@@ -16,11 +16,15 @@ All project content (code, comments, documentation, commits, issues, PRs) **must
 - **NEVER merge a Pull Request (PR/MR)** without asking for the user's formal permission JUST BEFORE executing the merge.
 - The `import/gitlab` branch tracks the legacy GitLab project (`gitlab` remote) and serves as inspiration only.
 
-## Commit Convention
+## Naming Convention
 
-All commits must follow the [Gitmoji](https://gitmoji.dev/) convention.
+The [Gitmoji](https://gitmoji.dev/) convention applies to **all named project artifacts** — not only git commit messages:
 
-Format: `<emoji> <Short description>`
+- **Git commits** — `<emoji> <Short description>`
+- **Issue titles** — `<emoji> <Short description>`
+- **Pull request titles** — `<emoji> <Short description>`
+
+Never use conventional-commit prefixes (`feat:`, `fix:`, `chore:`, etc.) in any of the above. Gitmoji is the sole convention.
 
 Examples:
 
