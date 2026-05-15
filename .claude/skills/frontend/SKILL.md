@@ -110,17 +110,20 @@ queries — which `:root`-only Sass variables cannot.
 
 ```css
 :root {
+  --primitive-color-white:    #ffffff;
   --primitive-color-blue-400: #60a5fa;
   --primitive-color-blue-500: #3b82f6;
   --primitive-space-4: 1rem;
 
-  --color-accent: var(--primitive-color-blue-500);
+  --color-accent:    var(--primitive-color-blue-500);
+  --color-on-accent: var(--primitive-color-white);
   --space-md: var(--primitive-space-4);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-accent: var(--primitive-color-blue-400);
+    --color-accent:    var(--primitive-color-blue-400);
+    --color-on-accent: var(--primitive-color-white);
   }
 }
 ```

@@ -109,10 +109,11 @@ Three layers, strict order:
 ```css
 /* tokens.css — primitives */
 :root {
-  --primitive-color-blue-400: #60a5fa;
-  --primitive-color-blue-500: #3b82f6;
-  --primitive-color-blue-600: #2563eb;
-  --primitive-color-blue-700: #1d4ed8;
+  --primitive-color-white:     #ffffff;
+  --primitive-color-blue-400:  #60a5fa;
+  --primitive-color-blue-500:  #3b82f6;
+  --primitive-color-blue-600:  #2563eb;
+  --primitive-color-blue-700:  #1d4ed8;
 
   --primitive-color-slate-50:  #f8fafc;
   --primitive-color-slate-900: #0f172a;
@@ -132,6 +133,7 @@ Three layers, strict order:
   --color-accent:        var(--primitive-color-blue-600);
   --color-accent-hover:  var(--primitive-color-blue-700);
   --color-accent-soft:   var(--primitive-color-blue-400);
+  --color-on-accent:     var(--primitive-color-white);
   --color-surface:       var(--primitive-color-slate-50);
   --color-text:          var(--primitive-color-slate-900);
 
