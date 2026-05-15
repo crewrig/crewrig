@@ -241,7 +241,7 @@ real-world audits:
 Helper scripts live under `scripts/` and are the recommended way to
 catch the pitfalls above before merge.
 
-- **`scripts/actionlint`** — runs the upstream `actionlint` binary
+- **`scripts/lint-workflow.sh`** — runs the upstream `actionlint` binary
   across `.github/workflows/`. Catches YAML errors, shellcheck
   findings inside `run:` blocks, undefined contexts, unreachable
   steps. Run on every workflow change.
@@ -261,7 +261,7 @@ catch the pitfalls above before merge.
 Invoke them as:
 
 ```sh
-scripts/actionlint .github/workflows/
+scripts/lint-workflow.sh .github/workflows/
 scripts/check-pinned-actions .github/workflows/
 scripts/check-secrets-exposure .github/workflows/
 scripts/simulate-job .github/workflows/ci.yml build

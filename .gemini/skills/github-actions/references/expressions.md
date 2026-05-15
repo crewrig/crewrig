@@ -130,7 +130,7 @@ In approximate precedence order (tightest first):
 | `!` | Logical NOT. |
 | `<`, `<=`, `>`, `>=` | Numeric and string comparison. |
 | `==`, `!=` | Equality. Loose comparison: `'1' == 1` is `true`. |
-| `&&`, `||` | Short-circuit logical AND / OR. |
+| `&&`, `\|\|` | Short-circuit logical AND / OR. |
 
 Strings are single-quoted; double quotes are not valid in expressions
 (they belong to YAML's quoting layer). Numbers and booleans are

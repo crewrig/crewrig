@@ -145,6 +145,7 @@ Symptoms: job stays in `queued` for minutes, "No runner matching the
 specified labels was found", "All runners are busy".
 
 Typical fixes:
+
 - Switch from a custom self-hosted label to `ubuntu-latest` for the
   affected job if no host-specific dependency exists.
 - For self-hosted fleets: check runner health, scale up, restart
@@ -158,6 +159,7 @@ Symptoms: "Cache not found for input keys", restored cache is
 inconsistent with the lockfile, cache exceeds 10 GB, slow restore.
 
 Typical fixes:
+
 - Cache key includes a hash of the **lockfile**, not the manifest.
 - Bump a numeric epoch in the cache key prefix to invalidate
   poisoned caches: `cache-v2-${{ hashFiles('**/lock.file') }}`.
@@ -170,6 +172,7 @@ Symptoms: `${{ secrets.X }}` is empty in a job, "Secret X not
 found", a deploy step receives a literal empty string.
 
 Typical fixes:
+
 - Confirm the secret exists at the correct scope: repo, environment,
   or organisation. Environment secrets are only visible to jobs
   declaring `environment: <name>`.
@@ -185,6 +188,7 @@ Symptoms: `403` on `GITHUB_TOKEN` API calls, "Resource not
 accessible by integration", OIDC `AssumeRoleWithWebIdentity` failure.
 
 Typical fixes:
+
 - Add the missing scope to the **job's** `permissions:` block, not
   the workflow's.
 - For OIDC: align the IAM/GCP/Azure trust policy's `sub` claim with
@@ -198,6 +202,7 @@ Symptoms: a previously-green workflow fails with "input X not
 supported", "deprecated input", or a runtime error from an action.
 
 Typical fixes:
+
 - Pin actions by **SHA**, not tag. Tag references can be re-pointed
   silently by the action maintainer.
 - Check the action's release notes for breaking changes. Pin to the
@@ -212,6 +217,7 @@ Symptoms: intermittent timeouts to `registry.npmjs.org`,
 limits.
 
 Typical fixes:
+
 - Add a retry around the network step (`nick-fields/retry@<sha>` or
   a shell loop with `curl --retry`). Retries are **bounded**: max 3
   attempts, exponential backoff.
@@ -226,6 +232,7 @@ Symptoms: workflow fails to start, "Invalid workflow file",
 `actionlint` complaint, YAML parse error.
 
 Typical fixes:
+
 - Run `actionlint` locally on the file. The skill's
   `scripts/lint-workflow.sh` wraps this.
 - Watch for the classic YAML traps: tab characters, multi-line
@@ -239,6 +246,7 @@ was canceled", two PRs racing on the same environment, an in-flight
 release aborted by a newer commit.
 
 Typical fixes:
+
 - For preview deploys: branch-scoped `concurrency:` with
   `cancel-in-progress: true` is correct.
 - For production deploys: environment-scoped group with

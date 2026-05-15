@@ -5,10 +5,10 @@
 # Usage: check-secrets-exposure.sh <workflow-file-or-directory>
 #
 # Patterns flagged:
-#   1. `echo ${{ secrets.* }}`           — secret echoed directly to stdout.
-#   2. workflow-level `env:`             — env values accessible to every job.
-#   3. `set -x` / `set +x` in `run:`     — shell trace expands env values.
-#   4. `toJSON(secrets)` anywhere        — serialises every secret as JSON.
+#   1. `echo ${{ secrets.* }}`                          — secret echoed directly to stdout.
+#   2. workflow-level `env:` referencing `secrets.*`    — broad blast radius across all jobs.
+#   3. `set -x` / `set +x` in `run:`                   — shell trace expands env values.
+#   4. `toJSON(secrets)` anywhere                       — serialises every secret as JSON.
 
 set -euo pipefail
 
@@ -67,6 +67,8 @@ report() {
 
 for current_file in "${files[@]}"; do
     lineno=0
+    in_top_level_env=0
+    top_level_env_lineno=0
     saw_top_level_env=0
     # shellcheck disable=SC2094  # report() only echoes; it does not write to current_file.
     while IFS= read -r line || [ -n "$line" ]; do
@@ -78,11 +80,21 @@ for current_file in "${files[@]}"; do
                 "secret value is written to stdout and persisted in the run log"
         fi
 
-        # 2. workflow-level env: — a line starting at column 0 that is "env:".
+        # 2. workflow-level env: that contains ${{ secrets.* }} — broad blast radius.
+        # Only enter tracking on the first top-level (column-0) "env:" line.
         if [[ "$line" =~ ^env:[[:space:]]*$ ]] && [ "$saw_top_level_env" -eq 0 ]; then
-            report "$current_file" "$lineno" "top-level env:" \
-                "values defined here are inherited by every job and step (broad blast radius)"
+            in_top_level_env=1
+            top_level_env_lineno=$lineno
             saw_top_level_env=1
+        elif [ "$in_top_level_env" -eq 1 ] && [ "$lineno" -gt "$top_level_env_lineno" ]; then
+            # Exit the block on the first non-indented, non-blank, non-comment line.
+            if [[ "$line" =~ ^[^[:space:]#] ]] && [[ -n "$line" ]]; then
+                in_top_level_env=0
+            elif [[ "$line" =~ \$\{\{[[:space:]]*secrets\. ]]; then
+                report "$current_file" "$top_level_env_lineno" "top-level env: references \${{ secrets.* }}" \
+                    "secrets defined at workflow level are inherited by every job (broad blast radius)"
+                in_top_level_env=0
+            fi
         fi
 
         # 3. set -x / set +x in a shell step.

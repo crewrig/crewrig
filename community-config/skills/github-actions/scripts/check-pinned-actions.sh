@@ -9,6 +9,9 @@
 # makes the reference immutable.
 #
 # Local actions (./path) are ignored — they are part of the repository.
+#
+# Limitation: only inline `uses: owner/repo@ref` forms (value on the same
+# line) are matched. Multi-line YAML scalars for `uses:` are not detected.
 
 set -euo pipefail
 
