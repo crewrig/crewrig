@@ -4,9 +4,28 @@ This document defines the rules and conventions that all agents (human or AI) mu
 
 ## Language
 
-All project content (code, comments, documentation, commits, issues, PRs) **must be written in English**.
+All **project content must be written in English**. "Project content" covers
+every artifact that lands in the repository or on GitHub — there are no
+exceptions for "internal" notes, draft documents, or AI-authored prose.
 
-**Exception:** Interpersonal interactions between the user and the agent (chat sessions) MUST be conducted in the **User Preferred Language**.
+This includes, but is not limited to:
+
+- **File content in the repository** — source code, inline comments,
+  documentation prose, READMEs, ADRs, RFCs, configuration files, shell
+  scripts, and every framework artifact (`SKILL.md`, `AGENT.md`,
+  `AGENTS.md`, `CLAUDE.md`, etc.).
+- **GitHub artifacts** — commit messages, PR titles, PR bodies, PR review
+  comments, issue titles, issue bodies, and every comment posted on an
+  issue or PR (including incremental logbook updates).
+
+**Decision rule:** *Is this landing in the project or on GitHub?* → English
+only.
+
+**Exception:** Interpersonal interactions between the user and the agent
+(chat sessions, transient terminal output) MUST be conducted in the **User
+Preferred Language**. This exception covers only ephemeral dialogue — the
+moment content is committed, pushed, or posted to GitHub, the English-only
+rule takes over.
 
 ## Branching Strategy
 
@@ -112,20 +131,42 @@ Be explicit about what was added, modified, or removed and why.>
 
 ## Logbook Issues
 
-Every PR **must** be linked to a **logbook issue** on GitHub.
+Every PR **must** be anchored to a **logbook** on GitHub — a journal that
+traces every obstacle encountered (with its resolution or avoidance
+strategy), every challenge faced during implementation, and every success
+or breakthrough. This ensures that the full experience of agents working
+on the project — failures and successes alike — is recorded for future
+reference.
 
-A logbook issue is a detailed journal entry that traces:
+Three rules govern how logbooks are kept:
 
-- Every obstacle encountered and the resolution or avoidance strategy applied
-- Every challenge faced during implementation
-- Every success and breakthrough
+### Rule A — A feature issue IS its own logbook
 
-This strategy ensures that all experience (failures and successes) from agents working on the project is recorded and available for future reference.
+When a feature issue (or any pre-existing tracked issue) already exists
+for the work, **that issue IS the logbook**. Post all logbook content —
+obstacles, decisions, breakthroughs — as **incremental comments directly
+on that issue**. Never open a separate logbook issue in this case;
+duplicating the journal across two issues fragments the trail.
 
-Logbook issues must be written in English and use the label `logbook`.
+Only create a dedicated logbook issue when there is **no pre-existing
+issue** to anchor the work to (e.g., spontaneous refactor, exploratory
+fix). A dedicated logbook issue uses the `logbook` label.
 
-Once the PR is merged and any linked feature issue is closed, the logbook
-issue must also be closed (`state_reason: completed`).
+### Rule B — Update incrementally, not at the end
+
+Post a logbook comment **every time a significant obstacle, correction,
+or decision occurs** — as it happens, while context is fresh. Do **not**
+batch the entire journey into a single end-of-work comment: batching
+loses the chronological structure, the failed attempts, and the reasoning
+behind course corrections, which is precisely the value the logbook is
+meant to preserve.
+
+### Rule C — Close immediately after merge
+
+Once the PR is merged and the changes verified, **close the linked issue
+immediately** (`state_reason: completed`). Do not defer closing to a
+later cleanup pass — stale open issues accumulate and obscure the actual
+state of work in flight.
 
 ## GitHub Access
 
