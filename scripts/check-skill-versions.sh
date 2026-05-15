@@ -35,26 +35,32 @@ if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
   }
 fi
 
-# Collect changed skill/agent sources. `while read` rather than
-# `mapfile` for bash 3.2 compatibility (macOS default — `mapfile` is a
-# bash 4.0+ builtin).
-changed=()
+# Collect changed skill/agent sources, split by status (A=added, M=modified).
+# New files (A) start at 1.0.0 by definition — no bump required until they
+# land on the base branch and are subsequently modified. Only modified files
+# (M) are subject to the version-bump rule.
+# `while read` rather than `mapfile` for bash 3.2 compat (macOS default).
+modified=()
 while IFS= read -r line; do
   [ -z "$line" ] && continue
-  changed+=("$line")
-done < <(git diff --name-only "$BASE_REF" -- \
+  status="${line%%$'\t'*}"
+  file="${line#*$'\t'}"
+  if [ "$status" = "M" ]; then
+    modified+=("$file")
+  fi
+done < <(git diff --name-status "$BASE_REF" -- \
   'community-config/skills/*/SKILL.md' \
   'community-config/agents/*/AGENT.md' 2>/dev/null || true)
 
-if [ "${#changed[@]}" -eq 0 ]; then
-  echo "OK: no skill/agent sources changed vs $BASE_REF."
+if [ "${#modified[@]}" -eq 0 ]; then
+  echo "OK: no existing skill/agent sources modified vs $BASE_REF."
   exit 0
 fi
 
-echo "Checking version bumps on ${#changed[@]} changed skill/agent source(s)..."
+echo "Checking version bumps on ${#modified[@]} modified skill/agent source(s)..."
 
 failures=()
-for f in "${changed[@]}"; do
+for f in "${modified[@]}"; do
   [ ! -f "$f" ] && continue  # deleted file: skip (deletions don't need a bump)
 
   # Look at the diff for a `version:` line addition. The
