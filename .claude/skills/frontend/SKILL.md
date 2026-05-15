@@ -153,7 +153,7 @@ rather than per-component `@media` blocks:
 ```css
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-action-primary: var(--color-blue-400);
+    --color-action-primary: var(--primitive-color-blue-400);
   }
 }
 ```
