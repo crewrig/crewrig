@@ -110,6 +110,7 @@ queries — which `:root`-only Sass variables cannot.
 
 ```css
 :root {
+  --primitive-color-blue-400: #60a5fa;
   --primitive-color-blue-500: #3b82f6;
   --primitive-space-4: 1rem;
 
