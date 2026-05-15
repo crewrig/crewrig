@@ -114,6 +114,7 @@ hierarchy: **category** → **variant** → **modifier**.
 ```css
 :root {
   /* Primitive tokens — raw values, not consumed directly by components */
+  --primitive-color-blue-400: #60a5fa;
   --primitive-color-blue-500: #3b82f6;
   --primitive-color-blue-600: #2563eb;
 

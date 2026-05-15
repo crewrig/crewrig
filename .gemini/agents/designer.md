@@ -92,6 +92,7 @@ of them.
 /* Primitive tokens — never consumed directly by components */
 :root {
   --primitive-color-blue-50:  #eff6ff;
+  --primitive-color-blue-400: #60a5fa;
   --primitive-color-blue-500: #3b82f6;
   --primitive-color-blue-600: #2563eb;
   --primitive-color-blue-700: #1d4ed8;
