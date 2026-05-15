@@ -36,6 +36,50 @@ Examples:
 
 Refer to [gitmoji.dev](https://gitmoji.dev/) for the full list of valid emojis and their meanings.
 
+## Agent Team Protocol
+
+Project tickets are multi-step work. They must be treated by a **team of specialist agents**, not by a single agent working solo inline.
+
+### When this applies
+
+Any time the agent is asked to treat a project ticket (a GitHub issue, a PR
+task, a feature request, or any equivalent unit of tracked work), the
+**first action** is to assemble a team of relevant specialist agents sized
+to the ticket's scope. This applies even for tickets that look small at
+first glance — the cost of assembling a team is low, the cost of solo
+rework is high.
+
+### On Claude Code CLI (team support available)
+
+When running on a harness that exposes team-management tools (Claude Code
+CLI and equivalent), the following three tools are **mandatory**:
+
+1. **`TeamCreate`** — instantiate a dedicated team for the ticket. Name
+   the team after the ticket identifier (e.g. `issue-42-auth-refactor`).
+2. **`TaskCreate`** — assign **one task per agent role**. Each task
+   targets a specific specialist (`architect`, `developer`, `tester`,
+   `security`, `doc-writer`, `pr-reviewer`, `pr-logbook`, etc.) with a
+   self-contained brief.
+3. **`SendMessage`** — coordinate progress, hand off intermediate
+   artifacts, and unblock teammates. All cross-agent communication flows
+   through this tool — never through plain text replies.
+
+### On CLIs without team support (e.g. Gemini CLI)
+
+When the harness does not expose `TeamCreate` / `TaskCreate` /
+`SendMessage`, fall back to **sequential `Agent` spawns** with an
+explicit `subagent_type` matching the specialist role. Each spawn must
+carry a self-contained brief — the spawned agent inherits no
+conversation context. Aggregate results in the orchestrating session
+before moving to the next role.
+
+### Solo work prohibition
+
+**Never** treat a multi-step ticket with inline solo work when specialist
+agents are available. Inline solo work on a ticket is reserved for trivial
+single-file edits explicitly scoped that way by the user. If in doubt,
+assemble the team.
+
 ## Pull Request Format
 
 Every PR must follow this structure:
