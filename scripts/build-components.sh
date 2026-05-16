@@ -172,7 +172,7 @@ inject_provenance() {
 
 # Extract YAML frontmatter from a Markdown file (between first two ---)
 extract_frontmatter() {
-  sed -n '/^---$/,/^---$/p' "$1" | sed '1d;$d'
+  awk 'NR==1 && /^---$/{inblk=1; next} inblk && /^---$/{exit} inblk{print}' "$1"
 }
 
 # Extract body from a Markdown file (everything after second ---)
