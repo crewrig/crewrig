@@ -10,7 +10,7 @@
 # Usage:
 #   bash scripts/check-skill-versions.sh [<base-ref>]
 #
-# Default base ref: origin/release/crew-v0. CI passes BASE_REF env var
+# Default base ref: origin/main. CI passes BASE_REF env var
 # pointing at the PR's *target* branch (`base.ref` in GitHub Actions
 # context) — NOT the PR's source/head branch. The guard diffs the PR
 # against what it's about to merge into, so changes that haven't yet
@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-BASE_REF="${1:-${BASE_REF:-origin/release/crew-v0}}"
+BASE_REF="${1:-${BASE_REF:-origin/main}}"
 
 # Make sure the base is fetched. CI runners do shallow clones by default.
 if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then

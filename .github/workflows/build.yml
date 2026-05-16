@@ -44,6 +44,9 @@ jobs:
       - name: Test extract_frontmatter regression
         run: bash scripts/tests/test-extract-frontmatter.sh
 
+      - name: Test check-skill-versions regression
+        run: bash scripts/tests/test-check-skill-versions.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:

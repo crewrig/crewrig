@@ -55,6 +55,35 @@ Examples:
 
 Refer to [gitmoji.dev](https://gitmoji.dev/) for the full list of valid emojis and their meanings.
 
+## Version Bump Convention
+
+Skill and agent sources carry a `metadata.provenance.version` field that
+tracks shipped revisions. Two rules govern when it must change.
+
+**Rule — bump on modification of shipped sources.** Any diff that modifies
+a skill or agent source already present on `main` MUST bump
+`metadata.provenance.version` in the same diff. Affected paths:
+
+- `community-config/skills/*/SKILL.md`
+- `community-config/agents/*/AGENT.md`
+
+**Exemption — new components do not bump in-branch.** Components
+introduced on a feature branch start at `1.0.0` and stay there until the
+branch is merged. In-branch fixes to a brand-new component MUST NOT bump
+its version — the version is only meaningful once the component ships on
+`main`. CI enforces this: only files with `git diff --name-status` status
+`M` (modified) trigger the check; newly added files (`A`) are skipped.
+
+**SemVer guidance for bumps:**
+
+- `PATCH` (1.0.x) — friction fix, wording change
+- `MINOR` (1.x.0) — additive change (new section, new field)
+- `MAJOR` (x.0.0) — breaking contract change
+
+**Enforcement.** `scripts/check-skill-versions.sh` runs in CI, diffs the
+PR against its target branch, and fails the build when a modified source
+ships without a version bump.
+
 ## Agent Team Protocol
 
 Project tickets are multi-step work. They must be treated by a **team of specialist agents**, not by a single agent working solo inline.
