@@ -29,9 +29,37 @@ why.
 
 ## Protocol
 
-Five ordered steps. Do not skip ahead.
+Six ordered steps. Do not skip ahead.
 
-### 1. Read the project conventions
+### 1. Preflight — check CI status
+
+Before reading the diff, query the CI state for the PR:
+
+```bash
+gh pr checks <number> --repo <owner/repo>
+```
+
+Classify each required check as **pass**, **fail**, or **pending**.
+
+- A **failing** required check is a hard blocker. Do not post `APPROVE`
+  or any "LGTM" framing while any required check is failing — the
+  editorial diff review is moot until CI is green. The verdict in this
+  case is `REQUEST_CHANGES` (or `COMMENT` if the failure is clearly
+  unrelated infrastructure flake, in which case say so explicitly and
+  cite the failing job).
+- A **pending** required check means the review is premature. Either
+  wait for completion, or post `COMMENT` and state plainly that the
+  verdict is deferred until CI resolves.
+- All required checks **passing** clears the preflight; proceed to
+  step 2.
+
+The CI status MUST be surfaced explicitly in the final verdict body
+(pass / fail / pending, with the failing job name when applicable).
+A silent skip of this section is a protocol violation: a failing
+required job overrides any editorial LGTM, and the reader of the
+review needs to see that signal in writing.
+
+### 2. Read the project conventions
 
 Open `AGENTS.md` at the repo root (or the project's equivalent) and
 note:
@@ -44,7 +72,7 @@ note:
 
 Different projects have different rules. Do not assume.
 
-### 2. Fetch the PR diff and metadata
+### 3. Fetch the PR diff and metadata
 
 ```bash
 gh pr diff <number>
@@ -54,7 +82,7 @@ gh pr view <number> --json title,body,files,headRefName,baseRefName,labels
 Identify linked issues by parsing the body (`Fixes #N`, `Closes #N`,
 `Refs #N`) and fetch each: `gh issue view <N>`.
 
-### 3. Run the bundled linter scripts
+### 4. Run the bundled linter scripts
 
 Select scripts based on file extensions in the changed-files list, then
 invoke each with the matching subset of paths. Capture stdout and exit
@@ -62,10 +90,13 @@ code; treat exit 0 as no findings, exit 1 as findings present.
 
 See *Scripts* below for the full table.
 
-### 4. Compose the structured review
+### 5. Compose the structured review
 
-Four sections, in this order:
+Five sections, in this order:
 
+- **CI status** — pass / fail / pending for each required check
+  (from step 1). When any required check is failing or pending, this
+  section drives the verdict; do not bury it.
 - **Correctness** — does the code do what the PR claims? Cite the file
   path and line range for each claim.
 - **Convention compliance** — does the change follow the rules
@@ -80,7 +111,7 @@ optional line number, or a specific assertion from the diff). If you
 cannot cite, write "see diff" or omit the claim. See *Grounding
 discipline* below.
 
-### 5. Post the review
+### 6. Post the review
 
 Use the GitHub MCP `pull_request_review_write` tool with the
 appropriate event:
