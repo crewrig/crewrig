@@ -86,7 +86,7 @@ hex value.
 
 - Every `<button>` has an accessible name (visible label or
   `aria-label`).
-- Every `<input>` has an associated `<label>` (via `for` /`id` or
+- Every `<input>` has an associated `<label>` (via `for` / `id` or
   wrapping).
 - Modal dialogs trap focus while open and restore focus to the
   trigger element on close.
