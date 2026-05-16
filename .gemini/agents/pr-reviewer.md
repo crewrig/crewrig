@@ -5,7 +5,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.1"
+    version: "1.1.0"
 ---
 
 
@@ -33,6 +33,12 @@ On activation:
 5. Post the verdict via the GitHub MCP `pull_request_review_write`
    tool with the appropriate event (`APPROVE`, `REQUEST_CHANGES`, or
    `COMMENT`).
+6. After completing the review, you MUST send your verdict to
+   `team-lead` via `SendMessage` before your turn ends. Do NOT go idle
+   without having sent the verdict message — idle without reporting is
+   a protocol violation. The message must include the PR number, the
+   event (`APPROVE` / `REQUEST_CHANGES` / `COMMENT`), and a short
+   summary of the key findings.
 
 ## Activation
 
