@@ -211,6 +211,28 @@ to lock in reproduction.
 `architect` is optional: include it only when the root cause exposes a
 design flaw rather than a localized defect.
 
+### Team Communication
+
+Two rules govern how teammates report back inside a team.
+
+**Rule 1 — Report before idle.** Every agent operating inside a team
+(spawned via `TeamCreate` / `TaskCreate`) MUST send a message to
+`team-lead` via `SendMessage` with a result summary before its turn ends.
+Going idle without sending a result message is a protocol violation. The
+result message must include: the task identifier, the outcome, and any
+artifact (file path, diff summary, verdict, etc.) the team lead needs to
+proceed.
+
+**Rule 2 — Idle fallback.** If a teammate goes idle twice in a row
+without reporting back on its assigned task, the team lead MUST NOT send
+a third `SendMessage`. Instead, spawn a fresh direct `Agent` with a
+self-contained brief — the same brief as the original task, plus context
+about what was attempted. Include any state already produced — PR
+number, branch name, worktree path, logbook issue — so the fresh spawn
+can resume rather than restart from scratch. Direct `Agent` spawns (without team context)
+reliably complete and return results; `SendMessage` to a stuck idle
+agent does not.
+
 ## Pull Request Format
 
 Every PR must follow this structure:
