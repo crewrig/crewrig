@@ -121,6 +121,67 @@ Once the PR is merged and the linked logbook issue closed (see *Logbook Issues �
 git worktree remove .worktrees/<ticket-id>
 ```
 
+### Standard Team Templates
+
+Every role in the templates below operates inside the ticket worktree as
+required by the rule above.
+
+Agents **MUST** use the closest matching template below as the starting team
+composition. Adjust by dropping a role only when the ticket's scope explicitly
+excludes it, or by adding a role when the change crosses a specialist's
+trigger surface (e.g. `security`, `architect`). Either adjustment requires a
+one-line rationale in the task handoff comment. Ad-hoc partial crews —
+omitting roles without justification — are prohibited.
+
+**Security rule (applies to all templates):** When a change touches the
+security skill's trigger surface (authentication, authorization, secrets,
+cryptography, input parsing, deserialization, network calls, or dependency
+upgrades), insert `security` after `developer` in the applicable template.
+
+#### Template 1 — Feature implementation (results in a PR)
+
+Full pipeline. Every role is mandatory unless explicitly scoped out by the
+user.
+
+| Order | Role | Responsibility |
+|---|---|---|
+| 1 | `architect` | Design review, ADR if needed, blast-radius check |
+| 2 | `developer` (×N) | Implementation in the worktree |
+| 3 | `tester` | Write / update tests |
+| 4 | `pr-logbook` | Draft PR title, body, and logbook entry |
+| 5 | `pr-reviewer` | Independent cold review of the diff |
+
+Use multiple `developer` agents in parallel when the work decomposes into
+independent files or modules; a single developer suffices otherwise.
+
+#### Template 2 — Documentation-only change
+
+Lighter pipeline — no code, no tests.
+
+| Order | Role | Responsibility |
+|---|---|---|
+| 1 | `doc-writer` | Write / update the documentation |
+| 2 | `pr-logbook` | Draft PR title, body, and logbook entry |
+| 3 | `pr-reviewer` | Independent cold review of the diff |
+
+If the documentation change modifies an established protocol, convention, or
+contract (e.g. AGENTS.md itself), insert `architect` as step 0.
+
+#### Template 3 — Bug fix
+
+Test-first pipeline: the failing regression test is written before the fix
+to lock in reproduction.
+
+| Order | Role | Responsibility |
+|---|---|---|
+| 1 | `tester` | Write a failing regression test that reproduces the bug |
+| 2 | `developer` | Implement the fix until the regression test passes |
+| 3 | `pr-logbook` | Draft PR title, body, and logbook entry |
+| 4 | `pr-reviewer` | Independent cold review of the diff |
+
+`architect` is optional: include it only when the root cause exposes a
+design flaw rather than a localized defect.
+
 ## Pull Request Format
 
 Every PR must follow this structure:
