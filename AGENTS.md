@@ -99,6 +99,22 @@ agents are available. Inline solo work on a ticket is reserved for trivial
 single-file edits explicitly scoped that way by the user. If in doubt,
 assemble the team.
 
+### Worktree Isolation
+
+Parallel agent teams operating on the same git working directory collide on branch checkout and the staging index, corrupting each other's work. To prevent this, the orchestrating agent **MUST** create a dedicated git worktree **before** issuing any `TaskCreate` call or `Agent` spawn for the ticket:
+
+```sh
+git worktree add .worktrees/<ticket-id> -b <branch-name> crewrig/main
+```
+
+All file edits performed by the team — by every specialist, without exception — **MUST** happen inside `.worktrees/<ticket-id>/`. The main working directory is off-limits for the duration of the ticket; treat it as read-only.
+
+Once the PR is merged and the linked logbook issue closed (see *Logbook Issues → Rule C*), remove the worktree to keep the repository clean:
+
+```sh
+git worktree remove .worktrees/<ticket-id>
+```
+
 ## Pull Request Format
 
 Every PR must follow this structure:
