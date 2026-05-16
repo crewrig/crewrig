@@ -58,7 +58,7 @@ Refer to [gitmoji.dev](https://gitmoji.dev/) for the full list of valid emojis a
 ## Version Bump Convention
 
 Skill and agent sources carry a `metadata.provenance.version` field that
-tracks shipped revisions. Two rules govern when it must change.
+tracks shipped revisions. One rule and one exemption govern when it must change.
 
 **Rule — bump on modification of shipped sources.** Any diff that modifies
 a skill or agent source already present on `main` MUST bump

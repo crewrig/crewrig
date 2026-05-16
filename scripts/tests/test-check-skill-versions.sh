@@ -14,6 +14,9 @@
 # Usage:
 #   bash scripts/tests/test-check-skill-versions.sh
 
+# -e is intentionally omitted: exit behaviour is controlled through explicit
+# pass/fail counters and a final assertion; adding -e would cause the harness
+# to abort on the expected non-zero exit codes from the script under test.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
