@@ -104,7 +104,7 @@ assemble the team.
 Parallel agent teams operating on the same git working directory collide on branch checkout and the staging index, corrupting each other's work. To prevent this, the orchestrating agent **MUST** create a dedicated git worktree **before** issuing any `TaskCreate` call or `Agent` spawn for the ticket:
 
 ```sh
-git worktree add .worktrees/<ticket-id> -b <branch-name> crewrig/main
+git worktree add -b <branch-name> .worktrees/<ticket-id> crewrig/main
 ```
 
 All file edits performed by the team — by every specialist, without exception — **MUST** happen inside `.worktrees/<ticket-id>/`. The main working directory is off-limits for the duration of the ticket; treat it as read-only.
