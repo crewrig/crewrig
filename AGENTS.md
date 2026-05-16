@@ -86,8 +86,7 @@ CLI and equivalent), the following three tools are **mandatory**:
 **Single-source brief rule**: The `Agent` spawn prompt is the
 authoritative brief — it must be self-contained because spawned agents
 inherit no conversation context. Use `TaskCreate` for tracking only:
-its `description` should be a one-liner (what the task is and where to
-find it), not a duplicate of the Agent prompt. Never write the same
+its `description` should be a one-liner (e.g. `"Implement feature X — full brief in Agent prompt"`), not a duplicate of the Agent prompt. Never write the same
 brief in both places.
 
 ### On CLIs without team support (e.g. Gemini CLI)
