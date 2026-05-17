@@ -150,6 +150,8 @@ Once the PR is merged and the linked logbook issue closed (see *Logbook Issues �
 git worktree remove .worktrees/<ticket-id>
 ```
 
+Any obstacle encountered during the worktree lifecycle — merge conflicts, CI failures, friction declarations, scope changes, rebases that resolve conflicts — must be logged on the issue logbook before resuming work. See **Rule B** for the full trigger list.
+
 ### Built Components
 
 Source files under `community-config/` are compiled into `.gemini/` and `.claude/` by `scripts/build-components.sh`. The CI `check-components` job fails if the built outputs drift from sources.
@@ -304,6 +306,17 @@ batch the entire journey into a single end-of-work comment: batching
 loses the chronological structure, the failed attempts, and the reasoning
 behind course corrections, which is precisely the value the logbook is
 meant to preserve.
+
+Triggers that require an immediate logbook comment:
+
+- Merge conflicts encountered during rebase or merge
+- CI failures (any red check that prompts a code change)
+- Friction declarations (`harness-report` activations)
+- Scope changes or requirement pivots mid-ticket
+- Rebase operations that resolve conflicts (one comment per rebase, summarising the conflict and resolution)
+- Architectural course corrections (an ADR-worthy decision made inline)
+
+The comment must be posted **before** resuming work on the obstacle's resolution — not after the PR is opened.
 
 ### Rule C — Close immediately after merge
 
