@@ -22,6 +22,33 @@ tasks:
         msg: "pipx is required. Install with: brew install pipx (macOS) or apt-get install pipx (Linux)"
     cmd: pipx install --force 'mempalace>=3.3.3,<3.4'
 
+  setup:playwright-mcp:
+    desc: "Install the Playwright MCP server globally (opt-in). Registers @playwright/mcp in Claude Code and Gemini CLI user-scope config. Idempotent — safe to re-run."
+    cmds:
+      - |
+        echo "Registering Playwright MCP server in Claude Code (user scope)..."
+        if claude mcp list 2>/dev/null | grep -q "playwright"; then
+          echo "  Already registered in Claude Code — skipping."
+        else
+          claude mcp add playwright npx @playwright/mcp@latest --scope user
+          echo "  Registered."
+        fi
+      - |
+        echo "Registering Playwright MCP server in Gemini CLI (global config)..."
+        GEMINI_SETTINGS="${HOME}/.gemini/settings.json"
+        if [ -f "$GEMINI_SETTINGS" ] && grep -q '"playwright"' "$GEMINI_SETTINGS" 2>/dev/null; then
+          echo "  Already registered in Gemini CLI — skipping."
+        else
+          python3 -c "
+        import json, sys, os
+        path = os.path.expanduser('~/.gemini/settings.json')
+        cfg = json.load(open(path)) if os.path.exists(path) else {}
+        cfg.setdefault('mcpServers', {})['playwright'] = {'command': 'npx', 'args': ['@playwright/mcp@latest']}
+        json.dump(cfg, open(path, 'w'), indent=2)
+        print('  Registered.')
+        " 2>/dev/null || echo "  Gemini CLI config not found or not JSON — skipping."
+        fi
+
   install-workspace:
     desc: Install all community-config components (copy mode)
     cmd: bash {{.REPO_DIR}}/scripts/install-workspace.sh install
