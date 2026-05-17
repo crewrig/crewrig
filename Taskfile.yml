@@ -40,13 +40,16 @@ tasks:
           echo "  Already registered in Gemini CLI — skipping."
         else
           python3 -c "
-        import json, sys, os
+        import json, os
         path = os.path.expanduser('~/.gemini/settings.json')
-        cfg = json.load(open(path)) if os.path.exists(path) else {}
+        if not os.path.exists(path):
+          print('  Gemini CLI config not found — skipping.')
+          raise SystemExit(0)
+        cfg = json.load(open(path))
         cfg.setdefault('mcpServers', {})['playwright'] = {'command': 'npx', 'args': ['@playwright/mcp@latest']}
         json.dump(cfg, open(path, 'w'), indent=2)
         print('  Registered.')
-        " 2>/dev/null || echo "  Gemini CLI config not found or not JSON — skipping."
+        " || echo "  Gemini CLI registration failed — check ~/.gemini/settings.json manually."
         fi
 
   install-workspace:

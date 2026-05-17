@@ -93,6 +93,9 @@ Produce a `.spec.ts` (or `.robot`) that:
 - Logs `moderate` and `minor` as warnings without failing.
 - Excludes any rule documented as intentionally disabled, with
   the rationale inline.
+- For known violations not yet fixed, use axe's `context.exclude`
+  selectors scoped to the specific element, with an inline comment
+  citing the tracking issue — do not suppress at the rule level.
 
 ## Boundaries
 

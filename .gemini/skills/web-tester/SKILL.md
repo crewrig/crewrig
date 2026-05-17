@@ -22,7 +22,8 @@ user journeys — not exhaustive click-throughs.
 - **Conformity checks** — verify a page matches a design system,
   functional spec, or API contract.
 - **Accessibility audits** — automated WCAG 2.1/2.2 scans via
-  axe-core, plus keyboard and ARIA verification.
+  axe-core. For keyboard operability and ARIA semantics, delegate
+  to the `accessibility-auditor` agent.
 - **Scenario authoring** — translate a user journey into an
   executable Playwright or RobotFramework script.
 - **Regression passes** — run an existing suite against staging or
