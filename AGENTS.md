@@ -144,6 +144,14 @@ git worktree add -b <branch-name> .worktrees/<ticket-id> crewrig/main
 
 All file edits performed by the team — by every specialist, without exception — **MUST** happen inside `.worktrees/<ticket-id>/`. The main working directory is off-limits for the duration of the ticket; treat it as read-only.
 
+Before pushing, always rebase the worktree branch against the upstream main to avoid merge conflicts on shared files:
+
+```sh
+git fetch crewrig && git rebase crewrig/main
+```
+
+If the rebase raises conflicts, resolve them, then `git rebase --continue`. Log the conflict on the issue logbook before resuming (Rule B).
+
 Once the PR is merged and the linked logbook issue closed (see *Logbook Issues → Rule C*), remove the worktree to keep the repository clean:
 
 ```sh
