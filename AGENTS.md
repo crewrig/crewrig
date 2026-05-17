@@ -150,6 +150,16 @@ Once the PR is merged and the linked logbook issue closed (see *Logbook Issues �
 git worktree remove .worktrees/<ticket-id>
 ```
 
+### Built Components
+
+Source files under `community-config/` are compiled into `.gemini/` and `.claude/` by `scripts/build-components.sh`. The CI `check-components` job fails if the built outputs drift from sources.
+
+**Rule:** any commit that modifies a file under `community-config/` MUST also run `bash scripts/build-components.sh` and stage the regenerated outputs in the same commit or an immediately following one — never deferred to a separate PR.
+
+**Verify before push:** run `bash scripts/build-components.sh` after staging. A clean `git status --porcelain` means no drift.
+
+This rule applies to every role — doc-writer edits to `SKILL.md`, architect edits to `AGENT.md`, and pr-reviewer self-edits all count. The CI job is a backstop; this rule closes the loop before push.
+
 ### Standard Team Templates
 
 Every role in the templates below operates inside the ticket worktree as

@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.1.0"
+    version: "1.2.0"
 ---
 
 # Developer Agent
@@ -33,6 +33,8 @@ verification you did not perform.
 
 When several subtasks are independent, dispatch them in parallel. When
 they share a file or a contract, serialise.
+
+When modifying any file under `community-config/`, follow the **Built Components** rule in `AGENTS.md`.
 
 When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure in
