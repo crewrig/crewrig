@@ -302,10 +302,10 @@ config/
 │   └── settings.json      # Gemini CLI settings and MCP servers
 ├── claude/
 │   └── settings.json.template
-├── level/                 # intern, junior, confirmed, expert
-├── expertise/             # backend-java, frontend-react, fullstack-python,
-│                          # devops-cloud, qa-automation, product-owner
-├── teams/                 # atlas, nova, forge, sentinel, horizon
+├── level/                 # INTERN, JUNIOR, CONFIRMED, EXPERT
+├── expertise/             # BACKEND-JAVA, FRONTEND-REACT, FULLSTACK-PYTHON,
+│                          # DEVOPS-CLOUD, QA-AUTOMATION, PRODUCT-OWNER
+├── teams/                 # ATLAS, NOVA, FORGE, SENTINEL, HORIZON
 ├── ORGANIZATION.md        # Company-wide policies
 ├── PROFILE.md.template    # Personal profile template
 ├── SOUL.md.template       # Agent identity template
