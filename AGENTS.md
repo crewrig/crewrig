@@ -84,6 +84,28 @@ its version — the version is only meaningful once the component ships on
 PR against its target branch, and fails the build when a modified source
 ships without a version bump.
 
+## CLI Matrix Maintenance
+
+`docs/cli-matrix.md` is the source of truth for every CLI-specific
+integration point. It MUST stay in lockstep with the code.
+
+**Trigger surface.** A change is CLI-specific when it touches any of:
+`.claude/**`, `.gemini/**`, `community-config/**`, `extensions/**`,
+`hooks/*-transcript-hooks.json`, `config/claude/**`, `config/gemini/**`,
+`scripts/build-components.sh`, any `scripts/{build,install,setup,import,manage}-*.sh`,
+`.github/workflows/claude.yml` or `.github/workflows/gemini.yml`,
+the top-level entry-point files (`CLAUDE.md`, `GEMINI.md`), or a
+CLI-prefixed entry in `Taskfile.yml` / `.gitignore`.
+
+**Obligation.** Any PR that modifies the trigger surface MUST consult
+`docs/cli-matrix.md` and update it in the same diff — new row, edited
+cell, or refreshed `Parity gaps` entry. Drift is a parity bug.
+
+**Parity check.** When adding or modifying a feature for one CLI,
+verify the other. If the symmetric path is missing, either implement
+it in the same PR or record it under `Parity gaps` with a follow-up
+issue link. Silent asymmetry is prohibited.
+
 ## Agent Team Protocol
 
 Project tickets are multi-step work. They must be treated by a **team of specialist agents**, not by a single agent working solo inline.
