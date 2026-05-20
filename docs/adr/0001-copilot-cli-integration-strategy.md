@@ -149,3 +149,16 @@ matrix.
   documents.
 - No changes to `community-config/` source tree — Copilot consumes the
   same SKILL.md / AGENT.md shape we already produce.
+
+## Addendum — 2026-05-20: User-level layered context
+
+The original discovery phase missed `~/.copilot/instructions/*.instructions.md`,
+which is the user-level context loading path documented at
+https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference.
+Files placed there are loaded automatically at every Copilot CLI session,
+making them the direct equivalent of `~/.claude/rules/` and `~/.gemini/`.
+
+`setup-copilot-interactive.sh` was updated to deploy the 00–60 priority
+files from `config/` to `~/.copilot/instructions/` using the naming
+convention `<priority>-<slug>.instructions.md`. The `[GAP]` for user-level
+layered context recorded in checklist item #7 is hereby resolved.

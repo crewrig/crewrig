@@ -1,17 +1,21 @@
 #!/bin/bash
 # setup-copilot-interactive.sh — Interactive GitHub Copilot CLI configuration setup.
 #
-# Mirrors scripts/setup-gemini-interactive.sh — the Copilot config root is split
-# across .github/copilot/, .github/skills/, .github/agents/, and
-# .github/copilot-instructions.md. There is no single ~/.copilot/rules tree
-# analogous to ~/.claude/rules; this script focuses on workspace-level setup
-# (settings.json, hook activation) and surfaces the entry-point file location.
+# Mirrors scripts/setup-gemini-interactive.sh and setup-claude-interactive.sh —
+# the Copilot config root is split across .github/copilot/, .github/skills/,
+# .github/agents/, and .github/copilot-instructions.md at the workspace level.
+# User-level layered context is deployed to ~/.copilot/instructions/*.instructions.md
+# (the documented analogue of ~/.claude/rules/ and ~/.gemini/).
+# Reference:
+# https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference
 
 set -e
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
 COPILOT_HOME="${HOME}/.copilot"
+COPILOT_INSTRUCTIONS="${COPILOT_HOME}/instructions"
+COPILOT_SKILLS="${COPILOT_HOME}/skills"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL_MODE="copy"
 
@@ -47,6 +51,33 @@ if ! gh copilot --help >/dev/null 2>&1 && ! command -v copilot >/dev/null 2>&1; 
   echo ""
 fi
 
+# --- Prerequisites: identity files ---
+# SOUL.md and PROFILE.md must be generated BEFORE running this setup.
+# They are produced by the /init-soul and /init-personal-profile skills.
+MISSING_PREREQS=()
+
+check_finalized() {
+  local file="$1" template="$2" label="$3" skill="$4"
+  if [ ! -f "$file" ]; then
+    MISSING_PREREQS+=("$label is missing — run: $skill")
+  elif [ -f "$template" ] && diff -q "$file" "$template" >/dev/null 2>&1; then
+    MISSING_PREREQS+=("$label is identical to its template — run: $skill to customize it")
+  fi
+}
+
+check_finalized "$REPO_DIR/config/SOUL.md"    "$REPO_DIR/config/SOUL.md.template"    "config/SOUL.md"    "/init-soul"
+check_finalized "$REPO_DIR/config/PROFILE.md" "$REPO_DIR/config/PROFILE.md.template" "config/PROFILE.md" "/init-personal-profile"
+
+if [ ${#MISSING_PREREQS[@]} -gt 0 ]; then
+  echo "Cannot proceed — required identity files are missing or not customized:"
+  for item in "${MISSING_PREREQS[@]}"; do
+    echo "  - $item"
+  done
+  echo ""
+  echo "Generate them BEFORE re-running this script."
+  exit 1
+fi
+
 # --- Workspace settings file ---
 WORKSPACE_SETTINGS="$REPO_DIR/.github/copilot/settings.json"
 TEMPLATE="$REPO_DIR/config/copilot/settings.json.template"
@@ -68,6 +99,121 @@ else
   echo "  WARN: $ENTRY is missing — Copilot will not load AGENTS.md without it."
 fi
 echo ""
+
+# --- User-level layered context (~/.copilot/instructions/) ---
+# Copilot CLI loads every *.instructions.md file under ~/.copilot/instructions/
+# automatically at session start. This is the direct equivalent of
+# ~/.claude/rules/ and ~/.gemini/ for the priority-prefixed context files.
+# Reference:
+# https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference
+SKIP_INSTRUCTIONS_CONFIG=0
+mkdir -p "$COPILOT_INSTRUCTIONS"
+EXISTING_INSTR=$(find "$COPILOT_INSTRUCTIONS" -maxdepth 1 \( -type f -o -type l \) -name "*.instructions.md" 2>/dev/null)
+if [ -n "$EXISTING_INSTR" ]; then
+  echo "Existing instruction files found in $COPILOT_INSTRUCTIONS:"
+  echo "$EXISTING_INSTR" | sed "s|^$COPILOT_INSTRUCTIONS/|   - |"
+  echo ""
+  INSTR_ACTION=$(echo -e "keep\nrefresh" | fzf --height 15% \
+    --header "Existing instructions detected — keep them (skip selection) or refresh from scratch?")
+  if [ "$INSTR_ACTION" = "keep" ]; then
+    SKIP_INSTRUCTIONS_CONFIG=1
+    echo "Keeping existing instructions. Team / expertise / level selection will be skipped."
+    echo ""
+  elif [ "$INSTR_ACTION" = "refresh" ]; then
+    find "$COPILOT_INSTRUCTIONS" -maxdepth 1 \( -type f -o -type l \) -name "*.instructions.md" -delete
+    echo "Existing instructions removed. Full selection flow will run."
+    echo ""
+  else
+    echo "No choice made. Aborting."
+    exit 1
+  fi
+fi
+
+if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
+  echo "Installing shared layered context to $COPILOT_INSTRUCTIONS ..."
+
+  install_file "$REPO_DIR/config/SOUL.md" "$COPILOT_INSTRUCTIONS/00-soul.instructions.md" \
+    "SOUL.md -> instructions/00-soul.instructions.md"
+  install_file "$REPO_DIR/config/ORGANIZATION.md" "$COPILOT_INSTRUCTIONS/20-organization.instructions.md" \
+    "ORGANIZATION.md -> instructions/20-organization.instructions.md"
+  install_file "$REPO_DIR/config/PROFILE.md" "$COPILOT_INSTRUCTIONS/30-profile.instructions.md" \
+    "PROFILE.md -> instructions/30-profile.instructions.md"
+  install_file "$REPO_DIR/config/TOOLS.md" "$COPILOT_INSTRUCTIONS/60-tools.instructions.md" \
+    "TOOLS.md -> instructions/60-tools.instructions.md"
+  echo ""
+
+  # Level
+  echo "Select your experience level:"
+  LEVEL=$(for f in "$REPO_DIR"/config/level/*.md; do basename "$f" .md; done \
+    | fzf --height 40% --preview "head -20 $REPO_DIR/config/level/{}.md")
+  if [ -z "$LEVEL" ]; then
+    echo "No level selected. Aborting."
+    exit 1
+  fi
+  install_file "$REPO_DIR/config/level/${LEVEL}.md" "$COPILOT_INSTRUCTIONS/10-level.instructions.md" \
+    "level/${LEVEL}.md -> instructions/10-level.instructions.md"
+  echo "$LEVEL" > "$COPILOT_HOME/.selected_level"
+  echo "Level: $LEVEL"
+  echo ""
+
+  # Expertise
+  echo "Select your expertise:"
+  EXPERTISE=$(for f in "$REPO_DIR"/config/expertise/*.md; do basename "$f" .md; done \
+    | fzf --height 40% --preview "head -20 $REPO_DIR/config/expertise/{}.md")
+  if [ -z "$EXPERTISE" ]; then
+    echo "No expertise selected. Aborting."
+    exit 1
+  fi
+  install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$COPILOT_INSTRUCTIONS/40-expertise.instructions.md" \
+    "expertise/${EXPERTISE}.md -> instructions/40-expertise.instructions.md"
+  echo "$EXPERTISE" > "$COPILOT_HOME/.selected_expertise"
+  echo "Expertise: $EXPERTISE"
+  echo ""
+
+  # Team
+  echo "Select your team:"
+  TEAM=$(for f in "$REPO_DIR"/config/teams/*.md; do basename "$f" .md; done \
+    | fzf --height 40% --preview "head -20 $REPO_DIR/config/teams/{}.md")
+  if [ -z "$TEAM" ]; then
+    echo "No team selected. Aborting."
+    exit 1
+  fi
+  install_file "$REPO_DIR/config/teams/${TEAM}.md" "$COPILOT_INSTRUCTIONS/50-team.instructions.md" \
+    "teams/${TEAM}.md -> instructions/50-team.instructions.md"
+  echo "$TEAM" > "$COPILOT_HOME/.selected_team"
+  echo "Team: $TEAM"
+  echo ""
+fi
+
+# --- User-level skills (~/.copilot/skills/) — opt-in ---
+# Mirrors the workspace-level .github/skills/ output to the user-level
+# directory so skills are usable from any Copilot CLI session, regardless
+# of the active workspace. Agents are intentionally skipped in v1: the
+# `~/.copilot/agents/<name>.agent.md` naming convention is unverified
+# (see docs/adr/0001 — [GAP-confirmation]).
+WORKSPACE_SKILLS_DIR="$REPO_DIR/.github/skills"
+if [ -d "$WORKSPACE_SKILLS_DIR" ] && [ -n "$(ls -A "$WORKSPACE_SKILLS_DIR" 2>/dev/null)" ]; then
+  INSTALL_USER_SKILLS=$(echo -e "no\nyes" | fzf --height 10% \
+    --header "Install user-level skills to $COPILOT_SKILLS? (opt-in)")
+  if [ "$INSTALL_USER_SKILLS" = "yes" ]; then
+    mkdir -p "$COPILOT_SKILLS"
+    for skill_dir in "$WORKSPACE_SKILLS_DIR"/*/; do
+      [ -d "$skill_dir" ] || continue
+      skill_name="$(basename "$skill_dir")"
+      target_dir="$COPILOT_SKILLS/$skill_name"
+      mkdir -p "$target_dir"
+      install_file "$skill_dir/SKILL.md" "$target_dir/SKILL.md" \
+        "skills/$skill_name/SKILL.md -> ~/.copilot/skills/$skill_name/SKILL.md"
+    done
+    echo ""
+  else
+    echo "  User-level skills install skipped."
+    echo ""
+  fi
+else
+  echo "  No built skills found at $WORKSPACE_SKILLS_DIR — run 'bash scripts/build-components.sh --target copilot' first."
+  echo ""
+fi
 
 # --- Transcript hooks (opt-in) ---
 ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)")
@@ -118,6 +264,9 @@ echo "  Setup complete"
 echo "===================================="
 echo ""
 echo "Install mode: $INSTALL_MODE"
+echo ""
+echo "Active user-level instruction files:"
+ls -1 "$COPILOT_INSTRUCTIONS"/*.instructions.md 2>/dev/null || echo "  (none)"
 echo ""
 echo "Copilot looks for skills under .github/skills/ and agents under .github/agents/."
 echo "Run 'bash scripts/build-components.sh --target copilot' to (re)generate them."

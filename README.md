@@ -55,7 +55,9 @@ to form the agent's full context:
 
 **Gemini CLI** loads these via numeric-prefix files in `~/.gemini/` with
 enforced priority order. **Claude Code** loads them from `~/.claude/rules/`
-as additive context (all files combine, no override).
+as additive context (all files combine, no override). **GitHub Copilot CLI**
+loads them from `~/.copilot/instructions/` as `*.instructions.md` files,
+applied to all sessions.
 
 ### Community Config Zone
 
