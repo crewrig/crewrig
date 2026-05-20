@@ -1,8 +1,8 @@
 # Contributing to AI Agent Configuration
 
 This guide explains how to add new configurations, skills, and components
-to the repository. The framework supports both **Gemini CLI** and
-**Claude Code** as target platforms.
+to the repository. The framework supports **Gemini CLI**, **Claude Code**,
+and **GitHub Copilot CLI** as target platforms.
 
 ## Philosophy: The Community Sandbox
 
@@ -10,7 +10,7 @@ The `community-config/` directory serves as a **collaborative sandbox**:
 
 - Share lightweight components (commands, skills, hooks) quickly.
 - Write each component **once** in the unified source format — the build
-  system generates outputs for both Gemini CLI and Claude Code.
+  system generates outputs for Gemini CLI, Claude Code, and GitHub Copilot CLI.
 - Once a component grows in complexity or requires executable code, migrate
   it to a full `extension/` with an `extension.json` manifest.
 
@@ -21,6 +21,7 @@ The `community-config/` directory serves as a **collaborative sandbox**:
 | `community-config/` | Reusable, shared across tools | **No** — single source, build generates targets |
 | `.gemini/commands/` | Gemini CLI project commands | **Yes** — native to Gemini |
 | `.claude/skills/` | Claude Code project skills | **Yes** — native to Claude Code |
+| `.github/skills/` | GitHub Copilot CLI project skills (Agent Skills standard) | **Yes** — native to Copilot CLI |
 
 Community components use the unified format documented in
 [`community-config/FORMAT.md`](community-config/FORMAT.md).

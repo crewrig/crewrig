@@ -1,0 +1,17 @@
+{
+  "version": "1",
+  "disableAllHooks": false,
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(task:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)"
+    ]
+  },
+  "hooks": []
+}

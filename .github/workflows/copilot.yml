@@ -1,0 +1,41 @@
+name: GitHub Copilot CLI
+
+# GitHub Copilot's `@copilot` mention trigger is native — issues and pull
+# requests automatically dispatch to the Copilot coding agent in a
+# GitHub-Actions-backed ephemeral environment when a comment mentions
+# `@copilot`. This workflow file does NOT enable that behaviour — it is
+# enabled at the repository / organisation level via the Copilot settings.
+#
+# This file exists for parity with `.github/workflows/claude.yml` and to
+# host optional non-interactive `gh copilot` automation. By default the
+# job is gated on a mention so it stays no-op until explicitly opted into.
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  copilot:
+    if: |
+      contains(github.event.comment.body, '@copilot-cli') &&
+      (github.event.issue.pull_request || github.event.pull_request)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # Optional: invoke the GitHub Copilot CLI for non-interactive automation.
+      # Requires the gh-copilot extension to be available on the runner image
+      # and a token with Copilot access; left as a documented placeholder.
+      - name: Run gh copilot (placeholder)
+        run: |
+          echo "::notice::This job is a parity placeholder for gh copilot automation."
+          echo "Native @copilot mention dispatch is configured via Copilot settings,"
+          echo "not through this workflow file."

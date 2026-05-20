@@ -2,8 +2,9 @@
 
 This document covers the full lifecycle of creating, developing, testing,
 and releasing extensions in this monorepo. Extensions work with both
-**Gemini CLI** (as extensions) and **Claude Code** (as plugins) from a
-single `extension.json` manifest. See
+**Gemini CLI** (as extensions), **Claude Code** (as plugins), and
+**GitHub Copilot CLI** (consumed in place from `.github/`) from a single
+`extension.json` manifest. See
 [`extension-skeleton/EXTENSION-FORMAT.md`](extension-skeleton/EXTENSION-FORMAT.md)
 for the complete manifest specification.
 

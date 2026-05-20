@@ -1,8 +1,8 @@
 #!/bin/bash
-# build-components.sh — Build community components for Gemini CLI and/or Claude Code
+# build-components.sh — Build community components for Gemini CLI, Claude Code, and/or GitHub Copilot CLI
 #
 # Usage:
-#   bash scripts/build-components.sh [--target gemini|claude|all] [--check]
+#   bash scripts/build-components.sh [--target gemini|claude|copilot|all] [--check]
 #
 # Options:
 #   --target   Which tool to generate for (default: all)
@@ -386,6 +386,38 @@ CLAUDE_EOF
       check_or_write "$REPO_DIR/.claude/skills/$name/SKILL.md" "$claude_content" "$source"
       propagate_skill_resources "$skill_dir" "$REPO_DIR/.claude/skills/$name"
     fi
+
+    # --- GitHub Copilot CLI output (Agent Skills standard) ---
+    # Copilot loads skills from .github/skills/<name>/SKILL.md. Frontmatter
+    # is the open agentskills.io shape — same shape we produce for Gemini.
+    if [ "$TARGET" = "copilot" ] || [ "$TARGET" = "all" ]; then
+      local license compatibility
+      license=$(yaml_field "$source" "license")
+      compatibility=$(yaml_field "$source" "compatibility")
+
+      local copilot_frontmatter="name: $name
+description: \"$description\""
+      if [ -n "$license" ] && [ "$license" != "null" ]; then
+        copilot_frontmatter="$copilot_frontmatter
+license: $license"
+      fi
+      if [ -n "$compatibility" ] && [ "$compatibility" != "null" ]; then
+        copilot_frontmatter="$copilot_frontmatter
+compatibility: \"$compatibility\""
+      fi
+
+      local copilot_content
+      copilot_content=$(cat <<COPILOT_EOF
+---
+$copilot_frontmatter
+---
+
+$body
+COPILOT_EOF
+      )
+      check_or_write "$REPO_DIR/.github/skills/$name/SKILL.md" "$copilot_content" "$source"
+      propagate_skill_resources "$skill_dir" "$REPO_DIR/.github/skills/$name"
+    fi
   done
 }
 
@@ -447,6 +479,36 @@ CLAUDE_EOF
       )
       check_or_write "$REPO_DIR/.claude/skills/$name/SKILL.md" "$claude_content" "$source"
     fi
+
+    # --- GitHub Copilot CLI output: SKILL.md (commands compile as skills) ---
+    # Copilot has no first-class slash-command file format. Every CrewRig
+    # command compiles as a user-invocable skill under .github/skills/.
+    if [ "$TARGET" = "copilot" ] || [ "$TARGET" = "all" ]; then
+      local copilot_frontmatter="name: $name
+description: \"$description\""
+
+      local allowed_tools
+      allowed_tools=$(extract_frontmatter "$source" | yq -r '.claude.allowed-tools // [] | .[]' 2>/dev/null)
+      if [ -n "$allowed_tools" ]; then
+        copilot_frontmatter="$copilot_frontmatter
+allowed-tools:"
+        while IFS= read -r tool; do
+          copilot_frontmatter="$copilot_frontmatter
+  - $tool"
+        done <<< "$allowed_tools"
+      fi
+
+      local copilot_content
+      copilot_content=$(cat <<COPILOT_EOF
+---
+$copilot_frontmatter
+---
+
+$body
+COPILOT_EOF
+      )
+      check_or_write "$REPO_DIR/.github/skills/$name/SKILL.md" "$copilot_content" "$source"
+    fi
   done
 }
 
@@ -504,6 +566,24 @@ $body
 CLAUDE_EOF
       )
       check_or_write "$REPO_DIR/.claude/agents/$name/AGENT.md" "$claude_content" "$source"
+    fi
+
+    # --- GitHub Copilot CLI output: <name>.md (flat file, by parallelism with Gemini) ---
+    # [GAP-confirmation] — repo-level agent file convention is not in the
+    # public Copilot reference. We adopt .github/agents/<name>.md mirroring
+    # the skill layout. See docs/cli-matrix.md and the ADR.
+    if [ "$TARGET" = "copilot" ] || [ "$TARGET" = "all" ]; then
+      local copilot_content
+      copilot_content=$(cat <<COPILOT_EOF
+---
+name: $name
+description: "$description"
+---
+
+$body
+COPILOT_EOF
+      )
+      check_or_write "$REPO_DIR/.github/agents/$name.md" "$copilot_content" "$source"
     fi
   done
 }

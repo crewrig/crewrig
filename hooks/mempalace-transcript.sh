@@ -11,8 +11,10 @@
 #   MEMPALACE_TRANSCRIPT_ENABLED - set to "1" to enable (default: disabled)
 #   MEMPALACE_PYTHON             - Python binary with mempalace installed
 #                                  (default: python3)
-#   GEMINI_SESSION_ID / CLAUDE_SESSION_ID - session identifier
+#   GEMINI_SESSION_ID / CLAUDE_SESSION_ID / COPILOT_SESSION_ID - session id
 #   GEMINI_PROJECT_DIR / CLAUDE_PROJECT_DIR - project directory
+#   (GitHub Copilot CLI does NOT export a $COPILOT_PROJECT_DIR — the project
+#    path is read from the hook stdin JSON payload, with $PWD as fallback.)
 #
 # Requires: jq, mempalace (Python package)
 
@@ -32,8 +34,15 @@ MEMPALACE_PYTHON="${MEMPALACE_PYTHON:-python3}"
 INPUT=$(cat)
 
 # --- Detect tool and session ---
-SESSION_ID="${GEMINI_SESSION_ID:-${CLAUDE_SESSION_ID:-unknown}}"
-PROJECT_DIR="${GEMINI_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+# Copilot CLI passes context as JSON on stdin and does not export a
+# $COPILOT_PROJECT_DIR env var. Extract the project dir / session id from the
+# JSON payload first (covers a few candidate field names used by the various
+# CLI hook contracts), then fall back to env vars, then $PWD.
+COPILOT_PROJECT_DIR_FROM_JSON=$(echo "$INPUT" | jq -r '.workspace_dir // .workspace // .project_dir // .projectDir // .cwd // empty' 2>/dev/null)
+COPILOT_SESSION_ID_FROM_JSON=$(echo "$INPUT" | jq -r '.session_id // .sessionId // empty' 2>/dev/null)
+
+SESSION_ID="${GEMINI_SESSION_ID:-${CLAUDE_SESSION_ID:-${COPILOT_SESSION_ID:-${COPILOT_SESSION_ID_FROM_JSON:-unknown}}}}"
+PROJECT_DIR="${GEMINI_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-${COPILOT_PROJECT_DIR:-${COPILOT_PROJECT_DIR_FROM_JSON:-$(pwd)}}}}"
 PROJECT_NAME=$(basename "$PROJECT_DIR")
 TODAY=$(date +%Y-%m-%d)
 ROOM_ID="${PROJECT_NAME}-${TODAY}-${SESSION_ID:0:8}"

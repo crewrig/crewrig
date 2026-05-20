@@ -1,8 +1,10 @@
 # CrewRig
 
 CrewRig is a centralized configuration framework for
-[Gemini CLI](https://github.com/google-gemini/gemini-cli) and
-[Claude Code](https://claude.ai/code). It serves three complementary
+[Gemini CLI](https://github.com/google-gemini/gemini-cli),
+[Claude Code](https://claude.ai/code), and
+[GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli).
+It serves three complementary
 purposes:
 
 - **Personal context layer** — layered configuration files shape how AI
@@ -26,9 +28,12 @@ workflow is the product in action.
 |----------|---------------|---------------|
 | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `~/.gemini/` | `task setup-gemini-interactive` |
 | [Claude Code](https://claude.ai/code) | `~/.claude/rules/` | `task setup-claude-interactive` |
+| [GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli) | Split: `.github/copilot/` + `.github/skills/` + `.github/agents/` (workspace-level) | `task setup-copilot-interactive` |
 
-Both platforms share the same source configuration files in `config/`.
-Setup scripts deploy them into platform-specific directories.
+All platforms share the same source configuration files in `config/` and
+`community-config/`. Setup and build scripts deploy them into the
+platform-specific directories. See `docs/cli-matrix.md` for the full
+per-CLI integration matrix.
 
 ## How It Works
 
@@ -57,7 +62,7 @@ as additive context (all files combine, no override).
 `community-config/` is a single-source sandbox where skills, agents, and
 commands are written **once** and compiled into outputs for both CLIs.
 Contributors edit a single Markdown file with YAML frontmatter; the
-build step produces Gemini and Claude Code targets.
+build step produces Gemini CLI, Claude Code, and GitHub Copilot CLI targets.
 
 | Type | Description |
 |---|---|

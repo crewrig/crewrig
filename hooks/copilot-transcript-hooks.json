@@ -1,0 +1,31 @@
+{
+  "version": "1",
+  "disableAllHooks": false,
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "type": "command",
+      "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+    },
+    {
+      "event": "UserPromptSubmit",
+      "type": "command",
+      "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+    },
+    {
+      "event": "PostToolUse",
+      "type": "command",
+      "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+    },
+    {
+      "event": "Stop",
+      "type": "command",
+      "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+    },
+    {
+      "event": "SessionEnd",
+      "type": "command",
+      "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+    }
+  ]
+}

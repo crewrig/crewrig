@@ -1,0 +1,5 @@
+{
+  "name": "crewrig",
+  "description": "CrewRig agent framework extension for GitHub Copilot CLI",
+  "version": "1.0.0"
+}

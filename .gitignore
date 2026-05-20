@@ -28,3 +28,7 @@ config/SOUL.md
 # Claude Code local settings (per-user, not committed)
 .claude/settings.local.json
 CLAUDE.local.md
+
+# GitHub Copilot CLI local settings (per-user, not committed)
+.github/copilot/settings.local.json
+copilot-instructions.local.md

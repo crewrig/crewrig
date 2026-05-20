@@ -1,0 +1,5 @@
+{
+  "name": "${SKELETON_NAME}",
+  "description": "Description of the ${SKELETON_NAME} extension.",
+  "version": "0.1.0"
+}
