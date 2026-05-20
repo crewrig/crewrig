@@ -18,6 +18,8 @@ COPILOT_INSTRUCTIONS="${COPILOT_HOME}/instructions"
 COPILOT_SKILLS="${COPILOT_HOME}/skills"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL_MODE="copy"
+MEMPALACE_MIN_VERSION="3.3.3"
+MEMPALACE_MAX_VERSION_EXCLUSIVE="3.4"
 
 # --- Parse arguments ---
 while [[ $# -gt 0 ]]; do
@@ -185,6 +187,46 @@ if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
   echo ""
 fi
 
+# --- MCP server configuration (~/.copilot/mcp-config.json) ---
+echo "Configuring ~/.copilot/mcp-config.json..."
+MCP_CONFIG_TARGET="$COPILOT_HOME/mcp-config.json"
+MCP_CONFIG_SRC="$REPO_DIR/config/copilot/mcp-config.json.template"
+
+backup_file "$MCP_CONFIG_TARGET"
+
+# Detect MemPalace Python interpreter
+MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
+if [ -z "$MEMPALACE_PYTHON_BIN" ]; then
+  echo "  WARN: 'mempalace.mcp_server' is not importable from any candidate Python."
+  echo "        Install MemPalace first, then re-run this script:"
+  echo "        pipx install 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
+fi
+
+INSTALL_MEMPALACE_COPILOT=no
+if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
+  MEMPALACE_VERSION="$(mempalace_installed_version "$MEMPALACE_PYTHON_BIN")"
+  if ! mempalace_version_in_range "$MEMPALACE_PYTHON_BIN"; then
+    echo "  ERROR: MemPalace ${MEMPALACE_VERSION:-(unknown)} is outside the supported range >=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}."
+    echo "         Upgrade with: pipx install --force 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
+    exit 1
+  fi
+  echo "  Detected MemPalace interpreter: $MEMPALACE_PYTHON_BIN (mempalace $MEMPALACE_VERSION)"
+  INSTALL_MEMPALACE_COPILOT=$(echo -e "yes\nno" | fzf --height 10% \
+    --header "Include MemPalace MCP server in mcp-config.json?")
+fi
+
+if [ "$INSTALL_MEMPALACE_COPILOT" = "yes" ]; then
+  jq --arg py "$MEMPALACE_PYTHON_BIN" \
+    '.mcpServers.mempalace.command = $py' \
+    "$MCP_CONFIG_SRC" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
+  echo "  Installed: mcp-config.json (mempalace patched with detected Python)"
+else
+  jq 'del(.mcpServers.mempalace)' \
+    "$MCP_CONFIG_SRC" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
+  echo "  Installed: mcp-config.json (mempalace omitted from mcpServers)"
+fi
+echo ""
+
 # --- User-level skills (~/.copilot/skills/) — opt-in ---
 # Mirrors the workspace-level .github/skills/ output to the user-level
 # directory so skills are usable from any Copilot CLI session, regardless
@@ -271,6 +313,9 @@ echo "Install mode: $INSTALL_MODE"
 echo ""
 echo "Active user-level instruction files:"
 ls -1 "$COPILOT_INSTRUCTIONS"/*.instructions.md 2>/dev/null || echo "  (none)"
+echo ""
+echo "MCP servers (from mcp-config.json):"
+jq -r '.mcpServers // {} | keys[]' "$MCP_CONFIG_TARGET" 2>/dev/null | sed 's|^|  - |' || echo "  (none)"
 echo ""
 echo "Copilot looks for skills under .github/skills/ and agents under .github/agents/."
 echo "Run 'bash scripts/build-components.sh --target copilot' to (re)generate them."

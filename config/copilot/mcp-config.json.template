@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer $GITHUB_PAT"
+      }
+    },
+    "mempalace": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "-m",
+        "mempalace.mcp_server"
+      ]
+    },
+    "sequentialthinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    }
+  }
+}
