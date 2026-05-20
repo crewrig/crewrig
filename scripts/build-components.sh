@@ -243,7 +243,7 @@ propagate_skill_resources() {
     src_sub="$src_dir/$subdir"
     [ -d "$src_sub" ] || continue
     while IFS= read -r src_file; do
-      rel="${src_file#$src_sub/}"
+      rel="${src_file#"$src_sub"/}"
       target_file="$target_dir/$subdir/$rel"
       if [ "$CHECK_MODE" = true ]; then
         if [ ! -f "$target_file" ]; then

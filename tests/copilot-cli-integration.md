@@ -35,7 +35,7 @@ Worktree: `.worktrees/issue-50/`. Date: 2026-05-20.
 
 The brief asked to invoke each functional test as:
 
-```
+```text
 ollama launch copilot --model deepseek-v4-pro:cloud -- -p "<prompt>"
 ```
 
