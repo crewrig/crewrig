@@ -223,11 +223,12 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   COPILOT_HOOKS_DIR="$COPILOT_HOME/hooks"
   HOOK_SCRIPT_TARGET="$COPILOT_HOOKS_DIR/mempalace-transcript.sh"
   echo ""
+  USER_HOOKS_JSON="$COPILOT_HOOKS_DIR/copilot-transcript-hooks.json"
   echo "Activating transcript hooks will:"
   echo "  1. Install the hook script to $HOOK_SCRIPT_TARGET (project-independent)"
-  echo "  2. Backup $WORKSPACE_SETTINGS to ${WORKSPACE_SETTINGS}.bak.<timestamp>"
-  echo "  3. Merge hooks from $HOOKS_SRC into $WORKSPACE_SETTINGS"
-  echo "  4. Rewrite each hook command to point at $HOOK_SCRIPT_TARGET"
+  echo "  2. Deploy user-level hooks to $USER_HOOKS_JSON (fires for ALL projects)"
+  echo "  3. Backup $WORKSPACE_SETTINGS to ${WORKSPACE_SETTINGS}.bak.<timestamp>"
+  echo "  4. Merge hooks into $WORKSPACE_SETTINGS (crewrig workspace)"
   echo ""
   CONFIRM=$(echo -e "yes\nno" | fzf --height 10% --header "Apply?")
   if [ "$CONFIRM" = "yes" ]; then
@@ -235,7 +236,6 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     install_file "$HOOK_SCRIPT_SRC" "$HOOK_SCRIPT_TARGET" \
       "mempalace-transcript.sh -> ~/.copilot/hooks/mempalace-transcript.sh"
     chmod +x "$HOOK_SCRIPT_TARGET" 2>/dev/null || true
-    backup_file "$WORKSPACE_SETTINGS"
     MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
     ENV_PREFIX='MEMPALACE_TRANSCRIPT_ENABLED=1'
     if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
@@ -245,12 +245,16 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" \
       '(.hooks // []) |= map(.command = ($envp + " bash " + ($hook_path | tojson)))' \
       "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
-    # Merge: workspace settings's "hooks" array becomes the patched one.
+    # User-level hooks: loaded by Copilot for every project (not just crewrig).
+    cp "$HOOKS_PATCHED_TMP" "$USER_HOOKS_JSON"
+    echo "  User-level transcript hooks deployed to $USER_HOOKS_JSON"
+    # Workspace hooks: merge into .github/copilot/settings.json for crewrig sessions.
+    backup_file "$WORKSPACE_SETTINGS"
     jq -s '.[0] * {"hooks": (.[1].hooks // []), "version": (.[1].version // .[0].version // "1")}' \
       "$WORKSPACE_SETTINGS" "$HOOKS_PATCHED_TMP" > "${WORKSPACE_SETTINGS}.tmp" && \
       mv "${WORKSPACE_SETTINGS}.tmp" "$WORKSPACE_SETTINGS"
     rm -f "$HOOKS_PATCHED_TMP"
-    echo "  Transcript hooks merged into $WORKSPACE_SETTINGS"
+    echo "  Workspace transcript hooks merged into $WORKSPACE_SETTINGS"
   else
     echo "  Transcript activation cancelled."
   fi
@@ -270,6 +274,10 @@ ls -1 "$COPILOT_INSTRUCTIONS"/*.instructions.md 2>/dev/null || echo "  (none)"
 echo ""
 echo "Copilot looks for skills under .github/skills/ and agents under .github/agents/."
 echo "Run 'bash scripts/build-components.sh --target copilot' to (re)generate them."
+echo ""
+echo "Transcript hooks are installed at two levels:"
+echo "  - User-level (~/.copilot/hooks/copilot-transcript-hooks.json): fires for ALL projects."
+echo "  - Workspace-level (.github/copilot/settings.json): fires for this repo only."
 echo ""
 echo "Note: GitHub Copilot CLI does NOT export a \$COPILOT_PROJECT_DIR — hooks"
 echo "read the workspace path from the stdin JSON payload (or fall back to \$PWD)."
