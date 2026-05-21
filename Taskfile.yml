@@ -72,6 +72,14 @@ tasks:
     desc: "Remove a component from ~/.gemini (task unlink-component TYPE=skills NAME=my-skill)"
     cmd: bash {{.REPO_DIR}}/scripts/unlink-component.sh {{.TYPE}} {{.NAME}}
 
+  install-copilot-component:
+    desc: "Install a Copilot component (task install-copilot-component TYPE=skills NAME=my-skill)"
+    cmd: bash {{.REPO_DIR}}/scripts/manage-copilot-component.sh install {{.TYPE}} {{.NAME}}
+
+  link-copilot-component:
+    desc: "Link a Copilot component (task link-copilot-component TYPE=skills NAME=my-skill)"
+    cmd: bash {{.REPO_DIR}}/scripts/manage-copilot-component.sh link {{.TYPE}} {{.NAME}}
+
   install-deps:
     desc: Install npm dependencies for all extensions
     cmd: npm install
