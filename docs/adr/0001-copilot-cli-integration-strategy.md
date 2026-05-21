@@ -35,7 +35,7 @@ synthetic `.copilot/` directory.
 | 5 | Slash-command directory (built output) | **No user-definable slash commands.** Copilot's slash commands are CLI builtins (`/skills`, `/clear`, …). User invocation of a custom skill happens via `/<skill-name>` once the skill is registered. | `[GAP]` for first-class slash commands. Mapping: commands compile **as skills** in `.github/skills/` (same approach Claude already uses). |
 | 6 | Settings template in `config/` | `config/copilot/settings.json.template` (new) — schema mirrors `.github/copilot/settings.json` | New directory under `config/`. |
 | 7 | Active workspace settings file | `.github/copilot/settings.json` (committed) and `.github/copilot/settings.local.json` (gitignored, user-specific) | Direct analogue to `.claude/settings.json` — Copilot supports it natively. |
-| 8 | Hook-integration manifest | Two valid forms: **(a)** inline `hooks: { … }` block at top of `.github/copilot/settings.json`; **(b)** standalone `*.json` files in `~/.copilot/hooks/` (user-level only). | We will use form (a) — repo-committed — for parity with the other CLIs. Event names: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PreCompact`, `Stop`, `SubagentStart`, `SubagentStop`, `ErrorOccurred`, `PermissionRequest`, `Notification`, `SessionEnd`. JSON manifest keys: `version`, `disableAllHooks`, `hooks`. Hook entry types: `command`, `http`, `prompt`. |
+| 8 | Hook-integration manifest | Two valid forms: **(a)** inline `hooks: { … }` block at top of `.github/copilot/settings.json`; **(b)** standalone `*.json` files in `~/.copilot/hooks/` (user-level only). | **Both forms are used** (revised from initial "form (a) only"): `setup-copilot-interactive.sh` deploys hooks as an opt-in step to **both** `~/.copilot/hooks/copilot-transcript-hooks.json` (form b — user-level, fires for all projects, parity with Claude/Gemini) **and** `.github/copilot/settings.json` (form a — workspace-level, rewritten with absolute path by setup). The committed `settings.json` has `"hooks": []` by design — hooks are never committed with project-relative paths. Event names: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PreCompact`, `Stop`, `SubagentStart`, `SubagentStop`, `ErrorOccurred`, `PermissionRequest`, `Notification`, `SessionEnd`. JSON manifest keys: `version`, `disableAllHooks`, `hooks`. Hook entry types: `command`, `http`, `prompt`. |
 | 9 | Project-dir env var consumed by hooks | **None documented.** Hooks receive context as a JSON payload on stdin, not as `$COPILOT_PROJECT_DIR`. | `[GAP]` for env-var parity. Workaround: `hooks/mempalace-transcript.sh` must read project dir from the hook stdin payload (or fall back to `$PWD` since the hook runs in the workspace cwd). |
 | 10 | Interactive setup script | `scripts/setup-copilot-interactive.sh` (new) | Standard pattern. |
 | 11 | Transcript backfill script | `scripts/import-copilot-history.sh` reading `~/.copilot/session-state/<session-id>/events.jsonl` | Each session is a directory; `events.jsonl` is the transcript. Differs from Claude's `~/.claude/projects` and Gemini's `~/.gemini/tmp`. |
@@ -108,6 +108,11 @@ matrix.
   `SessionStart`, `UserPromptSubmit`, `PostToolUse`, `Stop`,
   `SessionEnd`. Use the documented top-level schema
   (`version`, `disableAllHooks`, `hooks`).
+  `setup-copilot-interactive.sh` deploys hooks as opt-in to **both**
+  `~/.copilot/hooks/copilot-transcript-hooks.json` (form b — user-level,
+  all projects) and `.github/copilot/settings.json` (form a — workspace,
+  absolute path rewritten by setup). The committed `settings.json` ships
+  with `"hooks": []` — project-relative hook paths must never be committed.
 - Update `hooks/mempalace-transcript.sh` to parse the project dir from
   Copilot's hook stdin JSON; fall back to `$PWD`. Document the absence
   of `$COPILOT_PROJECT_DIR`.

@@ -47,7 +47,7 @@ as "Copilot CLI (aliases: copilot-cli)". All four tests were executed live on 20
 
 **Output (representative extract):**
 
-```
+```text
 Based on the project's `AGENTS.md`, this project uses the **Gitmoji convention** for all
 named artifacts — commit messages, issue titles, and PR titles.
 
@@ -75,7 +75,7 @@ Duration 7s — Tokens ↑ 25.5k • ↓ 193
 
 **Output (representative extract):**
 
-```
+```text
 ● Search (glob) "community-config/skills/*/SKILL.md" → 14 files found
 
 Here are the available skills and agents in this project:
@@ -101,7 +101,7 @@ Duration 25s — Tokens ↑ 51.6k • ↓ 799
 
 **Output (representative extract):**
 
-```
+```text
 ● List directory hooks → 4 files found
 ● Read copilot-transcript-hooks.json (hooks/copilot-transcript-hooks.json) → 31 lines read
 ● Read crewrig.config.toml → 16 lines read
@@ -134,7 +134,7 @@ bash scripts/build-components.sh --target copilot
 
 **Output (representative extract):**
 
-```
+```text
 ● Search (glob) "community-config/skills/*/SKILL.md" → 14 files found
 
 There are 14 skills in this repository, located under community-config/skills/:
