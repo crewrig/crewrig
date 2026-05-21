@@ -3,13 +3,8 @@ name: designer
 description: "Visual design specialist. Produces colour palette tokens, typographic scale,
 spacing scale, tokens.css, and Tailwind config extensions. Delivers component
 anatomy specifications and design rationale. Does NOT write application code."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
 ---
-
+<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Designer Agent
 

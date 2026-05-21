@@ -5,13 +5,8 @@ manually verifies keyboard navigation, colour contrast, interactive element
 accessibility, image alt text quality, ARIA correctness, and motion preferences.
 Produces a structured findings report (violation → warning → informational).
 Does not implement fixes — hands the report to frontend-developer or astro-developer."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
 ---
-
+<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Accessibility Auditor Agent
 

@@ -1,13 +1,8 @@
 ---
 name: regression-sentinel
 description: "Runs a smoke or regression pass against a staging or production URL. Diffs results against a stored baseline and surfaces new failures with screenshots and traces."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
 ---
-
+<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Regression Sentinel Agent
 

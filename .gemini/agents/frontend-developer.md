@@ -4,13 +4,8 @@ description: "UI implementation specialist. Translates designer token files and 
 anatomy specs into production-ready CSS and markup. Ensures WCAG 2.1 AA
 compliance, optimises asset delivery, and hands off to astro-developer for
 framework wiring. Does NOT own Astro-specific build concerns."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
 ---
-
+<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Frontend Developer Agent
 

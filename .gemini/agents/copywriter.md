@@ -4,13 +4,8 @@ description: "Content production specialist. Interviews the product brief, produ
 content outline for review, then writes final page copy (hero, features,
 social proof, CTA). Delivers structured Markdown ready for handoff to
 frontend-developer or astro-developer. Does NOT make layout or visual decisions."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
 ---
-
+<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Copywriter Agent
 

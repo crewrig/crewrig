@@ -1,13 +1,8 @@
 ---
 name: scenario-author
 description: "Writes automated test scenarios from a natural-language description of a user journey. Generates Playwright TypeScript or RobotFramework .robot files with page-object model, fixtures, and meaningful assertions."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
 ---
-
+<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Scenario Author Agent
 

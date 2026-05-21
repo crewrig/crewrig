@@ -1,13 +1,8 @@
 ---
 name: developer
 description: "Generic implementation agent. Writes, edits, and refactors code with the smallest correct change. Verifies locally before reporting done."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
 ---
-
+<!-- crewrig-provenance: version="1.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Developer Agent
 

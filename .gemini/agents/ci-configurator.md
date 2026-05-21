@@ -3,13 +3,8 @@ name: ci-configurator
 description: "Specialist agent for configuring new GitHub Actions pipelines.
 Interviews the project, generates a commit-ready workflow,
 and validates its own output before delivery."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
 ---
-
+<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Configurator Agent
 

@@ -124,6 +124,26 @@ provenance_block() {
     | yq -r '.metadata.provenance | to_entries | .[] | "    " + .key + ": \"" + .value + "\""' 2>/dev/null
 }
 
+# Returns a single-line HTML comment carrying provenance, or empty if the
+# frontmatter has no `metadata.provenance` key. Used for Gemini agents,
+# whose CLI 0.42.0+ rejects any frontmatter key outside `name`/`description`
+# — so the provenance has to travel in the body instead. The comment is
+# stable, greppable, and ignored by Markdown renderers.
+gemini_provenance_comment() {
+  local frontmatter="$1"
+  local has_prov
+  has_prov=$(printf '%s\n' "$frontmatter" | yq -r '.metadata // {} | has("provenance")' 2>/dev/null || echo "false")
+  if [ "$has_prov" != "true" ]; then
+    return 0
+  fi
+  local version canonical feedback
+  version=$(printf '%s\n' "$frontmatter" | yq -r '.metadata.provenance.version // ""' 2>/dev/null)
+  canonical=$(printf '%s\n' "$frontmatter" | yq -r '.metadata.provenance.canonical // ""' 2>/dev/null)
+  feedback=$(printf '%s\n' "$frontmatter" | yq -r '.metadata.provenance.feedback // ""' 2>/dev/null)
+  printf '<!-- crewrig-provenance: version="%s" canonical="%s" feedback="%s" -->\n' \
+    "$version" "$canonical" "$feedback"
+}
+
 # Splice a provenance block before the closing `---` of the first frontmatter
 # of `content`. No-op if the source has no provenance.
 # Uses a tempfile to feed multi-line provenance into awk — BSD awk does not
@@ -540,17 +560,27 @@ build_agents() {
     # `tools`, `model`, etc. The body becomes the system prompt. A directory
     # layout or a frontmatter-less body is not discovered.
     if [ "$TARGET" = "gemini" ] || [ "$TARGET" = "all" ]; then
+      # Gemini CLI 0.42.0+ rejects any frontmatter key outside `name` /
+      # `description`. Provenance therefore travels as an HTML comment at
+      # the top of the body — see gemini_provenance_comment() and the
+      # "Agent provenance" row in docs/cli-matrix.md.
+      local gemini_source_frontmatter
+      gemini_source_frontmatter=$(extract_frontmatter "$source")
+      local gemini_prov_comment
+      gemini_prov_comment=$(gemini_provenance_comment "$gemini_source_frontmatter")
       local gemini_content
       gemini_content=$(cat <<GEMINI_EOF
 ---
 name: $name
 description: "$description"
 ---
-
+$gemini_prov_comment
 $body
 GEMINI_EOF
       )
-      check_or_write "$REPO_DIR/.gemini/agents/$name.md" "$gemini_content" "$source"
+      # NOTE: no $source arg — we intentionally bypass inject_provenance
+      # so the `metadata:` YAML block does NOT land in the frontmatter.
+      check_or_write "$REPO_DIR/.gemini/agents/$name.md" "$gemini_content"
     fi
 
     # --- Claude Code output: AGENT.md (with frontmatter) ---

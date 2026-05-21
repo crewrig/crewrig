@@ -3,13 +3,8 @@ name: ci-debugger
 description: "Specialist agent for diagnosing and fixing failing GitHub Actions
 pipelines. Systematically produces a
 symptom → hypothesis → evidence → fix chain."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
 ---
-
+<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Debugger Agent
 

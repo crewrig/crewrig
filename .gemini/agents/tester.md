@@ -1,13 +1,8 @@
 ---
 name: tester
 description: "Generic test-authoring agent. Writes high-signal regression tests, enumerates priority edge cases, and verifies fixes by failing-then-passing the test against the bug."
-metadata:
-  provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
 ---
-
+<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Tester Agent
 
