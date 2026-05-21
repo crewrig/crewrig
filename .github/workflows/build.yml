@@ -47,6 +47,9 @@ jobs:
       - name: Test check-skill-versions regression
         run: bash scripts/tests/test-check-skill-versions.sh
 
+      - name: Test Gemini agent frontmatter contract (issue #54)
+        run: bash scripts/tests/test-gemini-agent-frontmatter.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
