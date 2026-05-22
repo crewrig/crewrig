@@ -49,8 +49,10 @@ fi
 # ---------------------------------------------------------------------------
 REQUIRED_KEYS=(
   "captured_at"
+  "base.debian"
   "base.node"
   "base.npm"
+  "base.python"
   "base.pipx"
   "base.gh"
   "base.yq"
