@@ -62,6 +62,11 @@ candidate follow-up issue. **Do not fix them in this ticket.**
 
 ## Adding a new CLI
 
+Every checklist item below is governed by the **Symmetric-script rule**
+and **Gap-acceptance evidence rule** in `AGENTS.md` → *CLI Matrix
+Maintenance*. Unchecking an item requires the evidence the gap rule
+demands; it is not a free-form choice.
+
 Use this checklist when onboarding a new CLI. Each item maps to a row in
 the feature matrix above — leaving one unchecked produces a parity gap.
 

@@ -102,9 +102,58 @@ CLI-prefixed entry in `Taskfile.yml` / `.gitignore`.
 cell, or refreshed `Parity gaps` entry. Drift is a parity bug.
 
 **Parity check.** When adding or modifying a feature for one CLI,
-verify the other. If the symmetric path is missing, either implement
-it in the same PR or record it under `Parity gaps` with a follow-up
-issue link. Silent asymmetry is prohibited.
+verify every other supported CLI. The default is **implement
+symmetrically in the same PR**. Recording a gap is an exception that
+requires written evidence (see *Gap-acceptance evidence rule* below);
+linking a follow-up issue is not, by itself, sufficient justification
+to defer. Silent asymmetry is prohibited.
+
+**Gap-acceptance evidence rule.** A `Parity gaps` entry MAY be added
+only when the agent has produced concrete evidence that no mechanism
+exists in the target CLI to support the feature. "Concrete evidence"
+means at least one of:
+
+- A citation from the CLI's public reference documentation explicitly
+  stating the absence (with URL and quoted sentence in the PR body
+  or the matrix entry itself).
+- An empirical reproduction (command + output) showing the CLI
+  rejecting or ignoring the symmetric artifact.
+- An upstream issue link where the CLI maintainers have declined or
+  deferred the capability.
+
+The following are **NOT** acceptable evidence and MUST NOT be used to
+justify a gap:
+
+- "The public reference does not mention it" (absence of mention is
+  not absence of mechanism — search for user-level, hook-level, and
+  alternative file-system paths first).
+- "A follow-up issue is filed."
+- "Out of scope for this PR."
+
+If the agent's own ADR, design note, or research surfaced a viable
+path — even an unconventional one (user-level config, hook directory,
+env var injection, wrapper script) — that path MUST be implemented in
+the current PR. Documenting a viable path and then declining to use
+it is a parity violation, not a deferral.
+
+**Symmetric-script rule.** When adding a new CLI target, every script
+under `scripts/` that already has a target for an existing CLI MUST
+gain a target for the new CLI in the **same PR** that introduces the
+CLI. This is a direct extension of working code, not new research,
+and is therefore in-scope by default. The list of trigger scripts is
+authoritative:
+
+- `scripts/setup-<cli>-interactive.sh`
+- `scripts/import-<cli>-history.sh`
+- `scripts/manage-<cli>-component.sh` (or a new `--target <cli>`
+  branch in `scripts/manage-workspace-component.sh` if that script
+  already serves multiple CLIs)
+- `scripts/build-components.sh` `--target <cli>` branch
+- Every `Taskfile.yml` entry whose name carries a CLI prefix
+
+Deferring any of the above to a follow-up ticket requires **explicit
+prior user authorization** captured in the PR or its linked logbook
+issue. Agent-initiated deferral of a symmetric script is prohibited.
 
 ## Agent Team Protocol
 
