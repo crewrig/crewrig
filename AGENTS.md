@@ -214,6 +214,16 @@ inherit no conversation context. Use `TaskCreate` for tracking only:
 its `description` should be a one-liner (e.g. `"Implement feature X — full brief in Agent prompt"`), not a duplicate of the Agent prompt. Never write the same
 brief in both places.
 
+**Model compatibility rule**: When the orchestrating Claude Code session
+runs on a non-Anthropic backend (Ollama, Ollama Cloud, or any
+non-default model provider), every spawned `Agent` MUST use the same
+model as the parent orchestrator. This is achieved either by passing an
+explicit `model` parameter matching the parent model identifier, or by
+omitting the `model` parameter to let the harness inherit from the
+parent session. A model mismatch causes spawned agents to fail silently
+— no output, no file edits, no error — which makes
+`TeamCreate`/`TaskCreate`/`Agent` effectively non-functional.
+
 ### On CLIs without team support (e.g. Gemini CLI)
 
 When the harness does not expose `TeamCreate` / `TaskCreate` /
