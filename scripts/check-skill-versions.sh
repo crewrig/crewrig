@@ -10,7 +10,8 @@
 # Usage:
 #   bash scripts/check-skill-versions.sh [<base-ref>]
 #
-# Default base ref: origin/main. CI passes BASE_REF env var
+# Default base ref: probes remotes for crewrig or origin, falls back to the
+# first available remote, and appends /main. CI passes BASE_REF env var
 # pointing at the PR's *target* branch (`base.ref` in GitHub Actions
 # context) — NOT the PR's source/head branch. The guard diffs the PR
 # against what it's about to merge into, so changes that haven't yet
