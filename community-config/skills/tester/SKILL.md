@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.1.0"
+    version: "1.2.0"
 claude:
   allowed-tools:
     - Read
@@ -104,6 +104,41 @@ When the trigger is a bug fix:
 4. Run the rest of the suite to detect regressions in unrelated areas.
 
 A test that never failed before the fix proves nothing.
+
+### 6. Tool availability is empirical, not assumed
+
+Before declaring a test skipped because a tool, binary, subcommand, or
+service is "unavailable", you MUST run a concrete probe against it and
+cite the failure. Acceptable probes, in order of preference:
+
+1. The tool's own discovery flag: `<tool> --help`, `<tool> --version`,
+   `<tool> <subcommand> --help`.
+2. A minimal real invocation with throwaway input (e.g.
+   `<tool> -p "hello"`, a no-op call with `--dry-run`).
+3. A `which <tool>` / `command -v <tool>` check, but only as a
+   precursor — a binary on `$PATH` may still expose the subcommand you
+   need.
+
+A tool is unavailable only when the probe produces one of:
+
+- A non-zero exit code, with stderr captured in the report.
+- An explicit error message ("command not found", "unknown subcommand",
+  "permission denied", "connection refused").
+- A timeout exceeding a stated bound.
+
+Forbidden grounds for declaring unavailability:
+
+- "I don't recognise this subcommand." Recognition is not a probe —
+  CLIs evolve faster than training data.
+- "The documentation I've seen doesn't mention it." Documentation lags
+  releases.
+- "The previous attempt in this session failed." Re-probe; the
+  environment may have changed (PATH, login shell, credentials).
+
+When a probe fails, quote the exact command run and the exact output
+(exit code + first line of stderr) in the skip rationale. A skip
+without a quoted failure is a protocol violation and forces the test
+to be re-attempted.
 
 ## Output expectations
 
