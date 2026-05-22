@@ -139,6 +139,41 @@ repo3="$(new_repo)"
 run_case "Case 3 — modified component with bump passes" "$repo3" 0
 
 # -------------------------------------------------------------------------
+# Case 4 — Remote probing: repo with crewrig remote (no origin) and no
+# explicit argument exercises the default BASE_REF resolution on line 24.
+# -------------------------------------------------------------------------
+repo4="$(new_repo)"
+(
+  cd "$repo4"
+  git branch -m main  # ensure the branch is named main for crewrig/main
+  mkdir -p community-config/skills/old-skill
+  render_skill "1.0.0" > community-config/skills/old-skill/SKILL.md
+  git add community-config/skills/old-skill/SKILL.md
+  git commit -q -m "seed old-skill at 1.0.0"
+
+  # Head commit: bump version.
+  render_skill "1.0.1" > community-config/skills/old-skill/SKILL.md
+  printf '\nExtra line.\n' >> community-config/skills/old-skill/SKILL.md
+  git add community-config/skills/old-skill/SKILL.md
+  git commit -q -m "patch bump"
+
+  # Add a remote named crewrig (no origin) pointing at the repo itself.
+  git remote add crewrig "$repo4"
+  git fetch crewrig >/dev/null 2>&1
+)
+
+# Run without explicit base ref — exercises the remote-probe fallback.
+actual_exit=0
+( cd "$repo4" && bash "$SCRIPT_UNDER_TEST" >/dev/null 2>&1 ) || actual_exit=$?
+if [ "$actual_exit" -eq 0 ]; then
+  echo "PASS  Case 4 — remote probing (crewrig, no origin) (exit $actual_exit)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 4 — remote probing (crewrig, no origin) (expected exit 0, got $actual_exit)"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""

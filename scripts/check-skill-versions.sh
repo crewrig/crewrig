@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-BASE_REF="${1:-${BASE_REF:-origin/main}}"
+BASE_REF="${1:-${BASE_REF:-$(git remote | grep -E -m1 'crewrig|origin' || git remote | head -1)/main}}"
 
 # Make sure the base is fetched. CI runners do shallow clones by default.
 if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
