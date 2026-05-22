@@ -318,6 +318,13 @@ user.
 | 4 | `pr-logbook` | Draft PR title, body, and logbook entry |
 | 5 | `pr-reviewer` | Independent cold review of the diff; verifies CI checks pass before posting verdict |
 
+**Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
+draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
+orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
+fulfil its cold-start contract without a valid PR number. `pr-reviewer`
+receives the PR number from `pr-logbook`'s result message (see *Team
+Communication → Rule 1*).
+
 Use multiple `developer` agents in parallel when the work decomposes into
 independent files or modules; a single developer suffices otherwise.
 
@@ -330,6 +337,13 @@ Lighter pipeline — no code, no tests.
 | 1 | `doc-writer` | Write / update the documentation |
 | 2 | `pr-logbook` | Draft PR title, body, and logbook entry |
 | 3 | `pr-reviewer` | Independent cold review of the diff; verifies CI checks pass before posting verdict |
+
+**Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
+draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
+orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
+fulfil its cold-start contract without a valid PR number. `pr-reviewer`
+receives the PR number from `pr-logbook`'s result message (see *Team
+Communication → Rule 1*).
 
 If the documentation change modifies an established protocol, convention, or
 contract (e.g. AGENTS.md itself), insert `architect` as step 0.
@@ -345,6 +359,13 @@ to lock in reproduction.
 | 2 | `developer` | Implement the fix until the regression test passes |
 | 3 | `pr-logbook` | Draft PR title, body, and logbook entry |
 | 4 | `pr-reviewer` | Independent cold review of the diff; verifies CI checks pass before posting verdict |
+
+**Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
+draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
+orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
+fulfil its cold-start contract without a valid PR number. `pr-reviewer`
+receives the PR number from `pr-logbook`'s result message (see *Team
+Communication → Rule 1*).
 
 `architect` is optional: include it only when the root cause exposes a
 design flaw rather than a localized defect.
