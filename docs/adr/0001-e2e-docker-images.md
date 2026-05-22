@@ -47,7 +47,7 @@ Rules of thumb applied:
 - Anything shared by ≥2 child images lives in `base`: apt packages,
   Node, pipx, `gh`, `ollama` client binary, the `agent` user, the
   workspace dir, and the empty mount-point stubs (`~/.claude`,
-  `~/.gemini`, `~/.copilot`, `~/.crewrig-e2e`).
+  `~/.gemini`, `~/.copilot`, `~/.mempalace`).
 - Per-CLI images add a single `RUN npm install -g <pkg>@<pin>` line and
   a `HEALTHCHECK` that calls `<cli> --version`. Nothing else.
 - `mempalace.Dockerfile` is the only image that pulls `pipx install`
@@ -90,7 +90,7 @@ RUN groupadd --gid 1000 agent \
       /home/agent/.claude \
       /home/agent/.gemini \
       /home/agent/.copilot \
-      /home/agent/.crewrig-e2e
+      /home/agent/.mempalace
 USER agent
 WORKDIR /home/agent/workspace
 ```
@@ -139,29 +139,39 @@ names, `desc:` populated, preconditions listed for binaries).
 ```yaml
 vars:
   E2E_IMG_PREFIX: "crewrig/e2e"
+  E2E_DOCKER_DIR: "{{.REPO_DIR}}/docker/e2e"
+  E2E_VERSIONS_LOCK: "{{.REPO_DIR}}/docker/e2e/.versions.lock"
 
 tasks:
   e2e:build:
-    desc: Build all e2e images (base + claude + gemini + copilot + mempalace).
-    deps: [e2e:build:base]
+    desc: Build all e2e images and refresh .versions.lock.
+    # `cmds:` (not `deps:`) so children run in the listed order — deterministic
+    # base-then-children, then version capture last.
     cmds:
+      - task: e2e:build:base
       - task: e2e:build:claude
       - task: e2e:build:gemini
       - task: e2e:build:copilot
       - task: e2e:build:mempalace
+      - task: e2e:lock
 
   e2e:build:base:
-    desc: Build the shared e2e base image.
+    desc: Build the shared e2e base image (crewrig/e2e-base:latest).
     preconditions:
       - sh: command -v docker >/dev/null 2>&1
         msg: "docker is required."
-    cmd: docker build -t {{.E2E_IMG_PREFIX}}/base:dev -f docker/e2e/base.Dockerfile docker/e2e
+    cmd: docker build -t {{.E2E_IMG_PREFIX}}-base:latest -f {{.E2E_DOCKER_DIR}}/base.Dockerfile {{.E2E_DOCKER_DIR}}
 
-  e2e:build:claude: { desc: "Build claude-code e2e image.",  deps: [e2e:build:base], cmd: docker build -t {{.E2E_IMG_PREFIX}}/claude:dev   -f docker/e2e/claude.Dockerfile   docker/e2e }
-  e2e:build:gemini: { desc: "Build gemini-cli e2e image.",   deps: [e2e:build:base], cmd: docker build -t {{.E2E_IMG_PREFIX}}/gemini:dev   -f docker/e2e/gemini.Dockerfile   docker/e2e }
-  e2e:build:copilot:{ desc: "Build copilot CLI e2e image.",  deps: [e2e:build:base], cmd: docker build -t {{.E2E_IMG_PREFIX}}/copilot:dev  -f docker/e2e/copilot.Dockerfile  docker/e2e }
-  e2e:build:mempalace:{ desc: "Build MemPalace sidecar.",    deps: [e2e:build:base], cmd: docker build -t {{.E2E_IMG_PREFIX}}/mempalace:dev -f docker/e2e/mempalace.Dockerfile docker/e2e }
+  e2e:build:claude:    { desc: "Build the Claude Code e2e image.",         deps: [e2e:build:base], cmd: "docker build -t {{.E2E_IMG_PREFIX}}-claude:latest    -f {{.E2E_DOCKER_DIR}}/claude.Dockerfile    {{.E2E_DOCKER_DIR}}" }
+  e2e:build:gemini:    { desc: "Build the Gemini CLI e2e image.",          deps: [e2e:build:base], cmd: "docker build -t {{.E2E_IMG_PREFIX}}-gemini:latest    -f {{.E2E_DOCKER_DIR}}/gemini.Dockerfile    {{.E2E_DOCKER_DIR}}" }
+  e2e:build:copilot:   { desc: "Build the GitHub Copilot CLI e2e image.",  deps: [e2e:build:base], cmd: "docker build -t {{.E2E_IMG_PREFIX}}-copilot:latest   -f {{.E2E_DOCKER_DIR}}/copilot.Dockerfile   {{.E2E_DOCKER_DIR}}" }
+  e2e:build:mempalace: { desc: "Build the MemPalace sidecar e2e image.",   deps: [e2e:build:base], cmd: "docker build -t {{.E2E_IMG_PREFIX}}-mempalace:latest -f {{.E2E_DOCKER_DIR}}/mempalace.Dockerfile {{.E2E_DOCKER_DIR}}" }
 ```
+
+Image tag scheme uses **hyphen + `:latest`** (`crewrig/e2e-base:latest`),
+not slash + `:dev`: a single-segment tag keeps `docker image ls` output
+readable and matches the `crewrig/e2e-<role>` namespace convention used
+elsewhere in the framework.
 
 The `--build-arg <CLI>_VERSION=x.y.z` knob is exposed by adding a
 `CLI_VERSION` var per task once needed; default omitted to keep the
