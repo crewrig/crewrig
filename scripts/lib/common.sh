@@ -65,3 +65,25 @@ detect_mempalace_python() {
   done
   return 1
 }
+
+offer_mempalace_install() {
+  if ! command -v pipx >/dev/null 2>&1; then
+    echo "  pipx not found — install MemPalace manually:"
+    echo "    pipx install 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
+    echo "  Install pipx: brew install pipx (macOS) or python3 -m pip install --user pipx"
+    return 1
+  fi
+  local choice
+  choice=$(echo -e "no\nyes" | fzf --height 10% \
+    --header "MemPalace not found — install via pipx now? (mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE})")
+  if [ "$choice" != "yes" ]; then
+    echo "  MemPalace install skipped."
+    return 1
+  fi
+  if ! pipx install "mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}"; then
+    echo "  pipx install failed — install MemPalace manually then re-run this script."
+    return 1
+  fi
+  echo "  MemPalace installed."
+  return 0
+}

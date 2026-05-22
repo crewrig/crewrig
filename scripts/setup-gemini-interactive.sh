@@ -136,9 +136,9 @@ backup_file "$SETTINGS_TARGET"
 # Detect MemPalace Python interpreter (used to patch mcpServers.mempalace.command)
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
 if [ -z "$MEMPALACE_PYTHON_BIN" ]; then
-  echo "  WARN: 'mempalace.mcp_server' is not importable from any candidate Python."
-  echo "        Install MemPalace first, then re-run this script:"
-  echo "        pipx install 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
+  echo "  MemPalace not found."
+  offer_mempalace_install || true
+  MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
 fi
 
 INSTALL_MEMPALACE_GEMINI=no

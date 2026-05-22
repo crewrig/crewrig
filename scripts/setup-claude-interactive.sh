@@ -188,10 +188,12 @@ MEMPALACE_INSTALLED=0
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
 
 if [ -z "$MEMPALACE_PYTHON_BIN" ]; then
-  echo "  WARN: 'mempalace.mcp_server' is not importable from any candidate Python."
-  echo "        Install MemPalace first, then re-run this script:"
-  echo "        pipx install 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
-else
+  echo "  MemPalace not found."
+  offer_mempalace_install || true
+  MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
+fi
+
+if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   MEMPALACE_VERSION="$(mempalace_installed_version "$MEMPALACE_PYTHON_BIN")"
   if ! mempalace_version_in_range "$MEMPALACE_PYTHON_BIN"; then
     echo "  ERROR: MemPalace ${MEMPALACE_VERSION:-(unknown)} is outside the supported range >=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}."
