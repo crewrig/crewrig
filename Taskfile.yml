@@ -3,6 +3,9 @@ version: '3'
 vars:
   GEMINI_HOME: "{{.HOME}}/.gemini"
   REPO_DIR: "{{.PWD}}"
+  E2E_IMG_PREFIX: "crewrig/e2e"
+  E2E_DOCKER_DIR: "{{.REPO_DIR}}/docker/e2e"
+  E2E_VERSIONS_LOCK: "{{.REPO_DIR}}/docker/e2e/.versions.lock"
 
 tasks:
   default:
@@ -255,3 +258,49 @@ tasks:
   check-skill-versions:
     desc: "Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)"
     cmd: bash {{.REPO_DIR}}/scripts/check-skill-versions.sh
+
+  # --- e2e Docker images (issue #76) ---
+
+  e2e:build:
+    desc: "Build all e2e images (base + claude + gemini + copilot + mempalace) and refresh .versions.lock."
+    cmds:
+      - task: e2e:build:base
+      - task: e2e:build:claude
+      - task: e2e:build:gemini
+      - task: e2e:build:copilot
+      - task: e2e:build:mempalace
+      - task: e2e:lock
+
+  e2e:build:base:
+    desc: "Build the shared e2e base image (crewrig/e2e-base:latest)."
+    preconditions:
+      - sh: command -v docker >/dev/null 2>&1
+        msg: "docker is required."
+    cmd: docker build -t {{.E2E_IMG_PREFIX}}-base:latest -f {{.E2E_DOCKER_DIR}}/base.Dockerfile {{.E2E_DOCKER_DIR}}
+
+  e2e:build:claude:
+    desc: "Build the Claude Code e2e image (crewrig/e2e-claude:latest)."
+    deps: [e2e:build:base]
+    cmd: docker build -t {{.E2E_IMG_PREFIX}}-claude:latest -f {{.E2E_DOCKER_DIR}}/claude.Dockerfile {{.E2E_DOCKER_DIR}}
+
+  e2e:build:gemini:
+    desc: "Build the Gemini CLI e2e image (crewrig/e2e-gemini:latest)."
+    deps: [e2e:build:base]
+    cmd: docker build -t {{.E2E_IMG_PREFIX}}-gemini:latest -f {{.E2E_DOCKER_DIR}}/gemini.Dockerfile {{.E2E_DOCKER_DIR}}
+
+  e2e:build:copilot:
+    desc: "Build the GitHub Copilot CLI e2e image (crewrig/e2e-copilot:latest)."
+    deps: [e2e:build:base]
+    cmd: docker build -t {{.E2E_IMG_PREFIX}}-copilot:latest -f {{.E2E_DOCKER_DIR}}/copilot.Dockerfile {{.E2E_DOCKER_DIR}}
+
+  e2e:build:mempalace:
+    desc: "Build the MemPalace sidecar e2e image (crewrig/e2e-mempalace:latest)."
+    deps: [e2e:build:base]
+    cmd: docker build -t {{.E2E_IMG_PREFIX}}-mempalace:latest -f {{.E2E_DOCKER_DIR}}/mempalace.Dockerfile {{.E2E_DOCKER_DIR}}
+
+  e2e:lock:
+    desc: "Capture resolved CLI/tool versions from the built images into docker/e2e/.versions.lock."
+    preconditions:
+      - sh: command -v docker >/dev/null 2>&1
+        msg: "docker is required."
+    cmd: bash {{.REPO_DIR}}/scripts/e2e-capture-versions.sh "{{.E2E_IMG_PREFIX}}" "{{.E2E_VERSIONS_LOCK}}"

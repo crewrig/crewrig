@@ -1,0 +1,19 @@
+# Resolved versions captured by `task e2e:build`.
+# Populated automatically — do not edit manually.
+# Regenerate with: task e2e:lock (after task e2e:build).
+captured_at=2026-05-22T16:42:34Z
+
+base.debian=12.14
+base.node=v22.22.2
+base.npm=10.9.7
+base.python=Python 3.11.2
+base.pipx=1.1.0
+base.gh=gh version 2.92.0 (2026-04-28)
+base.yq=yq (https://github.com/mikefarah/yq/) version v4.44.3
+base.jq=jq-1.6
+base.ollama=Warning: client version is 0.24.0
+
+claude.cli=2.1.148 (Claude Code)
+gemini.cli=0.43.0
+copilot.cli=GitHub Copilot CLI 1.0.51.
+mempalace.cli=MemPalace 3.3.5
