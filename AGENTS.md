@@ -359,6 +359,15 @@ can resume rather than restart from scratch. Direct `Agent` spawns (without team
 reliably complete and return results; `SendMessage` to a stuck idle
 agent does not.
 
+**Rule 3 — Review findings are not auto-deferrals.** When a reviewer
+lists findings marked "non-blocking", that label means the PR can merge
+without them — it does NOT mean the findings should be deferred to a
+follow-up ticket without asking the user. The agent MUST present every
+finding to the user and implement each one in the same session unless
+the user explicitly decides to skip or defer it. The user sets the
+scope, not the reviewer's severity labels. Auto-deferring findings to
+follow-up tickets without user authorization is prohibited.
+
 ## Pull Request Format
 
 Every PR must follow this structure:
