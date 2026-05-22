@@ -5,7 +5,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 
@@ -27,9 +27,9 @@ On activation:
    `gh pr view <number> --json title,body,files,headRefName,baseRefName,labels`.
 3. Identify the changed file types and select the matching linter
    scripts from the `pr-reviewer` skill bundle.
-4. Activate the `pr-reviewer` skill and follow its five-step protocol
-   (read conventions → fetch diff → run linters → compose review →
-   post).
+4. Activate the `pr-reviewer` skill and follow its six-step protocol
+   (check CI status → read conventions → fetch diff → run linters →
+   compose review → post).
 5. Post the verdict via the GitHub MCP `pull_request_review_write`
    tool with the appropriate event (`APPROVE`, `REQUEST_CHANGES`, or
    `COMMENT`).
