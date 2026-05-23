@@ -1,8 +1,0 @@
-Search the shared MemPalace for the `[TASK:ongoing]` drawer written
-by the previous container. Use:
-
-  mempalace search "[TASK:ongoing]" --wing e2e-cross-tool --room task-handoff
-
-Print the raw search output to STDOUT and exit 0 if the search command
-itself succeeds (regardless of match count — the host asserts on the
-shape of the output).
