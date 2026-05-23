@@ -11,9 +11,9 @@ about a CLI's behaviour. Governed by
 | `llm_judge.sh` | **Last resort.** LLM-as-judge oracle for qualitative criteria a regex cannot express. Each call burns budget and adds non-determinism — reach for it only when the first two cannot answer the question. |
 
 Every assertion returns `0` on PASS, `1` on FAIL, and PASS is silent.
-FAIL emits a single TAP-compatible diagnostic block to stderr (`# FAIL`
-+ `expected` / `actual` / `report` lines, truncated to 200 chars). The
-runner captures scenario stderr under
+FAIL emits a single TAP-compatible diagnostic block to stderr — a
+`# FAIL` header line plus `expected`, `actual`, and `report` lines,
+each truncated to 200 chars. The runner captures scenario stderr under
 `${E2E_REPORT_DIR}/<cli>/<scenario>/stderr`.
 
 ## Sourcing pattern

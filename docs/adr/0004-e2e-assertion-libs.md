@@ -37,7 +37,8 @@ Every assertion follows the same five rules:
    the scenario and the runner's existing exit-code dispatcher maps
    it to `not ok` (see ADR 0003 Decision 4 main loop).
 3. **Failure diagnostic.** On FAIL, emit exactly one TAP-compatible
-   diagnostic line to **stderr**, prefixed with `# `:
+   diagnostic line to **stderr**, prefixed with the TAP diagnostic
+   marker (hash followed by space):
 
    ```text
    # FAIL <assertion_name> <arg1> [<arg2>…]
