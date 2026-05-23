@@ -12,7 +12,10 @@
 #   - e2e_chown_bootstrap <cli> <image>
 #       : one-shot --user root chown of the host dir mounted at
 #         /home/agent/.<cli>. Mandatory on macOS (Decision 6 of ADR 0002);
-#         no-op on Linux hosts where the bind mount already lands as uid 1000.
+#         idempotent on Linux — the chown is a filesystem no-op when the
+#         bind mount already lands as uid 1000, but the helper still spawns
+#         a one-shot privileged container (~1–2 s spin-up cost). Accepted
+#         trade-off vs the brittleness of OS-detection branching.
 #
 # Conventions:
 #   - All scripts that source this file are expected to run under

@@ -64,8 +64,11 @@ What happens:
 
 1. `mkdir -p ~/.crewrig-e2e/claude`.
 2. One-shot `docker run --user root … chown -R 1000:1000` on the dir.
-   Required on macOS (VirtioFS bind mounts land root-owned); no-op on
-   Linux. See ADR 0002 Decision 6 for the empirical trace.
+   Required on macOS (VirtioFS bind mounts land root-owned); idempotent
+   on Linux — the chown itself is a filesystem no-op but the helper
+   still spawns a one-shot privileged container (~1–2 s spin-up).
+   Accepted trade-off vs OS-branching. See ADR 0002 Decision 6 for the
+   empirical trace.
 3. Interactive `docker run -it … crewrig/e2e-claude:latest claude /login`
    with the dir bind-mounted RW at `/home/agent/.claude`. You complete
    the OAuth flow in your browser on the host.
