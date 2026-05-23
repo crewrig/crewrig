@@ -32,6 +32,13 @@ delegating:
 Exit codes follow the runner's convention: `0` → ok, `78` → skip
 (diagnostic line on stdout), anything else → not ok.
 
+> **Run-ID format invariant.** The parity matrix report (`tests/e2e/lib/report.sh`)
+> uses lexicographic ordering of TAP file paths to decide which run wins when
+> the same `<cli>/<scenario>` cell appears in multiple files — the last file
+> wins. This relies on `E2E_RUN_ID` carrying a `<timestamp>-<rand>` prefix so
+> that newer runs sort after older ones. Do not change this format without also
+> updating the report aggregator.
+
 Every scenario sources the assertion libs and writes a TAP subtest plan
 to `${E2E_REPORT_DIR}/scenario.tap` for drill-down. The runner captures
 the scenario's stdout/stderr alongside.

@@ -31,7 +31,20 @@ OUTPUT_DIR="tests/e2e/reports"
 DRY_RUN=0
 
 usage() {
-  sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
+  cat <<'EOF'
+report.sh — aggregate per-run TAP files into a parity matrix.
+
+Reads TAP 13 files produced by tests/e2e/run.sh and emits:
+  1. A console table to stdout (✅ pass / ❌ fail / ⚠️  skip)
+  2. A markdown report at <output-dir>/parity-YYYYMMDD-HHMMSS.md
+
+Exit code: 1 if any cell is ❌, 2 on empty TAP dir, 0 otherwise.
+
+Usage:
+  tests/e2e/lib/report.sh [--tap-dir <dir>] [--output-dir <dir>] [--dry-run]
+
+Defaults: --tap-dir tests/e2e/reports/  --output-dir tests/e2e/reports/
+EOF
 }
 
 while [[ $# -gt 0 ]]; do
@@ -115,7 +128,7 @@ for tap in "${TAP_FILES[@]}"; do
     # Classify.
     if [[ "$line" == "not ok "* ]]; then
       status="fail"
-    elif [[ -n "$directive" ]] && echo "$directive" | grep -qiE '^(skip|todo)'; then
+    elif [[ -n "$directive" && "${directive,,}" =~ ^(skip|todo) ]]; then
       status="skip"
     else
       status="pass"
