@@ -49,6 +49,21 @@ command_args = []
 mounts       = []
 env_keys     = ["COPILOT_GITHUB_TOKEN"]
 
+# [judge] — LLM-as-judge wrapper config (see ADR 0004 Decision 4 and
+# tests/e2e/lib/llm_judge.sh). All fields are overridable via local.toml.
+# `api_key_env` is intentionally distinct from `ANTHROPIC_API_KEY` so the
+# judge's billing/quota line stays separated from the runtime CLI key
+# (which may point at the same upstream key value — separation is about
+# accounting, not secrecy).
+[judge]
+backend     = "anthropic"
+model       = "claude-sonnet-4-6"            # Update when a newer stable Sonnet ships.
+api_key_env = "ANTHROPIC_JUDGE_API_KEY"
+endpoint    = "https://api.anthropic.com/v1/messages"
+max_tokens  = 256
+strict      = false                          # UNCERTAIN warns; does NOT fail.
+max_calls   = 30                             # Per-run hard cap on Messages API calls.
+
 # [scenarios.*] — placeholder. Issue #80 will populate this section with the
 # real scenario library. Until then the runner emits a "no scenarios defined
 # yet" TAP plan and exits 0 cleanly.
