@@ -184,6 +184,12 @@ matters on shared CI runners where `$HOME` is multi-tenant.
 | Scenario fails mid-run with auth error after ~1 h | OAuth access token expired and the RO mount blocked the refresh write. | For long scenarios, set `CLAUDE_CODE_OAUTH_TOKEN` / `GEMINI_API_KEY` in your shell instead. |
 | `image 'crewrig/e2e-<cli>:latest' is not present locally` | You skipped `task e2e:build`. | Run `task e2e:build` (or `task e2e:build:<cli>`). |
 
+## Assertion libraries
+
+Scenarios assert via three sourceable bash libraries under
+`tests/e2e/lib/` — see [`lib/README.md`](lib/README.md) and
+[ADR 0004](../../docs/adr/0004-e2e-assertion-libs.md).
+
 ## Pointers
 
 - Design — [`docs/adr/0001-e2e-docker-images.md`](../../docs/adr/0001-e2e-docker-images.md),
