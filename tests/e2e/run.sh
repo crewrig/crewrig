@@ -214,11 +214,8 @@ tap_emit() {
   printf '%s\n' "$line" | tee -a "$TAP_OUT"
 }
 
-# Emit the TAP header now that we know we have ≥1 scenario.
-{
-  printf 'TAP version 13\n'
-} | tee -a "$TAP_OUT" >/dev/null
-printf 'TAP version 13\n'
+# Emit the TAP header — single source, mirrored to file and stdout via tee.
+printf 'TAP version 13\n' | tee -a "$TAP_OUT"
 
 # --------------------------------------------------------------------------
 # Main loop.
