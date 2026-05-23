@@ -54,9 +54,12 @@ e2e_cli_dir() {
 # Universal ownership bootstrap. On macOS + Docker Desktop VirtioFS the freshly
 # bind-mounted dir is root-owned inside the container; the `agent` user (uid
 # 1000) cannot write to it and the very first auth attempt fails with
-# "Permission denied". On Linux with matching uid this is a no-op (chown of an
-# already-owned dir is harmless). Run unconditionally for cross-platform
-# correctness — do not branch on OS.
+# "Permission denied". On Linux with matching uid the *filesystem effect* is a
+# no-op (chown of an already-owned dir is harmless) — but the *runtime cost*
+# of the helper is NOT zero: it still spawns a `docker run --rm --user root`
+# container (~1–2 s container spin-up) on every invocation. Accepted as the
+# price of cross-platform correctness; do not branch on OS to "optimise" Linux
+# out — the OS-detection logic is more fragile than the spin-up cost.
 e2e_chown_bootstrap() {
   local cli="$1" image="$2"
   local dir
