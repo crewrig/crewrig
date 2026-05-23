@@ -74,3 +74,65 @@ e2e_chown_bootstrap() {
     chown -R "${E2E_AGENT_UID}:${E2E_AGENT_GID}" "/home/agent/.${cli}" \
     || e2e_die "[$cli] ownership bootstrap failed — see docker output above."
 }
+
+# e2e_auth_ready <cli> — return 0 if the CLI can be exercised non-interactively
+# in an e2e run, 78 (SKIP convention) otherwise. Used by the runner to decide
+# whether to invoke a (cli, scenario) pair or emit a TAP `# SKIP unconfigured`
+# line. Echoes a one-line reason to stderr explaining which path matched.
+#
+# Decision tree:
+#   claude   → on-disk marker (~/.crewrig-e2e/claude/.credentials.json),
+#              else ANTHROPIC_API_KEY in the host shell.
+#   gemini   → on-disk marker (~/.crewrig-e2e/gemini/oauth_creds.json),
+#              else GEMINI_API_KEY in the host shell.
+#   copilot  → no on-disk creds (ADR 0002 Decision 4); precedence is
+#              COPILOT_GITHUB_TOKEN, then GH_TOKEN.
+#
+# The on-disk markers come from ADR 0002's auth-<cli>.sh post-flight
+# assertions and were chosen as the load-bearing files in those scripts.
+e2e_auth_ready() {
+  local cli="$1"
+  local dir
+  dir="$(e2e_cli_dir "$cli")"
+  case "$cli" in
+    claude)
+      if [[ -s "${dir}/.credentials.json" ]]; then
+        e2e_info "[$cli] auth ready: on-disk marker ${dir}/.credentials.json"
+        return 0
+      fi
+      if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+        e2e_info "[$cli] auth ready: ANTHROPIC_API_KEY set in host shell"
+        return 0
+      fi
+      e2e_info "[$cli] auth NOT ready: no marker file, no ANTHROPIC_API_KEY"
+      return 78
+      ;;
+    gemini)
+      if [[ -s "${dir}/oauth_creds.json" ]]; then
+        e2e_info "[$cli] auth ready: on-disk marker ${dir}/oauth_creds.json"
+        return 0
+      fi
+      if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+        e2e_info "[$cli] auth ready: GEMINI_API_KEY set in host shell"
+        return 0
+      fi
+      e2e_info "[$cli] auth NOT ready: no marker file, no GEMINI_API_KEY"
+      return 78
+      ;;
+    copilot)
+      if [[ -n "${COPILOT_GITHUB_TOKEN:-}" ]]; then
+        e2e_info "[$cli] auth ready: COPILOT_GITHUB_TOKEN set in host shell"
+        return 0
+      fi
+      if [[ -n "${GH_TOKEN:-}" ]]; then
+        e2e_info "[$cli] auth ready: GH_TOKEN set in host shell (fallback)"
+        return 0
+      fi
+      e2e_info "[$cli] auth NOT ready: neither COPILOT_GITHUB_TOKEN nor GH_TOKEN set"
+      return 78
+      ;;
+    *)
+      e2e_die "e2e_auth_ready: unknown CLI '$cli' (expected: claude|gemini|copilot)"
+      ;;
+  esac
+}
