@@ -1,0 +1,16 @@
+# tests/e2e/local.toml.example — sample local override (commit-friendly).
+#
+# Copy this file to tests/e2e/local.toml (which is gitignored) to override
+# the committed defaults at run time. The runner deep-merges this file over
+# tests/e2e/defaults.toml — arrays APPEND, scalars REPLACE, new tables graft
+# in. See ADR 0003 Decision 2 for the exact semantics.
+#
+# Common use case: route Copilot through Ollama Cloud for local validation
+# without spending real GitHub Copilot quota. With this override the runner
+# launches `ollama launch copilot --model deepseek-v4-pro:cloud -- ...`
+# instead of the vanilla `copilot` binary, and forwards both
+# COPILOT_GITHUB_TOKEN and OLLAMA_HOST into the container.
+
+[cli.copilot]
+command  = ["ollama", "launch", "copilot", "--model", "deepseek-v4-pro:cloud", "--"]
+env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]

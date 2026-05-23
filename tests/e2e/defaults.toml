@@ -1,0 +1,61 @@
+# tests/e2e/defaults.toml — committed defaults for the e2e runner.
+#
+# Schema overview (see docs/adr/0003-e2e-runner-toml.md for the full contract):
+#
+#   [cli.<name>]
+#     image         = "<docker-image-tag>"      # required
+#     command       = ["<argv0>", "<arg1>"]     # required
+#     command_args  = ["<extra>", ...]          # optional, default []
+#     mounts        = ["host:container[:mode]"] # required, may be []
+#     env_keys      = ["VAR_NAME", ...]         # required, may be []
+#
+#   [scenarios.<name>]                          # populated by issue #80
+#     description  = "..."
+#     command_args = [...]
+#     applies_to   = ["claude", "gemini", "copilot"]
+#
+# Path interpolation:
+#   The literal token "${CREWRIG_E2E_HOME}" in mount strings is replaced by
+#   the runner at execution time with the host's e2e home dir
+#   (typically "$HOME/.crewrig-e2e", overridable via $CREWRIG_E2E_HOME).
+#   This keeps the committed defaults portable across machines.
+#
+# Local overrides:
+#   Copy tests/e2e/local.toml.example to tests/e2e/local.toml (gitignored)
+#   to override any field. Arrays APPEND, scalars REPLACE, new tables graft
+#   in. See ADR 0003 Decision 2 for the full merge semantics.
+
+[cli.claude]
+image        = "crewrig/e2e-claude:latest"
+command      = ["claude"]
+command_args = []
+mounts       = ["${CREWRIG_E2E_HOME}/claude:/home/agent/.claude:ro"]
+env_keys     = ["ANTHROPIC_API_KEY"]
+
+[cli.gemini]
+image        = "crewrig/e2e-gemini:latest"
+command      = ["gemini"]
+command_args = []
+mounts       = ["${CREWRIG_E2E_HOME}/gemini:/home/agent/.gemini:ro"]
+env_keys     = ["GEMINI_API_KEY"]
+
+[cli.copilot]
+# Copilot uses the env-var auth path (ADR 0002 Decision 4); no on-disk creds,
+# so `mounts` is intentionally empty. COPILOT_GITHUB_TOKEN is the canonical
+# var; GH_TOKEN is honored as a fallback by e2e_auth_ready (see ADR 0002).
+image        = "crewrig/e2e-copilot:latest"
+command      = ["copilot"]
+command_args = []
+mounts       = []
+env_keys     = ["COPILOT_GITHUB_TOKEN"]
+
+# [scenarios.*] — placeholder. Issue #80 will populate this section with the
+# real scenario library. Until then the runner emits a "no scenarios defined
+# yet" TAP plan and exits 0 cleanly.
+#
+# Example shape (do NOT uncomment in this commit — kept here as schema doc):
+#
+# [scenarios.smoke-version]
+# description  = "CLI prints --version without auth."
+# command_args = ["--version"]
+# applies_to   = ["claude", "gemini", "copilot"]

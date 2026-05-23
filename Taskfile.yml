@@ -328,3 +328,17 @@ tasks:
   e2e:auth:copilot:
     desc: "Guidance for Copilot CLI auth via PAT (env-var COPILOT_GITHUB_TOKEN). Runs a sanity check if the token is already set."
     cmd: bash {{.REPO_DIR}}/scripts/e2e/auth-copilot.sh
+
+  # --- e2e runner + TOML config (issue #78) ---
+
+  e2e:test:
+    desc: "Run all e2e scenarios across all configured CLIs (TAP report)."
+    cmd: bash {{.REPO_DIR}}/tests/e2e/run.sh {{.CLI_ARGS}}
+
+  e2e:test:scenario:
+    desc: "Run one scenario across all configured CLIs. Usage: task e2e:test:scenario -- <scenario-name>"
+    cmd: bash {{.REPO_DIR}}/tests/e2e/run.sh --scenario {{.CLI_ARGS}}
+
+  e2e:test:cli:
+    desc: "Run all scenarios against one CLI. Usage: task e2e:test:cli -- <claude|gemini|copilot>"
+    cmd: bash {{.REPO_DIR}}/tests/e2e/run.sh --cli {{.CLI_ARGS}}
