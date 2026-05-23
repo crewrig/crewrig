@@ -1,0 +1,5 @@
+The friction summary is coherent: it describes a real software
+engineering obstacle (not a generic complaint), names a concrete
+component or surface where the friction occurred, and articulates an
+expected behaviour the user would prefer. A vague paragraph without
+any of those three elements fails the criterion.

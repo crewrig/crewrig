@@ -64,13 +64,27 @@ max_tokens  = 256
 strict      = false                          # UNCERTAIN warns; does NOT fail.
 max_calls   = 30                             # Per-run hard cap on Messages API calls.
 
-# [scenarios.*] — placeholder. Issue #80 will populate this section with the
-# real scenario library. Until then the runner emits a "no scenarios defined
-# yet" TAP plan and exits 0 cleanly.
+# [scenarios.*] — the four pillar scenarios (issue #80, ADR 0005).
 #
-# Example shape (do NOT uncomment in this commit — kept here as schema doc):
-#
-# [scenarios.smoke-version]
-# description  = "CLI prints --version without auth."
-# command_args = ["--version"]
-# applies_to   = ["claude", "gemini", "copilot"]
+# Each scenario owns a host-side orchestrator at
+# tests/e2e/scenarios/<name>/run.sh. The runner exports the env-var
+# contract (E2E_LIB_DIR, E2E_REPORT_DIR, E2E_CLI, E2E_IMAGE,
+# E2E_EFFECTIVE_JSON, E2E_CREWRIG_E2E_HOME, E2E_SCENARIO_DIR,
+# E2E_RUN_ID) and delegates. `command_args` is intentionally omitted —
+# scenarios assemble their own docker argv.
+
+[scenarios.01-layered-context]
+description = "00-60 rule files steer the CLI's profile-aware answer (location probe)."
+applies_to  = ["claude", "gemini", "copilot"]
+
+[scenarios.02-cross-tool-memory]
+description = "A drawer written by CLI A is read by CLI B via a shared MemPalace sidecar."
+applies_to  = ["claude", "gemini"]
+
+[scenarios.03-skill-build]
+description = "scripts/build-components.sh emits CLI-specific artefacts inside the container."
+applies_to  = ["claude", "gemini", "copilot"]
+
+[scenarios.04-harness-loop]
+description = "harness-report → MemPalace → harness-curator round-trip."
+applies_to  = ["claude", "gemini", "copilot"]

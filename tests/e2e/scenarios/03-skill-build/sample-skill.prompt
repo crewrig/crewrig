@@ -1,0 +1,4 @@
+Inside the container, run `bash scripts/build-components.sh` against
+the mounted repo at /repo. Verify the per-CLI built artefacts appear
+in their canonical directories and write a manifest of the produced
+files to /tmp/e2e-build-manifest.txt before exiting.

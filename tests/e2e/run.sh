@@ -252,8 +252,61 @@ for scenario in "${SELECTED_SCENARIOS[@]}"; do
       continue
     fi
 
-    # Build docker invocation.
     image="$(jq -r --arg c "$cli" '.cli[$c].image' "$EFFECTIVE_JSON")"
+    case_dir="${REPORT_DIR}/${cli}/${scenario}"
+    mkdir -p "$case_dir"
+
+    # ----------------------------------------------------------------------
+    # Scenario-script delegation branch (ADR 0005 Decision 3).
+    # If tests/e2e/scenarios/<name>/run.sh is present and executable, the
+    # runner hands off orchestration to it. The script receives the
+    # contract env vars and is responsible for assembling its own docker
+    # invocation(s), assertions, and tap subplan. Exit-code mapping is
+    # unchanged: 0 → ok, 78 → skip, else → not ok.
+    # ----------------------------------------------------------------------
+    scenario_script="${SCRIPT_DIR}/scenarios/${scenario}/run.sh"
+    if [[ -x "$scenario_script" ]]; then
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        tap_emit skip "$desc" "dry-run"
+        continue
+      fi
+      if env \
+          E2E_LIB_DIR="${SCRIPT_DIR}/lib" \
+          E2E_REPORT_DIR="$case_dir" \
+          E2E_CLI="$cli" \
+          E2E_IMAGE="$image" \
+          E2E_EFFECTIVE_JSON="$EFFECTIVE_JSON" \
+          E2E_CREWRIG_E2E_HOME="$(e2e_e2e_home)" \
+          E2E_SCENARIO_DIR="${SCRIPT_DIR}/scenarios/${scenario}" \
+          E2E_RUN_ID="$(basename "$REPORT_DIR")" \
+          "$scenario_script" \
+          >"${case_dir}/stdout" \
+          2>"${case_dir}/stderr"
+      then
+        exit_code=0
+      else
+        exit_code=$?
+      fi
+      printf '%d\n' "$exit_code" > "${case_dir}/exit"
+
+      case "$exit_code" in
+        0)  tap_emit ok "$desc" ;;
+        78) tap_emit skip "$desc" "scenario reported skip (exit 78)" ;;
+        *)
+          tap_emit not_ok "$desc" ""
+          e2e_info "[runner] ${desc} failed: exit ${exit_code}"
+          e2e_info "[runner]   stdout: ${case_dir}/stdout"
+          e2e_info "[runner]   stderr: ${case_dir}/stderr"
+          RUN_EXIT=1
+          ;;
+      esac
+      continue
+    fi
+
+    # ----------------------------------------------------------------------
+    # Legacy direct-docker path (preserved for scenarios without a script).
+    # ----------------------------------------------------------------------
+    # Build docker invocation.
     mapfile -t cli_cmd < <(
       jq -r --arg c "$cli" '.cli[$c].command[]' "$EFFECTIVE_JSON"
     )
@@ -281,8 +334,6 @@ for scenario in "${SELECTED_SCENARIOS[@]}"; do
     if [[ ${#cli_args[@]} -gt 0 ]]; then docker_argv+=("${cli_args[@]}"); fi
     if [[ ${#scen_extra_args[@]} -gt 0 ]]; then docker_argv+=("${scen_extra_args[@]}"); fi
 
-    case_dir="${REPORT_DIR}/${cli}/${scenario}"
-    mkdir -p "$case_dir"
     {
       printf 'image: %s\n' "$image"
       printf 'argv:'

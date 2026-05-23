@@ -1,0 +1,5 @@
+The answer demonstrates that the model read a profile configuration
+file describing the user, recognised a "location" field in it, and
+returned the value of that field. A correct answer is a single city
+name; a generic refusal, a guess, or a meta-comment about not having
+context fails the criterion.

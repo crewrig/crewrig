@@ -1,0 +1,9 @@
+You hit a recognition signal while editing a SKILL.md: the build step
+silently dropped the metadata.provenance.version field on a renamed
+component, so CI rejected the PR for a missing version bump. Activate
+the `harness-report` skill and tag the friction.
+
+The friction summary must include: the symptom (silent drop), the
+suspected component (`scripts/build-components.sh`), and what the user
+would expect to happen instead (an explicit "version field missing"
+error before the build exits 0).
