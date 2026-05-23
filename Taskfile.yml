@@ -342,3 +342,7 @@ tasks:
   e2e:test:cli:
     desc: "Run all scenarios against one CLI. Usage: task e2e:test:cli -- <claude|gemini|copilot>"
     cmd: bash {{.REPO_DIR}}/tests/e2e/run.sh --cli {{.CLI_ARGS}}
+
+  e2e:report:
+    desc: "Aggregate TAP results into a parity matrix (console + markdown)"
+    cmd: bash {{.REPO_DIR}}/tests/e2e/lib/report.sh
