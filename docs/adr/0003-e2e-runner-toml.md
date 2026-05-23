@@ -279,8 +279,8 @@ addition to `scripts/e2e/lib/auth-common.sh`:
 
 | Trigger | TAP line |
 |---|---|
-| Host dir missing AND no env var set | `ok N - <scenario>/<cli> # SKIP auth missing — run \`task e2e:auth:<cli>\`` |
-| Container exits 78 | `ok N - <scenario>/<cli> # SKIP container reported skip` |
+| Host dir missing AND no env var set | `` ok N - <scenario>/<cli> # SKIP auth missing — run `task e2e:auth:<cli>` `` |
+| Container exits 78 | `` ok N - <scenario>/<cli> # SKIP container reported skip `` |
 
 Both map to a green TAP plan, in line with the established
 "unconfigured ≠ failed" convention from ADR 0002.
