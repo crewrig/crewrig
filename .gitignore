@@ -32,3 +32,8 @@ CLAUDE.local.md
 # GitHub Copilot CLI local settings (per-user, not committed)
 .github/copilot/settings.local.json
 copilot-instructions.local.md
+
+# e2e runner — local overrides and per-run reports (issue #78)
+tests/e2e/local.toml
+tests/e2e/reports/*
+!tests/e2e/reports/.gitkeep
