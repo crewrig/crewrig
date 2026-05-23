@@ -304,3 +304,27 @@ tasks:
       - sh: command -v docker >/dev/null 2>&1
         msg: "docker is required."
     cmd: bash {{.REPO_DIR}}/scripts/e2e-capture-versions.sh "{{.E2E_IMG_PREFIX}}" "{{.E2E_VERSIONS_LOCK}}"
+
+  # --- e2e dedicated-account auth flow (issue #77) ---
+
+  e2e:auth:claude:
+    desc: "Interactive Claude Code login → ~/.crewrig-e2e/claude/ (RW one-shot, RO at scenario time)."
+    preconditions:
+      - sh: command -v docker >/dev/null 2>&1
+        msg: "docker is required."
+      - sh: docker image inspect {{.E2E_IMG_PREFIX}}-claude:latest >/dev/null 2>&1
+        msg: "image {{.E2E_IMG_PREFIX}}-claude:latest is missing. Run `task e2e:build:claude` first."
+    cmd: bash {{.REPO_DIR}}/scripts/e2e/auth-claude.sh
+
+  e2e:auth:gemini:
+    desc: "Interactive Gemini CLI login → ~/.crewrig-e2e/gemini/ (RW one-shot, RO at scenario time)."
+    preconditions:
+      - sh: command -v docker >/dev/null 2>&1
+        msg: "docker is required."
+      - sh: docker image inspect {{.E2E_IMG_PREFIX}}-gemini:latest >/dev/null 2>&1
+        msg: "image {{.E2E_IMG_PREFIX}}-gemini:latest is missing. Run `task e2e:build:gemini` first."
+    cmd: bash {{.REPO_DIR}}/scripts/e2e/auth-gemini.sh
+
+  e2e:auth:copilot:
+    desc: "Guidance for Copilot CLI auth via PAT (env-var COPILOT_GITHUB_TOKEN). Runs a sanity check if the token is already set."
+    cmd: bash {{.REPO_DIR}}/scripts/e2e/auth-copilot.sh
