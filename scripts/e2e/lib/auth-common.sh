@@ -70,8 +70,10 @@ e2e_cli_dir() {
 #
 # The `image` parameter is retained for call-site compatibility; it is no
 # longer used.
+# TODO: rename to e2e_chmod_bootstrap after call sites adopt new name.
 e2e_chown_bootstrap() {
   local cli="$1" image="$2"
+  : "${image}"  # unused; kept for call-site compatibility — shellcheck SC2034
   local dir
   dir="$(e2e_cli_dir "$cli")"
   e2e_info "[$cli] Asserting writability on $dir (uid:${E2E_AGENT_UID} gid:${E2E_AGENT_GID})…"
