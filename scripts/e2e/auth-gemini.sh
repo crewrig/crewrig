@@ -23,7 +23,7 @@ DIR="$(e2e_cli_dir "$CLI")"
 e2e_require_docker
 e2e_require_image "$IMAGE" "task e2e:build:gemini"
 
-e2e_info "[$CLI] Preparing $DIR…"
+e2e_info "[$CLI] Preparing ${DIR}…"
 mkdir -p "$DIR"
 
 # Decision 6: chown bootstrap is mandatory (macOS) and harmless (Linux).
