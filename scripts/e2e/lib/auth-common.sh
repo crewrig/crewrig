@@ -76,7 +76,7 @@ e2e_chown_bootstrap() {
   dir="$(e2e_cli_dir "$cli")"
   e2e_info "[$cli] Asserting writability on $dir (uid:${E2E_AGENT_UID} gid:${E2E_AGENT_GID})…"
   chmod a+rwx "${dir}" \
-    || e2e_die "[$cli] ownership bootstrap failed — cannot chmod ${dir}."
+    || e2e_die "[$cli] writability bootstrap failed — cannot chmod ${dir}."
 }
 
 # e2e_auth_ready <cli> — return 0 if the CLI can be exercised non-interactively

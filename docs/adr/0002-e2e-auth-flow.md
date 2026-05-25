@@ -32,11 +32,8 @@ Common skeleton (pseudo):
 ```sh
 DIR="${HOME}/.crewrig-e2e/<cli>"
 mkdir -p "${DIR}"
-# 1. Ownership bootstrap (see Decision 6 — required on macOS).
-docker run --rm --user root \
-  -v "${DIR}:/home/agent/.<cli>" \
-  crewrig/e2e-<cli>:latest \
-  chown -R 1000:1000 /home/agent/.<cli>
+# 1. Writability bootstrap (see Decision 6 — required on macOS VirtioFS).
+chmod a+rwx "${DIR}"
 # 2. Interactive auth (RW mount, TTY).
 docker run --rm -it \
   -v "${DIR}:/home/agent/.<cli>" \
@@ -187,7 +184,7 @@ No `HOME` or `XDG_*` overrides are needed: the base image already
 sets `HOME=/home/agent` for the `agent` user (uid 1000) and pre-creates
 the mount points (ADR 0001 Decision 4).
 
-## Decision 6 — Host-side bootstrap and the macOS ownership trap
+## Decision 6 — Host-side bootstrap and the macOS writability trap
 
 **Empirical finding (2026-05-23, macOS + Docker Desktop VirtioFS).**
 A freshly-created `~/.crewrig-e2e/<cli>/` on the host appears inside
@@ -202,30 +199,40 @@ $ mkdir -p /tmp/probe && docker run --rm \
 touch: cannot touch '/home/agent/.claude/x': Permission denied
 ```
 
-**Mitigation (mandatory).** Every `auth-<cli>.sh` script MUST run a
-one-shot `--user root` chown step before the interactive flow:
+**Original mitigation (2026-05-23) — RETIRED.** A `docker run --user
+root chown` step was introduced to transfer ownership to uid 1000
+inside the container. This broke on macOS Docker Desktop ≥ 4.x with
+VirtioFS: Docker Desktop's user namespace remapping translates the
+container's uid 0 to the macOS host user at the VirtioFS layer, so
+the container's root cannot chown to a different uid — even with
+`--privileged`.
 
 ```sh
+# RETIRED — fails with "Permission denied" on macOS VirtioFS
 docker run --rm --user root \
   -v "${DIR}:/home/agent/.<cli>" \
   crewrig/e2e-<cli>:latest \
   chown -R 1000:1000 /home/agent/.<cli>
 ```
 
-On Linux hosts with a matching uid 1000 this is a no-op; on macOS it
-is the only path that makes the bind mount writable. Verified the fix
-works:
+**Current mitigation (2026-05-25, issue #96) — `chmod a+rwx` on the
+host.** The host user always owns the directory (created by `mkdir -p`
+immediately before); `chmod` is therefore unconditionally permitted
+without Docker. The container's `agent` user (uid 1000) gains write
+access via the world-write bit. Files written by the container retain
+uid 1000 ownership, which read-only scenario mounts can access later.
 
-```text
-$ docker run --rm -v /tmp/probe:/home/agent/.claude crewrig/e2e-claude:latest \
-    bash -c 'touch /home/agent/.claude/x && echo OK'
-OK
+```sh
+chmod a+rwx "${DIR}"
 ```
 
-Idempotency: the chown step is safe to re-run on a populated dir
-(file modes are preserved). The auth script MUST NOT delete or
-overwrite existing credential files — only create the directory if
-missing and re-assert ownership.
+Implemented in `scripts/e2e/lib/auth-common.sh:e2e_chown_bootstrap`.
+The function signature (`<cli> <image>`) is preserved for call-site
+compatibility; the `image` parameter is no longer used.
+
+Idempotency: the chmod step is safe to re-run on a populated dir. The
+auth script MUST NOT delete or overwrite existing credential files —
+only create the directory if missing and re-assert writability.
 
 ## Decision 7 — Security posture
 
