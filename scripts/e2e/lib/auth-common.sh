@@ -10,12 +10,10 @@
 #   - e2e_e2e_home            : echo the e2e root dir (honors $CREWRIG_E2E_HOME)
 #   - e2e_cli_dir <cli>       : echo the per-CLI dir, mkdir -p before use
 #   - e2e_chown_bootstrap <cli> <image>
-#       : one-shot --user root chown of the host dir mounted at
-#         /home/agent/.<cli>. Mandatory on macOS (Decision 6 of ADR 0002);
-#         idempotent on Linux — the chown is a filesystem no-op when the
-#         bind mount already lands as uid 1000, but the helper still spawns
-#         a one-shot privileged container (~1–2 s spin-up cost). Accepted
-#         trade-off vs the brittleness of OS-detection branching.
+#       : make the host dir writable by the container's agent user (uid 1000)
+#         via `chmod a+rwx` on the host. Works on macOS VirtioFS where the
+#         previous docker-based chown approach failed with "Permission denied".
+#         The `image` parameter is accepted but no longer used.
 #
 # Conventions:
 #   - All scripts that source this file are expected to run under
@@ -54,25 +52,31 @@ e2e_cli_dir() {
   printf '%s\n' "$(e2e_e2e_home)/${cli}"
 }
 
-# Universal ownership bootstrap. On macOS + Docker Desktop VirtioFS the freshly
-# bind-mounted dir is root-owned inside the container; the `agent` user (uid
-# 1000) cannot write to it and the very first auth attempt fails with
-# "Permission denied". On Linux with matching uid the *filesystem effect* is a
-# no-op (chown of an already-owned dir is harmless) — but the *runtime cost*
-# of the helper is NOT zero: it still spawns a `docker run --rm --user root`
-# container (~1–2 s container spin-up) on every invocation. Accepted as the
-# price of cross-platform correctness; do not branch on OS to "optimise" Linux
-# out — the OS-detection logic is more fragile than the spin-up cost.
+# Universal writability bootstrap. Makes the bind-mount dir writable by the
+# container's `agent` user (uid 1000) regardless of the host UID or the
+# Docker Desktop filesystem backend (VirtioFS, gRPC-FUSE, osxfs).
+#
+# Previous approach: spawn a `docker run --user root` container to `chown` the
+# dir inside the container. This broke on macOS Docker Desktop ≥ 4.x with
+# VirtioFS: the container's root is remapped to the macOS user at the
+# VirtioFS layer, so it cannot chown a directory to a different UID — even
+# with --privileged.
+#
+# Current approach: `chmod a+rwx` on the host. The host user always owns the
+# dir (created by `mkdir -p` just above); chmod is unconditionally permitted.
+# The container's agent user (uid 1000) then has write access via the world-
+# execute/write bits. Files written by the container retain uid 1000
+# ownership, which scenario runs (also uid 1000) can read.
+#
+# The `image` parameter is retained for call-site compatibility; it is no
+# longer used.
 e2e_chown_bootstrap() {
   local cli="$1" image="$2"
   local dir
   dir="$(e2e_cli_dir "$cli")"
-  e2e_info "[$cli] Asserting ownership on $dir (uid:${E2E_AGENT_UID} gid:${E2E_AGENT_GID})…"
-  docker run --rm --user root \
-    -v "${dir}:/home/agent/.${cli}" \
-    "$image" \
-    chown -R "${E2E_AGENT_UID}:${E2E_AGENT_GID}" "/home/agent/.${cli}" \
-    || e2e_die "[$cli] ownership bootstrap failed — see docker output above."
+  e2e_info "[$cli] Asserting writability on $dir (uid:${E2E_AGENT_UID} gid:${E2E_AGENT_GID})…"
+  chmod a+rwx "${dir}" \
+    || e2e_die "[$cli] ownership bootstrap failed — cannot chmod ${dir}."
 }
 
 # e2e_auth_ready <cli> — return 0 if the CLI can be exercised non-interactively
