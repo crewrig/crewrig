@@ -200,15 +200,19 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
     echo "         Upgrade with: pipx install --force 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
     exit 1
   fi
+  # MCP entry goes through the shared-daemon http wrapper (issue #98, ADR 0006).
+  MEMPALACE_WRAPPER="$REPO_DIR/scripts/lib/mempalace-http-wrapper.py"
   echo "  Detected interpreter: $MEMPALACE_PYTHON_BIN (mempalace $MEMPALACE_VERSION)"
-  echo "  Full command:         $MEMPALACE_PYTHON_BIN -m mempalace.mcp_server"
+  echo "  Full command:         $MEMPALACE_PYTHON_BIN $MEMPALACE_WRAPPER"
   if mcp_is_registered mempalace; then
-    echo "  Currently registered. If the existing entry uses the wrong Python, re-register it."
+    echo "  Currently registered. If the existing entry does not use the http wrapper, re-register it."
     REPLACE_MEMPALACE=$(echo -e "yes\nno" | fzf --height 10% \
-      --header "Replace existing MemPalace registration with the detected interpreter?")
+      --header "Replace existing MemPalace registration with the http-wrapper entry?")
     if [ "$REPLACE_MEMPALACE" = "yes" ]; then
+      # Install the ChromaDB daemon supervisor BEFORE writing the wrapper into MCP config.
+      install_chroma_daemon "$REPO_DIR"
       claude mcp remove --scope user mempalace >/dev/null 2>&1 || true
-      if mcp_register_user mempalace "$MEMPALACE_PYTHON_BIN" -m mempalace.mcp_server; then
+      if mcp_register_user mempalace "$MEMPALACE_PYTHON_BIN" "$MEMPALACE_WRAPPER"; then
         MEMPALACE_INSTALLED=1
       fi
     else
@@ -218,12 +222,14 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   else
     INSTALL_MEMPALACE=$(echo -e "yes\nno" | fzf --height 10% --header "Install MemPalace MCP server now?")
     if [ "$INSTALL_MEMPALACE" = "yes" ]; then
-      if mcp_register_user mempalace "$MEMPALACE_PYTHON_BIN" -m mempalace.mcp_server; then
+      # Install the ChromaDB daemon supervisor BEFORE writing the wrapper into MCP config.
+      install_chroma_daemon "$REPO_DIR"
+      if mcp_register_user mempalace "$MEMPALACE_PYTHON_BIN" "$MEMPALACE_WRAPPER"; then
         MEMPALACE_INSTALLED=1
       fi
     else
       echo "  MemPalace install skipped."
-      echo "  To install later: claude mcp add --scope user mempalace -- $MEMPALACE_PYTHON_BIN -m mempalace.mcp_server"
+      echo "  To install later: claude mcp add --scope user mempalace -- $MEMPALACE_PYTHON_BIN $MEMPALACE_WRAPPER"
     fi
   fi
 fi
