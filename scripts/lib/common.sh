@@ -117,7 +117,27 @@ install_chroma_daemon() {
         return 1
       fi
       mkdir -p "$HOME/Library/LaunchAgents"
-      cp "$plist_src" "$plist_dst"
+      # Substitute placeholders. The plist on disk is user-agnostic
+      # (no hardcoded $HOME) — we materialise it here with the
+      # detected mempalace interpreter and chroma binary so the launchd
+      # agent runs against the right venv.
+      local pipx_py chroma_bin mempalace_home
+      pipx_py="$(detect_mempalace_python || true)"
+      if [ -z "$pipx_py" ]; then
+        echo "  ERROR: cannot detect mempalace pipx python — install mempalace first."
+        return 1
+      fi
+      chroma_bin="$(dirname "$pipx_py")/chroma"
+      if [ ! -x "$chroma_bin" ]; then
+        echo "  ERROR: chroma binary not found at $chroma_bin — run: pipx inject mempalace 'chromadb>=1.5.9'"
+        return 1
+      fi
+      mempalace_home="$HOME/.mempalace"
+      sed \
+        -e "s|__MEMPALACE_HOME__|${mempalace_home}|g" \
+        -e "s|__PIPX_PYTHON__|${pipx_py}|g" \
+        -e "s|__CHROMA_BIN__|${chroma_bin}|g" \
+        "$plist_src" > "$plist_dst"
       echo "  Installed: $plist_dst"
       if launchctl list | grep -q com.mempalace.chroma-server; then
         echo "  launchd agent already loaded — skipping load."

@@ -61,7 +61,7 @@ directory, and switch every MemPalace MCP server instance to
 
 ### Topology
 
-```
+```text
 chroma run --path ~/.mempalace/palace --host 127.0.0.1 --port 8001
         ↑ sole PersistentClient + sole Rust HNSW compactor
 

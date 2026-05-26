@@ -216,10 +216,19 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
 fi
 
 if [ "$INSTALL_MEMPALACE_COPILOT" = "yes" ]; then
-  jq --arg py "$MEMPALACE_PYTHON_BIN" \
-    '.mcpServers.mempalace.command = $py' \
+  # Install the shared ChromaDB HTTP daemon supervisor (issue #98) before
+  # writing the wrapper into mcp-config.json — first-launch ordering matters.
+  install_chroma_daemon "$REPO_DIR"
+
+  # Copy template, patch mcpServers.mempalace.command with the detected
+  # python, and substitute __CREWRIG_REPO_DIR__ in args so the
+  # http-wrapper resolves to an absolute path (mirrors Gemini setup).
+  jq --arg py "$MEMPALACE_PYTHON_BIN" --arg repo "$REPO_DIR" \
+    '.mcpServers.mempalace.command = $py
+     | .mcpServers.mempalace.args = (.mcpServers.mempalace.args
+         | map(gsub("__CREWRIG_REPO_DIR__"; $repo)))' \
     "$MCP_CONFIG_SRC" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
-  echo "  Installed: mcp-config.json (mempalace patched with detected Python)"
+  echo "  Installed: mcp-config.json (mempalace patched with detected Python + wrapper path)"
 else
   jq 'del(.mcpServers.mempalace)' \
     "$MCP_CONFIG_SRC" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"

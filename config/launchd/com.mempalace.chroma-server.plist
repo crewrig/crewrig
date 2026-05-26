@@ -7,11 +7,11 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/hoanicross/.local/pipx/venvs/mempalace/bin/python3.13</string>
-        <string>/Users/hoanicross/.local/pipx/venvs/mempalace/bin/chroma</string>
+        <string>__PIPX_PYTHON__</string>
+        <string>__CHROMA_BIN__</string>
         <string>run</string>
         <string>--path</string>
-        <string>/Users/hoanicross/.mempalace/palace</string>
+        <string>__MEMPALACE_HOME__/palace</string>
         <string>--host</string>
         <string>127.0.0.1</string>
         <string>--port</string>
@@ -19,7 +19,7 @@
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/hoanicross/.mempalace</string>
+    <string>__MEMPALACE_HOME__</string>
 
     <key>RunAtLoad</key>
     <true/>
@@ -28,9 +28,9 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/hoanicross/.mempalace/chroma-server.log</string>
+    <string>__MEMPALACE_HOME__/chroma-server.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/hoanicross/.mempalace/chroma-server.log</string>
+    <string>__MEMPALACE_HOME__/chroma-server.log</string>
 </dict>
 </plist>

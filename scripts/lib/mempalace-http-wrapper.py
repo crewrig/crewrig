@@ -1,4 +1,4 @@
-#!/Users/hoanicross/.local/pipx/venvs/mempalace/bin/python3.13
+#!/usr/bin/env python3
 # Requires: chromadb>=1.5.9
 """MemPalace MCP server wrapper — routes ``chromadb.PersistentClient`` to the
 shared ChromaDB HTTP daemon.
@@ -41,6 +41,10 @@ def _http_factory(path=None, settings=None, **kwargs):
     callers in MemPalace pass these but they are meaningless once routing
     goes over the wire.
     """
+    # TODO(ADR-0006): ``settings`` is intentionally ignored — ``HttpClient``
+    # has no equivalent parameter. Reconfigure the daemon via the
+    # ``MEMPALACE_CHROMA_HOST`` / ``MEMPALACE_CHROMA_PORT`` environment
+    # variables instead.
     return _chromadb.HttpClient(host=_host, port=_port)
 
 
@@ -50,7 +54,7 @@ _chromadb.PersistentClient = _http_factory  # type: ignore[assignment]
 try:
     _probe = _chromadb.HttpClient(host=_host, port=_port)
     _probe.heartbeat()
-except Exception as _e:  # noqa: BLE001 — fail-loud is the contract
+except Exception as _e:  # noqa: BLE001 — broad except intentional: any HttpClient failure (connection refused, DNS, auth, protocol) MUST block startup; silent fallback re-introduces the corruption bug ADR-0006 eliminates
     print(
         f"ERROR: ChromaDB HTTP daemon unreachable at {_host}:{_port} — {_e}\n"
         f"Start it first:  bash scripts/start-chroma-server.sh\n",

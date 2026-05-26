@@ -91,8 +91,16 @@ fi
 # Section B — Behavioural checks
 # ─────────────────────────────────────────────────────────────────────────────
 
-PYTHON_BIN="/Users/hoanicross/.local/pipx/venvs/mempalace/bin/python3.13"
-CHROMA_BIN="/Users/hoanicross/.local/pipx/venvs/mempalace/bin/chroma"
+# Resolve the mempalace pipx venv via common.sh's detect_mempalace_python
+# rather than hardcoding $HOME — keeps the test portable across machines.
+# shellcheck source=../lib/common.sh
+. "${REPO_DIR}/scripts/lib/common.sh"
+PYTHON_BIN="$(detect_mempalace_python 2>/dev/null || true)"
+if [[ -n "$PYTHON_BIN" ]]; then
+  CHROMA_BIN="$(dirname "$PYTHON_BIN")/chroma"
+else
+  CHROMA_BIN=""
+fi
 TEST_PORT="18001"
 TEST_HOST="127.0.0.1"
 TMP_HOME=""
@@ -188,7 +196,11 @@ else
 
     # Test 5 — wrapper smoke: _http_factory() returns a chromadb ClientAPI.
     # We replicate the monkey-patch inline rather than importing the wrapper
-    # module (which would also exec mempalace.mcp_server.main()).
+    # module: importing it would execute mempalace.mcp_server.main() at
+    # module-load time, which blocks reading the MCP stdio protocol from
+    # stdin and hangs the test. The inline factory exercises the same
+    # contract (HttpClient instantiation + ClientAPI conformance) without
+    # the side effect.
     factory_out="$(MEMPALACE_CHROMA_HOST="$TEST_HOST" \
                    MEMPALACE_CHROMA_PORT="$TEST_PORT" \
                    "$PYTHON_BIN" -c "

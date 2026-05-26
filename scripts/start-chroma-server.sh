@@ -17,8 +17,13 @@ PALACE_DIR="${MEMPALACE_DIR}/palace"
 HOST="${MEMPALACE_CHROMA_HOST:-127.0.0.1}"
 PORT="${MEMPALACE_CHROMA_PORT:-8001}"
 
-PYTHON_BIN="/Users/hoanicross/.local/pipx/venvs/mempalace/bin/python3.13"
-CHROMA_BIN="/Users/hoanicross/.local/pipx/venvs/mempalace/bin/chroma"
+PYTHON_BIN="${MEMPALACE_PYTHON:-$(detect_mempalace_python || true)}"
+if [ -z "${PYTHON_BIN}" ]; then
+  echo "ERROR: cannot locate the mempalace Python interpreter." >&2
+  echo "  Install via: pipx install 'mempalace>=3.3.3,<3.4'" >&2
+  exit 1
+fi
+CHROMA_BIN="$(dirname "${PYTHON_BIN}")/chroma"
 
 mkdir -p "${MEMPALACE_DIR}" "${PALACE_DIR}"
 
