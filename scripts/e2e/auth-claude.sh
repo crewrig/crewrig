@@ -27,6 +27,7 @@ e2e_require_image "$IMAGE" "task e2e:build:claude"
 
 e2e_info "[$CLI] Preparing ${DIR}…"
 mkdir -p "$DIR"
+touch "${DIR}/.claude.json"
 
 # Decision 6: chown bootstrap is mandatory (macOS) and harmless (Linux).
 e2e_chown_bootstrap "$CLI" "$IMAGE"
@@ -39,6 +40,7 @@ e2e_info "[$CLI] (Press Ctrl-D inside the prompt when Claude reports a successfu
 # so the OAuth URL is rendered properly and the user can paste the redirect.
 docker run --rm -it \
   -v "${DIR}:/home/agent/.${CLI}" \
+  -v "${DIR}/.claude.json:/home/agent/.claude.json" \
   "$IMAGE" \
   claude /login \
   || e2e_die "[$CLI] interactive container exited non-zero. Re-run after resolving the error above."

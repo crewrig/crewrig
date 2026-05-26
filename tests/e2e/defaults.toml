@@ -29,7 +29,10 @@
 image        = "crewrig/e2e-claude:latest"
 command      = ["claude"]
 command_args = []
-mounts       = ["${CREWRIG_E2E_HOME}/claude:/home/agent/.claude:ro"]
+mounts       = [
+  "${CREWRIG_E2E_HOME}/claude:/home/agent/.claude:ro",
+  "${CREWRIG_E2E_HOME}/claude/.claude.json:/home/agent/.claude.json:ro"
+]
 env_keys     = ["ANTHROPIC_API_KEY"]
 
 [cli.gemini]
