@@ -35,52 +35,53 @@ DEFAULTS="${REPO_DIR}/tests/e2e/defaults.toml"
 # Test 1 — auth-claude.sh mounts .claude.json into the container
 # ---------------------------------------------------------------------------
 if [[ ! -f "$AUTH_SCRIPT" ]]; then
-  note_fail "auth-claude.sh exists" "missing at $AUTH_SCRIPT"
-else
-  note_pass "auth-claude.sh exists"
+  echo "SKIP  auth-claude.sh not found at $AUTH_SCRIPT — cannot test"
+  exit 1
+fi
 
-  # The script must contain a -v flag that binds a host path ending in
-  # `.claude.json` to `/home/agent/.claude.json`. We grep with a tolerant
-  # regex so either an inline literal or a `${VAR}/.claude.json` form passes.
-  if grep -Eq -- '-v[[:space:]]+"?[^"[:space:]]*\.claude\.json:/home/agent/\.claude\.json' "$AUTH_SCRIPT"; then
-    note_pass "auth-claude.sh — docker run binds .claude.json into /home/agent/.claude.json"
-  else
-    note_fail "auth-claude.sh — docker run binds .claude.json into /home/agent/.claude.json" \
-      "no '-v <host>/.claude.json:/home/agent/.claude.json' flag found in $AUTH_SCRIPT (issue #112)"
-  fi
+# The script must contain a -v flag that binds a host path ending in
+# `.claude.json` to `/home/agent/.claude.json`. We grep with a tolerant
+# regex so either an inline literal or a `${VAR}/.claude.json` form passes.
+# Strip comment lines first so a `#  -v ...` example in a docstring cannot
+# satisfy the contract.
+if grep -v '^[[:space:]]*#' "$AUTH_SCRIPT" \
+   | grep -Eq -- '-v[[:space:]]+"?[^"[:space:]]*\.claude\.json:/home/agent/\.claude\.json'; then
+  note_pass "auth-claude.sh — docker run binds .claude.json into /home/agent/.claude.json"
+else
+  note_fail "auth-claude.sh — docker run binds .claude.json into /home/agent/.claude.json" \
+    "no '-v <host>/.claude.json:/home/agent/.claude.json' flag found in $AUTH_SCRIPT (issue #112)"
 fi
 
 # ---------------------------------------------------------------------------
 # Test 2 — defaults.toml: [cli.claude].mounts surfaces .claude.json
 # ---------------------------------------------------------------------------
 if [[ ! -f "$DEFAULTS" ]]; then
-  note_fail "defaults.toml exists" "missing at $DEFAULTS"
-else
-  note_pass "defaults.toml exists"
+  echo "SKIP  defaults.toml not found at $DEFAULTS — cannot test"
+  exit 1
+fi
 
-  if ! command -v yq >/dev/null 2>&1; then
-    note_fail "yq dependency" "yq not on PATH — required to parse defaults.toml"
-  elif ! command -v jq >/dev/null 2>&1; then
-    note_fail "jq dependency" "jq not on PATH — required to query the parsed JSON"
+if ! command -v yq >/dev/null 2>&1; then
+  note_fail "yq dependency" "yq not on PATH — required to parse defaults.toml"
+elif ! command -v jq >/dev/null 2>&1; then
+  note_fail "jq dependency" "jq not on PATH — required to query the parsed JSON"
+else
+  JSON="$(yq -p=toml -o=json '.' "$DEFAULTS" 2>/dev/null)" || JSON=""
+  if [[ -z "$JSON" ]]; then
+    note_fail "defaults.toml parses as TOML" "yq parse error"
   else
-    JSON="$(yq -p=toml -o=json '.' "$DEFAULTS" 2>/dev/null)" || JSON=""
-    if [[ -z "$JSON" ]]; then
-      note_fail "defaults.toml parses as TOML" "yq parse error"
+    # Any entry in [cli.claude].mounts whose container path is
+    # `/home/agent/.claude.json` satisfies the contract. Read-only (`:ro`)
+    # suffix is allowed but not required — the runtime composes that.
+    if jq -e '
+          .cli.claude.mounts // []
+          | map(select(test("/home/agent/\\.claude\\.json(:|$)")))
+          | length > 0
+        ' <<< "$JSON" >/dev/null; then
+      note_pass "[cli.claude].mounts — entry targeting /home/agent/.claude.json present"
     else
-      # Any entry in [cli.claude].mounts whose container path is
-      # `/home/agent/.claude.json` satisfies the contract. Read-only (`:ro`)
-      # suffix is allowed but not required — the runtime composes that.
-      if jq -e '
-            .cli.claude.mounts // []
-            | map(select(test("/home/agent/\\.claude\\.json(:|$)")))
-            | length > 0
-          ' <<< "$JSON" >/dev/null; then
-        note_pass "[cli.claude].mounts — entry targeting /home/agent/.claude.json present"
-      else
-        got="$(jq -c '.cli.claude.mounts // []' <<< "$JSON")"
-        note_fail "[cli.claude].mounts — entry targeting /home/agent/.claude.json present" \
-          "no mount for .claude.json found (issue #112). Current mounts=$got"
-      fi
+      got="$(jq -c '.cli.claude.mounts // []' <<< "$JSON")"
+      note_fail "[cli.claude].mounts — entry targeting /home/agent/.claude.json present" \
+        "no mount for .claude.json found (issue #112). Current mounts=$got"
     fi
   fi
 fi

@@ -50,6 +50,9 @@ jobs:
       - name: Test Gemini agent frontmatter contract (issue #54)
         run: bash scripts/tests/test-gemini-agent-frontmatter.sh
 
+      - name: Test e2e auth .claude.json mount (issue #112)
+        run: bash scripts/tests/test-e2e-auth-claude-json.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
