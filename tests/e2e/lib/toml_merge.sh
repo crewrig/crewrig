@@ -45,10 +45,26 @@ yq -p=toml -o=json '.' "$DEFAULTS" > "$defaults_json"
 if [[ -n "$LOCAL" && -f "$LOCAL" ]]; then
   local_json="${TMP_DIR}/local.json"
   yq -p=toml -o=json '.' "$LOCAL" > "$local_json"
-  # Deep-merge with array-append: `*+`. `ireduce` folds the two documents.
+
+  # Phase 1 — deep-merge with array-append (`*+`) for mounts, env_keys, etc.
+  merged_json="${TMP_DIR}/merged.json"
   yq eval-all -p=json -o=json \
     '. as $item ireduce ({}; . *+ $item)' \
-    "$defaults_json" "$local_json"
+    "$defaults_json" "$local_json" > "$merged_json"
+
+  # Phase 2 — post-merge fixups:
+  #   command   : semantically a full replacement; if local.toml defines it for
+  #               a CLI the appended result is wrong — take local's value verbatim.
+  #   env_keys  : array-append can produce duplicates; unique() preserves order.
+  jq --slurpfile local "$local_json" '
+    .cli |= with_entries(
+      .key as $c |
+      if ($local[0].cli[$c].command? // null) != null then
+        .value.command = $local[0].cli[$c].command
+      else . end |
+      .value.env_keys = (.value.env_keys // [] | unique)
+    )
+  ' "$merged_json"
 else
   cat "$defaults_json"
 fi

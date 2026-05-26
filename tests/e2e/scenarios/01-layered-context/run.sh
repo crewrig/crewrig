@@ -25,6 +25,7 @@ set -euo pipefail
 : "${E2E_REPORT_DIR:?runner must export E2E_REPORT_DIR}"
 : "${E2E_CLI:?runner must export E2E_CLI}"
 : "${E2E_IMAGE:?runner must export E2E_IMAGE}"
+: "${E2E_EFFECTIVE_JSON:?runner must export E2E_EFFECTIVE_JSON}"
 : "${E2E_CREWRIG_E2E_HOME:?runner must export E2E_CREWRIG_E2E_HOME}"
 : "${E2E_SCENARIO_DIR:?runner must export E2E_SCENARIO_DIR}"
 
@@ -57,19 +58,23 @@ scenario_skip() {
 }
 
 # --------------------------------------------------------------------------
-# Per-CLI one-shot probe mode. Each CLI accepts a different non-interactive
-# flag; this map is the only place the asymmetry surfaces.
+# Per-CLI one-shot probe mode. The base command comes from the effective
+# config (E2E_EFFECTIVE_JSON) so local.toml overrides (e.g. ollama wrapper)
+# are respected automatically. -p is the shared non-interactive flag.
+# Copilot's -p support is undocumented; we attempt it as best effort.
 # --------------------------------------------------------------------------
 case "$E2E_CLI" in
-  claude)  probe_argv=(claude -p) ;;
-  gemini)  probe_argv=(gemini -p) ;;
-  # Copilot CLI's non-interactive mode is undocumented in the public
-  # reference. We attempt `-p` as a best effort; if the binary rejects
-  # it, the docker run exits non-zero and the scenario reports failure
-  # rather than silently passing.
-  copilot) probe_argv=(copilot -p) ;;
-  *)       scenario_skip "unknown CLI '${E2E_CLI}'" ;;
+  claude|gemini|copilot) ;;
+  *) scenario_skip "unknown CLI '${E2E_CLI}'" ;;
 esac
+
+mapfile -t _cli_cmd < <(jq -r --arg c "$E2E_CLI" '.cli[$c].command[]' "$E2E_EFFECTIVE_JSON")
+mapfile -t _cli_mounts < <(jq -r --arg c "$E2E_CLI" '.cli[$c].mounts // [] | .[]' "$E2E_EFFECTIVE_JSON")
+mapfile -t _cli_env_keys < <(jq -r --arg c "$E2E_CLI" '.cli[$c].env_keys // [] | .[]' "$E2E_EFFECTIVE_JSON")
+
+expand_mount() { printf '%s' "${1/\$\{CREWRIG_E2E_HOME\}/${E2E_CREWRIG_E2E_HOME}}"; }
+
+probe_argv=("${_cli_cmd[@]}" -p)
 
 PROBE_PROMPT="$(cat "${E2E_SCENARIO_DIR}/probe.prompt")"
 EXPECTED_RE="$(head -n1 "${E2E_SCENARIO_DIR}/expected.regex")"
@@ -88,13 +93,6 @@ case "$E2E_CLI" in
   copilot) rules_mount_target="/home/agent/.copilot" ;;
 esac
 
-# Per-CLI env-var passthrough for the model API key.
-case "$E2E_CLI" in
-  claude)  api_env_key="ANTHROPIC_API_KEY" ;;
-  gemini)  api_env_key="GEMINI_API_KEY" ;;
-  copilot) api_env_key="COPILOT_GITHUB_TOKEN" ;;
-esac
-
 # Host out-dir bound into the container at /out for the answer file.
 host_out="${E2E_REPORT_DIR}/out"
 mkdir -p "$host_out"
@@ -105,7 +103,16 @@ docker_argv=(
   docker run --rm --name "$container_name"
   -v "${rules_dir}:${rules_mount_target}:ro"
   -v "${host_out}:/out"
-  -e "$api_env_key"
+)
+# Mounts from effective config (e.g. Ollama keypair dir from local.toml).
+for _m in "${_cli_mounts[@]}"; do
+  docker_argv+=(-v "$(expand_mount "$_m")")
+done
+# Env keys from effective config (covers PAT, API key, OLLAMA_HOST, etc.).
+for _k in "${_cli_env_keys[@]}"; do
+  docker_argv+=(-e "$_k")
+done
+docker_argv+=(
   -e "E2E_PROBE_PROMPT=${PROBE_PROMPT}"
   "$E2E_IMAGE"
   "${probe_argv[@]}" "$PROBE_PROMPT"
