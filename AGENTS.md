@@ -270,10 +270,21 @@ git fetch crewrig && git rebase crewrig/main
 
 If the rebase raises conflicts, resolve them, then `git rebase --continue`. Log the conflict on the issue logbook before resuming (Rule B).
 
-Once the PR is merged and the linked logbook issue closed (see *Logbook Issues → Rule C*), remove the worktree to keep the repository clean:
+Once the PR is merged and the linked logbook issue closed (see *Logbook Issues → Rule C*), clean up the worktree and its branch in this **exact order**:
+
+1. **Verify the merge landed.** `gh pr view <pr-number> --json state,mergedAt` — proceed only when `state == MERGED`.
+2. **Remove the worktree.** `git worktree remove .worktrees/<ticket-id>` — this releases the branch reference held by the worktree.
+3. **Delete the local branch.** `git branch -D <branch-name>` — required because `gh pr merge --delete-branch` only deletes the **remote** branch; the local ref survives.
+4. **Close the logbook issue** per *Logbook Issues → Rule C* (if not already closed by the merge).
+
+**Why this order matters.** Git refuses to delete a branch that is checked out by an active worktree. Running `gh pr merge --delete-branch` (or `git branch -D`) while the worktree still exists fails with `error: cannot delete branch '<name>' checked out at '.worktrees/<ticket-id>'`. Removing the worktree first releases the ref so step 3 can proceed cleanly.
 
 ```sh
+# canonical sequence
+gh pr view <pr-number> --json state,mergedAt
 git worktree remove .worktrees/<ticket-id>
+git branch -D <branch-name>
+gh issue close <issue-number> --reason completed
 ```
 
 Any obstacle encountered during the worktree lifecycle — merge conflicts, CI failures, friction declarations, scope changes, rebases that resolve conflicts — must be logged on the issue logbook before resuming work. See **Rule B** for the full trigger list.
