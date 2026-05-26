@@ -226,6 +226,17 @@ inherit no conversation context. Use `TaskCreate` for tracking only:
 its `description` should be a one-liner (e.g. `"Implement feature X — full brief in Agent prompt"`), not a duplicate of the Agent prompt. Never write the same
 brief in both places.
 
+**Verified-claim rule**: Technical assertions embedded in a developer
+brief (package names, install paths, command flags, file locations,
+schema fields, API shapes) MUST be either (a) sourced from the
+architect's design output for this ticket, or (b) prefixed inline with
+`UNVERIFIED —` so the developer treats them as hypotheses to validate
+before acting. The team-lead's own inline guesses are not ground
+truth. When `UNVERIFIED` claims accumulate to the point of shaping
+the approach, escalate to `architect` for a design pass before
+spawning the developer — that is the existing Template 1 step 1, not
+a new step.
+
 **Model compatibility rule**: When the orchestrating Claude Code session
 runs on a non-Anthropic backend (Ollama, Ollama Cloud, or any
 non-default model provider), every spawned `Agent` MUST use the same
