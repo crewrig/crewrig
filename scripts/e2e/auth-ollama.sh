@@ -40,7 +40,7 @@ e2e_info "[$CLI] (The CLI will print a URL; open it on the host, approve, then r
 docker run --rm -it \
   -v "${DIR}:/home/agent/.${CLI}" \
   "$IMAGE" \
-  ollama signin \
+  bash -c 'ollama serve >/dev/null 2>&1 & sleep 2 && ollama signin' \
   || e2e_die "[$CLI] interactive container exited non-zero. Re-run after resolving the error above."
 
 # Post-flight: id_ed25519 is the load-bearing private key; id_ed25519.pub
