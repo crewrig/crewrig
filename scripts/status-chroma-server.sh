@@ -14,7 +14,12 @@ HOST="${MEMPALACE_CHROMA_HOST:-127.0.0.1}"
 PORT="${MEMPALACE_CHROMA_PORT:-8001}"
 
 if [ ! -f "${PID_FILE}" ]; then
-  echo "chroma server: NOT RUNNING (no PID file)"
+  # No PID file — daemon may be supervisor-managed (launchd/systemd); rely on heartbeat alone.
+  if curl -sf "http://${HOST}:${PORT}/api/v2/heartbeat" >/dev/null 2>&1; then
+    echo "chroma server: HEALTHY (supervisor-managed, ${HOST}:${PORT})"
+    exit 0
+  fi
+  echo "chroma server: NOT RUNNING (no PID file, heartbeat failed at ${HOST}:${PORT})"
   exit 1
 fi
 
