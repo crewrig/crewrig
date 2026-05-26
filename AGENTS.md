@@ -372,7 +372,7 @@ design flaw rather than a localized defect.
 
 ### Team Communication
 
-Two rules govern how teammates report back inside a team.
+Four rules govern how teammates report back inside a team and how the team-lead interprets their signals.
 
 **Rule 1 — Report before idle.** Every agent operating inside a team
 (spawned via `TeamCreate` / `TaskCreate`) MUST send a message to
@@ -392,7 +392,37 @@ can resume rather than restart from scratch. Direct `Agent` spawns (without team
 reliably complete and return results; `SendMessage` to a stuck idle
 agent does not.
 
-**Rule 3 — Review findings are not auto-deferrals.** When a reviewer
+**Rule 3 — Idle notifications can race result messages.** When the
+team-lead receives an `idle_notification` for a teammate, that signal
+does NOT prove the teammate skipped Rule 1. Result messages and idle
+notifications travel as separate events on the harness bus, and the
+idle notification can arrive first even when the teammate sent its
+result correctly. Before treating an apparent silence as a Rule 1
+violation, the team-lead MUST:
+
+1. **Let the channel drain.** Do not send anything to the idle
+   teammate on the same turn the idle notification arrives. The
+   in-flight result message — if one exists — will be delivered on
+   the team-lead's next turn without any prompting.
+2. **Check observable side-effects first.** Inspect the artifacts the
+   teammate was tasked to produce: `git status` and `git log` in the
+   ticket worktree, `gh pr view <num>` for PR state, the logbook
+   issue for comments, or the specific file the task targeted. A
+   completed task almost always leaves a trace that confirms the
+   outcome without the result message itself.
+3. **Only then escalate.** If, after the next turn, no result message
+   has landed AND no side-effect confirms completion, treat the
+   silence as an actual Rule 1 violation and apply Rule 2 (spawn a
+   fresh direct `Agent`). Do NOT send a status-check `SendMessage` to
+   the idle teammate — it wastes the teammate's next turn
+   re-confirming work already done, and Rule 2 is the prescribed
+   remedy for genuine non-response.
+
+Sending a status-check ping on every idle notification is itself a
+protocol violation: it manufactures the very noise this rule exists
+to prevent.
+
+**Rule 4 — Review findings are not auto-deferrals.** When a reviewer
 lists findings marked "non-blocking", that label means the PR can merge
 without them — it does NOT mean the findings should be deferred to a
 follow-up ticket without asking the user. The agent MUST present every
