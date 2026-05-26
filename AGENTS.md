@@ -347,6 +347,8 @@ fulfil its cold-start contract without a valid PR number. `pr-reviewer`
 receives the PR number from `pr-logbook`'s result message (see *Team
 Communication → Rule 1*).
 
+**Shared-identity workaround:** When the orchestrator and `pr-reviewer` share the same GitHub identity (common in solo-dev setups), GitHub rejects `gh pr review --approve` with "Can not approve your own pull request"; in that case `pr-reviewer` MUST post its verdict as a regular PR comment opening with a `## Verdict: APPROVE` or `## Verdict: REQUEST CHANGES` header. This applies to every template below that includes `pr-reviewer`.
+
 Use multiple `developer` agents in parallel when the work decomposes into
 independent files or modules; a single developer suffices otherwise.
 
