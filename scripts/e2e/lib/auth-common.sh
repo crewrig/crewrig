@@ -91,8 +91,8 @@ e2e_chown_bootstrap() {
 #              else ANTHROPIC_API_KEY in the host shell.
 #   gemini   → on-disk marker (~/.crewrig-e2e/gemini/oauth_creds.json),
 #              else GEMINI_API_KEY in the host shell.
-#   copilot  → no on-disk creds (ADR 0002 Decision 4); precedence is
-#              COPILOT_GITHUB_TOKEN, then GH_TOKEN.
+#   copilot  → COPILOT_GITHUB_TOKEN, then GH_TOKEN, then Ollama Cloud
+#              keypair (~/.crewrig-e2e/ollama/id_ed25519, ADR 0002 Decision 8).
 #
 # The on-disk markers come from ADR 0002's auth-<cli>.sh post-flight
 # assertions and were chosen as the load-bearing files in those scripts.
@@ -134,7 +134,14 @@ e2e_auth_ready() {
         e2e_info "[$cli] auth ready: GH_TOKEN set in host shell (fallback)"
         return 0
       fi
-      e2e_info "[$cli] auth NOT ready: neither COPILOT_GITHUB_TOKEN nor GH_TOKEN set"
+      # Ollama Cloud path (ADR 0002 Decision 8): no GitHub token needed when
+      # Copilot is routed through Ollama Cloud — the Ed25519 keypair is the
+      # credential. Accept if the keypair is present and non-empty.
+      if [[ -s "$(e2e_cli_dir ollama)/id_ed25519" ]]; then
+        e2e_info "[$cli] auth ready: Ollama Cloud keypair present ($(e2e_cli_dir ollama)/id_ed25519)"
+        return 0
+      fi
+      e2e_info "[$cli] auth NOT ready: neither COPILOT_GITHUB_TOKEN nor GH_TOKEN set, and no Ollama Cloud keypair found"
       return 78
       ;;
     *)
