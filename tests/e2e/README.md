@@ -141,6 +141,12 @@ command  = ["ollama", "launch", "copilot", "--model", "deepseek-v4-pro:cloud", "
 env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]
 ```
 
+When the Ollama Cloud override is active, run `task e2e:auth:ollama` once
+before invoking any scenario. This registers the dedicated test account's
+Ed25519 keypair under `~/.crewrig-e2e/ollama/` and makes it available
+inside the copilot container as a read-only bind mount. Without this step,
+`ollama launch` will fail with an authentication error.
+
 The runner writes the merged result to `effective.json` at the top of
 each run; inspect it under the run's report directory when debugging
 config resolution.
@@ -225,7 +231,7 @@ and [ADR 0002 — Auth flow](../../docs/adr/0002-e2e-auth-flow.md).
 | `copilot` complains about a malformed token | PAT expired, was revoked, or was pasted with surrounding whitespace. | Mint a fresh PAT, re-export, re-run `task e2e:auth:copilot`. |
 | Scenario fails mid-run with auth error after ~1 h | OAuth access token expired and the RO mount blocked the refresh write. | Set `CLAUDE_CODE_OAUTH_TOKEN` / `GEMINI_API_KEY` in your shell for long scenarios. |
 | `llm_judge` returns `MISSING_KEY` | `ANTHROPIC_JUDGE_API_KEY` is unset on the host. | Export it (may share its value with `ANTHROPIC_API_KEY`; the split is for accounting, not secrecy). |
-| Ollama Cloud override hangs or 401s | `OLLAMA_HOST` or the Ollama Cloud token is not exported on the host. | Export both before invoking `task e2e:test`. |
+| Ollama Cloud override hangs or 401s | `OLLAMA_HOST` or the Ollama Cloud token is not exported on the host. | Run `task e2e:auth:ollama` to register the Ed25519 keypair (first-time setup). Then verify that Export both before invoking `task e2e:test`. |
 | `--dry-run` reports success but no containers ran | Expected behaviour. | `--dry-run` resolves config + writes `effective.json` only; drop the flag to execute. |
 | `assert_gitmoji_title` fails only on macOS | BSD grep lacks PCRE. | Run the assertion inside the e2e image, not on the host. |
 

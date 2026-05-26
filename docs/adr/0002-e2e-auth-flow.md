@@ -252,6 +252,7 @@ only create the directory if missing and re-assert writability.
   <NAME>`. They MUST NEVER be written to `~/.crewrig-e2e/`. The auth
   scripts MUST refuse to proceed if they detect an `*_API_KEY` value
   inside a credential file under that path.
+  (The Ed25519 keypair on disk per Decision 8 is the actual Ollama Cloud credential; no separate token is involved.)
 - **Rotation / revocation.** Document in
   `tests/e2e/README.md`: deleting `~/.crewrig-e2e/<cli>/` and
   re-running `task e2e:auth:<cli>` is the canonical full reset. PATs
@@ -259,6 +260,64 @@ only create the directory if missing and re-assert writability.
 - **Dedicated test account.** The user is responsible for creating
   and gating access to the dedicated GitHub / Google / Anthropic test
   account. The framework only persists what that account authorises.
+
+## Decision 8 — Ollama Cloud signin: Ed25519 keypair on disk
+
+**Verified surface (empirical, 2026-05-26).** The base image
+(`docker/e2e/base.Dockerfile`) installs the `ollama` client via the
+official install script. `ollama signin` on first run generates an
+Ed25519 keypair at `~/.ollama/id_ed25519` (private, `0600`) and
+`~/.ollama/id_ed25519.pub` (public), then prints a URL the user opens
+on the host browser to register the public key against an
+ollama.com account. Subsequent `ollama launch <model>` calls
+authenticate to ollama.com by signing requests with the private key.
+
+This surfaces only when `tests/e2e/local.toml` routes Copilot through
+Ollama Cloud (see `tests/e2e/local.toml.example`); the canonical
+Copilot scenario flow (Decision 4) remains env-var only.
+
+**Recommendation: interactive `ollama signin` in a TTY container,
+mirroring the claude/gemini pattern.**
+
+- Interactive: `task e2e:auth:ollama` runs `ollama signin` in a
+  TTY-attached container, reusing `crewrig/e2e-copilot:latest` (the
+  same image scenarios will exec against — guarantees client-version
+  parity). The user completes the browser registration on the host.
+  Resulting keypair lands in
+  `~/.crewrig-e2e/ollama/{id_ed25519,id_ed25519.pub}`.
+- Headless override: none. Unlike Claude (`CLAUDE_CODE_OAUTH_TOKEN`)
+  or Gemini (`GEMINI_API_KEY`), Ollama's cloud auth has no env-var
+  equivalent — the keypair on disk is the only path. `OLLAMA_HOST`
+  selects the endpoint but does not carry credentials.
+
+**Why interactive (not env-var only).** Ollama's cloud auth model is
+deliberately key-based: there is no documented "Ollama API key" that
+the CLI accepts at run time. Faking one by writing a synthesised
+keypair to disk is technically possible but defeats the registration
+step (the public key must be enrolled against the account upstream
+via the browser flow). The browser flow is therefore unavoidable
+exactly once per machine + test account.
+
+**`id_ed25519` persistence strategy.** The private key file is the
+load-bearing artifact. It is created by the container as `agent:agent`
+(uid 1000) thanks to the Decision 6 writability bootstrap, and
+re-mounted RO at scenario time. The key does not expire on a clock —
+it is revoked server-side when the user deletes the device from the
+ollama.com account dashboard. Re-auth cadence: re-run
+`task e2e:auth:ollama` after a manual revocation.
+
+**Chown bootstrap requirement.** Same VirtioFS trap as Decision 6.
+The auth script calls `e2e_chown_bootstrap "ollama" "$IMAGE"` before
+the signin container launches; without it, the keypair generation
+inside the container fails with "Permission denied" on macOS
+Docker Desktop ≥ 4.x. The bootstrap is idempotent and safe to re-run
+on a populated dir.
+
+**No API-key on disk.** The Ollama Cloud token mentioned in
+Decision 7's security posture is **not** the same artifact as the
+Ed25519 private key. The keypair is the credential; no separate
+`OLLAMA_API_KEY` env var or file is involved. The auth script
+defensively rejects any `*api*key*` filename under the dir.
 
 ## Open risks
 

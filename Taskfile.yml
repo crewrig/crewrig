@@ -329,6 +329,15 @@ tasks:
     desc: "Guidance for Copilot CLI auth via PAT (env-var COPILOT_GITHUB_TOKEN). Runs a sanity check if the token is already set."
     cmd: bash {{.REPO_DIR}}/scripts/e2e/auth-copilot.sh
 
+  e2e:auth:ollama:
+    desc: "Interactive Ollama Cloud signin → ~/.crewrig-e2e/ollama/ (RW one-shot, RO at scenario time). Required only when local.toml routes Copilot through Ollama Cloud."
+    preconditions:
+      - sh: command -v docker >/dev/null 2>&1
+        msg: "docker is required."
+      - sh: docker image inspect {{.E2E_IMG_PREFIX}}-copilot:latest >/dev/null 2>&1
+        msg: "image {{.E2E_IMG_PREFIX}}-copilot:latest is missing. Run `task e2e:build:copilot` first."
+    cmd: bash {{.REPO_DIR}}/scripts/e2e/auth-ollama.sh
+
   # --- e2e runner + TOML config (issue #78) ---
 
   e2e:test:

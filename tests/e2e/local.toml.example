@@ -11,6 +11,12 @@
 # instead of the vanilla `copilot` binary, and forwards both
 # COPILOT_GITHUB_TOKEN and OLLAMA_HOST into the container.
 
+# When this override is active, run `task e2e:auth:ollama` once to register
+# the dedicated test account's Ed25519 keypair under
+# ${CREWRIG_E2E_HOME}/ollama/. The mount below makes that keypair available
+# inside the copilot container (read-only) so `ollama launch` can talk to
+# ollama.com on behalf of the test account.
 [cli.copilot]
 command  = ["ollama", "launch", "copilot", "--model", "deepseek-v4-pro:cloud", "--"]
+mounts   = ["${CREWRIG_E2E_HOME}/ollama:/home/agent/.ollama:ro"]
 env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]

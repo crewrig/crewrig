@@ -53,6 +53,9 @@ jobs:
       - name: Test e2e auth .claude.json mount (issue #112)
         run: bash scripts/tests/test-e2e-auth-claude-json.sh
 
+      - name: Test e2e auth Ollama Cloud mount (issue #114)
+        run: bash scripts/tests/test-e2e-auth-ollama.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
