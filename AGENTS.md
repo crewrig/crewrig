@@ -442,6 +442,39 @@ the user explicitly decides to skip or defer it. The user sets the
 scope, not the reviewer's severity labels. Auto-deferring findings to
 follow-up tickets without user authorization is prohibited.
 
+### Team Shutdown
+
+Calling `TeamDelete` directly — without first requesting each teammate's
+shutdown — leaves teammates running as orphaned idle processes on the
+harness. This is a protocol violation. Every team disposal MUST follow
+the two-phase sequence below.
+
+**Phase 1 — Request shutdown from every teammate.** For each teammate
+still registered on the team, the team-lead sends a structured shutdown
+request via `SendMessage` and waits for the matching response before
+moving on:
+
+1. `SendMessage({to: "<teammate>", message: {type: "shutdown_request"}})`
+2. Await the teammate's reply: `{type: "shutdown_response", request_id: "...", approve: true}`. Approving the request terminates the teammate's process — that is the intended effect.
+3. If a teammate replies with `approve: false`, the team-lead MUST resolve the blocker the teammate cites (in `reason`) before retrying. Forcing `TeamDelete` over an explicit rejection discards in-flight work.
+4. If a teammate goes idle without responding, apply *Team Communication → Rule 3* (let the channel drain, check side-effects) before escalating. If the silence persists past the next turn, the team-lead MAY proceed to Phase 2 for that teammate only, after recording the unresponsive shutdown in the logbook (see *Logbook Issues → Rule B*).
+
+**Phase 2 — Dispose of the team.** Once every teammate has either
+approved its shutdown or been declared unresponsive per Phase 1 step 4,
+call `TeamDelete` to remove the team record itself.
+
+**Triggers.** Run the sequence above whenever:
+
+- The ticket's PR has been merged and the logbook closed (the standard end-of-ticket path — see *Logbook Issues → Rule C*).
+- The user cancels the ticket or pivots scope to a different team composition.
+- A fatal error makes the current team unrecoverable and a fresh team is needed.
+
+**Prohibition.** Invoking `TeamDelete` without a preceding
+`shutdown_request` round-trip for every teammate is a protocol
+violation, regardless of whether the teammates appear idle. "Idle" is a
+harness display state, not a confirmation that the underlying process
+has released its resources.
+
 ## Pull Request Format
 
 Every PR must follow this structure:
