@@ -5,11 +5,16 @@
 # Per ADR 0002 Decision 4, the v1 path is env-var token (PAT): the developer
 # mints a fine-grained PAT for the dedicated test account and exports it as
 # COPILOT_GITHUB_TOKEN in their shell. Scenarios consume the env var at run
-# time via `docker run -e COPILOT_GITHUB_TOKEN ...`; nothing is persisted under
-# ~/.crewrig-e2e/copilot/.
+# time via `docker run -e COPILOT_GITHUB_TOKEN ...`.
 #
-# If COPILOT_GITHUB_TOKEN is already set in the calling shell, the script runs
-# a 5-second sanity test against the e2e image and reports the result.
+# Rules directory (issue #120): regardless of which auth backend is used
+# (PAT, Ollama Cloud), this script populates ~/.crewrig-e2e/copilot/instructions/
+# by copying ~/.copilot/instructions/*.instructions.md from the host. The
+# 01-layered-context scenario mounts that directory as /home/agent/.copilot
+# inside the container. Running `task setup:copilot` first is a prerequisite.
+#
+# If COPILOT_GITHUB_TOKEN is already set in the calling shell, the script also
+# runs a 5-second sanity test against the e2e image and reports the result.
 #
 # See docs/adr/0002-e2e-auth-flow.md (Decision 4) for the full rationale,
 # including why we deferred device flow despite the empirical fallback path
@@ -23,13 +28,41 @@ source "${SCRIPT_DIR}/lib/auth-common.sh"
 CLI="copilot"
 IMAGE="crewrig/e2e-${CLI}:latest"
 
+# -----------------------------------------------------------------------
+# Rules directory — populate regardless of auth backend (issue #120).
+# -----------------------------------------------------------------------
+HOST_INSTRUCTIONS="${HOME}/.copilot/instructions"
+DIR="$(e2e_cli_dir "$CLI")"
+RULES_DIR="${DIR}/instructions"
+
+if [[ ! -d "$HOST_INSTRUCTIONS" ]]; then
+  e2e_die "[$CLI] ~/.copilot/instructions/ not found. Run \`task setup:copilot\` first to deploy layered-context files."
+fi
+
+e2e_info "[$CLI] Populating ${RULES_DIR} from ${HOST_INSTRUCTIONS}…"
+mkdir -p "$RULES_DIR"
+
+shopt -s nullglob
+src_files=("${HOST_INSTRUCTIONS}"/*.instructions.md)
+shopt -u nullglob
+
+if [[ ${#src_files[@]} -eq 0 ]]; then
+  e2e_die "[$CLI] No *.instructions.md files found in ${HOST_INSTRUCTIONS}. Run \`task setup:copilot\` to deploy them."
+fi
+
+for f in "${src_files[@]}"; do
+  cp "$f" "${RULES_DIR}/$(basename "$f")"
+done
+e2e_info "[$CLI] Copied ${#src_files[@]} instruction file(s) → ${RULES_DIR}."
+
 cat >&2 <<'BANNER'
 ================================================================================
  e2e auth — GitHub Copilot CLI (PAT-based, v1)
 ================================================================================
 Copilot CLI in our containers reads its credential from the env var
 COPILOT_GITHUB_TOKEN at run time (precedence: COPILOT_GITHUB_TOKEN >
-GITHUB_TOKEN > GH_TOKEN). No file is written under ~/.crewrig-e2e/copilot/.
+GITHUB_TOKEN > GH_TOKEN). Layered-context rule files are written under
+~/.crewrig-e2e/copilot/instructions/ by this script (see issue #120).
 
 Steps (do these on your host, in the shell you will run scenarios from):
 
