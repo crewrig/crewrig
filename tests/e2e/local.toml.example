@@ -5,18 +5,30 @@
 # tests/e2e/defaults.toml — arrays APPEND, scalars REPLACE, new tables graft
 # in. See ADR 0003 Decision 2 for the exact semantics.
 #
+# Note: `command` is treated as REPLACE (not APPEND) at merge time — the full
+# command array from local.toml wins, discarding the defaults entry. See
+# tests/e2e/lib/toml_merge.sh for the post-merge fixup logic.
+#
 # Common use case: route Copilot through Ollama Cloud for local validation
-# without spending real GitHub Copilot quota. With this override the runner
-# launches `ollama launch copilot --model deepseek-v4-pro:cloud -- ...`
-# instead of the vanilla `copilot` binary, and forwards both
-# COPILOT_GITHUB_TOKEN and OLLAMA_HOST into the container.
+# without spending real GitHub Copilot quota. The wrapper below:
+#   1. Starts `ollama serve` in the background with OLLAMA_MODELS redirected
+#      to /tmp/ so the :ro mount on ~/.ollama does not block writes.
+#   2. Copies the Ed25519 keypair from /run/ollama-creds (mounted :ro) into
+#      a writable ~/.ollama/ that ollama serve can use.
+#   3. Launches `ollama launch copilot --model deepseek-v4-pro:cloud` with
+#      --yes (skip confirmation) and --allow-all (permit file writes in
+#      non-interactive mode).
+#
+# Prerequisites:
+#   task e2e:auth:ollama   — register the Ed25519 keypair once
+#   task e2e:auth:copilot  — copy instructions + config.json into e2e dir
 
 # When this override is active, run `task e2e:auth:ollama` once to register
 # the dedicated test account's Ed25519 keypair under
-# ${CREWRIG_E2E_HOME}/ollama/. The mount below makes that keypair available
-# inside the copilot container (read-only) so `ollama launch` can talk to
-# ollama.com on behalf of the test account.
+# ${CREWRIG_E2E_HOME}/ollama/. The mount at /run/ollama-creds keeps the
+# source :ro while the startup wrapper copies the keypair into a writable
+# ~/.ollama/ inside the container.
 [cli.copilot]
-command  = ["ollama", "launch", "copilot", "--model", "deepseek-v4-pro:cloud", "--"]
-mounts   = ["${CREWRIG_E2E_HOME}/ollama:/home/agent/.ollama:ro"]
+command  = ["bash", "-c", "OLLAMA_MODELS=/tmp/ollama-models ollama serve >/dev/null 2>&1 & sleep 3 && mkdir -p /home/agent/.ollama && cp /run/ollama-creds/id_ed25519 /run/ollama-creds/id_ed25519.pub /home/agent/.ollama/ && chmod 600 /home/agent/.ollama/id_ed25519 && exec ollama launch copilot --model deepseek-v4-pro:cloud --yes -- --allow-all \"$@\"", "sh"]
+mounts   = ["${CREWRIG_E2E_HOME}/ollama:/run/ollama-creds:ro"]
 env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]

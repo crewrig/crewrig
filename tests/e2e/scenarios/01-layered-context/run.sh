@@ -99,9 +99,16 @@ mkdir -p "$host_out"
 
 container_name="crewrig-e2e-01-${E2E_CLI}-${E2E_RUN_ID:-adhoc}"
 
+# Copilot writes session-state/ into its config dir at runtime; mount rw
+# so those writes succeed. Claude/Gemini do not need write access.
+case "$E2E_CLI" in
+  copilot) rules_mount_mode="rw" ;;
+  *)       rules_mount_mode="ro" ;;
+esac
+
 docker_argv=(
   docker run --rm --name "$container_name"
-  -v "${rules_dir}:${rules_mount_target}:ro"
+  -v "${rules_dir}:${rules_mount_target}:${rules_mount_mode}"
   -v "${host_out}:/out"
 )
 # Mounts from effective config (e.g. Ollama keypair dir from local.toml).

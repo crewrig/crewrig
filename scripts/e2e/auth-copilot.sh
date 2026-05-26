@@ -55,6 +55,17 @@ for f in "${src_files[@]}"; do
 done
 e2e_info "[$CLI] Copied ${#src_files[@]} instruction file(s) → ${RULES_DIR}."
 
+# Copy config.json (GitHub Copilot auth token) so containers can authenticate
+# even when the model backend is Ollama Cloud. Copilot still reads its GitHub
+# auth from ~/.copilot/config.json regardless of the inference backend.
+HOST_CONFIG="${HOME}/.copilot/config.json"
+if [[ -f "$HOST_CONFIG" ]]; then
+  cp "$HOST_CONFIG" "${DIR}/config.json"
+  e2e_info "[$CLI] Copied config.json → ${DIR}/config.json."
+else
+  e2e_info "[$CLI] WARNING: ~/.copilot/config.json not found. Containers will rely on COPILOT_GITHUB_TOKEN only."
+fi
+
 cat >&2 <<'BANNER'
 ================================================================================
  e2e auth — GitHub Copilot CLI (PAT-based, v1)
