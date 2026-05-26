@@ -130,6 +130,26 @@ The framework implements a three-tier memory model:
 
 See `config/TOOLS.md` for the full memory protocol.
 
+#### Multi-agent concurrency and ChromaDB HTTP daemon
+
+When multiple CLI sessions (Claude Code, Gemini CLI, Copilot CLI) or
+parallel agents access MemPalace simultaneously, each `PersistentClient`
+instance spawns its own Rust HNSW compactor. Concurrent compactors write
+to the same binary vector index files without coordination, silently
+corrupting the HNSW segment — searches return empty results while the
+SQLite layer remains intact.
+
+CrewRig solves this by running a single shared `chroma run` daemon that
+owns the `PersistentClient`. Every CLI session connects through
+`scripts/lib/mempalace-http-wrapper.py`, which monkey-patches
+`chromadb.PersistentClient` → `chromadb.HttpClient` before importing
+MemPalace, reducing multi-writer contention to a single process.
+
+See [`docs/runbooks/chroma-http-server.md`](docs/runbooks/chroma-http-server.md)
+for start/stop/status commands, log locations, migration steps, and
+troubleshooting. The architectural decision is recorded in
+[ADR 0006](docs/adr/0006-chromadb-http-server.md).
+
 ## Lifecycle Scenario
 
 A complete journey, from installing the framework to closing the
