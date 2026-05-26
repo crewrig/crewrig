@@ -54,7 +54,7 @@ _chromadb.PersistentClient = _http_factory  # type: ignore[assignment]
 try:
     _probe = _chromadb.HttpClient(host=_host, port=_port)
     _probe.heartbeat()
-except Exception as _e:  # noqa: BLE001 — broad except intentional: any HttpClient failure (connection refused, DNS, auth, protocol) MUST block startup; silent fallback re-introduces the corruption bug ADR-0006 eliminates
+except Exception as _e:  # acknowledged-exception: broad except intentional — any HttpClient failure (connection refused, DNS, auth, protocol) MUST block startup; silent fallback re-introduces the corruption bug ADR-0006 eliminates
     print(
         f"ERROR: ChromaDB HTTP daemon unreachable at {_host}:{_port} — {_e}\n"
         f"Start it first:  bash scripts/start-chroma-server.sh\n",
