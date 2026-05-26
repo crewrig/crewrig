@@ -57,7 +57,7 @@ if [ "${#missing[@]}" -gt 0 ]; then
 fi
 
 # Defensive: refuse to leave Ollama API key material in the dir (Decision 7).
-if find "${DIR}" -type f -name '*api*key*' -print -quit | grep -q .; then
+if find "${DIR}" -type f -iname '*api*key*' -print -quit | grep -q .; then
   e2e_die "[$CLI] API-key-like file detected under $DIR — Ollama auth uses an Ed25519 keypair, not an API key. Delete the offending file and re-run."
 fi
 
