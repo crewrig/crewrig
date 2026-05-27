@@ -108,6 +108,7 @@ _llm_judge_load_config() {
   local endpoint="https://api.anthropic.com/v1/messages"
   local max_tokens="256"
   local temperature="0.0"
+  local gcp_project=""
   local cfg=""
   if [[ -n "${E2E_REPORT_DIR:-}" ]] \
        && [[ -f "${E2E_REPORT_DIR}/effective.json" ]] \
@@ -127,6 +128,7 @@ _llm_judge_load_config() {
               || printf 'https://api.anthropic.com/v1/messages')"
     max_tokens="$(jq -r '.judge.max_tokens // 256' "$cfg" 2>/dev/null || printf '256')"
     temperature="$(jq -r '.judge.temperature // 0.0' "$cfg" 2>/dev/null || printf '0.0')"
+    gcp_project="$(jq -r '.judge.gcp_project // ""' "$cfg" 2>/dev/null || printf '')"
   fi
   # E2E_JUDGE_STRICT overrides TOML.
   if [[ "${E2E_JUDGE_STRICT:-0}" == "1" ]]; then
@@ -141,6 +143,7 @@ _llm_judge_load_config() {
   printf 'JUDGE_ENDPOINT=%q\n' "$endpoint"
   printf 'JUDGE_MAX_TOKENS=%q\n' "$max_tokens"
   printf 'JUDGE_TEMPERATURE=%q\n' "$temperature"
+  printf 'JUDGE_GCP_PROJECT=%q\n' "$gcp_project"
 }
 
 # --------------------------------------------------------------------------
@@ -209,11 +212,13 @@ llm_judge() {
 
   # Config.
   local JUDGE_BACKEND JUDGE_MODEL JUDGE_API_KEY_ENV JUDGE_AUTH_MODE JUDGE_STRICT JUDGE_MAX_CALLS
-  local JUDGE_ENDPOINT JUDGE_MAX_TOKENS JUDGE_TEMPERATURE
+  local JUDGE_ENDPOINT JUDGE_MAX_TOKENS JUDGE_TEMPERATURE JUDGE_GCP_PROJECT
   eval "$(_llm_judge_load_config)"
   # The driver reads JUDGE_API_KEY_ENV via indirect expansion and
-  # branches internally on JUDGE_AUTH_MODE (ADR 0008).
-  export JUDGE_API_KEY_ENV JUDGE_AUTH_MODE
+  # branches internally on JUDGE_AUTH_MODE (ADR 0008). JUDGE_GCP_PROJECT
+  # is consumed by the gemini driver (ADR 0009) for the
+  # `x-goog-user-project` header.
+  export JUDGE_API_KEY_ENV JUDGE_AUTH_MODE JUDGE_GCP_PROJECT
 
   # Compute E2E_LIB_DIR fallback for standalone invocations.
   local lib_dir="${E2E_LIB_DIR:-${BASH_SOURCE[0]%/*}}"

@@ -63,6 +63,7 @@ backend     = "anthropic"                    # Selects tests/e2e/lib/llm_judge_d
 model       = "claude-sonnet-4-6"            # Update when a newer stable Sonnet ships.
 api_key_env = "ANTHROPIC_JUDGE_API_KEY"
 auth_mode   = "api_key"                      # "api_key" (default) | "oauth" — see ADR 0008. Only honored by drivers that branch on it (e.g. claude-code).
+# gcp_project = ""                       # Optional Google Cloud project; forwarded as x-goog-user-project when set.
 endpoint    = "https://api.anthropic.com/v1/messages"
 max_tokens  = 256
 strict      = false                          # UNCERTAIN warns; does NOT fail.

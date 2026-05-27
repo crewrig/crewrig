@@ -63,3 +63,24 @@ env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]
 # model       = "deepseek-v4-pro:cloud"
 # temperature = 0.0
 # strict      = false
+
+# Use Gemini as the LLM judge with an API key (GEMINI_API_KEY env var).
+# [judge]
+# backend     = "gemini"
+# auth_mode   = "api_key"
+# api_key_env = "GEMINI_API_KEY"
+# model       = "gemini-2.5-pro"
+# temperature = 0.0
+# strict      = false
+
+# Use Gemini as the LLM judge via OAuth (re-uses the token minted by
+# `task e2e:auth:gemini`). Reads from
+# ${GEMINI_CREDENTIALS_PATH:-~/.crewrig-e2e/gemini/oauth_creds.json}.
+# An optional gcp_project forwards x-goog-user-project to the API.
+# [judge]
+# backend     = "gemini"
+# auth_mode   = "oauth"
+# model       = "gemini-2.5-pro"
+# gcp_project = "my-gcp-project-id"   # optional
+# temperature = 0.0
+# strict      = false

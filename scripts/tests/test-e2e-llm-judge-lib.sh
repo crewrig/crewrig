@@ -478,6 +478,198 @@ else
     "rc=$rc out=$(cat "$out")"
 fi
 
+# ==========================================================================
+# Issue #128 — Gemini judge backend (OAuth refresh-token + api_key parity).
+# Exercises the real driver at tests/e2e/lib/llm_judge_drivers/gemini.sh.
+# Tests 7a/7c/7d/7f short-circuit before any HTTP call (preflight returns
+# 2 or 1); tests 7b/7e exercise the happy path with E2E_JUDGE_MOCK=1 to
+# bypass curl. Test 7g asserts the gcp_project field is plumbed through
+# _llm_judge_load_config as JUDGE_GCP_PROJECT.
+# ==========================================================================
+
+# Build an effective.json for the Gemini backend with explicit auth_mode,
+# api_key_env, and optional gcp_project. Mirrors mk_effective_json_auth
+# but lets the api_key_env name and gcp_project be set per-test (the
+# anthropic-shaped helper hardcodes ANTHROPIC_JUDGE_API_KEY).
+mk_effective_json_gemini() {
+  local cap="$1" rd="$2" auth_mode="$3"
+  local api_key_env="${4:-GEMINI_JUDGE_API_KEY}"
+  local gcp_project="${5:-}"
+  jq -n \
+    --argjson cap "$cap" \
+    --arg auth_mode "$auth_mode" \
+    --arg api_key_env "$api_key_env" \
+    --arg gcp_project "$gcp_project" '
+    { judge: {
+        backend: "gemini",
+        model: "gemini-1.5-pro",
+        api_key_env: $api_key_env,
+        auth_mode: $auth_mode,
+        gcp_project: $gcp_project,
+        strict: false,
+        max_calls: $cap,
+        endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent",
+        max_tokens: 256,
+        temperature: 0.0
+    } }' > "$rd/effective.json"
+}
+
+# Build a Gemini OAuth credentials fixture matching the schema accepted by
+# the driver (camelCase: refreshToken / clientId / clientSecret). Chmods
+# 0600 so the driver's permission guard does not refuse it.
+mk_gemini_creds() {
+  local path="$1"
+  cat > "$path" <<'JSON'
+{"refreshToken":"test-refresh-tok","clientId":"test-client-id","clientSecret":"test-secret"}
+JSON
+  chmod 600 "$path"
+}
+
+# ---------- 7a. gemini api_key missing → UNCERTAIN exit 0 + warn ----------
+rd="$TMP/rd_gemini_api_key_missing"; mkdir -p "$rd"
+mk_effective_json_gemini 30 "$rd" api_key GEMINI_JUDGE_API_KEY
+out="$TMP/out_gemini_api_key_missing"; err="$TMP/err_gemini_api_key_missing"
+set +e
+( unset GEMINI_JUDGE_API_KEY
+  E2E_REPORT_DIR="$rd" \
+  bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'"
+) >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] \
+   && grep -q '^VERDICT=UNCERTAIN' "$out" \
+   && grep -q 'WARN llm_judge UNCERTAIN reason=auth-missing' "$err"; then
+  note_pass "gemini api_key: missing key → UNCERTAIN exit 0"
+else
+  note_fail "gemini api_key: missing key → UNCERTAIN exit 0" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 7b. gemini api_key happy-path (mocked) → PASS exit 0 ----------
+rd="$TMP/rd_gemini_api_key_ok"; mkdir -p "$rd"
+mk_effective_json_gemini 30 "$rd" api_key GEMINI_JUDGE_API_KEY
+out="$TMP/out_gemini_api_key_ok"; err="$TMP/err_gemini_api_key_ok"
+set +e
+E2E_REPORT_DIR="$rd" \
+GEMINI_JUDGE_API_KEY="dummy-key" \
+E2E_JUDGE_MOCK=1 \
+E2E_JUDGE_MOCK_RESPONSE="VERDICT=PASS CONF=0.95" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] && grep -q '^VERDICT=PASS confidence=' "$out"; then
+  note_pass "gemini api_key: happy-path (mocked) → exit 0 + VERDICT=PASS"
+else
+  note_fail "gemini api_key: happy-path (mocked) → exit 0 + VERDICT=PASS" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 7c. gemini oauth missing credentials file → UNCERTAIN ---------
+rd="$TMP/rd_gemini_oauth_missing"; mkdir -p "$rd"
+mk_effective_json_gemini 30 "$rd" oauth
+out="$TMP/out_gemini_oauth_missing"; err="$TMP/err_gemini_oauth_missing"
+set +e
+E2E_REPORT_DIR="$rd" \
+GEMINI_CREDENTIALS_PATH="/nonexistent/path/oauth_creds.json" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] \
+   && grep -q '^VERDICT=UNCERTAIN' "$out" \
+   && grep -q 'WARN llm_judge UNCERTAIN reason=auth-missing' "$err"; then
+  note_pass "gemini oauth: missing credentials file → UNCERTAIN exit 0"
+else
+  note_fail "gemini oauth: missing credentials file → UNCERTAIN exit 0" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 7d. gemini oauth unsafe permissions → UNCERTAIN + warn --------
+rd="$TMP/rd_gemini_oauth_perms"; mkdir -p "$rd"
+mk_effective_json_gemini 30 "$rd" oauth
+creds="$TMP/gemini_creds_unsafe.json"
+cat > "$creds" <<'JSON'
+{"refreshToken":"r","clientId":"c","clientSecret":"s"}
+JSON
+chmod 644 "$creds"
+out="$TMP/out_gemini_oauth_perms"; err="$TMP/err_gemini_oauth_perms"
+set +e
+E2E_REPORT_DIR="$rd" \
+GEMINI_CREDENTIALS_PATH="$creds" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] \
+   && grep -q '^VERDICT=UNCERTAIN' "$out" \
+   && grep -q 'unsafe permissions' "$err" \
+   && grep -q 'WARN llm_judge UNCERTAIN reason=auth-missing' "$err"; then
+  note_pass "gemini oauth: unsafe permissions → UNCERTAIN exit 0 + driver WARN"
+else
+  note_fail "gemini oauth: unsafe permissions → UNCERTAIN exit 0 + driver WARN" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 500 "$err")"
+fi
+
+# ---------- 7e. gemini oauth happy-path (mocked) → PASS exit 0 ------------
+rd="$TMP/rd_gemini_oauth_ok"; mkdir -p "$rd"
+mk_effective_json_gemini 30 "$rd" oauth
+creds="$TMP/gemini_creds_ok.json"; mk_gemini_creds "$creds"
+out="$TMP/out_gemini_oauth_ok"; err="$TMP/err_gemini_oauth_ok"
+set +e
+E2E_REPORT_DIR="$rd" \
+GEMINI_CREDENTIALS_PATH="$creds" \
+E2E_JUDGE_MOCK=1 \
+E2E_JUDGE_MOCK_RESPONSE="VERDICT=PASS CONF=0.90" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] && grep -q '^VERDICT=PASS confidence=' "$out"; then
+  note_pass "gemini oauth: happy-path (mocked) → exit 0 + VERDICT=PASS"
+else
+  note_fail "gemini oauth: happy-path (mocked) → exit 0 + VERDICT=PASS" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 7f. gemini unknown auth_mode → hard failure exit 1 ------------
+rd="$TMP/rd_gemini_bogus"; mkdir -p "$rd"
+mk_effective_json_gemini 30 "$rd" bogus
+out="$TMP/out_gemini_bogus"; err="$TMP/err_gemini_bogus"
+set +e
+E2E_REPORT_DIR="$rd" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" != 0 ]] \
+   && grep -q '# FAIL' "$err" \
+   && grep -qE 'preflight returned hard failure' "$err"; then
+  note_pass "gemini: unknown auth_mode → hard fail exit 1"
+else
+  note_fail "gemini: unknown auth_mode → hard fail exit 1" \
+    "rc=$rc err=$(head -c 500 "$err")"
+fi
+
+# ---------- 7g. gemini gcp_project forwarded as JUDGE_GCP_PROJECT ---------
+rd="$TMP/rd_gemini_gcp"; mkdir -p "$rd"
+mk_effective_json_gemini 30 "$rd" api_key GEMINI_JUDGE_API_KEY my-proj
+gcp_out="$TMP/out_gemini_gcp"
+set +e
+E2E_REPORT_DIR="$rd" bash -c "
+  set -uo pipefail
+  source '$LIB'
+  eval \"\$(_llm_judge_load_config)\"
+  printf 'JUDGE_GCP_PROJECT=%s\n' \"\$JUDGE_GCP_PROJECT\"
+" >"$gcp_out" 2>&1
+set -e
+if grep -q '^JUDGE_GCP_PROJECT=my-proj$' "$gcp_out"; then
+  note_pass "gemini: gcp_project forwarded as JUDGE_GCP_PROJECT"
+else
+  note_fail "gemini: gcp_project forwarded as JUDGE_GCP_PROJECT" \
+    "out=$(cat "$gcp_out")"
+fi
+
 # ---------- 5. max_calls cap ---------------------------------------------
 # Cap=1 in effective.json; pre-bump counter to 1; next call must refuse.
 rd="$TMP/rd_cap"; mkdir -p "$rd"; mk_effective_json 1 "$rd"
