@@ -173,13 +173,18 @@ install_chroma_daemon() {
   # instead of one-shotting status-chroma-server.sh (see issue #138).
   if [ -x "$repo_dir/scripts/status-chroma-server.sh" ]; then
     local deadline=$((SECONDS + 15))
+    local healthy=0
     while [ "$SECONDS" -lt "$deadline" ]; do
       if bash "$repo_dir/scripts/status-chroma-server.sh" >/dev/null 2>&1; then
+        healthy=1
         break
       fi
       sleep 0.3
     done
-    if ! bash "$repo_dir/scripts/status-chroma-server.sh" >/dev/null 2>&1; then
+    if [ "$healthy" -ne 1 ]; then
+      # Surface the status script's diagnostics (stdout + stderr) so the user
+      # sees the real failure cause before the generic ERROR line.
+      bash "$repo_dir/scripts/status-chroma-server.sh" || true
       echo "  ERROR: ChromaDB daemon did not become healthy."
       echo "         Inspect logs at ~/.mempalace/chroma-server.log and retry."
       return 1
