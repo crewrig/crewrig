@@ -13,8 +13,8 @@
 # without spending real GitHub Copilot quota. The wrapper below:
 #   1. Starts `ollama serve` in the background with OLLAMA_MODELS redirected
 #      to /tmp/ so the :ro mount on ~/.ollama does not block writes.
-#   2. Copies the Ed25519 keypair from /run/ollama-creds (mounted :ro) into
-#      a writable ~/.ollama/ that ollama serve can use.
+#   2. Reads the Ed25519 keypair directly from /home/agent/.ollama (mounted
+#      read-only) — the path Ollama reads keypairs from.
 #   3. Launches `ollama launch copilot --model deepseek-v4-pro:cloud` with
 #      --yes (skip confirmation) and --allow-all (permit file writes in
 #      non-interactive mode).
@@ -25,10 +25,10 @@
 
 # When this override is active, run `task e2e:auth:ollama` once to register
 # the dedicated test account's Ed25519 keypair under
-# ${CREWRIG_E2E_HOME}/ollama/. The mount at /run/ollama-creds keeps the
-# source :ro while the startup wrapper copies the keypair into a writable
-# ~/.ollama/ inside the container.
+# ${CREWRIG_E2E_HOME}/ollama/. The mount at /home/agent/.ollama keeps the
+# source read-only; ollama serve reads the keypair directly from there
+# (OLLAMA_MODELS=/tmp/ollama-models redirects writes off the :ro mount).
 [cli.copilot]
-command  = ["bash", "-c", "OLLAMA_MODELS=/tmp/ollama-models ollama serve >/dev/null 2>&1 & sleep 3 && mkdir -p /home/agent/.ollama && cp /run/ollama-creds/id_ed25519 /run/ollama-creds/id_ed25519.pub /home/agent/.ollama/ && chmod 600 /home/agent/.ollama/id_ed25519 && exec ollama launch copilot --model deepseek-v4-pro:cloud --yes -- --allow-all \"$@\"", "sh"]
-mounts   = ["${CREWRIG_E2E_HOME}/ollama:/run/ollama-creds:ro"]
+command  = ["bash", "-c", "OLLAMA_MODELS=/tmp/ollama-models ollama serve >/dev/null 2>&1 & sleep 3 && exec ollama launch copilot --model deepseek-v4-pro:cloud --yes -- --allow-all \"$@\"", "sh"]
+mounts   = ["${CREWRIG_E2E_HOME}/ollama:/home/agent/.ollama:ro"]
 env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]
