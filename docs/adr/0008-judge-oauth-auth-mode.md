@@ -67,9 +67,11 @@ Implements the ADR 0007 §1 contract. `_preflight`:
    - Missing or unreadable file → rc=2 (soft auth-missing; core maps
      to UNCERTAIN per ADR 0007 §3).
    - Read access token via:
+
      ```bash
      token="$(jq -r '.claudeAiOauth.accessToken // empty' "$path")"
      ```
+
      **UNVERIFIED — verify before merge.** The Claude Code CLI's
      on-disk schema is not documented in this repository. The
      conventional upstream layout is
@@ -86,10 +88,10 @@ Implements the ADR 0007 §1 contract. `_preflight`:
      consistent with ADR 0007 §3 — "user has not configured a key on
      this machine").
    - `expiresAt` check: if the field is present AND parseable AND
-     `expiresAt < now_ms`, return rc=2 with a stderr WARN line
-     (`# WARN claude-code judge: OAuth token expired (re-run \`task
-     e2e:auth:claude\`)`). Missing/unparseable `expiresAt` → proceed
-     and let the API surface the 401 on `_call`.
+     `expiresAt < now_ms`, return rc=2 with a `# WARN` message on
+     stderr (e.g. `# WARN claude-code judge: OAuth token expired —
+     re-run task e2e:auth:claude`). Missing/unparseable `expiresAt`
+     → proceed and let the API surface the 401 on `_call`.
    - On success: `printf 'AUTH_TOKEN=%s\n' "$token"; return 0`.
 4. When `auth_mode = "api_key"`: identical body to
    `_llm_judge_driver_anthropic_preflight` (read `JUDGE_API_KEY_ENV`
@@ -116,6 +118,7 @@ Implements the ADR 0007 §1 contract. `_preflight`:
   `JUDGE_API_KEY_ENV` and ignores `JUDGE_AUTH_MODE`.
 - New `local.toml.example` stanza (commented) documents the
   claude-code oauth path:
+
   ```toml
   # Re-use the OAuth token minted by `task e2e:auth:claude` instead of
   # `ANTHROPIC_JUDGE_API_KEY`. Reads ${CLAUDE_CREDENTIALS_PATH:-~/.claude/.credentials.json}.
