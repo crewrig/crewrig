@@ -7,9 +7,15 @@
 # OAuth browser flow on the host. Subsequent scenario runs mount the same dir
 # read-only.
 #
+# Rules directory: regardless of the auth backend, this script populates
+# ~/.crewrig-e2e/claude/rules/ by copying ~/.claude/rules/*.md from the host.
+# The 01-layered-context scenario mounts that directory as /home/agent/.claude
+# inside the container. Running `task setup:claude` (or the interactive
+# equivalent) first is a prerequisite.
+#
 # Idempotent: safe to re-run on an already-authenticated dir. Existing
 # credential files are preserved by claude itself (it skips the login prompt if
-# the session is still valid).
+# the session is still valid). Rules files are always refreshed from the host.
 #
 # See docs/adr/0002-e2e-auth-flow.md (Decision 2) for the full rationale.
 set -euo pipefail
@@ -28,6 +34,32 @@ e2e_require_image "$IMAGE" "task e2e:build:claude"
 e2e_info "[$CLI] Preparing ${DIR}…"
 mkdir -p "$DIR"
 touch "${DIR}/.claude.json"
+
+# -----------------------------------------------------------------------
+# Rules directory — populate from host (mirrors auth-copilot.sh issue #120).
+# -----------------------------------------------------------------------
+HOST_RULES="${HOME}/.claude/rules"
+RULES_DIR="${DIR}/rules"
+
+if [[ ! -d "$HOST_RULES" ]]; then
+  e2e_die "[$CLI] ~/.claude/rules/ not found. Run \`task setup:claude\` (or the interactive equivalent) first to deploy layered-context files."
+fi
+
+e2e_info "[$CLI] Populating ${RULES_DIR} from ${HOST_RULES}…"
+mkdir -p "$RULES_DIR"
+
+shopt -s nullglob
+src_files=("${HOST_RULES}"/*.md)
+shopt -u nullglob
+
+if [[ ${#src_files[@]} -eq 0 ]]; then
+  e2e_die "[$CLI] No *.md files found in ${HOST_RULES}. Run \`task setup:claude\` to deploy them."
+fi
+
+for f in "${src_files[@]}"; do
+  cp "$f" "${RULES_DIR}/$(basename "$f")"
+done
+e2e_info "[$CLI] Copied ${#src_files[@]} rule file(s) → ${RULES_DIR}."
 
 # Decision 6: chown bootstrap is mandatory (macOS) and harmless (Linux).
 e2e_chown_bootstrap "$CLI" "$IMAGE"

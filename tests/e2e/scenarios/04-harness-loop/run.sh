@@ -72,19 +72,28 @@ fi
 
 # --------------------------------------------------------------------------
 # Step 1 — harness-report simulation. Write a friction drawer to the
-# global harness-friction wing. The drawer content is drawn from
-# friction.prompt so the LLM-judge has the same input under test.
+# global harness-friction wing.
+#
+# `mempalace add-drawer` is an MCP tool, not a CLI subcommand. The CLI
+# equivalent is init + mine: write the friction content to a file, init
+# the palace from that directory structure (which creates the palace and
+# detects "frictions" as a room from the subdirectory name), then mine
+# the workspace into wing=harness-friction.
 # --------------------------------------------------------------------------
 friction_body="$(cat "${E2E_SCENARIO_DIR}/friction.prompt")"
 friction_content=$'[FRICTION] e2e-04-build-version-drop | silent drop of metadata.provenance.version\n\nwriter_agent: '"${E2E_CLI}-harness-report"$'\ncomponent: scripts/build-components.sh\nvisible_to: ["*"]\nsymptom: build exits 0 even though metadata.provenance.version was dropped on rename\nexpected: explicit "version field missing" diagnostic; non-zero exit\n\n---\n'"$friction_body"
 
+# Prepare the workspace on the host (bind-mounted :ro into the container).
+FRICTION_WORKSPACE="${E2E_REPORT_DIR}/friction-workspace"
+mkdir -p "${FRICTION_WORKSPACE}/frictions"
+printf '%s\n' "$friction_content" > "${FRICTION_WORKSPACE}/frictions/friction-01.txt"
+
 if ! docker run --rm \
       -v "${VOLUME}:/home/agent/.mempalace" \
-      "$MEMPALACE_IMAGE" \
-      mempalace add-drawer \
-        --wing harness-friction \
-        --room frictions \
-        --content "$friction_content" \
+      -v "${FRICTION_WORKSPACE}:/tmp/harness-ws" \
+      "$MEMPALACE_IMAGE" bash -c \
+        'mempalace init --yes /tmp/harness-ws &&
+         mempalace mine /tmp/harness-ws --wing harness-friction' \
       >"${E2E_REPORT_DIR}/report.stdout" \
       2>"${E2E_REPORT_DIR}/report.stderr"
 then
