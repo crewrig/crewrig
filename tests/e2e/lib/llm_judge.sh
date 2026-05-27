@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # tests/e2e/lib/llm_judge.sh — LLM-as-judge oracle for e2e scenarios.
 #
-# Contract (ADR 0004 Decision 4):
+# Contract (ADR 0004 Decision 4, ADR 0007):
 #
 #   llm_judge <prompt-file> <subject-file> <criterion>
 #
@@ -10,13 +10,16 @@
 #     0 — PASS
 #     1 — FAIL  (or UNCERTAIN when strict mode is on)
 #     0 — UNCERTAIN  (default mode: warn-only)
+#     0 — auth-missing (default mode: warn-only; strict mode upgrades to 1)
 #
 #   Config (read from ${E2E_REPORT_DIR}/effective.json `.judge.*` when the
 #   runner has populated it; falls back to compiled defaults otherwise):
-#     model        — Anthropic model id; default "claude-sonnet-4-6"
+#     backend      — driver file selector under llm_judge_drivers/; default "anthropic"
+#     model        — backend-specific model id; default "claude-sonnet-4-6"
 #     api_key_env  — env var holding the API key; default "ANTHROPIC_JUDGE_API_KEY"
 #     strict       — false → UNCERTAIN warns; true → UNCERTAIN fails
-#     max_calls    — per-run hard cap on Anthropic Messages API calls (default 30)
+#     max_calls    — per-run hard cap on backend API calls (default 30)
+#     temperature  — forwarded to the backend driver (default 0.0; deterministic)
 #
 #   Env overrides:
 #     E2E_JUDGE_STRICT=1     — force strict mode regardless of TOML
@@ -96,17 +99,21 @@ _e2e_assert_diag() {
 # --------------------------------------------------------------------------
 
 _llm_judge_load_config() {
+  local backend="anthropic"
   local model="claude-sonnet-4-6"
   local api_key_env="ANTHROPIC_JUDGE_API_KEY"
   local strict="false"
   local max_calls="30"
   local endpoint="https://api.anthropic.com/v1/messages"
   local max_tokens="256"
+  local temperature="0.0"
   local cfg=""
   if [[ -n "${E2E_REPORT_DIR:-}" ]] \
        && [[ -f "${E2E_REPORT_DIR}/effective.json" ]] \
        && command -v jq >/dev/null 2>&1; then
     cfg="${E2E_REPORT_DIR}/effective.json"
+    backend="$(jq -r '.judge.backend // "anthropic"' "$cfg" 2>/dev/null \
+              || printf 'anthropic')"
     model="$(jq -r '.judge.model // "claude-sonnet-4-6"' "$cfg" 2>/dev/null \
               || printf 'claude-sonnet-4-6')"
     api_key_env="$(jq -r '.judge.api_key_env // "ANTHROPIC_JUDGE_API_KEY"' "$cfg" 2>/dev/null \
@@ -116,17 +123,20 @@ _llm_judge_load_config() {
     endpoint="$(jq -r '.judge.endpoint // "https://api.anthropic.com/v1/messages"' "$cfg" 2>/dev/null \
               || printf 'https://api.anthropic.com/v1/messages')"
     max_tokens="$(jq -r '.judge.max_tokens // 256' "$cfg" 2>/dev/null || printf '256')"
+    temperature="$(jq -r '.judge.temperature // 0.0' "$cfg" 2>/dev/null || printf '0.0')"
   fi
   # E2E_JUDGE_STRICT overrides TOML.
   if [[ "${E2E_JUDGE_STRICT:-0}" == "1" ]]; then
     strict="true"
   fi
+  printf 'JUDGE_BACKEND=%q\n' "$backend"
   printf 'JUDGE_MODEL=%q\n' "$model"
   printf 'JUDGE_API_KEY_ENV=%q\n' "$api_key_env"
   printf 'JUDGE_STRICT=%q\n' "$strict"
   printf 'JUDGE_MAX_CALLS=%q\n' "$max_calls"
   printf 'JUDGE_ENDPOINT=%q\n' "$endpoint"
   printf 'JUDGE_MAX_TOKENS=%q\n' "$max_tokens"
+  printf 'JUDGE_TEMPERATURE=%q\n' "$temperature"
 }
 
 # --------------------------------------------------------------------------
@@ -164,72 +174,6 @@ _llm_judge_counter_increment() {
 }
 
 # --------------------------------------------------------------------------
-# Single Anthropic Messages API call. Returns 0 on a parseable verdict line
-# echoed to stdout in the canonical `VERDICT=… CONF=…` form. Returns 1 on
-# malformed output (after one retry on HTTP error) — the caller treats this
-# as an UNCERTAIN slot.
-#
-# Inputs (positional): model, endpoint, api_key, max_tokens, prompt, subject, criterion
-# Optional 8th arg: "mock"  — when set, the implementation skips the curl
-#                              call and reads the verdict line from
-#                              ${E2E_JUDGE_MOCK_RESPONSE} instead. Used by
-#                              the library smoke test, never by scenarios.
-# --------------------------------------------------------------------------
-
-_llm_judge_one_call() {
-  local model="$1" endpoint="$2" api_key="$3" max_tokens="$4"
-  local prompt="$5" subject="$6" criterion="$7"
-  local mock="${8:-}"
-  local body raw text verdict
-  if [[ "$mock" == "mock" ]]; then
-    raw="${E2E_JUDGE_MOCK_RESPONSE:-}"
-    text="$raw"
-  else
-    body="$(jq -n \
-              --arg model "$model" \
-              --arg prompt "$prompt" \
-              --arg subject "$subject" \
-              --arg criterion "$criterion" \
-              --argjson maxtok "$max_tokens" '
-        { model: $model,
-          max_tokens: $maxtok,
-          messages: [
-            { role: "user",
-              content: ("You are an LLM judge for an end-to-end test framework. "
-                        + "Read the PROMPT, SUBJECT, and CRITERION below, then "
-                        + "respond with EXACTLY one line in the form:\n\n"
-                        + "  VERDICT=<PASS|FAIL|UNCERTAIN> CONF=<0.00-1.00>\n\n"
-                        + "No prose, no markdown, no trailing text.\n\n"
-                        + "PROMPT:\n" + $prompt
-                        + "\n\nSUBJECT:\n" + $subject
-                        + "\n\nCRITERION:\n" + $criterion) }
-          ] }')"
-    local attempt=0
-    while (( attempt < 2 )); do
-      raw="$(curl -sS --fail-with-body -X POST "$endpoint" \
-              -H "x-api-key: ${api_key}" \
-              -H "anthropic-version: 2023-06-01" \
-              -H "content-type: application/json" \
-              -d "$body" 2>&1)" && break
-      attempt=$(( attempt + 1 ))
-      sleep 1
-    done
-    if (( attempt >= 2 )); then
-      # HTTP failure persists; surface to caller as malformed slot.
-      return 1
-    fi
-    _llm_judge_counter_increment
-    text="$(printf '%s' "$raw" | jq -r '.content[0].text' 2>/dev/null || true)"
-  fi
-  # Extract canonical line.
-  verdict="$(printf '%s' "$text" | grep -oE 'VERDICT=(PASS|FAIL|UNCERTAIN)[[:space:]]+CONF=[0-9]+(\.[0-9]+)?' | head -n1 || true)"
-  if [[ -z "$verdict" ]]; then
-    return 1
-  fi
-  printf '%s\n' "$verdict"
-}
-
-# --------------------------------------------------------------------------
 # Public entry-point.
 # --------------------------------------------------------------------------
 
@@ -260,16 +204,55 @@ llm_judge() {
       "no such file: ${subject_file}"; return 1; }
 
   # Config.
-  local JUDGE_MODEL JUDGE_API_KEY_ENV JUDGE_STRICT JUDGE_MAX_CALLS JUDGE_ENDPOINT JUDGE_MAX_TOKENS
+  local JUDGE_BACKEND JUDGE_MODEL JUDGE_API_KEY_ENV JUDGE_STRICT JUDGE_MAX_CALLS
+  local JUDGE_ENDPOINT JUDGE_MAX_TOKENS JUDGE_TEMPERATURE
   eval "$(_llm_judge_load_config)"
+  # The driver reads JUDGE_API_KEY_ENV via indirect expansion.
+  export JUDGE_API_KEY_ENV
 
-  # API key resolution via indirect expansion.
-  local api_key="${!JUDGE_API_KEY_ENV:-}"
-  if [[ -z "$api_key" && "${E2E_JUDGE_MOCK:-0}" != "1" ]]; then
+  # Compute E2E_LIB_DIR fallback for standalone invocations.
+  local lib_dir="${E2E_LIB_DIR:-${BASH_SOURCE[0]%/*}}"
+
+  # Load driver.
+  local driver_path="${lib_dir}/llm_judge_drivers/${JUDGE_BACKEND}.sh"
+  if [[ ! -r "$driver_path" ]]; then
     _e2e_assert_diag \
       "llm_judge ${prompt_file} ${subject_file} ${criterion}" \
-      "env var ${JUDGE_API_KEY_ENV} set to an Anthropic API key" \
-      "${JUDGE_API_KEY_ENV} is unset or empty"
+      "driver for backend=${JUDGE_BACKEND} at ${driver_path}" \
+      "file not found"
+    return 1
+  fi
+  # shellcheck source=/dev/null
+  source "$driver_path"
+
+  # Preflight (auth resolution / tool availability).
+  local mock_arg=""
+  [[ "${E2E_JUDGE_MOCK:-0}" == "1" ]] && mock_arg="mock"
+  local auth_token_line="" auth_token=""
+  local pf_rc=0
+  auth_token_line="$("_llm_judge_driver_${JUDGE_BACKEND}_preflight")" || pf_rc=$?
+  if (( pf_rc == 0 )); then
+    auth_token="${auth_token_line#AUTH_TOKEN=}"
+  elif (( pf_rc == 2 )); then
+    # Soft auth-missing → synthesize UNCERTAIN, apply strict rule uniformly.
+    local verdict_am="UNCERTAIN" confidence_am="0.00"
+    printf 'VERDICT=%s confidence=%s\n' "$verdict_am" "$confidence_am"
+    if [[ "$JUDGE_STRICT" == "true" ]]; then
+      _e2e_assert_diag \
+        "llm_judge ${prompt_file} ${subject_file} ${criterion}" \
+        "judge credentials present (strict mode)" \
+        "backend=${JUDGE_BACKEND} auth-missing"
+      return 1
+    fi
+    printf '# WARN llm_judge UNCERTAIN reason=auth-missing backend=%s\n' \
+      "$JUDGE_BACKEND" >&2
+    return 0
+  else
+    # Hard preflight failure — always exit 1 regardless of strict.
+    _e2e_assert_diag \
+      "llm_judge ${prompt_file} ${subject_file} ${criterion}" \
+      "preflight success for backend=${JUDGE_BACKEND}" \
+      "preflight returned hard failure (rc=${pf_rc})"
     return 1
   fi
 
@@ -290,16 +273,15 @@ llm_judge() {
   subject="$(cat -- "$subject_file")"
 
   # 2-of-3 sequential quorum.
-  local mock_arg=""
-  [[ "${E2E_JUDGE_MOCK:-0}" == "1" ]] && mock_arg="mock"
   local slots=() pass_count=0 fail_count=0 unc_count=0
   local confs=()
   local i raw v c
   for i in 1 2 3; do
     raw=""
-    if raw="$(_llm_judge_one_call \
-                "$JUDGE_MODEL" "$JUDGE_ENDPOINT" "$api_key" \
-                "$JUDGE_MAX_TOKENS" "$prompt" "$subject" "$criterion" \
+    if raw="$("_llm_judge_driver_${JUDGE_BACKEND}_call" \
+                "$JUDGE_MODEL" "$JUDGE_ENDPOINT" "$auth_token" \
+                "$JUDGE_MAX_TOKENS" "$JUDGE_TEMPERATURE" \
+                "$prompt" "$subject" "$criterion" \
                 "$mock_arg")"; then
       v="$(printf '%s' "$raw" | sed -nE 's/.*VERDICT=([A-Z]+).*/\1/p')"
       c="$(printf '%s' "$raw" | sed -nE 's/.*CONF=([0-9]+(\.[0-9]+)?).*/\1/p')"

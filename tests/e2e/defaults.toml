@@ -59,12 +59,13 @@ env_keys     = ["COPILOT_GITHUB_TOKEN"]
 # (which may point at the same upstream key value — separation is about
 # accounting, not secrecy).
 [judge]
-backend     = "anthropic"
+backend     = "anthropic"                    # Selects tests/e2e/lib/llm_judge_drivers/<backend>.sh.
 model       = "claude-sonnet-4-6"            # Update when a newer stable Sonnet ships.
 api_key_env = "ANTHROPIC_JUDGE_API_KEY"
 endpoint    = "https://api.anthropic.com/v1/messages"
 max_tokens  = 256
 strict      = false                          # UNCERTAIN warns; does NOT fail.
+temperature = 0.0                            # Forwarded to the backend driver. Deterministic by default.
 max_calls   = 30                             # Per-run hard cap on Messages API calls.
 
 # [scenarios.*] — the four pillar scenarios (issue #80, ADR 0005).

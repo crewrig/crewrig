@@ -75,12 +75,46 @@ Configured via the `[judge]` table in `defaults.toml`:
 
 ```toml
 [judge]
-backend     = "anthropic"
-model       = "claude-sonnet-4-6"            # Overridable via local.toml
+backend     = "anthropic"                     # Selects llm_judge_drivers/<backend>.sh
+model       = "claude-sonnet-4-6"             # Overridable via local.toml
 api_key_env = "ANTHROPIC_JUDGE_API_KEY"
 strict      = false                           # UNCERTAIN warns; does NOT fail
+temperature = 0.0                             # Forwarded to backend; deterministic default
 max_calls   = 30                              # Per-run hard cap
 ```
+
+#### Driver protocol
+
+A backend is a sourceable file at
+`tests/e2e/lib/llm_judge_drivers/<backend>.sh` that defines exactly two
+functions, both prefixed `_llm_judge_driver_<backend>_`:
+
+```text
+_llm_judge_driver_<backend>_preflight
+  stdin:  (none)
+  stdout: single line "AUTH_TOKEN=<value>" on success, empty on failure
+  return: 0 = ready
+          2 = auth missing / unresolvable (core maps to UNCERTAIN; warn
+              under strict=false, FAIL under strict=true)
+          1 = hard failure (missing binary, unreachable mock, …) — core
+              always exits 1, regardless of strict
+```
+
+```text
+_llm_judge_driver_<backend>_call \
+    <model> <endpoint> <auth> <max_tokens> <temperature> \
+    <prompt> <subject> <criterion> [mock]
+  stdout: single line "VERDICT=<PASS|FAIL|UNCERTAIN> CONF=<0.00-1.00>"
+  return: 0 on parseable verdict; 1 on malformed output or persistent
+          HTTP error (caller records the slot as UNCERTAIN).
+```
+
+The `<auth>` positional is opaque to the core — drivers that need no
+secret (e.g. local Ollama) accept and ignore it. Drivers MUST emit a
+`# WARN` line on stderr when `temperature != 0.0` is passed but the
+backend does not honor it. Adding a new backend means dropping a new
+driver file under `llm_judge_drivers/` and pointing `[judge].backend` at
+it — no changes to `llm_judge.sh` core. See ADR 0007 for the rationale.
 
 #### Prompt template
 
