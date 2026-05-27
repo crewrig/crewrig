@@ -341,6 +341,8 @@ mk_creds() {
         accessToken: (if $token == "" then null else $token end),
         expiresAt: $expires
     } }' > "$path"
+  # Driver enforces mode <= 0600 (security finding #3).
+  chmod 600 "$path"
 }
 
 FAR_FUTURE_MS=$(( $(date +%s) * 1000 + 86400000 ))  # +24h
