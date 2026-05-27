@@ -62,6 +62,7 @@ env_keys     = ["COPILOT_GITHUB_TOKEN"]
 backend     = "anthropic"                    # Selects tests/e2e/lib/llm_judge_drivers/<backend>.sh.
 model       = "claude-sonnet-4-6"            # Update when a newer stable Sonnet ships.
 api_key_env = "ANTHROPIC_JUDGE_API_KEY"
+auth_mode   = "api_key"                      # "api_key" (default) | "oauth" — see ADR 0008. Only honored by drivers that branch on it (e.g. claude-code).
 endpoint    = "https://api.anthropic.com/v1/messages"
 max_tokens  = 256
 strict      = false                          # UNCERTAIN warns; does NOT fail.

@@ -173,3 +173,10 @@ max_calls = 100
 
 Set `E2E_JUDGE_STRICT=1` (or `[judge].strict = true`) to upgrade
 UNCERTAIN verdicts to hard failures — useful for the gating leg of CI.
+
+#### OAuth via `claude-code` backend
+
+To avoid minting a separate `ANTHROPIC_JUDGE_API_KEY`, set
+`[judge].backend = "claude-code"` + `[judge].auth_mode = "oauth"` to
+re-use the OAuth token minted by `task e2e:auth:claude`. See
+[ADR 0008](../../../docs/adr/0008-judge-oauth-auth-mode.md).

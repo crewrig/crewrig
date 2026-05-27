@@ -102,6 +102,7 @@ _llm_judge_load_config() {
   local backend="anthropic"
   local model="claude-sonnet-4-6"
   local api_key_env="ANTHROPIC_JUDGE_API_KEY"
+  local auth_mode="api_key"
   local strict="false"
   local max_calls="30"
   local endpoint="https://api.anthropic.com/v1/messages"
@@ -118,6 +119,8 @@ _llm_judge_load_config() {
               || printf 'claude-sonnet-4-6')"
     api_key_env="$(jq -r '.judge.api_key_env // "ANTHROPIC_JUDGE_API_KEY"' "$cfg" 2>/dev/null \
               || printf 'ANTHROPIC_JUDGE_API_KEY')"
+    auth_mode="$(jq -r '.judge.auth_mode // "api_key"' "$cfg" 2>/dev/null \
+              || printf 'api_key')"
     strict="$(jq -r '.judge.strict // false' "$cfg" 2>/dev/null || printf 'false')"
     max_calls="$(jq -r '.judge.max_calls // 30' "$cfg" 2>/dev/null || printf '30')"
     endpoint="$(jq -r '.judge.endpoint // "https://api.anthropic.com/v1/messages"' "$cfg" 2>/dev/null \
@@ -132,6 +135,7 @@ _llm_judge_load_config() {
   printf 'JUDGE_BACKEND=%q\n' "$backend"
   printf 'JUDGE_MODEL=%q\n' "$model"
   printf 'JUDGE_API_KEY_ENV=%q\n' "$api_key_env"
+  printf 'JUDGE_AUTH_MODE=%q\n' "$auth_mode"
   printf 'JUDGE_STRICT=%q\n' "$strict"
   printf 'JUDGE_MAX_CALLS=%q\n' "$max_calls"
   printf 'JUDGE_ENDPOINT=%q\n' "$endpoint"
@@ -204,11 +208,12 @@ llm_judge() {
       "no such file: ${subject_file}"; return 1; }
 
   # Config.
-  local JUDGE_BACKEND JUDGE_MODEL JUDGE_API_KEY_ENV JUDGE_STRICT JUDGE_MAX_CALLS
+  local JUDGE_BACKEND JUDGE_MODEL JUDGE_API_KEY_ENV JUDGE_AUTH_MODE JUDGE_STRICT JUDGE_MAX_CALLS
   local JUDGE_ENDPOINT JUDGE_MAX_TOKENS JUDGE_TEMPERATURE
   eval "$(_llm_judge_load_config)"
-  # The driver reads JUDGE_API_KEY_ENV via indirect expansion.
-  export JUDGE_API_KEY_ENV
+  # The driver reads JUDGE_API_KEY_ENV via indirect expansion and
+  # branches internally on JUDGE_AUTH_MODE (ADR 0008).
+  export JUDGE_API_KEY_ENV JUDGE_AUTH_MODE
 
   # Compute E2E_LIB_DIR fallback for standalone invocations.
   local lib_dir="${E2E_LIB_DIR:-${BASH_SOURCE[0]%/*}}"

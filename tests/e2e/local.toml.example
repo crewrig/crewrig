@@ -32,3 +32,14 @@
 command  = ["bash", "-c", "OLLAMA_MODELS=/tmp/ollama-models ollama serve >/dev/null 2>&1 & sleep 3 && exec ollama launch copilot --model deepseek-v4-pro:cloud --yes -- --allow-all \"$@\"", "sh"]
 mounts   = ["${CREWRIG_E2E_HOME}/ollama:/home/agent/.ollama:ro"]
 env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]
+
+# Re-use the OAuth token minted by `task e2e:auth:claude` instead of
+# `ANTHROPIC_JUDGE_API_KEY`. The claude-code driver reads the access
+# token from ${CLAUDE_CREDENTIALS_PATH:-~/.claude/.credentials.json}.
+# See ADR 0008 for the full design.
+# [judge]
+# backend     = "claude-code"
+# auth_mode   = "oauth"
+# model       = "claude-sonnet-4-6"
+# temperature = 0.0
+# strict      = false
