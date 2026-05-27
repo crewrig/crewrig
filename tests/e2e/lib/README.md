@@ -116,6 +116,27 @@ backend does not honor it. Adding a new backend means dropping a new
 driver file under `llm_judge_drivers/` and pointing `[judge].backend` at
 it — no changes to `llm_judge.sh` core. See ADR 0007 for the rationale.
 
+#### `ollama-cloud` backend
+
+Calls the Ollama Cloud completions endpoint (OpenAI-compatible). Supports
+two `auth_mode` values:
+
+- **`api_key`** — reads the env var named by `api_key_env` (default
+  `OLLAMA_API_KEY`) as a Bearer token.
+- **`keypair`** — reads the Ed25519 private key registered by
+  `task e2e:auth:ollama` from
+  `${CREWRIG_E2E_HOME}/ollama/id_ed25519`, constructs an Ed25519-signed
+  JWT assertion, and exchanges it for a short-lived bearer token at the
+  Ollama Cloud auth endpoint. See [ADR 0009](../../../docs/adr/0009-judge-ollama-cloud-backend.md).
+
+Env-var overrides:
+
+| Var | Default | Purpose |
+|---|---|---|
+| `OLLAMA_KEYPAIR_PATH` | `${CREWRIG_E2E_HOME}/ollama/id_ed25519` | Override keypair path |
+| `OLLAMA_TOKEN_ENDPOINT` | `https://api.ollama.ai/v1/auth/token` (UNVERIFIED) | Override token exchange URL |
+| `OLLAMA_COMPLETIONS_ENDPOINT` | `https://api.ollama.ai/v1/chat/completions` (UNVERIFIED) | Override completions URL |
+
 #### Prompt template
 
 The judge composes a single user message per quorum slot:

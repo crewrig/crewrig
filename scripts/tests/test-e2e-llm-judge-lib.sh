@@ -501,5 +501,134 @@ else
   note_fail "max_calls: refusal consumes zero queue items" "remaining=$remaining"
 fi
 
+# ==========================================================================
+# Issue #127 — ollama-cloud driver (api_key + keypair modes).
+# Tests 7a–7e use the real driver at tests/e2e/lib/llm_judge_drivers/ollama-cloud.sh.
+# Preflight short-circuits before any HTTP call (returns 2 or 1 for 7a/7c/7d),
+# so they need no driver stub. Tests 7b/7e use E2E_JUDGE_MOCK=1 to bypass curl.
+# ==========================================================================
+
+# Build an effective.json with backend=ollama-cloud, api_key_env=OLLAMA_API_KEY,
+# and an explicit auth_mode. Models on mk_effective_json_auth but pins
+# api_key_env to OLLAMA_API_KEY and uses an Ollama-compatible endpoint.
+mk_effective_json_ollama() {
+  local cap="$1" rd="$2" auth_mode="$3"
+  jq -n \
+    --argjson cap "$cap" \
+    --arg auth_mode "$auth_mode" '
+    { judge: {
+        backend: "ollama-cloud",
+        model: "gpt-oss:120b",
+        api_key_env: "OLLAMA_API_KEY",
+        auth_mode: $auth_mode,
+        strict: false,
+        max_calls: $cap,
+        endpoint: "https://ollama.com/v1/chat/completions",
+        max_tokens: 256,
+        temperature: 0.0
+    } }' > "$rd/effective.json"
+}
+
+# ---------- 7a. api_key mode, missing OLLAMA_API_KEY → UNCERTAIN exit 0 ----
+rd="$TMP/rd_ollama_nokey"; mkdir -p "$rd"
+mk_effective_json_ollama 30 "$rd" api_key
+out="$TMP/out_ollama_nokey"; err="$TMP/err_ollama_nokey"
+set +e
+( unset OLLAMA_API_KEY
+  E2E_REPORT_DIR="$rd" \
+  bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'"
+) >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] \
+   && grep -q '^VERDICT=UNCERTAIN' "$out" \
+   && grep -q 'WARN llm_judge UNCERTAIN reason=auth-missing' "$err"; then
+  note_pass "ollama-cloud: api_key missing OLLAMA_API_KEY → UNCERTAIN exit 0"
+else
+  note_fail "ollama-cloud: api_key missing OLLAMA_API_KEY → UNCERTAIN exit 0" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 7b. api_key mode, happy path (mocked) → PASS exit 0 -----------
+rd="$TMP/rd_ollama_apikey_ok"; mkdir -p "$rd"
+mk_effective_json_ollama 30 "$rd" api_key
+out="$TMP/out_ollama_apikey_ok"; err="$TMP/err_ollama_apikey_ok"
+set +e
+E2E_REPORT_DIR="$rd" \
+OLLAMA_API_KEY="dummy-ollama-key" \
+E2E_JUDGE_MOCK=1 \
+E2E_JUDGE_MOCK_RESPONSE="VERDICT=PASS CONF=0.95" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] && grep -q '^VERDICT=PASS confidence=' "$out"; then
+  note_pass "ollama-cloud: api_key happy-path (mocked) → exit 0 + VERDICT=PASS"
+else
+  note_fail "ollama-cloud: api_key happy-path (mocked) → exit 0 + VERDICT=PASS" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 7c. keypair mode, missing keypair file → UNCERTAIN exit 0 -----
+rd="$TMP/rd_ollama_nokey_pair"; mkdir -p "$rd"
+mk_effective_json_ollama 30 "$rd" keypair
+out="$TMP/out_ollama_nokey_pair"; err="$TMP/err_ollama_nokey_pair"
+set +e
+E2E_REPORT_DIR="$rd" \
+OLLAMA_KEYPAIR_PATH="/nonexistent/id_ed25519" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] \
+   && grep -q '^VERDICT=UNCERTAIN' "$out" \
+   && grep -q 'WARN llm_judge UNCERTAIN reason=auth-missing' "$err"; then
+  note_pass "ollama-cloud: keypair missing file → UNCERTAIN exit 0"
+else
+  note_fail "ollama-cloud: keypair missing file → UNCERTAIN exit 0" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 7d. unknown auth_mode → hard failure exit 1 -------------------
+rd="$TMP/rd_ollama_bogus"; mkdir -p "$rd"
+mk_effective_json_ollama 30 "$rd" badmode
+out="$TMP/out_ollama_bogus"; err="$TMP/err_ollama_bogus"
+set +e
+E2E_REPORT_DIR="$rd" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" != 0 ]] \
+   && grep -q '# FAIL' "$err" \
+   && grep -qE 'preflight returned hard failure' "$err"; then
+  note_pass "ollama-cloud: unknown auth_mode → hard fail exit 1"
+else
+  note_fail "ollama-cloud: unknown auth_mode → hard fail exit 1" \
+    "rc=$rc err=$(head -c 500 "$err")"
+fi
+
+# ---------- 7e. keypair mode, happy path (mocked) → PASS exit 0 -----------
+# E2E_JUDGE_MOCK=1 short-circuits preflight AND _call, so the absence of a
+# real keypair on the host is irrelevant — confirms dispatch path resolves
+# backend=ollama-cloud + auth_mode=keypair end-to-end.
+rd="$TMP/rd_ollama_keypair_ok"; mkdir -p "$rd"
+mk_effective_json_ollama 30 "$rd" keypair
+out="$TMP/out_ollama_keypair_ok"; err="$TMP/err_ollama_keypair_ok"
+set +e
+E2E_REPORT_DIR="$rd" \
+E2E_JUDGE_MOCK=1 \
+E2E_JUDGE_MOCK_RESPONSE="VERDICT=PASS CONF=0.90" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] && grep -q '^VERDICT=PASS confidence=' "$out"; then
+  note_pass "ollama-cloud: keypair happy-path (mocked) → exit 0 + VERDICT=PASS"
+else
+  note_fail "ollama-cloud: keypair happy-path (mocked) → exit 0 + VERDICT=PASS" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
 echo "# $PASS passed / $FAIL failed / $SKIP skipped"
 (( FAIL == 0 )) || exit 1

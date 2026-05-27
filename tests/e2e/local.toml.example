@@ -43,3 +43,23 @@ env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]
 # model       = "claude-sonnet-4-6"
 # temperature = 0.0
 # strict      = false
+
+# Use Ollama Cloud as the LLM judge — API key mode.
+# Requires OLLAMA_API_KEY to be set in the environment.
+# [judge]
+# backend     = "ollama-cloud"
+# auth_mode   = "api_key"
+# api_key_env = "OLLAMA_API_KEY"
+# model       = "deepseek-v4-pro:cloud"
+# temperature = 0.0
+# strict      = false
+
+# Use Ollama Cloud as the LLM judge — keypair mode.
+# Reuses the Ed25519 keypair registered by `task e2e:auth:ollama`.
+# No extra env var required when CREWRIG_E2E_HOME is set correctly.
+# [judge]
+# backend     = "ollama-cloud"
+# auth_mode   = "keypair"
+# model       = "deepseek-v4-pro:cloud"
+# temperature = 0.0
+# strict      = false
