@@ -83,7 +83,7 @@ fi
 friction_body="$(cat "${E2E_SCENARIO_DIR}/friction.prompt")"
 friction_content=$'[FRICTION] e2e-04-build-version-drop | silent drop of metadata.provenance.version\n\nwriter_agent: '"${E2E_CLI}-harness-report"$'\ncomponent: scripts/build-components.sh\nvisible_to: ["*"]\nsymptom: build exits 0 even though metadata.provenance.version was dropped on rename\nexpected: explicit "version field missing" diagnostic; non-zero exit\n\n---\n'"$friction_body"
 
-# Prepare the workspace on the host (bind-mounted :ro into the container).
+# Prepare the workspace on the host (bind-mounted :rw — mempalace init writes mempalace.yaml into the dir).
 FRICTION_WORKSPACE="${E2E_REPORT_DIR}/friction-workspace"
 mkdir -p "${FRICTION_WORKSPACE}/frictions"
 printf '%s\n' "$friction_content" > "${FRICTION_WORKSPACE}/frictions/friction-01.txt"
