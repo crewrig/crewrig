@@ -1,6 +1,6 @@
 # ADR 0009 — `ollama-cloud` judge backend (api_key + keypair auth modes)
 
-**Status:** Proposed (issue #127)
+**Status:** Accepted (issue #127)
 
 ## Context
 
