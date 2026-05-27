@@ -140,6 +140,26 @@ is borderline. Recorded as ADR 0008 because:
   (file permissions, expiry, stale tokens) that deserves a written
   decision the security agent can audit against.
 
+### 4a. Threat model — `CLAUDE_CREDENTIALS_PATH` trust assumption
+
+`CLAUDE_CREDENTIALS_PATH` is treated as **trusted input**: it must be
+controlled by the same operator who configures `JUDGE_ENDPOINT`. An
+attacker who can set both variables can exfiltrate any JSON file on
+disk that contains a `.claudeAiOauth.accessToken` field, by pointing
+the driver at the target file and at an attacker-controlled endpoint
+that captures the bearer token.
+
+This is an accepted threat. The mitigation is environmental: setting
+either variable already requires shell-level access equivalent to
+running arbitrary commands as the operator, so a successful attacker
+has strictly more direct paths to credential disclosure (e.g.
+reading `$HOME/.claude/.credentials.json` directly). The driver does
+not attempt to sandbox the path; it only refuses to read credential
+files whose POSIX permissions are more permissive than `0600` (any
+group/other bit set), which closes the *local other-user*
+disclosure path without claiming to address the *compromised
+operator* path.
+
 ## File list
 
 | Path | Change |
