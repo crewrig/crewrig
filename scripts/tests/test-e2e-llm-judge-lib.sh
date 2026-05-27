@@ -300,6 +300,182 @@ else
     "rc=$rc err=$(head -c 300 "$err")"
 fi
 
+# ==========================================================================
+# Issue #126 — claude-code OAuth driver + auth_mode plumbing.
+# Exercises the real driver at tests/e2e/lib/llm_judge_drivers/claude-code.sh
+# (preflight branches on JUDGE_AUTH_MODE; oauth reads ${CLAUDE_CREDENTIALS_PATH}).
+# Tests 6a–6d short-circuit before any HTTP call (preflight returns 2 or 1),
+# so they need no driver stub; test 6e exercises the happy path with
+# E2E_JUDGE_MOCK=1 to bypass curl.
+# ==========================================================================
+
+# Build an effective.json with explicit auth_mode + backend.
+mk_effective_json_auth() {
+  local cap="$1" rd="$2" backend="$3" auth_mode="$4"
+  jq -n \
+    --argjson cap "$cap" \
+    --arg backend "$backend" \
+    --arg auth_mode "$auth_mode" '
+    { judge: {
+        backend: $backend,
+        model: "claude-sonnet-4-6",
+        api_key_env: "ANTHROPIC_JUDGE_API_KEY",
+        auth_mode: $auth_mode,
+        strict: false,
+        max_calls: $cap,
+        endpoint: "https://api.anthropic.com/v1/messages",
+        max_tokens: 256,
+        temperature: 0.0
+    } }' > "$rd/effective.json"
+}
+
+# Build a Claude Code credentials fixture. Pass an empty string for $2 to
+# emit `accessToken: null` (jq drops the field when --arg is empty +
+# `// empty` selector — sufficient for "missing/null token" coverage).
+mk_creds() {
+  local path="$1" token="$2" expires_ms="$3"
+  jq -n \
+    --arg token "$token" \
+    --argjson expires "$expires_ms" '
+    { claudeAiOauth: {
+        accessToken: (if $token == "" then null else $token end),
+        expiresAt: $expires
+    } }' > "$path"
+}
+
+FAR_FUTURE_MS=$(( $(date +%s) * 1000 + 86400000 ))  # +24h
+
+# ---------- 6a. oauth missing credentials file → UNCERTAIN exit 0 ---------
+rd="$TMP/rd_oauth_missing"; mkdir -p "$rd"
+mk_effective_json_auth 30 "$rd" claude-code oauth
+out="$TMP/out_oauth_missing"; err="$TMP/err_oauth_missing"
+set +e
+E2E_REPORT_DIR="$rd" \
+CLAUDE_CREDENTIALS_PATH="/nonexistent/path/credentials.json" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] \
+   && grep -q '^VERDICT=UNCERTAIN' "$out" \
+   && grep -q 'WARN llm_judge UNCERTAIN reason=auth-missing' "$err"; then
+  note_pass "oauth: missing credentials file → UNCERTAIN exit 0"
+else
+  note_fail "oauth: missing credentials file → UNCERTAIN exit 0" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 6b. oauth null/empty accessToken → UNCERTAIN exit 0 -----------
+rd="$TMP/rd_oauth_null"; mkdir -p "$rd"
+mk_effective_json_auth 30 "$rd" claude-code oauth
+creds="$TMP/creds_null.json"; mk_creds "$creds" "" "$FAR_FUTURE_MS"
+out="$TMP/out_oauth_null"; err="$TMP/err_oauth_null"
+set +e
+E2E_REPORT_DIR="$rd" \
+CLAUDE_CREDENTIALS_PATH="$creds" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] \
+   && grep -q '^VERDICT=UNCERTAIN' "$out" \
+   && grep -q 'WARN llm_judge UNCERTAIN reason=auth-missing' "$err"; then
+  note_pass "oauth: null accessToken → UNCERTAIN exit 0"
+else
+  note_fail "oauth: null accessToken → UNCERTAIN exit 0" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 6c. oauth expired token → UNCERTAIN exit 0 + WARN on stderr ---
+rd="$TMP/rd_oauth_exp"; mkdir -p "$rd"
+mk_effective_json_auth 30 "$rd" claude-code oauth
+creds="$TMP/creds_expired.json"; mk_creds "$creds" "test-token-abc" 1
+out="$TMP/out_oauth_exp"; err="$TMP/err_oauth_exp"
+set +e
+E2E_REPORT_DIR="$rd" \
+CLAUDE_CREDENTIALS_PATH="$creds" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+# Both warnings must surface: the driver's own expiry warning AND the
+# core's auth-missing warning (because the driver returns 2 after warning).
+if [[ "$rc" == 0 ]] \
+   && grep -q '^VERDICT=UNCERTAIN' "$out" \
+   && grep -q '# WARN claude-code judge: OAuth token expired' "$err" \
+   && grep -q 'WARN llm_judge UNCERTAIN reason=auth-missing' "$err"; then
+  note_pass "oauth: expired token → UNCERTAIN exit 0 + driver WARN"
+else
+  note_fail "oauth: expired token → UNCERTAIN exit 0 + driver WARN" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 500 "$err")"
+fi
+
+# ---------- 6d. unknown auth_mode → hard failure (exit 1) -----------------
+# The driver's preflight rejects modes other than {oauth, api_key} with
+# rc=1, which llm_judge maps to a hard failure regardless of strict.
+rd="$TMP/rd_oauth_bogus"; mkdir -p "$rd"
+mk_effective_json_auth 30 "$rd" claude-code bogus
+out="$TMP/out_oauth_bogus"; err="$TMP/err_oauth_bogus"
+set +e
+E2E_REPORT_DIR="$rd" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" != 0 ]] \
+   && grep -q '# FAIL' "$err" \
+   && grep -qE 'preflight returned hard failure' "$err"; then
+  note_pass "oauth: unknown auth_mode → hard fail exit 1"
+else
+  note_fail "oauth: unknown auth_mode → hard fail exit 1" \
+    "rc=$rc err=$(head -c 500 "$err")"
+fi
+
+# ---------- 6e. oauth happy-path (mocked end-to-end) → PASS exit 0 --------
+# Valid credentials fixture + E2E_JUDGE_MOCK=1 short-circuits both the
+# driver's preflight (returns mock token) and its _call (uses
+# E2E_JUDGE_MOCK_RESPONSE). No network. Confirms the dispatch path
+# resolves backend=claude-code + auth_mode=oauth end-to-end.
+rd="$TMP/rd_oauth_ok"; mkdir -p "$rd"
+mk_effective_json_auth 30 "$rd" claude-code oauth
+creds="$TMP/creds_ok.json"; mk_creds "$creds" "test-oauth-token-abc123" "$FAR_FUTURE_MS"
+out="$TMP/out_oauth_ok"; err="$TMP/err_oauth_ok"
+set +e
+E2E_REPORT_DIR="$rd" \
+CLAUDE_CREDENTIALS_PATH="$creds" \
+E2E_JUDGE_MOCK=1 \
+E2E_JUDGE_MOCK_RESPONSE="VERDICT=PASS CONF=0.95" \
+bash -c "set -uo pipefail; source '$LIB'; llm_judge '$PROMPT' '$SUBJECT' 'criterion'" \
+  >"$out" 2>"$err"
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] && grep -q '^VERDICT=PASS confidence=' "$out"; then
+  note_pass "oauth: happy-path (mocked) → exit 0 + VERDICT=PASS"
+else
+  note_fail "oauth: happy-path (mocked) → exit 0 + VERDICT=PASS" \
+    "rc=$rc out=$(cat "$out") err=$(head -c 300 "$err")"
+fi
+
+# ---------- 6f. api_key parity unaffected under new JUDGE_AUTH_MODE -------
+# anthropic backend + explicit auth_mode=api_key. Reuses the existing
+# anthropic-stub FAKE_LIB to short-circuit HTTP. Confirms the new
+# auth_mode field is plumbed through without breaking the legacy path.
+rd="$TMP/rd_api_key_parity"; mkdir -p "$rd"
+mk_effective_json_auth 30 "$rd" anthropic api_key
+queue="$TMP/q_api_key_parity"; mk_queue "$queue" \
+  "VERDICT=PASS CONF=0.9" "VERDICT=PASS CONF=0.9" "VERDICT=PASS CONF=0.9"
+out="$TMP/out_api_key_parity"
+set +e
+run_judge_sequence "$rd" 0 "$queue" >"$out" 2>&1
+rc=$?
+set -e
+if [[ "$rc" == 0 ]] && grep -q '^VERDICT=PASS confidence=' "$out"; then
+  note_pass "auth_mode=api_key parity: anthropic backend still works"
+else
+  note_fail "auth_mode=api_key parity: anthropic backend still works" \
+    "rc=$rc out=$(cat "$out")"
+fi
+
 # ---------- 5. max_calls cap ---------------------------------------------
 # Cap=1 in effective.json; pre-bump counter to 1; next call must refuse.
 rd="$TMP/rd_cap"; mkdir -p "$rd"; mk_effective_json 1 "$rd"
