@@ -104,7 +104,7 @@ e2e_gemini_refresh_access_token() {
   local refresh_token response
   refresh_token=$(jq -r '.refresh_token // empty' "$creds_file")
   [[ -n "$refresh_token" ]] \
-    || e2e_die "[gemini] access token expired and refresh failed — re-run: task e2e:auth:gemini"
+    || e2e_die "[gemini] oauth_creds.json has no refresh_token — re-run: task e2e:auth:gemini"
   response=$(curl -s -X POST https://oauth2.googleapis.com/token \
     --data-urlencode "client_id=681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com" \
     --data-urlencode "client_secret=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" \
