@@ -47,12 +47,14 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 | 23 | e2e pillar 02 — cross-tool memory                         | `tests/e2e/scenarios/02-cross-tool-memory/`, ADR 0005 | ✅ MemPalace sidecar (per-run volume); drawer write + read across two short-lived containers | ✅ same path | ❌ **[GAP-soft]** — `crewrig/e2e-copilot:latest` (`docker/e2e/copilot.Dockerfile`) does not embed the `mempalace` CLI, and Copilot CLI ships no MemPalace MCP integration in `community-config/`. Empirical reproduction: `docker run --rm crewrig/e2e-copilot:latest which mempalace` → exit 1 (binary absent). Scenario excluded via `applies_to = ["claude","gemini"]` until the Copilot image gains a MemPalace surface. |
 | 24 | e2e pillar 03 — skill build                              | `tests/e2e/scenarios/03-skill-build/`, ADR 0005 | ✅ runs `scripts/build-components.sh --target claude` inside the container; asserts `.claude/` populated + first `SKILL.md` has `metadata:` frontmatter | ✅ same with `--target gemini` → `.gemini/` | ✅ same with `--target copilot` → `.github/` |
 | 25 | e2e pillar 04 — harness loop                             | `tests/e2e/scenarios/04-harness-loop/`, ADR 0005 | ✅ simulated path (drawer write to `wing=harness-friction` + curator-style search); MemPalace sidecar; LLM-judge on the friction summary | ✅ same simulated path | ✅ same simulated path. **[GAP-soft]** — full interactive `harness-report` skill invocation is not yet driven non-interactively from any CLI; the simulation matches what the curator reads and is parity-equivalent for v1. |
+| 26 | GenIA Quality Sentinel (SPI)                               | `config/sentinel/GENIA_QUALITY_SENTINEL.md`      | ✅ `.claude/70_SENTINEL.md`                         | ✅ `.gemini/70_SENTINEL.md`                         | ❌ **[GAP]** (SPI instruction file not implemented) |
 
 ## Parity gaps
 
 The following features exist for one CLI but not the other. Each gap is a
 candidate follow-up issue. **Do not fix them in this ticket.**
 
+- [GAP] GenIA Quality Sentinel (SPI) — present for Claude and Gemini via `70_SENTINEL.md` injection; missing for Copilot CLI.
 - [GAP] CI workflow — present for Claude Code (`.github/workflows/claude.yml`), missing for Gemini CLI.
 - [GAP] Plugin/extension build script — present for Claude Code (`scripts/build-claude-plugin.sh`), missing for Gemini CLI (extensions are consumed in place, but no symmetric packaging path exists).
 - [GAP] Plugin/extension install script — present for Claude Code (`scripts/install-claude-plugin.sh`), missing for Gemini CLI.

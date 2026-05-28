@@ -618,6 +618,27 @@ COPILOT_EOF
   done
 }
 
+# --- Build Sentinel ---
+build_sentinel() {
+  local source="$REPO_DIR/config/sentinel/GENIA_QUALITY_SENTINEL.md"
+  [ ! -f "$source" ] && return
+
+  echo "Building sentinel: GenIA Quality Sentinel"
+
+  local content
+  content=$(cat "$source")
+
+  # --- Gemini CLI output ---
+  if [ "$TARGET" = "gemini" ] || [ "$TARGET" = "all" ]; then
+    check_or_write "$REPO_DIR/.gemini/70_SENTINEL.md" "$content"
+  fi
+
+  # --- Claude Code output ---
+  if [ "$TARGET" = "claude" ] || [ "$TARGET" = "all" ]; then
+    check_or_write "$REPO_DIR/.claude/70_SENTINEL.md" "$content"
+  fi
+}
+
 # --- Main ---
 echo "========================================="
 echo "  Community Component Builder"
@@ -633,6 +654,7 @@ echo ""
 build_skills
 build_commands
 build_agents
+build_sentinel
 
 echo ""
 if [ "$CHECK_MODE" = true ]; then
