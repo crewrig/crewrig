@@ -1,0 +1,2 @@
+ok 1 - headless: gemini -p exited 0 with non-empty answer from stdout (fallback — model did not honour the side-effect ask)
+1..1
