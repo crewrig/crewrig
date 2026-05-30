@@ -74,11 +74,19 @@ fi
 # Step 1 — harness-report simulation. Write a friction drawer to the
 # global harness-friction wing.
 #
-# `mempalace add-drawer` is an MCP tool, not a CLI subcommand. The CLI
-# equivalent is init + mine: write the friction content to a file, init
-# the palace from that directory structure (which creates the palace and
-# detects "frictions" as a room from the subdirectory name), then mine
-# the workspace into wing=harness-friction.
+# `mempalace add-drawer` is an MCP tool, not a CLI subcommand. Two paths
+# exist for writing a drawer from a containerised e2e scenario:
+#   1. init + mine — write the content to a file, `mempalace init` the
+#      palace from the directory (detects "frictions" as a room from
+#      the subdirectory name), then `mempalace mine` ingests it into
+#      wing=harness-friction. File-based ingestion path.
+#   2. Python-direct — invoke `tool_add_drawer` from `mempalace.mcp_server`
+#      via the venv's python (see issue #155 for the empirical proof
+#      and `~/.claude/rules/60-tools.md` for the carve-out rationale).
+#      Verbatim payload preservation.
+# This scenario INTENTIONALLY uses path 1 because it mirrors what a real
+# harness-report flow does (capture-to-file then ingest). Scenario 02 uses
+# path 2 because it asserts on verbatim drawer content.
 # --------------------------------------------------------------------------
 friction_body="$(cat "${E2E_SCENARIO_DIR}/friction.prompt")"
 friction_content=$'[FRICTION] e2e-04-build-version-drop | silent drop of metadata.provenance.version\n\nwriter_agent: '"${E2E_CLI}-harness-report"$'\ncomponent: scripts/build-components.sh\nvisible_to: ["*"]\nsymptom: build exits 0 even though metadata.provenance.version was dropped on rename\nexpected: explicit "version field missing" diagnostic; non-zero exit\n\n---\n'"$friction_body"
