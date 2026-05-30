@@ -1,30 +1,54 @@
 #!/usr/bin/env bash
-# tests/e2e/lib/test-gemini-headless.sh — regression test for issue #139.
+# tests/e2e/lib/test-gemini-headless.sh — standalone smoke test for the
+# post-#148 / post-#149 headless contract.
 #
-# Failure modes under test:
+# History: this script was originally authored for issue #139 to lock in
+# the MODE A (BidiGenerateContent socket holds the container open) and
+# MODE B (empty settings-headless.json → exit 41) failure modes. Both
+# workarounds are gone:
+#   - #148 replaced the `timeout 120 gemini` wrapper with a writable-home
+#     bootstrap chain (see tests/e2e/defaults.toml [cli.gemini].command).
+#   - #149 dropped GOOGLE_CLOUD_ACCESS_TOKEN / GOOGLE_GENAI_USE_GCA and
+#     the e2e_gemini_refresh_access_token helper.
+# The MODE B settings-headless.json file and the assertions that depended
+# on it have been removed accordingly.
 #
-#   MODE A — oauth-personal (real settings.json): gemini -p makes an API call,
-#   delivers a response, then blocks indefinitely because the BidiGenerateContent
-#   WebSocket (wss://generativelanguage.googleapis.com) remains open after the
-#   single-turn response. The container never exits.
+# What this test asserts now (Strategy B, per issue #153):
 #
-#   MODE B — empty settings (PR #137 workaround, settings-headless.json={}):
-#   gemini -p exits immediately with code 41 ("Auth method not configured")
-#   without making any API call. No answer.txt is written. Scenario assertions
-#   that check for answer.txt therefore fail even though the container exits.
+#   `gemini -p` exits within 60 s and produces a non-empty answer
+#   (either /out/answer.txt or stdout) when invoked through the
+#   post-#148 contract — a :ro creds-bundle mount plus a container-side
+#   `cp -a` into a writable $HOME/.gemini, then `exec gemini`.
 #
-# This test locks in MODE B as the observed broken state (post-PR-#137) so
-# the developer can validate the fix: pre-fetched OAuth token passed via
-# GOOGLE_CLOUD_ACCESS_TOKEN + GOOGLE_GENAI_USE_GCA=true, wrapped by timeout.
+# The stdout fallback mirrors tests/e2e/scenarios/01-layered-context/run.sh
+# (search for `cp "${E2E_REPORT_DIR}/probe.stdout" "$answer_file"`):
+# whether the model honours the "write to /out/answer.txt" side-effect
+# ask is a model-behaviour concern, not a property of the headless
+# contract. The contract we lock in here is: the container exits and
+# the CLI produces output.
+#
+# Tests 2 and 3 from the original script (auth-failure message present;
+# answer.txt absent under MODE B) are gone — they asserted against a
+# code path that no longer exists. End-to-end layered-context coverage
+# lives in tests/e2e/scenarios/01-layered-context/run.sh; this smoke
+# test deliberately exercises only the headless-exit-and-answer-file
+# property, with no rules mount and no LLM judge, so it can fail fast
+# on environments where the bundle is broken without paying the cost
+# of a full scenario.
+#
+# The bootstrap shell below mirrors the structure of
+# [cli.gemini].command in tests/e2e/defaults.toml — minus the rules
+# manifest patch, which is irrelevant here. If that contract changes,
+# update defaults.toml first, then mirror the change here.
 #
 # Run standalone: bash tests/e2e/lib/test-gemini-headless.sh
 # TAP output: ok N - ... / not ok N - ...
+# Skip codes: 78 (preconditions missing — docker / image / creds bundle).
 
 set -uo pipefail
 
 GEMINI_IMAGE="${GEMINI_IMAGE:-crewrig/e2e-gemini:latest}"
 GEMINI_DIR="${CREWRIG_E2E_HOME:-$HOME/.crewrig-e2e}/gemini"
-HEADLESS_SETTINGS="${GEMINI_DIR}/settings-headless.json"
 
 TAP_INDEX=0
 TAP_NOK=0
@@ -38,7 +62,7 @@ emit() {
 }
 
 # --------------------------------------------------------------------------
-# Preconditions
+# Preconditions — skip (78) cleanly when the local env isn't set up.
 # --------------------------------------------------------------------------
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -51,60 +75,76 @@ if ! docker image inspect "$GEMINI_IMAGE" >/dev/null 2>&1; then
   exit 78
 fi
 
-if [[ ! -f "$HEADLESS_SETTINGS" ]]; then
-  printf '1..0 # SKIP settings-headless.json not found at %s\n' "$HEADLESS_SETTINGS"
+if [[ ! -f "${GEMINI_DIR}/settings.json" || ! -f "${GEMINI_DIR}/oauth_creds.json" ]]; then
+  printf '1..0 # SKIP gemini auth bundle not found at %s (run `task e2e:auth:gemini`)\n' "$GEMINI_DIR"
   exit 78
 fi
 
 # --------------------------------------------------------------------------
-# Test 1 — MODE B: empty settings exits non-zero (auth fails, no API call).
-# Expected post-PR-#137: exit 41 with "Auth method" in stderr.
+# Test 1 — headless smoke: post-#148 contract produces a non-empty
+# /out/answer.txt within the bounded window.
 # --------------------------------------------------------------------------
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
+# Bootstrap mirrors tests/e2e/defaults.toml [cli.gemini].command:
+# copy the :ro creds bundle into a writable $HOME/.gemini, fix ownership
+# to `agent` (best-effort, the image runs as agent already), then
+# exec gemini. No rules manifest patch — see header comment.
+BOOTSTRAP='set -e; D=/home/agent/.gemini; mkdir -p $D && cp -a /run/gemini-creds/. $D/ && chown -R agent:agent $D 2>/dev/null || true; exec gemini "$@"'
+
+PROMPT='Write the single word READY to /out/answer.txt and print it.'
+
 docker run --rm \
-  -v "${GEMINI_DIR}:/home/agent/.gemini:ro" \
-  -v "${HEADLESS_SETTINGS}:/home/agent/.gemini/settings.json:ro" \
+  --stop-timeout 5 \
+  -v "${GEMINI_DIR}:/run/gemini-creds:ro" \
   -v "${WORK_DIR}:/out" \
+  --entrypoint bash \
   "$GEMINI_IMAGE" \
-  gemini -p "Write the single word READY to /out/answer.txt and print it." \
-  >"${WORK_DIR}/stdout.txt" 2>"${WORK_DIR}/stderr.txt"
+  -c "$BOOTSTRAP" sh -p "$PROMPT" \
+  >"${WORK_DIR}/stdout.txt" 2>"${WORK_DIR}/stderr.txt" &
+docker_pid=$!
+
+# Bounded wait: 60 s is generous for a single-turn response on a warm
+# bundle. If the container holds past this, kill the docker client and
+# fall back to the answer-file check — same shape the scenario runner
+# uses (exit 124 tolerated when the side-effect landed).
+SECONDS=0
+while kill -0 "$docker_pid" 2>/dev/null; do
+  if (( SECONDS >= 60 )); then
+    kill "$docker_pid" 2>/dev/null || true
+    break
+  fi
+  sleep 1
+done
+wait "$docker_pid" 2>/dev/null
 actual_exit=$?
 
-# Auth failure must surface as non-zero exit.
-if (( actual_exit != 0 )); then
-  emit ok "MODE B: empty settings.json causes non-zero exit (got ${actual_exit})"
-else
-  emit not_ok "MODE B: expected non-zero exit with empty settings.json, got 0"
-fi
-
-# Auth error message must appear — confirms no API call was attempted.
-if grep -qiE "Auth method|authentication|credentials" \
-     "${WORK_DIR}/stderr.txt" "${WORK_DIR}/stdout.txt" 2>/dev/null; then
-  emit ok "MODE B: auth-failure message present in output"
-else
-  emit not_ok "MODE B: auth-failure message absent — output was: $(cat "${WORK_DIR}/stdout.txt" "${WORK_DIR}/stderr.txt" 2>/dev/null | head -c 200)"
-fi
-
-# --------------------------------------------------------------------------
-# Test 2 — answer.txt MUST be written (the core regression assertion).
-#
-# This assertion FAILS until the fix is applied. After the fix:
-#   - GOOGLE_CLOUD_ACCESS_TOKEN is pre-fetched on the host
-#   - GOOGLE_GENAI_USE_GCA=true is passed into the container
-#   - gemini -p is wrapped with `timeout 120`
-#   - exit 124 (timeout) is treated as success when answer.txt is non-empty
-#
-# Until those conditions are met, MODE B exits 41 without writing answer.txt,
-# and this assertion is the red line that proves the bug is present.
-# --------------------------------------------------------------------------
+# Exit semantics: 0 is the nominal happy path; 124 is tolerated to
+# mirror the scenario runner's safety belt for the BidiGenerateContent
+# socket edge-case (see tests/e2e/scenarios/01-layered-context/run.sh
+# around the `_probe_rc -eq 124` branch). Any other exit fails.
+case "$actual_exit" in
+  0|124) exit_ok=1 ;;
+  *)     exit_ok=0 ;;
+esac
 
 if [[ -s "${WORK_DIR}/answer.txt" ]]; then
-  emit ok "answer.txt written and non-empty (fix is in place)"
+  answer_source="/out/answer.txt"
+  has_answer=1
+elif [[ -s "${WORK_DIR}/stdout.txt" ]]; then
+  answer_source="stdout (fallback — model did not honour the side-effect ask)"
+  has_answer=1
 else
-  emit not_ok "answer.txt absent — gemini exited ${actual_exit} without making an API call (issue #139 unfixed)"
+  answer_source="none"
+  has_answer=0
+fi
+
+if (( exit_ok && has_answer )); then
+  emit ok "headless: gemini -p exited ${actual_exit} with non-empty answer from ${answer_source}"
+else
+  emit not_ok "headless: exit=${actual_exit} answer=${answer_source}; stderr: $(head -c 200 "${WORK_DIR}/stderr.txt" 2>/dev/null)"
 fi
 
 printf '1..%d\n' "$TAP_INDEX"
