@@ -1,0 +1,18 @@
+task: [e2e:test] bash /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/153-test-gemini-headless/tests/e2e/run.sh --cli gemini
+[runner] using defaults.toml (no local.toml present) → /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/153-test-gemini-headless/tests/e2e/reports/20260530T184813Z-0277/effective.json
+TAP version 13
+[gemini] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/gemini/oauth_creds.json
+ok 1 - gemini/01-layered-context
+[gemini] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/gemini/oauth_creds.json
+not ok 2 - gemini/02-cross-tool-memory
+[runner] gemini/02-cross-tool-memory failed: exit 1
+[runner]   stdout: /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/153-test-gemini-headless/tests/e2e/reports/20260530T184813Z-0277/gemini/02-cross-tool-memory/stdout
+[runner]   stderr: /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/153-test-gemini-headless/tests/e2e/reports/20260530T184813Z-0277/gemini/02-cross-tool-memory/stderr
+[gemini] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/gemini/oauth_creds.json
+ok 3 - gemini/03-skill-build
+[gemini] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/gemini/oauth_creds.json
+ok 4 - gemini/04-harness-loop
+1..4
+# pass: 3  fail: 1  skip: 0
+# report dir: /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/153-test-gemini-headless/tests/e2e/reports/20260530T184813Z-0277
+task: Failed to run task "e2e:test": exit status 1
