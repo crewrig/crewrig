@@ -18,6 +18,21 @@
 # docs/cli-matrix.md — empirical evidence: no MemPalace MCP wiring
 # nor mempalace CLI is shipped in the crewrig/e2e-copilot:latest
 # image (see docker/e2e/copilot.Dockerfile — only Node + GH CLI).
+#
+# Writer mechanism — the `mempalace` shell CLI has NO `add-drawer`
+# sub-command (see issue #155); the write path is `tool_add_drawer`
+# from `mempalace.mcp_server`, invoked directly via the image's
+# pipx-managed venv interpreter. This is the carve-out documented in
+# `~/.claude/rules/60-tools.md` (Python-direct invocation when MCP
+# lifecycle is overkill — here the writer container is one-shot and
+# throwaway). The drawer content is piped via stdin so the bash
+# variable carrying newlines, brackets, and quotes never has to be
+# re-quoted into the python source.
+#
+# Expected stderr noise — on first run the embedding model (~79 MB)
+# downloads through chromadb/onnxruntime, emitting ~30 lines of
+# progress + onnxruntime warnings to `write.stderr`. The structural
+# assertions below match stdout only; the stderr file is informational.
 
 set -euo pipefail
 
@@ -88,17 +103,35 @@ fi
 writer_agent_id="${E2E_CLI}-writer"
 write_content=$'[TASK:ongoing] e2e-02-cross-tool | cross-tool handoff probe\n\nwriter_agent: '"$writer_agent_id"$'\nhandoff_key: e2e-02-cross-tool\nvisible_to: ["*"]\nstatus: written by container A\nnext: container B should read this back\n'
 
-if ! docker run --rm \
+MEMPALACE_VENV_PY="/home/agent/.local/pipx/venvs/mempalace/bin/python"
+
+if ! docker run --rm -i \
+      -e "WRITER_AGENT_ID=${writer_agent_id}" \
       -v "${VOLUME}:/home/agent/.mempalace" \
       "$MEMPALACE_IMAGE" \
-      mempalace add-drawer \
-        --wing e2e-cross-tool \
-        --room task-handoff \
-        --content "$write_content" \
+      "$MEMPALACE_VENV_PY" -c '
+import os, sys
+# mempalace.mcp_server swaps sys.stdout at import time to protect its
+# JSON-RPC channel; dup fd 1 BEFORE importing so we can still write
+# RESULT: to the real stdout (see ~/.claude/rules/60-tools.md → "Stdout hazard").
+_REAL_STDOUT = os.fdopen(os.dup(1), "w", encoding="utf-8", closefd=False)
+os.environ["MEMPALACE_PALACE_DIR"] = "/home/agent/.mempalace/palace"
+from mempalace.mcp_server import tool_add_drawer
+content = sys.stdin.read()
+result = tool_add_drawer(
+    wing="e2e-cross-tool",
+    room="task-handoff",
+    content=content,
+    added_by=os.environ.get("WRITER_AGENT_ID", "e2e-test"),
+)
+print("RESULT:", result, file=_REAL_STDOUT, flush=True)
+sys.exit(0 if result.get("success") else 1)
+' \
       >"${E2E_REPORT_DIR}/write.stdout" \
-      2>"${E2E_REPORT_DIR}/write.stderr"
+      2>"${E2E_REPORT_DIR}/write.stderr" \
+      <<<"$write_content"
 then
-  sub_emit not_ok "writer: mempalace add-drawer exited non-zero"
+  sub_emit not_ok "writer: tool_add_drawer (python-direct) exited non-zero"
 else
   sub_emit ok "writer: drawer added to wing=e2e-cross-tool"
 fi
