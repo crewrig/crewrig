@@ -54,7 +54,13 @@ they are clearly unrelated to CLI auth:
 
 The remaining top-level entries fall into four buckets.
 
-### 2.1 Bucket A — Identity & credentials (load-bearing for `-p`)
+### 2.1 Bucket A — Identity & credentials (candidate load-bearing)
+
+Empirically confirmed load-bearing in this analysis: `oauth_creds.json` and
+`settings.json` (Test E without them returns `Please set an Auth method`).
+The other four files in the table below ship in the host's working
+`~/.gemini/` but have not been individually load-bearing-tested — #148 will
+narrow the minimal set during implementation.
 
 | File | Mode | Schema (keys) | Captured today? |
 |---|---|---|---|
@@ -148,9 +154,16 @@ tests are sufficient.
   an atomic-write to `projects.json.<uuid>.tmp`. This is what gemini
   was trying to do silently in Test A.
 
-The Test B stack trace is the smoking gun: it names
+The Test B stack trace is the smoking gun for the write path: it names
 `ProjectRegistry.save`, which closes the loop on §2.2 — `projects.json`
-is written by the Project Registry on every invocation.
+is written by the Project Registry on every invocation. Test A's silent
+hang against `:ro` is **almost certainly** the same write attempt failing
+upstream of the EACCES path Test B exercises (different mount mode, same
+target file), but the syscall trace that would prove identity directly
+is precisely the read-side trace §7 admits we did not capture. The
+strength of the §5 fix-pattern recommendation does not depend on closing
+that residual uncertainty: Test C empirically demonstrates the fix works,
+whatever the exact failure mode in Test A.
 
 ## 5. Fix pattern
 
@@ -208,9 +221,15 @@ Properties:
 3. **Remove from `tests/e2e/defaults.toml [cli.gemini]`:** the
    `timeout 120 gemini "$@"` wrapper (replaced by the `cp -R` + `exec`
    pattern) and the `settings-headless.json` mount line.
-4. **Keep `e2e_gemini_refresh_access_token` in `auth-common.sh` only if
-   a CI cron uses it for daily refresh.** Otherwise delete — it has no
-   user.
+4. **Delete `e2e_gemini_refresh_access_token` from `auth-common.sh`** when
+   #149 lands. Grep at the time of this analysis (run from the worktree
+   root) returns three call sites: `tests/e2e/run.sh:279` (the runner
+   injection block removed by #149), `tests/e2e/lib/test-token-refresh.sh`
+   (the helper's own regression test, added in #143 — goes with the
+   helper), and the definition itself in `scripts/e2e/lib/auth-common.sh`.
+   No CI cron, no other script, no documented external consumer. Recent
+   hardening (#143, commit `b1c3add`) was fixing a helper whose user base
+   is about to shrink to zero.
 
 ## 7. Limits of this analysis
 
