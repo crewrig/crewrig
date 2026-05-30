@@ -1,0 +1,33 @@
+=== ~/Library/Application Support (gemini/google) ===
+/Users/hoanicross/Library/Application Support/com.google.GeminiMacOS
+/Users/hoanicross/Library/Application Support/com.google.GeminiMacOS.launcher
+/Users/hoanicross/Library/Application Support/Google
+/Users/hoanicross/Library/Application Support/Gemini 2
+/Users/hoanicross/Library/Application Support/google-vscode-extension
+/Users/hoanicross/Library/Application Support/Google/GoogleUpdater
+/Users/hoanicross/Library/Application Support/CrashReporter/Google Drive_0995C32C-49E1-5401-8672-4400242A1E33.plist
+/Users/hoanicross/Library/Application Support/JetBrains/Air/.gemini
+/Users/hoanicross/Library/Application Support/Code/CachedExtensionVSIXs/google.geminicodeassist-2.82.0
+
+=== ~/Library/Preferences (gemini/google plists) ===
+/Users/hoanicross/Library/Preferences/com.google.chat.plist
+/Users/hoanicross/Library/Preferences/com.google.Keystone.Agent.plist
+/Users/hoanicross/Library/Preferences/com.google.drivefs.helper.renderer.plist
+/Users/hoanicross/Library/Preferences/com.google.GeminiMacOS.launcher.plist
+/Users/hoanicross/Library/Preferences/com.googlecode.iterm2.private.plist
+/Users/hoanicross/Library/Preferences/com.google.drivefs.plist
+/Users/hoanicross/Library/Preferences/com.google.GeminiMacOS.shareddata.plist
+/Users/hoanicross/Library/Preferences/com.google.Chrome.plist
+/Users/hoanicross/Library/Preferences/com.google.GeminiMacOS.plist
+/Users/hoanicross/Library/Preferences/com.googlecode.iterm2.plist
+/Users/hoanicross/Library/Preferences/com.google.android.mtpviewer.plist
+/Users/hoanicross/Library/Preferences/com.macpaw.site.Gemini2.plist
+/Users/hoanicross/Library/Preferences/com.google.android.studio.plist
+/Users/hoanicross/Library/Preferences/com.google.gct.plist
+/Users/hoanicross/Library/Preferences/com.google.drivefs.settings.plist
+/Users/hoanicross/Library/Preferences/com.google.antigravity.plist
+/Users/hoanicross/Library/Preferences/com.apple.FileProvider/com.google.drivefs.fpext
+/Users/hoanicross/Library/Preferences/ByHost/com.google.antigravity.ShipIt.0995C32C-49E1-5401-8672-4400242A1E33.plist
+
+=== ~/.config/gemini* / ~/.config/google* ===
+/Users/hoanicross/.config/configstore/update-notifier-@google

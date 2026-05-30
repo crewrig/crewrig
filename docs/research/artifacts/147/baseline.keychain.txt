@@ -1,0 +1,3 @@
+    "svce"<blob>=0x496E74656C6C694A20506C6174666F726D2047656D696E6920696E20416E64726F696453747564696F20E2809420415049204B6579  "IntelliJ Platform Gemini in AndroidStudio \342\200\224 API Key"
+    "acct"<blob>="Gemini Keys"
+    "svce"<blob>="Gemini Safe Storage"

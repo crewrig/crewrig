@@ -1,0 +1,27 @@
+=== trace-gemini-p.sh ===
+date: 2026-05-30T14:41:00+02:00
+prompt: quelle est la couleur du cheval blanc dHenri IV ?
+
+=== gemini stdout/stderr ===
+MCP issues detected. Run /mcp list for status.
+Hook system message: mempalace-transcript: FAILED to persist user-prompt (rc=127): 
+/Users/hoanicross/.gemini/hooks/mempalace-transcript.sh: ligne 157: timeout: commande introuvable
+Blanc.
+Hook system message: mempalace-transcript: FAILED to persist session-lifecycle (rc=127): 
+/Users/hoanicross/.gemini/hooks/mempalace-transcript.sh: ligne 157: timeout: commande introuvable
+
+=== gemini exit code: 0 ===
+
+=== REG files opened during run (under HOME or /tmp, deduped) ===
+/Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/147-gemini-auth-blackbox/docs/research/artifacts/147/trace.txt
+
+=== sockets observed ===
+(ESTABLISHED)
+
+=== files MODIFIED under ~/.gemini since trace start ===
+/Users/hoanicross/.gemini/projects.json
+/Users/hoanicross/.gemini/history/147-gemini-auth-blackbox/.project_root
+
+=== files NEWLY CREATED under ~/.gemini (size+mtime) ===
+/Users/hoanicross/.gemini/history/147-gemini-auth-blackbox/.project_root|89|May 30 14:41:01 2026
+/Users/hoanicross/.gemini/projects.json|1643|May 30 14:41:01 2026

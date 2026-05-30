@@ -1,0 +1,77 @@
+=== ~/.gemini (top-level + selected dirs, excl. antigravity/caches) ===
+/Users/hoanicross/.gemini/.env|Regular File|1521|May 25 11:16:22 2026|-rw-r--r--
+/Users/hoanicross/.gemini/.selected_expertise|Regular File|13|May 26 14:51:00 2026|-rw-r--r--
+/Users/hoanicross/.gemini/.selected_level|Regular File|7|May 26 14:51:01 2026|-rw-r--r--
+/Users/hoanicross/.gemini/.selected_team|Regular File|6|May 26 14:50:59 2026|-rw-r--r--
+/Users/hoanicross/.gemini/00_SOUL.md.bak|Regular File|2620|Feb 24 17:02:05 2026|-rw-r--r--
+/Users/hoanicross/.gemini/00_SOUL.md|Regular File|3855|May 26 14:50:53 2026|-rw-r--r--
+/Users/hoanicross/.gemini/10_USER_LEVEL.md|Regular File|4301|May 26 14:51:01 2026|-rw-r--r--
+/Users/hoanicross/.gemini/20_ORGANIZATION.md|Regular File|1428|May 26 14:50:53 2026|-rw-r--r--
+/Users/hoanicross/.gemini/30_USER_PROFILE.md.ori|Regular File|1589|Feb 24 22:14:24 2026|-rw-r--r--
+/Users/hoanicross/.gemini/30_USER_PROFILE.md|Regular File|1712|May 26 14:51:01 2026|-rw-r--r--
+/Users/hoanicross/.gemini/40_USER_EXPERTISE.md|Regular File|546|May 26 14:51:00 2026|-rw-r--r--
+/Users/hoanicross/.gemini/50_USER_TEAM.md.ori|Regular File|6471|Feb 24 19:01:55 2026|-rw-r--r--
+/Users/hoanicross/.gemini/50_USER_TEAM.md|Regular File|2221|May 26 14:50:59 2026|-rw-r--r--
+/Users/hoanicross/.gemini/60_TOOLS.md|Regular File|27130|May 26 14:50:53 2026|-rw-r--r--
+/Users/hoanicross/.gemini/60_USER_TOOLS.md.ori|Regular File|696|Feb 26 11:30:04 2026|-rw-r--r--
+/Users/hoanicross/.gemini/acknowledgments|Directory|96|May 20 23:14:49 2026|drwxr-xr-x
+/Users/hoanicross/.gemini/antigravity|Directory|544|May 27 18:39:48 2026|drwxr-xr-x
+/Users/hoanicross/.gemini/commands|Directory|128|Mar  5 09:58:28 2026|drwxr-xr-x
+/Users/hoanicross/.gemini/extension_integrity.json|Regular File|306|Apr 29 13:56:20 2026|-rw-------
+/Users/hoanicross/.gemini/extensions|Directory|160|May  5 14:09:42 2026|drwxr-xr-x
+/Users/hoanicross/.gemini/gemini-credentials.json|Regular File|326|Apr 29 13:56:20 2026|-rw-------
+/Users/hoanicross/.gemini/GEMINI.md|Regular File|844|Dec 27 13:58:45 2025|-rw-r--r--
+/Users/hoanicross/.gemini/google_account_id|Regular File|21|Oct  2 21:30:47 2025|-rw-r--r--
+/Users/hoanicross/.gemini/google_accounts.json|Regular File|79|May 20 22:52:44 2026|-rw-r--r--
+/Users/hoanicross/.gemini/history|Directory|896|May 21 12:10:09 2026|drwxr-xr-x
+/Users/hoanicross/.gemini/hooks|Directory|96|Apr 29 00:49:42 2026|drwxr-xr-x
+/Users/hoanicross/.gemini/installation_id|Regular File|36|Jul  2 13:33:21 2025|-rw-r--r--
+/Users/hoanicross/.gemini/mcp-server-enablement.json|Regular File|2|Feb 10 19:34:25 2026|-rw-r--r--
+/Users/hoanicross/.gemini/mcp|Directory|96|Feb 11 15:23:45 2026|drwxr-xr-x
+/Users/hoanicross/.gemini/oauth_creds.json|Regular File|1802|May 30 14:15:23 2026|-rw-------
+/Users/hoanicross/.gemini/policies|Directory|160|Apr  9 10:17:19 2026|drwxr-xr-x
+/Users/hoanicross/.gemini/projects.json|Regular File|1518|May 21 12:10:09 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260429-003507|Regular File|1087|Apr 29 00:35:07 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260429-003933|Regular File|2344|Apr 29 00:39:33 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260429-003942|Regular File|1087|Apr 29 00:39:42 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260429-004935|Regular File|2544|Apr 29 00:49:35 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260429-004942|Regular File|1087|Apr 29 00:49:42 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260429-210330|Regular File|2560|Apr 29 21:03:30 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260429-210339|Regular File|1087|Apr 29 21:03:39 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260430-221446|Regular File|2560|Apr 30 22:14:46 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260430-221547|Regular File|2560|Apr 30 22:15:47 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260430-221559|Regular File|1087|Apr 30 22:15:59 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260503-211950|Regular File|2486|May  3 21:19:50 2026|-rw-------
+/Users/hoanicross/.gemini/settings.json.bak.20260503-212124|Regular File|1087|May  3 21:21:24 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260504-082640|Regular File|2344|May  4 08:26:40 2026|-rw-------
+/Users/hoanicross/.gemini/settings.json.bak.20260504-082654|Regular File|1087|May  4 08:26:54 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260504-111534|Regular File|2560|May  4 11:15:34 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260504-111549|Regular File|1087|May  4 11:15:49 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260526-094145|Regular File|2373|May 26 09:41:45 2026|-rw-------
+/Users/hoanicross/.gemini/settings.json.bak.20260526-094201|Regular File|1144|May 26 09:42:01 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260526-145036|Regular File|2617|May 26 14:50:36 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260526-145045|Regular File|1144|May 26 14:50:45 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260526-145050|Regular File|1144|May 26 14:50:50 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260526-145053|Regular File|2617|May 26 14:50:53 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.bak.20260526-145104|Regular File|1144|May 26 14:51:04 2026|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json.ori|Regular File|1134|Apr 28 23:13:12 2026|-rw-------
+/Users/hoanicross/.gemini/settings.json.orig|Regular File|64|Jul  2 13:36:45 2025|-rw-r--r--
+/Users/hoanicross/.gemini/settings.json|Regular File|2479|May 27 18:39:48 2026|-rw-------
+/Users/hoanicross/.gemini/skills|Directory|224|May  4 14:14:26 2026|drwxr-xr-x
+/Users/hoanicross/.gemini/state.json|Regular File|268|May 20 23:14:31 2026|-rw-r--r--
+/Users/hoanicross/.gemini/trustedFolders.json|Regular File|964|Apr 29 13:54:45 2026|-rw-------
+
+=== ~/.gemini/history (file count + latest entries) ===
+drwxr-xr-x hoanicross staff 896 B  Thu May 21 12:10:09 2026 .
+drwxr-xr-x hoanicross staff 2.1 KB Sat May 30 14:23:33 2026 ..
+drwxr-xr-x hoanicross staff 160 B  Tue Feb 10 07:14:39 2026 11e84dea0497f5332e233c17dd6a7637184535114f2ba0e59cf64ae3d326beb6
+drwxr-xr-x hoanicross staff 192 B  Tue Feb 24 09:34:53 2026 15b18364e8e6405325b84f6c176c226afb49a7bfab5f1b91d0d7ae513597948a
+drwxr-xr-x hoanicross staff 160 B  Sun Feb 15 10:45:04 2026 3b27f888f6ae20a4c13d87745f4be486897c5790cc1f7788c0ae4d4c784c0a1b
+drwxr-xr-x hoanicross staff 160 B  Tue Feb 10 14:07:43 2026 58556acf3b6ba5e3bd601083595bd698dda00353c8e1ed951eff09ea6946d540
+drwxr-xr-x hoanicross staff 192 B  Fri Mar 20 12:59:06 2026 749a16e25a9c2ed5e688c501251bba1c0486ce69c4491df38e386df9d650faa8
+drwxr-xr-x hoanicross staff 192 B  Mon Mar 23 13:05:07 2026 8a5edab282632443219e051e4ade2d1d5bbc671c781051bf1437897cbdfea0f1
+drwxr-xr-x hoanicross staff 192 B  Tue Feb 24 09:42:03 2026 926025a8733b67f376ff095f1242ffb4679c0366bf6dcdbde0a12ec762165ffd
+drwxr-xr-x hoanicross staff 160 B  Sat Feb  7 00:30:26 2026 c79c3bb2191decb286a6144667b45d2496287cf487a71d3f7679a416f2b175c3
+
+=== ~/.gemini/acknowledgments ===
+/Users/hoanicross/.gemini/acknowledgments/agents.json
