@@ -268,18 +268,6 @@ for scenario in "${SELECTED_SCENARIOS[@]}"; do
         tap_emit skip "$desc" "dry-run"
         continue
       fi
-      # For Gemini: pre-fetch a short-lived OAuth access token so containers
-      # can authenticate without the interactive oauth-personal picker that
-      # blocks headless runs. GOOGLE_GENAI_USE_GCA + GOOGLE_CLOUD_ACCESS_TOKEN
-      # is the headless path recognised by the CLI (confirmed in bundle source).
-      # The token is ~1h TTL; scenarios complete well within that window.
-      if [[ "$cli" == "gemini" ]]; then
-        _gemini_token=$(e2e_gemini_refresh_access_token \
-          "$(e2e_cli_dir gemini)/oauth_creds.json" 2>&1) \
-          || e2e_die "[runner] Gemini token refresh failed: ${_gemini_token}"
-        export GOOGLE_CLOUD_ACCESS_TOKEN="$_gemini_token"
-        export GOOGLE_GENAI_USE_GCA="true"
-      fi
       if env \
           E2E_LIB_DIR="${SCRIPT_DIR}/lib" \
           E2E_REPORT_DIR="$case_dir" \

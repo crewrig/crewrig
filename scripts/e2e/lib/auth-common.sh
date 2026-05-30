@@ -81,41 +81,6 @@ e2e_chown_bootstrap() {
     || e2e_die "[$cli] writability bootstrap failed — cannot chmod ${dir}."
 }
 
-# e2e_gemini_refresh_access_token [creds_file] — return a usable Gemini OAuth
-# access token. Reads access_token + expiry_date from oauth_creds.json (the
-# shape the Gemini CLI itself writes: no client_id/client_secret embedded —
-# those live in the CLI bundle). If the stored access_token still has more
-# than 5 min of life, it is printed verbatim with no network call. Otherwise
-# the refresh_token is exchanged at the Google token endpoint using the same
-# OAuth client the Gemini CLI uses internally. Prints the access_token to
-# stdout or calls e2e_die on failure. curl and jq are required on the host.
-e2e_gemini_refresh_access_token() {
-  local creds_file="${1:-$(e2e_cli_dir gemini)/oauth_creds.json}"
-  [[ -f "$creds_file" ]] || e2e_die "[gemini] oauth_creds.json not found at ${creds_file}"
-  local access_token expiry_date now_ms
-  access_token=$(jq -r '.access_token // empty' "$creds_file")
-  expiry_date=$(jq -r '.expiry_date  // 0'     "$creds_file")
-  now_ms=$(( $(date +%s) * 1000 ))
-  if [[ -n "$access_token" ]] && (( expiry_date - 300000 > now_ms )); then
-    printf '%s' "$access_token"
-    return 0
-  fi
-  command -v curl >/dev/null 2>&1 || e2e_die "[gemini] curl is required to refresh the OAuth access token"
-  local refresh_token response
-  refresh_token=$(jq -r '.refresh_token // empty' "$creds_file")
-  [[ -n "$refresh_token" ]] \
-    || e2e_die "[gemini] oauth_creds.json has no refresh_token — re-run: task e2e:auth:gemini"
-  response=$(curl -s -X POST https://oauth2.googleapis.com/token \
-    --data-urlencode "client_id=681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com" \
-    --data-urlencode "client_secret=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" \
-    --data-urlencode "refresh_token=${refresh_token}" \
-    --data-urlencode "grant_type=refresh_token")
-  access_token=$(printf '%s' "$response" | jq -r '.access_token // empty')
-  [[ -n "$access_token" ]] \
-    || e2e_die "[gemini] access token expired and refresh failed — re-run: task e2e:auth:gemini"
-  printf '%s' "$access_token"
-}
-
 # e2e_auth_ready <cli> — return 0 if the CLI can be exercised non-interactively
 # in an e2e run, 78 (SKIP convention) otherwise. Used by the runner to decide
 # whether to invoke a (cli, scenario) pair or emit a TAP `# SKIP unconfigured`

@@ -72,7 +72,7 @@ mounts       = [
   "${CREWRIG_E2E_HOME}/gemini:/run/gemini-creds:ro",
   "${HOME}/.gemini:/run/gemini-rules:ro",
 ]
-env_keys     = ["GEMINI_API_KEY", "GOOGLE_CLOUD_ACCESS_TOKEN", "GOOGLE_GENAI_USE_GCA"]
+env_keys     = ["GEMINI_API_KEY"]
 
 [cli.copilot]
 # Copilot uses the env-var auth path (ADR 0002 Decision 4); no on-disk creds,
