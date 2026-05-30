@@ -1,0 +1,10 @@
+task: [e2e:test] bash /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/155-mempalace-add-drawer/tests/e2e/run.sh --scenario 02-cross-tool-memory
+[runner] using defaults.toml (no local.toml present) → /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/155-mempalace-add-drawer/tests/e2e/reports/20260530T205346Z-4847/effective.json
+TAP version 13
+[claude] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/claude/.credentials.json
+ok 1 - claude/02-cross-tool-memory
+[gemini] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/gemini/oauth_creds.json
+ok 2 - gemini/02-cross-tool-memory
+1..2
+# pass: 2  fail: 0  skip: 0
+# report dir: /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/155-mempalace-add-drawer/tests/e2e/reports/20260530T205346Z-4847

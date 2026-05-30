@@ -1,0 +1,15 @@
+=== claude/02-cross-tool-memory ===
+ok 1 - writer: drawer added to wing=e2e-cross-tool
+ok 2 - reader: search returned successfully
+ok 3 - side-effect: reader stdout captured
+ok 4 - structural: [TASK:ongoing] marker present
+ok 5 - structural: writer_agent field present in read-back
+1..5
+
+=== gemini/02-cross-tool-memory ===
+ok 1 - writer: drawer added to wing=e2e-cross-tool
+ok 2 - reader: search returned successfully
+ok 3 - side-effect: reader stdout captured
+ok 4 - structural: [TASK:ongoing] marker present
+ok 5 - structural: writer_agent field present in read-back
+1..5
