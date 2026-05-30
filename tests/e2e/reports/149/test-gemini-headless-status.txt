@@ -1,0 +1,25 @@
+ok 1 - MODE B: empty settings.json causes non-zero exit (got 41)
+ok 2 - MODE B: auth-failure message present in output
+not ok 3 - answer.txt absent — gemini exited 41 without making an API call (issue #139 unfixed)
+1..3
+
+---
+VERDICT: pre-existing failure, NOT a regression from #149.
+
+Rationale:
+- `git diff crewrig/main..HEAD -- tests/e2e/lib/test-gemini-headless.sh` is empty: #149 did not touch this file.
+- The script does not source scripts/e2e/lib/auth-common.sh, does not call
+  e2e_gemini_refresh_access_token, and does not set GOOGLE_CLOUD_ACCESS_TOKEN
+  / GOOGLE_GENAI_USE_GCA. It runs `docker run` directly with
+  settings-headless.json mounted as /home/agent/.gemini/settings.json:ro.
+- Lines 18, 95-96 reference the (now-removed) fix path inside comments only.
+  No code path depends on the removed symbols.
+- Tests 1 + 2 pass (MODE B exit 41, auth-failure message). Test 3 is the
+  intentional "red line" assertion authored in 7c51282 to lock in the broken
+  MODE B reproduction — it has never been satisfied by this standalone harness
+  because the harness never invokes the fix path.
+- Per brief Check 3 option (a) variant: comments are stale but assertions do
+  not reference removed code. Scope is "removal only" — patching the stale
+  comments is deferred. Recommend a follow-up ticket to either prune the
+  comments or refactor the test now that issue #139 is empirically resolved
+  (#148 §4.2 Test D shows gemini -p runs headless without the workaround).

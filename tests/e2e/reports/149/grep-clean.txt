@@ -1,0 +1,3 @@
+tests/e2e/lib/test-gemini-headless.sh:18:# GOOGLE_CLOUD_ACCESS_TOKEN + GOOGLE_GENAI_USE_GCA=true, wrapped by timeout.
+tests/e2e/lib/test-gemini-headless.sh:95:#   - GOOGLE_CLOUD_ACCESS_TOKEN is pre-fetched on the host
+tests/e2e/lib/test-gemini-headless.sh:96:#   - GOOGLE_GENAI_USE_GCA=true is passed into the container
