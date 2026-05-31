@@ -1,0 +1,35 @@
+# Check 2 — onnx.tar.gz grep over chroma-touching scenarios
+# Report dir: tests/e2e/reports/20260531T095214Z-0b30/
+# Pattern: 'onnx.tar.gz' in every *.stderr under each scenario dir.
+# Acceptance: 0 hits everywhere.
+
+=== claude/02-cross-tool-memory ===
+  read.stderr  : 0
+  write.stderr : 0
+  stderr       : 0
+
+=== claude/04-harness-loop ===
+  curator.stderr : 0
+  report.stderr  : 0
+  stderr         : 0
+
+=== gemini/02-cross-tool-memory ===
+  read.stderr  : 0
+  write.stderr : 0
+  stderr       : 0
+
+=== gemini/04-harness-loop ===
+  curator.stderr : 0
+  report.stderr  : 0
+  stderr         : 0
+
+=== copilot/02-cross-tool-memory ===
+  (scenario not produced — copilot does not run 02; not a #160 concern)
+
+=== copilot/04-harness-loop ===
+  curator.stderr : 0
+  report.stderr  : 0
+  stderr         : 0
+
+RESULT: PASS — 0 onnx.tar.gz references across all chroma-touching scenarios.
+The pre-bake of all-MiniLM-L6-v2 reached every mempalace-writing run.

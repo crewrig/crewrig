@@ -1,0 +1,5 @@
+crewrig/e2e-mempalace:latest 1.13GB (created 5 minutes ago)
+
+Pre-fix baseline: 1.04 GB
+Post-bake target band: 1.10–1.15 GB
+Delta: +~90 MB (within target)

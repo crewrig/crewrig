@@ -1,0 +1,35 @@
+task: [e2e:test] bash /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/160-prebake-chroma/tests/e2e/run.sh 
+[runner] using defaults.toml (no local.toml present) → /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/160-prebake-chroma/tests/e2e/reports/20260531T095214Z-0b30/effective.json
+TAP version 13
+[claude] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/claude/.credentials.json
+not ok 1 - claude/01-layered-context
+[runner] claude/01-layered-context failed: exit 1
+[runner]   stdout: /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/160-prebake-chroma/tests/e2e/reports/20260531T095214Z-0b30/claude/01-layered-context/stdout
+[runner]   stderr: /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/160-prebake-chroma/tests/e2e/reports/20260531T095214Z-0b30/claude/01-layered-context/stderr
+[gemini] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/gemini/oauth_creds.json
+ok 2 - gemini/01-layered-context
+[copilot] auth ready: Ollama Cloud keypair present (/Users/hoanicross/.crewrig-e2e/ollama/id_ed25519)
+not ok 3 - copilot/01-layered-context
+[runner] copilot/01-layered-context failed: exit 1
+[runner]   stdout: /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/160-prebake-chroma/tests/e2e/reports/20260531T095214Z-0b30/copilot/01-layered-context/stdout
+[runner]   stderr: /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/160-prebake-chroma/tests/e2e/reports/20260531T095214Z-0b30/copilot/01-layered-context/stderr
+[claude] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/claude/.credentials.json
+ok 4 - claude/02-cross-tool-memory
+[gemini] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/gemini/oauth_creds.json
+ok 5 - gemini/02-cross-tool-memory
+[claude] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/claude/.credentials.json
+ok 6 - claude/03-skill-build
+[gemini] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/gemini/oauth_creds.json
+ok 7 - gemini/03-skill-build
+[copilot] auth ready: Ollama Cloud keypair present (/Users/hoanicross/.crewrig-e2e/ollama/id_ed25519)
+ok 8 - copilot/03-skill-build
+[claude] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/claude/.credentials.json
+ok 9 - claude/04-harness-loop
+[gemini] auth ready: on-disk marker /Users/hoanicross/.crewrig-e2e/gemini/oauth_creds.json
+ok 10 - gemini/04-harness-loop
+[copilot] auth ready: Ollama Cloud keypair present (/Users/hoanicross/.crewrig-e2e/ollama/id_ed25519)
+ok 11 - copilot/04-harness-loop
+1..11
+# pass: 9  fail: 2  skip: 0
+# report dir: /Users/hoanicross/devel/perso/genai/framework/crewrig/.worktrees/160-prebake-chroma/tests/e2e/reports/20260531T095214Z-0b30
+task: Failed to run task "e2e:test": exit status 1
