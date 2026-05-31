@@ -607,7 +607,7 @@ AUTO).
 Definitions of each class, canonical and borderline examples, and the
 disambiguation rule (escalate upstream on tie) live in ADR-0010 →
 *Finding classification taxonomy*. The routing engine itself lands in
-#172 — this section states the contract.
+issue #172 — this section states the contract.
 
 ## Pull Request Format
 

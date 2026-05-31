@@ -311,12 +311,18 @@ items carry parity load, tracked in their own tickets:
   logbook issue, which is GitHub-side and therefore CLI-agnostic.
 
 `docs/cli-matrix.md` SHALL be updated as each of #168 / #172 / #173
-lands, not as part of this ADR.
+lands, not as part of this ADR. This PR does not touch the *CLI Matrix
+Maintenance* trigger surface defined in `AGENTS.md` (no edits under
+`.claude/`, `.gemini/`, `community-config/`, `extensions/`, the
+CLI-specific hooks, the `config/` trees, `scripts/build-components.sh`,
+the CLI-prefixed scripts, the `claude.yml` / `gemini.yml` workflows,
+or the top-level CLI entry-point files), so the obligation to update
+the matrix in lockstep does not apply here.
 
 ## Appendix — three worked examples
 
-These examples define expected artefacts so downstream tickets (#167,
-#169, #172, #173) can use them as fixtures.
+These examples define expected artefacts so downstream tickets
+(#167, #169, #172, #173) can use them as fixtures.
 
 ### Example 1 — Trivial change
 
