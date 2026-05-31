@@ -50,7 +50,7 @@ Asked in order, one at a time, only if the answer is not already
 unambiguously derivable from the ticket:
 
 1. **Intent confirmation.** "Confirm in one sentence the user-facing
-   change. Anything missing from: *<draft intent>*?"
+   change. Anything missing from: *`<draft intent>`*?"
 2. **Out-of-scope check.** "Is there a nearby behaviour you do NOT
    want this spec to cover?"
 3. **Acceptance signal.** "What single observable outcome will tell
@@ -62,13 +62,15 @@ exit.
 
 ### INTERMEDIATE — default; six questions
 
-Extends MINIMAL with three more, asked after the first three:
+Extends MINIMAL with three more, asked after the first three (numbered
+1–3 here to satisfy `MD029/ol-prefix`; conceptually questions 4–6 of
+the interview):
 
-4. **Failure path.** "What should happen if <the obvious failure
-   condition> occurs?" (Drives the failure-path scenario.)
-5. **Complexity tier.** "Does this fit `trivial`, `small`,
-   `standard`, or `large`? *<skill's proposed tier with rationale>*."
-6. **Open questions review.** "These points are unresolved — pick
+1. **Failure path.** "What should happen if `<the obvious failure
+   condition>` occurs?" (Drives the failure-path scenario.)
+2. **Complexity tier.** "Does this fit `trivial`, `small`,
+   `standard`, or `large`? *`<skill's proposed tier with rationale>`*."
+3. **Open questions review.** "These points are unresolved — pick
    one: resolve now / park explicitly / drop." (One pass per
    unresolved item.)
 
@@ -193,9 +195,9 @@ developer authors the AGENTS.md edit; this design note does not.
 
 **Where:** in the *Agent Team Protocol* → *Standard Team Templates*
 subsection, **before the `#### Template 1` heading**, insert a new
-subsection titled `#### Step 0 — `spec-author` (every non-trivial
-template)`. It precedes Templates 1, 2, and 3 because it applies to
-all three.
+subsection titled `Step 0 — spec-author (every non-trivial template)`
+at heading level `####`. It precedes Templates 1, 2, and 3 because it
+applies to all three.
 
 **Exact body to insert:**
 
