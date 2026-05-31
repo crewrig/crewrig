@@ -31,11 +31,18 @@ specs/
 ## Two-PR flow
 
 Specs ship in a **dedicated spec PR**, separately from the
-implementation PR that realises them. The exact branching and
-ordering rules for that flow are formalised in issue #170 and are
-not duplicated here — see the spec format document and ADR-0010 for
-the contract, and issue #170 for the operational protocol once it
-lands.
+implementation PR that realises them. The spec-branch is named
+`spec/<NNNN>-<slug>` (or `spec/<NNNN>-<slug>-delta-<NN>` for
+delta-spec amendments), carries exactly one new file under `/specs/`,
+and MUST merge to `main` before the implementation branch
+(`feat/<NNNN>-<slug>` and siblings) is cut. The two PRs are
+independent — each closes its own related issue, and the
+implementation-PR does not auto-close the spec-PR. The normative
+contract — branch naming, one-file rule, ordering, independence, and
+the delta-spec cumulative rule — lives in
+[`AGENTS.md#spec-pr-workflow`](../AGENTS.md#spec-pr-workflow); the
+classification and routing of `spec`-class loop findings live in
+[ADR-0010](../docs/adr/0010-spec-plan-review-lifecycle.md).
 
 ## Creating a new spec
 
@@ -43,5 +50,5 @@ lands.
    Ids are monotonic, zero-padded to four digits, never reused.
 2. Copy `_template.md` to `<NNNN>-<your-slug>.md`.
 3. Fill in the frontmatter and the five mandatory body sections.
-4. Open the spec PR against `main` (per issue #170 once available;
-   until then, follow the standard branch-and-PR flow in `AGENTS.md`).
+4. Open the spec PR against `main` following the
+   [Spec-PR workflow](../AGENTS.md#spec-pr-workflow) in `AGENTS.md`.

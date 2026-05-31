@@ -106,6 +106,76 @@ rule takes over.
 - Every change must go through a **feature branch** merged into `main` via a Pull Request.
 - **NEVER merge a Pull Request (PR/MR)** without asking for the user's formal permission JUST BEFORE executing the merge.
 - The `import/gitlab` branch tracks the legacy GitLab project (`gitlab` remote) and serves as inspiration only.
+- Non-trivial tickets follow the **Spec-PR workflow** (see section below): a `spec/<NNNN>-<slug>` PR qualifies the WHAT and merges to `main` before the implementation branch is cut.
+
+## Spec-PR workflow
+
+This section operationalises the SPECS stage of the lifecycle defined in
+[ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md) — specifically
+the *Stage definitions → SPECS* contract — and the two-PR convention
+mandated by [`specs/0003-spec-pr-workflow.md`](specs/0003-spec-pr-workflow.md).
+The SPECS-stage artefact (a single Markdown file under `/specs/`) MUST
+ship as its own pull request — the **spec-PR** — and be merged to `main`
+**before** any implementation branch for the same ticket is opened.
+This keeps the WHAT auditable as a standalone diff and decouples the
+qualification timeline from the realisation timeline.
+
+### Branch naming
+
+- Initial spec-branch: `spec/<NNNN>-<slug>` — where `<NNNN>` is the
+  zero-padded spec id and `<slug>` is the kebab-case slug. Both values
+  MUST match the spec file's frontmatter `id` and `slug` fields; the
+  schema is defined in [`docs/spec-format.md`](docs/spec-format.md).
+- Delta-spec branch (produced by a `spec`-class iteration of the
+  *Retroactive review loop*): `spec/<NNNN>-<slug>-delta-<NN>` — where
+  `<NN>` is the zero-padded delta sequence number for that spec id.
+
+### One-file rule
+
+A spec-branch SHALL contain **exactly one new file** under `/specs/`
+and nothing else. No co-mingling with implementation edits, no
+incidental fixes, no build outputs. The rationale: the spec-PR is the
+auditable artefact of qualification — its diff must be reviewable as a
+self-contained WHAT, without the reader having to mentally subtract
+unrelated changes.
+
+### Ordering rule
+
+The spec-PR MUST merge to `main` **before** the implementation branch
+is cut. The four valid implementation-branch prefixes — `feat/`,
+`fix/`, `docs/`, `refactor/` — all follow the `<prefix>/<NNNN>-<slug>`
+suffix convention so that implementation work traces back to its spec
+id by branch name alone. Cutting an implementation branch while the
+corresponding spec-PR is still open is a process violation; the
+*Retroactive review loop* surfaces this as a `class: tech` finding
+(see the rule there).
+
+### Independence rule
+
+The spec-PR and the implementation-PR are **independent pull
+requests**: each closes its own GitHub issue via its own
+`Closes #<related-issue>` directive, and the implementation-PR MUST
+NOT auto-close the spec-PR. Treating them as a single coupled unit
+would defeat the purpose of the two-PR flow — qualification and
+realisation are deliberately separated so that a merged spec can
+outlive a failed implementation attempt and be re-realised by a
+later PR without information loss.
+
+### Delta-spec cumulative rule
+
+A single implementation-PR MAY absorb **N delta-spec PRs** targeting
+the same ticket. Delta-specs accumulate on `main` as immutable
+amendments to the original spec; the implementation-PR realises the
+union of the original spec plus every merged delta. The originating
+loop iteration is defined in the *Retroactive review loop* section
+below — a `spec`-class finding produces a new delta-spec PR before
+the implementation-PR is retried.
+
+### Worktree pointer
+
+The *Worktree Isolation* rule (see *Agent Team Protocol → Worktree
+Isolation*) applies unchanged to both `spec/*` and the corresponding
+implementation branch — each PR runs in its own dedicated worktree.
 
 ## Post-Merge Flow
 
@@ -620,6 +690,12 @@ Rules:
 - A `spec`-class loop SHALL produce a delta-spec PR; the original
   spec on `main` is immutable.
 - The loop SHALL NOT change the logbook issue (Rule A still holds).
+- When an implementation branch (`feat/<NNNN>-<slug>` and siblings) is
+  opened against `main` while the corresponding spec-PR is still open,
+  the REVIEW pass on that implementation-PR SHALL emit a `class: tech`
+  finding citing *Spec-PR workflow → Ordering rule*, and the
+  implementation-PR SHALL NOT be retried until the spec-PR is merged
+  on `main`.
 
 **Termination.** The lifecycle terminates at MERGE iff a REVIEW pass
 verdict is APPROVE AND the pass surfaces zero findings of any class
