@@ -66,6 +66,15 @@ else
   e2e_info "[$CLI] WARNING: ~/.copilot/config.json not found. Containers will rely on COPILOT_GITHUB_TOKEN only."
 fi
 
+# Tighten modes on the on-disk bundle (issue #161 parity with #148 Med-1/Med-2).
+# Unlike claude/gemini, copilot does NOT call e2e_chown_bootstrap (no
+# interactive container), but this script still persists config.json (which
+# carries the GitHub Copilot auth token) and instruction files under $DIR.
+# Assert the 0700/0600 invariant explicitly so a permissive umask on the host
+# cannot leave the bundle world-readable.
+chmod 700 "$DIR"
+find "$DIR" -type f -exec chmod 600 {} +
+
 cat >&2 <<'BANNER'
 ================================================================================
  e2e auth — GitHub Copilot CLI (PAT-based, v1)

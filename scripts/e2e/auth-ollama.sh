@@ -43,6 +43,16 @@ docker run --rm -it \
   bash -c 'ollama serve >/dev/null 2>&1 & sleep 2 && ollama signin' \
   || e2e_die "[$CLI] interactive container exited non-zero. Re-run after resolving the error above."
 
+# Close the world-writable window opened by e2e_chown_bootstrap (Med-1 from
+# the #148 security review, applied to ollama per issue #161). The Ed25519
+# PRIVATE key landing under $DIR is the load-bearing secret; tightening
+# immediately after the container exits — BEFORE the post-flight checks —
+# minimises shared-dev-box exposure of the private key. Normalise file modes
+# too (Med-2 from #148) so id_ed25519 gets 0600 even if `ollama signin`
+# happens to write it with looser perms.
+chmod 700 "$DIR"
+find "$DIR" -type f -exec chmod 600 {} +
+
 # Post-flight: id_ed25519 is the load-bearing private key; id_ed25519.pub
 # is its public counterpart registered with ollama.com.
 missing=()
