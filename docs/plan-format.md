@@ -45,18 +45,15 @@ level-3 headings, in this order, with their text matching verbatim
 (case-sensitive, no trailing punctuation). A future plan linter will
 rely on header presence and ordering to validate conformance.
 
-### 1. `### Approach`
+**1. `### Approach`** — one paragraph, plain prose. Captures the
+semantics of the plan — *what stance the implementation takes* — in a
+single breath. No file-by-file enumeration here; that belongs in
+`### Steps`.
 
-One paragraph, plain prose. Captures the semantics of the plan —
-*what stance the implementation takes* — in a single breath. No
-file-by-file enumeration here; that belongs in `### Steps`.
-
-### 2. `### Steps`
-
-Ordered list. Each step SHALL name the concrete file path(s) it
-touches and a one-line description of the edit. A step MAY carry
-the `[P]` marker as its first token (after the list number) to
-indicate the step CAN run in parallel with the preceding step;
+**2. `### Steps`** — ordered list. Each step SHALL name the concrete
+file path(s) it touches and a one-line description of the edit. A step
+MAY carry the `[P]` marker as its first token (after the list number)
+to indicate the step CAN run in parallel with the preceding step;
 absence of `[P]` means strictly sequential (R4).
 
 ```markdown
@@ -65,38 +62,31 @@ absence of `[P]` means strictly sequential (R4).
 3. Run `scripts/build-components.sh` and stage the regenerated outputs.
 ```
 
-### 3. `### Blast radius`
+**3. `### Blast radius`** — bullet list. Each bullet names one of: an
+affected code path, a downstream ticket, a build output, a version-bump
+trigger (per *AGENTS.md → Version Bump Convention*), or a CLI-matrix
+trigger surface (per *AGENTS.md → CLI Matrix Maintenance*). When a
+category is genuinely empty for the ticket, state so explicitly
+(`Build outputs: none.`) rather than omitting the bullet — silence
+reads as oversight.
 
-Bullet list. Each bullet names one of: an affected code path, a
-downstream ticket, a build output, a version-bump trigger
-(per *AGENTS.md → Version Bump Convention*), or a CLI-matrix trigger
-surface (per *AGENTS.md → CLI Matrix Maintenance*). When a category
-is genuinely empty for the ticket, state so explicitly (`Build
-outputs: none.`) rather than omitting the bullet — silence reads as
-oversight.
+**4. `### Alternatives considered and rejected`** — at least one
+alternative, each followed by a one-line rationale. The purpose is to
+surface the design space the author traversed; a plan with zero
+rejected alternatives is rarely a plan that explored options.
 
-### 4. `### Alternatives considered and rejected`
-
-At least one alternative, each followed by a one-line rationale. The
-purpose is to surface the design space the author traversed; a plan
-with zero rejected alternatives is rarely a plan that explored
-options.
-
-### 5. `### Rollback strategy`
-
-One paragraph. Names the concrete revert path (commit revert,
-configuration rollback, data migration reversal, etc.) and any
-coordination required with downstream tickets or deployed
-components.
+**5. `### Rollback strategy`** — one paragraph. Names the concrete
+revert path (commit revert, configuration rollback, data migration
+reversal, etc.) and any coordination required with downstream tickets
+or deployed components.
 
 ## Optional sections
 
-### `### Risks`
-
-Discrete risks with a one-line mitigation or acceptance note each.
-When present, the section SHALL appear **after** `### Rollback
-strategy` (R3). Plans that surface non-trivial uncertainty SHOULD
-include it; plans whose blast radius is fully bounded MAY omit it.
+**`### Risks`** — discrete risks with a one-line mitigation or
+acceptance note each. When present, the section SHALL appear **after**
+`### Rollback strategy` (R3). Plans that surface non-trivial
+uncertainty SHOULD include it; plans whose blast radius is fully
+bounded MAY omit it.
 
 ## Finding tag schema
 
@@ -110,12 +100,12 @@ A reviewer comment that lists multiple findings SHALL tag each
 finding individually:
 
 ```markdown
-### Finding 1
+**Finding 1**
 
 class: tech
 <one-paragraph description and remediation pointer>
 
-### Finding 2
+**Finding 2**
 
 class: arch
 <one-paragraph description and remediation pointer>
