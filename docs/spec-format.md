@@ -24,7 +24,7 @@ be introduced without first amending this document.
 | `slug` | string | yes | kebab-case, ASCII, no leading/trailing hyphen. Must match the filename slug. |
 | `status` | enum | yes | One of `draft`, `approved`, `implemented`, `archived`, `superseded`. |
 | `complexity` | enum | yes | One of `trivial`, `small`, `standard`, `large`. Must match an ADR-0010 complexity tier. |
-| `interaction-mode` | enum | yes | One of `FULL`, `INTERMEDIATE`, `MINIMAL`, `AUTO`. Must match an ADR-0010 interaction mode. Default `INTERMEDIATE` when omitted by a draft, but the field SHALL be present once the spec reaches `approved`. |
+| `interaction-mode` | enum | from `approved` onward | One of `FULL`, `INTERMEDIATE`, `MINIMAL`, `AUTO`. Must match an ADR-0010 interaction mode. MAY be omitted in `draft`, in which case the value defaults to `INTERMEDIATE`; SHALL be present explicitly once the spec reaches `approved`. |
 | `related-issue` | integer | yes | The GitHub issue number this spec qualifies (the logbook anchor, per `AGENTS.md` → *Logbook Issues → Rule A*). |
 | `version` | semver | yes | Starts at `1.0.0` on the initial spec. Bumps follow the delta-spec convention below. |
 | `max-iterations` | integer | no | Overrides the ADR-0010 default of 5. Bounded `[1, 20]` inclusive. Omit to inherit the default. |
@@ -218,10 +218,12 @@ The format is designed to be machine-checkable. A future spec linter
 (not in scope for issue #167) will rely on the invariants below; spec
 authors and reviewers SHOULD anticipate them.
 
-- The file SHALL pass `markdownlint` with the project's
-  `.markdownlint.json` configuration. In particular: no MD018 traps
-  (do not let a wrapped line start with `#NNN` at column 1 — write
-  `issue #NNN` or reflow the sentence).
+- The file SHALL pass `markdownlint-cli` with the project's
+  `.markdownlintrc` configuration (CI invocation: `markdownlint
+  "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore
+  communication`). In particular: no MD018 traps (do not let a wrapped
+  line start with `#NNN` at column 1 — write `issue #NNN` or reflow
+  the sentence).
 - The five mandatory body section headings SHALL be present and SHALL
   appear in the order defined above. Heading text SHALL match
   verbatim (case-sensitive, no trailing punctuation).
@@ -233,5 +235,5 @@ authors and reviewers SHOULD anticipate them.
   other value is a lint error.
 
 Implementing the linter itself, wiring it into CI, and back-filling
-existing specs are out of scope for this document and will be handled
-in a dedicated ticket once the format has shipped.
+existing specs are out of scope for this document and are tracked in
+issue #178.

@@ -93,7 +93,7 @@ Then  the reviewer rejects the line as a HOW statement and asks the
 - A working spec linter that enforces the invariants listed in
   `docs/spec-format.md` → *Linting hints*. The document describes the
   invariants so the linter can be written later; the linter itself
-  ships in its own ticket.
+  ships in issue #178.
 - Multi-CLI distribution of any spec-related skills — issue #174.
 - Migration of in-flight tickets onto the new format — issue #175.
 
