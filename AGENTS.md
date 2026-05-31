@@ -67,6 +67,9 @@ full REVIEW pass produces zero findings.
 The full contract — stage definitions, transition rules, finding
 taxonomy, routing matrix, complexity tiers, and termination criterion
 — lives in [ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md).
+The file format for the spec artefact produced by the SPECS stage —
+frontmatter schema, mandatory body sections, delta-spec convention,
+and naming rules — lives in [`docs/spec-format.md`](docs/spec-format.md).
 The sections below (*Agent Team Protocol*, *Interaction modes*,
 *Retroactive review loop*) layer the operational rules onto that
 contract.
