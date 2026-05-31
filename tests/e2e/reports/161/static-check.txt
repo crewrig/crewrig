@@ -1,0 +1,25 @@
+=== auth-claude.sh ===
+65:e2e_chown_bootstrap "$CLI" "$IMAGE"
+73:docker run --rm -it \
+80:# Close the world-writable window opened by e2e_chown_bootstrap (Med-1 from
+88:chmod 700 "$DIR"
+89:find "$DIR" -type f -exec chmod 600 {} +
+=== auth-copilot.sh ===
+8:# time via `docker run -e COPILOT_GITHUB_TOKEN ...`.
+70:# Unlike claude/gemini, copilot does NOT call e2e_chown_bootstrap (no
+75:chmod 700 "$DIR"
+76:find "$DIR" -type f -exec chmod 600 {} +
+129:if docker run --rm \
+137:  e2e_info "[$CLI] Re-run with: docker run --rm -e COPILOT_GITHUB_TOKEN $IMAGE copilot --version"
+=== auth-ollama.sh ===
+35:e2e_chown_bootstrap "$CLI" "$IMAGE"
+40:docker run --rm -it \
+46:# Close the world-writable window opened by e2e_chown_bootstrap (Med-1 from
+53:chmod 700 "$DIR"
+54:find "$DIR" -type f -exec chmod 600 {} +
+--- auth-gemini.sh (must NOT have changed) ---
+--- auth-common.sh (must NOT have changed) ---
+--- bash -n syntax check ---
+auth-claude.sh: OK
+auth-copilot.sh: OK
+auth-ollama.sh: OK
