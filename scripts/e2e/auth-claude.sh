@@ -86,6 +86,7 @@ docker run --rm -it \
 # .credentials.json / .claude.json was previously implicit on whatever the
 # Claude CLI happened to write; assert it explicitly.
 chmod 700 "$DIR"
+find "$DIR" -type d -exec chmod 700 {} +
 find "$DIR" -type f -exec chmod 600 {} +
 
 # Post-flight: both .credentials.json AND .claude.json must land on disk for

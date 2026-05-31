@@ -73,6 +73,7 @@ fi
 # Assert the 0700/0600 invariant explicitly so a permissive umask on the host
 # cannot leave the bundle world-readable.
 chmod 700 "$DIR"
+find "$DIR" -type d -exec chmod 700 {} +
 find "$DIR" -type f -exec chmod 600 {} +
 
 cat >&2 <<'BANNER'

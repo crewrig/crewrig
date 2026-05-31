@@ -51,6 +51,7 @@ docker run --rm -it \
 # too (Med-2 from #148) so id_ed25519 gets 0600 even if `ollama signin`
 # happens to write it with looser perms.
 chmod 700 "$DIR"
+find "$DIR" -type d -exec chmod 700 {} +
 find "$DIR" -type f -exec chmod 600 {} +
 
 # Post-flight: id_ed25519 is the load-bearing private key; id_ed25519.pub
