@@ -27,6 +27,50 @@ five pillars without needing to read README.md or ADRs:
    every parity gap requires concrete evidence that the missing mechanism does
    not exist in the target CLI.
 
+## Lifecycle
+
+Every non-trivial ticket SHALL flow through the four-stage lifecycle
+**SPECS → PLAN → DEV → REVIEW**. REVIEW loops back into the upstream
+stage corresponding to the class of each finding (`tech` → DEV,
+`arch` → PLAN, `spec` → SPECS). The lifecycle terminates only when a
+full REVIEW pass produces zero findings.
+
+```text
+   user intent
+       │
+       ▼
+┌──────────────┐    spec PR    ┌──────────────┐
+│   SPECS      │ ───────────▶  │  spec merged │
+│  (WHAT)      │  /specs/<id>  │  on main     │
+└──────┬───────┘               └──────┬───────┘
+       │                              │
+       │ (loop on spec finding)       ▼
+       │                       ┌──────────────┐
+       │                       │    PLAN      │  reviewed in
+       │                       │   (HOW)      │  logbook issue
+       │                       └──────┬───────┘
+       │                              │
+       │ (loop on arch finding)       ▼
+       │                       ┌──────────────┐
+       │                       │     DEV      │  feature branch + PR
+       │                       └──────┬───────┘
+       │                              │
+       │ (loop on tech finding)       ▼
+       │                       ┌──────────────┐
+       └───────────────────────│   REVIEW     │
+                               └──────┬───────┘
+                                      │ clean
+                                      ▼
+                                    MERGE
+```
+
+The full contract — stage definitions, transition rules, finding
+taxonomy, routing matrix, complexity tiers, and termination criterion
+— lives in [ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md).
+The sections below (*Agent Team Protocol*, *Interaction modes*,
+*Retroactive review loop*) layer the operational rules onto that
+contract.
+
 ## Language
 
 All **project content must be written in English**. "Project content" covers
@@ -195,6 +239,17 @@ issue. Agent-initiated deferral of a symmetric script is prohibited.
 ## Agent Team Protocol
 
 Project tickets are multi-step work. They must be treated by a **team of specialist agents**, not by a single agent working solo inline.
+
+The team protocol below governs the **DEV stage** of the lifecycle
+defined in [ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md).
+SPECS and PLAN run before DEV (with their own artefacts: a spec file
+under `/specs/` and a plan comment on the logbook issue); REVIEW runs
+after, and its findings may re-enter DEV (`tech`), PLAN (`arch`), or
+SPECS (`spec`) per the routing matrix in *Retroactive review loop*
+below. Templates 1 / 2 / 3 in this section describe how the DEV stage
+is staffed for a `standard`-tier ticket; trivial / small / large
+tiers adjust the composition per ADR-0010 → *Complexity tiers and
+team sizing*.
 
 ### When this applies
 
@@ -487,6 +542,72 @@ call `TeamDelete` to remove the team record itself.
 violation, regardless of whether the teammates appear idle. "Idle" is a
 harness display state, not a confirmation that the underlying process
 has released its resources.
+
+## Interaction modes
+
+The lifecycle (per ADR-0010) runs in one of four modes. Mode controls
+*user gating*, not stage execution — every mode runs all four stages.
+
+| Mode | SPECS | PLAN | REVIEW loop |
+|---|---|---|---|
+| **FULL** | user interactive + validation | user interactive + validation | user notified at each iteration |
+| **INTERMEDIATE** | user interactive + validation | user interactive + validation | autonomous |
+| **MINIMAL** | user interactive + validation | autonomous | autonomous |
+| **AUTO** | LLM-authored, no user gate | autonomous | autonomous |
+
+Rules:
+
+- Default mode is **INTERMEDIATE**.
+- Mode is declared in the spec frontmatter (schema defined in #167)
+  and SHALL NOT change mid-lifecycle without re-entering SPECS.
+- In FULL mode, the orchestrator MUST post a notification on the
+  logbook issue at the start and end of every REVIEW iteration.
+  "Notify" is non-blocking; it does not gate the next iteration.
+- In AUTO mode, SPECS is authored by the `spec-author` skill (#168);
+  the user audits after the fact via the merged spec PR.
+
+The mode-driven engine — argument parsing, gate enforcement, user
+notification surface — lands in #173. This section states the
+contract.
+
+## Retroactive review loop
+
+Every REVIEW finding SHALL be tagged with exactly one class. Class
+drives the loop target.
+
+| Finding class | Loop target | Re-spawn | Spec-PR impact |
+|---|---|---|---|
+| `tech` | DEV | developer + tester | none |
+| `arch` | PLAN | architect → developer + tester | none |
+| `spec` | SPECS | spec-author → architect → developer + tester | new delta-spec PR (per #170) |
+
+Rules:
+
+- A single REVIEW pass MAY produce findings of multiple classes. The
+  routing engine SHALL pick the most upstream class present
+  (`spec` > `arch` > `tech`) and route the entire pass to that
+  stage. Mixing loop targets within a single iteration is prohibited.
+- Re-spawn columns are minimums. The `security` trigger surface (see
+  *Agent Team Protocol → Standard Team Templates → Security rule*)
+  applies to every re-spawn that touches it.
+- A `spec`-class loop SHALL produce a delta-spec PR; the original
+  spec on `main` is immutable.
+- The loop SHALL NOT change the logbook issue (Rule A still holds).
+
+**Termination.** The lifecycle terminates at MERGE iff a REVIEW pass
+verdict is APPROVE AND the pass surfaces zero findings of any class
+AND CI is green on the head commit reviewed.
+
+**Max-iteration guardrail.** The loop halts after **5 iterations**
+(configurable in the spec frontmatter, default 5) without
+termination. On halt, the orchestrator posts a structured summary on
+the logbook issue and pages the user regardless of mode (including
+AUTO).
+
+Definitions of each class, canonical and borderline examples, and the
+disambiguation rule (escalate upstream on tie) live in ADR-0010 →
+*Finding classification taxonomy*. The routing engine itself lands in
+#172 — this section states the contract.
 
 ## Pull Request Format
 
