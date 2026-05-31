@@ -385,7 +385,27 @@ security skill's trigger surface (authentication, authorization, secrets,
 cryptography, input parsing, deserialization, network calls, or dependency
 upgrades), insert `security` after `developer` in the applicable template.
 
+#### Step 0 — `spec-author` (every non-trivial template)
+
+Templates 1, 2, and 3 below describe the DEV-stage staffing of the
+ADR-0010 lifecycle. Before any of them runs, the `spec-author` skill
+authors the SPECS-stage artefact: a single Markdown file under
+`/specs/` conforming to `docs/spec-format.md`. The skill is invoked
+once per ticket, in the mode declared by the parent ticket (default
+INTERMEDIATE per ADR-0010).
+
+The skill runs as step 0 for every ticket whose complexity tier is
+NOT `trivial` (ADR-0010 → *Complexity tiers and team sizing*).
+`trivial`-tier tickets bypass `spec-author` entirely; the orchestrator
+handles them inline per the trivial-tier row of the ADR.
+
+The spec PR SHALL be merged before the team proceeds to PLAN/DEV. The
+ordering is enforced by the spec-PR workflow (#170) — agents do not
+hand-roll it.
+
 #### Template 1 — Feature implementation (results in a PR)
+
+Preceded by step 0 (spec-author) — see the subsection above.
 
 Full pipeline. Every role is mandatory unless explicitly scoped out by the
 user.
@@ -412,6 +432,8 @@ independent files or modules; a single developer suffices otherwise.
 
 #### Template 2 — Documentation-only change
 
+Preceded by step 0 (spec-author) — see the subsection above.
+
 Lighter pipeline — no code, no tests.
 
 | Order | Role | Responsibility |
@@ -431,6 +453,8 @@ If the documentation change modifies an established protocol, convention, or
 contract (e.g. AGENTS.md itself), insert `architect` as step 0.
 
 #### Template 3 — Bug fix
+
+Preceded by step 0 (spec-author) — see the subsection above.
 
 Test-first pipeline: the failing regression test is written before the fix
 to lock in reproduction.
