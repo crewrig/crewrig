@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.1.2"
+    version: "1.1.3"
 claude:
   allowed-tools:
     - Read
@@ -127,6 +127,21 @@ independent — serialise them.
   asks. The diff is the summary.
 - Comments only where the *why* is non-obvious. Do not narrate *what*
   the code does — the code already does that.
+
+## Finding class taxonomy
+
+When re-spawned as the DEV target of a `tech`-class iteration of the
+retroactive review loop (per
+[`specs/0005-retroactive-routing-engine.md`](../../../specs/0005-retroactive-routing-engine.md)
+R4 and [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md)
+→ *Routing matrix*), the brief carries reviewer findings each
+tagged with a `class:` field. The skill SHALL act on findings whose
+`class:` is `tech` and SHALL surface a violation back to the
+orchestrator if any incoming finding it is asked to address omits
+the tag — a missing tag is a reviewer protocol error, not a hint to
+guess at the loop target. Findings tagged `arch` or `spec` are
+out-of-scope for this skill and indicate misrouting; flag and
+return.
 
 ## Friction reporting
 

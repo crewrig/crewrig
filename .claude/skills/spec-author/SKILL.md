@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
+    version: "1.0.1"
 ---
 
 
@@ -209,6 +209,26 @@ iteration.
 In **AUTO** mode the same discipline applies with no user round-trip:
 unresolved items land under the prefix `[AUTO-PARKED]` and the user
 audits after the fact via the spec PR.
+
+## Finding class taxonomy
+
+This skill participates in the retroactive review loop on both ends
+(per [`specs/0005-retroactive-routing-engine.md`](../../../specs/0005-retroactive-routing-engine.md)
+R2, R6 and [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md)
+→ *Routing matrix*):
+
+- **As reviewer.** When the skill reviews a spec-PR (originating or
+  delta), every finding it emits SHALL carry exactly one `class:`
+  field whose value is `tech`, `arch`, or `spec`. Untagged findings
+  are malformed and trigger a retag round-trip that does NOT
+  increment the iteration counter.
+- **As re-spawn target.** When invoked on a `class: spec` REVIEW
+  finding (activation trigger 3 above), the skill operates in
+  **delta-spec mode only** — the original spec on `main` is
+  immutable per ADR-0010 and spec 0003. The `superseded` transition
+  is a new-ticket path outside the loop. The skill SHALL surface a
+  violation if the incoming routing request omits the `class:` tag
+  or asks for a non-delta re-author of an existing spec.
 
 ## Harness friction tagging
 

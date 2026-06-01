@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 
@@ -144,6 +144,21 @@ returns exit 0 (clean) or exit 1 (findings).
 All five scripts use `command -v <tool>` before invoking optional
 tools and print a one-line note when degrading, so a missing tool
 never aborts the review.
+
+## Finding class taxonomy
+
+Every finding emitted by this skill — blocking and non-blocking
+alike — SHALL carry exactly one `class:` field whose value is
+`tech`, `arch`, or `spec` (per
+[`specs/0005-retroactive-routing-engine.md`](../../../specs/0005-retroactive-routing-engine.md)
+R2). The tag drives the retroactive routing engine's loop target
+(see [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md));
+findings without it are malformed and trigger a retag round-trip
+that does NOT count against the max-iteration guardrail. Tag every
+finding individually — a single section header above multiple
+findings is not sufficient. Non-blocking findings still need the
+tag: in autonomous modes (MINIMAL / AUTO) the engine routes them
+through the matrix as if blocking.
 
 ## Grounding discipline
 

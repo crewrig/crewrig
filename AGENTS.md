@@ -499,6 +499,8 @@ user.
 | 4 | `pr-logbook` | Draft PR title, body, and logbook entry |
 | 5 | `pr-reviewer` | Independent cold review of the diff; verifies CI checks pass before posting verdict |
 
+**REVIEW is a looping stage**, not terminal — the orchestrator follows the routing engine documented in [`docs/retroactive-loop.md`](docs/retroactive-loop.md) until the termination criterion is met.
+
 **Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
 draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
 orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
@@ -523,6 +525,8 @@ Lighter pipeline — no code, no tests.
 | 2 | `pr-logbook` | Draft PR title, body, and logbook entry |
 | 3 | `pr-reviewer` | Independent cold review of the diff; verifies CI checks pass before posting verdict |
 
+**REVIEW is a looping stage**, not terminal — the orchestrator follows the routing engine documented in [`docs/retroactive-loop.md`](docs/retroactive-loop.md) until the termination criterion is met.
+
 **Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
 draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
 orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
@@ -546,6 +550,8 @@ to lock in reproduction.
 | 2 | `developer` | Implement the fix until the regression test passes |
 | 3 | `pr-logbook` | Draft PR title, body, and logbook entry |
 | 4 | `pr-reviewer` | Independent cold review of the diff; verifies CI checks pass before posting verdict |
+
+**REVIEW is a looping stage**, not terminal — the orchestrator follows the routing engine documented in [`docs/retroactive-loop.md`](docs/retroactive-loop.md) until the termination criterion is met.
 
 **Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
 draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
@@ -734,6 +740,19 @@ comment break the retroactive review loop's audit trail and are
 prohibited.
 
 ## Retroactive review loop
+
+This section operationalises the REVIEW stage of the lifecycle (per
+ADR-0010 → *Stage definitions → REVIEW*) and the routing contract
+mandated by [`specs/0005-retroactive-routing-engine.md`](specs/0005-retroactive-routing-engine.md).
+The engine is **doc-only**: the orchestrator (the `team-lead` role)
+follows the procedure documented in
+[`docs/retroactive-loop.md`](docs/retroactive-loop.md), which is the
+reference home for the routing precedence, the iteration mechanics,
+the termination check, the max-iteration guardrail, and the
+mode-conditional handling of non-blocking findings. The iteration
+counter SHALL be persisted as a GitHub label `iter:N` on the PR whose
+content the iteration is reshaping (implementation-PR for `tech` /
+`arch`; the active delta spec-PR for `spec`).
 
 Every REVIEW finding SHALL be tagged with exactly one class. Class
 drives the loop target.

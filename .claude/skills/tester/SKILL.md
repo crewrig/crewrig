@@ -14,7 +14,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
+    version: "1.2.1"
 ---
 
 
@@ -143,6 +143,21 @@ to be re-attempted.
 - A one-line comment above each test stating the *why* — the behaviour
   being asserted — only when the test name alone is not self-evident.
 - Test data inline when small; in fixtures when reused or large.
+
+## Finding class taxonomy
+
+When re-spawned as part of a `tech`-class iteration of the
+retroactive review loop (per
+[`specs/0005-retroactive-routing-engine.md`](../../../specs/0005-retroactive-routing-engine.md)
+R4 and [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md)
+→ *Routing matrix*), the skill consumes reviewer findings each
+tagged with a `class:` field. The skill SHALL act on findings whose
+`class:` is `tech` and that touch the test surface, and SHALL
+surface a violation back to the orchestrator if any incoming
+finding it is asked to address omits the tag — a missing tag is a
+reviewer protocol error. Findings tagged `arch` or `spec` are
+out-of-scope for this skill and indicate misrouting; flag and
+return.
 
 ## Friction reporting
 
