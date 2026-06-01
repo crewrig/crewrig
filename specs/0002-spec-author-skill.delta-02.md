@@ -19,6 +19,14 @@ prompt-quality defect, not a structural one — the skill already
 selects the right number of questions per mode; it merely fails to
 frame them. This delta closes the framing gap.
 
+The friction's `suggestion:` field cited four preface anchors —
+*EPIC*, *ticket*, *interview-pass position*, and *decisions already
+taken*. R15 collapses the first two into a single *originating ticket
+identifier* anchor because the concept *EPIC* is not first-class in
+`AGENTS.md`: the repository's lifecycle (per ADR-0010) tracks logbook
+issues, not multi-ticket epics. Re-introducing EPIC as a mandatory
+anchor would import a concept the framework does not otherwise carry.
+
 ## ADDED
 
 1. **New requirement (R15) — contextualizing prose around interactive
@@ -61,8 +69,9 @@ frame them. This delta closes the framing gap.
 
 1. **`specs/0002-spec-author-skill.md` → `## Scenarios` (after the
    existing *"Delta mode on a `spec`-class REVIEW finding"* scenario).**
-   A new failure-path scenario SHALL be inserted, recording the
-   contract that the cold spec-reviewer enforces on prose discipline:
+   Three new failure-path scenarios SHALL be inserted, one per R15
+   sub-rule, recording the contracts the cold spec-reviewer enforces
+   on prose discipline:
 
    ```text
    **Scenario:** Reviewer rejects an interview question batch with no
@@ -73,6 +82,37 @@ frame them. This delta closes the framing gap.
    When  the batch is emitted without a prose preface recalling the
          ticket, the lifecycle stage, the interview-pass position, and
          the decisions already taken
+   Then  the cold spec-reviewer SHALL reject the resulting spec PR
+   and   the finding SHALL carry `class: tech` per the retroactive
+         routing matrix
+   ```
+
+   ```text
+   **Scenario:** Reviewer rejects an interview question batch with
+   unexplained non-standard acronyms
+
+   Given the skill is running in `INTERMEDIATE` mode and is about to
+         emit a question batch containing a non-standard
+         software-engineering acronym at its first use within the
+         batch (for example `OQ`, `R1`, `NNNN`)
+   When  the batch is emitted without spelling out the acronym at
+         that first use, either in the question prose, in the option
+         labels, or in the option `description` fields
+   Then  the cold spec-reviewer SHALL reject the resulting spec PR
+   and   the finding SHALL carry `class: tech` per the retroactive
+         routing matrix
+   ```
+
+   ```text
+   **Scenario:** Reviewer rejects an interview question batch whose
+   option descriptions require prior-turn context to be understood
+
+   Given the skill is running in `INTERMEDIATE` mode and is about to
+         emit a question batch whose options each have a `description`
+         field
+   When  any option's `description` field references a decision,
+         identifier, or concept introduced in an earlier conversation
+         turn without restating it inline
    Then  the cold spec-reviewer SHALL reject the resulting spec PR
    and   the finding SHALL carry `class: tech` per the retroactive
          routing matrix
