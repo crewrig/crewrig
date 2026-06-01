@@ -261,6 +261,7 @@ tasks:
 
   skill:check:
     desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
+    silent: true
     preconditions:
       - sh: command -v yq >/dev/null 2>&1
         msg: "yq is required. Install with: brew install yq"
@@ -273,9 +274,17 @@ tasks:
           exit 2
         fi
 
+        # fail <message> [remediation-hint]
+        # The remediation hint is optional and context-specific. Callers
+        # whose failure is best resolved by rebuilding pass the build-script
+        # hint explicitly; failures unrelated to the build pipeline (e.g.
+        # malformed Gemini provenance comment) pass their own pointer or
+        # omit it entirely.
         fail() {
           echo "FAIL: $1" >&2
-          echo "Remediation: rebuild with \`bash scripts/build-components.sh\`." >&2
+          if [ -n "${2:-}" ]; then
+            echo "Remediation: $2" >&2
+          fi
           exit 1
         }
 
@@ -285,15 +294,15 @@ tasks:
           local val
           val="$(yq eval --front-matter=extract "$path" "$file" 2>/dev/null || true)"
           if [ -z "$val" ] || [ "$val" = "null" ]; then
-            fail "$file — missing or empty YAML field $label"
+            fail "$file — missing or empty YAML field $label" "rebuild with \`bash scripts/build-components.sh\`."
           fi
         }
 
         check_skill_mirror() {
           local file="$1"
-          [ -s "$file" ] || fail "$file — missing or empty"
+          [ -s "$file" ] || fail "$file — missing or empty" "rebuild with \`bash scripts/build-components.sh\`."
           yq eval --front-matter=extract '.' "$file" >/dev/null 2>&1 \
-            || fail "$file — YAML frontmatter does not parse"
+            || fail "$file — YAML frontmatter does not parse" "rebuild with \`bash scripts/build-components.sh\`."
           check_yaml_field "$file" '.name' 'name'
           check_yaml_field "$file" '.metadata.provenance.version' 'metadata.provenance.version'
         }
@@ -319,23 +328,23 @@ tasks:
           for path in "$CLAUDE_AGENT" "$GEMINI_AGENT" "$COPILOT_AGENT"; do
             [ -e "$path" ] || missing="$missing $path"
           done
-          fail "agent mirrors are asymmetric — present on $present/3 paths; missing:$missing"
+          fail "agent mirrors are asymmetric — present on $present/3 paths; missing:$missing" "rebuild with \`bash scripts/build-components.sh\`."
         fi
 
         if [ "$present" -eq 3 ]; then
           # Claude + Copilot — YAML-internal provenance
           for file in "$CLAUDE_AGENT" "$COPILOT_AGENT"; do
-            [ -s "$file" ] || fail "$file — missing or empty"
+            [ -s "$file" ] || fail "$file — missing or empty" "rebuild with \`bash scripts/build-components.sh\`."
             yq eval --front-matter=extract '.' "$file" >/dev/null 2>&1 \
-              || fail "$file — YAML frontmatter does not parse"
+              || fail "$file — YAML frontmatter does not parse" "rebuild with \`bash scripts/build-components.sh\`."
             check_yaml_field "$file" '.name' 'name'
             check_yaml_field "$file" '.metadata.provenance.version' 'metadata.provenance.version'
           done
 
           # Gemini — YAML name + HTML-comment provenance line after frontmatter
-          [ -s "$GEMINI_AGENT" ] || fail "$GEMINI_AGENT — missing or empty"
+          [ -s "$GEMINI_AGENT" ] || fail "$GEMINI_AGENT — missing or empty" "rebuild with \`bash scripts/build-components.sh\`."
           yq eval --front-matter=extract '.' "$GEMINI_AGENT" >/dev/null 2>&1 \
-            || fail "$GEMINI_AGENT — YAML frontmatter does not parse"
+            || fail "$GEMINI_AGENT — YAML frontmatter does not parse" "rebuild with \`bash scripts/build-components.sh\`."
           check_yaml_field "$GEMINI_AGENT" '.name' 'name'
           # The provenance line must appear immediately after the closing `---` of the frontmatter.
           # yq's --front-matter=extract strips frontmatter; awk to find the first non-frontmatter line.
@@ -349,7 +358,7 @@ tasks:
             seen_open == 1 && in_fm == 0 && NF > 0 { print; exit }
           ' "$GEMINI_AGENT")"
           echo "$first_body_line" | grep -qE '^<!-- crewrig-provenance: version="[^"]+"' \
-            || fail "$GEMINI_AGENT — missing HTML-comment provenance line (\`<!-- crewrig-provenance: version=\"…\" … -->\`) immediately after YAML frontmatter; see scripts/build-components.sh"
+            || fail "$GEMINI_AGENT — missing HTML-comment provenance line (\`<!-- crewrig-provenance: version=\"…\" … -->\`) immediately after YAML frontmatter" "rebuild with \`bash scripts/build-components.sh\`."
         fi
 
         echo "${NAME}: OK across .claude/, .gemini/, .github/"
