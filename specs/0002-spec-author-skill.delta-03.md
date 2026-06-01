@@ -89,13 +89,55 @@ documentation changes).
    ground against — that would be ceremony with no signal.
 
 6. **Trigger detection heuristic.** The skill SHALL classify the
-   spec as in-scope for R16 when any drafted requirement contains
-   the phrase *"every"* (or *"each"*) followed by a noun naming a
-   built artefact class (e.g. *"every built SKILL.md frontmatter"*,
-   *"each generated bundle"*), OR when any drafted requirement
-   asserts a property at the file level (an `exit zero`-style or
-   field-presence-style claim). When neither pattern is present,
-   the spec is out of scope.
+   spec as in-scope for R16 when ANY of the following conditions
+   holds for any drafted requirement:
+
+   a. **Quantifier pattern.** The requirement contains *"every"*
+      or *"each"* followed by a noun naming a built artefact class
+      (e.g. *"every built SKILL.md frontmatter"*, *"each generated
+      bundle"*).
+   b. **File-level assertion.** The requirement asserts a property
+      at the file level (an `exit zero`-style claim, a
+      field-presence claim, a layout claim, or a content-shape
+      claim).
+   c. **Validation-verb on existing class.** The requirement uses
+      a validation, rejection, refusal, or enforcement verb
+      (*refuse*, *reject*, *validate*, *require*, *mandate*,
+      *disallow*, *enforce*, *forbid*) acting on a property of an
+      artefact class that the codebase already produces.
+   d. **Semantic catch-all.** The drafted requirement describes
+      the shape, structure, or content of a class of artefacts
+      that the codebase already produces, regardless of the
+      surface wording.
+
+   When none of the four conditions holds, the spec is out of
+   scope for R16. The skill SHALL prefer false positives (over-
+   classifying as in-scope) over false negatives (missing a
+   verification spec): grounding ceremony in an out-of-scope case
+   is informational at worst, while grounding skipped in an
+   in-scope case re-introduces the friction R16 exists to close.
+
+7. **New field on existing artefact class.** When the spec mandates
+   a field, attribute, or property that no instance of the
+   artefact class currently exhibits on `main` (a *"new field on
+   existing class"* case — exactly the PR-189 scenario that
+   originated this delta), the grounding step SHALL still execute
+   against at least one real instance. The inspection's purpose
+   in this case is NOT to confirm field presence (the field is by
+   definition absent) but to confirm that:
+
+   a. The artefact class genuinely exists in the codebase under
+      the path the spec assumes (no typo, no stale path).
+   b. The existing instances have a coherent shape into which the
+      new field can be added without breaking the structure.
+
+   The skill SHALL emit a `[GROUNDING:]` bullet under
+   `## Open questions` stating explicitly that the new field is
+   absent from every existing instance and naming who is
+   responsible for the back-fill — the same implementation PR, a
+   migration PR scoped in `## Out of scope`, or a separate
+   follow-up ticket. This forces the back-fill-scope decision
+   into the spec PR rather than deferring it to DEV time.
 
 ## MODIFIED
 
