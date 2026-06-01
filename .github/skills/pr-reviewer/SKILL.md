@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.1"
+    version: "1.1.2"
 ---
 
 
@@ -154,6 +154,17 @@ finding individually — a single section header above multiple
 findings is not sufficient. Non-blocking findings still need the
 tag: in autonomous modes (MINIMAL / AUTO) the engine routes them
 through the matrix as if blocking.
+
+## Spec-review obligation — tier challenge
+
+When acting as a spec-reviewer (cold-spawned to review a spec-PR), the
+role MUST challenge a complexity tier that appears under-stated
+relative to the spec's declared blast radius. Emit a `class: spec`
+finding citing `AGENTS.md → Team sizing by complexity`. Under-statement
+is detected when the spec's `## Requirements` or `## Out of scope`
+enumerate a surface broader than the declared tier admits (per the
+tier table). Over-statement is a non-blocking observation, not a
+blocking finding.
 
 ## Grounding discipline
 
