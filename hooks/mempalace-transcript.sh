@@ -28,6 +28,20 @@ fi
 # --- Dependencies ---
 command -v jq >/dev/null 2>&1 || { echo "mempalace-transcript: jq required" >&2; exit 0; }
 
+# Detect a portable `timeout` binary. GNU coreutils ships `timeout(1)` on
+# Linux out of the box; macOS does not. Homebrew's `coreutils` package
+# provides `gtimeout`. Fall back to no timeout protection when neither is
+# present — the issue-94 Stop-hook-loop risk returns, but rc=127 on every
+# event (issue #210) is a worse failure mode than the rare hung-Python case.
+if command -v timeout >/dev/null 2>&1; then
+  _HOOK_TIMEOUT="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+  _HOOK_TIMEOUT="gtimeout"
+else
+  _HOOK_TIMEOUT=""
+  echo "mempalace-transcript: neither 'timeout' nor 'gtimeout' on PATH; persistence runs without timeout protection (install coreutils to restore it, e.g. 'brew install coreutils' on macOS)" >&2
+fi
+
 MEMPALACE_PYTHON="${MEMPALACE_PYTHON:-python3}"
 
 # --- Read input ---
@@ -121,10 +135,12 @@ if [ -n "$CONTENT" ]; then
 
   # Capture Python stderr to a dedicated file so import/runtime errors are
   # visible instead of being swallowed into $STATUS (issue #93). The
-  # `timeout 5` wrapper kills a hung Python after 5 seconds so a MemPalace
-  # lock cannot stall the calling CLI (issues #90, #94). `set +e`/`set -e`
-  # brackets the call so a non-zero Python exit does not abort the hook —
-  # STATUS_RC carries the actual outcome.
+  # `$_HOOK_TIMEOUT 5` wrapper (resolved at script init to `timeout` or
+  # `gtimeout` per portability detection — issue #210) kills a hung Python
+  # after 5 seconds so a MemPalace lock cannot stall the calling CLI
+  # (issues #90, #94). `set +e`/`set -e` brackets the call so a non-zero
+  # Python exit does not abort the hook — STATUS_RC carries the actual
+  # outcome.
   _HOOK_ERR="${TMPDIR:-/tmp}/mempalace-hook-$$.err"
   trap 'rm -f "$_HOOK_ERR"' EXIT
 
@@ -135,7 +151,7 @@ if [ -n "$CONTENT" ]; then
     TRANSCRIPT_CONTENT="$TRANSCRIPT_CONTENT" \
     TRANSCRIPT_ROOM="$TRANSCRIPT_ROOM" \
     TRANSCRIPT_AGENT="$TRANSCRIPT_AGENT" \
-    timeout 5 "$MEMPALACE_PYTHON" - 2>"$_HOOK_ERR" <<'PYEOF'
+    ${_HOOK_TIMEOUT:+$_HOOK_TIMEOUT 5} "$MEMPALACE_PYTHON" - 2>"$_HOOK_ERR" <<'PYEOF'
 import os, sys
 try:
     from mempalace.mcp_server import tool_add_drawer
