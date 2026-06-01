@@ -259,6 +259,101 @@ tasks:
     desc: "Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)"
     cmd: bash {{.REPO_DIR}}/scripts/check-skill-versions.sh
 
+  skill:check:
+    desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
+    preconditions:
+      - sh: command -v yq >/dev/null 2>&1
+        msg: "yq is required. Install with: brew install yq"
+    cmds:
+      - |
+        set -euo pipefail
+        NAME='{{.NAME}}'
+        if [ -z "$NAME" ]; then
+          echo "ERROR: NAME is required. Usage: task skill:check NAME=<skill-name>" >&2
+          exit 2
+        fi
+
+        fail() {
+          echo "FAIL: $1" >&2
+          echo "Remediation: rebuild with \`bash scripts/build-components.sh\`." >&2
+          exit 1
+        }
+
+        check_yaml_field() {
+          # $1: file, $2: yq path, $3: human-readable label
+          local file="$1" path="$2" label="$3"
+          local val
+          val="$(yq eval --front-matter=extract "$path" "$file" 2>/dev/null || true)"
+          if [ -z "$val" ] || [ "$val" = "null" ]; then
+            fail "$file — missing or empty YAML field $label"
+          fi
+        }
+
+        check_skill_mirror() {
+          local file="$1"
+          [ -s "$file" ] || fail "$file — missing or empty"
+          yq eval --front-matter=extract '.' "$file" >/dev/null 2>&1 \
+            || fail "$file — YAML frontmatter does not parse"
+          check_yaml_field "$file" '.name' 'name'
+          check_yaml_field "$file" '.metadata.provenance.version' 'metadata.provenance.version'
+        }
+
+        # --- Skill mirrors (mandatory across all three CLIs) ---
+        for path in ".claude/skills/${NAME}/SKILL.md" \
+                    ".gemini/skills/${NAME}/SKILL.md" \
+                    ".github/skills/${NAME}/SKILL.md"; do
+          check_skill_mirror "$path"
+        done
+
+        # --- Agent mirrors (optional, but must be symmetric when present) ---
+        CLAUDE_AGENT=".claude/agents/${NAME}/AGENT.md"
+        GEMINI_AGENT=".gemini/agents/${NAME}.md"
+        COPILOT_AGENT=".github/agents/${NAME}.md"
+        present=0
+        for path in "$CLAUDE_AGENT" "$GEMINI_AGENT" "$COPILOT_AGENT"; do
+          [ -e "$path" ] && present=$((present + 1))
+        done
+
+        if [ "$present" -ne 0 ] && [ "$present" -ne 3 ]; then
+          missing=""
+          for path in "$CLAUDE_AGENT" "$GEMINI_AGENT" "$COPILOT_AGENT"; do
+            [ -e "$path" ] || missing="$missing $path"
+          done
+          fail "agent mirrors are asymmetric — present on $present/3 paths; missing:$missing"
+        fi
+
+        if [ "$present" -eq 3 ]; then
+          # Claude + Copilot — YAML-internal provenance
+          for file in "$CLAUDE_AGENT" "$COPILOT_AGENT"; do
+            [ -s "$file" ] || fail "$file — missing or empty"
+            yq eval --front-matter=extract '.' "$file" >/dev/null 2>&1 \
+              || fail "$file — YAML frontmatter does not parse"
+            check_yaml_field "$file" '.name' 'name'
+            check_yaml_field "$file" '.metadata.provenance.version' 'metadata.provenance.version'
+          done
+
+          # Gemini — YAML name + HTML-comment provenance line after frontmatter
+          [ -s "$GEMINI_AGENT" ] || fail "$GEMINI_AGENT — missing or empty"
+          yq eval --front-matter=extract '.' "$GEMINI_AGENT" >/dev/null 2>&1 \
+            || fail "$GEMINI_AGENT — YAML frontmatter does not parse"
+          check_yaml_field "$GEMINI_AGENT" '.name' 'name'
+          # The provenance line must appear immediately after the closing `---` of the frontmatter.
+          # yq's --front-matter=extract strips frontmatter; awk to find the first non-frontmatter line.
+          first_body_line="$(awk '
+            BEGIN { in_fm = 0; seen_open = 0 }
+            /^---[[:space:]]*$/ {
+              if (seen_open == 0) { seen_open = 1; in_fm = 1; next }
+              if (in_fm == 1)     { in_fm = 0; next }
+            }
+            in_fm == 1 { next }
+            seen_open == 1 && in_fm == 0 && NF > 0 { print; exit }
+          ' "$GEMINI_AGENT")"
+          echo "$first_body_line" | grep -qE '^<!-- crewrig-provenance: version="[^"]+"' \
+            || fail "$GEMINI_AGENT — missing HTML-comment provenance line (\`<!-- crewrig-provenance: version=\"…\" … -->\`) immediately after YAML frontmatter; see scripts/build-components.sh"
+        fi
+
+        echo "${NAME}: OK across .claude/, .gemini/, .github/"
+
   # --- e2e Docker images (issue #76) ---
 
   e2e:build:
