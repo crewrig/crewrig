@@ -61,9 +61,20 @@ and  every mandatory frontmatter field and body section is present.
 Given an approved spec `specs/0042-build-dryrun.md` exists on `main`
 When  the REVIEW loop surfaces a `spec`-class finding
 Then  the author creates `specs/0042-build-dryrun.delta-01.md`
-and   the delta file contains the `### ADDED`, `### MODIFIED`, and
-      `### REMOVED` sub-sections
+and   the delta file contains the `## ADDED`, `## MODIFIED`, and
+      `## REMOVED` sections at H2 level
 and   the original spec on `main` is left untouched.
+
+**Scenario:** Reviewer rejects a delta-spec that violates MD001
+
+Given a delta-spec PR is opened with `### ADDED`, `### MODIFIED`,
+      `### REMOVED` sub-sections placed directly under the file's
+      `# <title>` H1 heading
+When  `markdownlint` runs on the file with the project's default
+      configuration
+Then  the linter rejects the file with MD001 (heading-increment)
+and   the reviewer asks the author to promote the three headings
+      to H2 per `docs/spec-format.md` → *Delta-spec body sections*.
 
 **Scenario:** Reviewer rejects a spec with implicit scope
 

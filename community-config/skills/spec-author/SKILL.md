@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.0.1"
+    version: "1.0.2"
 claude:
   allowed-tools:
     - Read
@@ -50,7 +50,7 @@ escalate user gating.
    delta-spec (`/specs/<NNNN>-<slug>.delta-<NN>.md`) per `docs/spec-format.md`
    → *Delta-spec convention*. The skill detects delta mode by the presence
    of a parent spec for the ticket and switches its output template to the
-   three delta sections (`### ADDED` / `### MODIFIED` / `### REMOVED`).
+   three delta sections (`## ADDED` / `## MODIFIED` / `## REMOVED`).
 
 ## Inputs
 
@@ -187,8 +187,8 @@ When the skill is invoked on a ticket that already has a parent spec
 `/specs/<NNNN>-<slug>.delta-<NN>.md` where `<NN>` is the next free
 two-digit delta number for the parent. The body replaces the five
 mandatory sections with the three delta sections defined in
-`docs/spec-format.md` → *Delta-spec convention* (`### ADDED`,
-`### MODIFIED`, `### REMOVED`), all three present even when empty.
+`docs/spec-format.md` → *Delta-spec convention* (`## ADDED`,
+`## MODIFIED`, `## REMOVED`), all three present even when empty.
 
 ### Self-validation (best-effort)
 

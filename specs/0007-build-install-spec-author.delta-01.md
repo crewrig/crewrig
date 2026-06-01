@@ -10,13 +10,11 @@ version: 1.0.1
 
 # Delta 01 — align R2/R3 with built-artefact reality
 
-## Body
-
-### ADDED
+## ADDED
 
 (none — this delta is corrective, not additive.)
 
-### MODIFIED
+## MODIFIED
 
 **R2** — the path enumeration for matching agent files SHALL be
 corrected to reflect the actual mirror layouts produced by
@@ -73,12 +71,12 @@ agent, any CLI); requiring it caused the verification to fail against
 every existing built file. The original R3 wording was aspirational,
 not descriptive.
 
-### REMOVED
+## REMOVED
 
 (none — the dropped `type` field is recorded under MODIFIED above
 because R3 as a whole is restated, not deleted.)
 
-### Notes
+## Notes
 
 This delta is purely corrective: the original spec 0007 was written
 without inspecting the actual mirror artefacts produced by

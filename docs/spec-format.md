@@ -140,19 +140,23 @@ two additional constraints:
 ### Delta-spec body sections
 
 ```markdown
-### ADDED
+## ADDED
 
 <requirements, scenarios, or out-of-scope items that the delta introduces>
 
-### MODIFIED
+## MODIFIED
 
 <requirements, scenarios, or out-of-scope items the delta changes; quote the
 original line, then show the replacement>
 
-### REMOVED
+## REMOVED
 
 <items the delta deletes; quote the original line>
 ```
+
+The three delta sections SHALL be authored at H2 level. The H1 of a
+delta-spec file remains the spec's title; no intermediate H2 wrapper
+(`## Body`, `## Delta sections`, or any other) SHALL be introduced.
 
 All three sections MUST be present (empty is allowed); the linter will
 check for presence, not content. This mirrors the OpenSpec delta
@@ -229,8 +233,10 @@ authors and reviewers SHOULD anticipate them.
   verbatim (case-sensitive, no trailing punctuation).
 - The frontmatter SHALL parse as YAML and SHALL contain every required
   field listed in the schema table.
-- For a delta-spec, the three delta section headings (`### ADDED`,
-  `### MODIFIED`, `### REMOVED`) SHALL be present in that order.
+- For a delta-spec, the three delta section headings (`## ADDED`,
+  `## MODIFIED`, `## REMOVED`) SHALL be present in that order, at H2
+  level. The H1 of a delta-spec file is the spec title; no
+  intermediate H2 wrapper is allowed.
 - Enum-valued fields SHALL contain a value from the listed set; any
   other value is a lint error.
 
