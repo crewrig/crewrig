@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.2.0"
+    version: "1.3.0"
 claude:
   allowed-tools:
     - Read
@@ -117,15 +117,19 @@ the same Open-questions discipline as INTERMEDIATE.
 
 ### Prose discipline for interactive batches
 
-The three sub-rules below apply uniformly to MINIMAL, INTERMEDIATE, and
-FULL — wherever the skill emits an `AskUserQuestion` (or the host CLI's
-equivalent interactive prompt). AUTO is out of scope: it asks no
-questions. The rules realise R15 of
-[`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md)
-and exist because the framework's interview text frequently renders
-through a side panel that strips prior chat context — the user sees the
-question and option descriptions in isolation. Treat each batch as if
-it were the first thing the user reads in this session.
+The four sub-rules below realise R15 and R17 of
+[`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md).
+The first three (preface anchors, acronym discipline, description
+self-sufficiency) apply uniformly to MINIMAL, INTERMEDIATE, and FULL —
+wherever the skill emits an `AskUserQuestion` (or the host CLI's
+equivalent interactive prompt) — and exist because the framework's
+interview text frequently renders through a side panel that strips
+prior chat context; the user sees the question and option descriptions
+in isolation. Treat each batch as if it were the first thing the user
+reads in this session. The fourth sub-rule (idiomatic language quality)
+extends to AUTO whenever AUTO emits any user-visible artefact in a
+language other than English — AUTO is not exempt simply because no
+interactive question batch is emitted.
 
 - **Preface anchors.** Before every interactive batch, emit a short
   one-paragraph preface that names, in this order: (1) the originating
@@ -157,15 +161,36 @@ it were the first thing the user reads in this session.
   (six questions, user-gated) — same gating model already chosen for
   spec 0002's parent ticket; lets the user audit each draft section
   before commit."*
+- **Idiomatic language quality.** When the user's preferred language
+  is not English (declared explicitly via a memory record or a direct
+  *"écris-moi en français"*-style instruction, inferred from the
+  last three messages, or inherited from prior session prose without
+  correction), produce the preface, the question text, the option
+  `label` fields, the option `description` fields, inline progress
+  messages, and any AUTO-mode user-visible artefact in **idiomatic**
+  prose in that language. Direct calques of English software-
+  engineering jargon — verb forms in `-er` derived from English
+  verbs (`spawner`, `shipper`, `merger` as a verb, `amender` in the
+  English sense), unprefixed `cold reviewer` instead of *"contrôle
+  indépendant"*, `verdicter` instead of *"rendre un verdict"* or
+  *"trancher"*, `en-branche` instead of *"directement sur la
+  branche"*, bare `PR` without first-use expansion to
+  *"pull-request"* — SHALL be avoided. The reference catalogue is
+  in spec 0002 R17 (sub-clause 2). The catalogue is non-exhaustive;
+  extrapolate from the listed patterns. When in doubt, prefer the
+  longer idiomatic phrasing over the calque — verbosity in the
+  target language is a smaller cost than the cognitive friction of
+  parsing franglais.
 
 Reviewer enforcement: the three failure-path scenarios added by spec
 0002 delta-02 in
 [`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md)
-→ `## Scenarios` codify the contract. A spec-PR that ships an
-interview batch without a preface, or with an opaque option
-`description`, or with an undefined acronym, is a `class: tech`
-finding in the retroactive review loop (per the three failure-path
-scenarios codified in spec 0002 delta-02 R15).
+→ `## Scenarios` codify the R15 contract; the two scenarios added by
+delta-04 codify the R17 contract. A spec-PR that ships an interview
+batch without a preface, with an opaque option `description`, with
+an undefined acronym, or with a non-English-language calque from the
+R17 catalogue, is a `class: tech` finding in the retroactive review
+loop.
 
 ## Pre-write grounding
 
