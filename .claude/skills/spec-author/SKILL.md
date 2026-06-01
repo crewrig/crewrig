@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.2"
+    version: "1.1.0"
 ---
 
 
@@ -108,6 +108,57 @@ After drafting each of the five mandatory body sections, the skill SHALL
 present the drafted section verbatim and request explicit sign-off
 ("approve / revise / reject") before moving on. The user gates exit on
 the same Open-questions discipline as INTERMEDIATE.
+
+### Prose discipline for interactive batches
+
+The three sub-rules below apply uniformly to MINIMAL, INTERMEDIATE, and
+FULL — wherever the skill emits an `AskUserQuestion` (or the host CLI's
+equivalent interactive prompt). AUTO is out of scope: it asks no
+questions. The rules realise R15 of
+[`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md)
+and exist because the framework's interview text frequently renders
+through a side panel that strips prior chat context — the user sees the
+question and option descriptions in isolation. Treat each batch as if
+it were the first thing the user reads in this session.
+
+- **Preface anchors.** Before every interactive batch, emit a short
+  one-paragraph preface that names, in this order: (1) the originating
+  ticket identifier (issue number or spec id), (2) the current
+  lifecycle stage and the artefact being authored, (3) the
+  interview-pass position as "Question N of M — &lt;short label&gt;",
+  and (4) a one-or-two-clause recap of the decisions already taken in
+  this session. The preface compensates for the side-panel rendering;
+  it is not a re-introduction of the skill. Concrete example for a
+  MINIMAL pass at its third question: *"Issue #193 — SPECS stage,
+  authoring `specs/0002-…-delta-03.md`. Question 3 of 3 (acceptance
+  signal). So far: intent confirmed as the prose-discipline edit, and
+  the `harness-report` skill is out of scope."*
+- **Acronym discipline.** Non-standard software-engineering vocabulary
+  SHALL be spelled out at first use within the batch, including inside
+  every option `description`. Treat the following as **illustrative**,
+  not exhaustive. Spell out at first use: `OQ` (*Open Question*), `R1`
+  / `R2` / … (*Requirement N*), `NNNN` (the four-digit spec id),
+  `delta-NN` (the two-digit delta sequence number). Leave bare: `PR`,
+  `CI`, `URL`, `ADR`, `CLI`. When in doubt, spell out — the cost of
+  redundancy is negligible against the cost of an opaque question.
+- **Description self-sufficiency.** Each option's `description` field
+  renders in a side panel disconnected from the question text and from
+  prior chat history; the user must be able to decide from the
+  description alone. Every `description` SHALL carry enough rationale
+  to support the decision without re-reading earlier turns.
+  Non-self-sufficient (bad): *"Use the same approach as before."*
+  Self-sufficient (good): *"Reuse the `INTERMEDIATE` interview path
+  (six questions, user-gated) — same gating model already chosen for
+  spec 0002's parent ticket; lets the user audit each draft section
+  before commit."*
+
+Reviewer enforcement: the three failure-path scenarios added by spec
+0002 delta-02 in
+[`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md)
+→ `## Scenarios` codify the contract. A spec-PR that ships an
+interview batch without a preface, or with an opaque option
+`description`, or with an undefined acronym, is a `class: spec`
+finding in the retroactive review loop.
 
 ## Output contract
 
