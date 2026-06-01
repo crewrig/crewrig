@@ -5,7 +5,7 @@ status: draft
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 198
-version: 1.0.1
+version: 1.1.0
 ---
 
 # 0002 — spec-author-skill (delta-01)
