@@ -157,8 +157,9 @@ Reviewer enforcement: the three failure-path scenarios added by spec
 [`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md)
 → `## Scenarios` codify the contract. A spec-PR that ships an
 interview batch without a preface, or with an opaque option
-`description`, or with an undefined acronym, is a `class: spec`
-finding in the retroactive review loop.
+`description`, or with an undefined acronym, is a `class: tech`
+finding in the retroactive review loop (per the three failure-path
+scenarios codified in spec 0002 delta-02 R15).
 
 ## Output contract
 
