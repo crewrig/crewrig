@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.2"
+    version: "1.1.3"
 ---
 
 
@@ -184,6 +184,26 @@ Before posting, self-check: walk every numeric or factual claim and
 trace it to a path or command output. If you cannot trace, rewrite
 the claim as "see diff" or remove it. Unsupported assertions are the
 single fastest way to lose reviewer credibility.
+
+### Source-of-truth for cross-references
+
+When verifying cross-references, line numbers, or any claim about the
+surrounding context of a modified file, read that file at the PR's
+`headRef` via the GitHub API — **not** from the local working tree.
+The local checkout may be behind the PR base (e.g. an earlier PR
+landed on `main` but the local clone has not pulled), silently
+anchoring cross-reference checks on a stale file and producing
+confidently-wrong blocking findings.
+
+```bash
+gh api "repos/<owner>/<repo>/contents/<path>?ref=<headRef>" \
+  --header "Accept: application/vnd.github.raw"
+```
+
+The `gh pr diff` alone is insufficient for cross-reference validation:
+it shows only the added lines, not the surrounding rule numbering they
+point to. Always cross-check claims about surrounding context against
+the file at the PR's head ref.
 
 ## Friction reporting
 
