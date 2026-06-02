@@ -54,23 +54,24 @@ command -v jq >/dev/null 2>&1 || {
 }
 
 # --- Prerequisites: identity files ---
-# SOUL.md and PROFILE.md must be generated BEFORE running this setup.
+# SOUL.md and PROFILE.md must exist BEFORE running this setup.
+# Customization is optional: accepting all defaults in /init-soul and
+# /init-personal-profile is a valid outcome, so a presence check is the
+# contract — not a byte-diff against the template.
 MISSING_PREREQS=()
 
 check_finalized() {
-  local file="$1" template="$2" label="$3" skill="$4"
+  local file="$1" label="$2" skill="$3"
   if [ ! -f "$file" ]; then
     MISSING_PREREQS+=("$label is missing — run: gemini $skill")
-  elif [ -f "$template" ] && diff -q "$file" "$template" >/dev/null 2>&1; then
-    MISSING_PREREQS+=("$label is identical to its template — run: gemini $skill to customize it")
   fi
 }
 
-check_finalized "$REPO_DIR/config/SOUL.md"    "$REPO_DIR/config/SOUL.md.template"    "config/SOUL.md"    "/init-soul"
-check_finalized "$REPO_DIR/config/PROFILE.md" "$REPO_DIR/config/PROFILE.md.template" "config/PROFILE.md" "/init-personal-profile"
+check_finalized "$REPO_DIR/config/SOUL.md"    "config/SOUL.md"    "/init-soul"
+check_finalized "$REPO_DIR/config/PROFILE.md" "config/PROFILE.md" "/init-personal-profile"
 
 if [ ${#MISSING_PREREQS[@]} -gt 0 ]; then
-  echo "Cannot proceed — required identity files are missing or not customized:"
+  echo "Cannot proceed — required identity files are missing:"
   for item in "${MISSING_PREREQS[@]}"; do
     echo "  - $item"
   done
