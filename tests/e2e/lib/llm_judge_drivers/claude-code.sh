@@ -78,7 +78,9 @@ _llm_judge_driver_claude-code_preflight() {
       if [[ -z "$api_key" ]]; then
         return 2
       fi
+      { set +x; } 2>/dev/null
       printf 'AUTH_TOKEN=%s\n' "$api_key"
+      { set -x; } 2>/dev/null
       return 0
       ;;
     *)
