@@ -113,3 +113,11 @@ jobs:
         env:
           BASE_REF: origin/${{ github.event.pull_request.base.ref }}
         run: bash scripts/check-skill-versions.sh
+
+  check-agents-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check AGENTS.md file size
+        run: bash scripts/check-agents-size.sh
