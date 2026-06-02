@@ -38,5 +38,23 @@
     "room": "tool",
     "filed_at": "2026-05-07T10:00:00.000000",
     "content": "FRICTION: Already-correlated friction must be skipped by the curator\n\nwriter_agent: claude-code\nsubcategory: stale-resolved-fixture\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - community-config/skills/harness-curator/scripts/apply.py:99\nsuggestion: Skip on truthy opened_as.\nopened_as: https://github.com/crewrig/crewrig/issues/99"
+  },
+  {
+    "drawer_id": "drw-008",
+    "room": "prompt",
+    "filed_at": "2026-05-11T09:00:00.000000",
+    "content": "FRICTION: Whitespace-only suggestion must be rejected\n\nwriter_agent: claude-code\nsubcategory: empty-suggestion-test\ncanonical: https://github.com/crewrig/crewrig\nseverity: low\nevidence:\n  - test-file.md:1\nsuggestion:   "
+  },
+  {
+    "drawer_id": "drw-009",
+    "room": "tool",
+    "filed_at": "2026-05-12T10:30:00.000000",
+    "content": "FRICTION: No canonical target — cluster must route-fail visibly\n\nwriter_agent: claude-code\nsubcategory: no-canonical-test\nseverity: high\nevidence:\n  - test-file.md:3\nsuggestion: Supply --target-repo or add canonical: to the drawer."
+  },
+  {
+    "drawer_id": "drw-010",
+    "room": "prompt",
+    "filed_at": "2026-05-12T11:00:00.000000",
+    "content": "FRICTION: Empty block scalar suggestion must be rejected\n\nwriter_agent: claude-code\nsubcategory: empty-block-scalar\ncanonical: https://github.com/crewrig/crewrig\nseverity: med\nevidence:\n  - test-file.md:4\nsuggestion: |"
   }
 ]

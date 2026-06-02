@@ -20,6 +20,7 @@ Output JSON schema (stable, depended on by ``scripts/harness-curate.sh``):
         "clusters_formed": int,
         "clusters_above_threshold": int,
         "clusters_parked": int,
+        "clusters_truncated": int,
         "routing_failures": int
       },
       "clusters": [
@@ -29,8 +30,23 @@ Output JSON schema (stable, depended on by ``scripts/harness-curate.sh``):
           "target_repo": str,
           "title": str,
           "body": str,
-          "branch_name": str,
+          "labels": [...],
           "frictions": [...]
+        }
+      ],
+      "skipped": [
+        {
+          "drawer_id": str,
+          "room": str,
+          "reason": str,
+          "snippet": str
+        }
+      ],
+      "routing_failures": [
+        {
+          "cluster_key": str,
+          "frictions": [...],
+          "reason": str
         }
       ]
     }
@@ -108,6 +124,8 @@ def parse_friction(content: str) -> Tuple[Optional[Dict[str, Any]], str]:
         so the curator does not re-open issues for drawers that already
         have one (issue #69).
       * ``(None, "malformed")`` — missing required fields or no title.
+      * ``(None, "empty_suggestion")`` — ``suggestion`` is present but
+        contains only whitespace (spec 0010 R1).
 
     The schema co-evolves with ``config/TOOLS.md``: ``opened_as`` is the
     correlation field stamped on each drawer by ``apply.py`` after a
@@ -159,6 +177,17 @@ def parse_friction(content: str) -> Tuple[Optional[Dict[str, Any]], str]:
         return None, "malformed"
     if not out["evidence"]:
         return None, "malformed"
+    # Empty or whitespace-only suggestion is malformed per spec 0010 R1.
+    # YAML block scalar indicators (|, >, |-, >-, |+, >+) with no body
+    # text survive the KV parser as a lone indicator character; strip those
+    # before the emptiness check so that ``suggestion: |`` with no indented
+    # block content is treated as equivalently empty.
+    if "suggestion" in out:
+        suggestion_val = out["suggestion"].strip()
+        # Strip a leading YAML block scalar indicator if it's the only content.
+        suggestion_val = re.sub(r'^[|>][-+]?\s*$', '', suggestion_val).strip()
+        if not suggestion_val:
+            return None, "empty_suggestion"
     # Default severity if absent.
     out.setdefault("severity", "med")
     # Skip drawers already correlated with an open/closed issue: the
@@ -575,6 +604,7 @@ def main() -> int:
     }
 
     parsed: List[Tuple[Dict[str, Any], str, str, str]] = []
+    skipped: List[Dict[str, Any]] = []
     for drawer in drawers:
         content = drawer.get("content", "")
         room = drawer.get("room", "")
@@ -586,6 +616,15 @@ def main() -> int:
                 stats["skipped_resolved"] += 1
             else:
                 stats["skipped_malformed"] += 1
+                snippet = content[:200]
+                if len(content) > 200:
+                    snippet += "..."
+                skipped.append({
+                    "drawer_id": drawer_id,
+                    "room": room,
+                    "reason": reason,
+                    "snippet": snippet,
+                })
             continue
         parsed.append((friction, room, filed_at, drawer_id))
         stats["valid_frictions"] += 1
@@ -594,6 +633,7 @@ def main() -> int:
     stats["clusters_formed"] = len(clusters)
 
     output_clusters: List[Dict[str, Any]] = []
+    routing_failures: List[Dict[str, Any]] = []
     for cluster_key, items in clusters.items():
         if not cluster_qualifies(items, THRESHOLD):
             stats["clusters_parked"] += 1
@@ -601,6 +641,11 @@ def main() -> int:
         target = pick_target_repo(items)
         if target is None:
             stats["routing_failures"] += 1
+            routing_failures.append({
+                "cluster_key": cluster_key,
+                "frictions": items,
+                "reason": "missing_canonical",
+            })
             continue
         stats["clusters_above_threshold"] += 1
         title, body = compose_body(cluster_key, items, target)
@@ -642,7 +687,12 @@ def main() -> int:
         output_clusters = output_clusters[:MAX_ISSUES]
 
     json.dump(
-        {"stats": stats, "clusters": output_clusters},
+        {
+            "stats": stats,
+            "clusters": output_clusters,
+            "skipped": skipped,
+            "routing_failures": routing_failures,
+        },
         _REAL_STDOUT,
         indent=2,
         ensure_ascii=False,

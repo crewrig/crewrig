@@ -61,23 +61,27 @@ assert() {
   fi
 }
 
-# 7 input drawers (drw-007 added to exercise the opened_as dedup path)
-assert "stats.total_drawers"       "7" "$(echo "$OUT" | jq -r '.stats.total_drawers')"
+# 10 input drawers: drw-001 through drw-010 (drw-008 exercises whitespace-only
+# suggestion; drw-009 exercises routing_failures; drw-010 exercises empty block
+# scalar suggestion per spec 0010).
+assert "stats.total_drawers"       "10" "$(echo "$OUT" | jq -r '.stats.total_drawers')"
 
-# 4 valid; 2 malformed: drw-005 (no FRICTION: prefix) and drw-006 (empty
-# writer_agent). drw-007 is well-formed but already correlated → counted
-# in skipped_resolved, NOT in skipped_malformed or valid_frictions.
-assert "stats.valid_frictions"     "4" "$(echo "$OUT" | jq -r '.stats.valid_frictions')"
-assert "stats.skipped_malformed"   "2" "$(echo "$OUT" | jq -r '.stats.skipped_malformed')"
+# 5 valid (drw-001,002,003,004,009); 4 malformed: drw-005 (no FRICTION:
+# prefix), drw-006 (empty writer_agent), drw-008 (whitespace-only suggestion
+# per spec 0010 R1), drw-010 (empty block scalar suggestion per spec 0010 R1).
+# drw-007 is well-formed but already correlated → counted in skipped_resolved.
+assert "stats.valid_frictions"     "5" "$(echo "$OUT" | jq -r '.stats.valid_frictions')"
+assert "stats.skipped_malformed"   "4" "$(echo "$OUT" | jq -r '.stats.skipped_malformed')"
 
 # Regression for issue #69: drw-007 carries `opened_as: <url>` and must be
 # filtered before clustering so the curator does not re-open an issue.
 assert "stats.skipped_resolved"    "1" "$(echo "$OUT" | jq -r '.stats.skipped_resolved')"
 
-# 3 cluster keys: yq-merge, gh-body-truncation, parked-singleton.
-# drw-007 is filtered upstream of clustering, so its subcategory must not
-# appear as a cluster key — see the explicit assertion further down.
-assert "stats.clusters_formed"     "3" "$(echo "$OUT" | jq -r '.stats.clusters_formed')"
+# 4 cluster keys: yq-merge, gh-body-truncation, parked-singleton,
+# no-canonical-test. drw-007 is filtered upstream of clustering, so its
+# subcategory must not appear as a cluster key — see the explicit assertion
+# further down.
+assert "stats.clusters_formed"     "4" "$(echo "$OUT" | jq -r '.stats.clusters_formed')"
 
 # Above threshold:
 #  - yq-merge (size 2, ≥ threshold)
@@ -87,8 +91,9 @@ assert "stats.clusters_above_threshold" "2" \
   "$(echo "$OUT" | jq -r '.stats.clusters_above_threshold')"
 assert "stats.clusters_parked"     "1" "$(echo "$OUT" | jq -r '.stats.clusters_parked')"
 
-# No routing failures (every cluster has canonical: set in the fixture)
-assert "stats.routing_failures"    "0" "$(echo "$OUT" | jq -r '.stats.routing_failures')"
+# No routing failures from the fixture clusters that have canonical: set,
+# but drw-009 (no-canonical-test) has no canonical → 1 routing failure.
+assert "stats.routing_failures"    "1" "$(echo "$OUT" | jq -r '.stats.routing_failures')"
 
 # Schema stability: clusters_truncated is always present, 0 when --max-issues
 # is unset. Tests below exercise the >0 path.
@@ -96,6 +101,68 @@ assert "stats.clusters_truncated"  "0" "$(echo "$OUT" | jq -r '.stats.clusters_t
 
 # Exactly 2 clusters in output
 assert "len(.clusters)"            "2" "$(echo "$OUT" | jq -r '.clusters | length')"
+
+# --- Spec 0010: skipped[] and routing_failures[] arrays -------------------
+
+# skipped array: 4 malformed drawers (drw-005, drw-006, drw-008, drw-010).
+# drw-007 (resolved) must NOT appear in skipped.
+SKIPPED_COUNT=$(echo "$OUT" | jq -r '.skipped | length')
+assert "skipped[] length"          "4" "$SKIPPED_COUNT"
+
+# Each skipped entry has the required fields.
+SKIPPED_KEYS=$(echo "$OUT" | jq -c '.skipped[0] | keys | sort')
+assert "skipped[0] keys" '["drawer_id","reason","room","snippet"]' "$SKIPPED_KEYS"
+
+# drw-008 reason is "empty_suggestion" per spec 0010 R1 (whitespace-only).
+DRW8_REASON=$(echo "$OUT" | jq -r '.skipped[] | select(.drawer_id == "drw-008") | .reason')
+assert "skipped drw-008 reason"    "empty_suggestion" "$DRW8_REASON"
+
+# drw-010 reason is "empty_suggestion" per spec 0010 R1 (empty block scalar).
+DRW10_REASON=$(echo "$OUT" | jq -r '.skipped[] | select(.drawer_id == "drw-010") | .reason')
+assert "skipped drw-010 reason"    "empty_suggestion" "$DRW10_REASON"
+
+# Spec 0010 scenario 3: distinct reasons in skipped. malformed drawers carry
+# parse-failure-specific reasons, not a single catch-all.
+SKIPPED_REASONS=$(echo "$OUT" | jq -r '[.skipped[].reason] | unique | sort | join(",")')
+assert "skipped distinct reasons"  "empty_suggestion,malformed" "$SKIPPED_REASONS"
+
+# drw-005 snippet starts with the non-FRICTION content.
+DRW5_SNIPPET=$(echo "$OUT" | jq -r '.skipped[] | select(.drawer_id == "drw-005") | .snippet')
+echo "$DRW5_SNIPPET" | grep -q "Not a friction" || {
+  echo "FAIL: drw-005 snippet missing expected content" >&2
+  exit 1
+}
+echo "  PASS skipped drw-005 snippet contains content"
+
+# routing_failures: 1 entry (no-canonical-test cluster from drw-009 lacks canonical).
+RF_COUNT=$(echo "$OUT" | jq -r '.routing_failures | length')
+assert "routing_failures[] length" "1" "$RF_COUNT"
+
+# routing_failures entry carries the required fields per spec 0010 R3.
+RF0_KEYS=$(echo "$OUT" | jq -c '.routing_failures[0] | keys | sort')
+assert "routing_failures[0] keys" '["cluster_key","frictions","reason"]' "$RF0_KEYS"
+
+# routing_failures cluster_key and reason.
+RF0_KEY=$(echo "$OUT" | jq -r '.routing_failures[0].cluster_key')
+assert "routing_failures[0].cluster_key" "no-canonical-test" "$RF0_KEY"
+RF0_REASON=$(echo "$OUT" | jq -r '.routing_failures[0].reason')
+assert "routing_failures[0].reason" "missing_canonical" "$RF0_REASON"
+
+# routing_failures frictions carries the single drw-009 friction.
+RF0_FRICTION_COUNT=$(echo "$OUT" | jq -r '.routing_failures[0].frictions | length')
+assert "routing_failures[0].frictions length" "1" "$RF0_FRICTION_COUNT"
+RF0_FRICTION_TITLE=$(echo "$OUT" | jq -r '.routing_failures[0].frictions[0].title')
+assert "routing_failures[0].frictions[0].title" \
+  "No canonical target — cluster must route-fail visibly" "$RF0_FRICTION_TITLE"
+
+# no-canonical-test must NOT appear in clusters[] per spec 0010 scenario 2.
+NO_CANON_IN_CLUSTERS=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "no-canonical-test")')
+[ -z "$NO_CANON_IN_CLUSTERS" ] || {
+  echo "FAIL: no-canonical-test leaked into clusters despite routing failure" >&2
+  echo "$NO_CANON_IN_CLUSTERS" >&2
+  exit 1
+}
+echo "  PASS no-canonical-test absent from clusters (routing failure)"
 
 # yq-merge cluster — 2 frictions, target crewrig/crewrig
 YQ=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "yq-merge")')
@@ -250,7 +317,7 @@ assert "gh-body-truncation argv labels" '["harness-feedback","room:tool","severi
   "$(echo "$HIGH_ARGV" | jq -c "$LABELS_FILTER")"
 
 # No-clusters branch: empty .clusters yields the friendly notice, exit 0.
-EMPTY_JSON='{"stats":{"total_drawers":0,"valid_frictions":0,"skipped_malformed":0,"clusters_formed":0,"clusters_above_threshold":0,"clusters_parked":0,"routing_failures":0},"clusters":[]}'
+EMPTY_JSON='{"stats":{"total_drawers":0,"valid_frictions":0,"skipped_malformed":0,"clusters_formed":0,"clusters_above_threshold":0,"clusters_parked":0,"routing_failures":0},"clusters":[],"skipped":[],"routing_failures":[]}'
 set +e
 EMPTY_OUT=$(printf '%s\n' "$EMPTY_JSON" | python3 "$APPLY" --dry-run-apply)
 EMPTY_RC=$?
@@ -378,7 +445,7 @@ echo "  PASS schedule-curator.sh --uninstall message"
 # Strict-mode-safe printf form (single line, no heredoc indentation games).
 make_cluster_payload() {
   local target="$1"
-  printf '{"stats":{"total_drawers":1,"valid_frictions":1,"skipped_malformed":0,"skipped_resolved":0,"clusters_formed":1,"clusters_above_threshold":1,"clusters_parked":0,"routing_failures":0},"clusters":[{"cluster_key":"norm-probe","cluster_size":1,"target_repo":"%s","title":"normalization probe","body":"body","labels":["harness-feedback"],"frictions":[{"_drawer_id":"drw-norm-1"}]}]}' "$target"
+  printf '{"stats":{"total_drawers":1,"valid_frictions":1,"skipped_malformed":0,"skipped_resolved":0,"clusters_formed":1,"clusters_above_threshold":1,"clusters_parked":0,"routing_failures":0},"clusters":[{"cluster_key":"norm-probe","cluster_size":1,"target_repo":"%s","title":"normalization probe","body":"body","labels":["harness-feedback"],"frictions":[{"_drawer_id":"drw-norm-1"}]}],"skipped":[],"routing_failures":[]}' "$target"
 }
 
 run_normalize_case() {

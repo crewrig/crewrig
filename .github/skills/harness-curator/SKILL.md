@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.1"
+    version: "1.5.0"
 ---
 
 
@@ -80,6 +80,21 @@ document on stdout:
       "body": "<markdown>",
       "labels": ["harness-feedback", "room:prompt", "severity:med"],
       "frictions": [...]
+    }
+  ],
+  "skipped": [
+    {
+      "drawer_id": "drw-005",
+      "room": "process",
+      "reason": "malformed",
+      "snippet": "Not a friction at all — random text..."
+    }
+  ],
+  "routing_failures": [
+    {
+      "cluster_key": "no-canonical-cluster",
+      "frictions": [...],
+      "reason": "missing_canonical"
     }
   ]
 }

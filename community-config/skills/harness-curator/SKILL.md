@@ -16,7 +16,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.4.1"
+    version: "1.5.0"
 claude:
   allowed-tools:
     - Read
@@ -95,6 +95,21 @@ document on stdout:
       "body": "<markdown>",
       "labels": ["harness-feedback", "room:prompt", "severity:med"],
       "frictions": [...]
+    }
+  ],
+  "skipped": [
+    {
+      "drawer_id": "drw-005",
+      "room": "process",
+      "reason": "malformed",
+      "snippet": "Not a friction at all — random text..."
+    }
+  ],
+  "routing_failures": [
+    {
+      "cluster_key": "no-canonical-cluster",
+      "frictions": [...],
+      "reason": "missing_canonical"
     }
   ]
 }
