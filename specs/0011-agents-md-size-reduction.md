@@ -43,7 +43,7 @@ rules, and a link to the full document. No rule content is altered.
 
 ## Scenarios
 
-**Scenario 1: Successful extraction (happy path)**
+**Scenario 1:** Successful extraction (happy path)
 
 Given `AGENTS.md` contains `## Agent Team Protocol` and `## CLI Matrix
 Maintenance` with a total file size of 53,965 bytes
@@ -54,14 +54,14 @@ Team Protocol section
 And `docs/cli-matrix-maintenance.md` exists and contains the verbatim CLI
 Matrix Maintenance section
 
-**Scenario 2: CI blocks an oversized AGENTS.md (failure path)**
+**Scenario 2:** CI blocks an oversized AGENTS.md (failure path)
 
 Given the CI check script is wired into the pipeline
 When a pull-request is opened where `wc -c AGENTS.md` equals or exceeds 35,840
 Then the CI check job exits non-zero
 And the pull-request cannot be merged until the threshold is satisfied
 
-**Scenario 3: Content integrity preserved**
+**Scenario 3:** Content integrity preserved
 
 Given the extraction has been applied
 When any rule originally in `## Agent Team Protocol` or `## CLI Matrix
