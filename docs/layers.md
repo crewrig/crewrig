@@ -64,26 +64,47 @@ refuse to proceed.
 
 The harness skill set and harness agent set (as defined in spec 0012 R6,
 amended by delta-01) are core. All other skill and agent directories in
-`community-config/` are classified under **examples**.
+`community-config/` are classified under **examples** or **overlay** as
+detailed in those sections.
+
+`community-config/FORMAT.md` is the normative format contract for all
+community components (core).
+
+The harness components split into two semantic groups:
+
+**Harness system** — the friction-reporting and curation machinery:
 
 | Path | Description |
 |---|---|
-| `community-config/FORMAT.md` | Normative format contract for skills, agents, and commands. |
-| `community-config/skills/spec-author/` | Harness skill — qualification stage author. |
-| `community-config/skills/harness-curator/` | Harness skill — friction clustering and issue authoring. |
 | `community-config/skills/harness-report/` | Harness skill — friction tagging protocol. |
-| `community-config/skills/pr-logbook/` | Harness skill — PR and logbook composer. |
-| `community-config/skills/pr-reviewer/` | Harness skill — independent PR reviewer. |
-| `community-config/agents/spec-author/` | Harness agent — spec-author specialist. |
+| `community-config/skills/harness-curator/` | Harness skill — friction clustering and issue authoring. |
 | `community-config/agents/harness-curator/` | Harness agent — curator specialist. |
-| `community-config/agents/pr-logbook/` | Harness agent — logbook composer specialist. |
-| `community-config/agents/pr-reviewer/` | Harness agent — PR reviewer specialist. |
-| `community-config/agents/architect/` | Harness agent — architect specialist (plan and design). |
+
+**SDLC lifecycle tools** — the SPECS → PLAN → DEV → REVIEW cycle machinery
+that enables CrewRig's own development (and through which harness-reports are
+implemented):
+
+| Path | Description |
+|---|---|
+| `community-config/skills/spec-author/` | Lifecycle skill — qualification stage author. |
+| `community-config/skills/pr-logbook/` | Lifecycle skill — PR and logbook composer. |
+| `community-config/skills/pr-reviewer/` | Lifecycle skill — independent PR reviewer. |
+| `community-config/agents/spec-author/` | Lifecycle agent — spec-author specialist. |
+| `community-config/agents/pr-logbook/` | Lifecycle agent — logbook composer specialist. |
+| `community-config/agents/pr-reviewer/` | Lifecycle agent — PR reviewer specialist. |
+| `community-config/agents/architect/` | Lifecycle agent — architect specialist (plan and design). |
 
 ### Built outputs
 
-Built by `scripts/build-components.sh` from `community-config/`. Regenerated
-automatically on every relevant commit; never edited directly.
+Built by `scripts/build-components.sh` from `community-config/`. These
+directories are **assembly zones**: after a build they contain both
+core-provided harness components and the adopting organisation's own compiled
+components. They are never edited directly; the source of truth is always
+`community-config/`.
+
+An adopting organisation may activate only a subset of CLIs; the sync
+mechanism respects this scope. The detailed assembly model (which CLI outputs
+exist, how org artefacts integrate) is defined in spec 0012 sub-spec E2.
 
 | Path | Description |
 |---|---|
@@ -98,13 +119,23 @@ automatically on every relevant commit; never edited directly.
 | `.github/workflows/` | CI/CD pipeline definitions. |
 | `.github/copilot/` | GitHub Copilot workspace configuration. |
 
-### Extension distribution channel and registry
+### Extension distribution channel
 
 | Path | Description |
 |---|---|
 | `extension-skeleton/` | Scaffold templates for creating new CrewRig extensions. |
-| `extensions/` | Upstream-provided extension registry. Extensions authored here are distributed via `scripts/install-extension.sh`. |
 | `hooks/` | Cross-CLI transcript hook configuration files (`claude-transcript-hooks.json`, `gemini-transcript-hooks.json`, `copilot-transcript-hooks.json`, `mempalace-transcript.sh`). |
+
+### Infrastructure service definitions
+
+Service management files for CrewRig's own infrastructure dependencies
+(e.g., ChromaDB for MemPalace). These are maintained by upstream and apply
+to every deployment of CrewRig.
+
+| Path | Description |
+|---|---|
+| `config/launchd/` | macOS launchd service definitions for CrewRig infrastructure services. |
+| `config/systemd/` | Linux systemd unit files for CrewRig infrastructure services. |
 
 ### Public communications
 
@@ -131,14 +162,6 @@ from the examples layer.
 | `config/ORGANIZATION.md` | Organisation overview: company context, code quality standards, collaboration norms. |
 | `config/TOOLS.md` | Tool and MCP server guidelines specific to the organisation. |
 
-### Persona and context files
-
-| Path | Description |
-|---|---|
-| `config/level/` | Seniority-level context rules (e.g., `10-level.md`). |
-| `config/expertise/` | Domain-expertise context rules. |
-| `config/teams/` | Per-team context and configuration. |
-
 ### CLI-specific overlay configuration
 
 | Path | Description |
@@ -148,24 +171,18 @@ from the examples layer.
 | `config/copilot/` | GitHub Copilot overlay configuration files. |
 | `.claude/settings.json` | Claude Code workspace-level settings (memory, permissions). |
 
-### System service definitions
+### Extensions and organisation-specific community configuration
 
 | Path | Description |
 |---|---|
-| `config/launchd/` | macOS launchd service definitions (organisation-specific launch agents). |
-| `config/systemd/` | Linux systemd unit files (organisation-specific services). |
-
-### Organisation-specific community configuration
-
-| Path | Description |
-|---|---|
+| `extensions/` | Organisation-owned extension registry. The adopting organisation places its own CrewRig extensions here. Upstream extensions are installed via `scripts/install-extension.sh` rather than committed directly. |
 | `community-config/mcp-servers/` | MCP server declarations specific to the organisation (Jira, Confluence, Slack, etc.). |
 | `community-config/hooks/` | Lifecycle hooks specific to the organisation. |
 | `community-config/policies/` | Organisation-level policy files. |
 | `community-config/themes/` | UI theme files specific to the organisation. |
 | `community-config/commands/` | Organisation-specific slash-command definitions. |
-| `community-config/skills/<org-name>/` | Any skill directory in `community-config/skills/` not belonging to the harness skill set (see Core) and not listed under Examples is reserved for the adopting organisation's own role skills. |
-| `community-config/agents/<org-name>/` | Any agent directory in `community-config/agents/` not belonging to the harness agent set (see Core) and not listed under Examples is reserved for the adopting organisation's own agents. |
+| `community-config/skills/<org-skill>/` | Any skill directory in `community-config/skills/` not belonging to the harness skill set (Core) and not listed under Examples is reserved for the adopting organisation's own role skills. |
+| `community-config/agents/<org-agent>/` | Any agent directory in `community-config/agents/` not belonging to the harness agent set (Core) and not listed under Examples is reserved for the adopting organisation's own agents. |
 
 ---
 
@@ -179,10 +196,25 @@ extended or overridden in place.
 A notice SHALL be present in each examples component indicating its
 demonstrative nature (spec 0012 R3).
 
+### Persona and context starting points
+
+Default persona and context files that CrewRig ships as illustrative
+starting points. An adopting organisation copies these into its own overlay
+and customises them. After copying, the customised version is `overlay`; the
+originals here remain `examples`.
+
+| Path | Description |
+|---|---|
+| `config/level/` | Seniority-level context rules (e.g., `10-level.md`). Starting points for an org's own level definitions. |
+| `config/expertise/` | Domain-expertise context rules. Starting points for an org's own expertise profiles. |
+| `config/teams/` | Per-team context and configuration. Starting points for an org's own team configs. |
+
 ### Illustrative skills
 
 Skills in `community-config/skills/` not belonging to the harness skill set
-(spec 0012 R8):
+(spec 0012 R8). These are actively used by the upstream CrewRig project for
+its own development workflow; they also serve as high-quality starting points
+for adopting organisations building their own role skills.
 
 | Path |
 |---|
@@ -200,7 +232,9 @@ Skills in `community-config/skills/` not belonging to the harness skill set
 ### Illustrative agents
 
 Agents in `community-config/agents/` not belonging to the harness agent set
-(spec 0012 R8, amended by delta-01):
+(spec 0012 R8, amended by delta-01). Same dual-use nature as the illustrative
+skills: actively used by upstream, and illustrative starting points for adopting
+organisations.
 
 | Path |
 |---|
