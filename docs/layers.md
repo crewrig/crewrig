@@ -31,6 +31,8 @@ refuse to proceed.
 |---|---|
 | `AGENTS.md` | Normative working rules for every agent. Single source of truth for the lifecycle. |
 | `CLAUDE.md` | Claude Code workspace bootstrap — imports `AGENTS.md`. |
+| `LICENSE` | Project license. |
+| `README.md` | Project overview and quick-start. |
 | `CONTRIBUTING.md` | Contribution guide. |
 | `DEVELOPMENT.md` | Local development setup guide. |
 | `Taskfile.yml` | Task runner definitions. |
@@ -38,6 +40,8 @@ refuse to proceed.
 | `.gitattributes` | Line-ending and diff attributes. |
 | `.markdownlintrc` | Markdown lint configuration. |
 | `renovate.json` | Automated dependency update configuration. |
+| `package.json` | Node.js tooling manifest (linting, markdown tooling). |
+| `package-lock.json` | Locked dependency tree for Node.js tooling. |
 
 ### Documentation and specifications
 
@@ -53,7 +57,6 @@ refuse to proceed.
 | `scripts/` | All build, install, setup, and utility scripts. |
 | `tests/` | Automated test suite. |
 | `docker/` | Docker infrastructure for end-to-end tests. |
-| `Taskfile.yml` | (see Repository governance above) |
 
 ### Community configuration — harness components
 
@@ -93,11 +96,13 @@ automatically on every relevant commit; never edited directly.
 | `.github/workflows/` | CI/CD pipeline definitions. |
 | `.github/copilot/` | GitHub Copilot workspace configuration. |
 
-### Extension distribution channel
+### Extension distribution channel and registry
 
 | Path | Description |
 |---|---|
-| `extension-skeleton/` | Scaffold templates for CrewRig extensions. Unchanged by this spec. |
+| `extension-skeleton/` | Scaffold templates for creating new CrewRig extensions. |
+| `extensions/` | Upstream-provided extension registry. Extensions authored here are distributed via `scripts/install-extension.sh`. |
+| `hooks/` | Cross-CLI transcript hook configuration files (`claude-transcript-hooks.json`, `gemini-transcript-hooks.json`, `copilot-transcript-hooks.json`, `mempalace-transcript.sh`). |
 
 ### Public communications
 
@@ -170,6 +175,8 @@ They must not be confused with the overlay files they seed.
 | `community-config/policies/` | Organisation-level policy files. |
 | `community-config/themes/` | UI theme files specific to the organisation. |
 | `community-config/commands/` | Organisation-specific slash-command definitions. |
+| `community-config/skills/<org-name>/` | Any skill directory in `community-config/skills/` not belonging to the harness skill set (see Core) and not listed under Examples is reserved for the adopting organisation's own role skills. |
+| `community-config/agents/<org-name>/` | Any agent directory in `community-config/agents/` not belonging to the harness agent set (see Core) and not listed under Examples is reserved for the adopting organisation's own agents. |
 
 ---
 
@@ -248,6 +255,7 @@ committed to the repository.
 | `.claude/worktrees/` | Claude Code worktree metadata. |
 | `.worktrees/` | Git worktrees created during agent team sessions. |
 | `.DS_Store` | macOS Finder metadata. |
+| `node_modules/` | Node.js dependencies installed locally — gitignored. |
 | `*.env` | Environment secrets — never committed. |
 
 ---
