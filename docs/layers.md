@@ -57,6 +57,8 @@ refuse to proceed.
 | `scripts/` | All build, install, setup, and utility scripts. |
 | `tests/` | Automated test suite. |
 | `docker/` | Docker infrastructure for end-to-end tests. |
+| `config/.env.example` | Environment variable reference (gitignored `.env` is never committed). |
+| `config/release-monorepo.json` | Monorepo release tooling configuration. |
 
 ### Community configuration — harness components
 
@@ -121,26 +123,13 @@ templates exist.
 
 ### Fork identity and configuration
 
-| Path | Core template | Description |
-|---|---|---|
-| `crewrig.config.toml` | `crewrig.config.toml.template` *(planned — spec 0012 R12)* | Fork-level configuration: `canonical_repo`, `feedback_repo`, overlay path declarations. |
-| `config/SOUL.md` | `config/SOUL.md.template` | Organisation identity: mission, values, working philosophy. |
-| `config/PROFILE.md` | `config/PROFILE.md.template` | Personal profile: user name, role, preferred language, tooling preferences. |
-| `config/ORGANIZATION.md` | *(no template — free-form)* | Organisation overview: company context, code quality standards, collaboration norms. |
-| `config/TOOLS.md` | *(no template — free-form)* | Tool and MCP server guidelines specific to the organisation. |
-
-### Core templates (owned by upstream, consumed by overlay)
-
-These files live under `config/` but belong to the **core** layer: they are
-templates the organisation reads once to initialise the overlay files above.
-They must not be confused with the overlay files they seed.
-
-| Path | Seeds |
+| Path | Description |
 |---|---|
-| `config/SOUL.md.template` | `config/SOUL.md` |
-| `config/PROFILE.md.template` | `config/PROFILE.md` |
-| `config/.env.example` | `.env` (never committed) |
-| `config/release-monorepo.json` | *(monorepo release tooling config — core)* |
+| `crewrig.config.toml` | Fork-level configuration: `canonical_repo`, `feedback_repo`, overlay path declarations. |
+| `config/SOUL.md` | Organisation identity: mission, values, working philosophy. |
+| `config/PROFILE.md` | Personal profile: user name, role, preferred language, tooling preferences. |
+| `config/ORGANIZATION.md` | Organisation overview: company context, code quality standards, collaboration norms. |
+| `config/TOOLS.md` | Tool and MCP server guidelines specific to the organisation. |
 
 ### Persona and context files
 
@@ -233,12 +222,28 @@ Agents in `community-config/agents/` not belonging to the harness agent set
 | `community-config/agents/visual-regression-tester/` |
 | `community-config/agents/web-conformity-checker/` |
 
+### Identity and configuration templates
+
+Default starting points for the overlay identity files. An adopting
+organisation copies one of these, customises it, and saves the result as the
+corresponding overlay path (`config/SOUL.md`, `config/PROFILE.md`,
+`crewrig.config.toml`). The templates themselves are illustrative; the
+organisation owns only the customised instances.
+
+| Path | Seeds overlay file |
+|---|---|
+| `config/SOUL.md.template` | `config/SOUL.md` |
+| `config/PROFILE.md.template` | `config/PROFILE.md` |
+| `crewrig.config.toml.template` *(forthcoming — spec 0012 R12)* | `crewrig.config.toml` |
+
 ### Forthcoming examples directory
 
 `examples/` — **not yet present** in the repository. Planned by spec 0012 R11
 (sub-spec B or C of the core framework separation). When introduced, it will
-serve as the primary landing zone for illustrative role skills and
-configuration templates, visually distinct from the core harness area.
+serve as the primary landing zone for illustrative role skills, configuration
+templates, and other starting-point artefacts, visually distinct from the core
+harness area. The identity templates above will physically relocate there at
+that point.
 
 ---
 
