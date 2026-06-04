@@ -118,8 +118,8 @@ automatically on every relevant commit; never edited directly.
 
 Paths reserved exclusively for the adopting organisation. The upstream
 synchronisation mechanism will never modify these paths. An adopting
-organisation initialises them from the core-provided templates where
-templates exist.
+organisation initialises them by copying the relevant starting-point templates
+from the examples layer.
 
 ### Fork identity and configuration
 
