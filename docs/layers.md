@@ -299,6 +299,32 @@ committed to the repository.
 
 ---
 
+## `config/` quick-reference
+
+The `config/` directory is the only top-level path with sub-paths distributed
+across multiple layers. This table provides a single-lookup view.
+
+| Path | Layer |
+|---|---|
+| `config/.env.example` | core |
+| `config/release-monorepo.json` | core |
+| `config/launchd/` | core |
+| `config/systemd/` | core |
+| `config/SOUL.md` | overlay |
+| `config/PROFILE.md` | overlay |
+| `config/ORGANIZATION.md` | overlay |
+| `config/TOOLS.md` | overlay |
+| `config/claude/` | overlay |
+| `config/gemini/` | overlay |
+| `config/copilot/` | overlay |
+| `config/level/` | examples |
+| `config/expertise/` | examples |
+| `config/teams/` | examples |
+| `config/SOUL.md.template` | examples |
+| `config/PROFILE.md.template` | examples |
+
+---
+
 ## Classification rules for future paths
 
 When a new path is added to the repository and this document has not yet been
