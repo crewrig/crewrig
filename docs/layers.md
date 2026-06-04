@@ -157,8 +157,6 @@ from the examples layer.
 | Path | Description |
 |---|---|
 | `crewrig.config.toml` | Fork-level configuration: `canonical_repo`, `feedback_repo`, overlay path declarations. |
-| `config/SOUL.md` | Organisation identity: mission, values, working philosophy. |
-| `config/PROFILE.md` | Personal profile: user name, role, preferred language, tooling preferences. |
 | `config/ORGANIZATION.md` | Organisation overview: company context, code quality standards, collaboration norms. |
 | `config/TOOLS.md` | Tool and MCP server guidelines specific to the organisation. |
 
@@ -296,6 +294,8 @@ committed to the repository.
 | `.DS_Store` | macOS Finder metadata. |
 | `node_modules/` | Node.js dependencies installed locally — gitignored. |
 | `*.env` | Environment secrets — never committed. |
+| `config/SOUL.md` | User-generated from `config/SOUL.md.template` — gitignored, personal to each developer, never committed. |
+| `config/PROFILE.md` | User-generated from `config/PROFILE.md.template` — gitignored, personal to each developer, never committed. |
 
 ---
 
@@ -310,8 +310,8 @@ across multiple layers. This table provides a single-lookup view.
 | `config/release-monorepo.json` | core |
 | `config/launchd/` | core |
 | `config/systemd/` | core |
-| `config/SOUL.md` | overlay |
-| `config/PROFILE.md` | overlay |
+| `config/SOUL.md` | user-local (gitignored) |
+| `config/PROFILE.md` | user-local (gitignored) |
 | `config/ORGANIZATION.md` | overlay |
 | `config/TOOLS.md` | overlay |
 | `config/claude/` | overlay |
