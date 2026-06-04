@@ -108,8 +108,6 @@ modification into the overlay layer instead.
   or equivalent).
 - The concrete upstream-tracking mechanism (git subtree, sparse checkout, or a
   bespoke sync script) — delegated to the PLAN stage and its sub-specifications.
-- GitHub Copilot CLI-specific content migration — a parallel effort not gated
-  on this spec.
 - Detailed sub-specifications for each implementation area — produced by the
   PLAN stage's architect-led decomposition, per the `large` complexity tier.
 
