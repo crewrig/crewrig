@@ -5,7 +5,7 @@ status: draft
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 228
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Artifacts Directory Restructuring
@@ -13,16 +13,17 @@ version: 1.0.0
 ## Intent
 
 The repository source layout is restructured to match the `artifacts/`
-namespace defined by spec 0012 (as amended through delta-03) and classified by
-spec 0013 (as amended through delta-03). Every component currently in
-`community-config/` migrates to its correct zone under `artifacts/` — the
-SDLC lifecycle tools to `artifacts/core/`, the harness system and operational
-role components to `artifacts/library/`, and the overlay directories to
-`artifacts/community/`. The build script and normative documentation are
-updated to source from the new paths. The `community-config/` directory is
-removed once the migration is complete. After this sub-spec, the repository
-layout is the canonical, spec-conforming structure that all downstream
-sub-specs (C, D, E1, E2) may depend on.
+namespace defined by spec 0012 (as amended through delta-04) and classified by
+spec 0013 (as amended through delta-04). Every component currently in
+`community-config/` migrates to its correct zone under `artifacts/`: SDLC
+lifecycle tools and operational role skills and agents to `artifacts/core/`
+(project-scoped, built into per-repo CLI output directories); the harness
+system to `artifacts/library/` (user-home-scoped, globally available across
+all projects); and overlay directories to `artifacts/community/`. The build
+script and normative documentation are updated to source from the new paths.
+The `community-config/` directory is removed once the migration is complete.
+After this sub-spec, the repository layout is the canonical, spec-conforming
+structure that all downstream sub-specs (C, D, E1, E2) may depend on.
 
 ## Requirements
 
@@ -52,12 +53,12 @@ sub-specs (C, D, E1, E2) may depend on.
    preserved without modification.
 
 7. The operational role skill set SHALL be relocated from `community-config/skills/`
-   to `artifacts/library/skills/`: `architect`, `developer`, `tester`, `astro`,
+   to `artifacts/core/skills/`: `architect`, `developer`, `tester`, `astro`,
    `frontend`, `doc-writer`, `security`, `web-tester`, `github-actions`,
    `copywriting`. Directory contents SHALL be preserved without modification.
 
 8. The operational role agent set SHALL be relocated from `community-config/agents/`
-   to `artifacts/library/agents/`: `accessibility-auditor`, `accessibility-tester`,
+   to `artifacts/core/agents/`: `accessibility-auditor`, `accessibility-tester`,
    `astro-developer`, `ci-configurator`, `ci-debugger`, `copywriter`, `designer`,
    `developer`, `doc-writer`, `frontend-developer`, `regression-sentinel`,
    `scenario-author`, `security`, `seo-specialist`, `tester`,
@@ -83,7 +84,10 @@ sub-specs (C, D, E1, E2) may depend on.
     `artifacts/library/agents/`, `artifacts/community/agents/`) instead of the
     former flat `community-config/skills/` and `community-config/agents/`
     directories. The commands source SHALL be updated from
-    `community-config/commands/` to `artifacts/community/commands/`.
+    `community-config/commands/` to `artifacts/community/commands/`. The build
+    script SHALL document the installation-location distinction: `core/` and
+    `community/` components are built into the per-repo CLI output directories;
+    `library/` components are intended for user-home installation.
 
 12. After the migration, `scripts/build-components.sh` SHALL execute without
     error and SHALL produce built outputs in `.claude/`, `.gemini/`, and
@@ -97,7 +101,7 @@ sub-specs (C, D, E1, E2) may depend on.
 
 14. `docs/layers.md` SHALL be updated to remove all references to
     `community-config/` paths, replacing each with its equivalent `artifacts/`
-    path as classified by spec 0013 (as amended by delta-03).
+    path as classified by spec 0013 (as amended by delta-04).
 
 15. `AGENTS.md` SHALL be updated to replace all references to `community-config/`
     with the appropriate `artifacts/` paths reflecting the restructured layout.
