@@ -1,0 +1,25 @@
+# Crewrig fork configuration — TEMPLATE.
+#
+# Copy this file to crewrig.config.toml and fill in the values for your
+# organisation. The template itself is illustrative (examples layer);
+# your customised crewrig.config.toml is overlay (owned by your org).
+#
+# The build pipeline reads crewrig.config.toml during `task build-components`
+# and substitutes ${UPPERCASED_KEY} placeholders in artifact source files
+# with the values below.
+#
+# See artifacts/FORMAT.md (Provenance Block) for context on how these
+# values flow into built components.
+
+# canonical_repo — the upstream repository this fork traces back to.
+# Forks should keep this pointing at the upstream they forked from so
+# that the audit trail and license trace remain intact.
+# Replace with your own repo URL only if YOUR repo IS the canonical
+# upstream for this deployment.
+canonical_repo = "https://github.com/<YOUR-ORG>/<YOUR-REPO>"
+
+# feedback_repo — where the harness curator opens friction MRs.
+# Override this with your organisation's internal repo so that friction
+# issues land on your own tracker rather than the upstream project.
+# For most adopting orgs this will differ from canonical_repo.
+feedback_repo  = "https://github.com/<YOUR-ORG>/<YOUR-REPO>"

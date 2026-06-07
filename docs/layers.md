@@ -94,6 +94,12 @@ SDLC lifecycle tools:
 | `artifacts/core/agents/pr-reviewer/` | Lifecycle agent — PR reviewer specialist. |
 | `artifacts/core/agents/architect/` | Lifecycle agent — architect specialist (plan and design). |
 
+Core rules files (deployed to user home at a fixed priority number):
+
+| Path | Description |
+|---|---|
+| `artifacts/core/rules/60-tools.md` | Framework-critical tool instructions: three-tier memory architecture, MemPalace protocol, harness engineering loop, Sequential Thinking, Obsidian access model. Deployed at priority 60. NOT a template — upstream content. |
+
 ### Built outputs
 
 Built by `scripts/build-components.sh` from `artifacts/`. These
@@ -267,7 +273,9 @@ organisation owns only the customised instances.
 |---|---|
 | `config/SOUL.md.template` | `config/SOUL.md` |
 | `config/PROFILE.md.template` | `config/PROFILE.md` |
-| `crewrig.config.toml.template` *(forthcoming — spec 0012 R12)* | `crewrig.config.toml` |
+| `crewrig.config.toml.template` | `crewrig.config.toml` |
+| `config/ORGANIZATION.md.template` | `config/ORGANIZATION.md` |
+| `config/TOOLS.md.template` | `config/TOOLS.md` |
 
 ---
 
@@ -314,6 +322,8 @@ across multiple layers. This table provides a single-lookup view.
 | `config/teams/` | examples |
 | `config/SOUL.md.template` | examples |
 | `config/PROFILE.md.template` | examples |
+| `config/ORGANIZATION.md.template` | examples |
+| `config/TOOLS.md.template` | examples |
 
 ---
 

@@ -141,8 +141,12 @@ if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
     "ORGANIZATION.md -> instructions/20-organization.instructions.md"
   install_file "$REPO_DIR/config/PROFILE.md" "$COPILOT_INSTRUCTIONS/30-profile.instructions.md" \
     "PROFILE.md -> instructions/30-profile.instructions.md"
-  install_file "$REPO_DIR/config/TOOLS.md" "$COPILOT_INSTRUCTIONS/60-tools.instructions.md" \
-    "TOOLS.md -> instructions/60-tools.instructions.md"
+  # Core framework tools (priority 60) — framework-critical instructions
+  install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$COPILOT_INSTRUCTIONS/60-tools.instructions.md" \
+    "artifacts/core/rules/60-tools.md -> instructions/60-tools.instructions.md"
+  # Org-specific tools (priority 65) — organisation-specific additions
+  install_file "$REPO_DIR/config/TOOLS.md" "$COPILOT_INSTRUCTIONS/65-org-tools.instructions.md" \
+    "TOOLS.md -> instructions/65-org-tools.instructions.md"
   echo ""
 
   # Level

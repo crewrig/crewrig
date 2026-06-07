@@ -1,0 +1,90 @@
+# Tools and MCP Server Guidelines — TEMPLATE
+#
+# This file is an illustrative starting point (examples layer).
+# Copy it to config/TOOLS.md and customise it for your organisation.
+# The completed config/TOOLS.md is overlay — owned by your org.
+#
+# IMPORTANT: This file covers ORGANISATION-SPECIFIC tool preferences only.
+# Framework-critical instructions (three-tier memory architecture, MemPalace
+# protocol, harness engineering loop, Sequential Thinking, Obsidian access
+# model) are shipped by the upstream CrewRig framework in the core rules file
+# deployed at priority 60 (~/.claude/rules/60-tools.md). This file is
+# deployed at priority 65 and layers organisation-specific settings on top.
+#
+# Do NOT duplicate framework content here. Use this file for:
+#   - Tooling preferences specific to your organisation (editors, CLIs, etc.)
+#   - MCP server declarations for organisation-specific integrations
+#     (Jira, Confluence, Slack, internal APIs, etc.)
+#   - Workflow preferences that apply across all teams in your org
+#
+# Remove this comment block and all placeholder comments before committing
+# your customised version.
+
+## Tooling Preferences
+
+<!--
+  Describe the tools your engineers use day-to-day. This helps the agent
+  generate commands, configurations, and suggestions that match your
+  actual environment.
+
+  Cover:
+  - Editors and key plugins (e.g., VSCode with ESLint, IntelliJ IDEA)
+  - Terminal setup (shell, prompt, key tools)
+  - Communication platforms (Slack, Teams, Google Chat)
+  - Any org-wide CLI tools that are always available (e.g., internal CLIs,
+    custom wrappers)
+
+  Example:
+  - Editor: IntelliJ IDEA with the Checkstyle plugin
+  - Terminal: zsh + oh-my-zsh, always available: `internal-cli`, `vault`
+  - Communication: Slack (#engineering channel for broad announcements)
+-->
+
+[Replace with your organisation's tooling preferences.]
+
+## MCP Server Declarations
+
+<!--
+  List MCP servers that are specific to your organisation's integrations.
+  These are servers beyond the framework defaults (MemPalace,
+  SequentialThinking, GitHub) that your agents should be aware of.
+
+  For each server, note:
+  - Its name as registered (e.g., `jira`, `confluence`)
+  - What it is used for
+  - Any usage constraints or guidance
+
+  Framework MCP servers (MemPalace, SequentialThinking, GitHub) are
+  already covered by the core rules file — do not redeclare them here.
+
+  Example:
+  - `jira` — Jira Cloud integration. Use for reading issue details and
+    posting progress comments. MUST NOT create or close issues without
+    explicit user instruction.
+  - `confluence` — Confluence wiki. Read-only during normal work; page
+    writes require explicit user consent.
+
+  If your organisation has no additional MCP servers, write "No additional
+  MCP servers beyond the framework defaults."
+-->
+
+[Replace with your organisation's MCP server declarations, or state that none apply.]
+
+## Workflow Preferences
+
+<!--
+  Describe any org-wide workflow conventions the agent should follow that
+  are not already captured in ORGANIZATION.md or in team/expertise files.
+
+  Examples:
+  - All feature work starts with a ticket in Jira (project prefix FRG-).
+  - Branch names follow the pattern feat/<ticket-id>-<slug>.
+  - Prefer interactive rebases over merge commits; squash before opening a PR.
+  - Always run `mvn verify` locally before pushing; CI mirrors this step.
+
+  If your organisation's workflow conventions are entirely captured in
+  AGENTS.md and the team/expertise files, write "No additional workflow
+  preferences beyond what is described in AGENTS.md."
+-->
+
+[Replace with your organisation's workflow preferences.]

@@ -118,8 +118,13 @@ echo "Installing shared configuration..."
 install_file "$REPO_DIR/config/ORGANIZATION.md" "$GEMINI_HOME/20_ORGANIZATION.md" \
   "ORGANIZATION.md -> 20_ORGANIZATION.md"
 
-install_file "$REPO_DIR/config/TOOLS.md" "$GEMINI_HOME/60_TOOLS.md" \
-  "TOOLS.md -> 60_TOOLS.md"
+# Core framework tools (priority 60) — framework-critical instructions
+install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$GEMINI_HOME/60_TOOLS.md" \
+  "artifacts/core/rules/60-tools.md -> 60_TOOLS.md"
+
+# Org-specific tools (priority 65) — organisation-specific additions
+install_file "$REPO_DIR/config/TOOLS.md" "$GEMINI_HOME/65_TOOLS.md" \
+  "TOOLS.md -> 65_TOOLS.md"
 
 install_file "$REPO_DIR/config/SOUL.md" "$GEMINI_HOME/00_SOUL.md" \
   "SOUL.md -> 00_SOUL.md"

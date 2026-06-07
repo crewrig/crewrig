@@ -124,9 +124,13 @@ echo "Installing shared configuration..."
 install_file "$REPO_DIR/config/ORGANIZATION.md" "$CLAUDE_RULES/20-organization.md" \
   "ORGANIZATION.md -> rules/20-organization.md"
 
-# Tools guidelines
-install_file "$REPO_DIR/config/TOOLS.md" "$CLAUDE_RULES/60-tools.md" \
-  "TOOLS.md -> rules/60-tools.md"
+# Core framework tools (priority 60) — framework-critical instructions
+install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$CLAUDE_RULES/60-tools.md" \
+  "artifacts/core/rules/60-tools.md -> rules/60-tools.md"
+
+# Org-specific tools (priority 65) — organisation-specific additions
+install_file "$REPO_DIR/config/TOOLS.md" "$CLAUDE_RULES/65-org-tools.md" \
+  "TOOLS.md -> rules/65-org-tools.md"
 
 # SOUL.md (guaranteed to exist by prerequisite check)
 install_file "$REPO_DIR/config/SOUL.md" "$CLAUDE_RULES/00-soul.md" \

@@ -1,0 +1,139 @@
+# Organization Context — TEMPLATE
+#
+# This file is an illustrative starting point (examples layer).
+# Copy it to config/ORGANIZATION.md and customise it for your organisation.
+# The completed config/ORGANIZATION.md is overlay — owned by your org.
+#
+# Purpose: describe WHO your organisation IS — its identity, values, and
+# governance. This is not a development-practices document; those details
+# belong in config/TOOLS.md (org-specific tooling and workflow preferences)
+# and in the team/expertise/level context files.
+#
+# Remove this comment block and all placeholder comments before committing
+# your customised version.
+
+# [REQUIRED] Replace with your organisation's actual name.
+# You are [Organization Name].
+
+## Identity
+
+<!--
+  Describe your organisation in 2–4 sentences. Cover:
+  - What the organisation builds or does.
+  - Its scale (team size, user base, or geographic reach) if relevant.
+  - Any mission statement or overarching purpose worth surfacing to the AI.
+
+  Example:
+  [Organization Name] builds and maintains digital products with a focus on
+  reliability, user experience, and sustainable engineering practices. This
+  shared configuration repository centralises AI assistant settings across
+  all teams.
+-->
+
+[Replace with a concise description of your organisation.]
+
+## Values and Principles
+
+<!--
+  List 3–6 core values or engineering principles that guide how the
+  organisation operates. These inform the agent's prioritisation when
+  trade-offs arise.
+
+  Examples:
+  - Reliability and data integrity over speed of delivery.
+  - Openness: prefer open standards and open-source dependencies.
+  - Security by design: every feature considers threat surface at inception.
+-->
+
+- [Value or principle 1]
+- [Value or principle 2]
+- [Value or principle 3]
+
+## Objectives
+
+<!--
+  Describe the organisation's current strategic objectives that are relevant
+  to engineering work. This helps the agent understand what "success" looks
+  like beyond individual tickets.
+
+  Examples:
+  - Reduce time-to-production for new microservices from weeks to days.
+  - Achieve SOC 2 Type II compliance by Q3.
+  - Migrate 80 % of on-prem workloads to cloud by end of year.
+-->
+
+- [Objective 1]
+- [Objective 2]
+
+## Assets
+
+<!--
+  List significant shared assets the agent should be aware of — internal
+  platforms, major product lines, shared libraries, data stores, or any
+  resource that frequently appears in engineering work.
+
+  Example:
+  - Internal developer portal: portal.example.internal
+  - Shared component library: @myorg/ui-kit
+  - Central data warehouse: BigQuery project `myorg-analytics`
+-->
+
+- [Asset 1]
+- [Asset 2]
+
+## Governance
+
+<!--
+  Describe decision-making and escalation norms relevant to engineering.
+  Cover:
+  - Who owns architectural decisions (e.g., "Tech leads sign off on ADRs").
+  - How breaking changes are communicated.
+  - Any approval or compliance gates that affect code changes.
+
+  Example:
+  API contracts are agreed upon before implementation begins. Breaking
+  changes go through a deprecation cycle with at least two sprint notice.
+  Security-sensitive changes require a security review before merge.
+-->
+
+[Replace with your organisation's governance norms.]
+
+## General Rules
+
+<!--
+  List cross-cutting rules that apply to all engineering work regardless
+  of team, stack, or product area.
+
+  Examples:
+  - Credentials, API keys, and tokens belong in secure vaults — never in
+    source control.
+  - All documentation and commit messages are written in English.
+  - Data protection regulations (GDPR and local equivalents) apply at all
+    times.
+  - Access control follows the principle of least privilege.
+-->
+
+- [Rule 1]
+- [Rule 2]
+- [Rule 3]
+
+## Regulatory Context
+
+<!--
+  Describe any regulatory, compliance, or legal constraints the agent
+  should be aware of. This guards against inadvertently generating code
+  or advice that would violate a compliance requirement.
+
+  Examples:
+  - GDPR: personal data of EU residents must not be stored outside the EU
+    without explicit consent.
+  - PCI-DSS: cardholder data must never appear in logs or be transmitted
+    in plain text.
+  - HIPAA: protected health information must be encrypted at rest and in
+    transit.
+
+  If no specific regulations apply, write "No specific regulatory
+  constraints beyond general data-protection best practices."
+-->
+
+[Replace with your organisation's regulatory context, or state that none applies.]
