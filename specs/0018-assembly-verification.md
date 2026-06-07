@@ -41,21 +41,25 @@ before the implementation pull request is eligible for merge.
 3. The test suite SHALL contain automated assertions (Bash or Bats) in
    `tests/` that invoke `bash scripts/build-components.sh` with the fixture
    overlay as the community source. After the build, the assertions SHALL
-   verify that the three CLI output directories (`.claude/`, `.gemini/`,
-   `.github/`) contain both:
+   verify that every supported CLI's output directory contains both:
    - At least one known core-layer component (from `artifacts/core/` or
      `artifacts/library/`).
    - At least one component originating from the fixture overlay
      (`tests/fixtures/overlay/artifacts/community/`).
 
+   Currently supported CLIs and their output directories: Claude Code
+   (`.claude/`), Gemini CLI (`.gemini/`), GitHub Copilot (`.github/`).
+
 4. The test suite SHALL additionally verify post-deployment integration: using
    an isolated test environment — a Docker container using the existing
    infrastructure in `docker/`, or a sandboxed temporary home directory — the
-   test SHALL run the deployment step that copies built outputs into CLI rules
-   directories (`~/.claude/rules/` equivalent, `~/.gemini/rules/` equivalent,
-   and the GitHub Copilot equivalent) and assert that both core-layer and
-   overlay-layer components are present in the deployed destination. The
-   isolated environment SHALL NOT modify the operator's actual home directory.
+   test SHALL run the deployment step that copies built outputs into each
+   supported CLI's rules directory and assert that both core-layer and
+   overlay-layer components are present in the deployed destination. Currently
+   supported CLI rules directories: `~/.claude/rules/` (Claude Code),
+   `~/.gemini/rules/` (Gemini CLI), and the equivalent path for GitHub Copilot
+   CLI. The isolated environment SHALL NOT modify the operator's actual home
+   directory.
 
 5. When an expected component is absent from the build outputs or the deployed
    destination, the test SHALL exit non-zero and print a human-readable list
@@ -63,11 +67,14 @@ before the implementation pull request is eligible for merge.
    it was expected — so that the operator can diagnose the failure without
    manually inspecting the output directories.
 
-6. The assertions SHALL cover all three CLIs — Claude Code (`.claude/skills/`,
-   `.claude/agents/`), Gemini CLI (`.gemini/skills/`, `.gemini/agents/`), and
-   GitHub Copilot (`.github/skills/`, `.github/agents/`) — and SHALL treat
-   them symmetrically. A CLI may be excluded only if documented evidence
-   confirms the mechanism does not exist for that CLI.
+6. The assertions SHALL cover every supported CLI and SHALL treat them
+   symmetrically. Currently supported CLIs: Claude Code (`.claude/skills/`,
+   `.claude/agents/`), Gemini CLI (`.gemini/skills/`, `.gemini/agents/`),
+   GitHub Copilot (`.github/skills/`, `.github/agents/`). As new CLIs are
+   added to CrewRig, the assertion suite SHALL be extended to cover them in the
+   same implementation pull request that introduces their support. A CLI may be
+   excluded only if documented evidence confirms the component mechanism does
+   not exist for that CLI.
 
 7. `bash scripts/build-components.sh --check` (or the equivalent CI entry
    point) SHALL execute the assembly verification assertions as part of the
@@ -87,8 +94,8 @@ Given a clean checkout of the implementation branch with the fixture overlay
 in place
 When the CI pipeline runs `bash scripts/build-components.sh --check`
 Then the assertion suite exits zero, having confirmed that both core-layer
-components and fixture-overlay components are present in all three CLI output
-directories.
+components and fixture-overlay components are present in every supported CLI's
+output directory.
 
 **Scenario:** Missing overlay component detected and reported
 
@@ -109,23 +116,23 @@ Then the assertions confirm both core-layer and overlay-layer components are
 active in the isolated environment, and the operator's actual home directory
 is unmodified.
 
-**Scenario:** Symmetric CLI coverage catches a missing Gemini output
+**Scenario:** Symmetric CLI coverage catches a missing output for one supported CLI
 
 Given a `scripts/build-components.sh` update that correctly populates
 `.claude/skills/` and `.github/skills/` but misses `.gemini/skills/` for
-overlay components
+overlay components (illustrating the general case where one supported CLI is
+not covered)
 When the assertion suite runs
-Then the Gemini-specific assertion exits non-zero and names the missing
-component in `.gemini/skills/`, surfacing the asymmetry before the PR is
-merged.
+Then the assertion for that CLI exits non-zero and names the missing component
+and its expected directory, surfacing the asymmetry before the PR is merged.
 
 ## Out of scope
 
 - Verification that `scripts/sync-from-upstream.sh` functions correctly —
   covered by the tests mandated in spec 0016.
-- Testing deployment to the operator's real home directory (`~/.claude/rules/`,
-  `~/.gemini/rules/`) — the isolation requirement (R4) explicitly prohibits
-  modifying the actual home directory.
+- Testing deployment to the operator's real home directory (e.g.
+  `~/.claude/rules/`, `~/.gemini/rules/`) — the isolation requirement (R4)
+  explicitly prohibits modifying the actual home directory.
 - Semantic quality verification of component content — the assertions check
   file presence, not correctness of the skill or agent definitions.
 - The adoption guide that narrates the process — covered by spec 0017.
