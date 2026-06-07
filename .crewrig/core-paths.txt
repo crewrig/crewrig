@@ -1,0 +1,60 @@
+# Core-layer paths — machine-readable manifest for sync-from-upstream.sh
+# One path per line. Blank lines and lines starting with # are ignored.
+# Maintained by upstream CrewRig. Any PR that adds, removes, or reclassifies
+# a core-layer path in docs/layers.md MUST update this file in the same diff.
+
+# Repository governance
+AGENTS.md
+CLAUDE.md
+CONTRIBUTING.md
+DEVELOPMENT.md
+LICENSE
+README.md
+Taskfile.yml
+.gitattributes
+.gitignore
+.markdownlintrc
+package-lock.json
+package.json
+renovate.json
+
+# Documentation and specifications
+docs
+specs
+
+# Build and install tooling
+scripts
+tests
+docker
+config/.env.example
+config/release-monorepo.json
+config/launchd
+config/systemd
+
+# Artifact zones — core and library
+artifacts/FORMAT.md
+artifacts/core
+artifacts/library
+
+# Built outputs
+.claude/skills
+.claude/agents
+.gemini/skills
+.gemini/agents
+.gemini/commands
+.github/copilot-instructions.md
+.github/copilot
+.github/skills
+.github/agents
+.github/workflows
+
+# Extension distribution channel
+extension-skeleton
+hooks
+
+# Public communications
+communication
+
+# Sync tooling (spec 0016)
+.crewrig
+scripts/sync-from-upstream.sh

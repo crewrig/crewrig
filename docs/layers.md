@@ -143,6 +143,12 @@ to every deployment of CrewRig.
 |---|---|
 | `communication/` | Conference talks, demos, and public presentation materials. |
 
+### Sync tooling
+
+| Path | Description |
+|---|---|
+| `.crewrig/` | Machine-readable sync manifest and related tooling. `.crewrig/core-paths.txt` enumerates core-layer paths consumed by `scripts/sync-from-upstream.sh`. |
+
 ---
 
 ## Overlay layer

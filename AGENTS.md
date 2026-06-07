@@ -253,6 +253,10 @@ See [`docs/cli-matrix-maintenance.md`](docs/cli-matrix-maintenance.md) for the f
 `CLAUDE.md`, `GEMINI.md`, or CLI-prefixed `Taskfile.yml` entries MUST consult and update
 `docs/cli-matrix.md` in the same diff.
 
+**Core-paths manifest co-maintenance.** Any PR that adds, removes, or reclassifies a
+core-layer path in `docs/layers.md` MUST update `.crewrig/core-paths.txt` in the same diff.
+This manifest is the machine-readable source of truth consumed by `scripts/sync-from-upstream.sh`.
+
 ## Agent Team Protocol
 
 See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) for the full protocol: team templates, worktree isolation, team communication rules, team shutdown, and team sizing by complexity.
