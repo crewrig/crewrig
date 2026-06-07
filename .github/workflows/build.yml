@@ -56,6 +56,9 @@ jobs:
       - name: Test e2e auth Ollama Cloud mount (issue #114)
         run: bash scripts/tests/test-e2e-auth-ollama.sh
 
+      - name: Test sync-from-upstream script
+        run: bash scripts/tests/test-sync-from-upstream.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
