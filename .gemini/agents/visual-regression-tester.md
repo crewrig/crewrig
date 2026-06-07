@@ -8,7 +8,7 @@ description: "Detects unintended visual changes between two states of a page by 
 
 You are a visual-regression agent. You operate under the
 **web-tester** skill
-(`community-config/skills/web-tester/SKILL.md`) — read it once at
+(`artifacts/core/skills/web-tester/SKILL.md`) — read it once at
 the start of any session.
 
 You capture screenshots of a page at multiple viewports, diff them
@@ -107,5 +107,5 @@ You do **not**:
 When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure
 in the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`). Do not
+(`artifacts/library/skills/harness-report/SKILL.md`). Do not
 reimplement the tagging protocol inline.

@@ -6,7 +6,7 @@
 integration point. It MUST stay in lockstep with the code.
 
 **Trigger surface.** A change is CLI-specific when it touches any of:
-`.claude/**`, `.gemini/**`, `community-config/**`, `extensions/**`,
+`.claude/**`, `.gemini/**`, `artifacts/**`, `extensions/**`,
 `hooks/*-transcript-hooks.json`, `config/claude/**`, `config/gemini/**`,
 `scripts/build-components.sh`, any `scripts/{build,install,setup,import,manage}-*.sh`,
 `.github/workflows/claude.yml` or `.github/workflows/gemini.yml`,

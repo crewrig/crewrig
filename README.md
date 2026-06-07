@@ -9,9 +9,9 @@ purposes:
 
 - **Personal context layer** — layered configuration files shape how AI
   assistants behave for a specific user's role, team, and seniority.
-- **Shared innovation zone** — `community-config/` is a collaborative
-  sandbox where a team builds and shares skills, agents, and commands
-  that any member can install from a single source.
+- **Shared artifact zones** — `artifacts/` is the single-source zone where
+  skills, agents, and commands are authored once and compiled into outputs
+  for all supported CLIs.
 - **Harness engineering** — a built-in feedback loop lets agents tag
   frictions encountered during real work; the harness curator clusters
   those frictions into actionable GitHub issues, closing the loop
@@ -31,7 +31,7 @@ workflow is the product in action.
 | [GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli) | Split: `.github/copilot/` + `.github/skills/` + `.github/agents/` (workspace-level) | `task setup-copilot-interactive` |
 
 All platforms share the same source configuration files in `config/` and
-`community-config/`. Setup and build scripts deploy them into the
+`artifacts/`. Setup and build scripts deploy them into the
 platform-specific directories. See `docs/cli-matrix.md` for the full
 per-CLI integration matrix.
 
@@ -59,12 +59,12 @@ as additive context (all files combine, no override). **GitHub Copilot CLI**
 loads them from `~/.copilot/instructions/` as `*.instructions.md` files,
 applied to all sessions.
 
-### Community Config Zone
+### Artifact Zone
 
-`community-config/` is a single-source sandbox where skills, agents, and
-commands are written **once** and compiled into outputs for both CLIs.
-Contributors edit a single Markdown file with YAML frontmatter; the
-build step produces Gemini CLI, Claude Code, and GitHub Copilot CLI targets.
+`artifacts/` is the single-source zone where skills, agents, and commands
+are written **once** and compiled into outputs for all CLIs. Contributors
+edit a single Markdown file with YAML frontmatter; the build step produces
+Gemini CLI, Claude Code, and GitHub Copilot CLI targets.
 
 | Type | Description |
 |---|---|
@@ -86,7 +86,7 @@ task install-component TYPE=skills NAME=my-skill
 task install-claude-component TYPE=claude-skills NAME=my-skill
 ```
 
-See [`community-config/FORMAT.md`](community-config/FORMAT.md) for the
+See [`artifacts/FORMAT.md`](artifacts/FORMAT.md) for the
 full unified-source specification.
 
 ### Harness Engineering Loop
@@ -108,7 +108,7 @@ a four-stage loop:
    `SKILL.md` signals that a new version is available.
 
 For automated periodic sweeps,
-`community-config/skills/harness-curator/scripts/schedule-curator.sh`
+`artifacts/library/skills/harness-curator/scripts/schedule-curator.sh`
 installs a macOS launchd job or a Linux crontab entry that runs the
 curator on a fixed cadence.
 
@@ -160,7 +160,7 @@ harness loop:
    Generate your profile with `/init-personal-profile` and your soul
    with `/init-soul`.
 2. **Create** — add a `SKILL.md` to
-   `community-config/skills/my-skill/`, or run
+   `artifacts/community/skills/my-skill/`, or run
    `task create-extension NAME=my-skill`. Run `task build-components`
    to generate outputs for both CLIs.
 3. **Use on another project** — install the component:
@@ -253,11 +253,11 @@ task setup-claude-interactive
    **expertise**, and **experience level** via an interactive menu with
    live preview.
 
-### Community Config (optional)
+### Artifact Zone (optional)
 
-The `community-config/` directory is a collaborative sandbox for
-lightweight, prompt-based components. Single-source files generate
-outputs for both tools:
+The `artifacts/` directory is the single-source zone for lightweight,
+prompt-based components. Single-source files generate outputs for all
+supported CLIs:
 
 **Gemini CLI:**
 
@@ -339,33 +339,36 @@ config/
 ├── TOOLS.md               # Memory architecture and MCP server guidelines
 └── release-monorepo.json  # Monorepo release configuration
 
-community-config/
+artifacts/
 ├── FORMAT.md              # Unified source format specification
-├── skills/                # Reusable agent skills (single-source)
-│   ├── harness-report/    # Skill: tag frictions during real work
-│   │   └── SKILL.md
-│   ├── harness-curator/   # Skill: cluster frictions and open GitHub issues
-│   │   ├── SKILL.md
-│   │   └── scripts/       # schedule-curator.sh (launchd/crontab installer), ...
-│   ├── pr-reviewer/       # Skill: independent PR reviewer + linters
-│   │   ├── SKILL.md
-│   │   └── scripts/       # lint-shell.sh, lint-markdown.sh, lint-skill.sh, ...
-│   └── # … 14 skills total (architect, astro, copywriting, developer, doc-writer,
-│       # frontend, github-actions, harness-curator, harness-report, pr-logbook,
-│       # pr-reviewer, security, tester, web-tester)
-├── agents/                # Sub-agent definitions
-│   ├── pr-reviewer/       # Agent: cold-start independent PR reviewer
-│   │   └── AGENT.md
-│   └── # … 21 agents total (accessibility-auditor, accessibility-tester, architect,
-│       # astro-developer, ci-configurator, ci-debugger, copywriter, designer,
-│       # developer, doc-writer, frontend-developer, harness-curator, pr-logbook,
-│       # pr-reviewer, regression-sentinel, scenario-author, security,
-│       # seo-specialist, tester, visual-regression-tester, web-conformity-checker)
-├── commands/              # Shared slash commands
-├── hooks/                 # Lifecycle hooks
-├── policies/              # Security policies
-├── mcp-servers/           # MCP server configurations
-└── themes/                # UI themes
+├── core/                  # Upstream-owned SDLC lifecycle tools and role skills/agents
+│   ├── skills/            # Reusable agent skills — SDLC + role skills
+│   │   ├── spec-author/   # Lifecycle: qualification stage author
+│   │   ├── pr-logbook/    # Lifecycle: PR and logbook composer
+│   │   ├── pr-reviewer/   # Lifecycle: independent PR reviewer + linters
+│   │   │   └── scripts/   # lint-shell.sh, lint-markdown.sh, lint-skill.sh, ...
+│   │   └── # … 10 role skills (architect, astro, copywriting, developer, doc-writer,
+│   │       # frontend, github-actions, security, tester, web-tester)
+│   └── agents/            # Sub-agent definitions (lifecycle + role agents)
+│       └── # … spec-author, pr-logbook, pr-reviewer, architect + 17 role agents
+├── library/               # Upstream-owned harness machinery (user-home scope)
+│   ├── skills/
+│   │   ├── harness-report/    # Skill: tag frictions during real work
+│   │   └── harness-curator/   # Skill: cluster frictions and open GitHub issues
+│   │       └── scripts/       # schedule-curator.sh, curate.sh, test.sh, ...
+│   └── agents/
+│       └── harness-curator/   # Agent: curator specialist
+├── community/             # Adopting organisation sandbox
+│   ├── skills/            # Org-authored role skills (not yet validated)
+│   ├── agents/            # Org-authored agents (not yet validated)
+│   ├── commands/          # Org-specific slash commands
+│   ├── hooks/             # Org-specific lifecycle hooks
+│   ├── policies/          # Org-specific policy files
+│   ├── mcp-servers/       # Org-specific MCP server configurations
+│   └── themes/            # Org-specific UI themes
+└── organisation/          # Adopting organisation validated components
+    ├── skills/
+    └── agents/
 
 .gemini/                              # Build output — generated by scripts/build-components.sh
                                       # Do not edit manually

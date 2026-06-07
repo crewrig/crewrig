@@ -4,27 +4,32 @@ This guide explains how to add new configurations, skills, and components
 to the repository. The framework supports **Gemini CLI**, **Claude Code**,
 and **GitHub Copilot CLI** as target platforms.
 
-## Philosophy: The Community Sandbox
+## Philosophy: The Artifacts Zone
 
-The `community-config/` directory serves as a **collaborative sandbox**:
+The `artifacts/` directory is the **single-source zone** for all skills,
+agents, and commands:
 
-- Share lightweight components (commands, skills, hooks) quickly.
-- Write each component **once** in the unified source format — the build
-  system generates outputs for Gemini CLI, Claude Code, and GitHub Copilot CLI.
-- Once a component grows in complexity or requires executable code, migrate
-  it to a full `extension/` with an `extension.json` manifest.
+- `artifacts/core/` — upstream-owned SDLC lifecycle tools and role skills.
+- `artifacts/library/` — upstream-owned harness machinery (harness-report, harness-curator).
+- `artifacts/community/` — adopting organisation sandbox (commands, hooks, MCP servers, policies, themes, org-specific skills and agents).
+- `artifacts/organisation/` — adopting organisation validated components.
+
+Write each component **once** in the unified source format — the build
+system generates outputs for Gemini CLI, Claude Code, and GitHub Copilot CLI.
+Once a capability requires executable code, migrate it to a full `extension/`
+with an `extension.json` manifest.
 
 ## Single-Source vs Project-Specific
 
 | Directory | Scope | Duplication? |
 |-----------|-------|:------------:|
-| `community-config/` | Reusable, shared across tools | **No** — single source, build generates targets |
+| `artifacts/` | Reusable, shared across tools | **No** — single source, build generates targets |
 | `.gemini/commands/` | Gemini CLI project commands | **Yes** — native to Gemini |
 | `.claude/skills/` | Claude Code project skills | **Yes** — native to Claude Code |
 | `.github/skills/` | GitHub Copilot CLI project skills (Agent Skills standard) | **Yes** — native to Copilot CLI |
 
-Community components use the unified format documented in
-[`community-config/FORMAT.md`](community-config/FORMAT.md).
+Artifact components use the unified format documented in
+[`artifacts/FORMAT.md`](artifacts/FORMAT.md).
 
 ## Development Workflow
 
@@ -73,8 +78,8 @@ task unlink-component TYPE=skills NAME=my-new-skill
 
 ## Community Component Format
 
-Community components use a **unified source format** (Markdown with YAML
-frontmatter). See [`community-config/FORMAT.md`](community-config/FORMAT.md)
+Artifact components use a **unified source format** (Markdown with YAML
+frontmatter). See [`artifacts/FORMAT.md`](artifacts/FORMAT.md)
 for the complete specification.
 
 ```markdown
@@ -188,8 +193,8 @@ Agent(subagent_type="architect", prompt="Design the implementation for issue #N 
    guide, test plan, detailed description, linked logbook issue).
 4. **Secrets**: never commit credentials. Use `~/.gemini/.env` or shell
    environment variables for local tokens.
-5. **Community components**: use the unified source format — one file,
-   build generates both tool outputs. See `community-config/FORMAT.md`.
+5. **Artifact components**: use the unified source format — one file,
+   build generates both tool outputs. See `artifacts/FORMAT.md`.
 6. **Extensions**: use `extension.json` manifest for new extensions.
    See `extension-skeleton/EXTENSION-FORMAT.md`.
 7. **Shell + Python glue**: follow the rules in

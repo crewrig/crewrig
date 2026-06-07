@@ -1,5 +1,5 @@
 #!/bin/bash
-# community-config/skills/harness-curator/scripts/test.sh
+# artifacts/library/skills/harness-curator/scripts/test.sh
 #   Smoke test for the bundled curate.sh.
 #
 # Feeds the fixture at ../assets/sample-frictions.json through
@@ -183,7 +183,7 @@ assert "drw-002.evidence count (inline form)" "1" "$DRW2_EVIDENCE"
 
 # Body must contain at least one evidence pointer.
 YQ_BODY=$(echo "$YQ" | jq -r '.body')
-echo "$YQ_BODY" | grep -q "community-config/skills/architect/SKILL.md:42" || {
+echo "$YQ_BODY" | grep -q "artifacts/core/skills/architect/SKILL.md:42" || {
   echo "FAIL: yq-merge body missing evidence pointer from drw-001" >&2
   exit 1
 }
@@ -626,7 +626,7 @@ result = tool_add_drawer(
         "canonical: https://github.com/crewrig/crewrig\n"
         "severity: high\n"
         "evidence:\n"
-        "  - community-config/skills/harness-curator/scripts/curate.py:60\n"
+        "  - artifacts/library/skills/harness-curator/scripts/curate.py:60\n"
     ),
 )
 _real.write(result.get("drawer_id", "") if isinstance(result, dict) else str(result))

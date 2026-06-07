@@ -121,9 +121,9 @@ Any obstacle encountered during the worktree lifecycle — merge conflicts, CI f
 
 ## Built Components
 
-Source files under `community-config/` are compiled into `.gemini/` and `.claude/` by `scripts/build-components.sh`. The CI `check-components` job fails if the built outputs drift from sources.
+Source files under `artifacts/` are compiled into `.gemini/` and `.claude/` by `scripts/build-components.sh`. The CI `check-components` job fails if the built outputs drift from sources.
 
-**Rule:** any commit that modifies a file under `community-config/` MUST also run `bash scripts/build-components.sh` and stage the regenerated outputs in the same commit or an immediately following one — never deferred to a separate PR.
+**Rule:** any commit that modifies a file under `artifacts/` MUST also run `bash scripts/build-components.sh` and stage the regenerated outputs in the same commit or an immediately following one — never deferred to a separate PR.
 
 **Verify before push:** run `bash scripts/build-components.sh` after staging. A clean `git status --porcelain` means no drift.
 
@@ -285,7 +285,7 @@ to the spec's declared blast radius (the union of
 `## Requirements` and the file paths the spec touches). The
 challenge is emitted as a `class: spec` finding citing this
 section — see
-[`community-config/skills/pr-reviewer/SKILL.md`](../community-config/skills/pr-reviewer/SKILL.md)
+[`artifacts/core/skills/pr-reviewer/SKILL.md`](../artifacts/core/skills/pr-reviewer/SKILL.md)
 → *Spec-review obligation — tier challenge*. Over-statement is a
 non-blocking observation, not a blocking finding.
 

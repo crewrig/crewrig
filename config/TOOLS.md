@@ -90,7 +90,7 @@ storage, a temporal knowledge graph, semantic search, and an agent diary.
 >    discipline (Memory Activation Protocol still applies at session
 >    start).
 >
-> The Harness Curator (`community-config/skills/harness-curator/`) is
+> The Harness Curator (`artifacts/library/skills/harness-curator/`) is
 > the canonical user of this carve-out: it batch-reads the
 > `harness-friction` wing, which a per-drawer MCP loop would turn into
 > a multi-thousand-call traversal.
@@ -435,7 +435,7 @@ make the trigger optional.
 
 The operational procedure (identifying the offender, picking the
 room, filling the payload) lives in
-`community-config/skills/harness-report/SKILL.md`. Any skill or
+`artifacts/library/skills/harness-report/SKILL.md`. Any skill or
 agent that needs to tag a friction must invoke `harness-report`
 rather than re-implementing the protocol inline. This keeps the
 contract single-sourced and lets future improvements (richer
@@ -529,7 +529,7 @@ subcategory: yq-merge
 canonical: https://github.com/crewrig/crewrig
 severity: med
 evidence:
-  - community-config/skills/architect/SKILL.md:42
+  - artifacts/core/skills/architect/SKILL.md:42
 suggestion: Replace `yq m -i` with `yq eval-all '. as $i ireduce ...'`.
 ```
 

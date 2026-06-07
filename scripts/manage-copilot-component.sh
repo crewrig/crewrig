@@ -61,14 +61,17 @@ place_component() {
   fi
 }
 
-# --- Install an agent (flat file: community-config/agents/<name>/AGENT.md -> .github/agents/<name>.md) ---
+# --- Install an agent (flat file: artifacts/*/agents/<name>/AGENT.md -> .github/agents/<name>.md) ---
 place_agent() {
   local name="$1"
-  local src_file="$REPO_DIR/community-config/agents/${name}/AGENT.md"
+  local src_file=""
+  for search_dir in "$REPO_DIR/artifacts/core/agents" "$REPO_DIR/artifacts/library/agents" "$REPO_DIR/artifacts/community/agents"; do
+    [ -f "$search_dir/${name}/AGENT.md" ] && src_file="$search_dir/${name}/AGENT.md" && break
+  done
   local dest_file="$REPO_DIR/.github/agents/${name}.md"
 
-  if [ ! -f "$src_file" ]; then
-    echo "Error: '$name' not found in community-config/agents/"
+  if [ -z "$src_file" ]; then
+    echo "Error: '$name' not found in artifacts/*/agents/"
     exit 1
   fi
 
@@ -110,43 +113,46 @@ merge_mcp_server() {
 case "$TYPE" in
   skills|commands)
     # Commands compile as skills for Copilot (no first-class slash-command format).
-    SRC_DIR="$REPO_DIR/community-config/skills"
     DEST="$REPO_DIR/.github/skills"
     mkdir -p "$DEST"
 
-    if [ -n "$NAME" ]; then
-      [ -d "$SRC_DIR/$NAME" ] || { echo "Error: '$NAME' not found in community-config/skills/"; exit 1; }
-      place_component "$SRC_DIR/$NAME" "$DEST"
-    else
-      for item in "$SRC_DIR"/*/; do
-        [ -d "$item" ] && place_component "$item" "$DEST"
-      done
-    fi
+    for SRC_DIR in "$REPO_DIR/artifacts/core/skills" "$REPO_DIR/artifacts/library/skills" "$REPO_DIR/artifacts/community/skills"; do
+      [ ! -d "$SRC_DIR" ] && continue
+      if [ -n "$NAME" ]; then
+        [ -d "$SRC_DIR/$NAME" ] && place_component "$SRC_DIR/$NAME" "$DEST"
+      else
+        for item in "$SRC_DIR"/*/; do
+          [ -d "$item" ] && place_component "$item" "$DEST"
+        done
+      fi
+    done
     ;;
 
   agents)
-    SRC_DIR="$REPO_DIR/community-config/agents"
     mkdir -p "$REPO_DIR/.github/agents"
 
     if [ -n "$NAME" ]; then
       place_agent "$NAME"
     else
-      for agent_dir in "$SRC_DIR"/*/; do
-        [ -d "$agent_dir" ] && place_agent "$(basename "$agent_dir")"
+      for SRC_DIR in "$REPO_DIR/artifacts/core/agents" "$REPO_DIR/artifacts/library/agents" "$REPO_DIR/artifacts/community/agents"; do
+        [ ! -d "$SRC_DIR" ] && continue
+        for agent_dir in "$SRC_DIR"/*/; do
+          [ -d "$agent_dir" ] && place_agent "$(basename "$agent_dir")"
+        done
       done
     fi
     ;;
 
   mcp-servers)
-    SRC_DIR="$REPO_DIR/community-config/mcp-servers"
+    SRC_DIR="$REPO_DIR/artifacts/community/mcp-servers"
     if [ ! -d "$SRC_DIR" ]; then
-      echo "Error: community-config/mcp-servers/ does not exist."
+      echo "Error: artifacts/community/mcp-servers/ does not exist."
       exit 1
     fi
 
     if [ -n "$NAME" ]; then
       JSON="$SRC_DIR/$NAME.json"
-      [ ! -f "$JSON" ] && { echo "Error: '$NAME.json' not found in community-config/mcp-servers/"; exit 1; }
+      [ ! -f "$JSON" ] && { echo "Error: '$NAME.json' not found in artifacts/community/mcp-servers/"; exit 1; }
       merge_mcp_server "$JSON"
     else
       for item in "$SRC_DIR"/*.json; do

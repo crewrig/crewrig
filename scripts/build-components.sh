@@ -13,7 +13,13 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-COMMUNITY_DIR="$REPO_DIR/community-config"
+# Source directories by installation scope (spec 0014 R11):
+#   core/    — project-scoped: built into per-repo CLI output directories
+#   library/ — user-home-scoped: intended for ~/.claude/skills/, ~/.gemini/skills/, etc.
+#   community/ — org sandbox: organisation-owned, project-scoped
+CORE_DIR="$REPO_DIR/artifacts/core"
+LIBRARY_DIR="$REPO_DIR/artifacts/library"
+COMMUNITY_DIR="$REPO_DIR/artifacts/community"
 TARGET="all"
 CHECK_MODE=false
 
@@ -288,9 +294,10 @@ propagate_skill_resources() {
 
 # --- Build Skills ---
 build_skills() {
-  local skills_dir="$COMMUNITY_DIR/skills"
-  [ ! -d "$skills_dir" ] && return
+  local skills_dirs=("$CORE_DIR/skills" "$LIBRARY_DIR/skills" "$COMMUNITY_DIR/skills")
 
+  for skills_dir in "${skills_dirs[@]}"; do
+  [ ! -d "$skills_dir" ] && continue
   for skill_dir in "$skills_dir"/*/; do
     [ ! -d "$skill_dir" ] && continue
     local source="$skill_dir/SKILL.md"
@@ -439,11 +446,13 @@ COPILOT_EOF
       propagate_skill_resources "$skill_dir" "$REPO_DIR/.github/skills/$name"
     fi
   done
+  done
 }
 
 # --- Build Commands ---
 build_commands() {
   local commands_dir="$COMMUNITY_DIR/commands"
+  # Commands are org-specific (community layer only); core/library have none.
   [ ! -d "$commands_dir" ] && return
 
   for source in "$commands_dir"/*.md; do
@@ -534,9 +543,10 @@ COPILOT_EOF
 
 # --- Build Agents ---
 build_agents() {
-  local agents_dir="$COMMUNITY_DIR/agents"
-  [ ! -d "$agents_dir" ] && return
+  local agents_dirs=("$CORE_DIR/agents" "$LIBRARY_DIR/agents" "$COMMUNITY_DIR/agents")
 
+  for agents_dir in "${agents_dirs[@]}"; do
+  [ ! -d "$agents_dir" ] && continue
   for agent_dir in "$agents_dir"/*/; do
     [ ! -d "$agent_dir" ] && continue
     local source="$agent_dir/AGENT.md"
@@ -615,6 +625,7 @@ COPILOT_EOF
       )
       check_or_write "$REPO_DIR/.github/agents/$name.md" "$copilot_content" "$source"
     fi
+  done
   done
 }
 

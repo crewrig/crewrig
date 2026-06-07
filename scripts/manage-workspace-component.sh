@@ -24,10 +24,10 @@ case "$TYPE" in
   theme)      TYPE="themes" ;;
 esac
 
-SRC_DIR="$REPO_DIR/community-config/$TYPE"
+SRC_DIR="$REPO_DIR/artifacts/community/$TYPE"
 
 if [ ! -d "$SRC_DIR" ]; then
-  echo "Error: directory community-config/$TYPE does not exist."
+  echo "Error: directory artifacts/community/$TYPE does not exist."
   exit 1
 fi
 
@@ -92,7 +92,7 @@ case "$TYPE" in
         fi
       done
       if [ -z "$FOUND" ]; then
-        echo "Error: '$NAME' not found in community-config/$TYPE"
+        echo "Error: '$NAME' not found in artifacts/community/$TYPE"
         exit 1
       fi
     else
@@ -109,7 +109,7 @@ case "$TYPE" in
     if [ -n "$NAME" ]; then
       JSON="$SRC_DIR/$NAME.json"
       if [ ! -f "$JSON" ]; then
-        echo "Error: '$NAME.json' not found in community-config/$TYPE" >&2
+        echo "Error: '$NAME.json' not found in artifacts/community/$TYPE" >&2
         exit 1
       fi
       merge_json "$JSON" "$KEY"

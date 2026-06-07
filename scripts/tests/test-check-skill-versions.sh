@@ -94,9 +94,9 @@ repo1="$(new_repo)"
   git commit -q -m "seed"
 
   # Head commit: ADD a brand-new skill source.
-  mkdir -p community-config/skills/new-skill
-  render_skill "1.0.0" > community-config/skills/new-skill/SKILL.md
-  git add community-config/skills/new-skill/SKILL.md
+  mkdir -p artifacts/core/skills/new-skill
+  render_skill "1.0.0" > artifacts/core/skills/new-skill/SKILL.md
+  git add artifacts/core/skills/new-skill/SKILL.md
   git commit -q -m "add new skill"
 )
 run_case "Case 1 — new component (status A) requires no bump" "$repo1" 0
@@ -107,14 +107,14 @@ run_case "Case 1 — new component (status A) requires no bump" "$repo1" 0
 repo2="$(new_repo)"
 (
   cd "$repo2"
-  mkdir -p community-config/skills/old-skill
-  render_skill "1.0.0" > community-config/skills/old-skill/SKILL.md
-  git add community-config/skills/old-skill/SKILL.md
+  mkdir -p artifacts/core/skills/old-skill
+  render_skill "1.0.0" > artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
   git commit -q -m "seed old-skill at 1.0.0"
 
   # Head commit: modify body, but leave version untouched.
-  printf '\nExtra line.\n' >> community-config/skills/old-skill/SKILL.md
-  git add community-config/skills/old-skill/SKILL.md
+  printf '\nExtra line.\n' >> artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
   git commit -q -m "tweak body, forget version bump"
 )
 run_case "Case 2 — modified component without bump fails" "$repo2" 1
@@ -125,15 +125,15 @@ run_case "Case 2 — modified component without bump fails" "$repo2" 1
 repo3="$(new_repo)"
 (
   cd "$repo3"
-  mkdir -p community-config/skills/old-skill
-  render_skill "1.0.0" > community-config/skills/old-skill/SKILL.md
-  git add community-config/skills/old-skill/SKILL.md
+  mkdir -p artifacts/core/skills/old-skill
+  render_skill "1.0.0" > artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
   git commit -q -m "seed old-skill at 1.0.0"
 
   # Head commit: bump version (and tweak body for realism).
-  render_skill "1.0.1" > community-config/skills/old-skill/SKILL.md
-  printf '\nExtra line.\n' >> community-config/skills/old-skill/SKILL.md
-  git add community-config/skills/old-skill/SKILL.md
+  render_skill "1.0.1" > artifacts/core/skills/old-skill/SKILL.md
+  printf '\nExtra line.\n' >> artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
   git commit -q -m "patch bump"
 )
 run_case "Case 3 — modified component with bump passes" "$repo3" 0
@@ -146,15 +146,15 @@ repo4="$(new_repo)"
 (
   cd "$repo4"
   git branch -m main  # ensure the branch is named main for crewrig/main
-  mkdir -p community-config/skills/old-skill
-  render_skill "1.0.0" > community-config/skills/old-skill/SKILL.md
-  git add community-config/skills/old-skill/SKILL.md
+  mkdir -p artifacts/core/skills/old-skill
+  render_skill "1.0.0" > artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
   git commit -q -m "seed old-skill at 1.0.0"
 
   # Head commit: bump version.
-  render_skill "1.0.1" > community-config/skills/old-skill/SKILL.md
-  printf '\nExtra line.\n' >> community-config/skills/old-skill/SKILL.md
-  git add community-config/skills/old-skill/SKILL.md
+  render_skill "1.0.1" > artifacts/core/skills/old-skill/SKILL.md
+  printf '\nExtra line.\n' >> artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
   git commit -q -m "patch bump"
 
   # Add a remote named crewrig (no origin) pointing at the repo itself.

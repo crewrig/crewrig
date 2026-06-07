@@ -77,11 +77,11 @@ if [[ ! -f "${REPO_ROOT}/scripts/build-components.sh" ]]; then
   scenario_skip "could not locate scripts/build-components.sh from ${E2E_SCENARIO_DIR}"
 fi
 
-# Stage a writable copy of community-config + scripts into the case dir
+# Stage a writable copy of artifacts + scripts into the case dir
 # so the build is hermetic (the source tree is read-only on principle).
 work_dir="${E2E_REPORT_DIR}/build-work"
 mkdir -p "$work_dir"
-cp -R "${REPO_ROOT}/community-config" "$work_dir/" 2>/dev/null || true
+cp -R "${REPO_ROOT}/artifacts" "$work_dir/" 2>/dev/null || true
 cp -R "${REPO_ROOT}/scripts"          "$work_dir/" 2>/dev/null || true
 cp -R "${REPO_ROOT}/config"           "$work_dir/" 2>/dev/null || true
 

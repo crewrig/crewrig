@@ -3,7 +3,7 @@
     "drawer_id": "drw-001",
     "room": "prompt",
     "filed_at": "2026-05-08T09:14:22.000000",
-    "content": "FRICTION: Skill prompt suggests yq merge syntax that does not exist on yq v4\n\nwriter_agent: claude-code\nsubcategory: yq-merge\ncanonical: https://github.com/crewrig/crewrig\nseverity: med\nevidence:\n  - community-config/skills/architect/SKILL.md:42\nsuggestion: Replace `yq m -i` with `yq eval-all '. as $i ireduce ...'`."
+    "content": "FRICTION: Skill prompt suggests yq merge syntax that does not exist on yq v4\n\nwriter_agent: claude-code\nsubcategory: yq-merge\ncanonical: https://github.com/crewrig/crewrig\nseverity: med\nevidence:\n  - artifacts/core/skills/architect/SKILL.md:42\nsuggestion: Replace `yq m -i` with `yq eval-all '. as $i ireduce ...'`."
   },
   {
     "drawer_id": "drw-002",
@@ -37,7 +37,7 @@
     "drawer_id": "drw-007",
     "room": "tool",
     "filed_at": "2026-05-07T10:00:00.000000",
-    "content": "FRICTION: Already-correlated friction must be skipped by the curator\n\nwriter_agent: claude-code\nsubcategory: stale-resolved-fixture\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - community-config/skills/harness-curator/scripts/apply.py:99\nsuggestion: Skip on truthy opened_as.\nopened_as: https://github.com/crewrig/crewrig/issues/99"
+    "content": "FRICTION: Already-correlated friction must be skipped by the curator\n\nwriter_agent: claude-code\nsubcategory: stale-resolved-fixture\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - artifacts/library/skills/harness-curator/scripts/apply.py:99\nsuggestion: Skip on truthy opened_as.\nopened_as: https://github.com/crewrig/crewrig/issues/99"
   },
   {
     "drawer_id": "drw-008",

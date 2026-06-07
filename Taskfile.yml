@@ -56,11 +56,11 @@ tasks:
         fi
 
   install-workspace:
-    desc: Install all community-config components (copy mode)
+    desc: Install all artifacts components (copy mode)
     cmd: bash {{.REPO_DIR}}/scripts/install-workspace.sh install
 
   link-workspace:
-    desc: Link all community-config components (symlink mode, for development)
+    desc: Link all artifacts components (symlink mode, for development)
     cmd: bash {{.REPO_DIR}}/scripts/install-workspace.sh link
 
   install-component:
@@ -143,11 +143,11 @@ tasks:
     cmd: bash {{.REPO_DIR}}/scripts/import-gemini-history.sh
 
   install-claude-workspace:
-    desc: Install all community-config Claude Code components (copy mode)
+    desc: Install all artifacts Claude Code components (copy mode)
     cmd: bash {{.REPO_DIR}}/scripts/manage-claude-component.sh install claude-skills
 
   link-claude-workspace:
-    desc: Link all community-config Claude Code components (symlink mode — dev only)
+    desc: Link all artifacts Claude Code components (symlink mode — dev only)
     cmd: bash {{.REPO_DIR}}/scripts/manage-claude-component.sh link claude-skills
 
   install-claude-component:
@@ -253,11 +253,11 @@ tasks:
 
   harness-curate:
     desc: "Run the Harness Curator (task harness-curate -- [--apply | --from-stdin])"
-    cmd: bash {{.REPO_DIR}}/community-config/skills/harness-curator/scripts/curate.sh {{.CLI_ARGS}}
+    cmd: bash {{.REPO_DIR}}/artifacts/library/skills/harness-curator/scripts/curate.sh {{.CLI_ARGS}}
 
   test-harness-curate:
     desc: "Smoke-test the Harness Curator against the bundled fixture"
-    cmd: bash {{.REPO_DIR}}/community-config/skills/harness-curator/scripts/test.sh
+    cmd: bash {{.REPO_DIR}}/artifacts/library/skills/harness-curator/scripts/test.sh
 
   check-skill-versions:
     desc: "Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)"

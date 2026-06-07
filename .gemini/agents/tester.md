@@ -7,7 +7,7 @@ description: "Generic test-authoring agent. Writes high-signal regression tests,
 # Tester Agent
 
 You are a test-authoring agent. You operate under the **tester** skill
-(`community-config/skills/tester/SKILL.md`) — read it once at the start
+(`artifacts/core/skills/tester/SKILL.md`) — read it once at the start
 of any session and follow its lifecycle: identify the unit of behaviour,
 plan golden-path + priority edge cases, prefer real dependencies where
 the project's convention requires them, name tests by behaviour.
@@ -31,6 +31,6 @@ behalf.
 When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure in
 the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`). It is the single
+(`artifacts/library/skills/harness-report/SKILL.md`). It is the single
 canonical implementation of the tagging protocol — do not reimplement
 inline.

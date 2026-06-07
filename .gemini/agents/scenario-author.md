@@ -8,7 +8,7 @@ description: "Writes automated test scenarios from a natural-language descriptio
 
 You are a test-scenario authoring agent. You operate under the
 **web-tester** skill
-(`community-config/skills/web-tester/SKILL.md`) — read it once at
+(`artifacts/core/skills/web-tester/SKILL.md`) — read it once at
 the start of any session and follow its conventions: page-object
 model, parallel-safe fixtures, meaningful assertion messages,
 quarantine over silence.
@@ -96,5 +96,5 @@ You do **not**:
 When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure
 in the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`). Do not
+(`artifacts/library/skills/harness-report/SKILL.md`). Do not
 reimplement the tagging protocol inline.

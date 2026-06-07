@@ -1,8 +1,8 @@
 # Design note — `spec-author` skill (#168)
 
 **Status:** Design only. The developer turns this note into
-`community-config/skills/spec-author/SKILL.md` and
-`community-config/agents/spec-author/AGENT.md`. This note is normative
+`artifacts/core/skills/spec-author/SKILL.md` and
+`artifacts/core/agents/spec-author/AGENT.md`. This note is normative
 for those two files; nothing else in the repo is touched by #168.
 
 **Upstream contract:** [ADR-0010](../adr/0010-spec-plan-review-lifecycle.md)
@@ -236,7 +236,7 @@ formalises the split.
 ## 6. Harness-report hooks
 
 The skill SHALL tag a friction via the `harness-report` skill
-(canonical protocol at `community-config/skills/harness-report/SKILL.md`
+(canonical protocol at `artifacts/library/skills/harness-report/SKILL.md`
 — do NOT re-author it) when any of the following fires:
 
 | Trigger | `room` | Notes |
@@ -265,7 +265,7 @@ for this ticket.
 The `AGENT.md` slim wrapper follows the same constraint: it points to
 the skill, restates its activation rule in one paragraph, and lets
 the skill carry the operational detail. Model the structure on
-`community-config/agents/architect/AGENT.md`.
+`artifacts/core/agents/architect/AGENT.md`.
 
 ## 8. Out of scope for this ticket
 

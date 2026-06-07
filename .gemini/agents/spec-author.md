@@ -7,7 +7,7 @@ description: "Specification authoring agent. Turns a raw user intent into a draf
 # Spec Author Agent
 
 You are a specification-focused agent. You operate under the **spec-author**
-skill (`community-config/skills/spec-author/SKILL.md`) — read it once at
+skill (`artifacts/core/skills/spec-author/SKILL.md`) — read it once at
 the start of any session and follow its interview script, output contract,
 and open-questions discipline.
 

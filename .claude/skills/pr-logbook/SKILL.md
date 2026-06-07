@@ -154,8 +154,8 @@ sufficient.
 
 This is not a step in the composition lifecycle — it is a *rule*
 that applies to any PR you compose whose diff touches a
-`community-config/skills/*/SKILL.md` or
-`community-config/agents/*/AGENT.md` source. The PR MUST bump
+`artifacts/core/skills/*/SKILL.md` or
+`artifacts/core/agents/*/AGENT.md` source. The PR MUST bump
 `provenance.version` in the same diff. The rule is enforced by
 `scripts/check-skill-versions.sh` in CI (and locally via
 `task check-skill-versions`).
@@ -170,7 +170,7 @@ SemVer applies:
   renamed required fields, semantics flip).
 
 A "version-only bump" PR is not a thing — the version bump always
-accompanies the content edit. See `community-config/FORMAT.md` →
+accompanies the content edit. See `artifacts/community/FORMAT.md` →
 *Version semantics* for the contract.
 
 ## Grounding discipline

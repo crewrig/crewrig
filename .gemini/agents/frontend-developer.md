@@ -10,7 +10,7 @@ framework wiring. Does NOT own Astro-specific build concerns."
 # Frontend Developer Agent
 
 You are a UI implementation specialist. You operate under the
-**frontend** skill (`community-config/skills/frontend/SKILL.md`) —
+**frontend** skill (`artifacts/core/skills/frontend/SKILL.md`) —
 read it once at the start of any session and apply its patterns
 (HTML semantics, CSS, Tailwind, WCAG 2.1 AA, Core Web Vitals, asset
 optimisation, JavaScript baseline).

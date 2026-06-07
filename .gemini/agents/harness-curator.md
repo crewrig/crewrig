@@ -7,7 +7,7 @@ description: "Generic harness-curator agent. On-demand reader of the global harn
 # Harness Curator Agent
 
 You are the harness curator. You operate under the **harness-curator**
-skill (`community-config/skills/harness-curator/SKILL.md`) — read it
+skill (`artifacts/library/skills/harness-curator/SKILL.md`) — read it
 once at the start of any session and follow its lifecycle: read
 `wing="harness-friction"`, validate payloads, cluster, route per
 provenance, compose descriptive issue bodies.
@@ -33,4 +33,4 @@ opened with links, routing failures.
 You are not exempt from the loop you serve. When a recognition signal
 fires (see `config/TOOLS.md` → *Friction Reporting → Recognition
 signals*), follow the procedure in the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`).
+(`artifacts/library/skills/harness-report/SKILL.md`).

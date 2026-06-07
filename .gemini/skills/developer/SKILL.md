@@ -82,8 +82,8 @@ Before reporting a task as done, run:
 - For UI / frontend work: open the change in a browser and exercise
   the golden path *and* one edge case.
 - For changes to bundled-script source files (any file under
-  `community-config/skills/<name>/scripts/` or
-  `community-config/agents/<name>/scripts/`): run
+  `artifacts/core/skills/<name>/scripts/` or
+  `artifacts/core/agents/<name>/scripts/`): run
   `bash scripts/build-components.sh` to regenerate the `.gemini/` and
   `.claude/` mirrors, stage them in the same commit, then run
   `bash scripts/build-components.sh --check` to confirm drift-free.

@@ -15,8 +15,8 @@ five pillars without needing to read README.md or ADRs:
 2. **Shared cross-tool memory** — MemPalace provides persistent agent memory
    accessible across tools and sessions, enabling continuity between Gemini
    CLI, Claude Code, and Copilot CLI.
-3. **Skill/agent/command creation and sharing** — `community-config/` is a
-   single-source sandbox where skills, agents, and commands are authored once;
+3. **Skill/agent/command creation and sharing** — `artifacts/` is the
+   single-source zone where skills, agents, and commands are authored once;
    `scripts/build-components.sh` compiles them into outputs for all three CLIs.
 4. **Harness engineering** — a built-in feedback loop where agents invoke the
    `harness-report` skill to tag frictions during real work, and the
@@ -218,8 +218,12 @@ tracks shipped revisions. One rule and one exemption govern when it must change.
 a skill or agent source already present on `main` MUST bump
 `metadata.provenance.version` in the same diff. Affected paths:
 
-- `community-config/skills/*/SKILL.md`
-- `community-config/agents/*/AGENT.md`
+- `artifacts/core/skills/*/SKILL.md`
+- `artifacts/library/skills/*/SKILL.md`
+- `artifacts/community/skills/*/SKILL.md`
+- `artifacts/core/agents/*/AGENT.md`
+- `artifacts/library/agents/*/AGENT.md`
+- `artifacts/community/agents/*/AGENT.md`
 
 **Exemption — new components do not bump in-branch.** Components
 introduced on a feature branch start at `1.0.0` and stay there until the
@@ -242,7 +246,7 @@ ships without a version bump.
 
 See [`docs/cli-matrix-maintenance.md`](docs/cli-matrix-maintenance.md) for the full protocol governing CLI-specific integration points, parity checks, gap-acceptance evidence, and the symmetric-script rule.
 
-**Summary:** Any PR touching `.claude/**`, `.gemini/**`, `community-config/**`, `extensions/**`,
+**Summary:** Any PR touching `.claude/**`, `.gemini/**`, `artifacts/**`, `extensions/**`,
 `hooks/*-transcript-hooks.json`, `config/claude/**`, `config/gemini/**`,
 `scripts/build-components.sh`, any `scripts/{build,install,setup,import,manage}-*.sh`,
 `.github/workflows/claude.yml` or `.github/workflows/gemini.yml`,
@@ -258,7 +262,7 @@ See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) for the full pr
 - **Solo work prohibition.** Never treat a multi-step ticket with inline solo work when specialist agents are available. Inline solo work is reserved for trivial single-file edits explicitly scoped by the user.
 - **Mandatory tools on Claude Code CLI.** Use `TeamCreate` (one team per ticket, named after the ticket id), `TaskCreate` (one task per agent role, self-contained brief in the Agent prompt), and `SendMessage` (all cross-agent communication). These three tools are mandatory — not optional.
 - **Worktree isolation.** Before any `TaskCreate` or `Agent` spawn, create a dedicated git worktree. All team edits happen inside `.worktrees/<ticket-id>/`. The main working directory is read-only for the duration.
-- **Built components.** Any commit touching `community-config/` MUST also run `bash scripts/build-components.sh` and stage the regenerated outputs in the same commit.
+- **Built components.** Any commit touching `artifacts/` MUST also run `bash scripts/build-components.sh` and stage the regenerated outputs in the same commit.
 - **Complexity tier.** Read the spec frontmatter `complexity` field at ticket pickup: `trivial` = inline, `small` = developer + pr-logbook + pr-reviewer, `standard` = full Template 1/2/3, `large` = architect-led sub-spec decomposition.
 
 ```sh

@@ -255,7 +255,7 @@ When the spec is in-scope:
 
 1. **Pick the artefact class.** Read the noun in the drafted
    requirement (e.g. *"every built SKILL.md frontmatter"* →
-   `community-config/skills/*/SKILL.md`). When the requirement names
+   `artifacts/core/skills/*/SKILL.md`). When the requirement names
    multiple classes, pick one per class.
 2. **Pick at least one real instance.** A safe default is the
    most-recently-modified file under the class's canonical path
@@ -282,7 +282,7 @@ specifically for:
   (field nesting, section ordering, header level) the observed
   instance does not match.
 - **Path mismatch.** The requirement assumes a canonical path
-  (`community-config/skills/<name>/SKILL.md`) that does not match
+  (`artifacts/core/skills/<name>/SKILL.md`) that does not match
   where the class actually lives in the codebase.
 
 The comparison is informational — the skill is checking that the
@@ -302,7 +302,7 @@ take.
 Worked example:
 
 ```text
-- [GROUNDING:] community-config/skills/spec-author/SKILL.md frontmatter
+- [GROUNDING:] artifacts/core/skills/spec-author/SKILL.md frontmatter
   has no 'type' field; the drafted R8 mandates it. Reconcile before exit
   — either drop R8, retarget the requirement at a different artefact
   class, or scope the back-fill in `## Out of scope`.
@@ -345,7 +345,7 @@ scope decision into the spec PR rather than deferring it to DEV time.
 Worked example:
 
 ```text
-- [GROUNDING:] No `community-config/skills/*/SKILL.md` on main carries
+- [GROUNDING:] No `artifacts/core/skills/*/SKILL.md` on main carries
   a `type: skill` frontmatter field; the drafted R8 mandates it.
   Back-fill responsibility: the implementation PR for this spec SHALL
   add `type:` to every existing skill source in the same diff.
@@ -476,7 +476,7 @@ R2, R6 and [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md)
 
 When a recognition signal fires (see `config/TOOLS.md` → *Friction
 Reporting → Recognition signals*), invoke the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`) rather than
+(`artifacts/library/skills/harness-report/SKILL.md`) rather than
 reimplementing the protocol inline. The skill is the single canonical
 implementation of the tagging contract.
 

@@ -77,5 +77,5 @@ Example: "Task #3 (cold-start review of PR #N) is already completed — availabl
 When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure in
 the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`). Do not let the
+(`artifacts/library/skills/harness-report/SKILL.md`). Do not let the
 friction fall on the floor.

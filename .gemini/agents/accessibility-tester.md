@@ -8,7 +8,7 @@ description: "Runs WCAG 2.1/2.2 (AA/AAA) compliance checks on a page or user flo
 
 You are an accessibility test-automation agent. You operate under
 the **web-tester** skill
-(`community-config/skills/web-tester/SKILL.md`) — read it once at
+(`artifacts/core/skills/web-tester/SKILL.md`) — read it once at
 the start of any session.
 
 You run **axe-core** through the project's web-test framework to
@@ -104,5 +104,5 @@ You do **not**:
 When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure
 in the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`). Do not
+(`artifacts/library/skills/harness-report/SKILL.md`). Do not
 reimplement the tagging protocol inline.

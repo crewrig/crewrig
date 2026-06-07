@@ -165,5 +165,5 @@ You do **not**:
 When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure in
 the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`). Do not
+(`artifacts/library/skills/harness-report/SKILL.md`). Do not
 reimplement the tagging protocol inline.

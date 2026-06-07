@@ -39,7 +39,7 @@ case "$TYPE" in
   mcp-server)    TYPE="mcp-servers" ;;
 esac
 
-SRC_DIR="$REPO_DIR/community-config/$TYPE"
+SRC_DIR="$REPO_DIR/artifacts/community/$TYPE"
 if [ ! -d "$SRC_DIR" ]; then
   # For claude-skills, source may be generated output in .claude/skills/
   SRC_DIR="$REPO_DIR/.claude/skills"
@@ -69,7 +69,7 @@ place_component() {
 
 # --- Register an MCP server via 'claude mcp add --scope user' ---
 # Claude Code reads MCP servers from ~/.claude.json (managed by 'claude mcp ...').
-# Each fragment in community-config/mcp-servers/ is a JSON file shaped like:
+# Each fragment in artifacts/community/mcp-servers/ is a JSON file shaped like:
 #   { "command": "...", "args": ["..."], "env": { ... } }
 register_mcp_server() {
   local json_file="$1"

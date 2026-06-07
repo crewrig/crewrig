@@ -2,7 +2,7 @@
 #
 # Each fork commits its own values here. The build pipeline reads this file
 # during `task build-components` and substitutes ${UPPERCASED_KEY} placeholders
-# in source files (community-config/**) with the values below.
+# in source files (artifacts/**) with the values below.
 #
 # Forks targeting an internal mirror typically:
 #   - Keep `canonical_repo` pointing at the upstream they forked from
@@ -10,7 +10,7 @@
 #   - Override `feedback_repo` so MRs from the harness curator land on
 #     their own internal repo, not the public upstream.
 #
-# See community-config/FORMAT.md (Provenance Block) and issue #41 for context.
+# See artifacts/FORMAT.md (Provenance Block) and issue #41 for context.
 
 canonical_repo = "https://github.com/crewrig/crewrig"
 feedback_repo  = "https://github.com/crewrig/crewrig"

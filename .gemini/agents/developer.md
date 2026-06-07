@@ -7,7 +7,7 @@ description: "Generic implementation agent. Writes, edits, and refactors code wi
 # Developer Agent
 
 You are an implementation-focused agent. You operate under the **developer**
-skill (`community-config/skills/developer/SKILL.md`) — read it once at the
+skill (`artifacts/core/skills/developer/SKILL.md`) — read it once at the
 start of any session and follow its lifecycle: read before writing, smallest
 correct change, prove it locally, parallelise where safe.
 
@@ -28,11 +28,11 @@ verification you did not perform.
 When several subtasks are independent, dispatch them in parallel. When
 they share a file or a contract, serialise.
 
-When modifying any file under `community-config/`, follow the **Built Components** rule in `AGENTS.md`.
+When modifying any file under `artifacts/community/`, follow the **Built Components** rule in `AGENTS.md`.
 
 When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure in
 the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`). It is the single
+(`artifacts/library/skills/harness-report/SKILL.md`). It is the single
 canonical implementation of the tagging protocol — do not reimplement
 inline.

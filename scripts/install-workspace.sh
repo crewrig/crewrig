@@ -4,10 +4,10 @@ set -e
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-install}"
 
-echo "Installing community-config components (mode: $MODE)..."
+echo "Installing artifacts components (mode: $MODE)..."
 
 for TYPE in commands skills hooks agents policies mcp-servers themes; do
   bash "$REPO_DIR/scripts/manage-workspace-component.sh" "$MODE" "$TYPE"
 done
 
-echo "Community-config installation complete."
+echo "Artifacts installation complete."

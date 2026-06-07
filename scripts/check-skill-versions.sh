@@ -1,11 +1,10 @@
 #!/bin/bash
 # check-skill-versions.sh — Enforce the version-bump rule on skill sources.
 #
-# Per community-config/FORMAT.md → Version semantics, every PR that touches
-# a `community-config/skills/<name>/SKILL.md` or
-# `community-config/agents/<name>/AGENT.md` source MUST bump
-# `metadata.provenance.version` in the same diff. This script enforces the
-# rule.
+# Per artifacts/FORMAT.md → Version semantics, every PR that touches
+# a skill or agent source under artifacts/core/, artifacts/library/, or
+# artifacts/community/ MUST bump `metadata.provenance.version` in the same
+# diff. This script enforces the rule.
 #
 # Usage:
 #   bash scripts/check-skill-versions.sh [<base-ref>]
@@ -50,8 +49,12 @@ while IFS= read -r line; do
     modified+=("$file")
   fi
 done < <(git diff --name-status "$BASE_REF" -- \
-  'community-config/skills/*/SKILL.md' \
-  'community-config/agents/*/AGENT.md' 2>/dev/null || true)
+  'artifacts/core/skills/*/SKILL.md' \
+  'artifacts/library/skills/*/SKILL.md' \
+  'artifacts/community/skills/*/SKILL.md' \
+  'artifacts/core/agents/*/AGENT.md' \
+  'artifacts/library/agents/*/AGENT.md' \
+  'artifacts/community/agents/*/AGENT.md' 2>/dev/null || true)
 
 if [ "${#modified[@]}" -eq 0 ]; then
   echo "OK: no existing skill/agent sources modified vs $BASE_REF."
@@ -84,7 +87,7 @@ if [ "${#failures[@]}" -gt 0 ]; then
     echo "  - $f"
   done
   echo ""
-  echo "Per community-config/FORMAT.md → Version semantics, bump"
+  echo "Per artifacts/FORMAT.md → Version semantics, bump"
   echo "metadata.provenance.version in the same diff. SemVer:"
   echo "  PATCH (1.0.0 → 1.0.1) — friction fix / wording change"
   echo "  MINOR (1.0.0 → 1.1.0) — additive (new section, new field)"

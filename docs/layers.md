@@ -60,47 +60,47 @@ refuse to proceed.
 | `config/.env.example` | Environment variable reference (gitignored `.env` is never committed). |
 | `config/release-monorepo.json` | Monorepo release tooling configuration. |
 
-### Community configuration — harness components
+### Artifact zones — core and library
 
-The harness skill set and harness agent set (as defined in spec 0012 R6,
-amended by delta-01) are core. All other skill and agent directories in
-`community-config/` are classified under **examples** or **overlay** as
-detailed in those sections.
+`artifacts/FORMAT.md` is the normative format contract for all artifact
+components (core).
 
-`community-config/FORMAT.md` is the normative format contract for all
-community components (core).
+The `artifacts/` directory is structured into four zones. Two zones are
+core-owned (upstream immutable); two are overlay-owned (adopting organisation).
 
-The harness components split into two semantic groups:
-
-**Harness system** — the friction-reporting and curation machinery:
+**`artifacts/library/`** — harness machinery. The friction-reporting and
+curation system. Deployed to user home scope (e.g., `~/.claude/skills/`).
 
 | Path | Description |
 |---|---|
-| `community-config/skills/harness-report/` | Harness skill — friction tagging protocol. |
-| `community-config/skills/harness-curator/` | Harness skill — friction clustering and issue authoring. |
-| `community-config/agents/harness-curator/` | Harness agent — curator specialist. |
+| `artifacts/library/skills/harness-report/` | Harness skill — friction tagging protocol. |
+| `artifacts/library/skills/harness-curator/` | Harness skill — friction clustering and issue authoring. |
+| `artifacts/library/agents/harness-curator/` | Harness agent — curator specialist. |
 
-**SDLC lifecycle tools** — the SPECS → PLAN → DEV → REVIEW cycle machinery
-that enables CrewRig's own development (and through which harness-reports are
-implemented):
+**`artifacts/core/`** — SDLC lifecycle tools and operational role skills and
+agents. Deployed to project scope (e.g., `.claude/skills/` in the workspace).
+Includes both the SPECS → PLAN → DEV → REVIEW cycle machinery and the
+illustrative role skills and agents that ship with the upstream framework.
+
+SDLC lifecycle tools:
 
 | Path | Description |
 |---|---|
-| `community-config/skills/spec-author/` | Lifecycle skill — qualification stage author. |
-| `community-config/skills/pr-logbook/` | Lifecycle skill — PR and logbook composer. |
-| `community-config/skills/pr-reviewer/` | Lifecycle skill — independent PR reviewer. |
-| `community-config/agents/spec-author/` | Lifecycle agent — spec-author specialist. |
-| `community-config/agents/pr-logbook/` | Lifecycle agent — logbook composer specialist. |
-| `community-config/agents/pr-reviewer/` | Lifecycle agent — PR reviewer specialist. |
-| `community-config/agents/architect/` | Lifecycle agent — architect specialist (plan and design). |
+| `artifacts/core/skills/spec-author/` | Lifecycle skill — qualification stage author. |
+| `artifacts/core/skills/pr-logbook/` | Lifecycle skill — PR and logbook composer. |
+| `artifacts/core/skills/pr-reviewer/` | Lifecycle skill — independent PR reviewer. |
+| `artifacts/core/agents/spec-author/` | Lifecycle agent — spec-author specialist. |
+| `artifacts/core/agents/pr-logbook/` | Lifecycle agent — logbook composer specialist. |
+| `artifacts/core/agents/pr-reviewer/` | Lifecycle agent — PR reviewer specialist. |
+| `artifacts/core/agents/architect/` | Lifecycle agent — architect specialist (plan and design). |
 
 ### Built outputs
 
-Built by `scripts/build-components.sh` from `community-config/`. These
+Built by `scripts/build-components.sh` from `artifacts/`. These
 directories are **assembly zones**: after a build they contain both
 core-provided harness components and the adopting organisation's own compiled
 components. They are never edited directly; the source of truth is always
-`community-config/`.
+`artifacts/`.
 
 An adopting organisation may activate only a subset of CLIs; the sync
 mechanism respects this scope. The detailed assembly model (which CLI outputs
@@ -169,18 +169,20 @@ from the examples layer.
 | `config/copilot/` | GitHub Copilot overlay configuration files. |
 | `.claude/settings.json` | Claude Code workspace-level settings (memory, permissions). |
 
-### Extensions and organisation-specific community configuration
+### Extensions and organisation-specific artifact zones
 
 | Path | Description |
 |---|---|
 | `extensions/` | Organisation-owned extension registry. The adopting organisation places its own CrewRig extensions here. Upstream extensions are installed via `scripts/install-extension.sh` rather than committed directly. |
-| `community-config/mcp-servers/` | MCP server declarations specific to the organisation (Jira, Confluence, Slack, etc.). |
-| `community-config/hooks/` | Lifecycle hooks specific to the organisation. |
-| `community-config/policies/` | Organisation-level policy files. |
-| `community-config/themes/` | UI theme files specific to the organisation. |
-| `community-config/commands/` | Organisation-specific slash-command definitions. |
-| `community-config/skills/<org-skill>/` | Any skill directory in `community-config/skills/` not belonging to the harness skill set (Core) and not listed under Examples is reserved for the adopting organisation's own role skills. |
-| `community-config/agents/<org-agent>/` | Any agent directory in `community-config/agents/` not belonging to the harness agent set (Core) and not listed under Examples is reserved for the adopting organisation's own agents. |
+| `artifacts/community/mcp-servers/` | MCP server declarations specific to the organisation (Jira, Confluence, Slack, etc.). |
+| `artifacts/community/hooks/` | Lifecycle hooks specific to the organisation. |
+| `artifacts/community/policies/` | Organisation-level policy files. |
+| `artifacts/community/themes/` | UI theme files specific to the organisation. |
+| `artifacts/community/commands/` | Organisation-specific slash-command definitions. |
+| `artifacts/community/skills/` | Sandbox for the organisation's own role skills, not yet validated for the organisation layer. |
+| `artifacts/community/agents/` | Sandbox for the organisation's own agents, not yet validated for the organisation layer. |
+| `artifacts/organisation/skills/` | Organisation-validated role skills — promoted from `artifacts/community/` after internal review. |
+| `artifacts/organisation/agents/` | Organisation-validated agents — promoted from `artifacts/community/` after internal review. |
 
 ---
 
@@ -209,50 +211,49 @@ originals here remain `examples`.
 
 ### Illustrative skills
 
-Skills in `community-config/skills/` not belonging to the harness skill set
-(spec 0012 R8). These are actively used by the upstream CrewRig project for
-its own development workflow; they also serve as high-quality starting points
-for adopting organisations building their own role skills.
+Role skills shipped by the upstream CrewRig project. They live in
+`artifacts/core/` — actively used by the upstream project for its own
+development workflow and serving as high-quality starting points for
+adopting organisations building their own role skills.
 
 | Path |
 |---|
-| `community-config/skills/architect/` |
-| `community-config/skills/astro/` |
-| `community-config/skills/copywriting/` |
-| `community-config/skills/developer/` |
-| `community-config/skills/doc-writer/` |
-| `community-config/skills/frontend/` |
-| `community-config/skills/github-actions/` |
-| `community-config/skills/security/` |
-| `community-config/skills/tester/` |
-| `community-config/skills/web-tester/` |
+| `artifacts/core/skills/architect/` |
+| `artifacts/core/skills/astro/` |
+| `artifacts/core/skills/copywriting/` |
+| `artifacts/core/skills/developer/` |
+| `artifacts/core/skills/doc-writer/` |
+| `artifacts/core/skills/frontend/` |
+| `artifacts/core/skills/github-actions/` |
+| `artifacts/core/skills/security/` |
+| `artifacts/core/skills/tester/` |
+| `artifacts/core/skills/web-tester/` |
 
 ### Illustrative agents
 
-Agents in `community-config/agents/` not belonging to the harness agent set
-(spec 0012 R8, amended by delta-01). Same dual-use nature as the illustrative
-skills: actively used by upstream, and illustrative starting points for adopting
-organisations.
+Role agents shipped by the upstream CrewRig project. Same dual-use nature as
+the illustrative skills: actively used by upstream, and illustrative starting
+points for adopting organisations.
 
 | Path |
 |---|
-| `community-config/agents/accessibility-auditor/` |
-| `community-config/agents/accessibility-tester/` |
-| `community-config/agents/astro-developer/` |
-| `community-config/agents/ci-configurator/` |
-| `community-config/agents/ci-debugger/` |
-| `community-config/agents/copywriter/` |
-| `community-config/agents/designer/` |
-| `community-config/agents/developer/` |
-| `community-config/agents/doc-writer/` |
-| `community-config/agents/frontend-developer/` |
-| `community-config/agents/regression-sentinel/` |
-| `community-config/agents/scenario-author/` |
-| `community-config/agents/security/` |
-| `community-config/agents/seo-specialist/` |
-| `community-config/agents/tester/` |
-| `community-config/agents/visual-regression-tester/` |
-| `community-config/agents/web-conformity-checker/` |
+| `artifacts/core/agents/accessibility-auditor/` |
+| `artifacts/core/agents/accessibility-tester/` |
+| `artifacts/core/agents/astro-developer/` |
+| `artifacts/core/agents/ci-configurator/` |
+| `artifacts/core/agents/ci-debugger/` |
+| `artifacts/core/agents/copywriter/` |
+| `artifacts/core/agents/designer/` |
+| `artifacts/core/agents/developer/` |
+| `artifacts/core/agents/doc-writer/` |
+| `artifacts/core/agents/frontend-developer/` |
+| `artifacts/core/agents/regression-sentinel/` |
+| `artifacts/core/agents/scenario-author/` |
+| `artifacts/core/agents/security/` |
+| `artifacts/core/agents/seo-specialist/` |
+| `artifacts/core/agents/tester/` |
+| `artifacts/core/agents/visual-regression-tester/` |
+| `artifacts/core/agents/web-conformity-checker/` |
 
 ### Identity and configuration templates
 
@@ -267,15 +268,6 @@ organisation owns only the customised instances.
 | `config/SOUL.md.template` | `config/SOUL.md` |
 | `config/PROFILE.md.template` | `config/PROFILE.md` |
 | `crewrig.config.toml.template` *(forthcoming — spec 0012 R12)* | `crewrig.config.toml` |
-
-### Forthcoming examples directory
-
-`examples/` — **not yet present** in the repository. Planned by spec 0012 R11
-(sub-spec B or C of the core framework separation). When introduced, it will
-serve as the primary landing zone for illustrative role skills, configuration
-templates, and other starting-point artefacts, visually distinct from the core
-harness area. The identity templates above will physically relocate there at
-that point.
 
 ---
 

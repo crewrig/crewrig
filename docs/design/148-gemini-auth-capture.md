@@ -199,7 +199,7 @@ The tester's brief beyond `task e2e:test passes`:
 5. **`docs/cli-matrix.md`** — update Row #21 and Row #22 Gemini cells per Decision 6, and extend Row #22 to mention the dual `:ro` mount (`/run/gemini-creds` for creds, `/run/gemini-rules` for layered-context rules).
 6. **Do NOT touch:** `tests/e2e/run.sh`, `scripts/e2e/lib/auth-common.sh` (specifically `e2e_gemini_refresh_access_token`), `tests/e2e/lib/test-token-refresh.sh`. All owned by #149.
 7. **Verify locally before push:**
-   - `bash scripts/check-skill-versions.sh` (no community-config edits expected; should be a no-op)
+   - `bash scripts/check-skill-versions.sh` (no artifacts/ edits expected; should be a no-op)
    - `task e2e:auth:gemini` — re-run the interactive login; confirm the new files appear under `~/.crewrig-e2e/gemini/` and the dir is `0700`.
    - `task e2e:test -- --cli gemini` — single-digit-seconds completion expected; `gemini/01-layered-context` should now pass.
 8. **Commit message** for the follow-up: `🔐 Add layered-context rules mount + selective bootstrap copy (issue #148)` (Gitmoji per AGENTS.md).

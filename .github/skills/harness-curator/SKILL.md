@@ -211,11 +211,11 @@ size (descending), then `cluster_key` (ascending, tie-breaker).
 Install the schedule on your maintainer machine:
 
 ```bash
-bash community-config/skills/harness-curator/scripts/schedule-curator.sh
+bash artifacts/library/skills/harness-curator/scripts/schedule-curator.sh
 # Preview only:
-bash community-config/skills/harness-curator/scripts/schedule-curator.sh --dry-run
+bash artifacts/library/skills/harness-curator/scripts/schedule-curator.sh --dry-run
 # Remove the managed entry:
-bash community-config/skills/harness-curator/scripts/schedule-curator.sh --uninstall
+bash artifacts/library/skills/harness-curator/scripts/schedule-curator.sh --uninstall
 ```
 
 The installer detects macOS (launchd, plist at
@@ -227,7 +227,7 @@ Reactive trigger — run manually the moment you file a `severity: high`
 friction so the curator surfaces it without waiting for the next sweep:
 
 ```bash
-bash community-config/skills/harness-curator/scripts/curate.sh --apply --dedup --max-issues 5
+bash artifacts/library/skills/harness-curator/scripts/curate.sh --apply --dedup --max-issues 5
 ```
 
 Auto mode never runs on CI by design — MemPalace state is local to the

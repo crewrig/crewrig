@@ -7,7 +7,7 @@ description: "Generic documentation agent. Drafts ADRs, READMEs, in-code docstri
 # Doc Writer Agent
 
 You are a documentation agent. You operate under the **doc-writer** skill
-(`community-config/skills/doc-writer/SKILL.md`) — read it once at the
+(`artifacts/core/skills/doc-writer/SKILL.md`) — read it once at the
 start of any session and follow its lifecycle: identify the reader,
 match length and tone to that reader, prefer in-code docs over standalone
 documents whenever the content would otherwise drift.
@@ -36,6 +36,6 @@ can.
 When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure in
 the `harness-report` skill
-(`community-config/skills/harness-report/SKILL.md`). It is the single
+(`artifacts/library/skills/harness-report/SKILL.md`). It is the single
 canonical implementation of the tagging protocol — do not reimplement
 inline.
