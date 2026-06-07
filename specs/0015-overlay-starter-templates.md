@@ -49,13 +49,21 @@ reference to the relocated `community-config/FORMAT.md`.
 
 4. `config/ORGANIZATION.md.template` SHALL contain, at minimum, the following
    sections as a skeleton with commented placeholder content indicating what the
-   organisation should write in each section:
-   - A company overview section (company context, mission, product area).
-   - A code quality standards section (readability, maintainability priorities).
-   - A security and compliance section (credential hygiene, data protection,
-     access control principles).
-   - A collaboration standards section (commit conventions, branch naming,
-     review process, documentation norms).
+   organisation should write in each section. The file describes WHO the
+   organisation IS — its identity and governing context — not HOW it develops
+   software (technical standards belong in other files):
+   - An identity section: organisation name, sector, and market positioning.
+   - A values and principles section: founding values and core principles that
+     guide every decision across all functions.
+   - An objectives section: the organisation's fundamental goals and the
+     underlying philosophy driving them (e.g. commercial, social, humanist).
+   - An assets section: the key resources, intellectual property, data, and
+     relationships the organisation seeks to protect.
+   - A governance section: decision-making structure and authority model.
+   - A general rules section: broad organisational rules that apply across all
+     professions and functions — thematic principles, not technical details.
+   - A regulatory context section: applicable laws, regulations, and compliance
+     frameworks the organisation operates under.
 
 5. The repository SHALL contain a core CrewRig tools rules file, classified as
    `core` layer, that carries the upstream-maintained framework instructions for
