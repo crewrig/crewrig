@@ -174,7 +174,7 @@ SemVer applies:
   renamed required fields, semantics flip).
 
 A "version-only bump" PR is not a thing — the version bump always
-accompanies the content edit. See `artifacts/community/FORMAT.md` →
+accompanies the content edit. See `artifacts/FORMAT.md` →
 *Version semantics* for the contract.
 
 ## Grounding discipline
