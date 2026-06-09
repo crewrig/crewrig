@@ -88,7 +88,7 @@ Commit the file:
 
 ```bash
 git add crewrig.config.toml
-git commit -m "chore: initialise crewrig.config.toml for <YOUR-ORG>"
+git commit -m "⚙️ Initialise crewrig.config.toml for <YOUR-ORG>"
 ```
 
 ## Step 3 — Initialise the organisation identity
@@ -125,7 +125,7 @@ will not be overwritten by upstream syncs.
 
 ```bash
 git add config/ORGANIZATION.md
-git commit -m "chore: initialise config/ORGANIZATION.md for <YOUR-ORG>"
+git commit -m "⚙️ Initialise config/ORGANIZATION.md for <YOUR-ORG>"
 ```
 
 ## Step 4 — Initialise the tool configuration
@@ -160,7 +160,7 @@ Remove all placeholder comments before committing.
 
 ```bash
 git add config/TOOLS.md
-git commit -m "chore: initialise config/TOOLS.md for <YOUR-ORG>"
+git commit -m "⚙️ Initialise config/TOOLS.md for <YOUR-ORG>"
 ```
 
 ## Step 5 — Run the build pipeline
@@ -303,11 +303,9 @@ absent. Common causes: an incomplete migration from a pre-spec-0014 branch,
 a branch that predates the `artifacts/` directory restructuring, or a
 partially applied upstream sync that left a directory missing.
 
-**Effect:** The script exits non-zero with a message such as:
-
-```text
-error: source directory not found: artifacts/core/skills/
-```
+**Effect:** The script exits zero but the output directories (`.claude/skills/`,
+`.gemini/skills/`, etc.) are empty or partially populated. Missing source
+directories are silently skipped — no error message is emitted.
 
 **Resolution:** Verify that the repository tree matches the current `main`
 branch. Run `git status` and `git diff origin/main` to identify missing
