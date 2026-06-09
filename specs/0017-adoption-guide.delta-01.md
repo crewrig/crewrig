@@ -40,7 +40,7 @@ Replacement:
 
 Original:
 
-> 6. The guide SHALL cover all three CLIs — Claude Code (`~/.claude/rules/`),
+> 1. The guide SHALL cover all three CLIs — Claude Code (`~/.claude/rules/`),
 >    Gemini CLI (`~/.gemini/rules/`), and GitHub Copilot CLI (its equivalent
 >    instructions path) — treating them symmetrically. Where a CLI-specific
 >    detail differs, the guide SHALL call it out explicitly rather than
@@ -48,7 +48,7 @@ Original:
 
 Replacement:
 
-> 6. The guide SHALL cover all three CLIs — Claude Code (`~/.claude/rules/`),
+> 1. The guide SHALL cover all three CLIs — Claude Code (`~/.claude/rules/`),
 >    Gemini CLI (`~/.gemini/`), and GitHub Copilot CLI (`~/.copilot/instructions/`)
 >    — treating them symmetrically. Where CLI-specific details differ (Gemini
 >    deploys directly to `~/.gemini/` with no `rules/` subdirectory; Copilot
