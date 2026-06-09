@@ -300,10 +300,10 @@ has been locally modified, the script will list the offending paths and
 exit 1 with a message similar to:
 
 ```text
-error: the following core-layer paths have local modifications:
+Error: the following core-layer paths have local modifications:
   config/SOUL.md
   artifacts/core/skills/developer/SKILL.md
-Revert them or promote them to overlay overrides before syncing.
+Revert these changes before running sync, or promote them to overlay overrides.
 ```
 
 Resolution: see [Troubleshooting — dirty-core refusal](#dirty-core-refusal) below.
@@ -317,7 +317,7 @@ the `canonical_repo` / `feedback_repo` fields still contain the literal
 placeholder strings `https://github.com/<YOUR-ORG>/<YOUR-REPO>` (or are
 empty strings).
 
-**Effect:** `bash scripts/build-components.sh` exits zero in both cases.
+**Effect — `bash scripts/build-components.sh`:** Exits zero in both cases.
 When config is absent, the script warns on stderr that placeholders will be
 left literal. When config contains the placeholder URL, the script passes
 validation silently and emits no warning. In both cases the built outputs
@@ -325,10 +325,18 @@ contain unreplaced values (skills and agents reference the placeholder URL
 literally). The harness curator will open friction issues against the
 placeholder URL, which resolves to nothing.
 
+**Effect — `bash scripts/sync-from-upstream.sh`:** Exits 1 and prints
+an error when `canonical_repo` is absent or empty:
+
+```text
+Error: canonical_repo is not set in crewrig.config.toml
+Set canonical_repo to the upstream repository URL before running sync.
+```
+
 **Resolution:** Follow Step 2. Copy `crewrig.config.toml.template` to
 `crewrig.config.toml`, replace both placeholder values with the
-organisation's actual GitHub repository URLs, and commit the file before
-re-running the build.
+organisation's actual Git repository URLs, and commit the file before
+re-running either script.
 
 ### Build output directories are empty or partially populated
 
