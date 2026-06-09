@@ -150,6 +150,15 @@ for start/stop/status commands, log locations, migration steps, and
 troubleshooting. The architectural decision is recorded in
 [ADR 0006](docs/adr/0006-chromadb-http-server.md).
 
+## Adopting CrewRig
+
+Organisations that wish to adopt CrewRig without contributing upstream should
+follow the **[Adoption Guide](docs/adoption-guide.md)** — a step-by-step
+walkthrough covering fork initialisation, overlay configuration, build
+pipeline, CLI deployment, and upstream synchronisation. The guide covers all
+three supported CLIs (Claude Code, Gemini CLI, GitHub Copilot CLI) and is the
+primary onboarding surface for adopting organisations.
+
 ## Lifecycle Scenario
 
 A complete journey, from installing the framework to closing the
