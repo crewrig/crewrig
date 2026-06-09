@@ -14,38 +14,53 @@ Before starting, ensure the following are in place:
 - **`bash`** — version 4 or later; required by all setup and build scripts.
 - **A TOML-capable editor** — for editing `crewrig.config.toml`.
   Any plain-text editor works; the TOML syntax used is minimal.
-- **Write access to a GitHub repository** — the organisation's fork of
-  CrewRig. This repository will serve as the overlay configuration home
-  for the organisation.
+- **Write access to a Git repository** — the organisation's copy of
+  CrewRig, hosted on any Git platform (GitHub, GitLab, Gitea, or a
+  self-hosted instance). The repository may be public or private and
+  will serve as the overlay configuration home for the organisation.
 - **The target CLI tools installed** — Claude Code, Gemini CLI, and/or
   GitHub Copilot CLI, whichever CLIs the organisation uses. The guide
   does not cover installing those tools; treat them as installed before
   proceeding.
 
-## Step 1 — Fork the repository
+## Step 1 — Set up the organisation repository
 
-Create the organisation's GitHub repository from the upstream CrewRig
-repository.
+Create a repository on any Git hosting platform (GitHub, GitLab, Gitea,
+Bitbucket, or a self-hosted instance) to serve as the organisation's overlay
+configuration home. The repository may be public or private.
 
-1. Navigate to [https://github.com/crewrig/crewrig](https://github.com/crewrig/crewrig).
-2. Click **Fork** and select the organisation's GitHub account as the
-   destination.
-3. Clone the fork locally:
+1. Clone the upstream CrewRig repository and push it to the organisation's Git
+   host. On GitHub you may use the **Fork** button as a shortcut; on any other
+   host, or when you want a private repository, clone and re-push manually:
+
+   ```bash
+   git clone https://github.com/crewrig/crewrig.git <YOUR-REPO>
+   cd <YOUR-REPO>
+   git remote rename origin upstream
+   git remote add origin <YOUR-GIT-HOST>/<YOUR-ORG>/<YOUR-REPO>.git
+   git push -u origin main
+   ```
+
+   If you used the GitHub Fork button, clone your fork and skip the push above:
 
    ```bash
    git clone git@github.com:<YOUR-ORG>/<YOUR-REPO>.git
    cd <YOUR-REPO>
-   ```
-
-4. Add the upstream remote so future syncs can pull from it:
-
-   ```bash
    git remote add upstream https://github.com/crewrig/crewrig.git
    ```
 
-The fork is now the organisation's overlay configuration repository. Upstream
-changes flow in via `bash scripts/sync-from-upstream.sh` (Step 7); the
-organisation's overlay content lives on top and is never touched by the sync.
+2. Verify that both remotes are present:
+
+   ```bash
+   git remote -v
+   # origin   <YOUR-GIT-HOST>/<YOUR-ORG>/<YOUR-REPO>.git (fetch)
+   # upstream https://github.com/crewrig/crewrig.git (fetch)
+   ```
+
+The `upstream` remote is required by `bash scripts/sync-from-upstream.sh`
+(Step 7). The `origin` remote is the organisation's own repository. Upstream
+changes flow in via the sync script; the organisation's overlay content lives
+on top and is never touched by the sync.
 
 ## Step 2 — Initialise the overlay configuration
 
@@ -181,6 +196,17 @@ output directories:
 .gemini/agents/        Gemini CLI agents
 .github/skills/        GitHub Copilot CLI skills
 .github/agents/        GitHub Copilot CLI agents
+```
+
+Commit the built outputs so the repository always contains up-to-date CLI
+component files and the next collaborator does not need to re-run the build
+from scratch:
+
+```bash
+git add .claude/skills .claude/agents \
+        .gemini/skills .gemini/agents \
+        .github/skills .github/agents
+git commit -m "⚙️ Build CLI components for <YOUR-ORG>"
 ```
 
 **Most-likely error — missing `crewrig.config.toml` or literal placeholders:**
