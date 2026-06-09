@@ -59,6 +59,9 @@ jobs:
       - name: Test sync-from-upstream script
         run: bash scripts/tests/test-sync-from-upstream.sh
 
+      - name: Test assembly verification
+        run: bash scripts/tests/test-assembly-verification.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:

@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 # Source directories by installation scope (spec 0014 R11):
 #   core/    — project-scoped: built into per-repo CLI output directories
 #   library/ — user-home-scoped: intended for ~/.claude/skills/, ~/.gemini/skills/, etc.
@@ -647,6 +647,7 @@ build_agents
 
 echo ""
 if [ "$CHECK_MODE" = true ]; then
+  bash "$(dirname "$0")/tests/test-assembly-verification.sh" || exit 1
   if [ "$DRIFT_FOUND" = true ]; then
     echo "FAILED: Drift detected. Run 'bash scripts/build-components.sh' to regenerate."
     exit 1

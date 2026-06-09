@@ -56,6 +56,7 @@ refuse to proceed.
 |---|---|
 | `scripts/` | All build, install, setup, and utility scripts. |
 | `tests/` | Automated test suite. |
+| `tests/fixtures/overlay/` | Fixture overlay components used by the assembly verification test (`scripts/tests/test-assembly-verification.sh`). Contains minimal skill and agent fixtures that are never deployed to production. |
 | `docker/` | Docker infrastructure for end-to-end tests. |
 | `config/.env.example` | Environment variable reference (gitignored `.env` is never committed). |
 | `config/release-monorepo.json` | Monorepo release tooling configuration. |
