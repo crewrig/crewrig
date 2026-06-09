@@ -97,7 +97,8 @@ Replace both values:
   (`https://github.com/crewrig/crewrig`) so that the audit trail and
   license trace remain intact. Override this only if the organisation's
   fork is itself the canonical upstream for a downstream deployment.
-- `feedback_repo` — set to the organisation's own repository URL so that
+- `feedback_repo` — set to the URL of the organisation's own repository
+  (on any Git hosting platform — GitHub, GitLab, Gitea, etc.) so that
   friction issues opened by the harness curator land on the organisation's
   tracker, not on the upstream project.
 
