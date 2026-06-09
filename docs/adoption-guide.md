@@ -57,10 +57,12 @@ configuration home. The repository may be public or private.
    # upstream https://github.com/crewrig/crewrig.git (fetch)
    ```
 
-The `upstream` remote is required by `bash scripts/sync-from-upstream.sh`
-(Step 7). The `origin` remote is the organisation's own repository. Upstream
-changes flow in via the sync script; the organisation's overlay content lives
-on top and is never touched by the sync.
+The sync script (`bash scripts/sync-from-upstream.sh`, Step 7) reads the
+upstream URL directly from `crewrig.config.toml → canonical_repo` — it does
+not rely on a named git remote. The `upstream` remote shown above is optional;
+retain it only if you want to run manual git operations such as `git log
+upstream/main`. Upstream changes flow in via the sync script; the
+organisation's overlay content lives on top and is never touched by the sync.
 
 ## Step 2 — Initialise the overlay configuration
 
@@ -209,11 +211,13 @@ git add .claude/skills .claude/agents \
 git commit -m "⚙️ Build CLI components for <YOUR-ORG>"
 ```
 
-**Most-likely error — missing `crewrig.config.toml` or literal placeholders:**
+**Most-likely symptom — unreplaced placeholders in built outputs:**
 If `crewrig.config.toml` is absent or still contains the literal placeholder
-strings `<YOUR-ORG>` / `<YOUR-REPO>`, the script will warn that placeholders
-have been left unreplaced and may exit non-zero. Resolution: complete Step 2
-before running the build.
+strings `<YOUR-ORG>` / `<YOUR-REPO>`, the script exits zero but the built
+outputs will contain unreplaced placeholder values (e.g. skills referencing
+`https://github.com/<YOUR-ORG>/<YOUR-REPO>` literally). When config is absent
+the script warns on stderr; when config contains placeholder values no warning
+is emitted. Resolution: complete Step 2 before running the build.
 
 The organisation may also author or override components in
 `artifacts/community/` and `artifacts/organisation/` — these directories
@@ -285,8 +289,9 @@ bash scripts/sync-from-upstream.sh
 ```
 
 **Expected outcome:** The script exits zero, updates the core-layer paths
-listed in `.crewrig/core-paths.txt` from the `upstream` remote's `main`
-branch, and leaves all overlay paths (including `config/ORGANIZATION.md`,
+listed in `.crewrig/core-paths.txt` from the URL set in
+`crewrig.config.toml → canonical_repo`, and leaves all overlay paths
+(including `config/ORGANIZATION.md`,
 `config/TOOLS.md`, `crewrig.config.toml`, and `artifacts/community/`)
 untouched.
 
@@ -312,17 +317,20 @@ the `canonical_repo` / `feedback_repo` fields still contain the literal
 placeholder strings `https://github.com/<YOUR-ORG>/<YOUR-REPO>` (or are
 empty strings).
 
-**Effect:** `bash scripts/build-components.sh` may warn that substitution
-placeholders were left literal and produced unreplaced strings in the built
-outputs. The harness curator will open friction issues against the placeholder
-URL, which resolves to nothing.
+**Effect:** `bash scripts/build-components.sh` exits zero in both cases.
+When config is absent, the script warns on stderr that placeholders will be
+left literal. When config contains the placeholder URL, the script passes
+validation silently and emits no warning. In both cases the built outputs
+contain unreplaced values (skills and agents reference the placeholder URL
+literally). The harness curator will open friction issues against the
+placeholder URL, which resolves to nothing.
 
 **Resolution:** Follow Step 2. Copy `crewrig.config.toml.template` to
 `crewrig.config.toml`, replace both placeholder values with the
 organisation's actual GitHub repository URLs, and commit the file before
 re-running the build.
 
-### Build exits non-zero due to missing source directory
+### Build output directories are empty or partially populated
 
 **Cause:** A source directory expected by `scripts/build-components.sh` is
 absent. Common causes: an incomplete migration from a pre-spec-0014 branch,
