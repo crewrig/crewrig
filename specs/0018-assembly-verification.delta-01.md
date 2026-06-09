@@ -16,7 +16,20 @@ version: 2.0.0
 
 ## MODIFIED
 
-(none)
+**Out-of-scope bullet referencing R4** — remove dangling `(R4)` citation and correct Gemini path.
+
+Original:
+
+> - Testing deployment to the operator's real home directory (e.g.
+>   `~/.claude/rules/`, `~/.gemini/rules/`) — the isolation requirement (R4)
+>   explicitly prohibits modifying the actual home directory.
+
+Replacement:
+
+> - Testing deployment to the operator's real home directory — modifying the
+>   operator's actual home directory is out of scope for this test suite.
+
+**Rationale:** With R4 removed, the `(R4)` citation is a dangling reference. The underlying constraint (don't touch the real home directory) remains valid, so the bullet is retained but rewritten to stand on its own. The path examples (`~/.claude/rules/`, `~/.gemini/rules/`) are also removed to avoid propagating the incorrect Gemini path.
 
 ## REMOVED
 
