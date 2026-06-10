@@ -446,7 +446,8 @@ Rules:
   *Agent Team Protocol → Standard Team Templates → Security rule*)
   applies to every re-spawn that touches it.
 - A `spec`-class loop SHALL produce a delta-spec PR; the original
-  spec on `main` is immutable.
+  spec's content on `main` is immutable (lifecycle metadata such as
+  `status` aside — see `docs/spec-format.md`).
 - The loop SHALL NOT change the logbook issue (Rule A still holds).
 - When an implementation branch (`feat/<NNNN>-<slug>` and siblings) is
   opened against `main` while the corresponding spec-PR is still open,

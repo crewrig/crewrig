@@ -177,8 +177,10 @@ Normative rules:
    (e.g. `security` per the trigger surface defined in `AGENTS.md` →
    *Agent Team Protocol*).
 3. A `spec`-class loop SHALL produce a delta-spec PR, not an edit to
-   the original spec on `main`. The original spec is immutable once
-   merged; deltas chain via the format defined in #167.
+   the original spec on `main`. The original spec's normative content is
+   immutable once merged; deltas chain via the format defined in #167.
+   Lifecycle metadata (`status`, `superseded-by`) is exempt and transitions
+   per `docs/spec-format.md` → *Recording a status transition*.
 4. The loop SHALL NOT modify the logbook issue's identity. Every
    iteration appends to the same logbook (per `AGENTS.md` → *Logbook
    Issues*, Rule A).
