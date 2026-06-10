@@ -230,6 +230,43 @@ for s in setup-gemini-interactive.sh setup-copilot-interactive.sh; do
 done
 report "Opt-in gate invariant: gemini + copilot share the gate shape" "$ok" "$detail"
 
+# =====================================================================
+# Scenario 4 — `--check` drift detection works with NO pre-existing dist/.
+# This is the exact CI condition (clean checkout: dist/ is gitignored and
+# absent). Only the committed `core` tier is drift-compared; non-core tiers
+# compile into a throwaway staging root and are discarded, so a missing dist/
+# is NOT a drift. A regression that compares non-core outputs against the
+# non-existent dist/ would emit "DRIFT: .../dist/library/... does not exist"
+# and exit 1 — which is precisely the bug this scenario pins.
+#
+# Run against the REAL repo so the assertion tracks the shipped sources. The
+# build is hermetic in --check mode (it writes nothing under the repo), so we
+# only guard against a stray dist/ being created as a side effect.
+# ---------------------------------------------------------------------
+REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+CHECK_LOG="$WORK/check-no-dist.log"
+ok="true"; detail=""
+DIST_PREEXISTED=false
+[ -e "$REPO_DIR/dist" ] && DIST_PREEXISTED=true
+# Only mutate the real tree if dist/ is genuinely absent — never delete a
+# developer's local dist/ as a test side effect.
+if [ "$DIST_PREEXISTED" = false ]; then
+  if REPO_DIR="$REPO_DIR" bash "$BUILD" --target all --check >"$CHECK_LOG" 2>&1; then
+    : # exit 0 as required
+  else
+    ok="false"; detail="--check exited non-zero with no pre-existing dist/. Log tail:
+$(tail -8 "$CHECK_LOG")"
+  fi
+  # A stray dist/ created by --check would be an unstaged-output leak.
+  if [ -e "$REPO_DIR/dist" ]; then
+    ok="false"; detail="${detail}${detail:+$'\n'}--check created a stray dist/ in the repo"
+    rm -rf "$REPO_DIR/dist"
+  fi
+else
+  detail="skipped mutation: a pre-existing dist/ was present; cannot assert the clean-tree condition non-destructively"
+fi
+report "Scenario 4: --check passes with no pre-existing dist/ (CI condition)" "$ok" "$detail"
+
 echo ""
 echo "==========================================="
 echo "  Result: $PASS passed, $FAIL failed"

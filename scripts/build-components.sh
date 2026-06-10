@@ -232,6 +232,13 @@ yaml_nested() {
   fi
 }
 
+# Per-tier drift-compare switch, set by the main build loop. In CHECK_MODE
+# only `core` outputs are committed, so only `core` is drift-compared; non-core
+# tiers compile into a throwaway staging root and take the write branch below
+# (compile-and-discard) so R10's "check every tier it builds" still holds
+# without comparing against a non-existent committed dist/.
+CHECK_COMPARE=true
+
 # Compare file with expected content, report drift.
 # When a source path is passed as $3, splices any `provenance:` block from
 # that source into the output frontmatter before resolving placeholders.
@@ -245,7 +252,7 @@ check_or_write() {
   fi
   content=$(resolve_placeholders "$content")
 
-  if [ "$CHECK_MODE" = true ]; then
+  if [ "$CHECK_MODE" = true ] && [ "$CHECK_COMPARE" = true ]; then
     if [ ! -f "$target_file" ]; then
       echo "DRIFT: $target_file does not exist (expected from source)"
       DRIFT_FOUND=true
@@ -278,7 +285,7 @@ propagate_skill_resources() {
     while IFS= read -r src_file; do
       rel="${src_file#"$src_sub"/}"
       target_file="$target_dir/$subdir/$rel"
-      if [ "$CHECK_MODE" = true ]; then
+      if [ "$CHECK_MODE" = true ] && [ "$CHECK_COMPARE" = true ]; then
         if [ ! -f "$target_file" ]; then
           echo "DRIFT: $target_file does not exist (expected from source)"
           DRIFT_FOUND=true
@@ -318,10 +325,31 @@ discover_tiers() {
 #   core     -> $REPO_DIR             (committed project tree: .claude/ etc.)
 #   non-core -> $REPO_DIR/dist/<tier> (gitignored staging tree)
 # The setup scripts read the non-core roots when installing to the user home.
+#
+# --check exception: only `core` outputs are committed (they live in the
+# project tree). Non-core tiers route to the gitignored dist/, which is absent
+# on a clean checkout — there is nothing to drift-compare. But R10 requires
+# --check to compile every tier it builds (to catch build/transform errors).
+# So in CHECK_MODE non-core tiers resolve to a throwaway temp root, forcing
+# them through the write path (compile + discard) instead of the compare path
+# against a non-existent dist/. CHECK_STAGING_ROOT is initialised once in the
+# main flow (not here — this function runs inside `$(...)` subshells, so a
+# global assigned here would not survive to the parent) and removed on exit.
+CHECK_STAGING_ROOT=""
+cleanup_check_staging() {
+  # Must return 0: under `set -e`, a non-zero exit from an EXIT trap becomes
+  # the script's exit status. A bare `[ -n "" ] && rm` would exit 1 when the
+  # staging root was never created (normal build), failing the whole build.
+  [ -n "$CHECK_STAGING_ROOT" ] && rm -rf "$CHECK_STAGING_ROOT"
+  return 0
+}
+trap cleanup_check_staging EXIT
 output_root_for_tier() {
   local tier="$1"
   if [ "$tier" = "core" ]; then
     echo "$REPO_DIR"
+  elif [ "$CHECK_MODE" = true ]; then
+    echo "$CHECK_STAGING_ROOT/$tier"
   else
     echo "$REPO_DIR/dist/$tier"
   fi
@@ -687,11 +715,21 @@ fi
 echo "========================================="
 echo ""
 
+# In CHECK_MODE, non-core tiers compile into a throwaway staging root (see
+# output_root_for_tier). Create it once here so every tier shares the same
+# directory and the EXIT trap can clean it up.
+if [ "$CHECK_MODE" = true ]; then
+  CHECK_STAGING_ROOT=$(mktemp -d -t crewrig-check-staging.XXXXXX)
+fi
+
 # Iterate every discovered tier. Build and --check share this loop, so drift
 # detection automatically covers every tier the build compiles (R10).
 while IFS= read -r tier; do
   [ -z "$tier" ] && continue
   tier_dir="$ARTIFACTS_DIR/$tier"
+  # In CHECK_MODE, drift-compare only `core` (the sole committed tier); non-core
+  # tiers compile into the throwaway staging root and take the write branch.
+  if [ "$tier" = "core" ]; then CHECK_COMPARE=true; else CHECK_COMPARE=false; fi
   echo "--- Tier: $tier (output root: $(output_root_for_tier "$tier")) ---"
   build_skills   "$tier" "$tier_dir"
   build_commands "$tier" "$tier_dir"
