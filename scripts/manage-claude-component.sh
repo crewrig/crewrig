@@ -41,10 +41,22 @@ esac
 
 SRC_DIR="$REPO_DIR/artifacts/community/$TYPE"
 if [ ! -d "$SRC_DIR" ]; then
-  # For claude-skills, source may be generated output in .claude/skills/
-  SRC_DIR="$REPO_DIR/.claude/skills"
-  if [ ! -d "$SRC_DIR" ]; then
+  # For claude-skills, the source is the built overlay output. Since spec 0019
+  # (ADR-0011), overlay tiers build into the gitignored staging tree
+  # dist/<tier>/.claude/skills/ — NOT into the committed .claude/skills/ tree
+  # (which now carries `core` only). Prefer the community staging root, then
+  # org. Run `bash scripts/build-components.sh` first to populate dist/.
+  SRC_DIR=""
+  for staging in "$REPO_DIR/dist/community/.claude/skills" "$REPO_DIR/dist/org/.claude/skills"; do
+    if [ -d "$staging" ]; then
+      SRC_DIR="$staging"
+      break
+    fi
+  done
+  if [ -z "$SRC_DIR" ]; then
     echo "Error: source directory not found for type '$TYPE'"
+    echo "       Overlay skills build into dist/{community,org}/.claude/skills/ —"
+    echo "       run 'bash scripts/build-components.sh' first."
     exit 1
   fi
 fi

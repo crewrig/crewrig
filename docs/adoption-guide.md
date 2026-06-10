@@ -221,7 +221,7 @@ the script warns on stderr; when config contains placeholder values no warning
 is emitted. Resolution: complete Step 2 before running the build.
 
 The organisation may also author or override components in
-`artifacts/community/` and `artifacts/organisation/` — these directories
+`artifacts/community/` and `artifacts/org/` — these directories
 are the designated sandbox for org-specific skills, agents, commands, hooks,
 policies, MCP server configurations, and themes. The build script compiles
 those alongside the upstream components. The guide does not cover how to
@@ -379,7 +379,7 @@ offending paths.
 
 2. **Promote to an overlay override** — if the change is intentional and
    must survive future upstream syncs, move it to the corresponding
-   overlay directory (`artifacts/community/` or `artifacts/organisation/`)
+   overlay directory (`artifacts/community/` or `artifacts/org/`)
    so the sync does not touch it. Commit the override, then re-run the
    sync. The `.crewrig/core-paths.txt` manifest lists exactly which paths
    are considered core; files outside that list are overlay and are always

@@ -12,7 +12,7 @@ agents, and commands:
 - `artifacts/core/` — upstream-owned SDLC lifecycle tools and role skills.
 - `artifacts/library/` — upstream-owned harness machinery (harness-report, harness-curator).
 - `artifacts/community/` — adopting organisation sandbox (commands, hooks, MCP servers, policies, themes, org-specific skills and agents).
-- `artifacts/organisation/` — adopting organisation validated components.
+- `artifacts/org/` — adopting organisation validated components.
 
 Write each component **once** in the unified source format — the build
 system generates outputs for Gemini CLI, Claude Code, and GitHub Copilot CLI.

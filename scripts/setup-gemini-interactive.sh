@@ -250,6 +250,70 @@ fi
 
 fi  # end: SKIP_RULES_CONFIG guard for team/expertise/level/profile
 
+# --- Artifact install to user home (ADR-0011, spec 0019) ---
+# The build (scripts/build-components.sh) compiles each non-core tier into the
+# gitignored staging tree dist/<tier>/.gemini/skills/ and .../agents/. This
+# phase installs them to the user home by tier scope:
+#   library   — installed automatically (harness machinery, useful everywhere).
+#   community — installed only on explicit opt-in (experimental sandbox).
+#   org       — installed only on explicit opt-in (validated org components).
+# `core` is never installed here: it ships in the project tree.
+GEMINI_SKILLS_HOME="$GEMINI_HOME/skills"
+GEMINI_AGENTS_HOME="$GEMINI_HOME/agents"
+
+# install_tier_to_home <tier> — copy a staged tier's Gemini skills and agents
+# into the user home. Skills land in ~/.gemini/skills/<name>/, agents as flat
+# ~/.gemini/agents/<name>.md files (Gemini's native layout). No-op if the tier
+# was not built.
+install_tier_to_home() {
+  local tier="$1"
+  local staging="$REPO_DIR/dist/$tier/.gemini"
+  if [ ! -d "$staging" ]; then
+    echo "  Tier '$tier' not built (no $staging) — run 'bash scripts/build-components.sh' first."
+    return 0
+  fi
+  if [ -d "$staging/skills" ]; then
+    mkdir -p "$GEMINI_SKILLS_HOME"
+    for skill_dir in "$staging/skills"/*/; do
+      [ -d "$skill_dir" ] || continue
+      local skill_name
+      skill_name="$(basename "$skill_dir")"
+      rm -rf "${GEMINI_SKILLS_HOME:?}/$skill_name"
+      cp -R "$skill_dir" "$GEMINI_SKILLS_HOME/$skill_name"
+      echo "  Installed skill: $tier/$skill_name -> ~/.gemini/skills/$skill_name"
+    done
+  fi
+  if [ -d "$staging/agents" ]; then
+    mkdir -p "$GEMINI_AGENTS_HOME"
+    for agent_file in "$staging/agents"/*.md; do
+      [ -f "$agent_file" ] || continue
+      local agent_base
+      agent_base="$(basename "$agent_file")"
+      cp "$agent_file" "$GEMINI_AGENTS_HOME/$agent_base"
+      echo "  Installed agent: $tier/$agent_base -> ~/.gemini/agents/$agent_base"
+    done
+  fi
+}
+
+echo ""
+echo "Installing library components to $GEMINI_SKILLS_HOME (automatic)..."
+install_tier_to_home library
+echo ""
+
+# Overlay tiers — each gated behind its own opt-in prompt.
+for overlay_tier in community org; do
+  if [ -d "$REPO_DIR/dist/$overlay_tier/.gemini" ]; then
+    INSTALL_OVERLAY=$(echo -e "no\nyes" | fzf --height 10% \
+      --header "Install '$overlay_tier' components to ~/.gemini/skills? (opt-in)")
+    if [ "$INSTALL_OVERLAY" = "yes" ]; then
+      install_tier_to_home "$overlay_tier"
+    else
+      echo "  '$overlay_tier' install skipped."
+    fi
+    echo ""
+  fi
+done
+
 # --- Transcript hooks (opt-in) ---
 echo ""
 ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)")

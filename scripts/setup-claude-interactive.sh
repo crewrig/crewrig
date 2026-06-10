@@ -334,6 +334,71 @@ fi
 
 fi  # end: SKIP_RULES_CONFIG guard for team/expertise/level/profile
 
+# --- Artifact install to user home (ADR-0011, spec 0019) ---
+# The build (scripts/build-components.sh) compiles each non-core tier into the
+# gitignored staging tree dist/<tier>/.claude/skills/ and .../agents/. This
+# phase installs them to the user home by tier scope:
+#   library   — installed automatically (harness machinery, useful everywhere).
+#   community — installed only on explicit opt-in (experimental sandbox).
+#   org       — installed only on explicit opt-in (validated org components).
+# `core` is never installed here: it ships in the project tree.
+CLAUDE_SKILLS_HOME="$CLAUDE_HOME/skills"
+CLAUDE_AGENTS_HOME="$CLAUDE_HOME/agents"
+
+# install_tier_to_home <tier> — copy a staged tier's Claude skills and agents
+# into the user home. Skills land in ~/.claude/skills/<name>/, agents in
+# ~/.claude/agents/<name>/ (Claude's directory layout). No-op if the tier was
+# not built.
+install_tier_to_home() {
+  local tier="$1"
+  local staging="$REPO_DIR/dist/$tier/.claude"
+  if [ ! -d "$staging" ]; then
+    echo "  Tier '$tier' not built (no $staging) — run 'bash scripts/build-components.sh' first."
+    return 0
+  fi
+  if [ -d "$staging/skills" ]; then
+    mkdir -p "$CLAUDE_SKILLS_HOME"
+    for skill_dir in "$staging/skills"/*/; do
+      [ -d "$skill_dir" ] || continue
+      local skill_name
+      skill_name="$(basename "$skill_dir")"
+      rm -rf "${CLAUDE_SKILLS_HOME:?}/$skill_name"
+      cp -R "$skill_dir" "$CLAUDE_SKILLS_HOME/$skill_name"
+      echo "  Installed skill: $tier/$skill_name -> ~/.claude/skills/$skill_name"
+    done
+  fi
+  if [ -d "$staging/agents" ]; then
+    mkdir -p "$CLAUDE_AGENTS_HOME"
+    for agent_dir in "$staging/agents"/*/; do
+      [ -d "$agent_dir" ] || continue
+      local agent_name
+      agent_name="$(basename "$agent_dir")"
+      rm -rf "${CLAUDE_AGENTS_HOME:?}/$agent_name"
+      cp -R "$agent_dir" "$CLAUDE_AGENTS_HOME/$agent_name"
+      echo "  Installed agent: $tier/$agent_name -> ~/.claude/agents/$agent_name"
+    done
+  fi
+}
+
+echo ""
+echo "Installing library components to $CLAUDE_SKILLS_HOME (automatic)..."
+install_tier_to_home library
+echo ""
+
+# Overlay tiers — each gated behind its own opt-in prompt.
+for overlay_tier in community org; do
+  if [ -d "$REPO_DIR/dist/$overlay_tier/.claude" ]; then
+    INSTALL_OVERLAY=$(echo -e "no\nyes" | fzf --height 10% \
+      --header "Install '$overlay_tier' components to ~/.claude/skills? (opt-in)")
+    if [ "$INSTALL_OVERLAY" = "yes" ]; then
+      install_tier_to_home "$overlay_tier"
+    else
+      echo "  '$overlay_tier' install skipped."
+    fi
+    echo ""
+  fi
+done
+
 # --- Transcript hooks (opt-in) ---
 echo ""
 ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)")

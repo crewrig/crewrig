@@ -13,13 +13,20 @@
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
-# Source directories by installation scope (spec 0014 R11):
-#   core/    — project-scoped: built into per-repo CLI output directories
-#   library/ — user-home-scoped: intended for ~/.claude/skills/, ~/.gemini/skills/, etc.
-#   community/ — org sandbox: organisation-owned, project-scoped
-CORE_DIR="$REPO_DIR/artifacts/core"
-LIBRARY_DIR="$REPO_DIR/artifacts/library"
-COMMUNITY_DIR="$REPO_DIR/artifacts/community"
+ARTIFACTS_DIR="$REPO_DIR/artifacts"
+# Build/install scope separation (ADR-0011, spec 0019):
+#   The build is tier-agnostic — it discovers and compiles every tier
+#   directory present under artifacts/ (core, library, community, org, and
+#   any tier added later), with no hardcoded tier list.
+#   Output routing depends on the tier (see output_root_for_tier):
+#     core     — written into the committed project tree (.claude/, .gemini/,
+#                .github/); installed automatically because it ships with the
+#                repo.
+#     non-core — written into the gitignored staging tree dist/<tier>/, from
+#                which the interactive setup scripts install to the user home
+#                (library automatically; community and org on opt-in).
+#   Building a component is independent of installing it: a successful build
+#   never installs a non-core component anywhere but dist/.
 TARGET="all"
 CHECK_MODE=false
 
@@ -292,12 +299,44 @@ propagate_skill_resources() {
   done
 }
 
-# --- Build Skills ---
-build_skills() {
-  local skills_dirs=("$CORE_DIR/skills" "$LIBRARY_DIR/skills" "$COMMUNITY_DIR/skills")
+# --- Tier discovery and output routing (ADR-0011, spec 0019) ---
 
-  for skills_dir in "${skills_dirs[@]}"; do
-  [ ! -d "$skills_dir" ] && continue
+# Discover every tier present under artifacts/. A tier is a subdirectory of
+# artifacts/ (the trailing-slash glob ignores artifacts/FORMAT.md, a file).
+# Echoes one tier name per line. Adding a new tier directory needs no edit
+# here — the build picks it up automatically.
+discover_tiers() {
+  local tier_path tier_name
+  for tier_path in "$ARTIFACTS_DIR"/*/; do
+    [ -d "$tier_path" ] || continue
+    tier_name="$(basename "$tier_path")"
+    echo "$tier_name"
+  done
+}
+
+# Map a tier name to the root directory its compiled output is written under.
+#   core     -> $REPO_DIR             (committed project tree: .claude/ etc.)
+#   non-core -> $REPO_DIR/dist/<tier> (gitignored staging tree)
+# The setup scripts read the non-core roots when installing to the user home.
+output_root_for_tier() {
+  local tier="$1"
+  if [ "$tier" = "core" ]; then
+    echo "$REPO_DIR"
+  else
+    echo "$REPO_DIR/dist/$tier"
+  fi
+}
+
+# --- Build Skills ---
+# Compiles every skill in one tier into the tier's output root.
+build_skills() {
+  local tier="$1"
+  local tier_dir="$2"
+  local out_root
+  out_root="$(output_root_for_tier "$tier")"
+  local skills_dir="$tier_dir/skills"
+
+  [ ! -d "$skills_dir" ] && return
   for skill_dir in "$skills_dir"/*/; do
     [ ! -d "$skill_dir" ] && continue
     local source="$skill_dir/SKILL.md"
@@ -340,8 +379,8 @@ $gemini_frontmatter
 $body
 GEMINI_EOF
       )
-      check_or_write "$REPO_DIR/.gemini/skills/$name/SKILL.md" "$gemini_content" "$source"
-      propagate_skill_resources "$skill_dir" "$REPO_DIR/.gemini/skills/$name"
+      check_or_write "$out_root/.gemini/skills/$name/SKILL.md" "$gemini_content" "$source"
+      propagate_skill_resources "$skill_dir" "$out_root/.gemini/skills/$name"
     fi
 
     # --- Claude Code output ---
@@ -410,8 +449,8 @@ $claude_frontmatter
 $body
 CLAUDE_EOF
       )
-      check_or_write "$REPO_DIR/.claude/skills/$name/SKILL.md" "$claude_content" "$source"
-      propagate_skill_resources "$skill_dir" "$REPO_DIR/.claude/skills/$name"
+      check_or_write "$out_root/.claude/skills/$name/SKILL.md" "$claude_content" "$source"
+      propagate_skill_resources "$skill_dir" "$out_root/.claude/skills/$name"
     fi
 
     # --- GitHub Copilot CLI output (Agent Skills standard) ---
@@ -442,17 +481,21 @@ $copilot_frontmatter
 $body
 COPILOT_EOF
       )
-      check_or_write "$REPO_DIR/.github/skills/$name/SKILL.md" "$copilot_content" "$source"
-      propagate_skill_resources "$skill_dir" "$REPO_DIR/.github/skills/$name"
+      check_or_write "$out_root/.github/skills/$name/SKILL.md" "$copilot_content" "$source"
+      propagate_skill_resources "$skill_dir" "$out_root/.github/skills/$name"
     fi
-  done
   done
 }
 
 # --- Build Commands ---
+# Compiles every command in one tier into the tier's output root.
 build_commands() {
-  local commands_dir="$COMMUNITY_DIR/commands"
-  # Commands are org-specific (community layer only); core/library have none.
+  local tier="$1"
+  local tier_dir="$2"
+  local out_root
+  out_root="$(output_root_for_tier "$tier")"
+  local commands_dir="$tier_dir/commands"
+
   [ ! -d "$commands_dir" ] && return
 
   for source in "$commands_dir"/*.md; do
@@ -477,7 +520,7 @@ build_commands() {
 prompt = \"\"\"
 $body
 \"\"\""
-      check_or_write "$REPO_DIR/.gemini/commands/$name.toml" "$toml_content" "$source"
+      check_or_write "$out_root/.gemini/commands/$name.toml" "$toml_content" "$source"
     fi
 
     # --- Claude Code output: SKILL.md ---
@@ -506,7 +549,7 @@ $claude_frontmatter
 $body
 CLAUDE_EOF
       )
-      check_or_write "$REPO_DIR/.claude/skills/$name/SKILL.md" "$claude_content" "$source"
+      check_or_write "$out_root/.claude/skills/$name/SKILL.md" "$claude_content" "$source"
     fi
 
     # --- GitHub Copilot CLI output: SKILL.md (commands compile as skills) ---
@@ -536,17 +579,21 @@ $copilot_frontmatter
 $body
 COPILOT_EOF
       )
-      check_or_write "$REPO_DIR/.github/skills/$name/SKILL.md" "$copilot_content" "$source"
+      check_or_write "$out_root/.github/skills/$name/SKILL.md" "$copilot_content" "$source"
     fi
   done
 }
 
 # --- Build Agents ---
+# Compiles every agent in one tier into the tier's output root.
 build_agents() {
-  local agents_dirs=("$CORE_DIR/agents" "$LIBRARY_DIR/agents" "$COMMUNITY_DIR/agents")
+  local tier="$1"
+  local tier_dir="$2"
+  local out_root
+  out_root="$(output_root_for_tier "$tier")"
+  local agents_dir="$tier_dir/agents"
 
-  for agents_dir in "${agents_dirs[@]}"; do
-  [ ! -d "$agents_dir" ] && continue
+  [ ! -d "$agents_dir" ] && return
   for agent_dir in "$agents_dir"/*/; do
     [ ! -d "$agent_dir" ] && continue
     local source="$agent_dir/AGENT.md"
@@ -590,7 +637,7 @@ GEMINI_EOF
       )
       # NOTE: no $source arg — we intentionally bypass inject_provenance
       # so the `metadata:` YAML block does NOT land in the frontmatter.
-      check_or_write "$REPO_DIR/.gemini/agents/$name.md" "$gemini_content"
+      check_or_write "$out_root/.gemini/agents/$name.md" "$gemini_content"
     fi
 
     # --- Claude Code output: AGENT.md (with frontmatter) ---
@@ -605,7 +652,7 @@ description: "$description"
 $body
 CLAUDE_EOF
       )
-      check_or_write "$REPO_DIR/.claude/agents/$name/AGENT.md" "$claude_content" "$source"
+      check_or_write "$out_root/.claude/agents/$name/AGENT.md" "$claude_content" "$source"
     fi
 
     # --- GitHub Copilot CLI output: <name>.md (flat file, by parallelism with Gemini) ---
@@ -623,9 +670,8 @@ description: "$description"
 $body
 COPILOT_EOF
       )
-      check_or_write "$REPO_DIR/.github/agents/$name.md" "$copilot_content" "$source"
+      check_or_write "$out_root/.github/agents/$name.md" "$copilot_content" "$source"
     fi
-  done
   done
 }
 
@@ -641,9 +687,16 @@ fi
 echo "========================================="
 echo ""
 
-build_skills
-build_commands
-build_agents
+# Iterate every discovered tier. Build and --check share this loop, so drift
+# detection automatically covers every tier the build compiles (R10).
+while IFS= read -r tier; do
+  [ -z "$tier" ] && continue
+  tier_dir="$ARTIFACTS_DIR/$tier"
+  echo "--- Tier: $tier (output root: $(output_root_for_tier "$tier")) ---"
+  build_skills   "$tier" "$tier_dir"
+  build_commands "$tier" "$tier_dir"
+  build_agents   "$tier" "$tier_dir"
+done < <(discover_tiers)
 
 echo ""
 if [ "$CHECK_MODE" = true ]; then

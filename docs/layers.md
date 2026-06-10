@@ -194,8 +194,8 @@ from the examples layer.
 | `artifacts/community/commands/` | Organisation-specific slash-command definitions. |
 | `artifacts/community/skills/` | Sandbox for the organisation's own role skills, not yet validated for the organisation layer. |
 | `artifacts/community/agents/` | Sandbox for the organisation's own agents, not yet validated for the organisation layer. |
-| `artifacts/organisation/skills/` | Organisation-validated role skills — promoted from `artifacts/community/` after internal review. |
-| `artifacts/organisation/agents/` | Organisation-validated agents — promoted from `artifacts/community/` after internal review. |
+| `artifacts/org/skills/` | Organisation-validated role skills — promoted from `artifacts/community/` after internal review. Compiled by the tier-agnostic build like any other tier (ADR-0011, spec 0019); installed to the user home on opt-in. |
+| `artifacts/org/agents/` | Organisation-validated agents — promoted from `artifacts/community/` after internal review. Compiled by the tier-agnostic build like any other tier (ADR-0011, spec 0019); installed to the user home on opt-in. |
 
 ---
 
@@ -298,6 +298,7 @@ committed to the repository.
 | `.claude/settings.local.json` | Local-only Claude Code overrides. |
 | `.claude/worktrees/` | Claude Code worktree metadata. |
 | `.worktrees/` | Git worktrees created during agent team sessions. |
+| `dist/<tier>/` | Gitignored staging tree for non-`core` build outputs (ADR-0011, spec 0019). `scripts/build-components.sh` writes each non-`core` tier here (`library`, `community`, `org`); the interactive setup scripts install from it to the user home. Never committed. |
 | `.DS_Store` | macOS Finder metadata. |
 | `node_modules/` | Node.js dependencies installed locally — gitignored. |
 | `*.env` | Environment secrets — never committed. |

@@ -24,10 +24,16 @@ case "$TYPE" in
   theme)      TYPE="themes" ;;
 esac
 
+# Resolve the overlay source tier. Default is the community sandbox; the org
+# tier (spec 0019 — only skills/ and agents/) is searched as a fallback so a
+# single-component install covers org symmetrically with Copilot/Claude.
 SRC_DIR="$REPO_DIR/artifacts/community/$TYPE"
+if [ ! -d "$SRC_DIR" ] && [ -d "$REPO_DIR/artifacts/org/$TYPE" ]; then
+  SRC_DIR="$REPO_DIR/artifacts/org/$TYPE"
+fi
 
 if [ ! -d "$SRC_DIR" ]; then
-  echo "Error: directory artifacts/community/$TYPE does not exist."
+  echo "Error: directory artifacts/community/$TYPE (and artifacts/org/$TYPE) does not exist."
   exit 1
 fi
 

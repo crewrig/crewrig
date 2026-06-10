@@ -65,7 +65,7 @@ place_component() {
 place_agent() {
   local name="$1"
   local src_file=""
-  for search_dir in "$REPO_DIR/artifacts/core/agents" "$REPO_DIR/artifacts/library/agents" "$REPO_DIR/artifacts/community/agents"; do
+  for search_dir in "$REPO_DIR/artifacts/core/agents" "$REPO_DIR/artifacts/library/agents" "$REPO_DIR/artifacts/community/agents" "$REPO_DIR/artifacts/org/agents"; do
     [ -f "$search_dir/${name}/AGENT.md" ] && src_file="$search_dir/${name}/AGENT.md" && break
   done
   local dest_file="$REPO_DIR/.github/agents/${name}.md"
@@ -116,7 +116,7 @@ case "$TYPE" in
     DEST="$REPO_DIR/.github/skills"
     mkdir -p "$DEST"
 
-    for SRC_DIR in "$REPO_DIR/artifacts/core/skills" "$REPO_DIR/artifacts/library/skills" "$REPO_DIR/artifacts/community/skills"; do
+    for SRC_DIR in "$REPO_DIR/artifacts/core/skills" "$REPO_DIR/artifacts/library/skills" "$REPO_DIR/artifacts/community/skills" "$REPO_DIR/artifacts/org/skills"; do
       [ ! -d "$SRC_DIR" ] && continue
       if [ -n "$NAME" ]; then
         [ -d "$SRC_DIR/$NAME" ] && place_component "$SRC_DIR/$NAME" "$DEST"

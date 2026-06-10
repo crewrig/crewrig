@@ -241,35 +241,55 @@ else
 fi
 echo ""
 
-# --- User-level skills (~/.copilot/skills/) — opt-in ---
-# Mirrors the workspace-level .github/skills/ output to the user-level
-# directory so skills are usable from any Copilot CLI session, regardless
-# of the active workspace. Agents are intentionally skipped in v1: the
-# `~/.copilot/agents/<name>.agent.md` naming convention is unverified
-# (see docs/adr/0001 — [GAP-confirmation]).
-WORKSPACE_SKILLS_DIR="$REPO_DIR/.github/skills"
-if [ -d "$WORKSPACE_SKILLS_DIR" ] && [ -n "$(ls -A "$WORKSPACE_SKILLS_DIR" 2>/dev/null)" ]; then
-  INSTALL_USER_SKILLS=$(echo -e "no\nyes" | fzf --height 10% \
-    --header "Install user-level skills to $COPILOT_SKILLS? (opt-in)")
-  if [ "$INSTALL_USER_SKILLS" = "yes" ]; then
-    mkdir -p "$COPILOT_SKILLS"
-    for skill_dir in "$WORKSPACE_SKILLS_DIR"/*/; do
-      [ -d "$skill_dir" ] || continue
-      skill_name="$(basename "$skill_dir")"
-      target_dir="$COPILOT_SKILLS/$skill_name"
-      mkdir -p "$target_dir"
-      install_file "$skill_dir/SKILL.md" "$target_dir/SKILL.md" \
-        "skills/$skill_name/SKILL.md -> ~/.copilot/skills/$skill_name/SKILL.md"
-    done
-    echo ""
-  else
-    echo "  User-level skills install skipped."
+# --- Artifact install to user home (ADR-0011, spec 0019) ---
+# The build (scripts/build-components.sh) compiles each non-core tier into the
+# gitignored staging tree dist/<tier>/.github/skills/. This phase installs them
+# to the user-level Copilot skills dir by tier scope:
+#   library   — installed automatically (harness machinery, useful everywhere).
+#   community — installed only on explicit opt-in (experimental sandbox).
+#   org       — installed only on explicit opt-in (validated org components).
+# `core` is never installed here: it ships in the project tree.
+# Agents are intentionally skipped: the `~/.copilot/agents/<name>.agent.md`
+# naming convention is unverified ([GAP-confirmation], see docs/cli-matrix.md).
+
+# install_tier_skills_to_home <tier> — copy a staged tier's Copilot skills into
+# ~/.copilot/skills/<name>/. No-op if the tier was not built.
+install_tier_skills_to_home() {
+  local tier="$1"
+  local staging="$REPO_DIR/dist/$tier/.github/skills"
+  if [ ! -d "$staging" ] || [ -z "$(ls -A "$staging" 2>/dev/null)" ]; then
+    echo "  Tier '$tier' has no built skills (no $staging) — run 'bash scripts/build-components.sh --target copilot' first."
+    return 0
+  fi
+  mkdir -p "$COPILOT_SKILLS"
+  for skill_dir in "$staging"/*/; do
+    [ -d "$skill_dir" ] || continue
+    local skill_name target_dir
+    skill_name="$(basename "$skill_dir")"
+    target_dir="$COPILOT_SKILLS/$skill_name"
+    mkdir -p "$target_dir"
+    install_file "$skill_dir/SKILL.md" "$target_dir/SKILL.md" \
+      "$tier/$skill_name/SKILL.md -> ~/.copilot/skills/$skill_name/SKILL.md"
+  done
+}
+
+echo "Installing library skills to $COPILOT_SKILLS (automatic)..."
+install_tier_skills_to_home library
+echo ""
+
+# Overlay tiers — each gated behind its own opt-in prompt.
+for overlay_tier in community org; do
+  if [ -d "$REPO_DIR/dist/$overlay_tier/.github/skills" ]; then
+    INSTALL_OVERLAY=$(echo -e "no\nyes" | fzf --height 10% \
+      --header "Install '$overlay_tier' skills to $COPILOT_SKILLS? (opt-in)")
+    if [ "$INSTALL_OVERLAY" = "yes" ]; then
+      install_tier_skills_to_home "$overlay_tier"
+    else
+      echo "  '$overlay_tier' skills install skipped."
+    fi
     echo ""
   fi
-else
-  echo "  No built skills found at $WORKSPACE_SKILLS_DIR — run 'bash scripts/build-components.sh --target copilot' first."
-  echo ""
-fi
+done
 
 # --- Transcript hooks (opt-in) ---
 ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)")

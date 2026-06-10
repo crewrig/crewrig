@@ -375,7 +375,7 @@ artifacts/
 │   ├── policies/          # Org-specific policy files
 │   ├── mcp-servers/       # Org-specific MCP server configurations
 │   └── themes/            # Org-specific UI themes
-└── organisation/          # Adopting organisation validated components
+└── org/                   # Adopting organisation validated components
     ├── skills/
     └── agents/
 
