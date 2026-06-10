@@ -62,6 +62,9 @@ jobs:
       - name: Test assembly verification
         run: bash scripts/tests/test-assembly-verification.sh
 
+      - name: Test artifact build/install scope (spec 0019)
+        run: bash scripts/tests/test-artifact-build-install-scope.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
