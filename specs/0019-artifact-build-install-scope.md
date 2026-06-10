@@ -1,7 +1,7 @@
 ---
 id: "0019"
 slug: artifact-build-install-scope
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 258

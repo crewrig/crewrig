@@ -48,7 +48,7 @@ refuse to proceed.
 | Path | Description |
 |---|---|
 | `docs/` | All normative and reference documentation, including ADRs, format specs, and this file. |
-| `specs/` | Immutable specification history. Spec files are append-only; existing files are never edited after merge. |
+| `specs/` | Immutable specification history. Spec **content** is append-only; existing files are not edited after merge except for lifecycle-metadata transitions (`status`, `superseded-by`) — see [`docs/spec-format.md`](spec-format.md). |
 
 ### Build and install tooling
 

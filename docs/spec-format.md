@@ -112,8 +112,10 @@ loop and waste a downstream iteration.
 
 `spec`-class findings produced by the REVIEW loop (per ADR-0010 →
 *Finding classification taxonomy*) do not edit the original spec on
-`main`. The original is immutable once merged; corrections chain via
-delta-spec files.
+`main`. The original's **normative content** is immutable once merged;
+corrections chain via delta-spec files. (Lifecycle *metadata* — `status`,
+`superseded-by` — is exempt from this freeze; see *Lifecycle states →
+Recording a status transition*.)
 
 ### File layout
 
@@ -194,6 +196,30 @@ table below is the contract.
 
 A `status` regression (e.g. `approved` → `draft`) is prohibited; if a
 spec must be re-opened, supersede it instead.
+
+### Recording a status transition
+
+The append-only rule (see *Delta-spec convention*) governs a spec's
+**normative content** — the body sections (`## Intent`, `## Requirements`,
+`## Scenarios`, `## Out of scope`, `## Open questions`) and the identifying
+frontmatter fields (`id`, `slug`). It does **not** freeze the
+lifecycle-tracking metadata: the `status` and `superseded-by` fields are
+*expected* to change after merge, since the table above defines transitions
+that occur once the spec PR, the implementation PR, or a superseding spec
+lands.
+
+Such a transition SHALL be recorded by a **metadata-only edit** to the
+merged spec's frontmatter. The authority named in the table above changes
+the `status` field (and sets `superseded-by` when moving to `superseded`)
+and touches nothing else — no body line, no `id`, no `slug`, no `version`.
+A diff that alters any normative content under cover of a status bump is a
+violation. The `version` field stays immutable on the original after merge;
+the cumulative version lives on the highest-numbered delta (per
+*Versioning*).
+
+This carve-out is deliberately narrow: it admits lifecycle metadata only.
+Meaning-preserving editorial edits to body prose (orthography, typo fixes)
+are **not** covered here and remain prohibited pending a separate amendment.
 
 ## Naming convention
 
