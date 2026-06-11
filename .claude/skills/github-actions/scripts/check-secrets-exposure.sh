@@ -106,7 +106,7 @@ for current_file in "${files[@]}"; do
         # 4. toJSON(secrets) — full secret bag serialization.
         if [[ "$line" =~ toJSON\([[:space:]]*secrets[[:space:]]*\) ]]; then
             report "$current_file" "$lineno" "toJSON(secrets)" \
-                "serialises the entire secrets context — any later echo, env, or file write leaks them all"
+                "serializes the entire secrets context — any later echo, env, or file write leaks them all"
         fi
     done < "$current_file"
 done
