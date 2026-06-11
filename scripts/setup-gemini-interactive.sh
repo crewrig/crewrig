@@ -126,6 +126,14 @@ install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$GEMINI_HOME/60_TOOLS
 install_file "$REPO_DIR/config/TOOLS.md" "$GEMINI_HOME/65_TOOLS.md" \
   "TOOLS.md -> 65_TOOLS.md"
 
+# Org rules (priority 66) — AGENTS.org.md fallback (spec 0020). Gemini resolves
+# @file imports only in GEMINI.md (absent at repo root), so AGENTS.org.md is
+# deployed as a context file. Re-run setup after editing AGENTS.org.md.
+if [ -f "$REPO_DIR/AGENTS.org.md" ]; then
+  install_file "$REPO_DIR/AGENTS.org.md" "$GEMINI_HOME/66_ORG_RULES.md" \
+    "AGENTS.org.md -> 66_ORG_RULES.md"
+fi
+
 install_file "$REPO_DIR/config/SOUL.md" "$GEMINI_HOME/00_SOUL.md" \
   "SOUL.md -> 00_SOUL.md"
 echo ""

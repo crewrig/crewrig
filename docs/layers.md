@@ -47,8 +47,8 @@ refuse to proceed.
 
 | Path | Description |
 |---|---|
-| `docs/` | All normative and reference documentation, including ADRs, format specs, and this file. |
-| `specs/` | Immutable specification history. Spec **content** is append-only; existing files are not edited after merge except for lifecycle-metadata transitions (`status`, `superseded-by`) — see [`docs/spec-format.md`](spec-format.md). |
+| `docs/` | All normative and reference documentation, including ADRs, format specs, and this file. The `docs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
+| `specs/` | Immutable specification history. Spec **content** is append-only; existing files are not edited after merge except for lifecycle-metadata transitions (`status`, `superseded-by`) — see [`docs/spec-format.md`](spec-format.md). The `specs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
 
 ### Build and install tooling
 
@@ -154,7 +154,7 @@ to every deployment of CrewRig.
 
 | Path | Description |
 |---|---|
-| `.crewrig/` | Machine-readable sync manifest and related tooling. `.crewrig/core-paths.txt` enumerates core-layer paths consumed by `scripts/sync-from-upstream.sh`. |
+| `.crewrig/` | Machine-readable sync manifest and related tooling. `.crewrig/core-paths.txt` enumerates core-layer paths and their sync policy consumed by `scripts/sync-from-upstream.sh`. The `.crewrig/.synced-markers/` subtree is carved out as adopter-owned state (spec 0020) — see the Overlay layer. |
 
 ---
 
@@ -196,6 +196,31 @@ from the examples layer.
 | `artifacts/community/agents/` | Sandbox for the organisation's own agents, not yet validated for the organisation layer. |
 | `artifacts/org/skills/` | Organisation-validated role skills — promoted from `artifacts/community/` after internal review. Compiled by the tier-agnostic build like any other tier (ADR-0011, spec 0019); installed to the user home on opt-in. |
 | `artifacts/org/agents/` | Organisation-validated agents — promoted from `artifacts/community/` after internal review. Compiled by the tier-agnostic build like any other tier (ADR-0011, spec 0019); installed to the user home on opt-in. |
+
+### Org overlay carve-outs in core trees (spec 0020)
+
+Org-owned paths nested within otherwise-core trees. The upstream
+synchronisation classifies each as **excluded** in `.crewrig/core-paths.txt`
+and carves it out of its core parent's dirty guard and restore via a
+`:(exclude)` pathspec, so it is never modified, restored, or able to abort a
+sync.
+
+| Path | Description |
+|---|---|
+| `specs/org/` | Organisation-owned specification overlay, nested in core `specs/`. Excluded from upstream sync. |
+| `docs/org/` | Organisation-owned documentation overlay, nested in core `docs/`. Excluded from upstream sync. |
+| `AGENTS.org.md` | Organisation-owned agent-rules extension, loaded alongside the upstream `AGENTS.md` (natively on Claude via `@` import; via the priority-66 setup deployment on Gemini and Copilot). Excluded from upstream sync. |
+
+### Adopter-managed sync state (spec 0020)
+
+| Path | Description |
+|---|---|
+| `.crewrig/.synced-markers/` | Per-path last-synced upstream blob SHAs backing the **adopt-on-edit** decision. Machine-managed by `scripts/sync-from-upstream.sh` (do not hand-edit); **committed** by the adopter so the customisation verdict survives a fresh clone (R7), and **never synced** from upstream — carved out of the `.crewrig` guard and restore. |
+
+The `README.md` core-governance entry carries the **adopt-on-edit** policy
+(spec 0020): upstream-owned until the adopter modifies it, then preserved
+permanently. It remains a core path; only its sync policy differs from
+`strict`.
 
 ---
 

@@ -147,6 +147,14 @@ if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
   # Org-specific tools (priority 65) — organisation-specific additions
   install_file "$REPO_DIR/config/TOOLS.md" "$COPILOT_INSTRUCTIONS/65-org-tools.instructions.md" \
     "TOOLS.md -> instructions/65-org-tools.instructions.md"
+  # Org rules (priority 66) — AGENTS.org.md fallback (spec 0020). Copilot does
+  # not resolve @file includes in instruction files and auto-reads only the
+  # standard AGENTS.md name, so AGENTS.org.md is deployed as an instruction
+  # file. Re-run setup after editing AGENTS.org.md.
+  if [ -f "$REPO_DIR/AGENTS.org.md" ]; then
+    install_file "$REPO_DIR/AGENTS.org.md" "$COPILOT_INSTRUCTIONS/66-org-rules.instructions.md" \
+      "AGENTS.org.md -> instructions/66-org-rules.instructions.md"
+  fi
   echo ""
 
   # Level

@@ -1,0 +1,10 @@
+# .crewrig/.synced-markers/ — adopt-on-edit sync state (spec 0020)
+#
+# Holds one file per adopt-on-edit path: <path>.sha containing the upstream
+# blob SHA the last successful sync applied. Machine-managed by
+# scripts/sync-from-upstream.sh — DO NOT hand-edit.
+#
+# Committed by the adopter (durable across a fresh clone, so the "modified?"
+# verdict survives), but carved out of the upstream sync guard and restore
+# (policy `excluded` under the strict `.crewrig` parent) so it never aborts a
+# sync nor gets clobbered. Ships empty upstream.

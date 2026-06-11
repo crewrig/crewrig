@@ -1,26 +1,49 @@
 # Core-layer paths — machine-readable manifest for sync-from-upstream.sh
-# One path per line. Blank lines and lines starting with # are ignored.
 # Maintained by upstream CrewRig. Any PR that adds, removes, or reclassifies
 # a core-layer path in docs/layers.md MUST update this file in the same diff.
+#
+# Format: <path>[<TAB><policy>]. Blank lines and lines starting with # are
+# ignored. The policy column is optional; an absent column defaults to
+# `strict` (backward-compatible with the original one-path-per-line form).
+#
+# Policies (spec 0020):
+#   strict         Upstream-owned. A local modification halts the sync.
+#   adopt-on-edit  Upstream-owned until the adopter modifies it, then
+#                  preserved permanently (never overwritten, never aborts).
+#   excluded       Org-owned. Never guarded, never restored, never touched.
+#
+# Nested exclusion: an `excluded` entry nested under a `strict`/`adopt-on-edit`
+# parent (e.g. `specs/org` under `specs`, `.crewrig/.synced-markers` under
+# `.crewrig`) is carved out of BOTH the parent's dirty guard and its restore
+# via a `:(exclude)` git pathspec, so org content under a core parent can
+# never abort the sync nor be overwritten.
+#
+# `.crewrig/.synced-markers/` holds per-path last-synced upstream blob SHAs
+# (adopt-on-edit state). It is committed by the adopter (durable across a
+# fresh clone) but never synced from upstream — it is machine-managed; do
+# not hand-edit.
 
 # Repository governance
-AGENTS.md
-CLAUDE.md
-CONTRIBUTING.md
-DEVELOPMENT.md
-LICENSE
-README.md
-Taskfile.yml
-.gitattributes
-.gitignore
-.markdownlintrc
-package-lock.json
-package.json
-renovate.json
+AGENTS.md	strict
+AGENTS.org.md	excluded
+CLAUDE.md	strict
+CONTRIBUTING.md	strict
+DEVELOPMENT.md	strict
+LICENSE	strict
+README.md	adopt-on-edit
+Taskfile.yml	strict
+.gitattributes	strict
+.gitignore	strict
+.markdownlintrc	strict
+package-lock.json	strict
+package.json	strict
+renovate.json	strict
 
 # Documentation and specifications
-docs
-specs
+docs	strict
+docs/org	excluded
+specs	strict
+specs/org	excluded
 
 # Build and install tooling
 scripts
@@ -56,5 +79,6 @@ hooks
 communication
 
 # Sync tooling (spec 0016)
-.crewrig
-scripts/sync-from-upstream.sh
+.crewrig	strict
+.crewrig/.synced-markers	excluded
+scripts/sync-from-upstream.sh	strict

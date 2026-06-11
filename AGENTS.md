@@ -593,3 +593,17 @@ at the time of the cutoff into `keep-legacy`, `retrofit`, or
 [`specs/0008-migration-of-in-flight-tickets.md`](specs/0008-migration-of-in-flight-tickets.md)
 under *Audit table*. Reclassification requires a delta-spec
 amendment.
+
+## Organisation rules extension
+
+The adopting organisation extends these rules through the org-owned
+`AGENTS.org.md`, never by editing this upstream-owned file (spec 0020).
+Claude Code resolves the import below natively and recursively. Gemini CLI
+and GitHub Copilot CLI do not resolve `@file` includes in this surface, so
+their setup scripts deploy `AGENTS.org.md` as a priority-66 rules file
+(`~/.gemini/66_ORG_RULES.md` and
+`~/.copilot/instructions/66-org-rules.instructions.md` respectively) — see
+[`docs/cli-matrix.md`](docs/cli-matrix.md) row 7e.
+
+<!-- Claude-native recursive import; per-CLI fallback handled at setup time. -->
+@AGENTS.org.md
