@@ -340,7 +340,7 @@ post hoc).
 | **SPECS** | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | No interview gate (spec authored autonomously); merge-authorization gate before merging the spec-PR. |
 | **PLAN** | `AskUserQuestion` to validate the plan comment before DEV starts; second `architect` cold-review remains autonomous. | `AskUserQuestion` to validate the plan comment before DEV starts; second `architect` cold-review remains autonomous. | — (plan authored and cold-reviewed autonomously; DEV starts on APPROVE without user prompt). | — (plan authored and cold-reviewed autonomously). |
 | **DEV** | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). |
-| **REVIEW** | Non-blocking notification posted on the logbook issue at the start and end of every iteration (per the FULL-mode rule above). No `AskUserQuestion`. | — (loop runs autonomously; iteration count visible via the `iter:N` PR label). | — (loop runs autonomously). | — (loop runs autonomously; halt at max-iteration guardrail pages the user per *Retroactive review loop*). |
+| **REVIEW** | Non-blocking notification posted on the logbook issue at the start and end of every iteration (per the FULL-mode rule above), **plus** a bounded `AskUserQuestion` to triage the non-blocking findings of each pass (spec 0006 R10 / spec 0005 R10 FULL branch). That triage is the sole REVIEW-loop gate. | — (loop runs autonomously; iteration count visible via the `iter:N` PR label). | — (loop runs autonomously). | — (loop runs autonomously; halt at max-iteration guardrail pages the user per *Retroactive review loop*). |
 
 Notes on the matrix:
 
@@ -348,9 +348,11 @@ Notes on the matrix:
   mode, including AUTO, MUST ask the user before any `gh pr merge`.
   *Branching Strategy* is not waivable.
 - FULL-mode REVIEW notifications are non-blocking — posting them does
-  not pause the loop. They are listed under "REVIEW" only because
-  they are the FULL-mode-specific surface the orchestrator must
-  produce; they are not gates.
+  not pause the loop. The one FULL-mode REVIEW gate is the bounded
+  non-blocking-finding triage `AskUserQuestion` (spec 0006 R10), under
+  which only FULL consults the user on optional findings; INTERMEDIATE,
+  MINIMAL, and AUTO fire no REVIEW gate. The per-iteration notifications
+  themselves are not gates.
 - The max-iteration guardrail (*Retroactive review loop*) pages the
   user in **every** mode, including AUTO. That paging is a gate by
   exception — the loop has halted and the user must decide whether

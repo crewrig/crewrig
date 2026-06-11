@@ -207,33 +207,32 @@ the lifecycle's interaction mode (spec 0005 R10):
 | Mode | Non-blocking finding handling |
 |---|---|
 | **FULL** | Apply `AGENTS.md` → *Team Communication → Rule 4*: the orchestrator presents every non-blocking finding to the user and routes only those the user accepts into the loop. Findings the user defers are journalled in the logbook and left unactioned. |
-| **INTERMEDIATE** | Same as FULL — Rule 4 applies; the user decides. |
-| **MINIMAL** | The orchestrator SHALL route every non-blocking finding into the loop using the same precedence matrix as blocking findings. In autonomous modes there is no user to defer to. |
+| **INTERMEDIATE** | The orchestrator SHALL route every non-blocking finding into the loop using the same precedence matrix as blocking findings; the REVIEW loop fires no user gate (spec 0005 R10 as amended for #288). |
+| **MINIMAL** | Same as INTERMEDIATE — every non-blocking finding is routed via the precedence matrix; no user gate. |
 | **AUTO** | Same as MINIMAL — non-blocking becomes effectively blocking, routed via the matrix. |
 
-The asymmetry reflects the lifecycle's gating philosophy: modes that
-keep the user in the loop give the user the last word on scope; modes
-that explicitly delegate scope to the engine route every signal
-through the matrix so that termination genuinely means "no work
-left", not "no work the engine bothered to do".
+The asymmetry reflects the lifecycle's gating philosophy: only FULL
+keeps the user in the loop during REVIEW and gives the user the last
+word on scope; every other mode delegates scope to the engine and
+routes every signal through the matrix so that termination genuinely
+means "no work left", not "no work the engine bothered to do".
 
 ## Worked example — PR #183 iteration 2
 
 The closest live fixture is the second iteration of PR #183 (the
 plan-format ticket, issue #169), where the cold review surfaced three
-non-blocking findings under `INTERMEDIATE` mode. Per the table above,
-the orchestrator applied Rule 4: each finding was presented to the
-user, who decided which to absorb in-session and which to journal.
-The PR merged after the user-accepted findings landed.
+non-blocking findings under `INTERMEDIATE` mode. Under the model as
+amended for #288, INTERMEDIATE fires no REVIEW gate, so the engine
+routes all three findings into the loop using the same precedence
+matrix as blocking findings — none are presented to the user for a
+keep-or-defer decision. Had the same findings surfaced under `FULL`,
+the orchestrator would instead present them for a bounded per-pass
+triage and route only the ones the user accepts (per the table above).
 
 The fixture predates this spec's `iter:N` label convention — the
 label was not applied retroactively — so readers should treat the
-example as a *retrofit* ("had the engine existed, here is how it
-would have routed") rather than a literal record of label state.
-The substantive routing decision the example demonstrates — three
-non-blocking findings, INTERMEDIATE mode, Rule 4 deciding which
-absorb and which defer — is the engine's intended behavior
-unchanged.
+example as a *retrofit* ("had the engine existed, here is how it would
+route today") rather than a literal record of label state.
 
 - <https://github.com/crewrig/crewrig/pull/183>
 

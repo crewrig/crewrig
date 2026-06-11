@@ -375,19 +375,21 @@ are routed conditionally on the ticket's declared interaction mode (see
 R10 and the table in [`docs/retroactive-loop.md`](retroactive-loop.md) →
 *Non-blocking conditional routing*:
 
-- **FULL / INTERMEDIATE.** The team-lead MUST present every non-blocking
-  finding to the user and route only those the user accepts into the fix
-  cycle; the rest are journalled in the logbook and left unactioned. The
-  user sets the scope, not the reviewer's severity labels.
-- **MINIMAL / AUTO.** The team-lead MUST route every finding — blocking and
-  non-blocking — into the fix cycle automatically, in the same session,
-  with no user gate other than the merge authorization; in the autonomous
-  modes there is no user to defer to, so non-blocking findings become
-  blocking by default.
+- **FULL.** The team-lead MUST present every non-blocking finding to the
+  user and route only those the user accepts into the fix cycle; the rest
+  are journalled in the logbook and left unactioned. The user sets the
+  scope, not the reviewer's severity labels. This bounded per-pass triage
+  is the sole REVIEW-loop user gate (see *Interaction modes → User-gate
+  definition* in AGENTS.md and spec 0006 R10).
+- **INTERMEDIATE / MINIMAL / AUTO.** The team-lead MUST route every finding
+  — blocking and non-blocking — into the fix cycle automatically, in the
+  same session, with no user gate other than the merge authorization; in
+  these modes the REVIEW loop fires no triage prompt, so non-blocking
+  findings become blocking by default.
 
 In no mode may a finding be deferred to a follow-up ticket without
 authorization appropriate to that mode — the user's explicit decision in
-FULL / INTERMEDIATE, never silently in MINIMAL / AUTO.
+FULL, never silently in INTERMEDIATE / MINIMAL / AUTO.
 
 ## Team Shutdown
 
