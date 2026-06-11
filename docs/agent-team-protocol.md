@@ -82,6 +82,15 @@ agents are available. Inline solo work on a ticket is reserved for trivial
 single-file edits explicitly scoped that way by the user. If in doubt,
 assemble the team.
 
+**Issue-anchored work forces a team.** When the unit of work references a
+tracked GitHub issue number, assembling a team is mandatory: such work
+SHALL NOT be downgraded to the `trivial` tier's inline handling on the
+basis of perceived small scope. "Small fix" and "scoped solo work" are
+orthogonal — a two-line fix on a tracked issue still requires a team. The
+trivial single-file inline exemption above applies only to a change the
+user explicitly scopes as inline with no tracked issue behind it; it never
+applies to issue-anchored work, however small the fix looks.
+
 ## Worktree Isolation
 
 Parallel agent teams operating on the same git working directory collide on branch checkout and the staging index, corrupting each other's work. To prevent this, the orchestrating agent **MUST** create a dedicated git worktree **before** issuing any `TaskCreate` call or `Agent` spawn for the ticket:
@@ -340,6 +349,21 @@ violation, the team-lead MUST:
 Sending a status-check ping on every idle notification is itself a
 protocol violation: it manufactures the very noise this rule exists
 to prevent.
+
+**Bounded wait before declaring death.** Rules 2 and 3 assume the
+team-lead eventually receives *some* signal — a second idle
+notification, or one it can reconcile against side-effects. A teammate
+can also die with no signal at all: no result message, no idle
+notification, no side-effect. To bound this case, the team-lead SHALL
+keep a wall-clock waiting budget per spawned teammate — roughly 30
+minutes for a `pr-logbook` or `pr-reviewer`, proportionally more for a
+long implementation task. When the budget elapses with no result
+message and no observable side-effect (checked per Rule 3 step 2), the
+team-lead SHALL treat the teammate as dead and apply Rule 2 — spawn a
+fresh direct `Agent` with a self-contained brief. The budget is a
+backstop, not a substitute for the side-effect check: a teammate whose
+work is visibly complete is never declared dead merely because the
+budget elapsed.
 
 **Rule 4 — Review findings are not auto-deferrals.** When a reviewer
 lists findings marked "non-blocking", that label means the PR can merge
