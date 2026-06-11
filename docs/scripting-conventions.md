@@ -128,7 +128,7 @@ the `if` block. It is shorter; it is also wrong.
 
 ```bash
 set -e
-[ ! -d "$REPO_DIR/extensions/$EXT" ] && echo "Error: extension '$EXT' not found." && exit 1
+[ ! -d "$REPO_DIR/extensions/$TIER/$EXT" ] && echo "Error: extension '$EXT' not found." && exit 1
 do_install "$EXT"
 ```
 
@@ -136,7 +136,7 @@ do_install "$EXT"
 
 ```bash
 set -e
-if [ ! -d "$REPO_DIR/extensions/$EXT" ]; then
+if [ ! -d "$REPO_DIR/extensions/$TIER/$EXT" ]; then
   echo "Error: extension '$EXT' not found." >&2
   exit 1
 fi

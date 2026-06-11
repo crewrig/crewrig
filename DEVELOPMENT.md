@@ -28,7 +28,7 @@ toggle, ENTER to confirm):
 
 The script will:
 
-1. Copy the base skeleton into `extensions/my-extension/`.
+1. Copy the base skeleton into `extensions/org/my-extension/`.
 2. Inject selected component directories.
 3. Replace every `SKELETON_NAME` placeholder with your extension name.
 4. Merge JSON fragments (MCP server, theme) into the manifest.
@@ -67,7 +67,7 @@ extension name during scaffolding.
 ### After Scaffolding
 
 ```bash
-cd extensions/my-extension
+cd extensions/org/my-extension
 npm install
 ```
 
@@ -91,7 +91,7 @@ rebuild with `npm run build`, and restart Gemini to pick up changes.
 
 ```bash
 task build-claude-plugin EXT=my-extension
-claude --plugin-dir extensions/my-extension/dist-claude-plugin/my-extension
+claude --plugin-dir extensions/org/my-extension/dist-claude-plugin/my-extension
 ```
 
 The `--plugin-dir` flag loads the plugin directly for development.
@@ -102,7 +102,7 @@ restarting.
 
 ```bash
 # Build the extension
-cd extensions/my-extension
+cd extensions/org/my-extension
 npm run build
 
 # Verify the MCP server starts
@@ -123,7 +123,7 @@ Implications for contributors:
 Rebuild reminder:
 
 ```bash
-cd extensions/my-extension
+cd extensions/org/my-extension
 npm run build
 task build-claude-plugin EXT=my-extension
 ```
@@ -180,7 +180,7 @@ trigger a release.
 
 ### How It Works
 
-1. A commit lands on `main` touching files in `extensions/my-extension/`.
+1. A commit lands on `main` touching files in `extensions/org/my-extension/`.
 2. The `release-monorepo` workflow detects the change.
 3. `semantic-release-monorepo` scopes the analysis to that extension only.
 4. `semantic-release-gitmoji` determines the version bump from the emoji.
@@ -207,7 +207,7 @@ The `.tgz` files are written to `dist/`.
 ## Extension Anatomy
 
 ```text
-extensions/my-extension/
+extensions/org/my-extension/
 ├── extension.json          # Unified manifest (generates Gemini ext + Claude plugin)
 ├── gemini-extension.json   # Legacy Gemini-only manifest (optional)
 ├── package.json            # npm package (dependencies, build script)

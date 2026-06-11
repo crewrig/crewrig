@@ -82,6 +82,12 @@ artifacts/library
 # Extension distribution channel
 extension-skeleton
 hooks
+# Extension tiers (spec 0024): the two upstream tiers are strict; extensions/org
+# is adopter-owned and deliberately omitted (unlisted = never guarded, restored,
+# or aborted on). The parent `extensions` is not an entry, so listing only the
+# upstream children leaves extensions/org untouched without an :(exclude) carve-out.
+extensions/core	strict
+extensions/library	strict
 
 # Public communications
 communication

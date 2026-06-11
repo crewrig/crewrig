@@ -13,7 +13,31 @@ set -euo pipefail
 
 command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: brew install jq"; exit 1; }
 
-EXT_DIR="${1:?Usage: build-claude-plugin.sh <extension-dir> [output-dir]}"
+EXT_ARG="${1:?Usage: build-claude-plugin.sh <extension-dir-or-name> [output-dir]}"
+
+# Accept either an extension directory (back-compatible) or a bare extension
+# name. A bare name is resolved to its SOURCE dir extensions/<tier>/<name>/,
+# searching every tier (first match; hard-error on a duplicate name). The tier
+# is a SOURCE-side concern only; the built plugin keeps its bare name.
+if [ -d "$EXT_ARG" ]; then
+  EXT_DIR="$EXT_ARG"
+else
+  REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+  EXT_DIR=""
+  for tier in core library org; do
+    if [ -d "$REPO_DIR/extensions/$tier/$EXT_ARG" ]; then
+      if [ -n "$EXT_DIR" ]; then
+        echo "Error: extension '$EXT_ARG' exists in multiple tiers; names must be unique."
+        exit 1
+      fi
+      EXT_DIR="$REPO_DIR/extensions/$tier/$EXT_ARG"
+    fi
+  done
+  if [ -z "$EXT_DIR" ]; then
+    echo "Error: extension directory or name '$EXT_ARG' not found."
+    exit 1
+  fi
+fi
 EXT_DIR="$(cd "$EXT_DIR" && pwd)"
 
 # --- Locate manifest ---

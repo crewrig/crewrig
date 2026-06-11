@@ -160,7 +160,7 @@ tasks:
 
   build-claude-plugin:
     desc: "Build a Claude Code plugin from an extension (task build-claude-plugin EXT=hello-world)"
-    cmd: bash {{.REPO_DIR}}/scripts/build-claude-plugin.sh {{.REPO_DIR}}/extensions/{{.EXT}}
+    cmd: bash {{.REPO_DIR}}/scripts/build-claude-plugin.sh {{.EXT}}
 
   install-claude-plugin:
     desc: "Install a Claude Code plugin (task install-claude-plugin EXT=hello-world)"

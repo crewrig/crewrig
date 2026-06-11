@@ -26,8 +26,20 @@ command -v claude >/dev/null 2>&1 || {
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 EXT_NAME="${1:?Usage: install-claude-plugin.sh <extension-name>}"
 
-EXT_DIR="$REPO_DIR/extensions/$EXT_NAME"
-if [ ! -d "$EXT_DIR" ]; then
+# Resolve the bare extension name to its SOURCE dir extensions/<tier>/<name>/,
+# searching every tier (first match; hard-error on a duplicate name). The tier
+# is a SOURCE-side concern only; the installed plugin keeps its bare name.
+EXT_DIR=""
+for tier in core library org; do
+  if [ -d "$REPO_DIR/extensions/$tier/$EXT_NAME" ]; then
+    if [ -n "$EXT_DIR" ]; then
+      echo "Error: extension '$EXT_NAME' exists in multiple tiers; names must be unique."
+      exit 1
+    fi
+    EXT_DIR="$REPO_DIR/extensions/$tier/$EXT_NAME"
+  fi
+done
+if [ -z "$EXT_DIR" ]; then
   echo "Error: Extension '$EXT_NAME' not found in extensions/"
   exit 1
 fi

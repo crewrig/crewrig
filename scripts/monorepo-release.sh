@@ -15,7 +15,7 @@ export NODE_PATH="$ROOT_DIR/node_modules"
 
 ERRORS=0
 
-for dir in extensions/*/; do
+for dir in extensions/*/*/; do
   if [ -f "${dir}package.json" ]; then
     EXT_NAME=$(basename "$dir")
     echo ""

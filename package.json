@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "extensions/*"
+    "extensions/*/*"
   ],
   "scripts": {
     "build": "npm run build --workspaces",

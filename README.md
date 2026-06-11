@@ -313,15 +313,18 @@ task build-claude-plugin EXT=hello-world
 task install-claude-plugin EXT=hello-world
 ```
 
-See `extensions/hello-world/` for a complete example,
+See `extensions/core/hello-world/` for a complete example,
 `extension-skeleton/EXTENSION-FORMAT.md` for the manifest specification,
 and `extension-skeleton/` as a starting template.
 
 ## Repository Structure
 
 ```text
-extensions/
-└── hello-world/           # Example extension (MCP server + command + skill)
+extensions/                # Extension registry, segmented into three tiers
+├── core/                  # Upstream-shipped extensions (synced, strict)
+│   └── hello-world/       # Example extension (MCP server + command + skill)
+├── library/               # Upstream harness/shared extensions (synced, strict)
+└── org/                   # Adopter-owned extensions (excluded from sync)
 
 extension-skeleton/        # Template for new extensions
 ├── EXTENSION-FORMAT.md    # extension.json specification

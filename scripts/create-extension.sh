@@ -10,9 +10,21 @@ if [ -z "$NAME" ]; then
   exit 1
 fi
 
-TARGET="$REPO_DIR/extensions/$NAME"
+# --- Tier selection ---
+# Scaffolding is an adopter action, so new extensions default to the org tier.
+# core/library are upstream-authored; override with TIER=core|library|org.
+TIER="${TIER:-org}"
+case "$TIER" in
+  core|library|org) ;;
+  *)
+    echo "Error: TIER must be one of core, library, org (got '$TIER')."
+    exit 1
+    ;;
+esac
+
+TARGET="$REPO_DIR/extensions/$TIER/$NAME"
 if [ -d "$TARGET" ]; then
-  echo "Error: extensions/$NAME already exists."
+  echo "Error: extensions/$TIER/$NAME already exists."
   exit 1
 fi
 
@@ -79,9 +91,9 @@ if echo "$COMPONENTS" | grep -q "theme"; then
 fi
 
 echo ""
-echo "Extension created: extensions/$NAME"
+echo "Extension created: extensions/$TIER/$NAME"
 echo ""
 echo "Next steps:"
-echo "  cd extensions/$NAME"
+echo "  cd extensions/$TIER/$NAME"
 echo "  npm install"
 echo "  task link-extensions"

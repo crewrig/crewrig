@@ -132,6 +132,8 @@ exist, how org artifacts integrate) is defined in spec 0012 sub-spec E2.
 |---|---|
 | `extension-skeleton/` | Scaffold templates for creating new CrewRig extensions. |
 | `hooks/` | Cross-CLI transcript hook configuration files (`claude-transcript-hooks.json`, `gemini-transcript-hooks.json`, `copilot-transcript-hooks.json`, `mempalace-transcript.sh`). |
+| `extensions/core/` | Upstream-shipped core extensions (e.g. the `hello-world` demo). Synced from upstream under the **strict** policy — a local modification halts the sync, consistent with `artifacts/core/`. |
+| `extensions/library/` | Upstream harness and shared extensions. Synced from upstream under the **strict** policy. Ships empty (populated upstream). |
 
 ### Infrastructure service definitions
 
@@ -186,7 +188,7 @@ from the examples layer.
 
 | Path | Description |
 |---|---|
-| `extensions/` | Organization-owned extension registry. The adopting organization places its own CrewRig extensions here. Upstream extensions are installed via `scripts/install-extension.sh` rather than committed directly. |
+| `extensions/org/` | Adopter-owned extension tier. The adopting organization places its own CrewRig extensions here. Excluded from the upstream sync — never modified, restored, or aborted on. The upstream `extensions/core/` and `extensions/library/` tiers are committed and live in the Core layer. |
 | `artifacts/community/mcp-servers/` | MCP server declarations specific to the organization (Jira, Confluence, Slack, etc.). |
 | `artifacts/community/hooks/` | Lifecycle hooks specific to the organization. |
 | `artifacts/community/policies/` | Organization-level policy files. |

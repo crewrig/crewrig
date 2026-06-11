@@ -29,12 +29,28 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Verify extension exists
+      - name: Resolve extension tier directory
+        id: resolve
         run: |
-          if [ ! -d "extensions/${{ steps.meta.outputs.ext }}" ]; then
-            echo "Error: extension '${{ steps.meta.outputs.ext }}' not found."
+          EXT="${{ steps.meta.outputs.ext }}"
+          # Extensions live under extensions/<tier>/<name>/. Resolve the bare
+          # tag-derived name to its tier dir (first match across the three
+          # tiers; fail on a duplicate name).
+          DIR=""
+          for tier in core library org; do
+            if [ -d "extensions/$tier/$EXT" ]; then
+              if [ -n "$DIR" ]; then
+                echo "Error: extension '$EXT' exists in multiple tiers; names must be unique."
+                exit 1
+              fi
+              DIR="extensions/$tier/$EXT"
+            fi
+          done
+          if [ -z "$DIR" ]; then
+            echo "Error: extension '$EXT' not found."
             exit 1
           fi
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: npm install
@@ -42,8 +58,8 @@ jobs:
       - name: Package extension
         run: |
           mkdir -p dist
-          cd "extensions/${{ steps.meta.outputs.ext }}"
-          npm pack --pack-destination ../../dist
+          cd "${{ steps.resolve.outputs.dir }}"
+          npm pack --pack-destination "$GITHUB_WORKSPACE/dist"
 
       - name: Rename package for release
         run: |

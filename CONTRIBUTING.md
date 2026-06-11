@@ -130,17 +130,18 @@ for the complete manifest specification.
 
 Quick steps:
 
-1. Copy `extension-skeleton/base/` into `extensions/<your-name>/`.
+1. Copy `extension-skeleton/base/` into `extensions/org/<your-name>/` (the
+   adopter-owned tier; `task create-extension` scaffolds here by default).
 2. Add optional component directories from the skeleton.
 3. Replace every `SKELETON_NAME` with your extension name.
 4. Implement your MCP server in `src/index.ts`.
 5. Test locally:
    - **Gemini**: `task link-extensions` then start a Gemini session.
    - **Claude Code**: `task build-claude-plugin EXT=<name>` then
-     `claude --plugin-dir extensions/<name>/dist-claude-plugin/<name>`.
+     `claude --plugin-dir extensions/org/<name>/dist-claude-plugin/<name>`.
 
 Each extension is an independent npm package with its own versioning. See
-`extensions/hello-world/` for a complete working reference.
+`extensions/core/hello-world/` for a complete working reference.
 
 > **Warning:** never install the `extension-skeleton/` directory itself.
 > It is a template container, not a functional extension.
