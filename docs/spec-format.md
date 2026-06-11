@@ -217,9 +217,29 @@ violation. The `version` field stays immutable on the original after merge;
 the cumulative version lives on the highest-numbered delta (per
 *Versioning*).
 
-This carve-out is deliberately narrow: it admits lifecycle metadata only.
-Meaning-preserving editorial edits to body prose (orthography, typo fixes)
-are **not** covered here and remain prohibited pending a separate amendment.
+This carve-out admits lifecycle metadata. A second, equally narrow carve-out
+admits meaning-preserving editorial edits to body prose; it is defined next.
+
+### Editorial edits
+
+Alongside the lifecycle-metadata carve-out above, the append-only rule permits
+**meaning-preserving editorial edits** — orthography and typo corrections — to
+the body prose of a merged spec. An editorial edit may change the spelling or
+surface form of a word but SHALL NOT alter meaning. Permitted: fixing a
+misspelling, normalising a British spelling to American, repairing a typo.
+
+Forbidden, still: any change to the substance of a requirement, scenario,
+intent, or out-of-scope item. Correcting the spelling of a word inside a
+requirement is allowed; changing what that requirement obliges, permits, or
+forbids is not. Substantive corrections chain via **delta-specs** (see
+*Delta-spec convention*), never as in-place edits — exactly as before this
+carve-out. A diff that alters normative meaning under cover of an editorial
+fix is a violation, mirroring the same guard on the lifecycle-metadata
+carve-out.
+
+This carve-out is deliberately narrow in the same spirit as the
+lifecycle-metadata one: it admits surface-form corrections only, leaving every
+normative guarantee of the merged spec untouched.
 
 ## Naming convention
 

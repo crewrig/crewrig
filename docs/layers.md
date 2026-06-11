@@ -48,7 +48,7 @@ refuse to proceed.
 | Path | Description |
 |---|---|
 | `docs/` | All normative and reference documentation, including ADRs, format specs, and this file. The `docs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
-| `specs/` | Immutable specification history. Spec **content** is append-only; existing files are not edited after merge except for lifecycle-metadata transitions (`status`, `superseded-by`) — see [`docs/spec-format.md`](spec-format.md). The `specs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
+| `specs/` | Immutable specification history. Spec **content** is append-only; existing files are not edited after merge except for lifecycle-metadata transitions (`status`, `superseded-by`) and meaning-preserving editorial edits (orthography, typo fixes) — see [`docs/spec-format.md`](spec-format.md). The `specs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
 
 ### Build and install tooling
 
