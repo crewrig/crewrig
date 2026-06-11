@@ -222,6 +222,26 @@ The `README.md` core-governance entry carries the **adopt-on-edit** policy
 permanently. It remains a core path; only its sync policy differs from
 `strict`.
 
+### Persona, team, and seniority catalogues (spec 0021)
+
+`config/expertise/`, `config/teams/`, and `config/level/` are **core paths**
+carrying the **adopt-on-edit** policy at **directory granularity**. Each is
+reconciled member-by-member by `scripts/sync-from-upstream.sh`
+(`reconcile_dir`): an untouched file keeps updating from upstream, a newly
+published upstream example is added (if the path never existed in the org's
+own history), a file the org customises or deletes freezes permanently
+(deletions stay deleted), and any file the org adds is left untouched. They
+moved here from the *Examples layer* (where they were copy-and-own starting
+points) so adopters receive upstream catalogue improvements in place rather
+than re-copying. Adopters may add their own role and team files through the
+`init-expertise` and `init-team` guided skills.
+
+| Path | Description |
+|---|---|
+| `config/expertise/` | Domain-expertise (role) context profiles. adopt-on-edit (directory). |
+| `config/teams/` | Per-team context and configuration profiles. adopt-on-edit (directory). |
+| `config/level/` | Seniority-level context rules. adopt-on-edit (directory). |
+
 ---
 
 ## Examples layer
@@ -232,20 +252,13 @@ into their overlay and adapt them freely; they are not intended to be
 extended or overridden in place.
 
 A notice SHALL be present in each examples component indicating its
-demonstrative nature (spec 0012 R3).
-
-### Persona and context starting points
-
-Default persona and context files that CrewRig ships as illustrative
-starting points. An adopting organisation copies these into its own overlay
-and customises them. After copying, the customised version is `overlay`; the
-originals here remain `examples`.
-
-| Path | Description |
-|---|---|
-| `config/level/` | Seniority-level context rules (e.g., `10-level.md`). Starting points for an org's own level definitions. |
-| `config/expertise/` | Domain-expertise context rules. Starting points for an org's own expertise profiles. |
-| `config/teams/` | Per-team context and configuration. Starting points for an org's own team configs. |
+demonstrative nature (spec 0012 R3). **Exception (spec 0021):**
+`config/expertise/`, `config/teams/`, and `config/level/` are no longer
+examples — they moved to the core layer under the **adopt-on-edit** sync
+policy (see *Core layer → Persona, team, and seniority catalogues*). Under
+that policy the shipped files are meant to be extended in place, which
+inverts the "do not extend in place" demonstrative contract; they are
+therefore exempt from this notice requirement.
 
 ### Illustrative skills
 
@@ -350,9 +363,9 @@ across multiple layers. This table provides a single-lookup view.
 | `config/claude/` | overlay |
 | `config/gemini/` | overlay |
 | `config/copilot/` | overlay |
-| `config/level/` | examples |
-| `config/expertise/` | examples |
-| `config/teams/` | examples |
+| `config/level/` | core (adopt-on-edit) |
+| `config/expertise/` | core (adopt-on-edit) |
+| `config/teams/` | core (adopt-on-edit) |
 | `config/SOUL.md.template` | examples |
 | `config/PROFILE.md.template` | examples |
 | `config/ORGANIZATION.md.template` | examples |

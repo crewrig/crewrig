@@ -54,6 +54,14 @@ config/release-monorepo.json
 config/launchd
 config/systemd
 
+# Persona, team, and seniority example catalogues (spec 0021). adopt-on-edit
+# at directory granularity: untouched files keep updating from upstream and
+# newly published examples arrive; a customised or deleted file freezes for
+# good. Reconciled member-by-member by sync-from-upstream.sh (reconcile_dir).
+config/expertise	adopt-on-edit
+config/teams	adopt-on-edit
+config/level	adopt-on-edit
+
 # Artifact zones — core and library
 artifacts/FORMAT.md
 artifacts/core

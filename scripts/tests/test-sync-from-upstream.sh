@@ -21,6 +21,22 @@
 #      exit 0, and the freeze marker records the ADOPTER's own blob
 #      (pre-feature customisation, Finding 2 R7 horn — no data loss).
 #
+# Spec-0021 directory adopt-on-edit cases (reconcile_dir):
+#   h. R3 ADD — upstream ships a file with no org history; AFTER fetching the
+#      upstream as a remote (so refs/remotes carry the blob), the new file is
+#      ADDed. The fetch-before-assert guards against the `git rev-list --all`
+#      leak that the cold review caught (--all would see the blob via
+#      refs/remotes and wrongly SKIP).
+#   i. R2 SKIP — org committed then deleted a file still shipped upstream; sync
+#      does NOT re-create it.
+#   j. Org-customised file inside the dir → frozen, not overwritten.
+#   k. Untouched dir file matching an upstream history blob → updated.
+#   l. Org-deleted file that upstream later re-touches → stays gone across a
+#      second sync.
+#   m. Shallow-clone guard — a shallow adopter clone refuses to reconcile the
+#      adopt-on-edit directory (warns, exit 0, no add) rather than trust an
+#      untrustworthy history.
+#
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
 
@@ -491,6 +507,234 @@ run_case_stderr() {
     pass=$((pass + 1))
   else
     echo "FAIL  case-g: freeze marker SHA mismatch (expected $expected_sha, got '$marker_sha')"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case h — R3 ADD: upstream ships config/expertise/DATA-ENGINEER.md with no org
+#          history. The upstream is wired as a NAMED REMOTE and fetched, so
+#          refs/remotes/<name>/main and FETCH_HEAD carry the new blob — this is
+#          the exact condition under which `git rev-list --all` leaks. The
+#          HEAD-scoped path_in_org_history must still see "never existed" → ADD.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "config/expertise/BACKEND-JAVA.md" "upstream backend" \
+    "config/expertise/DATA-ENGINEER.md" "upstream data engineer"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig/.synced-markers"
+  printf 'config/expertise\tadopt-on-edit\n.crewrig/.synced-markers\texcluded\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  # Adopter has BACKEND-JAVA.md but has NEVER had DATA-ENGINEER.md.
+  make_initial_commit "$adopter" \
+    "config/expertise/BACKEND-JAVA.md" "upstream backend"
+  # Wire the upstream as a named remote and fetch so refs/remotes is populated —
+  # this is what makes a `--all`-based primitive wrongly SKIP the new file.
+  git -C "$adopter" remote add canonical "$upstream"
+  git -C "$adopter" fetch -q canonical
+
+  run_case "case-h R3 ADD new upstream file (remote fetched)" "$adopter" 0
+
+  added="$(cat "$adopter/config/expertise/DATA-ENGINEER.md" 2>/dev/null)"
+  if [ "$added" = "upstream data engineer" ]; then
+    echo "PASS  case-h: genuinely-new upstream file ADDed despite fetched remote ref"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-h: new file not added (got '$added') — possible --all leak regression"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case i — R2 SKIP: org committed then deleted config/expertise/QA-AUTOMATION.md
+#          (still shipped upstream). Sync must NOT re-create it.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "config/expertise/QA-AUTOMATION.md" "upstream qa"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig/.synced-markers"
+  printf 'config/expertise\tadopt-on-edit\n.crewrig/.synced-markers\texcluded\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  # Org committed the file, then deleted it in a later commit (history records
+  # the deletion → org owns the path's absence).
+  make_initial_commit "$adopter" \
+    "config/expertise/QA-AUTOMATION.md" "upstream qa"
+  git -C "$adopter" rm -q "config/expertise/QA-AUTOMATION.md"
+  git -C "$adopter" commit -q -m "drop QA role"
+
+  run_case "case-i R2 SKIP org-deleted stays gone" "$adopter" 0
+
+  if [ ! -e "$adopter/config/expertise/QA-AUTOMATION.md" ]; then
+    echo "PASS  case-i: org-deleted file not re-created"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-i: org-deleted file was wrongly re-added"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case j — Org-customised file inside the dir → frozen, not overwritten.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "config/expertise/BACKEND-JAVA.md" "upstream backend v1"
+  commit_files "$upstream" "advance backend" \
+    "config/expertise/BACKEND-JAVA.md" "upstream backend v2"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig/.synced-markers"
+  printf 'config/expertise\tadopt-on-edit\n.crewrig/.synced-markers\texcluded\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "config/expertise/BACKEND-JAVA.md" "upstream backend v1"
+  # Customise to something upstream never shipped.
+  printf 'ORG customised backend\n' > "$adopter/config/expertise/BACKEND-JAVA.md"
+
+  run_case "case-j customised dir member frozen" "$adopter" 0
+
+  after="$(cat "$adopter/config/expertise/BACKEND-JAVA.md" 2>/dev/null)"
+  if [ "$after" = "ORG customised backend" ]; then
+    echo "PASS  case-j: customised dir member preserved (frozen)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-j: dir member was overwritten: '$after'"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case k — Untouched dir file matching an upstream history blob → updated.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "config/expertise/FRONTEND-REACT.md" "upstream frontend v1"
+  commit_files "$upstream" "advance frontend" \
+    "config/expertise/FRONTEND-REACT.md" "upstream frontend v2"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig/.synced-markers"
+  printf 'config/expertise\tadopt-on-edit\n.crewrig/.synced-markers\texcluded\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  # Adopter vendored the OLD upstream v1 (matches upstream history) — no marker.
+  make_initial_commit "$adopter" \
+    "config/expertise/FRONTEND-REACT.md" "upstream frontend v1"
+
+  run_case "case-k untouched dir member updates" "$adopter" 0
+
+  after="$(cat "$adopter/config/expertise/FRONTEND-REACT.md" 2>/dev/null)"
+  if [ "$after" = "upstream frontend v2" ]; then
+    echo "PASS  case-k: untouched dir member updated to upstream v2"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-k: expected 'upstream frontend v2', got '$after'"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case l — Org-deleted file that upstream LATER re-touches → stays gone across a
+#          second sync (R2 durability). Wires the upstream as a remote so both
+#          syncs run against a populated refs/remotes.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "config/expertise/QA-AUTOMATION.md" "upstream qa v1"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig/.synced-markers"
+  printf 'config/expertise\tadopt-on-edit\n.crewrig/.synced-markers\texcluded\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "config/expertise/QA-AUTOMATION.md" "upstream qa v1"
+  git -C "$adopter" rm -q "config/expertise/QA-AUTOMATION.md"
+  git -C "$adopter" commit -q -m "drop QA role"
+
+  # First sync: must not re-create.
+  ( cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" >/dev/null 2>&1 )
+
+  # Upstream re-touches the file.
+  commit_files "$upstream" "revive qa upstream" \
+    "config/expertise/QA-AUTOMATION.md" "upstream qa v2"
+
+  run_case "case-l org-deleted stays gone after upstream re-touch" "$adopter" 0
+
+  if [ ! -e "$adopter/config/expertise/QA-AUTOMATION.md" ]; then
+    echo "PASS  case-l: org-deleted file stays gone across second sync"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-l: org-deleted file re-appeared after upstream re-touch"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case m — Shallow-clone guard: a shallow adopter clone refuses to reconcile the
+#          adopt-on-edit directory rather than trust an untrustworthy history.
+#          The genuinely-new upstream file is NOT added (fail safe), the sync
+#          warns, and exits 0.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "config/expertise/BACKEND-JAVA.md"  "upstream backend" \
+    "config/expertise/DATA-ENGINEER.md" "upstream data engineer"
+
+  # Build a NORMAL adopter first, then shallow-clone it so the clone reports
+  # is-shallow-repository = true.
+  seed="$(mktemp -d "$TMP_ROOT/seed.XXXXXX")"
+  init_git_repo "$seed"
+  make_initial_commit "$seed" \
+    "config/expertise/BACKEND-JAVA.md" "upstream backend" \
+    "filler.txt" "v1"
+  commit_files "$seed" "more history" "filler.txt" "v2"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  rm -rf "$adopter"
+  git clone -q --depth 1 "file://$seed" "$adopter"
+  git -C "$adopter" config user.email "test@example.com"
+  git -C "$adopter" config user.name "Test"
+  git -C "$adopter" config commit.gpgsign false
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig/.synced-markers"
+  printf 'config/expertise\tadopt-on-edit\n.crewrig/.synced-markers\texcluded\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  git -C "$adopter" add crewrig.config.toml .crewrig/core-paths.txt
+  git -C "$adopter" commit -q -m "adopter config"
+
+  run_case_stderr "case-m shallow clone refuses to reconcile dir" \
+    "$adopter" 0 "shallow"
+
+  if [ ! -e "$adopter/config/expertise/DATA-ENGINEER.md" ]; then
+    echo "PASS  case-m: shallow guard fails safe (new file not added)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-m: shallow guard did not prevent the add"
     fail=$((fail + 1))
   fi
 }

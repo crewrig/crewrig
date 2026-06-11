@@ -309,6 +309,37 @@ Revert these changes before running sync, or promote them to overlay overrides.
 
 Resolution: see [Troubleshooting — dirty-core refusal](#dirty-core-refusal) below.
 
+### Example catalogues — adopt-on-edit (spec 0021)
+
+`config/expertise/`, `config/teams/`, and `config/level/` carry the
+**adopt-on-edit** sync policy at directory granularity. The sync reconciles
+each directory member-by-member, so the catalogues stay current by default
+while remaining yours to shape:
+
+- **Untouched files keep updating.** A role, team, or level file you have not
+  modified is refreshed from upstream on each sync.
+- **New examples arrive automatically.** When upstream publishes a new
+  example (e.g. a new role under `config/expertise/`), the sync adds it —
+  provided that path has never existed in your clone's history.
+- **Customising a file freezes it.** The moment you edit one of these files
+  (committed or in the working tree), that single path is preserved
+  permanently and never overwritten by a later sync.
+- **Deleting a file keeps it deleted.** If you `git rm` and commit a file you
+  do not want, the sync honours your decision and will not re-create it —
+  even if upstream later changes the upstream copy.
+- **You may add your own files.** Create new role and team files with the
+  guided `init-expertise` and `init-team` skills (run `/init-expertise` or
+  `/init-team`). A file you author has no upstream counterpart, so it is
+  yours from the start and never touched by the sync. The guided flow refuses
+  to silently overwrite an existing file of the same name.
+
+> **Note — full clone required.** The add/delete reconciliation reads your
+> clone's git history (`git rev-list HEAD`) to tell "you deleted this" from
+> "this never existed here". On a **shallow** clone that history is truncated,
+> so the sync refuses to reconcile these directories (it warns and leaves them
+> untouched rather than risk re-adding a file you deleted). Run the sync from a
+> full, non-shallow clone.
+
 ## Troubleshooting
 
 ### `crewrig.config.toml` absent or has empty values
