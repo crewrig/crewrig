@@ -365,14 +365,29 @@ backstop, not a substitute for the side-effect check: a teammate whose
 work is visibly complete is never declared dead merely because the
 budget elapsed.
 
-**Rule 4 — Review findings are not auto-deferrals.** When a reviewer
-lists findings marked "non-blocking", that label means the PR can merge
-without them — it does NOT mean the findings should be deferred to a
-follow-up ticket without asking the user. The agent MUST present every
-finding to the user and implement each one in the same session unless
-the user explicitly decides to skip or defer it. The user sets the
-scope, not the reviewer's severity labels. Auto-deferring findings to
-follow-up tickets without user authorization is prohibited.
+**Rule 4 — Review findings are not auto-deferrals; handling is
+mode-conditional.** A reviewer's "non-blocking" label means the pull
+request *may merge* without that finding — it never means the finding may
+be silently dropped or deferred to a follow-up ticket. Blocking findings
+are always routed into the fix cycle, in every mode. Non-blocking findings
+are routed conditionally on the ticket's declared interaction mode (see
+*Interaction modes* in AGENTS.md), matching `specs/0005-retroactive-routing-engine.md`
+R10 and the table in [`docs/retroactive-loop.md`](retroactive-loop.md) →
+*Non-blocking conditional routing*:
+
+- **FULL / INTERMEDIATE.** The team-lead MUST present every non-blocking
+  finding to the user and route only those the user accepts into the fix
+  cycle; the rest are journalled in the logbook and left unactioned. The
+  user sets the scope, not the reviewer's severity labels.
+- **MINIMAL / AUTO.** The team-lead MUST route every finding — blocking and
+  non-blocking — into the fix cycle automatically, in the same session,
+  with no user gate other than the merge authorization; in the autonomous
+  modes there is no user to defer to, so non-blocking findings become
+  blocking by default.
+
+In no mode may a finding be deferred to a follow-up ticket without
+authorization appropriate to that mode — the user's explicit decision in
+FULL / INTERMEDIATE, never silently in MINIMAL / AUTO.
 
 ## Team Shutdown
 
