@@ -114,8 +114,9 @@ loop and waste a downstream iteration.
 *Finding classification taxonomy*) do not edit the original spec on
 `main`. The original's **normative content** is immutable once merged;
 corrections chain via delta-spec files. (Lifecycle *metadata* — `status`,
-`superseded-by` — is exempt from this freeze; see *Lifecycle states →
-Recording a status transition*.)
+`superseded-by` — and meaning-preserving editorial edits are exempt from this
+freeze; see *Lifecycle states → Recording a status transition* and *Editorial
+edits*.)
 
 ### File layout
 
