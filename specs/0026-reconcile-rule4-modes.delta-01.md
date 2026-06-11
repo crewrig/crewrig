@@ -56,26 +56,30 @@ user; it differs only by emitting a non-blocking notification.
 The `Fully interactive mode consults the user` scenario is replaced,
 since FULL no longer consults the user inside the REVIEW loop.
 
-- Original scenario:
+Original scenario:
 
-  > **Scenario:** Fully interactive mode consults the user
-  >
-  > Given a ticket runs in the fully interactive mode and a reviewer posts
-  >       blocking and non-blocking findings
-  > When  the team-lead processes the review verdict
-  > Then  every finding is presented to the user, who decides per finding
-  >       whether to fix, skip, or defer before the fix cycle proceeds
+```text
+**Scenario:** Fully interactive mode consults the user
 
-- Replacement scenario:
+Given a ticket runs in the fully interactive mode and a reviewer posts
+      blocking and non-blocking findings
+When  the team-lead processes the review verdict
+Then  every finding is presented to the user, who decides per finding
+      whether to fix, skip, or defer before the fix cycle proceeds
+```
 
-  > **Scenario:** Fully interactive mode notifies without gating
-  >
-  > Given a ticket runs in FULL mode and a reviewer posts blocking and
-  >       non-blocking findings
-  > When  the team-lead processes the review verdict
-  > Then  every finding is routed into the fix cycle automatically and a
-  >       non-blocking notification is posted at the iteration boundary;
-  >       no interactive per-finding prompt is fired
+Replacement scenario:
+
+```text
+**Scenario:** Fully interactive mode notifies without gating
+
+Given a ticket runs in FULL mode and a reviewer posts blocking and
+      non-blocking findings
+When  the team-lead processes the review verdict
+Then  every finding is routed into the fix cycle automatically and a
+      non-blocking notification is posted at the iteration boundary;
+      no interactive per-finding prompt is fired
+```
 
 ## REMOVED
 
