@@ -6,7 +6,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.0"
+    version: "1.3.1"
 ---
 
 
@@ -15,7 +15,7 @@ metadata:
 The `spec-author` skill turns a raw user intent into a draft specification
 file under `/specs/` conforming to `docs/spec-format.md`. It owns the
 *qualification* phase of the ADR-0010 lifecycle — answering "what does the
-user actually want" — and emits exactly one artefact: a Markdown spec file.
+user actually want" — and emits exactly one artifact: a Markdown spec file.
 It does not plan, design, or implement; those belong to downstream skills.
 
 The skill is mode-aware (FULL / INTERMEDIATE / MINIMAL / AUTO per ADR-0010
@@ -76,7 +76,7 @@ unambiguously derivable from the ticket:
 
 1. **Intent confirmation.** "Confirm in one sentence the user-facing
    change. Anything missing from: *&lt;draft intent&gt;*?"
-2. **Out-of-scope check.** "Is there a nearby behaviour you do NOT want
+2. **Out-of-scope check.** "Is there a nearby behavior you do NOT want
    this spec to cover?"
 3. **Acceptance signal.** "What single observable outcome will tell us
    the spec is satisfied?" (drives the happy-path scenario).
@@ -105,7 +105,7 @@ the same Open-questions discipline as INTERMEDIATE.
 
 ### Prose discipline for interactive batches
 
-The four sub-rules below realise R15 and R17 of
+The four sub-rules below realize R15 and R17 of
 [`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md).
 The first three (preface anchors, acronym discipline, description
 self-sufficiency) apply uniformly to MINIMAL, INTERMEDIATE, and FULL —
@@ -115,14 +115,14 @@ interview text frequently renders through a side panel that strips
 prior chat context; the user sees the question and option descriptions
 in isolation. Treat each batch as if it were the first thing the user
 reads in this session. The fourth sub-rule (idiomatic language quality)
-extends to AUTO whenever AUTO emits any user-visible artefact in a
+extends to AUTO whenever AUTO emits any user-visible artifact in a
 language other than English — AUTO is not exempt simply because no
 interactive question batch is emitted.
 
 - **Preface anchors.** Before every interactive batch, emit a short
   one-paragraph preface that names, in this order: (1) the originating
   ticket identifier (issue number or spec id), (2) the current
-  lifecycle stage and the artefact being authored, (3) the
+  lifecycle stage and the artifact being authored, (3) the
   interview-pass position as "Question N of M — &lt;short label&gt;",
   and (4) a one-or-two-clause recap of the decisions already taken in
   this session. The preface compensates for the side-panel rendering;
@@ -155,7 +155,7 @@ interactive question batch is emitted.
   last three messages, or inherited from prior session prose without
   correction), produce the preface, the question text, the option
   `label` fields, the option `description` fields, inline progress
-  messages, and any AUTO-mode user-visible artefact in **idiomatic**
+  messages, and any AUTO-mode user-visible artifact in **idiomatic**
   prose in that language. Direct calques of English software-
   engineering jargon — verb forms in `-er` derived from English
   verbs (`spawner`, `shipper`, `merger` as a verb, `amender` in the
@@ -163,8 +163,8 @@ interactive question batch is emitted.
   indépendant"*, `verdicter` instead of *"rendre un verdict"* or
   *"trancher"*, `en-branche` instead of *"directement sur la
   branche"*, bare `PR` without first-use expansion to
-  *"pull-request"* — SHALL be avoided. The reference catalogue is
-  in spec 0002 R17 (sub-clause 2). The catalogue is non-exhaustive;
+  *"pull-request"* — SHALL be avoided. The reference catalog is
+  in spec 0002 R17 (sub-clause 2). The catalog is non-exhaustive;
   extrapolate from the listed patterns. When in doubt, prefer the
   longer idiomatic phrasing over the calque — verbosity in the
   target language is a smaller cost than the cognitive friction of
@@ -177,7 +177,7 @@ Reviewer enforcement: the three failure-path scenarios added by spec
 delta-04 codify the R17 contract. A spec-PR that ships an interview
 batch without a preface, with an opaque option `description`, with
 an undefined acronym, or with a non-English-language calque from the
-R17 catalogue, is a `class: tech` finding in the retroactive review
+R17 catalog, is a `class: tech` finding in the retroactive review
 loop.
 
 ## Pre-write grounding
@@ -185,10 +185,10 @@ loop.
 Before writing the `## Requirements` section of a spec that qualifies
 a **verification, audit, or sanity-check tool** whose acceptance is
 file-level, run a short grounding pass against the codebase. The pass
-realises R16 of
+realizes R16 of
 [`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md)
 (introduced by delta-03) and exists because the friction reported in
-issue #194 — spec 0007 mandated a `type` field that no built artefact
+issue #194 — spec 0007 mandated a `type` field that no built artifact
 ever exhibited, discovered only at DEV time — proves that a WHAT
 qualified in isolation from the actual code drifts. The grounding
 step is the cheap safety net that catches the drift at qualification
@@ -213,7 +213,7 @@ disjunction, not a conjunction — a single match flips the spec
 in-scope.
 
 - **a. Quantifier pattern.** The requirement contains *"every"* or
-  *"each"* followed by a noun naming a built artefact class.
+  *"each"* followed by a noun naming a built artifact class.
   Example: *"every built `SKILL.md` frontmatter SHALL contain a
   `type` field"* — `every` + `SKILL.md frontmatter` triggers.
 - **b. File-level assertion.** The requirement asserts a property at
@@ -223,7 +223,7 @@ in-scope.
 - **c. Validation-verb on existing class.** The requirement uses a
   validation, rejection, refusal, or enforcement verb (*refuse*,
   *reject*, *validate*, *require*, *mandate*, *disallow*, *enforce*,
-  *forbid*) acting on a property of an artefact class the codebase
+  *forbid*) acting on a property of an artifact class the codebase
   already produces. Example (the iter:1 reviewer counter-example
   that motivated this clause): *"the build script SHALL refuse to
   publish bundles whose `provenance` block is missing the `version`
@@ -231,7 +231,7 @@ in-scope.
   triggers via condition c. Note that condition a does NOT fire here
   (no `every` / `each`); condition c is the catcher.
 - **d. Semantic catch-all.** The drafted requirement describes the
-  shape, structure, or content of a class of artefacts the codebase
+  shape, structure, or content of a class of artifacts the codebase
   already produces, regardless of surface wording. Example: *"the
   ADR header MUST carry the status badge in the second line"* — no
   quantifier, no validation verb, but the requirement targets the
@@ -247,7 +247,7 @@ the original #194 friction. Bias accordingly.
 
 When the spec is in-scope:
 
-1. **Pick the artefact class.** Read the noun in the drafted
+1. **Pick the artifact class.** Read the noun in the drafted
    requirement (e.g. *"every built SKILL.md frontmatter"* →
    `artifacts/core/skills/*/SKILL.md`). When the requirement names
    multiple classes, pick one per class.
@@ -319,12 +319,12 @@ question, not from a manufactured marker.
 ### New field on existing class
 
 When the spec mandates a field, attribute, or property that no
-instance of the artefact class currently exhibits on `main` (the
+instance of the artifact class currently exhibits on `main` (the
 PR-189 scenario that originated this discipline), still run the
 inspection. The purpose is no longer to confirm field presence
 (absent by definition) but to confirm two adjacent facts:
 
-- The artefact class genuinely exists in the codebase under the
+- The artifact class genuinely exists in the codebase under the
   path the spec assumes — no typo, no stale path.
 - The existing instances have a coherent shape into which the new
   field can be added without breaking the structure.
@@ -332,7 +332,7 @@ inspection. The purpose is no longer to confirm field presence
 Emit a `[GROUNDING:]` bullet under `## Open questions` stating
 explicitly that the field is absent from every existing instance and
 naming who is responsible for the back-fill: the implementation PR
-that realises this spec, a migration PR scoped under `## Out of
+that realizes this spec, a migration PR scoped under `## Out of
 scope`, or a separate follow-up ticket. This forces the back-fill
 scope decision into the spec PR rather than deferring it to DEV time.
 
@@ -486,7 +486,7 @@ specific triggers SHALL fire a harness-report:
 | A second `spec`-class REVIEW iteration on the same ticket cites a question the skill already attempted to resolve in the prior pass. | `prompt` | Subcategory: `delta-spec-interview`. The interview is missing the right question. |
 
 Tagging is fire-and-forget; the skill SHALL NOT block the user's work
-waiting for an acknowledgement.
+waiting for an acknowledgment.
 
 ## Not in scope
 

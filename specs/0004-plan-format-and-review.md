@@ -14,12 +14,12 @@ version: 1.0.0
 
 Contributors gain a normative plan format and a matching review protocol
 so the PLAN stage of the ADR-0010 lifecycle produces a structured,
-classifiable artefact on the logbook issue before the DEV stage starts,
+classifiable artifact on the logbook issue before the DEV stage starts,
 giving findings a stable shape that the retroactive review loop can route.
 
 ## Requirements
 
-1. The PLAN stage SHALL emit exactly one artefact: a Markdown comment
+1. The PLAN stage SHALL emit exactly one artifact: a Markdown comment
    posted on the logbook issue (per *Logbook Issues → Rule A*) whose
    first line is the header `## PLAN — issue #<N> (spec <NNNN>)`.
 2. Every plan comment SHALL contain, in order, the following five

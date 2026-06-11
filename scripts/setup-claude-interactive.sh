@@ -128,7 +128,7 @@ install_file "$REPO_DIR/config/ORGANIZATION.md" "$CLAUDE_RULES/20-organization.m
 install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$CLAUDE_RULES/60-tools.md" \
   "artifacts/core/rules/60-tools.md -> rules/60-tools.md"
 
-# Org-specific tools (priority 65) — organisation-specific additions
+# Org-specific tools (priority 65) — organization-specific additions
 install_file "$REPO_DIR/config/TOOLS.md" "$CLAUDE_RULES/65-org-tools.md" \
   "TOOLS.md -> rules/65-org-tools.md"
 
@@ -448,7 +448,7 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
     echo "  env patched: $ENV_PATCH"
   else
-    echo "  Transcript activation cancelled by user."
+    echo "  Transcript activation canceled by user."
   fi
 else
   echo "  Session recording disabled (can enable later by re-running this script)."

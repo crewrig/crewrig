@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.0.0"
+    version: "1.0.1"
 claude:
   allowed-tools:
     - Read
@@ -25,7 +25,7 @@ claude:
 # Init Team
 
 Guide an adopter through creating a new team file under `config/teams/`. The
-output is exactly one Markdown file conforming to the established catalogue
+output is exactly one Markdown file conforming to the established catalog
 shape (the `config/teams/FORGE.md` shape): an H1 team title, then `## Mission`,
 `## Technology Stack`, `## Development Practices`, and optional sections such
 as `## Rituals`, `## Collaboration Norms`, `## Documentation`,
@@ -38,7 +38,7 @@ as `## Rituals`, `## Collaboration Norms`, `## Documentation`,
   `config/teams/`.
 
 A new file created through this flow has no upstream version, so it is the
-organisation's own from the start (it never enters the adopt-on-edit sync).
+organization's own from the start (it never enters the adopt-on-edit sync).
 
 ## Interaction rules
 
@@ -76,7 +76,7 @@ Collect, in free-form chat:
 1. **Mission** — one short paragraph: what the team builds or operates and its
    north star.
 2. **Technology Stack** — the languages, persistence, messaging, build, and
-   testing tools (as labelled bullets).
+   testing tools (as labeled bullets).
 3. **Development Practices** — 3–5 concrete practices the team follows.
 
 ## Phase 3 — Optional sections
@@ -95,7 +95,7 @@ section.
 3. Use `AskUserQuestion` (`header: "Finalize"`, options "Save as is",
    "Edit a section", "Discard draft") to confirm before writing.
 4. Write the file only after explicit confirmation. End with a short pointer:
-   the file is the organisation's own and will not be touched by upstream sync.
+   the file is the organization's own and will not be touched by upstream sync.
 
 ---
 

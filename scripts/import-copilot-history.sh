@@ -84,7 +84,7 @@ echo "Re-runs are safe: already-filed files are skipped automatically."
 echo ""
 RUN_REAL=$(echo -e "yes\nno" | fzf --height 10% --header "Proceed with the import?")
 if [ "$RUN_REAL" != "yes" ]; then
-  echo "Import cancelled."
+  echo "Import canceled."
   exit 0
 fi
 

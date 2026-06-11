@@ -2,7 +2,7 @@
 name: init-expertise
 description: "Create and populate a new expertise (role) file under
   config/expertise/ through a guided interview. Activate when an adopter wants
-  to add a domain-expertise context profile for a role the catalogue does not
+  to add a domain-expertise context profile for a role the catalog does not
   yet cover. Collects the role's responsibilities and key practices and writes
   a conformant config/expertise/<ROLE>.md, refusing to silently overwrite an
   existing file."
@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.0.0"
+    version: "1.0.1"
 claude:
   allowed-tools:
     - Read
@@ -27,7 +27,7 @@ claude:
 
 Guide an adopter through creating a new domain-expertise role file under
 `config/expertise/`. The output is exactly one Markdown file conforming to
-the established catalogue shape — an H1 role title, then `## Responsibilities`
+the established catalog shape — an H1 role title, then `## Responsibilities`
 and `## Key Practices` (the `config/expertise/PRODUCT-OWNER.md` shape), or
 `## Stack` and `## Key Practices` when the role is tied to a concrete tech
 stack (the `config/expertise/BACKEND-JAVA.md` shape).
@@ -39,7 +39,7 @@ stack (the `config/expertise/BACKEND-JAVA.md` shape).
   `config/expertise/`.
 
 A new file created through this flow has no upstream version, so it is the
-organisation's own from the start (it never enters the adopt-on-edit sync).
+organization's own from the start (it never enters the adopt-on-edit sync).
 
 ## Interaction rules
 
@@ -108,7 +108,7 @@ Use `AskUserQuestion` (`header: "Shape"`) to choose the section layout:
 3. Use `AskUserQuestion` (`header: "Finalize"`, options "Save as is",
    "Edit a section", "Discard draft") to confirm before writing.
 4. Write the file only after explicit confirmation. End with a short pointer:
-   the file is the organisation's own and will not be touched by upstream sync.
+   the file is the organization's own and will not be touched by upstream sync.
 
 ---
 

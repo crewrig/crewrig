@@ -8,7 +8,7 @@ related-issue: 174
 version: 1.0.1
 ---
 
-# Delta 01 — align R2/R3 with built-artefact reality
+# Delta 01 — align R2/R3 with built-artifact reality
 
 ## ADDED
 
@@ -66,7 +66,7 @@ output file:
 
 The previously-required `type` field SHALL be DROPPED from the
 verification list. The field is not part of the frontmatter schema
-emitted by `scripts/build-components.sh` for any artefact (skill or
+emitted by `scripts/build-components.sh` for any artifact (skill or
 agent, any CLI); requiring it caused the verification to fail against
 every existing built file. The original R3 wording was aspirational,
 not descriptive.
@@ -79,7 +79,7 @@ because R3 as a whole is restated, not deleted.)
 ## Notes
 
 This delta is purely corrective: the original spec 0007 was written
-without inspecting the actual mirror artefacts produced by
+without inspecting the actual mirror artifacts produced by
 `scripts/build-components.sh`. The blocker surfaced at DEV time when
 the developer cross-checked the spec against the filesystem (see
 issue #174 logbook for the diagnostic detail). PATCH-bump (`1.0.0` →
@@ -89,7 +89,7 @@ started writing any code yet).
 
 After this delta-spec merges, the developer resumes DEV with the
 corrected R2 path layout and R3 field set. The Taskfile target's
-behaviour against the actual built outputs is unchanged in intent
+behavior against the actual built outputs is unchanged in intent
 (file-level smoke check, no live API invocation, strict separation
 from #178); only the verification's field list and one path string
 are aligned with reality.

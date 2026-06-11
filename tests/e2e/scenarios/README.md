@@ -9,7 +9,7 @@ metadata lives in `tests/e2e/defaults.toml`.
 |---|---|---|
 | 01 | `01-layered-context` | 00–60 rule files deployed to the CLI actually steer a profile-aware answer. |
 | 02 | `02-cross-tool-memory` | A drawer written by CLI A is read by CLI B via a shared MemPalace sidecar. |
-| 03 | `03-skill-build` | `scripts/build-components.sh` emits the per-CLI artefacts (skills, agents, commands). |
+| 03 | `03-skill-build` | `scripts/build-components.sh` emits the per-CLI artifacts (skills, agents, commands). |
 | 04 | `04-harness-loop` | `harness-report` → MemPalace → `harness-curator` round-trip. |
 
 ## Scenario contract

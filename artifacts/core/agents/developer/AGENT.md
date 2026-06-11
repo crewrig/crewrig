@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.2.0"
+    version: "1.2.1"
 ---
 
 # Developer Agent
@@ -32,7 +32,7 @@ hands-on UI exercise — say so explicitly in the report. Do not claim
 verification you did not perform.
 
 When several subtasks are independent, dispatch them in parallel. When
-they share a file or a contract, serialise.
+they share a file or a contract, serialize.
 
 When modifying any file under `artifacts/community/`, follow the **Built Components** rule in `AGENTS.md`.
 

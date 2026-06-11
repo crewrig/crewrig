@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.0.0"
+    version: "1.0.1"
 compatibility: "No runtime prerequisites; this skill is documentation-only."
 claude:
   allowed-tools:
@@ -73,7 +73,7 @@ section cannot be removed, it is doing two jobs and needs to be split.
 
 ### PAS — Problem / Agitate / Solution
 
-Use when the reader may not yet recognise they have the problem.
+Use when the reader may not yet recognize they have the problem.
 Name the problem, dwell on its cost, then introduce the solution as
 relief.
 
@@ -84,7 +84,7 @@ Solution: Cached builds cut that to 3 minutes. Here's how.
 ```
 
 PAS is high-friction — the agitation step risks feeling manipulative
-if the audience is technical and already sceptical. Use sparingly with
+if the audience is technical and already skeptical. Use sparingly with
 developer audiences; lean on it harder for non-technical buyers.
 
 ### BAB — Before / After / Bridge
@@ -100,7 +100,7 @@ Bridge: Our pipeline gives you both — preview environments and
 ```
 
 BAB works well for developer tools because the "before" state is
-shared lore — readers recognise themselves immediately.
+shared lore — readers recognize themselves immediately.
 
 ### AIDA — Attention / Interest / Desire / Action
 

@@ -2,7 +2,7 @@
 # test-artifact-build-install-scope.sh — Regression tests for spec 0019
 # (artifact build/install scope; ADR-0011).
 #
-# Pins three behaviours the spec mandates:
+# Pins three behaviors the spec mandates:
 #
 #   Scenario 1 — An `org` component builds, and installs into the user home
 #                only when the org tier is opted in (build + install halves).
@@ -23,7 +23,7 @@
 #     contract is verified structurally (see the gate test + the gap note at
 #     the foot of this file).
 #
-# Hermetic: every artefact lives under a mktemp -d work area removed on EXIT.
+# Hermetic: every artifact lives under a mktemp -d work area removed on EXIT.
 # After this script runs, `git status --porcelain` MUST stay empty.
 
 set -euo pipefail

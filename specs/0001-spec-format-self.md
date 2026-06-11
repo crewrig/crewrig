@@ -15,7 +15,7 @@ version: 1.0.0
 Authors of CrewRig tickets gain a single, normative file format for the
 specifications that anchor the SPECS stage of the lifecycle, plus a
 top-level `/specs/` directory ready to receive them. Anyone reading a
-merged spec recognises its shape at a glance, knows where its
+merged spec recognizes its shape at a glance, knows where its
 frontmatter fields are documented, and can find a copy-ready template
 without leaving the repository.
 
@@ -82,7 +82,7 @@ Given a spec PR is opened with an empty `## Out of scope` section and
       `complexity: standard`
 When  the spec reviewer inspects the file
 Then  the reviewer rejects the PR and asks the author to enumerate the
-      excluded behaviours.
+      excluded behaviors.
 
 **Scenario:** Reviewer rejects a spec with HOW words in requirements
 
@@ -91,7 +91,7 @@ Given a spec PR contains a requirement line written as
       backoff via the `retry-go` library"
 When  the spec reviewer inspects the file
 Then  the reviewer rejects the line as a HOW statement and asks the
-      author to move the technology choice to the plan artefact.
+      author to move the technology choice to the plan artifact.
 
 ## Out of scope
 

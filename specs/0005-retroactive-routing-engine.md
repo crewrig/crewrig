@@ -105,7 +105,7 @@ And re-spawns the `developer` (and `tester` if the touched surface
 And on doc-writer/developer completion, re-spawns `pr-reviewer` cold
 And the new verdict is APPROVE with zero findings and CI green
 And the orchestrator stops the loop and asks the user for merge
-  authorisation per AGENTS.md → *Branching Strategy*.
+  authorization per AGENTS.md → *Branching Strategy*.
 
 ### Happy path — spec-class loop produces delta-spec PR
 
@@ -159,7 +159,7 @@ And SHALL NOT increment the iteration counter for this pass — the
 - The spec linter — tracked in issue #178.
 - Multi-CLI distribution of any new skill or agent. This spec ships
   no skill or agent source; the engine lives in the orchestrator's
-  documented behaviour.
+  documented behavior.
 
 ## Open questions
 

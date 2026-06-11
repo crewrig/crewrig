@@ -377,7 +377,7 @@ def compose_body(
     )
     lines.append("")
     # Pattern paragraph: leave room for human / future LLM enrichment in V0
-    # we just summarise the rooms involved.
+    # we just summarize the rooms involved.
     rooms_seen = sorted({f.get("_room", "?") for f in cluster})
     lines.append("### Pattern")
     lines.append("")
@@ -677,7 +677,7 @@ def main() -> int:
         )
     )
 
-    # --max-issues truncation: 0 = unlimited (existing behaviour). When the
+    # --max-issues truncation: 0 = unlimited (existing behavior). When the
     # cap fires, the surplus clusters drop off the end of the ranked list and
     # are surfaced in stats.clusters_truncated for the run summary. The field
     # is always present (0 when no truncation) so consumers can read it

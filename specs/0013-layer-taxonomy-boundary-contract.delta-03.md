@@ -59,7 +59,7 @@ Replacement:
 spec 0012 delta-02 R7. `community-config/mcp-servers/` and
 `community-config/hooks/` move to `artifacts/community/`;
 `community-config/themes/` is not carried forward into the new structure.
-The designated areas for organisation-specific skills and agents become the
+The designated areas for organization-specific skills and agents become the
 `skills/` and `agents/` sub-directories within `artifacts/community/` and
 `artifacts/organisation/`.
 
@@ -70,7 +70,7 @@ Original (as amended by delta-02):
 > `config/ORGANIZATION.md`, `config/TOOLS.md`, `config/claude/`,
 > `config/gemini/`, `config/copilot/`, `extensions/`,
 > `community-config/mcp-servers/`, `community-config/hooks/`,
-> `community-config/themes/`, and the designated areas for organisation-specific
+> `community-config/themes/`, and the designated areas for organization-specific
 > skills and agents.
 
 Replacement:
@@ -80,10 +80,10 @@ Replacement:
 > `crewrig.config.toml`, `config/ORGANIZATION.md`, `config/TOOLS.md`,
 > `config/claude/`, `config/gemini/`, `config/copilot/`, `extensions/`,
 > `artifacts/community/mcp-servers/`, `artifacts/community/hooks/`, and the
-> two organisation-owned artifact tiers — `artifacts/community/` (sandbox for
+> two organization-owned artifact tiers — `artifacts/community/` (sandbox for
 > experimentation and new development) and `artifacts/organisation/` (validated,
 > production-ready components) — each containing `skills/` and `agents/`
-> sub-directories owned exclusively by the adopting organisation.
+> sub-directories owned exclusively by the adopting organization.
 
 ---
 
@@ -116,7 +116,7 @@ Replacement:
 
 ---
 
-**R9** — Replace the forward reference to the cancelled `examples/` directory
+**R9** — Replace the forward reference to the canceled `examples/` directory
 with a reference to the forthcoming `artifacts/` namespace. Spec 0012 R11 (as
 amended by delta-03) no longer introduces an `examples/` directory; the
 `artifacts/` directory and its four sub-directories (`core/`, `library/`,

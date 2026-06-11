@@ -13,40 +13,40 @@ version: 1.0.0
 ## Intent
 
 A step-by-step guide, `docs/adoption-guide.md`, describes how a new
-organisation forks CrewRig, initialises its overlay layer using the starter
+organization forks CrewRig, initializes its overlay layer using the starter
 templates (introduced by spec 0015), runs the build pipeline to produce
 compiled CLI outputs, and uses `scripts/sync-from-upstream.sh` (introduced
 by spec 0016) to pull future core-layer updates from upstream. The guide
 covers all three supported CLIs — Claude Code, Gemini CLI, and GitHub Copilot
-— and is the primary onboarding surface for any organisation that wishes to
+— and is the primary onboarding surface for any organization that wishes to
 adopt CrewRig without contributing upstream.
 
 ## Requirements
 
 1. The repository SHALL contain a `docs/adoption-guide.md` file, classified
    as `core` layer, providing a linear, step-by-step walkthrough of the full
-   fork initialisation sequence.
+   fork initialization sequence.
 
 2. `docs/adoption-guide.md` SHALL open with a `## Prerequisites` section
    that lists every tool and credential the operator must have in place before
    following the guide. At minimum: `git`, `bash`, a TOML-capable editor or
    parser (for editing `crewrig.config.toml`), and write access to a GitHub
-   repository that will serve as the organisation's fork.
+   repository that will serve as the organization's fork.
 
 3. The guide SHALL contain the following steps, in order, each as a distinct
    `##`-level section:
-   - **Fork the repository** — create the organisation's own GitHub repository
+   - **Fork the repository** — create the organization's own GitHub repository
      from the upstream CrewRig repository.
-   - **Initialise the overlay configuration** — copy
+   - **Initialize the overlay configuration** — copy
      `crewrig.config.toml.template` to `crewrig.config.toml` and replace the
      `canonical_repo` and `feedback_repo` placeholder values with the
-     organisation's own repository URLs.
-   - **Initialise the organisation identity** — copy
+     organization's own repository URLs.
+   - **Initialize the organization identity** — copy
      `config/ORGANIZATION.md.template` to `config/ORGANIZATION.md` and
-     populate the identity sections (organisation name, values, objectives,
+     populate the identity sections (organization name, values, objectives,
      assets, governance, general rules, regulatory context).
-   - **Initialise the tool configuration** — copy `config/TOOLS.md.template`
-     to `config/TOOLS.md` and fill in the organisation-specific sections
+   - **Initialize the tool configuration** — copy `config/TOOLS.md.template`
+     to `config/TOOLS.md` and fill in the organization-specific sections
      (tooling preferences, MCP server declarations, workflow preferences).
    - **Run the build pipeline** — execute `bash scripts/build-components.sh`
      and verify that the CLI output directories (`.claude/`, `.gemini/`,
@@ -83,25 +83,25 @@ adopt CrewRig without contributing upstream.
    Gemini CLI (`~/.gemini/rules/`), and GitHub Copilot CLI (its equivalent
    instructions path) — treating them symmetrically. Where a CLI-specific
    detail differs, the guide SHALL call it out explicitly rather than
-   defaulting silently to Claude Code behaviour.
+   defaulting silently to Claude Code behavior.
 
 7. `README.md` SHALL be updated to reference `docs/adoption-guide.md` as the
-   primary starting point for adopting organisations, in the same implementation
+   primary starting point for adopting organizations, in the same implementation
    pull request that introduces the guide.
 
 8. The guide SHALL NOT contain instructions for: installing or configuring the
-   CLI tools themselves (treated as a prerequisite), creating organisation-specific
+   CLI tools themselves (treated as a prerequisite), creating organization-specific
    skills or agents in `artifacts/community/` or `artifacts/organisation/`
    (a brief mention that these directories exist for that purpose is
    sufficient), running the SPECS → PLAN → DEV → REVIEW lifecycle (this
-   applies to upstream contributors, not adopting organisations), or operating
+   applies to upstream contributors, not adopting organizations), or operating
    the assembly verification tooling introduced by sub-spec E2 (issue #232).
 
 ## Scenarios
 
 **Scenario:** Developer follows the guide from a clean fork
 
-Given a developer at an adopting organisation who has just forked CrewRig
+Given a developer at an adopting organization who has just forked CrewRig
 on GitHub and has all prerequisites satisfied
 When they follow `docs/adoption-guide.md` from beginning to end, copying
 the three templates, filling in the required values, running
@@ -135,11 +135,11 @@ script source.
 - Installation and configuration of Claude Code, Gemini CLI, and GitHub
   Copilot CLI — these are prerequisites; the guide asserts them, it does not
   explain them.
-- Creating organisation-specific skills and agents in `artifacts/community/`
+- Creating organization-specific skills and agents in `artifacts/community/`
   or `artifacts/organisation/` — the guide acknowledges these directories
   exist but does not explain how to author their contents.
 - The SPECS → PLAN → DEV → REVIEW lifecycle and the `harness-report` skill —
-  these govern how upstream CrewRig evolves, not how an organisation adopts it.
+  these govern how upstream CrewRig evolves, not how an organization adopts it.
 - Assembly verification tooling — covered by sub-spec E2 (issue #232). The
   guide may reference the tooling once it exists; this spec does not mandate it.
 - Automated end-to-end tests of the adoption sequence — acceptance is

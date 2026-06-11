@@ -1,6 +1,6 @@
 # Plan format
 
-This document defines the normative format for the PLAN artefact of
+This document defines the normative format for the PLAN artifact of
 the lifecycle introduced in
 [ADR-0010](adr/0010-spec-plan-review-lifecycle.md) — specifically
 *Stage definitions → PLAN*. It is the contract that every plan SHALL
@@ -17,7 +17,7 @@ file in the repository. Consequently a plan has **no YAML
 frontmatter** and no file path. Future readers SHOULD NOT graft a
 frontmatter schema by analogy with
 [`docs/spec-format.md`](spec-format.md): the spec format applies to
-artefacts that ship on `main` and need machine-readable metadata; the
+artifacts that ship on `main` and need machine-readable metadata; the
 plan format applies to discussion-thread comments whose machine-read
 fields (id, status, related issue) are already carried by the GitHub
 issue itself.

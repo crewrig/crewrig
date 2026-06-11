@@ -68,11 +68,11 @@ Gemini CLI, Claude Code, and GitHub Copilot CLI targets.
 
 | Type | Description |
 |---|---|
-| Skill | Reusable agent behaviour activated via `/skill-name` |
+| Skill | Reusable agent behavior activated via `/skill-name` |
 | Command | Slash command with a prompt body |
 | Agent | Sub-agent with a dedicated persona |
 | Hook | Lifecycle hook (BeforeTool/AfterTool/etc.) |
-| Policy | Security or behavioural constraint |
+| Policy | Security or behavioral constraint |
 | MCP Server | External tool integration |
 | Theme | UI theme fragment |
 
@@ -152,12 +152,12 @@ troubleshooting. The architectural decision is recorded in
 
 ## Adopting CrewRig
 
-Organisations that wish to adopt CrewRig without contributing upstream should
+Organizations that wish to adopt CrewRig without contributing upstream should
 follow the **[Adoption Guide](docs/adoption-guide.md)** — a step-by-step
-walkthrough covering fork initialisation, overlay configuration, build
-pipeline, CLI deployment, and upstream synchronisation. The guide covers all
+walkthrough covering fork initialization, overlay configuration, build
+pipeline, CLI deployment, and upstream synchronization. The guide covers all
 three supported CLIs (Claude Code, Gemini CLI, GitHub Copilot CLI) and is the
-primary onboarding surface for adopting organisations.
+primary onboarding surface for adopting organizations.
 
 ## Lifecycle Scenario
 

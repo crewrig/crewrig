@@ -67,7 +67,7 @@ full REVIEW pass produces zero findings.
 The full contract — stage definitions, transition rules, finding
 taxonomy, routing matrix, complexity tiers, and termination criterion
 — lives in [ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md).
-The file format for the spec artefact produced by the SPECS stage —
+The file format for the spec artifact produced by the SPECS stage —
 frontmatter schema, mandatory body sections, delta-spec convention,
 and naming rules — lives in [`docs/spec-format.md`](docs/spec-format.md).
 The sections below (*Agent Team Protocol*, *Interaction modes*,
@@ -114,11 +114,11 @@ This section operationalises the SPECS stage of the lifecycle defined in
 [ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md) — specifically
 the *Stage definitions → SPECS* contract — and the two-PR convention
 mandated by [`specs/0003-spec-pr-workflow.md`](specs/0003-spec-pr-workflow.md).
-The SPECS-stage artefact (a single Markdown file under `/specs/`) MUST
+The SPECS-stage artifact (a single Markdown file under `/specs/`) MUST
 ship as its own pull request — the **spec-PR** — and be merged to `main`
 **before** any implementation branch for the same ticket is opened.
 This keeps the WHAT auditable as a standalone diff and decouples the
-qualification timeline from the realisation timeline.
+qualification timeline from the realization timeline.
 
 ### Branch naming
 
@@ -135,7 +135,7 @@ qualification timeline from the realisation timeline.
 A spec-branch SHALL contain **exactly one new file** under `/specs/`
 and nothing else. No co-mingling with implementation edits, no
 incidental fixes, no build outputs. The rationale: the spec-PR is the
-auditable artefact of qualification — its diff must be reviewable as a
+auditable artifact of qualification — its diff must be reviewable as a
 self-contained WHAT, without the reader having to mentally subtract
 unrelated changes.
 
@@ -157,15 +157,15 @@ requests**: each closes its own GitHub issue via its own
 `Closes #<related-issue>` directive, and the implementation-PR MUST
 NOT auto-close the spec-PR. Treating them as a single coupled unit
 would defeat the purpose of the two-PR flow — qualification and
-realisation are deliberately separated so that a merged spec can
-outlive a failed implementation attempt and be re-realised by a
+realization are deliberately separated so that a merged spec can
+outlive a failed implementation attempt and be re-realized by a
 later PR without information loss.
 
 ### Delta-spec cumulative rule
 
 A single implementation-PR MAY absorb **N delta-spec PRs** targeting
 the same ticket. Delta-specs accumulate on `main` as immutable
-amendments to the original spec; the implementation-PR realises the
+amendments to the original spec; the implementation-PR realizes the
 union of the original spec plus every merged delta. The originating
 loop iteration is defined in the *Retroactive review loop* section
 below — a `spec`-class finding produces a new delta-spec PR before
@@ -320,19 +320,19 @@ SHALL NOT pause the agent:
 - Idle notifications, status pings, and harness-level events —
   observational.
 - ADR drafts, plan comments, review verdicts posted to a PR or issue
-  — artefacts of stage execution, audited asynchronously.
+  — artifacts of stage execution, audited asynchronously.
 
 The mode table above governs only the two gating actions. Whether the
 agent posts ADRs, plan comments, or REVIEW iteration notices in a
 given mode is fixed by the lifecycle contract (ADR-0010), independent
 of mode.
 
-### Behavioural contract per (mode × stage) cell
+### Behavioral contract per (mode × stage) cell
 
 Each cell below names precisely the user gates the orchestrator SHALL
 fire while running that stage in that mode. "—" means no gate; the
 stage runs autonomously and the user is informed (if at all) only via
-non-blocking artefacts (logbook comments, PR/spec-PR diffs to audit
+non-blocking artifacts (logbook comments, PR/spec-PR diffs to audit
 post hoc).
 
 | Stage \ Mode | FULL | INTERMEDIATE | MINIMAL | AUTO |
@@ -361,7 +361,7 @@ Notes on the matrix:
 
 The PLAN stage of the lifecycle (per
 [ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md) →
-*Stage definitions → PLAN*) emits exactly one artefact: a Markdown
+*Stage definitions → PLAN*) emits exactly one artifact: a Markdown
 comment posted on the logbook issue. The protocol below operationalises
 who authors that comment, who reviews it, what shape the review takes,
 and how revisions chain. The format of the plan comment itself —
@@ -539,7 +539,7 @@ Triggers that require an immediate logbook comment:
 - CI failures (any red check that prompts a code change)
 - Friction declarations (`harness-report` activations)
 - Scope changes or requirement pivots mid-ticket
-- Rebase operations that resolve conflicts (one comment per rebase, summarising the conflict and resolution)
+- Rebase operations that resolve conflicts (one comment per rebase, summarizing the conflict and resolution)
 - Architectural course corrections (an ADR-worthy decision made inline)
 
 The comment must be posted **before** resuming work on the obstacle's resolution — not after the PR is opened.
@@ -578,7 +578,7 @@ run under the contract that preceded ADR-0010:
   Team Templates* (Templates 1 / 2 / 3) applies unchanged.
 - A direct implementation pull request closes the issue.
 - **No** SPECS stage — no `/specs/<NNNN>-<slug>.md` file is required.
-- **No** PLAN comment — no `## PLAN — issue #<N>` artefact on the
+- **No** PLAN comment — no `## PLAN — issue #<N>` artifact on the
   logbook.
 - **No** spec-PR / delta-spec ordering — implementation may proceed
   without a preceding qualification PR.
@@ -594,9 +594,9 @@ at the time of the cutoff into `keep-legacy`, `retrofit`, or
 under *Audit table*. Reclassification requires a delta-spec
 amendment.
 
-## Organisation rules extension
+## Organization rules extension
 
-The adopting organisation extends these rules through the org-owned
+The adopting organization extends these rules through the org-owned
 `AGENTS.org.md`, never by editing this upstream-owned file (spec 0020).
 Claude Code resolves the import below natively and recursively. Gemini CLI
 and GitHub Copilot CLI do not resolve `@file` includes in this surface, so

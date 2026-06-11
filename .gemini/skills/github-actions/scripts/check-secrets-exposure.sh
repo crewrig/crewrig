@@ -8,7 +8,7 @@
 #   1. `echo ${{ secrets.* }}`                          — secret echoed directly to stdout.
 #   2. workflow-level `env:` referencing `secrets.*`    — broad blast radius across all jobs.
 #   3. `set -x` / `set +x` in `run:`                   — shell trace expands env values.
-#   4. `toJSON(secrets)` anywhere                       — serialises every secret as JSON.
+#   4. `toJSON(secrets)` anywhere                       — serializes every secret as JSON.
 
 set -euo pipefail
 
@@ -103,7 +103,7 @@ for current_file in "${files[@]}"; do
                 "shell xtrace prints every expanded command, including secret env values"
         fi
 
-        # 4. toJSON(secrets) — full secret bag serialisation.
+        # 4. toJSON(secrets) — full secret bag serialization.
         if [[ "$line" =~ toJSON\([[:space:]]*secrets[[:space:]]*\) ]]; then
             report "$current_file" "$lineno" "toJSON(secrets)" \
                 "serialises the entire secrets context — any later echo, env, or file write leaks them all"

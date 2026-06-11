@@ -25,7 +25,7 @@ R15 already covered three prose-quality axes — contextualizing
 preface, acronym discipline, and option-description self-sufficiency
 — but said nothing about idiomatic language quality. R17 closes that
 gap. It applies to the same modes as R15 (MINIMAL / INTERMEDIATE /
-FULL) plus AUTO when AUTO emits user-visible artefacts.
+FULL) plus AUTO when AUTO emits user-visible artifacts.
 
 ## ADDED
 
@@ -39,9 +39,9 @@ FULL) plus AUTO when AUTO emits user-visible artefacts.
    in that language. Direct calques of English software-engineering
    jargon SHALL be avoided.
 
-2. **Calque catalogue.** The skill MAINTAINS the following
+2. **Calque catalog.** The skill MAINTAINS the following
    non-exhaustive correspondence list, against which it self-checks
-   before emitting any batch in French. Equivalent catalogues for
+   before emitting any batch in French. Equivalent catalogs for
    other supported languages MAY be added in future deltas; the
    French list is the seed.
 
@@ -58,7 +58,7 @@ FULL) plus AUTO when AUTO emits user-visible artefacts.
    | `to push back` (idiomatic) | `pousser en arrière` | `contester` / `s'opposer à` |
    | `to ship` (a feature) | `shipper` | `livrer` / `publier` |
 
-   The catalogue is informational, not exhaustive. The skill is
+   The catalog is informational, not exhaustive. The skill is
    expected to extrapolate from the listed patterns to unlisted ones
    — a verb-form anglicism in `-er` derived from an English verb is
    the canonical red flag.
@@ -79,7 +79,7 @@ FULL) plus AUTO when AUTO emits user-visible artefacts.
    the user's last-message language and apply R17 accordingly.
 
 4. **AUTO mode applicability.** R17 applies in AUTO mode whenever
-   AUTO emits any user-visible artefact in a language other than
+   AUTO emits any user-visible artifact in a language other than
    English — for example, a `[AUTO-PARKED]` open-question bullet
    addressing the user, a progress message logged for user review,
    or a logbook comment intended to be read by the user. AUTO is

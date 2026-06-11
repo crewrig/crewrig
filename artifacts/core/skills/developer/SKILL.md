@@ -2,7 +2,7 @@
 name: developer
 description: "Implementation skill for writing, modifying, and refactoring
   code. Activate by default for any coding task that does not warrant the
-  architect skill. Optimised for parallelisable execution, fast feedback
+  architect skill. Optimized for parallelisable execution, fast feedback
   loops, and minimal surface area per change."
 type: skill
 license: Apache-2.0
@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.1.3"
+    version: "1.1.4"
 claude:
   allowed-tools:
     - Read
@@ -43,7 +43,7 @@ the change touches auth, secrets, crypto, or external input handling.
 
 ### 1. Branch setup
 
-Before creating your branch, always synchronise with the remote to
+Before creating your branch, always synchronize with the remote to
 avoid basing work on a stale commit:
 
 ```sh
@@ -121,7 +121,7 @@ fix to several files), prefer launching them concurrently rather than
 serially. State the decomposition in one line, then dispatch.
 
 If two subtasks share a file or a contract, they are *not*
-independent — serialise them.
+independent — serialize them.
 
 ## Output expectations
 

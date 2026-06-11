@@ -12,15 +12,15 @@ version: 1.0.0
 
 ## Intent
 
-CrewRig ships two kinds of configuration material for adopting organisations.
+CrewRig ships two kinds of configuration material for adopting organizations.
 First, a set of **starter templates** that an org copies and fills in to
-initialise its overlay layer: `crewrig.config.toml.template`,
+initialize its overlay layer: `crewrig.config.toml.template`,
 `config/ORGANIZATION.md.template`, and `config/TOOLS.md.template`. Second, a
 **core CrewRig tools rules file** that carries the framework-critical
 instructions — the three-tier memory architecture (MemPalace, Sequential
 Thinking, Obsidian), the harness engineering loop, and the MCP server
 protocol — maintained upstream and deployed directly to the user's CLI rules
-directory without org customisation. These two kinds of material are kept
+directory without org customization. These two kinds of material are kept
 physically separate so that upstream can update the framework rules without
 conflicting with the org's own tool preferences, and so that an org's
 `config/TOOLS.md` contains only content it genuinely owns. The comment block
@@ -31,7 +31,7 @@ reference to the relocated `community-config/FORMAT.md`.
 
 1. The repository SHALL contain a `crewrig.config.toml.template` file at the
    repository root, classified as `examples` layer. This file is the starting
-   point that an adopting organisation copies to `crewrig.config.toml` and
+   point that an adopting organization copies to `crewrig.config.toml` and
    fills in before running the build pipeline.
 
 2. `crewrig.config.toml.template` SHALL define, at minimum, the following keys
@@ -45,31 +45,31 @@ reference to the relocated `community-config/FORMAT.md`.
 
 3. The repository SHALL contain a `config/ORGANIZATION.md.template` file,
    classified as `examples` layer. This file is the starting point that an
-   adopting organisation copies to `config/ORGANIZATION.md` and customises.
+   adopting organization copies to `config/ORGANIZATION.md` and customizes.
 
 4. `config/ORGANIZATION.md.template` SHALL contain, at minimum, the following
    sections as a skeleton with commented placeholder content indicating what the
-   organisation should write in each section. The file describes WHO the
-   organisation IS — its identity and governing context — not HOW it develops
+   organization should write in each section. The file describes WHO the
+   organization IS — its identity and governing context — not HOW it develops
    software (technical standards belong in other files):
-   - An identity section: organisation name, sector, and market positioning.
+   - An identity section: organization name, sector, and market positioning.
    - A values and principles section: founding values and core principles that
      guide every decision across all functions.
-   - An objectives section: the organisation's fundamental goals and the
+   - An objectives section: the organization's fundamental goals and the
      underlying philosophy driving them (e.g. commercial, social, humanist).
    - An assets section: the key resources, intellectual property, data, and
-     relationships the organisation seeks to protect.
+     relationships the organization seeks to protect.
    - A governance section: decision-making structure and authority model.
-   - A general rules section: broad organisational rules that apply across all
+   - A general rules section: broad organizational rules that apply across all
      professions and functions — thematic principles, not technical details.
    - A regulatory context section: applicable laws, regulations, and compliance
-     frameworks the organisation operates under.
+     frameworks the organization operates under.
 
 5. The repository SHALL contain a core CrewRig tools rules file, classified as
    `core` layer, that carries the upstream-maintained framework instructions for
-   every developer working with CrewRig — regardless of their organisation's
+   every developer working with CrewRig — regardless of their organization's
    overlay. This file is deployed directly to the user's CLI rules directory; it
-   is not a template and is not customised by the adopting organisation.
+   is not a template and is not customized by the adopting organization.
 
 6. The core CrewRig tools rules file (R5) SHALL contain, at minimum, the
    following framework-critical sections:
@@ -86,13 +86,13 @@ reference to the relocated `community-config/FORMAT.md`.
 
 7. The repository SHALL contain a `config/TOOLS.md.template` file, classified
    as `examples` layer. This file is the starting point that an adopting
-   organisation copies to `config/TOOLS.md` and customises. It SHALL contain
+   organization copies to `config/TOOLS.md` and customizes. It SHALL contain
    only org-specific content; framework-critical instructions (covered by R5–R6)
    SHALL NOT appear in this template.
 
 8. `config/TOOLS.md.template` SHALL contain, at minimum, the following sections
    as a skeleton with commented placeholder content indicating what the
-   organisation should write in each section:
+   organization should write in each section:
    - A tooling preferences section (editor, terminal, communication tooling).
    - An MCP server declarations section (which org-specific MCP servers are
      enabled and any restrictions on their use; the framework MCP protocol is
@@ -112,9 +112,9 @@ reference to the relocated `community-config/FORMAT.md`.
 
 ## Scenarios
 
-**Scenario:** Organisation forks CrewRig and initialises its build configuration
+**Scenario:** Organization forks CrewRig and initializes its build configuration
 
-Given a developer at an adopting organisation who has just forked the CrewRig
+Given a developer at an adopting organization who has just forked the CrewRig
 repository
 When they copy `crewrig.config.toml.template` to `crewrig.config.toml` and
 replace the `canonical_repo` and `feedback_repo` placeholder values with their
@@ -126,14 +126,14 @@ directories are populated correctly.
 
 Given a CrewRig upstream update that modifies the core CrewRig tools rules file
 (e.g., an update to the MemPalace Memory Activation Protocol)
-When the adopting organisation syncs from upstream
+When the adopting organization syncs from upstream
 Then the core file is updated cleanly because the org has no local modifications
 to it — the org's tool preferences remain in their separate `config/TOOLS.md`,
 which upstream never touches.
 
-**Scenario:** Organisation customises TOOLS.md without duplicating framework instructions
+**Scenario:** Organization customizes TOOLS.md without duplicating framework instructions
 
-Given a developer opening `config/TOOLS.md.template` to initialise their org's
+Given a developer opening `config/TOOLS.md.template` to initialize their org's
 tool configuration
 When they read the template
 Then none of the framework-critical sections (MemPalace, harness loop, MCP
@@ -151,8 +151,8 @@ the spec review.
 
 ## Out of scope
 
-- The step-by-step adoption guide that walks an organisation through the full
-  fork initialisation sequence — covered by sub-spec E1 (issue #231).
+- The step-by-step adoption guide that walks an organization through the full
+  fork initialization sequence — covered by sub-spec E1 (issue #231).
 - `config/SOUL.md.template` and `config/PROFILE.md.template` — these already
   exist in the repository and are not modified by this sub-spec.
 - Creation of the `artifacts/` directory structure — covered by sub-spec B

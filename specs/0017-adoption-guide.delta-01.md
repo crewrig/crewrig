@@ -44,7 +44,7 @@ Original:
 >    Gemini CLI (`~/.gemini/rules/`), and GitHub Copilot CLI (its equivalent
 >    instructions path) — treating them symmetrically. Where a CLI-specific
 >    detail differs, the guide SHALL call it out explicitly rather than
->    defaulting silently to Claude Code behaviour.
+>    defaulting silently to Claude Code behavior.
 
 Replacement:
 

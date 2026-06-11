@@ -79,7 +79,7 @@ Original (as amended by delta-03):
 > `tester`, `visual-regression-tester`, `web-conformity-checker`. These
 > components are maintained by upstream, are useful to any project adopting
 > the CrewRig framework regardless of whether it uses the CrewRig SDLC
-> lifecycle, and serve as reference implementations; adopting organisations
+> lifecycle, and serve as reference implementations; adopting organizations
 > may copy any of them into their `artifacts/community/` or
 > `artifacts/organisation/` tiers and adapt them freely.
 
@@ -95,7 +95,7 @@ Replacement:
 > `regression-sentinel`, `scenario-author`, `security`, `seo-specialist`,
 > `tester`, `visual-regression-tester`, `web-conformity-checker`. These
 > components are project-scoped, built into the per-repo CLI output directories,
-> and serve as reference implementations that adopting organisations may copy
+> and serve as reference implementations that adopting organizations may copy
 > into their `artifacts/community/` or `artifacts/organisation/` tiers.
 > `artifacts/library/` SHALL contain exclusively the harness skill set and
 > harness agent set enumerated in R6.

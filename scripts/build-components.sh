@@ -116,7 +116,7 @@ validate_canonical_repo
 # frontmatter.
 #
 # Schema note: provenance lives under `metadata:` to keep the root
-# frontmatter restricted to fields recognised by the agentskills.io spec
+# frontmatter restricted to fields recognized by the agentskills.io spec
 # (`name`, `description`, `license`, `compatibility`, `metadata`,
 # `allowed-tools`).
 
@@ -270,7 +270,7 @@ check_or_write() {
   fi
 }
 
-# Copy the spec-recognised skill resource subfolders (`scripts/`,
+# Copy the spec-recognized skill resource subfolders (`scripts/`,
 # `references/`, `assets/` per https://agentskills.io/specification)
 # verbatim from source to target. Respects --check mode the same way
 # check_or_write does. Preserves the executable bit so packaged scripts
@@ -332,7 +332,7 @@ discover_tiers() {
 # --check to compile every tier it builds (to catch build/transform errors).
 # So in CHECK_MODE non-core tiers resolve to a throwaway temp root, forcing
 # them through the write path (compile + discard) instead of the compare path
-# against a non-existent dist/. CHECK_STAGING_ROOT is initialised once in the
+# against a non-existent dist/. CHECK_STAGING_ROOT is initialized once in the
 # main flow (not here — this function runs inside `$(...)` subshells, so a
 # global assigned here would not survive to the parent) and removed on exit.
 CHECK_STAGING_ROOT=""

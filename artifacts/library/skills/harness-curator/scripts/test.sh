@@ -395,7 +395,7 @@ assert "max-issues rank[1].cluster_key (med, asc)"      "bbb-med"  \
 assert "max-issues rank[2].cluster_key (med, asc)"      "ccc-med"  \
   "$(echo "$MAX_OUT" | jq -r '.clusters[2].cluster_key')"
 
-# --max-issues 0 (default) must leave behaviour unchanged: all 5 clusters
+# --max-issues 0 (default) must leave behavior unchanged: all 5 clusters
 # present, clusters_truncated == 0.
 set +e
 MAX0_OUT=$(bash "$SCRIPT" --from-stdin --dry-run --max-issues 0 < "$MAX_FIXTURE")

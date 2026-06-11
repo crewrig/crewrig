@@ -17,7 +17,7 @@ a `chromadb.PersistentClient` against the same on-disk palace
 ChromaDB stack, including an in-process Rust HNSW compactor that flushes
 `data_level0.bin` and `index_metadata.pickle` on its own cadence,
 outside any Python-level lock. MemPalace's `mine_palace_lock`
-(`fcntl.flock` around Python upserts) serialises WAL appends, but the
+(`fcntl.flock` around Python upserts) serializes WAL appends, but the
 compactor runs asynchronously after the lock has been released, so two
 sibling processes can — and do — flush the same binary segment files
 concurrently.
@@ -70,7 +70,7 @@ Gemini CLI      → mempalace MCP → HttpClient ─┴─→ 127.0.0.1:8001
 Copilot CLI     → mempalace MCP → HttpClient ─┘
 ```
 
-Mutations are serialised by the HTTP server's single writer; reads
+Mutations are serialized by the HTTP server's single writer; reads
 remain concurrent. The Rust compactor that flushes binary segment
 files exists in exactly one process — the corruption race is
 structurally eliminated, not merely narrowed.
@@ -78,7 +78,7 @@ structurally eliminated, not merely narrowed.
 ### Wrapper contract
 
 A wrapper module (target path:
-`scripts/lib/mempalace-http-wrapper.py`, finalised by the developer)
+`scripts/lib/mempalace-http-wrapper.py`, finalized by the developer)
 replaces `chromadb.PersistentClient` with a factory returning
 `chromadb.HttpClient` configured from environment variables:
 
@@ -134,7 +134,7 @@ processes via a sentinel file under the palace directory.
   intervention path would be to monkey-patch private ChromaDB
   internals — a contract that changes between ChromaDB releases and
   would silently break with an upgrade.
-- **Con:** even a working lock would serialise compactor work without
+- **Con:** even a working lock would serialize compactor work without
   removing the multiple-owner topology, so other latent races
   (segment-file rename, WAL truncation) remain on the table.
 
@@ -241,7 +241,7 @@ Out of scope:
    prints the exact installer command, so the failure mode is
    self-documenting rather than silent.
 2. **Port collision on 8001.** A user may already run something on
-   that port. Mitigation: `MEMPALACE_CHROMA_PORT` is honoured by both
+   that port. Mitigation: `MEMPALACE_CHROMA_PORT` is honored by both
    the supervisor unit template and the wrapper; the installer detects
    a collision and surfaces an error before writing the unit.
 3. **ChromaDB upgrade breaking the `ClientAPI` equivalence.** The

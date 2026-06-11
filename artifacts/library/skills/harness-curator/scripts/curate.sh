@@ -6,7 +6,7 @@
 # bodies, and either prints the result as JSON (`--dry-run`, default) or
 # opens one GitHub issue per cluster via `gh` (`--apply`).
 #
-# V0 is descriptive-only: the artefact opened is an *issue*, not an MR.
+# V0 is descriptive-only: the artifact opened is an *issue*, not an MR.
 # The actual fix (diff) lands later, either human-authored or via the
 # auto-fix mode tracked in #42, and closes the issue.
 #

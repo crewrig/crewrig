@@ -58,8 +58,8 @@ scripts, which handle priority-prefix renaming, settings.json wiring, and hook
 deployment — steps that cannot be exercised by simply copying the build outputs.
 R3's assertion that both core-layer and overlay-layer components are present in
 the project-scoped output directories is already the executable acceptance proof
-for spec 0012 R9 ("an adopting organisation's installed CLI tools receive both
-framework-provided and organisation-specific components"). Adding R4 would
+for spec 0012 R9 ("an adopting organization's installed CLI tools receive both
+framework-provided and organization-specific components"). Adding R4 would
 require either running interactive scripts in CI (not feasible) or re-implementing
 their logic in the test harness (duplication and drift risk). The finding was
 raised during PLAN review (issue #232, `class: spec`).

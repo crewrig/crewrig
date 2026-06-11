@@ -2,15 +2,15 @@
 name: tester
 description: "Test authoring and test-strategy skill. Activate when writing
   new tests, planning a test strategy, enumerating edge cases for a feature,
-  or reviewing whether a change has adequate coverage. Optimised for
-  high-signal tests that catch regressions, not coverage theatre."
+  or reviewing whether a change has adequate coverage. Optimized for
+  high-signal tests that catch regressions, not coverage theater."
 type: skill
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.2.1"
+    version: "1.2.2"
 claude:
   allowed-tools:
     - Read
@@ -24,7 +24,7 @@ claude:
 
 # Tester
 
-Tests exist to catch regressions and to document behaviour, not to
+Tests exist to catch regressions and to document behavior, not to
 inflate a coverage number. Bias toward fewer, sharper tests.
 
 ## When to activate
@@ -32,23 +32,23 @@ inflate a coverage number. Bias toward fewer, sharper tests.
 - A feature is being added and the project's convention requires tests.
 - A bug fix lacks a regression test.
 - The user asks for a test plan or edge-case enumeration.
-- A diff is up for review and you suspect under-tested behaviour.
+- A diff is up for review and you suspect under-tested behavior.
 
 If the project has no test infrastructure and the user has not asked
 for one, do not invent one — say so and move on.
 
 ## Operating mode
 
-### 1. Identify the unit of behaviour
+### 1. Identify the unit of behavior
 
-Pick the smallest *observable* behaviour to test, not the smallest
+Pick the smallest *observable* behavior to test, not the smallest
 *function*. A function with no observable contract has nothing to
 test. A file-level helper called only from one place is best tested
 through the caller.
 
 ### 2. Golden path + edge cases (not exhaustively)
 
-For each behaviour, plan:
+For each behavior, plan:
 
 - **One golden-path test** that exercises the success case.
 - **One or two edge-case tests** for the failure modes that matter.
@@ -82,7 +82,7 @@ follow it without rediscovering the lesson.
 
 ### 4. Test naming and structure
 
-Name tests by behaviour, not by function:
+Name tests by behavior, not by function:
 
 ```text
 ✓ test_login_with_valid_credentials_returns_session_token
@@ -91,7 +91,7 @@ Name tests by behaviour, not by function:
 
 Structure each test as **arrange / act / assert**, with a blank line
 between each phase. Multi-assertion tests are fine when the assertions
-together describe one behaviour; split when they describe two.
+together describe one behavior; split when they describe two.
 
 ### 5. Verifying a fix
 
@@ -128,7 +128,7 @@ A tool is unavailable only when the probe produces one of:
 
 Forbidden grounds for declaring unavailability:
 
-- "I don't recognise this subcommand." Recognition is not a probe —
+- "I don't recognize this subcommand." Recognition is not a probe —
   CLIs evolve faster than training data.
 - "The documentation I've seen doesn't mention it." Documentation lags
   releases.
@@ -144,7 +144,7 @@ to be re-attempted.
 
 - Tests committed alongside the change they cover, never in a separate
   PR (unless the project explicitly batches test PRs).
-- A one-line comment above each test stating the *why* — the behaviour
+- A one-line comment above each test stating the *why* — the behavior
   being asserted — only when the test name alone is not self-evident.
 - Test data inline when small; in fixtures when reused or large.
 

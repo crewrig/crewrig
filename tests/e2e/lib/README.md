@@ -1,13 +1,13 @@
 # Assertion libraries
 
 Three sourceable bash libraries that scenarios reach for to make claims
-about a CLI's behaviour. Governed by
+about a CLI's behavior. Governed by
 [ADR 0004](../../../docs/adr/0004-e2e-assertion-libs.md).
 
 | Lib | When to use |
 |---|---|
 | `assert.sh` | **First choice.** Side-effect probes: file presence/content, exit codes, drawers in MemPalace, git refs pushed to a remote. Cheap, deterministic, easy to reason about. |
-| `structural.sh` | **Second choice.** Structural shape probes: regex over stdout, JSON paths via `jq`, gitmoji-formatted titles. Use when the assertion is about the shape of an artefact, not its existence. |
+| `structural.sh` | **Second choice.** Structural shape probes: regex over stdout, JSON paths via `jq`, gitmoji-formatted titles. Use when the assertion is about the shape of an artifact, not its existence. |
 | `llm_judge.sh` | **Last resort.** LLM-as-judge oracle for qualitative criteria a regex cannot express. Each call burns budget and adds non-determinism — reach for it only when the first two cannot answer the question. |
 
 Every assertion returns `0` on PASS, `1` on FAIL, and PASS is silent.

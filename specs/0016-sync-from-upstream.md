@@ -12,7 +12,7 @@ version: 1.0.0
 
 ## Intent
 
-An adopting organisation that forks CrewRig must be able to pull upstream
+An adopting organization that forks CrewRig must be able to pull upstream
 changes to core-layer paths cleanly, without risk of accidentally overwriting
 its own overlay content. A dedicated `scripts/sync-from-upstream.sh` script
 reads `canonical_repo` from `crewrig.config.toml`, fetches the upstream HEAD,
@@ -26,7 +26,7 @@ same PR as any change to the `docs/layers.md` classification.
 ## Requirements
 
 1. The repository SHALL contain a `scripts/sync-from-upstream.sh` script,
-   classified as `core` layer, that synchronises core-layer paths from the
+   classified as `core` layer, that synchronizes core-layer paths from the
    upstream repository declared in `crewrig.config.toml`.
 
 2. The repository SHALL contain a `.crewrig/core-paths.txt` file, classified
@@ -81,7 +81,7 @@ same PR as any change to the `docs/layers.md` classification.
 
 **Scenario:** Clean sync from upstream
 
-Given an adopting organisation's fork in which no file listed in
+Given an adopting organization's fork in which no file listed in
 `.crewrig/core-paths.txt` has been locally modified
 And `crewrig.config.toml` declares a non-empty `canonical_repo` URL
 When a developer runs `bash scripts/sync-from-upstream.sh`
@@ -91,7 +91,7 @@ for every path listed in `.crewrig/core-paths.txt`, and the script exits zero.
 
 **Scenario:** Dirty-core guard refuses to proceed
 
-Given an adopting organisation's fork in which a developer has modified at
+Given an adopting organization's fork in which a developer has modified at
 least one file that is listed in `.crewrig/core-paths.txt`
 When the developer runs `bash scripts/sync-from-upstream.sh`
 Then the script fetches from upstream, detects the local modification,
@@ -119,11 +119,11 @@ gap and the PR fails the spec review until both files are consistent.
 
 - Migration of `community-config/` to `artifacts/` — covered by sub-spec B
   (spec 0014, issue #228).
-- The adoption guide that walks an organisation through the full fork
-  initialisation sequence — covered by sub-spec E1 (issue #231).
+- The adoption guide that walks an organization through the full fork
+  initialization sequence — covered by sub-spec E1 (issue #231).
 - Syncing overlay-layer paths (`crewrig.config.toml`, `config/ORGANIZATION.md`,
   `config/TOOLS.md`, `artifacts/community/`, `artifacts/organisation/`, etc.) —
-  those paths are owned exclusively by the adopting organisation and MUST NOT
+  those paths are owned exclusively by the adopting organization and MUST NOT
   be touched by the sync mechanism.
 - CI automation for scheduled or triggered upstream sync — the sync script is
   intentionally a manual, operator-invoked tool. Automating the invocation

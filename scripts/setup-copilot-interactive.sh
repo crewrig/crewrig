@@ -5,7 +5,7 @@
 # the Copilot config root is split across .github/copilot/, .github/skills/,
 # .github/agents/, and .github/copilot-instructions.md at the workspace level.
 # User-level layered context is deployed to ~/.copilot/instructions/*.instructions.md
-# (the documented analogue of ~/.claude/rules/ and ~/.gemini/).
+# (the documented analog of ~/.claude/rules/ and ~/.gemini/).
 # Reference:
 # https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference
 
@@ -144,7 +144,7 @@ if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
   # Core framework tools (priority 60) — framework-critical instructions
   install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$COPILOT_INSTRUCTIONS/60-tools.instructions.md" \
     "artifacts/core/rules/60-tools.md -> instructions/60-tools.instructions.md"
-  # Org-specific tools (priority 65) — organisation-specific additions
+  # Org-specific tools (priority 65) — organization-specific additions
   install_file "$REPO_DIR/config/TOOLS.md" "$COPILOT_INSTRUCTIONS/65-org-tools.instructions.md" \
     "TOOLS.md -> instructions/65-org-tools.instructions.md"
   # Org rules (priority 66) — AGENTS.org.md fallback (spec 0020). Copilot does
@@ -340,7 +340,7 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     rm -f "$HOOKS_PATCHED_TMP"
     echo "  Workspace transcript hooks merged into $WORKSPACE_SETTINGS"
   else
-    echo "  Transcript activation cancelled."
+    echo "  Transcript activation canceled."
   fi
 else
   echo "  Session recording disabled (re-run this script to enable)."

@@ -19,7 +19,7 @@ version: 1.2.0
 **R7** — Remove `config/SOUL.md` and `config/PROFILE.md` from the overlay
 enumeration. These files are gitignored (`.gitignore` lines 25–26) and are
 never committed to any repository — neither upstream nor in an adopting
-organisation's fork. Each developer generates them locally from the
+organization's fork. Each developer generates them locally from the
 corresponding `examples`-layer templates (`config/SOUL.md.template`,
 `config/PROFILE.md.template`). Classifying gitignored, user-local files as
 `overlay` is a misclassification; they belong to the user-local category
@@ -32,7 +32,7 @@ Original (as amended by delta-01):
 > `config/PROFILE.md`, `config/ORGANIZATION.md`, `config/TOOLS.md`,
 > `config/claude/`, `config/gemini/`, `config/copilot/`, `extensions/`,
 > `community-config/mcp-servers/`, `community-config/hooks/`,
-> `community-config/themes/`, and the designated areas for organisation-specific
+> `community-config/themes/`, and the designated areas for organization-specific
 > skills and agents.
 
 Replacement:
@@ -42,7 +42,7 @@ Replacement:
 > `config/ORGANIZATION.md`, `config/TOOLS.md`, `config/claude/`,
 > `config/gemini/`, `config/copilot/`, `extensions/`,
 > `community-config/mcp-servers/`, `community-config/hooks/`,
-> `community-config/themes/`, and the designated areas for organisation-specific
+> `community-config/themes/`, and the designated areas for organization-specific
 > skills and agents.
 
 ---

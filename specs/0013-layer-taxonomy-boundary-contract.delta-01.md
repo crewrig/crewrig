@@ -21,7 +21,7 @@ the overlay enumeration; reclassify them as examples (plan-review iter:4
 Finding 1: the implementation placed these paths under `examples` after an
 interactive classification review, contradicting R7's explicit enumeration).
 Also add `extensions/` to the overlay enumeration, reflecting the
-interactive-review decision that the adopting organisation owns its own
+interactive-review decision that the adopting organization owns its own
 extension registry (iter:4 consistency fix).
 
 Original:
@@ -32,7 +32,7 @@ Original:
 > `config/teams/`, `config/expertise/`, `config/level/`, `config/claude/`,
 > `config/gemini/`, `config/copilot/`, `community-config/mcp-servers/`,
 > `community-config/hooks/`, `community-config/themes/`, and the designated
-> areas for organisation-specific skills and agents.
+> areas for organization-specific skills and agents.
 
 Replacement:
 
@@ -41,7 +41,7 @@ Replacement:
 > `config/PROFILE.md`, `config/ORGANIZATION.md`, `config/TOOLS.md`,
 > `config/claude/`, `config/gemini/`, `config/copilot/`, `extensions/`,
 > `community-config/mcp-servers/`, `community-config/hooks/`,
-> `community-config/themes/`, and the designated areas for organisation-specific
+> `community-config/themes/`, and the designated areas for organization-specific
 > skills and agents.
 
 ---

@@ -18,12 +18,12 @@ structural rather than incidental:
 
 1. **User drift.** The user's evoked intent and the team's first
    implementation diverge, often subtly. Drift is caught — when caught
-   at all — at PR review, by which point the artefacts (branch,
+   at all — at PR review, by which point the artifacts (branch,
    commits, tests, logbook entries) are sunk cost. The corrective loop
    is expensive: rewind to design, re-spawn the team, re-open the PR
    or close-and-reopen, and reconcile the logbook.
 2. **Tech-finding-was-actually-spec-gap.** A reviewer surfaces a
-   "technical" finding (`pr-reviewer` flags a behaviour, a missing
+   "technical" finding (`pr-reviewer` flags a behavior, a missing
    guard, an inconsistent error path). The team fixes it locally; one
    or two iterations later the same finding resurfaces in a different
    shape. Root cause: the underlying specification never decided the
@@ -33,14 +33,14 @@ structural rather than incidental:
 Both modes share a structural cause: there is no place in the current
 contract where the *what* (specification) and the *how* (plan) are
 written down, reviewed, and merged independently of the code that
-realises them. Adding those two artefacts — and a routing rule that
+realizes them. Adding those two artifacts — and a routing rule that
 sends review findings back to the correct layer — is what this ADR
 defines.
 
 Inspiration: [GitHub spec-kit][spec-kit] (Specify → Plan → Tasks →
 Implement) and [OpenSpec][openspec] (Markdown specs with delta-style
 proposals). Neither is adopted wholesale; both are referenced as prior
-art for the staging discipline and the filesystem-first artefact model.
+art for the staging discipline and the filesystem-first artifact model.
 
 [spec-kit]: https://github.com/github/spec-kit
 [openspec]: https://github.com/Fission-AI/OpenSpec
@@ -67,7 +67,7 @@ The contract is mode-driven (FULL / INTERMEDIATE / MINIMAL / AUTO,
 see *Interaction modes* below): the same four stages run for every
 mode, but the user-gating between stages differs.
 
-This ADR defines the **contract**. The artefact formats, the skills,
+This ADR defines the **contract**. The artifact formats, the skills,
 and the routing engine land in dedicated tickets:
 
 | Concern | Ticket |
@@ -83,7 +83,7 @@ and the routing engine land in dedicated tickets:
 
 ## Stage definitions and transition rules
 
-| Stage | Produces | Artefact location | Entry criteria | Exit criteria |
+| Stage | Produces | Artifact location | Entry criteria | Exit criteria |
 |---|---|---|---|---|
 | **SPECS** | A specification (the WHAT) | Spec file under `/specs/<spec-id>/` (format defined in #167) | A ticket exists with a user-evoked intent | Spec PR is merged on `main` (mode-dependent: see *Interaction modes*) |
 | **PLAN** | A plan (the HOW: steps, blast radius, alternatives) | Comment on the logbook issue (format defined in #169) | A merged spec on `main` for this ticket | Plan is approved on the logbook issue (mode-dependent) |
@@ -98,7 +98,7 @@ Normative transition rules:
 2. REVIEW SHALL run after every DEV iteration, including iterations
    triggered by the loop.
 3. A SPECS or PLAN stage that produces no normative change MUST still
-   emit an artefact (an "unchanged" delta spec, or a one-line plan
+   emit an artifact (an "unchanged" delta spec, or a one-line plan
    confirmation) so the audit trail records that the stage ran.
 4. The lifecycle MUST be anchored to a logbook (per `AGENTS.md` →
    *Logbook Issues*). Stage transitions are journalled there.
@@ -111,7 +111,7 @@ not a severity scale.
 
 ### `tech` — implementation defect
 
-The intent and design are correct; the realisation is wrong.
+The intent and design are correct; the realization is wrong.
 
 - **Canonical example.** The spec says "retry transient HTTP errors
   up to 3 times with exponential backoff". The code retries once,
@@ -124,8 +124,8 @@ The intent and design are correct; the realisation is wrong.
 
 ### `arch` — design defect
 
-The spec is correct; the chosen design cannot realise it cleanly, or
-realises it at a cost the plan did not acknowledge.
+The spec is correct; the chosen design cannot realize it cleanly, or
+realizes it at a cost the plan did not acknowledge.
 
 - **Canonical example.** The spec mandates "exactly-once delivery
   across restarts". The plan picked an in-memory queue. REVIEW
@@ -283,13 +283,13 @@ terminate in 1–2 iterations.
 ### Harder
 
 - **Every non-trivial ticket gains one extra PR** (the spec PR) and
-  one extra structured artefact (the plan comment). The marginal
+  one extra structured artifact (the plan comment). The marginal
   cost is real and is the price of buying the two failure modes
   back.
 - **Spec-PR / impl-PR ordering** must be respected. Out-of-order
   merges (impl before spec) break the audit chain. Tooling per #170
   enforces this; agents must learn the new ordering.
-- **Finding classification is a judgement call.** Agents and humans
+- **Finding classification is a judgment call.** Agents and humans
   will disagree on borderline cases. The disambiguation rule
   (escalate upstream) protects correctness at the cost of occasional
   over-routing.
@@ -323,14 +323,14 @@ the matrix in lockstep does not apply here.
 
 ## Appendix — three worked examples
 
-These examples define expected artefacts so downstream tickets
+These examples define expected artifacts so downstream tickets
 (#167, #169, #172, #173) can use them as fixtures.
 
 ### Example 1 — Trivial change
 
 **Ticket.** "Fix typo in `README.md` line 42: `recieve` → `receive`."
 
-| Stage | Artefact | Content |
+| Stage | Artifact | Content |
 |---|---|---|
 | SPECS | Spec id `2026-T-0001-readme-typo` | Single-line WHAT: "Fix spelling of 'receive' in README.md." Tier: `trivial`. Mode: INTERMEDIATE. |
 | PLAN | (skipped for trivial) | — |
@@ -343,7 +343,7 @@ Expected iterations: 1. No team spawn. Logbook is the ticket itself.
 
 **Ticket.** "Add a `--dry-run` flag to `scripts/build-components.sh`."
 
-| Stage | Artefact | Content |
+| Stage | Artifact | Content |
 |---|---|---|
 | SPECS | Spec id `2026-S-0042-build-dryrun` | WHAT: flag semantics, exit codes, output format. Tier: `standard`. Mode: INTERMEDIATE. |
 | PLAN | Logbook comment, plan section | Steps: locate write sites, gate behind flag, add tests. Blast radius: build script + its tests. Alternatives: env var (rejected). |
@@ -357,7 +357,7 @@ Expected iterations: 1–2. Standard team composition.
 **Ticket.** "Introduce a credential-vault abstraction shared by the
 e2e judge backends and the auth-bundle scripts."
 
-| Stage | Artefact | Content |
+| Stage | Artifact | Content |
 |---|---|---|
 | SPECS | Parent spec id `2026-L-0007-cred-vault` + delta specs per sub-area | WHAT: vault contract, threat model, migration plan for existing credential stores. Tier: `large`. Mode: FULL (user requested visibility). |
 | PLAN | Logbook comment | Decomposition: 3 sub-specs (vault core; judge migration; auth-bundle migration). Sequencing: vault core first; migrations in parallel. |

@@ -5,7 +5,7 @@
 # Usage: simulate-workflow.sh <workflow-file> [event-type] [event-payload-json-file]
 #
 # Defaults: event-type = push. When no payload file is given, a minimal
-# default payload matching the event-type is synthesised in a tempfile.
+# default payload matching the event-type is synthesized in a tempfile.
 
 set -euo pipefail
 

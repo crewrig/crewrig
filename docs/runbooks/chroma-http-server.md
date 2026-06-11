@@ -17,7 +17,7 @@ CLI session connects to it via `chromadb.HttpClient` through
   directory on `PATH` if needed.
 - **Free TCP port `8001` on `127.0.0.1`**. Override with
   `MEMPALACE_CHROMA_PORT` if collision (the supervisor unit and the
-  wrapper both honour the variable).
+  wrapper both honor the variable).
 - **Supervisor unit installed**: `~/Library/LaunchAgents/com.mempalace.chroma-server.plist`
   (macOS) or `~/.config/systemd/user/mempalace-chroma-server.service` (Linux).
   `scripts/setup-claude-interactive.sh` and `scripts/setup-gemini-interactive.sh`

@@ -8,7 +8,7 @@ related-issue: 267
 version: 1.0.0
 ---
 
-# Adoption ergonomics — adopt-on-edit example dirs, richer catalogue, guided init flows
+# Adoption ergonomics — adopt-on-edit example dirs, richer catalog, guided init flows
 
 ## Intent
 
@@ -16,7 +16,7 @@ An organization adopting CrewRig receives the shipped persona, team, and
 seniority examples and keeps receiving upstream improvements — including newly
 added examples — until it makes a file its own. Customizing a file freezes it;
 deleting a file keeps it deleted; everything untouched stays current. A broader
-catalogue of role examples ships to start from, and the organization can create
+catalog of role examples ships to start from, and the organization can create
 its own role and team files through a guided interview. Identity around roles,
 teams, and levels becomes current-by-default and safely the organization's to
 shape.
@@ -40,7 +40,7 @@ shape.
    upstream and newly published examples arrive; customizing a file freezes it;
    deleting a file keeps it deleted; and the organization may add its own role
    and team files.
-5. The expertise example catalogue SHALL include role files for **Security
+5. The expertise example catalog SHALL include role files for **Security
    Engineer**, **Software Architect**, **Product Manager**, and **Site
    Reliability Engineer**, each following the established `config/expertise/`
    file shape, shipped under the adopt-on-edit policy.

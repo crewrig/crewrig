@@ -1,0 +1,224 @@
+# en-GB -> en-US orthographic replacement map (spec 0023).
+#
+# Format: one entry per line, `<british><TAB or spaces><american>`.
+# Comments (#) and blank lines are ignored.
+#
+# Matching is WHOLE-WORD and CASE-AWARE: the sweep engine derives the
+# lowercase / Title-case / UPPER-case variants of each entry automatically
+# (e.g. `organisation` also matches `Organisation` and `ORGANISATION`).
+# A blunt suffix regex is forbidden; every entry is a full British word
+# anchored on a word boundary so `four`, `your`, `hour`, `practice`,
+# `specialist`, `dialogue`, `analysis`, `characteristic` are never touched.
+#
+# Entries are enumerated, not suffix-globbed, from an independent survey of
+# the first-party in-scope corpus (.md prose + code comments + non-load-bearing
+# message strings), so US-valid forms and code-identical words stay out.
+
+# -- -ise / -isation -> -ize / -ization (verbs and their derivatives) --
+organise	organize
+organised	organized
+organises	organizes
+organising	organizing
+organisation	organization
+organisations	organizations
+organisational	organizational
+synchronise	synchronize
+synchronised	synchronized
+synchronises	synchronizes
+synchronising	synchronizing
+synchronisation	synchronization
+serialise	serialize
+serialised	serialized
+serialises	serializes
+serialising	serializing
+serialisation	serialization
+specialise	specialize
+specialised	specialized
+specialises	specializes
+specialising	specializing
+specialisation	specialization
+customise	customize
+customised	customized
+customises	customizes
+customising	customizing
+customisation	customization
+customisations	customizations
+recognise	recognize
+recognised	recognized
+recognises	recognizes
+recognising	recognizing
+recognisable	recognizable
+optimise	optimize
+optimised	optimized
+optimises	optimizes
+optimising	optimizing
+optimisation	optimization
+optimisations	optimizations
+summarise	summarize
+summarised	summarized
+summarises	summarizes
+summarising	summarizing
+prioritise	prioritize
+prioritised	prioritized
+prioritises	prioritizes
+prioritising	prioritizing
+prioritisation	prioritization
+parameterise	parameterize
+parameterised	parameterized
+parameterises	parameterizes
+parameterising	parameterizing
+initialise	initialize
+initialised	initialized
+initialises	initializes
+initialising	initializing
+initialisation	initialization
+characterise	characterize
+characterised	characterized
+characterises	characterizes
+characterising	characterizing
+characterisation	characterization
+authorise	authorize
+authorised	authorized
+authorises	authorizes
+authorising	authorizing
+authorisation	authorization
+standardise	standardize
+standardised	standardized
+standardises	standardizes
+standardising	standardizing
+standardisation	standardization
+generalise	generalize
+generalised	generalized
+generalises	generalizes
+generalising	generalizing
+generalisation	generalization
+normalise	normalize
+normalised	normalized
+normalises	normalizes
+normalising	normalizing
+normalisation	normalization
+minimise	minimize
+minimised	minimized
+minimises	minimizes
+minimising	minimizing
+minimisation	minimization
+maximise	maximize
+maximised	maximized
+maximises	maximizes
+maximising	maximizing
+maximisation	maximization
+containerise	containerize
+containerised	containerized
+containerises	containerizes
+containerising	containerizing
+containerisation	containerization
+categorise	categorize
+categorised	categorized
+categorises	categorizes
+categorising	categorizing
+categorisation	categorization
+deserialise	deserialize
+deserialised	deserialized
+deserialises	deserializes
+deserialising	deserializing
+deserialisation	deserialization
+realise	realize
+realised	realized
+realises	realizes
+realising	realizing
+realisation	realization
+finalise	finalize
+finalised	finalized
+finalises	finalizes
+finalising	finalizing
+sanitise	sanitize
+sanitised	sanitized
+sanitises	sanitizes
+sanitising	sanitizing
+sanitisation	sanitization
+synthesise	synthesize
+synthesised	synthesized
+synthesises	synthesizes
+synthesising	synthesizing
+
+# -- -our -> -or --
+colour	color
+colours	colors
+coloured	colored
+colourful	colorful
+behaviour	behavior
+behaviours	behaviors
+behavioural	behavioral
+flavour	flavor
+flavours	flavors
+flavoured	flavored
+favour	favor
+favours	favors
+favoured	favored
+favourite	favorite
+favourites	favorites
+honour	honor
+honours	honors
+honoured	honored
+honouring	honoring
+
+# -- -ogue -> -og (NOT dialogue: US keeps dialogue) --
+catalogue	catalog
+catalogues	catalogs
+catalogued	cataloged
+cataloguing	cataloging
+analogue	analog
+analogues	analogs
+
+# -- -re -> -er --
+theatre	theater
+theatres	theaters
+
+# -- -ence -> -ense (nouns) --
+defence	defense
+defences	defenses
+licence	license
+licences	licenses
+
+# -- -ement -> -ment --
+acknowledgement	acknowledgment
+acknowledgements	acknowledgments
+judgement	judgment
+judgements	judgments
+
+# -- doubled -l- (British) -> single -l- (American) --
+labelled	labeled
+labelling	labeling
+modelled	modeled
+modelling	modeling
+cancelled	canceled
+cancelling	canceling
+signalled	signaled
+signalling	signaling
+travelled	traveled
+travelling	traveling
+
+# -- single -l (British) -> doubled -ll (American) --
+fulfil	fulfill
+fulfils	fulfills
+fulfilment	fulfillment
+enrol	enroll
+enrols	enrolls
+enrolment	enrollment
+
+# -- -ae / -oe / -sceptic -> -e / -skeptic --
+sceptic	skeptic
+sceptics	skeptics
+sceptical	skeptical
+scepticism	skepticism
+
+# -- artefact -> artifact (prose word; NEVER the `artifacts/` path, which is
+#    already American, nor the shell variable `$artefact`, which is in X) --
+artefact	artifact
+artefacts	artifacts
+
+# -- analyse (VERB) -> analyze. The noun `analysis` / `analyses` is American
+#    already and intentionally OMITTED so it stays unchanged. --
+analyse	analyze
+analysed	analyzed
+analysing	analyzing

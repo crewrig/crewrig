@@ -21,7 +21,7 @@ unit-tested in isolation. Output is TAP, one subtest per scenario × CLI.
   `tests/e2e/lib/toml_merge.sh`.
 - **`gh`** (GitHub CLI) for harness-loop scenarios and PAT minting.
 - **Bash 4+**. macOS ships Bash 3.2 by default — install via Homebrew
-  (`brew install bash`) or rely on the containerised execution path.
+  (`brew install bash`) or rely on the containerized execution path.
 
 **Host OS caveat — Gitmoji checks.** `assert_gitmoji_title` in
 `structural.sh` uses `grep -P` (PCRE). PCRE is present in the Debian-based
@@ -83,7 +83,7 @@ scenario runner mounts read-only at execution time:
 > dedicated-account login per runner.
 
 Override the root with `CREWRIG_E2E_HOME=/path/to/parent` (the auth
-scripts and the runner both honour it). This matters on shared CI runners
+scripts and the runner both honor it). This matters on shared CI runners
 where `$HOME` is multi-tenant.
 
 At scenario run time the runner mounts the host bundle **read-only** at
@@ -259,7 +259,7 @@ and [ADR 0002 — Auth flow](../../docs/adr/0002-e2e-auth-flow.md).
 | Scenario fails mid-run with auth error after ~1 h | OAuth access token expired and the RO mount blocked the refresh write. | Set `CLAUDE_CODE_OAUTH_TOKEN` / `GEMINI_API_KEY` in your shell for long scenarios. |
 | `llm_judge` returns `MISSING_KEY` | `ANTHROPIC_JUDGE_API_KEY` is unset on the host. | Export it (may share its value with `ANTHROPIC_API_KEY`; the split is for accounting, not secrecy). |
 | Ollama Cloud override hangs or 401s | Ed25519 keypair missing, or `OLLAMA_HOST` / `COPILOT_GITHUB_TOKEN` not exported on the host. | First-time setup: run `task e2e:auth:ollama` to register the Ed25519 keypair. Then verify that `OLLAMA_HOST` and `COPILOT_GITHUB_TOKEN` are both exported before invoking `task e2e:test`. |
-| `--dry-run` reports success but no containers ran | Expected behaviour. | `--dry-run` resolves config + writes `effective.json` only; drop the flag to execute. |
+| `--dry-run` reports success but no containers ran | Expected behavior. | `--dry-run` resolves config + writes `effective.json` only; drop the flag to execute. |
 | `assert_gitmoji_title` fails only on macOS | BSD grep lacks PCRE. | Run the assertion inside the e2e image, not on the host. |
 
 For deeper debugging, every run writes `effective.json`, per-case

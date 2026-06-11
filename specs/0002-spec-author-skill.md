@@ -19,7 +19,7 @@ Whether the author invokes the surface explicitly, is routed to it by
 the orchestrator at the start of a ticket, or re-enters it after a
 `spec`-class REVIEW finding, the qualification experience is the same:
 a structured interview proportioned to the chosen interaction mode, an
-explicit gate on unresolved questions, and exactly one Markdown artefact
+explicit gate on unresolved questions, and exactly one Markdown artifact
 that the rest of the lifecycle can consume without rework.
 
 ## Requirements
@@ -141,9 +141,9 @@ Then  the skill refuses to write the spec file and surfaces the
 **Scenario:** `AUTO` mode parks unresolved gaps after the fact
 
 Given the skill is invoked in `AUTO` mode against a ticket whose body
-      leaves three behaviours unspecified
+      leaves three behaviors unspecified
 When  the skill drafts the spec end-to-end with no user round-trip
-Then  the three unspecified behaviours appear in `## Open questions`
+Then  the three unspecified behaviors appear in `## Open questions`
       with the `[AUTO-PARKED]` prefix and the spec is written with
       `status: draft` for the user to audit via the merged spec PR.
 

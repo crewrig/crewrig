@@ -12,7 +12,7 @@ version: 1.0.0
 
 ## Intent
 
-Contributors gain operational behavioural contracts for the four
+Contributors gain operational behavioral contracts for the four
 interaction modes (FULL / INTERMEDIATE / MINIMAL / AUTO) and a
 complexity-based team-sizing rule so the orchestrator can deterministically
 pick the right user-gating profile and the right team composition from
@@ -26,7 +26,7 @@ ticket pickup.
    tier; the orchestrator SHALL NOT reject a spec on the basis of an
    unusual combination (e.g. `trivial` + `FULL` or `large` + `AUTO`).
 2. `AGENTS.md` *Interaction modes* section SHALL be expanded to carry
-   the behavioural contract for every (mode × stage) cell, naming
+   the behavioral contract for every (mode × stage) cell, naming
    precisely which actions trigger a user gate.
 3. A **user gate** SHALL be defined narrowly as either (a) a call to
    `AskUserQuestion` or its CLI equivalent, or (b) the merge-

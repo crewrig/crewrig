@@ -34,13 +34,13 @@ synthetic `.copilot/` directory.
 | 4 | Agent definitions directory (built output) | User-level `~/.copilot/agents/` is documented. Repo-level layout is **not** in the public reference. By parallelism with skills we will adopt `.github/agents/<name>.md`. | `[GAP-confirmation]` — exact repo-level filename/extension is undocumented; verify by inspection during implementation. Treat as best-effort. |
 | 5 | Slash-command directory (built output) | **No user-definable slash commands.** Copilot's slash commands are CLI builtins (`/skills`, `/clear`, …). User invocation of a custom skill happens via `/<skill-name>` once the skill is registered. | `[GAP]` for first-class slash commands. Mapping: commands compile **as skills** in `.github/skills/` (same approach Claude already uses). |
 | 6 | Settings template in `config/` | `config/copilot/settings.json.template` (new) — schema mirrors `.github/copilot/settings.json` | New directory under `config/`. |
-| 7 | Active workspace settings file | `.github/copilot/settings.json` (committed) and `.github/copilot/settings.local.json` (gitignored, user-specific) | Direct analogue to `.claude/settings.json` — Copilot supports it natively. |
+| 7 | Active workspace settings file | `.github/copilot/settings.json` (committed) and `.github/copilot/settings.local.json` (gitignored, user-specific) | Direct analog to `.claude/settings.json` — Copilot supports it natively. |
 | 8 | Hook-integration manifest | Two valid forms: **(a)** inline `hooks: { … }` block at top of `.github/copilot/settings.json`; **(b)** standalone `*.json` files in `~/.copilot/hooks/` (user-level only). | **Both forms are used** (revised from initial "form (a) only"): `setup-copilot-interactive.sh` deploys hooks as an opt-in step to **both** `~/.copilot/hooks/copilot-transcript-hooks.json` (form b — user-level, fires for all projects, parity with Claude/Gemini) **and** `.github/copilot/settings.json` (form a — workspace-level, rewritten with absolute path by setup). The committed `settings.json` has `"hooks": []` by design — hooks are never committed with project-relative paths. Event names: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PreCompact`, `Stop`, `SubagentStart`, `SubagentStop`, `ErrorOccurred`, `PermissionRequest`, `Notification`, `SessionEnd`. JSON manifest keys: `version`, `disableAllHooks`, `hooks`. Hook entry types: `command`, `http`, `prompt`. |
 | 9 | Project-dir env var consumed by hooks | **None documented.** Hooks receive context as a JSON payload on stdin, not as `$COPILOT_PROJECT_DIR`. | `[GAP]` for env-var parity. Workaround: `hooks/mempalace-transcript.sh` must read project dir from the hook stdin payload (or fall back to `$PWD` since the hook runs in the workspace cwd). |
 | 10 | Interactive setup script | `scripts/setup-copilot-interactive.sh` (new) | Standard pattern. |
 | 11 | Transcript backfill script | `scripts/import-copilot-history.sh` reading `~/.copilot/session-state/<session-id>/events.jsonl` | Each session is a directory; `events.jsonl` is the transcript. Differs from Claude's `~/.claude/projects` and Gemini's `~/.gemini/tmp`. |
 | 12 | Component-management script | Extend `scripts/manage-workspace-component.sh` with a Copilot target (or add `scripts/manage-copilot-component.sh`). | Reuse existing pattern. |
-| 13 | Plugin / extension build script | **None required.** Copilot consumes skills + agents from `.github/` in place. Enterprise-managed plugins are an org-admin distribution layer, not a per-repo build step. | `[GAP]` by design — no analogue to `scripts/build-claude-plugin.sh`. Same status as Gemini. |
+| 13 | Plugin / extension build script | **None required.** Copilot consumes skills + agents from `.github/` in place. Enterprise-managed plugins are an org-admin distribution layer, not a per-repo build step. | `[GAP]` by design — no analog to `scripts/build-claude-plugin.sh`. Same status as Gemini. |
 | 14 | Plugin / extension install script | None required (see #13). | `[GAP]` by design — same as Gemini. |
 | 15 | Build-components target flag | `scripts/build-components.sh --target copilot` | Add a third branch in the existing dispatch. |
 | 16 | Taskfile entries | `setup-copilot-interactive`, `import-copilot-history`, `build-components-copilot` (minimum). Add `install-*` / `link-*` only if a packaging path lands. | Mirror Gemini's slim entry set. |
@@ -64,7 +64,7 @@ matrix.
 2. **Repo-level agent definitions (#4).** Public reference documents
    only `~/.copilot/agents/`. We adopt `.github/agents/<name>.md` by
    parallelism. **`[GAP-confirmation]`** — implementer must verify
-   loading behaviour and downgrade to a gap if the path is rejected.
+   loading behavior and downgrade to a gap if the path is rejected.
 
 3. **Slash commands (#5).** Copilot does not expose a user-definable
    slash-command file format. Every CrewRig command compiles **as a
@@ -78,7 +78,7 @@ matrix.
    reads the workspace path from the JSON payload (preferred) and falls
    back to `$PWD`. **`[GAP]`** for env-var parity.
 
-5. **Plugin build/install (#13, #14).** No analogue exists by design.
+5. **Plugin build/install (#13, #14).** No analog exists by design.
    **`[GAP]`** — same status as Gemini, same justification.
 
 6. **Per-extension manifest (#17).** No public spec for a repo-level
@@ -136,7 +136,7 @@ matrix.
 - The "config root" cell is plural — three sibling paths under
   `.github/` rather than a single `./.copilot/`. This is a Copilot
   product decision, not a CrewRig limitation.
-- Slash commands are not first-class — every command must be modelled
+- Slash commands are not first-class — every command must be modeled
   as a skill. Same trade-off Claude already lives with.
 - No `$COPILOT_PROJECT_DIR`. Hooks must extract workspace path from
   stdin or rely on cwd.

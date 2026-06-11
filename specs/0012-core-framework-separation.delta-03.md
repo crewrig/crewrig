@@ -75,7 +75,7 @@ Original (as amended by delta-02):
 > `regression-sentinel`, `scenario-author`, `security`, `seo-specialist`,
 > `tester`, `visual-regression-tester`, `web-conformity-checker` (agents).
 > These components are maintained by upstream and serve as reference
-> implementations; adopting organisations may copy any of them into their
+> implementations; adopting organizations may copy any of them into their
 > `artifacts/community/` or `artifacts/organisation/` tiers and adapt them
 > freely.
 
@@ -92,7 +92,7 @@ Replacement:
 > `tester`, `visual-regression-tester`, `web-conformity-checker`. These
 > components are maintained by upstream, are useful to any project adopting
 > the CrewRig framework regardless of whether it uses the CrewRig SDLC
-> lifecycle, and serve as reference implementations; adopting organisations
+> lifecycle, and serve as reference implementations; adopting organizations
 > may copy any of them into their `artifacts/community/` or
 > `artifacts/organisation/` tiers and adapt them freely.
 

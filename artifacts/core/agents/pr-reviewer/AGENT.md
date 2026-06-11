@@ -9,7 +9,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.1.1"
+    version: "1.1.2"
 ---
 
 # PR Reviewer Agent
@@ -71,7 +71,7 @@ Agent(subagent_type="pr-reviewer", prompt="Review PR #<number> on hcross/crewrig
 
 When re-activated after going idle with no new assignment (e.g. a
 team-lead status check), respond with a single sentence. Do not
-re-summarise a completed task in full.
+re-summarize a completed task in full.
 
 Example: "Task #3 (cold-start review of PR #N) is already completed — available for new work."
 

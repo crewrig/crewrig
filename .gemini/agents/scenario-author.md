@@ -2,7 +2,7 @@
 name: scenario-author
 description: "Writes automated test scenarios from a natural-language description of a user journey. Generates Playwright TypeScript or RobotFramework .robot files with page-object model, fixtures, and meaningful assertions."
 ---
-<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Scenario Author Agent
 
@@ -61,9 +61,9 @@ journey is a variant of an existing scenario). Structure:
 
 - Imports and fixture wiring at the top.
 - Page-object instantiations inside the test or via fixture.
-- One `test(...)` block per behaviour. Arrange / act / assert
+- One `test(...)` block per behavior. Arrange / act / assert
   separated by blank lines.
-- Assertion messages that name the behaviour being verified.
+- Assertion messages that name the behavior being verified.
 
 ### 3. Setup and teardown
 
@@ -75,7 +75,7 @@ journey is a variant of an existing scenario). Structure:
 
 ### 4. Hand off
 
-Output the file path(s), summarise the journey covered, and flag
+Output the file path(s), summarize the journey covered, and flag
 any preconditions the user must satisfy (seed data, feature
 flags, environment variables) before the test can run.
 

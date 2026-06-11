@@ -26,14 +26,14 @@ is not a credential.
 
 Both secrets and variables have three scopes:
 
-1. **Organisation.** Visible to a configurable set of repositories.
+1. **Organization.** Visible to a configurable set of repositories.
    Best for shared credentials (Docker registry, npm publish token).
 2. **Repository.** Repository-wide, visible to all environments.
 3. **Environment.** Scoped to a deployment environment (`staging`,
    `production`). Combined with required reviewers and wait timers,
    environments are the correct primitive for promotion gates.
 
-Precedence on name collision: **environment > repository > organisation**.
+Precedence on name collision: **environment > repository > organization**.
 A `secrets.AWS_ROLE` defined at all three levels resolves to the
 environment value.
 
@@ -51,7 +51,7 @@ environment value.
   run: npm publish
 ```
 
-### Organisation-level
+### Organization-level
 
 `Org settings → Secrets and variables → Actions`. Specify the
 repository access policy: all, private only, or a selected list.
@@ -242,7 +242,7 @@ step's `env:` is ideal.
 ```
 
 `secrets: inherit` only works when both workflows are in the **same
-organisation**. For cross-org consumption, list explicitly.
+organization**. For cross-org consumption, list explicitly.
 
 ### Echoing a secret to debug
 

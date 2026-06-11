@@ -122,7 +122,7 @@ install_file "$REPO_DIR/config/ORGANIZATION.md" "$GEMINI_HOME/20_ORGANIZATION.md
 install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$GEMINI_HOME/60_TOOLS.md" \
   "artifacts/core/rules/60-tools.md -> 60_TOOLS.md"
 
-# Org-specific tools (priority 65) — organisation-specific additions
+# Org-specific tools (priority 65) — organization-specific additions
 install_file "$REPO_DIR/config/TOOLS.md" "$GEMINI_HOME/65_TOOLS.md" \
   "TOOLS.md -> 65_TOOLS.md"
 
@@ -364,7 +364,7 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     echo "  Transcript hooks merged into settings.json"
     echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
   else
-    echo "  Transcript activation cancelled by user."
+    echo "  Transcript activation canceled by user."
   fi
 else
   echo "  Session recording disabled (can enable later by re-running this script)."

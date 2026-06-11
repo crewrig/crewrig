@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.2.0"
+    version: "1.2.1"
 claude:
   allowed-tools:
     - Read
@@ -22,7 +22,7 @@ claude:
 The skill every other skill invokes when a friction signal fires. The
 protocol contract (payload schema, wing routing, fixed categories,
 what NOT to tag) lives in `config/TOOLS.md` → *Friction Reporting*.
-This skill is the *operational* counterpart: how to recognise a
+This skill is the *operational* counterpart: how to recognize a
 signal, how to fill the payload correctly, and especially how to
 attribute the friction to the right offender even when you are not
 currently operating under that offender's skill.
@@ -39,7 +39,7 @@ short reminder list:
 - **Sibling-skill workaround** — you find yourself contorting around
   a constraint set by another skill or agent, not the user's request.
 - **Tool surprise (second time)** — a tool produced surprising or
-  inconsistent behaviour for the second time in the same session.
+  inconsistent behavior for the second time in the same session.
   First time is bad luck; second time is a pattern.
 - **Process gap** — a documented workflow step turned out to be
   missing, ambiguous, contradictory, or out of date.
@@ -128,7 +128,7 @@ re-derive it here; refer to it.
 
 ### 4. Tag
 
-One MCP call. Fire and forget — do not wait for an acknowledgement,
+One MCP call. Fire and forget — do not wait for an acknowledgment,
 do not block, return to your task:
 
 ```text

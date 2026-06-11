@@ -13,7 +13,7 @@ version: 1.1.0
 This delta aligns the two references in spec 0002 that still teach the
 obsolete H3 placement of delta sections (`### ADDED` / `### MODIFIED` /
 `### REMOVED`) with the canonical H2 convention introduced by the
-merged spec `0001-spec-format-self.delta-01.md` (v1.1.0) and realised
+merged spec `0001-spec-format-self.delta-01.md` (v1.1.0) and realized
 on `main` by PR #197. Without this delta, spec 0002 R9 mandates the
 exact heading level that `docs/spec-format.md` now forbids — a
 normative contradiction surfaced by the cold `pr-reviewer` finding F1

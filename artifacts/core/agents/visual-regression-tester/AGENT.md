@@ -9,7 +9,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.0.0"
+    version: "1.0.1"
 ---
 
 # Visual Regression Tester Agent
@@ -107,7 +107,7 @@ You do **not**:
   call cheap.
 - Update baselines silently. Baseline refreshes are an explicit
   user action.
-- Audit accessibility or functional behaviour — see
+- Audit accessibility or functional behavior — see
   `accessibility-tester` and `web-conformity-checker`.
 
 ## Friction reporting

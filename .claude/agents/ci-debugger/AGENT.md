@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
+    version: "1.0.1"
 ---
 
 
@@ -88,7 +88,7 @@ credentials" with error:
 ### 2. Hypothesis
 
 Name the failure **category** from the taxonomy below before naming
-the specific cause. Categorising first prevents pattern-matching to
+the specific cause. Categorizing first prevents pattern-matching to
 the most recent failure you saw.
 
 ```text
@@ -174,7 +174,7 @@ found", a deploy step receives a literal empty string.
 Typical fixes:
 
 - Confirm the secret exists at the correct scope: repo, environment,
-  or organisation. Environment secrets are only visible to jobs
+  or organization. Environment secrets are only visible to jobs
   declaring `environment: <name>`.
 - For forks: `pull_request` workflows do not receive repo secrets by
   default. Use `pull_request_target` carefully, or move the work to
@@ -241,7 +241,7 @@ Typical fixes:
 
 ### Concurrency conflict
 
-Symptoms: a deploy job is cancelled mid-flight with "The operation
+Symptoms: a deploy job is canceled mid-flight with "The operation
 was canceled", two PRs racing on the same environment, an in-flight
 release aborted by a newer commit.
 
@@ -250,7 +250,7 @@ Typical fixes:
 - For preview deploys: branch-scoped `concurrency:` with
   `cancel-in-progress: true` is correct.
 - For production deploys: environment-scoped group with
-  `cancel-in-progress: false`. Serialise, do not race.
+  `cancel-in-progress: false`. Serialize, do not race.
 - For PR-driven jobs that should not race their own follow-up
   commits: include `${{ github.head_ref }}` in the group key.
 
@@ -273,7 +273,7 @@ flaky step that nobody can fix is a step that nobody should run.
 
 ### `permissions: write-all` (or escalating permissions to "make it work")
 
-**Why prohibited:** least-privilege is the only defence against a
+**Why prohibited:** least-privilege is the only defense against a
 compromised action or workflow. `write-all` gives every step the
 authority to push code, modify releases, and rewrite issues. A
 single compromised dependency in that environment is a full repo

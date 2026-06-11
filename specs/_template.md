@@ -19,7 +19,7 @@ reading this paragraph, rewrite it.
 
 ## Requirements
 
-1. The system SHALL _[observable behaviour]_.
+1. The system SHALL _[observable behavior]_.
 2. The system MUST _[invariant or constraint]_.
 3. _Add as many as needed. Each line uses SHALL or MUST. Each line is
    independently testable. No HOW words._

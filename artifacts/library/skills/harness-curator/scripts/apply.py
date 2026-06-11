@@ -150,7 +150,7 @@ def main() -> int:
     if args.dry_run_apply:
         for c in clusters:
             # Dedup probe runs even in dry-run-apply so tests can assert
-            # the resolved behaviour without a live `gh issue create`.
+            # the resolved behavior without a live `gh issue create`.
             # When --dedup is off, the dedup_match line carries null so
             # the wire shape stays uniform across modes.
             dedup_match: Optional[str] = None

@@ -20,7 +20,7 @@ local Cloud routing) without forking the committed defaults. The
 runner must respect the SKIP semantics already wired through
 `e2e_skip` in `scripts/e2e/lib/auth-common.sh` (exit 78).
 
-All `yq` behaviours below were verified empirically on
+All `yq` behaviors below were verified empirically on
 `crewrig/e2e-base:latest` (`yq v4.44.3`, `jq 1.6`) on 2026-05-23.
 Evidence is captured inline in Decision 3.
 

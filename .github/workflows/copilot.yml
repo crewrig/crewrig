@@ -3,8 +3,8 @@ name: GitHub Copilot CLI
 # GitHub Copilot's `@copilot` mention trigger is native — issues and pull
 # requests automatically dispatch to the Copilot coding agent in a
 # GitHub-Actions-backed ephemeral environment when a comment mentions
-# `@copilot`. This workflow file does NOT enable that behaviour — it is
-# enabled at the repository / organisation level via the Copilot settings.
+# `@copilot`. This workflow file does NOT enable that behavior — it is
+# enabled at the repository / organization level via the Copilot settings.
 #
 # This file exists for parity with `.github/workflows/claude.yml` and to
 # host optional non-interactive `gh copilot` automation. By default the

@@ -103,7 +103,7 @@ pathspec_for() {
 # ---------------------------------------------------------------------------
 # blob_sha <path>
 # Print the SHA of the adopter's CURRENT working-tree blob for <path>. The
-# working tree (not HEAD) is hashed so an uncommitted local customisation is
+# working tree (not HEAD) is hashed so an uncommitted local customization is
 # detected; falls back to the HEAD blob when the working file is absent.
 # ---------------------------------------------------------------------------
 blob_sha() {
@@ -165,7 +165,7 @@ path_in_org_history() {
 # Run the spec-0020 two-tier "modified?" decision for one adopt-on-edit member
 # file that exists in BOTH the upstream tree and the working tree, restoring it
 # from FETCH_HEAD when untouched and freezing it (recording the adopter's own
-# blob marker) when customised. Identical to the blob adopt-on-edit branch in
+# blob marker) when customized. Identical to the blob adopt-on-edit branch in
 # the apply loop, factored out so reconcile_dir can call it per member.
 # ---------------------------------------------------------------------------
 reconcile_member() {
@@ -338,7 +338,7 @@ for i in "${!PATHS[@]}"; do
         # unmodified, possibly stale, upstream copy.
         decision="update"
       else
-        # Genuine org customisation (or first sync with no working file) →
+        # Genuine org customization (or first sync with no working file) →
         # freeze, never overwrite.
         decision="freeze"
       fi

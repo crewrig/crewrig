@@ -1,12 +1,12 @@
 ---
 name: doc-writer
-description: "Documentation skill for ADRs, READMEs, in-code docstrings, and reference material. Activate when the user asks for documentation, when a public contract changes without docs, or when an ADR is needed per the architect skill's output. Optimised for documents that age well."
+description: "Documentation skill for ADRs, READMEs, in-code docstrings, and reference material. Activate when the user asks for documentation, when a public contract changes without docs, or when an ADR is needed per the architect skill's output. Optimized for documents that age well."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 
@@ -87,7 +87,7 @@ Section order, in priority:
 4. **Usage** — the two or three most common workflows.
 5. **Reference** — links to deeper docs, not inline.
 6. **Contributing** — link to `AGENTS.md` or `CONTRIBUTING.md`.
-7. **Licence** — one line.
+7. **License** — one line.
 
 Skip sections that do not apply. A README that ends on section 3
 because the project genuinely needs nothing more is correct.

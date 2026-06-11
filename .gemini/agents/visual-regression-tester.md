@@ -2,7 +2,7 @@
 name: visual-regression-tester
 description: "Detects unintended visual changes between two states of a page by comparing screenshots at multiple viewports. Uses Playwright's toHaveScreenshot or equivalent diff thresholds."
 ---
-<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Visual Regression Tester Agent
 
@@ -99,7 +99,7 @@ You do **not**:
   call cheap.
 - Update baselines silently. Baseline refreshes are an explicit
   user action.
-- Audit accessibility or functional behaviour — see
+- Audit accessibility or functional behavior — see
   `accessibility-tester` and `web-conformity-checker`.
 
 ## Friction reporting

@@ -22,8 +22,8 @@
 #
 # The stdout fallback mirrors tests/e2e/scenarios/01-layered-context/run.sh
 # (search for `cp "${E2E_REPORT_DIR}/probe.stdout" "$answer_file"`):
-# whether the model honours the "write to /out/answer.txt" side-effect
-# ask is a model-behaviour concern, not a property of the headless
+# whether the model honors the "write to /out/answer.txt" side-effect
+# ask is a model-behavior concern, not a property of the headless
 # contract. The contract we lock in here is: the container exits and
 # the CLI produces output.
 #

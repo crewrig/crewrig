@@ -9,7 +9,7 @@
 #
 # Spec-0020 policy cases:
 #   a. Excluded org subtree untouched while sibling core path updates, AND a
-#      customised specs/org/* file does NOT abort the sync (Finding 1).
+#      customized specs/org/* file does NOT abort the sync (Finding 1).
 #   b. Unmodified adopt-on-edit file updated from upstream.
 #   c. Modified (non-upstream-historical) adopt-on-edit file frozen, exit 0.
 #   d. Strict path still aborts on local edit (regression).
@@ -19,7 +19,7 @@
 #      (stale-but-unmodified vendored fork, Finding 2 R6 horn).
 #   g. Empty marker + current blob matches NO upstream version → freezes,
 #      exit 0, and the freeze marker records the ADOPTER's own blob
-#      (pre-feature customisation, Finding 2 R7 horn — no data loss).
+#      (pre-feature customization, Finding 2 R7 horn — no data loss).
 #
 # Spec-0021 directory adopt-on-edit cases (reconcile_dir):
 #   h. R3 ADD — upstream ships a file with no org history; AFTER fetching the
@@ -29,7 +29,7 @@
 #      refs/remotes and wrongly SKIP).
 #   i. R2 SKIP — org committed then deleted a file still shipped upstream; sync
 #      does NOT re-create it.
-#   j. Org-customised file inside the dir → frozen, not overwritten.
+#   j. Org-customized file inside the dir → frozen, not overwritten.
 #   k. Untouched dir file matching an upstream history blob → updated.
 #   l. Org-deleted file that upstream later re-touches → stays gone across a
 #      second sync.
@@ -63,7 +63,7 @@ fail=0
 # ---------------------------------------------------------------------------
 
 # init_git_repo <dir>
-# Initialise a bare-minimum git repo with identity set.
+# Initialize a bare-minimum git repo with identity set.
 init_git_repo() {
   local dir="$1"
   git -C "$dir" init -q
@@ -267,7 +267,7 @@ run_case_stderr() {
 }
 
 # ---------------------------------------------------------------------------
-# Case a — A customised specs/org/* file does NOT abort the strict `specs`
+# Case a — A customized specs/org/* file does NOT abort the strict `specs`
 #          guard, and the sibling core spec is restored from upstream while the
 #          org file is left untouched (Finding 1: exclude on BOTH guard and
 #          restore). The adopter is byte-identical to upstream on the core spec
@@ -291,7 +291,7 @@ run_case_stderr() {
   make_initial_commit "$adopter" \
     "specs/0001.md"        "upstream spec content" \
     "specs/org/orgspec.md" "ORG ONLY content"
-  # Customise the org spec. Without the exclude on the guard this aborts the
+  # Customize the org spec. Without the exclude on the guard this aborts the
   # whole sync (the v1 bug); with it, the sync proceeds.
   printf 'ORG customised content\n' > "$adopter/specs/org/orgspec.md"
 
@@ -361,7 +361,7 @@ run_case_stderr() {
   mkdir -p "$adopter/.crewrig"
   printf 'README.md\tadopt-on-edit\n' > "$adopter/.crewrig/core-paths.txt"
   make_initial_commit "$adopter" "README.md" "upstream readme v1"
-  # Customise the README to something upstream never shipped.
+  # Customize the README to something upstream never shipped.
   printf 'ADOPTER customised readme\n' > "$adopter/README.md"
 
   run_case "case-c modified adopt-on-edit frozen exit 0" "$adopter" 0
@@ -481,7 +481,7 @@ run_case_stderr() {
   mkdir -p "$adopter/.crewrig/.synced-markers"
   printf 'README.md\tadopt-on-edit\n.crewrig/.synced-markers\texcluded\n' \
     > "$adopter/.crewrig/core-paths.txt"
-  # Adopter customised the README BEFORE the feature shipped — no marker, and
+  # Adopter customized the README BEFORE the feature shipped — no marker, and
   # the content matches no upstream-historical version.
   make_initial_commit "$adopter" "README.md" "ORG custom readme never upstream"
 
@@ -586,7 +586,7 @@ run_case_stderr() {
 }
 
 # ---------------------------------------------------------------------------
-# Case j — Org-customised file inside the dir → frozen, not overwritten.
+# Case j — Org-customized file inside the dir → frozen, not overwritten.
 # ---------------------------------------------------------------------------
 {
   upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
@@ -604,7 +604,7 @@ run_case_stderr() {
     > "$adopter/.crewrig/core-paths.txt"
   make_initial_commit "$adopter" \
     "config/expertise/BACKEND-JAVA.md" "upstream backend v1"
-  # Customise to something upstream never shipped.
+  # Customize to something upstream never shipped.
   printf 'ORG customised backend\n' > "$adopter/config/expertise/BACKEND-JAVA.md"
 
   run_case "case-j customised dir member frozen" "$adopter" 0

@@ -151,7 +151,7 @@ as a literal empty value and confuses the API).
 credential schema is not documented in this repository. The driver's
 best guess matches the
 [google-auth-library `authorized_user` format](https://google-auth.readthedocs.io/en/latest/reference/google.oauth2.credentials.html)
-that the gcloud SDK and most Google Node/Python libraries serialise to
+that the gcloud SDK and most Google Node/Python libraries serialize to
 disk, with camelCase keys:
 
 ```json
@@ -188,7 +188,7 @@ it directly with `jq`; no auto-detection across shapes.
 
 ### 4. Backward compatibility
 
-- `gcp_project` defaults to `""`. Existing configs see zero behaviour
+- `gcp_project` defaults to `""`. Existing configs see zero behavior
   change.
 - No existing driver (`anthropic`, `claude-code`) is modified.
 - New `local.toml.example` stanza (commented) documents both auth
@@ -281,4 +281,4 @@ it directly with `jq`; no auto-detection across shapes.
      403 inside `_call`. Caller maps to UNCERTAIN via the existing
      malformed-output path — acceptable.
 - **Reversibility:** Easy. The driver file can be deleted and the
-  `gcp_project` field removed; default behaviour is untouched.
+  `gcp_project` field removed; default behavior is untouched.

@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
+    version: "1.0.1"
 ---
 
 
@@ -109,7 +109,7 @@ mid-product.
 
 You do **not** decide:
 
-- Layout, visual hierarchy, colour, typography, spacing.
+- Layout, visual hierarchy, color, typography, spacing.
 - Component structure or which CMS / framework hosts the copy.
 - Image selection, illustration style, or photography direction.
 - A/B test variants — produce one canonical version unless explicitly
@@ -123,7 +123,7 @@ designer, frontend-developer) and stay focused on the words.
 
 - Markdown only. No HTML, no CSS, no `<div>` wrappers, no class names.
 - One `## Section name` per landing-page block, in reading order.
-- CTA labels rendered as inline backticks or a clearly labelled
+- CTA labels rendered as inline backticks or a clearly labeled
   `**Primary CTA:**` line — never as styled buttons.
 - Placeholders for content you cannot author (real testimonials,
   metrics, customer names) marked with `<<PLACEHOLDER: …>>` so the

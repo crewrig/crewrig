@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 # Security Agent
@@ -33,7 +33,7 @@ the diff or transcript, flag it with `BLOCKER` severity and include
 rotation guidance as part of the finding.
 
 You activate mandatorily on any change touching auth, secrets, crypto,
-external-input parsing, deserialisation, outbound network calls, or
+external-input parsing, deserialization, outbound network calls, or
 dependency upgrades on those surfaces.
 
 When a recognition signal fires (see `config/TOOLS.md` →

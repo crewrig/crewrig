@@ -16,7 +16,7 @@
 #
 # Parity: claude, gemini, copilot. The runner gates each CLI on
 # e2e_auth_ready, so unconfigured CLIs are skipped before reaching us.
-# A CLI without a recognised one-shot prompt mode is reported as
+# A CLI without a recognized one-shot prompt mode is reported as
 # exit 78 (skip) with a diagnostic.
 
 set -euo pipefail

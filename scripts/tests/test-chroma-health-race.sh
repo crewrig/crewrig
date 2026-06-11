@@ -27,7 +27,7 @@
 # 3. Execute the extracted block with `repo_dir` pointing at the
 #    sandbox. Assert exit code 0.
 #
-# Expected behaviour:
+# Expected behavior:
 #   - Against current main (one-shot check) → block exits 1. FAIL.
 #   - After the developer adds a polling loop                → block exits 0. PASS.
 
@@ -105,7 +105,7 @@ if [[ -z "$BLOCK" ]]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 1 — Behavioural: the health-check block must survive a 2-second
+# Test 1 — Behavioral: the health-check block must survive a 2-second
 # slow start. Against the one-shot code on main this fails; once the
 # developer adds a retry loop (mirroring start-chroma-server.sh lines
 # 65-80), it passes.
@@ -148,7 +148,7 @@ fi
 # We accept any of:
 #   - a `while`/`until` loop in the health-check block
 #   - a `for` loop in the health-check block
-#   - a recognisable `deadline=` / `SECONDS` budget marker
+#   - a recognizable `deadline=` / `SECONDS` budget marker
 #     (matches the convention used by scripts/start-chroma-server.sh)
 # ─────────────────────────────────────────────────────────────────────────────
 if echo "$BLOCK" | grep -Eq '(\bwhile\b|\buntil\b|\bfor\b|deadline=|SECONDS)'; then

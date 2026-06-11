@@ -2,7 +2,7 @@
 
 The `permissions:` key controls the scope of `GITHUB_TOKEN`, the
 automatically minted token that GitHub injects into every job. Getting
-this right is the single highest-leverage defence against supply-chain
+this right is the single highest-leverage defense against supply-chain
 compromise — a workflow with `contents: read` and nothing else cannot
 push code, cannot publish a package, cannot open a PR, cannot tag a
 release, no matter what an action it calls tries to do.

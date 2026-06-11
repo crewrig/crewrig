@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-# ANSI colours (disabled when stdout is not a TTY).
+# ANSI colors (disabled when stdout is not a TTY).
 if [ -t 1 ]; then
     C_GREEN=$'\033[0;32m'
     C_RED=$'\033[0;31m'

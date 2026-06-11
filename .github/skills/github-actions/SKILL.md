@@ -13,7 +13,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
+    version: "1.0.1"
 ---
 
 
@@ -85,7 +85,7 @@ Common triggers and the trap that comes with each:
   runs with the **base** repository's permissions but the **head**
   ref's code; this is the headline supply-chain risk.
 - **`pull_request_target`** — runs with **base** code and **base**
-  secrets. Useful for labelling, dangerous for anything that checks out
+  secrets. Useful for labeling, dangerous for anything that checks out
   the PR head. Never `actions/checkout` the PR head in a
   `pull_request_target` workflow without a separate, sandboxed
   evaluation step.
@@ -133,7 +133,7 @@ shell parser does not re-evaluate them.
 
 ### Runners
 
-Two flavours: GitHub-hosted (ephemeral VMs maintained by GitHub) and
+Two flavors: GitHub-hosted (ephemeral VMs maintained by GitHub) and
 self-hosted (your hardware, your responsibility). GitHub-hosted runners
 are pre-warmed with common toolchains; the inventory shifts — pin a
 specific Ubuntu/Windows/macOS image (e.g., `ubuntu-24.04`, not
@@ -155,7 +155,7 @@ is 10 GB; LRU eviction.
 
 **Secrets** are encrypted at rest, masked in logs, and never exposed
 via the API. **Variables** are plaintext, visible in logs, and meant
-for non-sensitive configuration. Both have three scopes: organisation,
+for non-sensitive configuration. Both have three scopes: organization,
 repository, environment. Environment scope binds to a deployment
 **environment** that can require approvals and wait timers — the
 correct primitive for promotion gates.
@@ -241,7 +241,7 @@ catch the pitfalls above before merge.
   steps. Run on every workflow change.
 - **`scripts/check-pinned-actions`** — fails the build if any
   `uses:` references a tag/branch rather than a 40-character commit
-  SHA. The first-line defence against supply-chain compromise.
+  SHA. The first-line defense against supply-chain compromise.
 - **`scripts/check-secrets-exposure`** — greps for
   `${{ secrets.* }}` patterns that flow into `run:` blocks without
   going through `env:`, and flags `echo $SECRET` style mistakes.

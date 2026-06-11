@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.0.0"
+    version: "1.0.1"
 ---
 
 # CI Configurator Agent
@@ -84,7 +84,7 @@ Question template (omit items you have already answered):
    (e.g. `npm test`, `pytest`, `go test ./...`).
 3. **Lint / format check command** — separate invocation, or part of
    test? If none exists, do you want one scaffolded?
-4. **Build artefact** — does this project produce a build artefact
+4. **Build artifact** — does this project produce a build artifact
    (Docker image, npm package, binary, static site)? Where should it
    be published?
 5. **Deployment target** — none, staging-only, staging + production,
@@ -202,7 +202,7 @@ invalidation.
 ### Concurrency
 
 Add a `concurrency:` block for branch-scoped workflows so an old run
-is cancelled when a newer commit lands:
+is canceled when a newer commit lands:
 
 ```yaml
 concurrency:
@@ -210,7 +210,7 @@ concurrency:
   cancel-in-progress: true
 ```
 
-For deploy jobs that should serialise (production), use
+For deploy jobs that should serialize (production), use
 `cancel-in-progress: false` and a non-ref-scoped group.
 
 ## Validation step
@@ -255,7 +255,7 @@ The agent's final message has three parts, in this order:
    branch protection). One bullet per action item, no prose.
 
 Do not pad the output with "this is a great starting point" or
-"feel free to customise". The workflow either works as written or it
+"feel free to customize". The workflow either works as written or it
 does not; if it does not, the validation step caught it.
 
 ## When the user pushes back

@@ -127,7 +127,7 @@ WORKDIR /home/agent/workspace
   ```
 
   Bind-mounted read-write into every CLI container at
-  `/home/agent/.mempalace`. Concurrent-writer behaviour is flagged as
+  `/home/agent/.mempalace`. Concurrent-writer behavior is flagged as
   an open risk in epic #75 — the sidecar image gives us the tooling to
   inspect lock state during scenarios.
 
@@ -200,7 +200,7 @@ floating-tag-plus-lockfile pattern (Decision 3).
    binary in apt may lag the Cloud client features. Decision deferred
    to scenario time: the base image installs the latest `ollama`
    binary from `ollama.com/install.sh`, pinned by SHA256 of the install
-   script. If Cloud-specific behaviour breaks, escalate before
+   script. If Cloud-specific behavior breaks, escalate before
    plumbing it into scenarios.
 
 ## Blast radius

@@ -71,7 +71,7 @@ structure that all downstream sub-specs (C, D, E1, E2) may depend on.
    `themes/` → `artifacts/community/themes/`, `commands/` → `artifacts/community/commands/`.
    Directory contents SHALL be preserved without modification.
 
-10. The empty organisation-facing tier directories SHALL be created with a
+10. The empty organization-facing tier directories SHALL be created with a
     `.gitkeep` file so that git tracks them: `artifacts/community/skills/`,
     `artifacts/community/agents/`, `artifacts/organisation/skills/`,
     `artifacts/organisation/agents/`.
@@ -136,16 +136,16 @@ not exist anywhere in the repository tree.
 ## Out of scope
 
 - The dirty-core guard (sync mechanism) that enforces core-layer immutability
-  at upstream synchronisation time — covered by sub-spec D (issue #230).
+  at upstream synchronization time — covered by sub-spec D (issue #230).
 - Creation of `crewrig.config.toml.template` — covered by spec 0012 R12,
   scheduled as a separate deliverable.
-- The adoption guide that describes how an organisation populates the overlay
+- The adoption guide that describes how an organization populates the overlay
   layer — covered by sub-spec E1 (issue #231).
 - Assembly verification tooling that confirms built CLI outputs match sources —
   covered by sub-spec E2 (issue #232).
 - Population of `artifacts/organisation/` — this directory is created empty
   (with `.gitkeep` files per R10); filling it with validated org components is
-  the responsibility of each adopting organisation.
+  the responsibility of each adopting organization.
 - Migration of the sub-spec C scope (overlay materialisation, `crewrig.config.toml`
   generation) — issue #229 owns that boundary.
 

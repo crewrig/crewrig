@@ -19,7 +19,7 @@ The curator JSON output surfaces every drawer skipped as malformed and every clu
 1. The FRICTION-payload parser SHALL treat a `suggestion` value that is empty or contains only whitespace as an absent `suggestion` field.
 2. The JSON output SHALL include a top-level `skipped` array listing every drawer the parser rejects as malformed, each entry carrying the drawer identifier, room, rejection reason, and a content excerpt.
 3. The JSON output SHALL include a top-level `routing_failures` array listing every cluster that fails routing, each entry carrying the cluster key, the aggregated frictions, and the reason routing failed.
-4. The additions in R2 and R3 SHALL not alter the behaviour of the `--apply` path.
+4. The additions in R2 and R3 SHALL not alter the behavior of the `--apply` path.
 
 ## Scenarios
 

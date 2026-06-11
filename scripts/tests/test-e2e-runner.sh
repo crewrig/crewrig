@@ -185,7 +185,7 @@ fi
 # --- Case 9: --scenario all-equivalent (empty config) still emits 1..0 ---
 # With no scenarios defined, requesting any scenario name should fail (not
 # found), but the default (no --scenario) yields 1..0. We assert the default
-# behaviour because there's no "all" sentinel in v1 — the default IS "all".
+# behavior because there's no "all" sentinel in v1 — the default IS "all".
 out9="$(bash "$RUN_SH" --dry-run 2>/dev/null)"
 rc9=$?
 if [[ $rc9 -eq 0 ]] && grep -q '^1\.\.0 # no scenarios defined yet (waiting for #80)$' <<< "$out9"; then

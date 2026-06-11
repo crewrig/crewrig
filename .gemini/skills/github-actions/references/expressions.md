@@ -169,7 +169,7 @@ labels.
 
 ### `toJSON(value)` / `fromJSON(string)`
 
-Serialise / deserialise. `fromJSON` is the canonical way to inject a
+Serialize / deserialize. `fromJSON` is the canonical way to inject a
 typed value (number, boolean, array) into a key that would otherwise
 receive a string.
 
@@ -200,7 +200,7 @@ The four functions that drive `if:` chains:
 |----------|----------------------|
 | `success()` | All previous steps in the job (and all `needs:` for jobs) succeeded. |
 | `failure()` | Any previous step failed (and the failure was not handled). |
-| `cancelled()` | The workflow was cancelled. |
+| `cancelled()` | The workflow was canceled. |
 | `always()` | Always — even on cancellation. |
 
 The default `if:` is implicit `success()`. To run a cleanup step on
@@ -304,6 +304,6 @@ jobs:
   Chain conditions with `&&` rather than relying on a value that may
   not have been produced.
 - **`always()` on a cleanup step that uses secrets.** The job may be
-  cancelling; the secret may already be unbound. Use
+  canceling; the secret may already be unbound. Use
   `if: ${{ !cancelled() }}` if you really mean "any outcome except
   cancellation".

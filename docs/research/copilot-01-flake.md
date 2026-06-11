@@ -1,4 +1,4 @@
-# `copilot/01-layered-context` intermittent flake — empirical characterisation
+# `copilot/01-layered-context` intermittent flake — empirical characterization
 
 > **Status:** Research deliverable for issue #162. Investigation only;
 > any remediation requiring non-trivial work is tracked in a follow-up
@@ -8,9 +8,9 @@
 > `bash tests/e2e/run.sh --scenario 01-layered-context --cli copilot`
 > on a single macOS Darwin 25.5.0 host (Apple Silicon, M-series), each
 > producing its own timestamped report dir with per-run TAP and
-> scenario artefacts. No other workload on the host during the loop.
+> scenario artifacts. No other workload on the host during the loop.
 > Plus one validation run preceding the loop (21 invocations total).
-> All artefacts captured under `tests/e2e/reports/20260601T195*Z-*/`.
+> All artifacts captured under `tests/e2e/reports/20260601T195*Z-*/`.
 
 ## Executive summary
 
@@ -47,7 +47,7 @@
 
 Two empirical occurrences in the 2026-05-30 / 2026-05-31 working
 session elevated `copilot/01-layered-context` from "noise" to "tracked
-behaviour":
+behavior":
 
 1. **2026-05-30 — post-#155 baseline tester run.** 1 fail in an
    otherwise-passing 10 / 1 / 0 suite. A fresh re-run minutes later
@@ -62,7 +62,7 @@ The original ticket enumerated four candidate hypotheses (#162 →
 *Plausible causes*). This document tests them against a fresh 20-run
 loop on the same host configuration.
 
-In scope: empirical characterisation of the flake rate and failure
+In scope: empirical characterization of the flake rate and failure
 modes on a single host, on 2026-06-01. Out of scope: implementing the
 chosen remediation, changes to other scenarios, architectural
 decisions about Ollama Cloud routing.
@@ -81,10 +81,10 @@ done
 
 Each invocation produced a fresh timestamped report dir under
 `tests/e2e/reports/<UTC-stamp>-<hash>/`. The runner's `--keep 20`
-behaviour retained the 20 most-recent dirs (plus the validation run
+behavior retained the 20 most-recent dirs (plus the validation run
 preceding the loop = 21 total dirs preserved). Per-run capture:
 
-| Artefact | Content |
+| Artifact | Content |
 |---|---|
 | `run.tap` | top-level TAP status |
 | `copilot/01-layered-context/scenario.tap` | scenario-level TAP status |
@@ -138,7 +138,7 @@ notable: it rules out cold-start outliers within this loop. If
 Ollama Cloud occasionally hits a much-slower path (e.g. > 60 s
 queue), it did not happen during these 20 invocations.
 
-## 4. Failure mode characterisation
+## 4. Failure mode characterization
 
 No failures occurred in the 20-run loop, so there is no failure
 signature to cluster.
@@ -151,7 +151,7 @@ modes:
 - **2026-05-31** — TAP `not ok` with `out/answer.txt` **empty** (no
   `[Nn]antes` match).
 
-Only the second is well-characterised. The 2026-05-30 failure mode
+Only the second is well-characterized. The 2026-05-30 failure mode
 is under-determined: the `tests/e2e/reports/` directory at that
 date was not preserved beyond the runner's `--keep 20` window and
 the report dirs for that session have since rolled off.
@@ -174,7 +174,7 @@ supported by this loop's data:
   an empty response rather than erroring — network glitch, model
   cold-start completing past the container's read deadline, queue
   contention masked as empty body.
-- **Evidence for:** the only well-characterised reported failure
+- **Evidence for:** the only well-characterized reported failure
   (2026-05-31) shows an *empty* `out/answer.txt`, not a wrong
   answer. Empty-vs-wrong is the empirical signature of a request
   that returned without content, which is more consistent with a
@@ -243,7 +243,7 @@ Rationale:
   upper bound. The two observed incidents in two days are
   consistent with a true rate of 1–5 %, well below the threshold
   where an architectural fix is warranted.
-- The well-characterised failure mode (empty `out/answer.txt`) is
+- The well-characterized failure mode (empty `out/answer.txt`) is
   trivially detectable post-invocation — a one-line check before
   the TAP verdict.
 - A retry policy bounded to the empty-answer signature avoids

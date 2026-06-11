@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.4"
+    version: "1.1.5"
 ---
 
 
@@ -88,7 +88,7 @@ A standalone logbook issue is only warranted when the PR has no upstream
 feature ticket (hotfix, dependency bump, automation run with no prior ticket).
 
 A logbook is *not* a status update. It is the record the next agent
-will read to avoid your mistakes. Optimise for that reader.
+will read to avoid your mistakes. Optimize for that reader.
 
 ```markdown
 ### YYYY-MM-DD — <one-line topic>
@@ -186,7 +186,7 @@ the input brief. This applies to file counts, line counts, assertion
 lists, pass-count deltas, exit codes, CI step names, and build-system
 invariants (e.g. "content-addressed", "drift-free", "idempotent"). If you
 cannot cite, write "see diff" or omit the claim. Do not estimate, round,
-or generalise.
+or generalize.
 
 **Self-check before returning.** Re-read the draft once. Mark every
 number, list-count, named invariant, and concrete technical assertion.
@@ -213,7 +213,7 @@ picking the room, and filling the payload.
 ## Idle behavior
 
 When re-activated after going idle with no new assignment, confirm
-availability in one sentence. Do not re-summarise a completed task.
+availability in one sentence. Do not re-summarize a completed task.
 
 Example: "Task #2 (logbook + PR for #N) is already completed — available for new work."
 
@@ -226,7 +226,7 @@ immediately with `shutdown_response` (approve: true) and stop:
 {"type": "shutdown_response", "request_id": "<id from request>", "approve": true}
 ```
 
-Do not defer, summarise completed tasks, or wait for an ongoing
+Do not defer, summarize completed tasks, or wait for an ongoing
 operation. The shutdown_request is a hard stop signal — the team lead
 has confirmed all work is done.
 

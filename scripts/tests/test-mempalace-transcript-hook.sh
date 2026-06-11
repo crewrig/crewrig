@@ -74,7 +74,7 @@ fi
 # -------------------------------------------------------------------------
 # Test 2 — Issue #91: PostToolUse events must NOT spawn Python.
 #
-# Behavioural test. We point MEMPALACE_PYTHON to a wrapper that creates a
+# Behavioral test. We point MEMPALACE_PYTHON to a wrapper that creates a
 # marker file whenever it is invoked, then feed a `PostToolUse` hook event
 # to the script on stdin. If the wrapper ran, the marker exists → FAIL
 # (the hook is still firing Python on PostToolUse).

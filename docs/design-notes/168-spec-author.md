@@ -17,7 +17,7 @@ spec file conforming to `docs/spec-format.md`. It is the entry point
 of the SPECS stage of the ADR-0010 lifecycle: every non-trivial
 ticket runs through it before any architect, developer, or tester is
 spawned. It owns the *qualification* phase — what does the user
-actually want — and emits exactly one artefact: a Markdown file
+actually want — and emits exactly one artifact: a Markdown file
 under `/specs/`. It does not plan, design, or implement; those belong
 to downstream skills.
 
@@ -28,7 +28,7 @@ the other three escalate user gating.
 
 ## 2. Interview script (by interaction mode)
 
-Each mode shares the same artefact contract (section 3) and differs
+Each mode shares the same artifact contract (section 3) and differs
 only in how the skill gathers the information. The skill SHALL pick
 the mode in this order: (a) explicit user invocation flag
 (`/spec --mode=FULL` etc.), (b) the parent ticket's declared mode if
@@ -51,7 +51,7 @@ unambiguously derivable from the ticket:
 
 1. **Intent confirmation.** "Confirm in one sentence the user-facing
    change. Anything missing from: *`<draft intent>`*?"
-2. **Out-of-scope check.** "Is there a nearby behaviour you do NOT
+2. **Out-of-scope check.** "Is there a nearby behavior you do NOT
    want this spec to cover?"
 3. **Acceptance signal.** "What single observable outcome will tell
    us the spec is satisfied?" (Drives the happy-path scenario.)
@@ -249,7 +249,7 @@ The skill SHALL tag a friction via the `harness-report` skill
 
 Tagging is fire-and-forget (`config/TOOLS.md` → *Friction Reporting*);
 the skill SHALL NOT block the user's work waiting for an
-acknowledgement.
+acknowledgment.
 
 ## 7. CLI-target constraints
 

@@ -113,7 +113,7 @@ Implements the ADR 0007 §1 contract. `_preflight`:
 ### 3. Backward compatibility
 
 - `auth_mode` defaults to `"api_key"`. Users who do not edit
-  `local.toml` see zero behaviour change.
+  `local.toml` see zero behavior change.
 - The `anthropic` driver is **not** modified. It continues to read
   `JUDGE_API_KEY_ENV` and ignores `JUDGE_AUTH_MODE`.
 - New `local.toml.example` stanza (commented) documents the
@@ -200,7 +200,7 @@ operator* path.
   `defaults.toml`, `local.toml.example`, `test-e2e-llm-judge-lib.sh`).
 - **Files added:** 2 (the driver and this ADR).
 - **Public-contract additions:**
-  - New `[judge].auth_mode` field — additive, default preserves behaviour.
+  - New `[judge].auth_mode` field — additive, default preserves behavior.
   - New `claude-code` backend value — additive.
   - New `CLAUDE_CREDENTIALS_PATH` env override — additive.
 - **Risks:**
@@ -215,4 +215,4 @@ operator* path.
   3. File-permission leak (world-readable `.credentials.json`). Out of
      scope for this PR but worth a security-skill check during review.
 - **Reversibility:** Easy. The driver file can be deleted and the
-  `auth_mode` field removed; default behaviour is untouched.
+  `auth_mode` field removed; default behavior is untouched.

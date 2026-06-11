@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.1.0"
+    version: "1.1.1"
 claude:
   allowed-tools:
     - Read
@@ -54,7 +54,7 @@ Before reading the diff, draw the trust boundary in your head:
 - The bug class to look for is the one that *crosses* the boundary
   without proper handling.
 
-### 2. Realistic threat, not paranoid theatre
+### 2. Realistic threat, not paranoid theater
 
 Ask: *what would the next attacker actually try here?* Two concrete
 threats with credible exploit paths beat a list of twenty generic
@@ -63,8 +63,8 @@ risks. Examples of credible threats per surface:
 - HTTP handler reading from JSON: prototype pollution, type confusion,
   unbounded length / depth.
 - File path from user: traversal, symlink, race.
-- SQL: parameterised? If yes, also check ORDER BY / LIMIT / table
-  name interpolation, which most ORMs do *not* parameterise.
+- SQL: parameterized? If yes, also check ORDER BY / LIMIT / table
+  name interpolation, which most ORMs do *not* parameterize.
 - Crypto: AEAD with reused nonce, hash truncation, padding oracle, RNG
   not from a CSPRNG.
 - Deserialization: gadget chains, auto-instantiation.
@@ -113,7 +113,7 @@ When asked to review a dependency upgrade:
 
 - Read the upstream changelog between current and target versions.
 - Check the GitHub Security Advisory database for known CVEs.
-- For minor / patch bumps, focus on transitive changes and licence drift.
+- For minor / patch bumps, focus on transitive changes and license drift.
 - For major bumps, flag breaking changes and require a migration note.
 
 ## Friction reporting

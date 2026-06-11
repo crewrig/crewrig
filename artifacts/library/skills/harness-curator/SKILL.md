@@ -16,7 +16,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.5.0"
+    version: "1.5.1"
 claude:
   allowed-tools:
     - Read
@@ -36,7 +36,7 @@ the friction surfaces to the maintainers.
 ## V0 contract — descriptive issues only
 
 The Curator does **not** attempt a fix. It produces a rich,
-evidence-backed issue body — the artefact is a GitHub *issue*, not a
+evidence-backed issue body — the artifact is a GitHub *issue*, not a
 PR/MR, because there is no diff yet. The actual fix lands later, as a
 human-authored MR (or via the auto-fix mode tracked in #42) that
 closes the issue. Proving the surfacing loop matters more than proving

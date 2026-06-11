@@ -150,7 +150,7 @@ expected count. The build round-trip is clean end-to-end.
 **Observation (non-blocking):** The agent notes that `init-personal-profile` and
 `init-soul` skills appear in the session's available-skills list but are not present
 under `community-config/skills/` — these are host-level skills not managed by the
-project build pipeline, which is the expected behaviour.
+project build pipeline, which is the expected behavior.
 
 ---
 
@@ -181,4 +181,4 @@ correctly loaded and discoverable by the live CLI after a clean rebuild.
 **Observation (non-blocking):** Host-level skills (`init-personal-profile`, `init-soul`,
 etc.) appear in the session available-skills list but are not present in
 `community-config/skills/` — these are managed at the Ollama platform level, outside
-the project build pipeline. Expected behaviour.
+the project build pipeline. Expected behavior.

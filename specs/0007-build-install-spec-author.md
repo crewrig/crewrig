@@ -63,7 +63,7 @@ of three manual directory inspections.
    `community-config/skills/spec-author/SKILL.md` or
    `community-config/agents/spec-author/AGENT.md` sources, or to any
    already-built output file. Issues #168 and #172 have already
-   produced the artefacts; this ticket adds the verification surface
+   produced the artifacts; this ticket adds the verification surface
    over them and one matrix note.
 
 ## Scenarios

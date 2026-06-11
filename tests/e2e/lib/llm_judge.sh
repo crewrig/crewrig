@@ -37,7 +37,7 @@
 #
 # The judge composes a single user message with the structure below. The
 # `criterion` is the assertion's free-form question; `subject` is the
-# artefact to evaluate; `prompt` is reusable scaffolding (instructions,
+# artifact to evaluate; `prompt` is reusable scaffolding (instructions,
 # few-shot examples, etc.) supplied by the scenario author.
 #
 #   You are an LLM judge for an end-to-end test framework. Read the

@@ -140,7 +140,7 @@ Defensive measures, in order of effectiveness:
 2. **`Require approval for all outside collaborators`** at repo
    settings. First-time contributor PRs require maintainer click to
    run.
-3. **Private repo only.** The simplest defence is to keep the repo
+3. **Private repo only.** The simplest defense is to keep the repo
    private and trust the contributor set.
 4. **Restrict runner-group repo access.** A GPU runner pool should
    not be visible to repositories that have no business using it.
@@ -154,7 +154,7 @@ Defensive measures, in order of effectiveness:
 
 ### Actions Runner Controller (ARC)
 
-The canonical Kubernetes-native deployment. Two flavours:
+The canonical Kubernetes-native deployment. Two flavors:
 
 - **Legacy ARC** (`actions-runner-controller/actions-runner-controller`)
   — operator-managed, PAT-based authentication. Maintenance mode.

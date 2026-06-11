@@ -3,7 +3,7 @@
 #
 # Pillar 3 — Skill build. Runs `scripts/build-components.sh` inside the
 # per-CLI image (bind-mounted at /repo) against a writable copy of the
-# repo, then asserts the per-CLI built artefacts are present and that
+# repo, then asserts the per-CLI built artifacts are present and that
 # the first built SKILL.md carries a `metadata:` frontmatter key.
 #
 # Parity: claude, gemini, copilot. The build script natively branches

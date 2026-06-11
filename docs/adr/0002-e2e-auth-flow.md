@@ -61,7 +61,7 @@ prompt on subsequent runs — persisting only `.credentials.json` causes
 the CLI to treat the session as a fresh install (upstream issue
 [tfvchow/field-notes-public#10](https://github.com/tfvchow/field-notes-public/issues/10)).
 The macOS keychain path applies only to the host CLI, not to our
-containerised flow.
+containerized flow.
 
 **Recommendation: hybrid — OAuth (default) with env-var override.**
 
@@ -114,7 +114,7 @@ e2e:auth:gemini` if a scenario hits `CREDENTIALS_MISSING`.
 inside `crewrig/e2e-copilot:latest` reports `1.0.51`. The image
 contains **no libsecret** (`ldconfig -p | grep libsecret` returns
 empty), so the CLI cannot use the OS keychain path documented for
-desktop installs. Upstream behaviour in this case
+desktop installs. Upstream behavior in this case
 (<https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli>):
 fall back to plaintext `~/.copilot/config.json`, with user settings
 in `~/.copilot/settings.json` since v1.0.35.
@@ -259,7 +259,7 @@ only create the directory if missing and re-assert writability.
   (copilot) are rotated upstream at <https://github.com/settings/tokens>.
 - **Dedicated test account.** The user is responsible for creating
   and gating access to the dedicated GitHub / Google / Anthropic test
-  account. The framework only persists what that account authorises.
+  account. The framework only persists what that account authorizes.
 
 ## Decision 8 — Ollama Cloud signin: Ed25519 keypair on disk
 
@@ -292,7 +292,7 @@ mirroring the claude/gemini pattern.**
 
 **Why interactive (not env-var only).** Ollama's cloud auth model is
 deliberately key-based: there is no documented "Ollama API key" that
-the CLI accepts at run time. Faking one by writing a synthesised
+the CLI accepts at run time. Faking one by writing a synthesized
 keypair to disk is technically possible but defeats the registration
 step (the public key must be enrolled against the account upstream
 via the browser flow). The browser flow is therefore unavoidable

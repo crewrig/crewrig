@@ -12,17 +12,17 @@ gap, not an implicit assignment.
 
 | Layer | Owner | Immutability contract |
 |---|---|---|
-| **`core`** | Upstream CrewRig project | Adopting organisations **SHALL NOT** modify these paths. Upstream updates land here cleanly. |
-| **`overlay`** | Adopting organisation | Upstream updates **SHALL NOT** touch these paths. The organisation owns them entirely. |
-| **`examples`** | Upstream CrewRig project (authoritative) | Illustrative templates. Adopting organisations may copy and adapt them but are not expected to extend them in place. |
+| **`core`** | Upstream CrewRig project | Adopting organizations **SHALL NOT** modify these paths. Upstream updates land here cleanly. |
+| **`overlay`** | Adopting organization | Upstream updates **SHALL NOT** touch these paths. The organization owns them entirely. |
+| **`examples`** | Upstream CrewRig project (authoritative) | Illustrative templates. Adopting organizations may copy and adapt them but are not expected to extend them in place. |
 
 ---
 
 ## Core layer
 
 Paths controlled exclusively by the upstream CrewRig project. An adopting
-organisation that modifies a `core` path will receive a conflict on the next
-upstream synchronisation; the sync mechanism (spec 0012, sub-spec D) will
+organization that modifies a `core` path will receive a conflict on the next
+upstream synchronization; the sync mechanism (spec 0012, sub-spec D) will
 refuse to proceed.
 
 ### Repository governance
@@ -67,7 +67,7 @@ refuse to proceed.
 components (core).
 
 The `artifacts/` directory is structured into four zones. Two zones are
-core-owned (upstream immutable); two are overlay-owned (adopting organisation).
+core-owned (upstream immutable); two are overlay-owned (adopting organization).
 
 **`artifacts/library/`** — harness machinery. The friction-reporting and
 curation system. Deployed to user home scope (e.g., `~/.claude/skills/`).
@@ -105,13 +105,13 @@ Core rules files (deployed to user home at a fixed priority number):
 
 Built by `scripts/build-components.sh` from `artifacts/`. These
 directories are **assembly zones**: after a build they contain both
-core-provided harness components and the adopting organisation's own compiled
+core-provided harness components and the adopting organization's own compiled
 components. They are never edited directly; the source of truth is always
 `artifacts/`.
 
-An adopting organisation may activate only a subset of CLIs; the sync
+An adopting organization may activate only a subset of CLIs; the sync
 mechanism respects this scope. The detailed assembly model (which CLI outputs
-exist, how org artefacts integrate) is defined in spec 0012 sub-spec E2.
+exist, how org artifacts integrate) is defined in spec 0012 sub-spec E2.
 
 | Path | Description |
 |---|---|
@@ -160,9 +160,9 @@ to every deployment of CrewRig.
 
 ## Overlay layer
 
-Paths reserved exclusively for the adopting organisation. The upstream
-synchronisation mechanism will never modify these paths. An adopting
-organisation initialises them by copying the relevant starting-point templates
+Paths reserved exclusively for the adopting organization. The upstream
+synchronization mechanism will never modify these paths. An adopting
+organization initializes them by copying the relevant starting-point templates
 from the examples layer.
 
 ### Fork identity and configuration
@@ -170,8 +170,8 @@ from the examples layer.
 | Path | Description |
 |---|---|
 | `crewrig.config.toml` | Fork-level configuration: `canonical_repo`, `feedback_repo`, overlay path declarations. |
-| `config/ORGANIZATION.md` | Organisation overview: company context, code quality standards, collaboration norms. |
-| `config/TOOLS.md` | Tool and MCP server guidelines specific to the organisation. |
+| `config/ORGANIZATION.md` | Organization overview: company context, code quality standards, collaboration norms. |
+| `config/TOOLS.md` | Tool and MCP server guidelines specific to the organization. |
 
 ### CLI-specific overlay configuration
 
@@ -182,57 +182,57 @@ from the examples layer.
 | `config/copilot/` | GitHub Copilot overlay configuration files. |
 | `.claude/settings.json` | Claude Code workspace-level settings (memory, permissions). |
 
-### Extensions and organisation-specific artifact zones
+### Extensions and organization-specific artifact zones
 
 | Path | Description |
 |---|---|
-| `extensions/` | Organisation-owned extension registry. The adopting organisation places its own CrewRig extensions here. Upstream extensions are installed via `scripts/install-extension.sh` rather than committed directly. |
-| `artifacts/community/mcp-servers/` | MCP server declarations specific to the organisation (Jira, Confluence, Slack, etc.). |
-| `artifacts/community/hooks/` | Lifecycle hooks specific to the organisation. |
-| `artifacts/community/policies/` | Organisation-level policy files. |
-| `artifacts/community/themes/` | UI theme files specific to the organisation. |
-| `artifacts/community/commands/` | Organisation-specific slash-command definitions. |
-| `artifacts/community/skills/` | Sandbox for the organisation's own role skills, not yet validated for the organisation layer. |
-| `artifacts/community/agents/` | Sandbox for the organisation's own agents, not yet validated for the organisation layer. |
-| `artifacts/org/skills/` | Organisation-validated role skills — promoted from `artifacts/community/` after internal review. Compiled by the tier-agnostic build like any other tier (ADR-0011, spec 0019); installed to the user home on opt-in. |
-| `artifacts/org/agents/` | Organisation-validated agents — promoted from `artifacts/community/` after internal review. Compiled by the tier-agnostic build like any other tier (ADR-0011, spec 0019); installed to the user home on opt-in. |
+| `extensions/` | Organization-owned extension registry. The adopting organization places its own CrewRig extensions here. Upstream extensions are installed via `scripts/install-extension.sh` rather than committed directly. |
+| `artifacts/community/mcp-servers/` | MCP server declarations specific to the organization (Jira, Confluence, Slack, etc.). |
+| `artifacts/community/hooks/` | Lifecycle hooks specific to the organization. |
+| `artifacts/community/policies/` | Organization-level policy files. |
+| `artifacts/community/themes/` | UI theme files specific to the organization. |
+| `artifacts/community/commands/` | Organization-specific slash-command definitions. |
+| `artifacts/community/skills/` | Sandbox for the organization's own role skills, not yet validated for the organization layer. |
+| `artifacts/community/agents/` | Sandbox for the organization's own agents, not yet validated for the organization layer. |
+| `artifacts/org/skills/` | Organization-validated role skills — promoted from `artifacts/community/` after internal review. Compiled by the tier-agnostic build like any other tier (ADR-0011, spec 0019); installed to the user home on opt-in. |
+| `artifacts/org/agents/` | Organization-validated agents — promoted from `artifacts/community/` after internal review. Compiled by the tier-agnostic build like any other tier (ADR-0011, spec 0019); installed to the user home on opt-in. |
 
 ### Org overlay carve-outs in core trees (spec 0020)
 
 Org-owned paths nested within otherwise-core trees. The upstream
-synchronisation classifies each as **excluded** in `.crewrig/core-paths.txt`
+synchronization classifies each as **excluded** in `.crewrig/core-paths.txt`
 and carves it out of its core parent's dirty guard and restore via a
 `:(exclude)` pathspec, so it is never modified, restored, or able to abort a
 sync.
 
 | Path | Description |
 |---|---|
-| `specs/org/` | Organisation-owned specification overlay, nested in core `specs/`. Excluded from upstream sync. |
-| `docs/org/` | Organisation-owned documentation overlay, nested in core `docs/`. Excluded from upstream sync. |
-| `AGENTS.org.md` | Organisation-owned agent-rules extension, loaded alongside the upstream `AGENTS.md` (natively on Claude via `@` import; via the priority-66 setup deployment on Gemini and Copilot). Excluded from upstream sync. |
+| `specs/org/` | Organization-owned specification overlay, nested in core `specs/`. Excluded from upstream sync. |
+| `docs/org/` | Organization-owned documentation overlay, nested in core `docs/`. Excluded from upstream sync. |
+| `AGENTS.org.md` | Organization-owned agent-rules extension, loaded alongside the upstream `AGENTS.md` (natively on Claude via `@` import; via the priority-66 setup deployment on Gemini and Copilot). Excluded from upstream sync. |
 
 ### Adopter-managed sync state (spec 0020)
 
 | Path | Description |
 |---|---|
-| `.crewrig/.synced-markers/` | Per-path last-synced upstream blob SHAs backing the **adopt-on-edit** decision. Machine-managed by `scripts/sync-from-upstream.sh` (do not hand-edit); **committed** by the adopter so the customisation verdict survives a fresh clone (R7), and **never synced** from upstream — carved out of the `.crewrig` guard and restore. |
+| `.crewrig/.synced-markers/` | Per-path last-synced upstream blob SHAs backing the **adopt-on-edit** decision. Machine-managed by `scripts/sync-from-upstream.sh` (do not hand-edit); **committed** by the adopter so the customization verdict survives a fresh clone (R7), and **never synced** from upstream — carved out of the `.crewrig` guard and restore. |
 
 The `README.md` core-governance entry carries the **adopt-on-edit** policy
 (spec 0020): upstream-owned until the adopter modifies it, then preserved
 permanently. It remains a core path; only its sync policy differs from
 `strict`.
 
-### Persona, team, and seniority catalogues (spec 0021)
+### Persona, team, and seniority catalogs (spec 0021)
 
 `config/expertise/`, `config/teams/`, and `config/level/` are **core paths**
 carrying the **adopt-on-edit** policy at **directory granularity**. Each is
 reconciled member-by-member by `scripts/sync-from-upstream.sh`
 (`reconcile_dir`): an untouched file keeps updating from upstream, a newly
 published upstream example is added (if the path never existed in the org's
-own history), a file the org customises or deletes freezes permanently
+own history), a file the org customizes or deletes freezes permanently
 (deletions stay deleted), and any file the org adds is left untouched. They
 moved here from the *Examples layer* (where they were copy-and-own starting
-points) so adopters receive upstream catalogue improvements in place rather
+points) so adopters receive upstream catalog improvements in place rather
 than re-copying. Adopters may add their own role and team files through the
 `init-expertise` and `init-team` guided skills.
 
@@ -247,7 +247,7 @@ than re-copying. Adopters may add their own role and team files through the
 ## Examples layer
 
 Illustrative paths authored by the upstream CrewRig project to demonstrate
-the framework to newcomers. Adopting organisations may copy any of these
+the framework to newcomers. Adopting organizations may copy any of these
 into their overlay and adapt them freely; they are not intended to be
 extended or overridden in place.
 
@@ -255,7 +255,7 @@ A notice SHALL be present in each examples component indicating its
 demonstrative nature (spec 0012 R3). **Exception (spec 0021):**
 `config/expertise/`, `config/teams/`, and `config/level/` are no longer
 examples — they moved to the core layer under the **adopt-on-edit** sync
-policy (see *Core layer → Persona, team, and seniority catalogues*). Under
+policy (see *Core layer → Persona, team, and seniority catalogs*). Under
 that policy the shipped files are meant to be extended in place, which
 inverts the "do not extend in place" demonstrative contract; they are
 therefore exempt from this notice requirement.
@@ -265,7 +265,7 @@ therefore exempt from this notice requirement.
 Role skills shipped by the upstream CrewRig project. They live in
 `artifacts/core/` — actively used by the upstream project for its own
 development workflow and serving as high-quality starting points for
-adopting organisations building their own role skills.
+adopting organizations building their own role skills.
 
 | Path |
 |---|
@@ -284,7 +284,7 @@ adopting organisations building their own role skills.
 
 Role agents shipped by the upstream CrewRig project. Same dual-use nature as
 the illustrative skills: actively used by upstream, and illustrative starting
-points for adopting organisations.
+points for adopting organizations.
 
 | Path |
 |---|
@@ -309,10 +309,10 @@ points for adopting organisations.
 ### Identity and configuration templates
 
 Default starting points for the overlay identity files. An adopting
-organisation copies one of these, customises it, and saves the result as the
+organization copies one of these, customizes it, and saves the result as the
 corresponding overlay path (`config/SOUL.md`, `config/PROFILE.md`,
 `crewrig.config.toml`). The templates themselves are illustrative; the
-organisation owns only the customised instances.
+organization owns only the customized instances.
 
 | Path | Seeds overlay file |
 |---|---|
@@ -380,5 +380,5 @@ updated, the following default rules apply until an explicit classification is
 merged:
 
 1. A new file or directory added by an upstream CrewRig pull request is **`core`** by default.
-2. A new file or directory added exclusively by an adopting organisation is **`overlay`** by default.
-3. Any ambiguity MUST be resolved by opening an issue and merging a delta to this document before the next upstream synchronisation cycle.
+2. A new file or directory added exclusively by an adopting organization is **`overlay`** by default.
+3. Any ambiguity MUST be resolved by opening an issue and merging a delta to this document before the next upstream synchronization cycle.

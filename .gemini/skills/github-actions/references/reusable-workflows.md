@@ -226,11 +226,11 @@ internal matrix.
 `concurrency:` is supported at the reusable workflow level and at the
 caller level. The caller's `concurrency:` applies to the calling job;
 the callee's applies to its own jobs. Both fire — be careful not to
-accidentally serialise more than intended.
+accidentally serialize more than intended.
 
 For deploy workflows, the typical pattern is to set `concurrency:`
 only at the caller, on the entire deploy job, so concurrent calls to
-the reusable workflow are serialised at the call site.
+the reusable workflow are serialized at the call site.
 
 ## Limitations
 

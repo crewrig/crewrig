@@ -244,7 +244,7 @@ Properties:
   cover the load-bearing path, but a complete list of files read at
   startup is not in this document. Whether more files than §2.1+§2.2
   matter will surface during #148 implementation.
-- **macOS-only.** Linux host behaviour was not characterised. If a Linux
+- **macOS-only.** Linux host behavior was not characterized. If a Linux
   CI runner ever calls `auth-gemini.sh` directly (not just via the
   e2e container), §3 should be re-run with `secret-tool` / GNOME keyring.
 - **Single CLI version.** The trace was captured against the version

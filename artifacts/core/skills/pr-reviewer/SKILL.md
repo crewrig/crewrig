@@ -13,7 +13,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.1.3"
+    version: "1.1.4"
 claude:
   allowed-tools:
     - Read
@@ -113,7 +113,7 @@ Five sections, in this order:
 - **Convention compliance** — does the change follow the rules
   collected in step 1? Cite the rule and the offending location.
 - **Test coverage** — are the changes covered? If tests were added,
-  do they actually exercise the new behaviour? Cite test file paths.
+  do they actually exercise the new behavior? Cite test file paths.
 - **Linter findings** — one subsection per script that produced
   output. Quote the script's stdout verbatim; do not paraphrase.
 

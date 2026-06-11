@@ -99,7 +99,7 @@ requires a delta-spec amendment per R4.
 | #132 | Back-port `set -x` suppression to claude-code.sh | keep-legacy | — | Two-line shell change; cost of authoring a retrofit spec is disproportionate to the change's surface. Finishes under the legacy contract with the pin comment from R5. |
 | #144 | GenIA Quality Sentinel (Global STOP hook) | retrofit | large | Substantial cross-CLI feature (global STOP hook for Claude + Gemini, system-prompt-injection mechanism). The canonical example of an EPIC #165 ticket that decomposes into sub-specs at SPECS time. Retrofit work is its own ticket. |
 | #146 | `setup-claude-interactive` rejects unmodified SOUL.md | keep-legacy | — | UX-clarification bug whose fix is a small shell-script change once the customization-mandatory question is decided. Specs would add ceremony without changing the decision surface. Finishes under the legacy contract. |
-| #159 | Add nightly CI workflow for e2e suite | retrofit | standard | Non-trivial infrastructure feature with an open architectural question (authentication strategy in CI) explicit in the ticket body. The SPECS stage forces that question to be answered in a persistent artefact before implementation begins, which is exactly the value the lifecycle adds. Created the day before the cutoff but firmly pre-merge of #176. |
+| #159 | Add nightly CI workflow for e2e suite | retrofit | standard | Non-trivial infrastructure feature with an open architectural question (authentication strategy in CI) explicit in the ticket body. The SPECS stage forces that question to be answered in a persistent artifact before implementation begins, which is exactly the value the lifecycle adds. Created the day before the cutoff but firmly pre-merge of #176. |
 | #162 | Investigate `copilot/01-layered-context` intermittent flake | keep-legacy | — | Investigation, not implementation. A SPECS document has nothing to qualify (the WHAT is "diagnose"). Finishes under the legacy contract; may resolve to "cannot reproduce" or spawn a separate fix ticket that itself follows the new lifecycle. |
 | #178 | Spec format linter (post-#167 follow-up) | NA — post-cutoff | — | Opened during this very migration's authoring session, after PR #176 merged. Automatically operates under the new SPECS → PLAN → DEV → REVIEW lifecycle. Listed here for traceability only; no action required by this spec's implementation team. |
 
@@ -111,7 +111,7 @@ Given the implementation team picks up this spec after its spec-PR merges
 When the team reads the audit table (R4) and posts the per-ticket
   logbook pin comments (R5, R6)
 Then a future agent reading any of `#132`, `#146`, `#162` sees the pin
-  comment as the first sibling-agent-visible artefact and immediately
+  comment as the first sibling-agent-visible artifact and immediately
   operates under the legacy contract documented in `AGENTS.md` →
   *Legacy ticket policy*
 And a future agent reading `#144` or `#159` sees the retrofit pin and
@@ -144,12 +144,12 @@ And the migration audit in this spec SHALL NOT be re-edited to
   under EPIC #165 sub-tickets #166 / #167 / #168 / #169 / #170 /
   #172 / #173 / #174 — all merged). This spec is the migration
   bridge, not the lifecycle.
-- The `spec-author` skill behaviour beyond reading the
+- The `spec-author` skill behavior beyond reading the
   `complexity` and `interaction-mode` fields from the retrofit
-  specs that this audit triggers — that behaviour is already
+  specs that this audit triggers — that behavior is already
   shipped via issue #168.
 - The actual retrofit work for `#144` and `#159`. Each retrofit is
-  its own ticket-by-ticket SPECS entry; this spec only authorises
+  its own ticket-by-ticket SPECS entry; this spec only authorizes
   and tier-pre-records them.
 - Closure of any audited ticket. Classifications are declared here;
   closure is a separate maintainer action.

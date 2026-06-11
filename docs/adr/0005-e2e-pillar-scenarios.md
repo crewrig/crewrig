@@ -17,9 +17,9 @@ The four pillars from issue #80 are:
 
 | # | Pillar | Verifies |
 |---|---|---|
-| 01 | Layered context | 00–60 rule files deployed to a CLI actually steer behaviour |
+| 01 | Layered context | 00–60 rule files deployed to a CLI actually steer behavior |
 | 02 | Cross-tool memory | A drawer written by CLI A is read by CLI B via shared MemPalace |
-| 03 | Skill build | `build-components.sh` emits artefacts a CLI can invoke |
+| 03 | Skill build | `build-components.sh` emits artifacts a CLI can invoke |
 | 04 | Harness loop | `harness-report` → MemPalace → `harness-curator` round-trip |
 
 Two structural questions had to be settled before any scenario can be
@@ -53,12 +53,12 @@ for:
 - Spinning up any sidecar (MemPalace, fixture servers) and tearing it
   down on exit.
 - Running assertions via the sourced `lib/*.sh` helpers, on the host,
-  against artefacts written to the mounted case directory.
+  against artifacts written to the mounted case directory.
 - Emitting a TAP subtest block to stdout and exiting `0` / `1` / `78`
   (the runner's existing skip convention).
 
 Rejected alternative — **in-container scenarios** (CLI receives a probe
-prompt as args, writes artefacts to a mounted volume, runner
+prompt as args, writes artifacts to a mounted volume, runner
 post-asserts on the host). It breaks down for scenario 02 (needs two
 sequential containers sharing state) and scenario 04 (needs the
 out-of-container `harness-curator` step). Host orchestration covers

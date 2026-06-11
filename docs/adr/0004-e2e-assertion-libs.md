@@ -20,7 +20,7 @@ What is still missing — and what this ADR specifies — is the
 libraries with consistent signatures, uniform failure semantics, and
 empirically grounded backend choices.
 
-All MemPalace, grep, and Docker behaviours below were verified on
+All MemPalace, grep, and Docker behaviors below were verified on
 `crewrig/e2e-base:latest` and `crewrig/e2e-mempalace:latest`
 (MemPalace 3.3.5, GNU grep 3.8) on 2026-05-23. Reproductions are
 inline.
@@ -145,7 +145,7 @@ acceptable, the choice is deferred to issue #80's scenario harness:
   `e2e_chown_bootstrap` in ADR 0002).
 
 P2 is the v1 default — fewer moving parts, no sidecar lifecycle in
-the runner. P1 is documented as the optimisation path if probe count
+the runner. P1 is documented as the optimization path if probe count
 per scenario climbs above ~5.
 
 ### Rejected MemPalace options
@@ -430,12 +430,12 @@ Explicitly NOT modified by #79:
 - `scripts/e2e/lib/auth-common.sh` — no new helpers needed; the
   assert libs do not need auth.
 - `docs/cli-matrix.md` — assertion libs are CLI-agnostic
-  infrastructure (no per-CLI behaviour). No parity row required.
+  infrastructure (no per-CLI behavior). No parity row required.
 - `community-config/**` — assertion libs are runtime test code, not
   shipped skills/agents. The `check-components` job and the
   version-bump rule do not apply.
 
-Reversibility: **trivial**. Every artefact is additive and gated
+Reversibility: **trivial**. Every artifact is additive and gated
 behind explicit `source` from a scenario that does not yet exist
 (scenarios land in #80). Removing the three files would be a clean
 revert with no downstream consumers.

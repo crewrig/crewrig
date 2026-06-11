@@ -13,7 +13,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.0.0"
+    version: "1.0.1"
 compatibility: "Requires Astro >= 4.0 and Node >= 18."
 claude:
   allowed-tools:
@@ -34,7 +34,7 @@ or any project that lists `astro` in its `package.json`.
 Astro's defining trait is the **server-first** rendering model with
 opt-in client islands. Treat every page as HTML by default; reach for
 JavaScript only where the interaction model requires it. The patterns
-below are organised around that bias.
+below are organized around that bias.
 
 ## When to activate
 
@@ -297,7 +297,7 @@ Common integrations:
   option.
 - **`astro:assets`** — built-in (no install). Provides `<Image>`,
   `<Picture>`, and the `getImage()` helper for build-time image
-  optimisation:
+  optimization:
 
 ```astro
 --- 
@@ -460,9 +460,9 @@ Astro's defaults already win most performance battles — keep them.
   `_headers`) or a middleware (`src/middleware.ts`) for SSR routes.
   Disallow `unsafe-inline`; rely on Astro's hashed scripts and
   styles.
-- **MDX sanitisation** — MDX executes JSX. Treat untrusted MDX input
+- **MDX sanitization** — MDX executes JSX. Treat untrusted MDX input
   exactly like untrusted code. For user-submitted Markdown, render
-  through a sanitised pipeline (e.g. `rehype-sanitize`) and never
+  through a sanitized pipeline (e.g. `rehype-sanitize`) and never
   through `@astrojs/mdx` directly.
 - **External fetches in frontmatter** run on the server — apply the
   same input-validation, timeout, and error-handling discipline as

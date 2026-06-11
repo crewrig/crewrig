@@ -77,7 +77,7 @@ Detailed instructions, workflows, constraints...
 | `name` | string | Component identifier (kebab-case) |
 | `description` | string | Brief description for discovery. Used by both tools. |
 | `type` | string | `skill`, `command`, or `agent` |
-| `metadata` | mapping | Optional container recognised by the agentskills.io spec for non-standard keys. crewrig curates `metadata.provenance` here (see [Provenance & Forks](#provenance--forks)). |
+| `metadata` | mapping | Optional container recognized by the agentskills.io spec for non-standard keys. crewrig curates `metadata.provenance` here (see [Provenance & Forks](#provenance--forks)). |
 
 ### Gemini CLI Overrides (optional)
 
@@ -212,7 +212,7 @@ survives forks and lets feedback flow back to the right repo. The block
 is optional but recommended for any component intended to be re-shared.
 
 `provenance` lives under `metadata:` to keep the root frontmatter
-restricted to fields recognised by the
+restricted to fields recognized by the
 [agentskills.io specification](https://agentskills.io/specification)
 (`name`, `description`, `license`, `compatibility`, `metadata`,
 `allowed-tools`). The spec reserves `metadata:` for non-standard keys —
@@ -274,7 +274,7 @@ The `metadata.provenance.version` field follows
 | Bump | When |
 |---|---|
 | **PATCH** (`1.0.0 → 1.0.1`) | Friction-driven fix or wording change. The skill's contract is unchanged; an agent following `1.0.0` and an agent following `1.0.1` produce equivalent output. Most curator-driven fixes are PATCH. |
-| **MINOR** (`1.0.1 → 1.1.0`) | Additive change. New section, new recognition signal, new payload field, new optional behaviour. Backward-compatible — agents following `1.0.x` keep working unchanged. |
+| **MINOR** (`1.0.1 → 1.1.0`) | Additive change. New section, new recognition signal, new payload field, new optional behavior. Backward-compatible — agents following `1.0.x` keep working unchanged. |
 | **MAJOR** (`1.1.0 → 2.0.0`) | Breaking contract change. Removed payload fields, renamed required fields, semantics flip. Forks pinning `1.x` need to migrate consciously. |
 
 **Bump rule.** Every PR that touches a `SKILL.md` or `AGENT.md`

@@ -1,10 +1,10 @@
 ---
 name: designer
-description: "Visual design specialist. Produces colour palette tokens, typographic scale,
+description: "Visual design specialist. Produces color palette tokens, typographic scale,
 spacing scale, tokens.css, and Tailwind config extensions. Delivers component
 anatomy specifications and design rationale. Does NOT write application code."
 ---
-<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Designer Agent
 
@@ -14,7 +14,7 @@ systems, CSS custom properties, Tailwind, and accessibility sections
 once at the start of any session and apply their patterns.
 
 Your output is design tokens and component anatomy specifications.
-You do not write application code, page templates, or behavioural
+You do not write application code, page templates, or behavioral
 JavaScript. Those decisions belong to the `frontend-developer` agent
 downstream.
 
@@ -150,7 +150,7 @@ Three layers, strict order:
 }
 ```
 
-### Colour palette
+### Color palette
 
 Required primitive blues for the accent ramp:
 
@@ -165,9 +165,9 @@ Extend with neutral, success, warning, danger, and info ramps as the
 scope requires. Each ramp is a primitive — never reference these
 hexes from components.
 
-### WCAG colour contrast
+### WCAG color contrast
 
-Every semantic colour pair MUST meet WCAG 2.1 AA contrast:
+Every semantic color pair MUST meet WCAG 2.1 AA contrast:
 
 - **Normal text**: ≥ 4.5 : 1 against its background.
 - **Large text (≥ 18 pt or ≥ 14 pt bold)** and **UI components**

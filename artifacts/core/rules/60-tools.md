@@ -390,7 +390,7 @@ Otherwise the same friction repeats forever.
 
 This section defines the **fire-and-forget tagging protocol**: agents
 tag frictions as they happen, never blocking the work in progress and
-never waiting for a synchronous acknowledgement. A separate Curator
+never waiting for a synchronous acknowledgment. A separate Curator
 agent (out of scope for this section) reads the tags on demand and
 proposes feedback MRs against the canonical/feedback repos declared
 in each component's `provenance:` block.
@@ -418,7 +418,7 @@ one source of truth.
    a constraint set by another skill or agent — not by the user's
    request.
 3. **Tool surprise (second time).** A tool produced surprising or
-   inconsistent behaviour for the second time in the same session.
+   inconsistent behavior for the second time in the same session.
    First time is bad luck; second time is a pattern.
 4. **Process gap.** A documented workflow step turned out to be
    missing, ambiguous, contradictory, or out of date.
@@ -458,7 +458,7 @@ mempalace_add_drawer(
 
 ### Categories (5, fixed)
 
-Use exactly one of these as `room`. Sub-categorisation is free-form
+Use exactly one of these as `room`. Sub-categorization is free-form
 inside the payload (`subcategory:` field).
 
 | Category | Room name | Use for |

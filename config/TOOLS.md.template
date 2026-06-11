@@ -1,24 +1,24 @@
 # Tools and MCP Server Guidelines — TEMPLATE
 #
 # This file is an illustrative starting point (examples layer).
-# Copy it to config/TOOLS.md and customise it for your organisation.
+# Copy it to config/TOOLS.md and customize it for your organization.
 # The completed config/TOOLS.md is overlay — owned by your org.
 #
-# IMPORTANT: This file covers ORGANISATION-SPECIFIC tool preferences only.
+# IMPORTANT: This file covers ORGANIZATION-SPECIFIC tool preferences only.
 # Framework-critical instructions (three-tier memory architecture, MemPalace
 # protocol, harness engineering loop, Sequential Thinking, Obsidian access
 # model) are shipped by the upstream CrewRig framework in the core rules file
 # deployed at priority 60 (~/.claude/rules/60-tools.md). This file is
-# deployed at priority 65 and layers organisation-specific settings on top.
+# deployed at priority 65 and layers organization-specific settings on top.
 #
 # Do NOT duplicate framework content here. Use this file for:
-#   - Tooling preferences specific to your organisation (editors, CLIs, etc.)
-#   - MCP server declarations for organisation-specific integrations
+#   - Tooling preferences specific to your organization (editors, CLIs, etc.)
+#   - MCP server declarations for organization-specific integrations
 #     (Jira, Confluence, Slack, internal APIs, etc.)
 #   - Workflow preferences that apply across all teams in your org
 #
 # Remove this comment block and all placeholder comments before committing
-# your customised version.
+# your customized version.
 
 ## Tooling Preferences
 
@@ -40,12 +40,12 @@
   - Communication: Slack (#engineering channel for broad announcements)
 -->
 
-[Replace with your organisation's tooling preferences.]
+[Replace with your organization's tooling preferences.]
 
 ## MCP Server Declarations
 
 <!--
-  List MCP servers that are specific to your organisation's integrations.
+  List MCP servers that are specific to your organization's integrations.
   These are servers beyond the framework defaults (MemPalace,
   SequentialThinking, GitHub) that your agents should be aware of.
 
@@ -64,11 +64,11 @@
   - `confluence` — Confluence wiki. Read-only during normal work; page
     writes require explicit user consent.
 
-  If your organisation has no additional MCP servers, write "No additional
+  If your organization has no additional MCP servers, write "No additional
   MCP servers beyond the framework defaults."
 -->
 
-[Replace with your organisation's MCP server declarations, or state that none apply.]
+[Replace with your organization's MCP server declarations, or state that none apply.]
 
 ## Workflow Preferences
 
@@ -82,9 +82,9 @@
   - Prefer interactive rebases over merge commits; squash before opening a PR.
   - Always run `mvn verify` locally before pushing; CI mirrors this step.
 
-  If your organisation's workflow conventions are entirely captured in
+  If your organization's workflow conventions are entirely captured in
   AGENTS.md and the team/expertise files, write "No additional workflow
   preferences beyond what is described in AGENTS.md."
 -->
 
-[Replace with your organisation's workflow preferences.]
+[Replace with your organization's workflow preferences.]

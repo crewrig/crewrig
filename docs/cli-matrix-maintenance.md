@@ -55,13 +55,13 @@ it is a parity violation, not a deferral.
 **Protocol-only exemption.** When the only file touched on the trigger
 surface is a top-level entry-point file (`AGENTS.md`, `CLAUDE.md`,
 `GEMINI.md`) AND the diff adds purely lifecycle / process documentation
-with no CLI-specific behaviour (no new path, command, hook, or
+with no CLI-specific behavior (no new path, command, hook, or
 configuration unique to one CLI), the obligation to update
 `docs/cli-matrix.md` does NOT apply. This codifies the precedent set by
 PRs #181 (Spec-PR workflow) and #183 (Plan review protocol) — both
 AGENTS.md-only, both pure lifecycle-protocol additions. The exemption
 SHALL NOT extend to changes that introduce or modify CLI-specific
-behaviour even when delivered exclusively through an entry-point file.
+behavior even when delivered exclusively through an entry-point file.
 
 **Symmetric-script rule.** When adding a new CLI target, every script
 under `scripts/` that already has a target for an existing CLI MUST

@@ -26,7 +26,7 @@ nothing experimental appears in their home unless they asked for it.
 1. The build SHALL compile artifact components for every tier present under
    `artifacts/`, including a tier added later, without relying on a fixed
    enumeration of tier names.
-2. The organisation tier SHALL be named `artifacts/org/`, replacing
+2. The organization tier SHALL be named `artifacts/org/`, replacing
    `artifacts/organisation/`.
 3. A component placed under `artifacts/org/` SHALL be compiled identically to
    a component in any other tier.
@@ -89,6 +89,6 @@ Then  the component is compiled but is not installed into the user home
 
 ## Open questions
 
-- None — the build/install doctrine is fixed by ADR-0011; this spec realises
+- None — the build/install doctrine is fixed by ADR-0011; this spec realizes
   it and carries the `community`/`org` scope requirements that ADR-0011's
   *Consequences* assign to it.

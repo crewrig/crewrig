@@ -6,7 +6,7 @@ Project tickets are multi-step work. They must be treated by a **team of special
 
 The team protocol below governs the **DEV stage** of the lifecycle
 defined in [ADR-0010](adr/0010-spec-plan-review-lifecycle.md).
-SPECS and PLAN run before DEV (with their own artefacts: a spec file
+SPECS and PLAN run before DEV (with their own artifacts: a spec file
 under `/specs/` and a plan comment on the logbook issue); REVIEW runs
 after, and its findings may re-enter DEV (`tech`), PLAN (`arch`), or
 SPECS (`spec`) per the routing matrix in *Retroactive review loop*
@@ -155,7 +155,7 @@ upgrades), insert `security` after `developer` in the applicable template.
 
 Templates 1, 2, and 3 below describe the DEV-stage staffing of the
 ADR-0010 lifecycle. Before any of them runs, the `spec-author` skill
-authors the SPECS-stage artefact: a single Markdown file under
+authors the SPECS-stage artifact: a single Markdown file under
 `/specs/` conforming to `docs/spec-format.md`. The skill is invoked
 once per ticket, in the mode declared by the parent ticket (default
 INTERMEDIATE per ADR-0010).
@@ -189,7 +189,7 @@ user.
 **Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
 draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
 orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
-fulfil its cold-start contract without a valid PR number. `pr-reviewer`
+fulfill its cold-start contract without a valid PR number. `pr-reviewer`
 receives the PR number from `pr-logbook`'s result message (see *Team
 Communication → Rule 1*).
 
@@ -215,7 +215,7 @@ Lighter pipeline — no code, no tests.
 **Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
 draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
 orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
-fulfil its cold-start contract without a valid PR number. `pr-reviewer`
+fulfill its cold-start contract without a valid PR number. `pr-reviewer`
 receives the PR number from `pr-logbook`'s result message (see *Team
 Communication → Rule 1*).
 
@@ -241,7 +241,7 @@ to lock in reproduction.
 **Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
 draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
 orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
-fulfil its cold-start contract without a valid PR number. `pr-reviewer`
+fulfill its cold-start contract without a valid PR number. `pr-reviewer`
 receives the PR number from `pr-logbook`'s result message (see *Team
 Communication → Rule 1*).
 
@@ -276,7 +276,7 @@ mode are orthogonal axes. Any combination is legitimate
 (e.g. `trivial` + `FULL`, `large` + `AUTO`) and the orchestrator
 SHALL NOT reject a spec on the basis of an unusual combination
 (spec 0006 R1). The mode governs user gating per *Interaction modes →
-Behavioural contract per (mode × stage) cell* in AGENTS.md; the tier governs team
+Behavioral contract per (mode × stage) cell* in AGENTS.md; the tier governs team
 composition per the table above.
 
 **Spec-reviewer obligation.** When a spec-PR is cold-reviewed, the

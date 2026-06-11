@@ -8,7 +8,7 @@
 #   - run.sh exists and is executable
 #   - run.sh parses under `bash -n` (no shell-syntax rot)
 #   - run.sh sources at least one helper from $E2E_LIB_DIR (proof that
-#     it honours the runner-injected library directory)
+#     it honors the runner-injected library directory)
 #   - tests/e2e/scenarios/README.md exists and is non-empty
 #   - tests/e2e/defaults.toml declares a [scenarios.<name>] table for
 #     every directory present on disk

@@ -83,10 +83,10 @@ Findings of lower-precedence classes from the same pass SHALL NOT be
 silently dropped — they SHALL be re-tagged onto the next iteration's
 verdict by the next reviewer spawned cold (spec 0005 R5). The engine
 does not parallelise multi-class routing within a single iteration;
-parallelising would fan out the team and require synchronising N
+parallelising would fan out the team and require synchronizing N
 upstream re-spawns against a single PR, which the spec-PR workflow
 (spec 0003) and the plan-review protocol (spec 0004) explicitly
-forbid by their one-artefact-per-stage discipline.
+forbid by their one-artifact-per-stage discipline.
 
 The disambiguation rule on a tie at SPECS time (`arch` vs `spec`,
 `tech` vs `arch`) — escalate upstream — lives in ADR-0010 →
@@ -232,7 +232,7 @@ example as a *retrofit* ("had the engine existed, here is how it
 would have routed") rather than a literal record of label state.
 The substantive routing decision the example demonstrates — three
 non-blocking findings, INTERMEDIATE mode, Rule 4 deciding which
-absorb and which defer — is the engine's intended behaviour
+absorb and which defer — is the engine's intended behavior
 unchanged.
 
 - <https://github.com/crewrig/crewrig/pull/183>

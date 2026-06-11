@@ -75,7 +75,7 @@ fi
 # global harness-friction wing.
 #
 # `mempalace add-drawer` is an MCP tool, not a CLI subcommand. Two paths
-# exist for writing a drawer from a containerised e2e scenario:
+# exist for writing a drawer from a containerized e2e scenario:
 #   1. init + mine — write the content to a file, `mempalace init` the
 #      palace from the directory (detects "frictions" as a room from
 #      the subdirectory name), then `mempalace mine` ingests it into

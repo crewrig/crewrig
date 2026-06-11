@@ -11,10 +11,10 @@
 #       * fail-loud when daemon unreachable
 #       * carries the chromadb version-pin comment
 #
-# Static tests run unconditionally. Behavioural tests that need the real
+# Static tests run unconditionally. Behavioral tests that need the real
 # chroma binary skip cleanly when it is absent (e.g. CI without pipx).
 #
-# Behavioural tests use:
+# Behavioral tests use:
 #   - an isolated $HOME so the user's real ~/.mempalace/chroma-server.pid
 #     is never touched.
 #   - port 18001 (avoid colliding with a running production daemon on 8001).
@@ -88,7 +88,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Section B — Behavioural checks
+# Section B — Behavioral checks
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Resolve the mempalace pipx venv via common.sh's detect_mempalace_python
@@ -118,15 +118,15 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 if [[ ! -x "$PYTHON_BIN" || ! -x "$CHROMA_BIN" ]]; then
-  note_skip "behavioural — wrapper daemon-unreachable exit" \
+  note_skip "behavioral — wrapper daemon-unreachable exit" \
     "mempalace pipx venv not installed"
-  note_skip "behavioural — wrapper _http_factory returns ClientAPI" \
+  note_skip "behavioral — wrapper _http_factory returns ClientAPI" \
     "mempalace pipx venv not installed"
-  note_skip "behavioural — start is idempotent (same PID)" \
+  note_skip "behavioral — start is idempotent (same PID)" \
     "mempalace pipx venv not installed"
-  note_skip "behavioural — stop removes PID file" \
+  note_skip "behavioral — stop removes PID file" \
     "mempalace pipx venv not installed"
-  note_skip "behavioural — status exits 1 when not running" \
+  note_skip "behavioral — status exits 1 when not running" \
     "mempalace pipx venv not installed"
 else
   TMP_HOME="$(mktemp -d -t chroma-server-test.XXXXXX)"
@@ -141,13 +141,13 @@ else
   rc=$?
   if (( rc != 0 )); then
     if echo "$err_out" | grep -qi "unreachable"; then
-      note_pass "behavioural — wrapper daemon-unreachable exit"
+      note_pass "behavioral — wrapper daemon-unreachable exit"
     else
-      note_fail "behavioural — wrapper daemon-unreachable exit" \
+      note_fail "behavioral — wrapper daemon-unreachable exit" \
         "rc=$rc but stderr lacks 'unreachable': $err_out"
     fi
   else
-    note_fail "behavioural — wrapper daemon-unreachable exit" \
+    note_fail "behavioral — wrapper daemon-unreachable exit" \
       "wrapper exited 0 with no daemon (expected non-zero)"
   fi
 
@@ -159,9 +159,9 @@ else
     bash "$STATUS_SH" >/dev/null 2>&1
   rc=$?
   if (( rc == 1 )); then
-    note_pass "behavioural — status exits 1 when not running"
+    note_pass "behavioral — status exits 1 when not running"
   else
-    note_fail "behavioural — status exits 1 when not running" \
+    note_fail "behavioral — status exits 1 when not running" \
       "got exit=$rc (expected 1)"
   fi
 
@@ -172,11 +172,11 @@ else
                bash "$START_SH" 2>&1)"
   start_rc=$?
   if (( start_rc != 0 )) || [[ ! -f "$PID_FILE" ]]; then
-    note_fail "behavioural — start is idempotent (same PID)" \
+    note_fail "behavioral — start is idempotent (same PID)" \
       "first start failed (rc=$start_rc): $start_out"
-    note_fail "behavioural — wrapper _http_factory returns ClientAPI" \
+    note_fail "behavioral — wrapper _http_factory returns ClientAPI" \
       "daemon failed to start"
-    note_fail "behavioural — stop removes PID file" \
+    note_fail "behavioral — stop removes PID file" \
       "daemon failed to start"
   else
     first_pid="$(cat "$PID_FILE")"
@@ -190,7 +190,7 @@ else
     if [[ "$first_pid" == "$second_pid" ]]; then
       note_pass "behavioural — start is idempotent (same PID ${first_pid})"
     else
-      note_fail "behavioural — start is idempotent (same PID)" \
+      note_fail "behavioral — start is idempotent (same PID)" \
         "first=${first_pid} second=${second_pid}"
     fi
 
@@ -215,9 +215,9 @@ print('OK')
 " 2>&1)"
       factory_rc=$?
       if (( factory_rc == 0 )) && [[ "$factory_out" == *"OK"* ]]; then
-        note_pass "behavioural — wrapper _http_factory returns ClientAPI"
+        note_pass "behavioral — wrapper _http_factory returns ClientAPI"
       else
-        note_fail "behavioural — wrapper _http_factory returns ClientAPI" \
+        note_fail "behavioral — wrapper _http_factory returns ClientAPI" \
           "rc=$factory_rc out=$factory_out"
       fi
 
@@ -227,9 +227,9 @@ print('OK')
       MEMPALACE_CHROMA_PORT="$TEST_PORT" \
       bash "$STOP_SH" >/dev/null 2>&1
     if [[ ! -f "$PID_FILE" ]]; then
-      note_pass "behavioural — stop removes PID file"
+      note_pass "behavioral — stop removes PID file"
     else
-      note_fail "behavioural — stop removes PID file" \
+      note_fail "behavioral — stop removes PID file" \
         "PID file still present: $PID_FILE"
     fi
   fi

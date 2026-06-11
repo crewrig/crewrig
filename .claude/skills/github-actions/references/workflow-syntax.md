@@ -136,7 +136,7 @@ explicitly on Windows runners pulls in Git Bash.
 
 ### `concurrency`
 
-Concurrency control group. Runs sharing a group are serialised; the
+Concurrency control group. Runs sharing a group are serialized; the
 optional `cancel-in-progress` boolean cancels older runs in the same
 group when a new one queues.
 
@@ -146,7 +146,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 ```
 
-Use cases: avoid wasting compute on rapid pushes; serialise
+Use cases: avoid wasting compute on rapid pushes; serialize
 deployments so only one ever runs to a given environment.
 
 ### `jobs`

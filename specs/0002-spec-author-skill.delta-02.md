@@ -39,10 +39,10 @@ anchor would import a concept the framework does not otherwise carry.
    1. The originating ticket identifier (GitHub issue number or
       equivalent).
    2. The current lifecycle stage (here always `SPECS`) and the
-      artefact being authored (e.g. *"delta-spec on parent spec 0002"*).
+      artifact being authored (e.g. *"delta-spec on parent spec 0002"*).
    3. The current interview-pass position — which question of which
       mode (e.g. *"Question 4 of 6 — failure-path scenario"*).
-   4. The decisions already taken in this session, summarised in one
+   4. The decisions already taken in this session, summarized in one
       or two clauses (e.g. *"complexity tier already set to `small`,
       interaction mode to `INTERMEDIATE`"*).
 

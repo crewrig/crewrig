@@ -5,7 +5,7 @@
 ## Context
 
 CrewRig compiles artifact sources under `artifacts/` into per-CLI component
-files via `scripts/build-components.sh`. The directory is organised into
+files via `scripts/build-components.sh`. The directory is organized into
 tiers — `core/`, `library/`, `community/`, and `organisation/` — classified
 by `docs/layers.md` and spec 0014.
 
@@ -25,7 +25,7 @@ inspecting the current code:
    (`$REPO_DIR/.claude/skills/`, `.gemini/skills/`, `.github/skills/`). It
    performs no scope routing. Spec 0014 R11 states the *intent* that `core`
    is project-scoped and `library` is user-home-scoped, but the build
-   realises only the former; home installation of skills exists solely in
+   realizes only the former; home installation of skills exists solely in
    out-of-band manual scripts (`manage-claude-component.sh`). The result: the
    "user-home-scoped" classification is aspirational, and there is no
    first-class notion of *installing* a built artifact to a destination
@@ -87,7 +87,7 @@ validated organization components.
 - **Build refactor.** `build-components.sh` stops writing non-`core` tiers
   directly into the project-side output directories. The separation of build
   output from install destination — staging layout, the install entry point,
-  the opt-in selection surface for `community`/`org` — is the WHAT realised by
+  the opt-in selection surface for `community`/`org` — is the WHAT realized by
   spec 0019; this ADR fixes the doctrine, not the mechanism.
 - **Refines spec 0014.** Spec 0014 R11's `core → project` and `library → home`
   scope facts are preserved. This ADR adds the `community`/`org` scope and

@@ -55,9 +55,9 @@ validate format conformance).
 
 One paragraph, plain prose, that captures the user-facing WHAT in a
 single breath. The intent answers "what would a user notice if this
-spec were realised?". HOW words (`by`, `via`, `using`, technology
+spec were realized?". HOW words (`by`, `via`, `using`, technology
 names, library choices) are forbidden here; they belong in the plan
-artefact defined in issue #169.
+artifact defined in issue #169.
 
 ### 2. `## Requirements`
 
@@ -91,9 +91,9 @@ plan stage for a manual-verification clause.
 
 ### 4. `## Out of scope`
 
-Bullet list. Each bullet names a behaviour, an integration, or a
+Bullet list. Each bullet names a behavior, an integration, or a
 boundary that this spec deliberately excludes. The spec reviewer
-rejects implicit scope; if a behaviour is not explicitly in
+rejects implicit scope; if a behavior is not explicitly in
 `## Requirements` and not explicitly excluded here, the spec is
 under-specified and SHALL be sent back to the author.
 
@@ -163,7 +163,7 @@ delta-spec file remains the spec's title; no intermediate H2 wrapper
 
 All three sections MUST be present (empty is allowed); the linter will
 check for presence, not content. This mirrors the OpenSpec delta
-convention so external readers familiar with that vocabulary recognise
+convention so external readers familiar with that vocabulary recognize
 the structure.
 
 ### Versioning
@@ -184,10 +184,10 @@ the original file's `version` is never edited after merge.
 ## Lifecycle states
 
 The `status` field tracks where the spec sits in its own life. Each
-transition has a single authority and an accompanying artefact; the
+transition has a single authority and an accompanying artifact; the
 table below is the contract.
 
-| `status` | Trigger | Authority | Accompanying artefact |
+| `status` | Trigger | Authority | Accompanying artifact |
 |---|---|---|---|
 | `draft` | Spec file opened in the working branch | Spec author (human or `spec-author` skill) | Spec file in the worktree, no PR yet |
 | `approved` | Spec PR merged on `main` | Spec reviewer (per the interaction mode declared in frontmatter) | Merged spec PR + logbook comment recording the approval |
@@ -227,7 +227,7 @@ Alongside the lifecycle-metadata carve-out above, the append-only rule permits
 **meaning-preserving editorial edits** — orthography and typo corrections — to
 the body prose of a merged spec. An editorial edit may change the spelling or
 surface form of a word but SHALL NOT alter meaning. Permitted: fixing a
-misspelling, normalising a British spelling to American, repairing a typo.
+misspelling, normalizing a British spelling to American, repairing a typo.
 
 Forbidden, still: any change to the substance of a requirement, scenario,
 intent, or out-of-scope item. Correcting the spelling of a word inside a

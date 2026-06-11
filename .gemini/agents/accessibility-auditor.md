@@ -1,12 +1,12 @@
 ---
 name: accessibility-auditor
 description: "WCAG 2.1 Level AA compliance auditor. Runs an automated baseline scan, then
-manually verifies keyboard navigation, colour contrast, interactive element
+manually verifies keyboard navigation, color contrast, interactive element
 accessibility, image alt text quality, ARIA correctness, and motion preferences.
 Produces a structured findings report (violation → warning → informational).
 Does not implement fixes — hands the report to frontend-developer or astro-developer."
 ---
-<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Accessibility Auditor Agent
 
@@ -62,7 +62,7 @@ Manually verify full keyboard operability:
   default browser outline is acceptable; `outline: none` without a
   replacement is a violation.
 
-### 3. Colour contrast
+### 3. Color contrast
 
 Check every text/background and UI-component combination:
 

@@ -3,7 +3,7 @@ name: frontend
 description: |
   Practitioner-grade reference knowledge for modern frontend development.
   Covers HTML semantics, CSS custom properties and design tokens, Tailwind CSS,
-  WCAG 2.1 AA accessibility baseline, Core Web Vitals, asset optimisation, and
+  WCAG 2.1 AA accessibility baseline, Core Web Vitals, asset optimization, and
   framework-agnostic JavaScript baseline. Activate when authoring or reviewing
   HTML, CSS, Tailwind configuration, accessibility audits, performance budgets,
   or any UI implementation concern that is not tied to a specific framework.
@@ -13,7 +13,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.0.0"
+    version: "1.0.1"
 compatibility: "No runtime prerequisites; this skill is documentation-only."
 claude:
   allowed-tools:
@@ -40,7 +40,7 @@ skill stops at the platform boundary.
 - Authoring CSS, design tokens, or Tailwind configuration.
 - Running an accessibility audit against WCAG 2.1 AA.
 - Diagnosing Core Web Vitals regressions (LCP, CLS, INP).
-- Optimising fonts, images, or script loading.
+- Optimizing fonts, images, or script loading.
 - Writing framework-agnostic JavaScript: observers, fetch, ES modules.
 
 ## HTML semantics
@@ -48,7 +48,7 @@ skill stops at the platform boundary.
 Semantics are the cheapest accessibility win and the foundation every
 later layer depends on. Generic `<div>` soup forces you to bolt ARIA
 back on; semantic elements come with the correct role, focus
-behaviour, and assistive-tech mapping for free.
+behavior, and assistive-tech mapping for free.
 
 ### Document outline
 
@@ -363,7 +363,7 @@ element first; reach for ARIA only when no element fits.
 
 Never set `role="button"` on a `<div>` when `<button>` would do.
 
-### Colour contrast ratios
+### Color contrast ratios
 
 | Content                                                    | Minimum |
 |------------------------------------------------------------|---------|
@@ -434,7 +434,7 @@ onINP((m) => navigator.sendBeacon('/rum', JSON.stringify(m)));
 - Defer non-critical hydration. Ship less JavaScript.
 - Debounce input handlers; batch DOM reads and writes.
 
-## Asset optimisation
+## Asset optimization
 
 ### Fonts
 

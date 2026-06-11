@@ -15,10 +15,10 @@ version: 1.0.0
 CrewRig gains a normative document — `docs/layers.md` — that classifies every
 top-level repository path as belonging to the `core`, `overlay`, or `examples`
 layer. This document is the single authoritative boundary contract that makes the
-two-layer adoption model legible: any developer, any adopting organisation, and
+two-layer adoption model legible: any developer, any adopting organization, and
 any downstream sub-specification implementation can consult it to know, without
 ambiguity, which paths are frozen upstream territory and which paths belong to
-the organisation.
+the organization.
 
 ## Requirements
 
@@ -31,12 +31,12 @@ the organisation.
    `examples`.
 3. `docs/layers.md` SHALL define the `core` layer as the bounded set of paths
    controlled exclusively by the upstream CrewRig project, which adopting
-   organisations SHALL NOT modify.
+   organizations SHALL NOT modify.
 4. `docs/layers.md` SHALL define the `overlay` layer as the bounded set of paths
-   reserved for adopting organisations' identity, server integrations, and
+   reserved for adopting organizations' identity, server integrations, and
    internal components, which upstream updates SHALL NOT touch.
 5. `docs/layers.md` SHALL define the `examples` layer as the set of
-   illustrative, template-intended paths that adopting organisations may copy and
+   illustrative, template-intended paths that adopting organizations may copy and
    adapt, but that are not part of the upstream contract and are not intended to
    be extended in place.
 6. `docs/layers.md` SHALL classify as `core`, at minimum, the paths enumerated
@@ -52,7 +52,7 @@ the organisation.
    `config/teams/`, `config/expertise/`, `config/level/`, `config/claude/`,
    `config/gemini/`, `config/copilot/`, `community-config/mcp-servers/`,
    `community-config/hooks/`, `community-config/themes/`, and the designated
-   areas for organisation-specific skills and agents.
+   areas for organization-specific skills and agents.
 8. `docs/layers.md` SHALL classify as `examples`, at minimum, the illustrative
    role skill directories under `community-config/skills/` that are not part of
    the harness skill set (as enumerated in spec 0012 R8, amended by delta-01)
@@ -73,16 +73,16 @@ the organisation.
 
 **Scenario:** Developer identifies the layer of an org-specific config path
 
-Given a developer at an adopting organisation who wants to know whether they may
-customise `config/SOUL.md`
+Given a developer at an adopting organization who wants to know whether they may
+customize `config/SOUL.md`
 When they consult `docs/layers.md`
 Then they find `config/SOUL.md` listed under the `overlay` layer with a
-description confirming it is reserved for the organisation's identity.
+description confirming it is reserved for the organization's identity.
 
 **Scenario:** Contributor verifies that `docs/` is frozen upstream territory
 
 Given a contributor considering whether to add a documentation file directly to
-`docs/` in their organisation's repository
+`docs/` in their organization's repository
 When they consult `docs/layers.md`
 Then they find `docs/` listed under the `core` layer, understanding that any
 addition there must originate from an upstream CrewRig pull request, not a local
@@ -103,9 +103,9 @@ omission is intentional.
   sub-specs B, C, and D of spec 0012.
 - Creating the `examples/` directory and populating it — covered by the
   directory-restructuring sub-spec.
-- Implementing the synchronisation mechanism that enforces core-layer immutability
+- Implementing the synchronization mechanism that enforces core-layer immutability
   at sync time — covered by sub-spec D.
-- Authoring the adoption guide that describes how an organisation populates the
+- Authoring the adoption guide that describes how an organization populates the
   overlay layer — covered by sub-spec E1.
 - Updating `AGENTS.md` to cross-reference `docs/layers.md` — the implementation
   PR for this sub-spec MAY include it, but it is not normatively required here.

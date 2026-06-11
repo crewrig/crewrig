@@ -56,24 +56,24 @@ promoted from the sandbox.
 
 Original:
 
-> 7\. The overlay layer SHALL provide designated locations for: organisation
+> 7\. The overlay layer SHALL provide designated locations for: organization
 > identity, agent personality configuration, user profiles, team
-> configurations, MCP server declarations, and organisation-specific skills
+> configurations, MCP server declarations, and organization-specific skills
 > and agents.
 
 Replacement:
 
-> 7\. The overlay layer SHALL provide designated locations for: organisation
+> 7\. The overlay layer SHALL provide designated locations for: organization
 > identity (`crewrig.config.toml`, `config/ORGANIZATION.md`, `config/TOOLS.md`),
 > CLI-specific overlay configuration (`config/claude/`, `config/gemini/`,
 > `config/copilot/`), MCP server declarations and lifecycle hooks
 > (`artifacts/community/mcp-servers/`, `artifacts/community/hooks/`), and two
-> tiers of organisation-specific component areas:
+> tiers of organization-specific component areas:
 > `artifacts/community/` (sandbox — experimentation and new development) and
 > `artifacts/organisation/` (validated — production-ready components approved
-> for use across the organisation). Both tiers follow the same internal
+> for use across the organization). Both tiers follow the same internal
 > structure (`skills/`, `agents/`) and are owned exclusively by the adopting
-> organisation.
+> organization.
 
 ---
 
@@ -82,7 +82,7 @@ skills and agents are relocated into `artifacts/core/` alongside the harness
 components. The operational nature of these components (actively used by the
 upstream CrewRig project) takes precedence over their illustrative role; their
 location in `artifacts/core/` communicates that they are upstream-maintained
-reference implementations that adopting organisations may study and copy into
+reference implementations that adopting organizations may study and copy into
 their own overlay tiers.
 
 Original (as amended by delta-01):
@@ -112,7 +112,7 @@ Replacement:
 > `regression-sentinel`, `scenario-author`, `security`, `seo-specialist`,
 > `tester`, `visual-regression-tester`, `web-conformity-checker` (agents).
 > These components are maintained by upstream and serve as reference
-> implementations; adopting organisations may copy any of them into their
+> implementations; adopting organizations may copy any of them into their
 > `artifacts/community/` or `artifacts/organisation/` tiers and adapt them
 > freely.
 

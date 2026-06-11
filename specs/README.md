@@ -7,8 +7,8 @@ the lifecycle defined in
 A spec is the normative WHAT of a ticket: what a user-facing change
 must achieve, written down before any plan is drafted and any code is
 written. The HOW (steps, blast radius, alternatives) lives in the plan
-artefact attached to the logbook issue (format defined in issue #169);
-the realisation lives on a feature branch.
+artifact attached to the logbook issue (format defined in issue #169);
+the realization lives on a feature branch.
 
 ## Layout
 
@@ -31,7 +31,7 @@ specs/
 ## Two-PR flow
 
 Specs ship in a **dedicated spec PR**, separately from the
-implementation PR that realises them. The spec-branch is named
+implementation PR that realizes them. The spec-branch is named
 `spec/<NNNN>-<slug>` (or `spec/<NNNN>-<slug>-delta-<NN>` for
 delta-spec amendments), carries exactly one new file under `/specs/`,
 and MUST merge to `main` before the implementation branch

@@ -1,6 +1,6 @@
 # Adoption Guide
 
-This guide walks an organisation through forking CrewRig, initialising the
+This guide walks an organization through forking CrewRig, initializing the
 overlay configuration, running the build pipeline, deploying to CLI rules
 directories, and staying in sync with upstream. Follow the steps in order.
 No step requires reading script source code — all expected outcomes and
@@ -14,22 +14,22 @@ Before starting, ensure the following are in place:
 - **`bash`** — version 4 or later; required by all setup and build scripts.
 - **A TOML-capable editor** — for editing `crewrig.config.toml`.
   Any plain-text editor works; the TOML syntax used is minimal.
-- **Write access to a Git repository** — the organisation's copy of
+- **Write access to a Git repository** — the organization's copy of
   CrewRig, hosted on any Git platform (GitHub, GitLab, Gitea, or a
   self-hosted instance). The repository may be public or private and
-  will serve as the overlay configuration home for the organisation.
+  will serve as the overlay configuration home for the organization.
 - **The target CLI tools installed** — Claude Code, Gemini CLI, and/or
-  GitHub Copilot CLI, whichever CLIs the organisation uses. The guide
+  GitHub Copilot CLI, whichever CLIs the organization uses. The guide
   does not cover installing those tools; treat them as installed before
   proceeding.
 
-## Step 1 — Set up the organisation repository
+## Step 1 — Set up the organization repository
 
 Create a repository on any Git hosting platform (GitHub, GitLab, Gitea,
-Bitbucket, or a self-hosted instance) to serve as the organisation's overlay
+Bitbucket, or a self-hosted instance) to serve as the organization's overlay
 configuration home. The repository may be public or private.
 
-1. Clone the upstream CrewRig repository and push it to the organisation's Git
+1. Clone the upstream CrewRig repository and push it to the organization's Git
    host. On GitHub you may use the **Fork** button as a shortcut; on any other
    host, or when you want a private repository, clone and re-push manually:
 
@@ -62,12 +62,12 @@ upstream URL directly from `crewrig.config.toml → canonical_repo` — it does
 not rely on a named git remote. The `upstream` remote shown above is optional;
 retain it only if you want to run manual git operations such as `git log
 upstream/main`. Upstream changes flow in via the sync script; the
-organisation's overlay content lives on top and is never touched by the sync.
+organization's overlay content lives on top and is never touched by the sync.
 
-## Step 2 — Initialise the overlay configuration
+## Step 2 — Initialize the overlay configuration
 
 Copy the configuration template and replace the placeholder values with the
-organisation's own repository URLs.
+organization's own repository URLs.
 
 ```bash
 cp crewrig.config.toml.template crewrig.config.toml
@@ -95,11 +95,11 @@ Replace both values:
 
 - `canonical_repo` — set to the upstream CrewRig URL
   (`https://github.com/crewrig/crewrig`) so that the audit trail and
-  license trace remain intact. Override this only if the organisation's
+  license trace remain intact. Override this only if the organization's
   fork is itself the canonical upstream for a downstream deployment.
-- `feedback_repo` — set to the URL of the organisation's own repository
+- `feedback_repo` — set to the URL of the organization's own repository
   (on any Git hosting platform — GitHub, GitLab, Gitea, etc.) so that
-  friction issues opened by the harness curator land on the organisation's
+  friction issues opened by the harness curator land on the organization's
   tracker, not on the upstream project.
 
 Commit the file:
@@ -109,9 +109,9 @@ git add crewrig.config.toml
 git commit -m "⚙️ Initialise crewrig.config.toml for <YOUR-ORG>"
 ```
 
-## Step 3 — Initialise the organisation identity
+## Step 3 — Initialize the organization identity
 
-Copy the organisation identity template and populate its sections.
+Copy the organization identity template and populate its sections.
 
 ```bash
 cp config/ORGANIZATION.md.template config/ORGANIZATION.md
@@ -120,11 +120,11 @@ cp config/ORGANIZATION.md.template config/ORGANIZATION.md
 Open `config/ORGANIZATION.md` and fill in each section. The template
 provides guidance comments inside each section. At minimum, complete:
 
-- **Identity** — a 2–4 sentence description of the organisation, its scale,
+- **Identity** — a 2–4 sentence description of the organization, its scale,
   and its mission.
 - **Values and Principles** — 3–6 core engineering values that guide
   trade-off decisions.
-- **Objectives** — the organisation's current strategic engineering
+- **Objectives** — the organization's current strategic engineering
   objectives.
 - **Assets** — significant shared platforms, product lines, libraries, or
   data stores that agents should be aware of.
@@ -138,7 +138,7 @@ provides guidance comments inside each section. At minimum, complete:
   explicitly.
 
 Remove all placeholder comments and placeholder text (`[Replace with …]`)
-before committing. This file is overlay — owned by the organisation — and
+before committing. This file is overlay — owned by the organization — and
 will not be overwritten by upstream syncs.
 
 ```bash
@@ -146,16 +146,16 @@ git add config/ORGANIZATION.md
 git commit -m "⚙️ Initialise config/ORGANIZATION.md for <YOUR-ORG>"
 ```
 
-## Step 4 — Initialise the tool configuration
+## Step 4 — Initialize the tool configuration
 
-Copy the tool configuration template and fill in the organisation-specific
+Copy the tool configuration template and fill in the organization-specific
 sections.
 
 ```bash
 cp config/TOOLS.md.template config/TOOLS.md
 ```
 
-Open `config/TOOLS.md`. This file layers organisation-specific settings
+Open `config/TOOLS.md`. This file layers organization-specific settings
 on top of the framework defaults (three-tier memory architecture, MemPalace
 protocol, harness loop, Sequential Thinking) that the upstream framework
 ships via the core rules file deployed at priority 60. Do **not** duplicate
@@ -163,10 +163,10 @@ framework content; use this file only for:
 
 - **Tooling Preferences** — editors, terminal setup, communication
   platforms, and any org-wide CLI tools that are always available.
-- **MCP Server Declarations** — MCP servers specific to the organisation's
+- **MCP Server Declarations** — MCP servers specific to the organization's
   integrations (Jira, Confluence, Slack, internal APIs). Framework MCP
   servers (MemPalace, SequentialThinking, GitHub) are already covered by
-  the core rules file — do not redeclare them here. If the organisation
+  the core rules file — do not redeclare them here. If the organization
   has no additional MCP servers, write "No additional MCP servers beyond
   the framework defaults."
 - **Workflow Preferences** — org-wide workflow conventions not already
@@ -220,7 +220,7 @@ outputs will contain unreplaced placeholder values (e.g. skills referencing
 the script warns on stderr; when config contains placeholder values no warning
 is emitted. Resolution: complete Step 2 before running the build.
 
-The organisation may also author or override components in
+The organization may also author or override components in
 `artifacts/community/` and `artifacts/org/` — these directories
 are the designated sandbox for org-specific skills, agents, commands, hooks,
 policies, MCP server configurations, and themes. The build script compiles
@@ -282,7 +282,7 @@ re-run.
 
 ## Step 7 — Sync from upstream
 
-After the organisation's fork is in use, pull future upstream core-layer
+After the organization's fork is in use, pull future upstream core-layer
 changes without touching overlay content.
 
 ```bash
@@ -309,11 +309,11 @@ Revert these changes before running sync, or promote them to overlay overrides.
 
 Resolution: see [Troubleshooting — dirty-core refusal](#dirty-core-refusal) below.
 
-### Example catalogues — adopt-on-edit (spec 0021)
+### Example catalogs — adopt-on-edit (spec 0021)
 
 `config/expertise/`, `config/teams/`, and `config/level/` carry the
 **adopt-on-edit** sync policy at directory granularity. The sync reconciles
-each directory member-by-member, so the catalogues stay current by default
+each directory member-by-member, so the catalogs stay current by default
 while remaining yours to shape:
 
 - **Untouched files keep updating.** A role, team, or level file you have not
@@ -321,11 +321,11 @@ while remaining yours to shape:
 - **New examples arrive automatically.** When upstream publishes a new
   example (e.g. a new role under `config/expertise/`), the sync adds it —
   provided that path has never existed in your clone's history.
-- **Customising a file freezes it.** The moment you edit one of these files
+- **Customizing a file freezes it.** The moment you edit one of these files
   (committed or in the working tree), that single path is preserved
   permanently and never overwritten by a later sync.
 - **Deleting a file keeps it deleted.** If you `git rm` and commit a file you
-  do not want, the sync honours your decision and will not re-create it —
+  do not want, the sync honors your decision and will not re-create it —
   even if upstream later changes the upstream copy.
 - **You may add your own files.** Create new role and team files with the
   guided `init-expertise` and `init-team` skills (run `/init-expertise` or
@@ -367,7 +367,7 @@ Set canonical_repo to the upstream repository URL before running sync.
 
 **Resolution:** Follow Step 2. Copy `crewrig.config.toml.template` to
 `crewrig.config.toml`, replace both placeholder values with the
-organisation's actual Git repository URLs, and commit the file before
+organization's actual Git repository URLs, and commit the file before
 re-running either script.
 
 ### Build output directories are empty or partially populated

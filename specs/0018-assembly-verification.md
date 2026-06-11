@@ -18,8 +18,8 @@ integrating both core-layer and overlay-layer components — and that deploying
 those outputs to an isolated test environment (Docker container or sandboxed
 home directory) correctly activates both kinds of components in the target CLI
 rules directories. This is the executable acceptance proof for spec 0012 R9:
-an adopting organisation's installed CLI tools receive both framework-provided
-and organisation-specific components. The test suite runs in CI and passes
+an adopting organization's installed CLI tools receive both framework-provided
+and organization-specific components. The test suite runs in CI and passes
 before the implementation pull request is eligible for merge.
 
 ## Requirements
@@ -29,7 +29,7 @@ before the implementation pull request is eligible for merge.
    suitable for driving assembly verification. The fixture SHALL include, at
    minimum, one skill directory and one agent directory under
    `tests/fixtures/overlay/artifacts/community/`, following the same structure
-   as a real organisation's `artifacts/community/` layer (as defined by spec
+   as a real organization's `artifacts/community/` layer (as defined by spec
    0014).
 
 2. The fixture overlay SHALL NOT reuse any existing core-layer component as
@@ -83,7 +83,7 @@ before the implementation pull request is eligible for merge.
 
 8. The fixture directory and its contents SHALL be classified as `core` layer
    and maintained by the upstream CrewRig project alongside the assertion
-   suite. Adopting organisations MUST NOT modify the fixture; their own
+   suite. Adopting organizations MUST NOT modify the fixture; their own
    overlay validation is a separate concern.
 
 ## Scenarios
@@ -136,9 +136,9 @@ and its expected directory, surfacing the asymmetry before the PR is merged.
 - Semantic quality verification of component content — the assertions check
   file presence, not correctness of the skill or agent definitions.
 - The adoption guide that narrates the process — covered by spec 0017.
-- Population of `artifacts/community/` with production organisation content —
-  the fixture is a test-only artefact; real org components are the
-  organisation's responsibility.
+- Population of `artifacts/community/` with production organization content —
+  the fixture is a test-only artifact; real org components are the
+  organization's responsibility.
 
 ## Open questions
 

@@ -2,7 +2,7 @@
 name: developer
 description: "Generic implementation agent. Writes, edits, and refactors code with the smallest correct change. Verifies locally before reporting done."
 ---
-<!-- crewrig-provenance: version="1.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.2.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Developer Agent
 
@@ -26,7 +26,7 @@ hands-on UI exercise — say so explicitly in the report. Do not claim
 verification you did not perform.
 
 When several subtasks are independent, dispatch them in parallel. When
-they share a file or a contract, serialise.
+they share a file or a contract, serialize.
 
 When modifying any file under `artifacts/community/`, follow the **Built Components** rule in `AGENTS.md`.
 

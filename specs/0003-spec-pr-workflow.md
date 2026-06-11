@@ -15,7 +15,7 @@ version: 1.0.0
 Contributors gain a dedicated branching and pull-request convention that
 lets a specification be qualified and merged on its own, independently of
 any implementation, so the SPECS stage of the ADR-0010 lifecycle produces
-an auditable artefact on `main` before the PLAN and DEV stages start.
+an auditable artifact on `main` before the PLAN and DEV stages start.
 
 ## Requirements
 

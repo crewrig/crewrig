@@ -9,7 +9,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${FEEDBACK_REPO}"
-    version: "1.0.0"
+    version: "1.0.1"
 claude:
   allowed-tools:
     - Read
@@ -24,7 +24,7 @@ claude:
 
 # Web Tester
 
-End-to-end web testing covers behaviours a unit test cannot reach: real
+End-to-end web testing covers behaviors a unit test cannot reach: real
 browser rendering, network conditions, accessibility tree, visual
 output. Bias toward fewer, sharper scenarios that exercise critical
 user journeys — not exhaustive click-throughs.
@@ -55,7 +55,7 @@ asked for one, do not invent it — say so and stop.
   **SeleniumLibrary** — preferred when the project already runs
   Robot, or when keyword-driven tests serve non-developer authors.
 - **pytest-playwright** — when the Python side of the project
-  already standardises on pytest.
+  already standardizes on pytest.
 - **axe-core** via `@axe-core/playwright` (TS), `axe-playwright`
   (Python), or `robotframework-axelibrary` — for accessibility
   assertions inside functional tests.
@@ -92,14 +92,14 @@ is the operator's choice, not the repository's.
   semantic methods (`login(email, password)`) rather than raw
   selectors. Selectors live inside the page object, never inline in
   the test.
-- **Data-driven tests** — parameterise with fixtures or
+- **Data-driven tests** — parameterize with fixtures or
   `test.describe.each`. Inline test data only when it is small and
   unique to one assertion.
 - **Fixtures** — set up authenticated state, seeded data, and
   service mocks once per worker. Avoid per-test login when storage
   state suffices.
 - **Parallel execution** — design tests to be independent. Shared
-  mutable state (a single user, a single record) serialises the
+  mutable state (a single user, a single record) serializes the
   suite and hides flakiness.
 - **Meaningful assertion messages** — `expect(locator,
   "checkout button visible after adding item").toBeVisible()` beats
@@ -122,7 +122,7 @@ is the operator's choice, not the repository's.
 ## Test quality bar
 
 Same philosophy as the `tester` skill: high-signal tests, not
-coverage theatre. A scenario that exercises five clicks to assert
+coverage theater. A scenario that exercises five clicks to assert
 one outcome is one test, not five. A scenario that asserts ten
 unrelated outcomes is a leaky fixture, not a test.
 

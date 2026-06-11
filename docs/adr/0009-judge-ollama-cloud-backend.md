@@ -74,7 +74,7 @@ Any other `JUDGE_AUTH_MODE` value → `rc=1` (hard) with an
 `_e2e_assert_diag` line, mirroring the `claude-code` driver's
 default arm.
 
-Default: `api_key` (preserves today's behaviour for users who set
+Default: `api_key` (preserves today's behavior for users who set
 the env var; new users following the keypair path opt in via
 `local.toml`).
 

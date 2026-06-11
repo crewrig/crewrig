@@ -1,25 +1,25 @@
 # Organization Context — TEMPLATE
 #
 # This file is an illustrative starting point (examples layer).
-# Copy it to config/ORGANIZATION.md and customise it for your organisation.
+# Copy it to config/ORGANIZATION.md and customize it for your organization.
 # The completed config/ORGANIZATION.md is overlay — owned by your org.
 #
-# Purpose: describe WHO your organisation IS — its identity, values, and
+# Purpose: describe WHO your organization IS — its identity, values, and
 # governance. This is not a development-practices document; those details
 # belong in config/TOOLS.md (org-specific tooling and workflow preferences)
 # and in the team/expertise/level context files.
 #
 # Remove this comment block and all placeholder comments before committing
-# your customised version.
+# your customized version.
 
-# [REQUIRED] Replace with your organisation's actual name.
+# [REQUIRED] Replace with your organization's actual name.
 # You are [Organization Name].
 
 ## Identity
 
 <!--
-  Describe your organisation in 2–4 sentences. Cover:
-  - What the organisation builds or does.
+  Describe your organization in 2–4 sentences. Cover:
+  - What the organization builds or does.
   - Its scale (team size, user base, or geographic reach) if relevant.
   - Any mission statement or overarching purpose worth surfacing to the AI.
 
@@ -30,13 +30,13 @@
   all teams.
 -->
 
-[Replace with a concise description of your organisation.]
+[Replace with a concise description of your organization.]
 
 ## Values and Principles
 
 <!--
   List 3–6 core values or engineering principles that guide how the
-  organisation operates. These inform the agent's prioritisation when
+  organization operates. These inform the agent's prioritization when
   trade-offs arise.
 
   Examples:
@@ -52,7 +52,7 @@
 ## Objectives
 
 <!--
-  Describe the organisation's current strategic objectives that are relevant
+  Describe the organization's current strategic objectives that are relevant
   to engineering work. This helps the agent understand what "success" looks
   like beyond individual tickets.
 
@@ -96,7 +96,7 @@
   Security-sensitive changes require a security review before merge.
 -->
 
-[Replace with your organisation's governance norms.]
+[Replace with your organization's governance norms.]
 
 ## General Rules
 
@@ -136,4 +136,4 @@
   constraints beyond general data-protection best practices."
 -->
 
-[Replace with your organisation's regulatory context, or state that none applies.]
+[Replace with your organization's regulatory context, or state that none applies.]

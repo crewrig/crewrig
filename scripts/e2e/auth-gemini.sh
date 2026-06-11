@@ -42,7 +42,7 @@ docker run --rm -it \
 # the #148 security review). The shared helper sets $DIR to a+rwx so the
 # container's `agent` UID can write during the interactive login; tightening
 # immediately after the container exits — BEFORE the denylist, the API-key
-# grep, and the post-flight check — minimises shared-dev-box exposure.
+# grep, and the post-flight check — minimizes shared-dev-box exposure.
 chmod 700 "$DIR"
 
 # Post-login: the sandbox mount above means the in-container CLI wrote
@@ -62,7 +62,7 @@ rm -rf \
   "${DIR}/tmp"
 find "$DIR" -maxdepth 2 -type f \( -name '*.bak' -o -name '*.ori' -o -name '*.orig' \) -delete
 
-# Normalise modes inside $DIR (Med-2 from the #148 security review). The
+# Normalize modes inside $DIR (Med-2 from the #148 security review). The
 # 0600 invariant on oauth_creds.json was previously implicit on whatever
 # the Gemini CLI happened to write; assert it. Belt-and-braces against a
 # future CLI release loosening file modes.

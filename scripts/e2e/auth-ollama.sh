@@ -47,7 +47,7 @@ docker run --rm -it \
 # the #148 security review, applied to ollama per issue #161). The Ed25519
 # PRIVATE key landing under $DIR is the load-bearing secret; tightening
 # immediately after the container exits — BEFORE the post-flight checks —
-# minimises shared-dev-box exposure of the private key. Normalise file modes
+# minimizes shared-dev-box exposure of the private key. Normalize file modes
 # too (Med-2 from #148) so id_ed25519 gets 0600 even if `ollama signin`
 # happens to write it with looser perms.
 chmod 700 "$DIR"
