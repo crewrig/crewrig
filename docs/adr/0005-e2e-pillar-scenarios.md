@@ -1,5 +1,7 @@
 # ADR 0005 — E2E pillar scenarios
 
+<!-- crewrig-doc: section=architecture-adr nav_order=50 published=true title="ADR 0005 — E2E pillar scenarios" -->
+
 - **Status:** Accepted
 - **Date:** 2026-05-23
 - **Issue:** [#80](../../../../issues/80) (epic [#75](../../../../issues/75))

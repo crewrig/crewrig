@@ -1,5 +1,7 @@
 # ADR 0001 — GitHub Copilot CLI Integration Strategy
 
+<!-- crewrig-doc: section=architecture-adr nav_order=10 published=true title="ADR 0001 — GitHub Copilot CLI Integration Strategy" -->
+
 ## Status
 
 Accepted — 2026-05-20.

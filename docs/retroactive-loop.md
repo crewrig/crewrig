@@ -1,5 +1,7 @@
 # Retroactive review loop
 
+<!-- crewrig-doc: section=lifecycle nav_order=10 published=true title="Retroactive review loop" -->
+
 This document is the normative reference for the **retroactive routing
 engine** that closes the REVIEW stage of the lifecycle introduced in
 [ADR-0010](adr/0010-spec-plan-review-lifecycle.md) — specifically

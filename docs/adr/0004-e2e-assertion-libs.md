@@ -1,5 +1,7 @@
 # ADR 0004 — e2e assertion libraries (side-effect + structural + LLM-judge)
 
+<!-- crewrig-doc: section=architecture-adr nav_order=40 published=true title="ADR 0004 — e2e assertion libraries" -->
+
 ## Status
 
 Proposed — 2026-05-23. Scoped to issue #79 (child of epic #75). Builds

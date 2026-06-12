@@ -1,5 +1,7 @@
 # ADR 0007 — Pluggable LLM-judge backends
 
+<!-- crewrig-doc: section=architecture-adr nav_order=70 published=true title="ADR 0007 — Pluggable LLM-judge backends" -->
+
 **Status:** Accepted (issue #125)
 
 ## Context

@@ -1,5 +1,7 @@
 # ADR 0001 — e2e Docker images (base + per-CLI + MemPalace sidecar)
 
+<!-- crewrig-doc: section=architecture-adr nav_order=11 published=true title="ADR 0001 — e2e Docker images" -->
+
 ## Status
 
 Proposed — 2026-05-22. Scoped to issue #76 (child of epic #75).

@@ -1,5 +1,7 @@
 # ADR 0002 — e2e dedicated-account auth flow (`~/.crewrig-e2e/<cli>/`)
 
+<!-- crewrig-doc: section=architecture-adr nav_order=20 published=true title="ADR 0002 — e2e dedicated-account auth flow" -->
+
 ## Status
 
 Proposed — 2026-05-23. Scoped to issue #77 (child of epic #75). Builds

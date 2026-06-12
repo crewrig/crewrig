@@ -1,5 +1,7 @@
 # Runbook — Shared ChromaDB HTTP server for MemPalace
 
+<!-- crewrig-doc: published=false -->
+
 Operational guide for the `chroma run` daemon introduced by
 [ADR 0006](../adr/0006-chromadb-http-server.md) and tracked in
 [issue #98](https://github.com/crewrig/crewrig/issues/98). The daemon owns

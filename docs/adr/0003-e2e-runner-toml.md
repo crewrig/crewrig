@@ -1,5 +1,7 @@
 # ADR 0003 — e2e runner + TOML config (defaults + local merge)
 
+<!-- crewrig-doc: section=architecture-adr nav_order=30 published=true title="ADR 0003 — e2e runner and TOML config" -->
+
 ## Status
 
 Proposed — 2026-05-23. Scoped to issue #78 (child of epic #75). Builds

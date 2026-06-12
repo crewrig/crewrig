@@ -1,5 +1,7 @@
 # Specification format
 
+<!-- crewrig-doc: section=reference nav_order=20 published=true title="Specification format" -->
+
 This document defines the normative file format for the SPECS stage of
 the lifecycle introduced in
 [ADR-0010](adr/0010-spec-plan-review-lifecycle.md). It is the contract

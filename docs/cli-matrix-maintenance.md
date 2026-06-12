@@ -2,6 +2,8 @@
 
 # CLI Matrix Maintenance
 
+<!-- crewrig-doc: published=false -->
+
 `docs/cli-matrix.md` is the source of truth for every CLI-specific
 integration point. It MUST stay in lockstep with the code.
 

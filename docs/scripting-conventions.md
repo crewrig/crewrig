@@ -1,5 +1,7 @@
 # Scripting Conventions
 
+<!-- crewrig-doc: section=reference nav_order=40 published=true title="Scripting conventions" -->
+
 Bash and Python glue scripts under `scripts/` and `hooks/` follow these rules.
 The list is short on purpose: each rule comes from a real production incident
 where a script silently misbehaved for weeks. If you have a real reason to

@@ -1,5 +1,7 @@
 # Design note — `spec-author` skill (#168)
 
+<!-- crewrig-doc: published=false -->
+
 **Status:** Design only. The developer turns this note into
 `artifacts/core/skills/spec-author/SKILL.md` and
 `artifacts/core/agents/spec-author/AGENT.md`. This note is normative

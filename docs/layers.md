@@ -1,5 +1,7 @@
 # CrewRig — Layer Taxonomy and Boundary Contract
 
+<!-- crewrig-doc: section=adoption nav_order=20 published=true title="Layer taxonomy and boundary contract" -->
+
 This document is the **authoritative boundary contract** for the two-layer
 adoption model introduced by spec 0012 (core framework separation). Every
 path in this repository is classified as belonging to exactly one of three
@@ -48,7 +50,26 @@ refuse to proceed.
 | Path | Description |
 |---|---|
 | `docs/` | All normative and reference documentation, including ADRs, format specs, and this file. The `docs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
+| `docs/index.json` | Generated public-documentation manifest (spec 0027). Core/`strict`, committed, and consumed by the separate site repository — see *Documentation publication contract* below. |
 | `specs/` | Immutable specification history. Spec **content** is append-only; existing files are not edited after merge except for lifecycle-metadata transitions (`status`, `superseded-by`) and meaning-preserving editorial edits (orthography, typo fixes) — see [`docs/spec-format.md`](spec-format.md). The `specs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
+
+#### Documentation publication contract
+
+Per [spec 0027](../specs/0027-docs-ia-and-publication-contract.md), every page
+under `docs/` declares a metadata block (an HTML comment immediately after its
+H1) stating its section, navigation order, and published status. The full
+normative contract — the eight-section taxonomy, the metadata-block grammar,
+and the `docs/index.json` schema — lives in
+[`docs/publication-contract.md`](publication-contract.md).
+
+`docs/index.json` is the generated, **committed** manifest of the public
+documentation subset. It is classified **core / `strict`** (upstream-owned;
+a local modification halts the sync). The generator
+`scripts/build-docs-index.sh` (also core/`strict`) derives it from the
+per-page blocks; CI runs `bash scripts/build-docs-index.sh --check` to guard
+against drift. Org-overlay documentation under `docs/org/` is `excluded` from
+sync and is unioned into the organization's own site build under the same
+contract — never flowing back upstream.
 
 ### Build and install tooling
 

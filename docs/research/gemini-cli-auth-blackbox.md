@@ -1,5 +1,7 @@
 # Gemini CLI auth — black-box analysis
 
+<!-- crewrig-doc: published=false -->
+
 > **Status:** Research deliverable for issue #147. Feeds the capture redesign
 > (#148) and the headless-invocation simplification (#149).
 >

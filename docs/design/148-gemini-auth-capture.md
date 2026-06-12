@@ -1,5 +1,7 @@
 # Design note — #148 Gemini auth capture redesign
 
+<!-- crewrig-doc: published=false -->
+
 > **Scope:** Redesign `scripts/e2e/auth-gemini.sh` and `tests/e2e/defaults.toml [cli.gemini]` so that the e2e harness captures every load-bearing artifact of a healthy `~/.gemini/` and ships it into the container through a writable copy. Runner cleanup (`run.sh`, `e2e_gemini_refresh_access_token`, `timeout` wrapper) is **out of scope** — owned by #149.
 
 Grounded entirely on `docs/research/gemini-cli-auth-blackbox.md` (#147). Section references below point into that document.

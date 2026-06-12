@@ -1,5 +1,7 @@
 # ADR 0009 — Judge `gemini` backend (api_key + OAuth)
 
+<!-- crewrig-doc: section=architecture-adr nav_order=90 published=true title="ADR 0009 — Judge gemini backend" -->
+
 **Status:** Accepted (issue #128)
 
 ## Context

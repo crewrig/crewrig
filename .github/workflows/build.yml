@@ -65,6 +65,12 @@ jobs:
       - name: Test artifact build/install scope (spec 0019)
         run: bash scripts/tests/test-artifact-build-install-scope.sh
 
+      - name: Check docs index drift (spec 0027)
+        run: bash scripts/build-docs-index.sh --check
+
+      - name: Test build-docs-index regression (spec 0027)
+        run: bash scripts/tests/test-build-docs-index.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:

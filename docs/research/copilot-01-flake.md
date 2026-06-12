@@ -1,5 +1,7 @@
 # `copilot/01-layered-context` intermittent flake — empirical characterization
 
+<!-- crewrig-doc: published=false -->
+
 > **Status:** Research deliverable for issue #162. Investigation only;
 > any remediation requiring non-trivial work is tracked in a follow-up
 > ticket per the original *Out of scope* clause.

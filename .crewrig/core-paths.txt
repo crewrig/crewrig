@@ -42,6 +42,7 @@ renovate.json	strict
 # Documentation and specifications
 docs	strict
 docs/org	excluded
+docs/index.json	strict
 specs	strict
 specs/org	excluded
 
@@ -96,3 +97,6 @@ communication
 .crewrig	strict
 .crewrig/.synced-markers	excluded
 scripts/sync-from-upstream.sh	strict
+
+# Documentation publication contract (spec 0027)
+scripts/build-docs-index.sh	strict

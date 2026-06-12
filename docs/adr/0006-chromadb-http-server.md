@@ -1,5 +1,7 @@
 # ADR 0006 — Shared ChromaDB HTTP server for MemPalace
 
+<!-- crewrig-doc: section=architecture-adr nav_order=60 published=true title="ADR 0006 — Shared ChromaDB HTTP server for MemPalace" -->
+
 ## Status
 
 Proposed — 2026-05-25. Scoped to issue #98.

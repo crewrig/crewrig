@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "section": "adoption",
+      "title": "Adoption",
+      "pages": [
+        {
+          "title": "Adoption guide",
+          "path": "docs/adoption-guide.md",
+          "nav_order": 10
+        },
+        {
+          "title": "Layer taxonomy and boundary contract",
+          "path": "docs/layers.md",
+          "nav_order": 20
+        }
+      ]
+    },
+    {
+      "section": "lifecycle",
+      "title": "Lifecycle",
+      "pages": [
+        {
+          "title": "Retroactive review loop",
+          "path": "docs/retroactive-loop.md",
+          "nav_order": 10
+        }
+      ]
+    },
+    {
+      "section": "reference",
+      "title": "Reference",
+      "pages": [
+        {
+          "title": "CLI support matrix",
+          "path": "docs/cli-matrix.md",
+          "nav_order": 10
+        },
+        {
+          "title": "Specification format",
+          "path": "docs/spec-format.md",
+          "nav_order": 20
+        },
+        {
+          "title": "Plan format",
+          "path": "docs/plan-format.md",
+          "nav_order": 30
+        },
+        {
+          "title": "Scripting conventions",
+          "path": "docs/scripting-conventions.md",
+          "nav_order": 40
+        },
+        {
+          "title": "Documentation publication contract",
+          "path": "docs/publication-contract.md",
+          "nav_order": 50
+        }
+      ]
+    },
+    {
+      "section": "architecture-adr",
+      "title": "Architecture & ADRs",
+      "pages": [
+        {
+          "title": "ADR 0001 — GitHub Copilot CLI Integration Strategy",
+          "path": "docs/adr/0001-copilot-cli-integration-strategy.md",
+          "nav_order": 10
+        },
+        {
+          "title": "ADR 0001 — e2e Docker images",
+          "path": "docs/adr/0001-e2e-docker-images.md",
+          "nav_order": 11
+        },
+        {
+          "title": "ADR 0002 — e2e dedicated-account auth flow",
+          "path": "docs/adr/0002-e2e-auth-flow.md",
+          "nav_order": 20
+        },
+        {
+          "title": "ADR 0003 — e2e runner and TOML config",
+          "path": "docs/adr/0003-e2e-runner-toml.md",
+          "nav_order": 30
+        },
+        {
+          "title": "ADR 0004 — e2e assertion libraries",
+          "path": "docs/adr/0004-e2e-assertion-libs.md",
+          "nav_order": 40
+        },
+        {
+          "title": "ADR 0005 — E2E pillar scenarios",
+          "path": "docs/adr/0005-e2e-pillar-scenarios.md",
+          "nav_order": 50
+        },
+        {
+          "title": "ADR 0006 — Shared ChromaDB HTTP server for MemPalace",
+          "path": "docs/adr/0006-chromadb-http-server.md",
+          "nav_order": 60
+        },
+        {
+          "title": "ADR 0007 — Pluggable LLM-judge backends",
+          "path": "docs/adr/0007-pluggable-judge-backends.md",
+          "nav_order": 70
+        },
+        {
+          "title": "ADR 0008 — Judge auth_mode and claude-code OAuth driver",
+          "path": "docs/adr/0008-judge-oauth-auth-mode.md",
+          "nav_order": 80
+        },
+        {
+          "title": "ADR 0009 — Judge gemini backend",
+          "path": "docs/adr/0009-judge-gemini-backend.md",
+          "nav_order": 90
+        },
+        {
+          "title": "ADR 0009 — ollama-cloud judge backend",
+          "path": "docs/adr/0009-judge-ollama-cloud-backend.md",
+          "nav_order": 91
+        },
+        {
+          "title": "ADR 0010 — SPECS to PLAN to DEV to REVIEW lifecycle",
+          "path": "docs/adr/0010-spec-plan-review-lifecycle.md",
+          "nav_order": 100
+        },
+        {
+          "title": "ADR 0011 — Artifact build/install scope model",
+          "path": "docs/adr/0011-artifact-build-install-scope.md",
+          "nav_order": 110
+        }
+      ]
+    }
+  ]
+}

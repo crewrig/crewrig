@@ -1,5 +1,7 @@
 # ADR 0008 — Judge `auth_mode` and `claude-code` OAuth driver
 
+<!-- crewrig-doc: section=architecture-adr nav_order=80 published=true title="ADR 0008 — Judge auth_mode and claude-code OAuth driver" -->
+
 **Status:** Proposed (issue #126)
 
 ## Context

@@ -1,5 +1,7 @@
 # Plan format
 
+<!-- crewrig-doc: section=reference nav_order=30 published=true title="Plan format" -->
+
 This document defines the normative format for the PLAN artifact of
 the lifecycle introduced in
 [ADR-0010](adr/0010-spec-plan-review-lifecycle.md) — specifically

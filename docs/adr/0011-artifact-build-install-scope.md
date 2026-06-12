@@ -1,5 +1,7 @@
 # ADR 0011 — Artifact build/install scope model
 
+<!-- crewrig-doc: section=architecture-adr nav_order=110 published=true title="ADR 0011 — Artifact build/install scope model" -->
+
 **Status:** Proposed (issue #258; refines the build/install amalgamation in spec 0014)
 
 ## Context

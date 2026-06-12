@@ -1,5 +1,7 @@
 # Adoption Guide
 
+<!-- crewrig-doc: section=adoption nav_order=10 published=true title="Adoption guide" -->
+
 This guide walks an organization through forking CrewRig, initializing the
 overlay configuration, running the build pipeline, deploying to CLI rules
 directories, and staying in sync with upstream. Follow the steps in order.

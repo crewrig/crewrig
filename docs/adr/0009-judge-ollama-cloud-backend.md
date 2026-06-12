@@ -1,5 +1,7 @@
 # ADR 0009 — `ollama-cloud` judge backend (api_key + keypair auth modes)
 
+<!-- crewrig-doc: section=architecture-adr nav_order=91 published=true title="ADR 0009 — ollama-cloud judge backend" -->
+
 **Status:** Accepted (issue #127)
 
 ## Context

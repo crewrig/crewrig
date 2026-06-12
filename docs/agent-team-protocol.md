@@ -2,6 +2,8 @@
 
 # Agent Team Protocol
 
+<!-- crewrig-doc: published=false -->
+
 Project tickets are multi-step work. They must be treated by a **team of specialist agents**, not by a single agent working solo inline.
 
 The team protocol below governs the **DEV stage** of the lifecycle

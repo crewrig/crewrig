@@ -1,5 +1,7 @@
 # ADR 0010 — SPECS → PLAN → DEV → REVIEW lifecycle
 
+<!-- crewrig-doc: section=architecture-adr nav_order=100 published=true title="ADR 0010 — SPECS to PLAN to DEV to REVIEW lifecycle" -->
+
 **Status:** Accepted (issue #166, parent EPIC #165)
 
 ## Context
