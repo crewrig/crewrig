@@ -80,11 +80,16 @@ is_known_section() { section_title "$1" >/dev/null 2>&1; }
 ROWS=()
 LINT_ERRORS=()
 
-# Extract the metadata block (first line containing the crewrig-doc sentinel)
-# from a file. Echoes the inner payload (between "crewrig-doc:" and "-->").
+# Extract the metadata block from a file. Echoes the inner payload (between
+# "crewrig-doc:" and "-->"). Per the contract the block is the first crewrig-doc
+# comment AFTER the page H1; anchoring to the post-H1 position prevents an
+# earlier illustrative crewrig-doc line (e.g. the contract page's own examples)
+# from being mis-parsed as the page's real block.
 extract_block() {
-  # Print the first matching line, strip the comment wrapper and sentinel.
-  grep -m1 -- 'crewrig-doc:' "$1" 2>/dev/null \
+  awk '
+    !seen_h1 && /^# / { seen_h1 = 1; next }
+    seen_h1 && /crewrig-doc:/ { print; exit }
+  ' "$1" 2>/dev/null \
     | sed -E 's/^.*crewrig-doc:[[:space:]]*//; s/[[:space:]]*-->.*$//'
 }
 

@@ -156,6 +156,25 @@ run "$t8"
 assert_eq "Case 8 — forbidden '>' in value fails" 1 "$RC"
 
 # -------------------------------------------------------------------------
+# Case 9 — Anchoring: a decoy crewrig-doc line BEFORE the H1 is ignored; the
+# real block after the H1 is the one parsed (guards the placement rule and the
+# contract page's own in-body example blocks).
+# -------------------------------------------------------------------------
+t9="$(new_tree)"
+{
+  printf '<!-- crewrig-doc: section=concepts nav_order=5 published=true title="DECOY" -->\n\n'
+  printf '# Real Page\n\n'
+  printf '<!-- crewrig-doc: section=reference nav_order=30 published=true title="Real Page" -->\n\n'
+  printf 'Body.\n'
+} > "$t9/docs/real.md"
+run "$t9"
+assert_eq "Case 9a — generate succeeds with decoy before H1" 0 "$RC"
+got_section="$(grep -oE '"section":[[:space:]]*"[a-z-]+"' "$t9/docs/index.json" | head -1 | sed -E 's/.*"([a-z-]+)".*/\1/')"
+assert_eq "Case 9b — real block after H1 wins over pre-H1 decoy" "reference" "$got_section"
+decoy_count="$(grep -c 'DECOY' "$t9/docs/index.json" || true)"
+assert_eq "Case 9c — pre-H1 decoy absent from index" "0" "$decoy_count"
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""
