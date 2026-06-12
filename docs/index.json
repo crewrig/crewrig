@@ -2,6 +2,28 @@
   "version": 1,
   "sections": [
     {
+      "section": "introduction",
+      "title": "Introduction",
+      "pages": [
+        {
+          "title": "Introduction",
+          "path": "docs/introduction.md",
+          "nav_order": 10
+        }
+      ]
+    },
+    {
+      "section": "concepts",
+      "title": "Concepts",
+      "pages": [
+        {
+          "title": "Core concepts",
+          "path": "docs/concepts.md",
+          "nav_order": 10
+        }
+      ]
+    },
+    {
       "section": "adoption",
       "title": "Adoption",
       "pages": [
@@ -18,12 +40,34 @@
       ]
     },
     {
+      "section": "authoring",
+      "title": "Authoring",
+      "pages": [
+        {
+          "title": "Authoring skills, agents & commands",
+          "path": "docs/authoring.md",
+          "nav_order": 10
+        }
+      ]
+    },
+    {
       "section": "lifecycle",
       "title": "Lifecycle",
       "pages": [
         {
           "title": "Retroactive review loop",
           "path": "docs/retroactive-loop.md",
+          "nav_order": 10
+        }
+      ]
+    },
+    {
+      "section": "harness-engineering",
+      "title": "Harness engineering",
+      "pages": [
+        {
+          "title": "Harness engineering",
+          "path": "docs/harness-engineering.md",
           "nav_order": 10
         }
       ]
