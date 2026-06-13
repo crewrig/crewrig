@@ -26,6 +26,32 @@ design — it would re-introduce the corruption bug.
 """
 import os
 import sys
+import threading
+import time
+
+# ── Step 0: orphan self-reap watchdog (spec 0029 R5) ─────────────────────────
+# An MCP stdio server normally exits on stdin EOF: ``mempalace.mcp_server.main()``
+# loops on ``sys.stdin.readline()`` and breaks when it returns empty, which the
+# OS then releases the daemon-side ``HttpClient`` sockets for (sockets close on
+# process exit). That covers the common case where the parent agent session dies
+# and closes the write-end of the stdin pipe. But if the parent dies while some
+# other process keeps that pipe's write-end open, stdin never EOFs and the
+# orphaned wrapper lingers, holding its daemon connection open indefinitely —
+# the exact leak R5 forbids. This watchdog is a belt-and-suspenders guard for
+# that case: it polls ``os.getppid()`` and self-terminates when the parent is
+# reaped (reparented to PID 1 = orphaned). It deliberately does NOT read stdin,
+# so it cannot steal JSON-RPC bytes that ``main()`` owns. It uses ``os._exit``,
+# not ``sys.exit``: ``sys.exit`` only raises ``SystemExit`` in its own thread
+# and would not terminate the process from this daemon thread (cold-review
+# finding #2).
+def _reap_if_orphaned(poll_interval: float = 5.0) -> None:
+    while True:
+        time.sleep(poll_interval)
+        if os.getppid() == 1:
+            os._exit(0)
+
+
+threading.Thread(target=_reap_if_orphaned, daemon=True).start()
 
 # ── Step 1: patch BEFORE any mempalace import resolves chromadb ──────────────
 import chromadb as _chromadb

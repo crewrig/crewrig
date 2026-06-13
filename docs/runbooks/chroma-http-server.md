@@ -45,6 +45,44 @@ restarts the daemon within seconds of a crash; the manual `start` and
   for the supervisor's own diagnostics.
 - **systemd specifics** — `journalctl --user -u mempalace-chroma-server`.
 
+### Applying the raised file-descriptor limit to a running daemon
+
+The shipped supervisor units declare an open-file floor of `65536`
+(launchd `SoftResourceLimits`/`HardResourceLimits` → `NumberOfFiles`;
+systemd `LimitNOFILE`). A fresh install inherits it automatically, but a
+daemon already running under the old unit keeps its previous limit until
+the supervisor re-execs it. Remediate an existing install without a host
+restart:
+
+- **macOS** — reload the launchd job so it re-reads the updated plist:
+
+  ```sh
+  launchctl bootout gui/$(id -u)/com.mempalace.chroma-server
+  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mempalace.chroma-server.plist
+  ```
+
+- **Linux** — reload the unit definition and restart the service:
+
+  ```sh
+  systemctl --user daemon-reload
+  systemctl --user restart mempalace-chroma-server
+  ```
+
+Verify the new limit took effect by inspecting the running daemon's
+open-file limit:
+
+- **macOS** — `launchctl print gui/$(id -u)/com.mempalace.chroma-server`
+  reports the job's resource limits; look for the `number of files`
+  entry under the `inherited limits` / `hard/soft limits` section.
+
+- **Linux** — read the kernel's per-process limit:
+
+  ```sh
+  cat /proc/"$(pgrep -f 'chroma run')"/limits | grep 'Max open files'
+  ```
+
+Both should report `65536` (or higher) once the reload completes.
+
 ## Migrating from the legacy `PersistentClient` setup
 
 If you upgraded a working CrewRig install across the #98 boundary:

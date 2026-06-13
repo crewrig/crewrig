@@ -9,6 +9,7 @@ WorkingDirectory=%h/.mempalace
 ExecStart=%h/.local/pipx/venvs/mempalace/bin/python3.13 %h/.local/pipx/venvs/mempalace/bin/chroma run --path %h/.mempalace/palace --host 127.0.0.1 --port 8001
 Restart=always
 RestartSec=3
+LimitNOFILE=65536
 StandardOutput=append:%h/.mempalace/chroma-server.log
 StandardError=append:%h/.mempalace/chroma-server.log
 
