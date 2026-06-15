@@ -4,7 +4,7 @@ description: "Visual design specialist. Produces color palette tokens, typograph
 spacing scale, tokens.css, and Tailwind config extensions. Delivers component
 anatomy specifications and design rationale. Does NOT write application code."
 ---
-<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Designer Agent
 

@@ -2,7 +2,7 @@
 name: pr-logbook
 description: "Generic PR and logbook composer agent. Drafts titles, bodies, test plans, logbook entries, and squash-merge commit messages that conform to the project's AGENTS.md conventions."
 ---
-<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # PR & Logbook Agent
 

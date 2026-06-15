@@ -6,7 +6,7 @@ accessibility, image alt text quality, ARIA correctness, and motion preferences.
 Produces a structured findings report (violation → warning → informational).
 Does not implement fixes — hands the report to frontend-developer or astro-developer."
 ---
-<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Accessibility Auditor Agent
 

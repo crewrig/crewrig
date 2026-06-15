@@ -10,8 +10,8 @@ compatibility: "Requires git (for log and staged-file inspection), the gh CLI (f
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
-    feedback: "${FEEDBACK_REPO}"
-    version: "1.1.5"
+    feedback: "${CANONICAL_REPO}"
+    version: "1.1.6"
 claude:
   allowed-tools:
     - Read

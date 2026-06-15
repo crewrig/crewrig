@@ -15,8 +15,8 @@ compatibility: Requires bash, jq, the gh CLI (used by setup-labels.sh and --appl
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
-    feedback: "${FEEDBACK_REPO}"
-    version: "1.5.1"
+    feedback: "${CANONICAL_REPO}"
+    version: "1.5.2"
 claude:
   allowed-tools:
     - Read

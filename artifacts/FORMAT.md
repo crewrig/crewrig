@@ -226,10 +226,24 @@ type: skill
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"   # origin (audit + license trace)
-    feedback:  "${FEEDBACK_REPO}"    # MR target (defaults to canonical)
+    feedback:  "${CANONICAL_REPO}"   # MR target — upstream-owned tier ⇒ canonical
     version:   "1.0.0"               # version at build/import
 ---
 ```
+
+The `feedback` target is governed **per tier**, not by a single fork-wide
+setting:
+
+- **Upstream-owned tiers** (`artifacts/core`, `artifacts/library`,
+  `extensions/core`, `extensions/library`) MUST declare `feedback` equal to
+  `canonical` (`"${CANONICAL_REPO}"`). A fork never diverts feedback away from
+  components it does not own — frictions on upstream components always reach the
+  upstream repo, regardless of the fork's `feedback_repo`. The
+  `scripts/check-feedback-routing.sh` CI guard enforces this (see
+  `task check-feedback-routing`).
+- **Adopter-owned tiers** (`artifacts/community`, `artifacts/org`,
+  `extensions/org`) use `feedback: "${FEEDBACK_REPO}"`, so a fork's own
+  components route feedback to the fork's configured `feedback_repo`.
 
 ### Placeholder resolution
 
@@ -260,6 +274,15 @@ When you fork crewrig (or a fork of it):
 2. Run `task build-components` to regenerate the outputs with your
    values.
 3. Commit both `crewrig.config.toml` and the regenerated outputs.
+
+`feedback_repo` governs **adopter-owned tiers only** (`artifacts/community`,
+`artifacts/org`, `extensions/org`). It has **no effect** on upstream-owned
+components (`artifacts/core`, `artifacts/library`, `extensions/core`,
+`extensions/library`): those always route feedback to `canonical`, so
+overriding `feedback_repo` does **not** capture feedback on components you did
+not author — that feedback keeps flowing to the upstream repository where the
+components are maintained. This is by design (spec 0030) and enforced by
+`scripts/check-feedback-routing.sh`.
 
 The `version:` field in `metadata.provenance:` is a literal
 per-component string, not a placeholder. It tracks the component's own

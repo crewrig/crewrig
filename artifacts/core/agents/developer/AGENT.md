@@ -6,8 +6,8 @@ type: agent
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
-    feedback: "${FEEDBACK_REPO}"
-    version: "1.2.1"
+    feedback: "${CANONICAL_REPO}"
+    version: "1.2.2"
 ---
 
 # Developer Agent

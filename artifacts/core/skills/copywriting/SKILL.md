@@ -11,8 +11,8 @@ license: Apache-2.0
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
-    feedback: "${FEEDBACK_REPO}"
-    version: "1.0.1"
+    feedback: "${CANONICAL_REPO}"
+    version: "1.0.2"
 compatibility: "No runtime prerequisites; this skill is documentation-only."
 claude:
   allowed-tools:

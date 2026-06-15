@@ -2,7 +2,7 @@
 name: doc-writer
 description: "Generic documentation agent. Drafts ADRs, READMEs, in-code docstrings, and reference material. Optimizes for documents that age well and stays close to the code where possible."
 ---
-<!-- crewrig-provenance: version="1.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Doc Writer Agent
 

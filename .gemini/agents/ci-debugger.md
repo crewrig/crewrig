@@ -4,7 +4,7 @@ description: "Specialist agent for diagnosing and fixing failing GitHub Actions
 pipelines. Systematically produces a
 symptom → hypothesis → evidence → fix chain."
 ---
-<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Debugger Agent
 

@@ -263,6 +263,10 @@ tasks:
     desc: "Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)"
     cmd: bash {{.REPO_DIR}}/scripts/check-skill-versions.sh
 
+  check-feedback-routing:
+    desc: "Enforce upstream-tier feedback routing to canonical (local mirror of the CI guard, spec 0030)"
+    cmd: bash {{.REPO_DIR}}/scripts/check-feedback-routing.sh
+
   skill:check:
     desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
     silent: true

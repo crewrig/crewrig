@@ -2,7 +2,7 @@
 name: tester
 description: "Generic test-authoring agent. Writes high-signal regression tests, enumerates priority edge cases, and verifies fixes by failing-then-passing the test against the bug."
 ---
-<!-- crewrig-provenance: version="1.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Tester Agent
 

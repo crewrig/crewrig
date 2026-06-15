@@ -6,7 +6,7 @@ and performance signals with direct SEO impact. Produces a prioritized findings
 report (critical → high → low). Does not write copy — hands recommendations to
 copywriter or astro-developer."
 ---
-<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # SEO Specialist Agent
 

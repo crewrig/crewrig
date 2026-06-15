@@ -5,7 +5,7 @@ anatomy specs into production-ready CSS and markup. Ensures WCAG 2.1 AA
 compliance, optimizes asset delivery, and hands off to astro-developer for
 framework wiring. Does NOT own Astro-specific build concerns."
 ---
-<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Frontend Developer Agent
 

@@ -47,6 +47,9 @@ jobs:
       - name: Test check-skill-versions regression
         run: bash scripts/tests/test-check-skill-versions.sh
 
+      - name: Test check-feedback-routing regression (spec 0030)
+        run: bash scripts/tests/test-check-feedback-routing.sh
+
       - name: Test Gemini agent frontmatter contract (issue #54)
         run: bash scripts/tests/test-gemini-agent-frontmatter.sh
 
@@ -136,3 +139,16 @@ jobs:
 
       - name: Check AGENTS.md file size
         run: bash scripts/check-agents-size.sh
+
+  check-feedback-routing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Enforce upstream-tier feedback routing (spec 0030)
+        run: bash scripts/check-feedback-routing.sh

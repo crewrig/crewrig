@@ -2,7 +2,7 @@
 name: security
 description: "Generic security review agent. Threat modeling, secret hygiene, realistic-threat code review, dependency audit. Findings only — does not implement fixes unless explicitly asked."
 ---
-<!-- crewrig-provenance: version="1.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Security Agent
 

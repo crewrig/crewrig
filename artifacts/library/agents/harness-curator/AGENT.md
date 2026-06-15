@@ -8,8 +8,8 @@ type: agent
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
-    feedback: "${FEEDBACK_REPO}"
-    version: "1.1.0"
+    feedback: "${CANONICAL_REPO}"
+    version: "1.1.1"
 ---
 
 # Harness Curator Agent

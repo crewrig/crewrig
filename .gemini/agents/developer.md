@@ -2,7 +2,7 @@
 name: developer
 description: "Generic implementation agent. Writes, edits, and refactors code with the smallest correct change. Verifies locally before reporting done."
 ---
-<!-- crewrig-provenance: version="1.2.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.2.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Developer Agent
 

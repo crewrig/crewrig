@@ -2,7 +2,7 @@
 name: pr-reviewer
 description: "Independent PR reviewer agent. Spawns cold — receives only a PR number, no authoring-session context. Activates the pr-reviewer skill to audit the diff, runs linter scripts against changed files, and posts a structured review verdict via the GitHub MCP."
 ---
-<!-- crewrig-provenance: version="1.1.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.3" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # PR Reviewer Agent
 

@@ -5,7 +5,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.1"
+    version: "1.2.2"
 ---
 
 

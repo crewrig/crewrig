@@ -12,8 +12,8 @@ compatibility: "Requires bash and gh CLI (for diff fetch and review post). Optio
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
-    feedback: "${FEEDBACK_REPO}"
-    version: "1.1.4"
+    feedback: "${CANONICAL_REPO}"
+    version: "1.1.5"
 claude:
   allowed-tools:
     - Read

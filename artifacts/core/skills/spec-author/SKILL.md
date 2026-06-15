@@ -11,8 +11,8 @@ license: Apache-2.0
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
-    feedback: "${FEEDBACK_REPO}"
-    version: "1.3.1"
+    feedback: "${CANONICAL_REPO}"
+    version: "1.3.2"
 claude:
   allowed-tools:
     - Read
