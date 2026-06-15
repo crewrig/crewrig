@@ -83,5 +83,8 @@ agent's action, or a tool surprises the agent a second time), the agent invokes
 the `harness-report` skill to tag the friction into a global memory wing. The
 `harness-curator` skill later clusters those tags and opens one descriptive
 GitHub issue per cluster, which is then fixed through the normal branch/PR
-workflow. The loop is covered in depth on the
-[Harness engineering](harness-engineering.md) page.
+workflow. Where that issue lands depends on the component's tier: frictions on
+upstream-owned components (`core`, `library`) always reach the upstream
+repository, while frictions on a fork's own components (`community`, `org`)
+land on the fork's configured `feedback_repo`. The loop is covered in depth on
+the [Harness engineering](harness-engineering.md) page.

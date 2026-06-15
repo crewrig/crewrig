@@ -90,8 +90,12 @@ Semantic Versioning, and any change to a shipped source must bump it in the same
 diff — a CI gate (`scripts/check-skill-versions.sh`) enforces this. The
 provenance block is what lets feedback flow back to the right repository after a
 fork and what lets the harness loop pin the contract observed when a friction
-was reported. The forking workflow, placeholder resolution, and version
-semantics are detailed in [`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
+was reported. The feedback target is resolved **per tier**: components in
+upstream-owned tiers (`core`, `library`) always route feedback to their
+`canonical` repository, while adopter-owned tiers (`community`, `org`) route to
+the fork's configured `feedback_repo`. The forking workflow, placeholder
+resolution, and version semantics are detailed in
+[`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
 
 ## Where to read next
 

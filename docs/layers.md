@@ -192,7 +192,7 @@ from the examples layer.
 
 | Path | Description |
 |---|---|
-| `crewrig.config.toml` | Fork-level configuration: `canonical_repo`, `feedback_repo`, overlay path declarations. |
+| `crewrig.config.toml` | Fork-level configuration: `canonical_repo`, `feedback_repo` (scopes to adopter-owned tiers only — upstream-owned components always route feedback to `canonical_repo`), overlay path declarations. |
 | `config/ORGANIZATION.md` | Organization overview: company context, code quality standards, collaboration norms. |
 | `config/TOOLS.md` | Tool and MCP server guidelines specific to the organization. |
 

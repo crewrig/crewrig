@@ -10,6 +10,10 @@
 #   - Override `feedback_repo` so MRs from the harness curator land on
 #     their own internal repo, not the public upstream.
 #
+# `feedback_repo` scopes to ADOPTER-OWNED tiers only (artifacts/community,
+# artifacts/org, extensions/org). Upstream-owned components always route
+# feedback to `canonical_repo`. See artifacts/FORMAT.md (Provenance & Forks).
+#
 # See artifacts/FORMAT.md (Provenance Block) and issue #41 for context.
 
 canonical_repo = "https://github.com/crewrig/crewrig"

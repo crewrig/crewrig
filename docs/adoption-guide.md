@@ -104,6 +104,17 @@ Replace both values:
   friction issues opened by the harness curator land on the organization's
   tracker, not on the upstream project.
 
+> **`feedback_repo` governs adopter-owned tiers only.** It redirects
+> feedback for the components *your* fork authors (`artifacts/community`,
+> `artifacts/org`, `extensions/org`). It has **no effect** on upstream-owned
+> components (`artifacts/core`, `artifacts/library`, `extensions/core`,
+> `extensions/library`): frictions on those always route to `canonical_repo`,
+> so overriding `feedback_repo` does **not** capture feedback on components you
+> did not author — that feedback keeps flowing upstream where the components are
+> maintained. This is by design (spec 0030) and enforced by
+> `scripts/check-feedback-routing.sh`. See
+> [`artifacts/FORMAT.md`](../artifacts/FORMAT.md) → *Provenance & Forks*.
+
 Commit the file:
 
 ```bash

@@ -22,4 +22,12 @@ canonical_repo = "https://github.com/<YOUR-ORG>/<YOUR-REPO>"
 # Override this with your organization's internal repo so that friction
 # issues land on your own tracker rather than the upstream project.
 # For most adopting orgs this will differ from canonical_repo.
+#
+# Scope: feedback_repo governs ADOPTER-OWNED tiers only (artifacts/community,
+# artifacts/org, extensions/org). Upstream-owned components (artifacts/core,
+# artifacts/library, extensions/core, extensions/library) always route feedback
+# to canonical_repo, regardless of this value — frictions on components you did
+# not author keep flowing to the repo that maintains them. See
+# artifacts/FORMAT.md (Provenance & Forks); enforced by
+# scripts/check-feedback-routing.sh.
 feedback_repo  = "https://github.com/<YOUR-ORG>/<YOUR-REPO>"
