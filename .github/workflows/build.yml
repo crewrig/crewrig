@@ -113,7 +113,12 @@ jobs:
         run: npm install -g markdownlint-cli
 
       - name: Lint Markdown files
-        run: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore communication
+        # extensions/**/commands/*.md are pivot command SOURCES whose body IS the
+        # rendered command prompt, not prose — linting them as documents (e.g.
+        # MD041 first-line-heading) would force a cosmetic heading that leaks
+        # into the prompt. Exclude them; every other extension .md (skills,
+        # agents, context, README) stays linted (spec 0042).
+        run: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md'
 
   lint-specs:
     runs-on: ubuntu-latest
