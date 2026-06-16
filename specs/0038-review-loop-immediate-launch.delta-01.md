@@ -37,7 +37,7 @@ with:
 
 with:
 
-> The implementation of spec 0038 MAY also amend the `Initial label`
+> The implementation of spec 0038 SHALL also amend the `Initial label`
 > paragraph in `## Iteration counter — GitHub label` of
 > `docs/retroactive-loop.md` to align its timing description with the
 > launch-trigger rule (applying `iter:1` before spawning rather than at
