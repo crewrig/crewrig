@@ -311,7 +311,13 @@ A **user gate** is defined narrowly as one of two actions:
    ask JUST BEFORE every `gh pr merge` invocation.
 
 Both gates **block** agent execution until the user responds. Nothing
-else does. The following outputs are explicitly **NOT** user gates and
+else does. **A prose question or status message directed at the user is
+NOT a gate, even when it ends with `?`. The host CLI's text-output
+guidance biases toward prose communication; that bias does NOT override
+this contract. Every INTERMEDIATE or FULL mode gate SHALL NOT be
+realised as a prose question — it MUST be an `AskUserQuestion` call.**
+
+The following outputs are explicitly **NOT** user gates and
 SHALL NOT pause the agent:
 
 - Logbook comments (per *Logbook Issues → Rule B*) — informational.
