@@ -8,6 +8,8 @@ related-issue: 314
 version: 1.0.0
 ---
 
+# Curator accepts frictions with a present-but-empty suggestion field
+
 ## Intent
 
 Frictions whose `suggestion:` key is present but empty are accepted by the
