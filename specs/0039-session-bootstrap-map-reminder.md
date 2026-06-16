@@ -18,9 +18,8 @@ Session Start*). Nothing in the per-project bootstrap surface —
 `CLAUDE.md`, `AGENTS.md`, or a hook — surfaces this protocol when an
 agent starts a session on this project. As a result, agents reliably skip
 the MAP across entire sessions, missing in-flight handoff tasks and
-cross-session context that the protocol is designed to surface (issue
-#316, evidence: PRs #305 and #307 ran without a single `mempalace_status`
-call).
+cross-session context that the protocol is designed to surface (issue 316:
+PRs #305 and #307 ran without a single `mempalace_status` call).
 
 Adding an explicit mandatory reminder at the top of `AGENTS.md` closes
 the gap: the reminder is read every time `AGENTS.md` is loaded, which
