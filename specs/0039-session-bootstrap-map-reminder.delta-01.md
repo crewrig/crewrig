@@ -20,15 +20,11 @@ version: 1.1.0
 **R2** — replace:
 
 > The section SHALL mandate, as the **first action before any work**,
-> the deterministic three-step sweep defined in `60-tools.md`:
->
-> a. `mempalace_status` — enumerate wings; confirm the `crewrig` wing
->    exists.
-> b. `mempalace_search` scoped to `wing="crewrig"`,
->    `room="task-handoff"` with `query="[TASK:ongoing]"` — discover
->    any in-flight cross-tool task.
-> c. `mempalace_diary_read` with the agent's own name — recover recent
->    per-agent reasoning trace.
+> the deterministic three-step sweep defined in `60-tools.md`: (a) `mempalace_status` —
+> enumerate wings; confirm the `crewrig` wing exists. (b) `mempalace_search` scoped to
+> `wing="crewrig"`, `room="task-handoff"` with `query="[TASK:ongoing]"` — discover any
+> in-flight cross-tool task. (c) `mempalace_diary_read` with the agent's own name —
+> recover recent per-agent reasoning trace.
 
 with:
 
