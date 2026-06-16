@@ -50,11 +50,13 @@ one uniform artifact lifecycle regardless of whether a component came from
 7. The install and link operations SHALL preserve an extension component's
    `metadata.provenance` block unchanged, so the installed component retains its
    routing identity.
-8. Every extension component whose source lives in an upstream-owned extension
-   tier (`extensions/core`, `extensions/library`) SHALL declare a
-   `metadata.provenance.feedback` value identical to its
-   `metadata.provenance.canonical` value, consistent with the per-tier
-   feedback-routing invariant established for the other upstream-owned tiers.
+8. The `metadata.provenance.feedback` value of an extension component whose
+   source lives in an upstream-owned extension tier (`extensions/core`,
+   `extensions/library`) SHALL satisfy the per-tier feedback-routing invariant
+   defined in
+   [`specs/0030-feedback-routing-upstream-tiers.md`](0030-feedback-routing-upstream-tiers.md);
+   this spec adds the provenance blocks that invariant already governs rather
+   than restating the invariant itself.
 9. **(Versioning)** Every skill and agent shipped inside an extension SHALL carry
    a `metadata.provenance.version` value that is independent of the extension's
    package version.
@@ -153,9 +155,9 @@ Then  the guard fails the build and names the component missing the bump
   extension components, which evolves the framing of
   [`specs/0024-extension-tiers.md`](0024-extension-tiers.md), whose
   `## Out of scope` deferred extension building ("extensions are installed
-  (copied/linked), not compiled by `scripts/build-components.sh`"). This
-  evolution is formalized by a sibling amendment,
-  [`specs/0024-extension-tiers.delta-01.md`](0024-extension-tiers.delta-01.md),
-  which requalifies that exclusion. The rendering mechanism (a dedicated
-  extension build path versus reuse of the `artifacts/` builder) remains a HOW
-  deferred to the PLAN stage. No residual question.
+  (copied/linked), not compiled by `scripts/build-components.sh`"). That framing
+  is requalified by a sibling delta-spec on 0024, tracked in issue #343 — cited
+  here by ticket rather than by file path so the reference holds regardless of
+  the relative merge order of the two independent spec-PRs. The rendering
+  mechanism (a dedicated extension build path versus reuse of the `artifacts/`
+  builder) remains a HOW deferred to the PLAN stage. No residual question.
