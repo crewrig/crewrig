@@ -65,6 +65,9 @@ jobs:
       - name: Check core-paths resolve at HEAD (spec 0031)
         run: bash scripts/check-core-paths.sh
 
+      - name: Test check-core-paths regression (spec 0031)
+        run: bash scripts/tests/test-check-core-paths.sh
+
       - name: Test assembly verification
         run: bash scripts/tests/test-assembly-verification.sh
 

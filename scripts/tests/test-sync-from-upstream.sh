@@ -37,6 +37,18 @@
 #      adopt-on-edit directory (warns, exit 0, no add) rather than trust an
 #      untrustworthy history.
 #
+# Spec-0031 phantom-entry tolerance cases:
+#   n. Phantom tolerance — the manifest declares a strict entry absent from the
+#      fetched upstream AND a resolvable adopt-on-edit sibling. The sync warns
+#      once for the phantom (apply-loop warn-and-skip; the strict dirty guard
+#      skips it silently), restores the resolvable sibling from upstream, and
+#      exits 0. The warn line appears EXACTLY once. This case bites if the
+#      apply-loop `resolves_at_fetch_head` guard is reverted: `set -e` + a
+#      `git restore` on a non-existent FETCH_HEAD path would exit non-zero.
+#   o. Clean-sync negative assertion — a fully resolvable manifest emits NO
+#      "Warning: skipping manifest entry" line on stderr (spec 0031 "fully
+#      resolvable manifest syncs cleanly" scenario; architect advisory #1).
+#
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
 
@@ -736,6 +748,119 @@ run_case_stderr() {
   else
     echo "FAIL  case-m: shallow guard did not prevent the add"
     fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case n — Spec-0031 phantom tolerance: a strict manifest entry absent from the
+#          fetched upstream is skipped-with-warning (exactly once) while a
+#          resolvable adopt-on-edit sibling is still restored, and the sync
+#          exits 0. Confirms the warn-and-skip fires only in the apply loop
+#          (the strict dirty guard skips the phantom silently — no duplicate
+#          warning) and that a phantom never aborts the whole sync.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" "core-file.txt" "upstream content v1"
+  commit_files "$upstream" "advance core-file" "core-file.txt" "upstream content v2"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  # phantom.txt is declared but exists nowhere upstream; core-file.txt resolves.
+  printf 'phantom.txt\tstrict\ncore-file.txt\tadopt-on-edit\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  # Adopter vendored the OLD upstream v1 (matches upstream history) so the
+  # adopt-on-edit sibling is eligible to update to v2 — proving the apply loop
+  # continued past the phantom and actually restored the sibling.
+  make_initial_commit "$adopter" "core-file.txt" "upstream content v1"
+
+  phantom_exit=0
+  phantom_stderr="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>&1 >/dev/null)" || phantom_exit=$?
+
+  if [ "$phantom_exit" -eq 0 ]; then
+    echo "PASS  case-n: phantom entry does not abort sync (exit 0)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-n: expected exit 0, got $phantom_exit"
+    echo "      actual stderr: $phantom_stderr"
+    fail=$((fail + 1))
+  fi
+
+  warn_line="Warning: skipping manifest entry absent from upstream: phantom.txt"
+  if echo "$phantom_stderr" | grep -qF "$warn_line"; then
+    echo "PASS  case-n: warn-and-skip line emitted for the phantom entry"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-n: missing warn-and-skip line for phantom.txt"
+    echo "      actual stderr: $phantom_stderr"
+    fail=$((fail + 1))
+  fi
+
+  warn_count="$(echo "$phantom_stderr" | grep -cF "$warn_line")"
+  if [ "$warn_count" -eq 1 ]; then
+    echo "PASS  case-n: warn-and-skip line emitted exactly once (apply loop only)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-n: expected exactly 1 warn line, got $warn_count"
+    echo "      actual stderr: $phantom_stderr"
+    fail=$((fail + 1))
+  fi
+
+  sibling_after="$(cat "$adopter/core-file.txt" 2>/dev/null)"
+  if [ "$sibling_after" = "upstream content v2" ]; then
+    echo "PASS  case-n: resolvable sibling restored from upstream (v2)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-n: sibling not restored (expected 'upstream content v2', got '$sibling_after')"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case o — Spec-0031 negative assertion: a fully resolvable manifest syncs
+#          cleanly and emits NO "Warning: skipping manifest entry" line. Guards
+#          against a regression where the warn-and-skip path fires spuriously on
+#          a manifest with no phantom entries (architect advisory #1).
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream content" \
+    "other.txt"     "other content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\tstrict\nother.txt\tstrict\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "core-file.txt" "upstream content" \
+    "other.txt"     "other content"
+
+  clean_exit=0
+  clean_stderr="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>&1 >/dev/null)" || clean_exit=$?
+
+  if [ "$clean_exit" -eq 0 ]; then
+    echo "PASS  case-o: fully resolvable manifest syncs cleanly (exit 0)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-o: expected exit 0, got $clean_exit"
+    echo "      actual stderr: $clean_stderr"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$clean_stderr" | grep -qF "Warning: skipping manifest entry"; then
+    echo "FAIL  case-o: unexpected skip warning on a fully resolvable manifest"
+    echo "      actual stderr: $clean_stderr"
+    fail=$((fail + 1))
+  else
+    echo "PASS  case-o: no skip warning emitted on a fully resolvable manifest"
+    pass=$((pass + 1))
   fi
 }
 
