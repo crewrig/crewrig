@@ -90,7 +90,7 @@ hooks
 extensions/core	strict
 extensions/library	strict
 
-# Public communications
+# Public communications (spec 0031)
 communication
 
 # Sync tooling (spec 0016)

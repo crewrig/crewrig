@@ -132,6 +132,18 @@ upstream_has_blob() {
 }
 
 # ---------------------------------------------------------------------------
+# resolves_at_fetch_head <path>
+# Return 0 iff <path> resolves to an object (blob OR tree) in the fetched
+# upstream tree. `git cat-file -e FETCH_HEAD:<path>` succeeds for either
+# object type, so the test is uniform across file and directory manifest
+# entries. A manifest entry that resolves to nothing upstream (a "phantom")
+# is skipped-with-warning by the apply loop rather than aborting the sync.
+# ---------------------------------------------------------------------------
+resolves_at_fetch_head() {
+  git cat-file -e "FETCH_HEAD:$1" 2>/dev/null
+}
+
+# ---------------------------------------------------------------------------
 # write_marker <path> <sha>
 # Record <sha> as the last-synced upstream blob marker for <path>.
 # ---------------------------------------------------------------------------
@@ -276,6 +288,10 @@ for i in "${!PATHS[@]}"; do
   path="${PATHS[$i]}"
   policy="${POLICIES[$i]}"
   [ "$policy" = "strict" ] || continue
+  # An entry absent from the fetched upstream tree (a "phantom") cannot be
+  # dirty against a non-existent upstream object. Skip it silently here — the
+  # single warning belongs to the apply loop below.
+  resolves_at_fetch_head "$path" || continue
   mapfile -d '' spec < <(pathspec_for "$path")
   if ! git diff --quiet FETCH_HEAD -- "${spec[@]}" 2>/dev/null; then
     DIRTY+=("$path")
@@ -305,10 +321,21 @@ for i in "${!PATHS[@]}"; do
       continue
       ;;
     strict)
+      if ! resolves_at_fetch_head "$path"; then
+        echo "Warning: skipping manifest entry absent from upstream: $path" >&2
+        continue
+      fi
       mapfile -d '' spec < <(pathspec_for "$path")
       git restore --source=FETCH_HEAD --worktree -- "${spec[@]}"
       ;;
     adopt-on-edit)
+      # Phantom guard at the top of the arm covers both sub-branches: the
+      # directory branch already tolerates absence via `git ls-tree`, but the
+      # blob restore below would abort under `set -e` on an unresolved entry.
+      if ! resolves_at_fetch_head "$path"; then
+        echo "Warning: skipping manifest entry absent from upstream: $path" >&2
+        continue
+      fi
       # A directory entry (a tree at FETCH_HEAD) is reconciled member-by-member
       # with add/delete history awareness; a blob entry keeps the spec-0020
       # two-tier decision below.

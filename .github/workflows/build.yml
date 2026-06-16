@@ -62,6 +62,9 @@ jobs:
       - name: Test sync-from-upstream script
         run: bash scripts/tests/test-sync-from-upstream.sh
 
+      - name: Check core-paths resolve at HEAD (spec 0031)
+        run: bash scripts/check-core-paths.sh
+
       - name: Test assembly verification
         run: bash scripts/tests/test-assembly-verification.sh
 
