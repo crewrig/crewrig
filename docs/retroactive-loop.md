@@ -172,12 +172,11 @@ cross-session-safe by virtue of being a GitHub primitive — two
 sibling orchestrators racing the same PR converge on the same label
 state without coordinating through MemPalace.
 
-**Initial label.** The first REVIEW pass on a freshly opened PR
-implies `iter:1`; the engine SHALL apply the `iter:1` label at the
-moment the first verdict is consumed, not at PR open time. PRs that
-never need a second pass therefore carry exactly one `iter:N` label
-on merge — a useful searchable signal for ticket-difficulty
-retrospectives.
+**Initial label.** The `iter:1` label SHALL be applied to the PR
+**before** the first reviewer is spawned (per *REVIEW launch trigger*
+above). PRs that never need a second pass therefore carry exactly one
+`iter:N` label on merge — a useful searchable signal for
+ticket-difficulty retrospectives.
 
 ## Termination
 
