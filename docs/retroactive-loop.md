@@ -173,10 +173,12 @@ sibling orchestrators racing the same PR converge on the same label
 state without coordinating through MemPalace.
 
 **Initial label.** The `iter:1` label SHALL be applied to the PR
-**before** the first reviewer is spawned (per *REVIEW launch trigger*
-above). PRs that never need a second pass therefore carry exactly one
-`iter:N` label on merge — a useful searchable signal for
-ticket-difficulty retrospectives.
+**before** the first reviewer is spawned — between PR creation and
+reviewer launch, not after the first verdict is consumed (see
+*REVIEW launch trigger* for the exact step ordering). PRs that never
+need a second pass therefore carry exactly one `iter:N` label on
+merge — a useful searchable signal for ticket-difficulty
+retrospectives.
 
 ## Termination
 
