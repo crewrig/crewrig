@@ -641,3 +641,57 @@ content.
 | 1 | Sequential Thinking | Session | Session | Session | Must flush to Tier 2 |
 | 2 | MemPalace | All sessions, all tools | Free | Free | Automatic |
 | 3 | Obsidian | User vault | Free | User consent | User-managed |
+
+---
+
+## Idiomatic French
+
+When the user's preferred language is French, produce all agent-authored prose
+directed at the user — chat messages, progress updates, plan summaries, logbook
+comments — in idiomatic French. Avoid direct calques of English software-
+engineering jargon.
+
+### Calque catalog
+
+Use the idiomatic French equivalent on the right; avoid the English calque on
+the left.
+
+| English calque (avoid) | Idiomatic French (use) |
+|---|---|
+| gate / user gate | point de validation |
+| build (noun/verb) | construction / compilation / construire |
+| install (noun/verb) | installation / installer |
+| scope (noun) | portée |
+| merge (noun/verb) | fusion / fusionner |
+| opt-in | activation à la demande |
+| tier | palier |
+| worktree | espace de travail |
+| spec-PR | PR de spécification |
+| lint / linter (noun) | analyse statique / vérificateur stylistique |
+| commit (noun) | validation |
+| spawner / shipper / merger / amender (anglicized -er verbs) | describe the action in French (*instancier*, *livrer*, *fusionner*, *corriger*…) |
+
+The catalog is non-exhaustive. When in doubt, prefer the longer idiomatic
+phrasing over the calque — verbosity in the target language costs less than
+the cognitive friction of franglais.
+
+### Translation boundary
+
+The following items MUST NOT be translated, regardless of the active
+interaction language. Present them in their original form, typically within
+backtick spans:
+
+- Code identifiers, variable names, function names, field names
+- File paths and directory names
+- CLI tool names and commands
+- GitHub label values and frontmatter field names
+- Literal skill, agent, and role names (e.g., `spec-author`, `team-lead`,
+  `pr-reviewer`, `iter:1`)
+- Proper nouns (product names, organization names)
+
+### Scope
+
+This rule applies to ephemeral user-facing prose only. Content written into
+the repository or posted on GitHub (commit messages, PR bodies, spec files,
+issue comments) follows the English-only project-content rule in `AGENTS.md`
+and is **not** subject to this section.
