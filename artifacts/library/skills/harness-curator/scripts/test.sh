@@ -80,12 +80,13 @@ assert() {
 # and > indicator variants — see the dedicated section).
 assert "stats.total_drawers"       "16" "$(echo "$OUT" | jq -r '.stats.total_drawers')"
 
-# 9 valid (drw-001,002,003,004,009,011,014,015,016); 4 malformed: drw-005 (no
-# FRICTION: prefix), drw-006 (empty writer_agent), drw-008 (whitespace-only
-# suggestion per spec 0010 R1), drw-010 (empty block scalar suggestion per spec
-# 0010 R1). drw-007/012/013 are well-formed but already correlated → skipped_resolved.
-assert "stats.valid_frictions"     "9" "$(echo "$OUT" | jq -r '.stats.valid_frictions')"
-assert "stats.skipped_malformed"   "4" "$(echo "$OUT" | jq -r '.stats.skipped_malformed')"
+# 11 valid (drw-001,002,003,004,008,009,010,011,014,015,016); 2 malformed:
+# drw-005 (no FRICTION: prefix), drw-006 (empty writer_agent). drw-008
+# (whitespace-only suggestion) and drw-010 (empty block-scalar body) are now
+# accepted with their suggestion key stripped per spec 0033 R1-R3.
+# drw-007/012/013 are well-formed but already correlated → skipped_resolved.
+assert "stats.valid_frictions"     "11" "$(echo "$OUT" | jq -r '.stats.valid_frictions')"
+assert "stats.skipped_malformed"   "2" "$(echo "$OUT" | jq -r '.stats.skipped_malformed')"
 
 # Regression for issue #69 + spec 0032 R4/R5: drw-007/012/013 carry
 # `opened_as: <url>` and must be filtered before clustering so the curator
@@ -94,12 +95,13 @@ assert "stats.skipped_malformed"   "4" "$(echo "$OUT" | jq -r '.stats.skipped_ma
 # both shape and emptiness — see the spec 0032 section further down.
 assert "stats.skipped_resolved"    "3" "$(echo "$OUT" | jq -r '.stats.skipped_resolved')"
 
-# 8 cluster keys: yq-merge, gh-body-truncation, parked-singleton,
+# 10 cluster keys: yq-merge, gh-body-truncation, parked-singleton,
 # no-canonical-test, block-scalar-multiline (drw-011), block-scalar-generalized
-# (drw-014), block-scalar-strip (drw-015), block-scalar-folded (drw-016).
-# drw-007/012/013 are filtered upstream of clustering, so their subcategories
-# must not appear as cluster keys — see explicit assertions below.
-assert "stats.clusters_formed"     "8" "$(echo "$OUT" | jq -r '.stats.clusters_formed')"
+# (drw-014), block-scalar-strip (drw-015), block-scalar-folded (drw-016),
+# empty-suggestion-test (drw-008, spec 0033), empty-block-scalar (drw-010,
+# spec 0033). drw-007/012/013 are filtered upstream of clustering, so their
+# subcategories must not appear as cluster keys — see explicit assertions below.
+assert "stats.clusters_formed"     "10" "$(echo "$OUT" | jq -r '.stats.clusters_formed')"
 
 # Above threshold:
 #  - yq-merge (size 2, ≥ threshold)
@@ -108,10 +110,11 @@ assert "stats.clusters_formed"     "8" "$(echo "$OUT" | jq -r '.stats.clusters_f
 #  - block-scalar-generalized (size 1 BUT severity:high → bypass, drw-014)
 #  - block-scalar-strip (size 1 BUT severity:high → bypass, drw-015)
 #  - block-scalar-folded (size 1 BUT severity:high → bypass, drw-016)
-# Parked: parked-singleton (size 1, severity low)
+# Parked: parked-singleton (size 1, low), empty-suggestion-test (size 1, low),
+#         empty-block-scalar (size 1, med)
 assert "stats.clusters_above_threshold" "6" \
   "$(echo "$OUT" | jq -r '.stats.clusters_above_threshold')"
-assert "stats.clusters_parked"     "1" "$(echo "$OUT" | jq -r '.stats.clusters_parked')"
+assert "stats.clusters_parked"     "3" "$(echo "$OUT" | jq -r '.stats.clusters_parked')"
 
 # No routing failures from the fixture clusters that have canonical: set,
 # but drw-009 (no-canonical-test) has no canonical → 1 routing failure.
@@ -128,27 +131,30 @@ assert "len(.clusters)"            "6" "$(echo "$OUT" | jq -r '.clusters | lengt
 
 # --- Spec 0010: skipped[] and routing_failures[] arrays -------------------
 
-# skipped array: 4 malformed drawers (drw-005, drw-006, drw-008, drw-010).
-# drw-007 (resolved) must NOT appear in skipped.
+# skipped array: 2 malformed drawers (drw-005, drw-006). drw-008 and drw-010
+# are now accepted (suggestion key stripped) per spec 0033 R1-R3, so they must
+# NOT appear in skipped[]. drw-007 (resolved) must NOT appear in skipped.
 SKIPPED_COUNT=$(echo "$OUT" | jq -r '.skipped | length')
-assert "skipped[] length"          "4" "$SKIPPED_COUNT"
+assert "skipped[] length"          "2" "$SKIPPED_COUNT"
 
 # Each skipped entry has the required fields.
 SKIPPED_KEYS=$(echo "$OUT" | jq -c '.skipped[0] | keys | sort')
 assert "skipped[0] keys" '["drawer_id","reason","room","snippet"]' "$SKIPPED_KEYS"
 
-# drw-008 reason is "empty_suggestion" per spec 0010 R1 (whitespace-only).
-DRW8_REASON=$(echo "$OUT" | jq -r '.skipped[] | select(.drawer_id == "drw-008") | .reason')
-assert "skipped drw-008 reason"    "empty_suggestion" "$DRW8_REASON"
+# Spec 0033 R2: drw-008 (whitespace-only suggestion) must NOT appear in skipped[].
+DRW8_IN_SKIPPED=$(echo "$OUT" | jq -c '.skipped[] | select(.drawer_id == "drw-008")')
+[ -z "$DRW8_IN_SKIPPED" ] || { echo "FAIL: drw-008 found in skipped — spec 0033 R2 violated" >&2; exit 1; }
+echo "  PASS drw-008 not in skipped (spec 0033 R1-R2)"
 
-# drw-010 reason is "empty_suggestion" per spec 0010 R1 (empty block scalar).
-DRW10_REASON=$(echo "$OUT" | jq -r '.skipped[] | select(.drawer_id == "drw-010") | .reason')
-assert "skipped drw-010 reason"    "empty_suggestion" "$DRW10_REASON"
+# Spec 0033 R2: drw-010 (bodiless suggestion: |) must NOT appear in skipped[].
+DRW10_IN_SKIPPED=$(echo "$OUT" | jq -c '.skipped[] | select(.drawer_id == "drw-010")')
+[ -z "$DRW10_IN_SKIPPED" ] || { echo "FAIL: drw-010 found in skipped — spec 0033 R2 violated" >&2; exit 1; }
+echo "  PASS drw-010 not in skipped (spec 0033 R1-R2)"
 
-# Spec 0010 scenario 3: distinct reasons in skipped. malformed drawers carry
-# parse-failure-specific reasons, not a single catch-all.
+# Spec 0010 scenario 3 (amended): distinct reasons in skipped are now only
+# "malformed" — "empty_suggestion" is no longer a skip reason (spec 0033 R4).
 SKIPPED_REASONS=$(echo "$OUT" | jq -r '[.skipped[].reason] | unique | sort | join(",")')
-assert "skipped distinct reasons"  "empty_suggestion,malformed" "$SKIPPED_REASONS"
+assert "skipped distinct reasons"  "malformed" "$SKIPPED_REASONS"
 
 # drw-005 snippet starts with the non-FRICTION content.
 DRW5_SNIPPET=$(echo "$OUT" | jq -r '.skipped[] | select(.drawer_id == "drw-005") | .snippet')
@@ -351,11 +357,17 @@ DRW13_CLUSTER=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "resol
 [ -z "$DRW13_CLUSTER" ] || { echo "FAIL: resolved drw-013 leaked into clusters" >&2; exit 1; }
 echo "  PASS resolved-empty-suggestion subcategory absent from clusters (R5)"
 
-# R6 regression — the pre-existing uncorrelated genuinely-empty fixtures
-# (drw-008 whitespace-only, drw-010 bodiless `suggestion: |`) must STILL be
-# classified empty_suggestion. Already asserted above (skipped drw-008/drw-010
-# reason == empty_suggestion); re-stated here as the R6 guard anchor.
-echo "  PASS R6 empty_suggestion guards intact (see drw-008/drw-010 assertions above)"
+# R6 (spec 0032) vs spec 0033: drw-008 and drw-010 were previously classified
+# empty_suggestion (spec 0032 R6). Spec 0033 supersedes that contract — they
+# are now accepted with the suggestion key stripped. The assertions above
+# (drw-008/drw-010 NOT in skipped) serve as the new spec 0033 guard.
+# The parked clusters below assert they enter the pipeline and park correctly.
+DRW8_CLUSTER=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "empty-suggestion-test")')
+[ -z "$DRW8_CLUSTER" ] || { echo "FAIL: drw-008 empty-suggestion-test cluster in output — should be parked" >&2; exit 1; }
+echo "  PASS drw-008 cluster parked (not in .clusters output, spec 0033 R1)"
+DRW10_CLUSTER=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "empty-block-scalar")')
+[ -z "$DRW10_CLUSTER" ] || { echo "FAIL: drw-010 empty-block-scalar cluster in output — should be parked" >&2; exit 1; }
+echo "  PASS drw-010 cluster parked (not in .clusters output, spec 0033 R1)"
 
 # Indicator-variant fixtures (drw-015 / drw-016) — same parse path as `|`,
 # exercised here to close the test-fixture gap across all six BLOCK_SCALAR_RE

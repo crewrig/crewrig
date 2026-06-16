@@ -238,13 +238,11 @@ def parse_friction(content: str) -> Tuple[Optional[Dict[str, Any]], str]:
     # job here is just to avoid re-opening.
     if out.get("opened_as"):
         return None, "resolved"
-    # Empty or whitespace-only suggestion is malformed per spec 0010 R1.
-    # A block scalar with no body now yields an empty captured string
-    # (handled above), so the lone-indicator strip hack is no longer
-    # needed — a bodiless ``suggestion: |`` still fails this check and is
-    # classified empty_suggestion (spec 0032 R6).
+    # A present-but-empty suggestion is treated identically to an absent key:
+    # the key is stripped and the friction is accepted (spec 0033 R1-R3).
+    # This supersedes the spec 0010 R1 / spec 0032 R6 empty_suggestion reject.
     if "suggestion" in out and not out["suggestion"].strip():
-        return None, "empty_suggestion"
+        out.pop("suggestion")
     # Default severity if absent.
     out.setdefault("severity", "med")
     return out, "ok"
