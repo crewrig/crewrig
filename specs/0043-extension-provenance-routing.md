@@ -48,11 +48,11 @@ lifecycle gives extension components the same feedback-loop reachability that
 7. **(Presence guard)** A continuous-integration guard SHALL fail the build when
    an extension component in an upstream-owned extension tier lacks the
    `metadata.provenance` block required by requirement 1.
-8. **(Back-fill)** Every existing extension component lacking a
-   `metadata.provenance` block — the `greeter` skill and the `hello-world`
-   command — SHALL be given a conformant block in the same change that
-   introduces requirement 1, so no extension component on the primary branch
-   violates requirement 1.
+8. **(Back-fill)** Every existing in-scope extension component lacking a
+   `metadata.provenance` block — today the `greeter` skill alone — SHALL be
+   given a conformant block in the same change that introduces requirement 1, so
+   no skill or agent under `extensions/` on the primary branch violates
+   requirement 1.
 
 ## Scenarios
 
@@ -116,12 +116,15 @@ Then  the guard fails the build and identifies the offending component
 
 ## Open questions
 
-- [GROUNDING:] No extension component on the primary branch carries a
+- [GROUNDING:] No in-scope extension component on the primary branch carries a
   `metadata.provenance` block today: the `greeter` skill
   (`extensions/core/hello-world/skills/greeter/SKILL.md`) declares only `name`
-  and `description`, and the `hello-world` command carries none. The provenance
-  schema (`canonical`/`feedback`/`version`) exists and is well-formed for
-  `artifacts/` components, so the block has a coherent shape to add. Back-fill
-  responsibility is resolved: requirement 8 adds the block to both components in
-  the implementation PR for this spec, and the guard introduced by requirement 7
-  prevents regression.
+  and `description`, and it is the only skill or agent any extension ships. The
+  `hello-world` command is a command, not a skill or agent, and is outside R1's
+  scope (the provenance schema in `artifacts/FORMAT.md` is defined on skill and
+  agent frontmatter, not on commands). The provenance schema
+  (`canonical`/`feedback`/`version`) exists and is well-formed for `artifacts/`
+  skills and agents, so the block has a coherent shape to add. Back-fill
+  responsibility is resolved: requirement 8 adds the block to the `greeter`
+  skill in the implementation PR for this spec, and the guard introduced by
+  requirement 7 prevents regression.
