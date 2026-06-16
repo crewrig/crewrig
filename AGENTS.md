@@ -120,6 +120,29 @@ rule takes over.
 - The `import/gitlab` branch tracks the legacy GitLab project (`gitlab` remote) and serves as inspiration only.
 - Non-trivial tickets follow the **Spec-PR workflow** (see section below): a `spec/<NNNN>-<slug>` PR qualifies the WHAT and merges to `main` before the implementation branch is cut.
 
+## Pre-Edit Guard
+
+Before writing or editing **any** file in the repository, the agent MUST
+confirm that all three of the following conditions hold:
+
+1. **A GitHub issue exists** for the work — pre-existing or freshly created
+   in this session.
+2. **A feature branch is active** — the current working context is NOT
+   `main` (or `master`). The branch name MUST follow the
+   `<prefix>/<NNNN>-<slug>` convention defined in *Branching Strategy* above.
+3. **A dedicated worktree is in use** — the working directory is
+   `.worktrees/<ticket-id>/`, NOT the repository root.
+
+**Process violation.** Editing any file without satisfying all three
+conditions is a process violation. A REVIEW pass that audits a session
+where the guard was bypassed SHALL emit a `class: tech` finding citing
+this section.
+
+**Exemption.** Trivial single-file edits explicitly scoped by the user in
+the same conversational turn are exempt from condition 3 (worktree), but
+NOT from conditions 1 (issue) and 2 (feature branch). There is no
+edit-without-branch exemption.
+
 ## Spec-PR workflow
 
 This section operationalises the SPECS stage of the lifecycle defined in
