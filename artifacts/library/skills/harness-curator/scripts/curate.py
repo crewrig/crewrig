@@ -112,6 +112,10 @@ TITLE_RE = re.compile(r"^FRICTION:\s*(.+)$")
 KV_RE = re.compile(r"^([a-z_][a-z0-9_]*):\s*(.*)$")
 # Evidence entries are ``  - <value>`` indented list items.
 LIST_RE = re.compile(r"^\s*-\s+(.+)$")
+# A lone YAML block-scalar indicator as a field value: ``|``, ``>`` with an
+# optional chomping indicator (``-``/``+``). When a ``key:`` value is just
+# this, the field body is the following MORE-indented block of lines.
+BLOCK_SCALAR_RE = re.compile(r"^[|>][-+]?$")
 
 
 def parse_friction(content: str) -> Tuple[Optional[Dict[str, Any]], str]:
@@ -150,18 +154,30 @@ def parse_friction(content: str) -> Tuple[Optional[Dict[str, Any]], str]:
 
     out: Dict[str, Any] = {"title": title, "evidence": []}
     in_evidence = False
-    for line in lines[body_start:]:
+    body_lines = lines[body_start:]
+    n = len(body_lines)
+    i = 0
+    # Index-driven scan: a lone block-scalar indicator value (``key: |``)
+    # makes the field's body the following MORE-indented block of lines,
+    # so the cursor must be able to jump past that block — a plain ``for``
+    # loop cannot. This generalizes to ANY field, not just ``suggestion``
+    # (spec 0032 R2).
+    while i < n:
+        line = body_lines[i]
         if in_evidence:
             m = LIST_RE.match(line)
             if m:
                 out["evidence"].append(m.group(1).strip())
+                i += 1
                 continue
             # First non-list-item line ends the evidence block.
             in_evidence = False
         if not line.strip():
+            i += 1
             continue
         m = KV_RE.match(line)
         if not m:
+            i += 1
             continue
         key, val = m.group(1), m.group(2).strip()
         if key == "evidence":
@@ -169,33 +185,68 @@ def parse_friction(content: str) -> Tuple[Optional[Dict[str, Any]], str]:
             # Allow inline evidence: "evidence: foo" → single entry.
             if val:
                 out["evidence"].append(val)
+            i += 1
+            continue
+        if BLOCK_SCALAR_RE.match(val):
+            # Block scalar: capture the following lines whose indentation
+            # exceeds the key line's as the field body (spec 0032 R1/R2).
+            # Blank lines inside the block are preserved; trailing blanks
+            # are dropped. Capture stops at the first line that dedents
+            # back to (or past) key level — a sibling ``key:`` line, the
+            # ``evidence:`` block, or EOF — so the block-scalar capture and
+            # the evidence-list handling never swallow each other.
+            key_indent = len(line) - len(line.lstrip())
+            i += 1
+            block: List[str] = []
+            while i < n:
+                cont = body_lines[i]
+                if not cont.strip():
+                    # Blank line: tentatively part of the block (trailing
+                    # blanks are stripped below).
+                    block.append("")
+                    i += 1
+                    continue
+                cont_indent = len(cont) - len(cont.lstrip())
+                if cont_indent <= key_indent:
+                    break
+                block.append(cont)
+                i += 1
+            # Dedent by the common leading whitespace of non-blank lines.
+            indents = [len(b) - len(b.lstrip()) for b in block if b.strip()]
+            if indents:
+                common = min(indents)
+                block = [b[common:] if b.strip() else "" for b in block]
+            # Strip trailing blank lines.
+            while block and not block[-1].strip():
+                block.pop()
+            out[key] = "\n".join(block)
             continue
         out[key] = val
+        i += 1
 
     # Required fields per config/TOOLS.md: writer_agent + ≥1 evidence.
     if not out.get("writer_agent"):
         return None, "malformed"
     if not out["evidence"]:
         return None, "malformed"
-    # Empty or whitespace-only suggestion is malformed per spec 0010 R1.
-    # YAML block scalar indicators (|, >, |-, >-, |+, >+) with no body
-    # text survive the KV parser as a lone indicator character; strip those
-    # before the emptiness check so that ``suggestion: |`` with no indented
-    # block content is treated as equivalently empty.
-    if "suggestion" in out:
-        suggestion_val = out["suggestion"].strip()
-        # Strip a leading YAML block scalar indicator if it's the only content.
-        suggestion_val = re.sub(r'^[|>][-+]?\s*$', '', suggestion_val).strip()
-        if not suggestion_val:
-            return None, "empty_suggestion"
-    # Default severity if absent.
-    out.setdefault("severity", "med")
-    # Skip drawers already correlated with an open/closed issue: the
-    # write-back stamp from apply.py (issue #69). We treat any truthy
-    # `opened_as` value as a resolved correlation — even if it's not a
-    # valid URL, the curator's job is just to avoid re-opening.
+    # Resolved-correlation takes precedence over empty-suggestion
+    # (spec 0032 R4/R5). A drawer already correlated with an opened issue
+    # (the write-back stamp from apply.py, issue #69) is skipped silently
+    # so the curator does not re-open issues — regardless of the shape or
+    # emptiness of its suggestion. Any truthy `opened_as` counts as a
+    # resolved correlation even if it is not a valid URL: the curator's
+    # job here is just to avoid re-opening.
     if out.get("opened_as"):
         return None, "resolved"
+    # Empty or whitespace-only suggestion is malformed per spec 0010 R1.
+    # A block scalar with no body now yields an empty captured string
+    # (handled above), so the lone-indicator strip hack is no longer
+    # needed — a bodiless ``suggestion: |`` still fails this check and is
+    # classified empty_suggestion (spec 0032 R6).
+    if "suggestion" in out and not out["suggestion"].strip():
+        return None, "empty_suggestion"
+    # Default severity if absent.
+    out.setdefault("severity", "med")
     return out, "ok"
 
 
