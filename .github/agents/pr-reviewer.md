@@ -5,7 +5,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.3"
+    version: "1.1.4"
 ---
 
 
@@ -33,12 +33,19 @@ On activation:
 5. Post the verdict via the GitHub MCP `pull_request_review_write`
    tool with the appropriate event (`APPROVE`, `REQUEST_CHANGES`, or
    `COMMENT`).
-6. After completing the review, you MUST send your verdict to
-   `team-lead` via `SendMessage` before your turn ends. Do NOT go idle
-   without having sent the verdict message — idle without reporting is
-   a protocol violation. The message must include the PR number, the
-   event (`APPROVE` / `REQUEST_CHANGES` / `COMMENT`), and a short
-   summary of the key findings.
+6. After completing the review, report the verdict according to the
+   invocation context:
+   - **If a `team-lead` is addressable (TeamCreate context):** send the
+     verdict via `SendMessage` before your turn ends. Do NOT go idle
+     without having sent the verdict — idle without reporting is a
+     protocol violation. The message must include the PR number, the
+     event (`APPROVE` / `REQUEST_CHANGES` / `COMMENT`), and a short
+     summary of the key findings.
+   - **If invoked directly (no `team-lead` addressable):** conclude your
+     turn by returning the verdict summary as your final response text.
+     Do NOT attempt `SendMessage` and do NOT flag the absence of a
+     team-lead as a failure or protocol violation. The GitHub PR review
+     comment posted in step 5 is the canonical, durable artifact.
 
 ## Activation
 
