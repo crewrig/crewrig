@@ -27,6 +27,18 @@ five pillars without needing to read README.md or ADRs:
    every parity gap requires concrete evidence that the missing mechanism does
    not exist in the target CLI.
 
+## Session Bootstrap
+
+**Before any work begins**, the agent SHALL run the complete deterministic
+session-start sweep defined in
+`artifacts/core/rules/60-tools.md` → *Memory Activation Protocol → Session Start*
+(all six steps, in order). The project-specific parameter for step 3 is
+`wing="crewrig"`, `room="task-handoff"`.
+
+Skipping the sweep is a process violation equivalent to missing a lifecycle
+stage. A REVIEW pass that audits a session where the sweep was omitted SHALL
+emit a `class: tech` finding citing this section.
+
 ## Lifecycle
 
 Every non-trivial ticket SHALL flow through the four-stage lifecycle
