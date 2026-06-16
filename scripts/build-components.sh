@@ -46,6 +46,16 @@ done
 # --- Prerequisites ---
 command -v yq >/dev/null 2>&1 || { echo "Error: yq is required. Install with: brew install yq"; exit 1; }
 
+# --- Shared command renderer (spec 0042) ---
+# build_commands() below delegates the pivot-source → consumed-form render to
+# the shared library so the extension renderer (scripts/build-extension-pivot.sh)
+# and the Claude plugin builder use the exact same logic. The library guards its
+# helper definitions (extract_frontmatter/extract_body/yaml_field), so the
+# versions defined later in THIS file win and the artifacts/ output stays
+# byte-identical.
+# shellcheck source=lib/render-command.sh
+. "$(dirname "$0")/lib/render-command.sh"
+
 DRIFT_FOUND=false
 
 # --- Crewrig fork configuration ---
@@ -541,42 +551,22 @@ build_commands() {
     echo "Building command: $name"
 
     # --- Gemini CLI output: TOML ---
+    # Rendered by the shared command library (spec 0042). For artifacts/ commands
+    # — which carry no metadata.provenance today — the output is byte-identical
+    # to the prior inline emitter.
     if [ "$TARGET" = "gemini" ] || [ "$TARGET" = "all" ]; then
       local toml_content
-      toml_content="description = \"$description\"
-
-prompt = \"\"\"
-$body
-\"\"\""
+      toml_content=$(render_command_gemini "$source")
       check_or_write "$out_root/.gemini/commands/$name.toml" "$toml_content" "$source"
     fi
 
     # --- Claude Code output: SKILL.md ---
+    # Rendered by the shared command library (spec 0042). Provenance, when
+    # present, is spliced into the Markdown frontmatter by check_or_write
+    # (inject_provenance), exactly as before.
     if [ "$TARGET" = "claude" ] || [ "$TARGET" = "all" ]; then
-      local claude_frontmatter="name: $name
-description: \"$description\"
-user-invocable: true"
-
-      local allowed_tools
-      allowed_tools=$(extract_frontmatter "$source" | yq -r '.claude.allowed-tools // [] | .[]' 2>/dev/null)
-      if [ -n "$allowed_tools" ]; then
-        claude_frontmatter="$claude_frontmatter
-allowed-tools:"
-        while IFS= read -r tool; do
-          claude_frontmatter="$claude_frontmatter
-  - $tool"
-        done <<< "$allowed_tools"
-      fi
-
       local claude_content
-      claude_content=$(cat <<CLAUDE_EOF
----
-$claude_frontmatter
----
-
-$body
-CLAUDE_EOF
-      )
+      claude_content=$(render_command_claude "$source")
       check_or_write "$out_root/.claude/skills/$name/SKILL.md" "$claude_content" "$source"
     fi
 

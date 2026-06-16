@@ -35,6 +35,14 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
+      # The extension pivot carrier round-trip test validates the rendered .toml
+      # via python3/tomllib (Python >= 3.11). ubuntu-latest ships Python 3.12,
+      # but pin it explicitly so the toolchain prerequisite is declared, not
+      # incidental (spec 0042 PLAN v2, finding F6).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Check community component drift
         run: bash scripts/build-components.sh --target all --check
 
@@ -49,6 +57,18 @@ jobs:
 
       - name: Test check-feedback-routing regression (spec 0030)
         run: bash scripts/tests/test-check-feedback-routing.sh
+
+      - name: Enforce extension pivot sourcing (spec 0042)
+        run: bash scripts/check-extension-pivot.sh
+
+      - name: Test check-extension-pivot regression (spec 0042)
+        run: bash scripts/tests/test-check-extension-pivot.sh
+
+      - name: Test build-extension-pivot renderer + carrier (spec 0042)
+        run: bash scripts/tests/test-build-extension-pivot.sh
+
+      - name: Check extension pivot .toml drift (spec 0042)
+        run: bash scripts/build-extension-pivot.sh --check
 
       - name: Test Gemini agent frontmatter contract (issue #54)
         run: bash scripts/tests/test-gemini-agent-frontmatter.sh

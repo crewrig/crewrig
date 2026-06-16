@@ -13,6 +13,13 @@ set -euo pipefail
 
 command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: brew install jq"; exit 1; }
 
+# Shared pivot helpers (spec 0042). The Claude plugin command form is rendered
+# from the pivot `commands/*.md` source — NOT from the Gemini `.toml` output —
+# so this builder consumes the same single source of truth as
+# build-extension-pivot.sh. Sourced for extract_body / yaml_field.
+# shellcheck source=lib/render-command.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/render-command.sh"
+
 EXT_ARG="${1:?Usage: build-claude-plugin.sh <extension-dir-or-name> [output-dir]}"
 
 # Accept either an extension directory (back-compatible) or a bare extension
@@ -123,17 +130,27 @@ if [ "$SKILLS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$SKILLS_LOCATION" ]; then
   done
 fi
 
-# --- Convert .toml commands to skills ---
+# --- Render pivot commands to Claude skills ---
+# Spec 0042: the command source of truth is the pivot `commands/<name>.md`, NOT
+# the Gemini `commands/<name>.toml` (which is a generated Gemini output). Reading
+# the pivot `.md` directly also fixes a latent bug: the prior code ran
+# `sed -n '/^prompt *= *"""/,/^"""/p'` over the `.toml`, which required a
+# triple-quoted prompt and therefore extracted an EMPTY prompt from any
+# single-quoted legacy `.toml`. The `convertToSkills` manifest flag is kept by
+# name (a rename is sibling spec 0044 scope); post-flip it means "render pivot
+# `.md` → Claude skill", not "convert `.toml` → skill".
 COMMANDS_ENABLED=$(jq -r '.components.commands.enabled // false' "$MANIFEST" 2>/dev/null)
 CONVERT_TO_SKILLS=$(jq -r '.components.commands.convertToSkills // false' "$MANIFEST" 2>/dev/null)
 COMMANDS_LOCATION=$(jq -r '.components.commands.location // "commands/"' "$MANIFEST" 2>/dev/null)
 if [ "$COMMANDS_ENABLED" = "true" ] && [ "$CONVERT_TO_SKILLS" = "true" ] && [ -d "$EXT_DIR/$COMMANDS_LOCATION" ]; then
+  command -v yq >/dev/null 2>&1 || { echo "Error: yq is required to render pivot commands. Install with: brew install yq"; exit 1; }
   DEFAULT_TOOLS=$(jq -r '.claude.defaultAllowedTools // [] | join("\n")' "$MANIFEST" 2>/dev/null)
-  for toml_file in "$EXT_DIR/$COMMANDS_LOCATION"*.toml; do
-    [ -f "$toml_file" ] || continue
-    cmd_name=$(basename "$toml_file" .toml)
-    cmd_desc=$(grep '^description' "$toml_file" | sed 's/^description *= *"\(.*\)"/\1/')
-    cmd_prompt=$(sed -n '/^prompt *= *"""/,/^"""/p' "$toml_file" | sed '1d;$d')
+  for md_file in "$EXT_DIR/$COMMANDS_LOCATION"*.md; do
+    [ -f "$md_file" ] || continue
+    cmd_name=$(yaml_field "$md_file" "name")
+    [ -z "$cmd_name" ] || [ "$cmd_name" = "null" ] && cmd_name=$(basename "$md_file" .md)
+    cmd_desc=$(yaml_field "$md_file" "description")
+    cmd_prompt=$(extract_body "$md_file")
 
     mkdir -p "$OUTPUT_DIR/skills/$cmd_name"
 
@@ -153,7 +170,7 @@ if [ "$COMMANDS_ENABLED" = "true" ] && [ "$CONVERT_TO_SKILLS" = "true" ] && [ -d
       echo ""
       echo "$cmd_prompt"
     } > "$OUTPUT_DIR/skills/$cmd_name/SKILL.md"
-    echo "  Converted command to skill: $cmd_name"
+    echo "  Rendered command to skill: $cmd_name"
   done
 fi
 
