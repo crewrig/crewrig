@@ -56,5 +56,29 @@
     "room": "prompt",
     "filed_at": "2026-05-12T11:00:00.000000",
     "content": "FRICTION: Empty block scalar suggestion must be rejected\n\nwriter_agent: claude-code\nsubcategory: empty-block-scalar\ncanonical: https://github.com/crewrig/crewrig\nseverity: med\nevidence:\n  - test-file.md:4\nsuggestion: |"
+  },
+  {
+    "drawer_id": "drw-011",
+    "room": "prompt",
+    "filed_at": "2026-05-13T09:00:00.000000",
+    "content": "FRICTION: Multi-line block-scalar suggestion must survive intact\n\nwriter_agent: claude-code\nsubcategory: block-scalar-multiline\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - block-scalar-test.md:11\nsuggestion: |\n  First line of the multi-line suggestion.\n  Second line that must also survive.\n  Third line MARKER-SUGG-TAIL ends the block."
+  },
+  {
+    "drawer_id": "drw-012",
+    "room": "tool",
+    "filed_at": "2026-05-13T10:00:00.000000",
+    "content": "FRICTION: Correlated drawer with block-scalar suggestion is resolved\n\nwriter_agent: claude-code\nsubcategory: resolved-block-scalar\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - resolved-test.md:1\nsuggestion: |\n  This correlated drawer still has a real multi-line suggestion.\n  It must be classified resolved, not empty.\nopened_as: https://github.com/crewrig/crewrig/issues/100"
+  },
+  {
+    "drawer_id": "drw-013",
+    "room": "tool",
+    "filed_at": "2026-05-13T11:00:00.000000",
+    "content": "FRICTION: Correlated drawer with empty suggestion is resolved not empty_suggestion\n\nwriter_agent: claude-code\nsubcategory: resolved-empty-suggestion\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - resolved-empty-test.md:1\nsuggestion:   \nopened_as: https://github.com/crewrig/crewrig/issues/101"
+  },
+  {
+    "drawer_id": "drw-014",
+    "room": "behavior",
+    "filed_at": "2026-05-13T12:00:00.000000",
+    "content": "FRICTION: Block-scalar capture generalizes beyond the suggestion field\n\nwriter_agent: claude-code\nsubcategory: block-scalar-generalized\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\ncontext: |\n  Context first line establishing the scenario.\n  Context second line MARKER-CTX-TAIL closes it.\nevidence:\n  - generalized-test.md:7\nsuggestion: Inline one-line suggestion stays correctly parsed."
   }
 ]

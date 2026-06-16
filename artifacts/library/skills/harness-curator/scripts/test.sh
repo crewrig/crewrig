@@ -9,6 +9,18 @@
 # paths are resolved relative to this script's directory.
 #
 # Exit 0 on pass, non-zero with explanation on fail.
+#
+# Cases (fixture drw-001..drw-014):
+#   - core clustering, threshold + severity:high bypass, parking
+#   - spec 0010: skipped[] reasons, routing_failures[], empty_suggestion
+#   - issue #69: resolved-correlation skip + _drawer_id write-back round-trip
+#   - issue #63: defensive target_repo normalization (apply.py)
+#   - auto mode (#42): dedup wire shape, --max-issues truncation, scheduler
+#   - setup-labels.sh dry-run plan
+#   - spec 0032 (drw-011..drw-014): block-scalar suggestion body preserved
+#     (R1/R3), capture generalizes to non-suggestion fields with no
+#     field-swallow (R2), resolved-correlation precedence over empty/shape
+#     (R4/R5), and the pre-existing empty_suggestion guards stay green (R6).
 
 set -euo pipefail
 
@@ -61,33 +73,39 @@ assert() {
   fi
 }
 
-# 10 input drawers: drw-001 through drw-010 (drw-008 exercises whitespace-only
+# 14 input drawers: drw-001 through drw-014 (drw-008 exercises whitespace-only
 # suggestion; drw-009 exercises routing_failures; drw-010 exercises empty block
-# scalar suggestion per spec 0010).
-assert "stats.total_drawers"       "10" "$(echo "$OUT" | jq -r '.stats.total_drawers')"
+# scalar suggestion per spec 0010; drw-011..drw-014 exercise spec 0032
+# block-scalar preservation + resolved-precedence — see the dedicated section).
+assert "stats.total_drawers"       "14" "$(echo "$OUT" | jq -r '.stats.total_drawers')"
 
-# 5 valid (drw-001,002,003,004,009); 4 malformed: drw-005 (no FRICTION:
+# 7 valid (drw-001,002,003,004,009,011,014); 4 malformed: drw-005 (no FRICTION:
 # prefix), drw-006 (empty writer_agent), drw-008 (whitespace-only suggestion
 # per spec 0010 R1), drw-010 (empty block scalar suggestion per spec 0010 R1).
-# drw-007 is well-formed but already correlated → counted in skipped_resolved.
-assert "stats.valid_frictions"     "5" "$(echo "$OUT" | jq -r '.stats.valid_frictions')"
+# drw-007/012/013 are well-formed but already correlated → skipped_resolved.
+assert "stats.valid_frictions"     "7" "$(echo "$OUT" | jq -r '.stats.valid_frictions')"
 assert "stats.skipped_malformed"   "4" "$(echo "$OUT" | jq -r '.stats.skipped_malformed')"
 
-# Regression for issue #69: drw-007 carries `opened_as: <url>` and must be
-# filtered before clustering so the curator does not re-open an issue.
-assert "stats.skipped_resolved"    "1" "$(echo "$OUT" | jq -r '.stats.skipped_resolved')"
+# Regression for issue #69 + spec 0032 R4/R5: drw-007/012/013 carry
+# `opened_as: <url>` and must be filtered before clustering so the curator
+# does not re-open an issue. drw-012 (non-empty block-scalar suggestion) and
+# drw-013 (empty suggestion) prove resolved-correlation takes precedence over
+# both shape and emptiness — see the spec 0032 section further down.
+assert "stats.skipped_resolved"    "3" "$(echo "$OUT" | jq -r '.stats.skipped_resolved')"
 
-# 4 cluster keys: yq-merge, gh-body-truncation, parked-singleton,
-# no-canonical-test. drw-007 is filtered upstream of clustering, so its
-# subcategory must not appear as a cluster key — see the explicit assertion
-# further down.
-assert "stats.clusters_formed"     "4" "$(echo "$OUT" | jq -r '.stats.clusters_formed')"
+# 6 cluster keys: yq-merge, gh-body-truncation, parked-singleton,
+# no-canonical-test, block-scalar-multiline (drw-011), block-scalar-generalized
+# (drw-014). drw-007/012/013 are filtered upstream of clustering, so their
+# subcategories must not appear as cluster keys — see explicit assertions below.
+assert "stats.clusters_formed"     "6" "$(echo "$OUT" | jq -r '.stats.clusters_formed')"
 
 # Above threshold:
 #  - yq-merge (size 2, ≥ threshold)
 #  - gh-body-truncation (size 1 BUT severity:high → bypass)
+#  - block-scalar-multiline (size 1 BUT severity:high → bypass, drw-011)
+#  - block-scalar-generalized (size 1 BUT severity:high → bypass, drw-014)
 # Parked: parked-singleton (size 1, severity low)
-assert "stats.clusters_above_threshold" "2" \
+assert "stats.clusters_above_threshold" "4" \
   "$(echo "$OUT" | jq -r '.stats.clusters_above_threshold')"
 assert "stats.clusters_parked"     "1" "$(echo "$OUT" | jq -r '.stats.clusters_parked')"
 
@@ -99,8 +117,9 @@ assert "stats.routing_failures"    "1" "$(echo "$OUT" | jq -r '.stats.routing_fa
 # is unset. Tests below exercise the >0 path.
 assert "stats.clusters_truncated"  "0" "$(echo "$OUT" | jq -r '.stats.clusters_truncated')"
 
-# Exactly 2 clusters in output
-assert "len(.clusters)"            "2" "$(echo "$OUT" | jq -r '.clusters | length')"
+# Exactly 4 clusters in output (yq-merge, gh-body-truncation,
+# block-scalar-multiline, block-scalar-generalized).
+assert "len(.clusters)"            "4" "$(echo "$OUT" | jq -r '.clusters | length')"
 
 # --- Spec 0010: skipped[] and routing_failures[] arrays -------------------
 
@@ -243,6 +262,96 @@ RESOLVED_CLUSTER=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "st
 }
 echo "  PASS resolved-drawer subcategory absent from clusters"
 
+# --- Spec 0032: block-scalar preservation + resolved precedence ----------
+# Four new fixtures (drw-011..drw-014) cover the spec 0032 contract. They are
+# self-contained: each accepted one is a severity:high singleton so it forms
+# its own cluster (bypass), and each resolved one is filtered upstream.
+
+# R1/R3 — drw-011 carries a NON-empty multi-line block-scalar `suggestion: |`.
+# It must be ACCEPTED (clustered) and its parsed suggestion must hold the FULL
+# multi-line body, not the bare `|` indicator nor a single line. We assert a
+# substring drawn from the LAST line of the block ("MARKER-SUGG-TAIL"): if the
+# body were truncated to the indicator or to line 1, this would not survive.
+ML=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "block-scalar-multiline")')
+[ -n "$ML" ] || { echo "FAIL: block-scalar-multiline cluster missing (drw-011 not accepted)" >&2; exit 1; }
+assert "block-scalar-multiline.cluster_size" "1" "$(echo "$ML" | jq -r '.cluster_size')"
+ML_SUGG=$(echo "$ML" | jq -r '.frictions[0].suggestion')
+echo "$ML_SUGG" | grep -q "MARKER-SUGG-TAIL" || {
+  echo "FAIL: drw-011 multi-line suggestion truncated — tail line lost" >&2
+  echo "--- captured suggestion ---" >&2
+  printf '%s\n' "$ML_SUGG" >&2
+  exit 1
+}
+echo "  PASS block-scalar-multiline suggestion preserves full multi-line body (R1/R3)"
+# The captured body must be genuinely multi-line (3 lines), proving the block
+# was consumed rather than collapsed.
+ML_LINES=$(printf '%s\n' "$ML_SUGG" | grep -c .)
+assert "block-scalar-multiline suggestion line count" "3" "$ML_LINES"
+# And it must NOT be the bare indicator.
+[ "$ML_SUGG" != "|" ] || { echo "FAIL: drw-011 suggestion collapsed to bare '|' indicator" >&2; exit 1; }
+echo "  PASS block-scalar-multiline suggestion is not the bare indicator"
+
+# R2 — drw-014 places a block scalar on a NON-suggestion field (`context: |`).
+# The capture must generalize: the full context body survives (tail-line check)
+# AND the sibling `evidence:` list and inline `suggestion:` must parse correctly
+# without being swallowed by the context block (no field-swallow).
+GEN=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "block-scalar-generalized")')
+[ -n "$GEN" ] || { echo "FAIL: block-scalar-generalized cluster missing (drw-014 not accepted)" >&2; exit 1; }
+GEN_CTX=$(echo "$GEN" | jq -r '.frictions[0].context')
+echo "$GEN_CTX" | grep -q "MARKER-CTX-TAIL" || {
+  echo "FAIL: drw-014 context block truncated — tail line lost" >&2
+  echo "--- captured context ---" >&2
+  printf '%s\n' "$GEN_CTX" >&2
+  exit 1
+}
+echo "  PASS block-scalar-generalized context preserves full body (R2)"
+# No field-swallow: evidence list intact (1 entry) and suggestion parsed inline.
+assert "block-scalar-generalized evidence count (no swallow)" "1" \
+  "$(echo "$GEN" | jq -r '.frictions[0].evidence | length')"
+assert "block-scalar-generalized evidence[0] (no swallow)" "generalized-test.md:7" \
+  "$(echo "$GEN" | jq -r '.frictions[0].evidence[0]')"
+assert "block-scalar-generalized suggestion (no swallow)" \
+  "Inline one-line suggestion stays correctly parsed." \
+  "$(echo "$GEN" | jq -r '.frictions[0].suggestion')"
+
+# R4/R5 — drw-012 is correlated (`opened_as`) AND carries a NON-empty
+# block-scalar suggestion → classified `resolved`, NOT empty_suggestion. It is
+# counted in skipped_resolved (asserted above as 3), must NOT appear in skipped[]
+# and must NOT form a cluster.
+DRW12_IN_SKIPPED=$(echo "$OUT" | jq -c '.skipped[] | select(.drawer_id == "drw-012")')
+[ -z "$DRW12_IN_SKIPPED" ] || {
+  echo "FAIL: drw-012 (correlated, block-scalar suggestion) wrongly skipped as malformed/empty" >&2
+  echo "$DRW12_IN_SKIPPED" >&2
+  exit 1
+}
+echo "  PASS drw-012 resolved, not empty_suggestion (R4)"
+DRW12_CLUSTER=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "resolved-block-scalar")')
+[ -z "$DRW12_CLUSTER" ] || { echo "FAIL: resolved drw-012 leaked into clusters" >&2; exit 1; }
+echo "  PASS resolved-block-scalar subcategory absent from clusters (R4)"
+
+# R5 boundary — drw-013 is correlated (`opened_as`) AND its suggestion is
+# present-but-empty. Resolved-correlation MUST take precedence over the
+# empty-suggestion check (the reorder under test): classified `resolved`, NOT
+# empty_suggestion. This is the assertion that BITES the check reorder — revert
+# the reorder and drw-013 flips to an empty_suggestion entry in skipped[],
+# dropping skipped_resolved to 2.
+DRW13_IN_SKIPPED=$(echo "$OUT" | jq -c '.skipped[] | select(.drawer_id == "drw-013")')
+[ -z "$DRW13_IN_SKIPPED" ] || {
+  echo "FAIL: drw-013 (correlated + empty suggestion) classified empty_suggestion instead of resolved" >&2
+  echo "$DRW13_IN_SKIPPED" >&2
+  exit 1
+}
+echo "  PASS drw-013 resolved precedence over empty_suggestion (R5)"
+DRW13_CLUSTER=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "resolved-empty-suggestion")')
+[ -z "$DRW13_CLUSTER" ] || { echo "FAIL: resolved drw-013 leaked into clusters" >&2; exit 1; }
+echo "  PASS resolved-empty-suggestion subcategory absent from clusters (R5)"
+
+# R6 regression — the pre-existing uncorrelated genuinely-empty fixtures
+# (drw-008 whitespace-only, drw-010 bodiless `suggestion: |`) must STILL be
+# classified empty_suggestion. Already asserted above (skipped drw-008/drw-010
+# reason == empty_suggestion); re-stated here as the R6 guard anchor.
+echo "  PASS R6 empty_suggestion guards intact (see drw-008/drw-010 assertions above)"
+
 # --- apply.py orchestration (--dry-run-apply) ----------------------------
 # Pipe the curator JSON through apply.py --dry-run-apply. Each cluster
 # round-trips as one JSON-array line representing the `gh issue create`
@@ -257,21 +366,21 @@ APPLY_RC=$?
 set -e
 assert "apply --dry-run-apply exit code" "0" "$APPLY_RC"
 
-# Two qualified clusters → exactly two argv lines, no spurious output.
+# Four qualified clusters → exactly four argv lines, no spurious output.
 # (apply.py now emits a sibling object line per cluster carrying the
 # would_update_drawers list — that line starts with `{`, so the `^\[`
 # filter still counts only argv arrays.)
 APPLY_LINES=$(printf '%s\n' "$APPLY_OUT" | grep -c '^\[')
-assert "apply --dry-run-apply emits one argv line per cluster" "2" "$APPLY_LINES"
+assert "apply --dry-run-apply emits one argv line per cluster" "4" "$APPLY_LINES"
 
 # Issue #69: alongside each argv array, apply.py emits a JSON object line
 # `{"would_update_drawers": [...], "cluster_key": "..."}` so the
 # orchestration shape now exposes the drawers that would receive the
-# `opened_as` write-back. Two qualified clusters → two object lines.
+# `opened_as` write-back. Four qualified clusters → four object lines.
 APPLY_OBJECTS=$(printf '%s\n' "$APPLY_OUT" | jq -c 'select(type == "object" and (.would_update_drawers // null) != null)' 2>/dev/null || true)
 APPLY_OBJ_COUNT=$(printf '%s\n' "$APPLY_OBJECTS" | grep -c .)
 assert "apply --dry-run-apply emits one would_update_drawers object per cluster" \
-  "2" "$APPLY_OBJ_COUNT"
+  "4" "$APPLY_OBJ_COUNT"
 
 # yq-merge object: 2 source drawers (drw-001, drw-002) propagated via _drawer_id.
 YQ_OBJ=$(printf '%s\n' "$APPLY_OBJECTS" | jq -c 'select(.cluster_key == "yq-merge")')
@@ -340,7 +449,7 @@ echo "  PASS apply --dry-run-apply emits no-clusters notice"
 APPLY_DEDUP_OBJECTS=$(printf '%s\n' "$APPLY_OUT" | jq -c 'select(type == "object" and has("dedup_match"))' 2>/dev/null || true)
 APPLY_DEDUP_COUNT=$(printf '%s\n' "$APPLY_DEDUP_OBJECTS" | grep -c .)
 assert "apply --dry-run-apply emits one dedup_match object per cluster" \
-  "2" "$APPLY_DEDUP_COUNT"
+  "4" "$APPLY_DEDUP_COUNT"
 
 # Both dedup_match values must be null in the baseline (no --dedup, no
 # live `gh` probe). jq emits 'null' (4 chars) for JSON null.
