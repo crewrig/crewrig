@@ -46,13 +46,12 @@ before any file is written.
    SHALL be surfaced as a `class: tech` finding by any REVIEW pass that
    audits the session.
 
-4. The section SHALL state that **trivial single-file documentation edits**
-   explicitly scoped by the user in the same conversational turn are the
-   sole exemption — they do not require a full team or worktree, but STILL
-   require a ticket (R2a) and feature branch (R2b). There is no edit-without-
-   branch exemption.
+4. The section SHALL state that **trivial single-file edits** explicitly
+   scoped by the user in the same conversational turn are the sole exemption
+   — they do not require a full team or worktree, but STILL require a ticket
+   (R2a) and feature branch (R2b). There is no edit-without-branch exemption.
 
-5. No other section of `AGENTS.md` is modified by this spec.
+5. No other section of `AGENTS.md` SHALL be modified by this spec.
 
 ## Scenarios
 
@@ -77,7 +76,7 @@ And a REVIEW pass SHALL emit a `class: tech` finding citing *Pre-Edit Guard*
 **Scenario:** User explicitly scopes a trivial single-file edit inline.
 
 Given the user says "change the title in README.md"  
-And the agent confirms this is a trivial single-file documentation edit  
+And the agent confirms this is a trivial single-file edit scoped in this turn  
 When the agent is about to edit the file  
 Then it MAY omit the worktree but MUST still have (or create) a ticket and
 a feature branch before writing  
