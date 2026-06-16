@@ -6,7 +6,7 @@ status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 315
-version: 1.0.1
+version: 1.1.0
 ---
 
 # REVIEW loop must launch immediately after PR creation without prompting the user
