@@ -644,6 +644,41 @@ content.
 
 ---
 
+## Scannable Recap Format
+
+When composing a situation recap, status update, or progress message directed
+at the user, apply this structure:
+
+1. **Decision or outcome first.** Open with one short sentence that stands
+   alone. A user who reads only that sentence must understand what happened or
+   what was decided.
+2. **Detail as tight bullets.** Push supporting information into bullets — one
+   idea per bullet. Never stack parentheticals inside a bullet. Cap at one
+   em-dash per sentence.
+3. **Cap prose paragraphs at two sentences.** When a summary requires more
+   than two sentences, convert the extra content into bullets.
+
+### Anti-patterns to avoid
+
+- **Stacked parentheticals** — `"The merge (which resolved the conflict in X
+  (introduced by Y)) succeeded"` — the nested aside buries the outcome.
+- **Multiple em-dashes in one sentence** — `"CI failed — lint-specs — see
+  below"` — use a bullet list instead.
+- **Stacked consecutive emphasis** — `"**step 1** … **step 2** … **step 3**"`
+  in the same sentence — emphasis loses meaning when over-used.
+- **Buried decision** — opening with context before stating the outcome forces
+  the user to read to the end before knowing what happened.
+
+### Scope
+
+This rule applies to ephemeral user-facing prose — situation recaps, stage
+transitions, progress updates, and logbook-comment summaries. It does NOT
+apply to repository-bound artifacts (commit messages, PR bodies, spec files,
+plan comments) or to skill-contracted output formats (e.g., the `pr-reviewer`
+verdict block — that format is a protocol contract, not a recap).
+
+---
+
 ## Idiomatic French
 
 When the user's preferred language is French, produce all agent-authored prose
