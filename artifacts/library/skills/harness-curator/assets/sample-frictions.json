@@ -80,5 +80,17 @@
     "room": "behavior",
     "filed_at": "2026-05-13T12:00:00.000000",
     "content": "FRICTION: Block-scalar capture generalizes beyond the suggestion field\n\nwriter_agent: claude-code\nsubcategory: block-scalar-generalized\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\ncontext: |\n  Context first line establishing the scenario.\n  Context second line MARKER-CTX-TAIL closes it.\nevidence:\n  - generalized-test.md:7\nsuggestion: Inline one-line suggestion stays correctly parsed."
+  },
+  {
+    "drawer_id": "drw-015",
+    "room": "prompt",
+    "filed_at": "2026-05-13T13:00:00.000000",
+    "content": "FRICTION: Literal-strip block-scalar indicator must be parsed correctly\n\nwriter_agent: claude-code\nsubcategory: block-scalar-strip\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - strip-variant-test.md:1\nsuggestion: |-\n  First line with strip indicator.\n  Second line MARKER-STRIP-TAIL closes the block."
+  },
+  {
+    "drawer_id": "drw-016",
+    "room": "prompt",
+    "filed_at": "2026-05-13T14:00:00.000000",
+    "content": "FRICTION: Folded block-scalar indicator must be parsed correctly\n\nwriter_agent: claude-code\nsubcategory: block-scalar-folded\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - folded-variant-test.md:1\nsuggestion: >\n  First folded line.\n  Second folded line MARKER-FOLD-TAIL closes the block."
   }
 ]

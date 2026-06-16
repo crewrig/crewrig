@@ -73,17 +73,18 @@ assert() {
   fi
 }
 
-# 14 input drawers: drw-001 through drw-014 (drw-008 exercises whitespace-only
+# 16 input drawers: drw-001 through drw-016 (drw-008 exercises whitespace-only
 # suggestion; drw-009 exercises routing_failures; drw-010 exercises empty block
 # scalar suggestion per spec 0010; drw-011..drw-014 exercise spec 0032
-# block-scalar preservation + resolved-precedence — see the dedicated section).
-assert "stats.total_drawers"       "14" "$(echo "$OUT" | jq -r '.stats.total_drawers')"
+# block-scalar preservation + resolved-precedence; drw-015/016 exercise the |-
+# and > indicator variants — see the dedicated section).
+assert "stats.total_drawers"       "16" "$(echo "$OUT" | jq -r '.stats.total_drawers')"
 
-# 7 valid (drw-001,002,003,004,009,011,014); 4 malformed: drw-005 (no FRICTION:
-# prefix), drw-006 (empty writer_agent), drw-008 (whitespace-only suggestion
-# per spec 0010 R1), drw-010 (empty block scalar suggestion per spec 0010 R1).
-# drw-007/012/013 are well-formed but already correlated → skipped_resolved.
-assert "stats.valid_frictions"     "7" "$(echo "$OUT" | jq -r '.stats.valid_frictions')"
+# 9 valid (drw-001,002,003,004,009,011,014,015,016); 4 malformed: drw-005 (no
+# FRICTION: prefix), drw-006 (empty writer_agent), drw-008 (whitespace-only
+# suggestion per spec 0010 R1), drw-010 (empty block scalar suggestion per spec
+# 0010 R1). drw-007/012/013 are well-formed but already correlated → skipped_resolved.
+assert "stats.valid_frictions"     "9" "$(echo "$OUT" | jq -r '.stats.valid_frictions')"
 assert "stats.skipped_malformed"   "4" "$(echo "$OUT" | jq -r '.stats.skipped_malformed')"
 
 # Regression for issue #69 + spec 0032 R4/R5: drw-007/012/013 carry
@@ -93,19 +94,22 @@ assert "stats.skipped_malformed"   "4" "$(echo "$OUT" | jq -r '.stats.skipped_ma
 # both shape and emptiness — see the spec 0032 section further down.
 assert "stats.skipped_resolved"    "3" "$(echo "$OUT" | jq -r '.stats.skipped_resolved')"
 
-# 6 cluster keys: yq-merge, gh-body-truncation, parked-singleton,
+# 8 cluster keys: yq-merge, gh-body-truncation, parked-singleton,
 # no-canonical-test, block-scalar-multiline (drw-011), block-scalar-generalized
-# (drw-014). drw-007/012/013 are filtered upstream of clustering, so their
-# subcategories must not appear as cluster keys — see explicit assertions below.
-assert "stats.clusters_formed"     "6" "$(echo "$OUT" | jq -r '.stats.clusters_formed')"
+# (drw-014), block-scalar-strip (drw-015), block-scalar-folded (drw-016).
+# drw-007/012/013 are filtered upstream of clustering, so their subcategories
+# must not appear as cluster keys — see explicit assertions below.
+assert "stats.clusters_formed"     "8" "$(echo "$OUT" | jq -r '.stats.clusters_formed')"
 
 # Above threshold:
 #  - yq-merge (size 2, ≥ threshold)
 #  - gh-body-truncation (size 1 BUT severity:high → bypass)
 #  - block-scalar-multiline (size 1 BUT severity:high → bypass, drw-011)
 #  - block-scalar-generalized (size 1 BUT severity:high → bypass, drw-014)
+#  - block-scalar-strip (size 1 BUT severity:high → bypass, drw-015)
+#  - block-scalar-folded (size 1 BUT severity:high → bypass, drw-016)
 # Parked: parked-singleton (size 1, severity low)
-assert "stats.clusters_above_threshold" "4" \
+assert "stats.clusters_above_threshold" "6" \
   "$(echo "$OUT" | jq -r '.stats.clusters_above_threshold')"
 assert "stats.clusters_parked"     "1" "$(echo "$OUT" | jq -r '.stats.clusters_parked')"
 
@@ -117,9 +121,10 @@ assert "stats.routing_failures"    "1" "$(echo "$OUT" | jq -r '.stats.routing_fa
 # is unset. Tests below exercise the >0 path.
 assert "stats.clusters_truncated"  "0" "$(echo "$OUT" | jq -r '.stats.clusters_truncated')"
 
-# Exactly 4 clusters in output (yq-merge, gh-body-truncation,
-# block-scalar-multiline, block-scalar-generalized).
-assert "len(.clusters)"            "4" "$(echo "$OUT" | jq -r '.clusters | length')"
+# Exactly 6 clusters in output (yq-merge, gh-body-truncation,
+# block-scalar-multiline, block-scalar-generalized, block-scalar-strip,
+# block-scalar-folded).
+assert "len(.clusters)"            "6" "$(echo "$OUT" | jq -r '.clusters | length')"
 
 # --- Spec 0010: skipped[] and routing_failures[] arrays -------------------
 
@@ -352,6 +357,38 @@ echo "  PASS resolved-empty-suggestion subcategory absent from clusters (R5)"
 # reason == empty_suggestion); re-stated here as the R6 guard anchor.
 echo "  PASS R6 empty_suggestion guards intact (see drw-008/drw-010 assertions above)"
 
+# Indicator-variant fixtures (drw-015 / drw-016) — same parse path as `|`,
+# exercised here to close the test-fixture gap across all six BLOCK_SCALAR_RE
+# forms: `|`, `>`, `|-`, `|+`, `>-`, `>+`.
+#
+# drw-015 uses `|-` (literal strip): body must survive intact with tail line.
+STRIP=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "block-scalar-strip")')
+[ -n "$STRIP" ] || { echo "FAIL: block-scalar-strip cluster missing (drw-015 not accepted)" >&2; exit 1; }
+assert "block-scalar-strip.cluster_size" "1" "$(echo "$STRIP" | jq -r '.cluster_size')"
+STRIP_SUGG=$(echo "$STRIP" | jq -r '.frictions[0].suggestion')
+echo "$STRIP_SUGG" | grep -q "MARKER-STRIP-TAIL" || {
+  echo "FAIL: drw-015 |- suggestion truncated — tail line lost" >&2
+  printf '%s\n' "$STRIP_SUGG" >&2
+  exit 1
+}
+echo "  PASS block-scalar-strip suggestion preserves full body (|-)"
+[ "$STRIP_SUGG" != "|-" ] || { echo "FAIL: drw-015 suggestion collapsed to bare '|-' indicator" >&2; exit 1; }
+echo "  PASS block-scalar-strip suggestion is not the bare indicator"
+
+# drw-016 uses `>` (folded): body must survive intact with tail line.
+FOLD=$(echo "$OUT" | jq -c '.clusters[] | select(.cluster_key == "block-scalar-folded")')
+[ -n "$FOLD" ] || { echo "FAIL: block-scalar-folded cluster missing (drw-016 not accepted)" >&2; exit 1; }
+assert "block-scalar-folded.cluster_size" "1" "$(echo "$FOLD" | jq -r '.cluster_size')"
+FOLD_SUGG=$(echo "$FOLD" | jq -r '.frictions[0].suggestion')
+echo "$FOLD_SUGG" | grep -q "MARKER-FOLD-TAIL" || {
+  echo "FAIL: drw-016 > suggestion truncated — tail line lost" >&2
+  printf '%s\n' "$FOLD_SUGG" >&2
+  exit 1
+}
+echo "  PASS block-scalar-folded suggestion preserves full body (>)"
+[ "$FOLD_SUGG" != ">" ] || { echo "FAIL: drw-016 suggestion collapsed to bare '>' indicator" >&2; exit 1; }
+echo "  PASS block-scalar-folded suggestion is not the bare indicator"
+
 # --- apply.py orchestration (--dry-run-apply) ----------------------------
 # Pipe the curator JSON through apply.py --dry-run-apply. Each cluster
 # round-trips as one JSON-array line representing the `gh issue create`
@@ -366,21 +403,21 @@ APPLY_RC=$?
 set -e
 assert "apply --dry-run-apply exit code" "0" "$APPLY_RC"
 
-# Four qualified clusters → exactly four argv lines, no spurious output.
+# Six qualified clusters → exactly six argv lines, no spurious output.
 # (apply.py now emits a sibling object line per cluster carrying the
 # would_update_drawers list — that line starts with `{`, so the `^\[`
 # filter still counts only argv arrays.)
 APPLY_LINES=$(printf '%s\n' "$APPLY_OUT" | grep -c '^\[')
-assert "apply --dry-run-apply emits one argv line per cluster" "4" "$APPLY_LINES"
+assert "apply --dry-run-apply emits one argv line per cluster" "6" "$APPLY_LINES"
 
 # Issue #69: alongside each argv array, apply.py emits a JSON object line
 # `{"would_update_drawers": [...], "cluster_key": "..."}` so the
 # orchestration shape now exposes the drawers that would receive the
-# `opened_as` write-back. Four qualified clusters → four object lines.
+# `opened_as` write-back. Six qualified clusters → six object lines.
 APPLY_OBJECTS=$(printf '%s\n' "$APPLY_OUT" | jq -c 'select(type == "object" and (.would_update_drawers // null) != null)' 2>/dev/null || true)
 APPLY_OBJ_COUNT=$(printf '%s\n' "$APPLY_OBJECTS" | grep -c .)
 assert "apply --dry-run-apply emits one would_update_drawers object per cluster" \
-  "4" "$APPLY_OBJ_COUNT"
+  "6" "$APPLY_OBJ_COUNT"
 
 # yq-merge object: 2 source drawers (drw-001, drw-002) propagated via _drawer_id.
 YQ_OBJ=$(printf '%s\n' "$APPLY_OBJECTS" | jq -c 'select(.cluster_key == "yq-merge")')
@@ -449,7 +486,7 @@ echo "  PASS apply --dry-run-apply emits no-clusters notice"
 APPLY_DEDUP_OBJECTS=$(printf '%s\n' "$APPLY_OUT" | jq -c 'select(type == "object" and has("dedup_match"))' 2>/dev/null || true)
 APPLY_DEDUP_COUNT=$(printf '%s\n' "$APPLY_DEDUP_OBJECTS" | grep -c .)
 assert "apply --dry-run-apply emits one dedup_match object per cluster" \
-  "4" "$APPLY_DEDUP_COUNT"
+  "6" "$APPLY_DEDUP_COUNT"
 
 # Both dedup_match values must be null in the baseline (no --dedup, no
 # live `gh` probe). jq emits 'null' (4 chars) for JSON null.
