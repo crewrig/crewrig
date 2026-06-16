@@ -2,6 +2,7 @@
 name: greeter
 description: "Helps users introduce themselves using the hello-world MCP tool."
 ---
+<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Greeter Skill
 

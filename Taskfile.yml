@@ -271,6 +271,10 @@ tasks:
     desc: "Enforce upstream-tier feedback routing to canonical (local mirror of the CI guard, spec 0030)"
     cmd: bash {{.REPO_DIR}}/scripts/check-feedback-routing.sh
 
+  check-extension-provenance:
+    desc: "Enforce extension skill/agent provenance carrier presence + routing (local mirror of the CI guard, spec 0043)"
+    cmd: bash {{.REPO_DIR}}/scripts/check-extension-provenance.sh
+
   skill:check:
     desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
     silent: true

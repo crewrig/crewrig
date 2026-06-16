@@ -284,6 +284,46 @@ not author — that feedback keeps flowing to the upstream repository where the
 components are maintained. This is by design (spec 0030) and enforced by
 `scripts/check-feedback-routing.sh`.
 
+### Extension skills & agents — carrier-in-source, literal origin
+
+The placeholder/build-strip model above applies to `artifacts/` components,
+which are *built* into per-CLI outputs. A skill or agent shipped inside an
+**extension** (`extensions/core`, `extensions/library`) is different: it is
+consumed **in place** — `install-extension.sh` does `ln -s` / `cp -rf` of the
+whole extension dir, and `build-claude-plugin.sh` does `cp -r` of the skill dir
+— so every CLI reads the same `SKILL.md` / `AGENT.md` source bytes with **no
+render seam** to strip a frontmatter block. Two consequences follow (spec 0043):
+
+- **Carrier = HTML comment, first body line.** Because Gemini CLI 0.42.0+
+  rejects any frontmatter key outside `name`/`description`, an in-place source
+  cannot carry `metadata.provenance` in frontmatter. It is authored directly as
+  the HTML-comment carrier (the same one `gemini_provenance_comment` emits for
+  built Gemini agents) on the first body line, immediately after the
+  frontmatter close:
+
+  ```markdown
+  ---
+  name: greeter
+  description: "…"
+  ---
+  <!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+
+  # Greeter Skill
+  ```
+
+- **`canonical`/`feedback` are LITERAL, not `${CANONICAL_REPO}`.** A consuming
+  project's `crewrig.config.toml` cannot resolve a third-party extension's
+  origin, so a build-time-resolved value would misroute frictions. The
+  extension names its own origin as a literal URL (spec 0043 R2).
+
+For an upstream-owned extension tier, `feedback` MUST equal `canonical` exactly
+as for `artifacts/` (spec 0030). **Enforcement note:** because this block lives
+in a *comment*, the frontmatter/`yq`-based `check-feedback-routing.sh` cannot
+see it and permanently skips extension skills — so the presence and R5
+(feedback==canonical) enforcement for extension skills/agents lives **solely**
+in `scripts/check-extension-provenance.sh` (no defense-in-depth overlap with the
+spec-0030 guard). See [`docs/cli-matrix.md`](cli-matrix.md) row 5c.
+
 The `version:` field in `metadata.provenance:` is a literal
 per-component string, not a placeholder. It tracks the component's own
 evolution independently from the host repo.

@@ -70,6 +70,12 @@ jobs:
       - name: Check extension pivot .toml drift (spec 0042)
         run: bash scripts/build-extension-pivot.sh --check
 
+      - name: Enforce extension provenance (spec 0043)
+        run: bash scripts/check-extension-provenance.sh
+
+      - name: Test check-extension-provenance regression (spec 0043)
+        run: bash scripts/tests/test-check-extension-provenance.sh
+
       - name: Test Gemini agent frontmatter contract (issue #54)
         run: bash scripts/tests/test-gemini-agent-frontmatter.sh
 
