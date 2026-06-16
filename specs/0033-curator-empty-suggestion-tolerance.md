@@ -80,3 +80,9 @@ And the friction does not appear in `skipped[]` with reason `empty_suggestion`
   contract prospectively and takes precedence where the two diverge.
 - Changing how non-empty block-scalar suggestion bodies are captured — that
   contract is owned by spec 0032.
+
+## Open questions
+
+- None. Both reconciliation options were evaluated in issue #314; option (a)
+  — accept and strip the empty key — is unambiguously preferred as it
+  preserves evidence-backed signal that would otherwise be silently lost.
