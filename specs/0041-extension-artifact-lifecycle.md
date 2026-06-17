@@ -1,7 +1,7 @@
 ---
 id: "0041"
 slug: extension-artifact-lifecycle
-status: draft
+status: approved
 complexity: large
 interaction-mode: INTERMEDIATE
 related-issue: 342

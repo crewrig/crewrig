@@ -1,7 +1,7 @@
 ---
 id: "0044"
 slug: extension-versioning-manifest
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 351
