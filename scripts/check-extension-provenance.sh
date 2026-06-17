@@ -51,27 +51,19 @@
 
 set -euo pipefail
 
+# Shared carrier parser — first_body_line() and carrier_field() are factored
+# into scripts/lib/provenance-carrier.sh (spec 0044) so this presence guard and
+# check-extension-version-bump.sh use ONE parser and cannot drift. The move is
+# behaviour-preserving (verbatim); the 0043 regression test backstops it.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/lib/provenance-carrier.sh
+source "$SCRIPT_DIR/lib/provenance-carrier.sh"
+
 # Upstream-owned extension tier roots. extensions/org is adopter-owned ⇒ EXEMPT.
 TIER_ROOTS=(
   "extensions/core"
   "extensions/library"
 )
-
-# Extract the FIRST body line (first non-frontmatter line) of a Markdown file.
-# Mirrors the awk used by test-gemini-agent-frontmatter.sh: skip the frontmatter
-# block (first two `---` fences) and print the first non-empty line after it.
-first_body_line() {
-  awk '/^---$/{c++; next} c==2 && NF{print; exit}' "$1"
-}
-
-# Extract a quoted field value from a crewrig-provenance carrier line.
-#   carrier_field '<carrier line>' canonical  →  the value between the quotes
-# Returns empty if the field is absent or empty.
-carrier_field() {
-  local line="$1" field="$2"
-  printf '%s\n' "$line" \
-    | sed -n "s/.*${field}=\"\([^\"]*\)\".*/\1/p"
-}
 
 checked=0
 failures=()

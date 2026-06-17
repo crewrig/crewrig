@@ -275,6 +275,14 @@ tasks:
     desc: "Enforce extension skill/agent provenance carrier presence + routing (local mirror of the CI guard, spec 0043)"
     cmd: bash {{.REPO_DIR}}/scripts/check-extension-provenance.sh
 
+  check-extension-version-bump:
+    desc: "Enforce carrier-version bump on modified extension skill/agent sources (local mirror of the CI guard, spec 0044)"
+    cmd: bash {{.REPO_DIR}}/scripts/check-extension-version-bump.sh
+
+  check-extension-manifest-version:
+    desc: "Enforce a single authoritative version across an extension's manifests (local mirror of the CI guard, spec 0044)"
+    cmd: bash {{.REPO_DIR}}/scripts/check-extension-manifest-version.sh
+
   skill:check:
     desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
     silent: true

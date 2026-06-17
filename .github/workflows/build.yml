@@ -76,6 +76,15 @@ jobs:
       - name: Test check-extension-provenance regression (spec 0043)
         run: bash scripts/tests/test-check-extension-provenance.sh
 
+      - name: Enforce extension manifest single-version (spec 0044)
+        run: bash scripts/check-extension-manifest-version.sh
+
+      - name: Test check-extension-manifest-version regression (spec 0044)
+        run: bash scripts/tests/test-check-extension-manifest-version.sh
+
+      - name: Test check-extension-version-bump regression (spec 0044)
+        run: bash scripts/tests/test-check-extension-version-bump.sh
+
       - name: Test Gemini agent frontmatter contract (issue #54)
         run: bash scripts/tests/test-gemini-agent-frontmatter.sh
 
@@ -168,6 +177,19 @@ jobs:
         env:
           BASE_REF: origin/${{ github.event.pull_request.base.ref }}
         run: bash scripts/check-skill-versions.sh
+
+  check-extension-version-bump:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so `git show BASE:path` resolves the old carrier
+
+      - name: Enforce carrier-version bump on changed extension sources (spec 0044)
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: bash scripts/check-extension-version-bump.sh
 
   check-agents-size:
     runs-on: ubuntu-latest

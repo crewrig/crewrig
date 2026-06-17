@@ -341,9 +341,17 @@ The `metadata.provenance.version` field follows
 | **MAJOR** (`1.1.0 → 2.0.0`) | Breaking contract change. Removed payload fields, renamed required fields, semantics flip. Forks pinning `1.x` need to migrate consciously. |
 
 **Bump rule.** Every PR that touches a `SKILL.md` or `AGENT.md`
-source under `artifacts/community/` MUST bump `metadata.provenance.version`
-in the same diff. CI enforces this via `scripts/check-skill-versions.sh`
-(see `task check-skill-versions` for the local invocation). The
+source under any artifact tier — `artifacts/core/`, `artifacts/library/`,
+or `artifacts/community/` — MUST bump `metadata.provenance.version` in the
+same diff. CI enforces this via `scripts/check-skill-versions.sh` (see
+`task check-skill-versions` for the local invocation). The same discipline
+extends to the upstream-owned extension tiers `extensions/core/` and
+`extensions/library/`, where the `version` instead rides on the
+provenance carrier (the first-body-line `<!-- crewrig-provenance:
+version="…" … -->` HTML comment per spec 0043, not frontmatter — Gemini
+CLI 0.42.0+ rejects non-`name`/`description` frontmatter keys on the
+in-place source); there the bump is enforced by
+`scripts/check-extension-version-bump.sh` (spec 0044). The
 rationale:
 
 - A friction tag captured `evidence: <path>:<line>` against an
