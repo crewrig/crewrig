@@ -1,7 +1,7 @@
 ---
 id: "0046"
 slug: multi-engine-ci-parity
-status: draft
+status: approved
 complexity: large
 interaction-mode: INTERMEDIATE
 related-issue: 366
