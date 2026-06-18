@@ -63,6 +63,20 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > obligation — `ci/` does not appear on the *CLI Matrix Maintenance* literal
 > trigger list. Consult the reference, not this matrix, when adding or
 > mapping a CI engine.
+>
+> **GitLab pipeline generator (spec 0048).** The GitLab pipeline is **derived**
+> from that reference, not hand-authored: `scripts/build-ci.sh` reads
+> `ci/ci-capabilities.yml` and emits one GitLab job per *portable* capability
+> into [`.gitlab-ci.yml`](../.gitlab-ci.yml) at the repo root (job key ==
+> capability id; `requires:` → `image`/`before_script`/`GIT_DEPTH`; `command:`
+> → `script:`). Engine-specific capabilities are skipped with no placeholder
+> (spec 0048 R4); the GitHub Actions workflows under `.github/workflows/` are
+> **not** generated (spec 0048 R5). `scripts/build-ci.sh --check` runs in this
+> repo's own CI (`.github/workflows/build.yml` job `gitlab-ci-check`, itself a
+> contract-described portable capability) and fails on any drift between the
+> committed `.gitlab-ci.yml` and a fresh derivation. `scripts/build-ci.sh` is a
+> `scripts/build-*.sh` script and therefore on the *CLI Matrix Maintenance*
+> trigger surface; this entry satisfies that obligation.
 
 ## Parity gaps
 

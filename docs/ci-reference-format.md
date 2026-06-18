@@ -52,6 +52,8 @@ these keys:
 | `trigger` | always | list | One or more trigger objects (see *Neutral trigger vocabulary*). |
 | `portability` | always | enum | `portable` or `specific` (see *Portability and exceptions*). |
 | `exception` | iff `specific` | mapping | `{engine, evidence}` (see *Portability and exceptions*). |
+| `command` | iff `portable` | list of strings | The business invocation command(s) that realize the job (see *Invocation command and execution requirements*). |
+| `requires` | iff `portable` | mapping | The engine-agnostic execution requirement: `{runtime, tools, history-depth}` (see *Invocation command and execution requirements*). |
 
 **Granularity — one capability is exactly one job (spec 0047 R1).** The steps
 *inside* a job are an implementation detail of that one capability, **not**
@@ -118,6 +120,76 @@ or a pull-request review comment that dispatches an assistant (e.g. the
 `@claude` and `@copilot-cli` workflows) — **SHALL** be treated as
 engine-specific, **never** portable, regardless of how its `trigger` is
 modeled.
+
+## Invocation command and execution requirements
+
+A `portable` capability is not merely *described* by the reference — its
+pipeline on any supported engine is **derived** from the reference alone. Two
+fields carry the derivable content: `command` (the work) and `requires` (the
+environment that work needs). Both are mandatory on a `portable` capability
+and absent on a `specific` one.
+
+### `command` — the business invocation (spec 0047 delta-01 R10)
+
+`command` is the **list of business commands** that realize the job — the work
+the job performs, distinct from any engine-specific setup boilerplate
+(checkout, runtime install). It is a **list of strings** so that a capability
+composed of several ordered steps (e.g. `check-components` runs roughly two
+dozen `bash scripts/*.sh` invocations) stays **one** capability with an ordered
+command list, never split into several — preserving the *Granularity — one
+capability is exactly one job* rule above. A derivation maps the list
+one-to-one onto the engine's step sequence (GitLab `script:`, a GHA job's
+`run:` steps).
+
+- A `portable` capability **SHALL** declare `command` (delta-01 R10). A
+  `portable` capability with no `command` makes the reference **invalid** (see
+  *Validity rules*, Scenario 5).
+- A `specific` capability **SHALL NOT** be required to declare `command`
+  (delta-01 R11); its body stays hand-authored under its evidence-backed
+  exception.
+
+### `requires` — the engine-agnostic execution requirement (spec 0047 delta-02 R12)
+
+`requires` declares **the need, not the mechanism**: the runtime and version,
+the additional tools, and the source-history depth the `command` needs to run.
+The engine-specific setup boilerplate that *satisfies* the requirement (a
+Docker `image`, a `before_script` tool install, a clone-depth flag) is produced
+by the derivation and is **never stored in the reference** (delta-02 R12).
+
+The requirement is a closed-vocabulary mapping mirroring R12's own enumeration:
+
+| Key | Type | Meaning | Example |
+|---|---|---|---|
+| `runtime` | string | The language runtime and version, as `<name>@<version>`. | `node@22`, `python@3.12` |
+| `tools` | list of strings | Additional tools the command needs on `PATH`. | `[yq]`, `[task]`, `[jq]` |
+| `history-depth` | enum | `full` when the command needs the complete source history (e.g. a base-ref diff); omitted otherwise. | `full` |
+
+All three sub-keys are optional **inside** `requires`: a capability whose
+command needs only POSIX shell (e.g. `grep-anti-patterns`) may omit `requires`
+entirely. What is *not* optional is consistency — a command that invokes a tool
+or runtime it does not declare is rejected:
+
+- A `portable` capability whose `command` needs a runtime or tool that the
+  capability does not declare under `requires` makes the reference **invalid**
+  (see *Validity rules*, Scenario 6). The execution requirement must be present
+  before the capability is accepted as derivable (delta-02 Scenario 2).
+- A `specific` capability gains no `requires` (R12 scopes the obligation to
+  portable capabilities, consistent with delta-01 R11).
+
+### GitLab generation
+
+The GitLab pipeline generator `scripts/build-ci.sh` (spec 0048) is the
+reference's consumer: it reads `command` + `requires` for every `portable`
+capability and produces `.gitlab-ci.yml` at the repo root. For each capability
+it emits one job keyed by the capability `id` (the C2 primary path below), with
+`requires` translated into the GitLab setup boilerplate — `runtime` →
+`image:`, `tools` → `before_script:` installs, `history-depth: full` →
+`variables: { GIT_DEPTH: "0" }` — and `command` becoming the job's `script:`.
+The boilerplate is the generator's own output; it is never written back into
+the reference (the R12 need-vs-mechanism boundary). Engine-specific
+capabilities are skipped with no placeholder (spec 0048 R4), and the existing
+GitHub Actions workflows are **not** regenerated (spec 0048 R5) — they stay
+hand-authored and are only *described* here.
 
 ## Traceability (contract C2)
 
@@ -265,6 +337,19 @@ checker implements against them.
 4. **Missing or duplicate id (Scenario 4, invalid).** If two capabilities
    share one `id`, or any capability has none, the reference is **invalid** —
    the traceability id must be present and unique.
+5. **Portable without command (delta-01 Scenario 2, invalid).** A capability
+   marked `portability: portable` that declares no `command` makes the
+   reference **invalid** — the invocation command is required before the
+   capability is accepted as portable (delta-01 R10).
+6. **Portable with an unmet execution requirement (delta-02 Scenario 2,
+   invalid).** A capability marked `portability: portable` whose `command`
+   needs a runtime or tool it does not declare under `requires` makes the
+   reference **invalid** — the execution requirement must be present before the
+   capability is accepted as derivable (delta-02 R12). In practice the
+   derivation enforces this: `scripts/build-ci.sh` has exactly one
+   GitLab install recipe per declarable tool, so a command invoking an
+   undeclared tool produces no `before_script` line for it, and the generator
+   fails closed when asked to translate a requirement it has no mapping for.
 
 ## Adding a further engine
 

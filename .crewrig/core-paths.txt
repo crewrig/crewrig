@@ -103,3 +103,7 @@ scripts/build-docs-index.sh	strict
 
 # Continuous-integration reference (spec 0047)
 ci	strict
+
+# Generated GitLab CI pipeline (spec 0048). Derived from ci/ci-capabilities.yml
+# by scripts/build-ci.sh; drift-guarded by `bash scripts/build-ci.sh --check`.
+.gitlab-ci.yml	strict

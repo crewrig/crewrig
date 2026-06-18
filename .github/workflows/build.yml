@@ -214,3 +214,16 @@ jobs:
 
       - name: Enforce upstream-tier feedback routing (spec 0030)
         run: bash scripts/check-feedback-routing.sh
+
+  gitlab-ci-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Verify the generated GitLab pipeline matches the contract (spec 0048)
+        run: bash scripts/build-ci.sh --check

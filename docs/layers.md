@@ -76,6 +76,7 @@ contract — never flowing back upstream.
 | Path | Description |
 |---|---|
 | `ci/` | Platform-neutral CI capability reference (`ci/ci-capabilities.yml`). One entry per CI job — the engine-agnostic source of truth that the per-engine pipelines (GitHub Actions today, GitLab CI and others later) are derived from and drift-checked against. Core/`strict`; its normative shape is `docs/ci-reference-format.md` (ADR-0012). Top-level rather than under `.github/` so the reference reads as engine-neutral, not GitHub-owned. |
+| `.gitlab-ci.yml` | Generated GitLab CI pipeline (spec 0048). The derived GitLab form of the portable subset of `ci/ci-capabilities.yml` — one job per portable capability, produced by `scripts/build-ci.sh`. Core/`strict` (engine-neutral generated output, upstream-owned). Never hand-edited: `bash scripts/build-ci.sh --check` guards it against drift from the reference in CI. The GitHub Actions workflows under `.github/workflows/` are NOT generated (spec 0048 R5); only GitLab is derived here. |
 
 ### Build and install tooling
 

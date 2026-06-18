@@ -27,6 +27,11 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
     portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - npm run build --workspaces --if-present
 
   - id: check-components
     name: "Check community component drift and run build-component tests"
@@ -36,6 +41,35 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
     portability: portable
+    requires:
+      runtime: python@3.12
+      tools: [yq]
+    command:
+      - bash scripts/build-components.sh --target all --check
+      - bash scripts/test-build-components.sh
+      - bash scripts/tests/test-extract-frontmatter.sh
+      - bash scripts/tests/test-check-skill-versions.sh
+      - bash scripts/tests/test-check-feedback-routing.sh
+      - bash scripts/check-extension-pivot.sh
+      - bash scripts/tests/test-check-extension-pivot.sh
+      - bash scripts/tests/test-build-extension-pivot.sh
+      - bash scripts/build-extension-pivot.sh --check
+      - bash scripts/check-extension-provenance.sh
+      - bash scripts/tests/test-check-extension-provenance.sh
+      - bash scripts/check-extension-manifest-version.sh
+      - bash scripts/tests/test-check-extension-manifest-version.sh
+      - bash scripts/tests/test-check-extension-version-bump.sh
+      - bash scripts/tests/test-install-claude-plugin-marketplace.sh
+      - bash scripts/tests/test-gemini-agent-frontmatter.sh
+      - bash scripts/tests/test-e2e-auth-claude-json.sh
+      - bash scripts/tests/test-e2e-auth-ollama.sh
+      - bash scripts/tests/test-sync-from-upstream.sh
+      - bash scripts/check-core-paths.sh
+      - bash scripts/tests/test-check-core-paths.sh
+      - bash scripts/tests/test-assembly-verification.sh
+      - bash scripts/tests/test-artifact-build-install-scope.sh
+      - bash scripts/build-docs-index.sh --check
+      - bash scripts/tests/test-build-docs-index.sh
 
   - id: lint-markdown
     name: "Lint Markdown files"
@@ -45,6 +79,11 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
     portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install -g markdownlint-cli
+      - markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md'
 
   - id: lint-specs
     name: "Lint specification files"
@@ -54,6 +93,12 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
     portability: portable
+    requires:
+      runtime: node@22
+      tools: [task]
+    command:
+      - npm install
+      - task spec:lint
 
   - id: test-harness-curate
     name: "Smoke-test the harness curator"
@@ -63,18 +108,27 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
     portability: portable
+    requires:
+      tools: [jq]
+    command:
+      - bash artifacts/library/skills/harness-curator/scripts/test.sh
 
   # check-skill-versions and check-extension-version-bump compare the change
   # against its base ref; the workflow gates them on
   # `if: github.event_name == 'pull_request'`
   # (.github/workflows/build.yml lines 173, 186), so the neutral trigger is
-  # pull-request only.
+  # pull-request only. They need full source history (GHA `fetch-depth: 0`)
+  # to resolve the base ref — declared as `history-depth: full` (delta-02 R12).
   - id: check-skill-versions
     name: "Enforce version bump on changed skill/agent sources"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
     portability: portable
+    requires:
+      history-depth: full
+    command:
+      - bash scripts/check-skill-versions.sh
 
   - id: check-extension-version-bump
     name: "Enforce carrier-version bump on changed extension sources"
@@ -82,6 +136,10 @@ capabilities:
       - on: pull-request
         branches: [main, "release/**"]
     portability: portable
+    requires:
+      history-depth: full
+    command:
+      - bash scripts/check-extension-version-bump.sh
 
   - id: check-agents-size
     name: "Check AGENTS.md file size"
@@ -91,6 +149,8 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
     portability: portable
+    command:
+      - bash scripts/check-agents-size.sh
 
   - id: check-feedback-routing
     name: "Enforce upstream-tier feedback routing"
@@ -100,11 +160,17 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
     portability: portable
+    requires:
+      tools: [yq]
+    command:
+      - bash scripts/check-feedback-routing.sh
 
   # --- Portable: standalone workflows -------------------------------------
 
   # scripting-conventions.yml gates on pull_request to [main, release/**] with
   # a path filter (.github/workflows/scripting-conventions.yml lines 3-9).
+  # The two inline grep blocks need no runtime or extra tools — POSIX shell
+  # only — so `requires:` is omitted (an empty engine-agnostic need).
   - id: grep-anti-patterns
     name: "Flag scripting anti-patterns in scripts and hooks"
     trigger:
@@ -115,6 +181,29 @@ capabilities:
           - "hooks/**"
           - ".github/workflows/scripting-conventions.yml"
     portability: portable
+    command:
+      - |
+        set -uo pipefail
+        hits=$(grep -rnE '\[\[?[^]]*\]\]?[[:space:]]+&&[[:space:]]+.*&&[[:space:]]+exit[[:space:]]+[0-9]+' \
+                scripts/ hooks/ \
+              | grep -v 'acknowledged-exception:' || true)
+        if [ -n "$hits" ]; then
+          echo "::error::Rule 3 violation — chained-test exit pattern (see docs/scripting-conventions.md)"
+          echo "$hits"
+          exit 1
+        fi
+        echo "Rule 3 clean."
+      - |
+        set -uo pipefail
+        hits=$(grep -rnE 'except[[:space:]]*:|except[[:space:]]+(Exception|BaseException)[[:space:]]*(as[[:space:]]+\w+)?[[:space:]]*:' \
+                scripts/ hooks/ \
+              | grep -v 'acknowledged-exception:' || true)
+        if [ -n "$hits" ]; then
+          echo "::error::Rule 1 violation — bare/broad except (see docs/scripting-conventions.md)"
+          echo "$hits"
+          exit 1
+        fi
+        echo "Rule 1 clean."
 
   # security-mcp.yml gates on pull_request to [main] with a path filter on the
   # MCP/dependency manifests (.github/workflows/security-mcp.yml lines 3-11).
@@ -130,6 +219,29 @@ capabilities:
           - "**/mcp.json.template"
           - "**/extension.json"
     portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - npm audit --audit-level=critical
+
+  # gitlab-ci-check is the generator's own drift gate (spec 0048 R6/R7),
+  # registered as a portable capability so the verification surface is itself
+  # contract-described, not a hidden gate. Its command diffs the committed
+  # .gitlab-ci.yml against a fresh derivation; it needs yq to read the
+  # reference (delta-02 R12).
+  - id: gitlab-ci-check
+    name: "Verify the generated GitLab pipeline matches the contract"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      tools: [yq]
+    command:
+      - bash scripts/build-ci.sh --check
 
   # --- Engine-specific: bot-mention assistants ----------------------------
   # A bot-mention trigger (an issue or review comment) is engine-specific,
