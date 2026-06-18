@@ -1,0 +1,232 @@
+# CrewRig — platform-neutral CI capability reference (spec 0047).
+#
+# One entry per continuous-integration job, identified by a stable `id` that
+# IS the pipeline job's YAML key on every engine (contract C2). The shape of
+# this file is described normatively in `docs/ci-reference-format.md`
+# (contract C1); the decision is recorded in `docs/adr/0012-ci-reference-contract.md`.
+#
+# Portable capabilities are generated into every engine's pipeline by
+# sub-spec B. Engine-specific capabilities carry an `exception` with evidence
+# that the mechanism has no faithful equivalent on the other supported
+# engines (spec 0047 R5); they are hand-authored, never generated.
+#
+# This reference DESCRIBES existing jobs. It generates nothing, runs no drift
+# check, and executes no pipeline — those are sub-specs B (#372), C (#373),
+# and D (#374).
+
+capabilities:
+  # --- Portable: build.yml jobs -------------------------------------------
+  # build.yml fires on pull_request and push to [main, release/**]
+  # (.github/workflows/build.yml lines 3-9).
+
+  - id: build
+    name: "Build all extensions"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+
+  - id: check-components
+    name: "Check community component drift and run build-component tests"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+
+  - id: lint-markdown
+    name: "Lint Markdown files"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+
+  - id: lint-specs
+    name: "Lint specification files"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+
+  - id: test-harness-curate
+    name: "Smoke-test the harness curator"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+
+  # check-skill-versions and check-extension-version-bump compare the change
+  # against its base ref; the workflow gates them on
+  # `if: github.event_name == 'pull_request'`
+  # (.github/workflows/build.yml lines 173, 186), so the neutral trigger is
+  # pull-request only.
+  - id: check-skill-versions
+    name: "Enforce version bump on changed skill/agent sources"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+    portability: portable
+
+  - id: check-extension-version-bump
+    name: "Enforce carrier-version bump on changed extension sources"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+    portability: portable
+
+  - id: check-agents-size
+    name: "Check AGENTS.md file size"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+
+  - id: check-feedback-routing
+    name: "Enforce upstream-tier feedback routing"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+
+  # --- Portable: standalone workflows -------------------------------------
+
+  # scripting-conventions.yml gates on pull_request to [main, release/**] with
+  # a path filter (.github/workflows/scripting-conventions.yml lines 3-9).
+  - id: grep-anti-patterns
+    name: "Flag scripting anti-patterns in scripts and hooks"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/**"
+          - "hooks/**"
+          - ".github/workflows/scripting-conventions.yml"
+    portability: portable
+
+  # security-mcp.yml gates on pull_request to [main] with a path filter on the
+  # MCP/dependency manifests (.github/workflows/security-mcp.yml lines 3-11).
+  - id: audit
+    name: "Run dependency security audit"
+    trigger:
+      - on: pull-request
+        branches: [main]
+        paths:
+          - "**/package.json"
+          - "**/settings.json"
+          - "**/mcp.json"
+          - "**/mcp.json.template"
+          - "**/extension.json"
+    portability: portable
+
+  # --- Engine-specific: bot-mention assistants ----------------------------
+  # A bot-mention trigger (an issue or review comment) is engine-specific,
+  # never portable (spec 0047 R5).
+
+  - id: claude
+    name: "Claude Code mention-triggered assistant"
+    trigger:
+      - on: manual
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Triggered by GitHub `issue_comment` / `pull_request_review_comment`
+        events gated on a literal `@claude` mention
+        (.github/workflows/claude.yml lines 3-13). GitLab CI exposes no
+        comment-event pipeline trigger, so there is no faithful equivalent on
+        the other supported engines. A bot-mention trigger is treated as
+        engine-specific, never portable (spec 0047 R5); the analogous non-GHA
+        surfaces are marked [GAP] in docs/cli-matrix.md.
+
+  - id: copilot
+    name: "GitHub Copilot CLI mention-triggered assistant"
+    trigger:
+      - on: manual
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Triggered by GitHub `issue_comment` / `pull_request_review_comment`
+        events gated on a literal `@copilot-cli` mention
+        (.github/workflows/copilot.yml lines 13-23); native `@copilot`
+        dispatch is configured at the repository/organization level, not
+        portable to GitLab CI. A bot-mention trigger is treated as
+        engine-specific, never portable (spec 0047 R5).
+
+  # --- Engine-specific: GitHub-native delivery surfaces --------------------
+
+  # pages.yml deploys the `communication/` site to GitHub Pages on push to main
+  # and via workflow_dispatch (.github/workflows/pages.yml lines 3-8). GitHub
+  # Pages is a GitHub-hosted product; GitLab's equivalent (GitLab Pages) is a
+  # distinct surface with its own job contract, so the deploy capability is
+  # engine-specific and hand-authored per engine.
+  - id: pages-deploy
+    name: "Deploy the communication site to GitHub Pages"
+    trigger:
+      - on: push
+        branches: [main]
+        paths:
+          - "communication/**"
+      - on: manual
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Uses the GitHub-Pages-specific action chain
+        `actions/configure-pages` → `actions/upload-pages-artifact` →
+        `actions/deploy-pages` against the `github-pages` deployment
+        environment (.github/workflows/pages.yml lines 26-38). GitHub Pages is
+        a GitHub-hosted product with no faithful equivalent on GitLab CI
+        (GitLab Pages is a distinct surface with its own job contract), so the
+        deploy capability is hand-authored per engine, not generated.
+
+  # release-extension.yml packages an extension and creates a GitHub Release on
+  # a matching version tag (.github/workflows/release-extension.yml lines 3-6).
+  - id: package-and-release
+    name: "Package an extension and create a GitHub Release on a version tag"
+    trigger:
+      - on: tag
+        tag-pattern: "*-v[0-9]*.[0-9]*.[0-9]*"
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Creates a GitHub Release via `softprops/action-gh-release`
+        (.github/workflows/release-extension.yml lines 69-74), a
+        GitHub-Releases-specific surface. GitLab's release mechanism
+        (`release:` keyword / release-cli) is a distinct, non-interchangeable
+        contract, so the release capability has no faithful equivalent on the
+        other supported engines and is hand-authored per engine.
+
+  # release-monorepo.yml runs the semantic-release monorepo pipeline on push to
+  # main (.github/workflows/release-monorepo.yml lines 3-7).
+  - id: release
+    name: "Run the monorepo semantic-release pipeline"
+    trigger:
+      - on: push
+        branches: [main]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs `scripts/monorepo-release.sh` driven by the GitHub
+        `${{ secrets.GITHUB_TOKEN }}` with `issues: write` /
+        `pull-requests: write` permissions to create GitHub Releases and
+        comment on GitHub issues/PRs
+        (.github/workflows/release-monorepo.yml lines 9-43). The release
+        tooling targets the GitHub Releases and GitHub issue APIs, which have
+        no faithful equivalent on GitLab CI, so the capability is hand-authored
+        per engine, not generated.

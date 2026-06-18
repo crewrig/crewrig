@@ -54,6 +54,16 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 | 24 | e2e pillar 03 — skill build                              | `tests/e2e/scenarios/03-skill-build/`, ADR 0005 | ✅ runs `scripts/build-components.sh --target claude` inside the container; asserts `.claude/` populated + first `SKILL.md` has `metadata:` frontmatter | ✅ same with `--target gemini` → `.gemini/` | ✅ same with `--target copilot` → `.github/` |
 | 25 | e2e pillar 04 — harness loop                             | `tests/e2e/scenarios/04-harness-loop/`, ADR 0005 | ✅ simulated path (drawer write to `wing=harness-friction` + curator-style search); MemPalace sidecar; LLM-judge on the friction summary | ✅ same simulated path | ✅ same simulated path. **[GAP-soft]** — full interactive `harness-report` skill invocation is not yet driven non-interactively from any CLI; the simulation matches what the curator reads and is parity-equivalent for v1. |
 
+> **Cross-reference — CI-engine × capability axis (spec 0047, ADR-0012).** The
+> CI-engine × CI-capability axis is a *different* axis from the CLI × feature
+> matrix above and is self-documented by its own source of truth:
+> [`ci/ci-capabilities.yml`](../ci/ci-capabilities.yml), normatively described
+> by [`docs/ci-reference-format.md`](ci-reference-format.md). This row is a
+> **voluntary cross-reference for discoverability**, not a triggered CLI-matrix
+> obligation — `ci/` does not appear on the *CLI Matrix Maintenance* literal
+> trigger list. Consult the reference, not this matrix, when adding or
+> mapping a CI engine.
+
 ## Parity gaps
 
 The following features exist for one CLI but not the other. Each gap is a

@@ -71,6 +71,12 @@ against drift. Org-overlay documentation under `docs/org/` is `excluded` from
 sync and is unioned into the organization's own site build under the same
 contract — never flowing back upstream.
 
+### Continuous-integration reference (spec 0047)
+
+| Path | Description |
+|---|---|
+| `ci/` | Platform-neutral CI capability reference (`ci/ci-capabilities.yml`). One entry per CI job — the engine-agnostic source of truth that the per-engine pipelines (GitHub Actions today, GitLab CI and others later) are derived from and drift-checked against. Core/`strict`; its normative shape is `docs/ci-reference-format.md` (ADR-0012). Top-level rather than under `.github/` so the reference reads as engine-neutral, not GitHub-owned. |
+
 ### Build and install tooling
 
 | Path | Description |

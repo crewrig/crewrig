@@ -100,6 +100,11 @@
           "title": "Documentation publication contract",
           "path": "docs/publication-contract.md",
           "nav_order": 50
+        },
+        {
+          "title": "CI capability reference format",
+          "path": "docs/ci-reference-format.md",
+          "nav_order": 60
         }
       ]
     },
@@ -171,6 +176,11 @@
           "title": "ADR 0011 — Artifact build/install scope model",
           "path": "docs/adr/0011-artifact-build-install-scope.md",
           "nav_order": 110
+        },
+        {
+          "title": "ADR 0012 — CI capability reference contract",
+          "path": "docs/adr/0012-ci-reference-contract.md",
+          "nav_order": 120
         }
       ]
     }
