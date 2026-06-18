@@ -85,6 +85,9 @@ jobs:
       - name: Test check-extension-version-bump regression (spec 0044)
         run: bash scripts/tests/test-check-extension-version-bump.sh
 
+      - name: Test install-claude-plugin marketplace regression (spec 0045)
+        run: bash scripts/tests/test-install-claude-plugin-marketplace.sh
+
       - name: Test Gemini agent frontmatter contract (issue #54)
         run: bash scripts/tests/test-gemini-agent-frontmatter.sh
 

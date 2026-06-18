@@ -134,9 +134,9 @@ Claude Code does not auto-discover plugins placed under `~/.claude/plugins/`. Pl
 
 `scripts/install-claude-plugin.sh` handles this in four steps:
 
-1. Calls `build-claude-plugin.sh` → produces `dist-claude-plugin/<name>/`
-2. Generates `dist-claude-plugin/.claude-plugin/marketplace.json` with a marketplace named `<repo-basename>-local` (e.g. `crewrig-local`)
-3. Runs `claude plugin marketplace add <dist-claude-plugin-dir> --scope user`
+1. Calls `build-claude-plugin.sh` → produces `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/local-marketplace/<name>/` (a shared home outside the working tree, so multiple extensions coexist and installs survive branch switches)
+2. Generates `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/local-marketplace/.claude-plugin/marketplace.json` with a marketplace named `<repo-basename>-local` (e.g. `crewrig-local`). This is a SHARED manifest: each installed extension is upserted by name, so it accumulates every extension installed under that config root
+3. Runs `claude plugin marketplace add ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/local-marketplace --scope user`
 4. Runs `claude plugin install <name>@<marketplace-name> --scope user`
 
 Install via the task wrapper:
