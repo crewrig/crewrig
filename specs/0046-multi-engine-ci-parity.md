@@ -49,15 +49,15 @@ explicit, evidence-backed exception rather than silently missing.
    assistance equivalent in depth to the GitHub Actions assistance it
    already provides.
 7. The framework SHALL provide a configuration capability that produces
-   a pipeline for either supported platform from the reference, and a
-   means to operate the divergence check and reconcile a detected
-   divergence.
-8. Adding support for a further platform SHALL require describing only
+   a pipeline for either supported platform from the reference.
+8. The framework SHALL provide a means to operate the divergence check
+   and to reconcile a detected divergence.
+9. Adding support for a further platform SHALL require describing only
    that platform's mapping of the reference capabilities, without
    altering the reference's capability definitions themselves.
-9. Any change to the reference, to a platform pipeline, or to the
-   capability set SHALL leave the reference, both platform pipelines,
-   and the divergence check mutually consistent within the same change.
+10. Any change to the reference, to a platform pipeline, or to the
+    capability set SHALL leave the reference, both platform pipelines,
+    and the divergence check mutually consistent within the same change.
 
 ## Scenarios
 
