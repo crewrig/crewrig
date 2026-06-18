@@ -1,7 +1,7 @@
 ---
 id: "0048"
 slug: ci-pipeline-generator
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 372
