@@ -76,6 +76,15 @@ Then the registry SHALL contain exactly one entry for that extension
 And that entry SHALL reflect the latest install
 And no other extension's entry SHALL be affected.
 
+**Scenario:** Failed install leaves the shared registry intact
+
+Given the user has installed the Claude plugins for one or more extensions
+When the user attempts to install a plugin for a name that resolves to no
+  extension
+Then the install SHALL fail without modifying the shared registry
+And every previously installed plugin SHALL remain registered and
+  resolvable.
+
 ## Out of scope
 
 - Garbage-collection or pruning of registry entries for extensions that
