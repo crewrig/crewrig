@@ -1,7 +1,7 @@
 ---
 id: "0045"
 slug: shared-plugin-marketplace
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 360
