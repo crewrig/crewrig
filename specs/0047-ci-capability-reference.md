@@ -1,7 +1,7 @@
 ---
 id: "0047"
 slug: ci-capability-reference
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 371
