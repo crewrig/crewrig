@@ -169,6 +169,17 @@ Then it treats the capability as expected to be absent on the engines the
      divergence
 ```
 
+**Scenario:** An adopter repository is missing one engine's pipeline
+
+```text
+Given an adopter repository that contains the reference and one engine's
+      pipeline but not the other engine's pipeline artifacts
+When the harness runs
+Then it checks only the arms whose engine artifacts are present, does not
+     fail on the absent engine, and reports no divergence attributable to its
+     absence
+```
+
 **Scenario:** A reference-validity violation is rejected
 
 ```text
