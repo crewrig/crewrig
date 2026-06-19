@@ -77,6 +77,25 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > committed `.gitlab-ci.yml` and a fresh derivation. `scripts/build-ci.sh` is a
 > `scripts/build-*.sh` script and therefore on the *CLI Matrix Maintenance*
 > trigger surface; this entry satisfies that obligation.
+>
+> **CI agentic surface (spec 0050).** The agentic layer over the CI machinery
+> — the new `gitlab-ci` knowledge skill (`artifacts/core/skills/gitlab-ci/`,
+> with a seven-file `references/` corpus and two offline check scripts), the
+> `ci-configurator` agent generalised to be engine-aware (it hand-authors a
+> GitHub Actions workflow but **derives** a GitLab pipeline by composing
+> `scripts/build-ci.sh`), and the new `ci-parity` agent
+> (`artifacts/core/agents/ci-parity/`, which operates `scripts/check-ci-parity.sh`
+> and reconciles drift) — rides the **existing generic component-build
+> mechanisms** with full three-CLI parity: the skill ships through the generic
+> skill-build (row 3, including `propagate_skill_resources` for its
+> `references/` and `scripts/`), and both agents ship through the generic
+> agent-build (row 4). **No new CLI mechanism row is created** — these are
+> ordinary `artifacts/core/**` components that `scripts/build-components.sh`
+> compiles symmetrically to `.claude/`, `.gemini/`, and `.github/`. The agentic
+> surface only **composes** the spec-0048 generator (`build-ci.sh`) and the
+> spec-0049 harness (`check-ci-parity.sh`); it introduces no CLI-specific
+> integration point. This paragraph discharges the `artifacts/**`
+> CLI-matrix-update obligation for spec 0050.
 
 ## Parity gaps
 
