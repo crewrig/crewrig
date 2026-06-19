@@ -106,6 +106,9 @@ jobs:
       - name: Test check-core-paths regression (spec 0031)
         run: bash scripts/tests/test-check-core-paths.sh
 
+      - name: Test check-ci-parity regression (spec 0049)
+        run: bash scripts/tests/test-check-ci-parity.sh
+
       - name: Test assembly verification
         run: bash scripts/tests/test-assembly-verification.sh
 
@@ -227,3 +230,16 @@ jobs:
 
       - name: Verify the generated GitLab pipeline matches the contract (spec 0048)
         run: bash scripts/build-ci.sh --check
+
+  check-ci-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Verify the reference, GitHub Actions, and GitLab pipelines agree (spec 0049)
+        run: bash scripts/check-ci-parity.sh

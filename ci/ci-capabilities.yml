@@ -66,6 +66,7 @@ capabilities:
       - bash scripts/tests/test-sync-from-upstream.sh
       - bash scripts/check-core-paths.sh
       - bash scripts/tests/test-check-core-paths.sh
+      - bash scripts/tests/test-check-ci-parity.sh
       - bash scripts/tests/test-assembly-verification.sh
       - bash scripts/tests/test-artifact-build-install-scope.sh
       - bash scripts/build-docs-index.sh --check
@@ -242,6 +243,26 @@ capabilities:
       tools: [yq]
     command:
       - bash scripts/build-ci.sh --check
+
+  # check-ci-parity is the 3-way CI drift harness (spec 0049). It checks the
+  # reference against both engine pipelines on the portable capability set;
+  # registered as a portable capability (spec 0049 R11) so the verification
+  # surface is itself contract-described and parity-checked — symmetric with
+  # gitlab-ci-check above. It shells `yq` to read the reference and the
+  # pipelines, and composes `build-ci.sh --check` (which also needs yq) for the
+  # reference↔GitLab arm; hence `tools: [yq]` (delta-02 R12).
+  - id: check-ci-parity
+    name: "Verify the reference, GitHub Actions, and GitLab pipelines agree"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      tools: [yq]
+    command:
+      - bash scripts/check-ci-parity.sh
 
   # --- Engine-specific: bot-mention assistants ----------------------------
   # A bot-mention trigger (an issue or review comment) is engine-specific,

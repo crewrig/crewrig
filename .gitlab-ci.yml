@@ -57,6 +57,7 @@ check-components:
     - "bash scripts/tests/test-sync-from-upstream.sh"
     - "bash scripts/check-core-paths.sh"
     - "bash scripts/tests/test-check-core-paths.sh"
+    - "bash scripts/tests/test-check-ci-parity.sh"
     - "bash scripts/tests/test-assembly-verification.sh"
     - "bash scripts/tests/test-artifact-build-install-scope.sh"
     - "bash scripts/build-docs-index.sh --check"
@@ -187,6 +188,18 @@ gitlab-ci-check:
     - chmod +x /usr/local/bin/yq
   script:
     - "bash scripts/build-ci.sh --check"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+check-ci-parity:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/check-ci-parity.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
