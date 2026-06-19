@@ -310,9 +310,29 @@ $ yq '
 - pages-deploy
 ```
 
-On GitHub Actions the harvest is simply `.jobs | keys`; GHA imposes no
-reserved-name collision on the jobs CrewRig defines, so the fallback clause is
-needed only where a future engine forces a reserved job name.
+On GitHub Actions the harvest is the same primary ∪ fallback union, scoped
+under `.jobs`. Most job keys already equal their capability `id`, so the
+primary clause (`yq '.jobs | keys'`) attributes them directly. But where a
+descriptive `id` deliberately differs from the job key — the `pages-deploy`
+capability versus the `deploy` job in `.github/workflows/pages.yml` (see
+*Reserved-name fallback annotation* above) — that job carries a
+`# ci-capability: pages-deploy` trailing key-comment, and the fallback clause
+resolves it:
+
+```console
+$ yq '.jobs | (.[]
+        | select(key | line_comment | test("^ci-capability: "))
+        | key | line_comment | sub("^ci-capability: ", ""))' \
+    .github/workflows/pages.yml
+pages-deploy
+```
+
+The fallback clause is therefore exercised on GitHub Actions **today**, not
+only where a future engine forces a reserved job name: sub-spec C's harness
+applies the same primary ∪ fallback harvest to both engines. (Use the
+`select(key | line_comment | …)` form above, which binds the job **key**; the
+form `select(.value | key | line_comment …)` binds the job *body* and silently
+matches nothing.)
 
 ## Validity rules (judgeability)
 
