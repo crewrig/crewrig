@@ -1,7 +1,7 @@
 ---
 id: "0050"
 slug: ci-agentic-surface
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 374
