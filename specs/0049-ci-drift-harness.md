@@ -1,7 +1,7 @@
 ---
 id: "0049"
 slug: ci-drift-harness
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 373
