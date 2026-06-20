@@ -349,7 +349,31 @@ for overlay_tier in community org; do
   fi
 done
 
+# --- Generate ~/.gemini/GEMINI.md from deployed context files (spec 0061) ---
+# Antigravity CLI reads a single ~/.gemini/GEMINI.md as its system context.
+# Concatenate every deployed priority-ordered context file into that single
+# file so the layered configuration is active at runtime.
+GEMINI_MD_TARGET="${HOME}/.gemini/GEMINI.md"
+GEMINI_MD_LINES=0
+
+echo "Generating $GEMINI_MD_TARGET..."
+CONTEXT_FILES=$(find "$AGY_HOME" -maxdepth 1 \( -type f -o -type l \) -name "[0-9][0-9]_*.md" 2>/dev/null | sort)
+if [ -n "$CONTEXT_FILES" ]; then
+  mkdir -p "$(dirname "$GEMINI_MD_TARGET")"
+  {
+    while IFS= read -r ctx_file; do
+      printf '<!-- crewrig-section: %s -->\n\n' "$(basename "$ctx_file")"
+      cat "$ctx_file"
+      printf '\n'
+    done <<< "$CONTEXT_FILES"
+  } > "${GEMINI_MD_TARGET}.tmp" && mv "${GEMINI_MD_TARGET}.tmp" "$GEMINI_MD_TARGET"
+  GEMINI_MD_LINES=$(wc -l < "$GEMINI_MD_TARGET")
+  echo "  Generated: $GEMINI_MD_TARGET ($GEMINI_MD_LINES lines)"
+else
+  echo "  No context files found in $AGY_HOME — $GEMINI_MD_TARGET not written."
+fi
 echo ""
+
 echo "===================================="
 echo "  Setup complete"
 echo "===================================="
@@ -358,6 +382,13 @@ echo "Install mode: $INSTALL_MODE"
 echo ""
 echo "Active context files:"
 ls -1 "$AGY_HOME"/[0-9][0-9]_*.md 2>/dev/null | sed 's|^|  |' || echo "  (none)"
+echo ""
+echo "System context file (Antigravity runtime):"
+if [ "$GEMINI_MD_LINES" -gt 0 ]; then
+  echo "  $GEMINI_MD_TARGET ($GEMINI_MD_LINES lines)"
+else
+  echo "  (not generated)"
+fi
 echo ""
 echo "MCP servers (from mcp_config.json):"
 jq -r '.mcpServers // {} | keys[]' "$AGY_MCP_CONFIG" 2>/dev/null | sed 's|^|  - |' || echo "  (none)"
