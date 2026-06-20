@@ -8,6 +8,8 @@ related-issue: 365
 version: 1.0.0
 ---
 
+# sync-from-upstream: strict path guard and missing-file restore
+
 ## Intent
 
 A fork that is behind upstream but carries no local modifications to
@@ -55,7 +57,7 @@ tree.
 
 ## Scenarios
 
-**Scenario 1 — clean fork behind upstream, strict directory (happy path)**
+**Scenario:** clean fork behind upstream, strict directory (happy path)
 
 Given a fork that is three commits behind upstream with no local
 modifications,
@@ -65,7 +67,7 @@ When the user runs `bash scripts/sync-from-upstream.sh`,
 Then the script exits zero, all three files are present in the working tree,
 and no "local modifications" error is printed.
 
-**Scenario 2 — genuine local modification, strict blob (guard fires correctly)**
+**Scenario:** genuine local modification, strict blob (guard fires correctly)
 
 Given a fork where the user has edited `DEVELOPMENT.md` (a strict blob
 entry) and the edit is not present in any upstream commit,
@@ -73,7 +75,7 @@ When the user runs `bash scripts/sync-from-upstream.sh`,
 Then the script prints `Error: the following core-layer paths have local
 modifications` and exits non-zero, naming `DEVELOPMENT.md`.
 
-**Scenario 3 — org-owned sub-path excluded from strict directory**
+**Scenario:** org-owned sub-path excluded from strict directory
 
 Given a strict manifest entry `specs/` with a nested excluded entry
 `specs/org`,
@@ -82,7 +84,7 @@ When the user runs `bash scripts/sync-from-upstream.sh`,
 Then `specs/org` is not overwritten, not flagged as locally modified, and
 not included in any error output.
 
-**Scenario 4 — new upstream file in strict directory not instantiated (Bug 2 regression)**
+**Scenario:** new upstream file in strict directory not instantiated (Bug 2 regression)
 
 Given the guard has been cleared (R1 satisfied),
 and the upstream tree at `FETCH_HEAD` contains `specs/0099-new.md` which is
