@@ -180,6 +180,14 @@ tasks:
     desc: "Install a Claude Code plugin (task install-claude-plugin EXT=hello-world)"
     cmd: bash {{.REPO_DIR}}/scripts/install-claude-plugin.sh {{.EXT}}
 
+  install-antigravity-component:
+    desc: "Install a single Antigravity CLI component (task install-antigravity-component TYPE=antigravity-skills NAME=my-skill)"
+    cmd: bash {{.REPO_DIR}}/scripts/manage-antigravity-component.sh install {{.TYPE}} {{.NAME}}
+
+  link-antigravity-component:
+    desc: "Link a single Antigravity CLI component (task link-antigravity-component TYPE=antigravity-skills NAME=my-skill)"
+    cmd: bash {{.REPO_DIR}}/scripts/manage-antigravity-component.sh link {{.TYPE}} {{.NAME}}
+
   build-antigravity-plugin:
     desc: Build the Antigravity CLI plugin from dist/
     cmd: bash {{.REPO_DIR}}/scripts/build-antigravity-plugin.sh
