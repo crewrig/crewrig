@@ -1,7 +1,7 @@
 ---
 id: "0061"
 slug: antigravity-gemini-md-concat
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 461
