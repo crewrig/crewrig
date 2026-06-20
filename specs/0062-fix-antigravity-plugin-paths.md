@@ -51,21 +51,21 @@ deployment path.
 
 ## Scenarios
 
-**Scenario 1 — clean build from scratch**
+**Scenario:** clean build from scratch
 
 Given a repo where `build-components.sh --target antigravity` has been run,
 when `bash scripts/install-antigravity-plugin.sh` is executed,
 then `agy plugin list` shows `crewrig` with `components` containing at least
 `skills`, `agents`, and `hooks`.
 
-**Scenario 2 — dist/ absent**
+**Scenario:** dist/ absent
 
 Given a repo where `build-components.sh` has never been run,
 when `bash scripts/build-antigravity-plugin.sh` is executed,
 then the script exits non-zero with a clear error message referencing
 `build-components.sh`.
 
-**Scenario 3 — only hooks present (no dist/.agents)**
+**Scenario:** only hooks present (no dist/.agents)
 
 Given a repo where `build-components.sh --target antigravity` has been run
 but produced no `.agents/skills/` output (e.g., all tiers are empty),
@@ -73,7 +73,7 @@ when `bash scripts/build-antigravity-plugin.sh` is executed,
 then the script completes with exit 0, writes `plugin.json` and `hooks.json`,
 and does not fail on the absent `skills/` or `agents/` source paths.
 
-**Scenario 4 — install idempotency**
+**Scenario:** install idempotency
 
 Given a crewrig plugin already installed via `agy plugin install`,
 when `bash scripts/install-antigravity-plugin.sh` is run a second time,
