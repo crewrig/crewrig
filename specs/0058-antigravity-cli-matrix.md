@@ -1,7 +1,7 @@
 ---
 id: "0058"
 slug: antigravity-cli-matrix
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 428
