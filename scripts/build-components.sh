@@ -1,8 +1,8 @@
 #!/bin/bash
-# build-components.sh — Build community components for Gemini CLI, Claude Code, and/or GitHub Copilot CLI
+# build-components.sh — Build community components for Gemini CLI, Claude Code, GitHub Copilot CLI, and/or Antigravity CLI
 #
 # Usage:
-#   bash scripts/build-components.sh [--target gemini|claude|copilot|all] [--check]
+#   bash scripts/build-components.sh [--target gemini|claude|copilot|antigravity|all] [--check]
 #
 # Options:
 #   --target   Which tool to generate for (default: all)
@@ -522,6 +522,39 @@ COPILOT_EOF
       check_or_write "$out_root/.github/skills/$name/SKILL.md" "$copilot_content" "$source"
       propagate_skill_resources "$skill_dir" "$out_root/.github/skills/$name"
     fi
+
+    # --- Antigravity CLI output ---
+    # Models the Claude Code path: YAML frontmatter (name + description + optional
+    # fields), provenance injected via inject_provenance, resources propagated.
+    # Output: <out_root>/.agents/skills/<name>/SKILL.md
+    if [ "$TARGET" = "antigravity" ] || [ "$TARGET" = "all" ]; then
+      local antigravity_frontmatter="name: $name
+description: \"$description\""
+
+      local license compatibility
+      license=$(yaml_field "$source" "license")
+      compatibility=$(yaml_field "$source" "compatibility")
+      if [ -n "$license" ] && [ "$license" != "null" ]; then
+        antigravity_frontmatter="$antigravity_frontmatter
+license: $license"
+      fi
+      if [ -n "$compatibility" ] && [ "$compatibility" != "null" ]; then
+        antigravity_frontmatter="$antigravity_frontmatter
+compatibility: \"$compatibility\""
+      fi
+
+      local antigravity_content
+      antigravity_content=$(cat <<ANTIGRAVITY_EOF
+---
+$antigravity_frontmatter
+---
+
+$body
+ANTIGRAVITY_EOF
+      )
+      check_or_write "$out_root/.agents/skills/$name/SKILL.md" "$antigravity_content" "$source"
+      propagate_skill_resources "$skill_dir" "$out_root/.agents/skills/$name"
+    fi
   done
 }
 
@@ -598,6 +631,25 @@ $body
 COPILOT_EOF
       )
       check_or_write "$out_root/.github/skills/$name/SKILL.md" "$copilot_content" "$source"
+    fi
+
+    # --- Antigravity CLI output: SKILL.md (commands compile as skills) ---
+    # Antigravity has no first-class slash-command file format. Every CrewRig
+    # command compiles as a skill under .agents/skills/.
+    if [ "$TARGET" = "antigravity" ] || [ "$TARGET" = "all" ]; then
+      local antigravity_frontmatter="name: $name
+description: \"$description\""
+
+      local antigravity_content
+      antigravity_content=$(cat <<ANTIGRAVITY_EOF
+---
+$antigravity_frontmatter
+---
+
+$body
+ANTIGRAVITY_EOF
+      )
+      check_or_write "$out_root/.agents/skills/$name/SKILL.md" "$antigravity_content" "$source"
     fi
   done
 }
@@ -689,6 +741,21 @@ $body
 COPILOT_EOF
       )
       check_or_write "$out_root/.github/agents/$name.md" "$copilot_content" "$source"
+    fi
+
+    # --- Antigravity CLI output: AGENT.md (directory layout, models Claude Code path) ---
+    if [ "$TARGET" = "antigravity" ] || [ "$TARGET" = "all" ]; then
+      local antigravity_content
+      antigravity_content=$(cat <<ANTIGRAVITY_EOF
+---
+name: $name
+description: "$description"
+---
+
+$body
+ANTIGRAVITY_EOF
+      )
+      check_or_write "$out_root/.agents/agents/$name/AGENT.md" "$antigravity_content" "$source"
     fi
   done
 }

@@ -189,6 +189,13 @@ tasks:
         msg: "yq is required. Install with: brew install yq"
     cmd: bash {{.REPO_DIR}}/scripts/build-components.sh --target copilot
 
+  build-components-antigravity:
+    desc: Build community components for Antigravity CLI only
+    preconditions:
+      - sh: command -v yq >/dev/null 2>&1
+        msg: "yq is required. Install with: brew install yq"
+    cmd: bash {{.REPO_DIR}}/scripts/build-components.sh --target antigravity
+
   # --- Community component build ---
 
   build-components:

@@ -76,6 +76,21 @@ for cli_dir in ".claude" ".gemini" ".github"; do
   fi
 done
 
+# Antigravity CLI assertions (spec 0053).
+# Core tier skill: <repo>/.agents/skills/<name>/SKILL.md
+# Core tier agent: <repo>/.agents/agents/<name>/AGENT.md
+# Community tier overlay skill: dist/community/.agents/skills/<name>/SKILL.md
+CORE_AGENT="developer"
+if [ ! -f "$TEMP_REPO/.agents/skills/$CORE_SKILL/SKILL.md" ]; then
+  FAILURES+=("MISSING core skill '$CORE_SKILL' in .agents/skills/ (Antigravity)")
+fi
+if [ ! -f "$TEMP_REPO/.agents/agents/$CORE_AGENT/AGENT.md" ]; then
+  FAILURES+=("MISSING core agent '$CORE_AGENT' in .agents/agents/ (Antigravity)")
+fi
+if [ ! -f "$OVERLAY_STAGING/.agents/skills/$OVERLAY_SKILL/SKILL.md" ]; then
+  FAILURES+=("MISSING overlay skill '$OVERLAY_SKILL' in dist/community/.agents/skills/ (Antigravity)")
+fi
+
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   echo "FAILED: assembly verification — missing components:"
   for f in "${FAILURES[@]}"; do
