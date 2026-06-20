@@ -1,0 +1,48 @@
+{
+  "hooks": {
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "transcript-user-prompt",
+            "command": "bash $PWD/hooks/mempalace-transcript.sh"
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "transcript-tool-use",
+            "command": "bash $PWD/hooks/mempalace-transcript.sh"
+          }
+        ]
+      }
+    ],
+    "AfterModel": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "transcript-agent-response",
+            "command": "bash $PWD/hooks/mempalace-transcript.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "transcript-session-end",
+            "command": "bash $PWD/hooks/mempalace-transcript.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
