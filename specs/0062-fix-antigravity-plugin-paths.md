@@ -1,7 +1,7 @@
 ---
 id: "0062"
 slug: fix-antigravity-plugin-paths
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 466
