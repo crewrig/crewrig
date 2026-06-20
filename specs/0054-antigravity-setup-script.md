@@ -1,7 +1,7 @@
 ---
 id: "0054"
 slug: antigravity-setup-script
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 424
