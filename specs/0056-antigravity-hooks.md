@@ -1,7 +1,7 @@
 ---
 id: "0056"
 slug: antigravity-hooks
-status: approved
+status: implemented
 complexity: trivial
 interaction-mode: INTERMEDIATE
 related-issue: 426

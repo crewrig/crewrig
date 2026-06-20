@@ -1,7 +1,7 @@
 ---
 id: "0057"
 slug: antigravity-plugin-build
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 427
