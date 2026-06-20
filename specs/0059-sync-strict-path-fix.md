@@ -1,7 +1,7 @@
 ---
 id: "0059"
 slug: sync-strict-path-fix
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 365
