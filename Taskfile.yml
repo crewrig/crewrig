@@ -18,6 +18,13 @@ tasks:
         msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
     cmd: bash {{.REPO_DIR}}/scripts/setup-gemini-interactive.sh
 
+  setup-antigravity-interactive:
+    desc: Interactive Antigravity CLI setup with team/expertise/level selection
+    preconditions:
+      - sh: command -v fzf >/dev/null 2>&1
+        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
+    cmd: bash {{.REPO_DIR}}/scripts/setup-antigravity-interactive.sh
+
   install-mempalace:
     desc: Install or upgrade MemPalace at the pinned version (>=3.3.3,<3.4)
     preconditions:
