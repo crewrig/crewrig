@@ -1,7 +1,7 @@
 ---
 id: "0060"
 slug: curator-malformed-rate-warning
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 376
