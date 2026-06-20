@@ -1,7 +1,7 @@
 ---
 id: "0051"
 slug: antigravity-cli-support
-status: approved
+status: implemented
 complexity: large
 interaction-mode: INTERMEDIATE
 related-issue: 418
