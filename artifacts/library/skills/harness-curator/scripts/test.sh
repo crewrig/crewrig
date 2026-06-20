@@ -902,11 +902,18 @@ PY
 fi
 
 # --- Spec 0060: malformed-rate warning (R1–R7) ----------------------------
+# Allocate all temp files up front; a single trap cleans them all on EXIT.
+WARN_W1_FIXTURE=$(mktemp -t crewrig-warn-w1.XXXXXX)
+WARN_W1_STDERR_FILE=$(mktemp -t crewrig-warn-w1-err.XXXXXX)
+WARN_W2_FIXTURE=$(mktemp -t crewrig-warn-w2.XXXXXX)
+WARN_W2_STDERR_FILE=$(mktemp -t crewrig-warn-w2-err.XXXXXX)
+WARN_W3_FIXTURE=$(mktemp -t crewrig-warn-w3.XXXXXX)
+WARN_W3_STDERR_FILE=$(mktemp -t crewrig-warn-w3-err.XXXXXX)
+trap 'rm -f "$WARN_W1_FIXTURE" "$WARN_W1_STDERR_FILE" "$WARN_W2_FIXTURE" "$WARN_W2_STDERR_FILE" "$WARN_W3_FIXTURE" "$WARN_W3_STDERR_FILE"' EXIT
+
 # W1 — high malformed rate (40 %, above 25 % default): warning fires.
 # 10 drawers: 6 valid singletons (severity:high so each forms its own
 # cluster) + 4 malformed (no FRICTION: prefix → reason=malformed).
-WARN_W1_FIXTURE=$(mktemp -t crewrig-warn-w1.XXXXXX)
-trap 'rm -f "$WARN_W1_FIXTURE"' EXIT
 cat > "$WARN_W1_FIXTURE" <<'JSON'
 [
   {"drawer_id":"wv-1","room":"tool","content":"FRICTION: w1-valid-1\n\nwriter_agent: t\nsubcategory: w1-valid-1\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
@@ -923,13 +930,13 @@ cat > "$WARN_W1_FIXTURE" <<'JSON'
 JSON
 
 set +e
-WARN_W1_STDOUT=$(bash "$SCRIPT" --from-stdin --dry-run < "$WARN_W1_FIXTURE" 2>/tmp/warn-w1-stderr)
+WARN_W1_STDOUT=$(bash "$SCRIPT" --from-stdin --dry-run < "$WARN_W1_FIXTURE" 2>"$WARN_W1_STDERR_FILE")
 WARN_W1_RC=$?
 set -e
 assert "warn-w1 exit code" "0" "$WARN_W1_RC"
 
 # R1/R2/R6: warning fires on stderr; stdout is clean JSON (R5).
-WARN_W1_STDERR=$(cat /tmp/warn-w1-stderr)
+WARN_W1_STDERR=$(cat "$WARN_W1_STDERR_FILE")
 echo "$WARN_W1_STDERR" | grep -q "Warning:" || {
   echo "FAIL warn-w1: no warning on stderr (4/10 malformed = 40 % > 25 % threshold)" >&2
   echo "--- stderr ---" >&2
@@ -968,8 +975,6 @@ assert "warn-w1 stats.skipped_malformed" "4" "$(echo "$WARN_W1_STDOUT" | jq -r '
 
 # W2 — low malformed rate (20 %, below 25 % default): warning is silent.
 # 10 drawers: 8 valid + 2 malformed.
-WARN_W2_FIXTURE=$(mktemp -t crewrig-warn-w2.XXXXXX)
-trap 'rm -f "$WARN_W2_FIXTURE"' EXIT
 cat > "$WARN_W2_FIXTURE" <<'JSON'
 [
   {"drawer_id":"wv2-1","room":"tool","content":"FRICTION: w2-valid-1\n\nwriter_agent: t\nsubcategory: w2-valid-1\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
@@ -986,13 +991,13 @@ cat > "$WARN_W2_FIXTURE" <<'JSON'
 JSON
 
 set +e
-WARN_W2_STDOUT=$(bash "$SCRIPT" --from-stdin --dry-run < "$WARN_W2_FIXTURE" 2>/tmp/warn-w2-stderr)
+WARN_W2_STDOUT=$(bash "$SCRIPT" --from-stdin --dry-run < "$WARN_W2_FIXTURE" 2>"$WARN_W2_STDERR_FILE")
 WARN_W2_RC=$?
 set -e
 assert "warn-w2 exit code" "0" "$WARN_W2_RC"
 
 # R1/R2: no warning on stderr (2/10 = 20 % < 25 % default).
-WARN_W2_STDERR=$(cat /tmp/warn-w2-stderr)
+WARN_W2_STDERR=$(cat "$WARN_W2_STDERR_FILE")
 if echo "$WARN_W2_STDERR" | grep -q "Warning:"; then
   echo "FAIL warn-w2: unexpected warning on stderr (2/10 malformed = 20 % < 25 % threshold)" >&2
   echo "--- stderr ---" >&2
@@ -1000,6 +1005,29 @@ if echo "$WARN_W2_STDERR" | grep -q "Warning:"; then
   exit 1
 fi
 echo "  PASS warn-w2 warning silent (20 % < 25 % default threshold)"
+
+# W3 — empty wing (total_drawers == 0): no warning (spec R7).
+echo '[]' > "$WARN_W3_FIXTURE"
+
+set +e
+WARN_W3_STDOUT=$(bash "$SCRIPT" --from-stdin --dry-run < "$WARN_W3_FIXTURE" 2>"$WARN_W3_STDERR_FILE")
+WARN_W3_RC=$?
+set -e
+assert "warn-w3 exit code" "0" "$WARN_W3_RC"
+
+# R7: total_drawers == 0 → no warning regardless of threshold.
+WARN_W3_STDERR=$(cat "$WARN_W3_STDERR_FILE")
+if echo "$WARN_W3_STDERR" | grep -q "Warning:"; then
+  echo "FAIL warn-w3: unexpected warning on stderr (empty wing — total_drawers == 0)" >&2
+  echo "--- stderr ---" >&2
+  echo "$WARN_W3_STDERR" >&2
+  exit 1
+fi
+echo "  PASS warn-w3 warning silent when total_drawers == 0 (R7)"
+
+# Sanity: empty fixture must report 0 drawers in stats.
+assert "warn-w3 stats.total_drawers"     "0" "$(echo "$WARN_W3_STDOUT" | jq -r '.stats.total_drawers')"
+assert "warn-w3 stats.skipped_malformed" "0" "$(echo "$WARN_W3_STDOUT" | jq -r '.stats.skipped_malformed')"
 
 echo ""
 echo "OK: harness-curate smoke test passed."
