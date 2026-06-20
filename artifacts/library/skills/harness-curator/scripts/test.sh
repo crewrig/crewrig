@@ -901,5 +901,105 @@ PY
   echo "  PASS test_real second-run: stamped drawer absent from clusters"
 fi
 
+# --- Spec 0060: malformed-rate warning (R1–R7) ----------------------------
+# W1 — high malformed rate (40 %, above 25 % default): warning fires.
+# 10 drawers: 6 valid singletons (severity:high so each forms its own
+# cluster) + 4 malformed (no FRICTION: prefix → reason=malformed).
+WARN_W1_FIXTURE=$(mktemp -t crewrig-warn-w1.XXXXXX)
+trap 'rm -f "$WARN_W1_FIXTURE"' EXIT
+cat > "$WARN_W1_FIXTURE" <<'JSON'
+[
+  {"drawer_id":"wv-1","room":"tool","content":"FRICTION: w1-valid-1\n\nwriter_agent: t\nsubcategory: w1-valid-1\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv-2","room":"tool","content":"FRICTION: w1-valid-2\n\nwriter_agent: t\nsubcategory: w1-valid-2\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv-3","room":"tool","content":"FRICTION: w1-valid-3\n\nwriter_agent: t\nsubcategory: w1-valid-3\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv-4","room":"tool","content":"FRICTION: w1-valid-4\n\nwriter_agent: t\nsubcategory: w1-valid-4\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv-5","room":"tool","content":"FRICTION: w1-valid-5\n\nwriter_agent: t\nsubcategory: w1-valid-5\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv-6","room":"tool","content":"FRICTION: w1-valid-6\n\nwriter_agent: t\nsubcategory: w1-valid-6\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wm-1","room":"tool","content":"Not a friction"},
+  {"drawer_id":"wm-2","room":"tool","content":"Not a friction"},
+  {"drawer_id":"wm-3","room":"tool","content":"Not a friction"},
+  {"drawer_id":"wm-4","room":"tool","content":"Not a friction"}
+]
+JSON
+
+set +e
+WARN_W1_STDOUT=$(bash "$SCRIPT" --from-stdin --dry-run < "$WARN_W1_FIXTURE" 2>/tmp/warn-w1-stderr)
+WARN_W1_RC=$?
+set -e
+assert "warn-w1 exit code" "0" "$WARN_W1_RC"
+
+# R1/R2/R6: warning fires on stderr; stdout is clean JSON (R5).
+WARN_W1_STDERR=$(cat /tmp/warn-w1-stderr)
+echo "$WARN_W1_STDERR" | grep -q "Warning:" || {
+  echo "FAIL warn-w1: no warning on stderr (4/10 malformed = 40 % > 25 % threshold)" >&2
+  echo "--- stderr ---" >&2
+  echo "$WARN_W1_STDERR" >&2
+  exit 1
+}
+echo "  PASS warn-w1 warning fires on stderr (40 % > 25 % default)"
+
+# R3: warning text includes malformed count (4), total (10), percentage (40).
+echo "$WARN_W1_STDERR" | grep -q "4 of 10" || {
+  echo "FAIL warn-w1: stderr warning missing '4 of 10' count" >&2
+  echo "$WARN_W1_STDERR" >&2
+  exit 1
+}
+echo "  PASS warn-w1 warning contains count (4 of 10)"
+echo "$WARN_W1_STDERR" | grep -q "40%" || {
+  echo "FAIL warn-w1: stderr warning missing '40%' percentage" >&2
+  echo "$WARN_W1_STDERR" >&2
+  exit 1
+}
+echo "  PASS warn-w1 warning contains percentage (40%)"
+
+# R5: stdout must be valid JSON (warning did not leak into stdout).
+if ! echo "$WARN_W1_STDOUT" | python3 -c "import json,sys; json.load(sys.stdin)" \
+    >/dev/null 2>&1; then
+  echo "FAIL warn-w1: stdout is not valid JSON (warning may have leaked)" >&2
+  echo "$WARN_W1_STDOUT" >&2
+  exit 1
+fi
+echo "  PASS warn-w1 stdout is valid JSON (no stderr contamination)"
+
+# R1/R2 stats sanity: 10 drawers, 6 valid, 4 malformed.
+assert "warn-w1 stats.total_drawers"    "10" "$(echo "$WARN_W1_STDOUT" | jq -r '.stats.total_drawers')"
+assert "warn-w1 stats.valid_frictions"  "6"  "$(echo "$WARN_W1_STDOUT" | jq -r '.stats.valid_frictions')"
+assert "warn-w1 stats.skipped_malformed" "4" "$(echo "$WARN_W1_STDOUT" | jq -r '.stats.skipped_malformed')"
+
+# W2 — low malformed rate (20 %, below 25 % default): warning is silent.
+# 10 drawers: 8 valid + 2 malformed.
+WARN_W2_FIXTURE=$(mktemp -t crewrig-warn-w2.XXXXXX)
+trap 'rm -f "$WARN_W2_FIXTURE"' EXIT
+cat > "$WARN_W2_FIXTURE" <<'JSON'
+[
+  {"drawer_id":"wv2-1","room":"tool","content":"FRICTION: w2-valid-1\n\nwriter_agent: t\nsubcategory: w2-valid-1\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv2-2","room":"tool","content":"FRICTION: w2-valid-2\n\nwriter_agent: t\nsubcategory: w2-valid-2\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv2-3","room":"tool","content":"FRICTION: w2-valid-3\n\nwriter_agent: t\nsubcategory: w2-valid-3\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv2-4","room":"tool","content":"FRICTION: w2-valid-4\n\nwriter_agent: t\nsubcategory: w2-valid-4\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv2-5","room":"tool","content":"FRICTION: w2-valid-5\n\nwriter_agent: t\nsubcategory: w2-valid-5\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv2-6","room":"tool","content":"FRICTION: w2-valid-6\n\nwriter_agent: t\nsubcategory: w2-valid-6\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv2-7","room":"tool","content":"FRICTION: w2-valid-7\n\nwriter_agent: t\nsubcategory: w2-valid-7\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wv2-8","room":"tool","content":"FRICTION: w2-valid-8\n\nwriter_agent: t\nsubcategory: w2-valid-8\ncanonical: https://github.com/crewrig/crewrig\nseverity: high\nevidence:\n  - x.md:1\n"},
+  {"drawer_id":"wm2-1","room":"tool","content":"Not a friction"},
+  {"drawer_id":"wm2-2","room":"tool","content":"Not a friction"}
+]
+JSON
+
+set +e
+WARN_W2_STDOUT=$(bash "$SCRIPT" --from-stdin --dry-run < "$WARN_W2_FIXTURE" 2>/tmp/warn-w2-stderr)
+WARN_W2_RC=$?
+set -e
+assert "warn-w2 exit code" "0" "$WARN_W2_RC"
+
+# R1/R2: no warning on stderr (2/10 = 20 % < 25 % default).
+WARN_W2_STDERR=$(cat /tmp/warn-w2-stderr)
+if echo "$WARN_W2_STDERR" | grep -q "Warning:"; then
+  echo "FAIL warn-w2: unexpected warning on stderr (2/10 malformed = 20 % < 25 % threshold)" >&2
+  echo "--- stderr ---" >&2
+  echo "$WARN_W2_STDERR" >&2
+  exit 1
+fi
+echo "  PASS warn-w2 warning silent (20 % < 25 % default threshold)"
+
 echo ""
 echo "OK: harness-curate smoke test passed."

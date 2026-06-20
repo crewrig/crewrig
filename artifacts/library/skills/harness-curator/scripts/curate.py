@@ -85,6 +85,9 @@ TARGET_OVERRIDE = os.environ.get("TARGET_REPO_OVERRIDE", "").strip()
 STDIN_FILE = os.environ.get("FROM_STDIN_FILE", "").strip()
 DEEP_MODE = os.environ.get("DEEP_MODE", "false").lower() == "true"
 DEEP_WINDOW = int(os.environ.get("DEEP_WINDOW", "500"))
+# Fraction of malformed drawers above which a stderr warning fires (spec 0060 R3/R4).
+# Clamped to [0.0, 1.0]; values outside that range are silently corrected.
+WARN_SKIPPED_RATIO = max(0.0, min(1.0, float(os.environ.get("WARN_SKIPPED_RATIO", "0.25"))))
 
 # Heuristic keyword patterns for --deep pre-filter (label → regex)
 _DEEP_HEURISTICS: Dict[str, str] = {
@@ -602,6 +605,27 @@ def compose_deep_review(
     return "\n".join(lines)
 
 
+# --- Malformed-rate warning -----------------------------------------------
+
+
+def _emit_malformed_warning(stats: Dict[str, int], threshold: float) -> None:
+    """Emit a stderr warning when the malformed-friction rate exceeds threshold.
+
+    Spec 0060 R1–R6: fires only in non-deep mode (caller's responsibility),
+    skips when total_drawers is zero, writes to stderr only."""
+    total = stats.get("total_drawers", 0)
+    if total == 0:
+        return
+    malformed = stats.get("skipped_malformed", 0)
+    if malformed / total > threshold:
+        pct = round(malformed / total * 100)
+        print(
+            f"Warning: {malformed} of {total} drawers ({pct}%) were rejected as "
+            "malformed. Check the skipped[] array for details.",
+            file=sys.stderr,
+        )
+
+
 # --- Main -----------------------------------------------------------------
 
 
@@ -677,6 +701,8 @@ def main() -> int:
             continue
         parsed.append((friction, room, filed_at, drawer_id))
         stats["valid_frictions"] += 1
+
+    _emit_malformed_warning(stats, WARN_SKIPPED_RATIO)
 
     clusters = cluster_frictions(parsed)
     stats["clusters_formed"] = len(clusters)
