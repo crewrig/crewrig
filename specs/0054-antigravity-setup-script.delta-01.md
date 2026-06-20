@@ -1,7 +1,7 @@
 ---
 id: "0054"
 slug: antigravity-setup-script
-status: draft
+status: approved
 complexity: trivial
 interaction-mode: INTERMEDIATE
 related-issue: 424
@@ -35,13 +35,13 @@ already; the spec text is brought into alignment here.
 
 **R6 tier-routing policy — original (spec 0054, line 37):**
 
-> 6. The script SHALL follow the tier-routed install pattern: the core tier
+> 1. The script SHALL follow the tier-routed install pattern: the core tier
 >    SHALL be deployed automatically; library, community, and org tiers SHALL
 >    each require explicit opt-in from the user.
 
 **Replacement:**
 
-> 6. The script SHALL follow the tier-routed install pattern: the core tier
+> 1. The script SHALL follow the tier-routed install pattern: the core tier
 >    SHALL be deployed automatically; the library tier SHALL also be deployed
 >    automatically (matching the behavior of `scripts/setup-gemini-interactive.sh`,
 >    which auto-installs the library tier); the community and org tiers SHALL
