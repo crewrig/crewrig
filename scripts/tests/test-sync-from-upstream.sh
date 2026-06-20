@@ -865,6 +865,70 @@ run_case_stderr() {
 }
 
 # ---------------------------------------------------------------------------
+# Case p — Bug 1 regression: strict blob at an older upstream version exits 0.
+# The fork is at upstream commit-1 content; upstream advances to commit-2.
+# No local modifications → guard must NOT abort.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream v1 content"
+  commit_files "$upstream" "advance" \
+    "core-file.txt" "upstream v2 content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "core-file.txt" "upstream v1 content"
+
+  run_case "case-p strict blob behind upstream exits 0 (Bug 1 regression)" "$adopter" 0
+
+  synced="$(cat "$adopter/core-file.txt" 2>/dev/null)"
+  if [ "$synced" = "upstream v2 content" ]; then
+    echo "PASS  case-p: strict blob behind upstream updated to v2"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-p: expected 'upstream v2 content', got '$synced'"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case q — Bug 2 regression: strict directory entry; upstream adds a new file
+# absent from the local index → sync must exit 0 and create the file.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "specs/0001.md" "spec one content"
+  commit_files "$upstream" "add new spec" \
+    "specs/0099-new.md" "new upstream spec"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'specs\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "specs/0001.md" "spec one content"
+
+  run_case "case-q strict dir new upstream file created (Bug 2 regression)" "$adopter" 0
+
+  if [ -f "$adopter/specs/0099-new.md" ]; then
+    echo "PASS  case-q: strict dir new upstream file instantiated"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-q: strict dir new upstream file not found after sync"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 total=$((pass + fail))

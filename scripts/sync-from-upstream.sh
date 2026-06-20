@@ -173,6 +173,29 @@ path_in_org_history() {
 }
 
 # ---------------------------------------------------------------------------
+# strict_blob_is_dirty <path>
+# Return 0 (dirty) iff <path> is locally modified relative to upstream.
+# Three cases:
+#   - File present locally: dirty iff blob is absent from FETCH_HEAD history.
+#   - File absent locally, present in HEAD: locally deleted → dirty.
+#   - File absent locally, absent from HEAD: new upstream file → not dirty.
+# ---------------------------------------------------------------------------
+strict_blob_is_dirty() {
+  local path="$1" current
+  if [ -e "$REPO_DIR/$path" ]; then
+    current="$(git hash-object "$REPO_DIR/$path" 2>/dev/null)"
+    upstream_has_blob "$path" "$current" && return 1
+    return 0
+  else
+    if git cat-file -e "HEAD:$path" 2>/dev/null; then
+      return 0  # was in HEAD, now absent: locally deleted
+    else
+      return 1  # new upstream file, never committed here
+    fi
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # reconcile_member <path>
 # Run the spec-0020 two-tier "modified?" decision for one adopt-on-edit member
 # file that exists in BOTH the upstream tree and the working tree, restoring it
@@ -279,9 +302,10 @@ git fetch "$CANONICAL_REPO"
 IS_SHALLOW="$(git rev-parse --is-shallow-repository 2>/dev/null || echo false)"
 
 # ---------------------------------------------------------------------------
-# Dirty-core detection: strict paths only. A local modification relative to
-# FETCH_HEAD (excluding any nested org subtree) aborts the sync. adopt-on-edit
-# and excluded paths never abort.
+# Dirty-core detection: strict paths only. Upstream-history membership
+# distinguishes "stale upstream version" from genuine local modification.
+# Directory entries are enumerated member-by-member so new-in-upstream files
+# are not treated as false positives (spec 0059 R1–R2).
 # ---------------------------------------------------------------------------
 DIRTY=()
 for i in "${!PATHS[@]}"; do
@@ -292,9 +316,26 @@ for i in "${!PATHS[@]}"; do
   # dirty against a non-existent upstream object. Skip it silently here — the
   # single warning belongs to the apply loop below.
   resolves_at_fetch_head "$path" || continue
-  mapfile -d '' spec < <(pathspec_for "$path")
-  if ! git diff --quiet FETCH_HEAD -- "${spec[@]}" 2>/dev/null; then
-    DIRTY+=("$path")
+
+  if [ "$(git cat-file -t "FETCH_HEAD:$path" 2>/dev/null)" = "tree" ]; then
+    # Directory entry: check each upstream member individually.
+    dir_dirty=0
+    while IFS= read -r member; do
+      [ -n "$member" ] || continue
+      skip=0
+      while IFS= read -r excl; do
+        case "$member" in "$excl"/*|"$excl") skip=1; break ;; esac
+      done < <(excluded_children_of "$path")
+      [ "$skip" -eq 1 ] && continue
+      if strict_blob_is_dirty "$member"; then
+        dir_dirty=1
+        break
+      fi
+    done < <(git ls-tree -r --name-only FETCH_HEAD -- "$path/" 2>/dev/null)
+    [ "$dir_dirty" -eq 1 ] && DIRTY+=("$path")
+  else
+    # Blob entry: upstream-history membership check.
+    strict_blob_is_dirty "$path" && DIRTY+=("$path")
   fi
 done
 
@@ -325,8 +366,23 @@ for i in "${!PATHS[@]}"; do
         echo "Warning: skipping manifest entry absent from upstream: $path" >&2
         continue
       fi
-      mapfile -d '' spec < <(pathspec_for "$path")
-      git restore --source=FETCH_HEAD --worktree -- "${spec[@]}"
+      if [ "$(git cat-file -t "FETCH_HEAD:$path" 2>/dev/null)" = "tree" ]; then
+        # Directory entry: enumerate upstream members and restore each individually
+        # so new-in-upstream files absent from the local index are instantiated
+        # (spec 0059 R3–R4).
+        while IFS= read -r member; do
+          [ -n "$member" ] || continue
+          skip=0
+          while IFS= read -r excl; do
+            case "$member" in "$excl"/*|"$excl") skip=1; break ;; esac
+          done < <(excluded_children_of "$path")
+          [ "$skip" -eq 1 ] && continue
+          git restore --source=FETCH_HEAD --worktree -- "$member"
+        done < <(git ls-tree -r --name-only FETCH_HEAD -- "$path/" 2>/dev/null)
+      else
+        mapfile -d '' spec < <(pathspec_for "$path")
+        git restore --source=FETCH_HEAD --worktree -- "${spec[@]}"
+      fi
       ;;
     adopt-on-edit)
       # Phantom guard at the top of the arm covers both sub-branches: the
