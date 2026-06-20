@@ -1,7 +1,7 @@
 ---
 id: "0052"
 slug: antigravity-workspace-layout
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 422
