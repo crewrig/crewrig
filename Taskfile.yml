@@ -149,6 +149,13 @@ tasks:
         msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
     cmd: bash {{.REPO_DIR}}/scripts/import-gemini-history.sh
 
+  import-antigravity-history:
+    desc: Backfill MemPalace with pre-existing Antigravity CLI transcripts from ~/.gemini/antigravity-cli/history.jsonl (idempotent)
+    preconditions:
+      - sh: command -v fzf >/dev/null 2>&1
+        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
+    cmd: bash {{.REPO_DIR}}/scripts/import-antigravity-history.sh
+
   install-claude-workspace:
     desc: Install all artifacts Claude Code components (copy mode)
     cmd: bash {{.REPO_DIR}}/scripts/manage-claude-component.sh install claude-skills
