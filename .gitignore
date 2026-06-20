@@ -37,3 +37,8 @@ copilot-instructions.local.md
 tests/e2e/local.toml
 tests/e2e/reports/*
 !tests/e2e/reports/.gitkeep
+
+# Antigravity CLI
+.agents/settings.local.json
+ANTIGRAVITY.local.md
+dist-antigravity-*/

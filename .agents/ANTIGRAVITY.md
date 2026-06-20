@@ -1,0 +1,3 @@
+# Agent Rules
+
+@AGENTS.md

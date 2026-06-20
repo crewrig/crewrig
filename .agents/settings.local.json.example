@@ -1,0 +1,17 @@
+{
+  // Antigravity CLI workspace settings — copy to settings.local.json to activate.
+  // Key names derived from agy 1.0.10 binary strings; verify against official
+  // documentation if a public reference becomes available.
+
+  // The Gemini model to use for this workspace (e.g. "gemini-2.5-pro").
+  // "model": "gemini-2.5-pro",
+
+  // Tool permission level: "auto" (default) | "requireApproval" | "disabled".
+  // "toolPermission": "auto",
+
+  // Whether to send anonymised usage telemetry to Google.
+  // "enableTelemetry": true,
+
+  // Number of history entries to retain across sessions (integer ≥ 0).
+  // "historySize": 100
+}
