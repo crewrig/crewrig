@@ -1,7 +1,7 @@
 ---
 id: "0055"
 slug: antigravity-history-import
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 425
