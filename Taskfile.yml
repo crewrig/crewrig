@@ -180,6 +180,14 @@ tasks:
     desc: "Install a Claude Code plugin (task install-claude-plugin EXT=hello-world)"
     cmd: bash {{.REPO_DIR}}/scripts/install-claude-plugin.sh {{.EXT}}
 
+  build-antigravity-plugin:
+    desc: Build the Antigravity CLI plugin from dist/
+    cmd: bash {{.REPO_DIR}}/scripts/build-antigravity-plugin.sh
+
+  install-antigravity-plugin:
+    desc: Build and install the Antigravity CLI plugin (requires agy in PATH)
+    cmd: bash {{.REPO_DIR}}/scripts/install-antigravity-plugin.sh
+
   # --- GitHub Copilot CLI tasks ---
 
   setup-copilot-interactive:
