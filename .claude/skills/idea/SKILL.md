@@ -189,7 +189,7 @@ Example composition prefix:
 The official vote mechanism is structured vote comments on the session issue.
 A valid vote comment matches exactly one of the following forms:
 
-```
+```text
 VOTE: APPROVE
 VOTE: REJECT
 VOTE: ABSTAIN
