@@ -50,13 +50,16 @@ art for the staging discipline and the filesystem-first artifact model.
 ## Decision
 
 CrewRig adopts a **four-stage lifecycle** for every non-trivial
-ticket:
+ticket, with an optional pre-SPECS convergence stage:
 
 ```text
-SPECS  ──▶  PLAN  ──▶  DEV  ──▶  REVIEW ──▶  MERGE
-                                    │
-                                    └── loops back on findings
+[IDEA] ──▶  SPECS  ──▶  PLAN  ──▶  DEV  ──▶  REVIEW ──▶  MERGE
+ (opt.)                                          │
+                                                 └── loops back on findings
 ```
+
+The IDEA stage is optional and explicitly triggered (see *Stage definitions →
+IDEA*). Tickets that do not require convergence proceed directly to SPECS.
 
 - **SPECS**, **PLAN**, and **DEV** are *linear* stages: each runs
   once per iteration of the lifecycle, in order.
@@ -87,10 +90,52 @@ and the routing engine land in dedicated tickets:
 
 | Stage | Produces | Artifact location | Entry criteria | Exit criteria |
 |---|---|---|---|---|
-| **SPECS** | A specification (the WHAT) | Spec file under `/specs/<spec-id>/` (format defined in #167) | A ticket exists with a user-evoked intent | Spec PR is merged on `main` (mode-dependent: see *Interaction modes*) |
+| **IDEA** *(optional)* | A converged intent + one or more SPECS issues | Session issue on the forge (labeled `idea-session`; closed with `idea-resolved` or `idea-no-consensus`) | Explicit `idea` skill invocation with `--mode` and `--issue` | Session issue closed with a terminal label (R14 of spec 0066) |
+| **SPECS** | A specification (the WHAT) | Spec file under `/specs/<spec-id>/` (format defined in #167) | A ticket exists with a user-evoked intent (may originate from a resolved IDEA session) | Spec PR is merged on `main` (mode-dependent: see *Interaction modes*) |
 | **PLAN** | A plan (the HOW: steps, blast radius, alternatives) | Comment on the logbook issue (format defined in #169) | A merged spec on `main` for this ticket | Plan is approved on the logbook issue (mode-dependent) |
 | **DEV** | Implementation diff | Feature branch in a dedicated worktree (per `AGENTS.md` → *Worktree Isolation*) | An approved plan on the logbook | A PR is opened and CI is green |
 | **REVIEW** | A verdict + zero or more findings | PR comment (`pr-reviewer` verdict format, per `AGENTS.md`) | An open PR with green CI | Verdict is APPROVE with zero findings of any class |
+
+### IDEA
+
+**Purpose.** The IDEA stage is an optional convergence layer positioned before
+SPECS. It is designed for situations where multiple competing, overlapping, or
+complementary proposals exist for a problem and must be resolved into a single
+intent before a spec can be written. Tickets that begin with a single clear
+intent MAY skip IDEA and proceed directly to SPECS.
+
+**Entry trigger.** IDEA is entered only when the `idea` skill is explicitly
+invoked with both `--mode=<governance-mode>` and `--issue=<parent-issue-number>`.
+There is no automatic entry condition; the stage is never triggered by the
+lifecycle engine.
+
+**Governance modes.** Three modes are supported:
+
+- `solo` — a single named owner; the session closes when the owner casts
+  `VOTE: APPROVE`.
+- `unanimity` — a declared set of owners; the session closes when every owner
+  has cast `VOTE: APPROVE`.
+- `vote` — a named voter set and a quorum threshold (integer percentage, e.g.
+  `60`); the session closes when the threshold is reached among cast non-ABSTAIN
+  votes.
+
+The declared governance mode and all its parameters are immutable for the
+lifetime of the session.
+
+**Exit — resolved path.** When the declared governance threshold is met, the
+skill posts a closing comment naming the winning proposal and vote tally, creates
+one or more SPECS issues pre-populated with the winning proposal as the intent
+statement, and closes the session issue with the label `idea-resolved`. Each
+created SPECS issue cross-references the IDEA session issue.
+
+**Exit — no-consensus path.** The session owner may close the session at any time
+without reaching the governance threshold by adding the label `idea-no-consensus`
+and posting a mandatory closure comment. No SPECS issue is created; the parent
+issue remains open for a future attempt.
+
+**Relationship to SPECS.** IDEA feeds SPECS; it does not replace it. A resolved
+IDEA session produces one or more SPECS issues, each of which enters the SPECS
+stage independently. The SPECS contract defined in this ADR is unchanged.
 
 Normative transition rules:
 

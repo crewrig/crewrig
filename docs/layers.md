@@ -115,6 +115,7 @@ SDLC lifecycle tools:
 
 | Path | Description |
 |---|---|
+| `artifacts/core/skills/idea/` | Lifecycle skill — IDEA stage idea-convergence. |
 | `artifacts/core/skills/spec-author/` | Lifecycle skill — qualification stage author. |
 | `artifacts/core/skills/pr-logbook/` | Lifecycle skill — PR and logbook composer. |
 | `artifacts/core/skills/pr-reviewer/` | Lifecycle skill — independent PR reviewer. |
