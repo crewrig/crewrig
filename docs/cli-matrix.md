@@ -129,7 +129,6 @@ candidate follow-up issue. **Do not fix them in this ticket.**
 - [GAP] Extension skill/agent loader (row 5c) — Antigravity CLI has no in-repo extension skill/agent loader. `scripts/install-antigravity-extension.sh` builds a plugin package and calls `agy plugin install` — the plugin is consumed as a package, not via per-skill directory links.
 - [GAP] CI workflow (row 18) — `agy --print` is confirmed non-interactive (exit 0; output: `Pong! How can I help you today?`), but no published GitHub Action (analogous to `anthropics/claude-code-action`) exists for Antigravity CLI. Evidence: `gh api /repos/antigravity-labs/agy-code-action` → HTTP 404; `gh api /users/antigravity-labs` → HTTP 404; `gh search repos "agy-action"` — no relevant results.
 
-
 - [GAP-soft] e2e dedicated-account auth flow (row 21) — no `scripts/e2e/auth-antigravity.sh` or `crewrig/e2e-antigravity:latest` Docker image has been defined. Adding Antigravity CLI e2e coverage is explicitly out of scope per spec 0058.
 - [GAP-soft] e2e pillar 01 — layered context (row 22) — no Antigravity CLI e2e container or scenario variant exists. Out of scope per spec 0058.
 - [GAP-soft] e2e pillar 02 — cross-tool memory (row 23) — no Antigravity CLI e2e container or scenario variant exists. Out of scope per spec 0058.
