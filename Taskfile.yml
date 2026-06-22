@@ -196,6 +196,16 @@ tasks:
     desc: "Build and install an Antigravity CLI plugin from an extension (requires agy in PATH; task install-antigravity-extension EXT=hello-world)"
     cmd: bash {{.REPO_DIR}}/scripts/install-antigravity-extension.sh {{.EXT}}
 
+  build-copilot-plugin:
+    desc: "Build a Copilot CLI plugin from an extension (task build-copilot-plugin EXT=hello-world)"
+    cmds:
+      - bash {{.REPO_DIR}}/scripts/build-copilot-plugin.sh {{.EXT}}
+
+  install-copilot-plugin:
+    desc: "Build and install a Copilot CLI plugin from an extension (requires copilot in PATH; task install-copilot-plugin EXT=hello-world)"
+    cmds:
+      - bash {{.REPO_DIR}}/scripts/install-copilot-plugin.sh {{.EXT}}
+
   # --- GitHub Copilot CLI tasks ---
 
   setup-copilot-interactive:

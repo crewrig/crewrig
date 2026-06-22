@@ -42,5 +42,8 @@
   "antigravity": {
     "pluginName": "${SKELETON_NAME}",
     "contextFileName": "GEMINI.md"
+  },
+  "copilot": {
+    "pluginName": "${SKELETON_NAME}"
   }
 }

@@ -42,3 +42,6 @@ tests/e2e/reports/*
 .agents/settings.local.json
 ANTIGRAVITY.local.md
 dist-antigravity-*/
+
+# GitHub Copilot CLI plugin build outputs
+dist-copilot-plugin/
