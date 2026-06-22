@@ -156,3 +156,7 @@ Then the script builds the plugin and calls
   CLI Matrix (rows 21–25).
 - Resolving the `[GAP-confirmation]` on row 4 (repo-level Copilot agent
   layout) — that follow-up remains open.
+
+## Open questions
+
+None.
