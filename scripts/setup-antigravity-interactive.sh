@@ -349,11 +349,11 @@ for overlay_tier in community org; do
   fi
 done
 
-# --- Generate ~/.gemini/GEMINI.md from deployed context files (spec 0061) ---
-# Antigravity CLI reads a single ~/.gemini/GEMINI.md as its system context.
+# --- Generate ~/.gemini/config/AGENTS.md from deployed context files (spec 0061) ---
+# Antigravity CLI reads a single ~/.gemini/config/AGENTS.md as its system context.
 # Concatenate every deployed priority-ordered context file into that single
 # file so the layered configuration is active at runtime.
-GEMINI_MD_TARGET="${HOME}/.gemini/GEMINI.md"
+GEMINI_MD_TARGET="${HOME}/.gemini/config/AGENTS.md"
 GEMINI_MD_LINES=0
 
 echo "Generating $GEMINI_MD_TARGET..."
