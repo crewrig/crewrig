@@ -49,6 +49,13 @@
 #      "Warning: skipping manifest entry" line on stderr (spec 0031 "fully
 #      resolvable manifest syncs cleanly" scenario; architect advisory #1).
 #
+# Spec-0064 strict-directory orphan cleanup cases:
+#   r. Orphan deletion — a strict directory contains a locally tracked file
+#      absent from FETCH_HEAD; the file is deleted, stdout contains
+#      "Removed (upstream-deleted): <path>", and exit 0.
+#   s. Excluded child preserved — a file under an excluded child of a strict
+#      directory is absent from FETCH_HEAD but NOT deleted.
+#
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
 
@@ -924,6 +931,101 @@ run_case_stderr() {
     pass=$((pass + 1))
   else
     echo "FAIL  case-q: strict dir new upstream file not found after sync"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case r — spec 0064 R2–R3: strict directory contains an orphaned file absent
+# from FETCH_HEAD → file deleted, stdout message emitted, exit 0.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "scripts/old-file.sh" "old content" \
+    "scripts/active-file.sh" "active content"
+  git -C "$upstream" rm -q "scripts/old-file.sh"
+  git -C "$upstream" commit -q -m "remove old-file.sh"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'scripts\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "scripts/old-file.sh" "old content" \
+    "scripts/active-file.sh" "active content"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>/dev/null)" || actual_exit=$?
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-r: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if [ -f "$adopter/scripts/old-file.sh" ]; then
+    echo "FAIL  case-r: orphan scripts/old-file.sh still present after sync"
+    ok=0
+  fi
+  if ! echo "$stdout_out" | grep -qF "Removed (upstream-deleted): scripts/old-file.sh"; then
+    echo "FAIL  case-r: stdout missing 'Removed (upstream-deleted): scripts/old-file.sh'"
+    echo "      actual stdout: $stdout_out"
+    ok=0
+  fi
+  if [ ! -f "$adopter/scripts/active-file.sh" ]; then
+    echo "FAIL  case-r: active-file.sh incorrectly removed"
+    ok=0
+  fi
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-r: strict dir orphan deleted, message emitted, active file preserved"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case s — spec 0064 R4: excluded child of strict directory absent from
+# FETCH_HEAD is NOT deleted by the orphan-cleanup pass.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "specs/0001.md" "spec content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'specs\nspecs/org\texcluded\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "specs/0001.md" "spec content" \
+    "specs/org/custom.md" "org content"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>/dev/null)" || actual_exit=$?
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-s: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if [ ! -f "$adopter/specs/org/custom.md" ]; then
+    echo "FAIL  case-s: excluded child specs/org/custom.md was incorrectly deleted"
+    ok=0
+  fi
+  if echo "$stdout_out" | grep -qF "Removed (upstream-deleted): specs/org"; then
+    echo "FAIL  case-s: stdout contained unexpected 'Removed' line for excluded path"
+    echo "      actual stdout: $stdout_out"
+    ok=0
+  fi
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-s: excluded child not deleted by orphan cleanup"
+    pass=$((pass + 1))
+  else
     fail=$((fail + 1))
   fi
 }

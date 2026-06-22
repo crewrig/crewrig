@@ -379,6 +379,19 @@ for i in "${!PATHS[@]}"; do
           [ "$skip" -eq 1 ] && continue
           git restore --source=FETCH_HEAD --worktree -- "$member"
         done < <(git ls-tree -r --name-only FETCH_HEAD -- "$path/" 2>/dev/null)
+        # Delete locally tracked files absent from FETCH_HEAD (spec 0064 orphan cleanup).
+        while IFS= read -r tracked; do
+          [ -n "$tracked" ] || continue
+          skip=0
+          while IFS= read -r excl; do
+            case "$tracked" in "$excl"/*|"$excl") skip=1; break ;; esac
+          done < <(excluded_children_of "$path")
+          [ "$skip" -eq 1 ] && continue
+          if ! git ls-tree FETCH_HEAD -- "$tracked" 2>/dev/null | grep -q .; then
+            rm -f "$REPO_DIR/$tracked"
+            echo "Removed (upstream-deleted): $tracked"
+          fi
+        done < <(cd "$REPO_DIR" && git ls-files -- "$path/")
       else
         mapfile -d '' spec < <(pathspec_for "$path")
         git restore --source=FETCH_HEAD --worktree -- "${spec[@]}"
