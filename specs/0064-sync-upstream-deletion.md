@@ -1,7 +1,7 @@
 ---
 id: "0064"
 slug: sync-upstream-deletion
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 474
