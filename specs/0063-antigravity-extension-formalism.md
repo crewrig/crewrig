@@ -1,7 +1,7 @@
 ---
 id: "0063"
 slug: antigravity-extension-formalism
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 470
