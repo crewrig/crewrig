@@ -1,7 +1,7 @@
 ---
 id: "0065"
 slug: copilot-plugin-build
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 481
