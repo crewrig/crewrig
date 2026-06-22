@@ -188,13 +188,13 @@ tasks:
     desc: "Link a single Antigravity CLI component (task link-antigravity-component TYPE=antigravity-skills NAME=my-skill)"
     cmd: bash {{.REPO_DIR}}/scripts/manage-antigravity-component.sh link {{.TYPE}} {{.NAME}}
 
-  build-antigravity-plugin:
-    desc: Build the Antigravity CLI plugin from dist/
-    cmd: bash {{.REPO_DIR}}/scripts/build-antigravity-plugin.sh
+  build-antigravity-extension:
+    desc: "Build an Antigravity CLI plugin from an extension (task build-antigravity-extension EXT=hello-world)"
+    cmd: bash {{.REPO_DIR}}/scripts/build-antigravity-extension.sh {{.EXT}}
 
-  install-antigravity-plugin:
-    desc: Build and install the Antigravity CLI plugin (requires agy in PATH)
-    cmd: bash {{.REPO_DIR}}/scripts/install-antigravity-plugin.sh
+  install-antigravity-extension:
+    desc: "Build and install an Antigravity CLI plugin from an extension (requires agy in PATH; task install-antigravity-extension EXT=hello-world)"
+    cmd: bash {{.REPO_DIR}}/scripts/install-antigravity-extension.sh {{.EXT}}
 
   # --- GitHub Copilot CLI tasks ---
 

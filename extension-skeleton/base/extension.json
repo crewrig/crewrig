@@ -38,5 +38,9 @@
     "settings": {},
     "lsp": {},
     "bin": null
+  },
+  "antigravity": {
+    "pluginName": "${SKELETON_NAME}",
+    "contextFileName": "GEMINI.md"
   }
 }
