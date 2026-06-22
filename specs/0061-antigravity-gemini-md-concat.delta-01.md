@@ -71,7 +71,7 @@ clearly-labelled separators between each section.
 
 ### Scenarios (replacements)
 
-**Scenario: Fresh setup — config/AGENTS.md generated**
+### Scenario: Fresh setup — config/AGENTS.md generated
 
 Given a clean environment with no prior configuration,
   the user runs the setup script and selects a level, expertise, and team,
@@ -84,7 +84,7 @@ Then `~/.gemini/config/AGENTS.md` exists,
   comment,
   and `~/.gemini/antigravity-cli/` still contains the individual files.
 
-**Scenario: Re-run with "keep" — config/AGENTS.md regenerated**
+### Scenario: Re-run with "keep" — config/AGENTS.md regenerated
 
 Given an environment where the script has already run and
   `~/.gemini/antigravity-cli/` contains existing files
@@ -94,7 +94,7 @@ Then `~/.gemini/config/AGENTS.md` is regenerated from the current files in
   the individual files are not modified,
   and the script exits zero.
 
-**Scenario: Re-run with "refresh" — config/AGENTS.md regenerated from new selection**
+### Scenario: Re-run with "refresh" — config/AGENTS.md regenerated from new selection
 
 Given an environment with an existing configuration
 When the user runs the script and chooses "refresh",
@@ -103,7 +103,7 @@ Then the old individual files are removed from `~/.gemini/antigravity-cli/`,
   new ones are deployed,
   and `~/.gemini/config/AGENTS.md` is regenerated from the new set of files.
 
-**Scenario: No context files after run — config/AGENTS.md not written**
+### Scenario: No context files after run — config/AGENTS.md not written
 
 Given `~/.gemini/antigravity-cli/` contains no `*.md` files after the setup
   run
