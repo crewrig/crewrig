@@ -1,7 +1,7 @@
 ---
 id: "0066"
 slug: idea-convergence-stage
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 485
