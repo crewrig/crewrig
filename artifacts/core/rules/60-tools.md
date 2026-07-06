@@ -5,6 +5,33 @@ explicitly directs otherwise.
 
 ---
 
+## Retrieving the system-context store
+
+Several reference-heavy subsections below have been moved into a committed
+store, installed to `~/.crewrig/system-context/` (source of truth:
+`artifacts/core/system-context/`). This keeps the home-installed file small
+enough for every supported CLI to load in full, while the moved rules stay
+reliably reachable on demand.
+
+Every stub that points into the store resolves with this deterministic
+protocol — the same path selection every session:
+
+1. **Direct file read — the default, always-available path.** Read
+   `~/.crewrig/system-context/<file>.md` with your file-reading tool. This path
+   needs no running service and is attempted first on every CLI.
+2. **MemPalace — optional enhancement.** If the direct read is unavailable and
+   MemPalace is configured, retrieve the same content with `mempalace_search`
+   (the Session Start sweep mirrors each store file into a drawer verbatim).
+   The bytes are identical to the direct read.
+3. **Explicit signal — never silent.** If neither path can serve a needed store
+   file, STOP and tell the user which section is unreachable. Never proceed as
+   if the content were absent.
+
+The selected path is observable (the direct read is always tried first) and the
+store content is byte-identical regardless of which path serves it.
+
+---
+
 ## Memory Architecture — Three-Tier Model
 
 The agent operates with three memory tiers, each with a distinct role,
@@ -117,60 +144,7 @@ storage, a temporal knowledge graph, semantic search, and an agent diary.
 
 ### Palace Structure Conventions
 
-Organize knowledge using the palace metaphor:
-
-```text
-MemPalace
-├── wing: <project-name>                 # One wing per project
-│   ├── room: task-handoff               # [TASK:*] cross-tool handoff lane
-│   ├── room: architecture-decisions     # ADRs, design choices
-│   ├── room: obstacles-and-solutions    # Problems + resolutions
-│   └── room: <topic-as-needed>          # Created organically
-│
-├── wing: wing_<agent-name>              # Per-agent diary (MCP-forced)
-│   └── room: diary                      # Reasoning provenance, self-recovery
-│
-├── wing: <user-name>                    # Personal wing (optional)
-│   ├── room: preferences                # Working style, tool preferences
-│   └── room: expertise                  # Domains of knowledge
-│
-└── wing: transcripts                    # Session recordings (if enabled)
-    └── room: <project>-<date>-<sid>     # EXCLUDED from default sweep
-```
-
-- **Wings**: Top-level grouping. One per project, one per agent (auto-created
-  by diary writes), one per user (optional), plus the `transcripts` wing.
-- **Rooms**: Topic-based within a wing. Created as needed.
-- **Drawers**: Individual content entries within a room.
-- **Halls**: Connection types (facts, events, discoveries, preferences).
-- **Tunnels**: Cross-wing connections discovered automatically.
-
-#### Project name derivation
-
-`<project-name>` is computed once at session start:
-
-1. `git rev-parse --show-toplevel` → basename, if inside a git repo.
-2. Otherwise: `basename "$(pwd)"`.
-
-Stable across agents and across machines that clone the same repo at
-different paths. Do not use the auto-derived path-based wings produced
-by some hooks (e.g., `_users_..._gemini_configuration`); they are
-machine-specific and not cross-tool stable.
-
-#### Lane mapping — what writes where
-
-| Lane | Write tool | Storage | Visible cross-tool? |
-|---|---|---|---|
-| **Cross-tool task handoff** | `mempalace_add_drawer` | `wing="<project-name>"`, `room="task-handoff"` | Yes — primary handoff surface |
-| **Curated knowledge** | `mempalace_add_drawer` | `wing="<project-name>"`, `room="<topic>"` | Yes |
-| **Per-agent diary** | `mempalace_diary_write` | `wing_<agent-name>` (MCP-forced) | No — siloed by design |
-| **Raw archive** | hook-driven | `wing="transcripts"` | No — excluded from sweep |
-
-The MCP surface forces this split: only `mempalace_add_drawer` and
-`mempalace_update_drawer` accept arbitrary `wing` and `room` parameters.
-The diary tools (`mempalace_diary_write` / `mempalace_diary_read`) only
-expose `agent_name`, so diary entries always land in `wing_<agent-name>`
-and cannot serve as the cross-tool handoff surface.
+> **Moved to the system-context store** — `~/.crewrig/system-context/palace-structure-conventions.md`. Retrieve it via the *Retrieving the system-context store* protocol near the top of this file (direct read by default; MemPalace optional; explicit signal if neither serves it).
 
 ### Memory Activation Protocol
 
@@ -242,6 +216,16 @@ surface for `mempalace_diary_read` does not expose a `wing` parameter
 level; they cannot serve as the cross-tool handoff surface. Use them
 for your own provenance recovery only.
 
+**Optional — System-context store mirror (MemPalace only).** An opportunistic
+enhancement layered on the six-step sweep above, not a required part of it: when
+`mempalace_status` reports the service reachable, mirror each
+`~/.crewrig/system-context/*.md` file into a drawer (`wing="system-context"`,
+`room="store"`) via `mempalace_add_drawer` / `mempalace_update_drawer` with the
+file's verbatim bytes, when the drawer is missing or stale. This backs the
+MemPalace path of the store retrieval protocol (see *Retrieving the
+system-context store*). When MemPalace is absent, skip silently — the direct
+file read remains the default and no rule becomes unreachable.
+
 #### 2. During Work — Continuous Persistence
 
 As you work, persist continuously:
@@ -275,73 +259,7 @@ Before ending:
 
 ### Long-Running Task Convention
 
-Cross-tool tasks live as **drawers** in the handoff lane
-(`wing="<project-name>"`, `room="task-handoff"`), NOT as diary entries.
-The drawer `content` field carries a structured plain-text payload.
-
-Starting a task — `mempalace_add_drawer`:
-
-```text
-[TASK:ongoing] <task-id> | <brief-description>
-
-writer_agent: <agent-name>
-handoff_key: <task-id>
-visible_to: ["*"]
-status: <phase/step description>
-next: <what to do next>
-blocked: <if blocked, why>
-context: <key facts needed to resume>
-```
-
-Resuming a task — `mempalace_update_drawer` on the existing drawer
-(preserves `drawer_id` and KG links). The new content replaces the old.
-**The checkpoint write is mandatory the moment a `[TASK:ongoing]` drawer
-is found at session start (see *Session Start* step 6) — it is not
-something to defer until "real work" begins.**
-
-```text
-[TASK:checkpoint] <task-id> | <brief-description>
-
-writer_agent: <agent-name>
-handoff_key: <task-id>
-visible_to: ["*"]
-resumed_from: <previous drawer_id>
-progress: <what was accomplished since last checkpoint>
-status: <current phase/step>
-next: <what to do next>
-context: <updated facts>
-```
-
-Completing a task — `mempalace_update_drawer`:
-
-```text
-[TASK:done] <task-id> | <brief-description>
-
-writer_agent: <agent-name>
-handoff_key: <task-id>
-visible_to: ["*"]
-outcome: <result summary>
-lessons: <what was learned>
-```
-
-#### Field semantics
-
-- `writer_agent` — agent identifier (e.g., `claude-code`, `gemini-cli`).
-  Closes the "guess the previous writer" failure mode by making
-  provenance explicit on every entry.
-- `handoff_key` — deterministic anchor. Matches the `<task-id>` in the
-  title line; useful for cross-referencing across drawer revisions or
-  related tasks.
-- `visible_to` — visibility allowlist. `["*"]` is the global default
-  (visible to every agent). `["<agent>"]` restricts to a specific agent.
-  `["<a>", "<b>"]` scopes to multiple agents. Reading agents apply the
-  filter **client-side**: ignore any entry whose `visible_to` does not
-  contain `*` and does not contain the reading agent's name. Honor
-  system; no platform-level enforcement.
-
-To resume work across sessions, the cross-tool sweep at session start
-hits `room="task-handoff"` directly — see *Memory Activation Protocol →
-Session Start*.
+> **Moved to the system-context store** — `~/.crewrig/system-context/long-running-task-convention.md`. Retrieve it via the *Retrieving the system-context store* protocol near the top of this file (direct read by default; MemPalace optional; explicit signal if neither serves it).
 
 ### Knowledge Graph Conventions
 
@@ -354,29 +272,7 @@ Session Start*.
 
 ### MCP Tools Reference
 
-MemPalace exposes the following tool categories (v3.3.x). Tools used by
-the cross-tool handoff protocol are highlighted in **bold**.
-
-| Category | Tools |
-|----------|-------|
-| **Palace read** | **`mempalace_status`**, `mempalace_list_wings`, `mempalace_list_rooms`, `mempalace_list_drawers`, `mempalace_get_drawer`, `mempalace_get_taxonomy`, **`mempalace_search`**, `mempalace_check_duplicate`, `mempalace_get_aaak_spec` |
-| **Palace write** | **`mempalace_add_drawer`**, **`mempalace_update_drawer`**, `mempalace_delete_drawer` |
-| **Knowledge Graph** | **`mempalace_kg_query`**, `mempalace_kg_add`, `mempalace_kg_invalidate`, `mempalace_kg_timeline`, `mempalace_kg_stats` |
-| **Navigation** | `mempalace_traverse`, `mempalace_find_tunnels`, `mempalace_graph_stats` |
-| **Agent Diary** | `mempalace_diary_write`, **`mempalace_diary_read`** |
-
-Notable v3.3.x facts that shape the protocol above:
-
-- `mempalace_add_drawer` and `mempalace_update_drawer` accept arbitrary
-  `wing` and `room` — the only MCP write paths that do. The handoff
-  lane is built on these.
-- `mempalace_diary_write` and `mempalace_diary_read` only accept
-  `agent_name`, not `wing` (despite the v3.3.3 changelog note about an
-  internal `wing` parameter). Diaries are MCP-level per-agent silos.
-- `mempalace_search` returns BM25-hybrid (60 % vector + 40 % keyword)
-  results since v3.3.0. The keyword share is real but does not
-  overcome volumetric imbalance from the `transcripts` wing — always
-  scope by `wing` and `room` for the handoff lookup.
+> **Moved to the system-context store** — `~/.crewrig/system-context/mcp-tools-reference.md`. Retrieve it via the *Retrieving the system-context store* protocol near the top of this file (direct read by default; MemPalace optional; explicit signal if neither serves it).
 
 ---
 
@@ -444,111 +340,7 @@ editing every skill body.
 
 ### Where to write
 
-Frictions live in a **global** wing, not in the project wing. A friction
-discovered while working on project X often applies to projects Y and Z
-that fork the same skill — scoping per project would hide the pattern.
-
-```text
-mempalace_add_drawer(
-  wing="harness-friction",
-  room="<category>",
-  content="<payload>"
-)
-```
-
-### Categories (5, fixed)
-
-Use exactly one of these as `room`. Sub-categorization is free-form
-inside the payload (`subcategory:` field).
-
-| Category | Room name | Use for |
-|----------|-----------|---------|
-| Tool | `tool` | An MCP tool, CLI, or script behaved unexpectedly or has a sharp edge. |
-| Prompt | `prompt` | A skill/agent prompt was misleading, ambiguous, or led you astray. |
-| Format | `format` | An output format broke parsing, mixed concerns, or was hard to consume. |
-| Behavior | `behavior` | The agent (you, or a sibling) did something it should not have, or skipped something it should have done. |
-| Process | `process` | A documented workflow step is missing, contradictory, or out of date. |
-
-### Payload schema
-
-Plain text, structured like the `[TASK:*]` payloads. The `FRICTION:`
-prefix on the first line is what the Curator searches for.
-
-```text
-FRICTION: <one-line title>
-
-writer_agent: <agent-name>
-subcategory: <free-form, optional — e.g. "yq-yaml-merge", "build-resolver">
-session_id: <session id, if available>
-project: <project name where it surfaced, if applicable>
-canonical: <canonical URL of the offending component, if known>
-severity: low | med | high      # default: med
-evidence:
-  - <path or URL #1>
-  - <path or URL #2>
-suggestion: <free-form fix idea, optional but encouraged>
-```
-
-#### Field semantics
-
-- `writer_agent` — required, **non-empty**. Same convention as the
-  task-handoff drawer. Lets the Curator attribute clusters and lets the
-  user trace who hit what. An empty value is treated as malformed and
-  the drawer is skipped.
-- `subcategory` — free-form clustering key. Frictions sharing a
-  `subcategory` get bundled into the same MR by default.
-- `evidence` — at least one entry is required. Path to the file, URL of
-  the failing CI run, link to the transcript line, or a verbatim
-  snippet. Without evidence the report is unactionable. The schema
-  above shows the canonical list form; a single inline value
-  (`evidence: <path-or-url>` on one line) is also accepted as a
-  one-entry list — useful when the friction has a single pointer.
-- `canonical` — when set, prefer the value of the offending
-  component's own `provenance.canonical` block, which is the **repo**
-  URL (`https://github.com/<owner>/<repo>`). NOT a file URL: the
-  Curator routes the resulting issue via `gh issue create --repo
-  <owner>/<repo>`, so a `/blob/<branch>/<path>` URL produces a
-  malformed routing target. File paths and line numbers belong in
-  `evidence:`. Hand-typing a different repo URL drifts the friction
-  away from the component the Curator should route the MR against;
-  if the offending component cannot be identified at tag time, leave
-  `canonical` empty and let `evidence:` carry the trail.
-- `severity` — `high` is reserved for blockers (e.g. agent corrupted
-  data, leaked a secret, or violated a stated guarantee). `low` is for
-  papercuts. Default `med`.
-- `suggestion` — what *you* think would fix it. Optional, but the
-  Curator weights MRs higher when one is present.
-
-#### Minimal example
-
-```text
-FRICTION: Skill prompt suggests yq merge syntax that does not exist on yq v4
-
-writer_agent: claude-code
-subcategory: yq-merge
-canonical: https://github.com/crewrig/crewrig
-severity: med
-evidence:
-  - artifacts/core/skills/architect/SKILL.md:42
-suggestion: Replace `yq m -i` with `yq eval-all '. as $i ireduce ...'`.
-```
-
-### What NOT to tag
-
-- One-off mistakes you made that the system did not actively cause —
-  those belong in your diary, not in `harness-friction`.
-- Bugs in the user's code under review — those belong in the project
-  logbook issue.
-- Missing features you wished existed — open a GitHub issue against
-  the canonical repo instead. Friction reporting is for *defects in
-  the agent system itself*, not feature requests.
-
-### Read side
-
-Reading `harness-friction` is the Curator agent's job, not the working
-agents'. If you find yourself searching this wing during normal work,
-you are off-task. The wing is write-mostly for everyone except the
-Curator.
+> **Moved to the system-context store** — `~/.crewrig/system-context/friction-reporting-reference.md`. Retrieve it via the *Retrieving the system-context store* protocol near the top of this file (direct read by default; MemPalace optional; explicit signal if neither serves it).
 
 ---
 
@@ -597,40 +389,7 @@ session. Before ending a session:
 
 ## Second Brain — Obsidian Protocol
 
-If an MCP server providing access to an Obsidian vault is available
-(e.g., `obsidian-mcp-server`), the following protocol applies.
-
-### Availability Check
-
-Before using Obsidian tools, verify the MCP server is present. If absent,
-Tier 3 is simply unavailable — Tier 1 (Sequential Thinking) and Tier 2
-(MemPalace) work independently. All memory protocols function without
-Obsidian.
-
-### Access Model
-
-- **Read**: Free. Browse and search the vault to find relevant context,
-  references, and domain knowledge that help achieve objectives.
-- **Write**: User-controlled only. The agent may **suggest** notes to
-  create or update, but MUST NOT write without the user's explicit
-  consent for each operation.
-
-### Vault Governance
-
-If an `AGENTS.md` file exists at the root of the Obsidian vault, the
-agent MUST conform to its rules. This file governs:
-
-- Note naming conventions.
-- Folder structure expectations.
-- Tag and frontmatter conventions.
-- Any vault-specific rules the user has established.
-
-### Cross-Referencing
-
-When the agent discovers a relevant Obsidian note, it may record a
-reference in MemPalace (e.g., a drawer noting the Obsidian path and a
-brief summary). This creates a bridge between tiers without duplicating
-content.
+> **Moved to the system-context store** — `~/.crewrig/system-context/obsidian-protocol.md`. Retrieve it via the *Retrieving the system-context store* protocol near the top of this file (direct read by default; MemPalace optional; explicit signal if neither serves it).
 
 ---
 

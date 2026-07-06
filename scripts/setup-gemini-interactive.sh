@@ -126,6 +126,16 @@ install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$GEMINI_HOME/60_TOOLS
 install_file "$REPO_DIR/config/TOOLS.md" "$GEMINI_HOME/65_TOOLS.md" \
   "TOOLS.md -> 65_TOOLS.md"
 
+# System-context store (spec 0068) — one shared home path read on demand.
+# NOTE: Gemini's direct-read capability could not be verified on the authoring
+# machine (auth ineligible) and Gemini gates tool use on workspace trust; it is
+# documented as the R6 at-risk CLI and covered by the store's explicit-signal
+# fallback. No unverified Gemini-specific config is written here — the store is
+# installed identically to the other CLIs. See
+# docs/research/system-context-sandbox-probe.md.
+install_dir "$REPO_DIR/artifacts/core/system-context" "$HOME/.crewrig/system-context" \
+  "artifacts/core/system-context -> ~/.crewrig/system-context"
+
 # Org rules (priority 66) — AGENTS.org.md fallback (spec 0020). Gemini resolves
 # @file imports only in GEMINI.md (absent at repo root), so AGENTS.org.md is
 # deployed as a context file. Re-run setup after editing AGENTS.org.md.
