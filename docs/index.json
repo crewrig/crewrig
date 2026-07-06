@@ -181,6 +181,11 @@
           "title": "ADR 0012 — CI capability reference contract",
           "path": "docs/adr/0012-ci-reference-contract.md",
           "nav_order": 120
+        },
+        {
+          "title": "ADR 0013 — User-space system-context store",
+          "path": "docs/adr/0013-user-space-system-context-store.md",
+          "nav_order": 130
         }
       ]
     }
