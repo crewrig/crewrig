@@ -1,7 +1,7 @@
 ---
 id: "0067"
 slug: agents-md-size-budget
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 495
