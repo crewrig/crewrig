@@ -130,6 +130,12 @@ Core rules files (deployed to user home at a fixed priority number):
 |---|---|
 | `artifacts/core/rules/60-tools.md` | Framework-critical tool instructions: three-tier memory architecture, MemPalace protocol, harness engineering loop, Sequential Thinking, Obsidian access model. Deployed at priority 60. NOT a template — upstream content. |
 
+Core system-context store (installed to user home, read on demand):
+
+| Path | Description |
+|---|---|
+| `artifacts/core/system-context/` | Reference-heavy sections extracted from `60-tools.md` (spec 0068): Palace Structure Conventions, Long-Running Task Convention, MCP Tools Reference, Friction Reporting reference detail, Obsidian Protocol. Installed verbatim to `~/.crewrig/system-context/` by every `setup-*-interactive.sh` via `install_dir`, then read on demand — direct file read by default, MemPalace optional, explicit signal on failure (never silently omitted). NOT a template — upstream content. |
+
 ### Built outputs
 
 Built by `scripts/build-components.sh` from `artifacts/`. These

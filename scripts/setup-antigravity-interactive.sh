@@ -134,6 +134,13 @@ install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$AGY_HOME/60_TOOLS.md
 install_file "$REPO_DIR/config/TOOLS.md" "$AGY_HOME/65_TOOLS.md" \
   "TOOLS.md -> 65_TOOLS.md"
 
+# System-context store (spec 0068) — one shared home path read on demand.
+# Antigravity reads the store directly by default (PASS-default in the Step 1
+# probe: `agy --print` read the store from an untrusted scratch dir with no
+# flags). See docs/research/system-context-sandbox-probe.md.
+install_dir "$REPO_DIR/artifacts/core/system-context" "$HOME/.crewrig/system-context" \
+  "artifacts/core/system-context -> ~/.crewrig/system-context"
+
 # Org rules (priority 66) — AGENTS.org.md fallback (spec 0020). Antigravity
 # does not resolve @file imports in ANTIGRAVITY.md, so AGENTS.org.md is
 # deployed as a context file. Re-run setup after editing AGENTS.org.md.

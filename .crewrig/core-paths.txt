@@ -66,6 +66,10 @@ config/level	adopt-on-edit
 # Artifact zones — core and library
 artifacts/FORMAT.md
 artifacts/core
+# User-space system-context store (spec 0068). Nested strict entry under
+# artifacts/core (same pattern as docs/index.json under docs) — the store is
+# installed to ~/.crewrig/system-context/ and read on demand.
+artifacts/core/system-context	strict
 artifacts/library
 
 # Built outputs

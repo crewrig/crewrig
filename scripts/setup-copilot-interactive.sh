@@ -147,6 +147,16 @@ if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
   # Org-specific tools (priority 65) — organization-specific additions
   install_file "$REPO_DIR/config/TOOLS.md" "$COPILOT_INSTRUCTIONS/65-org-tools.instructions.md" \
     "TOOLS.md -> instructions/65-org-tools.instructions.md"
+
+  # System-context store (spec 0068) — one shared home path read on demand.
+  # NOTE: Copilot's read capability is confirmed, but only via a per-invocation
+  # path allowlist (`--add-dir`/`--allow-all-paths`) or interactive per-read
+  # approval; the Step 1 probe showed `trustedFolders` in ~/.copilot/config.json
+  # does NOT grant a durable cross-project read, so no such (ineffective) config
+  # is written here. The store's explicit-signal fallback covers the headless
+  # deny case. See docs/research/system-context-sandbox-probe.md.
+  install_dir "$REPO_DIR/artifacts/core/system-context" "$HOME/.crewrig/system-context" \
+    "artifacts/core/system-context -> ~/.crewrig/system-context"
   # Org rules (priority 66) — AGENTS.org.md fallback (spec 0020). Copilot does
   # not resolve @file includes in instruction files and auto-reads only the
   # standard AGENTS.md name, so AGENTS.org.md is deployed as an instruction

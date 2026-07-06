@@ -132,6 +132,11 @@ install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$CLAUDE_RULES/60-tool
 install_file "$REPO_DIR/config/TOOLS.md" "$CLAUDE_RULES/65-org-tools.md" \
   "TOOLS.md -> rules/65-org-tools.md"
 
+# System-context store (spec 0068) — reference-heavy sections extracted from
+# 60-tools.md, installed to one shared home path read on demand by every CLI.
+install_dir "$REPO_DIR/artifacts/core/system-context" "$HOME/.crewrig/system-context" \
+  "artifacts/core/system-context -> ~/.crewrig/system-context"
+
 # SOUL.md (guaranteed to exist by prerequisite check)
 install_file "$REPO_DIR/config/SOUL.md" "$CLAUDE_RULES/00-soul.md" \
   "SOUL.md -> rules/00-soul.md"

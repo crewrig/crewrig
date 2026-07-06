@@ -23,6 +23,33 @@ install_file() {
   fi
 }
 
+# install_dir <source_dir> <target_dir> <label>
+# Directory analogue of install_file (spec 0068). Mirrors its link/copy duality
+# so the forkable-first symlink path works for a whole store directory:
+#   INSTALL_MODE=link  -> target is a symlink to the source dir (tracks the
+#                         working tree, same trust caveat as install_file link).
+#   otherwise (copy)   -> target is a real directory holding copies of the
+#                         source's files (byte-identical to the source).
+# Any prior install (a copy-mode directory or a link-mode symlink) is cleared
+# first so switching modes is idempotent.
+install_dir() {
+  local source="$1" target="$2" label="$3"
+  mkdir -p "$(dirname "$target")"
+  if [ -L "$target" ]; then
+    rm -f "$target"
+  elif [ -d "$target" ]; then
+    rm -rf "$target"
+  fi
+  if [ "$INSTALL_MODE" = "link" ]; then
+    ln -sfn "$source" "$target"
+    echo "  Linked dir: $label"
+  else
+    mkdir -p "$target"
+    cp -R "$source"/. "$target"/
+    echo "  Copied dir: $label"
+  fi
+}
+
 mempalace_installed_version() {
   "$1" -c "from importlib.metadata import version; print(version('mempalace'))" 2>/dev/null
 }
