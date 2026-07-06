@@ -139,6 +139,17 @@ authors a replacement spec (frontmatter `superseded-by: <new-id>` on
 the old, `superseded` on its status line). The loop owns deltas;
 it does not own full re-authoring.
 
+## Spec-PR ordering guard
+
+When an implementation branch (`feat/<NNNN>-<slug>` and siblings) is
+opened against `main` while the corresponding spec-PR is still open,
+the REVIEW pass on that implementation-PR SHALL emit a `class: tech`
+finding citing [`docs/spec-pr-workflow.md`](spec-pr-workflow.md) →
+*Ordering rule* (and
+[`specs/0003-spec-pr-workflow.md`](../specs/0003-spec-pr-workflow.md) →
+*Ordering rule*), and the implementation-PR SHALL NOT be retried until
+the spec-PR is merged on `main`.
+
 ## Iteration counter — GitHub label
 
 The iteration counter SHALL be persisted as a GitHub label `iter:N`

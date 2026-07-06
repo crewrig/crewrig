@@ -152,8 +152,11 @@ mandated by [`specs/0003-spec-pr-workflow.md`](specs/0003-spec-pr-workflow.md).
 The SPECS-stage artifact (a single Markdown file under `/specs/`) MUST
 ship as its own pull request — the **spec-PR** — and be merged to `main`
 **before** any implementation branch for the same ticket is opened.
-This keeps the WHAT auditable as a standalone diff and decouples the
-qualification timeline from the realization timeline.
+
+See [`docs/spec-pr-workflow.md`](docs/spec-pr-workflow.md) for the
+rationale and the full rule set: the one-file rule, the ordering rule,
+the independence rule, the delta-spec cumulative rule, and the worktree
+pointer.
 
 ### Branch naming
 
@@ -165,62 +168,13 @@ qualification timeline from the realization timeline.
   *Retroactive review loop*): `spec/<NNNN>-<slug>-delta-<NN>` — where
   `<NN>` is the zero-padded delta sequence number for that spec id.
 
-### One-file rule
-
-A spec-branch SHALL contain **exactly one new file** under `/specs/`
-and nothing else. No co-mingling with implementation edits, no
-incidental fixes, no build outputs. The rationale: the spec-PR is the
-auditable artifact of qualification — its diff must be reviewable as a
-self-contained WHAT, without the reader having to mentally subtract
-unrelated changes.
-
-### Ordering rule
-
-The spec-PR MUST merge to `main` **before** the implementation branch
-is cut. The four valid implementation-branch prefixes — `feat/`,
-`fix/`, `docs/`, `refactor/` — all follow the `<prefix>/<NNNN>-<slug>`
-suffix convention so that implementation work traces back to its spec
-id by branch name alone. Cutting an implementation branch while the
-corresponding spec-PR is still open is a process violation; the
-*Retroactive review loop* surfaces this as a `class: tech` finding
-(see the rule there).
-
-### Independence rule
-
-The spec-PR and the implementation-PR are **independent pull
-requests**: each closes its own GitHub issue via its own
-`Closes #<related-issue>` directive, and the implementation-PR MUST
-NOT auto-close the spec-PR. Treating them as a single coupled unit
-would defeat the purpose of the two-PR flow — qualification and
-realization are deliberately separated so that a merged spec can
-outlive a failed implementation attempt and be re-realized by a
-later PR without information loss.
-
-### Delta-spec cumulative rule
-
-A single implementation-PR MAY absorb **N delta-spec PRs** targeting
-the same ticket. Delta-specs accumulate on `main` as immutable
-amendments to the original spec; the implementation-PR realizes the
-union of the original spec plus every merged delta. The originating
-loop iteration is defined in the *Retroactive review loop* section
-below — a `spec`-class finding produces a new delta-spec PR before
-the implementation-PR is retried.
-
-### Worktree pointer
-
-The *Worktree Isolation* rule (see *Agent Team Protocol → Worktree
-Isolation*) applies unchanged to both `spec/*` and the corresponding
-implementation branch — each PR runs in its own dedicated worktree.
-
 ## Post-Merge Flow
 
-After any `gh pr merge`, the agent MUST verify the merge target before closing the task:
+After any `gh pr merge`, the agent MUST verify the merge target before closing the task.
 
-1. **Check the target branch.** If the PR was merged into `main` (or `master`), no further action is needed — the change is already on the primary branch.
-2. **If the target was NOT `main`/`master`:** verify whether a downstream PR toward `main` is needed. This is required when:
-   - A sibling repository or workflow is gated on `main` (e.g. deploy pipelines that only trigger from `main`).
-   - The merge target is an intermediate integration branch that must eventually reach `main`.
-3. **Open or propose the downstream PR** before considering the task complete. If the downstream PR can be created automatically (fast-forward or trivial rebase), open it. Otherwise, surface the need to the user with a clear explanation of what remains.
+See [`docs/post-merge-flow.md`](docs/post-merge-flow.md) for the
+target-branch check, the downstream-PR criteria, and the open-or-propose
+step.
 
 This rule applies regardless of whether the merge was initiated by a human or an agent — the obligation to verify downstream propagation is the same.
 
@@ -251,33 +205,11 @@ tracks shipped revisions. One rule and one exemption govern when it must change.
 
 **Rule — bump on modification of shipped sources.** Any diff that modifies
 a skill or agent source already present on `main` MUST bump
-`metadata.provenance.version` in the same diff. Affected paths:
+`metadata.provenance.version` in the same diff.
 
-- `artifacts/core/skills/*/SKILL.md`
-- `artifacts/library/skills/*/SKILL.md`
-- `artifacts/community/skills/*/SKILL.md`
-- `artifacts/core/agents/*/AGENT.md`
-- `artifacts/library/agents/*/AGENT.md`
-- `artifacts/community/agents/*/AGENT.md`
-- `extensions/core/skills/*/SKILL.md`
-- `extensions/library/skills/*/SKILL.md`
-- `extensions/core/agents/*/AGENT.md`
-- `extensions/library/agents/*/AGENT.md`
-
-For an extension component the `version` lives in the provenance carrier
-(the first-body-line `<!-- crewrig-provenance: version="…" … -->` HTML
-comment per spec 0043), NOT in frontmatter — Gemini CLI 0.42.0+ rejects
-non-`name`/`description` frontmatter keys on the in-place source. The bump
-is enforced by `scripts/check-extension-version-bump.sh` (spec 0044), which
-compares the carrier version against the base ref. `extensions/org` is
-adopter-owned and exempt; commands carry no provenance/version.
-
-**Exemption — new components do not bump in-branch.** Components
-introduced on a feature branch start at `1.0.0` and stay there until the
-branch is merged. In-branch fixes to a brand-new component MUST NOT bump
-its version — the version is only meaningful once the component ships on
-`main`. CI enforces this: only files with `git diff --name-status` status
-`M` (modified) trigger the check; newly added files (`A`) are skipped.
+See [`docs/version-bump-convention.md`](docs/version-bump-convention.md)
+for the full list of affected paths, the extension provenance-carrier
+detail, and the new-component in-branch exemption.
 
 **SemVer guidance for bumps:**
 
@@ -335,82 +267,17 @@ The lifecycle (per ADR-0010) runs in one of four modes. Mode controls
 Rules:
 
 - Default mode is **INTERMEDIATE**.
-- Mode is declared in the spec frontmatter (schema defined in #167)
-  and SHALL NOT change mid-lifecycle without re-entering SPECS.
 - In FULL mode, the orchestrator MUST post a notification on the
   logbook issue at the start and end of every REVIEW iteration.
   "Notify" is non-blocking; it does not gate the next iteration.
-- In AUTO mode, SPECS is authored by the `spec-author` skill (#168);
-  the user audits after the fact via the merged spec PR.
 
 The mode-driven engine — argument parsing, gate enforcement, user
 notification surface — lands in #173. This section states the
 contract.
 
-### User-gate definition
-
-A **user gate** is defined narrowly as one of two actions:
-
-1. A call to `AskUserQuestion` (or the equivalent interactive prompt
-   exposed by the host CLI).
-2. The pre-merge authorization request mandated by *Branching
-   Strategy* — the explicit "may I merge?" question the agent MUST
-   ask JUST BEFORE every `gh pr merge` invocation.
-
-Both gates **block** agent execution until the user responds. Nothing
-else does. **A prose question or status message directed at the user is
-NOT a gate, even when it ends with `?`. The host CLI's text-output
-guidance biases toward prose communication; that bias does NOT override
-this contract. Every INTERMEDIATE or FULL mode gate SHALL NOT be
-realised as a prose question — it MUST be an `AskUserQuestion` call.**
-
-The following outputs are explicitly **NOT** user gates and
-SHALL NOT pause the agent:
-
-- Logbook comments (per *Logbook Issues → Rule B*) — informational.
-- Progress messages and intermediate `SendMessage` traffic between
-  teammates — coordination, not consent.
-- Idle notifications, status pings, and harness-level events —
-  observational.
-- ADR drafts, plan comments, review verdicts posted to a PR or issue
-  — artifacts of stage execution, audited asynchronously.
-
-The mode table above governs only the two gating actions. Whether the
-agent posts ADRs, plan comments, or REVIEW iteration notices in a
-given mode is fixed by the lifecycle contract (ADR-0010), independent
-of mode.
-
-### Behavioral contract per (mode × stage) cell
-
-Each cell below names precisely the user gates the orchestrator SHALL
-fire while running that stage in that mode. "—" means no gate; the
-stage runs autonomously and the user is informed (if at all) only via
-non-blocking artifacts (logbook comments, PR/spec-PR diffs to audit
-post hoc).
-
-| Stage \ Mode | FULL | INTERMEDIATE | MINIMAL | AUTO |
-|---|---|---|---|---|
-| **SPECS** | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | No interview gate (spec authored autonomously); merge-authorization gate before merging the spec-PR. |
-| **PLAN** | `AskUserQuestion` to validate the plan comment before DEV starts; second `architect` cold-review remains autonomous. | `AskUserQuestion` to validate the plan comment before DEV starts; second `architect` cold-review remains autonomous. | — (plan authored and cold-reviewed autonomously; DEV starts on APPROVE without user prompt). | — (plan authored and cold-reviewed autonomously). |
-| **DEV** | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). |
-| **REVIEW** | Non-blocking notification posted on the logbook issue at the start and end of every iteration (per the FULL-mode rule above), **plus** a bounded `AskUserQuestion` to triage the non-blocking findings of each pass (spec 0006 R10 / spec 0005 R10 FULL branch). That triage is the sole REVIEW-loop gate. | — (loop runs autonomously; iteration count visible via the `iter:N` PR label). | — (loop runs autonomously). | — (loop runs autonomously; halt at max-iteration guardrail pages the user per *Retroactive review loop*). |
-
-Notes on the matrix:
-
-- The merge-authorization gate is **invariant across modes**: every
-  mode, including AUTO, MUST ask the user before any `gh pr merge`.
-  *Branching Strategy* is not waivable.
-- FULL-mode REVIEW notifications are non-blocking — posting them does
-  not pause the loop. The one FULL-mode REVIEW gate is the bounded
-  non-blocking-finding triage `AskUserQuestion` (spec 0006 R10), under
-  which only FULL consults the user on optional findings; INTERMEDIATE,
-  MINIMAL, and AUTO fire no REVIEW gate. The per-iteration notifications
-  themselves are not gates.
-- The max-iteration guardrail (*Retroactive review loop*) pages the
-  user in **every** mode, including AUTO. That paging is a gate by
-  exception — the loop has halted and the user must decide whether
-  to relax the iteration cap, accept the partial work, or close the
-  ticket. It is not part of the steady-state matrix above.
+See [`docs/interaction-modes.md`](docs/interaction-modes.md) for the
+`User-gate definition` and the full `Behavioral contract per (mode ×
+stage) cell` table.
 
 ## Plan review protocol
 
@@ -426,46 +293,10 @@ mandated by [`specs/0004-plan-format-and-review.md`](specs/0004-plan-format-and-
 This section SHALL NOT duplicate that schema; consult the format
 document for any field-level question.
 
-**Authoring rule.** The plan SHALL be authored by the existing
-`architect` role on the team (per *Agent Team Protocol → Standard
-Team Templates*); no new specialist role is introduced. The same
-`architect` invocation that runs the PLAN stage owns the comment.
-
-**Review rule.** The plan SHALL be reviewed by a **second
-`architect`** spawned cold — no authoring context, no prior session
-state — to preserve independence. The reviewer posts the review as a
-follow-up comment on the same logbook issue. The review header and
-verdict line follow `docs/plan-format.md` → *Header conventions*.
-When the orchestrator and the reviewer share the same GitHub
-identity, the shared-identity workaround from *Standard Team
-Templates → Template 1* applies (post the verdict as a regular
-comment).
-
-**Finding class taxonomy.** Every plan-review finding SHALL carry
-exactly one `class:` field whose value drives the loop target:
-
-- `class: tech` — DEV-stage fix (e.g. a step names the wrong file
-  path or omits a required edit).
-- `class: arch` — PLAN-stage rework (e.g. the approach is unsound;
-  the blast radius missed a downstream consumer).
-- `class: spec` — SPECS-stage rework (e.g. a requirement is
-  ambiguous; the spec admits the plan but the plan reveals the WHAT
-  is under-specified).
-
-The full routing matrix — re-spawn composition, delta-spec impact,
-termination — lives in *Retroactive review loop* below; this list
-states the taxonomy, not the routing.
-
-**REQUEST CHANGES blocks DEV.** A plan-review verdict of `### Verdict:
-REQUEST CHANGES` SHALL block the DEV stage from starting until a
-revised plan is posted and re-reviewed cold.
-
-**Append-only revisions.** Validated plan comments are immutable: a
-revised plan SHALL be posted as a **new comment** carrying the
-revision header defined in `docs/plan-format.md` (citing the
-revision trigger). Silent edits or deletions of a validated plan
-comment break the retroactive review loop's audit trail and are
-prohibited.
+See [`docs/plan-review-protocol.md`](docs/plan-review-protocol.md) for
+the authoring rule, the cold second-`architect` review rule, the
+finding-class taxonomy (`tech` / `arch` / `spec`), and the
+REQUEST-CHANGES-blocks-DEV rule.
 
 ## Retroactive review loop
 
@@ -476,11 +307,9 @@ The engine is **doc-only**: the orchestrator (the `team-lead` role)
 follows the procedure documented in
 [`docs/retroactive-loop.md`](docs/retroactive-loop.md), which is the
 reference home for the routing precedence, the iteration mechanics,
-the termination check, the max-iteration guardrail, and the
-mode-conditional handling of non-blocking findings. The iteration
-counter SHALL be persisted as a GitHub label `iter:N` on the PR whose
-content the iteration is reshaping (implementation-PR for `tech` /
-`arch`; the active delta spec-PR for `spec`).
+the termination check, the max-iteration guardrail, the spec-PR
+ordering guard, and the mode-conditional handling of non-blocking
+findings.
 
 Every REVIEW finding SHALL be tagged with exactly one class. Class
 drives the loop target.
@@ -493,23 +322,7 @@ drives the loop target.
 
 Rules:
 
-- A single REVIEW pass MAY produce findings of multiple classes. The
-  routing engine SHALL pick the most upstream class present
-  (`spec` > `arch` > `tech`) and route the entire pass to that
-  stage. Mixing loop targets within a single iteration is prohibited.
-- Re-spawn columns are minimums. The `security` trigger surface (see
-  *Agent Team Protocol → Standard Team Templates → Security rule*)
-  applies to every re-spawn that touches it.
-- A `spec`-class loop SHALL produce a delta-spec PR; the original
-  spec's content on `main` is immutable (lifecycle metadata such as
-  `status` aside — see `docs/spec-format.md`).
 - The loop SHALL NOT change the logbook issue (Rule A still holds).
-- When an implementation branch (`feat/<NNNN>-<slug>` and siblings) is
-  opened against `main` while the corresponding spec-PR is still open,
-  the REVIEW pass on that implementation-PR SHALL emit a `class: tech`
-  finding citing *Spec-PR workflow → Ordering rule*, and the
-  implementation-PR SHALL NOT be retried until the spec-PR is merged
-  on `main`.
 
 **Termination.** The lifecycle terminates at MERGE iff a REVIEW pass
 verdict is APPROVE AND the pass surfaces zero findings of any class
@@ -588,16 +401,10 @@ loses the chronological structure, the failed attempts, and the reasoning
 behind course corrections, which is precisely the value the logbook is
 meant to preserve.
 
-Triggers that require an immediate logbook comment:
-
-- Merge conflicts encountered during rebase or merge
-- CI failures (any red check that prompts a code change)
-- Friction declarations (`harness-report` activations)
-- Scope changes or requirement pivots mid-ticket
-- Rebase operations that resolve conflicts (one comment per rebase, summarizing the conflict and resolution)
-- Architectural course corrections (an ADR-worthy decision made inline)
-
-The comment must be posted **before** resuming work on the obstacle's resolution — not after the PR is opened.
+The comment must be posted **before** resuming work on the obstacle's
+resolution — not after the PR is opened. See
+[`docs/logbook-issues.md`](docs/logbook-issues.md) for the full list of
+triggers that require an immediate logbook comment.
 
 ### Rule C — Close immediately after merge
 
@@ -612,42 +419,17 @@ All GitHub operations (PRs, issues, branch protection) are performed through the
 
 ## Legacy ticket policy
 
-### Cutoff rule
-
-Tickets opened **before** the merge of PR #176 — which introduced
+Tickets opened **before** the merge of PR #176 (which introduced
 [ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md) and the
-SPECS → PLAN → DEV → REVIEW lifecycle — on `main` (literal date for
-the human reader: **2026-05-31**) were eligible for one-time
-migration triage under
+SPECS → PLAN → DEV → REVIEW lifecycle, on `main` on **2026-05-31**)
+were eligible for one-time migration triage under
 [`specs/0008-migration-of-in-flight-tickets.md`](specs/0008-migration-of-in-flight-tickets.md).
 Tickets opened on or after that date SHALL follow the new lifecycle
-by default. The migration was a one-time pass; this cutoff rule is
-the steady-state contract.
+by default.
 
-### Legacy contract
-
-Tickets classified `keep-legacy` by the spec 0008 audit continue to
-run under the contract that preceded ADR-0010:
-
-- The team protocol defined above in *Agent Team Protocol → Standard
-  Team Templates* (Templates 1 / 2 / 3) applies unchanged.
-- A direct implementation pull request closes the issue.
-- **No** SPECS stage — no `/specs/<NNNN>-<slug>.md` file is required.
-- **No** PLAN comment — no `## PLAN — issue #<N>` artifact on the
-  logbook.
-- **No** spec-PR / delta-spec ordering — implementation may proceed
-  without a preceding qualification PR.
-- **No** retroactive review-loop class tagging (`tech` / `arch` /
-  `spec`) on findings.
-
-### Audit reference
-
-The one-time migration audit table — classifying every ticket open
-at the time of the cutoff into `keep-legacy`, `retrofit`, or
-`NA — post-cutoff` — lives in
-[`specs/0008-migration-of-in-flight-tickets.md`](specs/0008-migration-of-in-flight-tickets.md)
-under *Audit table*. Reclassification requires a delta-spec
-amendment.
+See [`docs/legacy-ticket-policy.md`](docs/legacy-ticket-policy.md) for
+the full cutoff rule, the legacy contract that `keep-legacy` tickets
+run under, and the audit-table reference.
 
 ## Organization rules extension
 
