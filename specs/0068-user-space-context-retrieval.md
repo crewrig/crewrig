@@ -1,7 +1,7 @@
 ---
 id: "0068"
 slug: user-space-context-retrieval
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 496
