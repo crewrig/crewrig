@@ -210,11 +210,20 @@ filter, transcript noise overwhelms the BM25 hybrid scoring and buries
 actual handoff entries. The wing+room scoped query above is the only
 deterministic discovery path through the current MCP surface.
 
-**Why not `mempalace_diary_read` for cross-tool resume?** The MCP
-surface for `mempalace_diary_read` does not expose a `wing` parameter
-— it only accepts `agent_name`. Diaries are per-agent silos at the MCP
-level; they cannot serve as the cross-tool handoff surface. Use them
-for your own provenance recovery only.
+**Why not `mempalace_diary_read` for cross-tool resume?** Not because
+the tool lacks a `wing` parameter — it has one, and it works: an
+explicit `wing` on `mempalace_diary_write` determines the wing an
+entry is stored under, and an explicit `wing` on `mempalace_diary_read`
+restricts the read to that wing (confirmed live during issue #416; see
+`mcp-tools-reference.md` for the full corrected note, including the
+still-unresolved omitted-`wing` fallback). The diary lane stays out of
+the cross-tool handoff lane by the project's deliberate lane-mapping
+convention instead (see *Lane mapping* in
+`palace-structure-conventions.md`): the handoff lane is
+`mempalace_add_drawer`/`mempalace_update_drawer` on a project
+`wing`+`room`, while the diary lane is reserved for per-agent
+self-recovery. Use `mempalace_diary_read` for your own provenance
+recovery only.
 
 **Optional — System-context store mirror (MemPalace only).** An opportunistic
 enhancement layered on the six-step sweep above, not a required part of it: when
