@@ -1,7 +1,7 @@
 ---
 id: "0069"
 slug: mempalace-wakeup-parity
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 415
