@@ -1,7 +1,7 @@
 ---
 id: "0073"
 slug: transcript-hook-chroma-lock
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 508
