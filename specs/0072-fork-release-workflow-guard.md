@@ -1,7 +1,7 @@
 ---
 id: "0072"
 slug: fork-release-workflow-guard
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 491
