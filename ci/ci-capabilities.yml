@@ -338,7 +338,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Creates a GitHub Release via `softprops/action-gh-release`
-        (.github/workflows/release-extension.yml lines 69-74), a
+        (.github/workflows/release-extension.yml lines 70-75), a
         GitHub-Releases-specific surface. GitLab's release mechanism
         (`release:` keyword / release-cli) is a distinct, non-interchangeable
         contract, so the release capability has no faithful equivalent on the
@@ -359,7 +359,7 @@ capabilities:
         `${{ secrets.GITHUB_TOKEN }}` with `issues: write` /
         `pull-requests: write` permissions to create GitHub Releases and
         comment on GitHub issues/PRs
-        (.github/workflows/release-monorepo.yml lines 9-43). The release
+        (.github/workflows/release-monorepo.yml lines 9-44). The release
         tooling targets the GitHub Releases and GitHub issue APIs, which have
         no faithful equivalent on GitLab CI, so the capability is hand-authored
         per engine, not generated.

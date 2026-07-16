@@ -11,6 +11,7 @@ permissions:
 jobs:
   package-and-release:
     runs-on: ubuntu-latest
+    if: github.repository == 'crewrig/crewrig'
     steps:
       - uses: actions/checkout@v4
 

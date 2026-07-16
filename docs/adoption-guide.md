@@ -43,6 +43,16 @@ configuration home. The repository may be public or private.
    git push -u origin main
    ```
 
+   > **Note — release automation stays inert on your fork.** The release
+   > workflows (`.github/workflows/release-monorepo.yml` and
+   > `.github/workflows/release-extension.yml`) are reserved for the
+   > canonical `crewrig/crewrig` repository. On your fork, pushing to `main`
+   > or pushing a release-pattern tag is expected to leave these workflows
+   > inert — no release run, no red run on the Actions tab. If you see one
+   > fail instead, see
+   > [Release workflow fails with "Could not resolve to an issue or pull
+   > request"](#release-workflow-inert-on-fork) in Troubleshooting.
+
    If you used the GitHub Fork button, clone your fork and skip the push above:
 
    ```bash
@@ -428,3 +438,27 @@ offending paths.
    sync. The `.crewrig/core-paths.txt` manifest lists exactly which paths
    are considered core; files outside that list are overlay and are always
    left untouched by the sync.
+
+### Release workflow fails with "Could not resolve to an issue or pull request" {#release-workflow-inert-on-fork}
+
+**Cause:** The fork synced from an upstream commit predating this ticket's
+canonical-repository guard, so its `release-monorepo.yml` (or
+`release-extension.yml`) still lacks the `if: github.repository ==
+'crewrig/crewrig'` condition.
+
+**Effect:** "Analyze & Release (Monorepo)" (or "Release Extension") fails
+with the quoted symptom — a red run on the fork's Actions tab, caused by
+the release tooling resolving a pull-request or issue reference that
+belongs to the upstream `crewrig/crewrig` repository, not the fork.
+
+**Resolution:** Choose one of two paths:
+
+1. **Sync to pick up the fix** — run `bash scripts/sync-from-upstream.sh`
+   to pull in the canonical-repository guard, commit the result, and push.
+   The next push or tag push leaves the workflow inert on the fork instead
+   of failing.
+2. **Disable the workflow pre-emptively** — if release automation is never
+   wanted on this fork, disable `release-monorepo.yml` and/or
+   `release-extension.yml` from the fork's Actions tab, or remove or
+   override the workflow file, before the next triggering push or tag
+   push.
