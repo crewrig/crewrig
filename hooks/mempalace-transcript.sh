@@ -11,6 +11,10 @@
 #   MEMPALACE_TRANSCRIPT_ENABLED - set to "1" to enable (default: disabled)
 #   MEMPALACE_PYTHON             - Python binary with mempalace installed
 #                                  (default: python3)
+#   MEMPALACE_CHROMA_HOST        - shared ChromaDB HTTP daemon host (ADR-0006)
+#                                  (default: 127.0.0.1)
+#   MEMPALACE_CHROMA_PORT        - shared ChromaDB HTTP daemon port (ADR-0006)
+#                                  (default: 8001)
 #   GEMINI_SESSION_ID / CLAUDE_SESSION_ID / COPILOT_SESSION_ID - session id
 #   GEMINI_PROJECT_DIR / CLAUDE_PROJECT_DIR - project directory
 #   (GitHub Copilot CLI does NOT export a $COPILOT_PROJECT_DIR — the project
@@ -153,6 +157,40 @@ if [ -n "$CONTENT" ]; then
     TRANSCRIPT_AGENT="$TRANSCRIPT_AGENT" \
     ${_HOOK_TIMEOUT:+$_HOOK_TIMEOUT 5} "$MEMPALACE_PYTHON" - 2>"$_HOOK_ERR" <<'PYEOF'
 import os, sys
+
+# ADR-0006 routing: patch chromadb.PersistentClient -> HttpClient BEFORE
+# `mempalace.mcp_server` resolves the symbol (same technique as
+# scripts/lib/mempalace-http-wrapper.py's _http_factory). Reuses that
+# wrapper's own MEMPALACE_CHROMA_HOST / MEMPALACE_CHROMA_PORT env vars
+# and defaults verbatim (spec 0073 R2).
+try:
+    import chromadb
+except ImportError as e:
+    print(f"IMPORT_ERROR: {e}", file=sys.stderr)
+    sys.exit(2)
+
+_host = os.environ.get("MEMPALACE_CHROMA_HOST", "127.0.0.1")
+_port = int(os.environ.get("MEMPALACE_CHROMA_PORT", "8001"))
+
+
+def _http_factory(path=None, settings=None, **kwargs):
+    return chromadb.HttpClient(host=_host, port=_port)
+
+
+chromadb.PersistentClient = _http_factory
+
+# Soft, logged, non-blocking skip on daemon-unreachable (spec 0073 R3/R4)
+# — deliberately NOT the wrapper's fail-loud sys.exit(1): this is a
+# per-event fire-and-forget attempt bounded by the outer bash `timeout 5`
+# wrapper, not an MCP server startup gate. Distinct exit code (4) and
+# stderr prefix (DAEMON_UNREACHABLE:) keep it greppable alongside the
+# existing IMPORT_ERROR:/2 and ADD_FAILED:/3 convention.
+try:
+    chromadb.HttpClient(host=_host, port=_port).heartbeat()
+except Exception as e:  # acknowledged-exception: broad except intentional — any HttpClient.heartbeat() failure (connection refused, DNS, protocol) means the daemon is unreachable and must soft-skip this persistence attempt (spec 0073 R3); it does not block startup like the wrapper's probe, so it must not be silently swallowed or misclassified either
+    print(f"DAEMON_UNREACHABLE: {_host}:{_port} — {e}", file=sys.stderr)
+    sys.exit(4)
+
 try:
     from mempalace.mcp_server import tool_add_drawer
 except ImportError as e:
