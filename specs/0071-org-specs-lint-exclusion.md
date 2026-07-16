@@ -1,7 +1,7 @@
 ---
 id: "0071"
 slug: org-specs-lint-exclusion
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 421
