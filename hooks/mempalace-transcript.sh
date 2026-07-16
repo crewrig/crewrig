@@ -187,7 +187,7 @@ chromadb.PersistentClient = _http_factory
 # existing IMPORT_ERROR:/2 and ADD_FAILED:/3 convention.
 try:
     chromadb.HttpClient(host=_host, port=_port).heartbeat()
-except Exception as e:
+except Exception as e:  # acknowledged-exception: broad except intentional — any HttpClient.heartbeat() failure (connection refused, DNS, protocol) means the daemon is unreachable and must soft-skip this persistence attempt (spec 0073 R3); it does not block startup like the wrapper's probe, so it must not be silently swallowed or misclassified either
     print(f"DAEMON_UNREACHABLE: {_host}:{_port} — {e}", file=sys.stderr)
     sys.exit(4)
 
