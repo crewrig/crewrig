@@ -39,6 +39,59 @@ function globSpecs(targetPath) {
     return result;
 }
 
+// loadCorePathsManifest() — reads .crewrig/core-paths.txt and returns its
+// entries as { path, policy } objects. Mirrors the parsing rules in
+// scripts/check-core-paths.sh:41-54: blank/`#` lines are skipped, the path is
+// the first whitespace-delimited field, the policy is the next token
+// (defaulting to `strict`). A missing manifest resolves to an empty list
+// rather than throwing, so a checkout without the file still lints normally.
+function loadCorePathsManifest() {
+    const repoDir = process.env.CREWRIG_REPO_DIR || path.join(__dirname, '..', '..');
+    const manifestPath = path.join(repoDir, '.crewrig', 'core-paths.txt');
+
+    let content;
+    try {
+        content = fs.readFileSync(manifestPath, 'utf8');
+    } catch (e) {
+        return [];
+    }
+
+    const entries = [];
+    for (const rawLine of content.split('\n')) {
+        const line = rawLine.replace(/\r$/, '');
+        const trimmed = line.trim();
+        if (trimmed === '' || trimmed.startsWith('#')) {
+            continue;
+        }
+        const match = trimmed.match(/^(\S+)(?:\s+(\S+))?/);
+        if (!match) {
+            continue;
+        }
+        entries.push({ path: match[1], policy: match[2] || 'strict' });
+    }
+    return entries;
+}
+
+// isExcludedSpecPath(relPath, entries) — true iff the manifest entry whose
+// path most closely (longest-prefix match) matches relPath classifies it
+// `excluded`. relPath must match exactly, or relPath must sit under the
+// entry's path bounded by `/` (so `specs/org2` does not match an entry for
+// `specs/org`). This is the R5 mechanism: the caller never hardcodes
+// `specs/org` — whatever the manifest classifies `excluded` under `specs/`
+// is skipped, today and for any future nested entry.
+function isExcludedSpecPath(relPath, entries) {
+    const normalized = relPath.split(path.sep).join('/');
+    let best = null;
+    for (const entry of entries) {
+        if (normalized === entry.path || normalized.startsWith(entry.path + '/')) {
+            if (!best || entry.path.length > best.path.length) {
+                best = entry;
+            }
+        }
+    }
+    return best !== null && best.policy === 'excluded';
+}
+
 function lintFile(filePath) {
     let hasErrors = false;
     const errors = [];
@@ -208,8 +261,11 @@ function run() {
     
     console.log(`Running semantic validation...`);
     let totalErrors = 0;
-    
+
+    const manifestEntries = loadCorePathsManifest();
+
     for (const file of uniqueFiles) {
+        if (isExcludedSpecPath(file, manifestEntries)) continue;
         const { hasErrors, errors } = lintFile(file);
         if (hasErrors) {
             console.error(`\n[FAIL] ${file}`);

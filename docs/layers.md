@@ -244,7 +244,7 @@ sync.
 
 | Path | Description |
 |---|---|
-| `specs/org/` | Organization-owned specification overlay, nested in core `specs/`. Excluded from upstream sync. |
+| `specs/org/` | Organization-owned specification overlay, nested in core `specs/`. Excluded from upstream sync, and from the spec linter's upstream filename/frontmatter/heading validation (spec 0071). |
 | `docs/org/` | Organization-owned documentation overlay, nested in core `docs/`. Excluded from upstream sync. |
 | `AGENTS.org.md` | Organization-owned agent-rules extension, loaded alongside the upstream `AGENTS.md` (natively on Claude via `@` import; via the priority-66 setup deployment on Gemini and Copilot). Excluded from upstream sync. |
 

@@ -59,11 +59,12 @@ run_case() {
   local name="$1"
   local files="$2"
   local expected_exit="$3"
+  local env_repo_dir="${4:-}"
 
   local actual_exit=0
   local output
   # We run from TMP_ROOT so markdownlint finds .markdownlintrc
-  output=$( ( cd "$TMP_ROOT" && node "$LINTER_JS" $files 2>&1 ) ) || actual_exit=$?
+  output=$( ( cd "$TMP_ROOT" && CREWRIG_REPO_DIR="$env_repo_dir" node "$LINTER_JS" $files 2>&1 ) ) || actual_exit=$?
 
   if [ "$actual_exit" -eq "$expected_exit" ]; then
     echo "PASS  $name (exit $actual_exit)"
@@ -74,6 +75,16 @@ run_case() {
     echo "$output"
     fail=$((fail + 1))
   fi
+}
+
+# write_core_paths_fixture <dir> <content>
+# Write a standalone .crewrig/core-paths.txt fixture at <dir>, for use with
+# CREWRIG_REPO_DIR overrides (mirrors write_manifest() in
+# scripts/tests/test-check-core-paths.sh:63-67).
+write_core_paths_fixture() {
+  local dir="$1" content="$2"
+  mkdir -p "$dir/.crewrig"
+  printf '%s' "$content" > "$dir/.crewrig/core-paths.txt"
 }
 
 # -------------------------------------------------------------------------
@@ -205,6 +216,111 @@ run_case "Case 15 — headings inside code blocks are ignored passes" "$spec15" 
 spec16="0016-mandatory-heading-in-code.md"
 render_spec "0016" "mandatory-heading-in-code" "draft" "standard" "" "$(printf "## Intent\n\n## Requirements\n\n## Scenarios\n\n## Out of scope\n\n\`\`\`markdown\n## Open questions\n\`\`\`")" > "$TMP_ROOT/$spec16"
 run_case "Case 16 — mandatory heading missing but present in code block fails" "$spec16" 1
+
+# -------------------------------------------------------------------------
+# Cases 17-19 exercise the specs/org exclusion (spec 0071) against the real,
+# committed .crewrig/core-paths.txt — no CREWRIG_REPO_DIR override. This
+# deliberately couples their outcome to `specs/org` remaining classified
+# `excluded` in that manifest; Case 20/21 below are what actually prove the
+# exclusion mechanism is manifest-driven rather than hardcoded to
+# `specs/org`.
+# -------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------
+# Case 17 — Scenario 1: default CI invocation (no target args, matching the
+# `lint-specs` job) ignores a non-conforming specs/org/ file.
+# -------------------------------------------------------------------------
+mkdir -p "$TMP_ROOT/specs/org"
+cat <<'EOF' > "$TMP_ROOT/specs/org/ORG-0001-example.md"
+---
+id: "ORG-0001"
+slug: "example"
+status: "draft"
+complexity: "standard"
+version: 1.0.0
+related-issue: 123
+---
+
+# Title
+
+## Intent
+
+## Requirements
+EOF
+run_case "Case 17 — non-conforming specs/org file ignored on default CI invocation" "" 0
+
+# -------------------------------------------------------------------------
+# Case 18 — Scenario 2: a non-conforming spec outside specs/org/, on the
+# same invocation, is still caught (R4).
+# -------------------------------------------------------------------------
+render_spec "9999" "bad" > "$TMP_ROOT/specs/9999-bad!name.md"
+run_case "Case 18 — non-conforming upstream spec still fails alongside specs/org" "" 1
+
+# -------------------------------------------------------------------------
+# Case 19 — Scenario 3: explicit `specs/org` target still exempts the
+# non-conforming file (reuses Case 17's fixture).
+# -------------------------------------------------------------------------
+run_case "Case 19 — explicit specs/org target still exempts non-conforming file" "specs/org" 0
+
+# -------------------------------------------------------------------------
+# Case 20 — Scenario 4: manifest-driven exclusion generalizes to a path
+# never special-cased in spec-linter.js (specs/experimental), proving R5
+# (no hardcoded `specs/org` string match). Uses an isolated tree distinct
+# from $TMP_ROOT/specs: the shared tree above already carries Case 18's
+# deliberately non-conforming, non-excluded specs/9999-bad!name.md fixture,
+# which would fail this invocation for an unrelated reason if reused — this
+# isolation keeps the assertion pointed squarely at the manifest override.
+# -------------------------------------------------------------------------
+SCENARIO4_ROOT="$TMP_ROOT/scenario4"
+mkdir -p "$SCENARIO4_ROOT/specs/experimental"
+cp "$ROOT_DIR/.markdownlintrc" "$SCENARIO4_ROOT/"
+ln -s "$ROOT_DIR/node_modules" "$SCENARIO4_ROOT/node_modules"
+cat <<'EOF' > "$SCENARIO4_ROOT/specs/experimental/9999-bad.md"
+---
+id: "9999"
+slug: "bad"
+status: "draft"
+complexity: "standard"
+version: 1.0.0
+related-issue: 123
+---
+
+# Title
+
+## Intent
+EOF
+
+write_core_paths_fixture "$TMP_ROOT/fixture-manifest" $'specs/experimental\texcluded\n'
+
+case20_exit=0
+case20_output=$( ( cd "$SCENARIO4_ROOT" && CREWRIG_REPO_DIR="$TMP_ROOT/fixture-manifest" node "$LINTER_JS" 2>&1 ) ) || case20_exit=$?
+if [ "$case20_exit" -eq 0 ]; then
+  echo "PASS  Case 20 — manifest-driven exclusion of a novel path (exit 0)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 20 — expected exit 0, got $case20_exit"
+  echo "Output:"
+  echo "$case20_output"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
+# Case 21 — negative control for Scenario 4: same fixture, no manifest
+# override → falls back to the real repo's .crewrig/core-paths.txt, which
+# does not classify specs/experimental as excluded → exit 1. Proves Case 20
+# passes because of the override, not a blanket skip.
+# -------------------------------------------------------------------------
+case21_exit=0
+case21_output=$( ( cd "$SCENARIO4_ROOT" && node "$LINTER_JS" 2>&1 ) ) || case21_exit=$?
+if [ "$case21_exit" -eq 1 ]; then
+  echo "PASS  Case 21 — same fixture without override still fails (exit 1)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 21 — expected exit 1, got $case21_exit"
+  echo "Output:"
+  echo "$case21_output"
+  fail=$((fail + 1))
+fi
 
 # -------------------------------------------------------------------------
 # Summary
