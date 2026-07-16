@@ -1,7 +1,7 @@
 ---
 id: "0070"
 slug: mempalace-tool-surface-drift
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 416
