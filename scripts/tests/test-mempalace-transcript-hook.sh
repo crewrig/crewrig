@@ -24,6 +24,14 @@
 #   #94 — No timeout (explicit `timeout` keyword check).
 #         The Python invocation line MUST be prefixed with `timeout `.
 #
+#   spec 0073 / issue #508 — Route through the shared ChromaDB HTTP daemon.
+#         The heredoc's Python payload MUST route through
+#         `chromadb.HttpClient` (ADR-0006) instead of constructing a
+#         `chromadb.PersistentClient` against the on-disk palace, and MUST
+#         degrade to a soft, logged, non-blocking skip (exit 4,
+#         `DAEMON_UNREACHABLE:` on stderr) when the daemon is unreachable —
+#         never falling back to `PersistentClient`.
+#
 # Usage:
 #   bash scripts/tests/test-mempalace-transcript-hook.sh
 #
@@ -170,6 +178,62 @@ else
   else
     record FAIL "issue-94: explicit \`timeout <n>\` prefix on Python call" \
       "no \`timeout <n>\` line found in $HOOK"
+  fi
+fi
+
+# -------------------------------------------------------------------------
+# Test 6 — spec 0073 / issue #508: daemon-unreachable path must degrade
+# gracefully through the shared ChromaDB HTTP daemon (ADR-0006 routing).
+#
+# Behavioral test against the REAL, shipped Python heredoc — not a
+# paraphrase of it. We extract the live heredoc body from the hook (same
+# "extract the live source" technique
+# scripts/tests/test-chroma-health-race.sh uses on scripts/lib/common.sh)
+# and execute it under a fully-mocked `chromadb` module on PYTHONPATH
+# whose `HttpClient.heartbeat()` always raises (simulating an unreachable
+# daemon) and whose `PersistentClient` is a poison pill that fails the
+# test the moment it is ever constructed. Assert: exit code 4,
+# `DAEMON_UNREACHABLE:` on stderr, no `POISON` marker, and a bounded
+# runtime (the daemon-unreachable path must not hang).
+# -------------------------------------------------------------------------
+SANDBOX_T6="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_T2" "$SANDBOX_T6"' EXIT
+
+# Extract the real heredoc (between <<'PYEOF' and the closing PYEOF).
+sed -n "/<<.PYEOF./,/^PYEOF$/p" "$HOOK" | sed '1d;$d' > "$SANDBOX_T6/heredoc.py"
+
+mkdir -p "$SANDBOX_T6/chromadb"
+cat > "$SANDBOX_T6/chromadb/__init__.py" <<'MOCK'
+class HttpClient:
+    def __init__(self, host=None, port=None):
+        pass
+
+    def heartbeat(self):
+        raise ConnectionError("mock: connection refused")
+
+
+def PersistentClient(*a, **kw):
+    import sys
+    print("POISON: PersistentClient constructed", file=sys.stderr)
+    raise AssertionError("PersistentClient must never be constructed")
+MOCK
+
+if [ ! -s "$SANDBOX_T6/heredoc.py" ]; then
+  record FAIL "spec-0073-r6: daemon-unreachable path exits 4, never constructs PersistentClient, stays bounded" \
+    "could not extract Python heredoc from $HOOK"
+else
+  START_T6=$(date +%s)
+  PYTHONPATH="$SANDBOX_T6" TRANSCRIPT_ROOM=x TRANSCRIPT_CONTENT=x TRANSCRIPT_AGENT=x \
+    python3 "$SANDBOX_T6/heredoc.py" >"$SANDBOX_T6/stdout" 2>"$SANDBOX_T6/stderr"
+  RC_T6=$?
+  ELAPSED_T6=$(( $(date +%s) - START_T6 ))
+
+  if [ "$RC_T6" -eq 4 ] && grep -q "DAEMON_UNREACHABLE:" "$SANDBOX_T6/stderr" \
+     && ! grep -q "POISON" "$SANDBOX_T6/stderr" && [ "$ELAPSED_T6" -le 3 ]; then
+    record PASS "spec-0073-r6: daemon-unreachable path exits 4, never constructs PersistentClient, stays bounded"
+  else
+    record FAIL "spec-0073-r6: daemon-unreachable path exits 4, never constructs PersistentClient, stays bounded" \
+      "rc=$RC_T6 elapsed=${ELAPSED_T6}s stderr=$(cat "$SANDBOX_T6/stderr" 2>/dev/null)"
   fi
 fi
 
