@@ -284,6 +284,98 @@ else
 fi
 
 # -------------------------------------------------------------------------
+# Test 7/8 — spec 0074 / issue #510 (R1/R2): success logging is gated by
+# MEMPALACE_TRANSCRIPT_QUIET.
+#
+# Behavioral test, modeled on test 2's fake-python + stdin feed. We point
+# MEMPALACE_PYTHON at a fake that drains stdin, prints "OK", and exits 0 so
+# the hook reaches the success branch (STATUS_RC == 0). A `Stop` event sets
+# CONTENT so the Python call is reached.
+#
+#   - R1: with MEMPALACE_TRANSCRIPT_QUIET=1, the "persisted ..." success
+#     line MUST be ABSENT from stderr.
+#   - R2: with MEMPALACE_TRANSCRIPT_QUIET unset, the "persisted ..." success
+#     line MUST be PRESENT on stderr (default behavior preserved).
+# -------------------------------------------------------------------------
+TMPDIR_T7="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_T2" "$TMPDIR_T5" "$SANDBOX_T6" "$TMPDIR_T7"' EXIT
+
+OK_PY="$TMPDIR_T7/ok-python"
+cat > "$OK_PY" <<'EOF'
+#!/bin/bash
+cat >/dev/null   # drain the heredoc so it does not deadlock
+echo "OK"
+exit 0
+EOF
+chmod +x "$OK_PY"
+
+STOP_JSON_T7='{"hook_event_name":"Stop"}'
+
+# R1 — quiet enabled: success line suppressed.
+STDERR_QUIET="$TMPDIR_T7/stderr-quiet"
+(
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  export MEMPALACE_TRANSCRIPT_QUIET=1
+  export MEMPALACE_PYTHON="$OK_PY"
+  printf '%s' "$STOP_JSON_T7" | bash "$HOOK" >/dev/null 2>"$STDERR_QUIET"
+) || true
+
+if grep -q 'mempalace-transcript: persisted' "$STDERR_QUIET"; then
+  record FAIL "issue-510-r1: success log suppressed when MEMPALACE_TRANSCRIPT_QUIET=1" \
+    "found 'persisted' line on stderr: $(grep 'mempalace-transcript: persisted' "$STDERR_QUIET")"
+else
+  record PASS "issue-510-r1: success log suppressed when MEMPALACE_TRANSCRIPT_QUIET=1"
+fi
+
+# R2 — quiet unset: success line present (default preserved).
+STDERR_DEFAULT="$TMPDIR_T7/stderr-default"
+(
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  unset MEMPALACE_TRANSCRIPT_QUIET
+  export MEMPALACE_PYTHON="$OK_PY"
+  printf '%s' "$STOP_JSON_T7" | bash "$HOOK" >/dev/null 2>"$STDERR_DEFAULT"
+) || true
+
+if grep -q 'mempalace-transcript: persisted' "$STDERR_DEFAULT"; then
+  record PASS "issue-510-r2: success log present when MEMPALACE_TRANSCRIPT_QUIET unset"
+else
+  record FAIL "issue-510-r2: success log present when MEMPALACE_TRANSCRIPT_QUIET unset" \
+    "no 'persisted' line on stderr: $(cat "$STDERR_DEFAULT")"
+fi
+
+# -------------------------------------------------------------------------
+# Test 9 — spec 0074 / issue #510 (R3): failure logging is UNCONDITIONAL.
+#
+# Behavioral test. We point MEMPALACE_PYTHON at a fake that drains stdin
+# then exits non-zero so the hook reaches the failure branch
+# (STATUS_RC != 0). Even with MEMPALACE_TRANSCRIPT_QUIET=1, the
+# "FAILED to persist" line MUST still be emitted — the quiet flag gates
+# ONLY the success log, never failures.
+# -------------------------------------------------------------------------
+FAIL_PY="$TMPDIR_T7/fail-python"
+cat > "$FAIL_PY" <<'EOF'
+#!/bin/bash
+cat >/dev/null   # drain the heredoc so it does not deadlock
+exit 3
+EOF
+chmod +x "$FAIL_PY"
+
+STDERR_FAIL="$TMPDIR_T7/stderr-fail"
+(
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  export MEMPALACE_TRANSCRIPT_QUIET=1
+  export MEMPALACE_PYTHON="$FAIL_PY"
+  printf '%s' "$STOP_JSON_T7" | bash "$HOOK" >/dev/null 2>"$STDERR_FAIL"
+) || true
+
+if grep -q 'mempalace-transcript: FAILED to persist' "$STDERR_FAIL"; then
+  record PASS "issue-510-r3: failure log still emitted when MEMPALACE_TRANSCRIPT_QUIET=1"
+else
+  record FAIL "issue-510-r3: failure log still emitted when MEMPALACE_TRANSCRIPT_QUIET=1" \
+    "no 'FAILED to persist' line on stderr: $(cat "$STDERR_FAIL")"
+fi
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo
