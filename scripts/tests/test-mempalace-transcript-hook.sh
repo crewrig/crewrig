@@ -4,8 +4,10 @@
 # Pins the contracts surfaced by issues #90–#94:
 #
 #   #90 — Direct Python import causes SQLite contention.
-#         The Python invocation MUST be wrapped by `timeout` (or equivalent
-#         guard) so a hung MemPalace lock cannot stall the calling CLI.
+#         The Python invocation MUST be guarded by the resolved timeout
+#         wrapper (`${_HOOK_TIMEOUT:+... 5}`, resolved at init to `timeout`
+#         or `gtimeout`) so a hung MemPalace lock cannot stall the calling
+#         CLI. Checked structurally against that wrapper shape (PR #211).
 #
 #   #91 — Hook fires on every PostToolUse — too frequent for parallel agents.
 #         When the hook event is `PostToolUse`, the script MUST exit 0
@@ -21,8 +23,13 @@
 #         `2>&1` — that hides import errors and MemPalace failures from
 #         the log line.
 #
-#   #94 — No timeout (explicit `timeout` keyword check).
-#         The Python invocation line MUST be prefixed with `timeout `.
+#   #94 — No timeout guard at runtime.
+#         The timeout applied to the Python call is now conditional and
+#         portable (PR #211): the guard fires when a `timeout`/`gtimeout`
+#         binary is available, and degrades to a deliberate, logged no-op
+#         when neither is on PATH. The check is behavioral — it proves the
+#         guard actually kills a hung Python within the 5s budget — and
+#         SKIPs gracefully on hosts where no timeout binary exists.
 #
 #   spec 0073 / issue #508 — Route through the shared ChromaDB HTTP daemon.
 #         The heredoc's Python payload MUST route through
@@ -50,6 +57,7 @@ fi
 
 pass=0
 fail=0
+skip=0
 
 record() {
   local outcome="$1"
@@ -58,6 +66,9 @@ record() {
   if [ "$outcome" = "PASS" ]; then
     echo "PASS  $name${detail:+ — $detail}"
     pass=$((pass + 1))
+  elif [ "$outcome" = "SKIP" ]; then
+    echo "SKIP  $name${detail:+ — $detail}"
+    skip=$((skip + 1))
   else
     echo "FAIL  $name${detail:+ — $detail}"
     fail=$((fail + 1))
@@ -65,18 +76,20 @@ record() {
 }
 
 # -------------------------------------------------------------------------
-# Test 1 — Issue #90: Python call must be guarded by a timeout wrapper.
+# Test 1 — Issue #90: Python call must be fronted by the resolved timeout
+# wrapper.
 #
-# Heuristic: locate the line that invokes "$MEMPALACE_PYTHON" and assert
-# that `timeout` appears on (or immediately before) that line. The fix may
-# inline `timeout 5 "$MEMPALACE_PYTHON" ...` or use a variable, both are
-# accepted.
+# Structural check: PR #211 replaced the literal `timeout ` keyword with a
+# portable wrapper, `${_HOOK_TIMEOUT:+$_HOOK_TIMEOUT 5}`, resolved at script
+# init to `timeout` or `gtimeout` (portable detection). Assert that the
+# Python invocation is fronted by that wrapper carrying a numeric budget,
+# rather than grepping for a literal `timeout` keyword that no longer exists.
 # -------------------------------------------------------------------------
-if grep -nE '(^|[[:space:]])timeout[[:space:]].*\$MEMPALACE_PYTHON|(^|[[:space:]])timeout[[:space:]].*"\$MEMPALACE_PYTHON"' "$HOOK" >/dev/null; then
-  record PASS "issue-90: Python invocation guarded by timeout wrapper"
+if grep -nE '\$\{_HOOK_TIMEOUT:\+[^}]*[0-9]+[^}]*\}[[:space:]]+"\$MEMPALACE_PYTHON"' "$HOOK" >/dev/null; then
+  record PASS "issue-90: Python invocation fronted by resolved timeout wrapper"
 else
-  record FAIL "issue-90: Python invocation guarded by timeout wrapper" \
-    "no \`timeout ... \$MEMPALACE_PYTHON\` pattern found in $HOOK"
+  record FAIL "issue-90: Python invocation fronted by resolved timeout wrapper" \
+    "no \`\${_HOOK_TIMEOUT:+... <n>} \"\$MEMPALACE_PYTHON\"\` pattern found in $HOOK"
 fi
 
 # -------------------------------------------------------------------------
@@ -150,35 +163,68 @@ else
 fi
 
 # -------------------------------------------------------------------------
-# Test 5 — Issue #94: explicit `timeout ` prefix on the Python call line.
+# Test 5 — Issue #94: the timeout guard must actually fire at runtime.
 #
-# Stricter than test 1: this asserts the canonical `timeout <seconds>`
-# shape immediately preceding the Python binary, not just the presence of
-# the word `timeout` somewhere nearby. This guards against partial fixes
-# (e.g. a comment that mentions timeout but no actual wrapper).
+# Behavioral test (replaces the old static `timeout <n>` grep, which PR #211
+# invalidated by resolving the guard through the `${_HOOK_TIMEOUT:+... 5}`
+# wrapper instead of a literal keyword). We prove the guard behaviorally,
+# modeled on test 2's fake-python + stdin feed and test 6's `date +%s`
+# timing:
+#
+#   - Point MEMPALACE_PYTHON at a fake that drains stdin then sleeps 15s —
+#     well past the hook's 5s budget.
+#   - Feed a `Stop` event so CONTENT is set and the Python call is reached.
+#   - When a `timeout`/`gtimeout` binary is available, measure wall-clock:
+#     the guard must return in well under the sleep → PASS; otherwise FAIL
+#     with the elapsed time.
+#   - When neither binary is on PATH, the runtime guard is intentionally
+#     absent (logged degradation — PR #211), so SKIP rather than run the
+#     15s sleep and hang the suite.
 # -------------------------------------------------------------------------
-if grep -nE '^[[:space:]]*timeout[[:space:]]+[0-9]+' "$HOOK" | grep -q '$MEMPALACE_PYTHON\|"\$MEMPALACE_PYTHON"'; then
-  record PASS "issue-94: explicit \`timeout <n>\` prefix on Python call"
-else
-  # Allow the timeout to be on a preceding continuation line; check that
-  # any line starting with `timeout <digits>` exists in the file.
-  if grep -nE '^[[:space:]]*timeout[[:space:]]+[0-9]+' "$HOOK" >/dev/null; then
-    # Verify it actually fronts the Python call by checking the next
-    # non-blank/non-comment line references $MEMPALACE_PYTHON.
-    if awk '
-      /^[[:space:]]*timeout[[:space:]]+[0-9]+/ { found=1; next }
-      found && /\$MEMPALACE_PYTHON/ { print "match"; exit 0 }
-      found && !/^[[:space:]]*(#|$)/ && !/\\$/ { found=0 }
-    ' "$HOOK" | grep -q match; then
-      record PASS "issue-94: explicit \`timeout <n>\` prefix on Python call"
-    else
-      record FAIL "issue-94: explicit \`timeout <n>\` prefix on Python call" \
-        "\`timeout <n>\` present but not fronting \$MEMPALACE_PYTHON"
-    fi
+TMPDIR_T5="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_T2" "$TMPDIR_T5"' EXIT
+
+if command -v timeout >/dev/null 2>&1 || command -v gtimeout >/dev/null 2>&1; then
+  MARKER_T5="$TMPDIR_T5/python-was-called"
+  SLOW_PY="$TMPDIR_T5/slow-python"
+  cat > "$SLOW_PY" <<EOF
+#!/bin/bash
+touch "$MARKER_T5"          # prove the hung Python path was actually reached
+cat >/dev/null   # drain the heredoc so it does not deadlock
+sleep 15
+echo "OK"
+EOF
+  chmod +x "$SLOW_PY"
+
+  STOP_JSON='{"hook_event_name":"Stop"}'
+  START_T5=$(date +%s)
+  (
+    export MEMPALACE_TRANSCRIPT_ENABLED=1
+    export MEMPALACE_PYTHON="$SLOW_PY"
+    printf '%s' "$STOP_JSON" | bash "$HOOK" >/dev/null 2>&1
+  ) || true
+  ELAPSED_T5=$(( $(date +%s) - START_T5 ))
+
+  # Two-sided assertion: the marker proves the slow Python was actually
+  # invoked (guards against a regression that stops the Stop event from
+  # reaching the Python call — which would return in ~0s and otherwise
+  # PASS a bare upper bound, a silent false-positive). The lower bound
+  # (>=4s) proves the 5s budget was genuinely waited out; the upper bound
+  # proves the guard then fired instead of hanging for the full 15s sleep.
+  # The ceiling is set to 12s (not a tight 8s): the discriminating property
+  # is "well before the 15s sleep", so the extra headroom absorbs fork/exec
+  # and scheduling jitter on a loaded CI runner without weakening the test
+  # (a non-firing guard still lands at ~15s > 12s). The >=4s floor stays the
+  # meaningful half.
+  if [ -f "$MARKER_T5" ] && [ "$ELAPSED_T5" -ge 4 ] && [ "$ELAPSED_T5" -le 12 ]; then
+    record PASS "issue-94: timeout guard fires at runtime (5s budget)"
   else
-    record FAIL "issue-94: explicit \`timeout <n>\` prefix on Python call" \
-      "no \`timeout <n>\` line found in $HOOK"
+    record FAIL "issue-94: timeout guard fires at runtime (5s budget)" \
+      "marker=$([ -f "$MARKER_T5" ] && echo yes || echo no) elapsed=${ELAPSED_T5}s (want marker=yes, 4<=elapsed<=12: the slow Python must be reached AND the 5s timeout must fire before the 15s sleep)"
   fi
+else
+  record SKIP "issue-94: timeout guard fires at runtime (5s budget)" \
+    "no timeout/gtimeout on PATH; runtime guard intentionally absent per hook fallback (PR #211)"
 fi
 
 # -------------------------------------------------------------------------
@@ -197,7 +243,7 @@ fi
 # runtime (the daemon-unreachable path must not hang).
 # -------------------------------------------------------------------------
 SANDBOX_T6="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR_T2" "$SANDBOX_T6"' EXIT
+trap 'rm -rf "$TMPDIR_T2" "$TMPDIR_T5" "$SANDBOX_T6"' EXIT
 
 # Extract the real heredoc (between <<'PYEOF' and the closing PYEOF).
 sed -n "/<<.PYEOF./,/^PYEOF$/p" "$HOOK" | sed '1d;$d' > "$SANDBOX_T6/heredoc.py"
@@ -241,7 +287,7 @@ fi
 # Summary
 # -------------------------------------------------------------------------
 echo
-echo "Summary: $pass passed, $fail failed"
+echo "Summary: $pass passed, $fail failed, $skip skipped"
 
 if [ "$fail" -gt 0 ]; then
   exit 1
