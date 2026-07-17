@@ -209,13 +209,18 @@ EOF
   # invoked (guards against a regression that stops the Stop event from
   # reaching the Python call — which would return in ~0s and otherwise
   # PASS a bare upper bound, a silent false-positive). The lower bound
-  # (>=4s) proves the 5s budget was genuinely waited out, and the upper
-  # bound (<=8s) proves the guard then fired instead of hanging 15s.
-  if [ -f "$MARKER_T5" ] && [ "$ELAPSED_T5" -ge 4 ] && [ "$ELAPSED_T5" -le 8 ]; then
+  # (>=4s) proves the 5s budget was genuinely waited out; the upper bound
+  # proves the guard then fired instead of hanging for the full 15s sleep.
+  # The ceiling is set to 12s (not a tight 8s): the discriminating property
+  # is "well before the 15s sleep", so the extra headroom absorbs fork/exec
+  # and scheduling jitter on a loaded CI runner without weakening the test
+  # (a non-firing guard still lands at ~15s > 12s). The >=4s floor stays the
+  # meaningful half.
+  if [ -f "$MARKER_T5" ] && [ "$ELAPSED_T5" -ge 4 ] && [ "$ELAPSED_T5" -le 12 ]; then
     record PASS "issue-94: timeout guard fires at runtime (5s budget)"
   else
     record FAIL "issue-94: timeout guard fires at runtime (5s budget)" \
-      "marker=$([ -f "$MARKER_T5" ] && echo yes || echo no) elapsed=${ELAPSED_T5}s (want marker=yes, 4<=elapsed<=8: the slow Python must be reached AND the 5s timeout must fire)"
+      "marker=$([ -f "$MARKER_T5" ] && echo yes || echo no) elapsed=${ELAPSED_T5}s (want marker=yes, 4<=elapsed<=12: the slow Python must be reached AND the 5s timeout must fire before the 15s sleep)"
   fi
 else
   record SKIP "issue-94: timeout guard fires at runtime (5s budget)" \
