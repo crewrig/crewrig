@@ -221,3 +221,45 @@ install_chroma_daemon() {
   fi
   return 0
 }
+
+# print_store_access_guidance <cli>
+#
+# Prints actionable, evidence-grounded guidance on how to grant the
+# per-invocation read of the user-space system-context store
+# (~/.crewrig/system-context, spec 0068) on the two CLIs that gate an
+# out-of-workspace absolute-path read behind trust/path approval:
+# Gemini and Copilot. This function ONLY echoes to the user — it writes no
+# file and mutates no config, upholding ADR-0013 / spec 0075 R2 (no durable
+# trust config is written on any CLI). The grants named below are traced to
+# the sandbox probe (docs/research/system-context-sandbox-probe.md §1, §4.3,
+# §4.4); no flags are invented. The PASS-default CLIs (Claude, Antigravity)
+# do NOT call this — they read the store bare, with no flags or config.
+print_store_access_guidance() {
+  local cli="$1"
+  local store="~/.crewrig/system-context"
+  echo ""
+  echo "System-context store access (spec 0068):"
+  echo "  The framework installs a shared rule store at $store."
+  echo "  When a rule from the store is needed, the CLI reads it on demand."
+  echo "  Setup writes NO durable trust config; where the read still cannot be"
+  echo "  satisfied, the store surfaces its explicit fallback signal (spec 0068)."
+  case "$cli" in
+    gemini)
+      echo "  Gemini gates tool use on workspace trust. Make the store path"
+      echo "  trusted for the invocation with one of:"
+      echo "    gemini --include-directories $store"
+      echo "    GEMINI_CLI_TRUST_WORKSPACE=true gemini ..."
+      echo "    gemini --skip-trust ..."
+      echo "  or approve the directory interactively when prompted."
+      ;;
+    copilot)
+      echo "  Copilot denies the out-of-workspace read unless the path is"
+      echo "  granted. Grant it per-invocation with one of:"
+      echo "    copilot --add-dir $store"
+      echo "    copilot --allow-all-paths"
+      echo "  or approve the read interactively when prompted."
+      echo "  Note: trustedFolders in ~/.copilot/config.json does NOT durably"
+      echo "  authorize this cross-project read."
+      ;;
+  esac
+}

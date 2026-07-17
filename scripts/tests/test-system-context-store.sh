@@ -121,6 +121,64 @@ grep -q "System-context store mirror" "$TOOLS_FILE" \
   && ok "Session Start store-mirror step present" || bad "Session Start store-mirror step missing"
 
 # ---------------------------------------------------------------------------
+# 4. Setup-time guidance parity (spec 0075)
+# ---------------------------------------------------------------------------
+# The store read is gated behind trust/path approval on exactly two CLIs
+# (Gemini, Copilot); their setup scripts must print actionable per-invocation
+# grant guidance, the two PASS-default CLIs (Claude, Antigravity) must not, and
+# NO setup script may write a durable trust entry for the store (R2/ADR-0013).
+echo "4. Setup-time guidance parity (spec 0075)"
+
+SETUP_DIR="$SCRIPT_DIR/scripts"
+GAP_SCRIPTS=(setup-gemini-interactive.sh setup-copilot-interactive.sh)
+PASS_SCRIPTS=(setup-claude-interactive.sh setup-antigravity-interactive.sh)
+
+# (a) the two gap CLIs call the guidance helper
+for s in "${GAP_SCRIPTS[@]}"; do
+  if grep -q "print_store_access_guidance" "$SETUP_DIR/$s"; then
+    ok "gap CLI calls print_store_access_guidance: $s"
+  else
+    bad "gap CLI missing print_store_access_guidance call: $s"
+  fi
+done
+
+# (b) the two PASS-default CLIs do NOT call it (no silent asymmetry)
+for s in "${PASS_SCRIPTS[@]}"; do
+  if grep -q "print_store_access_guidance" "$SETUP_DIR/$s"; then
+    bad "PASS-default CLI unexpectedly calls print_store_access_guidance: $s"
+  else
+    ok "PASS-default CLI emits no store guidance: $s"
+  fi
+done
+
+# (c) no setup script writes a durable trust entry for the store (R2/ADR-0013).
+# trustedFolders / permissions-config.json are the durable-trust surfaces named
+# in the sandbox probe; they have no legitimate non-store use in setup, so their
+# absence from executable (non-comment) code is the guard. Full-line comment
+# mentions (e.g. the copilot note explaining trustedFolders does NOT work) are
+# stripped first so they do not trip the check.
+for s in "${GAP_SCRIPTS[@]}" "${PASS_SCRIPTS[@]}"; do
+  code="$(grep -v '^[[:space:]]*#' "$SETUP_DIR/$s")"
+  if echo "$code" | grep -Eq 'trustedFolders|permissions-config\.json'; then
+    bad "setup writes a durable trust surface (trustedFolders/permissions-config.json): $s"
+  else
+    ok "no durable trust write for the store: $s"
+  fi
+done
+
+# (d) the helper names the correct per-invocation grant per CLI (source-and-call)
+if print_store_access_guidance gemini | grep -q -- "--include-directories"; then
+  ok "gemini guidance names --include-directories"
+else
+  bad "gemini guidance missing --include-directories"
+fi
+if print_store_access_guidance copilot | grep -q -- "--add-dir"; then
+  ok "copilot guidance names --add-dir"
+else
+  bad "copilot guidance missing --add-dir"
+fi
+
+# ---------------------------------------------------------------------------
 echo ""
 echo "RESULT: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
