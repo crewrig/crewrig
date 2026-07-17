@@ -9,6 +9,9 @@
 #
 # Environment:
 #   MEMPALACE_TRANSCRIPT_ENABLED - set to "1" to enable (default: disabled)
+#   MEMPALACE_TRANSCRIPT_QUIET   - set to "1" to silence success logging;
+#                                  failures are still logged
+#                                  (default: disabled / success logs shown)
 #   MEMPALACE_PYTHON             - Python binary with mempalace installed
 #                                  (default: python3)
 #   MEMPALACE_CHROMA_HOST        - shared ChromaDB HTTP daemon host (ADR-0006)
@@ -212,7 +215,9 @@ PYEOF
   STATUS_RC=$?
   set -e
   if [ "$STATUS_RC" -eq 0 ]; then
-    echo "mempalace-transcript: persisted ${ENTRY_TYPE} to transcripts/${ROOM_ID}" >&2
+    if [ "${MEMPALACE_TRANSCRIPT_QUIET:-0}" != "1" ]; then
+      echo "mempalace-transcript: persisted ${ENTRY_TYPE} to transcripts/${ROOM_ID}" >&2
+    fi
   else
     echo "mempalace-transcript: FAILED to persist ${ENTRY_TYPE} (rc=$STATUS_RC): $STATUS" >&2
     if [ -s "$_HOOK_ERR" ]; then
