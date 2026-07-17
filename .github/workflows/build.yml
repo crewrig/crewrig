@@ -121,6 +121,9 @@ jobs:
       - name: Test build-docs-index regression (spec 0027)
         run: bash scripts/tests/test-build-docs-index.sh
 
+      - name: Test mempalace-transcript hook regression (issue #530)
+        run: bash scripts/tests/test-mempalace-transcript-hook.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
