@@ -63,6 +63,7 @@ check-components:
     - "bash scripts/build-docs-index.sh --check"
     - "bash scripts/tests/test-build-docs-index.sh"
     - "bash scripts/tests/test-mempalace-transcript-hook.sh"
+    - "bash scripts/tests/test-system-context-store.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

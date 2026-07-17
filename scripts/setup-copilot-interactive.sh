@@ -378,3 +378,4 @@ echo "  - Workspace-level (.github/copilot/settings.json): fires for this repo o
 echo ""
 echo "Note: GitHub Copilot CLI does NOT export a \$COPILOT_PROJECT_DIR — hooks"
 echo "read the workspace path from the stdin JSON payload (or fall back to \$PWD)."
+print_store_access_guidance copilot

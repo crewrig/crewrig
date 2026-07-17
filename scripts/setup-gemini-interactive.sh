@@ -399,4 +399,6 @@ if [ "${MEMPALACE_INSTALLED:-0}" -ne 1 ]; then
   echo "      pipx install 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
   echo ""
 fi
+print_store_access_guidance gemini
+echo ""
 echo "Restart any running Gemini CLI session to pick up the new configuration."
