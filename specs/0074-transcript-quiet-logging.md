@@ -1,7 +1,7 @@
 ---
 id: "0074"
 slug: transcript-quiet-logging
-status: draft
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 510
