@@ -1,7 +1,7 @@
 ---
 id: "0075"
 slug: system-context-trust-provisioning
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 509
