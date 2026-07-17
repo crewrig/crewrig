@@ -185,9 +185,11 @@ TMPDIR_T5="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_T2" "$TMPDIR_T5"' EXIT
 
 if command -v timeout >/dev/null 2>&1 || command -v gtimeout >/dev/null 2>&1; then
+  MARKER_T5="$TMPDIR_T5/python-was-called"
   SLOW_PY="$TMPDIR_T5/slow-python"
-  cat > "$SLOW_PY" <<'EOF'
+  cat > "$SLOW_PY" <<EOF
 #!/bin/bash
+touch "$MARKER_T5"          # prove the hung Python path was actually reached
 cat >/dev/null   # drain the heredoc so it does not deadlock
 sleep 15
 echo "OK"
@@ -203,11 +205,17 @@ EOF
   ) || true
   ELAPSED_T5=$(( $(date +%s) - START_T5 ))
 
-  if [ "$ELAPSED_T5" -le 8 ]; then
+  # Two-sided assertion: the marker proves the slow Python was actually
+  # invoked (guards against a regression that stops the Stop event from
+  # reaching the Python call — which would return in ~0s and otherwise
+  # PASS a bare upper bound, a silent false-positive). The lower bound
+  # (>=4s) proves the 5s budget was genuinely waited out, and the upper
+  # bound (<=8s) proves the guard then fired instead of hanging 15s.
+  if [ -f "$MARKER_T5" ] && [ "$ELAPSED_T5" -ge 4 ] && [ "$ELAPSED_T5" -le 8 ]; then
     record PASS "issue-94: timeout guard fires at runtime (5s budget)"
   else
     record FAIL "issue-94: timeout guard fires at runtime (5s budget)" \
-      "hook ran ${ELAPSED_T5}s — the 5s timeout did not fire"
+      "marker=$([ -f "$MARKER_T5" ] && echo yes || echo no) elapsed=${ELAPSED_T5}s (want marker=yes, 4<=elapsed<=8: the slow Python must be reached AND the 5s timeout must fire)"
   fi
 else
   record SKIP "issue-94: timeout guard fires at runtime (5s budget)" \
