@@ -87,6 +87,8 @@ check-components:
     - "bash scripts/tests/test-e2e-structural-lib.sh"
     - "bash scripts/tests/test-e2e-taskfile.sh"
     - "bash scripts/tests/test-e2e-versions-lock.sh"
+    - "bash scripts/tests/test-e2e-readme.sh"
+    - "bash scripts/tests/test-e2e-libs-readme.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

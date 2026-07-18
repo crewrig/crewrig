@@ -1,8 +1,7 @@
 # Assertion libraries
 
-Three sourceable bash libraries that scenarios reach for to make claims
-about a CLI's behavior. Governed by
-[ADR 0004](../../../docs/adr/0004-e2e-assertion-libs.md).
+Three sourceable bash libraries that scenarios reach for to make claims about a CLI's behavior.
+Governed by [ADR 0004](../../../docs/adr/0004-e2e-assertion-libs.md).
 
 | Lib | When to use |
 |---|---|
@@ -10,10 +9,9 @@ about a CLI's behavior. Governed by
 | `structural.sh` | **Second choice.** Structural shape probes: regex over stdout, JSON paths via `jq`, gitmoji-formatted titles. Use when the assertion is about the shape of an artifact, not its existence. |
 | `llm_judge.sh` | **Last resort.** LLM-as-judge oracle for qualitative criteria a regex cannot express. Each call burns budget and adds non-determinism — reach for it only when the first two cannot answer the question. |
 
-Every assertion returns `0` on PASS, `1` on FAIL, and PASS is silent.
-FAIL emits a single TAP-compatible diagnostic block to stderr — a
-`# FAIL` header line plus `expected`, `actual`, and `report` lines,
-each truncated to 200 chars. The runner captures scenario stderr under
+Every assertion returns `0` on PASS, `1` on FAIL; PASS is silent. FAIL emits a single TAP-compatible
+diagnostic block to stderr — a `# FAIL` header line plus `expected`, `actual`, and `report` lines, each
+truncated to 200 chars. The runner captures scenario stderr under
 `${E2E_REPORT_DIR}/<cli>/<scenario>/stderr`.
 
 ## Sourcing pattern
@@ -109,12 +107,10 @@ _llm_judge_driver_<backend>_call \
           HTTP error (caller records the slot as UNCERTAIN).
 ```
 
-The `<auth>` positional is opaque to the core — drivers that need no
-secret (e.g. local Ollama) accept and ignore it. Drivers MUST emit a
-`# WARN` line on stderr when `temperature != 0.0` is passed but the
-backend does not honor it. Adding a new backend means dropping a new
-driver file under `llm_judge_drivers/` and pointing `[judge].backend` at
-it — no changes to `llm_judge.sh` core. See ADR 0007 for the rationale.
+The `<auth>` positional is opaque to the core — drivers that need no secret (e.g. local Ollama) accept
+and ignore it. Drivers MUST emit a `# WARN` line on stderr when `temperature != 0.0` is passed but the
+backend does not honor it. Adding a new backend means dropping a driver file under `llm_judge_drivers/`
+and pointing `[judge].backend` at it — no changes to `llm_judge.sh` core. See ADR 0007 for the rationale.
 
 #### `ollama-cloud` backend
 
@@ -197,7 +193,6 @@ UNCERTAIN verdicts to hard failures — useful for the gating leg of CI.
 
 #### OAuth via `claude-code` backend
 
-To avoid minting a separate `ANTHROPIC_JUDGE_API_KEY`, set
-`[judge].backend = "claude-code"` + `[judge].auth_mode = "oauth"` to
-re-use the OAuth token minted by `task e2e:auth:claude`. See
+To avoid minting a separate `ANTHROPIC_JUDGE_API_KEY`, set `[judge].backend = "claude-code"` +
+`[judge].auth_mode = "oauth"` to re-use the OAuth token minted by `task e2e:auth:claude`. See
 [ADR 0008](../../../docs/adr/0008-judge-oauth-auth-mode.md).
