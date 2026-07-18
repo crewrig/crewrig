@@ -186,6 +186,11 @@
           "title": "ADR 0013 — User-space system-context store",
           "path": "docs/adr/0013-user-space-system-context-store.md",
           "nav_order": 130
+        },
+        {
+          "title": "ADR 0014 — CI test-wiring guard",
+          "path": "docs/adr/0014-ci-test-wiring-guard.md",
+          "nav_order": 140
         }
       ]
     }
