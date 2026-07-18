@@ -1,7 +1,7 @@
 ---
 id: "0078"
 slug: e2e-runner-hermetic
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 543
