@@ -1,7 +1,7 @@
 ---
 id: "0077"
 slug: e2e-readme-budget
-status: draft
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 542
