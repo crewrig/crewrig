@@ -127,6 +127,75 @@ jobs:
       - name: Test system-context store regression (spec 0068 + 0075)
         run: bash scripts/tests/test-system-context-store.sh
 
+      - name: Enforce test-wiring registration (spec 0076)
+        run: bash scripts/check-test-wiring.sh
+
+      - name: Test check-test-wiring regression (spec 0076)
+        run: bash scripts/tests/test-check-test-wiring.sh
+
+      - name: Test build-ci regression (spec 0076 wiring)
+        run: bash scripts/tests/test-build-ci.sh
+
+      - name: Test chroma fd-limits regression (spec 0076 wiring)
+        run: bash scripts/tests/test-chroma-fd-limits.sh
+
+      - name: Test chroma health-race regression (spec 0076 wiring)
+        run: bash scripts/tests/test-chroma-health-race.sh
+
+      - name: Test chroma-server regression (spec 0076 wiring)
+        run: bash scripts/tests/test-chroma-server.sh
+
+      - name: Test e2e assert-lib regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-assert-lib.sh
+
+      - name: Test e2e auth-common regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-auth-common.sh
+
+      - name: Test e2e auth-ready regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-auth-ready.sh
+
+      - name: Test e2e auth-taskfile regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-auth-taskfile.sh
+
+      - name: Test e2e defaults-toml regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-defaults-toml.sh
+
+      - name: Test e2e docker-images regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-docker-images.sh
+
+      - name: Test e2e gitignore regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-gitignore.sh
+
+      - name: Test e2e judge-config regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-judge-config.sh
+
+      - name: Test e2e llm-judge-lib regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-llm-judge-lib.sh
+
+      - name: Test e2e report regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-report.sh
+
+      - name: Test e2e runner-delegation regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-runner-delegation.sh
+
+      - name: Test e2e runner-taskfile regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-runner-taskfile.sh
+
+      - name: Test e2e scenarios-parity regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-scenarios-parity.sh
+
+      - name: Test e2e scenarios-structure regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-scenarios-structure.sh
+
+      - name: Test e2e structural-lib regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-structural-lib.sh
+
+      - name: Test e2e taskfile regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-taskfile.sh
+
+      - name: Test e2e versions-lock regression (spec 0076 wiring)
+        run: bash scripts/tests/test-e2e-versions-lock.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:

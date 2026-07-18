@@ -1,0 +1,30 @@
+# test-wiring-exemptions.txt — allowlist of scripts/tests/test-*.sh scripts that
+# are deliberately NOT executed by any CI workflow (spec 0076).
+#
+# Format, one entry per line:
+#
+#   <test-name.sh><TAB><human-readable reason>
+#
+# Blank lines and lines starting with '#' are ignored. Enforced by
+# scripts/check-test-wiring.sh:
+#   - every entry MUST carry a reason (an empty reason fails the check, R3);
+#   - every entry MUST name a test that still exists under scripts/tests/
+#     (a stale entry fails the check, R5).
+#
+# Hygiene: when a quarantined (bug-exempted) test is later fixed and wired into
+# a workflow, DELETE its line here. A test that is both wired and exempted is a
+# redundant exemption — the guard tolerates it, but it is dead weight and hides
+# the fact that the underlying bug is resolved.
+
+# --- Environment-dependent (cannot run in the hermetic check-components job) ---
+test-spec-linter.sh	requires the repo's npm-installed node_modules (markdownlint-cli via npx, plus js-yaml/semver) which the hermetic check-components job does not provision; spec-linter.js is exercised on real specs by the lint-specs job via `task spec:lint`.
+test-e2e-auth-scripts.sh	exercises scripts/e2e/auth-copilot.sh, which e2e_die's when ~/.copilot/instructions/ is absent — a `task setup:copilot` side-effect present on a developer host but not in a clean CI HOME; cannot pass in the hermetic check-components job. See follow-up note from #534 on whether the guidance path should print before that precondition.
+
+# --- Quarantined: a genuine pre-existing failure, out of scope for spec 0076 ---
+# Each entry below names a follow-up issue tracked from #534. The fix belongs to
+# a separate ticket (spec 0076 wires tests and guards wiring; it does not own the
+# code the tests exercise). Remove the entry once the follow-up is fixed + wired.
+test-e2e-libs-readme.sh	quarantined: asserts a 200-line budget on lib/README.md (now 203) and tests/e2e/README.md (now 289), both over budget; content trim / budget review is out of scope for spec 0076 — tracked in #542 (follow-up from #534).
+test-e2e-readme.sh	quarantined: asserts tests/e2e/README.md within a 200-line budget (now 289); same root cause as test-e2e-libs-readme.sh — tracked in #542 (follow-up from #534).
+test-e2e-runner.sh	quarantined: expectations are stale — asserts the pre-#80 `1..0 # no scenarios` TAP plan and a `--keep` report-retention behavior that no longer hold now that scenarios exist; runner realignment is out of scope for spec 0076 — tracked in #543 (follow-up from #534).
+test-e2e-toml-merge.sh	quarantined: merging an empty local over defaults emits an extra `env_keys: []` the fixture does not expect (genuine merge/fixture drift); out of scope for spec 0076 — tracked in #544 (follow-up from #534).
