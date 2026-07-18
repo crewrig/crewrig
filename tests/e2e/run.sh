@@ -30,7 +30,7 @@ export E2E_CREWRIG_E2E_HOME="$(e2e_e2e_home)"
 DEFAULTS_TOML="${SCRIPT_DIR}/defaults.toml"
 LOCAL_TOML="${SCRIPT_DIR}/local.toml"
 MERGE_SH="${SCRIPT_DIR}/lib/toml_merge.sh"
-REPORTS_ROOT="${SCRIPT_DIR}/reports"
+REPORTS_ROOT="${E2E_REPORTS_ROOT:-${SCRIPT_DIR}/reports}"
 
 # --------------------------------------------------------------------------
 # Defaults + arg parsing (named flags only — Taskfile `--` forwarding does

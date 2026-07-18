@@ -98,6 +98,7 @@ capabilities:
       - bash scripts/tests/test-e2e-versions-lock.sh
       - bash scripts/tests/test-e2e-readme.sh
       - bash scripts/tests/test-e2e-libs-readme.sh
+      - bash scripts/tests/test-e2e-runner.sh
 
   - id: lint-markdown
     name: "Lint Markdown files"

@@ -4,12 +4,16 @@
 # Locks ADR 0003's v1 contract for the runner:
 #   - --dry-run never spawns containers
 #   - report dir <ts>-<rand> is created with effective.json
-#   - TAP 13 header + `1..0 # no scenarios defined yet (waiting for #80)` line
+#   - TAP 13 header + a `1..11` plan line — defaults.toml defines 4 scenarios
+#     which expand to 11 (scenario,cli) pairs; every pair dry-run-SKIPs, so the
+#     plan line and exit 0 hold whether or not CLI auth is configured
 #   - --keep N prunes older report dirs
 #   - --cli <invalid> and unknown flag fail with usage hint
 #   - the runner sources scripts/e2e/lib/auth-common.sh
 #
-# No docker.
+# Hermetic: runs entirely under a throwaway E2E_REPORTS_ROOT (temp dir, swept on
+# EXIT). It never reads, creates, or deletes under the committed
+# tests/e2e/reports/ fixtures. No docker.
 
 set -uo pipefail
 
@@ -23,17 +27,30 @@ note_skip() { echo "# SKIP $1: $2"; SKIP=$((SKIP + 1)); }
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RUN_SH="${REPO_DIR}/tests/e2e/run.sh"
-REPORTS="${REPO_DIR}/tests/e2e/reports"
+
+# Hermetic reports root (spec 0078): run.sh honours E2E_REPORTS_ROOT and falls
+# back to tests/e2e/reports/ only when it is unset. Point it at a throwaway temp
+# dir and export it so the runner writes there too — no case reads, creates, or
+# deletes under the committed tests/e2e/reports/ fixtures.
+export E2E_REPORTS_ROOT="$(mktemp -d)"
+REPORTS="$E2E_REPORTS_ROOT"
+# Scratch stderr captures live under the temp root too, so a crash mid-run
+# leaves nothing behind at the repo root.
+ERR_DIR="$E2E_REPORTS_ROOT"
 
 # Snapshot of existing report dirs (we only inspect new entries).
 mapfile -t pre_dirs < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
 
-# Track every dir we create so we can clean up after ourselves.
+# Track every dir we create so we can clean up after ourselves. The temp root
+# itself is swept unconditionally on EXIT — that is the authoritative
+# hermeticity guarantee; the per-dir tracking is kept for parity with the
+# original idiom.
 CREATED=()
 cleanup() {
   for d in "${CREATED[@]}"; do
     [[ -n "$d" && -d "$d" ]] && rm -rf -- "$d"
   done
+  [[ -n "${E2E_REPORTS_ROOT:-}" && -d "$E2E_REPORTS_ROOT" ]] && rm -rf -- "$E2E_REPORTS_ROOT"
 }
 trap cleanup EXIT
 
@@ -45,12 +62,12 @@ fi
 note_pass "run.sh exists"
 
 # --- Case 1: dry-run exits 0 in a clean shell -----------------------------
-out1="$(bash "$RUN_SH" --dry-run 2>"$REPO_DIR/.test-runner.err")"
+out1="$(bash "$RUN_SH" --dry-run 2>"$ERR_DIR/.test-runner.err")"
 rc1=$?
 if [[ $rc1 -eq 0 ]]; then
   note_pass "dry-run exit 0"
 else
-  note_fail "dry-run exit 0" "rc=$rc1 stderr=$(tr '\n' '|' < "$REPO_DIR/.test-runner.err")"
+  note_fail "dry-run exit 0" "rc=$rc1 stderr=$(tr '\n' '|' < "$ERR_DIR/.test-runner.err")"
 fi
 
 # Identify the new report dir produced by case 1.
@@ -84,10 +101,10 @@ if grep -q '^TAP version 13$' <<< "$out1"; then
 else
   note_fail "TAP version 13 header" "stdout: $(echo "$out1" | head -3 | tr '\n' '|')"
 fi
-if grep -q '^1\.\.0 # no scenarios defined yet (waiting for #80)$' <<< "$out1"; then
-  note_pass "1..0 directive line present (waiting for #80)"
+if grep -q '^1\.\.11$' <<< "$out1"; then
+  note_pass "1..11 plan line present (4 scenarios → 11 (scenario,cli) pairs)"
 else
-  note_fail "1..0 directive line" "stdout: $(echo "$out1" | tr '\n' '|')"
+  note_fail "1..11 plan line" "stdout: $(echo "$out1" | tr '\n' '|')"
 fi
 
 # --- Case 5: --keep N prunes older report dirs ----------------------------
@@ -142,7 +159,7 @@ else
 fi
 
 # --- Case 6: --cli <invalid> fails with clear message --------------------
-err6_file="$REPO_DIR/.test-runner-c6.err"
+err6_file="$ERR_DIR/.test-runner-c6.err"
 if bash "$RUN_SH" --dry-run --cli bogus >/dev/null 2>"$err6_file"; then
   note_fail "--cli invalid — non-zero exit" "exited 0"
 else
@@ -163,7 +180,7 @@ for d in "${post6_dirs[@]}"; do
 done
 
 # --- Case 7: unknown flag fails -----------------------------------------
-err7_file="$REPO_DIR/.test-runner-c7.err"
+err7_file="$ERR_DIR/.test-runner-c7.err"
 if bash "$RUN_SH" --no-such-flag >/dev/null 2>"$err7_file"; then
   note_fail "unknown flag — non-zero exit" "exited 0"
 else
@@ -182,16 +199,18 @@ else
   note_fail "runner sources auth-common.sh" "no reference found in run.sh"
 fi
 
-# --- Case 9: --scenario all-equivalent (empty config) still emits 1..0 ---
-# With no scenarios defined, requesting any scenario name should fail (not
-# found), but the default (no --scenario) yields 1..0. We assert the default
-# behavior because there's no "all" sentinel in v1 — the default IS "all".
+# --- Case 9: default scenario set (all) enumerates every (scenario,cli) pair ---
+# Scenarios are now populated in defaults.toml, so the default (no --scenario)
+# enumerates all (scenario,cli) pairs and yields the 1..11 plan. We assert the
+# default behavior because there's no "all" sentinel in v1 — the default IS
+# "all". Every pair dry-run-SKIPs, so the plan line and exit 0 are identical
+# whether or not CLI auth is configured (CI has none).
 out9="$(bash "$RUN_SH" --dry-run 2>/dev/null)"
 rc9=$?
-if [[ $rc9 -eq 0 ]] && grep -q '^1\.\.0 # no scenarios defined yet (waiting for #80)$' <<< "$out9"; then
-  note_pass "default scenario set (all) → 1..0 with directive"
+if [[ $rc9 -eq 0 ]] && grep -q '^1\.\.11$' <<< "$out9"; then
+  note_pass "default scenario set (all) → 1..11 plan line"
 else
-  note_fail "default scenario set → 1..0" "rc=$rc9 stdout=$(echo "$out9" | tr '\n' '|')"
+  note_fail "default scenario set → 1..11" "rc=$rc9 stdout=$(echo "$out9" | tr '\n' '|')"
 fi
 mapfile -t post9_dirs < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
 for d in "${post9_dirs[@]}"; do
@@ -200,7 +219,7 @@ for d in "${post9_dirs[@]}"; do
   if [[ $known -eq 0 ]]; then CREATED+=("$d"); fi
 done
 
-rm -f "$REPO_DIR/.test-runner.err"
+rm -f "$ERR_DIR/.test-runner.err"
 
 echo "# $PASS passed / $FAIL failed / $SKIP skipped"
 if [[ $FAIL -gt 0 ]]; then exit 1; fi

@@ -202,6 +202,9 @@ jobs:
       - name: Test e2e lib README budget (spec 0077)
         run: bash scripts/tests/test-e2e-libs-readme.sh
 
+      - name: Test e2e runner regression (spec 0078)
+        run: bash scripts/tests/test-e2e-runner.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:

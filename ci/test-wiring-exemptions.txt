@@ -24,5 +24,4 @@ test-e2e-auth-scripts.sh	exercises scripts/e2e/auth-copilot.sh, which e2e_die's 
 # Each entry below names a follow-up issue tracked from #534. The fix belongs to
 # a separate ticket (spec 0076 wires tests and guards wiring; it does not own the
 # code the tests exercise). Remove the entry once the follow-up is fixed + wired.
-test-e2e-runner.sh	quarantined: expectations are stale — asserts the pre-#80 `1..0 # no scenarios` TAP plan and a `--keep` report-retention behavior that no longer hold now that scenarios exist; runner realignment is out of scope for spec 0076 — tracked in #543 (follow-up from #534).
 test-e2e-toml-merge.sh	quarantined: merging an empty local over defaults emits an extra `env_keys: []` the fixture does not expect (genuine merge/fixture drift); out of scope for spec 0076 — tracked in #544 (follow-up from #534).
