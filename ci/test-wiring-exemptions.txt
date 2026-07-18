@@ -19,9 +19,3 @@
 # --- Environment-dependent (cannot run in the hermetic check-components job) ---
 test-spec-linter.sh	requires the repo's npm-installed node_modules (markdownlint-cli via npx, plus js-yaml/semver) which the hermetic check-components job does not provision; spec-linter.js is exercised on real specs by the lint-specs job via `task spec:lint`.
 test-e2e-auth-scripts.sh	exercises scripts/e2e/auth-copilot.sh, which e2e_die's when ~/.copilot/instructions/ is absent — a `task setup:copilot` side-effect present on a developer host but not in a clean CI HOME; cannot pass in the hermetic check-components job. See follow-up note from #534 on whether the guidance path should print before that precondition.
-
-# --- Quarantined: a genuine pre-existing failure, out of scope for spec 0076 ---
-# Each entry below names a follow-up issue tracked from #534. The fix belongs to
-# a separate ticket (spec 0076 wires tests and guards wiring; it does not own the
-# code the tests exercise). Remove the entry once the follow-up is fixed + wired.
-test-e2e-toml-merge.sh	quarantined: merging an empty local over defaults emits an extra `env_keys: []` the fixture does not expect (genuine merge/fixture drift); out of scope for spec 0076 — tracked in #544 (follow-up from #534).

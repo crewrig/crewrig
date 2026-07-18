@@ -62,7 +62,7 @@ if [[ -n "$LOCAL" && -f "$LOCAL" ]]; then
       if ($local[0].cli[$c].command? // null) != null then
         .value.command = $local[0].cli[$c].command
       else . end |
-      .value.env_keys = (.value.env_keys // [] | unique)
+      .value |= (if has("env_keys") then .env_keys |= unique else . end)
     )
   ' "$merged_json"
 else

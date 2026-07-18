@@ -205,6 +205,9 @@ jobs:
       - name: Test e2e runner regression (spec 0078)
         run: bash scripts/tests/test-e2e-runner.sh
 
+      - name: Test e2e toml-merge regression (spec 0079)
+        run: bash scripts/tests/test-e2e-toml-merge.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
