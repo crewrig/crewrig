@@ -1,7 +1,7 @@
 ---
 id: "0079"
 slug: toml-merge-env-keys
-status: draft
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 544
