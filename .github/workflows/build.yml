@@ -196,6 +196,12 @@ jobs:
       - name: Test e2e versions-lock regression (spec 0076 wiring)
         run: bash scripts/tests/test-e2e-versions-lock.sh
 
+      - name: Test e2e README budget (spec 0077)
+        run: bash scripts/tests/test-e2e-readme.sh
+
+      - name: Test e2e lib README budget (spec 0077)
+        run: bash scripts/tests/test-e2e-libs-readme.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
