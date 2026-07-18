@@ -1,7 +1,7 @@
 ---
 id: "0076"
 slug: ci-test-wiring-guard
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 534
