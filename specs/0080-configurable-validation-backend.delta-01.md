@@ -19,7 +19,7 @@ _None._
 Requirement 16 is reworded to resolve an internal inconsistency surfaced by the
 PLAN cold review (issue #557). The original R16 mandated persistence "in the
 overlay layer", but `docs/layers.md` defines the overlay layer as adopter-owned
-*committed repo paths*; per-user, machine-local selections cannot live in a
+_committed repo paths_; per-user, machine-local selections cannot live in a
 committed overlay path without being shared across all fork clones. The original
 R16 also contradicted the spec's own OQ2, which blessed "a dedicated config file"
 as a candidate. This is a wording fix: the reworded R16 preserves the substantive
