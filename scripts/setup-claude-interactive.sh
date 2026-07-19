@@ -140,6 +140,10 @@ install_dir "$REPO_DIR/artifacts/core/system-context" "$HOME/.crewrig/system-con
 # SOUL.md (guaranteed to exist by prerequisite check)
 install_file "$REPO_DIR/config/SOUL.md" "$CLAUDE_RULES/00-soul.md" \
   "SOUL.md -> rules/00-soul.md"
+
+# User-gate validation backend (spec 0080) — per-user selection persisted to
+# ~/.crewrig/validation.conf (outside the core layer). Read by user-validate.
+configure_validation_backend
 echo ""
 
 fi  # end: SKIP_RULES_CONFIG guard for shared configuration

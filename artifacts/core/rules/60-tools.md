@@ -76,6 +76,37 @@ except for native `git` commands.
 
 ---
 
+## User-gate validation backend
+
+Artifact-validation gates — a spec, a plan, or any document put to the user for
+a decision — SHALL be realised by invoking the `user-validate` skill. Do NOT
+reimplement a gate inline; `user-validate` is the sole implementation of the
+protocol (spec 0080 R9).
+
+Two backends:
+
+- `plannotator` — opt-in, rich browser review.
+- `internal` — the default floor: `AskUserQuestion` (or the host CLI's
+  equivalent structured prompt), never a bare prose question.
+
+Three cross-cutting options tune each request:
+
+- *translation* — presentation-only; the copy shown to the user may be
+  translated, the repository artifact stays English.
+- *pedagogy* — `simple` | `contextual` | `professor` framing.
+- *illustration* — best-effort, honoured only with the `plannotator` backend
+  and an image-displaying surface.
+
+The active configuration is discovered at runtime from
+`~/.crewrig/validation.conf` (`key=value` lines: `backend`, `translate`,
+`pedagogy`, `illustration`; when the file is absent, the default
+`backend=internal` applies). The full procedure — backend detection, the
+`plannotator annotate <file> --gate --json` invocation, exit-plus-stdout
+validation, decision mapping, and fallback — lives in the `user-validate` skill,
+not here.
+
+---
+
 ## MemPalace — Agent Memory Protocol
 
 MemPalace is the unified persistent memory system, replacing the former

@@ -91,6 +91,7 @@ check-components:
     - "bash scripts/tests/test-e2e-libs-readme.sh"
     - "bash scripts/tests/test-e2e-runner.sh"
     - "bash scripts/tests/test-e2e-toml-merge.sh"
+    - "bash scripts/tests/test-setup-validation-backend.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

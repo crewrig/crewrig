@@ -263,3 +263,107 @@ print_store_access_guidance() {
       ;;
   esac
 }
+
+# configure_validation_backend
+#
+# Captures the per-user user-gate validation backend and the three cross-cutting
+# options (spec 0080), then persists them to ~/.crewrig/validation.conf — a
+# per-user, machine-local file OUTSIDE the core layer, never a committed layer
+# file (spec 0080 R15/R16, delta-01). The `user-validate` skill reads this file
+# at gate time to decide how to realise a validation gate.
+#
+# Two drive paths:
+#   Interactive (default) — fzf prompts, mirroring the opt-in toggles elsewhere
+#     in these scripts (e.g. INSTALL_SEQTHINK).
+#   Non-interactive (hermetic CI) — when ANY of VALIDATION_BACKEND,
+#     VALIDATION_TRANSLATE, VALIDATION_PEDAGOGY, or VALIDATION_ILLUSTRATION is
+#     set, the fzf prompts are bypassed and values are taken from the
+#     environment (each unset variable falls back to its documented default).
+#     This is the surface the CI test drives.
+#
+# Enum contract (an invalid value fails loudly — load-bearing in the
+# non-interactive path):
+#   backend      : internal | plannotator          (default: internal)
+#   translate    : off | on                         (default: off)
+#   pedagogy     : simple | contextual | professor  (default: contextual)
+#   illustration : off | on                         (default: off)
+#
+# The selection is recorded verbatim. Selecting `plannotator` only prints
+# install guidance; it never downgrades the recorded backend — the
+# binary-absent fallback to `internal` happens at gate time in the skill
+# (spec 0080 R4), not here.
+configure_validation_backend() {
+  local conf_dir="${HOME}/.crewrig"
+  local conf_file="${conf_dir}/validation.conf"
+  local backend translate pedagogy illustration
+
+  if [ -n "${VALIDATION_BACKEND:-}" ] || [ -n "${VALIDATION_TRANSLATE:-}" ] \
+     || [ -n "${VALIDATION_PEDAGOGY:-}" ] || [ -n "${VALIDATION_ILLUSTRATION:-}" ]; then
+    # Non-interactive path (hermetic CI): env overrides, defaults for the rest.
+    backend="${VALIDATION_BACKEND:-internal}"
+    translate="${VALIDATION_TRANSLATE:-off}"
+    pedagogy="${VALIDATION_PEDAGOGY:-contextual}"
+    illustration="${VALIDATION_ILLUSTRATION:-off}"
+  else
+    # Interactive path. Esc / empty selection falls back to the default so an
+    # optional convenience prompt never aborts the whole setup.
+    echo ""
+    echo "User-gate validation backend (spec 0080):"
+    backend=$(printf '%s\n' internal plannotator | fzf --height 10% \
+      --header "Validation backend? (internal = built-in AskUserQuestion prompt; plannotator = rich browser review, opt-in)") || backend=""
+    [ -n "$backend" ] || backend="internal"
+
+    translate=$(printf '%s\n' off on | fzf --height 10% \
+      --header "Translate the spec/plan into your preferred language for the gate presentation only? (the repo artifact stays English)") || translate=""
+    [ -n "$translate" ] || translate="off"
+
+    pedagogy=$(printf '%s\n' contextual simple professor | fzf --height 10% \
+      --header "Pedagogy level for validation requests? (simple / contextual / professor)") || pedagogy=""
+    [ -n "$pedagogy" ] || pedagogy="contextual"
+
+    illustration=$(printf '%s\n' off on | fzf --height 10% \
+      --header "Generate illustrations for reviews? (honoured only with the plannotator backend + a browser surface)") || illustration=""
+    [ -n "$illustration" ] || illustration="off"
+  fi
+
+  # --- Enum validation (defensive interactively; load-bearing in CI) ---
+  case "$backend" in
+    internal|plannotator) ;;
+    *) echo "  ERROR: invalid validation backend '$backend' (want: internal|plannotator)"; return 1 ;;
+  esac
+  case "$translate" in
+    on|off) ;;
+    *) echo "  ERROR: invalid validation translate '$translate' (want: on|off)"; return 1 ;;
+  esac
+  case "$pedagogy" in
+    simple|contextual|professor) ;;
+    *) echo "  ERROR: invalid validation pedagogy '$pedagogy' (want: simple|contextual|professor)"; return 1 ;;
+  esac
+  case "$illustration" in
+    on|off) ;;
+    *) echo "  ERROR: invalid validation illustration '$illustration' (want: on|off)"; return 1 ;;
+  esac
+
+  # --- Persist (machine-local, outside the core layer; spec 0080 R15/R16) ---
+  mkdir -p "$conf_dir"
+  {
+    printf '# crewrig user-gate validation backend (spec 0080)\n'
+    printf '# Per-user, machine-local; not a committed layer file. Read by the user-validate skill.\n'
+    printf 'backend=%s\n' "$backend"
+    printf 'translate=%s\n' "$translate"
+    printf 'pedagogy=%s\n' "$pedagogy"
+    printf 'illustration=%s\n' "$illustration"
+  } > "${conf_file}.tmp" && mv "${conf_file}.tmp" "$conf_file"
+  echo "  Validation backend recorded: backend=$backend translate=$translate pedagogy=$pedagogy illustration=$illustration"
+  echo "    -> $conf_file"
+
+  if [ "$backend" = "plannotator" ]; then
+    echo "  Plannotator backend selected. Install the binary if it is not present:"
+    echo "    curl -fsSL https://plannotator.ai/install.sh | bash"
+    if ! command -v plannotator >/dev/null 2>&1; then
+      echo "  Note: 'plannotator' is not on PATH yet — until it is installed, gates"
+      echo "        fall back to the 'internal' backend at gate time (spec 0080 R4)."
+    fi
+  fi
+  return 0
+}

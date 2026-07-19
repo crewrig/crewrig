@@ -208,6 +208,9 @@ jobs:
       - name: Test e2e toml-merge regression (spec 0079)
         run: bash scripts/tests/test-e2e-toml-merge.sh
 
+      - name: Test setup validation-backend helper regression (spec 0080)
+        run: bash scripts/tests/test-setup-validation-backend.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
