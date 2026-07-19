@@ -151,6 +151,10 @@ fi
 
 install_file "$REPO_DIR/config/SOUL.md" "$AGY_HOME/00_SOUL.md" \
   "SOUL.md -> 00_SOUL.md"
+
+# User-gate validation backend (spec 0080) — per-user selection persisted to
+# ~/.crewrig/validation.conf (outside the core layer). Read by user-validate.
+configure_validation_backend
 echo ""
 
 fi  # end: SKIP_RULES_CONFIG guard for shared configuration

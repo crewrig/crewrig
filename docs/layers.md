@@ -119,6 +119,7 @@ SDLC lifecycle tools:
 | `artifacts/core/skills/spec-author/` | Lifecycle skill — qualification stage author. |
 | `artifacts/core/skills/pr-logbook/` | Lifecycle skill — PR and logbook composer. |
 | `artifacts/core/skills/pr-reviewer/` | Lifecycle skill — independent PR reviewer. |
+| `artifacts/core/skills/user-validate/` | Lifecycle skill — backend-configurable user-gate validation. |
 | `artifacts/core/agents/spec-author/` | Lifecycle agent — spec-author specialist. |
 | `artifacts/core/agents/pr-logbook/` | Lifecycle agent — logbook composer specialist. |
 | `artifacts/core/agents/pr-reviewer/` | Lifecycle agent — PR reviewer specialist. |

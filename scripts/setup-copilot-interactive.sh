@@ -165,6 +165,10 @@ if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
     install_file "$REPO_DIR/AGENTS.org.md" "$COPILOT_INSTRUCTIONS/66-org-rules.instructions.md" \
       "AGENTS.org.md -> instructions/66-org-rules.instructions.md"
   fi
+
+  # User-gate validation backend (spec 0080) — per-user selection persisted to
+  # ~/.crewrig/validation.conf (outside the core layer). Read by user-validate.
+  configure_validation_backend
   echo ""
 
   # Level
