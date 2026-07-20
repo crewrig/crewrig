@@ -1,7 +1,7 @@
 ---
 id: "0082"
 slug: mempalace-3-6-support
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 566
