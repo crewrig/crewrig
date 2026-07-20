@@ -78,7 +78,7 @@ round, different forgotten edit.
 
 `task e2e:test -- --scenario 01-layered-context --cli gemini`. The
 `${HOME}` token now interpolates correctly: docker invocation shows
-`-v /Users/hoanicross/.gemini:/run/gemini-rules:ro`. Container
+`-v $HOME/.gemini:/run/gemini-rules:ro`. Container
 bootstrap runs and copies all seven layered-context rules into
 `/home/agent/.gemini/` (verified by an isolated bootstrap repro:
 00_SOUL.md, 10_USER_LEVEL.md, 20_ORGANIZATION.md, 30_USER_PROFILE.md,
