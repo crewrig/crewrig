@@ -96,6 +96,8 @@ Exit code is `0` on success (or when no scenarios are defined), non-zero when at
 fails (TAP `not ok`). Output lands in `reports/<run-id>/`, one `<cli>/<scenario>/` subdir per case
 with `scenario.tap`, captured stdout/stderr, and (when invoked) `judge.count`.
 
+**Redact before archiving.** Before committing anything under `reports/<run-id>/`, pipe run logs through `sed "s#$HOME#\$HOME#g"` and strip the owner column from `ls`-style probe output, so a fresh capture never re-embeds a machine-specific home path or login. The CI guard `scripts/check-no-machine-paths.sh` (spec 0081) enforces this — the build fails, naming the path, on any committed `/Users/<user>/` or `/home/<user>/` shape that slips through.
+
 ## Override file
 
 `tests/e2e/local.toml` is the gitignored override deep-merged over `defaults.toml` at run time.

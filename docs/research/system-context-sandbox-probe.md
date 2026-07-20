@@ -83,9 +83,9 @@ This machine's accumulated grants **would have produced a false PASS** had the
 probe run only from the working tree. Confirmed by inspection during the probe:
 
 - `~/.gemini/trustedFolders.json` trusts
-  `/Users/hoanicross/devel/perso/genai/framework` (a direct ancestor of the
-  crewrig tree) **and** `/users/hoanicross/devel` (case-insensitive on macOS →
-  effectively all of `~/devel`).
+  `$HOME/devel/perso/genai/framework` (a direct ancestor of the
+  crewrig tree) **and** a case-variant `$HOME/devel` entry (macOS paths are
+  case-insensitive → effectively all of `~/devel`).
 - `~/.copilot/config.json` `trustedFolders` lists the exact crewrig repo path.
 - `~/.copilot/permissions-config.json` `locations` has an approvals entry keyed
   to the exact crewrig repo path.
