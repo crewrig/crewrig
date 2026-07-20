@@ -207,6 +207,37 @@ run_check() {
 }
 
 # ---------------------------------------------------------------------------
+# Case f — A slash-less home root at end of line → exit 1, path named. Guards
+#          the regression where the deny pattern required a trailing slash after
+#          the owner, letting `export HOME=/Users/<user>` (no trailing slash,
+#          EOL) escape. The tolerant `(/|$)` delimiter must catch it.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" "envfile.sh" 'export HOME=/Users/eviluser'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-f: slash-less EOL home root fails the check (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-f: expected exit 1, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF "/Users/eviluser"; then
+    echo "PASS  case-f: stderr names the slash-less offending path"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-f: stderr did not name /Users/eviluser"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 total=$((pass + fail))

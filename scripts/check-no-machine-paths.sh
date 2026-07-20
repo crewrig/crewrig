@@ -32,8 +32,11 @@ set -euo pipefail
 REPO_DIR="${CREWRIG_REPO_DIR:-"$(cd "$(dirname "$0")/.." && pwd)"}"
 
 # Generic machine-specific home-path shape. Owner class excludes '<', '$', '{'
-# so placeholders and shell-variable forms fall out for free.
-PATTERN='/(Users|home)/[A-Za-z0-9._-]+/'
+# so placeholders and shell-variable forms fall out for free. The trailing
+# delimiter is tolerant — a slash OR end-of-token/line — so a slash-less home
+# root (e.g. `export HOME=/Users/alice` at end of line) is caught too, not just
+# paths that continue past the owner segment.
+PATTERN='/(Users|home)/[A-Za-z0-9._-]+(/|$)'
 
 # Sole benign owner present in the tracked tree (docker/e2e/base.Dockerfile).
 BENIGN_OWNER='agent'
