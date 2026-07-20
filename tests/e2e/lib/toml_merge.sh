@@ -55,14 +55,20 @@ if [[ -n "$LOCAL" && -f "$LOCAL" ]]; then
   # Phase 2 — post-merge fixups:
   #   command   : semantically a full replacement; if local.toml defines it for
   #               a CLI the appended result is wrong — take local's value verbatim.
-  #   env_keys  : array-append can produce duplicates; unique() preserves order.
+  #   env_keys  : array-append can produce duplicates; dedup first-seen,
+  #               preserving declaration order (per spec 0079 R2). NOTE: jq
+  #               unique() SORTS its input, so it MUST NOT be used here.
   jq --slurpfile local "$local_json" '
     .cli |= with_entries(
       .key as $c |
       if ($local[0].cli[$c].command? // null) != null then
         .value.command = $local[0].cli[$c].command
       else . end |
-      .value |= (if has("env_keys") then .env_keys |= unique else . end)
+      .value |= (
+        if has("env_keys")
+        then .env_keys |= reduce .[] as $k ([]; if any(.[]; . == $k) then . else . + [$k] end)
+        else . end
+      )
     )
   ' "$merged_json"
 else
