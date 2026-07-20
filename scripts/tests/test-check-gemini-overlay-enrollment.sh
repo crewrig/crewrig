@@ -27,6 +27,16 @@
 #      warning naming AGENTS.md.
 #   e. R6 reverse warning — a bogus enrolled entry (99_GHOST.md) not deployed →
 #      exit 0 (non-blocking) and a warning names it.
+#   f. Broadened name class (R2) — a future mixed-case overlay (67_NewTool.md)
+#      deployed but not enrolled → exit 1 naming it. Proves [A-Za-z0-9_]+ catches
+#      names that are not all-uppercase, so a future overlay cannot silently drop
+#      out of the deployed set.
+#   g. Fail-closed: a missing source file (settings absent) → exit 2.
+#   h. Fail-closed: an empty deployed set (setup with zero deploy tokens) → exit 2.
+#   i. Fail-closed: malformed settings JSON → exit 2.
+#   j. Fail-closed: settings missing the context.fileName key → exit 2.
+#   k. Boundary: context.fileName PRESENT but an empty list → exit 1 (a forward
+#      failure, NOT the exit-2 malformed case) — locks the Finding-2 distinction.
 #
 # Usage:
 #   bash scripts/tests/test-check-gemini-overlay-enrollment.sh
@@ -78,6 +88,29 @@ fi
 TARGET="$GEMINI_HOME/30_USER_PROFILE.md"
 install_file "$REPO_DIR/config/PROFILE.md" "$TARGET" "x"
 SETUP
+}
+
+# make_setup_script_no_tokens <repo>
+# A setup fixture with NO "$GEMINI_HOME/NN_NAME.md" deploy tokens, so the guard's
+# deployed set is empty and it must fail closed (exit 2).
+make_setup_script_no_tokens() {
+  local repo="$1"
+  mkdir -p "$repo/scripts"
+  cat > "$repo/scripts/setup-gemini-interactive.sh" <<'SETUP'
+#!/bin/bash
+# Fixture with no overlay deploy tokens at all.
+echo "nothing to deploy"
+SETUP
+}
+
+# append_deploy_token <repo> <overlay-basename>
+# Append one extra install_file deploy line to the fixture setup script so the
+# deployed set gains <overlay-basename>. Used to exercise a future overlay whose
+# name is not all-uppercase.
+append_deploy_token() {
+  local repo="$1" name="$2"
+  printf 'install_file "$REPO_DIR/config/x.md" "$GEMINI_HOME/%s" "x"\n' \
+    "$name" >> "$repo/scripts/setup-gemini-interactive.sh"
 }
 
 # make_settings <repo> <name>...
@@ -273,6 +306,145 @@ run_check() {
     pass=$((pass + 1))
   else
     echo "FAIL  case-e: stderr did not warn about 99_GHOST.md"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case f — Finding 1 / R2: a future mixed-case overlay (67_NewTool.md) deployed
+#          but not enrolled → exit 1 and named. Proves the broadened name class
+#          catches names that are not all-uppercase.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  make_setup_script "$repo"
+  append_deploy_token "$repo" "67_NewTool.md"
+  make_settings "$repo" "${MAIN_ENROLLED[@]}"   # 9 + AGENTS.md, NOT 67_NewTool.md
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-f: un-enrolled mixed-case overlay fails (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-f: expected exit 1, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF "67_NewTool.md"; then
+    echo "PASS  case-f: stderr names 67_NewTool.md (broadened name class, R2)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-f: stderr did not name 67_NewTool.md"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case g — Fail-closed: the settings source file is absent → exit 2.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  make_setup_script "$repo"
+  # Deliberately create no config/gemini/settings.json.
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 2 ]; then
+    echo "PASS  case-g: missing source file fails closed (exit 2)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-g: expected exit 2, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case h — Fail-closed: an empty deployed set (setup with zero deploy tokens) →
+#          exit 2, rather than a vacuous forward pass.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  make_setup_script_no_tokens "$repo"
+  make_settings "$repo" "${MAIN_ENROLLED[@]}"
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 2 ]; then
+    echo "PASS  case-h: empty deployed set fails closed (exit 2)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-h: expected exit 2, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case i — Fail-closed: malformed settings JSON → exit 2.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  make_setup_script "$repo"
+  mkdir -p "$repo/config/gemini"
+  printf '{ this is not valid json ]\n' > "$repo/config/gemini/settings.json"
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 2 ]; then
+    echo "PASS  case-i: malformed settings JSON fails closed (exit 2)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-i: expected exit 2, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case j — Fail-closed: settings missing the context.fileName key → exit 2
+#          (a structurally-incomplete file must not read as "all unenrolled").
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  make_setup_script "$repo"
+  mkdir -p "$repo/config/gemini"
+  printf '{ "context": {} }\n' > "$repo/config/gemini/settings.json"
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 2 ]; then
+    echo "PASS  case-j: settings missing context.fileName fails closed (exit 2)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-j: expected exit 2, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case k — Boundary: context.fileName PRESENT but an empty list → exit 1, not 2.
+#          Locks the Finding-2 distinction: an empty list is a legitimate
+#          forward failure (deployed overlays unenrolled), not the malformed
+#          exit-2 case.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  make_setup_script "$repo"
+  make_settings "$repo"   # context.fileName present but empty
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-k: present-but-empty fileName is a forward failure (exit 1, not 2)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-k: expected exit 1, got $CHECK_EXIT"
     echo "      actual stderr: $CHECK_STDERR"
     fail=$((fail + 1))
   fi

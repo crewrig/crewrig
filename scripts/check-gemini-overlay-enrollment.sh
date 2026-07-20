@@ -68,7 +68,15 @@ done
 # — then reduce each token to its bare overlay basename. An empty result means
 # the setup script's deploy shape changed out from under the guard: fail closed
 # (exit 2) rather than pass a vacuous forward check.
-if ! deployed=$(grep -oE '"\$GEMINI_HOME/[0-9]{2}_[A-Z_]+\.md"' "$SETUP_SCRIPT" \
+#
+# The name segment class is the permissive `[A-Za-z0-9_]+`, not just uppercase
+# (R2): the current overlays happen to be uppercase, but a future overlay named
+# with mixed case or a digit (e.g. `67_NewTool.md`) must still land in the
+# deployed set and be checked for enrollment — narrowing the class to `[A-Z_]`
+# would silently drop such an overlay and defeat the "covered automatically"
+# promise. The token stays anchored on `"$GEMINI_HOME/` + a two-digit priority,
+# so it can still only ever match a real deploy token.
+if ! deployed=$(grep -oE '"\$GEMINI_HOME/[0-9]{2}_[A-Za-z0-9_]+\.md"' "$SETUP_SCRIPT" \
                   | sed -E 's#.*/##; s/"$//' | sort -u) || [ -z "$deployed" ]; then
   echo "Error: no deployed overlays found in $SETUP_SCRIPT — the deploy token" >&2
   echo "shape may have changed; refusing to run a vacuous enrollment check." >&2
@@ -76,16 +84,32 @@ if ! deployed=$(grep -oE '"\$GEMINI_HOME/[0-9]{2}_[A-Z_]+\.md"' "$SETUP_SCRIPT" 
 fi
 
 # --- Enrolled set ------------------------------------------------------------
-# Read context.fileName with python3 (a CI dependency) and take basenames. A
-# parse failure (malformed JSON, missing key) is an internal error (exit 2).
+# Read context.fileName with python3 (a CI dependency) and take basenames.
+#
+# A malformed settings file must NOT masquerade as "everything unenrolled": a
+# structurally-absent or wrong-typed `context` / `context.fileName` (or JSON
+# that does not parse at all) is an internal error (exit 2), distinct from a
+# key that is PRESENT but an empty list — that stays a legitimate forward
+# failure (the deployed overlays are simply unenrolled, exit 1). The python
+# helper exits 2 on the malformed cases; that non-zero propagates through the
+# pipeline (pipefail) into the `if !` guard below.
 if ! enrolled=$(python3 -c '
 import json, os, sys
 with open(sys.argv[1], encoding="utf-8") as fh:
     data = json.load(fh)
-for name in data.get("context", {}).get("fileName", []):
+context = data.get("context")
+if not isinstance(context, dict):
+    sys.stderr.write("context key is absent or not an object\n")
+    sys.exit(2)
+file_names = context.get("fileName")
+if not isinstance(file_names, list):
+    sys.stderr.write("context.fileName is absent or not an array\n")
+    sys.exit(2)
+for name in file_names:
     print(os.path.basename(name))
 ' "$SETTINGS_FILE" | sort -u); then
-  echo "Error: failed to parse context.fileName from $SETTINGS_FILE" >&2
+  echo "Error: could not read a well-formed context.fileName list from $SETTINGS_FILE" >&2
+  echo "(malformed JSON, or a missing/wrong-typed context.fileName key)." >&2
   exit 2
 fi
 
