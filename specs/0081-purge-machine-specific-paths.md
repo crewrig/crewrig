@@ -1,7 +1,7 @@
 ---
 id: "0081"
 slug: purge-machine-specific-paths
-status: draft
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 562
