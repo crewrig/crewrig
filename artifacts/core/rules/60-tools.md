@@ -352,8 +352,18 @@ Before ending:
 
 - **Temporal facts**: Use validity windows (`valid_from` / `valid_to`)
   for facts that change over time.
+- **Half-open intervals (MemPalace 3.6.0)**: A point-in-time (`as_of`)
+  query treats a fact's window as the half-open interval
+  `[valid_from, valid_to)` — the upper bound is *strict*, so a fact whose
+  `valid_to` equals the query instant has already ended and is excluded at
+  that instant. This lets a fact and its successor share a single boundary
+  instant without an as-of query returning both.
 - **Contradiction detection**: The KG detects conflicting facts. When
-  flagged, investigate and invalidate the outdated fact.
+  flagged, investigate and invalidate the outdated fact. MemPalace 3.6.0
+  also exposes `mempalace_kg_supersede`, an atomic close-and-replace
+  primitive that closes the old fact and opens the new one at one shared
+  boundary instant — available but not prescribed; the invalidate-then-add
+  convention above remains the default.
 - **Entity naming**: Use descriptive names. Disambiguate with parentheses
   when needed: `React (Library)` vs `React (Concept)`.
 

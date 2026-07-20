@@ -10,7 +10,7 @@
 # Pin matches the `install-mempalace` task in Taskfile.yml.
 FROM crewrig/e2e-base:latest
 
-ARG MEMPALACE_VERSION=">=3.3.3,<3.4"
+ARG MEMPALACE_VERSION=">=3.6.0,<3.7"
 
 USER agent
 WORKDIR /home/agent/workspace

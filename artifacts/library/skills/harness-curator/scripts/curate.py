@@ -277,7 +277,7 @@ def read_from_mempalace() -> List[Dict[str, Any]]:
     except ImportError as e:
         print(
             f"Error: failed to import mempalace ({e}). "
-            "Install via pipx: pipx install 'mempalace>=3.3.3,<3.4'",
+            "Install via pipx: pipx install 'mempalace>=3.6.0,<3.7'",
             file=sys.stderr,
         )
         sys.exit(2)

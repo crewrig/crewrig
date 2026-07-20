@@ -11,7 +11,7 @@ CLI session connects to it via `chromadb.HttpClient` through
 
 ## Prerequisites
 
-- **MemPalace** installed via `pipx` (`pipx install 'mempalace>=3.3.3,<3.4'`).
+- **MemPalace** installed via `pipx` (`pipx install 'mempalace>=3.6.0,<3.7'`).
   The interpreter at `~/.local/pipx/venvs/mempalace/bin/python` ships the
   `chromadb` package the daemon needs.
 - **`chroma` binary** available on `PATH`. The MemPalace pipx venv exposes
