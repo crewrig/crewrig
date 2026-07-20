@@ -95,6 +95,8 @@ check-components:
     - "bash scripts/tests/test-setup-validation-backend.sh"
     - "bash scripts/check-no-machine-paths.sh"
     - "bash scripts/tests/test-check-no-machine-paths.sh"
+    - "bash scripts/check-gemini-overlay-enrollment.sh"
+    - "bash scripts/tests/test-check-gemini-overlay-enrollment.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
