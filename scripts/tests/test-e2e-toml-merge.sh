@@ -97,6 +97,27 @@ else
   note_fail "scalar override" "got: $(echo "$out" | jq -c .cli.claude)"
 fi
 
+# --- Case 3b: env_keys dedup preserves declaration order (spec 0079 R2) ----
+# Deliberately UNSORTED input: defaults declare [Z, A], local appends [A, M].
+# First-seen order-preserving dedup MUST yield [Z, A, M]. A sorting dedup
+# (e.g. jq unique) would wrongly yield [A, M, Z], so this case discriminates.
+c3b_d="$TMP/c3b-defaults.toml"
+c3b_l="$TMP/c3b-local.toml"
+cat > "$c3b_d" <<'TOML'
+[cli.claude]
+env_keys = ["Z", "A"]
+TOML
+cat > "$c3b_l" <<'TOML'
+[cli.claude]
+env_keys = ["A", "M"]
+TOML
+out="$(bash "$MERGER" "$c3b_d" "$c3b_l" 2>/dev/null)"
+if echo "$out" | jq -e '.cli.claude.env_keys == ["Z", "A", "M"]' >/dev/null; then
+  note_pass "env_keys dedup — declaration order preserved [Z,A,M]"
+else
+  note_fail "env_keys dedup order" "got: $(echo "$out" | jq -c '.cli.claude.env_keys') expected [\"Z\",\"A\",\"M\"]"
+fi
+
 # --- Case 4: key add in local --------------------------------------------
 c4_d="$TMP/c4-defaults.toml"
 c4_l="$TMP/c4-local.toml"
@@ -184,10 +205,14 @@ cat > "$c7_l" <<'TOML'
 [cli.claude]
 image = "Y"
 TOML
+# Approximate /tmp entry count is intentional; Case 7 tolerates ±1, so ls (vs find) is fine here.
+# shellcheck disable=SC2012
 before="$(ls /tmp 2>/dev/null | wc -l | tr -d ' ')"
 bash "$MERGER" "$c7_d" "$c7_l" >/dev/null 2>&1
 # Allow for the merger to make a tmp dir during execution, but it must be
 # cleaned by its EXIT trap before this snapshot.
+# Approximate /tmp entry count is intentional; Case 7 tolerates ±1, so ls (vs find) is fine here.
+# shellcheck disable=SC2012
 after="$(ls /tmp 2>/dev/null | wc -l | tr -d ' ')"
 # Tolerate ±1 (other processes may create transient files during the test).
 delta=$((after - before))

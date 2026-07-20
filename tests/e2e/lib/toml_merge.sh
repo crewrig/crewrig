@@ -32,6 +32,8 @@ if [[ ! -f "$DEFAULTS" ]]; then
   exit 1
 fi
 
+# $PATH in the message is intentional literal text for the human, not a shell var to expand.
+# shellcheck disable=SC2016
 command -v yq >/dev/null 2>&1 \
   || { printf 'ERROR: yq is required on $PATH (mikefarah/yq >= v4.40).\n' >&2; exit 1; }
 
@@ -48,6 +50,8 @@ if [[ -n "$LOCAL" && -f "$LOCAL" ]]; then
 
   # Phase 1 — deep-merge with array-append (`*+`) for mounts, env_keys, etc.
   merged_json="${TMP_DIR}/merged.json"
+  # The yq program is single-quoted on purpose: $item is a yq variable, it must NOT be shell-expanded.
+  # shellcheck disable=SC2016
   yq eval-all -p=json -o=json \
     '. as $item ireduce ({}; . *+ $item)' \
     "$defaults_json" "$local_json" > "$merged_json"
@@ -55,14 +59,20 @@ if [[ -n "$LOCAL" && -f "$LOCAL" ]]; then
   # Phase 2 — post-merge fixups:
   #   command   : semantically a full replacement; if local.toml defines it for
   #               a CLI the appended result is wrong — take local's value verbatim.
-  #   env_keys  : array-append can produce duplicates; unique() preserves order.
+  #   env_keys  : array-append can produce duplicates; dedup first-seen,
+  #               preserving declaration order (per spec 0079 R2). NOTE: jq
+  #               unique() SORTS its input, so it MUST NOT be used here.
   jq --slurpfile local "$local_json" '
     .cli |= with_entries(
       .key as $c |
       if ($local[0].cli[$c].command? // null) != null then
         .value.command = $local[0].cli[$c].command
       else . end |
-      .value |= (if has("env_keys") then .env_keys |= unique else . end)
+      .value |= (
+        if has("env_keys")
+        then .env_keys |= reduce .[] as $k ([]; if any(.[]; . == $k) then . else . + [$k] end)
+        else . end
+      )
     )
   ' "$merged_json"
 else
