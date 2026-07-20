@@ -40,7 +40,7 @@ set -uo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 COMMON_LIB="$REPO_DIR/scripts/lib/common.sh"
 SETUP_DIR="$REPO_DIR/scripts"
-SKILL_MD="$REPO_DIR/artifacts/core/skills/user-validate/SKILL.md"
+SKILL_MD="$REPO_DIR/artifacts/library/skills/user-validate/SKILL.md"
 
 if [ ! -f "$COMMON_LIB" ]; then
   echo "FATAL: missing $COMMON_LIB" >&2
