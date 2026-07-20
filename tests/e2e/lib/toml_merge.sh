@@ -32,6 +32,8 @@ if [[ ! -f "$DEFAULTS" ]]; then
   exit 1
 fi
 
+# $PATH in the message is intentional literal text for the human, not a shell var to expand.
+# shellcheck disable=SC2016
 command -v yq >/dev/null 2>&1 \
   || { printf 'ERROR: yq is required on $PATH (mikefarah/yq >= v4.40).\n' >&2; exit 1; }
 
@@ -48,6 +50,8 @@ if [[ -n "$LOCAL" && -f "$LOCAL" ]]; then
 
   # Phase 1 — deep-merge with array-append (`*+`) for mounts, env_keys, etc.
   merged_json="${TMP_DIR}/merged.json"
+  # The yq program is single-quoted on purpose: $item is a yq variable, it must NOT be shell-expanded.
+  # shellcheck disable=SC2016
   yq eval-all -p=json -o=json \
     '. as $item ireduce ({}; . *+ $item)' \
     "$defaults_json" "$local_json" > "$merged_json"

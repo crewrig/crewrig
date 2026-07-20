@@ -205,10 +205,14 @@ cat > "$c7_l" <<'TOML'
 [cli.claude]
 image = "Y"
 TOML
+# Approximate /tmp entry count is intentional; Case 7 tolerates ±1, so ls (vs find) is fine here.
+# shellcheck disable=SC2012
 before="$(ls /tmp 2>/dev/null | wc -l | tr -d ' ')"
 bash "$MERGER" "$c7_d" "$c7_l" >/dev/null 2>&1
 # Allow for the merger to make a tmp dir during execution, but it must be
 # cleaned by its EXIT trap before this snapshot.
+# Approximate /tmp entry count is intentional; Case 7 tolerates ±1, so ls (vs find) is fine here.
+# shellcheck disable=SC2012
 after="$(ls /tmp 2>/dev/null | wc -l | tr -d ' ')"
 # Tolerate ±1 (other processes may create transient files during the test).
 delta=$((after - before))
