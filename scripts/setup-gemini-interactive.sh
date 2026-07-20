@@ -80,12 +80,7 @@ if [ ${#MISSING_PREREQS[@]} -gt 0 ]; then
   exit 1
 fi
 
-# --- MemPalace version pin ---
-# The framework targets the v3.3.x line (see issue #30, Phase 0.1).
-# v3.3.3 introduces the `wing` parameter on diary tools, BM25 hybrid search,
-# and Halls — all relied upon by the cross-tool continuity protocol.
-MEMPALACE_MIN_VERSION="3.3.3"
-MEMPALACE_MAX_VERSION_EXCLUSIVE="3.4"
+# MemPalace version pin is single-sourced in scripts/lib/common.sh.
 
 # --- Existing context files: keep or refresh? ---
 SKIP_RULES_CONFIG=0
@@ -174,7 +169,7 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   MEMPALACE_VERSION="$(mempalace_installed_version "$MEMPALACE_PYTHON_BIN")"
   if ! mempalace_version_in_range "$MEMPALACE_PYTHON_BIN"; then
     echo "  ERROR: MemPalace ${MEMPALACE_VERSION:-(unknown)} is outside the supported range >=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}."
-    echo "         Upgrade with: pipx install --force 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
+    echo "         Install a supported version with: pipx install --force 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
     exit 1
   fi
   echo "  Detected MemPalace interpreter: $MEMPALACE_PYTHON_BIN (mempalace $MEMPALACE_VERSION)"

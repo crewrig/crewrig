@@ -124,6 +124,9 @@ jobs:
       - name: Test mempalace-transcript hook regression (issue #530)
         run: bash scripts/tests/test-mempalace-transcript-hook.sh
 
+      - name: Test mempalace version-range guard (spec 0082)
+        run: bash scripts/tests/test-mempalace-version-range.sh
+
       - name: Test system-context store regression (spec 0068 + 0075)
         run: bash scripts/tests/test-system-context-store.sh
 

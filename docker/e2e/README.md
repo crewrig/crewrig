@@ -12,7 +12,7 @@ per supported CLI, and a MemPalace sidecar.
 | `crewrig/e2e-claude:latest` | `claude.Dockerfile` | Base + `@anthropic-ai/claude-code` (npm global).            |
 | `crewrig/e2e-gemini:latest` | `gemini.Dockerfile` | Base + `@google/gemini-cli` (npm global).                   |
 | `crewrig/e2e-copilot:latest`| `copilot.Dockerfile`| Base + `@github/copilot` (npm global).                      |
-| `crewrig/e2e-mempalace:latest` | `mempalace.Dockerfile` | Base + `mempalace>=3.3.3,<3.4` via pipx. One-shot admin container. |
+| `crewrig/e2e-mempalace:latest` | `mempalace.Dockerfile` | Base + `mempalace>=3.6.0,<3.7` via pipx. One-shot admin container. |
 
 All images run as `agent` (uid/gid 1000) with workdir
 `/home/agent/workspace`. Mount points are pre-created and owned by
@@ -58,7 +58,7 @@ docker build \
 
 Build-args available: `CLAUDE_CODE_VERSION`, `GEMINI_CLI_VERSION`,
 `COPILOT_CLI_VERSION`, `MEMPALACE_VERSION`. Defaults float (`latest` /
-`>=3.3.3,<3.4`); pin them and re-run `task e2e:lock` to record the
+`>=3.6.0,<3.7`); pin them and re-run `task e2e:lock` to record the
 resolved versions in `.versions.lock`.
 
 ## `.versions.lock`

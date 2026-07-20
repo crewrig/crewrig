@@ -11,12 +11,12 @@ description: "Harness feedback-loop curator. Activate on demand to read
   with dedup and per-run issue cap."
 type: skill
 license: Apache-2.0
-compatibility: Requires bash, jq, the gh CLI (used by setup-labels.sh and --apply), and the mempalace Python package (pipx install 'mempalace>=3.3.3,<3.4').
+compatibility: Requires bash, jq, the gh CLI (used by setup-labels.sh and --apply), and the mempalace Python package (pipx install 'mempalace>=3.6.0,<3.7').
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.6.0"
+    version: "1.6.1"
 claude:
   allowed-tools:
     - Read

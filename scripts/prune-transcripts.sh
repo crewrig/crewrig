@@ -23,6 +23,11 @@
 
 set -euo pipefail
 
+# shellcheck source=scripts/lib/common.sh
+# Sourced for the single-sourced MemPalace version pin (MEMPALACE_MIN_VERSION /
+# MEMPALACE_MAX_VERSION_EXCLUSIVE).
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
 # --- Configuration ---
 DEFAULT_DAYS=30
 DRY_RUN=true
@@ -53,7 +58,7 @@ while [[ $# -gt 0 ]]; do
       echo ""
       echo "Prerequisites:"
       echo "  MemPalace must be installed via pipx (recommended):"
-      echo "    pipx install 'mempalace>=3.3.3,<3.4'"
+      echo "    pipx install 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
       echo ""
       echo "  If you installed via pip to a custom venv, set MEMPALACE_PYTHON:"
       echo "    MEMPALACE_PYTHON=/path/to/venv/bin/python $0 ..."
@@ -100,7 +105,7 @@ MEMPALACE_PYTHON="${MEMPALACE_PYTHON:-$(auto_detect_mempalace_python)}"
 
 command -v "$MEMPALACE_PYTHON" >/dev/null 2>&1 || {
   echo "Error: $MEMPALACE_PYTHON not found" >&2
-  echo "Install MemPalace via pipx: pipx install 'mempalace>=3.3.3,<3.4'" >&2
+  echo "Install MemPalace via pipx: pipx install 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'" >&2
   exit 1
 }
 
@@ -123,6 +128,7 @@ exec env \
   PROJECT_FILTER="$PROJECT_FILTER" \
   CUTOFF_DATE="$CUTOFF_DATE" \
   DRY_RUN="$DRY_RUN" \
+  MEMPALACE_INSTALL_SPEC="mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}" \
   "$MEMPALACE_PYTHON" - <<'PYEOF'
 import os
 import re
@@ -133,7 +139,10 @@ try:
     from mempalace.mcp_server import tool_list_drawers, tool_delete_drawer
 except ImportError as e:
     print(f"Error: Failed to import mempalace: {e}", file=sys.stderr)
-    print("  Ensure MemPalace is installed: pipx install 'mempalace>=3.3.3,<3.4'", file=sys.stderr)
+    print(
+        f"  Ensure MemPalace is installed: pipx install '{os.environ['MEMPALACE_INSTALL_SPEC']}'",
+        file=sys.stderr,
+    )
     sys.exit(2)
 
 wing = os.environ["TRANSCRIPTS_WING"]

@@ -468,9 +468,9 @@ claude mcp remove <name>
 - **Sequential Thinking** — Working memory; registered as user-scope.
 - **MemPalace** — Persistent agent memory; registered as user-scope (the
   setup script auto-detects the right Python interpreter and verifies the
-  installed version is within the supported range `>=3.3.3,<3.4`). Install
+  installed version is within the supported range `>=3.6.0,<3.7`). Install
   or upgrade with `task install-mempalace` (or
-  `pipx install --force 'mempalace>=3.3.3,<3.4'`).
+  `pipx install --force 'mempalace>=3.6.0,<3.7'`).
 - **GitHub** — Available via Claude Code's built-in connectors.
 
 ## Contributing

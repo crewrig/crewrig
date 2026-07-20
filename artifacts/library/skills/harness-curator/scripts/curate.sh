@@ -128,7 +128,7 @@ fi
 
 command -v "$MEMPALACE_PYTHON" >/dev/null 2>&1 || {
   echo "Error: $MEMPALACE_PYTHON not found" >&2
-  echo "Install MemPalace via pipx: pipx install 'mempalace>=3.3.3,<3.4'" >&2
+  echo "Install MemPalace via pipx: pipx install 'mempalace>=3.6.0,<3.7'" >&2
   exit 2
 }
 

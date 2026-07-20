@@ -2,6 +2,19 @@
 # scripts/lib/common.sh — Shared helpers sourced by setup and import scripts.
 # Do NOT execute directly.
 
+# --- MemPalace supported version pin (single source of truth) ---
+# Declared once here and consumed by every script that sources this file:
+# the four setup-*-interactive.sh flows, start-chroma-server.sh, and
+# prune-transcripts.sh. Keep this the ONLY executable declaration of the pin;
+# the literal-text copies (README, Taskfile, docs, skills) are kept in sync by
+# scripts/tests/test-mempalace-version-range.sh.
+#
+# The framework targets the MemPalace 3.6.x line. The cross-tool continuity
+# protocol relies on the `wing` parameter on diary tools, BM25 hybrid search,
+# and Halls — all still present in the 3.6.x line.
+MEMPALACE_MIN_VERSION="3.6.0"
+MEMPALACE_MAX_VERSION_EXCLUSIVE="3.7"
+
 backup_file() {
   local target="$1"
   if [ -f "$target" ] || [ -L "$target" ]; then
@@ -55,8 +68,8 @@ mempalace_installed_version() {
 }
 
 # mempalace_version_in_range <python>
-# Requires MEMPALACE_MIN_VERSION and MEMPALACE_MAX_VERSION_EXCLUSIVE to be set
-# by the calling script before this function is invoked.
+# Reads MEMPALACE_MIN_VERSION and MEMPALACE_MAX_VERSION_EXCLUSIVE, declared as
+# the single source of truth at the top of this file.
 # Returns 0 if the installed version is in [MIN, MAX_EXCLUSIVE), 1 otherwise.
 mempalace_version_in_range() {
   local py="$1"
