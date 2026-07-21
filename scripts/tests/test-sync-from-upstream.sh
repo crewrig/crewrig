@@ -56,6 +56,34 @@
 #   s. Excluded child preserved — a file under an excluded child of a strict
 #      directory is absent from FETCH_HEAD but NOT deleted.
 #
+# Spec-0086 --preserve-history regression cases (R13):
+#   t. Happy path (R5-R6) — after a successful --preserve-history sync, the
+#      fetched upstream commit (FETCH_HEAD) is a real ancestor of the current
+#      branch tip (git merge-base --is-ancestor), and every restored file is
+#      byte-for-byte identical to what an ordinary sync (no flag) would have
+#      produced.
+#   u. No-op (R11) — when FETCH_HEAD is already an ancestor of the current
+#      branch tip at invocation time, no new commit is created and the sync
+#      exits 0.
+#   v. Shallow-clone refusal (R12) — on a shallow clone, the sync exits
+#      non-zero BEFORE any fetch, restore, or commit.
+#   w. Unrelated-change refusal (R8) — an uncommitted change outside the
+#      paths governed by .crewrig/core-paths.txt and .crewrig/.synced-markers/
+#      blocks the graft commit after the policy-aware restore has already
+#      applied; the offending path is printed, no commit is created, and the
+#      sync exits non-zero.
+#   x. Nested-excluded-child refusal (R8, PLAN v2 arch-finding fix) — an
+#      uncommitted change under an `excluded` entry nested under a
+#      `strict`/`adopt-on-edit` parent (e.g. specs/org under specs) blocks the
+#      graft commit exactly like case w, even though the path falls inside the
+#      governing parent's own prefix; the strict parent's own restore still
+#      applies before the guard fires.
+#   y. Direct-excluded-entry refusal (R8, PLAN v2 arch-finding fix) — an
+#      uncommitted change under a top-level `excluded` manifest entry with no
+#      governing parent overlap (e.g. AGENTS.org.md) blocks the graft commit
+#      via the same path_is_governed() carve-out, independently of the nested
+#      form covered by case x.
+#
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
 
@@ -1024,6 +1052,423 @@ run_case_stderr() {
   fi
   if [ "$ok" -eq 1 ]; then
     echo "PASS  case-s: excluded child not deleted by orphan cleanup"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case t — spec 0086 R5-R6: --preserve-history happy path. After a successful
+# --preserve-history sync, the fetched upstream commit (FETCH_HEAD) is a real
+# ancestor of the current branch tip, and every restored file is byte-for-byte
+# identical to what an ordinary sync (no flag) would have produced. Two
+# independent, identically-configured adopters are synced — one with
+# --preserve-history, one without — so their resulting working trees can be
+# compared directly.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream v1 content" \
+    "other.txt"     "other content"
+  commit_files "$upstream" "advance core-file" \
+    "core-file.txt" "upstream v2 content"
+  upstream_sha="$(git -C "$upstream" rev-parse HEAD)"
+
+  # crewrig.config.toml and .crewrig/core-paths.txt are committed (not left
+  # untracked) so the R8 anti-pollution guard sees a fully clean working tree
+  # going in — untracked config/manifest files would otherwise themselves be
+  # reported as ungoverned changes.
+  adopter_hist="$(mktemp -d "$TMP_ROOT/adopter-hist.XXXXXX")"
+  init_git_repo "$adopter_hist"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter_hist/crewrig.config.toml"
+  mkdir -p "$adopter_hist/.crewrig"
+  printf 'core-file.txt\n' > "$adopter_hist/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter_hist/core-file.txt"
+  printf '%s' "other content" > "$adopter_hist/other.txt"
+  git -C "$adopter_hist" add -A
+  git -C "$adopter_hist" commit -q -m initial
+
+  adopter_plain="$(mktemp -d "$TMP_ROOT/adopter-plain.XXXXXX")"
+  init_git_repo "$adopter_plain"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter_plain/crewrig.config.toml"
+  mkdir -p "$adopter_plain/.crewrig"
+  printf 'core-file.txt\n' > "$adopter_plain/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter_plain/core-file.txt"
+  printf '%s' "other content" > "$adopter_plain/other.txt"
+  git -C "$adopter_plain" add -A
+  git -C "$adopter_plain" commit -q -m initial
+
+  actual_exit=0
+  ( cd "$adopter_hist" && CREWRIG_REPO_DIR="$adopter_hist" bash "$SCRIPT_UNDER_TEST" --preserve-history >/dev/null 2>&1 ) || actual_exit=$?
+  ( cd "$adopter_plain" && CREWRIG_REPO_DIR="$adopter_plain" bash "$SCRIPT_UNDER_TEST" >/dev/null 2>&1 )
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-t: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if ! git -C "$adopter_hist" merge-base --is-ancestor "$upstream_sha" HEAD 2>/dev/null; then
+    echo "FAIL  case-t: fetched upstream commit $upstream_sha is not an ancestor of the current branch tip"
+    ok=0
+  fi
+
+  core_hist="$(cat "$adopter_hist/core-file.txt" 2>/dev/null)"
+  core_plain="$(cat "$adopter_plain/core-file.txt" 2>/dev/null)"
+  other_hist="$(cat "$adopter_hist/other.txt" 2>/dev/null)"
+  other_plain="$(cat "$adopter_plain/other.txt" 2>/dev/null)"
+
+  if [ "$core_hist" != "upstream v2 content" ] || [ "$core_hist" != "$core_plain" ]; then
+    echo "FAIL  case-t: core-file.txt diverged from an ordinary sync (hist='$core_hist', plain='$core_plain')"
+    ok=0
+  fi
+  if [ "$other_hist" != "$other_plain" ]; then
+    echo "FAIL  case-t: other.txt diverged from an ordinary sync (hist='$other_hist', plain='$other_plain')"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-t: preserve-history happy path grafts ancestry with identical restore content"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case u — spec 0086 R11: no-op when FETCH_HEAD is already an ancestor of the
+# current branch tip at invocation time. The adopter is a full clone of
+# upstream (so upstream's tip is already reachable from the adopter's own
+# history) plus one extra local commit; --preserve-history must create no new
+# commit and exit 0.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" "core-file.txt" "upstream content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  rm -rf "$adopter"
+  git clone -q "file://$upstream" "$adopter"
+  git -C "$adopter" config user.email "test@example.com"
+  git -C "$adopter" config user.name "Test"
+  git -C "$adopter" config commit.gpgsign false
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  git -C "$adopter" add crewrig.config.toml .crewrig/core-paths.txt
+  git -C "$adopter" commit -q -m "adopter config"
+
+  head_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>/dev/null)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-u: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if [ "$head_after" != "$head_before" ]; then
+    echo "FAIL  case-u: HEAD moved (a commit was created) though FETCH_HEAD was already an ancestor"
+    ok=0
+  fi
+  if ! echo "$stdout_out" | grep -qF "no-op"; then
+    echo "FAIL  case-u: stdout missing the no-op acknowledgement"
+    echo "      actual stdout: $stdout_out"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-u: no-op when FETCH_HEAD already an ancestor, no commit created, exit 0"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case v — spec 0086 R12: --preserve-history refuses to run on a shallow
+# clone, exiting non-zero BEFORE any fetch, restore, or commit.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" "core-file.txt" "upstream content"
+
+  seed="$(mktemp -d "$TMP_ROOT/seed.XXXXXX")"
+  init_git_repo "$seed"
+  make_initial_commit "$seed" "core-file.txt" "seed content v1"
+  commit_files "$seed" "advance" "core-file.txt" "seed content v2"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  rm -rf "$adopter"
+  git clone -q --depth 1 "file://$seed" "$adopter"
+  git -C "$adopter" config user.email "test@example.com"
+  git -C "$adopter" config user.name "Test"
+  git -C "$adopter" config commit.gpgsign false
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  git -C "$adopter" add crewrig.config.toml .crewrig/core-paths.txt
+  git -C "$adopter" commit -q -m "adopter config"
+
+  head_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  actual_exit=0
+  output="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>&1)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -eq 0 ]; then
+    echo "FAIL  case-v: expected non-zero exit on a shallow clone, got 0"
+    ok=0
+  fi
+  if ! echo "$output" | grep -qi "shallow"; then
+    echo "FAIL  case-v: output does not mention the shallow-clone refusal"
+    echo "      actual output: $output"
+    ok=0
+  fi
+  if echo "$output" | grep -qF "Fetching"; then
+    echo "FAIL  case-v: a fetch was attempted despite the shallow-clone refusal"
+    echo "      actual output: $output"
+    ok=0
+  fi
+  if [ "$head_after" != "$head_before" ]; then
+    echo "FAIL  case-v: a commit was created despite the shallow-clone refusal"
+    ok=0
+  fi
+  content_after="$(cat "$adopter/core-file.txt" 2>/dev/null)"
+  if [ "$content_after" != "seed content v2" ]; then
+    echo "FAIL  case-v: the working tree was modified despite the shallow-clone refusal"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-v: shallow clone refuses --preserve-history before any fetch/restore/commit"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case w — spec 0086 R8: an uncommitted change outside the paths governed by
+# .crewrig/core-paths.txt and .crewrig/.synced-markers/ blocks the graft
+# commit. The policy-aware restore has already applied by the time the guard
+# fires, the offending path is printed, no commit is created, and the sync
+# exits non-zero.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" "core-file.txt" "upstream v1 content"
+  commit_files "$upstream" "advance" "core-file.txt" "upstream v2 content"
+
+  # crewrig.config.toml and .crewrig/core-paths.txt are committed (not left
+  # untracked) so the only uncommitted change going into the R8 check is the
+  # deliberate unrelated.txt edit below — an untracked config/manifest file
+  # would otherwise ALSO be reported as ungoverned, muddying the assertion.
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "original unrelated content" > "$adopter/unrelated.txt"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  head_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  # Uncommitted change OUTSIDE the governed paths: unrelated.txt is not listed
+  # in .crewrig/core-paths.txt, nor under .crewrig/.synced-markers/.
+  printf 'locally edited unrelated content' > "$adopter/unrelated.txt"
+
+  actual_exit=0
+  output="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>&1)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -eq 0 ]; then
+    echo "FAIL  case-w: expected non-zero exit on an unrelated uncommitted change, got 0"
+    ok=0
+  fi
+  if ! echo "$output" | grep -qF "unrelated.txt"; then
+    echo "FAIL  case-w: offending path unrelated.txt was not printed"
+    echo "      actual output: $output"
+    ok=0
+  fi
+  core_after="$(cat "$adopter/core-file.txt" 2>/dev/null)"
+  if [ "$core_after" != "upstream v2 content" ]; then
+    echo "FAIL  case-w: policy-aware restore did not apply before the graft was blocked (core-file.txt='$core_after')"
+    ok=0
+  fi
+  unrelated_after="$(cat "$adopter/unrelated.txt" 2>/dev/null)"
+  if [ "$unrelated_after" != "locally edited unrelated content" ]; then
+    echo "FAIL  case-w: unrelated.txt working-tree edit was lost"
+    ok=0
+  fi
+  if [ "$head_after" != "$head_before" ]; then
+    echo "FAIL  case-w: a graft commit was created despite the R8 refusal"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-w: unrelated uncommitted change blocks the graft commit after restore applied"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case x — spec 0086 R8, PLAN v2 arch-finding fix (nested form): an
+# uncommitted change under specs/org/ — an `excluded` manifest entry nested
+# under the `strict` parent specs — blocks the graft commit exactly like case
+# w's fully unrelated path, even though specs/org falls inside the "specs"
+# prefix that path_is_governed() would otherwise treat as governed. Guards
+# against the pre-fix behavior where the nested excluded child matched the
+# parent's "$gov"/* wildcard and was silently swept into the graft commit.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" "specs/0001.md" "spec v1 content"
+  commit_files "$upstream" "advance spec" "specs/0001.md" "spec v2 content"
+
+  # crewrig.config.toml and .crewrig/core-paths.txt are committed (not left
+  # untracked) so the only uncommitted change going into the R8 check is the
+  # deliberate specs/org/custom.md edit below — an untracked config/manifest
+  # file would otherwise ALSO be reported as ungoverned, muddying the
+  # assertion (same rationale as case w).
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'specs\nspecs/org\texcluded\n' > "$adopter/.crewrig/core-paths.txt"
+  mkdir -p "$adopter/specs/org"
+  printf '%s' "spec v1 content" > "$adopter/specs/0001.md"
+  printf '%s' "org content v1" > "$adopter/specs/org/custom.md"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  head_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  # Uncommitted change under the excluded child specs/org/, nested beneath
+  # the strict parent specs.
+  printf 'locally edited org content' > "$adopter/specs/org/custom.md"
+
+  actual_exit=0
+  output="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>&1)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -eq 0 ]; then
+    echo "FAIL  case-x: expected non-zero exit on an uncommitted change under a nested excluded child, got 0"
+    ok=0
+  fi
+  if ! echo "$output" | grep -qF "specs/org/custom.md"; then
+    echo "FAIL  case-x: offending path specs/org/custom.md was not printed"
+    echo "      actual output: $output"
+    ok=0
+  fi
+  specs_after="$(cat "$adopter/specs/0001.md" 2>/dev/null)"
+  if [ "$specs_after" != "spec v2 content" ]; then
+    echo "FAIL  case-x: policy-aware restore of the strict parent specs did not apply before the graft was blocked (specs/0001.md='$specs_after')"
+    ok=0
+  fi
+  org_after="$(cat "$adopter/specs/org/custom.md" 2>/dev/null)"
+  if [ "$org_after" != "locally edited org content" ]; then
+    echo "FAIL  case-x: specs/org/custom.md working-tree edit was lost"
+    ok=0
+  fi
+  if [ "$head_after" != "$head_before" ]; then
+    echo "FAIL  case-x: a graft commit was created despite the nested excluded-child edit"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-x: nested excluded child (specs/org) blocks the graft commit, strict parent restore still applied"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case y — spec 0086 R8, PLAN v2 arch-finding fix (direct form): an
+# uncommitted change under AGENTS.org.md — a top-level `excluded` manifest
+# entry with NO governing parent overlap — blocks the graft commit via the
+# same path_is_governed() carve-out, independently of case x's nested shape.
+# Guards against the pre-fix behavior where a bare excluded entry matched
+# "$gov" exactly (no policy filter in the loop at all) and was silently swept
+# into the graft commit.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" "core-file.txt" "upstream v1 content"
+  commit_files "$upstream" "advance" "core-file.txt" "upstream v2 content"
+
+  # crewrig.config.toml and .crewrig/core-paths.txt are committed (not left
+  # untracked) so the only uncommitted change going into the R8 check is the
+  # deliberate AGENTS.org.md edit below (same rationale as case w/x).
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\nAGENTS.org.md\texcluded\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "org rules v1" > "$adopter/AGENTS.org.md"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  head_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  # Uncommitted change under the top-level excluded entry AGENTS.org.md, with
+  # no strict/adopt-on-edit parent overlap at all.
+  printf 'locally edited org rules' > "$adopter/AGENTS.org.md"
+
+  actual_exit=0
+  output="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>&1)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -eq 0 ]; then
+    echo "FAIL  case-y: expected non-zero exit on an uncommitted change under a direct top-level excluded entry, got 0"
+    ok=0
+  fi
+  if ! echo "$output" | grep -qF "AGENTS.org.md"; then
+    echo "FAIL  case-y: offending path AGENTS.org.md was not printed"
+    echo "      actual output: $output"
+    ok=0
+  fi
+  core_after="$(cat "$adopter/core-file.txt" 2>/dev/null)"
+  if [ "$core_after" != "upstream v2 content" ]; then
+    echo "FAIL  case-y: policy-aware restore of the strict core-file.txt did not apply before the graft was blocked (core-file.txt='$core_after')"
+    ok=0
+  fi
+  org_after="$(cat "$adopter/AGENTS.org.md" 2>/dev/null)"
+  if [ "$org_after" != "locally edited org rules" ]; then
+    echo "FAIL  case-y: AGENTS.org.md working-tree edit was lost"
+    ok=0
+  fi
+  if [ "$head_after" != "$head_before" ]; then
+    echo "FAIL  case-y: a graft commit was created despite the direct excluded-entry edit"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-y: direct top-level excluded entry (AGENTS.org.md) blocks the graft commit"
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
