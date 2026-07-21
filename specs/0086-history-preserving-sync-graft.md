@@ -1,7 +1,7 @@
 ---
 id: "0086"
 slug: history-preserving-sync-graft
-status: draft
+status: implemented
 complexity: standard
 related-issue: 584
 version: 1.0.0
