@@ -1,7 +1,7 @@
 ---
 id: "0088"
 slug: http-wrapper-pool-bound
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 588
