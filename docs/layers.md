@@ -108,8 +108,8 @@ matches the contract.
 |---|---|
 | `artifacts/library/skills/harness-report/` | Harness skill — friction tagging protocol. |
 | `artifacts/library/skills/harness-curator/` | Harness skill — friction clustering and issue authoring. |
-| `artifacts/library/agents/harness-curator/` | Harness agent — curator specialist. |
 | `artifacts/library/skills/user-validate/` | Cross-cutting skill — backend-configurable user-gate validation. |
+| `artifacts/library/agents/harness-curator/` | Harness agent — curator specialist. |
 
 **`artifacts/core/`** — SDLC lifecycle tools and operational role skills and
 agents. Deployed to project scope (e.g., `.claude/skills/` in the workspace).
