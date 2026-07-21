@@ -10,9 +10,10 @@
 # then the daemon is up.
 #
 # This test locks in the contract that the health check MUST poll the
-# status script (mirroring the 15s / 0.3s pattern of
-# `scripts/start-chroma-server.sh` lines 65-80) instead of relying on
-# a single invocation.
+# status script (mirroring the 15s / 0.3s pattern of the health-check
+# loop in `scripts/start-chroma-server.sh` — the
+# `# ── Health-check loop` block) instead of relying on a single
+# invocation.
 #
 # Strategy
 # --------
@@ -107,8 +108,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 # Test 1 — Behavioral: the health-check block must survive a 2-second
 # slow start. Against the one-shot code on main this fails; once the
-# developer adds a retry loop (mirroring start-chroma-server.sh lines
-# 65-80), it passes.
+# developer adds a retry loop (mirroring the `# ── Health-check loop`
+# block in start-chroma-server.sh), it passes.
 # ─────────────────────────────────────────────────────────────────────────────
 HARNESS="$(mktemp -t chroma-health-race-harness.XXXXXX.sh)"
 trap 'rm -rf "$SANDBOX" "$HARNESS"' EXIT INT TERM
@@ -149,7 +150,8 @@ fi
 #   - a `while`/`until` loop in the health-check block
 #   - a `for` loop in the health-check block
 #   - a recognizable `deadline=` / `SECONDS` budget marker
-#     (matches the convention used by scripts/start-chroma-server.sh)
+#     (matches the convention used by the `# ── Health-check loop`
+#     block in scripts/start-chroma-server.sh)
 # ─────────────────────────────────────────────────────────────────────────────
 if echo "$BLOCK" | grep -Eq '(\bwhile\b|\buntil\b|\bfor\b|deadline=|SECONDS)'; then
   note_pass "health-check block contains a polling construct"
