@@ -6,7 +6,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=%h/.mempalace
-ExecStart=%h/.local/pipx/venvs/mempalace/bin/python3.13 %h/.local/pipx/venvs/mempalace/bin/chroma run --path %h/.mempalace/palace --host 127.0.0.1 --port 8001
+ExecStart=/usr/bin/env bash __TLS_EXEC__ %h/.local/pipx/venvs/mempalace/bin/python3.13 %h/.local/pipx/venvs/mempalace/bin/chroma run --path %h/.mempalace/palace --host 127.0.0.1 --port 8001
 Restart=always
 RestartSec=3
 LimitNOFILE=65536

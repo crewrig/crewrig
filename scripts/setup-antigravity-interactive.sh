@@ -2,6 +2,8 @@
 set -e
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+# shellcheck source=scripts/lib/tls-delegation.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/tls-delegation.sh"
 
 AGY_HOME="${HOME}/.gemini/antigravity-cli"
 AGY_MCP_CONFIG="${HOME}/.gemini/config/mcp_config.json"
@@ -158,6 +160,11 @@ fi  # end: SKIP_RULES_CONFIG guard for shared configuration
 echo "Configuring $AGY_MCP_CONFIG..."
 mkdir -p "$(dirname "$AGY_MCP_CONFIG")"
 
+# Custom root-CA / native-TLS delegation (spec 0084) — opt-in; runs before the
+# network bootstrap so pipx / npx / git inherit trust when consented.
+offer_tls_delegation
+echo ""
+
 backup_file "$AGY_MCP_CONFIG"
 
 # Detect MemPalace Python interpreter (used to patch mcpServers.mempalace.command)
@@ -200,8 +207,8 @@ if [ "$INSTALL_MEMPALACE_AGY" = "yes" ]; then
     --arg py "$MEMPALACE_PYTHON_BIN" \
     --arg repo "$REPO_DIR" \
     '.mcpServers.mempalace = {
-       "command": $py,
-       "args": [($repo + "/scripts/lib/mempalace-http-wrapper.py")]
+       "command": "bash",
+       "args": [($repo + "/scripts/lib/tls-exec.sh"), $py, ($repo + "/scripts/lib/mempalace-http-wrapper.py")]
      }')
   echo "  mempalace MCP server configured."
   INSTALL_MEMPALACE=1
@@ -211,10 +218,10 @@ fi
 INSTALL_SEQTHINK=$(echo -e "yes\nno" | fzf --height 10% \
   --header "Include SequentialThinking MCP server in mcp_config.json?")
 if [ "$INSTALL_SEQTHINK" = "yes" ]; then
-  MCP_BASE=$(echo "$MCP_BASE" | jq \
+  MCP_BASE=$(echo "$MCP_BASE" | jq --arg repo "$REPO_DIR" \
     '.mcpServers.sequentialthinking = {
-       "command": "npx",
-       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+       "command": "bash",
+       "args": [($repo + "/scripts/lib/tls-exec.sh"), "npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
      }')
   echo "  sequentialthinking MCP server configured."
 fi

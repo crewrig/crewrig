@@ -177,6 +177,7 @@ install_chroma_daemon() {
         -e "s|__MEMPALACE_HOME__|${mempalace_home}|g" \
         -e "s|__PIPX_PYTHON__|${pipx_py}|g" \
         -e "s|__CHROMA_BIN__|${chroma_bin}|g" \
+        -e "s|__TLS_EXEC__|${repo_dir}/scripts/lib/tls-exec.sh|g" \
         "$plist_src" > "$plist_dst"
       echo "  Installed: $plist_dst"
       if launchctl list | grep -q com.mempalace.chroma-server; then
@@ -195,7 +196,11 @@ install_chroma_daemon() {
         return 1
       fi
       mkdir -p "$HOME/.config/systemd/user"
-      cp "$svc_src" "$svc_dst"
+      # Materialise the unit through the TLS wrapper (spec 0084): substitute
+      # __TLS_EXEC__ in ExecStart so the supervised daemon inherits any
+      # user-consented custom-CA trust for its embedding-model fetch.
+      sed -e "s|__TLS_EXEC__|${repo_dir}/scripts/lib/tls-exec.sh|g" \
+        "$svc_src" > "$svc_dst"
       echo "  Installed: $svc_dst"
       systemctl --user daemon-reload \
         && systemctl --user enable --now mempalace-chroma-server \

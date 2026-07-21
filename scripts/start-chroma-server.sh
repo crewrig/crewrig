@@ -10,6 +10,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 . "${SCRIPT_DIR}/lib/common.sh"
 
+# Custom root-CA / native-TLS delegation (spec 0084): inherit user-consented
+# trust so the daemon's embedding-model fetch works behind a custom CA.
+if [ -f "${HOME}/.crewrig/tls-env.sh" ]; then
+  # shellcheck source=/dev/null
+  . "${HOME}/.crewrig/tls-env.sh"
+fi
+
 MEMPALACE_DIR="${HOME}/.mempalace"
 PID_FILE="${MEMPALACE_DIR}/chroma-server.pid"
 LOG_FILE="${MEMPALACE_DIR}/chroma-server.log"
