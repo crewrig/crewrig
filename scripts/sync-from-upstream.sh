@@ -50,9 +50,10 @@
 #     `--preserve-history`.
 #   - Anti-pollution guard: aborts the history-preserving step (without
 #     committing, leaving the already-restored files in the working tree) if
-#     the working tree carries an uncommitted change outside the union of
-#     every path declared in .crewrig/core-paths.txt and the
-#     .crewrig/.synced-markers/ bookkeeping directory.
+#     the working tree carries an uncommitted change outside the governed set
+#     — every `strict`/`adopt-on-edit` manifest entry, minus any nested
+#     `excluded` child — plus the .crewrig/.synced-markers/ bookkeeping
+#     directory.
 #
 # When FETCH_HEAD is already an ancestor of the current branch tip, the mode
 # is a no-op: no commit is created and the script exits zero.
@@ -343,22 +344,39 @@ reconcile_dir() {
 
 # ---------------------------------------------------------------------------
 # path_is_governed <path>
-# Return 0 iff <path> is covered by the union of every entry declared in
-# .crewrig/core-paths.txt (any policy, including `excluded`) and the marker
-# bookkeeping directory .crewrig/.synced-markers/ — the scope required by the
-# R8 anti-pollution guard for --preserve-history. The marker directory is
+# Return 0 iff <path> is covered by the union of every `strict` or
+# `adopt-on-edit` entry declared in .crewrig/core-paths.txt, MINUS any
+# `excluded` entry nested under one of those governed parents (e.g.
+# `specs/org` under `specs`, `docs/org` under `docs`) — carved out the same
+# way the dirty-guard and apply loops carve them out, via
+# excluded_children_of() — plus the marker bookkeeping directory
+# .crewrig/.synced-markers/. A top-level `excluded` manifest entry (e.g.
+# `AGENTS.org.md`) is never governed. This is the scope required by the R8
+# anti-pollution guard for --preserve-history. The marker directory is
 # checked unconditionally (not only when the manifest happens to declare it)
 # since R8 names it explicitly, separately from "the paths governed by
 # .crewrig/core-paths.txt".
 # ---------------------------------------------------------------------------
 path_is_governed() {
-  local path="$1" gov
+  local path="$1" i gov skip excl
   case "$path" in
     .crewrig/.synced-markers|.crewrig/.synced-markers/*) return 0 ;;
   esac
-  for gov in "${PATHS[@]}"; do
+  for i in "${!PATHS[@]}"; do
+    case "${POLICIES[$i]}" in
+      strict|adopt-on-edit) ;;
+      *) continue ;;
+    esac
+    gov="${PATHS[$i]}"
     case "$path" in
-      "$gov"|"$gov"/*) return 0 ;;
+      "$gov"|"$gov"/*)
+        skip=0
+        while IFS= read -r excl; do
+          case "$path" in "$excl"/*|"$excl") skip=1; break ;; esac
+        done < <(excluded_children_of "$gov")
+        [ "$skip" -eq 1 ] && continue
+        return 0
+        ;;
     esac
   done
   return 1
@@ -563,8 +581,9 @@ if [ "$PRESERVE_HISTORY" = true ]; then
   fi
 
   # R8 — anti-pollution guard: reject any uncommitted change outside the
-  # union of every path declared in .crewrig/core-paths.txt (any policy) and
-  # the .crewrig/.synced-markers/ bookkeeping directory (path_is_governed).
+  # governed set — every `strict`/`adopt-on-edit` manifest entry, minus any
+  # `excluded` child nested under it — plus the .crewrig/.synced-markers/
+  # bookkeeping directory (path_is_governed).
   # On violation, print the offending path(s), leave the already-restored
   # files in the working tree, create no commit, exit non-zero.
   UNGOVERNED=()
@@ -586,9 +605,10 @@ if [ "$PRESERVE_HISTORY" = true ]; then
   fi
 
   # R5-R7, R9 — build the single graft commit. Staging everything is safe
-  # here: the R8 check just above already proved every uncommitted change is
-  # governed, so the resulting tree is exactly what the policy-aware restore
-  # alone produced (R6), plus its marker bookkeeping (R7).
+  # here: the R8 check just above already proved every uncommitted change
+  # lies within the governed set (path_is_governed), so the resulting tree
+  # is exactly what the policy-aware restore alone produced (R6), plus its
+  # marker bookkeeping (R7).
   git -C "$REPO_DIR" add -A
   GRAFT_TREE="$(git -C "$REPO_DIR" write-tree)"
   UPSTREAM_SHA="$(git -C "$REPO_DIR" rev-parse FETCH_HEAD)"

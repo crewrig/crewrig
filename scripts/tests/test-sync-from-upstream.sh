@@ -72,6 +72,17 @@
 #      blocks the graft commit after the policy-aware restore has already
 #      applied; the offending path is printed, no commit is created, and the
 #      sync exits non-zero.
+#   x. Nested-excluded-child refusal (R8, PLAN v2 arch-finding fix) — an
+#      uncommitted change under an `excluded` entry nested under a
+#      `strict`/`adopt-on-edit` parent (e.g. specs/org under specs) blocks the
+#      graft commit exactly like case w, even though the path falls inside the
+#      governing parent's own prefix; the strict parent's own restore still
+#      applies before the guard fires.
+#   y. Direct-excluded-entry refusal (R8, PLAN v2 arch-finding fix) — an
+#      uncommitted change under a top-level `excluded` manifest entry with no
+#      governing parent overlap (e.g. AGENTS.org.md) blocks the graft commit
+#      via the same path_is_governed() carve-out, independently of the nested
+#      form covered by case x.
 #
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
@@ -1311,6 +1322,153 @@ run_case_stderr() {
 
   if [ "$ok" -eq 1 ]; then
     echo "PASS  case-w: unrelated uncommitted change blocks the graft commit after restore applied"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case x — spec 0086 R8, PLAN v2 arch-finding fix (nested form): an
+# uncommitted change under specs/org/ — an `excluded` manifest entry nested
+# under the `strict` parent specs — blocks the graft commit exactly like case
+# w's fully unrelated path, even though specs/org falls inside the "specs"
+# prefix that path_is_governed() would otherwise treat as governed. Guards
+# against the pre-fix behavior where the nested excluded child matched the
+# parent's "$gov"/* wildcard and was silently swept into the graft commit.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" "specs/0001.md" "spec v1 content"
+  commit_files "$upstream" "advance spec" "specs/0001.md" "spec v2 content"
+
+  # crewrig.config.toml and .crewrig/core-paths.txt are committed (not left
+  # untracked) so the only uncommitted change going into the R8 check is the
+  # deliberate specs/org/custom.md edit below — an untracked config/manifest
+  # file would otherwise ALSO be reported as ungoverned, muddying the
+  # assertion (same rationale as case w).
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'specs\nspecs/org\texcluded\n' > "$adopter/.crewrig/core-paths.txt"
+  mkdir -p "$adopter/specs/org"
+  printf '%s' "spec v1 content" > "$adopter/specs/0001.md"
+  printf '%s' "org content v1" > "$adopter/specs/org/custom.md"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  head_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  # Uncommitted change under the excluded child specs/org/, nested beneath
+  # the strict parent specs.
+  printf 'locally edited org content' > "$adopter/specs/org/custom.md"
+
+  actual_exit=0
+  output="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>&1)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -eq 0 ]; then
+    echo "FAIL  case-x: expected non-zero exit on an uncommitted change under a nested excluded child, got 0"
+    ok=0
+  fi
+  if ! echo "$output" | grep -qF "specs/org/custom.md"; then
+    echo "FAIL  case-x: offending path specs/org/custom.md was not printed"
+    echo "      actual output: $output"
+    ok=0
+  fi
+  specs_after="$(cat "$adopter/specs/0001.md" 2>/dev/null)"
+  if [ "$specs_after" != "spec v2 content" ]; then
+    echo "FAIL  case-x: policy-aware restore of the strict parent specs did not apply before the graft was blocked (specs/0001.md='$specs_after')"
+    ok=0
+  fi
+  org_after="$(cat "$adopter/specs/org/custom.md" 2>/dev/null)"
+  if [ "$org_after" != "locally edited org content" ]; then
+    echo "FAIL  case-x: specs/org/custom.md working-tree edit was lost"
+    ok=0
+  fi
+  if [ "$head_after" != "$head_before" ]; then
+    echo "FAIL  case-x: a graft commit was created despite the nested excluded-child edit"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-x: nested excluded child (specs/org) blocks the graft commit, strict parent restore still applied"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case y — spec 0086 R8, PLAN v2 arch-finding fix (direct form): an
+# uncommitted change under AGENTS.org.md — a top-level `excluded` manifest
+# entry with NO governing parent overlap — blocks the graft commit via the
+# same path_is_governed() carve-out, independently of case x's nested shape.
+# Guards against the pre-fix behavior where a bare excluded entry matched
+# "$gov" exactly (no policy filter in the loop at all) and was silently swept
+# into the graft commit.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" "core-file.txt" "upstream v1 content"
+  commit_files "$upstream" "advance" "core-file.txt" "upstream v2 content"
+
+  # crewrig.config.toml and .crewrig/core-paths.txt are committed (not left
+  # untracked) so the only uncommitted change going into the R8 check is the
+  # deliberate AGENTS.org.md edit below (same rationale as case w/x).
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\nAGENTS.org.md\texcluded\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "org rules v1" > "$adopter/AGENTS.org.md"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  head_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  # Uncommitted change under the top-level excluded entry AGENTS.org.md, with
+  # no strict/adopt-on-edit parent overlap at all.
+  printf 'locally edited org rules' > "$adopter/AGENTS.org.md"
+
+  actual_exit=0
+  output="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>&1)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -eq 0 ]; then
+    echo "FAIL  case-y: expected non-zero exit on an uncommitted change under a direct top-level excluded entry, got 0"
+    ok=0
+  fi
+  if ! echo "$output" | grep -qF "AGENTS.org.md"; then
+    echo "FAIL  case-y: offending path AGENTS.org.md was not printed"
+    echo "      actual output: $output"
+    ok=0
+  fi
+  core_after="$(cat "$adopter/core-file.txt" 2>/dev/null)"
+  if [ "$core_after" != "upstream v2 content" ]; then
+    echo "FAIL  case-y: policy-aware restore of the strict core-file.txt did not apply before the graft was blocked (core-file.txt='$core_after')"
+    ok=0
+  fi
+  org_after="$(cat "$adopter/AGENTS.org.md" 2>/dev/null)"
+  if [ "$org_after" != "locally edited org rules" ]; then
+    echo "FAIL  case-y: AGENTS.org.md working-tree edit was lost"
+    ok=0
+  fi
+  if [ "$head_after" != "$head_before" ]; then
+    echo "FAIL  case-y: a graft commit was created despite the direct excluded-entry edit"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-y: direct top-level excluded entry (AGENTS.org.md) blocks the graft commit"
     pass=$((pass + 1))
   else
     fail=$((fail + 1))

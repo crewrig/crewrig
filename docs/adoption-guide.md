@@ -370,7 +370,12 @@ drop the flag and run an ordinary sync.
 
 **Most-likely error — unrelated uncommitted change:** The provenance commit
 refuses to sweep in changes outside the paths governed by
-`.crewrig/core-paths.txt` and `.crewrig/.synced-markers/`. The restore still
+`.crewrig/core-paths.txt` and `.crewrig/.synced-markers/`. Governed means
+every `strict` or `adopt-on-edit` manifest entry, minus any `excluded` entry
+nested under it — `excluded` entries themselves (org paths such as
+`specs/org`, `docs/org`, `AGENTS.org.md`) are never part of this governed
+set, so an unrelated edit under one of them still aborts the graft commit
+exactly like any other unrelated change. The restore still
 runs and its output stays in your working tree, but the script exits 1
 without committing:
 
