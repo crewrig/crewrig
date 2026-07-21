@@ -32,6 +32,13 @@ if [ "${MEMPALACE_TRANSCRIPT_ENABLED:-0}" != "1" ]; then
   exit 0
 fi
 
+# Custom root-CA / native-TLS delegation (spec 0084): inherit user-consented
+# trust for any network this hook performs.
+if [ -f "${HOME}/.crewrig/tls-env.sh" ]; then
+  # shellcheck source=/dev/null
+  . "${HOME}/.crewrig/tls-env.sh"
+fi
+
 # --- Dependencies ---
 command -v jq >/dev/null 2>&1 || { echo "mempalace-transcript: jq required" >&2; exit 0; }
 

@@ -7,6 +7,8 @@
 
     <key>ProgramArguments</key>
     <array>
+        <string>/bin/bash</string>
+        <string>__TLS_EXEC__</string>
         <string>__PIPX_PYTHON__</string>
         <string>__CHROMA_BIN__</string>
         <string>run</string>

@@ -214,6 +214,9 @@ jobs:
       - name: Test setup validation-backend helper regression (spec 0080)
         run: bash scripts/tests/test-setup-validation-backend.sh
 
+      - name: Test TLS-delegation helper and runtime wrapper (spec 0084)
+        run: bash scripts/tests/test-tls-delegation.sh
+
       - name: Check no machine-specific home paths (spec 0081)
         run: bash scripts/check-no-machine-paths.sh
 

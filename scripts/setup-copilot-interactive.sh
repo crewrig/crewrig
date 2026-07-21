@@ -12,6 +12,8 @@
 set -e
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+# shellcheck source=scripts/lib/tls-delegation.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/tls-delegation.sh"
 
 COPILOT_HOME="${HOME}/.copilot"
 COPILOT_INSTRUCTIONS="${COPILOT_HOME}/instructions"
@@ -213,6 +215,11 @@ if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
   echo ""
 fi
 
+# Custom root-CA / native-TLS delegation (spec 0084) — opt-in; runs before the
+# network bootstrap so pipx / npx / git inherit trust when consented.
+offer_tls_delegation
+echo ""
+
 # --- MCP server configuration (~/.copilot/mcp-config.json) ---
 echo "Configuring ~/.copilot/mcp-config.json..."
 MCP_CONFIG_TARGET="$COPILOT_HOME/mcp-config.json"
@@ -249,10 +256,10 @@ if [ "$INSTALL_MEMPALACE_COPILOT" = "yes" ]; then
   # Copy template, patch mcpServers.mempalace.command with the detected
   # python, and substitute __CREWRIG_REPO_DIR__ in args so the
   # http-wrapper resolves to an absolute path (mirrors Gemini setup).
-  jq --arg py "$MEMPALACE_PYTHON_BIN" --arg repo "$REPO_DIR" \
-    '.mcpServers.mempalace.command = $py
-     | .mcpServers.mempalace.args = (.mcpServers.mempalace.args
-         | map(gsub("__CREWRIG_REPO_DIR__"; $repo)))' \
+  jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" --arg py "$MEMPALACE_PYTHON_BIN" --arg repo "$REPO_DIR" \
+    '.mcpServers.mempalace.command = "bash"
+     | .mcpServers.mempalace.args = ([$tlsexec, $py]
+         + (.mcpServers.mempalace.args | map(gsub("__CREWRIG_REPO_DIR__"; $repo))))' \
     "$MCP_CONFIG_SRC" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
   echo "  Installed: mcp-config.json (mempalace patched with detected Python + wrapper path)"
 else
@@ -260,6 +267,17 @@ else
     "$MCP_CONFIG_SRC" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
   echo "  Installed: mcp-config.json (mempalace omitted from mcpServers)"
 fi
+
+# Route the sequentialthinking MCP server through tls-exec.sh so its npx package
+# fetch inherits custom-CA trust when consented (spec 0084 R2/R9). Runs in both
+# the mempalace-in and mempalace-out branches.
+jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" '
+  if .mcpServers.sequentialthinking then
+    .mcpServers.sequentialthinking.args = ([$tlsexec, .mcpServers.sequentialthinking.command]
+      + .mcpServers.sequentialthinking.args)
+    | .mcpServers.sequentialthinking.command = "bash"
+  else . end' \
+  "$MCP_CONFIG_TARGET" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
 echo ""
 
 # --- Artifact install to user home (ADR-0011, spec 0019) ---
