@@ -83,6 +83,22 @@ open-file limit:
 
 Both should report `65536` (or higher) once the reload completes.
 
+### File-descriptor floor on the manual launch path
+
+`scripts/start-chroma-server.sh` — the ad-hoc path used to bring up the
+daemon outside the installed supervisor — raises the daemon process's
+open-file soft limit to `10240` (`MEMPALACE_CHROMA_ULIMIT_FLOOR`
+overrides the default) immediately before launching it. This floor is
+**deliberately different from, and independent of, the supervised path's
+`65536` floor documented above** — do not confuse the two: raising or
+lowering one has no effect on the other, and a manually-started daemon
+never inherits the supervisor units' resource limits.
+
+If the raise fails (e.g. the host's file-descriptor hard ceiling is fixed
+below the requested floor), the script prints a warning to standard error
+naming the ceiling that remains in effect and continues launching the
+daemon rather than aborting.
+
 ## Migrating from the legacy `PersistentClient` setup
 
 If you upgraded a working CrewRig install across the #98 boundary:
