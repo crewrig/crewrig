@@ -105,6 +105,7 @@ capabilities:
       - bash scripts/tests/test-tls-delegation.sh
       - bash scripts/check-no-machine-paths.sh
       - bash scripts/tests/test-check-no-machine-paths.sh
+      - bash scripts/tests/test-setup-mcp-merge.sh
 
   - id: lint-markdown
     name: "Lint Markdown files"
