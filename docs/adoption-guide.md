@@ -332,6 +332,57 @@ Revert these changes before running sync, or promote them to overlay overrides.
 
 Resolution: see [Troubleshooting — dirty-core refusal](#dirty-core-refusal) below.
 
+### `--preserve-history` (spec 0086)
+
+By default the sync above neither stages nor commits anything — it is always
+your call what to do with the updated working tree. Pass `--preserve-history`
+when you additionally want the specific upstream commit that was fetched to
+become a real ancestor of your current branch, so `git log`, `git merge-base`,
+and `git bisect` surface the upstream lineage directly instead of losing it to
+a plain file restore.
+
+```bash
+bash scripts/sync-from-upstream.sh --preserve-history
+```
+
+This flag is opt-in and per-invocation only — it is never enabled implicitly
+by `crewrig.config.toml`, an environment variable, or any other mechanism.
+
+**Expected outcome:** The script performs the same policy-aware restore as an
+ordinary sync (file content is byte-identical either way), then creates a
+single additional commit on your current branch whose second parent is the
+fetched `FETCH_HEAD` commit. If `FETCH_HEAD` is already an ancestor of your
+branch tip (e.g. you already ran `--preserve-history` since upstream last
+advanced), the flag is a no-op: no commit is created and the script exits
+zero.
+
+**Most-likely error — shallow-clone refusal:** `--preserve-history` requires a
+full clone; a shallow clone cannot safely host the two-parent commit's
+ancestry claims. The script exits 1 before doing anything else:
+
+```text
+Error: --preserve-history requires a full (non-shallow) clone.
+Remove the shallow limitation (e.g. 'git fetch --unshallow') or omit --preserve-history.
+```
+
+Resolution: run `git fetch --unshallow` (or re-clone without `--depth`), or
+drop the flag and run an ordinary sync.
+
+**Most-likely error — unrelated uncommitted change:** The provenance commit
+refuses to sweep in changes outside the paths governed by
+`.crewrig/core-paths.txt` and `.crewrig/.synced-markers/`. The restore still
+runs and its output stays in your working tree, but the script exits 1
+without committing:
+
+```text
+Error: --preserve-history refuses to commit — uncommitted change(s) outside the governed paths:
+  notes/scratch.md
+Commit, stash, or revert these changes (outside .crewrig/core-paths.txt and .crewrig/.synced-markers/), or omit --preserve-history.
+```
+
+Resolution: commit, stash, or revert the listed path(s), then re-run
+`--preserve-history`.
+
 ### Example catalogs — adopt-on-edit (spec 0021)
 
 `config/expertise/`, `config/teams/`, and `config/level/` carry the
