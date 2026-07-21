@@ -4,6 +4,7 @@
 #
 # Locks the contracts of:
 #   - scripts/start-chroma-server.sh   (idempotent start, PID-file lifecycle)
+#       * raises the open-file limit to a floor before launching (spec 0087)
 #   - scripts/stop-chroma-server.sh    (graceful stop, cleans PID file)
 #   - scripts/status-chroma-server.sh  (exit 0 healthy / exit 1 otherwise)
 #   - scripts/lib/mempalace-http-wrapper.py
@@ -85,6 +86,73 @@ if [[ -f "$WRAPPER_PY" ]]; then
   fi
 else
   note_fail "wrapper carries chromadb version pin" "missing $WRAPPER_PY"
+fi
+
+# Tests 9-11 anchor on `if ! ulimit -n` rather than the plain substring
+# `ulimit -n`: the guard's own explanatory comment above it also contains
+# the literal text `ulimit -n` (and a separate comment mentions `nohup`),
+# so a bare substring grep would key off prose instead of code. `if ! ulimit
+# -n` and `^nohup` are each unique in the file today and identify the real
+# guarded call and the real daemon launch, not the comments describing them.
+
+# Test 9 — start script must raise the open-file limit (spec 0087 R1) BEFORE
+# launching the daemon (spec 0087 R6): the guarded `ulimit -n` call must sit
+# at a lower line number than the `nohup` daemon launch.
+if [[ -f "$START_SH" ]]; then
+  ulimit_line="$(grep -n "if ! ulimit -n" "$START_SH" | head -1 | cut -d: -f1)"
+  nohup_line="$(grep -n "^nohup" "$START_SH" | head -1 | cut -d: -f1)"
+  if [[ -z "$ulimit_line" ]]; then
+    note_fail "start script raises open-file limit before nohup" \
+      "no guarded 'ulimit -n' call found"
+  elif [[ -z "$nohup_line" ]]; then
+    note_fail "start script raises open-file limit before nohup" \
+      "no 'nohup' daemon launch found"
+  elif (( ulimit_line < nohup_line )); then
+    note_pass "start script raises open-file limit before nohup (ulimit L${ulimit_line} < nohup L${nohup_line})"
+  else
+    note_fail "start script raises open-file limit before nohup" \
+      "ulimit (L${ulimit_line}) is NOT before nohup (L${nohup_line})"
+  fi
+else
+  note_fail "start script raises open-file limit before nohup" "missing $START_SH"
+fi
+
+# Test 10 — the ulimit call carries both the literal default floor (10240,
+# spec 0087 R1) and the literal override variable name
+# (MEMPALACE_CHROMA_ULIMIT_FLOOR, spec 0087 R2) on that same line, so a
+# refactor cannot silently change the default or rename the override
+# variable without also breaking this assertion.
+if [[ -f "$START_SH" ]]; then
+  ulimit_line_text="$(grep -n "if ! ulimit -n" "$START_SH" | head -1)"
+  if [[ -z "$ulimit_line_text" ]]; then
+    note_fail "ulimit call carries default floor and override variable" \
+      "no guarded 'ulimit -n' call found"
+  elif [[ "$ulimit_line_text" == *"10240"* && "$ulimit_line_text" == *"MEMPALACE_CHROMA_ULIMIT_FLOOR"* ]]; then
+    note_pass "ulimit call carries default floor and override variable"
+  else
+    note_fail "ulimit call carries default floor and override variable" \
+      "line lacks '10240' and/or 'MEMPALACE_CHROMA_ULIMIT_FLOOR': $ulimit_line_text"
+  fi
+else
+  note_fail "ulimit call carries default floor and override variable" "missing $START_SH"
+fi
+
+# Test 11 — the ulimit -n call is guarded (`if ! ulimit -n ...; then`), not a
+# bare statement. Under `set -e` (line 7 of the start script) a bare failing
+# ulimit would abort the whole script the moment a host's fixed-below-floor
+# hard ceiling is hit; the guard is what lets the script warn and continue
+# instead (spec 0087 R3). Locks the guard structurally so a future
+# refactor cannot silently drop it.
+if [[ -f "$START_SH" ]]; then
+  guard_count="$(grep -c "if ! ulimit -n" "$START_SH")"
+  if [[ "$guard_count" -ge 1 ]]; then
+    note_pass "ulimit -n call is guarded against set -e"
+  else
+    note_fail "ulimit -n call is guarded against set -e" \
+      "no 'if ! ulimit -n' guard structure found"
+  fi
+else
+  note_fail "ulimit -n call is guarded against set -e" "missing $START_SH"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────

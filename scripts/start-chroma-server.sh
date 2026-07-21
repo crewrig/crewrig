@@ -58,6 +58,17 @@ if [ ! -x "${CHROMA_BIN}" ]; then
   exit 1
 fi
 
+# ── Raise open-file limit (spec 0087) ───────────────────────────────────────
+# Scoped to this script's process: `ulimit -n` here only affects the shell
+# running this script, and the daemon inherits it as a child of that shell
+# (via `nohup ... &` below, no intervening subshell) — the invoking caller's
+# shell and any other process are left untouched. Guarded because `set -e`
+# (line 7) would otherwise abort the whole script on a fixed-below-floor
+# hard ceiling (e.g. an unprivileged container default).
+if ! ulimit -n "${MEMPALACE_CHROMA_ULIMIT_FLOOR:-10240}" 2>/dev/null; then
+  echo "WARNING: could not raise open-file limit to ${MEMPALACE_CHROMA_ULIMIT_FLOOR:-10240}; current hard ceiling is $(ulimit -Hn)." >&2
+fi
+
 # ── Launch daemon ───────────────────────────────────────────────────────────
 nohup "${PYTHON_BIN}" "${CHROMA_BIN}" run \
   --path "${PALACE_DIR}" \
