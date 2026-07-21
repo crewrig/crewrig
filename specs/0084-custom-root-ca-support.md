@@ -1,7 +1,7 @@
 ---
 id: "0084"
 slug: custom-root-ca-support
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 569
