@@ -248,10 +248,25 @@ trap 'rm -rf "$TMPDIR_T2" "$TMPDIR_T5" "$SANDBOX_T6"' EXIT
 # Extract the real heredoc (between <<'PYEOF' and the closing PYEOF).
 sed -n "/<<.PYEOF./,/^PYEOF$/p" "$HOOK" | sed '1d;$d' > "$SANDBOX_T6/heredoc.py"
 
+# spec 0088: the mock's Settings class + HttpClient(settings=...) kwarg
+# capture proves R8 (bounded ceiling) and R10 (soft-skip unaffected)
+# together, on the same execution of the real shipped heredoc source. The
+# mock HttpClient must accept `settings=None` — without it the real
+# heredoc's calls (which now always pass `settings=`) raise TypeError the
+# instant they run under this mock.
+CAPTURED_SETTINGS="$SANDBOX_T6/captured-settings.txt"
 mkdir -p "$SANDBOX_T6/chromadb"
-cat > "$SANDBOX_T6/chromadb/__init__.py" <<'MOCK'
+cat > "$SANDBOX_T6/chromadb/__init__.py" <<MOCK
+class Settings:
+    def __init__(self, chroma_http_max_connections=None, chroma_http_max_keepalive_connections=None):
+        self.chroma_http_max_connections = chroma_http_max_connections
+        self.chroma_http_max_keepalive_connections = chroma_http_max_keepalive_connections
+        with open(r"$CAPTURED_SETTINGS", "a") as f:
+            f.write(f"{chroma_http_max_connections},{chroma_http_max_keepalive_connections}\n")
+
+
 class HttpClient:
-    def __init__(self, host=None, port=None):
+    def __init__(self, host=None, port=None, settings=None):
         pass
 
     def heartbeat(self):
@@ -280,6 +295,27 @@ else
   else
     record FAIL "spec-0073-r6: daemon-unreachable path exits 4, never constructs PersistentClient, stays bounded" \
       "rc=$RC_T6 elapsed=${ELAPSED_T6}s stderr=$(cat "$SANDBOX_T6/stderr" 2>/dev/null)"
+  fi
+
+  # Test — spec 0088 R8: the Settings the real heredoc constructs (via the
+  # heartbeat probe, the only HttpClient call site this daemon-unreachable
+  # path reaches before exiting) carry the documented default ceiling.
+  # Assert the two count fields individually, not full object equality —
+  # mirrors the wrapper suite's own reasoning (chromadb's Settings defaults
+  # a field, chroma_http_keepalive_secs, this spec never constrains).
+  if [ -s "$CAPTURED_SETTINGS" ]; then
+    CAPTURED_LINE="$(head -1 "$CAPTURED_SETTINGS")"
+    CAPTURED_MAX_CONN="$(echo "$CAPTURED_LINE" | cut -d, -f1)"
+    CAPTURED_MAX_KEEPALIVE="$(echo "$CAPTURED_LINE" | cut -d, -f2)"
+    if [ "$CAPTURED_MAX_CONN" = "8" ] && [ "$CAPTURED_MAX_KEEPALIVE" = "4" ]; then
+      record PASS "spec-0088-r8: hook's heartbeat-probe Settings carry the default ceiling (8/4)"
+    else
+      record FAIL "spec-0088-r8: hook's heartbeat-probe Settings carry the default ceiling (8/4)" \
+        "captured max_connections=$CAPTURED_MAX_CONN max_keepalive_connections=$CAPTURED_MAX_KEEPALIVE"
+    fi
+  else
+    record FAIL "spec-0088-r8: hook's heartbeat-probe Settings carry the default ceiling (8/4)" \
+      "no Settings(...) construction captured — real heredoc never built one"
   fi
 fi
 
@@ -373,6 +409,60 @@ if grep -q 'mempalace-transcript: FAILED to persist' "$STDERR_FAIL"; then
 else
   record FAIL "issue-510-r3: failure log still emitted when MEMPALACE_TRANSCRIPT_QUIET=1" \
     "no 'FAILED to persist' line on stderr: $(cat "$STDERR_FAIL")"
+fi
+
+# -------------------------------------------------------------------------
+# Test 10 — spec 0088 R3/R9: the hook's connection-pool ceiling env vars
+# carry their literal defaults, shared verbatim with
+# scripts/lib/mempalace-http-wrapper.py. Static check, same style as the
+# wrapper suite's own default-literal assertions: the literal default and
+# the literal env-var name must appear on the same source line, so a
+# refactor cannot silently change the default or rename the override
+# variable without also breaking this assertion.
+# -------------------------------------------------------------------------
+MAX_CONN_LINE="$(grep -n "MEMPALACE_CHROMA_MAX_CONNECTIONS" "$HOOK" | grep "os.environ.get" || true)"
+if [ -z "$MAX_CONN_LINE" ]; then
+  record FAIL "spec-0088: hook max-connections env var carries default" \
+    "no 'MEMPALACE_CHROMA_MAX_CONNECTIONS' os.environ.get() line found in $HOOK"
+elif echo "$MAX_CONN_LINE" | grep -q '"8"'; then
+  record PASS "spec-0088: hook max-connections env var carries default (8)"
+else
+  record FAIL "spec-0088: hook max-connections env var carries default" \
+    "line lacks literal default '8': $MAX_CONN_LINE"
+fi
+
+MAX_KEEPALIVE_LINE="$(grep -n "MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS" "$HOOK" | grep "os.environ.get" || true)"
+if [ -z "$MAX_KEEPALIVE_LINE" ]; then
+  record FAIL "spec-0088: hook max-keepalive-connections env var carries default" \
+    "no 'MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS' os.environ.get() line found in $HOOK"
+elif echo "$MAX_KEEPALIVE_LINE" | grep -q '"4"'; then
+  record PASS "spec-0088: hook max-keepalive-connections env var carries default (4)"
+else
+  record FAIL "spec-0088: hook max-keepalive-connections env var carries default" \
+    "line lacks literal default '4': $MAX_KEEPALIVE_LINE"
+fi
+
+# -------------------------------------------------------------------------
+# Test 11 — spec 0088 R4/R8: `settings=` MUST appear on BOTH
+# chromadb.HttpClient(...) call sites inside the hook's heredoc — the
+# _http_factory stand-in's return statement and the heartbeat probe. This
+# is the regression lock: a future refactor that drops `settings=` from
+# either call site re-introduces an unbounded connection pool on that code
+# path.
+# -------------------------------------------------------------------------
+FACTORY_RETURN_LINE="$(grep -n "return chromadb\.HttpClient(" "$HOOK" | head -1)"
+PROBE_LINE="$(grep -n "chromadb\.HttpClient(.*)\.heartbeat()" "$HOOK" | head -1)"
+if [ -z "$FACTORY_RETURN_LINE" ]; then
+  record FAIL "spec-0088: settings= applied at both hook HttpClient call sites" \
+    "no 'return chromadb.HttpClient(...)' line found in $HOOK"
+elif [ -z "$PROBE_LINE" ]; then
+  record FAIL "spec-0088: settings= applied at both hook HttpClient call sites" \
+    "no heartbeat-probe 'chromadb.HttpClient(...).heartbeat()' line found in $HOOK"
+elif echo "$FACTORY_RETURN_LINE" | grep -q "settings=" && echo "$PROBE_LINE" | grep -q "settings="; then
+  record PASS "spec-0088: settings= applied at both hook HttpClient call sites"
+else
+  record FAIL "spec-0088: settings= applied at both hook HttpClient call sites" \
+    "factory_return=[$FACTORY_RETURN_LINE] probe=[$PROBE_LINE]"
 fi
 
 # -------------------------------------------------------------------------

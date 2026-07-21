@@ -155,6 +155,67 @@ else
   note_fail "ulimit -n call is guarded against set -e" "missing $START_SH"
 fi
 
+# Test 12 — wrapper's total-connection ceiling env var carries its literal
+# default (spec 0088 R3), in the style of Test 10: assert the literal default
+# (8) and the literal env-var name appear on the same source line, so a
+# refactor cannot silently change the default or rename the override
+# variable without also breaking this assertion.
+if [[ -f "$WRAPPER_PY" ]]; then
+  max_conn_line="$(grep -n "MEMPALACE_CHROMA_MAX_CONNECTIONS" "$WRAPPER_PY" | grep "os.environ.get" | head -1)"
+  if [[ -z "$max_conn_line" ]]; then
+    note_fail "wrapper max-connections env var carries default" \
+      "no 'MEMPALACE_CHROMA_MAX_CONNECTIONS' os.environ.get() line found"
+  elif [[ "$max_conn_line" == *'"8"'* ]]; then
+    note_pass "wrapper max-connections env var carries default (8)"
+  else
+    note_fail "wrapper max-connections env var carries default" \
+      "line lacks literal default '8': $max_conn_line"
+  fi
+else
+  note_fail "wrapper max-connections env var carries default" "missing $WRAPPER_PY"
+fi
+
+# Test 13 — wrapper's idle-keepalive-connection ceiling env var carries its
+# literal default (spec 0088 R3), same style as Test 12.
+if [[ -f "$WRAPPER_PY" ]]; then
+  max_keepalive_line="$(grep -n "MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS" "$WRAPPER_PY" | grep "os.environ.get" | head -1)"
+  if [[ -z "$max_keepalive_line" ]]; then
+    note_fail "wrapper max-keepalive-connections env var carries default" \
+      "no 'MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS' os.environ.get() line found"
+  elif [[ "$max_keepalive_line" == *'"4"'* ]]; then
+    note_pass "wrapper max-keepalive-connections env var carries default (4)"
+  else
+    note_fail "wrapper max-keepalive-connections env var carries default" \
+      "line lacks literal default '4': $max_keepalive_line"
+  fi
+else
+  note_fail "wrapper max-keepalive-connections env var carries default" "missing $WRAPPER_PY"
+fi
+
+# Test 14 — `settings=` MUST appear on BOTH chromadb.HttpClient(...) call
+# sites the wrapper constructs — the startup probe and _http_factory()'s
+# return statement (spec 0088 R4/R8). This is the regression lock: a future
+# refactor that drops `settings=` from either call site re-introduces an
+# unbounded connection pool on that code path.
+if [[ -f "$WRAPPER_PY" ]]; then
+  probe_line="$(grep -n "_probe = _chromadb\.HttpClient(" "$WRAPPER_PY" | head -1)"
+  factory_return_line="$(grep -n "return _chromadb\.HttpClient(" "$WRAPPER_PY" | head -1)"
+  if [[ -z "$probe_line" ]]; then
+    note_fail "settings= applied at both wrapper HttpClient call sites" \
+      "no '_probe = _chromadb.HttpClient(...)' line found"
+  elif [[ -z "$factory_return_line" ]]; then
+    note_fail "settings= applied at both wrapper HttpClient call sites" \
+      "no 'return _chromadb.HttpClient(...)' line found"
+  elif [[ "$probe_line" == *"settings="* && "$factory_return_line" == *"settings="* ]]; then
+    note_pass "settings= applied at both wrapper HttpClient call sites"
+  else
+    note_fail "settings= applied at both wrapper HttpClient call sites" \
+      "probe=[$probe_line] factory_return=[$factory_return_line]"
+  fi
+else
+  note_fail "settings= applied at both wrapper HttpClient call sites" "missing $WRAPPER_PY"
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Section B — Behavioral checks
 # ─────────────────────────────────────────────────────────────────────────────
@@ -195,6 +256,8 @@ if [[ ! -x "$PYTHON_BIN" || ! -x "$CHROMA_BIN" ]]; then
   note_skip "behavioral — stop removes PID file" \
     "mempalace pipx venv not installed"
   note_skip "behavioral — status exits 1 when not running" \
+    "mempalace pipx venv not installed"
+  note_skip "behavioral — connection-pool ceiling applied to real HttpClient" \
     "mempalace pipx venv not installed"
 else
   TMP_HOME="$(mktemp -d -t chroma-server-test.XXXXXX)"
@@ -244,6 +307,8 @@ else
       "first start failed (rc=$start_rc): $start_out"
     note_fail "behavioral — wrapper _http_factory returns ClientAPI" \
       "daemon failed to start"
+    note_fail "behavioral — connection-pool ceiling applied to real HttpClient" \
+      "daemon failed to start"
     note_fail "behavioral — stop removes PID file" \
       "daemon failed to start"
   else
@@ -287,6 +352,44 @@ print('OK')
       else
         note_fail "behavioral — wrapper _http_factory returns ClientAPI" \
           "rc=$factory_rc out=$factory_out"
+      fi
+
+    # Test 15 — spec 0088: the chosen mechanism (chromadb.Settings ->
+    # httpx.Limits) actually bounds the pool on the pinned chromadb version,
+    # not just that the wrapper's source mentions the right numbers. Against
+    # the real test daemon, construct an HttpClient with the wrapper's
+    # documented default settings and assert the resulting client's
+    # http_limits carries both ceilings. Assert the two count fields
+    # INDIVIDUALLY, not full httpx.Limits.__eq__ equality against a bare
+    # two-field Limits(...): chromadb's Settings defaults
+    # chroma_http_keepalive_secs to 40.0, which would make a bare
+    # Limits(max_connections=8, max_keepalive_connections=4) equality
+    # assertion fail on a field this spec never constrains.
+    pool_out="$(MEMPALACE_CHROMA_HOST="$TEST_HOST" \
+                MEMPALACE_CHROMA_PORT="$TEST_PORT" \
+                "$PYTHON_BIN" -c "
+import os, chromadb
+host = os.environ['MEMPALACE_CHROMA_HOST']
+port = int(os.environ['MEMPALACE_CHROMA_PORT'])
+client = chromadb.HttpClient(
+    host=host,
+    port=port,
+    settings=chromadb.Settings(
+        chroma_http_max_connections=8,
+        chroma_http_max_keepalive_connections=4,
+    ),
+)
+limits = client._server.http_limits
+assert limits.max_connections == 8, f'max_connections={limits.max_connections}'
+assert limits.max_keepalive_connections == 4, f'max_keepalive_connections={limits.max_keepalive_connections}'
+print('OK')
+" 2>&1)"
+      pool_rc=$?
+      if (( pool_rc == 0 )) && [[ "$pool_out" == *"OK"* ]]; then
+        note_pass "behavioral — connection-pool ceiling applied to real HttpClient"
+      else
+        note_fail "behavioral — connection-pool ceiling applied to real HttpClient" \
+          "rc=$pool_rc out=$pool_out"
       fi
 
     # Test 7 — stop removes the PID file.
