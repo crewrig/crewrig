@@ -99,6 +99,32 @@ below the requested floor), the script prints a warning to standard error
 naming the ceiling that remains in effect and continues launching the
 daemon rather than aborting.
 
+### Client-side connection-pool ceiling
+
+Each client that connects to the shared daemon — every
+`scripts/lib/mempalace-http-wrapper.py`-backed MCP session, including its
+own startup heartbeat probe — caps its own connection footprint against
+the daemon instead of leaving it unbounded (spec 0088). The ceiling bounds
+two independent limits:
+
+- **Total connections** — the maximum number of connections a single
+  session holds open against the daemon at once. Default: **8**. Override
+  with `MEMPALACE_CHROMA_MAX_CONNECTIONS`.
+- **Idle keep-alive connections** — the maximum number of idle connections
+  retained between requests. Default: **4**. Override with
+  `MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS`.
+
+When a session's momentary demand exceeds the ceiling, excess requests
+wait for a connection to free rather than failing outright. This is a
+purely client-side, in-process bound — it complements, but is independent
+of, the daemon's own file-descriptor floor documented above (spec 0087 /
+issue #587): this ceiling keeps each session frugal so that floor is
+approached far more slowly as concurrent sessions accumulate.
+`hooks/mempalace-transcript.sh`'s per-invocation clients honor this exact
+same ceiling and the exact same two environment variables — not a
+separate pair — so tuning one env var affects both components (spec 0088
+delta-01 R9).
+
 ## Migrating from the legacy `PersistentClient` setup
 
 If you upgraded a working CrewRig install across the #98 boundary:
