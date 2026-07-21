@@ -1,6 +1,6 @@
-<!-- crewrig-doc: published=false -->
-
 # Runbook: custom root CA certificates & native TLS delegation
+
+<!-- crewrig-doc: published=false -->
 
 This runbook explains how to make the tools CrewRig invokes trust a **custom or
 corporate root certificate authority (CA)** — the situation you hit behind a
