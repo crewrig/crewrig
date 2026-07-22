@@ -26,17 +26,19 @@ to the ticket's scope. This applies even for tickets that look small at
 first glance — the cost of assembling a team is low, the cost of solo
 rework is high.
 
-## On Claude Code CLI (team support available)
+## On Claude Code CLI (single implicit session team)
 
-When running on a harness that exposes team-management tools (Claude Code
-CLI and equivalent), the following three tools are **mandatory**:
+Claude Code runs a single implicit session team: the orchestrating session
+*is* the team, so there is no team-creation step. Within that implicit team,
+the following three primitives are **mandatory**:
 
-1. **`TeamCreate`** — instantiate a dedicated team for the ticket. Name
-   the team after the ticket identifier (e.g. `issue-42-auth-refactor`).
-2. **`TaskCreate`** — assign **one task per agent role**. Each task
-   targets a specific specialist (`architect`, `developer`, `tester`,
-   `security`, `doc-writer`, `pr-reviewer`, `pr-logbook`, etc.) with a
-   self-contained brief.
+1. **`Agent`** — delegate work to a specialist by spawning it with an
+   explicit `subagent_type` matching the role (`architect`, `developer`,
+   `tester`, `security`, `doc-writer`, `pr-reviewer`, `pr-logbook`, etc.).
+   The spawn happens within the implicit session team — there is no
+   `TeamCreate`.
+2. **`TaskCreate`** — assign **one task per agent role** for tracking. Each
+   task targets a specific specialist with a self-contained brief.
 3. **`SendMessage`** — coordinate progress, hand off intermediate
    artifacts, and unblock teammates. All cross-agent communication flows
    through this tool — never through plain text replies.
@@ -66,16 +68,18 @@ explicit `model` parameter matching the parent model identifier, or by
 omitting the `model` parameter to let the harness inherit from the
 parent session. A model mismatch causes spawned agents to fail silently
 — no output, no file edits, no error — which makes
-`TeamCreate`/`TaskCreate`/`Agent` effectively non-functional.
+**the `Agent` spawn effectively non-functional.**
 
-## On CLIs without team support (e.g. Gemini CLI)
+## On CLIs with no multi-agent coordination surface (e.g. Gemini CLI)
 
-When the harness does not expose `TeamCreate` / `TaskCreate` /
-`SendMessage`, fall back to **sequential `Agent` spawns** with an
-explicit `subagent_type` matching the specialist role. Each spawn must
-carry a self-contained brief — the spawned agent inherits no
-conversation context. Aggregate results in the orchestrating session
-before moving to the next role.
+A CLI that lacks the `SendMessage` / `TaskCreate` coordination bus reaches
+parity through **sequential `Agent` spawns** — first-class guidance, not a
+degraded mode. The orchestrator spawns one specialist at a time with an
+explicit `subagent_type` matching the role, carrying a self-contained brief
+(the spawned agent inherits no conversation context), and aggregates each
+result in the orchestrating session before spawning the next role. This
+sequential discipline delivers the same specialist division of labour the
+coordination bus provides elsewhere.
 
 ## Solo work prohibition
 
@@ -305,7 +309,7 @@ non-blocking observation, not a blocking finding.
 Four rules govern how teammates report back inside a team and how the team-lead interprets their signals.
 
 **Rule 1 — Report before idle.** Every agent operating inside a team
-(spawned via `TeamCreate` / `TaskCreate`) MUST send a message to
+(delegated via `Agent` and tracked via `TaskCreate`) MUST send a message to
 `team-lead` via `SendMessage` with a result summary before its turn ends.
 Going idle without sending a result message is a protocol violation. The
 result message must include: the task identifier, the outcome, and any
@@ -395,6 +399,27 @@ FULL, never silently in INTERMEDIATE / MINIMAL / AUTO.
 
 ## Team Shutdown
 
+On Claude Code's single implicit session team there is no team record to
+delete — `TeamDelete` has nothing to act on. Shutdown therefore reduces to
+a **teammate-conclusion courtesy**: before the orchestrator merges the PR,
+closes the logbook, or pivots scope, it MUST confirm that every spawned
+`Agent` has reported back per *Team Communication → Rule 1*. Where a result
+message has not landed, apply *Rule 3*'s side-effect checks (let the channel
+drain, inspect the artifacts the teammate was tasked to produce) to confirm
+the work concluded before moving on. No `shutdown_request` round-trip is
+required, because a spawned `Agent` releases its resources when its turn
+ends — there is no persistent team process to orphan.
+
+**Triggers.** Run the conclusion check above whenever:
+
+- The ticket's PR has been merged and the logbook closed (the standard end-of-ticket path — see *Logbook Issues → Rule C* in AGENTS.md).
+- The user cancels the ticket or pivots scope to a different team composition.
+- A fatal error makes the current team unrecoverable and a fresh team is needed.
+
+### On a harness that genuinely exposes team primitives
+
+When the harness exposes a persistent team record and teammate processes
+(via `TeamCreate` / `TeamDelete`), the following two-phase disposal applies.
 Calling `TeamDelete` directly — without first requesting each teammate's
 shutdown — leaves teammates running as orphaned idle processes on the
 harness. This is a protocol violation. Every team disposal MUST follow
@@ -413,12 +438,6 @@ moving on:
 **Phase 2 — Dispose of the team.** Once every teammate has either
 approved its shutdown or been declared unresponsive per Phase 1 step 4,
 call `TeamDelete` to remove the team record itself.
-
-**Triggers.** Run the sequence above whenever:
-
-- The ticket's PR has been merged and the logbook closed (the standard end-of-ticket path — see *Logbook Issues → Rule C* in AGENTS.md).
-- The user cancels the ticket or pivots scope to a different team composition.
-- A fatal error makes the current team unrecoverable and a fresh team is needed.
 
 **Prohibition.** Invoking `TeamDelete` without a preceding
 `shutdown_request` round-trip for every teammate is a protocol

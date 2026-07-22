@@ -243,7 +243,7 @@ See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) for the full pr
 **Critical rules — apply without reading the full doc:**
 
 - **Solo work prohibition.** Never treat a multi-step ticket with inline solo work when specialist agents are available. Inline solo work is reserved for trivial single-file edits explicitly scoped by the user.
-- **Mandatory tools on Claude Code CLI.** Use `TeamCreate` (one team per ticket, named after the ticket id), `TaskCreate` (one task per agent role, self-contained brief in the Agent prompt), and `SendMessage` (all cross-agent communication). These three tools are mandatory — not optional.
+- **Coordination primitives on Claude Code CLI.** Claude Code runs a single implicit session team — there is no team to create. Use `Agent` (always with an explicit `subagent_type`) to delegate work to a specialist, `TaskCreate` (one task per role; self-contained brief in the `Agent` prompt) to track it, and `SendMessage` for all cross-agent communication. These three primitives are mandatory — not optional.
 - **Worktree isolation.** Before any `TaskCreate` or `Agent` spawn, create a dedicated git worktree. All team edits happen inside `.worktrees/<ticket-id>/`. The main working directory is read-only for the duration.
 - **Built components.** Any commit touching `artifacts/` MUST also run `bash scripts/build-components.sh` and stage the regenerated outputs in the same commit.
 - **Complexity tier.** Read the spec frontmatter `complexity` field at ticket pickup: `trivial` = inline, `small` = developer + pr-logbook + pr-reviewer, `standard` = full Template 1/2/3, `large` = architect-led sub-spec decomposition.
