@@ -189,8 +189,10 @@ block is therefore an **unmanaged** entry the setup deliberately preserves;
 having setup delete it would re-introduce the very clobbering #616 removes.
 
 Consequence: an existing adopter who wants the old `github` MCP gone removes the
-block and `$GITHUB_PAT` from their own deployment. Spec 0090 SHALL ship a short
-migration note (in the ADR/spec and the changelog) documenting exactly that.
+`github` entry under `mcpServers` from their own deployment — `~/.gemini/settings.json`
+(Gemini) and `~/.copilot/mcp-config.json` (Copilot) — and deletes the `$GITHUB_PAT`
+value from their environment file. Spec 0090 SHALL ship a short migration note
+(in the ADR and spec) documenting exactly that.
 
 ## Derived spec plan
 
@@ -201,7 +203,7 @@ fast security win on the slower new-abstraction work for no benefit.
 
 | # | Spec (proposed id) | Scope | Depends on | Tier |
 |---|---|---|---|---|
-| 1 | **Forge access CLI-only** (0090) | Remove the `github` MCP block from `config/gemini/settings.json` + `config/copilot/mcp-config.json.template`; drop `$GITHUB_PAT` from `config/.env.example` + both headers; rewrite `60-tools.md` *GitHub MCP Server* CLI-first; rewrite **and rename** `AGENTS.md` *GitHub Access* → *Forge Access* CLI-first; fix the `config/TOOLS.md.template` framework-MCP note; ship the existing-adopter **migration note** (ADR/spec + changelog); update `docs/cli-matrix.md`. | nothing | `standard` |
+| 1 | **Forge access CLI-only** (0090) | Remove the `github` MCP block from `config/gemini/settings.json` + `config/copilot/mcp-config.json.template`; drop `$GITHUB_PAT` from `config/.env.example` + both headers; rewrite `60-tools.md` *GitHub MCP Server* CLI-first; rewrite **and rename** `AGENTS.md` *GitHub Access* → *Forge Access* CLI-first; fix the `config/TOOLS.md.template` framework-MCP note; ship the existing-adopter **migration note** (ADR + spec); update `docs/cli-matrix.md`. | nothing | `standard` |
 | 2 | **Org-level MCP declaration mechanism** (0091) | A single org-owned MCP declaration channel mirroring `AGENTS.org.md`/spec 0020, fanned out and **merged** into each CLI's native MCP config by the setup scripts; documents how an org re-adds a forge MCP. | **#616 / spec 0089** (merge-not-overwrite) as a hard technical prerequisite; **spec 0090** for the CLI-first baseline it documents | `standard` |
 
 **Ordering.**

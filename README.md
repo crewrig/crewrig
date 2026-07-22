@@ -449,7 +449,6 @@ renovate.json                         # Renovate dependency-update configuration
 
 ### Gemini CLI (`config/gemini/settings.json`)
 
-- **GitHub** — GitHub MCP server via OAuth.
 - **MemPalace** — Unified agent memory (replaces KG Memory + Deep Memory).
 - **Sequential Thinking** — Working memory for structured reasoning.
 
