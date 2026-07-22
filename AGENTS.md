@@ -408,15 +408,12 @@ triggers that require an immediate logbook comment.
 
 ### Rule C — Close immediately after merge
 
-Once the PR is merged and the changes verified, **close the linked issue
-immediately** (`state_reason: completed`). Do not defer closing to a
-later cleanup pass — stale open issues accumulate and obscure the actual
-state of work in flight.
-
-When the linked issue is also the ticket's spec-PR `related-issue`, see
-[`docs/spec-pr-workflow.md`](docs/spec-pr-workflow.md) → *Independence rule*
-for the spec-PR-time exception that keeps this issue open until the
-implementation-PR merges.
+Close the linked issue immediately once merged and verified
+(`state_reason: completed`); rationale in
+[`docs/logbook-issues.md`](docs/logbook-issues.md) → *Rule C*. Spec-PR
+exception:
+[`docs/spec-pr-workflow.md`](docs/spec-pr-workflow.md) → *Independence
+rule*.
 
 ## Forge Access
 
