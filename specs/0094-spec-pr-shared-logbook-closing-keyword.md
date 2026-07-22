@@ -40,8 +40,8 @@ closes a logbook issue mid-ticket.
    meaning. The carve-out SHALL cite this as the reason phrasing
    workarounds are rejected outright rather than merely discouraged.
 3. The carve-out SHALL prescribe the non-adjacent reference pattern the
-   spec-PR body uses instead — for example "Related #<N>" or "the
-   implementation PR (tracking #<N>) will close it on merge" — i.e. any
+   spec-PR body uses instead — for example "Related `#<N>`" or "the
+   implementation PR (tracking `#<N>`) will close it on merge" — i.e. any
    phrasing that keeps a closing keyword and the issue number from
    appearing adjacently.
 4. The carve-out SHALL state, unchanged from today's rule, that only
@@ -72,13 +72,13 @@ closes a logbook issue mid-ticket.
 **Scenario:** Spec-PR for a shared-logbook ticket merges without
 auto-closing the logbook issue
 
-Given a ticket whose GitHub issue #<N> is both the spec's
+Given a ticket whose GitHub issue `#<N>` is both the spec's
 `related-issue` and the ticket's shared logbook issue per Rule A
-Given the spec-PR body references issue #<N> using the non-adjacent
-pattern prescribed by Requirement 3 (e.g. "Related #<N>" or "the
-implementation PR, tracking #<N>, will close it on merge")
+Given the spec-PR body references issue `#<N>` using the non-adjacent
+pattern prescribed by Requirement 3 (e.g. "Related `#<N>`" or "the
+implementation PR, tracking `#<N>`, will close it on merge")
 When the spec-PR is merged to `main`
-Then issue #<N> remains open, because no closing-keyword token was
+Then issue `#<N>` remains open, because no closing-keyword token was
 adjacent to `#<N>` anywhere in the merged PR body
 
 **Scenario:** A spec-PR that still carries an adjacent closing-keyword
@@ -87,7 +87,7 @@ token is caught before merge
 Given a spec-PR body for a shared-logbook ticket that contains a
 closing-keyword token adjacent to the issue number — including a
 negated-sentence attempt such as "this spec-PR closes no issue on
-merge; the implementation PR will close #<N>" — which Requirement 2
+merge; the implementation PR will close `#<N>`" — which Requirement 2
 identifies as still triggering GitHub's auto-close regardless of the
 surrounding prose
 When a human reviewer checks the spec-PR body against the carve-out
