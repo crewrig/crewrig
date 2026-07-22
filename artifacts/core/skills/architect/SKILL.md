@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.2"
+    version: "1.2.0"
 claude:
   allowed-tools:
     - Read
@@ -89,7 +89,43 @@ A change with a one-way blast radius gets an ADR. A change with an
 awkward blast radius gets a migration plan. A trivial change gets
 neither — do not over-document.
 
-### 4. Output formats
+### 4. Byte-accounting discipline (size/budget-constrained plans)
+
+Applies whenever a plan claims to bring something under a size, byte,
+or token budget (e.g. a file-size CI gate) by relocating, trimming, or
+rewriting content.
+
+Every claimed savings figure MUST be based on an empirical measurement
+of the actual candidate span — `wc -c` on the exact line range being
+moved, dropped, or rewritten — taken **before** the figure is committed
+to the plan. Do not estimate savings from line counts, prose-length
+heuristics, or "architect-level approximation."
+
+```text
+# before committing a savings figure to the plan
+sed -n '42,88p' docs/target-file.md | wc -c
+# 1103 → this is the number the plan may cite, not a guess
+```
+
+The plan must land on an explicit safety margin between the projected
+post-change size and the budget line — not clear it exactly. A plan
+that projects landing 3 bytes under budget has no margin for the next
+edit and should not ship as if it were safe.
+
+**Self-check before finalizing.** Sum every section's *measured* (not
+estimated) savings, compare the total against the actual gap-to-budget,
+and check the resulting margin against an explicit threshold the plan
+states. If the margin is thinner than that threshold, either add more
+headroom (an additional candidate section, a larger margin) or flag the
+risk explicitly in the plan's Risks section — do not ship a thin,
+unverified plan as if it were safe.
+
+If a genuinely unmeasured figure must appear — a rough
+order-of-magnitude scoping estimate before line ranges are even
+identified — label it as an estimate, not a committed savings figure.
+Same cite-or-downgrade discipline as "## Grounding discipline" below.
+
+### 5. Output formats
 
 | Output | When | Where |
 |---|---|---|
@@ -101,7 +137,7 @@ ADRs follow the standard sections: Context, Decision, Status, Consequences.
 Keep each section under 10 lines. ADRs that need a 2-page Context have
 not been thought through yet.
 
-### 5. Briefing sub-agents (call-graph context)
+### 6. Briefing sub-agents (call-graph context)
 
 When delegating a focused task (tester, security, doc-writer, etc.) to a
 sub-agent, the brief MUST include the **call-graph context** of any file
