@@ -419,7 +419,9 @@ ends — there is no persistent team process to orphan.
 ### On a harness that genuinely exposes team primitives
 
 When the harness exposes a persistent team record and teammate processes
-(via `TeamCreate` / `TeamDelete`), the following two-phase disposal applies.
+(via `TeamCreate` / `TeamDelete`) — which is **not** the current Claude Code
+harness; see the single-implicit-team primary path above — the following
+two-phase disposal applies.
 Calling `TeamDelete` directly — without first requesting each teammate's
 shutdown — leaves teammates running as orphaned idle processes on the
 harness. This is a protocol violation. Every team disposal MUST follow
