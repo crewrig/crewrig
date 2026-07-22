@@ -1,7 +1,7 @@
 ---
 id: "0092"
 slug: claude-code-implicit-team-model
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 596
