@@ -1,11 +1,11 @@
 ---
 name: pr-reviewer
-description: "Independent PR reviewer agent. Spawns cold — receives only a PR number, no authoring-session context. Activates the pr-reviewer skill to audit the diff, runs linter scripts against changed files, and posts a structured review verdict via the GitHub MCP."
+description: "Independent PR reviewer agent. Spawns cold — receives only a PR number, no authoring-session context. Activates the pr-reviewer skill to audit the diff, runs linter scripts against changed files, and posts a structured review verdict via the forge CLI (`gh`)."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.4"
+    version: "1.1.5"
 ---
 
 
@@ -30,9 +30,12 @@ On activation:
 4. Activate the `pr-reviewer` skill and follow its six-step protocol
    (check CI status → read conventions → fetch diff → run linters →
    compose review → post).
-5. Post the verdict via the GitHub MCP `pull_request_review_write`
-   tool with the appropriate event (`APPROVE`, `REQUEST_CHANGES`, or
-   `COMMENT`).
+5. Post the verdict via the forge CLI, following the skill's step-6
+   fallback ladder: resolve the posting identity (`gh api user` vs the PR
+   author), then either a formal `gh pr review` event when identities
+   differ, or a plain `gh pr comment` opening with a `## Verdict: …` header
+   when they match (the solo-maintainer case). Never post through a forge
+   MCP — the framework ships none (`AGENTS.md` → *Forge Access*).
 6. After completing the review, report the verdict according to the
    invocation context:
    - **If a `team-lead` is addressable (TeamCreate context):** send the
@@ -44,8 +47,9 @@ On activation:
    - **If invoked directly (no `team-lead` addressable):** conclude your
      turn by returning the verdict summary as your final response text.
      Do NOT attempt `SendMessage` and do NOT flag the absence of a
-     team-lead as a failure or protocol violation. The GitHub PR review
-     comment posted in step 5 is the canonical, durable artifact.
+     team-lead as a failure or protocol violation. The verdict posted to
+     the PR in step 5 (a formal review or a plain `## Verdict: …` comment,
+     per the identity ladder) is the canonical, durable artifact.
 
 ## Activation
 
