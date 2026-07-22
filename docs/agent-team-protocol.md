@@ -107,6 +107,17 @@ git worktree add -b <branch-name> .worktrees/<ticket-id> crewrig/main
 
 All file edits performed by the team — by every specialist, without exception — **MUST** happen inside `.worktrees/<ticket-id>/`. The main working directory is off-limits for the duration of the ticket; treat it as read-only.
 
+**Cwd verification (every spawned role).** Before issuing its first `Write`, `Edit`, or file-mutating `Bash` call, a sub-agent whose brief names a worktree path (`.worktrees/<ticket-id>/`) as its working location MUST verify that its own working directory resolves inside that worktree. This obligation attaches to the brief's target, not to the role — it applies identically to `developer`, `tester`, `doc-writer`, `architect`, or any other spawned specialist whenever the brief names a worktree path. Embed the following instruction verbatim in the spawned `Agent` prompt whenever the brief targets a worktree:
+
+> Before your first `Write`, `Edit`, or file-mutating `Bash` call, `cd` into `.worktrees/<ticket-id>/` and confirm the resolved working directory (e.g. via `pwd`) actually resolves inside that worktree. If it does not, `cd` into the worktree and re-verify before proceeding — do not issue any mutating call until the check passes.
+
+This is a distinct, actionable check from the "treat the main directory as read-only" expectation above: that sentence states the constraint, this is the step that catches a session whose working directory silently defaulted to the main checkout before any file lands there.
+
+**Stray-file discovery — no unilateral action.** Discovering a file on the main repository checkout that appears misplaced from a worktree-scoped ticket — whether the discoverer is the orchestrator or a sibling sub-agent — does NOT trigger deletion of that file, on sight or by any other means. A file's location does not establish its provenance: a sibling agent's own in-flight write may be transiting through that same path at the moment of discovery, and location alone cannot distinguish an abandoned stray from a write still in progress. Instead:
+
+1. **Flag, don't act.** The discoverer flags the file to the orchestrator (or `team-lead`) for adjudication.
+2. **Relocate only after provenance is confirmed.** The file is moved into the correct worktree path only once its provenance has been confirmed — it is never deleted or relocated unilaterally by the discoverer.
+
 Before pushing, always rebase the worktree branch against the upstream main to avoid merge conflicts on shared files:
 
 ```sh
