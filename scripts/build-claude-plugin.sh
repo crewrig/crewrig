@@ -175,16 +175,31 @@ if [ "$COMMANDS_ENABLED" = "true" ] && [ "$CONVERT_TO_SKILLS" = "true" ] && [ -d
 fi
 
 # --- Copy agents ---
+# An agent dir is a pivot-authoring location: it may hold sibling files for
+# other CLIs alongside the Claude pivot source AGENT.md (e.g. PROMPT.md is the
+# Gemini pivot source — see extension-skeleton/agent/agents/sample-agent/PROMPT.md).
+# `cp -r` of the whole directory would drag such siblings into the Claude
+# plugin, where Claude Code registers them as bogus extra agents (issue #600).
+# Copy only the files matched by the manifest's `claude.agents` glob array
+# (default: agents/*/AGENT.md), file by file, preserving the relative path.
 AGENTS_ENABLED=$(jq -r '.components.agents.enabled // false' "$MANIFEST" 2>/dev/null)
 AGENTS_LOCATION=$(jq -r '.components.agents.location // "agents/"' "$MANIFEST" 2>/dev/null)
 if [ "$AGENTS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$AGENTS_LOCATION" ]; then
-  mkdir -p "$OUTPUT_DIR/agents"
-  for agent_dir in "$EXT_DIR/$AGENTS_LOCATION"*/; do
-    [ -d "$agent_dir" ] || continue
-    agent_name=$(basename "$agent_dir")
-    cp -r "$agent_dir" "$OUTPUT_DIR/agents/$agent_name"
-    echo "  Copied agent: $agent_name"
-  done
+  AGENTS_GLOBS=$(jq -r '.claude.agents // [] | .[]' "$MANIFEST" 2>/dev/null)
+  if [ -z "$AGENTS_GLOBS" ]; then
+    AGENTS_GLOBS="agents/*/AGENT.md"
+  fi
+  while IFS= read -r glob_pattern; do
+    [ -n "$glob_pattern" ] || continue
+    for src_file in "$EXT_DIR/"$glob_pattern; do
+      [ -f "$src_file" ] || continue
+      rel_path="${src_file#"$EXT_DIR"/}"
+      dest_file="$OUTPUT_DIR/$rel_path"
+      mkdir -p "$(dirname "$dest_file")"
+      cp "$src_file" "$dest_file"
+      echo "  Copied agent file: $rel_path"
+    done
+  done < <(echo "$AGENTS_GLOBS")
 fi
 
 # --- Generate hooks/hooks.json ---
