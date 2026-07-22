@@ -69,10 +69,31 @@ references, ideas, and domain knowledge.
 
 ---
 
-## GitHub MCP Server
+## Forge Access
 
-The GitHub MCP server MUST be used as a priority for all GitHub interactions,
-except for native `git` commands.
+Forge access is CLI-only. Every forge operation — issues, pull/merge requests,
+branch protection, and releases — SHALL go through the forge's own
+command-line tool, with authentication delegated to that tool. The framework
+ships no forge MCP server for any CLI.
+
+- **GitHub** → `gh`
+- **GitLab** → `glab`
+- **Gitea** → `tea`
+
+Native `git` remains the tool for ordinary version control (clone, commit,
+branch, push, fetch, rebase) and is unaffected by this policy.
+
+Authentication is a per-tool precondition, established once via each tool's own
+login flow — no personal access token is stored in any framework config:
+
+```sh
+gh auth login      # GitHub
+glab auth login    # GitLab (self-hosted: glab auth login --hostname <host>)
+tea login add      # Gitea
+```
+
+When an operation is scriptable, prefer the tool's structured output
+(`gh … --json`, `glab … -F json`) so results parse deterministically.
 
 ---
 
