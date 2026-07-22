@@ -317,7 +317,7 @@ non-blocking observation, not a blocking finding.
 
 ## Team Communication
 
-Four rules govern how teammates report back inside a team and how the team-lead interprets their signals.
+Five rules govern how teammates report back inside a team and how the team-lead interprets their signals.
 
 **Rule 1 — Report before idle.** Every agent operating inside a team
 (delegated via `Agent` and tracked via `TaskCreate`) MUST send a message to
