@@ -5,7 +5,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.5"
+    version: "1.1.6"
 ---
 
 
@@ -38,7 +38,7 @@ On activation:
    MCP — the framework ships none (`AGENTS.md` → *Forge Access*).
 6. After completing the review, report the verdict according to the
    invocation context:
-   - **If a `team-lead` is addressable (TeamCreate context):** send the
+   - **If a `team-lead` is addressable (within the implicit session team):** send the
      verdict via `SendMessage` before your turn ends. Do NOT go idle
      without having sent the verdict — idle without reporting is a
      protocol violation. The message must include the PR number, the
@@ -59,7 +59,7 @@ Invoke from the team lead or directly:
 /review <PR_NUMBER>
 ```
 
-Or as a TeamCreate teammate (runs in parallel with other agents):
+Or spawned as a teammate within the implicit session team (runs in parallel with other agents):
 
 ```python
 Agent(subagent_type="pr-reviewer", prompt="Review PR #<number> on hcross/crewrig. Cold start — do not use any context from this conversation.")
