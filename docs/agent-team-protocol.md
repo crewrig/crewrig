@@ -408,6 +408,41 @@ In no mode may a finding be deferred to a follow-up ticket without
 authorization appropriate to that mode — the user's explicit decision in
 FULL, never silently in INTERMEDIATE / MINIMAL / AUTO.
 
+**Rule 5 — Edit fence for delegated deliverables.** While a deliverable
+file is delegated to a sub-agent — i.e. the sub-agent's brief names that
+file as its task target — the team-lead (orchestrator) SHALL NOT edit
+that file itself until the sub-agent's completion has been confirmed,
+either (a) via the sub-agent's own `SendMessage` result per Rule 1, or
+(b) via the observable-side-effect check described in Rule 3 step 2. An
+`idle_notification` alone is NOT a completion signal: the team-lead MUST
+NOT treat receipt of an idle notification, by itself, as license to edit
+a file still delegated to that sub-agent.
+
+Rule 5 is the write-side counterpart to Rule 3. Rule 3 already
+establishes that an idle notification does not prove a teammate skipped
+its Rule 1 report; Rule 5 draws the corresponding consequence for the
+team-lead's own edits — the same unreliable signal that must not be
+mistaken for completion proof when reading a teammate's status also
+must not be acted upon when writing to a file that teammate still owns.
+
+If the team-lead determines that a delegated file needs an additional
+change while the sub-agent is still live, it MUST NOT edit the file
+directly. Instead it SHALL either:
+
+1. Instruct the still-live sub-agent, via `SendMessage`, to make the
+   change itself, rather than taking the edit on directly, or
+2. Confirm, per the conclusion check in *Team Shutdown*, that the
+   sub-agent has concluded its work — a landed Rule 1 result message, or
+   a confirmed side-effect per Rule 3 step 2 — before the team-lead takes
+   ownership of the file and edits it directly.
+
+This closes the race observed twice in practice — ticket #569 and the
+Harness Curator's `concurrent-deliverable-edit` friction cluster
+(issue #602) — where the orchestrator's own completion edits landed on
+a file the sub-agent was still editing, on the strength of an idle
+notification alone, producing duplicate content that required manual
+reconciliation.
+
 ## Team Shutdown
 
 On Claude Code's single implicit session team there is no team record to
