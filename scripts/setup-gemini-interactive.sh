@@ -2,6 +2,8 @@
 set -e
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+# shellcheck source=scripts/lib/tls-delegation.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/tls-delegation.sh"
 
 GEMINI_HOME="${HOME}/.gemini"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -149,12 +151,24 @@ echo ""
 
 fi  # end: SKIP_RULES_CONFIG guard for shared configuration
 
+# Custom root-CA / native-TLS delegation (spec 0084) — opt-in; runs before the
+# network bootstrap so pipx / npx / git inherit trust when consented.
+offer_tls_delegation
+echo ""
+
 # --- settings.json install + MCP server patching ---
 echo "Configuring ~/.gemini/settings.json..."
 SETTINGS_TARGET="$GEMINI_HOME/settings.json"
 SETTINGS_SRC="$REPO_DIR/config/gemini/settings.json"
 
 backup_file "$SETTINGS_TARGET"
+
+# Capture the operator's pre-existing MCP declarations + the backup path BEFORE
+# the framework overwrites settings.json, so non-reserved servers can be folded
+# back in after the write (spec 0089 R2/R4). Must run before the template copy
+# below, never after — see merge_preexisting_mcp_servers in common.sh.
+PREEXISTING_MCP="$(jq -c '.mcpServers // {}' "$SETTINGS_TARGET" 2>/dev/null || echo '{}')"
+MCP_BACKUP="$LAST_BACKUP_PATH"
 
 # Detect MemPalace Python interpreter (used to patch mcpServers.mempalace.command)
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
@@ -185,10 +199,10 @@ if [ "$INSTALL_MEMPALACE_GEMINI" = "yes" ]; then
   # Copy template, then patch mcpServers.mempalace.command with the detected
   # python and substitute the __CREWRIG_REPO_DIR__ placeholder in args with
   # the repo root so the http-wrapper resolves to an absolute path.
-  jq --arg py "$MEMPALACE_PYTHON_BIN" --arg repo "$REPO_DIR" \
-    '.mcpServers.mempalace.command = $py
-     | .mcpServers.mempalace.args = (.mcpServers.mempalace.args
-         | map(gsub("__CREWRIG_REPO_DIR__"; $repo)))' \
+  jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" --arg py "$MEMPALACE_PYTHON_BIN" --arg repo "$REPO_DIR" \
+    '.mcpServers.mempalace.command = "bash"
+     | .mcpServers.mempalace.args = ([$tlsexec, $py]
+         + (.mcpServers.mempalace.args | map(gsub("__CREWRIG_REPO_DIR__"; $repo))))' \
     "$SETTINGS_SRC" > "${SETTINGS_TARGET}.tmp" && mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"
   echo "  Installed: settings.json (mempalace patched with detected Python + wrapper path)"
   MEMPALACE_INSTALLED=1
@@ -199,6 +213,22 @@ else
   echo "  Installed: settings.json (mempalace omitted from mcpServers)"
   MEMPALACE_INSTALLED=0
 fi
+
+# Route the sequentialthinking MCP server through tls-exec.sh so its npx package
+# fetch inherits custom-CA trust when consented (spec 0084 R2/R9). Runs in both
+# the mempalace-in and mempalace-out branches.
+jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" '
+  if .mcpServers.sequentialthinking then
+    .mcpServers.sequentialthinking.args = ([$tlsexec, .mcpServers.sequentialthinking.command]
+      + .mcpServers.sequentialthinking.args)
+    | .mcpServers.sequentialthinking.command = "bash"
+  else . end' \
+  "$SETTINGS_TARGET" > "${SETTINGS_TARGET}.tmp" && mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"
+
+# Fold the operator's pre-existing non-reserved MCP servers back over the
+# framework config (spec 0089). Framework reserved entries (mempalace /
+# sequentialthinking) — including their spec-0084 TLS wrapping — are untouched.
+merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$SETTINGS_TARGET" "$MCP_BACKUP"
 echo ""
 
 if [ "$SKIP_RULES_CONFIG" -ne 1 ]; then

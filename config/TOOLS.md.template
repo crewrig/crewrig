@@ -47,14 +47,14 @@
 <!--
   List MCP servers that are specific to your organization's integrations.
   These are servers beyond the framework defaults (MemPalace,
-  SequentialThinking, GitHub) that your agents should be aware of.
+  SequentialThinking) that your agents should be aware of.
 
   For each server, note:
   - Its name as registered (e.g., `jira`, `confluence`)
   - What it is used for
   - Any usage constraints or guidance
 
-  Framework MCP servers (MemPalace, SequentialThinking, GitHub) are
+  Framework MCP servers (MemPalace, SequentialThinking) are
   already covered by the core rules file — do not redeclare them here.
 
   Example:

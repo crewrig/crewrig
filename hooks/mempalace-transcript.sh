@@ -18,6 +18,16 @@
 #                                  (default: 127.0.0.1)
 #   MEMPALACE_CHROMA_PORT        - shared ChromaDB HTTP daemon port (ADR-0006)
 #                                  (default: 8001)
+#   MEMPALACE_CHROMA_MAX_CONNECTIONS            - ceiling on total connections
+#                                  held open against the daemon (spec 0088,
+#                                  shared verbatim with
+#                                  scripts/lib/mempalace-http-wrapper.py)
+#                                  (default: 8)
+#   MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS  - ceiling on idle keep-alive
+#                                  connections retained between requests
+#                                  (spec 0088, shared verbatim with
+#                                  scripts/lib/mempalace-http-wrapper.py)
+#                                  (default: 4)
 #   GEMINI_SESSION_ID / CLAUDE_SESSION_ID / COPILOT_SESSION_ID - session id
 #   GEMINI_PROJECT_DIR / CLAUDE_PROJECT_DIR - project directory
 #   (GitHub Copilot CLI does NOT export a $COPILOT_PROJECT_DIR — the project
@@ -30,6 +40,13 @@ set -euo pipefail
 # --- Guard: opt-in only ---
 if [ "${MEMPALACE_TRANSCRIPT_ENABLED:-0}" != "1" ]; then
   exit 0
+fi
+
+# Custom root-CA / native-TLS delegation (spec 0084): inherit user-consented
+# trust for any network this hook performs.
+if [ -f "${HOME}/.crewrig/tls-env.sh" ]; then
+  # shellcheck source=/dev/null
+  . "${HOME}/.crewrig/tls-env.sh"
 fi
 
 # --- Dependencies ---
@@ -174,10 +191,24 @@ except ImportError as e:
 
 _host = os.environ.get("MEMPALACE_CHROMA_HOST", "127.0.0.1")
 _port = int(os.environ.get("MEMPALACE_CHROMA_PORT", "8001"))
+_max_connections = int(os.environ.get("MEMPALACE_CHROMA_MAX_CONNECTIONS", "8"))
+_max_keepalive_connections = int(
+    os.environ.get("MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS", "4")
+)
+
+
+def _build_pool_settings():
+    # Fresh Settings per call, not a shared singleton — chromadb.HttpClient()
+    # mutates its settings argument in place (spec 0088; same reasoning as
+    # scripts/lib/mempalace-http-wrapper.py's _build_pool_settings()).
+    return chromadb.Settings(
+        chroma_http_max_connections=_max_connections,
+        chroma_http_max_keepalive_connections=_max_keepalive_connections,
+    )
 
 
 def _http_factory(path=None, settings=None, **kwargs):
-    return chromadb.HttpClient(host=_host, port=_port)
+    return chromadb.HttpClient(host=_host, port=_port, settings=_build_pool_settings())
 
 
 chromadb.PersistentClient = _http_factory
@@ -187,9 +218,12 @@ chromadb.PersistentClient = _http_factory
 # per-event fire-and-forget attempt bounded by the outer bash `timeout 5`
 # wrapper, not an MCP server startup gate. Distinct exit code (4) and
 # stderr prefix (DAEMON_UNREACHABLE:) keep it greppable alongside the
-# existing IMPORT_ERROR:/2 and ADD_FAILED:/3 convention.
+# existing IMPORT_ERROR:/2 and ADD_FAILED:/3 convention. Passing settings=
+# here (spec 0088 R4/delta-01) only changes this call's arguments — the
+# try/except control flow below, and R10's soft-skip behavior, are
+# unchanged.
 try:
-    chromadb.HttpClient(host=_host, port=_port).heartbeat()
+    chromadb.HttpClient(host=_host, port=_port, settings=_build_pool_settings()).heartbeat()
 except Exception as e:  # acknowledged-exception: broad except intentional — any HttpClient.heartbeat() failure (connection refused, DNS, protocol) means the daemon is unreachable and must soft-skip this persistence attempt (spec 0073 R3); it does not block startup like the wrapper's probe, so it must not be silently swallowed or misclassified either
     print(f"DAEMON_UNREACHABLE: {_host}:{_port} — {e}", file=sys.stderr)
     sys.exit(4)

@@ -1,7 +1,7 @@
 ---
 id: "0083"
 slug: user-validate-to-library
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 570

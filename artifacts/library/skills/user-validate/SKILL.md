@@ -1,18 +1,24 @@
 ---
 name: user-validate
-description: "Realise a user-gate validation of an artifact (spec, plan, or any document) through the configured backend. The single canonical implementation of the backend-configurable gate protocol — CrewRig lifecycle stages and any external workflow invoke this skill instead of reimplementing a gate inline. Backends: `plannotator` (rich browser review, opt-in) and `internal` (AskUserQuestion, the default floor)."
+description: "Realise a user-gate validation of an artifact (spec, plan, or any
+  document) through the configured backend. The single canonical implementation
+  of the backend-configurable gate protocol — CrewRig lifecycle stages and any
+  external workflow invoke this skill instead of reimplementing a gate inline.
+  Backends: `plannotator` (rich browser review, opt-in) and `internal`
+  (AskUserQuestion, the default floor)."
+type: skill
 license: Apache-2.0
-allowed-tools:
-  - Read
-  - Bash
-user-invocable: true
 metadata:
   provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
+    canonical: "${CANONICAL_REPO}"
+    feedback: "${CANONICAL_REPO}"
+    version: "1.1.0"
+claude:
+  allowed-tools:
+    - Read
+    - Bash
+  user-invocable: true
 ---
-
 
 # User Validate
 
@@ -109,7 +115,7 @@ missing; the `internal` backend is the guaranteed floor on every CLI.
 Realise the gate through **`AskUserQuestion`** (or the host CLI's equivalent
 structured interactive prompt) — **never as a prose question**. This preserves
 and does not weaken
-[`specs/0037-validation-gate-must-use-askuserquestion.md`](../../../specs/0037-validation-gate-must-use-askuserquestion.md).
+`specs/0037-validation-gate-must-use-askuserquestion.md`.
 
 The `internal` feature set is a deliberate subset of `plannotator`:
 

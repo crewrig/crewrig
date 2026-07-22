@@ -28,6 +28,13 @@ set -euo pipefail
 # MEMPALACE_MAX_VERSION_EXCLUSIVE).
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
+# Custom root-CA / native-TLS delegation (spec 0084): inherit user-consented
+# trust for the MemPalace network this maintenance script performs.
+if [ -f "${HOME}/.crewrig/tls-env.sh" ]; then
+  # shellcheck source=/dev/null
+  . "${HOME}/.crewrig/tls-env.sh"
+fi
+
 # --- Configuration ---
 DEFAULT_DAYS=30
 DRY_RUN=true

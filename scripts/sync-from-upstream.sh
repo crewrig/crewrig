@@ -28,6 +28,36 @@
 # working tree without staging or committing anything. Review the diff with
 # 'git diff' before deciding what to commit.
 #
+# --preserve-history (opt-in, spec 0086; default OFF):
+#
+#   bash scripts/sync-from-upstream.sh --preserve-history
+#
+# Enabling this flag is always an explicit, per-invocation operator choice —
+# it defaults to off and is never enabled implicitly by crewrig.config.toml,
+# an environment variable, or any other mechanism. After the policy-aware
+# restore above completes without aborting, this mode additionally records
+# the fetched upstream commit (FETCH_HEAD) as a real ancestor of the current
+# branch: it creates a single commit whose tree is byte-identical to what the
+# restore alone produced and whose second parent is FETCH_HEAD, so later
+# history-inspection commands (`git log`, `git merge-base`, `git bisect`)
+# surface the upstream lineage directly. Two failure modes apply only in this
+# mode:
+#
+#   - Shallow-clone refusal: exits non-zero before any fetch, restore, or
+#     commit when the local repository is a shallow clone. This is a
+#     separate guard from the IS_SHALLOW check further below, which governs
+#     `adopt-on-edit` directory reconciliation only and is unaffected by
+#     `--preserve-history`.
+#   - Anti-pollution guard: aborts the history-preserving step (without
+#     committing, leaving the already-restored files in the working tree) if
+#     the working tree carries an uncommitted change outside the governed set
+#     — every `strict`/`adopt-on-edit` manifest entry, minus any nested
+#     `excluded` child — plus the .crewrig/.synced-markers/ bookkeeping
+#     directory.
+#
+# When FETCH_HEAD is already an ancestor of the current branch tip, the mode
+# is a no-op: no commit is created and the script exits zero.
+#
 # Requires git >= 1.9 (the `:(exclude)` magic pathspec).
 
 set -e
@@ -37,6 +67,37 @@ REPO_DIR="${CREWRIG_REPO_DIR:-"$(cd "$(dirname "$0")/.." && pwd)"}"
 CONFIG="$REPO_DIR/crewrig.config.toml"
 MANIFEST="$REPO_DIR/.crewrig/core-paths.txt"
 MARKERS_DIR="$REPO_DIR/.crewrig/.synced-markers"
+
+# ---------------------------------------------------------------------------
+# Parse command-line arguments. --preserve-history (spec 0086 R1) is the sole
+# recognized flag: default OFF, no config/env activation, explicit
+# per-invocation operator choice only.
+# ---------------------------------------------------------------------------
+PRESERVE_HISTORY=false
+for arg in "$@"; do
+  case "$arg" in
+    --preserve-history) PRESERVE_HISTORY=true ;;
+    *)
+      echo "Error: unknown argument '$arg'" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# ---------------------------------------------------------------------------
+# R12 — shallow-clone refusal for --preserve-history, checked before any
+# fetch, restore, or commit. This is a SEPARATE guard from the IS_SHALLOW
+# check further below (which governs adopt-on-edit directory reconciliation
+# only, spec 0020) — a shallow clone cannot safely host the two-parent graft
+# commit this mode creates, so refuse outright rather than relax that guard.
+# ---------------------------------------------------------------------------
+if [ "$PRESERVE_HISTORY" = true ]; then
+  if [ "$(git -C "$REPO_DIR" rev-parse --is-shallow-repository 2>/dev/null || echo false)" = "true" ]; then
+    echo "Error: --preserve-history requires a full (non-shallow) clone." >&2
+    echo "Remove the shallow limitation (e.g. 'git -C \"$REPO_DIR\" fetch --unshallow') or omit --preserve-history." >&2
+    exit 1
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # Read canonical_repo — strip surrounding quotes, reject empty/absent value.
@@ -282,6 +343,46 @@ reconcile_dir() {
 }
 
 # ---------------------------------------------------------------------------
+# path_is_governed <path>
+# Return 0 iff <path> is covered by the union of every `strict` or
+# `adopt-on-edit` entry declared in .crewrig/core-paths.txt, MINUS any
+# `excluded` entry nested under one of those governed parents (e.g.
+# `specs/org` under `specs`, `docs/org` under `docs`) — carved out the same
+# way the dirty-guard and apply loops carve them out, via
+# excluded_children_of() — plus the marker bookkeeping directory
+# .crewrig/.synced-markers/. A top-level `excluded` manifest entry (e.g.
+# `AGENTS.org.md`) is never governed. This is the scope required by the R8
+# anti-pollution guard for --preserve-history. The marker directory is
+# checked unconditionally (not only when the manifest happens to declare it)
+# since R8 names it explicitly, separately from "the paths governed by
+# .crewrig/core-paths.txt".
+# ---------------------------------------------------------------------------
+path_is_governed() {
+  local path="$1" i gov skip excl
+  case "$path" in
+    .crewrig/.synced-markers|.crewrig/.synced-markers/*) return 0 ;;
+  esac
+  for i in "${!PATHS[@]}"; do
+    case "${POLICIES[$i]}" in
+      strict|adopt-on-edit) ;;
+      *) continue ;;
+    esac
+    gov="${PATHS[$i]}"
+    case "$path" in
+      "$gov"|"$gov"/*)
+        skip=0
+        while IFS= read -r excl; do
+          case "$path" in "$excl"/*|"$excl") skip=1; break ;; esac
+        done < <(excluded_children_of "$gov")
+        [ "$skip" -eq 1 ] && continue
+        return 0
+        ;;
+    esac
+  done
+  return 1
+}
+
+# ---------------------------------------------------------------------------
 # Fetch upstream.
 # ---------------------------------------------------------------------------
 echo "Fetching $CANONICAL_REPO ..."
@@ -460,5 +561,61 @@ for i in "${!PATHS[@]}"; do
       ;;
   esac
 done
+
+# ---------------------------------------------------------------------------
+# --preserve-history: history-preserving graft commit (spec 0086 R5-R9, R11).
+# Reached only when the policy-aware restore above completed without
+# aborting (R4) — the strict dirty-core guard and any per-path failure exit
+# earlier, above this point, so no ancestry is ever recorded on that path.
+# ---------------------------------------------------------------------------
+if [ "$PRESERVE_HISTORY" = true ]; then
+  BRANCH_TIP="$(git -C "$REPO_DIR" rev-parse HEAD)"
+
+  # R11 — no-op short-circuit: FETCH_HEAD is already an ancestor of the
+  # current tip, so there is nothing new to graft. Checked BEFORE the R8
+  # anti-pollution guard below: no commit means no need to gate on
+  # unrelated uncommitted changes.
+  if git -C "$REPO_DIR" merge-base --is-ancestor FETCH_HEAD "$BRANCH_TIP" 2>/dev/null; then
+    echo "Sync complete. FETCH_HEAD is already an ancestor of $BRANCH_TIP; --preserve-history is a no-op."
+    exit 0
+  fi
+
+  # R8 — anti-pollution guard: reject any uncommitted change outside the
+  # governed set — every `strict`/`adopt-on-edit` manifest entry, minus any
+  # `excluded` child nested under it — plus the .crewrig/.synced-markers/
+  # bookkeeping directory (path_is_governed).
+  # On violation, print the offending path(s), leave the already-restored
+  # files in the working tree, create no commit, exit non-zero.
+  UNGOVERNED=()
+  while IFS= read -r status_line; do
+    [ -n "$status_line" ] || continue
+    changed_path="${status_line:3}"
+    changed_path="${changed_path%\"}"
+    changed_path="${changed_path#\"}"
+    path_is_governed "$changed_path" || UNGOVERNED+=("$changed_path")
+  done < <(git -C "$REPO_DIR" status --porcelain --no-renames)
+
+  if [ ${#UNGOVERNED[@]} -gt 0 ]; then
+    echo "Error: --preserve-history refuses to commit — uncommitted change(s) outside the governed paths:" >&2
+    for p in "${UNGOVERNED[@]}"; do
+      echo "  $p" >&2
+    done
+    echo "Commit, stash, or revert these changes (outside .crewrig/core-paths.txt and .crewrig/.synced-markers/), or omit --preserve-history." >&2
+    exit 1
+  fi
+
+  # R5-R7, R9 — build the single graft commit. Staging everything is safe
+  # here: the R8 check just above already proved every uncommitted change
+  # lies within the governed set (path_is_governed), so the resulting tree
+  # is exactly what the policy-aware restore alone produced (R6), plus its
+  # marker bookkeeping (R7).
+  git -C "$REPO_DIR" add -A
+  GRAFT_TREE="$(git -C "$REPO_DIR" write-tree)"
+  UPSTREAM_SHA="$(git -C "$REPO_DIR" rev-parse FETCH_HEAD)"
+  COMMIT_MSG="🔀 Graft upstream history via --preserve-history ($(git -C "$REPO_DIR" rev-parse --short FETCH_HEAD))"
+  GRAFT_COMMIT="$(git -C "$REPO_DIR" commit-tree "$GRAFT_TREE" -p "$BRANCH_TIP" -p "$UPSTREAM_SHA" -m "$COMMIT_MSG")"
+  git -C "$REPO_DIR" update-ref -m "sync-from-upstream --preserve-history" HEAD "$GRAFT_COMMIT"
+  echo "History-preserving commit created: $GRAFT_COMMIT (parents: $BRANCH_TIP, $UPSTREAM_SHA)"
+fi
 
 echo "Sync complete. Review the changes with 'git diff' before committing."

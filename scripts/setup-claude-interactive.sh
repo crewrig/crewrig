@@ -2,6 +2,8 @@
 set -e
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+# shellcheck source=scripts/lib/tls-delegation.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/tls-delegation.sh"
 
 CLAUDE_HOME="${HOME}/.claude"
 CLAUDE_RULES="${CLAUDE_HOME}/rules"
@@ -148,6 +150,11 @@ echo ""
 
 fi  # end: SKIP_RULES_CONFIG guard for shared configuration
 
+# Custom root-CA / native-TLS delegation (spec 0084) — opt-in; runs before the
+# network bootstrap so pipx / npx / git inherit trust when consented.
+offer_tls_delegation
+echo ""
+
 # --- MCP server registration via 'claude mcp add' ---
 # Claude Code reads MCP servers from ~/.claude.json (managed by 'claude mcp ...').
 # The legacy ~/.claude/mcp.json file is NOT read by Claude Code — we no longer write it.
@@ -185,7 +192,7 @@ echo "Sequential Thinking MCP server (working memory):"
 echo "  Command: npx -y @modelcontextprotocol/server-sequential-thinking"
 INSTALL_SEQTHINK=$(echo -e "yes\nno" | fzf --height 10% --header "Install Sequential Thinking MCP server?")
 if [ "$INSTALL_SEQTHINK" = "yes" ]; then
-  mcp_register_user sequentialthinking npx -y @modelcontextprotocol/server-sequential-thinking
+  mcp_register_user sequentialthinking bash "$REPO_DIR/scripts/lib/tls-exec.sh" npx -y @modelcontextprotocol/server-sequential-thinking
 else
   echo "  Sequential Thinking install skipped."
 fi
@@ -221,7 +228,7 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
       # Install the ChromaDB daemon supervisor BEFORE writing the wrapper into MCP config.
       install_chroma_daemon "$REPO_DIR"
       claude mcp remove --scope user mempalace >/dev/null 2>&1 || true
-      if mcp_register_user mempalace "$MEMPALACE_PYTHON_BIN" "$MEMPALACE_WRAPPER"; then
+      if mcp_register_user mempalace bash "$REPO_DIR/scripts/lib/tls-exec.sh" "$MEMPALACE_PYTHON_BIN" "$MEMPALACE_WRAPPER"; then
         MEMPALACE_INSTALLED=1
       fi
     else
@@ -233,7 +240,7 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
     if [ "$INSTALL_MEMPALACE" = "yes" ]; then
       # Install the ChromaDB daemon supervisor BEFORE writing the wrapper into MCP config.
       install_chroma_daemon "$REPO_DIR"
-      if mcp_register_user mempalace "$MEMPALACE_PYTHON_BIN" "$MEMPALACE_WRAPPER"; then
+      if mcp_register_user mempalace bash "$REPO_DIR/scripts/lib/tls-exec.sh" "$MEMPALACE_PYTHON_BIN" "$MEMPALACE_WRAPPER"; then
         MEMPALACE_INSTALLED=1
       fi
     else

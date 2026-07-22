@@ -83,6 +83,48 @@ open-file limit:
 
 Both should report `65536` (or higher) once the reload completes.
 
+### File-descriptor floor on the manual launch path
+
+`scripts/start-chroma-server.sh` — the ad-hoc path used to bring up the
+daemon outside the installed supervisor — raises the daemon process's
+open-file soft limit to `10240` (`MEMPALACE_CHROMA_ULIMIT_FLOOR`
+overrides the default) immediately before launching it. This floor is
+**deliberately different from, and independent of, the supervised path's
+`65536` floor documented above** — do not confuse the two: raising or
+lowering one has no effect on the other, and a manually-started daemon
+never inherits the supervisor units' resource limits.
+
+If the raise fails (e.g. the host's file-descriptor hard ceiling is fixed
+below the requested floor), the script prints a warning to standard error
+naming the ceiling that remains in effect and continues launching the
+daemon rather than aborting.
+
+### Client-side connection-pool ceiling
+
+Each client that connects to the shared daemon — every
+`scripts/lib/mempalace-http-wrapper.py`-backed MCP session, including its
+own startup heartbeat probe — caps its own connection footprint against
+the daemon instead of leaving it unbounded (spec 0088). The ceiling bounds
+two independent limits:
+
+- **Total connections** — the maximum number of connections a single
+  session holds open against the daemon at once. Default: **8**. Override
+  with `MEMPALACE_CHROMA_MAX_CONNECTIONS`.
+- **Idle keep-alive connections** — the maximum number of idle connections
+  retained between requests. Default: **4**. Override with
+  `MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS`.
+
+When a session's momentary demand exceeds the ceiling, excess requests
+wait for a connection to free rather than failing outright. This is a
+purely client-side, in-process bound — it complements, but is independent
+of, the daemon's own file-descriptor floor documented above (spec 0087 /
+issue #587): this ceiling keeps each session frugal so that floor is
+approached far more slowly as concurrent sessions accumulate.
+`hooks/mempalace-transcript.sh`'s per-invocation clients honor this exact
+same ceiling and the exact same two environment variables — not a
+separate pair — so tuning one env var affects both components (spec 0088
+delta-01 R9).
+
 ## Migrating from the legacy `PersistentClient` setup
 
 If you upgraded a working CrewRig install across the #98 boundary:

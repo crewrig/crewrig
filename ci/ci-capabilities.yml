@@ -102,8 +102,10 @@ capabilities:
       - bash scripts/tests/test-e2e-runner.sh
       - bash scripts/tests/test-e2e-toml-merge.sh
       - bash scripts/tests/test-setup-validation-backend.sh
+      - bash scripts/tests/test-tls-delegation.sh
       - bash scripts/check-no-machine-paths.sh
       - bash scripts/tests/test-check-no-machine-paths.sh
+      - bash scripts/tests/test-setup-mcp-merge.sh
       - bash scripts/check-gemini-overlay-enrollment.sh
       - bash scripts/tests/test-check-gemini-overlay-enrollment.sh
 

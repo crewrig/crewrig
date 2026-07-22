@@ -97,13 +97,18 @@ components (core).
 The `artifacts/` directory is structured into four zones. Two zones are
 core-owned (upstream immutable); two are overlay-owned (adopting organization).
 
-**`artifacts/library/`** — harness machinery. The friction-reporting and
-curation system. Deployed to user home scope (e.g., `~/.claude/skills/`).
+**`artifacts/library/`** — upstream-owned cross-cutting machinery deployed at
+user-home scope (e.g., `~/.claude/skills/`), available to every workflow on the
+machine rather than only inside a CrewRig project checkout. Friction reporting,
+friction curation, and user-gate validation are **instances** of this contract,
+not an exhaustive member list; a future cross-cutting tool belongs here when it
+matches the contract.
 
 | Path | Description |
 |---|---|
 | `artifacts/library/skills/harness-report/` | Harness skill — friction tagging protocol. |
 | `artifacts/library/skills/harness-curator/` | Harness skill — friction clustering and issue authoring. |
+| `artifacts/library/skills/user-validate/` | Cross-cutting skill — backend-configurable user-gate validation. |
 | `artifacts/library/agents/harness-curator/` | Harness agent — curator specialist. |
 
 **`artifacts/core/`** — SDLC lifecycle tools and operational role skills and
@@ -119,7 +124,6 @@ SDLC lifecycle tools:
 | `artifacts/core/skills/spec-author/` | Lifecycle skill — qualification stage author. |
 | `artifacts/core/skills/pr-logbook/` | Lifecycle skill — PR and logbook composer. |
 | `artifacts/core/skills/pr-reviewer/` | Lifecycle skill — independent PR reviewer. |
-| `artifacts/core/skills/user-validate/` | Lifecycle skill — backend-configurable user-gate validation. |
 | `artifacts/core/agents/spec-author/` | Lifecycle agent — spec-author specialist. |
 | `artifacts/core/agents/pr-logbook/` | Lifecycle agent — logbook composer specialist. |
 | `artifacts/core/agents/pr-reviewer/` | Lifecycle agent — PR reviewer specialist. |
