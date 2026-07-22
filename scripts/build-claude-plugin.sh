@@ -187,7 +187,7 @@ AGENTS_LOCATION=$(jq -r '.components.agents.location // "agents/"' "$MANIFEST" 2
 if [ "$AGENTS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$AGENTS_LOCATION" ]; then
   AGENTS_GLOBS=$(jq -r '.claude.agents // [] | .[]' "$MANIFEST" 2>/dev/null)
   if [ -z "$AGENTS_GLOBS" ]; then
-    AGENTS_GLOBS="agents/*/AGENT.md"
+    AGENTS_GLOBS="${AGENTS_LOCATION}*/AGENT.md"
   fi
   while IFS= read -r glob_pattern; do
     [ -n "$glob_pattern" ] || continue
