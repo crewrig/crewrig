@@ -51,6 +51,7 @@ check-components:
     - "bash scripts/tests/test-check-extension-manifest-version.sh"
     - "bash scripts/tests/test-check-extension-version-bump.sh"
     - "bash scripts/tests/test-install-claude-plugin-marketplace.sh"
+    - "bash scripts/tests/test-build-claude-plugin-agents-glob.sh"
     - "bash scripts/tests/test-gemini-agent-frontmatter.sh"
     - "bash scripts/tests/test-e2e-auth-claude-json.sh"
     - "bash scripts/tests/test-e2e-auth-ollama.sh"
