@@ -30,6 +30,7 @@ backup_file() {
     local stamp
     stamp="$(date +%Y%m%d-%H%M%S)"
     cp -P "$target" "${target}.bak.${stamp}"
+    # shellcheck disable=SC2034  # read by scripts that source this lib (R9 warning), not here
     LAST_BACKUP_PATH="${target}.bak.${stamp}"
     echo "  Backed up: ${target##*/} -> ${target##*/}.bak.${stamp}"
   fi

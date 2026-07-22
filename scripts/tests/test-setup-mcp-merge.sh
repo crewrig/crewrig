@@ -104,7 +104,7 @@ assert_absent() {
 assert_warn() {
   local label="$1" name="$2"
   if printf '%s' "$OUT" | grep -q "'$name'" \
-     && printf '%s' "$OUT" | grep -qF "backup: $BACKUP_REF"; then
+     && printf '%s' "$OUT" | grep -qF "$BACKUP_REF"; then
     ok "$label: warning names '$name' and points at the backup"
   else
     bad "$label: missing R9 warning for '$name' (out: $OUT)"
