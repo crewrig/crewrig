@@ -97,6 +97,7 @@ check-components:
     - "bash scripts/check-no-machine-paths.sh"
     - "bash scripts/tests/test-check-no-machine-paths.sh"
     - "bash scripts/tests/test-setup-mcp-merge.sh"
+    - "bash scripts/tests/test-setup-org-mcp.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

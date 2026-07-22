@@ -250,6 +250,20 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   fi
 fi
 
+# --- Org-declared MCP servers (spec 0091) ---
+# Deliver org-declared servers from the org-owned manifest via `claude mcp add`,
+# AFTER the framework-managed reserved servers above, so precedence is
+# framework-reserved > org > operator-pre-existing (R10/R11). Claude is the
+# R13 hermetic-equivalent CLI: the imperative path cannot be exercised live in
+# CI, so it is covered by the pure argv-unit test + structural call-site
+# assertions (the sanctioned realization; see docs/cli-matrix.md row 7h).
+ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
+if [ -f "$ORG_MCP_MANIFEST" ]; then
+  echo "Registering org-declared MCP servers from mcp-servers.org.json (spec 0091)..."
+  register_org_mcp_claude "$ORG_MCP_MANIFEST" "$CLAUDE_USER_CONFIG"
+  echo ""
+fi
+
 # Surface legacy ~/.claude/mcp.json (no longer used) to avoid confusion
 LEGACY_MCP="$CLAUDE_HOME/mcp.json"
 if [ -f "$LEGACY_MCP" ]; then

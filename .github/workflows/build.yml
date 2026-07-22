@@ -226,6 +226,9 @@ jobs:
       - name: Test setup MCP-merge preservation regression (spec 0089)
         run: bash scripts/tests/test-setup-mcp-merge.sh
 
+      - name: Test org-level MCP declaration channel regression (spec 0091)
+        run: bash scripts/tests/test-setup-org-mcp.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
