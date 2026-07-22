@@ -38,6 +38,34 @@ realization are deliberately separated so that a merged spec can
 outlive a failed implementation attempt and be re-realized by a
 later PR without information loss.
 
+That "closes its own issue" default assumes a dedicated logbook issue
+exists apart from the spec's `related-issue`. When the `related-issue`
+is instead the ticket's shared logbook issue — the common case under
+*Logbook Issues → Rule A*, where no separate dedicated logbook issue
+exists — the spec-PR body SHALL NOT carry any closing-keyword
+directive for that issue: no `Closes #<N>`, `Fixes #<N>`, or
+`Resolves #<N>`, in any phrasing. Merging the spec-PR under that
+directive would close the ticket's own journal mid-flight, well before
+PLAN, DEV, and REVIEW have even run.
+
+Rewording the sentence around the closing keyword does not sidestep
+this. GitHub's closing-keyword parser matches the literal adjacent
+token pattern (`close|fix|resolve #<N>`) regardless of the surrounding
+sentence's meaning, so a negated sentence such as "this spec-PR closes
+no issue on merge; `#<N>` stays open" still auto-closes `#<N>` on
+merge. The carve-out is therefore a hard rule, not a discouraged
+practice: the spec-PR body must instead use a non-adjacent reference —
+"Related `#<N>`" or "the implementation PR (tracking `#<N>`) will
+close it on merge" — anything that keeps a closing keyword and the
+issue number from landing next to each other.
+
+When the spec's `related-issue` is *not* the shared logbook issue — a
+dedicated logbook issue exists separately, per Rule A's second
+paragraph — today's rule continues unchanged: each PR closes its own
+`related-issue` via its own closing directive. Either way, only the
+implementation-PR ever carries the closing directive for the shared
+logbook issue itself, consistent with *Logbook Issues → Rule C*.
+
 ## Delta-spec cumulative rule
 
 A single implementation-PR MAY absorb **N delta-spec PRs** targeting
