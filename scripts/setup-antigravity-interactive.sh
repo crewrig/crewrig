@@ -167,6 +167,14 @@ echo ""
 
 backup_file "$AGY_MCP_CONFIG"
 
+# Capture the operator's pre-existing MCP declarations + the backup path BEFORE
+# the framework rebuilds mcp_config.json from its own base, so non-reserved
+# servers can be folded back in after the write (spec 0089 R2/R4). Antigravity
+# has no committed template — it builds MCP_BASE from empty — so this fold, not
+# a seeded base, is what preserves an existing config (spec 0089 review).
+PREEXISTING_MCP="$([ -f "$AGY_MCP_CONFIG" ] && jq -c '.mcpServers // {}' "$AGY_MCP_CONFIG" 2>/dev/null || echo '{}')"
+MCP_BACKUP="$LAST_BACKUP_PATH"
+
 # Detect MemPalace Python interpreter (used to patch mcpServers.mempalace.command)
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
 if [ -z "$MEMPALACE_PYTHON_BIN" ]; then
@@ -228,6 +236,12 @@ fi
 
 # Write atomically.
 echo "$MCP_BASE" | jq '.' > "${AGY_MCP_CONFIG}.tmp" && mv "${AGY_MCP_CONFIG}.tmp" "$AGY_MCP_CONFIG"
+
+# Fold the operator's pre-existing non-reserved MCP servers back over the
+# framework base (spec 0089) — this is what preserves an existing Antigravity
+# config despite the empty MCP_BASE. Framework reserved entries (mempalace /
+# sequentialthinking) — including their spec-0084 TLS wrapping — are untouched.
+merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$AGY_MCP_CONFIG" "$MCP_BACKUP"
 echo "  Installed: mcp_config.json"
 echo ""
 

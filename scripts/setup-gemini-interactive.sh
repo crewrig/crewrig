@@ -163,6 +163,13 @@ SETTINGS_SRC="$REPO_DIR/config/gemini/settings.json"
 
 backup_file "$SETTINGS_TARGET"
 
+# Capture the operator's pre-existing MCP declarations + the backup path BEFORE
+# the framework overwrites settings.json, so non-reserved servers can be folded
+# back in after the write (spec 0089 R2/R4). Must run before the template copy
+# below, never after — see merge_preexisting_mcp_servers in common.sh.
+PREEXISTING_MCP="$(jq -c '.mcpServers // {}' "$SETTINGS_TARGET" 2>/dev/null || echo '{}')"
+MCP_BACKUP="$LAST_BACKUP_PATH"
+
 # Detect MemPalace Python interpreter (used to patch mcpServers.mempalace.command)
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
 if [ -z "$MEMPALACE_PYTHON_BIN" ]; then
@@ -217,6 +224,11 @@ jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" '
     | .mcpServers.sequentialthinking.command = "bash"
   else . end' \
   "$SETTINGS_TARGET" > "${SETTINGS_TARGET}.tmp" && mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"
+
+# Fold the operator's pre-existing non-reserved MCP servers back over the
+# framework config (spec 0089). Framework reserved entries (mempalace /
+# sequentialthinking) — including their spec-0084 TLS wrapping — are untouched.
+merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$SETTINGS_TARGET" "$MCP_BACKUP"
 echo ""
 
 if [ "$SKIP_RULES_CONFIG" -ne 1 ]; then

@@ -223,6 +223,9 @@ jobs:
       - name: Test check-no-machine-paths regression (spec 0081)
         run: bash scripts/tests/test-check-no-machine-paths.sh
 
+      - name: Test setup MCP-merge preservation regression (spec 0089)
+        run: bash scripts/tests/test-setup-mcp-merge.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:

@@ -227,6 +227,13 @@ MCP_CONFIG_SRC="$REPO_DIR/config/copilot/mcp-config.json.template"
 
 backup_file "$MCP_CONFIG_TARGET"
 
+# Capture the operator's pre-existing MCP declarations + the backup path BEFORE
+# the framework overwrites mcp-config.json, so non-reserved servers can be
+# folded back in after the write (spec 0089 R2/R4). Must run before the template
+# copy below, never after — see merge_preexisting_mcp_servers in common.sh.
+PREEXISTING_MCP="$(jq -c '.mcpServers // {}' "$MCP_CONFIG_TARGET" 2>/dev/null || echo '{}')"
+MCP_BACKUP="$LAST_BACKUP_PATH"
+
 # Detect MemPalace Python interpreter
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
 if [ -z "$MEMPALACE_PYTHON_BIN" ]; then
@@ -278,6 +285,11 @@ jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" '
     | .mcpServers.sequentialthinking.command = "bash"
   else . end' \
   "$MCP_CONFIG_TARGET" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
+
+# Fold the operator's pre-existing non-reserved MCP servers back over the
+# framework config (spec 0089). Framework reserved entries (mempalace /
+# sequentialthinking) — including their spec-0084 TLS wrapping — are untouched.
+merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$MCP_CONFIG_TARGET" "$MCP_BACKUP"
 echo ""
 
 # --- Artifact install to user home (ADR-0011, spec 0019) ---

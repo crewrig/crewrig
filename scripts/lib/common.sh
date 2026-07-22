@@ -15,14 +15,107 @@
 MEMPALACE_MIN_VERSION="3.6.0"
 MEMPALACE_MAX_VERSION_EXCLUSIVE="3.7"
 
+# LAST_BACKUP_PATH — set by every backup_file call so a caller can name the
+# backup it just produced (spec 0089 R9 warning). Deterministic on ALL paths:
+# the path of the backup when one was made, the empty string when the target
+# was absent and no backup was made. Initialising it unconditionally means a
+# caller reading it after a no-backup call never sees a prior call's value and
+# never trips `set -u` (spec 0089 review F2).
+LAST_BACKUP_PATH=""
+
 backup_file() {
   local target="$1"
+  LAST_BACKUP_PATH=""
   if [ -f "$target" ] || [ -L "$target" ]; then
     local stamp
     stamp="$(date +%Y%m%d-%H%M%S)"
     cp -P "$target" "${target}.bak.${stamp}"
+    # shellcheck disable=SC2034  # read by scripts that source this lib (R9 warning), not here
+    LAST_BACKUP_PATH="${target}.bak.${stamp}"
     echo "  Backed up: ${target##*/} -> ${target##*/}.bak.${stamp}"
   fi
+}
+
+# --- MCP reserved (framework-managed) server names (spec 0089 R1) ------------
+# The single source of truth for the names the framework owns. A declaration
+# found under one of these names is framework-managed, never an operator
+# declaration: it is written by the framework on selection (R7, framework wins)
+# and absent on decline (R8). Every other MCP server name is an operator
+# declaration and is preserved verbatim across a setup run (R2/R3).
+MCP_RESERVED_NAMES=(mempalace sequentialthinking)
+
+# merge_preexisting_mcp_servers <pre_run_mcpservers_json> <framework_config_path> <backup_ref>
+#
+# Folds an operator's pre-existing MCP server declarations back into a
+# freshly-written framework MCP config so custom (non-reserved) servers survive
+# a setup run (spec 0089). The three overwrite-based setups (Gemini, Copilot,
+# Antigravity) each call this ONE helper at their write step, which is what
+# keeps them symmetric (R5) and is the only shape R11's hermetic test can
+# exercise without fzf / the `agy` guard / the chroma daemon.
+#
+# Policy (all owned here):
+#   R2/R3/R4 — every non-reserved pre-existing server is merged back VERBATIM
+#     and wins over any same-named framework entry (right-biased jq object
+#     merge: `.mcpServers + $preserved`).
+#   R7 — a framework reserved server selected during the run keeps its own name:
+#     reserved names are stripped from the operator side before the merge, so
+#     the framework entry cannot be overwritten (framework wins on selection).
+#   R8 — a declined reserved server is absent from BOTH operands (the framework
+#     write removed it, `$preserved` stripped it), so the result has no entry
+#     under that name (decline toggle-off preserved).
+#   R9 — each reserved-name collision in the pre-run config emits a non-silent
+#     warning naming the server and pointing at <backup_ref>, worded for the
+#     replacement (framework kept the name) or the removal (framework declined).
+#   R6 — the framework's reserved entries were TLS-wrapped (spec 0084) BEFORE
+#     this fold and are never in the operator side, so their wrapping survives.
+#
+# Args:
+#   $1 pre_run_mcpservers_json — the target's `.mcpServers` captured BEFORE the
+#      framework overwrite (a JSON object; "" or "{}" when none pre-existed).
+#   $2 framework_config_path   — the just-written framework config; rewritten in
+#      place (atomic tmp + mv).
+#   $3 backup_ref              — timestamped backup path named in the R9 warning
+#      (may be empty when the target did not pre-exist).
+merge_preexisting_mcp_servers() {
+  local pre_run="$1" config_path="$2" backup_ref="$3"
+  [ -n "$pre_run" ] || pre_run='{}'
+
+  # Defensive: an unparseable capture degrades to "nothing to preserve" rather
+  # than aborting the setup. The timestamped backup (R10) still holds the
+  # operator's data byte-for-byte, so nothing is lost. Not a spec scenario.
+  if ! printf '%s' "$pre_run" | jq -e . >/dev/null 2>&1; then
+    echo "  WARNING: pre-existing MCP config could not be parsed — pre-existing" \
+         "declarations are NOT preserved in place; recover them from: ${backup_ref:-(none)}"
+    pre_run='{}'
+  fi
+
+  # R9 — one warning per reserved name that pre-existed, distinguishing the
+  # framework-wins replacement (name still present after the framework write)
+  # from the decline removal (name absent after the write).
+  local name
+  for name in "${MCP_RESERVED_NAMES[@]}"; do
+    if printf '%s' "$pre_run" | jq -e --arg n "$name" 'has($n)' >/dev/null 2>&1; then
+      if jq -e --arg n "$name" '(.mcpServers // {}) | has($n)' "$config_path" >/dev/null 2>&1; then
+        echo "  WARNING: '$name' is a framework-managed MCP server — your prior '$name' entry was replaced (framework wins)."
+      else
+        echo "  WARNING: '$name' is a framework-managed MCP server — your prior '$name' entry was removed (you declined it)."
+      fi
+      echo "           The prior entry is preserved in the timestamped backup: ${backup_ref:-(none)}"
+    fi
+  done
+
+  # The reserved set as a JSON array, so the jq program stays declarative.
+  local reserved_json
+  reserved_json="$(jq -cn '$ARGS.positional' --args "${MCP_RESERVED_NAMES[@]}")"
+
+  # Right-biased merge. `preserved` = operator servers minus reserved names, so
+  # framework reserved entries survive and operator non-reserved entries win
+  # verbatim over any same-named framework default (e.g. a hand-customised
+  # `github`).
+  jq --argjson pre "$pre_run" --argjson reserved "$reserved_json" \
+    'def preserved: reduce $reserved[] as $r ($pre; del(.[$r]));
+     .mcpServers = ((.mcpServers // {}) + preserved)' \
+    "$config_path" > "${config_path}.tmp" && mv "${config_path}.tmp" "$config_path"
 }
 
 install_file() {
