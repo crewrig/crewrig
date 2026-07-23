@@ -81,6 +81,13 @@ artifacts/library
 .gemini/commands
 .github/copilot-instructions.md
 .github/copilot
+# `.github/copilot/settings.json` is deliberately rewritten locally with an
+# absolute hook path by the transcript-hooks opt-in in
+# setup-copilot-interactive.sh (ADR-0001 Discovery finding #8) — that local
+# mutation is the intended behavior of the opt-in, not drift. Nested
+# exclusion under the strict `.github/copilot` parent (spec 0097 / issue
+# #605) keeps the rest of `.github/copilot/` (e.g. extension.json) guarded.
+.github/copilot/settings.json	excluded
 .github/skills
 .github/agents
 .github/workflows

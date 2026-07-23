@@ -169,3 +169,23 @@ making them the direct equivalent of `~/.claude/rules/` and `~/.gemini/`.
 files from `config/` to `~/.copilot/instructions/` using the naming
 convention `<priority>-<slug>.instructions.md`. The `[GAP]` for user-level
 layered context recorded in checklist item #7 is hereby resolved.
+
+## Addendum — 2026-07-23: Strict-sync carve-out for the hook-merge mutation
+
+Discovery finding #8 above records that the transcript-hooks opt-in in
+`setup-copilot-interactive.sh` deliberately rewrites the committed
+`.github/copilot/settings.json` locally with an absolute hook path — the
+committed file ships with `"hooks": []` by design, and the opt-in is what
+populates it. `.crewrig/core-paths.txt` did not account for this: the whole
+`.github/copilot` directory was `strict`, so that same designed-in mutation
+made `scripts/sync-from-upstream.sh` abort on every subsequent sync, and the
+`.bak.<timestamp>` file `backup_file()` leaves alongside it showed up as
+untracked noise in `git status`.
+
+`.github/copilot/settings.json` is now reclassified `excluded`, nested
+under the still-`strict` `.github/copilot` parent (spec 0097 / issue #605).
+This does not change where the opt-in writes its hook merge, nor any other
+decision recorded above — it only stops the manifest from treating that one
+file's intended local mutation as upstream drift. Sibling members of
+`.github/copilot/` (e.g. `extension.json`) are unaffected and continue to
+abort the sync on a local diff, exactly as before.
