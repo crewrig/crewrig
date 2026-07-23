@@ -165,6 +165,7 @@ exist, how org artifacts integrate) is defined in spec 0012 sub-spec E2.
 | `.github/copilot-instructions.md` | Copilot system prompt built from `AGENTS.md`. |
 | `.github/workflows/` | CI/CD pipeline definitions. |
 | `.github/copilot/` | GitHub Copilot workspace configuration. |
+| `.github/copilot/settings.json` | Committed workspace settings, `strict` by default as a member of `.github/copilot/` above — except its `hooks` key, which the transcript-hooks opt-in in `setup-copilot-interactive.sh` deliberately rewrites locally with an absolute path (ADR-0001 Discovery finding #8). Reclassified `excluded`, nested under the strict `.github/copilot/` parent (spec 0097 / issue #605), so that designed-in local mutation no longer aborts `scripts/sync-from-upstream.sh`; sibling members such as `extension.json` remain `strict` and still abort on a local diff. |
 
 ### Extension distribution channel
 
