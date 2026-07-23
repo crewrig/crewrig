@@ -1519,7 +1519,7 @@ run_case_stderr() {
 
   # Mutate settings.json only, representative of the transcript-hooks
   # hook-merge opt-in rewriting it locally with an absolute hook path.
-  printf '{"hooks": ["/Users/adopter/.claude/hooks/transcript-hook.sh"]}' \
+  printf '{"hooks": ["/Users/agent/.claude/hooks/transcript-hook.sh"]}' \
     > "$adopter/.github/copilot/settings.json"
 
   actual_exit=0
@@ -1532,7 +1532,7 @@ run_case_stderr() {
     ok=0
   fi
   settings_after="$(cat "$adopter/.github/copilot/settings.json" 2>/dev/null)"
-  if [ "$settings_after" != '{"hooks": ["/Users/adopter/.claude/hooks/transcript-hook.sh"]}' ]; then
+  if [ "$settings_after" != '{"hooks": ["/Users/agent/.claude/hooks/transcript-hook.sh"]}' ]; then
     echo "FAIL  case-z: settings.json hook-merge mutation was reverted by sync: '$settings_after'"
     ok=0
   fi
