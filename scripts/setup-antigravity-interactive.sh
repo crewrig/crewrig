@@ -245,9 +245,9 @@ merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$AGY_MCP_CONFIG" "$MCP_BACKUP"
 
 # Fold org-declared MCP servers (spec 0091) over the just-merged config, AFTER
 # the 0089 operator fold, so precedence is framework-reserved > org > operator.
-# Guarded on manifest presence, like the AGENTS.org.md fan-out. Non-stdio
-# (remote) org servers are not groundable for Antigravity and are skipped with a
-# warning (gap-acceptance, docs/cli-matrix.md row 7h).
+# Guarded on manifest presence, like the AGENTS.org.md fan-out. Both stdio and
+# remote (http/sse) org servers are delivered: remote entries fold in as the
+# Antigravity-native {serverUrl, headers} shape (docs/cli-matrix.md row 7h).
 ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
 if [ -f "$ORG_MCP_MANIFEST" ]; then
   ORG_MCP_NATIVE="$(org_mcp_to_native antigravity "$(read_org_mcp_manifest "$ORG_MCP_MANIFEST")")"

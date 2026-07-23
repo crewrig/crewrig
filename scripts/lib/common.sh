@@ -164,26 +164,21 @@ read_org_mcp_manifest() {
 #           and the live mempalace/seqthink entries use "type":"stdio", so we
 #           match the framework's proven convention.)
 #   http/  gemini/copilot     -> {type:<transport>, url, headers?}
-#   sse    antigravity        -> NOT groundable: `agy` exposes no `mcp`
-#          subcommand and spec 0054 records the mcp_config.json format as "not
-#          publicly documented" (only stdio confirmed). A non-stdio org server
-#          is SKIPPED with a non-silent stderr warning rather than emitting a
-#          fabricated shape — recorded as gap-acceptance evidence in
-#          docs/cli-matrix.md row 7h (R5 escape hatch).
+#   sse    antigravity        -> {serverUrl, headers?}   (NOTE: Antigravity's
+#          remote-entry key is `serverUrl`, NOT `url`, and carries no transport
+#          `type` field — one shape covers both http and Streamable-HTTP/SSE.
+#          Grounded against the official Antigravity MCP docs
+#          (https://antigravity.google/docs/mcp#mcp-configuration-structure):
+#          file `~/.gemini/config/mcp_config.json`, stdio {command,args,env,cwd?}
+#          + remote {serverUrl, headers?}. This SUPERSEDES the stale note in
+#          spec 0054 §Open questions that the mcp_config.json format is "not
+#          publicly documented" — the format is now officially documented, so
+#          the earlier remote-transport gap-acceptance is closed. Auth extras
+#          (authProviderType/oauth) are out of scope for this base declaration.)
 org_mcp_to_native() {
   local cli="$1" neutral="$2"
   [ -n "$neutral" ] || neutral='{}'
   printf '%s' "$neutral" | jq -e 'type == "object"' >/dev/null 2>&1 || neutral='{}'
-
-  # Antigravity remote-transport gap: warn (stderr) for each skipped entry.
-  if [ "$cli" = "antigravity" ]; then
-    local dropped d
-    dropped="$(printf '%s' "$neutral" | jq -r 'to_entries[] | select((.value.transport // "stdio") != "stdio") | .key' 2>/dev/null)"
-    while IFS= read -r d; do
-      [ -n "$d" ] || continue
-      echo "  WARNING: org MCP server '$d' uses a non-stdio (remote) transport, which is not groundable for Antigravity CLI — skipped (gap-acceptance, docs/cli-matrix.md row 7h). Declare it via an Antigravity-native mechanism if support lands." >&2
-    done <<< "$dropped"
-  fi
 
   printf '%s' "$neutral" | jq -c --arg cli "$cli" '
     to_entries
@@ -198,7 +193,11 @@ org_mcp_to_native() {
                 + (if $cli == "copilot" then { type: "stdio" } else {} end)
             ) }
           elif $cli == "antigravity" then
-            empty
+            # Antigravity remote shape: `serverUrl` (not `url`), no `type`.
+            { key: $name, value: (
+                { serverUrl: $e.url }
+                + (if $e.headers then { headers: $e.headers } else {} end)
+            ) }
           else
             { key: $name, value: (
                 { type: $t, url: $e.url }

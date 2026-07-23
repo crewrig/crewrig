@@ -116,14 +116,19 @@ jq -e '.atlassian.type == "http" and .atlassian.url' <<<"$COP" >/dev/null 2>&1 \
 jq -e '.github.type == "stdio" and .github.command == "gh-mcp"' <<<"$COP" >/dev/null 2>&1 \
   && ok "copilot stdio -> {type:stdio,command,args,env}" || bad "copilot stdio shape wrong: $COP"
 
-# Antigravity: stdio delivered, http/sse skipped + non-silent stderr warning.
-AGY_OUT="$(org_mcp_to_native antigravity "$NEUTRAL" 2>/dev/null)"
-AGY_ERR="$(org_mcp_to_native antigravity "$NEUTRAL" 2>&1 1>/dev/null)"
-jq -e '(.github.command == "gh-mcp") and (has("atlassian") | not)' <<<"$AGY_OUT" >/dev/null 2>&1 \
-  && ok "antigravity delivers stdio, skips remote (http)" || bad "antigravity output wrong: $AGY_OUT"
-printf '%s' "$AGY_ERR" | grep -q "atlassian" \
-  && ok "antigravity remote-skip emits a non-silent warning naming the server" \
-  || bad "antigravity remote-skip must warn (got: $AGY_ERR)"
+# Antigravity: stdio AND remote delivered. Remote uses the native `serverUrl`
+# shape (NOT `url`, no `type`) per the official Antigravity MCP docs — which
+# supersede spec 0054's stale "format not publicly documented" note, closing
+# the former http/sse gap-acceptance (docs/cli-matrix.md row 7h).
+AGY="$(org_mcp_to_native antigravity "$NEUTRAL" 2>/dev/null)"
+jq -e '.github.command == "gh-mcp" and (.github | has("type") | not)' <<<"$AGY" >/dev/null 2>&1 \
+  && ok "antigravity stdio -> {command,args,env} (no type)" || bad "antigravity stdio shape wrong: $AGY"
+jq -e '.atlassian.serverUrl == "https://mcp.atlassian.example/mcp"
+       and (.atlassian | has("url") | not)
+       and (.atlassian | has("type") | not)
+       and .atlassian.headers.Authorization' <<<"$AGY" >/dev/null 2>&1 \
+  && ok "antigravity http -> {serverUrl,headers}: manifest 'url' translated to 'serverUrl', headers preserved" \
+  || bad "antigravity remote shape wrong (expected serverUrl, no url/type, headers kept): $AGY"
 
 # ---------------------------------------------------------------------------
 echo "3. apply_org_mcp_servers — fold precedence (R6/R10/R11)"

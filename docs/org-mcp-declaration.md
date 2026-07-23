@@ -95,15 +95,18 @@ health-check, deduplicate, or normalize them (spec 0091 *Out of scope*).
 | Claude Code | ✅ `claude mcp add --scope user … -- cmd args` | ✅ `claude mcp add --transport http … --header …` |
 | Gemini CLI | ✅ native `{command,args,env}` in `~/.gemini/settings.json` | ✅ native `{type,url,headers}` |
 | Copilot CLI | ✅ native `{type:"stdio",command,args,env}` in `~/.copilot/mcp-config.json` | ✅ native `{type,url,headers}` |
-| Antigravity CLI | ✅ native `{command,args,env}` in `~/.gemini/config/mcp_config.json` | ⚠️ **not delivered** — accepted gap |
+| Antigravity CLI | ✅ native `{command,args,env}` in `~/.gemini/config/mcp_config.json` | ✅ native `{serverUrl,headers}` |
 
-**Antigravity + remote transports.** A non-stdio (http/sse) org server is
-**skipped on Antigravity with a non-silent warning**, because `agy` exposes no
-`mcp` subcommand and its `mcp_config.json` remote-entry shape is not publicly
-documented or groundable — so no remote shape is emitted rather than a
-fabricated one. This is a documented, accepted parity gap, not a silent
-omission; see [`cli-matrix.md`](cli-matrix.md) row 7h and the *Parity gaps*
-entry. stdio org servers reach all four CLIs.
+**Antigravity remote-entry key.** The neutral `url` is delivered to all four
+CLIs, but the native remote key differs per CLI. Antigravity uses **`serverUrl`**
+(not `url`) and carries no transport `type` field — one shape covers both http
+and Streamable-HTTP/SSE — while Gemini/Copilot use `url` and Claude uses
+`--transport http`. This shape is grounded against the official
+[Antigravity MCP docs](https://antigravity.google/docs/mcp#mcp-configuration-structure)
+(file `~/.gemini/config/mcp_config.json`; remote entry `{serverUrl, headers}`),
+which supersede the stale "format not publicly documented" note in spec 0054 —
+so both stdio and remote org servers now reach all four CLIs. See
+[`cli-matrix.md`](cli-matrix.md) row 7h.
 
 Delivery happens at setup time. After editing `mcp-servers.org.json`, **re-run
 the setup script** for each CLI you use (`scripts/setup-<cli>-interactive.sh`);
