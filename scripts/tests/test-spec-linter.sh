@@ -325,13 +325,31 @@ fi
 # -------------------------------------------------------------------------
 # Case 22 (R9) — two original spec files sharing the same frontmatter `id`
 # but distinct slugs → cross-file duplicate-id failure naming both files,
-# non-zero exit.
+# non-zero exit. R9 requires the failure message to name both colliding
+# files directly — exit code alone (as run_case checks) can't distinguish
+# "failed naming both files" from "failed for an unrelated reason", so this
+# inspects the captured output, mirroring Case 25's technique for the 3-file
+# case.
 # -------------------------------------------------------------------------
 spec22a="0042-collision-a.md"
 spec22b="0042-collision-b.md"
 render_spec "0042" "collision-a" "draft" > "$TMP_ROOT/$spec22a"
 render_spec "0042" "collision-b" "draft" > "$TMP_ROOT/$spec22b"
-run_case "Case 22 — duplicate id across two original specs fails" "$spec22a $spec22b" 1
+
+case22_exit=0
+case22_output=$( ( cd "$TMP_ROOT" && node "$LINTER_JS" $spec22a $spec22b 2>&1 ) ) || case22_exit=$?
+if [ "$case22_exit" -eq 1 ] \
+  && echo "$case22_output" | grep -qF "$spec22a" \
+  && echo "$case22_output" | grep -qF "$spec22b" \
+  && echo "$case22_output" | grep -q 'Duplicate spec id "0042"'; then
+  echo "PASS  Case 22 — duplicate id across two original specs names both files (exit 1)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 22 — expected exit 1 naming both files and the shared id, got exit $case22_exit"
+  echo "Output:"
+  echo "$case22_output"
+  fail=$((fail + 1))
+fi
 
 # -------------------------------------------------------------------------
 # Case 23 (R10) — a delta-spec file sharing its parent's `id` is NOT a
