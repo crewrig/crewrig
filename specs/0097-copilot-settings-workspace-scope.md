@@ -74,7 +74,19 @@ mistake made by the operator or the setup script.
    not regress silently.
 10. A regression check SHALL assert that `.gitignore`'s updated pattern
     matches a representative `.github/copilot/settings.json.bak.<timestamp>`
-    filename in the shape produced by `backup_file()`.
+    filename in the shape produced by `backup_file()`. The pattern SHALL be
+    scoped narrowly to `.github/copilot/settings.json.bak.*` — not a
+    directory-wide `.github/copilot/*.bak.*` — to keep the diff auditable
+    and confined to the one file this spec addresses.
+11. `docs/adr/0001-copilot-cli-integration-strategy.md` SHALL receive a
+    short informational addendum, mirroring its existing
+    "Addendum — 2026-05-20" section, noting that
+    `.github/copilot/settings.json`'s local hook-merge mutation is now
+    explicitly exempted from the strict sync guard (per Requirement 1),
+    so a future reader is not required to cross-reference this spec to
+    understand why the manifest treats that file differently from its
+    sibling `extension.json`. This addendum SHALL NOT alter any normative
+    decision already recorded in the ADR.
 
 ## Scenarios
 
@@ -143,23 +155,12 @@ Then  the sync aborts, reporting `.github/copilot` as carrying a local
 
 ## Open questions
 
-- Should `docs/adr/0001-copilot-cli-integration-strategy.md` receive a
-  short addendum — mirroring its existing "Addendum — 2026-05-20"
-  section — noting that `.github/copilot/settings.json`'s local mutation
-  is now explicitly exempted from the sync guard, so a future reader of
-  the ADR does not have to cross-reference this spec to understand why
-  the manifest treats that one file differently from its sibling
-  `extension.json`? This is an informational addition, not a change to
-  the ADR's normative decisions, but it is a judgment call on ceremony
-  versus signal that this spec is deliberately leaving to the user.
-- Does the user want a follow-up ticket opened now to evaluate the
-  `settings.local.json` redirection named in *Out of scope* (confirming
-  GitHub Copilot CLI's multi-file settings-merge behavior first), or
-  should that exploration wait until it is independently motivated?
-- How wide should the new `.gitignore` pattern be: narrowly scoped to
-  `.github/copilot/settings.json.bak.*` (matching only the file this
-  spec addresses), or a directory-wide
-  `.github/copilot/*.bak.*` covering any future `backup_file()` target
-  inside that directory? The narrower pattern is a smaller, more
-  auditable diff; the wider one is more defensive against a similar
-  friction resurfacing on a different file in the same directory.
+None. All three questions raised at authoring time were closed by the
+user before PLAN:
+
+- ADR-0001 addendum: **yes** — see Requirement 11.
+- Follow-up ticket for the `settings.local.json` redirection: **not
+  opened now** — no concrete motivation exists today; revisit if a
+  future friction independently motivates it (see *Out of scope*).
+- `.gitignore` pattern scope: **narrow** (`settings.json.bak.*`) — see
+  Requirement 10.
