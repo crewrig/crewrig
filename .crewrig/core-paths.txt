@@ -26,6 +26,7 @@
 # Repository governance
 AGENTS.md	strict
 AGENTS.org.md	excluded
+mcp-servers.org.json	excluded
 CLAUDE.md	strict
 CONTRIBUTING.md	strict
 DEVELOPMENT.md	strict

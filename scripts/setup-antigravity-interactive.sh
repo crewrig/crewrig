@@ -242,6 +242,17 @@ echo "$MCP_BASE" | jq '.' > "${AGY_MCP_CONFIG}.tmp" && mv "${AGY_MCP_CONFIG}.tmp
 # config despite the empty MCP_BASE. Framework reserved entries (mempalace /
 # sequentialthinking) — including their spec-0084 TLS wrapping — are untouched.
 merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$AGY_MCP_CONFIG" "$MCP_BACKUP"
+
+# Fold org-declared MCP servers (spec 0091) over the just-merged config, AFTER
+# the 0089 operator fold, so precedence is framework-reserved > org > operator.
+# Guarded on manifest presence, like the AGENTS.org.md fan-out. Both stdio and
+# remote (http/sse) org servers are delivered: remote entries fold in as the
+# Antigravity-native {serverUrl, headers} shape (docs/cli-matrix.md row 7h).
+ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
+if [ -f "$ORG_MCP_MANIFEST" ]; then
+  ORG_MCP_NATIVE="$(org_mcp_to_native antigravity "$(read_org_mcp_manifest "$ORG_MCP_MANIFEST")")"
+  apply_org_mcp_servers "$ORG_MCP_NATIVE" "$AGY_MCP_CONFIG" "$PREEXISTING_MCP" "$MCP_BACKUP"
+fi
 echo "  Installed: mcp_config.json"
 echo ""
 

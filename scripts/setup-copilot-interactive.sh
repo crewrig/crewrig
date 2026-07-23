@@ -290,6 +290,15 @@ jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" '
 # framework config (spec 0089). Framework reserved entries (mempalace /
 # sequentialthinking) — including their spec-0084 TLS wrapping — are untouched.
 merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$MCP_CONFIG_TARGET" "$MCP_BACKUP"
+
+# Fold org-declared MCP servers (spec 0091) over the just-merged config, AFTER
+# the 0089 operator fold, so precedence is framework-reserved > org > operator.
+# Guarded on manifest presence, like the AGENTS.org.md fan-out.
+ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
+if [ -f "$ORG_MCP_MANIFEST" ]; then
+  ORG_MCP_NATIVE="$(org_mcp_to_native copilot "$(read_org_mcp_manifest "$ORG_MCP_MANIFEST")")"
+  apply_org_mcp_servers "$ORG_MCP_NATIVE" "$MCP_CONFIG_TARGET" "$PREEXISTING_MCP" "$MCP_BACKUP"
+fi
 echo ""
 
 # --- Artifact install to user home (ADR-0011, spec 0019) ---
