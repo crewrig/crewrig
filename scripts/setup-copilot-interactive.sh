@@ -174,44 +174,41 @@ if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
 
   # Level
   echo "Select your experience level:"
-  LEVEL=$(for f in "$REPO_DIR"/config/level/*.md; do basename "$f" .md; done \
-    | fzf --height 40% --preview "head -20 $REPO_DIR/config/level/{}.md")
-  if [ -z "$LEVEL" ]; then
-    echo "No level selected. Aborting."
-    exit 1
+  LEVEL="$(pick_catalogue_entry "$REPO_DIR/config/level" "level")"
+  if [ -n "$LEVEL" ]; then
+    install_file "$REPO_DIR/config/level/${LEVEL}.md" "$COPILOT_INSTRUCTIONS/10-level.instructions.md" \
+      "level/${LEVEL}.md -> instructions/10-level.instructions.md"
+    echo "$LEVEL" > "$COPILOT_HOME/.selected_level"
+    echo "Level: $LEVEL"
+  else
+    rm -f "$COPILOT_HOME/.selected_level"
   fi
-  install_file "$REPO_DIR/config/level/${LEVEL}.md" "$COPILOT_INSTRUCTIONS/10-level.instructions.md" \
-    "level/${LEVEL}.md -> instructions/10-level.instructions.md"
-  echo "$LEVEL" > "$COPILOT_HOME/.selected_level"
-  echo "Level: $LEVEL"
   echo ""
 
   # Expertise
   echo "Select your expertise:"
-  EXPERTISE=$(for f in "$REPO_DIR"/config/expertise/*.md; do basename "$f" .md; done \
-    | fzf --height 40% --preview "head -20 $REPO_DIR/config/expertise/{}.md")
-  if [ -z "$EXPERTISE" ]; then
-    echo "No expertise selected. Aborting."
-    exit 1
+  EXPERTISE="$(pick_catalogue_entry "$REPO_DIR/config/expertise" "expertise")"
+  if [ -n "$EXPERTISE" ]; then
+    install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$COPILOT_INSTRUCTIONS/40-expertise.instructions.md" \
+      "expertise/${EXPERTISE}.md -> instructions/40-expertise.instructions.md"
+    echo "$EXPERTISE" > "$COPILOT_HOME/.selected_expertise"
+    echo "Expertise: $EXPERTISE"
+  else
+    rm -f "$COPILOT_HOME/.selected_expertise"
   fi
-  install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$COPILOT_INSTRUCTIONS/40-expertise.instructions.md" \
-    "expertise/${EXPERTISE}.md -> instructions/40-expertise.instructions.md"
-  echo "$EXPERTISE" > "$COPILOT_HOME/.selected_expertise"
-  echo "Expertise: $EXPERTISE"
   echo ""
 
   # Team
   echo "Select your team:"
-  TEAM=$(for f in "$REPO_DIR"/config/teams/*.md; do basename "$f" .md; done \
-    | fzf --height 40% --preview "head -20 $REPO_DIR/config/teams/{}.md")
-  if [ -z "$TEAM" ]; then
-    echo "No team selected. Aborting."
-    exit 1
+  TEAM="$(pick_catalogue_entry "$REPO_DIR/config/teams" "team")"
+  if [ -n "$TEAM" ]; then
+    install_file "$REPO_DIR/config/teams/${TEAM}.md" "$COPILOT_INSTRUCTIONS/50-team.instructions.md" \
+      "teams/${TEAM}.md -> instructions/50-team.instructions.md"
+    echo "$TEAM" > "$COPILOT_HOME/.selected_team"
+    echo "Team: $TEAM"
+  else
+    rm -f "$COPILOT_HOME/.selected_team"
   fi
-  install_file "$REPO_DIR/config/teams/${TEAM}.md" "$COPILOT_INSTRUCTIONS/50-team.instructions.md" \
-    "teams/${TEAM}.md -> instructions/50-team.instructions.md"
-  echo "$TEAM" > "$COPILOT_HOME/.selected_team"
-  echo "Team: $TEAM"
   echo ""
 fi
 
