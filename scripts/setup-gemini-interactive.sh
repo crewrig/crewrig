@@ -244,44 +244,41 @@ if [ "$SKIP_RULES_CONFIG" -ne 1 ]; then
 
 # --- Team selection ---
 echo "Select your team:"
-TEAM=$(for f in "$REPO_DIR"/config/teams/*.md; do basename "$f" .md; done \
-  | fzf --height 40% --preview "head -20 $REPO_DIR/config/teams/{}.md")
-if [ -z "$TEAM" ]; then
-  echo "No team selected. Aborting."
-  exit 1
+TEAM="$(pick_catalogue_entry "$REPO_DIR/config/teams" "team")"
+if [ -n "$TEAM" ]; then
+  install_file "$REPO_DIR/config/teams/${TEAM}.md" "$GEMINI_HOME/50_USER_TEAM.md" \
+    "teams/${TEAM}.md -> 50_USER_TEAM.md"
+  echo "$TEAM" > "$GEMINI_HOME/.selected_team"
+  echo "Team: $TEAM"
+else
+  rm -f "$GEMINI_HOME/.selected_team"
 fi
-install_file "$REPO_DIR/config/teams/${TEAM}.md" "$GEMINI_HOME/50_USER_TEAM.md" \
-  "teams/${TEAM}.md -> 50_USER_TEAM.md"
-echo "$TEAM" > "$GEMINI_HOME/.selected_team"
-echo "Team: $TEAM"
 echo ""
 
 # --- Expertise selection ---
 echo "Select your expertise:"
-EXPERTISE=$(for f in "$REPO_DIR"/config/expertise/*.md; do basename "$f" .md; done \
-  | fzf --height 40% --preview "head -20 $REPO_DIR/config/expertise/{}.md")
-if [ -z "$EXPERTISE" ]; then
-  echo "No expertise selected. Aborting."
-  exit 1
+EXPERTISE="$(pick_catalogue_entry "$REPO_DIR/config/expertise" "expertise")"
+if [ -n "$EXPERTISE" ]; then
+  install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$GEMINI_HOME/40_USER_EXPERTISE.md" \
+    "expertise/${EXPERTISE}.md -> 40_USER_EXPERTISE.md"
+  echo "$EXPERTISE" > "$GEMINI_HOME/.selected_expertise"
+  echo "Expertise: $EXPERTISE"
+else
+  rm -f "$GEMINI_HOME/.selected_expertise"
 fi
-install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$GEMINI_HOME/40_USER_EXPERTISE.md" \
-  "expertise/${EXPERTISE}.md -> 40_USER_EXPERTISE.md"
-echo "$EXPERTISE" > "$GEMINI_HOME/.selected_expertise"
-echo "Expertise: $EXPERTISE"
 echo ""
 
 # --- Level selection ---
 echo "Select your experience level:"
-LEVEL=$(for f in "$REPO_DIR"/config/level/*.md; do basename "$f" .md; done \
-  | fzf --height 40% --preview "head -20 $REPO_DIR/config/level/{}.md")
-if [ -z "$LEVEL" ]; then
-  echo "No level selected. Aborting."
-  exit 1
+LEVEL="$(pick_catalogue_entry "$REPO_DIR/config/level" "level")"
+if [ -n "$LEVEL" ]; then
+  install_file "$REPO_DIR/config/level/${LEVEL}.md" "$GEMINI_HOME/10_USER_LEVEL.md" \
+    "level/${LEVEL}.md -> 10_USER_LEVEL.md"
+  echo "$LEVEL" > "$GEMINI_HOME/.selected_level"
+  echo "Level: $LEVEL"
+else
+  rm -f "$GEMINI_HOME/.selected_level"
 fi
-install_file "$REPO_DIR/config/level/${LEVEL}.md" "$GEMINI_HOME/10_USER_LEVEL.md" \
-  "level/${LEVEL}.md -> 10_USER_LEVEL.md"
-echo "$LEVEL" > "$GEMINI_HOME/.selected_level"
-echo "Level: $LEVEL"
 echo ""
 
 # --- Profile handling ---

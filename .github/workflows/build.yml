@@ -232,6 +232,9 @@ jobs:
       - name: Test org-level MCP declaration channel regression (spec 0091)
         run: bash scripts/tests/test-setup-org-mcp.sh
 
+      - name: Test setup catalogue-picker regression (spec 0096)
+        run: bash scripts/tests/test-setup-catalogue-picker.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:

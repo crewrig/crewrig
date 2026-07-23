@@ -392,6 +392,48 @@ install_dir() {
   fi
 }
 
+# pick_catalogue_entry <category_dir> <category_label>
+# Shared team/expertise/level picker (spec 0096), replacing the verbatim-
+# duplicated selection block across the four setup-*-interactive.sh scripts.
+#
+# Nullglob-safe: when <category_dir> holds zero *.md files, short-circuits to
+# an empty result BEFORE ever invoking fzf — no literal `*`/`*.md` placeholder
+# reaches the picker (R1). Otherwise pipes the candidate basenames through fzf;
+# the `|| true` on that invocation is load-bearing: it neutralizes fzf's own
+# exit status (1 on decline, 2 on error, 130 on Ctrl-C) so a caller running
+# under `set -e` cannot abort the assignment before the caller's own
+# if/else skip-handling runs (all four setup-*-interactive.sh scripts run
+# under `set -e`).
+#
+# Prints the chosen basename (no .md suffix) to stdout on a normal pick.
+# Prints nothing to stdout, and a category-naming, cause-distinguishing
+# message to stderr, on either an empty catalogue or a declined pick (R4) —
+# the caller only needs to test for an empty result, not which cause fired.
+pick_catalogue_entry() {
+  local category_dir="$1" category_label="$2"
+  local candidates=() f
+  shopt -s nullglob
+  for f in "$category_dir"/*.md; do
+    candidates+=("$(basename "$f" .md)")
+  done
+  shopt -u nullglob
+
+  if [ "${#candidates[@]}" -eq 0 ]; then
+    echo "No $category_label catalogue entries found under $category_dir — skipping $category_label selection." >&2
+    return 0
+  fi
+
+  local choice
+  choice="$(printf '%s\n' "${candidates[@]}" \
+    | fzf --height 40% --preview "head -20 $category_dir/{}.md" || true)"
+  if [ -z "$choice" ]; then
+    echo "No $category_label selected — skipping $category_label selection." >&2
+    return 0
+  fi
+
+  printf '%s\n' "$choice"
+}
+
 mempalace_installed_version() {
   "$1" -c "from importlib.metadata import version; print(version('mempalace'))" 2>/dev/null
 }
