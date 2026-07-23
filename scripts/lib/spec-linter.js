@@ -103,12 +103,12 @@ function lintFile(filePath) {
 
     const content = fs.readFileSync(filePath, 'utf8');
     const basename = path.basename(filePath);
+    const isDelta = basename.includes('.delta-');
+    let id;
 
     if (basename === '_template.md' || basename === 'README.md') {
-        return { hasErrors, errors };
+        return { hasErrors, errors, id, isDelta };
     }
-
-    const isDelta = basename.includes('.delta-');
 
     let expectedId = '';
     let expectedSlug = '';
@@ -123,7 +123,7 @@ function lintFile(filePath) {
     const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
     if (!fmMatch) {
         reportError(`Missing YAML frontmatter block`);
-        return { hasErrors, errors };
+        return { hasErrors, errors, id, isDelta };
     }
 
     let fm;
@@ -131,12 +131,12 @@ function lintFile(filePath) {
         fm = yaml.load(fmMatch[1]);
     } catch (e) {
         reportError(`Failed to parse YAML frontmatter: ${e.message}`);
-        return { hasErrors, errors };
+        return { hasErrors, errors, id, isDelta };
     }
 
     if (!fm) {
         reportError(`Frontmatter is empty`);
-        return { hasErrors, errors };
+        return { hasErrors, errors, id, isDelta };
     }
 
     const mandatoryFields = ['id', 'slug', 'status', 'complexity', 'version', 'related-issue'];
@@ -148,6 +148,7 @@ function lintFile(filePath) {
 
     if (fm.id !== undefined) {
         const fmIdStr = typeof fm.id === 'string' ? fm.id : fm.id.toString().padStart(4, '0');
+        id = fmIdStr;
         if (fmIdStr !== expectedId) {
             reportError(`Frontmatter 'id' ("${fmIdStr}") does not match filename prefix ("${expectedId}")`);
         }
@@ -233,7 +234,7 @@ function lintFile(filePath) {
         }
     }
 
-    return { hasErrors, errors };
+    return { hasErrors, errors, id, isDelta };
 }
 
 function run() {
@@ -264,9 +265,11 @@ function run() {
 
     const manifestEntries = loadCorePathsManifest();
 
+    const fileResults = [];
     for (const file of uniqueFiles) {
         if (isExcludedSpecPath(file, manifestEntries)) continue;
-        const { hasErrors, errors } = lintFile(file);
+        const { hasErrors, errors, id, isDelta } = lintFile(file);
+        fileResults.push({ file, id, isDelta });
         if (hasErrors) {
             console.error(`\n[FAIL] ${file}`);
             for (const err of errors) {
@@ -275,7 +278,32 @@ function run() {
             totalErrors++;
         }
     }
-    
+
+    // Cross-file duplicate-`id` check (spec 0098). Groups the already-parsed
+    // `id` from every non-excluded, non-delta file (R4/R5) and reports any
+    // group of size >= 2 as a failure naming every colliding file (R1-R3).
+    // Files whose `id` is `undefined` (frontmatter failed to parse) already
+    // carry their own per-file error above, so they're skipped here rather
+    // than double-reported. Groups of size 1 (or an empty map) satisfy R7 by
+    // construction — no finding is ever emitted for them.
+    const idGroups = new Map();
+    for (const { file, id, isDelta } of fileResults) {
+        if (isDelta || id === undefined) continue;
+        if (!idGroups.has(id)) {
+            idGroups.set(id, []);
+        }
+        idGroups.get(id).push(file);
+    }
+    for (const [id, files] of idGroups) {
+        if (files.length >= 2) {
+            console.error(`\n[FAIL] Duplicate spec id "${id}" across files:`);
+            for (const f of files) {
+                console.error(`  - ${f}`);
+            }
+            totalErrors++;
+        }
+    }
+
     if (totalErrors > 0) {
         console.error(`\nLinting failed: ${totalErrors} files contain errors.`);
         process.exit(1);
