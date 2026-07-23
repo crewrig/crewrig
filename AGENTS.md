@@ -417,7 +417,7 @@ rule*.
 
 ## Forge Access
 
-Forge access is CLI-only. Forge operations (issues, PRs/MRs, branch protection, releases) route through the forge's own CLI — `gh` (GitHub), `glab` (GitLab), `tea` (Gitea) — with authentication delegated to that CLI; the framework ships no forge MCP server. Native `git` remains the tool for ordinary version control and is unchanged. See `artifacts/core/rules/60-tools.md` → *Forge Access* for the per-CLI `auth login` details. An organization wanting a forge MCP re-adds it via the org-owned `mcp-servers.org.json` channel ([`docs/org-mcp-declaration.md`](docs/org-mcp-declaration.md), spec 0091).
+Forge access is CLI-only. Forge operations (issues, PRs/MRs, branch protection, releases) route through the forge's own CLI — `gh` (GitHub), `glab` (GitLab), `tea` (Gitea) — with authentication delegated to that CLI; the framework ships no forge MCP server. Native `git` remains the tool for ordinary version control and is unchanged. See `artifacts/core/rules/60-tools.md` → *Forge Access* for the per-CLI `auth login` details. Re-add a forge MCP via [org MCP declaration](docs/org-mcp-declaration.md).
 
 ## Legacy ticket policy
 
