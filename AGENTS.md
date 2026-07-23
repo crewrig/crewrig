@@ -39,6 +39,14 @@ Skipping the sweep is a process violation equivalent to missing a lifecycle
 stage. A REVIEW pass that audits a session where the sweep was omitted SHALL
 emit a `class: tech` finding citing this section.
 
+Additionally, before opening any new ticket worktree, perform the
+non-destructive session-start worktree surfacing defined in
+[`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) → *Worktree
+Isolation* → *Session-boundary worktree hygiene*: report any already-merged
+worktree still present under `.worktrees/` as a stale backlog before piling new
+work on top of it. This step is additive to the six-step sweep above and, like
+it at session start, removes nothing.
+
 ## Lifecycle
 
 Every non-trivial ticket SHALL flow through the four-stage lifecycle
