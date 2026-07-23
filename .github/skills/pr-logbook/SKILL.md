@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.6"
+    version: "1.1.7"
 ---
 
 
@@ -74,8 +74,12 @@ deletions, and the rationale for each.>
 an existing feature issue (scan the PR body for `Closes #N`, `Fixes #N`,
 `Resolves #N` patterns). If a feature issue exists:
 
-1. Append the logbook entry to that issue as a comment via the GitHub MCP
-   `add_issue_comment` tool (or `gh issue comment <N> --body "..."`).
+1. Append the logbook entry to that issue as a comment through the forge
+   CLI: `gh issue comment <N> --body "..."` on GitHub, or the equivalent
+   `glab`/`tea` note command on GitLab/Gitea. Forge access is CLI-only
+   (`AGENTS.md` → *Forge Access*); the framework ships no forge MCP
+   server, so a host-provided one is an optional convenience, not the
+   default.
 2. Ensure the issue carries the `logbook` label — add it with
    `gh issue edit <N> --add-label logbook` if absent.
 3. Do **not** create a new logbook issue. The feature ticket is the logbook.
@@ -126,17 +130,20 @@ Text-only tooling silently drops file metadata. Verify before pushing:
 
 - If the diff touches shell scripts, confirm executable bits survived
   the round-trip: `git ls-files --stage -- '*.sh'` must show `100755`,
-  not `100644`. The MCP `push_files` tool strips the exec bit. Restore
+  not `100644`. Any text-only file-write path can drop the exec bit,
+  whereas native `git add`/`git push` preserve it. Restore a lost bit
   with `git update-index --chmod=+x <file>` and amend before pushing.
 
 ### 7. Post-merge cleanup
 
 After the squash-merge commit lands on the target branch:
 
-1. Close the logbook issue:
-   `gh issue close <logbook-issue-number> --reason completed`
-   or via the GitHub MCP `issue_write` tool with `state: "closed"` and
-   `state_reason: "completed"`.
+1. Close the logbook issue through the forge CLI:
+   `gh issue close <logbook-issue-number> --reason completed` on GitHub,
+   or the equivalent `glab`/`tea` close command on GitLab/Gitea. Forge
+   access is CLI-only (`AGENTS.md` → *Forge Access*); the framework ships
+   no forge MCP server, so a host-provided one is an optional convenience,
+   not the default.
 2. If the PR also closes a feature issue (detected via `Closes #N` /
    `Fixes #N` / `Resolves #N` in §4), confirm that issue is closed too
    — GitHub auto-closes on merge when the keyword is in the PR body,
