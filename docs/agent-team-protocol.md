@@ -26,17 +26,19 @@ to the ticket's scope. This applies even for tickets that look small at
 first glance — the cost of assembling a team is low, the cost of solo
 rework is high.
 
-## On Claude Code CLI (team support available)
+## On Claude Code CLI (single implicit session team)
 
-When running on a harness that exposes team-management tools (Claude Code
-CLI and equivalent), the following three tools are **mandatory**:
+Claude Code runs a single implicit session team: the orchestrating session
+*is* the team, so there is no team-creation step. Within that implicit team,
+the following three primitives are **mandatory**:
 
-1. **`TeamCreate`** — instantiate a dedicated team for the ticket. Name
-   the team after the ticket identifier (e.g. `issue-42-auth-refactor`).
-2. **`TaskCreate`** — assign **one task per agent role**. Each task
-   targets a specific specialist (`architect`, `developer`, `tester`,
-   `security`, `doc-writer`, `pr-reviewer`, `pr-logbook`, etc.) with a
-   self-contained brief.
+1. **`Agent`** — delegate work to a specialist by spawning it with an
+   explicit `subagent_type` matching the role (`architect`, `developer`,
+   `tester`, `security`, `doc-writer`, `pr-reviewer`, `pr-logbook`, etc.).
+   The spawn happens within the implicit session team — there is no
+   `TeamCreate`.
+2. **`TaskCreate`** — assign **one task per agent role** for tracking. Each
+   task targets a specific specialist with a self-contained brief.
 3. **`SendMessage`** — coordinate progress, hand off intermediate
    artifacts, and unblock teammates. All cross-agent communication flows
    through this tool — never through plain text replies.
@@ -66,16 +68,18 @@ explicit `model` parameter matching the parent model identifier, or by
 omitting the `model` parameter to let the harness inherit from the
 parent session. A model mismatch causes spawned agents to fail silently
 — no output, no file edits, no error — which makes
-`TeamCreate`/`TaskCreate`/`Agent` effectively non-functional.
+**the `Agent` spawn effectively non-functional.**
 
-## On CLIs without team support (e.g. Gemini CLI)
+## On CLIs with no multi-agent coordination surface (e.g. Gemini CLI)
 
-When the harness does not expose `TeamCreate` / `TaskCreate` /
-`SendMessage`, fall back to **sequential `Agent` spawns** with an
-explicit `subagent_type` matching the specialist role. Each spawn must
-carry a self-contained brief — the spawned agent inherits no
-conversation context. Aggregate results in the orchestrating session
-before moving to the next role.
+A CLI that lacks the `SendMessage` / `TaskCreate` coordination bus reaches
+parity through **sequential `Agent` spawns** — first-class guidance, not a
+degraded mode. The orchestrator spawns one specialist at a time with an
+explicit `subagent_type` matching the role, carrying a self-contained brief
+(the spawned agent inherits no conversation context), and aggregates each
+result in the orchestrating session before spawning the next role. This
+sequential discipline delivers the same specialist division of labour the
+coordination bus provides elsewhere.
 
 ## Solo work prohibition
 
@@ -102,6 +106,17 @@ git worktree add -b <branch-name> .worktrees/<ticket-id> crewrig/main
 ```
 
 All file edits performed by the team — by every specialist, without exception — **MUST** happen inside `.worktrees/<ticket-id>/`. The main working directory is off-limits for the duration of the ticket; treat it as read-only.
+
+**Cwd verification (every spawned role).** Before issuing its first `Write`, `Edit`, or file-mutating `Bash` call, a sub-agent whose brief names a worktree path (`.worktrees/<ticket-id>/`) as its working location MUST verify that its own working directory resolves inside that worktree. This obligation attaches to the brief's target, not to the role — it applies identically to `developer`, `tester`, `doc-writer`, `architect`, or any other spawned specialist whenever the brief names a worktree path. Embed the following instruction verbatim in the spawned `Agent` prompt whenever the brief targets a worktree:
+
+> Before your first `Write`, `Edit`, or file-mutating `Bash` call, `cd` into `.worktrees/<ticket-id>/` and confirm the resolved working directory (e.g. via `pwd`) actually resolves inside that worktree. If it does not, `cd` into the worktree and re-verify before proceeding — do not issue any mutating call until the check passes.
+
+This is a distinct, actionable check from the "treat the main directory as read-only" expectation above: that sentence states the constraint, this is the step that catches a session whose working directory silently defaulted to the main checkout before any file lands there.
+
+**Stray-file discovery — no unilateral action.** Discovering a file on the main repository checkout that appears misplaced from a worktree-scoped ticket — whether the discoverer is the orchestrator or a sibling sub-agent — does NOT trigger deletion of that file, on sight or by any other means. A file's location does not establish its provenance: a sibling agent's own in-flight write may be transiting through that same path at the moment of discovery, and location alone cannot distinguish an abandoned stray from a write still in progress. Instead:
+
+1. **Flag, don't act.** The discoverer flags the file to the orchestrator (or `team-lead`) for adjudication.
+2. **Relocate only after provenance is confirmed.** The file is moved into the correct worktree path only once its provenance has been confirmed — it is never deleted or relocated unilaterally by the discoverer.
 
 Before pushing, always rebase the worktree branch against the upstream main to avoid merge conflicts on shared files:
 
@@ -302,10 +317,10 @@ non-blocking observation, not a blocking finding.
 
 ## Team Communication
 
-Four rules govern how teammates report back inside a team and how the team-lead interprets their signals.
+Five rules govern how teammates report back inside a team and how the team-lead interprets their signals.
 
 **Rule 1 — Report before idle.** Every agent operating inside a team
-(spawned via `TeamCreate` / `TaskCreate`) MUST send a message to
+(delegated via `Agent` and tracked via `TaskCreate`) MUST send a message to
 `team-lead` via `SendMessage` with a result summary before its turn ends.
 Going idle without sending a result message is a protocol violation. The
 result message must include: the task identifier, the outcome, and any
@@ -393,8 +408,66 @@ In no mode may a finding be deferred to a follow-up ticket without
 authorization appropriate to that mode — the user's explicit decision in
 FULL, never silently in INTERMEDIATE / MINIMAL / AUTO.
 
+**Rule 5 — Edit fence for delegated deliverables.** While a deliverable
+file is delegated to a sub-agent — i.e. the sub-agent's brief names that
+file as its task target — the team-lead (orchestrator) SHALL NOT edit
+that file itself until the sub-agent's completion has been confirmed,
+either (a) via the sub-agent's own `SendMessage` result per Rule 1, or
+(b) via the observable-side-effect check described in Rule 3 step 2. An
+`idle_notification` alone is NOT a completion signal: the team-lead MUST
+NOT treat receipt of an idle notification, by itself, as license to edit
+a file still delegated to that sub-agent.
+
+Rule 5 is the write-side counterpart to Rule 3. Rule 3 already
+establishes that an idle notification does not prove a teammate skipped
+its Rule 1 report; Rule 5 draws the corresponding consequence for the
+team-lead's own edits — the same unreliable signal that must not be
+mistaken for completion proof when reading a teammate's status also
+must not be acted upon when writing to a file that teammate still owns.
+
+If the team-lead determines that a delegated file needs an additional
+change while the sub-agent is still live, it MUST NOT edit the file
+directly. Instead it SHALL either:
+
+1. Instruct the still-live sub-agent, via `SendMessage`, to make the
+   change itself, rather than taking the edit on directly, or
+2. Confirm, per the conclusion check in *Team Shutdown*, that the
+   sub-agent has concluded its work — a landed Rule 1 result message, or
+   a confirmed side-effect per Rule 3 step 2 — before the team-lead takes
+   ownership of the file and edits it directly.
+
+This closes the race observed twice in practice — ticket #569 and the
+Harness Curator's `concurrent-deliverable-edit` friction cluster
+(issue #602) — where the orchestrator's own completion edits landed on
+a file the sub-agent was still editing, on the strength of an idle
+notification alone, producing duplicate content that required manual
+reconciliation.
+
 ## Team Shutdown
 
+On Claude Code's single implicit session team there is no team record to
+delete — `TeamDelete` has nothing to act on. Shutdown therefore reduces to
+a **teammate-conclusion courtesy**: before the orchestrator merges the PR,
+closes the logbook, or pivots scope, it MUST confirm that every spawned
+`Agent` has reported back per *Team Communication → Rule 1*. Where a result
+message has not landed, apply *Rule 3*'s side-effect checks (let the channel
+drain, inspect the artifacts the teammate was tasked to produce) to confirm
+the work concluded before moving on. No `shutdown_request` round-trip is
+required, because a spawned `Agent` releases its resources when its turn
+ends — there is no persistent team process to orphan.
+
+**Triggers.** Run the conclusion check above whenever:
+
+- The ticket's PR has been merged and the logbook closed (the standard end-of-ticket path — see *Logbook Issues → Rule C* in AGENTS.md).
+- The user cancels the ticket or pivots scope to a different team composition.
+- A fatal error makes the current team unrecoverable and a fresh team is needed.
+
+### On a harness that genuinely exposes team primitives
+
+When the harness exposes a persistent team record and teammate processes
+(via `TeamCreate` / `TeamDelete`) — which is **not** the current Claude Code
+harness; see the single-implicit-team primary path above — the following
+two-phase disposal applies.
 Calling `TeamDelete` directly — without first requesting each teammate's
 shutdown — leaves teammates running as orphaned idle processes on the
 harness. This is a protocol violation. Every team disposal MUST follow
@@ -413,12 +486,6 @@ moving on:
 **Phase 2 — Dispose of the team.** Once every teammate has either
 approved its shutdown or been declared unresponsive per Phase 1 step 4,
 call `TeamDelete` to remove the team record itself.
-
-**Triggers.** Run the sequence above whenever:
-
-- The ticket's PR has been merged and the logbook closed (the standard end-of-ticket path — see *Logbook Issues → Rule C* in AGENTS.md).
-- The user cancels the ticket or pivots scope to a different team composition.
-- A fatal error makes the current team unrecoverable and a fresh team is needed.
 
 **Prohibition.** Invoking `TeamDelete` without a preceding
 `shutdown_request` round-trip for every teammate is a protocol
