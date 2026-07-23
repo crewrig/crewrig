@@ -323,6 +323,36 @@ else
 fi
 
 # -------------------------------------------------------------------------
+# Case 22 (R9) — two original spec files sharing the same frontmatter `id`
+# but distinct slugs → cross-file duplicate-id failure naming both files,
+# non-zero exit.
+# -------------------------------------------------------------------------
+spec22a="0042-collision-a.md"
+spec22b="0042-collision-b.md"
+render_spec "0042" "collision-a" "draft" > "$TMP_ROOT/$spec22a"
+render_spec "0042" "collision-b" "draft" > "$TMP_ROOT/$spec22b"
+run_case "Case 22 — duplicate id across two original specs fails" "$spec22a $spec22b" 1
+
+# -------------------------------------------------------------------------
+# Case 23 (R10) — a delta-spec file sharing its parent's `id` is NOT a
+# duplicate-id collision → exit 0.
+# -------------------------------------------------------------------------
+spec23a="0043-parent.md"
+spec23b="0043-parent.delta-01.md"
+render_spec "0043" "parent" "draft" > "$TMP_ROOT/$spec23a"
+render_spec "0043" "parent" "draft" "standard" "" "$(printf "## ADDED\n\n## MODIFIED\n\n## REMOVED")" > "$TMP_ROOT/$spec23b"
+run_case "Case 23 — delta spec sharing parent id is not a duplicate-id failure" "$spec23a $spec23b" 0
+
+# -------------------------------------------------------------------------
+# Case 24 (R11) — all-distinct ids across specs → clean pass, exit 0.
+# -------------------------------------------------------------------------
+spec24a="0044-first.md"
+spec24b="0045-second.md"
+render_spec "0044" "first" "draft" > "$TMP_ROOT/$spec24a"
+render_spec "0045" "second" "draft" > "$TMP_ROOT/$spec24b"
+run_case "Case 24 — distinct ids across specs pass" "$spec24a $spec24b" 0
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""
