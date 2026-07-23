@@ -16,7 +16,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.6.1"
+    version: "1.6.2"
 claude:
   allowed-tools:
     - Read
@@ -130,10 +130,14 @@ Two paths, equivalent in outcome:
   script opens one issue per cluster via `gh issue create`, with all
   three labels from the JSON (`harness-feedback`, `room:<x>`,
   `severity:<y>`).
-- **Open them yourself**: iterate the JSON, use the GitHub MCP (or
-  `gh`) per cluster. Use this path when you want to enrich the body
-  before opening (e.g. linking a recent `logbook` issue you noticed
-  while reviewing).
+- **Open them yourself**: iterate the JSON and run `gh issue create
+  --repo <owner>/<repo> --title <title> --body <body> --label <...>`
+  per cluster (the same argv `apply.py` builds), or the `glab`/`tea`
+  equivalent on GitLab/Gitea. Forge access is CLI-only (`AGENTS.md` →
+  *Forge Access*); the framework ships no forge MCP server, so a
+  host-provided one is an optional convenience, not the default. Use
+  this path when you want to enrich the body before opening (e.g.
+  linking a recent `logbook` issue you noticed while reviewing).
 
 Either way: **one issue per cluster**. Resist bundling — independent
 clusters deserve independent triage.
