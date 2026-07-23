@@ -12,16 +12,21 @@ version: 1.0.0
 
 ## Intent
 
-A person running the Claude, Gemini, or Copilot interactive setup script sees
-the team, expertise, and level selection steps behave the same way whether
-their `config/teams/`, `config/expertise/`, and `config/level/` catalogue
-directories are populated or left empty, and whether they deliberately
-decline to pick an entry. Today, an empty catalogue directory or a declined
-pick makes the entire setup script stop with an error, discarding every step
-that had not yet run — including the other two selection categories, MCP
-registration, and hooks wiring. After this change, finding nothing to pick in
-one category, or declining to pick, simply leaves that one category's rule
-file undeployed for this run; the rest of the setup run completes normally.
+A person running the Claude, Gemini, Copilot, or Antigravity interactive
+setup script sees the team, expertise, and level selection steps behave the
+same way whether their `config/teams/`, `config/expertise/`, and
+`config/level/` catalogue directories are populated or left empty, and
+whether they deliberately decline to pick an entry. Today, an empty
+catalogue directory or a declined pick makes the entire setup script stop
+with an error, discarding every step that had not yet run — including the
+other two selection categories, MCP registration, and hooks wiring. After
+this change, finding nothing to pick in one category, or declining to pick,
+simply leaves that one category's rule file undeployed for this run; the
+rest of the setup run completes normally. Issue #603 names only the Claude,
+Gemini, and Copilot scripts; grounding this spec against the current
+repository surfaced the identical defect in
+`scripts/setup-antigravity-interactive.sh`, and the user explicitly approved
+widening this spec's scope to cover that fourth script as well.
 
 ## Requirements
 
@@ -46,16 +51,17 @@ file undeployed for this run; the rest of the setup run completes normally.
    cases.
 5. This behavior SHALL be applied identically to all three selection
    categories (team, expertise, level) within each in-scope script.
-6. This behavior SHALL be applied identically across the three setup
-   scripts named in issue #603 — `scripts/setup-claude-interactive.sh`,
-   `scripts/setup-gemini-interactive.sh`, and
-   `scripts/setup-copilot-interactive.sh`.
+6. This behavior SHALL be applied identically across the four in-scope
+   setup scripts — `scripts/setup-claude-interactive.sh`,
+   `scripts/setup-gemini-interactive.sh`,
+   `scripts/setup-copilot-interactive.sh`, and
+   `scripts/setup-antigravity-interactive.sh`.
 7. A regression test SHALL assert, for at least one in-scope script and at
    least one category, that an empty catalogue directory produces zero
    picker entries and that the setup script's selection step allows the
    script to continue rather than terminating it.
 8. The implementation PR SHALL consult `docs/cli-matrix.md` per `AGENTS.md`
-   → *CLI Matrix Maintenance* (the three in-scope scripts fall within that
+   → *CLI Matrix Maintenance* (the four in-scope scripts fall within that
    section's trigger list) and SHALL update the document if this change
    alters any row's documented behavior; if no row changes, the PR SHALL
    record that determination explicitly in its description.
@@ -117,10 +123,6 @@ And   the `.selected_team` marker is also absent at the end of this run —
 
 ## Out of scope
 
-- `scripts/setup-antigravity-interactive.sh` — grounding against the current
-  repository found the identical defect there (see `## Open questions`), but
-  it is not named in issue #603 and is not covered by the requirements above
-  pending resolution of that open question.
 - The pre-existing "keep vs. refresh" prompt (`SKIP_RULES_CONFIG`) and its
   full wipe of previously installed rule files on "refresh" — unchanged by
   this spec.
@@ -136,15 +138,4 @@ And   the `.selected_team` marker is also absent at the end of this run —
 
 ## Open questions
 
-- [GROUNDING:] `scripts/setup-antigravity-interactive.sh` (team block at
-  lines 262-271, expertise block at lines 276-285, level block at lines
-  290-299) contains the identical unguarded-glob / mandatory-selection
-  pattern, but issue #603's friction evidence names only the Claude, Gemini,
-  and Copilot scripts. `AGENTS.md`'s Multi-CLI parity pillar prohibits
-  silent asymmetry across the four supported CLIs. Recommendation: widen
-  this spec's scope to include `setup-antigravity-interactive.sh` as a
-  fourth in-scope script (identical fix, same `small` complexity tier); if
-  the user prefers to keep this ticket scoped to the three scripts issue
-  #603 named, `setup-antigravity-interactive.sh` should be opened as an
-  explicit follow-up ticket rather than left unaddressed. Needs a decision
-  before this spec moves to `status: approved`.
+None.
