@@ -125,62 +125,14 @@ rule takes over.
 
 ### On Claude Code CLI — solo-maintainer self-merge block
 
-This subsection applies to the **Claude Code CLI only**. An agent operating any
-other CLI can stop reading here: the mechanism below is a Claude Code mechanism,
-and whether Gemini CLI, GitHub Copilot CLI, or Antigravity CLI exposes an
-equivalent is unverified and out of scope.
+Claude-Code-only guidance; agents on other CLIs may skip it. See
+[`docs/solo-merge-classifier-workaround.md`](docs/solo-merge-classifier-workaround.md)
+for the full detail.
 
-In a solo-maintainer setup — where the identity executing the merge is the same
-identity that authored the pull request — a `gh pr merge` invocation on the
-author's own pull request can be **denied by the Claude Code auto-mode
-permission classifier**. The denial text itself names "the Claude Code auto
-mode classifier", which is the evidence that this is a Claude-Code-specific
-mechanism. This project asserts nothing about the other three CLIs — neither
-that they share the behaviour nor that they lack it.
-
-The denial has two manifestations, handled differently:
-
-- **Transient classifier error** — a denial that a single re-attempt of the
-  *same* `gh pr merge` command, by the *same* agent, clears. On the first
-  denial, the merging agent SHALL re-attempt the identical command once itself
-  before escalating, so a self-clearing error never becomes an unnecessary user
-  interruption.
-- **Hard block** — a denial that persists after that one self re-attempt. The
-  merge SHALL then be carried out by the user (for example through the host
-  CLI's in-session `!`-prefixed execution) or gated behind an explicit
-  merge-command permission rule (see prevention paths below). A hard block is
-  **not** a lifecycle failure: the change is complete and merge-ready, only the
-  merge keystroke is gated.
-
-**No laundering.** The denied agent SHALL NOT ask a sibling agent to execute the
-merge on its behalf — delegating a merge the classifier refused launders a
-permission the agent was denied. This is the merge-side counterpart of rung 3
-("Posting denied") of the verdict-posting ladder in
-`artifacts/core/skills/pr-reviewer/SKILL.md` → *Post the review* (step 6), which
-forbids a reviewer denied its own verdict post from asking the orchestrator to
-post it instead. Escalate the merge to the user, never to a peer.
-
-**Scope.** This guidance binds the `gh pr merge` action only. Other `gh`
-invocations MAY transiently hit the same classifier flakiness, but this
-subsection imposes no requirement on them.
-
-**Optional prevention paths.** A user MAY adopt either path below to stop
-encountering the block entirely. They are complementary to — not replacements
-for — the reactive retry-then-handoff above, which remains the mandatory
-fallback for any session that has not adopted a prevention path:
-
-- **Permission-bypassing session mode.** Launch the Claude Code session with
-  `claude --permission-mode bypassPermissions`, a verified session-level
-  permission mode under which the classifier does not gate the merge at all
-  (grounded in `docs/research/system-context-sandbox-probe.md`). This is a
-  session-launch choice; no in-session toggle that switches permission mode
-  without a fresh session is asserted here.
-- **Explicit merge-command allow-rule.** Add `"Bash(gh pr merge:*)"` to the
-  `permissions.allow` array of the user's Claude Code settings — the same
-  `"Bash(<tool>:*)"` pattern already used in
-  `config/claude/settings.json.template` — so the classifier stops gating that
-  specific command going forward. This allow-rule is addable through the
-  `update-config` skill or by a direct edit of the settings file.
+**Critical rule:** a `gh pr merge` denied by the Claude Code auto-mode
+classifier on the author's own PR SHALL be re-attempted once by the same agent,
+then handed to the user if still denied — NEVER delegated to a sibling
+(delegating launders a refused permission).
 
 ## Pre-Edit Guard
 
@@ -400,33 +352,10 @@ issue #172.
 
 ## Pull Request Format
 
-Every PR must follow this structure:
-
-### Title
-
-A concise, descriptive title.
-
-### Body
-
-```markdown
-<Two sentences maximum explaining the purpose of this PR for a human reader.>
-
-## How to read this PR?
-
-<A reading guide to help reviewers navigate the changeset. Highlight key files,
-the order in which to read them, and any non-obvious design decisions.>
-
-## How to test this PR?
-
-<Step-by-step instructions to test the proposed changes locally.
-Include prerequisites, commands to run, and expected outcomes.>
-
-## Detailed description (for agents)
-
-<A thorough, structured description of every change made in this PR.
-This section is intended for AI agents that will analyze the PR.
-Be explicit about what was added, modified, or removed and why.>
-```
+See [`docs/pr-format.md`](docs/pr-format.md) for the required PR structure:
+the title convention and the full PR-body template (purpose sentences, *How
+to read this PR?*, *How to test this PR?*, and *Detailed description (for
+agents)*).
 
 ## Logbook Issues
 
