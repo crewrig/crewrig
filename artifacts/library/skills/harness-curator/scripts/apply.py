@@ -359,7 +359,7 @@ def main() -> int:
             # narrows the clobber window against concurrent edits.
             # Partial failures are counted and logged but do NOT mark
             # the cluster failed — the issue is already opened on
-            # GitHub. The aggregate is surfaced in the final summary so
+            # the target forge. The aggregate is surfaced in the final summary so
             # the maintainer sees that some drawers remain unstamped.
             drawer_ids, missing = _collect_drawer_ids(c)
             if missing:
