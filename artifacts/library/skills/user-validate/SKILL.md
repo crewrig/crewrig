@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.0"
+    version: "1.3.0"
 claude:
   allowed-tools:
     - Read
@@ -157,6 +157,67 @@ readability-critical color lives in the head:
     </main>
   </body>
 </html>
+```
+
+### Substance-embedding for caller-built presentations
+
+**Scope (spec 0104 R2).** This guidance applies **only** when you build a
+bespoke presentation of the artifact before handing it to the review viewer —
+for example because an active `pedagogy`, `translate`, or `illustration` option
+obliges a richer rendering than the raw file. It does **not** apply on the raw-
+passthrough path (see the *Raw passthrough* rule below): there the viewer's own
+renderer already displays the full artifact.
+
+**Why (spec 0104 R3/R4).** A caller-built presentation that only *describes* the
+change — a title, a one-line summary, and the prior reviewer's verdict — leaves
+the reviewing user unable to judge what is actually being decided. That is the
+summary-only merge-authorization outcome observed during a live gate:
+translation and professor-level pedagogy were active, yet the user never saw the
+modified content itself. "Professor" framing means *showing the work*, not
+narrating it.
+
+**Rules for a caller-built presentation:**
+
+- **Embed the real substance (spec 0104 R3).** When `pedagogy=professor` and/or
+  `translate=on`, the presentation SHALL embed the **concrete changed content
+  itself** — a rendered diff excerpt, or the added or changed prose verbatim —
+  not only a prose summary describing what changed.
+- **Show enough of a change set to judge it independently (spec 0104 R4).** For
+  a decision over a change set or diff — a merge-authorization gate, for
+  instance — show enough of the actual modified content for the reviewing user
+  to judge the change **independently**, rather than relying solely on a prior
+  REVIEW verdict.
+- **Translate the embedded substance, presentation-only (spec 0104 R5).** When
+  `translate=on`, translate the embedded substance itself within the
+  presentation, consistent with the `translate` boundary (see *Cross-cutting
+  options → `translate`*): the translation is presentation-only and the
+  repository artifact stays in English — never written back translated
+  (`AGENTS.md` → *Language*).
+- **Raw passthrough carries no obligation (spec 0104 R6).** When you pass the
+  raw artifact file directly to the review viewer without building a bespoke
+  presentation, the viewer already renders the full substance, so no separate
+  substance-embedding step is required.
+
+**Presentation-only (spec 0104 R7).** This obligation does **not** modify the
+invocation command, the dual-validation rule, the decision mapping, or the
+defined semantics of the `translate` / `pedagogy` / `illustration` cross-cutting
+options; it only clarifies how a caller-built presentation applies them.
+
+**Compliant vs thin example (spec 0104 R4).** A compliant merge-authorization
+presentation embeds the real change; a thin one summarizes it away:
+
+```text
+Compliant — embeds the substance:
+  Ask: "Authorize merge of PR #123?"
+  Change under decision (added prose, verbatim):
+    + The guidance SHALL direct showing enough of the actual modified
+    + content for the reviewing user to judge the change independently.
+  Prior REVIEW verdict: APPROVE — context, not a substitute for the diff.
+
+Thin — non-compliant:
+  Ask: "Authorize merge of PR #123?"
+  Summary: "Adds substance-embedding guidance; reviewer approved."
+  (no diff, no changed prose — the user cannot judge the change itself)
 ```
 
 ## Backend: `internal` (default floor)
