@@ -1,7 +1,7 @@
 ---
 id: "0105"
 slug: forge-agnostic-curator-apply
-status: draft
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 671
