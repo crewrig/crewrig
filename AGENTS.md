@@ -1,6 +1,6 @@
 # CrewRig — Agent Working Rules
 
-This document defines the rules and conventions that all agents (human or AI) must follow when contributing to this project.
+The rules and conventions all agents (human or AI) must follow when contributing to this project.
 
 ## What is CrewRig?
 
@@ -38,6 +38,12 @@ session-start sweep defined in
 Skipping the sweep is a process violation equivalent to missing a lifecycle
 stage. A REVIEW pass that audits a session where the sweep was omitted SHALL
 emit a `class: tech` finding citing this section.
+
+Additionally, before opening any new ticket worktree, perform the additive,
+non-destructive session-start worktree-backlog surfacing in
+[`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) → *Worktree
+Isolation* → *Session-boundary worktree hygiene* — it reports already-merged
+worktrees but removes nothing.
 
 ## Lifecycle
 
@@ -82,9 +88,6 @@ taxonomy, routing matrix, complexity tiers, and termination criterion
 The file format for the spec artifact produced by the SPECS stage —
 frontmatter schema, mandatory body sections, delta-spec convention,
 and naming rules — lives in [`docs/spec-format.md`](docs/spec-format.md).
-The sections below (*Agent Team Protocol*, *Interaction modes*,
-*Retroactive review loop*) layer the operational rules onto that
-contract.
 
 ## Language
 
@@ -196,8 +199,6 @@ Examples:
 - `📝 Update README with setup instructions`
 - `♻️ Refactor settings parser for clarity`
 
-Refer to [gitmoji.dev](https://gitmoji.dev/) for the full list of valid emojis and their meanings.
-
 ## Version Bump Convention
 
 Skill and agent sources carry a `metadata.provenance.version` field that
@@ -272,8 +273,7 @@ Rules:
   "Notify" is non-blocking; it does not gate the next iteration.
 
 The mode-driven engine — argument parsing, gate enforcement, user
-notification surface — lands in #173. This section states the
-contract.
+notification surface — lands in #173.
 
 See [`docs/interaction-modes.md`](docs/interaction-modes.md) for the
 `User-gate definition` and the full `Behavioral contract per (mode ×
@@ -337,7 +337,7 @@ AUTO).
 Definitions of each class, canonical and borderline examples, and the
 disambiguation rule (escalate upstream on tie) live in ADR-0010 →
 *Finding classification taxonomy*. The routing engine itself lands in
-issue #172 — this section states the contract.
+issue #172.
 
 ## Pull Request Format
 
@@ -373,10 +373,8 @@ Be explicit about what was added, modified, or removed and why.>
 
 Every PR **must** be anchored to a **logbook** on GitHub — a journal that
 traces every obstacle encountered (with its resolution or avoidance
-strategy), every challenge faced during implementation, and every success
-or breakthrough. This ensures that the full experience of agents working
-on the project — failures and successes alike — is recorded for future
-reference.
+strategy), every challenge faced, and every success or breakthrough, so the
+full experience of agents on the project is recorded for future reference.
 
 Three rules govern how logbooks are kept:
 

@@ -145,6 +145,22 @@ gh issue close <issue-number> --reason completed
 
 Any obstacle encountered during the worktree lifecycle — merge conflicts, CI failures, friction declarations, scope changes, rebases that resolve conflicts — must be logged on the issue logbook before resuming work. See **Rule B** in AGENTS.md for the full trigger list.
 
+### Session-boundary worktree hygiene
+
+The per-ticket cleanup above runs at the single moment one ticket's pull request merges. It does not, on its own, account for the whole `.worktrees/` directory at the boundaries of a session — yet a session can begin on top of a backlog left by earlier sessions, and can end for reasons unrelated to any ticket completing (context exhaustion, the user stopping, an unrelated wrap-up). Left unchecked, worktrees whose work has already merged accumulate unnoticed and slow later sessions. The two steps below add session-boundary triggers that **reuse** the ordered cleanup above; they are **additional to, and do not replace,** the per-ticket cleanup that runs the moment a ticket's pull request merges.
+
+Both steps confirm merge status the same way the ordered cleanup's step 1 does — from the pull request's own state, **never** from `git branch --merged`. Under the project's squash-merge workflow a squash-merged branch is not reported as merged by `git branch --merged` (the squash commit does not carry the branch's commits as ancestors), so that signal both misses genuinely-merged worktrees and misreads them as still in flight. Worktrees are keyed by branch name — `.worktrees/<ticket-id>/` has `<branch-name>` checked out — so resolve each worktree's pull request by its head branch:
+
+```sh
+gh pr view <branch-name> --repo crewrig/crewrig --json state,mergedAt
+```
+
+A `state == MERGED` result is positive confirmation the branch has merged. A branch with no associated pull request, or any result that does not positively confirm `MERGED`, counts as **unconfirmable** — treated as still in flight, never as merged.
+
+**Session start — non-destructive surfacing.** Before opening a new ticket worktree, enumerate the existing worktrees (`git worktree list`), resolve each one's branch to its pull request with the command above, and **report** every worktree whose pull request is `MERGED` as a stale backlog item — so the agent is aware of the accumulated backlog before piling new work on top of it. This step is strictly report-only: it removes no worktree and deletes no branch, so a sibling session's in-flight worktree is never destroyed at another session's start.
+
+**Session end — confirmed-merge sweep.** When the session reaches its end, account for the worktrees under `.worktrees/` and, for every worktree whose pull request is positively confirmed `MERGED` by the command above, remove the worktree together with its local branch by following the ordered cleanup procedure documented earlier in this section (verify the merge landed → `git worktree remove` → `git branch -D` → close the logbook issue) — do not invent a new sequence. A worktree whose pull request is still open, whose branch carries unmerged or uncommitted work, or whose merge status cannot be positively confirmed SHALL be left in place and surfaced for later adjudication — never removed. This mirrors the *Stray-file discovery — no unilateral action* discipline above: a worktree's mere presence or apparent staleness never authorizes removal, and positive confirmation of a merged pull request is the sole precondition for removing any worktree.
+
 ## Built Components
 
 Source files under `artifacts/` are compiled into `.gemini/` and `.claude/` by `scripts/build-components.sh`. The CI `check-components` job fails if the built outputs drift from sources.
