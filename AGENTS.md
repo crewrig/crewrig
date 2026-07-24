@@ -123,6 +123,17 @@ rule takes over.
 - The `import/gitlab` branch tracks the legacy GitLab project (`gitlab` remote) and serves as inspiration only.
 - Non-trivial tickets follow the **Spec-PR workflow** (see section below): a `spec/<NNNN>-<slug>` PR qualifies the WHAT and merges to `main` before the implementation branch is cut.
 
+### On Claude Code CLI — solo-maintainer self-merge block
+
+Claude-Code-only guidance; agents on other CLIs may skip it. See
+[`docs/solo-merge-classifier-workaround.md`](docs/solo-merge-classifier-workaround.md)
+for the full detail.
+
+**Critical rule:** a `gh pr merge` denied by the Claude Code auto-mode
+classifier on the author's own PR SHALL be re-attempted once by the same agent,
+then handed to the user if still denied — NEVER delegated to a sibling
+(delegating launders a refused permission).
+
 ## Pre-Edit Guard
 
 Before writing or editing **any** file in the repository, the agent MUST
@@ -341,33 +352,10 @@ issue #172.
 
 ## Pull Request Format
 
-Every PR must follow this structure:
-
-### Title
-
-A concise, descriptive title.
-
-### Body
-
-```markdown
-<Two sentences maximum explaining the purpose of this PR for a human reader.>
-
-## How to read this PR?
-
-<A reading guide to help reviewers navigate the changeset. Highlight key files,
-the order in which to read them, and any non-obvious design decisions.>
-
-## How to test this PR?
-
-<Step-by-step instructions to test the proposed changes locally.
-Include prerequisites, commands to run, and expected outcomes.>
-
-## Detailed description (for agents)
-
-<A thorough, structured description of every change made in this PR.
-This section is intended for AI agents that will analyze the PR.
-Be explicit about what was added, modified, or removed and why.>
-```
+See [`docs/pr-format.md`](docs/pr-format.md) for the required PR structure:
+the title convention and the full PR-body template (purpose sentences, *How
+to read this PR?*, *How to test this PR?*, and *Detailed description (for
+agents)*).
 
 ## Logbook Issues
 
