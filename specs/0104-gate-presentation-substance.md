@@ -1,7 +1,7 @@
 ---
 id: "0104"
 slug: gate-presentation-substance
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 670
