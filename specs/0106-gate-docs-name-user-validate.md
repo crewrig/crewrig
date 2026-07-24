@@ -1,7 +1,7 @@
 ---
 id: "0106"
 slug: gate-docs-name-user-validate
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 663
