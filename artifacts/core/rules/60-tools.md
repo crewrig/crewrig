@@ -413,8 +413,11 @@ in each component's `provenance:` block.
 
 Tag a friction whenever a **recognition signal** fires (next section).
 Do not pause the user's task longer than the tag itself. The cost of
-one tag is negligible; the cost of an un-reported friction that bites
-the next agent is much higher.
+one tag is normally negligible — the one exception is when the MemPalace
+write path is unavailable (a peer holds the write lock, or the server is
+disconnected), a documented failure mode with a fallback in the
+`harness-report` procedure (see *How to tag* below); the cost of an
+un-reported friction that bites the next agent is much higher.
 
 If unsure whether something qualifies — tag it. Curation will discard
 noise; silent friction is the failure mode to avoid.
@@ -455,6 +458,15 @@ rather than re-implementing the protocol inline. This keeps the
 contract single-sourced and lets future improvements (richer
 `evidence:` format, new recognition signals, etc.) propagate without
 editing every skill body.
+
+The fire-and-forget tag has one **documented failure mode**: the
+MemPalace write path may be unavailable — a peer holds the write lock
+(MCP error `-32001`) or the server is disconnected — so the tag call
+cannot record the friction. The `harness-report` procedure carries the
+operational fallback for this case (file the friction directly as a
+`harness-feedback`-labeled GitHub issue on the canonical repository, so
+the signal still reaches the curator's triage lane). This file states
+the contract; the `SKILL.md` procedure carries the "how".
 
 ### Where to write
 

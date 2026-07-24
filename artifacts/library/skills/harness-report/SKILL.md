@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.2"
+    version: "1.3.0"
 claude:
   allowed-tools:
     - Read
@@ -47,8 +47,11 @@ short reminder list:
   and forced a workaround you had to explain explicitly to the user.
 
 If a signal fires, **tag the friction before resuming work**. Not
-"consider tagging". Not "when convenient". Tagging takes seconds and
-costs nothing; failing to tag loses the signal forever.
+"consider tagging". Not "when convenient". Tagging normally takes
+seconds and costs nothing — the one exception is when the MemPalace
+write path is unavailable (a peer holds the write lock, or the server
+is disconnected), a documented failure mode with a fallback in step 4
+below. Failing to tag loses the signal forever.
 
 ## Operating mode
 
@@ -149,6 +152,55 @@ suggestion: <optional fix idea>
 """
 )
 ```
+
+**Fallback — MemPalace write path unavailable.** The
+`mempalace_add_drawer` call above is the normal path, but it can fail
+in two ways. Both have the *same* remedy: file the friction directly as
+a GitHub issue so the signal is never silently lost.
+
+- **(a) A peer writer holds the write lock.** The mutating call returns
+  MCP error `-32001` ("Peer MCP writer active; this server is read-only
+  for mutating tools"). Retry the `mempalace_add_drawer` call **at most
+  once**. If it still returns `-32001`, fall back to direct filing. Do
+  **not** loop with backoff.
+- **(b) The MemPalace MCP server is unreachable.** It is disconnected
+  and *every* MemPalace tool — not only the mutating ones — is
+  unavailable. There is no live server to retry against: go **straight**
+  to direct filing, with no retry.
+
+Direct-filing procedure — file the friction as a GitHub issue on the
+offender's canonical repository, carrying the same `harness-feedback`
+label the curator's normal path produces, so a directly-filed friction
+lands in the identical triage lane:
+
+```bash
+gh issue create \
+  --repo <owner>/<repo> \
+  --label harness-feedback \
+  --title "FRICTION: <one-line title>" \
+  --body "$(cat <<'EOF'
+writer_agent: <you>
+subcategory: <optional anchor>
+canonical: <URL of offender, if known>
+severity: <low|med|high — default med>
+evidence:
+  - <commit_hash>:<path>:<line>
+  - <URL>
+suggestion: <optional fix idea>
+EOF
+)"
+```
+
+- `--repo <owner>/<repo>` is the offender's `canonical` repo with the
+  `https://github.com/` prefix stripped — the same transformation the
+  curator's apply step performs (see step 3's `canonical` note). When
+  the offender is unknown, default to the framework's own canonical
+  repository, mirroring the manual filing of issues #636 and #637.
+- Preserve the payload's substance: the one-line title, the offender's
+  `canonical` reference when known, and every `evidence:` entry carry
+  the same signal the MemPalace drawer would have. The
+  `harness-feedback` label is mandatory — it is exactly what routes the
+  friction into the curator's triage lane.
 
 ### 5. Resume
 
