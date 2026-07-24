@@ -8,18 +8,28 @@
 
 A **user gate** is defined narrowly as one of two actions:
 
-1. A call to `AskUserQuestion` (or the equivalent interactive prompt
-   exposed by the host CLI).
+1. An **artifact-validation gate** — presenting a spec, a plan, or a set
+   of REVIEW findings to the user for a validation decision — realised
+   through the `user-validate` skill. The skill dispatches to the
+   configured backend; the default-floor (`internal`) backend realizes the
+   gate as a call to `AskUserQuestion` (or the equivalent interactive
+   prompt exposed by the host CLI), while an opt-in backend such as
+   `plannotator` realizes it as a rich browser review. Agents invoke the
+   skill; they do NOT call `AskUserQuestion` directly to realise such a
+   gate.
 2. The pre-merge authorization request mandated by *Branching
    Strategy* — the explicit "may I merge?" question the agent MUST
-   ask JUST BEFORE every `gh pr merge` invocation.
+   ask JUST BEFORE every `gh pr merge` invocation. This is a distinct
+   action-authorization, NOT an artifact-validation gate, and is NOT
+   realised through the `user-validate` skill.
 
 Both gates **block** agent execution until the user responds. Nothing
 else does. **A prose question or status message directed at the user is
 NOT a gate, even when it ends with `?`. The host CLI's text-output
 guidance biases toward prose communication; that bias does NOT override
-this contract. Every INTERMEDIATE or FULL mode gate SHALL NOT be
-realised as a prose question — it MUST be an `AskUserQuestion` call.**
+this contract. Every INTERMEDIATE or FULL mode artifact-validation gate
+SHALL NOT be realised as a bare prose question — it MUST be realised
+through the `user-validate` skill.**
 
 The following outputs are explicitly **NOT** user gates and
 SHALL NOT pause the agent:
@@ -48,9 +58,9 @@ post hoc).
 | Stage \ Mode | FULL | INTERMEDIATE | MINIMAL | AUTO |
 |---|---|---|---|---|
 | **SPECS** | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | No interview gate (spec authored autonomously); merge-authorization gate before merging the spec-PR. |
-| **PLAN** | `AskUserQuestion` to validate the plan comment before DEV starts; second `architect` cold-review remains autonomous. | `AskUserQuestion` to validate the plan comment before DEV starts; second `architect` cold-review remains autonomous. | — (plan authored and cold-reviewed autonomously; DEV starts on APPROVE without user prompt). | — (plan authored and cold-reviewed autonomously). |
+| **PLAN** | Validate the plan comment through the `user-validate` skill before DEV starts; second `architect` cold-review remains autonomous. | Validate the plan comment through the `user-validate` skill before DEV starts; second `architect` cold-review remains autonomous. | — (plan authored and cold-reviewed autonomously; DEV starts on APPROVE without user prompt). | — (plan authored and cold-reviewed autonomously). |
 | **DEV** | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). |
-| **REVIEW** | Non-blocking notification posted on the logbook issue at the start and end of every iteration (per the FULL-mode rule above), **plus** a bounded `AskUserQuestion` to triage the non-blocking findings of each pass (spec 0006 R10 / spec 0005 R10 FULL branch). That triage is the sole REVIEW-loop gate. | — (loop runs autonomously; iteration count visible via the `iter:N` PR label). | — (loop runs autonomously). | — (loop runs autonomously; halt at max-iteration guardrail pages the user per *Retroactive review loop*). |
+| **REVIEW** | Non-blocking notification posted on the logbook issue at the start and end of every iteration (per the FULL-mode rule above), **plus** a bounded triage of the non-blocking findings of each pass realised through the `user-validate` skill (spec 0006 R10 / spec 0005 R10 FULL branch). That triage is the sole REVIEW-loop gate. | — (loop runs autonomously; iteration count visible via the `iter:N` PR label). | — (loop runs autonomously). | — (loop runs autonomously; halt at max-iteration guardrail pages the user per *Retroactive review loop*). |
 
 Notes on the matrix:
 
@@ -59,10 +69,10 @@ Notes on the matrix:
   *Branching Strategy* is not waivable.
 - FULL-mode REVIEW notifications are non-blocking — posting them does
   not pause the loop. The one FULL-mode REVIEW gate is the bounded
-  non-blocking-finding triage `AskUserQuestion` (spec 0006 R10), under
-  which only FULL consults the user on optional findings; INTERMEDIATE,
-  MINIMAL, and AUTO fire no REVIEW gate. The per-iteration notifications
-  themselves are not gates.
+  non-blocking-finding triage realised through the `user-validate` skill
+  (spec 0006 R10), under which only FULL consults the user on optional
+  findings; INTERMEDIATE, MINIMAL, and AUTO fire no REVIEW gate. The
+  per-iteration notifications themselves are not gates.
 - The max-iteration guardrail (*Retroactive review loop*) pages the
   user in **every** mode, including AUTO. That paging is a gate by
   exception — the loop has halted and the user must decide whether

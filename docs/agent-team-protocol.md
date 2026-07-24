@@ -301,7 +301,7 @@ tiers and their exact compositions:
 
 | Tier | DEV-stage team | Notes |
 |---|---|---|
-| `trivial` | No team — orchestrator handles the work inline in a single turn. | Bypasses `spec-author` per *Standard Team Templates → Step 0*. The `AskUserQuestion` and merge-authorization gates of the declared interaction mode still apply to inline work. |
+| `trivial` | No team — orchestrator handles the work inline in a single turn. | Bypasses `spec-author` per *Standard Team Templates → Step 0*. The artifact-validation gate(s) of the declared interaction mode — realised through the `user-validate` skill — and the distinct merge-authorization gate still apply to inline work. |
 | `small` | `developer` + `pr-logbook` + `pr-reviewer`. | No `architect` (the spec is its own architectural input). No `tester` unless the change carries a test surface; when added, slot `tester` between `developer` and `pr-logbook`. The *Security rule* still applies. |
 | `standard` | The matching Template (1 / 2 / 3) from *Standard Team Templates* above, unchanged. | Default tier when the frontmatter is silent. |
 | `large` | `architect`-led decomposition into one or more sub-specs **before** any `developer` spawn. | Each sub-spec is a separate ticket with its own SPECS-stage entry (a new spec file under `/specs/`, a new spec-PR, a new implementation-PR). The parent ticket coordinates; it does not implement. |

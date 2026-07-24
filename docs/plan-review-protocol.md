@@ -37,3 +37,10 @@ list states the taxonomy, not the routing.
 **REQUEST CHANGES blocks DEV.** A plan-review verdict of `### Verdict:
 REQUEST CHANGES` SHALL block the DEV stage from starting until a
 revised plan is posted and re-reviewed cold.
+
+**Plan-validation gate.** In the modes that gate the PLAN stage (FULL
+and INTERMEDIATE per *Interaction modes → Behavioral contract per (mode
+× stage) cell*), the user gate that validates the plan comment before
+DEV starts is realised through the `user-validate` skill — not through a
+direct `AskUserQuestion` call. That keeps the user's configured
+validation backend (including `plannotator`) in effect.
