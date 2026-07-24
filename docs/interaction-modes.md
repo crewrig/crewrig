@@ -47,6 +47,23 @@ agent posts ADRs, plan comments, or REVIEW iteration notices in a
 given mode is fixed by the lifecycle contract (ADR-0010), independent
 of mode.
 
+**Narrow discharge carve-out.** A SPECS-stage content-approval — the
+artifact-validation gate (realised through the `user-validate` skill) that
+validates a spec's content — of spec content that becomes a
+**one-file spec-PR** (per the Spec-PR workflow *one-file rule*: exactly one
+new file, no other edits) merging that content **unchanged** discharges the
+pre-merge merge-authorization gate for that spec-PR. The orchestrator SHALL
+NOT fire a second merge-authorization request for such a spec-PR, because
+the artifact merged to `main` is the identical, unchanged artifact the
+content-approval already approved. This discharge is deliberately narrow —
+it is not a general waiver of the gate. It does **not** apply in `AUTO`,
+where no SPECS-stage content-approval gate runs to discharge it, so the
+merge-authorization request there still fires and remains the sole approval
+event. And the merge-authorization gate stays mandatory and separate for
+every merge the carve-out does not cover — implementation-PRs, any
+delta-spec PR whose content changed after its own content-approval, and
+every non-spec-PR merge.
+
 ## Behavioral contract per (mode × stage) cell
 
 Each cell below names precisely the user gates the orchestrator SHALL
@@ -57,16 +74,25 @@ post hoc).
 
 | Stage \ Mode | FULL | INTERMEDIATE | MINIMAL | AUTO |
 |---|---|---|---|---|
-| **SPECS** | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | `AskUserQuestion` per interview turn during `spec-author`; merge-authorization gate before merging the spec-PR. | No interview gate (spec authored autonomously); merge-authorization gate before merging the spec-PR. |
+| **SPECS** | `AskUserQuestion` per interview turn during `spec-author`; the SPECS-stage content-approval of the spec content discharges the resulting one-file spec-PR's merge-authorization gate (see *User-gate definition*), so no second ask fires for it. | `AskUserQuestion` per interview turn during `spec-author`; the SPECS-stage content-approval of the spec content discharges the resulting one-file spec-PR's merge-authorization gate (see *User-gate definition*), so no second ask fires for it. | `AskUserQuestion` per interview turn during `spec-author`; the SPECS-stage content-approval of the spec content discharges the resulting one-file spec-PR's merge-authorization gate (see *User-gate definition*), so no second ask fires for it. | No interview gate (spec authored autonomously); merge-authorization gate before merging the spec-PR — no SPECS-stage content-approval runs to discharge it. |
 | **PLAN** | Validate the plan comment through the `user-validate` skill before DEV starts; second `architect` cold-review remains autonomous. | Validate the plan comment through the `user-validate` skill before DEV starts; second `architect` cold-review remains autonomous. | — (plan authored and cold-reviewed autonomously; DEV starts on APPROVE without user prompt). | — (plan authored and cold-reviewed autonomously). |
-| **DEV** | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). |
+| **DEV** | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR whose content changed after its own content-approval; an unchanged one-file delta-spec PR is discharged per *User-gate definition*). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR whose content changed after its own content-approval; an unchanged one-file delta-spec PR is discharged per *User-gate definition*). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR whose content changed after its own content-approval; an unchanged one-file delta-spec PR is discharged per *User-gate definition*). | Merge-authorization gate before merging the implementation-PR (and before merging any delta-spec PR produced by the loop). |
 | **REVIEW** | Non-blocking notification posted on the logbook issue at the start and end of every iteration (per the FULL-mode rule above), **plus** a bounded triage of the non-blocking findings of each pass realised through the `user-validate` skill (spec 0006 R10 / spec 0005 R10 FULL branch). That triage is the sole REVIEW-loop gate. | — (loop runs autonomously; iteration count visible via the `iter:N` PR label). | — (loop runs autonomously). | — (loop runs autonomously; halt at max-iteration guardrail pages the user per *Retroactive review loop*). |
 
 Notes on the matrix:
 
-- The merge-authorization gate is **invariant across modes**: every
-  mode, including AUTO, MUST ask the user before any `gh pr merge`.
-  *Branching Strategy* is not waivable.
+- The merge-authorization gate is **mandatory and un-waived for every
+  merge the one-file spec-PR discharge does not cover**: in every mode,
+  including AUTO, the agent MUST ask the user before any `gh pr merge` of
+  an implementation-PR, a delta-spec PR whose content changed after its
+  own content-approval, or any other non-spec-PR — *Branching Strategy*
+  is not waivable for those merges. The sole exception is the narrow
+  discharge defined under *User-gate definition*: a one-file spec-PR's
+  merge-authorization request is discharged by a prior SPECS-stage
+  content-approval of the identical, unchanged spec content, so it is not
+  fired a second time. That discharge is not a general waiver of the gate,
+  and it does not apply in AUTO, where no content-approval runs to
+  discharge it.
 - FULL-mode REVIEW notifications are non-blocking — posting them does
   not pause the loop. The one FULL-mode REVIEW gate is the bounded
   non-blocking-finding triage realised through the `user-validate` skill

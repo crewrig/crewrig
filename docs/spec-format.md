@@ -218,16 +218,23 @@ recorded **after** the spec has merged, by a metadata-only edit to the merged
 spec's frontmatter. The two cases are defined in turn below.
 
 **Recording the initial `draft` → `approved` transition (in the spec-PR).**
-The spec-PR merge **is** the approval event: the merge-authorization request
-that a maintainer grants just before a spec-PR merges is itself the decision
-that `status: approved` records. Because that gate fires in **every**
-interaction mode — `FULL`, `INTERMEDIATE`, `MINIMAL`, and `AUTO` alike — this
-rule applies independently of mode; no mode lacks a real approval event to
-record. The transition SHALL be recorded **only after** the spec-PR's
-merge-authorization approval has been granted; recording `status: approved`
-ahead of that gate is a violation, because a recorded `approved` status must
-reflect an approval decision that has actually been made, not one presumed
-before its authorization. The edit stays **metadata-only** in the sense the
+Every interaction mode has a real approval event whose grant the recorded
+`status: approved` reflects, but **which** user gate constitutes that event
+is mode-dependent. In `FULL`, `INTERMEDIATE`, and `MINIMAL` the approval
+event is the **SPECS-stage content-approval gate**; because the approved
+spec content becomes a one-file spec-PR that merges unchanged, that same
+content-approval discharges the spec-PR's merge-authorization request, which
+is therefore not fired a second time (see
+[`interaction-modes.md`](interaction-modes.md) → *User-gate definition*). In
+`AUTO`, where no SPECS-stage content-approval gate runs, the approval event
+is the **merge-authorization request**, which still fires and remains the
+sole approval event. The rule is thus mode-independent in effect — no mode
+lacks a real approval decision to record — while the gate that constitutes
+that decision differs by mode. The transition SHALL be recorded **only
+after** that approval event has been secured; recording `status: approved`
+ahead of it is a violation, because a recorded `approved` status must reflect
+an approval decision that has actually been made, not one presumed before it.
+The edit stays **metadata-only** in the sense the
 next paragraph defines: it sets `status` to `approved` and, when
 `interaction-mode` was omitted while the spec was `draft`, sets
 `interaction-mode` to the mode the spec was qualified under (the frontmatter
@@ -237,7 +244,7 @@ spec-PR carries `status: approved` at the moment it lands on `main` — a merged
 spec is never at once merged and still `draft` — and **no** separate,
 post-merge, metadata-only pull request is required to record the approval.
 
-*Merge mechanic.* Strictly **after** the merge-authorization gate is granted
+*Merge mechanic.* Strictly **after** the approval event has been secured
 and strictly **before** running `gh pr merge --squash`, on the spec-PR branch
 (`spec/<NNNN>-<slug>`) edit the spec's frontmatter (`status: draft` →
 `status: approved`, adding `interaction-mode` if it was omitted during
