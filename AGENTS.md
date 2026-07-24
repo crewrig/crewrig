@@ -120,8 +120,9 @@ rule takes over.
 - The `main` branch is **protected**: no direct pushes allowed.
 - Every change must go through a **feature branch** merged into `main` via a Pull Request.
 - **NEVER merge a Pull Request (PR/MR)** without asking for the user's formal permission JUST BEFORE executing the merge.
+  - Narrow one-file spec-PR exception: [`docs/interaction-modes.md`](docs/interaction-modes.md) → *User-gate definition*.
 - The `import/gitlab` branch tracks the legacy GitLab project (`gitlab` remote) and serves as inspiration only.
-- Non-trivial tickets follow the **Spec-PR workflow** (see section below): a `spec/<NNNN>-<slug>` PR qualifies the WHAT and merges to `main` before the implementation branch is cut.
+- Non-trivial tickets follow the **Spec-PR workflow** (see below).
 
 ### On Claude Code CLI — solo-maintainer self-merge block
 
