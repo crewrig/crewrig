@@ -11,12 +11,12 @@ description: "Harness feedback-loop curator. Activate on demand to read
   with dedup and per-run issue cap."
 type: skill
 license: Apache-2.0
-compatibility: Requires bash, jq, the gh CLI (used by setup-labels.sh and --apply), and the mempalace Python package (pipx install 'mempalace>=3.6.0,<3.7').
+compatibility: Requires bash, jq, a forge CLI (setup-labels.sh uses gh; --apply selects gh, glab, or tea per the target repository's forge), and the mempalace Python package (pipx install 'mempalace>=3.6.0,<3.7').
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.6.2"
+    version: "1.7.0"
 claude:
   allowed-tools:
     - Read
@@ -127,9 +127,10 @@ make sure it reads sensibly.
 Two paths, equivalent in outcome:
 
 - **Let the script do it**: `task harness-curate -- --apply`. The
-  script opens one issue per cluster via `gh issue create`, with all
-  three labels from the JSON (`harness-feedback`, `room:<x>`,
-  `severity:<y>`).
+  script opens one issue per cluster via the target forge's CLI
+  (`gh`, `glab`, or `tea`, selected from the cluster's canonical
+  repository host), with all three labels from the JSON
+  (`harness-feedback`, `room:<x>`, `severity:<y>`).
 - **Open them yourself**: iterate the JSON and run `gh issue create
   --repo <owner>/<repo> --title <title> --body <body> --label <...>`
   per cluster (the same argv `apply.py` builds), or the `glab`/`tea`

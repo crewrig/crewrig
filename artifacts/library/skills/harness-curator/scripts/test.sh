@@ -655,6 +655,145 @@ if grep -q "stripping to repo root" "$NORM_TMP/err"; then
 fi
 echo "  PASS norm.clean stderr does not contain 'stripping to repo root'"
 
+# --- Spec 0105: forge-agnostic apply (offline --dry-run-apply + unit) -----
+# The apply step now files each cluster against whichever forge hosts its
+# canonical repo — GitHub via `gh`, GitLab via `glab`, Gitea via `tea` —
+# selected from the target host. Everything below is OFFLINE: --dry-run-apply
+# resolves and prints the create argv without ever exec'ing a forge binary,
+# and the unit block loads apply.py via importlib (no live forge, no network).
+# The GitHub argv/regression assertions above are the byte-identity R7 guard
+# and stay untouched; these only add the non-GitHub surfaces + the two
+# Finding-2 guards (PLAN v2 Step 8).
+
+# Multi-label variant of make_cluster_payload: the single-label helper above
+# cannot exercise label comma-joining, so this one carries the full
+# three-tuple ["harness-feedback","room:tool","severity:high"].
+make_forge_payload() {
+  local target="$1"
+  printf '{"stats":{"total_drawers":1,"valid_frictions":1,"skipped_malformed":0,"skipped_resolved":0,"clusters_formed":1,"clusters_above_threshold":1,"clusters_parked":0,"routing_failures":0},"clusters":[{"cluster_key":"forge-probe","cluster_size":1,"target_repo":"%s","title":"forge probe","body":"body","labels":["harness-feedback","room:tool","severity:high"],"frictions":[{"_drawer_id":"drw-forge-1"}]}],"skipped":[],"routing_failures":[]}' "$target"
+}
+
+# Emit the single create-argv JSON array line for a target. Optional $2 is a
+# value for CREWRIG_GITLAB_HOSTS, scoped to this one process only (proves the
+# spec 0105 R9 allowlist branch). The full dry-run output is captured first
+# (no early pipe close), then the lone `^[` argv line is extracted — one
+# cluster ⇒ exactly one argv line, so no SIGPIPE under pipefail.
+forge_argv() {
+  local target="$1" out
+  if [ -n "${2:-}" ]; then
+    out=$(make_forge_payload "$target" | CREWRIG_GITLAB_HOSTS="$2" python3 "$APPLY" --dry-run-apply)
+  else
+    out=$(make_forge_payload "$target" | python3 "$APPLY" --dry-run-apply)
+  fi
+  printf '%s\n' "$out" | grep '^\[' | head -n1
+}
+
+# Count occurrences of an exact token in a JSON argv array (0/1/…).
+argv_flag_count() { jq -c --arg f "$1" '[.[] | select(. == $f)] | length'; }
+
+# GitLab.com canonical → glab issue create; --description (not --body); --repo
+# is the FULL cleaned URL; exactly one --label carrying the comma-joined tuple.
+GL_ARGV=$(forge_argv "https://gitlab.com/gr/proj")
+[ -n "$GL_ARGV" ] || { echo "FAIL: gitlab.com produced no argv line" >&2; exit 1; }
+assert "gitlab.com argv head"            '["glab","issue","create"]' "$(echo "$GL_ARGV" | jq -c '.[0:3]')"
+assert "gitlab.com has --description"    "1" "$(echo "$GL_ARGV" | argv_flag_count '--description')"
+assert "gitlab.com has no --body"        "0" "$(echo "$GL_ARGV" | argv_flag_count '--body')"
+assert "gitlab.com --repo is full URL"   "https://gitlab.com/gr/proj" \
+  "$(echo "$GL_ARGV" | jq -r '.[(index("--repo"))+1]')"
+assert "gitlab.com single --label flag"  "1" "$(echo "$GL_ARGV" | argv_flag_count '--label')"
+assert "gitlab.com has no --labels"      "0" "$(echo "$GL_ARGV" | argv_flag_count '--labels')"
+assert "gitlab.com --label comma-joined" "harness-feedback,room:tool,severity:high" \
+  "$(echo "$GL_ARGV" | jq -r '.[(index("--label"))+1]')"
+
+# A `gitlab.`-prefix host resolves to glab without any env var (spec R1 clause 2).
+GLPFX_ARGV=$(forge_argv "https://gitlab.example.com/gr/proj")
+assert "gitlab.-prefix host resolves to glab" '["glab","issue","create"]' \
+  "$(echo "$GLPFX_ARGV" | jq -c '.[0:3]')"
+
+# spec 0105 R9 allowlist — the key evidence pair. The SAME self-hosted host
+# resolves to glab WITH CREWRIG_GITLAB_HOSTS set, and to tea WITHOUT it.
+R9_ARGV=$(forge_argv "https://git.example.com/o/r" "git.example.com")
+assert "R9 CREWRIG_GITLAB_HOSTS host → glab" '["glab","issue","create"]' \
+  "$(echo "$R9_ARGV" | jq -c '.[0:3]')"
+assert "R9 glab --repo is full URL"          "https://git.example.com/o/r" \
+  "$(echo "$R9_ARGV" | jq -r '.[(index("--repo"))+1]')"
+R9_OFF_ARGV=$(forge_argv "https://git.example.com/o/r")
+assert "R9 same host without env → tea"      '["tea","issues","create"]' \
+  "$(echo "$R9_OFF_ARGV" | jq -c '.[0:3]')"
+
+# Plain self-hosted host → tea issues create; --description; --labels
+# comma-joined; --repo is the last two path segments (owner/repo).
+TEA_ARGV=$(forge_argv "https://git.acme.io/o/r")
+[ -n "$TEA_ARGV" ] || { echo "FAIL: gitea host produced no argv line" >&2; exit 1; }
+assert "gitea argv head"              '["tea","issues","create"]' "$(echo "$TEA_ARGV" | jq -c '.[0:3]')"
+assert "gitea has --description"      "1" "$(echo "$TEA_ARGV" | argv_flag_count '--description')"
+assert "gitea single --labels flag"   "1" "$(echo "$TEA_ARGV" | argv_flag_count '--labels')"
+assert "gitea --labels comma-joined"  "harness-feedback,room:tool,severity:high" \
+  "$(echo "$TEA_ARGV" | jq -r '.[(index("--labels"))+1]')"
+assert "gitea --repo is owner/repo"   "o/r" "$(echo "$TEA_ARGV" | jq -r '.[(index("--repo"))+1]')"
+
+# Finding-2 unit assertions — load apply.py as a module (importlib) and probe
+# the pure helpers directly. apply.py has no import-time side effects and its
+# `from mempalace.mcp_server import …` is function-local to main(), so a bare
+# import is safe offline. The snippet must set `OUT`; its str() is printed for
+# the bash `assert` to compare. A raising snippet writes nothing → the assert
+# mismatches → red (which is exactly how the "revert must fail" cases bite).
+apply_eval() {
+  APPLY_PATH="$APPLY" python3 -c '
+import importlib.util, os, sys
+_spec = importlib.util.spec_from_file_location("apply_mod", os.environ["APPLY_PATH"])
+_m = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_m)
+_ns = {"m": _m}
+exec(sys.argv[1], _ns)
+sys.stdout.write(str(_ns["OUT"]))
+' "$1"
+}
+
+# PRIMARY Finding-2 guard (argv fix): the Gitea dedup list MUST carry
+# `--fields` immediately followed by `index,title,state,url`. `tea issues
+# list --output json` omits `url` from its DEFAULT field set, so dropping the
+# `,url` (or the flag) would make a URL-keyed skip never fire → revert = red.
+assert "gitea dedup --fields index,title,state,url" "True" \
+  "$(apply_eval 'c = m._dedup_list_cmd("gitea","o/r","k"); OUT = (c[c.index("--fields")+1] == "index,title,state,url")')"
+assert "gitea dedup --output json" "True" \
+  "$(apply_eval 'c = m._dedup_list_cmd("gitea","o/r","k"); OUT = (c[c.index("--output")+1] == "json")')"
+
+# GitLab dedup list uses --output json and --per-page (glab lists open by default).
+assert "gitlab dedup --output json" "True" \
+  "$(apply_eval 'c = m._dedup_list_cmd("gitlab","ref","k"); OUT = (c[c.index("--output")+1] == "json")')"
+assert "gitlab dedup has --per-page" "True" \
+  "$(apply_eval 'c = m._dedup_list_cmd("gitlab","ref","k"); OUT = ("--per-page" in c)')"
+
+# GitHub dedup list is UNCHANGED — `--json title,url` and the `in:title`
+# search qualifier (byte-identical to the original single-forge query).
+assert "github dedup --json title,url" "title,url" \
+  "$(apply_eval 'c = m._dedup_list_cmd("github","o/r","k"); OUT = c[c.index("--json")+1]')"
+assert "github dedup search uses in:title" "True" \
+  "$(apply_eval 'c = m._dedup_list_cmd("github","o/r","k"); OUT = any("in:title" in x for x in c)')"
+
+# PRIMARY Finding-2 guard (skip decoupling): _match_existing returns a truthy
+# value on a title match even when NO url/web_url/html_url field is present.
+# Reverting to a URL-keyed return (`item.get("url")`) yields None here → the
+# caller would never skip the duplicate on Gitea → revert = red.
+assert "match_existing truthy with no url field" "True" \
+  "$(apply_eval 'OUT = bool(m._match_existing([{"title":"Friction cluster: k (2 reports)"}], "k"))')"
+assert "match_existing returns html_url when present" "u" \
+  "$(apply_eval 'OUT = m._match_existing([{"title":"Friction cluster: k (2 reports)","html_url":"u"}], "k")')"
+assert "match_existing returns None on no title match" "None" \
+  "$(apply_eval 'OUT = m._match_existing([{"title":"unrelated"}], "k")')"
+# The trailing ` (` anchor is load-bearing: sibling key `k-merge` must NOT
+# match cluster_key `k`. Drop the anchor and this returns a truthy title → red.
+assert "match_existing anchor blocks k vs k-merge collision" "None" \
+  "$(apply_eval 'OUT = m._match_existing([{"title":"Friction cluster: k-merge (2 reports)"}], "k")')"
+
+# Fail-open (spec R6) — validates the deliberate `except Exception` broadening.
+# With `tea` absent (PATH scrubbed), subprocess.run raises FileNotFoundError,
+# which is NOT a CalledProcessError/JSONDecodeError. A narrow except tuple
+# would let it propagate and crash the apply loop; the broad except must
+# catch it and return None (no-match). Revert to a narrow tuple → red.
+assert "existing_issue_url fails open on missing forge binary" "True" \
+  "$(apply_eval 'import os; os.environ["PATH"]="/nonexistent"; OUT = (m._existing_issue_url("gitea","o/r","k") is None)' 2>/dev/null)"
+
 # --- Smoke test: setup-labels.sh bootstrap (offline, --dry-run only) -----
 # Offline assertions on the dry-run plan — never contacts GitHub. Mirrors
 # the norm.* sub-case shape used in the apply.py normalization block

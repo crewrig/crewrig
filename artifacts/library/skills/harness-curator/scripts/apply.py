@@ -2,9 +2,12 @@
 """harness_curate — Apply step.
 
 Reads the cluster JSON emitted by ``curate.py`` on stdin and either opens
-one GitHub issue per cluster via ``gh issue create`` (default) or, with
-``--dry-run-apply``, prints the resolved ``gh`` argv as one JSON line per
-cluster without running anything.
+one issue per cluster on whichever forge hosts that cluster's canonical
+repository — GitHub via ``gh``, GitLab via ``glab``, Gitea via ``tea``,
+selected from the target repository's host — or, with ``--dry-run-apply``,
+prints the resolved forge argv as one JSON line per cluster without running
+anything. The GitHub argv path is kept byte-for-byte identical to the
+original single-forge behavior (spec 0105 R7).
 
 The script is invoked by ``curate.sh`` through ``$MEMPALACE_PYTHON``
 rather than via shebang exec, so that any future ``from mempalace …``
@@ -19,15 +22,47 @@ import os
 import subprocess
 import sys
 from typing import Optional
+from urllib.parse import urlsplit
 
 
-def _build_cmd(cluster: dict) -> list[str]:
-    target = cluster["target_repo"]
-    # Defensive: a filer may set `canonical:` to a file URL
-    # (https://github.com/<o>/<r>/blob/<branch>/<path>) despite the
-    # schema requiring the bare repo form. Strip /blob/... or
-    # /tree/... so `gh --repo` receives a valid <owner>/<repo> slug.
-    # Schema contract: harness-report/SKILL.md → `canonical` field.
+def _detect_forge(url: str) -> str:
+    """Select the forge CLI family from a canonical repository URL's host.
+
+    `github.com` → ``"github"``; `gitlab.com`, a host whose name begins
+    ``gitlab.``, or a host present in the comma-separated
+    ``CREWRIG_GITLAB_HOSTS`` env var (default unset → empty; spec 0105 R9's
+    deterministic, default-unset self-hosted-GitLab allowlist) →
+    ``"gitlab"``; any other host → ``"gitea"``. Robust to a URL with or
+    without a scheme. Mirrors spec 0103 delta-01 R9 and spec 0105 R1.
+    """
+    # urlsplit only fills netloc when a scheme (or leading `//`) is present;
+    # prepend `//` for a bare `host/owner/repo` so the host parses reliably.
+    parsed = urlsplit(url.strip() if "://" in url else "//" + url.strip())
+    host = (parsed.hostname or "").lower()
+    if host == "github.com":
+        return "github"
+    if host == "gitlab.com" or host.startswith("gitlab."):
+        return "gitlab"
+    allow = {
+        h.strip().lower()
+        for h in os.environ.get("CREWRIG_GITLAB_HOSTS", "").split(",")
+        if h.strip()
+    }
+    if host in allow:
+        return "gitlab"
+    return "gitea"
+
+
+def _clean_target(target: str) -> str:
+    """Strip a `/blob/…` or `/tree/…` file-URL suffix to the repo root.
+
+    Defensive: a filer may set `canonical:` to a file URL
+    (`https://<host>/<o>/<r>/blob/<branch>/<path>`) despite the schema
+    requiring the bare repo form. Single-sources the issue-#63 normalization
+    previously duplicated in `_build_cmd` and `_repo_slug`, emitting the
+    unchanged warning on stderr. Idempotent: a clean URL passes through with
+    no warning. Schema contract: harness-report/SKILL.md → `canonical` field.
+    """
     for sep in ("/blob/", "/tree/"):
         if sep in target:
             print(
@@ -36,14 +71,64 @@ def _build_cmd(cluster: dict) -> list[str]:
                 "to the repo URL, not a file URL.",
                 file=sys.stderr,
             )
-            target = target.split(sep, 1)[0]
-            break
+            return target.split(sep, 1)[0]
+    return target
+
+
+def _repo_ref(forge: str, cleaned: str) -> str:
+    """Derive the repository reference the selected forge CLI accepts, from an
+    already-`_clean_target`-normalized canonical URL (spec 0105 R3):
+
+    - github: strip the `https://github.com/` prefix to the bare
+      `owner/repo` slug — kept VERBATIM so the `gh` argv stays byte-for-byte
+      identical to the original single-forge behavior (spec R7);
+    - gitlab: the full cleaned URL — `glab -R` accepts a full URL, covering
+      self-hosted hosts and nested subgroups;
+    - gitea: the last two path segments (`owner/repo`).
+    """
+    if forge == "github":
+        return cleaned.replace("https://github.com/", "")
+    if forge == "gitlab":
+        return cleaned
+    # gitea: owner/repo from the final two non-empty path segments.
+    parts = [p for p in cleaned.split("/") if p]
+    return "/".join(parts[-2:])
+
+
+def _build_cmd(cluster: dict) -> list[str]:
+    """Build the per-forge `issue create` argv for a cluster (spec R2, R4).
+
+    Dispatches on the target repository's host. The GitHub branch is
+    byte-for-byte identical to the original single-forge output (spec R7).
+    The `harness-feedback` label name is forge-independent (spec R4).
+    """
+    target = cluster["target_repo"]
+    cleaned = _clean_target(target)
+    forge = _detect_forge(target)
+    ref = _repo_ref(forge, cleaned)
     title = cluster["title"]
     body = cluster["body"]
     labels = cluster.get("labels", ["harness-feedback"])
+    if forge == "gitlab":
+        return [
+            "glab", "issue", "create",
+            "--repo", ref,
+            "--title", title,
+            "--description", body,
+            "--label", ",".join(labels),
+        ]
+    if forge == "gitea":
+        return [
+            "tea", "issues", "create",
+            "--repo", ref,
+            "--title", title,
+            "--description", body,
+            "--labels", ",".join(labels),
+        ]
+    # github (default): unchanged argv — same flag order, same warning path.
     cmd = [
         "gh", "issue", "create",
-        "--repo", target.replace("https://github.com/", ""),
+        "--repo", ref,
         "--title", title,
         "--body", body,
     ]
@@ -52,60 +137,109 @@ def _build_cmd(cluster: dict) -> list[str]:
     return cmd
 
 
-def _repo_slug(cluster: dict) -> str:
-    """Return the `<owner>/<repo>` slug for a cluster's target_repo, applying
-    the same /blob/ and /tree/ stripping as `_build_cmd` so the dedup query
-    matches the issue-create target exactly."""
-    target = cluster["target_repo"]
-    for sep in ("/blob/", "/tree/"):
-        if sep in target:
-            target = target.split(sep, 1)[0]
-            break
-    return target.replace("https://github.com/", "")
+def _dedup_list_cmd(forge: str, repo_ref: str, cluster_key: str) -> list[str]:
+    """Build the per-forge list/search argv for the dedup lookup (spec R5).
 
+    Each forge lists open `harness-feedback` issues matching the cluster-key
+    phrase; the skip decision itself is title-only and made by
+    `_match_existing`, so the forge-specific search need only narrow the set.
 
-def _existing_issue_url(repo: str, cluster_key: str) -> Optional[str]:
-    """Look up an open `harness-feedback` issue whose title matches the
-    cluster's canonical prefix `Friction cluster: <key> (`. Returns the
-    issue URL on match, None otherwise.
-
-    `gh search` / `gh issue list --search` is fuzzy, so we post-filter on
-    a startswith check. The trailing ` (` anchor is load-bearing — it
-    prevents substring collisions between sibling cluster keys (e.g.
-    `yq` vs `yq-merge`).
-
-    Race condition: two concurrent curator runs could both miss the
-    duplicate and both open an issue. V1 ignores this — the scheduler
-    runs serially on one machine and the reactive trigger is rare.
-    Fails open on `gh` errors: when in doubt, surface the friction.
+    - github: unchanged — `gh issue list … --search "… in:title" --json
+      title,url` (byte-identical to the original single-forge query);
+    - gitlab: `glab issue list … --search "…" --output json` (lists open by
+      default);
+    - gitea: `tea issues list … --keyword "…" --output json --fields
+      index,title,state,url`. The `--fields …,url` is REQUIRED — `tea
+      issues list --output json` uses tea's DEFAULT field set, which omits
+      `url`, so a URL-keyed skip would never fire on Gitea.
     """
-    prefix = f"Friction cluster: {cluster_key} ("
-    cmd = [
+    if forge == "gitlab":
+        return [
+            "glab", "issue", "list",
+            "--repo", repo_ref,
+            "--label", "harness-feedback",
+            "--search", f"Friction cluster: {cluster_key}",
+            "--output", "json",
+            "--per-page", "50",
+        ]
+    if forge == "gitea":
+        return [
+            "tea", "issues", "list",
+            "--repo", repo_ref,
+            "--labels", "harness-feedback",
+            "--state", "open",
+            "--keyword", f"Friction cluster: {cluster_key}",
+            "--fields", "index,title,state,url",
+            "--output", "json",
+            "--limit", "50",
+        ]
+    # github (default): unchanged query.
+    return [
         "gh", "issue", "list",
-        "--repo", repo,
+        "--repo", repo_ref,
         "--label", "harness-feedback",
         "--state", "open",
         "--search", f"Friction cluster: {cluster_key} in:title",
         "--json", "title,url",
         "--limit", "50",
     ]
+
+
+def _match_existing(items: list, cluster_key: str) -> Optional[str]:
+    """Pure title-prefix matcher (no I/O) for the dedup skip decision (R5).
+
+    Returns a truthy value for the first item whose title starts with
+    `Friction cluster: <key> (` — the matched issue's URL if any of
+    `url` / `web_url` / `html_url` is present (read defensively across the
+    forges' differing JSON shapes, for the caller's log line only), else the
+    matched **title** as a non-None placeholder so the caller's `if existing:`
+    still skips. The skip decision is therefore title-only and independent of
+    any forge-specific URL field (spec R5). Returns `None` only when no title
+    matches.
+
+    The trailing ` (` anchor is load-bearing — it prevents substring
+    collisions between sibling cluster keys (e.g. `yq` vs `yq-merge`).
+    """
+    prefix = f"Friction cluster: {cluster_key} ("
+    for item in items:
+        title = item.get("title", "")
+        if title.startswith(prefix):
+            return (
+                item.get("url")
+                or item.get("web_url")
+                or item.get("html_url")
+                or title
+            )
+    return None
+
+
+def _existing_issue_url(forge: str, repo_ref: str, cluster_key: str) -> Optional[str]:
+    """Look up an open `harness-feedback` issue on the selected forge whose
+    title matches the cluster's canonical prefix `Friction cluster: <key> (`.
+    Returns a truthy value on match (see `_match_existing`), None otherwise.
+
+    Race condition: two concurrent curator runs could both miss the duplicate
+    and both open an issue. V1 ignores this — the scheduler runs serially on
+    one machine and the reactive trigger is rare.
+
+    Fails open on ANY error — a tool error, a missing forge CLI binary, or
+    unparseable output all resolve to no-match so the cluster's issue is still
+    opened (spec R6): a duplicate is recoverable, a missed friction is not.
+    """
+    cmd = _dedup_list_cmd(forge, repo_ref, cluster_key)
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         items = json.loads(result.stdout or "[]")
-    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+        return _match_existing(items, cluster_key)
+    except Exception as e:  # noqa: BLE001 — spec R6 fail-open: any error → no-match
         # Fail open: log and let the cluster open. Duplicates are
         # recoverable; a missed friction is not.
         print(
-            f"  warn: dedup query failed on {repo} for '{cluster_key}': {e}; "
+            f"  warn: dedup query failed on {repo_ref} for '{cluster_key}': {e}; "
             "treating as no-match.",
             file=sys.stderr,
         )
         return None
-    for item in items:
-        title = item.get("title", "")
-        if title.startswith(prefix):
-            return item.get("url")
-    return None
 
 
 def _collect_drawer_ids(cluster: dict) -> tuple[list[str], int]:
@@ -155,7 +289,11 @@ def main() -> int:
             # the wire shape stays uniform across modes.
             dedup_match: Optional[str] = None
             if args.dedup:
-                dedup_match = _existing_issue_url(_repo_slug(c), c["cluster_key"])
+                target = c["target_repo"]
+                forge = _detect_forge(target)
+                dedup_match = _existing_issue_url(
+                    forge, _repo_ref(forge, _clean_target(target)), c["cluster_key"]
+                )
             print(json.dumps(_build_cmd(c)))
             # Issue #69: surface the drawers that would receive the
             # `opened_as` correlation stamp. Object shape (not array) so
@@ -194,7 +332,10 @@ def main() -> int:
         target = c["target_repo"]
         title = c["title"]
         if args.dedup:
-            existing = _existing_issue_url(_repo_slug(c), c["cluster_key"])
+            forge = _detect_forge(target)
+            existing = _existing_issue_url(
+                forge, _repo_ref(forge, _clean_target(target)), c["cluster_key"]
+            )
             if existing:
                 print(
                     f"--- Skipping duplicate cluster '{c['cluster_key']}' "
