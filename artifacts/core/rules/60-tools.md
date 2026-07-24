@@ -464,9 +464,10 @@ MemPalace write path may be unavailable — a peer holds the write lock
 (MCP error `-32001`) or the server is disconnected — so the tag call
 cannot record the friction. The `harness-report` procedure carries the
 operational fallback for this case (file the friction directly as a
-`harness-feedback`-labeled GitHub issue on the canonical repository, so
-the signal still reaches the curator's triage lane). This file states
-the contract; the `SKILL.md` procedure carries the "how".
+`harness-feedback`-labeled issue on the offender's canonical repository,
+using the forge-appropriate CLI, so the signal still reaches the
+curator's triage lane). This file states the contract; the `SKILL.md`
+procedure carries the "how".
 
 ### Where to write
 
