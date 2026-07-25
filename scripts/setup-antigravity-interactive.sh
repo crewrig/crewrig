@@ -367,6 +367,7 @@ install_tier_to_home() {
 
 echo ""
 echo "Installing library components to $AGY_SKILLS_HOME (automatic)..."
+ensure_tier_built "$REPO_DIR" antigravity "$REPO_DIR/dist/library/.agents" || exit 1
 install_tier_to_home library
 echo ""
 

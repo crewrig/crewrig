@@ -109,6 +109,7 @@ capabilities:
       - bash scripts/tests/test-setup-mcp-merge.sh
       - bash scripts/tests/test-setup-org-mcp.sh
       - bash scripts/tests/test-setup-catalogue-picker.sh
+      - bash scripts/tests/test-setup-ensure-tier-built.sh
       - bash scripts/check-gemini-overlay-enrollment.sh
       - bash scripts/tests/test-check-gemini-overlay-enrollment.sh
 

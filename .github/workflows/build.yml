@@ -235,6 +235,9 @@ jobs:
       - name: Test setup catalogue-picker regression (spec 0096)
         run: bash scripts/tests/test-setup-catalogue-picker.sh
 
+      - name: Test setup ensure-tier-built regression (spec 0107)
+        run: bash scripts/tests/test-setup-ensure-tier-built.sh
+
       - name: Check Gemini overlay enrollment (spec 0085)
         run: bash scripts/check-gemini-overlay-enrollment.sh
 
