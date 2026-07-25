@@ -350,6 +350,7 @@ install_tier_to_home() {
 
 echo ""
 echo "Installing library components to $GEMINI_SKILLS_HOME (automatic)..."
+ensure_tier_built "$REPO_DIR" gemini "$REPO_DIR/dist/library/.gemini" || exit 1
 install_tier_to_home library
 echo ""
 

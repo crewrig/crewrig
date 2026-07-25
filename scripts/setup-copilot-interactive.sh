@@ -331,6 +331,7 @@ install_tier_skills_to_home() {
 }
 
 echo "Installing library skills to $COPILOT_SKILLS (automatic)..."
+ensure_tier_built "$REPO_DIR" copilot "$REPO_DIR/dist/library/.github/skills" || exit 1
 install_tier_skills_to_home library
 echo ""
 

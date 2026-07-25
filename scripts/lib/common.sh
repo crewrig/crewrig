@@ -434,6 +434,31 @@ pick_catalogue_entry() {
   printf '%s\n' "$choice"
 }
 
+# ensure_tier_built <repo_dir> <build_target> <staging_path>
+# Auto-builds a tier's staging output (spec 0107) so the interactive setup
+# scripts no longer require a manual `bash scripts/build-components.sh` run
+# before the `library` tier can be installed.
+#
+# If <staging_path> already exists as a directory, returns 0 immediately
+# (no message) — the tier is already built, nothing to do. Otherwise builds
+# it on the fly via `bash "$repo_dir/scripts/build-components.sh" --target
+# <build_target>`, returning 1 (with an ERROR: line naming the failed build
+# target) if that build fails, or 0 on a successful build.
+ensure_tier_built() {
+  local repo_dir="$1" build_target="$2" staging_path="$3"
+
+  if [ -d "$staging_path" ]; then
+    return 0
+  fi
+
+  echo "Tier not built (no $staging_path) — building automatically via 'bash scripts/build-components.sh --target $build_target'..."
+  if ! bash "$repo_dir/scripts/build-components.sh" --target "$build_target"; then
+    echo "ERROR: automatic build failed for target '$build_target'." >&2
+    return 1
+  fi
+  return 0
+}
+
 mempalace_installed_version() {
   "$1" -c "from importlib.metadata import version; print(version('mempalace'))" 2>/dev/null
 }
