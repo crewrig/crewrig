@@ -101,4 +101,3 @@ Then  the script does not re-trigger a build, prints no build-related
   sole behavior specified.
 
 ## Open questions
-
