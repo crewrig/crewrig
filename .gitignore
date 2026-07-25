@@ -33,6 +33,11 @@ CLAUDE.local.md
 .github/copilot/settings.local.json
 copilot-instructions.local.md
 
+# Timestamped backup left by backup_file() next to settings.json during the
+# transcript-hooks opt-in merge (spec 0097 / issue #605) — scoped narrowly to
+# that one file, not the whole .github/copilot directory
+.github/copilot/settings.json.bak.*
+
 # e2e runner — local overrides and per-run reports (issue #78)
 tests/e2e/local.toml
 tests/e2e/reports/*

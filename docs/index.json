@@ -105,6 +105,11 @@
           "title": "CI capability reference format",
           "path": "docs/ci-reference-format.md",
           "nav_order": 60
+        },
+        {
+          "title": "Org MCP server declaration channel",
+          "path": "docs/org-mcp-declaration.md",
+          "nav_order": 70
         }
       ]
     },

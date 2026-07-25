@@ -250,6 +250,20 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   fi
 fi
 
+# --- Org-declared MCP servers (spec 0091) ---
+# Deliver org-declared servers from the org-owned manifest via `claude mcp add`,
+# AFTER the framework-managed reserved servers above, so precedence is
+# framework-reserved > org > operator-pre-existing (R10/R11). Claude is the
+# R13 hermetic-equivalent CLI: the imperative path cannot be exercised live in
+# CI, so it is covered by the pure argv-unit test + structural call-site
+# assertions (the sanctioned realization; see docs/cli-matrix.md row 7h).
+ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
+if [ -f "$ORG_MCP_MANIFEST" ]; then
+  echo "Registering org-declared MCP servers from mcp-servers.org.json (spec 0091)..."
+  register_org_mcp_claude "$ORG_MCP_MANIFEST" "$CLAUDE_USER_CONFIG"
+  echo ""
+fi
+
 # Surface legacy ~/.claude/mcp.json (no longer used) to avoid confusion
 LEGACY_MCP="$CLAUDE_HOME/mcp.json"
 if [ -f "$LEGACY_MCP" ]; then
@@ -282,44 +296,41 @@ if [ "$SKIP_RULES_CONFIG" -ne 1 ]; then
 
 # --- Team selection ---
 echo "Select your team:"
-TEAM=$(for f in "$REPO_DIR"/config/teams/*.md; do basename "$f" .md; done \
-  | fzf --height 40% --preview "head -20 $REPO_DIR/config/teams/{}.md")
-if [ -z "$TEAM" ]; then
-  echo "No team selected. Aborting."
-  exit 1
+TEAM="$(pick_catalogue_entry "$REPO_DIR/config/teams" "team")"
+if [ -n "$TEAM" ]; then
+  install_file "$REPO_DIR/config/teams/${TEAM}.md" "$CLAUDE_RULES/50-team.md" \
+    "teams/${TEAM}.md -> rules/50-team.md"
+  echo "$TEAM" > "$CLAUDE_HOME/.selected_team"
+  echo "Team: $TEAM"
+else
+  rm -f "$CLAUDE_HOME/.selected_team"
 fi
-install_file "$REPO_DIR/config/teams/${TEAM}.md" "$CLAUDE_RULES/50-team.md" \
-  "teams/${TEAM}.md -> rules/50-team.md"
-echo "$TEAM" > "$CLAUDE_HOME/.selected_team"
-echo "Team: $TEAM"
 echo ""
 
 # --- Expertise selection ---
 echo "Select your expertise:"
-EXPERTISE=$(for f in "$REPO_DIR"/config/expertise/*.md; do basename "$f" .md; done \
-  | fzf --height 40% --preview "head -20 $REPO_DIR/config/expertise/{}.md")
-if [ -z "$EXPERTISE" ]; then
-  echo "No expertise selected. Aborting."
-  exit 1
+EXPERTISE="$(pick_catalogue_entry "$REPO_DIR/config/expertise" "expertise")"
+if [ -n "$EXPERTISE" ]; then
+  install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$CLAUDE_RULES/40-expertise.md" \
+    "expertise/${EXPERTISE}.md -> rules/40-expertise.md"
+  echo "$EXPERTISE" > "$CLAUDE_HOME/.selected_expertise"
+  echo "Expertise: $EXPERTISE"
+else
+  rm -f "$CLAUDE_HOME/.selected_expertise"
 fi
-install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$CLAUDE_RULES/40-expertise.md" \
-  "expertise/${EXPERTISE}.md -> rules/40-expertise.md"
-echo "$EXPERTISE" > "$CLAUDE_HOME/.selected_expertise"
-echo "Expertise: $EXPERTISE"
 echo ""
 
 # --- Level selection ---
 echo "Select your experience level:"
-LEVEL=$(for f in "$REPO_DIR"/config/level/*.md; do basename "$f" .md; done \
-  | fzf --height 40% --preview "head -20 $REPO_DIR/config/level/{}.md")
-if [ -z "$LEVEL" ]; then
-  echo "No level selected. Aborting."
-  exit 1
+LEVEL="$(pick_catalogue_entry "$REPO_DIR/config/level" "level")"
+if [ -n "$LEVEL" ]; then
+  install_file "$REPO_DIR/config/level/${LEVEL}.md" "$CLAUDE_RULES/10-level.md" \
+    "level/${LEVEL}.md -> rules/10-level.md"
+  echo "$LEVEL" > "$CLAUDE_HOME/.selected_level"
+  echo "Level: $LEVEL"
+else
+  rm -f "$CLAUDE_HOME/.selected_level"
 fi
-install_file "$REPO_DIR/config/level/${LEVEL}.md" "$CLAUDE_RULES/10-level.md" \
-  "level/${LEVEL}.md -> rules/10-level.md"
-echo "$LEVEL" > "$CLAUDE_HOME/.selected_level"
-echo "Level: $LEVEL"
 echo ""
 
 # --- Profile handling ---

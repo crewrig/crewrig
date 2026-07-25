@@ -351,11 +351,13 @@ items carry parity load, tracked in their own tickets:
   and is compiled to all three CLIs by `scripts/build-components.sh`
   (#174). No CLI-specific gap is anticipated.
 - The retroactive routing engine (#172) is orchestrator-side logic.
-  Claude Code's team primitives (`TeamCreate` / `TaskCreate` /
-  `SendMessage`) make it directly expressible; Gemini CLI's
-  sequential-spawn fallback (per `AGENTS.md` → *On CLIs without team
-  support*) requires loop bookkeeping in the orchestrator's
-  conversation state. Copilot CLI parity will be assessed in #172.
+  Claude Code's single implicit session team makes it directly
+  expressible — delegation via `Agent` (with an explicit
+  `subagent_type`), tracking via `TaskCreate`, and coordination via
+  `SendMessage`; Gemini CLI's sequential-spawn parity (per `AGENTS.md`
+  → *On CLIs with no multi-agent coordination surface*) requires loop
+  bookkeeping in the orchestrator's conversation state. Copilot CLI
+  parity will be assessed in #172.
 - The interaction-mode notification surface (#173) reuses the
   logbook issue, which is GitHub-side and therefore CLI-agnostic.
 

@@ -17,3 +17,14 @@ resolution — not after the PR is opened.
 - Scope changes or requirement pivots mid-ticket
 - Rebase operations that resolve conflicts (one comment per rebase, summarizing the conflict and resolution)
 - Architectural course corrections (an ADR-worthy decision made inline)
+
+## Rule C — close immediately after merge
+
+The `AGENTS.md` → *Logbook Issues → Rule C* obligation ("close
+immediately after merge") exists because stale open issues accumulate
+and obscure the actual state of work in flight — an issue left open
+after its PR merged reads as unfinished work to anyone scanning the
+tracker, and erodes trust in the issue list as a source of truth.
+
+See [`docs/spec-pr-workflow.md`](docs/spec-pr-workflow.md) → *Independence
+rule* for the spec-PR `related-issue` exception and its full mechanics.

@@ -51,6 +51,7 @@ check-components:
     - "bash scripts/tests/test-check-extension-manifest-version.sh"
     - "bash scripts/tests/test-check-extension-version-bump.sh"
     - "bash scripts/tests/test-install-claude-plugin-marketplace.sh"
+    - "bash scripts/tests/test-build-claude-plugin-agents-glob.sh"
     - "bash scripts/tests/test-gemini-agent-frontmatter.sh"
     - "bash scripts/tests/test-e2e-auth-claude-json.sh"
     - "bash scripts/tests/test-e2e-auth-ollama.sh"
@@ -97,6 +98,8 @@ check-components:
     - "bash scripts/check-no-machine-paths.sh"
     - "bash scripts/tests/test-check-no-machine-paths.sh"
     - "bash scripts/tests/test-setup-mcp-merge.sh"
+    - "bash scripts/tests/test-setup-org-mcp.sh"
+    - "bash scripts/tests/test-setup-catalogue-picker.sh"
     - "bash scripts/check-gemini-overlay-enrollment.sh"
     - "bash scripts/tests/test-check-gemini-overlay-enrollment.sh"
   rules:

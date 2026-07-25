@@ -118,6 +118,242 @@ merge_preexisting_mcp_servers() {
     "$config_path" > "${config_path}.tmp" && mv "${config_path}.tmp" "$config_path"
 }
 
+# --- Org-declared MCP servers (spec 0091) ------------------------------------
+# A THIRD precedence layer folded on top of the spec-0089 operator merge, wired
+# identically into all four setups but through each CLI's own mechanism. An
+# org-owned root manifest `mcp-servers.org.json` declares servers in a small
+# neutral schema keyed by name; the three file CLIs (Gemini/Copilot/Antigravity)
+# translate it into their native `mcpServers` shape and fold it AFTER the 0089
+# merge, while Claude iterates the same manifest and issues one `claude mcp add`
+# per entry. Resolved precedence on every CLI:
+#     framework-reserved  >  org  >  operator-pre-existing
+# R10 — reserved names (mempalace / sequentialthinking) stay framework-managed:
+#   an org declaration under a reserved name is NOT applied, with a non-silent
+#   warning (framework wins). R11 — a non-reserved org name that collides with
+#   an operator's pre-existing entry wins, with a non-silent warning naming it.
+# The 0089 helper (merge_preexisting_mcp_servers) above is deliberately left
+# untouched; these are siblings folded strictly after it.
+
+# read_org_mcp_manifest <manifest_path>
+# Echoes the manifest's `.mcpServers` object, or `{}` when the file is absent,
+# empty, unparseable, or `.mcpServers` is not an object — degrade, never abort,
+# exactly as merge_preexisting_mcp_servers does for a bad capture. Only the
+# `.mcpServers` key is read; a sibling `_example`/`_note` key is inert docs.
+read_org_mcp_manifest() {
+  local manifest="$1"
+  [ -f "$manifest" ] || { printf '{}'; return 0; }
+  local servers
+  servers="$(jq -c '.mcpServers // {}' "$manifest" 2>/dev/null)" || servers=""
+  if [ -z "$servers" ] || ! printf '%s' "$servers" | jq -e 'type == "object"' >/dev/null 2>&1; then
+    printf '{}'
+    return 0
+  fi
+  printf '%s' "$servers"
+}
+
+# org_mcp_to_native <cli> <neutral_mcpservers_json>
+# Pure translator: maps the neutral org `mcpServers` object into the native
+# `mcpServers` object for a file CLI (gemini | copilot | antigravity). Emits the
+# native JSON object on STDOUT only (safe for command substitution); any
+# capability warning goes to STDERR.
+#
+# Grounded native shapes (verified against each CLI's own `mcp add`, temp HOME):
+#   stdio  gemini/antigravity -> {command, args?, env?}   (no "type")
+#          copilot            -> {type:"stdio", command, args?, env?}
+#          (copilot's own `mcp add` writes "type":"local"; the shipped template
+#           and the live mempalace/seqthink entries use "type":"stdio", so we
+#           match the framework's proven convention.)
+#   http/  gemini/copilot     -> {type:<transport>, url, headers?}
+#   sse    antigravity        -> {serverUrl, headers?}   (NOTE: Antigravity's
+#          remote-entry key is `serverUrl`, NOT `url`, and carries no transport
+#          `type` field — one shape covers both http and Streamable-HTTP/SSE.
+#          Grounded against the official Antigravity MCP docs
+#          (https://antigravity.google/docs/mcp#mcp-configuration-structure):
+#          file `~/.gemini/config/mcp_config.json`, stdio {command,args,env,cwd?}
+#          + remote {serverUrl, headers?}. This SUPERSEDES the stale note in
+#          spec 0054 §Open questions that the mcp_config.json format is "not
+#          publicly documented" — the format is now officially documented, so
+#          the earlier remote-transport gap-acceptance is closed. Auth extras
+#          (authProviderType/oauth) are out of scope for this base declaration.)
+org_mcp_to_native() {
+  local cli="$1" neutral="$2"
+  [ -n "$neutral" ] || neutral='{}'
+  printf '%s' "$neutral" | jq -e 'type == "object"' >/dev/null 2>&1 || neutral='{}'
+
+  printf '%s' "$neutral" | jq -c --arg cli "$cli" '
+    to_entries
+    | map(
+        .key as $name | .value as $e
+        | (($e.transport) // "stdio") as $t
+        | if $t == "stdio" then
+            { key: $name, value: (
+                { command: $e.command }
+                + (if $e.args then { args: $e.args } else {} end)
+                + (if $e.env  then { env:  $e.env  } else {} end)
+                + (if $cli == "copilot" then { type: "stdio" } else {} end)
+            ) }
+          elif $cli == "antigravity" then
+            # Antigravity remote shape: `serverUrl` (not `url`), no `type`.
+            { key: $name, value: (
+                { serverUrl: $e.url }
+                + (if $e.headers then { headers: $e.headers } else {} end)
+            ) }
+          else
+            { key: $name, value: (
+                { type: $t, url: $e.url }
+                + (if $e.headers then { headers: $e.headers } else {} end)
+            ) }
+          end
+      )
+    | from_entries'
+}
+
+# apply_org_mcp_servers <native_org_json> <config_path> <preexisting_json> <backup_ref>
+# File-CLI applier. Folds the (already-translated) native org `mcpServers` object
+# over an on-disk config's `.mcpServers`, AFTER the 0089 operator merge, so org
+# wins over operator (R11) while framework-reserved names stay framework-owned
+# (R10). Emits non-silent warnings on stdout — the single warning surface,
+# mirroring merge_preexisting_mcp_servers — then rewrites the config in place
+# (atomic tmp + mv).
+#   $1 native_org_json — org servers in the CLI's native shape (org_mcp_to_native)
+#   $2 config_path     — the just-merged config; rewritten in place
+#   $3 preexisting_json — the operator's pre-run `.mcpServers` (for the R11 warning)
+#   $4 backup_ref      — timestamped backup path named in the R11 warning
+apply_org_mcp_servers() {
+  local org_native="$1" config_path="$2" preexisting="$3" backup_ref="$4"
+  [ -n "$org_native" ] || org_native='{}'
+  printf '%s' "$org_native" | jq -e 'type == "object"' >/dev/null 2>&1 || org_native='{}'
+  [ -n "$preexisting" ] || preexisting='{}'
+  printf '%s' "$preexisting" | jq -e 'type == "object"' >/dev/null 2>&1 || preexisting='{}'
+
+  # Nothing declared -> nothing to do (leave the 0089 result as-is).
+  if [ "$(printf '%s' "$org_native" | jq -r 'length')" = "0" ]; then
+    return 0
+  fi
+
+  local reserved_json
+  reserved_json="$(jq -cn '$ARGS.positional' --args "${MCP_RESERVED_NAMES[@]}")"
+
+  # R10 — an org declaration under a framework-reserved name is NOT applied.
+  local name
+  for name in "${MCP_RESERVED_NAMES[@]}"; do
+    if printf '%s' "$org_native" | jq -e --arg n "$name" 'has($n)' >/dev/null 2>&1; then
+      echo "  WARNING: '$name' is a framework-managed MCP server — the org declaration for '$name' was NOT applied (framework wins)."
+    fi
+  done
+
+  # R11 — a non-reserved org name that collides with an operator pre-existing
+  # entry wins; warn (non-silent) and point at the backup.
+  local collisions c
+  collisions="$(jq -rn --argjson org "$org_native" --argjson pre "$preexisting" --argjson reserved "$reserved_json" '
+    $org | keys[] as $k
+    | select( ($pre | has($k)) and (($reserved | index($k)) | not) )
+    | $k' 2>/dev/null)"
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    echo "  WARNING: org-declared MCP server '$c' overrides your pre-existing '$c' entry (org declaration wins)."
+    echo "           The prior entry is preserved in the timestamped backup: ${backup_ref:-(none)}"
+  done <<< "$collisions"
+
+  # Fold: org (minus reserved) wins over whatever the config holds.
+  jq --argjson org "$org_native" --argjson reserved "$reserved_json" \
+    'def org_min_reserved: reduce $reserved[] as $r ($org; del(.[$r]));
+     .mcpServers = ((.mcpServers // {}) + org_min_reserved)' \
+    "$config_path" > "${config_path}.tmp" && mv "${config_path}.tmp" "$config_path"
+}
+
+# org_mcp_to_claude_argv <name> <neutral_entry_json>
+# Pure translator for the Claude imperative path: emits the argv tokens that
+# follow `claude mcp add`, ONE TOKEN PER LINE (space-safe; read with `mapfile`).
+# Grounded against `claude mcp add --help`:
+#   stdio -> --scope user [-e K=V]… <name> -- <command> <args…>
+#   http/ -> --scope user --transport <t> <name> <url> [--header "K: V"]…
+#   sse
+org_mcp_to_claude_argv() {
+  local name="$1" entry="$2"
+  printf '%s' "$entry" | jq -r --arg name "$name" '
+    (.transport // "stdio") as $t
+    | if $t == "stdio" then
+        ([ "--scope", "user" ]
+         + ((.env // {}) | to_entries | map([ "-e", (.key + "=" + .value) ]) | add // [])
+         + [ $name, "--", .command ]
+         + (.args // []))
+      else
+        ([ "--scope", "user", "--transport", $t, $name, .url ]
+         + ((.headers // {}) | to_entries | map([ "--header", (.key + ": " + .value) ]) | add // []))
+      end
+    | .[]'
+}
+
+# register_org_mcp_claude <manifest_path> <claude_user_config>
+# Claude applier: iterate the org manifest and deliver each server via
+# `claude mcp add --scope user`, AFTER the framework-managed reserved servers, so
+# precedence is framework-reserved > org > operator (R10/R11). Self-contained —
+# uses only the `claude` binary and MCP_RESERVED_NAMES, so it does not depend on
+# helpers defined in setup-claude-interactive.sh.
+#   R10 reserved name -> skip + warning (framework wins).
+#   R11 name already registered -> org wins: remove-then-add, GUARDED — the
+#       prior entry is captured from <claude_user_config> and restored if the
+#       re-add fails, so a partial run never drops the operator's server
+#       (cold-review rider #3; the remove-then-add is non-atomic).
+#   otherwise -> add.
+register_org_mcp_claude() {
+  local manifest="$1" claude_config="$2"
+  local servers names
+  servers="$(read_org_mcp_manifest "$manifest")"
+  [ "$servers" = "{}" ] && return 0
+  names="$(printf '%s' "$servers" | jq -r 'keys[]' 2>/dev/null)"
+
+  local name entry saved r is_reserved tok
+  local -a argv
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+
+    is_reserved=0
+    for r in "${MCP_RESERVED_NAMES[@]}"; do
+      [ "$r" = "$name" ] && is_reserved=1
+    done
+    if [ "$is_reserved" -eq 1 ]; then
+      echo "  WARNING: '$name' is a framework-managed MCP server — the org declaration for '$name' was NOT applied (framework wins)."
+      continue
+    fi
+
+    entry="$(printf '%s' "$servers" | jq -c --arg n "$name" '.[$n]')"
+    argv=()
+    while IFS= read -r tok; do argv+=("$tok"); done < <(org_mcp_to_claude_argv "$name" "$entry")
+
+    if claude mcp list 2>/dev/null | grep -qE "^${name}:[[:space:]]"; then
+      # R11 — org wins over the operator's pre-existing entry. Guard the
+      # non-atomic remove-then-add: capture, then restore on re-add failure.
+      echo "  WARNING: org-declared MCP server '$name' overrides your pre-existing '$name' entry (org declaration wins)."
+      saved="$(jq -c --arg n "$name" '.mcpServers[$n] // empty' "$claude_config" 2>/dev/null || true)"
+      claude mcp remove --scope user "$name" >/dev/null 2>&1 || true
+      if claude mcp add "${argv[@]}" >/dev/null 2>&1; then
+        echo "  ${name}: org declaration registered (replaced prior entry)"
+      else
+        echo "  ${name}: FAILED to register org declaration — restoring your prior entry."
+        if [ -n "$saved" ] && [ -f "$claude_config" ]; then
+          local tmp
+          tmp="$(mktemp)"
+          if jq --arg n "$name" --argjson v "$saved" '.mcpServers[$n] = $v' "$claude_config" > "$tmp" 2>/dev/null; then
+            mv "$tmp" "$claude_config"
+            echo "  ${name}: prior entry restored from ~/.claude.json."
+          else
+            rm -f "$tmp"
+            echo "  ${name}: could not auto-restore — recover from the ~/.claude.json backup."
+          fi
+        fi
+      fi
+    else
+      if claude mcp add "${argv[@]}" >/dev/null 2>&1; then
+        echo "  ${name}: org declaration registered"
+      else
+        echo "  ${name}: FAILED to register org declaration — re-run manually: claude mcp add ${argv[*]}"
+      fi
+    fi
+  done <<< "$names"
+}
+
 install_file() {
   local source="$1" target="$2" label="$3"
   if [ "$INSTALL_MODE" = "link" ]; then
@@ -154,6 +390,48 @@ install_dir() {
     cp -R "$source"/. "$target"/
     echo "  Copied dir: $label"
   fi
+}
+
+# pick_catalogue_entry <category_dir> <category_label>
+# Shared team/expertise/level picker (spec 0096), replacing the verbatim-
+# duplicated selection block across the four setup-*-interactive.sh scripts.
+#
+# Nullglob-safe: when <category_dir> holds zero *.md files, short-circuits to
+# an empty result BEFORE ever invoking fzf — no literal `*`/`*.md` placeholder
+# reaches the picker (R1). Otherwise pipes the candidate basenames through fzf;
+# the `|| true` on that invocation is load-bearing: it neutralizes fzf's own
+# exit status (1 on decline, 2 on error, 130 on Ctrl-C) so a caller running
+# under `set -e` cannot abort the assignment before the caller's own
+# if/else skip-handling runs (all four setup-*-interactive.sh scripts run
+# under `set -e`).
+#
+# Prints the chosen basename (no .md suffix) to stdout on a normal pick.
+# Prints nothing to stdout, and a category-naming, cause-distinguishing
+# message to stderr, on either an empty catalogue or a declined pick (R4) —
+# the caller only needs to test for an empty result, not which cause fired.
+pick_catalogue_entry() {
+  local category_dir="$1" category_label="$2"
+  local candidates=() f
+  shopt -s nullglob
+  for f in "$category_dir"/*.md; do
+    candidates+=("$(basename "$f" .md)")
+  done
+  shopt -u nullglob
+
+  if [ "${#candidates[@]}" -eq 0 ]; then
+    echo "No $category_label catalogue entries found under $category_dir — skipping $category_label selection." >&2
+    return 0
+  fi
+
+  local choice
+  choice="$(printf '%s\n' "${candidates[@]}" \
+    | fzf --height 40% --preview "head -20 $category_dir/{}.md" || true)"
+  if [ -z "$choice" ]; then
+    echo "No $category_label selected — skipping $category_label selection." >&2
+    return 0
+  fi
+
+  printf '%s\n' "$choice"
 }
 
 mempalace_installed_version() {
