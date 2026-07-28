@@ -1,8 +1,9 @@
 ---
 id: "0099"
 slug: plannotator-gate-contrast
-status: draft
+status: implemented
 complexity: small
+interaction-mode: INTERMEDIATE
 related-issue: 608
 version: 1.0.0
 ---
