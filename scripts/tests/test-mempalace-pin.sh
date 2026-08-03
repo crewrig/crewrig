@@ -687,7 +687,9 @@ PYEOF
 arm_a_out="$(PYTHONPATH="$SHIELD" "$PYTHON_BIN" "$TMP_ROOT/corpus_driver.py" \
   "$LIB_DIR" a "$PIN_MIN" "$PIN_MAX" 2>&1)"
 arm_a_rc=$?
-echo "$arm_a_out" | sed 's/^/      /'
+# A bash substitution rather than `sed` in a pipe (SC2001): the `printf` prefixes
+# the first line and the replacement re-indents every line after it.
+printf '      %s\n' "${arm_a_out//$'\n'/$'\n'      }"
 if [ "$arm_a_rc" -eq 0 ]; then
   ok "Arm A: every fallback-accepted string matches the grammar and orders by release tuple"
 else
@@ -739,7 +741,7 @@ if [ -n "$PACKAGING_PYTHON" ]; then
   arm_b_out="$("$PACKAGING_PYTHON" "$TMP_ROOT/corpus_driver.py" \
     "$LIB_DIR" b "$PIN_MIN" "$PIN_MAX" 2>&1)"
   arm_b_rc=$?
-  echo "$arm_b_out" | sed 's/^/      /'
+  printf '      %s\n' "${arm_b_out//$'\n'/$'\n'      }"
   if [ "$arm_b_rc" -eq 0 ]; then
     ok "Arm B: zero strings where the fallback accepts and packaging refuses"
   else

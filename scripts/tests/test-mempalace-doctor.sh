@@ -54,7 +54,12 @@
 #       directory survives is reported as WRAPPER MISSING — a verdict that must
 #       come from the wrapper's own existence, not from whether a `cd` two levels
 #       above it succeeds.
-#   (j) R11 (structural): every CLI's launch path names the wrapper — for two
+#   (j) a registration whose interpreter resolves NO mempalace distribution at
+#       all is reported as NO VERSION and is a non-successful outcome — and the
+#       report says only that. Neither divergence trigger nor the range trigger
+#       may stand in for the finding, because such a source contributes no
+#       version to compare and none to range-check.
+#   (k) R11 (structural): every CLI's launch path names the wrapper — for two
 #       CLIs in the setup script, for the other two in the committed MCP template
 #       the setup script patches. The assertion spans script AND template, or it
 #       would fail on a correct tree.
@@ -161,6 +166,27 @@ make_interpreter() {
   cat > "$path" <<EOF
 #!/bin/sh
 exec env PYTHONPATH="${site}" PYTHONDONTWRITEBYTECODE=1 "${PYTHON_ABS}" "\$@"
+EOF
+  chmod +x "$path"
+}
+
+# make_absent_interpreter <path>
+# An "interpreter" that genuinely resolves NO mempalace distribution, for the
+# no-version branch.
+#
+# `-S` rather than an empty fixture site, because a fixture on PYTHONPATH can only
+# SHADOW an install, never establish its absence: on an interpreter carrying a real
+# MemPalace, `importlib.metadata.version()` still resolves it out of site-packages.
+# `-S` suppresses site-packages and `env -u PYTHONPATH` drops whatever the ambient
+# environment supplies, so nothing is left to answer. The pin module imports only
+# the stdlib, so `--print-pin` still works under those flags — which is what lets
+# the row get as far as the verdict at all.
+make_absent_interpreter() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  cat > "$path" <<EOF
+#!/bin/sh
+exec env -u PYTHONPATH PYTHONDONTWRITEBYTECODE=1 "${PYTHON_ABS}" -S "\$@"
 EOF
   chmod +x "$path"
 }
@@ -713,7 +739,86 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-echo "8. R11 — every CLI's launch path names the wrapper"
+echo "8. A registration whose interpreter resolves no MemPalace at all"
+# ---------------------------------------------------------------------------
+# `evaluate`'s third outcome, alongside in-range and out-of-range: a source that
+# serves NOTHING. It is the doctor's only path to reporting "this interpreter
+# answers with no MemPalace version", and it owns the `note_failure` that makes
+# such a machine exit non-zero — the #623 shape one dimension over, where a
+# registration's interpreter lost its install rather than drifting off the pin.
+#
+# The negative assertions are the point of the scenario, not decoration. A source
+# with no version contributes none to compare and none to range-check, so neither
+# divergence trigger nor the range trigger can produce this outcome — and the
+# report must not claim they did. The machine is built so exactly ONE finding
+# exists, which is asserted: it is what makes deleting the `note_failure` show up
+# as an exit-0 failure rather than being absorbed by some other row's finding.
+#
+# Section 3 is pinned to a KNOWN in-range interpreter (candidate 1 under the fake
+# HOME) rather than left to the authoring machine's own install, which would
+# otherwise contribute a second, machine-dependent version and could make
+# `lacks "lies outside"` a property of the machine instead of the branch.
+
+S8="$TMP_ROOT/s8"
+S8_HOME="$S8/home"
+S8_PATHDIR="$S8/bin"
+S8_TOOLBIN="$S8/toolbin"
+S8_SITE="$S8/site"
+mkdir -p "$S8_PATHDIR"
+make_toolbin "$S8_TOOLBIN"
+make_fakesite "$S8_SITE" "$GOOD_VERSION"
+S8_PY_GOOD="$S8_HOME/.local/pipx/venvs/mempalace/bin/python"
+make_interpreter "$S8_PY_GOOD" "$S8_SITE"
+S8_PY_ABSENT="$S8/no-mempalace-here/python-absent"
+make_absent_interpreter "$S8_PY_ABSENT"
+make_checkout "$S8/checkout"
+S8_WRAPPER="$S8/checkout/scripts/lib/mempalace-http-wrapper.py"
+# Exactly one registration, so exactly one row can reach the branch. The other
+# three CLIs have no config file at all and report NOT PRESENT.
+write_reg_bash "$S8_HOME/.claude.json" "$S8_PY_ABSENT" "$S8_WRAPPER"
+
+# Guard the fixture before relying on it: absence is the one fact this suite's
+# usual shadowing device cannot fabricate, so it is proved rather than assumed.
+s8_probe_dist="$("$S8_PY_ABSENT" "$PIN_MODULE" --probe 2>/dev/null \
+  | grep '^dist=' | cut -d= -f2-)"
+if [ "$s8_probe_dist" = "absent" ]; then
+  ok "fixture: the registered interpreter resolves no mempalace distribution (dist=absent)"
+else
+  bad "fixture: the registered interpreter reports dist='${s8_probe_dist:-<no probe output>}' — absence was not established, so this scenario would never reach the no-version branch"
+fi
+
+S8_OUT="$S8/report.txt"
+run_doctor_isolated "$S8_HOME" "$S8_PATHDIR" "$S8_TOOLBIN" "$S8_OUT"
+s8_rc=$?
+
+if [ "$s8_rc" -ne 0 ]; then
+  ok "no-version machine: exits non-zero ($s8_rc)"
+else
+  bad "no-version machine: exited 0 — a registration that serves no MemPalace version was reported as healthy"
+fi
+has_exact "$S8_OUT" \
+  "$(doctor_field_line "version served:" "absent  (dist-info, resolved in-process)")" \
+  "the doctor itself reports the absence, sourced to dist-info"
+has_exact "$S8_OUT" \
+  "$(doctor_field_line "verdict:" "NO VERSION — this interpreter resolves no mempalace distribution")" \
+  "the verdict for a source that serves nothing is NO VERSION"
+has_exact "$S8_OUT" \
+  "  - Claude Code: no mempalace version is resolvable from ${S8_PY_ABSENT}" \
+  "the finding names both the source and the interpreter that answered with nothing"
+# The report must claim what happened and nothing else. A source with no version
+# cannot be out of range and cannot diverge from anything, so any such claim here
+# would be the doctor describing a machine other than this one.
+lacks "$S8_OUT" "lies outside" \
+  "no range failure is claimed — there is no version to lie outside the pin"
+lacks "$S8_OUT" "OUT_OF_RANGE" \
+  "no range verdict is reported for a row that never reached the comparator"
+lacks "$S8_OUT" "DIVERGE" \
+  "no divergence is claimed — a source serving nothing contributes no version to compare"
+has_exact "$S8_OUT" "  NOT OK — 1 finding(s):" \
+  "the absent version is the ONLY finding, so it alone carries the non-zero exit"
+
+# ---------------------------------------------------------------------------
+echo "9. R11 — every CLI's launch path names the wrapper"
 # ---------------------------------------------------------------------------
 # Asserted against the surface that actually carries the path per CLI. Two setups
 # name the wrapper in the script; the other two never do — their path lives in the
@@ -790,7 +895,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-echo "9. The doctor mutates nothing"
+echo "10. The doctor mutates nothing"
 # ---------------------------------------------------------------------------
 # Re-run scenario 2 and compare a manifest of the fake HOME before and after: the
 # spec puts remediation and repair explicitly out of scope.
