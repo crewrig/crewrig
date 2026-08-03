@@ -19,6 +19,10 @@ Configuration
 -------------
 - ``MEMPALACE_CHROMA_HOST`` (default ``127.0.0.1``) — daemon host (loopback only).
 - ``MEMPALACE_CHROMA_PORT`` (default ``8001``) — daemon port.
+- ``MEMPALACE_CHROMA_MAX_CONNECTIONS`` (default ``8``) — ceiling on the total
+  number of connections this session holds open against the daemon.
+- ``MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS`` (default ``4``) — ceiling on
+  the number of idle keep-alive connections retained between requests.
 
 If the daemon is unreachable at startup we ``exit 1`` with the installer
 command on stderr. Silent fallback to ``PersistentClient`` is forbidden by
@@ -58,27 +62,48 @@ import chromadb as _chromadb
 
 _host = os.environ.get("MEMPALACE_CHROMA_HOST", "127.0.0.1")
 _port = int(os.environ.get("MEMPALACE_CHROMA_PORT", "8001"))
+_max_connections = int(os.environ.get("MEMPALACE_CHROMA_MAX_CONNECTIONS", "8"))
+_max_keepalive_connections = int(
+    os.environ.get("MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS", "4")
+)
+
+
+def _build_pool_settings() -> "_chromadb.Settings":
+    """Build a fresh connection-pool ``Settings`` object for one ``HttpClient``.
+
+    Always returns a new instance — never a shared singleton.
+    ``chromadb.HttpClient()`` mutates its ``settings`` argument in place
+    (``chroma_api_impl``/``chroma_server_host``/``chroma_server_http_port``),
+    so reusing one object across the probe and every ``_http_factory()``
+    call risks field bleed between independently constructed clients.
+    """
+    return _chromadb.Settings(
+        chroma_http_max_connections=_max_connections,
+        chroma_http_max_keepalive_connections=_max_keepalive_connections,
+    )
 
 
 def _http_factory(path=None, settings=None, **kwargs):
     """Drop-in replacement for ``chromadb.PersistentClient``.
 
-    Ignores ``path`` and ``settings`` — the HTTP daemon owns the index. All
-    callers in MemPalace pass these but they are meaningless once routing
-    goes over the wire.
+    Ignores the caller-supplied ``path``/``settings`` — the HTTP daemon owns
+    the index. All callers in MemPalace pass these but they are meaningless
+    once routing goes over the wire.
     """
-    # TODO(ADR-0006): ``settings`` is intentionally ignored — ``HttpClient``
-    # has no equivalent parameter. Reconfigure the daemon via the
-    # ``MEMPALACE_CHROMA_HOST`` / ``MEMPALACE_CHROMA_PORT`` environment
-    # variables instead.
-    return _chromadb.HttpClient(host=_host, port=_port)
+    # TODO(ADR-0006): the caller-supplied ``path``/``settings`` are still
+    # ignored — reconfigure the daemon via the ``MEMPALACE_CHROMA_HOST`` /
+    # ``MEMPALACE_CHROMA_PORT`` environment variables instead. ``settings``
+    # is no longer entirely unused, though: an internally-built,
+    # pool-bound ``Settings`` (see ``_build_pool_settings()``) is always
+    # applied to cap this session's connection footprint against the daemon.
+    return _chromadb.HttpClient(host=_host, port=_port, settings=_build_pool_settings())
 
 
 _chromadb.PersistentClient = _http_factory  # type: ignore[assignment]
 
 # ── Step 2: verify daemon is reachable before handing off to mempalace ───────
 try:
-    _probe = _chromadb.HttpClient(host=_host, port=_port)
+    _probe = _chromadb.HttpClient(host=_host, port=_port, settings=_build_pool_settings())
     _probe.heartbeat()
 except Exception as _e:  # acknowledged-exception: broad except intentional — any HttpClient failure (connection refused, DNS, auth, protocol) MUST block startup; silent fallback re-introduces the corruption bug ADR-0006 eliminates
     print(

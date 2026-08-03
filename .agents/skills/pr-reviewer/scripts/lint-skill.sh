@@ -25,11 +25,23 @@ else
   echo "lint-skill.sh: yq not found — using grep fallback for required keys."
 fi
 
+# Extracts the leading ---/--- frontmatter block only. yq must never see the
+# markdown body: a colon or indentation quirk in prose is valid multi-document
+# YAML noise that can make yq error out or silently omit the query result,
+# producing false "missing key" findings on fully-valid frontmatter.
+frontmatter_block() {
+  local file="$1"
+  awk 'NR==1 && /^---[[:space:]]*$/ {f=1; next} f && /^---[[:space:]]*$/ {exit} f {print}' "$file"
+}
+
 check_key() {
   local file="$1" key="$2"
   if [ "$HAS_YQ" -eq 1 ]; then
-    local value
-    value=$(yq -r ".$key // \"\"" "$file" 2>/dev/null)
+    local value fm_file
+    fm_file=$(mktemp)
+    frontmatter_block "$file" > "$fm_file"
+    value=$(yq -r ".$key // \"\"" "$fm_file" 2>/dev/null)
+    rm -f "$fm_file"
     [ -n "$value" ] && [ "$value" != "null" ]
   else
     # Grep fallback: handle nested keys (last segment).
@@ -41,7 +53,11 @@ check_key() {
 extract_version() {
   local file="$1"
   if [ "$HAS_YQ" -eq 1 ]; then
-    yq -r '.metadata.provenance.version // ""' "$file" 2>/dev/null
+    local fm_file
+    fm_file=$(mktemp)
+    frontmatter_block "$file" > "$fm_file"
+    yq -r '.metadata.provenance.version // ""' "$fm_file" 2>/dev/null
+    rm -f "$fm_file"
   else
     awk '/^[[:space:]]*version:/ {gsub(/[" ]/,"",$2); print $2; exit}' "$file"
   fi
@@ -58,15 +74,12 @@ for file in "$@"; do
   done
 
   head_version=$(extract_version "$file")
-  base_version=$(git show "${BASE_REF}:${file}" 2>/dev/null | extract_version /dev/stdin 2>/dev/null || true)
-  if [ -z "$base_version" ]; then
-    # Try via temp file because yq on /dev/stdin can misbehave.
-    if base_blob=$(git show "${BASE_REF}:${file}" 2>/dev/null); then
-      tmp=$(mktemp)
-      printf '%s\n' "$base_blob" > "$tmp"
-      base_version=$(extract_version "$tmp")
-      rm -f "$tmp"
-    fi
+  base_version=""
+  if base_blob=$(git show "${BASE_REF}:${file}" 2>/dev/null); then
+    tmp=$(mktemp)
+    printf '%s\n' "$base_blob" > "$tmp"
+    base_version=$(extract_version "$tmp")
+    rm -f "$tmp"
   fi
 
   if [ -n "$base_version" ] && [ "$head_version" = "$base_version" ]; then

@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.0"
+    version: "1.3.0"
 claude:
   allowed-tools:
     - Read
@@ -109,6 +109,116 @@ missing; the `internal` backend is the guaranteed floor on every CLI.
    | exit `0` + `{"decision":"approved"}` | `approved` |
    | exit `0` + `{"decision":"annotated","feedback":"…"}` | `changes-requested`, carrying `feedback` to the upstream stage |
    | `{"decision":"dismissed"}`, OR non-zero exit, OR absent/malformed stdout | `rejected` — surface the situation, return to caller |
+
+### Contrast-safety for caller-built presentations
+
+**Scope (spec 0099 R2).** This guidance applies **only** when you build a
+bespoke HTML presentation of the artifact before handing it to the review
+viewer — for example because an active `pedagogy` or `illustration` option
+obliges a richer rendering than the raw file. It does **not** apply when you
+pass a raw Markdown or plain-text artifact file straight through (spec 0099
+R2/R8): on that passthrough path the viewer's own renderer owns readability,
+and you MUST NOT inject inline contrast styling.
+
+**Why (spec 0099 R3).** The review viewer renders the document body but does
+**not** reliably honor a `<head>`-scoped `<style>` block, and it may place the
+content on a **dark host surface**. Colors declared only in the head can
+therefore surface as unreadable low-contrast content — the black-text-on-black-
+background outcome observed during a live spec-approval gate.
+
+**Rules for a caller-built HTML presentation:**
+
+- **Inline every readability-critical declaration (spec 0099 R4).** Each color
+  and contrast declaration the presentation's readability depends on SHALL be
+  self-contained **inline** — on the content wrapper element **and** on the
+  document `<body>` element — never declared only inside a `<head>` `<style>`
+  block.
+- **Keep supplementary styling in the body (spec 0099 R5).** Any `<style>`
+  block used for non-critical, supplementary styling SHALL live inside
+  `<body>`, not in `<head>`.
+- **Declare a light color-scheme hint (spec 0099 R6).** The document SHALL
+  declare `<meta name="color-scheme" content="light only">` so the host does
+  not place light-assuming content on a dark surface.
+
+**Compliant example (spec 0099 R7).** Background and text colors are inline on
+both `<body>` and the content wrapper, the color-scheme hint is present, and no
+readability-critical color lives in the head:
+
+```html
+<!doctype html>
+<html>
+  <head>
+    <meta name="color-scheme" content="light only">
+  </head>
+  <body style="background:#ffffff; color:#111111;">
+    <main style="background:#ffffff; color:#111111; padding:1.5rem;">
+      <h1 style="color:#111111;">Approve this plan for DEV?</h1>
+      <p style="color:#111111;">…artifact content…</p>
+    </main>
+  </body>
+</html>
+```
+
+### Substance-embedding for caller-built presentations
+
+**Scope (spec 0104 R2).** This guidance applies **only** when you build a
+bespoke presentation of the artifact before handing it to the review viewer —
+for example because an active `pedagogy`, `translate`, or `illustration` option
+obliges a richer rendering than the raw file. It does **not** apply on the raw-
+passthrough path (see the *Raw passthrough* rule below): there the viewer's own
+renderer already displays the full artifact.
+
+**Why (spec 0104 R3/R4).** A caller-built presentation that only *describes* the
+change — a title, a one-line summary, and the prior reviewer's verdict — leaves
+the reviewing user unable to judge what is actually being decided. That is the
+summary-only merge-authorization outcome observed during a live gate:
+translation and professor-level pedagogy were active, yet the user never saw the
+modified content itself. "Professor" framing means *showing the work*, not
+narrating it.
+
+**Rules for a caller-built presentation:**
+
+- **Embed the real substance (spec 0104 R3).** When `pedagogy=professor` and/or
+  `translate=on`, the presentation SHALL embed the **concrete changed content
+  itself** — a rendered diff excerpt, or the added or changed prose verbatim —
+  not only a prose summary describing what changed.
+- **Show enough of a change set to judge it independently (spec 0104 R4).** For
+  a decision over a change set or diff — a merge-authorization gate, for
+  instance — show enough of the actual modified content for the reviewing user
+  to judge the change **independently**, rather than relying solely on a prior
+  REVIEW verdict.
+- **Translate the embedded substance, presentation-only (spec 0104 R5).** When
+  `translate=on`, translate the embedded substance itself within the
+  presentation, consistent with the `translate` boundary (see *Cross-cutting
+  options → `translate`*): the translation is presentation-only and the
+  repository artifact stays in English — never written back translated
+  (`AGENTS.md` → *Language*).
+- **Raw passthrough carries no obligation (spec 0104 R6).** When you pass the
+  raw artifact file directly to the review viewer without building a bespoke
+  presentation, the viewer already renders the full substance, so no separate
+  substance-embedding step is required.
+
+**Presentation-only (spec 0104 R7).** This obligation does **not** modify the
+invocation command, the dual-validation rule, the decision mapping, or the
+defined semantics of the `translate` / `pedagogy` / `illustration` cross-cutting
+options; it only clarifies how a caller-built presentation applies them.
+
+**Compliant vs thin example (spec 0104 R4).** A compliant merge-authorization
+presentation embeds the real change; a thin one summarizes it away:
+
+```text
+Compliant — embeds the substance:
+  Ask: "Authorize merge of PR #123?"
+  Change under decision (added prose, verbatim):
+    + The guidance SHALL direct showing enough of the actual modified
+    + content for the reviewing user to judge the change independently.
+  Prior REVIEW verdict: APPROVE — context, not a substitute for the diff.
+
+Thin — non-compliant:
+  Ask: "Authorize merge of PR #123?"
+  Summary: "Adds substance-embedding guidance; reviewer approved."
+  (no diff, no changed prose — the user cannot judge the change itself)
+```
 
 ## Backend: `internal` (default floor)
 

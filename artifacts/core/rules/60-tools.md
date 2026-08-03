@@ -69,10 +69,31 @@ references, ideas, and domain knowledge.
 
 ---
 
-## GitHub MCP Server
+## Forge Access
 
-The GitHub MCP server MUST be used as a priority for all GitHub interactions,
-except for native `git` commands.
+Forge access is CLI-only. Every forge operation — issues, pull/merge requests,
+branch protection, and releases — SHALL go through the forge's own
+command-line tool, with authentication delegated to that tool. The framework
+ships no forge MCP server for any CLI.
+
+- **GitHub** → `gh`
+- **GitLab** → `glab`
+- **Gitea** → `tea`
+
+Native `git` remains the tool for ordinary version control (clone, commit,
+branch, push, fetch, rebase) and is unaffected by this policy.
+
+Authentication is a per-tool precondition, established once via each tool's own
+login flow — no personal access token is stored in any framework config:
+
+```sh
+gh auth login      # GitHub
+glab auth login    # GitLab (self-hosted: glab auth login --hostname <host>)
+tea login add      # Gitea
+```
+
+When an operation is scriptable, prefer the tool's structured output
+(`gh … --json`, `glab … -F json`) so results parse deterministically.
 
 ---
 
@@ -392,8 +413,11 @@ in each component's `provenance:` block.
 
 Tag a friction whenever a **recognition signal** fires (next section).
 Do not pause the user's task longer than the tag itself. The cost of
-one tag is negligible; the cost of an un-reported friction that bites
-the next agent is much higher.
+one tag is normally negligible — the one exception is when the MemPalace
+write path is unavailable (a peer holds the write lock, or the server is
+disconnected), a documented failure mode with a fallback in the
+`harness-report` procedure (see *How to tag* below); the cost of an
+un-reported friction that bites the next agent is much higher.
 
 If unsure whether something qualifies — tag it. Curation will discard
 noise; silent friction is the failure mode to avoid.
@@ -434,6 +458,16 @@ rather than re-implementing the protocol inline. This keeps the
 contract single-sourced and lets future improvements (richer
 `evidence:` format, new recognition signals, etc.) propagate without
 editing every skill body.
+
+The fire-and-forget tag has one **documented failure mode**: the
+MemPalace write path may be unavailable — a peer holds the write lock
+(MCP error `-32001`) or the server is disconnected — so the tag call
+cannot record the friction. The `harness-report` procedure carries the
+operational fallback for this case (file the friction directly as a
+`harness-feedback`-labeled issue on the offender's canonical repository,
+using the forge-appropriate CLI, so the signal still reaches the
+curator's triage lane). This file states the contract; the `SKILL.md`
+procedure carries the "how".
 
 ### Where to write
 

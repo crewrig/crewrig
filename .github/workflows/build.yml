@@ -88,6 +88,9 @@ jobs:
       - name: Test install-claude-plugin marketplace regression (spec 0045)
         run: bash scripts/tests/test-install-claude-plugin-marketplace.sh
 
+      - name: Test build-claude-plugin agents glob regression (issue #600)
+        run: bash scripts/tests/test-build-claude-plugin-agents-glob.sh
+
       - name: Test Gemini agent frontmatter contract (issue #54)
         run: bash scripts/tests/test-gemini-agent-frontmatter.sh
 
@@ -222,6 +225,24 @@ jobs:
 
       - name: Test check-no-machine-paths regression (spec 0081)
         run: bash scripts/tests/test-check-no-machine-paths.sh
+
+      - name: Test setup MCP-merge preservation regression (spec 0089)
+        run: bash scripts/tests/test-setup-mcp-merge.sh
+
+      - name: Test org-level MCP declaration channel regression (spec 0091)
+        run: bash scripts/tests/test-setup-org-mcp.sh
+
+      - name: Test setup catalogue-picker regression (spec 0096)
+        run: bash scripts/tests/test-setup-catalogue-picker.sh
+
+      - name: Test setup ensure-tier-built regression (spec 0107)
+        run: bash scripts/tests/test-setup-ensure-tier-built.sh
+
+      - name: Check Gemini overlay enrollment (spec 0085)
+        run: bash scripts/check-gemini-overlay-enrollment.sh
+
+      - name: Test Gemini overlay enrollment regression (spec 0085)
+        run: bash scripts/tests/test-check-gemini-overlay-enrollment.sh
 
   lint-markdown:
     runs-on: ubuntu-latest

@@ -165,6 +165,7 @@ exist, how org artifacts integrate) is defined in spec 0012 sub-spec E2.
 | `.github/copilot-instructions.md` | Copilot system prompt built from `AGENTS.md`. |
 | `.github/workflows/` | CI/CD pipeline definitions. |
 | `.github/copilot/` | GitHub Copilot workspace configuration. |
+| `.github/copilot/settings.json` | Committed workspace settings, `strict` by default as a member of `.github/copilot/` above — except its `hooks` key, which the transcript-hooks opt-in in `setup-copilot-interactive.sh` deliberately rewrites locally with an absolute path (ADR-0001 Discovery finding #8). Reclassified `excluded`, nested under the strict `.github/copilot/` parent (spec 0097 / issue #605), so that designed-in local mutation no longer aborts `scripts/sync-from-upstream.sh`; sibling members such as `extension.json` remain `strict` and still abort on a local diff. |
 
 ### Extension distribution channel
 
@@ -229,7 +230,7 @@ from the examples layer.
 | Path | Description |
 |---|---|
 | `extensions/org/` | Adopter-owned extension tier. The adopting organization places its own CrewRig extensions here. Excluded from the upstream sync — never modified, restored, or aborted on. The upstream `extensions/core/` and `extensions/library/` tiers are committed and live in the Core layer. |
-| `artifacts/community/mcp-servers/` | MCP server declarations specific to the organization (Jira, Confluence, Slack, etc.). |
+| `artifacts/community/mcp-servers/` | MCP server *implementation code* the organization itself **develops** (a server it writes and hosts). This is **not** the declaration channel for third-party remote servers (Jira, Confluence, Slack, forge MCPs, etc.) — those are *declared* through the org-owned `mcp-servers.org.json` manifest (spec 0091; see *Org overlay carve-outs in core trees* below). |
 | `artifacts/community/hooks/` | Lifecycle hooks specific to the organization. |
 | `artifacts/community/policies/` | Organization-level policy files. |
 | `artifacts/community/themes/` | UI theme files specific to the organization. |
@@ -252,6 +253,7 @@ sync.
 | `specs/org/` | Organization-owned specification overlay, nested in core `specs/`. Excluded from upstream sync, and from the spec linter's upstream filename/frontmatter/heading validation (spec 0071). |
 | `docs/org/` | Organization-owned documentation overlay, nested in core `docs/`. Excluded from upstream sync. |
 | `AGENTS.org.md` | Organization-owned agent-rules extension, loaded alongside the upstream `AGENTS.md` (natively on Claude via `@` import; via the priority-66 setup deployment on Gemini and Copilot). Excluded from upstream sync. |
+| `mcp-servers.org.json` | Organization-owned MCP server **declaration / configuration** channel (spec 0091): a root-level, CLI-agnostic manifest mapping each server name to its transport, endpoint, and authorization (no implementation code — that is `artifacts/community/mcp-servers/`, above). Setup translates it into each CLI's native MCP config and folds it after the spec-0089 operator merge (precedence framework-reserved > org > operator). Follows the `<name>.org.<ext>` convention of `AGENTS.org.md`; ships empty (no operational server or credential). Excluded from upstream sync. |
 
 ### Adopter-managed sync state (spec 0020)
 

@@ -84,6 +84,23 @@
 #      via the same path_is_governed() carve-out, independently of the nested
 #      form covered by case x.
 #
+# Spec-0097 Copilot settings.json workspace-scope carve-out cases (issue #605):
+#   z. R8 — a local content mutation confined to
+#      `.github/copilot/settings.json` (an `excluded` entry nested under the
+#      still-`strict` `.github/copilot` parent), representative of the
+#      transcript-hooks hook-merge opt-in, does NOT abort the strict
+#      dirty-guard for `.github/copilot`, and the mutated content survives
+#      the sync's restore step untouched.
+#  aa. R9 — a local content mutation confined to the sibling
+#      `.github/copilot/extension.json` (still `strict`, no exclusion) DOES
+#      abort the strict dirty-guard for `.github/copilot`, exactly as before
+#      the carve-out — guards against the narrow-scope fix silently widening
+#      to the whole directory.
+#  bb. R10 — the real repo's own `.gitignore` matches a representative
+#      `.github/copilot/settings.json.bak.<timestamp>` filename in the shape
+#      produced by `backup_file()`, and does NOT match the sibling
+#      `extension.json` (pattern stayed narrow).
+#
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
 
@@ -1472,6 +1489,145 @@ run_case_stderr() {
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case z — spec 0097 R8 / issue #605: a local mutation confined to
+# .github/copilot/settings.json (excluded child nested under the strict
+# .github/copilot parent) does not abort the strict dirty-guard, and the
+# mutated content is left untouched by the restore step (the excluded child
+# is skipped in both passes — same mechanism already covered generically by
+# case s, exercised here against the real spec-0097 manifest shape).
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    ".github/copilot/settings.json" '{"hooks": []}' \
+    ".github/copilot/extension.json" '{"name": "upstream-ext"}'
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf '.github/copilot\n.github/copilot/settings.json\texcluded\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    ".github/copilot/settings.json" '{"hooks": []}' \
+    ".github/copilot/extension.json" '{"name": "upstream-ext"}'
+
+  # Mutate settings.json only, representative of the transcript-hooks
+  # hook-merge opt-in rewriting it locally with an absolute hook path.
+  printf '{"hooks": ["/Users/agent/.claude/hooks/transcript-hook.sh"]}' \
+    > "$adopter/.github/copilot/settings.json"
+
+  actual_exit=0
+  stderr_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>&1 >/dev/null)" || actual_exit=$?
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-z: expected exit 0, got $actual_exit"
+    echo "      actual stderr: $stderr_out"
+    ok=0
+  fi
+  settings_after="$(cat "$adopter/.github/copilot/settings.json" 2>/dev/null)"
+  if [ "$settings_after" != '{"hooks": ["/Users/agent/.claude/hooks/transcript-hook.sh"]}' ]; then
+    echo "FAIL  case-z: settings.json hook-merge mutation was reverted by sync: '$settings_after'"
+    ok=0
+  fi
+  ext_after="$(cat "$adopter/.github/copilot/extension.json" 2>/dev/null)"
+  if [ "$ext_after" != '{"name": "upstream-ext"}' ]; then
+    echo "FAIL  case-z: unmodified sibling extension.json unexpectedly changed: '$ext_after'"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-z: settings.json mutation does not abort .github/copilot strict guard, content preserved"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case aa — spec 0097 R9 / issue #605: a local mutation confined to the
+# sibling .github/copilot/extension.json (still strict, not excluded) still
+# aborts the strict dirty-guard for .github/copilot, exactly as it did before
+# the settings.json carve-out — proves the fix's scope stayed narrow to
+# settings.json alone and did not silently widen to the whole directory.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    ".github/copilot/settings.json" '{"hooks": []}' \
+    ".github/copilot/extension.json" '{"name": "upstream-ext"}'
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf '.github/copilot\n.github/copilot/settings.json\texcluded\n' \
+    > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    ".github/copilot/settings.json" '{"hooks": []}' \
+    ".github/copilot/extension.json" '{"name": "upstream-ext"}'
+
+  # Mutate extension.json only — settings.json stays untouched.
+  printf '{"name": "locally-edited-ext"}' > "$adopter/.github/copilot/extension.json"
+
+  run_case_stderr \
+    "case-aa extension.json mutation still aborts .github/copilot strict guard" \
+    "$adopter" \
+    1 \
+    ".github/copilot"
+
+  # Working tree must still contain the local modification (unchanged by script).
+  ext_after="$(cat "$adopter/.github/copilot/extension.json" 2>/dev/null)"
+  if [ "$ext_after" = '{"name": "locally-edited-ext"}' ]; then
+    echo "PASS  case-aa: extension.json working-tree edit unchanged (abort happened before restore)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-aa: extension.json was unexpectedly modified by the aborted sync"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case bb — spec 0097 R10 / issue #605: the real repo's committed .gitignore
+# ignores a representative .github/copilot/settings.json.bak.<timestamp>
+# filename in the exact shape produced by backup_file() in
+# scripts/lib/common.sh (`cp -P "$target" "${target}.bak.${stamp}"`,
+# `stamp="$(date +%Y%m%d-%H%M%S)"`). Unlike every other case in this file,
+# this checks the actual repo's own .gitignore (via `git check-ignore`
+# against the real REPO_ROOT) rather than a synthetic fixture — .gitignore
+# is not an input to sync-from-upstream.sh, so there is nothing to
+# synthesize; the pattern under test either ships in this repo's .gitignore
+# or it does not.
+# ---------------------------------------------------------------------------
+{
+  REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
+  representative_path=".github/copilot/settings.json.bak.20260723-203351"
+
+  if git -C "$REPO_ROOT" check-ignore -q "$representative_path"; then
+    echo "PASS  case-bb: $representative_path is gitignored"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-bb: $representative_path is NOT gitignored (git check-ignore returned non-zero)"
+    fail=$((fail + 1))
+  fi
+
+  # Negative control: the narrow pattern must not widen to cover the
+  # sibling extension.json, which is still `strict` and must keep aborting
+  # the sync on a local diff (case aa) rather than silently disappearing
+  # from git status.
+  if git -C "$REPO_ROOT" check-ignore -q ".github/copilot/extension.json"; then
+    echo "FAIL  case-bb: sibling extension.json is unexpectedly gitignored (pattern too wide)"
+    fail=$((fail + 1))
+  else
+    echo "PASS  case-bb: sibling extension.json is NOT gitignored (pattern stayed narrow)"
+    pass=$((pass + 1))
   fi
 }
 

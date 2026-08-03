@@ -323,6 +323,179 @@ else
 fi
 
 # -------------------------------------------------------------------------
+# Case 22 (R9) — two original spec files sharing the same frontmatter `id`
+# but distinct slugs → cross-file duplicate-id failure naming both files,
+# non-zero exit. R9 requires the failure message to name both colliding
+# files directly — exit code alone (as run_case checks) can't distinguish
+# "failed naming both files" from "failed for an unrelated reason", so this
+# inspects the captured output, mirroring Case 25's technique for the 3-file
+# case.
+# -------------------------------------------------------------------------
+spec22a="0042-collision-a.md"
+spec22b="0042-collision-b.md"
+render_spec "0042" "collision-a" "draft" > "$TMP_ROOT/$spec22a"
+render_spec "0042" "collision-b" "draft" > "$TMP_ROOT/$spec22b"
+
+case22_exit=0
+case22_output=$( ( cd "$TMP_ROOT" && node "$LINTER_JS" $spec22a $spec22b 2>&1 ) ) || case22_exit=$?
+if [ "$case22_exit" -eq 1 ] \
+  && echo "$case22_output" | grep -qF "$spec22a" \
+  && echo "$case22_output" | grep -qF "$spec22b" \
+  && echo "$case22_output" | grep -q 'Duplicate spec id "0042"'; then
+  echo "PASS  Case 22 — duplicate id across two original specs names both files (exit 1)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 22 — expected exit 1 naming both files and the shared id, got exit $case22_exit"
+  echo "Output:"
+  echo "$case22_output"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
+# Case 23 (R10) — a delta-spec file sharing its parent's `id` is NOT a
+# duplicate-id collision → exit 0.
+# -------------------------------------------------------------------------
+spec23a="0043-parent.md"
+spec23b="0043-parent.delta-01.md"
+render_spec "0043" "parent" "draft" > "$TMP_ROOT/$spec23a"
+render_spec "0043" "parent" "draft" "standard" "" "$(printf "## ADDED\n\n## MODIFIED\n\n## REMOVED")" > "$TMP_ROOT/$spec23b"
+run_case "Case 23 — delta spec sharing parent id is not a duplicate-id failure" "$spec23a $spec23b" 0
+
+# -------------------------------------------------------------------------
+# Case 24 (R11) — all-distinct ids across specs → clean pass, exit 0.
+# -------------------------------------------------------------------------
+spec24a="0044-first.md"
+spec24b="0045-second.md"
+render_spec "0044" "first" "draft" > "$TMP_ROOT/$spec24a"
+render_spec "0045" "second" "draft" > "$TMP_ROOT/$spec24b"
+run_case "Case 24 — distinct ids across specs pass" "$spec24a $spec24b" 0
+
+# -------------------------------------------------------------------------
+# Case 25 (R2, R3) — three original spec files sharing the same id → the
+# failure names every file in the colliding group, not only the first two
+# encountered. Case 22 only proves the 2-file case; R3 explicitly calls out
+# the 3-or-more case as a distinct requirement, and only checking the exit
+# code (as run_case does) can't prove every path got named, so this case
+# inspects the captured output directly.
+# -------------------------------------------------------------------------
+spec25a="0050-triple-a.md"
+spec25b="0050-triple-b.md"
+spec25c="0050-triple-c.md"
+render_spec "0050" "triple-a" "draft" > "$TMP_ROOT/$spec25a"
+render_spec "0050" "triple-b" "draft" > "$TMP_ROOT/$spec25b"
+render_spec "0050" "triple-c" "draft" > "$TMP_ROOT/$spec25c"
+
+case25_exit=0
+case25_output=$( ( cd "$TMP_ROOT" && node "$LINTER_JS" $spec25a $spec25b $spec25c 2>&1 ) ) || case25_exit=$?
+if [ "$case25_exit" -eq 1 ] \
+  && echo "$case25_output" | grep -qF "$spec25a" \
+  && echo "$case25_output" | grep -qF "$spec25b" \
+  && echo "$case25_output" | grep -qF "$spec25c"; then
+  echo "PASS  Case 25 — three-way id collision names every colliding file (exit 1)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 25 — expected exit 1 naming all three files, got exit $case25_exit"
+  echo "Output:"
+  echo "$case25_output"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
+# Case 26 (R5, cross-file) — a spec file excluded by the core-paths manifest
+# (mirrors Case 20's specs/experimental fixture) shares its id with a real,
+# non-excluded spec. The manifest exclusion must be applied before the
+# fileResults accumulation that feeds the new duplicate-id check, not only
+# in the old per-file loop — so this must NOT be reported as a collision.
+# -------------------------------------------------------------------------
+SCENARIO26_ROOT="$TMP_ROOT/scenario26"
+mkdir -p "$SCENARIO26_ROOT/specs/experimental"
+cp "$ROOT_DIR/.markdownlintrc" "$SCENARIO26_ROOT/"
+ln -s "$ROOT_DIR/node_modules" "$SCENARIO26_ROOT/node_modules"
+render_spec "0071" "real" "draft" > "$SCENARIO26_ROOT/specs/0071-real.md"
+render_spec "0071" "twin" "draft" > "$SCENARIO26_ROOT/specs/experimental/0071-twin.md"
+
+write_core_paths_fixture "$TMP_ROOT/fixture-manifest-26" $'specs/experimental\texcluded\n'
+
+case26_exit=0
+case26_output=$( ( cd "$SCENARIO26_ROOT" && CREWRIG_REPO_DIR="$TMP_ROOT/fixture-manifest-26" node "$LINTER_JS" specs 2>&1 ) ) || case26_exit=$?
+if [ "$case26_exit" -eq 0 ] && ! echo "$case26_output" | grep -q "Duplicate spec id"; then
+  echo "PASS  Case 26 — manifest-excluded file sharing an id with a real spec is not a duplicate (R5)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 26 — expected exit 0 with no duplicate-id finding, got exit $case26_exit"
+  echo "Output:"
+  echo "$case26_output"
+  fail=$((fail + 1))
+fi
+
+# Negative control for Case 26: same fixture, no manifest override → falls
+# back to the real repo's .crewrig/core-paths.txt, which does not classify
+# specs/experimental as excluded → the id collision IS reported. Proves
+# Case 26 passes because of the exclusion applying to the new check, not
+# because the check is silently broken.
+case26b_exit=0
+case26b_output=$( ( cd "$SCENARIO26_ROOT" && node "$LINTER_JS" specs 2>&1 ) ) || case26b_exit=$?
+if [ "$case26b_exit" -eq 1 ] && echo "$case26b_output" | grep -q 'Duplicate spec id "0071"'; then
+  echo "PASS  Case 26b — negative control: without the exclusion override the 0071 collision is reported"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 26b — expected exit 1 reporting the 0071 collision, got exit $case26b_exit"
+  echo "Output:"
+  echo "$case26b_output"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
+# Case 27 — a file whose frontmatter fails to parse (own per-file error) must
+# NOT leak a stale/fallback `id` into the cross-file comparison. Regression
+# guard: if a future change ever defaulted `id` to the filename-derived
+# prefix on a parse failure, this file (filename-prefixed "0072", same as
+# spec27b's real id) would spuriously collide with spec27b. Exit code alone
+# can't distinguish "failed for its own YAML error" from "failed AND wrongly
+# flagged as a duplicate", so this inspects the output for the absence of
+# the duplicate-id message.
+# -------------------------------------------------------------------------
+spec27a="0072-broken.md"
+spec27b="0072-good.md"
+cat <<'EOF' > "$TMP_ROOT/$spec27a"
+---
+id: "0072
+slug: broken
+status: draft
+complexity: standard
+version: 1.0.0
+related-issue: 1
+---
+
+# Title
+
+## Intent
+
+## Requirements
+
+## Scenarios
+
+## Out of scope
+
+## Open questions
+EOF
+render_spec "0072" "good" "draft" > "$TMP_ROOT/$spec27b"
+
+case27_exit=0
+case27_output=$( ( cd "$TMP_ROOT" && node "$LINTER_JS" $spec27a $spec27b 2>&1 ) ) || case27_exit=$?
+if [ "$case27_exit" -eq 1 ] \
+  && echo "$case27_output" | grep -q "Failed to parse YAML frontmatter" \
+  && ! echo "$case27_output" | grep -q "Duplicate spec id"; then
+  echo "PASS  Case 27 — unparseable frontmatter does not leak a stale id into the cross-file check"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 27 — expected exit 1 from the per-file YAML error only, got exit $case27_exit"
+  echo "Output:"
+  echo "$case27_output"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""

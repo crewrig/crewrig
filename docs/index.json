@@ -105,6 +105,11 @@
           "title": "CI capability reference format",
           "path": "docs/ci-reference-format.md",
           "nav_order": 60
+        },
+        {
+          "title": "Org MCP server declaration channel",
+          "path": "docs/org-mcp-declaration.md",
+          "nav_order": 70
         }
       ]
     },
@@ -191,6 +196,11 @@
           "title": "ADR 0014 — CI test-wiring guard",
           "path": "docs/adr/0014-ci-test-wiring-guard.md",
           "nav_order": 140
+        },
+        {
+          "title": "ADR 0015 — Forge access CLI-only; no framework forge MCP",
+          "path": "docs/adr/0015-forge-access-cli-only.md",
+          "nav_order": 150
         }
       ]
     }

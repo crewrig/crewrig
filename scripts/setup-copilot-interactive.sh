@@ -174,44 +174,41 @@ if [ "$SKIP_INSTRUCTIONS_CONFIG" -ne 1 ]; then
 
   # Level
   echo "Select your experience level:"
-  LEVEL=$(for f in "$REPO_DIR"/config/level/*.md; do basename "$f" .md; done \
-    | fzf --height 40% --preview "head -20 $REPO_DIR/config/level/{}.md")
-  if [ -z "$LEVEL" ]; then
-    echo "No level selected. Aborting."
-    exit 1
+  LEVEL="$(pick_catalogue_entry "$REPO_DIR/config/level" "level")"
+  if [ -n "$LEVEL" ]; then
+    install_file "$REPO_DIR/config/level/${LEVEL}.md" "$COPILOT_INSTRUCTIONS/10-level.instructions.md" \
+      "level/${LEVEL}.md -> instructions/10-level.instructions.md"
+    echo "$LEVEL" > "$COPILOT_HOME/.selected_level"
+    echo "Level: $LEVEL"
+  else
+    rm -f "$COPILOT_HOME/.selected_level"
   fi
-  install_file "$REPO_DIR/config/level/${LEVEL}.md" "$COPILOT_INSTRUCTIONS/10-level.instructions.md" \
-    "level/${LEVEL}.md -> instructions/10-level.instructions.md"
-  echo "$LEVEL" > "$COPILOT_HOME/.selected_level"
-  echo "Level: $LEVEL"
   echo ""
 
   # Expertise
   echo "Select your expertise:"
-  EXPERTISE=$(for f in "$REPO_DIR"/config/expertise/*.md; do basename "$f" .md; done \
-    | fzf --height 40% --preview "head -20 $REPO_DIR/config/expertise/{}.md")
-  if [ -z "$EXPERTISE" ]; then
-    echo "No expertise selected. Aborting."
-    exit 1
+  EXPERTISE="$(pick_catalogue_entry "$REPO_DIR/config/expertise" "expertise")"
+  if [ -n "$EXPERTISE" ]; then
+    install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$COPILOT_INSTRUCTIONS/40-expertise.instructions.md" \
+      "expertise/${EXPERTISE}.md -> instructions/40-expertise.instructions.md"
+    echo "$EXPERTISE" > "$COPILOT_HOME/.selected_expertise"
+    echo "Expertise: $EXPERTISE"
+  else
+    rm -f "$COPILOT_HOME/.selected_expertise"
   fi
-  install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$COPILOT_INSTRUCTIONS/40-expertise.instructions.md" \
-    "expertise/${EXPERTISE}.md -> instructions/40-expertise.instructions.md"
-  echo "$EXPERTISE" > "$COPILOT_HOME/.selected_expertise"
-  echo "Expertise: $EXPERTISE"
   echo ""
 
   # Team
   echo "Select your team:"
-  TEAM=$(for f in "$REPO_DIR"/config/teams/*.md; do basename "$f" .md; done \
-    | fzf --height 40% --preview "head -20 $REPO_DIR/config/teams/{}.md")
-  if [ -z "$TEAM" ]; then
-    echo "No team selected. Aborting."
-    exit 1
+  TEAM="$(pick_catalogue_entry "$REPO_DIR/config/teams" "team")"
+  if [ -n "$TEAM" ]; then
+    install_file "$REPO_DIR/config/teams/${TEAM}.md" "$COPILOT_INSTRUCTIONS/50-team.instructions.md" \
+      "teams/${TEAM}.md -> instructions/50-team.instructions.md"
+    echo "$TEAM" > "$COPILOT_HOME/.selected_team"
+    echo "Team: $TEAM"
+  else
+    rm -f "$COPILOT_HOME/.selected_team"
   fi
-  install_file "$REPO_DIR/config/teams/${TEAM}.md" "$COPILOT_INSTRUCTIONS/50-team.instructions.md" \
-    "teams/${TEAM}.md -> instructions/50-team.instructions.md"
-  echo "$TEAM" > "$COPILOT_HOME/.selected_team"
-  echo "Team: $TEAM"
   echo ""
 fi
 
@@ -226,6 +223,13 @@ MCP_CONFIG_TARGET="$COPILOT_HOME/mcp-config.json"
 MCP_CONFIG_SRC="$REPO_DIR/config/copilot/mcp-config.json.template"
 
 backup_file "$MCP_CONFIG_TARGET"
+
+# Capture the operator's pre-existing MCP declarations + the backup path BEFORE
+# the framework overwrites mcp-config.json, so non-reserved servers can be
+# folded back in after the write (spec 0089 R2/R4). Must run before the template
+# copy below, never after — see merge_preexisting_mcp_servers in common.sh.
+PREEXISTING_MCP="$(jq -c '.mcpServers // {}' "$MCP_CONFIG_TARGET" 2>/dev/null || echo '{}')"
+MCP_BACKUP="$LAST_BACKUP_PATH"
 
 # Detect MemPalace Python interpreter
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
@@ -278,6 +282,20 @@ jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" '
     | .mcpServers.sequentialthinking.command = "bash"
   else . end' \
   "$MCP_CONFIG_TARGET" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
+
+# Fold the operator's pre-existing non-reserved MCP servers back over the
+# framework config (spec 0089). Framework reserved entries (mempalace /
+# sequentialthinking) — including their spec-0084 TLS wrapping — are untouched.
+merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$MCP_CONFIG_TARGET" "$MCP_BACKUP"
+
+# Fold org-declared MCP servers (spec 0091) over the just-merged config, AFTER
+# the 0089 operator fold, so precedence is framework-reserved > org > operator.
+# Guarded on manifest presence, like the AGENTS.org.md fan-out.
+ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
+if [ -f "$ORG_MCP_MANIFEST" ]; then
+  ORG_MCP_NATIVE="$(org_mcp_to_native copilot "$(read_org_mcp_manifest "$ORG_MCP_MANIFEST")")"
+  apply_org_mcp_servers "$ORG_MCP_NATIVE" "$MCP_CONFIG_TARGET" "$PREEXISTING_MCP" "$MCP_BACKUP"
+fi
 echo ""
 
 # --- Artifact install to user home (ADR-0011, spec 0019) ---
@@ -313,6 +331,7 @@ install_tier_skills_to_home() {
 }
 
 echo "Installing library skills to $COPILOT_SKILLS (automatic)..."
+ensure_tier_built "$REPO_DIR" copilot "$REPO_DIR/dist/library/.github/skills" || exit 1
 install_tier_skills_to_home library
 echo ""
 

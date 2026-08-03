@@ -1,6 +1,6 @@
 # CrewRig — Agent Working Rules
 
-This document defines the rules and conventions that all agents (human or AI) must follow when contributing to this project.
+The rules and conventions all agents (human or AI) must follow when contributing to this project.
 
 ## What is CrewRig?
 
@@ -38,6 +38,12 @@ session-start sweep defined in
 Skipping the sweep is a process violation equivalent to missing a lifecycle
 stage. A REVIEW pass that audits a session where the sweep was omitted SHALL
 emit a `class: tech` finding citing this section.
+
+Additionally, before opening any new ticket worktree, perform the additive,
+non-destructive session-start worktree-backlog surfacing in
+[`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) → *Worktree
+Isolation* → *Session-boundary worktree hygiene* — it reports already-merged
+worktrees but removes nothing.
 
 ## Lifecycle
 
@@ -82,9 +88,6 @@ taxonomy, routing matrix, complexity tiers, and termination criterion
 The file format for the spec artifact produced by the SPECS stage —
 frontmatter schema, mandatory body sections, delta-spec convention,
 and naming rules — lives in [`docs/spec-format.md`](docs/spec-format.md).
-The sections below (*Agent Team Protocol*, *Interaction modes*,
-*Retroactive review loop*) layer the operational rules onto that
-contract.
 
 ## Language
 
@@ -117,8 +120,20 @@ rule takes over.
 - The `main` branch is **protected**: no direct pushes allowed.
 - Every change must go through a **feature branch** merged into `main` via a Pull Request.
 - **NEVER merge a Pull Request (PR/MR)** without asking for the user's formal permission JUST BEFORE executing the merge.
+  - Narrow one-file spec-PR exception: [`docs/interaction-modes.md`](docs/interaction-modes.md) → *User-gate definition*.
 - The `import/gitlab` branch tracks the legacy GitLab project (`gitlab` remote) and serves as inspiration only.
-- Non-trivial tickets follow the **Spec-PR workflow** (see section below): a `spec/<NNNN>-<slug>` PR qualifies the WHAT and merges to `main` before the implementation branch is cut.
+- Non-trivial tickets follow the **Spec-PR workflow** (see below).
+
+### On Claude Code CLI — solo-maintainer self-merge block
+
+Claude-Code-only guidance; agents on other CLIs may skip it. See
+[`docs/solo-merge-classifier-workaround.md`](docs/solo-merge-classifier-workaround.md)
+for the full detail.
+
+**Critical rule:** a `gh pr merge` denied by the Claude Code auto-mode
+classifier on the author's own PR SHALL be re-attempted once by the same agent,
+then handed to the user if still denied — NEVER delegated to a sibling
+(delegating launders a refused permission).
 
 ## Pre-Edit Guard
 
@@ -196,8 +211,6 @@ Examples:
 - `📝 Update README with setup instructions`
 - `♻️ Refactor settings parser for clarity`
 
-Refer to [gitmoji.dev](https://gitmoji.dev/) for the full list of valid emojis and their meanings.
-
 ## Version Bump Convention
 
 Skill and agent sources carry a `metadata.provenance.version` field that
@@ -243,7 +256,7 @@ See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) for the full pr
 **Critical rules — apply without reading the full doc:**
 
 - **Solo work prohibition.** Never treat a multi-step ticket with inline solo work when specialist agents are available. Inline solo work is reserved for trivial single-file edits explicitly scoped by the user.
-- **Mandatory tools on Claude Code CLI.** Use `TeamCreate` (one team per ticket, named after the ticket id), `TaskCreate` (one task per agent role, self-contained brief in the Agent prompt), and `SendMessage` (all cross-agent communication). These three tools are mandatory — not optional.
+- **Coordination primitives on Claude Code CLI.** Claude Code runs a single implicit session team — there is no team to create. Use `Agent` (always with an explicit `subagent_type`) to delegate work to a specialist, `TaskCreate` (one task per role; self-contained brief in the `Agent` prompt) to track it, and `SendMessage` for all cross-agent communication. These three primitives are mandatory — not optional.
 - **Worktree isolation.** Before any `TaskCreate` or `Agent` spawn, create a dedicated git worktree. All team edits happen inside `.worktrees/<ticket-id>/`. The main working directory is read-only for the duration.
 - **Built components.** Any commit touching `artifacts/` MUST also run `bash scripts/build-components.sh` and stage the regenerated outputs in the same commit.
 - **Complexity tier.** Read the spec frontmatter `complexity` field at ticket pickup: `trivial` = inline, `small` = developer + pr-logbook + pr-reviewer, `standard` = full Template 1/2/3, `large` = architect-led sub-spec decomposition.
@@ -272,8 +285,7 @@ Rules:
   "Notify" is non-blocking; it does not gate the next iteration.
 
 The mode-driven engine — argument parsing, gate enforcement, user
-notification surface — lands in #173. This section states the
-contract.
+notification surface — lands in #173.
 
 See [`docs/interaction-modes.md`](docs/interaction-modes.md) for the
 `User-gate definition` and the full `Behavioral contract per (mode ×
@@ -337,46 +349,21 @@ AUTO).
 Definitions of each class, canonical and borderline examples, and the
 disambiguation rule (escalate upstream on tie) live in ADR-0010 →
 *Finding classification taxonomy*. The routing engine itself lands in
-issue #172 — this section states the contract.
+issue #172.
 
 ## Pull Request Format
 
-Every PR must follow this structure:
-
-### Title
-
-A concise, descriptive title.
-
-### Body
-
-```markdown
-<Two sentences maximum explaining the purpose of this PR for a human reader.>
-
-## How to read this PR?
-
-<A reading guide to help reviewers navigate the changeset. Highlight key files,
-the order in which to read them, and any non-obvious design decisions.>
-
-## How to test this PR?
-
-<Step-by-step instructions to test the proposed changes locally.
-Include prerequisites, commands to run, and expected outcomes.>
-
-## Detailed description (for agents)
-
-<A thorough, structured description of every change made in this PR.
-This section is intended for AI agents that will analyze the PR.
-Be explicit about what was added, modified, or removed and why.>
-```
+See [`docs/pr-format.md`](docs/pr-format.md) for the required PR structure:
+the title convention and the full PR-body template (purpose sentences, *How
+to read this PR?*, *How to test this PR?*, and *Detailed description (for
+agents)*).
 
 ## Logbook Issues
 
 Every PR **must** be anchored to a **logbook** on GitHub — a journal that
 traces every obstacle encountered (with its resolution or avoidance
-strategy), every challenge faced during implementation, and every success
-or breakthrough. This ensures that the full experience of agents working
-on the project — failures and successes alike — is recorded for future
-reference.
+strategy), every challenge faced, and every success or breakthrough, so the
+full experience of agents on the project is recorded for future reference.
 
 Three rules govern how logbooks are kept:
 
@@ -408,14 +395,16 @@ triggers that require an immediate logbook comment.
 
 ### Rule C — Close immediately after merge
 
-Once the PR is merged and the changes verified, **close the linked issue
-immediately** (`state_reason: completed`). Do not defer closing to a
-later cleanup pass — stale open issues accumulate and obscure the actual
-state of work in flight.
+Close the linked issue immediately once merged and verified
+(`state_reason: completed`); rationale in
+[`docs/logbook-issues.md`](docs/logbook-issues.md) → *Rule C*. Spec-PR
+exception:
+[`docs/spec-pr-workflow.md`](docs/spec-pr-workflow.md) → *Independence
+rule*.
 
-## GitHub Access
+## Forge Access
 
-All GitHub operations (PRs, issues, branch protection) are performed through the dedicated MCP server.
+Forge access is CLI-only. Forge operations (issues, PRs/MRs, branch protection, releases) route through the forge's own CLI — `gh` (GitHub), `glab` (GitLab), `tea` (Gitea) — with authentication delegated to that CLI; the framework ships no forge MCP server. Native `git` remains the tool for ordinary version control and is unchanged. See `artifacts/core/rules/60-tools.md` → *Forge Access* for the per-CLI `auth login` details. Re-add a forge MCP via [org MCP declaration](docs/org-mcp-declaration.md).
 
 ## Legacy ticket policy
 

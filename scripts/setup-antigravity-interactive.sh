@@ -167,6 +167,14 @@ echo ""
 
 backup_file "$AGY_MCP_CONFIG"
 
+# Capture the operator's pre-existing MCP declarations + the backup path BEFORE
+# the framework rebuilds mcp_config.json from its own base, so non-reserved
+# servers can be folded back in after the write (spec 0089 R2/R4). Antigravity
+# has no committed template — it builds MCP_BASE from empty — so this fold, not
+# a seeded base, is what preserves an existing config (spec 0089 review).
+PREEXISTING_MCP="$([ -f "$AGY_MCP_CONFIG" ] && jq -c '.mcpServers // {}' "$AGY_MCP_CONFIG" 2>/dev/null || echo '{}')"
+MCP_BACKUP="$LAST_BACKUP_PATH"
+
 # Detect MemPalace Python interpreter (used to patch mcpServers.mempalace.command)
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
 if [ -z "$MEMPALACE_PYTHON_BIN" ]; then
@@ -228,6 +236,23 @@ fi
 
 # Write atomically.
 echo "$MCP_BASE" | jq '.' > "${AGY_MCP_CONFIG}.tmp" && mv "${AGY_MCP_CONFIG}.tmp" "$AGY_MCP_CONFIG"
+
+# Fold the operator's pre-existing non-reserved MCP servers back over the
+# framework base (spec 0089) — this is what preserves an existing Antigravity
+# config despite the empty MCP_BASE. Framework reserved entries (mempalace /
+# sequentialthinking) — including their spec-0084 TLS wrapping — are untouched.
+merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$AGY_MCP_CONFIG" "$MCP_BACKUP"
+
+# Fold org-declared MCP servers (spec 0091) over the just-merged config, AFTER
+# the 0089 operator fold, so precedence is framework-reserved > org > operator.
+# Guarded on manifest presence, like the AGENTS.org.md fan-out. Both stdio and
+# remote (http/sse) org servers are delivered: remote entries fold in as the
+# Antigravity-native {serverUrl, headers} shape (docs/cli-matrix.md row 7h).
+ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
+if [ -f "$ORG_MCP_MANIFEST" ]; then
+  ORG_MCP_NATIVE="$(org_mcp_to_native antigravity "$(read_org_mcp_manifest "$ORG_MCP_MANIFEST")")"
+  apply_org_mcp_servers "$ORG_MCP_NATIVE" "$AGY_MCP_CONFIG" "$PREEXISTING_MCP" "$MCP_BACKUP"
+fi
 echo "  Installed: mcp_config.json"
 echo ""
 
@@ -235,44 +260,41 @@ if [ "$SKIP_RULES_CONFIG" -ne 1 ]; then
 
 # --- Team selection ---
 echo "Select your team:"
-TEAM=$(for f in "$REPO_DIR"/config/teams/*.md; do basename "$f" .md; done \
-  | fzf --height 40% --preview "head -20 $REPO_DIR/config/teams/{}.md")
-if [ -z "$TEAM" ]; then
-  echo "No team selected. Aborting."
-  exit 1
+TEAM="$(pick_catalogue_entry "$REPO_DIR/config/teams" "team")"
+if [ -n "$TEAM" ]; then
+  install_file "$REPO_DIR/config/teams/${TEAM}.md" "$AGY_HOME/50_USER_TEAM.md" \
+    "teams/${TEAM}.md -> 50_USER_TEAM.md"
+  echo "$TEAM" > "$AGY_HOME/.selected_team"
+  echo "Team: $TEAM"
+else
+  rm -f "$AGY_HOME/.selected_team"
 fi
-install_file "$REPO_DIR/config/teams/${TEAM}.md" "$AGY_HOME/50_USER_TEAM.md" \
-  "teams/${TEAM}.md -> 50_USER_TEAM.md"
-echo "$TEAM" > "$AGY_HOME/.selected_team"
-echo "Team: $TEAM"
 echo ""
 
 # --- Expertise selection ---
 echo "Select your expertise:"
-EXPERTISE=$(for f in "$REPO_DIR"/config/expertise/*.md; do basename "$f" .md; done \
-  | fzf --height 40% --preview "head -20 $REPO_DIR/config/expertise/{}.md")
-if [ -z "$EXPERTISE" ]; then
-  echo "No expertise selected. Aborting."
-  exit 1
+EXPERTISE="$(pick_catalogue_entry "$REPO_DIR/config/expertise" "expertise")"
+if [ -n "$EXPERTISE" ]; then
+  install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$AGY_HOME/40_USER_EXPERTISE.md" \
+    "expertise/${EXPERTISE}.md -> 40_USER_EXPERTISE.md"
+  echo "$EXPERTISE" > "$AGY_HOME/.selected_expertise"
+  echo "Expertise: $EXPERTISE"
+else
+  rm -f "$AGY_HOME/.selected_expertise"
 fi
-install_file "$REPO_DIR/config/expertise/${EXPERTISE}.md" "$AGY_HOME/40_USER_EXPERTISE.md" \
-  "expertise/${EXPERTISE}.md -> 40_USER_EXPERTISE.md"
-echo "$EXPERTISE" > "$AGY_HOME/.selected_expertise"
-echo "Expertise: $EXPERTISE"
 echo ""
 
 # --- Level selection ---
 echo "Select your experience level:"
-LEVEL=$(for f in "$REPO_DIR"/config/level/*.md; do basename "$f" .md; done \
-  | fzf --height 40% --preview "head -20 $REPO_DIR/config/level/{}.md")
-if [ -z "$LEVEL" ]; then
-  echo "No level selected. Aborting."
-  exit 1
+LEVEL="$(pick_catalogue_entry "$REPO_DIR/config/level" "level")"
+if [ -n "$LEVEL" ]; then
+  install_file "$REPO_DIR/config/level/${LEVEL}.md" "$AGY_HOME/10_USER_LEVEL.md" \
+    "level/${LEVEL}.md -> 10_USER_LEVEL.md"
+  echo "$LEVEL" > "$AGY_HOME/.selected_level"
+  echo "Level: $LEVEL"
+else
+  rm -f "$AGY_HOME/.selected_level"
 fi
-install_file "$REPO_DIR/config/level/${LEVEL}.md" "$AGY_HOME/10_USER_LEVEL.md" \
-  "level/${LEVEL}.md -> 10_USER_LEVEL.md"
-echo "$LEVEL" > "$AGY_HOME/.selected_level"
-echo "Level: $LEVEL"
 echo ""
 
 # --- Profile handling ---
@@ -345,6 +367,7 @@ install_tier_to_home() {
 
 echo ""
 echo "Installing library components to $AGY_SKILLS_HOME (automatic)..."
+ensure_tier_built "$REPO_DIR" antigravity "$REPO_DIR/dist/library/.agents" || exit 1
 install_tier_to_home library
 echo ""
 
