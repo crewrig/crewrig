@@ -317,10 +317,11 @@ reconcile_dir() {
   # Combine and sort uniquely to get the union. `sort -u` stands in for the
   # dedup an associative array gave us, and `grep -Fxq` for exact-key
   # membership; iteration order becomes sorted instead of hash-arbitrary,
-  # which makes the output deterministic. The deliberate trade is one or two
-  # `grep` forks per union member instead of an O(1) hash lookup — measured at
-  # ~607 ms for the repo's largest governed directory (scripts/, 124 files),
-  # which is why the portable form wins over a Bash-4 `declare -A` here.
+  # which makes the output deterministic. Bash 3.2 has no `declare -A`, so the
+  # trade is forced, not chosen: one or two `grep` forks per union member
+  # instead of an O(1) hash lookup. The cost is bounded by construction —
+  # reconcile_dir is reached only from the `adopt-on-edit` arm, whose largest
+  # directory entry is config/expertise at 10 files. Not a hot path.
   all_list="$(printf '%s\n%s\n' "$u_list" "$l_list" | sort -u | grep -v '^$')"
 
   while IFS= read -r f; do
