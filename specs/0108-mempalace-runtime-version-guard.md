@@ -1,7 +1,7 @@
 ---
 id: "0108"
 slug: mempalace-runtime-version-guard
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 623
