@@ -1,7 +1,7 @@
 ---
 id: "0107"
 slug: auto-build-setup-components
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 618
