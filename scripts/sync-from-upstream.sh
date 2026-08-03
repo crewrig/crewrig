@@ -151,7 +151,8 @@ excluded_children_of() {
 # pathspec_for <path>
 # Print the pathspec arguments for <path>: the path itself followed by a
 # :(exclude) entry for every excluded child nested under it (NUL-separated,
-# read back with `mapfile -d ''`).
+# read back with a `while IFS= read -r -d ''` loop — Bash 3.2 has no
+# `mapfile`).
 # ---------------------------------------------------------------------------
 pathspec_for() {
   local path="$1" child
@@ -301,26 +302,31 @@ reconcile_member() {
 # collisions (e.g. config/expertise must not capture config/expertise-archive).
 # ---------------------------------------------------------------------------
 reconcile_dir() {
-  local dir="$1" f new_sha
-  declare -A in_upstream=() seen=()
+  local dir="$1" f new_sha u_list l_list all_list
 
   # U := upstream file set at FETCH_HEAD under <dir>/.
-  while IFS= read -r f; do
-    [ -n "$f" ] || continue
-    in_upstream["$f"]=1
-    seen["$f"]=1
-  done < <(git ls-tree -r --name-only FETCH_HEAD -- "$dir/" 2>/dev/null)
+  u_list="$(git ls-tree -r --name-only FETCH_HEAD -- "$dir/" 2>/dev/null)"
 
   # W := org working-tree file set under <dir>/.
   if [ -d "$REPO_DIR/$dir" ]; then
-    while IFS= read -r f; do
-      [ -n "$f" ] || continue
-      seen["$f"]=1
-    done < <(cd "$REPO_DIR" && git ls-files --cached --others --exclude-standard -- "$dir/" 2>/dev/null)
+    l_list="$(cd "$REPO_DIR" && git ls-files --cached --others --exclude-standard -- "$dir/" 2>/dev/null)"
+  else
+    l_list=""
   fi
 
-  for f in "${!seen[@]}"; do
-    if [ -n "${in_upstream["$f"]:-}" ] && [ ! -e "$REPO_DIR/$f" ]; then
+  # Combine and sort uniquely to get the union. `sort -u` stands in for the
+  # dedup an associative array gave us, and `grep -Fxq` for exact-key
+  # membership; iteration order becomes sorted instead of hash-arbitrary,
+  # which makes the output deterministic. Bash 3.2 has no `declare -A`, so the
+  # trade is forced, not chosen: one or two `grep` forks per union member
+  # instead of an O(1) hash lookup. The cost is bounded by construction —
+  # reconcile_dir is reached only from the `adopt-on-edit` arm, whose largest
+  # directory entry is config/expertise at 10 files. Not a hot path.
+  all_list="$(printf '%s\n%s\n' "$u_list" "$l_list" | sort -u | grep -v '^$')"
+
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    if printf '%s\n' "$u_list" | grep -Fxq "$f" && [ ! -e "$REPO_DIR/$f" ]; then
       # Upstream has it, org doesn't.
       if path_in_org_history "$f"; then
         # R2 — org deleted it; stays gone.
@@ -332,14 +338,14 @@ reconcile_dir() {
         [ -n "$new_sha" ] && write_marker "$f" "$new_sha"
         echo "Added (new upstream file): $f" >&2
       fi
-    elif [ -z "${in_upstream["$f"]:-}" ]; then
+    elif ! printf '%s\n' "$u_list" | grep -Fxq "$f"; then
       # Org has it, upstream dropped/never had it → org-owned, never touched.
       :
     else
       # In both → existing two-tier decision.
       reconcile_member "$f"
     fi
-  done
+  done < <(printf '%s\n' "$all_list")
 }
 
 # ---------------------------------------------------------------------------
@@ -494,7 +500,10 @@ for i in "${!PATHS[@]}"; do
           fi
         done < <(cd "$REPO_DIR" && git ls-files -- "$path/")
       else
-        mapfile -d '' spec < <(pathspec_for "$path")
+        spec=()
+        while IFS= read -r -d '' item; do
+          spec+=("$item")
+        done < <(pathspec_for "$path")
         git restore --source=FETCH_HEAD --worktree -- "${spec[@]}"
       fi
       ;;
@@ -541,7 +550,10 @@ for i in "${!PATHS[@]}"; do
       fi
 
       if [ "$decision" = "update" ]; then
-        mapfile -d '' spec < <(pathspec_for "$path")
+        spec=()
+        while IFS= read -r -d '' item; do
+          spec+=("$item")
+        done < <(pathspec_for "$path")
         git restore --source=FETCH_HEAD --worktree -- "${spec[@]}"
         # Refresh the marker to the now-current upstream blob so subsequent
         # syncs short-circuit on Tier 1.
