@@ -74,6 +74,9 @@ capabilities:
       - bash scripts/tests/test-build-docs-index.sh
       - bash scripts/tests/test-mempalace-transcript-hook.sh
       - bash scripts/tests/test-mempalace-version-range.sh
+      - bash scripts/tests/test-mempalace-pin.sh
+      - bash scripts/tests/test-mempalace-runtime-guard.sh
+      - bash scripts/tests/test-mempalace-doctor.sh
       - bash scripts/tests/test-system-context-store.sh
       - bash scripts/check-test-wiring.sh
       - bash scripts/tests/test-check-test-wiring.sh

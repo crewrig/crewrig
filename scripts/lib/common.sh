@@ -480,7 +480,14 @@ sys.exit(0 if mn <= v < mx else 1)
 EOF
 }
 
-detect_mempalace_python() {
+# mempalace_python_candidates
+# Prints the interpreter candidates detect_mempalace_python considers, one per
+# line, highest priority first. Extracted from the helper below (spec 0108 R10)
+# so the operator diagnostic can report the very same ordered list the framework
+# would walk, and name a fallback selection instead of leaving it silent.
+# Candidate *ordering* only — no candidate is probed for a working mempalace
+# here; that is detect_mempalace_python's job.
+mempalace_python_candidates() {
   local candidates=()
   candidates+=("$HOME/.local/pipx/venvs/mempalace/bin/python")
   local mp_bin shebang_py
@@ -492,13 +499,22 @@ detect_mempalace_python() {
   candidates+=("python3")
   local py
   for py in "${candidates[@]}"; do
+    [ -n "$py" ] && printf '%s\n' "$py"
+  done
+}
+
+detect_mempalace_python() {
+  local py
+  # Process substitution, not a pipe: a pipeline would run this loop in a
+  # subshell and `return 0` would return from that subshell, not the helper.
+  while IFS= read -r py; do
     [ -n "$py" ] || continue
     command -v "$py" >/dev/null 2>&1 || continue
     if "$py" -c "import mempalace.mcp_server" >/dev/null 2>&1; then
       echo "$py"
       return 0
     fi
-  done
+  done < <(mempalace_python_candidates)
   return 1
 }
 

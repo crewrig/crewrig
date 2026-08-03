@@ -130,6 +130,15 @@ jobs:
       - name: Test mempalace version-range guard (spec 0082)
         run: bash scripts/tests/test-mempalace-version-range.sh
 
+      - name: Test mempalace pin parser and comparator (spec 0108)
+        run: bash scripts/tests/test-mempalace-pin.sh
+
+      - name: Test mempalace runtime version guard (spec 0108)
+        run: bash scripts/tests/test-mempalace-runtime-guard.sh
+
+      - name: Test mempalace operator diagnostic (spec 0108)
+        run: bash scripts/tests/test-mempalace-doctor.sh
+
       - name: Test system-context store regression (spec 0068 + 0075)
         run: bash scripts/tests/test-system-context-store.sh
 
