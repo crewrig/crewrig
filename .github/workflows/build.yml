@@ -130,6 +130,14 @@ jobs:
       - name: Test mempalace version-range guard (spec 0082)
         run: bash scripts/tests/test-mempalace-version-range.sh
 
+      # The spec-0108 guard's PRIMARY comparator. Installed so CI exercises the
+      # real library and not only the degraded fallback; test-mempalace-pin.sh
+      # fails loudly when no interpreter can import it, so a green run here means
+      # the primary comparator was actually tested. Not a runtime dependency of
+      # the guard itself.
+      - name: Install packaging for the spec-0108 primary comparator
+        run: python3 -m pip install --quiet packaging
+
       - name: Test mempalace pin parser and comparator (spec 0108)
         run: bash scripts/tests/test-mempalace-pin.sh
 

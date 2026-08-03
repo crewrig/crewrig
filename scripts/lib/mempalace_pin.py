@@ -118,14 +118,26 @@ def check(found, minimum, maximum):
 
     When ``packaging`` is unimportable the closed whitelist grammar above
     decides instead, and the returned comparator label says so.
+
+    This function is total on both paths: it returns a verdict for every input
+    or refuses, and never propagates an exception. A traceback here would kill
+    the launch *without* the R3 field set its caller is about to emit — the
+    diagnostic, not the exit status, is what spec 0108 buys.
     """
     try:
-        from packaging.version import InvalidVersion, Version
+        from packaging.version import Version
     except ImportError:
         return _fallback_in_range(found, minimum, maximum), COMPARATOR_FALLBACK
     try:
         verdict = Version(minimum) <= Version(found) < Version(maximum)
-    except InvalidVersion:
+    except ValueError:
+        # `ValueError` rather than `InvalidVersion`, which it is a subclass of,
+        # because the bare form is reachable too: `Version.__init__` maps
+        # `int()` over the release segment, so a segment longer than CPython's
+        # 4 300-digit conversion limit raises a plain `ValueError` from inside
+        # `packaging` before any validity verdict exists. Both are the same
+        # unmet precondition — a version string this comparator cannot order —
+        # and both fail closed.
         return False, COMPARATOR_PACKAGING
     return verdict, COMPARATOR_PACKAGING
 
@@ -140,11 +152,18 @@ def _fallback_in_range(found, minimum, maximum):
         # A bound this grammar cannot order is refused rather than guessed:
         # refusal keeps the never-more-permissive-than-`packaging` invariant.
         return False
-    tuples = [
-        _release_tuple(match.group("release")),
-        _release_tuple(low),
-        _release_tuple(high),
-    ]
+    try:
+        tuples = [
+            _release_tuple(match.group("release")),
+            _release_tuple(low),
+            _release_tuple(high),
+        ]
+    except ValueError:
+        # `int()` on a release segment longer than CPython's 4 300-digit
+        # conversion limit. The grammar admits such a string, so this is the
+        # fallback's mirror of the same guard `check` applies on the `packaging`
+        # branch: unorderable is refused, never raised.
+        return False
     width = max(len(item) for item in tuples)
     rel, mn, mx = (_padded(item, width) for item in tuples)
     return mn <= rel < mx

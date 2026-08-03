@@ -284,11 +284,29 @@ inspect_registration() {
     return
   fi
 
-  local checkout registered_common_sh registered_pin pin_module
-  checkout="$(cd "$(dirname "$wrapper")/../.." 2>/dev/null && pwd)"
-  if [ -z "$checkout" ]; then
+  # The wrapper file itself, not its grandparent directory: a registration
+  # naming a checkout whose `scripts/lib/` survived while the wrapper was
+  # deleted leaves the `cd` below perfectly satisfiable, and a session started
+  # from that argv cannot launch at all. That breakage shape is exactly what
+  # this section exists to surface, so it is tested for directly.
+  if [ ! -f "$wrapper" ]; then
     field "status:" "WRAPPER MISSING — ${wrapper} does not resolve on this machine"
     note_failure "${cli}: the registered wrapper ${wrapper} does not exist"
+    echo ""
+    return
+  fi
+
+  local checkout registered_common_sh registered_pin pin_module
+  checkout="$(cd "$(dirname "$wrapper")/../.." 2>/dev/null && pwd)"
+  # Defensive, and unreachable while the `-f` test above holds: a readable file
+  # implies every component of its path is traversable, so this `cd` cannot fail.
+  # Kept — rather than letting an empty `checkout` interpolate `/scripts/lib/...`
+  # into the paths below — so that a future refactor which drops or weakens that
+  # test degrades into a legible status instead of probing the filesystem root.
+  if [ -z "$checkout" ]; then
+    field "status:" "CHECKOUT UNRESOLVABLE — ${wrapper} exists but its checkout root"
+    echo "                            (its grandparent directory) does not resolve"
+    note_failure "${cli}: the checkout root above the registered wrapper ${wrapper} does not resolve"
     echo ""
     return
   fi

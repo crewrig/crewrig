@@ -100,7 +100,7 @@ _RESTART_NOTE = (
 )
 
 
-def _refuse(found, source, bounds, comparator, extra=""):
+def _refuse(found, source, bounds, comparator, extra="", remedy=None):
     """Emit the R3/R4 refusal diagnostic on stderr and terminate unsuccessfully.
 
     ``bounds`` is the ``(min, max)`` pair parsed from the pin, or ``None`` when
@@ -108,17 +108,26 @@ def _refuse(found, source, bounds, comparator, extra=""):
     for that, since no bound may be interpolated from a literal in this file
     (R5). The exit is non-zero so the launching CLI reports a failed memory
     server rather than a started one (R3).
+
+    ``remedy`` overrides the action line a caller would otherwise inherit from
+    ``bounds``. The bound-less default — re-run the framework setup from a
+    complete checkout — is the right repair for a checkout that is *missing* the
+    guard module, and the wrong one for a checkout whose ``common.sh`` is
+    present and malformed: re-running setup rewrites no declaration in it. That
+    branch therefore names its own remedy rather than pointing the operator at a
+    step that would change nothing.
     """
     if bounds is None:
         supported_range = "not determined (see the cause below)"
-        remedy = (
+        default_remedy = (
             "re-run the framework setup from a complete checkout "
             "(scripts/setup-<cli>-interactive.sh), so the pin and the guard "
             "module are both present under scripts/lib/"
         )
     else:
         supported_range = ">={0},<{1}".format(*bounds)
-        remedy = "pipx install --force 'mempalace>={0},<{1}'".format(*bounds)
+        default_remedy = "pipx install --force 'mempalace>={0},<{1}'".format(*bounds)
+    remedy = remedy or default_remedy
     fields = [
         ("MemPalace version found:", "{0}  (source: {1})".format(found, source)),
         ("Supported range:", supported_range),
@@ -140,8 +149,15 @@ def _refuse(found, source, bounds, comparator, extra=""):
 
 # The script-directory `sys.path[0]` default is defeated by PYTHONSAFEPATH=1 and
 # by `python3 -P`, neither of which the framework controls, so the sibling
-# import is made explicit rather than inherited.
-if _LIB_DIR not in sys.path:
+# import is made explicit rather than inherited — and undone again as soon as the
+# import has resolved. This file's whole premise is not perturbing the process
+# that goes on to serve, and a `scripts/lib/` left on `sys.path` for the life of
+# the session would let any future module dropped there shadow a same-named
+# import for `mempalace` or `chromadb`. Only an entry this file added is removed:
+# when the interpreter already supplied the directory as `sys.path[0]`, that
+# entry is the interpreter's and is left alone.
+_MP_PATH_ADDED = _LIB_DIR not in sys.path
+if _MP_PATH_ADDED:
     sys.path.insert(0, _LIB_DIR)
 
 try:
@@ -158,6 +174,9 @@ except ImportError as _pin_import_error:
         extra="the guard module {0}/mempalace_pin.py could not be imported: "
         "{1}".format(_LIB_DIR, _pin_import_error),
     )
+finally:
+    if _MP_PATH_ADDED and _LIB_DIR in sys.path:
+        sys.path.remove(_LIB_DIR)
 
 try:
     _MP_BOUNDS = mempalace_pin.read_pin(_COMMON_SH)
@@ -169,6 +188,15 @@ except (OSError, ValueError) as _pin_read_error:
         None,
         extra="the supported-version pin could not be read from {0}: {1}".format(
             _COMMON_SH, _pin_read_error
+        ),
+        # NOT the bound-less default: this checkout is complete, so re-running
+        # setup rewrites nothing. The declaration itself is what needs repair.
+        remedy=(
+            "repair the pin declaration in {0} so that each of "
+            'MEMPALACE_MIN_VERSION and MEMPALACE_MAX_VERSION_EXCLUSIVE is '
+            'declared exactly once, at line start, as NAME="<version>"'.format(
+                _COMMON_SH
+            )
         ),
     )
 

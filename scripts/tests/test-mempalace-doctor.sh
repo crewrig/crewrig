@@ -43,7 +43,18 @@
 #       out-of-range version still exits non-zero, with no divergence involved.
 #       Same machine covers the `#!/usr/bin/env python3` shebang form, whose
 #       interpreter is the second token.
-#   (i) R11 (structural): every CLI's launch path names the wrapper — for two
+#   (h4) R8's FIRST trigger on its own — the mirror image of (h3), and the spec's
+#       headline "Divergent installs are reported and flagged" scenario. Two
+#       sources report DIFFERENT versions, both INSIDE the pin, against ONE pin:
+#       so neither the range trigger nor the pin-divergence trigger can produce
+#       the outcome, and only the version-divergence detection can. Scenario 1
+#       fires all three triggers at once, which is why a bare `DIVERGE` grep there
+#       is answered by the pin-divergence line and proves nothing about this one.
+#   (i) a registration whose wrapper FILE is gone while its `scripts/lib/`
+#       directory survives is reported as WRAPPER MISSING — a verdict that must
+#       come from the wrapper's own existence, not from whether a `cd` two levels
+#       above it succeeds.
+#   (j) R11 (structural): every CLI's launch path names the wrapper — for two
 #       CLIs in the setup script, for the other two in the committed MCP template
 #       the setup script patches. The assertion spans script AND template, or it
 #       would fail on a correct tree.
@@ -93,6 +104,24 @@ fi
 # `mempalace-mcp` resolves elsewhere on a supported one.
 OLD_VERSION="3.0.0"
 GOOD_VERSION="$PIN_MIN"
+# A SECOND version that is also inside the pin, for the version-divergence
+# scenario that must fire with nothing else wrong. Derived from the pin rather
+# than authored, and asserted to be in range further down — if a future pin ever
+# made it out of range, the scenario would silently become a range test instead.
+SECOND_GOOD_VERSION="${PIN_MIN}.1"
+
+# The comparator and the `packaging importable:` answer the fixture interpreters
+# will report. Every fixture "interpreter" is a shim that execs PYTHON_ABS, so
+# both facts are PYTHON_ABS's, computed here rather than matched by shape: a
+# `Comparator: <something>` grep is satisfied by the literal `not reached`, and a
+# `packaging importable: <something>` grep by either answer.
+if "$PYTHON_ABS" -c 'import packaging.version' >/dev/null 2>&1; then
+  DOCTOR_COMPARATOR="packaging"
+  DOCTOR_HAS_PACKAGING="yes"
+else
+  DOCTOR_COMPARATOR="stdlib-whitelist"
+  DOCTOR_HAS_PACKAGING="no"
+fi
 
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
@@ -233,6 +262,25 @@ lacks() {
   fi
 }
 
+# doctor_field_line <label> <value>
+# Reproduces one per-source report line exactly as the doctor's `field()` helper
+# formats it (`printf '    %-24s%s\n'`). Used with `has_exact` below so each
+# reported FIELD is independently load-bearing: the doctor echoes the supported
+# range unconditionally, and `>=<min>,<max>` contains the floor, so a substring
+# grep for the version is answered by the range line of any row and cannot fail
+# while the pin is readable.
+doctor_field_line() {
+  printf '    %-24s%s' "$1" "$2"
+}
+
+has_exact() {
+  if grep -qxF "$2" "$1"; then
+    ok "$3"
+  else
+    bad "$3 (no line exactly '$2')"
+  fi
+}
+
 # ---------------------------------------------------------------------------
 echo "1. Divergent installs, both argv shapes, and the three guard labels"
 # ---------------------------------------------------------------------------
@@ -289,7 +337,16 @@ has "$S1_OUT" "$S1_PATHDIR/mempalace" "names the resolved path of \`mempalace\`"
 has "$S1_OUT" "mempalace-mcp" "names \`mempalace-mcp\` as its own row"
 has "$S1_OUT" "an-unrecognised-mechanism" \
   "R9: reports an install placed by a mechanism it does not recognise"
-has "$S1_OUT" "DIVERGE" "R8: reports the divergence explicitly"
+# Deliberately the FULL trigger sentence, not a bare `DIVERGE`. This fixture
+# fires three triggers at once (out-of-range, version divergence, pin
+# divergence), and `DIVERGE` alone is satisfied by the PIN-divergence line —
+# so deleting version-divergence detection outright cost nothing here. The
+# version trigger in isolation is scenario 6; this row keeps the combined
+# machine honest about WHICH divergence it is reporting.
+has "$S1_OUT" "reported versions DIVERGE" \
+  "R8: reports the VERSION divergence explicitly (not merely some divergence)"
+has "$S1_OUT" "declared pins DIVERGE" \
+  "R8: reports the PIN divergence explicitly, as a separate finding"
 has "$S1_OUT" "must be restarted" "R4: carries the restart sentence"
 
 # R8 — which path carries the out-of-range version must be identifiable without
@@ -375,6 +432,28 @@ lacks "$S2_OUT" "DIVERGE" "no divergence reported on a consistent machine"
 has   "$S2_OUT" "must be restarted" "R4: the restart sentence prints on a clean run too"
 has   "$S2_OUT" "OK — every source reports the same MemPalace version" \
   "clean machine states the successful outcome"
+
+# R7's per-source report fields, each as a WHOLE LINE. The doctor echoes
+# `supported range: >=<min>,<max>` for every row unconditionally, and the fixture's
+# in-range version IS the floor, so `grep -F "$GOOD_VERSION"` is answered by the
+# range line of any row and cannot fail while the pin is readable. Redacting the
+# served version, or deleting the verdict or packaging-importable field outright,
+# has to cost an assertion — these are the assertions it costs.
+has_exact "$S2_OUT" \
+  "$(doctor_field_line "version served:" "${GOOD_VERSION}  (dist-info, resolved in-process)")" \
+  "R7: reports the served version as its own field, sourced to dist-info"
+has_exact "$S2_OUT" \
+  "$(doctor_field_line "mempalace.__version__:" "${GOOD_VERSION}  (agrees with dist-info)")" \
+  "R7: reports the module literal and that it agrees with dist-info"
+has_exact "$S2_OUT" \
+  "$(doctor_field_line "supported range:" ">=${PIN_MIN},<${PIN_MAX}")" \
+  "R7: reports the pin the row was checked against"
+has_exact "$S2_OUT" \
+  "$(doctor_field_line "verdict:" "IN_RANGE version=${GOOD_VERSION} range=>=${PIN_MIN},<${PIN_MAX} comparator=${DOCTOR_COMPARATOR}")" \
+  "R7: reports the range verdict, naming the comparator that produced it (${DOCTOR_COMPARATOR})"
+has_exact "$S2_OUT" \
+  "$(doctor_field_line "packaging importable:" "$DOCTOR_HAS_PACKAGING")" \
+  "R7: reports whether the probed interpreter can import packaging (${DOCTOR_HAS_PACKAGING})"
 
 # ---------------------------------------------------------------------------
 echo "3. Absent surfaces are reported as absent, not as errors"
@@ -508,7 +587,133 @@ has "$S5_OUT" "PATH:mempalace-mcp: ${OLD_VERSION} lies outside" \
   "the env-form row was probed under the interpreter it named"
 
 # ---------------------------------------------------------------------------
-echo "6. R11 — every CLI's launch path names the wrapper"
+echo "6. R8 — version divergence ALONE is a non-successful outcome"
+# ---------------------------------------------------------------------------
+# The mirror image of scenario 5, and the spec's headline scenario: "Divergent
+# installs are reported and flagged". R8 has three independent triggers — versions
+# that differ, a version outside the pin, and pins that differ. Scenario 1 fires
+# all three on one machine, so its `DIVERGE` grep was answered by the PIN
+# divergence and its non-zero exit by the range failure: deleting the
+# version-divergence detection entirely cost zero assertions there.
+#
+# Here only the version trigger can fire. Two sources report DIFFERENT versions,
+# both INSIDE the pin, and every source reads the same pin from a checkout copied
+# out of this repository — so no range failure and no pin divergence exist to
+# stand in for the finding. `mempalace-mcp` resolves to an install one micro
+# release above the floor while everything else resolves to the floor itself: the
+# #623 shape, with the drift small enough to be invisible without this report.
+#
+# PATH is REPLACED, not prepended: on the authoring machine a real `mempalace`
+# sits on PATH and a prepended fixture directory cannot un-find it, which would
+# introduce a third version and make the assertion about the wrong thing.
+
+# Guard the derivation before relying on it: the scenario is meaningless if the
+# second version is not actually inside the pin.
+if "$PYTHON_BIN" "$PIN_MODULE" --common-sh "$COMMON_SH" --check "$SECOND_GOOD_VERSION" >/dev/null 2>&1; then
+  ok "the second in-range version ${SECOND_GOOD_VERSION} is inside the committed pin"
+else
+  bad "the second version ${SECOND_GOOD_VERSION} is OUTSIDE the pin >=${PIN_MIN},<${PIN_MAX} — scenario 6 would test the range trigger, not the divergence trigger"
+fi
+
+S6="$TMP_ROOT/s6"
+S6_HOME="$S6/home"
+S6_PATHDIR="$S6/bin"
+S6_TOOLBIN="$S6/toolbin"
+S6_SITE_A="$S6/site-a"
+S6_SITE_B="$S6/site-b"
+make_fakesite "$S6_SITE_A" "$GOOD_VERSION"
+make_fakesite "$S6_SITE_B" "$SECOND_GOOD_VERSION"
+# Candidate 1 of the detector's order, so section 3 selects a KNOWN interpreter
+# and does not report the authoring machine's own install as a third version.
+S6_PY_A="$S6_HOME/.local/pipx/venvs/mempalace/bin/python"
+make_interpreter "$S6_PY_A" "$S6_SITE_A"
+make_interpreter "$S6/other/python-b" "$S6_SITE_B"
+make_toolbin "$S6_TOOLBIN"
+make_checkout "$S6/checkout"
+S6_WRAPPER="$S6/checkout/scripts/lib/mempalace-http-wrapper.py"
+
+write_reg_bash   "$S6_HOME/.claude.json"                   "$S6_PY_A" "$S6_WRAPPER"
+write_reg_direct "$S6_HOME/.gemini/settings.json"           "$S6_PY_A" "$S6_WRAPPER"
+write_reg_direct "$S6_HOME/.copilot/mcp-config.json"        "$S6_PY_A" "$S6_WRAPPER"
+write_reg_bash   "$S6_HOME/.gemini/config/mcp_config.json"  "$S6_PY_A" "$S6_WRAPPER"
+make_console_script "$S6_PATHDIR/mempalace"     "$S6_PY_A"
+make_console_script "$S6_PATHDIR/mempalace-mcp" "$S6/other/python-b"
+
+S6_OUT="$S6/report.txt"
+run_doctor_isolated "$S6_HOME" "$S6_PATHDIR" "$S6_TOOLBIN" "$S6_OUT"
+s6_rc=$?
+
+if [ "$s6_rc" -ne 0 ]; then
+  ok "divergent-versions-only machine: exits non-zero ($s6_rc)"
+else
+  bad "divergent-versions-only machine: exited 0 — two sources report different MemPalace versions"
+fi
+has "$S6_OUT" "reported versions DIVERGE" \
+  "R8: the version-divergence trigger fires on its own, with nothing else wrong"
+has "$S6_OUT" "Versions reported, by source:" \
+  "R8: tabulates every source with the version it reports"
+# Which source carries which version, identifiable without further investigation.
+if grep -A8 "Versions reported, by source:" "$S6_OUT" \
+   | grep -E "^ +PATH:mempalace-mcp +${SECOND_GOOD_VERSION//./\\.}$" >/dev/null; then
+  ok "R8: attributes ${SECOND_GOOD_VERSION} to PATH:mempalace-mcp in the divergence table"
+else
+  bad "R8: the divergence table does not attribute ${SECOND_GOOD_VERSION} to a named source ($(grep -A8 'Versions reported, by source:' "$S6_OUT" || true))"
+fi
+# The three triggers must be independent, so the two that are NOT under test here
+# must be provably absent — otherwise this scenario is scenario 1 again.
+lacks "$S6_OUT" "lies outside" \
+  "R8: no range failure exists here, so the outcome came from divergence alone"
+lacks "$S6_OUT" "declared pins DIVERGE" \
+  "R8: every source reads one pin, so no pin divergence stands in for the finding"
+
+# ---------------------------------------------------------------------------
+echo "7. A registered wrapper that no longer exists is reported as missing"
+# ---------------------------------------------------------------------------
+# The verdict must come from the WRAPPER's own existence. Deriving it from whether
+# `dirname <wrapper>/../..` can be entered makes a registration whose
+# `scripts/lib/` survived — the shape a partial delete or a botched update leaves
+# behind — report as present, and a session started from that argv cannot launch
+# at all. PATH is replaced with an empty fixture directory so the only finding on
+# this machine is the one under test.
+
+S7="$TMP_ROOT/s7"
+S7_HOME="$S7/home"
+S7_PATHDIR="$S7/bin"
+S7_TOOLBIN="$S7/toolbin"
+mkdir -p "$S7_PATHDIR"
+make_toolbin "$S7_TOOLBIN"
+make_checkout "$S7/checkout"
+S7_WRAPPER="$S7/checkout/scripts/lib/mempalace-http-wrapper.py"
+S7_SITE="$S7/site"
+make_fakesite "$S7_SITE" "$GOOD_VERSION"
+S7_PY="$S7_HOME/.local/pipx/venvs/mempalace/bin/python"
+make_interpreter "$S7_PY" "$S7_SITE"
+write_reg_bash "$S7_HOME/.claude.json" "$S7_PY" "$S7_WRAPPER"
+# The wrapper alone is deleted; its directory, its sibling common.sh and its
+# sibling pin module all survive, so `cd <wrapper>/../..` still succeeds.
+rm -f "$S7_WRAPPER"
+if [ -d "$S7/checkout/scripts/lib" ] && [ ! -f "$S7_WRAPPER" ]; then
+  ok "fixture: the wrapper is gone while its scripts/lib/ directory survives"
+else
+  bad "fixture: could not construct the surviving-directory shape"
+fi
+
+S7_OUT="$S7/report.txt"
+run_doctor_isolated "$S7_HOME" "$S7_PATHDIR" "$S7_TOOLBIN" "$S7_OUT"
+s7_rc=$?
+
+has "$S7_OUT" "WRAPPER MISSING — ${S7_WRAPPER}" \
+  "a deleted wrapper is reported as WRAPPER MISSING, naming the path"
+lacks "$S7_OUT" "guard status:" \
+  "a registration whose wrapper is gone is not evaluated as if it could launch"
+if [ "$s7_rc" -ne 0 ]; then
+  ok "missing-wrapper machine: exits non-zero ($s7_rc)"
+else
+  bad "missing-wrapper machine: exited 0 — a registration that cannot launch was reported as healthy"
+fi
+
+# ---------------------------------------------------------------------------
+echo "8. R11 — every CLI's launch path names the wrapper"
 # ---------------------------------------------------------------------------
 # Asserted against the surface that actually carries the path per CLI. Two setups
 # name the wrapper in the script; the other two never do — their path lives in the
@@ -555,21 +760,37 @@ fi
 # pin-divergence verdict is only meaningful if it holds no bound of its own.
 # Searched as a bare substring: a bound baked into a message would never appear in
 # quoted form. Matching lines are echoed so a false positive is legible.
+#
+# `grep`'s status is discriminated three ways rather than tested for truthiness:
+# exit 2 means the scan never happened, and `if grep …; then bad; else ok; fi`
+# would score that non-event as a clean pass.
 doctor_literal_hits=0
+doctor_literal_scan_failed=0
 for bound in "$PIN_MIN" "$PIN_MAX"; do
-  if grep -nF "$bound" "$DOCTOR" >&2; then
-    echo "    ^ bound literal '$bound' present in $DOCTOR" >&2
-    doctor_literal_hits=$((doctor_literal_hits + 1))
-  fi
+  grep -nF "$bound" "$DOCTOR" >&2
+  grep_rc=$?
+  case "$grep_rc" in
+    0)
+      echo "    ^ bound literal '$bound' present in $DOCTOR" >&2
+      doctor_literal_hits=$((doctor_literal_hits + 1))
+      ;;
+    1) ;;
+    *)
+      bad "the pin-literal scan for '$bound' could not run against $DOCTOR (grep exit $grep_rc)"
+      doctor_literal_scan_failed=1
+      ;;
+  esac
 done
-if [ "$doctor_literal_hits" -eq 0 ]; then
+if [ "$doctor_literal_scan_failed" -eq 1 ]; then
+  : # already reported; do not also claim the bound is absent
+elif [ "$doctor_literal_hits" -eq 0 ]; then
   ok "the doctor carries neither pin bound as a literal"
 else
   bad "the doctor carries $doctor_literal_hits pin-bound literal(s)"
 fi
 
 # ---------------------------------------------------------------------------
-echo "7. The doctor mutates nothing"
+echo "9. The doctor mutates nothing"
 # ---------------------------------------------------------------------------
 # Re-run scenario 2 and compare a manifest of the fake HOME before and after: the
 # spec puts remediation and repair explicitly out of scope.
