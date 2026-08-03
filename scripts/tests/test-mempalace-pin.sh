@@ -465,7 +465,7 @@ for label, text, expected in ROWS:
 overlong = MIN + "." + "1" * 4301
 try:
     verdict, comparator = mempalace_pin.check(overlong, MIN, MAX)
-except Exception as exc:  # noqa: BLE001 — the point is that nothing escapes
+except Exception as exc:  # acknowledged-exception: broad except intentional — this assertion's whole purpose is that check() raises NOTHING; narrowing it would let an unexpected exception type pass as a success
     print("TOTALITY FAILURE: check() raised %s on a %d-digit release segment"
           % (type(exc).__name__, 4301))
     failures += 1
