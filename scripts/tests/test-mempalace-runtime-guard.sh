@@ -33,7 +33,8 @@
 #       pin-unreadable diagnostic, still carrying R3/R4.
 #   (e) mempalace_pin.py unimportable -> non-zero with an EMITTED diagnostic,
 #       not a traceback: a guard that cannot load must fail closed and say so.
-#   (f) no dist-info at all -> non-zero (PackageNotFoundError fails closed).
+#   (f) no dist-info at all -> non-zero (PackageNotFoundError fails closed), with
+#       the same R3/R4 field set as every other refusal path.
 #   (g) Phase B: dist-info in range but mempalace.__version__ out of range ->
 #       non-zero WITH the full R3/R4 field set, sourced to the module attribute.
 #   (h) Phase B: dist-info `.postN` disagreeing with an in-range
@@ -43,7 +44,11 @@
 #       a non-canonical in-range-looking string refuses — all via the fallback
 #       comparator, which is the arm that must hold on an interpreter that has
 #       no `packaging` at all.
-#   (j) structural: no pin literal in the wrapper (R5); Phase A precedes
+#   (j) R2: with every out-of-process source R2 forbids advertising an in-range
+#       version from a REPLACED PATH, a below-floor in-process resolution still
+#       refuses — the version came from the interpreter, not from an inventory.
+#   (k) structural: no pin literal in the wrapper (R5), searched as a bare
+#       substring so a bound hidden inside a message is caught; Phase A precedes
 #       `import chromadb`; Phase B follows the mempalace import.
 #
 # Usage:
@@ -180,15 +185,25 @@ EOF
   printf '%s' "$root"
 }
 
-# run_guard <fixture-root>
+# run_guard <fixture-root> [interpreter-flag ...]
 # Executes the fixture's wrapper; leaves stdout in <root>/stdout, stderr in
 # <root>/stderr, and returns the wrapper's exit status.
+#
+# A fixture site on PYTHONPATH SHADOWS a real install (PYTHONPATH precedes
+# site-packages), which is why fabricating a version needs nothing installed.
+# Shadowing cannot fabricate an ABSENCE, though: on an interpreter that carries a
+# real MemPalace, `importlib.metadata.version()` still resolves it out of
+# site-packages. The case that asserts absence therefore passes `-S` — the same
+# lesson as "asserting a console script is absent needs PATH replaced, not
+# prepended", one dimension over. `-S` suppresses site-packages only; PYTHONPATH
+# is still honoured, so the fixture's own stubs keep winning.
 run_guard() {
   local root="$1"
+  shift
   local pythonpath="$root/site"
   [ -d "$root/shield" ] && pythonpath="$root/shield:$pythonpath"
   PYTHONPATH="$pythonpath" PYTHONDONTWRITEBYTECODE=1 \
-    "$PYTHON_BIN" "$root/lib/mempalace-http-wrapper.py" \
+    "$PYTHON_BIN" "$@" "$root/lib/mempalace-http-wrapper.py" \
     >"$root/stdout" 2>"$root/stderr" </dev/null
 }
 
@@ -380,7 +395,9 @@ echo "6. No distribution metadata at all — fails closed"
 # ---------------------------------------------------------------------------
 
 root="$(build_fixture no-dist-info none "$IN_RANGE" no)"
-run_guard "$root"
+# `-S`: see run_guard. Without it this case asserts nothing on an interpreter
+# that carries a real MemPalace — the very interpreter a real session serves on.
+run_guard "$root" -S
 rc=$?
 if [ "$rc" -ne 0 ]; then
   ok "no-dist-info: terminates unsuccessfully (exit $rc)"
@@ -392,6 +409,9 @@ if grep -qF "no mempalace distribution metadata is resolvable" "$root/stderr"; t
 else
   bad "no-dist-info: no diagnostic naming the cause ($(cat "$root/stderr"))"
 fi
+# This is the third of the wrapper's five refusal paths, and R3/R4 bind to every
+# one of them — including the one whose "version found" is the absence itself.
+assert_refusal_fields "no-dist-info" "$root" "none resolvable" any
 
 # ---------------------------------------------------------------------------
 echo "7. Phase B: an out-of-range module attribute refuses, with R3/R4 intact"
@@ -483,14 +503,65 @@ fi
 assert_refusal_fields "fallback non-canonical" "$root" "${PIN_MIN}-git" stdlib-whitelist
 
 # ---------------------------------------------------------------------------
-echo "10. Structural assertions on the wrapper"
+echo "10. R2 — no out-of-process source is allowed to decide"
+# ---------------------------------------------------------------------------
+# Delta-01's R2 permits the serving interpreter's own in-process resolution and
+# forbids a package manager's inventory queried out of process, a `mempalace`
+# executable resolved from the operator's search path, and a value recorded at
+# setup time. Asserted by making every forbidden source LIE in the direction that
+# would let the launch through: PATH is REPLACED — prepending cannot un-find the
+# real machine's own `mempalace` — by a directory whose `mempalace`,
+# `mempalace-mcp`, `pipx` and `uv` all advertise an in-range version, while the
+# dist-info the interpreter actually resolves is below the floor. A guard that
+# consulted any of them would serve. The #623 incident is exactly this shape:
+# `pipx list` said one thing, the interpreter that served resolved another.
+
+# The module attribute is deliberately IN range: Phase B must not be able to
+# produce the refusal, or a guard that had been rewritten to trust the PATH
+# executable would still refuse here and the case would pass for the wrong reason
+# (observed while mutation-testing this very case).
+PY_ABS="$(command -v "$PYTHON_BIN")"
+root="$(build_fixture lying-out-of-process "$BELOW_FLOOR" "$IN_RANGE" no)"
+mkdir -p "$root/liarbin"
+for liar in mempalace mempalace-mcp pipx uv pip; do
+  cat > "$root/liarbin/$liar" <<EOF
+#!/bin/sh
+# Every out-of-process source R2 forbids, all agreeing on a version that is in
+# range — and all wrong about what this interpreter will actually load.
+echo "mempalace ${IN_RANGE}"
+exit 0
+EOF
+  chmod +x "$root/liarbin/$liar"
+done
+PYTHONPATH="$root/site" PYTHONDONTWRITEBYTECODE=1 PATH="$root/liarbin" \
+  "$PY_ABS" "$root/lib/mempalace-http-wrapper.py" \
+  >"$root/stdout" 2>"$root/stderr" </dev/null
+rc=$?
+if [ "$rc" -ne 0 ]; then
+  ok "lying out-of-process sources: still refuses (exit $rc)"
+else
+  bad "lying out-of-process sources: exited 0 — a forbidden source decided the verdict"
+fi
+if grep -qE "^  MemPalace version found: +${BELOW_FLOOR//./\\.} +\(source: importlib\.metadata\)\$" "$root/stderr"; then
+  ok "lying out-of-process sources: the verdict is the in-process version ($BELOW_FLOOR), sourced to importlib.metadata"
+else
+  bad "lying out-of-process sources: the decided version is not the in-process one ($(grep -E '^  MemPalace version found:' "$root/stderr" || true))"
+fi
+
+# ---------------------------------------------------------------------------
+echo "11. Structural assertions on the wrapper"
 # ---------------------------------------------------------------------------
 
-# R5 — no second copy of either bound anywhere on the launch path.
+# R5 — no second copy of either bound anywhere on the launch path. Searched as a
+# BARE substring, NOT as a quoted literal: the regression that matters is a bound
+# reintroduced inside a message — `"pipx install 'mempalace>=3.6.0,<3.7'"` — and
+# there the bound never appears in quoted form. Matching lines are echoed, so a
+# false positive (a bound-shaped substring that is not a pin copy) is legible
+# from the failure alone.
 literal_hits=0
 for bound in "$PIN_MIN" "$PIN_MAX"; do
-  if grep -nF "\"$bound\"" "$WRAPPER" >/dev/null 2>&1; then
-    echo "    bound literal '$bound' present in $WRAPPER" >&2
+  if grep -nF "$bound" "$WRAPPER" >&2; then
+    echo "    ^ bound literal '$bound' present in $WRAPPER" >&2
     literal_hits=$((literal_hits + 1))
   fi
 done

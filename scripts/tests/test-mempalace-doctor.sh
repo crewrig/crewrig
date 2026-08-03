@@ -36,6 +36,13 @@
 #       fully reported.
 #   (g) R4: the restart sentence prints on every outcome, clean or not.
 #   (h) a clean machine exits 0.
+#   (h2) a dist-info / `mempalace.__version__` disagreement is REPORTED and is
+#       neither a divergence nor a non-zero outcome — the doctor half of the
+#       wrapper's decision not to refuse on disagreement.
+#   (h3) R8's second trigger on its own: every source agreeing on the SAME
+#       out-of-range version still exits non-zero, with no divergence involved.
+#       Same machine covers the `#!/usr/bin/env python3` shebang form, whose
+#       interpreter is the second token.
 #   (i) R11 (structural): every CLI's launch path names the wrapper — for two
 #       CLIs in the setup script, for the other two in the committed MCP template
 #       the setup script patches. The assertion spans script AND template, or it
@@ -69,6 +76,11 @@ if ! command -v jq >/dev/null 2>&1; then
   echo "FATAL: jq is required by the unit under test" >&2
   exit 2
 fi
+PYTHON_ABS="$(command -v "$PYTHON_BIN" 2>/dev/null || true)"
+if [ -z "$PYTHON_ABS" ]; then
+  echo "FATAL: interpreter not found: $PYTHON_BIN" >&2
+  exit 2
+fi
 
 PIN_MIN="$(sed -n 's|^MEMPALACE_MIN_VERSION="\([^"]*\)"$|\1|p' "$COMMON_SH")"
 PIN_MAX="$(sed -n 's|^MEMPALACE_MAX_VERSION_EXCLUSIVE="\([^"]*\)"$|\1|p' "$COMMON_SH")"
@@ -92,12 +104,16 @@ bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 
 # --- Fixture builders --------------------------------------------------------
 
-# make_fakesite <dir> <version>
+# make_fakesite <dir> <version> [attr-version]
+# <attr-version> defaults to <version>. Passing a different one fabricates the
+# legitimate disagreement a `.postN` rebuild produces: the dist-info field and the
+# hand-maintained `mempalace.__version__` literal are structurally independent.
 make_fakesite() {
   local dir="$1"
   local version="$2"
+  local attr="${3:-$2}"
   mkdir -p "$dir/mempalace" "$dir/mempalace-${version}.dist-info"
-  printf '__version__ = "%s"\n' "$version" > "$dir/mempalace/__init__.py"
+  printf '__version__ = "%s"\n' "$attr" > "$dir/mempalace/__init__.py"
   printf 'def main():\n    return None\n' > "$dir/mempalace/mcp_server.py"
   printf 'Metadata-Version: 2.1\nName: mempalace\nVersion: %s\n' "$version" \
     > "$dir/mempalace-${version}.dist-info/METADATA"
@@ -105,13 +121,17 @@ make_fakesite() {
 
 # make_interpreter <path> <fakesite-dir>
 # A shim that IS an interpreter as far as the doctor is concerned.
+#
+# The real interpreter is named by ABSOLUTE path, never by the possibly-relative
+# CREWRIG_TEST_PYTHON: a shim installed under the name `python3` on a fixture PATH
+# would otherwise exec itself forever.
 make_interpreter() {
   local path="$1"
   local site="$2"
   mkdir -p "$(dirname "$path")"
   cat > "$path" <<EOF
 #!/bin/sh
-exec env PYTHONPATH="${site}" PYTHONDONTWRITEBYTECODE=1 "${PYTHON_BIN}" "\$@"
+exec env PYTHONPATH="${site}" PYTHONDONTWRITEBYTECODE=1 "${PYTHON_ABS}" "\$@"
 EOF
   chmod +x "$path"
 }
@@ -348,6 +368,8 @@ else
   bad "clean machine: exit $s2_rc — $(grep -A6 'NOT OK' "$S2_OUT" | head -8)"
 fi
 lacks "$S2_OUT" "fallback selected:" "R10: no fallback line when candidate 1 wins"
+has   "$S2_OUT" "selection:" \
+  "R7: the report names the interpreter the launch path would itself select"
 lacks "$S2_OUT" "GUARD ABSENT" "no GUARD ABSENT label when every checkout carries the guard"
 lacks "$S2_OUT" "DIVERGE" "no divergence reported on a consistent machine"
 has   "$S2_OUT" "must be restarted" "R4: the restart sentence prints on a clean run too"
@@ -388,7 +410,105 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-echo "4. R11 — every CLI's launch path names the wrapper"
+echo "4. A dist-info / __version__ disagreement is REPORTED, not treated as a fault"
+# ---------------------------------------------------------------------------
+# This is the other half of a design decision made in the wrapper: Phase B of the
+# launch guard deliberately does NOT refuse when the two declarations disagree,
+# because a `.postN` rebuild disagrees legitimately with both values in range. The
+# justification for not refusing is that the doctor reports the disagreement
+# instead — so the doctor must actually report it, and must not inflate it into a
+# version divergence across sources or a non-zero outcome.
+
+S4="$TMP_ROOT/s4"
+S4_HOME="$S4/home"
+S4_PATHDIR="$S4/bin"
+S4_SITE="$S4/site"
+S4_DIST="${PIN_MIN}.post1"
+make_fakesite "$S4_SITE" "$S4_DIST" "$PIN_MIN"
+S4_PY="$S4_HOME/.local/pipx/venvs/mempalace/bin/python"
+make_interpreter "$S4_PY" "$S4_SITE"
+make_checkout "$S4/checkout"
+S4_WRAPPER="$S4/checkout/scripts/lib/mempalace-http-wrapper.py"
+write_reg_bash   "$S4_HOME/.claude.json"                   "$S4_PY" "$S4_WRAPPER"
+write_reg_direct "$S4_HOME/.gemini/settings.json"           "$S4_PY" "$S4_WRAPPER"
+write_reg_direct "$S4_HOME/.copilot/mcp-config.json"        "$S4_PY" "$S4_WRAPPER"
+write_reg_bash   "$S4_HOME/.gemini/config/mcp_config.json"  "$S4_PY" "$S4_WRAPPER"
+make_console_script "$S4_PATHDIR/mempalace"     "$S4_PY"
+make_console_script "$S4_PATHDIR/mempalace-mcp" "$S4_PY"
+
+S4_OUT="$S4/report.txt"
+run_doctor "$S4_HOME" "$S4_PATHDIR" "$S4_OUT"
+s4_rc=$?
+
+has "$S4_OUT" "DISAGREES with dist-info ${S4_DIST}" \
+  "the hand-maintained literal disagreeing with dist-info is reported"
+has "$S4_OUT" "a .postN rebuild disagrees legitimately" \
+  "the report says why a disagreement is not by itself a fault"
+lacks "$S4_OUT" "DIVERGE" \
+  "two declarations disagreeing is NOT a version divergence across sources"
+if [ "$s4_rc" -eq 0 ]; then
+  ok "a legitimate disagreement is reported without a non-successful outcome"
+else
+  bad "disagreement machine: exit $s4_rc — a legitimate .postN rebuild was flagged as a fault ($(grep -A6 'NOT OK' "$S4_OUT" | head -8))"
+fi
+
+# ---------------------------------------------------------------------------
+echo "5. R8 — out of range WITHOUT divergence is still a non-successful outcome"
+# ---------------------------------------------------------------------------
+# R8 has two independent triggers: versions that differ, and a version outside the
+# pin. Scenario 1 fires both at once, so a regression that dropped the range check
+# and kept only the divergence check would still pass it. Here every source agrees
+# on the SAME out-of-range version, so only the range trigger can produce the
+# non-zero exit.
+#
+# The same machine carries the `#!/usr/bin/env python3` shebang form on
+# `mempalace-mcp`, whose interpreter is the SECOND token — a branch no other
+# scenario reaches. PATH is REPLACED (not prepended) so that `python3` resolves to
+# the fixture's own shim: a prepended PATH could not stop the real `python3` from
+# answering, and the row would then report the authoring machine's version.
+
+S5="$TMP_ROOT/s5"
+S5_HOME="$S5/home"
+S5_PATHDIR="$S5/bin"
+S5_TOOLBIN="$S5/toolbin"
+S5_SITE="$S5/site"
+make_fakesite "$S5_SITE" "$OLD_VERSION"
+S5_PY="$S5_HOME/.local/pipx/venvs/mempalace/bin/python"
+make_interpreter "$S5_PY" "$S5_SITE"
+# Pre-seeded so make_toolbin's `[ ! -e ]` guard leaves it alone: inside this
+# fixture's PATH, `python3` IS the shim, which is what makes the env-form shebang
+# resolvable to a known version.
+mkdir -p "$S5_TOOLBIN"
+make_interpreter "$S5_TOOLBIN/python3" "$S5_SITE"
+make_toolbin "$S5_TOOLBIN"
+make_console_script "$S5_PATHDIR/mempalace" "$S5_PY"
+printf '#!/usr/bin/env python3\n# fake console script — never executed by the doctor\n' \
+  > "$S5_PATHDIR/mempalace-mcp"
+chmod +x "$S5_PATHDIR/mempalace-mcp"
+
+S5_OUT="$S5/report.txt"
+run_doctor_isolated "$S5_HOME" "$S5_PATHDIR" "$S5_TOOLBIN" "$S5_OUT"
+s5_rc=$?
+
+if [ "$s5_rc" -ne 0 ]; then
+  ok "uniformly out-of-range machine: exits non-zero ($s5_rc)"
+else
+  bad "uniformly out-of-range machine: exited 0 — ${OLD_VERSION} is outside the pin everywhere"
+fi
+lacks "$S5_OUT" "DIVERGE" \
+  "R8: the non-zero outcome came from the range trigger alone, with no divergence"
+has "$S5_OUT" "PATH:mempalace: ${OLD_VERSION} lies outside" \
+  "R8: names which path carries the out-of-range version"
+if grep -qE '^ +shebang interpreter: +python3$' "$S5_OUT"; then
+  ok "an \`#!/usr/bin/env python3\` shebang resolves to its second token, not to \`env\`"
+else
+  bad "the env-form shebang was not resolved ($(grep -E 'shebang interpreter:' "$S5_OUT" || true))"
+fi
+has "$S5_OUT" "PATH:mempalace-mcp: ${OLD_VERSION} lies outside" \
+  "the env-form row was probed under the interpreter it named"
+
+# ---------------------------------------------------------------------------
+echo "6. R11 — every CLI's launch path names the wrapper"
 # ---------------------------------------------------------------------------
 # Asserted against the surface that actually carries the path per CLI. Two setups
 # name the wrapper in the script; the other two never do — their path lives in the
@@ -431,8 +551,25 @@ else
   bad "the shared wrapper does not reference the guard module"
 fi
 
+# The doctor evaluates FOREIGN checkouts against THEIR OWN declared pin, and its
+# pin-divergence verdict is only meaningful if it holds no bound of its own.
+# Searched as a bare substring: a bound baked into a message would never appear in
+# quoted form. Matching lines are echoed so a false positive is legible.
+doctor_literal_hits=0
+for bound in "$PIN_MIN" "$PIN_MAX"; do
+  if grep -nF "$bound" "$DOCTOR" >&2; then
+    echo "    ^ bound literal '$bound' present in $DOCTOR" >&2
+    doctor_literal_hits=$((doctor_literal_hits + 1))
+  fi
+done
+if [ "$doctor_literal_hits" -eq 0 ]; then
+  ok "the doctor carries neither pin bound as a literal"
+else
+  bad "the doctor carries $doctor_literal_hits pin-bound literal(s)"
+fi
+
 # ---------------------------------------------------------------------------
-echo "5. The doctor mutates nothing"
+echo "7. The doctor mutates nothing"
 # ---------------------------------------------------------------------------
 # Re-run scenario 2 and compare a manifest of the fake HOME before and after: the
 # spec puts remediation and repair explicitly out of scope.

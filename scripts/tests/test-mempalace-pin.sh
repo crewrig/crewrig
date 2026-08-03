@@ -14,7 +14,10 @@
 #
 #   Arm A — ALWAYS RUNS, and needs no `packaging` at all. `packaging` is actively
 #     shielded out (a stub on PYTHONPATH whose `version` submodule raises
-#     ImportError), so the fallback is provably the comparator in force. Every
+#     ImportError), so the fallback is provably the comparator in force — the
+#     corpus driver reports the comparator it OBSERVED, and the shield's ability
+#     to shadow a real `packaging` is proved separately against the one
+#     interpreter on the machine that has one. Every
 #     string the fallback accepts is then re-checked against an INDEPENDENTLY
 #     AUTHORED expression of the grammar — deliberately not the module's own
 #     regex, so a mistake in that regex cannot certify itself — and against the
@@ -142,10 +145,21 @@ else
   bad "read_pin on the real common.sh: exit $rc, output '$out'"
 fi
 
-if grep -qE "\"(${PIN_MIN//./\\.}|${PIN_MAX//./\\.})\"" "$PIN_MODULE"; then
-  bad "mempalace_pin.py carries a pin literal — the pin must live only in common.sh (R5)"
-else
+# Searched as a BARE substring, not as a quoted literal: a bound reintroduced
+# inside a message or a comparison expression never appears in quoted form, and
+# that is the regression R5 exists to prevent. Matching lines are echoed, so a
+# false positive is legible from the failure alone.
+pin_literal_hits=0
+for bound in "$PIN_MIN" "$PIN_MAX"; do
+  if grep -nF "$bound" "$PIN_MODULE" >&2; then
+    echo "    ^ bound literal '$bound' present in $PIN_MODULE" >&2
+    pin_literal_hits=$((pin_literal_hits + 1))
+  fi
+done
+if [ "$pin_literal_hits" -eq 0 ]; then
   ok "mempalace_pin.py carries neither bound as a literal (R5)"
+else
+  bad "mempalace_pin.py carries $pin_literal_hits pin-bound literal(s) — the pin must live only in common.sh (R5)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -304,8 +318,13 @@ if ARM == "a":
     accepted = 0
     grammar_violations = 0
     ordering_violations = 0
+    # The OBSERVED label, never the constant: the caller asserts on this line to
+    # prove the shield worked, and printing COMPARATOR_FALLBACK here would make
+    # that assertion pass whether or not `packaging` was actually shielded out.
+    observed = "none-observed"
     for candidate in corpus:
         verdict, comparator = mempalace_pin.check(candidate, MIN, MAX)
+        observed = comparator
         if comparator != mempalace_pin.COMPARATOR_FALLBACK:
             print("SHIELD FAILURE: comparator=%s for %r" % (comparator, candidate))
             violations += 1
@@ -322,7 +341,7 @@ if ARM == "a":
             print("ORDERING VIOLATION: %r accepted but carries an epoch, "
                   "pre-release or dev-release marker" % candidate)
             ordering_violations += 1
-    print("comparator=%s" % mempalace_pin.COMPARATOR_FALLBACK)
+    print("comparator=%s" % observed)
     print("fallback_accepted=%d" % accepted)
     print("grammar_violations=%d" % grammar_violations)
     print("ordering_violations=%d" % ordering_violations)
@@ -389,6 +408,27 @@ if [ -n "$accepted_count" ] && [ "$accepted_count" -gt 0 ]; then
   ok "Arm A exercised the accept path (${accepted_count} accepted)"
 else
   bad "Arm A accepted nothing — a comparator that refuses everything would pass vacuously"
+fi
+
+# The shield must be PROVED to shadow a real `packaging`, not assumed to: a stub
+# that silently failed to shadow it would leave Arm A asserting nothing about the
+# degraded mode. On an interpreter that has no `packaging` at all the shield is a
+# no-op and the flip is unobservable, so the proof runs where it is decisive — the
+# differential interpreter, which has one.
+if [ -n "$PACKAGING_PYTHON" ]; then
+  unshielded="$("$PACKAGING_PYTHON" "$PIN_MODULE" --common-sh "$COMMON_SH" --check "$PIN_MIN" 2>&1)"
+  shielded="$(PYTHONPATH="$SHIELD" "$PACKAGING_PYTHON" "$PIN_MODULE" \
+    --common-sh "$COMMON_SH" --check "$PIN_MIN" 2>&1)"
+  case "$unshielded:$shielded" in
+    *comparator=packaging*:*comparator=stdlib-whitelist*)
+      ok "the shield provably shadows a real packaging (packaging -> stdlib-whitelist)" ;;
+    *)
+      bad "the shield did not flip the comparator on an interpreter that HAS packaging (unshielded='$unshielded', shielded='$shielded')" ;;
+  esac
+else
+  echo "      no interpreter here can import packaging, so shielding is a no-op and"
+  echo "      the flip is unobservable; the fallback is what decides either way."
+  ok "shield-effectiveness proof skipped with a stated reason (no packaging anywhere)"
 fi
 
 # Arm B — the differential, when `packaging` is importable.
