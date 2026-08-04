@@ -32,6 +32,10 @@ tasks:
         msg: "pipx is required. Install with: brew install pipx (macOS) or apt-get install pipx (Linux)"
     cmd: pipx install --force 'mempalace>=3.6.0,<3.7'
 
+  mempalace:doctor:
+    desc: "Report which MemPalace will actually answer on this machine — resolved path, interpreter and version behind every MemPalace command and every CLI's memory-server registration. Exits non-zero on divergence (spec 0108)."
+    cmd: bash {{.REPO_DIR}}/scripts/doctor-mempalace.sh
+
   setup:playwright-mcp:
     desc: "Install the Playwright MCP server globally (opt-in). Registers @playwright/mcp in Claude Code and Gemini CLI user-scope config. Idempotent — safe to re-run."
     cmds:

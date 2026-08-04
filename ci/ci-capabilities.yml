@@ -74,6 +74,17 @@ capabilities:
       - bash scripts/tests/test-build-docs-index.sh
       - bash scripts/tests/test-mempalace-transcript-hook.sh
       - bash scripts/tests/test-mempalace-version-range.sh
+      # `packaging` is the spec-0108 launch guard's PRIMARY comparator and is the
+      # branch in force on every serving interpreter that carries it, so CI must
+      # exercise it against the real library rather than only against the degraded
+      # fallback. test-mempalace-pin.sh fails loudly when no interpreter here can
+      # import it — deliberately, so that a green pipeline means the primary
+      # comparator was actually tested. Not a runtime dependency of the guard: the
+      # wrapper still runs, and is still tested, where `packaging` is absent.
+      - python3 -m pip install --quiet packaging
+      - bash scripts/tests/test-mempalace-pin.sh
+      - bash scripts/tests/test-mempalace-runtime-guard.sh
+      - bash scripts/tests/test-mempalace-doctor.sh
       - bash scripts/tests/test-system-context-store.sh
       - bash scripts/check-test-wiring.sh
       - bash scripts/tests/test-check-test-wiring.sh

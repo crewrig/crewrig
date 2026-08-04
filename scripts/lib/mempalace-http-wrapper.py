@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 # Requires: chromadb>=1.5.9
+# Prefers (optional): packaging — the primary version comparator of the
+# spec-0108 launch guard. When it is unimportable the guard falls back to the
+# closed whitelist grammar in scripts/lib/mempalace_pin.py, which is never more
+# permissive than `packaging`. Which comparator decided is named in every
+# refusal diagnostic and reported by scripts/doctor-mempalace.sh.
 """MemPalace MCP server wrapper — routes ``chromadb.PersistentClient`` to the
 shared ChromaDB HTTP daemon.
 
@@ -27,6 +32,24 @@ Configuration
 If the daemon is unreachable at startup we ``exit 1`` with the installer
 command on stderr. Silent fallback to ``PersistentClient`` is forbidden by
 design — it would re-introduce the corruption bug.
+
+Runtime version guard (spec 0108)
+---------------------------------
+An out-of-range MemPalace is the same class of unmet precondition as an
+unreachable daemon and is treated the same way: this process determines, before
+it begins serving, the MemPalace version *its own interpreter* resolves, and
+refuses to serve when that version lies outside the range pinned in
+``scripts/lib/common.sh``. Two independent gates, both of which must pass:
+
+- **Phase A** (Step 1, before ``chromadb`` is even imported) range-checks
+  ``importlib.metadata.version("mempalace")`` — the in-process resolution, the
+  same machinery an ``import`` in this process would use.
+- **Phase B** (Step 4, after ``mempalace`` is imported) range-checks
+  ``mempalace.__version__`` independently. It is *not* compared for equality
+  with the Phase A value: ``mempalace/version.py`` is a hand-maintained literal,
+  structurally independent of the dist-info field, so a ``.postN`` rebuild
+  legitimately disagrees with both values in range. Such disagreement is
+  reported by ``scripts/doctor-mempalace.sh``, never refused here.
 """
 import os
 import sys
@@ -57,8 +80,144 @@ def _reap_if_orphaned(poll_interval: float = 5.0) -> None:
 
 threading.Thread(target=_reap_if_orphaned, daemon=True).start()
 
-# ── Step 1: patch BEFORE any mempalace import resolves chromadb ──────────────
-import chromadb as _chromadb
+# ── Step 1: refuse to serve an out-of-range MemPalace (spec 0108) ────────────
+# Placed before `import chromadb` so a refusal costs nothing and cannot perturb
+# the patch ordering Step 2 depends on. Every refusal on this path — both guard
+# phases plus the branch where the shared pin module itself cannot be imported —
+# routes through the single `_refuse` emitter defined below, so R3's four fields
+# and R4's restart sentence are structurally impossible to omit.
+import importlib.metadata  # noqa: E402
+
+_LIB_DIR = os.path.dirname(os.path.realpath(__file__))
+_COMMON_SH = os.path.join(_LIB_DIR, "common.sh")
+
+# R4: every operator-facing output of the guard says this, because a session
+# that is already up keeps serving what it loaded at start.
+_RESTART_NOTE = (
+    "a memory-server session that is already running keeps serving the MemPalace "
+    "version it started with; running sessions must be restarted before a change "
+    "to the install takes effect."
+)
+
+
+def _refuse(found, source, bounds, comparator, extra="", remedy=None):
+    """Emit the R3/R4 refusal diagnostic on stderr and terminate unsuccessfully.
+
+    ``bounds`` is the ``(min, max)`` pair parsed from the pin, or ``None`` when
+    the pin itself could not be read — in which case the remedy names the repair
+    for that, since no bound may be interpolated from a literal in this file
+    (R5). The exit is non-zero so the launching CLI reports a failed memory
+    server rather than a started one (R3).
+
+    ``remedy`` overrides the action line a caller would otherwise inherit from
+    ``bounds``. The bound-less default — re-run the framework setup from a
+    complete checkout — is the right repair for a checkout that is *missing* the
+    guard module, and the wrong one for a checkout whose ``common.sh`` is
+    present and malformed: re-running setup rewrites no declaration in it. That
+    branch therefore names its own remedy rather than pointing the operator at a
+    step that would change nothing.
+    """
+    if bounds is None:
+        supported_range = "not determined (see the cause below)"
+        default_remedy = (
+            "re-run the framework setup from a complete checkout "
+            "(scripts/setup-<cli>-interactive.sh), so the pin and the guard "
+            "module are both present under scripts/lib/"
+        )
+    else:
+        supported_range = ">={0},<{1}".format(*bounds)
+        default_remedy = "pipx install --force 'mempalace>={0},<{1}'".format(*bounds)
+    remedy = remedy or default_remedy
+    fields = [
+        ("MemPalace version found:", "{0}  (source: {1})".format(found, source)),
+        ("Supported range:", supported_range),
+        ("Resolved interpreter:", sys.executable),
+        ("Comparator:", comparator or "not reached"),
+        ("To bring into range:", remedy),
+    ]
+    if extra:
+        fields.append(("Cause:", extra))
+    fields.append(("NOTE:", _RESTART_NOTE))
+    lines = [
+        "ERROR: MemPalace runtime version guard refused to start the memory "
+        "server (spec 0108)."
+    ]
+    lines.extend("  {0:<26}{1}".format(label, value) for label, value in fields)
+    print("\n".join(lines), file=sys.stderr)
+    sys.exit(1)
+
+
+# The script-directory `sys.path[0]` default is defeated by PYTHONSAFEPATH=1 and
+# by `python3 -P`, neither of which the framework controls, so the sibling
+# import is made explicit rather than inherited — and undone again as soon as the
+# import has resolved. This file's whole premise is not perturbing the process
+# that goes on to serve, and a `scripts/lib/` left on `sys.path` for the life of
+# the session would let any future module dropped there shadow a same-named
+# import for `mempalace` or `chromadb`. Only an entry this file added is removed:
+# when the interpreter already supplied the directory as `sys.path[0]`, that
+# entry is the interpreter's and is left alone.
+_MP_PATH_ADDED = _LIB_DIR not in sys.path
+if _MP_PATH_ADDED:
+    sys.path.insert(0, _LIB_DIR)
+
+try:
+    import mempalace_pin  # noqa: E402
+except ImportError as _pin_import_error:
+    # Fails closed deliberately, with a diagnostic rather than a stack trace: a
+    # guard that cannot load is not a guard, and a checkout missing its own
+    # sibling module must not silently serve an unchecked install.
+    _refuse(
+        "not determined",
+        "not reached",
+        None,
+        None,
+        extra="the guard module {0}/mempalace_pin.py could not be imported: "
+        "{1}".format(_LIB_DIR, _pin_import_error),
+    )
+finally:
+    if _MP_PATH_ADDED and _LIB_DIR in sys.path:
+        sys.path.remove(_LIB_DIR)
+
+try:
+    _MP_BOUNDS = mempalace_pin.read_pin(_COMMON_SH)
+except (OSError, ValueError) as _pin_read_error:
+    _refuse(
+        "not determined",
+        "not reached",
+        None,
+        None,
+        extra="the supported-version pin could not be read from {0}: {1}".format(
+            _COMMON_SH, _pin_read_error
+        ),
+        # NOT the bound-less default: this checkout is complete, so re-running
+        # setup rewrites nothing. The declaration itself is what needs repair.
+        remedy=(
+            "repair the pin declaration in {0} so that each of "
+            'MEMPALACE_MIN_VERSION and MEMPALACE_MAX_VERSION_EXCLUSIVE is '
+            'declared exactly once, at line start, as NAME="<version>"'.format(
+                _COMMON_SH
+            )
+        ),
+    )
+
+try:
+    _MP_FOUND = importlib.metadata.version("mempalace")
+except importlib.metadata.PackageNotFoundError as _pkg_error:
+    _refuse(
+        "none resolvable",
+        "importlib.metadata",
+        _MP_BOUNDS,
+        None,
+        extra="no mempalace distribution metadata is resolvable from this "
+        "interpreter: {0}".format(_pkg_error),
+    )
+
+_MP_IN_RANGE, _MP_COMPARATOR = mempalace_pin.check(_MP_FOUND, *_MP_BOUNDS)
+if not _MP_IN_RANGE:
+    _refuse(_MP_FOUND, "importlib.metadata", _MP_BOUNDS, _MP_COMPARATOR)
+
+# ── Step 2: patch BEFORE any mempalace import resolves chromadb ──────────────
+import chromadb as _chromadb  # noqa: E402
 
 _host = os.environ.get("MEMPALACE_CHROMA_HOST", "127.0.0.1")
 _port = int(os.environ.get("MEMPALACE_CHROMA_PORT", "8001"))
@@ -101,7 +260,7 @@ def _http_factory(path=None, settings=None, **kwargs):
 
 _chromadb.PersistentClient = _http_factory  # type: ignore[assignment]
 
-# ── Step 2: verify daemon is reachable before handing off to mempalace ───────
+# ── Step 3: verify daemon is reachable before handing off to mempalace ───────
 try:
     _probe = _chromadb.HttpClient(host=_host, port=_port, settings=_build_pool_settings())
     _probe.heartbeat()
@@ -113,7 +272,23 @@ except Exception as _e:  # acknowledged-exception: broad except intentional — 
     )
     sys.exit(1)
 
-# ── Step 3: hand off to mempalace MCP server ─────────────────────────────────
+# ── Step 4: hand off to mempalace MCP server ─────────────────────────────────
 from mempalace.mcp_server import main  # noqa: E402
+
+# Phase B of the spec-0108 guard: a second, independent range check against the
+# module attribute now that `mempalace` is imported. It can only ever refuse,
+# never rescue — Step 1 already gated the authoritative dist-info version.
+# Deliberately NOT an equality test against that value: the two declarations are
+# structurally independent, so refusing on mere disagreement would brick a valid
+# `.postN` rebuild. When the attribute is absent this is a no-op, not a refusal.
+#
+# `mempalace.mcp_server` swaps `sys.stdout` for `sys.stderr` at import time and
+# restores the real channel only inside `main()`, so a refusal here cannot reach
+# the JSON-RPC channel even by accident.
+_MP_ATTR = getattr(sys.modules["mempalace"], "__version__", None)
+if _MP_ATTR is not None:
+    _ATTR_IN_RANGE, _ATTR_COMPARATOR = mempalace_pin.check(_MP_ATTR, *_MP_BOUNDS)
+    if not _ATTR_IN_RANGE:
+        _refuse(_MP_ATTR, "mempalace.__version__", _MP_BOUNDS, _ATTR_COMPARATOR)
 
 main()
