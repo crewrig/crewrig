@@ -313,6 +313,15 @@ jobs:
           # empty value hands the linter back to its own default derivation
           # (first `crewrig|origin` remote + /main).
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
+        # Read the log line, not the exit code, to tell an unresolvable-base
+        # wiring fault from a lint finding: the linter distinguishes them (exit 2
+        # vs 1), but Task collapses any non-zero status into its own 201, so only
+        # the `[ERROR]` line survives this wrapper. Kept behind `task` on purpose
+        # — `ci/ci-capabilities.yml` declares this command for both engines
+        # (check-ci-parity.sh enforces the agreement, and .gitlab-ci.yml is
+        # generated from it), and nothing here reads the exit code beyond
+        # pass/fail, so bypassing the wrapper would cost symmetry and buy no
+        # observable distinction.
         run: task spec:lint
 
   test-harness-curate:

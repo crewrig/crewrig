@@ -509,7 +509,7 @@ mkdir -p "$GITFIX/specs"
 cp "$ROOT_DIR/.markdownlintrc" "$GITFIX/"
 ln -s "$ROOT_DIR/node_modules" "$GITFIX/node_modules"
 (
-  cd "$GITFIX"
+  cd "$GITFIX" || exit 1
   git init -q
   git symbolic-ref HEAD refs/heads/main
   git config user.email "test@example.com"
@@ -523,7 +523,7 @@ render_spec "0201" "on-base-delta" "draft" "standard" "" \
   "$(printf "## ADDED\n\n## MODIFIED\n\n## REMOVED")" \
   > "$GITFIX/specs/0201-on-base-delta.delta-01.md"
 (
-  cd "$GITFIX"
+  cd "$GITFIX" || exit 1
   git add specs
   git commit -q -m "base branch content"
   # A remote-tracking `origin/main` so the default base-ref derivation
@@ -637,6 +637,37 @@ ln -s "$ROOT_DIR/node_modules" "$SCENARIO33_ROOT/node_modules"
 render_spec "0203" "outside-any-repo" "draft" > "$SCENARIO33_ROOT/specs/0203-outside-any-repo.md"
 run_base_case "Case 33 — outside a git work tree the check skips and announces it" \
   "$SCENARIO33_ROOT" "specs" 0 "main" "Base-branch status check" "-"
+
+# -------------------------------------------------------------------------
+# Case 34 — a linted path that cannot be canonicalized (here: a dangling
+# symlink under specs/) is reported by name, not as an uncaught stack trace
+# from the base-branch check's `realpathSync`. The exit code alone cannot pin
+# this: an uncaught throw ALSO exits non-zero, so the regression is invisible
+# to an exit-code assertion. The two content assertions are what discriminate
+# — the offending path must be named in the linter's own voice, and the
+# stack-frame marker of the crash must be absent. Uses its own isolated root
+# so the dangling symlink cannot leak into the cases above.
+# -------------------------------------------------------------------------
+SCENARIO34_ROOT="$TMP_ROOT/scenario34"
+mkdir -p "$SCENARIO34_ROOT/specs"
+cp "$ROOT_DIR/.markdownlintrc" "$SCENARIO34_ROOT/"
+ln -s "$ROOT_DIR/node_modules" "$SCENARIO34_ROOT/node_modules"
+render_spec "0204" "beside-a-dangling-symlink" "draft" \
+  > "$SCENARIO34_ROOT/specs/0204-beside-a-dangling-symlink.md"
+ln -s "./no-such-target.md" "$SCENARIO34_ROOT/specs/0205-dangling.md"
+(
+  cd "$SCENARIO34_ROOT" || exit 1
+  git init -q
+  git symbolic-ref HEAD refs/heads/main
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git config commit.gpgsign false
+  git add specs
+  git commit -q -m "content with a dangling symlink"
+)
+run_base_case "Case 34 — an uncanonicalizable linted path is named, not a stack trace" \
+  "$SCENARIO34_ROOT" "specs" 1 "main" \
+  "Cannot resolve linted path: specs/0205-dangling.md" "at resolveBaseContext"
 
 # -------------------------------------------------------------------------
 # Summary

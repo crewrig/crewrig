@@ -176,9 +176,21 @@ function baseBranchPaths(baseRef, relPaths) {
 //      Fail closed: a repository whose base cannot be resolved is a wiring
 //      fault (missing `fetch-depth: 0`, unfetched remote), and passing it as
 //      green would restore the "green does not mean checked" defect that spec
-//      0109 exists to remove. Exit 2 — not the linter's own exit 1 — marks it
-//      as an environment fault rather than a lint finding, matching
-//      check-skill-versions.sh.
+//      0109 exists to remove.
+//
+//      Exit 2 — not the linter's own exit 1 — marks it as an environment fault
+//      rather than a lint finding. Scope of that distinction, measured rather
+//      than assumed: it is observable only on DIRECT invocation
+//      (`node scripts/lib/spec-linter.js` → 2 for this fault, 1 for a lint
+//      finding), which is how the regression suite reads it (Case 32) and how a
+//      human debugging a base-ref fault reads it. Both CI engines invoke the
+//      linter through `task spec:lint`, and Task collapses ANY non-zero command
+//      status into its own 201 (measured on Task 3.50.0) — so downstream of the
+//      wrapper the two outcomes are indistinguishable by exit code, and the
+//      `[ERROR]` line below is what names the fault in the pipeline log. This is
+//      unlike check-skill-versions.sh, whose exit 2 does propagate because
+//      build.yml invokes it directly; that sibling is the model for the *code*,
+//      not evidence of a CI-observable property here.
 function resolveBaseContext(files) {
     const toplevel = gitCapture(['rev-parse', '--show-toplevel']);
     if (toplevel.status !== 0 || toplevel.stdout.trim() === '') {
@@ -206,7 +218,22 @@ function resolveBaseContext(files) {
     // anything outside it is not part of the change under test.
     const relPathByFile = new Map();
     for (const file of files) {
-        const rel = path.relative(repoRoot, fs.realpathSync(path.resolve(file))).split(path.sep).join('/');
+        let physical;
+        try {
+            physical = fs.realpathSync(path.resolve(file));
+        } catch (e) {
+            // A path that cannot be canonicalized (dangling symlink, symlink
+            // loop, unreadable parent directory) is also a path that cannot be
+            // read, so it is unlintable rather than merely unresolvable against
+            // the base. Report it here, naming the path, and exit on the
+            // linter's own exit 1: letting the canonicalization throw instead
+            // surfaces an uncaught stack trace, which is fail-closed but not a
+            // diagnostic — and the linter's job is to say what is wrong.
+            console.error(`\n[ERROR] Cannot resolve linted path: ${file}`);
+            console.error(`        ${e.message}`);
+            process.exit(1);
+        }
+        const rel = path.relative(repoRoot, physical).split(path.sep).join('/');
         if (rel === '' || rel.startsWith('../')) continue;
         relPathByFile.set(file, rel);
     }
