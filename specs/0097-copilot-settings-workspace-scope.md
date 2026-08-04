@@ -1,7 +1,7 @@
 ---
 id: "0097"
 slug: copilot-settings-workspace-scope
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 605

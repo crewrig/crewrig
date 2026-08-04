@@ -1,7 +1,7 @@
 ---
 id: "0003"
 slug: spec-pr-workflow
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 170

@@ -1,7 +1,7 @@
 ---
 id: "0087"
 slug: chroma-launcher-ulimit-floor
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 587

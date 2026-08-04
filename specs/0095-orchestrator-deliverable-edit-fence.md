@@ -1,7 +1,7 @@
 ---
 id: "0095"
 slug: orchestrator-deliverable-edit-fence
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 602

@@ -1,8 +1,9 @@
 ---
 id: "0098"
 slug: spec-linter-cross-file-id-uniqueness
-status: draft
+status: implemented
 complexity: small
+interaction-mode: INTERMEDIATE
 related-issue: 606
 version: 1.0.0
 ---

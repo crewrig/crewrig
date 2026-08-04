@@ -1,7 +1,7 @@
 ---
 id: "0012"
 slug: core-framework-separation
-status: draft
+status: implemented
 complexity: large
 interaction-mode: INTERMEDIATE
 related-issue: 224

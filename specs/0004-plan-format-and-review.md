@@ -1,7 +1,7 @@
 ---
 id: "0004"
 slug: plan-format-and-review
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 169

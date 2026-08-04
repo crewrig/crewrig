@@ -138,6 +138,9 @@ capabilities:
       - npm install -g markdownlint-cli
       - markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md'
 
+  # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves
+  # the change's base ref, so the job needs full source history — declared as
+  # `history-depth: full`, same as the two version-bump guards below.
   - id: lint-specs
     name: "Lint specification files"
     trigger:
@@ -149,8 +152,10 @@ capabilities:
     requires:
       runtime: node@22
       tools: [task]
+      history-depth: full
     command:
       - npm install
+      - bash scripts/tests/test-spec-linter.sh
       - task spec:lint
 
   - id: test-harness-curate

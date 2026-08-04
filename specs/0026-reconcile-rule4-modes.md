@@ -1,7 +1,7 @@
 ---
 id: "0026"
 slug: reconcile-rule4-modes
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 281

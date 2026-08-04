@@ -285,6 +285,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so the base ref resolves (spec 0109)
 
       - uses: actions/setup-node@v4
         with:
@@ -297,7 +299,20 @@ jobs:
       - name: Install Task
         run: sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
+      # Runs before the corpus lint so a broken linter is diagnosed by its own
+      # suite rather than reported only as a corpus failure. This job is where
+      # the suite belongs: it provisions the npm-installed node_modules the
+      # suite needs, which the hermetic check-components job does not.
+      - name: Test spec linter regression
+        run: bash scripts/tests/test-spec-linter.sh
+
       - name: Lint specs
+        env:
+          # The base-branch `status: draft` check (spec 0109 R2) compares against
+          # the PR's *target* branch. On a push there is no PR context, so the
+          # empty value hands the linter back to its own default derivation
+          # (first `crewrig|origin` remote + /main).
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
         run: task spec:lint
 
   test-harness-curate:

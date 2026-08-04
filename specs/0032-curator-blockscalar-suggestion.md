@@ -1,7 +1,7 @@
 ---
 id: "0032"
 slug: curator-blockscalar-suggestion
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 312

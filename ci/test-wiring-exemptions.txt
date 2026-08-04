@@ -17,5 +17,4 @@
 # the fact that the underlying bug is resolved.
 
 # --- Environment-dependent (cannot run in the hermetic check-components job) ---
-test-spec-linter.sh	requires the repo's npm-installed node_modules (markdownlint-cli via npx, plus js-yaml/semver) which the hermetic check-components job does not provision; spec-linter.js is exercised on real specs by the lint-specs job via `task spec:lint`.
 test-e2e-auth-scripts.sh	exercises scripts/e2e/auth-copilot.sh, which e2e_die's when ~/.copilot/instructions/ is absent — a `task setup:copilot` side-effect present on a developer host but not in a clean CI HOME; cannot pass in the hermetic check-components job. See follow-up note from #534 on whether the guidance path should print before that precondition.

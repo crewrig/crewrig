@@ -1,7 +1,7 @@
 ---
 id: "0024"
 slug: extension-tiers
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 276

@@ -1,7 +1,7 @@
 ---
 id: "0089"
 slug: merge-mcp-declarations
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 616

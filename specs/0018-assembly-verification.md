@@ -1,7 +1,7 @@
 ---
 id: "0018"
 slug: assembly-verification
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 232

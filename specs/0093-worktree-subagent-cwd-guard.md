@@ -1,7 +1,7 @@
 ---
 id: "0093"
 slug: worktree-subagent-cwd-guard
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 599

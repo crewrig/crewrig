@@ -1,8 +1,9 @@
 ---
 id: "0102"
 slug: solo-merge-classifier-workaround
-status: draft
+status: implemented
 complexity: small
+interaction-mode: INTERMEDIATE
 related-issue: 636
 version: 1.0.0
 ---

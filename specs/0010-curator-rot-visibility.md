@@ -1,7 +1,7 @@
 ---
 id: "0010"
 slug: curator-rot-visibility
-status: draft
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 203
