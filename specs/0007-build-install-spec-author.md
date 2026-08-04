@@ -1,7 +1,7 @@
 ---
 id: "0007"
 slug: build-install-spec-author
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 174

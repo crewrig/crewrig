@@ -1,7 +1,7 @@
 ---
 id: "0009"
 slug: spec-linter
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 178

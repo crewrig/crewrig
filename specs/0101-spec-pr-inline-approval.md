@@ -1,8 +1,9 @@
 ---
 id: "0101"
 slug: spec-pr-inline-approval
-status: draft
+status: implemented
 complexity: small
+interaction-mode: INTERMEDIATE
 related-issue: 610
 version: 1.0.0
 ---

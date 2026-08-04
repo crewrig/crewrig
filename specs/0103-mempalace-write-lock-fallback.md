@@ -1,8 +1,9 @@
 ---
 id: "0103"
 slug: mempalace-write-lock-fallback
-status: draft
+status: implemented
 complexity: small
+interaction-mode: INTERMEDIATE
 related-issue: 637
 version: 1.0.0
 ---

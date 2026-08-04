@@ -1,7 +1,7 @@
 ---
 id: "0028"
 slug: docs-section-overviews
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 296

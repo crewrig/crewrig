@@ -1,7 +1,7 @@
 ---
 id: "0022"
 slug: editorial-carve-out
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 270

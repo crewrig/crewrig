@@ -1,7 +1,7 @@
 ---
 id: "0094"
 slug: spec-pr-shared-logbook-closing-keyword
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 597

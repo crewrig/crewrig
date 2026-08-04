@@ -496,6 +496,180 @@ else
 fi
 
 # -------------------------------------------------------------------------
+# Cases 28-33 (spec 0109) — the base-branch `status: draft` check. Unlike every
+# case above, these need a real repository with a real base branch, so they
+# build a throwaway one (mirroring new_repo() in
+# scripts/tests/test-check-skill-versions.sh:54-66) instead of reusing the flat
+# non-git fixtures in $TMP_ROOT. The branch name is pinned with
+# `git symbolic-ref` rather than `git init -b`, so the fixture does not depend
+# on the host's `init.defaultBranch`.
+# -------------------------------------------------------------------------
+GITFIX="$TMP_ROOT/gitfix"
+mkdir -p "$GITFIX/specs"
+cp "$ROOT_DIR/.markdownlintrc" "$GITFIX/"
+ln -s "$ROOT_DIR/node_modules" "$GITFIX/node_modules"
+(
+  cd "$GITFIX" || exit 1
+  git init -q
+  git symbolic-ref HEAD refs/heads/main
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git config commit.gpgsign false
+)
+
+# Base-branch content: one non-delta spec and one delta-spec, both `draft`.
+render_spec "0200" "on-base" "draft" > "$GITFIX/specs/0200-on-base.md"
+render_spec "0201" "on-base-delta" "draft" "standard" "" \
+  "$(printf "## ADDED\n\n## MODIFIED\n\n## REMOVED")" \
+  > "$GITFIX/specs/0201-on-base-delta.delta-01.md"
+(
+  cd "$GITFIX" || exit 1
+  git add specs
+  git commit -q -m "base branch content"
+  # A remote-tracking `origin/main` so the default base-ref derivation
+  # (mirroring scripts/check-skill-versions.sh:24) has something to resolve.
+  git remote add origin "$GITFIX"
+  git fetch -q origin 2>/dev/null
+)
+
+# run_base_case <name> <workdir> <targets> <expected_exit> <base_ref|-> <must_contain|-> <must_not_contain|->
+# `-` for base_ref runs with BASE_REF explicitly *unset* (exercising the
+# default derivation) rather than inheriting an ambient value from the caller.
+run_base_case() {
+  local name="$1" workdir="$2" targets="$3" expected_exit="$4"
+  local base_ref="$5" must="$6" must_not="$7"
+
+  local actual_exit=0 output ok=true
+  if [ "$base_ref" = "-" ]; then
+    output=$( ( cd "$workdir" && env -u BASE_REF node "$LINTER_JS" $targets 2>&1 ) ) || actual_exit=$?
+  else
+    output=$( ( cd "$workdir" && BASE_REF="$base_ref" node "$LINTER_JS" $targets 2>&1 ) ) || actual_exit=$?
+  fi
+
+  if [ "$actual_exit" -ne "$expected_exit" ]; then
+    ok=false
+  fi
+  if [ "$must" != "-" ] && ! echo "$output" | grep -qF "$must"; then
+    ok=false
+  fi
+  if [ "$must_not" != "-" ] && echo "$output" | grep -qF "$must_not"; then
+    ok=false
+  fi
+
+  if [ "$ok" = true ]; then
+    echo "PASS  $name (exit $actual_exit)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  $name (expected exit $expected_exit, got $actual_exit)"
+    echo "Output:"
+    echo "$output"
+    fail=$((fail + 1))
+  fi
+}
+
+# -------------------------------------------------------------------------
+# Case 28 (R2, Scenarios 1 and 3) — a non-delta spec present on the base
+# branch carrying `status: draft` is reported by name and fails; the
+# delta-spec sitting beside it, equally `draft` and equally on the base
+# branch, is NOT reported. One assertion covers both scenarios because the
+# exempt file and the flagged file are in the same invocation — an exit code
+# alone could not distinguish "flagged the right file" from "flagged both".
+#
+# This is the case R8 requires: delete the base-branch check from
+# spec-linter.js and this case goes red (exit 0, no offender named).
+# -------------------------------------------------------------------------
+run_base_case "Case 28 — draft non-delta spec on the base branch fails and is named" \
+  "$GITFIX" "specs" 1 "main" \
+  "specs/0200-on-base.md" "specs/0201-on-base-delta.delta-01.md"
+
+# -------------------------------------------------------------------------
+# Case 29 (R2) — same violation, but with BASE_REF unset so the base ref comes
+# from the default derivation (first remote matching crewrig|origin, plus
+# `/main`). Pins the path CI uses on a `push` event, where no BASE_REF is
+# supplied; without this the derivation could rot unnoticed behind the
+# explicit-BASE_REF cases.
+# -------------------------------------------------------------------------
+run_base_case "Case 29 — default base-ref derivation (origin/main) enforces the check" \
+  "$GITFIX" "specs" 1 "-" \
+  "specs/0200-on-base.md" "-"
+
+# -------------------------------------------------------------------------
+# Case 30 (R4, Scenario 4) — correcting the offending spec's status in the
+# tree under test clears the violation, even though the base branch still
+# carries `draft`. This is what lets the check and the corpus correction land
+# in a single change (R6): the status read is the tree's, not the base's.
+# -------------------------------------------------------------------------
+render_spec "0200" "on-base" "implemented" "standard" "interaction-mode: INTERMEDIATE" \
+  > "$GITFIX/specs/0200-on-base.md"
+run_base_case "Case 30 — correcting the status in the tree clears the violation" \
+  "$GITFIX" "specs" 0 "main" "-" "-"
+
+# -------------------------------------------------------------------------
+# Case 31 (R2, Scenario 2) — a spec introduced by the change under test
+# (absent from the base branch) is legitimately `draft` and is not flagged.
+# -------------------------------------------------------------------------
+render_spec "0202" "introduced-by-change" "draft" > "$GITFIX/specs/0202-introduced-by-change.md"
+run_base_case "Case 31 — a spec absent from the base branch may be draft" \
+  "$GITFIX" "specs" 0 "main" "-" "specs/0202-introduced-by-change.md"
+
+# -------------------------------------------------------------------------
+# Case 32 — inside a repository whose base ref cannot be resolved, the linter
+# fails closed with exit 2 (an environment fault, distinct from its own exit-1
+# lint findings) rather than passing unchecked. Pins the deliberate choice:
+# a resolvable repository with an unresolvable base is a wiring fault, and
+# reporting it green would restore the "green does not mean checked" defect
+# spec 0109 exists to remove.
+# -------------------------------------------------------------------------
+run_base_case "Case 32 — unresolvable base ref inside a repository fails closed (exit 2)" \
+  "$GITFIX" "specs" 2 "no-such-base" "BASE_REF" "-"
+
+# -------------------------------------------------------------------------
+# Case 33 — outside any git work tree there is no change under test and so no
+# base branch to be the discriminator: the check is skipped, and says so on
+# stderr. Pins the other half of the Case 32 decision — the skip is
+# deliberate and announced, never silent. Uses its own isolated root so the
+# non-conforming fixtures in $TMP_ROOT/specs cannot influence the exit code.
+# -------------------------------------------------------------------------
+SCENARIO33_ROOT="$TMP_ROOT/scenario33"
+mkdir -p "$SCENARIO33_ROOT/specs"
+cp "$ROOT_DIR/.markdownlintrc" "$SCENARIO33_ROOT/"
+ln -s "$ROOT_DIR/node_modules" "$SCENARIO33_ROOT/node_modules"
+render_spec "0203" "outside-any-repo" "draft" > "$SCENARIO33_ROOT/specs/0203-outside-any-repo.md"
+run_base_case "Case 33 — outside a git work tree the check skips and announces it" \
+  "$SCENARIO33_ROOT" "specs" 0 "main" "Base-branch status check" "-"
+
+# -------------------------------------------------------------------------
+# Case 34 — a linted path that cannot be canonicalized (here: a dangling
+# symlink under specs/) is reported by name, not as an uncaught stack trace
+# from the base-branch check's `realpathSync`. The exit code alone cannot pin
+# this: an uncaught throw ALSO exits non-zero, so the regression is invisible
+# to an exit-code assertion. The two content assertions are what discriminate
+# — the offending path must be named in the linter's own voice, and the
+# stack-frame marker of the crash must be absent. Uses its own isolated root
+# so the dangling symlink cannot leak into the cases above.
+# -------------------------------------------------------------------------
+SCENARIO34_ROOT="$TMP_ROOT/scenario34"
+mkdir -p "$SCENARIO34_ROOT/specs"
+cp "$ROOT_DIR/.markdownlintrc" "$SCENARIO34_ROOT/"
+ln -s "$ROOT_DIR/node_modules" "$SCENARIO34_ROOT/node_modules"
+render_spec "0204" "beside-a-dangling-symlink" "draft" \
+  > "$SCENARIO34_ROOT/specs/0204-beside-a-dangling-symlink.md"
+ln -s "./no-such-target.md" "$SCENARIO34_ROOT/specs/0205-dangling.md"
+(
+  cd "$SCENARIO34_ROOT" || exit 1
+  git init -q
+  git symbolic-ref HEAD refs/heads/main
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git config commit.gpgsign false
+  git add specs
+  git commit -q -m "content with a dangling symlink"
+)
+run_base_case "Case 34 — an uncanonicalizable linted path is named, not a stack trace" \
+  "$SCENARIO34_ROOT" "specs" 1 "main" \
+  "Cannot resolve linted path: specs/0205-dangling.md" "at resolveBaseContext"
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""

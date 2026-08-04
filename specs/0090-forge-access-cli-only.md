@@ -1,7 +1,7 @@
 ---
 id: "0090"
 slug: forge-access-cli-only
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 624

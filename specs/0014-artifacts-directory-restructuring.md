@@ -1,7 +1,7 @@
 ---
 id: "0014"
 slug: artifacts-directory-restructuring
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 228

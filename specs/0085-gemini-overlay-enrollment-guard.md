@@ -1,7 +1,7 @@
 ---
 id: "0085"
 slug: gemini-overlay-enrollment-guard
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 579

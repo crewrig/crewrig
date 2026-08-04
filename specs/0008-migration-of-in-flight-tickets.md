@@ -1,7 +1,7 @@
 ---
 id: "0008"
 slug: migration-of-in-flight-tickets
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 175

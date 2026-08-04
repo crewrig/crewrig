@@ -122,10 +122,13 @@ lint-markdown:
 
 lint-specs:
   image: node:22
+  variables:
+    GIT_DEPTH: "0"
   before_script:
     - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
   script:
     - "npm install"
+    - "bash scripts/tests/test-spec-linter.sh"
     - "task spec:lint"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'

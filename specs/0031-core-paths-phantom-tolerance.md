@@ -1,7 +1,7 @@
 ---
 id: "0031"
 slug: core-paths-phantom-tolerance
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 310

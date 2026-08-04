@@ -200,6 +200,26 @@ table below is the contract.
 A `status` regression (e.g. `approved` → `draft`) is prohibited; if a
 spec must be re-opened, supersede it instead.
 
+### No spec on `main` is a draft
+
+A spec file present on `main`, other than a delta-spec, SHALL NOT carry
+`status: draft`. A spec reaches `main` only by its own merged spec-PR, which is
+the trigger the table above assigns to `approved`; `draft` on `main` therefore
+records a contradiction rather than a lagging value, and leaves a reader unable
+to use `status` for the one question it exists to answer — "merged and in
+force" or "proposed but never landed".
+
+The rule is enforced mechanically rather than by recall. The spec linter
+(`scripts/lib/spec-linter.js`, run as `task spec:lint` in CI) fails and names
+every non-delta spec that is **already present on the change's base branch**
+while carrying `status: draft`. Presence on the base branch is the
+discriminator, so a spec the change under test *introduces* is not flagged: it
+is legitimately `draft` until the *Merge mechanic* below flips it. Delta-specs
+are exempt too — what `status` a delta should carry is deliberately unsettled,
+per
+[`specs/0109-spec-status-invariant-on-main.md`](../specs/0109-spec-status-invariant-on-main.md)
+→ *Out of scope*.
+
 ### Recording a status transition
 
 The append-only rule (see *Delta-spec convention*) governs a spec's

@@ -1,8 +1,9 @@
 ---
 id: "0100"
 slug: worktree-session-hygiene
-status: draft
+status: implemented
 complexity: small
+interaction-mode: INTERMEDIATE
 related-issue: 609
 version: 1.0.0
 ---

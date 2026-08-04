@@ -1,7 +1,7 @@
 ---
 id: "0027"
 slug: docs-ia-and-publication-contract
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 292

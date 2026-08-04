@@ -1,7 +1,7 @@
 ---
 id: "0091"
 slug: org-mcp-declaration
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 631

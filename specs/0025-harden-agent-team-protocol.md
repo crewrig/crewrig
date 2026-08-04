@@ -1,7 +1,7 @@
 ---
 id: "0025"
 slug: harden-agent-team-protocol
-status: draft
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 280

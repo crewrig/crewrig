@@ -1,7 +1,7 @@
 ---
 id: "0011"
 slug: agents-md-size-reduction
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 219

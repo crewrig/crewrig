@@ -1,7 +1,7 @@
 ---
 id: "0015"
 slug: overlay-starter-templates
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 229

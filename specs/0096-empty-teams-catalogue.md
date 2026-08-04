@@ -1,7 +1,7 @@
 ---
 id: "0096"
 slug: empty-teams-catalogue
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 603
