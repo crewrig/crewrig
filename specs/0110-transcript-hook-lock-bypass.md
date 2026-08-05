@@ -1,7 +1,7 @@
 ---
 id: "0110"
 slug: transcript-hook-lock-bypass
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 713
