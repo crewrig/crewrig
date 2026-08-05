@@ -228,6 +228,16 @@ except Exception as e:  # acknowledged-exception: broad except intentional — a
     print(f"DAEMON_UNREACHABLE: {_host}:{_port} — {e}", file=sys.stderr)
     sys.exit(4)
 
+import contextlib
+try:
+    import mempalace.palace
+    @contextlib.contextmanager
+    def _mock_mine_palace_lock(palace_path):
+        yield
+    mempalace.palace.mine_palace_lock = _mock_mine_palace_lock
+except ImportError:
+    pass
+
 try:
     from mempalace.mcp_server import tool_add_drawer
 except ImportError as e:
