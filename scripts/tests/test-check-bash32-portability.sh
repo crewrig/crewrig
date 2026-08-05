@@ -25,10 +25,17 @@
 #      gate covers.
 #   g. A declared set with no usable entry fails closed rather than passing
 #      vacuously (docs/scripting-conventions.md Rule 4).
+#   h. No array expansion in the six suites corrected under R6 is unguarded —
+#      the standing half of scenario 5 (R8). See `bare_expansions_in`.
+#   i. That detector is itself probed on 13 fixtures in both directions, so a
+#      future narrowing of it fails here rather than silently going quiet.
 #
 # Scenario 5 — a corrected suite reports the same verdicts on both shells — is
-# not scriptable here: it needs two different Bash binaries. It is discharged by
-# the recorded two-shell evidence run on issue #697.
+# only partly scriptable here: comparing two shells needs two Bash binaries, and
+# that half is discharged by the recorded two-shell evidence run on issue #697.
+# The half that CAN be re-proved every run is case h's invariant: a guarded
+# expansion cannot abort under `set -u`, so guarding all of them removes the
+# class the two-shell run merely samples.
 #
 # Fixtures are written with `printf '%s\n' 'line' 'line'`, never a heredoc, and
 # that is load-bearing rather than stylistic. This file lives under the tree the
@@ -482,6 +489,7 @@ $unguarded"
     'safe	a default with a literal is safe	s="${D[*]:-(none)}"' \
     'bare	bare masked by :- on ANOTHER name	s="${C[*]:-} ${D[@]}"' \
     'bare	bare masked by :- on the SAME name	s="${D[*]:-} ${D[@]}"' \
+    'bare	bare masked by :- on SAME name AND subscript	s="${D[@]:-} ${D[@]}"' \
     'bare	prefix names do not bleed	s="${D[*]:-}" t="${DE[@]}"' \
     'safe	length form is safe	if [ ${#D[@]} -eq 0 ]; then' \
     'safe	slice form is safe	echo "${D[@]:1}"' \
@@ -507,10 +515,10 @@ $unguarded"
 $i_rows
 DETECTOR_PROBE
 
-  if [ "$i_total" -ne 12 ]; then
-    bad "case-i: expected 12 detector probes, ran $i_total"
+  if [ "$i_total" -ne 13 ]; then
+    bad "case-i: expected 13 detector probes, ran $i_total"
   elif [ "$i_fail" -eq 0 ]; then
-    ok "case-i: the bare-expansion detector is correct on all 12 probes, both directions"
+    ok "case-i: the bare-expansion detector is correct on all 13 probes, both directions"
   fi
 }
 
