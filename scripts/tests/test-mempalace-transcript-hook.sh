@@ -39,6 +39,16 @@
 #         `DAEMON_UNREACHABLE:` on stderr) when the daemon is unreachable —
 #         never falling back to `PersistentClient`.
 #
+#   spec 0110 / issue #713 — Survive a concurrently held palace write lock.
+#         The heredoc MUST neutralise `mine_palace_lock` in its own
+#         subprocess so an entry persists while a peer holds the palace
+#         write lock, at EVERY location the write path resolves that
+#         primitive from, only AFTER the daemon is established reachable,
+#         and MUST refuse to persist with a distinct status (5) and prefix
+#         (`LOCK_BYPASS_INEFFECTIVE:`) when it cannot prove the relief is in
+#         force. See the section header before test 12 for the full topology
+#         and the three resolution modes exercised.
+#
 # Usage:
 #   bash scripts/tests/test-mempalace-transcript-hook.sh
 #
@@ -463,6 +473,662 @@ elif echo "$FACTORY_RETURN_LINE" | grep -q "settings=" && echo "$PROBE_LINE" | g
 else
   record FAIL "spec-0088: settings= applied at both hook HttpClient call sites" \
     "factory_return=[$FACTORY_RETURN_LINE] probe=[$PROBE_LINE]"
+fi
+
+# =========================================================================
+# spec 0110 / issue #713 — transcript persistence survives a concurrently
+# held palace write lock.
+#
+# Topology under test. `tool_add_drawer` reaches the on-disk per-palace lock
+# through `ChromaCollection._write_lock()`, which resolves
+# `mine_palace_lock` by a LATE import from `mempalace.palace`. Whenever any
+# peer held that lock, every transcript entry failed with
+# `ADD_FAILED: palace ... is held by PID ...`. The hook now neutralises the
+# primitive in its own subprocess (spec 0110 R1) and refuses to persist when
+# it cannot prove the relief is in force on the real write path (R3/R4).
+#
+# These tests run the REAL shipped Python heredoc — extracted from the hook,
+# same technique as test 6 — against a fully mocked `mempalace` package that
+# mirrors the shipped topology: a genuine `fcntl.flock` lock keyed by
+# sha256(realpath(palace_path)), a `ChromaCollection` whose `_write_lock()`
+# resolves the primitive, and a `tool_add_drawer` that goes through it.
+#
+# Nothing here touches the real palace at ~/.mempalace/palace: the mock's
+# lock directory comes from $CREWRIG_TEST_LOCK_DIR and its palace path from
+# $CREWRIG_TEST_PALACE, both pointing inside a per-test mktemp sandbox. The
+# lock key is a hash of the palace path, so a throwaway path can never
+# contend with the real one.
+#
+# Three resolution modes are generated, because R5 forbids assuming a single
+# resolution site:
+#
+#   late     — today's shipped shape: `_write_lock()` late-imports from
+#              `mempalace.palace`.
+#   modload  — `mempalace.backends.chroma` binds the symbol at MODULE LOAD,
+#              the shape `sync.py` / `miner.py` / `convo_miner.py` already
+#              use. The canonical patch alone would not reach it; the hook's
+#              second patch target must.
+#   elsewhere— `_write_lock()` resolves from a third module the hook does not
+#              know about, bound before the patch runs. The relief is
+#              genuinely ineffective here, and the hook must say so (R3/R4)
+#              rather than persist.
+# =========================================================================
+
+SANDBOX_0110="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_T2" "$TMPDIR_T5" "$SANDBOX_T6" "$TMPDIR_T7" "$SANDBOX_0110"' EXIT
+
+HEREDOC_0110="$SANDBOX_0110/heredoc.py"
+sed -n "/<<.PYEOF./,/^PYEOF$/p" "$HOOK" | sed '1d;$d' > "$HEREDOC_0110"
+
+# -------------------------------------------------------------------------
+# Fixture builders
+# -------------------------------------------------------------------------
+
+# mp_sandbox <dir> <mode>
+# Materialises a mock `chromadb` (reachable daemon, poison PersistentClient)
+# and a mock `mempalace` package in <dir>, with `_write_lock()` resolving the
+# lock primitive per <mode> (late | modload | elsewhere).
+mp_sandbox() {
+  local mp_dir="$1"
+  local mp_mode="$2"
+
+  mkdir -p "$mp_dir/chromadb" "$mp_dir/mempalace/backends"
+
+  # Reachable daemon. `PersistentClient` stays a poison pill (spec 0073): the
+  # relief must not become an excuse to touch the on-disk palace directly.
+  cat > "$mp_dir/chromadb/__init__.py" <<'MOCK'
+import sys
+
+
+class Settings:
+    def __init__(self, chroma_http_max_connections=None,
+                 chroma_http_max_keepalive_connections=None):
+        self.chroma_http_max_connections = chroma_http_max_connections
+        self.chroma_http_max_keepalive_connections = chroma_http_max_keepalive_connections
+
+
+class HttpClient:
+    def __init__(self, host=None, port=None, settings=None):
+        pass
+
+    def heartbeat(self):
+        return 1
+
+
+def PersistentClient(*a, **kw):
+    print("POISON: PersistentClient constructed", file=sys.stderr)
+    raise AssertionError("PersistentClient must never be constructed")
+MOCK
+
+  # Import marker: proves whether the hook loaded mempalace at all. Test 21
+  # (R2 ordering) turns on its absence.
+  cat > "$mp_dir/mempalace/__init__.py" <<'MOCK'
+import os
+
+_marker = os.environ.get("CREWRIG_TEST_MP_IMPORT_MARKER")
+if _marker:
+    with open(_marker, "a") as _f:
+        _f.write("mempalace imported\n")
+MOCK
+
+  # Faithful stand-in for the shipped `mine_palace_lock`: a real
+  # non-blocking fcntl.flock, keyed by sha256 of the normalised realpath, so
+  # a throwaway palace path cannot contend with the real palace's lock.
+  cat > "$mp_dir/mempalace/palace.py" <<'MOCK'
+import contextlib
+import fcntl
+import hashlib
+import os
+
+
+class MineAlreadyRunning(RuntimeError):
+    pass
+
+
+@contextlib.contextmanager
+def mine_palace_lock(palace_path):
+    lock_dir = os.environ["CREWRIG_TEST_LOCK_DIR"]
+    os.makedirs(lock_dir, exist_ok=True)
+    resolved = os.path.normcase(os.path.realpath(os.path.expanduser(palace_path)))
+    key = hashlib.sha256(resolved.encode()).hexdigest()[:16]
+    lf = open(os.path.join(lock_dir, "mine_palace_%s.lock" % key), "a+b")
+    try:
+        try:
+            fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise MineAlreadyRunning(
+                "palace %s is held by another writer" % resolved
+            ) from exc
+        yield
+    finally:
+        lf.close()
+MOCK
+
+  echo "" > "$mp_dir/mempalace/backends/__init__.py"
+
+  if [ "$mp_mode" = "late" ]; then
+    # Today's shipped shape (backends/chroma.py:1348).
+    cat > "$mp_dir/mempalace/backends/chroma.py" <<'MOCK'
+import contextlib
+
+
+class ChromaCollection:
+    def __init__(self, collection, palace_path=None):
+        self._collection = collection
+        self._palace_path = palace_path
+
+    @contextlib.contextmanager
+    def _write_lock(self):
+        if self._palace_path is None:
+            yield
+            return
+        # Late import — resolved at call time.
+        from ..palace import mine_palace_lock
+
+        with mine_palace_lock(self._palace_path):
+            yield
+MOCK
+  elif [ "$mp_mode" = "modload" ]; then
+    # R5's fragility, made real: the symbol is bound at module load, the way
+    # sync.py / miner.py / convo_miner.py already bind it. Patching
+    # `mempalace.palace` alone leaves this binding pointing at the original.
+    cat > "$mp_dir/mempalace/backends/chroma.py" <<'MOCK'
+import contextlib
+
+from ..palace import mine_palace_lock
+
+
+class ChromaCollection:
+    def __init__(self, collection, palace_path=None):
+        self._collection = collection
+        self._palace_path = palace_path
+
+    @contextlib.contextmanager
+    def _write_lock(self):
+        if self._palace_path is None:
+            yield
+            return
+        # Module-load binding — resolved before the hook could patch it.
+        with mine_palace_lock(self._palace_path):
+            yield
+MOCK
+  else
+    # A resolution site the hook does not cover. `_relocated` is imported at
+    # chroma module load — i.e. while the hook is importing the modules it is
+    # about to patch — so its binding is the ORIGINAL primitive and neither
+    # patch target reaches it.
+    cat > "$mp_dir/mempalace/_relocated.py" <<'MOCK'
+from .palace import mine_palace_lock  # noqa: F401
+MOCK
+    cat > "$mp_dir/mempalace/backends/chroma.py" <<'MOCK'
+import contextlib
+
+from .. import _relocated  # binds the original before any patch can land
+
+
+class ChromaCollection:
+    def __init__(self, collection, palace_path=None):
+        self._collection = collection
+        self._palace_path = palace_path
+
+    @contextlib.contextmanager
+    def _write_lock(self):
+        if self._palace_path is None:
+            yield
+            return
+        with _relocated.mine_palace_lock(self._palace_path):
+            yield
+MOCK
+  fi
+
+  # `tool_add_drawer` stand-in: reaches the lock exactly the way the shipped
+  # one does (mcp_server.py:1177 constructs ChromaCollection with the
+  # configured palace_path), and records the write so a test can prove the
+  # entry was stored rather than merely "not errored".
+  cat > "$mp_dir/mempalace/mcp_server.py" <<'MOCK'
+import os
+
+from .backends.chroma import ChromaCollection
+from .palace import MineAlreadyRunning
+
+
+def tool_add_drawer(wing=None, room=None, content=None, added_by=None, **kwargs):
+    coll = ChromaCollection(object(), palace_path=os.environ["CREWRIG_TEST_PALACE"])
+    try:
+        with coll._write_lock():
+            with open(os.environ["CREWRIG_TEST_WRITE_MARKER"], "a") as f:
+                f.write("%s|%s|%s|%s\n" % (wing, room, content, added_by))
+    except MineAlreadyRunning as exc:
+        return {"success": False, "error": str(exc)}
+    return {"success": True, "drawer_id": "test-drawer"}
+MOCK
+}
+
+# Holder process: takes the mock lock on the test palace and keeps it.
+# Mirrors the SPECS-stage reproduction topology (one process holds, another
+# replays the write path).
+mp_holder_script() {
+  cat > "$1" <<'MOCK'
+import os
+import sys
+import time
+
+sys.path.insert(0, os.environ["CREWRIG_TEST_SANDBOX"])
+from mempalace.palace import mine_palace_lock
+
+with mine_palace_lock(os.environ["CREWRIG_TEST_PALACE"]):
+    with open(os.environ["CREWRIG_TEST_READY"], "w") as f:
+        f.write("held\n")
+    time.sleep(float(os.environ.get("CREWRIG_TEST_HOLD_SECS", "25")))
+MOCK
+}
+
+# mp_wait_ready <ready-file> — poll up to ~10s for the holder to signal.
+mp_wait_ready() {
+  local mp_i=0
+  while [ "$mp_i" -lt 100 ]; do
+    if [ -f "$1" ]; then
+      return 0
+    fi
+    sleep 0.1
+    mp_i=$((mp_i + 1))
+  done
+  return 1
+}
+
+# -------------------------------------------------------------------------
+# Test 12/13 — spec 0110 R1, scenario "an entry persists while a peer holds
+# the lock".
+#
+# Two-sided, so the test cannot pass vacuously. A CONTROL run first replays
+# the same mocked write path WITHOUT the hook's relief and must FAIL with the
+# lock-contention error — that is what proves the fixture actually reproduces
+# the defect. Only then is the real shipped heredoc run against the identical
+# fixture, and it must succeed and store the entry.
+# -------------------------------------------------------------------------
+S12="$SANDBOX_0110/s12"
+mkdir -p "$S12/palace"
+mp_sandbox "$S12" late
+mp_holder_script "$S12/holder.py"
+
+cat > "$S12/control.py" <<'MOCK'
+import os
+import sys
+
+sys.path.insert(0, os.environ["CREWRIG_TEST_SANDBOX"])
+from mempalace.mcp_server import tool_add_drawer
+
+r = tool_add_drawer(wing="transcripts", room="r", content="c", added_by="a")
+print("CONTROL_SUCCESS" if r.get("success") else "CONTROL_REFUSED: %s" % r.get("error"))
+MOCK
+
+# Env is passed per invocation, never exported: every fixture below shares
+# the same variable names, so a global export would silently hand a later
+# test the wrong sandbox.
+CREWRIG_TEST_SANDBOX="$S12" CREWRIG_TEST_LOCK_DIR="$S12/locks" \
+  CREWRIG_TEST_PALACE="$S12/palace" CREWRIG_TEST_READY="$S12/holder-ready" \
+  CREWRIG_TEST_HOLD_SECS=25 \
+  python3 "$S12/holder.py" >"$S12/holder.log" 2>&1 &
+HOLDER_PID_12=$!
+
+if ! mp_wait_ready "$S12/holder-ready"; then
+  record FAIL "spec-0110-r1: entry persists while a peer holds the palace write lock" \
+    "lock holder never signalled ready: $(cat "$S12/holder.log" 2>/dev/null)"
+  record FAIL "spec-0110-r1: fixture reproduces the defect without the relief (control)" \
+    "lock holder never signalled ready"
+else
+  CONTROL_OUT_12="$(CREWRIG_TEST_SANDBOX="$S12" CREWRIG_TEST_LOCK_DIR="$S12/locks" \
+    CREWRIG_TEST_PALACE="$S12/palace" CREWRIG_TEST_WRITE_MARKER="$S12/control-writes.txt" \
+    python3 "$S12/control.py" 2>&1)"
+  if echo "$CONTROL_OUT_12" | grep -q "CONTROL_REFUSED"; then
+    record PASS "spec-0110-r1: fixture reproduces the defect without the relief (control)"
+  else
+    record FAIL "spec-0110-r1: fixture reproduces the defect without the relief (control)" \
+      "expected the unrelieved write path to be refused while the peer holds the lock, got: $CONTROL_OUT_12"
+  fi
+
+  PYTHONPATH="$S12" CREWRIG_TEST_LOCK_DIR="$S12/locks" CREWRIG_TEST_PALACE="$S12/palace" \
+    CREWRIG_TEST_WRITE_MARKER="$S12/writes.txt" \
+    TRANSCRIPT_ROOM=room-12 TRANSCRIPT_CONTENT="[USER] held-lock entry" \
+    TRANSCRIPT_AGENT=transcript-hook \
+    python3 "$HEREDOC_0110" >"$S12/stdout" 2>"$S12/stderr"
+  RC_12=$?
+
+  if [ "$RC_12" -eq 0 ] && grep -q "^OK$" "$S12/stdout" \
+     && grep -q "held-lock entry" "$S12/writes.txt" 2>/dev/null \
+     && ! grep -q "POISON" "$S12/stderr"; then
+    record PASS "spec-0110-r1: entry persists while a peer holds the palace write lock"
+  else
+    record FAIL "spec-0110-r1: entry persists while a peer holds the palace write lock" \
+      "rc=$RC_12 stdout=$(cat "$S12/stdout" 2>/dev/null) stderr=$(cat "$S12/stderr" 2>/dev/null) writes=$(cat "$S12/writes.txt" 2>/dev/null)"
+  fi
+fi
+
+kill "$HOLDER_PID_12" 2>/dev/null
+wait "$HOLDER_PID_12" 2>/dev/null
+
+# -------------------------------------------------------------------------
+# Test 14 — spec 0110, scenario "nothing changes when no peer holds the
+# lock". The relief must not be a behaviour change on the uncontended path:
+# same fixture, no holder, entry still stored and success still reported.
+# -------------------------------------------------------------------------
+S14="$SANDBOX_0110/s14"
+mkdir -p "$S14/palace"
+mp_sandbox "$S14" late
+
+if PYTHONPATH="$S14" CREWRIG_TEST_LOCK_DIR="$S14/locks" CREWRIG_TEST_PALACE="$S14/palace" \
+   CREWRIG_TEST_WRITE_MARKER="$S14/writes.txt" \
+   TRANSCRIPT_ROOM=room-14 TRANSCRIPT_CONTENT="[USER] uncontended entry" \
+   TRANSCRIPT_AGENT=transcript-hook \
+   python3 "$HEREDOC_0110" >"$S14/stdout" 2>"$S14/stderr" \
+   && grep -q "^OK$" "$S14/stdout" \
+   && grep -q "uncontended entry" "$S14/writes.txt" 2>/dev/null; then
+  record PASS "spec-0110: uncontended path unchanged — entry stored, success reported"
+else
+  record FAIL "spec-0110: uncontended path unchanged — entry stored, success reported" \
+    "stdout=$(cat "$S14/stdout" 2>/dev/null) stderr=$(cat "$S14/stderr" 2>/dev/null) writes=$(cat "$S14/writes.txt" 2>/dev/null)"
+fi
+
+# -------------------------------------------------------------------------
+# Test 15 — spec 0110 R5: the relief covers a MODULE-LOAD resolution site,
+# not only the late import the shipped library happens to use today.
+#
+# This is the regression that a single-location patch cannot pass. The
+# fixture binds `mine_palace_lock` inside `mempalace.backends.chroma` at
+# module load — the shape three sibling modules in the real library already
+# use — so patching `mempalace.palace` alone leaves the write path holding
+# the original primitive. With a peer holding the lock, a single-location
+# relief fails; the hook's second patch target is what makes this pass.
+# -------------------------------------------------------------------------
+S15="$SANDBOX_0110/s15"
+mkdir -p "$S15/palace"
+mp_sandbox "$S15" modload
+mp_holder_script "$S15/holder.py"
+
+CREWRIG_TEST_SANDBOX="$S15" CREWRIG_TEST_LOCK_DIR="$S15/locks" \
+  CREWRIG_TEST_PALACE="$S15/palace" CREWRIG_TEST_READY="$S15/holder-ready" \
+  CREWRIG_TEST_HOLD_SECS=25 \
+  python3 "$S15/holder.py" >"$S15/holder.log" 2>&1 &
+HOLDER_PID_15=$!
+
+if ! mp_wait_ready "$S15/holder-ready"; then
+  record FAIL "spec-0110-r5: relief covers a module-load resolution site (not one location)" \
+    "lock holder never signalled ready: $(cat "$S15/holder.log" 2>/dev/null)"
+else
+  PYTHONPATH="$S15" CREWRIG_TEST_LOCK_DIR="$S15/locks" CREWRIG_TEST_PALACE="$S15/palace" \
+    CREWRIG_TEST_WRITE_MARKER="$S15/writes.txt" \
+    TRANSCRIPT_ROOM=room-15 TRANSCRIPT_CONTENT="[USER] modload entry" \
+    TRANSCRIPT_AGENT=transcript-hook \
+    python3 "$HEREDOC_0110" >"$S15/stdout" 2>"$S15/stderr"
+  RC_15=$?
+  if [ "$RC_15" -eq 0 ] && grep -q "modload entry" "$S15/writes.txt" 2>/dev/null; then
+    record PASS "spec-0110-r5: relief covers a module-load resolution site (not one location)"
+  else
+    record FAIL "spec-0110-r5: relief covers a module-load resolution site (not one location)" \
+      "rc=$RC_15 stderr=$(cat "$S15/stderr" 2>/dev/null) writes=$(cat "$S15/writes.txt" 2>/dev/null)"
+  fi
+fi
+
+kill "$HOLDER_PID_15" 2>/dev/null
+wait "$HOLDER_PID_15" 2>/dev/null
+
+# -------------------------------------------------------------------------
+# Test 16/17 — spec 0110 R3/R4, scenario "an ineffective relief is reported,
+# not silently absorbed".
+#
+# The fixture resolves the lock from a module the hook does not patch, bound
+# before the patch could land. The hook must DECLINE to persist (nothing in
+# the write marker — R3) and report a failure whose exit status and stderr
+# prefix are used by no other failure it reports (R4): not 2/IMPORT_ERROR:,
+# not 3/ADD_FAILED:, not 4/DAEMON_UNREACHABLE:.
+# -------------------------------------------------------------------------
+S16="$SANDBOX_0110/s16"
+mkdir -p "$S16/palace"
+mp_sandbox "$S16" elsewhere
+
+PYTHONPATH="$S16" CREWRIG_TEST_LOCK_DIR="$S16/locks" CREWRIG_TEST_PALACE="$S16/palace" \
+  CREWRIG_TEST_WRITE_MARKER="$S16/writes.txt" \
+  TRANSCRIPT_ROOM=room-16 TRANSCRIPT_CONTENT="[USER] must not be stored" \
+  TRANSCRIPT_AGENT=transcript-hook \
+  python3 "$HEREDOC_0110" >"$S16/stdout" 2>"$S16/stderr"
+RC_16=$?
+
+if [ "$RC_16" -eq 5 ] && grep -q "LOCK_BYPASS_INEFFECTIVE:" "$S16/stderr" \
+   && [ ! -f "$S16/writes.txt" ]; then
+  record PASS "spec-0110-r3: ineffective relief declines to persist and exits 5"
+else
+  record FAIL "spec-0110-r3: ineffective relief declines to persist and exits 5" \
+    "rc=$RC_16 (want 5) stderr=$(cat "$S16/stderr" 2>/dev/null) stored=$([ -f "$S16/writes.txt" ] && cat "$S16/writes.txt" || echo '(nothing)')"
+fi
+
+# R4 — the status AND the prefix must both be unused by every other failure
+# the hook reports. Asserted against the hook source itself, so the claim is
+# about the shipped contract and not just about this one run: each of the
+# three pre-existing prefixes must pair with its own distinct exit code, and
+# neither `5` nor `LOCK_BYPASS_INEFFECTIVE:` may appear on any of them.
+R4_CLASH=""
+for pair in "IMPORT_ERROR:2" "ADD_FAILED:3" "DAEMON_UNREACHABLE:4"; do
+  prefix="${pair%%:*}:"
+  code="${pair##*:}"
+  if grep -q "LOCK_BYPASS_INEFFECTIVE" "$S16/stderr" \
+     && echo "$prefix" | grep -q "LOCK_BYPASS_INEFFECTIVE"; then
+    R4_CLASH="$R4_CLASH prefix-collision:$prefix"
+  fi
+  if [ "$code" = "5" ]; then
+    R4_CLASH="$R4_CLASH status-collision:$prefix=$code"
+  fi
+  if ! grep -q "sys.exit($code)" "$HOOK"; then
+    R4_CLASH="$R4_CLASH missing-exit:$prefix->$code"
+  fi
+done
+if grep -q "LOCK_BYPASS_INEFFECTIVE" "$S16/stderr" \
+   && grep -qE 'IMPORT_ERROR|ADD_FAILED|DAEMON_UNREACHABLE' "$S16/stderr"; then
+  R4_CLASH="$R4_CLASH reported-alongside-another-prefix"
+fi
+if [ -z "$R4_CLASH" ] && grep -q "sys.exit(5)" "$HOOK"; then
+  record PASS "spec-0110-r4: status 5 + LOCK_BYPASS_INEFFECTIVE: collide with no existing failure"
+else
+  record FAIL "spec-0110-r4: status 5 + LOCK_BYPASS_INEFFECTIVE: collide with no existing failure" \
+    "clashes=[$R4_CLASH] exit5_present=$(grep -c 'sys.exit(5)' "$HOOK")"
+fi
+
+# -------------------------------------------------------------------------
+# Test 18 — spec 0110 R7, through the REAL bash hook: an ineffective relief
+# must still let the calling session's turn succeed. Runs the whole hook end
+# to end (Stop event on stdin, the ineffective fixture on PYTHONPATH) and
+# asserts hook exit 0 plus the failure surfaced on stderr the same way every
+# other failure is — `FAILED to persist ... (rc=5)` with the Python stderr
+# appended.
+# -------------------------------------------------------------------------
+STDERR_18="$S16/hook-stderr"
+(
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  export MEMPALACE_PYTHON=python3
+  export PYTHONPATH="$S16"
+  export CREWRIG_TEST_LOCK_DIR="$S16/locks"
+  export CREWRIG_TEST_PALACE="$S16/palace"
+  export CREWRIG_TEST_WRITE_MARKER="$S16/writes-hook.txt"
+  printf '%s' '{"hook_event_name":"Stop"}' | bash "$HOOK" >/dev/null 2>"$STDERR_18"
+)
+RC_18=$?
+
+if [ "$RC_18" -eq 0 ] && grep -q 'FAILED to persist' "$STDERR_18" \
+   && grep -q '(rc=5)' "$STDERR_18" && grep -q 'LOCK_BYPASS_INEFFECTIVE:' "$STDERR_18"; then
+  record PASS "spec-0110-r7: hook still exits 0 and reports rc=5 like every other failure"
+else
+  record FAIL "spec-0110-r7: hook still exits 0 and reports rc=5 like every other failure" \
+    "hook_rc=$RC_18 (want 0) stderr=$(cat "$STDERR_18" 2>/dev/null)"
+fi
+
+# -------------------------------------------------------------------------
+# Test 19/20 — spec 0110 R2, scenario "an unreachable service keeps its
+# existing behaviour".
+#
+# Ordering is normative: the relief must be installed only AFTER the daemon
+# has been established reachable, so a persistence attempt whose remote
+# routing is not established keeps the lock's protection. Proven by absence:
+# `mempalace/__init__.py` appends to $CREWRIG_TEST_MP_IMPORT_MARKER on
+# import, so if the file never appears, the hook exited at the heartbeat
+# without loading — let alone patching — the locking library. Test 6 already
+# pins the exit-4 / DAEMON_UNREACHABLE: behaviour itself; this pair adds the
+# ordering guarantee and the R7 tail.
+# -------------------------------------------------------------------------
+S19="$SANDBOX_0110/s19"
+mkdir -p "$S19/palace"
+mp_sandbox "$S19" late
+# Same fixture, unreachable daemon.
+cat > "$S19/chromadb/__init__.py" <<'MOCK'
+import sys
+
+
+class Settings:
+    def __init__(self, chroma_http_max_connections=None,
+                 chroma_http_max_keepalive_connections=None):
+        pass
+
+
+class HttpClient:
+    def __init__(self, host=None, port=None, settings=None):
+        pass
+
+    def heartbeat(self):
+        raise ConnectionError("mock: connection refused")
+
+
+def PersistentClient(*a, **kw):
+    print("POISON: PersistentClient constructed", file=sys.stderr)
+    raise AssertionError("PersistentClient must never be constructed")
+MOCK
+
+PYTHONPATH="$S19" CREWRIG_TEST_LOCK_DIR="$S19/locks" CREWRIG_TEST_PALACE="$S19/palace" \
+  CREWRIG_TEST_WRITE_MARKER="$S19/writes.txt" \
+  CREWRIG_TEST_MP_IMPORT_MARKER="$S19/mempalace-imported" \
+  TRANSCRIPT_ROOM=room-19 TRANSCRIPT_CONTENT="[USER] unreachable" \
+  TRANSCRIPT_AGENT=transcript-hook \
+  python3 "$HEREDOC_0110" >"$S19/stdout" 2>"$S19/stderr"
+RC_19=$?
+
+if [ "$RC_19" -eq 4 ] && grep -q "DAEMON_UNREACHABLE:" "$S19/stderr" \
+   && [ ! -f "$S19/mempalace-imported" ] && [ ! -d "$S19/locks" ]; then
+  record PASS "spec-0110-r2: relief not installed before the daemon is established reachable"
+else
+  record FAIL "spec-0110-r2: relief not installed before the daemon is established reachable" \
+    "rc=$RC_19 (want 4) mempalace_loaded=$([ -f "$S19/mempalace-imported" ] && echo yes || echo no) (want no) locks_dir=$([ -d "$S19/locks" ] && echo yes || echo no) (want no) stderr=$(cat "$S19/stderr" 2>/dev/null)"
+fi
+
+STDERR_20="$S19/hook-stderr"
+(
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  export MEMPALACE_PYTHON=python3
+  export PYTHONPATH="$S19"
+  export CREWRIG_TEST_LOCK_DIR="$S19/locks"
+  export CREWRIG_TEST_PALACE="$S19/palace"
+  export CREWRIG_TEST_WRITE_MARKER="$S19/writes-hook.txt"
+  printf '%s' '{"hook_event_name":"Stop"}' | bash "$HOOK" >/dev/null 2>"$STDERR_20"
+)
+RC_20=$?
+
+if [ "$RC_20" -eq 0 ] && grep -q '(rc=4)' "$STDERR_20" \
+   && grep -q 'DAEMON_UNREACHABLE:' "$STDERR_20"; then
+  record PASS "spec-0110-r7: hook still exits 0 on the unreachable-service path"
+else
+  record FAIL "spec-0110-r7: hook still exits 0 on the unreachable-service path" \
+    "hook_rc=$RC_20 (want 0) stderr=$(cat "$STDERR_20" 2>/dev/null)"
+fi
+
+# -------------------------------------------------------------------------
+# Test 21 — spec 0110 R6, scenario "a peer's lock protection is unaffected".
+#
+# The relief is an in-memory rebind inside the hook's own subprocess, so it
+# must leave the lock every other process takes exactly as it was. After the
+# hook has persisted an entry under the relief (test 14's fixture, replayed
+# here), a separate process must still be able to ACQUIRE the lock — proving
+# the relief neither wedged nor consumed it — and while that process holds
+# it, a third acquisition must still be REFUSED, proving the protection
+# still bites for everyone but the hook.
+# -------------------------------------------------------------------------
+S21="$SANDBOX_0110/s21"
+mkdir -p "$S21/palace"
+mp_sandbox "$S21" late
+mp_holder_script "$S21/holder.py"
+
+cat > "$S21/acquire.py" <<'MOCK'
+import os
+import sys
+
+sys.path.insert(0, os.environ["CREWRIG_TEST_SANDBOX"])
+from mempalace.palace import MineAlreadyRunning, mine_palace_lock
+
+try:
+    with mine_palace_lock(os.environ["CREWRIG_TEST_PALACE"]):
+        print("ACQUIRED")
+except MineAlreadyRunning:
+    print("REFUSED")
+MOCK
+
+PYTHONPATH="$S21" CREWRIG_TEST_LOCK_DIR="$S21/locks" CREWRIG_TEST_PALACE="$S21/palace" \
+  CREWRIG_TEST_WRITE_MARKER="$S21/writes.txt" \
+  TRANSCRIPT_ROOM=room-21 TRANSCRIPT_CONTENT="[USER] relieved entry" \
+  TRANSCRIPT_AGENT=transcript-hook \
+  python3 "$HEREDOC_0110" >"$S21/stdout" 2>"$S21/stderr"
+RC_21=$?
+
+AFTER_FREE_21="$(CREWRIG_TEST_SANDBOX="$S21" CREWRIG_TEST_LOCK_DIR="$S21/locks" \
+  CREWRIG_TEST_PALACE="$S21/palace" python3 "$S21/acquire.py" 2>&1)"
+
+CREWRIG_TEST_SANDBOX="$S21" CREWRIG_TEST_LOCK_DIR="$S21/locks" \
+  CREWRIG_TEST_PALACE="$S21/palace" CREWRIG_TEST_READY="$S21/holder-ready" \
+  CREWRIG_TEST_HOLD_SECS=25 \
+  python3 "$S21/holder.py" >"$S21/holder.log" 2>&1 &
+HOLDER_PID_21=$!
+if mp_wait_ready "$S21/holder-ready"; then
+  AFTER_HELD_21="$(CREWRIG_TEST_SANDBOX="$S21" CREWRIG_TEST_LOCK_DIR="$S21/locks" \
+    CREWRIG_TEST_PALACE="$S21/palace" python3 "$S21/acquire.py" 2>&1)"
+else
+  AFTER_HELD_21="holder-never-ready: $(cat "$S21/holder.log" 2>/dev/null)"
+fi
+kill "$HOLDER_PID_21" 2>/dev/null
+wait "$HOLDER_PID_21" 2>/dev/null
+
+if [ "$RC_21" -eq 0 ] && [ "$AFTER_FREE_21" = "ACQUIRED" ] && [ "$AFTER_HELD_21" = "REFUSED" ]; then
+  record PASS "spec-0110-r6: a peer's lock protection is unaffected by the relief"
+else
+  record FAIL "spec-0110-r6: a peer's lock protection is unaffected by the relief" \
+    "hook_rc=$RC_21 after_relief_uncontended=[$AFTER_FREE_21] (want ACQUIRED) while_peer_holds=[$AFTER_HELD_21] (want REFUSED)"
+fi
+
+# -------------------------------------------------------------------------
+# Test 22 — spec 0110 R2/R5, static regression locks on the shipped source.
+#
+# The behavioural tests above prove the contract on the fixtures they build;
+# these two locks pin the two properties a fixture cannot observe:
+#
+#   R2 — the relief installation must appear AFTER the heartbeat probe's
+#        `sys.exit(4)` in source order. A reorder would relieve the lock on a
+#        path whose HTTP routing is not established, and no mock can catch
+#        that because the reordered code still passes every fixture that has
+#        a reachable daemon.
+#   R5 — both resolution sites must be named in the heredoc. Test 15 proves
+#        the module-load site is covered; this pins that the canonical
+#        `mempalace.palace` site was not dropped in the process.
+# -------------------------------------------------------------------------
+EXIT4_LINE="$(grep -n 'sys.exit(4)' "$HOOK" | head -1 | cut -d: -f1)"
+RELIEF_LINE="$(grep -n 'mine_palace_lock = _relieved_palace_lock' "$HOOK" | head -1 | cut -d: -f1)"
+if [ -z "$EXIT4_LINE" ] || [ -z "$RELIEF_LINE" ]; then
+  record FAIL "spec-0110-r2: relief installed after the daemon-reachability probe (source order)" \
+    "exit4_line=[$EXIT4_LINE] relief_line=[$RELIEF_LINE] — one of the two anchors is missing from $HOOK"
+elif [ "$RELIEF_LINE" -gt "$EXIT4_LINE" ]; then
+  record PASS "spec-0110-r2: relief installed after the daemon-reachability probe (source order)"
+else
+  record FAIL "spec-0110-r2: relief installed after the daemon-reachability probe (source order)" \
+    "relief installed at line $RELIEF_LINE, before the DAEMON_UNREACHABLE exit at line $EXIT4_LINE"
+fi
+
+if grep -q 'import mempalace.palace' "$HOOK" && grep -q 'import mempalace.backends.chroma' "$HOOK"; then
+  record PASS "spec-0110-r5: both known resolution sites named in the hook source"
+else
+  record FAIL "spec-0110-r5: both known resolution sites named in the hook source" \
+    "expected both 'import mempalace.palace' and 'import mempalace.backends.chroma' in $HOOK"
 fi
 
 # -------------------------------------------------------------------------
