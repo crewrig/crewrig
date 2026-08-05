@@ -123,6 +123,7 @@ capabilities:
       - bash scripts/tests/test-setup-ensure-tier-built.sh
       - bash scripts/check-gemini-overlay-enrollment.sh
       - bash scripts/tests/test-check-gemini-overlay-enrollment.sh
+      - bash scripts/tests/test-check-bash32-portability.sh
 
   - id: lint-markdown
     name: "Lint Markdown files"
@@ -262,6 +263,7 @@ capabilities:
           exit 1
         fi
         echo "Rule 1 clean."
+      - bash scripts/check-bash32-portability.sh
 
   # security-mcp.yml gates on pull_request to [main] with a path filter on the
   # MCP/dependency manifests (.github/workflows/security-mcp.yml lines 3-11).

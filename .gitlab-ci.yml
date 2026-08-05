@@ -107,6 +107,7 @@ check-components:
     - "bash scripts/tests/test-setup-ensure-tier-built.sh"
     - "bash scripts/check-gemini-overlay-enrollment.sh"
     - "bash scripts/tests/test-check-gemini-overlay-enrollment.sh"
+    - "bash scripts/tests/test-check-bash32-portability.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -207,6 +208,7 @@ grep-anti-patterns:
           exit 1
         fi
         echo "Rule 1 clean."
+    - "bash scripts/check-bash32-portability.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:

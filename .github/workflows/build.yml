@@ -261,6 +261,9 @@ jobs:
       - name: Test Gemini overlay enrollment regression (spec 0085)
         run: bash scripts/tests/test-check-gemini-overlay-enrollment.sh
 
+      - name: Test Bash 3.2 portability guard regression (spec 0111)
+        run: bash scripts/tests/test-check-bash32-portability.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
