@@ -54,3 +54,11 @@ jobs:
             exit 1
           fi
           echo "Rule 1 clean."
+
+      - name: Flag Bash 4+ constructs in governed scripts
+        # Rule 5 — unlike the two steps above, the matching lives in a script
+        # rather than inline here, so its declared set (ci/bash32-forbidden.txt)
+        # is one data file instead of a per-engine hand-copied regex, and a
+        # maintainer can run the same check locally.
+        # See docs/scripting-conventions.md, Rule 5.
+        run: bash scripts/check-bash32-portability.sh

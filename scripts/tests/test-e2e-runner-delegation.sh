@@ -27,20 +27,30 @@ RUN_SH="${REPO_DIR}/tests/e2e/run.sh"
 REPORTS="${REPO_DIR}/tests/e2e/reports"
 
 # Track every dir created by this test so we leave no debris behind.
-mapfile -t pre_dirs < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+#
+# Two bash 3.2 (stock macOS) accommodations run throughout this file, both per
+# docs/scripting-conventions.md Rule 5:
+#   - `while read` rather than `mapfile`, which is a bash 4 builtin;
+#   - every array expansion written `${A[@]+"${A[@]}"}`, because bash 3.2 treats
+#     an empty array as an unset variable and aborts on it under `set -u`.
+pre_dirs=()
+while IFS= read -r line || [ -n "$line" ]; do pre_dirs+=("$line"); done \
+  < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
 CREATED=()
 cleanup() {
-  for d in "${CREATED[@]}"; do
+  for d in ${CREATED[@]+"${CREATED[@]}"}; do
     [[ -n "$d" && -d "$d" ]] && rm -rf -- "$d"
   done
 }
 trap cleanup EXIT
 
 collect_new_dirs() {
-  mapfile -t now_dirs < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
-  for d in "${now_dirs[@]}"; do
+  now_dirs=()
+  while IFS= read -r line || [ -n "$line" ]; do now_dirs+=("$line"); done \
+    < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+  for d in ${now_dirs[@]+"${now_dirs[@]}"}; do
     known=0
-    for p in "${pre_dirs[@]}"  "${CREATED[@]}"; do
+    for p in ${pre_dirs[@]+"${pre_dirs[@]}"} ${CREATED[@]+"${CREATED[@]}"}; do
       [[ "$d" == "$p" ]] && { known=1; break; }
     done
     [[ $known -eq 0 ]] && CREATED+=("$d")

@@ -56,7 +56,9 @@ done
 # --- Case 3: each [cli.*] has required fields ---------------------------
 REQUIRED=(image command command_args env_keys mounts)
 for cli in claude gemini copilot; do
-  for k in "${REQUIRED[@]}"; do
+  # `${A[@]+…}` per docs/scripting-conventions.md Rule 5: bash 3.2 (stock macOS)
+  # treats an empty array as an unset variable and aborts on it under `set -u`.
+  for k in ${REQUIRED[@]+"${REQUIRED[@]}"}; do
     if jq -e --arg c "$cli" --arg k "$k" '.cli[$c] | has($k)' <<< "$JSON" >/dev/null; then
       note_pass "[cli.$cli].$k present"
     else
@@ -76,12 +78,19 @@ for cli in claude gemini copilot; do
 done
 
 # --- Case 5: known image tags ------------------------------------------
-declare -A WANT_IMG=( [claude]="crewrig/e2e-claude:latest"
-                      [gemini]="crewrig/e2e-gemini:latest"
-                      [copilot]="crewrig/e2e-copilot:latest" )
+# A `case` rather than an associative-array lookup table: bash 3.2 (stock
+# macOS) has no associative arrays, per docs/scripting-conventions.md Rule 5.
+# The three tags stay verbatim literals on purpose — deriving them as
+# "crewrig/e2e-$cli:latest" would couple this assertion to the very naming
+# convention it exists to pin, so it would assert nothing.
 for cli in claude gemini copilot; do
   got="$(jq -r --arg c "$cli" '.cli[$c].image' <<< "$JSON")"
-  want="${WANT_IMG[$cli]}"
+  case "$cli" in
+    claude)  want="crewrig/e2e-claude:latest" ;;
+    gemini)  want="crewrig/e2e-gemini:latest" ;;
+    copilot) want="crewrig/e2e-copilot:latest" ;;
+    *)       want="(no expected image declared for $cli)" ;;
+  esac
   if [[ "$got" == "$want" ]]; then
     note_pass "[cli.$cli].image == $want"
   else

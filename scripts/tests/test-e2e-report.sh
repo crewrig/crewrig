@@ -128,11 +128,17 @@ TAP version 13
 ok 1 - claude/01-layered-context
 EOF
 bash "$REPORT_SH" --tap-dir "$tap7_dir" --output-dir "$out7_dir" --dry-run >/dev/null 2>"$TMP/c7.err"
-mapfile -t md_files7 < <(find "$out7_dir" -maxdepth 1 -name '*.md' 2>/dev/null)
+# `while read` rather than `mapfile` for bash 3.2 compat (macOS default), and
+# `${A[*]:-}` rather than `${A[*]}` because bash 3.2 treats an empty array as an
+# unset variable under `set -u` — the case-8 message below already used that
+# idiom. Both per docs/scripting-conventions.md Rule 5.
+md_files7=()
+while IFS= read -r line || [ -n "$line" ]; do md_files7+=("$line"); done \
+  < <(find "$out7_dir" -maxdepth 1 -name '*.md' 2>/dev/null)
 if [[ ${#md_files7[@]} -eq 0 ]]; then
   note_pass "--dry-run writes no markdown file"
 else
-  note_fail "--dry-run writes no markdown file" "found: ${md_files7[*]}"
+  note_fail "--dry-run writes no markdown file" "found: ${md_files7[*]:-}"
 fi
 
 # --- Case 8: without --dry-run, parity-*.md is created -------------------
@@ -146,7 +152,9 @@ ok 1 - claude/01-layered-context
 EOF
 bash "$REPORT_SH" --tap-dir "$tap8_dir" --output-dir "$out8_dir" >/dev/null 2>"$TMP/c8.err"
 rc8=$?
-mapfile -t md_files8 < <(find "$out8_dir" -maxdepth 1 -name 'parity-*.md' 2>/dev/null)
+md_files8=()
+while IFS= read -r line || [ -n "$line" ]; do md_files8+=("$line"); done \
+  < <(find "$out8_dir" -maxdepth 1 -name 'parity-*.md' 2>/dev/null)
 if [[ $rc8 -eq 0 && ${#md_files8[@]} -ge 1 ]]; then
   note_pass "non-dry-run creates parity-*.md"
 else
