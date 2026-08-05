@@ -375,6 +375,17 @@ test-setup-org-mcp test-e2e-defaults-toml test-setup-ensure-tier-built'
     # empty array under `set -u` (verified on 3.2.57), and the leading `#`
     # keeps it out of the `${name[` pattern.
     #
+    # Full-line comments are dropped before counting, for the same reason the
+    # guard itself drops them (check-bash32-portability.sh, requirement 4): a
+    # comment that *names* an expansion is prose, not use. Without this the
+    # scan contradicts the very doctrine this change establishes. Four of the
+    # six suites document their own guarding convention in exactly that form —
+    # e.g. "`${A[*]:-}` rather than `${A[*]}` because bash 3.2 …" — and they
+    # satisfied the count comparison only because each names the guarded form
+    # alongside the bare one, which balances the tally by phrasing coincidence.
+    # Rewording such a comment to cite only the bare form would have turned this
+    # case red with nothing wrong in the suite.
+    #
     # No -P and no \b, so BSD grep (macOS) and GNU grep (CI) agree.
     while IFS= read -r ln || [ -n "$ln" ]; do
       [ -n "$ln" ] || continue
@@ -387,7 +398,8 @@ test-setup-org-mcp test-e2e-defaults-toml test-setup-ensure-tier-built'
 "
       fi
     done <<PORTABILITY_SCAN
-$(grep -nE '\$\{[A-Za-z_][A-Za-z0-9_]*\[[@*]\]' "$suite_path" || true)
+$(grep -nE '\$\{[A-Za-z_][A-Za-z0-9_]*\[[@*]\]' "$suite_path" \
+   | grep -vE '^[0-9]+:[[:space:]]*#' || true)
 PORTABILITY_SCAN
   done
 
