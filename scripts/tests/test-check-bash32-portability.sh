@@ -376,6 +376,65 @@ bare_expansions_in() {
   else
     bad "case-g: expected exit 2 for an unknown kind, got $CHECK_EXIT (stderr: $CHECK_STDERR)"
   fi
+
+  # The three shapes below all produced `OK` and exit 0 on a tree holding real
+  # violations before iteration 6 — the guard's own authority file delivering the
+  # false green the guard exists to eliminate. Each is asserted against a tree
+  # that genuinely violates, so a regression cannot pass by finding nothing.
+  printf '%s\n' '#!/bin/bash' 'mapfile -t x < f' > "$repo/scripts/offender.sh"
+  printf '%s\n' '#!/bin/bash' 'declare -A m=( [a]=1 )' > "$repo/scripts/offender2.sh"
+
+  # A token carrying a regex metacharacter. Tokens are interpolated into an ERE,
+  # so `(` built an invalid pattern; grep exited 2 and the old pipeline discarded
+  # it, making "could not look" indistinguishable from "found nothing".
+  printf '%s\t%s\t%s\n' 'command' '(' 'a token with a metacharacter' \
+    > "$repo/ci/bash32-forbidden.txt"
+  run_check "$repo"
+  if [ "$CHECK_EXIT" -eq 2 ]; then
+    ok "case-g: a token with a regex metacharacter exits 2, never OK"
+  else
+    bad "case-g: metacharacter token gave $CHECK_EXIT, expected 2 (stdout: $CHECK_STDOUT)"
+  fi
+
+  # An empty token field. Splitting on generic whitespace slid the reason into the
+  # token's place, so the guard scanned for the first word of the prose.
+  printf '%s\t%s\t%s\n' 'command' '' 'a reason that used to slide into the token' \
+    > "$repo/ci/bash32-forbidden.txt"
+  run_check "$repo"
+  if [ "$CHECK_EXIT" -eq 2 ]; then
+    ok "case-g: an empty token field exits 2 rather than adopting the reason"
+  else
+    bad "case-g: empty token gave $CHECK_EXIT, expected 2 (stdout: $CHECK_STDOUT)"
+  fi
+
+  # A row with no tab at all: the format is tab-separated, and a space-separated
+  # row is a malformed authority rather than something to interpret generously.
+  printf '%s\n' 'command mapfile a space separated row' \
+    > "$repo/ci/bash32-forbidden.txt"
+  run_check "$repo"
+  if [ "$CHECK_EXIT" -eq 2 ]; then
+    ok "case-g: a row with no tab-separated fields exits 2"
+  else
+    bad "case-g: tabless row gave $CHECK_EXIT, expected 2 (stdout: $CHECK_STDOUT)"
+  fi
+
+  # Non-regression on the two tolerated shapes, so the stricter parsing above did
+  # not buy its correctness by rejecting valid input.
+  printf 'command\tmapfile\ttolerated CRLF\r\n' > "$repo/ci/bash32-forbidden.txt"
+  run_check "$repo"
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    ok "case-g: a CRLF-terminated row is still accepted and still detects"
+  else
+    bad "case-g: CRLF row gave $CHECK_EXIT, expected 1 (stderr: $CHECK_STDERR)"
+  fi
+
+  printf 'command\tmapfile\tno trailing newline' > "$repo/ci/bash32-forbidden.txt"
+  run_check "$repo"
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    ok "case-g: a final row without a trailing newline is still read"
+  else
+    bad "case-g: unterminated row gave $CHECK_EXIT, expected 1 (stderr: $CHECK_STDERR)"
+  fi
 }
 
 # ---------------------------------------------------------------------------

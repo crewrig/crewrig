@@ -69,18 +69,46 @@ fi
 CMD_ALT=""
 FLAG_ALT=""
 declared=0
+TAB="$(printf '\t')"
 
 while IFS= read -r line || [ -n "$line" ]; do
   line="${line%$'\r'}"                       # tolerate CRLF
   [[ -z "$line" || "$line" == \#* ]] && continue
-  kind="${line%%[[:space:]]*}"               # first whitespace field
-  rest="${line#"$kind"}"
-  rest="${rest#"${rest%%[![:space:]]*}"}"    # ltrim
-  token="${rest%%[[:space:]]*}"              # second whitespace field
-  if [ -z "$token" ]; then
-    echo "Error: $FORBIDDEN: entry of kind '$kind' declares no token." >&2
+  # Split on TAB, which is what the format declares. Splitting on generic
+  # whitespace instead let a row with an empty token field slide its reason
+  # into the token's place — `command<TAB><TAB>some reason` parsed as
+  # token=`some`, and the guard then scanned for the wrong word and reported
+  # OK on a tree holding real violations. Same false green this script exists
+  # to eliminate, arriving through its own authority file.
+  case "$line" in
+    *"$TAB"*) : ;;
+    *)
+      echo "Error: $FORBIDDEN: entry '$line' has no tab-separated fields." >&2
+      echo "       (expected <kind><TAB><token><TAB><reason>)" >&2
+      exit 2
+      ;;
+  esac
+  kind="${line%%"$TAB"*}"                    # first tab field
+  rest="${line#*"$TAB"}"                     # everything past the first tab
+  token="${rest%%"$TAB"*}"                   # second tab field, verbatim
+  if [ -z "$kind" ] || [ -z "$token" ]; then
+    echo "Error: $FORBIDDEN: entry '$line' declares an empty kind or token." >&2
     exit 2
   fi
+  # A token is interpolated into an ERE below, so a regex metacharacter in it
+  # would build an invalid or wrongly-matching pattern. Reject it here rather
+  # than letting grep decide: the declared set is documented as a floor, not a
+  # ceiling, so a maintainer WILL add tokens, and nothing in the file warns
+  # that they are regex-interpolated.
+  case "$token" in
+    *[^A-Za-z0-9_-]*)
+      echo "Error: $FORBIDDEN: token '$token' contains a character that is not" >&2
+      echo "       a letter, digit, underscore or hyphen. Tokens are interpolated" >&2
+      echo "       into a regular expression; a metacharacter would silently" >&2
+      echo "       change or invalidate the pattern." >&2
+      exit 2
+      ;;
+  esac
   case "$kind" in
     command)      CMD_ALT="${CMD_ALT:+$CMD_ALT|}$token" ;;
     declare-flag) FLAG_ALT="${FLAG_ALT:+$FLAG_ALT|}$token" ;;
@@ -135,7 +163,34 @@ fi
 
 # Drop full-line comments (use versus mention, requirement 4), then lines
 # carrying the acknowledged-exception marker (requirement 10).
-HITS="$( (cd "$REPO_DIR" && grep -rnE "$PATTERN" $SCAN_TARGETS 2>/dev/null || true) \
+# grep's exit status is load-bearing and must not be swallowed. `|| true` on the
+# whole pipeline made exit 2 (invalid pattern) indistinguishable from exit 1 (no
+# match): the guard then found nothing, printed OK and exited 0 on a tree holding
+# real violations. Measured on a two-violation fixture, a declared token of `(`
+# produced `OK … (1 declared construct(s), 2 file(s) scanned)` at rc 0 while a
+# well-formed set on the same tree produced `FAILED: 2 line(s)` at rc 1.
+#
+# The token validation above should now make an invalid pattern unreachable, but
+# this stays as the second line of defence: a guard that cannot tell "nothing
+# found" from "could not look" has no business reporting OK. Anything above 1 is
+# grep failing, not grep finding nothing.
+RAW=""
+GREP_RC=0
+GREP_ERR="$(mktemp)"
+RAW="$( cd "$REPO_DIR" && grep -rnE "$PATTERN" $SCAN_TARGETS 2>"$GREP_ERR" )" || GREP_RC=$?
+GREP_MSG="$(cat "$GREP_ERR")"
+rm -f "$GREP_ERR"
+# stderr is captured to a separate file, never folded into stdout: a grep that
+# warns without failing (an unreadable file, a directory loop) would otherwise
+# have its warning counted as a match and reported as a violation.
+if [ "$GREP_RC" -gt 1 ]; then
+  echo "Error: the scan itself failed (grep exit $GREP_RC), so this run proves" >&2
+  echo "       nothing about the tree. Refusing to report a clean result." >&2
+  echo "       grep said: $GREP_MSG" >&2
+  exit 2
+fi
+
+HITS="$( printf '%s\n' "$RAW" \
          | grep -vE '^[^:]*:[0-9]+:[[:space:]]*#' \
          | grep -v 'acknowledged-exception:' || true )"
 
