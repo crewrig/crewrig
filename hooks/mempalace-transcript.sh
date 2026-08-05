@@ -33,6 +33,16 @@
 #   (GitHub Copilot CLI does NOT export a $COPILOT_PROJECT_DIR — the project
 #    path is read from the hook stdin JSON payload, with $PWD as fallback.)
 #
+# Inner Python payload exit codes (surfaced by the hook as `rc=<n>` on the
+# failure log line, alongside the matching stderr prefix). The hook itself
+# always exits 0 — a failed persistence never fails the agent's turn.
+#   2  IMPORT_ERROR:            chromadb or mempalace unavailable
+#   3  ADD_FAILED:              the drawer write was refused
+#   4  DAEMON_UNREACHABLE:      the shared ChromaDB daemon did not answer
+#   5  LOCK_BYPASS_INEFFECTIVE: the spec-0110 palace-write-lock relief could
+#                               not be proven in force on the write path, so
+#                               the entry was deliberately not persisted
+#
 # Requires: jq, mempalace (Python package)
 
 set -euo pipefail
@@ -176,7 +186,7 @@ if [ -n "$CONTENT" ]; then
     TRANSCRIPT_ROOM="$TRANSCRIPT_ROOM" \
     TRANSCRIPT_AGENT="$TRANSCRIPT_AGENT" \
     ${_HOOK_TIMEOUT:+$_HOOK_TIMEOUT 5} "$MEMPALACE_PYTHON" - 2>"$_HOOK_ERR" <<'PYEOF'
-import os, sys
+import contextlib, os, sys
 
 # ADR-0006 routing: patch chromadb.PersistentClient -> HttpClient BEFORE
 # `mempalace.mcp_server` resolves the symbol (same technique as
@@ -227,6 +237,126 @@ try:
 except Exception as e:  # acknowledged-exception: broad except intentional — any HttpClient.heartbeat() failure (connection refused, DNS, protocol) means the daemon is unreachable and must soft-skip this persistence attempt (spec 0073 R3); it does not block startup like the wrapper's probe, so it must not be silently swallowed or misclassified either
     print(f"DAEMON_UNREACHABLE: {_host}:{_port} — {e}", file=sys.stderr)
     sys.exit(4)
+
+# --- spec 0110: relieve the palace write lock, for THIS subprocess only ---
+#
+# Every palace write this subprocess performs already leaves the process
+# over HTTP to the shared ChromaDB daemon (the `chromadb.PersistentClient`
+# substitution above, spec 0073/0088). `tool_add_drawer` does perform one
+# local disk write of its own — `_wal_log` appends to the write-ahead log
+# (`mcp_server._wal_log` -> `wal.py`) — but that append sits OUTSIDE
+# `ChromaCollection._write_lock()`, so the palace lock never guarded it and
+# relieving the lock leaves its exposure exactly as it already was. The
+# relief therefore opens no race that did not already exist. The MemPalace
+# library nevertheless has
+# `ChromaCollection._write_lock()` take the on-disk per-palace lock, so any
+# concurrent writer — a sibling agent, the memory server, a mine — made
+# every transcript entry fail with `ADD_FAILED: palace ... is held by PID
+# ...` and silently ended transcript persistence for the whole session
+# (spec 0110 R1).
+#
+# R2 — THE ORDERING BELOW IS NORMATIVE. This block sits AFTER the
+# heartbeat probe above, deliberately. A persistence attempt whose remote
+# routing is not established must keep the lock's protection, so the relief
+# must never be installed on a path that can still reach the on-disk
+# palace. Do not move it earlier.
+#
+# R6 — the relief is confined to this interpreter: it rebinds an in-memory
+# module attribute in the process this hook launched for one entry. It
+# writes no file, sets no environment variable for anyone else, and neither
+# releases nor removes a lock any other process holds. A concurrently
+# running memory server or maintenance writer keeps the exact lock it takes
+# today.
+_lock_relief_hits = []
+
+
+@contextlib.contextmanager
+def _relieved_palace_lock(palace_path, *args, **kwargs):
+    """Stand-in for `mempalace.palace.mine_palace_lock` — records, never locks."""
+    _lock_relief_hits.append(palace_path)
+    yield
+
+
+try:
+    import mempalace.backends.chroma as _mp_chroma
+    import mempalace.palace as _mp_palace
+except ImportError as e:
+    print(f"IMPORT_ERROR: {e}", file=sys.stderr)
+    sys.exit(2)
+
+# R5 — patch every location the write path can resolve the primitive from,
+# and do not assume a single one. Today `ChromaCollection._write_lock()`
+# resolves it by a LATE import from `mempalace.palace`, so the canonical
+# definition is the site that matters; but three sibling modules in the same
+# library (`sync`, `miner`, `convo_miner`) bind the symbol at module load
+# instead, and if `backends.chroma` ever joins them the canonical patch
+# alone would quietly stop taking effect. Rebind the attribute wherever it
+# already exists; never create one that does not, since that installs a name
+# the library never reads and would mask a genuine relocation instead of
+# surfacing it through the R3 guard below.
+_relieved_modules = []
+for _mp_mod in (_mp_palace, _mp_chroma):
+    if hasattr(_mp_mod, "mine_palace_lock"):
+        _mp_mod.mine_palace_lock = _relieved_palace_lock
+        _relieved_modules.append(_mp_mod.__name__)
+
+# R3/R4 — prove the relief is in force on the path the entry actually
+# takes, and decline to persist when it is not. Three stages, cheapest
+# first:
+#
+#   1. Coverage — at least one known location must have exposed the symbol.
+#      An empty list means the library relocated it entirely.
+#   2. Identity — every location that exposed it must now BE the stand-in.
+#      Side-effect free.
+#   3. Behavioural probe — enter the very method the write goes through,
+#      `ChromaCollection._write_lock()`, and require that it reached the
+#      stand-in. This is what makes the guard a statement about the real
+#      write path rather than about a module attribute: if `_write_lock` is
+#      renamed, or resolves the primitive from a location stage 1 does not
+#      cover, the stand-in is never reached and we refuse to persist.
+#
+# The probe's palace path is synthetic and is NEVER the configured palace.
+# The lock key is sha256(realpath(path)), so a synthetic path cannot contend
+# with any real palace lock; it is passed only so `_write_lock` takes its
+# locking branch instead of its documented palace_path-is-None no-op.
+#
+# The guard fails closed on purpose: an unprovable relief stops persistence
+# rather than silently reverting to the lock-contention failure this spec
+# exists to end. Distinct exit status (5) and stderr prefix
+# (LOCK_BYPASS_INEFFECTIVE:) per R4 — no other failure this hook reports
+# uses either (IMPORT_ERROR:/2, ADD_FAILED:/3, DAEMON_UNREACHABLE:/4).
+_LOCK_PROBE_PALACE = "/nonexistent/crewrig-transcript-lock-relief-probe"
+
+_relief_error = None
+if not _relieved_modules:
+    _relief_error = (
+        "no known location exposes mine_palace_lock "
+        f"(looked in {_mp_palace.__name__}, {_mp_chroma.__name__})"
+    )
+else:
+    for _mp_mod in (_mp_palace, _mp_chroma):
+        _resolved = getattr(_mp_mod, "mine_palace_lock", _relieved_palace_lock)
+        if _resolved is not _relieved_palace_lock:
+            _relief_error = f"{_mp_mod.__name__}.mine_palace_lock was not replaced"
+
+if _relief_error is None:
+    _hits_before = len(_lock_relief_hits)
+    try:
+        _probe = _mp_chroma.ChromaCollection(None, palace_path=_LOCK_PROBE_PALACE)
+        with _probe._write_lock():
+            pass
+    except Exception as e:  # acknowledged-exception: broad except intentional — the probe's only job is to answer "is the relief in force on the write path"; every failure mode (renamed/removed _write_lock, changed ChromaCollection signature, a real lock acquired and raising MineAlreadyRunning) answers "no" and takes the identical R3 decline-and-report path, so narrowing the catch would let an unanticipated type escape as a bare traceback and forfeit exactly the distinguishability R4 mandates
+        _relief_error = f"write-path probe raised {type(e).__name__}: {e}"
+    else:
+        if len(_lock_relief_hits) == _hits_before:
+            _relief_error = (
+                "ChromaCollection._write_lock() did not resolve the relieved "
+                f"lock (patched: {', '.join(_relieved_modules)})"
+            )
+
+if _relief_error is not None:
+    print(f"LOCK_BYPASS_INEFFECTIVE: {_relief_error}", file=sys.stderr)
+    sys.exit(5)
 
 try:
     from mempalace.mcp_server import tool_add_drawer
