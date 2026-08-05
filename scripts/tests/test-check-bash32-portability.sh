@@ -414,50 +414,19 @@ test-setup-org-mcp test-e2e-defaults-toml test-setup-ensure-tier-built'
       continue
     fi
     scanned=$((scanned + 1))
-    # Counted per occurrence, not per line. A line-level filter is wrong here
-    # and mutation-testing proved it: in
-    #   for p in "${pre_dirs[@]}" ${CREATED[@]+"${CREATED[@]}"}
-    # dropping every line that contains a guard hides the bare `pre_dirs`
-    # expansion behind the guarded `CREATED` one on the same line.
+    # Detection lives in `bare_expansions_in` — see its header for the model and
+    # for the three tally designs that preceded it, each of which shipped a false
+    # negative. Do not reimplement the decision here: it is probed directly by
+    # case i, and a copy of the logic at this call site would drift out from under
+    # those probes.
     #
-    # So compare counts — but PER ARRAY NAME, not per line. A bare expansion is
-    # `${name[@]}`, subscript closed immediately; a guard is `${name[@]+` or
-    # `${name[@]:-`. Comparing whole-line totals is unsound because the two
-    # guard spellings are asymmetric:
-    #
-    #   ${A[@]+"${A[@]}"}   1 bare + 1 guard  -> net zero
-    #   ${A[*]:-}           0 bare + 1 guard  -> one unit of spare credit
-    #
-    # Each `:-` guard on a line therefore grants credit that masks one genuinely
-    # bare expansion elsewhere on the same line. Reviewed and reproduced end to
-    # end: `note_fail "x=${ARGV_HTTP[*]:-} y=${ARGV_UNSET[@]}"` balanced the
-    # line tally while `ARGV_UNSET` was bare — case h green, guard green, suite
-    # rc 0 and "41 passed, 0 failed" on top of `ARGV_UNSET[@]: unbound variable`
-    # on stderr. That is exactly the #697 false green, walking past the only
-    # standing enforcement of R8. Four live code lines carry a `:-` guard
-    # (test-e2e-report.sh:141,161 and test-setup-org-mcp.sh:188,196), two of them
-    # `note_fail` message lines — the natural shape for a future edit to land on.
-    #
-    # Per name, a bare expansion can only be offset by a guard on that same
-    # array, so no credit crosses between names. The failure message names the
-    # offending array rather than only the line.
-    #
-    # `${#name[@]}` is deliberately not matched: the length form is safe on an
-    # empty array under `set -u` (verified on 3.2.57), and the leading `#`
-    # keeps it out of the `${name[` pattern.
-    #
-    # Full-line comments are dropped before counting, for the same reason the
+    # Full-line comments are dropped before scanning, for the same reason the
     # guard itself drops them (check-bash32-portability.sh, requirement 4): a
-    # comment that *names* an expansion is prose, not use. Without this the
-    # scan contradicts the very doctrine this change establishes. Four of the
-    # six suites document their own guarding convention in exactly that form —
-    # e.g. "`${A[*]:-}` rather than `${A[*]}` because bash 3.2 …" — and they
-    # satisfied the count comparison only because each names the guarded form
-    # alongside the bare one, which balances the tally by phrasing coincidence.
-    # Rewording such a comment to cite only the bare form would have turned this
-    # case red with nothing wrong in the suite.
-    #
-    # No -P and no \b, so BSD grep (macOS) and GNU grep (CI) agree.
+    # comment that *names* an expansion is prose, not use. Without this the scan
+    # contradicts the very doctrine this change establishes. Four of the six
+    # suites document their own guarding convention in exactly that form — e.g.
+    # "`${A[*]:-}` rather than `${A[*]}` because bash 3.2 …" — so a scan that
+    # counted them would fail on the suites' own documentation.
     while IFS= read -r ln || [ -n "$ln" ]; do
       [ -n "$ln" ] || continue
       hit="$(bare_expansions_in "$ln")"
