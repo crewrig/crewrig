@@ -240,10 +240,15 @@ except Exception as e:  # acknowledged-exception: broad except intentional — a
 
 # --- spec 0110: relieve the palace write lock, for THIS subprocess only ---
 #
-# Every write this subprocess performs already leaves the process over HTTP
-# to the shared ChromaDB daemon (the `chromadb.PersistentClient`
-# substitution above, spec 0073/0088), and `tool_add_drawer` performs no
-# direct disk write of its own. The MemPalace library nevertheless has
+# Every palace write this subprocess performs already leaves the process
+# over HTTP to the shared ChromaDB daemon (the `chromadb.PersistentClient`
+# substitution above, spec 0073/0088). `tool_add_drawer` does perform one
+# local disk write of its own — `_wal_log` appends to the write-ahead log
+# (`mcp_server._wal_log` -> `wal.py`) — but that append sits OUTSIDE
+# `ChromaCollection._write_lock()`, so the palace lock never guarded it and
+# relieving the lock leaves its exposure exactly as it already was. The
+# relief therefore opens no race that did not already exist. The MemPalace
+# library nevertheless has
 # `ChromaCollection._write_lock()` take the on-disk per-palace lock, so any
 # concurrent writer — a sibling agent, the memory server, a mine — made
 # every transcript entry fail with `ADD_FAILED: palace ... is held by PID
