@@ -1,7 +1,7 @@
 ---
 id: "0111"
 slug: bash32-portability-guard
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 697
