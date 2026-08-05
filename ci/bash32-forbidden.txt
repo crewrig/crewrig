@@ -1,0 +1,29 @@
+# bash32-forbidden.txt — the declared set of shell constructs forbidden in the
+# repository's governed scripts (spec 0111, requirement 2).
+#
+# This file is the one place both the enforcement and the documentation refer to:
+# scripts/check-bash32-portability.sh reads it to compose its match patterns, and
+# docs/scripting-conventions.md Rule 5 names the same tokens in prose.
+# scripts/tests/test-check-bash32-portability.sh asserts the two stay in sync, so
+# a construct added here without a matching Rule 5 entry fails CI.
+#
+# It lives under ci/ rather than scripts/ deliberately. The enforcement scans
+# scripts/ and hooks/; holding the literal tokens outside that tree is what lets
+# the guard match them without flagging its own declared set, and so without
+# needing a self-exemption at the very file that defines the rule.
+#
+# Format — one construct per line, <kind><TAB><token><TAB><reason>:
+#   kind=command       a builtin or command name, flagged when it stands in
+#                      command position on a line that is not itself a comment
+#   kind=declare-flag  an uppercase flag letter of declare/typeset/local/
+#                      readonly, flagged when the flag cluster contains it
+# Blank lines and lines whose first non-blank character is `#` are skipped;
+# a trailing carriage return is tolerated.
+#
+# The set is a floor, not a ceiling: every entry below has already been observed
+# to abort a governed script on the stock macOS shell. Growing it later is an
+# ordinary change to this file plus its Rule 5 entry.
+
+command	mapfile	Bash 4.0 builtin; fails `mapfile: command not found` on Bash 3.2.57 (stock macOS /bin/bash)
+command	readarray	Bash 4.0 builtin, synonym of mapfile; same failure on Bash 3.2.57
+declare-flag	A	Associative arrays are Bash 4.0; fails `-A: invalid option` on Bash 3.2.57
