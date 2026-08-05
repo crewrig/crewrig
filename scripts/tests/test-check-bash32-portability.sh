@@ -318,6 +318,95 @@ bad() { echo "FAIL  $1"; fail=$((fail + 1)); }
 }
 
 # ---------------------------------------------------------------------------
+# Case h — Every array expansion in the suites corrected under R6 stays guarded.
+#
+# This is the standing half of scenario 5. The two-shell evidence run proves the
+# corrected suites report identical verdicts today; nothing re-proves it
+# tomorrow, because CI runs Bash 5 where the defect is invisible. What CAN be
+# re-proved cheaply is the invariant the correction established: in these six
+# suites, no array is expanded without a guard.
+#
+# Why that invariant is the right proxy. Under `set -u` Bash 3.2 aborts on an
+# empty-array expansion where Bash 5 does not. The abort is not reliably visible
+# either: these suites run `set -uo pipefail` WITHOUT `-e`, so when the
+# expansion sits in a command substitution or subshell only that child dies —
+# the suite continues and can exit 0 with cases silently skipped. So neither a
+# zero exit status nor a clean-looking summary is evidence the suite ran
+# everything, which is exactly how the false green in issue #697 was produced.
+# A guarded expansion cannot abort, so guarding every one of them removes the
+# class rather than the symptom.
+#
+# This case also settles a judgement call recorded on the ticket: expansions on
+# arrays that provably cannot be empty were guarded too. Uniform guarding is
+# only worth its noise if something checks it — this is that something, and it
+# is why the uniform choice is an invariant rather than cargo cult.
+# ---------------------------------------------------------------------------
+{
+  # The suites corrected under R6. Scoped deliberately: other suites under
+  # scripts/tests/ carry unguarded expansions and are outside spec 0111, whose
+  # R8 constrains only the suites changed under R6.
+  corrected_suites='test-e2e-runner test-e2e-report test-e2e-runner-delegation
+test-setup-org-mcp test-e2e-defaults-toml test-setup-ensure-tier-built'
+
+  # Accumulate into a string, never an array: an empty accumulator array is the
+  # very abort this case exists to keep out of the corrected suites, and this
+  # file is itself governed.
+  unguarded=''
+  scanned=0
+  for suite in $corrected_suites; do
+    suite_path="$REPO_ROOT/scripts/tests/$suite.sh"
+    if [ ! -f "$suite_path" ]; then
+      bad "case-h: corrected suite not found: scripts/tests/$suite.sh"
+      continue
+    fi
+    scanned=$((scanned + 1))
+    # Counted per occurrence, not per line. A line-level filter is wrong here
+    # and mutation-testing proved it: in
+    #   for p in "${pre_dirs[@]}" ${CREATED[@]+"${CREATED[@]}"}
+    # dropping every line that contains a guard hides the bare `pre_dirs`
+    # expansion behind the guarded `CREATED` one on the same line.
+    #
+    # So compare counts. A bare expansion is `${name[@]}` — subscript closed
+    # immediately. A guard is `${name[@]+` or `${name[@]:-`. A complete guard
+    # `${A[@]+"${A[@]}"}` contributes one of each, so a healthy line has
+    # bare <= guards; any bare expansion without its guard tips the balance.
+    #
+    # `${#name[@]}` is deliberately not matched: the length form is safe on an
+    # empty array under `set -u` (verified on 3.2.57), and the leading `#`
+    # keeps it out of the `${name[` pattern.
+    #
+    # No -P and no \b, so BSD grep (macOS) and GNU grep (CI) agree.
+    while IFS= read -r ln || [ -n "$ln" ]; do
+      [ -n "$ln" ] || continue
+      n_bare=$(printf '%s\n' "$ln" \
+        | grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*\[[@*]\]\}' | wc -l | tr -d ' ')
+      n_guard=$(printf '%s\n' "$ln" \
+        | grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*\[[@*]\](\+|:-)' | wc -l | tr -d ' ')
+      if [ "$n_bare" -gt "$n_guard" ]; then
+        unguarded="$unguarded  $suite.sh: $ln
+"
+      fi
+    done <<PORTABILITY_SCAN
+$(grep -nE '\$\{[A-Za-z_][A-Za-z0-9_]*\[[@*]\]' "$suite_path" || true)
+PORTABILITY_SCAN
+  done
+
+  # Fail closed: scanning nothing must not read as success (Rule 4).
+  if [ "$scanned" -ne 6 ]; then
+    bad "case-h: expected 6 corrected suites, scanned $scanned"
+  else
+    ok "case-h: all 6 suites corrected under R6 are present and scanned"
+  fi
+
+  if [ -z "$unguarded" ]; then
+    ok "case-h: no unguarded array expansion remains in the corrected suites (R8)"
+  else
+    bad "case-h: unguarded array expansion(s) survive in the corrected suites:
+$unguarded"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 total=$((pass + fail))
