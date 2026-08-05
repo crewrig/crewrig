@@ -39,7 +39,15 @@ REPORTS="$E2E_REPORTS_ROOT"
 ERR_DIR="$E2E_REPORTS_ROOT"
 
 # Snapshot of existing report dirs (we only inspect new entries).
-mapfile -t pre_dirs < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+#
+# Two bash 3.2 (stock macOS) accommodations run throughout this file, both per
+# docs/scripting-conventions.md Rule 5:
+#   - `while read` rather than `mapfile`, which is a bash 4 builtin;
+#   - every array expansion written `${A[@]+"${A[@]}"}`, because bash 3.2 treats
+#     an empty array as an unset variable and aborts on it under `set -u`.
+pre_dirs=()
+while IFS= read -r line || [ -n "$line" ]; do pre_dirs+=("$line"); done \
+  < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
 
 # Track every dir we create so we can clean up after ourselves. The temp root
 # itself is swept unconditionally on EXIT — that is the authoritative
@@ -47,7 +55,7 @@ mapfile -t pre_dirs < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/n
 # original idiom.
 CREATED=()
 cleanup() {
-  for d in "${CREATED[@]}"; do
+  for d in ${CREATED[@]+"${CREATED[@]}"}; do
     [[ -n "$d" && -d "$d" ]] && rm -rf -- "$d"
   done
   [[ -n "${E2E_REPORTS_ROOT:-}" && -d "$E2E_REPORTS_ROOT" ]] && rm -rf -- "$E2E_REPORTS_ROOT"
@@ -71,11 +79,13 @@ else
 fi
 
 # Identify the new report dir produced by case 1.
-mapfile -t post1_dirs < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+post1_dirs=()
+while IFS= read -r line || [ -n "$line" ]; do post1_dirs+=("$line"); done \
+  < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
 NEW_DIR=""
-for d in "${post1_dirs[@]}"; do
+for d in ${post1_dirs[@]+"${post1_dirs[@]}"}; do
   found=0
-  for p in "${pre_dirs[@]}"; do
+  for p in ${pre_dirs[@]+"${pre_dirs[@]}"}; do
     [[ "$d" == "$p" ]] && { found=1; break; }
   done
   if [[ $found -eq 0 ]]; then NEW_DIR="$d"; CREATED+=("$d"); break; fi
@@ -112,7 +122,9 @@ fi
 [[ -n "$NEW_DIR" && -d "$NEW_DIR" ]] && rm -rf -- "$NEW_DIR"
 N=3
 TMP_REPORTS_ROOT="$REPORTS"
-mapfile -t pre_keep_dirs < <(find "$TMP_REPORTS_ROOT" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+pre_keep_dirs=()
+while IFS= read -r line || [ -n "$line" ]; do pre_keep_dirs+=("$line"); done \
+  < <(find "$TMP_REPORTS_ROOT" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
 # Create N+5 fakes with old, lexicographically-low names so they appear "older".
 FAKES=()
 for i in $(seq 1 $((N + 5))); do
@@ -129,19 +141,21 @@ rc5=$?
 [[ $rc5 -eq 0 ]] || note_fail "dry-run --keep N exit 0" "rc=$rc5"
 
 # Identify the new run dir from this invocation.
-mapfile -t post5_dirs < <(find "$TMP_REPORTS_ROOT" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+post5_dirs=()
+while IFS= read -r line || [ -n "$line" ]; do post5_dirs+=("$line"); done \
+  < <(find "$TMP_REPORTS_ROOT" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
 NEW_DIR2=""
-for d in "${post5_dirs[@]}"; do
+for d in ${post5_dirs[@]+"${post5_dirs[@]}"}; do
   is_fake=0
-  for f in "${FAKES[@]}"; do [[ "$d" == "$f" ]] && { is_fake=1; break; }; done
+  for f in ${FAKES[@]+"${FAKES[@]}"}; do [[ "$d" == "$f" ]] && { is_fake=1; break; }; done
   is_old=0
-  for p in "${pre_keep_dirs[@]}"; do [[ "$d" == "$p" ]] && { is_old=1; break; }; done
+  for p in ${pre_keep_dirs[@]+"${pre_keep_dirs[@]}"}; do [[ "$d" == "$p" ]] && { is_old=1; break; }; done
   if [[ $is_fake -eq 0 && $is_old -eq 0 ]]; then NEW_DIR2="$d"; CREATED+=("$d"); break; fi
 done
 
 # Surviving fakes after prune:
 surviving_fakes=0
-for f in "${FAKES[@]}"; do [[ -d "$f" ]] && surviving_fakes=$((surviving_fakes + 1)); done
+for f in ${FAKES[@]+"${FAKES[@]}"}; do [[ -d "$f" ]] && surviving_fakes=$((surviving_fakes + 1)); done
 
 # The new dir is the "newest" lexicographically (real ISO timestamp >
 # 00000000T000000Z). The N kept slots all get taken by newer entries first,
@@ -172,10 +186,12 @@ fi
 rm -f "$err6_file"
 
 # Cleanup any new dir that case 6 happened to create before failing.
-mapfile -t post6_dirs < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
-for d in "${post6_dirs[@]}"; do
+post6_dirs=()
+while IFS= read -r line || [ -n "$line" ]; do post6_dirs+=("$line"); done \
+  < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+for d in ${post6_dirs[@]+"${post6_dirs[@]}"}; do
   known=0
-  for c in "${CREATED[@]}" "${pre_dirs[@]}"; do [[ "$d" == "$c" ]] && { known=1; break; }; done
+  for c in ${CREATED[@]+"${CREATED[@]}"} ${pre_dirs[@]+"${pre_dirs[@]}"}; do [[ "$d" == "$c" ]] && { known=1; break; }; done
   if [[ $known -eq 0 ]]; then CREATED+=("$d"); fi
 done
 
@@ -212,10 +228,12 @@ if [[ $rc9 -eq 0 ]] && grep -q '^1\.\.11$' <<< "$out9"; then
 else
   note_fail "default scenario set → 1..11" "rc=$rc9 stdout=$(echo "$out9" | tr '\n' '|')"
 fi
-mapfile -t post9_dirs < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
-for d in "${post9_dirs[@]}"; do
+post9_dirs=()
+while IFS= read -r line || [ -n "$line" ]; do post9_dirs+=("$line"); done \
+  < <(find "$REPORTS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+for d in ${post9_dirs[@]+"${post9_dirs[@]}"}; do
   known=0
-  for c in "${CREATED[@]}" "${pre_dirs[@]}"; do [[ "$d" == "$c" ]] && { known=1; break; }; done
+  for c in ${CREATED[@]+"${CREATED[@]}"} ${pre_dirs[@]+"${pre_dirs[@]}"}; do [[ "$d" == "$c" ]] && { known=1; break; }; done
   if [[ $known -eq 0 ]]; then CREATED+=("$d"); fi
 done
 

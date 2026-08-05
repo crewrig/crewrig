@@ -171,15 +171,20 @@ extract_install_fn_staging_pattern() {
   printf '%s\n' "$line" | sed -E 's/^local staging="(.*)"$/\1/'
 }
 
-declare -A EXPECTED_TOOLS=(
-  [setup-gemini-interactive.sh]=gemini
-  [setup-claude-interactive.sh]=claude
-  [setup-copilot-interactive.sh]=copilot
-  [setup-antigravity-interactive.sh]=antigravity
-)
-
 for s in setup-gemini-interactive.sh setup-claude-interactive.sh \
          setup-copilot-interactive.sh setup-antigravity-interactive.sh; do
+  # A `case` rather than an associative-array lookup table: bash 3.2 (stock
+  # macOS) has no associative arrays, per docs/scripting-conventions.md Rule 5.
+  # The four tool names stay verbatim literals on purpose — deriving them from
+  # "$s" would couple this assertion to the very naming convention it exists to
+  # pin, so it would assert nothing.
+  case "$s" in
+    setup-gemini-interactive.sh)      expected_tool=gemini ;;
+    setup-claude-interactive.sh)      expected_tool=claude ;;
+    setup-copilot-interactive.sh)     expected_tool=copilot ;;
+    setup-antigravity-interactive.sh) expected_tool=antigravity ;;
+    *)                                expected_tool="(no expected build_target declared for $s)" ;;
+  esac
   path="$SETUP_DIR/$s"
   if [ ! -f "$path" ]; then
     bad "$s: script not found at $path"
@@ -200,9 +205,9 @@ for s in setup-gemini-interactive.sh setup-claude-interactive.sh \
     continue
   fi
 
-  [ "$ensure_tool" = "${EXPECTED_TOOLS[$s]}" ] \
-    && ok "$s: ensure_tier_built build_target is '${EXPECTED_TOOLS[$s]}'" \
-    || bad "$s: ensure_tier_built build_target was '$ensure_tool', expected '${EXPECTED_TOOLS[$s]}'"
+  [ "$ensure_tool" = "$expected_tool" ] \
+    && ok "$s: ensure_tier_built build_target is '$expected_tool'" \
+    || bad "$s: ensure_tier_built build_target was '$ensure_tool', expected '$expected_tool'"
 
   # Substitute the literal '$tier' token in the install function's pattern
   # with the literal tier argument the script actually passes to its

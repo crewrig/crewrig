@@ -177,14 +177,23 @@ apply_org_mcp_servers "{}" "$CFG2" "$PRE" "$BK" >/dev/null 2>&1
 # ---------------------------------------------------------------------------
 echo "4. org_mcp_to_claude_argv — pure argv translation (Claude R13 equivalent)"
 # ---------------------------------------------------------------------------
-mapfile -t ARGV_STDIO < <(org_mcp_to_claude_argv github "$ORG_STDIO")
-STDIO_STR="${ARGV_STDIO[*]}"
+# `while read` rather than `mapfile` for bash 3.2 compat (macOS default), and
+# `${A[*]:-}` rather than `${A[*]}` because bash 3.2 treats an empty array as an
+# unset variable under `set -u`. Both per docs/scripting-conventions.md Rule 5;
+# an empty argv joins to the empty string either way, so the assertions below
+# see exactly the value they saw before.
+ARGV_STDIO=()
+while IFS= read -r line || [ -n "$line" ]; do ARGV_STDIO+=("$line"); done \
+  < <(org_mcp_to_claude_argv github "$ORG_STDIO")
+STDIO_STR="${ARGV_STDIO[*]:-}"
 [[ "$STDIO_STR" == *"--scope user"* ]] && ok "stdio argv: --scope user" || bad "stdio argv missing --scope user ($STDIO_STR)"
 [[ "$STDIO_STR" == *"-e GITHUB_HOST=github.example"* ]] && ok "stdio argv: -e KEY=VALUE" || bad "stdio argv missing -e env ($STDIO_STR)"
 [[ "$STDIO_STR" == *"github -- gh-mcp --stdio"* ]] && ok "stdio argv: <name> -- <command> <args>" || bad "stdio argv command tail wrong ($STDIO_STR)"
 
-mapfile -t ARGV_HTTP < <(org_mcp_to_claude_argv atlassian "$ORG_HTTP")
-HTTP_STR="${ARGV_HTTP[*]}"
+ARGV_HTTP=()
+while IFS= read -r line || [ -n "$line" ]; do ARGV_HTTP+=("$line"); done \
+  < <(org_mcp_to_claude_argv atlassian "$ORG_HTTP")
+HTTP_STR="${ARGV_HTTP[*]:-}"
 [[ "$HTTP_STR" == *"--transport http"* ]] && ok "http argv: --transport http" || bad "http argv missing --transport http ($HTTP_STR)"
 [[ "$HTTP_STR" == *"atlassian https://mcp.atlassian.example/mcp"* ]] && ok "http argv: <name> <url>" || bad "http argv name/url wrong ($HTTP_STR)"
 [[ "$HTTP_STR" == *"--header Authorization: Bearer"* ]] && ok "http argv: --header \"K: V\"" || bad "http argv missing --header ($HTTP_STR)"
