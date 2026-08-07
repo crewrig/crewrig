@@ -201,6 +201,11 @@
           "title": "ADR 0015 — Forge access CLI-only; no framework forge MCP",
           "path": "docs/adr/0015-forge-access-cli-only.md",
           "nav_order": 150
+        },
+        {
+          "title": "ADR 0016 — Shared MemPalace MCP HTTP server",
+          "path": "docs/adr/0016-shared-mempalace-mcp-http-server.md",
+          "nav_order": 160
         }
       ]
     }
