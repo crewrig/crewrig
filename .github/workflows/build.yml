@@ -400,8 +400,12 @@ jobs:
           # disable the guard on every pull request. On GitLab CI the equivalent
           # pair (CI_MERGE_REQUEST_SOURCE_PROJECT_PATH / CI_PROJECT_PATH) is
           # already ambient, which is why the generated job needs no counterpart.
-          SPEC_ID_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          SPEC_ID_BASE_REPO: ${{ github.repository }}
+          # Named CREWRIG_* rather than GITHUB_*: GitHub reserves the GITHUB_
+          # prefix, and there is no native head-repo variable to mirror anyway
+          # (GITHUB_HEAD_REF is the branch, not the repository) — which is
+          # precisely why this mapping has to exist.
+          CREWRIG_PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          CREWRIG_PR_BASE_REPO: ${{ github.repository }}
         run: bash scripts/check-spec-id-reserved.sh
 
   check-agents-size:

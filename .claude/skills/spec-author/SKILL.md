@@ -394,6 +394,10 @@ the skill interprets:
 | `3` | The id is allocated locally but **not** secured — offline, unreachable remote, or no write access (the fork case). | Use it, AND copy the emitted `unsecured-id: true` line verbatim into the frontmatter. |
 | `1` | Genuine failure. | Stop. Relay the stderr reason to the user. |
 
+The marker is emitted on stdout line 2 in the exact frontmatter form, so the
+skill pastes it rather than composing it. The exit code already carries the
+boolean; the line exists to be copied.
+
 Three obligations, each closing a tempting shortcut:
 
 - On exit `1` the skill SHALL NOT fall back to `max(existing) + 1`, and
@@ -408,7 +412,7 @@ Three obligations, each closing a tempting shortcut:
   for one from a fork, where a maintainer secures the id and removes the
   mark before merge (requirement 10).
 - The skill never passes `--corpus`, never passes `--id`, and never sets
-  `SPEC_ID_CARRIER`. Securing a chosen identifier is the maintainer's path
+  `CREWRIG_SPEC_ID_CARRIER`. Securing a chosen identifier is the maintainer's path
   and the org-corpus path; changing the carrier is a pull request against
   `.crewrig/spec-id-carrier`, not something a session decides.
 

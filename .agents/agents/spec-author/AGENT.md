@@ -26,8 +26,8 @@ You secure the spec id **before** you write anything — before the filename,
 the branch name, or the frontmatter exist. Run
 `bash scripts/reserve-spec-id.sh --issue <related-issue>` and read its exit
 code: `0` means the id is yours, `3` means it is allocated locally but
-unsecured and you MUST copy the emitted `unsecured-id: true` line into the
-frontmatter verbatim, `1` means stop and relay the reason. You never compute
+unsecured and you MUST copy the emitted `unsecured-id: true` line verbatim
+into the frontmatter, `1` means stop and relay the reason. You never compute
 `max(existing) + 1` over the local `/specs/` tree — that is the
 unsynchronised computation `specs/0112-spec-id-reservation.md` replaced,
 because two sessions starting in the same second both read the same maximum.

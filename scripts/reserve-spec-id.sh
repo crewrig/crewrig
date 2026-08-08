@@ -44,6 +44,16 @@
 # numbering convention, which spec 0112 delta-01 requirement 16 forbids and
 # `specs/0071-org-specs-lint-exclusion.md` deliberately prevented.
 #
+# WHICH REMOTE is resolved from the reference branch, with the idiom this
+# repository already has rather than a third one: `BASE_REF` when set, else the
+# first remote matching `crewrig|origin` (falling back to the first remote at
+# all) with `/main` appended — the derivation documented at
+# `scripts/lib/spec-linter.js:114-131`, which aligns itself with
+# `scripts/check-skill-versions.sh:24-33` for exactly this reason. The remote is
+# the ref's first path component, so it is always a remote NAME: no repository
+# path and no URL is hardcoded anywhere here, which is what lets the regression
+# suites point the tool at a `file://` bare repository.
+#
 # Usage:
 #   bash scripts/reserve-spec-id.sh --issue <N>
 #   bash scripts/reserve-spec-id.sh --id <ID> --issue <N> [--corpus upstream|org]
@@ -54,14 +64,18 @@
 #   0   The id is secured on the remote.       stdout: the id.
 #   3   The id is allocated LOCALLY and NOT secured — offline, unreachable
 #       remote, no write access (the fork case), or a namespace the remote
-#       refuses. stdout: the id, then the unsecured marker as a structured
-#       field ready to paste into the spec frontmatter.
+#       refuses. stdout: the id, then `unsecured-id: true`.
 #   1   Genuine failure — malformed `/specs/` state, an invalid carrier value,
 #       a non-representable identifier, `--corpus org` without `--id`, an
 #       identifier already held by a different ticket, or a retry budget
 #       exhausted by lost races. stdout: nothing; the reason is on stderr.
 #
-# The first stdout line is ALWAYS the id, on exit 0 and exit 3 alike.
+# The first stdout line is ALWAYS the id, on exit 0 and exit 3 alike. The second
+# line on exit 3 is the unsecured marker, emitted in the EXACT form the spec
+# frontmatter takes — `unsecured-id: true`, the optional field
+# `docs/spec-format.md` defines — so the caller pastes it rather than composing
+# it. The exit code already carries the boolean, so nothing programmatic depends
+# on this line's separator.
 #
 # This script EMITS; it never writes a spec file. Requirement 2 places
 # allocation before the spec file exists, so `spec-author` consumes exit 3 and
@@ -85,7 +99,7 @@ DEFAULT_CARRIER="$CARRIER_PRIMARY"
 UPSTREAM_PATTERN_PRIMARY="refs/spec-ids/*"
 UPSTREAM_PATTERN_TAGS="refs/tags/spec-id/*"
 
-MAX_ATTEMPTS="${SPEC_ID_MAX_ATTEMPTS:-10}"
+MAX_ATTEMPTS="${CREWRIG_SPEC_ID_MAX_ATTEMPTS:-10}"
 
 # --- Diagnostics -------------------------------------------------------------
 
@@ -110,23 +124,29 @@ reserve-spec-id.sh — secure a spec id before the spec file exists (spec 0112).
       of delta-01.
 
 Options:
-  --issue <N>      GitHub issue the id is reserved for. Required.
-  --id <ID>        Secure this identifier instead of computing the next free
-                   one. Required with --corpus org.
-  --corpus <c>     'upstream' (default) or 'org'. Explicit, never inferred
-                   from the identifier's shape.
-  --offline        Skip the remote entirely and return exit 3.
-  --remote <name>  Remote to reserve against. Default: the first remote
-                   matching 'crewrig|origin', else the first remote.
-  -h, --help       This block.
+  --issue <N>   GitHub issue the id is reserved for. Required.
+  --id <ID>     Secure this identifier instead of computing the next free one.
+                Required with --corpus org.
+  --corpus <c>  'upstream' (default) or 'org'. Explicit, never inferred from
+                the identifier's shape.
+  --offline     Skip the remote entirely and return exit 3.
+  -h, --help    This block.
+
+There is deliberately no --remote flag: the remote comes from the reference
+branch, resolved with the repository's existing BASE_REF idiom below.
 
 Environment:
-  SPEC_ID_CARRIER        One-off carrier override for a single invocation, for
-                         debugging. NOT the normal configuration route — see
-                         .crewrig/spec-id-carrier.
-  SPEC_ID_REMOTE         Default remote when --remote is absent.
-  SPEC_ID_MAX_ATTEMPTS   Retry budget for lost races (default 10).
-  CREWRIG_REPO_DIR       Repository root override (used by the self-test).
+  BASE_REF                       The reference branch. Default: the first
+                                 remote matching 'crewrig|origin' (else the
+                                 first remote) with /main appended. The remote
+                                 is its first path component.
+  CREWRIG_SPEC_ID_CARRIER        One-off carrier override for a single
+                                 invocation, for debugging. NOT the normal
+                                 configuration route — see
+                                 .crewrig/spec-id-carrier.
+  CREWRIG_SPEC_ID_MAX_ATTEMPTS   Retry budget for lost races (default 10).
+  CREWRIG_REPO_DIR               Repository root override (used by the
+                                 regression suite).
 
 Exit codes: 0 secured (stdout: the id) | 3 allocated locally, NOT secured
 (stdout: the id, then 'unsecured-id: true') | 1 genuine failure (stderr).
@@ -139,14 +159,12 @@ ISSUE=""
 WANT_ID=""
 CORPUS="upstream"
 OFFLINE=false
-REMOTE_ARG=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --issue)   ISSUE="${2:-}"; shift 2 ;;
     --id)      WANT_ID="${2:-}"; shift 2 ;;
     --corpus)  CORPUS="${2:-}"; shift 2 ;;
-    --remote)  REMOTE_ARG="${2:-}"; shift 2 ;;
     --offline) OFFLINE=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *)         fail "unknown argument '$1'. Run with --help for the usage block." ;;
@@ -166,10 +184,10 @@ case "$ISSUE" in
 esac
 
 case "$MAX_ATTEMPTS" in
-  ""|*[!0-9]*) fail "SPEC_ID_MAX_ATTEMPTS must be a positive integer, got '$MAX_ATTEMPTS'." ;;
+  ""|*[!0-9]*) fail "CREWRIG_SPEC_ID_MAX_ATTEMPTS must be a positive integer, got '$MAX_ATTEMPTS'." ;;
 esac
 if [ "$MAX_ATTEMPTS" -lt 1 ]; then
-  fail "SPEC_ID_MAX_ATTEMPTS must be at least 1, got '$MAX_ATTEMPTS'."
+  fail "CREWRIG_SPEC_ID_MAX_ATTEMPTS must be at least 1, got '$MAX_ATTEMPTS'."
 fi
 
 # `--corpus org` requires `--id`. Computing the next free ORG identifier is out
@@ -208,8 +226,8 @@ read_carrier_setting() {
   return 0
 }
 
-CARRIER="${SPEC_ID_CARRIER:-}"
-CARRIER_SOURCE="the SPEC_ID_CARRIER environment override"
+CARRIER="${CREWRIG_SPEC_ID_CARRIER:-}"
+CARRIER_SOURCE="the CREWRIG_SPEC_ID_CARRIER environment override"
 if [ -z "$CARRIER" ]; then
   CARRIER="$(read_carrier_setting)"
   CARRIER_SOURCE="$CARRIER_FILE"
@@ -266,27 +284,23 @@ if [ -n "$WANT_ID" ]; then
   assert_representable "$WANT_ID"
 fi
 
-# --- Remote resolution -------------------------------------------------------
+# --- Reference branch and remote ---------------------------------------------
 
-resolve_remote() {
-  if [ -n "$REMOTE_ARG" ]; then
-    printf '%s' "$REMOTE_ARG"
-    return 0
-  fi
-  if [ -n "${SPEC_ID_REMOTE:-}" ]; then
-    printf '%s' "$SPEC_ID_REMOTE"
-    return 0
-  fi
-  git -C "$REPO_DIR" remote | grep -E -m1 'crewrig|origin' || git -C "$REPO_DIR" remote | head -1
-}
+# One idiom, not a third one. `BASE_REF` when set, else the first remote
+# matching `crewrig|origin` (falling back to the first remote at all) with
+# `/main` appended — the derivation documented at
+# `scripts/lib/spec-linter.js:114-131` and aligned there with
+# `scripts/check-skill-versions.sh:24-33`. There is deliberately no `--remote`
+# flag: the remote is the reference ref's first path component, so it is always
+# a remote NAME. Nothing here names a repository path or a URL, which is what
+# lets the regression suites aim the tool at a `file://` bare repository.
+REFERENCE_REF="${BASE_REF:-$(git -C "$REPO_DIR" remote | grep -E -m1 'crewrig|origin' || git -C "$REPO_DIR" remote | head -1)/main}"
+REMOTE="${REFERENCE_REF%%/*}"
 
-REMOTE=""
-if ! $OFFLINE; then
-  REMOTE="$(resolve_remote || true)"
-  if [ -z "$REMOTE" ]; then
-    note "Notice: no git remote is configured, so no id can be secured."
-    OFFLINE=true
-  fi
+if ! $OFFLINE && [ -z "$REMOTE" ]; then
+  # `REFERENCE_REF` is bare `/main`: the remote list was empty.
+  note "Notice: no git remote is configured, so no id can be secured."
+  OFFLINE=true
 fi
 
 # --- The allocated set (upstream corpus only) --------------------------------
@@ -315,13 +329,16 @@ ids_from_spec_paths() {
 # local working tree when the remote branch does not resolve — that is the
 # offline path, and it is precisely why such a run exits 3 rather than 0.
 merged_spec_paths() {
-  local listing="" p
+  local listing="" p branch
   if ! $OFFLINE; then
-    if ! git -C "$REPO_DIR" rev-parse --verify --quiet "${REMOTE}/main" >/dev/null 2>&1; then
-      git -C "$REPO_DIR" fetch --depth=50 "$REMOTE" main >/dev/null 2>&1 || true
+    if ! git -C "$REPO_DIR" rev-parse --verify --quiet "$REFERENCE_REF" >/dev/null 2>&1; then
+      branch="${REFERENCE_REF#*/}"
+      if [ -n "$branch" ] && [ "$branch" != "$REFERENCE_REF" ]; then
+        git -C "$REPO_DIR" fetch --depth=50 "$REMOTE" "$branch" >/dev/null 2>&1 || true
+      fi
     fi
-    if git -C "$REPO_DIR" rev-parse --verify --quiet "${REMOTE}/main" >/dev/null 2>&1; then
-      listing="$(git -C "$REPO_DIR" ls-tree -r --name-only "${REMOTE}/main" -- specs/ 2>/dev/null || true)"
+    if git -C "$REPO_DIR" rev-parse --verify --quiet "$REFERENCE_REF" >/dev/null 2>&1; then
+      listing="$(git -C "$REPO_DIR" ls-tree -r --name-only "$REFERENCE_REF" -- specs/ 2>/dev/null || true)"
       if [ -n "$listing" ]; then
         printf '%s\n' "$listing"
         return 0
@@ -453,6 +470,11 @@ emit_unsecured() {
   note "maintainer secures the id before merge with:"
   note "  bash scripts/reserve-spec-id.sh --id $id --issue $ISSUE"
   printf '%s\n' "$id"
+  # Emitted in the EXACT frontmatter form, not `key=value`. The exit code
+  # already carries the boolean completely, so a shell caller needs nothing
+  # from this line; its whole value is being the line spec-author pastes into
+  # the YAML frontmatter. A `key=value` spelling would optimise for a consumer
+  # that does not exist at the cost of the one that does.
   printf 'unsecured-id: true\n'
   exit 3
 }
@@ -473,7 +495,7 @@ while :; do
   if [ "$attempt" -gt "$MAX_ATTEMPTS" ]; then
     fail "gave up after $MAX_ATTEMPTS attempts: every candidate id was taken by a
        concurrent session between the read and the push. That is contention, not
-       a defect — re-run. Raise SPEC_ID_MAX_ATTEMPTS if the repository is
+       a defect — re-run. Raise CREWRIG_SPEC_ID_MAX_ATTEMPTS if the repository is
        routinely this busy."
   fi
 

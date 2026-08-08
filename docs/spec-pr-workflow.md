@@ -111,7 +111,7 @@ variable each contributor exports. The compare-and-swap locks a *ref*, not an
 *id*: two contributors with divergent carriers both succeed and both walk away
 with the same id, on an ordinary remote where both namespaces work. A
 convention that has to hold across strangers forking a public framework is not
-a guarantee. `SPEC_ID_CARRIER` survives only as a one-off override for a single
+a guarantee. `CREWRIG_SPEC_ID_CARRIER` survives only as a one-off override for a single
 invocation, for debugging — never as the configuration route.
 
 ### Securing an identifier for a spec under `specs/org/`

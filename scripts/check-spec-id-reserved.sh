@@ -13,9 +13,10 @@
 # parent's id by construction and secures nothing. Specs under `specs/org/` are
 # exempt (delta-01, replaced requirement 7), consistent with the exclusion
 # `specs/0071-org-specs-lint-exclusion.md` establishes for upstream validation of
-# org-owned content — the excluded prefix is read from `.crewrig/core-paths.txt`
-# rather than hardcoded, so a future org-owned path under `specs/` is covered
-# without editing this script.
+# org-owned content. `specs/org/` is an unconditional floor; the `excluded`
+# entries under `specs/` in `.crewrig/core-paths.txt` are read ON TOP of it, so a
+# future org-owned path is covered without editing this script while an absent
+# manifest cannot silently turn the exemption off.
 #
 # WHERE THE RECORD IS READ. Both upstream carriers, on the remote:
 # `refs/spec-ids/*` and `refs/tags/spec-id/*`. Always both, never the configured
@@ -46,16 +47,20 @@
 # maintainer secures the id before merging and removes the requirement-9 mark in
 # the same act. Origin comes from an explicit signal, never an inference:
 #
-#   SPEC_ID_ORIGIN                            'same' or 'fork' — the explicit
-#                                             override, for a local run.
-#   SPEC_ID_HEAD_REPO / SPEC_ID_BASE_REPO     GitHub Actions: mapped from
-#                                             `github.event.pull_request.head.repo.full_name`
-#                                             and `github.repository` by an
-#                                             `env:` block, because those are
-#                                             workflow CONTEXTS, not ambient
-#                                             environment.
-#   CI_MERGE_REQUEST_SOURCE_PROJECT_PATH /    GitLab CI: already ambient.
-#   CI_PROJECT_PATH
+#   CREWRIG_SPEC_ID_ORIGIN
+#       'same' or 'fork' — the explicit override, for a local run.
+#   CREWRIG_PR_HEAD_REPO / CREWRIG_PR_BASE_REPO
+#       GitHub Actions: mapped from
+#       `github.event.pull_request.head.repo.full_name` and
+#       `github.repository` by an `env:` block in .github/workflows/build.yml,
+#       because those are workflow CONTEXTS, not ambient environment. The
+#       `CREWRIG_` prefix is this repository's own convention (CREWRIG_REPO_DIR,
+#       CREWRIG_GITLAB_HOSTS) and it also avoids `GITHUB_`, which GitHub Actions
+#       reserves — a `GITHUB_`-prefixed name would look native while being a
+#       value GitHub does not in fact publish, and would collide with the
+#       reserved prefix in the very `env:` block that has to set it.
+#   CI_MERGE_REQUEST_SOURCE_PROJECT_PATH / CI_PROJECT_PATH
+#       GitLab CI: already ambient in a merge-request pipeline.
 #
 # Usage:
 #   bash scripts/check-spec-id-reserved.sh [<base-ref>]
@@ -63,7 +68,6 @@
 # Environment:
 #   BASE_REF           The change's target branch. Default: the first remote
 #                      matching `crewrig|origin`, plus `/main`.
-#   SPEC_ID_REMOTE     Remote to read reservations from. Default: as for BASE_REF.
 #   CREWRIG_REPO_DIR   Repository root override (used by the self-test).
 #
 # Exit codes:
@@ -106,14 +110,14 @@ fi
 # decision, and getting this wrong in the permissive direction silently disables
 # the guard for the exact case it exists for.
 determine_origin() {
-  case "${SPEC_ID_ORIGIN:-}" in
-    same|fork) printf '%s' "$SPEC_ID_ORIGIN"; return 0 ;;
+  case "${CREWRIG_SPEC_ID_ORIGIN:-}" in
+    same|fork) printf '%s' "$CREWRIG_SPEC_ID_ORIGIN"; return 0 ;;
     "") ;;
-    *) wiring_fault "SPEC_ID_ORIGIN is '$SPEC_ID_ORIGIN'; expected 'same' or 'fork'." ;;
+    *) wiring_fault "CREWRIG_SPEC_ID_ORIGIN is '$CREWRIG_SPEC_ID_ORIGIN'; expected 'same' or 'fork'." ;;
   esac
 
-  if [ -n "${SPEC_ID_HEAD_REPO:-}" ] && [ -n "${SPEC_ID_BASE_REPO:-}" ]; then
-    if [ "$SPEC_ID_HEAD_REPO" = "$SPEC_ID_BASE_REPO" ]; then
+  if [ -n "${CREWRIG_PR_HEAD_REPO:-}" ] && [ -n "${CREWRIG_PR_BASE_REPO:-}" ]; then
+    if [ "$CREWRIG_PR_HEAD_REPO" = "$CREWRIG_PR_BASE_REPO" ]; then
       printf 'same'
     else
       printf 'fork'
@@ -134,13 +138,13 @@ determine_origin() {
         repository or from a fork, and requirement 10 makes the two outcomes
         different — a same-repository unsecured id FAILS, a fork's is only
         reported. Supply one of:
-          - SPEC_ID_HEAD_REPO and SPEC_ID_BASE_REPO (GitHub Actions: map
+          - CREWRIG_PR_HEAD_REPO and CREWRIG_PR_BASE_REPO (GitHub Actions: map
             github.event.pull_request.head.repo.full_name and
             github.repository through an env: block — they are workflow
             contexts, not ambient environment);
           - CI_MERGE_REQUEST_SOURCE_PROJECT_PATH and CI_PROJECT_PATH (GitLab
             CI, already ambient in a merge-request pipeline);
-          - SPEC_ID_ORIGIN=same|fork, the explicit override for a local run.
+          - CREWRIG_SPEC_ID_ORIGIN=same|fork, the explicit override for a local run.
         Refusing to guess: guessing 'fork' would disable this guard on every
         pull request."
 }
@@ -174,7 +178,7 @@ if ! git -C "$REPO_DIR" rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
   fi
 fi
 
-REMOTE="${SPEC_ID_REMOTE:-${BASE_REF%%/*}}"
+REMOTE="${BASE_REF%%/*}"
 
 # --- Which spec paths are org-owned ------------------------------------------
 
