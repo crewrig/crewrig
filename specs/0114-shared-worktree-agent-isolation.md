@@ -1,7 +1,7 @@
 ---
 id: "0114"
 slug: shared-worktree-agent-isolation
-status: draft
+status: approved
 complexity: standard
 interaction-mode: AUTO
 related-issue: 736
