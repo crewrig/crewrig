@@ -344,6 +344,22 @@ function lintFile(filePath) {
         }
     }
 
+    // Optional `unsecured-id` (spec 0112 requirement 9), added to the format in
+    // the same change that introduced the reservation mechanism. Absent by
+    // default and never back-filled, so the only thing to validate is the shape
+    // of the value when an author does write it: a YAML boolean. The quoted
+    // string `"true"` is the mistake worth catching — it reads as set to a human
+    // and is not a boolean to any consumer. A null value is tolerated on the
+    // same terms as `max-iterations` above (present-but-empty is treated as
+    // absent), and `false` is accepted rather than rejected as redundant: this
+    // check validates the field, it does not police whether writing it out was
+    // necessary.
+    if ('unsecured-id' in fm && fm['unsecured-id'] !== null) {
+        if (typeof fm['unsecured-id'] !== 'boolean') {
+            reportError(`'unsecured-id' MUST be a boolean when present (got ${typeof fm['unsecured-id']}: ${JSON.stringify(fm['unsecured-id'])}).`);
+        }
+    }
+
     if (fm.status === 'superseded') {
         if (!('superseded-by' in fm) || !fm['superseded-by']) {
             reportError(`'superseded-by' is REQUIRED when status is 'superseded'.`);

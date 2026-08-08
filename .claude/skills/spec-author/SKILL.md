@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.2"
+    version: "1.4.0"
 ---
 
 
@@ -365,20 +365,60 @@ document wins.
 
 ### ID allocation
 
-`<NNNN>` is the next free monotonic id across the whole `/specs/`
-directory, zero-padded to four digits. The skill discovers it by:
+`<NNNN>` is **secured on the reference repository before the spec file is
+written**, by `scripts/reserve-spec-id.sh`. The skill SHALL NOT compute it
+from the local working tree.
 
-1. Listing `/specs/*.md` (excluding `_template.md`, `README.md`, and any
-   `*.delta-*.md`).
-2. Parsing each filename's `<NNNN>` prefix.
-3. Selecting `max(existing) + 1`. If `/specs/` contains no numbered
-   file, start at `0001`.
+What this replaces, and why (`specs/0112-spec-id-reservation.md`): an
+unsynchronised `max(existing) + 1` hands the same number to two sessions
+that pick up two tickets in the same second, and the collision is
+discovered by an unrelated third pull request *after* both offending specs
+have merged — by which point the id is carried by an issue, a branch name,
+a pull-request title and a logbook, and repairing it means renaming all of
+them.
 
-The skill SHALL NOT reuse an id from archived or superseded specs (per
-`docs/spec-format.md` → *Naming convention*: spec ids are cheap and
-never reused). On a collision detected at write time (race with a
-sibling agent), the skill bumps to the next free id and retries —
-non-fatal.
+Run the tool FIRST, before the filename, the branch name, or the
+frontmatter exist (requirement 2 — so that all three agree from the first
+commit):
+
+```sh
+bash scripts/reserve-spec-id.sh --issue <related-issue>
+```
+
+The first line of stdout is always the id. The exit code is the only thing
+the skill interprets:
+
+| Exit | Meaning | What the skill does |
+|---|---|---|
+| `0` | The id is secured. | Use it. Write no mark. |
+| `3` | The id is allocated locally but **not** secured — offline, unreachable remote, or no write access (the fork case). | Use it, AND copy the emitted `unsecured-id: true` line verbatim into the frontmatter. |
+| `1` | Genuine failure. | Stop. Relay the stderr reason to the user. |
+
+Three obligations, each closing a tempting shortcut:
+
+- On exit `1` the skill SHALL NOT fall back to `max(existing) + 1`, and
+  SHALL NOT re-run the tool hoping for a different answer. Exit `1` names a
+  condition a retry cannot change: an invalid carrier setting, a
+  non-representable identifier, an id already held by another ticket, or a
+  retry budget already exhausted by lost races.
+- On exit `3` the mark is **not optional**. It is the machine-readable
+  statement that the id may still be taken by another session, and it is
+  what `scripts/check-spec-id-reserved.sh` reports at pull-request time —
+  blocking for a pull request from the reference repository, non-blocking
+  for one from a fork, where a maintainer secures the id and removes the
+  mark before merge (requirement 10).
+- The skill never passes `--corpus`, never passes `--id`, and never sets
+  `SPEC_ID_CARRIER`. Securing a chosen identifier is the maintainer's path
+  and the org-corpus path; changing the carrier is a pull request against
+  `.crewrig/spec-id-carrier`, not something a session decides.
+
+Ids are never reused and a gap in the sequence is an accepted outcome (per
+`docs/spec-format.md` → *Naming convention*). An abandoned reservation is
+harmless by design: no expiry, no reclamation pass, no release protocol.
+
+**Delta-specs secure nothing.** A delta-spec reuses its parent's id by
+construction, so in delta-spec mode the skill does not call the tool at
+all.
 
 ### Frontmatter
 
@@ -387,7 +427,7 @@ schema*:
 
 | Field | Source |
 |---|---|
-| `id` | Allocated as above, quoted string. |
+| `id` | Secured as above, quoted string. |
 | `slug` | Generated from the intent; kebab-case, ASCII, ≤ 40 chars. |
 | `status` | Always `draft` on first write. |
 | `complexity` | From the user (INTERMEDIATE/FULL) or skill-judged (AUTO/MINIMAL). |
@@ -396,6 +436,7 @@ schema*:
 | `version` | `1.0.0`. |
 | `max-iterations` | Omitted by default (inherits ADR-0010's 5). |
 | `superseded-by` | Omitted (only present for `superseded` status). |
+| `unsecured-id` | Omitted. Present, and copied verbatim from the tool's stdout, only on the exit-`3` path above. |
 
 The filename slug and the frontmatter slug SHALL match exactly.
 

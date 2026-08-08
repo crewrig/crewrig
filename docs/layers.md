@@ -197,7 +197,7 @@ to every deployment of CrewRig.
 
 | Path | Description |
 |---|---|
-| `.crewrig/` | Machine-readable sync manifest and related tooling. `.crewrig/core-paths.txt` enumerates core-layer paths and their sync policy consumed by `scripts/sync-from-upstream.sh`. The `.crewrig/.synced-markers/` subtree is carved out as adopter-owned state (spec 0020) — see the Overlay layer. |
+| `.crewrig/` | Machine-readable sync manifest and related tooling. `.crewrig/core-paths.txt` enumerates core-layer paths and their sync policy consumed by `scripts/sync-from-upstream.sh`. Two members are carved out as adopter-owned (spec 0020) — see the Overlay layer: the `.crewrig/.synced-markers/` subtree (machine-managed sync state) and `.crewrig/spec-id-carrier` (the reservation-namespace setting, spec 0112). |
 
 ---
 
@@ -253,6 +253,7 @@ sync.
 | `specs/org/` | Organization-owned specification overlay, nested in core `specs/`. Excluded from upstream sync, and from the spec linter's upstream filename/frontmatter/heading validation (spec 0071). |
 | `docs/org/` | Organization-owned documentation overlay, nested in core `docs/`. Excluded from upstream sync. |
 | `AGENTS.org.md` | Organization-owned agent-rules extension, loaded alongside the upstream `AGENTS.md` (natively on Claude via `@` import; via the priority-66 setup deployment on Gemini and Copilot). Excluded from upstream sync. |
+| `.crewrig/spec-id-carrier` | Repository-scoped setting naming the git ref namespace that holds spec-id reservations (spec 0112), nested in the core `.crewrig/` tree. Value constrained to a closed pair — `refs/spec-ids/` (the shipped default) or `refs/tags/spec-id/` (for a remote that refuses a custom top-level namespace); org reservations go to the *sibling* namespace of whichever is set. Changed by pull request, never by an environment export: the create-only compare-and-swap locks a *ref*, so two contributors with divergent carriers would both succeed and both hold the same id. Excluded from upstream sync — which also means upstream can never update the value afterwards. Still reaches every fork, because `excluded` governs synchronisation, not distribution. |
 | `mcp-servers.org.json` | Organization-owned MCP server **declaration / configuration** channel (spec 0091): a root-level, CLI-agnostic manifest mapping each server name to its transport, endpoint, and authorization (no implementation code — that is `artifacts/community/mcp-servers/`, above). Setup translates it into each CLI's native MCP config and folds it after the spec-0089 operator merge (precedence framework-reserved > org > operator). Follows the `<name>.org.<ext>` convention of `AGENTS.org.md`; ships empty (no operational server or credential). Excluded from upstream sync. |
 
 ### Adopter-managed sync state (spec 0020)
