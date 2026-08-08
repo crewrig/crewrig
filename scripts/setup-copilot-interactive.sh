@@ -256,6 +256,7 @@ if [ "$INSTALL_MEMPALACE_COPILOT" = "yes" ]; then
   # Install the shared ChromaDB HTTP daemon supervisor (issue #98) before
   # writing the wrapper into mcp-config.json — first-launch ordering matters.
   install_chroma_daemon "$REPO_DIR"
+  offer_mcp_http_switch "$REPO_DIR" copilot || true
 
   # Copy template, patch mcpServers.mempalace.command with the detected
   # python, and substitute __CREWRIG_REPO_DIR__ in args so the

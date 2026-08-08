@@ -554,69 +554,72 @@ offer_mempalace_install() {
 # is healthy before returning. Exits 1 if the daemon fails to come up — the
 # wrapper's fail-loud contract requires the daemon to be reachable before
 # any MCP entry is registered.
-install_chroma_daemon() {
-  local repo_dir="$1"
+# install_daemon_supervisor <launchd_label> <systemd_unit> <materialise_fn> <health_fn> <log_hint>
+#
+# Installs and starts a supervised user-level daemon. Idempotent — re-running
+# on an already-loaded unit is a no-op.
+#
+#   <launchd_label>  launchd label, and the basename of the plist under
+#                    config/launchd/ (e.g. com.mempalace.chroma-server)
+#   <systemd_unit>   systemd unit name, and the basename of the unit file under
+#                    config/systemd/ (e.g. mempalace-chroma-server). The two
+#                    naming schemes genuinely differ — reverse-DNS on macOS,
+#                    hyphenated on Linux — so they are separate parameters
+#                    rather than one derived from the other.
+#   <materialise_fn> name of a function taking <src> <dst>; writes the
+#                    substituted unit and returns non-zero on refusal. Every
+#                    placeholder set is daemon-specific — Chroma needs the
+#                    chroma binary, the MCP daemon needs a port and a token —
+#                    so substitution is the caller's, not this function's.
+#   <health_fn>      name of a function returning 0 once the daemon serves.
+#                    Polled on a deadline; a supervised process needs a few
+#                    seconds to bind its socket (issue #138).
+#   <log_hint>       path shown to the operator when the deadline expires.
+#
+# Generalised from install_chroma_daemon by spec 0113. The three parts that
+# are genuinely daemon-specific — placeholder substitution, the binary
+# preflight, and the health check — are callbacks; the OS branching, the unit
+# install, the load/enable and the deadline poll are shared.
+install_daemon_supervisor() {
+  local label="$1"
+  local systemd_unit="$2"
+  local materialise_fn="$3"
+  local health_fn="$4"
+  local log_hint="$5"
   local os
   os="$(uname -s)"
-  echo ""
-  echo "Installing shared ChromaDB HTTP daemon supervisor (issue #98)..."
   case "$os" in
     Darwin)
-      local plist_src="$repo_dir/config/launchd/com.mempalace.chroma-server.plist"
-      local plist_dst="$HOME/Library/LaunchAgents/com.mempalace.chroma-server.plist"
+      local plist_src="$CREWRIG_REPO_DIR/config/launchd/${label}.plist"
+      local plist_dst="$HOME/Library/LaunchAgents/${label}.plist"
       if [ ! -f "$plist_src" ]; then
         echo "  ERROR: $plist_src missing — daemon supervisor unit not shipped."
         return 1
       fi
       mkdir -p "$HOME/Library/LaunchAgents"
-      # Substitute placeholders. The plist on disk is user-agnostic
-      # (no hardcoded $HOME) — we materialise it here with the
-      # detected mempalace interpreter and chroma binary so the launchd
-      # agent runs against the right venv.
-      local pipx_py chroma_bin mempalace_home
-      pipx_py="$(detect_mempalace_python || true)"
-      if [ -z "$pipx_py" ]; then
-        echo "  ERROR: cannot detect mempalace pipx python — install mempalace first."
-        return 1
-      fi
-      chroma_bin="$(dirname "$pipx_py")/chroma"
-      if [ ! -x "$chroma_bin" ]; then
-        echo "  ERROR: chroma binary not found at $chroma_bin — run: pipx inject mempalace 'chromadb>=1.5.9'"
-        return 1
-      fi
-      mempalace_home="$HOME/.mempalace"
-      sed \
-        -e "s|__MEMPALACE_HOME__|${mempalace_home}|g" \
-        -e "s|__PIPX_PYTHON__|${pipx_py}|g" \
-        -e "s|__CHROMA_BIN__|${chroma_bin}|g" \
-        -e "s|__TLS_EXEC__|${repo_dir}/scripts/lib/tls-exec.sh|g" \
-        "$plist_src" > "$plist_dst"
+      "$materialise_fn" "$plist_src" "$plist_dst" || return 1
       echo "  Installed: $plist_dst"
-      if launchctl list | grep -q com.mempalace.chroma-server; then
+      if launchctl list | grep -q "$label"; then
         echo "  launchd agent already loaded — skipping load."
       else
         launchctl load -w "$plist_dst" \
-          && echo "  Loaded launchd agent: com.mempalace.chroma-server" \
+          && echo "  Loaded launchd agent: $label" \
           || { echo "  ERROR: launchctl load failed."; return 1; }
       fi
       ;;
     Linux)
-      local svc_src="$repo_dir/config/systemd/mempalace-chroma-server.service"
-      local svc_dst="$HOME/.config/systemd/user/mempalace-chroma-server.service"
+      local svc_src="$CREWRIG_REPO_DIR/config/systemd/${systemd_unit}.service"
+      local svc_dst="$HOME/.config/systemd/user/${systemd_unit}.service"
       if [ ! -f "$svc_src" ]; then
         echo "  ERROR: $svc_src missing — daemon supervisor unit not shipped."
         return 1
       fi
       mkdir -p "$HOME/.config/systemd/user"
-      # Materialise the unit through the TLS wrapper (spec 0084): substitute
-      # __TLS_EXEC__ in ExecStart so the supervised daemon inherits any
-      # user-consented custom-CA trust for its embedding-model fetch.
-      sed -e "s|__TLS_EXEC__|${repo_dir}/scripts/lib/tls-exec.sh|g" \
-        "$svc_src" > "$svc_dst"
+      "$materialise_fn" "$svc_src" "$svc_dst" || return 1
       echo "  Installed: $svc_dst"
       systemctl --user daemon-reload \
-        && systemctl --user enable --now mempalace-chroma-server \
-        && echo "  Enabled and started: mempalace-chroma-server.service" \
+        && systemctl --user enable --now "$systemd_unit" \
+        && echo "  Enabled and started: ${systemd_unit}.service" \
         || { echo "  ERROR: systemctl --user enable --now failed."; return 1; }
       ;;
     *)
@@ -624,31 +627,752 @@ install_chroma_daemon() {
       return 1
       ;;
   esac
-  # Health check — confirm the daemon answers on the heartbeat endpoint
-  # before any MCP entry is written. The launchd/systemd-managed process
-  # needs a few seconds to bind its socket, so poll with a 15s budget
-  # instead of one-shotting status-chroma-server.sh (see issue #138).
-  if [ -x "$repo_dir/scripts/status-chroma-server.sh" ]; then
-    local deadline=$((SECONDS + 15))
-    local healthy=0
-    while [ "$SECONDS" -lt "$deadline" ]; do
-      if bash "$repo_dir/scripts/status-chroma-server.sh" >/dev/null 2>&1; then
-        healthy=1
-        break
+  # Health check — confirm the daemon answers before any MCP entry is written.
+  # The supervisor-managed process needs a few seconds to bind its socket, so
+  # poll with a 15s budget instead of one-shotting the health command
+  # (see issue #138). The `# Health check` marker on this line is load-bearing:
+  # scripts/tests/test-chroma-health-race.sh extracts the block between it and
+  # this function's closing brace to assert the polling shape, so moving or
+  # rewording it breaks that regression test.
+  local deadline=$((SECONDS + 15))
+  local healthy=0
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if "$health_fn" >/dev/null 2>&1; then
+      healthy=1
+      break
+    fi
+    sleep 0.3
+  done
+  if [ "$healthy" -ne 1 ]; then
+    # Surface the health check's own diagnostics so the operator sees the real
+    # cause before the generic ERROR line.
+    "$health_fn" || true
+    echo "  ERROR: daemon '$label' did not become healthy."
+    echo "         Inspect logs at $log_hint and retry."
+    return 1
+  fi
+  return 0
+}
+
+# Materialise callback for the ChromaDB unit. Placeholders are chroma-specific:
+# the plist on disk is user-agnostic (no hardcoded $HOME) and is filled here
+# with the detected mempalace interpreter and chroma binary so the supervised
+# agent runs against the right venv.
+_materialise_chroma_unit() {
+  local src="$1"
+  local dst="$2"
+  if [ "$(uname -s)" = "Linux" ]; then
+    # The systemd unit carries only the TLS wrapper placeholder (spec 0084),
+    # so ExecStart inherits any user-consented custom-CA trust.
+    sed -e "s|__TLS_EXEC__|${CREWRIG_REPO_DIR}/scripts/lib/tls-exec.sh|g" "$src" > "$dst"
+    return 0
+  fi
+  local pipx_py chroma_bin mempalace_home
+  pipx_py="$(detect_mempalace_python || true)"
+  if [ -z "$pipx_py" ]; then
+    echo "  ERROR: cannot detect mempalace pipx python — install mempalace first."
+    return 1
+  fi
+  chroma_bin="$(dirname "$pipx_py")/chroma"
+  if [ ! -x "$chroma_bin" ]; then
+    echo "  ERROR: chroma binary not found at $chroma_bin — run: pipx inject mempalace 'chromadb>=1.5.9'"
+    return 1
+  fi
+  mempalace_home="$HOME/.mempalace"
+  sed \
+    -e "s|__MEMPALACE_HOME__|${mempalace_home}|g" \
+    -e "s|__PIPX_PYTHON__|${pipx_py}|g" \
+    -e "s|__CHROMA_BIN__|${chroma_bin}|g" \
+    -e "s|__TLS_EXEC__|${CREWRIG_REPO_DIR}/scripts/lib/tls-exec.sh|g" \
+    "$src" > "$dst"
+  return 0
+}
+
+_health_chroma_daemon() {
+  if [ -x "$CREWRIG_REPO_DIR/scripts/status-chroma-server.sh" ]; then
+    bash "$CREWRIG_REPO_DIR/scripts/status-chroma-server.sh"
+    return $?
+  fi
+  echo "  WARNING: scripts/status-chroma-server.sh not found — cannot health-check."
+  return 0
+}
+
+install_chroma_daemon() {
+  local repo_dir="$1"
+  CREWRIG_REPO_DIR="$repo_dir"
+  echo ""
+  echo "Installing shared ChromaDB HTTP daemon supervisor (issue #98)..."
+  install_daemon_supervisor \
+    "com.mempalace.chroma-server" \
+    "mempalace-chroma-server" \
+    _materialise_chroma_unit \
+    _health_chroma_daemon \
+    "$HOME/.mempalace/chroma-server.log"
+}
+
+# --- MCP HTTP daemon: install (spec 0113, ADR 0016) --------------------------
+MCP_DAEMON_HOST_DEFAULT="127.0.0.1"
+MCP_DAEMON_PORT_DEFAULT="8021"
+# Overridable so a test can bind elsewhere. A test that shares the production
+# port reaches the production daemon even when its own unit is correctly
+# labelled and simply failed to bind — the isolation must cover the port, not
+# only the unit name (spec 0113 step 2c).
+MCP_DAEMON_LABEL_DEFAULT="com.mempalace.mcp-server"
+MCP_DAEMON_UNIT_DEFAULT="mempalace-mcp-server"
+
+mcp_launcher_installed_path() {
+  printf '%s\n' "${MEMPALACE_MCP_LAUNCHER_PATH:-$HOME/.crewrig/mcp-daemon-launcher.sh}"
+}
+
+mcp_launcher_source_sha() {
+  local src="$CREWRIG_REPO_DIR/scripts/lib/mcp-daemon-launcher.sh"
+  [ -f "$src" ] || return 1
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$src" | cut -d' ' -f1
+  else
+    sha256sum "$src" | cut -d' ' -f1
+  fi
+}
+
+# Materialise the launcher into ~/.crewrig/ with its placeholders substituted,
+# recording the SOURCE hash so status-mcp-server.sh can detect drift between
+# the installed copy and the repository. Comparing installed bytes to source
+# bytes would report divergence on every correct install — the substitutions
+# guarantee they differ — so the recorded hash is the comparable quantity.
+install_mcp_launcher() {
+  local dst src sha py
+  dst="$(mcp_launcher_installed_path)"
+  src="$CREWRIG_REPO_DIR/scripts/lib/mcp-daemon-launcher.sh"
+  if [ ! -f "$src" ]; then
+    echo "  ERROR: $src missing — launcher template not shipped."
+    return 1
+  fi
+  # MEMPALACE_PYTHON wins when set — the same variable the transcript hook
+  # honours. It lets a hermetic test materialise the launcher on a machine with
+  # no mempalace venv, which is every CI runner.
+  py="${MEMPALACE_PYTHON:-$(detect_mempalace_python || true)}"
+  if [ -z "$py" ]; then
+    echo "  ERROR: cannot detect mempalace pipx python — install mempalace first."
+    echo "         (set MEMPALACE_PYTHON to override detection)"
+    return 1
+  fi
+  sha="$(mcp_launcher_source_sha)" || return 1
+  mkdir -p "$(dirname "$dst")"
+  sed \
+    -e "s|__CREWRIG_REPO_DIR__|${CREWRIG_REPO_DIR}|g" \
+    -e "s|__MCP_HOST__|${MEMPALACE_MCP_HOST:-$MCP_DAEMON_HOST_DEFAULT}|g" \
+    -e "s|__MCP_PORT__|${MEMPALACE_MCP_PORT:-$MCP_DAEMON_PORT_DEFAULT}|g" \
+    -e "s|__CHROMA_HOST__|${MEMPALACE_CHROMA_HOST:-127.0.0.1}|g" \
+    -e "s|__CHROMA_PORT__|${MEMPALACE_CHROMA_PORT:-8001}|g" \
+    -e "s|__MEMPALACE_PYTHON__|${py}|g" \
+    -e "s|__LAUNCHER_SOURCE_SHA__|${sha}|g" \
+    "$src" > "$dst"
+  chmod 755 "$dst"
+  echo "  Installed launcher: $dst"
+  return 0
+}
+
+_materialise_mcp_unit() {
+  local src="$1"
+  local dst="$2"
+  # Both units name the launcher through the same placeholder, so an
+  # overridden launcher path (a test's) reaches both platforms identically.
+  sed \
+    -e "s|__LAUNCHER_PATH__|$(mcp_launcher_installed_path)|g" \
+    -e "s|__MEMPALACE_HOME__|${HOME}/.mempalace|g" \
+    "$src" > "$dst"
+  return 0
+}
+
+_health_mcp_daemon() {
+  local host port
+  host="${MEMPALACE_MCP_HOST:-$MCP_DAEMON_HOST_DEFAULT}"
+  port="${MEMPALACE_MCP_PORT:-$MCP_DAEMON_PORT_DEFAULT}"
+  curl -sf --max-time 3 "http://${host}:${port}/healthz" >/dev/null 2>&1
+}
+
+install_mcp_daemon() {
+  local repo_dir="$1"
+  CREWRIG_REPO_DIR="$repo_dir"
+  echo ""
+  echo "Installing shared MemPalace MCP HTTP daemon supervisor (spec 0113)..."
+  # The token must exist before the launcher runs: it refuses to serve without
+  # one, by design (an empty token disables the bearer check upstream).
+  if ! mcp_token_read_or_create >/dev/null; then
+    echo "  ERROR: could not provision the MCP bearer token."
+    echo "         Refusing to install a daemon that would serve unauthenticated."
+    return 1
+  fi
+  install_mcp_launcher || return 1
+  install_daemon_supervisor \
+    "${MEMPALACE_MCP_LABEL:-$MCP_DAEMON_LABEL_DEFAULT}" \
+    "${MEMPALACE_MCP_UNIT:-$MCP_DAEMON_UNIT_DEFAULT}" \
+    _materialise_mcp_unit \
+    _health_mcp_daemon \
+    "$HOME/.mempalace/mcp-server.log"
+}
+
+# --- Four-CLI registration surface (spec 0113 R3, R11; step 8) ---------------
+# Built here rather than reused from spec 0091: `apply_org_mcp_servers` skips
+# every name in MCP_RESERVED_NAMES by design, and `mempalace` is reserved — the
+# org appliers deliberately refuse to touch exactly the server we must
+# register. And setup-claude-interactive.sh's `mcp_register_user` takes
+# `-- "$@"`, a stdio argv shape with no room for a transport or a header.
+#
+# One helper, four native shapes, so they cannot drift:
+#   Claude       claude mcp add --transport http <name> <url> --header "..."
+#   Gemini       {"type":"http","url":…,"headers":{…}}
+#   Copilot      {"type":"http","url":…,"headers":{…}}
+#   Antigravity  {"serverUrl":…,"headers":{…}}   (no transport type key)
+
+mcp_assistant_config_path() {
+  case "$1" in
+    claude)      printf '%s\n' "$HOME/.claude.json" ;;
+    gemini)      printf '%s\n' "$HOME/.gemini/settings.json" ;;
+    copilot)     printf '%s\n' "$HOME/.copilot/mcp-config.json" ;;
+    antigravity) printf '%s\n' "$HOME/.gemini/config/mcp_config.json" ;;
+    *) return 1 ;;
+  esac
+}
+
+mcp_daemon_url() {
+  printf 'http://%s:%s/mcp\n' \
+    "${MEMPALACE_MCP_HOST:-$MCP_DAEMON_HOST_DEFAULT}" \
+    "${MEMPALACE_MCP_PORT:-$MCP_DAEMON_PORT_DEFAULT}"
+}
+
+# capture_mempalace_registration <cli> — echoes the current registration as
+# JSON, or `null` when there is none. Claude's is read from its own config file
+# rather than from `claude mcp get`, because restoring must write back the exact
+# object the CLI stores.
+capture_mempalace_registration() {
+  local cli="$1" cfg
+  cfg="$(mcp_assistant_config_path "$cli")" || return 1
+  [ -f "$cfg" ] || { printf 'null\n'; return 0; }
+  jq -c '.mcpServers.mempalace // null' "$cfg" 2>/dev/null || printf 'null\n'
+}
+
+# restore_mempalace_registration <cli> <captured_json>
+# Returns non-zero when the restore fails — the caller must report that state
+# (R14) rather than assume the machine is back where it started.
+restore_mempalace_registration() {
+  local cli="$1" captured="$2" cfg tmp
+  cfg="$(mcp_assistant_config_path "$cli")" || return 1
+  [ -f "$cfg" ] || return 1
+  if [ "$captured" = "null" ] || [ -z "$captured" ]; then
+    write_json_config_secure "$cfg" 'del(.mcpServers.mempalace)' || return 1
+  else
+    write_json_config_secure "$cfg" --argjson v "$captured" '.mcpServers.mempalace = $v' || return 1
+  fi
+  return 0
+}
+
+# register_mempalace_mcp <cli> <token> — switch one assistant to the shared
+# daemon. Returns non-zero on failure, leaving the caller to restore.
+register_mempalace_mcp() {
+  local cli="$1" token="$2" url cfg
+  url="$(mcp_daemon_url)"
+  case "$cli" in
+    claude)
+      command -v claude >/dev/null 2>&1 || return 1
+      # NOT `claude mcp add --header "Authorization: Bearer $token"`: on Linux
+      # /proc/<pid>/cmdline is world-readable, so any local uid sampling the
+      # process table during setup harvests the credential. `mcp add-json` puts
+      # the JSON in argv too, so it is no better. Upstream makes the same point
+      # about its own token handling. We therefore write the entry the way the
+      # other three CLIs are written — the same path restore already uses.
+      cfg="$(mcp_assistant_config_path claude)"
+      # Claude Code installed but never run has no config file yet — an
+      # ordinary state, and one `claude mcp add` used to paper over by creating
+      # the file itself. Since we now write the file directly, we must create
+      # it, or a fresh install fails the whole all-or-nothing transaction and
+      # switches nobody.
+      if [ ! -f "$cfg" ]; then
+        ( umask 077; printf '%s\n' '{"mcpServers":{}}' > "$cfg" ) || return 1
+        chmod 600 "$cfg" || return 1
       fi
-      sleep 0.3
-    done
-    if [ "$healthy" -ne 1 ]; then
-      # Surface the status script's diagnostics (stdout + stderr) so the user
-      # sees the real failure cause before the generic ERROR line.
-      bash "$repo_dir/scripts/status-chroma-server.sh" || true
-      echo "  ERROR: ChromaDB daemon did not become healthy."
-      echo "         Inspect logs at ~/.mempalace/chroma-server.log and retry."
+      claude mcp remove --scope user mempalace >/dev/null 2>&1 || true
+      write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
+        '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$auth}}' \
+        || return 1
+      return 0
+      ;;
+    gemini|copilot)
+      cfg="$(mcp_assistant_config_path "$cli")"
+      [ -f "$cfg" ] || return 1
+      write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
+        '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$auth}}' \
+        || return 1
+      return 0
+      ;;
+    antigravity)
+      # Antigravity's remote shape is {serverUrl, headers} with NO transport
+      # type key — grounded in docs/cli-matrix.md row 7h.
+      cfg="$(mcp_assistant_config_path "$cli")"
+      [ -f "$cfg" ] || return 1
+      write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
+        '.mcpServers.mempalace = {serverUrl:$url, headers:{Authorization:$auth}}' \
+        || return 1
+      return 0
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# mcp_assistant_present <cli> — the delta-01 definition of "present on the
+# machine": this repo ships a setup script for it AND its own CLI is
+# detectable. An absent tool is not part of the all-or-nothing obligation.
+mcp_assistant_present() {
+  case "$1" in
+    claude)      command -v claude >/dev/null 2>&1 ;;
+    gemini)      command -v gemini >/dev/null 2>&1 ;;
+    copilot)     command -v copilot >/dev/null 2>&1 ;;
+    antigravity) command -v agy >/dev/null 2>&1 ;;
+    *) return 1 ;;
+  esac
+}
+
+# switch_assistants_to_http — the transaction (R3, R4, R11-R15).
+#
+# R12 floor first: every present assistant's config must be readable AND
+# writable before anything is applied. `claude mcp add` cannot be pre-flighted
+# — no --dry-run, --check or --validate exists — so the floor is what CAN be
+# established in advance, and R13's restore covers what cannot.
+switch_assistants_to_http() {
+  local token="$1"
+  local clis="claude gemini copilot antigravity"
+  local cli cfg present="" arrangement
+  local had_http=0 had_stdio=0
+
+  # --- R15: report a partial state found on entry ---------------------------
+  for cli in $clis; do
+    mcp_assistant_present "$cli" || continue
+    present="$present $cli"
+    arrangement="$(mcp_assistant_arrangement "$cli")"
+    case "$arrangement" in
+      http)    had_http=1 ;;
+      stdio)   had_stdio=1 ;;
+      unknown)
+        echo "  ERROR: $cli is in an unrecognised arrangement."
+        echo "         A repeated run cannot resolve a configuration it cannot"
+        echo "         recognise. Repair it by hand, then re-run. (R14)"
+        return 1
+        ;;
+    esac
+  done
+  if [ -z "$present" ]; then
+    echo "  No supported assistant found on this machine — nothing to switch."
+    return 0
+  fi
+  if [ "$had_http" -eq 1 ] && [ "$had_stdio" -eq 1 ]; then
+    echo "  NOTE: found a partial state — some assistants were already switched"
+    echo "        and others were not. Converging them now. (R15)"
+  fi
+
+  # --- R12: the floor -------------------------------------------------------
+  for cli in $present; do
+    cfg="$(mcp_assistant_config_path "$cli")"
+    # A present assistant with NO config file is a pre-flight failure, not a
+    # skip: the apply step needs a file to write into and will fail there
+    # instead — after earlier assistants have already been changed, which is
+    # exactly what delta-01's first scenario forbids ("no assistant SHALL be
+    # changed"). Nesting the checks inside `[ -f ]` let that case through.
+    if [ ! -f "$cfg" ]; then
+      echo "  ERROR: $cli is installed but has no configuration file yet:"
+      echo "         $cfg"
+      echo "         Run its own setup script once first. No assistant has been"
+      echo "         changed. (R12)"
       return 1
     fi
-  else
-    echo "  WARNING: scripts/status-chroma-server.sh not found — skipping health check."
+    if [ ! -r "$cfg" ] || [ ! -w "$cfg" ]; then
+      echo "  ERROR: $cli's configuration is not both readable and writable:"
+      echo "         $cfg"
+      echo "         No assistant has been changed. (R12)"
+      return 1
+    fi
+    if ! jq -e . "$cfg" >/dev/null 2>&1; then
+      echo "  ERROR: $cli's configuration does not parse: $cfg"
+      echo "         No assistant has been changed. (R12)"
+      return 1
+    fi
+  done
+
+  # --- Capture, then apply --------------------------------------------------
+  local applied="" captured_claude="null" captured_gemini="null"
+  local captured_copilot="null" captured_antigravity="null" cap
+  for cli in $present; do
+    cap="$(capture_mempalace_registration "$cli")"
+    case "$cli" in
+      claude)      captured_claude="$cap" ;;
+      gemini)      captured_gemini="$cap" ;;
+      copilot)     captured_copilot="$cap" ;;
+      antigravity) captured_antigravity="$cap" ;;
+    esac
+    backup_file "$(mcp_assistant_config_path "$cli")"
+  done
+
+  for cli in $present; do
+    # Record the assistant as touched BEFORE attempting, not after succeeding.
+    # register_mempalace_mcp is not atomic for Claude — it removes the old
+    # entry, then writes the new one — so a failure leaves the assistant with
+    # NO registration at all. Rolling back only the successes would then skip
+    # the one assistant that actually lost its configuration, and `failed`
+    # would stay empty so R14's report never fires: silent, total memory loss
+    # on the primary CLI.
+    applied="$applied $cli"
+    if register_mempalace_mcp "$cli" "$token"; then
+      echo "  $cli: switched to the shared daemon"
+    else
+      echo "  ERROR: $cli could not be switched."
+      _switch_rollback "$applied" \
+        "$captured_claude" "$captured_gemini" "$captured_copilot" "$captured_antigravity"
+      return 1
+    fi
+  done
+  return 0
+}
+
+# _switch_rollback <applied_list> <claude> <gemini> <copilot> <antigravity>
+# R13, and R14 when a restore itself fails.
+_switch_rollback() {
+  local applied="$1" c_claude="$2" c_gemini="$3" c_copilot="$4" c_antigravity="$5"
+  local cli cap failed=""
+  echo "  Restoring the assistants already changed in this run... (R13)"
+  for cli in $applied; do
+    case "$cli" in
+      claude)      cap="$c_claude" ;;
+      gemini)      cap="$c_gemini" ;;
+      copilot)     cap="$c_copilot" ;;
+      antigravity) cap="$c_antigravity" ;;
+      *) continue ;;
+    esac
+    if restore_mempalace_registration "$cli" "$cap"; then
+      echo "    $cli: restored"
+    else
+      echo "    $cli: RESTORE FAILED"
+      failed="$failed $cli"
+    fi
+  done
+  if [ -n "$failed" ]; then
+    echo ""
+    echo "  *** MANUAL REPAIR REQUIRED (R14) ***"
+    echo "  These assistants could not be returned to their previous arrangement:"
+    for cli in $failed; do
+      echo "    - $cli  ($(mcp_assistant_config_path "$cli"))"
+    done
+    echo "  Each config was backed up before the change; restore the timestamped"
+    echo "  .bak file beside it, or re-run setup once the cause is fixed."
+    echo ""
+    echo "  Current state of every assistant:"
+    mcp_report_assistant_arrangements
   fi
+}
+
+# mcp_assistant_arrangement <cli>
+#
+# Echoes the arrangement one assistant is currently configured for, as one of:
+#   http     — reaches shared memory through the shared MCP daemon
+#   stdio    — spawns its own memory server (the previous arrangement)
+#   none     — no mempalace registration
+#   unknown  — a registration exists but matches neither shape (spec 0113 R14:
+#              reported, never silently converged — repetition cannot resolve a
+#              configuration it cannot recognise)
+#   absent   — the assistant's own CLI is not installed on this machine, so it
+#              is not part of the all-or-nothing obligation (delta-01 definition)
+#
+# One reader, consumed by both status-mcp-server.sh and doctor-mempalace.sh so
+# the two cannot drift apart on what "current arrangement" means.
+mcp_assistant_arrangement() {
+  local cli="$1" entry="" entry_cfg=""
+  case "$cli" in
+    claude)
+      command -v claude >/dev/null 2>&1 || { printf 'absent\n'; return 0; }
+      # Read the CONFIG FILE, not `claude mcp get` output. Grepping that text
+      # for http|url|/mcp matched `mempalace-http-wrapper.py` sitting in a
+      # STDIO entry's args, so a stdio Claude reported as http — verified on a
+      # real machine. The file is JSON like the other three, so the same exact
+      # test applies and the only textual branch disappears.
+      entry_cfg="$(mcp_assistant_config_path claude)"
+      [ -f "$entry_cfg" ] || { printf 'none\n'; return 0; }
+      entry="$(jq -c '.mcpServers.mempalace // empty' "$entry_cfg" 2>/dev/null)"
+      if [ -z "$entry" ]; then
+        printf 'none\n'
+      elif printf '%s' "$entry" | jq -e 'has("url") or has("serverUrl")' >/dev/null 2>&1; then
+        printf 'http\n'
+      elif printf '%s' "$entry" | jq -e 'has("command")' >/dev/null 2>&1; then
+        printf 'stdio\n'
+      else
+        printf 'unknown\n'
+      fi
+      return 0
+      ;;
+    gemini)      entry="$HOME/.gemini/settings.json" ;;
+    copilot)     entry="$HOME/.copilot/mcp-config.json" ;;
+    antigravity) entry="$HOME/.gemini/config/mcp_config.json" ;;
+    *) printf 'unknown\n'; return 0 ;;
+  esac
+  [ -f "$entry" ] || { printf 'absent\n'; return 0; }
+  local node
+  node="$(jq -c '.mcpServers.mempalace // empty' "$entry" 2>/dev/null)"
+  if [ -z "$node" ]; then
+    printf 'none\n'
+  elif printf '%s' "$node" | jq -e 'has("url") or has("serverUrl")' >/dev/null 2>&1; then
+    printf 'http\n'
+  elif printf '%s' "$node" | jq -e 'has("command")' >/dev/null 2>&1; then
+    printf 'stdio\n'
+  else
+    printf 'unknown\n'
+  fi
+  return 0
+}
+
+mcp_report_assistant_arrangements() {
+  local cli state
+  for cli in claude gemini copilot antigravity; do
+    state="$(mcp_assistant_arrangement "$cli")"
+    case "$state" in
+      http)    printf '  %-12s http (shared daemon)\n' "$cli" ;;
+      stdio)   printf '  %-12s stdio (previous arrangement)\n' "$cli" ;;
+      none)    printf '  %-12s no mempalace registration\n' "$cli" ;;
+      absent)  printf '  %-12s CLI not installed\n' "$cli" ;;
+      *)       printf '  %-12s *** UNRECOGNISED — manual repair required ***\n' "$cli" ;;
+    esac
+  done
+}
+
+# offer_mcp_http_switch <repo_dir> <cli>
+#
+# Called by each setup script after it has written its MCP configuration
+# (spec 0113 R3). Without this, a setup run would leave that assistant on the
+# previous stdio arrangement — and worse, SILENTLY UNDO an earlier switch:
+# `mempalace` is in MCP_RESERVED_NAMES, so merge_preexisting_mcp_servers
+# deliberately does not preserve an operator's entry under that name, and the
+# framework write that replaces it is stdio-shaped. A user who ran the switch
+# and later re-ran any setup would find the lock contention back with nothing
+# explaining why.
+#
+# SCOPE, stated rather than implied: this switches THIS assistant only. The
+# machine-wide all-or-nothing obligation (R4, delta R12-R14) belongs to
+# `switch-mempalace-http.sh`; a single-CLI run sits outside it by design, so it
+# reports which other assistants it is leaving behind instead of pretending to
+# have converged the machine.
+offer_mcp_http_switch() {
+  local repo_dir="$1" cli="$2" token other state left=""
+  CREWRIG_REPO_DIR="$repo_dir"
+  echo ""
+  echo "Shared memory daemon (spec 0113):"
+  echo "  Without it, every session spawns its own memory server and only the"
+  echo "  first one to write can write — the rest are refused for their whole life."
+  local choice
+  choice=$(echo -e "yes\nno" | fzf --height 10% \
+    --header "Reach shared memory through the shared daemon? (recommended)")
+  if [ "$choice" != "yes" ]; then
+    echo "  Skipped — this assistant keeps spawning its own memory server."
+    return 0
+  fi
+  if ! install_mcp_daemon "$repo_dir"; then
+    echo "  ERROR: the daemon is not serving — leaving this assistant unchanged."
+    echo "         Registering it against a daemon that is not there would break"
+    echo "         every session (R5: fail visibly, never fall back silently)."
+    return 1
+  fi
+  token="$(mcp_token_read_or_create)" || {
+    echo "  ERROR: could not read the bearer token — leaving this assistant unchanged."
+    return 1
+  }
+  if register_mempalace_mcp "$cli" "$token"; then
+    echo "  $cli now reaches shared memory through the daemon."
+  else
+    echo "  ERROR: could not switch $cli."
+    return 1
+  fi
+  for other in claude gemini copilot antigravity; do
+    [ "$other" = "$cli" ] && continue
+    mcp_assistant_present "$other" || continue
+    state="$(mcp_assistant_arrangement "$other")"
+    [ "$state" = "http" ] && continue
+    left="$left $other"
+  done
+  if [ -n "$left" ]; then
+    echo ""
+    echo "  NOTE: this run switched $cli only. Still on the previous arrangement:"
+    for other in $left; do echo "    - $other"; done
+    echo "  They will contend for the memory lock with $cli until they switch too."
+    echo "  Switch the whole machine at once with: task mempalace:switch-http"
+  fi
+  echo ""
+  echo "  Restart any running $cli session to pick this up."
+  return 0
+}
+
+# uninstall_daemon_supervisor <launchd_label> <systemd_unit>
+#
+# The symmetric inverse of install_daemon_supervisor (spec 0113, step 2b).
+# Each verb undoes exactly the verb the installer used:
+#
+#   launchd:  `unload -w`      undoes  `load -w`      (common.sh install path)
+#   systemd:  `disable --now`  undoes  `enable --now`
+#
+# The `-w` half matters and is NOT an oversight to modernise: `load -w` writes
+# the "enabled" state that survives a reboot, so only `unload -w` un-writes it.
+# `launchctl unload` without `-w` stops the daemon now and lets it return at the
+# next login. The pair is legacy launchd API on purpose — modernising one half
+# would break the symmetry that makes the uninstall honest.
+#
+# This is deliberately NOT what stop-*-server.sh calls. Stopping a supervised
+# daemon is a restart request (KeepAlive / Restart=always bring it straight
+# back); ending it is this function. Two verbs, two meanings, two entry points.
+uninstall_daemon_supervisor() {
+  local label="$1"
+  local systemd_unit="$2"
+  local os removed=0
+  os="$(uname -s)"
+  case "$os" in
+    Darwin)
+      local plist_dst="$HOME/Library/LaunchAgents/${label}.plist"
+      if launchctl list 2>/dev/null | grep -q "$label"; then
+        if [ -f "$plist_dst" ]; then
+          launchctl unload -w "$plist_dst" 2>/dev/null && removed=1
+        else
+          # Loaded with no plist on disk: remove by label so it stops
+          # respawning even though the file we would unload is gone.
+          launchctl remove "$label" 2>/dev/null && removed=1
+        fi
+      fi
+      if [ -f "$plist_dst" ]; then
+        rm -f "$plist_dst"
+        echo "  Removed unit: $plist_dst"
+      fi
+      ;;
+    Linux)
+      if systemctl --user is-enabled --quiet "$systemd_unit" 2>/dev/null \
+        || systemctl --user is-active --quiet "$systemd_unit" 2>/dev/null; then
+        systemctl --user disable --now "$systemd_unit" 2>/dev/null && removed=1
+      fi
+      local svc_dst="$HOME/.config/systemd/user/${systemd_unit}.service"
+      if [ -f "$svc_dst" ]; then
+        rm -f "$svc_dst"
+        systemctl --user daemon-reload 2>/dev/null || true
+        echo "  Removed unit: $svc_dst"
+      fi
+      ;;
+    *)
+      echo "  ERROR: unsupported OS '$os' — remove the supervisor unit manually."
+      return 1
+      ;;
+  esac
+  if [ "$removed" -eq 1 ]; then
+    echo "  Supervisor stopped and disabled: $label"
+  else
+    echo "  Supervisor was not loaded: $label"
+  fi
+  return 0
+}
+
+# --- MCP HTTP daemon: token provisioning (spec 0113 R8, step 6) --------------
+# The bearer token the MCP HTTP daemon requires and every CLI registration
+# sends. Keyed per palace so two palaces on one machine never share a
+# credential, and mode 0600 because it IS a credential.
+#
+# The path scheme mirrors upstream's own (`_server_token_path` in mempalace's
+# cli.py): ~/.mempalace/server/<sha256(realpath(palace))[:24]>/token. Matching
+# it means an operator who ran `mempalace serve` by hand and the framework
+# converge on one file rather than two competing ones.
+#
+# Read-or-create, never truncate-then-write: a concurrent reader must never
+# observe a half-written token. Creation is exclusive (`set -C`), so two setup
+# scripts racing produce one token and one winner, and the loser reads it.
+mcp_token_path() {
+  local palace_path="${MEMPALACE_PALACE_PATH:-$HOME/.mempalace/palace}"
+  local resolved key
+  # The parent must exist before resolving, or the key would depend on whether
+  # the directory happens to be there yet: `cd` fails on a missing parent, the
+  # path falls back to its unresolved form, and a later call — after some other
+  # step created the directory — resolves differently and computes a DIFFERENT
+  # key. That yields two token files for one palace, which reads as "the token
+  # keeps changing". Creating the parent first makes the key a function of the
+  # path alone.
+  mkdir -p "$(dirname "$palace_path")" 2>/dev/null || true
+  resolved="$(cd "$(dirname "$palace_path")" 2>/dev/null && pwd)/$(basename "$palace_path")" || resolved="$palace_path"
+  key="$(printf '%s' "$resolved" | shasum -a 256 2>/dev/null | cut -c1-24)"
+  if [ -z "$key" ]; then
+    key="$(printf '%s' "$resolved" | sha256sum | cut -c1-24)"
+  fi
+  printf '%s\n' "$HOME/.mempalace/server/${key}/token"
+}
+
+# mcp_token_read_or_create — echoes the token, creating it when absent.
+# Returns non-zero without echoing when it can neither read nor create one:
+# the caller must fail loudly rather than proceed with an empty credential.
+mcp_token_read_or_create() {
+  local token_file token dir existing
+  token_file="$(mcp_token_path)"
+  if [ -s "$token_file" ]; then
+    # Strip whitespace on the way out: upstream strips before storing, so a
+    # whitespace-only file is a non-empty string here and an EMPTY token there,
+    # which disables the bearer check. Returning it verbatim would register
+    # `Authorization: Bearer ` across all four CLIs.
+    existing="$(tr -d '[:space:]' < "$token_file")"
+    if [ -n "$existing" ]; then
+      printf '%s\n' "$existing"
+      return 0
+    fi
+    echo "  ERROR: the token file exists but is whitespace-only: $token_file" >&2
+    echo "         Refusing to use it — an empty token disables authentication." >&2
+    return 1
+  fi
+  dir="$(dirname "$token_file")"
+  mkdir -p "$dir" 2>/dev/null || return 1
+  # Fatal, not best-effort: the entire security model rests on these modes, so a
+  # silent failure would leave a credential readable by every uid on the host.
+  chmod 700 "$dir" || { echo "  ERROR: cannot restrict $dir to 0700" >&2; return 1; }
+  chmod 700 "$(dirname "$dir")" 2>/dev/null || true
+  token="$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 48)"
+  if [ -z "$token" ]; then
+    return 1
+  fi
+  # umask 077 so the file is NEVER briefly world-readable: creating at the
+  # ambient umask and narrowing afterwards leaves a window, and leaves the
+  # credential wide forever if the chmod fails. `set -C` keeps the create
+  # exclusive so a concurrent winner's token is read rather than clobbered.
+  ( umask 077; set -C; printf '%s' "$token" > "$token_file" ) 2>/dev/null || true
+  chmod 600 "$token_file" || { echo "  ERROR: cannot restrict $token_file to 0600" >&2; return 1; }
+  if [ -s "$token_file" ]; then
+    tr -d '[:space:]' < "$token_file"
+    printf '\n'
+    return 0
+  fi
+  return 1
+}
+
+# write_json_config_secure <path> <jq_program> [jq_args...]
+#
+# Rewrite a config that carries the bearer token, without ever widening it.
+# `mv` is rename(2): the destination inherits the TEMP file's mode, so a plain
+# `jq > tmp && mv` created at umask 022 silently downgrades a 0600 config to
+# 0644 — in the same operation that inserts the credential. Observed on a real
+# machine: ~/.gemini/settings.json is 0600 before, 0644 after, token inside.
+write_json_config_secure() {
+  local cfg="$1"; shift
+  local tmp
+  # mktemp, not "${cfg}.tmp.$$". Every operation below follows symlinks, and a
+  # predictable name turns write access to the config's directory into an
+  # arbitrary-file-write with the bearer token as payload: pre-create the
+  # expected name as a symlink and the victim is truncated and overwritten with
+  # this JSON. Demonstrated during review against a 0600 file in another
+  # directory. mktemp refuses to reuse an existing name, so the primitive dies.
+  tmp="$(umask 077; mktemp "${cfg}.tmp.XXXXXX")" || return 1
+  chmod 600 "$tmp" || { rm -f "$tmp"; return 1; }
+  if ! jq "$@" "$cfg" > "$tmp" 2>/dev/null; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
+  # The destination now holds a credential regardless of what it was before.
+  chmod 600 "$cfg" || {
+    echo "  ERROR: $cfg holds a bearer token and could not be restricted to 0600." >&2
+    return 1
+  }
   return 0
 }
 

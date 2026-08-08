@@ -168,6 +168,9 @@ jobs:
       - name: Test chroma-server regression (spec 0076 wiring)
         run: bash scripts/tests/test-chroma-server.sh
 
+      - name: Test MCP daemon regression (spec 0113)
+        run: bash scripts/tests/test-mcp-daemon.sh
+
       - name: Test e2e assert-lib regression (spec 0076 wiring)
         run: bash scripts/tests/test-e2e-assert-lib.sh
 

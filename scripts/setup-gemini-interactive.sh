@@ -195,6 +195,7 @@ if [ "$INSTALL_MEMPALACE_GEMINI" = "yes" ]; then
   # Install the shared ChromaDB HTTP daemon supervisor (issue #98) before
   # writing the wrapper into settings.json — first-launch ordering matters.
   install_chroma_daemon "$REPO_DIR"
+  offer_mcp_http_switch "$REPO_DIR" gemini || true
 
   # Copy template, then patch mcpServers.mempalace.command with the detected
   # python and substitute the __CREWRIG_REPO_DIR__ placeholder in args with

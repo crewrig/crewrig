@@ -36,6 +36,22 @@ tasks:
     desc: "Report which MemPalace will actually answer on this machine — resolved path, interpreter and version behind every MemPalace command and every CLI's memory-server registration. Exits non-zero on divergence (spec 0108)."
     cmd: bash {{.REPO_DIR}}/scripts/doctor-mempalace.sh
 
+  mempalace:switch-http:
+    desc: "Switch every supported assistant on this machine to the shared MemPalace MCP HTTP daemon, so concurrent sessions all write to shared memory (spec 0113). All-or-nothing: if one assistant cannot be switched, none is."
+    cmd: bash {{.REPO_DIR}}/scripts/switch-mempalace-http.sh
+
+  mempalace:status:
+    desc: "Report the shared MemPalace MCP HTTP daemon: whether it is serving, whether authentication is actually enforced, whether the installed launcher has drifted from the repository, and which arrangement each assistant is configured for."
+    cmd: bash {{.REPO_DIR}}/scripts/status-mcp-server.sh
+
+  mempalace:stop:
+    desc: "Restart the shared MemPalace MCP HTTP daemon. Under the supervisor a stop IS a restart request — to end the daemon, use mempalace:uninstall-daemon."
+    cmd: bash {{.REPO_DIR}}/scripts/stop-mcp-server.sh
+
+  mempalace:uninstall-daemon:
+    desc: "End the shared MemPalace MCP HTTP daemon and remove its supervisor unit. Run this BEFORE reverting the ticket that introduced it — the launcher lives outside the repository, so a revert alone would leave a unit that keeps autostarting."
+    cmd: bash {{.REPO_DIR}}/scripts/uninstall-mcp-daemon.sh
+
   setup:playwright-mcp:
     desc: "Install the Playwright MCP server globally (opt-in). Registers @playwright/mcp in Claude Code and Gemini CLI user-scope config. Idempotent — safe to re-run."
     cmds:

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mempalace.mcp-server</string>
+
+    <!--
+      ExecStart equivalent. The launcher lives OUTSIDE the repository
+      (~/.crewrig/, spec 0113) so a `git revert` of this ticket cannot delete
+      the program this agent points at. It runs in the FOREGROUND and execs the
+      MemPalace wrapper — launchd supervises the server itself, so the launcher
+      must never background the way start-chroma-server.sh does with nohup, or
+      launchd would observe an immediate exit and restart it forever.
+
+      The bearer token is deliberately absent from this file: a plist is
+      materialised with `sed > dst` at the default umask (0644), and the token
+      is a 0600 credential. The launcher reads it and exports it instead.
+
+      launchd has NO dependency ordering between user agents, so the ChromaDB
+      daemon is waited for inside the launcher, on a deadline. That converts a
+      boot-order race into one long attempt rather than a respawn storm.
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__LAUNCHER_PATH__</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__MEMPALACE_HOME__</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <!--
+      ThrottleInterval paces respawns; under KeepAlive=true it does NOT bound
+      the number of attempts. It is a backstop against a broken configuration,
+      not the mechanism that prevents a boot loop — that is the launcher's
+      deadline wait.
+    -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>65536</integer>
+    </dict>
+
+    <key>HardResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>65536</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>__MEMPALACE_HOME__/mcp-server.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__MEMPALACE_HOME__/mcp-server.log</string>
+</dict>
+</plist>

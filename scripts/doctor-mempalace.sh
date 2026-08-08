@@ -252,6 +252,28 @@ inspect_registration() {
     return
   fi
 
+  # An HTTP registration (spec 0113) has no `.command`/`.args` at all — it
+  # carries `url`/`serverUrl` and headers. The argv-based inspection below is
+  # meaningless for it and, worse, would silently report nothing: this
+  # diagnostic would go blind exactly when the operator most needs it, since
+  # the daemon it now points at is shared and long-lived. Report the endpoint
+  # and hand the version question to status-mcp-server.sh, which asks the
+  # running daemon instead of reading a launch line.
+  local remote_url
+  remote_url="$(printf '%s' "$entry" | jq -r '.url // .serverUrl // empty' 2>/dev/null)"
+  if [ -n "$remote_url" ]; then
+    field "transport:" "http (shared daemon, spec 0113)"
+    field "endpoint:" "$remote_url"
+    if printf '%s' "$entry" | jq -e '.headers.Authorization // empty' >/dev/null 2>&1; then
+      field "auth:" "bearer header present (value not shown)"
+    else
+      field "auth:" "*** NO Authorization HEADER — this CLI would reach the daemon unauthenticated ***"
+    fi
+    field "version:" "served by the daemon — run: bash scripts/status-mcp-server.sh"
+    echo ""
+    return
+  fi
+
   local argv_display
   argv_display="$(printf '%s' "$entry" | jq -r '([.command] + (.args // [])) | join(" ")' 2>/dev/null)"
   field "argv:" "$argv_display"

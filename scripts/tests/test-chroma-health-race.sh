@@ -123,8 +123,18 @@ trap 'rm -rf "$SANDBOX" "$HARNESS"' EXIT INT TERM
   # the bug under test.
   echo 'health_check() {'
   echo '  local repo_dir="$1"'
+  # Since spec 0113 the block polls a health CALLBACK rather than calling
+  # status-chroma-server.sh directly, so the supervisor installer can serve
+  # both daemons. The contract this test locks is unchanged — poll on a
+  # deadline, tolerate a slow start — so the harness supplies the callback the
+  # real caller supplies, pointed at the sandbox's stub.
+  echo '  local health_fn=_stub_health'
+  echo '  local log_hint="(test)"'
+  echo '  local label="(test)"'
   echo "${BLOCK}"
   echo '}'
+  echo '_stub_health() { bash "${CREWRIG_REPO_DIR}/scripts/status-chroma-server.sh"; }'
+  echo 'CREWRIG_REPO_DIR="$1"'
   echo 'health_check "$1"'
   echo 'exit $?'
 } > "$HARNESS"
