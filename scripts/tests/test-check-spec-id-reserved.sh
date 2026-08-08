@@ -755,7 +755,14 @@ add_spec c12b specs/0400-unreadable-record.md 0400 unreadable-record 910
 run_check_same_repo c12b
 expect_pass_verdict "Case 12b — an unfetchable reservation object reports without failing"
 expect_log_matches "Case 12b — and the spec is named rather than silently accepted" 'specs/0400-unreadable-record[.]md'
-expect_log_matches "Case 12b — and it is not called unsecured, which it is not" 'could not be read'
+# Asserted structurally — the condition appears in the non-blocking [REPORT]
+# channel — rather than by matching the sentence. The first version of this
+# matched 'could not be read', which was the old message's wording, and it broke
+# the moment that message was corrected to stop asserting a cause the check
+# cannot determine. The correction was right and the assertion was wrong: I
+# pinned prose on exactly the branch where the prose was the defect. The channel
+# is the contract here; the sentence inside it is not.
+expect_log_matches "Case 12b — and it is reported through the non-blocking channel" '\[REPORT\]'
 
 # ---------------------------------------------------------------------------
 # Base-ref resolution
