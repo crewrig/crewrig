@@ -801,6 +801,242 @@ install_mcp_daemon() {
     "$HOME/.mempalace/mcp-server.log"
 }
 
+# --- Four-CLI registration surface (spec 0113 R3, R11; step 8) ---------------
+# Built here rather than reused from spec 0091: `apply_org_mcp_servers` skips
+# every name in MCP_RESERVED_NAMES by design, and `mempalace` is reserved — the
+# org appliers deliberately refuse to touch exactly the server we must
+# register. And setup-claude-interactive.sh's `mcp_register_user` takes
+# `-- "$@"`, a stdio argv shape with no room for a transport or a header.
+#
+# One helper, four native shapes, so they cannot drift:
+#   Claude       claude mcp add --transport http <name> <url> --header "..."
+#   Gemini       {"type":"http","url":…,"headers":{…}}
+#   Copilot      {"type":"http","url":…,"headers":{…}}
+#   Antigravity  {"serverUrl":…,"headers":{…}}   (no transport type key)
+
+mcp_assistant_config_path() {
+  case "$1" in
+    claude)      printf '%s\n' "$HOME/.claude.json" ;;
+    gemini)      printf '%s\n' "$HOME/.gemini/settings.json" ;;
+    copilot)     printf '%s\n' "$HOME/.copilot/mcp-config.json" ;;
+    antigravity) printf '%s\n' "$HOME/.gemini/config/mcp_config.json" ;;
+    *) return 1 ;;
+  esac
+}
+
+mcp_daemon_url() {
+  printf 'http://%s:%s/mcp\n' \
+    "${MEMPALACE_MCP_HOST:-$MCP_DAEMON_HOST_DEFAULT}" \
+    "${MEMPALACE_MCP_PORT:-$MCP_DAEMON_PORT_DEFAULT}"
+}
+
+# capture_mempalace_registration <cli> — echoes the current registration as
+# JSON, or `null` when there is none. Claude's is read from its own config file
+# rather than from `claude mcp get`, because restoring must write back the exact
+# object the CLI stores.
+capture_mempalace_registration() {
+  local cli="$1" cfg
+  cfg="$(mcp_assistant_config_path "$cli")" || return 1
+  [ -f "$cfg" ] || { printf 'null\n'; return 0; }
+  jq -c '.mcpServers.mempalace // null' "$cfg" 2>/dev/null || printf 'null\n'
+}
+
+# restore_mempalace_registration <cli> <captured_json>
+# Returns non-zero when the restore fails — the caller must report that state
+# (R14) rather than assume the machine is back where it started.
+restore_mempalace_registration() {
+  local cli="$1" captured="$2" cfg tmp
+  cfg="$(mcp_assistant_config_path "$cli")" || return 1
+  [ -f "$cfg" ] || return 1
+  tmp="${cfg}.restore.$$"
+  if [ "$captured" = "null" ] || [ -z "$captured" ]; then
+    jq 'del(.mcpServers.mempalace)' "$cfg" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
+  else
+    jq --argjson v "$captured" '.mcpServers.mempalace = $v' "$cfg" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
+  fi
+  mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
+  if [ "$cli" = "claude" ]; then
+    return 0
+  fi
+  return 0
+}
+
+# register_mempalace_mcp <cli> <token> — switch one assistant to the shared
+# daemon. Returns non-zero on failure, leaving the caller to restore.
+register_mempalace_mcp() {
+  local cli="$1" token="$2" url cfg tmp
+  url="$(mcp_daemon_url)"
+  case "$cli" in
+    claude)
+      command -v claude >/dev/null 2>&1 || return 1
+      claude mcp remove --scope user mempalace >/dev/null 2>&1 || true
+      claude mcp add --scope user --transport http mempalace "$url" \
+        --header "Authorization: Bearer ${token}" >/dev/null 2>&1 || return 1
+      return 0
+      ;;
+    gemini|copilot)
+      cfg="$(mcp_assistant_config_path "$cli")"
+      [ -f "$cfg" ] || return 1
+      tmp="${cfg}.tmp.$$"
+      jq --arg url "$url" --arg auth "Bearer ${token}" \
+        '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$auth}}' \
+        "$cfg" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
+      mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
+      return 0
+      ;;
+    antigravity)
+      # Antigravity's remote shape is {serverUrl, headers} with NO transport
+      # type key — grounded in docs/cli-matrix.md row 7h.
+      cfg="$(mcp_assistant_config_path "$cli")"
+      [ -f "$cfg" ] || return 1
+      tmp="${cfg}.tmp.$$"
+      jq --arg url "$url" --arg auth "Bearer ${token}" \
+        '.mcpServers.mempalace = {serverUrl:$url, headers:{Authorization:$auth}}' \
+        "$cfg" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
+      mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
+      return 0
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# mcp_assistant_present <cli> — the delta-01 definition of "present on the
+# machine": this repo ships a setup script for it AND its own CLI is
+# detectable. An absent tool is not part of the all-or-nothing obligation.
+mcp_assistant_present() {
+  case "$1" in
+    claude)      command -v claude >/dev/null 2>&1 ;;
+    gemini)      command -v gemini >/dev/null 2>&1 ;;
+    copilot)     command -v copilot >/dev/null 2>&1 ;;
+    antigravity) command -v agy >/dev/null 2>&1 ;;
+    *) return 1 ;;
+  esac
+}
+
+# switch_assistants_to_http — the transaction (R3, R4, R11-R15).
+#
+# R12 floor first: every present assistant's config must be readable AND
+# writable before anything is applied. `claude mcp add` cannot be pre-flighted
+# — no --dry-run, --check or --validate exists — so the floor is what CAN be
+# established in advance, and R13's restore covers what cannot.
+switch_assistants_to_http() {
+  local token="$1"
+  local clis="claude gemini copilot antigravity"
+  local cli cfg present="" arrangement
+  local had_http=0 had_stdio=0
+
+  # --- R15: report a partial state found on entry ---------------------------
+  for cli in $clis; do
+    mcp_assistant_present "$cli" || continue
+    present="$present $cli"
+    arrangement="$(mcp_assistant_arrangement "$cli")"
+    case "$arrangement" in
+      http)    had_http=1 ;;
+      stdio)   had_stdio=1 ;;
+      unknown)
+        echo "  ERROR: $cli is in an unrecognised arrangement."
+        echo "         A repeated run cannot resolve a configuration it cannot"
+        echo "         recognise. Repair it by hand, then re-run. (R14)"
+        return 1
+        ;;
+    esac
+  done
+  if [ -z "$present" ]; then
+    echo "  No supported assistant found on this machine — nothing to switch."
+    return 0
+  fi
+  if [ "$had_http" -eq 1 ] && [ "$had_stdio" -eq 1 ]; then
+    echo "  NOTE: found a partial state — some assistants were already switched"
+    echo "        and others were not. Converging them now. (R15)"
+  fi
+
+  # --- R12: the floor -------------------------------------------------------
+  for cli in $present; do
+    cfg="$(mcp_assistant_config_path "$cli")"
+    if [ "$cli" = "claude" ]; then
+      # Claude's config is managed by its own CLI; readability of the file is
+      # still the precondition its writes depend on.
+      [ -f "$cfg" ] || continue
+    fi
+    if [ -f "$cfg" ]; then
+      if [ ! -r "$cfg" ] || [ ! -w "$cfg" ]; then
+        echo "  ERROR: $cli's configuration is not both readable and writable:"
+        echo "         $cfg"
+        echo "         No assistant has been changed. (R12)"
+        return 1
+      fi
+      if ! jq -e . "$cfg" >/dev/null 2>&1; then
+        echo "  ERROR: $cli's configuration does not parse: $cfg"
+        echo "         No assistant has been changed. (R12)"
+        return 1
+      fi
+    fi
+  done
+
+  # --- Capture, then apply --------------------------------------------------
+  local applied="" captured_claude="null" captured_gemini="null"
+  local captured_copilot="null" captured_antigravity="null" cap
+  for cli in $present; do
+    cap="$(capture_mempalace_registration "$cli")"
+    case "$cli" in
+      claude)      captured_claude="$cap" ;;
+      gemini)      captured_gemini="$cap" ;;
+      copilot)     captured_copilot="$cap" ;;
+      antigravity) captured_antigravity="$cap" ;;
+    esac
+    backup_file "$(mcp_assistant_config_path "$cli")"
+  done
+
+  for cli in $present; do
+    if register_mempalace_mcp "$cli" "$token"; then
+      echo "  $cli: switched to the shared daemon"
+      applied="$applied $cli"
+    else
+      echo "  ERROR: $cli could not be switched."
+      _switch_rollback "$applied" \
+        "$captured_claude" "$captured_gemini" "$captured_copilot" "$captured_antigravity"
+      return 1
+    fi
+  done
+  return 0
+}
+
+# _switch_rollback <applied_list> <claude> <gemini> <copilot> <antigravity>
+# R13, and R14 when a restore itself fails.
+_switch_rollback() {
+  local applied="$1" c_claude="$2" c_gemini="$3" c_copilot="$4" c_antigravity="$5"
+  local cli cap failed=""
+  echo "  Restoring the assistants already changed in this run... (R13)"
+  for cli in $applied; do
+    case "$cli" in
+      claude)      cap="$c_claude" ;;
+      gemini)      cap="$c_gemini" ;;
+      copilot)     cap="$c_copilot" ;;
+      antigravity) cap="$c_antigravity" ;;
+      *) continue ;;
+    esac
+    if restore_mempalace_registration "$cli" "$cap"; then
+      echo "    $cli: restored"
+    else
+      echo "    $cli: RESTORE FAILED"
+      failed="$failed $cli"
+    fi
+  done
+  if [ -n "$failed" ]; then
+    echo ""
+    echo "  *** MANUAL REPAIR REQUIRED (R14) ***"
+    echo "  These assistants could not be returned to their previous arrangement:"
+    for cli in $failed; do
+      echo "    - $cli  ($(mcp_assistant_config_path "$cli"))"
+    done
+    echo "  Each config was backed up before the change; restore the timestamped"
+    echo "  .bak file beside it, or re-run setup once the cause is fixed."
+    echo ""
+    echo "  Current state of every assistant:"
+    mcp_report_assistant_arrangements
+  fi
+}
+
 # mcp_assistant_arrangement <cli>
 #
 # Echoes the arrangement one assistant is currently configured for, as one of:
