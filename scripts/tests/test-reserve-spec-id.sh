@@ -7,12 +7,13 @@
 # fixture is self-contained and torn down with the temporary root.
 #
 # ---------------------------------------------------------------------------
-# Invocation surface assumed by this suite
+# Invocation surface — settled by the coordinator, binding on this suite and on
+# the implementation alike
 # ---------------------------------------------------------------------------
-# Spec 0112 and PLAN v9 pin the tool's BEHAVIOUR and its exit codes; neither
-# pins the spelling of the flags, the carrier setting's filename, or how the
-# reference remote is resolved. This block records what the suite assumes, so
-# that a change of surface is a five-line edit here rather than a rewrite.
+# Spec 0112 and PLAN v9 pin the tool's BEHAVIOUR and its exit codes but not the
+# spelling of its surface. That gap was closed by an explicit five-point ruling
+# during DEV; what follows is that ruling, and this suite tests it rather than
+# whatever the implementation happens to do.
 #
 #   scripts/reserve-spec-id.sh --issue <N>              allocate + secure, upstream
 #                              --id <ID>                secure one identifier (R14)
@@ -25,22 +26,35 @@
 #                      refs/tags/spec-id/   (alternative)
 #                    Org siblings derived:  refs/spec-ids-org/ , refs/tags/spec-id-org/
 #                    Absent file            → built-in default (PLAN step 3)
-#                    SPEC_ID_CARRIER        one-off override for a single
+#                    CREWRIG_SPEC_ID_CARRIER  one-off override for a single
 #                                           invocation, validated on the same
-#                                           closed pair (PLAN step 4)
+#                                           closed pair (PLAN step 4). The
+#                                           CREWRIG_ prefix is this repository's
+#                                           established convention —
+#                                           CREWRIG_REPO_DIR, CREWRIG_GITLAB_HOSTS,
+#                                           CREWRIG_TEST_*.
 #
-#   Reference remote Fixtures carry BOTH a `crewrig` and an `origin` remote
-#                    pointing at the same bare repository, so the suite does not
-#                    depend on which name the tool resolves first. CREWRIG_REPO_DIR
-#                    is exported as well, mirroring the sibling check-*.sh guards.
+#   Reference remote Resolved by NAME, never by a flag and never hard-coded:
+#                    the first remote matching `crewrig|origin`, else the first
+#                    remote at all. This is the existing repository idiom
+#                    (scripts/lib/spec-linter.js:114-131, aligned with
+#                    scripts/check-skill-versions.sh:24-33 "so the repository has
+#                    one idiom rather than two"). Fixtures carry both a `crewrig`
+#                    and an `origin` remote; Case 23 covers the fallback arm.
 #
 #   Reservation      A parentless object whose message is, verbatim per PLAN
 #                    step 1, `reserve <ID> for issue #<N>`.
 #
 # Exit contract under test (PLAN step 2, authoritative):
 #   0  secured on the remote        stdout: the id
-#   3  allocated, NOT secured       stdout: the id + a machine-readable unsecured mark
+#   3  allocated, NOT secured       stdout: the id on line 1, then exactly
+#                                   `unsecured-id=true` on line 2
 #   1  genuine failure              stdout: nothing; reason on stderr
+#
+# `unsecured-id` is one name across two surfaces: this stdout marker and the
+# optional frontmatter field docs/spec-format.md gains. Asserted exactly, not
+# by a loose match on `unsecured`, so that a change of shape is a visible
+# contract change rather than a silent one.
 #
 # ---------------------------------------------------------------------------
 # One harness rule that is load-bearing, not stylistic
@@ -228,7 +242,7 @@ run_tool() {
   TOOL_ERR="$(cat "$errfile")"
 }
 
-# run_tool_env_carrier <name> <SPEC_ID_CARRIER value> [args...]
+# run_tool_env_carrier <name> <CREWRIG_SPEC_ID_CARRIER value> [args...]
 # The documented one-off override. PLAN step 4 keeps it as a single-invocation
 # escape hatch, never the normal configuration route — so it must be subject to
 # the same closed-pair validation as the tracked setting.
@@ -238,10 +252,21 @@ run_tool_env_carrier() {
   local outfile="$TMP_ROOT/.stdout" errfile="$TMP_ROOT/.stderr"
 
   TOOL_RC=0
-  ( cd "$work" && CREWRIG_REPO_DIR="$work" SPEC_ID_CARRIER="$carrier" \
+  ( cd "$work" && CREWRIG_REPO_DIR="$work" CREWRIG_SPEC_ID_CARRIER="$carrier" \
       bash "$SCRIPT_UNDER_TEST" "$@" > "$outfile" 2> "$errfile" ) || TOOL_RC=$?
   TOOL_OUT="$(cat "$outfile")"
   TOOL_ERR="$(cat "$errfile")"
+}
+
+# use_single_remote <name> <remote-name>
+# Replace both fixture remotes with one bearing an arbitrary name, to exercise
+# the last arm of the resolution idiom.
+use_single_remote() {
+  local work; work="$(fixture_work "$1")"
+  git -C "$work" remote remove crewrig
+  git -C "$work" remote remove origin
+  git -C "$work" remote add "$2" "$(fixture_bare "$1")"
+  git -C "$work" fetch -q "$2"
 }
 
 # run_tool_bg <name> <tag> [args...]
@@ -292,6 +317,19 @@ expect_stdout_matches() {
   fi
 }
 
+# expect_stdout_line <name> <line-number> <exact-content>
+# The exit-3 payload is positional and machine-read, so its shape is asserted
+# line by line rather than by a substring search anywhere in the output.
+expect_stdout_line() {
+  local actual
+  actual="$(printf '%s\n' "$TOOL_OUT" | sed -n "$2p")"
+  if [ "$actual" = "$3" ]; then
+    record_pass "$1"
+  else
+    record_fail "$1" "stdout line $2: expected [$3], got [$actual]"
+  fi
+}
+
 # expect_no_ref_matching <name> <fixture> <ere>
 expect_no_ref_matching() {
   local hits
@@ -326,8 +364,8 @@ expect "Case 1 — the reservation names the requesting issue" "message" \
 new_fixture c2 specs/0001-a.md
 run_tool c2 --issue 901 --offline
 expect_rc "Case 2 — --offline exits 3" 3
-expect_stdout_matches "Case 2 — --offline prints the id" '(^|[^0-9])0002([^0-9]|$)'
-expect_stdout_matches "Case 2 — --offline prints a machine-readable unsecured mark" 'unsecured'
+expect_stdout_line "Case 2 — the id is on stdout line 1" 1 "0002"
+expect_stdout_line "Case 2 — the unsecured marker is exactly line 2" 2 "unsecured-id=true"
 expect_no_ref_matching "Case 2 — --offline pushes nothing" c2 '^refs/(spec-ids|tags/spec-id)'
 
 # Case 3 — an unreachable remote is the same outcome as offline, not a failure.
@@ -595,7 +633,7 @@ new_fixture c21 specs/0001-a.md
 git -C "$(fixture_bare c21)" config transfer.hideRefs refs/spec-ids
 run_tool c21 --issue 993
 expect_rc "Case 21 — a hidden namespace yields exit 3" 3
-expect_stdout_matches "Case 21 — the id is reported unsecured" 'unsecured'
+expect_stdout_line "Case 21 — the id is reported unsecured in the contracted shape" 2 "unsecured-id=true"
 expect_no_ref_matching "Case 21 — no carrier switch: the tag namespace is untouched" \
   c21 '^refs/tags/spec-id'
 expect_no_ref_matching "Case 21 — no second holder of the id anywhere" \
@@ -609,8 +647,21 @@ expect_no_ref_matching "Case 21 — no second holder of the id anywhere" \
 # the pull-request check reads is exactly as invisible either way.
 new_fixture c22 specs/0001-a.md
 run_tool_env_carrier c22 'refs/spec-id/' --issue 994
-expect_rc "Case 22 — an invalid SPEC_ID_CARRIER override exits 1" 1
+expect_rc "Case 22 — an invalid CREWRIG_SPEC_ID_CARRIER override exits 1" 1
 expect_no_ref_matching "Case 22 — an invalid override pushes nothing" c22 '^refs/spec-id'
+
+# Case 23 — the last arm of the remote-resolution idiom. A contributor whose
+# only remote is named neither `crewrig` nor `origin` — a fork clone named
+# `upstream`, or any personal convention — must still be able to secure an id;
+# requirement 4 grants no licence to require a particular remote name. This also
+# pins that the remote is resolved by NAME rather than by a hard-coded URL,
+# which is what makes the whole suite hermetic in the first place.
+new_fixture c23 specs/0001-a.md
+use_single_remote c23 upstream
+run_tool c23 --issue 995
+expect_rc "Case 23 — a remote named neither crewrig nor origin still secures an id" 0
+expect "Case 23 — the reservation reached that remote" "count" \
+  "$(remote_count c23 'refs/spec-ids/*')" "1"
 
 # ---------------------------------------------------------------------------
 # Summary
