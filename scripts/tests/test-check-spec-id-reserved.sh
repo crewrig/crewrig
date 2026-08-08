@@ -762,6 +762,16 @@ expect_log_matches "Case 12b — and the spec is named rather than silently acce
 # cannot determine. The correction was right and the assertion was wrong: I
 # pinned prose on exactly the branch where the prose was the defect. The channel
 # is the contract here; the sentence inside it is not.
+#
+# What separates this branch from the other [REPORT] producer is the spec path:
+# the namespace-unreadable report names no spec, so "a spec is named" identifies
+# the per-spec branch without matching any sentence. Note the fragility rather
+# than trusting it — that branch runs AFTER candidate enumeration (:416 then
+# :425), so the candidate list is in scope and nothing prevents it naming the
+# specs it could not verify. That would be a reasonable improvement, and it
+# would silently cost this case its discriminator. If it lands, replace the
+# identity assertion here with one keyed on something the two branches cannot
+# share; do not assume this one still separates them.
 expect_log_matches "Case 12b — and it is reported through the non-blocking channel" '\[REPORT\]'
 
 # ---------------------------------------------------------------------------
