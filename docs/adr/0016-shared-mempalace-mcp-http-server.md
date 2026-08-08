@@ -2,7 +2,8 @@
 
 <!-- crewrig-doc: section=architecture-adr nav_order=160 published=true title="ADR 0016 — Shared MemPalace MCP HTTP server" -->
 
-**Status:** Proposed — 2026-08-08 (issue #728)
+**Status:** Accepted — 2026-08-08 (issue #728; owner-validated 2026-08-08 after
+two rounds of review annotations)
 
 ## Framing
 
