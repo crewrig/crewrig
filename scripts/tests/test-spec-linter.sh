@@ -680,10 +680,12 @@ run_base_case "Case 34 — an uncanonicalizable linted path is named, not a stac
 # same way — `git symbolic-ref` rather than `git init -b`, so the fixture does
 # not depend on the host's init.defaultBranch.
 #
-# Case ORDER is load-bearing here: the three cases share one fixture and each
-# advances its work-tree state, from clean (35) to an unrelated edit (36) to an
-# edit of the offender itself (37). Reordering them silently changes what each
-# measures.
+# The three cases share this one fixture but do NOT depend on each other's
+# order: each one RESETS the work tree (`git checkout -- .`) and then applies
+# only the state it needs. An accumulating variant would pass just as green while
+# measuring something other than what the case names claim the moment anyone
+# inserts or reorders a case — an order-dependent test that silently changes
+# meaning is the same class of defect as the check being fixed here.
 # -------------------------------------------------------------------------
 GITFIX2="$TMP_ROOT/gitfix2"
 mkdir -p "$GITFIX2/specs" "$GITFIX2/docs"
@@ -711,6 +713,7 @@ printf '# Unrelated\n\nBody.\n' > "$GITFIX2/docs/unrelated.md"
 # empty-set branch and the base branch's build goes green while `main` violates
 # the invariant.
 # -------------------------------------------------------------------------
+git -C "$GITFIX2" checkout -q -- .
 run_base_case "Case 35 — no change relative to the base ref blocks on every offender (R10)" \
   "$GITFIX2" "specs" 1 "main" \
   "specs/0210-attributed.md" "[WARN]"
@@ -723,6 +726,7 @@ run_base_case "Case 35 — no change relative to the base ref blocks on every of
 # is present AND no `[FAIL]` block is — because exit 0 alone could not
 # distinguish "warned correctly" from "stopped checking".
 # -------------------------------------------------------------------------
+git -C "$GITFIX2" checkout -q -- .
 printf '# Unrelated\n\nBody, edited by the change under test.\n' > "$GITFIX2/docs/unrelated.md"
 run_base_case "Case 36 — an offender the change does not touch warns, and does not fail (R9)" \
   "$GITFIX2" "specs" 0 "main" \
@@ -735,6 +739,7 @@ run_base_case "Case 36 — an offender the change does not touch warns, and does
 # pins the replaced R2's discriminator: same offender, same base branch, and the
 # outcome turns only on whether the change touches the file.
 # -------------------------------------------------------------------------
+git -C "$GITFIX2" checkout -q -- .
 printf '\nEdited by the change under test.\n' >> "$GITFIX2/specs/0210-attributed.md"
 run_base_case "Case 37 — an offender the change does touch fails (R2 as replaced)" \
   "$GITFIX2" "specs" 1 "main" \
