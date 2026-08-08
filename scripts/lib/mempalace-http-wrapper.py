@@ -78,7 +78,35 @@ def _reap_if_orphaned(poll_interval: float = 5.0) -> None:
             os._exit(0)
 
 
-threading.Thread(target=_reap_if_orphaned, daemon=True).start()
+def _transport_is_http() -> bool:
+    """True when this process was asked to serve the HTTP transport.
+
+    Read from argv rather than from an environment flag because argv is what
+    actually decides the transport: `mcp_server` parses it at import time.
+    """
+    argv = sys.argv[1:]
+    for i, arg in enumerate(argv):
+        if arg == "--transport" and i + 1 < len(argv):
+            return argv[i + 1] == "http"
+        if arg.startswith("--transport="):
+            return arg.split("=", 1)[1] == "http"
+    return False
+
+
+# The reaper above is correct for STDIO and wrong for a supervised HTTP daemon.
+# launchd and systemd spawn their services and reparent them to PID 1
+# immediately, so a supervised daemon is orphaned BY CONSTRUCTION: the reaper
+# observes exactly the condition it watches for, concludes the parent session
+# died, and calls os._exit(0) — every poll interval, forever. Observed in
+# production as 172 clean restarts before an operator noticed, with no error in
+# the log because os._exit runs no handler (issue #749).
+#
+# Under HTTP there is also nothing left for it to protect: the leak it guards
+# is a wrapper whose stdin never EOFs because the parent died holding the pipe.
+# An HTTP daemon has no stdin pipe and no parent session — its lifetime belongs
+# to the supervisor, which is the thing that would stop it.
+if not _transport_is_http():
+    threading.Thread(target=_reap_if_orphaned, daemon=True).start()
 
 # ── Step 1: refuse to serve an out-of-range MemPalace (spec 0108) ────────────
 # Placed before `import chromadb` so a refusal costs nothing and cannot perturb
