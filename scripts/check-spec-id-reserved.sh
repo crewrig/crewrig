@@ -26,6 +26,14 @@
 # upstream `0042` and an org `0042` are a conformant state, not a collision
 # (delta-01, scenario 5).
 #
+# THE MARK MUST AGREE WITH THE RESERVATION. `docs/spec-format.md` states that a
+# merged spec never carries `unsecured-id`, and this script is the only place
+# that holds both the frontmatter mark and the remote's reservation state at
+# once — so it is the only place that invariant can be enforced. An id secured
+# for its own ticket while the spec still declares `unsecured-id: true` is a
+# finding: the field exists to be machine-readable, so a stale `true` misinforms
+# every consumer, in the direction that looks permissive.
+#
 # THE TWO-RECORDS RULE. One UPSTREAM id recorded in BOTH upstream carriers
 # naming two different issues is a collision, failed loudly naming both tickets.
 # This guard does not pick a winner: that state is the exact duplicate-holder
@@ -220,14 +228,51 @@ fi
 
 # --- Base ref ----------------------------------------------------------------
 
-# Resolved exactly as scripts/check-skill-versions.sh does, so the repository
-# has one idiom rather than two.
-BASE_REF="${1:-${BASE_REF:-$(git -C "$REPO_DIR" remote | grep -E -m1 'crewrig|origin' || git -C "$REPO_DIR" remote | head -1)/main}}"
+# Resolved as scripts/check-skill-versions.sh does, so the repository has one
+# idiom rather than two — with the target BRANCH resolved rather than assumed.
+default_remote() {
+  git -C "$REPO_DIR" remote | grep -E -m1 'crewrig|origin' || git -C "$REPO_DIR" remote | head -1
+}
 
-if [ "$BASE_REF" = "/main" ]; then
-  wiring_fault "no git remote is configured, so no default base ref could be derived.
+# The branch the change is proposed INTO. Hardcoding `main` here was wrong on
+# GitLab, and wrong in a way that failed legitimate merge requests rather than
+# merely under-checking them.
+#
+# The GitHub arm never had the bug: build.yml maps
+# `github.event.pull_request.base.ref` into BASE_REF, so a release/** pull
+# request resolves its own target. The generated GitLab job sets only GIT_DEPTH
+# and passes no argument, while its own rule fires on
+# `$CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//` — so on a
+# release/** merge request this fell through to `<remote>/main` and diffed
+# against the wrong branch. Every spec that landed on the release branch after it
+# forked from main then read as "added by this change", and the check blocked a
+# conformant merge request while naming a THIRD PARTY'S spec and issue number.
+# That is precisely the misattribution spec 0112's Intent paragraph exists to
+# remove, reappearing through the guard meant to prevent it.
+#
+# CI_MERGE_REQUEST_TARGET_BRANCH_NAME is ambient in a merge-request pipeline and
+# is the platform's own statement of the target, so reading it is the same move
+# already made for the origin pair at :154-165 — not a new mechanism, and no
+# generator change (spec 0049 parity harness untouched).
+default_base_branch() {
+  if [ -n "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-}" ]; then
+    printf '%s' "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    return 0
+  fi
+  printf 'main'
+}
+
+BASE_REF="${1:-${BASE_REF:-$(default_remote)/$(default_base_branch)}}"
+
+# An empty remote component — `/main`, or `/release/2.0` — means the remote list
+# was empty. Matched on the leading slash rather than the literal `/main`, since
+# the branch is no longer a constant.
+case "$BASE_REF" in
+  /*)
+    wiring_fault "no git remote is configured, so no default base ref could be derived.
         Pass a resolvable ref as the first argument or via BASE_REF."
-fi
+    ;;
+esac
 
 if ! git -C "$REPO_DIR" rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
   base_remote="${BASE_REF%%/*}"
@@ -393,6 +438,27 @@ related_issue_of() {
   ' "$file"
 }
 
+# The `unsecured-id` mark as written in the frontmatter, lowercased, or empty when
+# the field is absent. Only `true` is acted on; `false` and absent are the same
+# thing per docs/spec-format.md, which defines the field as absent by default and
+# meaningful only when present and true. The value is already known to be a YAML
+# boolean — scripts/lib/spec-linter.js rejects a quoted `"true"` or an integer —
+# so the vocabulary reaching this function is exactly {true, false, absent}.
+unsecured_mark_of() {
+  local file="$1"
+  awk '
+    NR == 1 { if ($0 != "---") exit; next }
+    $0 == "---" { exit }
+    /^unsecured-id:/ {
+      v = $0
+      sub(/^unsecured-id:[[:space:]]*/, "", v)
+      gsub(/[[:space:]]/, "", v)
+      print tolower(v)
+      exit
+    }
+  ' "$file"
+}
+
 # --- Verdict -----------------------------------------------------------------
 
 findings=""
@@ -427,8 +493,10 @@ while IFS= read -r spec; do
   esac
 
   ticket=""
+  mark=""
   if [ -f "$REPO_DIR/$spec" ]; then
     ticket="$(related_issue_of "$REPO_DIR/$spec")"
+    mark="$(unsecured_mark_of "$REPO_DIR/$spec")"
   fi
   if [ -z "$ticket" ]; then
     add_finding "$spec — no integer 'related-issue' in the frontmatter, so the reservation cannot be attributed to a ticket. 'related-issue' is mandatory (docs/spec-format.md → Frontmatter schema)."
@@ -441,8 +509,17 @@ while IFS= read -r spec; do
   oid_tags="$(oid_at_ref "$LS_TAGS" "$ref_tags")"
 
   if [ -z "$oid_primary" ] && [ -z "$oid_tags" ]; then
-    add_finding "$spec — id '$id' was never secured (neither $ref_primary nor $ref_tags exists on '$REMOTE'). Secure it with:
+    if [ "$mark" = "true" ]; then
+      # The mark is present AND accurate. The verdict is unchanged — the id still
+      # has to be secured before merge — but the message must not read as though
+      # the author did something wrong: declaring an unsecured id is exactly what
+      # requirement 9 asks of an offline or fork contributor.
+      add_finding "$spec — id '$id' was never secured (neither $ref_primary nor $ref_tags exists on '$REMOTE'), and the spec correctly declares 'unsecured-id: true'. Requirement 10: a maintainer secures the id and REMOVES the mark in the same act:
       bash scripts/reserve-spec-id.sh --id $id --issue $ticket"
+    else
+      add_finding "$spec — id '$id' was never secured (neither $ref_primary nor $ref_tags exists on '$REMOTE'). Secure it with:
+      bash scripts/reserve-spec-id.sh --id $id --issue $ticket"
+    fi
     continue
   fi
 
@@ -489,7 +566,28 @@ while IFS= read -r spec; do
     continue
   fi
 
-  note "  OK $spec — id '$id' secured for issue #$ticket at $held_at"
+  # THE MARK MUST AGREE WITH THE RESERVATION. docs/spec-format.md states the
+  # invariant flatly — "a merged spec never carries it" — and this is the only
+  # place both facts are in hand at once, so it is the only place the invariant
+  # can be enforced. Without this, a spec whose id IS secured for its own ticket
+  # merges with a stale `unsecured-id: true`, and the field's entire purpose is
+  # to be machine-readable: a false `true` makes every consumer wrong, and wrong
+  # in the direction that looks permissive. The linter cannot catch it — it sees
+  # one file and no remote — and requirement 10 assigning mark REMOVAL to the
+  # maintainer is what makes an automated reminder appropriate rather than
+  # redundant.
+  #
+  # Routed through the same BLOCKING flag as every other finding, deliberately:
+  # a fork's pull request is never blocked by this guard, and the state this
+  # catches is reached precisely when a maintainer has done half of requirement
+  # 10's single act. On a fork it is reported, which is the reminder that the
+  # other half is outstanding.
+  if [ "$mark" = "true" ]; then
+    add_finding "$spec — id '$id' IS secured for its own ticket #$ticket (at $held_at), but the spec still carries a stale 'unsecured-id: true'. docs/spec-format.md → Frontmatter schema states that a merged spec never carries the mark, and requirement 10 removes it in the same act that secures the id. The field is machine-readable, so a false 'true' misinforms every consumer. Delete the 'unsecured-id' line from the frontmatter."
+    continue
+  fi
+
+  note "  OK $spec — id '$id' secured for issue #$ticket at $held_at (no stale mark)"
 done <<EOF
 $CANDIDATES
 EOF
