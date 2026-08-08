@@ -207,6 +207,7 @@ if [ "$INSTALL_MEMPALACE_AGY" = "yes" ]; then
   # Install the shared ChromaDB HTTP daemon supervisor (issue #98) before
   # writing the wrapper into mcp_config.json — first-launch ordering matters.
   install_chroma_daemon "$REPO_DIR"
+  offer_mcp_http_switch "$REPO_DIR" antigravity || true
 
   # Patch mcpServers.mempalace with the detected python and substitute the
   # __CREWRIG_REPO_DIR__ placeholder in args with the repo root so the

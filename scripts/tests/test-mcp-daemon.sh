@@ -352,6 +352,25 @@ else
   nope "an assistant is only tracked after a SUCCESSFUL switch — a failed one is abandoned"
 fi
 
+# --- 9. Every setup script wires the switch (R3, F5) -------------------------
+echo ""
+echo "Setup scripts switch their assistant (R3):"
+missing=""
+for cli in claude gemini copilot antigravity; do
+  grep -q "offer_mcp_http_switch" "${REPO_DIR}/scripts/setup-${cli}-interactive.sh" || missing="${missing} ${cli}"
+done
+[ -z "${missing}" ] \
+  && ok "all four setup scripts offer the switch" \
+  || nope "setup scripts still stdio-only:${missing} — a later run would silently revert the switch"
+
+# The revert is not hypothetical: `mempalace` is reserved, so the preservation
+# helper deliberately drops an operator entry under that name and the framework
+# rewrites it stdio-shaped. Assert the reservation still holds, since that is
+# what makes wiring every setup mandatory rather than merely tidy.
+grep -q 'MCP_RESERVED_NAMES=(mempalace' "${REPO_DIR}/scripts/lib/common.sh" \
+  && ok "mempalace is still a reserved name (so setups must switch it themselves)" \
+  || nope "mempalace is no longer reserved — re-check whether the setups still need to switch"
+
 echo ""
 echo "----------------------------------------"
 echo "  passed: ${PASS}   failed: ${FAIL}"

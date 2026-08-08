@@ -227,6 +227,7 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
     if [ "$REPLACE_MEMPALACE" = "yes" ]; then
       # Install the ChromaDB daemon supervisor BEFORE writing the wrapper into MCP config.
       install_chroma_daemon "$REPO_DIR"
+      offer_mcp_http_switch "$REPO_DIR" claude || true
       claude mcp remove --scope user mempalace >/dev/null 2>&1 || true
       if mcp_register_user mempalace bash "$REPO_DIR/scripts/lib/tls-exec.sh" "$MEMPALACE_PYTHON_BIN" "$MEMPALACE_WRAPPER"; then
         MEMPALACE_INSTALLED=1

@@ -1140,6 +1140,71 @@ mcp_report_assistant_arrangements() {
   done
 }
 
+# offer_mcp_http_switch <repo_dir> <cli>
+#
+# Called by each setup script after it has written its MCP configuration
+# (spec 0113 R3). Without this, a setup run would leave that assistant on the
+# previous stdio arrangement — and worse, SILENTLY UNDO an earlier switch:
+# `mempalace` is in MCP_RESERVED_NAMES, so merge_preexisting_mcp_servers
+# deliberately does not preserve an operator's entry under that name, and the
+# framework write that replaces it is stdio-shaped. A user who ran the switch
+# and later re-ran any setup would find the lock contention back with nothing
+# explaining why.
+#
+# SCOPE, stated rather than implied: this switches THIS assistant only. The
+# machine-wide all-or-nothing obligation (R4, delta R12-R14) belongs to
+# `switch-mempalace-http.sh`; a single-CLI run sits outside it by design, so it
+# reports which other assistants it is leaving behind instead of pretending to
+# have converged the machine.
+offer_mcp_http_switch() {
+  local repo_dir="$1" cli="$2" token other state left=""
+  CREWRIG_REPO_DIR="$repo_dir"
+  echo ""
+  echo "Shared memory daemon (spec 0113):"
+  echo "  Without it, every session spawns its own memory server and only the"
+  echo "  first one to write can write — the rest are refused for their whole life."
+  local choice
+  choice=$(echo -e "yes\nno" | fzf --height 10% \
+    --header "Reach shared memory through the shared daemon? (recommended)")
+  if [ "$choice" != "yes" ]; then
+    echo "  Skipped — this assistant keeps spawning its own memory server."
+    return 0
+  fi
+  if ! install_mcp_daemon "$repo_dir"; then
+    echo "  ERROR: the daemon is not serving — leaving this assistant unchanged."
+    echo "         Registering it against a daemon that is not there would break"
+    echo "         every session (R5: fail visibly, never fall back silently)."
+    return 1
+  fi
+  token="$(mcp_token_read_or_create)" || {
+    echo "  ERROR: could not read the bearer token — leaving this assistant unchanged."
+    return 1
+  }
+  if register_mempalace_mcp "$cli" "$token"; then
+    echo "  $cli now reaches shared memory through the daemon."
+  else
+    echo "  ERROR: could not switch $cli."
+    return 1
+  fi
+  for other in claude gemini copilot antigravity; do
+    [ "$other" = "$cli" ] && continue
+    mcp_assistant_present "$other" || continue
+    state="$(mcp_assistant_arrangement "$other")"
+    [ "$state" = "http" ] && continue
+    left="$left $other"
+  done
+  if [ -n "$left" ]; then
+    echo ""
+    echo "  NOTE: this run switched $cli only. Still on the previous arrangement:"
+    for other in $left; do echo "    - $other"; done
+    echo "  They will contend for the memory lock with $cli until they switch too."
+    echo "  Switch the whole machine at once with: task mempalace:switch-http"
+  fi
+  echo ""
+  echo "  Restart any running $cli session to pick this up."
+  return 0
+}
+
 # uninstall_daemon_supervisor <launchd_label> <systemd_unit>
 #
 # The symmetric inverse of install_daemon_supervisor (spec 0113, step 2b).
