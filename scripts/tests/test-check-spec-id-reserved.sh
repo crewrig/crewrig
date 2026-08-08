@@ -766,12 +766,21 @@ expect_log_matches "Case 12b — and the spec is named rather than silently acce
 # What separates this branch from the other [REPORT] producer is the spec path:
 # the namespace-unreadable report names no spec, so "a spec is named" identifies
 # the per-spec branch without matching any sentence. Note the fragility rather
-# than trusting it — that branch runs AFTER candidate enumeration (:416 then
-# :425), so the candidate list is in scope and nothing prevents it naming the
-# specs it could not verify. That would be a reasonable improvement, and it
-# would silently cost this case its discriminator. If it lands, replace the
-# identity assertion here with one keyed on something the two branches cannot
-# share; do not assume this one still separates them.
+# than trusting it — the `ls-remote` namespace guard runs AFTER the
+# candidate-enumeration loop closes, so `$CANDIDATES` is populated and in scope
+# by the time that branch reports. Nothing prevents it from naming the specs it
+# could not verify; that would be a reasonable improvement, and it would
+# silently cost this case its discriminator. If it lands, replace the identity
+# assertion here with one keyed on something the two branches cannot share; do
+# not assume this one still separates them.
+#
+# Deliberately named by symbol and not by line. An earlier revision of this
+# comment cited `:416` and `:425` — and a warning that a structural assumption
+# may quietly stop holding has no business anchoring itself on the one reference
+# form guaranteed to quietly stop holding. The subject file changed in three of
+# six consecutive commits while this was being written, and `:416` was already
+# wrong when written: it is the note reporting the count, not the end of the
+# loop.
 expect_log_matches "Case 12b — and it is reported through the non-blocking channel" '\[REPORT\]'
 
 # ---------------------------------------------------------------------------
