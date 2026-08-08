@@ -334,6 +334,23 @@ expect() {
   fi
 }
 
+# expect_stderr_matches <name> <ere>
+# Requirement 12 has two clauses — print the id on success, and THE REASON ON
+# FAILURE — and the second one lives entirely on stderr. Asserting it needs a
+# rule about what to match, because a message is prose and prose gets reworded
+# legitimately. The rule these assertions follow is the one the reviewer drew
+# for the sibling suite: match the IDENTIFYING content a caller must act on —
+# the offending value, the missing flag, the command to run — never the
+# sentence around it. Every pattern below survives any rewording that keeps the
+# message useful, and fails any change that drops what the user needs.
+expect_stderr_matches() {
+  if printf '%s' "$TOOL_ERR" | grep -Eq "$2"; then
+    record_pass "$1"
+  else
+    record_fail "$1" "stderr does not match /$2/"
+  fi
+}
+
 # expect_stdout_matches <name> <ere>
 expect_stdout_matches() {
   if printf '%s' "$TOOL_OUT" | grep -Eqi "$2"; then
@@ -392,6 +409,17 @@ run_tool c2 --issue 901 --offline
 expect_rc "Case 2 — --offline exits 3" 3
 expect_stdout_line "Case 2 — the id is on stdout line 1" 1 "0002"
 expect_stdout_line "Case 2 — the unsecured marker is exactly line 2" 2 "unsecured-id: true"
+# Exit 3 has a machine half and a human half, and only the machine half was
+# pinned — four times over, which is what made the gap invisible. Stripping the
+# explanation while keeping both payload lines left the suite at 61/0: an author
+# on the offline path would get a bare id and a marker with no statement that
+# anything was wrong. These two pin the human half, matching what makes it
+# actionable rather than the sentences carrying it — that the REASON argument is
+# rendered at all, and that the remediation names the id it applies to.
+expect_stderr_matches "Case 2 — stderr states why the id is unsecured" '[-][-]offline'
+  '\\-\\-offline'
+expect_stderr_matches "Case 2 — and gives the command that secures it, for this id" 'reserve-spec-id[.]sh --id 0002'
+  'reserve-spec-id\\.sh --id 0002'
 expect_no_ref_matching "Case 2 — --offline pushes nothing" c2 '^refs/(spec-ids|tags/spec-id)'
 
 # Case 3 — an unreachable remote is the same outcome as offline, not a failure.
@@ -421,6 +449,11 @@ new_fixture c4 specs/0001-a.md
 set_carrier c4 'refs/spec-id/'
 run_tool c4 --issue 903
 expect_rc "Case 4 — a carrier outside the closed pair exits 1" 1
+# Requirement 12's second clause: the reason on failure. The offending VALUE is
+# what the adopter must act on — they have to find it in their settings file —
+# so that is what is pinned, not the sentence around it.
+expect_stderr_matches "Case 4 — and stderr names the offending carrier value" 'refs/spec-id/'
+  'refs/spec-id/'
 expect_no_ref_matching "Case 4 — an invalid carrier pushes nothing" c4 '^refs/spec-id'
 expect "Case 4 — an invalid carrier prints nothing on stdout" "stdout" "$TOOL_OUT" ""
 
@@ -600,6 +633,8 @@ expect "Case 14 — the org reservation is where it belongs" "org refs" \
 new_fixture c15 specs/0001-a.md
 run_tool c15 --corpus org --issue 980
 expect_rc "Case 15 — --corpus org without --id exits 1" 1
+expect_stderr_matches "Case 15 — and stderr names the flag that would make it work" '[-][-]id'
+  '\\-\\-id'
 expect_no_ref_matching "Case 15 — no reservation is created" c15 '^refs/(spec-ids|tags/spec-id)'
 
 # Case 16 — R14 calls the identifier opaque, but the carrier is a git ref and a
@@ -609,6 +644,8 @@ expect_no_ref_matching "Case 15 — no reservation is created" c15 '^refs/(spec-
 new_fixture c16 specs/0001-a.md
 run_tool c16 --corpus org --id 'ORG 0001' --issue 981
 expect_rc "Case 16 — an identifier containing a space exits 1" 1
+expect_stderr_matches "Case 16 — and stderr names the rejected identifier" 'ORG 0001'
+  'ORG 0001'
 expect_no_ref_matching "Case 16 — nothing is pushed before the refusal" c16 '^refs/(spec-ids|tags/spec-id)'
 
 # Case 17 — the same rule at its least obvious boundary. A trailing `.lock` is
@@ -618,6 +655,8 @@ expect_no_ref_matching "Case 16 — nothing is pushed before the refusal" c16 '^
 new_fixture c17 specs/0001-a.md
 run_tool c17 --corpus org --id 'ORG-0001.lock' --issue 982
 expect_rc "Case 17 — an identifier ending in .lock exits 1" 1
+expect_stderr_matches "Case 17 — and stderr names the rejected identifier" 'ORG-0001[.]lock'
+  'ORG-0001\\.lock'
 expect_no_ref_matching "Case 17 — nothing is pushed before the refusal" c17 '^refs/(spec-ids|tags/spec-id)'
 
 # ---------------------------------------------------------------------------
@@ -684,6 +723,8 @@ expect_no_ref_matching "Case 21 — no second holder of the id anywhere" \
 new_fixture c22 specs/0001-a.md
 run_tool_env_carrier c22 'refs/spec-id/' --issue 994
 expect_rc "Case 22 — an invalid CREWRIG_SPEC_ID_CARRIER override exits 1" 1
+expect_stderr_matches "Case 22 — and stderr names the offending override value" 'refs/spec-id/'
+  'refs/spec-id/'
 expect_no_ref_matching "Case 22 — an invalid override pushes nothing" c22 '^refs/spec-id'
 
 # Case 23 — the last arm of the remote-resolution idiom. A contributor whose
