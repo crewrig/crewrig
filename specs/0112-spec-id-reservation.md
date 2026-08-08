@@ -1,7 +1,7 @@
 ---
 id: "0112"
 slug: spec-id-reservation
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 726
