@@ -128,6 +128,16 @@ until curl -sf --max-time 2 "http://${CHROMA_HOST}:${CHROMA_PORT}/api/v2/heartbe
 done
 log "ChromaDB daemon reachable at ${CHROMA_HOST}:${CHROMA_PORT}"
 
+# Propagate the endpoint we just proved reachable. The wrapper reads
+# MEMPALACE_CHROMA_HOST/PORT from the environment and defaults to
+# 127.0.0.1:8001, and no supervisor inherits a login shell — so on a
+# non-default chroma port the launcher would wait on the RIGHT port, succeed,
+# and hand off to a wrapper that probes 8001, fails loud, and gets respawned
+# forever by KeepAlive / Restart=always. That is precisely the boot loop the
+# wait above exists to prevent, reintroduced one line later.
+export MEMPALACE_CHROMA_HOST="${CHROMA_HOST}"
+export MEMPALACE_CHROMA_PORT="${CHROMA_PORT}"
+
 # --- 3. Hand off ------------------------------------------------------------
 # exec, not a subshell: the supervisor must supervise the server itself, and
 # the wrapper carries the spec-0108 version guard plus the ADR-0006

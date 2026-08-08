@@ -270,6 +270,30 @@ restored="$(jq -c '.mcpServers.mempalace' "${TEST_HOME}/.gemini/settings.json")"
   && ok "restored entry is byte-identical to the captured one" \
   || nope "restored entry differs from the capture"
 
+# --- 8. Rollback restores what it is given ----------------------------------
+echo ""
+echo "Rollback primitives (R13, R14):"
+echo '{"mcpServers":{"mempalace":{"command":"bash","args":["orig"]}}}' > "${TEST_HOME}/.gemini/settings.json"
+cap_g="$(capture_mempalace_registration gemini)"
+register_mempalace_mcp gemini "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" >/dev/null 2>&1
+_switch_rollback "gemini" "null" "${cap_g}" "null" "null" >/dev/null 2>&1
+[ "$(mcp_assistant_arrangement gemini)" = "stdio" ] \
+  && ok "_switch_rollback restores an assistant named in its list" \
+  || nope "_switch_rollback did not restore the assistant it was given"
+
+# The defect this guards is that the CALLER must name the assistant whose own
+# switch failed. register_mempalace_mcp is not atomic for Claude — `mcp remove`
+# lands, the write may not — so an assistant tracked only on SUCCESS is left
+# with no registration at all and, because the failed list stays empty, R14
+# never reports it. Assert the caller's contract structurally: the assistant is
+# added to the rollback list BEFORE the attempt, not after.
+if awk '/^  for cli in \$present; do$/,/^  done$/' "${REPO_DIR}/scripts/lib/common.sh" \
+   | grep -B2 'if register_mempalace_mcp' | grep -q 'applied="\$applied \$cli"'; then
+  ok "the rollback list is built before the attempt, not after it succeeds"
+else
+  nope "an assistant is only tracked after a SUCCESSFUL switch — a failed one is abandoned"
+fi
+
 echo ""
 echo "----------------------------------------"
 echo "  passed: ${PASS}   failed: ${FAIL}"

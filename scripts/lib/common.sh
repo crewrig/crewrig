@@ -964,23 +964,28 @@ switch_assistants_to_http() {
   # --- R12: the floor -------------------------------------------------------
   for cli in $present; do
     cfg="$(mcp_assistant_config_path "$cli")"
-    if [ "$cli" = "claude" ]; then
-      # Claude's config is managed by its own CLI; readability of the file is
-      # still the precondition its writes depend on.
-      [ -f "$cfg" ] || continue
+    # A present assistant with NO config file is a pre-flight failure, not a
+    # skip: the apply step needs a file to write into and will fail there
+    # instead — after earlier assistants have already been changed, which is
+    # exactly what delta-01's first scenario forbids ("no assistant SHALL be
+    # changed"). Nesting the checks inside `[ -f ]` let that case through.
+    if [ ! -f "$cfg" ]; then
+      echo "  ERROR: $cli is installed but has no configuration file yet:"
+      echo "         $cfg"
+      echo "         Run its own setup script once first. No assistant has been"
+      echo "         changed. (R12)"
+      return 1
     fi
-    if [ -f "$cfg" ]; then
-      if [ ! -r "$cfg" ] || [ ! -w "$cfg" ]; then
-        echo "  ERROR: $cli's configuration is not both readable and writable:"
-        echo "         $cfg"
-        echo "         No assistant has been changed. (R12)"
-        return 1
-      fi
-      if ! jq -e . "$cfg" >/dev/null 2>&1; then
-        echo "  ERROR: $cli's configuration does not parse: $cfg"
-        echo "         No assistant has been changed. (R12)"
-        return 1
-      fi
+    if [ ! -r "$cfg" ] || [ ! -w "$cfg" ]; then
+      echo "  ERROR: $cli's configuration is not both readable and writable:"
+      echo "         $cfg"
+      echo "         No assistant has been changed. (R12)"
+      return 1
+    fi
+    if ! jq -e . "$cfg" >/dev/null 2>&1; then
+      echo "  ERROR: $cli's configuration does not parse: $cfg"
+      echo "         No assistant has been changed. (R12)"
+      return 1
     fi
   done
 
@@ -999,9 +1004,16 @@ switch_assistants_to_http() {
   done
 
   for cli in $present; do
+    # Record the assistant as touched BEFORE attempting, not after succeeding.
+    # register_mempalace_mcp is not atomic for Claude — it removes the old
+    # entry, then writes the new one — so a failure leaves the assistant with
+    # NO registration at all. Rolling back only the successes would then skip
+    # the one assistant that actually lost its configuration, and `failed`
+    # would stay empty so R14's report never fires: silent, total memory loss
+    # on the primary CLI.
+    applied="$applied $cli"
     if register_mempalace_mcp "$cli" "$token"; then
       echo "  $cli: switched to the shared daemon"
-      applied="$applied $cli"
     else
       echo "  ERROR: $cli could not be switched."
       _switch_rollback "$applied" \
@@ -1063,18 +1075,23 @@ _switch_rollback() {
 # One reader, consumed by both status-mcp-server.sh and doctor-mempalace.sh so
 # the two cannot drift apart on what "current arrangement" means.
 mcp_assistant_arrangement() {
-  local cli="$1" entry=""
+  local cli="$1" entry="" entry_cfg=""
   case "$cli" in
     claude)
       command -v claude >/dev/null 2>&1 || { printf 'absent\n'; return 0; }
-      if ! claude mcp list 2>/dev/null | grep -qE '^mempalace:[[:space:]]'; then
-        printf 'none\n'; return 0
-      fi
-      # `claude mcp get` prints the transport for an HTTP entry; a stdio entry
-      # prints a command line instead.
-      if claude mcp get mempalace 2>/dev/null | grep -qiE 'http|url|/mcp'; then
+      # Read the CONFIG FILE, not `claude mcp get` output. Grepping that text
+      # for http|url|/mcp matched `mempalace-http-wrapper.py` sitting in a
+      # STDIO entry's args, so a stdio Claude reported as http — verified on a
+      # real machine. The file is JSON like the other three, so the same exact
+      # test applies and the only textual branch disappears.
+      entry_cfg="$(mcp_assistant_config_path claude)"
+      [ -f "$entry_cfg" ] || { printf 'none\n'; return 0; }
+      entry="$(jq -c '.mcpServers.mempalace // empty' "$entry_cfg" 2>/dev/null)"
+      if [ -z "$entry" ]; then
+        printf 'none\n'
+      elif printf '%s' "$entry" | jq -e 'has("url") or has("serverUrl")' >/dev/null 2>&1; then
         printf 'http\n'
-      elif claude mcp get mempalace 2>/dev/null | grep -qiE 'command|args|python'; then
+      elif printf '%s' "$entry" | jq -e 'has("command")' >/dev/null 2>&1; then
         printf 'stdio\n'
       else
         printf 'unknown\n'
