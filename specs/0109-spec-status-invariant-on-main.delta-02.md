@@ -1,7 +1,7 @@
 ---
 id: "0109"
 slug: spec-status-invariant-on-main
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 732
