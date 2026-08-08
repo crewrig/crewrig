@@ -48,13 +48,20 @@
 # Exit contract under test (PLAN step 2, authoritative):
 #   0  secured on the remote        stdout: the id
 #   3  allocated, NOT secured       stdout: the id on line 1, then exactly
-#                                   `unsecured-id=true` on line 2
+#                                   `unsecured-id: true` on line 2
 #   1  genuine failure              stdout: nothing; reason on stderr
 #
-# `unsecured-id` is one name across two surfaces: this stdout marker and the
-# optional frontmatter field docs/spec-format.md gains. Asserted exactly, not
-# by a loose match on `unsecured`, so that a change of shape is a visible
-# contract change rather than a silent one.
+# `unsecured-id` is one name across two surfaces — this stdout marker and the
+# optional frontmatter field docs/spec-format.md gains — and the colon form
+# makes the two surfaces identical in syntax as well as in name: line 2 is
+# already a valid frontmatter line, so `spec-author` transcribes it rather than
+# reformatting it on the one code path that runs with no human present to catch
+# a bad rewrite. Line 1 is a bare id with no key, so stdout was never uniformly
+# `key=value` and nothing is lost by not being parseable as such.
+#
+# Asserted exactly, and by line number, rather than by a loose match on
+# `unsecured`: the shape is a contract with a declared consumer, so a change to
+# it must be a visible test failure rather than a silent drift.
 #
 # ---------------------------------------------------------------------------
 # One harness rule that is load-bearing, not stylistic
@@ -365,7 +372,7 @@ new_fixture c2 specs/0001-a.md
 run_tool c2 --issue 901 --offline
 expect_rc "Case 2 — --offline exits 3" 3
 expect_stdout_line "Case 2 — the id is on stdout line 1" 1 "0002"
-expect_stdout_line "Case 2 — the unsecured marker is exactly line 2" 2 "unsecured-id=true"
+expect_stdout_line "Case 2 — the unsecured marker is exactly line 2" 2 "unsecured-id: true"
 expect_no_ref_matching "Case 2 — --offline pushes nothing" c2 '^refs/(spec-ids|tags/spec-id)'
 
 # Case 3 — an unreachable remote is the same outcome as offline, not a failure.
@@ -633,7 +640,7 @@ new_fixture c21 specs/0001-a.md
 git -C "$(fixture_bare c21)" config transfer.hideRefs refs/spec-ids
 run_tool c21 --issue 993
 expect_rc "Case 21 — a hidden namespace yields exit 3" 3
-expect_stdout_line "Case 21 — the id is reported unsecured in the contracted shape" 2 "unsecured-id=true"
+expect_stdout_line "Case 21 — the id is reported unsecured in the contracted shape" 2 "unsecured-id: true"
 expect_no_ref_matching "Case 21 — no carrier switch: the tag namespace is untouched" \
   c21 '^refs/tags/spec-id'
 expect_no_ref_matching "Case 21 — no second holder of the id anywhere" \
