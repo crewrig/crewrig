@@ -712,7 +712,12 @@ install_chroma_daemon() {
 
 # --- MCP HTTP daemon: install (spec 0113, ADR 0016) --------------------------
 MCP_DAEMON_HOST_DEFAULT="127.0.0.1"
-MCP_DAEMON_PORT_DEFAULT="8021"
+# 41893: high, outside the ephemeral range (macOS starts at 49152, so an
+# ephemeral port can be claimed at random by any outgoing connection), and with
+# no /etc/services assignment. The previous default, 8021, is registered as
+# intu-ec-client and collided on the very first machine this ran on — held by
+# launchd for a system service, invisible to lsof without elevation (#748).
+MCP_DAEMON_PORT_DEFAULT="41893"
 # Overridable so a test can bind elsewhere. A test that shares the production
 # port reaches the production daemon even when its own unit is correctly
 # labelled and simply failed to bind — the isolation must cover the port, not

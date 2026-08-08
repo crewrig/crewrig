@@ -371,6 +371,53 @@ grep -q 'MCP_RESERVED_NAMES=(mempalace' "${REPO_DIR}/scripts/lib/common.sh" \
   && ok "mempalace is still a reserved name (so setups must switch it themselves)" \
   || nope "mempalace is no longer reserved — re-check whether the setups still need to switch"
 
+# --- 10. The daemon must OUTLIVE the reaper (#749) ---------------------------
+# The defect this guards shipped once and was invisible to every static check:
+# the wrapper starts an orphan-reaper thread that calls os._exit(0) when its
+# parent is PID 1, which is the NORMAL state of a supervised daemon. It killed
+# the daemon every ~60s with exit code 0 and no log line. Only watching the
+# process live past the reaper's poll interval reveals it.
+echo ""
+echo "Daemon lifetime (R2, #749):"
+
+# Hermetic half: the reaper must not be armed under the HTTP transport.
+if grep -q 'if not _transport_is_http():' "${REPO_DIR}/scripts/lib/mempalace-http-wrapper.py"; then
+  ok "the orphan reaper is not armed under --transport http"
+else
+  nope "the orphan reaper runs unconditionally — a supervised daemon will kill itself"
+fi
+
+# Behavioural half: probed skip, because CI has no mempalace venv. Quoting the
+# reason rather than silently passing, per the tester skill.
+if "${MEMPALACE_PYTHON}" -c 'import mempalace' >/dev/null 2>&1; then
+  export MEMPALACE_CHROMA_PORT=8001   # the real one; we need a working handoff
+  install_mcp_launcher >/dev/null 2>&1
+  # ORPHAN IT. A daemon whose parent is this test shell is never orphaned, so
+  # the reaper never fires and the assertion passes with the defect present —
+  # verified. The double-fork makes the intermediate shell exit immediately,
+  # reparenting the daemon to PID 1, which is exactly what a supervisor does.
+  ( bash "$(mcp_launcher_installed_path)" >/dev/null 2>&1 & ) &
+  sleep 1
+  waited=0
+  until curl -sf --max-time 2 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1 \
+        || [ "${waited}" -ge 40 ]; do sleep 2; waited=$((waited + 2)); done
+  if curl -sf --max-time 2 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1; then
+    # The reaper polls every 5s; 20s is four intervals of margin.
+    sleep 20
+    if curl -sf --max-time 3 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1; then
+      ok "an ORPHANED daemon still serves 20s later (four reaper intervals)"
+    else
+      nope "the orphaned daemon died within 20s — the reaper is killing it"
+    fi
+  else
+    nope "the daemon never became healthy"
+  fi
+  pkill -f "transport http --host 127.0.0.1 --port ${MEMPALACE_MCP_PORT}" 2>/dev/null
+else
+  echo "  skip mempalace is not importable from ${MEMPALACE_PYTHON} — cannot"
+  echo "       start a real daemon, so the behavioural lifetime check is skipped."
+fi
+
 echo ""
 echo "----------------------------------------"
 echo "  passed: ${PASS}   failed: ${FAIL}"

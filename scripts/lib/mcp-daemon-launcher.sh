@@ -107,6 +107,33 @@ export MEMPALACE_MCP_HTTP_TOKEN
 # would cycle the writer lease for no reason.
 export MEMPALACE_MCP_IDLE_HOURS="${MEMPALACE_MCP_IDLE_HOURS:-0}"
 
+# --- 1b. Refuse fast when the port is already taken --------------------------
+# A taken port is NOT transient: retrying every ThrottleInterval for hours
+# cannot resolve it, and that is exactly what the supervisor will do. Say it
+# once, name what the operator can actually check — `lsof` returns nothing when
+# the holder is a system service under launchd — and exit before doing any more
+# work. Observed as 172 identical restarts on the first production run (#748).
+if command -v python3 >/dev/null 2>&1; then
+  if ! python3 - "${MCP_HOST}" "${MCP_PORT}" <<'PROBE'
+import socket, sys
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    s.bind((sys.argv[1], int(sys.argv[2])))
+except OSError:
+    sys.exit(1)
+finally:
+    s.close()
+PROBE
+  then
+    die "port ${MCP_PORT} on ${MCP_HOST} is already in use.
+       Retrying will not help — the supervisor would respawn this forever.
+       Find the holder:   netstat -anv | grep ${MCP_PORT}
+       (lsof may show nothing: a system service under launchd is invisible
+        without elevation.)
+       Choose another:    MEMPALACE_MCP_PORT=<port> task mempalace:switch-http"
+  fi
+fi
+
 # --- 2. Wait for the ChromaDB daemon (tier 1) --------------------------------
 # ADR 0006 owns the tier below this one. The wrapper we exec fails loud when
 # that daemon is unreachable, which is correct but would make the supervisor
