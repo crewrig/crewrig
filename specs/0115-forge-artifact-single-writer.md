@@ -1,7 +1,7 @@
 ---
 id: "0115"
 slug: forge-artifact-single-writer
-status: draft
+status: approved
 complexity: standard
 interaction-mode: AUTO
 related-issue: 735
