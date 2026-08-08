@@ -1,0 +1,35 @@
+[Unit]
+Description=MemPalace shared MCP HTTP daemon
+Documentation=https://github.com/crewrig/crewrig/blob/main/docs/adr/0016-shared-mempalace-mcp-http-server.md
+After=network.target mempalace-chroma-server.service
+# Wants=, deliberately NOT Requires=. Ordering is what we need; coupling is not.
+# Requires= would take this unit down with the ChromaDB one and keep it down,
+# re-joining two failure domains that ADR 0016 separated on purpose. The
+# launcher waits on a deadline for the ChromaDB daemon anyway, which supplies
+# what Requires= was reaching for without the coupling.
+Wants=mempalace-chroma-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.mempalace
+# The launcher lives OUTSIDE the repository (spec 0113): a revert of the ticket
+# that introduced this unit must not delete the program ExecStart names. It
+# reads the 0600 bearer token, waits for the ChromaDB daemon, then execs the
+# MemPalace wrapper. The token is never named here — this file is materialised
+# at the default umask (0644).
+ExecStart=/usr/bin/env bash __LAUNCHER_PATH__
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+# StartLimit* is a backstop against a genuinely broken configuration, not the
+# convergence mechanism: the launcher's 60s deadline wait means a slow-but-
+# healthy ChromaDB start is absorbed inside ONE attempt and never reaches this
+# budget. The two units therefore converge for different reasons — Chroma has
+# no dependency to wait for, this one does — which is why the numbers differ.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+StandardOutput=append:%h/.mempalace/mcp-server.log
+StandardError=append:%h/.mempalace/mcp-server.log
+
+[Install]
+WantedBy=default.target

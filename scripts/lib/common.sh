@@ -554,69 +554,72 @@ offer_mempalace_install() {
 # is healthy before returning. Exits 1 if the daemon fails to come up — the
 # wrapper's fail-loud contract requires the daemon to be reachable before
 # any MCP entry is registered.
-install_chroma_daemon() {
-  local repo_dir="$1"
+# install_daemon_supervisor <launchd_label> <systemd_unit> <materialise_fn> <health_fn> <log_hint>
+#
+# Installs and starts a supervised user-level daemon. Idempotent — re-running
+# on an already-loaded unit is a no-op.
+#
+#   <launchd_label>  launchd label, and the basename of the plist under
+#                    config/launchd/ (e.g. com.mempalace.chroma-server)
+#   <systemd_unit>   systemd unit name, and the basename of the unit file under
+#                    config/systemd/ (e.g. mempalace-chroma-server). The two
+#                    naming schemes genuinely differ — reverse-DNS on macOS,
+#                    hyphenated on Linux — so they are separate parameters
+#                    rather than one derived from the other.
+#   <materialise_fn> name of a function taking <src> <dst>; writes the
+#                    substituted unit and returns non-zero on refusal. Every
+#                    placeholder set is daemon-specific — Chroma needs the
+#                    chroma binary, the MCP daemon needs a port and a token —
+#                    so substitution is the caller's, not this function's.
+#   <health_fn>      name of a function returning 0 once the daemon serves.
+#                    Polled on a deadline; a supervised process needs a few
+#                    seconds to bind its socket (issue #138).
+#   <log_hint>       path shown to the operator when the deadline expires.
+#
+# Generalised from install_chroma_daemon by spec 0113. The three parts that
+# are genuinely daemon-specific — placeholder substitution, the binary
+# preflight, and the health check — are callbacks; the OS branching, the unit
+# install, the load/enable and the deadline poll are shared.
+install_daemon_supervisor() {
+  local label="$1"
+  local systemd_unit="$2"
+  local materialise_fn="$3"
+  local health_fn="$4"
+  local log_hint="$5"
   local os
   os="$(uname -s)"
-  echo ""
-  echo "Installing shared ChromaDB HTTP daemon supervisor (issue #98)..."
   case "$os" in
     Darwin)
-      local plist_src="$repo_dir/config/launchd/com.mempalace.chroma-server.plist"
-      local plist_dst="$HOME/Library/LaunchAgents/com.mempalace.chroma-server.plist"
+      local plist_src="$CREWRIG_REPO_DIR/config/launchd/${label}.plist"
+      local plist_dst="$HOME/Library/LaunchAgents/${label}.plist"
       if [ ! -f "$plist_src" ]; then
         echo "  ERROR: $plist_src missing — daemon supervisor unit not shipped."
         return 1
       fi
       mkdir -p "$HOME/Library/LaunchAgents"
-      # Substitute placeholders. The plist on disk is user-agnostic
-      # (no hardcoded $HOME) — we materialise it here with the
-      # detected mempalace interpreter and chroma binary so the launchd
-      # agent runs against the right venv.
-      local pipx_py chroma_bin mempalace_home
-      pipx_py="$(detect_mempalace_python || true)"
-      if [ -z "$pipx_py" ]; then
-        echo "  ERROR: cannot detect mempalace pipx python — install mempalace first."
-        return 1
-      fi
-      chroma_bin="$(dirname "$pipx_py")/chroma"
-      if [ ! -x "$chroma_bin" ]; then
-        echo "  ERROR: chroma binary not found at $chroma_bin — run: pipx inject mempalace 'chromadb>=1.5.9'"
-        return 1
-      fi
-      mempalace_home="$HOME/.mempalace"
-      sed \
-        -e "s|__MEMPALACE_HOME__|${mempalace_home}|g" \
-        -e "s|__PIPX_PYTHON__|${pipx_py}|g" \
-        -e "s|__CHROMA_BIN__|${chroma_bin}|g" \
-        -e "s|__TLS_EXEC__|${repo_dir}/scripts/lib/tls-exec.sh|g" \
-        "$plist_src" > "$plist_dst"
+      "$materialise_fn" "$plist_src" "$plist_dst" || return 1
       echo "  Installed: $plist_dst"
-      if launchctl list | grep -q com.mempalace.chroma-server; then
+      if launchctl list | grep -q "$label"; then
         echo "  launchd agent already loaded — skipping load."
       else
         launchctl load -w "$plist_dst" \
-          && echo "  Loaded launchd agent: com.mempalace.chroma-server" \
+          && echo "  Loaded launchd agent: $label" \
           || { echo "  ERROR: launchctl load failed."; return 1; }
       fi
       ;;
     Linux)
-      local svc_src="$repo_dir/config/systemd/mempalace-chroma-server.service"
-      local svc_dst="$HOME/.config/systemd/user/mempalace-chroma-server.service"
+      local svc_src="$CREWRIG_REPO_DIR/config/systemd/${systemd_unit}.service"
+      local svc_dst="$HOME/.config/systemd/user/${systemd_unit}.service"
       if [ ! -f "$svc_src" ]; then
         echo "  ERROR: $svc_src missing — daemon supervisor unit not shipped."
         return 1
       fi
       mkdir -p "$HOME/.config/systemd/user"
-      # Materialise the unit through the TLS wrapper (spec 0084): substitute
-      # __TLS_EXEC__ in ExecStart so the supervised daemon inherits any
-      # user-consented custom-CA trust for its embedding-model fetch.
-      sed -e "s|__TLS_EXEC__|${repo_dir}/scripts/lib/tls-exec.sh|g" \
-        "$svc_src" > "$svc_dst"
+      "$materialise_fn" "$svc_src" "$svc_dst" || return 1
       echo "  Installed: $svc_dst"
       systemctl --user daemon-reload \
-        && systemctl --user enable --now mempalace-chroma-server \
-        && echo "  Enabled and started: mempalace-chroma-server.service" \
+        && systemctl --user enable --now "$systemd_unit" \
+        && echo "  Enabled and started: ${systemd_unit}.service" \
         || { echo "  ERROR: systemctl --user enable --now failed."; return 1; }
       ;;
     *)
@@ -624,32 +627,359 @@ install_chroma_daemon() {
       return 1
       ;;
   esac
-  # Health check — confirm the daemon answers on the heartbeat endpoint
-  # before any MCP entry is written. The launchd/systemd-managed process
-  # needs a few seconds to bind its socket, so poll with a 15s budget
-  # instead of one-shotting status-chroma-server.sh (see issue #138).
-  if [ -x "$repo_dir/scripts/status-chroma-server.sh" ]; then
-    local deadline=$((SECONDS + 15))
-    local healthy=0
-    while [ "$SECONDS" -lt "$deadline" ]; do
-      if bash "$repo_dir/scripts/status-chroma-server.sh" >/dev/null 2>&1; then
-        healthy=1
-        break
-      fi
-      sleep 0.3
-    done
-    if [ "$healthy" -ne 1 ]; then
-      # Surface the status script's diagnostics (stdout + stderr) so the user
-      # sees the real failure cause before the generic ERROR line.
-      bash "$repo_dir/scripts/status-chroma-server.sh" || true
-      echo "  ERROR: ChromaDB daemon did not become healthy."
-      echo "         Inspect logs at ~/.mempalace/chroma-server.log and retry."
-      return 1
+  local deadline=$((SECONDS + 15))
+  local healthy=0
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if "$health_fn" >/dev/null 2>&1; then
+      healthy=1
+      break
     fi
-  else
-    echo "  WARNING: scripts/status-chroma-server.sh not found — skipping health check."
+    sleep 0.3
+  done
+  if [ "$healthy" -ne 1 ]; then
+    # Surface the health check's own diagnostics so the operator sees the real
+    # cause before the generic ERROR line.
+    "$health_fn" || true
+    echo "  ERROR: daemon '$label' did not become healthy."
+    echo "         Inspect logs at $log_hint and retry."
+    return 1
   fi
   return 0
+}
+
+# Materialise callback for the ChromaDB unit. Placeholders are chroma-specific:
+# the plist on disk is user-agnostic (no hardcoded $HOME) and is filled here
+# with the detected mempalace interpreter and chroma binary so the supervised
+# agent runs against the right venv.
+_materialise_chroma_unit() {
+  local src="$1"
+  local dst="$2"
+  if [ "$(uname -s)" = "Linux" ]; then
+    # The systemd unit carries only the TLS wrapper placeholder (spec 0084),
+    # so ExecStart inherits any user-consented custom-CA trust.
+    sed -e "s|__TLS_EXEC__|${CREWRIG_REPO_DIR}/scripts/lib/tls-exec.sh|g" "$src" > "$dst"
+    return 0
+  fi
+  local pipx_py chroma_bin mempalace_home
+  pipx_py="$(detect_mempalace_python || true)"
+  if [ -z "$pipx_py" ]; then
+    echo "  ERROR: cannot detect mempalace pipx python — install mempalace first."
+    return 1
+  fi
+  chroma_bin="$(dirname "$pipx_py")/chroma"
+  if [ ! -x "$chroma_bin" ]; then
+    echo "  ERROR: chroma binary not found at $chroma_bin — run: pipx inject mempalace 'chromadb>=1.5.9'"
+    return 1
+  fi
+  mempalace_home="$HOME/.mempalace"
+  sed \
+    -e "s|__MEMPALACE_HOME__|${mempalace_home}|g" \
+    -e "s|__PIPX_PYTHON__|${pipx_py}|g" \
+    -e "s|__CHROMA_BIN__|${chroma_bin}|g" \
+    -e "s|__TLS_EXEC__|${CREWRIG_REPO_DIR}/scripts/lib/tls-exec.sh|g" \
+    "$src" > "$dst"
+  return 0
+}
+
+_health_chroma_daemon() {
+  if [ -x "$CREWRIG_REPO_DIR/scripts/status-chroma-server.sh" ]; then
+    bash "$CREWRIG_REPO_DIR/scripts/status-chroma-server.sh"
+    return $?
+  fi
+  echo "  WARNING: scripts/status-chroma-server.sh not found — cannot health-check."
+  return 0
+}
+
+install_chroma_daemon() {
+  local repo_dir="$1"
+  CREWRIG_REPO_DIR="$repo_dir"
+  echo ""
+  echo "Installing shared ChromaDB HTTP daemon supervisor (issue #98)..."
+  install_daemon_supervisor \
+    "com.mempalace.chroma-server" \
+    "mempalace-chroma-server" \
+    _materialise_chroma_unit \
+    _health_chroma_daemon \
+    "$HOME/.mempalace/chroma-server.log"
+}
+
+# --- MCP HTTP daemon: install (spec 0113, ADR 0016) --------------------------
+MCP_DAEMON_HOST_DEFAULT="127.0.0.1"
+MCP_DAEMON_PORT_DEFAULT="8021"
+# Overridable so a test can bind elsewhere. A test that shares the production
+# port reaches the production daemon even when its own unit is correctly
+# labelled and simply failed to bind — the isolation must cover the port, not
+# only the unit name (spec 0113 step 2c).
+MCP_DAEMON_LABEL_DEFAULT="com.mempalace.mcp-server"
+MCP_DAEMON_UNIT_DEFAULT="mempalace-mcp-server"
+
+mcp_launcher_installed_path() {
+  printf '%s\n' "${MEMPALACE_MCP_LAUNCHER_PATH:-$HOME/.crewrig/mcp-daemon-launcher.sh}"
+}
+
+mcp_launcher_source_sha() {
+  local src="$CREWRIG_REPO_DIR/scripts/lib/mcp-daemon-launcher.sh"
+  [ -f "$src" ] || return 1
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$src" | cut -d' ' -f1
+  else
+    sha256sum "$src" | cut -d' ' -f1
+  fi
+}
+
+# Materialise the launcher into ~/.crewrig/ with its placeholders substituted,
+# recording the SOURCE hash so status-mcp-server.sh can detect drift between
+# the installed copy and the repository. Comparing installed bytes to source
+# bytes would report divergence on every correct install — the substitutions
+# guarantee they differ — so the recorded hash is the comparable quantity.
+install_mcp_launcher() {
+  local dst src sha py
+  dst="$(mcp_launcher_installed_path)"
+  src="$CREWRIG_REPO_DIR/scripts/lib/mcp-daemon-launcher.sh"
+  if [ ! -f "$src" ]; then
+    echo "  ERROR: $src missing — launcher template not shipped."
+    return 1
+  fi
+  py="$(detect_mempalace_python || true)"
+  if [ -z "$py" ]; then
+    echo "  ERROR: cannot detect mempalace pipx python — install mempalace first."
+    return 1
+  fi
+  sha="$(mcp_launcher_source_sha)" || return 1
+  mkdir -p "$(dirname "$dst")"
+  sed \
+    -e "s|__CREWRIG_REPO_DIR__|${CREWRIG_REPO_DIR}|g" \
+    -e "s|__MCP_HOST__|${MEMPALACE_MCP_HOST:-$MCP_DAEMON_HOST_DEFAULT}|g" \
+    -e "s|__MCP_PORT__|${MEMPALACE_MCP_PORT:-$MCP_DAEMON_PORT_DEFAULT}|g" \
+    -e "s|__CHROMA_HOST__|${MEMPALACE_CHROMA_HOST:-127.0.0.1}|g" \
+    -e "s|__CHROMA_PORT__|${MEMPALACE_CHROMA_PORT:-8001}|g" \
+    -e "s|__MEMPALACE_PYTHON__|${py}|g" \
+    -e "s|__LAUNCHER_SOURCE_SHA__|${sha}|g" \
+    "$src" > "$dst"
+  chmod 755 "$dst"
+  echo "  Installed launcher: $dst"
+  return 0
+}
+
+_materialise_mcp_unit() {
+  local src="$1"
+  local dst="$2"
+  # Both units name the launcher through the same placeholder, so an
+  # overridden launcher path (a test's) reaches both platforms identically.
+  sed \
+    -e "s|__LAUNCHER_PATH__|$(mcp_launcher_installed_path)|g" \
+    -e "s|__MEMPALACE_HOME__|${HOME}/.mempalace|g" \
+    "$src" > "$dst"
+  return 0
+}
+
+_health_mcp_daemon() {
+  local host port
+  host="${MEMPALACE_MCP_HOST:-$MCP_DAEMON_HOST_DEFAULT}"
+  port="${MEMPALACE_MCP_PORT:-$MCP_DAEMON_PORT_DEFAULT}"
+  curl -sf --max-time 3 "http://${host}:${port}/healthz" >/dev/null 2>&1
+}
+
+install_mcp_daemon() {
+  local repo_dir="$1"
+  CREWRIG_REPO_DIR="$repo_dir"
+  echo ""
+  echo "Installing shared MemPalace MCP HTTP daemon supervisor (spec 0113)..."
+  # The token must exist before the launcher runs: it refuses to serve without
+  # one, by design (an empty token disables the bearer check upstream).
+  if ! mcp_token_read_or_create >/dev/null; then
+    echo "  ERROR: could not provision the MCP bearer token."
+    echo "         Refusing to install a daemon that would serve unauthenticated."
+    return 1
+  fi
+  install_mcp_launcher || return 1
+  install_daemon_supervisor \
+    "${MEMPALACE_MCP_LABEL:-$MCP_DAEMON_LABEL_DEFAULT}" \
+    "${MEMPALACE_MCP_UNIT:-$MCP_DAEMON_UNIT_DEFAULT}" \
+    _materialise_mcp_unit \
+    _health_mcp_daemon \
+    "$HOME/.mempalace/mcp-server.log"
+}
+
+# mcp_assistant_arrangement <cli>
+#
+# Echoes the arrangement one assistant is currently configured for, as one of:
+#   http     — reaches shared memory through the shared MCP daemon
+#   stdio    — spawns its own memory server (the previous arrangement)
+#   none     — no mempalace registration
+#   unknown  — a registration exists but matches neither shape (spec 0113 R14:
+#              reported, never silently converged — repetition cannot resolve a
+#              configuration it cannot recognise)
+#   absent   — the assistant's own CLI is not installed on this machine, so it
+#              is not part of the all-or-nothing obligation (delta-01 definition)
+#
+# One reader, consumed by both status-mcp-server.sh and doctor-mempalace.sh so
+# the two cannot drift apart on what "current arrangement" means.
+mcp_assistant_arrangement() {
+  local cli="$1" entry=""
+  case "$cli" in
+    claude)
+      command -v claude >/dev/null 2>&1 || { printf 'absent\n'; return 0; }
+      if ! claude mcp list 2>/dev/null | grep -qE '^mempalace:[[:space:]]'; then
+        printf 'none\n'; return 0
+      fi
+      # `claude mcp get` prints the transport for an HTTP entry; a stdio entry
+      # prints a command line instead.
+      if claude mcp get mempalace 2>/dev/null | grep -qiE 'http|url|/mcp'; then
+        printf 'http\n'
+      elif claude mcp get mempalace 2>/dev/null | grep -qiE 'command|args|python'; then
+        printf 'stdio\n'
+      else
+        printf 'unknown\n'
+      fi
+      return 0
+      ;;
+    gemini)      entry="$HOME/.gemini/settings.json" ;;
+    copilot)     entry="$HOME/.copilot/mcp-config.json" ;;
+    antigravity) entry="$HOME/.gemini/config/mcp_config.json" ;;
+    *) printf 'unknown\n'; return 0 ;;
+  esac
+  [ -f "$entry" ] || { printf 'absent\n'; return 0; }
+  local node
+  node="$(jq -c '.mcpServers.mempalace // empty' "$entry" 2>/dev/null)"
+  if [ -z "$node" ]; then
+    printf 'none\n'
+  elif printf '%s' "$node" | jq -e 'has("url") or has("serverUrl")' >/dev/null 2>&1; then
+    printf 'http\n'
+  elif printf '%s' "$node" | jq -e 'has("command")' >/dev/null 2>&1; then
+    printf 'stdio\n'
+  else
+    printf 'unknown\n'
+  fi
+  return 0
+}
+
+mcp_report_assistant_arrangements() {
+  local cli state
+  for cli in claude gemini copilot antigravity; do
+    state="$(mcp_assistant_arrangement "$cli")"
+    case "$state" in
+      http)    printf '  %-12s http (shared daemon)\n' "$cli" ;;
+      stdio)   printf '  %-12s stdio (previous arrangement)\n' "$cli" ;;
+      none)    printf '  %-12s no mempalace registration\n' "$cli" ;;
+      absent)  printf '  %-12s CLI not installed\n' "$cli" ;;
+      *)       printf '  %-12s *** UNRECOGNISED — manual repair required ***\n' "$cli" ;;
+    esac
+  done
+}
+
+# uninstall_daemon_supervisor <launchd_label> <systemd_unit>
+#
+# The symmetric inverse of install_daemon_supervisor (spec 0113, step 2b).
+# Each verb undoes exactly the verb the installer used:
+#
+#   launchd:  `unload -w`      undoes  `load -w`      (common.sh install path)
+#   systemd:  `disable --now`  undoes  `enable --now`
+#
+# The `-w` half matters and is NOT an oversight to modernise: `load -w` writes
+# the "enabled" state that survives a reboot, so only `unload -w` un-writes it.
+# `launchctl unload` without `-w` stops the daemon now and lets it return at the
+# next login. The pair is legacy launchd API on purpose — modernising one half
+# would break the symmetry that makes the uninstall honest.
+#
+# This is deliberately NOT what stop-*-server.sh calls. Stopping a supervised
+# daemon is a restart request (KeepAlive / Restart=always bring it straight
+# back); ending it is this function. Two verbs, two meanings, two entry points.
+uninstall_daemon_supervisor() {
+  local label="$1"
+  local systemd_unit="$2"
+  local os removed=0
+  os="$(uname -s)"
+  case "$os" in
+    Darwin)
+      local plist_dst="$HOME/Library/LaunchAgents/${label}.plist"
+      if launchctl list 2>/dev/null | grep -q "$label"; then
+        if [ -f "$plist_dst" ]; then
+          launchctl unload -w "$plist_dst" 2>/dev/null && removed=1
+        else
+          # Loaded with no plist on disk: remove by label so it stops
+          # respawning even though the file we would unload is gone.
+          launchctl remove "$label" 2>/dev/null && removed=1
+        fi
+      fi
+      if [ -f "$plist_dst" ]; then
+        rm -f "$plist_dst"
+        echo "  Removed unit: $plist_dst"
+      fi
+      ;;
+    Linux)
+      if systemctl --user is-enabled --quiet "$systemd_unit" 2>/dev/null \
+        || systemctl --user is-active --quiet "$systemd_unit" 2>/dev/null; then
+        systemctl --user disable --now "$systemd_unit" 2>/dev/null && removed=1
+      fi
+      local svc_dst="$HOME/.config/systemd/user/${systemd_unit}.service"
+      if [ -f "$svc_dst" ]; then
+        rm -f "$svc_dst"
+        systemctl --user daemon-reload 2>/dev/null || true
+        echo "  Removed unit: $svc_dst"
+      fi
+      ;;
+    *)
+      echo "  ERROR: unsupported OS '$os' — remove the supervisor unit manually."
+      return 1
+      ;;
+  esac
+  if [ "$removed" -eq 1 ]; then
+    echo "  Supervisor stopped and disabled: $label"
+  else
+    echo "  Supervisor was not loaded: $label"
+  fi
+  return 0
+}
+
+# --- MCP HTTP daemon: token provisioning (spec 0113 R8, step 6) --------------
+# The bearer token the MCP HTTP daemon requires and every CLI registration
+# sends. Keyed per palace so two palaces on one machine never share a
+# credential, and mode 0600 because it IS a credential.
+#
+# The path scheme mirrors upstream's own (`_server_token_path` in mempalace's
+# cli.py): ~/.mempalace/server/<sha256(realpath(palace))[:24]>/token. Matching
+# it means an operator who ran `mempalace serve` by hand and the framework
+# converge on one file rather than two competing ones.
+#
+# Read-or-create, never truncate-then-write: a concurrent reader must never
+# observe a half-written token. Creation is exclusive (`set -C`), so two setup
+# scripts racing produce one token and one winner, and the loser reads it.
+mcp_token_path() {
+  local palace_path="${MEMPALACE_PALACE_PATH:-$HOME/.mempalace/palace}"
+  local resolved key
+  resolved="$(cd "$(dirname "$palace_path")" 2>/dev/null && pwd)/$(basename "$palace_path")" || resolved="$palace_path"
+  key="$(printf '%s' "$resolved" | shasum -a 256 2>/dev/null | cut -c1-24)"
+  if [ -z "$key" ]; then
+    key="$(printf '%s' "$resolved" | sha256sum | cut -c1-24)"
+  fi
+  printf '%s\n' "$HOME/.mempalace/server/${key}/token"
+}
+
+# mcp_token_read_or_create — echoes the token, creating it when absent.
+# Returns non-zero without echoing when it can neither read nor create one:
+# the caller must fail loudly rather than proceed with an empty credential.
+mcp_token_read_or_create() {
+  local token_file token
+  token_file="$(mcp_token_path)"
+  if [ -s "$token_file" ]; then
+    cat "$token_file"
+    return 0
+  fi
+  mkdir -p "$(dirname "$token_file")" 2>/dev/null || return 1
+  chmod 700 "$(dirname "$token_file")" 2>/dev/null || true
+  token="$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 48)"
+  if [ -z "$token" ]; then
+    return 1
+  fi
+  # Exclusive create: a concurrent winner's token is read instead of clobbered.
+  ( set -C; printf '%s' "$token" > "$token_file" ) 2>/dev/null || true
+  chmod 600 "$token_file" 2>/dev/null || true
+  if [ -s "$token_file" ]; then
+    cat "$token_file"
+    return 0
+  fi
+  return 1
 }
 
 # print_store_access_guidance <cli>
