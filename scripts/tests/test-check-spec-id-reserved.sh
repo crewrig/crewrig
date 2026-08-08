@@ -13,11 +13,27 @@
 #
 #   Base of the change    BASE_REF, the name spec 0109 established and that
 #                         .github/workflows/build.yml already passes three times.
-#   Pull-request origin   CI_MERGE_REQUEST_SOURCE_PROJECT_PATH and CI_PROJECT_PATH.
-#                         These are the only origin variables PLAN v9 step 11
-#                         pins verbatim; the GitHub workflow maps its own
-#                         contexts into process environment, and whatever names
-#                         it chooses, these two must work.
+#   Pull-request origin   Two pairs, either of which determines the origin. The
+#                         CrewRig pair is consulted first, the GitLab pair
+#                         second; both unset is the undeterminable case.
+#
+#                           CREWRIG_PR_HEAD_REPO / CREWRIG_PR_BASE_REPO
+#                             GitHub Actions. .github/workflows/build.yml maps
+#                             github.event.pull_request.head.repo.full_name and
+#                             github.repository into these. They are NOT named
+#                             GITHUB_*: GitHub reserves that prefix, so such a
+#                             name would be fragile in the very `env:` block
+#                             that has to set it — and there is no native
+#                             head-repo variable to mirror anyway, since
+#                             GITHUB_HEAD_REF is the branch, not the repository.
+#                             A name that reads as native while being something
+#                             GitHub does not publish is a trap for whoever
+#                             maintains this next.
+#
+#                           CI_MERGE_REQUEST_SOURCE_PROJECT_PATH / CI_PROJECT_PATH
+#                             GitLab CI, where both are already ambient. These
+#                             are the only origin variables PLAN v9 step 11 pins
+#                             verbatim.
 #   Reference remote      Fixtures carry BOTH a `crewrig` and an `origin` remote
 #                         pointing at the same bare repository.
 #
@@ -217,20 +233,32 @@ CHECK_RC=0
 CHECK_LOG=""
 
 # run_check <name> [<VAR=value> ...]
-# The origin pair defaults to a same-repository pull request; a caller passing
-# its own assignments overrides that. Every origin variable this suite knows of
-# is cleared first, so a case that asserts "origin undeterminable" cannot be
-# rescued by a variable inherited from a real CI runner.
+# A caller supplies whichever origin signal the case is about. Every variable
+# the check consults for origin is cleared first — and exactly those, so the
+# unset list does not document a contract that does not exist.
+#
+# The clearing is not defensive housekeeping; two of these leak for real.
+# `CREWRIG_SPEC_ID_ORIGIN` is honoured outside CI, so a maintainer who exported
+# it in order to run the check by hand — the very workflow it exists for — would
+# otherwise turn Case 11 green on their machine and red in CI, or the reverse.
+# The three CI markers select which branch of determine_origin runs, so leaving
+# them ambient would mean this suite exercises a different code path on a laptop
+# than on a runner. Cleared here and set explicitly by the cases that are about
+# them, so every case pins one defined behaviour everywhere it runs.
 run_check() {
   local name="$1"; shift
   local work; work="$(fixture_work "$name")"
 
   CHECK_RC=0
   ( cd "$work" && env \
+      -u CREWRIG_PR_HEAD_REPO \
+      -u CREWRIG_PR_BASE_REPO \
       -u CI_MERGE_REQUEST_SOURCE_PROJECT_PATH \
       -u CI_PROJECT_PATH \
-      -u GITHUB_REPOSITORY \
-      -u GITHUB_HEAD_REPOSITORY \
+      -u CREWRIG_SPEC_ID_ORIGIN \
+      -u CI \
+      -u GITHUB_ACTIONS \
+      -u GITLAB_CI \
       CREWRIG_REPO_DIR="$work" \
       BASE_REF="origin/main" \
       "$@" \
@@ -239,6 +267,8 @@ run_check() {
 }
 
 # run_check_same_repo <name>
+# The GitLab pair, same-repository. The default for cases that are about
+# something other than origin detection.
 run_check_same_repo() {
   run_check "$1" \
     "CI_MERGE_REQUEST_SOURCE_PROJECT_PATH=$REFERENCE_REPO" \
@@ -406,17 +436,82 @@ run_check c10 \
 expect_pass_verdict "Case 10 — an unsecured id from a fork reports without failing"
 expect_log_matches "Case 10 — the condition is still reported" '0210'
 
-# Case 11 — PLAN step 10's loud half. This fixture is otherwise entirely
-# correct: the id is secured for its own ticket and would pass Case 1. Only the
-# origin is undeterminable. Failing here is the deliberate choice — silence
-# would green-light the same-repository case the check exists for, and an
-# origin that cannot be resolved is a wiring defect in the workflow, not a
-# property of the change.
+# Case 10b — the same discrimination driven by the GitHub pair, which is the
+# arm that actually runs on this repository's own continuous integration. Equal
+# head and base repositories mean a branch of the reference repository, where an
+# unsecured id blocks. Without this case the GitHub arm is exercised by nothing:
+# every other case here drives the GitLab pair, so a typo in the workflow's
+# `env:` block or in the variable names would surface only in production, and
+# would surface as the check silently failing every pull request open.
+new_fixture c10b
+add_spec c10b specs/0214-github-same-repo.md 0214 github-same-repo 871
+run_check c10b \
+  "CREWRIG_PR_HEAD_REPO=$REFERENCE_REPO" \
+  "CREWRIG_PR_BASE_REPO=$REFERENCE_REPO"
+expect_fail_verdict "Case 10b — GitHub pair, same repository: an unsecured id blocks"
+
+# Case 10c — and its other half. Differing head and base repositories mean a
+# fork, whose author cannot secure anything by construction, so the condition is
+# reported and the pipeline proceeds. Together with Case 10b this pins that the
+# GitHub arm discriminates rather than merely being read: a implementation that
+# consulted the variables but compared them wrongly passes one of these two and
+# fails the other.
+new_fixture c10c
+add_spec c10c specs/0215-github-fork.md 0215 github-fork 872
+run_check c10c \
+  "CREWRIG_PR_HEAD_REPO=contributor/crewrig" \
+  "CREWRIG_PR_BASE_REPO=$REFERENCE_REPO"
+expect_pass_verdict "Case 10c — GitHub pair, forked repository: an unsecured id reports without failing"
+expect_log_matches "Case 10c — the condition is still reported" '0215'
+
+# Case 11 — PLAN step 10's loud half, with BOTH pairs unset. This fixture is
+# otherwise entirely correct: the id is secured for its own ticket and would
+# pass Case 1. Only the origin is undeterminable. Failing here is the deliberate
+# choice — silence would green-light the same-repository case the check exists
+# for, and an origin that cannot be resolved is a wiring defect in the workflow,
+# not a property of the change.
 new_fixture c11
 reserve c11 refs/spec-ids/0211 0211 880
 add_spec c11 specs/0211-good-spec.md 0211 good-spec 880
 run_check c11
 expect_fail_verdict "Case 11 — an undeterminable origin fails even when the id is properly secured"
+
+# Case 11b — the load-bearing one. Inside a CI context with no platform pair
+# resolved, the explicit override does NOT rescue the run. A CI job whose pair
+# failed to map is exactly where a stray `CREWRIG_SPEC_ID_ORIGIN=fork` would do
+# its damage: it would turn the blocking branch into report-only for every pull
+# request, silently, and requirement 10's whole point is that those two outcomes
+# differ. A guard an environment variable can switch off is not a guard, so the
+# override's standing is gated on the CI marker even though the pairs' is not.
+new_fixture c11b
+add_spec c11b specs/0216-override-in-ci.md 0216 override-in-ci 881
+run_check c11b "CI=true" "CREWRIG_SPEC_ID_ORIGIN=fork"
+expect_fail_verdict "Case 11b — inside CI the origin override does not rescue an unresolvable pair"
+
+# Case 11c — and the reason the override exists at all. Outside CI it is the
+# only admissible signal, so a maintainer can run this check by hand instead of
+# meeting an unsatisfiable failure. That was a real gap: without this path the
+# check is a CI-only artefact that cannot be reproduced locally by the person
+# asked to fix what it reports.
+new_fixture c11c
+add_spec c11c specs/0217-override-locally.md 0217 override-locally 882
+run_check c11c "CREWRIG_SPEC_ID_ORIGIN=fork"
+expect_pass_verdict "Case 11c — outside CI the override resolves the origin and the run proceeds"
+expect_log_matches "Case 11c — the unsecured id is still reported" '0217'
+
+# Case 11d — precedence, which the implementation calls part of the guarantee
+# rather than a detail, and it is right to. The platform pair says
+# same-repository; the override says fork. The pair must win, or the override
+# becomes an off switch for the guard on any pull request that sets it. Reading
+# the override first is a defect the implementation records having had, which is
+# exactly the kind that returns during a later tidy-up.
+new_fixture c11d
+add_spec c11d specs/0218-precedence.md 0218 precedence 883
+run_check c11d \
+  "CREWRIG_PR_HEAD_REPO=$REFERENCE_REPO" \
+  "CREWRIG_PR_BASE_REPO=$REFERENCE_REPO" \
+  "CREWRIG_SPEC_ID_ORIGIN=fork"
+expect_fail_verdict "Case 11d — a present platform pair outranks the origin override"
 
 # Case 12 — PLAN step 10's quiet half. A credential gap or an unreachable
 # reference repository must never block an adopter's pipeline: the check cannot
