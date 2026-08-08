@@ -244,6 +244,51 @@ reserve() {
   git -C "$work" push -q crewrig "${obj}:${ref}"
 }
 
+# new_release_fixture <name>
+# A repository with a live release line. `main` carries no specs; `release/1.x`
+# branched from the same root and carries one spec of its own — a hotfix spec
+# authored on the release line and never forward-ported, which is the ordinary
+# way a release branch comes to hold something `main` does not. The feature
+# branch then targets `release/1.x`.
+#
+# This shape is what makes a wrong base ref observable. Resolved against
+# `release/1.x` the change under test is one spec; resolved against `main` it is
+# two, and the extra one belongs to another ticket.
+new_release_fixture() {
+  local name="$1"
+  local root="$TMP_ROOT/$name"
+  local bare="$root/bare.git"
+  local work="$root/work"
+
+  mkdir -p "$root"
+  git init -q --bare "$bare"
+  git init -q "$work"
+  git -C "$work" config user.email "test@example.com"
+  git -C "$work" config user.name "Test"
+  git -C "$work" config commit.gpgsign false
+  git -C "$work" symbolic-ref HEAD refs/heads/main
+
+  mkdir -p "$work/specs" "$work/.crewrig"
+  printf 'specs\tstrict\nspecs/org\texcluded\n' > "$work/.crewrig/core-paths.txt"
+  printf '# base\n' > "$work/README.md"
+  git -C "$work" add -A
+  git -C "$work" commit -q -m "root"
+  git -C "$work" remote add crewrig "$bare"
+  git -C "$work" remote add origin "$bare"
+  git -C "$work" push -q crewrig main
+
+  # The release line, carrying a third party's hotfix spec that main never got.
+  git -C "$work" checkout -q -b release/1.x
+  render_spec "0300" "someone-elses-hotfix" "700" > "$work/specs/0300-someone-elses-hotfix.md"
+  git -C "$work" add -A
+  git -C "$work" commit -q -m "release: a hotfix spec belonging to issue #700"
+  git -C "$work" push -q crewrig release/1.x
+
+  git -C "$work" fetch -q crewrig
+  git -C "$work" fetch -q origin
+  git -C "$work" checkout -q -b feature
+}
+
 # break_remote <name>
 break_remote() {
   local work; work="$(fixture_work "$1")"
@@ -273,20 +318,42 @@ CHECK_LOG=""
 # them, so every case pins one defined behaviour everywhere it runs.
 run_check() {
   local name="$1"; shift
+  run_check_based "$name" "origin/main" "$@"
+}
+
+# run_check_based <name> <base-ref-or-empty> [<VAR=value> ...]
+# As run_check, but the base ref is explicit, and an EMPTY value means BASE_REF
+# is not set at all — the shape a GitLab merge-request pipeline presents, and
+# the only shape in which the base-resolution fallbacks are reachable.
+# CI_MERGE_REQUEST_TARGET_BRANCH_NAME is cleared for the same reason as the
+# origin variables: it is a base signal the check consults, so leaving it
+# ambient would let a real merge-request runner decide what these cases pin.
+run_check_based() {
+  local name="$1" base="$2"; shift 2
   local work; work="$(fixture_work "$name")"
+
+  # BASE_REF is always cleared by flag and re-supplied as an assignment when the
+  # case wants it. `env` stops parsing options at the first VAR=value argument,
+  # so every -u must precede every assignment; a -u placed after one is taken as
+  # the command name and the run dies with 127 — which a case expecting failure
+  # scores as a pass. That is not hypothetical: it happened here once.
+  if [ -n "$base" ]; then
+    set -- "BASE_REF=$base" "$@"
+  fi
 
   CHECK_RC=0
   ( cd "$work" && env \
+      -u BASE_REF \
       -u CREWRIG_PR_HEAD_REPO \
       -u CREWRIG_PR_BASE_REPO \
       -u CI_MERGE_REQUEST_SOURCE_PROJECT_PATH \
       -u CI_PROJECT_PATH \
+      -u CI_MERGE_REQUEST_TARGET_BRANCH_NAME \
       -u CREWRIG_SPEC_ID_ORIGIN \
       -u CI \
       -u GITHUB_ACTIONS \
       -u GITLAB_CI \
       CREWRIG_REPO_DIR="$work" \
-      BASE_REF="origin/main" \
       "$@" \
       bash "$SCRIPT_UNDER_TEST" > "$TMP_ROOT/.check.log" 2>&1 ) || CHECK_RC=$?
   CHECK_LOG="$(cat "$TMP_ROOT/.check.log")"
@@ -318,6 +385,32 @@ expect_fail_verdict() {
     record_pass "$1"
   else
     record_fail "$1" "expected a non-zero exit, got 0"$'\n      '"$CHECK_LOG"
+  fi
+}
+
+# expect_wiring_fault <name>
+# A wiring fault is exit 2 specifically, which is what separates a deliberate
+# refusal from the script falling over. Both are non-zero and both print the
+# offending variable's name, so a `-ne 0` assertion cannot tell "refused to
+# guess, here is how to wire it" from an unbound-variable crash that happens to
+# mention the same identifier.
+expect_wiring_fault() {
+  if [ "$CHECK_RC" -eq 2 ]; then
+    record_pass "$1"
+  else
+    record_fail "$1" "expected exit 2 (wiring fault), got $CHECK_RC"$'\n      '"$CHECK_LOG"
+  fi
+}
+
+# expect_log_not_matching <name> <ere>
+# For the findings that must NOT appear. A verdict alone cannot express "the
+# right file was blamed": a run can reach the right exit code while having drawn
+# the wrong specs into the change under test.
+expect_log_not_matching() {
+  if printf '%s' "$CHECK_LOG" | grep -Eq "$2"; then
+    record_fail "$1" "output matches /$2/ and should not"$'\n      '"$CHECK_LOG"
+  else
+    record_pass "$1"
   fi
 }
 
@@ -612,6 +705,94 @@ add_spec c12 specs/0212-unreadable.md 0212 unreadable 890
 break_remote c12
 run_check_same_repo c12
 expect_pass_verdict "Case 12 — an unreadable reserved set reports without failing"
+
+# ---------------------------------------------------------------------------
+# Base-ref resolution
+# ---------------------------------------------------------------------------
+# The base ref decides WHICH specs are the change under test, so guessing it
+# wrong does not merely under-check — it blames a third party. The resolution is
+# the mirror of determine_origin's ladder, and for the same reason: an explicit
+# base wins; inside CI with none, the platform's own target-branch variable is
+# read; with neither, it REFUSES rather than guessing; outside CI it keeps
+# `<remote>/main`, because a maintainer running by hand against main is the
+# nominal case and should not have to declare it.
+#
+# The defect these were written for: the GitLab job set no base, the script fell
+# through to `<remote>/main`, and that job's rule fires on merge requests
+# targeting `release/**` as well.
+
+# Case 16 — the defect itself. A merge request onto `release/1.x`, in a GitLab
+# pipeline, with no explicit base. Resolved correctly the change under test is
+# one spec, this ticket's, and it is secured. Resolved against `main` it is two,
+# and the second belongs to issue #700 — a contributor is then blocked by a
+# finding naming a file they never touched, which is the least legible failure
+# this tool can produce.
+new_release_fixture c16
+reserve c16 refs/spec-ids/0301 0301 701
+add_spec c16 specs/0301-mine.md 0301 mine 701
+run_check_based c16 "" \
+  "GITLAB_CI=true" \
+  "CI_MERGE_REQUEST_TARGET_BRANCH_NAME=release/1.x" \
+  "CI_MERGE_REQUEST_SOURCE_PROJECT_PATH=$REFERENCE_REPO" \
+  "CI_PROJECT_PATH=$REFERENCE_REPO"
+expect_pass_verdict "Case 16 — a merge request onto release/1.x resolves its base from the target branch"
+expect_log_not_matching "Case 16 — no third party's spec is drawn into the change under test" \
+  '0300-someone-elses-hotfix'
+
+# Case 17 — the refusal rung. Inside CI with no explicit base and no
+# target-branch variable, the base is unknown and the script must say so rather
+# than assume `main`. Same judgement determine_origin already makes about
+# origin: a signal that cannot distinguish its cases must not drive a decision
+# whose outcomes differ.
+#
+# The verdict alone cannot pin this. Under the defect — falling through to
+# `<remote>/main` — this fixture ALSO exits non-zero, because the wrong base
+# drags issue #700's spec into the change and blocks on it: same verdict,
+# opposite meaning. And a `-ne 0` assertion cannot separate a deliberate refusal
+# from the script falling over, since an unbound-variable crash prints the same
+# identifier a grep for the remediation text would look for. Hence exit 2
+# specifically, plus the negative assertion that no spec was blamed.
+new_release_fixture c17
+reserve c17 refs/spec-ids/0302 0302 702
+add_spec c17 specs/0302-mine.md 0302 mine 702
+run_check_based c17 "" \
+  "GITLAB_CI=true" \
+  "CI_MERGE_REQUEST_SOURCE_PROJECT_PATH=$REFERENCE_REPO" \
+  "CI_PROJECT_PATH=$REFERENCE_REPO"
+expect_wiring_fault "Case 17 — inside CI with no base and no target branch, the check refuses to guess"
+expect_log_matches "Case 17 — and says which signal is missing" \
+  'CI_MERGE_REQUEST_TARGET_BRANCH_NAME'
+expect_log_not_matching "Case 17 — no spec is blamed for a wiring fault" \
+  '0300-someone-elses-hotfix'
+
+# Case 18 — the nominal case kept nominal. Outside CI, no explicit base, and
+# `<remote>/main` is the right default: a maintainer running this by hand
+# against main should not have to declare what is already true. The assertion is
+# on the RESOLVED base rather than on the verdict alone, because a verdict can
+# be right for the wrong reason and the resolved base is the thing under test.
+new_fixture c18
+reserve c18 refs/spec-ids/0303 0303 703
+add_spec c18 specs/0303-mine.md 0303 mine 703
+run_check_based c18 "" "CREWRIG_SPEC_ID_ORIGIN=same"
+expect_pass_verdict "Case 18 — outside CI the base defaults to <remote>/main"
+expect_log_matches "Case 18 — and the resolved base is reported as such" \
+  'Base ref: (crewrig|origin)/main'
+
+# Case 19 — precedence, the rung that makes the ladder a ladder. An explicit
+# base outranks the target-branch variable, so a caller that knows the answer is
+# never overridden by the platform's guess at it. Same defect shape as reading
+# the origin override before the platform pair, which this ticket has already
+# had to repair once.
+new_release_fixture c19
+reserve c19 refs/spec-ids/0304 0304 704
+add_spec c19 specs/0304-mine.md 0304 mine 704
+run_check_based c19 "origin/release/1.x" \
+  "GITLAB_CI=true" \
+  "CI_MERGE_REQUEST_TARGET_BRANCH_NAME=main" \
+  "CI_MERGE_REQUEST_SOURCE_PROJECT_PATH=$REFERENCE_REPO" \
+  "CI_PROJECT_PATH=$REFERENCE_REPO"
+expect_log_matches "Case 19 — an explicit base outranks the target-branch variable" \
+  'Base ref: origin/release/1\.x'
 
 # ---------------------------------------------------------------------------
 # Summary
