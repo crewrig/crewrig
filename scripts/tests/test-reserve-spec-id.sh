@@ -453,7 +453,6 @@ expect_rc "Case 4 — a carrier outside the closed pair exits 1" 1
 # what the adopter must act on — they have to find it in their settings file —
 # so that is what is pinned, not the sentence around it.
 expect_stderr_matches "Case 4 — and stderr names the offending carrier value" 'refs/spec-id/'
-  'refs/spec-id/'
 expect_no_ref_matching "Case 4 — an invalid carrier pushes nothing" c4 '^refs/spec-id'
 expect "Case 4 — an invalid carrier prints nothing on stdout" "stdout" "$TOOL_OUT" ""
 
@@ -724,7 +723,6 @@ new_fixture c22 specs/0001-a.md
 run_tool_env_carrier c22 'refs/spec-id/' --issue 994
 expect_rc "Case 22 — an invalid CREWRIG_SPEC_ID_CARRIER override exits 1" 1
 expect_stderr_matches "Case 22 — and stderr names the offending override value" 'refs/spec-id/'
-  'refs/spec-id/'
 expect_no_ref_matching "Case 22 — an invalid override pushes nothing" c22 '^refs/spec-id'
 
 # Case 23 — the last arm of the remote-resolution idiom. A contributor whose
