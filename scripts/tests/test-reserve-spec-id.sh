@@ -102,6 +102,28 @@
 # the badge version is the most dangerous, because a badge carries more
 # authority than a comment.
 #
+# ---------------------------------------------------------------------------
+# A green shellcheck is necessary and NOT sufficient for this file
+# ---------------------------------------------------------------------------
+# An editing pass once left seven argument lines orphaned in command position,
+# where they executed on every run. shellcheck flagged TWO of them (SC2287) and
+# could not see the other five, which differed only in their contents. Removing
+# the two it named silenced the linter while five stray commands kept running —
+# the detector went quiet and the behaviour did not change, which is worse than
+# the original defect because it manufactures evidence of correctness.
+#
+# The suite reported 78/0 throughout: a stray command fails, nothing consumes
+# its status, and execution continues.
+#
+# So the check that actually works here is execution, not analysis:
+#
+#   LC_ALL=C bash scripts/tests/test-reserve-spec-id.sh 2>&1 \
+#     | grep -c "command not found"      # MUST be 0
+#
+# Run that after any edit to this file. It is the fourth member of the family
+# above and the sharpest instance of it, because here the false evidence came
+# from a tool whose whole purpose is to supply true evidence.
+#
 # Usage:
 #   bash scripts/tests/test-reserve-spec-id.sh
 
@@ -417,9 +439,7 @@ expect_stdout_line "Case 2 — the unsecured marker is exactly line 2" 2 "unsecu
 # actionable rather than the sentences carrying it — that the REASON argument is
 # rendered at all, and that the remediation names the id it applies to.
 expect_stderr_matches "Case 2 — stderr states why the id is unsecured" '[-][-]offline'
-  '\\-\\-offline'
 expect_stderr_matches "Case 2 — and gives the command that secures it, for this id" 'reserve-spec-id[.]sh --id 0002'
-  'reserve-spec-id\\.sh --id 0002'
 expect_no_ref_matching "Case 2 — --offline pushes nothing" c2 '^refs/(spec-ids|tags/spec-id)'
 
 # Case 3 — an unreachable remote is the same outcome as offline, not a failure.
@@ -635,7 +655,6 @@ new_fixture c15 specs/0001-a.md
 run_tool c15 --corpus org --issue 980
 expect_rc "Case 15 — --corpus org without --id exits 1" 1
 expect_stderr_matches "Case 15 — and stderr names the flag that would make it work" '[-][-]id'
-  '\\-\\-id'
 expect_no_ref_matching "Case 15 — no reservation is created" c15 '^refs/(spec-ids|tags/spec-id)'
 
 # Case 16 — R14 calls the identifier opaque, but the carrier is a git ref and a
@@ -646,7 +665,6 @@ new_fixture c16 specs/0001-a.md
 run_tool c16 --corpus org --id 'ORG 0001' --issue 981
 expect_rc "Case 16 — an identifier containing a space exits 1" 1
 expect_stderr_matches "Case 16 — and stderr names the rejected identifier" 'ORG 0001'
-  'ORG 0001'
 expect_no_ref_matching "Case 16 — nothing is pushed before the refusal" c16 '^refs/(spec-ids|tags/spec-id)'
 
 # Case 17 — the same rule at its least obvious boundary. A trailing `.lock` is
@@ -657,7 +675,6 @@ new_fixture c17 specs/0001-a.md
 run_tool c17 --corpus org --id 'ORG-0001.lock' --issue 982
 expect_rc "Case 17 — an identifier ending in .lock exits 1" 1
 expect_stderr_matches "Case 17 — and stderr names the rejected identifier" 'ORG-0001[.]lock'
-  'ORG-0001\\.lock'
 expect_no_ref_matching "Case 17 — nothing is pushed before the refusal" c17 '^refs/(spec-ids|tags/spec-id)'
 
 # ---------------------------------------------------------------------------
