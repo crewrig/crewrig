@@ -49,6 +49,11 @@ export MEMPALACE_MCP_LABEL="com.mempalace.mcp-server-test-$$"
 export MEMPALACE_MCP_UNIT="mempalace-mcp-server-test-$$"
 export MEMPALACE_MCP_PORT="$((18000 + (RANDOM % 900)))"
 export MEMPALACE_MCP_LAUNCHER_PATH="${TEST_HOME}/.crewrig/mcp-daemon-launcher.sh"
+# The launcher only needs an interpreter PATH substituted in; the tests never
+# execute the wrapper, so any resolvable python satisfies them. Without this a
+# runner with no mempalace venv fails every launcher assertion for a reason
+# that has nothing to do with what is under test.
+export MEMPALACE_PYTHON="${MEMPALACE_PYTHON:-$(command -v python3 || echo /usr/bin/python3)}"
 
 cleanup() { rm -rf "${TEST_HOME}"; }
 trap cleanup EXIT
@@ -79,7 +84,9 @@ tok2="$(mcp_token_read_or_create)"
   || nope "second call produced a different token"
 
 tok_file="$(mcp_token_path)"
-perms="$(stat -f '%Lp' "${tok_file}" 2>/dev/null || stat -c '%a' "${tok_file}" 2>/dev/null)"
+# GNU first: `stat -f` on GNU means "filesystem" and SUCCEEDS with unusable
+# output, so probing BSD-style first silently yields garbage on Linux.
+perms="$(stat -c '%a' "${tok_file}" 2>/dev/null || stat -f '%Lp' "${tok_file}" 2>/dev/null)"
 [ "${perms}" = "600" ] && ok "token file is mode 0600" || nope "token file is mode ${perms}, expected 600"
 
 # --- 2. The launcher refuses to serve without a token ------------------------

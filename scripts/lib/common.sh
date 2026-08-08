@@ -747,9 +747,13 @@ install_mcp_launcher() {
     echo "  ERROR: $src missing — launcher template not shipped."
     return 1
   fi
-  py="$(detect_mempalace_python || true)"
+  # MEMPALACE_PYTHON wins when set — the same variable the transcript hook
+  # honours. It lets a hermetic test materialise the launcher on a machine with
+  # no mempalace venv, which is every CI runner.
+  py="${MEMPALACE_PYTHON:-$(detect_mempalace_python || true)}"
   if [ -z "$py" ]; then
     echo "  ERROR: cannot detect mempalace pipx python — install mempalace first."
+    echo "         (set MEMPALACE_PYTHON to override detection)"
     return 1
   fi
   sha="$(mcp_launcher_source_sha)" || return 1
