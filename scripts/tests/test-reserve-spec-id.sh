@@ -83,6 +83,25 @@
 # `server_refs` (full, unfiltered, immune to hideRefs) only for "nothing was
 # pushed" assertions.
 #
+# ---------------------------------------------------------------------------
+# What continuous integration proves about reserve-spec-id.sh: nothing
+# ---------------------------------------------------------------------------
+# No CI job runs the tool. It is invoked by a human or by `spec-author` at
+# pickup time, before a branch exists, so no pipeline is in a position to
+# exercise it and none tries. THIS SUITE is the only automated thing that does,
+# and a green pipeline says only that the suite ran.
+#
+# The sibling guard has the sharper version of the same trap, recorded in
+# scripts/tests/test-check-spec-id-reserved.sh: check-spec-id-reserved DOES run
+# in CI, and exits early and successfully whenever the change adds no spec file
+# — most pull requests, including the one that introduced it. A green badge
+# there reports that the check ran, not that it discriminated.
+#
+# Both belong next to the two rules below. All three are the same hazard —
+# something is green for a reason other than the one a reader will assume — and
+# the badge version is the most dangerous, because a badge carries more
+# authority than a comment.
+#
 # Usage:
 #   bash scripts/tests/test-reserve-spec-id.sh
 
