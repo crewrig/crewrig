@@ -118,7 +118,7 @@ tier too low. The naming compounds it: the "http" in
 MCP transport.
 
 ADR-0006 is working, and measurably so — which is why this PR also promotes it
-from `Proposed` to `Implemented`, evidence included, rather than leaving this
+from `Proposed` to `Accepted`, evidence included, rather than leaving this
 decision to rest on an unrecorded one. Palace `.drift-*` directories, which
 record the corruption class it targeted:
 
@@ -222,6 +222,25 @@ accumulate. On a supervised shared daemon it is either counter-productive
 (a restart cycles the lease for no reason) or harmless (the supervisor restarts
 it immediately). The derived spec sets it deliberately rather than inheriting
 the default.
+
+### Prefer upstream write routing over a framework-side switch
+
+Where a write path must be steered — the transcript hook being the open case —
+the framework SHALL use MemPalace's own routing policy rather than invent a
+crewrig-side equivalent. `config.py` (`resolve_write_routing`) already exposes
+per-caller policies (`MEMPALACE_HOOK_WRITE_ROUTING`,
+`MEMPALACE_CLI_WRITE_ROUTING`, plus a global `MEMPALACE_WRITE_ROUTING`) with a
+documented precedence chain and `direct` as the default. Two sibling mechanisms
+steering the same writes would eventually disagree, and the framework's would
+lose.
+
+Feasibility caveat, stated rather than hidden: the upstream docstring says the
+foundation *"does not change current hook or CLI behavior"* and that
+*"policy-aware consumers are introduced by follow-up PRs"*. The mechanism exists;
+its consumers do not yet. The derived specs re-check its state at implementation
+time and fall back to a framework-side steer **only** if upstream still cannot
+carry the case — recording that as an explicit, time-stamped deviation, not as a
+default.
 
 ## Alternatives considered
 
@@ -337,40 +356,53 @@ MemPalace source change.
    `doctor-mempalace.sh`.
 4. **Transcript-hook write path** — resolve the first open question below: keep
    the spec-0110 direct write with its relief, or route the hook through the
-   daemon. Depends on spec 1 and on re-checking MemPalace's write-routing
-   policy; must preserve spec 0110's guard rails either way. Deliberately last:
-   it is the only step that can regress a path which currently works.
+   daemon. Steered through upstream write routing per *Prefer upstream write
+   routing*; must preserve spec 0110's guard rails either way. Deliberately
+   late: it is the only step that can regress a path which currently works.
+
+   **Latency measurement — mandatory, blocking.** This spec SHALL NOT choose a
+   shape on judgement. It SHALL measure, against the real palace with the daemon
+   from step 1 running, the wall-clock cost of one hook-equivalent write through
+   the MCP daemon versus the current direct path, at each of the four lifecycle
+   events, on a palace of production size — the authoring palace held 24 481
+   drawers when this ADR was written, and a measurement on an empty palace
+   proves nothing. The comparison SHALL be reported in the spec, not merely
+   asserted, and SHALL state the p95 rather than a single sample.
+
+   The pass criterion is the hook's own five-second self-cap: a routed write
+   whose p95 does not fit **well** inside that budget — leaving room for a
+   loaded machine, not just an idle one — disqualifies shape (b), and the ADR's
+   open question resolves to (a) on evidence rather than on preference.
+
+   This measurement cannot be taken today: the daemon does not exist yet, and
+   measuring against a scratch palace would answer a different question. That is
+   why it is a requirement on this step rather than a figure in this ADR.
 5. **Documentation** — `docs/cli-matrix.md`, the ADR-0006 cross-reference, and
    the runbook.
 
 ## Open questions
 
 - **Where do the transcript hook's writes go once the daemon exists?** Two
-  shapes, and this ADR deliberately does not pick one:
+  shapes. This ADR does not pick one, and states the criterion that decides it:
+  **which topology is correct**, not which is cheaper to build. Implementation
+  cost is not a discriminant here — a one-off cost cannot outweigh a permanent
+  structural property.
   - **(a) Unchanged** — the hook keeps writing directly under its spec-0110
-    relief. Cheapest; leaves the palace multi-writer and keeps a bypass alive
-    whose precondition (a reachable remote service) the new topology makes
-    permanently true, which is either reassuring or a smell.
+    relief. The palace stays multi-writer, and a bypass stays alive whose
+    precondition (a reachable remote service) the new topology makes permanently
+    true. A bypass whose guard can no longer fail is either redundant or
+    load-bearing in a way nobody has stated; both readings deserve an answer
+    before it is kept.
   - **(b) Routed through the MCP daemon** — the hook stops writing directly, the
-    relief becomes dead code, and the palace becomes genuinely single-writer.
-    Costs the hook an HTTP round trip per lifecycle event, on a path deliberately
-    built to be non-blocking (spec 0073 R3/R4 already soft-skip on an unreachable
-    daemon, and the hook caps itself at five seconds so a lock cannot stall the
-    calling CLI). Whether an MCP call fits inside that budget is unverified.
-  Whichever is chosen, spec 0110's guard rails are the floor: a write must not
-  proceed on an unproven path, and an ineffective relief must stay
-  distinguishable in the exit status.
-- **Should the framework adopt MemPalace's write-routing policy instead of
-  deciding this itself?** `config.py` (`resolve_write_routing`) already exposes
-  per-caller policies — `MEMPALACE_HOOK_WRITE_ROUTING` and
-  `MEMPALACE_CLI_WRITE_ROUTING`, plus a global `MEMPALACE_WRITE_ROUTING`, with a
-  documented precedence chain and `direct` as the default. Its own docstring says
-  the foundation *"does not change current hook or CLI behavior"* and that
-  *"policy-aware consumers are introduced by follow-up PRs"*. Upstream is
-  building the mechanism this question needs. Aligning with it — rather than
-  inventing a crewrig-side routing switch that will collide with it — looks
-  right, but the policy vocabulary is not yet stable enough to depend on. The
-  derived specs should re-check it at implementation time.
+    relief becomes dead code, and the palace becomes genuinely single-writer:
+    one lease, one holder, no exceptions to reason about. It costs the hook an
+    HTTP round trip per lifecycle event on a path deliberately built to be
+    non-blocking — spec 0073 R3/R4 soft-skip on an unreachable daemon, and the
+    hook caps itself at five seconds so a lock cannot stall the calling CLI.
+  The deciding input is therefore a **measurement, not a preference** — see the
+  latency requirement in *Derived spec plan* step 4. Whichever shape wins, spec
+  0110's guard rails are the floor: a write must not proceed on an unproven
+  path, and an ineffective relief must stay distinguishable in the exit status.
 - **Does the wrapper forward `argv` to `mcp_server.main()`?** The handoff calls
   `main()` with no explicit arguments, so it reads `sys.argv`. Passing
   `--transport http --host … --port …` through the wrapper is expected to work

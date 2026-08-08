@@ -4,8 +4,13 @@
 
 ## Status
 
-Implemented — decided 2026-05-25 (issue #98), delivered by PR #99, validated in
-production 2026-08-08 (issue #728).
+Accepted — decided 2026-05-25 (issue #98), delivered by PR #99, owner-validated
+2026-08-08 (issue #728).
+
+An ADR records the standing of a *decision*, not the progress of its
+implementation — that is what a spec's `status` field tracks. `Accepted` is
+therefore the terminal status here even though the decision has shipped; the
+evidence below reports the outcome without inventing a status to carry it.
 
 **Validation evidence.** The palace `.drift-*` directories record the corruption
 class this ADR targets. Counted on the authoring machine on 2026-08-08:
