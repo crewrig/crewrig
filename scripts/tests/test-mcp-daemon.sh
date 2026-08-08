@@ -67,6 +67,13 @@ export MEMPALACE_MCP_CHROMA_WAIT=2
 # so a broken guard shows up as a failed assertion instead of a background
 # process nobody notices.
 export MEMPALACE_CHROMA_PORT=1
+# Claude Code resolves its user config through CLAUDE_CONFIG_DIR, so $HOME alone
+# does NOT isolate the Claude arm. Nothing exercises it today, but the coverage
+# this suite still owes (the switch transaction, the Claude reader) does — and
+# whoever writes it would mutate the operator's real ~/.claude.json unless the
+# variable is already redirected. Added before the coverage that needs it.
+export CLAUDE_CONFIG_DIR="${TEST_HOME}/.claude-config"
+mkdir -p "${CLAUDE_CONFIG_DIR}"
 
 cleanup() { rm -rf "${TEST_HOME}"; }
 trap cleanup EXIT
@@ -117,9 +124,26 @@ echo ""
 # refusal test that does not name the reason passes for whichever failure
 # happens first, which is the "green for the wrong reason" trap this file
 # exists to avoid. So: assert the diagnostic mentions the token.
+# Bounded: the launcher's happy path is an exec into a server that never
+# returns, so any regression letting a refusal case through turns this suite
+# into a hang rather than a failure. No `timeout(1)` on stock macOS, hence the
+# watchdog.
+run_launcher_bounded() {
+  local out_file rc
+  out_file="$(mktemp)"
+  bash "${launcher}" >"${out_file}" 2>&1 &
+  local pid=$!
+  ( sleep 20; kill -9 "${pid}" 2>/dev/null ) &
+  local watchdog=$!
+  wait "${pid}" 2>/dev/null; rc=$?
+  kill "${watchdog}" 2>/dev/null
+  cat "${out_file}"; rm -f "${out_file}"
+  return "${rc}"
+}
+
 refuses_for_token() {
   local label="$1" out rc
-  out="$(bash "${launcher}" 2>&1)"; rc=$?
+  out="$(run_launcher_bounded)"; rc=$?
   if [ "${rc}" -eq 0 ]; then
     nope "${label} — launcher STARTED (auth would be disabled)"
     return
@@ -190,15 +214,15 @@ echo ""
 echo "Unit files carry no credential (R8):"
 for unit in "${REPO_DIR}/config/launchd/com.mempalace.mcp-server.plist" \
             "${REPO_DIR}/config/systemd/mempalace-mcp-server.service"; do
-  if grep -qi "token\|Authorization" "${unit}"; then
-    # A comment explaining the absence is fine; an assignment is not.
-    if grep -viE '^\s*(#|<!--|\s+)' "${unit}" | grep -qi 'token='; then
-      nope "$(basename "${unit}") assigns a token"
-    else
-      ok "$(basename "${unit}") mentions the token only in commentary"
-    fi
+  # Strip comments STRUCTURALLY, then look for an assignment anywhere in what
+  # remains. Filtering by leading whitespace made this unfalsifiable for the
+  # plist, whose every body line is indented — an injected
+  # <string>token=SECRET</string> passed as "commentary".
+  body="$(sed -e 's/<!--.*-->//g' -e '/<!--/,/-->/d' -e 's/^[[:space:]]*#.*$//' "${unit}")"
+  if printf '%s' "${body}" | grep -qiE 'token[=[:space:]]*[A-Za-z0-9_-]{8,}|MEMPALACE_MCP_HTTP_TOKEN'; then
+    nope "$(basename "${unit}") carries a token outside commentary"
   else
-    ok "$(basename "${unit}") carries no token"
+    ok "$(basename "${unit}") carries no credential"
   fi
 done
 
@@ -262,6 +286,14 @@ cap="$(capture_mempalace_registration gemini)"
 register_mempalace_mcp gemini "test-token" >/dev/null 2>&1
 [ "$(mcp_assistant_arrangement gemini)" = "http" ] \
   && ok "registration switches the entry to http" || nope "registration did not switch"
+# R11 is REPLACE, not add-alongside — and asserting the http shape is present
+# does not prove it. An entry carrying BOTH shapes reads as http (the reader
+# tests `has("url")` first) while still holding a `command` the CLI would spawn:
+# a session with its own writer, which is precisely the R1 defect this ticket
+# exists to remove. Assert the absence.
+jq -e '.mcpServers.mempalace | has("command") | not' "${TEST_HOME}/.gemini/settings.json" >/dev/null 2>&1 \
+  && ok "no spawn-capable key survives the switch (R11 replace, not add)" \
+  || nope "the switched entry still carries a command — the session would spawn its own writer"
 restore_mempalace_registration gemini "${cap}"
 [ "$(mcp_assistant_arrangement gemini)" = "stdio" ] \
   && ok "restore returns the entry to its prior arrangement" || nope "restore did not return the prior arrangement"
