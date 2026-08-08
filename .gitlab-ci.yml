@@ -76,6 +76,7 @@ check-components:
     - "bash scripts/tests/test-chroma-fd-limits.sh"
     - "bash scripts/tests/test-chroma-health-race.sh"
     - "bash scripts/tests/test-chroma-server.sh"
+    - "bash scripts/tests/test-mcp-daemon.sh"
     - "bash scripts/tests/test-e2e-assert-lib.sh"
     - "bash scripts/tests/test-e2e-auth-common.sh"
     - "bash scripts/tests/test-e2e-auth-ready.sh"

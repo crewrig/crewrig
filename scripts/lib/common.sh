@@ -1184,6 +1184,14 @@ uninstall_daemon_supervisor() {
 mcp_token_path() {
   local palace_path="${MEMPALACE_PALACE_PATH:-$HOME/.mempalace/palace}"
   local resolved key
+  # The parent must exist before resolving, or the key would depend on whether
+  # the directory happens to be there yet: `cd` fails on a missing parent, the
+  # path falls back to its unresolved form, and a later call — after some other
+  # step created the directory — resolves differently and computes a DIFFERENT
+  # key. That yields two token files for one palace, which reads as "the token
+  # keeps changing". Creating the parent first makes the key a function of the
+  # path alone.
+  mkdir -p "$(dirname "$palace_path")" 2>/dev/null || true
   resolved="$(cd "$(dirname "$palace_path")" 2>/dev/null && pwd)/$(basename "$palace_path")" || resolved="$palace_path"
   key="$(printf '%s' "$resolved" | shasum -a 256 2>/dev/null | cut -c1-24)"
   if [ -z "$key" ]; then
