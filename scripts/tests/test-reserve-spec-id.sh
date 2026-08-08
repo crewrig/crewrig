@@ -402,6 +402,16 @@ git -C "$(fixture_work c3)" remote set-url crewrig "$TMP_ROOT/c3/absent.git"
 git -C "$(fixture_work c3)" remote set-url origin "$TMP_ROOT/c3/absent.git"
 run_tool c3 --issue 902
 expect_rc "Case 3 — an unreachable remote exits 3" 3
+# Exit 3 is half the contract; the payload is the other half, and this branch is
+# exercised by no other case. Cases 2 and 21 pin the payload on the offline and
+# hidden-namespace paths, which is what made this one look covered — it is not.
+# Measured: replacing this branch with a bare `exit 3`, emitting no id and no
+# marker, survived the whole suite at 59/0 while these two assertions were
+# missing. The caller cannot proceed on an exit code alone: `spec-author` needs
+# the id in order to name the file, and the marker in order to write the
+# frontmatter, so a silent 3 is indistinguishable to it from a crash.
+expect_stdout_line "Case 3 — the allocated id is still emitted" 1 "0002"
+expect_stdout_line "Case 3 — and the unsecured marker with it" 2 "unsecured-id: true"
 
 # Case 4 — a carrier value outside the closed pair is a genuine failure, refused
 # before any push. PLAN step 4: this closes the typo path in which

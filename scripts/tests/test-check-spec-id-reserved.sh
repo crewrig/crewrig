@@ -705,6 +705,24 @@ add_spec c12 specs/0212-unreadable.md 0212 unreadable 890
 break_remote c12
 run_check_same_repo c12
 expect_pass_verdict "Case 12 — an unreadable reserved set reports without failing"
+# The verdict is only half the requirement, and the half that is cheapest to
+# satisfy by accident. "Reports without failing" is two claims, and an exit 0
+# proves the second one only. Measured: replacing this whole branch with a bare
+# `exit 0` — a guard that verifies nothing and announces nothing — survived the
+# entire suite at 39/0 while this assertion was missing.
+#
+# One level up from Case 17, and the mirror of it. There, a non-zero exit had to
+# be stopped from reading as the intended refusal; here, a zero exit must be
+# stopped from reading as the intended report. Same conflation, opposite sign,
+# and the zero side is worse because nobody investigates a green.
+#
+# The text is asserted, not just the marker: all four exit-0 log signatures are
+# distinct, so matching this one pins THIS branch rather than any path that
+# happens to exit 0.
+expect_log_matches "Case 12 — and says so, rather than exiting green in silence" \
+  '\[REPORT\].*could not be read'
+expect_log_matches "Case 12 — and says why it is not treated as a finding" \
+  'indistinguishable from an empty'
 
 # ---------------------------------------------------------------------------
 # Base-ref resolution
