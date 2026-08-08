@@ -53,5 +53,23 @@ if [ -n "${still_http}" ]; then
 fi
 
 echo "The bearer token is left in place: it is per-palace and a later install"
-echo "reuses it. Remove it by hand if you are decommissioning this palace —"
-echo "and rotate it if you have any reason to think it leaked."
+echo "reuses it."
+echo ""
+# Telling an operator to rotate while giving them no way to do it is worse than
+# saying nothing: they will either skip it or invent a procedure. The framework
+# ships no --rotate yet, so the manual steps are spelled out here, in order,
+# because getting them out of order leaves a daemon serving the old value.
+echo "To ROTATE it (do this if you have any reason to think it leaked):"
+echo "  1. rm -f $(mcp_token_path)"
+echo "  2. bash scripts/switch-mempalace-http.sh     # mints a new one, restarts,"
+echo "                                               # and re-registers every CLI"
+echo "  3. Delete the timestamped .bak files beside each assistant's config —"
+echo "     they still contain the OLD token:"
+for _cli in claude gemini copilot antigravity; do
+  _cfg="$(mcp_assistant_config_path "${_cli}")"
+  [ -n "${_cfg}" ] && echo "       ${_cfg}.bak.*"
+done
+echo "  4. Restart every running session so it picks up the new value."
+echo ""
+echo "To DECOMMISSION this palace entirely, remove the token by hand:"
+echo "  rm -rf $(dirname "$(mcp_token_path)")"
