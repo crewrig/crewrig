@@ -124,6 +124,8 @@ capabilities:
       - bash scripts/check-gemini-overlay-enrollment.sh
       - bash scripts/tests/test-check-gemini-overlay-enrollment.sh
       - bash scripts/tests/test-check-bash32-portability.sh
+      - bash scripts/tests/test-reserve-spec-id.sh
+      - bash scripts/tests/test-check-spec-id-reserved.sh
 
   - id: lint-markdown
     name: "Lint Markdown files"
@@ -199,6 +201,37 @@ capabilities:
       history-depth: full
     command:
       - bash scripts/check-extension-version-bump.sh
+
+  # check-spec-id-reserved compares the change against its base ref and reads
+  # the reservation namespaces on the remote, so it needs full source history —
+  # declared as `history-depth: full`, same as the two version-bump guards above.
+  # The workflow gates it on `if: github.event_name == 'pull_request'` (the
+  # origin discrimination of spec 0112 R10 has no meaning on a push), so the
+  # neutral trigger is pull-request only.
+  #
+  # NO `tools:` KEY, deliberately. The generated GitLab job runs on the default
+  # `debian:stable-slim` image, which ships no git, so git is installed
+  # CONDITIONALLY as the first line of `command:` — a business step, not setup.
+  # Declaring `tools: [git]` instead would fail check-ci-parity.sh Arm 1 unless
+  # three coordinated edits landed (a `tool_install_lines` recipe in
+  # build-ci.sh, an `install_recipe_tool` pattern in check-ci-parity.sh, and a
+  # hand-authored GHA install step); this shape needs none of them. Note the
+  # `lint-markdown` analogy is looser than it looks: that job's inline install
+  # IS recognized by `install_recipe_tool()` and skipped as setup, whereas this
+  # git line stays a business step matching `command[0]` verbatim — which is why
+  # it must carry NO nested `sudo` (`normalize_cmd` strips only a *leading* one,
+  # so a nested `sudo` would diverge from the declared command).
+  - id: check-spec-id-reserved
+    name: "Verify every spec id added by the change was secured"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      history-depth: full
+    command:
+      - command -v git >/dev/null || (apt-get update && apt-get install -y --no-install-recommends git ca-certificates)
+      - bash scripts/check-spec-id-reserved.sh
 
   - id: check-agents-size
     name: "Check AGENTS.md file size"

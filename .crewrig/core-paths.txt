@@ -108,6 +108,20 @@ communication
 # Sync tooling (spec 0016)
 .crewrig	strict
 .crewrig/.synced-markers	excluded
+# `.crewrig/spec-id-carrier` names the git ref namespace this repository uses to
+# hold spec-id reservations (spec 0112). Upstream ships a default value, but the
+# value encodes which namespace THAT ADOPTER'S REMOTE accepts — something
+# upstream cannot know and has no business overriding — so it is `excluded`: an
+# adopter whose remote refuses the default changes it once and the sync never
+# guards, restores, or aborts on it. `adopt-on-edit` would NOT work here: the
+# only nesting mechanism this manifest defines and sync-from-upstream.sh
+# implements is an `excluded` carve-out (see Nested exclusion above), nothing
+# performs most-specific resolution, so a nested `adopt-on-edit` member would be
+# governed by its `strict` parent and the adopter's own edit would halt the sync.
+# The trade-off is symmetric and permanent: upstream can never update the value
+# afterwards either. Distribution is unaffected — the file is committed in the
+# tree a fork clones; `excluded` governs synchronisation only.
+.crewrig/spec-id-carrier	excluded
 scripts/sync-from-upstream.sh	strict
 
 # Documentation publication contract (spec 0027)

@@ -264,6 +264,12 @@ jobs:
       - name: Test Bash 3.2 portability guard regression (spec 0111)
         run: bash scripts/tests/test-check-bash32-portability.sh
 
+      - name: Test spec-id reservation tool regression (spec 0112)
+        run: bash scripts/tests/test-reserve-spec-id.sh
+
+      - name: Test spec-id reservation check regression (spec 0112)
+        run: bash scripts/tests/test-check-spec-id-reserved.sh
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
@@ -363,6 +369,44 @@ jobs:
         env:
           BASE_REF: origin/${{ github.event.pull_request.base.ref }}
         run: bash scripts/check-extension-version-bump.sh
+
+  check-spec-id-reserved:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so the base ref resolves (spec 0112)
+
+      # `command -v git` is true on ubuntu-latest, so this step is a no-op here.
+      # It exists because the capability declares no `requires.tools`, and the
+      # GitLab job generated from that declaration runs on debian:stable-slim,
+      # which ships no git. Keeping the conditional install inside `command:`
+      # is what lets one declaration serve both engines without touching
+      # scripts/build-ci.sh or scripts/check-ci-parity.sh. No nested `sudo`:
+      # normalize_cmd strips only a leading one, so a nested `sudo` would make
+      # this step diverge from the declared command and fail parity Arm 1.
+      - name: Ensure git is available
+        run: command -v git >/dev/null || (apt-get update && apt-get install -y --no-install-recommends git ca-certificates)
+
+      - name: Verify every spec id added by the change was secured (spec 0112)
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+          # Workflow CONTEXTS, not ambient environment — they only reach the
+          # process through this mapping. The guard compares the two to
+          # discriminate pull-request origin (R10): a same-repository unsecured
+          # id fails, a fork's is reported without blocking. It refuses to guess
+          # when either is missing, because guessing "fork" would silently
+          # disable the guard on every pull request. On GitLab CI the equivalent
+          # pair (CI_MERGE_REQUEST_SOURCE_PROJECT_PATH / CI_PROJECT_PATH) is
+          # already ambient, which is why the generated job needs no counterpart.
+          # Named CREWRIG_* rather than GITHUB_*: GitHub reserves the GITHUB_
+          # prefix, and there is no native head-repo variable to mirror anyway
+          # (GITHUB_HEAD_REF is the branch, not the repository) — which is
+          # precisely why this mapping has to exist.
+          CREWRIG_PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          CREWRIG_PR_BASE_REPO: ${{ github.repository }}
+        run: bash scripts/check-spec-id-reserved.sh
 
   check-agents-size:
     runs-on: ubuntu-latest

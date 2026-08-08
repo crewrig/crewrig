@@ -31,6 +31,7 @@ be introduced without first amending this document.
 | `version` | semver | yes | Starts at `1.0.0` on the initial spec. Bumps follow the delta-spec convention below. |
 | `max-iterations` | integer | no | Overrides the ADR-0010 default of 5. Bounded `[1, 20]` inclusive. Omit to inherit the default. |
 | `superseded-by` | string | conditional | Required when `status: superseded`, prohibited otherwise. Value is the `id` of the spec that supersedes this one. |
+| `unsecured-id` | boolean | no | **Absent by default, and carries meaning only when present and `true`.** Marks a spec whose `id` was allocated locally but never secured on the reference repository — the fallback of `specs/0112-spec-id-reservation.md` requirement 9, reached when the author is offline or contributing from a fork. `scripts/reserve-spec-id.sh` emits this exact line on stdout on its exit-3 path, so the author pastes rather than composes it. `scripts/check-spec-id-reserved.sh` reports the condition at pull-request time: blocking for a pull request from the reference repository, non-blocking for one from a fork. The mark SHALL be removed in the same act that secures the id (requirement 10) — a merged spec never carries it. Never back-filled onto an existing spec. |
 
 ### Worked frontmatter
 

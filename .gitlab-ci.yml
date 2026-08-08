@@ -108,6 +108,8 @@ check-components:
     - "bash scripts/check-gemini-overlay-enrollment.sh"
     - "bash scripts/tests/test-check-gemini-overlay-enrollment.sh"
     - "bash scripts/tests/test-check-bash32-portability.sh"
+    - "bash scripts/tests/test-reserve-spec-id.sh"
+    - "bash scripts/tests/test-check-spec-id-reserved.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -160,6 +162,16 @@ check-extension-version-bump:
     GIT_DEPTH: "0"
   script:
     - "bash scripts/check-extension-version-bump.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+
+check-spec-id-reserved:
+  image: debian:stable-slim
+  variables:
+    GIT_DEPTH: "0"
+  script:
+    - "command -v git >/dev/null || (apt-get update && apt-get install -y --no-install-recommends git ca-certificates)"
+    - "bash scripts/check-spec-id-reserved.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
 
