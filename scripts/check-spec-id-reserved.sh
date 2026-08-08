@@ -110,6 +110,17 @@ if ! git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
         test from the repository, so it has no subject here."
 fi
 
+# --- CI context ---------------------------------------------------------------
+
+# Computed ONCE and consumed by both decisions below, because both have the same
+# shape and must not drift apart: inside CI a missing platform signal is a wiring
+# defect and fails loudly; outside CI an explicit local answer is admissible.
+# Origin detection established that posture; base-ref resolution now mirrors it.
+IN_CI=false
+if [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${GITLAB_CI:-}" ] || [ -n "${CI:-}" ]; then
+  IN_CI=true
+fi
+
 # --- Origin discrimination (requirement 10) ----------------------------------
 
 # Determined from an explicit signal or not at all. Nothing here infers origin
@@ -133,11 +144,6 @@ fi
 # platform's own statement of where the change came from. Only the override's
 # standing depends on the marker.
 determine_origin() {
-  local in_ci=false
-  if [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${GITLAB_CI:-}" ] || [ -n "${CI:-}" ]; then
-    in_ci=true
-  fi
-
   # Reject a malformed override early, wherever it came from: a typo such as
   # `CREWRIG_SPEC_ID_ORIGIN=forked` must not degrade to "unset".
   case "${CREWRIG_SPEC_ID_ORIGIN:-}" in
@@ -178,7 +184,7 @@ determine_origin() {
   #    build.yml — not to assert the answer from the environment. Honouring the
   #    override here would reopen the hole closed above, since a CI job whose
   #    pair failed to map is exactly where a stray `=fork` would do its damage.
-  if $in_ci; then
+  if $IN_CI; then
     if [ -n "${CREWRIG_SPEC_ID_ORIGIN:-}" ]; then
       note "Notice: CREWRIG_SPEC_ID_ORIGIN='$CREWRIG_SPEC_ID_ORIGIN' IGNORED — a CI context was"
       note "        detected, where only the platform pair may decide origin."
@@ -234,45 +240,69 @@ default_remote() {
   git -C "$REPO_DIR" remote | grep -E -m1 'crewrig|origin' || git -C "$REPO_DIR" remote | head -1
 }
 
-# The branch the change is proposed INTO. Hardcoding `main` here was wrong on
-# GitLab, and wrong in a way that failed legitimate merge requests rather than
-# merely under-checking them.
+# THE TARGET BRANCH IS RESOLVED, NEVER GUESSED — the same posture as
+# determine_origin(), and for the same reason. A default of `main` is a silent
+# guess about which branch the change targets, which is exactly the shape this
+# ticket spent nine plan revisions removing from origin detection: a signal that
+# cannot distinguish its cases driving a decision whose outcomes differ. Origin
+# detection refuses to guess and says so; the base ref used to guess and say
+# nothing.
 #
-# The GitHub arm never had the bug: build.yml maps
-# `github.event.pull_request.base.ref` into BASE_REF, so a release/** pull
-# request resolves its own target. The generated GitLab job sets only GIT_DEPTH
-# and passes no argument, while its own rule fires on
-# `$CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//` — so on a
-# release/** merge request this fell through to `<remote>/main` and diffed
-# against the wrong branch. Every spec that landed on the release branch after it
-# forked from main then read as "added by this change", and the check blocked a
-# conformant merge request while naming a THIRD PARTY'S spec and issue number.
-# That is precisely the misattribution spec 0112's Intent paragraph exists to
-# remove, reappearing through the guard meant to prevent it.
+# The GitHub arm never carried the bug: build.yml maps
+# `github.event.pull_request.base.ref` into BASE_REF, so a release/** pull request
+# resolves its own target. The generated GitLab job sets only GIT_DEPTH and passes
+# no argument, while its own rule fires on
+# `$CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//` — so a release/**
+# merge request fell through to `<remote>/main` and diffed against the wrong
+# branch. Every spec that had landed on the release branch since it forked from
+# main then read as "added by this change", and the check BLOCKED a conformant
+# merge request while naming a THIRD PARTY'S spec and issue number. That is the
+# misattribution spec 0112's Intent paragraph exists to remove, arriving through
+# the guard built to prevent it — the least legible failure this tool can produce.
 #
-# CI_MERGE_REQUEST_TARGET_BRANCH_NAME is ambient in a merge-request pipeline and
-# is the platform's own statement of the target, so reading it is the same move
-# already made for the origin pair at :154-165 — not a new mechanism, and no
-# generator change (spec 0049 parity harness untouched).
-default_base_branch() {
-  if [ -n "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-}" ]; then
-    printf '%s' "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
-    return 0
-  fi
-  printf 'main'
-}
+# Precedence, mirroring determine_origin():
+#   1. An explicit base — positional argument or BASE_REF — always wins.
+#   2. Inside CI, CI_MERGE_REQUEST_TARGET_BRANCH_NAME (ambient in a GitLab
+#      merge-request pipeline; the mirror of how CI_PROJECT_PATH is consumed
+#      above). Absent too → WIRING FAULT, never a guess.
+#   3. Outside CI, `<remote>/main`. A maintainer running by hand against main is
+#      the nominal case and should not have to declare it.
+#
+# No generator change is required and none is made: the GitLab job's own rule
+# restricts it to `merge_request_event`, where CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+# is guaranteed present, so branch 2 always resolves there. Injecting an explicit
+# BASE_REF into the generated YAML would mean teaching build-ci.sh to emit
+# arbitrary `variables:` entries, which the plan deliberately avoids.
+BASE_REF="${1:-${BASE_REF:-}}"
 
-BASE_REF="${1:-${BASE_REF:-$(default_remote)/$(default_base_branch)}}"
-
-# An empty remote component — `/main`, or `/release/2.0` — means the remote list
-# was empty. Matched on the leading slash rather than the literal `/main`, since
-# the branch is no longer a constant.
-case "$BASE_REF" in
-  /*)
+if [ -z "$BASE_REF" ]; then
+  base_remote_name="$(default_remote)"
+  if [ -z "$base_remote_name" ]; then
     wiring_fault "no git remote is configured, so no default base ref could be derived.
         Pass a resolvable ref as the first argument or via BASE_REF."
-    ;;
-esac
+  fi
+  if $IN_CI; then
+    if [ -z "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-}" ]; then
+      wiring_fault "a CI context was detected (CI / GITHUB_ACTIONS / GITLAB_CI is set) but the
+        branch this change targets is unknown, and this guard will not assume
+        'main'. Assuming it is what made a release/** merge request diff against
+        main, report every spec merged to the release branch as newly added, and
+        block a conformant merge request while attributing a third party's spec
+        and issue number to it. Supply one of:
+          - BASE_REF, or a positional argument, naming the target ref (GitHub
+            Actions: map github.event.pull_request.base.ref through the job's
+            env: block, as .github/workflows/build.yml does);
+          - CI_MERGE_REQUEST_TARGET_BRANCH_NAME (GitLab CI: ambient in a
+            merge-request pipeline; a non-merge-request pipeline should not be
+            running this check at all).
+        Outside CI the default '<remote>/main' still applies, so a maintainer
+        running this by hand needs none of the above."
+    fi
+    BASE_REF="${base_remote_name}/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}"
+  else
+    BASE_REF="${base_remote_name}/main"
+  fi
+fi
 
 if ! git -C "$REPO_DIR" rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
   base_remote="${BASE_REF%%/*}"
