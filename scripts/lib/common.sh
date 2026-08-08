@@ -882,7 +882,15 @@ register_mempalace_mcp() {
       # about its own token handling. We therefore write the entry the way the
       # other three CLIs are written — the same path restore already uses.
       cfg="$(mcp_assistant_config_path claude)"
-      [ -f "$cfg" ] || return 1
+      # Claude Code installed but never run has no config file yet — an
+      # ordinary state, and one `claude mcp add` used to paper over by creating
+      # the file itself. Since we now write the file directly, we must create
+      # it, or a fresh install fails the whole all-or-nothing transaction and
+      # switches nobody.
+      if [ ! -f "$cfg" ]; then
+        ( umask 077; printf '%s\n' '{"mcpServers":{}}' > "$cfg" ) || return 1
+        chmod 600 "$cfg" || return 1
+      fi
       claude mcp remove --scope user mempalace >/dev/null 2>&1 || true
       write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
         '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$auth}}' \
@@ -1281,8 +1289,14 @@ mcp_token_read_or_create() {
 # machine: ~/.gemini/settings.json is 0600 before, 0644 after, token inside.
 write_json_config_secure() {
   local cfg="$1"; shift
-  local tmp="${cfg}.tmp.$$"
-  ( umask 077; : > "$tmp" ) || return 1
+  local tmp
+  # mktemp, not "${cfg}.tmp.$$". Every operation below follows symlinks, and a
+  # predictable name turns write access to the config's directory into an
+  # arbitrary-file-write with the bearer token as payload: pre-create the
+  # expected name as a symlink and the victim is truncated and overwritten with
+  # this JSON. Demonstrated during review against a 0600 file in another
+  # directory. mktemp refuses to reuse an existing name, so the primitive dies.
+  tmp="$(umask 077; mktemp "${cfg}.tmp.XXXXXX")" || return 1
   chmod 600 "$tmp" || { rm -f "$tmp"; return 1; }
   if ! jq "$@" "$cfg" > "$tmp" 2>/dev/null; then
     rm -f "$tmp"

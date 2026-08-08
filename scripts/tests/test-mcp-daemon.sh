@@ -189,6 +189,32 @@ else
 fi
 rm -f "${tok_file}"
 
+# Acceptance, not just refusal. Every case above asserts a REFUSAL; with only
+# those, tightening the charset to [A-Za-z0-9] would keep the suite fully green
+# while rejecting every token `mempalace serve` provisions (token_urlsafe uses
+# - and _) and breaking the documented convergence. The dead ChromaDB port
+# gives the success signal for free: dying at ChromaDB means the token gate was
+# passed.
+accepts_token() {
+  local label="$1" out
+  out="$(run_launcher_bounded)"
+  case "${out}" in
+    *"ChromaDB daemon unreachable"*) ok "${label}" ;;
+    *"bearer token"*) nope "${label} — refused at the token gate: ${out}" ;;
+    *) nope "${label} — unexpected outcome: ${out}" ;;
+  esac
+}
+
+printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' > "${tok_file}"
+accepts_token "a 48-character alphanumeric token is accepted"
+
+# upstream's secrets.token_urlsafe alphabet includes - and _
+printf 'abcdefghij-klmnopqrst_uvwxyz0123456789ABCDEF\n' > "${tok_file}"
+accepts_token "an upstream-style token with - and _ is accepted"
+
+printf '  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  \n' > "${tok_file}"
+accepts_token "a valid token with surrounding whitespace is normalised, not rejected"
+
 # --- 3. The launcher never puts the token in argv ----------------------------
 echo ""
 echo "Token stays out of the process table (R8):"
