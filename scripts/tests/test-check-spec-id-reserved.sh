@@ -289,6 +289,24 @@ new_release_fixture() {
   git -C "$work" checkout -q -b feature
 }
 
+# dangle_reservation <name> <ref>
+# A reservation ref that `ls-remote` reports and `fetch` then refuses: the ref
+# file is written directly into the bare repository, pointing at an object that
+# was never created. This is the state behind the check's "reservation ref
+# exists but its recording ticket could not be read" branch.
+#
+# That branch was flagged as possibly unreachable hermetically. It is not —
+# measured on git 2.55.0: `ls-remote` lists the ref because it reads the ref
+# file without resolving it, while `fetch` fails with `upload-pack: not our
+# ref`. So it was unpinned because it was missed, not because it could not be
+# built, and those are different problems with different answers.
+dangle_reservation() {
+  local name="$1" ref="$2"
+  local bare; bare="$(fixture_bare "$name")"
+  mkdir -p "$bare/$(dirname "$ref")"
+  printf '%s\n' "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" > "$bare/$ref"
+}
+
 # break_remote <name>
 break_remote() {
   local work; work="$(fixture_work "$1")"
@@ -723,6 +741,21 @@ expect_log_matches "Case 12 — and says so, rather than exiting green in silenc
   '\[REPORT\].*could not be read'
 expect_log_matches "Case 12 — and says why it is not treated as a finding" \
   'indistinguishable from an empty'
+
+# Case 12b — the third degradation, between Case 12's unreadable namespace and a
+# clean record: the namespace reads, the ref for this id is there, and the
+# object it names cannot be fetched. The check cannot then say which ticket
+# holds the id — but it also cannot conclude the id is unsecured, because the
+# reservation plainly exists. Reporting without failing is the only honest
+# verdict, and the announcement is the whole value of it: a silent green here
+# would be indistinguishable from a verified id.
+new_fixture c12b
+dangle_reservation c12b refs/spec-ids/0400
+add_spec c12b specs/0400-unreadable-record.md 0400 unreadable-record 910
+run_check_same_repo c12b
+expect_pass_verdict "Case 12b — an unfetchable reservation object reports without failing"
+expect_log_matches "Case 12b — and the spec is named rather than silently accepted" 'specs/0400-unreadable-record[.]md'
+expect_log_matches "Case 12b — and it is not called unsecured, which it is not" 'could not be read'
 
 # ---------------------------------------------------------------------------
 # Base-ref resolution
