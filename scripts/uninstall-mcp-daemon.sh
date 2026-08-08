@@ -28,5 +28,30 @@ if [ -f "${launcher}" ]; then
 fi
 
 echo ""
+# Leaving the registrations pointed at a now-free port is the dangerous part of
+# an uninstall: the next process to bind that port receives the real bearer
+# token in the first request header, and can then answer four agents with
+# fabricated memory. Report exactly which assistants are in that state.
+still_http=""
+for _cli in claude gemini copilot antigravity; do
+  if [ "$(mcp_assistant_arrangement "${_cli}")" = "http" ]; then
+    still_http="${still_http} ${_cli}"
+  fi
+done
+if [ -n "${still_http}" ]; then
+  echo "WARNING: these assistants still point at the daemon you just removed:"
+  for _cli in ${still_http}; do
+    echo "    - ${_cli}  ($(mcp_assistant_config_path "${_cli}"))"
+  done
+  echo ""
+  echo "  The port is now free. Any local process that binds it receives your"
+  echo "  bearer token in the first request and can answer your agents with"
+  echo "  fabricated memory. Re-point them before that matters:"
+  echo "    re-run the setup script for each, or 'task mempalace:switch-http'"
+  echo "    to bring the daemon back."
+  echo ""
+fi
+
 echo "The bearer token is left in place: it is per-palace and a later install"
-echo "reuses it. Remove it by hand if you are decommissioning this palace."
+echo "reuses it. Remove it by hand if you are decommissioning this palace —"
+echo "and rotate it if you have any reason to think it leaked."

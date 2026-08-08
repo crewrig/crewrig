@@ -54,6 +54,19 @@ export MEMPALACE_MCP_LAUNCHER_PATH="${TEST_HOME}/.crewrig/mcp-daemon-launcher.sh
 # runner with no mempalace venv fails every launcher assertion for a reason
 # that has nothing to do with what is under test.
 export MEMPALACE_PYTHON="${MEMPALACE_PYTHON:-$(command -v python3 || echo /usr/bin/python3)}"
+# Every launcher invocation below exercises a refusal and must die at the token
+# check. Without this, a regression that lets one through would sit in the
+# ChromaDB wait for a full minute per case and the suite would look hung.
+export MEMPALACE_MCP_CHROMA_WAIT=2
+# Point the launcher's ChromaDB dependency at a dead port. Every launcher case
+# below asserts a REFUSAL, and a refusal test must not be able to succeed at
+# starting something: if a regression removes the token guards, the launcher
+# would otherwise reach its exec and spawn a REAL daemon from inside the test
+# suite. Discovered by deliberately removing both guards — the suite hung with
+# a live daemon rather than failing. The dead port makes the exec unreachable,
+# so a broken guard shows up as a failed assertion instead of a background
+# process nobody notices.
+export MEMPALACE_CHROMA_PORT=1
 
 cleanup() { rm -rf "${TEST_HOME}"; }
 trap cleanup EXIT
@@ -94,6 +107,29 @@ perms="$(stat -c '%a' "${tok_file}" 2>/dev/null || stat -f '%Lp' "${tok_file}" 2
 # authentication silently disabled: MemPalace requires a token only on a
 # non-loopback bind, and its auth gate short-circuits on an empty one.
 echo ""
+
+# refuses_for_token <case-label> — run the launcher and assert it refused FOR
+# THE TOKEN, not merely that it exited non-zero.
+#
+# Checking the exit code alone is not enough and this was proven, not assumed:
+# with the token guards deliberately removed the suite still went green, because
+# the launcher then died on the unreachable ChromaDB dependency instead. A
+# refusal test that does not name the reason passes for whichever failure
+# happens first, which is the "green for the wrong reason" trap this file
+# exists to avoid. So: assert the diagnostic mentions the token.
+refuses_for_token() {
+  local label="$1" out rc
+  out="$(bash "${launcher}" 2>&1)"; rc=$?
+  if [ "${rc}" -eq 0 ]; then
+    nope "${label} — launcher STARTED (auth would be disabled)"
+    return
+  fi
+  case "${out}" in
+    *"bearer token"*) ok "${label}" ;;
+    *) nope "${label} — refused, but not for the token: ${out}" ;;
+  esac
+}
+
 echo "Launcher refuses an absent or empty token (R8, security):"
 install_mcp_launcher >/dev/null 2>&1
 launcher="$(mcp_launcher_installed_path)"
@@ -101,18 +137,33 @@ launcher="$(mcp_launcher_installed_path)"
   || nope "launcher not installed at ${launcher}"
 
 rm -f "${tok_file}"
-if bash "${launcher}" >/dev/null 2>&1; then
-  nope "launcher started with NO token file (auth would be disabled)"
-else
-  ok "launcher refuses to start with no token file"
-fi
+refuses_for_token "launcher refuses to start with no token file"
 
 mkdir -p "$(dirname "${tok_file}")"; : > "${tok_file}"
-if bash "${launcher}" >/dev/null 2>&1; then
-  nope "launcher started with an EMPTY token (auth would be disabled)"
+refuses_for_token "launcher refuses to start with an empty token"
+
+# Whitespace-only is the case that defeated the first version of this guard:
+# the shell sees a non-empty string, upstream .strip()s it to empty, and an
+# empty auth_token short-circuits the bearer check — the daemon then serves the
+# whole palace unauthenticated while the launcher reports success.
+printf '   \t  \n' > "${tok_file}"
+refuses_for_token "launcher refuses to start with a whitespace-only token"
+
+printf 'short\n' > "${tok_file}"
+refuses_for_token "launcher refuses a token shorter than 32 characters"
+
+printf 'has spaces and $(id) in it padded to length aaaaaaaaaaaa\n' > "${tok_file}"
+refuses_for_token "launcher refuses a token with unexpected characters"
+
+# mcp_token_read_or_create must refuse the same content rather than hand back
+# an empty string that would register `Authorization: Bearer ` on four CLIs.
+printf '   \n' > "${tok_file}"
+if mcp_token_read_or_create >/dev/null 2>&1; then
+  nope "token reader returned success on a whitespace-only file"
 else
-  ok "launcher refuses to start with an empty token"
+  ok "token reader refuses a whitespace-only token file"
 fi
+rm -f "${tok_file}"
 
 # --- 3. The launcher never puts the token in argv ----------------------------
 echo ""
@@ -161,6 +212,26 @@ current="$(mcp_launcher_source_sha)"
 [ "${recorded}" = "${current}" ] \
   && ok "a fresh install reports IN SYNC (not spurious drift)" \
   || nope "fresh install reports drift — the check compares the wrong quantity"
+
+# --- 5b. Config modes: a credential-bearing file must never widen ------------
+echo ""
+echo "Client configs never widen when the token lands in them (R8):"
+mkdir -p "${TEST_HOME}/.gemini"
+echo '{"mcpServers":{}}' > "${TEST_HOME}/.gemini/settings.json"
+chmod 600 "${TEST_HOME}/.gemini/settings.json"
+register_mempalace_mcp gemini "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" >/dev/null 2>&1
+mode="$(stat -c '%a' "${TEST_HOME}/.gemini/settings.json" 2>/dev/null || stat -f '%Lp' "${TEST_HOME}/.gemini/settings.json" 2>/dev/null)"
+[ "${mode}" = "600" ] \
+  && ok "a 0600 config stays 0600 after the token is written into it" \
+  || nope "config widened to ${mode} — mv inherits the temp file's mode"
+
+echo '{"mcpServers":{}}' > "${TEST_HOME}/.gemini/settings.json"
+chmod 644 "${TEST_HOME}/.gemini/settings.json"
+register_mempalace_mcp gemini "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" >/dev/null 2>&1
+mode="$(stat -c '%a' "${TEST_HOME}/.gemini/settings.json" 2>/dev/null || stat -f '%Lp' "${TEST_HOME}/.gemini/settings.json" 2>/dev/null)"
+[ "${mode}" = "600" ] \
+  && ok "an already-0644 config is narrowed to 0600 once it holds a token" \
+  || nope "config left at ${mode} while holding a bearer token"
 
 # --- 6. Arrangement reader ---------------------------------------------------
 echo ""

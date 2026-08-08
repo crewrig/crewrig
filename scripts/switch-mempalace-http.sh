@@ -45,4 +45,15 @@ echo "IMPORTANT: already-running sessions keep their previous memory server"
 echo "           until they restart. Restart them to pick up the change —"
 echo "           without that, you will see no difference."
 echo ""
-bash "${SCRIPT_DIR}/status-mcp-server.sh" || true
+# The status probe's exit code decides the run. Discarding it would print
+# "*** NOT ENFORCED ***" and still exit 0 with the token already written into
+# every config — the one check able to detect an unauthenticated daemon must be
+# able to fail the transaction it guards.
+if ! bash "${SCRIPT_DIR}/status-mcp-server.sh"; then
+  echo ""
+  echo "ERROR: the daemon is serving, the assistants are registered, but the"
+  echo "       checks above did not all pass. Read them before using this."
+  echo "       If authentication is NOT ENFORCED, treat the token as burned:"
+  echo "       remove it, run 'task mempalace:uninstall-daemon', and re-run."
+  exit 1
+fi

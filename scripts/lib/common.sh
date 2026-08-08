@@ -859,15 +859,10 @@ restore_mempalace_registration() {
   local cli="$1" captured="$2" cfg tmp
   cfg="$(mcp_assistant_config_path "$cli")" || return 1
   [ -f "$cfg" ] || return 1
-  tmp="${cfg}.restore.$$"
   if [ "$captured" = "null" ] || [ -z "$captured" ]; then
-    jq 'del(.mcpServers.mempalace)' "$cfg" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
+    write_json_config_secure "$cfg" 'del(.mcpServers.mempalace)' || return 1
   else
-    jq --argjson v "$captured" '.mcpServers.mempalace = $v' "$cfg" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
-  fi
-  mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
-  if [ "$cli" = "claude" ]; then
-    return 0
+    write_json_config_secure "$cfg" --argjson v "$captured" '.mcpServers.mempalace = $v' || return 1
   fi
   return 0
 }
@@ -875,24 +870,31 @@ restore_mempalace_registration() {
 # register_mempalace_mcp <cli> <token> — switch one assistant to the shared
 # daemon. Returns non-zero on failure, leaving the caller to restore.
 register_mempalace_mcp() {
-  local cli="$1" token="$2" url cfg tmp
+  local cli="$1" token="$2" url cfg
   url="$(mcp_daemon_url)"
   case "$cli" in
     claude)
       command -v claude >/dev/null 2>&1 || return 1
+      # NOT `claude mcp add --header "Authorization: Bearer $token"`: on Linux
+      # /proc/<pid>/cmdline is world-readable, so any local uid sampling the
+      # process table during setup harvests the credential. `mcp add-json` puts
+      # the JSON in argv too, so it is no better. Upstream makes the same point
+      # about its own token handling. We therefore write the entry the way the
+      # other three CLIs are written — the same path restore already uses.
+      cfg="$(mcp_assistant_config_path claude)"
+      [ -f "$cfg" ] || return 1
       claude mcp remove --scope user mempalace >/dev/null 2>&1 || true
-      claude mcp add --scope user --transport http mempalace "$url" \
-        --header "Authorization: Bearer ${token}" >/dev/null 2>&1 || return 1
+      write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
+        '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$auth}}' \
+        || return 1
       return 0
       ;;
     gemini|copilot)
       cfg="$(mcp_assistant_config_path "$cli")"
       [ -f "$cfg" ] || return 1
-      tmp="${cfg}.tmp.$$"
-      jq --arg url "$url" --arg auth "Bearer ${token}" \
+      write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
         '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$auth}}' \
-        "$cfg" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
-      mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
+        || return 1
       return 0
       ;;
     antigravity)
@@ -900,11 +902,9 @@ register_mempalace_mcp() {
       # type key — grounded in docs/cli-matrix.md row 7h.
       cfg="$(mcp_assistant_config_path "$cli")"
       [ -f "$cfg" ] || return 1
-      tmp="${cfg}.tmp.$$"
-      jq --arg url "$url" --arg auth "Bearer ${token}" \
+      write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
         '.mcpServers.mempalace = {serverUrl:$url, headers:{Authorization:$auth}}' \
-        "$cfg" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
-      mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
+        || return 1
       return 0
       ;;
     *) return 1 ;;
@@ -1215,26 +1215,69 @@ mcp_token_path() {
 # Returns non-zero without echoing when it can neither read nor create one:
 # the caller must fail loudly rather than proceed with an empty credential.
 mcp_token_read_or_create() {
-  local token_file token
+  local token_file token dir existing
   token_file="$(mcp_token_path)"
   if [ -s "$token_file" ]; then
-    cat "$token_file"
-    return 0
+    # Strip whitespace on the way out: upstream strips before storing, so a
+    # whitespace-only file is a non-empty string here and an EMPTY token there,
+    # which disables the bearer check. Returning it verbatim would register
+    # `Authorization: Bearer ` across all four CLIs.
+    existing="$(tr -d '[:space:]' < "$token_file")"
+    if [ -n "$existing" ]; then
+      printf '%s\n' "$existing"
+      return 0
+    fi
+    echo "  ERROR: the token file exists but is whitespace-only: $token_file" >&2
+    echo "         Refusing to use it — an empty token disables authentication." >&2
+    return 1
   fi
-  mkdir -p "$(dirname "$token_file")" 2>/dev/null || return 1
-  chmod 700 "$(dirname "$token_file")" 2>/dev/null || true
+  dir="$(dirname "$token_file")"
+  mkdir -p "$dir" 2>/dev/null || return 1
+  # Fatal, not best-effort: the entire security model rests on these modes, so a
+  # silent failure would leave a credential readable by every uid on the host.
+  chmod 700 "$dir" || { echo "  ERROR: cannot restrict $dir to 0700" >&2; return 1; }
+  chmod 700 "$(dirname "$dir")" 2>/dev/null || true
   token="$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 48)"
   if [ -z "$token" ]; then
     return 1
   fi
-  # Exclusive create: a concurrent winner's token is read instead of clobbered.
-  ( set -C; printf '%s' "$token" > "$token_file" ) 2>/dev/null || true
-  chmod 600 "$token_file" 2>/dev/null || true
+  # umask 077 so the file is NEVER briefly world-readable: creating at the
+  # ambient umask and narrowing afterwards leaves a window, and leaves the
+  # credential wide forever if the chmod fails. `set -C` keeps the create
+  # exclusive so a concurrent winner's token is read rather than clobbered.
+  ( umask 077; set -C; printf '%s' "$token" > "$token_file" ) 2>/dev/null || true
+  chmod 600 "$token_file" || { echo "  ERROR: cannot restrict $token_file to 0600" >&2; return 1; }
   if [ -s "$token_file" ]; then
-    cat "$token_file"
+    tr -d '[:space:]' < "$token_file"
+    printf '\n'
     return 0
   fi
   return 1
+}
+
+# write_json_config_secure <path> <jq_program> [jq_args...]
+#
+# Rewrite a config that carries the bearer token, without ever widening it.
+# `mv` is rename(2): the destination inherits the TEMP file's mode, so a plain
+# `jq > tmp && mv` created at umask 022 silently downgrades a 0600 config to
+# 0644 — in the same operation that inserts the credential. Observed on a real
+# machine: ~/.gemini/settings.json is 0600 before, 0644 after, token inside.
+write_json_config_secure() {
+  local cfg="$1"; shift
+  local tmp="${cfg}.tmp.$$"
+  ( umask 077; : > "$tmp" ) || return 1
+  chmod 600 "$tmp" || { rm -f "$tmp"; return 1; }
+  if ! jq "$@" "$cfg" > "$tmp" 2>/dev/null; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
+  # The destination now holds a credential regardless of what it was before.
+  chmod 600 "$cfg" || {
+    echo "  ERROR: $cfg holds a bearer token and could not be restricted to 0600." >&2
+    return 1
+  }
+  return 0
 }
 
 # print_store_access_guidance <cli>

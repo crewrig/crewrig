@@ -75,12 +75,30 @@ if [ ! -f "${TOKEN_FILE}" ]; then
        every client. Re-run the setup script to provision it."
 fi
 
-MEMPALACE_MCP_HTTP_TOKEN="$(cat "${TOKEN_FILE}" 2>/dev/null || true)"
+# Strip ALL whitespace before judging, and validate the SHAPE rather than mere
+# emptiness. This is not fussiness: upstream strips the token before storing it
+# (`token.strip()`), so a file containing only spaces or tabs is non-empty to
+# the shell and EMPTY to the server — and an empty auth_token short-circuits
+# the bearer check, serving the whole palace unauthenticated while this guard
+# reports success. Demonstrated against the real handler: a "   " token yields
+# 200 on an unauthenticated tools/list. A trailing newline is safe (command
+# substitution and .strip() agree), but only shape validation closes the class.
+MEMPALACE_MCP_HTTP_TOKEN="$(tr -d '[:space:]' < "${TOKEN_FILE}" 2>/dev/null || true)"
 if [ -z "${MEMPALACE_MCP_HTTP_TOKEN}" ]; then
-  die "bearer token file is empty: ${TOKEN_FILE}
-       Refusing to start: an empty token short-circuits the bearer check
-       upstream, which would serve every request unauthenticated. Re-run the
-       setup script to provision it."
+  die "bearer token file is empty or whitespace-only: ${TOKEN_FILE}
+       Refusing to start: upstream strips the token, so whitespace-only content
+       becomes an empty token and short-circuits the bearer check — every
+       request would be served unauthenticated. Re-run the setup script."
+fi
+case "${MEMPALACE_MCP_HTTP_TOKEN}" in
+  *[!A-Za-z0-9_-]*)
+    die "bearer token contains unexpected characters: ${TOKEN_FILE}
+       Refusing to start rather than guess how the server will interpret it."
+    ;;
+esac
+if [ "${#MEMPALACE_MCP_HTTP_TOKEN}" -lt 32 ]; then
+  die "bearer token is shorter than 32 characters: ${TOKEN_FILE}
+       Refusing to start: a short token is not a credential. Re-provision it."
 fi
 export MEMPALACE_MCP_HTTP_TOKEN
 
@@ -94,10 +112,15 @@ export MEMPALACE_MCP_IDLE_HOURS="${MEMPALACE_MCP_IDLE_HOURS:-0}"
 # that daemon is unreachable, which is correct but would make the supervisor
 # restart us in a loop at boot. Waiting converts a boot-order race into one
 # long attempt.
-DEADLINE=$((SECONDS + 60))
+# Configurable so a hermetic test does not pay 60s per invocation. Every test
+# that exercises a REFUSAL must die at the token check and never reach here; if
+# a regression lets one through, a short deadline turns a 60s hang into a fast,
+# legible failure rather than a suite that looks stuck.
+CHROMA_WAIT_SECONDS="${MEMPALACE_MCP_CHROMA_WAIT:-60}"
+DEADLINE=$((SECONDS + CHROMA_WAIT_SECONDS))
 until curl -sf --max-time 2 "http://${CHROMA_HOST}:${CHROMA_PORT}/api/v2/heartbeat" >/dev/null 2>&1; do
   if [ "${SECONDS}" -ge "${DEADLINE}" ]; then
-    die "ChromaDB daemon unreachable at ${CHROMA_HOST}:${CHROMA_PORT} after 60s.
+    die "ChromaDB daemon unreachable at ${CHROMA_HOST}:${CHROMA_PORT} after ${CHROMA_WAIT_SECONDS}s.
        The MCP daemon serves through it (ADR 0006) and will not start without it.
        Check: bash ${CREWRIG_REPO_DIR}/scripts/status-chroma-server.sh"
   fi
