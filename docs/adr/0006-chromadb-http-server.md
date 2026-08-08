@@ -4,7 +4,31 @@
 
 ## Status
 
-Proposed — 2026-05-25. Scoped to issue #98.
+Accepted — decided 2026-05-25 (issue #98), delivered by PR #99, owner-validated
+2026-08-08 (issue #728).
+
+An ADR records the standing of a *decision*, not the progress of its
+implementation — that is what a spec's `status` field tracks. `Accepted` is
+therefore the terminal status here even though the decision has shipped; the
+evidence below reports the outcome without inventing a status to carry it.
+
+**Validation evidence.** The palace `.drift-*` directories record the corruption
+class this ADR targets. Counted on the authoring machine on 2026-08-08:
+
+| Period | Drift events |
+|---|---|
+| May 2026 | 2 |
+| June 2026 | 133 |
+| July 2026 | 130 |
+| Since 2026-07-21 | **0** |
+
+The last drift predates the start of the daemon then running. Eighteen days
+clean against roughly 130 per month before it. The corruption race this ADR set
+out to eliminate structurally is gone, not narrowed.
+
+[ADR 0016](0016-shared-mempalace-mcp-http-server.md) extends the same
+collapse-onto-one-daemon pattern to the MCP tier above this one, and depends on
+the guarantee recorded here.
 
 ## Context
 
