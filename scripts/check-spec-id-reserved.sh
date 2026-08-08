@@ -555,17 +555,17 @@ while IFS= read -r spec; do
 
   holder_primary=""
   holder_tags=""
-  unreadable=false
+  unresolved_ticket=false
   if [ -n "$oid_primary" ]; then
     holder_primary="$(recorded_issue "$ref_primary")"
     if [ -z "$holder_primary" ]; then
-      unreadable=true
+      unresolved_ticket=true
     fi
   fi
   if [ -n "$oid_tags" ]; then
     holder_tags="$(recorded_issue "$ref_tags")"
     if [ -z "$holder_tags" ]; then
-      unreadable=true
+      unresolved_ticket=true
     fi
   fi
 
@@ -578,8 +578,18 @@ while IFS= read -r spec; do
     continue
   fi
 
-  if $unreadable; then
-    add_report "$spec — id '$id' has a reservation ref on '$REMOTE' but its recording ticket could not be read (the reservation object could not be fetched). Not treated as a finding: an unreadable record is a connectivity or credential gap, not an unsecured id."
+  if $unresolved_ticket; then
+    # recorded_issue() returns empty on THREE routes and cannot distinguish them,
+    # so this message must not name one. It previously claimed the object "could
+    # not be fetched" and blamed "a connectivity or credential gap", which is true
+    # only of the first: the fetch may be refused, the ref may not point at a
+    # commit (so `git log` fails), or the subject may simply carry no `issue #`.
+    # A maintainer on either of the last two was sent to check credentials for a
+    # condition that is not one. Naming all three lets them discriminate; asserting
+    # any one of them would be a guess. Note the inverse over-claim is just as
+    # wrong — "the object was read but names no issue" is false when the fetch was
+    # refused and nothing was read at all.
+    add_report "$spec — id '$id' has a reservation ref on '$REMOTE', but no ticket could be resolved from it. Three conditions produce this and the check cannot tell them apart: the object could not be fetched (transport or credentials), the ref does not point at a commit, or the commit subject names no issue. Not treated as a finding: an unresolvable record is not an unsecured id, and failing open on a malformed or unreachable third-party reservation beats blocking a conformant change."
     continue
   fi
 
