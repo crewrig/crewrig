@@ -178,11 +178,22 @@ REMOTE="${SPEC_ID_REMOTE:-${BASE_REF%%/*}}"
 
 # --- Which spec paths are org-owned ------------------------------------------
 
-# The `excluded` entries under `specs/` in the sync manifest. This is the spec
-# 0071 R5 mechanism: the exclusion is READ, never hardcoded, so `specs/org` is
-# covered today and any future org-owned path under `specs/` is covered without
-# a change here. A missing manifest yields an empty list rather than an error.
-EXCLUDED_SPEC_PREFIXES=""
+# `specs/org/` is the FLOOR, not a manifest lookup. Delta-01's replaced
+# requirement 7 names it literally — "a specification under `specs/org/` SHALL
+# NOT fail this check" — so the exemption cannot be contingent on a file this
+# script happens to be able to read. Seeding it here is what makes the failure
+# mode of an absent or unreadable manifest *inert* instead of inverted: derive
+# the list from the manifest alone and a missing manifest silently turns this
+# guard into upstream enforcement over org-owned content, which is the precise
+# layer breach `specs/0071-org-specs-lint-exclusion.md` exists to prevent, and
+# it would arrive on the adopter's pipeline rather than in CI.
+EXCLUDED_SPEC_PREFIXES="specs/org/
+"
+
+# The manifest read LAYERS ON TOP of that floor: it is the spec 0071 R5
+# mechanism, so any FUTURE org-owned path declared `excluded` under `specs/` is
+# covered without editing this script. Floor, not ceiling — same posture as
+# ci/bash32-forbidden.txt. A missing manifest adds nothing rather than erroring.
 if [ -f "$MANIFEST" ]; then
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line%$'\r'}"
