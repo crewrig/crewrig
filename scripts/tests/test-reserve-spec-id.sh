@@ -540,6 +540,7 @@ make_reservation c9 refs/spec-ids/0600 0600 930
 run_tool c9 --id 0600 --issue 931
 if [ "$TOOL_RC" -ne 0 ]; then
   record_pass "Case 9 — securing an identifier another ticket holds is refused"
+  expect_stderr_matches "Case 9 — and stderr names the ticket already holding it" '#930'
 else
   record_fail "Case 9 — securing an identifier another ticket holds is refused" \
     "expected a non-zero exit, got 0"
@@ -600,6 +601,7 @@ expect "Case 12 — no upstream identifier is affected" "count" \
 run_tool c12 --corpus org --id RFC_2026_07 --issue 961
 if [ "$TOOL_RC" -ne 0 ]; then
   record_pass "Case 12 — a second attempt on the same org identifier is refused"
+  expect_stderr_matches "Case 12 — and stderr names the ticket already holding it" '#960'
 else
   record_fail "Case 12 — a second attempt on the same org identifier is refused" \
     "expected a non-zero exit, got 0"
@@ -737,6 +739,61 @@ run_tool c23 --issue 995
 expect_rc "Case 23 — a remote named neither crewrig nor origin still secures an id" 0
 expect "Case 23 — the reservation reached that remote" "count" \
   "$(remote_count c23 'refs/spec-ids/*')" "1"
+
+# ---------------------------------------------------------------------------
+# Requirement 12 across the argument and configuration refusals
+# ---------------------------------------------------------------------------
+# R12 exists because the tool is invocable directly by a human with no agent
+# involved, so its failure paths are read by a person deciding what to type
+# next. There are fourteen `fail` sites; the cases above reach three of them.
+# The four below cover the refusals a human actually hits — a mistyped flag, a
+# forgotten argument, a bad value, a misconfigured setting — and each asserts
+# the identifying content that makes the message actionable rather than the
+# sentence carrying it.
+#
+# Deliberately not covered, and this is a judgement rather than an oversight:
+# the CREWRIG_SPEC_ID_MAX_ATTEMPTS validations and the empty-identifier guard,
+# which need an env var a user rarely sets or an argument they cannot easily
+# type; and the retry-exhaustion refusal, which is not reachable hermetically
+# at all — it needs a real competitor winning every round, and every substitute
+# collapses into a different branch. Covering the first two would be assertions
+# for their own sake; the third is a known gap, reported rather than faked.
+
+# Case 24 — the most common invocation error there is: the flag is required and
+# was not supplied. The message must name it, because the user's next action is
+# to type it.
+new_fixture c24 specs/0001-a.md
+run_tool c24
+expect_rc "Case 24 — a missing --issue exits 1" 1
+expect_stderr_matches "Case 24 — and stderr names the missing flag" '[-][-]issue'
+
+# Case 25 — a mistyped flag. Naming the offending token is what separates "you
+# typed something I do not know" from a usage dump the reader has to diff
+# against what they typed.
+new_fixture c25 specs/0001-a.md
+run_tool c25 --isue 900
+expect_rc "Case 25 — an unknown argument exits 1" 1
+expect_stderr_matches "Case 25 — and stderr names the offending argument" '[-][-]isue'
+
+# Case 26 — a well-formed flag with a value the tool cannot use. The value is
+# the actionable content: the user has to find it in what they typed.
+new_fixture c26 specs/0001-a.md
+run_tool c26 --issue not-a-number
+expect_rc "Case 26 — a non-integer --issue exits 1" 1
+expect_stderr_matches "Case 26 — and stderr names the offending value" 'not-a-number'
+
+# Case 27 — the carrier setting present but naming no namespace. This is the
+# silent-fallback path: before it was made a hard refusal, a file an adopter had
+# edited into an unparseable state resolved quietly to the built-in default, so
+# an adopter whose remote refuses that default would have gone on writing to it
+# and seen exit 3 forever with nothing pointing at the file they had just
+# changed. The refusal is only useful if it names the file.
+new_fixture c27 specs/0001-a.md
+printf '# a carrier setting with every line commented out\n# carrier=refs/tags/spec-id/\n' \
+  > "$(fixture_work c27)/.crewrig/spec-id-carrier"
+run_tool c27 --issue 900
+expect_rc "Case 27 — a carrier setting naming no namespace exits 1" 1
+expect_stderr_matches "Case 27 — and stderr names the file to fix" 'spec-id-carrier'
 
 # ---------------------------------------------------------------------------
 # Summary
