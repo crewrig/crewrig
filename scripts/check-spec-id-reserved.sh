@@ -109,14 +109,40 @@ fi
 # wrong engine: a signal that cannot distinguish its cases must not drive the
 # decision, and getting this wrong in the permissive direction silently disables
 # the guard for the exact case it exists for.
+#
+# PRECEDENCE IS PART OF THE GUARANTEE, not a detail. The platform pairs are
+# evaluated BEFORE `CREWRIG_SPEC_ID_ORIGIN`, and inside a CI context the override
+# is refused outright rather than used as a fallback. Reading the override first
+# — which is what this function used to do — made the guard switchable off by an
+# environment variable: `CREWRIG_SPEC_ID_ORIGIN=fork` would short-circuit the
+# platform truth and turn the blocking branch into report-only for every pull
+# request, silently. A guard an environment variable can disable is not a guard.
+# The override is still explicit rather than inferred, so the ambiguous-signal
+# rule was never breached; the defect was ordering.
+#
+# Note what is NOT gated on the CI marker: the pairs themselves. A pair that is
+# present and complete is authoritative in any context, because it is the
+# platform's own statement of where the change came from. Only the override's
+# standing depends on the marker.
 determine_origin() {
+  local in_ci=false
+  if [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${GITLAB_CI:-}" ] || [ -n "${CI:-}" ]; then
+    in_ci=true
+  fi
+
+  # Reject a malformed override early, wherever it came from: a typo such as
+  # `CREWRIG_SPEC_ID_ORIGIN=forked` must not degrade to "unset".
   case "${CREWRIG_SPEC_ID_ORIGIN:-}" in
-    same|fork) printf '%s' "$CREWRIG_SPEC_ID_ORIGIN"; return 0 ;;
-    "") ;;
+    same|fork|"") ;;
     *) wiring_fault "CREWRIG_SPEC_ID_ORIGIN is '$CREWRIG_SPEC_ID_ORIGIN'; expected 'same' or 'fork'." ;;
   esac
 
+  # 1. Platform truth, GitHub then GitLab. Authoritative whenever complete.
   if [ -n "${CREWRIG_PR_HEAD_REPO:-}" ] && [ -n "${CREWRIG_PR_BASE_REPO:-}" ]; then
+    if [ -n "${CREWRIG_SPEC_ID_ORIGIN:-}" ]; then
+      note "Notice: CREWRIG_SPEC_ID_ORIGIN='$CREWRIG_SPEC_ID_ORIGIN' IGNORED — the platform pair"
+      note "        (CREWRIG_PR_HEAD_REPO / CREWRIG_PR_BASE_REPO) is present and wins."
+    fi
     if [ "$CREWRIG_PR_HEAD_REPO" = "$CREWRIG_PR_BASE_REPO" ]; then
       printf 'same'
     else
@@ -126,6 +152,10 @@ determine_origin() {
   fi
 
   if [ -n "${CI_MERGE_REQUEST_SOURCE_PROJECT_PATH:-}" ] && [ -n "${CI_PROJECT_PATH:-}" ]; then
+    if [ -n "${CREWRIG_SPEC_ID_ORIGIN:-}" ]; then
+      note "Notice: CREWRIG_SPEC_ID_ORIGIN='$CREWRIG_SPEC_ID_ORIGIN' IGNORED — the platform pair"
+      note "        (CI_MERGE_REQUEST_SOURCE_PROJECT_PATH / CI_PROJECT_PATH) is present and wins."
+    fi
     if [ "$CI_MERGE_REQUEST_SOURCE_PROJECT_PATH" = "$CI_PROJECT_PATH" ]; then
       printf 'same'
     else
@@ -133,6 +163,38 @@ determine_origin() {
     fi
     return 0
   fi
+
+  # 2. In CI with no resolvable pair, the override does NOT rescue the run. That
+  #    is plan step 10 unchanged: an unresolvable origin inside CI is a WIRING
+  #    defect, and the repair is to fix the wiring — a reviewed change to
+  #    build.yml — not to assert the answer from the environment. Honouring the
+  #    override here would reopen the hole closed above, since a CI job whose
+  #    pair failed to map is exactly where a stray `=fork` would do its damage.
+  if $in_ci; then
+    if [ -n "${CREWRIG_SPEC_ID_ORIGIN:-}" ]; then
+      note "Notice: CREWRIG_SPEC_ID_ORIGIN='$CREWRIG_SPEC_ID_ORIGIN' IGNORED — a CI context was"
+      note "        detected, where only the platform pair may decide origin."
+    fi
+    wiring_fault "a CI context was detected (CI / GITHUB_ACTIONS / GITLAB_CI is set) but
+        neither platform pair resolved, so pull-request origin is unknown — and
+        requirement 10 makes the two outcomes different: a same-repository
+        unsecured id FAILS, a fork's is only reported. This is a wiring defect,
+        so fix the wiring rather than asserting the answer:
+          - GitHub Actions: map github.event.pull_request.head.repo.full_name and
+            github.repository into CREWRIG_PR_HEAD_REPO / CREWRIG_PR_BASE_REPO
+            through the job's env: block — they are workflow CONTEXTS, not
+            ambient environment;
+          - GitLab CI: CI_MERGE_REQUEST_SOURCE_PROJECT_PATH and CI_PROJECT_PATH
+            are ambient in a merge-request pipeline; a non-merge-request pipeline
+            should not be running this check at all.
+        CREWRIG_SPEC_ID_ORIGIN is deliberately NOT honoured inside CI: a guard an
+        environment variable can switch off is not a guard."
+  fi
+
+  # 3. Outside CI, the explicit override is the only admissible signal.
+  case "${CREWRIG_SPEC_ID_ORIGIN:-}" in
+    same|fork) printf '%s' "$CREWRIG_SPEC_ID_ORIGIN"; return 0 ;;
+  esac
 
   wiring_fault "cannot determine whether this pull request comes from the reference
         repository or from a fork, and requirement 10 makes the two outcomes
@@ -144,7 +206,8 @@ determine_origin() {
             contexts, not ambient environment);
           - CI_MERGE_REQUEST_SOURCE_PROJECT_PATH and CI_PROJECT_PATH (GitLab
             CI, already ambient in a merge-request pipeline);
-          - CREWRIG_SPEC_ID_ORIGIN=same|fork, the explicit override for a local run.
+          - CREWRIG_SPEC_ID_ORIGIN=same|fork, admissible OUTSIDE CI only, which
+            is the case you are in now — one variable and the run proceeds.
         Refusing to guess: guessing 'fork' would disable this guard on every
         pull request."
 }

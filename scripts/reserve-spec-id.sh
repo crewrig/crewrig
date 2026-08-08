@@ -206,9 +206,31 @@ fi
 # Read the tracked setting. An ABSENT file resolves to the built-in default
 # rather than an error: the entry is `excluded` in .crewrig/core-paths.txt, so
 # the synchroniser never restores it and a fork that deletes it must still work.
+# Resolves into CARRIER_FILE_VALUE / CARRIER_FILE_STATE, set in the parent shell
+# rather than printed, because the caller needs to tell THREE states apart and a
+# command substitution collapses two of them into the empty string:
+#
+#   absent      No file. No intent was expressed, so the built-in default is the
+#               right answer — and it has to be, since the entry is `excluded` in
+#               .crewrig/core-paths.txt and the synchroniser will never restore a
+#               file a fork deleted.
+#   parsed      The adopter stated which namespace their remote accepts.
+#   malformed   A file exists but names no namespace. The adopter MEANT
+#               something and this script cannot tell what, so it refuses.
+#
+# The absent/malformed asymmetry is the whole point and is a judgement about
+# INTENT, not about parsing. Falling back to the default on a malformed file
+# would leave an adopter whose remote refuses that default writing to it
+# forever, seeing exit 3 on every allocation with nothing anywhere pointing at
+# the cause — the silent degradation this mechanism exists to eliminate,
+# arriving through its own configuration surface.
+CARRIER_FILE_VALUE=""
+CARRIER_FILE_STATE="absent"
+
 read_carrier_setting() {
   local line value
   if [ ! -f "$CARRIER_FILE" ]; then
+    CARRIER_FILE_STATE="absent"
     return 0
   fi
   while IFS= read -r line || [ -n "$line" ]; do
@@ -218,23 +240,48 @@ read_carrier_setting() {
         value="${line#carrier=}"
         value="${value#"${value%%[![:space:]]*}"}"     # ltrim
         value="${value%"${value##*[![:space:]]}"}"     # rtrim
-        printf '%s' "$value"
+        if [ -n "$value" ]; then
+          CARRIER_FILE_VALUE="$value"
+          CARRIER_FILE_STATE="parsed"
+        else
+          # A bare `carrier=` states a key and no value: malformed, not absent.
+          CARRIER_FILE_STATE="malformed"
+        fi
         return 0
         ;;
     esac
   done < "$CARRIER_FILE"
+  CARRIER_FILE_STATE="malformed"
   return 0
 }
 
 CARRIER="${CREWRIG_SPEC_ID_CARRIER:-}"
 CARRIER_SOURCE="the CREWRIG_SPEC_ID_CARRIER environment override"
 if [ -z "$CARRIER" ]; then
-  CARRIER="$(read_carrier_setting)"
-  CARRIER_SOURCE="$CARRIER_FILE"
-fi
-if [ -z "$CARRIER" ]; then
-  CARRIER="$DEFAULT_CARRIER"
-  CARRIER_SOURCE="the built-in default (no carrier= line found)"
+  read_carrier_setting
+  case "$CARRIER_FILE_STATE" in
+    parsed)
+      CARRIER="$CARRIER_FILE_VALUE"
+      CARRIER_SOURCE="$CARRIER_FILE"
+      ;;
+    malformed)
+      fail "the carrier setting '$CARRIER_FILE' exists but names no namespace: no
+       line of the form 'carrier=<namespace>' with a non-empty value was found.
+       Refusing to fall back to the built-in default '$DEFAULT_CARRIER'. A file
+       that exists is a statement of intent, and if this repository's remote is
+       one that refuses the default, silently using it would make every
+       allocation report an unsecured id with nothing pointing at the cause.
+       Write one of:
+         carrier=$CARRIER_PRIMARY
+         carrier=$CARRIER_TAGS
+       (An ABSENT file is different and is not an error: it means no intent was
+       expressed, and the built-in default applies.)"
+      ;;
+    *)
+      CARRIER="$DEFAULT_CARRIER"
+      CARRIER_SOURCE="the built-in default (no $CARRIER_FILE)"
+      ;;
+  esac
 fi
 
 # Validate against the closed pair BEFORE any push.
