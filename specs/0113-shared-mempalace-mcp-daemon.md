@@ -1,7 +1,7 @@
 ---
 id: "0113"
 slug: shared-mempalace-mcp-daemon
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 739
