@@ -27,6 +27,131 @@ corresponding spec-PR is still open is a process violation; the
 *Retroactive review loop* surfaces this as a `class: tech` finding
 (see the rule there).
 
+## Reserving the spec id
+
+The spec id is **secured before the spec branch is created**, and therefore
+before the spec file exists. Run the tool as the first act of the SPECS
+stage, with nothing written yet:
+
+```sh
+bash scripts/reserve-spec-id.sh --issue <related-issue>
+```
+
+The first line of stdout is the id. Only then cut `spec/<NNNN>-<slug>` and
+write `specs/<NNNN>-<slug>.md`, so that the branch name, the filename and
+the frontmatter `id` agree from the first commit rather than being
+reconciled later.
+
+Why this and not `max(existing) + 1`: two sessions picking up two tickets in
+the same second read the same maximum and walk away with the same number.
+The collision is then discovered by an unrelated third pull request *after*
+both offending specs have merged, and by that point the id is carried by an
+issue, a branch name, a pull-request title and a logbook. A reservation is a
+git object pushed to a ref under a dedicated namespace, and the remote's
+create-only compare-and-swap means exactly one of two racing sessions gets
+it; the loser is refused and retries automatically.
+`specs/0112-spec-id-reservation.md` is the full contract.
+
+Ids are never reused and a gap in the sequence is fine. An abandoned
+reservation is harmless: no expiry, no reclamation pass, no release protocol.
+
+### Offline, and contributing from a fork
+
+Both cases reach the same exit code, `3`: the id is allocated locally but
+**not** secured, because either there was no remote to reach or the author
+holds no write access to the reference repository. The tool prints the id and
+then, as a structured field, the mark to carry:
+
+```text
+unsecured-id: true
+```
+
+Copy that line verbatim into the spec frontmatter. It is not optional and it
+is not cosmetic — it is the machine-readable statement that another session
+may still take the id, and it is what `scripts/check-spec-id-reserved.sh`
+reads at pull-request time. That check discriminates by origin:
+
+- a pull request from a branch of the reference repository **fails** on an
+  unsecured id;
+- a pull request from a **fork** has the condition reported without blocking,
+  because its author could not have secured it.
+
+**The maintainer's obligation.** Before merging a fork contribution, a
+maintainer secures the id and removes the mark in the same act:
+
+```sh
+bash scripts/reserve-spec-id.sh --id <NNNN> --issue <related-issue>
+```
+
+Re-running that command for an id already secured for the same issue is a
+no-op that exits `0`. If the id turns out to be held by a *different* ticket,
+the command exits `1` naming both tickets — that is the collision surfacing
+before merge instead of after, which is the whole point.
+
+### Changing the carrier namespace
+
+Which ref namespace holds reservations is named by `.crewrig/spec-id-carrier`,
+a tracked file in this repository, and the value is constrained to a closed
+pair:
+
+| Value | Notes |
+|---|---|
+| `refs/spec-ids/` | The shipped default. Invisible in branch and tag listings; no CI wakes on it. |
+| `refs/tags/spec-id/` | For a remote that refuses a custom top-level namespace. Visible in the tag listing. |
+
+An adopter whose remote refuses the default changes that one line, by pull
+request, and `scripts/sync-from-upstream.sh` never touches it again (the entry
+is `excluded`). Anything outside the pair — including the near miss
+`refs/spec-id/` — exits `1` naming the offending value, because a third
+namespace would be written by the push and read by neither the allocation
+union nor the pull-request check.
+
+The setting is repository-scoped **on purpose**, and not an environment
+variable each contributor exports. The compare-and-swap locks a *ref*, not an
+*id*: two contributors with divergent carriers both succeed and both walk away
+with the same id, on an ordinary remote where both namespaces work. A
+convention that has to hold across strangers forking a public framework is not
+a guarantee. `SPEC_ID_CARRIER` survives only as a one-off override for a single
+invocation, for debugging — never as the configuration route.
+
+### Securing an identifier for a spec under `specs/org/`
+
+`specs/org/` is the org-owned overlay, and upstream deliberately does not know
+its numbering convention (`specs/0071-org-specs-lint-exclusion.md`). So
+upstream cannot compute the next free org identifier, and does not try. It
+secures an identifier the organization has already chosen:
+
+```sh
+bash scripts/reserve-spec-id.sh --corpus org --id <ORG-IDENTIFIER> --issue <N>
+```
+
+`--corpus org` **requires** `--id`; without it the command exits `1` saying so,
+rather than silently falling back to an upstream computation and handing back a
+number from the wrong corpus. The corpus is always told, never inferred from
+the identifier's shape — inferring it would mean upstream recognising an org
+convention, which is exactly the layer boundary spec 0071 drew.
+
+Org reservations live in the **sibling** namespace of the configured carrier
+(`refs/spec-ids-org/` or `refs/tags/spec-id-org/`), never a child of it. That is
+load-bearing rather than stylistic: an `ls-remote` pattern's `*` crosses `/`, so
+a nested `refs/spec-ids/org/<ID>` would be returned by a read of
+`refs/spec-ids/*` and org reservations would appear inside the upstream
+allocated set they are required to stay out of. As siblings, an upstream `0042`
+and an org `0042` coexist without either read seeing the other, and a spec under
+`specs/org/` is never failed by the upstream pull-request check.
+
+**One constraint to know before designing a convention.** A reservation *is* a
+git ref, so an identifier must be nameable as one. An identifier containing a
+space, a `..` sequence, a `~`, a `^`, a `:`, a `?`, a `*`, a `[`, a backslash, or
+a trailing `.lock` **cannot be secured at all** — the command exits `1` naming
+the identifier and the constraint, before any push. This is not a narrowing of
+the opaque-string contract: nothing in the tooling parses or interprets an
+identifier. It is a statement of what the carrier can physically hold, and it is
+surfaced here because an organization needs it *before* it settles on a
+convention, not at first use. There is deliberately no encoding scheme: encoding
+would make the stored identifier differ from the written one and reintroduce a
+mapping nobody asked for.
+
 ## Independence rule
 
 The spec-PR and the implementation-PR are **independent pull
