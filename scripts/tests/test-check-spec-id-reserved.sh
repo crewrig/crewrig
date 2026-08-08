@@ -56,6 +56,23 @@
 # that distinction to catch a nested org namespace; rewriting it with
 # `for-each-ref` would leave it green against the defect it exists to find.
 #
+# ---------------------------------------------------------------------------
+# What a green `check-spec-id-reserved` job in CI does and does not prove
+# ---------------------------------------------------------------------------
+# It does not prove the guard works. The check exits early, successfully, when
+# the change under test adds or renames no spec file — which is most pull
+# requests, including the one that introduced the guard itself. A green badge on
+# such a run reports that the check RAN, not that it discriminated: it never
+# reached a candidate, never read a reservation, and never took a branch this
+# suite covers.
+#
+# That is the same green-for-the-wrong-reason hazard the two rules below guard
+# against, arriving in the CI job rather than in a test, and it is the more
+# dangerous of the three because a badge carries more authority than a comment.
+# THIS SUITE is what exercises the guard, by constructing the repositories the
+# early exit means CI will rarely present. Read a green job as "no spec entered
+# the corpus here" and a green suite as "the guard discriminates".
+#
 # Usage:
 #   bash scripts/tests/test-check-spec-id-reserved.sh
 
@@ -93,8 +110,12 @@ record_fail() {
 # Fixture construction
 # ---------------------------------------------------------------------------
 
-# render_spec <id> <slug> <related-issue>
+# render_spec <id> <slug> <related-issue> [<extra-frontmatter-line>]
+# The fourth argument carries an optional extra frontmatter line, which is how
+# the `unsecured-id: true` mark is placed. Absent by default, matching
+# docs/spec-format.md: the field carries meaning only when present and true.
 render_spec() {
+  local extra="${4:-}"
   cat <<EOF
 ---
 id: "$1"
@@ -103,7 +124,8 @@ status: draft
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: $3
-version: 1.0.0
+version: 1.0.0${extra:+
+$extra}
 ---
 
 # Title
@@ -175,16 +197,20 @@ add_to_base() {
   git -C "$work" checkout -q feature
 }
 
-# add_spec <name> <path> <id> <slug> <issue>
+# add_spec <name> <path> <id> <slug> <issue> [<extra-frontmatter-line>]
 # The pull request adds a spec file on the feature branch.
 add_spec() {
-  local name="$1" path="$2" id="$3" slug="$4" issue="$5"
+  local name="$1" path="$2" id="$3" slug="$4" issue="$5" extra="${6:-}"
   local work; work="$(fixture_work "$name")"
   mkdir -p "$work/$(dirname "$path")"
-  render_spec "$id" "$slug" "$issue" > "$work/$path"
+  render_spec "$id" "$slug" "$issue" "$extra" > "$work/$path"
   git -C "$work" add -A
   git -C "$work" commit -q -m "add $path"
 }
+
+# The mark scripts/reserve-spec-id.sh emits on its exit-3 path, in the exact
+# shape the author pastes into the frontmatter.
+UNSECURED_MARK="unsecured-id: true"
 
 # add_raw <name> <path> <body>
 add_raw() {
@@ -419,6 +445,71 @@ reserve c9 refs/spec-ids/0208 0208 860
 rename_spec c9 specs/0208-old-slug.md specs/0209-new-id.md 0209 new-id 860
 run_check_same_repo c9
 expect_fail_verdict "Case 9 — a rename onto an unsecured id fails"
+
+# ---------------------------------------------------------------------------
+# The unsecured-id mark (requirement 9) and its removal (requirement 10)
+# ---------------------------------------------------------------------------
+# The mark is the reservation tool's OUTPUT and this check's INPUT, and nothing
+# in PLAN v9 drew the line between them — which is how the invariant at
+# docs/spec-format.md:34, "a merged spec never carries it", reached `main`
+# enforced by nothing. The linter type-checks the boolean; this check compared
+# holder against ticket and logged OK without ever reading the mark.
+#
+# One case is not enough here, and the reason is structural rather than
+# rhetorical. Each of the three below was checked against the wrong fix it is
+# supposed to catch, and one of them does NOT catch what it first appeared to:
+#
+#   Case 13  the headline. Removing the stale-mark enforcement fails this and
+#            nothing else.
+#   Case 14  catches a mark enforced OUTSIDE the blocking gate — a bare `exit`
+#            or `wiring_fault` on the mark's presence, which is the natural way
+#            to write "this must never merge" and which bypasses origin
+#            discrimination entirely, blocking the fork path the mark exists to
+#            serve. It does NOT catch a mark merely routed to `add_finding`
+#            unconditionally: that respects the BLOCKING flag, so a fork still
+#            exits 0 and this case stays green. Routing through `add_finding`
+#            rather than around it is the property being pinned.
+#   Case 15  catches the opposite over-correction, where the mark is read as
+#            "the author already knows" and a blocking condition is downgraded
+#            to a report — which would let a same-repository author opt out of
+#            the guard by pasting one line.
+
+# Case 13 — the stale mark. The id IS secured, for this spec's own ticket, so
+# the run would otherwise be the golden path of Case 1. Requirement 10 says the
+# mark is removed in the same act that secures the id; a spec that keeps it has
+# a frontmatter field asserting the opposite of the reservation record, and
+# merging it puts a permanent falsehood in the corpus.
+new_fixture c13
+reserve c13 refs/spec-ids/0219 0219 900
+add_spec c13 specs/0219-stale-mark.md 0219 stale-mark 900 "$UNSECURED_MARK"
+run_check_same_repo c13
+expect_fail_verdict "Case 13 — a secured id still carrying the unsecured mark fails"
+expect_log_matches "Case 13 — the offending file is named" 'specs/0219-stale-mark\.md'
+
+# Case 14 — the honest mark on the path it exists for. A fork contributor cannot
+# secure anything by construction, so their spec carries the mark legitimately
+# and the pull request stays mergeable pending a maintainer. What this pins is
+# that mark handling stays INSIDE the blocking gate: enforcing the mark with its
+# own refusal — the natural shape for "a merged spec never carries this" — skips
+# origin discrimination and blocks the contributor who had no way to secure
+# anything. Verified: a hard `exit 1` on the mark's presence turns this red and
+# nothing else in the suite notices.
+new_fixture c14
+add_spec c14 specs/0220-honest-mark.md 0220 honest-mark 901 "$UNSECURED_MARK"
+run_check c14 \
+  "CI_MERGE_REQUEST_SOURCE_PROJECT_PATH=contributor/crewrig" \
+  "CI_PROJECT_PATH=$REFERENCE_REPO"
+expect_pass_verdict "Case 14 — an unsecured id from a fork carrying the mark reports without failing"
+
+# Case 15 — the opposite over-correction. Same honest mark, same unsecured id,
+# but from the reference repository, where the author CAN secure it and
+# requirement 10 says an unsecured id blocks. The mark must not buy an exemption:
+# reading it as "already acknowledged" would let a same-repo author opt out of
+# the guard by pasting one line, which is the whole guard.
+new_fixture c15
+add_spec c15 specs/0221-marked-but-blocking.md 0221 marked-but-blocking 902 "$UNSECURED_MARK"
+run_check_same_repo c15
+expect_fail_verdict "Case 15 — the mark buys no exemption from the reference repository"
 
 # ---------------------------------------------------------------------------
 # Requirement 10 and PLAN step 10 — origin discrimination and degradations
