@@ -1,0 +1,36 @@
+# spec-id-carrier — which git ref namespace this repository uses to hold spec-id
+# reservations (spec 0112).
+#
+# A reservation is a parentless git object pushed to a ref under the namespace
+# named here. The guarantee that two sessions never walk away with the same id
+# is the remote's create-only compare-and-swap on that ref, so the namespace
+# MUST be identical for every contributor — otherwise two contributors writing
+# into two different namespaces both succeed and both hold the same id. That is
+# why this setting is a tracked, repository-scoped file changed by pull request,
+# and not a contributor-local environment variable.
+#
+# Format: `carrier=<namespace>`. Blank lines and lines whose first non-blank
+# character is `#` are ignored; the first `carrier=` line wins.
+#
+# The value is constrained to a CLOSED PAIR. Anything else — including a near
+# miss such as `refs/spec-id/` — makes scripts/reserve-spec-id.sh exit 1 naming
+# the offending value, because a third namespace would be written by the push
+# and read by neither the allocation union nor
+# scripts/check-spec-id-reserved.sh:
+#
+#   refs/spec-ids/        the default. Invisible in branch and tag listings.
+#   refs/tags/spec-id/    the alternative, for a remote that refuses a custom
+#                         top-level namespace. Visible in the tag listing.
+#
+# Org reservations (specs under `specs/org/`, secured with
+# `--corpus org --id <ID>`) go to the SIBLING namespace of whichever value is
+# set here — `refs/spec-ids-org/` or `refs/tags/spec-id-org/`. Sibling, never a
+# child: an `ls-remote` pattern's `*` crosses `/`, so a nested `refs/spec-ids/org/`
+# would be returned by a read of `refs/spec-ids/*` and org reservations would
+# leak into the upstream allocated set that spec 0112 delta-01 excludes them from.
+#
+# This entry is `excluded` in .crewrig/core-paths.txt: an adopter whose remote
+# refuses the default changes the value once and scripts/sync-from-upstream.sh
+# never guards, restores, or aborts on it. The consequence is symmetric and
+# permanent — upstream can never update the value afterwards either.
+carrier=refs/spec-ids/
