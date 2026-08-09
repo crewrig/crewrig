@@ -556,13 +556,51 @@ cmd_takeover() {
 
 # `run`'s release path. Global because a `trap … EXIT` cannot take arguments,
 # and because the wrapped command's exit code must survive it.
+#
+# HAVING ACQUIRED THE CLAIM IS NOT A LICENCE TO DROP IT. A `takeover` can land
+# while the wrapped command is still in flight — and that is not an exotic race
+# but the case `takeover` exists for, since a `run` wrapping a build or a suite is
+# exactly what outlives the staleness threshold. From the instant the takeover
+# lands, the claim belongs to the taker. So this path re-checks the holder for the
+# same reason `cmd_release` does above: an unconditional release evicts the taker
+# SILENTLY, leaving it believing it holds a worktree a THIRD agent can then claim
+# — the simultaneous-belief state requirement 5 exists to make impossible.
+#
+# The ledger line matters as much as the guard. Writing `release <us>` after a
+# takeover answers a requirement-7 investigation with the WRONG agent: we were not
+# the holder at that instant, the taker was, and nothing would record that the
+# taker's claim ended at all. Naming the wrong holder is worse than naming none,
+# so a declined release is recorded explicitly and names the agent that displaced
+# us. This does NOT change `run`'s exit code, which stays the wrapped command's
+# own per the exit contract — being displaced says nothing about whether the
+# command succeeded.
 ACQUIRED=false
 run_release_on_exit() {
-  if [ "$ACQUIRED" = "true" ]; then
-    ACQUIRED=false
-    release_claim_dir
-    ledger_append "release" "run"
+  if [ "$ACQUIRED" != "true" ]; then
+    return 0
   fi
+  ACQUIRED=false
+
+  if ! claim_exists; then
+    # The claim went away without passing through us. Recording it as OUR release
+    # would be the same lie as releasing a claim we no longer hold.
+    ledger_append "release-declined" "run: claim was already gone at exit"
+    note "Notice: the claim on '$TICKET' was already gone when this run exited;"
+    note "       nothing was released. Run 'history' to see what happened to it."
+    return 0
+  fi
+
+  CURRENT_HOLDER="$(claim_field holder)"
+  if [ "$CURRENT_HOLDER" != "$AGENT" ]; then
+    ledger_append "release-declined" "run: displaced by '$CURRENT_HOLDER'; claim left intact"
+    note "Notice: '$CURRENT_HOLDER' took over the claim on '$TICKET' while this run"
+    note "       was in flight. Releasing it here would evict them, so the claim is"
+    note "       left intact and the ledger records a declined release."
+    return 0
+  fi
+
+  release_claim_dir
+  ledger_append "release" "run"
 }
 
 cmd_run() {
