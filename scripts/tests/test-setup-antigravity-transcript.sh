@@ -486,10 +486,17 @@ case "$GATE_OUT" in
   *DEPLOYED*) bad "R16: declining the CONFIRMATION still reached the deployment" ;;
   *)          ok  "R16: declining the confirmation reaches no deployment" ;;
 esac
+# THE CANARY. Every case above passes by NOT seeing "DEPLOYED", so a `run_gate`
+# that is broken outright — a bad extraction, an unset-variable abort, a sourcing
+# failure — would satisfy all of them and read as full coverage. This case is the
+# only one that requires the harness to actually work, which is what stops the
+# other three from being vacuous. Verified: pointing the sourced path at a
+# nonexistent file turns the suite red here (67 passed, 1 failed) rather than
+# green everywhere.
 GATE_OUT="$(run_gate yes yes)"
 case "$GATE_OUT" in
   *DEPLOYED*) ok  "R12/R16: accepting both prompts reaches the deployment" ;;
-  *)          bad "R12/R16: accepting both prompts did NOT reach the deployment — gate inverted?" ;;
+  *)          bad "R12/R16: accepting both prompts did NOT reach the deployment — gate inverted, or the harness is broken" ;;
 esac
 # The deployment target must be the customization root that is proven to fire,
 # not the application-data directory.
