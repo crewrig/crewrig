@@ -131,6 +131,13 @@
 #   since_epoch abort tolerated     19 at want_no_shell_error     ditto, quietly
 #   since_epoch width guard dropped 20 at rc                      the wrap
 #   since_epoch zero arm dropped    19 at rc                      the base error
+#   skew band reverted              21 at `held-for-seconds: 0`   the R8 deadlock
+#   clamp dropped, band kept        21 at `held-for-seconds: 0`   the clamp alone
+#   ANY negative age -> corrupt     21 at the now+300 arm's rc    a skewed fresh
+#                                                                 claim stays safe
+#   tolerance from `--stale-after`  21 at the now+900 arm's rc    it is a constant
+#   corrupt iff >1 year ahead       21 at the now+900 arm's rc    the band's size
+#   absurd age floored to zero      21 at the 18-digit arm's rc   the extreme
 #
 # Recipe: copy `scripts/worktree-claim.sh` and this file into a `mktemp -d` that
 # mirrors `scripts/tests/`, apply one mutation to the COPY, run the copied suite.
@@ -1059,6 +1066,100 @@ case_20() {
   return 0
 }
 
+# ===========================================================================
+# Case 21 [REVIEW F2, second finding] — a `since_epoch` in the FUTURE is sorted
+# into clock skew, which still protects the claim, and corruption, which does not.
+# Catches: the R8 violation that survived the first fix. `since_epoch` was made
+# safe against values that could not be EVALUATED, and a future timestamp
+# evaluates perfectly — it just evaluates to a negative age, which is below every
+# threshold, so `takeover` answered `Refused: … is not stale` and would answer
+# that until wall-clock caught up. At 18 digits that is roughly three billion
+# years: a claim no agent can ever take over, which is precisely the state R8
+# exists to dissolve.
+#
+# THE TWO DISPOSITIONS HAVE TO BE TESTED TOGETHER, and that is the whole design of
+# this case. Granting the takeover on any negative age would satisfy the R8 half
+# of it while making every fresh claim in the system stealable by a peer whose
+# clock runs a few seconds fast — R5's simultaneous-belief state, reintroduced
+# silently to fix R8. So the case asserts a refusal AND a grant, and neither arm
+# alone would be worth writing.
+#
+#   now+300  -> REFUSED, `held-for-seconds: 0`   skew: read as "taken just now"
+#   now+900  -> GRANTED                          past the 300s tolerance: corrupt
+#   18 digits-> GRANTED                          the reported reproduction
+#
+# `held-for-seconds: 0` is load-bearing and is not a restatement of the refusal.
+# It asserts the age was CLAMPED, not merely found negative-and-refused, which is
+# what the unfixed script also did — there the same arm prints -300. It is the
+# only assertion in this case that separates the fix from the defect on the skew
+# side, because on that side both refuse.
+#
+# WHY THE EXACT 300/301 EDGE IS NOT PINNED. It cannot be, without freezing the
+# clock. Let d be the seconds between the fixture stamping the file and the script
+# reading its own clock; a value written as now+N presents an age of d-N. So
+# now+301 classifies as corrupt only while d-301 < -300, i.e. only while d == 0.
+# Measured over 25 runs on this machine: d was 0 twenty-four times and 1 once — a
+# case pinned there would flake at roughly one run in twenty-five, and worse on a
+# loaded runner where d grows. The values above were chosen for the opposite
+# property: now+300 stays skew for any d < 300, and now+900 stays corrupt for any
+# d < 600. Both hold with minutes of slack against a d measured in single seconds.
+# An off-by-one in a five-minute heuristic safety band has no consequence worth an
+# intermittently red suite; a flaky case would cost more than the bound it guards.
+#
+# THE 18-DIGIT ARM WAS KEPT ON SUSPICION AND THEN EARNED IT. It was written as the
+# reported reproduction, and as the only corrupt-side value that rests on no clock
+# assumption at all; on the mutants built for the other two arms it never failed,
+# which is this suite's definition of decoration, and it was nearly dropped for
+# the reason the `09` arm of case 17 was. A mutant found afterwards separates it:
+# flooring an "absurd" age to zero instead of reading it as infinitely old — the
+# tempting extra guard against a very large negative — leaves now+300 and now+900
+# both correct and refuses the 18-digit claim forever. The arm goes red alone
+# there. Do not drop it on the grounds that it duplicates now+900; it does not.
+# ===========================================================================
+case_21() {
+  new_fixture c21a
+  new_fixture c21b
+  new_fixture c21c
+  local now
+  now="$(date -u +%s)"
+
+  # --- Skew: inside the tolerance, the claim is still protected --------------
+  run_claim "$(fx_wt c21a)" take --agent alice
+  want_rc 0 || return 1
+  printf '%s\n' "$(( now + 300 ))" > "$(fx_claim_dir c21a)/since_epoch"
+
+  run_claim "$(fx_wt c21a)" takeover --agent bob
+  want_rc 4 || { WHY="skew arm (now+300): $WHY"; return 1; }
+  want_out "not stale" || return 1
+  # Clamped, not merely negative — the unfixed script prints -300 here.
+  want_out "held-for-seconds: 0" || return 1
+  run_claim "$(fx_wt c21a)" status
+  want_out "holder: alice" || return 1
+  want_no_ledger "$(fx_ledger c21a)" "$(printf 'takeover\tbob\t%s' "$TICKET")" || return 1
+
+  # --- Past the tolerance: corrupt, so infinitely old, so takeable -----------
+  run_claim "$(fx_wt c21b)" take --agent alice
+  want_rc 0 || return 1
+  printf '%s\n' "$(( now + 900 ))" > "$(fx_claim_dir c21b)/since_epoch"
+
+  run_claim "$(fx_wt c21b)" takeover --agent bob
+  want_rc 0 || { WHY="corrupt arm (now+900): $WHY"; return 1; }
+  want_out "Took over '$TICKET' from 'alice'" || return 1
+  want_out "holder: bob" || return 1
+  want_ledger "$(fx_ledger c21b)" "$(printf 'takeover\tbob\t%s\tdisplaced=alice' "$TICKET")" || return 1
+
+  # --- The reported reproduction, with no clock dependence at all ------------
+  run_claim "$(fx_wt c21c)" take --agent alice
+  want_rc 0 || return 1
+  printf '100000000000000000\n' > "$(fx_claim_dir c21c)/since_epoch"
+
+  run_claim "$(fx_wt c21c)" takeover --agent bob
+  want_rc 0 || { WHY="18-digit arm: $WHY"; return 1; }
+  want_out "Took over '$TICKET' from 'alice'" || return 1
+  want_out "holder: bob" || return 1
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -1086,10 +1187,11 @@ describe() {
     18) echo "Case 18 — an over-wide --stale-after is refused before the arithmetic" ;;
     19) echo "Case 19 — a leading-zero since_epoch keeps R8's takeover path open" ;;
     20) echo "Case 20 — an over-wide since_epoch does not deadlock R8's takeover" ;;
+    21) echo "Case 21 — a future since_epoch: skew protects the claim, corruption does not" ;;
   esac
 }
 
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21; do
   WHY=""
   OUT=""
   ERR=""
