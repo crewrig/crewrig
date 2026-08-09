@@ -1,7 +1,7 @@
 ---
 id: "0117"
 slug: tool-boundary-command-guard
-status: draft
+status: approved
 complexity: standard
 interaction-mode: AUTO
 related-issue: 771
