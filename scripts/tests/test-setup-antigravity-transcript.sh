@@ -317,6 +317,30 @@ else
   ok "no stray .tmp file is left behind on the failure path"
 fi
 
+# The rewrite's own failure guard. Found uncovered by the third cold pass: removing
+# `|| { rm -f "$patched"; return 1; }` from the jq rewrite left the suite green.
+# The guard is reachable — an unreadable source manifest exercises it — so it gets
+# an assertion rather than a comment.
+HOME_F="$TMP_ROOT/f"
+TARGET_F="$HOME_F/.gemini/config/hooks.json"
+if deploy_antigravity_transcript_hooks \
+     "$TMP_ROOT/no-such-manifest.json" "$HOOK_SCRIPT" "$HOME_F/hooks" "$TARGET_F" "$ENVP" \
+     >"$TMP_ROOT/out_f" 2>/dev/null; then
+  bad "an unreadable source manifest returned SUCCESS"
+else
+  ok "an unreadable source manifest makes the helper fail"
+fi
+if [ -f "$TARGET_F" ]; then
+  bad "a manifest was written from an unreadable source"
+else
+  ok "no manifest is written when the source cannot be read"
+fi
+if grep -q 'Transcript hooks deployed' "$TMP_ROOT/out_f"; then
+  bad "the helper announced a deployment from an unreadable source"
+else
+  ok "the helper announces nothing when the source cannot be read"
+fi
+
 # --- §3b. The rewrite handles BOTH element shapes ---------------------------
 # The CLI has two: PreToolUse/PostToolUse are GROUPED (`{matcher, hooks: [...]}`)
 # while PreInvocation/PostInvocation/Stop are FLAT (the element IS the handler).
