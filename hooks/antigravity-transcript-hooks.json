@@ -1,12 +1,5 @@
 {
   "crewrig-mempalace-transcript": {
-    "PreInvocation": [
-      {
-        "type": "command",
-        "command": "bash hooks/mempalace-transcript.sh PreInvocation",
-        "timeout": 10
-      }
-    ],
     "Stop": [
       {
         "type": "command",

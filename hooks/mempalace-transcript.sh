@@ -1,11 +1,19 @@
 #!/bin/bash
-# mempalace-transcript.sh — Shared session transcript hook for Gemini CLI and Claude Code
+# mempalace-transcript.sh — Shared session transcript hook for Claude Code, Gemini CLI,
+#                            GitHub Copilot CLI and Antigravity CLI
 #
 # Persists session exchanges (user prompts, tool usage, agent responses) to
 # MemPalace's "transcripts" wing. Called by tool-specific hook registrations.
 #
-# Input: JSON on stdin (hook event data from Gemini CLI or Claude Code)
-# Output: none (all logging to stderr, stdout reserved for hook JSON response)
+# Input:  JSON on stdin (hook event data from any of the four CLIs).
+#         Antigravity ALSO passes the lifecycle event name as the first positional
+#         argument, because its payload carries no `hook_event_name` field. Any
+#         other caller passes no argument, which is what keeps every
+#         Antigravity-specific path below dormant for them (spec 0116 R11).
+# Output: nothing on stdout for Claude Code, Gemini CLI and Copilot CLI — all
+#         logging goes to stderr. For Antigravity, a single `{}` on stdout: the
+#         CLI requires a JSON object from every handler, and an empty one is
+#         non-steering (only `{"decision": "continue"}` blocks a Stop).
 #
 # Environment:
 #   MEMPALACE_TRANSCRIPT_ENABLED - set to "1" to enable (default: disabled)

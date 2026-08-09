@@ -13,10 +13,16 @@
 # `fzf` prompts are asserted structurally instead (§4).
 #
 # Contract asserted (spec 0116):
-#   R1/R2/R3 — the manifest is a map of NAMED hooks, registers only events the
-#     CLI actually has, and registers neither of the per-tool events. The four
-#     names spec 0056 shipped (BeforeAgent/AfterTool/AfterModel/SessionEnd) do
-#     not exist in Antigravity and MUST be absent.
+#   R1/R2 — the manifest is a map of NAMED hooks and registers only events the
+#     CLI actually has. The four names spec 0056 shipped
+#     (BeforeAgent/AfterTool/AfterModel/SessionEnd) do not exist and MUST be absent.
+#   R3 (delta-01) — `Stop` is the ONLY registered event, because it is the only
+#     one that fires once per turn. Measured, agy 1.0.16, one turn with three
+#     shell commands: PreInvocation 4x, PostInvocation 4x, PreToolUse 3x, Stop 1x.
+#   R22 (delta-01) — the consent text states the true per-turn write volume.
+#   R24 (delta-01) — the setup script's call-site ARGUMENTS are asserted, not just
+#     that the deployment is reached. An emptied env prefix silently disables
+#     recording, and previously survived the whole suite.
 #   R4 — no command depends on the launch directory ($PWD is fatal here: a
 #     handler's cwd is the directory holding hooks.json, not any project).
 #   R5 — every command tells the hook which event fired, because the Antigravity
@@ -106,16 +112,38 @@ for retired in BeforeAgent AfterTool AfterModel SessionEnd; do
   fi
 done
 
-# R3 — the per-tool events are deliberately not registered. mempalace-transcript.sh
-# already refuses PostToolUse (issue #91: too many writes for parallel sessions),
-# and PreToolUse sits on a path where a hook's output can deny the tool.
-for noisy in PreToolUse PostToolUse PostInvocation; do
+# R3 (as replaced by delta-01) — `Stop` is the ONLY registered event. Measured on
+# agy 1.0.16, one turn issuing three shell commands: PreInvocation 4x,
+# PostInvocation 4x, PreToolUse 3x, Stop 1x. The other four all have roughly
+# per-tool-round cardinality, and the CLI runs hooks synchronously, blocking the
+# agent loop.
+if jq -e '[.[] | keys[]] == ["Stop"]' "$MANIFEST" >/dev/null 2>&1; then
+  ok "R3: Stop is the only registered event"
+else
+  bad "R3: registered events are $(jq -c '[.[] | keys[]]' "$MANIFEST"), expected [\"Stop\"]"
+fi
+for noisy in PreToolUse PostToolUse PreInvocation PostInvocation; do
   if jq -e --arg e "$noisy" '[.[] | keys[]] | index($e) == null' "$MANIFEST" >/dev/null 2>&1; then
     ok "R3: high-frequency event '$noisy' is not registered"
   else
     bad "R3: high-frequency event '$noisy' is registered"
   fi
 done
+
+# R22 — the consent text must state the true write volume. It claimed "one entry
+# per turn (turn start and turn end)" while registering an event that fires once
+# per model call; a three-tool turn produced five entries, not two. Pin the two
+# together so the text cannot drift from the manifest again.
+if grep -q 'Record ONE entry per turn, when the turn ends' "$SETUP"; then
+  ok "R22: the consent text states one entry per turn, at turn end"
+else
+  bad "R22: the consent text does not state the true per-turn write volume"
+fi
+if grep -qE 'turn start and turn end' "$SETUP"; then
+  bad "R22: the consent text still promises a turn-start entry"
+else
+  ok "R22: the consent text no longer promises a turn-start entry"
+fi
 
 # R4 — a handler's cwd is the directory holding hooks.json, so $PWD resolves
 # under the customization root rather than under any project.
@@ -186,17 +214,20 @@ else
   ok "R4: deployed manifest is free of \$PWD"
 fi
 # The event argument must survive the rewrite, or the hook cannot classify —
-# the payload carries no event name. Asserted per event: a single compound
-# expression is a trap here, because after `[...] |` the `.` is the array, so a
-# second `[.. | .command? // empty]` re-derives from strings and yields [].
-for ev in PreInvocation Stop; do
+# the payload carries no event name. Read the registered events from the manifest
+# rather than hardcoding them, so this keeps covering whatever R3 mandates
+# without needing an edit here; today that is `Stop` alone.
+while IFS= read -r ev; do
+  [ -n "$ev" ] || continue
   if jq -e --arg ev " $ev" '[.. | .command? // empty] | any(endswith($ev))' \
        "$TARGET_A" >/dev/null 2>&1; then
     ok "R5: the '$ev' argument survives the command rewrite"
   else
     bad "R5: the '$ev' argument was lost in the rewrite"
   fi
-done
+done <<EOF
+$(jq -r '.[] | keys[] | select(. != "enabled")' "$MANIFEST")
+EOF
 
 # --- §3. Deployment: an operator's existing manifest -------------------------
 echo "§3 deployment over an existing manifest (R15)"
@@ -468,7 +499,11 @@ run_gate() {
       cat >/dev/null
       if [ ! -f "$_ASKED" ]; then : > "$_ASKED"; printf '%s\n' "$a1"; else printf '%s\n' "$a2"; fi
     }
-    deploy_antigravity_transcript_hooks() { echo "DEPLOYED"; }
+    # Echo the ARGUMENTS, not just a marker. Without this the call site is
+    # covered by nothing: §2/§3 exercise the helper with hand-written correct
+    # arguments, and a stub that ignores its own would let a swapped or emptied
+    # argument at the call site pass the whole suite (spec 0116 delta-01 R24).
+    deploy_antigravity_transcript_hooks() { echo "DEPLOYED|$1|$2|$3|$4|$5"; }
     detect_mempalace_python() { echo "/usr/bin/python3"; }
     # A directive covers only the next command, and `a=1; b=2` is two — hence
     # one line each. Both are read by the block sourced below.
@@ -521,6 +556,38 @@ GATE_OUT="$(run_gate yes yes)"
 case "$GATE_OUT" in
   *DEPLOYED*) ok  "R12/R16: accepting both prompts reaches the deployment" ;;
   *)          bad "R12/R16: accepting both prompts did NOT reach the deployment — gate inverted, or the harness is broken" ;;
+esac
+
+# R24 — the call site's ARGUMENT LIST. Everything above proves the deployment is
+# reached; none of it proves it is reached with the right arguments. Five
+# mutations at the call site previously survived the whole suite, the worst being
+# an emptied environment prefix: the deployed commands then lack
+# MEMPALACE_TRANSCRIPT_ENABLED=1, so the hook opts itself out and records nothing,
+# silently, exit 0. That is this feature's own failure mode, reachable by a
+# one-token edit.
+GATE_ARGS="$(printf '%s' "$GATE_OUT" | tr ' ' '\n' | grep '^DEPLOYED|' || true)"
+IFS='|' read -r _ A_SRC A_HOOK A_DIR A_JSON A_ENV <<EOF
+$GATE_ARGS
+EOF
+case "$A_SRC" in
+  */hooks/antigravity-transcript-hooks.json) ok "R24: arg 1 is the manifest source" ;;
+  *) bad "R24: arg 1 is '$A_SRC', expected the manifest source" ;;
+esac
+case "$A_HOOK" in
+  */hooks/mempalace-transcript.sh) ok "R24: arg 2 is the hook script source" ;;
+  *) bad "R24: arg 2 is '$A_HOOK', expected the hook script source" ;;
+esac
+case "$A_DIR" in
+  */hooks) ok "R24: arg 3 is the hook install DIRECTORY" ;;
+  *) bad "R24: arg 3 is '$A_DIR', expected a hooks directory" ;;
+esac
+case "$A_JSON" in
+  */.gemini/config/hooks.json) ok "R24: arg 4 is the manifest TARGET at the customization root" ;;
+  *) bad "R24: arg 4 is '$A_JSON', expected \${HOME}/.gemini/config/hooks.json" ;;
+esac
+case "$A_ENV" in
+  MEMPALACE_TRANSCRIPT_ENABLED=1*) ok "R24: arg 5 enables persistence" ;;
+  *) bad "R24: arg 5 is '$A_ENV' — the deployed hook would opt itself out and record nothing" ;;
 esac
 # The deployment target must be the customization root that is proven to fire,
 # not the application-data directory.

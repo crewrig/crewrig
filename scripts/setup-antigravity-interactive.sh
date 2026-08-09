@@ -412,8 +412,10 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   else
     echo "  3. Create $AGY_HOOKS_JSON (none exists today)"
   fi
-  echo "  4. Record one entry per turn (turn start and turn end) — per-tool"
-  echo "     events are deliberately NOT registered"
+  echo "  4. Record ONE entry per turn, when the turn ends. No other event is"
+  echo "     registered: the CLI's other four all fire once per model call or"
+  echo "     once per tool step, many times in a single turn, and each hook run"
+  echo "     blocks the agent loop"
   echo ""
   CONFIRM=$(echo -e "yes\nno" | fzf --height 10% --header "Apply?")
   if [ "$CONFIRM" = "yes" ]; then
