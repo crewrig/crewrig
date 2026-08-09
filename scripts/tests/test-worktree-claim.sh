@@ -129,7 +129,7 @@
 #     multiply (`[ … -gt … ]`)                                    arithmetic too
 #   since_epoch fails closed        19, 20 at rc                  R8's disposition
 #   since_epoch abort tolerated     19 at want_no_shell_error     ditto, quietly
-#   since_epoch width guard dropped 20 at rc                      the wrap
+#   since_epoch width guard dropped 20 at rc                      the plausible wrap
 #   since_epoch zero arm dropped    19 at rc                      the base error
 #   skew band reverted              21 at `held-for-seconds: 0`   the R8 deadlock
 #   clamp dropped, band kept        21 at `held-for-seconds: 0`   the clamp alone
@@ -144,6 +144,25 @@
 # Nothing here mutates the checkout. Full verbatim output is recorded on the
 # ticket; re-run the matrix after any edit to the validation block or to
 # `cmd_takeover`'s `since_epoch` handling.
+#
+# A ROW CAN DIE WITHOUT ANYONE TOUCHING IT, AND A DEAD ROW IS GREEN. One row here
+# — `since_epoch width guard dropped` — stopped reproducing three commits after it
+# was written, when the clock-skew band was added: the mutant's wrapped value began
+# falling out through the band's CORRUPT arm, which grants the takeover just as the
+# width guard does, so the mutation left the suite 21/21 while the row went on
+# asserting the opposite. Nothing edited that row, or case 20, or the guard it
+# covers. A LATER fix reached the same verdict by a second path, and the assertion
+# could not tell the paths apart. Case 20 now uses a value that second path cannot
+# reach (see the case). Every row above was re-run at that point; the other fifteen
+# still turn their named case red at their named assertion.
+#
+# Two things follow for anyone re-running this. Re-running is not a formality — it
+# is the only thing that detects this class of decay, because a row that has
+# stopped discriminating reports as a pass, and passes are not read. And a row
+# counts as re-run only if the MUTATION IS CONFIRMED TO HAVE APPLIED: a
+# substitution that silently matched nothing produces exactly the same all-green
+# output as a dead row. Diff the mutated copy against the original before believing
+# what its run reports.
 #
 # ---------------------------------------------------------------------------
 # Two harness rules that are load-bearing
@@ -1034,15 +1053,51 @@ case_19() {
 }
 
 # ===========================================================================
-# Case 20 [REVIEW F2] — an over-wide `since_epoch` does not invert R8 into a
-# permanent deadlock.
+# Case 20 [REVIEW F2] — an over-wide `since_epoch` does not wrap into a
+# plausible-looking FRESH claim and stand in front of R8's recovery.
 # Catches: the 64-bit wrap on the disk-side value, which fails in the mirror
-# direction of case 18's. A 20-digit timestamp wrapped to a NEGATIVE age, and a
-# negative age is less than any threshold, so `takeover` answered `Refused: the
-# claim on '736' is not stale.` with `held-for-seconds: -7766279629665972725` —
-# and would answer that forever. Not a claim granted too easily but a claim NO
-# AGENT CAN EVER TAKE OVER: the worktree is stranded on a holder that is gone,
-# which is precisely the state R8 exists to dissolve.
+# direction of case 18's. `$(( … ))` truncates a digit string wider than 64 bits
+# SILENTLY, so an over-wide `since_epoch` does not announce itself — it evaluates,
+# and what it evaluates to is unrelated to anything a clock ever produced.
+# `takeover` then reports that number as the claim's age and decides on it.
+#
+# THE VALUE IS `2^64 + now`, AND IT IS NOT INTERCHANGEABLE WITH THE OBVIOUS ONE.
+# This case was written with `99999999999999999999`, the reported reproduction,
+# and that value has stopped discriminating. Measured on both revisions, not
+# inferred:
+#
+#   at 30fb24b, the commit that introduced this case, before the skew band
+#     width guard dropped -> FAIL Case 20, 19/1.  The row was true when written.
+#   at bb844ab, head
+#     width guard dropped -> 21 passed, 0 failed. Dead.
+#
+# The mechanism is the clock-skew band added in bcc4e65. `99999999999999999999`
+# wraps to -7766279629665969197, and an age that negative now leaves through the
+# band's CORRUPT arm — takeable, which is the same verdict the width guard gives,
+# reached by a different path. The assertion cannot tell the two apart, so it went
+# on reading as a test of the guard while testing nothing.
+#
+# `2^64 + now` is the value that second path cannot reach. It wraps to `now`
+# exactly, so the age is d — the seconds between the fixture stamping the file and
+# the script reading its own clock, 0 on every measurement here — which is not
+# negative, never reaches the band, and sits below the 1800-second default
+# threshold. Without the guard the script answers `Refused: … is not stale` with
+# `held-for-seconds: 0`: a fabricated age, indistinguishable in the output from a
+# claim taken this second. The slack is one-sided and large — d ≥ 0 holds by
+# construction for any clock, and the refusal this case defeats holds for any
+# d < 1800 — so no arm of it depends on which way a clock drifts.
+#
+# WHAT THE GUARD IS WORTH, STATED HONESTLY. Since the skew band, the wrap is no
+# longer a deadlock for most over-wide values: one that lands far in the future
+# leaves through the corrupt arm, one that lands far in the past exceeds every
+# threshold, and both grant the takeover — correctly, but by luck rather than by
+# decision. What is left is the window where the wrap lands near `now`, and there
+# the stall is bounded by `--stale-after`: 30 minutes at the default, and up to
+# the 9-digit maximum the flag accepts — roughly 1900 years — for a caller who
+# asked for a long protection window. Bounded is not benign. The stranded agent R8
+# exists for is told the claim is fresh and is given nothing in the output to
+# suggest otherwise, which is the same wrong answer the original 20-digit value
+# produced, minus the arithmetic that made it obvious.
 #
 # Kept apart from case 19 rather than folded in as a second arm, because the two
 # corrupt shapes fail differently on the unfixed script — rc=1 with a shell abort
@@ -1053,10 +1108,22 @@ case_19() {
 # ===========================================================================
 case_20() {
   new_fixture c20
+  local wide
   run_claim "$(fx_wt c20)" take --agent alice
   want_rc 0 || return 1
 
-  printf '99999999999999999999\n' > "$(fx_claim_dir c20)/since_epoch"
+  # 2^64 + now, concatenated rather than added, because the addition cannot be
+  # done in `$(( … ))` — that is the arithmetic being defeated. 2^64 is
+  # 18446744073709551616; its low ten digits absorb `now` without carrying into
+  # the high ten for every clock below 6290448384, i.e. until the year 2169.
+  wide="$(printf '1844674407%s' "$(( 3709551616 + $(date -u +%s) ))")"
+  if [ "${#wide}" -ne 20 ]; then
+    WHY="fixture built a ${#wide}-digit value, not the 20-digit 2^64+now ('$wide');
+       the carry bound above has been crossed or a constant edited, and the case
+       is no longer testing the wrap it names"
+    return 1
+  fi
+  printf '%s\n' "$wide" > "$(fx_claim_dir c20)/since_epoch"
 
   run_claim "$(fx_wt c20)" takeover --agent bob
   want_rc 0 || return 1
@@ -1186,7 +1253,7 @@ describe() {
     17) echo "Case 17 — --stale-after 08 means eight minutes, not a base error" ;;
     18) echo "Case 18 — an over-wide --stale-after is refused before the arithmetic" ;;
     19) echo "Case 19 — a leading-zero since_epoch keeps R8's takeover path open" ;;
-    20) echo "Case 20 — an over-wide since_epoch does not deadlock R8's takeover" ;;
+    20) echo "Case 20 — an over-wide since_epoch does not pass as a fresh claim" ;;
     21) echo "Case 21 — a future since_epoch: skew protects the claim, corruption does not" ;;
   esac
 }
