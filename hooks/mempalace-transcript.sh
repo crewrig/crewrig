@@ -64,9 +64,24 @@ antigravity_ack() {
   fi
 }
 
+# ONE exit trap, installed here and never replaced. Two reasons it lives at the
+# top rather than at each `exit 0`:
+#   - the acknowledgement then survives an abort. `set -euo pipefail` makes a
+#     malformed payload abort at the first `jq` read, long before any explicit
+#     call site would be reached, and R10 is not conditional on the payload
+#     parsing.
+#   - a later `trap ... EXIT` REPLACES rather than appends, so the temp-file
+#     cleanup that used to install its own trap now routes through here. Adding
+#     a second `trap ... EXIT` anywhere below would silently disarm this one.
+# `${_HOOK_ERR:-}` because the variable is only assigned much further down.
+_hook_cleanup() {
+  rm -f "${_HOOK_ERR:-}"
+  antigravity_ack
+}
+trap _hook_cleanup EXIT
+
 # --- Guard: opt-in only ---
 if [ "${MEMPALACE_TRANSCRIPT_ENABLED:-0}" != "1" ]; then
-  antigravity_ack
   exit 0
 fi
 
@@ -78,7 +93,7 @@ if [ -f "${HOME}/.crewrig/tls-env.sh" ]; then
 fi
 
 # --- Dependencies ---
-command -v jq >/dev/null 2>&1 || { echo "mempalace-transcript: jq required" >&2; antigravity_ack; exit 0; }
+command -v jq >/dev/null 2>&1 || { echo "mempalace-transcript: jq required" >&2; exit 0; }
 
 # Detect a portable `timeout` binary. GNU coreutils ships `timeout(1)` on
 # Linux out of the box; macOS does not. Homebrew's `coreutils` package
@@ -143,7 +158,6 @@ fi
 # for parallel agent sessions. Only Stop and SessionEnd carry session-level
 # value (issue #91).
 if [ "$HOOK_EVENT" = "PostToolUse" ]; then
-  antigravity_ack
   exit 0
 fi
 
@@ -233,7 +247,6 @@ if [ -n "$CONTENT" ]; then
   # Python exit does not abort the hook — STATUS_RC carries the actual
   # outcome.
   _HOOK_ERR="${TMPDIR:-/tmp}/mempalace-hook-$$.err"
-  trap 'rm -f "$_HOOK_ERR"' EXIT
 
   # Temporarily disable `set -e` so a non-zero Python exit does not abort
   # the hook before we can log the failure.
@@ -447,5 +460,4 @@ PYEOF
   fi
 fi
 
-antigravity_ack
 exit 0

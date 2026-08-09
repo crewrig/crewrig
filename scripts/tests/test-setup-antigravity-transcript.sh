@@ -396,6 +396,38 @@ else
   bad "R10: opted-out path answered '$OUT', expected '{}'"
 fi
 
+# R10 is NOT conditional on the payload parsing. `set -euo pipefail` makes a
+# malformed payload abort at the first `jq` read, so the acknowledgement has to
+# survive an abort — which is why it lives in an EXIT trap rather than at each
+# exit site. A regression here is invisible on the happy path.
+for broken in 'NOT JSON' ''; do
+  OUT="$(printf '%s' "$broken" | MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON="$PYSTUB" \
+    bash "$HOOK_SCRIPT" Stop 2>/dev/null)"
+  if [ "$OUT" = "{}" ]; then
+    ok "R10: acknowledged even on an unparseable payload ('${broken:-<empty>}')"
+  else
+    bad "R10: unparseable payload ('${broken:-<empty>}') answered '$OUT', expected '{}'"
+  fi
+done
+
+# Exactly once — a trap that also fired at an explicit call site would emit two
+# objects and make the CLI's parse ambiguous.
+LINES="$(printf '%s' "$AGY_STOP" | MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON="$PYSTUB" \
+  bash "$HOOK_SCRIPT" Stop 2>/dev/null | wc -l | tr -d ' ')"
+if [ "$LINES" = "1" ]; then
+  ok "R10: the acknowledgement is emitted exactly once"
+else
+  bad "R10: emitted $LINES lines on stdout, expected exactly 1"
+fi
+
+# Only one EXIT trap may exist: a second one REPLACES the first, silently
+# disarming both the acknowledgement and the temp-file cleanup.
+if [ "$(grep -c '^[[:space:]]*trap .* EXIT' "$HOOK_SCRIPT")" = "1" ]; then
+  ok "R10: exactly one EXIT trap is installed in the hook"
+else
+  bad "R10: $(grep -c '^[[:space:]]*trap .* EXIT' "$HOOK_SCRIPT") EXIT traps — a later one disarms the earlier"
+fi
+
 # R11 — THE NO-REGRESSION GUARANTEE. The other three CLIs pass no argument, so
 # every Antigravity path above must stay dormant: nothing on stdout, and the
 # same classification as before.
