@@ -92,7 +92,7 @@
 # which costs more than the residual hazard it would close. What is NOT acceptable
 # is leaving the limit unstated: an undocumented boundary in a safety mechanism
 # manufactures exactly the false confidence this ticket exists to remove, so the
-# boundary is named here, in the usage block, and in the paragraph
+# boundary is named here, in the `--help` output, and in the paragraph
 # `docs/agent-team-protocol.md` devotes to the gate.
 #
 # `since` IS WRITTEN TWICE — ISO-8601 for humans and `since_epoch` for
