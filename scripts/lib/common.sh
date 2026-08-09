@@ -1607,6 +1607,11 @@ deploy_antigravity_transcript_hooks() {
       rm -f "${manifest_target}.tmp" "$patched"
       echo "  ERROR: $manifest_target is not a JSON object; refusing to merge." >&2
       echo "         Your original file is untouched, and a backup sits beside it." >&2
+      # The hook script installed above is deliberately NOT removed. It may have
+      # been put there by an earlier successful run, and a manifest already on
+      # disk may still reference it; deleting it to tidy up this failure would
+      # break that deployment. An unreferenced copy is inert — a deleted one that
+      # something still points at is not.
       return 1
     fi
     mv "${manifest_target}.tmp" "$manifest_target"
