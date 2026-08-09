@@ -147,8 +147,19 @@
 # tree dirtied inside the TOCTOU window releases the claim and exits 5.
 #
 # Environment:
-#   CREWRIG_REPO_DIR   Repository context override; every git invocation runs
-#                      with `git -C` against it. Default: the current directory.
+#   CREWRIG_REPO_DIR   Repository context override; every git invocation THIS
+#                      SCRIPT makes runs with `git -C` against it — but NOT the
+#                      command `run` wraps, which inherits the caller's cwd like
+#                      any other child process. Set the override to one tree while
+#                      standing in another and the gate certifies the tree named
+#                      by the variable while the command mutates the tree you are
+#                      standing in: a clean bill of health for a tree nobody
+#                      touched. In normal use the two coincide, because the
+#                      default IS the current directory; the divergence needs the
+#                      override, which is why it exists for the regression suite
+#                      (whose fixtures live under `mktemp -d`) and not for
+#                      day-to-day invocation. `cd` into the worktree and let the
+#                      default apply. Default: the current directory.
 #                      Used by the regression suite, which drives fixture
 #                      repositories under `mktemp -d`.
 
