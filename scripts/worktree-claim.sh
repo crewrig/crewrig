@@ -160,8 +160,6 @@
 #                      (whose fixtures live under `mktemp -d`) and not for
 #                      day-to-day invocation. `cd` into the worktree and let the
 #                      default apply. Default: the current directory.
-#                      Used by the regression suite, which drives fixture
-#                      repositories under `mktemp -d`.
 
 set -euo pipefail
 
