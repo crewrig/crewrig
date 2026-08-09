@@ -127,12 +127,17 @@
 #   numeric bound AFTER the multiply 18 at 307445734561825861     ordering
 #   numeric bound avoiding the      18 at 999999999999999999999   a comparison is
 #     multiply (`[ … -gt … ]`)                                    arithmetic too
-#   since_epoch fails closed        19, 20 at rc                  R8's disposition
+#   since_epoch fails closed        19, 20, 21 at rc              R8's disposition
+#     — at ALL THREE `AGE_SECONDS=""`                             (three sites: see
+#     sites, not the zero arm alone                               the note below)
 #   since_epoch abort tolerated     19 at want_no_shell_error     ditto, quietly
 #   since_epoch width guard dropped 20 at rc                      the plausible wrap
 #   since_epoch zero arm dropped    19 at rc                      the base error
-#   skew band reverted              21 at `held-for-seconds: 0`   the R8 deadlock
-#   clamp dropped, band kept        21 at `held-for-seconds: 0`   the clamp alone
+#   skew band reverted              21 at the skew arm's VALUE    the R8 deadlock
+#                                     AND the now+900 and
+#                                     18-digit arms' rc
+#   clamp dropped, band kept        21 at the skew arm's value,   the clamp alone
+#                                     and there ALONE
 #   ANY negative age -> corrupt     21 at the now+300 arm's rc    a skewed fresh
 #                                                                 claim stays safe
 #   tolerance from `--stale-after`  21 at the now+900 arm's rc    it is a constant
@@ -163,6 +168,36 @@
 # substitution that silently matched nothing produces exactly the same all-green
 # output as a dead row. Diff the mutated copy against the original before believing
 # what its run reports.
+#
+# A ROW CAN ALSO OVERSTATE WHAT THE RUN SEPARATES, WHICH IS THE SAME DEFECT WEARING
+# THE OPPOSITE FACE. A row is checked by its COLOUR — the named case went red — but
+# what it asserts sits in the `proves` column, and the two come apart without the
+# row ever going green. Two rows here had. `skew band reverted` and `clamp dropped,
+# band kept` both stopped case 21 at the same assertion, the skew arm's
+# `held-for-seconds: 0`, because the case returned at its first failed assertion and
+# the arms that tell the two mutants apart ran only after it. Reverting the band
+# destroys the corrupt disposition as well as the clamp — the deadlock its `proves`
+# column names — and the run never observed that half. The column was reporting a
+# mechanism the suite had not checked. Measured, on this revision: before case 21
+# was made to run every arm, both mutants printed one identical failure; after, the
+# first reddens three arms and the second reddens one.
+#
+# SO A ROW'S FINGERPRINT IS (case, failing assertion) — AND A SHARED FINGERPRINT IS
+# A QUESTION, NOT AUTOMATICALLY A DEFECT. `tolerance from --stale-after` and
+# `corrupt iff >1 year ahead` share one too: both die at the now+900 arm's rc and
+# nowhere else. Both are sound, because neither mutation's damage contains the
+# other's and each dies for exactly the reason its column names. The defect is the
+# SUBSET case — one mutant's damage strictly containing another's while both stop at
+# the same assertion, so the containing row's extra claim goes unverified. The remedy
+# is not to reword the column but to let the case run far enough to observe the
+# difference, which is why case 21's arms are independent and all three execute.
+#
+# Two habits for a new row, then. Name the assertion, then ask what the mutant
+# breaks BEYOND it: if that extra damage is what the `proves` column is really
+# claiming, the case has to reach it. And when a mutation has more than one
+# application SITE, the row names the count — `since_epoch fails closed` has three,
+# and applying it to the zero arm alone leaves case 20 green and the suite at 20/21,
+# which reads exactly like a full application of a narrower row.
 #
 # ---------------------------------------------------------------------------
 # Two harness rules that are load-bearing
@@ -419,6 +454,18 @@ want_no_ledger() {
     return 1
   fi
   return 0
+}
+
+# arm_fail <arm-name> — fold the arm's name AND the stdout it just saw into WHY.
+#
+# For a case built out of INDEPENDENT arms that all run (case 21). `record_fail`
+# prints the OUT global, which by then belongs to whichever arm ran LAST — not to
+# the one that failed. Snapshotting stdout here keeps the diagnostic attached to
+# its own arm; case 21 then clears OUT/ERR so nothing misleading trails the WHY.
+# Always returns 1, so `… || { arm_fail "…"; return 1; }` reads as one refusal.
+arm_fail() {
+  WHY="$1: $WHY [stdout: $(printf '%s' "$OUT" | tr '\n' ';')]"
+  return 1
 }
 
 # ===========================================================================
@@ -1157,9 +1204,21 @@ case_20() {
 #
 # `held-for-seconds: 0` is load-bearing and is not a restatement of the refusal.
 # It asserts the age was CLAMPED, not merely found negative-and-refused, which is
-# what the unfixed script also did — there the same arm prints -300. It is the
-# only assertion in this case that separates the fix from the defect on the skew
-# side, because on that side both refuse.
+# what the unfixed script also did — there the same arm prints a NEGATIVE age, and
+# the exact figure is d-300, so it reads -300 or -299 depending on the run (both
+# observed). The assertion is on the clamped 0, never on the negative value, for
+# that reason. It is the only assertion in this case that separates the fix from
+# the defect on the skew side, because on that side both refuse.
+#
+# EVERY ARM RUNS, AND THE CASE STILL RECORDS ONE PASS OR FAIL. The three arms are
+# independent — three fixtures, sharing only the clock read at the top — so the case
+# runs all of them and accumulates, rather than returning at the first failure. That
+# is not tidiness: two matrix rows differ ONLY in the arms after the skew one, and
+# while the case short-circuited they produced byte-identical output and the matrix
+# could not tell them apart. See the fingerprint note in the header. Because each
+# arm's stdout is folded into WHY by `arm_fail` at the point of failure, the OUT/ERR
+# globals are cleared before returning: by then they hold the LAST arm's output,
+# which would attach the wrong evidence to the right complaint.
 #
 # WHY THE EXACT 300/301 EDGE IS NOT PINNED. It cannot be, without freezing the
 # clock. Let d be the seconds between the fixture stamping the file and the script
@@ -1182,48 +1241,85 @@ case_20() {
 # tempting extra guard against a very large negative — leaves now+300 and now+900
 # both correct and refuses the 18-digit claim forever. The arm goes red alone
 # there. Do not drop it on the grounds that it duplicates now+900; it does not.
+#
+# It earns its place a second way now that the arms all run: it is one of the two
+# arms that separate `skew band reverted` from `clamp dropped, band kept`, which
+# were indistinguishable while the case stopped at the skew arm.
 # ===========================================================================
-case_21() {
+# --- Skew: inside the tolerance, the claim is still protected ----------------
+case_21_skew() {
   new_fixture c21a
-  new_fixture c21b
-  new_fixture c21c
-  local now
-  now="$(date -u +%s)"
-
-  # --- Skew: inside the tolerance, the claim is still protected --------------
   run_claim "$(fx_wt c21a)" take --agent alice
-  want_rc 0 || return 1
-  printf '%s\n' "$(( now + 300 ))" > "$(fx_claim_dir c21a)/since_epoch"
+  want_rc 0 || { arm_fail "skew (now+300) setup"; return 1; }
+  printf '%s\n' "$(( $1 + 300 ))" > "$(fx_claim_dir c21a)/since_epoch"
 
   run_claim "$(fx_wt c21a)" takeover --agent bob
-  want_rc 4 || { WHY="skew arm (now+300): $WHY"; return 1; }
-  want_out "not stale" || return 1
-  # Clamped, not merely negative — the unfixed script prints -300 here.
-  want_out "held-for-seconds: 0" || return 1
+  want_rc 4 || { arm_fail "skew (now+300)"; return 1; }
+  want_out "not stale" || { arm_fail "skew (now+300)"; return 1; }
+  # Clamped, not merely negative — the unfixed script prints a negative age here.
+  want_out "held-for-seconds: 0" || { arm_fail "skew (now+300)"; return 1; }
   run_claim "$(fx_wt c21a)" status
-  want_out "holder: alice" || return 1
-  want_no_ledger "$(fx_ledger c21a)" "$(printf 'takeover\tbob\t%s' "$TICKET")" || return 1
+  want_out "holder: alice" || { arm_fail "skew (now+300)"; return 1; }
+  want_no_ledger "$(fx_ledger c21a)" "$(printf 'takeover\tbob\t%s' "$TICKET")" \
+    || { arm_fail "skew (now+300)"; return 1; }
+  return 0
+}
 
-  # --- Past the tolerance: corrupt, so infinitely old, so takeable -----------
+# --- Past the tolerance: corrupt, so infinitely old, so takeable -------------
+case_21_corrupt() {
+  new_fixture c21b
   run_claim "$(fx_wt c21b)" take --agent alice
-  want_rc 0 || return 1
-  printf '%s\n' "$(( now + 900 ))" > "$(fx_claim_dir c21b)/since_epoch"
+  want_rc 0 || { arm_fail "corrupt (now+900) setup"; return 1; }
+  printf '%s\n' "$(( $1 + 900 ))" > "$(fx_claim_dir c21b)/since_epoch"
 
   run_claim "$(fx_wt c21b)" takeover --agent bob
-  want_rc 0 || { WHY="corrupt arm (now+900): $WHY"; return 1; }
-  want_out "Took over '$TICKET' from 'alice'" || return 1
-  want_out "holder: bob" || return 1
-  want_ledger "$(fx_ledger c21b)" "$(printf 'takeover\tbob\t%s\tdisplaced=alice' "$TICKET")" || return 1
+  want_rc 0 || { arm_fail "corrupt (now+900)"; return 1; }
+  want_out "Took over '$TICKET' from 'alice'" || { arm_fail "corrupt (now+900)"; return 1; }
+  want_out "holder: bob" || { arm_fail "corrupt (now+900)"; return 1; }
+  want_ledger "$(fx_ledger c21b)" "$(printf 'takeover\tbob\t%s\tdisplaced=alice' "$TICKET")" \
+    || { arm_fail "corrupt (now+900)"; return 1; }
+  return 0
+}
 
-  # --- The reported reproduction, with no clock dependence at all ------------
+# --- The reported reproduction, with no clock dependence at all --------------
+case_21_wide() {
+  new_fixture c21c
   run_claim "$(fx_wt c21c)" take --agent alice
-  want_rc 0 || return 1
+  want_rc 0 || { arm_fail "18-digit setup"; return 1; }
   printf '100000000000000000\n' > "$(fx_claim_dir c21c)/since_epoch"
 
   run_claim "$(fx_wt c21c)" takeover --agent bob
-  want_rc 0 || { WHY="18-digit arm: $WHY"; return 1; }
-  want_out "Took over '$TICKET' from 'alice'" || return 1
-  want_out "holder: bob" || return 1
+  want_rc 0 || { arm_fail "18-digit"; return 1; }
+  want_out "Took over '$TICKET' from 'alice'" || { arm_fail "18-digit"; return 1; }
+  want_out "holder: bob" || { arm_fail "18-digit"; return 1; }
+  return 0
+}
+
+case_21() {
+  local failed=0 acc="" now
+  now="$(date -u +%s)"
+
+  # EVERY ARM RUNS, EVEN AFTER ONE FAILS — see the fingerprint note in the header.
+  # The three arms are independent by construction (three fixtures, no shared
+  # state but the clock read above), so running all three costs nothing and is
+  # what makes `skew band reverted` and `clamp dropped, band kept` distinguishable:
+  # the first breaks all three arms, the second breaks the skew arm alone. Returned
+  # at the first failure, both mutants printed the SAME single failure and the
+  # matrix could not have told them apart.
+  case_21_skew    "$now" || { acc="$WHY"; failed=1; }
+  case_21_corrupt "$now" || { acc="${acc:+$acc
+      }$WHY"; failed=1; }
+  case_21_wide           || { acc="${acc:+$acc
+      }$WHY"; failed=1; }
+
+  if [ "$failed" -ne 0 ]; then
+    # Each arm already folded its own stdout into WHY via `arm_fail`; the OUT/ERR
+    # globals now hold the LAST arm's output, which would misattribute.
+    WHY="$acc"
+    OUT=""
+    ERR=""
+    return 1
+  fi
   return 0
 }
 
