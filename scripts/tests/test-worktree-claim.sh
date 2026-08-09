@@ -27,19 +27,27 @@
 #
 # That is a FIXTURE-LOCAL choice and NOT a mirror of this repository — an earlier
 # revision of this header claimed it was, and the resemblance runs the opposite
-# way. `.worktrees/` is not ignored here: `git check-ignore .worktrees/` exits 1,
-# the pattern appears nowhere in the repository's `.gitignore`, and `git status`
-# in this checkout does report `?? .worktrees/`. On the one property the claim
+# way. Measured at 4bb8221, in the repository's MAIN checkout: `git check-ignore
+# .worktrees/` exits 1, the pattern appears nowhere in the repository's
+# `.gitignore`, and `git status` there reports `?? .worktrees/`. The main checkout
+# is named rather than "here" because the last of the three is vacuous read from
+# inside a linked worktree — no `.worktrees/` directory exists under one — so a
+# reader running the command from the wrong place would find the claim false for a
+# reason that has nothing to do with the ignore. On the one property the claim
 # cited — a main checkout that stays clean while holding its worktrees — this
 # repository behaves the other way round.
 #
 # No assertion in this suite rests on the ignore either way. Verified rather than
-# assumed: swapping the pattern for an unrelated one and re-running left 15/15
-# passing, because nothing here reads the MAIN checkout's status — the clean-tree
-# gate runs against the worktree's own toplevel. The ignore is fixture hygiene,
-# kept so a human debugging a fixture by hand is not met with phantom dirt.
-# Anyone adding a case that DOES read the main checkout's status must re-derive
-# this rather than inherit it.
+# assumed: swapping the fixture's pattern for an unrelated one and re-running left
+# the suite at 21 passed, 0 failed at 4bb8221 — a full pass, every case — because
+# nothing here reads the MAIN checkout's status; the clean-tree gate runs against
+# the worktree's own toplevel. The figure is pinned to a commit because it counts
+# CASES and the suite grows: an earlier revision of this header carried `15/15`
+# from a run six cases earlier, and a stale full-pass figure still reads as a full
+# pass, so nothing about it looked wrong. The ignore is fixture hygiene, kept so a
+# human debugging a fixture by hand is not met with phantom dirt. Anyone adding a
+# case that DOES read the main checkout's status must re-derive this rather than
+# inherit it.
 #
 # ---------------------------------------------------------------------------
 # Case 12 and the symlink: why the fixture builds one by hand
@@ -94,13 +102,14 @@
 #   TOO WIDE. `$(( … ))` is 64-bit and WRAPS SILENTLY. `--stale-after
 #   200000000000000000` multiplies to a NEGATIVE threshold, every claim then
 #   compares as stale, and the flag hands out the claim its caller asked it to
-#   protect — measured at rc=0, `Took over '736' from 'alice'`. The same wrap on
+#   protect — measured against 5022270, the last revision carrying the defect:
+#   rc=0, `Took over '736' from 'alice'`. The same wrap on
 #   `since_epoch` runs the other way: a negative age compares as "not stale"
 #   forever, and no agent can ever take the claim over. Requirement 8 inverted.
 #
 # WHY VALIDATION MUST PRECEDE EVALUATION, AND NOT MERELY ACCOMPANY IT. A base
 # error in `$(( … ))` is a FATAL EXPANSION ERROR: a non-interactive bash exits on
-# the spot, and `|| fallback` does NOT catch it — measured, both on bash 5 and on
+# the spot, and `|| fallback` does NOT catch it — measured on bash 5.3.15 and on
 # stock 3.2.57. So there is no "evaluate, then recover" design available at all;
 # the only place a bad value can be caught is before the expansion. The overflow
 # side reaches the same conclusion from the other direction: a numeric bound is
@@ -151,15 +160,18 @@
 # `cmd_takeover`'s `since_epoch` handling.
 #
 # A ROW CAN DIE WITHOUT ANYONE TOUCHING IT, AND A DEAD ROW IS GREEN. One row here
-# — `since_epoch width guard dropped` — stopped reproducing three commits after it
-# was written, when the clock-skew band was added: the mutant's wrapped value began
-# falling out through the band's CORRUPT arm, which grants the takeover just as the
-# width guard does, so the mutation left the suite 21/21 while the row went on
-# asserting the opposite. Nothing edited that row, or case 20, or the guard it
-# covers. A LATER fix reached the same verdict by a second path, and the assertion
-# could not tell the paths apart. Case 20 now uses a value that second path cannot
-# reach (see the case). Every row above was re-run at that point; the other fifteen
-# still turn their named case red at their named assertion.
+# — `since_epoch width guard dropped` — stopped reproducing at the VERY NEXT COMMIT
+# after the one that introduced it. Written at 30fb24b, where it still reddened case
+# 20; dead at bcc4e65, which added the clock-skew band, and dead at every commit
+# since until case 20 was rewritten. The mutant's wrapped value began falling out
+# through the band's CORRUPT arm, which grants the takeover just as the width guard
+# does, so the mutation left the suite fully green while the row went on asserting
+# the opposite. Nothing edited that row, or case 20, or the guard it covers. A LATER
+# fix reached the same verdict by a second path, and the assertion could not tell
+# the paths apart. Case 20 now uses a value that second path cannot reach (see the
+# case, which carries the run at each of those three revisions). Every row above was
+# re-run at c48aa6c, the commit that restored it, and every row OTHER than that one
+# still turns its named case red at its named assertion.
 #
 # Two things follow for anyone re-running this. Re-running is not a formality — it
 # is the only thing that detects this class of decay, because a row that has
@@ -178,9 +190,10 @@
 # the arms that tell the two mutants apart ran only after it. Reverting the band
 # destroys the corrupt disposition as well as the clamp — the deadlock its `proves`
 # column names — and the run never observed that half. The column was reporting a
-# mechanism the suite had not checked. Measured, on this revision: before case 21
-# was made to run every arm, both mutants printed one identical failure; after, the
-# first reddens three arms and the second reddens one.
+# mechanism the suite had not checked. Measured at 4bb8221, the commit that made
+# case 21 run every arm: before it, both mutants printed one identical failure;
+# after, `skew band reverted` reddens all three arms and `clamp dropped, band kept`
+# reddens the skew arm alone.
 #
 # SO A ROW'S FINGERPRINT IS (case, failing assertion) — AND A SHARED FINGERPRINT IS
 # A QUESTION, NOT AUTOMATICALLY A DEFECT. `tolerance from --stale-after` and
@@ -196,11 +209,13 @@
 # breaks BEYOND it: if that extra damage is what the `proves` column is really
 # claiming, the case has to reach it. And when a mutation has more than one
 # application SITE, the row names the count — `since_epoch fails closed` has three,
-# and applying it to the zero arm alone leaves case 20 green and the suite at 20/21,
-# which reads exactly like a full application of a narrower row.
+# and applying it to the zero arm alone reddens case 19 ALONE, leaving cases 20 and
+# 21 green, which reads exactly like a full application of a narrower row. Measured
+# at 4bb8221: all three sites, 18 passed and 3 failed; the zero arm alone, 20 passed
+# and 1 failed.
 #
 # ---------------------------------------------------------------------------
-# Two harness rules that are load-bearing
+# Three rules that are load-bearing
 # ---------------------------------------------------------------------------
 # 1. EXIT CODES ARE CAPTURED DIRECTLY, NEVER THROUGH A PIPE. `bash x.sh | tee`
 #    yields `tee`'s status, not the script's, and this repository has shipped that
@@ -211,6 +226,27 @@
 #    WORKTREE. Cases 8 and 13 claim an uncommitted file survives an operation; a
 #    copy kept inside the worktree would be destroyed by the same operation, and
 #    the comparison would then be of two equally-destroyed files.
+#
+# 3. EVERY MEASUREMENT BELOW NAMES THE COMMIT IT WAS TAKEN AT, AND NONE IS
+#    LABELLED `head`. This rule is the residue of three consecutive review rounds
+#    that each found the same defect in this file: a claim that was TRUE WHEN
+#    WRITTEN, went false as later commits landed, and was touched by nobody in
+#    between. Nothing in CI reads a comment, so there is no signal when one rots —
+#    the only detector is a human re-deriving the figure, and a plausible figure
+#    never prompts anyone to. A figure pinned to a commit cannot go false; it goes
+#    HISTORICAL, and a reader who wants today's value can see that it has to be
+#    taken rather than read. `head` is the opposite: it re-points on every commit,
+#    so the label keeps asserting that a measurement taken at some earlier revision
+#    describes the current one.
+#
+#    Where a number carried nothing an anchor could not — a case number, a
+#    subcommand, an assertion string, an arm's name — it was replaced by the anchor
+#    instead of pinned, because an anchor does not go stale at all. Counts of CASES
+#    are the specific trap: the suite grows, `N/N` still reads as a full pass, and
+#    a stale full pass looks exactly like a fresh one. Figures derived from a
+#    constant in `worktree-claim.sh` (480, 1800, the 9-digit ceiling) name the
+#    constant they come from, so the derivation is re-runnable rather than
+#    remembered.
 #
 # Bash 3.2-portable per spec 0111: no associative arrays, no Bash 4 builtins.
 #
@@ -975,11 +1011,12 @@ INTERLOPER
 # fix that merely stops the crash — including one that swallows the base error and
 # falls back to the 30-minute default, answering "how long until stale?" with a
 # figure the caller never asked for. `stale-after-seconds: 480` pins the value at
-# eight decimal minutes: a default fallback yields 1800, a parse-to-zero yields 0
-# and grants the takeover outright, and a fix that rejects leading zeros instead of
-# reading them yields rc=1. `want_no_shell_error` is separately load-bearing — the
-# cheapest fix of all is to retry the arithmetic in base 10 after it fails, which
-# reaches 480 with the raw bash abort still on stderr.
+# eight decimal minutes: a default fallback yields 1800 (`STALE_DEFAULT_MINUTES`,
+# 30, times 60), a parse-to-zero yields 0 and grants the takeover outright, and a
+# fix that rejects leading zeros instead of reading them yields rc=1.
+# `want_no_shell_error` is separately load-bearing — the cheapest fix of all is to
+# retry the arithmetic in base 10 after it fails, which reaches 480 with the raw
+# bash abort still on stderr.
 #
 # NO `09` ARM, DELIBERATELY. `08` and `09` are the whole two-character family and
 # the review names both, but an arm is kept here only if some mutant fails it while
@@ -1109,26 +1146,50 @@ case_19() {
 # `takeover` then reports that number as the claim's age and decides on it.
 #
 # THE VALUE IS `2^64 + now`, AND IT IS NOT INTERCHANGEABLE WITH THE OBVIOUS ONE.
-# This case was written with `99999999999999999999`, the reported reproduction,
-# and that value has stopped discriminating. Measured on both revisions, not
-# inferred:
+# This case was written with `99999999999999999999`, the reported reproduction, and
+# that value stopped discriminating. One mutation — `since_epoch width guard
+# dropped` — run at each revision named below, measured rather than inferred:
 #
-#   at 30fb24b, the commit that introduced this case, before the skew band
-#     width guard dropped -> FAIL Case 20, 19/1.  The row was true when written.
-#   at bb844ab, head
-#     width guard dropped -> 21 passed, 0 failed. Dead.
+#   30fb24b  introduced this case, before the skew band
+#              -> FAIL Case 20 at `expected exit 0, got 4`; 19 passed, 1 failed.
+#                 True when written.
+#   bcc4e65  the very next commit; adds the skew band
+#              -> 20 passed, 0 failed. Dead already, one commit later.
+#   bb844ab  four commits on, still on `99999999999999999999`
+#              -> 21 passed, 0 failed. Still dead, still reading as a pass.
+#   c48aa6c  this case rewritten onto `2^64 + now`
+#              -> FAIL Case 20 at `expected exit 0, got 4`, stdout carrying
+#                 `held-for-seconds: 0`; 20 passed, 1 failed. Alive again.
+#
+# THE LAST ROW IS THE ONE THAT CERTIFIES THE FIX, and an earlier revision of this
+# block did not carry it: it stopped at `bb844ab, head`, so the only measurement on
+# the page was the DEAD one, under a label asserting that state was current. When
+# bb844ab stopped being head the label did not stop claiming it was. That is why
+# every row above names a commit and none names `head` — a ledger of revisions can
+# only go out of date by being INCOMPLETE, which a reader can see; `head` goes out
+# of date by being WRONG, which a reader cannot.
 #
 # The mechanism is the clock-skew band added in bcc4e65. `99999999999999999999`
-# wraps to -7766279629665969197, and an age that negative now leaves through the
-# band's CORRUPT arm — takeable, which is the same verdict the width guard gives,
-# reached by a different path. The assertion cannot tell the two apart, so it went
-# on reading as a test of the guard while testing nothing.
+# never reaches the comparison as itself: `$(( … ))` wraps it to
+# 7766279631452241919, a timestamp some 246 billion years ahead, so the age it
+# yields is negative by that same order — far past the band's tolerance
+# (`CLOCK_SKEW_TOLERANCE_SECONDS`, 300) — and it leaves through the CORRUPT arm.
+# Takeable, which is the same verdict the width guard gives, reached by a different
+# path. The assertion cannot tell the two
+# apart, so it went on reading as a test of the guard while testing nothing.
+#
+# (An earlier revision quoted the resulting AGE here rather than the wrapped value.
+# An age is `now` minus that constant, so it moves once a second: it could not be
+# pinned to any commit, and the figure printed on the page was already hours stale
+# by the time anyone read it. The wrapped value is a constant, and `$(( … ))` in
+# any bash re-derives it in one line.)
 #
 # `2^64 + now` is the value that second path cannot reach. It wraps to `now`
 # exactly, so the age is d — the seconds between the fixture stamping the file and
-# the script reading its own clock, 0 on every measurement here — which is not
-# negative, never reaches the band, and sits below the 1800-second default
-# threshold. Without the guard the script answers `Refused: … is not stale` with
+# the script reading its own clock, measured 0 in the c48aa6c row above — which is
+# not negative, never reaches the band, and sits below the 1800-second default
+# threshold (`STALE_DEFAULT_MINUTES` x 60). Without the guard the script answers
+# `Refused: … is not stale` with
 # `held-for-seconds: 0`: a fabricated age, indistinguishable in the output from a
 # claim taken this second. The slack is one-sided and large — d ≥ 0 holds by
 # construction for any clock, and the refusal this case defeats holds for any
@@ -1139,10 +1200,11 @@ case_19() {
 # leaves through the corrupt arm, one that lands far in the past exceeds every
 # threshold, and both grant the takeover — correctly, but by luck rather than by
 # decision. What is left is the window where the wrap lands near `now`, and there
-# the stall is bounded by `--stale-after`: 30 minutes at the default, and up to
-# the 9-digit maximum the flag accepts — roughly 1900 years — for a caller who
-# asked for a long protection window. Bounded is not benign. The stranded agent R8
-# exists for is told the claim is fresh and is given nothing in the output to
+# the stall is bounded by `--stale-after`: 30 minutes at the default, and up to the
+# maximum the flag accepts (`STALE_MAX_DIGITS`, 9 digits of minutes) — roughly 1900
+# years — for a caller who asked for a long protection window. Bounded is not
+# benign. The stranded agent R8 exists for is told the claim is fresh and is given
+# nothing in the output to
 # suggest otherwise, which is the same wrong answer the original 20-digit value
 # produced, minus the arithmetic that made it obvious.
 #
@@ -1205,8 +1267,8 @@ case_20() {
 # `held-for-seconds: 0` is load-bearing and is not a restatement of the refusal.
 # It asserts the age was CLAMPED, not merely found negative-and-refused, which is
 # what the unfixed script also did — there the same arm prints a NEGATIVE age, and
-# the exact figure is d-300, so it reads -300 or -299 depending on the run (both
-# observed). The assertion is on the clamped 0, never on the negative value, for
+# the exact figure is d-300, so it reads -300 when d is 0 and -299 when d is 1. The
+# assertion is on the clamped 0, never on the negative value, for
 # that reason. It is the only assertion in this case that separates the fix from
 # the defect on the skew side, because on that side both refuse.
 #
@@ -1223,10 +1285,13 @@ case_20() {
 # WHY THE EXACT 300/301 EDGE IS NOT PINNED. It cannot be, without freezing the
 # clock. Let d be the seconds between the fixture stamping the file and the script
 # reading its own clock; a value written as now+N presents an age of d-N. So
-# now+301 classifies as corrupt only while d-301 < -300, i.e. only while d == 0.
-# Measured over 25 runs on this machine: d was 0 twenty-four times and 1 once — a
-# case pinned there would flake at roughly one run in twenty-five, and worse on a
-# loaded runner where d grows. The values above were chosen for the opposite
+# now+301 classifies as corrupt only while d-301 < -300, i.e. only while d == 0. A
+# case pinned there would be asserting that a `git init`, a commit, a `worktree
+# add` and two script invocations all land inside one wall-clock second — a
+# property of the machine's load, not of the script, and one that fails outright on
+# a loaded runner where d grows. Stated as a bound rather than as a flake RATE on
+# purpose: a rate is measured on one machine and does not transfer to the runner
+# that matters. The values above were chosen for the opposite
 # property: now+300 stays skew for any d < 300, and now+900 stays corrupt for any
 # d < 600. Both hold with minutes of slack against a d measured in single seconds.
 # An off-by-one in a five-minute heuristic safety band has no consequence worth an
