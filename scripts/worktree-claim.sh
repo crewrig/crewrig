@@ -205,7 +205,9 @@ Options:
                         .worktrees/; required otherwise.
   --operation "<cmd>"   Recorded with the claim and in the ledger (take).
   --stale-after <min>   Minutes after which a claim counts as stale (takeover).
-                        Default: 30.
+                        A non-negative integer of at most 9 digits — the width at
+                        which 'minutes * 60' still fits the arithmetic that
+                        evaluates it. Default: 30.
   -h, --help            This block.
 
 Read-only subcommands (status, history) carry no .worktrees/ guard, so an
@@ -266,9 +268,52 @@ done
 # Everything after `--` stays in the positional parameters; it is the command
 # `run` wraps. No other subcommand accepts one.
 
+# `--stale-after` is CONSUMED as arithmetic — `$(( STALE_AFTER * 60 ))` in
+# `cmd_takeover` — so it is validated as arithmetic and not merely as digits. A
+# digit-only check accepts two classes of value that the arithmetic then
+# mishandles, neither of them visibly:
+#
+#   * `08` and `09` are read by `$(( … ))` as OCTAL and abort with a raw bash
+#     error naming this script's path and line number, instead of the diagnostic
+#     below that tells the caller what to pass instead;
+#   * a value above roughly 1.5e17 overflows a 64-bit integer once multiplied by
+#     60, and a NEGATIVE threshold inverts the comparison it feeds: `--stale-after
+#     200000000000000000` asks for "essentially never stale" and delivers "always
+#     stale", so every takeover succeeds immediately. That is the direction that
+#     matters — the flag hands out the claim its caller asked it to protect.
+#
+# Both are refused here, before any arithmetic runs. The width is bounded by
+# STRING LENGTH rather than by a numeric comparison, because a comparison can only
+# run after the `$(( … ))` that has already overflowed — validating the value
+# *after* consuming it is the mistake this fix removes, not a smaller version of it.
+STALE_MAX_DIGITS=9
+STALE_AFTER_RAW="$STALE_AFTER"
+
 case "$STALE_AFTER" in
-  ""|*[!0-9]*) fail "--stale-after must be a non-negative integer number of minutes, got '$STALE_AFTER'." ;;
+  ""|*[!0-9]*)
+    fail "--stale-after must be a non-negative integer number of minutes, got '$STALE_AFTER_RAW'."
+    ;;
 esac
+
+# Strip leading zeros so the value reaches `$(( … ))` in base 10. `10#` expresses
+# the same intent, but only for a string that already fits an integer, so the width
+# check has to come first — and once it has, there is nothing left for `10#` to fix.
+while [ "${#STALE_AFTER}" -gt 1 ]; do
+  case "$STALE_AFTER" in
+    0*) STALE_AFTER="${STALE_AFTER#0}" ;;
+    *)  break ;;
+  esac
+done
+
+if [ "${#STALE_AFTER}" -gt "$STALE_MAX_DIGITS" ]; then
+  fail "--stale-after '$STALE_AFTER_RAW' is out of range: at most $STALE_MAX_DIGITS digits of
+       minutes. The bound is not a policy about how long a claim may be held — a
+       claim's age cannot exceed the Unix epoch, so the largest accepted value
+       already means 'never stale' by a factor of thirty. It is what keeps
+       'minutes * 60' inside the integer arithmetic that evaluates it, because a
+       threshold that overflows to a negative number reports every claim as stale
+       and grants every takeover — the opposite of what a large value asks for."
+fi
 
 case "$SUBCOMMAND" in
   run|take|release|takeover)
@@ -555,15 +600,32 @@ cmd_takeover() {
     exit 0
   fi
 
+  # `since_epoch` is the second value this script consumes as arithmetic, and it
+  # comes off DISK rather than from the command line, so it gets the same
+  # treatment as `--stale-after`: what cannot be evaluated safely is not
+  # evaluated. The difference is the disposition. An unreadable `--stale-after`
+  # is a caller error and fails closed; an unreadable `since_epoch` is the
+  # dead-holder case requirement 8 exists for, so it is treated as infinitely
+  # old and the takeover proceeds.
   case "$SINCE_EPOCH" in
-    ""|*[!0-9]*)
-      # An unreadable timestamp is treated as infinitely old rather than as a
-      # reason to refuse: a claim whose state file never got written is exactly
-      # the dead-holder case requirement 8 names.
+    ""|*[!0-9]*|0*)
+      # A claim whose state file never got fully written is exactly requirement
+      # 8's case. A LEADING ZERO joins that class deliberately: `now_epoch` never
+      # emits one, so such a value did not come from this script, and handing it
+      # to `$(( … ))` would read it as OCTAL and abort with a raw bash error on
+      # the very path requirement 8 asks to keep open. (`0` itself lands here too,
+      # and 1970 is infinitely old on any reading.)
       AGE_SECONDS=""
       ;;
     *)
-      AGE_SECONDS="$(( $(now_epoch) - SINCE_EPOCH ))"
+      if [ "${#SINCE_EPOCH}" -gt 18 ]; then
+        # The same hazard from the other end: a digit string too wide for 64-bit
+        # arithmetic overflows it silently, and a negative age compares as "not
+        # stale", which would block the takeover forever instead of granting it.
+        AGE_SECONDS=""
+      else
+        AGE_SECONDS="$(( $(now_epoch) - SINCE_EPOCH ))"
+      fi
       ;;
   esac
 
