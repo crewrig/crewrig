@@ -284,6 +284,62 @@ else
   bad "R15: the operator's hook was lost while replacing ours"
 fi
 
+# --- §3b. The rewrite handles BOTH element shapes ---------------------------
+# The CLI has two: PreToolUse/PostToolUse are GROUPED (`{matcher, hooks: [...]}`)
+# while PreInvocation/PostInvocation/Stop are FLAT (the element IS the handler).
+# The shipped manifest registers only flat events, so a rewrite that mishandled
+# the grouped shape would stay invisible until the first tool event was ever
+# registered — and would then produce a manifest the CLI loads and never runs.
+# Covered here against a synthetic manifest rather than left to that day.
+echo "§3b rewrite against a grouped event and a non-array member"
+
+HOME_D="$TMP_ROOT/d"
+SRC_D="$TMP_ROOT/grouped-src.json"
+TARGET_D="$HOME_D/.gemini/config/hooks.json"
+cat > "$SRC_D" <<'EOF'
+{
+  "grouped-and-disabled": {
+    "enabled": false,
+    "PreToolUse": [
+      { "matcher": "run_command", "hooks": [ { "type": "command", "command": "ORIG" } ] }
+    ],
+    "Stop": [ { "type": "command", "command": "ORIG" } ]
+  }
+}
+EOF
+deploy_antigravity_transcript_hooks \
+  "$SRC_D" "$HOOK_SCRIPT" "$HOME_D/hooks" "$TARGET_D" "$ENVP" >/dev/null 2>&1
+
+if jq -e '."grouped-and-disabled".enabled == false' "$TARGET_D" >/dev/null 2>&1; then
+  ok "a non-array member ('enabled') passes through untouched"
+else
+  bad "the non-array member 'enabled' was mangled by the rewrite"
+fi
+if jq -e '."grouped-and-disabled".PreToolUse[0].matcher == "run_command"' "$TARGET_D" >/dev/null 2>&1; then
+  ok "a grouped event keeps its matcher"
+else
+  bad "a grouped event lost its matcher"
+fi
+if jq -e --arg hp "$HOME_D/hooks/mempalace-transcript.sh" \
+     '."grouped-and-disabled".PreToolUse[0].hooks[0].command | contains($hp) and endswith(" PreToolUse")' \
+     "$TARGET_D" >/dev/null 2>&1; then
+  ok "a grouped event's INNER handler command is rewritten"
+else
+  bad "a grouped event's inner handler command was not rewritten"
+fi
+if jq -e '."grouped-and-disabled".PreToolUse[0] | has("command") | not' "$TARGET_D" >/dev/null 2>&1; then
+  ok "no bogus 'command' is bolted onto the group object itself"
+else
+  bad "a 'command' key was injected at the group level, where the CLI never reads it"
+fi
+if jq -e --arg hp "$HOME_D/hooks/mempalace-transcript.sh" \
+     '."grouped-and-disabled".Stop[0].command | contains($hp) and endswith(" Stop")' \
+     "$TARGET_D" >/dev/null 2>&1; then
+  ok "a flat event's handler command is still rewritten"
+else
+  bad "a flat event's handler command was not rewritten"
+fi
+
 # --- §4. The setup script's own wiring (structural) -------------------------
 # The interactive script cannot run in CI, so assert its shape instead.
 echo "§4 setup script wiring (R12/R16, structural)"

@@ -1565,12 +1565,26 @@ deploy_antigravity_transcript_hooks() {
 
   local patched
   patched="$(mktemp)"
+  # Two element shapes, per the CLI's own docs/hooks.md: PreToolUse/PostToolUse
+  # are GROUPED — each element is `{matcher, hooks: [handler, ...]}` — while
+  # PreInvocation/PostInvocation/Stop are FLAT, each element being a handler
+  # itself. Rewriting `.command` unconditionally would bolt a meaningless
+  # `command` onto a group object and leave the real handler inside `hooks`
+  # untouched, which the CLI would happily load and never run. The shipped
+  # manifest registers only flat events today, so that mistake would have been
+  # invisible until the first tool event was ever registered.
   jq --arg envp "$env_prefix" --arg hp "$hook_target" '
+    def rewrite($ev): .command = ($envp + " bash " + ($hp | tojson) + " " + $ev);
     with_entries(
       .value |= with_entries(
         if (.value | type) == "array"
         then (.key) as $ev
-             | .value |= map(.command = ($envp + " bash " + ($hp | tojson) + " " + $ev))
+             | .value |= map(
+                 if has("hooks") and (.hooks | type) == "array"
+                 then .hooks |= map(rewrite($ev))
+                 else rewrite($ev)
+                 end
+               )
         else .
         end
       )
