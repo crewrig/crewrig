@@ -1,7 +1,7 @@
 ---
 id: "0118"
 slug: spec-pr-merge-status-guard
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 766
