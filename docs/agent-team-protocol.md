@@ -473,17 +473,24 @@ that ticket is the writer, whether or not it created the artifact; one
 instance concluding ends nothing and makes no artifact unwritable. No
 per-instance identifier or register is wanted.
 
-**Determining the writer, without asking it.** An agent about to write
-resolves writership in this order:
+**Determining the writer, without asking it.** Writership starts at
+creation and moves only forward, so an agent about to write walks it
+forward rather than reading the latest line:
 
-1. **A recorded handover** — the most recent `**Writership handover:**`
-   line on the ticket's logbook for that artifact names the writer.
-2. **Otherwise, the creator's role** — the `**Writer:**` line the
-   creating role posts inside the logbook entry it already writes for
-   that artifact. Both lines ride in comments the ticket already gets;
-   the forge's own authorship field names the *account*, not the role.
+1. **Start at the creator's role** — the `**Writer:**` line the creating
+   role posts inside the logbook entry it already writes for that
+   artifact. That role is the writer until a valid handover moves it.
+2. **Then apply the handovers, oldest first** — a
+   `**Writership handover:**` line moves writership only where its
+   left-hand role is the writer the walk has reached, that role being
+   the one who posts it. A line naming anyone else on the left is void
+   (see *Handover* below), contributes nothing, and does not halt the
+   walk: the most recent line is not the answer unless it survives.
 3. **Otherwise, you are not the writer.** An agent that cannot determine
    the writer treats itself as not being it.
+
+Both lines ride in comments the ticket already gets; the forge's own
+authorship field names the *account*, not the role.
 
 ```markdown
 **Writer:** `pr-logbook` — PR #734 body
@@ -492,10 +499,12 @@ resolves writership in this order:
 
 **Already-published comments resolve at rung 3, by design.** A
 `**Writer:**` line is posted for a pull-request or issue body, never per
-comment, so a published comment has no determinable writer and is
-written by nobody — effectively append-only, as `docs/plan-format.md` →
-*Append-only revisions* and Rule B already require. No per-comment
-writer line is owed; correct a published comment by posting a new one.
+comment. A comment's writer is its author when it is published, but
+nothing records that, so every later determination resolves at rung 3
+and the comment is written by nobody from then on — effectively
+append-only, as `docs/plan-format.md` → *Append-only revisions* and Rule
+B already require. No per-comment writer line is owed; correct a
+published comment by posting a new one.
 
 **A non-writer does not write.** An agent that is not the writer and
 judges the artifact needs a change either routes it through the current
@@ -510,7 +519,7 @@ observed side effect of its work.
 fresh-spawn remedy can leave two agents of the writer role live on one
 ticket. An orchestrator that brings a further agent of that role live
 does not direct more than one of them to write a given artifact: each
-resolves the ladder above to its own role and cannot see that the other
+resolves the walk above to its own role and cannot see that the other
 is live. The assertion and lost-update obligations below hold between
 agents of one role exactly as between agents of different roles.
 
@@ -519,10 +528,10 @@ through an explicit handover recorded where a writer determination reads.
 A nomination, designation, or purported transfer by an agent that is not
 the current writer confers nothing — however explicitly stated, wherever
 recorded. An agent offered writership determines the current writer per
-the ladder *before* writing, and treats itself as not being the writer
-unless that determination names its **role**. Writership never transfers
-by assumption, elapsed time, an `idle_notification`, apparent inactivity,
-or a peer having finished something related.
+the walk above *before* writing, and treats itself as not being the
+writer unless that determination names its **role**. Writership never
+transfers by assumption, elapsed time, an `idle_notification`, apparent
+inactivity, or a peer having finished something related.
 
 **Assert only what you have just observed.** An agent that tells the user
 or a peer what a forge artifact currently contains bases that on an
