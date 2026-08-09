@@ -616,6 +616,42 @@ cmd_takeover() {
   # is a caller error and fails closed; an unreadable `since_epoch` is the
   # dead-holder case requirement 8 exists for, so it is treated as infinitely
   # old and the takeover proceeds.
+  #
+  # A `since_epoch` in the FUTURE is that same corrupt state reached from the
+  # other side, and it earns the same disposition for the same reason. Left to
+  # evaluate it yields a NEGATIVE age, and a negative age sits below every
+  # threshold `--stale-after` can express: the flag is validated non-negative, so
+  # `STALE_SECONDS` is never below zero and `age < stale` holds for every value a
+  # caller could pass — including 0, which on any honest claim means "always
+  # stale". Such a claim refuses every takeover forever. That is a worktree no
+  # agent can ever reclaim, precisely the state requirement 8 forbids, so corrupt
+  # state fails toward TAKEABLE rather than toward locked.
+  #
+  # Not every negative age is corrupt, though. Agents sharing this claim
+  # directory share a filesystem; when they also share a host they read ONE clock
+  # and the skew is structurally zero, but across a network mount two clocks
+  # disagree, and a claim taken a moment ago by a host running slightly ahead
+  # reads as negative here. Calling that corrupt would hand a live claim to a
+  # lagging agent — two agents believing they hold the worktree, the
+  # simultaneous-belief state requirement 5 exists to make impossible.
+  #
+  # A tolerance band separates the two, sized by the more expensive mistake. Too
+  # tight steals live claims: silent, and requirement 5 is what stops the silent
+  # clobber this whole script is for. Too generous stalls a takeover on a corrupt
+  # claim — but only until the wall clock passes the stored value, which is what
+  # makes the age non-negative again, so that cost is bounded by the band and
+  # then self-heals. Five minutes is the answer the surrounding ecosystem already
+  # gives to this same question (it is Kerberos' default `clockskew`), it costs
+  # nothing in the single-host case that dominates here, and it caps the stall at
+  # five minutes.
+  #
+  # Inside the band the age is CLAMPED to zero rather than left negative: an age
+  # we cannot measure is treated as a claim taken just now, which is what it
+  # almost certainly is, and what a fresh claim would have reported anyway. The
+  # clamp also removes negative arithmetic from the decision entirely, so no
+  # comparison below can be inverted by a value it was not written to expect.
+  CLOCK_SKEW_TOLERANCE_SECONDS=300
+
   case "$SINCE_EPOCH" in
     ""|*[!0-9]*|0*)
       # A claim whose state file never got fully written is exactly requirement
@@ -634,6 +670,14 @@ cmd_takeover() {
         AGE_SECONDS=""
       else
         AGE_SECONDS="$(( $(now_epoch) - SINCE_EPOCH ))"
+        if [ "$AGE_SECONDS" -lt "-$CLOCK_SKEW_TOLERANCE_SECONDS" ]; then
+          # Further ahead than any clock two agents could plausibly disagree by:
+          # corrupt, so infinitely old, so takeable.
+          AGE_SECONDS=""
+        elif [ "$AGE_SECONDS" -lt 0 ]; then
+          # Within the band: skew, not corruption. Read it as "taken just now".
+          AGE_SECONDS=0
+        fi
       fi
       ;;
   esac
