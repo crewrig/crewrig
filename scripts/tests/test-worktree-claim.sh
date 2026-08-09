@@ -22,9 +22,24 @@
 # fails every case for a reason that has nothing to do with the behaviour under
 # test.
 #
-# The fixture commits a `.gitignore` carrying `.worktrees/`, mirroring this
-# repository, so the main checkout stays clean while holding the worktree inside
-# itself.
+# The fixture commits a `.gitignore` carrying `.worktrees/`, so its main checkout
+# stays clean while holding the worktree inside itself.
+#
+# That is a FIXTURE-LOCAL choice and NOT a mirror of this repository — an earlier
+# revision of this header claimed it was, and the resemblance runs the opposite
+# way. `.worktrees/` is not ignored here: `git check-ignore .worktrees/` exits 1,
+# the pattern appears nowhere in the repository's `.gitignore`, and `git status`
+# in this checkout does report `?? .worktrees/`. On the one property the claim
+# cited — a main checkout that stays clean while holding its worktrees — this
+# repository behaves the other way round.
+#
+# No assertion in this suite rests on the ignore either way. Verified rather than
+# assumed: swapping the pattern for an unrelated one and re-running left 15/15
+# passing, because nothing here reads the MAIN checkout's status — the clean-tree
+# gate runs against the worktree's own toplevel. The ignore is fixture hygiene,
+# kept so a human debugging a fixture by hand is not met with phantom dirt.
+# Anyone adding a case that DOES read the main checkout's status must re-derive
+# this rather than inherit it.
 #
 # ---------------------------------------------------------------------------
 # Case 12 and the symlink: why the fixture builds one by hand
@@ -280,6 +295,23 @@ want_ledger() {
   fi
   if ! grep -qE -- "$2" "$1"; then
     WHY="ledger has no line matching /$2/; ledger reads: $(tr '\t' '|' < "$1" | tr '\n' ';')"
+    return 1
+  fi
+  return 0
+}
+
+# want_no_ledger <ledger> <extended-regex>
+# The ledger must EXIST and carry no such line. A missing ledger fails rather
+# than passes: "that falsehood is absent" is vacuous when read off a file that
+# was never written, and a vacuous green is the failure mode this suite is built
+# to refuse.
+want_no_ledger() {
+  if [ ! -f "$1" ]; then
+    WHY="ledger absent: $1 — an absence assertion against a missing ledger proves nothing"
+    return 1
+  fi
+  if grep -qE -- "$2" "$1"; then
+    WHY="ledger carries a line matching /$2/, which it must not; ledger reads: $(tr '\t' '|' < "$1" | tr '\n' ';')"
     return 1
   fi
   return 0
@@ -708,6 +740,79 @@ case_15() {
   return 0
 }
 
+# ===========================================================================
+# Case 16 — a takeover that lands INSIDE an in-flight `run` survives that run's
+# exit.
+# Catches: an EXIT trap that releases on the sole ground that THIS invocation
+# created the claim, without re-checking it is still the holder. alice `run`s,
+# bob takes over while the wrapped command is still executing, alice exits and
+# deletes the claim bob now holds. R5 mutual exclusion is defeated — carol then
+# takes a worktree bob believes he holds — and R7 attribution is not merely
+# missing but actively wrong: the ledger's last line reads `release alice`,
+# recording an event that never happened, while nothing records that bob's claim
+# ended.
+#
+# No case above sees this. Case 10 releases from a run nobody contested, and
+# case 14 covers the mirror image — a run that must NOT release a claim it never
+# acquired. This is the third combination: a claim the run DID acquire and has
+# since lost. The exit code is 0 on both sides of the fix, so the surviving claim
+# directory and the ledger are the whole assertion.
+#
+# WHY THE CLAIM IS AGED INSTEAD OF `--stale-after 0`. The interloper rewrites
+# `since_epoch` an hour into the past and then takes over with NO flags, at the
+# default 30-minute threshold. That is the reproduction as reported, and it costs
+# nothing to keep it faithful: the defect is reachable through the documented
+# default path, not only through a flag that exists for tests. The edit lands on
+# the claim's own state file under `.git/` and touches no working-tree file, so
+# it cannot perturb the clean-tree gate `run` evaluates around it. It stands in
+# for wall-clock, and for nothing else.
+#
+# The interloper is held OUTSIDE the worktree for the same reason case 8's
+# reference copies are: a helper script written inside it would dirty the tree,
+# and `run` would refuse with 5 before the case ever reached its subject.
+# ===========================================================================
+case_16() {
+  new_fixture c16
+  local aged
+  aged="$(( $(date -u +%s) - 3600 ))"
+
+  cat > "$TMP_ROOT/c16/interloper.sh" <<INTERLOPER
+#!/bin/bash
+set -eu
+printf '%s\n' "$aged" > "$(fx_claim_dir c16)/since_epoch"
+bash "$SCRIPT_UNDER_TEST" takeover --agent bob
+INTERLOPER
+
+  run_claim "$(fx_wt c16)" run --agent alice -- bash "$TMP_ROOT/c16/interloper.sh"
+  # Assert the displacement FIRST: a takeover refused for any reason would leave
+  # every assertion below trivially satisfiable, and this is the more direct
+  # diagnostic when the fixture rather than the script is at fault.
+  want_out "Took over '$TICKET' from 'alice'" || return 1
+  want_rc 0 || return 1
+
+  # R5 — bob's claim outlives the run it landed inside.
+  want_dir "$(fx_claim_dir c16)" || return 1
+  run_claim "$(fx_wt c16)" status
+  want_rc 0 || return 1
+  want_out "state: claimed" || return 1
+  want_out "holder: bob" || return 1
+
+  # …and still excludes a third agent. This is the consequence that bites: with
+  # the claim deleted, carol acquires a worktree bob is actively working in.
+  run_claim "$(fx_wt c16)" take --agent carol
+  want_rc 4 || return 1
+  want_out "holder: bob" || return 1
+
+  # R7 — the ledger must not record a release that never occurred. Asserted as
+  # the ABSENCE of the falsehood rather than the presence of one particular
+  # truth: a fix that logs its declined release under some other action name is
+  # equally honest, and this case must not legislate which.
+  want_no_ledger "$(fx_ledger c16)" "$(printf 'release\talice\t%s' "$TICKET")" || return 1
+  # The record of what did happen has to survive alongside.
+  want_ledger "$(fx_ledger c16)" "$(printf 'takeover\tbob\t%s\tdisplaced=alice' "$TICKET")" || return 1
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -730,10 +835,11 @@ describe() {
     13) echo "Case 13 — a takeover grants no clean-tree waiver" ;;
     14) echo "Case 14 — run is re-entrant and does not release a hold it did not take" ;;
     15) echo "Case 15 — takeover on an unclaimed worktree is refused (4)" ;;
+    16) echo "Case 16 — a takeover landing inside an in-flight run survives its exit" ;;
   esac
 }
 
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
   WHY=""
   OUT=""
   ERR=""
