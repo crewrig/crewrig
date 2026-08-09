@@ -470,6 +470,17 @@ case "$GATE_OUT" in
   *DEPLOYED*) bad "R16: declining the OFFER still reached the deployment" ;;
   *)          ok  "R16: declining the offer reaches no deployment" ;;
 esac
+# `no no` alone cannot say WHICH gate blocked — the second `no` would carry the
+# case on its own. This is the independent probe: decline the offer, then answer
+# yes to anything that follows. It must still deploy nothing. Without it, a
+# refactor that renames the variable on one side of the offer's `if` — leaving
+# the gate always-true — passes the whole suite while an operator who declined
+# the offer is still shown "Apply?" and can deploy from it.
+GATE_OUT="$(run_gate no yes)"
+case "$GATE_OUT" in
+  *DEPLOYED*) bad "R16: the offer decline was overridden by the confirmation" ;;
+  *)          ok  "R16: the offer decline holds on its own" ;;
+esac
 GATE_OUT="$(run_gate yes no)"
 case "$GATE_OUT" in
   *DEPLOYED*) bad "R16: declining the CONFIRMATION still reached the deployment" ;;
