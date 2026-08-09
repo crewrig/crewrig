@@ -497,10 +497,10 @@ authorship field names the *account*, not the role.
 **Writership handover:** PR #734 body — `pr-logbook` → `team-lead`
 ```
 
-**Already-published comments resolve at rung 3, by design.** A
+**Already-published comments resolve at step 3, by design.** A
 `**Writer:**` line is posted for a pull-request or issue body, never per
 comment. A comment's writer is its author when it is published, but
-nothing records that, so every later determination resolves at rung 3
+nothing records that, so every later determination resolves at step 3
 and the comment is written by nobody from then on — effectively
 append-only, as `docs/plan-format.md` → *Append-only revisions* and Rule
 B already require. No per-comment writer line is owed; correct a
