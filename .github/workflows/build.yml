@@ -127,6 +127,9 @@ jobs:
       - name: Test mempalace-transcript hook regression (issue #530)
         run: bash scripts/tests/test-mempalace-transcript-hook.sh
 
+      - name: Test Antigravity transcript activation (spec 0116)
+        run: bash scripts/tests/test-setup-antigravity-transcript.sh
+
       - name: Test mempalace version-range guard (spec 0082)
         run: bash scripts/tests/test-mempalace-version-range.sh
 

@@ -1,11 +1,19 @@
 #!/bin/bash
-# mempalace-transcript.sh — Shared session transcript hook for Gemini CLI and Claude Code
+# mempalace-transcript.sh — Shared session transcript hook for Claude Code, Gemini CLI,
+#                            GitHub Copilot CLI and Antigravity CLI
 #
 # Persists session exchanges (user prompts, tool usage, agent responses) to
 # MemPalace's "transcripts" wing. Called by tool-specific hook registrations.
 #
-# Input: JSON on stdin (hook event data from Gemini CLI or Claude Code)
-# Output: none (all logging to stderr, stdout reserved for hook JSON response)
+# Input:  JSON on stdin (hook event data from any of the four CLIs).
+#         Antigravity ALSO passes the lifecycle event name as the first positional
+#         argument, because its payload carries no `hook_event_name` field. Any
+#         other caller passes no argument, which is what keeps every
+#         Antigravity-specific path below dormant for them (spec 0116 R11).
+# Output: nothing on stdout for Claude Code, Gemini CLI and Copilot CLI — all
+#         logging goes to stderr. For Antigravity, a single `{}` on stdout: the
+#         CLI requires a JSON object from every handler, and an empty one is
+#         non-steering (only `{"decision": "continue"}` blocks a Stop).
 #
 # Environment:
 #   MEMPALACE_TRANSCRIPT_ENABLED - set to "1" to enable (default: disabled)
@@ -46,6 +54,39 @@
 # Requires: jq, mempalace (Python package)
 
 set -euo pipefail
+
+# --- Antigravity CLI: the event name arrives as an argument (spec 0116 R5) ---
+# The Antigravity payload carries no `hook_event_name`, so the manifest tells the
+# hook which event fired. Empty for Claude Code / Gemini CLI / Copilot CLI, whose
+# manifests pass no argument — every Antigravity-specific path below is gated on
+# it, which is what makes requirement 11 (no regression) true by construction.
+CREWRIG_ANTIGRAVITY_EVENT="${1:-}"
+
+# Antigravity requires a JSON object on stdout from every handler (spec 0116 R10).
+# An empty object is the non-steering answer for the one event registered here:
+# on `Stop`, only `"decision":"continue"` blocks the stop, and an object without
+# that key cannot. The other three CLIs get nothing on stdout, exactly as before.
+antigravity_ack() {
+  if [ -n "$CREWRIG_ANTIGRAVITY_EVENT" ]; then
+    printf '{}\n'
+  fi
+}
+
+# ONE exit trap, installed here and never replaced. Two reasons it lives at the
+# top rather than at each `exit 0`:
+#   - the acknowledgement then survives an abort. `set -euo pipefail` makes a
+#     malformed payload abort at the first `jq` read, long before any explicit
+#     call site would be reached, and R10 is not conditional on the payload
+#     parsing.
+#   - a later `trap ... EXIT` REPLACES rather than appends, so the temp-file
+#     cleanup that used to install its own trap now routes through here. Adding
+#     a second `trap ... EXIT` anywhere below would silently disarm this one.
+# `${_HOOK_ERR:-}` because the variable is only assigned much further down.
+_hook_cleanup() {
+  rm -f "${_HOOK_ERR:-}"
+  antigravity_ack
+}
+trap _hook_cleanup EXIT
 
 # --- Guard: opt-in only ---
 if [ "${MEMPALACE_TRANSCRIPT_ENABLED:-0}" != "1" ]; then
@@ -89,18 +130,37 @@ INPUT=$(cat)
 COPILOT_PROJECT_DIR_FROM_JSON=$(echo "$INPUT" | jq -r '.workspace_dir // .workspace // .project_dir // .projectDir // .cwd // empty' 2>/dev/null)
 COPILOT_SESSION_ID_FROM_JSON=$(echo "$INPUT" | jq -r '.session_id // .sessionId // empty' 2>/dev/null)
 
+if [ -n "$CREWRIG_ANTIGRAVITY_EVENT" ]; then
+  # Antigravity: the conversation id IS the session id (spec 0116 R8). Read it
+  # explicitly rather than appending to the chain below — Antigravity lives under
+  # ~/.gemini/, so an appended fallback would lose to $GEMINI_SESSION_ID if that
+  # variable ever appeared.
+  _AGY_CONV=$(echo "$INPUT" | jq -r '.conversationId // empty' 2>/dev/null)
+  SESSION_ID="${_AGY_CONV:-unknown}"
+else
 SESSION_ID="${GEMINI_SESSION_ID:-${CLAUDE_SESSION_ID:-${COPILOT_SESSION_ID:-${COPILOT_SESSION_ID_FROM_JSON:-unknown}}}}"
+fi
 # Resolve project dir from the git root so that worktree paths collapse to
 # the canonical repository root (issue #92). Fallbacks: env vars from each
 # CLI, JSON-embedded project dir from Copilot, then $PWD as last resort.
 _GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [ -n "$CREWRIG_ANTIGRAVITY_EVENT" ]; then
+  # spec 0116 R9: workspacePaths[0] when present, existing fallback chain when not
+  # (it was observed empty in a headless run outside a workspace).
+  _AGY_WS=$(echo "$INPUT" | jq -r '.workspacePaths[0] // empty' 2>/dev/null)
+  PROJECT_DIR="${_AGY_WS:-${_GIT_ROOT:-$(pwd)}}"
+else
 PROJECT_DIR="${GEMINI_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-${COPILOT_PROJECT_DIR:-${COPILOT_PROJECT_DIR_FROM_JSON:-${_GIT_ROOT:-$(pwd)}}}}}"
+fi
 PROJECT_NAME=$(basename "$PROJECT_DIR")
 TODAY=$(date +%Y-%m-%d)
 ROOM_ID="${PROJECT_NAME}-${TODAY}-${SESSION_ID:0:8}"
 
 # --- Detect event type from input fields ---
 HOOK_EVENT=$(echo "$INPUT" | jq -r '.hook_event_name // empty' 2>/dev/null)
+if [ -z "$HOOK_EVENT" ] && [ -n "$CREWRIG_ANTIGRAVITY_EVENT" ]; then
+  HOOK_EVENT="$CREWRIG_ANTIGRAVITY_EVENT"
+fi
 
 # Skip high-frequency PostToolUse events — they generate too many writes
 # for parallel agent sessions. Only Stop and SessionEnd carry session-level
@@ -115,6 +175,25 @@ TOOL_INPUT=$(echo "$INPUT" | jq -r '.tool_input // empty' 2>/dev/null)
 # --- Determine content based on available fields ---
 CONTENT=""
 ENTRY_TYPE=""
+
+# Antigravity CLI (spec 0116 R7). Placed first: no Antigravity payload carries
+# .prompt/.tool_name/.user_input/.model_response, so none of the branches below
+# can fire for one, and every later branch guards on an empty $CONTENT.
+if [ -n "$CREWRIG_ANTIGRAVITY_EVENT" ]; then
+  case "$CREWRIG_ANTIGRAVITY_EVENT" in
+    PreInvocation)
+      ENTRY_TYPE="session-lifecycle"
+      _AGY_N=$(echo "$INPUT" | jq -r '.invocationNum // empty' 2>/dev/null)
+      _AGY_MODEL=$(echo "$INPUT" | jq -r '.modelName // empty' 2>/dev/null)
+      CONTENT="[SESSION] PreInvocation: invocation ${_AGY_N:-?} (${_AGY_MODEL:-unknown})"
+      ;;
+    Stop)
+      ENTRY_TYPE="agent-response"
+      _AGY_REASON=$(echo "$INPUT" | jq -r '.terminationReason // empty' 2>/dev/null)
+      CONTENT="[AGENT] Session turn completed (${_AGY_REASON:-unknown})"
+      ;;
+  esac
+fi
 
 # User prompt (Claude Code: UserPromptSubmit)
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty' 2>/dev/null)
@@ -176,7 +255,6 @@ if [ -n "$CONTENT" ]; then
   # Python exit does not abort the hook — STATUS_RC carries the actual
   # outcome.
   _HOOK_ERR="${TMPDIR:-/tmp}/mempalace-hook-$$.err"
-  trap 'rm -f "$_HOOK_ERR"' EXIT
 
   # Temporarily disable `set -e` so a non-zero Python exit does not abort
   # the hook before we can log the failure.
