@@ -80,6 +80,65 @@
 # is decoration — fix the fixture before trusting the green.
 #
 # ---------------------------------------------------------------------------
+# Cases 17-20 and the two values this script consumes as arithmetic
+# ---------------------------------------------------------------------------
+# `--stale-after` (from the caller) and `since_epoch` (off disk) both reach a
+# `$(( … ))`. Both were once validated as DIGITS, which is a weaker property than
+# "evaluates as arithmetic", and the gap between the two admitted exactly two
+# shapes:
+#
+#   LEADING ZERO. `$(( 08 ))` is a base error, not eight. Bash aborts with a raw
+#   diagnostic naming the script's path and line, so the caller is handed the
+#   script's internals instead of the script's own message.
+#
+#   TOO WIDE. `$(( … ))` is 64-bit and WRAPS SILENTLY. `--stale-after
+#   200000000000000000` multiplies to a NEGATIVE threshold, every claim then
+#   compares as stale, and the flag hands out the claim its caller asked it to
+#   protect — measured at rc=0, `Took over '736' from 'alice'`. The same wrap on
+#   `since_epoch` runs the other way: a negative age compares as "not stale"
+#   forever, and no agent can ever take the claim over. Requirement 8 inverted.
+#
+# WHY VALIDATION MUST PRECEDE EVALUATION, AND NOT MERELY ACCOMPANY IT. A base
+# error in `$(( … ))` is a FATAL EXPANSION ERROR: a non-interactive bash exits on
+# the spot, and `|| fallback` does NOT catch it — measured, both on bash 5 and on
+# stock 3.2.57. So there is no "evaluate, then recover" design available at all;
+# the only place a bad value can be caught is before the expansion. The overflow
+# side reaches the same conclusion from the other direction: a numeric bound is
+# itself arithmetic, so it inherits the very limits it is trying to police. `[
+# "$STALE_AFTER" -gt 999999999 ]` cannot parse a 21-digit operand — bash reports
+# "integer expression expected", the condition reads FALSE, and the value it was
+# meant to stop sails through. `${#…}` is the only test that is not arithmetic.
+# That is why the fix bounds the width textually, and cases 17-20 are built to
+# fail any design that discovers the problem later than that.
+#
+# THE MUTATION MATRIX. Each row is a plausible alternative fix, each must turn the
+# named case red, and each was RUN — not reasoned about. Assertions marked
+# "coupled" are reachable only together with the exit code on that path and are
+# not claimed to be independently proven.
+#
+#   mutant                          turns red                     proves
+#   ------------------------------  ----------------------------  ------------------
+#   the whole fix reverted          17, 18, 19, 20 (all at rc)    the defect itself
+#   leading zero -> default (30)    17 at `…-seconds: 480`        the VALUE, not rc
+#   abort contained in a subshell   17 at want_no_shell_error     the caller never
+#     and retried in base 10                                      sees bash's guts
+#   claim state written before      17 at `holder: alice`         a refusal mutates
+#     the staleness verdict           (and case 8, same rule)     nothing
+#   numeric bound AFTER the multiply 18 at 307445734561825861     ordering
+#   numeric bound avoiding the      18 at 999999999999999999999   a comparison is
+#     multiply (`[ … -gt … ]`)                                    arithmetic too
+#   since_epoch fails closed        19, 20 at rc                  R8's disposition
+#   since_epoch abort tolerated     19 at want_no_shell_error     ditto, quietly
+#   since_epoch width guard dropped 20 at rc                      the wrap
+#   since_epoch zero arm dropped    19 at rc                      the base error
+#
+# Recipe: copy `scripts/worktree-claim.sh` and this file into a `mktemp -d` that
+# mirrors `scripts/tests/`, apply one mutation to the COPY, run the copied suite.
+# Nothing here mutates the checkout. Full verbatim output is recorded on the
+# ticket; re-run the matrix after any edit to the validation block or to
+# `cmd_takeover`'s `since_epoch` handling.
+#
+# ---------------------------------------------------------------------------
 # Two harness rules that are load-bearing
 # ---------------------------------------------------------------------------
 # 1. EXIT CODES ARE CAPTURED DIRECTLY, NEVER THROUGH A PIPE. `bash x.sh | tee`
@@ -251,6 +310,25 @@ want_no_line() {
     WHY="stdout carries the line '$1', which it must not"
     return 1
   fi
+  return 0
+}
+
+# want_no_shell_error — stderr must carry no RAW shell diagnostic.
+#
+# Matched on the script's own file name rather than on the message, because bash
+# prefixes a runtime error with `<path>: line <n>: ` and TRANSLATES the text after
+# it. The same abort reads `value too great for base` under LC_ALL=C and `valeur
+# trop grande pour la base` under the fr_FR locale a developer here may well have
+# set; the path prefix is in both. The script's own diagnostics never name their
+# own file (they open with `Error: `), so this cannot fire on a legitimate
+# refusal — verified by grepping every `>&2` writer in the script.
+want_no_shell_error() {
+  case "$ERR" in
+    *"worktree-claim.sh:"*)
+      WHY="stderr carries a raw shell error naming the script: $ERR"
+      return 1
+      ;;
+  esac
   return 0
 }
 
@@ -813,6 +891,174 @@ INTERLOPER
   return 0
 }
 
+# ===========================================================================
+# Case 17 [REVIEW F2] — `--stale-after 08` means EIGHT MINUTES, not a base error.
+# Catches: a `--stale-after` validated as digits and then evaluated as arithmetic.
+# `08` and `09` are the only two-character values that pass a digit test and abort
+# `$(( … ))`, and the abort happened INSIDE `cmd_takeover`, so the caller got the
+# script's path and line number where the usage block should have been.
+#
+# THE ASSERTION IS THE NUMBER, NOT THE EXIT CODE. `rc=4` alone is satisfied by any
+# fix that merely stops the crash — including one that swallows the base error and
+# falls back to the 30-minute default, answering "how long until stale?" with a
+# figure the caller never asked for. `stale-after-seconds: 480` pins the value at
+# eight decimal minutes: a default fallback yields 1800, a parse-to-zero yields 0
+# and grants the takeover outright, and a fix that rejects leading zeros instead of
+# reading them yields rc=1. `want_no_shell_error` is separately load-bearing — the
+# cheapest fix of all is to retry the arithmetic in base 10 after it fails, which
+# reaches 480 with the raw bash abort still on stderr.
+#
+# NO `09` ARM, DELIBERATELY. `08` and `09` are the whole two-character family and
+# the review names both, but an arm is kept here only if some mutant fails it while
+# passing `08` — and no fix distinguishes them. Everything that reads `08` as eight
+# (strip the zero, `10#`, retry-in-base-10) reads `09` as nine, and everything that
+# does not (base-8 conversion, `printf %d`, outright rejection) fails both. The arm
+# was written, found undemonstrable, and removed; do not restore it without the
+# mutant that justifies it.
+# ===========================================================================
+case_17() {
+  new_fixture c17
+  run_claim "$(fx_wt c17)" take --agent alice
+  want_rc 0 || return 1
+
+  run_claim "$(fx_wt c17)" takeover --agent bob --stale-after 08
+  want_rc 4 || return 1
+  want_out "not stale" || return 1
+  want_out "stale-after-seconds: 480" || return 1
+  want_no_shell_error || return 1
+
+  # The claim the flag was pointed at is still alice's, and nothing recorded a
+  # transfer that did not happen.
+  run_claim "$(fx_wt c17)" status
+  want_rc 0 || return 1
+  want_out "holder: alice" || return 1
+  want_no_ledger "$(fx_ledger c17)" "$(printf 'takeover\tbob\t%s' "$TICKET")" || return 1
+  return 0
+}
+
+# ===========================================================================
+# Case 18 [REVIEW F2] — an over-wide `--stale-after` is refused BEFORE the
+# arithmetic it would overflow, not judged after it.
+# Catches: the silent 64-bit wrap. `--stale-after 200000000000000000` asks for
+# "essentially never stale"; unfixed, `* 60` wrapped to -6446744073709551616, the
+# comparison inverted, and a claim taken one second earlier was handed to bob at
+# rc=0 with `Took over '736' from 'alice'`. A flag whose entire purpose is to
+# PROTECT a fresh claim was the fastest way to lose one.
+#
+# EACH OF THE THREE VALUES DEFEATS A DIFFERENT HALF-FIX; none is a wider spelling
+# of another, and each was kept only after a mutant was found that it alone fails.
+#
+#   200000000000000000  — the measured harm. Refused by every candidate fix, so it
+#                         proves nothing on its own; it is here because it is the
+#                         value that actually gave a live claim away at rc=0.
+#   999999999999999999999
+#                       — defeats a numeric bound that AVOIDS the multiply:
+#                         `[ "$STALE_AFTER" -gt 999999999 ]` refuses the other two,
+#                         but bash's own `[` cannot parse 21 digits ("integer
+#                         expression expected", rc=2), the condition reads false,
+#                         and the value sails through to the arithmetic. A
+#                         comparison is arithmetic too. Only `${#…}` is not.
+#   307445734561825861  — defeats a numeric bound applied AFTER the multiply:
+#                         60 * this wraps past 2^64 to `44`, positive and small, so
+#                         a "refuse a negative threshold" check waves it through to
+#                         `stale-after-seconds: 44` — a flag asking for "never
+#                         stale" delivering "stale in three quarters of a minute".
+#
+# The loop asserts the value is echoed back verbatim as well: the diagnostic must
+# name what the caller typed, not the zero-stripped form the script works with,
+# or the caller cannot match the error to their own command line.
+# ===========================================================================
+case_18() {
+  new_fixture c18
+  local v
+  run_claim "$(fx_wt c18)" take --agent alice
+  want_rc 0 || return 1
+
+  for v in 200000000000000000 999999999999999999999 307445734561825861; do
+    run_claim "$(fx_wt c18)" takeover --agent bob --stale-after "$v"
+    want_rc 1        || { WHY="--stale-after $v: $WHY"; return 1; }
+    want_any "is out of range" || { WHY="--stale-after $v: $WHY"; return 1; }
+    want_any "$v"    || { WHY="--stale-after $v: $WHY"; return 1; }
+  done
+
+  # Refused before the subcommand ran at all: alice's claim is untouched and the
+  # ledger records no transfer.
+  want_dir "$(fx_claim_dir c18)" || return 1
+  run_claim "$(fx_wt c18)" status
+  want_rc 0 || return 1
+  want_out "holder: alice" || return 1
+  want_no_ledger "$(fx_ledger c18)" "$(printf 'takeover\tbob\t%s' "$TICKET")" || return 1
+  return 0
+}
+
+# ===========================================================================
+# Case 19 [REVIEW F2] — a leading-zero `since_epoch` keeps requirement 8's
+# takeover path OPEN.
+# Catches: the same base error as case 17, on the value that comes off DISK, and
+# therefore on the one path that must never fail closed. `since_epoch` is read
+# from a claim written by a holder that has since ended; a corrupt or truncated
+# one is not an exotic input but the literal dead-holder case R8 exists for.
+# Unfixed, `08` there aborted `takeover` at rc=1 with a raw base error — the
+# recovery route sealed shut by the state file of the very holder it recovers
+# from.
+#
+# THE DISPOSITION IS THE ASSERTION, AND IT IS THE OPPOSITE OF CASE 18's. An
+# unreadable `--stale-after` is a caller error and must fail closed; an unreadable
+# `since_epoch` must be read as infinitely old and let the takeover through. A fix
+# that treats both alike is symmetric, tempting, and wrong in one direction or the
+# other — so this case asserts rc=0 AND the displacement, not merely "no crash".
+# The takeover runs with NO flags, at the documented default, because R8's path is
+# the one a stranded agent reaches without knowing anything is wrong.
+# ===========================================================================
+case_19() {
+  new_fixture c19
+  run_claim "$(fx_wt c19)" take --agent alice
+  want_rc 0 || return 1
+
+  printf '08\n' > "$(fx_claim_dir c19)/since_epoch"
+
+  run_claim "$(fx_wt c19)" takeover --agent bob
+  want_rc 0 || return 1
+  want_out "Took over '$TICKET' from 'alice'" || return 1
+  want_out "holder: bob" || return 1
+  want_no_shell_error || return 1
+  want_ledger "$(fx_ledger c19)" "$(printf 'takeover\tbob\t%s\tdisplaced=alice' "$TICKET")" || return 1
+  return 0
+}
+
+# ===========================================================================
+# Case 20 [REVIEW F2] — an over-wide `since_epoch` does not invert R8 into a
+# permanent deadlock.
+# Catches: the 64-bit wrap on the disk-side value, which fails in the mirror
+# direction of case 18's. A 20-digit timestamp wrapped to a NEGATIVE age, and a
+# negative age is less than any threshold, so `takeover` answered `Refused: the
+# claim on '736' is not stale.` with `held-for-seconds: -7766279629665972725` —
+# and would answer that forever. Not a claim granted too easily but a claim NO
+# AGENT CAN EVER TAKE OVER: the worktree is stranded on a holder that is gone,
+# which is precisely the state R8 exists to dissolve.
+#
+# Kept apart from case 19 rather than folded in as a second arm, because the two
+# corrupt shapes fail differently on the unfixed script — rc=1 with a shell abort
+# there, rc=4 with a plausible-looking refusal here. A refusal that looks like a
+# considered decision is the more dangerous of the two, and it deserves a PASS/FAIL
+# line that names it. No `want_no_shell_error` here: this path never aborted, and
+# an assertion that cannot fail is the decoration this suite refuses.
+# ===========================================================================
+case_20() {
+  new_fixture c20
+  run_claim "$(fx_wt c20)" take --agent alice
+  want_rc 0 || return 1
+
+  printf '99999999999999999999\n' > "$(fx_claim_dir c20)/since_epoch"
+
+  run_claim "$(fx_wt c20)" takeover --agent bob
+  want_rc 0 || return 1
+  want_out "Took over '$TICKET' from 'alice'" || return 1
+  want_out "holder: bob" || return 1
+  want_ledger "$(fx_ledger c20)" "$(printf 'takeover\tbob\t%s\tdisplaced=alice' "$TICKET")" || return 1
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -836,10 +1082,14 @@ describe() {
     14) echo "Case 14 — run is re-entrant and does not release a hold it did not take" ;;
     15) echo "Case 15 — takeover on an unclaimed worktree is refused (4)" ;;
     16) echo "Case 16 — a takeover landing inside an in-flight run survives its exit" ;;
+    17) echo "Case 17 — --stale-after 08 means eight minutes, not a base error" ;;
+    18) echo "Case 18 — an over-wide --stale-after is refused before the arithmetic" ;;
+    19) echo "Case 19 — a leading-zero since_epoch keeps R8's takeover path open" ;;
+    20) echo "Case 20 — an over-wide since_epoch does not deadlock R8's takeover" ;;
   esac
 }
 
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   WHY=""
   OUT=""
   ERR=""
