@@ -433,8 +433,12 @@ run_gate() {
     }
     deploy_antigravity_transcript_hooks() { echo "DEPLOYED"; }
     detect_mempalace_python() { echo "/usr/bin/python3"; }
-    # shellcheck disable=SC2034  # both are read by the block sourced below
-    REPO_DIR="$TMP_ROOT/repo"; AGY_HOME="$TMP_ROOT/gatehome"
+    # A directive covers only the next command, and `a=1; b=2` is two — hence
+    # one line each. Both are read by the block sourced below.
+    # shellcheck disable=SC2034
+    REPO_DIR="$TMP_ROOT/repo"
+    # shellcheck disable=SC2034
+    AGY_HOME="$TMP_ROOT/gatehome"
     # shellcheck source=/dev/null
     . "$GATE_BLOCK"
   ) 2>/dev/null
