@@ -670,6 +670,122 @@ run_base_case "Case 34 — an uncanonicalizable linted path is named, not a stac
   "Cannot resolve linted path: specs/0205-dangling.md" "at resolveBaseContext"
 
 # -------------------------------------------------------------------------
+# Cases 35-37 (delta-02 R13, covering R10, R9 and the R2 replacement) —
+# ATTRIBUTION. Identification is settled by the cases above; these pin who the
+# identified violation is charged to.
+#
+# A second git fixture, not $GITFIX: that one's work tree was mutated by cases
+# 30-31 (0200 corrected to `implemented`, 0202 added), and these cases need a
+# base-branch offender still carrying `draft` in the tree under test. Built the
+# same way — `git symbolic-ref` rather than `git init -b`, so the fixture does
+# not depend on the host's init.defaultBranch.
+#
+# The three cases share this one fixture but do NOT depend on each other's
+# order: each one RESETS the work tree (`git checkout -- .`) and then applies
+# only the state it needs. An accumulating variant would pass just as green while
+# measuring something other than what the case names claim the moment anyone
+# inserts or reorders a case — an order-dependent test that silently changes
+# meaning is the same class of defect as the check being fixed here.
+# -------------------------------------------------------------------------
+GITFIX2="$TMP_ROOT/gitfix2"
+mkdir -p "$GITFIX2/specs" "$GITFIX2/docs"
+cp "$ROOT_DIR/.markdownlintrc" "$GITFIX2/"
+ln -s "$ROOT_DIR/node_modules" "$GITFIX2/node_modules"
+render_spec "0210" "attributed" "draft" > "$GITFIX2/specs/0210-attributed.md"
+printf '# Unrelated\n\nBody.\n' > "$GITFIX2/docs/unrelated.md"
+(
+  cd "$GITFIX2" || exit 1
+  git init -q
+  git symbolic-ref HEAD refs/heads/main
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git config commit.gpgsign false
+  git add specs docs
+  git commit -q -m "base branch content"
+)
+
+# -------------------------------------------------------------------------
+# Case 35 (delta-02 R10) — the tree under test modifies nothing relative to the
+# base ref, which is exactly the state the check runs in on the base branch's
+# own build (`HEAD` IS the derived base there). With no change to attribute the
+# violation to, every offender blocks. This is the case that keeps R1
+# mechanically enforced after R9 narrows the pull-request case: remove the
+# empty-set branch and the base branch's build goes green while `main` violates
+# the invariant.
+# -------------------------------------------------------------------------
+git -C "$GITFIX2" checkout -q -- .
+run_base_case "Case 35 — no change relative to the base ref blocks on every offender (R10)" \
+  "$GITFIX2" "specs" 1 "main" \
+  "specs/0210-attributed.md" "[WARN]"
+
+# -------------------------------------------------------------------------
+# Case 36 (delta-02 R9) — the change under test modifies an unrelated file, so
+# the offender is named as a NON-BLOCKING finding and the run passes. This is
+# the case the ticket exists for: the pull request that touches no spec is no
+# longer failed by a violation it cannot cure. Asserts both halves — the warning
+# is present AND no `[FAIL]` block is — because exit 0 alone could not
+# distinguish "warned correctly" from "stopped checking".
+# -------------------------------------------------------------------------
+git -C "$GITFIX2" checkout -q -- .
+printf '# Unrelated\n\nBody, edited by the change under test.\n' > "$GITFIX2/docs/unrelated.md"
+run_base_case "Case 36 — an offender the change does not touch warns, and does not fail (R9)" \
+  "$GITFIX2" "specs" 0 "main" \
+  "[WARN]" "[FAIL]"
+
+# -------------------------------------------------------------------------
+# Case 37 (delta-02 R2 as replaced) — the change under test modifies the
+# offending spec itself and leaves it `draft`. It can record the correct status
+# in the same edit, so it is the change that pays. Together with Case 36 this
+# pins the replaced R2's discriminator: same offender, same base branch, and the
+# outcome turns only on whether the change touches the file.
+# -------------------------------------------------------------------------
+git -C "$GITFIX2" checkout -q -- .
+printf '\nEdited by the change under test.\n' >> "$GITFIX2/specs/0210-attributed.md"
+run_base_case "Case 37 — an offender the change does touch fails (R2 as replaced)" \
+  "$GITFIX2" "specs" 1 "main" \
+  "specs/0210-attributed.md" "[WARN]"
+
+# -------------------------------------------------------------------------
+# Case 38 (delta-02 R11) — attribution that cannot be derived is not an
+# exemption. The base ref resolves (so this is NOT the Case 32 wiring fault, and
+# the exit is the linter's own 1 rather than 2), but it shares no history with
+# `HEAD`, so `git merge-base` fails and the modified-file set is unavailable.
+# Every offender blocks, and the cause is named on stderr rather than left as an
+# unexplained failure.
+#
+# An orphan branch is the cheapest reproduction of "resolves but has no common
+# ancestor"; `git checkout --orphan` keeps the index, so the same specs are
+# committed onto it and the offender is present on the base ref as required.
+# -------------------------------------------------------------------------
+GITFIX3="$TMP_ROOT/gitfix3"
+mkdir -p "$GITFIX3/specs"
+cp "$ROOT_DIR/.markdownlintrc" "$GITFIX3/"
+ln -s "$ROOT_DIR/node_modules" "$GITFIX3/node_modules"
+render_spec "0220" "unrelated-history" "draft" > "$GITFIX3/specs/0220-unrelated-history.md"
+(
+  cd "$GITFIX3" || exit 1
+  git init -q
+  git symbolic-ref HEAD refs/heads/main
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git config commit.gpgsign false
+  git add specs
+  git commit -q -m "main content"
+  git checkout -q --orphan unrelated-base
+  # `git add specs`, never `git add -A`: the harness's own scaffolding sits in
+  # this directory untracked (.markdownlintrc, the node_modules symlink), and
+  # tracking it on the orphan branch makes the `checkout main` below DELETE it —
+  # markdownlint then dies on a missing config, which reads as a lint failure
+  # rather than as the fixture eating its own tooling.
+  git add specs
+  git commit -q -m "orphan base sharing no history with main"
+  git checkout -q main
+)
+run_base_case "Case 38 — attribution that cannot be derived blocks, and says so (R11)" \
+  "$GITFIX3" "specs" 1 "unrelated-base" \
+  "could not be derived" "[WARN]"
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""
