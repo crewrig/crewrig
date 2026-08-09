@@ -51,6 +51,7 @@ command -v jq >/dev/null 2>&1 || { echo "FATAL: jq is required for this test" >&
 
 # install_file() branches on INSTALL_MODE; pin it so the helper copies rather
 # than symlinking into the temp root.
+# shellcheck disable=SC2034  # read by install_file() in the lib sourced below
 INSTALL_MODE="copy"
 # shellcheck source=scripts/lib/common.sh
 source "$COMMON_LIB"
@@ -432,6 +433,7 @@ run_gate() {
     }
     deploy_antigravity_transcript_hooks() { echo "DEPLOYED"; }
     detect_mempalace_python() { echo "/usr/bin/python3"; }
+    # shellcheck disable=SC2034  # both are read by the block sourced below
     REPO_DIR="$TMP_ROOT/repo"; AGY_HOME="$TMP_ROOT/gatehome"
     # shellcheck source=/dev/null
     . "$GATE_BLOCK"
