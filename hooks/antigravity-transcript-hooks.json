@@ -1,47 +1,17 @@
 {
-  "hooks": {
-    "BeforeAgent": [
+  "crewrig-mempalace-transcript": {
+    "PreInvocation": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "name": "transcript-user-prompt",
-            "command": "bash $PWD/hooks/mempalace-transcript.sh"
-          }
-        ]
+        "type": "command",
+        "command": "bash hooks/mempalace-transcript.sh PreInvocation",
+        "timeout": 10
       }
     ],
-    "AfterTool": [
+    "Stop": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "name": "transcript-tool-use",
-            "command": "bash $PWD/hooks/mempalace-transcript.sh"
-          }
-        ]
-      }
-    ],
-    "AfterModel": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "name": "transcript-agent-response",
-            "command": "bash $PWD/hooks/mempalace-transcript.sh"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "name": "transcript-session-end",
-            "command": "bash $PWD/hooks/mempalace-transcript.sh"
-          }
-        ]
+        "type": "command",
+        "command": "bash hooks/mempalace-transcript.sh Stop",
+        "timeout": 10
       }
     ]
   }

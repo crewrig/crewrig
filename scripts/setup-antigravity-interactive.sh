@@ -386,6 +386,53 @@ for overlay_tier in community org; do
   fi
 done
 
+# --- Transcript hooks (opt-in) --- (spec 0116)
+# The three sibling setups have offered this since spec 0056; Antigravity did
+# not, and the manifest it would have deployed registered four lifecycle events
+# the CLI does not have. Both are fixed here.
+#
+# The deployment target is the GLOBAL customization root, `~/.gemini/config/` —
+# the same root `$AGY_MCP_CONFIG` already uses. That root is the one confirmed
+# to fire; the per-workspace `.agents/hooks.json` the vendor also documents was
+# not observed to, and is recorded as a gap in docs/cli-matrix.md rather than
+# shipped on trust.
+ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)")
+if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
+  HOOKS_SRC="$REPO_DIR/hooks/antigravity-transcript-hooks.json"
+  HOOK_SCRIPT_SRC="$REPO_DIR/hooks/mempalace-transcript.sh"
+  AGY_HOOKS_DIR="$AGY_HOME/hooks"
+  AGY_HOOKS_JSON="${HOME}/.gemini/config/hooks.json"
+  echo ""
+  echo "Activating transcript hooks will:"
+  echo "  1. Install the hook script to $AGY_HOOKS_DIR/mempalace-transcript.sh (project-independent)"
+  echo "  2. Deploy hooks to $AGY_HOOKS_JSON (fires for ALL projects)"
+  if [ -f "$AGY_HOOKS_JSON" ]; then
+    echo "  3. Backup $AGY_HOOKS_JSON to ${AGY_HOOKS_JSON}.bak.<timestamp>, then merge"
+    echo "     the crewrig hook in — any hook you already declare is preserved"
+  else
+    echo "  3. Create $AGY_HOOKS_JSON (none exists today)"
+  fi
+  echo "  4. Record one entry per turn (turn start and turn end) — per-tool"
+  echo "     events are deliberately NOT registered"
+  echo ""
+  CONFIRM=$(echo -e "yes\nno" | fzf --height 10% --header "Apply?")
+  if [ "$CONFIRM" = "yes" ]; then
+    MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
+    ENV_PREFIX='MEMPALACE_TRANSCRIPT_ENABLED=1'
+    if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
+      ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
+    fi
+    deploy_antigravity_transcript_hooks \
+      "$HOOKS_SRC" "$HOOK_SCRIPT_SRC" "$AGY_HOOKS_DIR" "$AGY_HOOKS_JSON" "$ENV_PREFIX"
+  else
+    echo "  Transcript activation canceled."
+  fi
+else
+  echo "  Session recording disabled (re-run this script to enable)."
+fi
+
+echo ""
+
 # --- Generate ~/.gemini/config/AGENTS.md from deployed context files (spec 0061) ---
 # Antigravity CLI reads a single ~/.gemini/config/AGENTS.md as its system context.
 # Concatenate every deployed priority-ordered context file into that single

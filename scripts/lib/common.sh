@@ -1526,3 +1526,64 @@ configure_validation_backend() {
   fi
   return 0
 }
+
+# --- Antigravity CLI transcript-hook deployment (spec 0116 R13/R14/R15) ------
+#
+# deploy_antigravity_transcript_hooks <manifest_src> <hook_src> <hooks_dir> <manifest_target> <env_prefix>
+#
+# Why this is a helper rather than an inline block like its three siblings:
+# `scripts/tests/test-setup-mcp-merge.sh` records the house rule that the
+# interactive setup scripts cannot run end-to-end in CI (fzf prompts, the `agy`
+# guard, the chroma daemon). Spec 0116 R17 requires hermetic coverage of the
+# deployment, so the deployment has to live somewhere a test can call. The two
+# `fzf` prompts stay in the setup script and are asserted structurally.
+#
+# What it does, in order:
+#   1. installs the shared hook script under the assistant's own directory, so
+#      the deployed hook stops depending on this repository's path (R13);
+#   2. rewrites every command in the manifest to that absolute path, prefixed
+#      with `$env_prefix`, and appends the lifecycle event name (R14, and R5 —
+#      the Antigravity payload carries no event name, so the manifest must say
+#      which event fired);
+#   3. backs up an existing manifest before touching it (R15) and MERGES into
+#      it rather than overwriting: `hooks.json`'s top level is a map of NAMED
+#      hooks and the operator may own others. Same-named hooks are replaced,
+#      which is what re-running setup should do.
+#
+# The rewrite uses `with_entries`, not the `map` the sibling setups use, for two
+# reasons: the event name is a KEY here rather than a field, and a named hook may
+# carry a non-array `enabled` member that must be passed through untouched.
+deploy_antigravity_transcript_hooks() {
+  local manifest_src="$1" hook_src="$2" hooks_dir="$3" manifest_target="$4" env_prefix="$5"
+  local hook_target="${hooks_dir}/mempalace-transcript.sh"
+
+  mkdir -p "$hooks_dir" "$(dirname "$manifest_target")"
+
+  install_file "$hook_src" "$hook_target" \
+    "mempalace-transcript.sh -> ${hook_target}"
+  chmod +x "$hook_target" 2>/dev/null || true
+
+  local patched
+  patched="$(mktemp)"
+  jq --arg envp "$env_prefix" --arg hp "$hook_target" '
+    with_entries(
+      .value |= with_entries(
+        if (.value | type) == "array"
+        then (.key) as $ev
+             | .value |= map(.command = ($envp + " bash " + ($hp | tojson) + " " + $ev))
+        else .
+        end
+      )
+    )' "$manifest_src" > "$patched" || { rm -f "$patched"; return 1; }
+
+  if [ -f "$manifest_target" ]; then
+    backup_file "$manifest_target"
+    jq -s '.[0] * .[1]' "$manifest_target" "$patched" > "${manifest_target}.tmp" \
+      && mv "${manifest_target}.tmp" "$manifest_target"
+  else
+    cp "$patched" "$manifest_target"
+  fi
+  rm -f "$patched"
+
+  echo "  Transcript hooks deployed to $manifest_target"
+}

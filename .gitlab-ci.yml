@@ -64,6 +64,7 @@ check-components:
     - "bash scripts/build-docs-index.sh --check"
     - "bash scripts/tests/test-build-docs-index.sh"
     - "bash scripts/tests/test-mempalace-transcript-hook.sh"
+    - "bash scripts/tests/test-setup-antigravity-transcript.sh"
     - "bash scripts/tests/test-mempalace-version-range.sh"
     - "python3 -m pip install --quiet packaging"
     - "bash scripts/tests/test-mempalace-pin.sh"
