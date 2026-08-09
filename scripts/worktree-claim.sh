@@ -75,6 +75,26 @@
 # agent told only `newdir/` cannot see what it was about to lose. Nobody should
 # later "optimise" the flag away believing it was load-bearing for correctness.
 #
+# WHERE THE GATE STOPS IS IGNORED STATE, AND THAT LIMIT IS PART OF THE CONTRACT.
+# `git status` reports nothing about a path matched by `.gitignore` — `-uall`
+# widens the UNTRACKED view, not the ignored one — so the gate reads an EMPTY
+# status over a tree full of ignored build output and local scratch files, and
+# `git clean -fdx` / `-fdX` delete exactly those. A `run` wrapping `git clean
+# -fdx` therefore passes the gate, destroys them, and exits 0. The guarantee this
+# script offers is consequently NARROWER than "a whole-tree operation cannot
+# destroy work": it is that no such operation proceeds over work git can NAME as
+# tracked or untracked. Ignored state is outside the claim's protection, and an
+# agent reaching for `-x` or `-X` under a claim has left the mechanism's cover.
+#
+# That limit is deliberate and `--ignored` is NOT the fix. A gate that refused
+# over ignored state would refuse permanently in any checkout carrying build
+# output, and a guard that always refuses gets routed around rather than obeyed —
+# which costs more than the residual hazard it would close. What is NOT acceptable
+# is leaving the limit unstated: an undocumented boundary in a safety mechanism
+# manufactures exactly the false confidence this ticket exists to remove, so the
+# boundary is named here, in the usage block, and in the paragraph
+# `docs/agent-team-protocol.md` devotes to the gate.
+#
 # `since` IS WRITTEN TWICE — ISO-8601 for humans and `since_epoch` for
 # arithmetic — deliberately: parsing an ISO timestamp back needs GNU `date -d` or
 # BSD `date -j -f`, and neither is portable.
@@ -98,6 +118,12 @@
 # releases from a `trap … EXIT`, so requirement 2's "for the whole duration of the
 # operation" is structural rather than remembered. `take` / `release` remain for an
 # operation that is not a single command.
+#
+# That automatic release is CONDITIONAL on still being the holder. A `takeover` can
+# land while the wrapped command is in flight, and dropping the claim afterwards
+# would evict the taker silently — so the trap leaves such a claim intact and
+# records a `release-declined` line naming the agent that displaced us. See
+# `run_release_on_exit`.
 #
 # Exit contract — authoritative:
 #
@@ -186,6 +212,12 @@ Read-only subcommands (status, history) carry no .worktrees/ guard, so an
 investigation can run from the main checkout after the worktree is cleaned up.
 The clean-tree gate is evaluated by take and run on EVERY invocation, including
 when the caller already holds the claim.
+
+The gate reads `git status`, which says nothing about files matched by
+.gitignore. `git clean -fdx` and `-fdX` reach that state and destroy it while the
+gate reads clean and the run exits 0. The claim protects work git can name as
+tracked or untracked; ignored build output and local scratch files are outside
+its cover, whoever holds the claim.
 
 Exit codes: 0 success | 1 genuine failure | 4 refused, claim state
 | 5 refused, tree not clean (take/run only) | 6 release on an unclaimed worktree
