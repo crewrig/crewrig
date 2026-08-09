@@ -284,6 +284,38 @@ else
   bad "R15: the operator's hook was lost while replacing ours"
 fi
 
+# A refused merge must FAIL, not report success. `cmd > out && mv` would swallow
+# it: POSIX exempts every command in an `&&` list except the last from `set -e`,
+# so a jq that refuses the input skips the `mv`, falls through to the success
+# message, and returns 0 — announcing a deployment that never happened.
+HOME_E="$TMP_ROOT/e"
+TARGET_E="$HOME_E/.gemini/config/hooks.json"
+mkdir -p "$(dirname "$TARGET_E")"
+printf 'this is not json at all' > "$TARGET_E"
+BEFORE_E="$(cat "$TARGET_E")"
+
+if deploy_antigravity_transcript_hooks \
+     "$MANIFEST" "$HOOK_SCRIPT" "$HOME_E/hooks" "$TARGET_E" "$ENVP" >"$TMP_ROOT/out_e" 2>/dev/null; then
+  bad "a non-object existing manifest returned SUCCESS"
+else
+  ok "a non-object existing manifest makes the helper fail"
+fi
+if grep -q 'Transcript hooks deployed' "$TMP_ROOT/out_e"; then
+  bad "the helper announced a deployment that did not happen"
+else
+  ok "the helper does not announce a deployment it did not perform"
+fi
+if [ "$(cat "$TARGET_E")" = "$BEFORE_E" ]; then
+  ok "the operator's unreadable file is left untouched"
+else
+  bad "the operator's file was modified on the failure path"
+fi
+if [ -f "${TARGET_E}.tmp" ]; then
+  bad "a stray .tmp file was left behind on the failure path"
+else
+  ok "no stray .tmp file is left behind on the failure path"
+fi
+
 # --- §3b. The rewrite handles BOTH element shapes ---------------------------
 # The CLI has two: PreToolUse/PostToolUse are GROUPED (`{matcher, hooks: [...]}`)
 # while PreInvocation/PostInvocation/Stop are FLAT (the element IS the handler).
@@ -366,13 +398,64 @@ if grep -q 'echo -e "no\\nyes" | fzf --height 10% --header "Enable automatic ses
 else
   bad "R12: the offer does not default to 'no'"
 fi
-# R16 — the helper call must sit INSIDE the confirmation branch, so that
-# declining either prompt reaches no write at all.
-if awk '/^ *CONFIRM=\$\(echo -e "yes\\nno"/{c=1} c && /deploy_antigravity_transcript_hooks/{found=1} END{exit !found}' "$SETUP"; then
-  ok "R16: the deployment is gated behind the confirmation prompt"
+# R16 — BEHAVIOURAL, not a grep. An earlier version of this assertion only
+# checked that the helper's NAME appeared somewhere after the `CONFIRM=` line,
+# which no arrangement of the code could falsify: it passed even with the gate
+# fully INVERTED, so that declining deployed and accepting did not. A test that
+# cannot fail is worse than no test, because it is counted as coverage.
+#
+# Instead: extract the real block from the script, run it with `fzf` and the
+# deployment stubbed, and drive the two prompts. That exercises the gate itself
+# without needing a terminal, a real `fzf`, or a single write.
+GATE_BLOCK="$TMP_ROOT/gate-block.sh"
+awk '/^# --- Transcript hooks \(opt-in\) --- \(spec 0116\)/{p=1}
+     p && /^# --- Generate/{p=0}
+     p{print}' "$SETUP" > "$GATE_BLOCK"
+if [ -s "$GATE_BLOCK" ]; then
+  ok "R16: the transcript block was located in the setup script"
 else
-  bad "R16: the deployment is not gated behind the confirmation prompt"
+  bad "R16: could not locate the transcript block — the marker comment moved?"
 fi
+
+# <answer1> <answer2> -> echoes "DEPLOYED" iff the helper was reached
+run_gate() {
+  local a1="$1" a2="$2"
+  ( # subshell: the stubs must not leak into the rest of the suite
+    # `fzf` is invoked as `echo ... | fzf --header ...`, so the stub swallows
+    # stdin and answers positionally: first call = the offer, second = the
+    # confirmation. A command-substitution subshell would lose an exported
+    # counter, so the state rides on a file.
+    _ASKED="$TMP_ROOT/asked.$$"; rm -f "$_ASKED"
+    fzf() {
+      cat >/dev/null
+      if [ ! -f "$_ASKED" ]; then : > "$_ASKED"; printf '%s\n' "$a1"; else printf '%s\n' "$a2"; fi
+    }
+    deploy_antigravity_transcript_hooks() { echo "DEPLOYED"; }
+    detect_mempalace_python() { echo "/usr/bin/python3"; }
+    REPO_DIR="$TMP_ROOT/repo"; AGY_HOME="$TMP_ROOT/gatehome"
+    # shellcheck source=/dev/null
+    . "$GATE_BLOCK"
+  ) 2>/dev/null
+}
+
+# Capture, then match. Piping into `grep -q` would be wrong under the `pipefail`
+# this suite runs with: grep exits on its first match, the producer takes SIGPIPE,
+# and the pipeline reports 141 — so a successful match reads as a failure.
+GATE_OUT="$(run_gate no no)"
+case "$GATE_OUT" in
+  *DEPLOYED*) bad "R16: declining the OFFER still reached the deployment" ;;
+  *)          ok  "R16: declining the offer reaches no deployment" ;;
+esac
+GATE_OUT="$(run_gate yes no)"
+case "$GATE_OUT" in
+  *DEPLOYED*) bad "R16: declining the CONFIRMATION still reached the deployment" ;;
+  *)          ok  "R16: declining the confirmation reaches no deployment" ;;
+esac
+GATE_OUT="$(run_gate yes yes)"
+case "$GATE_OUT" in
+  *DEPLOYED*) ok  "R12/R16: accepting both prompts reaches the deployment" ;;
+  *)          bad "R12/R16: accepting both prompts did NOT reach the deployment — gate inverted?" ;;
+esac
 # The deployment target must be the customization root that is proven to fire,
 # not the application-data directory.
 if grep -q 'AGY_HOOKS_JSON="${HOME}/.gemini/config/hooks.json"' "$SETUP"; then
@@ -504,6 +587,30 @@ if [ -z "$OUT" ] && grep -q 'persisted user-prompt' "$TMP_ROOT/stderr"; then
   ok "R11: Claude UserPromptSubmit still classifies as user-prompt, silent stdout"
 else
   bad "R11: Claude UserPromptSubmit regressed: $(cat "$TMP_ROOT/stderr")"
+fi
+
+# R11 names THREE assistants, so all three are replayed. Gemini and Copilot are
+# the ones whose classification branches sit closest to the new code — Gemini's
+# `user_input`/`model_response` reads and Copilot's stdin-derived session id and
+# workspace path — so covering only Claude would leave the adjacent branches
+# untested.
+OUT="$(run_hook '{"user_input":"gemini prompt"}')"
+if [ -z "$OUT" ] && grep -q 'persisted user-prompt' "$TMP_ROOT/stderr"; then
+  ok "R11: Gemini BeforeAgent-shaped payload still classifies as user-prompt"
+else
+  bad "R11: Gemini user_input regressed: $(cat "$TMP_ROOT/stderr")"
+fi
+OUT="$(run_hook '{"model_response":"gemini answer"}')"
+if [ -z "$OUT" ] && grep -q 'persisted agent-response' "$TMP_ROOT/stderr"; then
+  ok "R11: Gemini AfterModel-shaped payload still classifies as agent-response"
+else
+  bad "R11: Gemini model_response regressed: $(cat "$TMP_ROOT/stderr")"
+fi
+OUT="$(run_hook '{"session_id":"abc12345","workspace_dir":"'"$TMP_ROOT"'/wsproj","prompt":"p"}')"
+if [ -z "$OUT" ] && grep -q 'persisted user-prompt to transcripts/wsproj-.*-abc12345' "$TMP_ROOT/stderr"; then
+  ok "R11: Copilot payload still derives session id and workspace from stdin"
+else
+  bad "R11: Copilot stdin derivation regressed: $(cat "$TMP_ROOT/stderr")"
 fi
 
 # Issue #91 must survive: PostToolUse still short-circuits without persisting.

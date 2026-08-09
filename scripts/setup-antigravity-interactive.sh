@@ -422,8 +422,13 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
       ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
     fi
-    deploy_antigravity_transcript_hooks \
-      "$HOOKS_SRC" "$HOOK_SCRIPT_SRC" "$AGY_HOOKS_DIR" "$AGY_HOOKS_JSON" "$ENV_PREFIX"
+    # Guarded so a refused merge reports and lets the rest of setup finish,
+    # rather than aborting the whole run under `set -e`. The helper leaves the
+    # operator's file untouched on that path.
+    if ! deploy_antigravity_transcript_hooks \
+           "$HOOKS_SRC" "$HOOK_SCRIPT_SRC" "$AGY_HOOKS_DIR" "$AGY_HOOKS_JSON" "$ENV_PREFIX"; then
+      echo "  Transcript activation FAILED — setup continues without it." >&2
+    fi
   else
     echo "  Transcript activation canceled."
   fi

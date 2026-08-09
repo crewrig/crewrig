@@ -1590,6 +1590,10 @@ deploy_antigravity_transcript_hooks() {
       )
     )' "$manifest_src" > "$patched" || { rm -f "$patched"; return 1; }
 
+  # `cmd > out && mv` would swallow a jq failure: POSIX exempts every command in
+  # an `&&` list except the last from `set -e`, so a refused input would skip the
+  # `mv`, fall through to the success message, and return 0 — reporting a
+  # deployment that never happened. Fail loudly instead.
   if [ -f "$manifest_target" ]; then
     backup_file "$manifest_target"
     # `+`, NOT `*`. Object `+` is a SHALLOW right-biased merge: a hook we own is
@@ -1599,8 +1603,13 @@ deploy_antigravity_transcript_hooks() {
     # spec removes — would survive a re-run, still pointing at a stale command.
     # The operator's entries are preserved either way; only our own must be
     # authoritative.
-    jq -s '.[0] + .[1]' "$manifest_target" "$patched" > "${manifest_target}.tmp" \
-      && mv "${manifest_target}.tmp" "$manifest_target"
+    if ! jq -s '.[0] + .[1]' "$manifest_target" "$patched" > "${manifest_target}.tmp" 2>/dev/null; then
+      rm -f "${manifest_target}.tmp" "$patched"
+      echo "  ERROR: $manifest_target is not a JSON object; refusing to merge." >&2
+      echo "         Your original file is untouched, and a backup sits beside it." >&2
+      return 1
+    fi
+    mv "${manifest_target}.tmp" "$manifest_target"
   else
     cp "$patched" "$manifest_target"
   fi
