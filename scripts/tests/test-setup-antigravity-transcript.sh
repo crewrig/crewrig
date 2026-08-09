@@ -418,6 +418,19 @@ else
   bad "R16: could not locate the transcript block — the marker comment moved?"
 fi
 
+# TRIPWIRE. The extraction is bounded by a comment, and a comment can be
+# reworded. If the END marker ever stops matching, `awk` runs away and captures
+# the rest of the script — including the block that writes
+# `${HOME}/.gemini/config/AGENTS.md`. Sourcing that would make this suite write
+# to the operator's real home, breaking the hermeticity it claims in its own
+# header. Fail loudly on a runaway instead of silently doing more work.
+# (`run_gate` also sandboxes HOME, so this is the second of two guards.)
+if grep -q 'GEMINI_MD_TARGET' "$GATE_BLOCK"; then
+  bad "R16: the extraction ran away past the transcript block — end marker moved?"
+else
+  ok "R16: the extraction is bounded to the transcript block"
+fi
+
 # <answer1> <answer2> -> echoes "DEPLOYED" iff the helper was reached
 run_gate() {
   local a1="$1" a2="$2"
@@ -439,6 +452,11 @@ run_gate() {
     REPO_DIR="$TMP_ROOT/repo"
     # shellcheck disable=SC2034
     AGY_HOME="$TMP_ROOT/gatehome"
+    # Sandbox HOME. The block resolves its deployment target from ${HOME}, and
+    # this suite promises in its own header to write nothing outside a temp
+    # directory. Redirecting HOME makes that true by construction rather than by
+    # trusting that every line of the extracted block is inert.
+    HOME="$TMP_ROOT/gatehome"
     # shellcheck source=/dev/null
     . "$GATE_BLOCK"
   ) 2>/dev/null
