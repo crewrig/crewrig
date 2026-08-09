@@ -1,7 +1,7 @@
 ---
 id: "0116"
 slug: antigravity-transcript-activation
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 724
