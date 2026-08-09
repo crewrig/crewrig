@@ -130,7 +130,7 @@ bash scripts/worktree-claim.sh status
 
 Exit `4` names the current holder; `5` prints the uncommitted changes that closed the gate. `status` answers without asking any agent; it and `history` also run from the main checkout, given `--ticket <id>`.
 
-**Who held the worktree, after the fact.** `worktree-claim.sh history --ticket <id>` prints the append-only ledger — every take, release, and takeover, with agent, timestamp, and operation. It lives beside the shared `.git`, not in the worktree, so it survives the cleanup below.
+**Who held the worktree, after the fact.** `worktree-claim.sh history --ticket <id>` prints the append-only ledger — every take, release, and takeover, with agent, timestamp, and operation. It lives inside the shared `.git`, as a sibling of the claim directory and never a child, so releasing a claim cannot take the history with it; being outside the worktree, it also survives the cleanup below.
 
 **A claim whose holder has ended.** `worktree-claim.sh takeover --agent <name>` transfers a claim untouched for 30 minutes (`--stale-after <minutes>` overrides) and records both agents in the ledger. It rewrites the claim only — never a working-tree file — and grants **no** clean-tree waiver: the gate is re-evaluated on every `take` and `run`, whoever holds the claim.
 
