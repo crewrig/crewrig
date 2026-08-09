@@ -786,6 +786,67 @@ run_base_case "Case 38 — attribution that cannot be derived blocks, and says s
   "could not be derived" "[WARN]"
 
 # -------------------------------------------------------------------------
+# Cases 39-40 (delta-03 R16, covering R14/R15) — WORKING-DIRECTORY INDEPENDENCE.
+#
+# A fixture whose specs AND markdownlint configuration both sit under `sub/`.
+# The nested configuration is not incidental: `-c .markdownlintrc` is resolved
+# against the working directory, so without a config there the run dies at
+# markdownlint and never reaches the check. That is exactly why this defect was
+# first believed unreachable, and it is what these cases exist to keep reachable.
+# -------------------------------------------------------------------------
+GITFIX4="$TMP_ROOT/gitfix4"
+mkdir -p "$GITFIX4/sub/specs"
+cp "$ROOT_DIR/.markdownlintrc" "$GITFIX4/sub/"
+ln -s "$ROOT_DIR/node_modules" "$GITFIX4/sub/node_modules"
+render_spec "0240" "nested-layout" "draft" > "$GITFIX4/sub/specs/0240-nested-layout.md"
+(
+  cd "$GITFIX4" || exit 1
+  git init -q
+  git symbolic-ref HEAD refs/heads/main
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git config commit.gpgsign false
+  git add sub/specs
+  git commit -q -m "draft non-delta spec on the base branch, under sub/"
+)
+
+# -------------------------------------------------------------------------
+# Case 39 (R14) — the offender is identified when the linter runs from a
+# SUBDIRECTORY. Before delta-03, `git ls-tree` resolved the repo-root-relative
+# pathspec against the working directory, matched nothing, and returned an empty
+# set — so no file was ever identified as present on the base branch and the run
+# reported `Linting passed!` with exit 0 on a live violation. Remove the
+# `gitCwd = repoRoot` assignment and this case goes red.
+# -------------------------------------------------------------------------
+run_base_case "Case 39 — an offender is identified from a subdirectory (R14)" \
+  "$GITFIX4/sub" "specs" 1 "main" \
+  "specs/0240-nested-layout.md" "-"
+
+# -------------------------------------------------------------------------
+# Case 40 (R14, the attribution half) — same subdirectory run, with
+# `diff.relative=true` and the offending spec MODIFIED in the tree. It must fail,
+# because a change that touches the offender is the change that pays
+# (delta-02 R2 as replaced).
+#
+# This is the case that discriminates a PARTIAL fix, which is why it exists
+# alongside Case 39: pin `ls-tree` alone and the offender is identified, but
+# `git diff` still reports `specs/0240-nested-layout.md` relative to `sub/`, the
+# `changed` set never matches `sub/specs/0240-nested-layout.md`, the offender
+# degrades to a bystander, and the run passes with a [WARN]. Hence the assertion
+# on the ABSENCE of [WARN] rather than on the exit code alone.
+#
+# It does not isolate the `diff` derivation from the `ls-tree` one — that is not
+# observable through the command line, since the only working directory where
+# `diff` misbehaves is one where `ls-tree` has already returned nothing. Stated
+# rather than implied, so the case is not read as stronger than it is.
+# -------------------------------------------------------------------------
+git -C "$GITFIX4" config diff.relative true
+printf '\nEdited by the change under test.\n' >> "$GITFIX4/sub/specs/0240-nested-layout.md"
+run_base_case "Case 40 — attribution stays root-anchored under diff.relative (R14)" \
+  "$GITFIX4/sub" "specs" 1 "main" \
+  "specs/0240-nested-layout.md" "[WARN]"
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""

@@ -100,11 +100,39 @@ function isExcludedSpecPath(relPath, entries) {
 // legitimately `draft` until its own merge mechanic flips it, while a spec
 // already on the base branch carrying `draft` is the contradiction R1 forbids.
 
-// gitCapture(args) — run git, capturing both streams. Returns the exit status
-// and stdout; never throws and never leaks git's own stderr into the linter's
-// output, so callers can probe git freely (including outside a repository).
-function gitCapture(args) {
-    const result = spawnSync('git', args, { encoding: 'utf8' });
+// gitCwd — the directory every git invocation in this file runs in, assigned once
+// the work tree has been located (see resolveBaseContext). It enforces one
+// invariant: **git in this file runs at the repository root** (spec 0109
+// delta-03 R14).
+//
+// A default rather than an argument at each call site, because R15 requires the
+// mechanism to be structural. The defect delta-03 fixes existed precisely
+// because two path-sensitive invocations — `ls-tree`'s pathspecs and `diff`'s
+// output paths — were each written without their author classifying them as
+// path-sensitive; from a subdirectory the first returned an empty set and the
+// check reported `Linting passed!` on a live violation. A remedy that depends on
+// that classification being made correctly next time does not remove the failure
+// mode. As a default, an invocation added later inherits the guarantee without
+// having to know it exists.
+//
+// One invocation is necessarily exempt: the one that DISCOVERS the work tree runs
+// while this is still `null`, so it resolves against the caller's directory —
+// which is what lets it answer which repository the run is about. Pinning it
+// would be circular.
+let gitCwd = null;
+
+// gitCapture(args, cwd) — run git, capturing both streams. Returns the exit
+// status and stdout; never throws and never leaks git's own stderr into the
+// linter's output, so callers can probe git freely (including outside a
+// repository). `cwd` overrides the module default for a single call; omitting it
+// (the normal case) takes `gitCwd`, and `undefined` inherits this process's
+// directory — which is what every pre-work-tree and non-repository path does,
+// exactly as before this file had a default at all.
+function gitCapture(args, cwd) {
+    const result = spawnSync('git', args, {
+        encoding: 'utf8',
+        cwd: cwd !== undefined ? cwd : (gitCwd !== null ? gitCwd : undefined),
+    });
     return {
         status: result.status,
         stdout: typeof result.stdout === 'string' ? result.stdout : '',
@@ -247,6 +275,13 @@ function resolveBaseContext(files) {
     // (a symlinked checkout, /tmp on macOS) would otherwise resolve "outside"
     // the repository and be silently exempted from the check.
     const repoRoot = fs.realpathSync(toplevel.stdout.trim());
+
+    // From here on, every git invocation runs at the repository root (R14/R15).
+    // Assigned immediately after the root is known and before the first
+    // path-sensitive read, so resolveBaseRef(), baseBranchPaths() and
+    // changedPaths() are all covered without this line naming any of them —
+    // which is the point: the next one is covered too.
+    gitCwd = repoRoot;
 
     const { ref, error } = resolveBaseRef();
     if (error) {
