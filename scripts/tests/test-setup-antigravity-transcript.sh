@@ -250,6 +250,40 @@ else
   bad "re-running the deployment changed the key set"
 fi
 
+# A hook we own must be REPLACED, not deep-merged. This is the difference
+# between jq's `+` and `*`, and it is not cosmetic: a stale event under our own
+# name — the `SessionEnd` spec 0056 shipped and this spec retires — would
+# otherwise survive every re-run, still pointing at a dead command. The whole
+# point of this ticket is that those four event names are gone.
+HOME_C="$TMP_ROOT/c"
+HOOKS_DIR_C="$HOME_C/.gemini/antigravity-cli/hooks"
+TARGET_C="$HOME_C/.gemini/config/hooks.json"
+OURS="$(jq -r 'keys[0]' "$MANIFEST")"
+mkdir -p "$(dirname "$TARGET_C")"
+jq -n --arg k "$OURS" '{
+  ($k): { "SessionEnd": [ { "type": "command", "command": "bash $PWD/hooks/mempalace-transcript.sh" } ] },
+  "operator-keep": { "Stop": [ { "command": "./keep.sh" } ] }
+}' > "$TARGET_C"
+
+deploy_antigravity_transcript_hooks \
+  "$MANIFEST" "$HOOK_SCRIPT" "$HOOKS_DIR_C" "$TARGET_C" "$ENVP" >/dev/null 2>&1
+
+if jq -e --arg k "$OURS" '.[$k] | has("SessionEnd") | not' "$TARGET_C" >/dev/null 2>&1; then
+  ok "R2: a retired event under our own hook name does not survive a re-run"
+else
+  bad "R2: a stale 'SessionEnd' survived under our own hook name (deep merge?)"
+fi
+if grep -q '\$PWD' "$TARGET_C"; then
+  bad "R4: a stale \$PWD command survived the re-run"
+else
+  ok "R4: the stale \$PWD command was replaced, not merged around"
+fi
+if jq -e '.["operator-keep"].Stop[0].command == "./keep.sh"' "$TARGET_C" >/dev/null 2>&1; then
+  ok "R15: replacing our own hook still leaves the operator's untouched"
+else
+  bad "R15: the operator's hook was lost while replacing ours"
+fi
+
 # --- §4. The setup script's own wiring (structural) -------------------------
 # The interactive script cannot run in CI, so assert its shape instead.
 echo "§4 setup script wiring (R12/R16, structural)"

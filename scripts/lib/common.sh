@@ -1578,7 +1578,14 @@ deploy_antigravity_transcript_hooks() {
 
   if [ -f "$manifest_target" ]; then
     backup_file "$manifest_target"
-    jq -s '.[0] * .[1]' "$manifest_target" "$patched" > "${manifest_target}.tmp" \
+    # `+`, NOT `*`. Object `+` is a SHALLOW right-biased merge: a hook we own is
+    # replaced wholesale, while every hook the operator owns is untouched. Deep
+    # merge (`*`) would union the EVENT keys inside our own hook, so an event we
+    # have since retired — say the `SessionEnd` that spec 0056 shipped and this
+    # spec removes — would survive a re-run, still pointing at a stale command.
+    # The operator's entries are preserved either way; only our own must be
+    # authoritative.
+    jq -s '.[0] + .[1]' "$manifest_target" "$patched" > "${manifest_target}.tmp" \
       && mv "${manifest_target}.tmp" "$manifest_target"
   else
     cp "$patched" "$manifest_target"
