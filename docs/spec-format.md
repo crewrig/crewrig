@@ -211,15 +211,32 @@ to use `status` for the one question it exists to answer — "merged and in
 force" or "proposed but never landed".
 
 The rule is enforced mechanically rather than by recall. The spec linter
-(`scripts/lib/spec-linter.js`, run as `task spec:lint` in CI) fails and names
-every non-delta spec that is **already present on the change's base branch**
-while carrying `status: draft`. Presence on the base branch is the
-discriminator, so a spec the change under test *introduces* is not flagged: it
-is legitimately `draft` until the *Merge mechanic* below flips it. Delta-specs
-are exempt too — what `status` a delta should carry is deliberately unsettled,
-per
+(`scripts/lib/spec-linter.js`, run as `task spec:lint` in CI) names every
+non-delta spec that is **already present on the change's base branch** while
+carrying `status: draft`. Presence on the base branch is the discriminator for
+being named, so a spec the change under test *introduces* is not named at all:
+it is legitimately `draft` until the *Merge mechanic* below flips it.
+Delta-specs are exempt too — what `status` a delta should carry is deliberately
+unsettled, per
 [`specs/0109-spec-status-invariant-on-main.md`](../specs/0109-spec-status-invariant-on-main.md)
 → *Out of scope*.
+
+**Which build the violation fails, and which it only warns.** Being named and
+being failed are two different things, decided by two different questions. A
+change that **modifies** a named spec is failed by it (`[FAIL]`), because it can
+record the correct status in the same edit. A change that does not — a pull
+request touching no spec at all, say — gets the same spec named as a
+**non-blocking** warning (`[WARN]`) and passes: a check a change has no power to
+satisfy must not block it. The build that does fail in that case is the base
+branch's own, where `HEAD` is the base and there is therefore no change to
+charge the violation to. So **a `[WARN]` met on a pull request is a statement
+about `main`, not about that pull request**: it is cleared by correcting the
+named spec's status on the base branch, and nothing in the change under test
+will make it go away. When the linter cannot determine which files the change
+modifies, it reports every named spec as blocking and says so — an
+indeterminate answer never becomes an exemption.
+[`specs/0109-spec-status-invariant-on-main.delta-02.md`](../specs/0109-spec-status-invariant-on-main.delta-02.md)
+is the contract.
 
 ### Recording a status transition
 

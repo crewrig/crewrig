@@ -163,6 +163,47 @@ function baseBranchPaths(baseRef, relPaths) {
     return new Set(result.stdout.split('\0').filter(Boolean));
 }
 
+// changedPaths(baseRef) — the repo-relative paths the change under test
+// modifies, as a Set, or `null` when that set cannot be derived. This is the
+// discriminator spec 0109 delta-02 adds on top of presence-on-base: a
+// base-branch violation fails the change that CAN cure it (R2 as replaced) and
+// is reported non-blocking to every change that cannot (R9).
+//
+// Derived from the repository at check time, never configured (R11, mirroring
+// what R3 already obliges for the set of files examined). Deliberately NOT a
+// second environment variable alongside BASE_REF: the value is measurable here,
+// and a second variable would have to be provisioned identically in two CI
+// engines that already drift on exactly this pair of jobs (issue #709).
+//
+// `git merge-base` then `git diff` against it, rather than a two-dot diff
+// against the base tip: against a base that has advanced, the two-dot form
+// reports base-only changes as this change's, which is MIS-attribution rather
+// than degraded attribution. There is no fallback to it for that reason — a
+// `null` here is an honest "unknown", which R11 answers by blocking.
+//
+// The diff compares the merge base to the WORK TREE (no second revision
+// argument), so committed, staged and unstaged edits all count. That matches
+// what the linter reads: it lints the work tree, so attribution must measure the
+// work tree too, or a status corrected but not yet committed would be attributed
+// to nobody.
+//
+// Empty is meaningful and distinct from `null`: an empty set means the tree
+// under test introduces nothing relative to the base — which is the state this
+// runs in on the base branch's own build, where `HEAD` IS the derived base — and
+// R10 answers it by blocking on every offender.
+function changedPaths(baseRef) {
+    const mergeBase = gitCapture(['merge-base', baseRef, 'HEAD']);
+    const mergeBaseSha = mergeBase.stdout.trim();
+    if (mergeBase.status !== 0 || mergeBaseSha === '') {
+        return null;
+    }
+    const diff = gitCapture(['diff', '--name-only', '-z', mergeBaseSha]);
+    if (diff.status !== 0) {
+        return null;
+    }
+    return new Set(diff.stdout.split('\0').filter(Boolean));
+}
+
 // resolveBaseContext(files) — decide whether the base-branch status check runs,
 // and if so against which paths. Three outcomes, deliberately distinct:
 //
@@ -244,7 +285,7 @@ function resolveBaseContext(files) {
         process.exit(2);
     }
 
-    return { enforced: true, ref, basePaths, relPathByFile };
+    return { enforced: true, ref, basePaths, relPathByFile, changed: changedPaths(ref) };
 }
 
 function lintFile(filePath) {
@@ -479,7 +520,8 @@ function run() {
         }
     }
 
-    // Base-branch `status: draft` check (spec 0109 R1/R2). A non-delta spec
+    // Base-branch `status: draft` check (spec 0109 R1/R2, R2 as replaced by
+    // delta-02, plus delta-02 R9/R10/R11). A non-delta spec
     // already present on the base branch has by definition had its own spec-PR
     // merged, which is the trigger docs/spec-format.md assigns to `approved` —
     // so `draft` on it is a contradiction, not a lagging value. Delta-specs are
@@ -492,14 +534,49 @@ function run() {
             !isDelta && status === 'draft' && baseContext.basePaths.has(baseContext.relPathByFile.get(file))
         );
         if (offenders.length > 0) {
-            console.error(`\n[FAIL] Non-delta specs present on the base branch (${baseContext.ref}) carry 'status: draft':`);
-            for (const { file } of offenders) {
-                console.error(`  - ${file}`);
+            // Whose violation is it? (delta-02 R2/R9/R10/R11.) Identification
+            // above is unchanged; only the consequence is attributed. `null`
+            // means attribution is unavailable (R11) and an empty set means
+            // there is no change to attribute to (R10) — both make every
+            // offender blocking, so only a NON-EMPTY set can exempt one. That
+            // asymmetry is the whole safety property: no state of the
+            // repository turns the check green while the invariant is violated.
+            const changed = baseContext.changed;
+            const blockEveryOffender = changed === null || changed.size === 0;
+            const blocking = blockEveryOffender
+                ? offenders
+                : offenders.filter(({ file }) => changed.has(baseContext.relPathByFile.get(file)));
+            const bystanders = blockEveryOffender
+                ? []
+                : offenders.filter(({ file }) => !changed.has(baseContext.relPathByFile.get(file)));
+
+            if (changed === null) {
+                console.error(`\n[ERROR] Base-branch status check (spec 0109 R11): the set of files this`);
+                console.error(`        change modifies could not be derived from the repository, so every`);
+                console.error(`        spec below is reported as this change's to fix rather than exempt.`);
             }
-            console.error(`  A spec reaches the base branch only by its own merged spec-PR, which is`);
-            console.error(`  the trigger docs/spec-format.md assigns to 'approved'. Record the status`);
-            console.error(`  that reflects the spec's true state (metadata-only edit).`);
-            totalErrors++;
+
+            if (blocking.length > 0) {
+                console.error(`\n[FAIL] Non-delta specs present on the base branch (${baseContext.ref}) carry 'status: draft':`);
+                for (const { file } of blocking) {
+                    console.error(`  - ${file}`);
+                }
+                console.error(`  A spec reaches the base branch only by its own merged spec-PR, which is`);
+                console.error(`  the trigger docs/spec-format.md assigns to 'approved'. Record the status`);
+                console.error(`  that reflects the spec's true state (metadata-only edit).`);
+                totalErrors++;
+            }
+
+            if (bystanders.length > 0) {
+                console.error(`\n[WARN] Non-delta specs present on the base branch (${baseContext.ref}) carry 'status: draft':`);
+                for (const { file } of bystanders) {
+                    console.error(`  - ${file}`);
+                }
+                console.error(`  This change modifies none of them, so the violation lives on the base`);
+                console.error(`  branch rather than in this change and is not this change's to fix — it`);
+                console.error(`  does NOT fail this run. Correcting it is an edit to the named spec on the`);
+                console.error(`  base branch, whose own build fails on it (spec 0109 R1/R9/R10).`);
+            }
         }
     }
 
