@@ -134,8 +134,8 @@ done
 # per turn (turn start and turn end)" while registering an event that fires once
 # per model call; a three-tool turn produced five entries, not two. Pin the two
 # together so the text cannot drift from the manifest again.
-if grep -q 'Record ONE entry per turn, when the turn ends' "$SETUP"; then
-  ok "R22: the consent text states one entry per turn, at turn end"
+if grep -q "Record ONE entry each time the agent's execution loop ends" "$SETUP"; then
+  ok "R22: the consent text states one entry per execution-loop end"
 else
   bad "R22: the consent text does not state the true per-turn write volume"
 fi
@@ -698,6 +698,28 @@ if [ "$(grep -c '^[[:space:]]*trap .* EXIT' "$HOOK_SCRIPT")" = "1" ]; then
   ok "R10: exactly one EXIT trap is installed in the hook"
 else
   bad "R10: $(grep -c '^[[:space:]]*trap .* EXIT' "$HOOK_SCRIPT") EXIT traps — a later one disarms the earlier"
+fi
+
+# THE ENTRY'S CONTENT. Everything above pins the entry TYPE and the room; nothing
+# pinned the text. Deleting the Antigravity `Stop)` case arm left both suites
+# green, because the generic Claude `Stop` branch below it sets the same
+# ENTRY_TYPE — only the `(terminationReason)` suffix silently vanished. That
+# suffix is the whole informational payload: docs/cli-matrix.md row 8 records
+# [GAP-content], so an Antigravity entry is a turn marker and the reason is all
+# the marker carries. Pin the text by stubbing $MEMPALACE_PYTHON to dump the
+# content the hook hands it.
+CONTENT_STUB="$TMP_ROOT/content-stub"
+CONTENT_OUT="$TMP_ROOT/content-out"
+printf '#!/bin/bash\ncat >/dev/null\nprintf "%%s" "$TRANSCRIPT_CONTENT" > "%s"\necho OK\n' \
+  "$CONTENT_OUT" > "$CONTENT_STUB"
+chmod +x "$CONTENT_STUB"
+rm -f "$CONTENT_OUT"
+printf '%s' "$AGY_STOP" | MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON="$CONTENT_STUB" \
+  bash "$HOOK_SCRIPT" Stop >/dev/null 2>&1
+if [ "$(cat "$CONTENT_OUT" 2>/dev/null)" = "[AGENT] Session turn completed (NO_TOOL_CALL)" ]; then
+  ok "R7: the entry carries the terminationReason, not just the turn marker"
+else
+  bad "R7: entry content is '$(cat "$CONTENT_OUT" 2>/dev/null)', expected the reason suffix"
 fi
 
 # R11 — THE NO-REGRESSION GUARANTEE. The other three CLIs pass no argument, so

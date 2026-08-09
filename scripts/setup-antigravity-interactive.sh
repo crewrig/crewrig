@@ -412,7 +412,8 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   else
     echo "  3. Create $AGY_HOOKS_JSON (none exists today)"
   fi
-  echo "  4. Record ONE entry per turn, when the turn ends. No other event is"
+  echo "  4. Record ONE entry each time the agent's execution loop ends — in"
+  echo "     normal use, once per turn. No other event is"
   echo "     registered: the CLI's other four all fire once per model call or"
   echo "     once per tool step, many times in a single turn, and each hook run"
   echo "     blocks the agent loop"

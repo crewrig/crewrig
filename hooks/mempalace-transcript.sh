@@ -63,9 +63,9 @@ set -euo pipefail
 CREWRIG_ANTIGRAVITY_EVENT="${1:-}"
 
 # Antigravity requires a JSON object on stdout from every handler (spec 0116 R10).
-# An empty object is the non-steering answer for both events registered here: on
-# `Stop`, only `"decision":"continue"` blocks the stop. The other three CLIs get
-# nothing on stdout, exactly as before.
+# An empty object is the non-steering answer for the one event registered here:
+# on `Stop`, only `"decision":"continue"` blocks the stop, and an object without
+# that key cannot. The other three CLIs get nothing on stdout, exactly as before.
 antigravity_ack() {
   if [ -n "$CREWRIG_ANTIGRAVITY_EVENT" ]; then
     printf '{}\n'
