@@ -129,18 +129,45 @@
 #
 #   0   Success.
 #   1   Genuine failure — not a repository, `--agent` missing, an unwritable
-#       common directory, an unknown argument; for the four MUTATING subcommands
-#       additionally: the toplevel is not under `.worktrees/`; for `status` /
-#       `history` additionally: no `--ticket` and none derivable.
-#   4   Refused (`take`, `takeover`, `release`) — the worktree is claimed by
-#       another agent (`take`), the claim is not stale or does not exist
-#       (`takeover`), or the caller is not the holder (`release`). stdout names
-#       the holder and `since`.
+#       common directory, an unknown argument, or a `git status` that itself
+#       failed (the gate then proves nothing and refuses to call the tree clean);
+#       for the four MUTATING subcommands additionally: the toplevel is not under
+#       `.worktrees/`; for `status` / `history` additionally: no `--ticket` and
+#       none derivable.
+#   4   Refused (`take`, `takeover`, `release`, `run`) — the worktree is claimed
+#       by another agent (`take`, `run`), the claim is not stale or does not
+#       exist (`takeover`), or the caller is not the holder (`release`). stdout
+#       names the holder and `since`.
 #   5   Refused (`take`, `run` ONLY) — the tree is not clean. stdout is the
 #       `git status --porcelain --untracked-files=all` listing. NEVER raised by
 #       `takeover`, `release`, `status` or `history`.
 #   6   `release` on an unclaimed worktree — a warning, not an error.
 #   n   `run` propagates the wrapped command's own exit code.
+#
+# THE LAST LINE OVERLAPS THE ONES ABOVE IT, AND THE OVERLAP IS THE TRAP. `run`
+# emits 1, 4 and 5 ON ITS OWN BEHALF — each of them BEFORE the wrapped command is
+# started — and each is equally a code the wrapped command may return for reasons
+# of its own. `run --agent a -- git reset --hard` exiting 4 means the claim is
+# held by ANOTHER agent and `git reset` NEVER RAN; the identical 4 from
+# `run --agent a -- some-tool` may just as well be `some-tool`'s own status. A
+# caller that branches on the number alone reads a refusal as a result and draws
+# the conclusion backwards: it concludes the command failed, when the truth is
+# that the command did not run and the worktree it was aimed at is still held by
+# someone else. Retrying, reporting, or cleaning up on that reading are all wrong.
+#
+# What separates the two is not the code but the DIAGNOSTIC. Every refusal `run`
+# raises on its own behalf prints a line opening `Refused:` (stdout) or `Error:`
+# (stderr), and on that path the wrapped command contributed no output whatsoever,
+# because it was never started. A caller that must tell the cases apart reads that
+# output; the exit code alone cannot carry the distinction.
+#
+# Nor is this a wording gap that a better sentence closes. It is structural to
+# propagating the wrapped code at all: any code `run` reserves for itself is a
+# code some command will one day return. Closing it means reserving a range
+# disjoint from ordinary command statuses — what `timeout(1)` does with 124/125
+# and what `flock`'s `--conflict-exit-code` hands to the caller — which CHANGES
+# this contract rather than clarifying it. That change is deliberately not made
+# here; it is reported, not implemented.
 #
 # `take` order is check → `mkdir` → re-check: the clean-tree gate runs BEFORE the
 # claim so a refused operation leaves no claim behind, and AGAIN after it, so a
@@ -230,9 +257,17 @@ gate reads clean and the run exits 0. The claim protects work git can name as
 tracked or untracked; ignored build output and local scratch files are outside
 its cover, whoever holds the claim.
 
-Exit codes: 0 success | 1 genuine failure | 4 refused, claim state
-| 5 refused, tree not clean (take/run only) | 6 release on an unclaimed worktree
-| n run propagates the wrapped command's exit code.
+Exit codes: 0 success | 1 genuine failure | 4 refused, claim state (take,
+takeover, release, run) | 5 refused, tree not clean (take/run only) | 6 release
+on an unclaimed worktree | n run propagates the wrapped command's exit code.
+
+Those last four overlap. run emits 1, 4 and 5 on its OWN behalf, always before
+the wrapped command is started, and each is also a code that command may return
+by itself: a 4 from run can mean the claim is held by another agent and your
+command never ran at all. The code does not separate the two cases -- the
+diagnostic does. Every refusal run raises itself prints `Refused:` (stdout) or
+`Error:` (stderr), and on that path the wrapped command produced no output,
+because it never ran. Branch on that output, not on the number alone.
 USAGE
 }
 
