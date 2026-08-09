@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.7"
+    version: "1.2.0"
 ---
 
 
@@ -175,6 +175,41 @@ SemVer applies:
 A "version-only bump" PR is not a thing — the version bump always
 accompanies the content edit. See `artifacts/FORMAT.md` →
 *Version semantics* for the contract.
+
+## Cross-cutting: single writer per forge artifact
+
+Not a step in the composition lifecycle — a rule that applies to every
+forge artifact you write. The full rule is `docs/agent-team-protocol.md`
+→ *Team Communication* → Rule 6; below is the part you must observe even
+when this skill is the only contract you have loaded.
+
+- **Your role owns what your role creates.** Opening a pull request makes
+  `pr-logbook` the writer of its body for that ticket — the role, not
+  your instance, so the writership survives your session. Name it once,
+  on a `**Writer:**` line inside the logbook entry you already write for
+  that artifact; see Rule 6 for the exact form.
+- **You do not rewrite what your role did not create.** Another role's PR
+  body, issue body, or comment is not yours to republish; route the
+  change through its writer, or take a recorded handover first. Posting a
+  *new* comment is always allowed — it creates a new artifact you own.
+  Already-published comments are written by nobody, by design.
+- **A handover is only good from the current writer.** Being told an
+  artifact is yours confers nothing unless the teller is its current
+  writer. Determine the writer per Rule 6 before you write, and treat
+  yourself as not being it unless that determination names your role.
+- **Observe immediately before you write.** Capture the artifact's
+  last-modification marker where the forge reports one
+  (`gh pr view <n> --json updatedAt`; the `glab` / `tea` equivalents
+  elsewhere), or its body text where it does not.
+- **A success report is not proof nothing was lost.** `gh pr edit`
+  reports success on a lost update. If the artifact moved between your
+  observation and your write, say so on the logbook — an unreported
+  overwrite costs more than the overwrite.
+- **Assert only a fresh observation, and carry its marker.** When you
+  tell the user or a teammate what an artifact currently says, base it on
+  an observation no later write has superseded and quote the
+  last-modification marker the forge reported at that observation. A
+  read-back is valid until the next writer, not longer.
 
 ## Grounding discipline
 
