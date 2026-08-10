@@ -118,6 +118,9 @@ jobs:
       - name: Test artifact build/install scope (spec 0019)
         run: bash scripts/tests/test-artifact-build-install-scope.sh
 
+      - name: Test component tier resolution (spec 0119)
+        run: bash scripts/tests/test-component-tier-resolution.sh
+
       - name: Check docs index drift (spec 0027)
         run: bash scripts/build-docs-index.sh --check
 

@@ -1,16 +1,24 @@
 #!/bin/bash
-# manage-claude-component.sh — Install or link Claude Code community components
+# manage-claude-component.sh — Install or link Claude Code overlay-tier components
 #
 # Usage:
 #   bash scripts/manage-claude-component.sh <install|link> <type> [name]
 #
 # Types: claude-skills, policies, mcp-servers
 # Default mode: install (copy). Link mode shows security disclaimer.
+#
+# Every type resolves over the served overlay tiers — library, community, org —
+# and never over `core`, whose landing zone is the committed project tree and
+# whose delivery is the build rather than an install (spec 0119 R5/R6). Which
+# tiers happen to be populated no longer decides which tiers are reachable.
 
 set -e
 
 CLAUDE_HOME="${HOME}/.claude"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/component-resolve.sh
+. "$(dirname "$0")/lib/component-resolve.sh"
+
 MODE="${1:-install}"
 TYPE="$2"
 NAME="$3"
@@ -23,7 +31,12 @@ fi
 
 # --- Security disclaimer for link mode ---
 if [ "$MODE" = "link" ]; then
-  echo "WARNING: Symlink mode — files change with branch switches."
+  echo "WARNING: Symlink mode — the installed component is a link into this"
+  echo "         repository, so a branch switch changes it in place."
+  echo "         For claude-skills the link target is the regenerable staging"
+  echo "         tree dist/<tier>/, which a rebuild replaces wholesale: an edit"
+  echo "         to the authoring source under artifacts/ takes effect only"
+  echo "         after 'bash scripts/build-components.sh' has run."
   echo "Only use if you trust all branches in this repository."
   read -p "Continue? [y/N] " -n 1 -r
   echo ""
@@ -38,28 +51,6 @@ case "$TYPE" in
   policy)        TYPE="policies" ;;
   mcp-server)    TYPE="mcp-servers" ;;
 esac
-
-SRC_DIR="$REPO_DIR/artifacts/community/$TYPE"
-if [ ! -d "$SRC_DIR" ]; then
-  # For claude-skills, the source is the built overlay output. Since spec 0019
-  # (ADR-0011), overlay tiers build into the gitignored staging tree
-  # dist/<tier>/.claude/skills/ — NOT into the committed .claude/skills/ tree
-  # (which now carries `core` only). Prefer the community staging root, then
-  # org. Run `bash scripts/build-components.sh` first to populate dist/.
-  SRC_DIR=""
-  for staging in "$REPO_DIR/dist/community/.claude/skills" "$REPO_DIR/dist/org/.claude/skills"; do
-    if [ -d "$staging" ]; then
-      SRC_DIR="$staging"
-      break
-    fi
-  done
-  if [ -z "$SRC_DIR" ]; then
-    echo "Error: source directory not found for type '$TYPE'"
-    echo "       Overlay skills build into dist/{community,org}/.claude/skills/ —"
-    echo "       run 'bash scripts/build-components.sh' first."
-    exit 1
-  fi
-fi
 
 # --- Place a file or directory ---
 place_component() {
@@ -81,7 +72,7 @@ place_component() {
 
 # --- Register an MCP server via 'claude mcp add --scope user' ---
 # Claude Code reads MCP servers from ~/.claude.json (managed by 'claude mcp ...').
-# Each fragment in artifacts/community/mcp-servers/ is a JSON file shaped like:
+# Each fragment in artifacts/<tier>/mcp-servers/ is a JSON file shaped like:
 #   { "command": "...", "args": ["..."], "env": { ... } }
 register_mcp_server() {
   local json_file="$1"
@@ -118,49 +109,60 @@ register_mcp_server() {
   fi
 }
 
+# --- The single-component installers handed to the shared drivers ------------
+# Each reads DEST from the dispatch arm below, which is what lets one driver
+# serve every type without the resolver library knowing any landing zone.
+install_into_dest() {
+  place_component "$1" "$DEST"
+}
+
+register_json_entry() {
+  case "$1" in
+    *.json) ;;
+    *)
+      echo "Error: '$1' is not a JSON MCP declaration." >&2
+      return 1
+      ;;
+  esac
+  register_mcp_server "$1"
+}
+
 # --- Dispatch by type ---
 case "$TYPE" in
   claude-skills)
+    # R2: the assisted setup installs skills from dist/<tier>/.claude/skills
+    # (setup-claude-interactive.sh), so this command reads the same basis rather
+    # than the authoring sources. A miss triggers one prune-and-rebuild of the
+    # served overlay staging roots, because a compiled tree is stale by default.
     DEST="$CLAUDE_HOME/skills"
     mkdir -p "$DEST"
-
+    component_set_staging_roots ".claude/skills"
     if [ -n "$NAME" ]; then
-      [ -d "$SRC_DIR/$NAME" ] || { echo "Error: '$NAME' not found"; exit 1; }
-      place_component "$SRC_DIR/$NAME" "$DEST"
+      component_install_named install_into_dest "$NAME" "$TYPE" claude "${COMPONENT_ROOTS[@]}" || exit $?
     else
-      for item in "$SRC_DIR"/*/; do
-        [ -d "$item" ] && place_component "$item" "$DEST"
-      done
+      component_install_all install_into_dest claude "${COMPONENT_ROOTS[@]}" || exit $?
     fi
     ;;
 
   policies)
+    # Never compiled: the authoring source IS what installs, so there is no
+    # staging tree to refresh and no rebuild to trigger.
     DEST="$CLAUDE_HOME/rules"
     mkdir -p "$DEST"
-
+    component_set_artifact_roots "policies"
     if [ -n "$NAME" ]; then
-      for candidate in "$SRC_DIR/$NAME" "$SRC_DIR/$NAME.md"; do
-        if [ -e "$candidate" ]; then
-          place_component "$candidate" "$DEST"
-          break
-        fi
-      done
+      component_install_named install_into_dest "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
     else
-      for item in "$SRC_DIR"/*; do
-        [ -e "$item" ] && place_component "$item" "$DEST"
-      done
+      component_install_all install_into_dest "" "${COMPONENT_ROOTS[@]}" || exit $?
     fi
     ;;
 
   mcp-servers)
+    component_set_artifact_roots "mcp-servers"
     if [ -n "$NAME" ]; then
-      JSON="$SRC_DIR/$NAME.json"
-      [ ! -f "$JSON" ] && { echo "Error: '$NAME.json' not found"; exit 1; }
-      register_mcp_server "$JSON"
+      component_install_named register_json_entry "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
     else
-      for item in "$SRC_DIR"/*.json; do
-        [ -f "$item" ] && register_mcp_server "$item"
-      done
+      component_install_all register_json_entry "" "${COMPONENT_ROOTS[@]}" || exit $?
     fi
     ;;
 

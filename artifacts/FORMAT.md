@@ -380,7 +380,12 @@ The build script (`scripts/build-components.sh`) requires:
 - **`yq`** (preferred) for YAML frontmatter parsing, or a lightweight
   Python helper as fallback.
 - **`jq`** for JSON merging (hooks, policies, MCP servers).
-- **Bash 4+** for associative arrays and advanced string handling.
+- **Bash 3.2.57** — the stock macOS `/bin/bash`, and the enforced floor. The
+  forbidden constructs are declared in `ci/bash32-forbidden.txt` and rejected in
+  continuous integration by `scripts/check-bash32-portability.sh`: no
+  associative arrays (`declare -A`), no `mapfile`/`readarray`. This entry
+  previously read "Bash 4+ for associative arrays", which contradicted that
+  guard.
 
 ## Validation Rules
 
@@ -390,3 +395,28 @@ The build script (`scripts/build-components.sh`) requires:
 3. The body (content after the closing `---`) MUST NOT be empty.
 4. Tool-specific sections (`gemini:`, `claude:`) are optional.
 5. Unknown fields in tool-specific sections are silently ignored.
+6. Two components MUST NOT be installed under the same name into the same
+   landing zone. The build refuses such a pair before writing anything, naming
+   the colliding name and every tier that declares it (spec 0119 R13). The
+   bound is the landing zone, not the name: two components whose landing zones
+   differ do not collide, however their names relate (R12).
+
+   The contrast is worth stating, because both halves are load-bearing:
+
+   - **Legal.** `architect` exists as both a skill and an agent. A skill lands
+     in `.claude/skills/architect`, an agent in `.claude/agents/architect` —
+     different landing zones, so the pair builds. Eight other name pairs in
+     this repository are legal for the same reason. A `core` component may
+     likewise share a name with an overlay one: `core` lands in the committed
+     project tree, every overlay tier lands in the user home.
+   - **Refused.** A *command* and a *skill* sharing one name. Three of the four
+     supported CLIs have no first-class slash-command format and compile a
+     command into the skills namespace — `.claude/skills/<name>`,
+     `.github/skills/<name>`, `.agents/skills/<name>` — so the pair would claim
+     one landing zone under one name. Two tiers declaring one `policies` name
+     is refused on the same ground, even though nothing compiles a policy.
+
+   The check keys on the installed target each component reaches, not on its
+   source path, so it covers every type an install command can resolve —
+   including `policies`, `hooks`, `themes` and `mcp-servers`, which no CLI
+   compiles and which a guard scoped to build output could not reach.

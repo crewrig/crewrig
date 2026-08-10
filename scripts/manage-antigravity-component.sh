@@ -1,5 +1,5 @@
 #!/bin/bash
-# manage-antigravity-component.sh — Install or link Antigravity CLI community components
+# manage-antigravity-component.sh — Install or link Antigravity CLI overlay-tier components
 #
 # Usage:
 #   bash scripts/manage-antigravity-component.sh <install|link> <type> [name]
@@ -10,11 +10,20 @@
 # Skills and policies are installed into the Antigravity CLI user home
 # (~/.gemini/antigravity-cli/). MCP servers are merged into
 # ~/.gemini/antigravity-cli/settings.json (user-level).
+#
+# Every type resolves over the served overlay tiers — library, community, org —
+# and never over `core` (spec 0119 R5/R6). Skills resolve from the compiled
+# staging tree dist/<tier>/.agents/skills, the same basis the assisted setup
+# reads (R2); policies and mcp-servers resolve from the authoring sources, which
+# before this change were hardcoded to the community tier alone.
 
 set -e
 
 ANTIGRAVITY_HOME="${HOME}/.gemini/antigravity-cli"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/component-resolve.sh
+. "$(dirname "$0")/lib/component-resolve.sh"
+
 MODE="${1:-install}"
 TYPE="$2"
 NAME="$3"
@@ -27,7 +36,12 @@ fi
 
 # --- Security disclaimer for link mode ---
 if [ "$MODE" = "link" ]; then
-  echo "WARNING: Symlink mode — files change with branch switches."
+  echo "WARNING: Symlink mode — the installed component is a link into this"
+  echo "         repository, so a branch switch changes it in place."
+  echo "         For antigravity-skills the link target is the regenerable"
+  echo "         staging tree dist/<tier>/, which a rebuild replaces wholesale:"
+  echo "         an edit to the authoring source under artifacts/ takes effect"
+  echo "         only after 'bash scripts/build-components.sh' has run."
   echo "Only use if you trust all branches in this repository."
   read -p "Continue? [y/N] " -n 1 -r
   echo ""
@@ -82,77 +96,52 @@ merge_mcp_server() {
   echo "  Merged: $entry_name into mcpServers"
 }
 
+# --- The single-component installers handed to the shared drivers ------------
+install_into_dest() {
+  place_component "$1" "$DEST"
+}
+
+register_json_entry() {
+  case "$1" in
+    *.json) ;;
+    *)
+      echo "Error: '$1' is not a JSON MCP declaration." >&2
+      return 1
+      ;;
+  esac
+  merge_mcp_server "$1"
+}
+
 # --- Dispatch by type ---
 case "$TYPE" in
   antigravity-skills)
-    # For antigravity-skills, prefer the built overlay output from the staging tree.
-    # Run `bash scripts/build-components.sh --target antigravity` first to populate dist/.
-    SRC_DIR=""
-    for staging in "$REPO_DIR/dist/community/.agents/skills" "$REPO_DIR/dist/org/.agents/skills"; do
-      if [ -d "$staging" ]; then
-        SRC_DIR="$staging"
-        break
-      fi
-    done
-    if [ -z "$SRC_DIR" ]; then
-      echo "Error: source directory not found for type '$TYPE'"
-      echo "       Overlay skills build into dist/{community,org}/.agents/skills/ —"
-      echo "       run 'bash scripts/build-components.sh --target antigravity' first."
-      exit 1
-    fi
-
     DEST="$ANTIGRAVITY_HOME/skills"
     mkdir -p "$DEST"
-
+    component_set_staging_roots ".agents/skills"
     if [ -n "$NAME" ]; then
-      [ -d "$SRC_DIR/$NAME" ] || { echo "Error: '$NAME' not found"; exit 1; }
-      place_component "$SRC_DIR/$NAME" "$DEST"
+      component_install_named install_into_dest "$NAME" "$TYPE" antigravity "${COMPONENT_ROOTS[@]}" || exit $?
     else
-      for item in "$SRC_DIR"/*/; do
-        [ -d "$item" ] && place_component "$item" "$DEST"
-      done
+      component_install_all install_into_dest antigravity "${COMPONENT_ROOTS[@]}" || exit $?
     fi
     ;;
 
   policies)
-    SRC_DIR="$REPO_DIR/artifacts/community/policies"
-    if [ ! -d "$SRC_DIR" ]; then
-      echo "Error: artifacts/community/policies/ does not exist."
-      exit 1
-    fi
-
     DEST="$ANTIGRAVITY_HOME/rules"
     mkdir -p "$DEST"
-
+    component_set_artifact_roots "policies"
     if [ -n "$NAME" ]; then
-      for candidate in "$SRC_DIR/$NAME" "$SRC_DIR/$NAME.md"; do
-        if [ -e "$candidate" ]; then
-          place_component "$candidate" "$DEST"
-          break
-        fi
-      done
+      component_install_named install_into_dest "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
     else
-      for item in "$SRC_DIR"/*; do
-        [ -e "$item" ] && place_component "$item" "$DEST"
-      done
+      component_install_all install_into_dest "" "${COMPONENT_ROOTS[@]}" || exit $?
     fi
     ;;
 
   mcp-servers)
-    SRC_DIR="$REPO_DIR/artifacts/community/mcp-servers"
-    if [ ! -d "$SRC_DIR" ]; then
-      echo "Error: artifacts/community/mcp-servers/ does not exist."
-      exit 1
-    fi
-
+    component_set_artifact_roots "mcp-servers"
     if [ -n "$NAME" ]; then
-      JSON="$SRC_DIR/$NAME.json"
-      [ ! -f "$JSON" ] && { echo "Error: '$NAME.json' not found in artifacts/community/mcp-servers/"; exit 1; }
-      merge_mcp_server "$JSON"
+      component_install_named register_json_entry "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
     else
-      for item in "$SRC_DIR"/*.json; do
-        [ -f "$item" ] && merge_mcp_server "$item"
-      done
+      component_install_all register_json_entry "" "${COMPONENT_ROOTS[@]}" || exit $?
     fi
     ;;
 
