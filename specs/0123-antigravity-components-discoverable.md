@@ -1,7 +1,7 @@
 ---
 id: "0123"
 slug: antigravity-components-discoverable
-status: draft
+status: approved
 complexity: standard
 interaction-mode: AUTO
 related-issue: 761
