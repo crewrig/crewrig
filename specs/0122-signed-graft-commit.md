@@ -159,12 +159,14 @@ And   the run exits zero, whether or not that fork can produce a signature
 
 ## Open questions
 
-- [AUTO-PARKED] Requirement 4 places the refusal *after* the policy-aware
-  restore has run, matching the posture spec 0086 Requirement 8 already
-  established for the anti-pollution guard — restored files left in the
-  working tree, no commit, non-zero exit. A fail-fast alternative, probing
-  the signing capability before the restore touches anything (as spec 0086
-  Requirement 12 does for a shallow clone), would instead leave the working
-  tree untouched on failure, at the cost of that probe on every
-  history-preserving run. Consistency with the neighbouring guard decided
-  it; raise this at review if the untouched-tree guarantee is preferred.
+None. One question was carried while drafting — whether Requirement 4's refusal
+belongs *after* the policy-aware restore, matching the posture spec 0086
+Requirement 8 established for the anti-pollution guard, or *before* it, matching
+the fail-fast shape spec 0086 Requirement 12 uses for a shallow clone. It is
+closed in writing on the logbook issue, per `docs/spec-format.md` → *Mandatory
+body sections → 5*, in favour of the post-restore placement: the operator's
+recovery path is identical either way and already documented, a capability probe
+costs a credential interaction on every history-preserving run of every signing
+fork including the successful ones, and signing capability is a condition
+discovered while doing the work rather than one knowable for free beforehand.
+Closure: <https://github.com/crewrig/crewrig/issues/756#issuecomment-5246352615>
