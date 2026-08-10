@@ -70,6 +70,7 @@ capabilities:
       - bash scripts/tests/test-check-ci-parity.sh
       - bash scripts/tests/test-assembly-verification.sh
       - bash scripts/tests/test-artifact-build-install-scope.sh
+      - bash scripts/tests/test-component-tier-resolution.sh
       - bash scripts/build-docs-index.sh --check
       - bash scripts/tests/test-build-docs-index.sh
       - bash scripts/tests/test-mempalace-transcript-hook.sh
