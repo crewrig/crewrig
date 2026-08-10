@@ -268,6 +268,13 @@
 #    a new figure is precisely the act that produces rotted ones, so a pass that
 #    removes them can add one.
 #
+#    AND A REFERENCE OUT OF THIS FILE NAMES THE ROUND THAT ISSUED IT. A finding
+#    id is as anchorless as a distance: `[REVIEW F2]` carries WHICH finding but
+#    not WHOSE round, and PR #773 ran five REVIEW rounds each numbering its own
+#    findings from F1. Cases 17-20 answer iteration 1's F2 and case 22 answers
+#    iteration 5's, so the bare form spelled two unrelated findings identically —
+#    which is why every case label reads `[REVIEW iteration <N>, F<M>]`.
+#
 # Bash 3.2-portable per spec 0111: no associative arrays, no Bash 4 builtins.
 #
 # Usage:
@@ -1021,7 +1028,8 @@ INTERLOPER
 }
 
 # ===========================================================================
-# Case 17 [REVIEW F2] — `--stale-after 08` means EIGHT MINUTES, not a base error.
+# Case 17 [REVIEW iteration 1, F2] — `--stale-after 08` means EIGHT MINUTES, not
+# a base error.
 # Catches: a `--stale-after` validated as digits and then evaluated as arithmetic.
 # `08` and `09` are the only two-character values that pass a digit test and abort
 # `$(( … ))`, and the abort happened INSIDE `cmd_takeover`, so the caller got the
@@ -1067,8 +1075,8 @@ case_17() {
 }
 
 # ===========================================================================
-# Case 18 [REVIEW F2] — an over-wide `--stale-after` is refused BEFORE the
-# arithmetic it would overflow, not judged after it.
+# Case 18 [REVIEW iteration 1, F2] — an over-wide `--stale-after` is refused
+# BEFORE the arithmetic it would overflow, not judged after it.
 # Catches: the silent 64-bit wrap. `--stale-after 200000000000000000` asks for
 # "essentially never stale"; unfixed, `* 60` wrapped to -6446744073709551616, the
 # comparison inverted, and a claim taken one second earlier was handed to bob at
@@ -1122,8 +1130,8 @@ case_18() {
 }
 
 # ===========================================================================
-# Case 19 [REVIEW F2] — a leading-zero `since_epoch` keeps requirement 8's
-# takeover path OPEN.
+# Case 19 [REVIEW iteration 1, F2] — a leading-zero `since_epoch` keeps
+# requirement 8's takeover path OPEN.
 # Catches: the same base error as case 17, on the value that comes off DISK, and
 # therefore on the one path that must never fail closed. `since_epoch` is read
 # from a claim written by a holder that has since ended; a corrupt or truncated
@@ -1157,8 +1165,8 @@ case_19() {
 }
 
 # ===========================================================================
-# Case 20 [REVIEW F2] — an over-wide `since_epoch` does not wrap into a
-# plausible-looking FRESH claim and stand in front of R8's recovery.
+# Case 20 [REVIEW iteration 1, F2] — an over-wide `since_epoch` does not wrap
+# into a plausible-looking FRESH claim and stand in front of R8's recovery.
 # Catches: the 64-bit wrap on the disk-side value, which fails in the mirror
 # direction of case 18's. `$(( … ))` truncates a digit string wider than 64 bits
 # SILENTLY, so an over-wide `since_epoch` does not announce itself — it evaluates,
@@ -1264,8 +1272,12 @@ case_20() {
 }
 
 # ===========================================================================
-# Case 21 [REVIEW F2, second finding] — a `since_epoch` in the FUTURE is sorted
-# into clock skew, which still protects the claim, and corruption, which does not.
+# Case 21 [REVIEW iteration 1, out of F2's fix] — a `since_epoch` in the FUTURE
+# is sorted into clock skew, which still protects the claim, and corruption,
+# which does not. No reviewer numbered this one: it surfaced while F2 was being
+# fixed and `team-lead` ruled it in scope rather than deferring it, so the label
+# names F2's fix rather than a finding id. Recorded in the iteration-1 closeout
+# on issue #736.
 # Catches: the R8 violation that survived the first fix. `since_epoch` was made
 # safe against values that could not be EVALUATED, and a future timestamp
 # evaluates perfectly — it just evaluates to a negative age, which is below every
@@ -1410,8 +1422,8 @@ case_21() {
 }
 
 # ===========================================================================
-# Case 22 [REVIEW F3] — a value-taking flag in FINAL position is refused BY NAME,
-# not by exiting 1 with both streams empty.
+# Case 22 [REVIEW iteration 5, F2] — a value-taking flag in FINAL position is
+# refused BY NAME, not by exiting 1 with both streams empty.
 # Catches: the one refusal in this script that said nothing at all. `--agent` last
 # on the line leaves `shift 2` asking for more parameters than remain; `shift`
 # then fails, and under `set -euo pipefail` (line 191) the script exits 1 having
