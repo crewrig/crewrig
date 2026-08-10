@@ -6,14 +6,46 @@
 # not resolve to tracked content at HEAD. This is the parity sibling mandated by
 # the repo convention "every check-*.sh has a test-*.sh".
 #
+# Since spec 0121 the same script also guards the reverse direction — every
+# directory the component build writes component outputs into must carry an
+# upstream-sync guarantee — so cases e-i exercise that half.
+#
 # Cases:
+#   Forward direction (manifest → tree, spec 0031 R5)
 #   a. Phantom strict entry → exit 1, stderr names the failing entry.
 #   b. Phantom adopt-on-edit entry → exit 1, stderr names the failing entry.
 #   c. Fully resolvable manifest → exit 0 with the OK line on stdout.
 #   d. Phantom excluded entry → exit 0 (excluded is org-owned, NOT checked).
 #
+#   Reverse direction (tree → manifest, spec 0121 R5)
+#   e. Built output absent from the manifest → exit 1, stderr names it.
+#   f. Same tree, manifest lists it → exit 0. The control that makes e
+#      informative: it isolates the manifest omission as e's cause.
+#   g. Write-helper call site with no $out_root/ target → non-zero, names the
+#      line (fail-closed: unclassifiable is not the same as nothing to report).
+#   h. Built output covered only by an `excluded` entry → exit 1. `excluded` is
+#      the absence of a guarantee, and R2 admits no directory without one.
+#   i. The repository's REAL build script + a manifest naming no built output →
+#      exit 1 naming `.agents/skills` and `.agents/agents`, 9 derived. The only
+#      case run against the real script's real shape, so the only one a
+#      matcher-blinding change cannot pass.
+#
+# Cases a-d commit a stub `scripts/build-components.sh` with no call sites, so
+# the derived set is empty in half the suite — the accumulator-empty path the
+# array guards in check-core-paths.sh must survive under bash 3.2 `set -u`. The
+# stub is committed, not merely written, so the fixtures hold up if the guard
+# ever reads the build script from HEAD instead of from disk.
+#
+# Case i reads `scripts/build-components.sh`. That coupling is deliberate: a
+# legitimate tenth output directory turns case i red on its count until the
+# literal is updated. That is the forcing function working, not flakiness.
+#
 # Usage:
 #   bash scripts/tests/test-check-core-paths.sh
+#   /bin/bash scripts/tests/test-check-core-paths.sh   # the bash 3.2 gate;
+#       real only because run_check spawns via "${BASH:-bash}". No CI job runs
+#       a 3.2 interpreter, so this local run is the only place the empty-array
+#       trap is caught.
 
 # -e intentionally omitted: pass/fail counters control the harness; adding -e
 # would abort on expected non-zero exits from the script under test.
@@ -74,11 +106,40 @@ run_check() {
   out_file="$(mktemp "$TMP_ROOT/out.XXXXXX")"
   err_file="$(mktemp "$TMP_ROOT/err.XXXXXX")"
   CHECK_EXIT=0
-  ( CREWRIG_REPO_DIR="$repo" bash "$SCRIPT_UNDER_TEST" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
+  # `${BASH:-bash}`, not bare `bash`: bare `bash` resolves from $PATH, so
+  # launching this harness as `/bin/bash test-check-core-paths.sh` would run the
+  # harness on 3.2.57 and the script under test on whatever modern bash $PATH
+  # supplies — making the 3.2 gate below inert. The `:-` default keeps it safe
+  # under `set -u`. (Repo-wide, 19 of 68 suites still carry the bare form; #798.)
+  ( CREWRIG_REPO_DIR="$repo" "${BASH:-bash}" "$SCRIPT_UNDER_TEST" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
   CHECK_STDOUT="$(cat "$out_file")"
   CHECK_STDERR="$(cat "$err_file")"
   rm -f "$out_file" "$err_file"
 }
+
+# ---------------------------------------------------------------------------
+# Stub build scripts. Single-quoted so `$out_root` stays literal.
+#
+# Deliberately written at column 0, unlike the real script's six-space-indented
+# call sites: a matcher that tested the raw line instead of the trimmed one
+# would still match these stubs and only case i would catch it.
+# ---------------------------------------------------------------------------
+
+# No write-helper call site → the derived set is empty.
+BUILD_STUB_NONE='#!/bin/bash
+# Stub build script: no write-helper call sites.
+echo "stub"
+'
+
+# One call site writing into .newcli/skills.
+BUILD_STUB_NEWCLI='#!/bin/bash
+check_or_write "$out_root/.newcli/skills/$name/SKILL.md" "$content" "$source"
+'
+
+# One call site whose target this guard cannot classify (line 2).
+BUILD_STUB_UNCLASSIFIABLE='#!/bin/bash
+check_or_write "$some_other_root/x.md" "$content"
+'
 
 # ---------------------------------------------------------------------------
 # Case a — Phantom strict entry → exit 1, stderr names the failing entry.
@@ -86,7 +147,9 @@ run_check() {
 {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
   init_git_repo "$repo"
-  make_initial_commit "$repo" "real.txt" "tracked content"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    "scripts/build-components.sh" "$BUILD_STUB_NONE"
   write_manifest "$repo" $'real.txt\tstrict\nphantom.txt\tstrict\n'
 
   run_check "$repo"
@@ -115,7 +178,9 @@ run_check() {
 {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
   init_git_repo "$repo"
-  make_initial_commit "$repo" "real.txt" "tracked content"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    "scripts/build-components.sh" "$BUILD_STUB_NONE"
   write_manifest "$repo" $'real.txt\tstrict\nphantom.txt\tadopt-on-edit\n'
 
   run_check "$repo"
@@ -146,7 +211,8 @@ run_check() {
   init_git_repo "$repo"
   make_initial_commit "$repo" \
     "real.txt"  "tracked content" \
-    "other.txt" "other tracked content"
+    "other.txt" "other tracked content" \
+    "scripts/build-components.sh" "$BUILD_STUB_NONE"
   write_manifest "$repo" $'real.txt\tstrict\nother.txt\tadopt-on-edit\n'
 
   run_check "$repo"
@@ -177,7 +243,9 @@ run_check() {
 {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
   init_git_repo "$repo"
-  make_initial_commit "$repo" "real.txt" "tracked content"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    "scripts/build-components.sh" "$BUILD_STUB_NONE"
   # phantom-excluded.txt resolves nowhere at HEAD, but `excluded` is skipped.
   write_manifest "$repo" $'real.txt\tstrict\nphantom-excluded.txt\texcluded\n'
 
@@ -199,6 +267,216 @@ run_check() {
   else
     echo "FAIL  case-d: excluded entry was counted or OK line malformed"
     echo "      actual stdout: $CHECK_STDOUT"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case e — A built-output directory absent from the manifest → exit 1, and
+#          stderr names it. The reverse direction (spec 0121 R5); this is the
+#          shape of the bug in issue #755.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    ".newcli/skills/demo/SKILL.md" "built output" \
+    "scripts/build-components.sh" "$BUILD_STUB_NEWCLI"
+  # The manifest never mentions .newcli/skills — the whole point of the case.
+  write_manifest "$repo" $'real.txt\tstrict\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-e: ungoverned built-output directory fails the check (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-e: expected exit 1, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF -- "- .newcli/skills"; then
+    echo "PASS  case-e: stderr names the ungoverned directory"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-e: stderr did not name .newcli/skills"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case f — The control for case e. Byte-identical tree; the manifest lists the
+#          directory → exit 0. Without this, case e's exit 1 could as easily be
+#          caused by the fixture existing at all as by the manifest omission.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    ".newcli/skills/demo/SKILL.md" "built output" \
+    "scripts/build-components.sh" "$BUILD_STUB_NEWCLI"
+  write_manifest "$repo" $'real.txt\tstrict\n.newcli/skills\tstrict\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-f: the same tree passes once the manifest lists it (exit 0)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-f: expected exit 0, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  # Exit status only, deliberately. Case f's job is to be the green control
+  # that isolates case e's cause; asserting the reverse direction's success
+  # line here would make the control sensitive to the reverse block existing,
+  # which is precisely what case e is for.
+}
+
+# ---------------------------------------------------------------------------
+# Case g — A write-helper call site with no $out_root/ target → non-zero,
+#          naming the line. Fail-closed: a target the guard cannot classify is
+#          an output it cannot check, which must not read as nothing to report.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    "scripts/build-components.sh" "$BUILD_STUB_UNCLASSIFIABLE"
+  write_manifest "$repo" $'real.txt\tstrict\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -ne 0 ]; then
+    echo "PASS  case-g: unclassifiable call site fails the check (exit $CHECK_EXIT)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-g: expected non-zero exit, got 0"
+    echo "      actual stdout: $CHECK_STDOUT"
+    fail=$((fail + 1))
+  fi
+
+  # Naming the line is what distinguishes a fail-closed refusal from an
+  # unrelated crash that happens to exit non-zero.
+  if echo "$CHECK_STDERR" | grep -qF "build-components.sh:2"; then
+    echo "PASS  case-g: stderr names the offending build-script line"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-g: stderr did not name build-components.sh:2"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case h — A built output covered only by an `excluded` entry nested under a
+#          governed parent → exit 1. `excluded` is the absence of a guarantee
+#          (the sync never restores it), and R2 leaves no built-output
+#          directory without one. Also exercises the nested-carve-out rule
+#          this guard shares with sync-from-upstream.sh.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    ".newcli/skills/demo/SKILL.md" "built output" \
+    "scripts/build-components.sh" "$BUILD_STUB_NEWCLI"
+  # .newcli is strict, but the excluded child carves the built output back out.
+  write_manifest "$repo" $'real.txt\tstrict\n.newcli\tstrict\n.newcli/skills\texcluded\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-h: an excluded built-output directory fails the check (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-h: expected exit 1, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF -- "- .newcli/skills"; then
+    echo "PASS  case-h: stderr names the excluded built-output directory"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-h: stderr did not name .newcli/skills"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case i — The repository's REAL build script against a manifest naming no
+#          built-output directory (spec 0121 R6).
+#
+# Every case above runs the guard against a stub whose shape this file chose.
+# This one runs it against the real script's real shape — six-space-indented
+# call sites, real quoting, all sixteen of them — so it is the only case a
+# matcher-blinding change cannot pass: the derived set goes empty, the reverse
+# direction turns vacuous, exit becomes 0, and case i alone turns red.
+#
+# Driven down the FAILURE path on purpose: the success path prints a count and
+# no identities, so a mutation deriving nine wrong directories would pass an
+# `OK: all 9 …` assertion. The failure path names each one, pinning the
+# identities as well as the count. The expected names are literals here, never
+# re-derived by re-running the guard's own extraction — a test that re-derives
+# agrees with the parser instead of checking it.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" "real.txt" "tracked content"
+  mkdir -p "$repo/scripts"
+  cp "$SCRIPT_DIR/build-components.sh" "$repo/scripts/build-components.sh"
+  # One trivially-resolvable entry, so the forward direction passes and the
+  # non-zero exit is unambiguously the reverse direction's.
+  write_manifest "$repo" $'real.txt\tstrict\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-i: the real build script against a bare manifest fails (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-i: expected exit 1, got $CHECK_EXIT"
+    echo "      actual stdout: $CHECK_STDOUT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF -- "- .agents/skills"; then
+    echo "PASS  case-i: stderr names .agents/skills"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-i: stderr did not name .agents/skills"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF -- "- .agents/agents"; then
+    echo "PASS  case-i: stderr names .agents/agents"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-i: stderr did not name .agents/agents"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  # 9 derived directories today. A legitimate tenth output turns this red until
+  # the literal is updated — the forcing function, not flakiness.
+  if echo "$CHECK_STDERR" | grep -qF "9 of 9 built-output"; then
+    echo "PASS  case-i: reverse-direction summary reports 9 derived directories"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-i: expected '9 of 9 built-output' in the failure summary"
+    echo "      actual stderr: $CHECK_STDERR"
     fail=$((fail + 1))
   fi
 }

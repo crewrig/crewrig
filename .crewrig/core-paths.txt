@@ -91,6 +91,16 @@ artifacts/library
 .github/skills
 .github/agents
 .github/workflows
+# The `.agents` root is deliberately NOT claimed whole (spec 0121 → Out of
+# scope): no CLI output root is, and claiming this one would sweep in
+# `.agents/ANTIGRAVITY.md` and `.agents/settings.local.json.example` — the
+# latter exactly the class of settings template that already needed the
+# `.github/copilot/settings.json` carve-out above. Only the two
+# subdirectories the component build writes are claimed.
+# `.agents/settings.local.json` is untracked (.gitignore) and stays unlisted,
+# so it is never guarded and never restored (spec 0121 R4).
+.agents/skills
+.agents/agents
 
 # Extension distribution channel
 extension-skeleton
