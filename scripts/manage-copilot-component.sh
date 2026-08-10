@@ -1,32 +1,46 @@
 #!/bin/bash
-# manage-copilot-component.sh — Install or link Copilot CLI community components
+# manage-copilot-component.sh — Install or link Copilot CLI overlay-tier components
 #
 # Usage:
 #   bash scripts/manage-copilot-component.sh <install|link> <type> [name]
 #
-# Types: skills, agents, commands (compiled as skills), mcp-servers
+# Types: skills, commands (compiled as skills), mcp-servers
 # Default mode: install (copy). Link mode shows security disclaimer.
 #
-# Skills and agents are installed into the workspace .github/ directories.
+# Skills land in ~/.copilot/skills — the same landing zone the assisted setup
+# uses (COPILOT_SKILLS in setup-copilot-interactive.sh), read from the same
+# basis, dist/<tier>/.github/skills (spec 0119 R1/R2). This command previously
+# wrote into the repository's own .github/skills, which spec 0119 R3 forbids for
+# a non-`core` tier and which silently dirtied the committed checkout.
+#
 # MCP servers are merged into ~/.copilot/mcp-config.json (user-level).
+# `agents` is refused; see the dispatch arm for why.
 
 set -e
 
 COPILOT_HOME="${HOME}/.copilot"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/component-resolve.sh
+. "$(dirname "$0")/lib/component-resolve.sh"
+
 MODE="${1:-install}"
 TYPE="$2"
 NAME="$3"
 
 if [ -z "$TYPE" ]; then
   echo "Usage: $0 <install|link> <type> [name]"
-  echo "Types: skills, agents, commands, mcp-servers"
+  echo "Types: skills, commands, mcp-servers"
   exit 1
 fi
 
 # --- Security disclaimer for link mode ---
 if [ "$MODE" = "link" ]; then
-  echo "WARNING: Symlink mode — files change with branch switches."
+  echo "WARNING: Symlink mode — the installed component is a link into this"
+  echo "         repository, so a branch switch changes it in place."
+  echo "         For skills the link target is the regenerable staging tree"
+  echo "         dist/<tier>/, which a rebuild replaces wholesale: an edit to"
+  echo "         the authoring source under artifacts/ takes effect only after"
+  echo "         'bash scripts/build-components.sh' has run."
   echo "Only use if you trust all branches in this repository."
   read -p "Continue? [y/N] " -n 1 -r
   echo ""
@@ -61,33 +75,6 @@ place_component() {
   fi
 }
 
-# --- Install an agent (flat file: artifacts/*/agents/<name>/AGENT.md -> .github/agents/<name>.md) ---
-place_agent() {
-  local name="$1"
-  local src_file=""
-  for search_dir in "$REPO_DIR/artifacts/core/agents" "$REPO_DIR/artifacts/library/agents" "$REPO_DIR/artifacts/community/agents" "$REPO_DIR/artifacts/org/agents"; do
-    [ -f "$search_dir/${name}/AGENT.md" ] && src_file="$search_dir/${name}/AGENT.md" && break
-  done
-  local dest_file="$REPO_DIR/.github/agents/${name}.md"
-
-  if [ -z "$src_file" ]; then
-    echo "Error: '$name' not found in artifacts/*/agents/"
-    exit 1
-  fi
-
-  if [ -e "$dest_file" ] || [ -L "$dest_file" ]; then
-    rm -f "$dest_file"
-  fi
-
-  if [ "$MODE" = "link" ]; then
-    ln -s "$src_file" "$dest_file"
-    echo "  Linked: ${name}.md"
-  else
-    cp "$src_file" "$dest_file"
-    echo "  Copied: ${name}.md"
-  fi
-}
-
 # --- Merge an MCP server fragment into ~/.copilot/mcp-config.json ---
 merge_mcp_server() {
   local json_file="$1"
@@ -109,61 +96,65 @@ merge_mcp_server() {
   echo "  Merged: $entry_name into mcpServers"
 }
 
+# --- The single-component installers handed to the shared drivers ------------
+install_into_dest() {
+  place_component "$1" "$DEST"
+}
+
+register_json_entry() {
+  case "$1" in
+    *.json) ;;
+    *)
+      echo "Error: '$1' is not a JSON MCP declaration." >&2
+      return 1
+      ;;
+  esac
+  merge_mcp_server "$1"
+}
+
 # --- Dispatch ---
 case "$TYPE" in
   skills|commands)
-    # Commands compile as skills for Copilot (no first-class slash-command format).
-    DEST="$REPO_DIR/.github/skills"
+    # Commands compile as skills for Copilot (no first-class slash-command
+    # format), so both types share one landing zone and one staging root.
+    DEST="$COPILOT_HOME/skills"
     mkdir -p "$DEST"
-
-    for SRC_DIR in "$REPO_DIR/artifacts/core/skills" "$REPO_DIR/artifacts/library/skills" "$REPO_DIR/artifacts/community/skills" "$REPO_DIR/artifacts/org/skills"; do
-      [ ! -d "$SRC_DIR" ] && continue
-      if [ -n "$NAME" ]; then
-        [ -d "$SRC_DIR/$NAME" ] && place_component "$SRC_DIR/$NAME" "$DEST"
-      else
-        for item in "$SRC_DIR"/*/; do
-          [ -d "$item" ] && place_component "$item" "$DEST"
-        done
-      fi
-    done
+    component_set_staging_roots ".github/skills"
+    if [ -n "$NAME" ]; then
+      component_install_named install_into_dest "$NAME" "$TYPE" copilot "${COMPONENT_ROOTS[@]}" || exit $?
+    else
+      component_install_all install_into_dest copilot "${COMPONENT_ROOTS[@]}" || exit $?
+    fi
     ;;
 
   agents)
-    mkdir -p "$REPO_DIR/.github/agents"
-
-    if [ -n "$NAME" ]; then
-      place_agent "$NAME"
-    else
-      for SRC_DIR in "$REPO_DIR/artifacts/core/agents" "$REPO_DIR/artifacts/library/agents" "$REPO_DIR/artifacts/community/agents"; do
-        [ ! -d "$SRC_DIR" ] && continue
-        for agent_dir in "$SRC_DIR"/*/; do
-          [ -d "$agent_dir" ] && place_agent "$(basename "$agent_dir")"
-        done
-      done
-    fi
+    # Nothing this command may lawfully serve. spec 0119 R3 bars a non-`core`
+    # component from the committed project tree — which is where this arm used
+    # to write, .github/agents/<name>.md. R6 bars the `core` tier from a
+    # per-component install altogether. And R4 declines to oblige a landing zone
+    # for a type whose assisted setup deliberately installs none, deferring to
+    # the recorded parity gap instead. The repository-level Copilot agent layout
+    # is that gap: see docs/cli-matrix.md rows 4 and 10.
+    echo "Error: this command installs no Copilot agent." >&2
+    echo "       The repository-level Copilot agent layout is a documented" >&2
+    echo "       parity gap (docs/cli-matrix.md rows 4 and 10), and spec 0119" >&2
+    echo "       R3/R4/R6 leave this command no landing zone it may serve." >&2
+    echo "       Agents ship compiled in .github/agents/ via the build." >&2
+    exit 1
     ;;
 
   mcp-servers)
-    SRC_DIR="$REPO_DIR/artifacts/community/mcp-servers"
-    if [ ! -d "$SRC_DIR" ]; then
-      echo "Error: artifacts/community/mcp-servers/ does not exist."
-      exit 1
-    fi
-
+    component_set_artifact_roots "mcp-servers"
     if [ -n "$NAME" ]; then
-      JSON="$SRC_DIR/$NAME.json"
-      [ ! -f "$JSON" ] && { echo "Error: '$NAME.json' not found in artifacts/community/mcp-servers/"; exit 1; }
-      merge_mcp_server "$JSON"
+      component_install_named register_json_entry "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
     else
-      for item in "$SRC_DIR"/*.json; do
-        [ -f "$item" ] && merge_mcp_server "$item"
-      done
+      component_install_all register_json_entry "" "${COMPONENT_ROOTS[@]}" || exit $?
     fi
     ;;
 
   *)
     echo "Error: unknown type '$TYPE'"
-    echo "Types: skills, agents, commands, mcp-servers"
+    echo "Types: skills, commands, mcp-servers"
     exit 1
     ;;
 esac

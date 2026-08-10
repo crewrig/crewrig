@@ -29,6 +29,9 @@ ARTIFACTS_DIR="$REPO_DIR/artifacts"
 #   never installs a non-core component anywhere but dist/.
 TARGET="all"
 CHECK_MODE=false
+# Space-separated allowlist of tier names set by --tier; empty means every tier
+# discovered under artifacts/. See discover_tiers().
+TIER_FILTER=""
 
 # --- Parse arguments ---
 # Note: do not seed TARGET from $1. The previous form `TARGET="${1:-all}"`
@@ -38,6 +41,7 @@ CHECK_MODE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --target) TARGET="$2"; shift 2 ;;
+    --tier)   TIER_FILTER="$TIER_FILTER $2"; shift 2 ;;
     --check)  CHECK_MODE=true; shift ;;
     *)        shift ;;
   esac
@@ -55,6 +59,13 @@ command -v yq >/dev/null 2>&1 || { echo "Error: yq is required. Install with: br
 # byte-identical.
 # shellcheck source=lib/render-command.sh
 . "$(dirname "$0")/lib/render-command.sh"
+
+# --- Shared component resolver (spec 0119) ---
+# Supplies installed_targets()/report_installed_name_collisions(), the R13
+# pre-pass this build runs before writing anything, and report_collision(), the
+# refusal formatter it shares with the four per-component install commands.
+# shellcheck source=lib/component-resolve.sh
+. "$(dirname "$0")/lib/component-resolve.sh"
 
 DRIFT_FOUND=false
 
@@ -322,11 +333,27 @@ propagate_skill_resources() {
 # artifacts/ (the trailing-slash glob ignores artifacts/FORMAT.md, a file).
 # Echoes one tier name per line. Adding a new tier directory needs no edit
 # here — the build picks it up automatically.
+#
+# `--tier <name>` (repeatable) narrows the set to the named tiers and changes
+# nothing else about the loop. It exists because a per-component install command
+# needs the served OVERLAY tiers rebuilt and nothing more: filtered to those,
+# `--target claude` takes 0.57 s and writes zero files into the committed tree,
+# where the unfiltered build takes 4.31 s and — on a branch carrying an unbuilt
+# `core` source edit — leaves four unrequested tracked modifications per edited
+# skill behind. An unknown tier name simply matches nothing, the same way the
+# `*) shift ;;` arm above already swallows an unrecognised flag.
 discover_tiers() {
-  local tier_path tier_name
+  local tier_path tier_name want keep
   for tier_path in "$ARTIFACTS_DIR"/*/; do
     [ -d "$tier_path" ] || continue
     tier_name="$(basename "$tier_path")"
+    if [ -n "$TIER_FILTER" ]; then
+      keep=false
+      for want in $TIER_FILTER; do
+        if [ "$want" = "$tier_name" ]; then keep=true; fi
+      done
+      if [ "$keep" != true ]; then continue; fi
+    fi
     echo "$tier_name"
   done
 }
@@ -777,6 +804,20 @@ echo ""
 # directory and the EXIT trap can clean it up.
 if [ "$CHECK_MODE" = true ]; then
   CHECK_STAGING_ROOT=$(mktemp -d -t crewrig-check-staging.XXXXXX)
+fi
+
+# --- R13 pre-pass: refuse two components claiming one installed name ---------
+# spec 0119 R13. Runs BEFORE the tier loop, so a refusal happens before any file
+# is written, and in both build and --check mode. It evaluates all four CLI
+# mappings whatever --target says and all tiers whatever --tier says: the
+# requirement binds what the build accepts, not what one invocation happens to
+# compile, and a guard that narrowed with the flags would pass on exactly the
+# filtered rebuild an install command performs.
+if ! report_installed_name_collisions "$ARTIFACTS_DIR"; then
+  echo "FAILED: two components would be installed under one name into one landing zone." >&2
+  echo "        Rename one of them, or move one to a tier with a different landing zone." >&2
+  echo "        See artifacts/FORMAT.md -> Validation Rules." >&2
+  exit 1
 fi
 
 # Iterate every discovered tier. Build and --check share this loop, so drift

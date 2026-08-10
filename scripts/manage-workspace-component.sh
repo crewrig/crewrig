@@ -1,8 +1,30 @@
 #!/bin/bash
+# manage-workspace-component.sh — Install or link Gemini CLI overlay-tier components
+#
+# Usage:
+#   bash scripts/manage-workspace-component.sh <install|link> <type> [name]
+#
+# Types: commands, skills, hooks, agents, policies, mcp-servers, themes
+# Default mode: install (copy). Link mode shows a security disclaimer but does
+# NOT prompt — scripts/install-workspace.sh drives this script seven times in
+# one run, so a per-type confirmation would fire seven times for one
+# `task link-workspace`. The asymmetry with the other three commands is recorded
+# in docs/cli-matrix.md row 12 with that reason.
+#
+# Every type resolves over the served overlay tiers — library, community, org —
+# and never over `core` (spec 0119 R5/R6). `skills` and `agents` resolve from
+# the compiled staging tree because the assisted setup does
+# (setup-gemini-interactive.sh installs both from dist/<tier>/.gemini, R2); the
+# other five resolve from the authoring sources, which is also what the setup
+# reads wherever it touches the same landing zone.
+
 set -e
 
 GEMINI_HOME="${HOME}/.gemini"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/component-resolve.sh
+. "$(dirname "$0")/lib/component-resolve.sh"
+
 MODE="${1:-install}"   # "install" (copy) or "link" (symlink)
 TYPE="$2"
 NAME="$3"
@@ -11,6 +33,17 @@ if [ -z "$TYPE" ]; then
   echo "Usage: $0 <install|link> <type> [name]"
   echo "Types: commands, skills, hooks, agents, policies, mcp-servers, themes"
   exit 1
+fi
+
+# --- Security disclaimer for link mode (no prompt — see the header) ---
+if [ "$MODE" = "link" ]; then
+  echo "WARNING: Symlink mode — the installed component is a link into this"
+  echo "         repository, so a branch switch changes it in place."
+  echo "         For skills and agents the link target is the regenerable"
+  echo "         staging tree dist/<tier>/, which a rebuild replaces wholesale:"
+  echo "         an edit to the authoring source under artifacts/ takes effect"
+  echo "         only after 'bash scripts/build-components.sh' has run."
+  echo "Only use if you trust all branches in this repository."
 fi
 
 # Normalize singular/plural
@@ -23,19 +56,6 @@ case "$TYPE" in
   mcp-server) TYPE="mcp-servers" ;;
   theme)      TYPE="themes" ;;
 esac
-
-# Resolve the overlay source tier. Default is the community sandbox; the org
-# tier (spec 0019 — only skills/ and agents/) is searched as a fallback so a
-# single-component install covers org symmetrically with Copilot/Claude.
-SRC_DIR="$REPO_DIR/artifacts/community/$TYPE"
-if [ ! -d "$SRC_DIR" ] && [ -d "$REPO_DIR/artifacts/org/$TYPE" ]; then
-  SRC_DIR="$REPO_DIR/artifacts/org/$TYPE"
-fi
-
-if [ ! -d "$SRC_DIR" ]; then
-  echo "Error: directory artifacts/community/$TYPE (and artifacts/org/$TYPE) does not exist."
-  exit 1
-fi
 
 # --- File/directory component (commands, skills, hooks, agents, policies) ---
 place_component() {
@@ -70,6 +90,7 @@ merge_json() {
     exit 1
   fi
 
+  mkdir -p "$GEMINI_HOME"
   [ ! -f "$settings_file" ] && echo "{}" > "$settings_file"
 
   cp "$settings_file" "${settings_file}.bak"
@@ -82,29 +103,41 @@ merge_json() {
   echo "  Merged: $entry_name into $settings_key"
 }
 
+# --- The single-component installers handed to the shared drivers ------------
+install_into_dest() {
+  place_component "$1" "$DEST"
+}
+
+merge_json_entry() {
+  case "$1" in
+    *.json) ;;
+    *)
+      echo "Error: '$1' is not a JSON $TYPE declaration." >&2
+      return 1
+      ;;
+  esac
+  merge_json "$1" "$KEY"
+}
+
 # --- Dispatch ---
 case "$TYPE" in
   commands|skills|hooks|agents|policies)
     DEST="$GEMINI_HOME/$TYPE"
     mkdir -p "$DEST"
 
+    # R2: only the two types the assisted setup reads from compiled output
+    # resolve from the staging tree; the rest stay on the authoring sources,
+    # where neither route reads compiled output either.
+    case "$TYPE" in
+      skills) component_set_staging_roots ".gemini/skills"; REFRESH_CLI="gemini" ;;
+      agents) component_set_staging_roots ".gemini/agents"; REFRESH_CLI="gemini" ;;
+      *)      component_set_artifact_roots "$TYPE";         REFRESH_CLI="" ;;
+    esac
+
     if [ -n "$NAME" ]; then
-      FOUND=""
-      for candidate in "$SRC_DIR/$NAME" "$SRC_DIR/$NAME.toml" "$SRC_DIR/$NAME.md"; do
-        if [ -e "$candidate" ]; then
-          place_component "$candidate" "$DEST"
-          FOUND=1
-          break
-        fi
-      done
-      if [ -z "$FOUND" ]; then
-        echo "Error: '$NAME' not found in artifacts/community/$TYPE"
-        exit 1
-      fi
+      component_install_named install_into_dest "$NAME" "$TYPE" "$REFRESH_CLI" "${COMPONENT_ROOTS[@]}" || exit $?
     else
-      for item in "$SRC_DIR"/*; do
-        [ -e "$item" ] && place_component "$item" "$DEST"
-      done
+      component_install_all install_into_dest "$REFRESH_CLI" "${COMPONENT_ROOTS[@]}" || exit $?
     fi
     ;;
 
@@ -112,17 +145,11 @@ case "$TYPE" in
     KEY="mcpServers"
     [ "$TYPE" = "themes" ] && KEY="themes"
 
+    component_set_artifact_roots "$TYPE"
     if [ -n "$NAME" ]; then
-      JSON="$SRC_DIR/$NAME.json"
-      if [ ! -f "$JSON" ]; then
-        echo "Error: '$NAME.json' not found in artifacts/community/$TYPE" >&2
-        exit 1
-      fi
-      merge_json "$JSON" "$KEY"
+      component_install_named merge_json_entry "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
     else
-      for item in "$SRC_DIR"/*.json; do
-        [ -f "$item" ] && merge_json "$item" "$KEY"
-      done
+      component_install_all merge_json_entry "" "${COMPONENT_ROOTS[@]}" || exit $?
     fi
     ;;
 
