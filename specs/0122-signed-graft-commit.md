@@ -1,7 +1,7 @@
 ---
 id: "0122"
 slug: signed-graft-commit
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 756
