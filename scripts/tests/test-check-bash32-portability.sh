@@ -40,8 +40,10 @@
 #      a verdict, and an unrecognised argument is refused rather than falling
 #      through to a verdict run (spec 0120 R3).
 #   k. Both requests refuse the same declared sets and accept the same ones —
-#      case g's five malformed shapes replayed against each, plus the converse on
-#      a well-formed set (spec 0120 R5).
+#      case g's five malformed shapes replayed against each, plus a sixth whose
+#      malformed row follows two valid ones, plus the converse on a well-formed
+#      set (spec 0120 R5). Each refusal is asserted on exit status, stderr AND
+#      empty stdout, the last being the scenario's "it reports no construct".
 #
 # Scenario 5 — a corrected suite reports the same verdicts on both shells — is
 # only partly scriptable here: comparing two shells needs two Bash binaries, and
@@ -786,12 +788,19 @@ DETECTOR_PROBE
 
 # ---------------------------------------------------------------------------
 # Case k — Both requests refuse the same declared sets, and accept the same ones
-#          (spec 0120 R5).
+#          (spec 0120 R5), and a refused set leaves no construct reported.
 #
 # This case asserts the guard's refusal parity only — the *input* side. What the
 # synchronisation check does with each outcome is case f's three call sites, not
 # this case's business; conflating the two is how "the guard refuses" gets
 # written up as "the consumer discriminates".
+#
+# A refusal is asserted on three observables, not two: the exit status, non-empty
+# stderr, and **empty stdout**. The third is spec 0120's own second clause — "a
+# malformed row is refused on both requests → And it reports no construct" — and
+# it is the only assertion anywhere that a per-row emission would fail. Checking
+# it needs a fixture that can leak, which is why the sixth shape below exists;
+# on a single-row set the clause is true whatever the guard does.
 # ---------------------------------------------------------------------------
 {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
@@ -815,24 +824,44 @@ DETECTOR_PROBE
   printf '%s\n' 'command mapfile a space separated row' \
     > "$k_sets/tabless-row"
 
+  # A sixth shape, and the only one of the six that can fail the "reports no
+  # construct" clause below: two well-formed rows the parse loop accepts BEFORE
+  # it reaches the malformed one. Every other fixture here and in case g is
+  # single-row or comment-only, so the guard has nothing accepted to leak and the
+  # clause would hold on them however the report were emitted — vacuously.
+  # A guard that emitted each row as it validated would leave two rows on stdout
+  # here and still exit 2, which satisfies every other assertion in this case.
+  printf '%s\t%s\t%s\n' \
+    'command' 'mapfile'   'a valid row, accepted before the malformed one is reached' \
+    'command' 'readarray' 'a second valid row, so a leak would be two rows deep' \
+    'command' ''          'the malformed row: an empty token field, arriving third' \
+    > "$k_sets/valid-rows-then-malformed"
+
   k_fail=0
   k_total=0
-  for k_name in comment-only unknown-kind metacharacter-token empty-token tabless-row; do
+  for k_name in comment-only unknown-kind metacharacter-token empty-token \
+                tabless-row valid-rows-then-malformed; do
     cp "$k_sets/$k_name" "$repo/ci/bash32-forbidden.txt"
     k_total=$((k_total + 1))
     run_check "$repo"
     k_verdict_exit="$CHECK_EXIT"
     run_check "$repo" --list-constructs
-    if [ "$k_verdict_exit" -ne 2 ] || [ "$CHECK_EXIT" -ne 2 ] || [ -z "$CHECK_STDERR" ]; then
-      bad "case-k: $k_name — verdict exit $k_verdict_exit, query exit $CHECK_EXIT, query stderr '$CHECK_STDERR' (expected 2, 2, non-empty)"
+    # `[ -z "$CHECK_STDOUT" ]` is the scenario's second clause — "And it reports
+    # no construct" — and it is what makes the guard's accumulate-then-emit
+    # placement load-bearing rather than incidental: a report written row by row
+    # would leave the rows it had already accepted on stdout ahead of a late
+    # refusal. Asserted on the query, which is the request the scenario names.
+    if [ "$k_verdict_exit" -ne 2 ] || [ "$CHECK_EXIT" -ne 2 ] \
+       || [ -z "$CHECK_STDERR" ] || [ -n "$CHECK_STDOUT" ]; then
+      bad "case-k: $k_name — verdict exit $k_verdict_exit, query exit $CHECK_EXIT, query stderr '$CHECK_STDERR', query stdout '$CHECK_STDOUT' (expected 2, 2, non-empty, empty)"
       k_fail=$((k_fail + 1))
     fi
   done
 
-  if [ "$k_total" -ne 5 ]; then
-    bad "case-k: expected 5 malformed declared sets, ran $k_total"
+  if [ "$k_total" -ne 6 ]; then
+    bad "case-k: expected 6 malformed declared sets, ran $k_total"
   elif [ "$k_fail" -eq 0 ]; then
-    ok "case-k: all 5 malformed declared sets are refused with exit 2 by both requests (R5)"
+    ok "case-k: all 6 malformed declared sets are refused with exit 2 by both requests, reporting no construct (R5)"
   fi
 
   # The converse: a declared set neither request refuses. The verdict renders its
