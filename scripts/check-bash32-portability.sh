@@ -40,15 +40,53 @@
 # included, on the same terms as the scripts it ships.
 #
 # Usage:
-#   bash scripts/check-bash32-portability.sh
+#   bash scripts/check-bash32-portability.sh                  # render a verdict
+#   bash scripts/check-bash32-portability.sh --list-constructs # report what it read
 #
 # Override the repository root with CREWRIG_REPO_DIR (used by the self-test
 # against temporary fixtures), mirroring the sibling check-*.sh guards.
 #
 # Exits 0 when no governed script uses a declared construct, non-zero (naming
 # every offending file and line) otherwise.
+#
+# Contract of the second invocation (spec 0120, requirements 1-3 and 5). It
+# exists so that this guard is the repository's single interpretation of the
+# declared set's row format: a consumer that needs to know what the declared set
+# contains asks the enforcement instead of parsing ci/bash32-forbidden.txt a
+# second time. What is promised:
+#   - Rows on stdout, one per declared construct, in the shape
+#     <kind><TAB><token> — the two fields requirement 2 names, drawn from the
+#     alphabets this script already validates (kind is `command` or
+#     `declare-flag`, token is letters, digits, underscore and hyphen).
+#   - The row *set*, and therefore the row count, is exactly what the parse loop
+#     below accepted. Nothing is scanned and no verdict is rendered.
+#   - Exit 0 with rows; exit 2 for any refusal — every declared set this script
+#     refuses when asked for a verdict is refused here too, and the converse.
+#     Never exit 1: exit 1 is a verdict, and this invocation renders none.
+# What is deliberately NOT promised, so that the surface stays cheap to keep:
+#   - Row order. A consumer that depends on it is depending on file order, which
+#     is not part of this contract.
+#   - The wording of anything written to stderr.
+#   - Any third field. The reason column is free text that may itself hold tabs,
+#     which is the field-boundary ambiguity this invocation exists to remove; it
+#     is not reported.
 
 set -euo pipefail
+
+# Mode selection happens before the repository root is resolved and before
+# anything is read, so an unrecognised argument cannot scan the tree (R3).
+MODE=verdict
+if [ "$#" -gt 0 ]; then
+  # `[ "$#" -gt 0 ]` before touching `$1`: this script runs under `set -u`,
+  # where a bare `$1` with no arguments aborts on `$1: unbound variable`.
+  if [ "$#" -eq 1 ] && [ "$1" = "--list-constructs" ]; then
+    MODE=list
+  else
+    echo "Error: unrecognised argument(s): $*" >&2
+    echo "Usage: bash ${0##*/} [--list-constructs]" >&2
+    exit 2
+  fi
+fi
 
 REPO_DIR="${CREWRIG_REPO_DIR:-"$(cd "$(dirname "$0")/.." && pwd)"}"
 FORBIDDEN="$REPO_DIR/ci/bash32-forbidden.txt"
@@ -66,10 +104,14 @@ fi
 # the failure class this script exists to catch, and it would be invisible to
 # both the grep rule below (not grep-detectable) and CI (which runs Bash 5).
 # `while read` rather than the Bash 4 line-reading builtin, for the same reason.
+# LISTING is the report the second invocation returns: the same rows, joined by
+# newlines rather than held in an array, for the reason above.
 CMD_ALT=""
 FLAG_ALT=""
 declared=0
 TAB="$(printf '\t')"
+NL=$'\n'
+LISTING=""
 
 while IFS= read -r line || [ -n "$line" ]; do
   line="${line%$'\r'}"                       # tolerate CRLF
@@ -119,11 +161,27 @@ while IFS= read -r line || [ -n "$line" ]; do
       ;;
   esac
   declared=$((declared + 1))
+  # Accumulated, never emitted here: a malformed row later in the file must be
+  # refused with no partial report already on stdout, so the report is written
+  # once, below, after the whole file has been accepted.
+  LISTING="${LISTING:+$LISTING$NL}$kind$TAB$token"
 done < "$FORBIDDEN"
 
 if [ "$declared" -eq 0 ]; then
   echo "Error: $FORBIDDEN declares no construct — the guard would pass vacuously." >&2
   exit 2
+fi
+
+# --- Report what was read, when that is what was asked ----------------------
+# Placed here on purpose, and the placement is the whole design: everything
+# upstream of this point is shared with the verdict path — the missing
+# declared-set file, every refusal inside the parse loop, and the vacuous-set
+# refusal above — so both invocations refuse exactly the same declared sets
+# (R5) without a duplicated condition. Everything downstream is the tree scan
+# the report must not perform (R3).
+if [ "$MODE" = list ]; then
+  printf '%s\n' "$LISTING"
+  exit 0
 fi
 
 # --- Compose the match pattern ----------------------------------------------
