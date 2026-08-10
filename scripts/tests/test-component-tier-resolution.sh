@@ -16,6 +16,13 @@
 # are labelled GUARD and say why in place — they are over-refusal bounds, not
 # regression cases, and their vacuity is stated rather than hidden.
 #
+# Cases 13b, 13c and 13d were authored AFTER the fix, against commits f071215
+# and 373fe66, and the same rule was applied rather than waived: each was
+# observed to fail against the specific code shape it guards being broken —
+# the pre-hoist mid-loop `core` validation for 13d, the pruned-roots paragraph
+# deleted for 13c, and a reworded report for 13b — before being accepted here.
+# Each turns red on exactly the case that binds it and on no other.
+#
 # ── Strategy ────────────────────────────────────────────────────────────────
 #   * Hermetic. Every case builds a throwaway repository under a `mktemp -d`
 #     work area removed on EXIT, and points the command under test at a
@@ -63,6 +70,26 @@
 #      reported PASS while three behavioural cases went red. Case 19 asserts the
 #      ARGUMENT of the `component_set_staging_roots` call instead, which is the
 #      declaration itself and cannot be satisfied by an unrelated mention.
+#      THE SAME TRAP WAS LIVE A SECOND TIME, three lines below that fix, on the
+#      tier set: with `COMPONENT_OVERLAY_TIERS` cut to "library community",
+#      EIGHT behavioural cases went red while `grep -qw org` over the scan set
+#      still SUCCEEDED, matching component-resolve.sh:9 and :300 — both comments.
+#      Case 19 now reads that declaration too. Those two are the whole
+#      population: the scan set is consumed by exactly two assertions in this
+#      file, and both now read a declaration rather than a mention.
+#   6. A NEGATIVE guard fails silently; a POSITIVE assertion cannot. Reword a
+#      report and every positive assertion over it goes red at once, while a
+#      negative guard simply stops matching, never fires, and the case carrying
+#      it keeps reporting PASS. Both negative guards here were in that state:
+#      case 2 grepped `collision|colliding|ambiguous` and case 13
+#      `not found|unresolved|searched` — the REQUIREMENTS' vocabulary — while the
+#      code says "claimed by more than one component" and "Locations examined",
+#      so neither could ever fire. Measured: a `report_collision` call injected
+#      into every unnamed install left all 23 cases green, so the regression
+#      case 2's own header names was undetectable by case 2. The patterns are now
+#      named constants (COLLISION_REPORT_RE, UNRESOLVED_REPORT_RE) that case 13b
+#      holds to the code, so the next rewording lands as a red case rather than
+#      as two guards quietly going inert.
 #
 # Deliberately NOT `set -e`: most cases run a command that is expected to fail,
 # and a harness that aborts mid-run destroys the per-case evidence this file
@@ -122,6 +149,35 @@ run_stdin() {
 }
 
 both() { cat "$RUN_OUT" "$RUN_ERR" 2>/dev/null; }
+
+# --- Reporter wording, as the code emits it ----------------------------------
+# The text `report_collision` and `report_unresolved`
+# (scripts/lib/component-resolve.sh:262 and :230) actually print. Two NEGATIVE
+# guards below fire on these, and a negative guard is the one shape of assertion
+# that fails silently: when its pattern does not match what the code prints it
+# never fires, and the case carrying it reports PASS forever.
+#
+# Both were in exactly that state. They grepped
+# `collision|colliding|ambiguous` and `not found|unresolved|searched` — the
+# REQUIREMENTS' vocabulary — while the code says "claimed by more than one
+# component" and "Locations examined". Measured against an unlabelled capture of
+# each reporter: zero of those six alternatives occurs in either output, so
+# neither guard could ever fire.
+#
+# Naming them here is what makes the coupling assertable rather than assumed:
+# case 13b calls both reporters and fails when either pattern stops matching, so
+# the next rewording lands as a red case naming the pattern to update instead of
+# as two guards quietly going inert.
+#
+# ON THE R17 VOCABULARY DRIFT. Spec 0119 R17 obliges the report to name every
+# tier that was "searched"; the implementation says "Locations examined". R17 is
+# satisfied on the merits — the report does name every location examined, and
+# examining is the act R17 calls searching — so the code is not at fault and is
+# not touched. What was wrong is keying an assertion to the spec's synonym
+# instead of to the string the code emits, which is precisely how a guard goes
+# inert while reading as coverage.
+COLLISION_REPORT_RE='claimed by more than one component|Every source presenting it'
+UNRESOLVED_REPORT_RE='resolved in any served tier|Locations examined'
 
 # Compact, self-documenting evidence for a failure detail.
 evidence() {
@@ -306,7 +362,14 @@ ok="true"; detail=""
   && { ok="false"; detail="a component absent from every served tier was installed from build residue; $(evidence)"; }
 [ -f "$R2_ROOT/cli-home/.claude/skills/keeper-skill/SKILL.md" ] \
   || { ok="false"; detail="${detail}${detail:+$'\n'}the surviving component was not installed; $(evidence)"; }
-if grep -qiE 'collision|colliding|ambiguous' "$RUN_OUT" "$RUN_ERR" 2>/dev/null; then
+# The phantom-collision guard, and the ONLY assertion in this case that can
+# catch one. The other two arms are "doomed-skill is not installed" and
+# "keeper-skill is installed", and a phantom collision raised against
+# doomed-skill satisfies BOTH — a collision is exactly what would stop it
+# installing. Measured with the previous requirements-vocabulary pattern: a
+# report_collision call injected into every unnamed install left all 23 cases
+# green, so the regression this case's own header names was undetectable by it.
+if grep -qE "$COLLISION_REPORT_RE" "$RUN_OUT" "$RUN_ERR" 2>/dev/null; then
   ok="false"; detail="${detail}${detail:+$'\n'}a phantom collision was reported against build residue; $(evidence)"
 fi
 report "R9: a component removed from artifacts/ is not installed from build residue" "$ok" "$detail"
@@ -672,12 +735,182 @@ ok="true"; detail=""
 both > "$LOGS/c13.both"
 grep -Fq 'acme-review' "$LOGS/c13.both" \
   || { ok="false"; detail="${detail}${detail:+$'\n'}the build's own refusal was not surfaced (the colliding name is absent from the report)"; }
-if grep -qiE 'not found|unresolved|searched' "$LOGS/c13.both"; then
+if grep -qE "$UNRESOLVED_REPORT_RE" "$LOGS/c13.both"; then
   ok="false"
   detail="${detail}${detail:+$'\n'}a refused rebuild was reported as an unresolved name"
 fi
 [ "$ok" = "false" ] && detail="${detail}"$'\n'"$(evidence)"
 report "step 3 exit contract: a refused rebuild is reported as itself, not as an unresolved name" "$ok" "$detail"
+
+# =====================================================================
+# Case 13b — the negative guards' patterns match the text the reporters emit.
+#
+# Why this case exists at all. A POSITIVE assertion over real output cannot go
+# inert: reword the report and it goes red at once. A NEGATIVE guard is the
+# opposite — reword the report and it stops matching, never fires, and the case
+# carrying it keeps reporting PASS. That asymmetry is why the two guards at
+# case 2 and case 13 were the vulnerable assertions in this file and the
+# positive ones were not, and why they need a case of their own rather than
+# careful authoring.
+#
+# The two patterns are named once (COLLISION_REPORT_RE, UNRESOLVED_REPORT_RE)
+# and this case holds them to the code: both reporters are called for real and
+# each pattern must match its own reporter's output. A rewording of either
+# report now lands as a red case naming the pattern to update.
+#
+# THE CAPTURES CARRY NO LABEL, AND THAT IS LOAD-BEARING. An earlier probe of
+# this exact question reported both patterns matching, because the capture had
+# been annotated with the function names `report_collision` and
+# `report_unresolved` while the patterns under test contained `collision` and
+# `unresolved` — the sample matched its own scaffolding. Nothing writes to these
+# captures but the reporter under test; every fixture name is neutral
+# (`aa-name`, `bb-name`); and the control capture below is the check that keeps
+# it that way — it runs the same scaffolding with NO reporter call and fails the
+# case unless it is byte-empty. Anything the harness itself contributes to a
+# capture shows up there.
+# =====================================================================
+R13B_ROOT="$(new_repo reporter-wording)"
+mkdir -p "$R13B_ROOT/dist/library/.claude/skills" "$R13B_ROOT/dist/community/.claude/skills"
+
+# probe_reporter <capture> [<fn> <arg>...] — run one reporter in the throwaway
+# repo and capture ITS STDERR ALONE. With no <fn>, sources the library and
+# returns: that is the control.
+probe_reporter() {
+  local capture="$1"
+  shift
+  bash -c '
+    REPO_DIR="$1"; shift
+    . "$REPO_DIR/scripts/lib/component-resolve.sh"
+    [ "$#" -gt 0 ] || exit 0
+    fn="$1"; shift
+    "$fn" "$@"
+  ' _ "$R13B_ROOT" "$@" >/dev/null 2>"$capture"
+}
+
+probe_reporter "$LOGS/c13b.control"
+probe_reporter "$LOGS/c13b.a" report_collision aa-name \
+  "$R13B_ROOT/dist/library/.claude/skills/aa-name" \
+  "$R13B_ROOT/dist/community/.claude/skills/aa-name"
+probe_reporter "$LOGS/c13b.b" report_unresolved bb-name skills \
+  "$R13B_ROOT/dist/library/.claude/skills" \
+  "$R13B_ROOT/dist/community/.claude/skills"
+
+ok="true"; detail=""
+if [ -s "$LOGS/c13b.control" ]; then
+  ok="false"
+  detail="the control capture is not empty, so the harness contributes text to its own samples and neither result below can be trusted: $(head -3 "$LOGS/c13b.control" | tr '\n' ' ')"
+fi
+[ -s "$LOGS/c13b.a" ] \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}report_collision printed nothing at all"; }
+[ -s "$LOGS/c13b.b" ] \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}report_unresolved printed nothing at all"; }
+grep -qE "$COLLISION_REPORT_RE" "$LOGS/c13b.a" 2>/dev/null \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}the collision guard's pattern no longer matches report_collision's output, so the guard at case 2 cannot fire. Pattern: $COLLISION_REPORT_RE — emitted: $(head -2 "$LOGS/c13b.a" | tr '\n' ' ')"; }
+grep -qE "$UNRESOLVED_REPORT_RE" "$LOGS/c13b.b" 2>/dev/null \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}the unresolved guard's pattern no longer matches report_unresolved's output, so the guard at case 13 cannot fire. Pattern: $UNRESOLVED_REPORT_RE — emitted: $(head -2 "$LOGS/c13b.b" | tr '\n' ' ')"; }
+report "guard liveness: both negative guards' patterns match what the reporters emit" "$ok" "$detail"
+
+# =====================================================================
+# Case 13c — R17: a refused rebuild names every staging root it emptied, and the
+# claim it makes about the rest of the tree is true.
+#
+# `ensure_overlay_tiers_fresh` prunes BEFORE it rebuilds, so a refused rebuild
+# leaves the served staging roots emptied rather than stale. The failure branch
+# therefore names every root it emptied and adds a positive claim — "the next
+# rebuild that succeeds repopulates them, and nothing outside them was touched".
+# A message carrying a positive claim about a destructive step is exactly the
+# kind of operator-facing wording this ticket exists to stop being silent, and
+# nothing asserted it: `emptied|repopulat|pruned` appeared nowhere in this suite
+# and `ensure_overlay_tiers_fresh` appeared zero times. Measured: removing the
+# entire pruned-roots paragraph left all 23 cases green.
+#
+# The assertions are deliberately not limited to the wording. Two of them bind
+# the CLAIM: the pre-seeded root really is gone afterwards (so "emptied"
+# describes something that happened), and two sentinels outside the pruned roots
+# survive — one under the same tier's dist but a different CLI root, one in
+# artifacts/ — so "nothing outside them was touched" is asserted rather than
+# quoted.
+#
+# The fixture builds with only the library copy, THEN seeds the org copy: the
+# collision has to arrive after a successful build, or there would be no
+# populated staging root to empty and the case could not tell a prune from a
+# no-op.
+# =====================================================================
+R13C_ROOT="$(new_repo refused-rebuild-prune)"
+seed_skill "$R13C_ROOT" library acme-review
+build_repo "$R13C_ROOT" claude build-prune >/dev/null
+[ -d "$R13C_ROOT/dist/library/.claude" ] \
+  || { echo "FATAL: fixture did not produce dist/library/.claude to empty" >&2; exit 2; }
+# Sentinel OUTSIDE the pruned roots, under the same tier: a different CLI root.
+mkdir -p "$R13C_ROOT/dist/library/.gemini/skills/sentinel-keep"
+printf 'untouched\n' > "$R13C_ROOT/dist/library/.gemini/skills/sentinel-keep/SKILL.md"
+# Now the collision, after the build that populated the staging root.
+seed_skill "$R13C_ROOT" org acme-review
+
+run c13c env HOME="$R13C_ROOT/cli-home" bash "$R13C_ROOT/$CLAUDE_CMD" install claude-skills zz-absent
+ok="true"; detail=""
+[ "$RUN_STATUS" -ne 0 ] || { ok="false"; detail="the command exited zero although the rebuild it needs is refused; $(evidence)"; }
+both > "$LOGS/c13c.both"
+# The prune happened: the populated root is gone, not merely reported as gone.
+[ -e "$R13C_ROOT/dist/library/.claude" ] \
+  && { ok="false"; detail="${detail}${detail:+$'\n'}the staging root reported as emptied is still present, so the report describes something that did not happen"; }
+# Every emptied root is named, by the absolute path the operator would need.
+for t in library community org; do
+  grep -Fq "$R13C_ROOT/dist/$t/.claude" "$LOGS/c13c.both" \
+    || { ok="false"; detail="${detail}${detail:+$'\n'}the refusal does not name the emptied $t staging root by path"; }
+done
+grep -Fq 'staging roots were emptied' "$LOGS/c13c.both" \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}the refusal does not say the staging roots were emptied, so the operator is left holding an emptied tree with no notice of it"; }
+grep -Fq 'nothing outside them was touched' "$LOGS/c13c.both" \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}the refusal does not bound what it touched"; }
+# ...and that bound is true.
+[ -f "$R13C_ROOT/dist/library/.gemini/skills/sentinel-keep/SKILL.md" ] \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}the prune reached outside the roots it named: a sentinel under dist/library/.gemini was removed, while the refusal claims nothing outside them was touched"; }
+[ -f "$R13C_ROOT/artifacts/library/skills/acme-review/SKILL.md" ] \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}the prune reached the authoring sources under artifacts/"; }
+[ "$ok" = "false" ] && detail="${detail}"$'\n'"$(evidence)"
+report "R17: a refused rebuild names every staging root it emptied and touches nothing else" "$ok" "$detail"
+
+# =====================================================================
+# Case 13d — the `core` tier is rejected BEFORE anything is pruned.
+#
+# Reachable only by internal misuse — no command passes `core` to
+# `ensure_overlay_tiers_fresh` — which is why no behavioural case can bind it and
+# why it gets a direct call. The ordering is the whole property: validating each
+# tier inside the prune loop would reject `core` only after the tiers before it
+# were already emptied, which is the same silent half-done state case 13c's
+# message exists to prevent. Hoisting the validation into its own loop ahead of
+# the prune is what this asserts, and the sentinels are what make it an assertion
+# about pruning rather than about an exit code.
+#
+# `core` is passed LAST, after two valid tiers. Passed first it would prove
+# nothing: any implementation, hoisted or not, rejects it before reaching a
+# second tier.
+# =====================================================================
+R13D_ROOT="$(new_repo core-refused-before-prune)"
+mkdir -p "$R13D_ROOT/dist/library/.claude/skills/sentinel-lib" \
+         "$R13D_ROOT/dist/community/.claude/skills/sentinel-com"
+printf 'untouched\n' > "$R13D_ROOT/dist/library/.claude/skills/sentinel-lib/SKILL.md"
+printf 'untouched\n' > "$R13D_ROOT/dist/community/.claude/skills/sentinel-com/SKILL.md"
+
+run c13d bash -c '
+  REPO_DIR="$1"; shift
+  . "$REPO_DIR/scripts/lib/component-resolve.sh"
+  ensure_overlay_tiers_fresh "$@"
+' _ "$R13D_ROOT" claude library community core
+ok="true"; detail=""
+[ "$RUN_STATUS" -eq 2 ] \
+  || { ok="false"; detail="expected exit 2 for a request naming the core tier, got $RUN_STATUS; $(evidence)"; }
+both > "$LOGS/c13d.both"
+grep -Fq "the 'core' tier is never pruned" "$LOGS/c13d.both" \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}the refusal does not say why core was rejected"; }
+for s in library/sentinel-lib community/sentinel-com; do
+  t="${s%%/*}"; n="${s##*/}"
+  [ -f "$R13D_ROOT/dist/$t/.claude/skills/$n/SKILL.md" ] \
+    || { ok="false"; detail="${detail}${detail:+$'\n'}the $t tier was pruned before core was rejected, leaving the half-done state the validation is hoisted to prevent"; }
+done
+[ "$ok" = "false" ] && detail="${detail}"$'\n'"$(evidence)"
+report "internal contract: core is rejected before any staging root is pruned" "$ok" "$detail"
 
 # =====================================================================
 # Case 14 — R3: a non-core component never reaches the committed project tree.
@@ -973,11 +1206,40 @@ while IFS=: read -r cli type setup_name cmd_name; do
     ok="false"
     detail="${detail}${detail:+$'\n'}$cli/$type: the command declares no staging root equal to the setup's ($setup_root/$type); it declares: $(printf '%s' "$declared" | tr '\n' ' ')"
   fi
-  # Tier set: all three overlay tiers must be reachable.
-  for t in library community org; do
-    printf '%s\n' "$scan" | xargs grep -qw -- "$t" 2>/dev/null \
-      || { ok="false"; detail="${detail}${detail:+$'\n'}$cli/$type: the command never references the $t tier"; }
-  done
+  # Tier set: all three overlay tiers must be REACHABLE.
+  #
+  # Asserted on the DECLARATION of the served set, never on a mention of a tier
+  # name somewhere in the scanned set. The substring form was trap 5 a second
+  # time, three lines below the fix for it, and it was live: with
+  # COMPONENT_OVERLAY_TIERS cut to "library community" — verbatim the R5/R7/R11
+  # divergence that makes `org` unreachable on every command and on both request
+  # shapes — EIGHT behavioural cases go red while `grep -qw org` over the scan
+  # set still SUCCEEDS, because scripts/lib/component-resolve.sh names `org` in
+  # prose at :9 ("a component in `org` became") and :300 ("a library-versus-org
+  # command-name collision"). Two comments were satisfying a coverage assertion.
+  #
+  # The declared value is a single assignment in a known file, so more than one
+  # declaration across the scanned set is itself a finding: the served set would
+  # then depend on source order, and this case could not say which one binds.
+  served="$(printf '%s\n' "$scan" \
+    | xargs grep -hE '^[[:space:]]*COMPONENT_OVERLAY_TIERS=' 2>/dev/null \
+    | sed -e 's/^[^=]*=//' | sort -u)"
+  served="$(strip_q "$served")"
+  if [ -z "$served" ]; then
+    ok="false"
+    detail="${detail}${detail:+$'\n'}$cli/$type: no COMPONENT_OVERLAY_TIERS declaration in the command or the libraries it sources, so no served tier set is declared at all"
+  elif [ "$(printf '%s\n' "$served" | wc -l | tr -d ' ')" != "1" ]; then
+    ok="false"
+    detail="${detail}${detail:+$'\n'}$cli/$type: the scanned set carries more than one COMPONENT_OVERLAY_TIERS declaration, so the served tier set depends on source order (got: $(printf '%s' "$served" | tr '\n' ' '))"
+  else
+    for t in library community org; do
+      case " $served " in
+        *" $t "*) ;;
+        *) ok="false"
+           detail="${detail}${detail:+$'\n'}$cli/$type: the declared served tier set does not include the $t tier; it declares: $served" ;;
+      esac
+    done
+  fi
 done <<EOF
 $CLI_ROWS
 EOF
