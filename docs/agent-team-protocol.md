@@ -118,6 +118,53 @@ This is a distinct, actionable check from the "treat the main directory as read-
 1. **Flag, don't act.** The discoverer flags the file to the orchestrator (or `team-lead`) for adjudication.
 2. **Relocate only after provenance is confirmed.** The file is moved into the correct worktree path only once its provenance has been confirmed — it is never deleted or relocated unilaterally by the discoverer.
 
+**Whole-tree git operations need an exclusive claim over a clean tree.** `git reset --hard`, `git checkout -- .`, `git stash`, and `git clean` — and every other operation that discards, reverts, or relocates uncommitted changes across a whole tree rather than a named set of files — SHALL NOT run inside `.worktrees/<ticket-id>/` unless the acting agent holds the claim below for the **whole duration** of the operation and `git status --porcelain --untracked-files=all` is empty. The claim never waives the clean-tree condition: git records no author for an uncommitted change, so an empty status is the only proof that nothing you did not author is at risk. Their usual motive is verification: use the recipes below instead. The gate reads `git status`, which is blind to a path matched by `.gitignore`, so the guarantee is narrower than *nothing gets destroyed*: no whole-tree operation proceeds over work git can **name** as tracked or untracked. Ignored build output and local scratch are outside it — `git clean -fdx` passes the gate, deletes them, and exits `0` — so adding `-x` or `-X` leaves the claim's cover: enumerate with `git clean -ndx` first, and treat whatever it lists as a sibling's until provenance says otherwise.
+
+**Taking, inspecting, and releasing the claim.** Prefer `run` — it takes the claim, executes, and releases on exit, so *whole duration* is structural.
+
+```sh
+bash scripts/worktree-claim.sh run     --agent <name> -- <command…>
+bash scripts/worktree-claim.sh take    --agent <name>   # then release --agent <name>
+bash scripts/worktree-claim.sh status
+```
+
+Exit `4` names the current holder; `5` prints the uncommitted changes that closed the gate. `status` answers without asking any agent; it and `history` also run from the main checkout, given `--ticket <id>`.
+
+**Who held the worktree, after the fact.** `worktree-claim.sh history --ticket <id>` prints the append-only ledger — every take, release, and takeover, with agent, timestamp, and operation. It lives inside the shared `.git`, as a sibling of the claim directory and never a child, so releasing a claim cannot take the history with it; being outside the worktree, it also survives the cleanup below.
+
+**A claim whose holder has ended.** `worktree-claim.sh takeover --agent <name>` transfers a claim untouched for 30 minutes (`--stale-after <minutes>` overrides) and records both agents in the ledger. It rewrites the claim only — never a working-tree file — and grants **no** clean-tree waiver: the gate is re-evaluated on every `take` and `run`, whoever holds the claim.
+
+**Residue left by an agent that ended.** When a takeover finds the tree dirty, adjudicate on authorship, not convenience. Residue you authored: commit it — that is the route back to a clean tree. Residue you did not author is not yours: flag it to `team-lead` under *Stray-file discovery* above and stop — do not commit another agent's work, run a whole-tree operation, or remove the worktree. The orchestrator adjudicates: commit on the branch, respawn the role that owns it, or route to a human operator.
+
+**`git worktree remove --force` is not an escape hatch.** Plain `git worktree remove` exits `128` on a worktree carrying uncommitted changes; `--force` exits `0` having destroyed them. It belongs to the prohibited class above; the refusal is your signal to escalate. The one exception is a scratch tree you created yourself under `$TMPDIR` (Tier 2b).
+
+**Verification without touching a shared worktree — the default.** Reserve the claim for operations that must act on the shared tree itself; observe everything else from outside. `git fetch` writes only into `.git`, never into a working tree, so Tier 1 — inspection — destroys nothing:
+
+```sh
+git fetch crewrig <branch>
+git --no-pager log --oneline -5 crewrig/<branch>
+git --no-pager show "crewrig/<branch>:<path>"
+git --no-pager diff crewrig/main...crewrig/<branch>
+```
+
+Tier 2, when a check must *execute* against a clean state, extracts it instead of cleaning a shared one:
+
+```sh
+scratch="$(mktemp -d)"
+git fetch crewrig <branch>
+git archive "crewrig/<branch>" | tar -x -C "$scratch"
+( cd "$scratch" && bash scripts/tests/<suite>.sh )
+rm -rf "$scratch"
+```
+
+Tier 2b, when the check needs git metadata or dependencies: `git worktree add --detach "$scratch/tree" <ref>` under `$TMPDIR`, removed with `git worktree remove --force "$scratch/tree"` in the same step.
+
+**Commit before you report or hand off.** No outcome you report — a passing test run above all — may exist only in a working tree. Commit what you authored first, so the result survives from committed state.
+
+**Measure from the suite's own fixture.** When a test suite already constructs the state you need to observe, measure from that fixture, not from a fresh probe. A measurement whose setup cannot be shown to have reached the subject is no measurement at all; report a failed probe, not a number.
+
+**Enforcement.** A REVIEW pass that audits a session in which a whole-tree git operation ran in a shared worktree without a recorded claim SHALL emit a `class: tech` finding citing this section.
+
 Before pushing, always rebase the worktree branch against the upstream main to avoid merge conflicts on shared files:
 
 ```sh

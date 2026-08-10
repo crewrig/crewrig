@@ -174,6 +174,9 @@ jobs:
       - name: Test MCP daemon regression (spec 0113)
         run: bash scripts/tests/test-mcp-daemon.sh
 
+      - name: Test worktree-claim regression (spec 0114)
+        run: bash scripts/tests/test-worktree-claim.sh
+
       - name: Test e2e assert-lib regression (spec 0076 wiring)
         run: bash scripts/tests/test-e2e-assert-lib.sh
 
