@@ -51,6 +51,18 @@
 #      then adds a component without rebuilding.
 #   4. Bash 3.2.57 is the enforced floor (ci/bash32-forbidden.txt). No
 #      `declare -A`, no `mapfile`. This file runs under /bin/bash 3.2 and 5.x.
+#   5. `scripts/lib/component-resolve.sh` — sourced by ALL FOUR commands —
+#      spells out `.claude/skills`, `.gemini/skills`, `.github/skills`,
+#      `.agents/skills` and `.gemini/agents` verbatim inside `installed_targets`
+#      (:324-327, :347). A structural check that greps the scanned files for
+#      `<cli-root>/<type>` as a bare SUBSTRING therefore matches the library
+#      whatever the command declares, on every CLI. Measured: with the Gemini
+#      command's `component_set_staging_roots ".gemini/skills"` mutated to
+#      `".gemini/sub-skills"` — a basis diverging from the assisted setup, which
+#      is exactly what R20 obliges this file to catch — the substring form still
+#      reported PASS while three behavioural cases went red. Case 19 asserts the
+#      ARGUMENT of the `component_set_staging_roots` call instead, which is the
+#      declaration itself and cannot be satisfied by an unrelated mention.
 #
 # Deliberately NOT `set -e`: most cases run a command that is expected to fail,
 # and a harness that aborts mid-run destroys the per-case evidence this file
@@ -366,6 +378,54 @@ for s in alpha-skill beta-skill; do
 done
 
 report "R9: an unnamed request installs every component under its own name" "$ok" "$detail"
+
+# =====================================================================
+# Case 4c — R11 + R10 over the `agents` type, on both request shapes.
+#
+# R11 binds the `org` tier on every type that tier may hold, not only on
+# `skills`; every other behavioural case here reaches org through `skills` or
+# `policies`, so `agents` was asserted on neither request shape.
+#
+# ONE CLI IS THE WHOLE POPULATION, not a sample. `agents` is served by exactly
+# one of the four per-component commands: manage-claude-component.sh and
+# manage-antigravity-component.sh declare no `agents` arm at all, and
+# manage-copilot-component.sh's arm refuses by design (spec 0119 R3/R4/R6
+# deferring to the recorded Copilot agent parity gap, docs/cli-matrix.md rows 4
+# and 10). So there is no second command left out of this case.
+#
+# The assertion is `-f` on a FLAT `<name>.md`, never `-e` on a bare name.
+# build-components.sh:737 writes `.gemini/agents/$name.md`, while the authoring
+# source of the same component is a DIRECTORY
+# (artifacts/<tier>/agents/<name>/AGENT.md). Asserting the compiled shape is what
+# makes the case notice a resolution that silently fell back to the wrong basis
+# rather than accepting whatever arrived under the right name.
+# =====================================================================
+R4C_ROOT="$(new_repo org-agents)"
+seed_agent "$R4C_ROOT" library   lib-agent
+seed_agent "$R4C_ROOT" community com-agent
+seed_agent "$R4C_ROOT" org       org-agent
+build_repo "$R4C_ROOT" gemini build-org-agents >/dev/null
+mkdir -p "$R4C_ROOT/cli-home-named" "$R4C_ROOT/cli-home-unnamed"
+
+ok="true"; detail=""
+run c4c-named env HOME="$R4C_ROOT/cli-home-named" bash "$R4C_ROOT/$GEMINI_CMD" install agents org-agent
+[ "$RUN_STATUS" -eq 0 ] || { ok="false"; detail="named: the command exited non-zero"; }
+[ -f "$R4C_ROOT/cli-home-named/.gemini/agents/org-agent.md" ] \
+  || { ok="false"; detail="${detail}${detail:+$'\n'}named: the org agent was not installed while library and community were populated"; }
+[ "$ok" = "false" ] && detail="${detail}"$'\n'"$(evidence)"
+
+run c4c-unnamed env HOME="$R4C_ROOT/cli-home-unnamed" bash "$R4C_ROOT/$GEMINI_CMD" install agents
+u_ok="true"; u_detail=""
+[ "$RUN_STATUS" -eq 0 ] || { u_ok="false"; u_detail="unnamed: the command exited non-zero"; }
+for a in lib-agent com-agent org-agent; do
+  [ -f "$R4C_ROOT/cli-home-unnamed/.gemini/agents/$a.md" ] \
+    || { u_ok="false"; u_detail="${u_detail}${u_detail:+$'\n'}unnamed: $a was not installed"; }
+done
+if [ "$u_ok" = "false" ]; then
+  ok="false"
+  detail="${detail}${detail:+$'\n'}${u_detail}"$'\n'"$(evidence)"
+fi
+report "R11+R10: the org tier resolves for agents on both request shapes (Gemini)" "$ok" "$detail"
 
 # =====================================================================
 # Case 5 — R8: a served tier present but holding no component of the requested
@@ -758,18 +818,24 @@ assert_unresolved_report claude "$LOGS/c17.view"
 report "R16-R18: the Claude command reports an unresolvable name and names every searched tier" "$ok" "$detail"
 
 # =====================================================================
-# Cases 18 and 19 — R20's relational arm, derived structurally.
+# Cases 18 and 19 — R20's relational arm, derived structurally, over every
+# (CLI, type) pair whose assisted setup resolves that type from compiled output.
 #
-# For each CLI, the setup script's declared landing zone and staging root and
+# For each pair, the setup script's declared landing zone and staging root and
 # the command's are parsed and compared. A results comparison would be actively
 # harmful: install_tier_skills_to_home (setup-copilot-interactive.sh) copies only
 # SKILL.md while place_component (manage-copilot-component.sh) copies the whole
 # directory, so the two routes' file sets differ for a reason R1/R2 do not bind.
 #
+# THE PAIRS ARE EXHAUSTIVE, not a sample: `skills` on all four commands, plus
+# `agents` on the Gemini command. There is no fifth pair to add — the other three
+# commands serve no `agents` type (see case 4c) — and no pair left out.
+#
 # A parse that matches nothing FAILS the case rather than passing vacuously,
 # following scripts/check-bash32-portability.sh. HOME and REPO_DIR resolve to the
 # sentinels <HOME> and <REPO> so the comparison is over declared intent, not over
-# one machine's paths.
+# one machine's paths; TYPE resolves to the row's own type, which is what lets
+# one parser serve every pair.
 # =====================================================================
 strip_q() { printf '%s' "$1" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'\$//"; }
 
@@ -781,18 +847,19 @@ var_last() {
   strip_q "$(printf '%s' "$line" | sed 's/^[^=]*=//')"
 }
 
-# resolve_expr <script> <expr> — expand $VAR/${VAR} from the script's own
-# assignments. HOME, REPO_DIR, tier and TYPE become stable sentinels. Bash
+# resolve_expr <script> <expr> <type> — expand $VAR/${VAR} from the script's own
+# assignments. HOME, REPO_DIR and tier become stable sentinels; TYPE becomes
+# <type>, so the same parser serves the `skills` rows and the `agents` one. Bash
 # substitution, not sed: a substituted value containing the sed delimiter
 # ("s|${MCP_BASE}|$(echo …" in setup-antigravity-interactive.sh) breaks sed.
 resolve_expr() {
-  local script="$1" val="$2" pass name sub
+  local script="$1" val="$2" type="$3" pass name sub
   for pass in 1 2 3 4 5 6; do
     val=$(printf '%s' "$val" | sed \
       -e 's/\${HOME}/<HOME>/g' -e 's/\$HOME/<HOME>/g' \
       -e 's/\${REPO_DIR}/<REPO>/g' -e 's/\$REPO_DIR/<REPO>/g' \
       -e 's/\${tier}/<TIER>/g' -e 's/\$tier/<TIER>/g' \
-      -e 's/\${TYPE}/skills/g' -e 's/\$TYPE/skills/g')
+      -e "s/\\\${TYPE}/$type/g" -e "s/\\\$TYPE/$type/g")
     case "$val" in *'$'*) ;; *) break ;; esac
     name=$(printf '%s' "$val" | sed -n 's/.*\$[{]\{0,1\}\([A-Za-z_][A-Za-z0-9_]*\).*/\1/p' | head -1)
     [ -n "$name" ] || break
@@ -804,22 +871,24 @@ resolve_expr() {
   printf '%s' "$val"
 }
 
-# resolved_by_name <script> <name-ERE> — resolved value of EVERY assignment whose
-# variable name matches. Every line, not just the last: manage-claude-component.sh
-# assigns DEST twice (skills, then rules) and the second would hide the first.
+# resolved_by_name <script> <name-ERE> <type> — resolved value of EVERY
+# assignment whose variable name matches. Every line, not just the last:
+# manage-claude-component.sh assigns DEST twice (skills, then rules) and the
+# second would hide the first.
 resolved_by_name() {
-  local script="$1" name_re="$2" line val
+  local script="$1" name_re="$2" type="$3" line val
   while IFS= read -r line; do
-    val=$(resolve_expr "$script" "$(strip_q "$(printf '%s' "$line" | sed 's/^[^=]*=//')")")
+    val=$(resolve_expr "$script" "$(strip_q "$(printf '%s' "$line" | sed 's/^[^=]*=//')")" "$type")
     [ -n "$val" ] && printf '%s\n' "$val"
   done < <(grep -E "^[[:space:]]*(local[[:space:]]+)?${name_re}=" "$script" 2>/dev/null)
 }
 
-# The four CLIs: <cli> <setup-script> <command-script>
-CLI_ROWS="claude:setup-claude-interactive.sh:manage-claude-component.sh
-gemini:setup-gemini-interactive.sh:manage-workspace-component.sh
-copilot:setup-copilot-interactive.sh:manage-copilot-component.sh
-antigravity:setup-antigravity-interactive.sh:manage-antigravity-component.sh"
+# The covered pairs: <cli>:<type>:<setup-script>:<command-script>
+CLI_ROWS="claude:skills:setup-claude-interactive.sh:manage-claude-component.sh
+gemini:skills:setup-gemini-interactive.sh:manage-workspace-component.sh
+gemini:agents:setup-gemini-interactive.sh:manage-workspace-component.sh
+copilot:skills:setup-copilot-interactive.sh:manage-copilot-component.sh
+antigravity:skills:setup-antigravity-interactive.sh:manage-antigravity-component.sh"
 
 # scan_set <command-script> — the command plus every scripts/lib file it sources,
 # so a tier list or staging root that moved into the shared resolver still counts.
@@ -832,68 +901,87 @@ scan_set() {
 }
 
 ok="true"; detail=""
-while IFS= read -r row; do
-  cli="${row%%:*}"
-  rest="${row#*:}"
-  setup="$REPO_DIR/scripts/${rest%%:*}"
-  cmd="$REPO_DIR/scripts/${rest##*:}"
+while IFS=: read -r cli type setup_name cmd_name; do
+  [ -n "$cli" ] || continue
+  setup="$REPO_DIR/scripts/$setup_name"
+  cmd="$REPO_DIR/scripts/$cmd_name"
 
-  setup_zone="$(resolved_by_name "$setup" '[A-Za-z_][A-Za-z0-9_]*' | grep -E '^<HOME>.*/skills$' | sort -u)"
-  cmd_zone="$(resolved_by_name "$cmd" '[A-Za-z0-9_]*DEST[A-Za-z0-9_]*' | grep -E '/skills$' | sort -u)"
+  setup_zone="$(resolved_by_name "$setup" '[A-Za-z_][A-Za-z0-9_]*' "$type" | grep -E "^<HOME>.*/$type\$" | sort -u)"
+  cmd_zone="$(resolved_by_name "$cmd" '[A-Za-z0-9_]*DEST[A-Za-z0-9_]*' "$type" | grep -E "/$type\$" | sort -u)"
 
   # Vacuity guards first: an unparseable side fails the case, never passes it.
   if [ -z "$setup_zone" ] || [ "$(printf '%s\n' "$setup_zone" | wc -l | tr -d ' ')" != "1" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli: could not parse exactly one user-home skills landing zone from $(basename "$setup") (got: $(printf '%s' "$setup_zone" | tr '\n' ' '))"
+    detail="${detail}${detail:+$'\n'}$cli/$type: could not parse exactly one user-home $type landing zone from $(basename "$setup") (got: $(printf '%s' "$setup_zone" | tr '\n' ' '))"
     continue
   fi
   if [ -z "$cmd_zone" ] || [ "$(printf '%s\n' "$cmd_zone" | wc -l | tr -d ' ')" != "1" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli: could not parse exactly one skills landing zone from $(basename "$cmd") (got: $(printf '%s' "$cmd_zone" | tr '\n' ' '))"
+    detail="${detail}${detail:+$'\n'}$cli/$type: could not parse exactly one $type landing zone from $(basename "$cmd") (got: $(printf '%s' "$cmd_zone" | tr '\n' ' '))"
     continue
   fi
   if [ "$setup_zone" != "$cmd_zone" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli: landing zones diverge — setup declares '$setup_zone', command declares '$cmd_zone'"
+    detail="${detail}${detail:+$'\n'}$cli/$type: landing zones diverge — setup declares '$setup_zone', command declares '$cmd_zone'"
   fi
 done <<EOF
 $CLI_ROWS
 EOF
-report "R20/R1: every command's skills landing zone equals its assisted setup's" "$ok" "$detail"
+report "R20/R1: every command's landing zone for each covered type equals its assisted setup's" "$ok" "$detail"
 
 ok="true"; detail=""
-while IFS= read -r row; do
-  cli="${row%%:*}"
-  rest="${row#*:}"
-  setup="$REPO_DIR/scripts/${rest%%:*}"
-  cmd="$REPO_DIR/scripts/${rest##*:}"
+while IFS=: read -r cli type setup_name cmd_name; do
+  [ -n "$cli" ] || continue
+  setup="$REPO_DIR/scripts/$setup_name"
+  cmd="$REPO_DIR/scripts/$cmd_name"
 
   # The CLI root the assisted setup reads under dist/<tier>/.
   setup_root="$(grep -oE 'dist/\$\{?tier\}?/\.[A-Za-z]+' "$setup" 2>/dev/null | sed 's|.*/||' | sort -u)"
   if [ -z "$setup_root" ] || [ "$(printf '%s\n' "$setup_root" | wc -l | tr -d ' ')" != "1" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli: could not parse exactly one dist/<tier>/<root> staging root from $(basename "$setup") (got: $(printf '%s' "$setup_root" | tr '\n' ' '))"
+    detail="${detail}${detail:+$'\n'}$cli/$type: could not parse exactly one dist/<tier>/<root> staging root from $(basename "$setup") (got: $(printf '%s' "$setup_root" | tr '\n' ' '))"
     continue
   fi
 
   scan="$(scan_set "$cmd")"
-  # Basis: the command must resolve skills from the same staging root.
-  if ! printf '%s\n' "$scan" | xargs grep -l -- "dist/" >/dev/null 2>&1; then
+  # Basis: the command must declare the setup's staging root for this type.
+  #
+  # Asserted over the ARGUMENT of every `component_set_staging_roots` call in the
+  # scanned set, never as a bare substring of it — trap 5 in the header. The scan
+  # deliberately includes the sourced libraries so a staging root that MOVES into
+  # the shared resolver still counts, and scripts/lib/component-resolve.sh
+  # already names all five roots verbatim for an unrelated reason
+  # (installed_targets, :324-327 and :347), so a substring form matches the
+  # library on every CLI and can never go red. Reading the call's argument keeps
+  # both properties: it follows the declaration wherever it lives, and an
+  # incidental mention is not a declaration.
+  #
+  # The stated cost: a declaration made INDIRECTLY — `SR=".gemini/skills";
+  # component_set_staging_roots "$SR"` — fails this case although the command
+  # still resolves from the right root. Measured, and deliberate: the file's
+  # standing rule is that a parse matching nothing fails rather than passes
+  # vacuously (scripts/check-bash32-portability.sh, "refusing to pass
+  # vacuously"), and the diagnostic below prints what the command declares, so
+  # the next author is told the literal to restore rather than left guessing.
+  declared="$(printf '%s\n' "$scan" \
+    | xargs grep -hoE 'component_set_staging_roots[[:space:]]+"[^"]*"' 2>/dev/null \
+    | sed -e 's/^[^"]*"//' -e 's/"$//' | sort -u)"
+  if [ -z "$declared" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli: the command reads no compiled output at all (no dist/ reference), while its setup reads dist/<tier>/$setup_root"
-  elif ! printf '%s\n' "$scan" | xargs grep -q -- "$setup_root/skills" 2>/dev/null; then
+    detail="${detail}${detail:+$'\n'}$cli/$type: no component_set_staging_roots declaration in the command or the libraries it sources, while its setup reads dist/<tier>/$setup_root"
+  elif ! printf '%s\n' "$declared" | grep -Fqx -- "$setup_root/$type"; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli: the command does not resolve skills from the setup's staging root ($setup_root/skills)"
+    detail="${detail}${detail:+$'\n'}$cli/$type: the command declares no staging root equal to the setup's ($setup_root/$type); it declares: $(printf '%s' "$declared" | tr '\n' ' ')"
   fi
   # Tier set: all three overlay tiers must be reachable.
   for t in library community org; do
     printf '%s\n' "$scan" | xargs grep -qw -- "$t" 2>/dev/null \
-      || { ok="false"; detail="${detail}${detail:+$'\n'}$cli: the command never references the $t tier"; }
+      || { ok="false"; detail="${detail}${detail:+$'\n'}$cli/$type: the command never references the $t tier"; }
   done
 done <<EOF
 $CLI_ROWS
 EOF
-report "R20/R2+R5: every command resolves skills from its setup's staging root, over all three overlay tiers" "$ok" "$detail"
+report "R20/R2+R5: every command resolves each covered type from its setup's staging root, over all three overlay tiers" "$ok" "$detail"
 
 # =====================================================================
 # Case 20 — R19: the twelve documented task entry points, plus
