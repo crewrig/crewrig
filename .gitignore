@@ -9,7 +9,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Runtime
-node_modules/
+node_modules
 __pycache__/
 *.pyc
 .venv/

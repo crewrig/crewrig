@@ -786,6 +786,84 @@ run_base_case "Case 38 — attribution that cannot be derived blocks, and says s
   "could not be derived" "[WARN]"
 
 # -------------------------------------------------------------------------
+# Cases 39-40 (delta-03 R16, covering R14/R15) — WORKING-DIRECTORY INDEPENDENCE.
+#
+# Both cases assert on `Non-delta specs present on the base branch` — the banner
+# only this check emits — and NOT on the offending file's path. The path is also
+# printed by markdownlint on any rule violation in the fixture, and markdownlint's
+# own failure is exit 1, so a fixture that drifts out of conformance would satisfy
+# a path-plus-exit-code assertion while the check never executed. Measured: with
+# an MD001 violation injected and run against a linter WITHOUT the fix, exit is 1
+# and the path appears. For cases guarding a check whose defect was passing
+# without checking, that is the one false-pass that must not be possible. The
+# fixture holds exactly one spec, so asserting the banner loses no identity.
+#
+# A fixture whose specs AND markdownlint configuration both sit under `sub/`.
+# The nested configuration is not incidental: `-c .markdownlintrc` is resolved
+# against the working directory, so without a config there the run dies at
+# markdownlint and never reaches the check. That is exactly why this defect was
+# first believed unreachable, and it is what these cases exist to keep reachable.
+# -------------------------------------------------------------------------
+GITFIX4="$TMP_ROOT/gitfix4"
+mkdir -p "$GITFIX4/sub/specs"
+cp "$ROOT_DIR/.markdownlintrc" "$GITFIX4/sub/"
+ln -s "$ROOT_DIR/node_modules" "$GITFIX4/sub/node_modules"
+render_spec "0240" "nested-layout" "draft" > "$GITFIX4/sub/specs/0240-nested-layout.md"
+(
+  cd "$GITFIX4" || exit 1
+  git init -q
+  git symbolic-ref HEAD refs/heads/main
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git config commit.gpgsign false
+  git add sub/specs
+  git commit -q -m "draft non-delta spec on the base branch, under sub/"
+)
+
+# -------------------------------------------------------------------------
+# Case 39 (R14) — the offender is identified when the linter runs from a
+# SUBDIRECTORY. Before delta-03, `git ls-tree` resolved the repo-root-relative
+# pathspec against the working directory, matched nothing, and returned an empty
+# set — so no file was ever identified as present on the base branch and the run
+# reported `Linting passed!` with exit 0 on a live violation. Remove the
+# `gitCwd = repoRoot` assignment and this case goes red.
+# -------------------------------------------------------------------------
+git -C "$GITFIX4" checkout -q -- .
+git -C "$GITFIX4" config --unset-all diff.relative 2>/dev/null || true
+run_base_case "Case 39 — an offender is identified from a subdirectory (R14)" \
+  "$GITFIX4/sub" "specs" 1 "main" \
+  "Non-delta specs present on the base branch" "-"
+
+# -------------------------------------------------------------------------
+# Case 40 (R14, the attribution half) — same subdirectory run, with
+# `diff.relative=true` and the offending spec MODIFIED in the tree. It must fail,
+# because a change that touches the offender is the change that pays
+# (delta-02 R2 as replaced).
+#
+# This is the case that discriminates a PARTIAL fix, which is why it exists
+# alongside Case 39: pin `ls-tree` alone and the offender is identified, but
+# `git diff` still reports `specs/0240-nested-layout.md` relative to `sub/`, the
+# `changed` set never matches `sub/specs/0240-nested-layout.md`, the offender
+# degrades to a bystander, and the run passes with a [WARN]. Hence the assertion
+# on the ABSENCE of [WARN] rather than on the exit code alone.
+#
+# It does not isolate the `diff` derivation from the `ls-tree` one — that is not
+# observable through the command line, since the only working directory where
+# `diff` misbehaves is one where `ls-tree` has already returned nothing. Stated
+# rather than implied, so the case is not read as stronger than it is.
+#
+# Like cases 35-37 on $GITFIX2, these two do NOT depend on each other's order:
+# each resets the work tree and the `diff.relative` setting, then applies only
+# what it measures. A third case added here inherits neither.
+# -------------------------------------------------------------------------
+git -C "$GITFIX4" checkout -q -- .
+git -C "$GITFIX4" config diff.relative true
+printf '\nEdited by the change under test.\n' >> "$GITFIX4/sub/specs/0240-nested-layout.md"
+run_base_case "Case 40 — attribution stays root-anchored under diff.relative (R14)" \
+  "$GITFIX4/sub" "specs" 1 "main" \
+  "Non-delta specs present on the base branch" "[WARN]"
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""
