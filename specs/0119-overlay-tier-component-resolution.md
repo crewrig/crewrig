@@ -1,7 +1,7 @@
 ---
 id: "0119"
 slug: overlay-tier-component-resolution
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 789
