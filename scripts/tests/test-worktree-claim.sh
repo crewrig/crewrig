@@ -243,10 +243,27 @@
 #    subcommand, an assertion string, an arm's name — it was replaced by the anchor
 #    instead of pinned, because an anchor does not go stale at all. Counts of CASES
 #    are the specific trap: the suite grows, `N/N` still reads as a full pass, and
-#    a stale full pass looks exactly like a fresh one. Figures derived from a
-#    constant in `worktree-claim.sh` (480, 1800, the 9-digit ceiling) name the
-#    constant they come from, so the derivation is re-runnable rather than
-#    remembered.
+#    a stale full pass looks exactly like a fresh one. A figure that DOES come from
+#    a constant in `worktree-claim.sh` names it, so the derivation is re-runnable
+#    rather than remembered: 1800 is `STALE_DEFAULT_MINUTES` (30) x 60, and the
+#    nine-digit ceiling on `--stale-after` is `STALE_MAX_DIGITS`. 480 is NOT one of
+#    them and cannot be made one — it is case 17's own flag input `08` times the
+#    bare `60` in `STALE_SECONDS="$(( STALE_AFTER * 60 ))"`, and the script defines
+#    no seconds-per-minute constant to name. A figure with no constant behind it
+#    spells out its whole derivation instead, which is what case 17's block does.
+#
+#    A DERIVED DISTANCE IS WRITTEN AS THE COMMAND THAT DERIVES IT, NOT AS A WORD.
+#    This clause is younger than the rest of the rule and was paid for: f8bd54b —
+#    the commit whose whole purpose was pinning the measurements above — introduced
+#    a fresh wrong one, labelling bb844ab "four commits on" in case 20's ledger
+#    where `git rev-list --count bcc4e65..bb844ab` answers 1. The arithmetic was
+#    not the failure. Four was a REAL measurement — `git rev-list --count
+#    bb844ab..4bb8221` = 4, the distance to head as that commit was being written,
+#    and its message says exactly that — written into a row whose anchor is the row
+#    above it. A word carries its value but not its endpoints, so it survives being
+#    moved somewhere the value is wrong; a command carries both and cannot. Writing
+#    a new figure is precisely the act that produces rotted ones, so a pass that
+#    removes them can add one.
 #
 # Bash 3.2-portable per spec 0111: no associative arrays, no Bash 4 builtins.
 #
@@ -1153,9 +1170,10 @@ case_19() {
 #   30fb24b  introduced this case, before the skew band
 #              -> FAIL Case 20 at `expected exit 0, got 4`; 19 passed, 1 failed.
 #                 True when written.
-#   bcc4e65  the very next commit; adds the skew band
+#   bcc4e65  adds the skew band; `git rev-list --count 30fb24b..bcc4e65` = 1
 #              -> 20 passed, 0 failed. Dead already, one commit later.
-#   bb844ab  four commits on, still on `99999999999999999999`
+#   bb844ab  `git rev-list --count bcc4e65..bb844ab` = 1 — the next commit again;
+#            still on `99999999999999999999`
 #              -> 21 passed, 0 failed. Still dead, still reading as a pass.
 #   c48aa6c  this case rewritten onto `2^64 + now`
 #              -> FAIL Case 20 at `expected exit 0, got 4`, stdout carrying
