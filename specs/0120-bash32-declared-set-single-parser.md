@@ -1,7 +1,7 @@
 ---
 id: "0120"
 slug: bash32-declared-set-single-parser
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 721
