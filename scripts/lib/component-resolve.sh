@@ -455,6 +455,14 @@ report_installed_name_collisions() {
 # build carries a refusal whose whole purpose is to exit non-zero on a
 # collision, and emitting "not resolved, examined 3 roots" when the established
 # cause is a refused build would name a cause that was not established (R17).
+#
+# THE REFUSAL NAMES THE PRUNE. The prune happens BEFORE the build runs, so a
+# refused build leaves the staging roots emptied rather than stale. Saying only
+# "nothing has been installed" is true and still leaves the operator holding an
+# emptied staging tree with no idea it happened — a confusing state produced by
+# this function and reported by nobody. The failure branch therefore names every
+# root it emptied and says the next successful rebuild repopulates them, which
+# is the difference between a recoverable state and a mysterious one.
 ensure_overlay_tiers_fresh() {
   local cli="$1"
   shift
@@ -473,17 +481,27 @@ ensure_overlay_tiers_fresh() {
   local repo
   repo="${REPO_DIR:?component-resolve.sh requires REPO_DIR}"
   local tier
-  local build_args
-  build_args=()
+
+  # Validate every tier BEFORE removing anything. Rejecting `core` mid-loop
+  # would leave the earlier tiers already pruned, which is the same silent
+  # half-done state the failure branch below exists to stop.
   for tier in "$@"; do
     if [ "$tier" = "core" ]; then
       printf "Internal error: the 'core' tier is never pruned by an install command.\n" >&2
       return 2
     fi
+  done
+
+  local build_args
+  local pruned
+  build_args=()
+  pruned=()
+  for tier in "$@"; do
     # Every interpolated component carries its own :? guard. Guarding only the
     # base would still let an empty tier or root widen the removal by a whole
     # directory level.
     rm -rf "${repo:?}/dist/${tier:?}/${cli_root:?}"
+    pruned[${#pruned[@]}]="$repo/dist/$tier/$cli_root"
     build_args[${#build_args[@]}]="--tier"
     build_args[${#build_args[@]}]="$tier"
   done
@@ -491,13 +509,20 @@ ensure_overlay_tiers_fresh() {
   local log
   log="$(mktemp -t crewrig-overlay-rebuild.XXXXXX)"
   local status
+  local pruned_root
   if bash "${repo}/scripts/build-components.sh" --target "$cli" \
        ${build_args[@]+"${build_args[@]}"} >"$log" 2>&1; then
     status=0
   else
     status=$?
     printf 'The rebuild of the served overlay tiers was refused (exit %s).\n' "$status" >&2
-    printf 'Its own report follows verbatim; nothing has been installed.\n' >&2
+    printf 'Nothing has been installed. These staging roots were emptied before the\n' >&2
+    printf 'rebuild was attempted, so they are empty now; the next rebuild that\n' >&2
+    printf 'succeeds repopulates them, and nothing outside them was touched:\n' >&2
+    for pruned_root in ${pruned[@]+"${pruned[@]}"}; do
+      printf '  - %s\n' "$pruned_root" >&2
+    done
+    printf "The refused rebuild's own report follows verbatim.\n" >&2
     cat "$log" >&2
   fi
   rm -f "$log"
