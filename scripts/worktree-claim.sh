@@ -298,12 +298,32 @@ TICKET=""
 OPERATION=""
 STALE_AFTER="$STALE_DEFAULT_MINUTES"
 
+# A value-taking flag in FINAL position has nothing to consume. Left to the
+# `shift 2` below, that is the one refusal in this script that says nothing at
+# all: `shift` fails when it is asked for more parameters than remain, and under
+# `set -e` the script exits 1 with both streams empty. Silence is the worst
+# available answer here — a caller reading exit 1 with no diagnostic cannot tell
+# "you forgot an argument" from "the repository is broken", which is the same
+# false-confidence shape the rest of this script exists to remove. Worse, the
+# header tells callers to branch on the diagnostic rather than on the code (see
+# *Exit codes* and the `run` note above); a refusal that prints nothing makes
+# that documented advice unfollowable. So refuse explicitly, BEFORE the shift.
+require_value() {
+  if [ "$#" -lt 2 ]; then
+    fail "'$1' requires a value: worktree-claim.sh $SUBCOMMAND … $1 <value>. Run
+       with --help for the usage block."
+  fi
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --agent)       AGENT="${2:-}"; shift 2 ;;
-    --ticket)      TICKET="${2:-}"; shift 2 ;;
-    --operation)   OPERATION="${2:-}"; shift 2 ;;
-    --stale-after) STALE_AFTER="${2:-}"; shift 2 ;;
+    # `"$2"` and not `${2:-}`: `require_value` has already established that a
+    # second parameter exists, so the fallback would only mask a later change
+    # that removed the guard.
+    --agent)       require_value "$@"; AGENT="$2";       shift 2 ;;
+    --ticket)      require_value "$@"; TICKET="$2";      shift 2 ;;
+    --operation)   require_value "$@"; OPERATION="$2";   shift 2 ;;
+    --stale-after) require_value "$@"; STALE_AFTER="$2"; shift 2 ;;
     -h|--help)     usage; exit 0 ;;
     --)            shift; break ;;
     *)             fail "unknown argument '$1'. Run with --help for the usage block." ;;
