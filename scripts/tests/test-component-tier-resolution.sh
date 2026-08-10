@@ -133,7 +133,7 @@ new_repo() {
   local name="$1"
   local root="$WORK/$name"
   local f
-  mkdir -p "$root/scripts" "$root/artifacts" "$root/home"
+  mkdir -p "$root/scripts" "$root/artifacts" "$root/cli-home"
   /bin/cp -R "$REPO_DIR/scripts/lib" "$root/scripts/lib"
   for f in "$REPO_DIR"/scripts/*.sh; do
     /bin/cp -f "$f" "$root/scripts/"
@@ -142,7 +142,7 @@ new_repo() {
   [ -f "$REPO_DIR/crewrig.config.toml" ] && /bin/cp -f "$REPO_DIR/crewrig.config.toml" "$root/"
   # dist/ is gitignored upstream (.gitignore:16); the R3 case depends on that
   # being true of the fixture too, because the fix rebuilds overlay tiers there.
-  printf 'dist/\n' > "$root/.gitignore"
+  printf 'dist/\ncli-home*/\n' > "$root/.gitignore"
   printf '%s' "$root"
 }
 
@@ -265,10 +265,10 @@ build_repo "$R1_ROOT" claude build-stale >/dev/null
 # Added after the build, never compiled. Real body content, not whitespace.
 seed_skill "$R1_ROOT" library late-skill
 
-run c1 env HOME="$R1_ROOT/home" bash "$R1_ROOT/$CLAUDE_CMD" install claude-skills late-skill
+run c1 env HOME="$R1_ROOT/cli-home" bash "$R1_ROOT/$CLAUDE_CMD" install claude-skills late-skill
 ok="true"; detail=""
 [ "$RUN_STATUS" -eq 0 ] || { ok="false"; detail="command exited non-zero; $(evidence)"; }
-[ -f "$R1_ROOT/home/.claude/skills/late-skill/SKILL.md" ] \
+[ -f "$R1_ROOT/cli-home/.claude/skills/late-skill/SKILL.md" ] \
   || { ok="false"; detail="late-skill absent from the landing zone; $(evidence)"; }
 report "R7: a library component added after the last build installs by name (stale dist/)" "$ok" "$detail"
 
@@ -288,11 +288,11 @@ seed_skill "$R2_ROOT" community doomed-skill
 build_repo "$R2_ROOT" claude build-residual >/dev/null
 rm -rf "$R2_ROOT/artifacts/community/skills/doomed-skill"
 
-run c2 env HOME="$R2_ROOT/home" bash "$R2_ROOT/$CLAUDE_CMD" install claude-skills
+run c2 env HOME="$R2_ROOT/cli-home" bash "$R2_ROOT/$CLAUDE_CMD" install claude-skills
 ok="true"; detail=""
-[ -e "$R2_ROOT/home/.claude/skills/doomed-skill" ] \
+[ -e "$R2_ROOT/cli-home/.claude/skills/doomed-skill" ] \
   && { ok="false"; detail="a component absent from every served tier was installed from build residue; $(evidence)"; }
-[ -f "$R2_ROOT/home/.claude/skills/keeper-skill/SKILL.md" ] \
+[ -f "$R2_ROOT/cli-home/.claude/skills/keeper-skill/SKILL.md" ] \
   || { ok="false"; detail="${detail}${detail:+$'\n'}the surviving component was not installed; $(evidence)"; }
 if grep -qiE 'collision|colliding|ambiguous' "$RUN_OUT" "$RUN_ERR" 2>/dev/null; then
   ok="false"; detail="${detail}${detail:+$'\n'}a phantom collision was reported against build residue; $(evidence)"
@@ -311,20 +311,20 @@ seed_skill "$R34_ROOT" library lib-skill
 seed_skill "$R34_ROOT" community com-skill
 seed_skill "$R34_ROOT" org org-skill
 build_repo "$R34_ROOT" claude build-three >/dev/null
-mkdir -p "$R34_ROOT/home-named" "$R34_ROOT/home-unnamed"
+mkdir -p "$R34_ROOT/cli-home-named" "$R34_ROOT/cli-home-unnamed"
 
-run c3 env HOME="$R34_ROOT/home-named" bash "$R34_ROOT/$CLAUDE_CMD" install claude-skills org-skill
+run c3 env HOME="$R34_ROOT/cli-home-named" bash "$R34_ROOT/$CLAUDE_CMD" install claude-skills org-skill
 ok="true"; detail=""
 [ "$RUN_STATUS" -eq 0 ] || { ok="false"; detail="command exited non-zero; $(evidence)"; }
-[ -f "$R34_ROOT/home-named/.claude/skills/org-skill/SKILL.md" ] \
+[ -f "$R34_ROOT/cli-home-named/.claude/skills/org-skill/SKILL.md" ] \
   || { ok="false"; detail="the org component was not installed while community was populated; $(evidence)"; }
 report "R7: a named org component installs while the community tier is populated" "$ok" "$detail"
 
-run c4 env HOME="$R34_ROOT/home-unnamed" bash "$R34_ROOT/$CLAUDE_CMD" install claude-skills
+run c4 env HOME="$R34_ROOT/cli-home-unnamed" bash "$R34_ROOT/$CLAUDE_CMD" install claude-skills
 ok="true"; detail=""
 [ "$RUN_STATUS" -eq 0 ] || { ok="false"; detail="command exited non-zero; $(evidence)"; }
 for s in lib-skill com-skill org-skill; do
-  [ -f "$R34_ROOT/home-unnamed/.claude/skills/$s/SKILL.md" ] \
+  [ -f "$R34_ROOT/cli-home-unnamed/.claude/skills/$s/SKILL.md" ] \
     || { ok="false"; detail="${detail}${detail:+$'\n'}$s (unnamed request) was not installed"; }
 done
 [ "$ok" = "false" ] && detail="${detail}"$'\n'"$(evidence)"
@@ -351,17 +351,17 @@ seed_skill "$R4B_ROOT" community beta-skill
 build_repo "$R4B_ROOT" all build-per-name >/dev/null
 
 ok="true"; detail=""
-run c4b-claude env HOME="$R4B_ROOT/home-claude" bash "$R4B_ROOT/$CLAUDE_CMD" install claude-skills
+run c4b-claude env HOME="$R4B_ROOT/cli-home-claude" bash "$R4B_ROOT/$CLAUDE_CMD" install claude-skills
 for s in alpha-skill beta-skill; do
-  [ -f "$R4B_ROOT/home-claude/.claude/skills/$s/SKILL.md" ] \
+  [ -f "$R4B_ROOT/cli-home-claude/.claude/skills/$s/SKILL.md" ] \
     || { ok="false"; detail="${detail}${detail:+$'\n'}claude: $s is not installed under its own name"; }
 done
-[ -f "$R4B_ROOT/home-claude/.claude/skills/SKILL.md" ] \
+[ -f "$R4B_ROOT/cli-home-claude/.claude/skills/SKILL.md" ] \
   && { ok="false"; detail="${detail}${detail:+$'\n'}claude: a skill body was flattened into the landing-zone root"; }
 
-run c4b-agy env HOME="$R4B_ROOT/home-agy" bash "$R4B_ROOT/$AGY_CMD" install antigravity-skills
+run c4b-agy env HOME="$R4B_ROOT/cli-home-agy" bash "$R4B_ROOT/$AGY_CMD" install antigravity-skills
 for s in alpha-skill beta-skill; do
-  [ -f "$R4B_ROOT/home-agy/.gemini/antigravity-cli/skills/$s/SKILL.md" ] \
+  [ -f "$R4B_ROOT/cli-home-agy/.gemini/antigravity-cli/skills/$s/SKILL.md" ] \
     || { ok="false"; detail="${detail}${detail:+$'\n'}antigravity: $s is not installed under its own name"; }
 done
 
@@ -382,10 +382,10 @@ seed_empty_type "$R5_ROOT" community skills
 seed_skill "$R5_ROOT" org acme-review
 build_repo "$R5_ROOT" gemini build-empty >/dev/null
 
-run c5 env HOME="$R5_ROOT/home" bash "$R5_ROOT/$GEMINI_CMD" install skills acme-review
+run c5 env HOME="$R5_ROOT/cli-home" bash "$R5_ROOT/$GEMINI_CMD" install skills acme-review
 ok="true"; detail=""
 [ "$RUN_STATUS" -eq 0 ] || { ok="false"; detail="command exited non-zero; $(evidence)"; }
-[ -e "$R5_ROOT/home/.gemini/skills/acme-review" ] \
+[ -e "$R5_ROOT/cli-home/.gemini/skills/acme-review" ] \
   || { ok="false"; detail="an empty-but-present served tier masked the org tier; $(evidence)"; }
 report "R8: a served tier present but empty of the type does not mask another tier" "$ok" "$detail"
 
@@ -502,10 +502,10 @@ diff -q "$R10_ROOT/dist/library/.claude/skills/acme-review/SKILL.md" \
         "$R10_ROOT/dist/org/.claude/skills/acme-review/SKILL.md" >/dev/null \
   || { echo "FATAL: residue seeding failed (cp is aliased?)" >&2; exit 2; }
 
-run c10 env HOME="$R10_ROOT/home" bash "$R10_ROOT/$CLAUDE_CMD" install claude-skills acme-review
+run c10 env HOME="$R10_ROOT/cli-home" bash "$R10_ROOT/$CLAUDE_CMD" install claude-skills acme-review
 ok="true"; detail=""
 [ "$RUN_STATUS" -ne 0 ] || { ok="false"; detail="the command resolved an ambiguous name and exited zero; $(evidence)"; }
-[ -e "$R10_ROOT/home/.claude/skills/acme-review" ] \
+[ -e "$R10_ROOT/cli-home/.claude/skills/acme-review" ] \
   && { ok="false"; detail="${detail}${detail:+$'\n'}a component was installed under the colliding name; $(evidence)"; }
 both > "$LOGS/c10.both"
 grep -Fq 'acme-review' "$LOGS/c10.both" || { ok="false"; detail="${detail}${detail:+$'\n'}the report does not name the colliding name"; }
@@ -532,12 +532,12 @@ seed_policy "$R11_ROOT" library   acme-rules
 seed_policy "$R11_ROOT" community acme-rules
 seed_policy "$R11_ROOT" library   solo-rules
 
-run c11 env HOME="$R11_ROOT/home" bash "$R11_ROOT/$GEMINI_CMD" install policies
+run c11 env HOME="$R11_ROOT/cli-home" bash "$R11_ROOT/$GEMINI_CMD" install policies
 ok="true"; detail=""
 [ "$RUN_STATUS" -ne 0 ] || { ok="false"; detail="the unnamed request exited zero despite a collision; $(evidence)"; }
-[ -e "$R11_ROOT/home/.gemini/policies/acme-rules.md" ] \
+[ -e "$R11_ROOT/cli-home/.gemini/policies/acme-rules.md" ] \
   && { ok="false"; detail="${detail}${detail:+$'\n'}a component was installed under the colliding name; $(evidence)"; }
-[ -f "$R11_ROOT/home/.gemini/policies/solo-rules.md" ] \
+[ -f "$R11_ROOT/cli-home/.gemini/policies/solo-rules.md" ] \
   || { ok="false"; detail="${detail}${detail:+$'\n'}a non-colliding sibling was not installed (R9); $(evidence)"; }
 both > "$LOGS/c11.both"
 grep -Fq 'acme-rules' "$LOGS/c11.both" || { ok="false"; detail="${detail}${detail:+$'\n'}the report does not name the colliding name"; }
@@ -572,8 +572,8 @@ seed_policy "$R12_ROOT" community com-policy
 seed_json   "$R12_ROOT" community mcp-servers acme-mcp
 seed_json   "$R12_ROOT" community themes      acme-theme
 
-run c12 env HOME="$R12_ROOT/home" bash "$R12_ROOT/scripts/install-workspace.sh" install
-H12="$R12_ROOT/home"
+run c12 env HOME="$R12_ROOT/cli-home" bash "$R12_ROOT/scripts/install-workspace.sh" install
+H12="$R12_ROOT/cli-home"
 ok="true"; detail=""
 [ "$RUN_STATUS" -ne 0 ] || { ok="false"; detail="the wrapper exited zero although a type failed; $(evidence)"; }
 [ -e "$H12/.gemini/skills/acme-review" ] \
@@ -606,7 +606,7 @@ R13_ROOT="$(new_repo failed-rebuild)"
 seed_skill "$R13_ROOT" library acme-review
 seed_skill "$R13_ROOT" org     acme-review
 
-run c13 env HOME="$R13_ROOT/home" bash "$R13_ROOT/$CLAUDE_CMD" install claude-skills zz-absent
+run c13 env HOME="$R13_ROOT/cli-home" bash "$R13_ROOT/$CLAUDE_CMD" install claude-skills zz-absent
 ok="true"; detail=""
 [ "$RUN_STATUS" -ne 0 ] || { ok="false"; detail="the command exited zero although the rebuild it needs is refused; $(evidence)"; }
 both > "$LOGS/c13.both"
@@ -642,7 +642,7 @@ $GIT add scripts Taskfile.yml .gitignore artifacts >/dev/null 2>&1
 $GIT commit -m "fixture" >/dev/null 2>&1
 build_repo "$R14_ROOT" copilot build-r3 >/dev/null
 
-run c14 env HOME="$R14_ROOT/home" bash "$R14_ROOT/$COPILOT_CMD" install skills acme-review
+run c14 env HOME="$R14_ROOT/cli-home" bash "$R14_ROOT/$COPILOT_CMD" install skills acme-review
 PORC="$($GIT status --porcelain 2>&1)"
 ok="true"; detail=""
 if [ -n "$PORC" ]; then
@@ -651,7 +651,7 @@ if [ -n "$PORC" ]; then
 $PORC
 $(evidence)"
 fi
-[ -e "$R14_ROOT/home/.copilot/skills/acme-review" ] \
+[ -e "$R14_ROOT/cli-home/.copilot/skills/acme-review" ] \
   || { ok="false"; detail="${detail}${detail:+$'\n'}nothing was delivered to the command's landing zone (the case would otherwise pass vacuously); $(evidence)"; }
 report "R3: a non-core per-component install leaves the committed checkout clean" "$ok" "$detail"
 
@@ -670,7 +670,7 @@ R15_ROOT="$(new_repo core-unreachable)"
 seed_skill "$R15_ROOT" core      core-only
 seed_skill "$R15_ROOT" community com-skill
 build_repo "$R15_ROOT" claude build-core >/dev/null
-H15="$R15_ROOT/home"
+H15="$R15_ROOT/cli-home"
 ok="true"; detail=""
 
 run c15-claude env HOME="$H15" bash "$R15_ROOT/$CLAUDE_CMD" install claude-skills core-only
@@ -739,7 +739,7 @@ assert_unresolved_report() {
   ASSERT_OK="$o"; ASSERT_DETAIL="$d"
 }
 
-run c16 env HOME="$R16_ROOT/home" bash "$R16_ROOT/$COPILOT_CMD" install skills no-such-component
+run c16 env HOME="$R16_ROOT/cli-home" bash "$R16_ROOT/$COPILOT_CMD" install skills no-such-component
 ok="true"; detail=""
 [ "$RUN_STATUS" -ne 0 ] || { ok="false"; detail="the command exited zero on an unresolvable name"; }
 report_view "$RUN_OUT" "$RUN_ERR" > "$LOGS/c16.view"
@@ -748,7 +748,7 @@ assert_unresolved_report copilot "$LOGS/c16.view"
 [ "$ok" = "false" ] && detail="${detail}"$'\n'"$(evidence)"
 report "R16-R18: the Copilot command reports an unresolvable name and names every searched tier" "$ok" "$detail"
 
-run c17 env HOME="$R16_ROOT/home" bash "$R16_ROOT/$CLAUDE_CMD" install claude-skills no-such-component
+run c17 env HOME="$R16_ROOT/cli-home" bash "$R16_ROOT/$CLAUDE_CMD" install claude-skills no-such-component
 ok="true"; detail=""
 [ "$RUN_STATUS" -ne 0 ] || { ok="false"; detail="the command exited zero on an unresolvable name"; }
 report_view "$RUN_OUT" "$RUN_ERR" > "$LOGS/c17.view"
@@ -948,7 +948,7 @@ if true; then
   seed_json   "$R20_ROOT" community mcp-servers acme-mcp
   seed_json   "$R20_ROOT" community themes      acme-theme
   build_repo "$R20_ROOT" all build-task >/dev/null
-  H20="$R20_ROOT/home"
+  H20="$R20_ROOT/cli-home"
 
   ok="true"; detail=""
 
