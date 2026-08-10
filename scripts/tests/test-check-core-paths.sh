@@ -29,6 +29,13 @@
 #      exit 1 naming `.agents/skills` and `.agents/agents`, 9 derived. The only
 #      case run against the real script's real shape, so the only one a
 #      matcher-blinding change cannot pass.
+#   j. A call site that is not the first token of its line → exit 1, named.
+#      Case i cannot cover this: all sixteen real call sites are bare.
+#   k. An `excluded` ANCESTOR over a governed child → exit 0. Pins the half of
+#      dir_is_governed() that keeps it from being stricter than the sync.
+#   l. An indented comment naming a helper → still a comment. Pins the trim,
+#      which no other case constrains now that the matcher accepts non-leading
+#      calls and is therefore indentation-insensitive.
 #
 # Cases a-d commit a stub `scripts/build-components.sh` with no call sites, so
 # the derived set is empty in half the suite — the accumulator-empty path the
@@ -139,6 +146,31 @@ check_or_write "$out_root/.newcli/skills/$name/SKILL.md" "$content" "$source"
 # One call site whose target this guard cannot classify (line 2).
 BUILD_STUB_UNCLASSIFIABLE='#!/bin/bash
 check_or_write "$some_other_root/x.md" "$content"
+'
+
+# A call site that is NOT the first token of its line. All sixteen real call
+# sites are bare, so case i cannot exercise this shape — and a prefix-anchored
+# matcher discarded it silently, the fail-closed rule never seeing a line that
+# failed to match in the first place.
+BUILD_STUB_NESTED_CALL='#!/bin/bash
+for name in demo; do
+  if ! check_or_write "$out_root/.newcli/skills/$name/SKILL.md" "$content" "$source"; then
+    exit 1
+  fi
+done
+'
+
+# An INDENTED comment naming a helper, above a real call site. The comment skip
+# runs on the trimmed line; on the raw line an indented comment is not seen as a
+# comment, matches the helper pattern instead, yields no directory, and trips
+# the fail-closed rule. build-components.sh carries such a comment today (:625),
+# but it ends at the helper name with no trailing space, so it happens not to
+# match — which would leave the trim pinned by nothing.
+BUILD_STUB_INDENTED_COMMENT='#!/bin/bash
+for name in demo; do
+    # check_or_write is how the compiled skill gets written
+  check_or_write "$out_root/.newcli/skills/$name/SKILL.md" "$content" "$source"
+done
 '
 
 # ---------------------------------------------------------------------------
@@ -476,6 +508,125 @@ check_or_write "$some_other_root/x.md" "$content"
     pass=$((pass + 1))
   else
     echo "FAIL  case-i: expected '9 of 9 built-output' in the failure summary"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case j — A call site that is not the first token of its line → exit 1,
+#          stderr names the directory.
+#
+# The matcher was prefix-anchored and discarded such lines at the `case`, so
+# they never reached the fail-closed rule: three real shapes (`if ! …`,
+# `for … do …`, `[ … ] && …`) wrote into an ungoverned directory while the
+# guard printed `OK: all 9 … are governed`. No other case catches this — case i
+# runs the real build script, where all sixteen call sites happen to be bare,
+# which is exactly why measuring the matcher against that script could not
+# surface the gap.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    ".newcli/skills/demo/SKILL.md" "built output" \
+    "scripts/build-components.sh" "$BUILD_STUB_NESTED_CALL"
+  write_manifest "$repo" $'real.txt\tstrict\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-j: a non-leading call site is still extracted (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-j: expected exit 1, got $CHECK_EXIT"
+    echo "      actual stdout: $CHECK_STDOUT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF -- "- .newcli/skills"; then
+    echo "PASS  case-j: stderr names the directory written from a nested call"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-j: stderr did not name .newcli/skills"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case k — An `excluded` ANCESTOR must not disqualify a governed child →
+#          exit 0.
+#
+# dir_is_governed() consults only `excluded` entries nested under the matched
+# governing entry, because that is what sync-from-upstream.sh does
+# (excluded_children_of). Consulting excluded ancestors instead would be
+# stricter than the sync — and reachable, which is the point: on
+# `.newcli excluded` + `.newcli/skills strict` the sync governs
+# `.newcli/skills`, so this guard must too, or it fails a build the sync would
+# have synchronised happily.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    ".newcli/skills/demo/SKILL.md" "built output" \
+    "scripts/build-components.sh" "$BUILD_STUB_NEWCLI"
+  write_manifest "$repo" $'real.txt\tstrict\n.newcli\texcluded\n.newcli/skills\tstrict\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-k: an excluded ancestor does not disqualify a governed child"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-k: expected exit 0, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case l — An indented comment naming a helper is still a comment → exit 1 for
+#          the real call site below it, not exit 2 for the comment.
+#
+# Pins the trim. Before the matcher was widened to accept non-leading calls,
+# the trim was what made the matcher see indented call sites, and mutating it
+# to the raw line turned case i red. Widening the matcher made it
+# indentation-insensitive, so that mutation stopped discriminating and the trim
+# was left pinned by nothing — the comment skip being the one place it still
+# matters. This case restores that.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    ".newcli/skills/demo/SKILL.md" "built output" \
+    "scripts/build-components.sh" "$BUILD_STUB_INDENTED_COMMENT"
+  write_manifest "$repo" $'real.txt\tstrict\n'
+
+  run_check "$repo"
+
+  # Exit 1 (ungoverned), NOT exit 2 (unclassifiable): reaching exit 2 means the
+  # comment was parsed as a call site.
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-l: an indented comment naming a helper is skipped (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-l: expected exit 1, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF -- "- .newcli/skills"; then
+    echo "PASS  case-l: the real call site below the comment is still extracted"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-l: stderr did not name .newcli/skills"
     echo "      actual stderr: $CHECK_STDERR"
     fail=$((fail + 1))
   fi
