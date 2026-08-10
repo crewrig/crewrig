@@ -152,6 +152,9 @@
 #   tolerance from `--stale-after`  21 at the now+900 arm's rc    it is a constant
 #   corrupt iff >1 year ahead       21 at the now+900 arm's rc    the band's size
 #   absurd age floored to zero      21 at the 18-digit arm's rc   the extreme
+#   value-flag guard dropped        22 at the DIAGNOSTIC,         the MESSAGE, not
+#     (literally f8bd54b, the last     never at rc                the code — rc is
+#     revision without it)                                        1 on both sides
 #
 # Recipe: copy `scripts/worktree-claim.sh` and this file into a `mktemp -d` that
 # mirrors `scripts/tests/`, apply one mutation to the COPY, run the copied suite.
@@ -1406,6 +1409,69 @@ case_21() {
   return 0
 }
 
+# ===========================================================================
+# Case 22 [REVIEW F3] — a value-taking flag in FINAL position is refused BY NAME,
+# not by exiting 1 with both streams empty.
+# Catches: the one refusal in this script that said nothing at all. `--agent` last
+# on the line leaves `shift 2` asking for more parameters than remain; `shift`
+# then fails, and under `set -euo pipefail` (line 191) the script exits 1 having
+# printed nothing to either stream.
+#
+# THE EXIT CODE IS THE SAME ON BOTH SIDES OF THE FIX, SO THE CODE CANNOT BE THE
+# ASSERTION. Measured, both scripts extracted with `git show` into a `mktemp -d`,
+# invoked as `status --agent`:
+#
+#   f8bd54b (before)  -> rc=1, stdout empty, stderr empty
+#   44d0c9b (after)   -> rc=1, stderr `Error: '--agent' requires a value: …`
+#
+# A case asserting `want_rc 1` alone is therefore GREEN AGAINST THE UNFIXED
+# SCRIPT. It would sit here looking exactly like coverage while certifying
+# nothing — the same false-green this file's header exists to argue against, and
+# the reason this case asserts the DIAGNOSTIC and treats the code as incidental.
+#
+# ONE FLAG, DELIBERATELY — the same rule case 17 states for its absent `09` arm.
+# All four value-taking flags (`--agent`, `--ticket`, `--operation`,
+# `--stale-after`) reach `require_value` through one call each, so no mutant can
+# fail one arm while passing another: dropping the guard silences all four, and
+# restoring it fixes all four. Three more arms would be three more things to
+# maintain and nothing more proven. `--stale-after` is the one worth a note: its
+# empty value never reaches the digit validation cases 17-18 cover, because the
+# failing `shift` aborts first — so that path too is this case's, not theirs.
+#
+# TWO ASSERTIONS, AND THE OTHERS WERE WRITTEN THEN REMOVED — the rule case 17
+# states for its absent `09` arm, applied here to arms this case's own author had
+# already drafted. Both removals were measured, not reasoned:
+#
+#   * `want_no_shell_error` — kept in the first draft against a bare-`$2` mutant,
+#     which under `set -u` does abort with `worktree-claim.sh: line 323: $2:
+#     unbound variable` (measured; it printed in French on the authoring machine,
+#     which is exactly why that helper matches the script's PATH and not the
+#     message). But that mutant fails the diagnostic assertion FIRST, so the arm
+#     is never reached. No mutant fails it while passing what precedes it.
+#   * a `take --agent alice` / `holder: alice` tail, asserting the refusal left
+#     the worktree claimable. It cannot fail: this fix lives in the parse loop,
+#     which runs before any claim is touched, and `take` with an empty agent is
+#     independently refused by the `--agent <name> is required` guard that
+#     predates this fix. The arm re-tested a neighbouring guarantee and would
+#     have reported that as coverage of this one.
+#
+# `want_rc 1` earns its place on a different mutant than the message does: a
+# "warn and carry on" fix prints the diagnostic and proceeds, passing the message
+# assertion and failing this one.
+# ===========================================================================
+case_22() {
+  new_fixture c22
+
+  # `take` rather than `status`: a silent exit 1 is worst on a MUTATING
+  # subcommand, where the caller cannot tell "your flag was malformed and
+  # nothing happened" from "the claim machinery is broken".
+  run_claim "$(fx_wt c22)" take --agent
+  want_rc 1 || return 1
+  want_any "'--agent' requires a value" || return 1
+
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -1434,10 +1500,11 @@ describe() {
     19) echo "Case 19 — a leading-zero since_epoch keeps R8's takeover path open" ;;
     20) echo "Case 20 — an over-wide since_epoch does not pass as a fresh claim" ;;
     21) echo "Case 21 — a future since_epoch: skew protects the claim, corruption does not" ;;
+    22) echo "Case 22 — a flag with no value is refused by name, not by silent exit 1" ;;
   esac
 }
 
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21; do
+for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22; do
   WHY=""
   OUT=""
   ERR=""
