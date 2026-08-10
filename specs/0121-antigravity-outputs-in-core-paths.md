@@ -2,7 +2,7 @@
 id: "0121"
 slug: antigravity-outputs-in-core-paths
 status: draft
-complexity: small
+complexity: standard
 interaction-mode: AUTO
 related-issue: 755
 version: 1.0.0
