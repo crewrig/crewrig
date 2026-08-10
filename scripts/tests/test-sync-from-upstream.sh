@@ -101,6 +101,39 @@
 #      produced by `backup_file()`, and does NOT match the sibling
 #      `extension.json` (pattern stayed narrow).
 #
+# Spec-0122 signed-graft-commit cases (issue #756):
+#  cc. R1, R2, R6, R7 — a repository configured to sign (gpg.format ssh, an
+#      ephemeral ed25519 key, commit.gpgsign true) gets a SIGNED graft commit
+#      that still carries both parents, whose second parent is the fetched
+#      upstream commit byte-for-byte, and whose creation is reported with a
+#      `(signed)` suffix on stdout.
+#  dd. R3 — a repository that does not sign (commit.gpgsign false) gets an
+#      unsigned graft commit, exit 0, no `(signed)` on stdout, and no
+#      signing-related line on stderr: the non-signing path gains nothing.
+#  ee. R4, R5 — commit.gpgsign true with a user.signingkey that does not
+#      exist: the sync refuses, creates no commit, leaves the branch tip
+#      where it stood, leaves the restored content in the working tree, and
+#      names the unproducible signature in its OWN message. git's signing
+#      diagnostic is localized, so no assertion here may read it.
+#  ff. R8 — the no-op path (FETCH_HEAD already an ancestor) still exits 0 in
+#      a repository configured to sign but unable to: no commit means no
+#      signature to produce, so signing capability is never probed.
+#  gg. R1, R5 — commit.gpgsign holds a value git cannot read as a boolean.
+#      `git commit` itself exits 128 in such a repository, so reporting a
+#      successful sync would breach R1 on its face. Guards the shape of the
+#      predicate: a config read placed in the word of a `[ … ]` test inside
+#      an `if` condition discards git's 128 (errexit is suspended there) and
+#      silently produces an unsigned commit with exit 0.
+#  hh. R5 ordering — a gpg.ssh.program that exits 0 without writing a
+#      signature makes `commit-tree -S` exit 0 and produce a commit with no
+#      gpgsig header. The sync must refuse with the branch tip UNMOVED; the
+#      same check placed after update-ref would refuse with the tip already
+#      on the unsigned commit, satisfying R5 by violating R4.
+#  ii. R3 by absence — commit.gpgsign unset, which is the modal non-signing
+#      shape and the one no other case reaches (init_git_repo pins it to
+#      `false`). Invoked with the operator's own configuration neutralised,
+#      because the predicate resolves through global config too.
+#
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
 
@@ -134,6 +167,15 @@ init_git_repo() {
   git -C "$dir" config user.email "test@example.com"
   git -C "$dir" config user.name "Test"
   git -C "$dir" config commit.gpgsign false
+}
+
+# commit_is_signed <repo> <rev>
+# True when <rev> carries a gpgsig header. The sed slice stops at the blank
+# line that ends the header block: `git cat-file commit` also prints the
+# message, so a naive full-output match reports SIGNED for an unsigned commit
+# whose message body happens to begin with `gpgsig `.
+commit_is_signed() {
+  git -C "$1" cat-file commit "$2" | sed -n '/^$/q;p' | grep -q '^gpgsig '
 }
 
 # make_initial_commit <repo> [<file> <content>]...
@@ -1628,6 +1670,531 @@ run_case_stderr() {
   else
     echo "PASS  case-bb: sibling extension.json is NOT gitignored (pattern stayed narrow)"
     pass=$((pass + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case cc — spec 0122 R1, R2, R6, R7: a repository configured to sign its
+# commits gets a SIGNED graft commit that still carries both parents, the
+# second of them the fetched upstream commit byte-for-byte.
+#
+# The signing key lives OUTSIDE the adopter worktree. Inside it, the R8
+# anti-pollution guard would see an untracked, ungoverned path and abort the
+# history-preserving step before `git add -A` ever runs — and the resulting
+# failure reads as a signing failure, which is what makes it worth naming.
+#
+# The signing configuration is applied AFTER the fixture's own commits, so
+# those commits stay hermetic under init_git_repo's `commit.gpgsign false`
+# pin and the case remains constructible on a machine whose global config
+# points at a key this process cannot use.
+# ---------------------------------------------------------------------------
+{
+  ok=1
+  keydir="$(mktemp -d "$TMP_ROOT/signkey.XXXXXX")"
+  if ! ssh-keygen -t ed25519 -N '' -f "$keydir/signer" -q 2>/dev/null; then
+    echo "FAIL  case-cc: could not create an ed25519 key — ssh-keygen signing support (OpenSSH >= 8.2) is a precondition of this case, not an optional capability"
+    ok=0
+  fi
+
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream v1 content" \
+    "other.txt"     "other content"
+  commit_files "$upstream" "advance core-file" \
+    "core-file.txt" "upstream v2 content"
+  upstream_sha="$(git -C "$upstream" rev-parse HEAD)"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "other content" > "$adopter/other.txt"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  git -C "$adopter" config gpg.format ssh
+  git -C "$adopter" config user.signingkey "$keydir/signer.pub"
+  git -C "$adopter" config commit.gpgsign true
+
+  tip_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>/dev/null)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-cc: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if [ "$head_after" = "$tip_before" ]; then
+    echo "FAIL  case-cc: HEAD did not move — no graft commit was created"
+    ok=0
+  fi
+  if ! commit_is_signed "$adopter" HEAD; then
+    echo "FAIL  case-cc: the graft commit carries no gpgsig header though commit.gpgsign is true"
+    ok=0
+  fi
+  parent_count="$(git -C "$adopter" cat-file commit HEAD | sed -n '/^$/q;p' | grep -c '^parent ')"
+  if [ "$parent_count" -ne 2 ]; then
+    echo "FAIL  case-cc: the graft commit carries $parent_count parent(s), expected 2"
+    ok=0
+  fi
+  first_parent="$(git -C "$adopter" rev-parse 'HEAD^1' 2>/dev/null || true)"
+  second_parent="$(git -C "$adopter" rev-parse 'HEAD^2' 2>/dev/null || true)"
+  if [ "$first_parent" != "$tip_before" ]; then
+    echo "FAIL  case-cc: first parent is '$first_parent', expected the pre-run tip '$tip_before'"
+    ok=0
+  fi
+  if [ "$second_parent" != "$upstream_sha" ]; then
+    echo "FAIL  case-cc: second parent is '$second_parent', expected the fetched upstream commit '$upstream_sha' unchanged (R7)"
+    ok=0
+  fi
+  if ! git -C "$adopter" merge-base --is-ancestor "$upstream_sha" HEAD 2>/dev/null; then
+    echo "FAIL  case-cc: the fetched upstream commit is not an ancestor of the new branch tip"
+    ok=0
+  fi
+  if ! echo "$stdout_out" | grep -qF "(signed)"; then
+    echo "FAIL  case-cc: stdout does not report the commit as signed"
+    echo "      actual stdout: $stdout_out"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-cc: signing repository gets a signed graft commit with both parents intact"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case dd — spec 0122 R3: a repository that does not sign its commits is
+# untouched by the change. init_git_repo pins `commit.gpgsign false` locally,
+# which is what makes the case hermetic: the predicate resolves through global
+# config too, so an unpinned fixture would inherit the operator's own setting.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream v1 content" \
+    "other.txt"     "other content"
+  commit_files "$upstream" "advance core-file" \
+    "core-file.txt" "upstream v2 content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "other content" > "$adopter/other.txt"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  tip_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  stdout_file="$(mktemp "$TMP_ROOT/dd-stdout.XXXXXX")"
+  stderr_file="$(mktemp "$TMP_ROOT/dd-stderr.XXXXXX")"
+  actual_exit=0
+  ( cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history >"$stdout_file" 2>"$stderr_file" ) || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-dd: expected exit 0, got $actual_exit"
+    echo "      stderr: $(cat "$stderr_file")"
+    ok=0
+  fi
+  if [ "$head_after" = "$tip_before" ]; then
+    echo "FAIL  case-dd: HEAD did not move — no graft commit was created"
+    ok=0
+  fi
+  if commit_is_signed "$adopter" HEAD; then
+    echo "FAIL  case-dd: the graft commit carries a gpgsig header though commit.gpgsign is false"
+    ok=0
+  fi
+  if grep -qF "(signed)" "$stdout_file"; then
+    echo "FAIL  case-dd: stdout reports the commit as signed"
+    echo "      actual stdout: $(cat "$stdout_file")"
+    ok=0
+  fi
+  if grep -q "[Ss]ign" "$stderr_file"; then
+    echo "FAIL  case-dd: stderr carries a signing-related line on the non-signing path"
+    echo "      actual stderr: $(cat "$stderr_file")"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-dd: non-signing repository gets an unsigned graft commit, exit 0, no signing noise"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case ee — spec 0122 R4, R5: commit.gpgsign true with a user.signingkey that
+# does not exist. The sync refuses AFTER the policy-aware restore (spec 0122's
+# closed open question), so the restored upstream content is already in the
+# working tree when it does.
+#
+# The stderr assertion reads the script's OWN message. git's signing
+# diagnostic is localized — on a French-locale machine it opens `erreur :` —
+# so an assertion on git's wording would pass in CI and fail on a maintainer's
+# laptop for a reason having nothing to do with the requirement.
+# ---------------------------------------------------------------------------
+{
+  keydir="$(mktemp -d "$TMP_ROOT/signkey.XXXXXX")"
+
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream v1 content" \
+    "other.txt"     "other content"
+  commit_files "$upstream" "advance core-file" \
+    "core-file.txt" "upstream v2 content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "other content" > "$adopter/other.txt"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  git -C "$adopter" config gpg.format ssh
+  git -C "$adopter" config user.signingkey "$keydir/absent-key.pub"
+  git -C "$adopter" config commit.gpgsign true
+
+  tip_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  actual_exit=0
+  stderr_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>&1 >/dev/null)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -eq 0 ]; then
+    echo "FAIL  case-ee: expected a non-zero exit when the configured signature cannot be produced, got 0"
+    ok=0
+  fi
+  if [ "$head_after" != "$tip_before" ]; then
+    echo "FAIL  case-ee: the branch tip moved despite the signing refusal ('$tip_before' -> '$head_after')"
+    ok=0
+  fi
+  content_after="$(cat "$adopter/core-file.txt" 2>/dev/null)"
+  if [ "$content_after" != "upstream v2 content" ]; then
+    echo "FAIL  case-ee: the restored files are not in the working tree (core-file.txt = '$content_after')"
+    ok=0
+  fi
+  if ! echo "$stderr_out" | grep -qF "refuses to commit — this repository is configured to sign"; then
+    echo "FAIL  case-ee: stderr does not name the unproducible signature in the script's own words"
+    echo "      actual stderr: $stderr_out"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-ee: unproducible signature refuses with no commit, tip unmoved, restore intact"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case ff — spec 0122 R8: the no-op path still exits 0 in a repository that
+# is configured to sign but cannot. No commit is created, so no signature is
+# needed and signing capability is never probed. Case u's clone shape, where
+# FETCH_HEAD is already an ancestor of the branch tip.
+#
+# Placing a signing probe before the no-op short-circuit is exactly the
+# regression this case catches.
+# ---------------------------------------------------------------------------
+{
+  keydir="$(mktemp -d "$TMP_ROOT/signkey.XXXXXX")"
+
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" "core-file.txt" "upstream content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  rm -rf "$adopter"
+  git clone -q "file://$upstream" "$adopter"
+  git -C "$adopter" config user.email "test@example.com"
+  git -C "$adopter" config user.name "Test"
+  git -C "$adopter" config commit.gpgsign false
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  git -C "$adopter" add crewrig.config.toml .crewrig/core-paths.txt
+  git -C "$adopter" commit -q -m "adopter config"
+
+  git -C "$adopter" config gpg.format ssh
+  git -C "$adopter" config user.signingkey "$keydir/absent-key.pub"
+  git -C "$adopter" config commit.gpgsign true
+
+  head_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>/dev/null)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-ff: expected exit 0 on the no-op path, got $actual_exit"
+    ok=0
+  fi
+  if [ "$head_after" != "$head_before" ]; then
+    echo "FAIL  case-ff: HEAD moved (a commit was created) though FETCH_HEAD was already an ancestor"
+    ok=0
+  fi
+  if ! echo "$stdout_out" | grep -qF "no-op"; then
+    echo "FAIL  case-ff: stdout missing the no-op acknowledgement"
+    echo "      actual stdout: $stdout_out"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-ff: no-op path exits 0 in a signing repository that cannot sign"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case gg — spec 0122 R1, R5: commit.gpgsign holds a value git cannot read as
+# a boolean, and no signing key is configured at all. `git commit` itself
+# exits 128 in such a repository, so a sync reporting success here breaches R1
+# on its face.
+#
+# This is the case that pins the SHAPE of the predicate. Reading the value in
+# the word of a `[ … ]` test inside an `if` condition — where errexit is
+# suspended — discards git's 128 twice over and yields an unsigned commit with
+# exit 0. The assertion is on the script's own English message, not on git's
+# localized `fatal :` line.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream v1 content" \
+    "other.txt"     "other content"
+  commit_files "$upstream" "advance core-file" \
+    "core-file.txt" "upstream v2 content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "other content" > "$adopter/other.txt"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  git -C "$adopter" config commit.gpgsign yesplease
+
+  tip_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  actual_exit=0
+  stderr_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>&1 >/dev/null)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -eq 0 ]; then
+    echo "FAIL  case-gg: expected a non-zero exit on an unreadable commit.gpgsign, got 0"
+    ok=0
+  fi
+  if [ "$head_after" != "$tip_before" ]; then
+    echo "FAIL  case-gg: the branch tip moved despite the unreadable commit.gpgsign ('$tip_before' -> '$head_after')"
+    ok=0
+  fi
+  if ! echo "$stderr_out" | grep -qF "cannot determine whether to sign"; then
+    echo "FAIL  case-gg: stderr does not name the unreadable commit.gpgsign in the script's own words"
+    echo "      actual stderr: $stderr_out"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-gg: unreadable commit.gpgsign refuses with no commit and the tip unmoved"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case hh — spec 0122 R5 ordering: a gpg.ssh.program that exits 0 without
+# writing a signature makes `commit-tree -S` exit 0 and hand back a commit
+# with no gpgsig header. That is the degradation R5 forbids, and it is
+# reachable from a black-box fixture — the shape of a mis-wired signing
+# wrapper.
+#
+# The HEAD assertion is what pins the post-condition's PLACEMENT. Run before
+# update-ref, the refusal leaves the tip where it stood; run after, the same
+# refusal leaves the tip on the unsigned commit — satisfying R5 by violating
+# R4. The stub lives outside the adopter worktree for the same reason case
+# cc's key does: the R8 guard rejects an ungoverned path first.
+# ---------------------------------------------------------------------------
+{
+  ok=1
+  keydir="$(mktemp -d "$TMP_ROOT/signkey.XXXXXX")"
+  if ! ssh-keygen -t ed25519 -N '' -f "$keydir/signer" -q 2>/dev/null; then
+    echo "FAIL  case-hh: could not create an ed25519 key — ssh-keygen signing support (OpenSSH >= 8.2) is a precondition of this case, not an optional capability"
+    ok=0
+  fi
+  # git invokes the signing program as
+  # `<prog> -Y sign -n git -f <pubkey> <buffer>` and then reads
+  # `<buffer>.sig`. The stub creates that file empty and reports success.
+  # Taking the LAST argument keeps the stub independent of git's argument
+  # order.
+  cat > "$keydir/emptysig.sh" <<'STUB'
+#!/bin/sh
+for arg in "$@"; do buffer="$arg"; done
+: > "$buffer.sig"
+exit 0
+STUB
+  chmod +x "$keydir/emptysig.sh"
+
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream v1 content" \
+    "other.txt"     "other content"
+  commit_files "$upstream" "advance core-file" \
+    "core-file.txt" "upstream v2 content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "other content" > "$adopter/other.txt"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  git -C "$adopter" config gpg.format ssh
+  git -C "$adopter" config user.signingkey "$keydir/signer.pub"
+  git -C "$adopter" config gpg.ssh.program "$keydir/emptysig.sh"
+  git -C "$adopter" config commit.gpgsign true
+
+  tip_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  actual_exit=0
+  stderr_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>&1 >/dev/null)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  if [ "$actual_exit" -eq 0 ]; then
+    echo "FAIL  case-hh: expected a non-zero exit when commit-tree returns an unsigned commit, got 0"
+    ok=0
+  fi
+  if [ "$head_after" != "$tip_before" ]; then
+    echo "FAIL  case-hh: the branch tip moved onto the unsigned commit — the post-condition runs after update-ref ('$tip_before' -> '$head_after')"
+    ok=0
+  fi
+  if ! echo "$stderr_out" | grep -qF "built an unsigned commit"; then
+    echo "FAIL  case-hh: stderr does not name the unsigned-commit refusal"
+    echo "      actual stderr: $stderr_out"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-hh: an unsigned commit from a successful commit-tree -S refuses before the tip moves"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case ii — spec 0122 R3 by absence: commit.gpgsign UNSET, which is the modal
+# non-signing shape and the one no other case reaches (init_git_repo pins the
+# key to `false`, so every other fixture takes the explicitly-false branch and
+# the presence probe always succeeds).
+#
+# The `--unset` comes AFTER the fixture's own commits, and the script is
+# invoked with the operator's configuration neutralised. Both are mandatory,
+# not hygiene. Without the isolation, a repository with no local key resolves
+# commit.gpgsign to `true` from a maintainer's ~/.gitconfig, so the case would
+# be a SIGNING fixture locally and a non-signing one in CI. And with the unset
+# applied before the fixture's commits, those commits would be signed with the
+# operator's own key — harmless where it works, unconstructible where it does
+# not. GIT_CONFIG_NOSYSTEM + HOME + XDG_CONFIG_HOME is preferred over
+# GIT_CONFIG_GLOBAL (git >= 2.32) so the suite's git floor is not raised.
+# ---------------------------------------------------------------------------
+{
+  isolated="$(mktemp -d "$TMP_ROOT/isolated-home.XXXXXX")"
+
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream v1 content" \
+    "other.txt"     "other content"
+  commit_files "$upstream" "advance core-file" \
+    "core-file.txt" "upstream v2 content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "other content" > "$adopter/other.txt"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  git -C "$adopter" config --unset commit.gpgsign
+
+  tip_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  stdout_file="$(mktemp "$TMP_ROOT/ii-stdout.XXXXXX")"
+  stderr_file="$(mktemp "$TMP_ROOT/ii-stderr.XXXXXX")"
+  actual_exit=0
+  ( cd "$adopter" \
+    && GIT_CONFIG_NOSYSTEM=1 HOME="$isolated" XDG_CONFIG_HOME="$isolated" \
+       CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history \
+       >"$stdout_file" 2>"$stderr_file" ) || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-ii: expected exit 0 with commit.gpgsign unset, got $actual_exit"
+    echo "      stderr: $(cat "$stderr_file")"
+    ok=0
+  fi
+  if [ "$head_after" = "$tip_before" ]; then
+    echo "FAIL  case-ii: HEAD did not move — no graft commit was created"
+    ok=0
+  fi
+  if commit_is_signed "$adopter" HEAD; then
+    echo "FAIL  case-ii: the graft commit is signed though commit.gpgsign is unset"
+    ok=0
+  fi
+  if grep -qF "(signed)" "$stdout_file"; then
+    echo "FAIL  case-ii: stdout reports the commit as signed"
+    echo "      actual stdout: $(cat "$stdout_file")"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-ii: unset commit.gpgsign grafts an unsigned commit and exits 0"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
   fi
 }
 
