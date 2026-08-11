@@ -1558,7 +1558,7 @@ run_case_stderr() {
   upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
   init_git_repo "$upstream"
   make_initial_commit "$upstream" \
-    ".github/copilot/settings.json" '{"hooks": []}' \
+    ".github/copilot/settings.json" '{"hooks": {}}' \
     ".github/copilot/extension.json" '{"name": "upstream-ext"}'
 
   adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
@@ -1568,12 +1568,13 @@ run_case_stderr() {
   printf '.github/copilot\n.github/copilot/settings.json\texcluded\n' \
     > "$adopter/.crewrig/core-paths.txt"
   make_initial_commit "$adopter" \
-    ".github/copilot/settings.json" '{"hooks": []}' \
+    ".github/copilot/settings.json" '{"hooks": {}}' \
     ".github/copilot/extension.json" '{"name": "upstream-ext"}'
 
   # Mutate settings.json only, representative of the transcript-hooks
   # hook-merge opt-in rewriting it locally with an absolute hook path.
-  printf '{"hooks": ["/Users/agent/.claude/hooks/transcript-hook.sh"]}' \
+  # Copilot hooks are an object keyed by camelCase event name.
+  printf '{"hooks": {"sessionStart": [{"type": "command", "command": "/Users/agent/.claude/hooks/transcript-hook.sh"}]}}' \
     > "$adopter/.github/copilot/settings.json"
 
   actual_exit=0
@@ -1586,7 +1587,7 @@ run_case_stderr() {
     ok=0
   fi
   settings_after="$(cat "$adopter/.github/copilot/settings.json" 2>/dev/null)"
-  if [ "$settings_after" != '{"hooks": ["/Users/agent/.claude/hooks/transcript-hook.sh"]}' ]; then
+  if [ "$settings_after" != '{"hooks": {"sessionStart": [{"type": "command", "command": "/Users/agent/.claude/hooks/transcript-hook.sh"}]}}' ]; then
     echo "FAIL  case-z: settings.json hook-merge mutation was reverted by sync: '$settings_after'"
     ok=0
   fi
@@ -1615,7 +1616,7 @@ run_case_stderr() {
   upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
   init_git_repo "$upstream"
   make_initial_commit "$upstream" \
-    ".github/copilot/settings.json" '{"hooks": []}' \
+    ".github/copilot/settings.json" '{"hooks": {}}' \
     ".github/copilot/extension.json" '{"name": "upstream-ext"}'
 
   adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
@@ -1625,7 +1626,7 @@ run_case_stderr() {
   printf '.github/copilot\n.github/copilot/settings.json\texcluded\n' \
     > "$adopter/.crewrig/core-paths.txt"
   make_initial_commit "$adopter" \
-    ".github/copilot/settings.json" '{"hooks": []}' \
+    ".github/copilot/settings.json" '{"hooks": {}}' \
     ".github/copilot/extension.json" '{"name": "upstream-ext"}'
 
   # Mutate extension.json only — settings.json stays untouched.

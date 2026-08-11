@@ -1,5 +1,5 @@
 {
-  "version": "1",
+  "version": 1,
   "disableAllHooks": false,
   "permissions": {
     "allow": [
@@ -13,5 +13,5 @@
       "Bash(chmod:*)"
     ]
   },
-  "hooks": []
+  "hooks": {}
 }

@@ -377,15 +377,18 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
       ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
     fi
     HOOKS_PATCHED_TMP="$(mktemp)"
+    # The Copilot CLI hooks schema keys `hooks` by camelCase event name
+    # (object of event -> array), so rewrite the command inside every entry
+    # of every event array (docs/github hook schema).
     jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" \
-      '(.hooks // []) |= map(.command = ($envp + " bash " + ($hook_path | tojson)))' \
+      '(.hooks // {}) |= map_values(map(.command = ($envp + " bash " + ($hook_path | tojson))))' \
       "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
     # User-level hooks: loaded by Copilot for every project (not just crewrig).
     cp "$HOOKS_PATCHED_TMP" "$USER_HOOKS_JSON"
     echo "  User-level transcript hooks deployed to $USER_HOOKS_JSON"
     # Workspace hooks: merge into .github/copilot/settings.json for crewrig sessions.
     backup_file "$WORKSPACE_SETTINGS"
-    jq -s '.[0] * {"hooks": (.[1].hooks // []), "version": (.[1].version // .[0].version // "1")}' \
+    jq -s '.[0] * {"hooks": (.[1].hooks // {}), "version": (.[1].version // .[0].version // 1)}' \
       "$WORKSPACE_SETTINGS" "$HOOKS_PATCHED_TMP" > "${WORKSPACE_SETTINGS}.tmp" && \
       mv "${WORKSPACE_SETTINGS}.tmp" "$WORKSPACE_SETTINGS"
     rm -f "$HOOKS_PATCHED_TMP"
