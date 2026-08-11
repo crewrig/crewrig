@@ -1,7 +1,7 @@
 ---
 id: "0132"
 slug: spec-pr-draft-approved-guard
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 766
