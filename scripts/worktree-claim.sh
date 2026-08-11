@@ -136,7 +136,9 @@
 #       failed (the gate then proves nothing and refuses to call the tree clean);
 #       for the four MUTATING subcommands additionally: the toplevel is not under
 #       `.worktrees/`; for `status` / `history` additionally: no `--ticket` and
-#       none derivable.
+#       none derivable; for `run` additionally: the certified toplevel could not
+#       be entered (it went away between the gate and the execution), in which
+#       case the wrapped command never starts and contributes no output.
 #   4   Refused (`take`, `takeover`, `release`, `run`) — the worktree is claimed
 #       by another agent (`take`, `run`), the claim is not stale or does not
 #       exist (`takeover`), or the caller is not the holder (`release`). stdout
@@ -198,12 +200,16 @@
 #                           against the worktree root.
 #                        2. `git clean -fdx` / `-fdX` acts on the WHOLE WORKTREE
 #                           instead of that subdirectory. This is the one operation
-#                           where the widening bites, and the set is closed: of the
-#                           whole-tree operations this mechanism governs, only
-#                           `git clean` with -x/-X reaches state `git status` does
-#                           not report. `git checkout -- .`, `git stash` and
-#                           `git reset --hard` have their scope moved too, and act
-#                           on nothing over the empty status the gate requires.
+#                           where the widening bites, and the set is closed, for
+#                           two different reasons. `git checkout -- .` is the only
+#                           other cwd-scoped operation here — its `.` pathspec IS
+#                           relative — but it acts on nothing over the empty status
+#                           the gate requires. `git stash` and `git reset --hard`
+#                           take no pathspec and have ALWAYS acted on the whole
+#                           repository from any directory: their scope does not
+#                           move, because it was never the caller's to begin with.
+#                           Measured, not reasoned: run from a subdirectory, both
+#                           revert a modification at the repository root.
 #                           The gate does NOT absorb the `git clean` case — see the
 #                           ignored-state block above and `--help`. To clean one
 #                           subtree, say so explicitly from the root:
@@ -886,6 +892,17 @@ cmd_run() {
   # toplevel resolution, tree_is_clean uses `git -C "$TOPLEVEL"`, and everything
   # the EXIT trap reaches hangs off the absolutized $COMMON. $TOPLEVEL is absolute,
   # so CDPATH cannot make this `cd` print to stdout.
+  #
+  # NO TEST DEFENDS THIS CHOICE, AND THE SUITE'S GREEN MUST NOT BE READ AS ONE.
+  # Both rejected forms above were mutated in and run against the full suite during
+  # the cold review of #837: each reported `24 passed, 0 failed`, the shipped code's
+  # own result. Cases 23 and 24 discriminate this fix from the behaviour that
+  # PRECEDED it — which is what spec 0126 R7/R8 ask for — but not from a plausible
+  # rewrite INTO either subshell, because all three agree whenever the `cd`
+  # succeeds. They diverge only when it fails, and no fixture here constructs that:
+  # it needs `git -C "$TOPLEVEL" status` to succeed and the `cd` to it to fail a few
+  # interpreter instructions later. So what protects this line from a future
+  # simplification is this comment, not the suite. Tracked in #839.
   cd "$TOPLEVEL" || fail "cannot enter '$TOPLEVEL', the tree the gate just
        certified. Refusing to run the command from a tree the gate never looked
        at — that divergence is the defect this guard exists to remove."
