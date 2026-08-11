@@ -1,7 +1,7 @@
 ---
 id: "0002"
 slug: spec-author-skill
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 703
