@@ -1,7 +1,7 @@
 ---
 id: "0129"
 slug: dirty-report-names-files
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 719
