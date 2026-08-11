@@ -133,6 +133,13 @@
 #      shape and the one no other case reaches (init_git_repo pins it to
 #      `false`). Invoked with the operator's own configuration neutralised,
 #      because the predicate resolves through global config too.
+#  jj. R1, R2 in a SHA-256 repository (PR #803 review) — git's signature
+#      header name is hash-algorithm dependent: `gpgsig` under SHA-1,
+#      `gpgsig-sha256` under `--object-format=sha256`. A `^gpgsig ` pattern
+#      WITH a trailing space matches the first and misses the second, so the
+#      R5 post-condition refuses a signature it had just produced and reports
+#      the opposite of what happened. Guards both readers of that pattern —
+#      the script's post-condition and commit_is_signed.
 #
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
@@ -173,9 +180,14 @@ init_git_repo() {
 # True when <rev> carries a gpgsig header. The sed slice stops at the blank
 # line that ends the header block: `git cat-file commit` also prints the
 # message, so a naive full-output match reports SIGNED for an unsigned commit
-# whose message body happens to begin with `gpgsig `.
+# whose message body happens to begin with `gpgsig`.
+#
+# NO trailing space in the pattern, deliberately: the header name is
+# hash-algorithm dependent (`gpgsig` under SHA-1, `gpgsig-sha256` under
+# --object-format=sha256), and a trailing space would report a signed SHA-256
+# commit as unsigned. Case jj fails if the space comes back.
 commit_is_signed() {
-  git -C "$1" cat-file commit "$2" | sed -n '/^$/q;p' | grep -q '^gpgsig '
+  git -C "$1" cat-file commit "$2" | sed -n '/^$/q;p' | grep -q '^gpgsig'
 }
 
 # make_initial_commit <repo> [<file> <content>]...
@@ -2192,6 +2204,124 @@ STUB
 
   if [ "$ok" -eq 1 ]; then
     echo "PASS  case-ii: unset commit.gpgsign grafts an unsigned commit and exits 0"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case jj — spec 0122 R1, R2 in a SHA-256 repository (PR #803 cold review).
+# Git's signature header name is hash-algorithm dependent: `gpgsig` in a SHA-1
+# repository, `gpgsig-sha256` in one created with --object-format=sha256. A
+# `^gpgsig ` pattern WITH a trailing space matches the first and misses the
+# second, so the R5 post-condition refuses a signature it had just
+# successfully produced: no commit at all where an ordinary `git commit` makes
+# a signed one. That breaches R1 and R2 rather than serving R5, and the
+# refusal message names a cause that did not occur.
+#
+# Both readers of the pattern are covered, independently:
+#   - restore the space in sync-from-upstream.sh -> fails on exit code, on the
+#     unmoved HEAD, and on the missing `(signed)`;
+#   - restore it in commit_is_signed only        -> fails on that assertion
+#     alone, with the sync itself still green.
+#
+# Reachability is narrow and worth stating: a SHA-256 fork of a SHA-1 upstream
+# never gets here, because `git fetch` refuses the object-format mismatch
+# first. The fixture therefore needs SHA-256 on BOTH ends — which
+# `canonical_repo` permits.
+#
+# The object format is fixed at init time, so `git init` runs with the flag
+# first; a plain re-init inside init_git_repo preserves it (measured) and
+# supplies the identity plus the `commit.gpgsign false` pin that keeps the
+# fixture's own commits hermetic before the signing config goes on.
+# ---------------------------------------------------------------------------
+{
+  ok=1
+  keydir="$(mktemp -d "$TMP_ROOT/signkey.XXXXXX")"
+  if ! ssh-keygen -t ed25519 -N '' -f "$keydir/signer" -q 2>/dev/null; then
+    echo "FAIL  case-jj: could not create an ed25519 key — ssh-keygen signing support (OpenSSH >= 8.2) is a precondition of this case, not an optional capability"
+    ok=0
+  fi
+
+  upstream="$(mktemp -d "$TMP_ROOT/upstream-sha256.XXXXXX")"
+  adopter="$(mktemp -d "$TMP_ROOT/adopter-sha256.XXXXXX")"
+  if ! git init -q --object-format=sha256 "$upstream" 2>/dev/null \
+     || ! git init -q --object-format=sha256 "$adopter" 2>/dev/null; then
+    echo "FAIL  case-jj: this git cannot create a --object-format=sha256 repository (needs git >= 2.29) — a precondition of this case, not an optional capability"
+    ok=0
+  fi
+  init_git_repo "$upstream"
+  init_git_repo "$adopter"
+
+  # Fixture sanity: without this, a silent fallback to SHA-1 would leave the
+  # case green while exercising the very header name it exists to NOT test.
+  for r in "$upstream" "$adopter"; do
+    fmt="$(git -C "$r" rev-parse --show-object-format 2>/dev/null || true)"
+    if [ "$fmt" != "sha256" ]; then
+      echo "FAIL  case-jj: fixture repo $r reports object format '$fmt', expected 'sha256' — the case would test the SHA-1 header name instead"
+      ok=0
+    fi
+  done
+
+  make_initial_commit "$upstream" \
+    "core-file.txt" "upstream v1 content" \
+    "other.txt"     "other content"
+  commit_files "$upstream" "advance core-file" \
+    "core-file.txt" "upstream v2 content"
+
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'core-file.txt\n' > "$adopter/.crewrig/core-paths.txt"
+  printf '%s' "upstream v1 content" > "$adopter/core-file.txt"
+  printf '%s' "other content" > "$adopter/other.txt"
+  git -C "$adopter" add -A
+  git -C "$adopter" commit -q -m initial
+
+  git -C "$adopter" config gpg.format ssh
+  git -C "$adopter" config user.signingkey "$keydir/signer.pub"
+  git -C "$adopter" config commit.gpgsign true
+
+  # Premise check, deliberately BEFORE the sync and independent of it: this
+  # fixture must really produce the hash-dependent header name, or the case
+  # stops being evidence about the trailing space. Asserting it afterwards on
+  # the graft commit would conflate "git renamed the header" with "the script
+  # refused the commit" — under a restored trailing space HEAD never moves, so
+  # the check would fail while pointing at the wrong cause. The throwaway
+  # commit is referenced by nothing and changes no ref, index, or file.
+  probe_commit="$(git -C "$adopter" commit-tree "$(git -C "$adopter" rev-parse 'HEAD^{tree}')" -m sha256-header-probe -S 2>/dev/null || true)"
+  if [ -z "$probe_commit" ] || ! git -C "$adopter" cat-file commit "$probe_commit" 2>/dev/null | sed -n '/^$/q;p' | grep -q '^gpgsig-sha256 '; then
+    echo "FAIL  case-jj: this fixture does not produce a 'gpgsig-sha256' header — the case no longer exercises the hash-dependent header name it exists to cover"
+    ok=0
+  fi
+
+  tip_before="$(git -C "$adopter" rev-parse HEAD)"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history 2>/dev/null)" || actual_exit=$?
+
+  head_after="$(git -C "$adopter" rev-parse HEAD)"
+
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-jj: expected exit 0, got $actual_exit — a signature that WAS produced was read as absent"
+    ok=0
+  fi
+  if [ "$head_after" = "$tip_before" ]; then
+    echo "FAIL  case-jj: HEAD did not move — the graft commit was refused though the repository can sign"
+    ok=0
+  fi
+  if ! commit_is_signed "$adopter" HEAD; then
+    echo "FAIL  case-jj: commit_is_signed reports the graft commit unsigned in a SHA-256 repository"
+    ok=0
+  fi
+  if ! echo "$stdout_out" | grep -qF "(signed)"; then
+    echo "FAIL  case-jj: stdout does not report the commit as signed"
+    echo "      actual stdout: $stdout_out"
+    ok=0
+  fi
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-jj: SHA-256 repository gets a signed graft commit (gpgsig-sha256 recognised)"
     pass=$((pass + 1))
   else
     fail=$((fail + 1))

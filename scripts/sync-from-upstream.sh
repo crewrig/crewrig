@@ -682,9 +682,19 @@ if [ "$PRESERVE_HISTORY" = true ]; then
   # reachable: a signing program that exits 0 without writing a signature
   # makes `commit-tree -S` exit 0 and produce a commit with no gpgsig header.
   # The `sed -n '/^$/q;p'` slice stops at the blank line that ends the header
-  # block, so a message body beginning with `gpgsig ` cannot pass for one.
+  # block, so a message body beginning with `gpgsig` cannot pass for one.
+  #
+  # The pattern carries NO trailing space, deliberately: git's signature
+  # header name is hash-algorithm dependent — `gpgsig` in a SHA-1 repository,
+  # `gpgsig-sha256` in one created with `--object-format=sha256`. A trailing
+  # space matches the first and misses the second, which would make this
+  # post-condition refuse a signature it had just successfully produced. Not
+  # anchoring on the right stays safe inside the slice: only header lines are
+  # visible there, the signature's own continuation lines begin with a space,
+  # and `gpgsig-sha256` is the only other header name that can match. Case jj
+  # fails if the space comes back.
   if [ "$GRAFT_SIGN" = true ] && \
-     ! git -C "$REPO_DIR" cat-file commit "$GRAFT_COMMIT" | sed -n '/^$/q;p' | grep -q '^gpgsig '; then
+     ! git -C "$REPO_DIR" cat-file commit "$GRAFT_COMMIT" | sed -n '/^$/q;p' | grep -q '^gpgsig'; then
     echo "Error: --preserve-history built an unsigned commit though this repository is configured to sign; refusing to move the branch tip." >&2
     exit 1
   fi
