@@ -319,16 +319,26 @@ listed in `.crewrig/core-paths.txt` from the URL set in
 `config/TOOLS.md`, `crewrig.config.toml`, and `artifacts/community/`)
 untouched.
 
-**Most-likely error — dirty-core guard:** If at least one core-layer path
-has been locally modified, the script will list the offending paths and
-exit 1 with a message similar to:
+**Most-likely error — dirty-core guard:** If at least one core-layer file
+has been locally modified, the script will list the offending **files** — never
+the directory containing them — and exit 1 with a message similar to:
 
 ```text
 Error: the following core-layer paths have local modifications:
-  config/SOUL.md
+  scripts/sync-from-upstream.sh
   artifacts/core/skills/developer/SKILL.md
 Revert these changes before running sync, or promote them to overlay overrides.
+
+Restore ONLY the files listed above, one path at a time:
+  git checkout <your-ref> -- <path listed above>
+Never restore the containing directory. A directory-level checkout also
+reverts every file upstream added or changed in it, silently.
 ```
+
+Both example paths are *members* of directory entries in
+`.crewrig/core-paths.txt` (`scripts` and `artifacts/core`). The guard names the
+member rather than the entry precisely so that the restoration below can be
+targeted: told `scripts`, an adopter restores `scripts`.
 
 Resolution: see [Troubleshooting — dirty-core refusal](#dirty-core-refusal) below.
 
@@ -468,22 +478,30 @@ missing directories, re-run `bash scripts/build-components.sh`.
 
 ### Dirty-core refusal during sync {#dirty-core-refusal}
 
-**Cause:** At least one path listed in `.crewrig/core-paths.txt` has been
-locally modified. The sync script enforces a dirty-core guard to prevent
-upstream changes from silently overwriting local modifications to core-layer
-files.
+**Cause:** At least one **file** governed by `.crewrig/core-paths.txt` has been
+locally modified — either because it is listed there itself, or because it sits
+inside a directory that is. The sync script enforces a dirty-core guard to
+prevent upstream changes from silently overwriting local modifications to
+core-layer files.
 
 **Effect:** `bash scripts/sync-from-upstream.sh` exits 1 and lists the
-offending paths.
+offending **files**, each at its full path. A directory listed in the manifest
+is never itself reported: what you see is what you modified.
 
 **Resolution:** Choose one of two paths for each offending file:
 
 1. **Revert the modification** — if the change was experimental or
-   unintended, restore the file to its committed state:
+   unintended, restore that file, and only that file, to its committed state:
 
    ```bash
    git checkout -- <path/to/core-file>
    ```
+
+   **Restore file by file, never the containing directory.** A directory-level
+   checkout — `git checkout -- scripts` — also reverts every file upstream
+   added or changed inside it, with no message and no error. That is how an
+   adopter loses a new upstream guard and discovers it later through unrelated
+   test failures; it is why the guard lists files rather than directories.
 
    Then re-run `bash scripts/sync-from-upstream.sh`.
 
