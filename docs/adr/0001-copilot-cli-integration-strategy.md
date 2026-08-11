@@ -189,3 +189,24 @@ decision recorded above — it only stops the manifest from treating that one
 file's intended local mutation as upstream drift. Sibling members of
 `.github/copilot/` (e.g. `extension.json`) are unaffected and continue to
 abort the sync on a local diff, exactly as before.
+
+## Addendum — 2026-08-11: Hook schema corrected to the documented object shape
+
+Discovery finding #8 above recorded the committed `settings.json` shipping
+`"hooks": []` and the manifest keyed by PascalCase event names. Both were
+wrong against the vendor hook schema (issue #825): `hooks` must be an
+**object** keyed by **camelCase** config keys (`sessionStart`,
+`userPromptSubmitted`, `postToolUse`, `agentStop`, `sessionEnd`), each
+mapping to an array of `{"type": "command", "command"/"bash": "…"}`
+entries, with `version` as the integer `1`. A non-object `hooks` block is a
+structural error that rejects the whole hooks config — so the previously
+committed `"hooks": []` silently disabled every hook.
+
+`hooks/copilot-transcript-hooks.json`,
+`config/copilot/settings.json.template` and `.github/copilot/settings.json`
+now ship the corrected object schema, and `setup-copilot-interactive.sh`
+patches/merges the object form. The payload's `hook_event_name` remains
+PascalCase regardless of the camelCase config keys, so
+`hooks/mempalace-transcript.sh` is unaffected. The "never commit
+project-relative hook paths" decision stands — the empty hook set is now
+`{}` rather than `[]`.

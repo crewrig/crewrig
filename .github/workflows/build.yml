@@ -133,6 +133,9 @@ jobs:
       - name: Test Antigravity transcript activation (spec 0116)
         run: bash scripts/tests/test-setup-antigravity-transcript.sh
 
+      - name: Test Copilot transcript manifest schema (issue #825)
+        run: bash scripts/tests/test-setup-copilot-transcript.sh
+
       - name: Test Antigravity component install and migration (spec 0123)
         run: bash scripts/tests/test-antigravity-component-install.sh
 
