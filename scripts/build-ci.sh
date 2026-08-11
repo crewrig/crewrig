@@ -232,9 +232,22 @@ emit_job() {
   # fetch-depth: 0) so base-ref diffing checks resolve their base.
   local history_depth
   history_depth=$(yq -r ".capabilities[] | select(.id == \"$id\") | .requires.history-depth // \"\"" "$REFERENCE")
-  if [ "$history_depth" = "full" ]; then
+  local env_keys
+  env_keys=$(yq -r ".capabilities[] | select(.id == \"$id\") | .env // {} | keys | .[]" "$REFERENCE")
+
+  if [ "$history_depth" = "full" ] || [ -n "$env_keys" ]; then
     echo "  variables:"
-    echo "    GIT_DEPTH: \"0\""
+    if [ "$history_depth" = "full" ]; then
+      echo "    GIT_DEPTH: \"0\""
+    fi
+    if [ -n "$env_keys" ]; then
+      local ek ev
+      while IFS= read -r ek; do
+        [ -z "$ek" ] && continue
+        ev=$(yq -r ".capabilities[] | select(.id == \"$id\") | .env.\"$ek\"" "$REFERENCE")
+        echo "    $ek: \"$(printf '%s' "$ev" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
+      done <<< "$env_keys"
+    fi
   fi
 
   # before_script: tool installs satisfying requires.tools.

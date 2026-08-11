@@ -240,6 +240,26 @@ RC=0
 yq '.' "$tk/.gitlab-ci.yml" >/dev/null 2>&1 || RC=$?
 assert_eq "Case K1 — generated .gitlab-ci.yml parses as YAML" 0 "$RC"
 
+# Case L (spec 0131) — capability env mapping emits variables block in .gitlab-ci.yml.
+tl="$(new_tree)"
+cat > "$tl/ci/ci-capabilities.yml" <<'YML'
+capabilities:
+  - id: lint-specs
+    name: "Lint specs"
+    trigger:
+      - on: pull-request
+        branches: [main]
+    portability: portable
+    env:
+      BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    command:
+      - task spec:lint
+YML
+run_in "$tl"
+assert_eq "Case L0 — generate with env mapping succeeds" 0 "$RC"
+l_out="$(cat "$tl/.gitlab-ci.yml")"
+assert_contains "Case L1 — generated job contains env variable under variables" "$l_out" 'BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"'
+
 # -------------------------------------------------------------------------
 echo ""
 echo "Results: $pass passed, $fail failed"

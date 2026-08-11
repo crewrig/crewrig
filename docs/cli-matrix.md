@@ -78,7 +78,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > from that reference, not hand-authored: `scripts/build-ci.sh` reads
 > `ci/ci-capabilities.yml` and emits one GitLab job per *portable* capability
 > into [`.gitlab-ci.yml`](../.gitlab-ci.yml) at the repo root (job key ==
-> capability id; `requires:` → `image`/`before_script`/`GIT_DEPTH`; `command:`
+> capability id; `requires:` → `image`/`before_script`/`GIT_DEPTH`; `env:` → `variables:`; `command:`
 > → `script:`). Engine-specific capabilities are skipped with no placeholder
 > (spec 0048 R4); the GitHub Actions workflows under `.github/workflows/` are
 > **not** generated (spec 0048 R5). `scripts/build-ci.sh --check` runs in this
