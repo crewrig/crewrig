@@ -1,7 +1,7 @@
 ---
 id: "0133"
 slug: close-mcp-daemon-coverage-gaps
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 754
