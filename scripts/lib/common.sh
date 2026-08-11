@@ -786,6 +786,19 @@ _materialise_mcp_unit() {
     -e "s|__LAUNCHER_PATH__|$(mcp_launcher_installed_path)|g" \
     -e "s|__MEMPALACE_HOME__|${HOME}/.mempalace|g" \
     "$src" > "$dst"
+  # Refuse to emit a unit that still carries an unsubstituted placeholder
+  # (spec 0133 R7). A materialised unit that logs to /__MEMPALACE_HOME__/...
+  # or execs the literal /__LAUNCHER_PATH__ points at a path that does not
+  # exist; failing here beats a supervisor that silently restarts a program
+  # that was never installed. A unit that reaches the supervisor only through
+  # the two placeholders above is the only shape install_daemon_supervisor
+  # ever builds, so a residual placeholder means the template gained a token
+  # this materialiser does not know how to fill.
+  if grep -qE '__[A-Z][A-Z0-9_]*__' "$dst" 2>/dev/null; then
+    echo "  ERROR: $dst still contains an unsubstituted placeholder." >&2
+    rm -f "$dst"
+    return 1
+  fi
   return 0
 }
 
