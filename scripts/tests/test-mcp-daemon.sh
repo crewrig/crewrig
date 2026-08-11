@@ -418,6 +418,234 @@ else
   echo "       start a real daemon, so the behavioural lifetime check is skipped."
 fi
 
+# --- 11. Switch transaction, end-to-end (spec 0133 R2, R15) ------------------
+# The transaction's "present" gate is `command -v`, so stub each tool on PATH;
+# the stubs must exist for capture/arrangement/register to treat the four
+# assistants as present without a real install.
+echo ""
+echo "Switch transaction, end-to-end (R2, R11-R15):"
+mkdir -p "${TEST_HOME}/bin"
+for c in claude gemini copilot agy; do
+  printf '#!/usr/bin/env bash\nexit 0\n' > "${TEST_HOME}/bin/${c}"
+  chmod +x "${TEST_HOME}/bin/${c}"
+done
+export ORIG_PATH="${PATH}"
+export PATH="${TEST_HOME}/bin:${PATH}"
+
+# Four hermetic configs. claude starts with no mempalace entry (captures null);
+# the other three start stdio-shaped, giving the transaction prior arrangements
+# to restore to and to converge.
+mkdir -p "${TEST_HOME}/.gemini/config" "${TEST_HOME}/.copilot"
+echo '{"mcpServers":{}}' > "${TEST_HOME}/.claude.json"
+echo '{"mcpServers":{"mempalace":{"command":"bash","args":["c"]}}}' > "${TEST_HOME}/.gemini/settings.json"
+echo '{"mcpServers":{"mempalace":{"command":"bash","args":["p"]}}}' > "${TEST_HOME}/.copilot/mcp-config.json"
+echo '{"mcpServers":{"mempalace":{"command":"bash","args":["a"]}}}' > "${TEST_HOME}/.gemini/config/mcp_config.json"
+chmod 600 "${TEST_HOME}/.claude.json"
+
+# Force a mid-transaction failure on the SECOND assistant switched. `present`
+# is ordered claude, gemini, copilot, antigravity, so gemini is switched second.
+# Making its config DIRECTORY unwritable passes the R12 floor (the file itself
+# stays readable and writable) but makes write_json_config_secure's mktemp fail
+# — the failure lands in the APPLY loop, after claude has already been switched,
+# so the rollback must restore claude. gemini's backup_file silently no-ops
+# (it writes into the same unwritable directory), which is harmless.
+chmod 555 "${TEST_HOME}/.gemini"
+out1="$(switch_assistants_to_http "test-token" 2>&1)"; rc1=$?
+chmod 755 "${TEST_HOME}/.gemini"
+
+[ "${rc1}" -ne 0 ] \
+  && ok "a switch that fails partway returns non-zero" \
+  || nope "the failed switch returned success"
+case "${out1}" in
+  *"gemini could not be switched"*) ok "the failing assistant is reported" ;;
+  *) nope "no report of the gemini failure: ${out1}" ;;
+esac
+[ "$(mcp_assistant_arrangement claude)" = "none" ] \
+  && ok "the FIRST assistant's entry is restored to its prior arrangement" \
+  || nope "claude was not restored after the rollback"
+jq -e '(.mcpServers | has("mempalace")) | not' "${TEST_HOME}/.claude.json" >/dev/null 2>&1 \
+  && ok "the restored claude carries no orphan HTTP entry" \
+  || nope "claude still carries a mempalace entry after the rollback"
+
+# --- 11b. A repeated run converges a partial state (R15) ----------------------
+# Leave one assistant (copilot) already switched to the shared daemon and the
+# rest on their previous arrangement; the repeated run must find that partial
+# state, converge every present assistant, and say it did.
+register_mempalace_mcp copilot "test-token" >/dev/null 2>&1
+out2="$(switch_assistants_to_http "test-token" 2>&1)"; rc2=$?
+[ "${rc2}" -eq 0 ] \
+  && ok "a repeated run converges (returns success)" \
+  || nope "the repeated run did not converge: ${out2}"
+case "${out2}" in
+  *"found a partial state"*) ok "the repeated run reports the found partial state" ;;
+  *) nope "the repeated run did not report a partial state: ${out2}" ;;
+esac
+all_http=1
+for cli in claude gemini copilot antigravity; do
+  [ "$(mcp_assistant_arrangement "$cli")" = "http" ] || all_http=0
+done
+[ "${all_http}" -eq 1 ] \
+  && ok "every present assistant reaches the shared daemon" \
+  || nope "not every assistant was converged to http"
+
+export PATH="${ORIG_PATH}"
+
+# --- 12. Null-capture restore leaves no orphan (spec 0133 R8) ----------------
+echo ""
+echo "Null-capture restore (R8):"
+echo '{"mcpServers":{}}' > "${TEST_HOME}/.gemini/settings.json"
+cap="$(capture_mempalace_registration gemini)"
+[ "${cap}" = "null" ] \
+  && ok "an assistant with no prior entry captures null" \
+  || nope "expected a null capture, got: ${cap}"
+register_mempalace_mcp gemini "test-token" >/dev/null 2>&1
+[ "$(mcp_assistant_arrangement gemini)" = "http" ] \
+  && ok "registration switches the empty assistant to http" \
+  || nope "registration did not switch the empty assistant"
+restore_mempalace_registration gemini "${cap}"
+[ "$(mcp_assistant_arrangement gemini)" = "none" ] \
+  && ok "a null-capture restore removes the http entry" \
+  || nope "the null restore left an http entry behind"
+jq -e '(.mcpServers | has("mempalace")) | not' "${TEST_HOME}/.gemini/settings.json" >/dev/null 2>&1 \
+  && ok "no mempalace entry remains after the null restore" \
+  || nope "an orphan mempalace entry survived the null restore"
+
+# --- 13. status-mcp-server.sh branches (spec 0133 R4, R5, R6) ----------------
+# A hermetic stand-in for the daemon so the status probe can be exercised
+# without a real mempalace install: GET /healthz returns 200, POST /mcp returns
+# the code given on the command line (401 passes the auth branch; anything else
+# trips the NOT ENFORCED branch).
+cat > "${TEST_HOME}/fake-mcp.py" <<'PY'
+import http.server, socketserver, sys
+port = int(sys.argv[1]); code = int(sys.argv[2])
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/healthz':
+            self.send_response(200); self.end_headers(); self.wfile.write(b'ok')
+        else:
+            self.send_response(404); self.end_headers()
+    def do_POST(self):
+        self.send_response(code); self.end_headers(); self.wfile.write(b'{}')
+    def log_message(self, *a): pass
+socketserver.TCPServer.allow_reuse_address = True
+with socketserver.TCPServer(("127.0.0.1", port), H) as s:
+    s.serve_forever()
+PY
+
+echo ""
+echo "status-mcp-server.sh branches (R4, R5, R6):"
+
+# --- 13a. NOT SERVING (R4) ----------------------------------------------------
+# No server on the probe port: healthz fails, rc=1, and the probe prints the
+# daemon log tail or a statement that no log exists. Assert the no-log arm.
+mkdir -p "${HOME}/.mempalace"
+rm -f "${HOME}/.mempalace/mcp-server.log"
+out="$(bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+[ "${rc}" -ne 0 ] && ok "NOT SERVING exits non-zero" || nope "NOT SERVING exited ${rc}"
+case "${out}" in
+  *"NOT SERVING"*) ok "NOT SERVING is printed" ;;
+  *) nope "no NOT SERVING line: ${out}" ;;
+esac
+case "${out}" in
+  *"no log at"*) ok "a missing daemon log is stated, not assumed" ;;
+  *) nope "no 'no log' statement: ${out}" ;;
+esac
+
+# The log-tail arm: with a log file present, the probe tails it.
+printf 'probe log line\n' > "${HOME}/.mempalace/mcp-server.log"
+out="$(bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+case "${out}" in
+  *"probe log line"*) ok "the NOT SERVING probe tails the daemon log" ;;
+  *) nope "the daemon log tail was not shown: ${out}" ;;
+esac
+rm -f "${HOME}/.mempalace/mcp-server.log"
+
+# --- 13b. Authentication NOT ENFORCED (R5) ------------------------------------
+# Daemon "serving" (healthz 200) but an unauthenticated /mcp returns 200, not
+# 401: the probe must report authentication is NOT enforced and exit non-zero.
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${MEMPALACE_MCP_PORT}" 200 &
+fake_pid=$!
+sleep 1
+out="$(bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+kill "${fake_pid}" 2>/dev/null
+[ "${rc}" -ne 0 ] \
+  && ok "an unauthenticated probe returning non-401 exits non-zero" \
+  || nope "auth-not-enforced exited ${rc}"
+case "${out}" in
+  *"NOT ENFORCED"*) ok "authentication not enforced is reported" ;;
+  *) nope "no NOT ENFORCED report: ${out}" ;;
+esac
+
+# --- 13c. Launcher drift (R6) -------------------------------------------------
+# A daemon serving WITH auth enforced (healthz 200, /mcp 401) isolates the
+# drift branch: the ONLY reason to exit non-zero is the launcher hash mismatch.
+install_mcp_launcher >/dev/null 2>&1
+launcher="$(mcp_launcher_installed_path)"
+sed 's/^LAUNCHER_SOURCE_SHA=.*/LAUNCHER_SOURCE_SHA="deadbeef"/' "${launcher}" > "${launcher}.new"
+mv "${launcher}.new" "${launcher}"
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${MEMPALACE_MCP_PORT}" 401 &
+fake_pid=$!
+sleep 1
+out="$(bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+kill "${fake_pid}" 2>/dev/null
+[ "${rc}" -ne 0 ] \
+  && ok "a drifted launcher exits non-zero" \
+  || nope "launcher drift exited ${rc}"
+case "${out}" in
+  *"DRIFTED"*) ok "launcher drift is reported as DRIFTED" ;;
+  *) nope "no DRIFTED report: ${out}" ;;
+esac
+
+# --- 14. _materialise_mcp_unit refuses unsubstituted placeholders (R7) -------
+echo ""
+echo "Unit materialisation refuses an unsubstituted placeholder (R7):"
+# A template with only the two known placeholders materialises cleanly.
+clean_tpl="${TEST_HOME}/clean.plist"
+printf '%s\n' '__LAUNCHER_PATH__' '__MEMPALACE_HOME__/mcp-server.log' > "${clean_tpl}"
+_materialise_mcp_unit "${clean_tpl}" "${TEST_HOME}/clean-out.plist" >/dev/null 2>&1 \
+  && ok "a template with the known placeholders materialises" \
+  || nope "a clean template was refused"
+[ -e "${TEST_HOME}/clean-out.plist" ] \
+  && ok "the clean unit was emitted" \
+  || nope "clean materialisation did not produce a unit"
+
+# A template carrying a placeholder this materialiser does not know must be
+# refused, and must NOT emit a unit that would log to a literal path.
+bad_tpl="${TEST_HOME}/bad.plist"
+printf '%s\n' '__LAUNCHER_PATH__' '__MEMPALACE_HOME__/mcp-server.log' '__UNKNOWN_KEYS__' > "${bad_tpl}"
+if _materialise_mcp_unit "${bad_tpl}" "${TEST_HOME}/bad-out.plist" >/dev/null 2>&1; then
+  nope "an unsubstituted placeholder was materialised silently"
+else
+  ok "an unsubstituted placeholder is refused"
+fi
+[ -e "${TEST_HOME}/bad-out.plist" ] \
+  && nope "a refused unit was still emitted" \
+  || ok "a refused unit is not emitted (no literal-path unit ships)"
+
+# --- 15. Launcher token path agrees with mcp_token_path (spec 0133 R9) -------
+echo ""
+echo "Launcher token-path derivation agrees with mcp_token_path (R9):"
+install_mcp_launcher >/dev/null 2>&1
+launcher="$(mcp_launcher_installed_path)"
+# A palace whose dirname is reached through a SYMLINK and whose subdirectory
+# does not yet exist. mcp_token_path's mkdir-parent fix creates the target,
+# then `cd` resolves through the symlink; the launcher must compute the SAME
+# key rather than fall back to the literal (unresolved) path. Without the fix
+# the two derivations diverge and this assertion fails.
+mkdir -p "${TEST_HOME}/real-palace"
+ln -sf "${TEST_HOME}/real-palace" "${TEST_HOME}/palace-link"
+export MEMPALACE_PALACE_PATH="${TEST_HOME}/palace-link/subdir/palace"
+out="$(run_launcher_bounded)"
+launcher_tok="$(printf '%s\n' "${out}" | sed -n 's/.*bearer token file not found: //p' | head -n1)"
+tok_path="$(mcp_token_path)"
+unset MEMPALACE_PALACE_PATH
+[ -n "${launcher_tok}" ] \
+  && ok "the launcher reports a token path when the palace parent is absent" \
+  || nope "the launcher reported no token path: ${out}"
+[ "${launcher_tok}" = "${tok_path}" ] \
+  && ok "launcher token path == mcp_token_path when the palace parent is missing" \
+  || nope "launcher '${launcher_tok}' != mcp_token_path '${tok_path}' — derivations diverged"
+
 echo ""
 echo "----------------------------------------"
 echo "  passed: ${PASS}   failed: ${FAIL}"
