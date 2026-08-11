@@ -1,7 +1,7 @@
 ---
 id: "0131"
 slug: ci-parity-env-divergence
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 709
