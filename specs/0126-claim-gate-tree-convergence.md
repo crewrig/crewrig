@@ -1,7 +1,7 @@
 ---
 id: "0126"
 slug: claim-gate-tree-convergence
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 779
