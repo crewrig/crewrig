@@ -37,8 +37,9 @@
 #   Reference remote Resolved by NAME, never by a flag and never hard-coded:
 #                    the first remote matching `crewrig|origin`, else the first
 #                    remote at all. This is the existing repository idiom
-#                    (scripts/lib/spec-linter.js:114-131, aligned with
-#                    scripts/check-skill-versions.sh:24-33 "so the repository has
+#                    (the `getRemoteName` function in scripts/lib/spec-linter.js,
+#                    aligned with the remote resolution block in
+#                    scripts/check-skill-versions.sh "so the repository has
 #                    one idiom rather than two"). Fixtures carry both a `crewrig`
 #                    and an `origin` remote; Case 23 covers the fallback arm.
 #

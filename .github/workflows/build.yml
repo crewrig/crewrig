@@ -171,6 +171,12 @@ jobs:
       - name: Test check-test-wiring regression (spec 0076)
         run: bash scripts/tests/test-check-test-wiring.sh
 
+      - name: Enforce test suites runtime stray guard (issue #738)
+        run: bash scripts/check-test-strays.sh
+
+      - name: Test check-test-strays regression (issue #738)
+        run: bash scripts/tests/test-check-test-strays.sh
+
       - name: Test build-ci regression (spec 0076 wiring)
         run: bash scripts/tests/test-build-ci.sh
 

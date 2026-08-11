@@ -561,9 +561,9 @@ expect_fail_verdict "Case 9 — a rename onto an unsecured id fails"
 # The unsecured-id mark (requirement 9) and its removal (requirement 10)
 # ---------------------------------------------------------------------------
 # The mark is the reservation tool's OUTPUT and this check's INPUT, and nothing
-# in PLAN v9 drew the line between them — which is how the invariant at
-# docs/spec-format.md:34, "a merged spec never carries it", reached `main`
-# enforced by nothing. The linter type-checks the boolean; this check compared
+# in PLAN v9 drew the line between them — which is how the invariant in the
+# `unsecured-id` row of the frontmatter schema table, "a merged spec never
+# carries it", reached `main` enforced by nothing. The linter type-checks the boolean; this check compared
 # holder against ticket and logged OK without ever reading the mark.
 #
 # One case is not enough here, and the reason is structural rather than
@@ -741,6 +741,8 @@ expect_log_matches "Case 12 — and says so, rather than exiting green in silenc
   '\[REPORT\].*could not be read'
 expect_log_matches "Case 12 — and says why it is not treated as a finding" \
   'indistinguishable from an empty'
+expect_log_not_matching "Case 12 — the namespace-unreadable report names no spec" \
+  'specs/0212-unreadable[.]md'
 
 # Case 12b — the third degradation, between Case 12's unreadable namespace and a
 # clean record: the namespace reads, the ref for this id is there, and the
@@ -782,6 +784,20 @@ expect_log_matches "Case 12b — and the spec is named rather than silently acce
 # wrong when written: it is the note reporting the count, not the end of the
 # loop.
 expect_log_matches "Case 12b — and it is reported through the non-blocking channel" '\[REPORT\]'
+
+# Case 12c — the second route to recorded_issue returning empty: the object is
+# fetchable but its message names no ticket. The calling loop cannot distinguish
+# this from an unreadable object, so it reports without failing exactly as Case 12b
+# does. If recorded_issue later failed loudly on a non-conformant message instead
+# of returning empty, this is the case that catches the regression.
+new_fixture c12c
+scratch_work="$(fixture_work c12c)"
+obj="$(git -C "$scratch_work" commit-tree -m "no ticket here" "$EMPTY_TREE")"
+git -C "$scratch_work" push -q crewrig "${obj}:refs/spec-ids/0401"
+add_spec c12c specs/0401-no-ticket.md 0401 no-ticket 911
+run_check_same_repo c12c
+expect_pass_verdict "Case 12c — a fetchable reservation lacking a ticket reports without failing"
+expect_log_matches "Case 12c — and it is reported through the non-blocking channel" '\[REPORT\]'
 
 # ---------------------------------------------------------------------------
 # Base-ref resolution
