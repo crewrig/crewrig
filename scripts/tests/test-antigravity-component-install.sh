@@ -261,6 +261,17 @@ S6_OUT="$(migrate_antigravity_superseded_components "$S6/superseded" "$S6/artifa
 S6_ST=$?
 
 [ "$S6_ST" -eq 0 ] && ok "the migration exits 0 on the spec scenario" || bad "the migration exited $S6_ST"
+# What the run SAYS, not only what it leaves behind: a removal under $HOME that
+# is not announced is indistinguishable from one that never happened, which is
+# the reporting failure R4/R5/R6 exist against one surface over.
+case "$S6_OUT" in
+  *"Migrated away"*harness-report*) ok "R8: the run names the framework component it removed" ;;
+  *) bad "R8: a component was removed without being named — got: $S6_OUT" ;;
+esac
+case "$S6_OUT" in
+  *my-own-notes*) bad "R9: the user's own directory is named in the migration output" ;;
+  *) ok "R9: the user's own directory is never named — nothing claims it was touched" ;;
+esac
 [ -e "$S6/superseded/skills/harness-report" ] \
   && bad "R8: a framework skill survived at the superseded placement" \
   || ok "R8: the framework skill is gone from the superseded placement"
@@ -308,6 +319,60 @@ case "$S7_OUT" in
   *"tester"*) bad "(i) a directory with no framework provenance was reported as residue" ;;
   *) ok "(i) a directory failing the provenance half is not reported as residue either" ;;
 esac
+
+# =====================================================================
+echo "§7b the served-name test is LITERAL and WHOLE-LINE"
+# =====================================================================
+# The on-disk name is the PATTERN and the served set is the SUBJECT
+# (`printf '%s\n' "$names" | grep -qxF -- "$declared"`), so a degraded flag set
+# over-matches in the direction that DELETES:
+#   without `-F`, on-disk `a.b` matches served `axb` — `.` is any character;
+#   without `-x`, on-disk `harness` matches served `harness-report` — substring.
+#
+# Every other fixture in this suite is kebab-case, carrying neither a
+# metacharacter nor a prefix relationship, so not one of them can tell a
+# correct flag set from a degraded one: all three degradations passed the whole
+# suite before this section existed. The victim class is narrow but real — the
+# provenance half still holds, so a user's OWN directory is never at risk; what
+# these two protect is a retired or user-edited FRAMEWORK component, which
+# `migrate_antigravity_superseded_components` promises to preserve and report
+# rather than remove.
+S7B="$TMP_ROOT/s7b"
+stage_skill "$S7B/artifacts/library" axb
+stage_skill "$S7B/artifacts/library" harness-report
+stage_agent "$S7B/artifacts/library" axb-agent
+
+# A name that is a REGEXP for a served one, and a name that is a PREFIX of one.
+# Both carry provenance, so only the name half of the conjunction can save them.
+write_component "$S7B/superseded/skills/a.b/SKILL.md"     a.b     yes plain
+write_component "$S7B/superseded/skills/harness/SKILL.md" harness yes plain
+# Flat agent shape: `${item%.md}` strips one extension, so a dotted name reaches
+# the same test through code the directory branch does not share.
+write_component "$S7B/superseded/agents/a.b-agent.md"     a.b-agent yes plain
+# The true positive, in the same run. Without it, a section in which everything
+# survives would pass just as well on a migration that does nothing at all.
+write_component "$S7B/superseded/skills/harness-report/SKILL.md" harness-report yes plain
+
+S7B_OUT="$(migrate_antigravity_superseded_components "$S7B/superseded" "$S7B/artifacts" all 2>&1)"
+
+[ -d "$S7B/superseded/skills/a.b" ] \
+  && ok "a name that is a REGEXP for a served one survives (-F is load-bearing)" \
+  || bad "'a.b' was deleted — the served-name test matched 'axb' as a pattern, not a literal"
+[ -d "$S7B/superseded/skills/harness" ] \
+  && ok "a name that is a PREFIX of a served one survives (-x is load-bearing)" \
+  || bad "'harness' was deleted — the served-name test matched 'harness-report' as a substring"
+[ -f "$S7B/superseded/agents/a.b-agent.md" ] \
+  && ok "agent shape: a regexp-shaped flat name survives the same test" \
+  || bad "agent shape: 'a.b-agent.md' was deleted by a non-literal name test"
+[ -e "$S7B/superseded/skills/harness-report" ] \
+  && bad "control: the genuinely served component was NOT migrated — this section would prove nothing" \
+  || ok "control: the genuinely served component is still migrated away"
+printf '%s\n' "$S7B_OUT" | grep -qF "rm -rf $S7B/superseded/skills/a.b" \
+  && ok "the regexp-shaped name is reported as residue, not silently kept" \
+  || bad "'a.b' survived without being reported — got: $S7B_OUT"
+printf '%s\n' "$S7B_OUT" | grep -qF "rm -rf $S7B/superseded/skills/harness" \
+  && ok "the prefix name is reported as residue, not silently kept" \
+  || bad "'harness' survived without being reported — got: $S7B_OUT"
 
 # =====================================================================
 echo '§8 the same two fixtures in AGENT shape — flat <name>.md, removed with rm rather than rm -rf'
