@@ -566,9 +566,7 @@ grep -q 'DEST="\$AGY_CUSTOMIZATION_ROOT/skills"' "$MANAGE" \
 grep -qF 'PLACED_NAMES+=("$item_name")' "$MANAGE" \
   && ok "manage: place_component feeds the name it just placed into PLACED_NAMES" \
   || bad "manage: PLACED_NAMES is never fed — the per-component cleanup is a no-op branch"
-grep -qF '"$ANTIGRAVITY_HOME" "$REPO_DIR/artifacts" skills "${PLACED_NAMES[@]}"' "$MANAGE" \
-  && ok "manage: the narrow migration is called with the superseded root, the artifacts root, the kind, and the names" \
-  || bad "manage: the per-component migration call-site arguments are wrong or emptied"
+grep -qF '"$ANTIGRAVITY_HOME" "$REPO_DIR/artifacts" skills ${PLACED_NAMES[@]+"${PLACED_NAMES[@]}"}' "$MANAGE" && ok "manage: the narrow migration is called with the superseded root, the artifacts root, the kind, and the names" || bad "manage: the per-component migration call-site arguments are wrong or emptied" # acknowledged-exception: literal grep pattern (mention, not a use)
 
 # The two kinds spec 0123 explicitly EXCLUDES must not have moved. A one-line
 # edit to ANTIGRAVITY_HOME would have relocated both silently.

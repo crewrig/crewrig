@@ -67,7 +67,7 @@ fi
 is_wired() {
   local token="$1" file line before after
   [ "${#SURFACES[@]}" -eq 0 ] && return 1
-  for file in "${SURFACES[@]}"; do
+  for file in ${SURFACES[@]+"${SURFACES[@]}"}; do
     while IFS= read -r line; do
       before="${line%%"$token"*}"
       case "$before" in *"#"*) continue ;; esac
@@ -138,7 +138,7 @@ failed=0
 if [ "${#orphans[@]}" -gt 0 ]; then
   failed=1
   echo "FAILED: ${#orphans[@]} test script(s) run in no CI workflow and are not exempted:" >&2
-  for n in "${orphans[@]}"; do
+  for n in ${orphans[@]+"${orphans[@]}"}; do
     echo "  - scripts/tests/$n" >&2
   done
   echo "" >&2
@@ -151,7 +151,7 @@ if [ "${#reasonless[@]}" -gt 0 ]; then
   failed=1
   echo "" >&2
   echo "FAILED: ${#reasonless[@]} exemption entr(y/ies) carry no reason:" >&2
-  for n in "${reasonless[@]}"; do
+  for n in ${reasonless[@]+"${reasonless[@]}"}; do
     echo "  - $n" >&2
   done
   echo "Every line in ci/test-wiring-exemptions.txt must be '<name.sh><TAB><reason>' (spec 0076 R3)." >&2
@@ -161,7 +161,7 @@ if [ "${#stale[@]}" -gt 0 ]; then
   failed=1
   echo "" >&2
   echo "FAILED: ${#stale[@]} exemption entr(y/ies) name a test that no longer exists:" >&2
-  for n in "${stale[@]}"; do
+  for n in ${stale[@]+"${stale[@]}"}; do
     echo "  - $n" >&2
   done
   echo "Remove the stale exemption from ci/test-wiring-exemptions.txt (spec 0076 R5)." >&2

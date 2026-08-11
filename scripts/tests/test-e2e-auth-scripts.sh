@@ -32,7 +32,7 @@ SCRIPTS_DIR="${REPO_DIR}/scripts/e2e"
 # ---------------------------------------------------------------------------
 SCRIPTS=(auth-claude.sh auth-gemini.sh auth-copilot.sh)
 
-for s in "${SCRIPTS[@]}"; do
+for s in ${SCRIPTS[@]+"${SCRIPTS[@]}"}; do
   path="${SCRIPTS_DIR}/$s"
 
   if [[ -f "$path" ]]; then
@@ -80,7 +80,7 @@ done
 # ---------------------------------------------------------------------------
 INTERACTIVE=(claude gemini)
 
-for cli in "${INTERACTIVE[@]}"; do
+for cli in ${INTERACTIVE[@]+"${INTERACTIVE[@]}"}; do
   s="auth-${cli}.sh"
   path="${SCRIPTS_DIR}/$s"
 

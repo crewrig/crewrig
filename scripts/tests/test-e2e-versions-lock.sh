@@ -64,7 +64,7 @@ REQUIRED_KEYS=(
   "mempalace.cli"
 )
 
-for key in "${REQUIRED_KEYS[@]}"; do
+for key in ${REQUIRED_KEYS[@]+"${REQUIRED_KEYS[@]}"}; do
   if grep -qE "^${key}=" "$LOCK_ABS"; then
     note_pass "key present: $key"
   else

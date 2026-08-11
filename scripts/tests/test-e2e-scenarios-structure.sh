@@ -33,7 +33,7 @@ README="${SCEN_DIR}/README.md"
 SCENARIOS=(01-layered-context 02-cross-tool-memory 03-skill-build 04-harness-loop)
 
 # --- 1. Each scenario dir + run.sh present and executable --------------------
-for s in "${SCENARIOS[@]}"; do
+for s in ${SCENARIOS[@]+"${SCENARIOS[@]}"}; do
   d="${SCEN_DIR}/${s}"
   r="${d}/run.sh"
   if [[ ! -d "$d" ]]; then
@@ -48,7 +48,7 @@ for s in "${SCENARIOS[@]}"; do
 done
 
 # --- 2. Each run.sh passes `bash -n` syntax check ----------------------------
-for s in "${SCENARIOS[@]}"; do
+for s in ${SCENARIOS[@]+"${SCENARIOS[@]}"}; do
   r="${SCEN_DIR}/${s}/run.sh"
   [[ -f "$r" ]] || continue
   err="$(bash -n "$r" 2>&1)"
@@ -61,7 +61,7 @@ done
 
 # --- 3. Each run.sh sources a helper from $E2E_LIB_DIR -----------------------
 # Accept any of: assert.sh, structural.sh, llm_judge.sh (the v1 lib set).
-for s in "${SCENARIOS[@]}"; do
+for s in ${SCENARIOS[@]+"${SCENARIOS[@]}"}; do
   r="${SCEN_DIR}/${s}/run.sh"
   [[ -f "$r" ]] || continue
   if grep -Eq 'source[[:space:]]+"\$\{?E2E_LIB_DIR\}?/' "$r" \
@@ -84,7 +84,7 @@ fi
 if [[ ! -f "$DEFAULTS_TOML" ]]; then
   note_fail "defaults.toml — present" "missing at $DEFAULTS_TOML"
 else
-  for s in "${SCENARIOS[@]}"; do
+  for s in ${SCENARIOS[@]+"${SCENARIOS[@]}"}; do
     if grep -Eq "^\[scenarios\.${s}\]" "$DEFAULTS_TOML"; then
       note_pass "defaults.toml — [scenarios.${s}] table present"
     else

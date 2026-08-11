@@ -218,7 +218,7 @@ done
 
 if [ "${#validity_errors[@]}" -gt 0 ]; then
   echo "FAILED: ${#validity_errors[@]} reference-validity violation(s) in $REFERENCE:" >&2
-  for e in "${validity_errors[@]}"; do
+  for e in ${validity_errors[@]+"${validity_errors[@]}"}; do
     echo "  - $e" >&2
   done
   echo "" >&2

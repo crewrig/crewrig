@@ -62,7 +62,7 @@ while IFS= read -r d; do
   [ -z "$d" ] && continue
   ext_dirs+=("$d")
 done < <(
-  for root in "${TIER_ROOTS[@]}"; do
+  for root in ${TIER_ROOTS[@]+"${TIER_ROOTS[@]}"}; do
     [ -d "$root" ] || continue
     # extensions/<tier>/<name>/package.json — one level of <name> under the root.
     for pkg in "$root"/*/package.json; do
@@ -72,7 +72,7 @@ done < <(
   done | sort
 )
 
-for dir in "${ext_dirs[@]}"; do
+for dir in ${ext_dirs[@]+"${ext_dirs[@]}"}; do
   checked=$((checked + 1))
   authoritative="$(jq -r '.version // empty' "$dir/package.json")"
 
@@ -83,7 +83,7 @@ for dir in "${ext_dirs[@]}"; do
   fi
 
   dir_ok=1
-  for sib in "${SIBLINGS[@]}"; do
+  for sib in ${SIBLINGS[@]+"${SIBLINGS[@]}"}; do
     [ -f "$dir/$sib" ] || continue
     sib_version="$(jq -r '.version // empty' "$dir/$sib")"
     if [ "$sib_version" != "$authoritative" ]; then
@@ -101,7 +101,7 @@ done
 if [ "${#failures[@]}" -gt 0 ]; then
   echo ""
   echo "FAILED: ${#failures[@]} manifest(s) diverge from their extension's authoritative version:"
-  for f in "${failures[@]}"; do
+  for f in ${failures[@]+"${failures[@]}"}; do
     echo "  - $f"
   done
   echo ""

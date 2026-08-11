@@ -34,7 +34,7 @@ for img in "$base_img" "$claude_img" "$gemini_img" "$copilot_img" "$mempalace_im
 done
 if [ "${#missing[@]}" -gt 0 ]; then
   echo "ERROR: required image(s) not found locally:" >&2
-  printf '  - %s\n' "${missing[@]}" >&2
+  printf '  - %s\n' ${missing[@]+"${missing[@]}"} >&2
   echo "Run 'task e2e:build' first." >&2
   exit 1
 fi
@@ -117,7 +117,7 @@ cat "$LOCKFILE"
 if [ "${#empty_fields[@]}" -gt 0 ]; then
   echo >&2
   echo "ERROR: the following lockfile fields resolved to <unknown>:" >&2
-  printf '  - %s\n' "${empty_fields[@]}" >&2
+  printf '  - %s\n' ${empty_fields[@]+"${empty_fields[@]}"} >&2
   echo "Rebuild the affected image(s) and re-run." >&2
   exit 2
 fi

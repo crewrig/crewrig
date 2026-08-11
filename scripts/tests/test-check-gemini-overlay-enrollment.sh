@@ -159,7 +159,7 @@ run_check() {
 {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
   make_setup_script "$repo"
-  make_settings "$repo" "${MAIN_ENROLLED[@]}"
+  make_settings "$repo" ${MAIN_ENROLLED[@]+"${MAIN_ENROLLED[@]}"}
 
   run_check "$repo"
 
@@ -266,7 +266,7 @@ run_check() {
 {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
   make_setup_script "$repo"
-  make_settings "$repo" "${MAIN_ENROLLED[@]}"
+  make_settings "$repo" ${MAIN_ENROLLED[@]+"${MAIN_ENROLLED[@]}"}
 
   run_check "$repo"
 
@@ -288,7 +288,7 @@ run_check() {
 {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
   make_setup_script "$repo"
-  make_settings "$repo" "${MAIN_ENROLLED[@]}" 99_GHOST.md
+  make_settings "$repo" ${MAIN_ENROLLED[@]+"${MAIN_ENROLLED[@]}"} 99_GHOST.md
 
   run_check "$repo"
 
@@ -320,7 +320,7 @@ run_check() {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
   make_setup_script "$repo"
   append_deploy_token "$repo" "67_NewTool.md"
-  make_settings "$repo" "${MAIN_ENROLLED[@]}"   # 9 + AGENTS.md, NOT 67_NewTool.md
+  make_settings "$repo" ${MAIN_ENROLLED[@]+"${MAIN_ENROLLED[@]}"}   # 9 + AGENTS.md, NOT 67_NewTool.md
 
   run_check "$repo"
 
@@ -370,7 +370,7 @@ run_check() {
 {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
   make_setup_script_no_tokens "$repo"
-  make_settings "$repo" "${MAIN_ENROLLED[@]}"
+  make_settings "$repo" ${MAIN_ENROLLED[@]+"${MAIN_ENROLLED[@]}"}
 
   run_check "$repo"
 

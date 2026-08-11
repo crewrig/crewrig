@@ -232,6 +232,16 @@ declared set — but it breaks a script just as thoroughly. Under `set -u`, Bash
 expansion is interpolated into a message string. This bites accumulator arrays
 hardest, because an accumulator is empty on precisely the success path.
 
+The array-guard rule is **enforced**, not merely recommended: the same
+`check-bash32-portability.sh` pass scans every governed `*.sh` file for array
+value expansions and fails when any is unguarded. Every `"${arr[@]}"` /
+`"${arr[*]}"` value expansion must be guarded — the canonical form
+`${arr[@]+"${arr[@]}"}` (drop the outer quotes; the guard carries its own), or
+`${arr[*]:-}` when interpolated inside a double-quoted string. A literal
+mention of an expansion in a comment or a grep pattern is not a use, but a
+script that deliberately requires a newer shell tags the line with
+`# acknowledged-exception: <reason>` and the check honours it.
+
 ### Why
 
 `mapfile` and `declare -A` had spread into six of the repository's own test

@@ -62,7 +62,7 @@ missing=()
 
 if [ "${#missing[@]}" -gt 0 ]; then
   e2e_info "[$CLI] WARNING: expected credential file(s) not found in $DIR:"
-  for f in "${missing[@]}"; do e2e_info "  - $f"; done
+  for f in ${missing[@]+"${missing[@]}"}; do e2e_info "  - $f"; done
   e2e_info "[$CLI] The signin flow may not have completed. Re-run \`task e2e:auth:ollama\` after authorising in the browser."
   exit 1
 fi

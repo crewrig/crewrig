@@ -64,7 +64,7 @@ fi
 echo "Checking version bumps on ${#modified[@]} modified skill/agent source(s)..."
 
 failures=()
-for f in "${modified[@]}"; do
+for f in ${modified[@]+"${modified[@]}"}; do
   [ ! -f "$f" ] && continue  # deleted file: skip (deletions don't need a bump)
 
   # Look at the diff for a `version:` line addition. The
@@ -83,7 +83,7 @@ done
 if [ "${#failures[@]}" -gt 0 ]; then
   echo ""
   echo "FAILED: ${#failures[@]} source(s) changed without a version bump:"
-  for f in "${failures[@]}"; do
+  for f in ${failures[@]+"${failures[@]}"}; do
     echo "  - $f"
   done
   echo ""

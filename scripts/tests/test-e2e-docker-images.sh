@@ -55,7 +55,7 @@ IMAGES=(
   "crewrig/e2e-mempalace:latest|mempalace"
 )
 
-for entry in "${IMAGES[@]}"; do
+for entry in ${IMAGES[@]+"${IMAGES[@]}"}; do
   img="${entry%%|*}"
   cli="${entry##*|}"
   short="${img#crewrig/e2e-}"

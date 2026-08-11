@@ -65,9 +65,9 @@ fi
 if [ -n "$EXT" ]; then
   do_install "$EXT"
 else
-  tiers=("${UPSTREAM_TIERS[@]}")
+  tiers=(${UPSTREAM_TIERS[@]+"${UPSTREAM_TIERS[@]}"})
   [ -n "$INCLUDE_ORG" ] && tiers+=(org)
-  for tier in "${tiers[@]}"; do
+  for tier in ${tiers[@]+"${tiers[@]}"}; do
     for dir in "$REPO_DIR"/extensions/"$tier"/*/; do
       [ -d "$dir" ] && do_install "$(basename "$dir")"
     done

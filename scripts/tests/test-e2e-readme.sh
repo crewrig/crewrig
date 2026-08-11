@@ -75,7 +75,7 @@ for ref in '#75' '#78' '#80' '#81'; do
   fi
 done
 if [[ "${#found_refs[@]}" -ge 1 ]]; then
-  note_pass "tests/e2e/README.md — cross-references epic/child issues (${found_refs[*]})"
+  note_pass "tests/e2e/README.md — cross-references epic/child issues (${found_refs[*]:-})"
 else
   note_fail "tests/e2e/README.md — issue cross-references" \
             "none of #75/#78/#80/#81 found"

@@ -93,7 +93,7 @@ merge_preexisting_mcp_servers() {
   # framework-wins replacement (name still present after the framework write)
   # from the decline removal (name absent after the write).
   local name
-  for name in "${MCP_RESERVED_NAMES[@]}"; do
+  for name in ${MCP_RESERVED_NAMES[@]+"${MCP_RESERVED_NAMES[@]}"}; do
     if printf '%s' "$pre_run" | jq -e --arg n "$name" 'has($n)' >/dev/null 2>&1; then
       if jq -e --arg n "$name" '(.mcpServers // {}) | has($n)' "$config_path" >/dev/null 2>&1; then
         echo "  WARNING: '$name' is a framework-managed MCP server — your prior '$name' entry was replaced (framework wins)."
@@ -106,7 +106,7 @@ merge_preexisting_mcp_servers() {
 
   # The reserved set as a JSON array, so the jq program stays declarative.
   local reserved_json
-  reserved_json="$(jq -cn '$ARGS.positional' --args "${MCP_RESERVED_NAMES[@]}")"
+  reserved_json="$(jq -cn '$ARGS.positional' --args ${MCP_RESERVED_NAMES[@]+"${MCP_RESERVED_NAMES[@]}"})"
 
   # Right-biased merge. `preserved` = operator servers minus reserved names, so
   # framework reserved entries survive and operator non-reserved entries win
@@ -232,11 +232,11 @@ apply_org_mcp_servers() {
   fi
 
   local reserved_json
-  reserved_json="$(jq -cn '$ARGS.positional' --args "${MCP_RESERVED_NAMES[@]}")"
+  reserved_json="$(jq -cn '$ARGS.positional' --args ${MCP_RESERVED_NAMES[@]+"${MCP_RESERVED_NAMES[@]}"})"
 
   # R10 — an org declaration under a framework-reserved name is NOT applied.
   local name
-  for name in "${MCP_RESERVED_NAMES[@]}"; do
+  for name in ${MCP_RESERVED_NAMES[@]+"${MCP_RESERVED_NAMES[@]}"}; do
     if printf '%s' "$org_native" | jq -e --arg n "$name" 'has($n)' >/dev/null 2>&1; then
       echo "  WARNING: '$name' is a framework-managed MCP server — the org declaration for '$name' was NOT applied (framework wins)."
     fi
@@ -310,7 +310,7 @@ register_org_mcp_claude() {
     [ -n "$name" ] || continue
 
     is_reserved=0
-    for r in "${MCP_RESERVED_NAMES[@]}"; do
+    for r in ${MCP_RESERVED_NAMES[@]+"${MCP_RESERVED_NAMES[@]}"}; do
       [ "$r" = "$name" ] && is_reserved=1
     done
     if [ "$is_reserved" -eq 1 ]; then
@@ -328,7 +328,7 @@ register_org_mcp_claude() {
       echo "  WARNING: org-declared MCP server '$name' overrides your pre-existing '$name' entry (org declaration wins)."
       saved="$(jq -c --arg n "$name" '.mcpServers[$n] // empty' "$claude_config" 2>/dev/null || true)"
       claude mcp remove --scope user "$name" >/dev/null 2>&1 || true
-      if claude mcp add "${argv[@]}" >/dev/null 2>&1; then
+      if claude mcp add ${argv[@]+"${argv[@]}"} >/dev/null 2>&1; then
         echo "  ${name}: org declaration registered (replaced prior entry)"
       else
         echo "  ${name}: FAILED to register org declaration — restoring your prior entry."
@@ -345,10 +345,10 @@ register_org_mcp_claude() {
         fi
       fi
     else
-      if claude mcp add "${argv[@]}" >/dev/null 2>&1; then
+      if claude mcp add ${argv[@]+"${argv[@]}"} >/dev/null 2>&1; then
         echo "  ${name}: org declaration registered"
       else
-        echo "  ${name}: FAILED to register org declaration — re-run manually: claude mcp add ${argv[*]}"
+        echo "  ${name}: FAILED to register org declaration — re-run manually: claude mcp add ${argv[*]:-}"
       fi
     fi
   done <<< "$names"
@@ -424,7 +424,7 @@ pick_catalogue_entry() {
   fi
 
   local choice
-  choice="$(printf '%s\n' "${candidates[@]}" \
+  choice="$(printf '%s\n' ${candidates[@]+"${candidates[@]}"} \
     | fzf --height 40% --preview "head -20 $category_dir/{}.md" || true)"
   if [ -z "$choice" ]; then
     echo "No $category_label selected — skipping $category_label selection." >&2
@@ -498,7 +498,7 @@ mempalace_python_candidates() {
   fi
   candidates+=("python3")
   local py
-  for py in "${candidates[@]}"; do
+  for py in ${candidates[@]+"${candidates[@]}"}; do
     [ -n "$py" ] && printf '%s\n' "$py"
   done
 }
@@ -1895,7 +1895,7 @@ migrate_antigravity_superseded_components() {
     local dest="$superseded_root/$kind"
 
     if [ ${#explicit_names[@]} -gt 0 ]; then
-      names="$(printf '%s\n' "${explicit_names[@]}")"
+      names="$(printf '%s\n' ${explicit_names[@]+"${explicit_names[@]}"})"
     else
       names="$(_antigravity_framework_names "$artifacts_root" "$kind")"
       name_count="$(printf '%s' "$names" | grep -c . || true)"
@@ -1978,7 +1978,7 @@ migrate_antigravity_superseded_components() {
   if [ ${#residue[@]} -gt 0 ]; then
     echo "  The following carry framework provenance but match no served component" >&2
     echo "  name. They were NOT removed — check them, then remove by hand:" >&2
-    for item in "${residue[@]}"; do
+    for item in ${residue[@]+"${residue[@]}"}; do
       echo "    rm -rf ${item%% (*}" >&2
     done
   fi

@@ -70,7 +70,7 @@ scan_repo() {
     [ -z "$hit" ] && continue
     echo "  STALE RANGE: $hit" >&2
     violations=$((violations + 1))
-  done < <(git -C "$repo" grep -nE "$OLD_LIT_RE" -- . "${EXCLUDES[@]}" 2>/dev/null || true)
+  done < <(git -C "$repo" grep -nE "$OLD_LIT_RE" -- . ${EXCLUDES[@]+"${EXCLUDES[@]}"} 2>/dev/null || true)
 
   # --- Check (b): every literal numeric mempalace range must equal the pin ---
   while IFS= read -r hit; do
@@ -86,7 +86,7 @@ scan_repo() {
         violations=$((violations + 1))
       fi
     done < <(printf '%s\n' "$content" | grep -oE 'mempalace>=[0-9][0-9.,<]*')
-  done < <(git -C "$repo" grep -nE 'mempalace>=[0-9]' -- . "${EXCLUDES[@]}" 2>/dev/null || true)
+  done < <(git -C "$repo" grep -nE 'mempalace>=[0-9]' -- . ${EXCLUDES[@]+"${EXCLUDES[@]}"} 2>/dev/null || true)
 
   [ "$violations" -eq 0 ]
 }

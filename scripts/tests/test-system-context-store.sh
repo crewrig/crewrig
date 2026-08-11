@@ -59,7 +59,7 @@ if [ "${#store_files[@]}" -eq 0 ]; then
 else
   ok "${#store_files[@]} store file(s) present"
 fi
-for sf in "${store_files[@]}"; do
+for sf in ${store_files[@]+"${store_files[@]}"}; do
   if [ -s "$sf" ]; then ok "non-empty: ${sf##*/}"; else bad "empty store file: ${sf##*/}"; fi
 done
 
@@ -74,7 +74,7 @@ else
 fi
 
 # Every store file is referenced by a stub (no orphan)
-for sf in "${store_files[@]}"; do
+for sf in ${store_files[@]+"${store_files[@]}"}; do
   base="${sf##*/}"
   if grep -qF "system-context/$base" "$TOOLS_FILE"; then ok "referenced: $base"; else bad "orphan store file (no stub): $base"; fi
 done
@@ -134,7 +134,7 @@ GAP_SCRIPTS=(setup-gemini-interactive.sh setup-copilot-interactive.sh)
 PASS_SCRIPTS=(setup-claude-interactive.sh setup-antigravity-interactive.sh)
 
 # (a) the two gap CLIs call the guidance helper
-for s in "${GAP_SCRIPTS[@]}"; do
+for s in ${GAP_SCRIPTS[@]+"${GAP_SCRIPTS[@]}"}; do
   if grep -q "print_store_access_guidance" "$SETUP_DIR/$s"; then
     ok "gap CLI calls print_store_access_guidance: $s"
   else
@@ -143,7 +143,7 @@ for s in "${GAP_SCRIPTS[@]}"; do
 done
 
 # (b) the two PASS-default CLIs do NOT call it (no silent asymmetry)
-for s in "${PASS_SCRIPTS[@]}"; do
+for s in ${PASS_SCRIPTS[@]+"${PASS_SCRIPTS[@]}"}; do
   if grep -q "print_store_access_guidance" "$SETUP_DIR/$s"; then
     bad "PASS-default CLI unexpectedly calls print_store_access_guidance: $s"
   else
@@ -157,7 +157,7 @@ done
 # absence from executable (non-comment) code is the guard. Full-line comment
 # mentions (e.g. the copilot note explaining trustedFolders does NOT work) are
 # stripped first so they do not trip the check.
-for s in "${GAP_SCRIPTS[@]}" "${PASS_SCRIPTS[@]}"; do
+for s in ${GAP_SCRIPTS[@]+"${GAP_SCRIPTS[@]}"} ${PASS_SCRIPTS[@]+"${PASS_SCRIPTS[@]}"}; do
   code="$(grep -v '^[[:space:]]*#' "$SETUP_DIR/$s")"
   if echo "$code" | grep -Eq 'trustedFolders|permissions-config\.json'; then
     bad "setup writes a durable trust surface (trustedFolders/permissions-config.json): $s"

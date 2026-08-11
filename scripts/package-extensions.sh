@@ -10,7 +10,7 @@ if [ "$1" = "--include-org" ] || [ -n "${INCLUDE_ORG:-}" ]; then
   tiers+=(org)
 fi
 
-for tier in "${tiers[@]}"; do
+for tier in ${tiers[@]+"${tiers[@]}"}; do
   for dir in "$REPO_DIR"/extensions/"$tier"/*/; do
     if [ -d "$dir" ]; then
       EXT="$(basename "$dir")" bash "$REPO_DIR/scripts/package-extension.sh"
