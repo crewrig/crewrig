@@ -283,11 +283,11 @@ spec is never at once merged and still `draft` — and **no** separate,
 post-merge, metadata-only pull request is required to record the approval.
 
 *Merge mechanic.* Strictly **after** the approval event has been secured
-and strictly **before** running `gh pr merge --squash`, on the spec-PR branch
+and strictly **before** running `bash scripts/merge-spec-pr.sh`, on the spec-PR branch
 (`spec/<NNNN>-<slug>`) edit the spec's frontmatter (`status: draft` →
 `status: approved`, adding `interaction-mode` if it was omitted during
 `draft`), create a **new commit** — not `git commit --amend` — then `git push`
-and only then `gh pr merge --squash`. A new commit rather than an amend
+and only then `bash scripts/merge-spec-pr.sh`. A new commit rather than an amend
 because the spec-PR squash-merges, so both routes collapse to the same single
 commit on `main` carrying `status: approved`; a new commit needs only a plain
 `git push`, whereas an amend would force `git push --force-with-lease` and
