@@ -480,6 +480,14 @@ want_no_file() {
   return 0
 }
 
+want_file() {
+  if [ ! -e "$1" ]; then
+    WHY="expected path to exist: $1"
+    return 1
+  fi
+  return 0
+}
+
 # want_same <file-a> <file-b>
 want_same() {
   if ! cmp -s "$1" "$2"; then
@@ -1484,6 +1492,59 @@ case_22() {
   return 0
 }
 
+# The gate certifies a tree; spec 0126 makes the wrapped command run in THAT tree.
+# Two fixtures, because one cannot exhibit a divergence: the override names A while
+# the caller stands in B. Before 0126 the wrapped command was an ordinary child
+# process inheriting the caller's cwd, so `touch marker.txt` landed in B — the tree
+# the gate never read — and the run still exited 0. That is issue #779, and the
+# incident it was found by was `git clean -fdx` taking the same wrong turn.
+#
+# ASSERTED ON THE MUTATION, NOT ON A DIAGNOSTIC. A message naming the certified
+# tree can be perfectly correct while the file goes to the other one; only the
+# marker's location distinguishes the two behaviours. Both spellings of a path
+# resolve to the same inode, so this case is indifferent to the physical-vs-logical
+# hazard case 24 has to normalize for.
+case_23() {
+  new_fixture c23a
+  new_fixture c23b
+
+  run_claim_env "$(fx_wt c23b)" "$(fx_wt c23a)" run --agent alice -- touch marker.txt
+  want_rc 0 || return 1
+  want_file "$(fx_wt c23a)/marker.txt" || return 1
+  want_no_file "$(fx_wt c23b)/marker.txt" || return 1
+  return 0
+}
+
+# The break spec 0126 R3 accepts, pinned. A `run` from a SUBDIRECTORY of the
+# worktree now executes at the worktree ROOT, so a wrapped command's cwd — and with
+# it every relative path and every cwd-scoped operation, `git clean -fdx` above all
+# — moves. Accepted deliberately; unpinned it would be merely asserted.
+#
+# The expectation is NORMALIZED, and that is load-bearing rather than tidy.
+# $TOPLEVEL is physical (the script resolves it through `pwd -P`), while `fx_wt`
+# concatenates strings over a bare `mktemp -d`. On macOS those differ —
+# /var/folders/… against /private/var/folders/… — so an unnormalized expectation
+# fails on the maintainer's machine and passes on ubuntu-latest, which is a green
+# certifying the platform rather than the behaviour. The suite's header documents
+# the same asymmetry as load-bearing for case 12.
+#
+# Compared for EQUALITY, not with want_out: the root is a prefix of the
+# subdirectory, so a substring assertion would be satisfied by the very value this
+# case exists to reject.
+case_24() {
+  new_fixture c24
+  local expected
+  expected="$(cd "$(fx_wt c24)" && pwd -P)"
+
+  run_claim "$(fx_wt c24)/sub" run --agent alice -- sh -c 'pwd -P'
+  want_rc 0 || return 1
+  if [ "$OUT" != "$expected" ]; then
+    WHY="wrapped command reported cwd '$OUT'; expected the worktree root '$expected'"
+    return 1
+  fi
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -1513,10 +1574,12 @@ describe() {
     20) echo "Case 20 — an over-wide since_epoch does not pass as a fresh claim" ;;
     21) echo "Case 21 — a future since_epoch: skew protects the claim, corruption does not" ;;
     22) echo "Case 22 — a flag with no value is refused by name, not by silent exit 1" ;;
+    23) echo "Case 23 — the wrapped command mutates the tree the gate certified, not the caller's" ;;
+    24) echo "Case 24 — a run from a subdirectory executes at the worktree root" ;;
   esac
 }
 
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22; do
+for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24; do
   WHY=""
   OUT=""
   ERR=""

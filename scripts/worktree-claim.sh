@@ -80,7 +80,10 @@
 # widens the UNTRACKED view, not the ignored one — so the gate reads an EMPTY
 # status over a tree full of ignored build output and local scratch files, and
 # `git clean -fdx` / `-fdX` delete exactly those. A `run` wrapping `git clean
-# -fdx` therefore passes the gate, destroys them, and exits 0. The guarantee this
+# -fdx` therefore passes the gate, destroys them, and exits 0 — over the WHOLE
+# worktree, since spec 0126 runs the wrapped command at $TOPLEVEL whatever
+# directory the caller stood in. Scope one deliberately with a pathspec from the
+# root (`git clean -fdx -- <subdir>/`), never by standing in it. The guarantee this
 # script offers is consequently NARROWER than "a whole-tree operation cannot
 # destroy work": it is that no such operation proceeds over work git can NAME as
 # tracked or untracked. Ignored state is outside the claim's protection, and an
@@ -133,7 +136,9 @@
 #       failed (the gate then proves nothing and refuses to call the tree clean);
 #       for the four MUTATING subcommands additionally: the toplevel is not under
 #       `.worktrees/`; for `status` / `history` additionally: no `--ticket` and
-#       none derivable.
+#       none derivable; for `run` additionally: the certified toplevel could not
+#       be entered (it went away between the gate and the execution), in which
+#       case the wrapped command never starts and contributes no output.
 #   4   Refused (`take`, `takeover`, `release`, `run`) — the worktree is claimed
 #       by another agent (`take`, `run`), the claim is not stale or does not
 #       exist (`takeover`), or the caller is not the holder (`release`). stdout
@@ -174,19 +179,43 @@
 # tree dirtied inside the TOCTOU window releases the claim and exits 5.
 #
 # Environment:
-#   CREWRIG_REPO_DIR   Repository context override; every git invocation THIS
-#                      SCRIPT makes runs with `git -C` against it — but NOT the
-#                      command `run` wraps, which inherits the caller's cwd like
-#                      any other child process. Set the override to one tree while
-#                      standing in another and the gate certifies the tree named
-#                      by the variable while the command mutates the tree you are
-#                      standing in: a clean bill of health for a tree nobody
-#                      touched. In normal use the two coincide, because the
-#                      default IS the current directory; the divergence needs the
-#                      override, which is why it exists for the regression suite
-#                      (whose fixtures live under `mktemp -d`) and not for
-#                      day-to-day invocation. `cd` into the worktree and let the
-#                      default apply. Default: the current directory.
+#   CREWRIG_REPO_DIR   Repository context override. It names the tree THIS SCRIPT
+#                      inspects — every git invocation the script makes runs with
+#                      `git -C` against it — AND, since spec 0126, the tree the
+#                      command `run` wraps executes in. One variable, one tree, no
+#                      divergence to configure and none to check. Default: the
+#                      current directory.
+#
+#                      BREAKING CHANGE (spec 0126, issue #779). Before it, the
+#                      wrapped command was an ordinary child process inheriting the
+#                      CALLER's cwd, so pointing the override at one tree while
+#                      standing in another certified tree A and mutated tree B — a
+#                      clean bill of health for a tree nobody touched. `run` now
+#                      moves to $TOPLEVEL before executing, ALWAYS, override or
+#                      not. Two consequences for a `run` invoked from a
+#                      SUBDIRECTORY of the worktree, where the cwd used to be the
+#                      subdirectory and is now the worktree root:
+#
+#                        1. A wrapped command naming a RELATIVE PATH resolves it
+#                           against the worktree root.
+#                        2. `git clean -fdx` / `-fdX` acts on the WHOLE WORKTREE
+#                           instead of that subdirectory. This is the one operation
+#                           where the widening bites, and the set is closed, for
+#                           two different reasons. `git checkout -- .` is the only
+#                           other cwd-scoped operation here — its `.` pathspec IS
+#                           relative — but it acts on nothing over the empty status
+#                           the gate requires. `git stash` and `git reset --hard`
+#                           take no pathspec and have ALWAYS acted on the whole
+#                           repository from any directory: their scope does not
+#                           move, because it was never the caller's to begin with.
+#                           Measured, not reasoned: run from a subdirectory, both
+#                           revert a modification at the repository root.
+#                           The gate does NOT absorb the `git clean` case — see the
+#                           ignored-state block above and `--help`. To clean one
+#                           subtree, say so explicitly from the root:
+#                           `git clean -fdx -- <subdir>/`. Do not express it by
+#                           standing in the subdirectory; that no longer scopes
+#                           anything.
 
 set -euo pipefail
 
@@ -214,7 +243,9 @@ worktree-claim.sh — exclusive, attributable claims on a shared ticket worktree
 
   bash scripts/worktree-claim.sh run --agent <name> [--ticket <id>] -- <command…>
       RECOMMENDED. Take the claim, run the command, release on exit. The claim
-      is held for the whole duration of the operation by construction.
+      is held for the whole duration of the operation by construction. The
+      command runs in the worktree root — the same tree the gate certified —
+      whatever directory you invoked this from.
 
   bash scripts/worktree-claim.sh take --agent <name> [--ticket <id>] [--operation "<cmd>"]
       Take the claim for an operation that is not a single command.
@@ -836,6 +867,45 @@ cmd_run() {
     run_release_on_exit
     refuse_dirty
   fi
+
+  # The command runs where the gate looked. Both are $TOPLEVEL, so the certified
+  # tree and the mutated tree are one tree BY CONSTRUCTION rather than by a check
+  # that could be wrong (spec 0126 R1/R2). Before this, the wrapped command was a
+  # child process inheriting the CALLER's cwd while the gate read the override, so
+  # the two diverged on demand and the gate issued a clean bill of health for a
+  # tree nobody was about to touch (#779).
+  #
+  # This is a `cd` in THIS shell, and the two subshell forms are refused for
+  # measured reasons, not stylistic ones:
+  #   ( cd "$TOPLEVEL" && "$@" ) || RC=$?   a failed `cd` hands RC the status of
+  #                                         `cd`, indistinguishable from a wrapped
+  #                                         command that exited 1.
+  #   ( cd "$TOPLEVEL"; "$@" )   || RC=$?   WORSE, and it is the natural rewrite
+  #                                         once the form above is refused: errexit
+  #                                         is suppressed inside a subshell that is
+  #                                         the left operand of `||`, so the command
+  #                                         runs in the caller's directory and the
+  #                                         invocation exits 0. That is #779 itself,
+  #                                         re-created inside its own fix, wearing a
+  #                                         success code.
+  # Nothing below resolves a relative path: `git_here` has no call site after the
+  # toplevel resolution, tree_is_clean uses `git -C "$TOPLEVEL"`, and everything
+  # the EXIT trap reaches hangs off the absolutized $COMMON. $TOPLEVEL is absolute,
+  # so CDPATH cannot make this `cd` print to stdout.
+  #
+  # NO TEST DEFENDS THIS CHOICE, AND THE SUITE'S GREEN MUST NOT BE READ AS ONE.
+  # Both rejected forms above were mutated in and run against the full suite during
+  # the cold review of #837: each reported `24 passed, 0 failed`, the shipped code's
+  # own result. Cases 23 and 24 discriminate this fix from the behaviour that
+  # PRECEDED it — which is what spec 0126 R7/R8 ask for — but not from a plausible
+  # rewrite INTO either subshell, because all three agree whenever the `cd`
+  # succeeds. They diverge only when it fails, and no fixture here constructs that:
+  # it needs `git -C "$TOPLEVEL" status` to succeed and the `cd` to it to fail a few
+  # interpreter instructions later. So what protects this line from a future
+  # simplification is this comment, not the suite. Tracked in #839.
+  cd "$TOPLEVEL" || fail "cannot enter '$TOPLEVEL', the tree the gate just
+       certified. Refusing to run the command from a tree the gate never looked
+       at — that divergence is the defect this guard exists to remove."
 
   RC=0
   "$@" || RC=$?
