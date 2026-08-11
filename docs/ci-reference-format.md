@@ -54,6 +54,7 @@ these keys:
 | `exception` | iff `specific` | mapping | `{engine, evidence}` (see *Portability and exceptions*). |
 | `command` | iff `portable` | list of strings | The business invocation command(s) that realize the job (see *Invocation command and execution requirements*). |
 | `requires` | iff `portable` | mapping | The engine-agnostic execution requirement: `{runtime, tools, history-depth}` (see *Invocation command and execution requirements*). |
+| `env` | optional | mapping | Optional dictionary of job-scoped environment variable keys and string values (spec 0131). |
 
 **Granularity — one capability is exactly one job (spec 0047 R1).** The steps
 *inside* a job are an implementation detail of that one capability, **not**
@@ -175,6 +176,14 @@ or runtime it does not declare is rejected:
   before the capability is accepted as derivable (delta-02 Scenario 2).
 - A `specific` capability gains no `requires` (R12 scopes the obligation to
   portable capabilities, consistent with delta-01 R11).
+
+### `env` — job-scoped environment variables (spec 0131)
+
+`env` defines an optional mapping of environment variable keys to string values.
+When declared on a portable capability, `scripts/build-ci.sh` emits them into the
+job's `variables:` section in `.gitlab-ci.yml`, and `scripts/check-ci-parity.sh`
+verifies that the environment variables are exhibited by the attributed GitHub Actions
+job and matched on GitLab.
 
 ### GitLab generation
 

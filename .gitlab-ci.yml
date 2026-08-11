@@ -136,6 +136,7 @@ lint-specs:
   image: node:22
   variables:
     GIT_DEPTH: "0"
+    BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
   before_script:
     - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
   script:
@@ -160,6 +161,7 @@ check-skill-versions:
   image: debian:stable-slim
   variables:
     GIT_DEPTH: "0"
+    BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
   script:
     - "bash scripts/check-skill-versions.sh"
   rules:
@@ -169,6 +171,7 @@ check-extension-version-bump:
   image: debian:stable-slim
   variables:
     GIT_DEPTH: "0"
+    BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
   script:
     - "bash scripts/check-extension-version-bump.sh"
   rules:
@@ -178,6 +181,9 @@ check-spec-id-reserved:
   image: debian:stable-slim
   variables:
     GIT_DEPTH: "0"
+    BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    CREWRIG_PR_BASE_REPO: "$CI_PROJECT_PATH"
+    CREWRIG_PR_HEAD_REPO: "$CI_MERGE_REQUEST_SOURCE_PROJECT_PATH"
   script:
     - "command -v git >/dev/null || (apt-get update && apt-get install -y --no-install-recommends git ca-certificates)"
     - "bash scripts/check-spec-id-reserved.sh"

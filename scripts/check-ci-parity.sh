@@ -214,6 +214,14 @@ for ((i = 0; i < cap_count; i++)); do
       done
     fi
   fi
+
+  # Check env mapping if present (spec 0131).
+  env_type=$(yq ".capabilities[$i].env | tag" "$REFERENCE")
+  if [ "$env_type" != "!!null" ] && [ -n "$env_type" ] && [ "$env_type" != "null" ]; then
+    if [ "$env_type" != "!!map" ]; then
+      verr "$label: env must be a key-value mapping (spec 0131)"
+    fi
+  fi
 done
 
 if [ "${#validity_errors[@]}" -gt 0 ]; then
@@ -398,6 +406,29 @@ check_gha_job() {
     [ "$prov_fetch" = "0" ] || \
       fail "capability '$id' (github-actions): requires full source history but checkout fetch-depth is '${prov_fetch:-unset}' (R4)"
   fi
+
+  # Spec 0131 — env parity check.
+  local req_env gha_env_job gha_env_steps gha_env_all
+  req_env=$(yq -r ".capabilities[] | select(.id == \"$id\") | .env // {} | keys | .[]" "$REFERENCE")
+  gha_env_job=$(yq -r ".jobs.\"$jk\".env // {} | keys | .[]" "$wf" 2>/dev/null || true)
+  gha_env_steps=$(yq -r ".jobs.\"$jk\".steps[].env // {} | keys | .[]" "$wf" 2>/dev/null || true)
+  gha_env_all=$(printf '%s\n%s' "$gha_env_job" "$gha_env_steps" | grep -v '^$' | sort -u || true)
+
+  local ek
+  while IFS= read -r ek; do
+    [ -z "$ek" ] && continue
+    if ! in_list "$ek" "$gha_env_all"; then
+      fail "capability '$id' (github-actions): requires env variable '$ek' but GHA job does not exhibit it (spec 0131)"
+    fi
+  done <<< "$req_env"
+
+  local gek
+  while IFS= read -r gek; do
+    [ -z "$gek" ] && continue
+    if ! in_list "$gek" "$req_env"; then
+      fail "capability '$id' (github-actions): GHA job defines env variable '$gek' not declared in reference env block (spec 0131)"
+    fi
+  done <<< "$gha_env_all"
 }
 
 if $GHA_PRESENT; then

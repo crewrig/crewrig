@@ -404,6 +404,34 @@ refute_in() {
 }
 
 # ---------------------------------------------------------------------------
+# S10e — Reference validity: env must be a key-value mapping (spec 0131).
+# ---------------------------------------------------------------------------
+{
+  f="$(make_fixture)"
+  yq -i '(.capabilities[] | select(.id == "build") | .env) = "invalid-string"' \
+    "$f/ci/ci-capabilities.yml"
+
+  run_check "$f"
+  expect_exit 1 "S10e: invalid env schema fails closed"
+  expect_in err "build" "S10e: names the capability"
+  expect_in err "env must be a key-value mapping" "S10e: names the env mapping violation"
+}
+
+# ---------------------------------------------------------------------------
+# S11 — Env block divergence (spec 0131): GHA defines an undeclared env variable.
+# ---------------------------------------------------------------------------
+{
+  f="$(make_fixture)"
+  yq -i '(.jobs.build.env.UNEXPECTED_VAR) = "val"' \
+    "$f/.github/workflows/build.yml"
+
+  run_check "$f"
+  expect_exit 1 "S11: GHA env block divergence fails closed"
+  expect_in err "capability 'build' (github-actions)" "S11: names capability + platform"
+  expect_in err "UNEXPECTED_VAR"                     "S11: names the divergent env variable"
+}
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 total=$((pass + fail))
