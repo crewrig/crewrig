@@ -2503,6 +2503,94 @@ STUB
 }
 
 # ---------------------------------------------------------------------------
+# Case nn — the dedup's seen-string is delimited by a NEWLINE, and a space
+# delimiter silently drops a modified file from the refusal.
+#
+# Without this case the delimiter is defended by a comment and nothing else:
+# reverting the newline to a space leaves the rest of the suite fully green, so
+# the guard reads as protected while being unprotected. That gap is what the cold
+# review of this PR found, and it is the same shape as the defect the whole ticket
+# is about — a claim made in prose with no signal behind it.
+#
+# The fixture is built so a space-delimited membership test produces a FALSE HIT.
+# The `container` entry is processed first and stores the member `container/name b`;
+# the separate `b` entry probes the string "b", which is a space-separated
+# fragment of what is stored. Under a space delimiter that probe reads as
+# already-seen and `b` never reaches the report — a modified file, silently
+# missing. Under a newline delimiter it cannot: git prints a space in a path
+# verbatim but C-quotes control characters, so a member can hold a space and can
+# never hold a newline.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "container/name b" "upstream spaced" \
+    "b" "upstream b"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'container\nb\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "container/name b" "upstream spaced" \
+    "b" "upstream b"
+
+  printf 'locally customised spaced' > "$adopter/container/name b"
+  printf 'locally customised b'      > "$adopter/b"
+
+  run_case_dirty_report \
+    "case-nn: a space-bearing member does not mask a separate modified file" \
+    "$adopter" \
+    "container/name b" "b" \
+    -- \
+    "container"
+}
+
+# ---------------------------------------------------------------------------
+# Case oo — spec 0129 R4: the refusal states the targeted restoration and warns
+# against the directory-level move.
+#
+# R4 is the half of this spec that reaches the adopter who already knows the
+# directory-level habit and would reproduce it from memory. Deleting all four
+# guidance lines left the suite green before this case existed, so the
+# requirement shipped with no signal behind it.
+#
+# Asserted on the sentence that carries the warning rather than on the whole
+# block: the wording may be improved, but a refusal that stops warning against
+# the directory-level checkout has lost the requirement.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "tools/alpha.sh" "upstream alpha"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'tools\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "tools/alpha.sh" "upstream alpha"
+
+  printf 'locally customised alpha' > "$adopter/tools/alpha.sh"
+
+  run_case_stderr \
+    "case-oo: the refusal warns against restoring the containing directory" \
+    "$adopter" \
+    1 \
+    "Never restore the containing directory"
+
+  run_case_stderr \
+    "case-oo: the refusal states the targeted restoration command" \
+    "$adopter" \
+    1 \
+    "Restore ONLY the files listed above"
+}
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 total=$((pass + fail))

@@ -459,10 +459,13 @@ for i in "${!PATHS[@]}"; do
   fi
 done
 
-# One file can be governed by two strict entries — the manifest ships
-# `docs` + `docs/index.json` and `artifacts/core` + `artifacts/core/system-context`
-# — and would then be appended twice, putting a duplicated line in the list the
-# adopter is asked to copy. Dedup HERE, in one pass after the loop, and not at
+# One file can be governed by two strict entries and would then be appended
+# twice, putting a duplicated line in the list the adopter is asked to copy. The
+# manifest ships FOUR such pairs today — `docs` + `docs/index.json`,
+# `artifacts/core` + `artifacts/core/system-context`, and `scripts` with each of
+# `scripts/sync-from-upstream.sh` and `scripts/build-docs-index.sh` — but the
+# dedup is placement-general and does not depend on that count. Dedup HERE, in
+# one pass after the loop, and not at
 # append time: the `docs` pair is produced by one append from the tree branch and
 # one from the blob branch, so an append-time filter inside either branch cannot
 # see it. Order-preserving, first occurrence wins — the duplicates are identical
