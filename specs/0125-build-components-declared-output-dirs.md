@@ -1,7 +1,7 @@
 ---
 id: "0125"
 slug: build-components-declared-output-dirs
-status: draft
+status: approved
 complexity: standard
 interaction-mode: AUTO
 related-issue: 804
