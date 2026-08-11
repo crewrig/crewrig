@@ -44,6 +44,14 @@
 #      malformed row follows two valid ones, plus the converse on a well-formed
 #      set (spec 0120 R5). Each refusal is asserted on exit status, stderr AND
 #      empty stdout, the last being the scenario's "it reports no construct".
+#   l. The comment stripper is probed on 8 fixtures covering quote state, so a
+#      regression in comment handling fails here rather than widening or
+#      narrowing the phase-2 scan's view of a line (spec 0124 R6).
+#
+# Cases h, i, and l all pull their fixture rows from .tsv files under
+# scripts/tests/fixtures/. Those files live outside the phase-2 scan's tree,
+# so they can hold example unguarded expansions without the enforcement
+# flagging them.
 #
 # Scenario 5 — a corrected suite reports the same verdicts on both shells — is
 # only partly scriptable here: comparing two shells needs two Bash binaries, and
@@ -74,6 +82,12 @@ SCRIPT_UNDER_TEST="$SCRIPT_DIR/check-bash32-portability.sh"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DECLARED_SET="$REPO_ROOT/ci/bash32-forbidden.txt"
 CONVENTIONS_DOC="$REPO_ROOT/docs/scripting-conventions.md"
+
+# The detector and the comment stripper live in the shared lib, used by both
+# this suite and the enforcement's phase-2 scan. Source it here so a single
+# definition serves both consumers.
+# shellcheck source=../lib/bash32-array-guard.sh
+. "$SCRIPT_DIR/lib/bash32-array-guard.sh"
 
 TAB="$(printf '\t')"
 
@@ -134,59 +148,11 @@ run_check() {
 ok() { echo "PASS  $1"; pass=$((pass + 1)); }
 bad() { echo "FAIL  $1"; fail=$((fail + 1)); }
 
-# bare_expansions_in <line> — echo the `name[subscript]` of every array expansion
-# on the line that would abort under `set -u` when the array is empty, or nothing
-# when the line is safe. Used by case h against the corrected suites, and probed
-# directly by case i.
-#
-# It works by CONSUMPTION, not by tallying, and that distinction is the whole
-# history of this function. Three successive tally designs each left a hole:
-#
-#   1. Per line, guarded-vs-bare counts: a guard anywhere on the line hid a bare
-#      expansion elsewhere on it.
-#   2. Per line with comment lines dropped: fixed a false positive, not the tally.
-#   3. Per array name: narrowed *who* could spend the slack without removing it.
-#
-# The slack is a property of the guard SPELLING. `${A[@]+"${A[@]}"}` contains one
-# closed `${A[@]}` and is worth one; `${A[*]:-}` contains no closed form and is
-# worth zero — so on `"${A[*]:-} ${A[@]}"` any tally balances while `A` is bare.
-# That shape reproduces the very false green this ticket exists to remove:
-# `A=(); s="${A[*]:-}"; out=$(printf '%s' "${A[@]}")` prints
-# `A[@]: unbound variable` to stderr and still exits 0.
-#
-# So: count the closed forms `${name[@]}` / `${name[*]}`, then subtract only the
-# ones a complete canonical guard `${name[@]+"${name[@]}"}` accounts for. Anything
-# left is genuinely bare. `${name[*]:-…}` contributes no closed form, so it needs
-# no special case. Matching is done with `grep -oF` on literals built per name, so
-# there is no regex to escape and no BSD-versus-GNU divergence to reason about.
-#
-# Deliberately not matched, all verified safe on an empty array under `set -u` on
-# 3.2.57: `${#name[@]}` (length), `${name[@]:1}` (slice), `${!name[@]}` (keys).
-bare_expansions_in() {
-  _bx_line="$1"
-  _bx_out=''
-  # Array names on the line, deduplicated. `tr -d` rather than a sed capture:
-  # BSD sed reads `\{` as an interval and errors "braces not balanced".
-  _bx_names=$(printf '%s\n' "$_bx_line" \
-    | grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*\[' | tr -d '${[' | sort -u)
-  for _bx_nm in $_bx_names; do
-    for _bx_sub in '@' '*'; do
-      # Braced interpolation (`${var}[`) rather than `$var[`: the latter is a
-      # literal string being built for `grep -oF`, but shellcheck reads it as an
-      # array expansion and raises SC1087 at error level.
-      _bx_closed=$(printf '%s\n' "$_bx_line" \
-        | grep -oF "\${${_bx_nm}[${_bx_sub}]}" | wc -l | tr -d ' ')
-      _bx_wrapped=$(printf '%s\n' "$_bx_line" \
-        | grep -oF "\${${_bx_nm}[${_bx_sub}]+\"\${${_bx_nm}[${_bx_sub}]}\"}" \
-        | wc -l | tr -d ' ')
-      if [ "$_bx_closed" -gt "$_bx_wrapped" ]; then
-        _bx_out="${_bx_out}${_bx_nm}[${_bx_sub}] "
-      fi
-    done
-  done
-  # Trailing space trimmed without a bashism, so the caller can test -n cleanly.
-  printf '%s' "$_bx_out" | sed -e 's/[[:space:]]*$//'
-}
+# bare_expansions_in and strip_comments are provided by the shared lib
+# (scripts/lib/bash32-array-guard.sh), sourced at the top of this file. The
+# detector is defined in exactly one place — the lib — because it is now used
+# by BOTH the enforcement scan (phase 2 of check-bash32-portability.sh) and
+# this suite. Its design history is recorded at its definition site.
 
 # ---------------------------------------------------------------------------
 # Case a — A reintroduced forbidden construct is rejected, by file and line.
@@ -675,47 +641,35 @@ $unguarded"
 # ---------------------------------------------------------------------------
 {
   # Each row: <expect> <TAB> <description> <TAB> <line>. `expect` is `bare` when
-  # the detector must report something, `safe` when it must report nothing.
-  # Written with printf, never a heredoc, for the reason recorded in the header.
-  i_rows=$(printf '%s\n' \
-    'safe	a complete canonical guard is safe	for p in ${D[@]+"${D[@]}"}; do' \
-    'safe	two canonical guards on one line	for p in ${D[@]+"${D[@]}"} ${C[@]+"${C[@]}"}; do' \
-    'bare	bare expansion alone	printf "%s" "${D[@]}"' \
-    'bare	bare behind a guard on another name	for p in "${D[@]}" ${C[@]+"${C[@]}"}; do' \
-    'safe	a default-valued guard is safe	s="${D[*]:-}"' \
-    'safe	a default with a literal is safe	s="${D[*]:-(none)}"' \
-    'bare	bare masked by :- on ANOTHER name	s="${C[*]:-} ${D[@]}"' \
-    'bare	bare masked by :- on the SAME name	s="${D[*]:-} ${D[@]}"' \
-    'bare	bare masked by :- on SAME name AND subscript	s="${D[@]:-} ${D[@]}"' \
-    'bare	prefix names do not bleed	s="${D[*]:-}" t="${DE[@]}"' \
-    'safe	length form is safe	if [ ${#D[@]} -eq 0 ]; then' \
-    'safe	slice form is safe	echo "${D[@]:1}"' \
-    'safe	key form is safe	echo "${!D[@]}"')
+  # the detector must report something, `safe` when it must report nothing. The
+  # rows live in the fixture .tsv (see the header), outside the phase-2 scan tree.
+  fixture="$SCRIPT_DIR/tests/fixtures/detector-probes.tsv"
+  if [ ! -f "$fixture" ]; then
+    bad "case-i: fixture missing — $fixture"
+  else
+    i_fail=0
+    i_total=0
+    while IFS= read -r row || [ -n "$row" ]; do
+      [ -n "$row" ] || continue
+      expect=$(printf '%s' "$row" | cut -f1)
+      what=$(printf '%s' "$row" | cut -f2)
+      line=$(printf '%s' "$row" | cut -f3-)
+      got="$(bare_expansions_in "$line")"
+      i_total=$((i_total + 1))
+      if [ "$expect" = bare ] && [ -z "$got" ]; then
+        bad "case-i: detector missed a bare expansion — $what: $line"
+        i_fail=$((i_fail + 1))
+      elif [ "$expect" = safe ] && [ -n "$got" ]; then
+        bad "case-i: detector flagged a safe line [$got] — $what: $line"
+        i_fail=$((i_fail + 1))
+      fi
+    done < "$fixture"
 
-  i_fail=0
-  i_total=0
-  while IFS= read -r row || [ -n "$row" ]; do
-    [ -n "$row" ] || continue
-    expect=$(printf '%s' "$row" | cut -f1)
-    what=$(printf '%s' "$row" | cut -f2)
-    line=$(printf '%s' "$row" | cut -f3-)
-    got="$(bare_expansions_in "$line")"
-    i_total=$((i_total + 1))
-    if [ "$expect" = bare ] && [ -z "$got" ]; then
-      bad "case-i: detector missed a bare expansion — $what: $line"
-      i_fail=$((i_fail + 1))
-    elif [ "$expect" = safe ] && [ -n "$got" ]; then
-      bad "case-i: detector flagged a safe line [$got] — $what: $line"
-      i_fail=$((i_fail + 1))
+    if [ "$i_total" -ne 13 ]; then
+      bad "case-i: expected 13 detector probes, ran $i_total"
+    elif [ "$i_fail" -eq 0 ]; then
+      ok "case-i: the bare-expansion detector is correct on all 13 probes, both directions"
     fi
-  done <<DETECTOR_PROBE
-$i_rows
-DETECTOR_PROBE
-
-  if [ "$i_total" -ne 13 ]; then
-    bad "case-i: expected 13 detector probes, ran $i_total"
-  elif [ "$i_fail" -eq 0 ]; then
-    ok "case-i: the bare-expansion detector is correct on all 13 probes, both directions"
   fi
 }
 
@@ -881,6 +835,46 @@ DETECTOR_PROBE
     ok "case-k: a well-formed declared set is accepted by both requests (R5)"
   else
     bad "case-k: well-formed set gave verdict exit $k_verdict_exit, query exit $CHECK_EXIT, $k_ill ill-shaped of $k_rows row(s)"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case l — The comment stripper is probed on quote-state fixtures (spec 0124 R6).
+#
+# The phase-2 scan strips comments before it runs the detector, so a wrong call
+# on where a comment starts — an unquoted `#` inside quotes, an escaped quote,
+# a mid-word `#` — shifts the view of a line and can either hide a bare
+# expansion or manufacture one. Case l pins that boundary down.
+# ---------------------------------------------------------------------------
+{
+  fixture="$SCRIPT_DIR/tests/fixtures/strip-comments.tsv"
+  if [ ! -f "$fixture" ]; then
+    bad "case-l: fixture missing — $fixture"
+  else
+    l_fail=0
+    l_total=0
+    while IFS= read -r row || [ -n "$row" ]; do
+      [ -n "$row" ] || continue
+      expected=$(printf '%s' "$row" | cut -f1)
+      what=$(printf '%s' "$row" | cut -f2)
+      input=$(printf '%s' "$row" | cut -f3-)
+      got="$(strip_comments "$input")"
+      # The stripper is pure substring arithmetic and keeps the whitespace that
+      # preceded the `#`. That whitespace is irrelevant to the detector's grep,
+      # so drop it here to keep the fixture expectations readable.
+      got="$(printf '%s' "$got" | sed 's/[[:space:]]*$//')"
+      l_total=$((l_total + 1))
+      if [ "$got" != "$expected" ]; then
+        bad "case-l: strip_comments mismatch — $what: got [$got], want [$expected]"
+        l_fail=$((l_fail + 1))
+      fi
+    done < "$fixture"
+
+    if [ "$l_total" -ne 8 ]; then
+      bad "case-l: expected 8 strip-comments probes, ran $l_total"
+    elif [ "$l_fail" -eq 0 ]; then
+      ok "case-l: the comment stripper is correct on all 8 quote-state probes"
+    fi
   fi
 }
 

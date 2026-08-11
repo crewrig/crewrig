@@ -1,0 +1,8 @@
+echo hi	echo full-line trailing comment	echo hi # note
+	empty	# whole line is a comment
+echo 'a # b'	# inside single quotes is literal	echo 'a # b'
+echo "a # b"	# inside double quotes is literal	echo "a # b"
+nohash#x	# mid-word is not a comment	nohash#x
+echo "say \"hi\""	escaped quote does not toggle; later # is a comment	echo "say \"hi\"" # note
+s="${D[@]}"	guard preserved before a comment	s="${D[@]}" # note
+echo hi	comment after trailing space	echo hi   # note
