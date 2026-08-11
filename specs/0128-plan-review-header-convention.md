@@ -1,7 +1,7 @@
 ---
 id: "0128"
 slug: plan-review-header-convention
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 833
