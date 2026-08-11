@@ -4,10 +4,12 @@ description: "Generic architecture agent. Drafts ADRs, runs design reviews,
   proposes alternatives with explicit trade-offs, and maps blast radius."
 type: agent
 metadata:
+  claude:
+    model: opus
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.2"
+    version: "1.1.3"
 ---
 
 # Architect Agent

@@ -5,10 +5,12 @@ description: "Generic documentation agent. Drafts ADRs, READMEs, in-code
   and stays close to the code where possible."
 type: agent
 metadata:
+  claude:
+    model: haiku
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.2"
+    version: "1.1.3"
 ---
 
 # Doc Writer Agent

@@ -1,11 +1,12 @@
 ---
 name: tester
 description: "Generic test-authoring agent. Writes high-signal regression tests, enumerates priority edge cases, and verifies fixes by failing-then-passing the test against the bug."
+model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.2"
+    version: "1.1.3"
 ---
 
 

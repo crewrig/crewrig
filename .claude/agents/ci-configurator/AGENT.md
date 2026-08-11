@@ -5,11 +5,12 @@ engine — GitHub Actions or GitLab CI/CD. Resolves the engine target,
 produces a commit-ready pipeline (hand-authored for GitHub Actions,
 derived from the platform-neutral capability reference for GitLab),
 and validates its own output before delivery."
+model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 
