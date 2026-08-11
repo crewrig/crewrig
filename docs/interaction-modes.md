@@ -73,7 +73,10 @@ new file, no other edits) merging that content **unchanged** discharges the
 pre-merge merge-authorization gate for that spec-PR. The orchestrator SHALL
 NOT fire a second merge-authorization request for such a spec-PR, because
 the artifact merged to `main` is the identical, unchanged artifact the
-content-approval already approved. This discharge is deliberately narrow —
+content-approval already approved. The lifecycle-metadata transition
+(`status` and `interaction-mode`) mandated by `docs/spec-format.md` is
+explicitly NOT a content change and does NOT forfeit this
+merge-authorization discharge. This discharge is deliberately narrow —
 it is not a general waiver of the gate. It does **not** apply in `AUTO`,
 where no SPECS-stage content-approval gate runs to discharge it, so the
 merge-authorization request there still fires and remains the sole approval
