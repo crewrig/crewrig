@@ -40,8 +40,10 @@
 # branch: it creates a single commit whose tree is byte-identical to what the
 # restore alone produced and whose second parent is FETCH_HEAD, so later
 # history-inspection commands (`git log`, `git merge-base`, `git bisect`)
-# surface the upstream lineage directly. Two failure modes apply only in this
-# mode:
+# surface the upstream lineage directly. That one commit inherits the
+# repository's own commit.gpgsign setting (spec 0122): it is signed wherever
+# an ordinary `git commit` in that repository would be. Three failure modes
+# apply only in this mode:
 #
 #   - Shallow-clone refusal: exits non-zero before any fetch, restore, or
 #     commit when the local repository is a shallow clone. This is a
@@ -54,6 +56,11 @@
 #     — every `strict`/`adopt-on-edit` manifest entry, minus any nested
 #     `excluded` child — plus the .crewrig/.synced-markers/ bookkeeping
 #     directory.
+#   - Signing refusal: aborts the history-preserving step (same posture as
+#     the anti-pollution guard — no commit, branch tip unmoved, restored
+#     files left in the working tree) when the repository is configured to
+#     sign commits but the signature cannot be determined or produced.
+#     Degrading to an unsigned commit is never an accepted outcome.
 #
 # When FETCH_HEAD is already an ancestor of the current branch tip, the mode
 # is a no-op: no commit is created and the script exits zero.
@@ -575,7 +582,8 @@ for i in "${!PATHS[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
-# --preserve-history: history-preserving graft commit (spec 0086 R5-R9, R11).
+# --preserve-history: history-preserving graft commit (spec 0086 R5-R9, R11;
+# spec 0122 R1-R8 for that commit's signature status).
 # Reached only when the policy-aware restore above completed without
 # aborting (R4) — the strict dirty-core guard and any per-path failure exit
 # earlier, above this point, so no ancestry is ever recorded on that path.
@@ -625,9 +633,78 @@ if [ "$PRESERVE_HISTORY" = true ]; then
   GRAFT_TREE="$(git -C "$REPO_DIR" write-tree)"
   UPSTREAM_SHA="$(git -C "$REPO_DIR" rev-parse FETCH_HEAD)"
   COMMIT_MSG="🔀 Graft upstream history via --preserve-history ($(git -C "$REPO_DIR" rev-parse --short FETCH_HEAD))"
-  GRAFT_COMMIT="$(git -C "$REPO_DIR" commit-tree "$GRAFT_TREE" -p "$BRANCH_TIP" -p "$UPSTREAM_SHA" -m "$COMMIT_MSG")"
+
+  # spec 0122 R1-R2 — commit-tree neither reads commit.gpgsign nor is
+  # overridden by it, so neither direction is automatic: resolve the
+  # repository's own setting and pass -S ourselves.
+  #
+  # The presence probe stays an `if` condition because there a non-zero status
+  # legitimately means "unset". The VALUE read must not be one: git exits 128
+  # on a malformed boolean, and a command substitution in the word of a
+  # `[ … ]` test — or anywhere inside an `if` condition, where errexit is
+  # suspended — discards that status twice over, silently yielding an
+  # unsigned commit and exit 0. An assignment propagates it. The explicit
+  # branch below names the cause in English because git's own diagnostic here
+  # is localized, so it is not something an operator or a test can rely on.
+  GRAFT_SIGN=false
+  GRAFT_SIGN_ARGS=()
+  if git -C "$REPO_DIR" config --get commit.gpgsign >/dev/null 2>&1; then
+    if ! GRAFT_SIGN_RAW="$(git -C "$REPO_DIR" config --bool --get commit.gpgsign)"; then
+      echo "Error: --preserve-history cannot determine whether to sign this commit — commit.gpgsign holds a value git cannot read as a boolean; see the git error above." >&2
+      echo "The branch tip is unchanged and the restored files remain in the working tree. Correct commit.gpgsign and re-run." >&2
+      exit 1
+    fi
+    if [ "$GRAFT_SIGN_RAW" = true ]; then
+      GRAFT_SIGN=true
+      GRAFT_SIGN_ARGS=(-S)
+    fi
+  fi
+
+  # The array expansion is guarded per docs/scripting-conventions.md Rule 5's
+  # fourth, deliberately non-grep-detectable trap: under `set -u` Bash 3.2
+  # treats an empty array as unset, and empty is exactly what
+  # GRAFT_SIGN_ARGS holds on the non-signing path — every fork spec 0122 R3
+  # exists to leave alone.
+  if ! GRAFT_COMMIT="$(git -C "$REPO_DIR" commit-tree "$GRAFT_TREE" \
+    -p "$BRANCH_TIP" -p "$UPSTREAM_SHA" ${GRAFT_SIGN_ARGS[@]+"${GRAFT_SIGN_ARGS[@]}"} -m "$COMMIT_MSG")"; then
+    if [ "$GRAFT_SIGN" = true ]; then
+      echo "Error: --preserve-history refuses to commit — this repository is configured to sign commits (commit.gpgsign) but the signature could not be produced; see the git error above." >&2
+      echo "The branch tip is unchanged and the restored files remain in the working tree. Fix the signing setup (key, agent, gpg.format) and re-run, or clear commit.gpgsign for this repository." >&2
+    else
+      echo "Error: --preserve-history could not create the graft commit; see the git error above." >&2
+    fi
+    exit 1
+  fi
+
+  # spec 0122 R5 — refuse a degraded (unsigned) commit BEFORE the ref moves.
+  # The identical check placed after update-ref would leave the branch tip
+  # sitting on the unsigned commit, satisfying R5 by violating R4. The path is
+  # reachable: a signing program that exits 0 without writing a signature
+  # makes `commit-tree -S` exit 0 and produce a commit with no gpgsig header.
+  # The `sed -n '/^$/q;p'` slice stops at the blank line that ends the header
+  # block, so a message body beginning with `gpgsig` cannot pass for one.
+  #
+  # The pattern carries NO trailing space, deliberately: git's signature
+  # header name is hash-algorithm dependent — `gpgsig` in a SHA-1 repository,
+  # `gpgsig-sha256` in one created with `--object-format=sha256`. A trailing
+  # space matches the first and misses the second, which would make this
+  # post-condition refuse a signature it had just successfully produced. Not
+  # anchoring on the right stays safe inside the slice: only header lines are
+  # visible there, the signature's own continuation lines begin with a space,
+  # and `gpgsig-sha256` is the only other header name that can match. Case jj
+  # fails if the space comes back.
+  if [ "$GRAFT_SIGN" = true ] && \
+     ! git -C "$REPO_DIR" cat-file commit "$GRAFT_COMMIT" | sed -n '/^$/q;p' | grep -q '^gpgsig'; then
+    echo "Error: --preserve-history built an unsigned commit though this repository is configured to sign; refusing to move the branch tip." >&2
+    exit 1
+  fi
+
   git -C "$REPO_DIR" update-ref -m "sync-from-upstream --preserve-history" HEAD "$GRAFT_COMMIT"
-  echo "History-preserving commit created: $GRAFT_COMMIT (parents: $BRANCH_TIP, $UPSTREAM_SHA)"
+  # The suffix reports the signature the check above observed on the object,
+  # not the fact that -S was passed (docs/scripting-conventions.md Rule 2).
+  GRAFT_SIGN_NOTE=""
+  if [ "$GRAFT_SIGN" = true ]; then GRAFT_SIGN_NOTE=" (signed)"; fi
+  echo "History-preserving commit created: $GRAFT_COMMIT$GRAFT_SIGN_NOTE (parents: $BRANCH_TIP, $UPSTREAM_SHA)"
 fi
 
 echo "Sync complete. Review the changes with 'git diff' before committing."
