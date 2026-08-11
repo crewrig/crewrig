@@ -4,12 +4,19 @@
 
 <!-- crewrig-doc: published=false -->
 
-## Rule B — triggers that require an immediate logbook comment
+Three rules govern how logbooks are kept:
 
-The `AGENTS.md` → *Logbook Issues → Rule B* obligation ("update
-incrementally, not at the end") fires on each of the following events. A
-logbook comment MUST be posted **before** resuming work on the trigger's
-resolution — not after the PR is opened.
+## Rule A — A feature issue IS its own logbook
+
+When a feature issue (or any pre-existing tracked issue) already exists for the work, **that issue IS the logbook**. Post all logbook content — obstacles, decisions, breakthroughs — as **incremental comments directly on that issue**. Never open a separate logbook issue in this case; duplicating the journal across two issues fragments the trail.
+
+Only create a dedicated logbook issue when there is **no pre-existing issue** to anchor the work to (e.g., spontaneous refactor, exploratory fix). A dedicated logbook issue uses the `logbook` label.
+
+## Rule B — Update incrementally, not at the end
+
+Post a logbook comment **every time a significant obstacle, correction, or decision occurs** — as it happens, while context is fresh. Do **not** batch the entire journey into a single end-of-work comment: batching loses the chronological structure, the failed attempts, and the reasoning behind course corrections, which is precisely the value the logbook is meant to preserve.
+
+The comment must be posted **before** resuming work on the trigger's resolution — not after the PR is opened. The following events each require an immediate logbook comment:
 
 - Merge conflicts encountered during rebase or merge
 - CI failures (any red check that prompts a code change)

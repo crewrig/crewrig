@@ -4,6 +4,24 @@
 
 <!-- crewrig-doc: published=false -->
 
+## Modes and Rules
+
+The lifecycle runs in one of four modes. Mode controls *user gating*, not stage execution — every mode runs all four stages.
+
+| Mode | SPECS | PLAN | REVIEW loop |
+|---|---|---|---|
+| **FULL** | user interactive + validation | user interactive + validation | user notified at each iteration |
+| **INTERMEDIATE** | user interactive + validation | user interactive + validation | autonomous |
+| **MINIMAL** | user interactive + validation | autonomous | autonomous |
+| **AUTO** | LLM-authored, no user gate | autonomous | autonomous |
+
+Rules:
+
+- Default mode is **INTERMEDIATE**.
+- In FULL mode, the orchestrator MUST post a notification on the logbook issue at the start and end of every REVIEW iteration. "Notify" is non-blocking; it does not gate the next iteration.
+
+The mode-driven engine — argument parsing, gate enforcement, user notification surface — lands in #173.
+
 ## User-gate definition
 
 A **user gate** is defined narrowly as one of two actions:

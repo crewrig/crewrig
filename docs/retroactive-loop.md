@@ -11,6 +11,26 @@ and the contract layered on top by `AGENTS.md` → *Retroactive review
 loop*. Every section below traces back to one of spec 0005's
 requirements R1..R14.
 
+## Finding classes and routing
+
+Every REVIEW finding SHALL be tagged with exactly one class. Class drives the loop target.
+
+| Finding class | Loop target | Re-spawn | Spec-PR impact |
+|---|---|---|---|
+| `tech` | DEV | developer + tester | none |
+| `arch` | PLAN | architect → developer + tester | none |
+| `spec` | SPECS | spec-author → architect → developer + tester | new delta-spec PR (per #170) |
+
+Rules:
+
+- The loop SHALL NOT change the logbook issue (Rule A still holds).
+
+**Termination.** The lifecycle terminates at MERGE iff a REVIEW pass verdict is APPROVE AND the pass surfaces zero findings of any class AND CI is green on the head commit reviewed.
+
+**Max-iteration guardrail.** The loop halts after **5 iterations** (configurable in the spec frontmatter, default 5) without termination. On halt, the orchestrator posts a structured summary on the logbook issue and pages the user regardless of mode (including AUTO).
+
+Definitions of each class, canonical and borderline examples, and the disambiguation rule (escalate upstream on tie) live in ADR-0010 → *Finding classification taxonomy*. The routing engine itself lands in issue #172.
+
 ## Doc-only engine
 
 The engine is **a documented procedure the orchestrator (the
