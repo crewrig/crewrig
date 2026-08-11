@@ -155,6 +155,10 @@
 #   value-flag guard dropped        22 at the DIAGNOSTIC,         the MESSAGE, not
 #     (literally f8bd54b, the last     never at rc                the code — rc is
 #     revision without it)                                        1 on both sides
+#   cmd_run subshell mutant A       DEAD ROW (cases 23-24 pass)  behaviour identical
+#     `( cd "$TOPLEVEL" && "$@" )`                               when `cd` succeeds
+#   cmd_run subshell mutant B       DEAD ROW (cases 23-24 pass)  errexit suppressed,
+#     `( cd "$TOPLEVEL"; "$@" )`                                 runs in caller cwd
 #
 # Recipe: copy `scripts/worktree-claim.sh` and this file into a `mktemp -d` that
 # mirrors `scripts/tests/`, apply one mutation to the COPY, run the copied suite.
