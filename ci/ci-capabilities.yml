@@ -92,6 +92,8 @@ capabilities:
       - bash scripts/tests/test-system-context-store.sh
       - bash scripts/check-test-wiring.sh
       - bash scripts/tests/test-check-test-wiring.sh
+      - bash scripts/check-test-strays.sh
+      - bash scripts/tests/test-check-test-strays.sh
       - bash scripts/tests/test-build-ci.sh
       - bash scripts/tests/test-chroma-fd-limits.sh
       - bash scripts/tests/test-chroma-health-race.sh
