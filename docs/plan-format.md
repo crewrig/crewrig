@@ -33,12 +33,15 @@ matching exactly one of the patterns below.
 |---|---|---|
 | Initial plan | `## PLAN — issue #<N> (spec <NNNN>)` | R1 |
 | Revision | `## PLAN v<N+1> — issue #<N> (spec <NNNN>) — revision after <trigger>` | R9 |
-| Review | `## PLAN review — issue #<N>` followed by `### Verdict: APPROVE` or `### Verdict: REQUEST CHANGES` on the next non-empty line | R6 |
+| Review (pass 1) | `## PLAN review — issue #<N>` (or `## PLAN review of v1 — issue #<N>`) followed by `### Verdict: APPROVE` or `### Verdict: REQUEST CHANGES` on the next non-empty line | R6 |
+| Review (pass M ≥ 2) | `## PLAN review of v<M> — issue #<N>` followed by `### Verdict: APPROVE` or `### Verdict: REQUEST CHANGES` on the next non-empty line | R6 |
 
 `<N>` is the logbook issue number, `<NNNN>` the zero-padded spec id,
+`<M>` the plan revision ordinal being judged (`v1`, `v2`, etc.),
 and `<trigger>` is a short noun phrase describing why the revision
 exists (`DEV finding`, `user request`, `REQUEST CHANGES review`,
-etc.).
+etc.). `## PLAN review — issue #<N>` is accepted as a backward-compatible
+alias for `## PLAN review of v1 — issue #<N>`.
 
 ## Mandatory body sections
 

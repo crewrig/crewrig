@@ -44,7 +44,8 @@ giving findings a stable shape that the retroactive review loop can route.
 6. Plan review SHALL be performed by a second `architect` agent spawned
    cold (no authoring context), posting the review as a follow-up
    comment on the same logbook issue whose first line is the header
-   `## PLAN review — issue #<N>` followed by a verdict line
+   `## PLAN review of v<M> — issue #<N>` (or `## PLAN review — issue #<N>`
+   for pass 1) followed by a verdict line
    (`### Verdict: APPROVE` or `### Verdict: REQUEST CHANGES`).
 7. Every plan-review finding SHALL be tagged with exactly one `class:`
    field (`tech` / `arch` / `spec`) so the retroactive routing engine
