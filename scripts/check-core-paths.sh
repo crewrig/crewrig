@@ -27,16 +27,11 @@
 # second token = policy, default `strict`; blank/`#` lines skipped; CRLF
 # tolerated).
 #
-# Three limits on what the reverse direction can see. The first two are
-# deliberate scoping decisions; the third is a precondition it cannot check:
+# Two limits on what the reverse direction can see, both deliberate scoping decisions:
 #
-#   1. Depth-2 extraction. Only a `$out_root/<a>/<b>` target yields a
-#      directory, because `<a>/<b>` is the granularity the manifest itself
-#      claims (`.claude/skills`, not `.claude`). A future top-level output —
-#      `"$out_root/AGENTS.md"` — therefore yields nothing and trips the
-#      fail-closed rule below. That is loud by design, not a false positive:
-#      such an output needs a manifest classification decision, and this guard
-#      is where the decision gets forced rather than skipped.
+#   1. Depth-2 output structure. Built outputs are evaluated at `<a>/<b>`
+#      granularity (`.claude/skills`, `.claude/agents`), matching the core-paths
+#      manifest.
 #   2. Bounded identity with sync-from-upstream.sh's path_is_governed().
 #      dir_is_governed() below mirrors it EXCEPT for the
 #      `.crewrig/.synced-markers` short-circuit (sync-from-upstream.sh:369),
@@ -44,26 +39,11 @@
 #      output. Everything else — the strict/adopt-on-edit policy filter, the
 #      nested-`excluded`-child carve-out, and continuing the scan rather than
 #      concluding when such a child matches — is the identical rule.
-#   3. PRECONDITION, not a fact: every output write goes through one of the two
-#      helpers. True at the time of writing and verified then, but nothing here
-#      enforces it, and no matcher can — a call-site parser cannot see a write
-#      that is not a call. A direct redirection,
-#          printf '%s' "$content" > "$out_root/.newcli/skills/$name/SKILL.md"
-#      writes an ungoverned directory and this guard reports the repository
-#      clean. Teaching the build a third write path therefore retires the
-#      reverse direction for whatever that path writes, silently. If one is
-#      ever added, either route it through a helper or move to the
-#      `--list-output-dirs` escape below — which closes this class too, since a
-#      declaration covers every write regardless of how it is spelled.
 #
-# Known limitation, named here so it is not rediscovered the hard way: a write
-# site reachable only for a non-`core` tier would demand a manifest entry for a
-# path with no tracked content at HEAD, which the forward direction would then
-# reject as a phantom — an unsatisfiable pair, since output_root_for_tier() in
-# build-components.sh sends non-core tiers to `dist/<tier>`. The escape is to
-# teach build-components.sh to declare its own output directories (e.g. a
-# `--list-output-dirs` query mode) and consume that here instead of parsing
-# call sites; a declaration can distinguish tiers, this extraction cannot.
+# Declared output set (spec 0125): `scripts/build-components.sh` is queried directly
+# via `--list-output-dirs` to obtain its declared output directories. The build
+# script is the authority on its outputs, so direct writes and helper calls are
+# equally covered.
 #
 # Usage:
 #   bash scripts/check-core-paths.sh
@@ -105,16 +85,8 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$MANIFEST"
 
 # ---------------------------------------------------------------------------
-# Reverse direction, part 1 — derive the built-output directory set from the
-# build script itself (spec 0121 R5).
-#
-# Deriving rather than declaring is the whole point: a list held here would
-# drift from the build exactly as the manifest just did, which is the failure
-# this guard exists to end.
-#
-# This works only while every output write goes through one of the two helpers
-# — a precondition, not a property this guard can verify (header, limit 3). So
-# long as it holds, the call sites are the declaration.
+# Reverse direction, part 1 — query the built-output directory set from the
+# build script itself (spec 0121 R5, spec 0125).
 # ---------------------------------------------------------------------------
 BUILD_SCRIPT="$REPO_DIR/scripts/build-components.sh"
 
@@ -127,74 +99,22 @@ if [ ! -f "$BUILD_SCRIPT" ]; then
 fi
 
 DERIVED=()
-bs_lineno=0
-while IFS= read -r bs_line || [ -n "$bs_line" ]; do
-  bs_lineno=$((bs_lineno + 1))
-  bs_line="${bs_line%$'\r'}"
+query_output=""
+if ! query_output="$(bash "$BUILD_SCRIPT" --list-output-dirs 2>/dev/null)" || [ -z "$query_output" ]; then
+  echo "Error: failed to query built-output directories from build script: $BUILD_SCRIPT --list-output-dirs" >&2
+  exit 2
+fi
 
-  # Match on the TRIMMED line, and this is load-bearing: the real call sites
-  # are indented inside `for`/`if` bodies, so a matcher tested against the raw
-  # line matches only column-0 stubs and derives nothing from the real script.
-  trimmed="${bs_line#"${bs_line%%[![:space:]]*}"}"
+while IFS= read -r line || [ -n "$line" ]; do
+  line="${line%$'\r'}"
+  [ -z "$line" ] && continue
+  DERIVED+=("$line")
+done <<< "$query_output"
 
-  case "$trimmed" in
-    # Comment skip first — it is what excludes the prose mentions of both
-    # helper names. The definition lines (`check_or_write() {`) are excluded
-    # naturally instead: they carry `(`, not a space, after the name.
-    \#*) continue ;;
-    # Leading `*` deliberately: a helper call need not be the first token of
-    # its line. `if ! check_or_write …`, `for … do check_or_write …` and
-    # `[ -n "$x" ] && check_or_write …` all write output, and a prefix-anchored
-    # pattern discarded them here — silently, because the fail-closed rule
-    # below only ever sees lines that already matched. All sixteen call sites
-    # happen to be bare today, which is exactly why measuring the matcher
-    # against the real build script could not surface the gap.
-    *"check_or_write "*|*"propagate_skill_resources "*) ;;
-    *) continue ;;
-  esac
-
-  yielded=0
-  rest="$trimmed"
-  while :; do
-    case "$rest" in
-      *'$out_root/'*) ;;
-      *) break ;;
-    esac
-    rest="${rest#*'$out_root/'}"
-
-    seg_a="${rest%%/*}"
-    seg_b="${rest#*/}"
-    seg_b="${seg_b%%/*}"
-
-    # Depth-2 only: both segments must be literal directory names.
-    case "$seg_a" in ''|*'"'*|*'$'*|*/*) continue ;; esac
-    case "$seg_b" in ''|*'"'*|*'$'*|*/*) continue ;; esac
-
-    yielded=1
-    dir="$seg_a/$seg_b"
-    seen=0
-    for d in ${DERIVED[@]+"${DERIVED[@]}"}; do
-      [ "$d" = "$dir" ] && { seen=1; break; }
-    done
-    [ "$seen" -eq 0 ] && DERIVED+=("$dir")
-  done
-
-  # Fail closed. A write-helper call whose target this guard cannot classify is
-  # an output directory it cannot check — indistinguishable, from the outside,
-  # from a repository with nothing to report. Refusing to run is the only
-  # answer that cannot be mistaken for a clean bill of health.
-  if [ "$yielded" -eq 0 ]; then
-    echo "Error: unclassifiable write-helper call site" >&2
-    echo "  $BUILD_SCRIPT:$bs_lineno" >&2
-    echo "  $trimmed" >&2
-    echo "" >&2
-    echo "This guard extracts an output directory from a \$out_root/<a>/<b>" >&2
-    echo "target and found none on this line. Depth-2 is deliberate — see the" >&2
-    echo "header comment of this script. A top-level or tier-conditional output" >&2
-    echo "needs a manifest classification decision before it can be built." >&2
-    exit 2
-  fi
-done < "$BUILD_SCRIPT"
+if [ "${#DERIVED[@]}" -eq 0 ]; then
+  echo "Error: build script declared zero output directories: $BUILD_SCRIPT" >&2
+  exit 2
+fi
 
 # ---------------------------------------------------------------------------
 # dir_is_governed <dir>
