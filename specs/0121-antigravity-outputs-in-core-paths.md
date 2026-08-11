@@ -1,7 +1,7 @@
 ---
 id: "0121"
 slug: antigravity-outputs-in-core-paths
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 755
