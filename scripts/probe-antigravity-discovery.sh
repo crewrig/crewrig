@@ -316,24 +316,24 @@ echo ""
 # Refuse to start if any sentinel name is already on disk: the probe must never
 # remove something it did not write.
 collisions=()
-for record in "${SENTINELS[@]}"; do
+for record in ${SENTINELS[@]+"${SENTINELS[@]}"}; do
   rel="$(sentinel_field "$record" 3)"
   if [ -e "$HOME/$rel" ]; then collisions+=("$HOME/$rel"); fi
 done
-for rel in "${DUP_PATHS[@]}"; do
+for rel in ${DUP_PATHS[@]+"${DUP_PATHS[@]}"}; do
   if [ -e "$HOME/$rel" ]; then collisions+=("$HOME/$rel"); fi
 done
 if [ ${#collisions[@]} -gt 0 ]; then
   echo "ERROR: sentinel paths already exist — refusing to run, and refusing to" >&2
   echo "       remove anything this probe did not write:" >&2
-  for c in "${collisions[@]}"; do echo "  - $c" >&2; done
+  for c in ${collisions[@]+"${collisions[@]}"}; do echo "  - $c" >&2; done
   exit "$EXIT_PRECONDITION"
 fi
 
 trap cleanup EXIT
 
 echo "Installing sentinels..."
-for record in "${SENTINELS[@]}"; do
+for record in ${SENTINELS[@]+"${SENTINELS[@]}"}; do
   kind="$(sentinel_field "$record" 1)"
   name="$(sentinel_field "$record" 2)"
   rel="$(sentinel_field "$record" 3)"
@@ -346,7 +346,7 @@ for record in "${SENTINELS[@]}"; do
   CREATED_PATHS+=("$HOME/$rel")
   echo "  $name  ($label)"
 done
-for rel in "${DUP_PATHS[@]}"; do
+for rel in ${DUP_PATHS[@]+"${DUP_PATHS[@]}"}; do
   write_agent_sentinel "$HOME/$rel" "$DUP_NAME" "$rel"
   CREATED_PATHS+=("$HOME/$rel")
   echo "  $DUP_NAME  (duplicate-name cell -> $rel)"
@@ -359,7 +359,7 @@ ASK_STATUS_FILE="$WORK/status"
 
 skill_names=""
 agent_names=""
-for record in "${SENTINELS[@]}"; do
+for record in ${SENTINELS[@]+"${SENTINELS[@]}"}; do
   kind="$(sentinel_field "$record" 1)"
   name="$(sentinel_field "$record" 2)"
   if [ "$kind" = "skill" ]; then
@@ -424,7 +424,7 @@ echo "=========================================================="
 echo "  Verdicts (R14: FOUND / NOT-FOUND / INDETERMINATE)"
 echo "=========================================================="
 indeterminate=0
-for record in "${SENTINELS[@]}"; do
+for record in ${SENTINELS[@]+"${SENTINELS[@]}"}; do
   kind="$(sentinel_field "$record" 1)"
   name="$(sentinel_field "$record" 2)"
   label="$(sentinel_field "$record" 4)"

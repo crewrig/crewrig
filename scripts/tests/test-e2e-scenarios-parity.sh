@@ -43,7 +43,7 @@ if [[ ! -f "$MATRIX" || ! -f "$DEFAULTS_TOML" ]]; then
 fi
 
 # --- 1. Each scenario key is mentioned in cli-matrix.md ---------------------
-for s in "${SCENARIOS[@]}"; do
+for s in ${SCENARIOS[@]+"${SCENARIOS[@]}"}; do
   if grep -Fq "$s" "$MATRIX"; then
     note_pass "cli-matrix.md — mentions scenario key '$s'"
   else
@@ -74,7 +74,7 @@ fi
 # Strategy: for each scenario, find the `[scenarios.<name>]` header line,
 # then scan the next 10 lines for an `applies_to` assignment. This survives
 # blank lines and comments inside the table.
-for s in "${SCENARIOS[@]}"; do
+for s in ${SCENARIOS[@]+"${SCENARIOS[@]}"}; do
   hdr_line="$(grep -n -E "^\[scenarios\.${s}\]" "$DEFAULTS_TOML" | head -1 | cut -d: -f1)"
   if [[ -z "$hdr_line" ]]; then
     note_fail "defaults.toml — applies_to for '$s'" \

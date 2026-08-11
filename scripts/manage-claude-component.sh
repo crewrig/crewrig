@@ -101,10 +101,10 @@ register_mcp_server() {
     args+=("$arg")
   done < <(jq -r '.args // [] | .[]' "$json_file")
 
-  if claude mcp add --scope user "$entry_name" -- "$cmd" "${args[@]}" >/dev/null 2>&1; then
+  if claude mcp add --scope user "$entry_name" -- "$cmd" ${args[@]+"${args[@]}"} >/dev/null 2>&1; then
     echo "  ${entry_name}: registered (scope=user)"
   else
-    echo "  ${entry_name}: FAILED — re-run manually: claude mcp add --scope user $entry_name -- $cmd ${args[*]}"
+    echo "  ${entry_name}: FAILED — re-run manually: claude mcp add --scope user $entry_name -- $cmd ${args[*]:-}"
     return 1
   fi
 }
@@ -138,9 +138,9 @@ case "$TYPE" in
     mkdir -p "$DEST"
     component_set_staging_roots ".claude/skills"
     if [ -n "$NAME" ]; then
-      component_install_named install_into_dest "$NAME" "$TYPE" claude "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named install_into_dest "$NAME" "$TYPE" claude ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all install_into_dest claude "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all install_into_dest claude ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     ;;
 
@@ -151,18 +151,18 @@ case "$TYPE" in
     mkdir -p "$DEST"
     component_set_artifact_roots "policies"
     if [ -n "$NAME" ]; then
-      component_install_named install_into_dest "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named install_into_dest "$NAME" "$TYPE" "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all install_into_dest "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all install_into_dest "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     ;;
 
   mcp-servers)
     component_set_artifact_roots "mcp-servers"
     if [ -n "$NAME" ]; then
-      component_install_named register_json_entry "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named register_json_entry "$NAME" "$TYPE" "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all register_json_entry "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all register_json_entry "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     ;;
 

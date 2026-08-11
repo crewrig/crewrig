@@ -73,13 +73,13 @@ while IFS= read -r f; do
   [ -z "$f" ] && continue
   sources+=("$f")
 done < <(
-  for root in "${TIER_ROOTS[@]}"; do
+  for root in ${TIER_ROOTS[@]+"${TIER_ROOTS[@]}"}; do
     [ -d "$root" ] || continue
     find "$root" -type f \( -name 'SKILL.md' -o -name 'AGENT.md' \) 2>/dev/null
   done | sort
 )
 
-for f in "${sources[@]}"; do
+for f in ${sources[@]+"${sources[@]}"}; do
   checked=$((checked + 1))
   carrier="$(first_body_line "$f")"
 
@@ -104,7 +104,7 @@ for f in "${sources[@]}"; do
   [ -z "$canonical" ] && missing+=("canonical")
   [ -z "$feedback" ]  && missing+=("feedback")
   if [ "${#missing[@]}" -gt 0 ]; then
-    echo "  FAIL $f — provenance carrier missing field(s): ${missing[*]} (R1)"
+    echo "  FAIL $f — provenance carrier missing field(s): ${missing[*]:-} (R1)"
     failures+=("$f")
     continue
   fi
@@ -122,7 +122,7 @@ done
 if [ "${#failures[@]}" -gt 0 ]; then
   echo ""
   echo "FAILED: ${#failures[@]} upstream-owned extension component(s) violate the provenance contract:"
-  for f in "${failures[@]}"; do
+  for f in ${failures[@]+"${failures[@]}"}; do
     echo "  - $f"
   done
   echo ""

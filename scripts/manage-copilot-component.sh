@@ -121,9 +121,9 @@ case "$TYPE" in
     mkdir -p "$DEST"
     component_set_staging_roots ".github/skills"
     if [ -n "$NAME" ]; then
-      component_install_named install_into_dest "$NAME" "$TYPE" copilot "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named install_into_dest "$NAME" "$TYPE" copilot ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all install_into_dest copilot "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all install_into_dest copilot ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     ;;
 
@@ -146,9 +146,9 @@ case "$TYPE" in
   mcp-servers)
     component_set_artifact_roots "mcp-servers"
     if [ -n "$NAME" ]; then
-      component_install_named register_json_entry "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named register_json_entry "$NAME" "$TYPE" "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all register_json_entry "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all register_json_entry "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     ;;
 

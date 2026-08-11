@@ -135,7 +135,7 @@ render_extension() {
 # Collect the target extension dirs.
 ext_dirs=()
 if [ "${#EXT_ARGS[@]}" -gt 0 ]; then
-  for arg in "${EXT_ARGS[@]}"; do
+  for arg in ${EXT_ARGS[@]+"${EXT_ARGS[@]}"}; do
     ext_dirs+=("$(resolve_extension_dir "$arg")")
   done
 else
@@ -151,7 +151,7 @@ else
   echo "Extension pivot render — BUILD"
 fi
 
-for ext_dir in "${ext_dirs[@]}"; do
+for ext_dir in ${ext_dirs[@]+"${ext_dirs[@]}"}; do
   render_extension "$ext_dir"
 done
 

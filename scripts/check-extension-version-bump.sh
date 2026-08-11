@@ -105,7 +105,7 @@ fi
 echo "Checking version bumps on ${#modified[@]} modified extension skill/agent source(s)..."
 
 failures=()
-for f in "${modified[@]}"; do
+for f in ${modified[@]+"${modified[@]}"}; do
   [ ! -f "$f" ] && continue  # deleted file: skip (deletions don't need a bump)
 
   new_version="$(carrier_version "$f")"
@@ -146,7 +146,7 @@ done
 if [ "${#failures[@]}" -gt 0 ]; then
   echo ""
   echo "FAILED: ${#failures[@]} extension source(s) changed without a version bump:"
-  for f in "${failures[@]}"; do
+  for f in ${failures[@]+"${failures[@]}"}; do
     echo "  - $f"
   done
   echo ""

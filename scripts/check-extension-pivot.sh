@@ -54,7 +54,7 @@ failures=()
 checked_commands=0
 checked_agents=0
 
-for root in "${TIER_ROOTS[@]}"; do
+for root in ${TIER_ROOTS[@]+"${TIER_ROOTS[@]}"}; do
   [ -d "$root" ] || continue
 
   # --- (a) command-native: orphan .toml with no sibling .md ---
@@ -90,7 +90,7 @@ done
 if [ "${#failures[@]}" -gt 0 ]; then
   echo ""
   echo "FAILED: ${#failures[@]} extension component(s) are authored CLI-native instead of pivot:"
-  for f in "${failures[@]}"; do
+  for f in ${failures[@]+"${failures[@]}"}; do
     echo "  - $f"
   done
   echo ""

@@ -13,7 +13,7 @@ if [ "$1" = "--include-org" ] || [ -n "${INCLUDE_ORG:-}" ]; then
   tiers+=(org)
 fi
 
-for tier in "${tiers[@]}"; do
+for tier in ${tiers[@]+"${tiers[@]}"}; do
   for dir in "$REPO_DIR"/extensions/"$tier"/*/; do
     [ -d "$dir" ] || continue
     name="$(basename "$dir")"

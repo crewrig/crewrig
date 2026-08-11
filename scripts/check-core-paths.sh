@@ -251,7 +251,7 @@ done
 if [ "${#failures[@]}" -gt 0 ]; then
   echo "" >&2
   echo "FAILED: ${#failures[@]} core-paths manifest entr(y/ies) do not resolve at HEAD:" >&2
-  for p in "${failures[@]}"; do
+  for p in ${failures[@]+"${failures[@]}"}; do
     echo "  - $p" >&2
   done
   echo "" >&2

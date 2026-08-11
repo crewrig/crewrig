@@ -251,7 +251,7 @@ fi
 # ---------------------------------------------------------------------------
 if [ "${#LINT_ERRORS[@]}" -gt 0 ]; then
   echo "Documentation publication contract violations:" >&2
-  for e in "${LINT_ERRORS[@]}"; do
+  for e in ${LINT_ERRORS[@]+"${LINT_ERRORS[@]}"}; do
     echo "  - $e" >&2
   done
   exit 1
@@ -269,11 +269,11 @@ emit_index() {
 
   local first_section=1
   local sec
-  for sec in "${SECTION_KEYS[@]}"; do
+  for sec in ${SECTION_KEYS[@]+"${SECTION_KEYS[@]}"}; do
     # Gather rows for this section, sort by nav_order then path.
     local sec_rows=()
     local row
-    for row in "${ROWS[@]}"; do
+    for row in ${ROWS[@]+"${ROWS[@]}"}; do
       [ "${row%%$'\t'*}" = "$sec" ] && sec_rows+=("$row")
     done
     [ "${#sec_rows[@]}" -eq 0 ] && continue
@@ -282,7 +282,7 @@ emit_index() {
     local sorted=()
     while IFS= read -r row; do
       sorted+=("$row")
-    done < <(printf '%s\n' "${sec_rows[@]}" | sort -t$'\t' -k2,2n -k3,3)
+    done < <(printf '%s\n' ${sec_rows[@]+"${sec_rows[@]}"} | sort -t$'\t' -k2,2n -k3,3)
 
     if [ "$first_section" -eq 1 ]; then
       first_section=0
@@ -295,7 +295,7 @@ emit_index() {
     printf '      "pages": [\n'
 
     local first_page=1
-    for row in "${sorted[@]}"; do
+    for row in ${sorted[@]+"${sorted[@]}"}; do
       local r_nav r_path r_title rest2
       rest2="${row#*$'\t'}"            # drop section
       r_nav="${rest2%%$'\t'*}"

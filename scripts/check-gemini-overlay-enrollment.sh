@@ -132,7 +132,7 @@ done <<<"$enrolled"
 # code on their own.
 if [ "${#warnings[@]}" -gt 0 ]; then
   echo "WARNING: ${#warnings[@]} overlay(s) enrolled in context.fileName but not deployed by the setup script:" >&2
-  for w in "${warnings[@]}"; do
+  for w in ${warnings[@]+"${warnings[@]}"}; do
     echo "  - $w" >&2
   done
   echo "This is drift, not a failure — either enroll a deploy for it or remove it" >&2
@@ -143,7 +143,7 @@ fi
 # Forward failures are blocking (R1).
 if [ "${#missing[@]}" -gt 0 ]; then
   echo "FAILED: ${#missing[@]} deployed Gemini overlay(s) not enrolled in context.fileName (spec 0085):" >&2
-  for m in "${missing[@]}"; do
+  for m in ${missing[@]+"${missing[@]}"}; do
     echo "  - $m" >&2
   done
   echo "" >&2

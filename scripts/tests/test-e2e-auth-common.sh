@@ -46,7 +46,7 @@ rm -f /tmp/auth-common-source.err
 # --- 3. Declared helpers exist as functions ----------------------------------
 HELPERS=(e2e_die e2e_skip e2e_info e2e_require_docker e2e_require_image \
          e2e_e2e_home e2e_cli_dir e2e_chown_bootstrap)
-for fn in "${HELPERS[@]}"; do
+for fn in ${HELPERS[@]+"${HELPERS[@]}"}; do
   if bash -c "set -euo pipefail; source '$LIB'; declare -F '$fn' >/dev/null"; then
     note_pass "helper '$fn' — declared as function"
   else

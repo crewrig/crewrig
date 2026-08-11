@@ -137,16 +137,16 @@ case "$TYPE" in
     mkdir -p "$DEST"
     component_set_staging_roots ".agents/skills"
     if [ -n "$NAME" ]; then
-      component_install_named install_into_dest "$NAME" "$TYPE" antigravity "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named install_into_dest "$NAME" "$TYPE" antigravity ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all install_into_dest antigravity "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all install_into_dest antigravity ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     # Keep R7's property true: a copy of the same component left at the
     # superseded placement would otherwise still be there after this run.
     # Narrow by design — only the names this invocation placed.
     if [ ${#PLACED_NAMES[@]} -gt 0 ]; then
       migrate_antigravity_superseded_components \
-        "$ANTIGRAVITY_HOME" "$REPO_DIR/artifacts" skills "${PLACED_NAMES[@]}" || exit $?
+        "$ANTIGRAVITY_HOME" "$REPO_DIR/artifacts" skills ${PLACED_NAMES[@]+"${PLACED_NAMES[@]}"} || exit $?
     fi
     ;;
 
@@ -155,18 +155,18 @@ case "$TYPE" in
     mkdir -p "$DEST"
     component_set_artifact_roots "policies"
     if [ -n "$NAME" ]; then
-      component_install_named install_into_dest "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named install_into_dest "$NAME" "$TYPE" "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all install_into_dest "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all install_into_dest "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     ;;
 
   mcp-servers)
     component_set_artifact_roots "mcp-servers"
     if [ -n "$NAME" ]; then
-      component_install_named register_json_entry "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named register_json_entry "$NAME" "$TYPE" "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all register_json_entry "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all register_json_entry "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     ;;
 

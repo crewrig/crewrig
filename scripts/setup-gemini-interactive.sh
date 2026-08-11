@@ -74,7 +74,7 @@ check_finalized "$REPO_DIR/config/PROFILE.md" "config/PROFILE.md" "/init-persona
 
 if [ ${#MISSING_PREREQS[@]} -gt 0 ]; then
   echo "Cannot proceed — required identity files are missing:"
-  for item in "${MISSING_PREREQS[@]}"; do
+  for item in ${MISSING_PREREQS[@]+"${MISSING_PREREQS[@]}"}; do
     echo "  - $item"
   done
   echo ""

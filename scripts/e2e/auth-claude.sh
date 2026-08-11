@@ -56,7 +56,7 @@ if [[ ${#src_files[@]} -eq 0 ]]; then
   e2e_die "[$CLI] No *.md files found in ${HOST_RULES}. Run \`task setup:claude\` to deploy them."
 fi
 
-for f in "${src_files[@]}"; do
+for f in ${src_files[@]+"${src_files[@]}"}; do
   cp "$f" "${RULES_DIR}/$(basename "$f")"
 done
 e2e_info "[$CLI] Copied ${#src_files[@]} rule file(s) → ${RULES_DIR}."
@@ -98,7 +98,7 @@ missing=()
 
 if [ "${#missing[@]}" -gt 0 ]; then
   e2e_info "[$CLI] WARNING: expected credential file(s) not found in $DIR:"
-  for f in "${missing[@]}"; do e2e_info "  - $f"; done
+  for f in ${missing[@]+"${missing[@]}"}; do e2e_info "  - $f"; done
   e2e_info "[$CLI] The login flow may not have completed. Re-run \`task e2e:auth:claude\` after authenticating in the browser."
   exit 1
 fi

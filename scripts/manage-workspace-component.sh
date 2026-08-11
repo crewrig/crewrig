@@ -135,9 +135,9 @@ case "$TYPE" in
     esac
 
     if [ -n "$NAME" ]; then
-      component_install_named install_into_dest "$NAME" "$TYPE" "$REFRESH_CLI" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named install_into_dest "$NAME" "$TYPE" "$REFRESH_CLI" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all install_into_dest "$REFRESH_CLI" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all install_into_dest "$REFRESH_CLI" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     ;;
 
@@ -147,9 +147,9 @@ case "$TYPE" in
 
     component_set_artifact_roots "$TYPE"
     if [ -n "$NAME" ]; then
-      component_install_named merge_json_entry "$NAME" "$TYPE" "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_named merge_json_entry "$NAME" "$TYPE" "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     else
-      component_install_all merge_json_entry "" "${COMPONENT_ROOTS[@]}" || exit $?
+      component_install_all merge_json_entry "" ${COMPONENT_ROOTS[@]+"${COMPONENT_ROOTS[@]}"} || exit $?
     fi
     ;;
 

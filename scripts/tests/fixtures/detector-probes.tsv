@@ -1,0 +1,13 @@
+safe	a complete canonical guard is safe	for p in ${D[@]+"${D[@]}"}; do
+safe	two canonical guards on one line	for p in ${D[@]+"${D[@]}"} ${C[@]+"${C[@]}"}; do
+bare	bare expansion alone	printf "%s" "${D[@]}"
+bare	bare behind a guard on another name	for p in "${D[@]}" ${C[@]+"${C[@]}"}; do
+safe	a default-valued guard is safe	s="${D[*]:-}"
+safe	a default with a literal is safe	s="${D[*]:-(none)}"
+bare	bare masked by :- on ANOTHER name	s="${C[*]:-} ${D[@]}"
+bare	bare masked by :- on the SAME name	s="${D[*]:-} ${D[@]}"
+bare	bare masked by :- on SAME name AND subscript	s="${D[@]:-} ${D[@]}"
+bare	prefix names do not bleed	s="${D[*]:-}" t="${DE[@]}"
+safe	length form is safe	if [ ${#D[@]} -eq 0 ]; then
+safe	slice form is safe	echo "${D[@]:1}"
+safe	key form is safe	echo "${!D[@]}"

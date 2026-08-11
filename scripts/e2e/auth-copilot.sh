@@ -50,7 +50,7 @@ if [[ ${#src_files[@]} -eq 0 ]]; then
   e2e_die "[$CLI] No *.instructions.md files found in ${HOST_INSTRUCTIONS}. Run \`task setup:copilot\` to deploy them."
 fi
 
-for f in "${src_files[@]}"; do
+for f in ${src_files[@]+"${src_files[@]}"}; do
   cp "$f" "${RULES_DIR}/$(basename "$f")"
 done
 e2e_info "[$CLI] Copied ${#src_files[@]} instruction file(s) → ${RULES_DIR}."

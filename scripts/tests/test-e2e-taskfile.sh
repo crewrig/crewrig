@@ -42,7 +42,7 @@ ENTRIES=(
   "e2e:lock"
 )
 
-for entry in "${ENTRIES[@]}"; do
+for entry in ${ENTRIES[@]+"${ENTRIES[@]}"}; do
   if grep -qE "^  ${entry}:\s*$" "$TASKFILE"; then
     note_pass "entry declared: $entry"
   else
@@ -80,7 +80,7 @@ fi
 # ---------------------------------------------------------------------------
 if command -v task >/dev/null 2>&1; then
   if list_out="$( ( cd "$REPO_ROOT" && task --list 2>&1 ) )"; then
-    for entry in "${ENTRIES[@]}"; do
+    for entry in ${ENTRIES[@]+"${ENTRIES[@]}"}; do
       if printf '%s\n' "$list_out" | grep -qE "(^|\s)\* ${entry}:" \
          || printf '%s\n' "$list_out" | grep -qE "(^|\s)${entry}:"; then
         note_pass "task --list shows: $entry"

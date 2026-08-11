@@ -165,7 +165,7 @@ extract_selection_block() {
   ' "$script"
 }
 
-for s in "${SETUP_SCRIPTS[@]}"; do
+for s in ${SETUP_SCRIPTS[@]+"${SETUP_SCRIPTS[@]}"}; do
   path="$SETUP_DIR/$s"
   if [ ! -f "$path" ]; then
     bad "$s: script not found at $path"

@@ -455,7 +455,7 @@ done
 
 if [ ${#DIRTY[@]} -gt 0 ]; then
   echo "Error: the following core-layer paths have local modifications:" >&2
-  for p in "${DIRTY[@]}"; do
+  for p in ${DIRTY[@]+"${DIRTY[@]}"}; do
     echo "  $p" >&2
   done
   echo "Revert these changes before running sync, or promote them to overlay overrides." >&2
@@ -511,7 +511,7 @@ for i in "${!PATHS[@]}"; do
         while IFS= read -r -d '' item; do
           spec+=("$item")
         done < <(pathspec_for "$path")
-        git restore --source=FETCH_HEAD --worktree -- "${spec[@]}"
+        git restore --source=FETCH_HEAD --worktree -- ${spec[@]+"${spec[@]}"}
       fi
       ;;
     adopt-on-edit)
@@ -561,7 +561,7 @@ for i in "${!PATHS[@]}"; do
         while IFS= read -r -d '' item; do
           spec+=("$item")
         done < <(pathspec_for "$path")
-        git restore --source=FETCH_HEAD --worktree -- "${spec[@]}"
+        git restore --source=FETCH_HEAD --worktree -- ${spec[@]+"${spec[@]}"}
         # Refresh the marker to the now-current upstream blob so subsequent
         # syncs short-circuit on Tier 1.
         new_sha="$(blob_sha "$path")"
@@ -617,7 +617,7 @@ if [ "$PRESERVE_HISTORY" = true ]; then
 
   if [ ${#UNGOVERNED[@]} -gt 0 ]; then
     echo "Error: --preserve-history refuses to commit — uncommitted change(s) outside the governed paths:" >&2
-    for p in "${UNGOVERNED[@]}"; do
+    for p in ${UNGOVERNED[@]+"${UNGOVERNED[@]}"}; do
       echo "  $p" >&2
     done
     echo "Commit, stash, or revert these changes (outside .crewrig/core-paths.txt and .crewrig/.synced-markers/), or omit --preserve-history." >&2

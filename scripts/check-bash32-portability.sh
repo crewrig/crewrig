@@ -266,5 +266,34 @@ if [ -n "$HITS" ]; then
   exit 1
 fi
 
-echo "OK: no forbidden Bash 4+ construct in $SCAN_TARGETS" \
-     "($declared declared construct(s), $scanned file(s) scanned)."
+# --- Phase 2: empty-array guard (Bash 3.2) -----------------------------------
+# Every `${name[@]}` / `${name[*]}` value expansion must be guarded, because on
+# the Bash 3.2 that ships with macOS an empty array is treated as unset and an
+# unguarded expansion aborts under `set -u`. This is a second, `.sh`-scoped
+# scan, folded in after the declared-set grep above so a single OK means both
+# rules held. The lib is sourced here — in the verdict path only, after the
+# list-mode exit — so `--list-constructs` still queries without scanning.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/bash32-array-guard.sh
+. "$SCRIPT_DIR/lib/bash32-array-guard.sh"
+
+array_guard_scan "$REPO_DIR"
+if [ -n "$ARRAY_GUARD_HITS" ]; then
+  ag_hits_count="$(printf '%s\n' "$ARRAY_GUARD_HITS" | wc -l | tr -d '[:space:]')"
+  echo "FAILED: $ag_hits_count array value expansion(s) are unguarded:" >&2
+  echo "" >&2
+  printf '%s\n' "$ARRAY_GUARD_HITS" >&2
+  echo "" >&2
+  echo "Each line expands an array value (the \${name[...]} brace form)" >&2
+  echo "without guarding against the empty array. On the Bash 3.2 that ships" >&2
+  echo "with macOS an empty array is treated as unset, so under set -u the" >&2
+  echo "expansion aborts with 'unbound variable' — silently, because suites" >&2
+  echo "run set -uo pipefail WITHOUT -e, so the child subshell dies and the" >&2
+  echo "suite can exit 0 with cases skipped (the false green of issue #697)." >&2
+  echo "Guard the expansion per Rule 5 (docs/scripting-conventions.md)." >&2
+  exit 1
+fi
+
+echo "OK: no forbidden Bash 4+ construct and no unguarded array value expansion" \
+     "in $SCAN_TARGETS ($declared declared construct(s), $scanned file(s) scanned," \
+     "$ARRAY_GUARD_SH_FILES .sh file(s) array-scanned)."

@@ -93,7 +93,7 @@ fi
 
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   echo "FAILED: assembly verification — missing components:"
-  for f in "${FAILURES[@]}"; do
+  for f in ${FAILURES[@]+"${FAILURES[@]}"}; do
     echo "  $f"
   done
   exit 1

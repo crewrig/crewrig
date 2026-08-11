@@ -70,13 +70,13 @@ while IFS= read -r f; do
   [ -z "$f" ] && continue
   sources+=("$f")
 done < <(
-  for root in "${TIER_ROOTS[@]}"; do
+  for root in ${TIER_ROOTS[@]+"${TIER_ROOTS[@]}"}; do
     [ -d "$root" ] || continue
     find "$root" -type f \( -name 'SKILL.md' -o -name 'AGENT.md' \) 2>/dev/null
   done | sort
 )
 
-for f in "${sources[@]}"; do
+for f in ${sources[@]+"${sources[@]}"}; do
   frontmatter=$(extract_frontmatter "$f")
 
   # Skip sources with no metadata.provenance block — nothing to enforce.
@@ -109,7 +109,7 @@ done
 if [ "${#failures[@]}" -gt 0 ]; then
   echo ""
   echo "FAILED: ${#failures[@]} upstream-owned source(s) route feedback away from canonical:"
-  for f in "${failures[@]}"; do
+  for f in ${failures[@]+"${failures[@]}"}; do
     echo "  - $f"
   done
   echo ""
