@@ -1,7 +1,7 @@
 ---
 id: "0127"
 slug: copilot-subagent-model-guard
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 834
