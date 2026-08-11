@@ -7,9 +7,13 @@
 # Types: antigravity-skills, policies, mcp-servers
 # Default mode: install (copy). Link mode shows security disclaimer.
 #
-# Skills and policies are installed into the Antigravity CLI user home
-# (~/.gemini/antigravity-cli/). MCP servers are merged into
-# ~/.gemini/antigravity-cli/settings.json (user-level).
+# Skills are installed into the documented machine-local customization root
+# (~/.gemini/config/skills/) — the same location a full setup run uses, per
+# spec 0123 R7. Policies still land in ~/.gemini/antigravity-cli/rules and MCP
+# servers are still merged into ~/.gemini/antigravity-cli/settings.json: no
+# observation covers those two kinds, and asserting a defect there would rest on
+# exactly the documentation-only reasoning spec 0123 exists to correct. They
+# warrant their own ticket, opened with a probe of their own.
 #
 # Every type resolves over the served overlay tiers — library, community, org —
 # and never over `core` (spec 0119 R5/R6). Skills resolve from the compiled
@@ -19,10 +23,17 @@
 
 set -e
 
+# ANTIGRAVITY_HOME serves THREE destinations below — `rules/` (:policies) and
+# `settings.json` (:mcp-servers) as well as skills. Spec 0123 moves ONLY skills,
+# so it gets its own root rather than a one-line edit here that would silently
+# relocate two kinds the spec explicitly excludes.
 ANTIGRAVITY_HOME="${HOME}/.gemini/antigravity-cli"
+AGY_CUSTOMIZATION_ROOT="${HOME}/.gemini/config"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=lib/component-resolve.sh
 . "$(dirname "$0")/lib/component-resolve.sh"
+# shellcheck source=lib/common.sh
+. "$(dirname "$0")/lib/common.sh"
 
 MODE="${1:-install}"
 TYPE="$2"
@@ -57,12 +68,18 @@ case "$TYPE" in
   mcp-server)        TYPE="mcp-servers" ;;
 esac
 
+# Names this invocation actually placed. The superseded-placement cleanup below
+# is narrowed to them: R8 binds a setup run, and this surface needs only enough
+# cleanup to keep R7's placement property true for the component it touched.
+PLACED_NAMES=()
+
 # --- Place a file or directory ---
 place_component() {
   local src="$1" dest_dir="$2"
   local item_name
   item_name=$(basename "$src")
   [ "$item_name" = ".gitkeep" ] && return
+  PLACED_NAMES+=("$item_name")
 
   [ -e "$dest_dir/$item_name" ] || [ -L "$dest_dir/$item_name" ] && rm -rf "$dest_dir/$item_name"
 
@@ -115,13 +132,21 @@ register_json_entry() {
 # --- Dispatch by type ---
 case "$TYPE" in
   antigravity-skills)
-    DEST="$ANTIGRAVITY_HOME/skills"
+    # R7 — the same location `task setup-antigravity-interactive` places it.
+    DEST="$AGY_CUSTOMIZATION_ROOT/skills"
     mkdir -p "$DEST"
     component_set_staging_roots ".agents/skills"
     if [ -n "$NAME" ]; then
       component_install_named install_into_dest "$NAME" "$TYPE" antigravity "${COMPONENT_ROOTS[@]}" || exit $?
     else
       component_install_all install_into_dest antigravity "${COMPONENT_ROOTS[@]}" || exit $?
+    fi
+    # Keep R7's property true: a copy of the same component left at the
+    # superseded placement would otherwise still be there after this run.
+    # Narrow by design — only the names this invocation placed.
+    if [ ${#PLACED_NAMES[@]} -gt 0 ]; then
+      migrate_antigravity_superseded_components \
+        "$ANTIGRAVITY_HOME" "$REPO_DIR/artifacts" skills "${PLACED_NAMES[@]}" || exit $?
     fi
     ;;
 

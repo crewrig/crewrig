@@ -328,63 +328,59 @@ fi  # end: SKIP_RULES_CONFIG guard for team/expertise/level/profile
 #   community — installed only on explicit opt-in (experimental sandbox).
 #   org       — installed only on explicit opt-in (validated org components).
 # `core` is never installed here: it ships in the project tree.
-AGY_SKILLS_HOME="$AGY_HOME/skills"
-AGY_AGENTS_HOME="$AGY_HOME/agents"
+#
+# THE INSTALL TARGET IS THE DOCUMENTED CUSTOMIZATION ROOT, NOT `$AGY_HOME`
+# (spec 0123 R1/R2). `~/.gemini/antigravity-cli/` is Antigravity's application
+# data directory; the vendor never documents it as a customization root and the
+# assistant does not discover components from it. Measured 2026-08-11 on `agy`
+# 1.1.11, twice: a sentinel skill and a sentinel agent under
+# `~/.gemini/config/` are found, while the same sentinels under
+# `~/.gemini/antigravity-cli/` and under the Gemini CLI roots are not. Full
+# matrix and method: docs/runbooks/antigravity-discovery-probe.md.
+#
+# `$AGY_HOME` itself is deliberately unchanged: the priority-ordered context
+# files (spec 0061) and the hooks directory (spec 0116) are not customizations
+# discovered from a root, and they stay where they are.
+AGY_SKILLS_HOME="${HOME}/.gemini/config/skills"
+AGY_AGENTS_HOME="${HOME}/.gemini/config/agents"
 
-# install_tier_to_home <tier> — copy a staged tier's Antigravity skills and
-# agents into the user home. Skills land in ~/.gemini/antigravity-cli/skills/<name>/,
-# agents as flat ~/.gemini/antigravity-cli/agents/<name>.md files.
-# Reads from dist/<tier>/.agents/ (Antigravity build output per spec 0053 R2/R3).
-# No-op if the tier was not built.
-install_tier_to_home() {
-  local tier="$1"
-  local staging="$REPO_DIR/dist/$tier/.agents"
-  if [ ! -d "$staging" ]; then
-    echo "  Tier '$tier' not built (no $staging) — run 'bash scripts/build-components.sh' first."
-    return 0
-  fi
-  if [ -d "$staging/skills" ]; then
-    mkdir -p "$AGY_SKILLS_HOME"
-    for skill_dir in "$staging/skills"/*/; do
-      [ -d "$skill_dir" ] || continue
-      local skill_name
-      skill_name="$(basename "$skill_dir")"
-      rm -rf "${AGY_SKILLS_HOME:?}/$skill_name"
-      cp -R "$skill_dir" "$AGY_SKILLS_HOME/$skill_name"
-      echo "  Installed skill: $tier/$skill_name -> ~/.gemini/antigravity-cli/skills/$skill_name"
-    done
-  fi
-  if [ -d "$staging/agents" ]; then
-    mkdir -p "$AGY_AGENTS_HOME"
-    for agent_file in "$staging/agents"/*.md; do
-      [ -f "$agent_file" ] || continue
-      local agent_base
-      agent_base="$(basename "$agent_file")"
-      cp "$agent_file" "$AGY_AGENTS_HOME/$agent_base"
-      echo "  Installed agent: $tier/$agent_base -> ~/.gemini/antigravity-cli/agents/$agent_base"
-    done
-  fi
-}
+# The superseded placement every existing machine still carries. Migrated below.
+AGY_SUPERSEDED_ROOT="$AGY_HOME"
 
 echo ""
 echo "Installing library components to $AGY_SKILLS_HOME (automatic)..."
 ensure_tier_built "$REPO_DIR" antigravity "$REPO_DIR/dist/library/.agents" || exit 1
-install_tier_to_home library
+install_antigravity_tier_to_home "$REPO_DIR" library "$AGY_SKILLS_HOME" "$AGY_AGENTS_HOME" || exit 1
 echo ""
 
 # Overlay tiers — each gated behind its own opt-in prompt.
 for overlay_tier in community org; do
   if [ -d "$REPO_DIR/dist/$overlay_tier/.agents" ]; then
     INSTALL_OVERLAY=$(echo -e "no\nyes" | fzf --height 10% \
-      --header "Install '$overlay_tier' components to ~/.gemini/antigravity-cli/skills? (opt-in)")
+      --header "Install '$overlay_tier' components to ~/.gemini/config/skills? (opt-in)")
     if [ "$INSTALL_OVERLAY" = "yes" ]; then
-      install_tier_to_home "$overlay_tier"
+      install_antigravity_tier_to_home "$REPO_DIR" "$overlay_tier" \
+        "$AGY_SKILLS_HOME" "$AGY_AGENTS_HOME" || exit 1
     else
       echo "  '$overlay_tier' install skipped."
     fi
     echo ""
   fi
 done
+
+# --- Migrate the superseded placement (spec 0123 R8/R9) ---
+#
+# OUTSIDE the overlay opt-in branch, and unconditional on which tiers this run
+# installs. R8 carries no tier qualifier: an adopter who once opted into `org`
+# and declines it today must still have those components removed rather than
+# orphaned. The overlay prompt above is itself gated on `dist/<tier>/.agents`
+# existing, so scoping the sweep to the installed tiers would re-introduce the
+# dependency on a stale, gitignored staging tree that this migration was
+# rewritten to escape.
+echo "Migrating components left at the superseded placement..."
+migrate_antigravity_superseded_components \
+  "$AGY_SUPERSEDED_ROOT" "$REPO_DIR/artifacts" all || exit 1
+echo ""
 
 # --- Transcript hooks (opt-in) --- (spec 0116)
 # The three sibling setups have offered this since spec 0056; Antigravity did

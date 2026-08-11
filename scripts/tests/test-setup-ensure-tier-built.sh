@@ -17,10 +17,18 @@
 #       returns 1, and the printed output names the failed build target.
 #   (d) structural: each of the four setup-*-interactive.sh scripts passes
 #       ensure_tier_built the exact same staging-path literal that its own
-#       existing tier-install function (install_tier_to_home /
-#       install_tier_skills_to_home) already reads for the `library` tier —
-#       asserted by grepping both from the actual script source, never by
-#       hardcoding an assumed match.
+#       tier-install function (install_tier_to_home /
+#       install_tier_skills_to_home / install_antigravity_tier_to_home)
+#       already reads for the `library` tier — asserted by grepping both from
+#       the actual source, never by hardcoding an assumed match.
+#
+#       Three of the four keep that function inline. Antigravity's lives in
+#       scripts/lib/common.sh since spec 0123, so for that script the
+#       assertion reads the two halves from two files and compares ACROSS the
+#       boundary. The parity is not weakened by the move — it is what the move
+#       makes worth checking, because a divergence between the path
+#       ensure_tier_built builds and the path the installer reads is now a
+#       cross-file edit nobody sees in one diff.
 #
 # HERMETIC: every operation runs against mktemp -d fixtures; nothing under
 # the real repo's dist/ directory or scripts/build-components.sh is invoked.
@@ -157,15 +165,49 @@ extract_ensure_tool() {
 extract_install_tier_arg() {
   local script="$1" line
   line="$(grep -oE 'install_tier(_skills)?_to_home [a-zA-Z0-9_]+' "$script" | head -1)"
+  if [ -z "$line" ]; then
+    # Antigravity's helper takes the repo dir first and the tier SECOND, so the
+    # tier is not the token after the function name. Matching `"$REPO_DIR"`
+    # explicitly also skips the overlay call site, whose tier is `"$overlay_tier"`
+    # — quoted, therefore outside the character class, therefore never a
+    # candidate for the `library` comparison this case is scoped to.
+    line="$(grep -oE 'install_antigravity_tier_to_home "\$REPO_DIR" [a-zA-Z0-9_]+' "$script" | head -1)"
+  fi
   [ -z "$line" ] && return 1
   printf '%s\n' "$line" | awk '{print $NF}'
 }
 
 # extract_install_fn_staging_pattern <script>
-# Prints the literal (unexpanded) RHS of the install function's
+# Prints the literal (unexpanded) RHS of the tier-install function's
 # `local staging="..."` assignment, e.g. '$REPO_DIR/dist/$tier/.gemini'.
+#
+# Antigravity is the one script whose tier-install function does not live in
+# the script. Spec 0123 moved it into scripts/lib/common.sh as
+# install_antigravity_tier_to_home(), for the reason spec 0116 R17 moved the
+# transcript-hook deployment there: the interactive scripts cannot run
+# end-to-end in CI, so the code that must be hermetically tested has to be
+# callable. Reading the assignment back out of the SETUP script would make this
+# case pass by no longer checking Antigravity at all — so it is read from the
+# helper instead, and only the two parameter NAMES are normalised to the
+# caller's. Everything about the path itself still has to match, so a genuine
+# divergence — `.agents` becoming `.antigravity`, `dist` becoming something
+# else — still fails, which is the whole point of the case.
 extract_install_fn_staging_pattern() {
   local script="$1" line
+  case "$script" in
+    *setup-antigravity-interactive.sh)
+      # Scoped to the function body, not `head -1` over the whole library:
+      # common.sh is 2000 lines and another `local staging=` landing in it
+      # later must not silently become the thing this case compares.
+      line="$(awk '/^install_antigravity_tier_to_home\(\)/ { f = 1 }
+                   f && /local staging=/ { print; exit }' "$COMMON_LIB" \
+              | grep -oE 'local staging="[^"]*"')"
+      [ -z "$line" ] && return 1
+      printf '%s\n' "$line" \
+        | sed -E 's/^local staging="(.*)"$/\1/; s/\$repo_dir/$REPO_DIR/'
+      return 0
+      ;;
+  esac
   line="$(grep -oE 'local staging="[^"]*"' "$script" | head -1)"
   [ -z "$line" ] && return 1
   printf '%s\n' "$line" | sed -E 's/^local staging="(.*)"$/\1/'

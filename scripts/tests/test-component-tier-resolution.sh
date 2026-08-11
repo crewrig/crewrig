@@ -436,7 +436,7 @@ done
 
 run c4b-agy env HOME="$R4B_ROOT/cli-home-agy" bash "$R4B_ROOT/$AGY_CMD" install antigravity-skills
 for s in alpha-skill beta-skill; do
-  [ -f "$R4B_ROOT/cli-home-agy/.gemini/antigravity-cli/skills/$s/SKILL.md" ] \
+  [ -f "$R4B_ROOT/cli-home-agy/.gemini/config/skills/$s/SKILL.md" ] \
     || { ok="false"; detail="${detail}${detail:+$'\n'}antigravity: $s is not installed under its own name"; }
 done
 
@@ -976,7 +976,7 @@ run c15-gemini env HOME="$H15" bash "$R15_ROOT/$GEMINI_CMD" install skills core-
 
 run c15-agy env HOME="$H15" bash "$R15_ROOT/$AGY_CMD" install antigravity-skills core-only
 [ "$RUN_STATUS" -ne 0 ] || { ok="false"; detail="${detail}${detail:+$'\n'}antigravity: exited zero for a core-only component"; }
-[ -e "$H15/.gemini/antigravity-cli/skills/core-only" ] && { ok="false"; detail="${detail}${detail:+$'\n'}antigravity: installed a core component"; }
+[ -e "$H15/.gemini/config/skills/core-only" ] && { ok="false"; detail="${detail}${detail:+$'\n'}antigravity: installed a core component"; }
 
 run c15-copilot env HOME="$H15" bash "$R15_ROOT/$COPILOT_CMD" install skills core-only
 # The decisive assertion: the project tree must be untouched. The overlay
@@ -1169,7 +1169,18 @@ while IFS=: read -r cli type setup_name cmd_name; do
   cmd="$REPO_DIR/scripts/$cmd_name"
 
   # The CLI root the assisted setup reads under dist/<tier>/.
-  setup_root="$(grep -oE 'dist/\$\{?tier\}?/\.[A-Za-z]+' "$setup" 2>/dev/null | sed 's|.*/||' | sort -u)"
+  #
+  # The tier variable is matched as `<anything>tier`, not as the bare name
+  # `tier`. All four setups declare the staging root TWICE — once in the
+  # automatic library install (`dist/$tier/<root>`) and once in the overlay
+  # opt-in guard (`dist/$overlay_tier/<root>`) — and the two forms are equally
+  # a declaration. Recognising only the bare form made this parse a hostage to
+  # which of the two happened to be inlined: when spec 0123 moved the
+  # Antigravity install body into scripts/lib/common.sh, the `$tier` occurrence
+  # went with it and this case failed although the setup still declares
+  # `dist/$overlay_tier/.agents` two lines from the call. Both forms yield the
+  # same single root for every CLI, so the vacuity guard below is unweakened.
+  setup_root="$(grep -oE 'dist/\$\{?[A-Za-z_]*tier\}?/\.[A-Za-z]+' "$setup" 2>/dev/null | sed 's|.*/||' | sort -u)"
   if [ -z "$setup_root" ] || [ "$(printf '%s\n' "$setup_root" | wc -l | tr -d ' ')" != "1" ]; then
     ok="false"
     detail="${detail}${detail:+$'\n'}$cli/$type: could not parse exactly one dist/<tier>/<root> staging root from $(basename "$setup") (got: $(printf '%s' "$setup_root" | tr '\n' ' '))"
@@ -1388,10 +1399,10 @@ if true; then
   entry "Taskfile:191 link-claude-component (org tier)" "$H20/.claude/skills/org-skill"
 
   tsk t203 ''  install-antigravity-component  manage-antigravity-component.sh antigravity-skills org-skill
-  entry "Taskfile:203 install-antigravity-component (org tier)" "$H20/.gemini/antigravity-cli/skills/org-skill"
+  entry "Taskfile:203 install-antigravity-component (org tier)" "$H20/.gemini/config/skills/org-skill"
 
   tsk t207 'y' link-antigravity-component     manage-antigravity-component.sh antigravity-skills org-skill
-  entry "Taskfile:207 link-antigravity-component (org tier)" "$H20/.gemini/antigravity-cli/skills/org-skill"
+  entry "Taskfile:207 link-antigravity-component (org tier)" "$H20/.gemini/config/skills/org-skill"
 
   run t-direct env HOME="$H20" bash "$R20_ROOT/scripts/install-workspace.sh" install
   entry "scripts/install-workspace.sh (reached directly)" "$H20/.gemini/policies/com-policy.md"
