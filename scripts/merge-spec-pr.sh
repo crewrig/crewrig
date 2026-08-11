@@ -18,6 +18,7 @@ if [[ "$BRANCH_NAME" != spec/* ]]; then
 fi
 
 SPEC_SLUG="${BRANCH_NAME#spec/}"
+SPEC_SLUG="$(echo "$SPEC_SLUG" | sed 's/-delta-\([0-9][0-9]*\)$/.delta-\1/')"
 SPEC_FILE="specs/${SPEC_SLUG}.md"
 
 if [ ! -f "$SPEC_FILE" ]; then
