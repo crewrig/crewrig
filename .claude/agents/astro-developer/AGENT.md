@@ -5,6 +5,7 @@ projects, implements pages/layouts/components, wires Content Collections,
 configures integrations, handles deployment, and diagnoses build failures.
 Receives tokens from designer, copy from copywriter, and hands off to
 seo-specialist and accessibility-auditor."
+license: Apache-2.0
 model: sonnet
 metadata:
   provenance:
