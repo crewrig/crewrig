@@ -1622,3 +1622,369 @@ deploy_antigravity_transcript_hooks() {
 
   echo "  Transcript hooks deployed to $manifest_target"
 }
+
+# ============================================================================
+# Antigravity component install and superseded-placement migration (spec 0123)
+# ============================================================================
+#
+# WHY THESE LIVE HERE AND NOT INLINE. `docs/cli-matrix.md` row 10 records that
+# the interactive setup scripts cannot run end-to-end in CI — `fzf` prompts, the
+# `agy` binary guard, the chroma daemon. Spec 0116 R17 moved the transcript-hook
+# deployment into this file for exactly that reason, and the same constraint
+# applies to placement, verification and migration: the code that has to be
+# hermetically tested must be callable, so `scripts/tests/*.sh` can `source` it
+# and the `fzf` prompts are asserted structurally instead.
+
+# _antigravity_frontmatter_name <file>
+#
+# The component's declared name, read from the LEADING `---` block only.
+#
+# DELIBERATELY NOT `yaml_field`. That helper (scripts/lib/render-command.sh)
+# ends `… | yq -r ".$field" 2>/dev/null || echo ""`, so on a machine without
+# `yq` it does not fail — it returns the EMPTY STRING. Neither Antigravity
+# install surface requires `yq` (`setup-antigravity-interactive.sh` and
+# `manage-antigravity-component.sh` require `jq` only), so a `yaml_field`-based
+# predicate would yield an empty name set, a migration that removes nothing, and
+# an exit status of 0: a silent no-op, which is the exact failure class this
+# spec exists to correct.
+_antigravity_frontmatter_name() {
+  awk '
+    NR == 1 && $0 != "---" { exit }
+    NR == 1 { in_fm = 1; next }
+    in_fm && $0 == "---" { exit }
+    in_fm && /^name:[ \t]*/ {
+      sub(/^name:[ \t]*/, "")
+      sub(/^["\047]/, ""); sub(/["\047]$/, "")
+      print
+      exit
+    }
+  ' "$1" 2>/dev/null
+}
+
+# _antigravity_has_provenance <file>
+#
+# True iff the file's LEADING frontmatter block carries a
+# `metadata.provenance.canonical` entry — the marker `inject_provenance()` in
+# scripts/build-components.sh stamps into every built component, and therefore
+# the half of the migration predicate that distinguishes a framework install
+# from a directory the user happens to have named the same thing.
+#
+# THE FRONTMATTER BOUNDARY IS THE WHOLE POINT, and it is one line thick.
+# Deleting the `in_fm && $0 == "---" { exit }` rule below turns this into a
+# whole-file scan that matches prose. That is not a theoretical degradation:
+# the shipped `artifacts/library/skills/harness-report/SKILL.md` carries a
+# `canonical:` token on FOUR body lines besides the real one — frontmatter
+# closes at line 18, the real entry is line 11, and lines 73, 76, 146 and 206
+# are body. A whole-file reader would call every one of them provenance, which
+# would let the migration delete a user's own directory. The regression fixture
+# in scripts/tests/test-antigravity-component-install.sh puts an INDENTED
+# `canonical:` in a fixture's body precisely so that only this boundary
+# separates it from a real one.
+_antigravity_has_provenance() {
+  local verdict
+  verdict="$(awk '
+    NR == 1 && $0 != "---" { exit }
+    NR == 1 { in_fm = 1; next }
+    in_fm && $0 == "---" { exit }
+    in_fm && /^[[:space:]]+provenance:[[:space:]]*$/ { seen_prov = 1; next }
+    in_fm && seen_prov && /^[[:space:]]+canonical:[[:space:]]*[^[:space:]]/ {
+      print "YES"; exit
+    }
+  ' "$1" 2>/dev/null)"
+  [ "$verdict" = "YES" ]
+}
+
+# _antigravity_kind_marker <kind> — the file whose presence makes a component of
+# that kind real: a skill is its SKILL.md, an agent its AGENT.md.
+_antigravity_kind_marker() {
+  case "$1" in
+    skills) printf 'SKILL.md\n' ;;
+    *)      printf 'AGENT.md\n' ;;
+  esac
+}
+
+# install_antigravity_tier_to_home <repo_dir> <tier> <skills_home> <agents_home>
+#
+# Copy a staged tier's Antigravity components into the user home, then VERIFY.
+# The superseded version of this code reported what it intended to do; this one
+# reports what it observed.
+#
+#   R5 — presence at the destination is asserted BEFORE the `Installed …` line
+#        is printed, never after and never instead.
+#   R4 — `staged` and `placed` are tallied per kind and any shortfall is named.
+#   R6 — a kind that staged components and placed none returns non-zero.
+#
+# A tier that stages nothing has `staged == 0`, so the R6 guard is vacuous and
+# the call exits 0 — covering both an absent `<staging>/agents` and one that
+# exists but is empty. An unbuilt tier returns 0 early.
+#
+# Both kinds are DIRECTORY-shaped (`<name>/SKILL.md`, `<name>/AGENT.md`), which
+# is what `scripts/build-components.sh` stages and what the 2026-08-11 discovery
+# probe observed the assistant to accept — see
+# docs/runbooks/antigravity-discovery-probe.md. The superseded installer globbed
+# `"$staging/agents"/*.md` for a FLAT shape the build has never produced, so the
+# glob matched nothing, `[ -f ] || continue` swallowed it, and the step exited 0
+# having installed no agent at all. The failure mode was silence, which is why
+# R4/R5/R6 exist.
+install_antigravity_tier_to_home() {
+  local repo_dir="$1" tier="$2" skills_home="$3" agents_home="$4"
+  local staging="$repo_dir/dist/$tier/.agents"
+
+  if [ ! -d "$staging" ]; then
+    echo "  Tier '$tier' not built (no $staging) — run 'bash scripts/build-components.sh' first."
+    return 0
+  fi
+
+  local staged_skills=0 placed_skills=0 staged_agents=0 placed_agents=0
+  local missing=()
+  local entry item marker
+
+  if [ -d "$staging/skills" ]; then
+    mkdir -p "$skills_home"
+    for entry in "$staging/skills"/*/; do
+      [ -d "$entry" ] || continue
+      staged_skills=$((staged_skills + 1))
+      item="$(basename "$entry")"
+      rm -rf "${skills_home:?}/$item"
+      # A failed copy must not abort the caller: the presence assertion below is
+      # the single source of truth for "placed", and a shortfall has to be
+      # REPORTED rather than crashed on.
+      cp -R "$entry" "$skills_home/$item" 2>/dev/null || true
+      if [ -f "$skills_home/$item/SKILL.md" ]; then
+        placed_skills=$((placed_skills + 1))
+        echo "  Installed skill: $tier/$item -> $skills_home/$item"
+      else
+        missing+=("skill $tier/$item")
+      fi
+    done
+  fi
+
+  if [ -d "$staging/agents" ]; then
+    mkdir -p "$agents_home"
+    for entry in "$staging/agents"/*/; do
+      [ -d "$entry" ] || continue
+      staged_agents=$((staged_agents + 1))
+      item="$(basename "$entry")"
+      rm -rf "${agents_home:?}/$item"
+      cp -R "$entry" "$agents_home/$item" 2>/dev/null || true
+      if [ -f "$agents_home/$item/AGENT.md" ]; then
+        placed_agents=$((placed_agents + 1))
+        echo "  Installed agent: $tier/$item -> $agents_home/$item"
+      else
+        missing+=("agent $tier/$item")
+      fi
+    done
+  fi
+
+  # R4 — the shortfall report. Deliberately a separate code path from the R6
+  # return below: a tier that stages two and places one is a defect the run must
+  # name, even though it is not the total failure R6 catches.
+  if [ "$staged_skills" -ne "$placed_skills" ] || [ "$staged_agents" -ne "$placed_agents" ]; then
+    echo "  WARNING: tier '$tier' staged ${staged_skills} skill(s) and ${staged_agents} agent(s)" >&2
+    echo "           but placed ${placed_skills} and ${placed_agents} at the install target." >&2
+    for item in ${missing[@]+"${missing[@]}"}; do
+      echo "           absent from the install target: $item" >&2
+    done
+  fi
+
+  # R6 — staged components, placed none. The tier has NOT been installed and the
+  # run must not complete as though it had.
+  local failed=0
+  if [ "$staged_skills" -gt 0 ] && [ "$placed_skills" -eq 0 ]; then
+    echo "  ERROR: tier '$tier' staged ${staged_skills} skill(s) and placed none at $skills_home." >&2
+    failed=1
+  fi
+  if [ "$staged_agents" -gt 0 ] && [ "$placed_agents" -eq 0 ]; then
+    echo "  ERROR: tier '$tier' staged ${staged_agents} agent(s) and placed none at $agents_home." >&2
+    failed=1
+  fi
+  return "$failed"
+}
+
+# _antigravity_framework_names <artifacts_root> <kind>
+#
+# Every component name the framework SERVES for that kind, read from the
+# authoring sources under all three non-core tiers.
+#
+# ALL THREE TIERS, UNCONDITIONALLY, AND NOT FROM `dist/`. R8 and its scenario
+# are written without a tier qualifier — "no framework-installed skill or agent
+# at the superseded location" — so an adopter who once opted into `org` and
+# declines it on the re-run must still have those components REMOVED, not
+# reported. Deriving from `dist/` instead would be worse still: it is gitignored
+# and `ensure_tier_built` short-circuits on directory existence, so a stale
+# staging tree would orphan any component that has moved into a tier since it
+# was last built.
+#
+# Widening the sweep costs nothing under R9, because tier scope was never what
+# protected user content — the provenance half of the conjunction is.
+_antigravity_framework_names() {
+  local artifacts_root="$1" kind="$2"
+  local tier dir marker name
+  marker="$(_antigravity_kind_marker "$kind")"
+  for tier in library community org; do
+    [ -d "$artifacts_root/$tier/$kind" ] || continue
+    for dir in "$artifacts_root/$tier/$kind"/*/; do
+      [ -d "$dir" ] || continue
+      [ -f "$dir$marker" ] || continue
+      name="$(_antigravity_frontmatter_name "$dir$marker")"
+      if [ -n "$name" ]; then
+        printf '%s\n' "$name"
+      fi
+    done
+  done
+}
+
+# _antigravity_source_dir_count <artifacts_root> <kind> — how many component
+# source directories exist for that kind. Used only to tell "this fork ships no
+# agents" (fine) apart from "the name reader returned nothing for directories
+# that are right there" (a defect, see the empty-name-set guard below).
+_antigravity_source_dir_count() {
+  local artifacts_root="$1" kind="$2"
+  local tier dir marker count=0
+  marker="$(_antigravity_kind_marker "$kind")"
+  for tier in library community org; do
+    [ -d "$artifacts_root/$tier/$kind" ] || continue
+    for dir in "$artifacts_root/$tier/$kind"/*/; do
+      [ -d "$dir" ] || continue
+      [ -f "$dir$marker" ] || continue
+      count=$((count + 1))
+    done
+  done
+  printf '%s\n' "$count"
+}
+
+# migrate_antigravity_superseded_components \
+#     <superseded_root> <artifacts_root> <kind: all|skills|agents> [name...]
+#
+# Remove every framework-installed component left at the superseded placement
+# (R8) while leaving everything else there untouched (R9).
+#
+# THE PREDICATE IS A CONJUNCTION, and both halves are load-bearing:
+#   1. the on-disk name is one the framework serves, AND
+#   2. that component's own frontmatter carries `metadata.provenance.canonical`.
+# Names like `user-validate`, `developer`, `tester` and `architect` are entirely
+# plausible names for a directory a user created themselves; a degraded
+# predicate that keeps only half of this destroys user content. Anything failing
+# either half is left alone, and a leftover that carries provenance but matches
+# no served name is REPORTED by name with its removal command rather than
+# removed — a component the framework once installed and has since deleted, or
+# moved out of a served tier, is the one accepted failure mode here.
+#
+# `<artifacts_root>` is an ARGUMENT rather than a constant resolved from
+# `$REPO_DIR` so the org-orphan case can be tested hermetically: this repository
+# ships `artifacts/org/skills/` and `artifacts/community/skills/` empty.
+#
+# With explicit names the sweep is narrowed to them — the per-component install
+# surface needs only enough cleanup to keep R7's placement property true for the
+# component it just touched; R8 binds a setup run.
+migrate_antigravity_superseded_components() {
+  local superseded_root="$1" artifacts_root="$2" kind_filter="$3"
+  shift 3
+  local explicit_names=("$@")
+
+  local kinds="skills agents"
+  case "$kind_filter" in
+    skills) kinds="skills" ;;
+    agents) kinds="agents" ;;
+  esac
+
+  local kind names name_count dir_count entry item marker removed=0
+  local residue=()
+
+  for kind in $kinds; do
+    local dest="$superseded_root/$kind"
+
+    if [ ${#explicit_names[@]} -gt 0 ]; then
+      names="$(printf '%s\n' "${explicit_names[@]}")"
+    else
+      names="$(_antigravity_framework_names "$artifacts_root" "$kind")"
+      name_count="$(printf '%s' "$names" | grep -c . || true)"
+      dir_count="$(_antigravity_source_dir_count "$artifacts_root" "$kind")"
+      # An EMPTY NAME SET IS AN ERROR, not "nothing to do". A migration that
+      # removes nothing and exits 0 is indistinguishable from a clean run, and
+      # that is precisely how a `yq`-less `yaml_field` would fail. A fork that
+      # genuinely ships no components of this kind has dir_count 0 and is fine.
+      if [ "$dir_count" -gt 0 ] && [ "$name_count" -eq 0 ]; then
+        echo "  ERROR: read no $kind name from $dir_count source director(ies) under" >&2
+        echo "         $artifacts_root — refusing to run a migration that would" >&2
+        echo "         remove nothing and report success." >&2
+        return 1
+      fi
+    fi
+
+    [ -d "$dest" ] || continue
+    marker="$(_antigravity_kind_marker "$kind")"
+
+    for entry in "$dest"/*; do
+      [ -e "$entry" ] || continue
+      item="$(basename "$entry")"
+
+      # Both shapes are recognised at the superseded location: the installer
+      # that wrote there only ever produced flat `<name>.md` agents, but naming
+      # the directory shape costs one branch and removes a reasoning-by-absence.
+      local marker_file="" strip_ext="$item"
+      if [ -d "$entry" ]; then
+        marker_file="$entry/$marker"
+      elif [ -f "$entry" ]; then
+        case "$item" in
+          *.md) marker_file="$entry"; strip_ext="${item%.md}" ;;
+          *) continue ;;
+        esac
+      else
+        continue
+      fi
+      [ -f "$marker_file" ] || continue
+
+      local declared
+      declared="$(_antigravity_frontmatter_name "$marker_file")"
+      [ -n "$declared" ] || declared="$strip_ext"
+
+      local in_set=0
+      # `-F`, not a bare pattern: `$declared` comes off disk and is compared as
+      # a LITERAL. Read as a regexp it would over-match — a directory named
+      # `a.b` would satisfy a served name `axb` — and this predicate's true
+      # branch deletes.
+      if printf '%s\n' "$names" | grep -qxF -- "$declared"; then
+        in_set=1
+      fi
+      local has_prov=0
+      if _antigravity_has_provenance "$marker_file"; then
+        has_prov=1
+      fi
+
+      if [ "$in_set" -eq 1 ] && [ "$has_prov" -eq 1 ]; then
+        if [ -d "$entry" ]; then
+          # Not `rm -rf`. `find -delete` is bounded to this directory, does not
+          # follow symlinks out of it, and leaves `rmdir` as the final
+          # only-if-empty gate: anything that resisted deletion keeps the
+          # directory alive and surfaces below as residue instead of vanishing.
+          find "$entry" -mindepth 1 -delete 2>/dev/null || true
+          rmdir "$entry" 2>/dev/null || true
+        else
+          rm -f "$entry"
+        fi
+        if [ -e "$entry" ]; then
+          residue+=("$entry (removal incomplete)")
+        else
+          removed=$((removed + 1))
+          echo "  Migrated away: $entry (superseded placement)"
+        fi
+      elif [ "$has_prov" -eq 1 ]; then
+        residue+=("$entry")
+      fi
+    done
+  done
+
+  if [ ${#residue[@]} -gt 0 ]; then
+    echo "  The following carry framework provenance but match no served component" >&2
+    echo "  name. They were NOT removed — check them, then remove by hand:" >&2
+    for item in "${residue[@]}"; do
+      echo "    rm -rf ${item%% (*}" >&2
+    done
+  fi
+
+  if [ "$removed" -gt 0 ]; then
+    echo "  Removed $removed framework component(s) from the superseded placement at $superseded_root."
+  fi
+  return 0
+}

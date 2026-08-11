@@ -75,6 +75,8 @@ capabilities:
       - bash scripts/tests/test-build-docs-index.sh
       - bash scripts/tests/test-mempalace-transcript-hook.sh
       - bash scripts/tests/test-setup-antigravity-transcript.sh
+      - bash scripts/tests/test-antigravity-component-install.sh
+      - bash scripts/tests/test-antigravity-discovery-probe.sh
       - bash scripts/tests/test-mempalace-version-range.sh
       # `packaging` is the spec-0108 launch guard's PRIMARY comparator and is the
       # branch in force on every serving interpreter that carries it, so CI must

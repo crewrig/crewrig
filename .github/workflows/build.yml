@@ -133,6 +133,12 @@ jobs:
       - name: Test Antigravity transcript activation (spec 0116)
         run: bash scripts/tests/test-setup-antigravity-transcript.sh
 
+      - name: Test Antigravity component install and migration (spec 0123)
+        run: bash scripts/tests/test-antigravity-component-install.sh
+
+      - name: Test Antigravity discovery-probe classifier (spec 0123)
+        run: bash scripts/tests/test-antigravity-discovery-probe.sh
+
       - name: Test mempalace version-range guard (spec 0082)
         run: bash scripts/tests/test-mempalace-version-range.sh
 
