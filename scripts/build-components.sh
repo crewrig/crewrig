@@ -33,6 +33,8 @@ CHECK_MODE=false
 # discovered under artifacts/. See discover_tiers().
 TIER_FILTER=""
 
+LIST_OUTPUT_DIRS=false
+
 # --- Parse arguments ---
 # Note: do not seed TARGET from $1. The previous form `TARGET="${1:-all}"`
 # silently set TARGET to `--check` when invoked as `bash ... --check`,
@@ -40,12 +42,68 @@ TIER_FILTER=""
 # whole --check mode into a silent no-op.
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --target) TARGET="$2"; shift 2 ;;
-    --tier)   TIER_FILTER="$TIER_FILTER $2"; shift 2 ;;
-    --check)  CHECK_MODE=true; shift ;;
-    *)        shift ;;
+    --target)           TARGET="$2"; shift 2 ;;
+    --tier)             TIER_FILTER="$TIER_FILTER $2"; shift 2 ;;
+    --check)            CHECK_MODE=true; shift ;;
+    --list-output-dirs) LIST_OUTPUT_DIRS=true; shift ;;
+    *)                  shift ;;
   esac
 done
+
+# --- Query mode fast-exit (spec 0125) ---
+# Declares the relative output directories that component builds write into,
+# returning fast without running prerequisite tools checks (yq, jq) or building.
+list_output_dirs() {
+  local target_list="gemini claude copilot antigravity"
+  if [ "$TARGET" != "all" ]; then
+    target_list="$TARGET"
+  fi
+
+  local tier_list="core"
+  if [ -n "$TIER_FILTER" ]; then
+    tier_list="$TIER_FILTER"
+  fi
+
+  local dirs=()
+  local t tr t_root
+
+  for tr in $tier_list; do
+    if [ "$tr" = "core" ]; then
+      t_root=""
+    else
+      t_root="dist/$tr/"
+    fi
+
+    for t in $target_list; do
+      case "$t" in
+        gemini)
+          dirs+=("${t_root}.gemini/skills")
+          dirs+=("${t_root}.gemini/commands")
+          dirs+=("${t_root}.gemini/agents")
+          ;;
+        claude)
+          dirs+=("${t_root}.claude/skills")
+          dirs+=("${t_root}.claude/agents")
+          ;;
+        copilot|github)
+          dirs+=("${t_root}.github/skills")
+          dirs+=("${t_root}.github/agents")
+          ;;
+        antigravity)
+          dirs+=("${t_root}.agents/skills")
+          dirs+=("${t_root}.agents/agents")
+          ;;
+      esac
+    done
+  done
+
+  printf '%s\n' ${dirs[@]+"${dirs[@]}"} | sort -u
+}
+
+if [ "$LIST_OUTPUT_DIRS" = true ]; then
+  list_output_dirs
+  exit 0
+fi
 
 # --- Prerequisites ---
 command -v yq >/dev/null 2>&1 || { echo "Error: yq is required. Install with: brew install yq"; exit 1; }
