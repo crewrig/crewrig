@@ -258,6 +258,61 @@ run_case_stderr() {
   fi
 }
 
+# run_case_dirty_report <name> <repo> <present-path>… -- <absent-line>…
+#
+# Spec 0129's report assertions, and the reason this helper exists rather than a
+# second `run_case_stderr` call: R2 is an ABSENCE requirement, and the string
+# that must be absent (`scripts`) is a substring of the string that must be
+# present (`scripts/sync-from-upstream.sh`). A substring absence check therefore
+# fails whether or not the defect is fixed — a test that can never go green —
+# while a substring PRESENCE check on the directory name passes with the defect
+# fully present, because the pre-0129 refusal prints `  scripts`. Only a
+# WHOLE-LINE comparison discriminates, and the refusal prints each path as two
+# spaces followed by the path.
+#
+# Present paths are matched with the same two-space prefix, for symmetry and
+# because a bare substring would match a sibling path that contains this one.
+run_case_dirty_report() {
+  local name="$1" repo="$2"
+  shift 2
+  local present=() absent=() bucket="present"
+  local a
+  for a in "$@"; do
+    if [ "$a" = "--" ]; then bucket="absent"; continue; fi
+    if [ "$bucket" = "present" ]; then present+=("$a"); else absent+=("$a"); fi
+  done
+
+  local actual_exit=0 stderr_out
+  stderr_out="$(cd "$repo" && CREWRIG_REPO_DIR="$repo" bash "$SCRIPT_UNDER_TEST" 2>&1 >/dev/null)" || actual_exit=$?
+
+  local ok=1 p n
+  if [ "$actual_exit" -ne 1 ]; then
+    echo "FAIL  $name (expected exit 1, got $actual_exit)"
+    ok=0
+  fi
+  for p in ${present[@]+"${present[@]}"}; do
+    n="$(printf '%s\n' "$stderr_out" | grep -cxF "  $p" || true)"
+    if [ "$n" -ne 1 ]; then
+      echo "FAIL  $name (expected the line '  $p' exactly once, saw $n)"
+      ok=0
+    fi
+  done
+  for p in ${absent[@]+"${absent[@]}"}; do
+    if printf '%s\n' "$stderr_out" | grep -qxF "  $p"; then
+      echo "FAIL  $name (stderr names '$p' as its own line, which it must not)"
+      ok=0
+    fi
+  done
+
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  $name"
+    pass=$((pass + 1))
+  else
+    echo "      actual stderr: $stderr_out"
+    fail=$((fail + 1))
+  fi
+}
+
 # ---------------------------------------------------------------------------
 # Case 1 — Clean-core sync: all paths clean → exit 0
 # ---------------------------------------------------------------------------
@@ -2327,6 +2382,212 @@ STUB
   else
     fail=$((fail + 1))
   fi
+}
+
+# ---------------------------------------------------------------------------
+# Case kk — spec 0129 R9: a directory manifest entry with ONE modified member
+# reports the MEMBER, and never the entry.
+#
+# The suite's pre-0129 coverage of the dirty guard runs through a manifest entry
+# that resolves to a FILE (`dirty-core refusal`, and case-d), which is the shape
+# that never exhibited issue #719 — for a file entry the entry IS the file. This
+# is the first case to drive a directory entry through the refusal.
+#
+# The assertions are whole-line, via run_case_dirty_report, and that is
+# load-bearing rather than tidy: asserting the presence of `scripts` as a
+# substring passes against the PRE-fix script, which printed exactly that.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "tools/alpha.sh" "upstream alpha" \
+    "tools/beta.sh" "upstream beta"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'tools\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "tools/alpha.sh" "upstream alpha" \
+    "tools/beta.sh" "upstream beta"
+
+  printf 'locally customised alpha' > "$adopter/tools/alpha.sh"
+
+  run_case_dirty_report \
+    "case-kk: a directory entry reports the modified member, not the directory" \
+    "$adopter" \
+    "tools/alpha.sh" \
+    -- \
+    "tools"
+}
+
+# ---------------------------------------------------------------------------
+# Case ll — spec 0129 R10: every modified member is reported, not the first.
+#
+# This is the case that discriminates R3. On case-kk's single-member fixture an
+# implementation that keeps the original `break` passes by accident: it reports
+# the one member there is. Only a fixture with several modified members can tell
+# "reports the members" from "reports the first member it finds".
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "tools/alpha.sh" "upstream alpha" \
+    "tools/beta.sh" "upstream beta" \
+    "tools/nested/gamma.sh" "upstream gamma"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'tools\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "tools/alpha.sh" "upstream alpha" \
+    "tools/beta.sh" "upstream beta" \
+    "tools/nested/gamma.sh" "upstream gamma"
+
+  printf 'locally customised alpha' > "$adopter/tools/alpha.sh"
+  printf 'locally customised beta'  > "$adopter/tools/beta.sh"
+  printf 'locally customised gamma' > "$adopter/tools/nested/gamma.sh"
+
+  run_case_dirty_report \
+    "case-ll: every modified member is reported, not just the first" \
+    "$adopter" \
+    "tools/alpha.sh" "tools/beta.sh" "tools/nested/gamma.sh" \
+    -- \
+    "tools"
+}
+
+# ---------------------------------------------------------------------------
+# Case mm — spec 0129 R1 via the deduplication: a file governed by BOTH a
+# directory entry and a nested strict entry is reported exactly once.
+#
+# The manifest ships two shapes of this, and they fail differently. This fixture
+# pins the NESTED-FILE shape (`docs` + `docs/index.json`), where the duplicate is
+# produced by one append from the tree branch and one from the blob branch — so a
+# deduplication installed at append time inside the tree branch cannot see it.
+# The nested-DIRECTORY shape (`artifacts/core` + `artifacts/core/system-context`)
+# also answers "governed by two entries" but goes green against that wrong
+# placement, which is why the fixture here is the file shape and not that one.
+#
+# `grep -cxF` equal to 1 is the whole point: a substring count would silently
+# absorb any sibling path containing this one.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "papers/index.json" '{"upstream": true}' \
+    "papers/other.md" "upstream other"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'papers\npapers/index.json\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "papers/index.json" '{"upstream": true}' \
+    "papers/other.md" "upstream other"
+
+  printf '{"locally": "customised"}' > "$adopter/papers/index.json"
+
+  run_case_dirty_report \
+    "case-mm: a file governed by two strict entries is reported exactly once" \
+    "$adopter" \
+    "papers/index.json" \
+    -- \
+    "papers"
+}
+
+# ---------------------------------------------------------------------------
+# Case nn — the dedup's seen-string is delimited by a NEWLINE, and a space
+# delimiter silently drops a modified file from the refusal.
+#
+# Without this case the delimiter is defended by a comment and nothing else:
+# reverting the newline to a space leaves the rest of the suite fully green, so
+# the guard reads as protected while being unprotected. That gap is what the cold
+# review of this PR found, and it is the same shape as the defect the whole ticket
+# is about — a claim made in prose with no signal behind it.
+#
+# The fixture is built so a space-delimited membership test produces a FALSE HIT.
+# The `container` entry is processed first and stores the member `container/name b`;
+# the separate `b` entry probes the string "b", which is a space-separated
+# fragment of what is stored. Under a space delimiter that probe reads as
+# already-seen and `b` never reaches the report — a modified file, silently
+# missing. Under a newline delimiter it cannot: git prints a space in a path
+# verbatim but C-quotes control characters, so a member can hold a space and can
+# never hold a newline.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "container/name b" "upstream spaced" \
+    "b" "upstream b"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'container\nb\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "container/name b" "upstream spaced" \
+    "b" "upstream b"
+
+  printf 'locally customised spaced' > "$adopter/container/name b"
+  printf 'locally customised b'      > "$adopter/b"
+
+  run_case_dirty_report \
+    "case-nn: a space-bearing member does not mask a separate modified file" \
+    "$adopter" \
+    "container/name b" "b" \
+    -- \
+    "container"
+}
+
+# ---------------------------------------------------------------------------
+# Case oo — spec 0129 R4: the refusal states the targeted restoration and warns
+# against the directory-level move.
+#
+# R4 is the half of this spec that reaches the adopter who already knows the
+# directory-level habit and would reproduce it from memory. Deleting all four
+# guidance lines left the suite green before this case existed, so the
+# requirement shipped with no signal behind it.
+#
+# Asserted on the sentence that carries the warning rather than on the whole
+# block: the wording may be improved, but a refusal that stops warning against
+# the directory-level checkout has lost the requirement.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "tools/alpha.sh" "upstream alpha"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'tools\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "tools/alpha.sh" "upstream alpha"
+
+  printf 'locally customised alpha' > "$adopter/tools/alpha.sh"
+
+  run_case_stderr \
+    "case-oo: the refusal warns against restoring the containing directory" \
+    "$adopter" \
+    1 \
+    "Never restore the containing directory"
+
+  run_case_stderr \
+    "case-oo: the refusal states the targeted restoration command" \
+    "$adopter" \
+    1 \
+    "Restore ONLY the files listed above"
 }
 
 # ---------------------------------------------------------------------------

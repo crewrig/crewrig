@@ -432,8 +432,16 @@ for i in "${!PATHS[@]}"; do
   resolves_at_fetch_head "$path" || continue
 
   if [ "$(git cat-file -t "FETCH_HEAD:$path" 2>/dev/null)" = "tree" ]; then
-    # Directory entry: check each upstream member individually.
-    dir_dirty=0
+    # Directory entry: report the MEMBERS, never the entry (spec 0129 R1/R2).
+    # An adopter restores what they are shown. Reporting `scripts` is what makes
+    # them run `git checkout <ref> -- scripts` afterwards, reverting every file
+    # upstream added in between — the silent over-erasure of issue #719.
+    #
+    # No `break` (spec 0129 R3): a partial list sends the adopter back for a
+    # second refusal, and the second list is the one they act on in a hurry.
+    # This costs nothing on the path that runs every time — when nothing is
+    # modified the loop already visits every member, because the early exit was
+    # only ever reachable once something was dirty (spec 0129 R8).
     while IFS= read -r member; do
       [ -n "$member" ] || continue
       skip=0
@@ -441,17 +449,48 @@ for i in "${!PATHS[@]}"; do
         case "$member" in "$excl"/*|"$excl") skip=1; break ;; esac
       done < <(excluded_children_of "$path")
       [ "$skip" -eq 1 ] && continue
-      if strict_blob_is_dirty "$member"; then
-        dir_dirty=1
-        break
-      fi
+      strict_blob_is_dirty "$member" && DIRTY+=("$member")
     done < <(git ls-tree -r --name-only FETCH_HEAD -- "$path/" 2>/dev/null)
-    [ "$dir_dirty" -eq 1 ] && DIRTY+=("$path")
   else
-    # Blob entry: upstream-history membership check.
+    # Blob entry: upstream-history membership check. Untouched by spec 0129 —
+    # for a file entry the entry IS the file, so this already reports precisely
+    # (R5).
     strict_blob_is_dirty "$path" && DIRTY+=("$path")
   fi
 done
+
+# One file can be governed by two strict entries and would then be appended
+# twice, putting a duplicated line in the list the adopter is asked to copy. The
+# manifest ships FOUR such pairs today — `docs` + `docs/index.json`,
+# `artifacts/core` + `artifacts/core/system-context`, and `scripts` with each of
+# `scripts/sync-from-upstream.sh` and `scripts/build-docs-index.sh` — but the
+# dedup is placement-general and does not depend on that count. Dedup HERE, in
+# one pass after the loop, and not at
+# append time: the `docs` pair is produced by one append from the tree branch and
+# one from the blob branch, so an append-time filter inside either branch cannot
+# see it. Order-preserving, first occurrence wins — the duplicates are identical
+# strings, so what this preserves is manifest order, which is the order the
+# refusal already prints.
+#
+# Delimited by NEWLINE, not by a space: a space-delimited membership test reports
+# a false hit for any probe that is a space-separated fragment of a stored value
+# (with `docs/a b.md` stored, both `docs/a` and `b.md` read as already-seen), and
+# a false hit here silently DROPS a modified file from the refusal — this
+# ticket's own defect, reached through its fix. `git ls-tree` prints a space in a
+# path verbatim but C-quotes control characters, so a member string can contain a
+# space and can never contain a newline.
+UNIQ=()
+seen=""
+NL='
+'
+for p in ${DIRTY[@]+"${DIRTY[@]}"}; do
+  case "$NL$seen$NL" in
+    *"$NL$p$NL"*) continue ;;
+  esac
+  seen="$seen$NL$p"
+  UNIQ+=("$p")
+done
+DIRTY=(${UNIQ[@]+"${UNIQ[@]}"})
 
 if [ ${#DIRTY[@]} -gt 0 ]; then
   echo "Error: the following core-layer paths have local modifications:" >&2
@@ -459,6 +498,11 @@ if [ ${#DIRTY[@]} -gt 0 ]; then
     echo "  $p" >&2
   done
   echo "Revert these changes before running sync, or promote them to overlay overrides." >&2
+  echo "" >&2
+  echo "Restore ONLY the files listed above, one path at a time:" >&2
+  echo "  git checkout <your-ref> -- <path listed above>" >&2
+  echo "Never restore the containing directory. A directory-level checkout also" >&2
+  echo "reverts every file upstream added or changed in it, silently." >&2
   exit 1
 fi
 
