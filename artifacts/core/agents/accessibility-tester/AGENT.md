@@ -6,10 +6,12 @@ description: "Runs WCAG 2.1/2.2 (AA/AAA) compliance checks on a page or user
 type: agent
 license: Apache-2.0
 metadata:
+  claude:
+    model: haiku
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.0.1"
+    version: "1.0.2"
 ---
 
 # Accessibility Tester Agent

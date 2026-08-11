@@ -739,11 +739,32 @@ GEMINI_EOF
 
     # --- Claude Code output: AGENT.md (with frontmatter) ---
     if [ "$TARGET" = "claude" ] || [ "$TARGET" = "all" ]; then
+      local claude_frontmatter="name: $name
+description: \"$description\""
+
+      local license compatibility
+      license=$(yaml_field "$source" "license")
+      compatibility=$(yaml_field "$source" "compatibility")
+      if [ -n "$license" ] && [ "$license" != "null" ]; then
+        claude_frontmatter="$claude_frontmatter
+license: $license"
+      fi
+      if [ -n "$compatibility" ] && [ "$compatibility" != "null" ]; then
+        claude_frontmatter="$claude_frontmatter
+compatibility: \"$compatibility\""
+      fi
+
+      local claude_model
+      claude_model=$(extract_frontmatter "$source" | yq -r '.metadata.claude.model // .claude.model // ""' 2>/dev/null)
+      if [ -n "$claude_model" ] && [ "$claude_model" != "null" ]; then
+        claude_frontmatter="$claude_frontmatter
+model: $claude_model"
+      fi
+
       local claude_content
       claude_content=$(cat <<CLAUDE_EOF
 ---
-name: $name
-description: "$description"
+$claude_frontmatter
 ---
 
 $body

@@ -6,11 +6,13 @@ interprets its fail-closed output, classifies each divergence by kind,
 and reconciles it — auto-applying only the deterministic
 regenerate-and-re-verify case, and diagnosing-and-proposing for every
 judgment-bearing case."
+license: Apache-2.0
+model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
+    version: "1.0.1"
 ---
 
 

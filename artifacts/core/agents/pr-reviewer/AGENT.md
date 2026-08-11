@@ -6,10 +6,12 @@ description: "Independent PR reviewer agent. Spawns cold — receives only a PR
   review verdict via the forge CLI (`gh`)."
 type: agent
 metadata:
+  claude:
+    model: sonnet
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.6"
+    version: "1.1.7"
 ---
 
 # PR Reviewer Agent

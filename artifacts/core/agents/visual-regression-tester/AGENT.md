@@ -6,10 +6,12 @@ description: "Detects unintended visual changes between two states of a page
 type: agent
 license: Apache-2.0
 metadata:
+  claude:
+    model: haiku
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.0.2"
+    version: "1.0.3"
 ---
 
 # Visual Regression Tester Agent

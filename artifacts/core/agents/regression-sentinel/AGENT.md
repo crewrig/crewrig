@@ -6,10 +6,12 @@ description: "Runs a smoke or regression pass against a staging or production
 type: agent
 license: Apache-2.0
 metadata:
+  claude:
+    model: haiku
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.0.1"
+    version: "1.0.2"
 ---
 
 # Regression Sentinel Agent

@@ -7,7 +7,7 @@ and reconciles it — auto-applying only the deterministic
 regenerate-and-re-verify case, and diagnosing-and-proposing for every
 judgment-bearing case."
 ---
-<!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Parity Agent
 

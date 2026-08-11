@@ -1,11 +1,13 @@
 ---
 name: web-conformity-checker
 description: "Verifies that a page or site matches a given specification — design system, functional requirements, or API contract. Produces a gap report and optionally a Playwright assertion script."
+license: Apache-2.0
+model: haiku
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.1"
+    version: "1.0.2"
 ---
 
 

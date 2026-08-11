@@ -6,7 +6,7 @@ produces a commit-ready pipeline (hand-authored for GitHub Actions,
 derived from the platform-neutral capability reference for GitLab),
 and validates its own output before delivery."
 ---
-<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Configurator Agent
 
