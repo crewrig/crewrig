@@ -1,8 +1,9 @@
 ---
 id: "0130"
 slug: cases-23-24-cd-mutants-discrimination
-status: draft
+status: approved
 complexity: small
+interaction-mode: INTERMEDIATE
 related-issue: 839
 version: 1.0.0
 ---
