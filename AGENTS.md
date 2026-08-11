@@ -258,6 +258,7 @@ See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) for the full pr
 - **Solo work prohibition.** Never treat a multi-step ticket with inline solo work when specialist agents are available. Inline solo work is reserved for trivial single-file edits explicitly scoped by the user.
 - **Coordination primitives on Claude Code CLI.** Claude Code runs a single implicit session team — there is no team to create. Use `Agent` (always with an explicit `subagent_type`) to delegate work to a specialist, `TaskCreate` (one task per role; self-contained brief in the `Agent` prompt) to track it, and `SendMessage` for all cross-agent communication. These three primitives are mandatory — not optional.
 - **Worktree isolation.** Before any `TaskCreate` or `Agent` spawn, create a dedicated git worktree. All team edits happen inside `.worktrees/<ticket-id>/`. The main working directory is read-only for the duration.
+- **Whole-tree git ops.** `git reset --hard`, `git stash`, `git clean` require an exclusive claim + empty `git status`. See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) → *Worktree Isolation*.
 - **Built components.** Any commit touching `artifacts/` MUST also run `bash scripts/build-components.sh` and stage the regenerated outputs in the same commit.
 - **Complexity tier.** Read the spec frontmatter `complexity` field at ticket pickup: `trivial` = inline, `small` = developer + pr-logbook + pr-reviewer, `standard` = full Template 1/2/3, `large` = architect-led sub-spec decomposition.
 
@@ -267,25 +268,9 @@ git worktree add -b <branch-name> .worktrees/<ticket-id> crewrig/main
 
 ## Interaction modes
 
-The lifecycle (per ADR-0010) runs in one of four modes. Mode controls
+The lifecycle (per [ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md))
+runs in one of four modes (FULL, INTERMEDIATE, MINIMAL, AUTO). Mode controls
 *user gating*, not stage execution — every mode runs all four stages.
-
-| Mode | SPECS | PLAN | REVIEW loop |
-|---|---|---|---|
-| **FULL** | user interactive + validation | user interactive + validation | user notified at each iteration |
-| **INTERMEDIATE** | user interactive + validation | user interactive + validation | autonomous |
-| **MINIMAL** | user interactive + validation | autonomous | autonomous |
-| **AUTO** | LLM-authored, no user gate | autonomous | autonomous |
-
-Rules:
-
-- Default mode is **INTERMEDIATE**.
-- In FULL mode, the orchestrator MUST post a notification on the
-  logbook issue at the start and end of every REVIEW iteration.
-  "Notify" is non-blocking; it does not gate the next iteration.
-
-The mode-driven engine — argument parsing, gate enforcement, user
-notification surface — lands in #173.
 
 See [`docs/interaction-modes.md`](docs/interaction-modes.md) for the
 `User-gate definition` and the full `Behavioral contract per (mode ×
@@ -313,43 +298,14 @@ REQUEST-CHANGES-blocks-DEV rule.
 ## Retroactive review loop
 
 This section operationalises the REVIEW stage of the lifecycle (per
-ADR-0010 → *Stage definitions → REVIEW*) and the routing contract
-mandated by [`specs/0005-retroactive-routing-engine.md`](specs/0005-retroactive-routing-engine.md).
-The engine is **doc-only**: the orchestrator (the `team-lead` role)
-follows the procedure documented in
-[`docs/retroactive-loop.md`](docs/retroactive-loop.md), which is the
-reference home for the routing precedence, the iteration mechanics,
-the termination check, the max-iteration guardrail, the spec-PR
-ordering guard, and the mode-conditional handling of non-blocking
-findings.
+[ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md) →
+*Stage definitions → REVIEW*) and the routing contract mandated by
+[`specs/0005-retroactive-routing-engine.md`](specs/0005-retroactive-routing-engine.md).
 
-Every REVIEW finding SHALL be tagged with exactly one class. Class
-drives the loop target.
-
-| Finding class | Loop target | Re-spawn | Spec-PR impact |
-|---|---|---|---|
-| `tech` | DEV | developer + tester | none |
-| `arch` | PLAN | architect → developer + tester | none |
-| `spec` | SPECS | spec-author → architect → developer + tester | new delta-spec PR (per #170) |
-
-Rules:
-
-- The loop SHALL NOT change the logbook issue (Rule A still holds).
-
-**Termination.** The lifecycle terminates at MERGE iff a REVIEW pass
-verdict is APPROVE AND the pass surfaces zero findings of any class
-AND CI is green on the head commit reviewed.
-
-**Max-iteration guardrail.** The loop halts after **5 iterations**
-(configurable in the spec frontmatter, default 5) without
-termination. On halt, the orchestrator posts a structured summary on
-the logbook issue and pages the user regardless of mode (including
-AUTO).
-
-Definitions of each class, canonical and borderline examples, and the
-disambiguation rule (escalate upstream on tie) live in ADR-0010 →
-*Finding classification taxonomy*. The routing engine itself lands in
-issue #172.
+See [`docs/retroactive-loop.md`](docs/retroactive-loop.md) for the
+finding-class loop targets (`tech`/`arch`/`spec`), the termination check,
+the 5-iteration guardrail, the mode-conditional handling of non-blocking
+findings, and the rule against changing the logbook issue mid-loop.
 
 ## Pull Request Format
 
@@ -365,42 +321,10 @@ traces every obstacle encountered (with its resolution or avoidance
 strategy), every challenge faced, and every success or breakthrough, so the
 full experience of agents on the project is recorded for future reference.
 
-Three rules govern how logbooks are kept:
-
-### Rule A — A feature issue IS its own logbook
-
-When a feature issue (or any pre-existing tracked issue) already exists
-for the work, **that issue IS the logbook**. Post all logbook content —
-obstacles, decisions, breakthroughs — as **incremental comments directly
-on that issue**. Never open a separate logbook issue in this case;
-duplicating the journal across two issues fragments the trail.
-
-Only create a dedicated logbook issue when there is **no pre-existing
-issue** to anchor the work to (e.g., spontaneous refactor, exploratory
-fix). A dedicated logbook issue uses the `logbook` label.
-
-### Rule B — Update incrementally, not at the end
-
-Post a logbook comment **every time a significant obstacle, correction,
-or decision occurs** — as it happens, while context is fresh. Do **not**
-batch the entire journey into a single end-of-work comment: batching
-loses the chronological structure, the failed attempts, and the reasoning
-behind course corrections, which is precisely the value the logbook is
-meant to preserve.
-
-The comment must be posted **before** resuming work on the obstacle's
-resolution — not after the PR is opened. See
-[`docs/logbook-issues.md`](docs/logbook-issues.md) for the full list of
-triggers that require an immediate logbook comment.
-
-### Rule C — Close immediately after merge
-
-Close the linked issue immediately once merged and verified
-(`state_reason: completed`); rationale in
-[`docs/logbook-issues.md`](docs/logbook-issues.md) → *Rule C*. Spec-PR
-exception:
-[`docs/spec-pr-workflow.md`](docs/spec-pr-workflow.md) → *Independence
-rule*.
+See [`docs/logbook-issues.md`](docs/logbook-issues.md) for the three
+rules governing logbooks: Rule A (a feature issue IS its own logbook),
+Rule B (update incrementally, not at the end), and Rule C (close immediately
+after merge).
 
 ## Forge Access
 
