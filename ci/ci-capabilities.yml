@@ -75,6 +75,7 @@ capabilities:
       - bash scripts/tests/test-build-docs-index.sh
       - bash scripts/tests/test-mempalace-transcript-hook.sh
       - bash scripts/tests/test-setup-antigravity-transcript.sh
+      - bash scripts/tests/test-setup-copilot-transcript.sh
       - bash scripts/tests/test-antigravity-component-install.sh
       - bash scripts/tests/test-antigravity-discovery-probe.sh
       - bash scripts/tests/test-mempalace-version-range.sh
