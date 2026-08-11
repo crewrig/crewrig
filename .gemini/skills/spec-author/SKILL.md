@@ -6,7 +6,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.0"
+    version: "1.5.0"
 ---
 
 
@@ -472,6 +472,13 @@ locally that: (a) all five headings are present in order, (b)
 frontmatter parses as YAML, (c) every required field has a value of the
 right type. Enforcement of the format is the spec linter's job; this
 self-check is a courtesy, not a substitute.
+
+In addition, per R18 of spec 0002, the skill SHALL enforce a mandatory
+null-case and permitted-path self-check during the authoring phase. For
+each drafted requirement, verify that the requirement explicitly answers
+the null/degenerate case and names a permitted path, rather than solely
+stating what is forbidden or describing only the happy path. If a
+requirement fails this check, revise it before finalizing the draft.
 
 ## Open-questions discipline
 
