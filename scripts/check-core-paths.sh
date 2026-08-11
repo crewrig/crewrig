@@ -100,20 +100,17 @@ fi
 
 DERIVED=()
 query_output=""
-if ! query_output="$(bash "$BUILD_SCRIPT" --list-output-dirs 2>/dev/null)" || [ -z "$query_output" ]; then
+if ! query_output="$(bash "$BUILD_SCRIPT" --list-output-dirs 2>/dev/null)"; then
   echo "Error: failed to query built-output directories from build script: $BUILD_SCRIPT --list-output-dirs" >&2
   exit 2
 fi
 
-while IFS= read -r line || [ -n "$line" ]; do
-  line="${line%$'\r'}"
-  [ -z "$line" ] && continue
-  DERIVED+=("$line")
-done <<< "$query_output"
-
-if [ "${#DERIVED[@]}" -eq 0 ]; then
-  echo "Error: build script declared zero output directories: $BUILD_SCRIPT" >&2
-  exit 2
+if [ -n "$query_output" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    [ -z "$line" ] && continue
+    DERIVED+=("$line")
+  done <<< "$query_output"
 fi
 
 # ---------------------------------------------------------------------------

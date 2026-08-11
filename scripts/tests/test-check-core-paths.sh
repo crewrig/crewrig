@@ -134,25 +134,36 @@ run_check() {
 
 # No write-helper call site → the derived set is empty.
 BUILD_STUB_NONE='#!/bin/bash
-# Stub build script: no write-helper call sites.
+if [ "$1" = "--list-output-dirs" ]; then
+  exit 0
+fi
 echo "stub"
 '
 
 # One call site writing into .newcli/skills.
 BUILD_STUB_NEWCLI='#!/bin/bash
+if [ "$1" = "--list-output-dirs" ]; then
+  echo ".newcli/skills"
+  exit 0
+fi
 check_or_write "$out_root/.newcli/skills/$name/SKILL.md" "$content" "$source"
 '
 
-# One call site whose target this guard cannot classify (line 2).
+# A build script whose query fails (case g).
 BUILD_STUB_UNCLASSIFIABLE='#!/bin/bash
+if [ "$1" = "--list-output-dirs" ]; then
+  echo "Error: simulated failure" >&2
+  exit 2
+fi
 check_or_write "$some_other_root/x.md" "$content"
 '
 
-# A call site that is NOT the first token of its line. All sixteen real call
-# sites are bare, so case i cannot exercise this shape — and a prefix-anchored
-# matcher discarded it silently, the fail-closed rule never seeing a line that
-# failed to match in the first place.
+# A call site that is NOT the first token of its line.
 BUILD_STUB_NESTED_CALL='#!/bin/bash
+if [ "$1" = "--list-output-dirs" ]; then
+  echo ".newcli/skills"
+  exit 0
+fi
 for name in demo; do
   if ! check_or_write "$out_root/.newcli/skills/$name/SKILL.md" "$content" "$source"; then
     exit 1
@@ -160,13 +171,12 @@ for name in demo; do
 done
 '
 
-# An INDENTED comment naming a helper, above a real call site. The comment skip
-# runs on the trimmed line; on the raw line an indented comment is not seen as a
-# comment, matches the helper pattern instead, yields no directory, and trips
-# the fail-closed rule. build-components.sh carries such a comment today (:625),
-# but it ends at the helper name with no trailing space, so it happens not to
-# match — which would leave the trim pinned by nothing.
+# An INDENTED comment naming a helper, above a real call site.
 BUILD_STUB_INDENTED_COMMENT='#!/bin/bash
+if [ "$1" = "--list-output-dirs" ]; then
+  echo ".newcli/skills"
+  exit 0
+fi
 for name in demo; do
     # check_or_write is how the compiled skill gets written
   check_or_write "$out_root/.newcli/skills/$name/SKILL.md" "$content" "$source"
@@ -394,13 +404,13 @@ done
     fail=$((fail + 1))
   fi
 
-  # Naming the line is what distinguishes a fail-closed refusal from an
+  # Naming the build script is what distinguishes a fail-closed refusal from an
   # unrelated crash that happens to exit non-zero.
-  if echo "$CHECK_STDERR" | grep -qF "build-components.sh:2"; then
-    echo "PASS  case-g: stderr names the offending build-script line"
+  if echo "$CHECK_STDERR" | grep -qF "build-components.sh"; then
+    echo "PASS  case-g: stderr names the build script"
     pass=$((pass + 1))
   else
-    echo "FAIL  case-g: stderr did not name build-components.sh:2"
+    echo "FAIL  case-g: stderr did not name build-components.sh"
     echo "      actual stderr: $CHECK_STDERR"
     fail=$((fail + 1))
   fi
