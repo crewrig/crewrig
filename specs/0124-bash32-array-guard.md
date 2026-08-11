@@ -1,8 +1,9 @@
 ---
 id: "0124"
 slug: bash32-array-guard
-status: draft
+status: approved
 complexity: standard
+interaction-mode: INTERMEDIATE
 related-issue: 798
 version: 1.0.0
 ---
