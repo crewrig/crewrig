@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.0"
+    version: "1.4.0"
 claude:
   allowed-tools:
     - Read
@@ -279,9 +279,9 @@ or fails, proceed with the gate without the illustration.
 | CLI | `plannotator` detached invocation | `internal` structured prompt | Guaranteed floor |
 |---|---|---|---|
 | Claude Code | verified | `AskUserQuestion` (verified) | `internal` |
-| Gemini CLI | pending-DEV → degrade to `internal` | `[GAP-confirmation]` | `internal` |
-| Copilot CLI | pending-DEV → degrade to `internal` | `[GAP-confirmation]` | `internal` |
-| Antigravity CLI | pending-DEV → degrade to `internal` | `[GAP-confirmation]` | `internal` |
+| Gemini CLI | verified | `[GAP-confirmation]` | `internal` |
+| Copilot CLI | verified | `[GAP-confirmation]` | `internal` |
+| Antigravity CLI | verified | `[GAP-confirmation]` | `internal` |
 
 The `internal` backend is the floor on every CLI: whenever a richer affordance
 cannot be proven available at gate time, degrade to `internal` rather than
