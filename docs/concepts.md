@@ -69,11 +69,16 @@ persists and travels across tools:
 | 3 | Obsidian | User knowledge base | Read free, write user-controlled |
 
 MemPalace is the tier that makes memory *shared*: it is read/write and visible
-across Gemini CLI, Claude Code, and Copilot CLI, so a decision recorded during a
-Claude Code session can be recovered later from Gemini CLI. The full memory
-protocol — how agents activate memory at session start, the wing/room/drawer
-structure, and the cross-tool task-handoff convention — is specified in the
-framework's tool rules (the priority-60 core rules file).
+across Gemini CLI, Claude Code, Copilot CLI, and Antigravity CLI, so a decision
+recorded during a Claude Code session can be recovered later from Gemini CLI.
+Under the shared MemPalace MCP HTTP daemon topology, the agent-memory tier is
+served by a single shared process rather than by one process per session —
+see [ADR 0016](adr/0016-shared-mempalace-mcp-http-server.md) for the decision
+record and the [MCP daemon runbook](runbooks/mempalace-mcp-server.md) for
+converting a machine to it. The full memory protocol — how agents activate
+memory at session start, the wing/room/drawer structure, and the cross-tool
+task-handoff convention — is specified in the framework's tool rules (the
+priority-60 core rules file).
 
 ## The harness feedback loop
 

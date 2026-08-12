@@ -130,25 +130,43 @@ The framework implements a three-tier memory model:
 
 See `config/TOOLS.md` for the full memory protocol.
 
-#### Multi-agent concurrency and ChromaDB HTTP daemon
+#### Multi-agent concurrency: ChromaDB and MCP daemons
 
-When multiple CLI sessions (Claude Code, Gemini CLI, Copilot CLI) or
-parallel agents access MemPalace simultaneously, each `PersistentClient`
-instance spawns its own Rust HNSW compactor. Concurrent compactors write
-to the same binary vector index files without coordination, silently
-corrupting the HNSW segment — searches return empty results while the
-SQLite layer remains intact.
+When multiple CLI sessions (Claude Code, Gemini CLI, Copilot CLI, Antigravity
+CLI) or parallel agents access MemPalace simultaneously, two independent
+layers each need a single owner, or writes corrupt.
 
-CrewRig solves this by running a single shared `chroma run` daemon that
-owns the `PersistentClient`. Every CLI session connects through
+![Two-layer memory coordination topology: the four CLIs connect through the shared MCP daemon (port 41893, one writer lease), which connects through the shared ChromaDB daemon (port 8001, one HNSW compactor), which owns the palace.](docs/assets/mempalace-mcp/topology.png)
+
+**Tier 1 — the ChromaDB daemon.** Each `PersistentClient` instance spawns
+its own Rust HNSW compactor. Concurrent compactors write to the same binary
+vector index files without coordination, silently corrupting the HNSW
+segment — searches return empty results while the SQLite layer remains
+intact. CrewRig solves this by running a single shared `chroma run` daemon
+that owns the `PersistentClient`. Every CLI session connects through
 `scripts/lib/mempalace-http-wrapper.py`, which monkey-patches
 `chromadb.PersistentClient` → `chromadb.HttpClient` before importing
-MemPalace, reducing multi-writer contention to a single process.
-
-See [`docs/runbooks/chroma-http-server.md`](docs/runbooks/chroma-http-server.md)
+MemPalace. See
+[`docs/runbooks/chroma-http-server.md`](docs/runbooks/chroma-http-server.md)
 for start/stop/status commands, log locations, migration steps, and
 troubleshooting. The architectural decision is recorded in
 [ADR 0006](docs/adr/0006-chromadb-http-server.md).
+
+**Tier 2 — the shared MemPalace MCP daemon.** Collapsing tier 1 does not, on
+its own, collapse the palace *writer lease*: each CLI session still ran its
+own stdio MemPalace process, and the first one to mutate held that lease for
+the rest of its life, refusing every sibling session with MCP error
+`-32001` (*"Peer MCP writer active"*). Converting a machine to a single
+supervised MCP HTTP daemon that every CLI registers against —
+`task mempalace:switch-http` — removes that contention between sibling
+sessions by construction. **This conversion is opt-in and per-machine**:
+until it is run on a given machine, each session still spawns its own stdio
+server there, and a peer-writer refusal stays the expected case, not an
+already-solved one. See
+[the runbook](docs/runbooks/mempalace-mcp-server.md) for the conversion
+command, daily operations, and the token-replacement procedure, and
+[ADR 0016](docs/adr/0016-shared-mempalace-mcp-http-server.md) for the
+decision record.
 
 ## Adopting CrewRig
 
