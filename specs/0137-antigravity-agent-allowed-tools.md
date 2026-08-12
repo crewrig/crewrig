@@ -1,12 +1,14 @@
 ---
 id: "0137"
 slug: antigravity-agent-allowed-tools
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 835
 version: 1.0.0
 ---
+
+# Preserve tool capabilities for Antigravity agents
 
 ## Intent
 
@@ -39,4 +41,4 @@ Then the compiled agent's frontmatter SHALL contain `enable_mcp_tools: true`
 
 ## Open questions
 
-*(none)*
+- None.

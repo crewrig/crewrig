@@ -5,6 +5,7 @@ structured data (JSON-LD), heading hierarchy, sitemap/robots.txt, internal links
 and performance signals with direct SEO impact. Produces a prioritized findings
 report (critical → high → low). Does not write copy — hands recommendations to
 copywriter or astro-developer."
+license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
