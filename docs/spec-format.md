@@ -194,7 +194,7 @@ table below is the contract.
 |---|---|---|---|
 | `draft` | Spec file opened in the working branch | Spec author (human or `spec-author` skill) | Spec file in the worktree, no PR yet |
 | `approved` | Spec PR merged on `main` | Spec reviewer (per the interaction mode declared in frontmatter) | Merged spec PR — its own (squash) commit already carries `status: approved`, so no separate status-transition PR is opened — plus a logbook comment recording the approval |
-| `implemented` | Implementation PR for `related-issue` merged on `main` | Implementation team's `pr-logbook` | Merged implementation PR + logbook closure comment |
+| `implemented` | Implementation PR for `related-issue` merged on `main` | Implementation team's `pr-logbook` | Merged implementation PR — its own (squash) commit already carries `status: implemented`, so no separate status-transition PR is opened — plus a logbook closure comment |
 | `archived` | Related issue closed without implementation (`won't fix`, duplicate, abandoned) | Ticket closer | Logbook comment explaining the archival |
 | `superseded` | A newer spec replaces this one (often through a `spec`-class loop that grows beyond a delta) | Author of the superseding spec | `superseded-by` field set; superseding spec exists with its own id |
 
@@ -248,12 +248,15 @@ lifecycle-tracking metadata: the `status` and `superseded-by` fields are
 *expected* to change, since the table above defines transitions the spec
 undergoes over its life.
 
-Those transitions divide into two kinds, recorded differently. The first,
+Those transitions divide into three kinds, recorded differently. The first,
 `draft` → `approved`, is recorded **inside the spec-PR's own commit**, so the
-spec lands on `main` already carrying `status: approved`. Every **later**
-transition — `approved` → `implemented`, `→ superseded`, `→ archived` — is
-recorded **after** the spec has merged, by a metadata-only edit to the merged
-spec's frontmatter. The two cases are defined in turn below.
+spec lands on `main` already carrying `status: approved`. The second,
+`approved` → `implemented`, is recorded **inside the implementation PR's own
+commit**, so the spec carries `status: implemented` the moment its
+implementation lands on `main`. Every **later** transition — `→ superseded`,
+`→ archived` — is recorded **after** the spec has merged, by a metadata-only
+edit to the merged spec's frontmatter. The three cases are defined in turn
+below.
 
 **Recording the initial `draft` → `approved` transition (in the spec-PR).**
 Every interaction mode has a real approval event whose grant the recorded
@@ -293,19 +296,34 @@ commit on `main` carrying `status: approved`; a new commit needs only a plain
 `git push`, whereas an amend would force `git push --force-with-lease` and
 risk clobbering a concurrent reviewer or CI push on the shared branch.
 
+**Recording the `approved` → `implemented` transition (in the implementation
+PR).** The `implemented` transition is triggered by the merge of the
+implementation PR for the spec's `related-issue` — a genuinely later, separate
+event that cannot be folded into the spec-PR that introduces the spec, but
+**can** be folded into the implementation PR itself. On the implementation
+feature branch, before the implementation PR merges, edit the spec's
+frontmatter (`status: approved` → `status: implemented`), create a **new
+commit** — not `git commit --amend` — then `git push`. The implementation PR
+squash-merges, so the transition rides the implementation PR's own squash
+commit and the spec lands on `main` already carrying `status: implemented` at
+the moment its implementation lands. The authority named in the table above
+(the implementation team's `pr-logbook`) performs the edit; it touches nothing
+else — no body line, no `id`, no `slug`, no `version`. A diff that alters any
+normative content under cover of the status bump is a violation. No separate,
+post-merge, metadata-only pull request is required to record the transition.
+
 **Recording a post-merge transition (every other transition).** Every
-transition other than `draft` → `approved` — `approved` → `implemented`,
+transition other than `draft` → `approved` and `approved` → `implemented` —
 `→ superseded`, `→ archived` — is triggered by a genuinely later, separate
-event (an implementation PR merging, a superseding spec landing, a ticket
-closed without implementation) that cannot be folded into the spec-PR that
-introduces the spec, and so is recorded **after** merge by a **metadata-only
-edit** to the merged spec's frontmatter. The authority named in the table
-above changes the `status` field (and sets `superseded-by` when moving to
-`superseded`) and touches nothing else — no body line, no `id`, no `slug`, no
-`version`. A diff that alters any normative content under cover of a status
-bump is a violation. The `version` field stays immutable on the original after
-merge; the cumulative version lives on the highest-numbered delta (per
-*Versioning*).
+event (a superseding spec landing, a ticket closed without implementation)
+that cannot be folded into the spec-PR that introduces the spec, and so is
+recorded **after** merge by a **metadata-only edit** to the merged spec's
+frontmatter. The authority named in the table above changes the `status` field
+(and sets `superseded-by` when moving to `superseded`) and touches nothing
+else — no body line, no `id`, no `slug`, no `version`. A diff that alters any
+normative content under cover of a status bump is a violation. The `version`
+field stays immutable on the original after merge; the cumulative version
+lives on the highest-numbered delta (per *Versioning*).
 
 This carve-out admits lifecycle metadata. A second, equally narrow carve-out
 admits meaning-preserving editorial edits to body prose; it is defined next.
