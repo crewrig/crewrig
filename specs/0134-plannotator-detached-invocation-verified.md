@@ -1,7 +1,7 @@
 ---
 id: "0134"
 slug: plannotator-detached-invocation-verified
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 823
