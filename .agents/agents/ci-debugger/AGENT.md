@@ -3,6 +3,7 @@ name: ci-debugger
 description: "Specialist agent for diagnosing and fixing failing GitHub Actions
 pipelines. Systematically produces a
 symptom → hypothesis → evidence → fix chain."
+license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

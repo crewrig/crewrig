@@ -4,6 +4,7 @@ description: "Content production specialist. Interviews the product brief, produ
 content outline for review, then writes final page copy (hero, features,
 social proof, CTA). Delivers structured Markdown ready for handoff to
 frontend-developer or astro-developer. Does NOT make layout or visual decisions."
+license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

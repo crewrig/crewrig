@@ -1,11 +1,12 @@
 ---
 name: pr-reviewer
 description: "Independent PR reviewer agent. Spawns cold — receives only a PR number, no authoring-session context. Activates the pr-reviewer skill to audit the diff, runs linter scripts against changed files, and posts a structured review verdict via the forge CLI (`gh`)."
+enable_write_tools: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.7"
+    version: "1.2.0"
 ---
 
 
