@@ -1,7 +1,7 @@
 ---
 id: "0136"
 slug: document-shared-mempalace-mcp-daemon
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 751
