@@ -8,6 +8,8 @@ related-issue: 835
 version: 1.0.0
 ---
 
+# Preserve tool capabilities for Antigravity agents
+
 ## Intent
 
 Ensure that agents compiled for the Antigravity CLI target preserve their tool capabilities so that they do not fail to execute required commands or access necessary capabilities.
@@ -39,4 +41,4 @@ Then the compiled agent's frontmatter SHALL contain `enable_mcp_tools: true`
 
 ## Open questions
 
-*(none)*
+- None.

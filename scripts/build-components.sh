@@ -870,9 +870,24 @@ compatibility: \"$compatibility\""
       ag_frontmatter=$(extract_frontmatter "$source")
 
       local enable_write_tools enable_mcp_tools enable_subagent_tools
-      enable_write_tools=$(printf '%s\n' "$ag_frontmatter" | yq -r '.antigravity.enable_write_tools // ""' 2>/dev/null)
-      enable_mcp_tools=$(printf '%s\n' "$ag_frontmatter" | yq -r '.antigravity.enable_mcp_tools // ""' 2>/dev/null)
-      enable_subagent_tools=$(printf '%s\n' "$ag_frontmatter" | yq -r '.antigravity.enable_subagent_tools // ""' 2>/dev/null)
+      # Use has() to detect key presence — yq's // operator treats false as
+      # falsy, which would drop an explicit "false" and trigger the Bash
+      # fallback incorrectly.
+      if printf '%s\n' "$ag_frontmatter" | yq -e '.antigravity | has("enable_write_tools")' >/dev/null 2>&1; then
+        enable_write_tools=$(printf '%s\n' "$ag_frontmatter" | yq -r '.antigravity.enable_write_tools' 2>/dev/null)
+      else
+        enable_write_tools=""
+      fi
+      if printf '%s\n' "$ag_frontmatter" | yq -e '.antigravity | has("enable_mcp_tools")' >/dev/null 2>&1; then
+        enable_mcp_tools=$(printf '%s\n' "$ag_frontmatter" | yq -r '.antigravity.enable_mcp_tools' 2>/dev/null)
+      else
+        enable_mcp_tools=""
+      fi
+      if printf '%s\n' "$ag_frontmatter" | yq -e '.antigravity | has("enable_subagent_tools")' >/dev/null 2>&1; then
+        enable_subagent_tools=$(printf '%s\n' "$ag_frontmatter" | yq -r '.antigravity.enable_subagent_tools' 2>/dev/null)
+      else
+        enable_subagent_tools=""
+      fi
 
       if [ -z "$enable_write_tools" ] || [ "$enable_write_tools" = "null" ]; then
         local claude_tools
