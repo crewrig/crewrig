@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.5.0"
+    version: "1.6.0"
 claude:
   allowed-tools:
     - Read
@@ -449,6 +449,14 @@ schema*:
 | `unsecured-id` | Omitted. Present, and copied verbatim from the tool's stdout, only on the exit-`3` path above. |
 
 The filename slug and the frontmatter slug SHALL match exactly.
+
+The `status` field is written `draft` on first write and flipped to
+`approved` in the spec-PR's own commit (the Merge mechanic). The subsequent
+`approved` → `implemented` transition is **not** this skill's job: it is
+recorded by the implementation team's `pr-logbook` on the implementation
+feature branch, folded into the implementation PR's own squash commit
+(`docs/spec-format.md` → *Recording a status transition*). This skill SHALL
+NOT open a separate, post-merge, metadata-only PR to record `implemented`.
 
 ### Body sections
 

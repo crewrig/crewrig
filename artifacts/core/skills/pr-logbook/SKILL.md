@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.0"
+    version: "1.3.0"
 claude:
   allowed-tools:
     - Read
@@ -131,6 +131,27 @@ Co-authored-by lines, if any.
 ```
 
 Do not paste the entire PR description. The commit message is denser.
+
+### 5b. Spec `approved` → `implemented` transition (when the PR implements a spec)
+
+When the PR implements a spec (its `related-issue` is a spec's issue), the
+spec's `approved` → `implemented` transition is folded into this PR's own
+merge — it is **not** recorded by a separate, post-merge, metadata-only PR
+(`docs/spec-format.md` → *Recording a status transition*). Before the PR
+merges, on the implementation feature branch:
+
+1. Edit the spec's frontmatter: `status: approved` → `status: implemented`.
+2. Touch nothing else — no body line, no `id`, no `slug`, no `version`. A
+   diff that alters any normative content under cover of the status bump is
+   a violation.
+3. Create a **new commit** — not `git commit --amend` — then `git push`. The
+   implementation PR squash-merges, so the transition rides the PR's own
+   squash commit and the spec lands on `main` already carrying
+   `status: implemented` at the moment its implementation lands.
+
+The spec-author skill writes `status: draft` on first write and records
+`draft` → `approved` in the spec-PR; this step is the `implemented` half of
+the same in-commit mechanic.
 
 ### 6. Pre-push sanity checks
 
