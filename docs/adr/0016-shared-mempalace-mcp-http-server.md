@@ -147,8 +147,20 @@ prototype:
   token is passed to the child through the environment, never through `argv`.
 - Optional TLS (`--tls-cert` / `--tls-key`), a `--read-only` mode, and an
   unauthenticated `/healthz` liveness endpoint.
-- A token is *mandatory* on a non-loopback bind; on loopback it is optional, and
-  `cmd_serve` mints one anyway.
+- A token is *mandatory* on a non-loopback bind, matching `cmd_serve`'s own
+  token-resolution guard. **Correction (spec 0136, #751):** the loopback half
+  of this sentence was wrong as first written. On a loopback bind,
+  `cmd_serve` does **not** mint a token automatically — its auto-generate
+  branch fires only when the bind is non-loopback
+  (`if not token and not loopback and not args.allow_insecure`,
+  `mempalace/cli.py:1450`, verified at the pinned 3.6.0; the docstring at
+  `mempalace/cli.py:1421` confirms it, describing the wrapper as
+  "auto-generating a strong one for non-loopback binds"). A loopback server
+  given no explicit `--token` or `MEMPALACE_MCP_HTTP_TOKEN` serves
+  unauthenticated. The decision this ADR records is unchanged by this
+  correction — see *Daemon lifecycle* and the derived-spec launcher, which
+  provisions and enforces a token itself rather than relying on upstream to
+  mint one on loopback.
 
 The lease is designed for exactly this topology. From `mine_palace_lock`'s
 docstring:
@@ -408,8 +420,12 @@ MemPalace source change.
   `main()` with no explicit arguments, so it reads `sys.argv`. Passing
   `--transport http --host … --port …` through the wrapper is expected to work
   but must be verified in DEV before spec 1 commits to the launch line.
-- **Token on a loopback bind** — mint one anyway (defence in depth, matching
-  `cmd_serve`'s own behaviour) or rely on the loopback boundary?
+- **Token on a loopback bind** — mint one anyway (defence in depth), or rely
+  on the loopback boundary instead? **Correction (spec 0136, #751):** this
+  question's premise was wrong as first written — minting one anyway would
+  *diverge* from `cmd_serve`'s own default on loopback, not match it; see
+  the correction under *The upstream remedy already exists* above. The
+  question itself is unaffected by the correction and stays open.
 - **What becomes of spec 0103?** Its `-32001` fallback stops describing the
   expected case. Keep it as the degraded-path net, or restate its trigger?
 - **Is a per-session read-only client worth it?** `MEMPALACE_MCP_READ_ONLY`

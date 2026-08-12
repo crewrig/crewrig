@@ -415,8 +415,11 @@ Tag a friction whenever a **recognition signal** fires (next section).
 Do not pause the user's task longer than the tag itself. The cost of
 one tag is normally negligible — the one exception is when the MemPalace
 write path is unavailable (a peer holds the write lock, or the server is
-disconnected), a documented failure mode with a fallback in the
-`harness-report` procedure (see *How to tag* below); the cost of an
+disconnected). That exception is the **rare** case rather than the routine
+one on a machine converted to the shared MemPalace MCP HTTP daemon (see
+*How to tag* below for why) — but it remains a documented failure mode
+with a fallback in the `harness-report` procedure, because the refusal is
+still a degraded path every agent must be able to handle; the cost of an
 un-reported friction that bites the next agent is much higher.
 
 If unsure whether something qualifies — tag it. Curation will discard
@@ -462,12 +465,20 @@ editing every skill body.
 The fire-and-forget tag has one **documented failure mode**: the
 MemPalace write path may be unavailable — a peer holds the write lock
 (MCP error `-32001`) or the server is disconnected — so the tag call
-cannot record the friction. The `harness-report` procedure carries the
-operational fallback for this case (file the friction directly as a
+cannot record the friction. **On a machine converted to the shared
+MemPalace MCP HTTP daemon (ADR 0016), a peer-held write lock between
+sibling sessions becomes rare rather than expected**: one process holds
+the palace writer lease on behalf of every session, and MemPalace's own
+lock is re-entrant for the process that already holds it — it passes
+through without re-acquiring rather than refusing — which is what lets
+that one process serve every session's writes without contending with
+itself. The `harness-report` procedure carries the operational fallback
+for this case regardless (file the friction directly as a
 `harness-feedback`-labeled issue on the offender's canonical repository,
 using the forge-appropriate CLI, so the signal still reaches the
-curator's triage lane). This file states the contract; the `SKILL.md`
-procedure carries the "how".
+curator's triage lane): the refusal stays a degraded path every agent must
+still handle, converted machine or not. This file states the contract; the
+`SKILL.md` procedure carries the "how".
 
 ### Where to write
 
