@@ -11,7 +11,10 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.7"
+    version: "1.2.0"
+claude:
+  allowed-tools:
+    - Bash
 ---
 
 # PR Reviewer Agent
