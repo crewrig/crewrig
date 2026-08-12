@@ -60,6 +60,17 @@ rather than the expected one.
 11. This spec's implementation SHALL NOT restate the per-CLI integration facts
     that `docs/cli-matrix.md` carries. Prose that needs them SHALL link the
     matrix row.
+12. The documentation SHALL carry a diagram of the two-layer coordination
+    topology, placed where a reader first meets that topology.
+13. Every operator procedure this spec requires whose steps have a
+    consequential order SHALL carry a diagram of that order. Converting a
+    machine and replacing the bearer token each qualify.
+14. Every diagram SHALL ship with a form that a later contributor can diff and
+    amend — either a text-based source rendered at read time, or a generated
+    image committed alongside the input that produced it. A diagram whose only
+    committed form is an opaque binary SHALL NOT be introduced.
+15. Every diagram SHALL remain legible on both a light and a dark reading
+    surface.
 
 ## Scenarios
 
@@ -100,6 +111,24 @@ Given  a draft runbook describing a --rotate flag for the token
 When   the repository ships no such flag
 Then   the draft is rejected and the manual procedure is documented instead,
        stating that no automated path exists yet
+```
+
+**Scenario:** A reader grasps the topology before reading a paragraph about it
+
+```text
+Given  a reader who has never heard of the two coordination layers
+When   they reach the section of README.md that introduces them
+Then   a diagram shows both layers, which one requires conversion, and where
+       the palace sits relative to them
+```
+
+**Scenario:** A diagram that cannot be amended is refused
+
+```text
+Given  a diagram contributed as an image file with no accompanying source
+When   a later contributor needs to correct one label in it
+Then   the contribution is refused, because nothing committed lets them
+       regenerate or diff it
 ```
 
 ## Out of scope
