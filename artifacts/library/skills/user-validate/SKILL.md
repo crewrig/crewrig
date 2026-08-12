@@ -237,12 +237,10 @@ The `internal` feature set is a deliberate subset of `plannotator`:
 - `illustration` is **not** honoured here (see R14) — there is no browser image
   surface on the `internal` path.
 
-**Structured-equivalent gap (non-Claude CLIs).** `AskUserQuestion` is confirmed
-on Claude Code. A structured interactive-prompt equivalent on Gemini / Copilot /
-Antigravity is not yet verified (`[GAP-confirmation]`, `docs/cli-matrix.md` row
-27b). Where no structured prompt exists, use the closest host-CLI interactive
-primitive that still avoids a bare prose question, and record the gap — do not
-silently downgrade to prose.
+**Structured-equivalent (non-Claude CLIs).** `AskUserQuestion` is verified on
+Claude Code. A structured interactive-prompt equivalent is verified on Gemini
+and Copilot (using `ask_user`) and on Antigravity (using `ask_question`). The
+gate realizes the structured question without downgrading to prose.
 
 ## Cross-cutting options
 
