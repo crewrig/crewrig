@@ -1,7 +1,7 @@
 ---
 id: "0137"
 slug: antigravity-agent-allowed-tools
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 835
