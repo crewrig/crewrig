@@ -12,7 +12,7 @@ script's own printed reminder that already-running sessions must restart.
 
 - **Model:** `gemini-3-pro-image` (Nano Banana Pro)
 - **Skill:** `nano-banana`, `generate` subcommand
-- **Invocation:** `python3 /Users/hoanicross/.claude/skills/nano-banana/scripts/nano_banana.py generate --model gemini-3-pro-image --out docs/assets/mempalace-mcp/convert-machine.png --prompt "<exact prompt text below>"`
+- **Invocation:** `python3 "$HOME/.claude/skills/nano-banana/scripts/nano_banana.py" generate --model gemini-3-pro-image --out docs/assets/mempalace-mcp/convert-machine.png --prompt "<exact prompt text below>"`
   (`NANO_BANANA_PYTHON` already exported to the skill's dedicated venv.)
 
 ## Exact prompt text
