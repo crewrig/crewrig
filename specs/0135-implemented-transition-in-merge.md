@@ -1,7 +1,7 @@
 ---
 id: "0135"
 slug: implemented-transition-in-merge
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 863
