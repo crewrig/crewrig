@@ -36,22 +36,26 @@ Converting is all-or-nothing across the four CLIs, run once per machine:
 task mempalace:switch-http
 ```
 
-1. Installs the supervisor unit (launchd on macOS, systemd user unit on
-   Linux) and the daemon launcher.
-2. Provisions a bearer token if one does not already exist for this palace.
-3. Starts the daemon and waits for it to report healthy.
-4. Registers every supported CLI against it, over `--transport http`.
-5. Re-runs the status check so the conversion is verified, not merely
+1. Provisions a bearer token if one does not already exist for this palace
+   — this happens **first**: the daemon launcher refuses to start without
+   one, by design (`install_mcp_daemon`, `scripts/lib/common.sh:812-830`).
+2. Installs the daemon launcher and starts it under the supervisor (launchd
+   on macOS, systemd user unit on Linux), which waits for the daemon to
+   report healthy.
+3. Registers every supported CLI against it, over `--transport http`.
+4. Re-runs the status check so the conversion is verified, not merely
    assumed.
 
 **Already-running sessions keep their previous memory server until they
 restart** — restart every open CLI session to actually pick up the change.
+This is a separate, order-independent follow-up rather than a step in the
+sequence above, so it is not depicted in the diagram below.
 
 A single CLI can be converted on its own by re-running that CLI's own
 `setup-*-interactive.sh`; the machine-wide, all-four-CLIs-or-none obligation
 belongs only to `task mempalace:switch-http`.
 
-![Five ordered steps to convert a machine to the shared MemPalace MCP HTTP daemon: start the conversion task, the daemon starts and provisions a token, every CLI is registered with the token, the result is verified, then running sessions are restarted.](../assets/mempalace-mcp/convert-machine.png)
+![Four ordered steps to convert a machine to the shared MemPalace MCP HTTP daemon: provision the bearer token, install and start the daemon, register every CLI with the token, then verify status and auth.](../assets/mempalace-mcp/convert-machine.png)
 
 ## Daily operations
 
@@ -133,13 +137,20 @@ directly in the log, naming
 
 ## Replacing the bearer token
 
-**No automated path exists yet.** The framework ships no `--rotate` flag or
-script for this daemon; the manual procedure below is the only one that
-exists today, and it is ordered so that the daemon never keeps serving under
-the superseded token for longer than the single command in step 2 takes to
-run.
+**No automated path exists yet, and the existing conversion tooling has a
+gap tracked separately as #880:** `switch-mempalace-http.sh` mints a new
+token and re-registers every CLI with it, but it does **not** restart the
+daemon — `install_daemon_supervisor` explicitly skips loading an
+already-loaded launchd agent and `enable --now` no-ops on an already-active
+systemd unit, and the launcher process, once running, `exec`s the wrapper
+once and never re-reads the token file
+(`scripts/lib/mcp-daemon-launcher.sh:187`). So the running daemon keeps
+serving under the token it started with until something replaces the
+process. The manual procedure below adds the missing restart explicitly, in
+the order that leaves no daemon serving the superseded token for longer
+than necessary.
 
-![Four ordered steps to replace the shared MCP daemon's bearer token: delete the old token file, run switch-mempalace-http.sh to mint a new token and restart the daemon, delete each CLI's stale backup config that still holds the old token, then restart every running session.](../assets/mempalace-mcp/rotate-token.png)
+![Five ordered steps to replace the shared MCP daemon's bearer token: delete the old token file, run switch-mempalace-http.sh to mint a new token and re-register every CLI, restart the daemon so the new token takes effect, delete each CLI's stale backup config that still holds the old token, then restart every running session.](../assets/mempalace-mcp/rotate-token.png)
 
 1. **Delete the current token file.** Its path is derived from the palace
    path the same way the daemon derives it (`scripts/lib/common.sh`,
@@ -155,12 +166,23 @@ run.
    task mempalace:switch-http
    ```
 
-   Finding no token file, this mints a fresh one, restarts the daemon under
-   the new value — **the point at which the superseded token stops being
-   honored** — and re-registers every CLI with the new token, all in the
-   same run.
+   Finding no token file, this mints a fresh one and re-registers every CLI
+   with it — but it does **not** restart the daemon (#880). The running
+   process keeps serving under the *old* token until step 3.
 
-3. **Delete each CLI's stale backup config.** Step 2's re-registration backs
+3. **Restart the daemon so the new token actually takes effect:**
+
+   ```sh
+   task mempalace:stop
+   ```
+
+   Under the supervisor this is a restart request (see *Stopping is not
+   uninstalling* above): the process is replaced, and only the replacement
+   reads the token file — which by now holds the value step 2 minted.
+   **This is the point at which the superseded token stops being
+   honored**, not step 2.
+
+4. **Delete each CLI's stale backup config.** Step 2's re-registration backs
    up each assistant's config file with a timestamp suffix before
    overwriting it, and every backup still contains the *old* token:
 
@@ -172,7 +194,7 @@ run.
 
    Remove whichever of these exist on this machine.
 
-4. **Restart every running CLI session** so it picks up the new token —
+5. **Restart every running CLI session** so it picks up the new token —
    exactly as after a first conversion, a session already running keeps
    using the value it started with.
 
