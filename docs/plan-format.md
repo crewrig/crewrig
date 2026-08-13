@@ -9,8 +9,10 @@ the lifecycle introduced in
 satisfy and the schema that the plan reviewer (per `AGENTS.md` →
 *Plan review protocol*) and the retroactive routing engine
 (issue #172) will rely on. The format is mandated by
-[`specs/0004-plan-format-and-review.md`](../specs/0004-plan-format-and-review.md);
-every section below traces back to one of its requirements R1..R11.
+[`specs/0004-plan-format-and-review.md`](../specs/0004-plan-format-and-review.md)
+(R1..R11) and, for the tier-conditioned mandatory set below, by
+[`specs/0138-tier-bounded-plan-artifacts-and-loops.md`](../specs/0138-tier-bounded-plan-artifacts-and-loops.md)
+(R1); every section below traces back to one of these requirements.
 
 ## Not a file — a comment
 
@@ -45,8 +47,9 @@ alias for `## PLAN review of v1 — issue #<N>`.
 
 ## Mandatory body sections
 
-An initial or revised plan comment SHALL contain the following five
-level-3 headings, in this order, with their text matching verbatim
+An initial or revised plan comment SHALL contain the level-3 headings
+below that are mandatory at its complexity tier (see *Tier-conditioned
+mandatory set*), in this order, with their text matching verbatim
 (case-sensitive, no trailing punctuation). A future plan linter will
 rely on header presence and ordering to validate conformance.
 
@@ -84,6 +87,24 @@ rejected alternatives is rarely a plan that explored options.
 revert path (commit revert, configuration rollback, data migration
 reversal, etc.) and any coordination required with downstream tickets
 or deployed components.
+
+## Tier-conditioned mandatory set
+
+The complexity tier declared in the ticket's spec frontmatter (per
+[ADR-0010](adr/0010-spec-plan-review-lifecycle.md) → *Complexity tiers
+and team sizing*) determines which of the five sections above are
+mandatory:
+
+- At every tier — `trivial`, `small`, `standard`, and `large` —
+  `### Approach` and `### Steps` are mandatory.
+- At `trivial` and `small` tiers, `### Blast radius`,
+  `### Alternatives considered and rejected`, and `### Rollback
+  strategy` MAY be omitted; when present, they SHALL keep the format
+  defined above.
+- At `standard` and `large` tiers, all five sections remain mandatory
+  (R1 of spec 0138).
+
+These clauses bound the plan's size and the loop's length; they remove no item from the reviewer's checklist at any tier.
 
 ## Optional sections
 

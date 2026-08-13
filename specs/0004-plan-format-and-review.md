@@ -22,8 +22,13 @@ giving findings a stable shape that the retroactive review loop can route.
 1. The PLAN stage SHALL emit exactly one artifact: a Markdown comment
    posted on the logbook issue (per *Logbook Issues → Rule A*) whose
    first line is the header `## PLAN — issue #<N> (spec <NNNN>)`.
-2. Every plan comment SHALL contain, in order, the following five
-   mandatory sections, with their headings verbatim:
+2. Every plan comment SHALL contain, in order, the following mandatory
+   sections, with their headings verbatim. `### Approach` and
+   `### Steps` are mandatory at every complexity tier; `### Blast
+   radius`, `### Alternatives considered and rejected`, and
+   `### Rollback strategy` are mandatory at `standard` and `large`
+   tiers and MAY be omitted at `trivial` and `small` (R1 of spec
+   0138), keeping the format below whenever present:
    1. `### Approach` — one paragraph.
    2. `### Steps` — ordered list; each step SHALL name the concrete
       file path(s) it touches and a one-line description of the edit.
@@ -71,8 +76,8 @@ giving findings a stable shape that the retroactive review loop can route.
 ### Happy path — single review pass
 
 Given a non-trivial ticket #N whose spec-PR has merged on `main`
-When the architect drafts a PLAN comment on the logbook with the five
-  mandatory sections and posts it
+When the architect drafts a PLAN comment on the logbook with the
+  mandatory sections for its complexity tier and posts it
 And a second architect is spawned cold to review the plan
 Then the reviewer posts a `## PLAN review` comment with verdict
   `### Verdict: APPROVE` and zero findings of any class

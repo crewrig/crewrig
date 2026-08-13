@@ -85,6 +85,23 @@ every merge the carve-out does not cover — implementation-PRs, any
 delta-spec PR whose content changed after its own content-approval, and
 every non-spec-PR merge.
 
+**Feedback-conforming revision carve-out.** This carve-out is scoped
+explicitly to an **artifact-validation gate** (kind 1 above). When
+such a gate returned feedback and the artifact is revised, and every
+change in the revision is attributable to that gate's own feedback
+with no other normative change, the same gate SHALL NOT fire again on
+the revised artifact. When any change is not attributable to the
+feedback, or attribution is uncertain, the gate SHALL fire again on
+the full artifact — the conservative default (R6 of spec 0138). This
+carve-out does **not** reach the pre-merge merge-authorization gate
+(kind 2 above) — defined above as "a distinct action-authorization,
+NOT an artifact-validation gate" — so the *Notes on the matrix* claim
+that the one-file spec-PR discharge is "the sole exception" stays
+true, and *Branching Strategy* in `AGENTS.md` is neither weakened nor
+touched.
+
+These clauses bound the plan's size and the loop's length; they remove no item from the reviewer's checklist at any tier.
+
 ## Behavioral contract per (mode × stage) cell
 
 Each cell below names precisely the user gates the orchestrator SHALL
