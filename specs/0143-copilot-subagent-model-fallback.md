@@ -1,7 +1,7 @@
 ---
 id: "0143"
 slug: copilot-subagent-model-fallback
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 892
