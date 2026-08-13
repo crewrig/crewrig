@@ -4,7 +4,6 @@ description: "Visual design specialist. Produces color palette tokens, typograph
 spacing scale, tokens.css, and Tailwind config extensions. Delivers component
 anatomy specifications and design rationale. Does NOT write application code."
 license: Apache-2.0
-model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
