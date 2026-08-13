@@ -146,7 +146,9 @@ Normative transition rules:
    triggered by the loop.
 3. A SPECS or PLAN stage that produces no normative change MUST still
    emit an artifact (an "unchanged" delta spec, or a one-line plan
-   confirmation) so the audit trail records that the stage ran.
+   confirmation) so the audit trail records that the stage ran. At the
+   `trivial` tier, that one-line plan confirmation IS a sufficient
+   PLAN artifact (R2 of spec 0138).
 4. The lifecycle MUST be anchored to a logbook (per `AGENTS.md` →
    *Logbook Issues*). Stage transitions are journalled there.
 
@@ -266,12 +268,12 @@ The spec SHALL declare a complexity tier. The tier drives team
 composition for the DEV stage. The spec reviewer (whoever approves
 the spec PR) validates the tier.
 
-| Tier | Team for DEV | Notes |
-|---|---|---|
-| **trivial** | inline (orchestrator only) | No team spawn, no worktree, no logbook (the issue itself suffices). Reserved for single-file edits with no test surface. |
-| **small** | `developer` + `pr-logbook` + `pr-reviewer` | Worktree required. No architect, no tester. |
-| **standard** | Templates 1 / 2 / 3 from `AGENTS.md` → *Agent Team Protocol* | Current default. |
-| **large** | `architect`-led decomposition into sub-specs, then one standard team per sub-spec | Each sub-spec gets its own spec PR (chained via the delta mechanism). |
+| Tier | Team for DEV | PLAN-revision cap | Notes |
+|---|---|---|---|
+| **trivial** | inline (orchestrator only) | 1 | No team spawn, no worktree, no logbook (the issue itself suffices). Reserved for single-file edits with no test surface. |
+| **small** | `developer` + `pr-logbook` + `pr-reviewer` | 1 | Worktree required. No architect, no tester. |
+| **standard** | Templates 1 / 2 / 3 from `AGENTS.md` → *Agent Team Protocol* | 2 | Current default. |
+| **large** | `architect`-led decomposition into sub-specs, then one standard team per sub-spec | 5 | Each sub-spec gets its own spec PR (chained via the delta mechanism). |
 
 Normative rules:
 
@@ -282,6 +284,12 @@ Normative rules:
    routed through the PLAN loop with an updated team.
 3. Tier de-escalation (standard → small) is prohibited mid-lifecycle.
    The cost of running the larger team is already sunk.
+4. The PLAN-revision cap column above is the single source of truth
+   for those numbers; `docs/plan-review-protocol.md` defines the halt
+   semantics applied when a ticket's cap would be exceeded (R3–R4 of
+   spec 0138).
+
+These clauses bound the plan's size and the loop's length; they remove no item from the reviewer's checklist at any tier.
 
 ## REVIEW loop termination
 
@@ -382,7 +390,7 @@ These examples define expected artifacts so downstream tickets
 | Stage | Artifact | Content |
 |---|---|---|
 | SPECS | Spec id `2026-T-0001-readme-typo` | Single-line WHAT: "Fix spelling of 'receive' in README.md." Tier: `trivial`. Mode: INTERMEDIATE. |
-| PLAN | (skipped for trivial) | — |
+| PLAN | One-line confirmation on the ticket issue | "No design decisions beyond the spec; proceeding to DEV." |
 | DEV | Inline edit by orchestrator | One-line diff. |
 | REVIEW | Self-review by orchestrator | Expected classes: none. |
 

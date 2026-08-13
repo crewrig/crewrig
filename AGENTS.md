@@ -292,8 +292,8 @@ document for any field-level question.
 
 See [`docs/plan-review-protocol.md`](docs/plan-review-protocol.md) for
 the authoring rule, the cold second-`architect` review rule, the
-finding-class taxonomy (`tech` / `arch` / `spec`), and the
-REQUEST-CHANGES-blocks-DEV rule.
+finding-class taxonomy (`tech` / `arch` / `spec`), the
+REQUEST-CHANGES-blocks-DEV rule, and the per-tier PLAN-loop cap.
 
 ## Retroactive review loop
 
