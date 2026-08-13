@@ -7,7 +7,6 @@ and reconciles it — auto-applying only the deterministic
 regenerate-and-re-verify case, and diagnosing-and-proposing for every
 judgment-bearing case."
 license: Apache-2.0
-model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

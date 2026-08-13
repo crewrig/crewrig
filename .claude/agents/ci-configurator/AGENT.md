@@ -6,7 +6,6 @@ produces a commit-ready pipeline (hand-authored for GitHub Actions,
 derived from the platform-neutral capability reference for GitLab),
 and validates its own output before delivery."
 license: Apache-2.0
-model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

@@ -6,7 +6,6 @@ accessibility, image alt text quality, ARIA correctness, and motion preferences.
 Produces a structured findings report (violation → warning → informational).
 Does not implement fixes — hands the report to frontend-developer or astro-developer."
 license: Apache-2.0
-model: haiku
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
