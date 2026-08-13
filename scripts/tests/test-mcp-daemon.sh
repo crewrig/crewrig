@@ -37,6 +37,13 @@ nope() { FAIL=$((FAIL + 1)); printf '  FAIL %s\n' "$1"; }
 PROD_LABEL="com.mempalace.mcp-server"
 PROD_UNIT="mempalace-mcp-server"
 PROD_PORT="8021"
+# 41893 is the CURRENT default (common.sh:~720, since #748); 8021 predates
+# that move and a machine provisioned before it still binds the old value.
+# This axis's own contract above ("the axis that matters most... refuses
+# rather than risks") argues for accepting BOTH rather than narrowing to only
+# the current default, which would silently stop protecting pre-#748
+# machines.
+PROD_PORT_CURRENT="41893"
 
 # Capture the real HOME BEFORE overriding it. Comparing $HOME to `cd ~` after
 # the override compares the override to itself and is always equal — a guard
@@ -81,6 +88,7 @@ trap cleanup EXIT
 if [ "${MEMPALACE_MCP_LABEL}" = "${PROD_LABEL}" ] \
   || [ "${MEMPALACE_MCP_UNIT}" = "${PROD_UNIT}" ] \
   || [ "${MEMPALACE_MCP_PORT}" = "${PROD_PORT}" ] \
+  || [ "${MEMPALACE_MCP_PORT}" = "${PROD_PORT_CURRENT}" ] \
   || [ "${HOME}" = "${REAL_HOME}" ]; then
   echo "REFUSING TO RUN: an isolation axis resolved to its production value." >&2
   echo "  label=${MEMPALACE_MCP_LABEL} unit=${MEMPALACE_MCP_UNIT} port=${MEMPALACE_MCP_PORT}" >&2
@@ -645,6 +653,197 @@ unset MEMPALACE_PALACE_PATH
 [ "${launcher_tok}" = "${tok_path}" ] \
   && ok "launcher token path == mcp_token_path when the palace parent is missing" \
   || nope "launcher '${launcher_tok}' != mcp_token_path '${tok_path}' — derivations diverged"
+
+# --- 16. mcp_daemon_replace_process actually revokes the old token (spec 0139) ---
+echo ""
+echo "mcp_daemon_replace_process — token rotation revokes the old one (R1, R2):"
+
+# Hermetic half, always runs: drive the helper against fake-mcp.py so its
+# decision logic and its fail-visibly path are pinned in CI, which has no
+# mempalace venv to exercise a real daemon.
+#
+# The accept predicate mcp_daemon_replace_process uses is POSITIVE — a 2xx on
+# POST /mcp — not "neither 401 nor 000". Verified against the real mempalace
+# handler while writing this section (mempalace/mcp_server.py
+# `_request_rejected` / `do_POST`): a missing OR incorrect bearer both send
+# exactly 401 (there is no reachable 403 branch from a loopback probe with no
+# Origin header), and an authenticated non-notification method is answered
+# `_send_json(200, response)`. The 401-vs-403 residual the PLAN flagged as an
+# assumption to confirm does not exist on this codepath, so the helper
+# accepts only a 2xx rather than widening the refusal set to guess at it
+# (cold PLAN review on #880, non-blocking note #2).
+#
+# Runs against its OWN port, one above MEMPALACE_MCP_PORT, rather than the
+# suite's main one: several curl POSTs against fake-mcp.py leave TIME_WAIT
+# sockets behind on whatever port they hit (observed to linger ~20s on this
+# box), and the behavioural half below binds MEMPALACE_MCP_PORT for a REAL
+# daemon moments later. mcp-daemon-launcher.sh's own port preflight
+# (":118-143") does not set SO_REUSEADDR, so it would see that residue as
+# "already in use" and die — the daemon would then never become healthy for
+# a reason that has nothing to do with what this section tests. Keeping the
+# two halves on disjoint ports avoids the collision outright instead of
+# sleeping it out.
+HERMETIC_PORT=$((MEMPALACE_MCP_PORT + 1))
+printf '%s\n' "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" > "${tok_file}"
+
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 200 &
+fake_pid=$!
+sleep 1
+out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" mcp_daemon_replace_process 2>&1)"; rc=$?
+kill "${fake_pid}" 2>/dev/null
+[ "${rc}" -eq 0 ] \
+  && ok "a process already accepting the current token returns 0" \
+  || nope "an already-accepting process was not recognised: ${out}"
+[ -z "${out}" ] \
+  && ok "no restart is requested when the current token is already accepted" \
+  || nope "unexpected output on the accept-immediately path: ${out}"
+
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 401 &
+fake_pid=$!
+sleep 1
+out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" mcp_daemon_replace_process 2>&1)"; rc=$?
+kill "${fake_pid}" 2>/dev/null
+[ "${rc}" -ne 0 ] \
+  && ok "a process that never accepts the current token returns non-zero" \
+  || nope "a permanently-401 process was reported as replaced"
+case "${out}" in
+  *"did not accept the current token"*) ok "the deadline failure names the daemon and points at the log" ;;
+  *) nope "no deadline-expiry diagnostic: ${out}" ;;
+esac
+
+# Behavioural half: probed skip on `import mempalace`, mirroring section 10 —
+# CI has no mempalace venv, so quote the reason rather than silently passing.
+#
+# Scenario 2 (specs/0139) assumes an ALREADY-LOADED supervisor unit; that
+# precondition is structurally untestable here — install_daemon_supervisor
+# reads config/launchd/${label}.plist and no plist ships for a randomised
+# test label (com.mempalace.mcp-server-test-$$). This half instead asserts
+# the property scenario 2 demands — the running process gets replaced and the
+# superseded token stops being honoured — without the supervisor precondition:
+# it covers the process-replacement EFFECT, not the launchd-unit STATE. The
+# "replace" step below is therefore kill-and-relaunch, not launchctl/systemctl:
+# with no unit loaded there is no supervisor path to exercise, and naming it
+# here keeps the next reader from looking for a launchctl path that isn't
+# there.
+echo ""
+if "${MEMPALACE_PYTHON}" -c 'import mempalace' >/dev/null 2>&1; then
+  export MEMPALACE_CHROMA_PORT=8001   # the real one; the launcher waits on it
+
+  # _probe_code <token> — the bare HTTP status from POST /mcp bearing
+  # <token>; same curl shape the helper's own probe uses, kept local to the
+  # test so the exact code (not just accept/reject) can be asserted. No
+  # `|| echo "000"` fallback: curl's own `-w '%{http_code}'` already writes
+  # literal "000" whenever no HTTP response code was received, regardless of
+  # curl's exit status — a fallback double-writes on that exact path
+  # (verified: a refused connection captures "000000", not "000").
+  _probe_code() {
+    curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
+      -X POST "http://127.0.0.1:${MEMPALACE_MCP_PORT}/mcp" \
+      -H 'Content-Type: application/json' \
+      -H "Authorization: Bearer $1" \
+      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' 2>/dev/null
+  }
+
+  # _wait_bindable — block until MEMPALACE_MCP_PORT is actually bindable, or
+  # ~40s elapse (the same budget this section's own daemon health-wait already
+  # uses below). Every curl probe against this port — section 13's
+  # status-mcp-server.sh runs against fake-mcp.py, and every probe in this
+  # section's own behavioural half — leaves a TIME_WAIT socket behind
+  # (measured to linger ~20s on macOS loopback for a handful of connections;
+  # a longer preceding run of probes, as happens right before the "replace"
+  # relaunch below, can leave more of them). mcp-daemon-launcher.sh's own port
+  # preflight (:118-143) does not set SO_REUSEADDR, so it sees that residue as
+  # "already in use" and dies before ever binding — the daemon then never
+  # becomes healthy for a reason that has nothing to do with what this
+  # section tests. Same probe shape as that preflight, so it is testing
+  # exactly what the launcher is about to test.
+  _wait_bindable() {
+    local w=0
+    while ! "${MEMPALACE_PYTHON}" - "127.0.0.1" "${MEMPALACE_MCP_PORT}" <<'PROBE' >/dev/null 2>&1
+import socket, sys
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    s.bind((sys.argv[1], int(sys.argv[2])))
+except OSError:
+    sys.exit(1)
+finally:
+    s.close()
+PROBE
+    do
+      w=$((w + 1))
+      [ "${w}" -ge 40 ] && return 1
+      sleep 1
+    done
+    return 0
+  }
+
+  install_mcp_launcher >/dev/null 2>&1
+  rm -f "${tok_file}"
+  A="$(mcp_token_read_or_create)"
+  _wait_bindable || echo "  WARNING: port ${MEMPALACE_MCP_PORT} still not bindable after 40s — starting anyway."
+  ( bash "$(mcp_launcher_installed_path)" >/dev/null 2>&1 & ) &
+  sleep 1
+  waited=0
+  until curl -sf --max-time 2 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1 \
+        || [ "${waited}" -ge 40 ]; do sleep 2; waited=$((waited + 2)); done
+
+  if curl -sf --max-time 2 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1; then
+    code_a="$(_probe_code "${A}")"
+    case "${code_a}" in
+      2??) ok "a fresh daemon accepts the token it started with (baseline, not vacuous)" ;;
+      *) nope "the baseline probe with token A returned ${code_a}, not 2xx" ;;
+    esac
+
+    # The ticket's defect, asserted live rather than traced: rotate the
+    # token file without replacing the process, and the OLD process is still
+    # the one answering — it must refuse the new token.
+    rm -f "${tok_file}"
+    B="$(mcp_token_read_or_create)"
+    code_b_before="$(_probe_code "${B}")"
+    [ "${code_b_before}" = "401" ] \
+      && ok "the new token is refused while the old process still runs (the shipped defect, R1)" \
+      || nope "expected 401 for the new token pre-replace, got ${code_b_before}"
+
+    if MCP_DAEMON_REPLACE_DEADLINE=2 mcp_daemon_replace_process >/dev/null 2>&1; then
+      nope "mcp_daemon_replace_process reported success with no supervisor unit to replace"
+    else
+      ok "mcp_daemon_replace_process fails visibly when it cannot replace the process (R2)"
+    fi
+
+    # No supervisor unit is loaded in this harness (see the comment above), so
+    # there is no launchctl/systemctl path to exercise. Replace the process
+    # the only way available: kill and relaunch it directly.
+    pkill -f "transport http --host 127.0.0.1 --port ${MEMPALACE_MCP_PORT}" 2>/dev/null
+    sleep 1
+    # The probes just above (baseline, defect assertion, the failed replace
+    # attempt's own polling) all connected to this same port and leave fresh
+    # TIME_WAIT residue of their own — wait it out again before rebinding.
+    _wait_bindable || echo "  WARNING: port ${MEMPALACE_MCP_PORT} still not bindable after 40s — starting anyway."
+    ( bash "$(mcp_launcher_installed_path)" >/dev/null 2>&1 & ) &
+    sleep 1
+    waited=0
+    until curl -sf --max-time 2 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1 \
+          || [ "${waited}" -ge 40 ]; do sleep 2; waited=$((waited + 2)); done
+
+    code_b_after="$(_probe_code "${B}")"
+    case "${code_b_after}" in
+      2??) ok "the replaced process accepts the new token" ;;
+      *) nope "the replaced process returned ${code_b_after} for the new token, expected 2xx" ;;
+    esac
+    code_a_after="$(_probe_code "${A}")"
+    [ "${code_a_after}" = "401" ] \
+      && ok "the replaced process refuses the superseded token (R1: rotation revokes it)" \
+      || nope "the replaced process still answers the superseded token: ${code_a_after}"
+  else
+    nope "the daemon never became healthy — cannot exercise the rotation contract"
+  fi
+  pkill -f "transport http --host 127.0.0.1 --port ${MEMPALACE_MCP_PORT}" 2>/dev/null
+  unset -f _probe_code
+  unset -f _wait_bindable
+else
+  echo "  skip mempalace is not importable from ${MEMPALACE_PYTHON} — cannot start a"
+  echo "       real daemon, so the behavioural rotation check is skipped."
+fi
 
 echo ""
 echo "----------------------------------------"

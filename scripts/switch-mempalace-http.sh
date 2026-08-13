@@ -32,6 +32,16 @@ TOKEN="$(mcp_token_read_or_create)" || {
 }
 
 echo ""
+echo "Ensuring the daemon process honours the current token (spec 0139 R2)..."
+if ! mcp_daemon_replace_process; then
+  echo ""
+  echo "ERROR: the daemon process could not be replaced — it may still be"
+  echo "       honouring a superseded token. No assistant has been switched over"
+  echo "       a stale credential."
+  exit 1
+fi
+
+echo ""
 echo "Registering assistants..."
 if ! switch_assistants_to_http "${TOKEN}"; then
   exit 1
