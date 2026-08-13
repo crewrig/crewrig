@@ -96,7 +96,17 @@ and team sizing*) determines which of the five sections above are
 mandatory:
 
 - At every tier — `trivial`, `small`, `standard`, and `large` —
-  `### Approach` and `### Steps` are mandatory.
+  `### Approach` and `### Steps` are mandatory for a structured plan
+  comment; the sole exception is the `trivial`-tier one-line plan
+  confirmation admitted by spec 0138 R2 and by
+  [ADR-0010](adr/0010-spec-plan-review-lifecycle.md) → *Stage
+  definitions and transition rules* rule 3, which is a sufficient PLAN
+  artifact without either section. That confirmation still carries the
+  *Initial plan* header `## PLAN — issue #<N> (spec <NNNN>)` from
+  *Header conventions* above, so it stays discoverable under the
+  header patterns this document's preamble names and satisfies
+  `specs/0004-plan-format-and-review.md` R1; it is exempt from the
+  level-3 section set alone.
 - At `trivial` and `small` tiers, `### Blast radius`,
   `### Alternatives considered and rejected`, and `### Rollback
   strategy` MAY be omitted; when present, they SHALL keep the format

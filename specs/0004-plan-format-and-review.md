@@ -24,8 +24,11 @@ giving findings a stable shape that the retroactive review loop can route.
    first line is the header `## PLAN — issue #<N> (spec <NNNN>)`.
 2. Every plan comment SHALL contain, in order, the following mandatory
    sections, with their headings verbatim. `### Approach` and
-   `### Steps` are mandatory at every complexity tier; `### Blast
-   radius`, `### Alternatives considered and rejected`, and
+   `### Steps` are mandatory at every complexity tier, except for the
+   `trivial`-tier one-line plan confirmation admitted by spec 0138 R2,
+   which is a sufficient PLAN artifact without either section (R1 of
+   spec 0138, as amended by delta-02); `### Blast radius`,
+   `### Alternatives considered and rejected`, and
    `### Rollback strategy` are mandatory at `standard` and `large`
    tiers and MAY be omitted at `trivial` and `small` (R1 of spec
    0138), keeping the format below whenever present:
