@@ -1,7 +1,7 @@
 ---
 id: "0138"
 slug: tier-bounded-plan-artifacts-and-loops
-status: draft
+status: approved
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 884
