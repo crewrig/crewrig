@@ -1,7 +1,7 @@
 ---
 id: "0139"
 slug: token-rotation-revocation
-status: draft
+status: approved
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 880
