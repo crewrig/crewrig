@@ -1,7 +1,7 @@
 ---
 id: "0140"
 slug: spec-linter-leaked-scaffolding-guard
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 890
