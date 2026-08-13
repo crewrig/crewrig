@@ -11,6 +11,8 @@ const INTERACTION_MODE_ENUM = ['FULL', 'INTERMEDIATE', 'MINIMAL', 'AUTO'];
 const ORIGINAL_HEADINGS = ['## Intent', '## Requirements', '## Scenarios', '## Out of scope', '## Open questions'];
 const DELTA_HEADINGS = ['## ADDED', '## MODIFIED', '## REMOVED'];
 
+const LEAKED_SCAFFOLDING_REGEX = /<\/?(?:content|invoke|tool_call|thought|tool_use|function_call|tool_result|tool_response)\b[^>]*>/i;
+
 function globSpecs(targetPath) {
     const result = [];
     if (fs.existsSync(targetPath)) {
@@ -449,13 +451,21 @@ function lintFile(filePath) {
     const lines = content.split('\n');
     const h2Headings = [];
     let inCodeBlock = false;
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
         if (line.trim().startsWith('```')) {
             inCodeBlock = !inCodeBlock;
             continue;
         }
-        if (!inCodeBlock && line.startsWith('## ')) {
-            h2Headings.push(line.trim());
+        if (!inCodeBlock) {
+            if (line.startsWith('## ')) {
+                h2Headings.push(line.trim());
+            }
+            const lineClean = line.replace(/`+[^`]+`+/g, '');
+            const match = lineClean.match(LEAKED_SCAFFOLDING_REGEX);
+            if (match) {
+                reportError(`Line ${i + 1}: Leaked tool scaffolding tag detected: "${match[0]}"`);
+            }
         }
     }
 

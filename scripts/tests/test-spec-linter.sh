@@ -864,8 +864,33 @@ run_base_case "Case 40 — attribution stays root-anchored under diff.relative (
   "Non-delta specs present on the base branch" "[WARN]"
 
 # -------------------------------------------------------------------------
+# Case 41 — Leaked tool scaffolding tags outside code blocks → exit 1
+# -------------------------------------------------------------------------
+spec41="0041-leaked-scaffolding.md"
+headings41=$(printf "## Intent\n\n## Requirements\n\n## Scenarios\n\n## Out of scope\n\n## Open questions\n\n</content>\n</invoke>")
+render_spec "0041" "leaked-scaffolding" "draft" "standard" "" "$headings41" > "$TMP_ROOT/$spec41"
+run_case "Case 41 — leaked tool scaffolding fails" "$spec41" 1
+
+# -------------------------------------------------------------------------
+# Case 42 — Tool scaffolding tags inside fenced code block → exit 0
+# -------------------------------------------------------------------------
+spec42="0042-fenced-scaffolding.md"
+headings42=$(printf "## Intent\n\n\`\`\`text\n</content>\n</invoke>\n\`\`\`\n\n## Requirements\n\n## Scenarios\n\n## Out of scope\n\n## Open questions")
+render_spec "0042" "fenced-scaffolding" "draft" "standard" "" "$headings42" > "$TMP_ROOT/$spec42"
+run_case "Case 42 — tool scaffolding inside fenced code block passes" "$spec42" 0
+
+# -------------------------------------------------------------------------
+# Case 43 — Tool scaffolding tags in inline code spans → exit 0
+# -------------------------------------------------------------------------
+spec43="0043-inline-scaffolding.md"
+headings43=$(printf "## Intent\n\nRefers to \`</content>\` and \`</invoke>\` tags.\n\n## Requirements\n\n## Scenarios\n\n## Out of scope\n\n## Open questions")
+render_spec "0043" "inline-scaffolding" "draft" "standard" "" "$headings43" > "$TMP_ROOT/$spec43"
+run_case "Case 43 — tool scaffolding in inline code span passes" "$spec43" 0
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
+
