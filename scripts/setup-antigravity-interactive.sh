@@ -425,7 +425,8 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     # rather than aborting the whole run under `set -e`. The helper leaves the
     # operator's file untouched on that path.
     if ! deploy_antigravity_transcript_hooks \
-           "$HOOKS_SRC" "$HOOK_SCRIPT_SRC" "$AGY_HOOKS_DIR" "$AGY_HOOKS_JSON" "$ENV_PREFIX"; then
+           "$HOOKS_SRC" "$HOOK_SCRIPT_SRC" "$AGY_HOOKS_DIR" "$AGY_HOOKS_JSON" "$ENV_PREFIX" \
+           "$(dirname "$HOOKS_SRC")/worktree-git-guard.sh"; then
       echo "  Transcript activation FAILED — setup continues without it." >&2
     fi
   else

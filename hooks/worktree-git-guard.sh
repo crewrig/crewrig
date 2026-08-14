@@ -14,8 +14,19 @@ fi
 CMD=""
 CWD=""
 if [ -n "$INPUT" ]; then
-  CMD=$(echo "$INPUT" | jq -r '.tool_input.command // .command // .tool_input // empty' 2>/dev/null || true)
-  CWD=$(echo "$INPUT" | jq -r '.cwd // .workspace_dir // .project_dir // empty' 2>/dev/null || true)
+  # Antigravity `PreToolUse` payloads carry the command under
+  # `.toolCall.args.CommandLine` (`{toolCall:{name:"run_command",args:{CommandLine:...}}}`),
+  # with `.toolCall.args` as the fallback (spec 0116 delta-03 R29). The
+  # Claude/Gemini/Copilot shapes (`.tool_input.command`, `.command`, `.tool_input`)
+  # stay in the chain behind them so those payloads are not regressed.
+  CMD=$(echo "$INPUT" | jq -r '.toolCall.args.CommandLine // .toolCall.args // .tool_input.command // .command // .tool_input // empty' 2>/dev/null || true)
+  # Residual limit: the Antigravity handler's working directory is the hooks.json
+  # directory and the payload carries no `.cwd`, so `workspacePaths[0]` (the
+  # session's workspace ROOT, not the command's execution cwd) is the best the
+  # payload offers. The spec 0153 R1 scenario is covered when the session is
+  # opened inside a worktree; a session opened at the repository root that `cd`s
+  # into `.worktrees/<id>` stays inert (the root path carries no `.worktrees/`).
+  CWD=$(echo "$INPUT" | jq -r '.cwd // .workspace_dir // .project_dir // .workspacePaths[0] // empty' 2>/dev/null || true)
 fi
 
 if [ -z "$CMD" ] && [ -n "$1" ]; then

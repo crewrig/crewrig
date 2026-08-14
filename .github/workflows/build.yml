@@ -7,6 +7,7 @@ on:
     branches: [main, "release/**"]
     tags-ignore:
       - "**"
+  workflow_dispatch:
 
 jobs:
   build:
@@ -25,284 +26,627 @@ jobs:
       - name: Build all extensions
         run: npm run build --workspaces --if-present
 
-  check-components:
+  component-drift:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            component-drift:
+              - 'scripts/build-components.sh'
+              - 'scripts/test-build-components.sh'
+              - 'scripts/lib/**'
+              - 'artifacts/**'
+              - 'extensions/**'
+              - '.crewrig/core-paths.txt'
+              - 'docs/layers.md'
+      - name: Install yq
+        if: steps.filter.outputs.component-drift == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.component-drift == 'true'
+        with:
+          path: .ci-cache
+          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt') }}
+      - name: Build Components
+        if: steps.filter.outputs.component-drift == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt" --key-env "" -- bash scripts/build-components.sh --target all --check
+      - name: Test Build Components
+        if: steps.filter.outputs.component-drift == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt" --key-env "" -- bash scripts/test-build-components.sh
+  extension-pivot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            extension-pivot:
+              - 'scripts/check-extension-pivot.sh'
+              - 'scripts/build-extension-pivot.sh'
+              - 'scripts/tests/test-check-extension-pivot.sh'
+              - 'scripts/tests/test-build-extension-pivot.sh'
+              - 'extensions/**'
+              - 'artifacts/**'
+      - name: Install yq
+        if: steps.filter.outputs.extension-pivot == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Check Extension Pivot
+        if: steps.filter.outputs.extension-pivot == 'true'
+        run: bash scripts/check-extension-pivot.sh
+      - name: Test Check Extension Pivot
+        if: steps.filter.outputs.extension-pivot == 'true'
+        run: bash scripts/tests/test-check-extension-pivot.sh
+      - name: Test Build Extension Pivot
+        if: steps.filter.outputs.extension-pivot == 'true'
+        run: bash scripts/tests/test-build-extension-pivot.sh
+      - name: Build Extension Pivot
+        if: steps.filter.outputs.extension-pivot == 'true'
+        run: bash scripts/build-extension-pivot.sh --check
+  extension-provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            extension-provenance:
+              - 'scripts/check-extension-provenance.sh'
+              - 'scripts/tests/test-check-extension-provenance.sh'
+              - 'extensions/**'
+              - 'artifacts/**'
+      - name: Install yq
+        if: steps.filter.outputs.extension-provenance == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Check Extension Provenance
+        if: steps.filter.outputs.extension-provenance == 'true'
+        run: bash scripts/check-extension-provenance.sh
+      - name: Test Check Extension Provenance
+        if: steps.filter.outputs.extension-provenance == 'true'
+        run: bash scripts/tests/test-check-extension-provenance.sh
+  extension-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            extension-manifest:
+              - 'scripts/check-extension-manifest-version.sh'
+              - 'scripts/tests/test-check-extension-manifest-version.sh'
+              - 'scripts/tests/test-check-extension-version-bump.sh'
+              - 'extensions/**'
+              - 'artifacts/**'
+      - name: Install yq
+        if: steps.filter.outputs.extension-manifest == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Check Extension Manifest Version
+        if: steps.filter.outputs.extension-manifest == 'true'
+        run: bash scripts/check-extension-manifest-version.sh
+      - name: Test Check Extension Manifest Version
+        if: steps.filter.outputs.extension-manifest == 'true'
+        run: bash scripts/tests/test-check-extension-manifest-version.sh
+      - name: Test Check Extension Version Bump
+        if: steps.filter.outputs.extension-manifest == 'true'
+        run: bash scripts/tests/test-check-extension-version-bump.sh
+  extension-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            extension-install:
+              - 'scripts/tests/test-install-claude-plugin-marketplace.sh'
+              - 'scripts/tests/test-build-claude-plugin-agents-glob.sh'
+              - 'scripts/tests/test-gemini-agent-frontmatter.sh'
+              - 'scripts/build-claude-plugin.sh'
+              - 'scripts/build-gemini-agent.sh'
+              - 'extensions/**'
+              - 'artifacts/**'
+      - name: Install yq
+        if: steps.filter.outputs.extension-install == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Test Install Claude Plugin Marketplace
+        if: steps.filter.outputs.extension-install == 'true'
+        run: bash scripts/tests/test-install-claude-plugin-marketplace.sh
+      - name: Test Build Claude Plugin Agents Glob
+        if: steps.filter.outputs.extension-install == 'true'
+        run: bash scripts/tests/test-build-claude-plugin-agents-glob.sh
+      - name: Test Gemini Agent Frontmatter
+        if: steps.filter.outputs.extension-install == 'true'
+        run: bash scripts/tests/test-gemini-agent-frontmatter.sh
+  core-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            core-paths:
+              - 'scripts/check-core-paths.sh'
+              - 'scripts/tests/test-check-core-paths.sh'
+              - 'scripts/tests/test-sync-from-upstream.sh'
+              - '.crewrig/core-paths.txt'
+              - 'docs/layers.md'
+      - name: Install yq
+        if: steps.filter.outputs.core-paths == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Check Core Paths
+        if: steps.filter.outputs.core-paths == 'true'
+        run: bash scripts/check-core-paths.sh
+      - name: Test Check Core Paths
+        if: steps.filter.outputs.core-paths == 'true'
+        run: bash scripts/tests/test-check-core-paths.sh
+      - name: Test Sync From Upstream
+        if: steps.filter.outputs.core-paths == 'true'
+        run: bash scripts/tests/test-sync-from-upstream.sh
+  ci-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ci-parity:
+              - 'scripts/check-ci-parity.sh'
+              - 'scripts/build-ci.sh'
+              - 'scripts/ci-cache-guard.sh'
+              - 'scripts/ci-changeset-coverage.sh'
+              - 'scripts/tests/test-check-ci-parity.sh'
+              - 'scripts/tests/test-build-ci.sh'
+              - 'ci/ci-capabilities.yml'
+              - '.gitlab-ci.yml'
+              - '.github/workflows/build.yml'
+              - 'docs/ci-reference-format.md'
+      - name: Install yq
+        if: steps.filter.outputs.ci-parity == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.ci-parity == 'true'
+        with:
+          path: .ci-cache
+          key: ${{ hashFiles('scripts/check-ci-parity.sh', 'scripts/build-ci.sh', 'scripts/ci-cache-guard.sh', 'scripts/ci-changeset-coverage.sh', 'scripts/tests/test-check-ci-parity.sh', 'scripts/tests/test-build-ci.sh', 'ci/ci-capabilities.yml', '.gitlab-ci.yml', '.github/workflows/build.yml', 'docs/ci-reference-format.md') }}
+      - name: Test Check Ci Parity
+        if: steps.filter.outputs.ci-parity == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/tests/test-check-ci-parity.sh
+      - name: Test Build Ci
+        if: steps.filter.outputs.ci-parity == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/tests/test-build-ci.sh
+  docs-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            docs-index:
+              - 'scripts/build-docs-index.sh'
+              - 'scripts/tests/test-build-docs-index.sh'
+              - 'docs/**'
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.docs-index == 'true'
+        with:
+          path: .ci-cache
+          key: ${{ hashFiles('scripts/build-docs-index.sh', 'scripts/tests/test-build-docs-index.sh', 'docs/**') }}
+      - name: Build Docs Index
+        if: steps.filter.outputs.docs-index == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**" --key-env "" -- bash scripts/build-docs-index.sh --check
+      - name: Test Build Docs Index
+        if: steps.filter.outputs.docs-index == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**" --key-env "" -- bash scripts/tests/test-build-docs-index.sh
+  mempalace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            mempalace:
+              - 'scripts/tests/test-mempalace-*.sh'
+              - 'scripts/tests/test-system-context-store.sh'
+              - 'scripts/tests/test-setup-antigravity-transcript.sh'
+              - 'scripts/tests/test-setup-copilot-transcript.sh'
+              - 'scripts/tests/test-antigravity-component-install.sh'
+              - 'scripts/tests/test-antigravity-discovery-probe.sh'
+              - 'scripts/lib/**'
+              - 'artifacts/library/skills/mempalace/**'
+              - 'artifacts/library/skills/harness-report/**'
+      - name: Install yq
+        if: steps.filter.outputs.mempalace == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/setup-python@v5
+        if: steps.filter.outputs.mempalace == 'true'
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.mempalace == 'true'
+        with:
+          path: .ci-cache
+          key: ${{ hashFiles('scripts/tests/test-mempalace-*.sh', 'scripts/tests/test-system-context-store.sh', 'scripts/tests/test-setup-antigravity-transcript.sh', 'scripts/tests/test-setup-copilot-transcript.sh', 'scripts/tests/test-antigravity-component-install.sh', 'scripts/tests/test-antigravity-discovery-probe.sh', 'scripts/lib/**', 'artifacts/library/skills/mempalace/**', 'artifacts/library/skills/harness-report/**') }}
+      - name: Test Mempalace Transcript Hook
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-transcript-hook.sh
+      - name: Test Setup Antigravity Transcript
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-setup-antigravity-transcript.sh
+      - name: Test Worktree Git Guard
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-worktree-git-guard.sh
+      - name: Test Setup Copilot Transcript
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-setup-copilot-transcript.sh
+      - name: Test Antigravity Component Install
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-antigravity-component-install.sh
+      - name: Test Antigravity Discovery Probe
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-antigravity-discovery-probe.sh
+      - name: Test Mempalace Version Range
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-version-range.sh
+      - name: Python3  M Pip Install   Quiet Packaging
+        if: steps.filter.outputs.mempalace == 'true'
+        run: python3 -m pip install --quiet packaging
+      - name: Test Mempalace Pin
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-pin.sh
+      - name: Test Mempalace Runtime Guard
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-runtime-guard.sh
+      - name: Test Mempalace Doctor
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-doctor.sh
+      - name: Test System Context Store
+        if: steps.filter.outputs.mempalace == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-system-context-store.sh
+  test-wiring:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            test-wiring:
+              - 'scripts/check-test-wiring.sh'
+              - 'scripts/tests/test-check-test-wiring.sh'
+              - 'scripts/check-test-strays.sh'
+              - 'scripts/tests/test-check-test-strays.sh'
+              - 'scripts/tests/**'
+              - 'hooks/worktree-git-guard.sh'
+      - name: Check Test Wiring
+        if: steps.filter.outputs.test-wiring == 'true'
+        run: bash scripts/check-test-wiring.sh
+      - name: Test Check Test Wiring
+        if: steps.filter.outputs.test-wiring == 'true'
+        run: bash scripts/tests/test-check-test-wiring.sh
+      - name: Check Test Strays
+        if: steps.filter.outputs.test-wiring == 'true'
+        run: bash scripts/check-test-strays.sh
+      - name: Test Check Test Strays
+        if: steps.filter.outputs.test-wiring == 'true'
+        run: bash scripts/tests/test-check-test-strays.sh
+      - name: Test Worktree Git Guard
+        if: steps.filter.outputs.test-wiring == 'true'
+        run: bash scripts/tests/test-worktree-git-guard.sh
+  chroma-mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            chroma-mcp:
+              - 'scripts/tests/test-chroma-*.sh'
+              - 'scripts/tests/test-mcp-daemon.sh'
+              - 'scripts/tests/test-worktree-claim.sh'
+              - 'scripts/mcp-daemon.sh'
+              - 'scripts/lib/**'
+      - name: Install yq
+        if: steps.filter.outputs.chroma-mcp == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/setup-python@v5
+        if: steps.filter.outputs.chroma-mcp == 'true'
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.chroma-mcp == 'true'
+        with:
+          path: .ci-cache
+          key: ${{ hashFiles('scripts/tests/test-chroma-*.sh', 'scripts/tests/test-mcp-daemon.sh', 'scripts/tests/test-worktree-claim.sh', 'scripts/mcp-daemon.sh', 'scripts/lib/**') }}
+      - name: Test Chroma Fd Limits
+        if: steps.filter.outputs.chroma-mcp == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-fd-limits.sh
+      - name: Test Chroma Health Race
+        if: steps.filter.outputs.chroma-mcp == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-health-race.sh
+      - name: Test Chroma Server
+        if: steps.filter.outputs.chroma-mcp == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-server.sh
+      - name: Test Mcp Daemon
+        if: steps.filter.outputs.chroma-mcp == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-mcp-daemon.sh
+      - name: Test Worktree Claim
+        if: steps.filter.outputs.chroma-mcp == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-worktree-claim.sh
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            e2e:
+              - 'scripts/tests/test-e2e-*.sh'
+              - 'tests/e2e/**'
+      - name: Install yq
+        if: steps.filter.outputs.e2e == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/setup-python@v5
+        if: steps.filter.outputs.e2e == 'true'
+        with:
+          python-version: "3.12"
+      - name: Test E2E Assert Lib
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-assert-lib.sh
+      - name: Test E2E Auth Claude Json
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-auth-claude-json.sh
+      - name: Test E2E Auth Common
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-auth-common.sh
+      - name: Test E2E Auth Ollama
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-auth-ollama.sh
+      - name: Test E2E Auth Ready
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-auth-ready.sh
+      - name: Test E2E Auth Taskfile
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-auth-taskfile.sh
+      - name: Test E2E Defaults Toml
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-defaults-toml.sh
+      - name: Test E2E Docker Images
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-docker-images.sh
+      - name: Test E2E Gitignore
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-gitignore.sh
+      - name: Test E2E Judge Config
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-judge-config.sh
+      - name: Test E2E Libs Readme
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-libs-readme.sh
+      - name: Test E2E Llm Judge Lib
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-llm-judge-lib.sh
+      - name: Test E2E Readme
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-readme.sh
+      - name: Test E2E Report
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-report.sh
+      - name: Test E2E Runner Delegation
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-runner-delegation.sh
+      - name: Test E2E Runner Taskfile
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-runner-taskfile.sh
+      - name: Test E2E Runner
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-runner.sh
+      - name: Test E2E Scenarios Parity
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-scenarios-parity.sh
+      - name: Test E2E Scenarios Structure
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-scenarios-structure.sh
+      - name: Test E2E Structural Lib
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-structural-lib.sh
+      - name: Test E2E Taskfile
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-taskfile.sh
+      - name: Test E2E Toml Merge
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-toml-merge.sh
+      - name: Test E2E Versions Lock
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-versions-lock.sh
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            setup:
+              - 'scripts/tests/test-setup-*.sh'
+              - 'scripts/tests/test-tls-delegation.sh'
+              - 'scripts/setup-*.sh'
+              - 'scripts/lib/**'
+      - name: Install yq
+        if: steps.filter.outputs.setup == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Test Setup Validation Backend
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-setup-validation-backend.sh
+      - name: Test Tls Delegation
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-tls-delegation.sh
+      - name: Test Setup Mcp Merge
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-setup-mcp-merge.sh
+      - name: Test Setup Org Mcp
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-setup-org-mcp.sh
+      - name: Test Setup Catalogue Picker
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-setup-catalogue-picker.sh
+      - name: Test Setup Ensure Tier Built
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-setup-ensure-tier-built.sh
+  misc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            misc:
+              - 'scripts/check-no-machine-paths.sh'
+              - 'scripts/tests/test-check-no-machine-paths.sh'
+              - 'scripts/check-gemini-overlay-enrollment.sh'
+              - 'scripts/tests/test-check-gemini-overlay-enrollment.sh'
+              - 'scripts/tests/test-check-bash32-portability.sh'
+              - 'scripts/tests/test-reserve-spec-id.sh'
+              - 'scripts/tests/test-check-spec-id-reserved.sh'
+              - 'scripts/reserve-spec-id.sh'
+              - 'scripts/check-spec-id-reserved.sh'
+      - uses: actions/setup-python@v5
+        if: steps.filter.outputs.misc == 'true'
+        with:
+          python-version: "3.12"
+      - name: Check No Machine Paths
+        if: steps.filter.outputs.misc == 'true'
+        run: bash scripts/check-no-machine-paths.sh
+      - name: Test Check No Machine Paths
+        if: steps.filter.outputs.misc == 'true'
+        run: bash scripts/tests/test-check-no-machine-paths.sh
+      - name: Check Gemini Overlay Enrollment
+        if: steps.filter.outputs.misc == 'true'
+        run: bash scripts/check-gemini-overlay-enrollment.sh
+      - name: Test Check Gemini Overlay Enrollment
+        if: steps.filter.outputs.misc == 'true'
+        run: bash scripts/tests/test-check-gemini-overlay-enrollment.sh
+      - name: Test Check Bash32 Portability
+        if: steps.filter.outputs.misc == 'true'
+        run: bash scripts/tests/test-check-bash32-portability.sh
+      - name: Test Reserve Spec Id
+        if: steps.filter.outputs.misc == 'true'
+        run: bash scripts/tests/test-reserve-spec-id.sh
+      - name: Test Check Spec Id Reserved
+        if: steps.filter.outputs.misc == 'true'
+        run: bash scripts/tests/test-check-spec-id-reserved.sh
+  frontmatter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontmatter:
+              - 'scripts/tests/test-extract-frontmatter.sh'
+              - 'scripts/tests/test-check-skill-versions.sh'
+              - 'scripts/tests/test-check-feedback-routing.sh'
+              - 'scripts/tests/test-assembly-verification.sh'
+              - 'scripts/tests/test-artifact-build-install-scope.sh'
+              - 'scripts/tests/test-component-tier-resolution.sh'
+              - 'scripts/lib/**'
+              - 'artifacts/**'
+      - name: Install yq
+        if: steps.filter.outputs.frontmatter == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Test Extract Frontmatter
+        if: steps.filter.outputs.frontmatter == 'true'
+        run: bash scripts/tests/test-extract-frontmatter.sh
+      - name: Test Check Skill Versions
+        if: steps.filter.outputs.frontmatter == 'true'
+        run: bash scripts/tests/test-check-skill-versions.sh
+      - name: Test Check Feedback Routing
+        if: steps.filter.outputs.frontmatter == 'true'
+        run: bash scripts/tests/test-check-feedback-routing.sh
+      - name: Test Assembly Verification
+        if: steps.filter.outputs.frontmatter == 'true'
+        run: bash scripts/tests/test-assembly-verification.sh
+      - name: Test Artifact Build Install Scope
+        if: steps.filter.outputs.frontmatter == 'true'
+        run: bash scripts/tests/test-artifact-build-install-scope.sh
+      - name: Test Component Tier Resolution
+        if: steps.filter.outputs.frontmatter == 'true'
+        run: bash scripts/tests/test-component-tier-resolution.sh
+  markdown-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            markdown-links:
+              - 'scripts/check-markdown-links.sh'
+              - 'scripts/tests/test-check-markdown-links.sh'
+              - 'docs/**'
+              - 'README.md'
+              - 'AGENTS.md'
+              - '**/*.md'
+      - uses: actions/setup-python@v5
+        if: steps.filter.outputs.markdown-links == 'true'
+        with:
+          python-version: "3.12"
+      - name: Check Markdown Links
+        if: steps.filter.outputs.markdown-links == 'true'
+        run: bash scripts/check-markdown-links.sh
+      - name: Test Check Markdown Links
+        if: steps.filter.outputs.markdown-links == 'true'
+        run: bash scripts/tests/test-check-markdown-links.sh
+  changeset-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so the base ref resolves
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
-
-      # The extension pivot carrier round-trip test validates the rendered .toml
-      # via python3/tomllib (Python >= 3.11). ubuntu-latest ships Python 3.12,
-      # but pin it explicitly so the toolchain prerequisite is declared, not
-      # incidental (spec 0042 PLAN v2, finding F6).
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Check community component drift
-        run: bash scripts/build-components.sh --target all --check
-
-      - name: Test build-components validator
-        run: bash scripts/test-build-components.sh
-
-      - name: Test extract_frontmatter regression
-        run: bash scripts/tests/test-extract-frontmatter.sh
-
-      - name: Test check-skill-versions regression
-        run: bash scripts/tests/test-check-skill-versions.sh
-
-      - name: Test check-feedback-routing regression (spec 0030)
-        run: bash scripts/tests/test-check-feedback-routing.sh
-
-      - name: Enforce extension pivot sourcing (spec 0042)
-        run: bash scripts/check-extension-pivot.sh
-
-      - name: Test check-extension-pivot regression (spec 0042)
-        run: bash scripts/tests/test-check-extension-pivot.sh
-
-      - name: Test build-extension-pivot renderer + carrier (spec 0042)
-        run: bash scripts/tests/test-build-extension-pivot.sh
-
-      - name: Check extension pivot .toml drift (spec 0042)
-        run: bash scripts/build-extension-pivot.sh --check
-
-      - name: Enforce extension provenance (spec 0043)
-        run: bash scripts/check-extension-provenance.sh
-
-      - name: Test check-extension-provenance regression (spec 0043)
-        run: bash scripts/tests/test-check-extension-provenance.sh
-
-      - name: Enforce extension manifest single-version (spec 0044)
-        run: bash scripts/check-extension-manifest-version.sh
-
-      - name: Test check-extension-manifest-version regression (spec 0044)
-        run: bash scripts/tests/test-check-extension-manifest-version.sh
-
-      - name: Test check-extension-version-bump regression (spec 0044)
-        run: bash scripts/tests/test-check-extension-version-bump.sh
-
-      - name: Test install-claude-plugin marketplace regression (spec 0045)
-        run: bash scripts/tests/test-install-claude-plugin-marketplace.sh
-
-      - name: Test build-claude-plugin agents glob regression (issue #600)
-        run: bash scripts/tests/test-build-claude-plugin-agents-glob.sh
-
-      - name: Test Gemini agent frontmatter contract (issue #54)
-        run: bash scripts/tests/test-gemini-agent-frontmatter.sh
-
-      - name: Test e2e auth .claude.json mount (issue #112)
-        run: bash scripts/tests/test-e2e-auth-claude-json.sh
-
-      - name: Test e2e auth Ollama Cloud mount (issue #114)
-        run: bash scripts/tests/test-e2e-auth-ollama.sh
-
-      - name: Test sync-from-upstream script
-        run: bash scripts/tests/test-sync-from-upstream.sh
-
-      - name: Check core-paths resolve at HEAD (spec 0031)
-        run: bash scripts/check-core-paths.sh
-
-      - name: Test check-core-paths regression (spec 0031)
-        run: bash scripts/tests/test-check-core-paths.sh
-
-      - name: Check relative Markdown link integrity (#872)
-        run: bash scripts/check-markdown-links.sh
-
-      - name: Test check-markdown-links regression (#872)
-        run: bash scripts/tests/test-check-markdown-links.sh
-
-      - name: Test check-ci-parity regression (spec 0049)
-        run: bash scripts/tests/test-check-ci-parity.sh
-
-      - name: Test assembly verification
-        run: bash scripts/tests/test-assembly-verification.sh
-
-      - name: Test artifact build/install scope (spec 0019)
-        run: bash scripts/tests/test-artifact-build-install-scope.sh
-
-      - name: Test component tier resolution (spec 0119)
-        run: bash scripts/tests/test-component-tier-resolution.sh
-
-      - name: Check docs index drift (spec 0027)
-        run: bash scripts/build-docs-index.sh --check
-
-      - name: Test build-docs-index regression (spec 0027)
-        run: bash scripts/tests/test-build-docs-index.sh
-
-      - name: Test mempalace-transcript hook regression (issue #530)
-        run: bash scripts/tests/test-mempalace-transcript-hook.sh
-
-      - name: Test Antigravity transcript activation (spec 0116)
-        run: bash scripts/tests/test-setup-antigravity-transcript.sh
-
-      - name: Test Copilot transcript manifest schema (issue #825)
-        run: bash scripts/tests/test-setup-copilot-transcript.sh
-
-      - name: Test Antigravity component install and migration (spec 0123)
-        run: bash scripts/tests/test-antigravity-component-install.sh
-
-      - name: Test Antigravity discovery-probe classifier (spec 0123)
-        run: bash scripts/tests/test-antigravity-discovery-probe.sh
-
-      - name: Test mempalace version-range guard (spec 0082)
-        run: bash scripts/tests/test-mempalace-version-range.sh
-
-      # The spec-0108 guard's PRIMARY comparator. Installed so CI exercises the
-      # real library and not only the degraded fallback; test-mempalace-pin.sh
-      # fails loudly when no interpreter can import it, so a green run here means
-      # the primary comparator was actually tested. Not a runtime dependency of
-      # the guard itself.
-      - name: Install packaging for the spec-0108 primary comparator
-        run: python3 -m pip install --quiet packaging
-
-      - name: Test mempalace pin parser and comparator (spec 0108)
-        run: bash scripts/tests/test-mempalace-pin.sh
-
-      - name: Test mempalace runtime version guard (spec 0108)
-        run: bash scripts/tests/test-mempalace-runtime-guard.sh
-
-      - name: Test mempalace operator diagnostic (spec 0108)
-        run: bash scripts/tests/test-mempalace-doctor.sh
-
-      - name: Test system-context store regression (spec 0068 + 0075)
-        run: bash scripts/tests/test-system-context-store.sh
-
-      - name: Enforce test-wiring registration (spec 0076)
-        run: bash scripts/check-test-wiring.sh
-
-      - name: Test check-test-wiring regression (spec 0076)
-        run: bash scripts/tests/test-check-test-wiring.sh
-
-      - name: Enforce test suites runtime stray guard (issue #738)
-        run: bash scripts/check-test-strays.sh
-
-      - name: Test check-test-strays regression (issue #738)
-        run: bash scripts/tests/test-check-test-strays.sh
-
-      - name: Test build-ci regression (spec 0076 wiring)
-        run: bash scripts/tests/test-build-ci.sh
-
-      - name: Test chroma fd-limits regression (spec 0076 wiring)
-        run: bash scripts/tests/test-chroma-fd-limits.sh
-
-      - name: Test chroma health-race regression (spec 0076 wiring)
-        run: bash scripts/tests/test-chroma-health-race.sh
-
-      - name: Test chroma-server regression (spec 0076 wiring)
-        run: bash scripts/tests/test-chroma-server.sh
-
-      - name: Test MCP daemon regression (spec 0113)
-        run: bash scripts/tests/test-mcp-daemon.sh
-
-      - name: Test worktree-claim regression (spec 0114)
-        run: bash scripts/tests/test-worktree-claim.sh
-
-      - name: Test e2e assert-lib regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-assert-lib.sh
-
-      - name: Test e2e auth-common regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-auth-common.sh
-
-      - name: Test e2e auth-ready regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-auth-ready.sh
-
-      - name: Test e2e auth-taskfile regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-auth-taskfile.sh
-
-      - name: Test e2e defaults-toml regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-defaults-toml.sh
-
-      - name: Test e2e docker-images regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-docker-images.sh
-
-      - name: Test e2e gitignore regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-gitignore.sh
-
-      - name: Test e2e judge-config regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-judge-config.sh
-
-      - name: Test e2e llm-judge-lib regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-llm-judge-lib.sh
-
-      - name: Test e2e report regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-report.sh
-
-      - name: Test e2e runner-delegation regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-runner-delegation.sh
-
-      - name: Test e2e runner-taskfile regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-runner-taskfile.sh
-
-      - name: Test e2e scenarios-parity regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-scenarios-parity.sh
-
-      - name: Test e2e scenarios-structure regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-scenarios-structure.sh
-
-      - name: Test e2e structural-lib regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-structural-lib.sh
-
-      - name: Test e2e taskfile regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-taskfile.sh
-
-      - name: Test e2e versions-lock regression (spec 0076 wiring)
-        run: bash scripts/tests/test-e2e-versions-lock.sh
-
-      - name: Test e2e README budget (spec 0077)
-        run: bash scripts/tests/test-e2e-readme.sh
-
-      - name: Test e2e lib README budget (spec 0077)
-        run: bash scripts/tests/test-e2e-libs-readme.sh
-
-      - name: Test e2e runner regression (spec 0078)
-        run: bash scripts/tests/test-e2e-runner.sh
-
-      - name: Test e2e toml-merge regression (spec 0079)
-        run: bash scripts/tests/test-e2e-toml-merge.sh
-
-      - name: Test setup validation-backend helper regression (spec 0080)
-        run: bash scripts/tests/test-setup-validation-backend.sh
-
-      - name: Test TLS-delegation helper and runtime wrapper (spec 0084)
-        run: bash scripts/tests/test-tls-delegation.sh
-
-      - name: Check no machine-specific home paths (spec 0081)
-        run: bash scripts/check-no-machine-paths.sh
-
-      - name: Test check-no-machine-paths regression (spec 0081)
-        run: bash scripts/tests/test-check-no-machine-paths.sh
-
-      - name: Test setup MCP-merge preservation regression (spec 0089)
-        run: bash scripts/tests/test-setup-mcp-merge.sh
-
-      - name: Test org-level MCP declaration channel regression (spec 0091)
-        run: bash scripts/tests/test-setup-org-mcp.sh
-
-      - name: Test setup catalogue-picker regression (spec 0096)
-        run: bash scripts/tests/test-setup-catalogue-picker.sh
-
-      - name: Test setup ensure-tier-built regression (spec 0107)
-        run: bash scripts/tests/test-setup-ensure-tier-built.sh
-
-      - name: Check Gemini overlay enrollment (spec 0085)
-        run: bash scripts/check-gemini-overlay-enrollment.sh
-
-      - name: Test Gemini overlay enrollment regression (spec 0085)
-        run: bash scripts/tests/test-check-gemini-overlay-enrollment.sh
-
-      - name: Test Bash 3.2 portability guard regression (spec 0111)
-        run: bash scripts/tests/test-check-bash32-portability.sh
-
-      - name: Test spec-id reservation tool regression (spec 0112)
-        run: bash scripts/tests/test-reserve-spec-id.sh
-
-      - name: Test spec-id reservation check regression (spec 0112)
-        run: bash scripts/tests/test-check-spec-id-reserved.sh
-
+      - name: Fail-safe full check suite (spec 0147 R5)
+        run: bash scripts/ci-changeset-coverage.sh
   lint-markdown:
     runs-on: ubuntu-latest
     steps:

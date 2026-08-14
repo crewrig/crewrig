@@ -12,23 +12,35 @@
 # deployment, so the deployment lives in a helper the test can call and the two
 # `fzf` prompts are asserted structurally instead (§4).
 #
-# Contract asserted (spec 0116):
+# Contract asserted (spec 0116, incl. delta-03):
 #   R1/R2 — the manifest is a map of NAMED hooks and registers only events the
 #     CLI actually has. The four names spec 0056 shipped
 #     (BeforeAgent/AfterTool/AfterModel/SessionEnd) do not exist and MUST be absent.
-#   R3 (delta-01) — `Stop` is the ONLY registered event, because it is the only
+#   R3 (delta-01 as rescoped by delta-03) — `Stop` is the ONLY event registered
+#     under the named hook `crewrig-mempalace-transcript`, because it is the only
 #     one that fires once per turn. Measured, agy 1.0.16, one turn with three
 #     shell commands: PreInvocation 4x, PostInvocation 4x, PreToolUse 3x, Stop 1x.
+#     The manifest MAY carry OTHER named hooks with their own normative base —
+#     namely `crewrig-worktree-git-guard`, whose `PreToolUse` registration is
+#     covered by R27 below.
+#   R27 (delta-03) — the manifest carries `crewrig-worktree-git-guard` registering
+#     `PreToolUse` through a group whose `matcher` selects `run_command` and whose
+#     handler command names `hooks/worktree-git-guard.sh`.
+#   R28 (delta-03) — the deployment rewrites the guard command to the absolute
+#     REPOSITORY path of `hooks/worktree-git-guard.sh` — never the installed
+#     transcript hook, no env prefix, no lifecycle-event argument.
 #   R22 (delta-01) — the consent text states the true per-turn write volume.
 #   R24 (delta-01) — the setup script's call-site ARGUMENTS are asserted, not just
 #     that the deployment is reached. An emptied env prefix silently disables
 #     recording, and previously survived the whole suite.
 #   R4 — no command depends on the launch directory ($PWD is fatal here: a
 #     handler's cwd is the directory holding hooks.json, not any project).
-#   R5 — every command tells the hook which event fired, because the Antigravity
-#     payload carries no event name.
+#   R5 — every command registered under the transcript hook tells the hook which
+#     event fired, because the Antigravity payload carries no event name. The
+#     guard command is exempt (it reads the payload it receives on stdin).
 #   R13/R14 — the hook script is installed under the assistant's own directory
-#     and every command names it by absolute path, with the enabling env prefix.
+#     and every transcript command names it by absolute path, with the enabling
+#     env prefix.
 #   R15 — an existing manifest is backed up before being touched, and a hook the
 #     operator already declares survives the merge.
 #   R16 — asserted structurally: both decline paths reach neither the helper nor
@@ -48,9 +60,10 @@ REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 COMMON_LIB="$REPO_DIR/scripts/lib/common.sh"
 MANIFEST="$REPO_DIR/hooks/antigravity-transcript-hooks.json"
 HOOK_SCRIPT="$REPO_DIR/hooks/mempalace-transcript.sh"
+GUARD_SCRIPT="$REPO_DIR/hooks/worktree-git-guard.sh"
 SETUP="$REPO_DIR/scripts/setup-antigravity-interactive.sh"
 
-for f in "$COMMON_LIB" "$MANIFEST" "$HOOK_SCRIPT" "$SETUP"; do
+for f in "$COMMON_LIB" "$MANIFEST" "$HOOK_SCRIPT" "$GUARD_SCRIPT" "$SETUP"; do
   [ -f "$f" ] || { echo "FATAL: missing $f" >&2; exit 2; }
 done
 command -v jq >/dev/null 2>&1 || { echo "FATAL: jq is required for this test" >&2; exit 2; }
@@ -117,16 +130,16 @@ done
 # PostInvocation 4x, PreToolUse 3x, Stop 1x. The other four all have roughly
 # per-tool-round cardinality, and the CLI runs hooks synchronously, blocking the
 # agent loop.
-if jq -e '[.[] | keys[]] == ["Stop"]' "$MANIFEST" >/dev/null 2>&1; then
-  ok "R3: Stop is the only registered event"
+if jq -e '."crewrig-mempalace-transcript" | [keys[]] == ["Stop"]' "$MANIFEST" >/dev/null 2>&1; then
+  ok "R3: Stop is the only event registered under the transcript hook"
 else
-  bad "R3: registered events are $(jq -c '[.[] | keys[]]' "$MANIFEST"), expected [\"Stop\"]"
+  bad "R3: transcript-hook events are $(jq -c '."crewrig-mempalace-transcript" | keys' "$MANIFEST"), expected [\"Stop\"]"
 fi
 for noisy in PreToolUse PostToolUse PreInvocation PostInvocation; do
-  if jq -e --arg e "$noisy" '[.[] | keys[]] | index($e) == null' "$MANIFEST" >/dev/null 2>&1; then
-    ok "R3: high-frequency event '$noisy' is not registered"
+  if jq -e --arg e "$noisy" '."crewrig-mempalace-transcript" | [keys[]] | index($e) == null' "$MANIFEST" >/dev/null 2>&1; then
+    ok "R3: high-frequency event '$noisy' is not registered under the transcript hook"
   else
-    bad "R3: high-frequency event '$noisy' is registered"
+    bad "R3: high-frequency event '$noisy' is registered under the transcript hook"
   fi
 done
 
@@ -154,12 +167,39 @@ else
 fi
 
 # R5 — the event name is on the command line, because the payload has none.
-if jq -e 'to_entries | all(.[]; .value | to_entries | all(.[];
-       (.value | type) != "array" or (.key as $ev | .value | all(.[]; .command | endswith($ev)))))' \
+# Scoped to the transcript hook: the guard command is exempt (R5 as replaced by
+# delta-03) because it inspects the payload it reads from stdin.
+if jq -e '."crewrig-mempalace-transcript" | to_entries | all(.[];
+       (.value | type) != "array" or (.key as $ev | .value | all(.[]; .command | endswith($ev))))' \
      "$MANIFEST" >/dev/null 2>&1; then
-  ok "R5: every command ends with the event name it is registered under"
+  ok "R5: every transcript command ends with the event name it is registered under"
 else
-  bad "R5: a command does not carry its event name"
+  bad "R5: a transcript command does not carry its event name"
+fi
+
+# R27 (delta-03) — the manifest MAY carry the named hook `crewrig-worktree-git-guard`
+# registering `PreToolUse` through a group whose matcher selects `run_command` and
+# whose handler command names `hooks/worktree-git-guard.sh` (spec 0153 R1/R4).
+if jq -e 'has("crewrig-worktree-git-guard")' "$MANIFEST" >/dev/null 2>&1; then
+  ok "R27: the manifest carries the named hook 'crewrig-worktree-git-guard'"
+else
+  bad "R27: the named hook 'crewrig-worktree-git-guard' is absent"
+fi
+if jq -e '."crewrig-worktree-git-guard".PreToolUse[0].matcher == "run_command"' "$MANIFEST" >/dev/null 2>&1; then
+  ok "R27: the guard registers PreToolUse with matcher 'run_command'"
+else
+  bad "R27: guard PreToolUse[0].matcher is not 'run_command'"
+fi
+if jq -e '."crewrig-worktree-git-guard".PreToolUse[0] | has("hooks") and (.hooks | type) == "array"' "$MANIFEST" >/dev/null 2>&1; then
+  ok "R27: the guard group carries a 'hooks' array"
+else
+  bad "R27: the guard group has no 'hooks' array (grouped shape violated)"
+fi
+if jq -e '."crewrig-worktree-git-guard".PreToolUse[0].hooks[0].command | contains("hooks/worktree-git-guard.sh")' \
+     "$MANIFEST" >/dev/null 2>&1; then
+  ok "R27: the guard handler command names hooks/worktree-git-guard.sh"
+else
+  bad "R27: the guard handler command does not name hooks/worktree-git-guard.sh"
 fi
 
 # --- §2. Deployment: the accept path ----------------------------------------
@@ -170,7 +210,7 @@ HOOKS_DIR_A="$HOME_A/.gemini/antigravity-cli/hooks"
 TARGET_A="$HOME_A/.gemini/config/hooks.json"
 
 if deploy_antigravity_transcript_hooks \
-     "$MANIFEST" "$HOOK_SCRIPT" "$HOOKS_DIR_A" "$TARGET_A" "$ENVP" >/dev/null 2>&1; then
+     "$MANIFEST" "$HOOK_SCRIPT" "$HOOKS_DIR_A" "$TARGET_A" "$ENVP" "$GUARD_SCRIPT" >/dev/null 2>&1; then
   ok "helper exits zero on a clean target"
 else
   bad "helper failed on a clean target"
@@ -193,30 +233,68 @@ else
   bad "R14: manifest not deployed, or not valid JSON"
 fi
 
-# Every command must name the installed hook by ABSOLUTE path — that is the whole
-# point of installing it out of the repository.
+# Every TRANSCRIPT command must name the installed hook by ABSOLUTE path — that
+# is the whole point of installing it out of the repository. Scoped to the
+# transcript hook: the guard command deliberately names the repository path
+# instead (R28).
 if jq -e --arg hp "$HOOK_TARGET_A" \
-     '[.. | .command? // empty] | length > 0 and all(contains($hp))' \
+     '."crewrig-mempalace-transcript" | [.. | .command? // empty] | length > 0 and all(contains($hp))' \
      "$TARGET_A" >/dev/null 2>&1; then
-  ok "R14: every command names the installed hook by absolute path"
+  ok "R14: every transcript command names the installed hook by absolute path"
 else
-  bad "R14: a command does not name the installed hook by absolute path"
+  bad "R14: a transcript command does not name the installed hook by absolute path"
 fi
-if jq -e '[.. | .command? // empty] | all(startswith("MEMPALACE_TRANSCRIPT_ENABLED=1"))' \
+if jq -e '."crewrig-mempalace-transcript" | [.. | .command? // empty] | all(startswith("MEMPALACE_TRANSCRIPT_ENABLED=1"))' \
      "$TARGET_A" >/dev/null 2>&1; then
-  ok "R14: every command carries the enabling env prefix"
+  ok "R14: every transcript command carries the enabling env prefix"
 else
-  bad "R14: a command is missing the enabling env prefix"
+  bad "R14: a transcript command is missing the enabling env prefix"
 fi
 if grep -q '\$PWD' "$TARGET_A"; then
   bad "R4: deployed manifest reintroduced \$PWD"
 else
   ok "R4: deployed manifest is free of \$PWD"
 fi
+
+# R28 (delta-03) — the deployed guard command names the REPOSITORY guard path,
+# never the installed transcript hook, with no env prefix and no event argument.
+# `contains`, NOT exact equality: the rewrite's `tojson` quotes the path, so the
+# deployed command is `bash "/abs/repo/hooks/worktree-git-guard.sh"` and an exact
+# match against the unquoted path would fail.
+if jq -e --arg gp "$GUARD_SCRIPT" \
+     '."crewrig-worktree-git-guard".PreToolUse[0].hooks[0].command | contains($gp)' \
+     "$TARGET_A" >/dev/null 2>&1; then
+  ok "R28: the deployed guard command contains the repository guard path"
+else
+  bad "R28: the deployed guard command lacks $GUARD_SCRIPT"
+fi
+if jq -e --arg hp "$HOOK_TARGET_A" \
+     '."crewrig-worktree-git-guard".PreToolUse[0].hooks[0].command | contains($hp) | not' \
+     "$TARGET_A" >/dev/null 2>&1; then
+  ok "R28: the deployed guard command does NOT name the installed transcript hook"
+else
+  bad "R28: the deployed guard command still names the installed transcript hook"
+fi
+if jq -e '."crewrig-worktree-git-guard".PreToolUse[0].hooks[0].command | startswith("MEMPALACE_TRANSCRIPT_ENABLED=1") | not' \
+     "$TARGET_A" >/dev/null 2>&1; then
+  ok "R28: the deployed guard command carries no transcript env prefix"
+else
+  bad "R28: the deployed guard command carries the transcript enabling env prefix"
+fi
+if jq -e '."crewrig-worktree-git-guard".PreToolUse[0].hooks[0].command as $c |
+       ["PreToolUse","PostToolUse","PreInvocation","PostInvocation","Stop"]
+         | any(. as $e | $c | endswith(" " + $e)) | not' \
+     "$TARGET_A" >/dev/null 2>&1; then
+  ok "R28: the deployed guard command carries no lifecycle-event argument"
+else
+  bad "R28: the deployed guard command ends with a lifecycle-event name"
+fi
+
 # The event argument must survive the rewrite, or the hook cannot classify —
-# the payload carries no event name. Read the registered events from the manifest
-# rather than hardcoding them, so this keeps covering whatever R3 mandates
-# without needing an edit here; today that is `Stop` alone.
+# the payload carries no event name. Read the registered events from the
+# TRANSCRIPT hook (the only one R5 applies to) rather than hardcoding them, so
+# this keeps covering whatever R3 mandates without needing an edit here; today
+# that is `Stop` alone.
 while IFS= read -r ev; do
   [ -n "$ev" ] || continue
   if jq -e --arg ev " $ev" '[.. | .command? // empty] | any(endswith($ev))' \
@@ -226,7 +304,7 @@ while IFS= read -r ev; do
     bad "R5: the '$ev' argument was lost in the rewrite"
   fi
 done <<EOF
-$(jq -r '.[] | keys[] | select(. != "enabled")' "$MANIFEST")
+$(jq -r '."crewrig-mempalace-transcript" | keys[] | select(. != "enabled")' "$MANIFEST")
 EOF
 
 # --- §3. Deployment: an operator's existing manifest -------------------------
@@ -247,7 +325,7 @@ cat > "$TARGET_B" <<'EOF'
 EOF
 
 deploy_antigravity_transcript_hooks \
-  "$MANIFEST" "$HOOK_SCRIPT" "$HOOKS_DIR_B" "$TARGET_B" "$ENVP" >/dev/null 2>&1
+  "$MANIFEST" "$HOOK_SCRIPT" "$HOOKS_DIR_B" "$TARGET_B" "$ENVP" "$GUARD_SCRIPT" >/dev/null 2>&1
 
 if compgen -G "${TARGET_B}.bak.*" >/dev/null; then
   ok "R15: the pre-existing manifest was backed up"
@@ -275,7 +353,7 @@ fi
 # Re-running setup must be idempotent, not additive.
 BEFORE_KEYS="$(jq -S 'keys' "$TARGET_B")"
 deploy_antigravity_transcript_hooks \
-  "$MANIFEST" "$HOOK_SCRIPT" "$HOOKS_DIR_B" "$TARGET_B" "$ENVP" >/dev/null 2>&1
+  "$MANIFEST" "$HOOK_SCRIPT" "$HOOKS_DIR_B" "$TARGET_B" "$ENVP" "$GUARD_SCRIPT" >/dev/null 2>&1
 if [ "$BEFORE_KEYS" = "$(jq -S 'keys' "$TARGET_B")" ]; then
   ok "re-running the deployment is idempotent on the key set"
 else
@@ -287,10 +365,16 @@ fi
 # name — the `SessionEnd` spec 0056 shipped and this spec retires — would
 # otherwise survive every re-run, still pointing at a dead command. The whole
 # point of this ticket is that those four event names are gone.
+#
+# `OURS` is pinned to the literal transcript-hook name, not `jq -r 'keys[0]'`:
+# jq `keys` sorts alphabetically, so `keys[0]` already yields the transcript
+# hook today ('m' < 'w'), but the pin is defensive — it guards against a future
+# hook whose name sorts before it. This block replaces OUR OWN hook wholesale
+# while preserving the operator's; it is not about which hook runs first.
 HOME_C="$TMP_ROOT/c"
 HOOKS_DIR_C="$HOME_C/.gemini/antigravity-cli/hooks"
 TARGET_C="$HOME_C/.gemini/config/hooks.json"
-OURS="$(jq -r 'keys[0]' "$MANIFEST")"
+OURS="crewrig-mempalace-transcript"
 mkdir -p "$(dirname "$TARGET_C")"
 jq -n --arg k "$OURS" '{
   ($k): { "SessionEnd": [ { "type": "command", "command": "bash $PWD/hooks/mempalace-transcript.sh" } ] },
@@ -298,7 +382,7 @@ jq -n --arg k "$OURS" '{
 }' > "$TARGET_C"
 
 deploy_antigravity_transcript_hooks \
-  "$MANIFEST" "$HOOK_SCRIPT" "$HOOKS_DIR_C" "$TARGET_C" "$ENVP" >/dev/null 2>&1
+  "$MANIFEST" "$HOOK_SCRIPT" "$HOOKS_DIR_C" "$TARGET_C" "$ENVP" "$GUARD_SCRIPT" >/dev/null 2>&1
 
 if jq -e --arg k "$OURS" '.[$k] | has("SessionEnd") | not' "$TARGET_C" >/dev/null 2>&1; then
   ok "R2: a retired event under our own hook name does not survive a re-run"
@@ -327,7 +411,7 @@ printf 'this is not json at all' > "$TARGET_E"
 BEFORE_E="$(cat "$TARGET_E")"
 
 if deploy_antigravity_transcript_hooks \
-     "$MANIFEST" "$HOOK_SCRIPT" "$HOME_E/hooks" "$TARGET_E" "$ENVP" >"$TMP_ROOT/out_e" 2>/dev/null; then
+     "$MANIFEST" "$HOOK_SCRIPT" "$HOME_E/hooks" "$TARGET_E" "$ENVP" "$GUARD_SCRIPT" >"$TMP_ROOT/out_e" 2>/dev/null; then
   bad "a non-object existing manifest returned SUCCESS"
 else
   ok "a non-object existing manifest makes the helper fail"
@@ -355,7 +439,7 @@ fi
 HOME_F="$TMP_ROOT/f"
 TARGET_F="$HOME_F/.gemini/config/hooks.json"
 if deploy_antigravity_transcript_hooks \
-     "$TMP_ROOT/no-such-manifest.json" "$HOOK_SCRIPT" "$HOME_F/hooks" "$TARGET_F" "$ENVP" \
+     "$TMP_ROOT/no-such-manifest.json" "$HOOK_SCRIPT" "$HOME_F/hooks" "$TARGET_F" "$ENVP" "$GUARD_SCRIPT" \
      >"$TMP_ROOT/out_f" 2>/dev/null; then
   bad "an unreadable source manifest returned SUCCESS"
 else
@@ -396,7 +480,7 @@ cat > "$SRC_D" <<'EOF'
 }
 EOF
 deploy_antigravity_transcript_hooks \
-  "$SRC_D" "$HOOK_SCRIPT" "$HOME_D/hooks" "$TARGET_D" "$ENVP" >/dev/null 2>&1
+  "$SRC_D" "$HOOK_SCRIPT" "$HOME_D/hooks" "$TARGET_D" "$ENVP" "$GUARD_SCRIPT" >/dev/null 2>&1
 
 if jq -e '."grouped-and-disabled".enabled == false' "$TARGET_D" >/dev/null 2>&1; then
   ok "a non-array member ('enabled') passes through untouched"
@@ -503,7 +587,7 @@ run_gate() {
     # covered by nothing: §2/§3 exercise the helper with hand-written correct
     # arguments, and a stub that ignores its own would let a swapped or emptied
     # argument at the call site pass the whole suite (spec 0116 delta-01 R24).
-    deploy_antigravity_transcript_hooks() { echo "DEPLOYED|$1|$2|$3|$4|$5"; }
+    deploy_antigravity_transcript_hooks() { echo "DEPLOYED|$1|$2|$3|$4|$5|$6"; }
     detect_mempalace_python() { echo "/usr/bin/python3"; }
     # A directive covers only the next command, and `a=1; b=2` is two — hence
     # one line each. Both are read by the block sourced below.
@@ -565,8 +649,11 @@ esac
 # MEMPALACE_TRANSCRIPT_ENABLED=1, so the hook opts itself out and records nothing,
 # silently, exit 0. That is this feature's own failure mode, reachable by a
 # one-token edit.
-GATE_ARGS="$(printf '%s' "$GATE_OUT" | tr ' ' '\n' | grep '^DEPLOYED|' || true)"
-IFS='|' read -r _ A_SRC A_HOOK A_DIR A_JSON A_ENV <<EOF
+# No `tr ' ' '\n'` here: the env prefix (arg 5) contains a space, and a word-split
+# `tr` would push the 6th field onto a line `grep '^DEPLOYED|'` rejects, leaving
+# A_GUARD silently empty — the exact R24 defect class this ticket fixes.
+GATE_ARGS="$(printf '%s' "$GATE_OUT" | grep '^DEPLOYED|' || true)"
+IFS='|' read -r _ A_SRC A_HOOK A_DIR A_JSON A_ENV A_GUARD <<EOF
 $GATE_ARGS
 EOF
 case "$A_SRC" in
@@ -588,6 +675,10 @@ esac
 case "$A_ENV" in
   MEMPALACE_TRANSCRIPT_ENABLED=1*) ok "R24: arg 5 enables persistence" ;;
   *) bad "R24: arg 5 is '$A_ENV' — the deployed hook would opt itself out and record nothing" ;;
+esac
+case "$A_GUARD" in
+  */hooks/worktree-git-guard.sh) ok "R24: arg 6 is the guard script source" ;;
+  *) bad "R24: arg 6 is '$A_GUARD', expected the guard script source" ;;
 esac
 # The deployment target must be the customization root that is proven to fire,
 # not the application-data directory.

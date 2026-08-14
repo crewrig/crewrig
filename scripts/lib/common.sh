@@ -1685,7 +1685,7 @@ configure_validation_backend() {
 
 # --- Antigravity CLI transcript-hook deployment (spec 0116 R13/R14/R15) ------
 #
-# deploy_antigravity_transcript_hooks <manifest_src> <hook_src> <hooks_dir> <manifest_target> <env_prefix>
+# deploy_antigravity_transcript_hooks <manifest_src> <hook_src> <hooks_dir> <manifest_target> <env_prefix> <guard_src>
 #
 # Why this is a helper rather than an inline block like its three siblings:
 # `scripts/tests/test-setup-mcp-merge.sh` records the house rule that the
@@ -1697,10 +1697,17 @@ configure_validation_backend() {
 # What it does, in order:
 #   1. installs the shared hook script under the assistant's own directory, so
 #      the deployed hook stops depending on this repository's path (R13);
-#   2. rewrites every command in the manifest to that absolute path, prefixed
-#      with `$env_prefix`, and appends the lifecycle event name (R14, and R5 —
-#      the Antigravity payload carries no event name, so the manifest must say
-#      which event fired);
+#   2. rewrites every command in the manifest by named-hook dispatch (spec 0116
+#      delta-03 R28):
+#      - under `crewrig-mempalace-transcript`, every command names the installed
+#        absolute path, prefixed with `$env_prefix`, and appends the lifecycle
+#        event name (R14, and R5 — the Antigravity payload carries no event
+#        name, so the manifest must say which event fired);
+#      - under `crewrig-worktree-git-guard`, the command names the absolute
+#        REPOSITORY path of the guard (never installed), with NO env prefix and
+#        NO event argument — the guard inspects the payload it reads from stdin,
+#        and it delegates claim validation to `scripts/worktree-claim.sh`
+#        relative to the repo, so an installed copy would break that chain;
 #   3. backs up an existing manifest before touching it (R15) and MERGES into
 #      it rather than overwriting: `hooks.json`'s top level is a map of NAMED
 #      hooks and the operator may own others. Same-named hooks are replaced,
@@ -1710,8 +1717,15 @@ configure_validation_backend() {
 # reasons: the event name is a KEY here rather than a field, and a named hook may
 # carry a non-array `enabled` member that must be passed through untouched.
 deploy_antigravity_transcript_hooks() {
-  local manifest_src="$1" hook_src="$2" hooks_dir="$3" manifest_target="$4" env_prefix="$5"
+  local manifest_src="$1" hook_src="$2" hooks_dir="$3" manifest_target="$4" env_prefix="$5" guard_src="$6"
   local hook_target="${hooks_dir}/mempalace-transcript.sh"
+  # The guard is NEVER installed under the assistant's own directory (unlike the
+  # transcript hook): it delegates claim validation to
+  # `scripts/worktree-claim.sh` via `$(dirname "${BASH_SOURCE[0]}")/..`, and
+  # `BASH_SOURCE[0]` is the invocation path — an installed copy would resolve
+  # `..` to the wrong tree. Pin the rewrite to this repository's absolute path.
+  local guard_abs
+  guard_abs="$(cd "$(dirname "$guard_src")" && pwd -P)/$(basename "$guard_src")"
 
   mkdir -p "$hooks_dir" "$(dirname "$manifest_target")"
 
@@ -1729,10 +1743,31 @@ deploy_antigravity_transcript_hooks() {
   # untouched, which the CLI would happily load and never run. The shipped
   # manifest registers only flat events today, so that mistake would have been
   # invisible until the first tool event was ever registered.
-  jq --arg envp "$env_prefix" --arg hp "$hook_target" '
+  # Two rewrite paths, dispatched on the named-hook key (spec 0116 delta-03 R28):
+  #   - `crewrig-mempalace-transcript` keeps the established contract — absolute
+  #     INSTALLED path, transcript enabling env prefix, lifecycle-event argument.
+  #   - `crewrig-worktree-git-guard` is rewritten to the absolute REPOSITORY path
+  #     of the guard with NO env prefix and NO event argument: the guard reads
+  #     the command from its stdin payload rather than a positional argument (R5
+  #     exemption), and must resolve `scripts/worktree-claim.sh` relative to the
+  #     repo, so an installed copy would break its delegation chain.
+  jq --arg envp "$env_prefix" --arg hp "$hook_target" --arg gp "$guard_abs" '
     def rewrite($ev): .command = ($envp + " bash " + ($hp | tojson) + " " + $ev);
+    def guard_rewrite: .command = ("bash " + ($gp | tojson));
     with_entries(
-      .value |= with_entries(
+      if .key == "crewrig-worktree-git-guard"
+      then .value |= with_entries(
+        if (.value | type) == "array"
+        then .value |= map(
+          if has("hooks") and (.hooks | type) == "array"
+          then .hooks |= map(guard_rewrite)
+          else guard_rewrite
+          end
+        )
+        else .
+        end
+      )
+      else .value |= with_entries(
         if (.value | type) == "array"
         then (.key) as $ev
              | .value |= map(
@@ -1744,6 +1779,7 @@ deploy_antigravity_transcript_hooks() {
         else .
         end
       )
+      end
     )' "$manifest_src" > "$patched" || { rm -f "$patched"; return 1; }
 
   # `cmd > out && mv` would swallow a jq failure: POSIX exempts every command in

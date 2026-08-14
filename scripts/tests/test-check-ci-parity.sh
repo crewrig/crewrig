@@ -432,6 +432,23 @@ refute_in() {
 }
 
 # ---------------------------------------------------------------------------
+# C1 — Cached capability: GHA cache key inputs must agree with the reference
+# cache.files (spec 0147 R6/R7). A divergence fails closed naming the capability.
+# ---------------------------------------------------------------------------
+{
+  f="$(make_fixture)"
+  # Drift the ci-parity job's actions/cache key so its hashFiles(...) inputs no
+  # longer match the reference cache.files.
+  yq -i '(.jobs."ci-parity".steps[] | select(.uses == "actions/cache@v4") | .with.key) = "${{ hashFiles('"'"'scripts/check-ci-parity.sh'"'"') }}"' \
+    "$f/.github/workflows/build.yml"
+
+  run_check "$f"
+  expect_exit 1 "C1: cache key input divergence fails closed"
+  expect_in err "capability 'ci-parity' (github-actions)" "C1: names the capability"
+  expect_in err "cache key inputs diverge"                "C1: names the R6 divergence"
+}
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 total=$((pass + fail))
