@@ -725,6 +725,72 @@ MCP_DAEMON_PORT_DEFAULT="41893"
 MCP_DAEMON_LABEL_DEFAULT="com.mempalace.mcp-server"
 MCP_DAEMON_UNIT_DEFAULT="mempalace-mcp-server"
 
+# mcp_listener_pid <port> — the PID of the process listening on <port>, or
+# empty when none can be identified. lsof on macOS, ss on Linux.
+#
+# MEMPALACE_MCP_LISTENER_PID fixes the listener side for a hermetic suite
+# (spec 0158 R3). The set-but-empty contract is load-bearing: an explicitly
+# empty value forces the lookup to report undeterminable, while an unset one
+# falls through to the real lookup. `${VAR+x}` is what distinguishes the two —
+# `:-` would collapse both to the fallback.
+mcp_listener_pid() {
+  local port="$1"
+  if [ -n "${MEMPALACE_MCP_LISTENER_PID+x}" ]; then
+    printf '%s\n' "${MEMPALACE_MCP_LISTENER_PID}"
+    return 0
+  fi
+  local pid=""
+  case "$(uname -s)" in
+    Darwin)
+      pid="$(lsof -nP -iTCP:"${port}" -sTCP:LISTEN -t 2>/dev/null | head -n1)"
+      ;;
+    Linux)
+      pid="$(ss -H -tlnp "sport = :${port}" 2>/dev/null \
+        | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | head -n1)"
+      ;;
+    *)
+      pid=""
+      ;;
+  esac
+  printf '%s\n' "${pid}"
+}
+
+# mcp_supervisor_pid — the PID the OS supervisor reports for the daemon unit,
+# or empty when the unit is not loaded or reports no running process. The
+# expected process comes from the OS supervisor — launchctl print
+# gui/<uid>/<label> on macOS, systemctl --user show -p MainPID on Linux — never
+# from a file a same-uid local process could write (spec 0158 R2).
+#
+# MEMPALACE_MCP_EXPECTED_PID fixes the supervisor side for a hermetic suite
+# (spec 0158 R3); set-but-empty forces undeterminable, unset falls through to
+# the real supervisor lookup.
+mcp_supervisor_pid() {
+  if [ -n "${MEMPALACE_MCP_EXPECTED_PID+x}" ]; then
+    printf '%s\n' "${MEMPALACE_MCP_EXPECTED_PID}"
+    return 0
+  fi
+  local label unit pid=""
+  label="${MEMPALACE_MCP_LABEL:-$MCP_DAEMON_LABEL_DEFAULT}"
+  unit="${MEMPALACE_MCP_UNIT:-$MCP_DAEMON_UNIT_DEFAULT}"
+  case "$(uname -s)" in
+    Darwin)
+      pid="$(launchctl print "gui/$(id -u)/${label}" 2>/dev/null \
+        | sed -n 's/^[[:space:]]*pid = \([0-9][0-9]*\)[[:space:]]*$/\1/p' \
+        | head -n1)"
+      ;;
+    Linux)
+      pid="$(systemctl --user show -p MainPID --value "${unit}" 2>/dev/null)"
+      # systemctl reports MainPID=0 when the unit is loaded but no process
+      # runs; that is undeterminable, not a PID.
+      [ "${pid}" = "0" ] && pid=""
+      ;;
+    *)
+      pid=""
+      ;;
+  esac
+  printf '%s\n' "${pid}"
+}
+
 mcp_launcher_installed_path() {
   printf '%s\n' "${MEMPALACE_MCP_LAUNCHER_PATH:-$HOME/.crewrig/mcp-daemon-launcher.sh}"
 }
