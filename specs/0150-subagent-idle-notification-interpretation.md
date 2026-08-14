@@ -1,7 +1,7 @@
 ---
 id: "0150"
 slug: subagent-idle-notification-interpretation
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 730
