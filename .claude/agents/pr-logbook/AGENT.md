@@ -1,7 +1,6 @@
 ---
 name: pr-logbook
 description: "Generic PR and logbook composer agent. Drafts titles, bodies, test plans, logbook entries, and squash-merge commit messages that conform to the project's AGENTS.md conventions."
-model: haiku
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

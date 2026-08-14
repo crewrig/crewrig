@@ -2,7 +2,6 @@
 name: visual-regression-tester
 description: "Detects unintended visual changes between two states of a page by comparing screenshots at multiple viewports. Uses Playwright's toHaveScreenshot or equivalent diff thresholds."
 license: Apache-2.0
-model: haiku
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

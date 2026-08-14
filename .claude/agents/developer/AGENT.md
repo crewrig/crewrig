@@ -1,7 +1,6 @@
 ---
 name: developer
 description: "Generic implementation agent. Writes, edits, and refactors code with the smallest correct change. Verifies locally before reporting done."
-model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

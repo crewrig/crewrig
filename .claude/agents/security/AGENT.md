@@ -1,7 +1,6 @@
 ---
 name: security
 description: "Generic security review agent. Threat modeling, secret hygiene, realistic-threat code review, dependency audit. Findings only — does not implement fixes unless explicitly asked."
-model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
