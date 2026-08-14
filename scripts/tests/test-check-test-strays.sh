@@ -270,6 +270,114 @@ EOF
     fail=$((fail + 1))
   fi
 }
+# ---------------------------------------------------------------------------
+# Case g — A change to a root-level scripts/*.sh invalidates a cached verdict
+# (cache-key half of the arch-gap closure).
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
+#!/bin/bash
+echo "Everything is fine"
+EOF
+  chmod +x "$repo/scripts/tests/test-clean.sh"
+  cat > "$repo/scripts/foo.sh" << 'EOF'
+#!/bin/bash
+foo() { :; }
+EOF
+  cache_dir="$(mktemp -d "$TMP_ROOT/cache-g.XXXXXX")"
+
+  # First run: cold cache, suite executes and writes a verdict marker.
+  run_check "$repo" --cache-dir "$cache_dir"
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-g: cold run exits 0"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-g: cold run expected exit 0, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+
+  # Second run: warm cache, suite unchanged → cache hit.
+  run_check "$repo" --cache-dir "$cache_dir"
+  if echo "$CHECK_STDERR" | grep -q "cache hit, skipping test-clean.sh"; then
+    echo "PASS  case-g: warm run reports cache hit"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-g: expected cache-hit notice (stderr: $CHECK_STDERR)"
+    fail=$((fail + 1))
+  fi
+
+  # Change a root-level script (outside scripts/tests and scripts/lib) → the
+  # suite verdict must be invalidated (arch-gap closure).
+  cat > "$repo/scripts/foo.sh" << 'EOF'
+#!/bin/bash
+foo() { echo "changed"; }
+EOF
+  run_check "$repo" --cache-dir "$cache_dir"
+  if echo "$CHECK_STDERR" | grep -q "cache hit, skipping test-clean.sh"; then
+    echo "FAIL  case-g: root-level script change should invalidate the suite verdict"
+    fail=$((fail + 1))
+  else
+    echo "PASS  case-g: root-level script change invalidates the suite verdict"
+    pass=$((pass + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case h — The broadened short-circuit does not fire on a committed non-test
+# script change (short-circuit half of the arch-gap closure).
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  cat > "$repo/scripts/tests/test-stray.sh" << 'EOF'
+#!/bin/bash
+some-bogus-command
+EOF
+  chmod +x "$repo/scripts/tests/test-stray.sh"
+  cat > "$repo/scripts/foo.sh" << 'EOF'
+#!/bin/bash
+foo() { :; }
+EOF
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name test
+  git -C "$repo" config commit.gpgsign false
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm init
+  git -C "$repo" branch -M main
+  init_sha="$(git -C "$repo" rev-parse HEAD)"
+
+  # Commit a change to a root-level script only (no test/lib change). The
+  # broadened short-circuit diffs the whole scripts/ tree, so it must NOT fire;
+  # the scan runs and detects the stray (exit 1). If the short-circuit were
+  # still scoped to scripts/tests + scripts/lib, it would fire and exit 0.
+  cat > "$repo/scripts/foo.sh" << 'EOF'
+#!/bin/bash
+foo() { echo "changed"; }
+EOF
+  git -C "$repo" add scripts/foo.sh
+  git -C "$repo" commit -qm change-root-script
+
+  run_check "$repo" --base-ref "$init_sha"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-h: short-circuit does not fire on a root-level script change (scan ran, exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-h: expected exit 1 (scan ran and found the stray), got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+  if echo "$CHECK_STDERR" | grep -q "test-stray.sh has 1 stray.*errors"; then
+    echo "PASS  case-h: stderr names the stray suite and count"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-h: stderr did not name test-stray.sh (stderr: $CHECK_STDERR)"
+    fail=$((fail + 1))
+  fi
+}
+
 # Summary
 # ---------------------------------------------------------------------------
 total=$((pass + fail))

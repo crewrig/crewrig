@@ -11,12 +11,14 @@
 #
 # Optimization (issue #939, spec 0157): the scan is changeset-aware,
 # content-addressed, and parallel. Each suite's verdict is cached under a key
-# derived from the suite's own content plus the content of every `scripts/lib/**`
-# file, so a change to a shared helper invalidates every suite's verdict (R4)
-# while a change to one suite invalidates only that suite (R2/R7). The execution
-# set is ALL suites whose verdict is a cache-miss — never a diff-restricted
-# subset. The git diff against the base ref is used only to short-circuit the
-# "no change" case (skip the scan entirely when the diff is empty).
+# derived from the suite's own content plus the content of every non-test file
+# under scripts/ (root-level scripts/*.sh, scripts/lib/**, and any other non-test
+# subdirectory), so a change to any script a suite might invoke invalidates
+# every suite's verdict (R4) while a change to one suite invalidates only that
+# suite (R2/R7). The execution set is ALL suites whose verdict is a cache-miss —
+# never a diff-restricted subset. The git diff against the base ref is used only
+# to short-circuit the "no change" case (skip the scan entirely when the diff
+# over the whole scripts/ tree is empty).
 #
 # Usage:
 #   bash scripts/check-test-strays.sh [--cache-dir DIR] [--base-ref REF] [--jobs N]
@@ -80,7 +82,7 @@ fi
 
 if [ -n "$BASE_REF" ]; then
   if merge_base="$(git -C "$REPO_DIR" merge-base "$BASE_REF" HEAD 2>/dev/null)"; then
-    if [ -z "$(git -C "$REPO_DIR" diff --name-only "$merge_base" HEAD -- scripts/tests/ scripts/lib/)" ]; then
+    if [ -z "$(git -C "$REPO_DIR" diff --name-only "$merge_base" HEAD -- scripts/)" ]; then
       echo "OK: zero runtime strays across all test suites."
       exit 0
     fi
@@ -96,18 +98,24 @@ for suite in "$TESTS_DIR"/test-*.sh; do
 done
 
 # --- Per-suite content-addressed verdict key --------------------------------
-# The key is sha256(suite content) + sha256 of every scripts/lib/** file, so a
-# change to a shared helper invalidates every suite's verdict (R4) and a change
-# to one suite invalidates only that suite (R2/R7).
+# The key is sha256(suite content) + sha256 of every non-test file under
+# scripts/ (root-level scripts/*.sh, scripts/lib/**, and any other non-test
+# subdirectory). A change to any script a suite might invoke invalidates every
+# suite's verdict (R4, and the arch-gap closure: a deleted/renamed root-level
+# script a suite calls no longer serves a stale verdict), while a change to one
+# suite invalidates only that suite (R2/R7). The cost is that a change to any
+# non-test script — invoked or not — invalidates all verdicts; accepted in
+# exchange for closing the gap without static parsing.
 
 lib_hash=""
-if [ -d "$LIB_DIR" ]; then
-  shopt -s globstar nullglob
-  for f in "$LIB_DIR"/**; do
-    [ -f "$f" ] || continue
-    lib_hash="${lib_hash}$(sha256 "$f" | awk '{print $1}')"
-  done
-fi
+shopt -s globstar nullglob
+for f in "$REPO_DIR"/scripts/**; do
+  [ -f "$f" ] || continue
+  case "$f" in
+    "$TESTS_DIR"/*) continue ;;
+  esac
+  lib_hash="${lib_hash}$(sha256 "$f" | awk '{print $1}')"
+done
 
 # --- Determine the execution set (all cache-miss suites) ---------------------
 
