@@ -139,6 +139,16 @@ tok_file="$(mcp_token_path)"
 perms="$(stat -c '%a' "${tok_file}" 2>/dev/null || stat -f '%Lp' "${tok_file}" 2>/dev/null)"
 [ "${perms}" = "600" ] && ok "token file is mode 0600" || nope "token file is mode ${perms}, expected 600"
 
+# Symlinked palace directory canonicalization (spec 0159 / issue #746)
+real_palace="${TEST_HOME}/real_palace"
+sym_palace="${TEST_HOME}/sym_palace"
+mkdir -p "${real_palace}"
+ln -s "${real_palace}" "${sym_palace}"
+p_real="$(MEMPALACE_PALACE_PATH="${real_palace}" mcp_token_path)"
+p_sym="$(MEMPALACE_PALACE_PATH="${sym_palace}" mcp_token_path)"
+[ "${p_real}" = "${p_sym}" ] && ok "symlinked palace path resolves to identical token path as real directory (spec 0159)" \
+  || nope "symlinked palace path (${p_sym}) diverges from real directory (${p_real})"
+
 # --- 2. The launcher refuses to serve without a token ------------------------
 # This is the finding that would otherwise have shipped a daemon with
 # authentication silently disabled: MemPalace requires a token only on a

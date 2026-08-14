@@ -98,6 +98,8 @@ install_recipe_tool() {
     *yq_linux_amd64*|*mikefarah/yq*) echo yq ;;
     *taskfile.dev*)                  echo task ;;
     *markdownlint-cli*)              echo markdownlint-cli ;;
+    *tesseract*)                     echo tesseract ;;
+    *python3*)                       echo python3 ;;
     *apt-get*install*jq*|*install*-y*jq*) echo jq ;;
     *) echo "" ;;
   esac

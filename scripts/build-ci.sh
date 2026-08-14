@@ -107,6 +107,12 @@ tool_install_lines() {
       # tool without re-deriving the install line.
       echo 'npm install -g markdownlint-cli'
       ;;
+    tesseract)
+      echo 'apt-get update && apt-get install -y --no-install-recommends tesseract-ocr'
+      ;;
+    python3)
+      echo 'apt-get update && apt-get install -y --no-install-recommends python3'
+      ;;
     *)
       echo "Error: unknown tool '$tool' — no GitLab install recipe (delta-02 Scenario 2)." >&2
       exit 1

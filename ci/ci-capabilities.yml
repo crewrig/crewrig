@@ -309,6 +309,33 @@ capabilities:
       - bash scripts/build-docs-index.sh --check
       - bash scripts/tests/test-build-docs-index.sh
 
+  - id: figure-labels
+    name: "Check figure labels with OCR"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-figure-labels.sh"
+          - "scripts/lib/check-figure-labels.py"
+          - "scripts/tests/test-check-figure-labels.sh"
+          - "docs/assets/**/*.png"
+          - "docs/assets/**/*.prompt.md"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-figure-labels.sh"
+          - "scripts/lib/check-figure-labels.py"
+          - "scripts/tests/test-check-figure-labels.sh"
+          - "docs/assets/**/*.png"
+          - "docs/assets/**/*.prompt.md"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [tesseract, python3]
+    command:
+      - bash scripts/check-figure-labels.sh
+      - bash scripts/tests/test-check-figure-labels.sh
+
   - id: mempalace
     name: "Test mempalace transcript, pin, and runtime guards"
     trigger:
