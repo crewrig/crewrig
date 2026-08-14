@@ -274,9 +274,38 @@ emit_job() {
     done <<< "$before_lines"
   fi
 
+  # cache: persist the .ci-cache/ directory keyed from the declared cache
+  # inputs (spec 0147 R6/R7). The reference declares the key-derivation NEED
+  # (which files + which env vars the key is derived from); the GitLab
+  # `cache:key:files` syntax is the mechanism and is never written back into
+  # the reference. The cache-guard script (ci-cache-guard.sh) is the real
+  # correctness gate — it recomputes the content-addressed key from ALL
+  # declared files and re-executes on a miss even if the engine cache restores
+  # a stale .ci-cache/.
+  local cache_files cache_env
+  cache_files=$(yq -r ".capabilities[] | select(.id == \"$id\") | .cache.files // [] | .[]" "$REFERENCE")
+  cache_env=$(yq -r ".capabilities[] | select(.id == \"$id\") | .cache.env // [] | .[]" "$REFERENCE")
+  if [ -n "$cache_files" ]; then
+    echo "  cache:"
+    echo "    key:"
+    echo "      files:"
+    local cf
+    while IFS= read -r cf; do
+      [ -z "$cf" ] && continue
+      echo "        - \"$cf\""
+    done <<< "$cache_files"
+    echo "    paths:"
+    echo "      - .ci-cache/"
+  fi
+
   # script: the command list (delta-01 R10). A command entry may be a
   # multi-line block (the inline grep jobs); emit it as a single YAML
-  # block scalar so the newlines survive.
+  # block scalar so the newlines survive. When the capability declares a
+  # `cache:`, each hermetic `bash scripts/…` command is wrapped in the
+  # cache-guard so a cache hit skips re-execution (R6) and a changed input
+  # re-executes (R7). Setup commands (e.g. `python3 -m pip install …`) are
+  # NOT wrapped: their side effects are not captured by the .ci-cache/ marker,
+  # so skipping them on a hit would break a fresh environment.
   echo "  script:"
   local ncmds
   ncmds=$(yq ".capabilities[] | select(.id == \"$id\") | .command | length" "$REFERENCE")
@@ -295,7 +324,18 @@ emit_job() {
       done
     else
       # Single-line command. Quote defensively (commands carry globs, quotes).
-      echo "    - \"$(printf '%s' "$cmd" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
+      local emitted="$cmd"
+      if [ -n "$cache_files" ]; then
+        case "$cmd" in
+          bash\ scripts/*)
+            local files_csv env_csv
+            files_csv=$(printf '%s' "$cache_files" | paste -sd, -)
+            env_csv=$(printf '%s' "$cache_env" | paste -sd, -)
+            emitted="bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"$files_csv\" --key-env \"$env_csv\" -- $cmd"
+            ;;
+        esac
+      fi
+      echo "    - \"$(printf '%s' "$emitted" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
     fi
   done
 

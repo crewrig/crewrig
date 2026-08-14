@@ -33,48 +33,327 @@ capabilities:
       - npm install
       - npm run build --workspaces --if-present
 
-  - id: check-components
+  # --- Portable: check-components decomposition (spec 0147) ----------------
+  # The former monolithic `check-components` job (~85 sequential steps, >7 min)
+  # is decomposed into focused, parallel, changeset-gated capabilities so the
+  # CI critical-path wall-clock stays under 2 minutes (spec 0147 R1-R4). Each
+  # focused capability keeps the same trigger (pull-request + push to
+  # main/release/**) but ADDS a `paths:` filter covering the files its checks
+  # exercise, and is marked `changeset-gated: true` so the `changeset-coverage`
+  # fail-safe (R5) can read the focused path sets from this reference rather
+  # than hardcoding them. The union of the focused `paths:` sets covers every
+  # file the checks exercise; `changeset-coverage` (no `paths:` filter) is the
+  # fail-safe that runs the full suite when a changed file falls outside the
+  # union. Cached groups declare `cache:` (the key-derivation need: which files
+  # + which env vars the cache key is derived from); the engine cache syntax is
+  # the mechanism and is never written here (R6/R7).
+
+  - id: component-drift
     name: "Check community component drift and run build-component tests"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
       - on: push
         branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
     portability: portable
+    changeset-gated: true
     requires:
-      runtime: python@3.12
       tools: [yq]
+    cache:
+      files:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+      env: []
     command:
       - bash scripts/build-components.sh --target all --check
       - bash scripts/test-build-components.sh
-      - bash scripts/tests/test-extract-frontmatter.sh
-      - bash scripts/tests/test-check-skill-versions.sh
-      - bash scripts/tests/test-check-feedback-routing.sh
+
+  - id: extension-pivot
+    name: "Enforce extension pivot sourcing and carrier round-trip"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-extension-pivot.sh"
+          - "scripts/build-extension-pivot.sh"
+          - "scripts/tests/test-check-extension-pivot.sh"
+          - "scripts/tests/test-build-extension-pivot.sh"
+          - "extensions/**"
+          - "artifacts/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-extension-pivot.sh"
+          - "scripts/build-extension-pivot.sh"
+          - "scripts/tests/test-check-extension-pivot.sh"
+          - "scripts/tests/test-build-extension-pivot.sh"
+          - "extensions/**"
+          - "artifacts/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
       - bash scripts/check-extension-pivot.sh
       - bash scripts/tests/test-check-extension-pivot.sh
       - bash scripts/tests/test-build-extension-pivot.sh
       - bash scripts/build-extension-pivot.sh --check
+
+  - id: extension-provenance
+    name: "Enforce extension provenance"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-extension-provenance.sh"
+          - "scripts/tests/test-check-extension-provenance.sh"
+          - "extensions/**"
+          - "artifacts/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-extension-provenance.sh"
+          - "scripts/tests/test-check-extension-provenance.sh"
+          - "extensions/**"
+          - "artifacts/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
       - bash scripts/check-extension-provenance.sh
       - bash scripts/tests/test-check-extension-provenance.sh
+
+  - id: extension-manifest
+    name: "Enforce extension manifest single-version and version-bump"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-extension-manifest-version.sh"
+          - "scripts/tests/test-check-extension-manifest-version.sh"
+          - "scripts/tests/test-check-extension-version-bump.sh"
+          - "extensions/**"
+          - "artifacts/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-extension-manifest-version.sh"
+          - "scripts/tests/test-check-extension-manifest-version.sh"
+          - "scripts/tests/test-check-extension-version-bump.sh"
+          - "extensions/**"
+          - "artifacts/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
       - bash scripts/check-extension-manifest-version.sh
       - bash scripts/tests/test-check-extension-manifest-version.sh
       - bash scripts/tests/test-check-extension-version-bump.sh
+
+  - id: extension-install
+    name: "Test extension install and agent frontmatter contracts"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-install-claude-plugin-marketplace.sh"
+          - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
+          - "scripts/tests/test-gemini-agent-frontmatter.sh"
+          - "scripts/build-claude-plugin.sh"
+          - "scripts/build-gemini-agent.sh"
+          - "extensions/**"
+          - "artifacts/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-install-claude-plugin-marketplace.sh"
+          - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
+          - "scripts/tests/test-gemini-agent-frontmatter.sh"
+          - "scripts/build-claude-plugin.sh"
+          - "scripts/build-gemini-agent.sh"
+          - "extensions/**"
+          - "artifacts/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
       - bash scripts/tests/test-install-claude-plugin-marketplace.sh
       - bash scripts/tests/test-build-claude-plugin-agents-glob.sh
       - bash scripts/tests/test-gemini-agent-frontmatter.sh
-      - bash scripts/tests/test-e2e-auth-claude-json.sh
-      - bash scripts/tests/test-e2e-auth-ollama.sh
-      - bash scripts/tests/test-sync-from-upstream.sh
+
+  - id: core-paths
+    name: "Check core-paths resolve and sync-from-upstream"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-core-paths.sh"
+          - "scripts/tests/test-check-core-paths.sh"
+          - "scripts/tests/test-sync-from-upstream.sh"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-core-paths.sh"
+          - "scripts/tests/test-check-core-paths.sh"
+          - "scripts/tests/test-sync-from-upstream.sh"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
       - bash scripts/check-core-paths.sh
       - bash scripts/tests/test-check-core-paths.sh
-      - bash scripts/check-markdown-links.sh
-      - bash scripts/tests/test-check-markdown-links.sh
+      - bash scripts/tests/test-sync-from-upstream.sh
+
+  - id: ci-parity
+    name: "Test the CI generator and parity harness"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-ci-parity.sh"
+          - "scripts/build-ci.sh"
+          - "scripts/ci-cache-guard.sh"
+          - "scripts/ci-changeset-coverage.sh"
+          - "scripts/tests/test-check-ci-parity.sh"
+          - "scripts/tests/test-build-ci.sh"
+          - "ci/ci-capabilities.yml"
+          - ".gitlab-ci.yml"
+          - ".github/workflows/build.yml"
+          - "docs/ci-reference-format.md"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-ci-parity.sh"
+          - "scripts/build-ci.sh"
+          - "scripts/ci-cache-guard.sh"
+          - "scripts/ci-changeset-coverage.sh"
+          - "scripts/tests/test-check-ci-parity.sh"
+          - "scripts/tests/test-build-ci.sh"
+          - "ci/ci-capabilities.yml"
+          - ".gitlab-ci.yml"
+          - ".github/workflows/build.yml"
+          - "docs/ci-reference-format.md"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    cache:
+      files:
+        - "scripts/check-ci-parity.sh"
+        - "scripts/build-ci.sh"
+        - "scripts/ci-cache-guard.sh"
+        - "scripts/ci-changeset-coverage.sh"
+        - "scripts/tests/test-check-ci-parity.sh"
+        - "scripts/tests/test-build-ci.sh"
+        - "ci/ci-capabilities.yml"
+        - ".gitlab-ci.yml"
+        - ".github/workflows/build.yml"
+        - "docs/ci-reference-format.md"
+      env: []
+    command:
       - bash scripts/tests/test-check-ci-parity.sh
-      - bash scripts/tests/test-assembly-verification.sh
-      - bash scripts/tests/test-artifact-build-install-scope.sh
-      - bash scripts/tests/test-component-tier-resolution.sh
+      - bash scripts/tests/test-build-ci.sh
+
+  - id: docs-index
+    name: "Check docs index drift"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-docs-index.sh"
+          - "scripts/tests/test-build-docs-index.sh"
+          - "docs/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-docs-index.sh"
+          - "scripts/tests/test-build-docs-index.sh"
+          - "docs/**"
+    portability: portable
+    changeset-gated: true
+    cache:
+      files:
+        - "scripts/build-docs-index.sh"
+        - "scripts/tests/test-build-docs-index.sh"
+        - "docs/**"
+      env: []
+    command:
       - bash scripts/build-docs-index.sh --check
       - bash scripts/tests/test-build-docs-index.sh
+
+  - id: mempalace
+    name: "Test mempalace transcript, pin, and runtime guards"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-mempalace-*.sh"
+          - "scripts/tests/test-system-context-store.sh"
+          - "scripts/tests/test-setup-antigravity-transcript.sh"
+          - "scripts/tests/test-setup-copilot-transcript.sh"
+          - "scripts/tests/test-antigravity-component-install.sh"
+          - "scripts/tests/test-antigravity-discovery-probe.sh"
+          - "scripts/lib/**"
+          - "artifacts/library/skills/mempalace/**"
+          - "artifacts/library/skills/harness-report/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-mempalace-*.sh"
+          - "scripts/tests/test-system-context-store.sh"
+          - "scripts/tests/test-setup-antigravity-transcript.sh"
+          - "scripts/tests/test-setup-copilot-transcript.sh"
+          - "scripts/tests/test-antigravity-component-install.sh"
+          - "scripts/tests/test-antigravity-discovery-probe.sh"
+          - "scripts/lib/**"
+          - "artifacts/library/skills/mempalace/**"
+          - "artifacts/library/skills/harness-report/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: python@3.12
+      tools: [yq]
+    cache:
+      files:
+        - "scripts/tests/test-mempalace-*.sh"
+        - "scripts/tests/test-system-context-store.sh"
+        - "scripts/tests/test-setup-antigravity-transcript.sh"
+        - "scripts/tests/test-setup-copilot-transcript.sh"
+        - "scripts/tests/test-antigravity-component-install.sh"
+        - "scripts/tests/test-antigravity-discovery-probe.sh"
+        - "scripts/lib/**"
+        - "artifacts/library/skills/mempalace/**"
+        - "artifacts/library/skills/harness-report/**"
+      env: []
+    command:
       - bash scripts/tests/test-mempalace-transcript-hook.sh
       - bash scripts/tests/test-setup-antigravity-transcript.sh
       - bash scripts/tests/test-worktree-git-guard.sh
@@ -94,50 +373,279 @@ capabilities:
       - bash scripts/tests/test-mempalace-runtime-guard.sh
       - bash scripts/tests/test-mempalace-doctor.sh
       - bash scripts/tests/test-system-context-store.sh
+
+  - id: test-wiring
+    name: "Enforce test-wiring registration and stray suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-test-wiring.sh"
+          - "scripts/tests/test-check-test-wiring.sh"
+          - "scripts/check-test-strays.sh"
+          - "scripts/tests/test-check-test-strays.sh"
+          - "scripts/tests/**"
+          - "hooks/worktree-git-guard.sh"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-test-wiring.sh"
+          - "scripts/tests/test-check-test-wiring.sh"
+          - "scripts/check-test-strays.sh"
+          - "scripts/tests/test-check-test-strays.sh"
+          - "scripts/tests/**"
+          - "hooks/worktree-git-guard.sh"
+    portability: portable
+    changeset-gated: true
+    command:
       - bash scripts/check-test-wiring.sh
       - bash scripts/tests/test-check-test-wiring.sh
       - bash scripts/check-test-strays.sh
       - bash scripts/tests/test-check-test-strays.sh
-      - bash scripts/tests/test-build-ci.sh
+      - bash scripts/tests/test-worktree-git-guard.sh
+
+  - id: chroma-mcp
+    name: "Test chroma server, MCP daemon, and worktree claim"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-chroma-*.sh"
+          - "scripts/tests/test-mcp-daemon.sh"
+          - "scripts/tests/test-worktree-claim.sh"
+          - "scripts/mcp-daemon.sh"
+          - "scripts/lib/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-chroma-*.sh"
+          - "scripts/tests/test-mcp-daemon.sh"
+          - "scripts/tests/test-worktree-claim.sh"
+          - "scripts/mcp-daemon.sh"
+          - "scripts/lib/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: python@3.12
+      tools: [yq]
+    cache:
+      files:
+        - "scripts/tests/test-chroma-*.sh"
+        - "scripts/tests/test-mcp-daemon.sh"
+        - "scripts/tests/test-worktree-claim.sh"
+        - "scripts/mcp-daemon.sh"
+        - "scripts/lib/**"
+      env: []
+    command:
       - bash scripts/tests/test-chroma-fd-limits.sh
       - bash scripts/tests/test-chroma-health-race.sh
       - bash scripts/tests/test-chroma-server.sh
       - bash scripts/tests/test-mcp-daemon.sh
       - bash scripts/tests/test-worktree-claim.sh
+
+  # e2e is the heaviest group; it stays enforced on push/PR (changeset-gated)
+  # but is ALSO manually triggerable (spec 0147 R8) so a contributor can run it
+  # on demand without waiting for the full pipeline. The `manual` trigger maps
+  # to GitLab `when: manual` and GHA `workflow_dispatch`.
+  - id: e2e
+    name: "Run the e2e regression suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-e2e-*.sh"
+          - "tests/e2e/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-e2e-*.sh"
+          - "tests/e2e/**"
+      - on: manual
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: python@3.12
+      tools: [yq]
+    command:
       - bash scripts/tests/test-e2e-assert-lib.sh
+      - bash scripts/tests/test-e2e-auth-claude-json.sh
       - bash scripts/tests/test-e2e-auth-common.sh
+      - bash scripts/tests/test-e2e-auth-ollama.sh
       - bash scripts/tests/test-e2e-auth-ready.sh
       - bash scripts/tests/test-e2e-auth-taskfile.sh
       - bash scripts/tests/test-e2e-defaults-toml.sh
       - bash scripts/tests/test-e2e-docker-images.sh
       - bash scripts/tests/test-e2e-gitignore.sh
       - bash scripts/tests/test-e2e-judge-config.sh
+      - bash scripts/tests/test-e2e-libs-readme.sh
       - bash scripts/tests/test-e2e-llm-judge-lib.sh
+      - bash scripts/tests/test-e2e-readme.sh
       - bash scripts/tests/test-e2e-report.sh
       - bash scripts/tests/test-e2e-runner-delegation.sh
       - bash scripts/tests/test-e2e-runner-taskfile.sh
+      - bash scripts/tests/test-e2e-runner.sh
       - bash scripts/tests/test-e2e-scenarios-parity.sh
       - bash scripts/tests/test-e2e-scenarios-structure.sh
       - bash scripts/tests/test-e2e-structural-lib.sh
       - bash scripts/tests/test-e2e-taskfile.sh
-      - bash scripts/tests/test-e2e-versions-lock.sh
-      - bash scripts/tests/test-e2e-readme.sh
-      - bash scripts/tests/test-e2e-libs-readme.sh
-      - bash scripts/tests/test-e2e-runner.sh
       - bash scripts/tests/test-e2e-toml-merge.sh
+      - bash scripts/tests/test-e2e-versions-lock.sh
+
+  - id: setup
+    name: "Test setup helpers and validation backend"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-setup-*.sh"
+          - "scripts/tests/test-tls-delegation.sh"
+          - "scripts/setup-*.sh"
+          - "scripts/lib/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-setup-*.sh"
+          - "scripts/tests/test-tls-delegation.sh"
+          - "scripts/setup-*.sh"
+          - "scripts/lib/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
       - bash scripts/tests/test-setup-validation-backend.sh
       - bash scripts/tests/test-tls-delegation.sh
-      - bash scripts/check-no-machine-paths.sh
-      - bash scripts/tests/test-check-no-machine-paths.sh
       - bash scripts/tests/test-setup-mcp-merge.sh
       - bash scripts/tests/test-setup-org-mcp.sh
       - bash scripts/tests/test-setup-catalogue-picker.sh
       - bash scripts/tests/test-setup-ensure-tier-built.sh
+
+  - id: misc
+    name: "Run miscellaneous portability and reservation checks"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-no-machine-paths.sh"
+          - "scripts/tests/test-check-no-machine-paths.sh"
+          - "scripts/check-gemini-overlay-enrollment.sh"
+          - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
+          - "scripts/tests/test-check-bash32-portability.sh"
+          - "scripts/tests/test-reserve-spec-id.sh"
+          - "scripts/tests/test-check-spec-id-reserved.sh"
+          - "scripts/reserve-spec-id.sh"
+          - "scripts/check-spec-id-reserved.sh"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-no-machine-paths.sh"
+          - "scripts/tests/test-check-no-machine-paths.sh"
+          - "scripts/check-gemini-overlay-enrollment.sh"
+          - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
+          - "scripts/tests/test-check-bash32-portability.sh"
+          - "scripts/tests/test-reserve-spec-id.sh"
+          - "scripts/tests/test-check-spec-id-reserved.sh"
+          - "scripts/reserve-spec-id.sh"
+          - "scripts/check-spec-id-reserved.sh"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: python@3.12
+    command:
+      - bash scripts/check-no-machine-paths.sh
+      - bash scripts/tests/test-check-no-machine-paths.sh
       - bash scripts/check-gemini-overlay-enrollment.sh
       - bash scripts/tests/test-check-gemini-overlay-enrollment.sh
       - bash scripts/tests/test-check-bash32-portability.sh
       - bash scripts/tests/test-reserve-spec-id.sh
       - bash scripts/tests/test-check-spec-id-reserved.sh
+
+  - id: frontmatter
+    name: "Test frontmatter, skill-version, and assembly contracts"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-extract-frontmatter.sh"
+          - "scripts/tests/test-check-skill-versions.sh"
+          - "scripts/tests/test-check-feedback-routing.sh"
+          - "scripts/tests/test-assembly-verification.sh"
+          - "scripts/tests/test-artifact-build-install-scope.sh"
+          - "scripts/tests/test-component-tier-resolution.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/test-extract-frontmatter.sh"
+          - "scripts/tests/test-check-skill-versions.sh"
+          - "scripts/tests/test-check-feedback-routing.sh"
+          - "scripts/tests/test-assembly-verification.sh"
+          - "scripts/tests/test-artifact-build-install-scope.sh"
+          - "scripts/tests/test-component-tier-resolution.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
+      - bash scripts/tests/test-extract-frontmatter.sh
+      - bash scripts/tests/test-check-skill-versions.sh
+      - bash scripts/tests/test-check-feedback-routing.sh
+      - bash scripts/tests/test-assembly-verification.sh
+      - bash scripts/tests/test-artifact-build-install-scope.sh
+      - bash scripts/tests/test-component-tier-resolution.sh
+
+  - id: markdown-links
+    name: "Check relative Markdown link integrity"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-markdown-links.sh"
+          - "scripts/tests/test-check-markdown-links.sh"
+          - "docs/**"
+          - "README.md"
+          - "AGENTS.md"
+          - "**/*.md"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-markdown-links.sh"
+          - "scripts/tests/test-check-markdown-links.sh"
+          - "docs/**"
+          - "README.md"
+          - "AGENTS.md"
+          - "**/*.md"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: python@3.12
+    command:
+      - bash scripts/check-markdown-links.sh
+      - bash scripts/tests/test-check-markdown-links.sh
+
+  # changeset-coverage is the fail-safe (spec 0147 R5): it carries NO `paths:`
+  # filter, so it runs on every change on both engines. Its command reads the
+  # focused `paths:` sets from this reference (via yq, never hardcoded),
+  # computes the changed files, and — when a changed file is not covered by the
+  # union of the focused path sets — runs the full check suite; when every
+  # changed file is covered it is a fast no-op.
+  - id: changeset-coverage
+    name: "Fail-safe: run the full check suite when a change is uncovered"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: python@3.12
+      tools: [yq]
+      history-depth: full
+    command:
+      - bash scripts/ci-changeset-coverage.sh
 
   - id: lint-markdown
     name: "Lint Markdown files"

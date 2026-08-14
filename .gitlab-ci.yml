@@ -29,99 +29,547 @@ build:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
-check-components:
+component-drift:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  cache:
+    key:
+      files:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+    paths:
+      - .ci-cache/
+  script:
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt\" --key-env \"\" -- bash scripts/build-components.sh --target all --check"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt\" --key-env \"\" -- bash scripts/test-build-components.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/layers.md"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/layers.md"
+
+extension-pivot:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/check-extension-pivot.sh"
+    - "bash scripts/tests/test-check-extension-pivot.sh"
+    - "bash scripts/tests/test-build-extension-pivot.sh"
+    - "bash scripts/build-extension-pivot.sh --check"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-extension-pivot.sh"
+        - "scripts/build-extension-pivot.sh"
+        - "scripts/tests/test-check-extension-pivot.sh"
+        - "scripts/tests/test-build-extension-pivot.sh"
+        - "extensions/**"
+        - "artifacts/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-extension-pivot.sh"
+        - "scripts/build-extension-pivot.sh"
+        - "scripts/tests/test-check-extension-pivot.sh"
+        - "scripts/tests/test-build-extension-pivot.sh"
+        - "extensions/**"
+        - "artifacts/**"
+
+extension-provenance:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/check-extension-provenance.sh"
+    - "bash scripts/tests/test-check-extension-provenance.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-extension-provenance.sh"
+        - "scripts/tests/test-check-extension-provenance.sh"
+        - "extensions/**"
+        - "artifacts/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-extension-provenance.sh"
+        - "scripts/tests/test-check-extension-provenance.sh"
+        - "extensions/**"
+        - "artifacts/**"
+
+extension-manifest:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/check-extension-manifest-version.sh"
+    - "bash scripts/tests/test-check-extension-manifest-version.sh"
+    - "bash scripts/tests/test-check-extension-version-bump.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-extension-manifest-version.sh"
+        - "scripts/tests/test-check-extension-manifest-version.sh"
+        - "scripts/tests/test-check-extension-version-bump.sh"
+        - "extensions/**"
+        - "artifacts/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-extension-manifest-version.sh"
+        - "scripts/tests/test-check-extension-manifest-version.sh"
+        - "scripts/tests/test-check-extension-version-bump.sh"
+        - "extensions/**"
+        - "artifacts/**"
+
+extension-install:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/tests/test-install-claude-plugin-marketplace.sh"
+    - "bash scripts/tests/test-build-claude-plugin-agents-glob.sh"
+    - "bash scripts/tests/test-gemini-agent-frontmatter.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-install-claude-plugin-marketplace.sh"
+        - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
+        - "scripts/tests/test-gemini-agent-frontmatter.sh"
+        - "scripts/build-claude-plugin.sh"
+        - "scripts/build-gemini-agent.sh"
+        - "extensions/**"
+        - "artifacts/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-install-claude-plugin-marketplace.sh"
+        - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
+        - "scripts/tests/test-gemini-agent-frontmatter.sh"
+        - "scripts/build-claude-plugin.sh"
+        - "scripts/build-gemini-agent.sh"
+        - "extensions/**"
+        - "artifacts/**"
+
+core-paths:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/check-core-paths.sh"
+    - "bash scripts/tests/test-check-core-paths.sh"
+    - "bash scripts/tests/test-sync-from-upstream.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-core-paths.sh"
+        - "scripts/tests/test-check-core-paths.sh"
+        - "scripts/tests/test-sync-from-upstream.sh"
+        - ".crewrig/core-paths.txt"
+        - "docs/layers.md"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-core-paths.sh"
+        - "scripts/tests/test-check-core-paths.sh"
+        - "scripts/tests/test-sync-from-upstream.sh"
+        - ".crewrig/core-paths.txt"
+        - "docs/layers.md"
+
+ci-parity:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  cache:
+    key:
+      files:
+        - "scripts/check-ci-parity.sh"
+        - "scripts/build-ci.sh"
+        - "scripts/ci-cache-guard.sh"
+        - "scripts/ci-changeset-coverage.sh"
+        - "scripts/tests/test-check-ci-parity.sh"
+        - "scripts/tests/test-build-ci.sh"
+        - "ci/ci-capabilities.yml"
+        - ".gitlab-ci.yml"
+        - ".github/workflows/build.yml"
+        - "docs/ci-reference-format.md"
+    paths:
+      - .ci-cache/
+  script:
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/tests/test-check-ci-parity.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/tests/test-build-ci.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-ci-parity.sh"
+        - "scripts/build-ci.sh"
+        - "scripts/ci-cache-guard.sh"
+        - "scripts/ci-changeset-coverage.sh"
+        - "scripts/tests/test-check-ci-parity.sh"
+        - "scripts/tests/test-build-ci.sh"
+        - "ci/ci-capabilities.yml"
+        - ".gitlab-ci.yml"
+        - ".github/workflows/build.yml"
+        - "docs/ci-reference-format.md"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-ci-parity.sh"
+        - "scripts/build-ci.sh"
+        - "scripts/ci-cache-guard.sh"
+        - "scripts/ci-changeset-coverage.sh"
+        - "scripts/tests/test-check-ci-parity.sh"
+        - "scripts/tests/test-build-ci.sh"
+        - "ci/ci-capabilities.yml"
+        - ".gitlab-ci.yml"
+        - ".github/workflows/build.yml"
+        - "docs/ci-reference-format.md"
+
+docs-index:
+  image: debian:stable-slim
+  cache:
+    key:
+      files:
+        - "scripts/build-docs-index.sh"
+        - "scripts/tests/test-build-docs-index.sh"
+        - "docs/**"
+    paths:
+      - .ci-cache/
+  script:
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**\" --key-env \"\" -- bash scripts/build-docs-index.sh --check"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**\" --key-env \"\" -- bash scripts/tests/test-build-docs-index.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-docs-index.sh"
+        - "scripts/tests/test-build-docs-index.sh"
+        - "docs/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-docs-index.sh"
+        - "scripts/tests/test-build-docs-index.sh"
+        - "docs/**"
+
+mempalace:
+  image: python:3.12
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  cache:
+    key:
+      files:
+        - "scripts/tests/test-mempalace-*.sh"
+        - "scripts/tests/test-system-context-store.sh"
+        - "scripts/tests/test-setup-antigravity-transcript.sh"
+        - "scripts/tests/test-setup-copilot-transcript.sh"
+        - "scripts/tests/test-antigravity-component-install.sh"
+        - "scripts/tests/test-antigravity-discovery-probe.sh"
+        - "scripts/lib/**"
+        - "artifacts/library/skills/mempalace/**"
+        - "artifacts/library/skills/harness-report/**"
+    paths:
+      - .ci-cache/
+  script:
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-mempalace-transcript-hook.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-setup-antigravity-transcript.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-worktree-git-guard.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-setup-copilot-transcript.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-antigravity-component-install.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-antigravity-discovery-probe.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-mempalace-version-range.sh"
+    - "python3 -m pip install --quiet packaging"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-mempalace-pin.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-mempalace-runtime-guard.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-mempalace-doctor.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**\" --key-env \"\" -- bash scripts/tests/test-system-context-store.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-mempalace-*.sh"
+        - "scripts/tests/test-system-context-store.sh"
+        - "scripts/tests/test-setup-antigravity-transcript.sh"
+        - "scripts/tests/test-setup-copilot-transcript.sh"
+        - "scripts/tests/test-antigravity-component-install.sh"
+        - "scripts/tests/test-antigravity-discovery-probe.sh"
+        - "scripts/lib/**"
+        - "artifacts/library/skills/mempalace/**"
+        - "artifacts/library/skills/harness-report/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-mempalace-*.sh"
+        - "scripts/tests/test-system-context-store.sh"
+        - "scripts/tests/test-setup-antigravity-transcript.sh"
+        - "scripts/tests/test-setup-copilot-transcript.sh"
+        - "scripts/tests/test-antigravity-component-install.sh"
+        - "scripts/tests/test-antigravity-discovery-probe.sh"
+        - "scripts/lib/**"
+        - "artifacts/library/skills/mempalace/**"
+        - "artifacts/library/skills/harness-report/**"
+
+test-wiring:
+  image: debian:stable-slim
+  script:
+    - "bash scripts/check-test-wiring.sh"
+    - "bash scripts/tests/test-check-test-wiring.sh"
+    - "bash scripts/check-test-strays.sh"
+    - "bash scripts/tests/test-check-test-strays.sh"
+    - "bash scripts/tests/test-worktree-git-guard.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-test-wiring.sh"
+        - "scripts/tests/test-check-test-wiring.sh"
+        - "scripts/check-test-strays.sh"
+        - "scripts/tests/test-check-test-strays.sh"
+        - "scripts/tests/**"
+        - "hooks/worktree-git-guard.sh"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-test-wiring.sh"
+        - "scripts/tests/test-check-test-wiring.sh"
+        - "scripts/check-test-strays.sh"
+        - "scripts/tests/test-check-test-strays.sh"
+        - "scripts/tests/**"
+        - "hooks/worktree-git-guard.sh"
+
+chroma-mcp:
+  image: python:3.12
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  cache:
+    key:
+      files:
+        - "scripts/tests/test-chroma-*.sh"
+        - "scripts/tests/test-mcp-daemon.sh"
+        - "scripts/tests/test-worktree-claim.sh"
+        - "scripts/mcp-daemon.sh"
+        - "scripts/lib/**"
+    paths:
+      - .ci-cache/
+  script:
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-chroma-fd-limits.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-chroma-health-race.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-chroma-server.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-mcp-daemon.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-worktree-claim.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-chroma-*.sh"
+        - "scripts/tests/test-mcp-daemon.sh"
+        - "scripts/tests/test-worktree-claim.sh"
+        - "scripts/mcp-daemon.sh"
+        - "scripts/lib/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-chroma-*.sh"
+        - "scripts/tests/test-mcp-daemon.sh"
+        - "scripts/tests/test-worktree-claim.sh"
+        - "scripts/mcp-daemon.sh"
+        - "scripts/lib/**"
+
+e2e:
   image: python:3.12
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
-    - "bash scripts/build-components.sh --target all --check"
-    - "bash scripts/test-build-components.sh"
-    - "bash scripts/tests/test-extract-frontmatter.sh"
-    - "bash scripts/tests/test-check-skill-versions.sh"
-    - "bash scripts/tests/test-check-feedback-routing.sh"
-    - "bash scripts/check-extension-pivot.sh"
-    - "bash scripts/tests/test-check-extension-pivot.sh"
-    - "bash scripts/tests/test-build-extension-pivot.sh"
-    - "bash scripts/build-extension-pivot.sh --check"
-    - "bash scripts/check-extension-provenance.sh"
-    - "bash scripts/tests/test-check-extension-provenance.sh"
-    - "bash scripts/check-extension-manifest-version.sh"
-    - "bash scripts/tests/test-check-extension-manifest-version.sh"
-    - "bash scripts/tests/test-check-extension-version-bump.sh"
-    - "bash scripts/tests/test-install-claude-plugin-marketplace.sh"
-    - "bash scripts/tests/test-build-claude-plugin-agents-glob.sh"
-    - "bash scripts/tests/test-gemini-agent-frontmatter.sh"
-    - "bash scripts/tests/test-e2e-auth-claude-json.sh"
-    - "bash scripts/tests/test-e2e-auth-ollama.sh"
-    - "bash scripts/tests/test-sync-from-upstream.sh"
-    - "bash scripts/check-core-paths.sh"
-    - "bash scripts/tests/test-check-core-paths.sh"
-    - "bash scripts/check-markdown-links.sh"
-    - "bash scripts/tests/test-check-markdown-links.sh"
-    - "bash scripts/tests/test-check-ci-parity.sh"
-    - "bash scripts/tests/test-assembly-verification.sh"
-    - "bash scripts/tests/test-artifact-build-install-scope.sh"
-    - "bash scripts/tests/test-component-tier-resolution.sh"
-    - "bash scripts/build-docs-index.sh --check"
-    - "bash scripts/tests/test-build-docs-index.sh"
-    - "bash scripts/tests/test-mempalace-transcript-hook.sh"
-    - "bash scripts/tests/test-setup-antigravity-transcript.sh"
-    - "bash scripts/tests/test-worktree-git-guard.sh"
-    - "bash scripts/tests/test-setup-copilot-transcript.sh"
-    - "bash scripts/tests/test-antigravity-component-install.sh"
-    - "bash scripts/tests/test-antigravity-discovery-probe.sh"
-    - "bash scripts/tests/test-mempalace-version-range.sh"
-    - "python3 -m pip install --quiet packaging"
-    - "bash scripts/tests/test-mempalace-pin.sh"
-    - "bash scripts/tests/test-mempalace-runtime-guard.sh"
-    - "bash scripts/tests/test-mempalace-doctor.sh"
-    - "bash scripts/tests/test-system-context-store.sh"
-    - "bash scripts/check-test-wiring.sh"
-    - "bash scripts/tests/test-check-test-wiring.sh"
-    - "bash scripts/check-test-strays.sh"
-    - "bash scripts/tests/test-check-test-strays.sh"
-    - "bash scripts/tests/test-build-ci.sh"
-    - "bash scripts/tests/test-chroma-fd-limits.sh"
-    - "bash scripts/tests/test-chroma-health-race.sh"
-    - "bash scripts/tests/test-chroma-server.sh"
-    - "bash scripts/tests/test-mcp-daemon.sh"
-    - "bash scripts/tests/test-worktree-claim.sh"
     - "bash scripts/tests/test-e2e-assert-lib.sh"
+    - "bash scripts/tests/test-e2e-auth-claude-json.sh"
     - "bash scripts/tests/test-e2e-auth-common.sh"
+    - "bash scripts/tests/test-e2e-auth-ollama.sh"
     - "bash scripts/tests/test-e2e-auth-ready.sh"
     - "bash scripts/tests/test-e2e-auth-taskfile.sh"
     - "bash scripts/tests/test-e2e-defaults-toml.sh"
     - "bash scripts/tests/test-e2e-docker-images.sh"
     - "bash scripts/tests/test-e2e-gitignore.sh"
     - "bash scripts/tests/test-e2e-judge-config.sh"
+    - "bash scripts/tests/test-e2e-libs-readme.sh"
     - "bash scripts/tests/test-e2e-llm-judge-lib.sh"
+    - "bash scripts/tests/test-e2e-readme.sh"
     - "bash scripts/tests/test-e2e-report.sh"
     - "bash scripts/tests/test-e2e-runner-delegation.sh"
     - "bash scripts/tests/test-e2e-runner-taskfile.sh"
+    - "bash scripts/tests/test-e2e-runner.sh"
     - "bash scripts/tests/test-e2e-scenarios-parity.sh"
     - "bash scripts/tests/test-e2e-scenarios-structure.sh"
     - "bash scripts/tests/test-e2e-structural-lib.sh"
     - "bash scripts/tests/test-e2e-taskfile.sh"
-    - "bash scripts/tests/test-e2e-versions-lock.sh"
-    - "bash scripts/tests/test-e2e-readme.sh"
-    - "bash scripts/tests/test-e2e-libs-readme.sh"
-    - "bash scripts/tests/test-e2e-runner.sh"
     - "bash scripts/tests/test-e2e-toml-merge.sh"
+    - "bash scripts/tests/test-e2e-versions-lock.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-e2e-*.sh"
+        - "tests/e2e/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-e2e-*.sh"
+        - "tests/e2e/**"
+    - if: ''
+      when: manual
+
+setup:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
     - "bash scripts/tests/test-setup-validation-backend.sh"
     - "bash scripts/tests/test-tls-delegation.sh"
-    - "bash scripts/check-no-machine-paths.sh"
-    - "bash scripts/tests/test-check-no-machine-paths.sh"
     - "bash scripts/tests/test-setup-mcp-merge.sh"
     - "bash scripts/tests/test-setup-org-mcp.sh"
     - "bash scripts/tests/test-setup-catalogue-picker.sh"
     - "bash scripts/tests/test-setup-ensure-tier-built.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-setup-*.sh"
+        - "scripts/tests/test-tls-delegation.sh"
+        - "scripts/setup-*.sh"
+        - "scripts/lib/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-setup-*.sh"
+        - "scripts/tests/test-tls-delegation.sh"
+        - "scripts/setup-*.sh"
+        - "scripts/lib/**"
+
+misc:
+  image: python:3.12
+  script:
+    - "bash scripts/check-no-machine-paths.sh"
+    - "bash scripts/tests/test-check-no-machine-paths.sh"
     - "bash scripts/check-gemini-overlay-enrollment.sh"
     - "bash scripts/tests/test-check-gemini-overlay-enrollment.sh"
     - "bash scripts/tests/test-check-bash32-portability.sh"
     - "bash scripts/tests/test-reserve-spec-id.sh"
     - "bash scripts/tests/test-check-spec-id-reserved.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-no-machine-paths.sh"
+        - "scripts/tests/test-check-no-machine-paths.sh"
+        - "scripts/check-gemini-overlay-enrollment.sh"
+        - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
+        - "scripts/tests/test-check-bash32-portability.sh"
+        - "scripts/tests/test-reserve-spec-id.sh"
+        - "scripts/tests/test-check-spec-id-reserved.sh"
+        - "scripts/reserve-spec-id.sh"
+        - "scripts/check-spec-id-reserved.sh"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-no-machine-paths.sh"
+        - "scripts/tests/test-check-no-machine-paths.sh"
+        - "scripts/check-gemini-overlay-enrollment.sh"
+        - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
+        - "scripts/tests/test-check-bash32-portability.sh"
+        - "scripts/tests/test-reserve-spec-id.sh"
+        - "scripts/tests/test-check-spec-id-reserved.sh"
+        - "scripts/reserve-spec-id.sh"
+        - "scripts/check-spec-id-reserved.sh"
+
+frontmatter:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/tests/test-extract-frontmatter.sh"
+    - "bash scripts/tests/test-check-skill-versions.sh"
+    - "bash scripts/tests/test-check-feedback-routing.sh"
+    - "bash scripts/tests/test-assembly-verification.sh"
+    - "bash scripts/tests/test-artifact-build-install-scope.sh"
+    - "bash scripts/tests/test-component-tier-resolution.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-extract-frontmatter.sh"
+        - "scripts/tests/test-check-skill-versions.sh"
+        - "scripts/tests/test-check-feedback-routing.sh"
+        - "scripts/tests/test-assembly-verification.sh"
+        - "scripts/tests/test-artifact-build-install-scope.sh"
+        - "scripts/tests/test-component-tier-resolution.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/test-extract-frontmatter.sh"
+        - "scripts/tests/test-check-skill-versions.sh"
+        - "scripts/tests/test-check-feedback-routing.sh"
+        - "scripts/tests/test-assembly-verification.sh"
+        - "scripts/tests/test-artifact-build-install-scope.sh"
+        - "scripts/tests/test-component-tier-resolution.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+
+markdown-links:
+  image: python:3.12
+  script:
+    - "bash scripts/check-markdown-links.sh"
+    - "bash scripts/tests/test-check-markdown-links.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-markdown-links.sh"
+        - "scripts/tests/test-check-markdown-links.sh"
+        - "docs/**"
+        - "README.md"
+        - "AGENTS.md"
+        - "**/*.md"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-markdown-links.sh"
+        - "scripts/tests/test-check-markdown-links.sh"
+        - "docs/**"
+        - "README.md"
+        - "AGENTS.md"
+        - "**/*.md"
+
+changeset-coverage:
+  image: python:3.12
+  variables:
+    GIT_DEPTH: "0"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/ci-changeset-coverage.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

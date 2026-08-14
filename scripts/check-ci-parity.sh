@@ -116,6 +116,16 @@ self_installs_tool() {
 
 in_list() { grep -qxF "$1" <<< "$2"; }
 
+# Extract the file list from a GHA `hashFiles('a', 'b')` cache-key expression
+# (spec 0147 R6/R7). The engine's hashFiles() is the mechanism; the reference
+# declares the same inputs as the need. Echoes one file per line.
+extract_hashfiles() {
+  local expr="$1" inner
+  inner="${expr#*hashFiles(}"
+  inner="${inner%%)*}"
+  printf '%s' "$inner" | tr -d "'" | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -v '^$'
+}
+
 # --- Concern 1: reference validity (R2) -------------------------------------
 
 validity_errors=()
@@ -220,6 +230,29 @@ for ((i = 0; i < cap_count; i++)); do
   if [ "$env_type" != "!!null" ] && [ -n "$env_type" ] && [ "$env_type" != "null" ]; then
     if [ "$env_type" != "!!map" ]; then
       verr "$label: env must be a key-value mapping (spec 0131)"
+    fi
+  fi
+
+  # Rule 7 (spec 0147 R6/R7) — cache: field, when present, is a mapping whose
+  # `files` is a non-empty list of key-derivation inputs. `env` may be an empty
+  # list (a group with no env-derived key inputs). The reference declares the
+  # NEED (which files + env vars the key is derived from); engine cache syntax
+  # is the mechanism and is never written here.
+  cache_type=$(yq ".capabilities[$i].cache | tag" "$REFERENCE")
+  if [ "$cache_type" != "!!null" ] && [ -n "$cache_type" ] && [ "$cache_type" != "null" ]; then
+    if [ "$cache_type" != "!!map" ]; then
+      verr "$label: cache must be a mapping with files and env (spec 0147)"
+    else
+      ncf=$(yq ".capabilities[$i].cache.files // [] | length" "$REFERENCE")
+      if [ "$ncf" -eq 0 ]; then
+        verr "$label: cache declares no files (spec 0147)"
+      fi
+      # env may be an empty list (a group with no env-derived key inputs); it
+      # must still be a list, not a scalar.
+      env_tag=$(yq ".capabilities[$i].cache.env | tag" "$REFERENCE")
+      if [ "$env_tag" != "!!seq" ]; then
+        verr "$label: cache.env must be a list (spec 0147)"
+      fi
     fi
   fi
 done
@@ -359,6 +392,14 @@ check_gha_job() {
 
     if [ -n "$run" ] && [ "$run" != "null" ]; then
       nrun=$(normalize_cmd "$run")
+      # Unwrap the cache-guard wrapper (spec 0147 R6/R7): the guard is a
+      # mechanism, not business work. Extract the inner command after ` -- `,
+      # mirroring how install_recipe_tool skips setup steps.
+      case "$nrun" in
+        "bash scripts/ci-cache-guard.sh "*)
+          nrun="${nrun#* -- }"
+          ;;
+      esac
       # Business step iff it matches the next expected command entry, in order.
       if [ "$ci" -lt "$ncmd" ]; then
         nextcmd=$(normalize_cmd "$(yq -r ".capabilities[] | select(.id == \"$id\") | .command[$ci]" "$REFERENCE")")
@@ -431,6 +472,33 @@ check_gha_job() {
   done <<< "$gha_env_all"
 }
 
+# Verify one cached capability's GHA cache key inputs agree with the reference
+# (spec 0147 R6/R7): the actions/cache step's hashFiles(...) args must be the
+# same declared inputs as the reference's cache.files (semantic, not string).
+check_gha_cache() {
+  local id="$1" wf="$2" jk="$3"
+  local ref_files gha_files nsteps s uses key
+  ref_files=$(yq -r ".capabilities[] | select(.id == \"$id\") | .cache.files[]" "$REFERENCE" | sort)
+  nsteps=$(yq ".jobs.\"$jk\".steps | length" "$wf")
+  gha_files=""
+  for ((s = 0; s < nsteps; s++)); do
+    uses=$(yq -r ".jobs.\"$jk\".steps[$s].uses // \"\"" "$wf")
+    case "$uses" in
+      */cache@*)
+        key=$(yq -r ".jobs.\"$jk\".steps[$s].with.key // \"\"" "$wf")
+        gha_files=$(extract_hashfiles "$key" | sort)
+        ;;
+    esac
+  done
+  if [ -z "$gha_files" ]; then
+    fail "capability '$id' (github-actions): declares cache: but no actions/cache step with a hashFiles key found (R6)"
+    return
+  fi
+  if [ "$ref_files" != "$gha_files" ]; then
+    fail "capability '$id' (github-actions): cache key inputs diverge from the reference cache.files (R6)"
+  fi
+}
+
 if $GHA_PRESENT; then
   while IFS= read -r pid; do
     [ -z "$pid" ] && continue
@@ -440,6 +508,10 @@ if $GHA_PRESENT; then
     wf="${triple%%	*}"
     jk="${triple#*	}"
     check_gha_job "$pid" "$wf" "$jk"
+    # Cache key agreement for cached capabilities.
+    if [ "$(yq -r ".capabilities[] | select(.id == \"$pid\") | .cache // \"\" | length" "$REFERENCE")" != "0" ]; then
+      check_gha_cache "$pid" "$wf" "$jk"
+    fi
   done <<< "$PORTABLE_IDS"
 fi
 
@@ -452,6 +524,18 @@ if $GITLAB_PRESENT; then
       echo "    $ln" >&2
     done <<< "$gitlab_out"
   fi
+
+  # Cache key agreement (spec 0147 R6/R7): each cached capability's GitLab
+  # cache:key:files must be the same declared inputs as the reference's
+  # cache.files (semantic, not string).
+  while IFS= read -r cid; do
+    [ -z "$cid" ] && continue
+    ref_files=$(yq -r ".capabilities[] | select(.id == \"$cid\") | .cache.files[]" "$REFERENCE" | sort)
+    gl_files=$(yq -r ".\"$cid\".cache.key.files[]" "$GITLAB_CI" 2>/dev/null | sort)
+    if [ "$ref_files" != "$gl_files" ]; then
+      fail "capability '$cid' (gitlab): cache key inputs diverge from the reference cache.files (R6)"
+    fi
+  done < <(yq -r '.capabilities[] | select(.cache != null) | .id' "$REFERENCE")
 fi
 
 # --- Arm 3: GitHub Actions↔GitLab portable-set parity (R6) ------------------

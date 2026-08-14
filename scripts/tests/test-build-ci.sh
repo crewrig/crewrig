@@ -130,8 +130,18 @@ csv_job="$(yq '.["check-skill-versions"]' "$REAL_OUTPUT")"
 assert_contains "Case E — check-skill-versions history-depth full → GIT_DEPTH 0" "$csv_job" 'GIT_DEPTH'
 
 # Case F (delta-02 R12) — tools: [yq] → before_script install line.
-cc_job="$(yq '.["check-components"]' "$REAL_OUTPUT")"
-assert_contains "Case F — check-components tools:[yq] → before_script yq install" "$cc_job" '/usr/local/bin/yq'
+cc_job="$(yq '.["ci-parity"]' "$REAL_OUTPUT")"
+assert_contains "Case F — ci-parity tools:[yq] → before_script yq install" "$cc_job" '/usr/local/bin/yq'
+
+# Case F2 (spec 0147 R6/R7) — a cached capability emits a GitLab `cache:` block
+# keyed from the declared cache.files, and wraps its hermetic `bash scripts/`
+# commands in the cache-guard.
+cache_job="$(yq '.["ci-parity"]' "$REAL_OUTPUT")"
+assert_contains "Case F2a — cached capability emits cache:key:files" "$cache_job" 'cache:'
+assert_contains "Case F2b — cache key derived from declared files" "$cache_job" 'ci/ci-capabilities.yml'
+assert_contains "Case F2c — cache persists the .ci-cache/ dir" "$cache_job" '.ci-cache/'
+assert_contains "Case F2d — hermetic command wrapped in cache-guard" "$cache_job" 'ci-cache-guard.sh'
+assert_contains "Case F2e — cache-guard unwraps to the declared command" "$cache_job" 'test-check-ci-parity.sh'
 
 # =========================================================================
 # SYNTHETIC cases — drift, validation rejection.
