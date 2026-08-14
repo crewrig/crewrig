@@ -124,24 +124,41 @@ acceptance note each. When present, the section SHALL appear **after**
 uncertainty SHOULD include it; plans whose blast radius is fully
 bounded MAY omit it.
 
+**`### Finding traceability`** (or `### Revision rationale & traceability`) —
+a Markdown table mapping every reviewer-minted ID (`v<N>-F<M>`) raised across
+prior review passes to its resolution or rationale in the revised plan comment.
+Mandatory when revising a plan in response to a `REQUEST CHANGES` verdict.
+The table SHALL carry the schema:
+
+```markdown
+| Plan Ver | Finding ID | Resolution / Rationale | Step |
+|---|---|---|---|
+| v1 | v1-F1 | Added preconditions step | Step 1 |
+| v1 | v1-F2 | Clarified scope boundary | Step 3 |
+```
+
+The row count of addressed reviewer-minted IDs SHALL equal the total number
+of findings raised across prior review passes (per `docs/plan-review-protocol.md`
+→ *Countable invariant*).
+
 ## Finding tag schema
 
-Every plan-review finding SHALL carry exactly one `class:` field
-whose value is one of `tech`, `arch`, or `spec` (R7). The class
-drives the loop target of the retroactive review loop; the routing
-matrix is defined once, in `AGENTS.md` → *Retroactive review loop*,
+Every plan-review finding SHALL carry a reviewer-minted identifier in its header
+(`v<N>-F<M>`) and exactly one `class:` field whose value is one of `tech`, `arch`,
+or `spec` (R7). The class drives the loop target of the retroactive review loop;
+the routing matrix is defined once, in `AGENTS.md` → *Retroactive review loop*,
 and SHALL NOT be duplicated here.
 
 A reviewer comment that lists multiple findings SHALL tag each
 finding individually:
 
 ```markdown
-**Finding 1**
+**Finding 1 (v1-F1)**
 
 class: tech
 <one-paragraph description and remediation pointer>
 
-**Finding 2**
+**Finding 2 (v1-F2)**
 
 class: arch
 <one-paragraph description and remediation pointer>
