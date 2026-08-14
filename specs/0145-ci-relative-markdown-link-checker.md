@@ -1,7 +1,7 @@
 ---
 id: "0145"
 slug: ci-relative-markdown-link-checker
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 872
