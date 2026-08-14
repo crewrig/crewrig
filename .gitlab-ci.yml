@@ -361,6 +361,15 @@ mempalace:
 
 test-wiring:
   image: debian:stable-slim
+  variables:
+    GIT_DEPTH: "0"
+  cache:
+    key:
+      files:
+        - "scripts/lib/**"
+        - "scripts/check-test-strays.sh"
+    paths:
+      - .ci-cache/
   script:
     - "bash scripts/check-test-wiring.sh"
     - "bash scripts/tests/test-check-test-wiring.sh"
