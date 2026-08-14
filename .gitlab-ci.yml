@@ -278,6 +278,30 @@ docs-index:
         - "scripts/tests/test-build-docs-index.sh"
         - "docs/**"
 
+figure-labels:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends tesseract-ocr
+    - apt-get update && apt-get install -y --no-install-recommends python3
+  script:
+    - "bash scripts/check-figure-labels.sh"
+    - "bash scripts/tests/test-check-figure-labels.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-figure-labels.sh"
+        - "scripts/lib/check-figure-labels.py"
+        - "scripts/tests/test-check-figure-labels.sh"
+        - "docs/assets/**/*.png"
+        - "docs/assets/**/*.prompt.md"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-figure-labels.sh"
+        - "scripts/lib/check-figure-labels.py"
+        - "scripts/tests/test-check-figure-labels.sh"
+        - "docs/assets/**/*.png"
+        - "docs/assets/**/*.prompt.md"
+
 mempalace:
   image: python:3.12
   before_script:

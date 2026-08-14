@@ -258,6 +258,32 @@ jobs:
       - name: Test Build Docs Index
         if: steps.filter.outputs.docs-index == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**" --key-env "" -- bash scripts/tests/test-build-docs-index.sh
+  figure-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            figure-labels:
+              - 'scripts/check-figure-labels.sh'
+              - 'scripts/lib/check-figure-labels.py'
+              - 'scripts/tests/test-check-figure-labels.sh'
+              - 'docs/assets/**/*.png'
+              - 'docs/assets/**/*.prompt.md'
+      - name: Install tesseract
+        if: steps.filter.outputs.figure-labels == 'true'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
+      - name: Install python3
+        if: steps.filter.outputs.figure-labels == 'true'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3
+      - name: Check Figure Labels
+        if: steps.filter.outputs.figure-labels == 'true'
+        run: bash scripts/check-figure-labels.sh
+      - name: Test Check Figure Labels
+        if: steps.filter.outputs.figure-labels == 'true'
+        run: bash scripts/tests/test-check-figure-labels.sh
   mempalace:
     runs-on: ubuntu-latest
     steps:
