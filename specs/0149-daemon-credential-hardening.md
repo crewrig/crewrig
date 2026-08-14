@@ -1,7 +1,7 @@
 ---
 id: "0149"
 slug: daemon-credential-hardening
-status: draft
+status: approved
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 913
