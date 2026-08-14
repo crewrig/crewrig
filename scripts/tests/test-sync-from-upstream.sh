@@ -258,6 +258,28 @@ run_case_stderr() {
   fi
 }
 
+# ensure_ssh_signing_capability <keydir> <case-name>
+#
+# Spec 0148 R1-R2: Generates an ed25519 key and performs an `ssh-keygen -Y sign`
+# smoke check to verify actual SSH signing support (OpenSSH >= 8.2), rather than
+# testing key generation alone.
+ensure_ssh_signing_capability() {
+  local keydir="$1" case_name="$2"
+  if ! ssh-keygen -t ed25519 -N '' -f "$keydir/signer" -q 2>/dev/null; then
+    echo "FAIL  $case_name: could not create an ed25519 key — ssh-keygen signing support (OpenSSH >= 8.2) is a precondition of this case, not an optional capability"
+    return 1
+  fi
+  local buf="$keydir/smoke-buffer"
+  printf "smoke test" > "$buf"
+  if ! ssh-keygen -Y sign -f "$keydir/signer" -n test "$buf" >/dev/null 2>&1 || [ ! -f "$buf.sig" ]; then
+    echo "FAIL  $case_name: ssh-keygen -Y sign failed — ssh-keygen signing support (OpenSSH >= 8.2) is a precondition of this case, not an optional capability"
+    rm -f "$buf" "$buf.sig" 2>/dev/null
+    return 1
+  fi
+  rm -f "$buf" "$buf.sig" 2>/dev/null
+  return 0
+}
+
 # run_case_dirty_report <name> <repo> <present-path>… -- <absent-line>…
 #
 # Spec 0129's report assertions, and the reason this helper exists rather than a
@@ -1759,8 +1781,7 @@ run_case_dirty_report() {
 {
   ok=1
   keydir="$(mktemp -d "$TMP_ROOT/signkey.XXXXXX")"
-  if ! ssh-keygen -t ed25519 -N '' -f "$keydir/signer" -q 2>/dev/null; then
-    echo "FAIL  case-cc: could not create an ed25519 key — ssh-keygen signing support (OpenSSH >= 8.2) is a precondition of this case, not an optional capability"
+  if ! ensure_ssh_signing_capability "$keydir" "case-cc"; then
     ok=0
   fi
 
@@ -2118,8 +2139,7 @@ run_case_dirty_report() {
 {
   ok=1
   keydir="$(mktemp -d "$TMP_ROOT/signkey.XXXXXX")"
-  if ! ssh-keygen -t ed25519 -N '' -f "$keydir/signer" -q 2>/dev/null; then
-    echo "FAIL  case-hh: could not create an ed25519 key — ssh-keygen signing support (OpenSSH >= 8.2) is a precondition of this case, not an optional capability"
+  if ! ensure_ssh_signing_capability "$keydir" "case-hh"; then
     ok=0
   fi
   # git invokes the signing program as
@@ -2295,8 +2315,7 @@ STUB
 {
   ok=1
   keydir="$(mktemp -d "$TMP_ROOT/signkey.XXXXXX")"
-  if ! ssh-keygen -t ed25519 -N '' -f "$keydir/signer" -q 2>/dev/null; then
-    echo "FAIL  case-jj: could not create an ed25519 key — ssh-keygen signing support (OpenSSH >= 8.2) is a precondition of this case, not an optional capability"
+  if ! ensure_ssh_signing_capability "$keydir" "case-jj"; then
     ok=0
   fi
 
@@ -2588,6 +2607,21 @@ STUB
     "$adopter" \
     1 \
     "Restore ONLY the files listed above"
+}
+
+# ---------------------------------------------------------------------------
+# Case pp — spec 0148 R1-R2: ensure_ssh_signing_capability verifies signing
+# capability via `ssh-keygen -Y sign` smoke check.
+# ---------------------------------------------------------------------------
+{
+  keydir="$(mktemp -d "$TMP_ROOT/signkey.XXXXXX")"
+  if ensure_ssh_signing_capability "$keydir" "case-pp" >/dev/null 2>&1; then
+    echo "PASS  case-pp: ensure_ssh_signing_capability succeeds on valid environment"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-pp: ensure_ssh_signing_capability failed unexpectedly on valid environment"
+    fail=$((fail + 1))
+  fi
 }
 
 # ---------------------------------------------------------------------------
