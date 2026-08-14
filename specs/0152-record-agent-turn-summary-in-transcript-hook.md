@@ -1,7 +1,7 @@
 ---
 id: "0152"
 slug: record-agent-turn-summary-in-transcript-hook
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 757
