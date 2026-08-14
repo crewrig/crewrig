@@ -56,6 +56,7 @@ these keys:
 | `requires` | iff `portable` | mapping | The engine-agnostic execution requirement: `{runtime, tools, history-depth}` (see *Invocation command and execution requirements*). |
 | `env` | optional | mapping | Optional dictionary of job-scoped environment variable keys and string values (spec 0131). |
 | `cache` | optional | mapping | The cache key-derivation **need**: `{files, env}` (see *Cache*). |
+| `cache-guard` | optional | boolean | Whether the job's `bash scripts/…` commands are wrapped in the coarse `scripts/ci-cache-guard.sh` (default `true`). Set `false` when a command manages its own fine-grained cache (see *Cache*). |
 | `changeset-gated` | optional | boolean | `true` marks a capability as part of a changeset-gated decomposition whose focused `paths:` sets the `changeset-coverage` fail-safe reads (spec 0147 R5). |
 
 **Granularity — one capability is exactly one job (spec 0047 R1).** The steps
@@ -211,6 +212,16 @@ real correctness gate: it recomputes a content-addressed key from the declared
 stale directory. `scripts/check-ci-parity.sh` asserts the engines' cache key
 inputs agree **semantically** with the reference's `cache.files` (same declared
 inputs, not string equality).
+
+By default, when a capability declares `cache:`, `scripts/build-ci.sh` wraps
+each hermetic `bash scripts/…` command in `scripts/ci-cache-guard.sh` so a
+cache hit skips re-execution. A capability MAY set `cache-guard: false` to
+opt out of that coarse wrapping — used when a command manages its own
+fine-grained, content-addressed cache (e.g. `scripts/check-test-strays.sh`
+caching per-suite verdicts). With `cache-guard: false`, the command is emitted
+bare (identical to the GitHub Actions step) while the engine `cache:` block and
+`GIT_DEPTH: "0"` are still emitted, so the engine cache persists the command's
+own cache directory across runs.
 
 ### GitLab generation
 

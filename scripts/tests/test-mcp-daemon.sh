@@ -775,6 +775,77 @@ case "${out}" in
   *) nope "no DRIFTED report: ${out}" ;;
 esac
 
+# --- 13d. Listener owner (spec 0158) -----------------------------------------
+# The owner check compares the process listening on the MCP port against the
+# process the OS supervisor runs for the daemon. Both sides are fixed via
+# environment so the branch under test is the ONLY difference from a healthy
+# run (R3): MEMPALACE_MCP_EXPECTED_PID fixes the supervisor side,
+# MEMPALACE_MCP_LISTENER_PID fixes the listener side. The launcher is
+# re-installed first because 13c left its hash corrupted to deadbeef — the
+# healthy-match case asserts exit 0, which requires EVERY probe check to pass,
+# including the drift check (v2-F1).
+install_mcp_launcher >/dev/null 2>&1
+launcher="$(mcp_launcher_installed_path)"
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${MEMPALACE_MCP_PORT}" 401 &
+fake_pid=$!
+sleep 1
+
+# Healthy match: listener PID == expected PID -> verified, exit 0.
+out="$(MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=1234 \
+  bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+[ "${rc}" -eq 0 ] \
+  && ok "a listener matching the supervised process exits 0" \
+  || nope "healthy owner exited ${rc}: ${out}"
+case "${out}" in
+  *"VERIFIED"*) ok "the matching owner is reported as VERIFIED" ;;
+  *) nope "no VERIFIED report: ${out}" ;;
+esac
+
+# Usurped mismatch: listener PID != expected PID -> non-zero, naming both PIDs
+# and the recovery action (R1, R5).
+out="$(MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=5678 \
+  bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+[ "${rc}" -ne 0 ] \
+  && ok "a mismatched listener exits non-zero" \
+  || nope "usurped owner exited ${rc}"
+case "${out}" in
+  *"USURPED"*) ok "a mismatched listener is reported as USURPED" ;;
+  *) nope "no USURPED report: ${out}" ;;
+esac
+case "${out}" in
+  *"PID 5678"*"PID 1234"*) ok "the usurped report names both PIDs" ;;
+  *) nope "the usurped report does not name both PIDs: ${out}" ;;
+esac
+case "${out}" in
+  *"Rotate"*) ok "the usurped report names the recovery action (rotate the token)" ;;
+  *) nope "no recovery action named: ${out}" ;;
+esac
+
+# Unverifiable: expected process undeterminable (no supervisor unit loaded).
+out="$(MEMPALACE_MCP_EXPECTED_PID='' MEMPALACE_MCP_LISTENER_PID=5678 \
+  bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+[ "${rc}" -ne 0 ] \
+  && ok "an undeterminable expected process exits non-zero" \
+  || nope "unverifiable (no supervisor) exited ${rc}"
+case "${out}" in
+  *"UNVERIFIABLE"*) ok "an undeterminable expected process is reported as UNVERIFIABLE" ;;
+  *) nope "no UNVERIFIABLE report: ${out}" ;;
+esac
+
+# Unverifiable: listener unidentifiable (forced by an empty
+# MEMPALACE_MCP_LISTENER_PID — set-but-empty, not unset).
+out="$(MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID='' \
+  bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+[ "${rc}" -ne 0 ] \
+  && ok "an unidentifiable listener exits non-zero" \
+  || nope "unverifiable (no listener) exited ${rc}"
+case "${out}" in
+  *"UNVERIFIABLE"*) ok "an unidentifiable listener is reported as UNVERIFIABLE" ;;
+  *) nope "no UNVERIFIABLE report: ${out}" ;;
+esac
+
+kill "${fake_pid}" 2>/dev/null
+
 # --- 14. _materialise_mcp_unit refuses unsubstituted placeholders (R7) -------
 echo ""
 echo "Unit materialisation refuses an unsubstituted placeholder (R7):"

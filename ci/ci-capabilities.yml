@@ -424,6 +424,14 @@ capabilities:
           - "hooks/worktree-git-guard.sh"
     portability: portable
     changeset-gated: true
+    cache:
+      files:
+        - "scripts/lib/**"
+        - "scripts/check-test-strays.sh"
+      env: []
+    cache-guard: false
+    requires:
+      history-depth: full
     command:
       - bash scripts/check-test-wiring.sh
       - bash scripts/tests/test-check-test-wiring.sh

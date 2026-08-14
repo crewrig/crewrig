@@ -69,7 +69,33 @@ if [ "${rc}" -eq 0 ]; then
   fi
 fi
 
-# --- 3. Launcher drift -------------------------------------------------------
+# --- 3. Listener owner (spec 0158) -------------------------------------------
+# Only meaningful while serving: a dead daemon has no listener to verify, and
+# the NOT SERVING verdict already carries the failure. Runs BEFORE the launcher
+# drift check so a drifted launcher cannot hide a usurped listener — the two are
+# independent problems and both must be reported.
+if [ "${rc}" -eq 0 ]; then
+  listener_pid="$(mcp_listener_pid "${PORT}")"
+  expected_pid="$(mcp_supervisor_pid)"
+  if [ -n "${listener_pid}" ] && [ -n "${expected_pid}" ]; then
+    if [ "${listener_pid}" = "${expected_pid}" ]; then
+      echo "  owner:    VERIFIED (listener PID ${listener_pid} is the supervised daemon)"
+    else
+      echo "  owner:    *** USURPED LISTENER ***"
+      echo "            PID ${listener_pid} is answering on ${HOST}:${PORT}, but the"
+      echo "            supervisor runs PID ${expected_pid}. A process that claimed"
+      echo "            the port first may have received the bearer token."
+      echo "            Rotate the token: rm -f $(mcp_token_path), then re-run"
+      echo "            bash scripts/switch-mempalace-http.sh"
+      rc=1
+    fi
+  else
+    echo "  owner:    UNVERIFIABLE (listener PID ${listener_pid:-unknown}, expected PID ${expected_pid:-unknown})"
+    rc=1
+  fi
+fi
+
+# --- 4. Launcher drift -------------------------------------------------------
 launcher="$(mcp_launcher_installed_path)"
 if [ -f "${launcher}" ]; then
   recorded="$(grep -m1 '^LAUNCHER_SOURCE_SHA=' "${launcher}" 2>/dev/null | cut -d'"' -f2)"
@@ -89,7 +115,7 @@ else
   rc=1
 fi
 
-# --- 4. Per-assistant arrangement (R16) --------------------------------------
+# --- 5. Per-assistant arrangement (R16) --------------------------------------
 echo ""
 echo "Assistant registrations:"
 mcp_report_assistant_arrangements || true

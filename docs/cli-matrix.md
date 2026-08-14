@@ -126,6 +126,22 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > R5): when a changed file is not covered by the union of the focused `paths:`
 > sets it executes the full check suite; otherwise it is a fast no-op. This
 > paragraph discharges the `ci/` CLI-matrix-update obligation for spec 0147.
+>
+> **test-wiring fine-grained cache (spec 0157).** The `test-wiring` capability
+> adds a `cache-guard: false` field and a fine-grained, content-addressed
+> per-suite cache inside `scripts/check-test-strays.sh`. `cache-guard: false`
+> tells `scripts/build-ci.sh` to emit the strays command **bare** (no coarse
+> `ci-cache-guard.sh` wrapper), because the coarse wrapper's single engine-level
+> key is incompatible with the per-suite verdict cache: keyed on the suites it
+> invalidates the engine cache on every suite change (defeating the cache), and
+> keyed on lib+script it skips the whole command on a suite-only change (skipping
+> the re-validation the fine-grained cache must perform). The engine-level
+> `cache:` block (GitLab `cache:key:files` / GitHub Actions `actions/cache`
+> `hashFiles(...)`) is still emitted and persists `.ci-cache/` across runs, so
+> the per-suite verdicts survive; the fine-grained cache is the sole gate. The
+> capability also declares `requires.history-depth: full` so the base ref resolves
+> for the changeset short-circuit. This paragraph discharges the `ci/`
+> CLI-matrix-update obligation for spec 0157.
 
 ## Parity gaps
 
