@@ -38,7 +38,6 @@ set -euo pipefail
 
 REPO_DIR="${CREWRIG_REPO_DIR:-"$(cd "$(dirname "$0")/.." && pwd)"}"
 TESTS_DIR="$REPO_DIR/scripts/tests"
-LIB_DIR="$REPO_DIR/scripts/lib"
 
 CACHE_DIR=".ci-cache"
 BASE_REF=""
@@ -75,10 +74,10 @@ if [ -z "$BASE_REF" ]; then
 fi
 
 # --- "no change" short-circuit ----------------------------------------------
-# When the base ref resolves and the merge-base diff over the test/lib paths is
-# empty, there is nothing to validate: exit clean without scanning. This is a
-# pure optimization; it never gates which suites run (the execution set below is
-# always the cache-miss set).
+# When the base ref resolves and the merge-base diff over the whole scripts/
+# tree is empty, there is nothing to validate: exit clean without scanning.
+# This is a pure optimization; it never gates which suites run (the execution
+# set below is always the cache-miss set).
 
 if [ -n "$BASE_REF" ]; then
   if merge_base="$(git -C "$REPO_DIR" merge-base "$BASE_REF" HEAD 2>/dev/null)"; then
