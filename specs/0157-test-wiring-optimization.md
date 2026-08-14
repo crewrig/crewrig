@@ -3,6 +3,7 @@ id: "0157"
 slug: test-wiring-optimization
 status: approved
 complexity: standard
+interaction-mode: INTERMEDIATE
 related-issue: 939
 version: 1.0.0
 ---
