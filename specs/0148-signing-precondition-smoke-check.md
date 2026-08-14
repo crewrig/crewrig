@@ -1,7 +1,7 @@
 ---
 id: "0148"
 slug: signing-precondition-smoke-check
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 811
