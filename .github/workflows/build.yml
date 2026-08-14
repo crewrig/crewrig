@@ -139,6 +139,9 @@ jobs:
       - name: Test Antigravity transcript activation (spec 0116)
         run: bash scripts/tests/test-setup-antigravity-transcript.sh
 
+      - name: Test worktree git guard (spec 0153)
+        run: bash scripts/tests/test-worktree-git-guard.sh
+
       - name: Test Copilot transcript manifest schema (issue #825)
         run: bash scripts/tests/test-setup-copilot-transcript.sh
 
