@@ -284,5 +284,5 @@ prompt audit (hypothesis 4) and a write-mount audit (hypothesis 3).
 - Logbook: <https://github.com/crewrig/crewrig/issues/162>
 - Reference research doc shape: [`gemini-cli-auth-blackbox.md`](gemini-cli-auth-blackbox.md)
 - Scenario source: [`tests/e2e/scenarios/01-layered-context/`](../../tests/e2e/scenarios/01-layered-context/)
-- Copilot routing config: [`tests/e2e/local.toml`](../../tests/e2e/local.toml) `[cli.copilot]` block (Ollama Cloud, model `deepseek-v4-pro:cloud`).
+- Copilot routing config: [`tests/e2e/local.toml`](../../tests/e2e/local.toml.example) `[cli.copilot]` block (Ollama Cloud, model `deepseek-v4-pro:cloud`).
 - Per-run report directories (this loop): `tests/e2e/reports/20260601T195329Z-15e4/` (validation) and `tests/e2e/reports/20260601T1954*Z-*/` through `tests/e2e/reports/20260601T200104Z-1659/` (20 loop runs).

@@ -118,7 +118,7 @@ the same Open-questions discipline as INTERMEDIATE.
 ### Prose discipline for interactive batches
 
 The four sub-rules below realize R15 and R17 of
-[`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md).
+[`specs/0002-spec-author-skill.md`](../../../../specs/0002-spec-author-skill.md).
 The first three (preface anchors, acronym discipline, description
 self-sufficiency) apply uniformly to MINIMAL, INTERMEDIATE, and FULL —
 wherever the skill emits an `AskUserQuestion` (or the host CLI's
@@ -184,7 +184,7 @@ interactive question batch is emitted.
 
 Reviewer enforcement: the three failure-path scenarios added by spec
 0002 delta-02 in
-[`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md)
+[`specs/0002-spec-author-skill.md`](../../../../specs/0002-spec-author-skill.md)
 → `## Scenarios` codify the R15 contract; the two scenarios added by
 delta-04 codify the R17 contract. A spec-PR that ships an interview
 batch without a preface, with an opaque option `description`, with
@@ -198,7 +198,7 @@ Before writing the `## Requirements` section of a spec that qualifies
 a **verification, audit, or sanity-check tool** whose acceptance is
 file-level, run a short grounding pass against the codebase. The pass
 realizes R16 of
-[`specs/0002-spec-author-skill.md`](../../../specs/0002-spec-author-skill.md)
+[`specs/0002-spec-author-skill.md`](../../../../specs/0002-spec-author-skill.md)
 (introduced by delta-03) and exists because the friction reported in
 issue #194 — spec 0007 mandated a `type` field that no built artifact
 ever exhibited, discovered only at DEV time — proves that a WHAT
@@ -521,8 +521,8 @@ audits after the fact via the spec PR.
 ## Finding class taxonomy
 
 This skill participates in the retroactive review loop on both ends
-(per [`specs/0005-retroactive-routing-engine.md`](../../../specs/0005-retroactive-routing-engine.md)
-R2, R6 and [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md)
+(per [`specs/0005-retroactive-routing-engine.md`](../../../../specs/0005-retroactive-routing-engine.md)
+R2, R6 and [`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md)
 → *Routing matrix*):
 
 - **As reviewer.** When the skill reviews a spec-PR (originating or

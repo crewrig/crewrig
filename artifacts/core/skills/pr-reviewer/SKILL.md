@@ -213,11 +213,9 @@ never aborts the review.
 ## Finding class taxonomy
 
 Every finding emitted by this skill — blocking and non-blocking
-alike — SHALL carry exactly one `class:` field whose value is
-`tech`, `arch`, or `spec` (per
-[`specs/0005-retroactive-routing-engine.md`](../../../specs/0005-retroactive-routing-engine.md)
-R2). The tag drives the retroactive routing engine's loop target
-(see [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md));
+alike — SHALL carry exactly one `class:` field whose value is `tech`, `arch`, or `spec` (per
+[`specs/0005-retroactive-routing-engine.md`](../../../../specs/0005-retroactive-routing-engine.md)
+R2 and [`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md));
 findings without it are malformed and trigger a retag round-trip
 that does NOT count against the max-iteration guardrail. Tag every
 finding individually — a single section header above multiple

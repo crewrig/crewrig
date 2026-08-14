@@ -33,5 +33,5 @@ and obscure the actual state of work in flight — an issue left open
 after its PR merged reads as unfinished work to anyone scanning the
 tracker, and erodes trust in the issue list as a source of truth.
 
-See [`docs/spec-pr-workflow.md`](docs/spec-pr-workflow.md) → *Independence
+See [`docs/spec-pr-workflow.md`](spec-pr-workflow.md) → *Independence
 rule* for the spec-PR `related-issue` exception and its full mechanics.

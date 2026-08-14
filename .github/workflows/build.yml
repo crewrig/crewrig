@@ -109,6 +109,12 @@ jobs:
       - name: Test check-core-paths regression (spec 0031)
         run: bash scripts/tests/test-check-core-paths.sh
 
+      - name: Check relative Markdown link integrity (#872)
+        run: bash scripts/check-markdown-links.sh
+
+      - name: Test check-markdown-links regression (#872)
+        run: bash scripts/tests/test-check-markdown-links.sh
+
       - name: Test check-ci-parity regression (spec 0049)
         run: bash scripts/tests/test-check-ci-parity.sh
 
