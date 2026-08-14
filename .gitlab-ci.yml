@@ -58,6 +58,8 @@ check-components:
     - "bash scripts/tests/test-sync-from-upstream.sh"
     - "bash scripts/check-core-paths.sh"
     - "bash scripts/tests/test-check-core-paths.sh"
+    - "bash scripts/check-markdown-links.sh"
+    - "bash scripts/tests/test-check-markdown-links.sh"
     - "bash scripts/tests/test-check-ci-parity.sh"
     - "bash scripts/tests/test-assembly-verification.sh"
     - "bash scripts/tests/test-artifact-build-install-scope.sh"
