@@ -1,7 +1,7 @@
 ---
 id: "0144"
 slug: permission-laundering-prevention
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 891
