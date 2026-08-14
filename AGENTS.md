@@ -122,6 +122,7 @@ rule takes over.
 - **NEVER merge a Pull Request (PR/MR)** without asking for the user's formal permission JUST BEFORE executing the merge.
   - Narrow one-file spec-PR exception: [`docs/interaction-modes.md`](docs/interaction-modes.md) → *User-gate definition*.
 - The `import/gitlab` branch tracks the legacy GitLab project (`gitlab` remote) and serves as inspiration only.
+- **Up-to-date merge precondition:** BEFORE executing `gh pr merge`, the agent MUST verify that the branch is up-to-date with `main` (`git fetch crewrig main`, `git rebase crewrig/main` or `gh pr update-branch`). If `main` has advanced since the branch was created/rebased, the agent MUST update the branch and re-verify all test suites pass on the rebased state prior to merging.
 - Non-trivial tickets follow the **Spec-PR workflow** (see below).
 
 ### On Claude Code CLI — solo-maintainer self-merge block

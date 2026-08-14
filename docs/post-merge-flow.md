@@ -12,4 +12,6 @@ After any `gh pr merge`, the agent MUST verify the merge target before closing t
    - The merge target is an intermediate integration branch that must eventually reach `main`.
 3. **Open or propose the downstream PR** before considering the task complete. If the downstream PR can be created automatically (fast-forward or trivial rebase), open it. Otherwise, surface the need to the user with a clear explanation of what remains.
 
+> **Pre-merge up-to-date requirement.** Before executing `gh pr merge`, the agent MUST verify that the feature branch is up-to-date with `main` (`git fetch crewrig main`, `git rebase crewrig/main` or `gh pr update-branch`) and that all test suites pass on the rebased state (`AGENTS.md` → *Branching Strategy*).
+
 > **Merge blocked before it ran (Claude Code).** This flow begins only after a `gh pr merge` command has already executed. If the merge command itself was denied before it could run — the Claude Code auto-mode permission classifier can block a solo-maintainer self-merge — see `AGENTS.md` → *Branching Strategy* → *On Claude Code CLI — solo-maintainer self-merge block* for how to respond.
