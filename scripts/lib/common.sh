@@ -937,6 +937,7 @@ mcp_daemon_replace_process() {
   echo "           receives the newly minted token in the very next probe — this"
   echo "           one — and can then answer your agents with fabricated memory."
   echo "           Nothing below can tell that process from the real daemon."
+  echo "           Rotate the token again if the window may have been claimed."
   echo ""
 
   case "$(uname -s)" in

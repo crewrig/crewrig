@@ -270,27 +270,85 @@ grep -q "${tok}" "${launcher}" 2>/dev/null \
 # sampling the process table while a probe runs harvests the credential — the
 # reason both probes feed the header through a stdin curl config instead
 # (scripts/lib/common.sh `_mcp_daemon_probe_accepts`, and `_probe_code` in
-# section 16 below). The pattern's last syllable is concatenated at runtime so
-# THIS assertion cannot satisfy the search it performs. It deliberately admits
-# every spelling of the flag rather than the canonical one only: `--header` as
-# well as `-H`, `=` or nothing in place of the space (`--header=`, `-H'…'`,
-# `-HAuthorization:…`), an optional opening quote, and anything at all between
-# the colon and the scheme name — a cold review put all four variants past the
-# earlier `-(H|-header) ` form untouched. Over-matching is the right failure
-# direction here: a false positive costs a reader one glance, a false negative
-# ships the credential back into the process table. Comments are stripped
-# by matching grep -n's own `<line>:` prefix, NOT by leading whitespace —
-# the trap section 4 below documents; the filter is load-bearing here, since
-# common.sh's `register_mempalace_mcp` explains the hazard in prose that
-# quotes the very flag being banned. Scoped to the two files this spec
-# governs: scripts/tests/test-setup-org-mcp.sh asserts the org-MCP `--header`
-# argv shape on purpose, and sweeping that call site is the follow-up
-# specs/0139-token-rotation-revocation.delta-01.md defers.
-argv_bearer="Bea""rer"
-argv_bearer_hits="$(grep -nE -- "-(H|-header)[[:space:]=]*[\"']?Authorization:.*${argv_bearer}" \
+# section 16 below). BOTH halves of the banned string — the header name and
+# the scheme word — are concatenated at runtime (`argv_hdr`, `argv_scheme`) so
+# THIS assertion cannot satisfy the search it performs. Splitting the scheme
+# alone sufficed while the search was case-sensitive; it does not since spec
+# 0149 R1 made the match case-insensitive, because any line in this block that
+# spells the header name out then self-trips the pattern. It deliberately
+# admits every spelling of the flag rather than the canonical one only:
+# `--header` as well as `-H`, `=` or nothing in place of the space
+# (`--header=`, `-H'…'`, `-HAuthorization:…`), an optional opening quote, and
+# anything at all between the colon and the scheme name — a cold review put
+# all four variants past the earlier `-(H|-header) ` form untouched.
+# Over-matching is the right failure direction here: a false positive costs a
+# reader one glance, a false negative ships the credential back into the
+# process table.
+#
+# Comments are stripped by matching grep -n's own `<line>:` prefix ANCHORED
+# (spec 0149 R2), NOT by leading whitespace — the trap section 4 below
+# documents — and NOT unanchored, which used to swallow any genuine violation
+# whose line merely carried a trailing comment. The anchor is why the sweep
+# runs ONE FILE AT A TIME: hand `grep -n` two paths and every hit gains a
+# `<path>:` prefix, so `^[0-9]` never matches and the filter degenerates into
+# excluding nothing. The filter is load-bearing either way, since common.sh's
+# `register_mempalace_mcp` explains the hazard in prose that quotes the very
+# flag being banned.
+#
+# Scope: the two files this spec governs, swept through the same helper as the
+# fixture below — the executable witness that both mutations spec 0149 names
+# are caught and that a pure comment is still excluded. The one deliberate
+# occurrence in the repository, scripts/tests/test-setup-org-mcp.sh, asserts
+# the org-MCP argv shape on purpose and carries a comment saying so at its own
+# call site (spec 0149 R4); no other occurrence exists under scripts/.
+argv_scheme="Bea""rer"
+argv_hdr="Authoriz""ation"
+argv_pat="-(H|-header)[[:space:]=]*[\"']?${argv_hdr}:.*${argv_scheme}"
+# ONE pattern and ONE filter, shared by the self-test and the real sweep, so a
+# mutation cannot satisfy the witness while leaving the repository unguarded.
+_argv_bearer_hits() {
+  local f hits all=""
+  for f in "$@"; do
+    hits="$(grep -niE -- "${argv_pat}" "${f}" 2>/dev/null \
+      | grep -vE '^[0-9]+:[[:space:]]*#' || true)"
+    [ -n "${hits}" ] && all="${all}${f}:${hits}"$'\n'
+  done
+  printf '%s' "${all}"
+}
+
+# Self-test BEFORE the sweep: this guard is a static grep whose passing state
+# looks identical whether or not it can still catch a violation, so it has to
+# prove it can. Three fixture lines under ${TEST_HOME} (the cleanup trap at
+# :102-103 removes them): the lower-case shape R1 names, the trailing-comment
+# shape R2 names, and a pure comment that must stay excluded. The two words
+# are handed to printf at runtime for the same reason the pattern splits them.
+argv_fixture="${TEST_HOME}/argv-guard-fixture.txt"
+argv_hdr_lc="$(printf '%s' "${argv_hdr}" | tr '[:upper:]' '[:lower:]')"
+argv_scheme_lc="$(printf '%s' "${argv_scheme}" | tr '[:upper:]' '[:lower:]')"
+{ printf 'curl -H "%s: %s $t" http://x\n'              "${argv_hdr_lc}" "${argv_scheme_lc}"
+  printf 'curl -H "%s: %s $t" http://x  # ref: #913\n' "${argv_hdr}"    "${argv_scheme}"
+  printf '  # prose: NOT curl -H "%s: %s $t"\n'        "${argv_hdr}"    "${argv_scheme}"
+} > "${argv_fixture}"
+argv_self_hits="$(_argv_bearer_hits "${argv_fixture}")"
+argv_self_n="$(printf '%s' "${argv_self_hits}" | grep -c . || true)"
+case "${argv_self_hits}" in
+  *"${argv_hdr_lc}: ${argv_scheme_lc}"*) ok "the guard catches a violation spelled in lower case (R1)" ;;
+  *) nope "the guard missed the lower-case violation: ${argv_self_hits}" ;;
+esac
+case "${argv_self_hits}" in
+  *"# ref: #913"*) ok "the guard catches a violation carrying a trailing comment (R2)" ;;
+  *) nope "the comment filter swallowed a violation carrying a trailing comment: ${argv_self_hits}" ;;
+esac
+# The assertion that kills the degenerate "exclude nothing" filter, which would
+# satisfy both cases above while making the guard useless: exactly the two
+# violation lines are reported, and the pure comment is not.
+[ "${argv_self_n}" -eq 2 ] \
+  && ok "the anchored filter excludes the comment line and nothing else (R2)" \
+  || nope "expected exactly 2 fixture violations, got ${argv_self_n}: ${argv_self_hits}"
+
+argv_bearer_hits="$(_argv_bearer_hits \
   "${REPO_DIR}/scripts/lib/common.sh" \
-  "${REPO_DIR}/scripts/tests/test-mcp-daemon.sh" 2>/dev/null \
-  | grep -v ':[[:space:]]*#' || true)"
+  "${REPO_DIR}/scripts/tests/test-mcp-daemon.sh")"
 [ -z "${argv_bearer_hits}" ] \
   && ok "no bearer token is passed through an -H argv flag (R8)" \
   || nope "a bearer token reached argv via -H: ${argv_bearer_hits}"
@@ -774,6 +832,14 @@ esac
 case "${out}" in
   *"receives the newly minted token"*) ok "the replacement window is disclosed before the stop is issued (R5)" ;;
   *) nope "no replacement-window disclosure: ${out}" ;;
+esac
+# Second half of the same witness: spec 0149 R3 makes a disclosure that names
+# the risk without naming the recovery non-conformant, so the risk substring
+# above cannot be the only thing asserted. `case` is case-sensitive, so this
+# substring tracks the copy in common.sh verbatim.
+case "${out}" in
+  *"Rotate the token again"*) ok "the disclosure names the recovery, not only the risk (0149 R3)" ;;
+  *) nope "the disclosure names the risk without the recovery action: ${out}" ;;
 esac
 
 # Behavioural half: probed skip on the prerequisites the launcher actually
