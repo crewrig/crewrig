@@ -1,7 +1,7 @@
 ---
 id: "0147"
 slug: ci-execution-speed
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 906
