@@ -39,10 +39,15 @@ PROD_UNIT="mempalace-mcp-server"
 PROD_PORT="8021"
 # 41893 is the CURRENT default (common.sh:~720, since #748); 8021 predates
 # that move and a machine provisioned before it still binds the old value.
-# This axis's own contract above ("the axis that matters most... refuses
-# rather than risks") argues for accepting BOTH rather than narrowing to only
-# the current default, which would silently stop protecting pre-#748
-# machines.
+#
+# Be precise about what these two constants do, because the guard below reads
+# as though they protect the operator and they do not: the port override is
+# unconditional, so the effective port is always drawn from 18000-18899 and
+# can never equal either constant. Both clauses are therefore UNREACHABLE as
+# the file stands. They are kept as a tripwire on the override itself — weaken
+# it to `${VAR:-default}` or drop it, and an operator who exports a production
+# port reaches the tests with the guard already in place to catch them. What
+# protects a pre-#748 machine today is the override, not this comparison.
 PROD_PORT_CURRENT="41893"
 
 # Capture the real HOME BEFORE overriding it. Comparing $HOME to `cd ~` after
@@ -50,6 +55,18 @@ PROD_PORT_CURRENT="41893"
 # that would refuse every run, i.e. protect by permanently skipping the tests
 # it exists to protect.
 REAL_HOME="${HOME}"
+# Same capture, and this one guards a hazard that IS live. The port drawn
+# below is random, so it can land on whatever port the operator configured for
+# their OWN daemon — binding that is precisely the axis-2 hazard above, and no
+# comparison against the two production constants sees it, since the operator
+# may serve on any port at all. Refuse rather than re-roll, per this file's
+# contract. No emptiness test is needed beside it: unset leaves this empty and
+# the override is always non-empty, so the comparison is simply false. And do
+# NOT extend this to refuse merely because the captured value is a production
+# port — exporting 8021 is how a pre-#748 machine is configured, the override
+# already makes such a machine safe, and refusing there would skip the tests
+# on exactly the population axis 2 exists to protect.
+REAL_MCP_PORT="${MEMPALACE_MCP_PORT:-}"
 TEST_HOME="$(mktemp -d)"
 export HOME="${TEST_HOME}"
 export MEMPALACE_MCP_LABEL="com.mempalace.mcp-server-test-$$"
@@ -89,9 +106,14 @@ if [ "${MEMPALACE_MCP_LABEL}" = "${PROD_LABEL}" ] \
   || [ "${MEMPALACE_MCP_UNIT}" = "${PROD_UNIT}" ] \
   || [ "${MEMPALACE_MCP_PORT}" = "${PROD_PORT}" ] \
   || [ "${MEMPALACE_MCP_PORT}" = "${PROD_PORT_CURRENT}" ] \
+  || [ "${MEMPALACE_MCP_PORT}" = "${REAL_MCP_PORT}" ] \
   || [ "${HOME}" = "${REAL_HOME}" ]; then
   echo "REFUSING TO RUN: an isolation axis resolved to its production value." >&2
   echo "  label=${MEMPALACE_MCP_LABEL} unit=${MEMPALACE_MCP_UNIT} port=${MEMPALACE_MCP_PORT}" >&2
+  if [ "${MEMPALACE_MCP_PORT}" = "${REAL_MCP_PORT}" ]; then
+    echo "  the randomly chosen test port collides with MEMPALACE_MCP_PORT=${REAL_MCP_PORT}" >&2
+    echo "  from your environment — re-run to draw a different one." >&2
+  fi
   exit 2
 fi
 
@@ -249,7 +271,14 @@ grep -q "${tok}" "${launcher}" 2>/dev/null \
 # reason both probes feed the header through a stdin curl config instead
 # (scripts/lib/common.sh `_mcp_daemon_probe_accepts`, and `_probe_code` in
 # section 16 below). The pattern's last syllable is concatenated at runtime so
-# THIS assertion cannot satisfy the search it performs. Comments are stripped
+# THIS assertion cannot satisfy the search it performs. It deliberately admits
+# every spelling of the flag rather than the canonical one only: `--header` as
+# well as `-H`, `=` or nothing in place of the space (`--header=`, `-H'…'`,
+# `-HAuthorization:…`), an optional opening quote, and anything at all between
+# the colon and the scheme name — a cold review put all four variants past the
+# earlier `-(H|-header) ` form untouched. Over-matching is the right failure
+# direction here: a false positive costs a reader one glance, a false negative
+# ships the credential back into the process table. Comments are stripped
 # by matching grep -n's own `<line>:` prefix, NOT by leading whitespace —
 # the trap section 4 below documents; the filter is load-bearing here, since
 # common.sh's `register_mempalace_mcp` explains the hazard in prose that
@@ -258,7 +287,7 @@ grep -q "${tok}" "${launcher}" 2>/dev/null \
 # argv shape on purpose, and sweeping that call site is the follow-up
 # specs/0139-token-rotation-revocation.delta-01.md defers.
 argv_bearer="Bea""rer"
-argv_bearer_hits="$(grep -nE -- "-(H|-header) .*Authorization: ${argv_bearer}" \
+argv_bearer_hits="$(grep -nE -- "-(H|-header)[[:space:]=]*[\"']?Authorization:.*${argv_bearer}" \
   "${REPO_DIR}/scripts/lib/common.sh" \
   "${REPO_DIR}/scripts/tests/test-mcp-daemon.sh" 2>/dev/null \
   | grep -v ':[[:space:]]*#' || true)"
@@ -747,8 +776,19 @@ case "${out}" in
   *) nope "no replacement-window disclosure: ${out}" ;;
 esac
 
-# Behavioural half: probed skip on `import mempalace`, mirroring section 10 —
-# CI has no mempalace venv, so quote the reason rather than silently passing.
+# Behavioural half: probed skip on the prerequisites the launcher actually
+# needs, mirroring section 10 — CI has no mempalace venv, so quote the reason
+# rather than silently passing.
+#
+# BOTH prerequisites, not just the import. mcp-daemon-launcher.sh's
+# CHROMA_WAIT_SECONDS loop waits on ChromaDB and `die`s when it stays
+# unreachable for MEMPALACE_MCP_CHROMA_WAIT, which this suite pins to 2s
+# above — so a developer with mempalace installed and Chroma stopped used to
+# get "the daemon never became healthy" and a red suite for a missing
+# prerequisite, which is the opposite of the clean skip R4 claims. The probe
+# below is that loop's own, verbatim (same endpoint, same --max-time), so it
+# tests exactly what the launcher is about to test — the same reasoning
+# _wait_bindable records for the port preflight.
 #
 # Scenario 2 (specs/0139) assumes an ALREADY-LOADED supervisor unit; that
 # precondition is structurally untestable here — install_daemon_supervisor
@@ -762,8 +802,17 @@ esac
 # here keeps the next reader from looking for a launchctl path that isn't
 # there.
 echo ""
-if "${MEMPALACE_PYTHON}" -c 'import mempalace' >/dev/null 2>&1; then
-  export MEMPALACE_CHROMA_PORT=8001   # the real one; the launcher waits on it
+behav_chroma_host="127.0.0.1"
+behav_chroma_port="8001"
+if "${MEMPALACE_PYTHON}" -c 'import mempalace' >/dev/null 2>&1 \
+   && curl -sf --max-time 2 \
+        "http://${behav_chroma_host}:${behav_chroma_port}/api/v2/heartbeat" \
+        >/dev/null 2>&1; then
+  # The real ones; the launcher waits on them, and install_mcp_launcher below
+  # bakes them into the materialised launcher — so they must be the endpoint
+  # the gate just proved reachable, not a second guess at it.
+  export MEMPALACE_CHROMA_HOST="${behav_chroma_host}"
+  export MEMPALACE_CHROMA_PORT="${behav_chroma_port}"
 
   # _probe_code <token> — the bare HTTP status from POST /mcp bearing
   # <token>; same curl shape the helper's own probe uses, kept local to the
@@ -884,8 +933,17 @@ PROBE
   unset -f _probe_code
   unset -f _wait_bindable
 else
-  echo "  skip mempalace is not importable from ${MEMPALACE_PYTHON} — cannot start a"
-  echo "       real daemon, so the behavioural rotation check is skipped."
+  # Name WHICH prerequisite is missing: "skipped" without a reason is
+  # indistinguishable from a silent pass, and the two have different fixes.
+  if ! "${MEMPALACE_PYTHON}" -c 'import mempalace' >/dev/null 2>&1; then
+    echo "  skip mempalace is not importable from ${MEMPALACE_PYTHON} — cannot start a"
+    echo "       real daemon, so the behavioural rotation check is skipped."
+  else
+    echo "  skip ChromaDB is unreachable at ${behav_chroma_host}:${behav_chroma_port} — the"
+    echo "       launcher will not start the daemon without it (ADR 0006), so the"
+    echo "       behavioural rotation check is skipped. Run"
+    echo "       scripts/start-chroma-server.sh to exercise this half."
+  fi
 fi
 
 echo ""

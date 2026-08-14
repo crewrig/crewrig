@@ -861,10 +861,17 @@ _mcp_daemon_probe_accepts() {
   # credential leaves argv; `Content-Type` is not a secret and stays there.
   # `-w '%{http_code}'` is unaffected — it still writes a single literal "000"
   # on a dead connection, so the no-fallback reasoning above survives this
-  # change. The token is 48 characters of [A-Za-z0-9] (see
-  # `mcp_token_read_or_create`), so the config's double-quoted value needs no
-  # escaping — widening that charset is what would break this line.
-  # (spec 0139 delta-01 rationale; spec 0113 R8)
+  # change. The config's double-quoted value carries no escaping, which is
+  # exact only for tokens `mcp_token_read_or_create` MINTED — those are 48
+  # characters of [A-Za-z0-9] by construction (`tr -dc 'A-Za-z0-9' | head -c
+  # 48`), and widening that charset is what would break this line. On its READ
+  # path that function returns whatever a pre-existing token file holds, minus
+  # whitespace, so an operator-supplied token can carry quotes or backslashes.
+  # That is a malformed-header risk, not an injection one: the same
+  # `tr -d '[:space:]'` strips the newline a second config directive would
+  # need, and a malformed header can only produce a non-2xx — i.e. the
+  # fail-visible path this helper already contracts for, never a silent
+  # accept. (spec 0139 delta-01 rationale; spec 0113 R8)
   code="$(printf 'header = "Authorization: Bearer %s"\n' "$token" \
     | curl -K - -s -o /dev/null -w '%{http_code}' --max-time 3 \
       -X POST "http://${host}:${port}/mcp" \
