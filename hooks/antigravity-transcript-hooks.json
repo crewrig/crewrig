@@ -1,5 +1,12 @@
 {
   "crewrig-mempalace-transcript": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "bash hooks/worktree-git-guard.sh",
+        "timeout": 5
+      }
+    ],
     "Stop": [
       {
         "type": "command",

@@ -262,6 +262,7 @@ See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) for the full pr
 - **Whole-tree git ops.** `git reset --hard`, `git stash`, `git clean` require an exclusive claim + empty `git status`. See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) → *Worktree Isolation*.
 - **Built components.** Any commit touching `artifacts/` MUST also run `bash scripts/build-components.sh` and stage the regenerated outputs in the same commit.
 - **Complexity tier.** Read the spec frontmatter `complexity` field at ticket pickup: `trivial` = inline, `small` = developer + pr-logbook + pr-reviewer, `standard` = full Template 1/2/3, `large` = architect-led sub-spec decomposition.
+- **Idle notification non-completion.** `idle_notification` events indicate thread status at event emission time and are NOT request completion signals; never abandon subagents on an idle event while a request is pending.
 
 ```sh
 git worktree add -b <branch-name> .worktrees/<ticket-id> crewrig/main

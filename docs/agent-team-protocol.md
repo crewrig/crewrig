@@ -406,12 +406,12 @@ can resume rather than restart from scratch. Direct `Agent` spawns (without team
 reliably complete and return results; `SendMessage` to a stuck idle
 agent does not.
 
-**Rule 3 — Idle notifications can race result messages.** When the
+**Rule 3 — Idle notifications can race result messages.** An `idle_notification` event indicates subagent process/thread idleness at the time of event emission and SHALL NOT be interpreted as a completion signal for a pending `SendMessage` request. When the
 team-lead receives an `idle_notification` for a teammate, that signal
 does NOT prove the teammate skipped Rule 1. Result messages and idle
 notifications travel as separate events on the harness bus, and the
 idle notification can arrive first even when the teammate sent its
-result correctly. Before treating an apparent silence as a Rule 1
+result correctly. The team-lead SHALL NOT abandon, replace, or terminate an active subagent on the basis of an `idle_notification` alone while a request is pending. Before treating an apparent silence as a Rule 1
 violation, the team-lead MUST:
 
 1. **Let the channel drain.** Do not send anything to the idle
