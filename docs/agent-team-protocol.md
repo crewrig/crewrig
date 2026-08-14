@@ -113,6 +113,12 @@ All file edits performed by the team — by every specialist, without exception 
 
 This is a distinct, actionable check from the "treat the main directory as read-only" expectation above: that sentence states the constraint, this is the step that catches a session whose working directory silently defaulted to the main checkout before any file lands there.
 
+**Per-command cwd anchoring.** Every Bash command that operates on worktree content, or names a repository-relative path, SHALL begin with `cd <abs-worktree> &&`; no repository-relative path SHALL be used without that prefix. The rule binds every agent issuing Bash commands against a ticket worktree — every specialist and the orchestrating session alike; the failure it closes was observed in both roles in the originating incident (the developer session and the team-lead's DEV brief). The Tier 1 ref-based inspection recipes above (`git fetch` / `git log` / `git show` / `git diff` against `crewrig/<branch>`) are exempt: they deliberately run from the shared checkout on ref-scoped paths, not repository-relative filesystem paths. Embed the following instruction verbatim in every spawned sub-agent brief that targets a worktree:
+
+> Begin every Bash command that operates on worktree content, or names a repository-relative path, with `cd <abs-worktree> &&` — never use a repository-relative path without that prefix.
+
+This complements — does not replace — the cwd-verification check above: the check covers the session's first mutating call, the rule covers the whole session, including a Bash-tool cwd reset that occurs after the check has passed.
+
 **Stray-file discovery — no unilateral action.** Discovering a file on the main repository checkout that appears misplaced from a worktree-scoped ticket — whether the discoverer is the orchestrator or a sibling sub-agent — does NOT trigger deletion of that file, on sight or by any other means. A file's location does not establish its provenance: a sibling agent's own in-flight write may be transiting through that same path at the moment of discovery, and location alone cannot distinguish an abandoned stray from a write still in progress. Instead:
 
 1. **Flag, don't act.** The discoverer flags the file to the orchestrator (or `team-lead`) for adjudication.
