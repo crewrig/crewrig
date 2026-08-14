@@ -55,13 +55,18 @@ these keys:
 | `command` | iff `portable` | list of strings | The business invocation command(s) that realize the job (see *Invocation command and execution requirements*). |
 | `requires` | iff `portable` | mapping | The engine-agnostic execution requirement: `{runtime, tools, history-depth}` (see *Invocation command and execution requirements*). |
 | `env` | optional | mapping | Optional dictionary of job-scoped environment variable keys and string values (spec 0131). |
+| `cache` | optional | mapping | The cache key-derivation **need**: `{files, env}` (see *Cache*). |
+| `changeset-gated` | optional | boolean | `true` marks a capability as part of a changeset-gated decomposition whose focused `paths:` sets the `changeset-coverage` fail-safe reads (spec 0147 R5). |
 
 **Granularity — one capability is exactly one job (spec 0047 R1).** The steps
 *inside* a job are an implementation detail of that one capability, **not**
-separate capabilities. For example the `check-components` job runs roughly two
-dozen steps; it is one capability, not two dozen. A candidate reference is not
-invalid for collapsing a job's steps into a single entry — that is the
-required shape.
+separate capabilities. For example the former `check-components` job ran
+roughly two dozen steps; it was one capability, not two dozen. A candidate
+reference is not invalid for collapsing a job's steps into a single entry —
+that is the required shape. Spec 0147 decomposes that one capability into
+several focused, changeset-gated capabilities (each still exactly one job),
+each with a `paths:` filter and a `changeset-gated: true` marker, plus a
+`changeset-coverage` fail-safe with no `paths:` filter.
 
 ## Neutral trigger vocabulary
 
@@ -135,12 +140,13 @@ and absent on a `specific` one.
 `command` is the **list of business commands** that realize the job — the work
 the job performs, distinct from any engine-specific setup boilerplate
 (checkout, runtime install). It is a **list of strings** so that a capability
-composed of several ordered steps (e.g. `check-components` runs roughly two
-dozen `bash scripts/*.sh` invocations) stays **one** capability with an ordered
-command list, never split into several — preserving the *Granularity — one
-capability is exactly one job* rule above. A derivation maps the list
-one-to-one onto the engine's step sequence (GitLab `script:`, a GHA job's
-`run:` steps).
+composed of several ordered steps (e.g. the former `check-components` ran
+roughly two dozen `bash scripts/*.sh` invocations) stays **one** capability
+with an ordered command list, never split into several — preserving the
+*Granularity — one capability is exactly one job* rule above. A derivation maps
+the list one-to-one onto the engine's step sequence (GitLab `script:`, a GHA
+job's `run:` steps). Spec 0147 splits that one capability into focused
+capabilities, each with a smaller `command:` list and a `paths:` filter.
 
 - A `portable` capability **SHALL** declare `command` (delta-01 R10). A
   `portable` capability with no `command` makes the reference **invalid** (see
@@ -185,6 +191,27 @@ job's `variables:` section in `.gitlab-ci.yml`, and `scripts/check-ci-parity.sh`
 verifies that the environment variables are exhibited by the attributed GitHub Actions
 job and matched on GitLab.
 
+### `cache` — the cache key-derivation need (spec 0147 R6/R7)
+
+`cache` declares **the need, not the mechanism**: which files and which
+environment variables the job's cache key is derived from. It is a mapping with
+two keys:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `files` | list of strings | The file paths/globs whose contents the cache key is derived from. A change to any of them invalidates the cache. |
+| `env` | list of strings | The environment variable names whose values the cache key is derived from. May be empty (`[]`) when no env var feeds the key. |
+
+The engine-specific cache syntax that *satisfies* the need — GHA
+`hashFiles(...)` in an `actions/cache` key, GitLab `cache:key:files` — is the
+**mechanism** and is **never written into the reference** (the R12
+need-vs-mechanism boundary). The portable `scripts/ci-cache-guard.sh` is the
+real correctness gate: it recomputes a content-addressed key from the declared
+`files` + `env` and re-executes on a miss even if the engine cache restores a
+stale directory. `scripts/check-ci-parity.sh` asserts the engines' cache key
+inputs agree **semantically** with the reference's `cache.files` (same declared
+inputs, not string equality).
+
 ### GitLab generation
 
 The GitLab pipeline generator `scripts/build-ci.sh` (spec 0048) is the
@@ -228,7 +255,23 @@ shown with a passing sample.
 ```console
 $ yq '.jobs | keys' .github/workflows/build.yml
 - build
-- check-components
+- component-drift
+- extension-pivot
+- extension-provenance
+- extension-manifest
+- extension-install
+- core-paths
+- ci-parity
+- docs-index
+- mempalace
+- test-wiring
+- chroma-mcp
+- e2e
+- setup
+- misc
+- frontmatter
+- markdown-links
+- changeset-coverage
 - lint-markdown
 - lint-specs
 - test-harness-curate

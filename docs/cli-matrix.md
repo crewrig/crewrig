@@ -108,6 +108,24 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > spec-0049 harness (`check-ci-parity.sh`); it introduces no CLI-specific
 > integration point. This paragraph discharges the `artifacts/**`
 > CLI-matrix-update obligation for spec 0050.
+>
+> **CI execution speed (spec 0147).** The former monolithic `check-components`
+> capability (one job, ~85 sequential steps) is decomposed into focused,
+> parallel, changeset-gated capabilities in `ci/ci-capabilities.yml`, each with
+> its own `paths:` trigger filter and a `changeset-gated: true` marker. On both
+> engines a job runs only when a changed file matches its `paths:` set (GitLab
+> `changes:`; GitHub Actions `dorny/paths-filter` at the job level). Heavy
+> groups (e.g. `e2e`) declare a `manual` trigger so they are `when: manual` /
+> `workflow_dispatch` on non-`main` runs while staying enforced on push to
+> `main`. Cached groups declare a `cache:` block (the key-derivation *need*:
+> which files + env vars feed the key); `scripts/build-ci.sh` derives the GitLab
+> `cache:key:files` mechanism and `scripts/check-ci-parity.sh` asserts semantic
+> key agreement with the GitHub Actions `hashFiles(...)` inputs. A portable
+> `changeset-coverage` capability with no `paths:` filter runs
+> `scripts/ci-changeset-coverage.sh` on every change as the fail-safe (spec 0147
+> R5): when a changed file is not covered by the union of the focused `paths:`
+> sets it executes the full check suite; otherwise it is a fast no-op. This
+> paragraph discharges the `ci/` CLI-matrix-update obligation for spec 0147.
 
 ## Parity gaps
 
