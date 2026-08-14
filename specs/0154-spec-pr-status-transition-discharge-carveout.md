@@ -1,7 +1,7 @@
 ---
 id: "0154"
 slug: spec-pr-status-transition-discharge-carveout
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 849
