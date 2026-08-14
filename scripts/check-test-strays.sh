@@ -112,7 +112,7 @@ fi
 # --- Determine the execution set (all cache-miss suites) ---------------------
 
 to_run=()
-for suite in "${suites[@]}"; do
+for suite in ${suites[@]+"${suites[@]}"}; do
   suite_hash="$(sha256 "$suite" | awk '{print $1}')"
   key="$(printf '%s%s' "$suite_hash" "$lib_hash" | sha256 | awk '{print $1}')"
   marker="$CACHE_DIR/$key/$(basename "$suite").marker"
@@ -152,7 +152,7 @@ export -f run_one
 export CACHE_DIR
 
 failed=0
-if ! printf '%s\n' "${to_run[@]}" | xargs -P "$JOBS" -I{} bash -c 'run_one "$@"' _ {}; then
+if ! printf '%s\n' ${to_run[@]+"${to_run[@]}"} | xargs -P "$JOBS" -I{} bash -c 'run_one "$@"' _ {}; then
   failed=1
 fi
 
