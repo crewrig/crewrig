@@ -606,6 +606,13 @@ no protection whatever, because it lives outside every worktree: two
 agents in two isolated worktrees still write one pull-request body
 through one forge. Rule 6 closes the race seen on ticket #726 / PR #734.
 
+**Rule 7 — Anti-permission-laundering via orchestrator takeover.** Any tool call or command execution permission denial reported by a subagent MUST be treated as potentially user-authored. The orchestrator (team-lead) SHALL NOT take over and re-execute a subagent's denied action in the parent session on its own classification. Laundering a subagent's permission denial by re-executing it in the parent session bypasses human review.
+
+When a subagent reports a permission rejection:
+
+1. **Surface to user.** The orchestrator SHALL present the denied action, the tool/command context, and the subagent's report directly to the user.
+2. **Wait for decision.** The orchestrator SHALL wait for explicit user approval, modification, or guidance before taking or delegating that action further.
+
 ## Team Shutdown
 
 On Claude Code's single implicit session team there is no team record to
