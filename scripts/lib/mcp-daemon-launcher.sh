@@ -59,15 +59,13 @@ die() { printf '%s ERROR: %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" >&2; exit 
 TOKEN_FILE="${MEMPALACE_MCP_TOKEN_FILE:-}"
 if [ -z "${TOKEN_FILE}" ]; then
   palace="${MEMPALACE_PALACE_PATH:-${HOME}/.mempalace/palace}"
-  # Derive the key exactly as mcp_token_path does (spec 0113 R8, spec 0133 R9).
-  # The parent must exist before resolving, or `cd` fails on a missing parent,
-  # the path falls back to its unresolved form, and a later call — after some
-  # other step created the directory — resolves differently and computes a
-  # DIFFERENT key. Two token files for one palace reads as "the token keeps
-  # changing". Creating the parent first makes the key a function of the path
-  # alone, and removes the dead `|| resolved=` fallback that masked the bug.
-  mkdir -p "$(dirname "${palace}")" 2>/dev/null || true
-  resolved="$(cd "$(dirname "${palace}")" 2>/dev/null && pwd)/$(basename "${palace}")"
+  # Derive the key exactly as mcp_token_path does (spec 0113 R8, spec 0133 R9, spec 0159).
+  if [ -d "${palace}" ]; then
+    resolved="$(cd -P "${palace}" 2>/dev/null && pwd -P)"
+  else
+    mkdir -p "$(dirname "${palace}")" 2>/dev/null || true
+    resolved="$(cd -P "$(dirname "${palace}")" 2>/dev/null && pwd -P)/$(basename "${palace}")"
+  fi
   if command -v shasum >/dev/null 2>&1; then
     key="$(printf '%s' "${resolved}" | shasum -a 256 | cut -c1-24)"
   else
