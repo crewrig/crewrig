@@ -852,11 +852,24 @@ _mcp_daemon_probe_accepts() {
   # fallback double-writes on that exact path (verified: a refused
   # connection captures "000000", not "000") without ever being needed for
   # a genuinely absent code.
-  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
-    -X POST "http://${host}:${port}/mcp" \
-    -H 'Content-Type: application/json' \
-    -H "Authorization: Bearer ${token}" \
-    -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' 2>/dev/null)"
+  #
+  # The bearer reaches curl through a config read from stdin (`-K -`), never
+  # through an `-H` argv flag — the same reasoning `register_mempalace_mcp`
+  # records for the Claude registration path below: on Linux
+  # /proc/<pid>/cmdline is world-readable, so any local uid sampling the
+  # process table while this probe polls harvests the credential. Only the
+  # credential leaves argv; `Content-Type` is not a secret and stays there.
+  # `-w '%{http_code}'` is unaffected — it still writes a single literal "000"
+  # on a dead connection, so the no-fallback reasoning above survives this
+  # change. The token is 48 characters of [A-Za-z0-9] (see
+  # `mcp_token_read_or_create`), so the config's double-quoted value needs no
+  # escaping — widening that charset is what would break this line.
+  # (spec 0139 delta-01 rationale; spec 0113 R8)
+  code="$(printf 'header = "Authorization: Bearer %s"\n' "$token" \
+    | curl -K - -s -o /dev/null -w '%{http_code}' --max-time 3 \
+      -X POST "http://${host}:${port}/mcp" \
+      -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' 2>/dev/null)"
   case "$code" in
     2??) return 0 ;;
     *) return 1 ;;
@@ -895,6 +908,29 @@ mcp_daemon_replace_process() {
   if _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
     return 0
   fi
+
+  # Disclose the replacement window before opening it (spec 0139 R5,
+  # delta-01). Placed in straight-line code between the accept-immediately
+  # early return above and the `case` below, so it prints on EVERY path that
+  # proceeds past that return — including the three that print it and then
+  # issue no stop at all (Darwin with no launchd unit listed, Linux with no
+  # active unit, and the unsupported-OS branch), where the port is never
+  # released and no window ever opens. That over-disclosure is deliberate and
+  # accepted: R5 is a floor on silence, not a ceiling, and this is the only
+  # placement the hermetic suite can witness — it loads no supervisor unit, so
+  # the two stop branches are unreachable there. What the placement guarantees
+  # is therefore: the disclosure precedes every replacement ATTEMPT, including
+  # the ones that find nothing to replace, and is silent only on the
+  # accept-immediately path R5 explicitly exempts (the window is never opened).
+  # Stdout, in the post-uninstall WARNING's voice; the helper's stderr lane
+  # stays reserved for error diagnostics.
+  echo ""
+  echo "  WARNING: replacing the daemon frees ${host}:${port} between the stop and"
+  echo "           the relaunch. Any local process that binds it in that window"
+  echo "           receives the newly minted token in the very next probe — this"
+  echo "           one — and can then answer your agents with fabricated memory."
+  echo "           Nothing below can tell that process from the real daemon."
+  echo ""
 
   case "$(uname -s)" in
     Darwin)

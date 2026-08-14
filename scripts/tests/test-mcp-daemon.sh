@@ -243,6 +243,29 @@ grep -q "${tok}" "${launcher}" 2>/dev/null \
   && nope "the token VALUE was substituted into the launcher" \
   || ok "no token value is baked into the launcher"
 
+# Reintroduction guard: no bearer may travel through an `-H`/`--header` argv
+# flag either. /proc/<pid>/cmdline is world-readable on Linux, so a local uid
+# sampling the process table while a probe runs harvests the credential — the
+# reason both probes feed the header through a stdin curl config instead
+# (scripts/lib/common.sh `_mcp_daemon_probe_accepts`, and `_probe_code` in
+# section 16 below). The pattern's last syllable is concatenated at runtime so
+# THIS assertion cannot satisfy the search it performs. Comments are stripped
+# by matching grep -n's own `<line>:` prefix, NOT by leading whitespace —
+# the trap section 4 below documents; the filter is load-bearing here, since
+# common.sh's `register_mempalace_mcp` explains the hazard in prose that
+# quotes the very flag being banned. Scoped to the two files this spec
+# governs: scripts/tests/test-setup-org-mcp.sh asserts the org-MCP `--header`
+# argv shape on purpose, and sweeping that call site is the follow-up
+# specs/0139-token-rotation-revocation.delta-01.md defers.
+argv_bearer="Bea""rer"
+argv_bearer_hits="$(grep -nE -- "-(H|-header) .*Authorization: ${argv_bearer}" \
+  "${REPO_DIR}/scripts/lib/common.sh" \
+  "${REPO_DIR}/scripts/tests/test-mcp-daemon.sh" 2>/dev/null \
+  | grep -v ':[[:space:]]*#' || true)"
+[ -z "${argv_bearer_hits}" ] \
+  && ok "no bearer token is passed through an -H argv flag (R8)" \
+  || nope "a bearer token reached argv via -H: ${argv_bearer_hits}"
+
 # --- 4. Unit files never carry the token -------------------------------------
 echo ""
 echo "Unit files carry no credential (R8):"
@@ -710,6 +733,19 @@ case "${out}" in
   *"did not accept the current token"*) ok "the deadline failure names the daemon and points at the log" ;;
   *) nope "no deadline-expiry diagnostic: ${out}" ;;
 esac
+# R5 (delta-01) is normative and this string is its only executable witness.
+# A substring, not the paragraph, so a copy edit does not break the suite.
+# The pair reads as one contract with the `[ -z "${out}" ]` assertion above,
+# which is its negative control: silence when the current token is already
+# accepted (no window opens — R5's carve-out), the disclosure whenever a
+# replacement is attempted. Note this fixture runs under the randomised label
+# com.mempalace.mcp-server-test-$$ with no unit loaded, so it takes the Darwin
+# `else` branch and no process is in fact replaced — the disclosure covers
+# that path too, by design (see the helper's comment).
+case "${out}" in
+  *"receives the newly minted token"*) ok "the replacement window is disclosed before the stop is issued (R5)" ;;
+  *) nope "no replacement-window disclosure: ${out}" ;;
+esac
 
 # Behavioural half: probed skip on `import mempalace`, mirroring section 10 —
 # CI has no mempalace venv, so quote the reason rather than silently passing.
@@ -736,12 +772,19 @@ if "${MEMPALACE_PYTHON}" -c 'import mempalace' >/dev/null 2>&1; then
   # literal "000" whenever no HTTP response code was received, regardless of
   # curl's exit status — a fallback double-writes on that exact path
   # (verified: a refused connection captures "000000", not "000").
+  #
+  # The bearer travels in a curl config read from stdin rather than an `-H`
+  # argv flag, matching the helper's probe — but deliberately as a SECOND
+  # implementation of that shape, not a call into it: this probe must reach
+  # the wire without going through the code it is used to judge, or a bug in
+  # the lib's curl shape would hide itself behind the assertions meant to
+  # catch it.
   _probe_code() {
-    curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
-      -X POST "http://127.0.0.1:${MEMPALACE_MCP_PORT}/mcp" \
-      -H 'Content-Type: application/json' \
-      -H "Authorization: Bearer $1" \
-      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' 2>/dev/null
+    printf 'header = "Authorization: Bearer %s"\n' "$1" \
+      | curl -K - -s -o /dev/null -w '%{http_code}' --max-time 3 \
+        -X POST "http://127.0.0.1:${MEMPALACE_MCP_PORT}/mcp" \
+        -H 'Content-Type: application/json' \
+        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' 2>/dev/null
   }
 
   # _wait_bindable — block until MEMPALACE_MCP_PORT is actually bindable, or
