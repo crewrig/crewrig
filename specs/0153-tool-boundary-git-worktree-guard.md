@@ -1,7 +1,7 @@
 ---
 id: "0153"
 slug: tool-boundary-git-worktree-guard
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 771
