@@ -211,9 +211,18 @@ fi
 
 # Agent response / stop (Claude Code: Stop)
 STOP_REASON=$(echo "$INPUT" | jq -r '.stop_hook_active // empty' 2>/dev/null)
+TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // .transcriptPath // empty' 2>/dev/null)
 if [ "$HOOK_EVENT" = "Stop" ] && [ -z "$CONTENT" ]; then
   ENTRY_TYPE="agent-response"
-  CONTENT="[AGENT] Session turn completed"
+  SUMMARY=""
+  if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+    SUMMARY=$(tail -n 20 "$TRANSCRIPT_PATH" 2>/dev/null | jq -r 'select(.type=="PLANNER_RESPONSE" or .type=="ASSISTANT_RESPONSE" or .type=="RESPONSE") | .content // (.tool_calls[].name // empty)' 2>/dev/null | tail -n 5 | tr '\n' ' ' | head -c 500)
+  fi
+  if [ -n "$SUMMARY" ]; then
+    CONTENT="[AGENT] $SUMMARY"
+  else
+    CONTENT="[AGENT] Session turn completed"
+  fi
 fi
 
 # Session lifecycle (SessionStart / SessionEnd)
