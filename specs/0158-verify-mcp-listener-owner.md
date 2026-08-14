@@ -1,7 +1,7 @@
 ---
 id: "0158"
 slug: verify-mcp-listener-owner
-status: approved
+status: implemented
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 745
