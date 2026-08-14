@@ -51,13 +51,13 @@ jobs:
         if: steps.filter.outputs.component-drift == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/lib/common.sh', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt') }}
+          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt') }}
       - name: Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/common.sh,artifacts/**,extensions/**,.crewrig/core-paths.txt" --key-env "" -- bash scripts/build-components.sh --target all --check
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt" --key-env "" -- bash scripts/build-components.sh --target all --check
       - name: Test Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/common.sh,artifacts/**,extensions/**,.crewrig/core-paths.txt" --key-env "" -- bash scripts/test-build-components.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt" --key-env "" -- bash scripts/test-build-components.sh
   extension-pivot:
     runs-on: ubuntu-latest
     steps:
@@ -335,6 +335,7 @@ jobs:
               - 'scripts/check-test-strays.sh'
               - 'scripts/tests/test-check-test-strays.sh'
               - 'scripts/tests/**'
+              - 'hooks/worktree-git-guard.sh'
       - name: Check Test Wiring
         if: steps.filter.outputs.test-wiring == 'true'
         run: bash scripts/check-test-wiring.sh
@@ -347,6 +348,9 @@ jobs:
       - name: Test Check Test Strays
         if: steps.filter.outputs.test-wiring == 'true'
         run: bash scripts/tests/test-check-test-strays.sh
+      - name: Test Worktree Git Guard
+        if: steps.filter.outputs.test-wiring == 'true'
+        run: bash scripts/tests/test-worktree-git-guard.sh
   chroma-mcp:
     runs-on: ubuntu-latest
     steps:

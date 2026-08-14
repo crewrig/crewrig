@@ -67,7 +67,7 @@ if [ -n "$KEY_FILES" ]; then
   # pattern matching nothing contributes nothing rather than the literal text.
   shopt -s globstar nullglob
   IFS=',' read -r -a files <<< "$KEY_FILES"
-  for f in "${files[@]}"; do
+  for f in ${files[@]+"${files[@]}"}; do
     [ -z "$f" ] && continue
     for expanded in $f; do
       [ -f "$expanded" ] || continue
@@ -77,7 +77,7 @@ if [ -n "$KEY_FILES" ]; then
 fi
 if [ -n "$KEY_ENV" ]; then
   IFS=',' read -r -a envs <<< "$KEY_ENV"
-  for e in "${envs[@]}"; do
+  for e in ${envs[@]+"${envs[@]}"}; do
     [ -z "$e" ] && continue
     key_input="${key_input}${e}=${!e:-}"
   done

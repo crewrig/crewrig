@@ -79,7 +79,7 @@ capabilities:
       files:
         - "scripts/build-components.sh"
         - "scripts/test-build-components.sh"
-        - "scripts/lib/common.sh"
+        - "scripts/lib/**"
         - "artifacts/**"
         - "extensions/**"
         - ".crewrig/core-paths.txt"
@@ -379,6 +379,7 @@ capabilities:
           - "scripts/check-test-strays.sh"
           - "scripts/tests/test-check-test-strays.sh"
           - "scripts/tests/**"
+          - "hooks/worktree-git-guard.sh"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -387,6 +388,7 @@ capabilities:
           - "scripts/check-test-strays.sh"
           - "scripts/tests/test-check-test-strays.sh"
           - "scripts/tests/**"
+          - "hooks/worktree-git-guard.sh"
     portability: portable
     changeset-gated: true
     command:
@@ -394,6 +396,7 @@ capabilities:
       - bash scripts/tests/test-check-test-wiring.sh
       - bash scripts/check-test-strays.sh
       - bash scripts/tests/test-check-test-strays.sh
+      - bash scripts/tests/test-worktree-git-guard.sh
 
   - id: chroma-mcp
     name: "Test chroma server, MCP daemon, and worktree claim"
