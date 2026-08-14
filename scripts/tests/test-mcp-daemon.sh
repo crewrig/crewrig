@@ -37,12 +37,36 @@ nope() { FAIL=$((FAIL + 1)); printf '  FAIL %s\n' "$1"; }
 PROD_LABEL="com.mempalace.mcp-server"
 PROD_UNIT="mempalace-mcp-server"
 PROD_PORT="8021"
+# 41893 is the CURRENT default (common.sh:~720, since #748); 8021 predates
+# that move and a machine provisioned before it still binds the old value.
+#
+# Be precise about what these two constants do, because the guard below reads
+# as though they protect the operator and they do not: the port override is
+# unconditional, so the effective port is always drawn from 18000-18899 and
+# can never equal either constant. Both clauses are therefore UNREACHABLE as
+# the file stands. They are kept as a tripwire on the override itself — weaken
+# it to `${VAR:-default}` or drop it, and an operator who exports a production
+# port reaches the tests with the guard already in place to catch them. What
+# protects a pre-#748 machine today is the override, not this comparison.
+PROD_PORT_CURRENT="41893"
 
 # Capture the real HOME BEFORE overriding it. Comparing $HOME to `cd ~` after
 # the override compares the override to itself and is always equal — a guard
 # that would refuse every run, i.e. protect by permanently skipping the tests
 # it exists to protect.
 REAL_HOME="${HOME}"
+# Same capture, and this one guards a hazard that IS live. The port drawn
+# below is random, so it can land on whatever port the operator configured for
+# their OWN daemon — binding that is precisely the axis-2 hazard above, and no
+# comparison against the two production constants sees it, since the operator
+# may serve on any port at all. Refuse rather than re-roll, per this file's
+# contract. No emptiness test is needed beside it: unset leaves this empty and
+# the override is always non-empty, so the comparison is simply false. And do
+# NOT extend this to refuse merely because the captured value is a production
+# port — exporting 8021 is how a pre-#748 machine is configured, the override
+# already makes such a machine safe, and refusing there would skip the tests
+# on exactly the population axis 2 exists to protect.
+REAL_MCP_PORT="${MEMPALACE_MCP_PORT:-}"
 TEST_HOME="$(mktemp -d)"
 export HOME="${TEST_HOME}"
 export MEMPALACE_MCP_LABEL="com.mempalace.mcp-server-test-$$"
@@ -81,9 +105,15 @@ trap cleanup EXIT
 if [ "${MEMPALACE_MCP_LABEL}" = "${PROD_LABEL}" ] \
   || [ "${MEMPALACE_MCP_UNIT}" = "${PROD_UNIT}" ] \
   || [ "${MEMPALACE_MCP_PORT}" = "${PROD_PORT}" ] \
+  || [ "${MEMPALACE_MCP_PORT}" = "${PROD_PORT_CURRENT}" ] \
+  || [ "${MEMPALACE_MCP_PORT}" = "${REAL_MCP_PORT}" ] \
   || [ "${HOME}" = "${REAL_HOME}" ]; then
   echo "REFUSING TO RUN: an isolation axis resolved to its production value." >&2
   echo "  label=${MEMPALACE_MCP_LABEL} unit=${MEMPALACE_MCP_UNIT} port=${MEMPALACE_MCP_PORT}" >&2
+  if [ "${MEMPALACE_MCP_PORT}" = "${REAL_MCP_PORT}" ]; then
+    echo "  the randomly chosen test port collides with MEMPALACE_MCP_PORT=${REAL_MCP_PORT}" >&2
+    echo "  from your environment — re-run to draw a different one." >&2
+  fi
   exit 2
 fi
 
@@ -234,6 +264,36 @@ esac
 grep -q "${tok}" "${launcher}" 2>/dev/null \
   && nope "the token VALUE was substituted into the launcher" \
   || ok "no token value is baked into the launcher"
+
+# Reintroduction guard: no bearer may travel through an `-H`/`--header` argv
+# flag either. /proc/<pid>/cmdline is world-readable on Linux, so a local uid
+# sampling the process table while a probe runs harvests the credential — the
+# reason both probes feed the header through a stdin curl config instead
+# (scripts/lib/common.sh `_mcp_daemon_probe_accepts`, and `_probe_code` in
+# section 16 below). The pattern's last syllable is concatenated at runtime so
+# THIS assertion cannot satisfy the search it performs. It deliberately admits
+# every spelling of the flag rather than the canonical one only: `--header` as
+# well as `-H`, `=` or nothing in place of the space (`--header=`, `-H'…'`,
+# `-HAuthorization:…`), an optional opening quote, and anything at all between
+# the colon and the scheme name — a cold review put all four variants past the
+# earlier `-(H|-header) ` form untouched. Over-matching is the right failure
+# direction here: a false positive costs a reader one glance, a false negative
+# ships the credential back into the process table. Comments are stripped
+# by matching grep -n's own `<line>:` prefix, NOT by leading whitespace —
+# the trap section 4 below documents; the filter is load-bearing here, since
+# common.sh's `register_mempalace_mcp` explains the hazard in prose that
+# quotes the very flag being banned. Scoped to the two files this spec
+# governs: scripts/tests/test-setup-org-mcp.sh asserts the org-MCP `--header`
+# argv shape on purpose, and sweeping that call site is the follow-up
+# specs/0139-token-rotation-revocation.delta-01.md defers.
+argv_bearer="Bea""rer"
+argv_bearer_hits="$(grep -nE -- "-(H|-header)[[:space:]=]*[\"']?Authorization:.*${argv_bearer}" \
+  "${REPO_DIR}/scripts/lib/common.sh" \
+  "${REPO_DIR}/scripts/tests/test-mcp-daemon.sh" 2>/dev/null \
+  | grep -v ':[[:space:]]*#' || true)"
+[ -z "${argv_bearer_hits}" ] \
+  && ok "no bearer token is passed through an -H argv flag (R8)" \
+  || nope "a bearer token reached argv via -H: ${argv_bearer_hits}"
 
 # --- 4. Unit files never carry the token -------------------------------------
 echo ""
@@ -645,6 +705,246 @@ unset MEMPALACE_PALACE_PATH
 [ "${launcher_tok}" = "${tok_path}" ] \
   && ok "launcher token path == mcp_token_path when the palace parent is missing" \
   || nope "launcher '${launcher_tok}' != mcp_token_path '${tok_path}' — derivations diverged"
+
+# --- 16. mcp_daemon_replace_process actually revokes the old token (spec 0139) ---
+echo ""
+echo "mcp_daemon_replace_process — token rotation revokes the old one (R1, R2):"
+
+# Hermetic half, always runs: drive the helper against fake-mcp.py so its
+# decision logic and its fail-visibly path are pinned in CI, which has no
+# mempalace venv to exercise a real daemon.
+#
+# The accept predicate mcp_daemon_replace_process uses is POSITIVE — a 2xx on
+# POST /mcp — not "neither 401 nor 000". Verified against the real mempalace
+# handler while writing this section (mempalace/mcp_server.py
+# `_request_rejected` / `do_POST`): a missing OR incorrect bearer both send
+# exactly 401 (there is no reachable 403 branch from a loopback probe with no
+# Origin header), and an authenticated non-notification method is answered
+# `_send_json(200, response)`. The 401-vs-403 residual the PLAN flagged as an
+# assumption to confirm does not exist on this codepath, so the helper
+# accepts only a 2xx rather than widening the refusal set to guess at it
+# (cold PLAN review on #880, non-blocking note #2).
+#
+# Runs against its OWN port, one above MEMPALACE_MCP_PORT, rather than the
+# suite's main one: several curl POSTs against fake-mcp.py leave TIME_WAIT
+# sockets behind on whatever port they hit (observed to linger ~20s on this
+# box), and the behavioural half below binds MEMPALACE_MCP_PORT for a REAL
+# daemon moments later. mcp-daemon-launcher.sh's own port preflight
+# (":118-143") does not set SO_REUSEADDR, so it would see that residue as
+# "already in use" and die — the daemon would then never become healthy for
+# a reason that has nothing to do with what this section tests. Keeping the
+# two halves on disjoint ports avoids the collision outright instead of
+# sleeping it out.
+HERMETIC_PORT=$((MEMPALACE_MCP_PORT + 1))
+printf '%s\n' "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" > "${tok_file}"
+
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 200 &
+fake_pid=$!
+sleep 1
+out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" mcp_daemon_replace_process 2>&1)"; rc=$?
+kill "${fake_pid}" 2>/dev/null
+[ "${rc}" -eq 0 ] \
+  && ok "a process already accepting the current token returns 0" \
+  || nope "an already-accepting process was not recognised: ${out}"
+[ -z "${out}" ] \
+  && ok "no restart is requested when the current token is already accepted" \
+  || nope "unexpected output on the accept-immediately path: ${out}"
+
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 401 &
+fake_pid=$!
+sleep 1
+out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" mcp_daemon_replace_process 2>&1)"; rc=$?
+kill "${fake_pid}" 2>/dev/null
+[ "${rc}" -ne 0 ] \
+  && ok "a process that never accepts the current token returns non-zero" \
+  || nope "a permanently-401 process was reported as replaced"
+case "${out}" in
+  *"did not accept the current token"*) ok "the deadline failure names the daemon and points at the log" ;;
+  *) nope "no deadline-expiry diagnostic: ${out}" ;;
+esac
+# R5 (delta-01) is normative and this string is its only executable witness.
+# A substring, not the paragraph, so a copy edit does not break the suite.
+# The pair reads as one contract with the `[ -z "${out}" ]` assertion above,
+# which is its negative control: silence when the current token is already
+# accepted (no window opens — R5's carve-out), the disclosure whenever a
+# replacement is attempted. Note this fixture runs under the randomised label
+# com.mempalace.mcp-server-test-$$ with no unit loaded, so it takes the Darwin
+# `else` branch and no process is in fact replaced — the disclosure covers
+# that path too, by design (see the helper's comment).
+case "${out}" in
+  *"receives the newly minted token"*) ok "the replacement window is disclosed before the stop is issued (R5)" ;;
+  *) nope "no replacement-window disclosure: ${out}" ;;
+esac
+
+# Behavioural half: probed skip on the prerequisites the launcher actually
+# needs, mirroring section 10 — CI has no mempalace venv, so quote the reason
+# rather than silently passing.
+#
+# BOTH prerequisites, not just the import. mcp-daemon-launcher.sh's
+# CHROMA_WAIT_SECONDS loop waits on ChromaDB and `die`s when it stays
+# unreachable for MEMPALACE_MCP_CHROMA_WAIT, which this suite pins to 2s
+# above — so a developer with mempalace installed and Chroma stopped used to
+# get "the daemon never became healthy" and a red suite for a missing
+# prerequisite, which is the opposite of the clean skip R4 claims. The probe
+# below is that loop's own, verbatim (same endpoint, same --max-time), so it
+# tests exactly what the launcher is about to test — the same reasoning
+# _wait_bindable records for the port preflight.
+#
+# Scenario 2 (specs/0139) assumes an ALREADY-LOADED supervisor unit; that
+# precondition is structurally untestable here — install_daemon_supervisor
+# reads config/launchd/${label}.plist and no plist ships for a randomised
+# test label (com.mempalace.mcp-server-test-$$). This half instead asserts
+# the property scenario 2 demands — the running process gets replaced and the
+# superseded token stops being honoured — without the supervisor precondition:
+# it covers the process-replacement EFFECT, not the launchd-unit STATE. The
+# "replace" step below is therefore kill-and-relaunch, not launchctl/systemctl:
+# with no unit loaded there is no supervisor path to exercise, and naming it
+# here keeps the next reader from looking for a launchctl path that isn't
+# there.
+echo ""
+behav_chroma_host="127.0.0.1"
+behav_chroma_port="8001"
+if "${MEMPALACE_PYTHON}" -c 'import mempalace' >/dev/null 2>&1 \
+   && curl -sf --max-time 2 \
+        "http://${behav_chroma_host}:${behav_chroma_port}/api/v2/heartbeat" \
+        >/dev/null 2>&1; then
+  # The real ones; the launcher waits on them, and install_mcp_launcher below
+  # bakes them into the materialised launcher — so they must be the endpoint
+  # the gate just proved reachable, not a second guess at it.
+  export MEMPALACE_CHROMA_HOST="${behav_chroma_host}"
+  export MEMPALACE_CHROMA_PORT="${behav_chroma_port}"
+
+  # _probe_code <token> — the bare HTTP status from POST /mcp bearing
+  # <token>; same curl shape the helper's own probe uses, kept local to the
+  # test so the exact code (not just accept/reject) can be asserted. No
+  # `|| echo "000"` fallback: curl's own `-w '%{http_code}'` already writes
+  # literal "000" whenever no HTTP response code was received, regardless of
+  # curl's exit status — a fallback double-writes on that exact path
+  # (verified: a refused connection captures "000000", not "000").
+  #
+  # The bearer travels in a curl config read from stdin rather than an `-H`
+  # argv flag, matching the helper's probe — but deliberately as a SECOND
+  # implementation of that shape, not a call into it: this probe must reach
+  # the wire without going through the code it is used to judge, or a bug in
+  # the lib's curl shape would hide itself behind the assertions meant to
+  # catch it.
+  _probe_code() {
+    printf 'header = "Authorization: Bearer %s"\n' "$1" \
+      | curl -K - -s -o /dev/null -w '%{http_code}' --max-time 3 \
+        -X POST "http://127.0.0.1:${MEMPALACE_MCP_PORT}/mcp" \
+        -H 'Content-Type: application/json' \
+        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' 2>/dev/null
+  }
+
+  # _wait_bindable — block until MEMPALACE_MCP_PORT is actually bindable, or
+  # ~40s elapse (the same budget this section's own daemon health-wait already
+  # uses below). Every curl probe against this port — section 13's
+  # status-mcp-server.sh runs against fake-mcp.py, and every probe in this
+  # section's own behavioural half — leaves a TIME_WAIT socket behind
+  # (measured to linger ~20s on macOS loopback for a handful of connections;
+  # a longer preceding run of probes, as happens right before the "replace"
+  # relaunch below, can leave more of them). mcp-daemon-launcher.sh's own port
+  # preflight (:118-143) does not set SO_REUSEADDR, so it sees that residue as
+  # "already in use" and dies before ever binding — the daemon then never
+  # becomes healthy for a reason that has nothing to do with what this
+  # section tests. Same probe shape as that preflight, so it is testing
+  # exactly what the launcher is about to test.
+  _wait_bindable() {
+    local w=0
+    while ! "${MEMPALACE_PYTHON}" - "127.0.0.1" "${MEMPALACE_MCP_PORT}" <<'PROBE' >/dev/null 2>&1
+import socket, sys
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    s.bind((sys.argv[1], int(sys.argv[2])))
+except OSError:
+    sys.exit(1)
+finally:
+    s.close()
+PROBE
+    do
+      w=$((w + 1))
+      [ "${w}" -ge 40 ] && return 1
+      sleep 1
+    done
+    return 0
+  }
+
+  install_mcp_launcher >/dev/null 2>&1
+  rm -f "${tok_file}"
+  A="$(mcp_token_read_or_create)"
+  _wait_bindable || echo "  WARNING: port ${MEMPALACE_MCP_PORT} still not bindable after 40s — starting anyway."
+  ( bash "$(mcp_launcher_installed_path)" >/dev/null 2>&1 & ) &
+  sleep 1
+  waited=0
+  until curl -sf --max-time 2 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1 \
+        || [ "${waited}" -ge 40 ]; do sleep 2; waited=$((waited + 2)); done
+
+  if curl -sf --max-time 2 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1; then
+    code_a="$(_probe_code "${A}")"
+    case "${code_a}" in
+      2??) ok "a fresh daemon accepts the token it started with (baseline, not vacuous)" ;;
+      *) nope "the baseline probe with token A returned ${code_a}, not 2xx" ;;
+    esac
+
+    # The ticket's defect, asserted live rather than traced: rotate the
+    # token file without replacing the process, and the OLD process is still
+    # the one answering — it must refuse the new token.
+    rm -f "${tok_file}"
+    B="$(mcp_token_read_or_create)"
+    code_b_before="$(_probe_code "${B}")"
+    [ "${code_b_before}" = "401" ] \
+      && ok "the new token is refused while the old process still runs (the shipped defect, R1)" \
+      || nope "expected 401 for the new token pre-replace, got ${code_b_before}"
+
+    if MCP_DAEMON_REPLACE_DEADLINE=2 mcp_daemon_replace_process >/dev/null 2>&1; then
+      nope "mcp_daemon_replace_process reported success with no supervisor unit to replace"
+    else
+      ok "mcp_daemon_replace_process fails visibly when it cannot replace the process (R2)"
+    fi
+
+    # No supervisor unit is loaded in this harness (see the comment above), so
+    # there is no launchctl/systemctl path to exercise. Replace the process
+    # the only way available: kill and relaunch it directly.
+    pkill -f "transport http --host 127.0.0.1 --port ${MEMPALACE_MCP_PORT}" 2>/dev/null
+    sleep 1
+    # The probes just above (baseline, defect assertion, the failed replace
+    # attempt's own polling) all connected to this same port and leave fresh
+    # TIME_WAIT residue of their own — wait it out again before rebinding.
+    _wait_bindable || echo "  WARNING: port ${MEMPALACE_MCP_PORT} still not bindable after 40s — starting anyway."
+    ( bash "$(mcp_launcher_installed_path)" >/dev/null 2>&1 & ) &
+    sleep 1
+    waited=0
+    until curl -sf --max-time 2 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1 \
+          || [ "${waited}" -ge 40 ]; do sleep 2; waited=$((waited + 2)); done
+
+    code_b_after="$(_probe_code "${B}")"
+    case "${code_b_after}" in
+      2??) ok "the replaced process accepts the new token" ;;
+      *) nope "the replaced process returned ${code_b_after} for the new token, expected 2xx" ;;
+    esac
+    code_a_after="$(_probe_code "${A}")"
+    [ "${code_a_after}" = "401" ] \
+      && ok "the replaced process refuses the superseded token (R1: rotation revokes it)" \
+      || nope "the replaced process still answers the superseded token: ${code_a_after}"
+  else
+    nope "the daemon never became healthy — cannot exercise the rotation contract"
+  fi
+  pkill -f "transport http --host 127.0.0.1 --port ${MEMPALACE_MCP_PORT}" 2>/dev/null
+  unset -f _probe_code
+  unset -f _wait_bindable
+else
+  # Name WHICH prerequisite is missing: "skipped" without a reason is
+  # indistinguishable from a silent pass, and the two have different fixes.
+  if ! "${MEMPALACE_PYTHON}" -c 'import mempalace' >/dev/null 2>&1; then
+    echo "  skip mempalace is not importable from ${MEMPALACE_PYTHON} — cannot start a"
+    echo "       real daemon, so the behavioural rotation check is skipped."
+  else
+    echo "  skip ChromaDB is unreachable at ${behav_chroma_host}:${behav_chroma_port} — the"
+    echo "       launcher will not start the daemon without it (ADR 0006), so the"
+    echo "       behavioural rotation check is skipped. Run"
+    echo "       scripts/start-chroma-server.sh to exercise this half."
+  fi
+fi
 
 echo ""
 echo "----------------------------------------"

@@ -830,6 +830,149 @@ install_mcp_daemon() {
     "$HOME/.mempalace/mcp-server.log"
 }
 
+# _mcp_daemon_probe_accepts <host> <port> <token> — true when POST /mcp
+# answers a bearer-authenticated, non-notification request (tools/list) with
+# a 2xx status. A POSITIVE accept predicate, not "neither 401 nor 000":
+# accepting on the class of code an authenticated request actually returns
+# retires the 401-vs-403 question outright instead of widening the refusal
+# set to guess at it (cold PLAN review on issue #880, non-blocking note #2).
+# Verified against mempalace's own HTTP handler while writing this function
+# (mempalace/mcp_server.py `_request_rejected` / `do_POST`): a missing OR
+# incorrect bearer both send exactly 401 — there is no reachable 403 branch
+# on a loopback probe with no Origin header — and an authenticated
+# non-notification method is answered `_send_json(200, response)`. `/healthz`
+# cannot serve this check: it is `require_auth=False` and returns 200 in
+# every state (status-mcp-server.sh:15-17), so it is satisfied by a stale
+# process and would be green for exactly the wrong reason.
+_mcp_daemon_probe_accepts() {
+  local host="$1" port="$2" token="$3" code
+  # No `|| echo "000"` fallback: curl's own `-w '%{http_code}'` already
+  # writes literal "000" whenever no HTTP response code was received (dead
+  # connection, timeout) — REGARDLESS of curl's exit status. Appending a
+  # fallback double-writes on that exact path (verified: a refused
+  # connection captures "000000", not "000") without ever being needed for
+  # a genuinely absent code.
+  #
+  # The bearer reaches curl through a config read from stdin (`-K -`), never
+  # through an `-H` argv flag — the same reasoning `register_mempalace_mcp`
+  # records for the Claude registration path below: on Linux
+  # /proc/<pid>/cmdline is world-readable, so any local uid sampling the
+  # process table while this probe polls harvests the credential. Only the
+  # credential leaves argv; `Content-Type` is not a secret and stays there.
+  # `-w '%{http_code}'` is unaffected — it still writes a single literal "000"
+  # on a dead connection, so the no-fallback reasoning above survives this
+  # change. The config's double-quoted value carries no escaping, which is
+  # exact only for tokens `mcp_token_read_or_create` MINTED — those are 48
+  # characters of [A-Za-z0-9] by construction (`tr -dc 'A-Za-z0-9' | head -c
+  # 48`), and widening that charset is what would break this line. On its READ
+  # path that function returns whatever a pre-existing token file holds, minus
+  # whitespace, so an operator-supplied token can carry quotes or backslashes.
+  # That is a malformed-header risk, not an injection one: the same
+  # `tr -d '[:space:]'` strips the newline a second config directive would
+  # need, and a malformed header can only produce a non-2xx — i.e. the
+  # fail-visible path this helper already contracts for, never a silent
+  # accept. (spec 0139 delta-01 rationale; spec 0113 R8)
+  code="$(printf 'header = "Authorization: Bearer %s"\n' "$token" \
+    | curl -K - -s -o /dev/null -w '%{http_code}' --max-time 3 \
+      -X POST "http://${host}:${port}/mcp" \
+      -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' 2>/dev/null)"
+  case "$code" in
+    2??) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# mcp_daemon_replace_process — leave the running MCP daemon process honouring
+# the CURRENT value of the token file, replacing it via the supervisor when it
+# does not already (spec 0139 R1, R2).
+#
+# The fresh-load case (this run's install_daemon_supervisor loaded the unit
+# itself, so the process already started on the new token) returns
+# immediately — the probe above accepts on the first try and no restart is
+# requested. The already-loaded case (install_daemon_supervisor skipped the
+# load because a unit was already running — common.sh:602-608 — so the OLD
+# process is still the one answering) issues the supervisor's restart
+# request: the same launchctl/systemctl primitives stop-mcp-server.sh:24,34
+# document as "a stop IS a restart request" under KeepAlive / Restart=always.
+# Either way the result is re-probed on a deadline; expiry is reported and
+# returned as a failure, never treated as a completed switch over the stale
+# credential (R2).
+#
+# MCP_DAEMON_REPLACE_DEADLINE overrides the poll deadline in seconds (default
+# 15, the same budget install_daemon_supervisor's own health poll uses at
+# common.sh:637). A hermetic test asserting the expiry path would otherwise
+# pay that full deadline on every CI run.
+mcp_daemon_replace_process() {
+  local label unit host port token deadline_s deadline
+  label="${MEMPALACE_MCP_LABEL:-$MCP_DAEMON_LABEL_DEFAULT}"
+  unit="${MEMPALACE_MCP_UNIT:-$MCP_DAEMON_UNIT_DEFAULT}"
+  host="${MEMPALACE_MCP_HOST:-$MCP_DAEMON_HOST_DEFAULT}"
+  port="${MEMPALACE_MCP_PORT:-$MCP_DAEMON_PORT_DEFAULT}"
+  token="$(mcp_token_read_or_create)" || return 1
+  deadline_s="${MCP_DAEMON_REPLACE_DEADLINE:-15}"
+
+  if _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
+    return 0
+  fi
+
+  # Disclose the replacement window before opening it (spec 0139 R5,
+  # delta-01). Placed in straight-line code between the accept-immediately
+  # early return above and the `case` below, so it prints on EVERY path that
+  # proceeds past that return — including the three that print it and then
+  # issue no stop at all (Darwin with no launchd unit listed, Linux with no
+  # active unit, and the unsupported-OS branch), where the port is never
+  # released and no window ever opens. That over-disclosure is deliberate and
+  # accepted: R5 is a floor on silence, not a ceiling, and this is the only
+  # placement the hermetic suite can witness — it loads no supervisor unit, so
+  # the two stop branches are unreachable there. What the placement guarantees
+  # is therefore: the disclosure precedes every replacement ATTEMPT, including
+  # the ones that find nothing to replace, and is silent only on the
+  # accept-immediately path R5 explicitly exempts (the window is never opened).
+  # Stdout, in the post-uninstall WARNING's voice; the helper's stderr lane
+  # stays reserved for error diagnostics.
+  echo ""
+  echo "  WARNING: replacing the daemon frees ${host}:${port} between the stop and"
+  echo "           the relaunch. Any local process that binds it in that window"
+  echo "           receives the newly minted token in the very next probe — this"
+  echo "           one — and can then answer your agents with fabricated memory."
+  echo "           Nothing below can tell that process from the real daemon."
+  echo ""
+
+  case "$(uname -s)" in
+    Darwin)
+      if launchctl list 2>/dev/null | grep -q "$label"; then
+        launchctl stop "$label" 2>/dev/null || true
+      else
+        echo "  WARNING: no launchd unit loaded for '$label' — issuing no restart request." >&2
+      fi
+      ;;
+    Linux)
+      if systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+        systemctl --user restart "$unit" 2>/dev/null || true
+      else
+        echo "  WARNING: no systemd unit active for '$unit' — issuing no restart request." >&2
+      fi
+      ;;
+    *)
+      echo "  ERROR: unsupported OS '$(uname -s)' — replace the daemon process manually." >&2
+      return 1
+      ;;
+  esac
+
+  deadline=$((SECONDS + deadline_s))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
+      return 0
+    fi
+    sleep 0.3
+  done
+  echo "  ERROR: daemon '$label' ('$unit') did not accept the current token within ${deadline_s}s." >&2
+  echo "         It may still be honouring a superseded one. Inspect" >&2
+  echo "         $HOME/.mempalace/mcp-server.log and retry." >&2
+  return 1
+}
+
 # --- Four-CLI registration surface (spec 0113 R3, R11; step 8) ---------------
 # Built here rather than reused from spec 0091: `apply_org_mcp_servers` skips
 # every name in MCP_RESERVED_NAMES by design, and `mempalace` is reserved — the
