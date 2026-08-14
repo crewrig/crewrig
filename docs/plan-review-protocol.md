@@ -19,6 +19,36 @@ identity, the shared-identity workaround from *Standard Team
 Templates → Template 1* applies (post the verdict as a regular
 comment).
 
+**Reviewer-minted identifiers.** Every finding emitted by a PLAN review
+pass SHALL carry a reviewer-minted identifier in the format `v<N>-F<M>`
+(e.g., `v1-F1`, `v1-F2` for pass 1 reviewing plan `v1`; `v2-F1` for pass
+2 reviewing plan `v2`). If a finding is later split by the author or
+reviewer, sub-findings SHALL retain the parent prefix (e.g., `v1-F2a`,
+`v1-F2b`). Reviewer-minted IDs stabilize finding identities across plan
+revisions and prevent renumbering drift.
+
+**Prior-finding traceability audit.** A PLAN review of a revised plan
+(`v<N+1>` for N ≥ 1) SHALL begin with a **Finding Traceability Audit**
+section before listing any new findings. The audit section SHALL
+enumerate every reviewer-minted ID (`v<N>-F<M>`) raised across all prior
+review passes and state its disposition in the revised plan: *addressed*,
+*superseded*, or *withdrawn with reason*. Any unaddressed prior finding
+SHALL cause the review pass to return a `### Verdict: REQUEST CHANGES`.
+
+**Countable invariant.** Reviewers and third parties MAY verify that all
+raised review findings are claimed in a revised plan's traceability
+table by asserting that the row count of addressed reviewer-minted IDs
+matches the total findings raised across prior review comments:
+
+```sh
+# Count findings raised across prior review comments
+for id in <review-comment-ids>; do
+  gh api repos/crewrig/crewrig/issues/comments/$id --jq .body | grep -c '^\*\*Finding '
+done
+# Count rows in the plan comment's traceability table
+grep -c '^| v[0-9]* | [0-9]' <plan-comment>
+```
+
 **Finding class taxonomy.** Every plan-review finding SHALL carry
 exactly one `class:` field whose value drives the loop target:
 
