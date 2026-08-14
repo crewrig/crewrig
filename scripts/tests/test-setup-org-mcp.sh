@@ -196,6 +196,15 @@ while IFS= read -r line || [ -n "$line" ]; do ARGV_HTTP+=("$line"); done \
 HTTP_STR="${ARGV_HTTP[*]:-}"
 [[ "$HTTP_STR" == *"--transport http"* ]] && ok "http argv: --transport http" || bad "http argv missing --transport http ($HTTP_STR)"
 [[ "$HTTP_STR" == *"atlassian https://mcp.atlassian.example/mcp"* ]] && ok "http argv: <name> <url>" || bad "http argv name/url wrong ($HTTP_STR)"
+# DELIBERATE bearer-in-argv occurrence, and the only one under scripts/ (spec
+# 0149 R4). What follows asserts the SHAPE of the argv the Claude adapter
+# builds from an org declaration — the flag plus the header name it emits —
+# not a live credential: the value comes from the ORG_HTTP fixture at :58,
+# whose token is the literal placeholder `${ATLASSIAN_TOKEN}`. The reader
+# sweeping the repository for this pattern is meant to land here and stop. The
+# credential-bearing surface is elsewhere and guarded elsewhere: the MemPalace
+# daemon probes feed their header through a stdin curl config, enforced by the
+# reintroduction guard in scripts/tests/test-mcp-daemon.sh section 3.
 [[ "$HTTP_STR" == *"--header Authorization: Bearer"* ]] && ok "http argv: --header \"K: V\"" || bad "http argv missing --header ($HTTP_STR)"
 
 # ---------------------------------------------------------------------------
