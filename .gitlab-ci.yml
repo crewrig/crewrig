@@ -214,6 +214,8 @@ ci-parity:
       files:
         - "scripts/check-ci-parity.sh"
         - "scripts/build-ci.sh"
+        - "scripts/ci-cache-guard.sh"
+        - "scripts/ci-changeset-coverage.sh"
         - "scripts/tests/test-check-ci-parity.sh"
         - "scripts/tests/test-build-ci.sh"
         - "ci/ci-capabilities.yml"
@@ -223,13 +225,15 @@ ci-parity:
     paths:
       - .ci-cache/
   script:
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/tests/test-check-ci-parity.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/tests/test-build-ci.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/tests/test-check-ci-parity.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/tests/test-build-ci.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-ci-parity.sh"
         - "scripts/build-ci.sh"
+        - "scripts/ci-cache-guard.sh"
+        - "scripts/ci-changeset-coverage.sh"
         - "scripts/tests/test-check-ci-parity.sh"
         - "scripts/tests/test-build-ci.sh"
         - "ci/ci-capabilities.yml"
@@ -240,6 +244,8 @@ ci-parity:
       changes:
         - "scripts/check-ci-parity.sh"
         - "scripts/build-ci.sh"
+        - "scripts/ci-cache-guard.sh"
+        - "scripts/ci-changeset-coverage.sh"
         - "scripts/tests/test-check-ci-parity.sh"
         - "scripts/tests/test-build-ci.sh"
         - "ci/ci-capabilities.yml"

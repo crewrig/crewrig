@@ -211,6 +211,8 @@ jobs:
             ci-parity:
               - 'scripts/check-ci-parity.sh'
               - 'scripts/build-ci.sh'
+              - 'scripts/ci-cache-guard.sh'
+              - 'scripts/ci-changeset-coverage.sh'
               - 'scripts/tests/test-check-ci-parity.sh'
               - 'scripts/tests/test-build-ci.sh'
               - 'ci/ci-capabilities.yml'
@@ -226,13 +228,13 @@ jobs:
         if: steps.filter.outputs.ci-parity == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/check-ci-parity.sh', 'scripts/build-ci.sh', 'scripts/tests/test-check-ci-parity.sh', 'scripts/tests/test-build-ci.sh', 'ci/ci-capabilities.yml', '.gitlab-ci.yml', '.github/workflows/build.yml', 'docs/ci-reference-format.md') }}
+          key: ${{ hashFiles('scripts/check-ci-parity.sh', 'scripts/build-ci.sh', 'scripts/ci-cache-guard.sh', 'scripts/ci-changeset-coverage.sh', 'scripts/tests/test-check-ci-parity.sh', 'scripts/tests/test-build-ci.sh', 'ci/ci-capabilities.yml', '.gitlab-ci.yml', '.github/workflows/build.yml', 'docs/ci-reference-format.md') }}
       - name: Test Check Ci Parity
         if: steps.filter.outputs.ci-parity == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/tests/test-check-ci-parity.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/tests/test-check-ci-parity.sh
       - name: Test Build Ci
         if: steps.filter.outputs.ci-parity == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/tests/test-build-ci.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/tests/test-build-ci.sh
   docs-index:
     runs-on: ubuntu-latest
     steps:

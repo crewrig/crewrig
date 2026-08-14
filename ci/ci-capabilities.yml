@@ -240,6 +240,8 @@ capabilities:
         paths:
           - "scripts/check-ci-parity.sh"
           - "scripts/build-ci.sh"
+          - "scripts/ci-cache-guard.sh"
+          - "scripts/ci-changeset-coverage.sh"
           - "scripts/tests/test-check-ci-parity.sh"
           - "scripts/tests/test-build-ci.sh"
           - "ci/ci-capabilities.yml"
@@ -251,6 +253,8 @@ capabilities:
         paths:
           - "scripts/check-ci-parity.sh"
           - "scripts/build-ci.sh"
+          - "scripts/ci-cache-guard.sh"
+          - "scripts/ci-changeset-coverage.sh"
           - "scripts/tests/test-check-ci-parity.sh"
           - "scripts/tests/test-build-ci.sh"
           - "ci/ci-capabilities.yml"
@@ -265,6 +269,8 @@ capabilities:
       files:
         - "scripts/check-ci-parity.sh"
         - "scripts/build-ci.sh"
+        - "scripts/ci-cache-guard.sh"
+        - "scripts/ci-changeset-coverage.sh"
         - "scripts/tests/test-check-ci-parity.sh"
         - "scripts/tests/test-build-ci.sh"
         - "ci/ci-capabilities.yml"
