@@ -1,7 +1,7 @@
 ---
 id: "0159"
 slug: symlinked-palace-token-path-canonicalization
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 746
