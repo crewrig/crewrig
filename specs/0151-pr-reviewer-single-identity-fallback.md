@@ -1,7 +1,7 @@
 ---
 id: "0151"
 slug: pr-reviewer-single-identity-fallback
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 692
