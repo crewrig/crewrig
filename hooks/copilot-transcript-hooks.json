@@ -2,6 +2,12 @@
   "version": 1,
   "disableAllHooks": false,
   "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/worktree-git-guard.sh\""
+      }
+    ],
     "sessionStart": [
       {
         "type": "command",
