@@ -1,7 +1,7 @@
 ---
 id: "0156"
 slug: check-figure-labels-ocr
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 881
