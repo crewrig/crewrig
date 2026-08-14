@@ -1,7 +1,7 @@
 ---
 id: "0157"
 slug: test-wiring-optimization
-status: draft
+status: approved
 complexity: standard
 related-issue: 939
 version: 1.0.0
