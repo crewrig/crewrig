@@ -1,7 +1,7 @@
 ---
 id: "0146"
 slug: dropped-plan-review-finding-detection
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 874
