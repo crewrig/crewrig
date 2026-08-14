@@ -1,7 +1,7 @@
 ---
 id: "0141"
 slug: worktree-cwd-reset-guard
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 889
