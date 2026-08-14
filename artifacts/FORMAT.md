@@ -322,7 +322,7 @@ in a *comment*, the frontmatter/`yq`-based `check-feedback-routing.sh` cannot
 see it and permanently skips extension skills — so the presence and R5
 (feedback==canonical) enforcement for extension skills/agents lives **solely**
 in `scripts/check-extension-provenance.sh` (no defense-in-depth overlap with the
-spec-0030 guard). See [`docs/cli-matrix.md`](cli-matrix.md) row 5c.
+spec-0030 guard). See [`docs/cli-matrix.md`](../docs/cli-matrix.md) row 5c.
 
 The `version:` field in `metadata.provenance:` is a literal
 per-component string, not a placeholder. It tracks the component's own

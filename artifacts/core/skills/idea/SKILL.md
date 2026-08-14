@@ -325,7 +325,7 @@ CLI's existing forge tooling (e.g., `gh` for GitHub, `glab` for GitLab).
 ## Finding class taxonomy
 
 When invoked as part of the retroactive review loop (per
-[`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md) → *Routing
+[`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md) → *Routing
 matrix*), this skill participates as follows:
 
 - **As author.** Every IDEA session produces an auditable record of proposals,

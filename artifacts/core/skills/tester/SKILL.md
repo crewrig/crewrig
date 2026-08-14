@@ -152,8 +152,8 @@ to be re-attempted.
 
 When re-spawned as part of a `tech`-class iteration of the
 retroactive review loop (per
-[`specs/0005-retroactive-routing-engine.md`](../../../specs/0005-retroactive-routing-engine.md)
-R4 and [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md)
+[`specs/0005-retroactive-routing-engine.md`](../../../../specs/0005-retroactive-routing-engine.md)
+R4 and [`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md)
 → *Routing matrix*), the skill consumes reviewer findings each
 tagged with a `class:` field. The skill SHALL act on findings whose
 `class:` is `tech` and that touch the test surface, and SHALL

@@ -370,14 +370,26 @@ propagate_skill_resources() {
           DRIFT_FOUND=true
           continue
         fi
-        if ! cmp -s "$src_file" "$target_file"; then
+        local tmp_compare
+        tmp_compare=$(mktemp -t crewrig-res.XXXXXX)
+        if [[ "$src_file" == *.md ]]; then
+          sed 's#\.\./\.\./\.\./\.\./\.\./docs/#../../../../docs/#g; s#\.\./\.\./\.\./\.\./\.\./specs/#../../../../specs/#g' "$src_file" > "$tmp_compare"
+        else
+          cp "$src_file" "$tmp_compare"
+        fi
+        if ! cmp -s "$tmp_compare" "$target_file"; then
           echo "DRIFT: $target_file differs from source"
           DRIFT_FOUND=true
-          continue
         fi
+        rm -f "$tmp_compare"
+        continue
       else
         mkdir -p "$(dirname "$target_file")"
-        cp "$src_file" "$target_file"
+        if [[ "$src_file" == *.md ]]; then
+          sed 's#\.\./\.\./\.\./\.\./\.\./docs/#../../../../docs/#g; s#\.\./\.\./\.\./\.\./\.\./specs/#../../../../specs/#g' "$src_file" > "$target_file"
+        else
+          cp "$src_file" "$target_file"
+        fi
         [ -x "$src_file" ] && chmod +x "$target_file"
         echo "  Generated: $target_file"
       fi
@@ -476,6 +488,11 @@ build_skills() {
 
     echo "Building skill: $name"
 
+    local skill_body="$body"
+    if [ "$tier" = "core" ]; then
+      skill_body=$(printf '%s' "$body" | sed 's#\.\./\.\./\.\./\.\./docs/#../../../docs/#g; s#\.\./\.\./\.\./\.\./specs/#../../../specs/#g')
+    fi
+
     # --- Gemini CLI output ---
     if [ "$TARGET" = "gemini" ] || [ "$TARGET" = "all" ]; then
       local license compatibility
@@ -499,7 +516,7 @@ compatibility: \"$compatibility\""
 $gemini_frontmatter
 ---
 
-$body
+$skill_body
 GEMINI_EOF
       )
       check_or_write "$out_root/.gemini/skills/$name/SKILL.md" "$gemini_content" "$source"
@@ -569,7 +586,7 @@ agent: $agent"
 $claude_frontmatter
 ---
 
-$body
+$skill_body
 CLAUDE_EOF
       )
       check_or_write "$out_root/.claude/skills/$name/SKILL.md" "$claude_content" "$source"
@@ -601,7 +618,7 @@ compatibility: \"$compatibility\""
 $copilot_frontmatter
 ---
 
-$body
+$skill_body
 COPILOT_EOF
       )
       check_or_write "$out_root/.github/skills/$name/SKILL.md" "$copilot_content" "$source"
@@ -634,7 +651,7 @@ compatibility: \"$compatibility\""
 $antigravity_frontmatter
 ---
 
-$body
+$skill_body
 ANTIGRAVITY_EOF
       )
       check_or_write "$out_root/.agents/skills/$name/SKILL.md" "$antigravity_content" "$source"

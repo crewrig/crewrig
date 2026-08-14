@@ -189,12 +189,12 @@ When this skill acts as plan reviewer (per `AGENTS.md` →
 *Plan review protocol* — *Review rule*) or as spec reviewer in the
 SPECS stage, every finding it emits SHALL carry exactly one `class:`
 field whose value is `tech`, `arch`, or `spec` (per
-[`specs/0005-retroactive-routing-engine.md`](../../../specs/0005-retroactive-routing-engine.md)
+[`specs/0005-retroactive-routing-engine.md`](../../../../specs/0005-retroactive-routing-engine.md)
 R2 and `docs/plan-format.md` → *Finding tag schema*). The tag is the
 only signal the routing engine reads to pick the loop target; a
 finding without it is malformed and SHALL be retagged before the
 orchestrator consumes the verdict (see
-[`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md) →
+[`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md) →
 *Class tagging discipline*). Do not default to `tech` when the class
 is ambiguous — escalate upstream per ADR-0010 →
 *Finding classification taxonomy*.

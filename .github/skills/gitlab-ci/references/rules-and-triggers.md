@@ -458,7 +458,7 @@ engine-neutral trigger vocabulary — `push` / `pull-request` / `tag` /
 above (e.g. `pull-request` → `$CI_PIPELINE_SOURCE == "merge_request_event"`,
 `tag` → `$CI_COMMIT_TAG`, a `tag-pattern` filter → a `=~ /pattern/`
 clause). That neutral vocabulary and the mapping contract are defined
-in [`docs/ci-reference-format.md`](../../../../../docs/ci-reference-format.md)
+in [`docs/ci-reference-format.md`](../../../../docs/ci-reference-format.md)
 — do not redefine it here. This reference documents the GitLab target
 syntax the generator emits; the format doc owns the neutral source
 contract.
