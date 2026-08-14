@@ -356,6 +356,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so the base ref resolves (spec 0157)
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -367,6 +369,11 @@ jobs:
               - 'scripts/tests/test-check-test-strays.sh'
               - 'scripts/tests/**'
               - 'hooks/worktree-git-guard.sh'
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.test-wiring == 'true'
+        with:
+          path: .ci-cache
+          key: ${{ hashFiles('scripts/lib/**', 'scripts/check-test-strays.sh') }}
       - name: Check Test Wiring
         if: steps.filter.outputs.test-wiring == 'true'
         run: bash scripts/check-test-wiring.sh

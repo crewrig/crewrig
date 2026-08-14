@@ -288,9 +288,11 @@ emit_job() {
   # correctness gate — it recomputes the content-addressed key from ALL
   # declared files and re-executes on a miss even if the engine cache restores
   # a stale .ci-cache/.
-  local cache_files cache_env
+  local cache_files cache_env cache_guard
   cache_files=$(yq -r ".capabilities[] | select(.id == \"$id\") | .cache.files // [] | .[]" "$REFERENCE")
   cache_env=$(yq -r ".capabilities[] | select(.id == \"$id\") | .cache.env // [] | .[]" "$REFERENCE")
+  cache_guard=$(yq -r '.capabilities[] | select(.id == "'"$id"'") | select(has("cache-guard")) | .cache-guard' "$REFERENCE")
+  [ -z "$cache_guard" ] && cache_guard=true
   if [ -n "$cache_files" ]; then
     echo "  cache:"
     echo "    key:"
@@ -331,7 +333,7 @@ emit_job() {
     else
       # Single-line command. Quote defensively (commands carry globs, quotes).
       local emitted="$cmd"
-      if [ -n "$cache_files" ]; then
+      if [ -n "$cache_files" ] && [ "$cache_guard" != "false" ]; then
         case "$cmd" in
           bash\ scripts/*)
             local files_csv env_csv

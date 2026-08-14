@@ -17,6 +17,9 @@ dist/
 dist-claude-plugin/
 build/
 
+# CI cache directory (persisted by engine cache, never committed)
+.ci-cache/
+
 # Environment
 .env
 .env.local
