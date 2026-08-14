@@ -1,7 +1,7 @@
 ---
 id: "0155"
 slug: stale-branch-up-to-date-merge-precondition
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 934
