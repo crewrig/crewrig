@@ -1,7 +1,7 @@
 ---
 id: "0149"
 slug: daemon-credential-hardening
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 951

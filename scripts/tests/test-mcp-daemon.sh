@@ -965,13 +965,68 @@ case "${out}" in
   *"receives the newly minted token"*) ok "the replacement window is disclosed before the stop is issued (R5)" ;;
   *) nope "no replacement-window disclosure: ${out}" ;;
 esac
-# Second half of the same witness: spec 0149 R3 makes a disclosure that names
-# the risk without naming the recovery non-conformant, so the risk substring
-# above cannot be the only thing asserted. `case` is case-sensitive, so this
-# substring tracks the copy in common.sh verbatim.
+# Second half of the same witness: spec 0149 delta-01 R3 makes a disclosure that names
+# the risk without naming the evict-then-rotate recovery non-conformant, so the risk
+# substring above cannot be the only thing asserted.
 case "${out}" in
-  *"Rotate the token again"*) ok "the disclosure names the recovery, not only the risk (0149 R3)" ;;
-  *) nope "the disclosure names the risk without the recovery action: ${out}" ;;
+  *"Evict any squatter process"*"verify port"*"rotate the token"*) ok "the disclosure names the evict-then-rotate recovery (0149 delta-01 R3)" ;;
+  *) nope "the disclosure names the risk without the evict-then-rotate recovery action: ${out}" ;;
+esac
+
+# Squatter eviction during replacement (spec 0149 delta-01 R6, R7, R8):
+echo ""
+echo "mcp_daemon_replace_process — squatter eviction and port verification (0149 delta-01 R6, R7, R8):"
+
+# Test 1: Squatter answering 200 on the port does NOT trigger accept-immediately early return
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 200 &
+fake_pid=$!
+sleep 1
+out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" \
+  MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=5678 \
+  MEMPALACE_MCP_EVICT_CMD="true" \
+  mcp_daemon_replace_process 2>&1)"; rc=$?
+kill "${fake_pid}" 2>/dev/null
+[ "${rc}" -ne 0 ] \
+  && ok "a squatter on the port is refused early accept-immediately even when answering 200" \
+  || nope "squatter was falsely accepted immediately"
+case "${out}" in
+  *"squatter PID 5678 detected"*|*"failed to evict squatter"*) ok "squatter detection is reported" ;;
+  *) nope "no squatter detection reported: ${out}" ;;
+esac
+
+# Test 2: Successful eviction allows verified daemon to be probed and succeed
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 200 &
+fake_pid=$!
+sleep 1
+evict_flag="${TEST_HOME}/evicted.flag"
+rm -f "${evict_flag}"
+out="$(MCP_DAEMON_REPLACE_DEADLINE=2 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" \
+  MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=5678 \
+  MEMPALACE_MCP_EVICT_CMD="touch '${evict_flag}'; export MEMPALACE_MCP_LISTENER_PID=1234" \
+  mcp_daemon_replace_process 2>&1)"; rc=$?
+kill "${fake_pid}" 2>/dev/null
+[ "${rc}" -eq 0 ] \
+  && ok "evicting the squatter allows the verified daemon to succeed (R6)" \
+  || nope "replacement failed after eviction: ${out}"
+[ -f "${evict_flag}" ] \
+  && ok "eviction command was executed (R6)" \
+  || nope "eviction command was not executed"
+
+# Test 3: Non-evictable squatter fails visibly without transmitting the token (R7)
+"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 200 &
+fake_pid=$!
+sleep 1
+out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" \
+  MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=9999 \
+  MEMPALACE_MCP_EVICT_CMD="true" \
+  mcp_daemon_replace_process 2>&1)"; rc=$?
+kill "${fake_pid}" 2>/dev/null
+[ "${rc}" -ne 0 ] \
+  && ok "failed eviction results in visible failure (R7)" \
+  || nope "failed eviction reported success: ${out}"
+case "${out}" in
+  *"failed to evict squatter"*) ok "failure diagnostic names failed squatter eviction" ;;
+  *) nope "missing eviction failure message: ${out}" ;;
 esac
 
 # Behavioural half: probed skip on the prerequisites the launcher actually

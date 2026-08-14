@@ -978,32 +978,29 @@ mcp_daemon_replace_process() {
   token="$(mcp_token_read_or_create)" || return 1
   deadline_s="${MCP_DAEMON_REPLACE_DEADLINE:-15}"
 
-  if _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
-    return 0
+  local initial_listener initial_expected
+  initial_listener="$(mcp_listener_pid "$port")"
+  initial_expected="$(mcp_supervisor_pid)"
+
+  # Only accept immediately if the listener is NOT a squatter (i.e. if supervisor PID is
+  # known, listener PID must match it). If listener differs from supervisor PID, it is an
+  # impostor claiming the port and must NOT receive early acceptance even if it answers probes.
+  if [ -z "$initial_listener" ] || [ -z "$initial_expected" ] || [ "$initial_listener" = "$initial_expected" ]; then
+    if _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
+      return 0
+    fi
   fi
 
-  # Disclose the replacement window before opening it (spec 0139 R5,
-  # delta-01). Placed in straight-line code between the accept-immediately
-  # early return above and the `case` below, so it prints on EVERY path that
-  # proceeds past that return — including the three that print it and then
-  # issue no stop at all (Darwin with no launchd unit listed, Linux with no
-  # active unit, and the unsupported-OS branch), where the port is never
-  # released and no window ever opens. That over-disclosure is deliberate and
-  # accepted: R5 is a floor on silence, not a ceiling, and this is the only
-  # placement the hermetic suite can witness — it loads no supervisor unit, so
-  # the two stop branches are unreachable there. What the placement guarantees
-  # is therefore: the disclosure precedes every replacement ATTEMPT, including
-  # the ones that find nothing to replace, and is silent only on the
-  # accept-immediately path R5 explicitly exempts (the window is never opened).
-  # Stdout, in the post-uninstall WARNING's voice; the helper's stderr lane
-  # stays reserved for error diagnostics.
+  # Disclose the replacement window and the evict-then-rotate recovery action
+  # before opening the window (spec 0139 R5 delta-01; spec 0149 R3 delta-01).
   echo ""
   echo "  WARNING: replacing the daemon frees ${host}:${port} between the stop and"
   echo "           the relaunch. Any local process that binds it in that window"
   echo "           receives the newly minted token in the very next probe — this"
   echo "           one — and can then answer your agents with fabricated memory."
   echo "           Nothing below can tell that process from the real daemon."
-  echo "           Rotate the token again if the window may have been claimed."
+  echo "           Evict any squatter process on ${host}:${port}, verify port"
+  echo "           release, and only then rotate the token."
   echo ""
 
   case "$(uname -s)" in
@@ -1029,8 +1026,41 @@ mcp_daemon_replace_process() {
 
   deadline=$((SECONDS + deadline_s))
   while [ "$SECONDS" -lt "$deadline" ]; do
-    if _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
-      return 0
+    local cur_listener cur_expected
+    cur_listener="$(mcp_listener_pid "$port")"
+    cur_expected="$(mcp_supervisor_pid)"
+
+    # If an unauthorized squatter process is detected listening on the port:
+    if [ -n "$cur_listener" ] && [ -n "$cur_expected" ] && [ "$cur_listener" != "$cur_expected" ]; then
+      echo "  WARNING: squatter PID ${cur_listener} detected on ${host}:${port} (expected PID ${cur_expected}) — evicting." >&2
+      if [ -n "${MEMPALACE_MCP_EVICT_CMD+x}" ]; then
+        eval "${MEMPALACE_MCP_EVICT_CMD}"
+      else
+        kill -15 "$cur_listener" 2>/dev/null || true
+        sleep 0.2
+        if [ "$(mcp_listener_pid "$port")" = "$cur_listener" ]; then
+          kill -9 "$cur_listener" 2>/dev/null || true
+          sleep 0.2
+        fi
+      fi
+      cur_listener="$(mcp_listener_pid "$port")"
+      if [ -n "$cur_listener" ] && [ "$cur_listener" != "$cur_expected" ]; then
+        echo "  ERROR: failed to evict squatter PID ${cur_listener} from ${host}:${port}." >&2
+        return 1
+      fi
+    fi
+
+    # Only probe if the listener is verified (matches supervisor PID) or if supervisor PID is unknown
+    if [ -n "$cur_expected" ]; then
+      if [ "$cur_listener" = "$cur_expected" ]; then
+        if _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
+          return 0
+        fi
+      fi
+    else
+      if _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
+        return 0
+      fi
     fi
     sleep 0.3
   done
