@@ -1,7 +1,7 @@
 ---
 id: "0161"
 slug: reclassify-harness-transcript-traffic
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 866
