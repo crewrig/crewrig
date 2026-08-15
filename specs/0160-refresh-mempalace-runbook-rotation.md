@@ -1,7 +1,7 @@
 ---
 id: "0160"
 slug: refresh-mempalace-runbook-rotation
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 914
