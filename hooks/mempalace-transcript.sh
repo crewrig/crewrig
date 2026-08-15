@@ -176,6 +176,19 @@ TOOL_INPUT=$(echo "$INPUT" | jq -r '.tool_input // empty' 2>/dev/null)
 CONTENT=""
 ENTRY_TYPE=""
 
+_is_harness_injection() {
+  local payload="$1"
+  case "$payload" in
+    *"<task-notification"*|*"<system-reminder"*|*"<system-message"*|*"<SYSTEM_MESSAGE"*|*"<task-status"*|*"<command-status"*|*"<harness-notification"*|*"<notification"*|*"[Message] timestamp="*)
+      return 0
+      ;;
+  esac
+  if echo "$payload" | grep -Eq '^[[:space:]]*<([a-zA-Z0-9_-]+-(notification|reminder|message|status)|system-[a-zA-Z0-9_-]+|task-[a-zA-Z0-9_-]+|harness-[a-zA-Z0-9_-]+|SYSTEM_MESSAGE|system-reminder|task-notification)[^>]*>'; then
+    return 0
+  fi
+  return 1
+}
+
 # Antigravity CLI (spec 0116 R7). Placed first: no Antigravity payload carries
 # .prompt/.tool_name/.user_input/.model_response, so none of the branches below
 # can fire for one, and every later branch guards on an empty $CONTENT.
@@ -198,8 +211,13 @@ fi
 # User prompt (Claude Code: UserPromptSubmit)
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty' 2>/dev/null)
 if [ -n "$PROMPT" ] && [ "$PROMPT" != "null" ]; then
-  ENTRY_TYPE="user-prompt"
-  CONTENT="[USER] $PROMPT"
+  if _is_harness_injection "$PROMPT"; then
+    ENTRY_TYPE="harness-injection"
+    CONTENT="[HARNESS] $PROMPT"
+  else
+    ENTRY_TYPE="user-prompt"
+    CONTENT="[USER] $PROMPT"
+  fi
 fi
 
 # Tool usage (Claude Code: PostToolUse / Gemini: AfterTool)
@@ -235,8 +253,13 @@ fi
 # Gemini-specific: BeforeAgent (user prompt equivalent)
 USER_INPUT=$(echo "$INPUT" | jq -r '.user_input // .userInput // empty' 2>/dev/null)
 if [ -n "$USER_INPUT" ] && [ "$USER_INPUT" != "null" ] && [ -z "$CONTENT" ]; then
-  ENTRY_TYPE="user-prompt"
-  CONTENT="[USER] $USER_INPUT"
+  if _is_harness_injection "$USER_INPUT"; then
+    ENTRY_TYPE="harness-injection"
+    CONTENT="[HARNESS] $USER_INPUT"
+  else
+    ENTRY_TYPE="user-prompt"
+    CONTENT="[USER] $USER_INPUT"
+  fi
 fi
 
 # Gemini-specific: AfterModel (agent response equivalent)
