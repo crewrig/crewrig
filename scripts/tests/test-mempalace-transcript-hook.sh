@@ -1132,6 +1132,71 @@ else
 fi
 
 # -------------------------------------------------------------------------
+# Test 23/24 — spec 0161 / issue #866: prompt submissions distinguish
+# genuine human prompts from automated harness injections.
+#
+# Behavioral tests:
+#   - Human prompt ("Run tests") -> CONTENT starts with "[USER]"
+#   - Harness injections (<task-notification>..., <system-reminder>...)
+#     -> CONTENT starts with "[HARNESS]"
+# -------------------------------------------------------------------------
+TMPDIR_T23="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_T2" "$TMPDIR_T5" "$SANDBOX_T6" "$TMPDIR_T7" "$SANDBOX_0110" "$TMPDIR_T23"' EXIT
+
+RECORD_PY="$TMPDIR_T23/record-python"
+CONTENT_OUT="$TMPDIR_T23/captured-content.txt"
+cat > "$RECORD_PY" <<'EOF'
+#!/bin/bash
+cat >/dev/null   # drain the heredoc so it does not deadlock
+echo "$TRANSCRIPT_CONTENT" >> "$CAPTURED_CONTENT_FILE"
+echo "OK"
+exit 0
+EOF
+chmod +x "$RECORD_PY"
+
+# Test 23: Human prompt
+USER_PROMPT_JSON='{"hook_event_name":"UserPromptSubmit","prompt":"Run the test suite"}'
+(
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  export MEMPALACE_PYTHON="$RECORD_PY"
+  export CAPTURED_CONTENT_FILE="$CONTENT_OUT"
+  printf '%s' "$USER_PROMPT_JSON" | bash "$HOOK" >/dev/null 2>&1
+) || true
+
+if [ -f "$CONTENT_OUT" ] && grep -q '^\[USER\] Run the test suite' "$CONTENT_OUT"; then
+  record PASS "spec-0161-r1/r2: human prompt classified as [USER] (user-prompt)"
+else
+  record FAIL "spec-0161-r1/r2: human prompt classified as [USER] (user-prompt)" \
+    "captured content: $(cat "$CONTENT_OUT" 2>/dev/null)"
+fi
+
+# Test 24: Harness injections (<task-notification> and <system-reminder>)
+rm -f "$CONTENT_OUT"
+HARNESS_TASK_JSON='{"hook_event_name":"UserPromptSubmit","prompt":"<task-notification>\n<task-id>bqhfosl1o</task-id>\n<summary>CI pass</summary>\n</task-notification>"}'
+(
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  export MEMPALACE_PYTHON="$RECORD_PY"
+  export CAPTURED_CONTENT_FILE="$CONTENT_OUT"
+  printf '%s' "$HARNESS_TASK_JSON" | bash "$HOOK" >/dev/null 2>&1
+) || true
+
+HARNESS_REMINDER_JSON='{"hook_event_name":"UserPromptSubmit","prompt":"<system-reminder>Remember to verify CI</system-reminder>"}'
+(
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  export MEMPALACE_PYTHON="$RECORD_PY"
+  export CAPTURED_CONTENT_FILE="$CONTENT_OUT"
+  printf '%s' "$HARNESS_REMINDER_JSON" | bash "$HOOK" >/dev/null 2>&1
+) || true
+
+if [ -f "$CONTENT_OUT" ] && grep -q '^\[HARNESS\] <task-notification>' "$CONTENT_OUT" \
+   && grep -q '^\[HARNESS\] <system-reminder>' "$CONTENT_OUT"; then
+  record PASS "spec-0161-r1/r3: harness injections reclassified as [HARNESS] (harness-injection)"
+else
+  record FAIL "spec-0161-r1/r3: harness injections reclassified as [HARNESS] (harness-injection)" \
+    "captured content: $(cat "$CONTENT_OUT" 2>/dev/null)"
+fi
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo
