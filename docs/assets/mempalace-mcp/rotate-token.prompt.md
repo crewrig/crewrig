@@ -2,29 +2,21 @@
 
 <!-- crewrig-doc: published=false -->
 
-Generated for spec 0136 (issue #751), figure step of PLAN v5 (satisfies R13,
-R14, R15). Depicts the ordered manual procedure for replacing the shared MCP
-daemon's bearer token, in the order that leaves no daemon serving a
-superseded value (R5).
+Generated for spec 0136 (issue #751), refreshed for spec 0160 (issue #914)
+following the token-rotation revocation fix in PR #897 (issue #880 / spec 0139).
+Depicts the ordered manual procedure for replacing the shared MCP daemon's bearer
+token, in the order that leaves no daemon serving a superseded value.
 
-**Corrected during REVIEW (cold `architect` pass on #877): the original
-version of this figure and the runbook both repeated a false claim inherited
-from `scripts/uninstall-mcp-daemon.sh`'s own inline comment** ("mints a new
-one, restarts, and re-registers every CLI") — `switch-mempalace-http.sh`
-does **not** restart the daemon: `install_daemon_supervisor` skips loading
-an already-loaded launchd agent and no-ops `enable --now` on an
-already-active systemd unit, and the launcher process `exec`s the wrapper
-once and never re-reads the token file
-(`scripts/lib/mcp-daemon-launcher.sh:187`). The upstream defect (false
-comment, incomplete procedure, no test asserting the old token is refused
-after rotation) is filed as #880. This figure now depicts the corrected,
-five-step procedure with an explicit daemon-restart step added — its
-original four-step order was otherwise right and is unchanged: delete the
-token file, run `switch-mempalace-http.sh` (mints a new token, re-registers
-every CLI, but does not restart), restart the daemon (`task mempalace:stop`
-— the actual point the superseded token stops being honored), remove the
-`.bak` config files that still hold the old token, then restart every
-running session.
+**Refreshed for spec 0160 (issue #914):** PR #897 (issue #880) resolved the
+previous defect where `switch-mempalace-http.sh` did not restart the running
+daemon. The script now directly replaces the daemon process
+(`mcp_daemon_replace_process`) and verifies that the new token is served before
+re-registering any assistant. The redundant manual daemon restart step
+(`task mempalace:stop`) is therefore removed. This figure depicts the
+authoritative four-step procedure matching shipped script behaviour: (1) delete
+the old token file, (2) run `switch-mempalace-http.sh` (mints new token,
+replaces daemon process, re-registers every CLI), (3) delete `.bak` config files
+that still hold the old token, and (4) restart every running CLI session.
 
 - **Model:** `gemini-3-pro-image` (Nano Banana Pro)
 - **Skill:** `nano-banana`, `generate` subcommand
@@ -40,7 +32,7 @@ no drop shadows, no gradients — a plain corporate technical diagram. Use a
 dark navy blue color for every numbered box, white sans-serif text inside the
 boxes, and a muted orange/tan color for every connecting arrow.
 
-Layout: exactly five rounded-rectangle boxes arranged left to right in a
+Layout: exactly four rounded-rectangle boxes arranged left to right in a
 single horizontal row, connected by bold orange arrows pointing rightward
 from each box to the next one, forming a single strict left-to-right
 sequence. Each box has a small circular badge in its top-left corner
@@ -48,9 +40,8 @@ containing a single number in white text. In this exact left-to-right order:
 
 1. Badge "1". Box text: "Delete the old token file"
 2. Badge "2". Box text: "Run switch-mempalace-http.sh: mints new token"
-3. Badge "3". Box text: "Restart the daemon: new token takes effect"
-4. Badge "4". Box text: "Delete each CLI's .bak config (old token)"
-5. Badge "5". Box text: "Restart every running session"
+3. Badge "3". Box text: "Delete each CLI's .bak config (old token)"
+4. Badge "4". Box text: "Restart every running session"
 
 Render every specified word and every number exactly as given, with no
 typos, no missing words, no substituted words, no reordering, and no extra

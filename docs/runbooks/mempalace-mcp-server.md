@@ -137,20 +137,13 @@ directly in the log, naming
 
 ## Replacing the bearer token
 
-**No automated path exists yet, and the existing conversion tooling has a
-gap tracked separately as #880:** `switch-mempalace-http.sh` mints a new
-token and re-registers every CLI with it, but it does **not** restart the
-daemon — `install_daemon_supervisor` explicitly skips loading an
-already-loaded launchd agent and `enable --now` no-ops on an already-active
-systemd unit, and the launcher process, once running, `exec`s the wrapper
-once and never re-reads the token file
-(`scripts/lib/mcp-daemon-launcher.sh:187`). So the running daemon keeps
-serving under the token it started with until something replaces the
-process. The manual procedure below adds the missing restart explicitly, in
-the order that leaves no daemon serving the superseded token for longer
-than necessary.
+When you need to rotate the bearer token (for instance, after a suspected
+leak), follow the four-step manual procedure below. Re-running the switch
+script mints a fresh token, replaces the running daemon process so the new
+token takes effect immediately, and re-registers every assistant CLI with the
+new credential.
 
-![Five ordered steps to replace the shared MCP daemon's bearer token: delete the old token file, run switch-mempalace-http.sh to mint a new token and re-register every CLI, restart the daemon so the new token takes effect, delete each CLI's stale backup config that still holds the old token, then restart every running session.](../assets/mempalace-mcp/rotate-token.png)
+![Four ordered steps to replace the shared MCP daemon's bearer token: delete the old token file, run switch-mempalace-http.sh to mint a new token and replace the daemon process, delete each CLI's stale backup config that still holds the old token, then restart every running session.](../assets/mempalace-mcp/rotate-token.png)
 
 1. **Delete the current token file.** Its path is derived from the palace
    path the same way the daemon derives it (`scripts/lib/common.sh`,
@@ -166,23 +159,23 @@ than necessary.
    task mempalace:switch-http
    ```
 
-   Finding no token file, this mints a fresh one and re-registers every CLI
-   with it — but it does **not** restart the daemon (#880). The running
-   process keeps serving under the *old* token until step 3.
+   Finding no token file, this mints a fresh one, replaces the running
+   daemon process under the supervisor (`mcp_daemon_replace_process`), and
+   re-registers every CLI with the new credential. **This is the point at
+   which the superseded token stops being honored** (spec 0139) — the switch
+   script verifies that the new token is served before updating any CLI
+   registration, and fails visibly rather than leave a running daemon
+   honouring the stale credential.
 
-3. **Restart the daemon so the new token actually takes effect:**
+   > [!WARNING]
+   > **Replacement-window residual risk (spec 0139 delta-01 R5):** During the
+   > brief process replacement window in step 2 (between terminating the old
+   > daemon and binding the new listener), the supervisor port is temporarily
+   > released. On an untrusted multi-user system, another local process could
+   > theoretically bind the released port before the daemon relaunches; in that
+   > event, the switch script fails when probing the listener.
 
-   ```sh
-   task mempalace:stop
-   ```
-
-   Under the supervisor this is a restart request (see *Stopping is not
-   uninstalling* above): the process is replaced, and only the replacement
-   reads the token file — which by now holds the value step 2 minted.
-   **This is the point at which the superseded token stops being
-   honored**, not step 2.
-
-4. **Delete each CLI's stale backup config.** Step 2's re-registration backs
+3. **Delete each CLI's stale backup config.** Step 2's re-registration backs
    up each assistant's config file with a timestamp suffix before
    overwriting it, and every backup still contains the *old* token:
 
@@ -194,7 +187,7 @@ than necessary.
 
    Remove whichever of these exist on this machine.
 
-5. **Restart every running CLI session** so it picks up the new token —
+4. **Restart every running CLI session** so it picks up the new token —
    exactly as after a first conversion, a session already running keeps
    using the value it started with.
 
