@@ -12,35 +12,12 @@ version: 1.0.0
 
 ## Intent
 
-Session transcript hook persistence routes to the shared MemPalace Model Context
-Protocol daemon instead of writing directly to the on-disk palace store. When an
-interactive session in any supported assistant interface completes a turn or
-lifecycle event, the transcript entry reaches the shared daemon over local
-network transport. Direct disk locks and temporary lock-bypass exceptions are
-retired, establishing a single-writer topology where the daemon manages all
-palace updates while transcript write latency stays within an order of magnitude
-of baseline execution.
-
-### Empirical latency benchmark
-
-An empirical measurement campaign of 160 executions (N=20 per condition)
-conducted on the production palace (~24,000+ drawers, 418 MB store) produced
-the following wall-clock results:
-
-| Payload | Lifecycle Event | Direct Write p95 | Daemon Routed p95 | Daemon p50 | Speedup | Budget (<5.0s) |
-|---|---|---|---|---|---|---|
-| **133 B** | `sessionStart` | 0.675 s | **0.076 s** | 0.041 s | ~8.9× | PASS |
-| **133 B** | `userPromptSubmitted` | 0.696 s | **0.087 s** | 0.039 s | ~8.0× | PASS |
-| **133 B** | `postToolUse` | 0.709 s | **0.081 s** | 0.040 s | ~8.8× | PASS |
-| **133 B** | `sessionEnd` | 0.712 s | **0.080 s** | 0.040 s | ~8.9× | PASS |
-| **4000 B** | `sessionStart` | 0.800 s | **0.069 s** | 0.040 s | ~11.6× | PASS |
-| **4000 B** | `userPromptSubmitted` | 0.804 s | **0.166 s** | 0.040 s | ~4.8× | PASS |
-| **4000 B** | `postToolUse` | 0.823 s | **0.080 s** | 0.039 s | ~10.3× | PASS |
-| **4000 B** | `sessionEnd` | 0.812 s | **0.082 s** | 0.040 s | ~9.9× | PASS |
-
-Daemon-routed writes achieve a p95 latency under 0.17 seconds in all conditions,
-consuming less than 3.5% of the 5.0-second budget and satisfying the pass
-criterion defined in ADR-0016 Derived Spec 4.
+Session transcript hook persistence forwards transcript records to the shared
+daemon instead of writing directly to the on-disk storage. Interactive sessions
+across all supported assistant interfaces deliver lifecycle records without
+contending for disk locks or relying on temporary lock-bypass exceptions,
+ensuring a single-writer topology while preserving sub-second persistence
+latencies.
 
 ## Requirements
 
