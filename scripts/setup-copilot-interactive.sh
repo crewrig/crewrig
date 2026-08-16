@@ -386,13 +386,7 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     # User-level hooks: loaded by Copilot for every project (not just crewrig).
     cp "$HOOKS_PATCHED_TMP" "$USER_HOOKS_JSON"
     echo "  User-level transcript hooks deployed to $USER_HOOKS_JSON"
-    # Workspace hooks: merge into .github/copilot/settings.json for crewrig sessions.
-    backup_file "$WORKSPACE_SETTINGS"
-    jq -s '.[0] * {"hooks": (.[1].hooks // {}), "version": (.[1].version // .[0].version // 1)}' \
-      "$WORKSPACE_SETTINGS" "$HOOKS_PATCHED_TMP" > "${WORKSPACE_SETTINGS}.tmp" && \
-      mv "${WORKSPACE_SETTINGS}.tmp" "$WORKSPACE_SETTINGS"
     rm -f "$HOOKS_PATCHED_TMP"
-    echo "  Workspace transcript hooks merged into $WORKSPACE_SETTINGS"
   else
     echo "  Transcript activation canceled."
   fi

@@ -20,11 +20,9 @@
 #        each value an array of entries; `version` is the integer 1; every
 #        entry carries `type` and a `command`/`bash` field.
 #   R2 — the workspace settings (template + committed settings.json) carry
-#        `"hooks": {}` and `version: 1`, and accept a merged object.
+#        `"hooks": {}` and `version: 1`.
 #   R3 — the user-level patch transform rewrites the command of EVERY entry in
 #        EVERY event array to an absolute hook path prefixed by the env vars.
-#   R4 — the workspace merge transform produces a valid object-keyed `hooks`
-#        output that stays valid JSON with `version: 1`.
 #
 # HERMETIC: no HOME writes, no network, no interactive script runs. All
 # transforms target throwaway paths under a temp root removed on exit.
@@ -135,18 +133,6 @@ else
   bad "$unrewritten entry/entries not rewritten to hook target"
 fi
 
-# ---------------------------------------------------------------------------
-# §4. Replay the workspace merge transform (R4).
-# ---------------------------------------------------------------------------
-echo "§4 workspace merge transform (R4)"
-MERGED="$TMP_ROOT/merged.json"
-jq -s '.[0] * {"hooks": (.[1].hooks // {}), "version": (.[1].version // .[0].version // 1)}' \
-  "$SETTINGS_COMMITTED" "$PATCHED" > "$MERGED" 2>/dev/null
-if jq -e . "$MERGED" >/dev/null 2>&1 && [ "$(jq -r '.hooks | type' "$MERGED")" = "object" ] && [ "$(jq -r '.version' "$MERGED")" = "1" ]; then
-  ok "merge output is valid JSON with object hooks and version 1"
-else
-  bad "merge output invalid / hooks not object / version != 1"
-fi
 
 # ---------------------------------------------------------------------------
 echo ""
