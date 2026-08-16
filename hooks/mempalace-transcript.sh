@@ -20,22 +20,10 @@
 #   MEMPALACE_TRANSCRIPT_QUIET   - set to "1" to silence success logging;
 #                                  failures are still logged
 #                                  (default: disabled / success logs shown)
-#   MEMPALACE_PYTHON             - Python binary with mempalace installed
-#                                  (default: python3)
-#   MEMPALACE_CHROMA_HOST        - shared ChromaDB HTTP daemon host (ADR-0006)
+#   MEMPALACE_MCP_HOST           - shared MemPalace MCP HTTP daemon host (ADR-0016)
 #                                  (default: 127.0.0.1)
-#   MEMPALACE_CHROMA_PORT        - shared ChromaDB HTTP daemon port (ADR-0006)
-#                                  (default: 8001)
-#   MEMPALACE_CHROMA_MAX_CONNECTIONS            - ceiling on total connections
-#                                  held open against the daemon (spec 0088,
-#                                  shared verbatim with
-#                                  scripts/lib/mempalace-http-wrapper.py)
-#                                  (default: 8)
-#   MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS  - ceiling on idle keep-alive
-#                                  connections retained between requests
-#                                  (spec 0088, shared verbatim with
-#                                  scripts/lib/mempalace-http-wrapper.py)
-#                                  (default: 4)
+#   MEMPALACE_MCP_PORT           - shared MemPalace MCP HTTP daemon port (ADR-0016)
+#                                  (default: 41893)
 #   GEMINI_SESSION_ID / CLAUDE_SESSION_ID / COPILOT_SESSION_ID - session id
 #   GEMINI_PROJECT_DIR / CLAUDE_PROJECT_DIR - project directory
 #   (GitHub Copilot CLI does NOT export a $COPILOT_PROJECT_DIR — the project
@@ -44,14 +32,10 @@
 # Inner Python payload exit codes (surfaced by the hook as `rc=<n>` on the
 # failure log line, alongside the matching stderr prefix). The hook itself
 # always exits 0 — a failed persistence never fails the agent's turn.
-#   2  IMPORT_ERROR:            chromadb or mempalace unavailable
 #   3  ADD_FAILED:              the drawer write was refused
 #   4  DAEMON_UNREACHABLE:      the shared ChromaDB daemon did not answer
-#   5  LOCK_BYPASS_INEFFECTIVE: the spec-0110 palace-write-lock relief could
-#                               not be proven in force on the write path, so
-#                               the entry was deliberately not persisted
 #
-# Requires: jq, mempalace (Python package)
+# Requires: jq, curl
 
 set -euo pipefail
 
@@ -102,22 +86,7 @@ fi
 
 # --- Dependencies ---
 command -v jq >/dev/null 2>&1 || { echo "mempalace-transcript: jq required" >&2; exit 0; }
-
-# Detect a portable `timeout` binary. GNU coreutils ships `timeout(1)` on
-# Linux out of the box; macOS does not. Homebrew's `coreutils` package
-# provides `gtimeout`. Fall back to no timeout protection when neither is
-# present — the issue-94 Stop-hook-loop risk returns, but rc=127 on every
-# event (issue #210) is a worse failure mode than the rare hung-Python case.
-if command -v timeout >/dev/null 2>&1; then
-  _HOOK_TIMEOUT="timeout"
-elif command -v gtimeout >/dev/null 2>&1; then
-  _HOOK_TIMEOUT="gtimeout"
-else
-  _HOOK_TIMEOUT=""
-  echo "mempalace-transcript: neither 'timeout' nor 'gtimeout' on PATH; persistence runs without timeout protection (install coreutils to restore it, e.g. 'brew install coreutils' on macOS)" >&2
-fi
-
-MEMPALACE_PYTHON="${MEMPALACE_PYTHON:-python3}"
+command -v curl >/dev/null 2>&1 || { echo "mempalace-transcript: curl required" >&2; exit 0; }
 
 # --- Read input ---
 INPUT=$(cat)
@@ -270,221 +239,90 @@ if [ -n "$MODEL_RESPONSE" ] && [ "$MODEL_RESPONSE" != "null" ] && [ -z "$CONTENT
   CONTENT="[AGENT] ${MODEL_RESPONSE:0:2000}"
 fi
 
-# --- Persist to MemPalace via the v3.3.x tool_add_drawer wrapper ---
+# --- Persist to MemPalace via MCP ---
 if [ -n "$CONTENT" ]; then
   # Pass content + room via env vars to avoid heredoc/quoting fragility.
   # Truncate content to 4000 chars to keep drawer size bounded.
   TRANSCRIPT_CONTENT="$(printf '%s' "$CONTENT" | head -c 4000)"
   TRANSCRIPT_ROOM="$ROOM_ID"
   TRANSCRIPT_AGENT="transcript-hook"
-
-  # Capture Python stderr to a dedicated file so import/runtime errors are
-  # visible instead of being swallowed into $STATUS (issue #93). The
-  # `$_HOOK_TIMEOUT 5` wrapper (resolved at script init to `timeout` or
-  # `gtimeout` per portability detection — issue #210) kills a hung Python
-  # after 5 seconds so a MemPalace lock cannot stall the calling CLI
-  # (issues #90, #94). `set +e`/`set -e` brackets the call so a non-zero
-  # Python exit does not abort the hook — STATUS_RC carries the actual
-  # outcome.
   _HOOK_ERR="${TMPDIR:-/tmp}/mempalace-hook-$$.err"
 
-  # Temporarily disable `set -e` so a non-zero Python exit does not abort
+  # Temporarily disable `set -e` so a non-zero exit does not abort
   # the hook before we can log the failure.
   set +e
   STATUS=$(
-    TRANSCRIPT_CONTENT="$TRANSCRIPT_CONTENT" \
-    TRANSCRIPT_ROOM="$TRANSCRIPT_ROOM" \
-    TRANSCRIPT_AGENT="$TRANSCRIPT_AGENT" \
-    ${_HOOK_TIMEOUT:+$_HOOK_TIMEOUT 5} "$MEMPALACE_PYTHON" - 2>"$_HOOK_ERR" <<'PYEOF'
-import contextlib, os, sys
+    PALACE_PATH="${MEMPALACE_PATH:-${HOME}/.mempalace/palace}"
+    if command -v shasum >/dev/null 2>&1; then
+      SHA256=$(printf '%s' "$PALACE_PATH" | shasum -a 256 | awk '{print $1}')
+    elif command -v sha256sum >/dev/null 2>&1; then
+      SHA256=$(printf '%s' "$PALACE_PATH" | sha256sum | awk '{print $1}')
+    else
+      echo "DAEMON_UNREACHABLE: neither shasum nor sha256sum on PATH" >&2
+      exit 4
+    fi
+    TOKEN_KEY="${SHA256:0:24}"
+    TOKEN_FILE="${HOME}/.mempalace/server/$TOKEN_KEY/token"
 
-# ADR-0006 routing: patch chromadb.PersistentClient -> HttpClient BEFORE
-# `mempalace.mcp_server` resolves the symbol (same technique as
-# scripts/lib/mempalace-http-wrapper.py's _http_factory). Reuses that
-# wrapper's own MEMPALACE_CHROMA_HOST / MEMPALACE_CHROMA_PORT env vars
-# and defaults verbatim (spec 0073 R2).
-try:
-    import chromadb
-except ImportError as e:
-    print(f"IMPORT_ERROR: {e}", file=sys.stderr)
-    sys.exit(2)
+    if [ ! -f "$TOKEN_FILE" ]; then
+      wildcards=("${HOME}/.mempalace/server/"*"/token")
+      if [ ${#wildcards[@]} -gt 0 ] && [ -f "${wildcards[0]}" ]; then
+        TOKEN_FILE="${wildcards[0]}"
+      fi
+    fi
 
-_host = os.environ.get("MEMPALACE_CHROMA_HOST", "127.0.0.1")
-_port = int(os.environ.get("MEMPALACE_CHROMA_PORT", "8001"))
-_max_connections = int(os.environ.get("MEMPALACE_CHROMA_MAX_CONNECTIONS", "8"))
-_max_keepalive_connections = int(
-    os.environ.get("MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS", "4")
-)
+    if [ ! -f "$TOKEN_FILE" ]; then
+      echo "DAEMON_UNREACHABLE: token file not found at $TOKEN_FILE" >&2
+      exit 4
+    fi
+    TOKEN="$(cat "$TOKEN_FILE")"
+    HOST="${MEMPALACE_MCP_HOST:-127.0.0.1}"
+    PORT="${MEMPALACE_MCP_PORT:-41893}"
 
+    PAYLOAD=$(jq -n \
+      --arg room "$TRANSCRIPT_ROOM" \
+      --arg content "$TRANSCRIPT_CONTENT" \
+      --arg added_by "$TRANSCRIPT_AGENT" \
+      '{
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "mempalace_add_drawer",
+          arguments: {
+            wing: "transcripts",
+            room: $room,
+            content: $content,
+            added_by: $added_by
+          }
+        }
+      }')
 
-def _build_pool_settings():
-    # Fresh Settings per call, not a shared singleton — chromadb.HttpClient()
-    # mutates its settings argument in place (spec 0088; same reasoning as
-    # scripts/lib/mempalace-http-wrapper.py's _build_pool_settings()).
-    return chromadb.Settings(
-        chroma_http_max_connections=_max_connections,
-        chroma_http_max_keepalive_connections=_max_keepalive_connections,
-    )
+    CURL_OUT="$(curl -s -S --max-time 5 -X POST "http://${HOST}:${PORT}/mcp" \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TOKEN" \
+      -d "$PAYLOAD" 2>"$_HOOK_ERR")"
+    CURL_RC=$?
 
+    if [ "$CURL_RC" -ne 0 ]; then
+      echo "DAEMON_UNREACHABLE: ${HOST}:${PORT} — curl exit $CURL_RC: $(cat "$_HOOK_ERR" 2>/dev/null | tr '\n' ' ')" >&2
+      exit 4
+    fi
 
-def _http_factory(path=None, settings=None, **kwargs):
-    return chromadb.HttpClient(host=_host, port=_port, settings=_build_pool_settings())
+    MCP_ERR="$(echo "$CURL_OUT" | jq -r '.error.message // empty' 2>/dev/null)"
+    if [ -n "$MCP_ERR" ]; then
+      echo "ADD_FAILED: $MCP_ERR" >&2
+      exit 3
+    fi
 
+    IS_ERR="$(echo "$CURL_OUT" | jq -r '.result.isError // false' 2>/dev/null)"
+    if [ "$IS_ERR" = "true" ]; then
+      TOOL_ERR="$(echo "$CURL_OUT" | jq -r '.result.content[0].text // empty' 2>/dev/null)"
+      echo "ADD_FAILED: $TOOL_ERR" >&2
+      exit 3
+    fi
 
-chromadb.PersistentClient = _http_factory
-
-# Soft, logged, non-blocking skip on daemon-unreachable (spec 0073 R3/R4)
-# — deliberately NOT the wrapper's fail-loud sys.exit(1): this is a
-# per-event fire-and-forget attempt bounded by the outer bash `timeout 5`
-# wrapper, not an MCP server startup gate. Distinct exit code (4) and
-# stderr prefix (DAEMON_UNREACHABLE:) keep it greppable alongside the
-# existing IMPORT_ERROR:/2 and ADD_FAILED:/3 convention. Passing settings=
-# here (spec 0088 R4/delta-01) only changes this call's arguments — the
-# try/except control flow below, and R10's soft-skip behavior, are
-# unchanged.
-try:
-    chromadb.HttpClient(host=_host, port=_port, settings=_build_pool_settings()).heartbeat()
-except Exception as e:  # acknowledged-exception: broad except intentional — any HttpClient.heartbeat() failure (connection refused, DNS, protocol) means the daemon is unreachable and must soft-skip this persistence attempt (spec 0073 R3); it does not block startup like the wrapper's probe, so it must not be silently swallowed or misclassified either
-    print(f"DAEMON_UNREACHABLE: {_host}:{_port} — {e}", file=sys.stderr)
-    sys.exit(4)
-
-# --- spec 0110: relieve the palace write lock, for THIS subprocess only ---
-#
-# Every palace write this subprocess performs already leaves the process
-# over HTTP to the shared ChromaDB daemon (the `chromadb.PersistentClient`
-# substitution above, spec 0073/0088). `tool_add_drawer` does perform one
-# local disk write of its own — `_wal_log` appends to the write-ahead log
-# (`mcp_server._wal_log` -> `wal.py`) — but that append sits OUTSIDE
-# `ChromaCollection._write_lock()`, so the palace lock never guarded it and
-# relieving the lock leaves its exposure exactly as it already was. The
-# relief therefore opens no race that did not already exist. The MemPalace
-# library nevertheless has
-# `ChromaCollection._write_lock()` take the on-disk per-palace lock, so any
-# concurrent writer — a sibling agent, the memory server, a mine — made
-# every transcript entry fail with `ADD_FAILED: palace ... is held by PID
-# ...` and silently ended transcript persistence for the whole session
-# (spec 0110 R1).
-#
-# R2 — THE ORDERING BELOW IS NORMATIVE. This block sits AFTER the
-# heartbeat probe above, deliberately. A persistence attempt whose remote
-# routing is not established must keep the lock's protection, so the relief
-# must never be installed on a path that can still reach the on-disk
-# palace. Do not move it earlier.
-#
-# R6 — the relief is confined to this interpreter: it rebinds an in-memory
-# module attribute in the process this hook launched for one entry. It
-# writes no file, sets no environment variable for anyone else, and neither
-# releases nor removes a lock any other process holds. A concurrently
-# running memory server or maintenance writer keeps the exact lock it takes
-# today.
-_lock_relief_hits = []
-
-
-@contextlib.contextmanager
-def _relieved_palace_lock(palace_path, *args, **kwargs):
-    """Stand-in for `mempalace.palace.mine_palace_lock` — records, never locks."""
-    _lock_relief_hits.append(palace_path)
-    yield
-
-
-try:
-    import mempalace.backends.chroma as _mp_chroma
-    import mempalace.palace as _mp_palace
-except ImportError as e:
-    print(f"IMPORT_ERROR: {e}", file=sys.stderr)
-    sys.exit(2)
-
-# R5 — patch every location the write path can resolve the primitive from,
-# and do not assume a single one. Today `ChromaCollection._write_lock()`
-# resolves it by a LATE import from `mempalace.palace`, so the canonical
-# definition is the site that matters; but three sibling modules in the same
-# library (`sync`, `miner`, `convo_miner`) bind the symbol at module load
-# instead, and if `backends.chroma` ever joins them the canonical patch
-# alone would quietly stop taking effect. Rebind the attribute wherever it
-# already exists; never create one that does not, since that installs a name
-# the library never reads and would mask a genuine relocation instead of
-# surfacing it through the R3 guard below.
-_relieved_modules = []
-for _mp_mod in (_mp_palace, _mp_chroma):
-    if hasattr(_mp_mod, "mine_palace_lock"):
-        _mp_mod.mine_palace_lock = _relieved_palace_lock
-        _relieved_modules.append(_mp_mod.__name__)
-
-# R3/R4 — prove the relief is in force on the path the entry actually
-# takes, and decline to persist when it is not. Three stages, cheapest
-# first:
-#
-#   1. Coverage — at least one known location must have exposed the symbol.
-#      An empty list means the library relocated it entirely.
-#   2. Identity — every location that exposed it must now BE the stand-in.
-#      Side-effect free.
-#   3. Behavioural probe — enter the very method the write goes through,
-#      `ChromaCollection._write_lock()`, and require that it reached the
-#      stand-in. This is what makes the guard a statement about the real
-#      write path rather than about a module attribute: if `_write_lock` is
-#      renamed, or resolves the primitive from a location stage 1 does not
-#      cover, the stand-in is never reached and we refuse to persist.
-#
-# The probe's palace path is synthetic and is NEVER the configured palace.
-# The lock key is sha256(realpath(path)), so a synthetic path cannot contend
-# with any real palace lock; it is passed only so `_write_lock` takes its
-# locking branch instead of its documented palace_path-is-None no-op.
-#
-# The guard fails closed on purpose: an unprovable relief stops persistence
-# rather than silently reverting to the lock-contention failure this spec
-# exists to end. Distinct exit status (5) and stderr prefix
-# (LOCK_BYPASS_INEFFECTIVE:) per R4 — no other failure this hook reports
-# uses either (IMPORT_ERROR:/2, ADD_FAILED:/3, DAEMON_UNREACHABLE:/4).
-_LOCK_PROBE_PALACE = "/nonexistent/crewrig-transcript-lock-relief-probe"
-
-_relief_error = None
-if not _relieved_modules:
-    _relief_error = (
-        "no known location exposes mine_palace_lock "
-        f"(looked in {_mp_palace.__name__}, {_mp_chroma.__name__})"
-    )
-else:
-    for _mp_mod in (_mp_palace, _mp_chroma):
-        _resolved = getattr(_mp_mod, "mine_palace_lock", _relieved_palace_lock)
-        if _resolved is not _relieved_palace_lock:
-            _relief_error = f"{_mp_mod.__name__}.mine_palace_lock was not replaced"
-
-if _relief_error is None:
-    _hits_before = len(_lock_relief_hits)
-    try:
-        _probe = _mp_chroma.ChromaCollection(None, palace_path=_LOCK_PROBE_PALACE)
-        with _probe._write_lock():
-            pass
-    except Exception as e:  # acknowledged-exception: broad except intentional — the probe's only job is to answer "is the relief in force on the write path"; every failure mode (renamed/removed _write_lock, changed ChromaCollection signature, a real lock acquired and raising MineAlreadyRunning) answers "no" and takes the identical R3 decline-and-report path, so narrowing the catch would let an unanticipated type escape as a bare traceback and forfeit exactly the distinguishability R4 mandates
-        _relief_error = f"write-path probe raised {type(e).__name__}: {e}"
-    else:
-        if len(_lock_relief_hits) == _hits_before:
-            _relief_error = (
-                "ChromaCollection._write_lock() did not resolve the relieved "
-                f"lock (patched: {', '.join(_relieved_modules)})"
-            )
-
-if _relief_error is not None:
-    print(f"LOCK_BYPASS_INEFFECTIVE: {_relief_error}", file=sys.stderr)
-    sys.exit(5)
-
-try:
-    from mempalace.mcp_server import tool_add_drawer
-except ImportError as e:
-    print(f"IMPORT_ERROR: {e}", file=sys.stderr)
-    sys.exit(2)
-
-result = tool_add_drawer(
-    wing="transcripts",
-    room=os.environ["TRANSCRIPT_ROOM"],
-    content=os.environ["TRANSCRIPT_CONTENT"],
-    added_by=os.environ["TRANSCRIPT_AGENT"],
-)
-if not result.get("success"):
-    print(f"ADD_FAILED: {result.get('error', 'unknown')}", file=sys.stderr)
-    sys.exit(3)
-print("OK")
-PYEOF
+    echo "OK"
   )
   STATUS_RC=$?
   set -e
