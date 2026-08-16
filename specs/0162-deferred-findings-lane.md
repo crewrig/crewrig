@@ -95,14 +95,18 @@ The argument is:
    | **Accept** | Finding is noted but not actionable; close the entry with a rationale. |
    | **Carry** | Finding is still relevant but not yet urgent; leave open for the next drain. |
 
-6. The maintainer (the user, not an agent) is the decision-maker for
-   each disposition. An agent MAY prepare a draft recommendation per
-   entry, but SHALL NOT auto-dispose any entry.
+6. The maintainer (the user, not an agent) SHALL be the sole
+   decision-maker for each disposition. An agent MAY prepare a draft
+   recommendation per entry, but SHALL NOT auto-dispose any entry.
 
 7. The findings ledger SHALL NOT grow without bound between drains.
    The orchestrator SHALL emit a visible warning on the logbook issue
    when the open-entry count exceeds **10**, and SHALL page the user
-   when it exceeds **20**.
+   when it exceeds **20**. When the open-entry count exceeds **20**,
+   the orchestrator SHALL additionally block all further ledger-route
+   operations for the current ticket until the maintainer posts a
+   `DRAIN` comment on the ledger issue and at least one entry is
+   disposed.
 
 ### Routing rule amendments
 
@@ -143,7 +147,7 @@ The argument is:
 
 10. This spec SHALL NOT change the routing of **blocking** findings.
     The routing matrix for blocking findings (tech → DEV, arch → PLAN,
-    spec → SPECS) is unchanged.
+    spec → SPECS) SHALL remain unchanged.
 
 11. The termination condition's "zero findings of any class" (spec 0005
     R8) SHALL be narrowed to "zero blocking findings plus zero
