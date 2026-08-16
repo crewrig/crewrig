@@ -431,3 +431,7 @@ MemPalace source change.
 - **Is a per-session read-only client worth it?** `MEMPALACE_MCP_READ_ONLY`
   would let a session declare itself a reader; probably unnecessary once one
   writer serves everyone, but it is the natural place to ask.
+
+### Addendum: Resolution of Derived Spec 4 (spec 0164, issue #753)
+
+The transcript hook write path open question was resolved in favor of shape (b) — routing through the MCP daemon via `curl`. The direct Python invocation and its associated lock bypass (spec 0110) were retired in favor of an HTTP JSON-RPC `tools/call`. The latency measurement on a production-sized palace demonstrated that the `curl` call fit well within the 5.0-second execution budget.
