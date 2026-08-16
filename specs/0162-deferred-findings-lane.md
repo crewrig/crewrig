@@ -68,8 +68,9 @@ The argument is:
 
 1. The project SHALL maintain exactly one **findings ledger**, a pinned
    GitHub issue titled `📋 Findings ledger — deferred non-blocking
-   findings` (Gitmoji convention: 📋). The issue is pinned on creation
-   and never closed; it is the sink for all ledger-routed findings.
+   findings` (Gitmoji convention: 📋). The issue SHALL be pinned on
+   creation and SHALL never be closed; it SHALL serve as the sink for
+   all ledger-routed findings.
 
 2. Each ledger entry SHALL record at minimum: the source PR number, the
    source ticket number, the finding class (`tech` / `arch` / `spec`),
@@ -82,9 +83,10 @@ The argument is:
 ### Drain trigger
 
 4. The ledger drain SHALL be triggered by the project maintainer at a
-   cadence they own. The trigger is explicit and documented — the
-   maintainer posts a `DRAIN` command comment on the ledger issue,
-   which activates the drain process.
+   cadence they own. The maintainer SHALL post a `DRAIN` command comment
+   on the ledger issue to trigger a drain pass; the orchestrator SHALL
+   treat the presence of this comment as the activation signal for the
+   drain process.
 
 5. During a drain pass, each open ledger entry SHALL be evaluated
    against one of three dispositions:
@@ -141,7 +143,8 @@ The argument is:
    4. Every non-blocking finding in the pass has been disposed as
       **ledger** or **dismiss** (FULL: per user triage; others: auto-
       ledger). Non-blocking findings that the user routes to the loop
-      (FULL mode only) are treated as blocking for termination purposes.
+      (FULL mode only) SHALL be treated as blocking for termination
+      purposes.
 
 ### Compatibility
 
@@ -182,6 +185,13 @@ The argument is:
     implementation PR as its first deliverable (before any doc change
     is committed), so the ledger exists as a live artifact before the
     first possible ledger-route is made.
+
+16. The orchestrator SHALL journal every ledger-route disposition on the
+    active logbook issue — one line per finding routed, recording the
+    finding reference, the disposition chosen (ledger), and the actor.
+    This journalling is distinct from the ledger entry itself (R2) and
+    ensures the logbook issue remains the single source of truth for the
+    ticket's review history.
 
 ## Scenarios
 
