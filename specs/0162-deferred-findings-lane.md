@@ -32,7 +32,7 @@ This spec amends:
    section and updates *Non-blocking conditional routing* and
    *Termination* to match.
 
-## Background — conflict with spec 0005 R10 delta-01 (#288)
+### Background — conflict with spec 0005 R10 delta-01 (#288)
 
 Spec 0005 R10 (as amended by delta-01 for issue #288) currently reads:
 
@@ -61,6 +61,15 @@ The argument is:
   batch triage, currently scoped to harness friction) is the nearest
   existing pattern; this spec either extends it or adopts the same
   shape for product findings.
+
+The prior delta-01 rule treated every non-blocking finding as
+effectively blocking, creating loop iterations for findings the
+reviewer themselves flagged as non-blocking. The ledger default
+preserves the "deferred ≠ dropped" invariant (R1–R3 enforce a drain
+cycle) while removing a systematic source of spurious loop iterations.
+The two #751 review catches that justified delta-01 (wrong ADR
+filename, #880 token-rotation defect) were **blocking** findings and
+would not be affected by this routing change.
 
 ## Requirements
 
@@ -93,9 +102,9 @@ The argument is:
 
    | Disposition | Meaning |
    |---|---|
-   | **Promote** | Finding is material; open a new ticket to address it. |
-   | **Accept** | Finding is noted but not actionable; close the entry with a rationale. |
-   | **Carry** | Finding is still relevant but not yet urgent; leave open for the next drain. |
+   | **Promote** | Finding is material; a new ticket SHALL be opened to address it. |
+   | **Accept** | Finding is noted but not actionable; the entry SHALL be closed with a recorded rationale. |
+   | **Carry** | Finding is still relevant but not yet urgent; the entry SHALL remain open for the next drain. |
 
 6. The maintainer (the user, not an agent) SHALL be the sole
    decision-maker for each disposition. An agent MAY prepare a draft
@@ -114,25 +123,14 @@ The argument is:
 
 8. The non-blocking routing table (spec 0005 R10) SHALL be amended for
    all modes to introduce **ledger-route** as a third disposition
-   alongside *loop-route* and *journal-and-leave-unactioned*:
+   alongside *loop-route* and *dismiss*:
 
    | Mode | Non-blocking finding handling |
    |---|---|
-   | **FULL** | The orchestrator presents every non-blocking finding to the user. The user chooses per finding: **loop** (routes into the retroactive loop), **ledger** (routes to the findings ledger), or **dismiss** (journalled in the logbook and left unactioned). |
-   | **INTERMEDIATE** | The orchestrator routes every non-blocking finding to the **ledger** by default. No user gate fires. |
-   | **MINIMAL** | Same as INTERMEDIATE — ledger by default, no user gate. |
-   | **AUTO** | Same as MINIMAL — ledger by default, no user gate. |
-
-   **Rationale for the INTERMEDIATE/MINIMAL/AUTO default change:**
-   the prior delta-01 rule ("route into the loop using the same matrix
-   as blocking findings") treated every non-blocking finding as
-   effectively blocking, creating loop iterations for findings the
-   reviewer themselves flagged as non-blocking. The ledger default
-   preserves the "deferred ≠ dropped" invariant (R1–R3 enforce a drain
-   cycle) while removing a systematic source of spurious loop
-   iterations. The two #751 review catches that justified delta-01
-   (wrong ADR filename, #880 token-rotation defect) were **blocking**
-   findings — they would not be affected by this routing change.
+   | **FULL** | The orchestrator SHALL present every non-blocking finding to the user. The user SHALL choose per finding: **loop** (the finding SHALL be routed into the retroactive loop via the blocking matrix per spec 0005 R4), **ledger** (the finding SHALL be routed to the findings ledger), or **dismiss** (the finding SHALL be journalled in the logbook and left unactioned). |
+   | **INTERMEDIATE** | The orchestrator SHALL route every non-blocking finding to the **ledger** by default. No user gate SHALL fire. |
+   | **MINIMAL** | Same as INTERMEDIATE — the orchestrator SHALL route to the ledger by default; no user gate SHALL fire. |
+   | **AUTO** | Same as MINIMAL — the orchestrator SHALL route to the ledger by default; no user gate SHALL fire. |
 
 9. A REVIEW pass SHALL terminate (per spec 0005 R8, as further amended
    by this spec) iff all four conditions hold:
@@ -144,7 +142,8 @@ The argument is:
       **ledger** or **dismiss** (FULL: per user triage; others: auto-
       ledger). Non-blocking findings that the user routes to the loop
       (FULL mode only) SHALL be treated as blocking for termination
-      purposes.
+      purposes and SHALL be routed through the blocking matrix per
+      spec 0005 R4 using their `class:` tag.
 
 ### Compatibility
 
@@ -189,8 +188,8 @@ The argument is:
 16. The orchestrator SHALL journal every ledger-route disposition on the
     active logbook issue — one line per finding routed, recording the
     finding reference, the disposition chosen (ledger), and the actor.
-    This journalling is distinct from the ledger entry itself (R2) and
-    ensures the logbook issue remains the single source of truth for the
+    This journalling SHALL be distinct from the ledger entry itself (R2);
+    the logbook issue SHALL remain the single source of truth for the
     ticket's review history.
 
 ## Scenarios
@@ -217,6 +216,7 @@ When the REVIEW pass completes under INTERMEDIATE mode
 Then the orchestrator auto-routes the finding to the ledger (no user
 gate)  
 And appends a ledger entry (actor=orchestrator)  
+And journals the ledger-route on the logbook issue  
 And the pass termination check: verdict APPROVE + zero blocking + zero
 loop-routed non-blocking → terminates.
 
@@ -233,9 +233,9 @@ entries — consider scheduling a drain."
 Given an implementation PR with one non-blocking `class: spec` finding  
 When the orchestrator presents it to the user in FULL mode  
 And the user routes it to the loop (chooses "loop" disposition)  
-Then the finding is treated as blocking for the current pass  
-And the pass routing follows the blocking matrix (spec class → SPECS →
-spec-author in delta-spec mode)  
+Then the finding SHALL be treated as blocking for the current pass  
+And the orchestrator SHALL route it through the blocking matrix per
+spec 0005 R4 (spec class → SPECS → spec-author in delta-spec mode)  
 And termination is not reached on this pass.
 
 ### Failure path — ledger grows past the hard guardrail (20 entries)
@@ -271,30 +271,4 @@ and at least one entry is disposed.
 
 ## Open questions
 
-(None — all questions from the ticket were resolved during SPECS.)
-
-**Q: Ledger shape — extend harness-friction lane vs pinned issue?**  
-Resolved: pinned issue (R1). Extension of the harness-friction lane
-would mix harness tooling friction with product-findings semantics.
-The pinned issue is simpler, immediately usable, and requires no new
-infrastructure.
-
-**Q: Drain trigger — owner, cadence, and promotion rule?**  
-Resolved: maintainer-owned explicit trigger (R4–R6). Cadence is at the
-maintainer's discretion; the growth guardrail (R7) provides an implicit
-forcing function. Promotion is one of three dispositions (R5).
-
-**Q: Who classifies blocking vs non-blocking?**  
-Resolved: the reviewer classifies at finding authorship time. The
-existing `class:` tagging discipline (spec 0005 R2–R3) is unchanged;
-the reviewer tags the finding as blocking or non-blocking in the verdict
-comment. The orchestrator consumes the tag; it does not re-classify.
-
-**Q: Reversibility — what happens to accumulated ledger entries on
-delta-spec revert?**  
-Resolved: a revert of this delta-spec does not delete ledger entries;
-existing entries carry their own paper trail. On revert, the ledger
-issue is unpinned and archived (locked, labelled `archived`). Any
-Promote dispositions already raised as tickets are unaffected — they
-stand on their own.
-
+- (none — all questions from the ticket were resolved during SPECS)
