@@ -138,8 +138,8 @@ would not be affected by this routing change.
    1. The verdict line SHALL be `### Verdict: APPROVE`.
    2. The pass SHALL surface **zero blocking** findings of any class.
    3. CI SHALL be green on the head commit reviewed.
-   4. Every non-blocking finding in the pass has been disposed as
-      **ledger** or **dismiss** (FULL: per user triage; others: auto-
+   4. Every non-blocking finding in the pass SHALL have been disposed
+      as **ledger** or **dismiss** (FULL: per user triage; others: auto-
       ledger). Non-blocking findings that the user routes to the loop
       (FULL mode only) SHALL be treated as blocking for termination
       purposes and SHALL be routed through the blocking matrix per
