@@ -31,6 +31,24 @@ Rules:
 
 Definitions of each class, canonical and borderline examples, and the disambiguation rule (escalate upstream on tie) live in ADR-0010 → *Finding classification taxonomy*. The routing engine itself lands in issue #172.
 
+## Deferred-findings ledger
+
+Non-blocking findings MAY be routed to a persistent findings ledger rather than into the retroactive routing loop (see *Non-blocking conditional routing* below). 
+
+**Ledger shape and ownership.** The project maintains exactly one findings ledger: a pinned GitHub issue titled `📋 Findings ledger — deferred non-blocking findings` carrying the `deferred-findings-ledger` label. It serves as the single sink for all ledger-routed findings and SHALL never be closed. Each entry records the source PR number, source ticket number, finding class, a one-line summary, date routed, and the routing actor.
+
+**Journalling.** The orchestrator SHALL journal every ledger-route disposition on the active logbook issue (one line per finding: finding ref, disposition `ledger`, actor).
+
+**Drain protocol.** The project maintainer triggers a drain pass by posting a `DRAIN` comment on the ledger issue. Each open entry is evaluated as:
+- **Promote**: Finding is material; open a new ticket to address it.
+- **Accept**: Finding is noted but not actionable; close entry with rationale.
+- **Carry**: Finding is still relevant but not urgent; leave open.
+The maintainer is the sole decision-maker for each disposition.
+
+**Growth guardrail.** To prevent unbounded growth:
+- The orchestrator posts a warning on the logbook issue when open entries exceed **10**.
+- The orchestrator pages the user and blocks all further ledger-route operations when open entries exceed **20**, until a DRAIN comment is posted and at least one entry is disposed.
+
 ## Doc-only engine
 
 The engine is **a documented procedure the orchestrator (the
@@ -213,20 +231,19 @@ retrospectives.
 
 ## Termination
 
-The lifecycle terminates at MERGE iff all three conditions hold on
-the same REVIEW pass (spec 0005 R8):
+The lifecycle terminates at MERGE iff all four conditions hold on
+the same REVIEW pass (spec 0005 R8, as amended by spec 0162):
 
 1. The verdict line is `### Verdict: APPROVE`.
-2. The pass surfaces **zero** findings of any class (blocking or
-   non-blocking — see *Non-blocking conditional routing* for the
-   non-blocking distinction).
+2. The pass surfaces **zero blocking** findings of any class.
 3. CI is **green** on the head commit reviewed. The engine SHALL
    query `gh pr checks <pr-number>` and confirm every required
    check is `pass`; pending or failing checks block termination
    regardless of the verdict text.
+4. Every non-blocking finding in the pass has been disposed as **ledger** or **dismiss** (FULL: per user triage; others: auto-ledger). Non-blocking findings loop-routed by the user in FULL mode count as blocking for this purpose.
 
-All three are necessary. An APPROVE with one nit is one finding away
-from termination. An APPROVE with zero findings and red CI is a
+All four are necessary. An APPROVE with one blocking finding is one finding away
+from termination. An APPROVE with zero blocking findings and red CI is a
 reviewer who skipped the CI-status section of `pr-reviewer` →
 *Preflight*; the engine SHALL flag this as a protocol violation and
 re-spawn the reviewer cold.
@@ -266,10 +283,10 @@ the lifecycle's interaction mode (spec 0005 R10):
 
 | Mode | Non-blocking finding handling |
 |---|---|
-| **FULL** | Apply `AGENTS.md` → *Team Communication → Rule 4*: the orchestrator presents every non-blocking finding to the user and routes only those the user accepts into the loop. Findings the user defers are journalled in the logbook and left unactioned. |
-| **INTERMEDIATE** | The orchestrator SHALL route every non-blocking finding into the loop using the same precedence matrix as blocking findings; the REVIEW loop fires no user gate (spec 0005 R10 as amended for #288). |
-| **MINIMAL** | Same as INTERMEDIATE — every non-blocking finding is routed via the precedence matrix; no user gate. |
-| **AUTO** | Same as MINIMAL — non-blocking becomes effectively blocking, routed via the matrix. |
+| **FULL** | The orchestrator SHALL present every non-blocking finding to the user. The user SHALL choose per finding: **loop** (routed into the retroactive loop via the blocking matrix), **ledger** (routed to the findings ledger), or **dismiss** (journalled in the logbook and left unactioned). |
+| **INTERMEDIATE** | The orchestrator SHALL route every non-blocking finding to the **ledger** by default. No user gate SHALL fire. |
+| **MINIMAL** | Same as INTERMEDIATE — the orchestrator SHALL route to the ledger by default; no user gate SHALL fire. |
+| **AUTO** | Same as MINIMAL — the orchestrator SHALL route to the ledger by default; no user gate SHALL fire. |
 
 The asymmetry reflects the lifecycle's gating philosophy: only FULL
 keeps the user in the loop during REVIEW and gives the user the last
