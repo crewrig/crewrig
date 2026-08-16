@@ -106,9 +106,9 @@ The argument is:
 
 ### Routing rule amendments
 
-8. The non-blocking routing table (spec 0005 R10) is amended for all
-   modes to introduce **ledger-route** as a third disposition alongside
-   *loop-route* and *journal-and-leave-unactioned*:
+8. The non-blocking routing table (spec 0005 R10) SHALL be amended for
+   all modes to introduce **ledger-route** as a third disposition
+   alongside *loop-route* and *journal-and-leave-unactioned*:
 
    | Mode | Non-blocking finding handling |
    |---|---|
@@ -128,8 +128,8 @@ The argument is:
    (wrong ADR filename, #880 token-rotation defect) were **blocking**
    findings — they would not be affected by this routing change.
 
-9. A REVIEW pass under the amended rule terminates (per spec 0005 R8,
-   as further amended by this spec) iff:
+9. A REVIEW pass SHALL terminate (per spec 0005 R8, as further amended
+   by this spec) iff all four conditions hold:
 
    1. The verdict line is `### Verdict: APPROVE`.
    2. The pass surfaces **zero blocking** findings of any class.
@@ -141,21 +141,22 @@ The argument is:
 
 ### Compatibility
 
-10. This spec does NOT change the routing of **blocking** findings.
+10. This spec SHALL NOT change the routing of **blocking** findings.
     The routing matrix for blocking findings (tech → DEV, arch → PLAN,
     spec → SPECS) is unchanged.
 
 11. The termination condition's "zero findings of any class" (spec 0005
-    R8) is narrowed to "zero blocking findings plus zero non-blocking
-    findings loop-routed by the user" — the intent is preserved (every
-    finding has a disposition; none are silently dropped) while the
-    mechanism is corrected (ledger-routed findings are fully disposed,
-    not in-flight).
+    R8) SHALL be narrowed to "zero blocking findings plus zero
+    non-blocking findings loop-routed by the user" — the intent is
+    preserved (every finding has a disposition; none are silently
+    dropped) while the mechanism is corrected (ledger-routed findings
+    are fully disposed, not in-flight).
 
 12. The existing "journal in the logbook and leave unactioned"
-    disposition (FULL mode only, prior to this spec) is superseded by
-    **dismiss** (same semantics, clearer name). The dismiss disposition
-    is recorded on the logbook issue, not on the findings ledger.
+    disposition (FULL mode only, prior to this spec) SHALL be
+    superseded by **dismiss** (same semantics, clearer name). The
+    dismiss disposition SHALL be recorded on the logbook issue, not on
+    the findings ledger.
 
 ### Documentation
 
@@ -223,6 +224,37 @@ And the pass routing follows the blocking matrix (spec class → SPECS →
 spec-author in delta-spec mode)  
 And termination is not reached on this pass.
 
+### Failure path — ledger grows past the hard guardrail (20 entries)
+
+Given the findings ledger has 20 open entries  
+When the orchestrator is about to append a 21st entry  
+Then the orchestrator SHALL append the entry  
+And SHALL post a page-level alert on the active logbook issue:
+"🚨 Findings ledger has exceeded 20 open entries — drain is overdue.
+No further ledger-routes SHALL be executed until a DRAIN pass reduces
+the open-entry count below 20."  
+And SHALL block all subsequent ledger-route operations for the current
+ticket until the maintainer posts a `DRAIN` comment on the ledger issue
+and at least one entry is disposed.
+
+## Out of scope
+
+- Scripted automation for drain (batch triage of ledger entries via an
+  agent). A manual-trigger, maintainer-decided drain is sufficient for
+  the current scale. Automation is a candidate follow-up if friction
+  surfaces.
+- Changes to the `harness-report` / `harness-curator` harness-friction
+  lane. The two lanes are independent; this spec does not touch harness
+  tooling.
+- Changes to the blocking finding routing matrix (R10 of this spec is
+  explicit: blocking findings are unaffected).
+- Multi-CLI distribution of any new skill or agent. This spec ships no
+  new skill or agent source.
+- The `spec-author`, `pr-reviewer`, `architect`, `developer`, `tester`
+  skill sources — no `class:` field changes are needed for the ledger
+  routing; the reviewer's existing blocking/non-blocking flag drives the
+  disposition.
+
 ## Open questions
 
 (None — all questions from the ticket were resolved during SPECS.)
@@ -252,20 +284,3 @@ issue is unpinned and archived (locked, labelled `archived`). Any
 Promote dispositions already raised as tickets are unaffected — they
 stand on their own.
 
-## Out of scope
-
-- Scripted automation for drain (batch triage of ledger entries via an
-  agent). A manual-trigger, maintainer-decided drain is sufficient for
-  the current scale. Automation is a candidate follow-up if friction
-  surfaces.
-- Changes to the `harness-report` / `harness-curator` harness-friction
-  lane. The two lanes are independent; this spec does not touch harness
-  tooling.
-- Changes to the blocking finding routing matrix (R10 of this spec is
-  explicit: blocking findings are unaffected).
-- Multi-CLI distribution of any new skill or agent. This spec ships no
-  new skill or agent source.
-- The `spec-author`, `pr-reviewer`, `architect`, `developer`, `tester`
-  skill sources — no `class:` field changes are needed for the ledger
-  routing; the reviewer's existing blocking/non-blocking flag drives the
-  disposition.
