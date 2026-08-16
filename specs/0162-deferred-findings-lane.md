@@ -135,9 +135,9 @@ would not be affected by this routing change.
 9. A REVIEW pass SHALL terminate (per spec 0005 R8, as further amended
    by this spec) iff all four conditions hold:
 
-   1. The verdict line is `### Verdict: APPROVE`.
-   2. The pass surfaces **zero blocking** findings of any class.
-   3. CI is green on the head commit reviewed.
+   1. The verdict line SHALL be `### Verdict: APPROVE`.
+   2. The pass SHALL surface **zero blocking** findings of any class.
+   3. CI SHALL be green on the head commit reviewed.
    4. Every non-blocking finding in the pass has been disposed as
       **ledger** or **dismiss** (FULL: per user triage; others: auto-
       ledger). Non-blocking findings that the user routes to the loop
@@ -153,10 +153,7 @@ would not be affected by this routing change.
 
 11. The termination condition's "zero findings of any class" (spec 0005
     R8) SHALL be narrowed to "zero blocking findings plus zero
-    non-blocking findings loop-routed by the user" — the intent is
-    preserved (every finding has a disposition; none are silently
-    dropped) while the mechanism is corrected (ledger-routed findings
-    are fully disposed, not in-flight).
+    non-blocking findings loop-routed by the user".
 
 12. The existing "journal in the logbook and leave unactioned"
     disposition (FULL mode only, prior to this spec) SHALL be
@@ -224,7 +221,7 @@ loop-routed non-blocking → terminates.
 
 Given the findings ledger has 10 open entries  
 When the orchestrator is about to append an 11th entry  
-Then the orchestrator SHALL append the entry AND post a visible warning
+Then the orchestrator appends the entry and posts a visible warning
 on the active logbook issue: "⚠️ Findings ledger has reached 10 open
 entries — consider scheduling a drain."
 
@@ -233,8 +230,8 @@ entries — consider scheduling a drain."
 Given an implementation PR with one non-blocking `class: spec` finding  
 When the orchestrator presents it to the user in FULL mode  
 And the user routes it to the loop (chooses "loop" disposition)  
-Then the finding SHALL be treated as blocking for the current pass  
-And the orchestrator SHALL route it through the blocking matrix per
+Then the finding is treated as blocking for the current pass  
+And the orchestrator routes it through the blocking matrix per
 spec 0005 R4 (spec class → SPECS → spec-author in delta-spec mode)  
 And termination is not reached on this pass.
 
@@ -242,12 +239,12 @@ And termination is not reached on this pass.
 
 Given the findings ledger has 20 open entries  
 When the orchestrator is about to append a 21st entry  
-Then the orchestrator SHALL append the entry  
-And SHALL post a page-level alert on the active logbook issue:
+Then the orchestrator appends the entry  
+And posts a page-level alert on the active logbook issue:
 "🚨 Findings ledger has exceeded 20 open entries — drain is overdue.
-No further ledger-routes SHALL be executed until a DRAIN pass reduces
+No further ledger-routes are executed until a DRAIN pass reduces
 the open-entry count below 20."  
-And SHALL block all subsequent ledger-route operations for the current
+And blocks all subsequent ledger-route operations for the current
 ticket until the maintainer posts a `DRAIN` comment on the ledger issue
 and at least one entry is disposed.
 
