@@ -210,3 +210,9 @@ PascalCase regardless of the camelCase config keys, so
 `hooks/mempalace-transcript.sh` is unaffected. The "never commit
 project-relative hook paths" decision stands — the empty hook set is now
 `{}` rather than `[]`.
+
+## Addendum — 2026-08-16: Reversal of workspace-level hook merge in favor of user-level hooks
+
+Discovery finding #8 and the 2026-07-23 Addendum originally recorded that `setup-copilot-interactive.sh` merged transcript hooks into `.github/copilot/settings.json`. That workspace-level mutation embedded machine-specific absolute paths into a tracked file, causing `scripts/check-no-machine-paths.sh` (spec 0081) to fail and leaving working trees permanently dirty.
+
+Spec 0163 supersedes that design: Copilot transcript hooks are now deployed exclusively to the user-level configuration `~/.copilot/hooks/copilot-transcript-hooks.json`, which Copilot CLI loads globally across all workspaces. The repository file `.github/copilot/settings.json` remains clean and immutable with `"hooks": {}`, establishing full parity with Claude and Gemini setup scripts.
