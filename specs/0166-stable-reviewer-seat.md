@@ -1,7 +1,7 @@
 ---
 id: "0166"
 slug: stable-reviewer-seat
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 970
