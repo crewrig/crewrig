@@ -1,7 +1,7 @@
 ---
 id: "0163"
 slug: drop-copilot-workspace-hook-merge
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 959
