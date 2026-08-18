@@ -1,7 +1,7 @@
 ---
 id: "0162"
 slug: deferred-findings-lane
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: FULL
 related-issue: 885
@@ -73,9 +73,7 @@ would not be affected by this routing change.
 
 ## Requirements
 
-### Ledger shape and ownership
-
-1. The project SHALL maintain exactly one **findings ledger**, a pinned
+1. **Ledger shape and ownership.** The project SHALL maintain exactly one **findings ledger**, a pinned
    GitHub issue titled `📋 Findings ledger — deferred non-blocking
    findings` (Gitmoji convention: 📋). The issue SHALL be pinned on
    creation and SHALL never be closed; it SHALL serve as the sink for
@@ -89,9 +87,7 @@ would not be affected by this routing change.
 3. The ledger issue SHALL carry the label `deferred-findings-ledger`
    (created on first use). No other issue SHALL carry this label.
 
-### Drain trigger
-
-4. The ledger drain SHALL be triggered by the project maintainer at a
+4. **Drain trigger.** The ledger drain SHALL be triggered by the project maintainer at a
    cadence they own. The maintainer SHALL post a `DRAIN` command comment
    on the ledger issue to trigger a drain pass; the orchestrator SHALL
    treat the presence of this comment as the activation signal for the
@@ -119,9 +115,7 @@ would not be affected by this routing change.
    `DRAIN` comment on the ledger issue and at least one entry is
    disposed.
 
-### Routing rule amendments
-
-8. The non-blocking routing table (spec 0005 R10) SHALL be amended for
+8. **Routing rule amendments.** The non-blocking routing table (spec 0005 R10) SHALL be amended for
    all modes to introduce **ledger-route** as a third disposition
    alongside *loop-route* and *dismiss*:
 
@@ -145,9 +139,7 @@ would not be affected by this routing change.
       purposes and SHALL be routed through the blocking matrix per
       spec 0005 R4 using their `class:` tag.
 
-### Compatibility
-
-10. This spec SHALL NOT change the routing of **blocking** findings.
+10. **Compatibility.** This spec SHALL NOT change the routing of **blocking** findings.
     The routing matrix for blocking findings (tech → DEV, arch → PLAN,
     spec → SPECS) SHALL remain unchanged.
 
@@ -161,9 +153,7 @@ would not be affected by this routing change.
     dismiss disposition SHALL be recorded on the logbook issue, not on
     the findings ledger.
 
-### Documentation
-
-13. `docs/retroactive-loop.md` SHALL be amended to:
+13. **Documentation.** `docs/retroactive-loop.md` SHALL be amended to:
     - Add a *Deferred-findings ledger* section documenting R1–R7 of
       this spec (ledger shape, drain trigger, disposition table,
       growth guardrail).

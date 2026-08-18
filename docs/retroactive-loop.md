@@ -33,19 +33,22 @@ Definitions of each class, canonical and borderline examples, and the disambigua
 
 ## Deferred-findings ledger
 
-Non-blocking findings MAY be routed to a persistent findings ledger rather than into the retroactive routing loop (see *Non-blocking conditional routing* below). 
+Non-blocking findings MAY be routed to a persistent findings ledger rather than into the retroactive routing loop (see *Non-blocking conditional routing* below).
 
 **Ledger shape and ownership.** The project maintains exactly one findings ledger: a pinned GitHub issue titled `📋 Findings ledger — deferred non-blocking findings` carrying the `deferred-findings-ledger` label. It serves as the single sink for all ledger-routed findings and SHALL never be closed. Each entry records the source PR number, source ticket number, finding class, a one-line summary, date routed, and the routing actor.
 
 **Journalling.** The orchestrator SHALL journal every ledger-route disposition on the active logbook issue (one line per finding: finding ref, disposition `ledger`, actor).
 
 **Drain protocol.** The project maintainer triggers a drain pass by posting a `DRAIN` comment on the ledger issue. Each open entry is evaluated as:
+
 - **Promote**: Finding is material; open a new ticket to address it.
 - **Accept**: Finding is noted but not actionable; close entry with rationale.
 - **Carry**: Finding is still relevant but not urgent; leave open.
+
 The maintainer is the sole decision-maker for each disposition.
 
 **Growth guardrail.** To prevent unbounded growth:
+
 - The orchestrator posts a warning on the logbook issue when open entries exceed **10**.
 - The orchestrator pages the user and blocks all further ledger-route operations when open entries exceed **20**, until a DRAIN comment is posted and at least one entry is disposed.
 
