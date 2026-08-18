@@ -77,9 +77,28 @@ case "${out}" in
   *) nope "the configuration path is not named: ${out}" ;;
 esac
 case "${out}" in
+  *"backup:  no"*) ok "the report names the backup state (none present)" ;;
+  *) nope "no backup-state line: ${out}" ;;
+esac
+case "${out}" in
   *"--reset-none"*) ok "the available repair action is named" ;;
   *) nope "no repair action named: ${out}" ;;
 esac
+
+# A parseable backup flips the report: backup yes, and --restore-backup joins
+# the available actions.
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["x"]}}}' \
+  > "${TEST_HOME}/.gemini/settings.json.bak.20260101-000000"
+out="$(bash "${REPAIR}" 2>&1)"; rc=$?
+case "${out}" in
+  *"backup:  yes (most recent parses as JSON)"*) ok "the report names a usable backup" ;;
+  *) nope "no usable-backup line: ${out}" ;;
+esac
+case "${out}" in
+  *"--restore-backup"*) ok "--restore-backup joins the available actions" ;;
+  *) nope "--restore-backup not named: ${out}" ;;
+esac
+rm -f "${TEST_HOME}/.gemini/settings.json.bak."*
 
 # A present assistant with no config file has no mempalace registration —
 # recognisably `none`, not residue (spec 0165 R2, absent→none mapping).
@@ -92,19 +111,27 @@ bash "${REPAIR}" >/dev/null 2>&1; rc=$?
 # --- R5. Restore from the most recent usable backup --------------------------
 echo ""
 echo "R5 — restore from the most recent usable backup:"
-# Two backups: an older one that does not parse, a newer one that does. The
-# restore must pick the newer usable one, not the older non-parseable one.
+# Three backups: an older non-parseable one, an older parseable one, and a
+# newer parseable one. The restore must skip the non-parseable AND pick the
+# newer of the two parseable ones — a regression that takes the first
+# parseable match would restore the older content.
 echo 'not json' > "${TEST_HOME}/.gemini/settings.json.bak.20260101-000000"
-printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["good"]}}}' \
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["older"]}}}' \
   > "${TEST_HOME}/.gemini/settings.json.bak.20260102-000000"
-chmod 644 "${TEST_HOME}/.gemini/settings.json.bak.20260102-000000"
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["newer"]}}}' \
+  > "${TEST_HOME}/.gemini/settings.json.bak.20260103-000000"
+chmod 644 "${TEST_HOME}/.gemini/settings.json.bak.20260102-000000" \
+        "${TEST_HOME}/.gemini/settings.json.bak.20260103-000000"
 residue_config > "${TEST_HOME}/.gemini/settings.json"
-out="$(bash "${REPAIR}" --restore-backup 2>&1)"; rc=$?
-[ "$(jq -c '.mcpServers.mempalace' "${TEST_HOME}/.gemini/settings.json")" = '{"command":"bash","args":["good"]}' ] \
+# umask 077 makes the mode assertion non-vacuous: a plain `cp` of a 644 backup
+# would yield 600 under this umask, so the restored file staying 644 proves the
+# restore uses `cp -p` (mode preservation), not a umask-derived rewrite.
+out="$(umask 077; bash "${REPAIR}" --restore-backup 2>&1)"; rc=$?
+[ "$(jq -c '.mcpServers.mempalace' "${TEST_HOME}/.gemini/settings.json")" = '{"command":"bash","args":["newer"]}' ] \
   && ok "the most recent usable backup is restored" \
   || nope "the wrong backup was restored"
 [ "$(mode_of "${TEST_HOME}/.gemini/settings.json")" = "644" ] \
-  && ok "the file's mode is preserved by the restore" \
+  && ok "the file's mode is preserved by the restore (cp -p, not umask-derived)" \
   || nope "restore did not preserve the mode (got $(mode_of "${TEST_HOME}/.gemini/settings.json"))"
 [ "${rc}" -eq 0 ] \
   && ok "a restore that leaves no residue exits 0" \
@@ -204,6 +231,32 @@ bash "${REPAIR}" >/dev/null 2>&1; rc=$?
 [ "${rc}" -eq 0 ] \
   && ok "a second run after a successful repair finds no residue and exits 0" \
   || nope "a second run found residue or exited ${rc}"
+
+# --- R14. The switch transaction hands off to the repair command -------------
+echo ""
+echo "R14 — the switch transaction hands off to the repair command:"
+# The R15 loop refuses an unknown arrangement and names the repair command
+# (common.sh R14 message). The unknown branch returns before any state change,
+# so the switch is safe to invoke directly with a residue fixture.
+residue_config > "${TEST_HOME}/.gemini/settings.json"
+out="$(switch_assistants_to_http "test-token" 2>&1)"; rc=$?
+[ "${rc}" -ne 0 ] \
+  && ok "the switch refuses an unknown arrangement" \
+  || nope "the switch accepted an unknown arrangement (exit ${rc})"
+case "${out}" in
+  *"task mempalace:repair"*) ok "the R15-loop handoff names the repair command" ;;
+  *) nope "the R15-loop handoff does not name the repair command: ${out}" ;;
+esac
+
+# The rollback handoff names the restore verb. A restore fails deterministically
+# when the config file is absent, so _switch_rollback reports the assistant as
+# requiring manual repair and names the repair command's --restore-backup verb.
+rm -f "${TEST_HOME}/.gemini/settings.json"
+out="$(_switch_rollback "gemini" "null" "null" "null" "null" 2>&1)"; rc=$?
+case "${out}" in
+  *"task mempalace:repair --restore-backup"*) ok "the rollback handoff names the restore verb" ;;
+  *) nope "the rollback handoff does not name the restore verb: ${out}" ;;
+esac
 
 # --- Flag parsing ------------------------------------------------------------
 echo ""
