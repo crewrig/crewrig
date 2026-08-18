@@ -126,6 +126,20 @@ has_any_backup() {
   return 1
 }
 
+# file_mode <path> — the file's mode in octal, or 600 when it cannot be read.
+# GNU probed first: `stat -f` on GNU means "filesystem" and SUCCEEDS with
+# output this caller would then feed to chmod (the test suite's mode_of carries
+# the same ordering for the same reason). An unreadable mode falls back to the
+# narrow end, never the wide one.
+file_mode() {
+  local m
+  m="$(stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null)"
+  case "$m" in
+    [0-7]|[0-7][0-7][0-7]|[0-7][0-7][0-7][0-7]) printf '%s\n' "$m" ;;
+    *) printf '600\n' ;;
+  esac
+}
+
 # most_recent_usable_backup <cfg> — echoes the most recent backup whose content
 # parses as JSON, or nothing (returning non-zero) when none is usable. The glob
 # expands in lexical order and the %Y%m%d-%H%M%S stamp from backup_file is
@@ -183,26 +197,52 @@ report_residue() {
 # An affected assistant without a usable backup is reported, not silently
 # skipped.
 restore_backup() {
-  local cli="$1" cfg bak
+  local cli="$1" cfg bak mode tmp
   cfg="$(mcp_assistant_config_path "$cli")"
   bak="$(most_recent_usable_backup "$cfg")" || {
     echo "  $cli: NO USABLE BACKUP — restore the timestamped .bak file beside"
     echo "        $cfg by hand, or re-run setup once the cause is fixed."
     return 1
   }
-  cp -p "$bak" "$cfg" || {
+  # R5: preserve the backup's mode, EXCEPT that a configuration carrying a
+  # bearer token SHALL be 0600. Both are decided here, before the content
+  # exists at the config path, because the mode is a property of the write and
+  # not a correction applied after it: `cp -p "$bak" "$cfg"` publishes the
+  # token at the backup's mode — 0644 on a backup taken under umask 022 — and
+  # only narrows it on the next statement, so the credential is world-readable
+  # for the width of that window. `cp` also writes THROUGH a symlinked $cfg,
+  # putting the configuration (token included) wherever the link points.
+  # Staging into a mktemp sibling and renaming closes both: `mv` is rename(2),
+  # so the destination inherits the temp file's already-final mode and replaces
+  # a symlink instead of following it. write_json_config_secure in
+  # scripts/lib/common.sh is the in-repo precedent for the same pattern.
+  mode="$(file_mode "$bak")"
+  if jq -e '.mcpServers.mempalace.headers.Authorization // empty' "$bak" >/dev/null 2>&1; then
+    mode=600
+  fi
+  # mktemp, not "${cfg}.tmp.$$": a predictable name in a writable directory
+  # turns this restore into an arbitrary-file-write with the bearer token as
+  # payload (pre-create the name as a symlink). mktemp refuses an existing
+  # name. umask 077 so the file is never observable wider than its final mode.
+  tmp="$(umask 077; mktemp "${cfg}.tmp.XXXXXX")" || {
+    echo "  ERROR: could not stage the restore of $cfg beside it" >&2
+    return 1
+  }
+  if ! cat "$bak" > "$tmp"; then
+    rm -f "$tmp"
+    echo "  ERROR: could not restore $cfg from $bak" >&2
+    return 1
+  fi
+  chmod "$mode" "$tmp" || {
+    rm -f "$tmp"
+    echo "  ERROR: could not set mode $mode on the staged restore of $cfg." >&2
+    return 1
+  }
+  mv "$tmp" "$cfg" || {
+    rm -f "$tmp"
     echo "  ERROR: could not restore $cfg from $bak" >&2
     return 1
   }
-  # R5: a configuration that carries a bearer token SHALL remain 0600. The
-  # backup was taken with cp -P (umask-derived mode), so cp -p alone cannot be
-  # trusted to reproduce the original mode.
-  if jq -e '.mcpServers.mempalace.headers.Authorization // empty' "$cfg" >/dev/null 2>&1; then
-    chmod 600 "$cfg" || {
-      echo "  ERROR: $cfg holds a bearer token and could not be restricted to 0600." >&2
-      return 1
-    }
-  fi
   echo "  $cli: restored from $bak"
   return 0
 }

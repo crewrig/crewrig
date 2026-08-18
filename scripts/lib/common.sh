@@ -1408,7 +1408,7 @@ mcp_report_assistant_arrangements() {
       stdio)   printf '  %-12s stdio (previous arrangement)\n' "$cli" ;;
       none)    printf '  %-12s no mempalace registration\n' "$cli" ;;
       absent)  printf '  %-12s CLI not installed\n' "$cli" ;;
-      *)       printf '  %-12s *** UNRECOGNISED — manual repair required ***\n' "$cli" ;;
+      *)       printf "  %-12s *** UNRECOGNISED — run 'task mempalace:repair' ***\n" "$cli" ;;
     esac
   done
 }

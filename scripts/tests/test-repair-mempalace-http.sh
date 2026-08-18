@@ -7,8 +7,16 @@
 # under $HOME and never touches supervisor state, ports, or the daemon, so the
 # isolation contract is the single $HOME axis: mcp_assistant_config_path
 # (common.sh) derives all four config paths from $HOME alone, and nothing here
-# invokes a real CLI. The "present" gate is `command -v`, so each CLI is
-# stubbed on PATH exactly as test-mcp-daemon.sh section 11 does.
+# invokes a real CLI. That single axis is sufficient only for as long as that
+# derivation holds: Claude Code itself resolves its user config through
+# CLAUDE_CONFIG_DIR, so if common.sh ever learns to honour that variable, this
+# suite must redirect it too or it silently escapes isolation and rewrites the
+# operator's real ~/.claude.json. The sibling suite test-mcp-daemon.sh already
+# exports CLAUDE_CONFIG_DIR deliberately — it owes coverage on the Claude arm
+# (the switch transaction, the Claude reader) that this pure file-level suite
+# never will — so the two suites differ on purpose, not by omission.
+# The "present" gate is `command -v`, so each CLI is stubbed on PATH exactly as
+# test-mcp-daemon.sh section 11 does.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -131,15 +139,16 @@ printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["newer"]}}}'
 chmod 644 "${TEST_HOME}/.gemini/settings.json.bak.20260102-000000" \
         "${TEST_HOME}/.gemini/settings.json.bak.20260103-000000"
 residue_config > "${TEST_HOME}/.gemini/settings.json"
-# umask 077 makes the mode assertion non-vacuous: a plain `cp` of a 644 backup
-# would yield 600 under this umask, so the restored file staying 644 proves the
-# restore uses `cp -p` (mode preservation), not a umask-derived rewrite.
+# umask 077 makes the mode assertion non-vacuous: the restore stages the
+# content into a mktemp sibling created under this umask (0600) and chmods it to
+# the backup's mode before renaming, so the restored file staying 644 proves the
+# backup's mode is propagated deliberately, not inherited from the umask.
 out="$(umask 077; bash "${REPAIR}" --restore-backup 2>&1)"; rc=$?
 [ "$(jq -c '.mcpServers.mempalace' "${TEST_HOME}/.gemini/settings.json")" = '{"command":"bash","args":["newer"]}' ] \
   && ok "the most recent usable backup is restored" \
   || nope "the wrong backup was restored"
 [ "$(mode_of "${TEST_HOME}/.gemini/settings.json")" = "644" ] \
-  && ok "the file's mode is preserved by the restore (cp -p, not umask-derived)" \
+  && ok "the file's mode is preserved by the restore (not umask-derived)" \
   || nope "restore did not preserve the mode (got $(mode_of "${TEST_HOME}/.gemini/settings.json"))"
 [ "${rc}" -eq 0 ] \
   && ok "a restore that leaves no residue exits 0" \
@@ -168,6 +177,40 @@ case "${out}" in
   *"gemini"*"NO USABLE BACKUP"*) ok "the assistant with no usable backup is reported" ;;
   *) nope "no usable-backup report: ${out}" ;;
 esac
+
+echo ""
+echo "R5 — the restore never follows a symlinked destination:"
+# `cp -p BAK CFG` writes THROUGH a symlinked CFG: the restored configuration —
+# bearer token included — lands wherever the link points, and the link target
+# takes the backup's mode. Staging the content into a mktemp sibling and
+# renaming it over CFG replaces the link itself, so the target is untouched.
+# This is the deterministic half of the same defect whose other half — the
+# window during which the token sits at the backup's (possibly 0644) mode
+# before the chmod narrows it — is a race and cannot be asserted directly.
+victim="${TEST_HOME}/victim-outside-the-config.json"
+rm -f "${TEST_HOME}/.gemini/settings.json"
+ln -s "${victim}" "${TEST_HOME}/.gemini/settings.json"
+# The classifier reads through the link, so the residue has to live in the link
+# target for gemini to be treated as affected at all.
+residue_config > "${victim}"
+chmod 600 "${victim}"
+printf '%s\n' '{"mcpServers":{"mempalace":{"type":"http","url":"http://127.0.0.1:1/mcp","headers":{"Authorization":"Bearer SECRET123"}}}}' \
+  > "${TEST_HOME}/.gemini/settings.json.bak.20260104-000000"
+chmod 644 "${TEST_HOME}/.gemini/settings.json.bak.20260104-000000"
+bash "${REPAIR}" --restore-backup >/dev/null 2>&1
+case "$(cat "${victim}")" in
+  *SECRET123*) nope "the restore wrote the bearer token through the symlink into ${victim}" ;;
+  *) ok "the symlink target never receives the restored configuration" ;;
+esac
+[ ! -L "${TEST_HOME}/.gemini/settings.json" ] \
+  && ok "the symlinked config path is replaced, not followed" \
+  || nope "the config path is still a symlink — the restore wrote through it"
+[ "$(mode_of "${TEST_HOME}/.gemini/settings.json")" = "600" ] \
+  && ok "the restored token-bearing config is 0600 at the config path" \
+  || nope "restored config at the config path is $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 600"
+# Hand the following sections a plain regular config again.
+rm -f "${TEST_HOME}/.gemini/settings.json" "${victim}" \
+      "${TEST_HOME}/.gemini/settings.json.bak."*
 
 # --- R6. Reset to none -------------------------------------------------------
 echo ""
