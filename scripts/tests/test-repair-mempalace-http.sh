@@ -5,9 +5,10 @@
 # The command under test is scripts/repair-mempalace-http.sh. It is a pure
 # file-level repair: it reads and rewrites assistant MCP configuration files
 # under $HOME and never touches supervisor state, ports, or the daemon, so the
-# isolation contract is the single $HOME axis (plus CLAUDE_CONFIG_DIR, which
-# Claude Code resolves instead of $HOME). The "present" gate is `command -v`,
-# so each CLI is stubbed on PATH exactly as test-mcp-daemon.sh section 11 does.
+# isolation contract is the single $HOME axis: mcp_assistant_config_path
+# (common.sh) derives all four config paths from $HOME alone, and nothing here
+# invokes a real CLI. The "present" gate is `command -v`, so each CLI is
+# stubbed on PATH exactly as test-mcp-daemon.sh section 11 does.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,9 +21,16 @@ nope() { FAIL=$((FAIL + 1)); printf '  FAIL %s\n' "$1"; }
 
 REAL_HOME="${HOME}"
 TEST_HOME="$(mktemp -d)"
+# $HOME is the only isolation axis and this suite rewrites MCP configuration
+# under it, so an isolated HOME that failed to materialise must abort BEFORE
+# the export. There is no `set -e` here: a failed mktemp leaves TEST_HOME
+# empty, and the suite would then rewrite /.claude.json and
+# /.gemini/settings.json — outside any sandbox.
+if [ -z "${TEST_HOME}" ] || [ ! -d "${TEST_HOME}" ] || [ "${TEST_HOME}" = "${REAL_HOME}" ]; then
+  echo "REFUSING TO RUN: the isolated HOME did not materialise (got '${TEST_HOME}')." >&2
+  exit 1
+fi
 export HOME="${TEST_HOME}"
-export CLAUDE_CONFIG_DIR="${TEST_HOME}/.claude-config"
-mkdir -p "${CLAUDE_CONFIG_DIR}"
 
 cleanup() { rm -rf "${TEST_HOME}"; }
 trap cleanup EXIT
