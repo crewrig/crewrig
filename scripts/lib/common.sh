@@ -1319,7 +1319,12 @@ _switch_rollback() {
       echo "    - $cli  ($(mcp_assistant_config_path "$cli"))"
     done
     echo "  Each config was backed up before the change; run"
-    echo "  'task mempalace:repair --restore-backup' to restore the timestamped"
+    # `--` is load-bearing, not decoration: the Taskfile entry forwards
+    # {{.CLI_ARGS}}, which go-task populates ONLY from arguments after a `--`
+    # separator. Without it the flag is parsed as a task flag and the operator
+    # gets `unknown flag:` plus a usage dump instead of the restore this
+    # handoff exists to hand them (same form as `task prune-transcripts --`).
+    echo "  'task mempalace:repair -- --restore-backup' to restore the timestamped"
     echo "  .bak file, or re-run setup once the cause is fixed."
     echo ""
     echo "  Current state of every assistant:"

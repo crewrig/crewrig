@@ -126,14 +126,27 @@ has_any_backup() {
   return 1
 }
 
-# file_mode <path> — the file's mode in octal, or 600 when it cannot be read.
+# file_mode <path> — the mode chmod should be given for a copy of <path>, in
+# octal, or 600 when it cannot be read.
+#
 # GNU probed first: `stat -f` on GNU means "filesystem" and SUCCEEDS with
 # output this caller would then feed to chmod (the test suite's mode_of carries
 # the same ordering for the same reason). An unreadable mode falls back to the
 # narrow end, never the wide one.
+#
+# `-L` dereferences, and it is required here: the argument is a BACKUP, and a
+# backup can be a symlink. backup_file (scripts/lib/common.sh) copies with
+# `cp -P`, which deliberately does not dereference, so an assistant config that
+# is itself a symlink — the dotfiles pattern, ~/.gemini/settings.json linked
+# into a dotfiles repo — yields a symlinked backup, and
+# most_recent_usable_backup accepts it because jq follows the link and parses
+# the target. Without -L this reads the LINK's own mode — 0755 on macOS, 0777
+# on Linux — and the restore publishes the configuration wider than the
+# operator ever had it, up to world-writable for a file whose
+# mcpServers.mempalace.command the CLI executes at session start.
 file_mode() {
   local m
-  m="$(stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null)"
+  m="$(stat -Lc '%a' "$1" 2>/dev/null || stat -L -f '%Lp' "$1" 2>/dev/null)"
   case "$m" in
     [0-7]|[0-7][0-7][0-7]|[0-7][0-7][0-7][0-7]) printf '%s\n' "$m" ;;
     *) printf '600\n' ;;

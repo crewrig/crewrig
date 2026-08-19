@@ -63,6 +63,13 @@ export PATH="${TEST_HOME}/bin:${PATH}"
 # mode_of <path> — the file's mode in octal, GNU first (test-mcp-daemon.sh
 # token-file precedent: `stat -f` on GNU means "filesystem" and SUCCEEDS with
 # unusable output, so probing BSD-style first silently yields garbage).
+#
+# Deliberately WITHOUT `-L`, unlike file_mode in the command under test: this
+# is an assertion helper, and every caller asserts on the restored config path,
+# which the restore is required to leave as a regular file. Dereferencing here
+# would make a restore that wrongly left a symlink in place report its target's
+# mode and pass. file_mode needs `-L` for the opposite reason — it reads a
+# BACKUP, which `cp -P` can legitimately have made a symlink.
 mode_of() {
   stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null
 }
@@ -139,6 +146,14 @@ printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["newer"]}}}'
 chmod 644 "${TEST_HOME}/.gemini/settings.json.bak.20260102-000000" \
         "${TEST_HOME}/.gemini/settings.json.bak.20260103-000000"
 residue_config > "${TEST_HOME}/.gemini/settings.json"
+# The destination is deliberately given a DIFFERENT mode from the backup. R5
+# says the restore preserves "the file's mode" and there are two candidate
+# files; left at the ambient umask the destination is also 644, and the
+# assertion below then passes whether the implementation reads the backup or
+# the destination — a loose reading of R5 that is wrong, since the destination
+# is the residue being replaced. 600 here vs 644 on the backup makes the
+# assertion name which file it means.
+chmod 600 "${TEST_HOME}/.gemini/settings.json"
 # umask 077 makes the mode assertion non-vacuous: the restore stages the
 # content into a mktemp sibling created under this umask (0600) and chmods it to
 # the backup's mode before renaming, so the restored file staying 644 proves the
@@ -210,6 +225,59 @@ esac
   || nope "restored config at the config path is $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 600"
 # Hand the following sections a plain regular config again.
 rm -f "${TEST_HOME}/.gemini/settings.json" "${victim}" \
+      "${TEST_HOME}/.gemini/settings.json.bak."*
+
+echo ""
+echo "R5 — the restored mode comes from a symlinked backup's TARGET:"
+# The other symlink hazard, and a different one from the case above: there the
+# DESTINATION is a link, here the SOURCE is. backup_file (scripts/lib/common.sh)
+# tests `[ -f ] || [ -L ]` and copies with `cp -P`, which does not dereference,
+# so a config that is itself a symlink — the dotfiles pattern — produces a
+# symlinked BACKUP; most_recent_usable_backup then accepts it because jq
+# follows the link and parses the target. Reading the mode off the link instead
+# of its target hands chmod the link's own mode — 0755 on macOS, 0777 on Linux
+# — and publishes the restored configuration wider than the operator had it.
+link_target="${TEST_HOME}/dotfiles-settings.json"
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["from-dotfiles"]}}}' \
+  > "${link_target}"
+chmod 644 "${link_target}"
+ln -s "${link_target}" "${TEST_HOME}/.gemini/settings.json.bak.20260105-000000"
+residue_config > "${TEST_HOME}/.gemini/settings.json"
+# 600 on the destination for the same reason as the first R5 case: it keeps the
+# three candidate modes distinct — link target 644, link itself 755/777,
+# destination 600 — so the single assertion below names all three outcomes
+# apart instead of collapsing two of them.
+chmod 600 "${TEST_HOME}/.gemini/settings.json"
+# umask 077 for the same reason as the first R5 case: the staged temp file is
+# created at 0600, so a restored config at 644 proves the target's mode was
+# read and applied deliberately.
+(umask 077; bash "${REPAIR}" --restore-backup) >/dev/null 2>&1
+[ "$(jq -c '.mcpServers.mempalace' "${TEST_HOME}/.gemini/settings.json" 2>/dev/null)" \
+  = '{"command":"bash","args":["from-dotfiles"]}' ] \
+  && ok "a symlinked backup is restored from its target's content" \
+  || nope "the symlinked backup was not restored"
+[ "$(mode_of "${TEST_HOME}/.gemini/settings.json")" = "644" ] \
+  && ok "the restored mode is the symlinked backup's target mode, not the link's" \
+  || nope "restore from a symlinked backup is $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 644 (the link target's mode)"
+rm -f "${TEST_HOME}/.gemini/settings.json" "${link_target}" \
+      "${TEST_HOME}/.gemini/settings.json.bak."*
+
+echo ""
+echo "R5 — a symlinked backup whose target carries a bearer token stays 0600:"
+# The token rule outranks the mode-preservation rule, and must keep doing so
+# when the mode arrives by dereferencing a link: a 0644 target must not carry
+# its mode over a credential.
+link_target="${TEST_HOME}/dotfiles-settings-token.json"
+printf '%s\n' '{"mcpServers":{"mempalace":{"type":"http","url":"http://127.0.0.1:1/mcp","headers":{"Authorization":"Bearer x"}}}}' \
+  > "${link_target}"
+chmod 644 "${link_target}"
+ln -s "${link_target}" "${TEST_HOME}/.gemini/settings.json.bak.20260106-000000"
+residue_config > "${TEST_HOME}/.gemini/settings.json"
+bash "${REPAIR}" --restore-backup >/dev/null 2>&1
+[ "$(mode_of "${TEST_HOME}/.gemini/settings.json")" = "600" ] \
+  && ok "a token-bearing symlinked backup restores to 0600, not the target's mode" \
+  || nope "token-bearing restore from a symlinked backup is $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 600"
+rm -f "${TEST_HOME}/.gemini/settings.json" "${link_target}" \
       "${TEST_HOME}/.gemini/settings.json.bak."*
 
 # --- R6. Reset to none -------------------------------------------------------
@@ -302,11 +370,14 @@ esac
 # The rollback handoff names the restore verb. A restore fails deterministically
 # when the config file is absent, so _switch_rollback reports the assistant as
 # requiring manual repair and names the repair command's --restore-backup verb.
+# The `--` separator is part of the assertion: the Taskfile entry forwards
+# {{.CLI_ARGS}}, which go-task fills only from arguments after `--`, so the
+# separator-less form the operator would copy exits 2 with `unknown flag:`.
 rm -f "${TEST_HOME}/.gemini/settings.json"
 out="$(_switch_rollback "gemini" "null" "null" "null" "null" 2>&1)"; rc=$?
 case "${out}" in
-  *"task mempalace:repair --restore-backup"*) ok "the rollback handoff names the restore verb" ;;
-  *) nope "the rollback handoff does not name the restore verb: ${out}" ;;
+  *"task mempalace:repair -- --restore-backup"*) ok "the rollback handoff names the restore verb with the -- separator" ;;
+  *) nope "the rollback handoff does not name 'task mempalace:repair -- --restore-backup': ${out}" ;;
 esac
 
 # --- Flag parsing ------------------------------------------------------------
