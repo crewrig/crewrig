@@ -689,11 +689,40 @@ else
 fi
 
 # --- §5. The hook's own Antigravity handling ---------------------------------
-# Hermetic by stubbing $MEMPALACE_PYTHON: the hook pipes its heredoc into that
-# binary and, on a zero exit, logs `persisted <ENTRY_TYPE> to transcripts/<ROOM>`.
-# A stub that swallows stdin and exits zero therefore exposes both the
-# classification and the room id without MemPalace, chromadb, or a network.
+# Hermetic by stubbing curl and providing a mock token file: the hook posts
+# JSON-RPC requests via curl and, on a zero exit, logs
+# `persisted <ENTRY_TYPE> to transcripts/<ROOM>`.
+# A stub that accepts JSON-RPC calls and exits zero therefore exposes both the
+# classification, the payload content, and the room id without a live network.
 echo "§5 hook payload handling (R7/R8/R9/R10/R11)"
+
+MOCK_BIN="$TMP_ROOT/bin"
+mkdir -p "$MOCK_BIN"
+MOCK_CURL="$MOCK_BIN/curl"
+CONTENT_OUT="$TMP_ROOT/content-out"
+cat > "$MOCK_CURL" <<EOF
+#!/bin/bash
+payload=""
+while [ \$# -gt 0 ]; do
+  if [ "\$1" = "-d" ]; then
+    payload="\$2"
+    break
+  fi
+  shift
+done
+if [ -n "\$payload" ]; then
+  content="\$(echo "\$payload" | jq -r '.params.arguments.content // empty' 2>/dev/null)"
+  if [ -n "\$content" ]; then
+    printf '%s' "\$content" > "$CONTENT_OUT"
+  fi
+fi
+echo '{"jsonrpc": "2.0", "id": 1, "result": {"isError": false, "content": [{"text": "OK"}]}}'
+exit 0
+EOF
+chmod +x "$MOCK_CURL"
+
+MOCK_TOKEN="$TMP_ROOT/mock-token"
+echo "test-token" > "$MOCK_TOKEN"
 
 PYSTUB="$TMP_ROOT/pystub"
 printf '#!/bin/bash\ncat >/dev/null\necho OK\n' > "$PYSTUB"
@@ -707,7 +736,7 @@ CLAUDE_PROMPT='{"hook_event_name":"UserPromptSubmit","prompt":"hello"}'
 
 run_hook() { # <payload> [event]
   local payload="$1"; shift
-  printf '%s' "$payload" | MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON="$PYSTUB" \
+  printf '%s' "$payload" | PATH="$MOCK_BIN:$PATH" MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" MEMPALACE_PYTHON="$PYSTUB" \
     bash "$HOOK_SCRIPT" "$@" 2>"$TMP_ROOT/stderr"
 }
 
@@ -795,17 +824,9 @@ fi
 # pinned the text. Deleting the Antigravity `Stop)` case arm left both suites
 # green, because the generic Claude `Stop` branch below it sets the same
 # ENTRY_TYPE — only the `(terminationReason)` suffix silently vanished. That
-# suffix is the whole informational payload: docs/cli-matrix.md row 8 records
-# [GAP-content], so an Antigravity entry is a turn marker and the reason is all
-# the marker carries. Pin the text by stubbing $MEMPALACE_PYTHON to dump the
-# content the hook hands it.
-CONTENT_STUB="$TMP_ROOT/content-stub"
-CONTENT_OUT="$TMP_ROOT/content-out"
-printf '#!/bin/bash\ncat >/dev/null\nprintf "%%s" "$TRANSCRIPT_CONTENT" > "%s"\necho OK\n' \
-  "$CONTENT_OUT" > "$CONTENT_STUB"
-chmod +x "$CONTENT_STUB"
+# Pin the text by capturing the payload content passed to the mock curl.
 rm -f "$CONTENT_OUT"
-printf '%s' "$AGY_STOP" | MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON="$CONTENT_STUB" \
+printf '%s' "$AGY_STOP" | PATH="$MOCK_BIN:$PATH" MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" \
   bash "$HOOK_SCRIPT" Stop >/dev/null 2>&1
 if [ "$(cat "$CONTENT_OUT" 2>/dev/null)" = "[AGENT] Session turn completed (NO_TOOL_CALL)" ]; then
   ok "R7: the entry carries the terminationReason, not just the turn marker"
