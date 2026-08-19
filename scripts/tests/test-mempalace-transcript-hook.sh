@@ -259,6 +259,65 @@ else
 fi
 
 # -------------------------------------------------------------------------
+# Test 25/26 — spec 0167 / issue #973: injectable daemon token file path
+# and graceful DAEMON_UNREACHABLE exit when token is absent.
+# -------------------------------------------------------------------------
+TMPDIR_T25="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_T2" "$TMPDIR_T7" "$TMPDIR_T23" "$TMPDIR_T25"' EXIT
+
+EXPLICIT_TOKEN_CURL="$TMPDIR_T25/curl"
+cat > "$EXPLICIT_TOKEN_CURL" <<EOF
+#!/bin/bash
+auth_header=""
+while [ \$# -gt 0 ]; do
+  if [ "\$1" = "-H" ] && [[ "\$2" =~ ^Authorization:[[:space:]]*Bearer ]]; then
+    auth_header="\$2"
+    break
+  fi
+  shift
+done
+echo "\$auth_header" > "$TMPDIR_T25/captured-auth.txt"
+echo '{"jsonrpc": "2.0", "id": 1, "result": {"isError": false, "content": [{"text": "OK"}]}}'
+exit 0
+EOF
+chmod +x "$EXPLICIT_TOKEN_CURL"
+
+EXPLICIT_TOKEN_FILE="$TMPDIR_T25/custom-token"
+echo "custom-secret-token" > "$EXPLICIT_TOKEN_FILE"
+
+(
+  export PATH="$TMPDIR_T25:$PATH"
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  export MEMPALACE_DAEMON_TOKEN_FILE="$EXPLICIT_TOKEN_FILE"
+  unset TOKEN_PATH_MOCK
+  printf '%s' "$STOP_JSON_T7" | bash "$HOOK" >/dev/null 2>&1
+) || true
+
+if [ -f "$TMPDIR_T25/captured-auth.txt" ] && grep -q 'custom-secret-token' "$TMPDIR_T25/captured-auth.txt"; then
+  record PASS "spec-0167-r1: MEMPALACE_DAEMON_TOKEN_FILE injects explicit bearer token"
+else
+  record FAIL "spec-0167-r1: MEMPALACE_DAEMON_TOKEN_FILE injects explicit bearer token" \
+    "captured auth: $(cat "$TMPDIR_T25/captured-auth.txt" 2>/dev/null)"
+fi
+
+STDERR_MISSING="$TMPDIR_T25/stderr-missing"
+(
+  export PATH="$TMPDIR_T25:$PATH"
+  export MEMPALACE_TRANSCRIPT_ENABLED=1
+  export HOME="$TMPDIR_T25/empty-home"
+  mkdir -p "$HOME"
+  unset MEMPALACE_DAEMON_TOKEN_FILE TOKEN_PATH_MOCK
+  printf '%s' "$STOP_JSON_T7" | bash "$HOOK" >/dev/null 2>"$STDERR_MISSING"
+) || true
+
+if grep -q 'DAEMON_UNREACHABLE: token file not found' "$STDERR_MISSING"; then
+  record PASS "spec-0167-r3: missing token logs DAEMON_UNREACHABLE diagnostic and exits 0"
+else
+  record FAIL "spec-0167-r3: missing token logs DAEMON_UNREACHABLE diagnostic and exits 0" \
+    "stderr: $(cat "$STDERR_MISSING" 2>/dev/null)"
+fi
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo
