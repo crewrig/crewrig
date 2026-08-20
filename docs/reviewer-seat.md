@@ -130,14 +130,28 @@ readily as on the pull request, so the logbook issue is queried on **every**
 surface — not only on `plan`:
 
 ```bash
+# The seat line in the exact form required above. Defined once and used by
+# every query below: a copy per query is a copy that can drift out of step.
+SEAT='(?m)^seat: (specs|plan|review)/[0-9]+(#[0-9]+)?[ \t]*\r?$'
+
 # every surface — the logbook issue
 gh issue view <ticket> --json comments \
-  --jq '[.comments[] | select(.body | test("(?m)^seat: (specs|plan|review)/[0-9]+(#[0-9]+)?$"))]'
+  --jq "[.comments[] | select(.body | test(\"$SEAT\"))]"
 
-# a pull-request surface, additionally — both PR transports
-gh pr view <pr> --json comments
-gh api repos/<owner>/<repo>/pulls/<pr>/reviews
+# a pull-request surface, additionally — both PR transports.
+# Mind the accessor: the reviews endpoint returns a top-level array, so
+# `.comments[]` errors against it.
+gh pr view <pr> --json comments \
+  --jq "[.comments[] | select(.body | test(\"$SEAT\"))]"
+gh api repos/<owner>/<repo>/pulls/<pr>/reviews \
+  --jq "[.[] | select(.body | test(\"$SEAT\"))]"
 ```
+
+**The filter belongs on every query, not just the first.** It is what makes
+the void annotation below drop a verdict out of the dossier without anyone
+having to remember a rule — so a query that omits it returns voided
+verdicts and the discriminator degrades to advice on exactly the two
+locations where a `review`- or `specs`-surface verdict normally lands.
 
 **Query a subset and the seat reads as falsely vacant.** A verdict posted
 as a formal review does not appear among a pull request's comments; one
@@ -174,7 +188,16 @@ seat: specs/970 — VOID (discarded: brief carried authoring context)
 
 That is one `gh` call against an artifact the forge already holds, so no
 new store appears and the void status is visible to a human reading the
-verdict. Where the orchestrator cannot edit the artifact — a distinct
+verdict.
+
+**The recipe tolerates trailing whitespace; the rule still says exact
+form.** That asymmetry is deliberate. The two ways of failing this match
+are not equally costly: a void annotation that fails to match is the whole
+point, whereas a *valid* verdict whose seat line picked up a stray space or
+a `\r` would silently drop its seat's entire dossier and present as a false
+vacancy. So the pattern absorbs trailing blanks and an optional carriage
+return, and nothing else — an annotation still begins with a visible
+character and is still excluded. Where the orchestrator cannot edit the artifact — a distinct
 posting identity, or a permission refusal — the record described under
 *Prior-finding disposition* names the voided verdict instead, and a
 reconstructing pass consults it before counting passes. Either way the
