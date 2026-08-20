@@ -24,8 +24,15 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 PASS=0
 FAIL=0
+SKIP=0
 ok()   { PASS=$((PASS + 1)); printf '  ok   %s\n' "$1"; }
 nope() { FAIL=$((FAIL + 1)); printf '  FAIL %s\n' "$1"; }
+# skipped <first-line> — a case whose fixture cannot be built on this platform.
+# Counted, because the summary is what a reader compares between heads: an
+# uncounted skip makes a run that exercised less look numerically identical to
+# one that exercised more. Continuation lines are plain echoes; only the first
+# is counted. A skip is not a failure and never changes the exit status.
+skipped() { SKIP=$((SKIP + 1)); printf '  skip %s\n' "$1"; }
 
 REAL_HOME="${HOME}"
 TEST_HOME="$(mktemp -d)"
@@ -329,7 +336,7 @@ if [ "${acl_mode}" = "60" ]; then
     && ok "an owner-unreadable backup mode falls back to 600, not preserved" \
     || nope "owner-unreadable backup restored as $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 600"
 else
-  echo "  skip could not build a readable file whose mode still denies its owner"
+  skipped "could not build a readable file whose mode still denies its owner"
   echo "       read (ACL primitive unavailable or ineffective here; mode read"
   echo "       back as '${acl_mode:-unreadable}'), so file_mode's owner-read"
   echo "       floor is NOT exercised on this platform."
@@ -367,7 +374,7 @@ if [ "${setuid_mode}" = "4060" ] && jq -e . "${setuid_backup}" >/dev/null 2>&1; 
     && ok "the restored config is readable by its owner (four-digit case)" \
     || nope "the 4060 restore left the config unreadable (mode $(mode_of "${TEST_HOME}/.gemini/settings.json"))"
 else
-  echo "  skip stat here reports '${setuid_mode:-nothing}' for a 04060 file rather"
+  skipped "stat here reports '${setuid_mode:-nothing}' for a 04060 file rather"
   echo "       than '4060' (BSD %Lp drops the setuid bit), so the four-digit arm"
   echo "       of file_mode's case list is NOT exercised on this platform."
 fi
@@ -493,5 +500,5 @@ export PATH="${ORIG_PATH}"
 
 echo ""
 echo "----------------------------------------"
-echo "  passed: ${PASS}   failed: ${FAIL}"
+echo "  passed: ${PASS}   failed: ${FAIL}   skipped: ${SKIP}"
 [ "${FAIL}" -eq 0 ] || exit 1
