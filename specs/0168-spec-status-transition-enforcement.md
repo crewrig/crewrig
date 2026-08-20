@@ -1,8 +1,9 @@
 ---
 id: "0168"
 slug: spec-status-transition-enforcement
-status: draft
+status: approved
 complexity: small
+interaction-mode: AUTO
 related-issue: 974
 version: 1.0.0
 ---
