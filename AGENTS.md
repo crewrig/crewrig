@@ -310,6 +310,20 @@ finding-class loop targets (`tech`/`arch`/`spec`), the termination check,
 the 5-iteration guardrail, the mode-conditional handling of non-blocking
 findings, and the rule against changing the logbook issue mid-loop.
 
+## Reviewer seat
+
+Every review pass is attributed to exactly one **reviewer seat**, keyed
+`<surface>/<ticket>` on one of three surfaces (`specs`, `plan`, `review`), and
+every verdict a seat posts carries a `seat: <surface>/<ticket>[#<generation>]`
+line. A seat is not a surviving process: each pass is a fresh agent holding no
+authoring context that reconstructs its dossier — its own prior verdicts — from
+the forge, and from its second pass onward is bound to the change since the
+revision it last examined plus the surfaces that change reaches.
+
+See [`docs/reviewer-seat.md`](docs/reviewer-seat.md) for the full contract: the
+dossier, the references-only brief, the prior-finding disposition record, the
+per-surface finding identifiers, and the vacancy and retirement paths.
+
 ## Pull Request Format
 
 See [`docs/pr-format.md`](docs/pr-format.md) for the required PR structure:

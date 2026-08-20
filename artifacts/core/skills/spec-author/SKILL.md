@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.6.0"
+    version: "1.7.0"
 claude:
   allowed-tools:
     - Read
@@ -529,7 +529,13 @@ R2, R6 and [`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md)
   delta), every finding it emits SHALL carry exactly one `class:`
   field whose value is `tech`, `arch`, or `spec`. Untagged findings
   are malformed and trigger a retag round-trip that does NOT
-  increment the iteration counter.
+  increment the iteration counter. The review runs on the
+  `specs/<ticket>` seat: the verdict carries a `seat:` line at the
+  pull-request placement, findings carry `s<N>-F<M>` identifiers where
+  `<N>` counts the seat's passes across every artifact of that surface,
+  and a fresh delta-spec PR is a **replaced artifact** — examined in
+  full, with the seat's dossier retained for the prior-finding audit.
+  The contract is `docs/reviewer-seat.md`.
 - **As re-spawn target.** When invoked on a `class: spec` REVIEW
   finding (activation trigger 3 above), the skill operates in
   **delta-spec mode only** — the original spec on `main` is

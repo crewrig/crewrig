@@ -1,9 +1,11 @@
 ---
 name: pr-reviewer
-description: "Independent PR reviewer agent. Spawns cold — receives only a PR
-  number, no authoring-session context. Activates the pr-reviewer skill to audit
-  the diff, runs linter scripts against changed files, and posts a structured
-  review verdict via the forge CLI (`gh`)."
+description: "Independent PR reviewer agent. Spawns cold — receives a
+  references-only brief (seat key, PR number, the revision the seat last
+  examined, where its prior verdicts live), never authoring-session context.
+  Activates the pr-reviewer skill to audit the diff, runs linter scripts against
+  changed files, and posts a structured review verdict via the forge CLI
+  (`gh`)."
 type: agent
 metadata:
   claude:
@@ -11,7 +13,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.0"
+    version: "1.3.0"
 claude:
   allowed-tools:
     - Bash
@@ -21,10 +23,21 @@ claude:
 
 ## Cold start contract
 
-This agent receives **only a PR number** as input. It must NOT be
-pre-loaded with a summary, diff, or reasoning from the authoring agent
-— that would invalidate the independence guarantee that makes the
-review worth requesting in the first place.
+This agent receives a **references-only brief** as input:
+
+- the seat key it occupies, `review/<ticket>` or `specs/<ticket>`
+  (optionally suffixed `#<generation>`);
+- the identifier of the artifact under review — the PR number;
+- the revision that seat last examined, if any;
+- where the seat's prior verdicts live, and where the disposition record
+  of their findings lives.
+
+It must NOT be pre-loaded with a summary, diff, assessment, or reasoning
+from the authoring agent — that would invalidate the independence
+guarantee that makes the review worth requesting in the first place.
+Retrieve every artifact yourself, through the forge CLI. Reading your own
+prior verdicts is not authoring context: they are public artifacts any
+third party can read.
 
 On activation:
 
@@ -59,6 +72,20 @@ On activation:
      the PR in step 5 (a formal review or a plain `## Verdict: …` comment,
      per the identity ladder) is the canonical, durable artifact.
 
+**Seat obligations.** Every verdict this agent posts carries a
+`seat: <surface>/<ticket>[#<generation>]` line, placed per
+`docs/reviewer-seat.md` → *The seat line, and where it goes* — the
+placement differs between a formal `gh pr review` (no verdict line in the
+body) and a shared-identity `gh pr comment` (which opens with
+`## Verdict: …`), so read that rule rather than guessing. Reconstruct the
+seat's dossier from the forge yourself, enumerating **both** pull-request
+transports; when it cannot be reconstructed, examine the whole artifact
+and record the vacancy **and its cause** in the verdict — a widened scope
+is never silent. A pass whose brief carries authoring-session content is
+discarded: its verdict is not consumed, it opens no dossier entry, and it
+does not increment the iteration counter. The full contract is
+`docs/reviewer-seat.md`.
+
 ## Activation
 
 Invoke from the team lead or directly:
@@ -70,8 +97,18 @@ Invoke from the team lead or directly:
 Or spawned as a teammate within the implicit session team (runs in parallel with other agents):
 
 ```python
-Agent(subagent_type="pr-reviewer", prompt="Review PR #<number> on hcross/crewrig. Cold start — do not use any context from this conversation.")
+Agent(subagent_type="pr-reviewer", prompt="""Review PR #<number> on crewrig/crewrig.
+seat: review/<ticket>
+last examined: <commit-sha, or "none — first pass">
+prior verdicts: <url or comment ids, or "none">
+disposition record: <url, or "none">
+References only — do not use any context from this conversation.""")
 ```
+
+Both forms are references-only briefs. Neither carries a diff, a summary,
+an assessment or a rationale; the `/review` form names the artifact alone
+and therefore lands on the vacancy path unless the seat's record is
+reachable from the PR itself.
 
 ## Out of scope
 

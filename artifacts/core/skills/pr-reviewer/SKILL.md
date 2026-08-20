@@ -13,7 +13,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.0"
+    version: "1.4.0"
 claude:
   allowed-tools:
     - Read
@@ -70,6 +70,11 @@ A silent skip of this section is a protocol violation: a failing
 required job overrides any editorial LGTM, and the reader of the
 review needs to see that signal in writing.
 
+**Never waived by the bound.** On a seat's second and later passes the
+mandatory reading narrows (step 3), but the CI state of the artifact's
+current head stays inside it on every pass. There is no pass on which
+this preflight is skippable.
+
 ### 2. Read the project conventions
 
 Open `AGENTS.md` at the repo root (or the project's equivalent) and
@@ -93,6 +98,24 @@ gh pr view <number> --json title,body,files,headRefName,baseRefName,labels
 Identify linked issues by parsing the body (`Fixes #N`, `Closes #N`,
 `Refs #N`) and fetch each: `gh issue view <N>`.
 
+**From the seat's second pass onward, the mandatory reading is bounded**
+(`docs/reviewer-seat.md` → *Bounded scope from the second pass*) to:
+
+- the change since the revision the seat last examined — the brief names
+  it; `gh pr diff <number> --name-only` and
+  `git diff <last-examined-sha>..<head>` give you the increment;
+- the disposition record of the seat's prior findings;
+- the continuous-integration state of the current head (step 1, never
+  waived);
+- every surface that change reaches — a surface it newly touches, a
+  surface a prior finding's remedy touches, and a surface whose invariant
+  it depends on even where that surface's own text is unchanged.
+
+**The bound removes re-examination only. It removes no item from this
+skill's checklist** for the surfaces in scope: a file inside the bound is
+reviewed to the same standard as on a first pass. On a first pass, and on
+a vacant seat, nothing is bounded — read the whole artifact.
+
 ### 4. Run the bundled linter scripts
 
 Select scripts based on file extensions in the changed-files list, then
@@ -103,7 +126,20 @@ See *Scripts* below for the full table.
 
 ### 5. Compose the structured review
 
-Five sections, in this order:
+The verdict opens with the seat line:
+`seat: <surface>/<ticket>[#<generation>]`. Its exact placement depends on
+which transport step 6 selects, so take it from
+`docs/reviewer-seat.md` → *The seat line, and where it goes* rather than
+deriving it here.
+
+**From the seat's second pass onward, a prior-finding audit is the
+verdict's first section**, before any new finding. It states, per finding
+identifier in the seat's dossier, whether this pass accepts the recorded
+disposition. A prior finding this pass judges unaddressed **prevents an
+approving verdict**. When the seat is vacant, that section instead records
+the vacancy and its cause.
+
+Then five sections, in this order:
 
 - **CI status** — pass / fail / pending for each required check
   (from step 1). When any required check is failing or pending, this
@@ -223,6 +259,21 @@ findings is not sufficient. Non-blocking findings still need the
 tag: in autonomous modes (MINIMAL / AUTO) the engine routes them
 through the matrix as if blocking.
 
+**Reviewer-minted identifiers.** Alongside the `class:` field, every
+finding carries an identifier that names the pass that raised it and stays
+stable for the life of the seat: `i<N>-F<M>` on the `review` surface,
+where `<N>` is the iteration ordinal the `iter:N` label carried when the
+pass ran; `s<N>-F<M>` on the `specs` surface, where `<N>` is the seat's
+pass ordinal counted across every artifact of that surface. These are what
+the next pass's prior-finding audit enumerates
+(`docs/reviewer-seat.md` → *Finding identifiers*).
+
+**A finding on an unchanged surface.** You may raise one, and must then
+state which condition of the step-3 bound returned that surface to scope.
+A finding on an unchanged surface with no such statement is treated as
+non-blocking and routed to the deferred-findings ledger — the iteration is
+not routed on its account.
+
 ## Spec-review obligation — tier challenge
 
 When acting as a spec-reviewer (cold-spawned to review a spec-PR), the
@@ -233,6 +284,12 @@ is detected when the spec's `## Requirements` or `## Out of scope`
 enumerate a surface broader than the declared tier admits (per the
 tier table). Over-statement is a non-blocking observation, not a
 blocking finding.
+
+A spec review runs on the `specs/<ticket>` seat, so its findings carry
+`s<N>-F<M>` identifiers. A fresh delta-spec PR is a **replaced artifact**,
+not a revision: examine it in full — the step-3 bound attaches to an
+artifact, never to a seat — while still auditing every prior finding the
+seat's dossier carries (`docs/reviewer-seat.md` → *A replaced artifact*).
 
 ## Grounding discipline
 

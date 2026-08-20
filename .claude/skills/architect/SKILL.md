@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
+    version: "1.3.0"
 ---
 
 
@@ -194,6 +194,32 @@ orchestrator consumes the verdict (see
 *Class tagging discipline*). Do not default to `tech` when the class
 is ambiguous — escalate upstream per ADR-0010 →
 *Finding classification taxonomy*.
+
+## Reviewer seat
+
+Both review surfaces this skill occupies are seated: every pass is
+attributed to one seat, carries a `seat:` line, and — from its second pass
+onward — reads a bounded scope. The contract is
+`docs/reviewer-seat.md`; the two surfaces differ only as follows.
+
+**As plan reviewer** — the `plan/<ticket>` seat. The `seat:` line goes
+immediately after the `### Verdict: …` line (`docs/plan-format.md` →
+*Header conventions*). From pass two the mandatory reading is bounded to
+the plan revision's delta, the prior findings' dispositions, and every
+surface that delta reaches. Nothing else changes on this surface: the
+`v<N>-F<M>` identifiers and the *Finding Traceability Audit* that
+`docs/plan-review-protocol.md` already mandates are exactly what the seat
+contract's identifier, disposition-record and audit obligations resolve
+to here — there is no second scheme and no second record.
+
+**As spec reviewer in the SPECS stage** — the `specs/<ticket>` seat. The
+verdict lands on a pull request, so the `seat:` line's placement follows
+the pull-request transport rule (`docs/reviewer-seat.md` → *The seat line,
+and where it goes*): there is no `### Verdict:` line to anchor to on a
+formal review, and the line goes first in the body. Findings carry
+`s<N>-F<M>`, where `<N>` counts the seat's passes across every artifact of
+that surface. A fresh delta-spec PR is a **replaced artifact**: examine it
+in full, and still audit every prior finding the dossier carries.
 
 ## Friction reporting
 

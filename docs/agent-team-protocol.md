@@ -11,8 +11,9 @@ defined in [ADR-0010](adr/0010-spec-plan-review-lifecycle.md).
 SPECS and PLAN run before DEV (with their own artifacts: a spec file
 under `/specs/` and a plan comment on the logbook issue); REVIEW runs
 after, and its findings may re-enter DEV (`tech`), PLAN (`arch`), or
-SPECS (`spec`) per the routing matrix in *Retroactive review loop*
-in AGENTS.md. Templates 1 / 2 / 3 in this section describe how the DEV stage
+SPECS (`spec`) per the routing matrix in
+[`docs/retroactive-loop.md`](retroactive-loop.md) → *Routing matrix*.
+Templates 1 / 2 / 3 in this section describe how the DEV stage
 is staffed for a `standard`-tier ticket; trivial / small / large
 tiers adjust the composition per ADR-0010 → *Complexity tiers and
 team sizing*.
@@ -246,6 +247,24 @@ security skill's trigger surface (authentication, authorization, secrets,
 cryptography, input parsing, deserialization, network calls, or dependency
 upgrades), insert `security` after `developer` in the applicable template.
 
+### Seated review passes
+
+Every review pass a template spawns — on the `specs`, `plan` or `review`
+surface — is attributed to a **reviewer seat** keyed
+`<surface>/<ticket>`, and the orchestrator instantiates it with a
+**references-only brief**: the seat key, the artifact identifier, the
+revision the seat last examined, and the locations of the seat's prior
+verdicts and of the finding-disposition record. A brief that carries a
+diff, a summary, an assessment or a rationale from the authoring session
+makes the pass discardable — its verdict is not consumed and the
+iteration counter does not increment.
+
+The contract in full, including the seat line every verdict carries and
+the bounded reading that applies from a seat's second pass onward, is
+[`docs/reviewer-seat.md`](reviewer-seat.md). It changes no template's
+composition and no role's surface; it changes how a pass is briefed and
+what its verdict must say.
+
 ### Step 0 — `spec-author` (every non-trivial template)
 
 Templates 1, 2, and 3 below describe the DEV-stage staffing of the
@@ -382,7 +401,12 @@ challenge is emitted as a `class: spec` finding citing this
 section — see
 [`artifacts/core/skills/pr-reviewer/SKILL.md`](../artifacts/core/skills/pr-reviewer/SKILL.md)
 → *Spec-review obligation — tier challenge*. Over-statement is a
-non-blocking observation, not a blocking finding.
+non-blocking observation, not a blocking finding. The review is
+attributed to the `specs/<ticket>` seat, so the challenge carries an
+`s<N>-F<M>` identifier alongside its `class:` field, and a fresh
+delta-spec PR is a replaced artifact the seat examines in full while
+retaining its dossier — see
+[`docs/reviewer-seat.md`](reviewer-seat.md).
 
 ## Team Communication
 
