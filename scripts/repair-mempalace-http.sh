@@ -23,9 +23,11 @@
 #   --restore-backup   Restore, for each affected assistant that has a
 #                      timestamped backup whose content parses as JSON, the
 #                      most recent such backup. The restore preserves the
-#                      file's mode; a configuration that carries a bearer token
-#                      remains 0600. An affected assistant without a usable
-#                      backup is reported, not silently skipped (R5).
+#                      file's mode, except that a configuration carrying a
+#                      bearer token remains 0600 and a mode denying its own
+#                      owner read is replaced by 0600. An affected assistant
+#                      without a usable backup is reported, not silently
+#                      skipped (R5).
 #   --reset-none       Remove the `mempalace` registration from each affected
 #                      assistant whose configuration parses, producing the
 #                      recognisable `none` arrangement. An affected assistant
@@ -76,7 +78,8 @@ when any residue exists.
 
   --restore-backup  Restore each affected assistant's most recent backup whose
                     content parses as JSON (mode preserved; 0600 when the
-                    restored content carries a bearer token).
+                    restored content carries a bearer token, or when the
+                    backup's mode would deny its owner read).
   --reset-none      Remove the mempalace registration from each affected
                     assistant whose configuration parses, producing the
                     recognisable none arrangement.
@@ -137,8 +140,9 @@ has_any_backup() {
   return 1
 }
 
-# file_mode <path> — the mode chmod should be given for a copy of <path>, in
-# octal, or 600 when it cannot be read.
+# file_mode <path> — the mode chmod should be given for a COPY of <path>, in
+# octal. 600 when the mode cannot be read, and 600 when preserving it would
+# leave the copy's owner unable to read it (see the case list below).
 #
 # GNU probed first: `stat -f` on GNU means "filesystem" and SUCCEEDS with
 # output this caller would then feed to chmod (the test suite's mode_of carries
@@ -164,26 +168,34 @@ has_any_backup() {
 # operator ever had it, up to world-writable for a file whose
 # mcpServers.mempalace.command the CLI executes at session start.
 #
-# The case list is total over every string `stat` can emit, which takes four
-# arms because `%a`/`%Lp` strip leading zeros: 4 digits (setuid/setgid/sticky),
-# 3 (the ordinary case), 2 (`060` prints as `60`), 1 (`004` prints as `4`).
+# The case list accepts a mode ONLY when its owner triad carries read — that
+# is the property, and it is not the same as "looks like a mode". A backup can
+# be readable through something the restore does not carry over: an ACL
+# granting the owner read (measured: `jq -e .` exits 0 while stat still reports
+# `60`), foreign ownership plus group access, or a root run. The restore then
+# writes a NEW file, owned by the operator, with no ACL, and applies these
+# bits verbatim. Preserving an owner-unreadable mode in exactly the case that
+# made it reachable therefore produces a configuration its owner cannot read:
+# the repair's own verification reclassifies it as residue, the command exits
+# 1, and R7 ("exits 0 only when no residue remains") becomes unsatisfiable
+# through the documented verb. Falling back to 600 converges instead.
 #
-# The short arms are narrow but NOT unreachable, and the distinction matters
-# because the two-digit one is covered by a test. A mode printed with fewer
-# than 3 digits has an all-zero OWNER triad, so ordinarily the owner cannot
-# read the file and the restore never gets this far: measured on a self-owned
-# 0060 file, `jq -e .` exits 2 and `cat` exits 1, and both gate ahead of
-# file_mode. `cp -P` cannot produce such a backup either — it exits 1 on that
-# source and creates nothing — so this is never a file backup_file made. What
-# does reach here is a backup carrying an ACL that grants read without
-# changing the mode bits: measured, `jq -e .` then exits 0 while stat still
-# reports `60`. Foreign ownership and a root run do the same. So the arms are
-# load-bearing for a real if unusual arrangement, not decoration.
+# Owner-read and not merely owner-nonzero: modes 100, 200 and 300 all leave
+# the owner unable to read (measured, `jq -e .` exits 2 for each), so the
+# accepted owner digit is 4-7.
+#
+# Both arms are needed because the two probes disagree on width. `%a`/`%Lp`
+# strip leading zeros, so an all-zero owner triad prints in fewer than three
+# digits (`0060` -> `60`) and is rejected by falling off the list. GNU `%a`
+# additionally reports setuid/setgid/sticky, giving a four-digit string where
+# the OWNER digit is the second one — measured, GNU prints `4060` where BSD
+# `%Lp` prints `60` — so the four-digit arm has to test that second digit or a
+# setuid backup would smuggle an unreadable mode past on Linux.
 file_mode() {
   local m
   m="$(stat -Lc '%a' "$1" 2>/dev/null || stat -L -f '%Lp' "$1" 2>/dev/null)"
   case "$m" in
-    [0-7]|[0-7][0-7]|[0-7][0-7][0-7]|[0-7][0-7][0-7][0-7]) printf '%s\n' "$m" ;;
+    [4-7][0-7][0-7]|[0-7][4-7][0-7][0-7]) printf '%s\n' "$m" ;;
     *) printf '600\n' ;;
   esac
 }
@@ -261,8 +273,12 @@ restore_backup() {
     echo "        $cfg by hand, or re-run setup once the cause is fixed."
     return 1
   }
-  # R5: preserve the backup's mode, EXCEPT that a configuration carrying a
-  # bearer token SHALL be 0600. Both are decided here, before the content
+  # R5: preserve the backup's mode, with two exceptions — a configuration
+  # carrying a bearer token SHALL be 0600, and a mode that would deny the
+  # new owner read is not preserved at all (file_mode returns 600 for it,
+  # because the restore does not carry over the ACL or the ownership that
+  # made such a backup readable, and an unreadable config is residue the
+  # R7 verification below refuses to converge on). Both are decided here, before the content
   # exists at the config path, because the mode is a property of the write and
   # not a correction applied after it: `cp -p "$bak" "$cfg"` publishes the
   # token at the backup's mode — 0644 on a backup taken under umask 022 — and

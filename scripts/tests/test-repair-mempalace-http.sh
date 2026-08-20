@@ -281,27 +281,26 @@ rm -f "${TEST_HOME}/.gemini/settings.json" "${link_target}" \
       "${TEST_HOME}/.gemini/settings.json.bak."*
 
 echo ""
-echo "R5 — a two-digit backup mode is preserved, not narrowed to 600:"
-# file_mode's case list has to accept a two-digit mode. `%a`/`%Lp` strip
-# leading zeros, so 0060 prints as `60`; a list that omits the two-digit arm
-# sends it to the `*)` fallback and the restore silently publishes 600 instead
-# of the mode R5 promises to preserve.
+echo "R5 — an owner-unreadable backup mode is NOT preserved (the restore must converge):"
+# The mode-preservation rule has a floor, and this is the case that proves why
+# it must. A backup can be readable through something the restore does not
+# carry over — here an ACL granting the owner read, equally foreign ownership
+# or a root run. `%a`/`%Lp` strip leading zeros, so such a backup reports a
+# two-digit mode (0060 -> `60`) while jq reads it fine.
 #
-# Reaching it takes an ACL, and that is not an artificial detail — it is the
-# reason the case is narrow. A two-digit mode means an all-zero OWNER triad, so
-# the owner cannot read the file: `jq -e .` in most_recent_usable_backup and
-# the `cat` in restore_backup both fail first, and `cp -P` cannot even produce
-# such a backup (measured: it exits 1 and no backup is created, so this is
-# never a file the tool itself made). An ACL granting the owner read restores
-# access WITHOUT changing the mode bits stat reports, which gets a two-digit
-# mode as far as file_mode; foreign ownership and a root run do the same, and
-# the ACL is simply the one a test can build as an ordinary user.
+# The restore writes a NEW file, owned by the operator, with NO ACL. Copying
+# `60` onto it therefore hands the operator a configuration they cannot read:
+# the R7 verification reclassifies it as residue, the command exits 1, and a
+# second --restore-backup loops them back onto the verb that just failed. So
+# the assertions here are the operator's outcome — exit code and readability —
+# not the mode alone. A mode-only assertion passed against exactly this
+# non-converging run, which is how the defect shipped.
 #
 # Probed skip on the ACL primitive, matching test-mcp-daemon.sh's idiom: the
 # syntax is platform-specific and the case announces itself loudly rather than
 # passing vacuously where the fixture cannot be built.
 acl_backup="${TEST_HOME}/.gemini/settings.json.bak.20260107-000000"
-printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["two-digit"]}}}' \
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["owner-unreadable"]}}}' \
   > "${acl_backup}"
 chmod 060 "${acl_backup}"
 if chmod +a "user:$(id -un) allow read" "${acl_backup}" 2>/dev/null \
@@ -311,7 +310,7 @@ else
   acl_ok=0
 fi
 # Both halves must hold or the fixture is not the state under test: readable
-# (so the restore reaches file_mode at all) AND still reported two-digit.
+# (so the restore reaches file_mode at all) AND still owner-unreadable by mode.
 if [ "${acl_ok}" -eq 1 ] && jq -e . "${acl_backup}" >/dev/null 2>&1; then
   acl_mode="$(mode_of "${acl_backup}")"
 else
@@ -319,17 +318,60 @@ else
 fi
 if [ "${acl_mode}" = "60" ]; then
   residue_config > "${TEST_HOME}/.gemini/settings.json"
-  (umask 077; bash "${REPAIR}" --restore-backup) >/dev/null 2>&1
-  [ "$(mode_of "${TEST_HOME}/.gemini/settings.json")" = "60" ] \
-    && ok "a two-digit backup mode is preserved on the restored config" \
-    || nope "two-digit backup restored as $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 60"
+  (umask 077; bash "${REPAIR}" --restore-backup) >/dev/null 2>&1; rc=$?
+  [ "${rc}" -eq 0 ] \
+    && ok "the restore converges on an owner-unreadable backup mode (R7, exit 0)" \
+    || nope "restore from an owner-unreadable backup exited ${rc} — residue remains (R7)"
+  jq -e . "${TEST_HOME}/.gemini/settings.json" >/dev/null 2>&1 \
+    && ok "the restored config is readable by its owner" \
+    || nope "the restored config is NOT readable by its owner (mode $(mode_of "${TEST_HOME}/.gemini/settings.json"))"
+  [ "$(mode_of "${TEST_HOME}/.gemini/settings.json")" = "600" ] \
+    && ok "an owner-unreadable backup mode falls back to 600, not preserved" \
+    || nope "owner-unreadable backup restored as $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 600"
 else
-  echo "  skip could not build a readable file whose mode stat reports as two"
-  echo "       digits (ACL primitive unavailable or ineffective here; mode read"
-  echo "       back as '${acl_mode:-unreadable}'), so the two-digit arm of"
-  echo "       file_mode's case list is NOT exercised on this platform."
+  echo "  skip could not build a readable file whose mode still denies its owner"
+  echo "       read (ACL primitive unavailable or ineffective here; mode read"
+  echo "       back as '${acl_mode:-unreadable}'), so file_mode's owner-read"
+  echo "       floor is NOT exercised on this platform."
 fi
 rm -f "${TEST_HOME}/.gemini/settings.json" "${acl_backup}"
+
+echo ""
+echo "R5 — a four-digit setuid mode with an unreadable owner triad is not preserved either:"
+# The same floor, on the arm the other case cannot reach. The two probes
+# disagree on width: GNU `%a` reports setuid/setgid/sticky, so a 04060 backup
+# reads as `4060` where BSD `%Lp` reports `60` (measured). In a four-digit
+# string the OWNER digit is the SECOND one, so a case list that tested only
+# the first would let a setuid backup smuggle an owner-unreadable mode past on
+# Linux, where GNU stat is the probe that answers.
+#
+# Probed skip on width, not on the ACL: on a machine whose stat reports three
+# digits for a setuid file, this arm is unreachable and the case says so.
+setuid_backup="${TEST_HOME}/.gemini/settings.json.bak.20260108-000000"
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["setuid"]}}}' \
+  > "${setuid_backup}"
+chmod 4060 "${setuid_backup}" 2>/dev/null
+if chmod +a "user:$(id -un) allow read" "${setuid_backup}" 2>/dev/null \
+   || setfacl -m "u:$(id -un):r" "${setuid_backup}" 2>/dev/null; then
+  setuid_mode="$(mode_of "${setuid_backup}")"
+else
+  setuid_mode=""
+fi
+if [ "${setuid_mode}" = "4060" ] && jq -e . "${setuid_backup}" >/dev/null 2>&1; then
+  residue_config > "${TEST_HOME}/.gemini/settings.json"
+  (umask 077; bash "${REPAIR}" --restore-backup) >/dev/null 2>&1; rc=$?
+  [ "${rc}" -eq 0 ] \
+    && ok "the restore converges on a four-digit owner-unreadable mode (R7, exit 0)" \
+    || nope "restore from a 4060 backup exited ${rc} — residue remains (R7)"
+  jq -e . "${TEST_HOME}/.gemini/settings.json" >/dev/null 2>&1 \
+    && ok "the restored config is readable by its owner (four-digit case)" \
+    || nope "the 4060 restore left the config unreadable (mode $(mode_of "${TEST_HOME}/.gemini/settings.json"))"
+else
+  echo "  skip stat here reports '${setuid_mode:-nothing}' for a 04060 file rather"
+  echo "       than '4060' (BSD %Lp drops the setuid bit), so the four-digit arm"
+  echo "       of file_mode's case list is NOT exercised on this platform."
+fi
+rm -f "${TEST_HOME}/.gemini/settings.json" "${setuid_backup}"
 
 # --- R6. Reset to none -------------------------------------------------------
 echo ""
