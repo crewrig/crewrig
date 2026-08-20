@@ -531,7 +531,8 @@ R2, R6 and [`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md)
   are malformed and trigger a retag round-trip that does NOT
   increment the iteration counter. The review runs on the
   `specs/<ticket>` seat: the verdict carries a `seat:` line at the
-  pull-request placement, findings carry `s<N>-F<M>` identifiers where
+  placement its posting transport dictates, findings carry `s<N>-F<M>`
+  identifiers where
   `<N>` counts the seat's passes across every artifact of that surface,
   and a fresh delta-spec PR is a **replaced artifact** — examined in
   full, with the seat's dossier retained for the prior-finding audit.

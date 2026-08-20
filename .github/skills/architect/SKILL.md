@@ -207,10 +207,10 @@ contract's identifier, disposition-record and audit obligations resolve
 to here — there is no second scheme and no second record.
 
 **As spec reviewer in the SPECS stage** — the `specs/<ticket>` seat. The
-verdict lands on a pull request, where two placements are possible
-depending on which rung of the posting ladder the identity check selects,
-so take the `seat:` line's placement from `docs/reviewer-seat.md` → *The
-seat line, and where it goes* rather than deriving it here. Findings carry
+verdict lands on a pull request, where the placement depends on which rung
+of the posting ladder carries the verdict, so take the `seat:` line's
+placement from `docs/reviewer-seat.md` → *The seat line, and where it goes*
+rather than deriving it here. Findings carry
 `s<N>-F<M>`, where `<N>` counts the seat's passes across every artifact of
 that surface. A fresh delta-spec PR is a **replaced artifact**: examine it
 in full, and still audit every prior finding the dossier carries.
