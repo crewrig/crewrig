@@ -287,98 +287,142 @@ bash "${REPAIR}" --restore-backup >/dev/null 2>&1
 rm -f "${TEST_HOME}/.gemini/settings.json" "${link_target}" \
       "${TEST_HOME}/.gemini/settings.json.bak."*
 
-echo ""
-echo "R5 — an owner-unreadable backup mode is NOT preserved (the restore must converge):"
-# The mode-preservation rule has a floor, and this is the case that proves why
-# it must. A backup can be readable through something the restore does not
-# carry over — here an ACL granting the owner read, equally foreign ownership
-# or a root run. `%a`/`%Lp` strip leading zeros, so such a backup reports a
-# two-digit mode (0060 -> `60`) while jq reads it fine.
+
+# make_owner_unreadable_backup <path> <chmod-arg> <expected-mode>
+# Builds a backup that stat reports as <expected-mode> — a mode whose OWNER
+# triad lacks read — and that is nonetheless readable, so the restore reaches
+# file_mode instead of rejecting the backup earlier. Returns 0 on success;
+# on failure echoes the reason THAT HALF failed.
 #
-# The restore writes a NEW file, owned by the operator, with NO ACL. Copying
-# `60` onto it therefore hands the operator a configuration they cannot read:
-# the R7 verification reclassifies it as residue, the command exits 1, and a
-# second --restore-backup loops them back onto the verb that just failed. So
-# the assertions here are the operator's outcome — exit code and readability —
-# not the mode alone. A mode-only assertion passed against exactly this
-# non-converging run, which is how the defect shipped.
-#
-# Probed skip on the ACL primitive, matching test-mcp-daemon.sh's idiom: the
-# syntax is platform-specific and the case announces itself loudly rather than
-# passing vacuously where the fixture cannot be built.
-acl_backup="${TEST_HOME}/.gemini/settings.json.bak.20260107-000000"
-printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["owner-unreadable"]}}}' \
-  > "${acl_backup}"
-chmod 060 "${acl_backup}"
-if chmod +a "user:$(id -un) allow read" "${acl_backup}" 2>/dev/null \
-   || setfacl -m "u:$(id -un):r" "${acl_backup}" 2>/dev/null; then
-  acl_ok=1
-else
-  acl_ok=0
-fi
-# Both halves must hold or the fixture is not the state under test: readable
-# (so the restore reaches file_mode at all) AND still owner-unreadable by mode.
-if [ "${acl_ok}" -eq 1 ] && jq -e . "${acl_backup}" >/dev/null 2>&1; then
-  acl_mode="$(mode_of "${acl_backup}")"
-else
-  acl_mode=""
-fi
-if [ "${acl_mode}" = "60" ]; then
+# Each half reports separately on purpose. The fixture needs two independent
+# things — the width/value stat reports, and read access granted by something
+# other than the mode bits — and they fail on different platforms for
+# different reasons. A single message covering both told a Linux reader that
+# stat reported "'4060' rather than '4060'" while the real blocker was that a
+# named POSIX ACL naming the file's own owner is stored and inert, so setfacl
+# exits 0 having granted nothing.
+make_owner_unreadable_backup() {
+  local path="$1" want_chmod="$2" want_mode="$3" got
+  if ! chmod "${want_chmod}" "${path}" 2>/dev/null; then
+    printf 'chmod %s was refused here\n' "${want_chmod}"
+    return 1
+  fi
+  got="$(mode_of "${path}")"
+  if [ "${got}" != "${want_mode}" ]; then
+    printf "stat here reports '%s' for a 0%s file, not '%s' — this probe does not report that width (BSD %%Lp drops the setuid bit)\n" \
+      "${got}" "${want_chmod}" "${want_mode}"
+    return 1
+  fi
+  if ! chmod +a "user:$(id -un) allow read" "${path}" 2>/dev/null \
+     && ! setfacl -m "u:$(id -un):r" "${path}" 2>/dev/null; then
+    printf 'no ACL primitive here — chmod +a and setfacl both failed\n'
+    return 1
+  fi
+  if ! jq -e . "${path}" >/dev/null 2>&1; then
+    printf 'the ACL primitive exited 0 but granted nothing — the file is still unreadable, so the restore would reject it before file_mode (a named POSIX ACL naming the owner itself is stored and inert)\n'
+    return 1
+  fi
+  got="$(mode_of "${path}")"
+  if [ "${got}" != "${want_mode}" ]; then
+    printf "the ACL changed the reported mode to '%s'\n" "${got}"
+    return 1
+  fi
+  return 0
+}
+
+# assert_converges_at_600 <label> — run the restore over the fixture already in
+# place and assert the OPERATOR's outcome: the repair converges, and the config
+# it leaves behind can be read by the owner it leaves it to. A mode-only
+# assertion is what let the non-converging restore ship.
+assert_converges_at_600() {
+  local label="$1" rc
   residue_config > "${TEST_HOME}/.gemini/settings.json"
   (umask 077; bash "${REPAIR}" --restore-backup) >/dev/null 2>&1; rc=$?
   [ "${rc}" -eq 0 ] \
-    && ok "the restore converges on an owner-unreadable backup mode (R7, exit 0)" \
-    || nope "restore from an owner-unreadable backup exited ${rc} — residue remains (R7)"
+    && ok "the restore converges (R7, exit 0) — ${label}" \
+    || nope "restore exited ${rc}, residue remains (R7) — ${label}"
   jq -e . "${TEST_HOME}/.gemini/settings.json" >/dev/null 2>&1 \
-    && ok "the restored config is readable by its owner" \
-    || nope "the restored config is NOT readable by its owner (mode $(mode_of "${TEST_HOME}/.gemini/settings.json"))"
+    && ok "the restored config is readable by its owner — ${label}" \
+    || nope "the restored config is NOT readable by its owner (mode $(mode_of "${TEST_HOME}/.gemini/settings.json")) — ${label}"
   [ "$(mode_of "${TEST_HOME}/.gemini/settings.json")" = "600" ] \
-    && ok "an owner-unreadable backup mode falls back to 600, not preserved" \
-    || nope "owner-unreadable backup restored as $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 600"
-else
-  skipped "could not build a readable file whose mode still denies its owner"
-  echo "       read (ACL primitive unavailable or ineffective here; mode read"
-  echo "       back as '${acl_mode:-unreadable}'), so file_mode's owner-read"
-  echo "       floor is NOT exercised on this platform."
-fi
-rm -f "${TEST_HOME}/.gemini/settings.json" "${acl_backup}"
+    && ok "the unsafe mode falls back to 600 — ${label}" \
+    || nope "restored as $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 600 — ${label}"
+}
 
 echo ""
-echo "R5 — a four-digit setuid mode with an unreadable owner triad is not preserved either:"
-# The same floor, on the arm the other case cannot reach. The two probes
-# disagree on width: GNU `%a` reports setuid/setgid/sticky, so a 04060 backup
-# reads as `4060` where BSD `%Lp` reports `60` (measured). In a four-digit
-# string the OWNER digit is the SECOND one, so a case list that tested only
-# the first would let a setuid backup smuggle an owner-unreadable mode past on
-# Linux, where GNU stat is the probe that answers.
-#
-# Probed skip on width, not on the ACL: on a machine whose stat reports three
-# digits for a setuid file, this arm is unreachable and the case says so.
+echo "R5 — a mode too NARROW to name an owner triad is not preserved (width):"
+# 0060 prints as `60`. A two-digit string matches no arm, so this case pins the
+# width rejection — and ONLY that. It says nothing about the owner digit,
+# because the string never reaches an arm that tests one.
+narrow_backup="${TEST_HOME}/.gemini/settings.json.bak.20260107-000000"
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["narrow"]}}}' \
+  > "${narrow_backup}"
+if reason="$(make_owner_unreadable_backup "${narrow_backup}" 060 60)"; then
+  assert_converges_at_600 "two-digit backup mode"
+else
+  skipped "${reason}"
+  echo "       -> the WIDTH rejection in file_mode's case list is NOT exercised here."
+fi
+rm -f "${TEST_HOME}/.gemini/settings.json" "${narrow_backup}"
+
+echo ""
+echo "R5 — a three-digit mode whose OWNER cannot read is not preserved (owner digit):"
+# The case the width one cannot cover. 0100 prints as `100`: three digits, so
+# it REACHES the three-digit arm and is judged on its owner digit alone. That
+# is the arm's whole content — 4-7 rather than 1-7 — and modes 100, 200 and
+# 300 are exactly the values that distinguish "owner can read" from "owner
+# triad is nonzero". Without this case a floor accepting `100` passes.
+owner_backup="${TEST_HOME}/.gemini/settings.json.bak.20260107-000000"
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["owner"]}}}' \
+  > "${owner_backup}"
+if reason="$(make_owner_unreadable_backup "${owner_backup}" 100 100)"; then
+  assert_converges_at_600 "three-digit execute-only owner"
+else
+  skipped "${reason}"
+  echo "       -> the OWNER-READ test in file_mode's three-digit arm is NOT"
+  echo "          exercised here."
+fi
+rm -f "${TEST_HOME}/.gemini/settings.json" "${owner_backup}"
+
+echo ""
+echo "R5 — a four-digit setuid mode whose OWNER cannot read is not preserved:"
+# In a four-digit string the owner digit is the SECOND one, so this arm needs
+# its own case: a list testing only the first digit would let a setuid backup
+# smuggle an owner-unreadable mode past. Only GNU `%a` reports the setuid bit
+# (BSD `%Lp` drops it), so on a BSD-only machine the string is never four
+# digits and the arm is unreachable. Where GNU stat exists but is not the
+# default probe, shim it in front: that is not an artificial path, it is the
+# probe file_mode tries FIRST and the one that answers on Linux.
 setuid_backup="${TEST_HOME}/.gemini/settings.json.bak.20260108-000000"
+gnu_shim=""
+# Probe the ambient stat with a real setuid file rather than assuming which
+# platform this is: if it reports 4755 the special bits are visible and the
+# four-digit arm is reachable as-is; if it reports 755 they are not, and a
+# GNU stat in front supplies the probe file_mode would have used on Linux.
+setuid_probe="${TEST_HOME}/.setuid-probe"
+: > "${setuid_probe}"
+chmod 4755 "${setuid_probe}" 2>/dev/null
+if [ "$(mode_of "${setuid_probe}")" != "4755" ] && command -v gstat >/dev/null 2>&1; then
+  gnu_shim="$(mktemp -d)"
+  printf '#!/bin/sh\nexec %s "$@"\n' "$(command -v gstat)" > "${gnu_shim}/stat"
+  chmod +x "${gnu_shim}/stat"
+  PATH="${gnu_shim}:${PATH}"
+fi
+rm -f "${setuid_probe}"
 printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["setuid"]}}}' \
   > "${setuid_backup}"
-chmod 4060 "${setuid_backup}" 2>/dev/null
-if chmod +a "user:$(id -un) allow read" "${setuid_backup}" 2>/dev/null \
-   || setfacl -m "u:$(id -un):r" "${setuid_backup}" 2>/dev/null; then
-  setuid_mode="$(mode_of "${setuid_backup}")"
+if reason="$(make_owner_unreadable_backup "${setuid_backup}" 4060 4060)"; then
+  assert_converges_at_600 "four-digit setuid, owner triad 0"
 else
-  setuid_mode=""
-fi
-if [ "${setuid_mode}" = "4060" ] && jq -e . "${setuid_backup}" >/dev/null 2>&1; then
-  residue_config > "${TEST_HOME}/.gemini/settings.json"
-  (umask 077; bash "${REPAIR}" --restore-backup) >/dev/null 2>&1; rc=$?
-  [ "${rc}" -eq 0 ] \
-    && ok "the restore converges on a four-digit owner-unreadable mode (R7, exit 0)" \
-    || nope "restore from a 4060 backup exited ${rc} — residue remains (R7)"
-  jq -e . "${TEST_HOME}/.gemini/settings.json" >/dev/null 2>&1 \
-    && ok "the restored config is readable by its owner (four-digit case)" \
-    || nope "the 4060 restore left the config unreadable (mode $(mode_of "${TEST_HOME}/.gemini/settings.json"))"
-else
-  skipped "stat here reports '${setuid_mode:-nothing}' for a 04060 file rather"
-  echo "       than '4060' (BSD %Lp drops the setuid bit), so the four-digit arm"
-  echo "       of file_mode's case list is NOT exercised on this platform."
+  skipped "${reason}"
+  echo "       -> the OWNER-READ test in file_mode's FOUR-digit arm is NOT"
+  echo "          exercised here."
 fi
 rm -f "${TEST_HOME}/.gemini/settings.json" "${setuid_backup}"
+if [ -n "${gnu_shim}" ]; then
+  PATH="${PATH#"${gnu_shim}:"}"
+  rm -rf "${gnu_shim}"
+fi
 
 # --- R6. Reset to none -------------------------------------------------------
 echo ""
