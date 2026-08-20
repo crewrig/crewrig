@@ -88,6 +88,12 @@ source:
 - **A pull-request surface posted as a shared-identity plain comment**
   (`gh pr comment`, the same ladder's shared-identity rung). That body
   opens with `## Verdict: …`, so the seat line goes immediately after it.
+- **A pull-request surface recorded on the logbook issue** — the same
+  ladder's posting-denied rung, where the reviewer returns the verdict and
+  the orchestrator records it. The body still opens with `## Verdict: …`,
+  so the seat line again goes immediately after it. The surface stays
+  `review` or `specs`: the seat key names the artifact reviewed, never the
+  place the verdict happened to land.
 
 ## Seat dossier
 
@@ -116,24 +122,69 @@ follows; the record a seat accumulates stays on the forge.
 
 The dossier is reconstructible from the forge alone. The seat line is
 what makes the existing artifacts enumerable, so an orchestrator session
-that did not spawn the earlier passes can still assemble the dossier:
+that did not spawn the earlier passes can still assemble the dossier.
+
+**The three admissible locations are not partitioned by surface.** A
+`review`- or `specs`-surface verdict can land on the logbook issue as
+readily as on the pull request, so the logbook issue is queried on **every**
+surface — not only on `plan`:
 
 ```bash
-# plan surface — verdicts are comments on the logbook issue
+# every surface — the logbook issue
 gh issue view <ticket> --json comments \
-  --jq '[.comments[] | select(.body | test("(?m)^seat: "))]'
+  --jq '[.comments[] | select(.body | test("(?m)^seat: (specs|plan|review)/[0-9]+(#[0-9]+)?$"))]'
 
-# pull-request surface — both transports must be enumerated
+# a pull-request surface, additionally — both PR transports
 gh pr view <pr> --json comments
 gh api repos/<owner>/<repo>/pulls/<pr>/reviews
 ```
 
-**Enumerate both pull-request transports.** A verdict posted as a formal
-review does not appear among a pull request's comments, and a verdict
+**Query a subset and the seat reads as falsely vacant.** A verdict posted
+as a formal review does not appear among a pull request's comments; one
 posted as a shared-identity plain comment does not appear among its
-reviews. A seat that queries only one of the two reads an empty dossier
-on a solo-maintainer project and declares itself vacant for no reason —
-see *Vacant seat*.
+reviews; and one the reviewer was refused permission to post at all
+reaches the forge only through the logbook issue — the posting-denied rung
+of
+[`artifacts/core/skills/pr-reviewer/SKILL.md`](../artifacts/core/skills/pr-reviewer/SKILL.md)
+→ *Post the review* returns the verdict to the orchestrator, which records
+it there. That rung is a shipped path, not a hypothetical one: a seat that
+skips the logbook issue on a pull-request surface reads an empty dossier
+and declares itself vacant for no reason — see *Vacant seat*.
+
+### What counts as a dossier entry
+
+Two rules below declare that a posted verdict is **not** a dossier entry:
+a pass discarded for a non-conforming brief (*Instantiating a seated
+pass*) and the malformed verdict that a retag replaces (*Retagged
+verdicts*). In both cases the verdict is **already public** when that
+judgement is made — a reviewer posts its verdict as its own last step, and
+only then does the orchestrator judge the brief or the tagging. So the
+discrimination has to be carried on the forge. Orchestrator bookkeeping
+cannot carry it, because the next pass is a fresh agent that reads nothing
+else.
+
+**A dossier entry is a verdict whose seat line is in the exact form
+required above.** When the orchestrator voids a verdict it annotates that
+verdict's seat line with the cause, which takes the line out of that form
+and so out of the enumeration:
+
+```text
+seat: specs/970 — VOID (discarded: brief carried authoring context)
+```
+
+That is one `gh` call against an artifact the forge already holds, so no
+new store appears and the void status is visible to a human reading the
+verdict. Where the orchestrator cannot edit the artifact — a distinct
+posting identity, or a permission refusal — the record described under
+*Prior-finding disposition* names the voided verdict instead, and a
+reconstructing pass consults it before counting passes. Either way the
+discriminator is a forge artifact.
+
+**Voiding is not a generation.** A void verdict does not open a successor
+seat: the seat is unchanged and one of its passes is void. Generations
+replace a seat (*Retirement and generation*); they do not invalidate a
+single pass, and overloading them for that would make a seat key stop
+denoting a seat.
 
 ## Instantiating a seated pass
 
@@ -163,6 +214,12 @@ paraphrase the record into the brief.
 Its verdict is not consumed, it is not entered in the dossier, and it
 does not increment the iteration counter. The orchestrator re-instantiates
 the pass with a conforming brief.
+
+The discarded verdict is normally already posted by the time the brief is
+judged, so the orchestrator voids it on the forge per *What counts as a
+dossier entry*. Left unvoided it is byte-indistinguishable from a consumed
+verdict, and a later pass would count it as one — inflating the `specs`
+pass ordinal and auditing findings this rule says must not be consumed.
 
 ## Prior-finding disposition
 
@@ -309,6 +366,11 @@ discipline* — is re-issued **from the same seat**. It opens no new dossier
 entry, and its corrected form replaces the malformed one in the dossier.
 The existing rule that a retag round-trip does not increment the
 iteration counter is unchanged.
+
+"Replaces" is an operation on the forge, not on the orchestrator's memory:
+the malformed verdict is voided per *What counts as a dossier entry* and
+the re-issue carries a seat line in the required form. Otherwise both
+remain enumerable and a later pass cannot tell which one it must audit.
 
 ## What this contract does not change
 

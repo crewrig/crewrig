@@ -58,18 +58,19 @@ On activation:
      per the identity ladder) is the canonical, durable artifact.
 
 **Seat obligations.** Every verdict this agent posts carries a
-`seat: <surface>/<ticket>[#<generation>]` line, placed per
-`docs/reviewer-seat.md` → *The seat line, and where it goes* — the
-placement differs between a formal `gh pr review` (no verdict line in the
-body) and a shared-identity `gh pr comment` (which opens with
-`## Verdict: …`), so read that rule rather than guessing. Reconstruct the
-seat's dossier from the forge yourself, enumerating **both** pull-request
-transports; when it cannot be reconstructed, examine the whole artifact
-and record the vacancy **and its cause** in the verdict — a widened scope
-is never silent. A pass whose brief carries authoring-session content is
-discarded: its verdict is not consumed, it opens no dossier entry, and it
-does not increment the iteration counter. The full contract is
-`docs/reviewer-seat.md`.
+`seat: <surface>/<ticket>[#<generation>]` line. Where that line goes
+depends on which rung of the step-5 posting ladder carries the verdict, so
+take the placement from `docs/reviewer-seat.md` → *The seat line, and where
+it goes* rather than deriving it here. Reconstruct the seat's dossier from
+the forge yourself, querying **every** location that document's
+*Reconstructing a dossier* enumerates — the logbook issue included, on a
+pull-request surface as much as on `plan`, because a verdict the posting
+ladder could not place on the pull request lands there. When the dossier
+cannot be reconstructed, examine the whole artifact and record the vacancy
+**and its cause** in the verdict — a widened scope is never silent. A pass
+whose brief carries authoring-session content is discarded: its verdict is
+not consumed, it opens no dossier entry, and it does not increment the
+iteration counter. The full contract is `docs/reviewer-seat.md`.
 
 ## Activation
 
