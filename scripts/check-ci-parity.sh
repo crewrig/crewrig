@@ -442,6 +442,8 @@ check_gha_job() {
   esac
   while IFS= read -r rt; do
     [ -z "$rt" ] && continue
+    # jq is preinstalled on GitHub Actions ubuntu-latest runners; GitLab CI installs it via tool_install_lines.
+    [ "$rt" = "jq" ] && continue
     in_list "$rt" "$prov_tools" || \
       fail "capability '$id' (github-actions): requires tool '$rt' but no setup step installs it (R4)"
   done <<< "$req_tools"
