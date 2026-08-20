@@ -235,17 +235,11 @@ function changedPaths(baseRef) {
 }
 
 // resolveCurrentBranch() — resolve the branch name of the change under test.
-// Checks explicit test override (BRANCH_NAME), CI variables (GITHUB_HEAD_REF,
-// CI_MERGE_REQUEST_SOURCE_BRANCH_NAME), local git branch, and CI ref names.
+// Checks explicit test override (BRANCH_NAME), local git branch, and CI variables
+// (GITHUB_HEAD_REF, CI_MERGE_REQUEST_SOURCE_BRANCH_NAME, GITHUB_REF_NAME, etc.).
 function resolveCurrentBranch() {
     if (process.env.BRANCH_NAME && process.env.BRANCH_NAME.trim() !== '') {
         return process.env.BRANCH_NAME.trim();
-    }
-    if (process.env.GITHUB_HEAD_REF && process.env.GITHUB_HEAD_REF.trim() !== '') {
-        return process.env.GITHUB_HEAD_REF.trim();
-    }
-    if (process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME && process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME.trim() !== '') {
-        return process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME.trim();
     }
     const gitBranch = gitCapture(['symbolic-ref', '--short', 'HEAD']);
     if (gitBranch.status === 0 && gitBranch.stdout.trim() !== '') {
@@ -254,6 +248,12 @@ function resolveCurrentBranch() {
     const gitAbbrev = gitCapture(['rev-parse', '--abbrev-ref', 'HEAD']);
     if (gitAbbrev.status === 0 && gitAbbrev.stdout.trim() !== '' && gitAbbrev.stdout.trim() !== 'HEAD') {
         return gitAbbrev.stdout.trim();
+    }
+    if (process.env.GITHUB_HEAD_REF && process.env.GITHUB_HEAD_REF.trim() !== '') {
+        return process.env.GITHUB_HEAD_REF.trim();
+    }
+    if (process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME && process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME.trim() !== '') {
+        return process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME.trim();
     }
     if (process.env.GITHUB_REF_NAME && process.env.GITHUB_REF_NAME.trim() !== '') {
         return process.env.GITHUB_REF_NAME.trim();
