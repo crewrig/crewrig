@@ -211,15 +211,21 @@ to use `status` for the one question it exists to answer — "merged and in
 force" or "proposed but never landed".
 
 The rule is enforced mechanically rather than by recall. The spec linter
-(`scripts/lib/spec-linter.js`, run as `task spec:lint` in CI) names every
-non-delta spec that is **already present on the change's base branch** while
-carrying `status: draft`. Presence on the base branch is the discriminator for
-being named, so a spec the change under test *introduces* is not named at all:
-it is legitimately `draft` until the *Merge mechanic* below flips it.
-Delta-specs are exempt too — what `status` a delta should carry is deliberately
-unsettled, per
+(`scripts/lib/spec-linter.js`, run as `task spec:lint` in CI) enforces status
+invariants across all pull requests and on `main` (governed by
 [`specs/0109-spec-status-invariant-on-main.md`](../specs/0109-spec-status-invariant-on-main.md)
-→ *Out of scope*.
+and [`specs/0168-spec-status-transition-enforcement.md`](../specs/0168-spec-status-transition-enforcement.md)):
+
+- **Spec PRs (`spec/<NNNN>-*` or introducing a new spec):** CI fails (`[FAIL]`)
+  if an added or modified non-delta spec file carries `status: draft`. The spec
+  must transition to `status: approved` (and declare `interaction-mode`) before
+  merging to `main`.
+- **Implementation PRs (`(feat|fix|refactor|perf|chore)/<NNNN>-*`):** CI fails
+  (`[FAIL]`) if the corresponding specification file `specs/<NNNN>-*.md` does not
+  carry `status: implemented`.
+- **Base branch status check:** The linter names every non-delta spec already
+  present on the change's base branch that carries `status: draft`. Delta-specs
+  are exempt per Spec 0109.
 
 **Which build the violation fails, and which it only warns.** Being named and
 being failed are two different things, decided by two different questions. A

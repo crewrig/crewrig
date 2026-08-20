@@ -888,9 +888,93 @@ render_spec "0043" "inline-scaffolding" "draft" "standard" "" "$headings43" > "$
 run_case "Case 43 — tool scaffolding in inline code span passes" "$spec43" 0
 
 # -------------------------------------------------------------------------
+# Cases 44-48 (spec 0168 R1, R2) — AUTOMATED STATUS TRANSITION ENFORCEMENT
+# -------------------------------------------------------------------------
+GITFIX5="$TMP_ROOT/gitfix5"
+mkdir -p "$GITFIX5/specs" "$GITFIX5/docs"
+cp "$ROOT_DIR/.markdownlintrc" "$GITFIX5/"
+ln -s "$ROOT_DIR/node_modules" "$GITFIX5/node_modules"
+render_spec "0300" "base-feature" "implemented" "standard" "interaction-mode: AUTO" > "$GITFIX5/specs/0300-base-feature.md"
+(
+  cd "$GITFIX5" || exit 1
+  git init -q
+  git symbolic-ref HEAD refs/heads/main
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git config commit.gpgsign false
+  git add specs
+  git commit -q -m "initial main branch"
+)
+
+# -------------------------------------------------------------------------
+# Case 44 (Spec 0168 R1) — A new spec PR introducing a spec carrying `status: draft`
+# fails CI when targeting the base branch.
+# -------------------------------------------------------------------------
+git -C "$GITFIX5" checkout -q -b spec/0301-new-feature
+render_spec "0301" "new-feature" "draft" "standard" "" > "$GITFIX5/specs/0301-new-feature.md"
+git -C "$GITFIX5" add specs/0301-new-feature.md
+git -C "$GITFIX5" commit -q -m "add spec in draft"
+run_base_case "Case 44 — new spec PR carrying draft status fails CI (spec 0168 R1)" \
+  "$GITFIX5" "specs" 1 "main" \
+  "Non-delta specs added or modified by this change carry 'status: draft'" "-"
+
+# -------------------------------------------------------------------------
+# Case 45 (Spec 0168 R1) — Transitioning the new spec to `status: approved` (with
+# interaction-mode) passes CI on the spec PR.
+# -------------------------------------------------------------------------
+render_spec "0301" "new-feature" "approved" "standard" "interaction-mode: AUTO" > "$GITFIX5/specs/0301-new-feature.md"
+git -C "$GITFIX5" add specs/0301-new-feature.md
+git -C "$GITFIX5" commit -q -m "transition spec to approved"
+run_base_case "Case 45 — new spec PR carrying approved status passes CI (spec 0168 R1)" \
+  "$GITFIX5" "specs" 0 "main" \
+  "-" "Non-delta specs added or modified by this change carry 'status: draft'"
+
+# -------------------------------------------------------------------------
+# Case 46 (Spec 0168 R2) — An implementation PR on branch feat/0302-cool-feature
+# whose spec still carries `status: approved` fails CI.
+# -------------------------------------------------------------------------
+git -C "$GITFIX5" checkout -q main
+render_spec "0302" "cool-feature" "approved" "standard" "interaction-mode: AUTO" > "$GITFIX5/specs/0302-cool-feature.md"
+git -C "$GITFIX5" add specs/0302-cool-feature.md
+git -C "$GITFIX5" commit -q -m "merge spec 0302 to main"
+git -C "$GITFIX5" checkout -q -b feat/0302-cool-feature
+printf 'console.log("implemented");\n' > "$GITFIX5/docs/feature.js"
+git -C "$GITFIX5" add docs/feature.js
+git -C "$GITFIX5" commit -q -m "implement feature without updating spec status"
+run_base_case "Case 46 — implementation PR without status: implemented fails CI (spec 0168 R2)" \
+  "$GITFIX5" "specs" 1 "main" \
+  "matches spec id '0302', but specification" "-"
+
+# -------------------------------------------------------------------------
+# Case 47 (Spec 0168 R2) — An implementation PR that transitions the spec to
+# `status: implemented` passes CI.
+# -------------------------------------------------------------------------
+render_spec "0302" "cool-feature" "implemented" "standard" "interaction-mode: AUTO" > "$GITFIX5/specs/0302-cool-feature.md"
+git -C "$GITFIX5" add specs/0302-cool-feature.md
+git -C "$GITFIX5" commit -q -m "transition spec 0302 to implemented"
+run_base_case "Case 47 — implementation PR with status: implemented passes CI (spec 0168 R2)" \
+  "$GITFIX5" "specs" 0 "main" \
+  "-" "matches spec id '0302'"
+
+# -------------------------------------------------------------------------
+# Case 48 (Spec 0168 R2) — An implementation branch for a ticket that has no
+# matching spec file in specs/ (e.g. non-spec bug fix) is a clean pass.
+# -------------------------------------------------------------------------
+git -C "$GITFIX5" checkout -q main
+git -C "$GITFIX5" checkout -q -b fix/0999-no-such-spec
+mkdir -p "$GITFIX5/docs"
+printf 'console.log("fix");\n' > "$GITFIX5/docs/fix.js"
+git -C "$GITFIX5" add docs/fix.js
+git -C "$GITFIX5" commit -q -m "fix non-spec issue"
+run_base_case "Case 48 — implementation branch with no matching spec file passes (spec 0168 R2)" \
+  "$GITFIX5" "specs" 0 "main" \
+  "-" "matches spec id"
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
+
 

@@ -234,6 +234,36 @@ function changedPaths(baseRef) {
     return new Set(diff.stdout.split('\0').filter(Boolean));
 }
 
+// resolveCurrentBranch() — resolve the branch name of the change under test.
+// Checks explicit test override (BRANCH_NAME), local git branch, and CI variables
+// (GITHUB_HEAD_REF, CI_MERGE_REQUEST_SOURCE_BRANCH_NAME, GITHUB_REF_NAME, etc.).
+function resolveCurrentBranch() {
+    if (process.env.BRANCH_NAME && process.env.BRANCH_NAME.trim() !== '') {
+        return process.env.BRANCH_NAME.trim();
+    }
+    const gitBranch = gitCapture(['symbolic-ref', '--short', 'HEAD']);
+    if (gitBranch.status === 0 && gitBranch.stdout.trim() !== '') {
+        return gitBranch.stdout.trim();
+    }
+    const gitAbbrev = gitCapture(['rev-parse', '--abbrev-ref', 'HEAD']);
+    if (gitAbbrev.status === 0 && gitAbbrev.stdout.trim() !== '' && gitAbbrev.stdout.trim() !== 'HEAD') {
+        return gitAbbrev.stdout.trim();
+    }
+    if (process.env.GITHUB_HEAD_REF && process.env.GITHUB_HEAD_REF.trim() !== '') {
+        return process.env.GITHUB_HEAD_REF.trim();
+    }
+    if (process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME && process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME.trim() !== '') {
+        return process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME.trim();
+    }
+    if (process.env.GITHUB_REF_NAME && process.env.GITHUB_REF_NAME.trim() !== '') {
+        return process.env.GITHUB_REF_NAME.trim();
+    }
+    if (process.env.CI_COMMIT_REF_NAME && process.env.CI_COMMIT_REF_NAME.trim() !== '') {
+        return process.env.CI_COMMIT_REF_NAME.trim();
+    }
+    return '';
+}
+
 // resolveBaseContext(files) — decide whether the base-branch status check runs,
 // and if so against which paths. Three outcomes, deliberately distinct:
 //
@@ -621,6 +651,48 @@ function run() {
                 console.error(`  branch rather than in this change and is not this change's to fix — it`);
                 console.error(`  does NOT fail this run. Correcting it is an edit to the named spec on the`);
                 console.error(`  base branch, whose own build fails on it (spec 0109 R1/R9/R10).`);
+            }
+        }
+
+        // Spec 0168 Requirement 1 — Spec-PR status validation:
+        // A pull request introducing a new non-delta specification file (or modifying one)
+        // SHALL NOT pass CI if it carries `status: draft`.
+        // It must carry `status: approved` (with `interaction-mode`) before merging to main.
+        if (baseContext.changed !== null) {
+            const newDraftOffenders = fileResults.filter(({ file, isDelta, status }) =>
+                !isDelta && status === 'draft' &&
+                baseContext.changed.has(baseContext.relPathByFile.get(file)) &&
+                !baseContext.basePaths.has(baseContext.relPathByFile.get(file))
+            );
+            if (newDraftOffenders.length > 0) {
+                console.error(`\n[FAIL] Non-delta specs added or modified by this change carry 'status: draft' (spec 0168 R1):`);
+                for (const { file } of newDraftOffenders) {
+                    console.error(`  - ${file}`);
+                }
+                console.error(`  A specification must be approved before merging to the base branch.`);
+                console.error(`  Transition 'status: draft' to 'status: approved' and declare 'interaction-mode'`);
+                console.error(`  in the frontmatter once review approval is secured.`);
+                totalErrors++;
+            }
+        }
+
+        // Spec 0168 Requirement 2 — Implementation PR status validation:
+        // A pull request operating on an implementation branch ((feat|fix|refactor|perf|chore)/<NNNN>-*)
+        // SHALL NOT pass CI if the corresponding specification file does not carry `status: implemented`.
+        const currentBranch = resolveCurrentBranch();
+        const implBranchMatch = currentBranch.match(/^(?:feat|fix|refactor|perf|chore)\/(\d{4})-.*$/);
+        if (implBranchMatch) {
+            const specId = implBranchMatch[1];
+            const matchingSpecs = fileResults.filter(({ id, isDelta }) => !isDelta && id === specId);
+            for (const { file, status } of matchingSpecs) {
+                if (status !== 'implemented') {
+                    console.error(`\n[FAIL] Implementation branch '${currentBranch}' matches spec id '${specId}', but specification`);
+                    console.error(`       file does not carry 'status: implemented' (spec 0168 R2):`);
+                    console.error(`  - ${file} (current status: '${status}')`);
+                    console.error(`  An implementation pull request must transition its corresponding specification`);
+                    console.error(`  frontmatter to 'status: implemented' before merging.`);
+                    totalErrors++;
+                }
             }
         }
     }
