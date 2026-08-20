@@ -238,6 +238,83 @@ for s in setup-gemini-interactive.sh setup-copilot-interactive.sh \
 done
 
 # ---------------------------------------------------------------------------
+echo "5. backup_file helper behaviour (spec 0089 R9/R10, issue #982)"
+# ---------------------------------------------------------------------------
+
+# 5a. Existing regular file is backed up, sets LAST_BACKUP_PATH, announces success
+src_file="$TMP_ROOT/valid_src.json"
+echo '{"hello":"world"}' > "$src_file"
+out_5a_file="$TMP_ROOT/out_5a.txt"
+backup_file "$src_file" > "$out_5a_file" 2>&1
+out_5a="$(cat "$out_5a_file")"
+if [ -n "$LAST_BACKUP_PATH" ] && [ -f "$LAST_BACKUP_PATH" ]; then
+  ok "backup_file sets LAST_BACKUP_PATH to existing file on success"
+else
+  bad "backup_file failed to set valid LAST_BACKUP_PATH (got: '$LAST_BACKUP_PATH')"
+fi
+if printf '%s' "$out_5a" | grep -q "Backed up: valid_src.json ->"; then
+  ok "backup_file reports success on stdout"
+else
+  bad "backup_file missing success message on stdout (got: '$out_5a')"
+fi
+
+# 5b. Absent target leaves LAST_BACKUP_PATH empty and emits no output
+absent_file="$TMP_ROOT/nonexistent.json"
+out_5b_file="$TMP_ROOT/out_5b.txt"
+backup_file "$absent_file" > "$out_5b_file" 2>&1
+out_5b="$(cat "$out_5b_file")"
+if [ -z "$LAST_BACKUP_PATH" ]; then
+  ok "backup_file leaves LAST_BACKUP_PATH empty on absent file"
+else
+  bad "backup_file set LAST_BACKUP_PATH on absent file (got: '$LAST_BACKUP_PATH')"
+fi
+if [ -z "$out_5b" ]; then
+  ok "backup_file produces no output for absent target"
+else
+  bad "backup_file produced unexpected output for absent target: '$out_5b'"
+fi
+
+# 5c. Target cannot be copied (forcing cp failure when writing backup next to target)
+no_write_dir="$TMP_ROOT/nowrite_dir"
+mkdir -p "$no_write_dir"
+unwritable_target="$no_write_dir/src.json"
+echo '{"test":1}' > "$unwritable_target"
+chmod 555 "$no_write_dir"
+out_5c_file="$TMP_ROOT/out_5c.txt"
+backup_file "$unwritable_target" > "$out_5c_file" 2>&1
+out_5c="$(cat "$out_5c_file")"
+chmod 755 "$no_write_dir"
+if [ -z "$LAST_BACKUP_PATH" ]; then
+  ok "backup_file leaves LAST_BACKUP_PATH empty when cp fails (issue #982)"
+else
+  bad "backup_file published nonexistent LAST_BACKUP_PATH on failure (got: '$LAST_BACKUP_PATH')"
+fi
+if printf '%s' "$out_5c" | grep -q "WARNING: Failed to back up src.json"; then
+  ok "backup_file emits warning on stderr when backup fails"
+else
+  bad "backup_file missing failure warning (got: '$out_5c')"
+fi
+if printf '%s' "$out_5c" | grep -q "Backed up:"; then
+  bad "backup_file falsely reported success when copy failed"
+else
+  ok "backup_file does not falsely report success when copy fails"
+fi
+
+# 5d. Symlink target is backed up with -P (preserves symlink)
+link_target="$TMP_ROOT/link_src.json"
+echo '{"link":true}' > "$link_target"
+symlink_path="$TMP_ROOT/symlink.json"
+ln -s "$link_target" "$symlink_path"
+out_5d_file="$TMP_ROOT/out_5d.txt"
+backup_file "$symlink_path" > "$out_5d_file" 2>&1
+out_5d="$(cat "$out_5d_file")"
+if [ -n "$LAST_BACKUP_PATH" ] && [ -L "$LAST_BACKUP_PATH" ]; then
+  ok "backup_file preserves symlink on backup (-P)"
+else
+  bad "backup_file failed to preserve symlink as backup (got: '$LAST_BACKUP_PATH')"
+fi
+
+# ---------------------------------------------------------------------------
 echo ""
 echo "RESULT: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

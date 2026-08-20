@@ -18,21 +18,26 @@ MEMPALACE_MAX_VERSION_EXCLUSIVE="3.7"
 # LAST_BACKUP_PATH — set by every backup_file call so a caller can name the
 # backup it just produced (spec 0089 R9 warning). Deterministic on ALL paths:
 # the path of the backup when one was made, the empty string when the target
-# was absent and no backup was made. Initialising it unconditionally means a
-# caller reading it after a no-backup call never sees a prior call's value and
-# never trips `set -u` (spec 0089 review F2).
+# was absent, or when backup creation failed. Initialising it unconditionally
+# means a caller reading it after a no-backup call never sees a prior call's
+# value, never sees a nonexistent backup path, and never trips `set -u`
+# (spec 0089 review F2, issue #982).
 LAST_BACKUP_PATH=""
 
 backup_file() {
   local target="$1"
   LAST_BACKUP_PATH=""
   if [ -f "$target" ] || [ -L "$target" ]; then
-    local stamp
+    local stamp bak
     stamp="$(date +%Y%m%d-%H%M%S)"
-    cp -P "$target" "${target}.bak.${stamp}"
-    # shellcheck disable=SC2034  # read by scripts that source this lib (R9 warning), not here
-    LAST_BACKUP_PATH="${target}.bak.${stamp}"
-    echo "  Backed up: ${target##*/} -> ${target##*/}.bak.${stamp}"
+    bak="${target}.bak.${stamp}"
+    if cp -P "$target" "$bak" 2>/dev/null && [ -e "$bak" ]; then
+      # shellcheck disable=SC2034  # read by scripts that source this lib (R9 warning), not here
+      LAST_BACKUP_PATH="$bak"
+      echo "  Backed up: ${target##*/} -> ${target##*/}.bak.${stamp}"
+    else
+      echo "  WARNING: Failed to back up ${target##*/} (could not create ${bak##*/})" >&2
+    fi
   fi
 }
 
