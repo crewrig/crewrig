@@ -11,9 +11,15 @@ Team Templates*); no new specialist role is introduced. The same
 
 **Review rule.** The plan SHALL be reviewed by a **second
 `architect`** spawned cold — no authoring context, no prior session
-state — to preserve independence. The reviewer posts the review as a
+state — to preserve independence. Every pass of that review is
+attributed to the `plan/<ticket>` seat, whose verdicts carry a `seat:`
+line and whose second and later passes read a bounded scope; which role
+occupies the surface is unchanged. The reviewer posts the review as a
 follow-up comment on the same logbook issue. The review header and
-verdict line follow `docs/plan-format.md` → *Header conventions*.
+verdict line follow `docs/plan-format.md` → *Header conventions*, and the
+`seat:` line goes immediately after the verdict line
+([`docs/reviewer-seat.md`](reviewer-seat.md) → *The seat line, and where
+it goes*).
 When the orchestrator and the reviewer share the same GitHub
 identity, the shared-identity workaround from *Standard Team
 Templates → Template 1* applies (post the verdict as a regular
@@ -34,6 +40,13 @@ enumerate every reviewer-minted ID (`v<N>-F<M>`) raised across all prior
 review passes and state its disposition in the revised plan: *addressed*,
 *superseded*, or *withdrawn with reason*. Any unaddressed prior finding
 SHALL cause the review pass to return a `### Verdict: REQUEST CHANGES`.
+
+**On this surface the two clauses above already discharge the seat
+contract's finding-identifier, disposition-record and audit obligations.**
+[`docs/reviewer-seat.md`](reviewer-seat.md) preserves and references
+`v<N>-F<M>`, the revised plan's traceability table, and the audit above
+rather than redefining any of them, so no second identifier scheme and no
+second disposition record apply here.
 
 **Countable invariant.** Reviewers and third parties MAY verify that all
 raised review findings are claimed in a revised plan's traceability
@@ -61,12 +74,17 @@ exactly one `class:` field whose value drives the loop target:
   is under-specified).
 
 The full routing matrix — re-spawn composition, delta-spec impact,
-termination — lives in `AGENTS.md` → *Retroactive review loop*; this
-list states the taxonomy, not the routing.
+termination — lives in [`docs/retroactive-loop.md`](retroactive-loop.md)
+→ *Routing matrix*, restated in condensed form in
+[ADR-0010](adr/0010-spec-plan-review-lifecycle.md) → *Routing matrix*;
+this list states the taxonomy, not the routing.
 
 **REQUEST CHANGES blocks DEV.** A plan-review verdict of `### Verdict:
 REQUEST CHANGES` SHALL block the DEV stage from starting until a
-revised plan is posted and re-reviewed cold.
+revised plan is posted and re-reviewed by the **same seat** — a fresh
+agent holding no session state from the earlier pass, which is what
+"cold" has always meant here
+([`docs/reviewer-seat.md`](reviewer-seat.md) → *Seat identity*).
 
 **PLAN-loop cap.** The loop halts when a further plan revision would
 exceed the tier's cap (numbers per the ADR-0010 → *Complexity tiers

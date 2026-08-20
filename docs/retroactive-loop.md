@@ -35,6 +35,8 @@ Definitions of each class, canonical and borderline examples, and the disambigua
 
 Non-blocking findings MAY be routed to a persistent findings ledger rather than into the retroactive routing loop (see *Non-blocking conditional routing* below).
 
+**Turnover-shaped findings — an inbound cause.** A finding a seated pass raises on a surface unchanged since that seat last examined it, carrying no statement of which condition returned that surface to scope ([`docs/reviewer-seat.md`](reviewer-seat.md) → *A finding on an unchanged surface*), SHALL be treated as non-blocking and routed here; the iteration SHALL NOT be routed to an upstream stage on its account. In INTERMEDIATE, MINIMAL and AUTO the orchestrator applies this disposition directly, as *Non-blocking conditional routing* below already requires. In FULL it is the disposition the orchestrator **presents** in that same section's per-finding triage: the user's `loop` / `ledger` / `dismiss` choice, and *Termination* condition 4's treatment of a FULL-mode loop-routed finding, are unchanged — spec 0166 R20 forbids the seat contract from removing that gate.
+
 **Ledger shape and ownership.** The project maintains exactly one findings ledger: a pinned GitHub issue titled `📋 Findings ledger — deferred non-blocking findings` carrying the `deferred-findings-ledger` label. It serves as the single sink for all ledger-routed findings and SHALL never be closed. Each entry records the source PR number, source ticket number, finding class, a one-line summary, date routed, and the routing actor.
 
 **Journalling.** The orchestrator SHALL journal every ledger-route disposition on the active logbook issue (one line per finding: finding ref, disposition `ledger`, actor).
@@ -77,8 +79,11 @@ remote. The orchestrator SHALL:
 
 1. Apply the `iter:1` label to the implementation PR (per *Iteration
    counter — GitHub label*).
-2. **Immediately** spawn the cold-start `pr-reviewer` with the PR
-   number — no pause, no prompt, no user acknowledgement requested.
+2. **Immediately** instantiate the `review/<ticket>` seat with a
+   references-only brief — no pause, no prompt, no user acknowledgement
+   requested. The brief's contents, and the seat's obligations, are
+   defined in [`docs/reviewer-seat.md`](reviewer-seat.md); the
+   `iter:1`-before-instantiation ordering above is unchanged.
 
 The spawn sequence is mode-conditional:
 
@@ -99,7 +104,8 @@ final merge-authorization request.
 ## Routing matrix
 
 The matrix below is the engine's authoritative reference. It is also
-restated in condensed form in `AGENTS.md` → *Retroactive review loop*
+restated in condensed form in
+[ADR-0010](adr/0010-spec-plan-review-lifecycle.md) → *Routing matrix*
 for cross-section navigability; the duplication is intentional, and
 the two surfaces SHALL stay in lockstep when either is amended.
 
@@ -127,8 +133,11 @@ orchestrator SHALL NOT consume it. Instead (spec 0005 R3):
 1. Post a comment on the relevant PR (implementation-PR for `tech` /
    `arch` candidates, spec-PR for `spec` candidates) explicitly
    requesting retagging, naming each unlabeled finding by its index.
-2. Re-spawn the reviewer cold (same role, fresh agent) with the retag
-   instruction.
+2. Re-issue the verdict **from the same seat** (a fresh agent holding no
+   session state, per [`docs/reviewer-seat.md`](reviewer-seat.md) →
+   *Retagged verdicts*) with the retag instruction. The retag opens no
+   new dossier entry, and the corrected verdict replaces the malformed
+   one in the dossier.
 3. **Do NOT increment the iteration counter for this pass.** A
    malformed verdict does not count as an iteration consumed against
    the max-iteration guardrail (R9). The engine refuses to penalise
@@ -150,10 +159,12 @@ precedence:  spec  >  arch  >  tech
 
 Findings of lower-precedence classes from the same pass SHALL NOT be
 silently dropped — they SHALL be re-tagged onto the next iteration's
-verdict by the next reviewer spawned cold (spec 0005 R5). The engine
-does not parallelise multi-class routing within a single iteration;
-parallelising would fan out the team and require synchronizing N
-upstream re-spawns against a single PR, which the spec-PR workflow
+verdict by **the same seat's next pass** (spec 0005 R5; the seat is
+defined in [`docs/reviewer-seat.md`](reviewer-seat.md)). The precedence
+order above is unchanged. The engine does not parallelise multi-class
+routing within a single iteration; parallelising would fan out the team
+and require synchronizing N upstream re-spawns against a single PR,
+which the spec-PR workflow
 (spec 0003) and the plan-review protocol (spec 0004) explicitly
 forbid by their one-artifact-per-stage discipline.
 
@@ -249,7 +260,11 @@ All four are necessary. An APPROVE with one blocking finding is one finding away
 from termination. An APPROVE with zero blocking findings and red CI is a
 reviewer who skipped the CI-status section of `pr-reviewer` →
 *Preflight*; the engine SHALL flag this as a protocol violation and
-re-spawn the reviewer cold.
+re-instantiate the **same seat**. A seat's bounded reading
+([`docs/reviewer-seat.md`](reviewer-seat.md) → *Bounded scope from the
+second pass*) never waives this: the continuous-integration state of the
+current head is inside the bound on every pass, whatever else the pass is
+excused from re-examining.
 
 ## Max-iteration guardrail
 
@@ -324,3 +339,4 @@ route today") rather than a literal record of label state.
 - Spec format and delta-spec convention — [`docs/spec-format.md`](spec-format.md).
 - Spec-PR workflow — [`specs/0003-spec-pr-workflow.md`](../specs/0003-spec-pr-workflow.md) and `AGENTS.md` → *Spec-PR workflow*.
 - Team Communication Rule 4 — `AGENTS.md` → *Agent Team Protocol → Team Communication*.
+- Reviewer seat contract — [`docs/reviewer-seat.md`](reviewer-seat.md) and [`specs/0166-stable-reviewer-seat.md`](../specs/0166-stable-reviewer-seat.md).

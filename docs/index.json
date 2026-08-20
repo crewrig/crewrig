@@ -58,6 +58,11 @@
           "title": "Retroactive review loop",
           "path": "docs/retroactive-loop.md",
           "nav_order": 10
+        },
+        {
+          "title": "Reviewer seat",
+          "path": "docs/reviewer-seat.md",
+          "nav_order": 20
         }
       ]
     },

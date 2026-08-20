@@ -146,7 +146,9 @@ of findings raised across prior review passes (per `docs/plan-review-protocol.md
 Every plan-review finding SHALL carry a reviewer-minted identifier in its header
 (`v<N>-F<M>`) and exactly one `class:` field whose value is one of `tech`, `arch`,
 or `spec` (R7). The class drives the loop target of the retroactive review loop;
-the routing matrix is defined once, in `AGENTS.md` → *Retroactive review loop*,
+the routing matrix is defined once, in [`docs/retroactive-loop.md`](retroactive-loop.md)
+→ *Routing matrix* (restated in condensed form in
+[ADR-0010](adr/0010-spec-plan-review-lifecycle.md) → *Routing matrix*),
 and SHALL NOT be duplicated here.
 
 A reviewer comment that lists multiple findings SHALL tag each
