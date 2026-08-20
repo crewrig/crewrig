@@ -1218,7 +1218,7 @@ switch_assistants_to_http() {
       unknown)
         echo "  ERROR: $cli is in an unrecognised arrangement."
         echo "         A repeated run cannot resolve a configuration it cannot"
-        echo "         recognise. Repair it by hand, then re-run. (R14)"
+        echo "         recognise. Run 'task mempalace:repair', then re-run. (R14)"
         return 1
         ;;
     esac
@@ -1323,8 +1323,14 @@ _switch_rollback() {
     for cli in $failed; do
       echo "    - $cli  ($(mcp_assistant_config_path "$cli"))"
     done
-    echo "  Each config was backed up before the change; restore the timestamped"
-    echo "  .bak file beside it, or re-run setup once the cause is fixed."
+    echo "  Each config was backed up before the change; run"
+    # `--` is load-bearing, not decoration: the Taskfile entry forwards
+    # {{.CLI_ARGS}}, which go-task populates ONLY from arguments after a `--`
+    # separator. Without it the flag is parsed as a task flag and the operator
+    # gets `unknown flag:` plus a usage dump instead of the restore this
+    # handoff exists to hand them (same form as `task prune-transcripts --`).
+    echo "  'task mempalace:repair -- --restore-backup' to restore the timestamped"
+    echo "  .bak file, or re-run setup once the cause is fixed."
     echo ""
     echo "  Current state of every assistant:"
     mcp_report_assistant_arrangements
@@ -1357,6 +1363,13 @@ mcp_assistant_arrangement() {
       # test applies and the only textual branch disappears.
       entry_cfg="$(mcp_assistant_config_path claude)"
       [ -f "$entry_cfg" ] || { printf 'none\n'; return 0; }
+      # R3 (spec 0165): a file that does not parse is residue, not "no
+      # registration" — reporting it as none would let a repeated setup run
+      # treat it as convergeable and fail mid-switch.
+      if ! jq -e . "$entry_cfg" >/dev/null 2>&1; then
+        printf 'unknown\n'
+        return 0
+      fi
       entry="$(jq -c '.mcpServers.mempalace // empty' "$entry_cfg" 2>/dev/null)"
       if [ -z "$entry" ]; then
         printf 'none\n'
@@ -1375,6 +1388,13 @@ mcp_assistant_arrangement() {
     *) printf 'unknown\n'; return 0 ;;
   esac
   [ -f "$entry" ] || { printf 'absent\n'; return 0; }
+  # R3 (spec 0165): a file that does not parse is residue, not "no
+  # registration" — reporting it as none would let a repeated setup run
+  # treat it as convergeable and fail mid-switch.
+  if ! jq -e . "$entry" >/dev/null 2>&1; then
+    printf 'unknown\n'
+    return 0
+  fi
   local node
   node="$(jq -c '.mcpServers.mempalace // empty' "$entry" 2>/dev/null)"
   if [ -z "$node" ]; then
@@ -1398,7 +1418,7 @@ mcp_report_assistant_arrangements() {
       stdio)   printf '  %-12s stdio (previous arrangement)\n' "$cli" ;;
       none)    printf '  %-12s no mempalace registration\n' "$cli" ;;
       absent)  printf '  %-12s CLI not installed\n' "$cli" ;;
-      *)       printf '  %-12s *** UNRECOGNISED — manual repair required ***\n' "$cli" ;;
+      *)       printf "  %-12s *** UNRECOGNISED — run 'task mempalace:repair' ***\n" "$cli" ;;
     esac
   done
 }

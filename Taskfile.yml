@@ -44,6 +44,10 @@ tasks:
     desc: "Report the shared MemPalace MCP HTTP daemon: whether it is serving, whether authentication is actually enforced, whether the installed launcher has drifted from the repository, and which arrangement each assistant is configured for."
     cmd: bash {{.REPO_DIR}}/scripts/status-mcp-server.sh
 
+  mempalace:repair:
+    desc: "Repair the residue left by an interrupted MemPalace switch (spec 0165): an assistant whose configuration does not parse as JSON, or whose mempalace registration matches neither the http nor the stdio shape. With no flag, reports each affected assistant, its config path, whether a timestamped backup exists, and the available actions. The repair verbs need the separator (task mempalace:repair -- [--restore-backup | --reset-none]): --restore-backup restores the most recent usable backup, --reset-none removes the mempalace registration. Restores recognisability only — never registers anyone for http, never places the bearer token in argv."
+    cmd: bash {{.REPO_DIR}}/scripts/repair-mempalace-http.sh {{.CLI_ARGS}}
+
   mempalace:stop:
     desc: "Restart the shared MemPalace MCP HTTP daemon. Under the supervisor a stop IS a restart request — to end the daemon, use mempalace:uninstall-daemon."
     cmd: bash {{.REPO_DIR}}/scripts/stop-mcp-server.sh

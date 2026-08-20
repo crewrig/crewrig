@@ -400,8 +400,10 @@ jobs:
             chroma-mcp:
               - 'scripts/tests/test-chroma-*.sh'
               - 'scripts/tests/test-mcp-daemon.sh'
+              - 'scripts/tests/test-repair-mempalace-http.sh'
               - 'scripts/tests/test-worktree-claim.sh'
               - 'scripts/mcp-daemon.sh'
+              - 'scripts/repair-mempalace-http.sh'
               - 'scripts/lib/**'
       - name: Install yq
         if: steps.filter.outputs.chroma-mcp == 'true'
@@ -416,22 +418,25 @@ jobs:
         if: steps.filter.outputs.chroma-mcp == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/tests/test-chroma-*.sh', 'scripts/tests/test-mcp-daemon.sh', 'scripts/tests/test-worktree-claim.sh', 'scripts/mcp-daemon.sh', 'scripts/lib/**') }}
+          key: ${{ hashFiles('scripts/tests/test-chroma-*.sh', 'scripts/tests/test-mcp-daemon.sh', 'scripts/tests/test-repair-mempalace-http.sh', 'scripts/tests/test-worktree-claim.sh', 'scripts/mcp-daemon.sh', 'scripts/repair-mempalace-http.sh', 'scripts/lib/**') }}
       - name: Test Chroma Fd Limits
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-fd-limits.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-fd-limits.sh
       - name: Test Chroma Health Race
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-health-race.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-health-race.sh
       - name: Test Chroma Server
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-server.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-server.sh
       - name: Test Mcp Daemon
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-mcp-daemon.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-mcp-daemon.sh
+      - name: Test Repair Mempalace Http
+        if: steps.filter.outputs.chroma-mcp == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-repair-mempalace-http.sh
       - name: Test Worktree Claim
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-worktree-claim.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-worktree-claim.sh
   e2e:
     runs-on: ubuntu-latest
     steps:

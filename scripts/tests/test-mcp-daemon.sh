@@ -483,6 +483,11 @@ echo '{"mcpServers":{}}' > "${TEST_HOME}/.gemini/settings.json"
 [ "$(mcp_assistant_arrangement gemini)" = "none" ] \
   && ok "no entry reads as none" || nope "missing entry misread"
 
+echo 'not json' > "${TEST_HOME}/.gemini/settings.json"
+[ "$(mcp_assistant_arrangement gemini)" = "unknown" ] \
+  && ok "a non-parseable config reads as unknown, not none (R3)" \
+  || nope "non-parseable config misread as none"
+
 # --- 7. Capture and restore round-trip (R13) ---------------------------------
 echo ""
 echo "Capture and restore (R13):"
@@ -666,6 +671,14 @@ done
 [ "${all_http}" -eq 1 ] \
   && ok "every present assistant reaches the shared daemon" \
   || nope "not every assistant was converged to http"
+
+# R3 (spec 0165): a non-parseable claude config reads as unknown, not none.
+# Anchored here: .claude.json is http-shaped, the claude stub is on PATH, and
+# nothing later in this file reads .claude.json.
+echo 'not json' > "${TEST_HOME}/.claude.json"
+[ "$(mcp_assistant_arrangement claude)" = "unknown" ] \
+  && ok "a non-parseable claude config reads as unknown, not none (R3)" \
+  || nope "non-parseable claude config misread as none"
 
 export PATH="${ORIG_PATH}"
 
