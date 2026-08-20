@@ -280,6 +280,57 @@ bash "${REPAIR}" --restore-backup >/dev/null 2>&1
 rm -f "${TEST_HOME}/.gemini/settings.json" "${link_target}" \
       "${TEST_HOME}/.gemini/settings.json.bak."*
 
+echo ""
+echo "R5 — a two-digit backup mode is preserved, not narrowed to 600:"
+# file_mode's case list has to accept a two-digit mode. `%a`/`%Lp` strip
+# leading zeros, so 0060 prints as `60`; a list that omits the two-digit arm
+# sends it to the `*)` fallback and the restore silently publishes 600 instead
+# of the mode R5 promises to preserve.
+#
+# Reaching it takes an ACL, and that is not an artificial detail — it is the
+# reason the case is narrow. A two-digit mode means an all-zero OWNER triad, so
+# the owner cannot read the file: `jq -e .` in most_recent_usable_backup and
+# the `cat` in restore_backup both fail first, and `cp -P` cannot even produce
+# such a backup (measured: it exits 1 and no backup is created, so this is
+# never a file the tool itself made). An ACL granting the owner read restores
+# access WITHOUT changing the mode bits stat reports, which gets a two-digit
+# mode as far as file_mode; foreign ownership and a root run do the same, and
+# the ACL is simply the one a test can build as an ordinary user.
+#
+# Probed skip on the ACL primitive, matching test-mcp-daemon.sh's idiom: the
+# syntax is platform-specific and the case announces itself loudly rather than
+# passing vacuously where the fixture cannot be built.
+acl_backup="${TEST_HOME}/.gemini/settings.json.bak.20260107-000000"
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["two-digit"]}}}' \
+  > "${acl_backup}"
+chmod 060 "${acl_backup}"
+if chmod +a "user:$(id -un) allow read" "${acl_backup}" 2>/dev/null \
+   || setfacl -m "u:$(id -un):r" "${acl_backup}" 2>/dev/null; then
+  acl_ok=1
+else
+  acl_ok=0
+fi
+# Both halves must hold or the fixture is not the state under test: readable
+# (so the restore reaches file_mode at all) AND still reported two-digit.
+if [ "${acl_ok}" -eq 1 ] && jq -e . "${acl_backup}" >/dev/null 2>&1; then
+  acl_mode="$(mode_of "${acl_backup}")"
+else
+  acl_mode=""
+fi
+if [ "${acl_mode}" = "60" ]; then
+  residue_config > "${TEST_HOME}/.gemini/settings.json"
+  (umask 077; bash "${REPAIR}" --restore-backup) >/dev/null 2>&1
+  [ "$(mode_of "${TEST_HOME}/.gemini/settings.json")" = "60" ] \
+    && ok "a two-digit backup mode is preserved on the restored config" \
+    || nope "two-digit backup restored as $(mode_of "${TEST_HOME}/.gemini/settings.json"), expected 60"
+else
+  echo "  skip could not build a readable file whose mode stat reports as two"
+  echo "       digits (ACL primitive unavailable or ineffective here; mode read"
+  echo "       back as '${acl_mode:-unreadable}'), so the two-digit arm of"
+  echo "       file_mode's case list is NOT exercised on this platform."
+fi
+rm -f "${TEST_HOME}/.gemini/settings.json" "${acl_backup}"
+
 # --- R6. Reset to none -------------------------------------------------------
 echo ""
 echo "R6 — reset-none removes the mempalace registration:"

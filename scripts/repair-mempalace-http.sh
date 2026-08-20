@@ -118,6 +118,17 @@ classify() {
 }
 
 # has_any_backup <cfg> — true when at least one timestamped backup exists.
+#
+# `-e` and not `-e || -L`, deliberately: a DANGLING .bak symlink is reported as
+# `backup: no`. That reads as a contradiction next to the fallback action the
+# same report prints ("restore the .bak file by hand"), and it is — the
+# directory entry exists. It is still the right answer, because the question
+# this line answers is "is there anything restorable", and a link whose target
+# is gone is the absence of a backup with a leftover name, not a backup. The
+# alternative label, `backup: yes, but none parses as JSON`, would be less
+# accurate still: nothing was parsed, the target simply is not there. Both
+# messages already point the operator at the .bak files beside the config,
+# which is where one `ls -l` shows them the broken link.
 has_any_backup() {
   local cfg="$1" bak
   for bak in "${cfg}".bak.*; do
@@ -131,8 +142,16 @@ has_any_backup() {
 #
 # GNU probed first: `stat -f` on GNU means "filesystem" and SUCCEEDS with
 # output this caller would then feed to chmod (the test suite's mode_of carries
-# the same ordering for the same reason). An unreadable mode falls back to the
-# narrow end, never the wide one.
+# the same ordering for the same reason).
+#
+# The `*)` arm catches an UNPARSEABLE result — both probes failing and leaving
+# `$m` empty — and not every unreadable file. On BSD, `stat -L` on a dangling
+# symlink falls back to the link and exits 0 with its mode (measured: 755), so
+# for that one input the function returns the WIDE value and `*)` never runs.
+# It cannot arrive here: most_recent_usable_backup gates every candidate on
+# `jq -e .`, which fails on a dangling link, and `cat "$bak"` would fail before
+# the chmod even if it did. Stated rather than guarded — a guard for a state
+# the call site excludes is dead code that still has to be maintained.
 #
 # `-L` dereferences, and it is required here: the argument is a BACKUP, and a
 # backup can be a symlink. backup_file (scripts/lib/common.sh) copies with
@@ -144,20 +163,45 @@ has_any_backup() {
 # on Linux — and the restore publishes the configuration wider than the
 # operator ever had it, up to world-writable for a file whose
 # mcpServers.mempalace.command the CLI executes at session start.
+#
+# The case list is total over every string `stat` can emit, which takes four
+# arms because `%a`/`%Lp` strip leading zeros: 4 digits (setuid/setgid/sticky),
+# 3 (the ordinary case), 2 (`060` prints as `60`), 1 (`004` prints as `4`).
+#
+# The short arms are narrow but NOT unreachable, and the distinction matters
+# because the two-digit one is covered by a test. A mode printed with fewer
+# than 3 digits has an all-zero OWNER triad, so ordinarily the owner cannot
+# read the file and the restore never gets this far: measured on a self-owned
+# 0060 file, `jq -e .` exits 2 and `cat` exits 1, and both gate ahead of
+# file_mode. `cp -P` cannot produce such a backup either — it exits 1 on that
+# source and creates nothing — so this is never a file backup_file made. What
+# does reach here is a backup carrying an ACL that grants read without
+# changing the mode bits: measured, `jq -e .` then exits 0 while stat still
+# reports `60`. Foreign ownership and a root run do the same. So the arms are
+# load-bearing for a real if unusual arrangement, not decoration.
 file_mode() {
   local m
   m="$(stat -Lc '%a' "$1" 2>/dev/null || stat -L -f '%Lp' "$1" 2>/dev/null)"
   case "$m" in
-    [0-7]|[0-7][0-7][0-7]|[0-7][0-7][0-7][0-7]) printf '%s\n' "$m" ;;
+    [0-7]|[0-7][0-7]|[0-7][0-7][0-7]|[0-7][0-7][0-7][0-7]) printf '%s\n' "$m" ;;
     *) printf '600\n' ;;
   esac
 }
 
-# most_recent_usable_backup <cfg> — echoes the most recent backup whose content
-# parses as JSON, or nothing (returning non-zero) when none is usable. The glob
-# expands in lexical order and the %Y%m%d-%H%M%S stamp from backup_file is
-# fixed-width, so lexical order IS chronological order and the last usable
-# match is the most recent one.
+# most_recent_usable_backup <cfg> — echoes the most recent USABLE backup, or
+# nothing (returning non-zero) when none is. The glob expands in lexical order
+# and the %Y%m%d-%H%M%S stamp from backup_file is fixed-width, so lexical order
+# IS chronological order and the last usable match is the most recent one.
+#
+# "Usable" is `jq -e .`, which is narrower than "parses as JSON" and is meant
+# to be: `-e` also exits non-zero on a document that parses to `null` or to
+# `false` (measured), so those two are rejected alongside the malformed ones.
+# That is the wanted behaviour — a config file whose whole content is `null` is
+# not something to restore an assistant from — but it means the operator-facing
+# wording ("parses as JSON") is a simplification, not a literal description of
+# the test. Keep `-e`: dropping it to make the prose exact would accept `null`
+# as a usable backup. The realistic residue shapes are unaffected either way —
+# a 0-byte or whitespace-only file from a truncated write exits 4 here.
 most_recent_usable_backup() {
   local cfg="$1" bak best=""
   for bak in "${cfg}".bak.*; do
