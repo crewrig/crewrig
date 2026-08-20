@@ -1,7 +1,7 @@
 ---
 id: "0167"
 slug: transcript-hook-ci-test-token
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 973

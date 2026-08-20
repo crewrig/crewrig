@@ -261,13 +261,16 @@ if [ -n "$CONTENT" ]; then
       echo "DAEMON_UNREACHABLE: neither shasum nor sha256sum on PATH" >&2
       exit 4
     fi
-    TOKEN_KEY="${SHA256:0:24}"
-    TOKEN_FILE="${HOME}/.mempalace/server/$TOKEN_KEY/token"
+    TOKEN_FILE="${MEMPALACE_DAEMON_TOKEN_FILE:-${TOKEN_PATH_MOCK:-}}"
+    if [ -z "$TOKEN_FILE" ]; then
+      TOKEN_KEY="${SHA256:0:24}"
+      TOKEN_FILE="${HOME}/.mempalace/server/$TOKEN_KEY/token"
 
-    if [ ! -f "$TOKEN_FILE" ]; then
-      wildcards=("${HOME}/.mempalace/server/"*"/token")
-      if [ ${#wildcards[@]} -gt 0 ] && [ -f "${wildcards[0]}" ]; then
-        TOKEN_FILE="${wildcards[0]}"
+      if [ ! -f "$TOKEN_FILE" ]; then
+        wildcards=("${HOME}/.mempalace/server/"*"/token")
+        if [ ${#wildcards[@]} -gt 0 ] && [ -f "${wildcards[0]}" ]; then
+          TOKEN_FILE="${wildcards[0]}"
+        fi
       fi
     fi
 
