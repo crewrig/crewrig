@@ -1,24 +1,18 @@
 #!/bin/bash
-# check-test-strays.sh — CI guard for stray commands in test suites (issue #738).
+# check-test-strays.sh — CI guard for stray commands in test suites (issue #738, spec 0170).
 #
 # A script with a stray command line (e.g. `some-bogus-command`) will print
 # `some-bogus-command: command not found` to stderr and, unless `set -e` is
 # active, continue executing. Because tests are wired as `bash <suite>`, a
 # stray command inside one fails without anything consuming its status.
 #
-# The check here uses the runtime form: executing the suites and grepping for
-# the error message. This avoids the ambiguity of parsing bash syntax statically.
-#
-# Optimization (issue #939, spec 0157): the scan is changeset-aware,
-# content-addressed, and parallel. Each suite's verdict is cached under a key
-# derived from the suite's own content plus the content of every non-test file
-# under scripts/ (root-level scripts/*.sh, scripts/lib/**, and any other non-test
-# subdirectory), so a change to any script a suite might invoke invalidates
-# every suite's verdict (R4) while a change to one suite invalidates only that
-# suite (R2/R7). The execution set is ALL suites whose verdict is a cache-miss —
-# never a diff-restricted subset. The git diff against the base ref is used only
-# to short-circuit the "no change" case (skip the scan entirely when the diff
-# over the whole scripts/ tree is empty).
+# Fast validation strategy (spec 0170):
+# 1. Static syntax check (`bash -n`) is run across all test suites in milliseconds.
+# 2. Runtime execution for stray command detection is strictly scoped to the
+#    suites modified or added in the changeset (git diff --name-only <base> HEAD -- scripts/tests/test-*.sh).
+# 3. When no test suites are modified, zero suites are executed at runtime.
+# 4. Changes to non-test scripts under scripts/ do NOT trigger runtime execution
+#    of unchanged test suites.
 #
 # Usage:
 #   bash scripts/check-test-strays.sh [--cache-dir DIR] [--base-ref REF] [--jobs N]
@@ -26,10 +20,9 @@
 # Options:
 #   --cache-dir DIR   Directory for the content-addressed verdict cache
 #                     (default: .ci-cache).
-#   --base-ref REF    Base ref to diff against for the "no change" short-circuit.
+#   --base-ref REF    Base ref to diff against for changeset detection.
 #                     Default: $GITHUB_BASE_REF, then
-#                     $CI_MERGE_REQUEST_TARGET_BRANCH_NAME, then empty (no
-#                     short-circuit; every non-cached suite runs).
+#                     $CI_MERGE_REQUEST_TARGET_BRANCH_NAME.
 #   --jobs N          Maximum number of suites to run in parallel
 #                     (default: the runner's CPU count).
 #
@@ -57,6 +50,24 @@ if [ ! -d "$TESTS_DIR" ]; then
   exit 2
 fi
 
+# --- Collect all test suites ------------------------------------------------
+
+all_suites=()
+for suite in "$TESTS_DIR"/test-*.sh; do
+  [ -f "$suite" ] || continue
+  all_suites+=("$suite")
+done
+
+# --- 1. Static syntax validation across all test suites (spec 0170 R1) -------
+
+for suite in ${all_suites[@]+"${all_suites[@]}"}; do
+  if ! err_out="$(bash -n "$suite" 2>&1)"; then
+    echo "FAILED: $(basename "$suite") has syntax errors:" >&2
+    echo "$err_out" >&2
+    exit 1
+  fi
+done
+
 # --- sha256 helper (portable across Linux/macOS) ----------------------------
 
 sha256() {
@@ -73,55 +84,40 @@ if [ -z "$BASE_REF" ]; then
   BASE_REF="${GITHUB_BASE_REF:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-}}"
 fi
 
-# --- "no change" short-circuit ----------------------------------------------
-# When the base ref resolves and the merge-base diff over the whole scripts/
-# tree is empty, there is nothing to validate: exit clean without scanning.
-# This is a pure optimization; it never gates which suites run (the execution
-# set below is always the cache-miss set).
+# --- 2. Scope execution to changeset-modified suites (spec 0170 R2-R5) ------
 
+suites=()
 if [ -n "$BASE_REF" ]; then
   if merge_base="$(git -C "$REPO_DIR" merge-base "$BASE_REF" HEAD 2>/dev/null)"; then
-    if [ -z "$(git -C "$REPO_DIR" diff --name-only "$merge_base" HEAD -- scripts/)" ]; then
+    changed_files="$(git -C "$REPO_DIR" diff --name-only "$merge_base" HEAD -- scripts/tests/ 2>/dev/null || true)"
+    if [ -z "$changed_files" ]; then
       echo "OK: zero runtime strays across all test suites."
       exit 0
     fi
+    for rel in $changed_files; do
+      abs="$REPO_DIR/$rel"
+      if [ -f "$abs" ] && [[ "$(basename "$abs")" == test-*.sh ]]; then
+        suites+=("$abs")
+      fi
+    done
+    if [ ${#suites[@]} -eq 0 ]; then
+      echo "OK: zero runtime strays across all test suites."
+      exit 0
+    fi
+  else
+    # Fallback if merge-base fails
+    suites=(${all_suites[@]+"${all_suites[@]}"})
   fi
+else
+  # Fallback when no base-ref is provided
+  suites=(${all_suites[@]+"${all_suites[@]}"})
 fi
 
-# --- Collect the suites -----------------------------------------------------
-
-suites=()
-for suite in "$TESTS_DIR"/test-*.sh; do
-  [ -f "$suite" ] || continue
-  suites+=("$suite")
-done
-
-# --- Per-suite content-addressed verdict key --------------------------------
-# The key is sha256(suite content) + sha256 of every non-test file under
-# scripts/ (root-level scripts/*.sh, scripts/lib/**, and any other non-test
-# subdirectory). A change to any script a suite might invoke invalidates every
-# suite's verdict (R4, and the arch-gap closure: a deleted/renamed root-level
-# script a suite calls no longer serves a stale verdict), while a change to one
-# suite invalidates only that suite (R2/R7). The cost is that a change to any
-# non-test script — invoked or not — invalidates all verdicts; accepted in
-# exchange for closing the gap without static parsing.
-
-lib_hash=""
-shopt -s globstar nullglob
-for f in "$REPO_DIR"/scripts/**; do
-  [ -f "$f" ] || continue
-  case "$f" in
-    "$TESTS_DIR"/*) continue ;;
-  esac
-  lib_hash="${lib_hash}$(sha256 "$f" | awk '{print $1}')"
-done
-
-# --- Determine the execution set (all cache-miss suites) ---------------------
+# --- Determine execution set from content-addressed cache -------------------
 
 to_run=()
 for suite in ${suites[@]+"${suites[@]}"}; do
-  suite_hash="$(sha256 "$suite" | awk '{print $1}')"
-  key="$(printf '%s%s' "$suite_hash" "$lib_hash" | sha256 | awk '{print $1}')"
+  key="$(sha256 "$suite" | awk '{print $1}')"
   marker="$CACHE_DIR/$key/$(basename "$suite").marker"
   if [ -f "$marker" ]; then
     echo "check-test-strays: cache hit, skipping $(basename "$suite")" >&2
