@@ -362,8 +362,6 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   echo "Activating transcript hooks will:"
   echo "  1. Install the hook script to $HOOK_SCRIPT_TARGET (project-independent)"
   echo "  2. Deploy user-level hooks to $USER_HOOKS_JSON (fires for ALL projects)"
-  echo "  3. Backup $WORKSPACE_SETTINGS to ${WORKSPACE_SETTINGS}.bak.<timestamp>"
-  echo "  4. Merge hooks into $WORKSPACE_SETTINGS (crewrig workspace)"
   echo ""
   CONFIRM=$(echo -e "yes\nno" | fzf --height 10% --header "Apply?")
   if [ "$CONFIRM" = "yes" ]; then
@@ -376,16 +374,30 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
       ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
     fi
+    GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
+    GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
     HOOKS_PATCHED_TMP="$(mktemp)"
     # The Copilot CLI hooks schema keys `hooks` by camelCase event name
-    # (object of event -> array), so rewrite the command inside every entry
-    # of every event array (docs/github hook schema).
-    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" \
-      '(.hooks // {}) |= map_values(map(.command = ($envp + " bash " + ($hook_path | tojson))))' \
+    # (object of event -> array). Rewrite `preToolUse` command to the in-repo
+    # guard path (without env prefix), and lifecycle event commands to the
+    # installed hook path with env prefix.
+    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" '
+      (.hooks // {}) |= with_entries(
+        if .key == "preToolUse"
+        then .value |= map(.command = ("bash " + ($guard_path | tojson)))
+        else .value |= map(.command = ($envp + " bash " + ($hook_path | tojson)))
+        end
+      )' \
       "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
+    if grep -q '\${COPILOT_PROJECT_DIR' "$HOOKS_PATCHED_TMP"; then
+      echo "  ERROR: Unresolved \${COPILOT_PROJECT_DIR} token in patched hooks." >&2
+      rm -f "$HOOKS_PATCHED_TMP"
+      exit 1
+    fi
     # User-level hooks: loaded by Copilot for every project (not just crewrig).
     cp "$HOOKS_PATCHED_TMP" "$USER_HOOKS_JSON"
     echo "  User-level transcript hooks deployed to $USER_HOOKS_JSON"
+    echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
     rm -f "$HOOKS_PATCHED_TMP"
   else
     echo "  Transcript activation canceled."

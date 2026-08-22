@@ -117,20 +117,46 @@ done
 echo "§3 user-level patch transform (R3)"
 ENVP="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3"
 HOOK_TARGET="$TMP_ROOT/copilot/hooks/mempalace-transcript.sh"
+GUARD_TARGET="$REPO_DIR/hooks/worktree-git-guard.sh"
 PATCHED="$TMP_ROOT/patched.json"
-jq --arg envp "$ENVP" --arg hook_path "$HOOK_TARGET" \
-  '(.hooks // {}) |= map_values(map(.command = ($envp + " bash " + ($hook_path | tojson))))' \
+jq --arg envp "$ENVP" --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" '
+  (.hooks // {}) |= with_entries(
+    if .key == "preToolUse"
+    then .value |= map(.command = ("bash " + ($guard_path | tojson)))
+    else .value |= map(.command = ($envp + " bash " + ($hook_path | tojson)))
+    end
+  )' \
   "$MANIFEST" > "$PATCHED" 2>/dev/null
 if jq -e . "$PATCHED" >/dev/null 2>&1 && [ "$(jq -r '.hooks | type' "$PATCHED")" = "object" ]; then
   ok "patch output is valid JSON with object hooks"
 else
   bad "patch output is not valid JSON / object hooks"
 fi
-unrewritten="$(jq -r --arg tgt "$HOOK_TARGET" '[.hooks[] | .[] | select((.command | contains($tgt)) | not)] | length' "$PATCHED" 2>/dev/null)"
-if [ "$unrewritten" = "0" ]; then
-  ok "every entry's command rewritten to the absolute hook target"
+
+# preToolUse must point to the guard script and not carry the transcript env prefix
+guard_cmd="$(jq -r '.hooks.preToolUse[0].command // ""' "$PATCHED" 2>/dev/null)"
+if [[ "$guard_cmd" == *"$GUARD_TARGET"* ]] && [[ "$guard_cmd" != *"MEMPALACE_TRANSCRIPT_ENABLED"* ]]; then
+  ok "preToolUse command rewritten to in-repo guard target without transcript env"
 else
-  bad "$unrewritten entry/entries not rewritten to hook target"
+  bad "preToolUse command not correctly rewritten to guard (got: $guard_cmd)"
+fi
+
+# Lifecycle events must point to the transcript hook with env prefix
+transcript_events=("sessionStart" "userPromptSubmitted" "postToolUse" "agentStop" "sessionEnd")
+for ev in "${transcript_events[@]}"; do
+  ev_cmd="$(jq -r --arg ev "$ev" '.hooks[$ev][0].command // ""' "$PATCHED" 2>/dev/null)"
+  if [[ "$ev_cmd" == *"$HOOK_TARGET"* ]] && [[ "$ev_cmd" == *"MEMPALACE_TRANSCRIPT_ENABLED=1"* ]]; then
+    ok "event '$ev' rewritten to transcript hook with env prefix"
+  else
+    bad "event '$ev' not correctly rewritten (got: $ev_cmd)"
+  fi
+done
+
+# Zero project-directory tokens must survive
+if grep -q '\${COPILOT_PROJECT_DIR' "$PATCHED"; then
+  bad "surviving \${COPILOT_PROJECT_DIR} token found in patched output"
+else
+  ok "zero project-directory placeholder tokens survive in patched output"
 fi
 
 
