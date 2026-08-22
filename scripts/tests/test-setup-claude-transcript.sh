@@ -92,8 +92,7 @@ else
 fi
 
 # Lifecycle events must point to installed transcript hook
-lifecycle_events=("UserPromptSubmit" "PostToolUse" "Stop" "SessionEnd")
-for ev in "${lifecycle_events[@]}"; do
+for ev in UserPromptSubmit PostToolUse Stop SessionEnd; do
   ev_cmd="$(jq -r --arg ev "$ev" '.hooks[$ev][0].hooks[0].command // ""' "$PATCHED" 2>/dev/null)"
   if [[ "$ev_cmd" == *"\"$HOOK_TARGET\""* ]]; then
     ok "event '$ev' rewritten to installed transcript hook"

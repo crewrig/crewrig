@@ -96,8 +96,7 @@ else
 fi
 
 # Lifecycle events must point to installed transcript hook with env prefix
-lifecycle_events=("BeforeAgent" "AfterTool" "AfterModel" "SessionEnd")
-for ev in "${lifecycle_events[@]}"; do
+for ev in BeforeAgent AfterTool AfterModel SessionEnd; do
   ev_cmd="$(jq -r --arg ev "$ev" '.hooks[$ev][0].hooks[0].command // ""' "$PATCHED" 2>/dev/null)"
   if [[ "$ev_cmd" == *"$HOOK_TARGET"* ]] && [[ "$ev_cmd" == *"MEMPALACE_TRANSCRIPT_ENABLED=1"* ]]; then
     ok "event '$ev' rewritten to installed transcript hook with env prefix"
