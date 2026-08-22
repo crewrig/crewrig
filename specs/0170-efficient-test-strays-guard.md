@@ -1,7 +1,7 @@
 ---
 id: "0170"
 slug: efficient-test-strays-guard
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 993
