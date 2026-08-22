@@ -1,7 +1,7 @@
 ---
 id: "0169"
 slug: multi-cli-worktree-git-guard-wiring
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 990

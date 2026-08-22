@@ -456,13 +456,22 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
       ENV_PATCH=$(jq -nc --arg py "$MEMPALACE_PYTHON_BIN" \
         '{"MEMPALACE_TRANSCRIPT_ENABLED": "1", "MEMPALACE_PYTHON": $py}')
     fi
+    GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
+    GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
     # Rewrite every nested command to use the installed absolute hook path
-    # instead of the source-file's "$CLAUDE_PROJECT_DIR/..." token.
+    # or the in-repo absolute guard path instead of the source-file's
+    # "$CLAUDE_PROJECT_DIR/..." tokens.
     HOOKS_PATCHED_TMP="$(mktemp)"
-    jq --arg hook_path "$HOOK_SCRIPT_TARGET" \
+    jq --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" \
       '(.. | objects | select(.type? == "command") | .command) |=
-         gsub("\"\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh\""; ("\"" + $hook_path + "\""))' \
+         (gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path) |
+          gsub("\\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"; $guard_path))' \
       "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
+    if grep -q '\$CLAUDE_PROJECT_DIR' "$HOOKS_PATCHED_TMP"; then
+      echo "  ERROR: Unresolved \$CLAUDE_PROJECT_DIR token in patched hooks." >&2
+      rm -f "$HOOKS_PATCHED_TMP"
+      exit 1
+    fi
     jq -s --argjson patch "$ENV_PATCH" \
       '.[0] * .[1] | .env = ((.env // {}) + $patch)' \
       "$SETTINGS_TARGET" "$HOOKS_PATCHED_TMP" > "${SETTINGS_TARGET}.tmp" && \
@@ -470,6 +479,7 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     rm -f "$HOOKS_PATCHED_TMP"
     echo "  Transcript hooks merged into settings.json"
     echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
+    echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
     echo "  env patched: $ENV_PATCH"
   else
     echo "  Transcript activation canceled by user."

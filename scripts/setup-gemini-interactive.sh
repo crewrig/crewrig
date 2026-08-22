@@ -397,19 +397,31 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     if [ -n "${MEMPALACE_PYTHON_BIN:-}" ]; then
       ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
     fi
-    # Rewrite every nested command: substitute the source-file token with the
-    # installed absolute path, then prefix env vars. Hooks become independent
-    # of any project-dir variable resolution.
-    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" \
-      '(.. | objects | select(.type? == "command") | .command) |=
-         ($envp + " " + (gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/mempalace-transcript.sh"; $hook_path)))' \
+    GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
+    GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
+    # Rewrite every nested command: substitute the source-file tokens with the
+    # installed absolute path for transcripts (prefixed by env vars) or the
+    # in-repo absolute path for the worktree git guard (without env prefix).
+    # Hooks become independent of any project-dir variable resolution.
+    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" '
+      (.. | objects | select(.type? == "command")) |=
+        (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard.sh")))
+         then .command = ("bash " + $guard_path)
+         else .command = ($envp + " " + (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/mempalace-transcript.sh"; $hook_path)))
+         end)' \
       "$HOOKS_SRC" > "${SETTINGS_TARGET}.hooks.tmp"
+    if grep -q '\${GEMINI_PROJECT_DIR}' "${SETTINGS_TARGET}.hooks.tmp"; then
+      echo "  ERROR: Unresolved \${GEMINI_PROJECT_DIR} token in patched hooks." >&2
+      rm -f "${SETTINGS_TARGET}.hooks.tmp"
+      exit 1
+    fi
     jq -s '.[0] * .[1]' \
       "$SETTINGS_TARGET" "${SETTINGS_TARGET}.hooks.tmp" > "${SETTINGS_TARGET}.tmp"
     mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"
     rm -f "${SETTINGS_TARGET}.hooks.tmp"
     echo "  Transcript hooks merged into settings.json"
     echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
+    echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
   else
     echo "  Transcript activation canceled by user."
   fi

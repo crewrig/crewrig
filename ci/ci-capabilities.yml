@@ -345,7 +345,9 @@ capabilities:
           - "scripts/tests/test-mempalace-*.sh"
           - "scripts/tests/test-system-context-store.sh"
           - "scripts/tests/test-setup-antigravity-transcript.sh"
+          - "scripts/tests/test-setup-claude-transcript.sh"
           - "scripts/tests/test-setup-copilot-transcript.sh"
+          - "scripts/tests/test-setup-gemini-transcript.sh"
           - "scripts/tests/test-antigravity-component-install.sh"
           - "scripts/tests/test-antigravity-discovery-probe.sh"
           - "scripts/lib/**"
@@ -357,7 +359,9 @@ capabilities:
           - "scripts/tests/test-mempalace-*.sh"
           - "scripts/tests/test-system-context-store.sh"
           - "scripts/tests/test-setup-antigravity-transcript.sh"
+          - "scripts/tests/test-setup-claude-transcript.sh"
           - "scripts/tests/test-setup-copilot-transcript.sh"
+          - "scripts/tests/test-setup-gemini-transcript.sh"
           - "scripts/tests/test-antigravity-component-install.sh"
           - "scripts/tests/test-antigravity-discovery-probe.sh"
           - "scripts/lib/**"
@@ -373,7 +377,9 @@ capabilities:
         - "scripts/tests/test-mempalace-*.sh"
         - "scripts/tests/test-system-context-store.sh"
         - "scripts/tests/test-setup-antigravity-transcript.sh"
+        - "scripts/tests/test-setup-claude-transcript.sh"
         - "scripts/tests/test-setup-copilot-transcript.sh"
+        - "scripts/tests/test-setup-gemini-transcript.sh"
         - "scripts/tests/test-antigravity-component-install.sh"
         - "scripts/tests/test-antigravity-discovery-probe.sh"
         - "scripts/lib/**"
@@ -383,8 +389,10 @@ capabilities:
     command:
       - bash scripts/tests/test-mempalace-transcript-hook.sh
       - bash scripts/tests/test-setup-antigravity-transcript.sh
+      - bash scripts/tests/test-setup-claude-transcript.sh
       - bash scripts/tests/test-worktree-git-guard.sh
       - bash scripts/tests/test-setup-copilot-transcript.sh
+      - bash scripts/tests/test-setup-gemini-transcript.sh
       - bash scripts/tests/test-antigravity-component-install.sh
       - bash scripts/tests/test-antigravity-discovery-probe.sh
       - bash scripts/tests/test-mempalace-version-range.sh
