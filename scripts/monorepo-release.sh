@@ -34,18 +34,24 @@ for dir in extensions/*/*/; do
     #   semantic-release-monorepo → scope commits to this extension dir
     #   @semantic-release/changelog → write CHANGELOG.md
     #   @semantic-release/github → create GitHub Release + upload .tgz
-    #   @semantic-release/exec → sync extension.json + gemini-extension.json
-    #     to nextRelease.version (lockstep with package.json, spec 0044 F1)
+    #   @semantic-release/exec → sync package.json + extension.json +
+    #     gemini-extension.json to nextRelease.version, all in lockstep
+    #     (spec 0044 F1)
     #   @semantic-release/git → commit CHANGELOG + all three manifests back
     #
     # LOCKSTEP ORDERING (spec 0044): @semantic-release/exec MUST precede
     # @semantic-release/git in this array. semantic-release runs each release
-    # step's plugins in array order, so exec.prepareCmd (which rewrites the two
-    # sibling manifests) runs BEFORE git.prepare (which stages + commits the
-    # assets). If git ran first, the synced siblings would miss the release
-    # commit and re-introduce the divergence check-extension-manifest-version.sh
-    # forbids. The siblings are ALSO listed in @semantic-release/git `assets`
-    # below — exec writes them to the tree, git commits them; both are required.
+    # step's plugins in array order, so exec.prepareCmd (which rewrites all
+    # three manifests — package.json, extension.json, gemini-extension.json)
+    # runs BEFORE git.prepare (which stages + commits the assets). If git ran
+    # first, the synced manifests would miss the release commit and
+    # re-introduce the divergence check-extension-manifest-version.sh forbids.
+    # The manifests are ALSO listed in @semantic-release/git `assets` below —
+    # exec writes them to the tree, git commits them; both are required.
+    # package.json is the authoritative manifest (spec 0044 R5) yet no plugin
+    # here writes nextRelease.version into it on its own (no
+    # @semantic-release/npm) — exec.prepareCmd below covers it explicitly, or
+    # it silently stays stale (issue #1018).
     # The `[skip ci]` token in the git `message` MUST be preserved: it is what
     # stops the release commit from re-triggering build.yml (and the divergence
     # guard) — do not drop it when editing this heredoc.
@@ -69,7 +75,7 @@ for dir in extensions/*/*/; do
       ]
     }],
     ["@semantic-release/exec", {
-      "prepareCmd": "for m in extension.json gemini-extension.json; do [ -f \"\$m\" ] && jq --arg v \"\${nextRelease.version}\" '.version=\$v' \"\$m\" > \"\$m.tmp\" && mv \"\$m.tmp\" \"\$m\"; done; true"
+      "prepareCmd": "for m in package.json extension.json gemini-extension.json; do [ -f \"\$m\" ] && jq --arg v \"\${nextRelease.version}\" '.version=\$v' \"\$m\" > \"\$m.tmp\" && mv \"\$m.tmp\" \"\$m\"; done; true"
     }],
     ["@semantic-release/git", {
       "assets": ["package.json", "extension.json", "gemini-extension.json", "CHANGELOG.md"],
