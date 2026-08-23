@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.4.0"
+    version: "1.5.0"
 claude:
   allowed-tools:
     - Read
@@ -110,39 +110,98 @@ missing; the `internal` backend is the guaranteed floor on every CLI.
    | exit `0` + `{"decision":"annotated","feedback":"…"}` | `changes-requested`, carrying `feedback` to the upstream stage |
    | `{"decision":"dismissed"}`, OR non-zero exit, OR absent/malformed stdout | `rejected` — surface the situation, return to caller |
 
-### Contrast-safety for caller-built presentations
+### Contrast-safety and theme support for caller-built presentations
 
-**Scope (spec 0099 R2).** This guidance applies **only** when you build a
-bespoke HTML presentation of the artifact before handing it to the review
-viewer — for example because an active `pedagogy` or `illustration` option
-obliges a richer rendering than the raw file. It does **not** apply when you
-pass a raw Markdown or plain-text artifact file straight through (spec 0099
-R2/R8): on that passthrough path the viewer's own renderer owns readability,
-and you MUST NOT inject inline contrast styling.
+**Scope (spec 0099 R2, spec 0174 R6).** This guidance applies **only** when you
+build a bespoke HTML presentation of the artifact before handing it to the
+review viewer — for example because an active `pedagogy`, `translate`, or
+`illustration` option obliges a richer rendering than the raw file. It does
+**not** apply when you pass a raw Markdown or plain-text artifact file straight
+through (spec 0099 R2/R8, spec 0174 R6): on that passthrough path the viewer's
+own renderer owns readability, and you MUST NOT inject inline contrast styling.
 
-**Why (spec 0099 R3).** The review viewer renders the document body but does
-**not** reliably honor a `<head>`-scoped `<style>` block, and it may place the
-content on a **dark host surface**. Colors declared only in the head can
-therefore surface as unreadable low-contrast content — the black-text-on-black-
-background outcome observed during a live spec-approval gate.
+**Why (spec 0099 R3, spec 0174).** The review viewer renders the document body
+but does **not** reliably honor a `<head>`-scoped `<style>` block. Colors
+declared only in `<head>` can surface as unreadable low-contrast content — such
+as black-text-on-black-background in dark viewers. Furthermore, users work in
+both light and dark desktop environments; presentations must adapt to their
+system theme preference or honor explicit theme configuration in
+`~/.crewrig/validation.conf` without sacrificing contrast.
 
 **Rules for a caller-built HTML presentation:**
 
-- **Inline every readability-critical declaration (spec 0099 R4).** Each color
-  and contrast declaration the presentation's readability depends on SHALL be
-  self-contained **inline** — on the content wrapper element **and** on the
-  document `<body>` element — never declared only inside a `<head>` `<style>`
-  block.
-- **Keep supplementary styling in the body (spec 0099 R5).** Any `<style>`
-  block used for non-critical, supplementary styling SHALL live inside
-  `<body>`, not in `<head>`.
-- **Declare a light color-scheme hint (spec 0099 R6).** The document SHALL
-  declare `<meta name="color-scheme" content="light only">` so the host does
-  not place light-assuming content on a dark surface.
+- **Discover the active theme (spec 0174 R1/R2).** Discover `theme` from
+  `~/.crewrig/validation.conf` (`auto|system|dark|light`, default: `auto`).
+- **Declare appropriate color-scheme metadata (spec 0174 R3, supersedes spec
+  0099 R6).**
+  - When `theme=auto` (or `system`), declare `<meta name="color-scheme" content="light dark">`.
+  - When `theme=dark`, declare `<meta name="color-scheme" content="dark only">` (or `dark`).
+  - When `theme=light`, declare `<meta name="color-scheme" content="light only">` (or `light`).
+- **Inline or body-scope every readability-critical declaration (spec 0099 R4/R5, spec 0174 R4/R5).**
+  Each color, background, and contrast declaration SHALL be self-contained
+  inline on the content wrapper and `<body>`, or defined via body-scoped CSS
+  custom properties inside `<body><style>`. Never place critical styles in
+  `<head>`.
+- **Adaptive styling for `auto` / `system` mode (spec 0174 R4).** Define CSS
+  variables on `:root` within a `<body><style>` block with a `@media
+  (prefers-color-scheme: dark)` override, ensuring WCAG AA contrast for text,
+  backgrounds, cards, and diff excerpts across both light and dark modes.
 
-**Compliant example (spec 0099 R7).** Background and text colors are inline on
-both `<body>` and the content wrapper, the color-scheme hint is present, and no
-readability-critical color lives in the head:
+**Compliant examples (spec 0174 R7):**
+
+*1. Adaptive template (`theme=auto`, recommended default):*
+
+```html
+<!doctype html>
+<html>
+  <head>
+    <meta name="color-scheme" content="light dark">
+  </head>
+  <body style="margin:0; padding:1.5rem; background:#ffffff; color:#111111;">
+    <style>
+      :root {
+        --bg: #ffffff;
+        --card-bg: #f6f8fa;
+        --text: #111111;
+        --border: #d0d7de;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0d1117;
+          --card-bg: #161b22;
+          --text: #e6edf3;
+          --border: #30363d;
+        }
+      }
+      body { background: var(--bg) !important; color: var(--text) !important; }
+      .card { background: var(--card-bg); border: 1px solid var(--border); }
+    </style>
+    <main class="card" style="padding:1.5rem; border-radius:8px;">
+      <h1>Decision title</h1>
+      <p>Artifact content…</p>
+    </main>
+  </body>
+</html>
+```
+
+*2. Explicit dark template (`theme=dark`):*
+
+```html
+<!doctype html>
+<html>
+  <head>
+    <meta name="color-scheme" content="dark only">
+  </head>
+  <body style="margin:0; padding:1.5rem; background:#0d1117; color:#e6edf3;">
+    <main style="background:#161b22; color:#e6edf3; border:1px solid #30363d; border-radius:8px; padding:1.5rem;">
+      <h1 style="color:#e6edf3;">Decision title</h1>
+      <p style="color:#e6edf3;">Artifact content…</p>
+    </main>
+  </body>
+</html>
+```
+
+*3. Explicit light template (`theme=light`):*
 
 ```html
 <!doctype html>
@@ -150,10 +209,10 @@ readability-critical color lives in the head:
   <head>
     <meta name="color-scheme" content="light only">
   </head>
-  <body style="background:#ffffff; color:#111111;">
-    <main style="background:#ffffff; color:#111111; padding:1.5rem;">
-      <h1 style="color:#111111;">Approve this plan for DEV?</h1>
-      <p style="color:#111111;">…artifact content…</p>
+  <body style="margin:0; padding:1.5rem; background:#ffffff; color:#111111;">
+    <main style="background:#f6f8fa; color:#111111; border:1px solid #d0d7de; border-radius:8px; padding:1.5rem;">
+      <h1 style="color:#111111;">Decision title</h1>
+      <p style="color:#111111;">Artifact content…</p>
     </main>
   </body>
 </html>
@@ -271,6 +330,19 @@ display is a function of browser availability, not of the driving CLI (uniform
 across all four CLIs, not a per-CLI asymmetry — spec 0080 OQ4). When honoured,
 generation is **best-effort** via the `nano-banana` skill; if it is unavailable
 or fails, proceed with the gate without the illustration.
+
+### `theme` (spec 0174 R1/R2)
+
+Tune the presentation styling when building a bespoke HTML document for
+`plannotator`:
+
+- **`auto`** (or **`system`**, default) — adaptive styling using body-scoped CSS
+  custom properties and `@media (prefers-color-scheme: dark)` to automatically
+  match the user's OS theme in both light and dark modes with WCAG AA contrast.
+- **`dark`** — forces explicit dark theme styling (`<meta name="color-scheme"
+  content="dark only">`, dark background, light text).
+- **`light`** — forces explicit light theme styling (`<meta name="color-scheme"
+  content="light only">`, light background, dark text).
 
 ## Parity posture (spec 0080 R3/R17)
 

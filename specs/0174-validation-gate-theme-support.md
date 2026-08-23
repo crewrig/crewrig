@@ -1,7 +1,7 @@
 ---
 id: "0174"
 slug: validation-gate-theme-support
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1000
