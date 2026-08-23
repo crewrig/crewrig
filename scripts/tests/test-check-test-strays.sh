@@ -33,7 +33,7 @@ run_check() {
   out_file="$(mktemp "$TMP_ROOT/out.XXXXXX")"
   err_file="$(mktemp "$TMP_ROOT/err.XXXXXX")"
   CHECK_EXIT=0
-  ( CREWRIG_REPO_DIR="$repo" bash "$SCRIPT_UNDER_TEST" "$@" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
+  ( unset GITHUB_BASE_REF CI_MERGE_REQUEST_TARGET_BRANCH_NAME CI_COMMIT_BEFORE_SHA; CREWRIG_REPO_DIR="$repo" bash "$SCRIPT_UNDER_TEST" "$@" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
   CHECK_STDOUT="$(cat "$out_file")"
   CHECK_STDERR="$(cat "$err_file")"
   rm -f "$out_file" "$err_file"
@@ -379,6 +379,191 @@ EOF
     pass=$((pass + 1))
   else
     echo "FAIL  case-i: stderr did not name test-stray.sh (stderr: $CHECK_STDERR)"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case j — Automatic HEAD~1 resolution on push/local commit without --base-ref (spec 0171 R1, R2, R3).
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
+#!/bin/bash
+echo "Clean suite"
+EOF
+  chmod +x "$repo/scripts/tests/test-clean.sh"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name test
+  git -C "$repo" config commit.gpgsign false
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm init
+  git -C "$repo" branch -M main
+
+  # Modify an unrelated non-test file (simulate push to main).
+  echo "update docs" > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit -qm update-docs
+
+  # Run check WITHOUT --base-ref and WITHOUT GITHUB_BASE_REF.
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-j: automatic HEAD~1 resolution on push/commit exits 0"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-j: expected exit 0, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
+    echo "PASS  case-j: OK line emitted on automatic HEAD~1 resolution"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-j: missing OK line (stdout: $CHECK_STDOUT)"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case k — Automatic HEAD~1 resolution catches stray in modified test suite without --base-ref (spec 0171).
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
+#!/bin/bash
+echo "Clean suite"
+EOF
+  chmod +x "$repo/scripts/tests/test-clean.sh"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name test
+  git -C "$repo" config commit.gpgsign false
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm init
+  git -C "$repo" branch -M main
+
+  # Modify test-clean.sh with a stray command.
+  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
+#!/bin/bash
+some-bogus-command
+EOF
+  git -C "$repo" add scripts/tests/test-clean.sh
+  git -C "$repo" commit -qm add-stray-to-clean
+
+  # Run check WITHOUT --base-ref.
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-k: automatic HEAD~1 catches stray in modified suite (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-k: expected exit 1, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+  if echo "$CHECK_STDERR" | grep -q "test-clean.sh has 1 stray.*errors"; then
+    echo "PASS  case-k: stderr names the modified suite"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-k: stderr did not name test-clean.sh (stderr: $CHECK_STDERR)"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case l — GITHUB_BASE_REF environment variable is honored when set.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
+#!/bin/bash
+echo "Clean suite"
+EOF
+  chmod +x "$repo/scripts/tests/test-clean.sh"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name test
+  git -C "$repo" config commit.gpgsign false
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm init
+  git -C "$repo" branch -M base-branch
+  base_sha="$(git -C "$repo" rev-parse HEAD)"
+
+  git -C "$repo" checkout -qb feature-branch
+  echo "unrelated" > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit -qm update-readme
+
+  out_file="$(mktemp "$TMP_ROOT/out.XXXXXX")"
+  err_file="$(mktemp "$TMP_ROOT/err.XXXXXX")"
+  CHECK_EXIT=0
+  ( CREWRIG_REPO_DIR="$repo" GITHUB_BASE_REF="$base_sha" bash "$SCRIPT_UNDER_TEST" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
+  CHECK_STDOUT="$(cat "$out_file")"
+  CHECK_STDERR="$(cat "$err_file")"
+  rm -f "$out_file" "$err_file"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-l: GITHUB_BASE_REF is honored (exit 0)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-l: expected exit 0, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
+    echo "PASS  case-l: OK line emitted on GITHUB_BASE_REF resolution"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-l: missing OK line (stdout: $CHECK_STDOUT)"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case m — CI_COMMIT_BEFORE_SHA environment variable is honored when set.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
+#!/bin/bash
+echo "Clean suite"
+EOF
+  chmod +x "$repo/scripts/tests/test-clean.sh"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name test
+  git -C "$repo" config commit.gpgsign false
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm init
+  before_sha="$(git -C "$repo" rev-parse HEAD)"
+
+  echo "unrelated" > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit -qm update-readme
+
+  out_file="$(mktemp "$TMP_ROOT/out.XXXXXX")"
+  err_file="$(mktemp "$TMP_ROOT/err.XXXXXX")"
+  CHECK_EXIT=0
+  ( CREWRIG_REPO_DIR="$repo" CI_COMMIT_BEFORE_SHA="$before_sha" bash "$SCRIPT_UNDER_TEST" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
+  CHECK_STDOUT="$(cat "$out_file")"
+  CHECK_STDERR="$(cat "$err_file")"
+  rm -f "$out_file" "$err_file"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-m: CI_COMMIT_BEFORE_SHA is honored (exit 0)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-m: expected exit 0, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
+    echo "PASS  case-m: OK line emitted on CI_COMMIT_BEFORE_SHA resolution"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-m: missing OK line (stdout: $CHECK_STDOUT)"
     fail=$((fail + 1))
   fi
 }
