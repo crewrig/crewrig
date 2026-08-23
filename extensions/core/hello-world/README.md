@@ -30,8 +30,7 @@ scripts/build-extension.sh --check` fails the build if a generated file is
 ever committed, if a fresh render fails, or if the render's output diverges
 from the declared set.
 
-## Command rendering (spec 0042, as amended by
-`specs/0042-extension-pivot-render.delta-01.md` and spec 0173)
+## Command rendering (spec 0042, as amended by `specs/0042-extension-pivot-render.delta-01.md` and spec 0173)
 
 The command is authored **once** in the pivot source `commands/hello.md`
 (the same format used by `artifacts/` components). Its per-CLI consumed

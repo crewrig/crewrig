@@ -271,16 +271,16 @@ render_extension() {
   local rc=0
 
   {
-    if [[ " ${TARGETS[*]} " == *" gemini "* ]]; then
+    if [[ " ${TARGETS[*]:-} " == *" gemini "* ]]; then
       render_gemini "$ext_dir" "$manifest" "$name" || rc=1
     fi
-    if [[ " ${TARGETS[*]} " == *" claude "* ]]; then
+    if [[ " ${TARGETS[*]:-} " == *" claude "* ]]; then
       render_plugin "$REPO_DIR/scripts/build-claude-plugin.sh" "$ext_dir" "$manifest" "$name" claude || rc=1
     fi
-    if [[ " ${TARGETS[*]} " == *" copilot "* ]]; then
+    if [[ " ${TARGETS[*]:-} " == *" copilot "* ]]; then
       render_plugin "$REPO_DIR/scripts/build-copilot-plugin.sh" "$ext_dir" "$manifest" "$name" copilot || rc=1
     fi
-    if [[ " ${TARGETS[*]} " == *" antigravity "* ]]; then
+    if [[ " ${TARGETS[*]:-} " == *" antigravity "* ]]; then
       render_plugin "$REPO_DIR/scripts/build-antigravity-extension.sh" "$ext_dir" "$manifest" "$name" antigravity || rc=1
     fi
   } 3>"$gap_file"
@@ -407,7 +407,7 @@ check_extension() {
   fi
 
   # Arm (b) — RENDER-FAIL. Forces --target all regardless of the CLI --target.
-  local saved_targets=("${TARGETS[@]}") render_log
+  local saved_targets=(${TARGETS[@]+"${TARGETS[@]}"}) render_log
   render_log="$(mktemp)"
   TARGETS=(gemini claude copilot antigravity)
   if ! render_extension "$ext_dir" >"$render_log" 2>&1; then
@@ -415,12 +415,12 @@ check_extension() {
     sed 's/^/         /' "$render_log"
     failures=$((failures + 1))
     rm -f "$render_log"
-    TARGETS=("${saved_targets[@]}")
+    TARGETS=(${saved_targets[@]+"${saved_targets[@]}"})
     return "$failures"
   fi
   rm -f "$render_log"
   echo "  OK   RENDER-FAIL $name (fresh --target all render succeeded)"
-  TARGETS=("${saved_targets[@]}")
+  TARGETS=(${saved_targets[@]+"${saved_targets[@]}"})
 
   # Arm (c) — MISSING/UNDECLARED, in-place target only.
   local build_dir declared produced
@@ -463,7 +463,7 @@ check_extension() {
 
 ext_dirs=()
 if [ "${#EXT_ARGS[@]}" -gt 0 ]; then
-  for arg in "${EXT_ARGS[@]}"; do
+  for arg in ${EXT_ARGS[@]+"${EXT_ARGS[@]}"}; do
     ext_dirs+=("$(resolve_extension_dir "$arg")")
   done
 else

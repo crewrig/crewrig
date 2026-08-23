@@ -86,7 +86,7 @@ same conclusion against the state the render-at-publication model actually
 ships (a build tree installed from a local path), per requirement 14 as
 amended. `extensions/core/hello-world/extension.json`'s
 `mcpServers.default.args` already carries this form (step 5 of the issue
-#1004 PLAN keeps it), and `scripts/build-extension.sh` passes a declared
+\#1004 PLAN keeps it), and `scripts/build-extension.sh` passes a declared
 `args` value through to the built manifest verbatim — the render does not
 itself resolve or rewrite the form, so declaring the wrong one still ships
 the wrong one; this evidence is what tells an author which one to declare.
