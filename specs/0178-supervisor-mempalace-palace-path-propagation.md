@@ -1,7 +1,7 @@
 ---
 id: "0178"
 slug: supervisor-mempalace-palace-path-propagation
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 747
