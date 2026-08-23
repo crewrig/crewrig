@@ -1,11 +1,13 @@
 {
   "name": "hello-world",
-  "version": "0.1.0",
+  "version": "1.2.1",
   "description": "Demonstration extension showcasing MCP tools, commands, skills, and context.",
   "mcpServers": {
     "default": {
       "command": "node",
-      "args": ["${extensionPath}/dist/index.js"]
+      "args": [
+        "${extensionPath}/dist/index.js"
+      ]
     }
   }
 }
