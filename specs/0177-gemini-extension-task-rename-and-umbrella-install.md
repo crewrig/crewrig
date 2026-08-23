@@ -1,7 +1,7 @@
 ---
 id: "0177"
 slug: gemini-extension-task-rename-and-umbrella-install
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1002

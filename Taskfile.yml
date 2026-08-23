@@ -122,21 +122,55 @@ tasks:
     desc: Install npm dependencies for all extensions
     cmd: npm install
 
-  install-extensions:
-    desc: Install all extensions (copy mode)
+  # --- Cross-CLI extension tasks ---
+
+  install-extension-all:
+    desc: "Install a single extension across all present CLIs (task install-extension-all EXT=hello-world)"
+    cmd: bash {{.REPO_DIR}}/scripts/install-extension-all.sh {{.EXT}}
+
+  # --- Gemini CLI extension tasks ---
+
+  install-gemini-extensions:
+    desc: Install all extensions to Gemini CLI (copy mode)
     cmd: bash {{.REPO_DIR}}/scripts/install-extension.sh install
 
-  install-extension:
-    desc: "Install a single extension (task install-extension EXT=hello-world)"
+  install-gemini-extension:
+    desc: "Install a single extension to Gemini CLI (task install-gemini-extension EXT=hello-world)"
     cmd: bash {{.REPO_DIR}}/scripts/install-extension.sh install {{.EXT}}
 
-  link-extensions:
-    desc: Link all extensions (symlink mode, for development)
+  link-gemini-extensions:
+    desc: Link all extensions to Gemini CLI (symlink mode, for development)
     cmd: bash {{.REPO_DIR}}/scripts/link-extensions.sh
 
-  unlink-extensions:
-    desc: Remove all installed extensions
+  unlink-gemini-extensions:
+    desc: Remove all installed extensions from Gemini CLI
     cmd: bash {{.REPO_DIR}}/scripts/unlink-extensions.sh
+
+  # --- Legacy extension task aliases (deprecated) ---
+
+  install-extensions:
+    desc: "Deprecated: Install all extensions to Gemini CLI (use install-gemini-extensions)"
+    cmd: |
+      echo "[DEPRECATION] 'task install-extensions' is deprecated. Use 'task install-gemini-extensions' instead." >&2
+      bash {{.REPO_DIR}}/scripts/install-extension.sh install
+
+  install-extension:
+    desc: "Deprecated: Install a single extension to Gemini CLI (use install-gemini-extension or install-extension-all)"
+    cmd: |
+      echo "[DEPRECATION] 'task install-extension' is deprecated. Use 'task install-gemini-extension EXT={{.EXT}}' (Gemini only) or 'task install-extension-all EXT={{.EXT}}' (all CLIs)." >&2
+      bash {{.REPO_DIR}}/scripts/install-extension.sh install {{.EXT}}
+
+  link-extensions:
+    desc: "Deprecated: Link all extensions to Gemini CLI (use link-gemini-extensions)"
+    cmd: |
+      echo "[DEPRECATION] 'task link-extensions' is deprecated. Use 'task link-gemini-extensions' instead." >&2
+      bash {{.REPO_DIR}}/scripts/link-extensions.sh
+
+  unlink-extensions:
+    desc: "Deprecated: Remove all installed extensions from Gemini CLI (use unlink-gemini-extensions)"
+    cmd: |
+      echo "[DEPRECATION] 'task unlink-extensions' is deprecated. Use 'task unlink-gemini-extensions' instead." >&2
+      bash {{.REPO_DIR}}/scripts/unlink-extensions.sh
 
   package:
     desc: Package all extensions to dist/
