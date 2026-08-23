@@ -69,7 +69,7 @@ for dir in extensions/*/*/; do
       ]
     }],
     ["@semantic-release/exec", {
-      "prepareCmd": "for m in extension.json gemini-extension.json; do [ -f \"\$m\" ] && jq --arg v \"\${nextRelease.version}\" '.version=\$v' \"\$m\" > \"\$m.tmp\" && mv \"\$m.tmp\" \"\$m\"; done; true"
+      "prepareCmd": "for m in package.json extension.json gemini-extension.json; do [ -f \"\$m\" ] && jq --arg v \"\${nextRelease.version}\" '.version=\$v' \"\$m\" > \"\$m.tmp\" && mv \"\$m.tmp\" \"\$m\"; done; true"
     }],
     ["@semantic-release/git", {
       "assets": ["package.json", "extension.json", "gemini-extension.json", "CHANGELOG.md"],
