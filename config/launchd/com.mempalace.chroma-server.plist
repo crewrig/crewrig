@@ -13,7 +13,7 @@
         <string>__CHROMA_BIN__</string>
         <string>run</string>
         <string>--path</string>
-        <string>__MEMPALACE_HOME__/palace</string>
+        <string>__CHROMA_PALACE_PATH__</string>
         <string>--host</string>
         <string>127.0.0.1</string>
         <string>--port</string>

@@ -460,6 +460,7 @@ capabilities:
         paths:
           - "scripts/tests/test-chroma-*.sh"
           - "scripts/tests/test-mcp-daemon.sh"
+          - "scripts/tests/test-palace-path-propagation.sh"
           - "scripts/tests/test-repair-mempalace-http.sh"
           - "scripts/tests/test-rotate-mempalace-token.sh"
           - "scripts/tests/test-worktree-claim.sh"
@@ -472,6 +473,7 @@ capabilities:
         paths:
           - "scripts/tests/test-chroma-*.sh"
           - "scripts/tests/test-mcp-daemon.sh"
+          - "scripts/tests/test-palace-path-propagation.sh"
           - "scripts/tests/test-repair-mempalace-http.sh"
           - "scripts/tests/test-rotate-mempalace-token.sh"
           - "scripts/tests/test-worktree-claim.sh"
@@ -488,6 +490,7 @@ capabilities:
       files:
         - "scripts/tests/test-chroma-*.sh"
         - "scripts/tests/test-mcp-daemon.sh"
+        - "scripts/tests/test-palace-path-propagation.sh"
         - "scripts/tests/test-repair-mempalace-http.sh"
         - "scripts/tests/test-rotate-mempalace-token.sh"
         - "scripts/tests/test-worktree-claim.sh"
@@ -501,6 +504,7 @@ capabilities:
       - bash scripts/tests/test-chroma-health-race.sh
       - bash scripts/tests/test-chroma-server.sh
       - bash scripts/tests/test-mcp-daemon.sh
+      - bash scripts/tests/test-palace-path-propagation.sh
       - bash scripts/tests/test-repair-mempalace-http.sh
       - bash scripts/tests/test-rotate-mempalace-token.sh
       - bash scripts/tests/test-worktree-claim.sh
