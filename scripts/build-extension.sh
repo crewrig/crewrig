@@ -459,6 +459,32 @@ check_extension() {
   return "$failures"
 }
 
+# cleanup_stray_plugin_dist — --check's arm (b) forces a full --target all
+# render per extension purely to prove it succeeds; nothing downstream of
+# that arm consumes the delegated Claude/Copilot/Antigravity plugin
+# builders' own staging output (arms (c)-(e) only ever look at the Gemini
+# build/extensions/<name> tree). build-claude-plugin.sh's own
+# bare-invocation default stages INSIDE the extension's own source directory
+# (extensions/<tier>/<name>/dist-claude-plugin/ — an override exists and
+# install-claude-plugin.sh already uses it, but build-extension.sh's own
+# delegation call does not), so a --check run leaves that staging dir sitting
+# inside a tree other, unrelated scripts subsequently walk in the SAME
+# workspace: scripts/check-extension-provenance.sh's `find` over
+# extensions/core and extensions/library, and
+# scripts/tests/test-install-claude-plugin-marketplace.sh's `find` over the
+# whole repo. Invisible when every CI job gets its own fresh checkout; a real
+# false positive the moment more than one such script runs in one workspace
+# (spec 0147 R5's fail-safe changeset-coverage job — issue #1004 iteration
+# 3). Swept ONLY on the --check path (see the trap below): an ordinary
+# `build-extension.sh --target ... <ext>` (no --check) is the one path whose
+# whole point is to leave a persistent, inspectable plugin directory behind
+# for `claude --plugin-dir` / the per-CLI install scripts to use
+# (EXTENSION-FORMAT.md's documented model, pinned by
+# scripts/tests/test-extension-render-conformance.sh), so it stays untouched.
+cleanup_stray_plugin_dist() {
+  find "$REPO_DIR/extensions" -mindepth 3 -maxdepth 3 -type d -name 'dist-*-plugin' -exec rm -rf {} + 2>/dev/null || true
+}
+
 # --- main ---------------------------------------------------------------
 
 ext_dirs=()
@@ -474,6 +500,10 @@ else
 fi
 
 if [ "$CHECK_MODE" = true ]; then
+  # EXIT (success or failure, including an early exit from a future change to
+  # this branch) — see cleanup_stray_plugin_dist above for why only the
+  # --check path registers this trap.
+  trap cleanup_stray_plugin_dist EXIT
   echo "Extension render — CHECK (no committed generated output, fresh render, exact declared set)"
   total_failures=0
   for ext_dir in ${ext_dirs[@]+"${ext_dirs[@]}"}; do

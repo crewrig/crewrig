@@ -514,6 +514,53 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+echo "15. Issue #1004 iter 3 — --check leaves no delegated plugin staging dir inside extensions/"
+# ---------------------------------------------------------------------------
+# build-claude-plugin.sh's own bare-invocation default stages into
+# <ext_dir>/dist-claude-plugin/<name> — physically inside the extension's own
+# committed source directory, gitignored but not cleaned up afterward.
+# --check's RENDER-FAIL arm (b) forces a full --target all render (which
+# delegates to that default, since build-extension.sh does not pass an
+# override), so a --check run used to leave that staging dir behind for
+# other, unrelated scripts to trip over when they run in the SAME workspace
+# — scripts/check-extension-provenance.sh's `find` over extensions/core and
+# extensions/library wrongly charged it as an unprovenanced committed
+# source, and scripts/tests/test-install-claude-plugin-marketplace.sh's
+# stray-dist-claude-plugin `find` over the whole repo wrongly attributed it
+# to that OTHER script's own install run. Both false positives were invisible
+# under a fresh per-job CI checkout and surfaced only in the fail-safe
+# changeset-coverage job that runs the full suite in one workspace (spec
+# 0147 R5).
+sandbox="$(make_sandbox)"
+plugin_fix="$sandbox/extensions/core/pluginstray"
+mkdir -p "$plugin_fix"
+cat > "$plugin_fix/extension.json" <<'EOF'
+{"name":"pluginstray","version":"0.0.1","description":"fixture"}
+EOF
+out="$( cd "$sandbox" && bash scripts/build-extension.sh --check pluginstray 2>&1 )"
+rc=$?
+stray="$(find "$sandbox/extensions" -mindepth 3 -maxdepth 3 -type d -name 'dist-*-plugin' 2>/dev/null)"
+if [ "$rc" -eq 0 ] && [ -z "$stray" ]; then
+  ok "Case 15a — --check exits 0 and leaves no dist-*-plugin/ under extensions/ (find extensions -mindepth 3 -maxdepth 3 -name 'dist-*-plugin' is empty)"
+else
+  ng "Case 15a — --check (rc=$rc) left a stray plugin staging dir behind:"$'\n'"$stray"$'\n'"$out"
+fi
+# Paired negative — the cleanup must be --check-only. An ORDINARY render (no
+# --check) is the one path whose whole point is to leave a persistent,
+# inspectable Claude plugin directory behind for `claude --plugin-dir` /
+# install-claude-plugin.sh to use (EXTENSION-FORMAT.md's documented model,
+# pinned by scripts/tests/test-extension-render-conformance.sh); a fix that
+# swept on every render, not just --check, would silently break that
+# contract instead.
+render_out="$( cd "$sandbox" && bash scripts/build-extension.sh --target claude pluginstray 2>&1 )"
+render_rc=$?
+if [ "$render_rc" -eq 0 ] && [ -f "$plugin_fix/dist-claude-plugin/pluginstray/.claude-plugin/plugin.json" ]; then
+  ok "Case 15b — an ordinary (non --check) render still leaves the Claude plugin directory in place"
+else
+  ng "Case 15b — an ordinary render (rc=$render_rc) did not leave dist-claude-plugin/pluginstray/.claude-plugin/plugin.json in place:"$'\n'"$render_out"
+fi
+
+# ---------------------------------------------------------------------------
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
