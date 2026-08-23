@@ -78,10 +78,18 @@ sha256() {
   fi
 }
 
-# --- Resolve the base ref ---------------------------------------------------
+# --- Resolve the base ref (spec 0171 R1) ------------------------------------
 
 if [ -z "$BASE_REF" ]; then
-  BASE_REF="${GITHUB_BASE_REF:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-}}"
+  if [ -n "${GITHUB_BASE_REF:-}" ]; then
+    BASE_REF="$GITHUB_BASE_REF"
+  elif [ -n "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-}" ]; then
+    BASE_REF="$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+  elif [ -n "${CI_COMMIT_BEFORE_SHA:-}" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+    BASE_REF="$CI_COMMIT_BEFORE_SHA"
+  elif git -C "$REPO_DIR" rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+    BASE_REF="HEAD~1"
+  fi
 fi
 
 # --- 2. Scope execution to changeset-modified suites (spec 0170 R2-R5) ------
