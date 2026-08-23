@@ -5,7 +5,7 @@
   "mcpServers": {
     "default": {
       "command": "node",
-      "args": ["dist/index.js"]
+      "args": ["${extensionPath}/dist/index.js"]
     }
   }
 }

@@ -278,6 +278,10 @@ Generated `gemini-extension.json` contains: `name`, `version`, `description`,
 `contextFileName` (from `gemini.contextFileName`), `mcpServers`, `themes`
 (from `gemini.themes`).
 
+No script implements this generation today: `gemini-extension.json` is
+currently hand-maintained and version-locked to `package.json` by spec 0044,
+with generation tracked by #725.
+
 ### Claude Code: plugin generation
 
 ```
@@ -322,9 +326,10 @@ Install scripts support both formats:
 ## Fragment Merging
 
 The scaffolding system (`create-extension.sh`) merges JSON fragments into
-`extension.json` during extension creation:
+both manifests (`extension.json` and `gemini-extension.json`) during
+extension creation, keeping the two in agreement (spec 0044):
 
 - `mcp-server.json.fragment` → `mcpServers` field
 - `theme.json.fragment` → `gemini.themes` field
-- Merge tool: `jq -s '.[0] * .[1]'`
-- Fragments are deleted after merge.
+- Merge tool: `jq -s '.[0] * .[1]'`, applied to each manifest
+- Fragments are deleted only after both merges.
