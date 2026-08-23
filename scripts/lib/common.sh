@@ -680,10 +680,11 @@ _materialise_chroma_unit() {
   mempalace_home="$HOME/.mempalace"
   if [ -n "${MEMPALACE_PALACE_PATH:-}" ]; then
     chroma_palace_path="${MEMPALACE_PALACE_PATH}"
-  elif [ "$(uname -s)" = "Linux" ]; then
-    chroma_palace_path="%h/.mempalace/palace"
   else
-    chroma_palace_path="${mempalace_home}/palace"
+    case "$src" in
+      *.service) chroma_palace_path="%h/.mempalace/palace" ;;
+      *)         chroma_palace_path="${mempalace_home}/palace" ;;
+    esac
   fi
 
   sed \
