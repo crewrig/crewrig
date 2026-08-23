@@ -1,7 +1,7 @@
 ---
 id: "0176"
 slug: mempalace-daemon-token-rotation
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 744
