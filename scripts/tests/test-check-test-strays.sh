@@ -33,7 +33,7 @@ run_check() {
   out_file="$(mktemp "$TMP_ROOT/out.XXXXXX")"
   err_file="$(mktemp "$TMP_ROOT/err.XXXXXX")"
   CHECK_EXIT=0
-  ( CREWRIG_REPO_DIR="$repo" bash "$SCRIPT_UNDER_TEST" "$@" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
+  ( unset GITHUB_BASE_REF CI_MERGE_REQUEST_TARGET_BRANCH_NAME CI_COMMIT_BEFORE_SHA; CREWRIG_REPO_DIR="$repo" bash "$SCRIPT_UNDER_TEST" "$@" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
   CHECK_STDOUT="$(cat "$out_file")"
   CHECK_STDERR="$(cat "$err_file")"
   rm -f "$out_file" "$err_file"
@@ -468,6 +468,102 @@ EOF
     pass=$((pass + 1))
   else
     echo "FAIL  case-k: stderr did not name test-clean.sh (stderr: $CHECK_STDERR)"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case l — GITHUB_BASE_REF environment variable is honored when set.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
+#!/bin/bash
+echo "Clean suite"
+EOF
+  chmod +x "$repo/scripts/tests/test-clean.sh"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name test
+  git -C "$repo" config commit.gpgsign false
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm init
+  git -C "$repo" branch -M base-branch
+  base_sha="$(git -C "$repo" rev-parse HEAD)"
+
+  git -C "$repo" checkout -qb feature-branch
+  echo "unrelated" > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit -qm update-readme
+
+  out_file="$(mktemp "$TMP_ROOT/out.XXXXXX")"
+  err_file="$(mktemp "$TMP_ROOT/err.XXXXXX")"
+  CHECK_EXIT=0
+  ( CREWRIG_REPO_DIR="$repo" GITHUB_BASE_REF="$base_sha" bash "$SCRIPT_UNDER_TEST" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
+  CHECK_STDOUT="$(cat "$out_file")"
+  CHECK_STDERR="$(cat "$err_file")"
+  rm -f "$out_file" "$err_file"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-l: GITHUB_BASE_REF is honored (exit 0)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-l: expected exit 0, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
+    echo "PASS  case-l: OK line emitted on GITHUB_BASE_REF resolution"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-l: missing OK line (stdout: $CHECK_STDOUT)"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case m — CI_COMMIT_BEFORE_SHA environment variable is honored when set.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
+#!/bin/bash
+echo "Clean suite"
+EOF
+  chmod +x "$repo/scripts/tests/test-clean.sh"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name test
+  git -C "$repo" config commit.gpgsign false
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm init
+  before_sha="$(git -C "$repo" rev-parse HEAD)"
+
+  echo "unrelated" > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit -qm update-readme
+
+  out_file="$(mktemp "$TMP_ROOT/out.XXXXXX")"
+  err_file="$(mktemp "$TMP_ROOT/err.XXXXXX")"
+  CHECK_EXIT=0
+  ( CREWRIG_REPO_DIR="$repo" CI_COMMIT_BEFORE_SHA="$before_sha" bash "$SCRIPT_UNDER_TEST" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
+  CHECK_STDOUT="$(cat "$out_file")"
+  CHECK_STDERR="$(cat "$err_file")"
+  rm -f "$out_file" "$err_file"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-m: CI_COMMIT_BEFORE_SHA is honored (exit 0)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-m: expected exit 0, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
+    echo "PASS  case-m: OK line emitted on CI_COMMIT_BEFORE_SHA resolution"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-m: missing OK line (stdout: $CHECK_STDOUT)"
     fail=$((fail + 1))
   fi
 }
