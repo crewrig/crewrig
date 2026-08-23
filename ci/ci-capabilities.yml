@@ -456,9 +456,11 @@ capabilities:
           - "scripts/tests/test-chroma-*.sh"
           - "scripts/tests/test-mcp-daemon.sh"
           - "scripts/tests/test-repair-mempalace-http.sh"
+          - "scripts/tests/test-rotate-mempalace-token.sh"
           - "scripts/tests/test-worktree-claim.sh"
           - "scripts/mcp-daemon.sh"
           - "scripts/repair-mempalace-http.sh"
+          - "scripts/switch-mempalace-http.sh"
           - "scripts/lib/**"
       - on: push
         branches: [main, "release/**"]
@@ -466,9 +468,11 @@ capabilities:
           - "scripts/tests/test-chroma-*.sh"
           - "scripts/tests/test-mcp-daemon.sh"
           - "scripts/tests/test-repair-mempalace-http.sh"
+          - "scripts/tests/test-rotate-mempalace-token.sh"
           - "scripts/tests/test-worktree-claim.sh"
           - "scripts/mcp-daemon.sh"
           - "scripts/repair-mempalace-http.sh"
+          - "scripts/switch-mempalace-http.sh"
           - "scripts/lib/**"
     portability: portable
     changeset-gated: true
@@ -480,9 +484,11 @@ capabilities:
         - "scripts/tests/test-chroma-*.sh"
         - "scripts/tests/test-mcp-daemon.sh"
         - "scripts/tests/test-repair-mempalace-http.sh"
+        - "scripts/tests/test-rotate-mempalace-token.sh"
         - "scripts/tests/test-worktree-claim.sh"
         - "scripts/mcp-daemon.sh"
         - "scripts/repair-mempalace-http.sh"
+        - "scripts/switch-mempalace-http.sh"
         - "scripts/lib/**"
       env: []
     command:
@@ -491,6 +497,7 @@ capabilities:
       - bash scripts/tests/test-chroma-server.sh
       - bash scripts/tests/test-mcp-daemon.sh
       - bash scripts/tests/test-repair-mempalace-http.sh
+      - bash scripts/tests/test-rotate-mempalace-token.sh
       - bash scripts/tests/test-worktree-claim.sh
 
   # e2e is the heaviest group; it stays enforced on push/PR (changeset-gated)

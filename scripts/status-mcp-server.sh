@@ -85,8 +85,8 @@ if [ "${rc}" -eq 0 ]; then
       echo "            PID ${listener_pid} is answering on ${HOST}:${PORT}, but the"
       echo "            supervisor runs PID ${expected_pid}. A process that claimed"
       echo "            the port first may have received the bearer token."
-      echo "            Rotate the token: rm -f $(mcp_token_path), then re-run"
-      echo "            bash scripts/switch-mempalace-http.sh"
+      echo "            Rotate the token: task mempalace:rotate-token"
+      echo "            (or: bash scripts/switch-mempalace-http.sh --rotate)"
       rc=1
     fi
   else
