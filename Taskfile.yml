@@ -139,8 +139,12 @@ tasks:
     cmd: bash {{.REPO_DIR}}/scripts/install-extension.sh install {{.EXT}}
 
   link-gemini-extensions:
-    desc: Link all extensions to Gemini CLI (symlink mode, for development)
+    desc: "Debugging path (not an install path): symlink every extension's rendered build directory into Gemini CLI"
     cmd: bash {{.REPO_DIR}}/scripts/link-extensions.sh
+
+  link-gemini-extension-build:
+    desc: "Debugging path (not an install path): symlink one extension's rendered build directory into Gemini CLI (task link-gemini-extension-build EXT=hello-world)"
+    cmd: bash {{.REPO_DIR}}/scripts/install-extension.sh link {{.EXT}}
 
   unlink-gemini-extensions:
     desc: Remove all installed extensions from Gemini CLI
