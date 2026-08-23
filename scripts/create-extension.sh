@@ -68,25 +68,32 @@ find "$TARGET" -type f | while read -r file; do
   fi
 done
 
-# --- Merge MCP server config into manifest if selected ---
+# --- Merge MCP server config into both manifests if selected ---
+# Spec 0044 requires extension.json and gemini-extension.json to agree, so
+# each fragment lands in BOTH (the double-write goes away once
+# gemini-extension.json becomes generated — tracked by #725).
 if echo "$COMPONENTS" | grep -q "mcp-server"; then
   FRAGMENT="$TARGET/mcp-server.json.fragment"
   if [ -f "$FRAGMENT" ] && command -v jq >/dev/null 2>&1; then
-    jq -s '.[0] * .[1]' "$TARGET/gemini-extension.json" "$FRAGMENT" > "$TARGET/gemini-extension.json.tmp"
-    mv "$TARGET/gemini-extension.json.tmp" "$TARGET/gemini-extension.json"
+    for MANIFEST in "$TARGET/extension.json" "$TARGET/gemini-extension.json"; do
+      jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
+      mv "$MANIFEST.tmp" "$MANIFEST"
+    done
     rm -f "$FRAGMENT"
-    echo "  Merged: MCP server config into manifest"
+    echo "  Merged: MCP server config into both manifests"
   fi
 fi
 
-# --- Merge theme config into manifest if selected ---
+# --- Merge theme config into both manifests if selected ---
 if echo "$COMPONENTS" | grep -q "theme"; then
   FRAGMENT="$TARGET/theme.json.fragment"
   if [ -f "$FRAGMENT" ] && command -v jq >/dev/null 2>&1; then
-    jq -s '.[0] * .[1]' "$TARGET/gemini-extension.json" "$FRAGMENT" > "$TARGET/gemini-extension.json.tmp"
-    mv "$TARGET/gemini-extension.json.tmp" "$TARGET/gemini-extension.json"
+    for MANIFEST in "$TARGET/extension.json" "$TARGET/gemini-extension.json"; do
+      jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
+      mv "$MANIFEST.tmp" "$MANIFEST"
+    done
     rm -f "$FRAGMENT"
-    echo "  Merged: theme config into manifest"
+    echo "  Merged: theme config into both manifests"
   fi
 fi
 
