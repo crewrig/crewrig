@@ -181,6 +181,26 @@ WRAPPER="${CREWRIG_REPO_DIR}/scripts/lib/mempalace-http-wrapper.py"
        The launcher lives outside the repository but the wrapper does not; a
        moved or removed checkout breaks this path. Re-run the setup script."
 
+# Preflight check: warn if any installed assistant is still configured in stdio (spec 0172 R4)
+if [ -f "${CREWRIG_REPO_DIR}/scripts/lib/common.sh" ]; then
+  # shellcheck source=scripts/lib/common.sh
+  . "${CREWRIG_REPO_DIR}/scripts/lib/common.sh" 2>/dev/null || true
+  if command -v mcp_assistant_arrangement >/dev/null 2>&1; then
+    stdio_clis=""
+    for cli in claude gemini copilot antigravity; do
+      if [ "$(mcp_assistant_arrangement "$cli")" = "stdio" ]; then
+        stdio_clis="${stdio_clis:+${stdio_clis}, }${cli}"
+      fi
+    done
+    if [ -n "${stdio_clis}" ]; then
+      printf '%s WARNING: MemPalace MCP HTTP daemon is starting, but assistant(s) [%s] are still configured in stdio mode.\n' \
+        "$(date '+%Y-%m-%dT%H:%M:%S%z')" "${stdio_clis}" >&2
+      printf '%s WARNING: stdio sessions will be locked out of writing by this daemon. Run: bash %s/scripts/switch-mempalace-http.sh\n' \
+        "$(date '+%Y-%m-%dT%H:%M:%S%z')" "${CREWRIG_REPO_DIR}" >&2
+    fi
+  fi
+fi
+
 log "starting MemPalace MCP HTTP daemon on ${MCP_HOST}:${MCP_PORT}/mcp"
 exec "${MEMPALACE_PYTHON}" "${WRAPPER}" \
   --transport http --host "${MCP_HOST}" --port "${MCP_PORT}"

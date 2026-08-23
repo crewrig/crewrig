@@ -135,6 +135,25 @@ A daemon that will not start because tier 1 is unreachable reports that
 directly in the log, naming
 [the ChromaDB runbook's](chroma-http-server.md) status command to check next.
 
+### `Peer MCP writer active` (`-32001`) / Half-converted machine lockout
+
+If an assistant receives an MCP error `-32001` (`Peer MCP writer active; this server is read-only for mutating tools`), the machine may be in a half-converted state where the shared MCP daemon holds the palace lease while the CLI remains configured in `stdio` mode.
+
+The first diagnostic step is running:
+
+```sh
+task mempalace:status
+```
+
+`scripts/status-mcp-server.sh` diagnoses which assistant configurations are locked out (reporting `stdio (LOCKED OUT by shared daemon)` and exiting with code 1).
+
+To resolve the misconfiguration across all installed assistants, run:
+
+```sh
+task mempalace:switch-http
+```
+
+
 ## Replacing the bearer token
 
 When you need to rotate the bearer token (for instance, after a suspected

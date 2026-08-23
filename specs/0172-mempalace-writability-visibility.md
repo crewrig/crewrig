@@ -1,7 +1,7 @@
 ---
 id: "0172"
 slug: mempalace-writability-visibility
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 989

@@ -131,6 +131,9 @@ fi
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
+# Isolate MCP port from production daemon on the test runner
+export MEMPALACE_MCP_PORT="$((19000 + (RANDOM % 900)))"
+
 pass=0
 fail=0
 ok()  { echo "  ok: $1"; pass=$((pass + 1)); }
@@ -910,6 +913,47 @@ if diff -q "$before" "$after" >/dev/null 2>&1; then
 else
   bad "the doctor modified something under HOME:"
   diff "$before" "$after" >&2 || true
+fi
+
+# ---------------------------------------------------------------------------
+echo "11. Half-converted lockout detection (spec 0172 R3)"
+# ---------------------------------------------------------------------------
+S11="$TMP_ROOT/scenario-11"
+mkdir -p "$S11"
+S11_HOME="$S11/home"
+S11_PATHDIR="$S11/bin"
+mkdir -p "$S11_HOME" "$S11_PATHDIR"
+
+cp -R "$S2_HOME/." "$S11_HOME/"
+cp -R "$S2_PATHDIR/." "$S11_PATHDIR/"
+
+python3 -c '
+import sys, http.server, socketserver
+port = int(sys.argv[1])
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200); self.end_headers(); self.wfile.write(b"OK")
+    def log_message(self, *a): pass
+socketserver.TCPServer.allow_reuse_address = True
+with socketserver.TCPServer(("127.0.0.1", port), H) as s:
+    s.serve_forever()
+' "$MEMPALACE_MCP_PORT" &
+fake_daemon_pid=$!
+sleep 1
+
+run_doctor "$S11_HOME" "$S11_PATHDIR" "$S11/report.txt"
+s11_rc=$?
+kill "$fake_daemon_pid" 2>/dev/null
+
+if [ "$s11_rc" -ne 0 ]; then
+  ok "doctor exits non-zero when stdio registrations conflict with running daemon"
+else
+  bad "doctor exited 0 with running daemon conflict"
+fi
+if grep -q "LOCKED OUT BY RUNNING DAEMON" "$S11/report.txt"; then
+  ok "doctor report contains LOCKED OUT BY RUNNING DAEMON"
+else
+  bad "doctor report missing lockout finding: $(cat "$S11/report.txt")"
 fi
 
 # ---------------------------------------------------------------------------

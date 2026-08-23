@@ -278,6 +278,13 @@ inspect_registration() {
   argv_display="$(printf '%s' "$entry" | jq -r '([.command] + (.args // [])) | join(" ")' 2>/dev/null)"
   field "argv:" "$argv_display"
 
+  local daemon_host="${MEMPALACE_MCP_HOST:-${MCP_DAEMON_HOST_DEFAULT}}"
+  local daemon_port="${MEMPALACE_MCP_PORT:-${MCP_DAEMON_PORT_DEFAULT}}"
+  if curl -sf --max-time 1 "http://${daemon_host}:${daemon_port}/healthz" >/dev/null 2>&1; then
+    field "daemon conflict:" "*** LOCKED OUT BY RUNNING DAEMON *** (daemon at http://${daemon_host}:${daemon_port}/mcp holds exclusive write lease)"
+    note_failure "${cli}: registered as stdio while shared MCP daemon is running; locked out of writes (run: bash scripts/switch-mempalace-http.sh)"
+  fi
+
   # The invariant is over the whole `[.command] + .args` concatenation: the
   # interpreter is whichever element immediately precedes the wrapper, wherever
   # that pair happens to sit.
