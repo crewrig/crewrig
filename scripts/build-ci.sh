@@ -30,7 +30,7 @@
 #   --check    Regenerate to a temp file and `diff -q` against the committed
 #              .gitlab-ci.yml; exit non-zero on drift (drift detection, for CI).
 #              Mirrors scripts/build-components.sh --check and
-#              scripts/build-extension-pivot.sh --check.
+#              scripts/build-extension.sh --check.
 #
 # Prerequisites: yq (mikefarah v4).
 

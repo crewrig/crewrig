@@ -23,7 +23,7 @@
 #   render_command_claude <source.md>   → Claude Code `SKILL.md` form
 #
 # Both `scripts/build-components.sh` (for artifacts/ commands) and
-# `scripts/build-extension-pivot.sh` (for extension commands) call these, so the
+# `scripts/build-extension.sh` (for extension commands) call these, so the
 # command render logic lives in exactly one place (spec 0042 R1/R2). The
 # extraction is byte-for-byte faithful to the prior inline implementation in
 # build-components.sh `build_commands()` so the artifacts/ outputs stay
@@ -104,7 +104,7 @@ render_command_toml_provenance_comment() {
 # today). When the source carries a metadata.provenance block, a TOML
 # `# crewrig-provenance:` comment line is prepended above `description` (R5
 # carrier). The emitted string carries NO trailing newline — callers add one
-# (build-components.sh's check_or_write uses `echo`, build-extension-pivot.sh
+# (build-components.sh's check_or_write uses `echo`, build-extension.sh
 # uses `printf '%s\n'`), matching the prior behavior exactly.
 render_command_gemini() {
   local source="$1"

@@ -110,7 +110,7 @@ command -v yq >/dev/null 2>&1 || { echo "Error: yq is required. Install with: br
 
 # --- Shared command renderer (spec 0042) ---
 # build_commands() below delegates the pivot-source → consumed-form render to
-# the shared library so the extension renderer (scripts/build-extension-pivot.sh)
+# the shared library so the extension renderer (scripts/build-extension.sh)
 # and the Claude plugin builder use the exact same logic. The library guards its
 # helper definitions (extract_frontmatter/extract_body/yaml_field), so the
 # versions defined later in THIS file win and the artifacts/ output stays

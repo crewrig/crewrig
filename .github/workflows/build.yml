@@ -58,7 +58,7 @@ jobs:
       - name: Test Build Components
         if: steps.filter.outputs.component-drift == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt" --key-env "" -- bash scripts/test-build-components.sh
-  extension-pivot:
+  extension-render:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,30 +66,39 @@ jobs:
         id: filter
         with:
           filters: |
-            extension-pivot:
+            extension-render:
               - 'scripts/check-extension-pivot.sh'
-              - 'scripts/build-extension-pivot.sh'
+              - 'scripts/build-extension.sh'
+              - 'scripts/install-extension.sh'
+              - 'scripts/lib/extension-manifest.sh'
+              - 'scripts/lib/extension-percli-keys.json'
+              - 'scripts/lib/extension-generated-class.json'
               - 'scripts/tests/test-check-extension-pivot.sh'
-              - 'scripts/tests/test-build-extension-pivot.sh'
+              - 'scripts/tests/test-build-extension.sh'
+              - 'scripts/tests/test-extension-render-conformance.sh'
+              - 'Taskfile.yml'
               - 'extensions/**'
               - 'artifacts/**'
       - name: Install yq
-        if: steps.filter.outputs.extension-pivot == 'true'
+        if: steps.filter.outputs.extension-render == 'true'
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
       - name: Check Extension Pivot
-        if: steps.filter.outputs.extension-pivot == 'true'
+        if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/check-extension-pivot.sh
       - name: Test Check Extension Pivot
-        if: steps.filter.outputs.extension-pivot == 'true'
+        if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/tests/test-check-extension-pivot.sh
-      - name: Test Build Extension Pivot
-        if: steps.filter.outputs.extension-pivot == 'true'
-        run: bash scripts/tests/test-build-extension-pivot.sh
-      - name: Build Extension Pivot
-        if: steps.filter.outputs.extension-pivot == 'true'
-        run: bash scripts/build-extension-pivot.sh --check
+      - name: Test Build Extension
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/tests/test-build-extension.sh
+      - name: Test Extension Render Conformance
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/tests/test-extension-render-conformance.sh
+      - name: Build Extension --check
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/build-extension.sh --check
   extension-provenance:
     runs-on: ubuntu-latest
     steps:

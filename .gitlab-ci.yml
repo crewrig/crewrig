@@ -69,32 +69,46 @@ component-drift:
         - ".crewrig/core-paths.txt"
         - "docs/layers.md"
 
-extension-pivot:
+extension-render:
   image: debian:stable-slim
   before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
     - "bash scripts/check-extension-pivot.sh"
     - "bash scripts/tests/test-check-extension-pivot.sh"
-    - "bash scripts/tests/test-build-extension-pivot.sh"
-    - "bash scripts/build-extension-pivot.sh --check"
+    - "bash scripts/tests/test-build-extension.sh"
+    - "bash scripts/tests/test-extension-render-conformance.sh"
+    - "bash scripts/build-extension.sh --check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-pivot.sh"
-        - "scripts/build-extension-pivot.sh"
+        - "scripts/build-extension.sh"
+        - "scripts/install-extension.sh"
+        - "scripts/lib/extension-manifest.sh"
+        - "scripts/lib/extension-percli-keys.json"
+        - "scripts/lib/extension-generated-class.json"
         - "scripts/tests/test-check-extension-pivot.sh"
-        - "scripts/tests/test-build-extension-pivot.sh"
+        - "scripts/tests/test-build-extension.sh"
+        - "scripts/tests/test-extension-render-conformance.sh"
+        - "Taskfile.yml"
         - "extensions/**"
         - "artifacts/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-pivot.sh"
-        - "scripts/build-extension-pivot.sh"
+        - "scripts/build-extension.sh"
+        - "scripts/install-extension.sh"
+        - "scripts/lib/extension-manifest.sh"
+        - "scripts/lib/extension-percli-keys.json"
+        - "scripts/lib/extension-generated-class.json"
         - "scripts/tests/test-check-extension-pivot.sh"
-        - "scripts/tests/test-build-extension-pivot.sh"
+        - "scripts/tests/test-build-extension.sh"
+        - "scripts/tests/test-extension-render-conformance.sh"
+        - "Taskfile.yml"
         - "extensions/**"
         - "artifacts/**"
 
