@@ -153,7 +153,6 @@ To resolve the misconfiguration across all installed assistants, run:
 task mempalace:switch-http
 ```
 
-
 ## Replacing the bearer token
 
 When you need to rotate the bearer token (for instance, after a suspected
