@@ -528,15 +528,18 @@ its own one-file spec-PR.
 
 - **Spec 0044 relation.** The manifest-version guard of spec 0044 checks
   `gemini-extension.json` as a committed sibling, so de-committing that file
-  makes the guard's Gemini arm pass by absence. Requirement 11 as amended keeps
-  the property enforced by asserting it on the built manifest inside this spec's
-  own change, which is why no spec 0044 delta is a precondition here. The
+  would leave the guard's Gemini arm passing because its subject is absent. The
+  maintainer decision at the 2026-08-23 content gate on issue #1004
+  ([recorded verbatim](https://github.com/crewrig/crewrig/issues/1004#issuecomment-5387545134))
+  settles that case: a check whose subject disappears is **removed**, not left
+  green over nothing. `specs/0044-extension-versioning-manifest.delta-01.md`
+  therefore ships in this wave, as its own one-file spec-PR alongside this delta,
+  and removes that arm in the same change that de-commits the file. The version
+  property the arm asserted is carried by requirement 11 as amended, on the
+  built manifest, inside that same change — so the property is never merely
+  unchecked. The `extension.json` arm survives untouched, and the full
   re-specification of the spec 0044 guard and of the release driver stays with
-  S5 (issue #1008), where the parent's *Out of scope* already placed it. Should
-  a reviewer read spec 0044's guard requirement as a standing obligation over a
-  *committed* sibling rather than over the property itself, the remedy is a
-  one-file `specs/0044-extension-versioning-manifest.delta-01.md`, not a change
-  to this delta.
+  S5 (issue #1008), where the parent's *Out of scope* already placed it.
 - **Task surface.** The dedicated development link task of requirement 20 joins
   the Gemini extension task family renamed by issue #1002 and merged as pull
   request #1021 (`install-gemini-extension`, `install-gemini-extensions`,
