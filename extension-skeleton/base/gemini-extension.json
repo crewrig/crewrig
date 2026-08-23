@@ -1,6 +1,0 @@
-{
-  "name": "${SKELETON_NAME}",
-  "version": "0.1.0",
-  "description": "Description of the ${SKELETON_NAME} extension.",
-  "contextFileName": "GEMINI.md"
-}
