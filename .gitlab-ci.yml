@@ -157,14 +157,17 @@ extension-install:
     - "bash scripts/tests/test-install-claude-plugin-marketplace.sh"
     - "bash scripts/tests/test-build-claude-plugin-agents-glob.sh"
     - "bash scripts/tests/test-gemini-agent-frontmatter.sh"
+    - "bash scripts/tests/test-install-extension-all.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/tests/test-install-claude-plugin-marketplace.sh"
         - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
         - "scripts/tests/test-gemini-agent-frontmatter.sh"
+        - "scripts/tests/test-install-extension-all.sh"
         - "scripts/build-claude-plugin.sh"
         - "scripts/build-gemini-agent.sh"
+        - "scripts/install-extension-all.sh"
         - "extensions/**"
         - "artifacts/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -172,8 +175,10 @@ extension-install:
         - "scripts/tests/test-install-claude-plugin-marketplace.sh"
         - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
         - "scripts/tests/test-gemini-agent-frontmatter.sh"
+        - "scripts/tests/test-install-extension-all.sh"
         - "scripts/build-claude-plugin.sh"
         - "scripts/build-gemini-agent.sh"
+        - "scripts/install-extension-all.sh"
         - "extensions/**"
         - "artifacts/**"
 

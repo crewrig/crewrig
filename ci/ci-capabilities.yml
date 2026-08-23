@@ -181,8 +181,10 @@ capabilities:
           - "scripts/tests/test-install-claude-plugin-marketplace.sh"
           - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
           - "scripts/tests/test-gemini-agent-frontmatter.sh"
+          - "scripts/tests/test-install-extension-all.sh"
           - "scripts/build-claude-plugin.sh"
           - "scripts/build-gemini-agent.sh"
+          - "scripts/install-extension-all.sh"
           - "extensions/**"
           - "artifacts/**"
       - on: push
@@ -191,8 +193,10 @@ capabilities:
           - "scripts/tests/test-install-claude-plugin-marketplace.sh"
           - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
           - "scripts/tests/test-gemini-agent-frontmatter.sh"
+          - "scripts/tests/test-install-extension-all.sh"
           - "scripts/build-claude-plugin.sh"
           - "scripts/build-gemini-agent.sh"
+          - "scripts/install-extension-all.sh"
           - "extensions/**"
           - "artifacts/**"
     portability: portable
@@ -203,6 +207,7 @@ capabilities:
       - bash scripts/tests/test-install-claude-plugin-marketplace.sh
       - bash scripts/tests/test-build-claude-plugin-agents-glob.sh
       - bash scripts/tests/test-gemini-agent-frontmatter.sh
+      - bash scripts/tests/test-install-extension-all.sh
 
   - id: core-paths
     name: "Check core-paths resolve and sync-from-upstream"

@@ -154,8 +154,10 @@ jobs:
               - 'scripts/tests/test-install-claude-plugin-marketplace.sh'
               - 'scripts/tests/test-build-claude-plugin-agents-glob.sh'
               - 'scripts/tests/test-gemini-agent-frontmatter.sh'
+              - 'scripts/tests/test-install-extension-all.sh'
               - 'scripts/build-claude-plugin.sh'
               - 'scripts/build-gemini-agent.sh'
+              - 'scripts/install-extension-all.sh'
               - 'extensions/**'
               - 'artifacts/**'
       - name: Install yq
@@ -172,6 +174,9 @@ jobs:
       - name: Test Gemini Agent Frontmatter
         if: steps.filter.outputs.extension-install == 'true'
         run: bash scripts/tests/test-gemini-agent-frontmatter.sh
+      - name: Test Install Extension All
+        if: steps.filter.outputs.extension-install == 'true'
+        run: bash scripts/tests/test-install-extension-all.sh
   core-paths:
     runs-on: ubuntu-latest
     steps:

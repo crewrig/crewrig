@@ -315,12 +315,19 @@ Extensions are code-based capabilities (TypeScript MCP servers) packaged
 as independent npm modules. From a single `extension.json` manifest,
 install scripts generate both Gemini extensions and Claude Code plugins:
 
+**All CLIs (umbrella installer):**
+
+```bash
+task install-deps
+task install-extension-all EXT=hello-world
+```
+
 **Gemini CLI:**
 
 ```bash
 task install-deps
-task install-extensions
-task install-extension EXT=hello-world
+task install-gemini-extensions
+task install-gemini-extension EXT=hello-world
 ```
 
 **Claude Code:**
@@ -434,6 +441,7 @@ scripts/
 ├── import-gemini-history.sh          # Gemini transcript import
 ├── install-claude-plugin.sh          # Claude Code plugin installer
 ├── install-extension.sh              # Gemini extension installer
+├── install-extension-all.sh          # Cross-CLI umbrella extension installer
 ├── install-workspace.sh              # Bulk Gemini component install
 ├── link-extensions.sh                # Symlink extensions for local dev
 ├── manage-claude-component.sh        # Claude Code component manager
