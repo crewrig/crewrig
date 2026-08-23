@@ -414,37 +414,44 @@ chroma-mcp:
         - "scripts/tests/test-chroma-*.sh"
         - "scripts/tests/test-mcp-daemon.sh"
         - "scripts/tests/test-repair-mempalace-http.sh"
+        - "scripts/tests/test-rotate-mempalace-token.sh"
         - "scripts/tests/test-worktree-claim.sh"
         - "scripts/mcp-daemon.sh"
         - "scripts/repair-mempalace-http.sh"
+        - "scripts/switch-mempalace-http.sh"
         - "scripts/lib/**"
     paths:
       - .ci-cache/
   script:
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-chroma-fd-limits.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-chroma-health-race.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-chroma-server.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-mcp-daemon.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-repair-mempalace-http.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-worktree-claim.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-chroma-fd-limits.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-chroma-health-race.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-chroma-server.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-mcp-daemon.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-repair-mempalace-http.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-rotate-mempalace-token.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**\" --key-env \"\" -- bash scripts/tests/test-worktree-claim.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/tests/test-chroma-*.sh"
         - "scripts/tests/test-mcp-daemon.sh"
         - "scripts/tests/test-repair-mempalace-http.sh"
+        - "scripts/tests/test-rotate-mempalace-token.sh"
         - "scripts/tests/test-worktree-claim.sh"
         - "scripts/mcp-daemon.sh"
         - "scripts/repair-mempalace-http.sh"
+        - "scripts/switch-mempalace-http.sh"
         - "scripts/lib/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/tests/test-chroma-*.sh"
         - "scripts/tests/test-mcp-daemon.sh"
         - "scripts/tests/test-repair-mempalace-http.sh"
+        - "scripts/tests/test-rotate-mempalace-token.sh"
         - "scripts/tests/test-worktree-claim.sh"
         - "scripts/mcp-daemon.sh"
         - "scripts/repair-mempalace-http.sh"
+        - "scripts/switch-mempalace-http.sh"
         - "scripts/lib/**"
 
 e2e:

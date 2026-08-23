@@ -40,6 +40,10 @@ tasks:
     desc: "Switch every supported assistant on this machine to the shared MemPalace MCP HTTP daemon, so concurrent sessions all write to shared memory (spec 0113). All-or-nothing: if one assistant cannot be switched, none is."
     cmd: bash {{.REPO_DIR}}/scripts/switch-mempalace-http.sh
 
+  mempalace:rotate-token:
+    desc: "Rotate the shared MemPalace MCP HTTP daemon bearer token (spec 0176). Mints a new token, replaces the daemon process, purges stale backups, and re-registers every assistant."
+    cmd: bash {{.REPO_DIR}}/scripts/switch-mempalace-http.sh --rotate
+
   mempalace:status:
     desc: "Report the shared MemPalace MCP HTTP daemon: whether it is serving, whether authentication is actually enforced, whether the installed launcher has drifted from the repository, and which arrangement each assistant is configured for."
     cmd: bash {{.REPO_DIR}}/scripts/status-mcp-server.sh
