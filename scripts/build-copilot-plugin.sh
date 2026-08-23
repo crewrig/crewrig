@@ -24,6 +24,10 @@ command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: br
 # sources — NOT from Gemini `.toml` outputs.  Sourced for extract_body / yaml_field.
 # shellcheck source=lib/render-command.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/render-command.sh"
+# Shared manifest accessors (spec 0173): resolve the generic top-level
+# section first, falling back to legacy components.<subject>.* until S5.
+# shellcheck source=lib/extension-manifest.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/extension-manifest.sh"
 
 EXT_ARG="${1:?Usage: build-copilot-plugin.sh <extension-dir-or-name> [output-dir]}"
 
@@ -97,8 +101,8 @@ jq -n \
 echo "  Generated: plugin.json (name: $PLUGIN_NAME)"
 
 # --- Copy skills ---
-SKILLS_ENABLED=$(jq -r '.components.skills.enabled // false' "$MANIFEST" 2>/dev/null)
-SKILLS_LOCATION=$(jq -r '.components.skills.location // "skills/"' "$MANIFEST" 2>/dev/null)
+SKILLS_ENABLED=$(ext_subject_present "$MANIFEST" skills)
+SKILLS_LOCATION=$(ext_subject_location "$MANIFEST" skills "skills/")
 if [ "$SKILLS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$SKILLS_LOCATION" ]; then
   mkdir -p "$OUTPUT_DIR/skills"
   for skill_dir in "$EXT_DIR/$SKILLS_LOCATION"*/; do
@@ -113,9 +117,9 @@ fi
 # Spec 0042: the command source of truth is the pivot `commands/<name>.md`, NOT
 # the Gemini `commands/<name>.toml`.  The `convertToSkills` manifest flag means
 # "render pivot `.md` → Copilot skill" (same pattern as Claude and Antigravity).
-COMMANDS_ENABLED=$(jq -r '.components.commands.enabled // false' "$MANIFEST" 2>/dev/null)
-CONVERT_TO_SKILLS=$(jq -r '.components.commands.convertToSkills // false' "$MANIFEST" 2>/dev/null)
-COMMANDS_LOCATION=$(jq -r '.components.commands.location // "commands/"' "$MANIFEST" 2>/dev/null)
+COMMANDS_ENABLED=$(ext_subject_present "$MANIFEST" commands)
+CONVERT_TO_SKILLS=$(ext_subject_option "$MANIFEST" commands convertToSkills false)
+COMMANDS_LOCATION=$(ext_subject_location "$MANIFEST" commands "commands/")
 if [ "$COMMANDS_ENABLED" = "true" ] && [ "$CONVERT_TO_SKILLS" = "true" ] && [ -d "$EXT_DIR/$COMMANDS_LOCATION" ]; then
   command -v yq >/dev/null 2>&1 || { echo "Error: yq is required to render pivot commands. Install with: brew install yq"; exit 1; }
   for md_file in "$EXT_DIR/$COMMANDS_LOCATION"*.md; do
@@ -145,8 +149,8 @@ fi
 # Copilot's native plugin agent format is a flat file with .agent.md extension,
 # not a subdirectory.  Each agents/<name>/AGENT.md source is flattened to
 # agents/<name>.agent.md in the output.
-AGENTS_ENABLED=$(jq -r '.components.agents.enabled // false' "$MANIFEST" 2>/dev/null)
-AGENTS_LOCATION=$(jq -r '.components.agents.location // "agents/"' "$MANIFEST" 2>/dev/null)
+AGENTS_ENABLED=$(ext_subject_present "$MANIFEST" agents)
+AGENTS_LOCATION=$(ext_subject_location "$MANIFEST" agents "agents/")
 if [ "$AGENTS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$AGENTS_LOCATION" ]; then
   mkdir -p "$OUTPUT_DIR/agents"
   for agent_dir in "$EXT_DIR/$AGENTS_LOCATION"*/; do
