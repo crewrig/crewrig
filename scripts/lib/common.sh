@@ -1410,17 +1410,27 @@ mcp_assistant_arrangement() {
 }
 
 mcp_report_assistant_arrangements() {
-  local cli state
+  local daemon_status="${1:-}"
+  local cli state has_lockout=0
   for cli in claude gemini copilot antigravity; do
     state="$(mcp_assistant_arrangement "$cli")"
     case "$state" in
       http)    printf '  %-12s http (shared daemon)\n' "$cli" ;;
-      stdio)   printf '  %-12s stdio (previous arrangement)\n' "$cli" ;;
+      stdio)
+        if [ "$daemon_status" = "serving" ] || [ "$daemon_status" = "healthy" ]; then
+          printf '  %-12s stdio (LOCKED OUT by shared daemon)\n' "$cli"
+          has_lockout=1
+        else
+          printf '  %-12s stdio (previous arrangement)\n' "$cli"
+        fi
+        ;;
       none)    printf '  %-12s no mempalace registration\n' "$cli" ;;
       absent)  printf '  %-12s CLI not installed\n' "$cli" ;;
       *)       printf "  %-12s *** UNRECOGNISED — run 'task mempalace:repair' ***\n" "$cli" ;;
     esac
   done
+  [ "$has_lockout" -eq 0 ] || return 1
+  return 0
 }
 
 # offer_mcp_http_switch <repo_dir> <cli>

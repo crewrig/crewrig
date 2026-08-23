@@ -857,6 +857,52 @@ case "${out}" in
   *) nope "no UNVERIFIABLE report: ${out}" ;;
 esac
 
+# --- 13e. Half-converted stdio assistant lockout (spec 0172 R1) ----------------
+# When daemon is serving and an assistant is in stdio mode, status-mcp-server.sh
+# must report LOCKED OUT and exit 1.
+mkdir -p "${TEST_HOME}/.gemini"
+cat > "${TEST_HOME}/.gemini/settings.json" <<'EOF'
+{
+  "mcpServers": {
+    "mempalace": {
+      "command": "python3",
+      "args": ["/some/path/mempalace-http-wrapper.py"]
+    }
+  }
+}
+EOF
+out="$(MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=1234 \
+  bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+[ "${rc}" -ne 0 ] \
+  && ok "status-mcp-server exits non-zero on half-converted stdio assistant (spec 0172 R1)" \
+  || nope "status-mcp-server exited 0 on half-converted stdio assistant"
+case "${out}" in
+  *"LOCKED OUT"*) ok "status-mcp-server reports LOCKED OUT on stdio assistant" ;;
+  *) nope "status-mcp-server did not report LOCKED OUT: ${out}" ;;
+esac
+
+# --- 13f. Fully converted http assistant (spec 0172 R2) -----------------------
+cat > "${TEST_HOME}/.gemini/settings.json" <<'EOF'
+{
+  "mcpServers": {
+    "mempalace": {
+      "url": "http://127.0.0.1:41893/mcp",
+      "headers": { "Authorization": "Bearer token123" }
+    }
+  }
+}
+EOF
+out="$(MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=1234 \
+  bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
+[ "${rc}" -eq 0 ] \
+  && ok "status-mcp-server exits 0 on fully converted http assistant (spec 0172 R2)" \
+  || nope "status-mcp-server exited non-zero on http assistant: ${rc} ${out}"
+case "${out}" in
+  *"http (shared daemon)"*) ok "status-mcp-server reports http (shared daemon)" ;;
+  *) nope "status-mcp-server did not report http: ${out}" ;;
+esac
+rm -f "${TEST_HOME}/.gemini/settings.json"
+
 kill "${fake_pid}" 2>/dev/null
 
 # --- 14. _materialise_mcp_unit refuses unsubstituted placeholders (R7) -------

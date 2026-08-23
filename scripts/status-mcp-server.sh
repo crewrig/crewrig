@@ -118,6 +118,16 @@ fi
 # --- 5. Per-assistant arrangement (R16) --------------------------------------
 echo ""
 echo "Assistant registrations:"
-mcp_report_assistant_arrangements || true
+if [ "${rc}" -eq 0 ]; then
+  if ! mcp_report_assistant_arrangements "serving"; then
+    echo "            One or more assistants are still in stdio mode while the shared"
+    echo "            daemon is serving. They are locked out of writes by the daemon's"
+    echo "            exclusive lease. Run: bash scripts/switch-mempalace-http.sh"
+    rc=1
+  fi
+else
+  mcp_report_assistant_arrangements || true
+fi
 
 exit "${rc}"
+
