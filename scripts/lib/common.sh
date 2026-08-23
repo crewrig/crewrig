@@ -666,30 +666,39 @@ install_daemon_supervisor() {
 _materialise_chroma_unit() {
   local src="$1"
   local dst="$2"
-  if [ "$(uname -s)" = "Linux" ]; then
-    # The systemd unit carries only the TLS wrapper placeholder (spec 0084),
-    # so ExecStart inherits any user-consented custom-CA trust.
-    sed -e "s|__TLS_EXEC__|${CREWRIG_REPO_DIR}/scripts/lib/tls-exec.sh|g" "$src" > "$dst"
-    return 0
-  fi
-  local pipx_py chroma_bin mempalace_home
-  pipx_py="$(detect_mempalace_python || true)"
+  local pipx_py chroma_bin mempalace_home chroma_palace_path
+  pipx_py="${MEMPALACE_PYTHON:-$(detect_mempalace_python || true)}"
   if [ -z "$pipx_py" ]; then
     echo "  ERROR: cannot detect mempalace pipx python — install mempalace first."
     return 1
   fi
   chroma_bin="$(dirname "$pipx_py")/chroma"
-  if [ ! -x "$chroma_bin" ]; then
+  if [ ! -x "$chroma_bin" ] && [ "${CREWRIG_TEST_MOCK_CHROMA_BIN:-false}" != "true" ]; then
     echo "  ERROR: chroma binary not found at $chroma_bin — run: pipx inject mempalace 'chromadb>=1.5.9'"
     return 1
   fi
   mempalace_home="$HOME/.mempalace"
+  if [ -n "${MEMPALACE_PALACE_PATH:-}" ]; then
+    chroma_palace_path="${MEMPALACE_PALACE_PATH}"
+  elif [ "$(uname -s)" = "Linux" ]; then
+    chroma_palace_path="%h/.mempalace/palace"
+  else
+    chroma_palace_path="${mempalace_home}/palace"
+  fi
+
   sed \
     -e "s|__MEMPALACE_HOME__|${mempalace_home}|g" \
     -e "s|__PIPX_PYTHON__|${pipx_py}|g" \
     -e "s|__CHROMA_BIN__|${chroma_bin}|g" \
+    -e "s|__CHROMA_PALACE_PATH__|${chroma_palace_path}|g" \
     -e "s|__TLS_EXEC__|${CREWRIG_REPO_DIR}/scripts/lib/tls-exec.sh|g" \
     "$src" > "$dst"
+
+  if grep -qE '__[A-Z][A-Z0-9_]*__' "$dst" 2>/dev/null; then
+    echo "  ERROR: $dst still contains an unsubstituted placeholder." >&2
+    rm -f "$dst"
+    return 1
+  fi
   return 0
 }
 
@@ -841,9 +850,15 @@ install_mcp_launcher() {
     -e "s|__CHROMA_HOST__|${MEMPALACE_CHROMA_HOST:-127.0.0.1}|g" \
     -e "s|__CHROMA_PORT__|${MEMPALACE_CHROMA_PORT:-8001}|g" \
     -e "s|__MEMPALACE_PYTHON__|${py}|g" \
+    -e "s|__MEMPALACE_PALACE_PATH__|${MEMPALACE_PALACE_PATH:-}|g" \
     -e "s|__LAUNCHER_SOURCE_SHA__|${sha}|g" \
     "$src" > "$dst"
   chmod 755 "$dst"
+  if grep -qE '__[A-Z][A-Z0-9_]*__' "$dst" 2>/dev/null; then
+    echo "  ERROR: $dst still contains an unsubstituted placeholder." >&2
+    rm -f "$dst"
+    return 1
+  fi
   echo "  Installed launcher: $dst"
   return 0
 }

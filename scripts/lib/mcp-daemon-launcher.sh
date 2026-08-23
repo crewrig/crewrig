@@ -42,6 +42,10 @@ MCP_PORT="__MCP_PORT__"
 CHROMA_HOST="__CHROMA_HOST__"
 CHROMA_PORT="__CHROMA_PORT__"
 MEMPALACE_PYTHON="__MEMPALACE_PYTHON__"
+CONFIGURED_PALACE_PATH="__MEMPALACE_PALACE_PATH__"
+if [ -n "${CONFIGURED_PALACE_PATH}" ]; then
+  export MEMPALACE_PALACE_PATH="${CONFIGURED_PALACE_PATH}"
+fi
 
 # Recorded at install time: the sha256 of this file's REPOSITORY SOURCE, not of
 # the materialised copy. status-mcp-server.sh compares it against the source's
