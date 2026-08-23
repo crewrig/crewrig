@@ -11,7 +11,7 @@ Worktree: `.worktrees/issue-50/`. Date: 2026-05-20.
 | JSON well-formedness — `.github/copilot/extension.json` | ✅ | parses cleanly |
 | JSON well-formedness — `config/copilot/settings.json.template` | ✅ | parses cleanly |
 | JSON well-formedness — `hooks/copilot-transcript-hooks.json` | ✅ | parses cleanly; 5 hook events declared (SessionStart, UserPromptSubmit, PostToolUse, Stop, SessionEnd) using `${COPILOT_PROJECT_DIR:-$PWD}` |
-| JSON well-formedness — `extension-skeleton/base/.github/copilot/extension.json` | ✅ | parses cleanly |
+| JSON well-formedness — `extension-skeleton/base/.github/copilot/extension.json` | ✅ | parses cleanly at the time of this report (2026-05-20); the file was deleted by issue #1004 (spec 0173 requirement 16) — an unconsumed manifest under a generic-schema render is a build output, not a hand-authored source, and no script ever read it. Historical row, not a live check. |
 | Build target — `bash scripts/build-components.sh --target copilot` | ✅ | exits 0, emits `.github/skills/` and `.github/agents/` |
 | Skill parity — count `community-config/skills/` vs `.github/skills/` | ✅ | 14 vs 14 |
 | Agent parity — count `community-config/agents/` vs `.github/agents/` | ✅ | 21 vs 21 |

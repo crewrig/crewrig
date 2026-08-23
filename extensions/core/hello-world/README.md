@@ -8,40 +8,62 @@ your own extensions.
 
 ```text
 hello-world/
-├── gemini-extension.json   # Extension manifest
+├── extension.json          # The ONLY manifest — declares the whole cross-CLI
+│                           #   surface (spec 0173); every CLI-native file below
+│                           #   is produced FROM it, never hand-authored.
 ├── package.json            # npm package with MCP SDK dependency
 ├── tsconfig.json           # TypeScript configuration
 ├── src/index.ts            # MCP server exposing the greet tool
 ├── commands/hello.md       # /hello slash command — PIVOT SOURCE (author here)
-├── commands/hello.toml     # Generated Gemini consumed form (DO NOT hand-edit)
 ├── skills/greeter/SKILL.md # Greeter skill instructions
 ├── GEMINI.md               # Agent context when extension is loaded
+├── CLAUDE.md                # Agent context when the Claude plugin is active
+├── copilot-instructions.md  # Agent context for Copilot CLI
+├── .geminiignore             # Keeps Gemini from loading non-extension files
 └── README.md               # This file
 ```
 
-## Command rendering (spec 0042)
+Nothing named after a specific command-line tool is committed here — a file
+of that shape is always a build output (spec 0173 requirement 4). Render one
+with `bash scripts/build-extension.sh [--target <cli>] hello-world`; `bash
+scripts/build-extension.sh --check` fails the build if a generated file is
+ever committed, if a fresh render fails, or if the render's output diverges
+from the declared set.
+
+## Command rendering (spec 0042, as amended by
+`specs/0042-extension-pivot-render.delta-01.md` and spec 0173)
 
 The command is authored **once** in the pivot source `commands/hello.md`
 (the same format used by `artifacts/` components). Its per-CLI consumed
 forms are produced by how each tool loads an extension:
 
-- **Gemini CLI** loads the extension in place, so its form
-  `commands/hello.toml` is a **committed, generated sibling** of the
-  pivot `.md`. Regenerate it with
-  `bash scripts/build-extension-pivot.sh hello-world` and commit the
-  result; never hand-edit it. A CI drift gate
-  (`build-extension-pivot.sh --check`) fails if the committed `.toml`
-  diverges from a fresh render of the `.md`.
-- **Claude Code** builds a plugin at install time, so its form is
-  rendered **ephemerally** by `scripts/build-claude-plugin.sh`, which
-  reads the pivot `.md` directly. The `extension.json`
-  `components.commands.convertToSkills` flag is kept by name; post-flip
-  it means *"render the pivot `.md` into a Claude skill"*, **not**
-  *"convert the `.toml` into a skill"* (a rename is deferred to spec
-  0044).
+- **Gemini CLI** loads an extension from an installed build tree, so its
+  form, `commands/hello.toml`, is an **ephemeral build output** —
+  `bash scripts/build-extension.sh --target gemini hello-world` renders it
+  into `build/extensions/hello-world/commands/hello.toml`. It is **never**
+  committed here; `bash scripts/build-extension.sh --check` fails the build
+  if a copy of it ever is.
+- **Claude Code, GitHub Copilot CLI, Antigravity CLI** each build an
+  ephemeral plugin at install time, rendering the pivot `.md` directly
+  (`scripts/build-{claude,copilot,antigravity}-*.sh`). The manifest's
+  `commands.convertToSkills` flag means *"render the pivot `.md` into a
+  skill"* for whichever of those three targets is being built.
+
+## Delivery (spec 0173 delta-01 requirements 20/21)
+
+The rendered Gemini build tree reaches an adopter through one of three
+paths — a versioned release artifact (the default), `bash
+scripts/install-extension.sh install hello-world`, or the debugging task
+`task link-gemini-extension-build EXT=hello-world` — never through a native
+`gemini extensions install` pointed directly at this repository's primary
+branch, which is a documented-unsupported path. See
+`extension-skeleton/EXTENSION-FORMAT.md` for the full delivery-path
+contract.
 
 ## Installation
 
 ```bash
-task install-extension EXT=hello-world
+task install-extension-all EXT=hello-world
+# Gemini CLI only:
+task install-gemini-extension EXT=hello-world
 ```

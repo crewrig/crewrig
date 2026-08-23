@@ -41,8 +41,7 @@ The `extension-skeleton/` directory contains the template source:
 extension-skeleton/
 ├── .geminiignore                          # Prevents Gemini from loading templates
 ├── base/                                  # Always copied
-│   ├── extension.json                     # Unified manifest (all tools)
-│   ├── gemini-extension.json              # Legacy Gemini-only manifest
+│   ├── extension.json                     # Unified manifest (all tools; the ONLY manifest — gemini-extension.json is a build output, never committed, spec 0173 delta-01)
 │   ├── CLAUDE.md                          # Claude Code context placeholder
 │   ├── package.json                       # npm package with MCP SDK dependency
 │   ├── tsconfig.json                      # TypeScript ES2022 / Node16
@@ -52,7 +51,7 @@ extension-skeleton/
 ├── mcp-server/                            # MCP server component
 │   ├── src/index.ts                       # Stdio MCP server with sample tool
 │   └── mcp-server.json.fragment           # Merged into manifest on creation
-├── command/commands/sample.toml           # Sample slash command
+├── command/commands/sample.md              # Sample slash command (pivot source; the rendered .toml is a build output, never committed)
 ├── skill/skills/sample-skill/SKILL.md     # Sample agent skill
 ├── agent/agents/sample-agent/PROMPT.md    # Sample sub-agent prompt
 ├── hook/hooks/                            # Lifecycle hook
@@ -208,8 +207,8 @@ The `.tgz` files are written to `dist/`.
 
 ```text
 extensions/org/my-extension/
-├── extension.json          # Unified manifest (generates Gemini ext + Claude plugin)
-├── gemini-extension.json   # Legacy Gemini-only manifest (optional)
+├── extension.json          # The ONLY manifest — renders every CLI's file (spec 0173).
+│                           #   gemini-extension.json is a build output; never committed.
 ├── package.json            # npm package (dependencies, build script)
 ├── tsconfig.json           # TypeScript configuration
 ├── GEMINI.md               # Agent context for Gemini CLI
@@ -217,7 +216,7 @@ extensions/org/my-extension/
 ├── README.md               # Documentation
 ├── src/                    # MCP server source (TypeScript)
 │   └── index.ts
-├── commands/               # Slash command .toml files
+├── commands/               # Slash command pivot sources (.md); the rendered .toml is a build output
 ├── skills/                 # Agent skill directories (SKILL.md)
 ├── agents/                 # Sub-agent prompts (PROMPT.md)
 └── hooks/                  # Lifecycle hooks (hooks.json + scripts)
