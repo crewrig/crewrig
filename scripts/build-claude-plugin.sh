@@ -16,9 +16,13 @@ command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: br
 # Shared pivot helpers (spec 0042). The Claude plugin command form is rendered
 # from the pivot `commands/*.md` source — NOT from the Gemini `.toml` output —
 # so this builder consumes the same single source of truth as
-# build-extension-pivot.sh. Sourced for extract_body / yaml_field.
+# scripts/build-extension.sh. Sourced for extract_body / yaml_field.
 # shellcheck source=lib/render-command.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/render-command.sh"
+# Shared manifest accessors (spec 0173): resolve the generic top-level
+# section first, falling back to legacy components.<subject>.* until S5.
+# shellcheck source=lib/extension-manifest.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/extension-manifest.sh"
 
 EXT_ARG="${1:?Usage: build-claude-plugin.sh <extension-dir-or-name> [output-dir]}"
 
@@ -118,8 +122,8 @@ if [ -n "$CLAUDE_CONTEXT" ] && [ -f "$EXT_DIR/$CLAUDE_CONTEXT" ]; then
 fi
 
 # --- Copy skills ---
-SKILLS_ENABLED=$(jq -r '.components.skills.enabled // false' "$MANIFEST" 2>/dev/null)
-SKILLS_LOCATION=$(jq -r '.components.skills.location // "skills/"' "$MANIFEST" 2>/dev/null)
+SKILLS_ENABLED=$(ext_subject_present "$MANIFEST" skills)
+SKILLS_LOCATION=$(ext_subject_location "$MANIFEST" skills "skills/")
 if [ "$SKILLS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$SKILLS_LOCATION" ]; then
   mkdir -p "$OUTPUT_DIR/skills"
   for skill_dir in "$EXT_DIR/$SKILLS_LOCATION"*/; do
@@ -139,9 +143,9 @@ fi
 # single-quoted legacy `.toml`. The `convertToSkills` manifest flag is kept by
 # name (a rename is sibling spec 0044 scope); post-flip it means "render pivot
 # `.md` → Claude skill", not "convert `.toml` → skill".
-COMMANDS_ENABLED=$(jq -r '.components.commands.enabled // false' "$MANIFEST" 2>/dev/null)
-CONVERT_TO_SKILLS=$(jq -r '.components.commands.convertToSkills // false' "$MANIFEST" 2>/dev/null)
-COMMANDS_LOCATION=$(jq -r '.components.commands.location // "commands/"' "$MANIFEST" 2>/dev/null)
+COMMANDS_ENABLED=$(ext_subject_present "$MANIFEST" commands)
+CONVERT_TO_SKILLS=$(ext_subject_option "$MANIFEST" commands convertToSkills false)
+COMMANDS_LOCATION=$(ext_subject_location "$MANIFEST" commands "commands/")
 if [ "$COMMANDS_ENABLED" = "true" ] && [ "$CONVERT_TO_SKILLS" = "true" ] && [ -d "$EXT_DIR/$COMMANDS_LOCATION" ]; then
   command -v yq >/dev/null 2>&1 || { echo "Error: yq is required to render pivot commands. Install with: brew install yq"; exit 1; }
   DEFAULT_TOOLS=$(jq -r '.claude.defaultAllowedTools // [] | join("\n")' "$MANIFEST" 2>/dev/null)
@@ -182,8 +186,8 @@ fi
 # plugin, where Claude Code registers them as bogus extra agents (issue #600).
 # Copy only the files matched by the manifest's `claude.agents` glob array
 # (default: agents/*/AGENT.md), file by file, preserving the relative path.
-AGENTS_ENABLED=$(jq -r '.components.agents.enabled // false' "$MANIFEST" 2>/dev/null)
-AGENTS_LOCATION=$(jq -r '.components.agents.location // "agents/"' "$MANIFEST" 2>/dev/null)
+AGENTS_ENABLED=$(ext_subject_present "$MANIFEST" agents)
+AGENTS_LOCATION=$(ext_subject_location "$MANIFEST" agents "agents/")
 if [ "$AGENTS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$AGENTS_LOCATION" ]; then
   AGENTS_GLOBS=$(jq -r '.claude.agents // [] | .[]' "$MANIFEST" 2>/dev/null)
   if [ -z "$AGENTS_GLOBS" ]; then

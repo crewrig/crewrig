@@ -1,7 +1,7 @@
 ---
 id: "0042"
 slug: extension-pivot-render
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1004

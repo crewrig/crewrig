@@ -6,6 +6,9 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-install}"
 EXT="$2"
 
+# shellcheck source=lib/extension-manifest.sh
+. "$REPO_DIR/scripts/lib/extension-manifest.sh"
+
 # Extensions live under extensions/<tier>/<name>/. The tier is a SOURCE-side
 # organization concern: the install TARGET ($GEMINI_HOME/extensions/<name>)
 # stays flat — the tier is never reflected in the installed extension's name.
@@ -42,16 +45,28 @@ do_install() {
     echo "Error: extension '$name' not found." >&2
     return 1
   }
+
+  # Render before installing/linking (spec 0173 delta-01 R7/R20): nothing
+  # generated is committed on the primary branch, so the source tree alone
+  # has no gemini-extension.json to serve. Both modes move together — a
+  # `link` into the source tree would symlink an extension with no manifest,
+  # which is broken by construction rather than merely unsupported.
+  bash "$REPO_DIR/scripts/build-extension.sh" --target gemini "$name" >&2 || {
+    echo "Error: rendering extension '$name' failed." >&2
+    return 1
+  }
+  src="$(ext_build_dir "$REPO_DIR" "$name")"
+
   target="$GEMINI_HOME/extensions/$name"
 
   [ -e "$target" ] || [ -L "$target" ] && rm -rf "$target"
 
   if [ "$MODE" = "link" ]; then
     ln -s "$src" "$target"
-    echo "  Linked: $name"
+    echo "  Linked: $name (build directory)"
   else
     cp -rf "$src" "$target"
-    echo "  Copied: $name"
+    echo "  Copied: $name (build directory)"
   fi
 }
 

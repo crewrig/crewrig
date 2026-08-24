@@ -51,12 +51,41 @@ mkdir -p "$TARGET"
 cp -r "$SKELETON_DIR/base/." "$TARGET/"
 
 # --- Add selected components ---
+# component_subject <comp> — the generic-manifest subject key a skeleton
+# component directory corresponds to, for the enablement flip below. Empty
+# for mcp-server/theme, which merge a whole-fragment (mcpServers / gemini.themes)
+# rather than toggling a components.<subject>.enabled boolean.
+component_subject() {
+  case "$1" in
+    command) echo "commands" ;;
+    skill)   echo "skills" ;;
+    agent)   echo "agents" ;;
+    hook)    echo "hooks" ;;
+    *)       echo "" ;;
+  esac
+}
+
 while IFS= read -r comp; do
   [ -z "$comp" ] && continue
   COMP_DIR="$SKELETON_DIR/$comp"
   if [ -d "$COMP_DIR" ]; then
     cp -r "$COMP_DIR/." "$TARGET/"
     echo "  Added: $comp"
+    # Flip the matching components.<subject>.enabled toggle in the scaffolded
+    # extension.json — the base skeleton ships every subject disabled, and
+    # copying the component's files alone never turned it on (a pre-existing
+    # gap: it silently never mattered for Gemini before spec 0173, since the
+    # retired build-extension-pivot.sh discovered by commands/ directory
+    # presence rather than by the manifest, and the plugin builders already
+    # required this same flag). Under the render model every target now
+    # reads it uniformly (scripts/lib/extension-manifest.sh
+    # ext_subject_present), so a selected component that stays disabled would
+    # render on no target at all.
+    subj="$(component_subject "$comp")"
+    if [ -n "$subj" ] && command -v jq >/dev/null 2>&1; then
+      jq --arg s "$subj" '.components[$s].enabled = true' "$TARGET/extension.json" > "$TARGET/extension.json.tmp" \
+        && mv "$TARGET/extension.json.tmp" "$TARGET/extension.json"
+    fi
   fi
 done <<< "$COMPONENTS"
 
@@ -68,32 +97,34 @@ find "$TARGET" -type f | while read -r file; do
   fi
 done
 
-# --- Merge MCP server config into both manifests if selected ---
-# Spec 0044 requires extension.json and gemini-extension.json to agree, so
-# each fragment lands in BOTH (the double-write goes away once
-# gemini-extension.json becomes generated — tracked by #725).
+# --- Merge MCP server config into the manifest if selected ---
+# extension.json is the single generic root manifest (spec 0173 R1);
+# gemini-extension.json is a BUILD output under the render-at-publication
+# model (spec 0173 delta-01) and no longer exists in the skeleton (step 8),
+# so the fragment merges the ONE manifest that exists. This is a hard break,
+# not a preference: with no second manifest present, the prior two-manifest
+# loop's `jq -s` would run against a non-existent first input and error under
+# `set -e` (:2) on every scaffold selecting mcp-server or theme.
 if echo "$COMPONENTS" | grep -q "mcp-server"; then
   FRAGMENT="$TARGET/mcp-server.json.fragment"
   if [ -f "$FRAGMENT" ] && command -v jq >/dev/null 2>&1; then
-    for MANIFEST in "$TARGET/extension.json" "$TARGET/gemini-extension.json"; do
-      jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
-      mv "$MANIFEST.tmp" "$MANIFEST"
-    done
+    MANIFEST="$TARGET/extension.json"
+    jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
+    mv "$MANIFEST.tmp" "$MANIFEST"
     rm -f "$FRAGMENT"
-    echo "  Merged: MCP server config into both manifests"
+    echo "  Merged: MCP server config into extension.json"
   fi
 fi
 
-# --- Merge theme config into both manifests if selected ---
+# --- Merge theme config into the manifest if selected ---
 if echo "$COMPONENTS" | grep -q "theme"; then
   FRAGMENT="$TARGET/theme.json.fragment"
   if [ -f "$FRAGMENT" ] && command -v jq >/dev/null 2>&1; then
-    for MANIFEST in "$TARGET/extension.json" "$TARGET/gemini-extension.json"; do
-      jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
-      mv "$MANIFEST.tmp" "$MANIFEST"
-    done
+    MANIFEST="$TARGET/extension.json"
+    jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
+    mv "$MANIFEST.tmp" "$MANIFEST"
     rm -f "$FRAGMENT"
-    echo "  Merged: theme config into both manifests"
+    echo "  Merged: theme config into extension.json"
   fi
 fi
 
@@ -103,4 +134,5 @@ echo ""
 echo "Next steps:"
 echo "  cd extensions/$TIER/$NAME"
 echo "  npm install"
-echo "  task link-extensions"
+echo "  task install-gemini-extension EXT=$NAME"
+echo "  (debugging: task link-gemini-extension-build EXT=$NAME)"

@@ -1,6 +1,0 @@
-description = "Quick greeting from the hello-world extension"
-
-prompt = """
-
-Say hello! This prompt comes from the hello-world extension.
-"""

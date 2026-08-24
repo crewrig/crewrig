@@ -27,7 +27,11 @@ assert_eq() {
 assert_contains() {
   local haystack="$1" needle="$2" label="$3"
   TESTS_RUN=$((TESTS_RUN + 1))
-  if echo "$haystack" | grep -Fq "$needle"; then
+  # Pure-bash containment: `echo | grep -Fq` under pipefail turns an EARLY
+  # match into a false FAIL — grep exits on match, echo takes SIGPIPE (141),
+  # and pipefail reports the pipeline failed. Timing-dependent: green locally,
+  # red on CI once the haystack outgrows the pipe buffer.
+  if [[ "$haystack" == *"$needle"* ]]; then
     echo "  PASS: $label"
     TESTS_PASSED=$((TESTS_PASSED + 1))
   else
@@ -77,9 +81,18 @@ assert_eq 1 "$all_skip_code" "Exits 1 when all CLI targets are skipped"
 assert_contains "$all_skip_out" "[SKIPPED]" "Reports SKIPPED for targets"
 assert_contains "$all_skip_out" "all 4 target(s) were skipped" "Summarizes all targets skipped"
 
-# Test 5: Partial install with mock Gemini only
+# Test 5: Partial install with mock Gemini only.
+# Under spec 0173 delta-01, install-extension.sh renders (scripts/build-extension.sh)
+# before installing, so this case's Gemini branch now needs jq and yq on PATH.
+# Symlinking the two binaries into $FAKE_BIN (rather than appending their real
+# directory to PATH) is deliberate: on a host where jq/yq happen to share a
+# directory with claude/copilot/agy (any Homebrew install, for one), appending
+# that directory would make command -v find those CLIs too and defeat the
+# very absence this restricted PATH exists to force.
+ln -sf "$(command -v jq)" "$FAKE_BIN/jq"
+ln -sf "$(command -v yq)" "$FAKE_BIN/yq"
 set +e
-gemini_only_out="$(PATH="/usr/bin:/bin" GEMINI_HOME="$FAKE_GEMINI_HOME" bash "$REPO_DIR/scripts/install-extension-all.sh" hello-world 2>&1)"
+gemini_only_out="$(PATH="/usr/bin:/bin:$FAKE_BIN" GEMINI_HOME="$FAKE_GEMINI_HOME" bash "$REPO_DIR/scripts/install-extension-all.sh" hello-world 2>&1)"
 gemini_only_code=$?
 set -e
 assert_eq 0 "$gemini_only_code" "Exits 0 when at least one CLI is present and installed"
@@ -93,6 +106,7 @@ taskfile_content="$(cat "$REPO_DIR/Taskfile.yml")"
 assert_contains "$taskfile_content" "install-gemini-extension:" "Taskfile defines install-gemini-extension"
 assert_contains "$taskfile_content" "install-gemini-extensions:" "Taskfile defines install-gemini-extensions"
 assert_contains "$taskfile_content" "link-gemini-extensions:" "Taskfile defines link-gemini-extensions"
+assert_contains "$taskfile_content" "link-gemini-extension-build:" "Taskfile defines link-gemini-extension-build (debugging path, spec 0173 delta-01 R20)"
 assert_contains "$taskfile_content" "unlink-gemini-extensions:" "Taskfile defines unlink-gemini-extensions"
 assert_contains "$taskfile_content" "install-extension-all:" "Taskfile defines install-extension-all"
 

@@ -1,2 +1,0 @@
-description = "Sample command for ${SKELETON_NAME}"
-prompt = "This is a placeholder prompt from the ${SKELETON_NAME} extension. Replace with your own logic."

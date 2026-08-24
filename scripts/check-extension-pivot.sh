@@ -18,8 +18,15 @@
 #
 #   (a) command-native  — any commands/<stem>.toml with NO sibling
 #                         commands/<stem>.md. The .toml is a GENERATED Gemini
-#                         output (build-extension-pivot.sh); an orphan .toml with
-#                         no pivot .md source is an authored-native command.
+#                         output (scripts/build-extension.sh); an orphan .toml
+#                         with no pivot .md source is an authored-native
+#                         command. Under the render-at-publication model
+#                         (spec 0173 delta-01) a committed .toml under an
+#                         upstream tier is ALSO forbidden outright by
+#                         `bash scripts/build-extension.sh --check` (COMMITTED),
+#                         which runs first in the same PR — so this arm's
+#                         domain is empty in-tree today (Risks 9 of the issue
+#                         #1004 PLAN), not a gap in the guard.
 #   (b) agent structural — any directory under agents/ that lacks an AGENT.md
 #                         (the canonical pivot agent shape per artifacts/FORMAT.md).
 #                         No extension ships an agent today, so there is no live
@@ -97,8 +104,10 @@ if [ "${#failures[@]}" -gt 0 ]; then
   echo "Per spec 0042 R1/R7, every skill, agent, and command under an upstream-owned"
   echo "extension tier (extensions/core, extensions/library) MUST be authored in the"
   echo "pivot source format:"
-  echo "  - command → commands/<name>.md  (the .toml is a GENERATED Gemini output:"
-  echo "    run 'bash scripts/build-extension-pivot.sh' to regenerate it)"
+  echo "  - command → commands/<name>.md  (the .toml is a GENERATED Gemini output"
+  echo "    under the render-at-publication model — spec 0173 delta-01 — and MUST"
+  echo "    NOT be committed; delete it and reach it through one of the delivery"
+  echo "    paths in extension-skeleton/EXTENSION-FORMAT.md instead)"
   echo "  - agent   → agents/<name>/AGENT.md"
   echo "  - skill   → skills/<name>/SKILL.md"
   exit 1

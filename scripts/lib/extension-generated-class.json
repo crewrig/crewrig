@@ -1,0 +1,6 @@
+{
+  "manifest_class": ["claude-extension.json", "gemini-extension.json",
+                     "copilot-extension.json", "antigravity-extension.json",
+                     ".github/copilot/extension.json"],
+  "generated_globs": ["commands/*.toml", "observed-gaps.json"]
+}

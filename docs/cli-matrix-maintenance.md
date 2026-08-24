@@ -84,24 +84,28 @@ Deferring any of the above to a follow-up ticket requires **explicit
 prior user authorization** captured in the PR or its linked logbook
 issue. Agent-initiated deferral of a symmetric script is prohibited.
 
-**Extension render symmetric pair (spec 0042).** Extension components
-are rendered to their per-CLI consumed forms by a CLI-split pair that
-shares `scripts/lib/render-command.sh`:
+**Extension render symmetric pair (spec 0042, as amended by
+`specs/0042-extension-pivot-render.delta-01.md` and spec 0173).** Extension
+components are rendered to their per-CLI consumed forms by a CLI-split pair
+that shares `scripts/lib/render-command.sh`, both dispatched from the single
+entry point `scripts/build-extension.sh`:
 
 - `scripts/build-claude-plugin.sh` — Claude side. Renders the pivot
   `commands/<name>.md` into an **ephemeral** plugin skill at install
   time (Claude builds a plugin).
-- `scripts/build-extension-pivot.sh` — Gemini side, the symmetric
-  counterpart. Renders the pivot `.md` into a **committed**
-  `commands/<name>.toml` sibling, because Gemini loads the extension
-  tree in place with no install-time render hook (cli-matrix row 13).
+- `scripts/build-extension.sh --target gemini` — Gemini side, the
+  symmetric counterpart. Renders the pivot `.md` into
+  `build/extensions/<name>/commands/<name>.toml`, an **ephemeral build
+  output** — never a committed sibling — because Gemini loads an
+  extension installed from that build tree, and the tree it loads has no
+  install-time render hook of its own (cli-matrix row 13).
 
 A change to either renderer, or to the shared `render-command.sh`
 library, MUST keep this pair in sync in the same PR; the
-`build-extension-pivot.sh --check` drift gate and
-`scripts/check-extension-pivot.sh` (R1/R7 guard) enforce that the
-committed Gemini output never diverges from the pivot and that no
-extension component is authored CLI-native instead of pivot. Copilot
-has no extension command/agent surface (rows 13/14/17), so it is a
-**documented gap** here, not a third script — recording it satisfies
-the gap-acceptance evidence rule above.
+`bash scripts/build-extension.sh --check` guard and
+`scripts/check-extension-pivot.sh` (R1/R7 guard) enforce that no
+generated Gemini output is ever committed, that a fresh render matches
+the declared set, and that no extension component is authored CLI-native
+instead of pivot. Copilot has no extension command/agent surface (rows
+13/14/17), so it is a **documented gap** here, not a third script —
+recording it satisfies the gap-acceptance evidence rule above.

@@ -10,24 +10,12 @@
       ]
     }
   },
-  "components": {
-    "commands": {
-      "enabled": true,
-      "location": "commands/",
-      "convertToSkills": true
-    },
-    "skills": {
-      "enabled": true,
-      "location": "skills/"
-    },
-    "agents": {
-      "enabled": false,
-      "location": "agents/"
-    },
-    "hooks": {
-      "enabled": false,
-      "location": "hooks/"
-    }
+  "commands": {
+    "location": "commands/",
+    "convertToSkills": true
+  },
+  "skills": {
+    "location": "skills/"
   },
   "gemini": {
     "contextFileName": "GEMINI.md",

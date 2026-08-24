@@ -1,25 +1,39 @@
 #!/bin/bash
 # check-extension-manifest-version.sh — Enforce a single authoritative version
-# per extension across its sibling manifests (spec 0044, R5/R6).
+# per extension across its sibling manifests (spec 0044, R5/R6, as amended by
+# specs/0044-extension-versioning-manifest.delta-01.md R6/R8/R10).
 #
-# An extension can ship up to three manifests in its directory:
+# An extension can ship up to two COMMITTED manifests in its directory:
 #   - package.json           (npm workspace manifest, AUTHORITATIVE)
-#   - extension.json         (Claude/native per-extension manifest, cli-matrix row 17)
-#   - gemini-extension.json  (Gemini per-extension manifest, cli-matrix row 17)
+#   - extension.json         (per-extension manifest, cli-matrix row 17)
+#
+# `gemini-extension.json` is no longer a committed sibling — under the
+# render-at-publication model (spec 0173 delta-01) it is a BUILD output, and a
+# committed instance of it fails scripts/build-extension.sh --check instead
+# (arm COMMITTED). The 0044 delta-01 content-gate decision is that a check
+# whose subject disappears is REMOVED, not left green over nothing (R8): the
+# arm that used to compare `gemini-extension.json` against the authoritative
+# version is gone from this guard, and the property it asserted is carried,
+# in the same change, by scripts/build-extension.sh --check arm
+# VERSION-DRIFT on the BUILT manifest (spec 0173 delta-01 R11). This guard's
+# scope now follows the committed manifest set (R6 as amended): only
+# `extension.json` is checked here.
 #
 # package.json is elected as the single source of truth because it is the ONLY
 # manifest the release driver writes back and tags from
 # (scripts/monorepo-release.sh: `@semantic-release/git` `assets` + `tagFormat`
-# `${EXT_NAME}-v${version}`). The release driver was taught (spec 0044) to sync
-# extension.json and gemini-extension.json to the same version in lockstep, so
-# this static guard stays green across release commits.
+# `${EXT_NAME}-v${version}`). The release driver still iterates
+# `package.json extension.json gemini-extension.json` (spec 0044 delta-01
+# *Notes*: its own re-specification is deferred to S5, issue #1008) — the
+# third iteration is now a no-op wherever `gemini-extension.json` is absent,
+# guarded by `[ -f "$m" ] &&` at scripts/monorepo-release.sh:72.
 #
 # This guard is STATIC (diff-free): it walks the whole tree on every run and
-# fails when any sibling manifest of an extension declares a `version` that
-# differs from that extension's authoritative package.json `version`. Like the
-# 0043 provenance guard, being static makes it safe on both `push` and
-# `pull_request` and catches drift regardless of how it was introduced (a
-# release commit, a manual edit, a botched merge).
+# fails when the committed extension.json of an extension declares a
+# `version` that differs from that extension's authoritative package.json
+# `version`. Like the 0043 provenance guard, being static makes it safe on
+# both `push` and `pull_request` and catches drift regardless of how it was
+# introduced (a release commit, a manual edit, a botched merge).
 #
 # Scope — upstream-owned tiers (extensions/core, extensions/library), matching
 # the sibling guards; extensions/org is adopter-owned ⇒ EXEMPT.
@@ -48,9 +62,10 @@ TIER_ROOTS=(
 )
 
 # Sibling manifests checked against the authoritative package.json version.
+# gemini-extension.json is deliberately absent: it is a build output, not a
+# committed sibling (spec 0044 delta-01 R8) — see the header comment.
 SIBLINGS=(
   "extension.json"
-  "gemini-extension.json"
 )
 
 checked=0
@@ -105,10 +120,12 @@ if [ "${#failures[@]}" -gt 0 ]; then
     echo "  - $f"
   done
   echo ""
-  echo "Per spec 0044, an extension's package.json version is authoritative; its"
-  echo "extension.json and gemini-extension.json siblings MUST declare the SAME"
-  echo "version. The release driver (scripts/monorepo-release.sh) syncs all three"
-  echo "in lockstep, so post-release drift means a manual edit fell out of step."
+  echo "Per spec 0044 (as amended by delta-01), an extension's package.json version"
+  echo "is authoritative; its committed extension.json sibling MUST declare the SAME"
+  echo "version (gemini-extension.json is a build output, asserted separately by"
+  echo "'bash scripts/build-extension.sh --check'). The release driver"
+  echo "(scripts/monorepo-release.sh) syncs both in lockstep, so post-release drift"
+  echo "means a manual edit fell out of step."
   exit 1
 fi
 
