@@ -278,17 +278,6 @@ other generated-output-class member.
       "name": "Your Name"
     },
 
-    // Glob patterns for skill directories to include in the plugin.
-    // deferred:S5 — full skeleton/reference migration.
-    "skills": ["skills/*/SKILL.md"],
-
-    // Glob patterns for agent definitions to include (default:
-    // agents/*/AGENT.md when empty — issue #600). deferred:S5.
-    "agents": [],
-
-    // Additional rule files to include with the plugin. deferred:S5.
-    "rules": [],
-
     // Default allowed-tools applied to skills from this extension
     // when they don't define their own. cli-only-concept.
     "defaultAllowedTools": ["Read", "Write", "Edit", "Bash"],
