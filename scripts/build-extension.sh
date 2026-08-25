@@ -324,13 +324,33 @@ render_extension() {
     local gap_dir
     gap_dir="$(ext_gap_dir "$REPO_DIR" "$name")"
     mkdir -p "$gap_dir"
-    # spec 0179 step 14 — fd 3 now carries one compact JSON object per line
-    # (subject, target, reason, and — for a hook gap — hook/event/part) in
-    # place of the retired "@"-joined positional string: a positional parse
-    # collapses on any value containing the delimiter (a hook command is
-    # unconstrained), and #1006/#1007 extend this same record at their own
-    # granularities, which a self-describing line protocol lets them do by
-    # appending fields rather than renegotiating positions.
+    # THE WIRE CONTRACT (spec 0179 step 14 — shared with #1006/#1007, whose
+    # DEVs read this merged diff, not the plan text, as the contract):
+    #
+    #   fd 3 carries NDJSON — one COMPACT (`jq -c`) JSON object per line.
+    #   Every emitter (ext_hooks_gaps below; the `context` gap loops above)
+    #   writes with `jq -c -n --arg ...` — never string interpolation — so a
+    #   value containing '"', '@' or a newline can never corrupt the line
+    #   boundary the parse below depends on. Every entry carries `subject`
+    #   and `target`; a hook-granular entry additionally carries `hook`,
+    #   `event` and `part` (`"event"` | `"matcher"`). Sibling tickets extend
+    #   this by ADDING fields, never by changing the framing.
+    #
+    #   Parsed here with `jq -R -s 'split("\n") | ... | map(fromjson)'` —
+    #   raw input, split on literal newlines, each line parsed on its own —
+    #   rather than the equivalent-looking `jq -s '.'` (jq's native
+    #   multi-value stream slurp, which also happens to accept NDJSON, since
+    #   consecutive JSON values separated only by whitespace are valid
+    #   input to it). The two are NOT equivalent on a malformed line: `jq -s`
+    #   parses "the next JSON value," so a value some future writer
+    #   accidentally pretty-prints across several lines still parses
+    #   silently, quietly breaking the "one compact object per LINE"
+    #   contract without any error. Splitting on "\n" first and calling
+    #   `fromjson` per line enforces that contract structurally — a
+    #   multi-line value fails loudly right here instead of surfacing as a
+    #   confusing downstream `check_gaps` key mismatch. If you extend this
+    #   record, keep both the emitter (`jq -c -n --arg`) and this parse
+    #   invocation exactly as documented; do not swap either independently.
     jq -R -s '
       split("\n") | map(select(length > 0)) | map(fromjson)
     ' "$gap_file" > "$gap_dir/observed-gaps.json"
