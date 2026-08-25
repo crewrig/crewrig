@@ -17,6 +17,9 @@
   "skills": {
     "location": "skills/"
   },
+  "agents": {
+    "location": "agents/"
+  },
   "context": {
     "source": "CONTEXT.md"
   },

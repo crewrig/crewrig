@@ -127,6 +127,7 @@ CLAUDE.md
 package.json
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
+agents/reference-guide/AGENT.md
 hooks/hooks.json
 hooks/prompt-logger.sh
 hooks/shell-logger.sh
@@ -140,6 +141,7 @@ package.json
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
 skills/hello-world-context/SKILL.md
+agents/reference-guide.agent.md
 hooks.json
 hooks/prompt-logger.sh
 hooks/shell-logger.sh
@@ -153,6 +155,7 @@ mcp_config.json
 rules/AGENTS.md
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
+agents/reference-guide/AGENT.md
 hooks.json
 hooks/prompt-logger.sh
 hooks/shell-logger.sh
