@@ -192,6 +192,10 @@ tasks:
         msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
     cmd: bash {{.REPO_DIR}}/scripts/create-extension.sh
 
+  migrate-extension:
+    desc: "Convert an extension source tree from the retired declaration shape to the current one (task migrate-extension EXT=my-ext, spec 0183)"
+    cmd: bash {{.REPO_DIR}}/scripts/migrate-extension.sh {{.EXT}}
+
   # --- Claude Code tasks ---
 
   setup-claude-interactive:
