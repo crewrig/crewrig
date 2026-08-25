@@ -132,6 +132,35 @@ target) rather than a content digest — this one-time proof is what
 establishes the content-level baseline the permanent guard does not itself
 re-assert on every run.
 
+## Addendum — 2026-08-25 (spec 0180, issue #1006)
+
+The evidence above — Gemini CLI resolves `${extensionPath}` and does not
+resolve a bare relative path — is unchanged and remains the grounding for
+requirement 7's Gemini resolver. Two of this file's own forward-looking
+statements are now stale and are corrected here rather than silently edited,
+per the project's append-only convention:
+
+- **"`extensions/core/hello-world/extension.json`'s `mcpServers.default.args`
+  already carries this form"** (line 87-89, this section) is no longer true.
+  Spec 0180 introduces ONE neutral path token, `${extensionRoot}`, shared
+  across all four targets rather than each extension author declaring a
+  Gemini-specific token directly; `hello-world` now declares
+  `${extensionRoot}/dist/index.js`, and the render rewrites it to
+  `${extensionPath}/dist/index.js` for Gemini specifically (see
+  `ext_mcp_native` in `scripts/lib/extension-manifest.sh`) — the delivered
+  Gemini output is unchanged, only the AUTHORING vocabulary moved.
+- **"`scripts/build-extension.sh` passes a declared `args` value through to
+  the built manifest verbatim — the render does not itself resolve or
+  rewrite the form"** (same section) is no longer true in general: the
+  render now rewrites the ONE admissible token (`${extensionRoot}`) per
+  target. It remains true that no OTHER string in `args` is altered — a
+  bare relative path, or any token content besides `${extensionRoot}`, still
+  passes through unchanged (or is refused at validation time if it names an
+  inadmissible target-specific token — spec 0180 R6/R9).
+
+Both Arm A and Arm B above stand as recorded; this addendum only updates
+which vocabulary an extension author writes to reach Arm B's resolved form.
+
 ## Corroboration (not re-derived here)
 
 The third-party `gemini-cli-security` extension's absolute-path observation,

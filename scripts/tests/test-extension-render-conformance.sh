@@ -3,7 +3,8 @@
 # requirement 15, as amended by
 # specs/0173-extension-declaration-model.delta-01.md ("build against build":
 # no committed command form serves as the baseline any more, since the
-# companion delta on spec 0042 de-commits it).
+# companion delta on spec 0042 de-commits it), and for spec 0180's
+# requirement 18 (extension-scoped MCP server declaration, issue #1006).
 #
 # Asserts the FILE SET each of the four builders produces for the reference
 # extension (hello-world) against a human-readable list of expected relative
@@ -21,6 +22,20 @@
 # --update-golden escape hatch, and the test cannot degrade into a rubber
 # stamp.
 #
+# SANDBOXED since spec 0180 (PLAN v5 step 12, v2-F3 corrected): hello-world
+# now declares an MCP server whose command names a build-output artifact
+# (dist/index.js), and the reference extension's REAL dist/ is a gitignored
+# `tsc` output this test must never write to or delete — cleanup() here fires
+# BEFORE every render, so touching the real dist/ would destroy a developer's
+# actual local build on the very first run. A full copy of scripts/,
+# extension-skeleton/ and extensions/{core,library,org}/ into a mktemp'd
+# sandbox (the same idiom scripts/tests/test-build-extension.sh's
+# make_sandbox() uses) means the render's own REPO_DIR resolution keys
+# entirely on the sandbox, a throwaway dist/index.js stub can be dropped into
+# the SANDBOX's copy of hello-world with no risk to the real tree, and no
+# node/tsc runtime is ever needed (the extension-render CI capability
+# declares tools: [jq, yq] only).
+#
 # Usage:
 #   bash scripts/tests/test-extension-render-conformance.sh
 #
@@ -30,13 +45,17 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-RENDER="$SCRIPT_DIR/build-extension.sh"
+RENDER_REL="scripts/build-extension.sh"
 GENERATED_CLASS="$SCRIPT_DIR/lib/extension-generated-class.json"
 EXT_NAME="hello-world"
-EXT_DIR="$REPO_DIR/extensions/core/$EXT_NAME"
+REAL_EXT_DIR="$REPO_DIR/extensions/core/$EXT_NAME"
 
-if [ ! -f "$RENDER" ]; then
-  echo "FATAL: cannot find $RENDER" >&2
+if [ ! -f "$SCRIPT_DIR/build-extension.sh" ]; then
+  echo "FATAL: cannot find $SCRIPT_DIR/build-extension.sh" >&2
+  exit 2
+fi
+if [ ! -d "$REAL_EXT_DIR" ]; then
+  echo "FATAL: cannot find $REAL_EXT_DIR" >&2
   exit 2
 fi
 
@@ -45,18 +64,46 @@ fail=0
 ok() { echo "PASS  $1"; pass=$((pass + 1)); }
 ng() { echo "FAIL  $1"; fail=$((fail + 1)); }
 
-# Clean start — every one of these roots is gitignored (.gitignore:16-18,52,55)
-# and none is tracked, so removing them before the render is not a
-# working-tree mutation.
-CLAUDE_OUT="$EXT_DIR/dist-claude-plugin"
-COPILOT_OUT="$REPO_DIR/dist-copilot-plugin"
-ANTIGRAVITY_OUT="$REPO_DIR/dist-antigravity-plugin"
-GEMINI_BUILD="$REPO_DIR/build"
-cleanup() { rm -rf "$CLAUDE_OUT" "$COPILOT_OUT" "$ANTIGRAVITY_OUT" "$GEMINI_BUILD"; }
-trap cleanup EXIT
-cleanup
+TMP_ROOT="$(mktemp -d)"
+trap 'rm -rf "$TMP_ROOT"' EXIT
 
-render_out="$( cd "$REPO_DIR" && bash "$RENDER" --target all "$EXT_NAME" 2>&1 )"
+# make_sandbox — a fresh mktemp'd copy of scripts/, extension-skeleton/ and
+# extensions/{core,library,org}/ (the real committed trees, so hello-world's
+# actual hooks/commands/skills fixtures come along unchanged), so RENDER's
+# own REPO_DIR resolution keys entirely on the sandbox and the real repo tree
+# is never touched. Echoes the sandbox path.
+make_sandbox() {
+  local sandbox
+  sandbox="$(mktemp -d "$TMP_ROOT/sandbox.XXXXXX")"
+  cp -r "$SCRIPT_DIR" "$sandbox/scripts"
+  cp -r "$REPO_DIR/extension-skeleton" "$sandbox/extension-skeleton"
+  mkdir -p "$sandbox/extensions/core" "$sandbox/extensions/library" "$sandbox/extensions/org"
+  cp -r "$REPO_DIR/extensions/core" "$sandbox/extensions/"
+  cp -r "$REPO_DIR/extensions/library" "$sandbox/extensions/" 2>/dev/null || true
+  cp -r "$REPO_DIR/extensions/org" "$sandbox/extensions/" 2>/dev/null || true
+  echo "$sandbox"
+}
+
+SANDBOX="$(make_sandbox)"
+EXT_DIR="$SANDBOX/extensions/core/$EXT_NAME"
+
+# The dist/index.js stub (spec 0180 R16's artifact-travels-with-declaration
+# assertion needs a real file to find; compiling the real TypeScript source
+# is explicitly out of scope for this render — spec 0180 "Out of scope").
+# Lives ONLY in the sandbox, dies with $TMP_ROOT.
+mkdir -p "$EXT_DIR/dist"
+cat > "$EXT_DIR/dist/index.js" <<'EOF'
+// Fixture stub for scripts/tests/test-extension-render-conformance.sh
+// (spec 0180 R16). Not a real MCP server — proves the artifact-copy path
+// carries what the declaration names, never executed.
+EOF
+
+CLAUDE_OUT="$EXT_DIR/dist-claude-plugin"
+COPILOT_OUT="$SANDBOX/dist-copilot-plugin"
+ANTIGRAVITY_OUT="$SANDBOX/dist-antigravity-plugin"
+GEMINI_BUILD="$SANDBOX/build"
+
+render_out="$( cd "$SANDBOX" && bash "$RENDER_REL" --target all "$EXT_NAME" 2>&1 )"
 render_rc=$?
 if [ "$render_rc" -eq 0 ]; then
   ok "render --target all exits 0 for $EXT_NAME"
@@ -82,25 +129,31 @@ skills/hello/SKILL.md
 hooks/hooks.json
 hooks/prompt-logger.sh
 hooks/shell-logger.sh
+dist/index.js
 EOF
 
 read -r -d '' EXPECTED_COPILOT <<'EOF' || true
 plugin.json
+.mcp.json
+package.json
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
 hooks.json
 hooks/prompt-logger.sh
 hooks/shell-logger.sh
+dist/index.js
 EOF
 
 read -r -d '' EXPECTED_ANTIGRAVITY <<'EOF' || true
 package.json
 plugin.json
+mcp_config.json
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
 hooks.json
 hooks/prompt-logger.sh
 hooks/shell-logger.sh
+dist/index.js
 EOF
 
 # assert_file_set <label> <root-dir> <expected-heredoc>
@@ -156,6 +209,102 @@ else
   ng "Gemini in-place — build/extensions/$EXT_NAME was not produced"
 fi
 
+# --- spec 0180 R18(i), second half — content: the declared server NAME must
+# actually be present, not merely an empty {} the file-set check would not
+# catch. hello-world declares exactly one server, "default". ---
+declared_mcp_names="$(jq -r '.mcpServers // {} | keys[]' "$EXT_DIR/extension.json" 2>/dev/null)"
+assert_mcp_server_names() {
+  # assert_mcp_server_names <label> <file> — data-driven from the SANDBOX's
+  # own extension.json (never hardcoded), so a manifest that later declares
+  # a second server is covered automatically and a target's emitter that
+  # drops just ONE of several declared servers is caught, not only a target
+  # that drops all of them.
+  local label="$1" file="$2" name missing=""
+  if [ ! -f "$file" ]; then
+    ng "$label — $file was not produced, cannot check declared server name(s)"
+    return
+  fi
+  while IFS= read -r name; do
+    [ -z "$name" ] && continue
+    jq -e --arg n "$name" '(.mcpServers // {}) | has($n)' "$file" >/dev/null 2>&1 \
+      || missing="$missing $name"
+  done <<< "$declared_mcp_names"
+  if [ -z "$missing" ]; then
+    ok "$label — rendered output carries every declared server name ($declared_mcp_names)"
+  else
+    ng "$label — rendered output at $file is missing declared server name(s):$missing"
+  fi
+}
+assert_mcp_server_names "Claude MCP content" "$CLAUDE_OUT/$EXT_NAME/.mcp.json"
+assert_mcp_server_names "Copilot MCP content" "$COPILOT_OUT/$EXT_NAME/.mcp.json"
+assert_mcp_server_names "Antigravity MCP content" "$ANTIGRAVITY_OUT/$EXT_NAME/mcp_config.json"
+assert_mcp_server_names "Gemini MCP content" "$gemini_build_dir/gemini-extension.json"
+
+# --- spec 0180 R18(ii) — no render-time absolute path. Assert ABSENCE of the
+# repo root (here, the sandbox root — the render-time equivalent of a real
+# checkout), the builder's own OUTPUT_DIR, build/extensions/, dist-*-plugin
+# and $HOME in every rendered MCP output. Absence, not "token presence": a
+# declaration carrying BOTH a resolved absolute path and the neutral token
+# would pass a presence-only check. ---
+assert_no_render_time_absolute_path() {
+  # assert_no_render_time_absolute_path <label> <file>
+  local label="$1" file="$2" content needle
+  if [ ! -f "$file" ]; then
+    ng "$label — $file was not produced, cannot check for a render-time absolute path"
+    return
+  fi
+  content="$(cat "$file")"
+  for needle in "$SANDBOX" "$HOME" "build/extensions/" "dist-claude-plugin" "dist-copilot-plugin" "dist-antigravity"; do
+    if [[ "$content" == *"$needle"* ]]; then
+      ng "$label — $file carries the render-time path fragment '$needle'"
+      return
+    fi
+  done
+  ok "$label — no render-time absolute path in $file"
+}
+assert_no_render_time_absolute_path "Claude no-absolute-path" "$CLAUDE_OUT/$EXT_NAME/.mcp.json"
+assert_no_render_time_absolute_path "Copilot no-absolute-path" "$COPILOT_OUT/$EXT_NAME/.mcp.json"
+assert_no_render_time_absolute_path "Antigravity no-absolute-path" "$ANTIGRAVITY_OUT/$EXT_NAME/mcp_config.json"
+assert_no_render_time_absolute_path "Gemini no-absolute-path" "$gemini_build_dir/gemini-extension.json"
+
+# --- spec 0180 R18(iii) — a framework-reserved name is refused. A SEPARATE
+# sandbox (mutating hello-world's own manifest would corrupt the fixture the
+# assertions above depend on). ---
+RESERVED_SANDBOX="$(make_sandbox)"
+RESERVED_EXT_DIR="$RESERVED_SANDBOX/extensions/core/$EXT_NAME"
+mkdir -p "$RESERVED_EXT_DIR/dist"
+echo "// stub" > "$RESERVED_EXT_DIR/dist/index.js"
+jq '.mcpServers.mempalace = {"command": "evil"}' "$RESERVED_EXT_DIR/extension.json" > "$RESERVED_EXT_DIR/extension.json.tmp" \
+  && mv "$RESERVED_EXT_DIR/extension.json.tmp" "$RESERVED_EXT_DIR/extension.json"
+reserved_out="$( cd "$RESERVED_SANDBOX" && bash "$RENDER_REL" --target all "$EXT_NAME" 2>&1 )"
+reserved_rc=$?
+if [ "$reserved_rc" -ne 0 ] && [[ "$reserved_out" == *"$EXT_NAME"* ]] && [[ "$reserved_out" == *"mempalace"* ]]; then
+  ok "Reserved-name rejection — a declared 'mempalace' server makes the render exit non-zero, naming the extension and the reserved name"
+else
+  ng "Reserved-name rejection — expected a non-zero exit naming '$EXT_NAME' and 'mempalace'; got rc=$reserved_rc, output:"$'\n'"$reserved_out"
+fi
+no_target_carries=1
+for f in "$RESERVED_EXT_DIR/dist-claude-plugin/$EXT_NAME/.mcp.json" \
+         "$RESERVED_SANDBOX/dist-copilot-plugin/$EXT_NAME/.mcp.json" \
+         "$RESERVED_SANDBOX/dist-antigravity-plugin/$EXT_NAME/mcp_config.json" \
+         "$RESERVED_SANDBOX/build/extensions/$EXT_NAME/gemini-extension.json"; do
+  if [ -f "$f" ] && jq -e '.mcpServers.mempalace // (.mcpServers // {} | has("mempalace"))' "$f" >/dev/null 2>&1; then
+    no_target_carries=0
+  fi
+done
+if [ "$no_target_carries" -eq 1 ]; then
+  ok "Reserved-name rejection — no target's output carries a server under the reserved name"
+else
+  ng "Reserved-name rejection — a target's output carries the reserved-name server despite the validation failure"
+fi
+
+# --- spec 0180 R16/R18(iv) — no declaration without its artifacts. The
+# exact file-set assertions above already require dist/index.js to be
+# PRESENT in every target that receives a declaration naming it — this is
+# that property's positive proof. Its own mutation (delete the stub from one
+# target's tree; declare a second server naming a second build output and
+# copy only the first) lives in the mutation-testing pass, not here. ---
+
 # --- spec 0179 v2-F1 — RESOLVABILITY: each emitted hook command's resolved
 # path must exist in that target's own rendered tree. An exact file-set
 # match (above) proves the handler files are PRESENT; it does not prove the
@@ -210,8 +359,7 @@ assert_command_resolves "Gemini resolvability" "$gemini_build_dir/hooks/hooks.js
 # match-all form. hello-world's own hooks always declare an explicit
 # matcher, so this needs a dedicated fixture — a sandboxed synthetic
 # extension outside extensions/, rendered directly, cleaned up on exit. ---
-MATCHALL_SANDBOX="$(mktemp -d)"
-trap 'rm -rf "$MATCHALL_SANDBOX"; cleanup' EXIT
+MATCHALL_SANDBOX="$(mktemp -d "$TMP_ROOT/matchall.XXXXXX")"
 MATCHALL_EXT="$MATCHALL_SANDBOX/extensions/core/matchall"
 mkdir -p "$MATCHALL_EXT"
 cat > "$MATCHALL_EXT/extension.json" <<'EOF'

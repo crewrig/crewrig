@@ -158,17 +158,20 @@ read_org_mcp_manifest() {
 
 # org_mcp_to_native <cli> <neutral_mcpservers_json>
 # Pure translator: maps the neutral org `mcpServers` object into the native
-# `mcpServers` object for a file CLI (gemini | copilot | antigravity). Emits the
-# native JSON object on STDOUT only (safe for command substitution); any
-# capability warning goes to STDERR.
+# `mcpServers` object for a file CLI (gemini | copilot | antigravity | claude —
+# widened by spec 0180 to name Claude explicitly: the default arm already
+# emitted Claude's evidenced shapes byte-for-byte, so no branch logic changes
+# with this fourth label, only the contract comment below). Emits the native
+# JSON object on STDOUT only (safe for command substitution); any capability
+# warning goes to STDERR.
 #
 # Grounded native shapes (verified against each CLI's own `mcp add`, temp HOME):
-#   stdio  gemini/antigravity -> {command, args?, env?}   (no "type")
-#          copilot            -> {type:"stdio", command, args?, env?}
+#   stdio  gemini/antigravity/claude -> {command, args?, env?}   (no "type")
+#          copilot                   -> {type:"stdio", command, args?, env?}
 #          (copilot's own `mcp add` writes "type":"local"; the shipped template
 #           and the live mempalace/seqthink entries use "type":"stdio", so we
 #           match the framework's proven convention.)
-#   http/  gemini/copilot     -> {type:<transport>, url, headers?}
+#   http/  copilot/claude     -> {type:<transport>, url, headers?}
 #   sse    antigravity        -> {serverUrl, headers?}   (NOTE: Antigravity's
 #          remote-entry key is `serverUrl`, NOT `url`, and carries no transport
 #          `type` field — one shape covers both http and Streamable-HTTP/SSE.
@@ -180,6 +183,18 @@ read_org_mcp_manifest() {
 #          publicly documented" — the format is now officially documented, so
 #          the earlier remote-transport gap-acceptance is closed. Auth extras
 #          (authProviderType/oauth) are out of scope for this base declaration.)
+#          gemini              -> {httpUrl, headers?} (http) | {url, headers?}
+#          (sse) — no `type`/`transport` key at all; Gemini infers the
+#          transport from WHICH key is present. Grounded against gemini-cli
+#          0.46.0's own schema (bundle/docs/tools/mcp-server.md — "Required
+#          (one of the following)": `command` (Stdio), `url` (SSE), `httpUrl`
+#          (HTTP streaming); no `type`/`transport` key anywhere in the
+#          documented schema). This REPAIRS a live defect (spec 0180 PLAN v5
+#          step 4, maintainer arbitration 2026-08-25): the prior fall-through
+#          emitted Copilot/Claude's `{type:"http", url}` shape for Gemini too,
+#          which lands a declared `http` server on Gemini's SSE transport
+#          instead of Streamable HTTP. The stale claim this propagated from
+#          lived right here, one line up, until this comment was corrected.
 org_mcp_to_native() {
   local cli="$1" neutral="$2"
   [ -n "$neutral" ] || neutral='{}'
@@ -201,6 +216,14 @@ org_mcp_to_native() {
             # Antigravity remote shape: `serverUrl` (not `url`), no `type`.
             { key: $name, value: (
                 { serverUrl: $e.url }
+                + (if $e.headers then { headers: $e.headers } else {} end)
+            ) }
+          elif $cli == "gemini" then
+            # Gemini remote shape (defect repair, spec 0180 PLAN v5 step 4):
+            # no `type` key; transport is inferred from WHICH key is present
+            # — `httpUrl` for Streamable HTTP, `url` for SSE.
+            { key: $name, value: (
+                (if $t == "http" then { httpUrl: $e.url } else { url: $e.url } end)
                 + (if $e.headers then { headers: $e.headers } else {} end)
             ) }
           else

@@ -101,18 +101,41 @@ jq -n \
   }' > "$OUTPUT_DIR/plugin.json"
 echo "  Generated: plugin.json (name: $PLUGIN_NAME)"
 
-# --- Copy MCP server artifacts ---
-# Copy dist/ and package.json when mcpServers is defined in the manifest.
-MCP_SERVERS=$(jq '.mcpServers // {}' "$MANIFEST")
-if [ "$MCP_SERVERS" != "{}" ] && [ "$MCP_SERVERS" != "null" ]; then
-  if [ -d "$EXT_DIR/dist" ]; then
-    cp -r "$EXT_DIR/dist" "$OUTPUT_DIR/dist"
-    echo "  Copied: dist/"
+# --- Generate mcp_config.json (spec 0180 R7/R9/R10/R16) ---
+# Delivered at the plugin root — the location both plugins.md:18 and
+# mcp_servers.md:21 name. Translated through the shared org-channel
+# translator (ext_mcp_native), which leaves the neutral ${extensionRoot}
+# token UNRESOLVED here on purpose: a live probe
+# (docs/runbooks/extension-mcp-token-probe.md, Q2, 2026-08-25) proved a
+# RELATIVE command/args does NOT resolve against the plugin directory —
+# Antigravity spawns a plugin's MCP server with the CLI's own launch
+# directory as CWD, not the plugin root (the opposite of Copilot's default,
+# and the opposite of how Antigravity itself fires a HOOK). The token is
+# resolved later, at install time, by
+# scripts/install-antigravity-extension.sh's post-install rewrite (Option A)
+# — the earliest moment the real installed directory is knowable (R7).
+# mcpDelivery gate (spec 0180 v2-F5): the SAME row scripts/build-extension.sh's
+# render_plugin reads to decide whether an R15 gap is owed, so the emit
+# decision and the gap decision read one shared fact and cannot disagree.
+MCP_DELIVERABLE=$(ext_mcp_delivery antigravity)
+if [ "$MCP_DELIVERABLE" = "true" ]; then
+  MCP_SERVERS_NATIVE=$(ext_mcp_native antigravity "$MANIFEST")
+  if [ "$MCP_SERVERS_NATIVE" != "{}" ]; then
+    jq -n --argjson servers "$MCP_SERVERS_NATIVE" '{ mcpServers: $servers }' > "$OUTPUT_DIR/mcp_config.json"
+    echo "  Generated: mcp_config.json"
+
+    # R16: the named build output travels WITH the declaration.
+    if [ -d "$EXT_DIR/dist" ]; then
+      cp -r "$EXT_DIR/dist" "$OUTPUT_DIR/dist"
+      echo "  Copied: dist/"
+    fi
+    if [ -f "$EXT_DIR/package.json" ]; then
+      cp "$EXT_DIR/package.json" "$OUTPUT_DIR/package.json"
+      echo "  Copied: package.json"
+    fi
   fi
-  if [ -f "$EXT_DIR/package.json" ]; then
-    cp "$EXT_DIR/package.json" "$OUTPUT_DIR/package.json"
-    echo "  Copied: package.json"
-  fi
+elif jq -e '(.mcpServers // {}) | length > 0' "$MANIFEST" >/dev/null 2>&1; then
+  echo "Warning: extension declares mcpServers, which has no expressible delivery on target 'antigravity' — recorded as an observed gap by the parent render" >&2
 fi
 
 # --- Copy context file ---

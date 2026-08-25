@@ -111,7 +111,7 @@ node dist/index.js
 
 ### Plugin Build Contract
 
-`build-claude-plugin.sh` propagates `dist/` and `package.json` into the plugin output directory because the generated `.mcp.json` resolves `${extensionPath}` to that directory at build time, and Node requires both to load an ESM MCP server at runtime.
+`build-claude-plugin.sh` propagates `dist/` and `package.json` into the plugin output directory because the declared MCP command typically points inside it (`${extensionRoot}/dist/index.js` — the one neutral path token, spec 0180), and Node requires both to load an ESM MCP server at runtime. The generated `.mcp.json` carries `${CLAUDE_PLUGIN_ROOT}` (the neutral token rewritten to Claude's own spelling), which Claude Code itself resolves when it LOADS the installed plugin — not a render-time (build-time) resolution baked into the file (spec 0180 R8).
 
 Implications for contributors:
 

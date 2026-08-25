@@ -92,22 +92,68 @@ file.
   "description": "Demonstration extension showcasing MCP tools, commands, skills, and context.",
 
   // ============================================================
-  // MCP SERVERS (optional) — a generic declaration subject (requirement 1)
-  // Shared MCP server definitions. Both tools use the same MCP SDK
-  // and stdio transport, so this section is 100% universal.
+  // MCP SERVERS (optional) — a generic declaration subject (spec 0180,
+  // issue #1006). Declare each server ONCE, in the SAME neutral vocabulary
+  // the org-level channel of spec 0091 already uses (requirement 2) — the
+  // shared translator (scripts/lib/common.sh's org_mcp_to_native) derives
+  // every target's native shape from this one declaration (requirement 3).
+  // No per-CLI top-level section may carry an MCP server key (requirement 3);
+  // declaring one there is a manifest validation error.
   //
   // Each key is a server name (convention: "default" for single-server
-  // extensions). Values define how to launch the server process.
+  // extensions), except the FRAMEWORK-RESERVED names `mempalace` and
+  // `sequentialthinking` (requirement 12) — declaring a server under either
+  // is a manifest validation error naming the extension and the reserved
+  // name.
   //
-  // Variable substitution:
-  //   ${extensionPath} — resolved at install time to the absolute path
-  //                      of the installed extension/plugin directory. This
-  //                      is the ONE form Gemini CLI demonstrably resolves
-  //                      when loading an extension from an installed build
-  //                      tree — see tests/gemini-extension-path-form.md for
-  //                      the recorded evidence (requirement 14). The render
-  //                      passes whatever form is declared through verbatim;
-  //                      declaring the bare form ships the bare form.
+  // Vocabulary (requirement 1 — a non-conforming declaration is a hard
+  // build failure, never a silent transformation, per requirement 5's clean
+  // break):
+  //   transport  "stdio" | "http" | "sse". Absent means "stdio".
+  //   stdio      command (required, non-empty), args (optional), env (optional)
+  //   http/sse   url (required, non-empty), headers (optional)
+  // No other key is admissible on either shape — `cwd`, `timeout`, `trust`,
+  // `description`, `includeTools` and `excludeTools` are refused with a
+  // VALIDATION-ERROR naming the key, even though some of these are
+  // documented, extension-supported Gemini CLI fields (see the tracked
+  // follow-up issue linked from docs/cli-matrix.md's MCP row for the
+  // rationale and the two vendor citations behind it).
+  //
+  // The ONE neutral path token (requirement 6): ${extensionRoot} — a
+  // command or arg pointing inside the extension's own installed directory
+  // names ONLY this token, never a target-specific one. Each target
+  // resolves it through its OWN named party and moment (requirement 7),
+  // pinned by live evidence (requirement 9,
+  // docs/runbooks/extension-mcp-token-probe.md) — never assumed:
+  //   Gemini        rewritten to ${extensionPath} at RENDER time; gemini-cli
+  //                 itself resolves that token when it LOADS the extension
+  //                 from the installed tree.
+  //   Claude Code   rewritten to ${CLAUDE_PLUGIN_ROOT} at RENDER time;
+  //                 Claude Code itself resolves that token when it LOADS
+  //                 the installed plugin.
+  //   Copilot CLI   rewritten to ${COPILOT_PLUGIN_ROOT} at RENDER time;
+  //                 Copilot resolves that token — and defaults a plugin
+  //                 server's `cwd` to its own plugin root — when it SPAWNS
+  //                 the server (confirmed live: all three candidate forms
+  //                 spawn correctly).
+  //   Antigravity   LEFT UNRESOLVED at render time — a relative
+  //                 command/args does NOT resolve against the plugin
+  //                 directory when Antigravity spawns a plugin's MCP server
+  //                 (confirmed live: it silently fails, no error surfaced).
+  //                 scripts/install-antigravity-extension.sh's POST-INSTALL
+  //                 step rewrites it, once the real installed directory is
+  //                 knowable — never a render-time absolute path
+  //                 (requirement 8).
+  //
+  // Requirement 14 (server code layout): an extension that ships its own MCP
+  // server implementation keeps its SOURCE under one source directory
+  // (`src/` below) and its EXECUTABLE OUTPUT under one build-output
+  // directory (`dist/` below), both at the extension root — a declared
+  // `command`/`args` names the build output, never a source file. An
+  // extension that declares only servers it does not itself implement
+  // carries neither directory. Compiling the source is the extension's own
+  // build step, out of scope for this render (requirement 16 only requires
+  // that whatever build output IS present travels with the declaration).
   // ============================================================
   "mcpServers": {
     "default": {
@@ -116,11 +162,13 @@ file.
       "command": "node",
 
       // Arguments passed to the command. The first argument is usually
-      // the compiled entry point.
-      "args": ["${extensionPath}/dist/index.js"],
+      // the compiled entry point, inside the build-output directory.
+      "args": ["${extensionRoot}/dist/index.js"],
 
       // Environment variables injected when spawning the server process.
-      // Supports ${VAR} interpolation from the user's shell environment.
+      // Arbitrary ${VAR} interpolation is admissible here EXCEPT the five
+      // known path tokens (${extensionRoot} included) — a path token has
+      // no path to resolve against inside an env value.
       // Optional — omit if the server needs no extra env.
       "env": {
         "NODE_ENV": "production"
@@ -296,14 +344,19 @@ rejection would fail `--check` on the scaffolder's own output.
 | `version` | string | Semantic version (X.Y.Z) — the render's own version source (requirement 11) |
 | `description` | string | Human-readable summary |
 
-### MCP Servers (optional, generic subject)
+### MCP Servers (optional, generic subject, spec 0180)
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `mcpServers` | object | MCP server definitions (shared across tools) |
-| `mcpServers[name].command` | string | Executable name |
-| `mcpServers[name].args` | string[] | Arguments. Supports `${extensionPath}` |
-| `mcpServers[name].env` | object | Env vars. Supports `${VAR}` interpolation |
+| `mcpServers` | object | MCP server definitions, one per-CLI translation for all four tools (requirement 2/3). Name must not be a framework-reserved name (`mempalace`, `sequentialthinking` — requirement 12) |
+| `mcpServers[name].transport` | string | `"stdio"` (default) \| `"http"` \| `"sse"` |
+| `mcpServers[name].command` | string | Executable name (stdio only, required, non-empty) |
+| `mcpServers[name].args` | string[] | Arguments (stdio only). Supports the ONE neutral path token, `${extensionRoot}` (requirement 6) — no other `${...}` token is admissible here |
+| `mcpServers[name].env` | object | Env vars (stdio only). Arbitrary `${VAR}` interpolation admissible, EXCEPT the five known path tokens |
+| `mcpServers[name].url` | string | Endpoint (http/sse only, required, non-empty) |
+| `mcpServers[name].headers` | object | HTTP headers (http/sse only). Same token rule as `env` |
+
+No other key is admissible on either shape (`cwd`, `timeout`, `trust`, `description`, `includeTools`, `excludeTools` all refused — see the MCP comment block above for the tracked follow-up).
 
 ### Declaration subjects (optional, generic top-level sections)
 
@@ -443,7 +496,15 @@ authoritative version declaration (requirement 11) by `--check`'s
 ```
 extension.json ──render──> dist-{claude,copilot,antigravity}-plugin/<name>/
                           ├── plugin manifest          # Generated
-                          ├── .mcp.json (Claude only)   # Generated, ${extensionPath} resolved
+                          ├── .mcp.json (Claude, Copilot)   # Generated,
+                          │                                #   ${CLAUDE_PLUGIN_ROOT} /
+                          │                                #   ${COPILOT_PLUGIN_ROOT} resolved
+                          ├── mcp_config.json (Antigravity) # Generated, ${extensionRoot} LEFT
+                          │                                #   UNRESOLVED — see
+                          │                                #   scripts/install-antigravity-extension.sh
+                          ├── dist/ (when mcpServers present)  # Copied — requirement 16, the
+                          │                                    #   build output travels with
+                          │                                    #   the declaration that names it
                           ├── context file              # Copied, when declared
                           ├── skills/ agents/            # Copied / rendered from pivots
                           ├── hooks/hooks.json OR hooks.json  # Built from the generic `hooks`
@@ -455,7 +516,13 @@ extension.json ──render──> dist-{claude,copilot,antigravity}-plugin/<nam
 
 This half of the render is unchanged by the render-at-publication model —
 these three targets already built an ephemeral plugin; only the Gemini
-in-place target moved off a committed sibling.
+in-place target moved off a committed sibling. Antigravity's MCP delivery
+needs one MORE step beyond the render: `scripts/install-antigravity-extension.sh`
+rewrites `${extensionRoot}` to the real installed absolute path AFTER
+`agy plugin install` places the plugin (spec 0180 R7's "named resolver,
+named moment") — a `dist-antigravity-plugin/<name>/mcp_config.json` sitting
+in the build output still carries the unresolved neutral token; that is not
+a defect, it is what Option A depends on.
 
 ## Hook Systems
 

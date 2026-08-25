@@ -1,7 +1,8 @@
 {
   "manifest_class": ["claude-extension.json", "gemini-extension.json",
                      "copilot-extension.json", "antigravity-extension.json",
-                     ".github/copilot/extension.json"],
+                     ".github/copilot/extension.json",
+                     ".mcp.json", "mcp_config.json"],
   "generated_globs": ["commands/*.toml", "observed-gaps.json",
                        "hooks/hooks.json", "hooks.json"]
 }
