@@ -26,6 +26,18 @@ if [ -z "$EXT_DIR" ]; then
   exit 1
 fi
 
-mkdir -p "$REPO_DIR/dist"
-cd "$EXT_DIR" && npm pack --pack-destination "$REPO_DIR/dist"
-echo "Packaged: $EXT"
+# Package the extension's OWN currently-committed version (spec 0183 R17):
+# scripts/release-package-extension.sh is now the ONE place a release
+# artifact's shape is decided, so this task delegates to it rather than
+# hand-producing a source-only `npm pack` tarball — a candidate R17 forbids
+# publishing as an extension release.
+command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: brew install jq"; exit 1; }
+VERSION="$(jq -r '.version // ""' "$EXT_DIR/extension.json" 2>/dev/null)"
+if [ -z "$VERSION" ]; then
+  echo "Error: $EXT_DIR/extension.json carries no .version." >&2
+  exit 1
+fi
+
+OUT_DIR="$REPO_DIR/dist/release/$EXT"
+rm -rf "$OUT_DIR"
+bash "$REPO_DIR/scripts/release-package-extension.sh" "$EXT" --version "$VERSION" --out "$OUT_DIR"

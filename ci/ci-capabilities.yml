@@ -1066,23 +1066,17 @@ capabilities:
         (GitLab Pages is a distinct surface with its own job contract), so the
         deploy capability is hand-authored per engine, not generated.
 
-  # release-extension.yml packages an extension and creates a GitHub Release on
-  # a matching version tag (.github/workflows/release-extension.yml lines 3-6).
-  - id: package-and-release
-    name: "Package an extension and create a GitHub Release on a version tag"
-    trigger:
-      - on: tag
-        tag-pattern: "*-v[0-9]*.[0-9]*.[0-9]*"
-    portability: specific
-    exception:
-      engine: github-actions
-      evidence: >
-        Creates a GitHub Release via `softprops/action-gh-release`
-        (.github/workflows/release-extension.yml lines 70-75), a
-        GitHub-Releases-specific surface. GitLab's release mechanism
-        (`release:` keyword / release-cli) is a distinct, non-interchangeable
-        contract, so the release capability has no faithful equivalent on the
-        other supported engines and is hand-authored per engine.
+  # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
+  # (spec 0183 R23, issue #1008): it packaged the committed source tree via
+  # `npm pack`, a non-conforming release artifact under R17. The primary
+  # driver (scripts/monorepo-release.sh, the `release` capability below)
+  # already creates the release and uploads its own conforming asset on the
+  # SAME tag it pushes, so a second, conforming path would race it and put a
+  # second asset on the release — which the vendor's measured one-asset gate
+  # (specs/0183-extension-model-migration.delta-01.md Notes) forbids as
+  # firmly as the non-conforming one did. There is no replacement capability:
+  # the property this capability asserted (a tag-triggered release path)
+  # is retired, not relocated.
 
   # release-monorepo.yml runs the semantic-release monorepo pipeline on push to
   # main (.github/workflows/release-monorepo.yml lines 3-7).
