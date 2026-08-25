@@ -42,11 +42,6 @@
     "author": {
       "name": "crewrig contributors"
     },
-    "skills": [
-      "skills/*/SKILL.md"
-    ],
-    "agents": [],
-    "rules": [],
     "defaultAllowedTools": [
       "Read",
       "Write",

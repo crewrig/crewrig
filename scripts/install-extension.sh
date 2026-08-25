@@ -51,6 +51,9 @@ do_install() {
   # has no gemini-extension.json to serve. Both modes move together — a
   # `link` into the source tree would symlink an extension with no manifest,
   # which is broken by construction rather than merely unsupported.
+  # No separate ext_assert_current_shape call here (spec 0183 R13): this
+  # delegates to build-extension.sh, which reaches it through
+  # ext_validate_manifest — do NOT add a second call.
   bash "$REPO_DIR/scripts/build-extension.sh" --target gemini "$name" >&2 || {
     echo "Error: rendering extension '$name' failed." >&2
     return 1

@@ -22,6 +22,7 @@
 
 EXT_MANIFEST_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXT_MCP_TARGETS_JSON="$EXT_MANIFEST_LIB_DIR/extension-targets.json"
+EXT_LEGACY_SHAPE_JSON="$EXT_MANIFEST_LIB_DIR/extension-legacy-shape.json"
 
 # scripts/lib/common.sh is sourced here (spec 0180 PLAN v5 step 3) rather than
 # from scripts/build-extension.sh: this is the ONE file all four entry points
@@ -37,12 +38,13 @@ EXT_MCP_TARGETS_JSON="$EXT_MANIFEST_LIB_DIR/extension-targets.json"
 
 ext_subject_present() {
   # ext_subject_present <manifest-file> <subject>
-  # Echoes "true"/"false".
+  # Echoes "true"/"false". Generic-schema read only (spec 0183 R1/R13): the
+  # legacy `components.<subject>.enabled` fallback is gone — a manifest
+  # carrying that shape is rejected earlier, by ext_assert_current_shape,
+  # not silently reinterpreted here.
   local manifest="$1" subject="$2"
   jq -r --arg s "$subject" '
-    if (has($s) and (.[$s] != null)) then "true"
-    else ((.components[$s].enabled // false) | if type == "boolean" then . else false end | tostring)
-    end
+    if (has($s) and (.[$s] != null)) then "true" else "false" end
   ' "$manifest"
 }
 
@@ -50,9 +52,7 @@ ext_subject_location() {
   # ext_subject_location <manifest-file> <subject> <default>
   local manifest="$1" subject="$2" default="$3"
   jq -r --arg s "$subject" --arg d "$default" '
-    if (has($s) and (.[$s] != null)) then (.[$s].location // $d)
-    else (.components[$s].location // $d)
-    end
+    if (has($s) and (.[$s] != null)) then (.[$s].location // $d) else $d end
   ' "$manifest"
 }
 
@@ -60,9 +60,7 @@ ext_subject_option() {
   # ext_subject_option <manifest-file> <subject> <option> [<default>]
   local manifest="$1" subject="$2" option="$3" default="${4:-}"
   jq -r --arg s "$subject" --arg o "$option" --arg d "$default" '
-    if (has($s) and (.[$s] != null)) then (.[$s][$o] // $d)
-    else (.components[$s][$o] // $d)
-    end
+    if (has($s) and (.[$s] != null)) then (.[$s][$o] // $d) else $d end
   ' "$manifest"
 }
 
@@ -71,6 +69,52 @@ ext_version() {
   # render's own single source, independent of package.json).
   local manifest="$1"
   jq -r '.version // ""' "$manifest"
+}
+
+# ext_assert_current_shape <manifest> — spec 0183 R12/R13. Fails loudly,
+# naming scripts/migrate-extension.sh and docs/adoption-guide.md, when the
+# manifest carries any declaration form scripts/lib/extension-legacy-shape.json
+# enumerates: the `components` object (whichever of its subject entries it
+# carries) and any of the five retired per-CLI keys. Reads the SAME
+# enumeration scripts/migrate-extension.sh consumes — neither carries its own
+# list (R12). Fail-closed: a missing or malformed legacy-shape file is itself
+# a hard error rather than an admit-everything default. Prints one
+# VALIDATION-ERROR line per surviving old-shape form to stderr and returns
+# non-zero; silent and returns 0 when the manifest carries none.
+ext_assert_current_shape() {
+  local manifest="$1" shape="${EXT_LEGACY_SHAPE_JSON}" errors=0
+
+  if [ ! -f "$shape" ]; then
+    echo "VALIDATION-ERROR: $manifest — legacy-shape enumeration not found at $shape (spec 0183 R12)" >&2
+    return 1
+  fi
+
+  local components_key
+  components_key="$(jq -r '.componentsKey' "$shape")"
+  if jq -e --arg k "$components_key" 'has($k) and (.[$k] != null)' "$manifest" >/dev/null 2>&1; then
+    local found_subjects
+    found_subjects="$(jq -r --arg k "$components_key" --slurpfile shape "$shape" '
+      .[$k] as $c | $shape[0].componentsSubjects[] | select($c | has(.))
+    ' "$manifest" 2>/dev/null | paste -sd, -)"
+    echo "VALIDATION-ERROR: $manifest — declares the retired '$components_key' object" \
+      "${found_subjects:+(subjects: $found_subjects)}" \
+      "— run scripts/migrate-extension.sh, see docs/adoption-guide.md" >&2
+    errors=$((errors + 1))
+  fi
+
+  local percli_key section key
+  while IFS= read -r percli_key; do
+    [ -z "$percli_key" ] && continue
+    section="${percli_key%%.*}"
+    key="${percli_key#*.}"
+    if jq -e --arg s "$section" --arg k "$key" 'has($s) and (.[$s] // {} | has($k))' "$manifest" >/dev/null 2>&1; then
+      echo "VALIDATION-ERROR: $manifest — declares the retired per-CLI key '$percli_key'" \
+        "— run scripts/migrate-extension.sh, see docs/adoption-guide.md" >&2
+      errors=$((errors + 1))
+    fi
+  done < <(jq -r '.perCliKeys[]' "$shape")
+
+  [ "$errors" -eq 0 ]
 }
 
 ext_validate_manifest() {
@@ -82,12 +126,18 @@ ext_validate_manifest() {
   # clean. Fail-closed: an allowlist row absent or malformed does not admit
   # the key (spec 0173 PLAN step 3).
   #
+  # Also calls ext_assert_current_shape (spec 0183 R12/R13): the render path
+  # inherits the clean-break check from here, so every caller of
+  # ext_validate_manifest fails loudly on the old shape with no separate call.
+  #
   # Also calls ext_hooks_validate (spec 0179 R3/R4/R7/R8): a malformed
   # generic `hooks` entry fails the build here too, alongside the per-CLI
   # key check, so both error classes surface from the one validation call
   # sites already invoke.
   local manifest="$1" allowlist="$2"
   local cli errors=0
+
+  ext_assert_current_shape "$manifest" || errors=$((errors + 1))
   for cli in gemini claude copilot antigravity; do
     local keys
     keys=$(jq -r --arg c "$cli" '.[$c] // {} | keys[]?' "$manifest" 2>/dev/null) || continue

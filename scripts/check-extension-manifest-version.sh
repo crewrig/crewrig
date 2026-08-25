@@ -55,6 +55,13 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 2
 fi
 
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# Shared manifest accessors (spec 0173/0183), for ext_assert_current_shape:
+# a committed extension.json declaring the retired shape fails this guard too
+# (spec 0183 R13 — every entry point that reads a manifest fails loudly).
+# shellcheck source=lib/extension-manifest.sh
+. "$REPO_DIR/scripts/lib/extension-manifest.sh"
+
 # Upstream-owned extension tier roots. extensions/org is adopter-owned ⇒ EXEMPT.
 TIER_ROOTS=(
   "extensions/core"
@@ -100,6 +107,11 @@ for dir in ${ext_dirs[@]+"${ext_dirs[@]}"}; do
   dir_ok=1
   for sib in ${SIBLINGS[@]+"${SIBLINGS[@]}"}; do
     [ -f "$dir/$sib" ] || continue
+    if ! ext_assert_current_shape "$dir/$sib"; then
+      failures+=("$dir/$sib")
+      dir_ok=0
+      continue
+    fi
     sib_version="$(jq -r '.version // empty' "$dir/$sib")"
     if [ "$sib_version" != "$authoritative" ]; then
       echo "  FAIL $dir/$sib — version '$sib_version' != authoritative package.json version '$authoritative'"

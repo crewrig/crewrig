@@ -1,0 +1,12 @@
+{
+  "_comment": "Single enumeration of the declaration forms this redesign replaced (spec 0183 R12). Both scripts/lib/extension-manifest.sh (ext_assert_current_shape, the fail-closed reader) and scripts/migrate-extension.sh (the converter) read this file; neither carries its own list. A form absent here is not failed as old shape; a form present here is failed by every reader (spec 0183 R13).",
+  "componentsKey": "components",
+  "componentsSubjects": ["commands", "skills", "agents", "hooks"],
+  "perCliKeys": [
+    "claude.skills",
+    "claude.agents",
+    "claude.rules",
+    "copilot.pluginName",
+    "antigravity.pluginName"
+  ]
+}

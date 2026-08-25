@@ -31,6 +31,12 @@ command -v claude >/dev/null 2>&1 || {
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 EXT_NAME="${1:?Usage: install-claude-plugin.sh <extension-name>}"
 
+# Shared manifest accessors (spec 0173/0183): resolve the generic top-level
+# section only — the legacy components.<subject>.* shape is rejected by
+# ext_assert_current_shape rather than read.
+# shellcheck source=lib/extension-manifest.sh
+. "$REPO_DIR/scripts/lib/extension-manifest.sh"
+
 # Resolve the bare extension name to its SOURCE dir extensions/<tier>/<name>/,
 # searching every tier (first match; hard-error on a duplicate name). The tier
 # is a SOURCE-side concern only; the installed plugin keeps its bare name.
@@ -49,6 +55,20 @@ if [ -z "$EXT_DIR" ]; then
   exit 1
 fi
 
+# --- Locate manifest ---
+# No gemini-extension.json fallback (spec 0183 R14): it is a build output,
+# never committed, and reading through it would resurrect exactly the
+# dual-shape read this change removes. build-claude-plugin.sh (invoked below)
+# performs its OWN ext_assert_current_shape call on the same manifest — this
+# one covers the direct .description/.claude.author.name reads below, which
+# never reach that script's copy.
+MANIFEST="$EXT_DIR/extension.json"
+if [ ! -f "$MANIFEST" ]; then
+  echo "Error: No extension.json found in $EXT_DIR — run scripts/migrate-extension.sh if this is an old-shape extension (see docs/adoption-guide.md)."
+  exit 1
+fi
+ext_assert_current_shape "$MANIFEST" || exit 1
+
 # --- Build the plugin into the shared local marketplace home (out of tree) ---
 # A single shared home lets multiple extensions coexist in one marketplace and
 # survives branch switches: output goes to
@@ -64,10 +84,8 @@ MARKETPLACE_NAME="$(basename "$REPO_DIR")-local"
 MARKETPLACE_DIR="$BUILD_PARENT/.claude-plugin"
 mkdir -p "$MARKETPLACE_DIR"
 
-DESCRIPTION=$(jq -r '.description // ""' "$EXT_DIR/extension.json" 2>/dev/null \
-  || jq -r '.description // ""' "$EXT_DIR/gemini-extension.json" 2>/dev/null \
-  || echo "")
-AUTHOR_NAME=$(jq -r '.claude.author.name // .author.name // "Unknown"' "$EXT_DIR/extension.json" 2>/dev/null || echo "Unknown")
+DESCRIPTION=$(jq -r '.description // ""' "$MANIFEST")
+AUTHOR_NAME=$(jq -r '.claude.author.name // .author.name // "Unknown"' "$MANIFEST" 2>/dev/null || echo "Unknown")
 
 # Build the marketplace manifest. If a marketplace.json already exists for
 # this build parent, upsert the new plugin entry (filter out any prior entry

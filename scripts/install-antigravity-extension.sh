@@ -40,6 +40,9 @@ if [ -z "$EXT_DIR" ]; then
 fi
 
 # --- Build the plugin into the output directory ---
+# No separate ext_assert_current_shape call here (spec 0183 R13): this
+# delegates to build-antigravity-extension.sh, which calls it directly after
+# locating the manifest — do NOT add a second call.
 OUTPUT_DIR="$REPO_DIR/dist-antigravity-plugin/$EXT_NAME"
 bash "$REPO_DIR/scripts/build-antigravity-extension.sh" "$EXT_DIR" "$OUTPUT_DIR"
 

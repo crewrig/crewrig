@@ -342,7 +342,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-echo "9. R5 — no subject declared remains valid; a stray components.hooks block does not crash"
+echo "9. R5 — no subject declared remains valid; R13 — the retired shape fails loudly"
 # ---------------------------------------------------------------------------
 sandbox="$(make_sandbox)"
 bare_fix="$sandbox/extensions/core/bare"
@@ -354,14 +354,43 @@ out="$( cd "$sandbox" && bash scripts/build-extension.sh --check bare 2>&1 )"
 [ $? -eq 0 ] && ok "Case 9a — an extension declaring no subject at all still renders/checks cleanly" \
   || ng "Case 9a — a subjectless manifest failed:"$'\n'"$out"
 
+# Case 9b (spec 0183 R12/R13, PLAN step 10): a manifest carrying the retired
+# `components` object — even a single stray subject inside it — is old shape
+# and MUST fail loudly, naming the migration tool. Before this change this
+# fixture merely proved the legacy fallback did not crash on an
+# unrecognized `components.hooks` sub-key; the clean break inverts the
+# expectation entirely.
 stray_fix="$sandbox/extensions/core/strayhooks"
 mkdir -p "$stray_fix"
 cat > "$stray_fix/extension.json" <<'EOF'
 {"name":"strayhooks","version":"0.0.1","description":"fixture","components":{"hooks":{"enabled":true,"location":"hooks/"}}}
 EOF
 out="$( cd "$sandbox" && bash scripts/build-extension.sh --check strayhooks 2>&1 )"
-[ $? -eq 0 ] && ok "Case 9b — a stray legacy components.hooks block causes no crash" \
-  || ng "Case 9b — a stray components.hooks block broke the render:"$'\n'"$out"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "migrate-extension.sh"; then
+  ok "Case 9b — an old-shape manifest (retired 'components' object) fails loudly, naming scripts/migrate-extension.sh"
+else
+  ng "Case 9b — old-shape manifest did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
+
+# Case 9c (spec 0183 R14, PLAN step 10): a tree carrying only
+# gemini-extension.json — no committed extension.json — fails rather than
+# being read through the retired manifest-location fallback. Exercised
+# directly against build-claude-plugin.sh, the entry point that used to
+# carry that fallback (the other two plugin builders and
+# install-claude-plugin.sh share the same fix; see Blast radius).
+gemini_only_fix="$sandbox/extensions/core/geminionly"
+mkdir -p "$gemini_only_fix"
+cat > "$gemini_only_fix/gemini-extension.json" <<'EOF'
+{"name":"geminionly","version":"0.0.1","description":"fixture"}
+EOF
+out="$(bash "$CLAUDE_PLUGIN" "$gemini_only_fix" "$sandbox/dist-claude-plugin/geminionly" 2>&1)"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "migrate-extension.sh"; then
+  ok "Case 9c — a tree carrying only gemini-extension.json fails, naming scripts/migrate-extension.sh, rather than being read through it"
+else
+  ng "Case 9c — a gemini-extension.json-only tree did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
 
 # ---------------------------------------------------------------------------
 echo "10. R10(c) — the guard tracks the declared set, not a fixed file list"

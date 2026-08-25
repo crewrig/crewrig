@@ -2,20 +2,6 @@
   "name": "${SKELETON_NAME}",
   "version": "0.1.0",
   "description": "Description of the ${SKELETON_NAME} extension.",
-  "components": {
-    "commands": {
-      "enabled": false,
-      "location": "commands/"
-    },
-    "skills": {
-      "enabled": false,
-      "location": "skills/"
-    },
-    "agents": {
-      "enabled": false,
-      "location": "agents/"
-    }
-  },
   "context": {
     "source": "CONTEXT.md"
   },
@@ -26,18 +12,9 @@
     "author": {
       "name": "Your Name"
     },
-    "skills": ["skills/*/SKILL.md"],
-    "agents": [],
-    "rules": [],
     "defaultAllowedTools": ["Read", "Write", "Edit", "Bash"],
     "settings": {},
     "lsp": {},
     "bin": null
-  },
-  "antigravity": {
-    "pluginName": "${SKELETON_NAME}"
-  },
-  "copilot": {
-    "pluginName": "${SKELETON_NAME}"
   }
 }
