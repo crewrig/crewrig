@@ -95,6 +95,7 @@ jobs:
               - 'scripts/probe-extension-mcp-token.sh'
               - 'scripts/tests/test-extension-mcp-manifest.sh'
               - 'scripts/install-antigravity-extension.sh'
+              - 'scripts/lib/render-context.sh'
       - name: Install yq
         if: steps.filter.outputs.extension-render == 'true'
         run: |

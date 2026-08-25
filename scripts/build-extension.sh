@@ -60,6 +60,8 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 . "$SCRIPT_DIR/lib/extension-manifest.sh"
 # shellcheck source=lib/extension-hooks.sh
 . "$SCRIPT_DIR/lib/extension-hooks.sh"
+# shellcheck source=lib/render-context.sh
+. "$SCRIPT_DIR/lib/render-context.sh"
 
 PERCLI_KEYS="$SCRIPT_DIR/lib/extension-percli-keys.json"
 GENERATED_CLASS="$SCRIPT_DIR/lib/extension-generated-class.json"
@@ -118,19 +120,6 @@ resolve_extension_dir() {
   (cd "$found" && pwd)
 }
 
-# generic_subject_declared <manifest> <subject> — true iff <subject> is
-# present as a GENERIC top-level section (never via the legacy
-# components.<subject>.enabled fallback). Used only for gap detection
-# (hooks/context, R12): those two subjects have no legacy reader at all
-# (the parent spec's own grounding record: "components.hooks is read by no
-# script"), so a stray legacy components.hooks/components.context toggle
-# stays exactly as inert as it always was, rather than newly surfacing a gap
-# warning nothing before this render ever produced.
-generic_subject_declared() {
-  local manifest="$1" subject="$2"
-  jq -e --arg s "$subject" 'has($s) and (.[$s] != null)' "$manifest" >/dev/null 2>&1
-}
-
 # ext_class_scan <dir> <class-json> — echoes, one per line, every path
 # (relative to <dir>) that is a member of the generated-output class: a
 # manifest_class entry whose literal relative shape occurs under <dir>, or a
@@ -161,8 +150,7 @@ ext_class_scan() {
 }
 
 # render_gemini <ext_dir> <manifest> <name> — renders the complete installable
-# Gemini tree into build/extensions/<name>/. Echoes one "<subject>@gemini"
-# line per unmappable declared subject to fd 3 (the gap collector).
+# Gemini tree into build/extensions/<name>/.
 render_gemini() {
   local ext_dir="$1" manifest="$2" name="$3"
   local build_dir
@@ -186,7 +174,16 @@ render_gemini() {
   local description version context_fname mcp_servers themes rc=0
   description="$(jq -r '.description // ""' "$manifest")"
   version="$(ext_version "$manifest")"
-  context_fname="$(jq -r '.gemini.contextFileName // ""' "$manifest")"
+  # spec 0181 R9: the render supplies the built manifest's own contextFileName
+  # from its OWN knowledge of the target (the descriptor's contextOutput
+  # column) — the authored manifest no longer carries this key at all.
+  # Non-empty only when the extension actually declares a context source.
+  local ctx_source=""
+  context_fname=""
+  ctx_source="$(jq -r '.context.source // ""' "$manifest")"
+  if [ -n "$ctx_source" ]; then
+    context_fname="$(render_context_target_output gemini "$name")"
+  fi
   # spec 0180 step 5: translate through the shared org-channel translator and
   # rewrite the neutral ${extensionRoot} token to Gemini's own ${extensionPath}
   # spelling — Gemini itself resolves ${extensionPath} when it loads the
@@ -209,6 +206,27 @@ render_gemini() {
     ' > "$build_dir/gemini-extension.json" || rc=1
   echo "  Rendered: build/extensions/$name/gemini-extension.json"
 
+  # Context (spec 0181 R1/R9): render the single neutral source through the
+  # shared resolver into this target's own contextOutput location. A
+  # resolver failure (an unresolved reference or a malformed span) fails the
+  # render (R5) — no context output for ANY target, per the scenario.
+  if [ -n "$ctx_source" ] && [ -f "$ext_dir/$ctx_source" ]; then
+    # A plain `render_context ... > "$dest"` redirection creates $dest via
+    # the SHELL before the command's exit status is known, so a resolver
+    # failure would still leave a (truncated or empty) file behind — the
+    # exact stray output R5's "no context output for any target" forbids.
+    # Render to a scratch file first; only place it on success.
+    local ctx_tmp
+    ctx_tmp="$(mktemp)"
+    if render_context "$ext_dir/$ctx_source" gemini "$manifest" "$ext_dir" > "$ctx_tmp"; then
+      mv "$ctx_tmp" "$build_dir/$context_fname"
+      echo "  Rendered: build/extensions/$name/$context_fname"
+    else
+      rm -f "$ctx_tmp"
+      rc=1
+    fi
+  fi
+
   if [ "$(ext_subject_present "$manifest" commands)" = "true" ]; then
     local loc source cmd_name rendered
     loc="$(ext_subject_location "$manifest" commands "commands/")"
@@ -229,22 +247,13 @@ render_gemini() {
     fi
   fi
 
-  # Hooks (spec 0179): translated by the shared library, not gapped
-  # blanket-style any more — R16 retires that arm in the same change that
-  # gives the subject a renderer. Only the surviving `context` arm keeps
-  # using the blanket per-subject gap (its own sub-spec has not landed).
+  # Hooks (spec 0179): translated by the shared library. R16 retired the
+  # blanket per-subject gap arm in the same change that gave the subject a
+  # renderer; context's own last unmappable-subject arm is retired here,
+  # in the same spirit, now that every declared subject maps on this target.
   ext_hooks_render gemini "$manifest" "$ext_dir" "$build_dir"
   ext_hooks_gaps gemini "$manifest" >&3
 
-  local subj
-  for subj in context; do
-    if generic_subject_declared "$manifest" "$subj"; then
-      echo "Warning: extension '$name' declares subject '$subj' with no renderer on target 'gemini' yet (its sub-spec has not landed)" >&2
-      jq -c -n --arg subject "$subj" --arg target gemini \
-        --arg reason "declared subject has no renderer yet (its sub-spec has not landed)" \
-        '{subject: $subject, target: $target, reason: $reason}' >&3
-    fi
-  done
   return "$rc"
 }
 
@@ -289,15 +298,6 @@ render_plugin() {
       '{subject: $subject, target: $target, reason: $reason}' >&3
   fi
 
-  local subj
-  for subj in context; do
-    if generic_subject_declared "$manifest" "$subj"; then
-      echo "Warning: extension '$name' declares subject '$subj' with no renderer on target '$label' yet (its sub-spec has not landed)" >&2
-      jq -c -n --arg subject "$subj" --arg target "$label" \
-        --arg reason "declared subject has no renderer yet (its sub-spec has not landed)" \
-        '{subject: $subject, target: $target, reason: $reason}' >&3
-    fi
-  done
   return "$rc"
 }
 
@@ -385,6 +385,13 @@ render_extension() {
 declared_outputs() {
   local ext_dir="$1" manifest="$2"
   echo "gemini-extension.json"
+  # spec 0181 R15: the declared output set covers context — only when a
+  # source is actually declared, so a context-less extension's arm (c)
+  # stays exactly as before (the non-vacuous negative R15's scenario asks
+  # for).
+  if [ -n "$(jq -r '.context.source // ""' "$manifest")" ]; then
+    printf '%s\n' "$(render_context_target_output gemini "$(jq -r '.name' "$manifest")")"
+  fi
   if [ "$(ext_subject_present "$manifest" commands)" = "true" ]; then
     local loc source stem
     loc="$(ext_subject_location "$manifest" commands "commands/")"

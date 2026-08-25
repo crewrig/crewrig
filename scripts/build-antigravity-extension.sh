@@ -28,6 +28,9 @@ command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: br
 # section first, falling back to legacy components.<subject>.* until S5.
 # shellcheck source=lib/extension-manifest.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/extension-manifest.sh"
+# Shared context renderer (spec 0181, issue #1007).
+# shellcheck source=lib/render-context.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/render-context.sh"
 
 EXT_ARG="${1:?Usage: build-antigravity-extension.sh <extension-dir-or-name> [output-dir]}"
 
@@ -138,11 +141,29 @@ elif jq -e '(.mcpServers // {}) | length > 0' "$MANIFEST" >/dev/null 2>&1; then
   echo "Warning: extension declares mcpServers, which has no expressible delivery on target 'antigravity' — recorded as an observed gap by the parent render" >&2
 fi
 
-# --- Copy context file ---
-AGY_CONTEXT=$(jq -r '.antigravity.contextFileName // ""' "$MANIFEST" 2>/dev/null)
-if [ -n "$AGY_CONTEXT" ] && [ "$AGY_CONTEXT" != "null" ] && [ -f "$EXT_DIR/$AGY_CONTEXT" ]; then
-  cp "$EXT_DIR/$AGY_CONTEXT" "$OUTPUT_DIR/$AGY_CONTEXT"
-  echo "  Copied: $AGY_CONTEXT"
+# --- Render context file (spec 0181 R1/R10) ---
+# The per-CLI `antigravity.contextFileName` key is retired — the concept it
+# configured has no counterpart in Antigravity's plugin format at all (the
+# key named a bare file the build copied to the plugin root, where nothing
+# ingested it). The location below (plugins/<name>/rules/AGENTS.md) is
+# pinned by a live evidence probe, not assumed:
+# tests/extension-context-delivery-evidence.md.
+CONTEXT_SOURCE=$(jq -r '.context.source // ""' "$MANIFEST" 2>/dev/null)
+if [ -n "$CONTEXT_SOURCE" ] && [ -f "$EXT_DIR/$CONTEXT_SOURCE" ]; then
+  AGY_CONTEXT=$(render_context_target_output antigravity "$NAME")
+  # Render to a scratch file first — a plain `> "$dest"` redirection creates
+  # $dest via the shell before the command's exit status is known, which
+  # would leave a stray (truncated/empty) file behind on a resolver failure.
+  CONTEXT_TMP=$(mktemp)
+  if render_context "$EXT_DIR/$CONTEXT_SOURCE" antigravity "$MANIFEST" "$EXT_DIR" > "$CONTEXT_TMP"; then
+    mkdir -p "$OUTPUT_DIR/$(dirname "$AGY_CONTEXT")"
+    mv "$CONTEXT_TMP" "$OUTPUT_DIR/$AGY_CONTEXT"
+    echo "  Rendered: $AGY_CONTEXT"
+  else
+    rm -f "$CONTEXT_TMP"
+    echo "Error: rendering context for target 'antigravity' failed" >&2
+    exit 1
+  fi
 fi
 
 # --- Copy skills ---

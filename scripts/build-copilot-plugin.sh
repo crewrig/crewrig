@@ -28,6 +28,9 @@ command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: br
 # section first, falling back to legacy components.<subject>.* until S5.
 # shellcheck source=lib/extension-manifest.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/extension-manifest.sh"
+# Shared context renderer (spec 0181, issue #1007).
+# shellcheck source=lib/render-context.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/render-context.sh"
 
 EXT_ARG="${1:?Usage: build-copilot-plugin.sh <extension-dir-or-name> [output-dir]}"
 
@@ -135,6 +138,38 @@ if [ "$MCP_DELIVERABLE" = "true" ]; then
   fi
 elif jq -e '(.mcpServers // {}) | length > 0' "$MANIFEST" >/dev/null 2>&1; then
   echo "Warning: extension declares mcpServers, which has no expressible delivery on target 'copilot' — recorded as an observed gap by the parent render" >&2
+fi
+
+# --- Render context file (spec 0181 R1/R11) ---
+# Copilot CLI's plugin surface carries no context/instructions concept
+# (`copilot plugin --help`; pinned live in
+# tests/extension-context-delivery-evidence.md) — the context is delivered
+# as a user-invocable skill instead, the SAME surface this builder already
+# uses for commands below. The output path itself
+# (skills/<name>-context/SKILL.md) is the render's own knowledge
+# (scripts/lib/extension-targets.json's contextOutput column), never
+# authored.
+CONTEXT_SOURCE=$(jq -r '.context.source // ""' "$MANIFEST" 2>/dev/null)
+if [ -n "$CONTEXT_SOURCE" ] && [ -f "$EXT_DIR/$CONTEXT_SOURCE" ]; then
+  CONTEXT_OUTPUT=$(render_context_target_output copilot "$NAME")
+  mkdir -p "$OUTPUT_DIR/$(dirname "$CONTEXT_OUTPUT")"
+  CONTEXT_BODY=$(render_context "$EXT_DIR/$CONTEXT_SOURCE" copilot "$MANIFEST" "$EXT_DIR")
+  CONTEXT_RC=$?
+  if [ "$CONTEXT_RC" -eq 0 ]; then
+    {
+      echo "---"
+      echo "name: ${NAME}-context"
+      echo "description: \"Agent-facing context for the ${NAME} extension.\""
+      echo "user-invocable: true"
+      echo "---"
+      echo ""
+      printf '%s\n' "$CONTEXT_BODY"
+    } > "$OUTPUT_DIR/$CONTEXT_OUTPUT"
+    echo "  Rendered: $CONTEXT_OUTPUT"
+  else
+    echo "Error: rendering context for target 'copilot' failed" >&2
+    exit 1
+  fi
 fi
 
 # --- Copy skills ---

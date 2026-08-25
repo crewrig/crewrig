@@ -53,18 +53,14 @@ not an install path). A native `gemini extensions install` pointed directly
 at this repository's primary branch is a **documented-unsupported** path
 (requirement 21) — nothing generated is there for it to find.
 
-**One interim carve-out.** A committed, hand-authored file of the
-CLI-designated shape whose subject this spec does not yet generalize (the
-hook, MCP-server, and context vocabularies — sub-specs S2/S3/S4) stays
-admissible until that subject's sub-spec lands, mirroring the interim the
-per-CLI-key irreducibility rule below already grants. Today that carve-out
-covers exactly the four hand-authored context files of the reference
-extension — `CLAUDE.md`, `GEMINI.md`, `copilot-instructions.md`,
-`.geminiignore` — and their skeleton equivalents; `--check` does not charge
-them, because none is a `manifest_class` or `generated_globs` member in the
-first place. Their subject is sub-spec S4 (context declarations, issue
-#1007); once S4 lands, requirement 4 binds them like any other CLI-named
-file.
+**The interim has ended.** Sub-specs S2 (hooks, spec 0179, issue #1005), S3
+(MCP servers, spec 0180, issue #1006) and S4 (context, spec 0181, issue #1007)
+have all landed, so no subject any longer carries the file-level carve-out
+this section used to grant. Every CLI-designated file — including
+the reference extension's former hand-authored `CLAUDE.md`, `GEMINI.md`,
+`copilot-instructions.md` and `.geminiignore` — is now produced from the
+single `extension.json` declaration and binds to requirement 4 like any
+other generated-output-class member.
 
 ## Complete Schema
 
@@ -216,6 +212,16 @@ file.
     "location": "agents/"
   },
 
+  // Agent-facing context (spec 0181, issue #1007). A SINGLE
+  // command-line-tool-neutral Markdown source, reached through this
+  // generic `context` section — see *Context rendering* below for the
+  // render-variable vocabulary. An extension declaring no `context` section
+  // produces no context output on any target (R1) — this section is
+  // entirely optional.
+  "context": {
+    "source": "CONTEXT.md"
+  },
+
   // Lifecycle hooks (spec 0179, issue #1005). An ARRAY of entries, each
   // carrying a stable `id`, exactly one neutral `event` (from the closed
   // set documented in docs/extension-hook-events.md), one `command`, and
@@ -244,11 +250,6 @@ file.
   // ============================================================
   "gemini": {
 
-    // Context file loaded by Gemini CLI when this extension is active.
-    // Must be a file at the extension root. deferred:S4 — the context
-    // declaration vocabulary generalizes this key with sub-spec S4.
-    "contextFileName": "GEMINI.md",
-
     // UI themes for Gemini CLI. cli-only-concept — no other supported tool
     // has a themes concept.
     "themes": [
@@ -276,9 +277,6 @@ file.
     "author": {
       "name": "Your Name"
     },
-
-    // Context file loaded when plugin is active. deferred:S4.
-    "contextFileName": "CLAUDE.md",
 
     // Glob patterns for skill directories to include in the plugin.
     // deferred:S5 — full skeleton/reference migration.
@@ -368,13 +366,13 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 | `commands.convertToSkills` | boolean | `false` | Render pivot `.md` → skill for plugin-building targets |
 | `skills.location` | string | `skills/` | Directory path |
 | `agents.location` | string | `agents/` | Directory path |
+| `context.source` | string | — | Path (relative to the extension root) of the single neutral context source (spec 0181) — see *Context rendering* below |
 | `hooks` | array | — | Lifecycle hook entries, translated for every target (spec 0179) — see [`docs/extension-hook-events.md`](../docs/extension-hook-events.md) for the closed event/matcher vocabulary and *Unmappable-declaration policy* below for the gap contract |
 
 ### Gemini CLI (optional, per-CLI section)
 
 | Field | Type | `reason` | Description |
 |-------|------|----------|-------------|
-| `gemini.contextFileName` | string | `deferred:S4` | Context file loaded when extension is active |
 | `gemini.themes` | array | `cli-only-concept` | UI theme definitions |
 | `gemini.themes[].name` | string | — | Theme identifier |
 | `gemini.themes[].colors` | object | — | Color palette |
@@ -384,7 +382,6 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 | Field | Type | `reason` | Description |
 |-------|------|----------|-------------|
 | `claude.author` | object | `cli-only-concept` | Plugin author → `plugin.json` |
-| `claude.contextFileName` | string | `deferred:S4` | Context file for the plugin |
 | `claude.skills` | string[] | `deferred:S5` | Glob patterns for skill directories |
 | `claude.agents` | string[] | `deferred:S5` | Glob patterns for agent files (default `agents/*/AGENT.md`) |
 | `claude.rules` | string[] | `deferred:S5` | Rule files for the plugin |
@@ -399,7 +396,92 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 |-------|------|----------|-------------|
 | `copilot.pluginName` | string | `deferred:S5` (reducible) | Overrides `.name` in the built `plugin.json` |
 | `antigravity.pluginName` | string | `deferred:S5` (reducible) | Overrides `.name` in the built `plugin.json` |
-| `antigravity.contextFileName` | string | `deferred:S4` | Context file copied into the built plugin |
+
+## Context rendering (spec 0181, issue #1007)
+
+An extension declares its agent-facing context exactly **once**, in one
+command-line-tool-neutral Markdown source named by `context.source` — never
+a per-CLI file, and never a per-CLI key naming one. The shared render
+(`scripts/lib/render-context.sh`, called by `scripts/build-extension.sh` and
+each of the three plugin builders — the three `install-*-plugin.sh` scripts
+invoke the builders directly, bypassing `build-extension.sh`) turns that one
+source into one output per target, resolving a small render-variable
+vocabulary against `scripts/lib/extension-targets.json`'s own knowledge of
+each target and the extension's own declared commands/skills. An extension
+declaring no `context` section produces no context output on any target
+(R1) and stays valid.
+
+**Delivery per target** — the render's own knowledge, never authored:
+
+| Target | Delivered as | Location |
+|---|---|---|
+| Gemini CLI | `GEMINI.md`, in the rendered installable tree | `build/extensions/<name>/GEMINI.md` |
+| Claude Code | `CLAUDE.md`, in the built plugin | `dist-claude-plugin/<name>/CLAUDE.md` |
+| GitHub Copilot CLI | a user-invocable skill — the same surface the build already uses for commands, pinned by live evidence (`tests/extension-context-delivery-evidence.md`) since the CLI's plugin surface carries no context/instructions concept of its own | `dist-copilot-plugin/<name>/skills/<name>-context/SKILL.md` |
+| Antigravity CLI | a plugin rule file, pinned by live evidence the same way | `dist-antigravity-plugin/<name>/rules/AGENTS.md` |
+
+Two author-facing name reservations follow from the table above: a
+`skills/*-context/` directory under a built Copilot/Antigravity plugin, and
+the root-anchored `rules/AGENTS.md` path (Antigravity). Neither is available
+to an extension author for any other purpose.
+
+**Render-variable vocabulary — six members:**
+
+| Member | Resolves to |
+|---|---|
+| `${TOOL}` | the target's display name |
+| `${EXTENSION}` | the extension's own `.name` |
+| `${COMMAND:<name>}` | the target's invocation reference for a **declared** command |
+| `${SKILL:<name>}` | the target's invocation reference for a **declared** skill |
+| `${ONLY:<t>[,<t>…]}` … `${ENDONLY}` | span kept only on the named targets |
+| `${EXCEPT:<t>[,<t>…]}` … `${ENDEXCEPT}` | span kept on every target **except** those named |
+
+A reference to an undeclared command/skill fails the render (R5) — the
+permitted path is to declare the entry, never a hand-written literal.
+`${COMMAND:x}` / `${SKILL:x}` resolve against `extension-targets.json`'s
+`commandRef` / `skillRef` columns, per-target templates using `{ext}` / `{name}`
+placeholders — an author never restates a namespace or invocation form (R4).
+
+**Pass order — `(b)` `(a)` `(c)` `(d)` `(e)`, mask first.** `(b)` replaces
+every literal `$${` with a reserved sentinel byte (an author writes
+`$${ONLY:copilot}` to get the literal text `${ONLY:copilot}` in every
+render — the render fails up front if the source already contains that
+reserved byte); `(a)` resolves `${ONLY:...}` / `${EXCEPT:...}` spans; `(c)`
+substitutes `${TOOL}` / `${EXTENSION}`; `(d)` resolves `${COMMAND:x}` /
+`${SKILL:x}` against the declared entry set only; `(e)` unmasks the
+sentinel back to `${`.
+
+**Span semantics — five rules.** (1) Markers may appear anywhere on a line
+and a span may cross lines. (2) Splice: a **dropped** span is removed from
+the first byte of its opener through the last byte of its closer inclusive,
+newlines included, so the text before and after joins into one output
+line. (3) A source line lying wholly inside a dropped span emits nothing.
+(4) A **kept** span has only its two marker tokens removed, with a removal
+sentinel written at both sites (so a kept `${ONLY:...}` alone on its own
+line does not leak a blank line). (5) After the pass, a whitespace-only
+line carrying a removal sentinel is deleted with its newline; an
+already-blank source line has no sentinel and survives. Nesting is
+forbidden — any opener encountered while a span is open is `NESTED-BLOCK`
+by construction, containment and crossing pairs alike.
+
+**Diagnostics — eight, every one non-zero, naming file and line:**
+`UNKNOWN-TARGET`, `EMPTY-TARGET-LIST`, `SPAN-KEPT-NOWHERE`,
+`UNCLOSED-BLOCK`, `STRAY-BLOCK-END`, `MISMATCHED-BLOCK-END`,
+`NESTED-BLOCK`, `UNRESOLVED-REFERENCE`. A surviving `${IDENT}` /
+`${IDENT:arg}` whose `IDENT` has the ALL-CAPS shape of a vocabulary token
+but matches none **warns**, never fails — the accepted residual of R4's
+verbatim-passthrough guarantee (a hard error here would also claim a
+legitimate literal like `${extensionPath}`).
+
+**Two substitution layers.** `scripts/create-extension.sh` resolves
+`${SKELETON_NAME}` at **scaffold** time with a blind text substitution over
+every skeleton file, before `render_context` ever runs at **render** time
+on the already-substituted file — `${SKELETON_NAME}` is therefore the one
+row of the near-miss warning's committed known-external allow-list. The
+base skeleton's own `CONTEXT.md` references `${TOOL}` and `${EXTENSION}`
+only, deliberately: components are opt-in at scaffold time, and a
+`${COMMAND:...}`/`${SKILL:...}` reference there would fail the render of
+every base-only scaffold.
 
 ## Unmappable-declaration policy (requirements 8, 12, 13)
 
@@ -471,7 +553,9 @@ posture is the 2026-08-23 maintainer decision recorded on issue #725.
 ```
 extension.json ──render──> build/extensions/<name>/ (complete installable tree)
                           ├── gemini-extension.json   # Built (six fields, below)
-                          ├── GEMINI.md               # Context file (copied verbatim)
+                          ├── GEMINI.md               # Context file, RENDERED from CONTEXT.md
+                          │                            #   (spec 0181), when a context source is
+                          │                            #   declared — never copied verbatim
                           ├── dist/                   # MCP server (copied verbatim, when built)
                           ├── commands/                # pivot .md (copied) + rendered .toml
                           ├── skills/                 # SKILL.md files (copied verbatim)
@@ -484,9 +568,12 @@ extension.json ──render──> build/extensions/<name>/ (complete installabl
 ```
 
 The built `gemini-extension.json` carries exactly six fields —`name`,
-`version`, `description`, `contextFileName` (from `gemini.contextFileName`),
-`mcpServers`, `themes` (from `gemini.themes`) — omitting any whose declared
-value is empty, so `hello-world` (no themes) renders no `themes` key. Its
+`version`, `description`, `contextFileName` (spec 0181 R9: the render's own
+knowledge of its target — `scripts/lib/extension-targets.json`'s
+`contextOutput` column — present only when a `context` source is declared;
+never authored), `mcpServers`, `themes` (from `gemini.themes`) — omitting
+any whose declared value is empty, so `hello-world` (no themes) renders no
+`themes` key. Its
 `.version` is asserted, non-vacuously, to equal the extension's
 authoritative version declaration (requirement 11) by `--check`'s
 `VERSION-DRIFT` arm.
@@ -505,7 +592,10 @@ extension.json ──render──> dist-{claude,copilot,antigravity}-plugin/<nam
                           ├── dist/ (when mcpServers present)  # Copied — requirement 16, the
                           │                                    #   build output travels with
                           │                                    #   the declaration that names it
-                          ├── context file              # Copied, when declared
+                          ├── CLAUDE.md (Claude)             # RENDERED from CONTEXT.md (spec 0181),
+                          │   skills/<name>-context/           when declared — never copied. See
+                          │     SKILL.md (Copilot)              *Context rendering* above for the
+                          │   rules/AGENTS.md (Antigravity)     per-target delivery location table.
                           ├── skills/ agents/            # Copied / rendered from pivots
                           ├── hooks/hooks.json OR hooks.json  # Built from the generic `hooks`
                           │                                    #   section (spec 0179) — file

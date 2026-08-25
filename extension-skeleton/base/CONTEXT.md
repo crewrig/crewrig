@@ -1,9 +1,9 @@
-# ${SKELETON_NAME} Context
+# ${SKELETON_NAME} Extension
 
-Loaded when the ${SKELETON_NAME} extension is active. Describes the
+Context file loaded when this extension is active in ${TOOL}. Describes the
 extension's purpose and available capabilities to the agent.
 
-## Capabilities
+## Available Capabilities
 
 - List the tools, commands, and skills provided by this extension.
 - Describe when and how the agent should use them.

@@ -244,14 +244,43 @@ else
   ng "Case 6a — COMMITTED arm did not fire as expected (rc=$rc):"$'\n'"$out"
 fi
 rm -f "$committed_fix/claude-extension.json"
-echo "context" > "$committed_fix/CLAUDE.md"
+
+# Case 6b, FLIPPED (spec 0181 R6/R7): the four per-CLI context files join the
+# generated-output class once this ticket lands — each committed one now
+# fails as COMMITTED, individually, naming the file.
+for ctxfile in CLAUDE.md GEMINI.md copilot-instructions.md; do
+  echo "context" > "$committed_fix/$ctxfile"
+  out="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
+  rc=$?
+  if [ "$rc" -ne 0 ] && echo "$out" | grep -q "COMMITTED" && echo "$out" | grep -q "$ctxfile"; then
+    ok "Case 6b ($ctxfile) — a committed per-CLI context file fails as COMMITTED, class membership"
+  else
+    ng "Case 6b ($ctxfile) — did not fail as expected (rc=$rc):"$'\n'"$out"
+  fi
+  rm -f "$committed_fix/$ctxfile"
+done
+
+mkdir -p "$committed_fix/rules"
+echo "context" > "$committed_fix/rules/AGENTS.md"
+out="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "COMMITTED" && echo "$out" | grep -q "rules/AGENTS.md"; then
+  ok "Case 6b (rules/AGENTS.md) — a committed root-anchored Antigravity context file fails as COMMITTED"
+else
+  ng "Case 6b (rules/AGENTS.md) — did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
+rm -rf "$committed_fix/rules"
+
+# Paired negative (R4): .geminiignore and accepted-gaps.json are NOT members
+# of the generated-output class (never were, and R13 leaves the former's
+# reintroduction as a fresh committed decision rather than a class member).
 echo "*.md" > "$committed_fix/.geminiignore"
 echo "[]" > "$committed_fix/accepted-gaps.json"
 out2="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
 if echo "$out2" | grep -q "OK   COMMITTED"; then
-  ok "Case 6b — CLAUDE.md/.geminiignore/accepted-gaps.json stay outside the class by construction (paired negative)"
+  ok "Case 6b (paired negative) — .geminiignore/accepted-gaps.json stay outside the class by construction"
 else
-  ng "Case 6b — a hand-authored context file or the gap declaration was wrongly charged:"$'\n'"$out2"
+  ng "Case 6b (paired negative) — the gap declaration was wrongly charged:"$'\n'"$out2"
 fi
 
 # ---------------------------------------------------------------------------
@@ -470,7 +499,7 @@ fi
 # ---------------------------------------------------------------------------
 echo "13. v2-F1 — scaffold org-tier manifest path (mcp-server, theme)"
 # ---------------------------------------------------------------------------
-for comp_file in "mcp-server:src/index.ts" "theme:CLAUDE.md"; do
+for comp_file in "mcp-server:src/index.ts" "theme:CONTEXT.md"; do
   comp="${comp_file%%:*}"
   file="${comp_file#*:}"
   result="$(scaffold "$comp")"
@@ -711,6 +740,193 @@ if [ "$rc" -ne 0 ] && echo "$out" | grep -q "VALIDATION-ERROR" && echo "$out" | 
   ok "Case 18 (matcher) — a matcher on a matcher-rejecting event is a validation error, not silently ignored"
 else
   ng "Case 18 (matcher) — did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
+
+# ---------------------------------------------------------------------------
+echo "19. spec 0181 — the context render (issue #1007)"
+# ---------------------------------------------------------------------------
+sandbox="$(make_sandbox)"
+ctxfix="$sandbox/extensions/core/ctxfix"
+mkdir -p "$ctxfix/commands" "$ctxfix/skills/ok-skill"
+cat > "$ctxfix/extension.json" <<'EOF'
+{"name":"ctxfix","version":"0.0.1","description":"fixture",
+ "commands":{"location":"commands/"},"skills":{"location":"skills/"},
+ "context":{"source":"CONTEXT.md"}}
+EOF
+cat > "$ctxfix/commands/ok-cmd.md" <<'EOF'
+---
+name: ok-cmd
+description: "ok"
+type: command
+---
+Body.
+EOF
+cat > "$ctxfix/skills/ok-skill/SKILL.md" <<'EOF'
+---
+name: ok-skill
+description: "ok"
+---
+Body.
+EOF
+
+# ctx_case <label> <content> — writes CONTEXT.md, renders --target claude,
+# echoes "<rc>\t<combined-output-b64>".
+ctx_case() {
+  local content="$2"
+  printf '%s' "$content" > "$ctxfix/CONTEXT.md"
+  local out rc
+  rm -rf "$sandbox/build" "$ctxfix/dist-claude-plugin"
+  out="$( cd "$sandbox" && bash scripts/build-extension.sh --target all ctxfix 2>&1 )"
+  rc=$?
+  printf '%s\t%s\n' "$rc" "$(printf '%s' "$out" | base64 | tr -d '\n')"
+}
+
+assert_diag() {
+  # assert_diag <label> <content> <expect-substring>...
+  local label="$1" content="$2"; shift 2
+  local result rc out_b64 out ok=1
+  result="$(ctx_case "$label" "$content")"
+  rc="${result%%$'\t'*}"
+  out_b64="${result#*$'\t'}"
+  out="$(printf '%s' "$out_b64" | base64 -d)"
+  if [ "$rc" -eq 0 ]; then ok=0; fi
+  local pattern
+  for pattern in "$@"; do
+    case "$out" in *"$pattern"*) ;; *) ok=0 ;; esac
+  done
+  if [ "$ok" -eq 1 ]; then
+    ok "Case 19 ($label) — fired as expected, naming $*"
+  else
+    ng "Case 19 ($label) — did not fire as expected (rc=$rc):"$'\n'"$out"
+  fi
+}
+
+assert_diag "UNKNOWN-TARGET" 'x${ONLY:bogus}y${ENDONLY}z' "UNKNOWN-TARGET" "bogus"
+assert_diag "EMPTY-TARGET-LIST" 'x${ONLY:}y${ENDONLY}z' "EMPTY-TARGET-LIST"
+assert_diag "SPAN-KEPT-NOWHERE" 'x${EXCEPT:gemini,claude,copilot,antigravity}y${ENDEXCEPT}z' "SPAN-KEPT-NOWHERE"
+assert_diag "UNCLOSED-BLOCK" 'x${ONLY:claude}y' "UNCLOSED-BLOCK"
+assert_diag "STRAY-BLOCK-END" 'x${ENDONLY}y' "STRAY-BLOCK-END"
+assert_diag "MISMATCHED-BLOCK-END" 'x${ONLY:claude}y${ENDEXCEPT}z' "MISMATCHED-BLOCK-END"
+# CROSSING pair, not contained — v2-F2's own input (containment was already
+# caught; crossing was not).
+assert_diag "NESTED-BLOCK" 'A${ONLY:copilot}B${EXCEPT:gemini}C${ENDONLY}D${ENDEXCEPT}E' "NESTED-BLOCK"
+assert_diag "UNRESOLVED-REFERENCE" 'x ${COMMAND:nope} y' "UNRESOLVED-REFERENCE" "COMMAND:nope"
+# Growth (step 14(i)): a SECOND undeclared reference is named too, in the
+# SAME run — not only the first.
+assert_diag "UNRESOLVED-REFERENCE-growth" 'x ${COMMAND:nope} y ${SKILL:alsonope} z' "UNRESOLVED-REFERENCE" "COMMAND:nope" "SKILL:alsonope"
+
+# --- R5: an undeclared command reference fails the render, names the token
+# AND the file, and produces NO context output under ANY build root.
+printf 'x ${COMMAND:nope} y' > "$ctxfix/CONTEXT.md"
+r5_out="$( cd "$sandbox" && bash scripts/build-extension.sh --target all ctxfix 2>&1 )"
+r5_rc=$?
+if [ "$r5_rc" -ne 0 ] && echo "$r5_out" | grep -q "UNRESOLVED-REFERENCE" && echo "$r5_out" | grep -q "CONTEXT.md"; then
+  ok "Case 19 (R5) — an undeclared command reference fails the render, naming the token and the file"
+else
+  ng "Case 19 (R5) — did not fail as expected (rc=$r5_rc):"$'\n'"$r5_out"
+fi
+no_ctx_output=1
+[ -f "$sandbox/build/extensions/ctxfix/GEMINI.md" ] && no_ctx_output=0
+[ -f "$ctxfix/dist-claude-plugin/ctxfix/CLAUDE.md" ] && no_ctx_output=0
+[ -f "$sandbox/dist-copilot-plugin/ctxfix/skills/ctxfix-context/SKILL.md" ] && no_ctx_output=0
+[ -f "$sandbox/dist-antigravity-plugin/ctxfix/rules/AGENTS.md" ] && no_ctx_output=0
+if [ "$no_ctx_output" -eq 1 ]; then
+  ok "Case 19 (R5) — no context output was produced under any of the four build roots"
+else
+  ng "Case 19 (R5) — a context output was produced under some build root despite the R5 failure"
+fi
+rm -rf "$sandbox/build" "$ctxfix/dist-claude-plugin" "$sandbox/dist-copilot-plugin" "$sandbox/dist-antigravity-plugin"
+
+# --- Three span-shape cases the prototype run proved necessary. -------------
+
+# Splice (rule 2): a dropped span opens and closes on DIFFERENT lines — the
+# text before the opener and the text after the closer must join into ONE
+# line, not leave the newlines behind.
+result="$(ctx_case "splice" $'before${ONLY:copilot}\nmiddle\n${ENDONLY}after\n')"
+rc="${result%%$'\t'*}"
+out_b64="${result#*$'\t'}"; out="$(printf '%s' "$out_b64" | base64 -d)"
+built="$sandbox/build/extensions/ctxfix/GEMINI.md"
+if [ "$rc" -eq 0 ] && [ -f "$built" ] && [ "$(cat "$built")" = "beforeafter" ]; then
+  ok "Case 19 (splice) — a dropped multi-line span joins its prefix and suffix into one line"
+else
+  ng "Case 19 (splice) — expected 'beforeafter', got:"$'\n'"$(cat "$built" 2>/dev/null || echo "<missing>")"
+fi
+
+# Consumed line (rule 3): a source line wholly inside a dropped span emits
+# NOTHING of its own — its content never survives the render, and neither
+# does its own newline (rule 2's byte range runs opener-through-closer
+# inclusive, which swallows the interior line whole). The newlines OUTSIDE
+# that range — ending the opener's own line, starting the closer's own
+# line — are ordinary surrounding text, not part of the splice, so a marker
+# sitting alone on its own line leaves each side's own line boundary
+# exactly where rule 2's literal byte range places it.
+result="$(ctx_case "consumed-line" $'A\n${ONLY:copilot}\nwholly inside\n${ENDONLY}\nB\n')"
+built="$sandbox/build/extensions/ctxfix/GEMINI.md"
+if [ -f "$built" ] && [ "$(cat "$built")" = $'A\n\nB' ] && ! grep -q "wholly inside" "$built"; then
+  ok "Case 19 (consumed-line) — the interior line's own content never appears in the output"
+else
+  ng "Case 19 (consumed-line) — expected 'A\\n\\nB' with no 'wholly inside' text, got:"$'\n'"$(cat "$built" 2>/dev/null || echo "<missing>")"
+fi
+
+# Kept-alone-on-its-own-line (rules 4-5): a KEPT ${ONLY:...} sitting alone on
+# its own line must not leak a blank line (two-site sentinel). Target=claude
+# keeps the span (claude is named); the CLAUDE.md build is what proves it.
+ctx_case "kept-alone-on-line" $'A\n${ONLY:claude}\nkept\n${ENDONLY}\nB\n' >/dev/null
+claude_built="$ctxfix/dist-claude-plugin/ctxfix/CLAUDE.md"
+if [ -f "$claude_built" ] && [ "$(cat "$claude_built")" = $'A\nkept\nB' ]; then
+  ok "Case 19 (kept-alone-on-line) — a kept \${ONLY:...} alone on its own line leaks no blank line"
+else
+  ng "Case 19 (kept-alone-on-line) — expected 'A\\nkept\\nB', got:"$'\n'"$(cat "$claude_built" 2>/dev/null || echo "<missing>")"
+fi
+rm -rf "$sandbox/build" "$ctxfix/dist-claude-plugin"
+
+# --- R4 passthrough: both ${extensionPath} and $${ONLY:copilot} survive
+# verbatim on EVERY target — the reference extension has no in-scope
+# instance of either, so this fixture is where the guarantee is proved.
+printf 'path ${extensionPath} and $${ONLY:copilot} literal.' > "$ctxfix/CONTEXT.md"
+r4_out="$( cd "$sandbox" && bash scripts/build-extension.sh --target all ctxfix 2>&1 )"
+r4_rc=$?
+r4_ok=1
+[ "$r4_rc" -eq 0 ] || r4_ok=0
+for f in "$sandbox/build/extensions/ctxfix/GEMINI.md" \
+         "$ctxfix/dist-claude-plugin/ctxfix/CLAUDE.md" \
+         "$sandbox/dist-antigravity-plugin/ctxfix/rules/AGENTS.md"; do
+  [ -f "$f" ] || { r4_ok=0; continue; }
+  content="$(cat "$f")"
+  case "$content" in
+    *'${extensionPath}'*) ;; *) r4_ok=0 ;;
+  esac
+  case "$content" in
+    *'${ONLY:copilot}'*) ;; *) r4_ok=0 ;;
+  esac
+done
+copilot_skill="$sandbox/dist-copilot-plugin/ctxfix/skills/ctxfix-context/SKILL.md"
+if [ -f "$copilot_skill" ]; then
+  content="$(cat "$copilot_skill")"
+  case "$content" in *'${extensionPath}'*) ;; *) r4_ok=0 ;; esac
+else
+  r4_ok=0
+fi
+if [ "$r4_ok" -eq 1 ]; then
+  ok "Case 19 (R4 passthrough) — \${extensionPath} and the escaped \${ONLY:copilot} survive verbatim on every target"
+else
+  ng "Case 19 (R4 passthrough) — a target lost one of the passthrough literals (rc=$r4_rc)"
+fi
+rm -rf "$sandbox/build" "$ctxfix/dist-claude-plugin" "$sandbox/dist-copilot-plugin" "$sandbox/dist-antigravity-plugin"
+
+# --- R15 non-vacuous negative: an extension declaring no `context` section
+# declares no context output, produces none, and --check stays green.
+nocontext="$sandbox/extensions/core/nocontext"
+mkdir -p "$nocontext"
+cat > "$nocontext/extension.json" <<'EOF'
+{"name":"nocontext","version":"0.0.1","description":"fixture"}
+EOF
+nc_out="$( cd "$sandbox" && bash scripts/build-extension.sh --check nocontext 2>&1 )"
+nc_rc=$?
+if [ "$nc_rc" -eq 0 ] && ! echo "$nc_out" | grep -qi "GEMINI.md"; then
+  ok "Case 19 (R15 negative) — an extension declaring no context section renders/checks cleanly, no GEMINI.md produced or declared"
+else
+  ng "Case 19 (R15 negative) — --check failed or a context output leaked in (rc=$nc_rc):"$'\n'"$nc_out"
 fi
 
 # ---------------------------------------------------------------------------

@@ -16,10 +16,13 @@ hello-world/
 ├── src/index.ts            # MCP server exposing the greet tool
 ├── commands/hello.md       # /hello slash command — PIVOT SOURCE (author here)
 ├── skills/greeter/SKILL.md # Greeter skill instructions
-├── GEMINI.md               # Agent context when extension is loaded
-├── CLAUDE.md                # Agent context when the Claude plugin is active
-├── copilot-instructions.md  # Agent context for Copilot CLI
-├── .geminiignore             # Keeps Gemini from loading non-extension files
+├── CONTEXT.md              # Agent-facing context — the ONE neutral source
+│                           #   (spec 0181); GEMINI.md, CLAUDE.md, the
+│                           #   Copilot context skill and Antigravity's
+│                           #   rules/AGENTS.md are all RENDERED from this,
+│                           #   never hand-authored — see
+│                           #   extension-skeleton/EXTENSION-FORMAT.md's
+│                           #   *Context rendering*.
 └── README.md               # This file
 ```
 

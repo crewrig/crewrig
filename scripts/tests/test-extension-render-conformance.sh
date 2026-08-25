@@ -116,6 +116,7 @@ fi
 read -r -d '' EXPECTED_GEMINI_GENERATED <<'EOF' || true
 commands/hello.toml
 gemini-extension.json
+GEMINI.md
 hooks/hooks.json
 EOF
 
@@ -138,6 +139,7 @@ plugin.json
 package.json
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
+skills/hello-world-context/SKILL.md
 hooks.json
 hooks/prompt-logger.sh
 hooks/shell-logger.sh
@@ -148,6 +150,7 @@ read -r -d '' EXPECTED_ANTIGRAVITY <<'EOF' || true
 package.json
 plugin.json
 mcp_config.json
+rules/AGENTS.md
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
 hooks.json
