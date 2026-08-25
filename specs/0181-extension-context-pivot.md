@@ -1,7 +1,7 @@
 ---
 id: "0181"
 slug: extension-context-pivot
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1007
