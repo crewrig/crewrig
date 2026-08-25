@@ -56,11 +56,17 @@ cp -r "$SKELETON_DIR/base/." "$TARGET/"
 # for mcp-server/theme, which merge a whole-fragment (mcpServers / gemini.themes)
 # rather than toggling a components.<subject>.enabled boolean.
 component_subject() {
+  # "hook" is deliberately absent (spec 0179 R2): the generic `hooks`
+  # section merged from hooks.json.fragment below is ALREADY the subject's
+  # enablement (presence follows enablement — the same rule every other
+  # generic subject in this schema follows), so there is no
+  # components.hooks.enabled toggle to flip. Flipping one here would
+  # resurrect exactly the "toggle that appears to resolve the subject and
+  # does not" shape R2 forbids surviving anywhere.
   case "$1" in
     command) echo "commands" ;;
     skill)   echo "skills" ;;
     agent)   echo "agents" ;;
-    hook)    echo "hooks" ;;
     *)       echo "" ;;
   esac
 }
@@ -125,6 +131,24 @@ if echo "$COMPONENTS" | grep -q "theme"; then
     mv "$MANIFEST.tmp" "$MANIFEST"
     rm -f "$FRAGMENT"
     echo "  Merged: theme config into extension.json"
+  fi
+fi
+
+# --- Merge hook config into the manifest if selected (spec 0179 R17) ---
+# The fragment mechanism is the ONLY correct target for the neutral `hooks`
+# section: base/extension.json is copied unconditionally before this loop,
+# so putting the section there would make every scaffolded extension declare
+# a hook, violating R1 ("An extension that provides no hook SHALL omit the
+# section entirely") and naming a handler absent from a scaffold that never
+# selected `hook`.
+if echo "$COMPONENTS" | grep -q "hook"; then
+  FRAGMENT="$TARGET/hooks.json.fragment"
+  if [ -f "$FRAGMENT" ] && command -v jq >/dev/null 2>&1; then
+    MANIFEST="$TARGET/extension.json"
+    jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
+    mv "$MANIFEST.tmp" "$MANIFEST"
+    rm -f "$FRAGMENT"
+    echo "  Merged: hook config into extension.json"
   fi
 fi
 

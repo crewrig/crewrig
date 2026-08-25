@@ -115,6 +115,11 @@
           "title": "Org MCP server declaration channel",
           "path": "docs/org-mcp-declaration.md",
           "nav_order": 70
+        },
+        {
+          "title": "Extension hook events",
+          "path": "docs/extension-hook-events.md",
+          "nav_order": 80
         }
       ]
     },

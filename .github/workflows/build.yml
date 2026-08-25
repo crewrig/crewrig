@@ -79,6 +79,18 @@ jobs:
               - 'Taskfile.yml'
               - 'extensions/**'
               - 'artifacts/**'
+              - 'scripts/lib/extension-hooks.sh'
+              - 'scripts/lib/extension-targets.json'
+              - 'scripts/check-extension-hook-tokens.sh'
+              - 'scripts/check-extension-hook-map.sh'
+              - 'docs/extension-hook-events.md'
+              - 'extension-skeleton/**'
+              - 'scripts/create-extension.sh'
+              - 'scripts/build-claude-plugin.sh'
+              - 'scripts/build-copilot-plugin.sh'
+              - 'scripts/build-antigravity-extension.sh'
+              - 'scripts/tests/test-check-extension-hook-tokens.sh'
+              - 'scripts/tests/test-check-extension-hook-map.sh'
       - name: Install yq
         if: steps.filter.outputs.extension-render == 'true'
         run: |
@@ -99,6 +111,18 @@ jobs:
       - name: Build Extension --check
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/build-extension.sh --check
+      - name: Check Extension Hook Tokens
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/check-extension-hook-tokens.sh
+      - name: Test Check Extension Hook Tokens
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/tests/test-check-extension-hook-tokens.sh
+      - name: Check Extension Hook Map
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/check-extension-hook-map.sh
+      - name: Test Check Extension Hook Map
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/tests/test-check-extension-hook-map.sh
   extension-provenance:
     runs-on: ubuntu-latest
     steps:

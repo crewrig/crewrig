@@ -161,11 +161,19 @@ if [ "$AGENTS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$AGENTS_LOCATION" ]; then
   done
 fi
 
-# --- Generate hooks.json at output root ---
-COPILOT_HOOKS=$(jq '.copilot.hooks // {}' "$MANIFEST" 2>/dev/null)
-if [ "$COPILOT_HOOKS" != "{}" ] && [ "$COPILOT_HOOKS" != "null" ]; then
-  echo "$COPILOT_HOOKS" | jq '.' > "$OUTPUT_DIR/hooks.json"
-  echo "  Generated: hooks.json"
+# --- Deliver hook handlers (spec 0179) ---
+# The per-CLI `copilot.hooks` key is retired (0065 delta-01 R1/R10; this
+# builder no longer reads it — build-extension.sh's render_plugin emits
+# hooks.json from the generic declaration via scripts/lib/extension-hooks.sh,
+# AFTER this builder runs, per 0065 delta-01 R9). What this builder still
+# owns is delivering the extension's own hook HANDLER scripts, because the
+# emitted command's ${COPILOT_PLUGIN_ROOT}/hooks/<handler> form resolves to a
+# path nothing else copies here. Copied whenever the manifest declares any
+# generic hooks at all, regardless of which map on Copilot specifically — a
+# conservative, deliberately coarse test that never under-delivers.
+if jq -e '(.hooks // []) | length > 0' "$MANIFEST" >/dev/null 2>&1 && [ -d "$EXT_DIR/hooks" ]; then
+  cp -r "$EXT_DIR/hooks" "$OUTPUT_DIR/hooks"
+  echo "  Copied: hooks/"
 fi
 
 echo ""

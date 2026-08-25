@@ -20,11 +20,6 @@
     "evidence": "scripts/build-claude-plugin.sh:188 — full skeleton/reference migration lands with sub-spec S5 (issue #1008)"
   },
   {
-    "key": "claude.hooks",
-    "reason": "deferred:S2",
-    "evidence": "scripts/build-claude-plugin.sh:206 — hook declaration vocabulary lands with sub-spec S2 (issue #1005)"
-  },
-  {
     "key": "claude.settings",
     "reason": "cli-only-concept",
     "evidence": "scripts/build-claude-plugin.sh:214"
@@ -60,19 +55,9 @@
     "evidence": "consumed by scripts/build-extension.sh's render — no Claude/Copilot/Antigravity theme concept"
   },
   {
-    "key": "gemini.hooks",
-    "reason": "deferred:S2",
-    "evidence": "hook declaration vocabulary lands with sub-spec S2 (issue #1005)"
-  },
-  {
     "key": "copilot.pluginName",
     "reason": "deferred:S5",
     "evidence": "scripts/build-copilot-plugin.sh:84 — reducible from .name, verdict recorded for sub-spec S5 (issue #1008)"
-  },
-  {
-    "key": "copilot.hooks",
-    "reason": "deferred:S2",
-    "evidence": "scripts/build-copilot-plugin.sh:161 — hook declaration vocabulary lands with sub-spec S2 (issue #1005)"
   },
   {
     "key": "antigravity.pluginName",
@@ -83,10 +68,5 @@
     "key": "antigravity.contextFileName",
     "reason": "deferred:S4",
     "evidence": "scripts/build-antigravity-extension.sh:115 — context declaration vocabulary lands with sub-spec S4 (issue #1007)"
-  },
-  {
-    "key": "antigravity.hooks",
-    "reason": "deferred:S2",
-    "evidence": "scripts/build-antigravity-extension.sh:180 — hook declaration vocabulary lands with sub-spec S2 (issue #1005)"
   }
 ]

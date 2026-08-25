@@ -66,6 +66,11 @@ ext_validate_manifest() {
   # stderr and returns non-zero; returns 0 (silent) when the manifest is
   # clean. Fail-closed: an allowlist row absent or malformed does not admit
   # the key (spec 0173 PLAN step 3).
+  #
+  # Also calls ext_hooks_validate (spec 0179 R3/R4/R7/R8): a malformed
+  # generic `hooks` entry fails the build here too, alongside the per-CLI
+  # key check, so both error classes surface from the one validation call
+  # sites already invoke.
   local manifest="$1" allowlist="$2"
   local cli errors=0
   for cli in gemini claude copilot antigravity; do
@@ -79,6 +84,11 @@ ext_validate_manifest() {
       fi
     done <<< "$keys"
   done
+
+  # shellcheck source=extension-hooks.sh
+  . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/extension-hooks.sh"
+  ext_hooks_validate "$manifest" || errors=$((errors + 1))
+
   [ "$errors" -eq 0 ]
 }
 

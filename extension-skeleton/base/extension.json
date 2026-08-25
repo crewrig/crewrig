@@ -14,16 +14,11 @@
     "agents": {
       "enabled": false,
       "location": "agents/"
-    },
-    "hooks": {
-      "enabled": false,
-      "location": "hooks/"
     }
   },
   "gemini": {
     "contextFileName": "GEMINI.md",
-    "themes": [],
-    "hooks": []
+    "themes": []
   },
   "claude": {
     "author": {
@@ -33,7 +28,6 @@
     "skills": ["skills/*/SKILL.md"],
     "agents": [],
     "rules": [],
-    "hooks": {},
     "defaultAllowedTools": ["Read", "Write", "Edit", "Bash"],
     "settings": {},
     "lsp": {},

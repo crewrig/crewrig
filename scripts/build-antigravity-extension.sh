@@ -180,11 +180,22 @@ if [ "$AGENTS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$AGENTS_LOCATION" ]; then
   done
 fi
 
-# --- Generate hooks.json at output root ---
-AGY_HOOKS=$(jq '.antigravity.hooks // {}' "$MANIFEST" 2>/dev/null)
-if [ "$AGY_HOOKS" != "{}" ] && [ "$AGY_HOOKS" != "null" ]; then
-  echo "$AGY_HOOKS" | jq '.' > "$OUTPUT_DIR/hooks.json"
-  echo "  Generated: hooks.json"
+# --- Deliver hook handlers (spec 0179; v2-F1) ---
+# The per-CLI `antigravity.hooks` key is retired (0063 delta-01 R1/R19; this
+# builder no longer reads it — build-extension.sh's render_plugin emits
+# hooks.json AT THE OUTPUT ROOT from the generic declaration via
+# scripts/lib/extension-hooks.sh, AFTER this builder runs, per 0063 delta-01
+# R18). What this builder still owns is delivering the extension's own hook
+# HANDLER scripts into hooks/ — the asymmetry v2-F1 flagged: hooks.json sits
+# at the plugin ROOT while Antigravity has no path variable, so its emitted
+# command is working-directory-relative and MUST resolve to hooks/<handler>,
+# never a bare <handler> sitting beside hooks.json itself. Copied whenever
+# the manifest declares any generic hooks at all, regardless of which map on
+# Antigravity specifically — a conservative, deliberately coarse test that
+# never under-delivers.
+if jq -e '(.hooks // []) | length > 0' "$MANIFEST" >/dev/null 2>&1 && [ -d "$EXT_DIR/hooks" ]; then
+  cp -r "$EXT_DIR/hooks" "$OUTPUT_DIR/hooks"
+  echo "  Copied: hooks/"
 fi
 
 echo ""

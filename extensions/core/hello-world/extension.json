@@ -17,10 +17,24 @@
   "skills": {
     "location": "skills/"
   },
+  "hooks": [
+    {
+      "id": "shell-logger",
+      "event": "PreToolUse",
+      "matcher": "shell",
+      "command": "bash ${extensionRoot}/hooks/shell-logger.sh",
+      "description": "Maps-everywhere example (spec 0179 R18): fires before every shell-class tool call on every supported target."
+    },
+    {
+      "id": "prompt-logger",
+      "event": "UserPromptSubmit",
+      "command": "bash ${extensionRoot}/hooks/prompt-logger.sh",
+      "description": "Maps-partially example (spec 0179 R18): no counterpart on the Antigravity CLI (see extensions/core/hello-world/accepted-gaps.json)."
+    }
+  ],
   "gemini": {
     "contextFileName": "GEMINI.md",
-    "themes": [],
-    "hooks": []
+    "themes": []
   },
   "claude": {
     "author": {
@@ -32,7 +46,6 @@
     ],
     "agents": [],
     "rules": [],
-    "hooks": {},
     "defaultAllowedTools": [
       "Read",
       "Write",
