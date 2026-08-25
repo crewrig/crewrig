@@ -133,10 +133,11 @@ substitution — leave `${extensionRoot}` unresolved for the install-time
 rewrite (Option A) to find," which is why `ext_mcp_native` implements its own
 null-handling rather than reusing `_ext_hooks_resolve_command`.
 
-**Q3 — Antigravity install destination and rewriting.** `agy plugin install
-<dir>` copies the plugin verbatim to `~/.gemini/config/plugins/<name>/`,
-where `<name>` is `plugin.json`'s own `.name` field (NOT the source
-directory's basename) — confirmed by installing a source directory named
+**Q3 — Antigravity install destination and rewriting.**
+`agy plugin install <dir>` copies the plugin verbatim to
+`~/.gemini/config/plugins/<name>/`, where `<name>` is `plugin.json`'s own
+`.name` field (NOT the source directory's basename) — confirmed by
+installing a source directory named
 differently from its declared plugin name and finding the installed
 directory under the declared name. `agy plugin list` names the plugin back
 under an `imports` array. **No rewriting of any kind happens at install** —
