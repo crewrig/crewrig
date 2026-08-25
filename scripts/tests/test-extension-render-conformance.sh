@@ -69,6 +69,7 @@ fi
 read -r -d '' EXPECTED_GEMINI_GENERATED <<'EOF' || true
 commands/hello.toml
 gemini-extension.json
+hooks/hooks.json
 EOF
 
 read -r -d '' EXPECTED_CLAUDE <<'EOF' || true
@@ -78,12 +79,18 @@ CLAUDE.md
 package.json
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
+hooks/hooks.json
+hooks/prompt-logger.sh
+hooks/shell-logger.sh
 EOF
 
 read -r -d '' EXPECTED_COPILOT <<'EOF' || true
 plugin.json
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
+hooks.json
+hooks/prompt-logger.sh
+hooks/shell-logger.sh
 EOF
 
 read -r -d '' EXPECTED_ANTIGRAVITY <<'EOF' || true
@@ -91,6 +98,9 @@ package.json
 plugin.json
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
+hooks.json
+hooks/prompt-logger.sh
+hooks/shell-logger.sh
 EOF
 
 # assert_file_set <label> <root-dir> <expected-heredoc>
@@ -144,6 +154,98 @@ if [ -d "$gemini_build_dir" ]; then
   fi
 else
   ng "Gemini in-place — build/extensions/$EXT_NAME was not produced"
+fi
+
+# --- spec 0179 v2-F1 — RESOLVABILITY: each emitted hook command's resolved
+# path must exist in that target's own rendered tree. An exact file-set
+# match (above) proves the handler files are PRESENT; it does not prove the
+# COMMAND STRING a target actually reads points at them — a translator that
+# emits the wrong root-token substitution (or the wrong relative path for
+# Antigravity's working-directory rule) can pass every file-set assertion
+# above while still shipping a hook nothing can execute. This is the one
+# hole the seat flagged that no other check closes, and it lands WITH this
+# file's file-set work, not after it. ---
+assert_command_resolves() {
+  # assert_command_resolves <label> <hook-file> <root-dir> <root-token-or-empty>
+  local label="$1" hook_file="$2" root_dir="$3" root_token="$4"
+  if [ ! -f "$hook_file" ]; then
+    ng "$label — $hook_file was not produced, cannot check command resolvability"
+    return
+  fi
+  local commands checked=0
+  commands="$(jq -r '.. | objects | .command? // empty' "$hook_file" 2>/dev/null)"
+  while IFS= read -r cmd; do
+    [ -z "$cmd" ] && continue
+    checked=$((checked + 1))
+    local resolved rel
+    if [ -n "$root_token" ]; then
+      resolved="${cmd//$root_token/$root_dir}"
+    else
+      resolved="$cmd"
+    fi
+    # Extract the path-looking token (starts with the root dir, or is a
+    # bare relative path for Antigravity's working-directory rule) that
+    # follows the invoking shell word (e.g. "bash <path>").
+    rel="$(awk '{for(i=1;i<=NF;i++) if ($i ~ /\.(sh)$/) print $i}' <<< "$resolved" | head -1)"
+    [ -n "$rel" ] || continue
+    case "$rel" in
+      /*) ;;
+      *) rel="$root_dir/$rel" ;;
+    esac
+    if [ -f "$rel" ]; then
+      ok "$label — emitted command's resolved path exists: $rel"
+    else
+      ng "$label — emitted command '$cmd' resolves to '$rel', which does NOT exist"
+    fi
+  done <<< "$commands"
+  [ "$checked" -gt 0 ] || ng "$label — no command found in $hook_file to check"
+}
+
+assert_command_resolves "Claude resolvability" "$CLAUDE_OUT/$EXT_NAME/hooks/hooks.json" "$CLAUDE_OUT/$EXT_NAME" '${CLAUDE_PLUGIN_ROOT}'
+assert_command_resolves "Copilot resolvability" "$COPILOT_OUT/$EXT_NAME/hooks.json" "$COPILOT_OUT/$EXT_NAME" '${COPILOT_PLUGIN_ROOT}'
+assert_command_resolves "Antigravity resolvability" "$ANTIGRAVITY_OUT/$EXT_NAME/hooks.json" "$ANTIGRAVITY_OUT/$EXT_NAME" ""
+assert_command_resolves "Gemini resolvability" "$gemini_build_dir/hooks/hooks.json" "$gemini_build_dir" '${extensionPath}'
+
+# --- spec 0179 R8 — an omitted matcher renders as each target's own
+# match-all form. hello-world's own hooks always declare an explicit
+# matcher, so this needs a dedicated fixture — a sandboxed synthetic
+# extension outside extensions/, rendered directly, cleaned up on exit. ---
+MATCHALL_SANDBOX="$(mktemp -d)"
+trap 'rm -rf "$MATCHALL_SANDBOX"; cleanup' EXIT
+MATCHALL_EXT="$MATCHALL_SANDBOX/extensions/core/matchall"
+mkdir -p "$MATCHALL_EXT"
+cat > "$MATCHALL_EXT/extension.json" <<'EOF'
+{"name":"matchall","version":"0.0.1","description":"fixture",
+ "hooks":[{"id":"everything","event":"PreToolUse","command":"echo hi"}]}
+EOF
+cp -r "$REPO_DIR/scripts" "$MATCHALL_SANDBOX/scripts"
+mkdir -p "$MATCHALL_SANDBOX/extensions/library" "$MATCHALL_SANDBOX/extensions/org"
+( cd "$MATCHALL_SANDBOX" && bash scripts/build-extension.sh --target all matchall ) >/dev/null 2>&1
+
+claude_matcher="$(jq -r '.hooks.PreToolUse[0].matcher' "$MATCHALL_EXT/dist-claude-plugin/matchall/hooks/hooks.json" 2>/dev/null)"
+gemini_matcher="$(jq -r '.hooks.BeforeTool[0].matcher' "$MATCHALL_SANDBOX/build/extensions/matchall/hooks/hooks.json" 2>/dev/null)"
+copilot_matcher="$(jq -r '.hooks.preToolUse[0].matcher' "$MATCHALL_SANDBOX/dist-copilot-plugin/matchall/hooks.json" 2>/dev/null)"
+antigravity_matcher="$(jq -r '.["matchall-hooks"].PreToolUse[0].matcher' "$MATCHALL_SANDBOX/dist-antigravity-plugin/matchall/hooks.json" 2>/dev/null)"
+
+if [ "$claude_matcher" = "" ]; then
+  ok "Match-all default — Claude renders the omitted matcher as its own empty-string match-all form"
+else
+  ng "Match-all default — Claude matcher was '$claude_matcher', expected the empty string"
+fi
+if [ "$gemini_matcher" = ".*" ]; then
+  ok "Match-all default — Gemini renders the omitted matcher as '.*'"
+else
+  ng "Match-all default — Gemini matcher was '$gemini_matcher', expected '.*'"
+fi
+if [ "$copilot_matcher" = ".*" ]; then
+  ok "Match-all default — Copilot renders the omitted matcher as '.*'"
+else
+  ng "Match-all default — Copilot matcher was '$copilot_matcher', expected '.*'"
+fi
+if [ "$antigravity_matcher" = ".*" ]; then
+  ok "Match-all default — Antigravity renders the omitted matcher as '.*'"
+else
+  ng "Match-all default — Antigravity matcher was '$antigravity_matcher', expected '.*'"
 fi
 
 echo ""

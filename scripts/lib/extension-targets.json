@@ -1,0 +1,35 @@
+{
+  "_readme": "Per-target descriptor table for the extension hook translator (spec 0179 issue #1005, plan step 5). Each row is the RENDER's own knowledge of one target: the shell tool name its neutral matcher class resolves to, its time-limit unit/default, its extension-root token form, the hook file it reads, and its match-all matcher form. OPEN ROW SET: sibling tickets #1006 (spec 0180) and #1007 (spec 0181) add COLUMNS (commandRef, skillRef, contextOutput) to these same four rows rather than recreating this file — do not delete or rename an existing key without checking those tickets. BOUNDARY (do not blur): this file carries per-target CONSTANTS only. The neutral-event-to-target-event VOCABULARY MAPPING stays in scripts/lib/extension-hooks.sh, never here, for two reasons that hold independently of whether docs/extension-hook-events.md and the translator would end up sharing a source: (a) R5 obliges the correspondence artifact to record, per column, the tool version, the probe method and the evidence behind each cell — prose with nowhere to live in a terse JSON row, so the vocabulary belongs in the hand-authored artifact and its translator counterpart, not in this machine-constants table; (b) this descriptor is a THREE-TICKET additive-only shared file (#1005/#1006/#1007 all extend it) — folding the hook vocabulary in here would couple two siblings' unrelated columns (commandRef, skillRef, contextOutput) to hook-specific content on every touch, which the open-row-set contract is meant to avoid. A later contributor tidying the mapping into this file re-couples what these two reasons keep apart.",
+  "gemini": {
+    "shellTool": "run_shell_command",
+    "timeUnit": "milliseconds",
+    "timeDefault": 60000,
+    "rootToken": "${extensionPath}",
+    "hookFile": "hooks/hooks.json",
+    "matchAll": ".*"
+  },
+  "claude": {
+    "shellTool": "Bash",
+    "timeUnit": "ungrounded",
+    "timeDefault": null,
+    "rootToken": "${CLAUDE_PLUGIN_ROOT}",
+    "hookFile": "hooks/hooks.json",
+    "matchAll": ""
+  },
+  "antigravity": {
+    "shellTool": "run_command",
+    "timeUnit": "seconds",
+    "timeDefault": 30,
+    "rootToken": null,
+    "hookFile": "hooks.json",
+    "matchAll": ".*"
+  },
+  "copilot": {
+    "shellTool": "bash",
+    "timeUnit": "seconds",
+    "timeDefault": null,
+    "rootToken": "${COPILOT_PLUGIN_ROOT}",
+    "hookFile": "hooks.json",
+    "matchAll": ".*"
+  }
+}

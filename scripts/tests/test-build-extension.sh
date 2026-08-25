@@ -240,7 +240,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-echo "7. R13 — a stale declared gap fails GAP-STALE"
+echo "7. R13 — a stale declared gap fails GAP-STALE (repointed at 'context' — spec 0179 step 13 retires the 'hooks' arm of this blanket loop, so this case now exercises the surviving subject)"
 # ---------------------------------------------------------------------------
 sandbox="$(make_sandbox)"
 stale_fix="$sandbox/extensions/core/stalegap"
@@ -249,50 +249,50 @@ cat > "$stale_fix/extension.json" <<'EOF'
 {"name":"stalegap","version":"0.0.1","description":"fixture"}
 EOF
 cat > "$stale_fix/accepted-gaps.json" <<'EOF'
-[{"subject":"hooks","target":"gemini","reason":"accepted for the fixture"}]
+[{"subject":"context","target":"gemini","reason":"accepted for the fixture"}]
 EOF
 out="$( cd "$sandbox" && bash scripts/build-extension.sh --check stalegap 2>&1 )"
 rc=$?
-if [ "$rc" -ne 0 ] && echo "$out" | grep -q "GAP-STALE" && echo "$out" | grep -q "hooks@gemini"; then
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "GAP-STALE" && echo "$out" | grep -q "context@gemini"; then
   ok "Case 7 — an accepted gap the render no longer observes fails as GAP-STALE"
 else
   ng "Case 7 — GAP-STALE did not fire as expected (rc=$rc):"$'\n'"$out"
 fi
 
 # ---------------------------------------------------------------------------
-echo "8. R12/R13 — an observed-but-undeclared gap warns, never fails the render, and fails --check until declared"
+echo "8. spec 0179 R12/R14/R15 — a REAL hook-granular gap (not the retired blanket one) warns, never fails the render, and fails --check until declared"
 # ---------------------------------------------------------------------------
 sandbox="$(make_sandbox)"
 gap_fix="$sandbox/extensions/core/realgap"
-mkdir -p "$gap_fix"
+mkdir -p "$gap_fix/hooks"
 cat > "$gap_fix/extension.json" <<'EOF'
-{"name":"realgap","version":"0.0.1","description":"fixture","hooks":{}}
+{"name":"realgap","version":"0.0.1","description":"fixture",
+ "hooks":[{"id":"prompt-logger","event":"UserPromptSubmit","command":"echo hi"}]}
 EOF
 render_out="$( cd "$sandbox" && bash scripts/build-extension.sh --target all realgap 2>&1 )"
 render_rc=$?
 observed="$sandbox/build/gaps/realgap/observed-gaps.json"
-if [ "$render_rc" -eq 0 ] && echo "$render_out" | grep -qi "Warning:.*hooks" && [ -f "$observed" ] && jq -e '.[] | select(.subject=="hooks" and .target=="gemini")' "$observed" >/dev/null 2>&1; then
-  ok "Case 8a — the render warns and records the gap, and still exits 0 (R12: never silent, never a build failure)"
+if [ "$render_rc" -eq 0 ] && echo "$render_out" | grep -qi "Warning:.*prompt-logger.*antigravity" \
+   && [ -f "$observed" ] \
+   && jq -e '.[] | select(.subject=="hooks" and .target=="antigravity" and .hook=="prompt-logger" and .event=="UserPromptSubmit" and .part=="event")' "$observed" >/dev/null 2>&1; then
+  ok "Case 8a — the render warns and records the hook-granular gap (hook/event/part), and still exits 0 (R12: never silent, never a build failure)"
 else
   ng "Case 8a — render did not warn/record/exit-0 as expected (rc=$render_rc):"$'\n'"$render_out"
 fi
 out="$( cd "$sandbox" && bash scripts/build-extension.sh --check realgap 2>&1 )"
 rc=$?
-if [ "$rc" -ne 0 ] && echo "$out" | grep -q "GAP-UNDECLARED"; then
-  ok "Case 8b — --check fails as GAP-UNDECLARED with no accepted-gaps.json"
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "GAP-UNDECLARED" && echo "$out" | grep -q "prompt-logger"; then
+  ok "Case 8b — --check fails as GAP-UNDECLARED, naming the hook, with no accepted-gaps.json"
 else
-  ng "Case 8b — GAP-UNDECLARED did not fire (rc=$rc):"$'\n'"$out"
+  ng "Case 8b — GAP-UNDECLARED did not fire as expected (rc=$rc):"$'\n'"$out"
 fi
 cat > "$gap_fix/accepted-gaps.json" <<'EOF'
-[{"subject":"hooks","target":"gemini","reason":"accepted for the fixture"},
- {"subject":"hooks","target":"claude","reason":"accepted for the fixture"},
- {"subject":"hooks","target":"copilot","reason":"accepted for the fixture"},
- {"subject":"hooks","target":"antigravity","reason":"accepted for the fixture"}]
+[{"subject":"hooks","target":"antigravity","hook":"prompt-logger","event":"UserPromptSubmit","part":"event","reason":"accepted for the fixture"}]
 EOF
 out="$( cd "$sandbox" && bash scripts/build-extension.sh --check realgap 2>&1 )"
 rc=$?
 if [ "$rc" -eq 0 ]; then
-  ok "Case 8c — declaring the observed gap in accepted-gaps.json makes --check pass"
+  ok "Case 8c — declaring the observed hook-granular gap in accepted-gaps.json makes --check pass"
 else
   ng "Case 8c — --check still fails after declaring the gap:"$'\n'"$out"
 fi
@@ -558,6 +558,144 @@ if [ "$render_rc" -eq 0 ] && [ -f "$plugin_fix/dist-claude-plugin/pluginstray/.c
   ok "Case 15b — an ordinary (non --check) render still leaves the Claude plugin directory in place"
 else
   ng "Case 15b — an ordinary render (rc=$render_rc) did not leave dist-claude-plugin/pluginstray/.claude-plugin/plugin.json in place:"$'\n'"$render_out"
+fi
+
+# ---------------------------------------------------------------------------
+echo "16. spec 0179 R17 — scaffold org-tier hook path (hooks.json.fragment, neutral declaration only)"
+# ---------------------------------------------------------------------------
+result="$(scaffold "hook")"
+sandbox="${result%%$'\t'*}"
+out_b64="${result#*$'\t'}"
+out="$(printf '%s' "$out_b64" | base64 -d)"
+assert_selection_took_effect "Case 16" "$sandbox" "$out" "hook" "hooks/logger.sh"
+if [ ! -e "$sandbox/extensions/org/probe/hooks/hooks.json" ] && [ ! -e "$sandbox/extensions/org/probe/hooks.json.fragment" ]; then
+  ok "Case 16 — the scaffold carries no committed hooks/hooks.json and no leftover hooks.json.fragment (the fragment merge consumed and deleted it)"
+else
+  ng "Case 16 — the scaffold left a committed hooks/hooks.json or an un-merged hooks.json.fragment behind"
+fi
+if jq -e '(.hooks // []) | length == 1 and .[0].event == "PreToolUse"' "$sandbox/extensions/org/probe/extension.json" >/dev/null 2>&1; then
+  ok "Case 16 — the merged manifest carries exactly one generic hook entry, declared neutrally (event PreToolUse)"
+else
+  ng "Case 16 — the merged manifest's generic hooks section is missing or malformed"
+fi
+chk_out="$( cd "$sandbox" && bash scripts/build-extension.sh --check probe 2>&1 )"
+chk_rc=$?
+if [ "$chk_rc" -eq 0 ]; then
+  ok "Case 16 — --check is clean on the hook scaffold (renders on every target the example event has a counterpart on, no gap declaration needed)"
+else
+  ng "Case 16 — --check failed on the hook scaffold:"$'\n'"$chk_out"
+fi
+
+# ---------------------------------------------------------------------------
+echo "17. spec 0179 step 26 — R15 gap reconciliation mutation tests"
+# ---------------------------------------------------------------------------
+sandbox="$(make_sandbox)"
+r15_fix="$sandbox/extensions/core/r15fix"
+mkdir -p "$r15_fix"
+cat > "$r15_fix/extension.json" <<'EOF'
+{"name":"r15fix","version":"0.0.1","description":"fixture",
+ "hooks":[{"id":"probe","event":"UserPromptSubmit","command":"echo hi"}]}
+EOF
+cat > "$r15_fix/accepted-gaps.json" <<'EOF'
+[{"subject":"hooks","target":"antigravity","hook":"probe","event":"UserPromptSubmit","part":"event","reason":"accepted"}]
+EOF
+out="$( cd "$sandbox" && bash scripts/build-extension.sh --check r15fix 2>&1 )"
+[ $? -eq 0 ] && ok "Case 17a — baseline (gap declared exactly) is clean" || ng "Case 17a — baseline failed:"$'\n'"$out"
+
+# Delete the entry -> GAP-UNDECLARED, naming the hook, event and target.
+echo '[]' > "$r15_fix/accepted-gaps.json"
+out="$( cd "$sandbox" && bash scripts/build-extension.sh --check r15fix 2>&1 )"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "GAP-UNDECLARED" && echo "$out" | grep -q "probe" && echo "$out" | grep -q "UserPromptSubmit" && echo "$out" | grep -q "antigravity"; then
+  ok "Case 17b — deleting the accepted entry fails GAP-UNDECLARED, naming hook/event/target"
+else
+  ng "Case 17b — did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
+
+# Add an entry the render doesn't observe -> GAP-STALE.
+cat > "$r15_fix/accepted-gaps.json" <<'EOF'
+[{"subject":"hooks","target":"antigravity","hook":"probe","event":"UserPromptSubmit","part":"event","reason":"accepted"},
+ {"subject":"hooks","target":"antigravity","hook":"ghost","event":"UserPromptSubmit","part":"event","reason":"never observed"}]
+EOF
+out="$( cd "$sandbox" && bash scripts/build-extension.sh --check r15fix 2>&1 )"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "GAP-STALE" && echo "$out" | grep -q "ghost"; then
+  ok "Case 17c — an accepted entry the render no longer observes fails GAP-STALE, naming it"
+else
+  ng "Case 17c — did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
+
+# Growth (R14 discrimination bar): two hooks sharing an id, differing ONLY
+# in their neutral event, must NOT collapse onto one subject@target key.
+# The real vocabulary has exactly one event that gaps on Antigravity
+# (UserPromptSubmit); this sandbox's OWN copy of the translator is mutated
+# so PreToolUse gaps there too, purely to construct the second colliding
+# gap the discrimination bar needs to be tested against.
+sed -i.bak 's/antigravity:PreToolUse) echo "PreToolUse" ;;/antigravity:PreToolUse) : ;;/' "$sandbox/scripts/lib/extension-hooks.sh"
+cat > "$r15_fix/extension.json" <<'EOF'
+{"name":"r15fix","version":"0.0.1","description":"fixture",
+ "hooks":[{"id":"probe","event":"PreToolUse","command":"echo a"},
+          {"id":"probe","event":"UserPromptSubmit","command":"echo b"}]}
+EOF
+cat > "$r15_fix/accepted-gaps.json" <<'EOF'
+[{"subject":"hooks","target":"antigravity","hook":"probe","event":"UserPromptSubmit","part":"event","reason":"accepted only this one"}]
+EOF
+out="$( cd "$sandbox" && bash scripts/build-extension.sh --check r15fix 2>&1 )"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "GAP-UNDECLARED" && echo "$out" | grep -q "PreToolUse"; then
+  ok "Case 17d — two hooks sharing an id but differing only in event produce DISTINGUISHABLE gap keys (accepting one leaves the other GAP-UNDECLARED, not silently satisfied)"
+else
+  ng "Case 17d — did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
+
+# ---------------------------------------------------------------------------
+echo "18. spec 0179 step 27 — the four retirements are load-bearing, on all four sections"
+# ---------------------------------------------------------------------------
+for cli in gemini claude copilot antigravity; do
+  sandbox="$(make_sandbox)"
+  r27_fix="$sandbox/extensions/core/r27fix"
+  mkdir -p "$r27_fix"
+  jq -n --arg cli "$cli" '{name:"r27fix", version:"0.0.1", description:"fixture"} * {($cli): {hooks: {}}}' > "$r27_fix/extension.json"
+  out="$( cd "$sandbox" && bash scripts/build-extension.sh --check r27fix 2>&1 )"
+  rc=$?
+  if [ "$rc" -ne 0 ] && echo "$out" | grep -q "VALIDATION-ERROR" && echo "$out" | grep -q "$cli.hooks"; then
+    ok "Case 18 ($cli) — a re-added '$cli.hooks' per-CLI key is rejected as inadmissible"
+  else
+    ng "Case 18 ($cli) — did not reject '$cli.hooks' as expected (rc=$rc):"$'\n'"$out"
+  fi
+done
+
+# A rendered hooks/hooks.json committed inside a fixture source tree fails COMMITTED (R13).
+sandbox="$(make_sandbox)"
+r27committed="$sandbox/extensions/core/r27committed"
+mkdir -p "$r27committed/hooks"
+cat > "$r27committed/extension.json" <<'EOF'
+{"name":"r27committed","version":"0.0.1","description":"fixture"}
+EOF
+echo '{"hooks":{}}' > "$r27committed/hooks/hooks.json"
+out="$( cd "$sandbox" && bash scripts/build-extension.sh --check r27committed 2>&1 )"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "COMMITTED" && echo "$out" | grep -q "hooks/hooks.json"; then
+  ok "Case 18 (committed) — a committed hooks/hooks.json fails as COMMITTED and is named"
+else
+  ng "Case 18 (committed) — did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
+
+# A matcher declared on a matcher-rejecting event is a validation error, not
+# a silently ignored key (R8).
+sandbox="$(make_sandbox)"
+r27matcher="$sandbox/extensions/core/r27matcher"
+mkdir -p "$r27matcher"
+cat > "$r27matcher/extension.json" <<'EOF'
+{"name":"r27matcher","version":"0.0.1","description":"fixture",
+ "hooks":[{"id":"probe","event":"UserPromptSubmit","matcher":"shell","command":"echo hi"}]}
+EOF
+out="$( cd "$sandbox" && bash scripts/build-extension.sh --check r27matcher 2>&1 )"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "VALIDATION-ERROR" && echo "$out" | grep -qi "matcher"; then
+  ok "Case 18 (matcher) — a matcher on a matcher-rejecting event is a validation error, not silently ignored"
+else
+  ng "Case 18 (matcher) — did not fail as expected (rc=$rc):"$'\n'"$out"
 fi
 
 # ---------------------------------------------------------------------------

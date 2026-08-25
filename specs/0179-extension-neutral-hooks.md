@@ -1,7 +1,7 @@
 ---
 id: "0179"
 slug: extension-neutral-hooks
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1005

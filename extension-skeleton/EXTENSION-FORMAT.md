@@ -168,13 +168,25 @@ file.
     "location": "agents/"
   },
 
-  // Lifecycle hooks. NOT YET GENERALIZED — the hook declaration vocabulary
-  // is sub-spec S2 (issue #1005). Declaring this section today is
-  // spec-legal (requirement 1 names hooks as a subject unconditionally) but
-  // has no renderer yet on any target: `bash scripts/build-extension.sh`
-  // records it as a gap (see *Unmappable-declaration policy* below) rather
-  // than silently ignoring or failing on it.
-  "hooks": {},
+  // Lifecycle hooks (spec 0179, issue #1005). An ARRAY of entries, each
+  // carrying a stable `id`, exactly one neutral `event` (from the closed
+  // set documented in docs/extension-hook-events.md), one `command`, and
+  // optionally a neutral tool-class `matcher`, a `timeLimit` (seconds —
+  // the canonical unit; converted per target, or omitted where a target's
+  // own unit is ungrounded), and a human `description`. Translated for
+  // every supported target by the shared render (scripts/build-extension.sh
+  // via scripts/lib/extension-hooks.sh) — no per-CLI hook key exists any
+  // more. A hook whose event has no counterpart on a declared target
+  // produces a build warning and an entry in the observed gap set rather
+  // than an approximation (see *Unmappable-declaration policy* below).
+  "hooks": [
+    {
+      "id": "logger",
+      "event": "PreToolUse",
+      "matcher": "shell",
+      "command": "bash ${extensionRoot}/hooks/logger.sh"
+    }
+  ],
 
   // ============================================================
   // GEMINI CLI (optional, per-CLI section)
@@ -204,10 +216,7 @@ file.
           "foreground": "#eeeeee"
         }
       }
-    ],
-
-    // Inline Gemini hook definitions. deferred:S2.
-    "hooks": []
+    ]
   },
 
   // ============================================================
@@ -233,9 +242,6 @@ file.
 
     // Additional rule files to include with the plugin. deferred:S5.
     "rules": [],
-
-    // Plugin-level hooks in Claude Code format. deferred:S2.
-    "hooks": {},
 
     // Default allowed-tools applied to skills from this extension
     // when they don't define their own. cli-only-concept.
@@ -309,7 +315,7 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 | `commands.convertToSkills` | boolean | `false` | Render pivot `.md` → skill for plugin-building targets |
 | `skills.location` | string | `skills/` | Directory path |
 | `agents.location` | string | `agents/` | Directory path |
-| `hooks` | object | — | Not yet generalized (sub-spec S2, issue #1005); declaring it records a gap, per *Unmappable-declaration policy* |
+| `hooks` | array | — | Lifecycle hook entries, translated for every target (spec 0179) — see [`docs/extension-hook-events.md`](../docs/extension-hook-events.md) for the closed event/matcher vocabulary and *Unmappable-declaration policy* below for the gap contract |
 
 ### Gemini CLI (optional, per-CLI section)
 
@@ -319,7 +325,6 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 | `gemini.themes` | array | `cli-only-concept` | UI theme definitions |
 | `gemini.themes[].name` | string | — | Theme identifier |
 | `gemini.themes[].colors` | object | — | Color palette |
-| `gemini.hooks` | array | `deferred:S2` | Inline hook definitions |
 
 ### Claude Code (optional, per-CLI section)
 
@@ -330,7 +335,6 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 | `claude.skills` | string[] | `deferred:S5` | Glob patterns for skill directories |
 | `claude.agents` | string[] | `deferred:S5` | Glob patterns for agent files (default `agents/*/AGENT.md`) |
 | `claude.rules` | string[] | `deferred:S5` | Rule files for the plugin |
-| `claude.hooks` | object | `deferred:S2` | Claude Code hook definitions → `hooks/hooks.json` |
 | `claude.defaultAllowedTools` | string[] | `cli-only-concept` | Default tool permissions for skills |
 | `claude.settings` | object | `cli-only-concept` | Plugin settings → `settings.json` |
 | `claude.lsp` | object | `cli-only-concept` | LSP server config → `.lsp.json` |
@@ -341,10 +345,8 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 | Field | Type | `reason` | Description |
 |-------|------|----------|-------------|
 | `copilot.pluginName` | string | `deferred:S5` (reducible) | Overrides `.name` in the built `plugin.json` |
-| `copilot.hooks` | object | `deferred:S2` | Copilot hook definitions → `hooks.json` |
 | `antigravity.pluginName` | string | `deferred:S5` (reducible) | Overrides `.name` in the built `plugin.json` |
 | `antigravity.contextFileName` | string | `deferred:S4` | Context file copied into the built plugin |
-| `antigravity.hooks` | object | `deferred:S2` | Antigravity hook definitions → `hooks.json` |
 
 ## Unmappable-declaration policy (requirements 8, 12, 13)
 
@@ -361,17 +363,30 @@ declaration:
 
 The durable side of the policy is a **hand-authored, committed declaration**
 of the gaps an extension's maintainers have accepted:
-`extensions/<tier>/<name>/accepted-gaps.json`, one entry per accepted
-`{subject, target}` pair. **Absence means the empty set** — an extension
-whose declarations all map cleanly (like `hello-world`) ships no such file
-at all. `bash scripts/build-extension.sh --check` compares the observed set
-against the declared one and fails, naming the offender, on either mismatch:
-a gap observed but not declared (`GAP-UNDECLARED`), or a gap declared but no
-longer observed (`GAP-STALE`). This is what keeps the gap inventory
-reviewable in a diff rather than ephemeral in a render's stderr, at the cost
-the delta spec names plainly: a legitimately unmappable declaration must be
-acknowledged twice — the render observes it, and a human records it — and
-`--check` stays red until the record lands.
+`extensions/<tier>/<name>/accepted-gaps.json`, one entry per accepted gap.
+**Absence means the empty set** — an extension whose declarations all map
+cleanly ships no such file at all. `bash scripts/build-extension.sh --check`
+compares the observed set against the declared one and fails, naming the
+offender, on either mismatch: a gap observed but not declared
+(`GAP-UNDECLARED`), or a gap declared but no longer observed (`GAP-STALE`).
+This is what keeps the gap inventory reviewable in a diff rather than
+ephemeral in a render's stderr, at the cost the delta spec names plainly: a
+legitimately unmappable declaration must be acknowledged twice — the render
+observes it, and a human records it — and `--check` stays red until the
+record lands.
+
+**Granularity.** Every gap entry carries `subject` and `target`; a gap on
+the `hooks` subject (spec 0179 R14) additionally carries `hook` (the
+declaring entry's identifier), `event` (the neutral event it declared), and
+`part` — `"event"` when the neutral event itself has no counterpart on the
+target, `"matcher"` when the event maps but the declared matcher class does
+not. These three extra fields are what let two hooks that differ only in
+their neutral event produce distinguishable gap entries rather than
+colliding on one `hooks@<target>` key — see `hello-world`'s own
+`accepted-gaps.json` for a worked example (its `prompt-logger` hook has no
+counterpart on the Antigravity CLI). The `context` subject — whose own
+sub-spec has not landed — keeps using the coarser `{subject, target}` shape
+these extra fields are absent from.
 
 ## Delivery paths (requirements 20, 21, 22)
 
@@ -408,6 +423,10 @@ extension.json ──render──> build/extensions/<name>/ (complete installabl
                           ├── commands/                # pivot .md (copied) + rendered .toml
                           ├── skills/                 # SKILL.md files (copied verbatim)
                           ├── agents/                 # PROMPT.md files (copied verbatim)
+                          ├── hooks/hooks.json         # Built from the generic `hooks` section
+                          │                            #   (spec 0179), when at least one hook maps
+                          │                            #   on Gemini; the hooks/ handler tree itself
+                          │                            #   is copied verbatim like any other file
                           └── (every other source file, copied verbatim)
 ```
 
@@ -427,7 +446,11 @@ extension.json ──render──> dist-{claude,copilot,antigravity}-plugin/<nam
                           ├── .mcp.json (Claude only)   # Generated, ${extensionPath} resolved
                           ├── context file              # Copied, when declared
                           ├── skills/ agents/            # Copied / rendered from pivots
-                          └── hooks (Claude/Copilot/Antigravity format)
+                          ├── hooks/hooks.json OR hooks.json  # Built from the generic `hooks`
+                          │                                    #   section (spec 0179) — file
+                          │                                    #   name and shape per target,
+                          │                                    #   see docs/extension-hook-events.md
+                          └── hooks/<handler files>      # Copied by the per-CLI builder itself
 ```
 
 This half of the render is unchanged by the render-at-publication model —
@@ -436,11 +459,27 @@ in-place target moved off a committed sibling.
 
 ## Hook Systems
 
-Gemini CLI and Claude Code have fundamentally different hook architectures.
-See the migration plan (issue #30, section 5.4) for the complete comparison.
-The hook declaration vocabulary itself is not yet generalized — sub-spec S2
-(issue #1005) owns it; today `gemini.hooks` / `claude.hooks` /
-`copilot.hooks` / `antigravity.hooks` remain per-CLI, `deferred:S2` keys.
+Gemini CLI, Claude Code, GitHub Copilot CLI and the Antigravity CLI each have
+their own hook file, structural shape, matcher form, time-limit unit and
+extension-root token form — and none of that surfaces in `extension.json`.
+An extension declares each hook exactly ONCE, in the generic `hooks` section
+above (spec 0179, issue #1005): a stable identifier, a neutral lifecycle
+event drawn from a closed, evidence-backed set, one command, and optionally
+a neutral tool-class matcher, a time limit in seconds, and a description.
+There is exactly one declaration site — no per-CLI `hooks` key exists on
+any of the four per-CLI sections, and declaring one is a manifest validation
+error.
+
+The shared translator (`scripts/lib/extension-hooks.sh`, invoked by
+`scripts/build-extension.sh`) renders every declared hook into each target's
+own native shape. Where a declared event or matcher class has no counterpart
+on a target, the render emits a build warning and records the gap rather
+than approximating it — see *Unmappable-declaration policy* below. The full
+per-target correspondence — which neutral event maps to which target event,
+the hook file, the matcher form, the time unit and the extension-root
+token — is the normative, evidence-backed
+[`docs/extension-hook-events.md`](../docs/extension-hook-events.md), kept
+honest against the translator by `scripts/check-extension-hook-map.sh`.
 
 ## Backward Compatibility
 

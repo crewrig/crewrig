@@ -58,6 +58,8 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 . "$SCRIPT_DIR/lib/render-command.sh"
 # shellcheck source=lib/extension-manifest.sh
 . "$SCRIPT_DIR/lib/extension-manifest.sh"
+# shellcheck source=lib/extension-hooks.sh
+. "$SCRIPT_DIR/lib/extension-hooks.sh"
 
 PERCLI_KEYS="$SCRIPT_DIR/lib/extension-percli-keys.json"
 GENERATED_CLASS="$SCRIPT_DIR/lib/extension-generated-class.json"
@@ -223,14 +225,36 @@ render_gemini() {
     fi
   fi
 
+  # Hooks (spec 0179): translated by the shared library, not gapped
+  # blanket-style any more — R16 retires that arm in the same change that
+  # gives the subject a renderer. Only the surviving `context` arm keeps
+  # using the blanket per-subject gap (its own sub-spec has not landed).
+  ext_hooks_render gemini "$manifest" "$ext_dir" "$build_dir"
+  ext_hooks_gaps gemini "$manifest" >&3
+
   local subj
-  for subj in hooks context; do
+  for subj in context; do
     if generic_subject_declared "$manifest" "$subj"; then
       echo "Warning: extension '$name' declares subject '$subj' with no renderer on target 'gemini' yet (its sub-spec has not landed)" >&2
-      echo "${subj}@gemini" >&3
+      jq -c -n --arg subject "$subj" --arg target gemini \
+        --arg reason "declared subject has no renderer yet (its sub-spec has not landed)" \
+        '{subject: $subject, target: $target, reason: $reason}' >&3
     fi
   done
   return "$rc"
+}
+
+# _plugin_default_out_dir <ext_dir> <name> <label> — the SAME default output
+# root each per-CLI builder resolves for a bare invocation (no explicit
+# output-dir argument), so the translator writes the hook file into the tree
+# the builder actually produced rather than guessing a second path.
+_plugin_default_out_dir() {
+  local ext_dir="$1" name="$2" label="$3"
+  case "$label" in
+    claude) echo "$ext_dir/dist-claude-plugin/$name" ;;
+    copilot) echo "$REPO_DIR/dist-copilot-plugin/$name" ;;
+    antigravity) echo "$REPO_DIR/dist-antigravity-plugin/$name" ;;
+  esac
 }
 
 # render_plugin <builder> <ext_dir> <manifest> <name> <target-label>
@@ -238,11 +262,22 @@ render_plugin() {
   local builder="$1" ext_dir="$2" manifest="$3" name="$4" label="$5" rc=0
   bash "$builder" "$ext_dir" >&2 || rc=1
 
+  # Hooks (spec 0179): emitted into the builder's own output root AFTER the
+  # delegated builder runs (0063 delta-01 R18 / 0065 delta-01 R9 — the
+  # shared pipeline is the property's carrier, not a per-CLI build script
+  # reading a manifest field of its own).
+  local out_dir
+  out_dir="$(_plugin_default_out_dir "$ext_dir" "$name" "$label")"
+  ext_hooks_render "$label" "$manifest" "$ext_dir" "$out_dir"
+  ext_hooks_gaps "$label" "$manifest" >&3
+
   local subj
-  for subj in hooks context; do
+  for subj in context; do
     if generic_subject_declared "$manifest" "$subj"; then
       echo "Warning: extension '$name' declares subject '$subj' with no renderer on target '$label' yet (its sub-spec has not landed)" >&2
-      echo "${subj}@${label}" >&3
+      jq -c -n --arg subject "$subj" --arg target "$label" \
+        --arg reason "declared subject has no renderer yet (its sub-spec has not landed)" \
+        '{subject: $subject, target: $target, reason: $reason}' >&3
     fi
   done
   return "$rc"
@@ -289,10 +324,35 @@ render_extension() {
     local gap_dir
     gap_dir="$(ext_gap_dir "$REPO_DIR" "$name")"
     mkdir -p "$gap_dir"
+    # THE WIRE CONTRACT (spec 0179 step 14 — shared with #1006/#1007, whose
+    # DEVs read this merged diff, not the plan text, as the contract):
+    #
+    #   fd 3 carries NDJSON — one COMPACT (`jq -c`) JSON object per line.
+    #   Every emitter (ext_hooks_gaps below; the `context` gap loops above)
+    #   writes with `jq -c -n --arg ...` — never string interpolation — so a
+    #   value containing '"', '@' or a newline can never corrupt the line
+    #   boundary the parse below depends on. Every entry carries `subject`
+    #   and `target`; a hook-granular entry additionally carries `hook`,
+    #   `event` and `part` (`"event"` | `"matcher"`). Sibling tickets extend
+    #   this by ADDING fields, never by changing the framing.
+    #
+    #   Parsed here with `jq -R -s 'split("\n") | ... | map(fromjson)'` —
+    #   raw input, split on literal newlines, each line parsed on its own —
+    #   rather than the equivalent-looking `jq -s '.'` (jq's native
+    #   multi-value stream slurp, which also happens to accept NDJSON, since
+    #   consecutive JSON values separated only by whitespace are valid
+    #   input to it). The two are NOT equivalent on a malformed line: `jq -s`
+    #   parses "the next JSON value," so a value some future writer
+    #   accidentally pretty-prints across several lines still parses
+    #   silently, quietly breaking the "one compact object per LINE"
+    #   contract without any error. Splitting on "\n" first and calling
+    #   `fromjson` per line enforces that contract structurally — a
+    #   multi-line value fails loudly right here instead of surfacing as a
+    #   confusing downstream `check_gaps` key mismatch. If you extend this
+    #   record, keep both the emitter (`jq -c -n --arg`) and this parse
+    #   invocation exactly as documented; do not swap either independently.
     jq -R -s '
-      split("\n") | map(select(length > 0)) | map(split("@")) |
-      map({subject: .[0], target: .[1],
-           reason: "declared subject has no renderer yet (its sub-spec has not landed)"})
+      split("\n") | map(select(length > 0)) | map(fromjson)
     ' "$gap_file" > "$gap_dir/observed-gaps.json"
   fi
   rm -f "$gap_file"
@@ -321,6 +381,9 @@ declared_outputs() {
         echo "$loc/$stem.toml"
       done
     fi
+  fi
+  if [ -n "$(_ext_hooks_resolved_entries gemini "$manifest")" ]; then
+    echo "hooks/hooks.json"
   fi
 }
 
@@ -351,6 +414,15 @@ check_version_drift() {
   return 0
 }
 
+# GAP_KEY_FILTER — the SINGLE canonical key builder (spec 0179 step 14),
+# applied identically to the observed and accepted sides so the two can
+# never drift apart by construction. Subject-granularity entries (the
+# surviving `context` arm) key on `subject@target` alone, exactly as before;
+# a hook-granularity entry additionally carries `hook`, `event` and `part`,
+# so two hooks differing only in their neutral event produce distinguishable
+# keys rather than colliding on one `subject@target` pair.
+GAP_KEY_FILTER='def gap_key: "\(.subject)@\(.target)" + (if has("hook") then "@\(.hook)@\(.event)@\(.part)" else "" end); map(gap_key)'
+
 # check_gaps <ext_dir> <name> — arm (d): the render's observed gap set against
 # the hand-authored, committed accepted-gaps.json (absent means the empty
 # set, spec 0173Δ R13).
@@ -361,9 +433,9 @@ check_gaps() {
   observed="$gap_dir/observed-gaps.json"
   accepted="$ext_dir/accepted-gaps.json"
   obs_keys=""
-  [ -f "$observed" ] && obs_keys="$(jq -r '.[] | "\(.subject)@\(.target)"' "$observed" | sort -u)"
+  [ -f "$observed" ] && obs_keys="$(jq -r "$GAP_KEY_FILTER"' | .[]' "$observed" | sort -u)"
   acc_keys=""
-  [ -f "$accepted" ] && acc_keys="$(jq -r '.[] | "\(.subject)@\(.target)"' "$accepted" | sort -u)"
+  [ -f "$accepted" ] && acc_keys="$(jq -r "$GAP_KEY_FILTER"' | .[]' "$accepted" | sort -u)"
 
   while IFS= read -r k; do
     [ -z "$k" ] && continue

@@ -206,12 +206,20 @@ if [ "$AGENTS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$AGENTS_LOCATION" ]; then
   done < <(echo "$AGENTS_GLOBS")
 fi
 
-# --- Generate hooks/hooks.json ---
-CLAUDE_HOOKS=$(jq '.claude.hooks // {}' "$MANIFEST" 2>/dev/null)
-if [ "$CLAUDE_HOOKS" != "{}" ] && [ "$CLAUDE_HOOKS" != "null" ]; then
-  mkdir -p "$OUTPUT_DIR/hooks"
-  echo "{\"hooks\": $CLAUDE_HOOKS}" | jq '.' > "$OUTPUT_DIR/hooks/hooks.json"
-  echo "  Generated: hooks/hooks.json"
+# --- Deliver hook handlers (spec 0179) ---
+# The per-CLI `claude.hooks` key is retired (0179 R1/R16; this builder no
+# longer reads it — build-extension.sh's render_plugin emits hooks/hooks.json
+# from the generic declaration via scripts/lib/extension-hooks.sh, AFTER this
+# builder runs). What this builder still owns is delivering the extension's
+# own hook HANDLER scripts into the plugin output, because the emitted
+# command's ${CLAUDE_PLUGIN_ROOT}/hooks/<handler> form resolves to a path
+# nothing else copies here (unlike Gemini's render, which copies the whole
+# source tree verbatim). Copied whenever the manifest declares any generic
+# hooks at all, regardless of which map on Claude specifically — a
+# conservative, deliberately coarse test that never under-delivers.
+if jq -e '(.hooks // []) | length > 0' "$MANIFEST" >/dev/null 2>&1 && [ -d "$EXT_DIR/hooks" ]; then
+  cp -r "$EXT_DIR/hooks" "$OUTPUT_DIR/hooks"
+  echo "  Copied: hooks/"
 fi
 
 # --- Generate settings.json ---
