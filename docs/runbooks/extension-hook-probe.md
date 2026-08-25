@@ -41,7 +41,7 @@ Copilot is different in kind, not degree: `0065-copilot-plugin-build.md`'s
 `hooks.json`-at-the-output-root shape "was written by analogy with the
 Antigravity plugin layout, not from a probe of the Copilot CLI," and the
 authoring probes could not close that gap either — "the installed binary
-... yields no readable hook strings, and the one installed plugin ... 
+... yields no readable hook strings, and the one installed plugin ...
 declares no hook." No amount of static reading settles whether a
 plugin-level hook surface exists at all. Only running one actually fire does.
 
@@ -49,14 +49,16 @@ plugin-level hook surface exists at all. Only running one actually fire does.
 
 1. Writes a synthetic plugin at **two** candidate placements —
    `hooks.json` at the plugin root (Antigravity's convention) and
-   `hooks/hooks.json` in a subdirectory (Claude/Gemini's convention) — using
-   the **same envelope shape already grounded** for the user-level manifest
-   (`hooks/copilot-transcript-hooks.json`): `{"version": 1,
-   "disableAllHooks": false, "hooks": {"preToolUse": [...]}}`.
-2. Loads both via the documented `--plugin-dir` flag (`copilot --plugin-dir
-   <dir> plugin list` confirms `--plugin-dir` mounts a local, uncommitted
-   plugin directory for a session — no marketplace or GitHub registration
-   needed, so the probe touches no external state).
+   `hooks/hooks.json` in a subdirectory (Claude/Gemini's convention) —
+   using the **same envelope shape already grounded** for the user-level
+   manifest (`hooks/copilot-transcript-hooks.json`): an object carrying
+   `version: 1`, `disableAllHooks: false`, and a `hooks` map keyed by
+   `preToolUse`.
+2. Loads both via the documented `--plugin-dir` flag — `copilot
+   --plugin-dir` followed by a directory and `plugin list` confirms the
+   flag mounts a local, uncommitted plugin directory for a session, with
+   no marketplace or GitHub registration needed, so the probe touches no
+   external state.
 3. Runs **one** live, non-interactive, tool-invoking session (`copilot -p
    "Run the shell command: echo ..." --allow-all-tools`) and checks a
    side-channel log file the candidate hook commands append to.
@@ -86,6 +88,7 @@ verdicts both times.
 **Claude Code.** The installed binary's own embedded reference text (`strings
 -a` on the resolved Mach-O executable) carries a `## Hooks Configuration`
 section verbatim, confirming:
+
 - **Envelope confirmed**: `{"hooks": {"EVENT_NAME": [{"matcher": ...,
   "hooks": [{"type": "command", "command": ..., "timeout": ...}]}]}}` — the
   incumbent `build-claude-plugin.sh:213` shape (`{"hooks": $CLAUDE_HOOKS}`)
@@ -148,8 +151,9 @@ secondary finding, not exercised by the render.
 Follow-up live checks, all against the SAME confirmed-firing plugin:
 
 - **Root token**: `$COPILOT_PLUGIN_ROOT` is exported into the hook command's
-  environment, equal to the plugin's own directory (`CWD=<plugin-dir>
-  ROOT=<plugin-dir>`, captured live). Unlike Claude's per-element string
+  environment, equal to the plugin's own directory — both `pwd` and the
+  variable itself resolved to the same path, captured live. Unlike Claude's
+  per-element string
   substitution, this is a **real shell environment variable** the CLI
   exports before invoking the command through a shell — but the render's
   job is the same either way: emit the literal text `${COPILOT_PLUGIN_ROOT}`

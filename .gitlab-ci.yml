@@ -82,6 +82,10 @@ extension-render:
     - "bash scripts/tests/test-build-extension.sh"
     - "bash scripts/tests/test-extension-render-conformance.sh"
     - "bash scripts/build-extension.sh --check"
+    - "bash scripts/check-extension-hook-tokens.sh"
+    - "bash scripts/tests/test-check-extension-hook-tokens.sh"
+    - "bash scripts/check-extension-hook-map.sh"
+    - "bash scripts/tests/test-check-extension-hook-map.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -97,6 +101,18 @@ extension-render:
         - "Taskfile.yml"
         - "extensions/**"
         - "artifacts/**"
+        - "scripts/lib/extension-hooks.sh"
+        - "scripts/lib/extension-targets.json"
+        - "scripts/check-extension-hook-tokens.sh"
+        - "scripts/check-extension-hook-map.sh"
+        - "docs/extension-hook-events.md"
+        - "extension-skeleton/**"
+        - "scripts/create-extension.sh"
+        - "scripts/build-claude-plugin.sh"
+        - "scripts/build-copilot-plugin.sh"
+        - "scripts/build-antigravity-extension.sh"
+        - "scripts/tests/test-check-extension-hook-tokens.sh"
+        - "scripts/tests/test-check-extension-hook-map.sh"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-pivot.sh"
@@ -111,6 +127,18 @@ extension-render:
         - "Taskfile.yml"
         - "extensions/**"
         - "artifacts/**"
+        - "scripts/lib/extension-hooks.sh"
+        - "scripts/lib/extension-targets.json"
+        - "scripts/check-extension-hook-tokens.sh"
+        - "scripts/check-extension-hook-map.sh"
+        - "docs/extension-hook-events.md"
+        - "extension-skeleton/**"
+        - "scripts/create-extension.sh"
+        - "scripts/build-claude-plugin.sh"
+        - "scripts/build-copilot-plugin.sh"
+        - "scripts/build-antigravity-extension.sh"
+        - "scripts/tests/test-check-extension-hook-tokens.sh"
+        - "scripts/tests/test-check-extension-hook-map.sh"
 
 extension-provenance:
   image: debian:stable-slim
