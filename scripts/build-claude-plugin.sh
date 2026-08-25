@@ -93,25 +93,43 @@ jq -n \
   }' > "$OUTPUT_DIR/.claude-plugin/plugin.json"
 echo "  Generated: .claude-plugin/plugin.json"
 
-# --- Generate .mcp.json (resolve ${extensionPath}) ---
-MCP_SERVERS=$(jq '.mcpServers // {}' "$MANIFEST")
-if [ "$MCP_SERVERS" != "{}" ]; then
-  echo "$MCP_SERVERS" | jq --arg path "$OUTPUT_DIR" '
-    { mcpServers: walk(if type == "string" then gsub("\\$\\{extensionPath\\}"; $path) else . end) }
-  ' > "$OUTPUT_DIR/.mcp.json"
-  echo "  Generated: .mcp.json"
+# --- Generate .mcp.json (spec 0180 R7/R8 back-fill) ---
+# Translated through the shared org-channel translator (ext_mcp_native,
+# scripts/lib/extension-manifest.sh) and rewritten to Claude's own
+# ${CLAUDE_PLUGIN_ROOT} spelling — Claude Code resolves ${CLAUDE_PLUGIN_ROOT}
+# itself at load time from the installed plugin directory (evidenced: the
+# official marketplace plugin discord/.mcp.json on disk, and four
+# CLAUDE_PLUGIN_ROOT substitution entries in the installed changelog), so no
+# render-time absolute path is baked in any more. The prior substitution here
+# — `gsub("\\$\\{extensionPath\\}"; $path)` with $path=$OUTPUT_DIR — baked
+# the RENDERING machine's own directory into every delivered .mcp.json,
+# which is wrong the moment a release artifact carries the tree elsewhere
+# (spec 0173Δ R20/R22; spec 0180 R8).
+# mcpDelivery gate (spec 0180 v2-F5): the SAME row scripts/build-extension.sh's
+# render_plugin reads to decide whether an R15 gap is owed, so the emit
+# decision and the gap decision read one shared fact and cannot disagree.
+MCP_DELIVERABLE=$(ext_mcp_delivery claude)
+if [ "$MCP_DELIVERABLE" = "true" ]; then
+  MCP_SERVERS_NATIVE=$(ext_mcp_native claude "$MANIFEST")
+  if [ "$MCP_SERVERS_NATIVE" != "{}" ]; then
+    jq -n --argjson servers "$MCP_SERVERS_NATIVE" '{ mcpServers: $servers }' > "$OUTPUT_DIR/.mcp.json"
+    echo "  Generated: .mcp.json"
 
-  # The .mcp.json typically references ${extensionPath}/dist/index.js — copy
-  # the compiled MCP server so the resolved path inside the plugin is valid.
-  # package.json is also needed for ESM type resolution by node at runtime.
-  if [ -d "$EXT_DIR/dist" ]; then
-    cp -r "$EXT_DIR/dist" "$OUTPUT_DIR/dist"
-    echo "  Copied: dist/"
+    # The .mcp.json typically references ${CLAUDE_PLUGIN_ROOT}/dist/index.js —
+    # copy the compiled MCP server so the resolved path inside the plugin is
+    # valid (R16). package.json is also needed for ESM type resolution by node
+    # at runtime.
+    if [ -d "$EXT_DIR/dist" ]; then
+      cp -r "$EXT_DIR/dist" "$OUTPUT_DIR/dist"
+      echo "  Copied: dist/"
+    fi
+    if [ -f "$EXT_DIR/package.json" ]; then
+      cp "$EXT_DIR/package.json" "$OUTPUT_DIR/package.json"
+      echo "  Copied: package.json"
+    fi
   fi
-  if [ -f "$EXT_DIR/package.json" ]; then
-    cp "$EXT_DIR/package.json" "$OUTPUT_DIR/package.json"
-    echo "  Copied: package.json"
-  fi
+elif jq -e '(.mcpServers // {}) | length > 0' "$MANIFEST" >/dev/null 2>&1; then
+  echo "Warning: extension declares mcpServers, which has no expressible delivery on target 'claude' — recorded as an observed gap by the parent render" >&2
 fi
 
 # --- Copy context file ---

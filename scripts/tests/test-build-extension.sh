@@ -180,35 +180,50 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-echo "5. R14/R9 — MCP path-form fidelity: the render passes the declared form through verbatim"
+echo "5. spec 0180 R1/R5/R6/R7 — the ONE neutral token is rewritten per target; any other braced token is now a validation error"
 # ---------------------------------------------------------------------------
+# RETARGETED (spec 0180, issue #1006): this case used to pin "the render
+# passes the declared form through verbatim, whatever it is" — R1's neutral
+# vocabulary plus R5's clean break retire exactly that contract. A command
+# naming a target-specific token like ${extensionPath} directly is now a
+# manifest VALIDATION ERROR, not a value the render is trusted to forward.
 sandbox="$(make_sandbox)"
 mcpfix="$sandbox/extensions/core/mcpfix"
 mkdir -p "$mcpfix"
 cat > "$mcpfix/extension.json" <<'EOF'
 {"name":"mcpfix","version":"0.0.1","description":"fixture",
- "mcpServers":{"default":{"command":"node","args":["${extensionPath}/dist/index.js"]}}}
+ "mcpServers":{"default":{"command":"node","args":["${extensionRoot}/dist/index.js"]}}}
 EOF
-( cd "$sandbox" && bash scripts/build-extension.sh --target gemini mcpfix ) >/dev/null 2>&1
+render_out="$( cd "$sandbox" && bash scripts/build-extension.sh --target gemini mcpfix 2>&1 )"
 built="$sandbox/build/extensions/mcpfix/gemini-extension.json"
 if [ -f "$built" ] && [ "$(jq -r '.mcpServers.default.args[0]' "$built")" = '${extensionPath}/dist/index.js' ]; then
-  ok "Case 5a — braced form is passed through verbatim to the built manifest"
+  ok "Case 5a — the ONE neutral token (\${extensionRoot}) is rewritten to Gemini's own \${extensionPath} form"
 else
-  ng "Case 5a — braced form was rewritten or lost in the built manifest"
+  ng "Case 5a — neutral-token rewrite wrong or missing:"$'\n'"$render_out"
 fi
+
+jq '.mcpServers.default.args = ["${extensionPath}/dist/index.js"]' "$mcpfix/extension.json" > "$mcpfix/extension.json.tmp" && mv "$mcpfix/extension.json.tmp" "$mcpfix/extension.json"
+render_out="$( cd "$sandbox" && bash scripts/build-extension.sh --target gemini mcpfix 2>&1 )"
+render_rc=$?
+if [ "$render_rc" -ne 0 ] && [[ "$render_out" == *'${extensionPath}'* ]] && [[ "$render_out" == *"command/args"* ]]; then
+  ok "Case 5b — declaring a target-specific token (\${extensionPath}) directly is now a manifest VALIDATION ERROR (R1/R6), not passed through"
+else
+  ng "Case 5b — expected a validation error naming \${extensionPath}; got rc=$render_rc:"$'\n'"$render_out"
+fi
+
 jq '.mcpServers.default.args = ["dist/index.js"]' "$mcpfix/extension.json" > "$mcpfix/extension.json.tmp" && mv "$mcpfix/extension.json.tmp" "$mcpfix/extension.json"
 ( cd "$sandbox" && bash scripts/build-extension.sh --target gemini mcpfix ) >/dev/null 2>&1
 if [ "$(jq -r '.mcpServers.default.args[0]' "$built")" = "dist/index.js" ]; then
-  ok "Case 5b — bare form is passed through verbatim too (the render does not hardcode a form — tests/gemini-extension-path-form.md is what says which one to declare)"
+  ok "Case 5c — a bare form naming no path token at all is passed through verbatim (R6: an extension remains free to declare no such path)"
 else
-  ng "Case 5b — bare form was rewritten in the built manifest"
+  ng "Case 5c — bare form was rewritten in the built manifest"
 fi
 jq 'del(.mcpServers)' "$mcpfix/extension.json" > "$mcpfix/extension.json.tmp" && mv "$mcpfix/extension.json.tmp" "$mcpfix/extension.json"
 ( cd "$sandbox" && bash scripts/build-extension.sh --target gemini mcpfix ) >/dev/null 2>&1
 if ! jq -e 'has("mcpServers")' "$built" >/dev/null 2>&1; then
-  ok "Case 5c — dropping mcpServers from the declaration omits the key from the built manifest (no empty {} leaks through)"
+  ok "Case 5d — dropping mcpServers from the declaration omits the key from the built manifest (no empty {} leaks through)"
 else
-  ng "Case 5c — built manifest still carries an mcpServers key with nothing declared"
+  ng "Case 5d — built manifest still carries an mcpServers key with nothing declared"
 fi
 
 # ---------------------------------------------------------------------------

@@ -187,7 +187,11 @@ render_gemini() {
   description="$(jq -r '.description // ""' "$manifest")"
   version="$(ext_version "$manifest")"
   context_fname="$(jq -r '.gemini.contextFileName // ""' "$manifest")"
-  mcp_servers="$(jq -c '.mcpServers // {}' "$manifest")"
+  # spec 0180 step 5: translate through the shared org-channel translator and
+  # rewrite the neutral ${extensionRoot} token to Gemini's own ${extensionPath}
+  # spelling — Gemini itself resolves ${extensionPath} when it loads the
+  # extension in place (R7), so no render-time absolute path is baked in (R8).
+  mcp_servers="$(ext_mcp_native gemini "$manifest")"
   themes="$(jq -c '.gemini.themes // []' "$manifest")"
 
   jq -n \
@@ -270,6 +274,20 @@ render_plugin() {
   out_dir="$(_plugin_default_out_dir "$ext_dir" "$name" "$label")"
   ext_hooks_render "$label" "$manifest" "$ext_dir" "$out_dir"
   ext_hooks_gaps "$label" "$manifest" >&3
+
+  # MCP (spec 0180 step 11, v2-F5): emitted from the PARENT shell, AFTER the
+  # builder subprocess returns, reading the SAME mcpDelivery row the builder
+  # itself already consumed before deciding whether to write its MCP file —
+  # so the emit decision (inside the builder) and this gap decision cannot
+  # disagree. A truthful reason, since MCP's sub-spec HAS landed (spec 0180),
+  # unlike the generic "no renderer yet" reason below.
+  if jq -e '(.mcpServers // {}) | length > 0' "$manifest" >/dev/null 2>&1 \
+     && [ "$(ext_mcp_delivery "$label")" != "true" ]; then
+    echo "Warning: extension '$name' declares mcpServers, which has no expressible delivery on target '$label'" >&2
+    jq -c -n --arg subject mcpServers --arg target "$label" \
+      --arg reason "no resolvable path form for this target's MCP delivery (see docs/cli-matrix.md)" \
+      '{subject: $subject, target: $target, reason: $reason}' >&3
+  fi
 
   local subj
   for subj in context; do

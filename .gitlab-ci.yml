@@ -81,6 +81,7 @@ extension-render:
     - "bash scripts/tests/test-check-extension-pivot.sh"
     - "bash scripts/tests/test-build-extension.sh"
     - "bash scripts/tests/test-extension-render-conformance.sh"
+    - "bash scripts/tests/test-extension-mcp-manifest.sh"
     - "bash scripts/build-extension.sh --check"
     - "bash scripts/check-extension-hook-tokens.sh"
     - "bash scripts/tests/test-check-extension-hook-tokens.sh"
@@ -113,6 +114,10 @@ extension-render:
         - "scripts/build-antigravity-extension.sh"
         - "scripts/tests/test-check-extension-hook-tokens.sh"
         - "scripts/tests/test-check-extension-hook-map.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/probe-extension-mcp-token.sh"
+        - "scripts/tests/test-extension-mcp-manifest.sh"
+        - "scripts/install-antigravity-extension.sh"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-pivot.sh"
@@ -139,6 +144,10 @@ extension-render:
         - "scripts/build-antigravity-extension.sh"
         - "scripts/tests/test-check-extension-hook-tokens.sh"
         - "scripts/tests/test-check-extension-hook-map.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/probe-extension-mcp-token.sh"
+        - "scripts/tests/test-extension-mcp-manifest.sh"
+        - "scripts/install-antigravity-extension.sh"
 
 extension-provenance:
   image: debian:stable-slim

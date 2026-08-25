@@ -46,5 +46,39 @@ bash "$REPO_DIR/scripts/build-antigravity-extension.sh" "$EXT_DIR" "$OUTPUT_DIR"
 # --- Install via agy ---
 agy plugin install "$OUTPUT_DIR"
 
+# --- Post-install: resolve the neutral ${extensionRoot} token (spec 0180
+# PLAN v5 step 8, Option A). A live probe
+# (docs/runbooks/extension-mcp-token-probe.md, Q2, 2026-08-25) proved a
+# relative command/args does NOT resolve against the plugin directory on
+# Antigravity — its MCP server spawns with the CLI's own launch directory as
+# CWD, not the plugin root — so build-antigravity-extension.sh's render
+# ships mcp_config.json with ${extensionRoot} left UNRESOLVED. This is the
+# earliest moment the real installed directory is knowable (R7's "named
+# resolver, named moment"): `agy plugin install <dir>` copies verbatim, with
+# no rewriting of its own (confirmed by the same probe, Q3), to
+# ~/.gemini/config/plugins/<pluginName>/ — a deterministic destination named
+# by plugin.json's own `.name` field, not the source directory's basename.
+if [ -f "$OUTPUT_DIR/mcp_config.json" ]; then
+  PLUGIN_NAME="$(jq -r '.name // empty' "$OUTPUT_DIR/plugin.json" 2>/dev/null)"
+  [ -n "$PLUGIN_NAME" ] || PLUGIN_NAME="$EXT_NAME"
+  INSTALLED_ROOT="$HOME/.gemini/config/plugins/$PLUGIN_NAME"
+  INSTALLED_MCP="$INSTALLED_ROOT/mcp_config.json"
+  if [ ! -f "$INSTALLED_MCP" ]; then
+    echo "Error: expected $INSTALLED_MCP after install (spec 0180 R16: a target that receives a declaration without the artifacts it names is a failure)." >&2
+    exit 1
+  fi
+  TMP_MCP="$(mktemp)"
+  if jq --arg root "$INSTALLED_ROOT" \
+      'walk(if type == "string" then gsub("\\$\\{extensionRoot\\}"; $root) else . end)' \
+      "$INSTALLED_MCP" > "$TMP_MCP"; then
+    mv "$TMP_MCP" "$INSTALLED_MCP"
+    echo "  Resolved \${extensionRoot} -> $INSTALLED_ROOT in $INSTALLED_MCP"
+  else
+    rm -f "$TMP_MCP"
+    echo "Error: failed to rewrite \${extensionRoot} in $INSTALLED_MCP" >&2
+    exit 1
+  fi
+fi
+
 echo ""
 echo "Plugin '$EXT_NAME' installed. Restart Antigravity CLI to pick up the plugin."

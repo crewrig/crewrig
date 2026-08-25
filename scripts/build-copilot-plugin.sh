@@ -100,6 +100,43 @@ jq -n \
   }' > "$OUTPUT_DIR/plugin.json"
 echo "  Generated: plugin.json (name: $PLUGIN_NAME)"
 
+# --- Generate .mcp.json (spec 0180 R7/R9/R10) ---
+# Delivered at the plugin root, "source": "plugin" — Copilot CLI 1.0.80's own
+# installed-plugin registry (probed empirically: a plugin directory carrying
+# .mcp.json was registered, `copilot mcp list --json` returned exactly the
+# declared server tagged "source": "plugin"). Translated through the shared
+# org-channel translator (ext_mcp_native) and rewritten to Copilot's own
+# ${COPILOT_PLUGIN_ROOT} spelling — confirmed by a live, non-interactive
+# `copilot -p` session actually spawning the stdio server with that token
+# expanded (docs/runbooks/extension-mcp-token-probe.md, Q1, 2026-08-25):
+# every one of the three candidate forms resolves, because Copilot defaults
+# a plugin-sourced server's `cwd` to its own plugin root.
+# mcpDelivery gate (spec 0180 v2-F5): the SAME row scripts/build-extension.sh's
+# render_plugin reads to decide whether an R15 gap is owed, so the emit
+# decision and the gap decision read one shared fact and cannot disagree.
+MCP_DELIVERABLE=$(ext_mcp_delivery copilot)
+if [ "$MCP_DELIVERABLE" = "true" ]; then
+  MCP_SERVERS_NATIVE=$(ext_mcp_native copilot "$MANIFEST")
+  if [ "$MCP_SERVERS_NATIVE" != "{}" ]; then
+    jq -n --argjson servers "$MCP_SERVERS_NATIVE" '{ mcpServers: $servers }' > "$OUTPUT_DIR/.mcp.json"
+    echo "  Generated: .mcp.json"
+
+    # R16: the named build output travels WITH the declaration. package.json is
+    # also needed for ESM type resolution by node at runtime (same rationale as
+    # the Claude and Antigravity builders).
+    if [ -d "$EXT_DIR/dist" ]; then
+      cp -r "$EXT_DIR/dist" "$OUTPUT_DIR/dist"
+      echo "  Copied: dist/"
+    fi
+    if [ -f "$EXT_DIR/package.json" ]; then
+      cp "$EXT_DIR/package.json" "$OUTPUT_DIR/package.json"
+      echo "  Copied: package.json"
+    fi
+  fi
+elif jq -e '(.mcpServers // {}) | length > 0' "$MANIFEST" >/dev/null 2>&1; then
+  echo "Warning: extension declares mcpServers, which has no expressible delivery on target 'copilot' — recorded as an observed gap by the parent render" >&2
+fi
+
 # --- Copy skills ---
 SKILLS_ENABLED=$(ext_subject_present "$MANIFEST" skills)
 SKILLS_LOCATION=$(ext_subject_location "$MANIFEST" skills "skills/")

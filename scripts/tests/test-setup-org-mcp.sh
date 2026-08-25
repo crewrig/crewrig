@@ -56,6 +56,7 @@ bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 
 # --- Fixtures ---------------------------------------------------------------
 ORG_HTTP='{"transport":"http","url":"https://mcp.atlassian.example/mcp","headers":{"Authorization":"Bearer ${ATLASSIAN_TOKEN}"}}'
+ORG_SSE='{"transport":"sse","url":"https://mcp.example/sse"}'
 ORG_STDIO='{"transport":"stdio","command":"gh-mcp","args":["--stdio"],"env":{"GITHUB_HOST":"github.example"}}'
 OP_ACME='{"command":"acme","args":["--serve","--port","9999"],"env":{"ACME_TOKEN":"xyz"}}'
 
@@ -105,10 +106,28 @@ echo "2. org_mcp_to_native — grounded native shapes per file CLI"
 NEUTRAL="$(printf '{"atlassian":%s,"github":%s}' "$ORG_HTTP" "$ORG_STDIO")"
 
 GEM="$(org_mcp_to_native gemini "$NEUTRAL" 2>/dev/null)"
-jq -e '.atlassian.type == "http" and .atlassian.url and .atlassian.headers and (.atlassian | has("command") | not)' <<<"$GEM" >/dev/null 2>&1 \
-  && ok "gemini http -> {type:http,url,headers}" || bad "gemini http shape wrong: $GEM"
+# Repaired shape (spec 0180 PLAN v5 step 4, 2026-08-25 maintainer arbitration):
+# gemini-cli has no `type`/`transport` key at all; transport is inferred from
+# WHICH key is present (`httpUrl` for Streamable HTTP, `url` for SSE). The
+# prior assertion here (`.type == "http"`) encoded the very defect this repair
+# fixes — asserting `has("type") | not` is what makes this test red under an
+# exact-token `url`<->`httpUrl` transposition mutation (PLAN v5 step 4/13).
+jq -e '.atlassian.httpUrl and .atlassian.headers and (.atlassian | has("command") | not) and (.atlassian | has("type") | not)' <<<"$GEM" >/dev/null 2>&1 \
+  && ok "gemini http -> {httpUrl,headers} (no type)" || bad "gemini http shape wrong: $GEM"
 jq -e '.github.command == "gh-mcp" and (.github | has("type") | not)' <<<"$GEM" >/dev/null 2>&1 \
   && ok "gemini stdio -> {command,args,env} (no type)" || bad "gemini stdio shape wrong: $GEM"
+
+# Growth mutation for step 4's arm (v2-F7): one http AND one sse server in the
+# SAME manifest, each landing under its own key. Catches an arm that is
+# transport-insensitive (emits one key regardless of $t, which a lone http
+# declaration passes cleanly) and exercises per-entry independence inside
+# org_mcp_to_native's map() — neither of which a single-transport manifest
+# reaches.
+GEM_BOTH="$(org_mcp_to_native gemini "$(printf '{"atlassian":%s,"other":%s}' "$ORG_HTTP" "$ORG_SSE")" 2>/dev/null)"
+jq -e '.atlassian.httpUrl and (.atlassian | has("url") | not)
+       and .other.url and (.other | has("httpUrl") | not)' <<<"$GEM_BOTH" >/dev/null 2>&1 \
+  && ok "gemini http+sse in one manifest -> each lands under its own key (httpUrl vs url)" \
+  || bad "gemini http+sse growth shape wrong: $GEM_BOTH"
 
 COP="$(org_mcp_to_native copilot "$NEUTRAL" 2>/dev/null)"
 jq -e '.atlassian.type == "http" and .atlassian.url' <<<"$COP" >/dev/null 2>&1 \
@@ -151,7 +170,13 @@ printf '%s' "$OUT" | grep -q "mempalace" \
   && ok "R10: non-silent warning names the reserved collision" \
   || bad "R10: missing reserved-collision warning (out: $OUT)"
 
-jq -e '.mcpServers.atlassian.type == "http"' "$CFG" >/dev/null 2>&1 \
+# Witness repointed (v2-F1): the entry inspected here is produced by
+# org_mcp_to_native gemini at line ~143 above, so it must survive the step-4
+# repair rather than assert the pre-repair `.type == "http"` shape (which the
+# repair makes permanently absent). `.httpUrl` presence plus no `command` key
+# is what an org-declared http server winning over the operator's stdio entry
+# actually looks like post-repair.
+jq -e '.mcpServers.atlassian.httpUrl and (.mcpServers.atlassian | has("command") | not)' "$CFG" >/dev/null 2>&1 \
   && ok "R11: org 'atlassian' overrides the operator entry (org wins)" \
   || bad "R11: org atlassian should win over operator"
 if printf '%s' "$OUT" | grep -q "'atlassian'" && printf '%s' "$OUT" | grep -qF "$BK"; then
