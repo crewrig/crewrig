@@ -724,6 +724,27 @@ with socketserver.TCPServer(("127.0.0.1", port), H) as s:
     s.serve_forever()
 PY
 
+# _start_fake_mcp — launch fake-mcp.py in the background and poll for readiness
+# on /healthz up to 5s. Replaces fixed sleep 1 intervals to prevent CI flakes (spec 0182).
+_start_fake_mcp() {
+  local port="$1"
+  local code="$2"
+  "${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${port}" "${code}" >/dev/null 2>&1 &
+  local pid=$!
+  local waited=0
+  until curl -sf --max-time 1 "http://127.0.0.1:${port}/healthz" >/dev/null 2>&1 \
+        || [ "${waited}" -ge 50 ]; do
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+  if ! curl -sf --max-time 1 "http://127.0.0.1:${port}/healthz" >/dev/null 2>&1; then
+    echo "FATAL: fake-mcp.py failed to bind port ${port} within 5s (pid ${pid})" >&2
+    kill "${pid}" 2>/dev/null
+    exit 1
+  fi
+  echo "${pid}"
+}
+
 echo ""
 echo "status-mcp-server.sh branches (R4, R5, R6):"
 
@@ -755,9 +776,11 @@ rm -f "${HOME}/.mempalace/mcp-server.log"
 # --- 13b. Authentication NOT ENFORCED (R5) ------------------------------------
 # Daemon "serving" (healthz 200) but an unauthenticated /mcp returns 200, not
 # 401: the probe must report authentication is NOT enforced and exit non-zero.
-"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${MEMPALACE_MCP_PORT}" 200 &
-fake_pid=$!
-sleep 1
+fake_pid="$(_start_fake_mcp "${MEMPALACE_MCP_PORT}" 200)"
+# Precondition check: verify fake-mcp is actively serving /healthz so the non-401 test is not vacuous (spec 0182 R4)
+curl -sf --max-time 1 "http://127.0.0.1:${MEMPALACE_MCP_PORT}/healthz" >/dev/null 2>&1 \
+  && ok "fake-mcp /healthz is live (precondition verified, non-vacuous)" \
+  || nope "fake-mcp /healthz is not reachable"
 out="$(bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
 kill "${fake_pid}" 2>/dev/null
 [ "${rc}" -ne 0 ] \
@@ -775,9 +798,7 @@ install_mcp_launcher >/dev/null 2>&1
 launcher="$(mcp_launcher_installed_path)"
 sed 's/^LAUNCHER_SOURCE_SHA=.*/LAUNCHER_SOURCE_SHA="deadbeef"/' "${launcher}" > "${launcher}.new"
 mv "${launcher}.new" "${launcher}"
-"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${MEMPALACE_MCP_PORT}" 401 &
-fake_pid=$!
-sleep 1
+fake_pid="$(_start_fake_mcp "${MEMPALACE_MCP_PORT}" 401)"
 out="$(bash "${REPO_DIR}/scripts/status-mcp-server.sh" 2>&1)"; rc=$?
 kill "${fake_pid}" 2>/dev/null
 [ "${rc}" -ne 0 ] \
@@ -799,9 +820,7 @@ esac
 # including the drift check (v2-F1).
 install_mcp_launcher >/dev/null 2>&1
 launcher="$(mcp_launcher_installed_path)"
-"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${MEMPALACE_MCP_PORT}" 401 &
-fake_pid=$!
-sleep 1
+fake_pid="$(_start_fake_mcp "${MEMPALACE_MCP_PORT}" 401)"
 
 # Healthy match: listener PID == expected PID -> verified, exit 0.
 out="$(MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=1234 \
@@ -987,9 +1006,7 @@ echo "mcp_daemon_replace_process — token rotation revokes the old one (R1, R2)
 HERMETIC_PORT=$((MEMPALACE_MCP_PORT + 1))
 printf '%s\n' "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" > "${tok_file}"
 
-"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 200 &
-fake_pid=$!
-sleep 1
+fake_pid="$(_start_fake_mcp "${HERMETIC_PORT}" 200)"
 out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" mcp_daemon_replace_process 2>&1)"; rc=$?
 kill "${fake_pid}" 2>/dev/null
 [ "${rc}" -eq 0 ] \
@@ -999,9 +1016,7 @@ kill "${fake_pid}" 2>/dev/null
   && ok "no restart is requested when the current token is already accepted" \
   || nope "unexpected output on the accept-immediately path: ${out}"
 
-"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 401 &
-fake_pid=$!
-sleep 1
+fake_pid="$(_start_fake_mcp "${HERMETIC_PORT}" 401)"
 out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" mcp_daemon_replace_process 2>&1)"; rc=$?
 kill "${fake_pid}" 2>/dev/null
 [ "${rc}" -ne 0 ] \
@@ -1037,9 +1052,7 @@ echo ""
 echo "mcp_daemon_replace_process — squatter eviction and port verification (0149 delta-01 R6, R7, R8):"
 
 # Test 1: Squatter answering 200 on the port does NOT trigger accept-immediately early return
-"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 200 &
-fake_pid=$!
-sleep 1
+fake_pid="$(_start_fake_mcp "${HERMETIC_PORT}" 200)"
 out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" \
   MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=5678 \
   MEMPALACE_MCP_EVICT_CMD="true" \
@@ -1054,9 +1067,7 @@ case "${out}" in
 esac
 
 # Test 2: Successful eviction allows verified daemon to be probed and succeed
-"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 200 &
-fake_pid=$!
-sleep 1
+fake_pid="$(_start_fake_mcp "${HERMETIC_PORT}" 200)"
 evict_flag="${TEST_HOME}/evicted.flag"
 rm -f "${evict_flag}"
 out="$(MCP_DAEMON_REPLACE_DEADLINE=2 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" \
@@ -1072,9 +1083,7 @@ kill "${fake_pid}" 2>/dev/null
   || nope "eviction command was not executed"
 
 # Test 3: Non-evictable squatter fails visibly without transmitting the token (R7)
-"${MEMPALACE_PYTHON}" "${TEST_HOME}/fake-mcp.py" "${HERMETIC_PORT}" 200 &
-fake_pid=$!
-sleep 1
+fake_pid="$(_start_fake_mcp "${HERMETIC_PORT}" 200)"
 out="$(MCP_DAEMON_REPLACE_DEADLINE=1 MEMPALACE_MCP_PORT="${HERMETIC_PORT}" \
   MEMPALACE_MCP_EXPECTED_PID=1234 MEMPALACE_MCP_LISTENER_PID=9999 \
   MEMPALACE_MCP_EVICT_CMD="true" \
