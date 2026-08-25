@@ -1,7 +1,7 @@
 ---
 id: "0180"
 slug: extension-mcp-declaration
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1006
