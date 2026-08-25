@@ -16,15 +16,16 @@
       "location": "agents/"
     }
   },
+  "context": {
+    "source": "CONTEXT.md"
+  },
   "gemini": {
-    "contextFileName": "GEMINI.md",
     "themes": []
   },
   "claude": {
     "author": {
       "name": "Your Name"
     },
-    "contextFileName": "CLAUDE.md",
     "skills": ["skills/*/SKILL.md"],
     "agents": [],
     "rules": [],
@@ -34,8 +35,7 @@
     "bin": null
   },
   "antigravity": {
-    "pluginName": "${SKELETON_NAME}",
-    "contextFileName": "GEMINI.md"
+    "pluginName": "${SKELETON_NAME}"
   },
   "copilot": {
     "pluginName": "${SKELETON_NAME}"

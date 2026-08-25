@@ -5,11 +5,6 @@
     "evidence": "scripts/build-claude-plugin.sh:78, scripts/install-claude-plugin.sh:70"
   },
   {
-    "key": "claude.contextFileName",
-    "reason": "deferred:S4",
-    "evidence": "scripts/build-claude-plugin.sh:114 — context declaration vocabulary lands with sub-spec S4 (issue #1007)"
-  },
-  {
     "key": "claude.defaultAllowedTools",
     "reason": "cli-only-concept",
     "evidence": "scripts/build-claude-plugin.sh:147"
@@ -45,11 +40,6 @@
     "evidence": "extension-skeleton/EXTENSION-FORMAT.md; full skeleton/reference migration lands with sub-spec S5 (issue #1008)"
   },
   {
-    "key": "gemini.contextFileName",
-    "reason": "deferred:S4",
-    "evidence": "consumed by scripts/build-extension.sh's render — context declaration vocabulary lands with sub-spec S4 (issue #1007)"
-  },
-  {
     "key": "gemini.themes",
     "reason": "cli-only-concept",
     "evidence": "consumed by scripts/build-extension.sh's render — no Claude/Copilot/Antigravity theme concept"
@@ -63,10 +53,5 @@
     "key": "antigravity.pluginName",
     "reason": "deferred:S5",
     "evidence": "scripts/build-antigravity-extension.sh:85 — reducible from .name, verdict recorded for sub-spec S5 (issue #1008)"
-  },
-  {
-    "key": "antigravity.contextFileName",
-    "reason": "deferred:S4",
-    "evidence": "scripts/build-antigravity-extension.sh:115 — context declaration vocabulary lands with sub-spec S4 (issue #1007)"
   }
 ]

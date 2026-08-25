@@ -1,3 +1,0 @@
-# Prevent Gemini from loading extension context at the project level.
-# GEMINI.md is only meant to be loaded when the extension is installed.
-GEMINI.md

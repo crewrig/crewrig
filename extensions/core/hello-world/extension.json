@@ -1,6 +1,6 @@
 {
   "name": "hello-world",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Demonstration extension showcasing MCP tools, commands, skills, and context.",
   "mcpServers": {
     "default": {
@@ -16,6 +16,9 @@
   },
   "skills": {
     "location": "skills/"
+  },
+  "context": {
+    "source": "CONTEXT.md"
   },
   "hooks": [
     {
@@ -33,14 +36,12 @@
     }
   ],
   "gemini": {
-    "contextFileName": "GEMINI.md",
     "themes": []
   },
   "claude": {
     "author": {
       "name": "crewrig contributors"
     },
-    "contextFileName": "CLAUDE.md",
     "skills": [
       "skills/*/SKILL.md"
     ],

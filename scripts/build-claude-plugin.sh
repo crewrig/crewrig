@@ -23,6 +23,9 @@ command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: br
 # section first, falling back to legacy components.<subject>.* until S5.
 # shellcheck source=lib/extension-manifest.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/extension-manifest.sh"
+# Shared context renderer (spec 0181, issue #1007).
+# shellcheck source=lib/render-context.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/render-context.sh"
 
 EXT_ARG="${1:?Usage: build-claude-plugin.sh <extension-dir-or-name> [output-dir]}"
 
@@ -132,11 +135,27 @@ elif jq -e '(.mcpServers // {}) | length > 0' "$MANIFEST" >/dev/null 2>&1; then
   echo "Warning: extension declares mcpServers, which has no expressible delivery on target 'claude' — recorded as an observed gap by the parent render" >&2
 fi
 
-# --- Copy context file ---
-CLAUDE_CONTEXT=$(jq -r '.claude.contextFileName // ""' "$MANIFEST" 2>/dev/null)
-if [ -n "$CLAUDE_CONTEXT" ] && [ -f "$EXT_DIR/$CLAUDE_CONTEXT" ]; then
-  cp "$EXT_DIR/$CLAUDE_CONTEXT" "$OUTPUT_DIR/$CLAUDE_CONTEXT"
-  echo "  Copied: $CLAUDE_CONTEXT"
+# --- Render context file (spec 0181 R1/R8) ---
+# The single neutral source is rendered through the shared resolver — the
+# per-CLI `claude.contextFileName` key is retired, the built file's name
+# coming from the render's OWN knowledge of this target
+# (scripts/lib/extension-targets.json's contextOutput column) instead.
+CONTEXT_SOURCE=$(jq -r '.context.source // ""' "$MANIFEST" 2>/dev/null)
+if [ -n "$CONTEXT_SOURCE" ] && [ -f "$EXT_DIR/$CONTEXT_SOURCE" ]; then
+  CLAUDE_CONTEXT=$(render_context_target_output claude "$NAME")
+  # Render to a scratch file first — a plain `> "$dest"` redirection creates
+  # $dest via the shell before the command's exit status is known, which
+  # would leave a stray (truncated/empty) file behind on a resolver failure.
+  CONTEXT_TMP=$(mktemp)
+  if render_context "$EXT_DIR/$CONTEXT_SOURCE" claude "$MANIFEST" "$EXT_DIR" > "$CONTEXT_TMP"; then
+    mkdir -p "$OUTPUT_DIR/$(dirname "$CLAUDE_CONTEXT")"
+    mv "$CONTEXT_TMP" "$OUTPUT_DIR/$CLAUDE_CONTEXT"
+    echo "  Rendered: $CLAUDE_CONTEXT"
+  else
+    rm -f "$CONTEXT_TMP"
+    echo "Error: rendering context for target 'claude' failed" >&2
+    exit 1
+  fi
 fi
 
 # --- Copy skills ---

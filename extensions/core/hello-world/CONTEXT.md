@@ -1,15 +1,15 @@
-# Hello World Extension — Copilot Instructions
+# Hello World Extension${ONLY:copilot} — Copilot Instructions${ENDONLY}
 
-Context file loaded when this extension is active in GitHub Copilot CLI.
+Context file loaded when this extension is active${EXCEPT:gemini} in ${TOOL}${ENDEXCEPT}.
 
 ## Available Capabilities
 
 - **`greet` tool**: produces a personalized greeting via MCP.
 - **`farewell` tool**: says goodbye to someone by name.
-- **`/hello` skill**: shortcut for a quick greeting (compiled from the
+- **${COMMAND:hello} ${ONLY:copilot}skill${ENDONLY}${EXCEPT:copilot}command${ENDEXCEPT}**: shortcut for a quick greeting${ONLY:copilot} (compiled from the
   `hello` command — Copilot has no first-class slash-command format, so
-  commands ship as user-invocable skills).
-- **`/greeter` skill**: guided introduction workflow.
+  commands ship as user-invocable skills)${ENDONLY}.
+- **${SKILL:greeter} skill**: guided introduction workflow.
 
 ## Reference Value
 

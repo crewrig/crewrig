@@ -1,5 +1,5 @@
 {
-  "_readme": "Per-target descriptor table for the extension hook translator (spec 0179 issue #1005, plan step 5) and the MCP translator (spec 0180 issue #1006, PLAN v5 step 3). Each row is the RENDER's own knowledge of one target: the shell tool name its neutral matcher class resolves to, its time-limit unit/default, its extension-root token form, the hook file it reads, its match-all matcher form, and (added by #1006) whether it receives an MCP declaration at all. OPEN ROW SET: sibling ticket #1007 (spec 0181) adds further COLUMNS (commandRef, skillRef, contextOutput) to these same four rows rather than recreating this file — do not delete or rename an existing key without checking that ticket. BOUNDARY (do not blur): this file carries per-target CONSTANTS only. The neutral-event-to-target-event VOCABULARY MAPPING stays in scripts/lib/extension-hooks.sh, never here (see that file's own header for the two reasons). NOTE ON `rootToken` FOR ANTIGRAVITY: the hook translator (scripts/lib/extension-hooks.sh) and the MCP translator (scripts/lib/extension-manifest.sh's ext_mcp_native) give Antigravity's `rootToken: null` OPPOSITE meanings, because Antigravity's own process CWD at spawn time differs by subject — evidenced in docs/runbooks/extension-mcp-token-probe.md. Hooks fire with the plugin directory as CWD, so null there means 'strip the token, a relative command resolves.' MCP servers spawn with the CLI's OWN launch directory as CWD, so null there means 'leave the token UNRESOLVED for install-time rewriting' (scripts/install-antigravity-extension.sh). This is one JSON value read two different ways by two different callers, not a shared fact — do not try to unify it into one behaviour.",
+  "_readme": "Per-target descriptor table for the extension hook translator (spec 0179 issue #1005, plan step 5) and the MCP translator (spec 0180 issue #1006, PLAN v5 step 3). Each row is the RENDER's own knowledge of one target: the shell tool name its neutral matcher class resolves to, its time-limit unit/default, its extension-root token form, the hook file it reads, its match-all matcher form, and (added by #1006) whether it receives an MCP declaration at all. OPEN ROW SET: sibling ticket #1007 (spec 0181) adds further COLUMNS (commandRef, skillRef, contextOutput) to these same four rows rather than recreating this file — do not delete or rename an existing key without checking that ticket. BOUNDARY (do not blur): this file carries per-target CONSTANTS only. The neutral-event-to-target-event VOCABULARY MAPPING stays in scripts/lib/extension-hooks.sh, never here (see that file's own header for the two reasons). NOTE ON `rootToken` FOR ANTIGRAVITY: the hook translator (scripts/lib/extension-hooks.sh) and the MCP translator (scripts/lib/extension-manifest.sh's ext_mcp_native) give Antigravity's `rootToken: null` OPPOSITE meanings, because Antigravity's own process CWD at spawn time differs by subject — evidenced in docs/runbooks/extension-mcp-token-probe.md. Hooks fire with the plugin directory as CWD, so null there means 'strip the token, a relative command resolves.' MCP servers spawn with the CLI's OWN launch directory as CWD, so null there means 'leave the token UNRESOLVED for install-time rewriting' (scripts/install-antigravity-extension.sh). This is one JSON value read two different ways by two different callers, not a shared fact — do not try to unify it into one behaviour. NOTE ON THE FOUR CONTEXT COLUMNS (spec 0181 issue #1007, plan step 2): `displayName` resolves the render vocabulary's `${TOOL}`; `commandRef`/`skillRef` resolve `${COMMAND:<name>}`/`${SKILL:<name>}` for a DECLARED entry, as templates using `{ext}` (the extension's own `.name`) and `{name}` (the declared entry's own name) placeholders, substituted by `scripts/lib/render-context.sh` — never a literal namespace or prefix restated per row (0181 R4). The value carries its OWN markup (backticks) so a source bullet's `**\\`...\\`**` shape is byte-preserved without the author restating it. Claude namespaces both forms (`/{ext}:{name}`, `extension-skeleton/EXTENSION-FORMAT.md:80`); Gemini and Copilot namespace neither, and Gemini's SKILL form additionally drops the leading slash (a recorded, deliberate deviation from the pre-render `CLAUDE.md`/`GEMINI.md`/`copilot-instructions.md`'s hand-written `**Greeter skill**`, see specs/0181-extension-context-pivot.md step 6's *Preservation result*); Antigravity namespaces neither and drops the slash on BOTH forms — evidenced live: `agy -p \"list your skills\"` against a throwaway plugin listed the sentinel skill by its bare name with no plugin-name prefix (tests/extension-context-delivery-evidence.md). `contextOutput` is the render's own knowledge of where ITS OWN context output lands, relative to that target's own build/plugin root; Copilot's carries an `{ext}` placeholder (its context ships as a per-extension-named skill directory, the same surface the build already uses for that target's commands).",
   "gemini": {
     "shellTool": "run_shell_command",
     "timeUnit": "milliseconds",
@@ -7,7 +7,11 @@
     "rootToken": "${extensionPath}",
     "hookFile": "hooks/hooks.json",
     "matchAll": ".*",
-    "mcpDelivery": true
+    "mcpDelivery": true,
+    "displayName": "Gemini CLI",
+    "commandRef": "`/{name}`",
+    "skillRef": "`{name}`",
+    "contextOutput": "GEMINI.md"
   },
   "claude": {
     "shellTool": "Bash",
@@ -16,7 +20,11 @@
     "rootToken": "${CLAUDE_PLUGIN_ROOT}",
     "hookFile": "hooks/hooks.json",
     "matchAll": "",
-    "mcpDelivery": true
+    "mcpDelivery": true,
+    "displayName": "Claude Code",
+    "commandRef": "`/{ext}:{name}`",
+    "skillRef": "`/{ext}:{name}`",
+    "contextOutput": "CLAUDE.md"
   },
   "antigravity": {
     "shellTool": "run_command",
@@ -25,7 +33,11 @@
     "rootToken": null,
     "hookFile": "hooks.json",
     "matchAll": ".*",
-    "mcpDelivery": true
+    "mcpDelivery": true,
+    "displayName": "Antigravity CLI",
+    "commandRef": "`{name}`",
+    "skillRef": "`{name}`",
+    "contextOutput": "rules/AGENTS.md"
   },
   "copilot": {
     "shellTool": "bash",
@@ -34,6 +46,10 @@
     "rootToken": "${COPILOT_PLUGIN_ROOT}",
     "hookFile": "hooks.json",
     "matchAll": ".*",
-    "mcpDelivery": true
+    "mcpDelivery": true,
+    "displayName": "GitHub Copilot CLI",
+    "commandRef": "`/{name}`",
+    "skillRef": "`/{name}`",
+    "contextOutput": "skills/{ext}-context/SKILL.md"
   }
 }
