@@ -30,37 +30,52 @@ The script will:
 
 1. Copy the base skeleton into `extensions/org/my-extension/`.
 2. Inject selected component directories.
-3. Replace every `SKELETON_NAME` placeholder with your extension name.
-4. Merge JSON fragments (MCP server, theme) into the manifest.
+3. Merge each selected component's JSON fragment into the manifest by
+   presence — every component now works this way (spec 0183 R1), not only
+   `mcp-server`/`theme`.
+4. Replace every `${SKELETON_NAME}` placeholder in every text-carrying
+   file (a NUL-byte predicate, not a content-type heuristic — spec 0183 R3)
+   and assert, unconditionally, that none survives in the produced tree.
+5. Render the scaffolded tree once to derive its `accepted-gaps.json` from
+   the render's own observed gap set (spec 0183 R2) — a scaffold whose
+   declarations all map on every target gets no gap file at all.
 
 ### Skeleton Structure
 
-The `extension-skeleton/` directory contains the template source:
+The `extension-skeleton/` directory contains the template source. No file
+here is named for a specific command-line tool (spec 0183 R9 — enforced by
+`bash scripts/build-extension.sh --check` over this directory, not only
+over extension source trees):
 
 ```text
 extension-skeleton/
-├── .geminiignore                          # Prevents Gemini from loading templates
 ├── base/                                  # Always copied
-│   ├── extension.json                     # Unified manifest (all tools; the ONLY manifest — gemini-extension.json is a build output, never committed, spec 0173 delta-01)
-│   ├── CLAUDE.md                          # Claude Code context placeholder
+│   ├── extension.json                     # Unified manifest (all tools; the ONLY manifest — gemini-extension.json is a build output, never committed, spec 0173 delta-01). Declares no subject: a base-only scaffold is a valid extension (spec 0183 R1).
+│   ├── CONTEXT.md                         # Agent-facing context source, rendered per target (spec 0181)
 │   ├── package.json                       # npm package with MCP SDK dependency
 │   ├── tsconfig.json                      # TypeScript ES2022 / Node16
-│   ├── GEMINI.md                          # Agent context placeholder
-│   ├── README.md                          # Documentation placeholder
+│   ├── README.md                          # Documentation, naming only the files the produced tree actually contains (spec 0183 R5)
 │   └── .gitignore                         # node_modules, dist, .env
 ├── mcp-server/                            # MCP server component
 │   ├── src/index.ts                       # Stdio MCP server with sample tool
-│   └── mcp-server.json.fragment           # Merged into manifest on creation
-├── command/commands/sample.md              # Sample slash command (pivot source; the rendered .toml is a build output, never committed)
-├── skill/skills/sample-skill/SKILL.md     # Sample agent skill
-├── agent/agents/sample-agent/PROMPT.md    # Sample sub-agent prompt
-├── hook/hooks/                            # Lifecycle hook
-│   ├── hooks.json                         # Hook event configuration
-│   └── logger.sh                          # Sample BeforeTool hook script
-└── theme/theme.json.fragment              # Merged into manifest on creation
+│   └── mcp-server.json.fragment           # Merged into the manifest's mcpServers field on creation
+├── command/
+│   ├── commands/sample.md                 # Sample slash command (pivot source; the rendered .toml is a build output, never committed)
+│   └── command.json.fragment              # Merged into the manifest's commands field on creation
+├── skill/
+│   ├── skills/sample-skill/SKILL.md       # Sample agent skill
+│   └── skill.json.fragment                # Merged into the manifest's skills field on creation
+├── agent/
+│   ├── agents/sample-agent/AGENT.md       # Sample sub-agent prompt, Claude Code / Copilot CLI / Antigravity CLI pivot source
+│   ├── agents/sample-agent/PROMPT.md      # Same sub-agent, Gemini CLI pivot source (sibling files by design — see EXTENSION-FORMAT.md)
+│   └── agent.json.fragment                # Merged into the manifest's agents field on creation
+├── hook/
+│   ├── hooks/logger.sh                    # Sample PreToolUse hook script (the maps-everywhere event — spec 0179)
+│   └── hooks.json.fragment                # Merged into the manifest's hooks field on creation
+└── theme/theme.json.fragment              # Merged into the manifest's gemini.themes field on creation
 ```
 
-Every occurrence of `SKELETON_NAME` in these files is replaced with your
+Every occurrence of `${SKELETON_NAME}` in these files is replaced with your
 extension name during scaffolding.
 
 ### After Scaffolding
@@ -184,7 +199,15 @@ trigger a release.
 3. `semantic-release-monorepo` scopes the analysis to that extension only.
 4. `semantic-release-gitmoji` determines the version bump from the emoji.
 5. A tag `my-extension-vX.Y.Z` is created.
-6. A GitHub Release is published with the packaged `.tgz` as an asset.
+6. `scripts/release-package-extension.sh` renders the extension
+   (`--target gemini`), asserts the built manifest's version matches the
+   release version, and archives the rendered tree — `package.json` and
+   `extension.json` (never `gemini-extension.json`, a build output that is
+   never committed) are written to the release version first. A GitHub
+   Release is published with that archive as its single asset (spec 0183;
+   the published artifact serves the in-place tool, Gemini CLI, alone —
+   Claude Code, Copilot CLI and Antigravity CLI reach an adopter through
+   their own local render-and-install paths, unaffected by this release).
 7. A CHANGELOG.md is committed back into the extension directory.
 
 Other extensions in the monorepo are not affected.
@@ -201,7 +224,10 @@ task package-extension EXT=my-extension
 task package
 ```
 
-The `.tgz` files are written to `dist/`.
+Both delegate to `scripts/release-package-extension.sh`, packaging the
+extension's own currently-committed version — the same artifact shape a
+real release publishes (a rendered, installable tree, not a source-only
+tarball). The archive is written to `dist/release/<name>/`.
 
 ## Extension Anatomy
 
@@ -211,15 +237,14 @@ extensions/org/my-extension/
 │                           #   gemini-extension.json is a build output; never committed.
 ├── package.json            # npm package (dependencies, build script)
 ├── tsconfig.json           # TypeScript configuration
-├── GEMINI.md               # Agent context for Gemini CLI
-├── CLAUDE.md               # Agent context for Claude Code
+├── CONTEXT.md              # Agent-facing context source, rendered per target (spec 0181) — GEMINI.md/CLAUDE.md/rules/AGENTS.md/the Copilot skill are all build outputs, never committed
 ├── README.md               # Documentation
 ├── src/                    # MCP server source (TypeScript)
 │   └── index.ts
-├── commands/               # Slash command pivot sources (.md); the rendered .toml is a build output
+├── commands/                # Slash command pivot sources (.md); the rendered .toml is a build output
 ├── skills/                 # Agent skill directories (SKILL.md)
-├── agents/                 # Sub-agent prompts (PROMPT.md)
-└── hooks/                  # Lifecycle hooks (hooks.json + scripts)
+├── agents/                 # Sub-agent prompts — AGENT.md (Claude Code / Copilot CLI / Antigravity CLI pivot) and PROMPT.md (Gemini CLI pivot) as siblings, per component
+└── hooks/                  # Lifecycle hooks (handler scripts; the rendered hooks.json is a build output)
 ```
 
 Not all directories are required — include only what your extension needs.

@@ -44,12 +44,12 @@ configuration home. The repository may be public or private.
    ```
 
    > **Note — release automation stays inert on your fork.** The release
-   > workflows (`.github/workflows/release-monorepo.yml` and
-   > `.github/workflows/release-extension.yml`) are reserved for the
-   > canonical `crewrig/crewrig` repository. On your fork, pushing to `main`
-   > or pushing a release-pattern tag is expected to leave these workflows
-   > inert — no release run, no red run on the Actions tab. If you see one
-   > fail instead, see
+   > workflow (`.github/workflows/release-monorepo.yml` — the sole release
+   > path; the second, tag-triggered `.github/workflows/release-extension.yml`
+   > is removed, spec 0183 R23) is reserved for the canonical
+   > `crewrig/crewrig` repository. On your fork, pushing to `main` is
+   > expected to leave it inert — no release run, no red run on the Actions
+   > tab. If you see one fail instead, see
    > [Release workflow fails with "Could not resolve to an issue or pull
    > request"](#release-workflow-inert-on-fork) in Troubleshooting.
 
@@ -565,23 +565,26 @@ is never itself reported: what you see is what you modified.
 ### Release workflow fails with "Could not resolve to an issue or pull request" {#release-workflow-inert-on-fork}
 
 **Cause:** The fork synced from an upstream commit predating this ticket's
-canonical-repository guard, so its `release-monorepo.yml` (or
-`release-extension.yml`) still lacks the `if: github.repository ==
-'crewrig/crewrig'` condition.
+canonical-repository guard, so its `release-monorepo.yml` still lacks the
+`if: github.repository == 'crewrig/crewrig'` condition. A fork synced from
+an even older commit may also still carry `release-extension.yml` — removed
+upstream (spec 0183 R23: it published a non-conforming, source-only
+archive) — which never carried the guard at all.
 
-**Effect:** "Analyze & Release (Monorepo)" (or "Release Extension") fails
-with the quoted symptom — a red run on the fork's Actions tab, caused by
-the release tooling resolving a pull-request or issue reference that
-belongs to the upstream `crewrig/crewrig` repository, not the fork.
+**Effect:** "Analyze & Release (Monorepo)" (or, on a stale fork,
+"Release Extension") fails with the quoted symptom — a red run on the
+fork's Actions tab, caused by the release tooling resolving a pull-request
+or issue reference that belongs to the upstream `crewrig/crewrig`
+repository, not the fork.
 
 **Resolution:** Choose one of two paths:
 
 1. **Sync to pick up the fix** — run `bash scripts/sync-from-upstream.sh`
-   to pull in the canonical-repository guard, commit the result, and push.
-   The next push or tag push leaves the workflow inert on the fork instead
-   of failing.
+   to pull in the canonical-repository guard and, on a stale fork, the
+   removal of `release-extension.yml`; commit the result, and push. The
+   next push leaves the workflow inert on the fork instead of failing.
 2. **Disable the workflow pre-emptively** — if release automation is never
-   wanted on this fork, disable `release-monorepo.yml` and/or
-   `release-extension.yml` from the fork's Actions tab, or remove or
-   override the workflow file, before the next triggering push or tag
-   push.
+   wanted on this fork, disable `release-monorepo.yml` (and, on a
+   not-yet-synced fork, `release-extension.yml`) from the fork's Actions
+   tab, or remove or override the workflow file, before the next
+   triggering push.

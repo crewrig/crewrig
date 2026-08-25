@@ -180,10 +180,10 @@ other generated-output-class member.
   // because it is absent — an extension declaring no subject at all
   // remains valid and renders only its per-CLI manifests. Subject-scoped
   // options live inside the subject's own section, never in a separate
-  // "components" block (the legacy components.<subject>.enabled shape
-  // below is a READ-ONLY fallback for not-yet-migrated extensions, per the
-  // Migration note at the end of this section — it MUST NOT be used in new
-  // authoring).
+  // "components" block: that shape is RETIRED (spec 0183 R12/R13, clean
+  // break, no compatibility window) — a manifest declaring it fails every
+  // reader loudly, naming scripts/migrate-extension.sh and the migration
+  // note in docs/adoption-guide.md.
   // ============================================================
 
   // Slash commands.
@@ -305,21 +305,20 @@ other generated-output-class member.
 ## Per-CLI key irreducibility (requirements 2/3)
 
 A per-CLI section carries only keys that fail to generalize: the concept
-exists on that one command-line tool alone (`cli-only-concept`), or the
-value cannot yet be derived because its generalizing sub-spec has not landed
-(`deferred:S<n>`). `scripts/lib/extension-percli-keys.json` is the committed
-allowlist — one row per admissible key, each with a `reason` and an
-`evidence` pointer — and a key absent from that table is rejected as a
-manifest validation error (fail-closed, requirement 3). `deferred:S<n>` is a
-scheduled retirement, not a permanent exemption: requirement 4's per-CLI
-"deferred subject" carve-out above and this table's `deferred:S<n>` rows
-bind together — once the named sub-spec lands, both a committed file of
-that subject's shape and a per-CLI key belonging to it stop being
-admissible. Two keys — `copilot.pluginName` and `antigravity.pluginName` —
-are `deferred:S5` **and** already known reducible (both are derivable from
-`.name`); they stay admissible until sub-spec S5 does the reduction, because
-`create-extension.sh`'s own scaffolder ships them verbatim today and a hard
-rejection would fail `--check` on the scaffolder's own output.
+exists on that one command-line tool alone (`cli-only-concept`).
+`scripts/lib/extension-percli-keys.json` is the committed allowlist — one
+row per admissible key, each with a `reason` and an `evidence` pointer — and
+a key absent from that table is rejected as a manifest validation error
+(fail-closed, requirement 3). Every entry in the table carries a
+non-deferral reason and its evidence (spec 0183 R7): no row carries a
+deferral to a future sub-spec any more. `claude.skills`, `claude.agents`,
+`claude.rules`, `copilot.pluginName` and `antigravity.pluginName` were the
+five deferred rows this migration resolved — all five judged reducible and
+removed from the allowlist, every committed manifest, and every reader in
+the same change (spec 0183 R7/R8). A per-CLI top-level section is absent
+entirely where every key a tool would carry was judged reducible: `copilot`
+and `antigravity` currently carry no admissible key at all, so neither
+section survives.
 
 ## Field Reference
 
@@ -371,20 +370,20 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 | Field | Type | `reason` | Description |
 |-------|------|----------|-------------|
 | `claude.author` | object | `cli-only-concept` | Plugin author → `plugin.json` |
-| `claude.skills` | string[] | `deferred:S5` | Glob patterns for skill directories |
-| `claude.agents` | string[] | `deferred:S5` | Glob patterns for agent files (default `agents/*/AGENT.md`) |
-| `claude.rules` | string[] | `deferred:S5` | Rule files for the plugin |
 | `claude.defaultAllowedTools` | string[] | `cli-only-concept` | Default tool permissions for skills |
 | `claude.settings` | object | `cli-only-concept` | Plugin settings → `settings.json` |
 | `claude.lsp` | object | `cli-only-concept` | LSP server config → `.lsp.json` |
 | `claude.bin` | string | `cli-only-concept` | Executables directory → `bin/` |
 
-### Copilot CLI and Antigravity CLI (optional, per-CLI sections)
+Every agent file the `agents` subject discovers (default glob
+`agents/*/AGENT.md`) is copied verbatim, preserving its relative path — no
+per-extension override key survives (spec 0183 R7): the fixed default was
+already what every committed manifest resolved to.
 
-| Field | Type | `reason` | Description |
-|-------|------|----------|-------------|
-| `copilot.pluginName` | string | `deferred:S5` (reducible) | Overrides `.name` in the built `plugin.json` |
-| `antigravity.pluginName` | string | `deferred:S5` (reducible) | Overrides `.name` in the built `plugin.json` |
+Copilot CLI and Antigravity CLI carry **no per-CLI section**: both keys they
+once admitted (`copilot.pluginName`, `antigravity.pluginName`) were judged
+reducible from the manifest's own `.name` and removed (spec 0183 R7/R8),
+leaving neither tool with an irreducible key to carry.
 
 ## Context rendering (spec 0181, issue #1007)
 
@@ -519,10 +518,20 @@ to be installed or packaged with no second render" (requirement 22) — so
 publication is a packaging step, not a build step. An adopter reaches that
 tree through exactly one of three paths:
 
-1. **A versioned release artifact** carrying the rendered tree — the
-   default operating mode for an install. The publication mechanics
-   themselves are sub-spec S5's (issue #1008); this spec stops at the
-   complete tree in the build directory.
+1. **A versioned release artifact** carrying the rendered tree, for the
+   in-place tool (Gemini CLI) alone — the default operating mode for that
+   tool's install (spec 0183 requirements 17-24, as amended by
+   `specs/0183-extension-model-migration.delta-01.md`; maintainer
+   arbitration, 2026-08-25, issue #1008). `scripts/release-package-extension.sh`
+   is the ONE place the artifact's shape is decided: it asserts the current
+   declaration shape, renders `--target gemini`, and archives
+   `build/extensions/<name>`'s contents at the archive root with no wrapper
+   directory — a form pinned live against the installed tool, evidence in
+   `docs/runbooks/extension-release-install-probe.md`.
+   `scripts/monorepo-release.sh` is the release driver that calls it. The
+   other three supported tools (Claude Code, Copilot CLI, Antigravity CLI)
+   are not served by this artifact; they reach an adopter through path 2
+   below, on their own local render.
 2. **`bash scripts/install-extension.sh install <name>`** — this
    repository's own script, which renders and then copies (or, in `link`
    mode, symlinks) the build directory into `$GEMINI_HOME/extensions/<name>`.
@@ -627,38 +636,19 @@ token — is the normative, evidence-backed
 [`docs/extension-hook-events.md`](../docs/extension-hook-events.md), kept
 honest against the translator by `scripts/check-extension-hook-map.sh`.
 
-## Backward Compatibility
-
-This section is retained deliberately rather than excised: the fallback
-chain it documents is exactly what `scripts/lib/extension-manifest.sh`'s
-accessors (`ext_subject_present` / `ext_subject_location` /
-`ext_subject_option`) still honor for a not-yet-migrated extension, and what
-the three plugin builders and `scripts/build-extension.sh` still read
-through. It is the interim spec 0173's *Out of scope* grants until sub-spec
-S5 (issue #1008) removes the dual-shape fallback in a full skeleton and
-reference-extension migration.
-
-Install scripts and the render support both shapes:
-1. If a generic top-level subject section (`commands`, `skills`, `agents`,
-   ...) is present → use it (the current, generic shape above).
-2. Else fall back to reading `components.<subject>.enabled` /
-   `components.<subject>.<option>` (the legacy shape) — the same
-   `components.*` block requirement 5 says the generic schema itself SHALL
-   NOT carry, kept readable only for extensions that have not migrated yet.
-3. `extension.json` → `gemini-extension.json` fallback for a manifest a
-   plugin builder cannot otherwise locate (`build-claude-plugin.sh:52-55`
-   and its siblings) stays as dead code for now: it can never fire in
-   practice, since `gemini-extension.json` is never committed, but its
-   removal is sub-spec S5's clean-break work, not this spec's.
-4. `create-extension.sh` generates `extension.json` for new extensions —
-   the ONLY manifest it writes; see *Fragment Merging* below.
-
 ## Fragment Merging
 
 The scaffolding system (`create-extension.sh`) merges JSON fragments into
-`extension.json` — the single generic root manifest — during extension
-creation:
+`extension.json` — the single generic root manifest, and the ONLY manifest
+the scaffolding tool writes — during extension creation. Every one of the
+six offered components merges its own fragment (spec 0183 R1/R4, PLAN v2
+step 23): selecting a component adds its generic section by PRESENCE alone,
+never by flipping an enablement toggle.
 
+- `command.json.fragment` → `commands` field
+- `skill.json.fragment` → `skills` field
+- `agent.json.fragment` → `agents` field
+- `hooks.json.fragment` → `hooks` field
 - `mcp-server.json.fragment` → `mcpServers` field
 - `theme.json.fragment` → `gemini.themes` field
 - Merge tool: `jq -s '.[0] * .[1]'`, applied to `extension.json`
@@ -670,3 +660,10 @@ target no longer exists — `gemini-extension.json` is a build output, never
 committed — so the merge now has exactly one manifest to update; the
 double-write was retargeted to the single manifest in the same change that
 removed the skeleton's committed `gemini-extension.json` (issue #1004).
+
+After every fragment is merged, `create-extension.sh` asserts unconditionally
+that no scaffold placeholder literal (`${SKELETON_*}`) survives anywhere in
+the produced tree (spec 0183 R3), then runs one full render to derive
+`accepted-gaps.json` from the render's own observed gap set — never a static,
+hand-authored list (spec 0183 R2). A scaffold whose declarations all map on
+every target gets no gap file at all.

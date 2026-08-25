@@ -96,6 +96,13 @@ jobs:
               - 'scripts/tests/test-extension-mcp-manifest.sh'
               - 'scripts/install-antigravity-extension.sh'
               - 'scripts/lib/render-context.sh'
+              - 'scripts/lib/extension-legacy-shape.json'
+              - 'scripts/migrate-extension.sh'
+              - 'scripts/tests/test-migrate-extension.sh'
+              - 'scripts/release-package-extension.sh'
+              - 'scripts/lib/extension-install.sh'
+              - 'scripts/tests/test-release-package-extension.sh'
+              - 'scripts/tests/test-create-extension-combinations.sh'
       - name: Install yq
         if: steps.filter.outputs.extension-render == 'true'
         run: |
@@ -131,6 +138,15 @@ jobs:
       - name: Test Check Extension Hook Map
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/tests/test-check-extension-hook-map.sh
+      - name: Test Migrate Extension
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/tests/test-migrate-extension.sh
+      - name: Test Release Package Extension
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/tests/test-release-package-extension.sh
+      - name: Test Create Extension Combinations
+        if: steps.filter.outputs.extension-render == 'true'
+        run: bash scripts/tests/test-create-extension-combinations.sh
   extension-provenance:
     runs-on: ubuntu-latest
     steps:
