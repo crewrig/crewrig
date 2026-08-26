@@ -1,6 +1,6 @@
 {
   "name": "hello-world",
-  "version": "1.7.0",
+  "version": "2.0.0",
   "description": "Demonstration extension showcasing MCP tools, commands, skills, and context.",
   "mcpServers": {
     "default": {
