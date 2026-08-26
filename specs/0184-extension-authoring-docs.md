@@ -1,7 +1,7 @@
 ---
 id: "0184"
 slug: extension-authoring-docs
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1009
