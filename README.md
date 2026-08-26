@@ -427,8 +427,7 @@ tests/
 ├── build.yml                         # Component build and drift check
 ├── claude.yml                        # Claude Code integration
 ├── pages.yml                         # GitHub Pages deployment
-├── release-extension.yml             # Extension release automation
-├── release-monorepo.yml              # Monorepo release automation
+├── release-monorepo.yml              # Monorepo release automation (also packages and publishes each extension's release artifact, spec 0183)
 ├── scripting-conventions.yml         # Shell scripting lint
 └── security-mcp.yml                  # MCP security scan
 
@@ -437,6 +436,7 @@ scripts/
 ├── build-claude-plugin.sh            # Claude Code plugin generator
 ├── check-skill-versions.sh           # CI gate: enforces version bump on modified sources
 ├── create-extension.sh               # Extension scaffolding
+├── migrate-extension.sh              # Converts an extension off the retired declaration shape (spec 0183)
 ├── import-claude-history.sh          # Claude transcript import
 ├── import-gemini-history.sh          # Gemini transcript import
 ├── install-claude-plugin.sh          # Claude Code plugin installer
@@ -446,9 +446,10 @@ scripts/
 ├── link-extensions.sh                # Symlink extensions for local dev
 ├── manage-claude-component.sh        # Claude Code component manager
 ├── manage-workspace-component.sh     # Gemini component manager
-├── monorepo-release.sh               # Monorepo release script
-├── package-extension.sh              # Package a single extension
-├── package-extensions.sh             # Package all extensions
+├── monorepo-release.sh               # Monorepo release driver — bumps versions, calls release-package-extension.sh, publishes the release
+├── release-package-extension.sh      # The ONE place a release artifact's shape is decided: renders, asserts, archives (spec 0183)
+├── package-extension.sh              # Manually package a single extension at its current committed version (delegates to release-package-extension.sh)
+├── package-extensions.sh             # Manually package every extension (delegates to package-extension.sh)
 ├── prune-transcripts.sh              # Remove old transcript archives
 ├── setup-claude-interactive.sh       # Claude Code setup (interactive)
 ├── setup-gemini-interactive.sh       # Gemini CLI setup (interactive)

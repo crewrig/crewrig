@@ -44,12 +44,12 @@ configuration home. The repository may be public or private.
    ```
 
    > **Note — release automation stays inert on your fork.** The release
-   > workflows (`.github/workflows/release-monorepo.yml` and
-   > `.github/workflows/release-extension.yml`) are reserved for the
-   > canonical `crewrig/crewrig` repository. On your fork, pushing to `main`
-   > or pushing a release-pattern tag is expected to leave these workflows
-   > inert — no release run, no red run on the Actions tab. If you see one
-   > fail instead, see
+   > workflow (`.github/workflows/release-monorepo.yml` — the sole release
+   > path; the second, tag-triggered `.github/workflows/release-extension.yml`
+   > is removed, spec 0183 R23) is reserved for the canonical
+   > `crewrig/crewrig` repository. On your fork, pushing to `main` is
+   > expected to leave it inert — no release run, no red run on the Actions
+   > tab. If you see one fail instead, see
    > [Release workflow fails with "Could not resolve to an issue or pull
    > request"](#release-workflow-inert-on-fork) in Troubleshooting.
 
@@ -429,6 +429,55 @@ while remaining yours to shape:
 > untouched rather than risk re-adding a file you deleted). Run the sync from a
 > full, non-shallow clone.
 
+## Migrating an extension off the retired declaration shape (spec 0183)
+
+**If you own no extension in this repository or in a fork of it, this
+section does not apply to you** — skip to *Troubleshooting* below.
+
+Spec 0183 retires, with no compatibility window, the legacy
+`components.<subject>.enabled` declaration shape and five per-CLI keys
+(`claude.skills`, `claude.agents`, `claude.rules`, `copilot.pluginName`,
+`antigravity.pluginName`). This is a clean break, not a deprecation: every
+entry point that reads an extension manifest (the three plugin builders,
+the Claude install script, the manifest-version guard, and the render
+itself) fails loudly on a manifest declaring the retired shape — there is
+no dual-shape read and no fallback through a tool-specific manifest.
+
+**What breaks.** An extension whose `extension.json` still declares
+`components.<subject>.enabled`, or any of the five retired per-CLI keys,
+stops building, installing, and passing `bash scripts/build-extension.sh
+--check` from the moment this change lands. The failure names the retired
+form it found and points here.
+
+**What converts it.** Run:
+
+```sh
+task migrate-extension EXT=<your-extension-name>
+```
+
+(equivalently, `bash scripts/migrate-extension.sh <path-or-name>`). The
+tool converts an enabled `components.<subject>` entry into the equivalent
+generic top-level `<subject>` section, drops a disabled entry with nothing
+added, deletes the `components` object outright, drops the five retired
+per-CLI keys along with any per-CLI section they leave empty, and
+de-commits any committed generated-output-class file the source tree still
+carries. It works on a temporary copy and replaces your extension's tree
+only on full success; a tree it cannot fully convert is left untouched and
+the failure names what it could not convert. A tree already in the current
+shape is reported as already migrated, and the tool writes nothing.
+
+**When the break lands.** This repository carries no framework version
+stream — there are no framework tags, no `VERSION` file, and the root
+`package.json` version has never moved since the initial commit — so the
+sync boundary an adopter running `scripts/sync-from-upstream.sh` should use
+is the change itself, not a framework version number: **2026-08-25, spec
+0183, the implementation pull request for issue #1008** (crewrig/crewrig).
+For anyone consuming the reference extension (`extensions/core/hello-world`)
+rather than the framework directly, its published artifact form changes
+starting with the first `hello-world` major release published after this
+change — check that release's own asset for confirmation rather than
+assuming a specific version number here.
+
 ## Troubleshooting
 
 ### `crewrig.config.toml` absent or has empty values
@@ -516,23 +565,26 @@ is never itself reported: what you see is what you modified.
 ### Release workflow fails with "Could not resolve to an issue or pull request" {#release-workflow-inert-on-fork}
 
 **Cause:** The fork synced from an upstream commit predating this ticket's
-canonical-repository guard, so its `release-monorepo.yml` (or
-`release-extension.yml`) still lacks the `if: github.repository ==
-'crewrig/crewrig'` condition.
+canonical-repository guard, so its `release-monorepo.yml` still lacks the
+`if: github.repository == 'crewrig/crewrig'` condition. A fork synced from
+an even older commit may also still carry `release-extension.yml` — removed
+upstream (spec 0183 R23: it published a non-conforming, source-only
+archive) — which never carried the guard at all.
 
-**Effect:** "Analyze & Release (Monorepo)" (or "Release Extension") fails
-with the quoted symptom — a red run on the fork's Actions tab, caused by
-the release tooling resolving a pull-request or issue reference that
-belongs to the upstream `crewrig/crewrig` repository, not the fork.
+**Effect:** "Analyze & Release (Monorepo)" (or, on a stale fork,
+"Release Extension") fails with the quoted symptom — a red run on the
+fork's Actions tab, caused by the release tooling resolving a pull-request
+or issue reference that belongs to the upstream `crewrig/crewrig`
+repository, not the fork.
 
 **Resolution:** Choose one of two paths:
 
 1. **Sync to pick up the fix** — run `bash scripts/sync-from-upstream.sh`
-   to pull in the canonical-repository guard, commit the result, and push.
-   The next push or tag push leaves the workflow inert on the fork instead
-   of failing.
+   to pull in the canonical-repository guard and, on a stale fork, the
+   removal of `release-extension.yml`; commit the result, and push. The
+   next push leaves the workflow inert on the fork instead of failing.
 2. **Disable the workflow pre-emptively** — if release automation is never
-   wanted on this fork, disable `release-monorepo.yml` and/or
-   `release-extension.yml` from the fork's Actions tab, or remove or
-   override the workflow file, before the next triggering push or tag
-   push.
+   wanted on this fork, disable `release-monorepo.yml` (and, on a
+   not-yet-synced fork, `release-extension.yml`) from the fork's Actions
+   tab, or remove or override the workflow file, before the next
+   triggering push.

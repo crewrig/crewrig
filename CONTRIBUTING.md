@@ -123,22 +123,29 @@ task check-components           # Drift detection (CI)
 When a capability requires executable code (TypeScript MCP server, custom
 build steps), create a full extension with an `extension.json` manifest.
 
-A single `extension.json` generates both a Gemini extension and a Claude
-Code plugin. See
+A single `extension.json` renders for all four supported command-line
+tools (Gemini CLI, Claude Code, Copilot CLI, Antigravity CLI). See
 [`extension-skeleton/EXTENSION-FORMAT.md`](extension-skeleton/EXTENSION-FORMAT.md)
 for the complete manifest specification.
 
 Quick steps:
 
-1. Copy `extension-skeleton/base/` into `extensions/org/<your-name>/` (the
-   adopter-owned tier; `task create-extension` scaffolds here by default).
-2. Add optional component directories from the skeleton.
-3. Replace every `SKELETON_NAME` with your extension name.
-4. Implement your MCP server in `src/index.ts`.
-5. Test locally:
-   - **Gemini**: `task link-extensions` then start a Gemini session.
+1. Scaffold with `task create-extension NAME=<your-name>` — it copies the
+   base skeleton into `extensions/org/<your-name>/` (the adopter-owned
+   tier), merges each selected component's own manifest fragment,
+   substitutes every `${SKELETON_NAME}` placeholder, and derives
+   `accepted-gaps.json` from a real render. Manually copying skeleton
+   component directories is no longer sufficient on its own — each
+   component now merges a generic manifest section by presence (spec
+   0183), not a hand-editable toggle.
+2. Implement your MCP server in `src/index.ts`, if you selected `mcp-server`.
+3. Test locally:
+   - **Gemini**: `task link-gemini-extension-build EXT=<name>` (debugging)
+     or `task install-gemini-extension EXT=<name>`, then start a Gemini
+     session.
    - **Claude Code**: `task build-claude-plugin EXT=<name>` then
      `claude --plugin-dir extensions/org/<name>/dist-claude-plugin/<name>`.
+   - **All four tools at once**: `task install-extension-all EXT=<name>`.
 
 Each extension is an independent npm package with its own versioning. See
 `extensions/core/hello-world/` for a complete working reference.

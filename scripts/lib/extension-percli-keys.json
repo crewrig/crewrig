@@ -2,56 +2,31 @@
   {
     "key": "claude.author",
     "reason": "cli-only-concept",
-    "evidence": "scripts/build-claude-plugin.sh:78, scripts/install-claude-plugin.sh:70"
+    "evidence": "scripts/build-claude-plugin.sh:86, scripts/install-claude-plugin.sh:88"
   },
   {
     "key": "claude.defaultAllowedTools",
     "reason": "cli-only-concept",
-    "evidence": "scripts/build-claude-plugin.sh:147"
-  },
-  {
-    "key": "claude.agents",
-    "reason": "deferred:S5",
-    "evidence": "scripts/build-claude-plugin.sh:188 — full skeleton/reference migration lands with sub-spec S5 (issue #1008)"
+    "evidence": "scripts/build-claude-plugin.sh:189"
   },
   {
     "key": "claude.settings",
     "reason": "cli-only-concept",
-    "evidence": "scripts/build-claude-plugin.sh:214"
+    "evidence": "scripts/build-claude-plugin.sh:264"
   },
   {
     "key": "claude.lsp",
     "reason": "cli-only-concept",
-    "evidence": "scripts/build-claude-plugin.sh:221"
+    "evidence": "scripts/build-claude-plugin.sh:271"
   },
   {
     "key": "claude.bin",
     "reason": "cli-only-concept",
-    "evidence": "scripts/build-claude-plugin.sh:228"
-  },
-  {
-    "key": "claude.skills",
-    "reason": "deferred:S5",
-    "evidence": "extension-skeleton/EXTENSION-FORMAT.md; full skeleton/reference migration lands with sub-spec S5 (issue #1008)"
-  },
-  {
-    "key": "claude.rules",
-    "reason": "deferred:S5",
-    "evidence": "extension-skeleton/EXTENSION-FORMAT.md; full skeleton/reference migration lands with sub-spec S5 (issue #1008)"
+    "evidence": "scripts/build-claude-plugin.sh:278"
   },
   {
     "key": "gemini.themes",
     "reason": "cli-only-concept",
     "evidence": "consumed by scripts/build-extension.sh's render — no Claude/Copilot/Antigravity theme concept"
-  },
-  {
-    "key": "copilot.pluginName",
-    "reason": "deferred:S5",
-    "evidence": "scripts/build-copilot-plugin.sh:84 — reducible from .name, verdict recorded for sub-spec S5 (issue #1008)"
-  },
-  {
-    "key": "antigravity.pluginName",
-    "reason": "deferred:S5",
-    "evidence": "scripts/build-antigravity-extension.sh:85 — reducible from .name, verdict recorded for sub-spec S5 (issue #1008)"
   }
 ]

@@ -51,57 +51,90 @@ mkdir -p "$TARGET"
 cp -r "$SKELETON_DIR/base/." "$TARGET/"
 
 # --- Add selected components ---
-# component_subject <comp> — the generic-manifest subject key a skeleton
-# component directory corresponds to, for the enablement flip below. Empty
-# for mcp-server/theme, which merge a whole-fragment (mcpServers / gemini.themes)
-# rather than toggling a components.<subject>.enabled boolean.
-component_subject() {
-  # "hook" is deliberately absent (spec 0179 R2): the generic `hooks`
-  # section merged from hooks.json.fragment below is ALREADY the subject's
-  # enablement (presence follows enablement — the same rule every other
-  # generic subject in this schema follows), so there is no
-  # components.hooks.enabled toggle to flip. Flipping one here would
-  # resurrect exactly the "toggle that appears to resolve the subject and
-  # does not" shape R2 forbids surviving anywhere.
-  case "$1" in
-    command) echo "commands" ;;
-    skill)   echo "skills" ;;
-    agent)   echo "agents" ;;
-    *)       echo "" ;;
-  esac
-}
-
+# Every offered component now merges a whole-fragment (spec 0183 R1, PLAN
+# step 23) into the generic top-level manifest, the same mechanism
+# mcp-server/theme/hook already used before this change — there is no
+# components.<subject>.enabled toggle left to flip (the retired shape no
+# longer exists in the base skeleton at all), so selecting a component adds
+# its generic section by PRESENCE alone (spec 0173 R5). This also makes R4
+# hold by construction: the tool writes no tool-designated file, because the
+# skeleton no longer contains one.
 while IFS= read -r comp; do
   [ -z "$comp" ] && continue
   COMP_DIR="$SKELETON_DIR/$comp"
   if [ -d "$COMP_DIR" ]; then
     cp -r "$COMP_DIR/." "$TARGET/"
     echo "  Added: $comp"
-    # Flip the matching components.<subject>.enabled toggle in the scaffolded
-    # extension.json — the base skeleton ships every subject disabled, and
-    # copying the component's files alone never turned it on (a pre-existing
-    # gap: it silently never mattered for Gemini before spec 0173, since the
-    # retired build-extension-pivot.sh discovered by commands/ directory
-    # presence rather than by the manifest, and the plugin builders already
-    # required this same flag). Under the render model every target now
-    # reads it uniformly (scripts/lib/extension-manifest.sh
-    # ext_subject_present), so a selected component that stays disabled would
-    # render on no target at all.
-    subj="$(component_subject "$comp")"
-    if [ -n "$subj" ] && command -v jq >/dev/null 2>&1; then
-      jq --arg s "$subj" '.components[$s].enabled = true' "$TARGET/extension.json" > "$TARGET/extension.json.tmp" \
-        && mv "$TARGET/extension.json.tmp" "$TARGET/extension.json"
-    fi
   fi
 done <<< "$COMPONENTS"
 
-# --- Replace ${SKELETON_NAME} placeholder ---
-find "$TARGET" -type f | while read -r file; do
-  if file "$file" | grep -q text; then
+# --- Replace ${SKELETON_NAME} placeholder (spec 0183 R3, absorbs #1010) ---
+# is_text_carrying <path> — a NUL-byte predicate (`grep -I`, portable across
+# GNU/BSD/ugrep): a file with no NUL byte is text-carrying and gets
+# substituted, REGARDLESS of what a content-type heuristic like `file`
+# reports. This replaces the prior `file "$path" | grep -q text` classifier,
+# which macOS `file` 5.41 defeats on every committed JSON manifest — it
+# reports "JSON data", containing no "text" substring, so the prior
+# heuristic silently skipped every extension.json and package.json in the
+# skeleton, leaving ${SKELETON_NAME} literals standing in every scaffolded
+# manifest (issue #1010, absorbed here).
+is_text_carrying() {
+  grep -Iq '' "$1" 2>/dev/null
+}
+
+find "$TARGET" -type f | while IFS= read -r file; do
+  if is_text_carrying "$file"; then
     sed -i.bak "s/\${SKELETON_NAME}/$NAME/g" "$file"
     rm -f "$file.bak"
   fi
 done
+
+# The placeholder SET for the final produced-tree assertion (below, after
+# every fragment merge) is derived by scanning extension-skeleton/ itself
+# for every ${SKELETON_*} token any skeleton file actually uses today — not
+# hard-coded as the single literal ${SKELETON_NAME} — so a later addition to
+# that family is covered with no code change here.
+PLACEHOLDER_TOKENS="$(grep -rhoE '\$\{SKELETON_[A-Za-z0-9_]*\}' "$SKELETON_DIR" 2>/dev/null | sort -u)"
+
+# --- Merge command config into the manifest if selected (spec 0183 R1) ---
+# Fragment mechanism, not the retired components.commands.enabled toggle:
+# base/extension.json declares no `commands` section at all, so a scaffold
+# that never selected `command` stays subjectless on this axis (R1's "a
+# scaffold that declares no subject at all SHALL remain a valid extension").
+if echo "$COMPONENTS" | grep -q "command"; then
+  FRAGMENT="$TARGET/command.json.fragment"
+  if [ -f "$FRAGMENT" ] && command -v jq >/dev/null 2>&1; then
+    MANIFEST="$TARGET/extension.json"
+    jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
+    mv "$MANIFEST.tmp" "$MANIFEST"
+    rm -f "$FRAGMENT"
+    echo "  Merged: command config into extension.json"
+  fi
+fi
+
+# --- Merge skill config into the manifest if selected (spec 0183 R1) ---
+if echo "$COMPONENTS" | grep -q "skill"; then
+  FRAGMENT="$TARGET/skill.json.fragment"
+  if [ -f "$FRAGMENT" ] && command -v jq >/dev/null 2>&1; then
+    MANIFEST="$TARGET/extension.json"
+    jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
+    mv "$MANIFEST.tmp" "$MANIFEST"
+    rm -f "$FRAGMENT"
+    echo "  Merged: skill config into extension.json"
+  fi
+fi
+
+# --- Merge agent config into the manifest if selected (spec 0183 R1/R6) ---
+if echo "$COMPONENTS" | grep -q "agent"; then
+  FRAGMENT="$TARGET/agent.json.fragment"
+  if [ -f "$FRAGMENT" ] && command -v jq >/dev/null 2>&1; then
+    MANIFEST="$TARGET/extension.json"
+    jq -s '.[0] * .[1]' "$MANIFEST" "$FRAGMENT" > "$MANIFEST.tmp"
+    mv "$MANIFEST.tmp" "$MANIFEST"
+    rm -f "$FRAGMENT"
+    echo "  Merged: agent config into extension.json"
+  fi
+fi
 
 # --- Merge MCP server config into the manifest if selected ---
 # extension.json is the single generic root manifest (spec 0173 R1);
@@ -151,6 +184,61 @@ if echo "$COMPONENTS" | grep -q "hook"; then
     echo "  Merged: hook config into extension.json"
   fi
 fi
+
+# --- Assert unconditionally that no placeholder literal survives (R3) -----
+# Runs against the FULLY merged, produced tree — after every fragment merge
+# above — not only the raw substitution pass, so a placeholder a future
+# fragment happens to carry is caught here too. On any failure the partly
+# written target directory is removed (R3's own failure contract).
+PLACEHOLDER_SURVIVORS=0
+while IFS= read -r token; do
+  [ -z "$token" ] && continue
+  while IFS= read -r file; do
+    [ -z "$file" ] && continue
+    is_text_carrying "$file" || continue
+    if grep -qF "$token" "$file" 2>/dev/null; then
+      echo "Error: placeholder $token survives in $file" >&2
+      PLACEHOLDER_SURVIVORS=$((PLACEHOLDER_SURVIVORS + 1))
+    fi
+  done < <(find "$TARGET" -type f)
+done <<< "$PLACEHOLDER_TOKENS"
+
+if [ "$PLACEHOLDER_SURVIVORS" -gt 0 ]; then
+  echo "Error: $PLACEHOLDER_SURVIVORS placeholder occurrence(s) survived substitution; removing the partly-written $TARGET." >&2
+  rm -rf "$TARGET"
+  exit 1
+fi
+echo "  No placeholder literal survives in $TARGET."
+
+# --- Derive the scaffold's gap declaration from a real render (spec 0183 R2) ---
+# Run once, --target all, from the repository root, so ext_discover_dirs and
+# ext_gap_dir resolve exactly as they do for every other invocation. A
+# scaffold whose declarations all map on every target observes no gap and
+# gets no accepted-gaps.json at all — a DERIVED file can never disagree with
+# the render it is compared against, unlike a static, hand-authored one.
+echo ""
+echo "Rendering the scaffold once to derive its gap declaration..."
+(cd "$REPO_DIR" && bash scripts/build-extension.sh --target all "$NAME" >/dev/null 2>&1)
+GAP_DIR="$REPO_DIR/build/gaps/$NAME"
+OBSERVED_GAPS="$GAP_DIR/observed-gaps.json"
+if [ -f "$OBSERVED_GAPS" ] && command -v jq >/dev/null 2>&1 && [ "$(jq 'length' "$OBSERVED_GAPS" 2>/dev/null)" != "0" ]; then
+  cp "$OBSERVED_GAPS" "$TARGET/accepted-gaps.json"
+  echo ""
+  echo "=============================================================="
+  echo " REVIEW: this scaffold declares a gap the render could not map."
+  echo " extensions/$TIER/$NAME/accepted-gaps.json was DERIVED from the"
+  echo " render's own observed gap set below. Review each entry before"
+  echo " committing it — it is a starting point, not a rubber stamp."
+  echo "=============================================================="
+  jq -r '.[] | "  - " + .subject + " on " + .target + (if .hook then " (hook: " + .hook + ")" else "" end) + ": " + .reason' "$TARGET/accepted-gaps.json"
+fi
+# Stray plugin staging directories (spec 0173Δ, mirrors --check's own
+# cleanup_stray_plugin_dist): a --target all render for gap derivation
+# stages the three plugin builders' output inside the scaffold's own
+# directory (extensions/$TIER/$NAME/dist-*-plugin/); this scaffolding run
+# has no downstream consumer for them, so they are swept immediately rather
+# than left as day-one clutter in a freshly created extension.
+rm -rf "$TARGET/dist-claude-plugin" "$TARGET/dist-copilot-plugin" "$TARGET/dist-antigravity-plugin"
 
 echo ""
 echo "Extension created: extensions/$TIER/$NAME"

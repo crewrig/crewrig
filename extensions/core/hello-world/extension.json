@@ -17,6 +17,9 @@
   "skills": {
     "location": "skills/"
   },
+  "agents": {
+    "location": "agents/"
+  },
   "context": {
     "source": "CONTEXT.md"
   },
@@ -42,11 +45,6 @@
     "author": {
       "name": "crewrig contributors"
     },
-    "skills": [
-      "skills/*/SKILL.md"
-    ],
-    "agents": [],
-    "rules": [],
     "defaultAllowedTools": [
       "Read",
       "Write",

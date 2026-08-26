@@ -271,17 +271,96 @@ else
 fi
 rm -rf "$committed_fix/rules"
 
-# Paired negative (R4): .geminiignore and accepted-gaps.json are NOT members
-# of the generated-output class (never were, and R13 leaves the former's
-# reintroduction as a fresh committed decision rather than a class member).
+# Corrected paired negative (spec 0183 R9/R11, PLAN steps 18-19): neither
+# half is a generated-output-class member, but R9 charges on the NAME axis
+# rather than on class membership, so the two halves now have OPPOSITE
+# expected verdicts — one shared assertion (as before) cannot express that,
+# so each half is its own assertion with its OWN captured `rc` (the
+# pre-existing version asserted only the literal "OK   COMMITTED" text and
+# never checked `rc`, so it would have passed even if --check failed for an
+# unrelated reason).
 echo "*.md" > "$committed_fix/.geminiignore"
-echo "[]" > "$committed_fix/accepted-gaps.json"
-out2="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
-if echo "$out2" | grep -q "OK   COMMITTED"; then
-  ok "Case 6b (paired negative) — .geminiignore/accepted-gaps.json stay outside the class by construction"
+out_gi="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
+rc_gi=$?
+if [ "$rc_gi" -ne 0 ] && echo "$out_gi" | grep -q "COMMITTED" && echo "$out_gi" | grep -q "\.geminiignore"; then
+  ok "Case 6b (.geminiignore) — a committed .geminiignore now fails as COMMITTED on the name axis (R9 admits no class-membership exemption)"
 else
-  ng "Case 6b (paired negative) — the gap declaration was wrongly charged:"$'\n'"$out2"
+  ng "Case 6b (.geminiignore) — did not fail as expected (rc=$rc_gi):"$'\n'"$out_gi"
 fi
+rm -f "$committed_fix/.geminiignore"
+
+echo "[]" > "$committed_fix/accepted-gaps.json"
+out_gaps="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
+rc_gaps=$?
+if [ "$rc_gaps" -eq 0 ] && echo "$out_gaps" | grep -q "OK   COMMITTED"; then
+  ok "Case 6b (accepted-gaps.json) — stays green: its name designates no command-line tool, so it is outside BOTH the class-membership and the name-axis charge"
+else
+  ng "Case 6b (accepted-gaps.json) — was wrongly charged (rc=$rc_gaps):"$'\n'"$out_gaps"
+fi
+rm -f "$committed_fix/accepted-gaps.json"
+
+# R11 non-vacuity mutations (spec 0183, PLAN step 20): each rule run
+# red-then-green for real, pinning the literal token each assertion greps
+# for, so the enforcement cannot stay green under an injection it exists to
+# catch.
+
+# Mutation 1 — a tool-designated file with NO generating declaration,
+# committed into an extension SOURCE tree, turns the capability red. Chosen
+# deliberately OUTSIDE the generated-output class (unlike the Case 6b
+# context files above) to prove the name-axis charge fires on its own.
+echo "notes" > "$committed_fix/antigravity-notes.md"
+out_m1="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
+rc_m1=$?
+if [ "$rc_m1" -ne 0 ] && echo "$out_m1" | grep -q "COMMITTED" && echo "$out_m1" | grep -q "antigravity-notes.md"; then
+  ok "Case 6c (mutation 1) — a tool-designated file with no generating declaration, committed into an extension tree, turns the capability red"
+else
+  ng "Case 6c (mutation 1) — did not fail as expected (rc=$rc_m1):"$'\n'"$out_m1"
+fi
+rm -f "$committed_fix/antigravity-notes.md"
+
+# Mutation 2 — the SAME file committed into the scaffold template container
+# (extension-skeleton/) also turns the capability red (R9's "and in the
+# scaffold template container").
+skeleton_copy="$sandbox/extension-skeleton"
+echo "notes" > "$skeleton_copy/antigravity-notes.md"
+out_m2="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
+rc_m2=$?
+if [ "$rc_m2" -ne 0 ] && echo "$out_m2" | grep -q "COMMITTED extension-skeleton" && echo "$out_m2" | grep -q "antigravity-notes.md"; then
+  ok "Case 6d (mutation 2) — the same tool-designated file committed into extension-skeleton/ also turns the capability red"
+else
+  ng "Case 6d (mutation 2) — did not fail as expected (rc=$rc_m2):"$'\n'"$out_m2"
+fi
+rm -f "$skeleton_copy/antigravity-notes.md"
+
+# Mutation 3 — near-miss negative: "regeminate.md" CONTAINS "gemini" as a
+# substring but does not have it as a PREFIX, so it must stay green in both
+# locations — this is what proves the prefix rule rather than assuming it.
+echo "notes" > "$committed_fix/regeminate.md"
+echo "notes" > "$skeleton_copy/regeminate.md"
+out_m3="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
+rc_m3=$?
+if [ "$rc_m3" -eq 0 ] && echo "$out_m3" | grep -q "OK   COMMITTED committedfix" && echo "$out_m3" | grep -q "OK   COMMITTED extension-skeleton"; then
+  ok "Case 6e (mutation 3, near-miss) — regeminate.md (substring, not prefix) stays green in both the extension tree and the scaffold container"
+else
+  ng "Case 6e (mutation 3, near-miss) — regeminate.md was wrongly charged (rc=$rc_m3):"$'\n'"$out_m3"
+fi
+rm -f "$committed_fix/regeminate.md" "$skeleton_copy/regeminate.md"
+
+# Mutation 4 — growth: adding a synthetic FIFTH target key to a sandboxed
+# copy of scripts/lib/extension-targets.json, and committing a file bearing
+# that new token, is charged — proving the token set is single-sourced from
+# that file rather than a second, hand-kept list.
+targets_copy="$sandbox/scripts/lib/extension-targets.json"
+jq '. + {"syntheticcli": {"shellTool": "x"}}' "$targets_copy" > "$targets_copy.tmp" && mv "$targets_copy.tmp" "$targets_copy"
+echo "notes" > "$committed_fix/syntheticcli-notes.md"
+out_m4="$( cd "$sandbox" && bash scripts/build-extension.sh --check committedfix 2>&1 )"
+rc_m4=$?
+if [ "$rc_m4" -ne 0 ] && echo "$out_m4" | grep -q "COMMITTED" && echo "$out_m4" | grep -q "syntheticcli-notes.md"; then
+  ok "Case 6f (mutation 4, growth) — a file bearing a synthetic 5th target-descriptor token is charged, proving the token set is single-sourced"
+else
+  ng "Case 6f (mutation 4, growth) — did not fail as expected (rc=$rc_m4):"$'\n'"$out_m4"
+fi
+rm -f "$committed_fix/syntheticcli-notes.md"
 
 # ---------------------------------------------------------------------------
 echo "7. R13 — a stale declared gap fails GAP-STALE (repointed at 'context' — spec 0179 step 13 retires the 'hooks' arm of this blanket loop, so this case now exercises the surviving subject)"
@@ -342,7 +421,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-echo "9. R5 — no subject declared remains valid; a stray components.hooks block does not crash"
+echo "9. R5 — no subject declared remains valid; R13 — the retired shape fails loudly"
 # ---------------------------------------------------------------------------
 sandbox="$(make_sandbox)"
 bare_fix="$sandbox/extensions/core/bare"
@@ -354,14 +433,43 @@ out="$( cd "$sandbox" && bash scripts/build-extension.sh --check bare 2>&1 )"
 [ $? -eq 0 ] && ok "Case 9a — an extension declaring no subject at all still renders/checks cleanly" \
   || ng "Case 9a — a subjectless manifest failed:"$'\n'"$out"
 
+# Case 9b (spec 0183 R12/R13, PLAN step 10): a manifest carrying the retired
+# `components` object — even a single stray subject inside it — is old shape
+# and MUST fail loudly, naming the migration tool. Before this change this
+# fixture merely proved the legacy fallback did not crash on an
+# unrecognized `components.hooks` sub-key; the clean break inverts the
+# expectation entirely.
 stray_fix="$sandbox/extensions/core/strayhooks"
 mkdir -p "$stray_fix"
 cat > "$stray_fix/extension.json" <<'EOF'
 {"name":"strayhooks","version":"0.0.1","description":"fixture","components":{"hooks":{"enabled":true,"location":"hooks/"}}}
 EOF
 out="$( cd "$sandbox" && bash scripts/build-extension.sh --check strayhooks 2>&1 )"
-[ $? -eq 0 ] && ok "Case 9b — a stray legacy components.hooks block causes no crash" \
-  || ng "Case 9b — a stray components.hooks block broke the render:"$'\n'"$out"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "migrate-extension.sh"; then
+  ok "Case 9b — an old-shape manifest (retired 'components' object) fails loudly, naming scripts/migrate-extension.sh"
+else
+  ng "Case 9b — old-shape manifest did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
+
+# Case 9c (spec 0183 R14, PLAN step 10): a tree carrying only
+# gemini-extension.json — no committed extension.json — fails rather than
+# being read through the retired manifest-location fallback. Exercised
+# directly against build-claude-plugin.sh, the entry point that used to
+# carry that fallback (the other two plugin builders and
+# install-claude-plugin.sh share the same fix; see Blast radius).
+gemini_only_fix="$sandbox/extensions/core/geminionly"
+mkdir -p "$gemini_only_fix"
+cat > "$gemini_only_fix/gemini-extension.json" <<'EOF'
+{"name":"geminionly","version":"0.0.1","description":"fixture"}
+EOF
+out="$(bash "$CLAUDE_PLUGIN" "$gemini_only_fix" "$sandbox/dist-claude-plugin/geminionly" 2>&1)"
+rc=$?
+if [ "$rc" -ne 0 ] && echo "$out" | grep -q "migrate-extension.sh"; then
+  ok "Case 9c — a tree carrying only gemini-extension.json fails, naming scripts/migrate-extension.sh, rather than being read through it"
+else
+  ng "Case 9c — a gemini-extension.json-only tree did not fail as expected (rc=$rc):"$'\n'"$out"
+fi
 
 # ---------------------------------------------------------------------------
 echo "10. R10(c) — the guard tracks the declared set, not a fixed file list"

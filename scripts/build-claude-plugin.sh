@@ -4,8 +4,9 @@
 # Usage:
 #   bash scripts/build-claude-plugin.sh <extension-dir> [output-dir]
 #
-# Reads extension.json (or falls back to gemini-extension.json) and generates
-# a complete Claude Code plugin directory.
+# Reads extension.json and generates a complete Claude Code plugin directory.
+# An extension with no committed extension.json fails naming the migration
+# tool (spec 0183 R14) — there is no gemini-extension.json fallback.
 #
 # Prerequisites: jq
 
@@ -19,8 +20,9 @@ command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: br
 # scripts/build-extension.sh. Sourced for extract_body / yaml_field.
 # shellcheck source=lib/render-command.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/render-command.sh"
-# Shared manifest accessors (spec 0173): resolve the generic top-level
-# section first, falling back to legacy components.<subject>.* until S5.
+# Shared manifest accessors (spec 0173/0183): resolve the generic top-level
+# section only — the legacy components.<subject>.* shape is rejected by
+# ext_assert_current_shape rather than read.
 # shellcheck source=lib/extension-manifest.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/extension-manifest.sh"
 # Shared context renderer (spec 0181, issue #1007).
@@ -55,16 +57,15 @@ fi
 EXT_DIR="$(cd "$EXT_DIR" && pwd)"
 
 # --- Locate manifest ---
-MANIFEST=""
-if [ -f "$EXT_DIR/extension.json" ]; then
-  MANIFEST="$EXT_DIR/extension.json"
-elif [ -f "$EXT_DIR/gemini-extension.json" ]; then
-  MANIFEST="$EXT_DIR/gemini-extension.json"
-  echo "Warning: Using legacy gemini-extension.json (no Claude-specific config available)"
-else
-  echo "Error: No extension.json or gemini-extension.json found in $EXT_DIR"
+# No gemini-extension.json fallback (spec 0183 R14): it is a build output,
+# never committed, and reading through it would resurrect exactly the
+# dual-shape read this change removes.
+MANIFEST="$EXT_DIR/extension.json"
+if [ ! -f "$MANIFEST" ]; then
+  echo "Error: No extension.json found in $EXT_DIR — run scripts/migrate-extension.sh if this is an old-shape extension (see docs/adoption-guide.md)."
   exit 1
 fi
+ext_assert_current_shape "$MANIFEST" || exit 1
 
 # --- Read universal metadata ---
 NAME=$(jq -r '.name' "$MANIFEST")
@@ -221,15 +222,15 @@ fi
 # Gemini pivot source — see extension-skeleton/agent/agents/sample-agent/PROMPT.md).
 # `cp -r` of the whole directory would drag such siblings into the Claude
 # plugin, where Claude Code registers them as bogus extra agents (issue #600).
-# Copy only the files matched by the manifest's `claude.agents` glob array
-# (default: agents/*/AGENT.md), file by file, preserving the relative path.
+# Copy only the files matched by the fixed default glob (agents/*/AGENT.md),
+# file by file, preserving the relative path. The per-extension override key
+# `claude.agents` is retired (spec 0183 R7): it was read by this builder only
+# as an override whose own default was this same glob, and both committed
+# manifests already carried `[]`, so the default already applied everywhere.
 AGENTS_ENABLED=$(ext_subject_present "$MANIFEST" agents)
 AGENTS_LOCATION=$(ext_subject_location "$MANIFEST" agents "agents/")
 if [ "$AGENTS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$AGENTS_LOCATION" ]; then
-  AGENTS_GLOBS=$(jq -r '.claude.agents // [] | .[]' "$MANIFEST" 2>/dev/null)
-  if [ -z "$AGENTS_GLOBS" ]; then
-    AGENTS_GLOBS="${AGENTS_LOCATION}*/AGENT.md"
-  fi
+  AGENTS_GLOBS="${AGENTS_LOCATION}*/AGENT.md"
   while IFS= read -r glob_pattern; do
     [ -n "$glob_pattern" ] || continue
     for src_file in "$EXT_DIR/"$glob_pattern; do

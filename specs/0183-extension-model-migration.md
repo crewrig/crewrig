@@ -1,7 +1,7 @@
 ---
 id: "0183"
 slug: extension-model-migration
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1008

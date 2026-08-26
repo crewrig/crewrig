@@ -19,10 +19,14 @@
 #     ephemeral output roots (dist-claude-plugin/, dist-copilot-plugin/,
 #     dist-antigravity-plugin/) — spec 0173 R6/R7.
 #
-# `--check` (0173Δ R10) asserts, for every discovered extension:
+# `--check` (0173Δ R10, as amended by spec 0183 R9/R11) runs over TWO
+# subjects. For every discovered EXTENSION:
 #   (a) COMMITTED  — no file of the generated-output class
 #       (scripts/lib/extension-generated-class.json) is committed anywhere in
-#       the extension's SOURCE tree.
+#       the extension's SOURCE tree, AND no file committed anywhere in that
+#       tree is named for a supported command-line tool
+#       (ext_name_axis_scan, spec 0183 R9) with no declaration generating it
+#       — whether or not that file is also a generated-output-class member.
 #   (b) RENDER-FAIL — a fresh --target all render succeeds.
 #   (c) MISSING/UNDECLARED — the Gemini build tree's generated-class members
 #       equal exactly the declared output set (the in-place target only —
@@ -35,6 +39,13 @@
 #       the empty set — 0173Δ R13).
 #   (e) VERSION-DRIFT — the built gemini-extension.json's .version equals the
 #       extension's authoritative version declaration (0173Δ R11, 0044Δ R9).
+# For the SCAFFOLD TEMPLATE CONTAINER (extension-skeleton/, spec 0183 R9's
+# Scenario "The scaffold template container is charged like an extension
+# tree"), checked once per run regardless of any extension argument:
+#   (a) COMMITTED (name-axis only) — no committed file under
+#       extension-skeleton/ is named for a supported command-line tool. Arms
+#       (b)-(e) do not apply: the container has no declarations to render, no
+#       version, and no gap set.
 #
 # Usage:
 #   bash scripts/build-extension.sh [--target {gemini,claude,copilot,antigravity,all}] [<extension-dir-or-name> ...]
@@ -146,6 +157,57 @@ ext_class_scan() {
       esac
     done <<< "$globs"
     [ "$matched" -eq 1 ] && echo "$rel"
+  done < <(cd "$dir" && find . -type f | sed 's#^\./##' | sort)
+}
+
+# _ext_name_axis_matches <rel-path> <newline-separated-tool-tokens> — true
+# (rc 0) iff ANY path segment of <rel-path> — split on '/', basename
+# included — is, after stripping AT MOST ONE leading dot and lowercasing, a
+# case-insensitive PREFIX match against one of <tool-tokens>. Deliberately a
+# prefix rule, not a substring rule (spec 0183 R9/PLAN step 15): a substring
+# rule would charge "regeminate.md" — the near-miss this predicate must NOT
+# charge — while the prefix rule correctly excludes it and still charges
+# ".geminiignore", "GEMINI.md", "copilot-instructions.md", and a committed
+# ".claude-plugin/" path segment.
+_ext_name_axis_matches() {
+  local rel="$1" tokens="$2" segment stripped lower token
+  while IFS= read -r segment; do
+    [ -z "$segment" ] && continue
+    stripped="$segment"
+    case "$stripped" in
+      .*) stripped="${stripped#.}" ;;
+    esac
+    lower="$(printf '%s' "$stripped" | tr '[:upper:]' '[:lower:]')"
+    while IFS= read -r token; do
+      [ -z "$token" ] && continue
+      # shellcheck disable=SC2254  # deliberate: $token is used as a glob prefix, not a literal
+      case "$lower" in
+        "$token"*) return 0 ;;
+      esac
+    done <<< "$tokens"
+  done <<< "$(printf '%s' "$rel" | tr '/' '\n')"
+  return 1
+}
+
+# ext_name_axis_scan <dir> <targets-json> — echoes, one per line, every path
+# (relative to <dir>) that names a supported command-line tool on the name
+# axis (spec 0183 R9): the token set is the keys of <targets-json> MINUS
+# `_readme` (a documentation row that designates no tool), matched via
+# _ext_name_axis_matches above. Runs whether or not any declaration
+# generates the file — R9 admits no exemption for "no declaration generates
+# it" — so this is deliberately a DIFFERENT predicate from ext_class_scan's
+# generated-output-class membership, not a restriction of it: the two are
+# combined by check_extension's arm (a), below.
+ext_name_axis_scan() {
+  local dir="$1" targets_json="$2" rel
+  [ -d "$dir" ] || return 0
+  local tokens
+  tokens="$(jq -r 'keys[] | select(. != "_readme")' "$targets_json")"
+  while IFS= read -r rel; do
+    [ -z "$rel" ] && continue
+    if _ext_name_axis_matches "$rel" "$tokens"; then
+      echo "$rel"
+    fi
   done < <(cd "$dir" && find . -type f | sed 's#^\./##' | sort)
 }
 
@@ -441,8 +503,10 @@ check_version_drift() {
 
 # GAP_KEY_FILTER — the SINGLE canonical key builder (spec 0179 step 14),
 # applied identically to the observed and accepted sides so the two can
-# never drift apart by construction. Subject-granularity entries (the
-# surviving `context` arm) key on `subject@target` alone, exactly as before;
+# never drift apart by construction. Subject-granularity entries (the only
+# surviving one being `mcpServers` — spec 0183 R10; `context`'s own
+# unmappable-subject arm was retired earlier, at render_extension's
+# `${extensionRoot}` resolution) key on `subject@target` alone, exactly as before;
 # a hook-granularity entry additionally carries `hook`, `event` and `part`,
 # so two hooks differing only in their neutral event produce distinguishable
 # keys rather than colliding on one `subject@target` pair.
@@ -490,17 +554,31 @@ check_extension() {
   name="$(jq -r '.name' "$manifest")"
 
   # Arm (a) — COMMITTED, on the SOURCE tree, independent of the render below.
-  local committed
+  # Two predicates converge here (spec 0183 R9/R11, PLAN step 16): the
+  # pre-existing generated-output-class membership (a file the render itself
+  # would produce) and the tool-designated name-axis charge (a file whose
+  # name designates a supported command-line tool, whether or not any
+  # declaration generates it — R9 admits no exemption for "no declaration
+  # generates it"). A file caught by both prints once, under the more
+  # specific generated-class message.
+  local committed name_axis
   committed="$(ext_class_scan "$ext_dir" "$GENERATED_CLASS")"
-  if [ -n "$committed" ]; then
+  name_axis="$(ext_name_axis_scan "$ext_dir" "$EXT_MCP_TARGETS_JSON")"
+  if [ -n "$committed" ] || [ -n "$name_axis" ]; then
     local f
     while IFS= read -r f; do
       [ -z "$f" ] && continue
       echo "  FAIL COMMITTED $name — $f is a member of the generated-output class and MUST NOT be committed at all; delete it and reach it through one of the delivery paths in EXTENSION-FORMAT.md"
       failures=$((failures + 1))
     done <<< "$committed"
+    while IFS= read -r f; do
+      [ -z "$f" ] && continue
+      grep -qxF "$f" <<< "$committed" && continue
+      echo "  FAIL COMMITTED $name — $f is named for a supported command-line tool but no declaration generates it; the permitted paths are to delete the file or to declare the subject that produces it"
+      failures=$((failures + 1))
+    done <<< "$name_axis"
   else
-    echo "  OK   COMMITTED $name (no generated-output-class file committed)"
+    echo "  OK   COMMITTED $name (no generated-output-class file committed, no undeclared tool-designated file)"
   fi
 
   # Arm (b) — RENDER-FAIL. Forces --target all regardless of the CLI --target.
@@ -556,6 +634,28 @@ check_extension() {
   return "$failures"
 }
 
+# check_skeleton_name_axis <skeleton-dir> — the second subject of --check's
+# arm (a) (spec 0183 R9/Scenario "The scaffold template container is charged
+# like an extension tree"): extension-skeleton/ has no declarations to
+# render, no version, and no gap set, so it runs the name-axis scan ALONE —
+# no RENDER-FAIL, no MISSING/UNDECLARED, no GAP, no VERSION-DRIFT arm applies
+# to a template container that is not itself an extension.
+check_skeleton_name_axis() {
+  local skeleton_dir="$1" failures=0 f
+  local hits
+  hits="$(ext_name_axis_scan "$skeleton_dir" "$EXT_MCP_TARGETS_JSON")"
+  if [ -n "$hits" ]; then
+    while IFS= read -r f; do
+      [ -z "$f" ] && continue
+      echo "  FAIL COMMITTED extension-skeleton — $f is named for a supported command-line tool but no declaration generates it; the permitted paths are to delete the file or to declare the subject that produces it"
+      failures=$((failures + 1))
+    done <<< "$hits"
+  else
+    echo "  OK   COMMITTED extension-skeleton (no tool-designated file committed)"
+  fi
+  return "$failures"
+}
+
 # cleanup_stray_plugin_dist — --check's arm (b) forces a full --target all
 # render per extension purely to prove it succeeds; nothing downstream of
 # that arm consumes the delegated Claude/Copilot/Antigravity plugin
@@ -608,6 +708,12 @@ if [ "$CHECK_MODE" = true ]; then
       total_failures=$((total_failures + 1))
     fi
   done
+  # Second subject of arm (a) only (spec 0183 R9): the scaffold template
+  # container, checked once per run regardless of any --target/extension
+  # argument the caller passed — it is not itself a discovered extension.
+  if ! check_skeleton_name_axis "$REPO_DIR/extension-skeleton"; then
+    total_failures=$((total_failures + 1))
+  fi
   echo ""
   if [ "$total_failures" -gt 0 ]; then
     echo "FAILED: $total_failures extension(s) failed one or more --check arms."

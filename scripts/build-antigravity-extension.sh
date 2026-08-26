@@ -4,8 +4,10 @@
 # Usage:
 #   bash scripts/build-antigravity-extension.sh <extension-dir-or-name> [output-dir]
 #
-# Reads extension.json (or falls back to gemini-extension.json) and generates
-# a complete Antigravity CLI plugin directory suitable for `agy plugin install`.
+# Reads extension.json and generates a complete Antigravity CLI plugin
+# directory suitable for `agy plugin install`. An extension with no
+# committed extension.json fails naming the migration tool (spec 0183 R14)
+# — there is no gemini-extension.json fallback.
 #
 # When a bare extension name is given it is resolved by searching:
 #   extensions/core/  →  extensions/library/  →  extensions/org/
@@ -24,8 +26,9 @@ command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: br
 # sources — NOT from Gemini `.toml` outputs.  Sourced for extract_body / yaml_field.
 # shellcheck source=lib/render-command.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/render-command.sh"
-# Shared manifest accessors (spec 0173): resolve the generic top-level
-# section first, falling back to legacy components.<subject>.* until S5.
+# Shared manifest accessors (spec 0173/0183): resolve the generic top-level
+# section only — the legacy components.<subject>.* shape is rejected by
+# ext_assert_current_shape rather than read.
 # shellcheck source=lib/extension-manifest.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib/extension-manifest.sh"
 # Shared context renderer (spec 0181, issue #1007).
@@ -62,16 +65,15 @@ REPO_DIR="$(cd "$EXT_DIR/../../../.." && pwd 2>/dev/null || cd "$(dirname "$0")/
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # --- Locate manifest ---
-MANIFEST=""
-if [ -f "$EXT_DIR/extension.json" ]; then
-  MANIFEST="$EXT_DIR/extension.json"
-elif [ -f "$EXT_DIR/gemini-extension.json" ]; then
-  MANIFEST="$EXT_DIR/gemini-extension.json"
-  echo "Warning: Using legacy gemini-extension.json (no Antigravity-specific config available)"
-else
-  echo "Error: No extension.json or gemini-extension.json found in $EXT_DIR"
+# No gemini-extension.json fallback (spec 0183 R14): it is a build output,
+# never committed, and reading through it would resurrect exactly the
+# dual-shape read this change removes.
+MANIFEST="$EXT_DIR/extension.json"
+if [ ! -f "$MANIFEST" ]; then
+  echo "Error: No extension.json found in $EXT_DIR — run scripts/migrate-extension.sh if this is an old-shape extension (see docs/adoption-guide.md)."
   exit 1
 fi
+ext_assert_current_shape "$MANIFEST" || exit 1
 
 # --- Read universal metadata ---
 NAME=$(jq -r '.name' "$MANIFEST")
@@ -88,11 +90,9 @@ echo "  Source: $EXT_DIR"
 echo "  Output: $OUTPUT_DIR"
 
 # --- Generate plugin.json at output root ---
-# Use antigravity.pluginName when present and non-empty; fall back to manifest name.
-PLUGIN_NAME=$(jq -r '.antigravity.pluginName // ""' "$MANIFEST" 2>/dev/null)
-if [ -z "$PLUGIN_NAME" ] || [ "$PLUGIN_NAME" = "null" ]; then
-  PLUGIN_NAME="$NAME"
-fi
+# `antigravity.pluginName` is retired (spec 0183 R7): it was reducible from
+# the manifest's own `.name`, and this reader already fell back to it.
+PLUGIN_NAME="$NAME"
 jq -n \
   --arg name "$PLUGIN_NAME" \
   --arg version "$VERSION" \

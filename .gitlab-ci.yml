@@ -87,6 +87,9 @@ extension-render:
     - "bash scripts/tests/test-check-extension-hook-tokens.sh"
     - "bash scripts/check-extension-hook-map.sh"
     - "bash scripts/tests/test-check-extension-hook-map.sh"
+    - "bash scripts/tests/test-migrate-extension.sh"
+    - "bash scripts/tests/test-release-package-extension.sh"
+    - "bash scripts/tests/test-create-extension-combinations.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -119,6 +122,13 @@ extension-render:
         - "scripts/tests/test-extension-mcp-manifest.sh"
         - "scripts/install-antigravity-extension.sh"
         - "scripts/lib/render-context.sh"
+        - "scripts/lib/extension-legacy-shape.json"
+        - "scripts/migrate-extension.sh"
+        - "scripts/tests/test-migrate-extension.sh"
+        - "scripts/release-package-extension.sh"
+        - "scripts/lib/extension-install.sh"
+        - "scripts/tests/test-release-package-extension.sh"
+        - "scripts/tests/test-create-extension-combinations.sh"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-pivot.sh"
@@ -150,6 +160,13 @@ extension-render:
         - "scripts/tests/test-extension-mcp-manifest.sh"
         - "scripts/install-antigravity-extension.sh"
         - "scripts/lib/render-context.sh"
+        - "scripts/lib/extension-legacy-shape.json"
+        - "scripts/migrate-extension.sh"
+        - "scripts/tests/test-migrate-extension.sh"
+        - "scripts/release-package-extension.sh"
+        - "scripts/lib/extension-install.sh"
+        - "scripts/tests/test-release-package-extension.sh"
+        - "scripts/tests/test-create-extension-combinations.sh"
 
 extension-provenance:
   image: debian:stable-slim
