@@ -1,7 +1,7 @@
 ---
 id: "0182"
 slug: test-mcp-daemon-fake-server-readiness
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 983
