@@ -134,17 +134,17 @@ surface — not only on `plan`:
 # every query below: a copy per query is a copy that can drift out of step.
 SEAT='(?m)^seat: (specs|plan|review)/[0-9]+(#[0-9]+)?[ \t]*\r?$'
 
-# every surface — the logbook issue
+# every surface — the logbook issue (guarded against unset SEAT)
 gh issue view <ticket> --json comments \
-  --jq "[.comments[] | select(.body | test(\"$SEAT\"))]"
+  --jq "[.comments[] | select(.body | test(\"${SEAT:-(?m)^seat: (specs|plan|review)/[0-9]+(#[0-9]+)?[ \\t]*\\r?$}\"))]"
 
 # a pull-request surface, additionally — both PR transports.
 # Mind the accessor: the reviews endpoint returns a top-level array, so
 # `.comments[]` errors against it.
 gh pr view <pr> --json comments \
-  --jq "[.comments[] | select(.body | test(\"$SEAT\"))]"
+  --jq "[.comments[] | select(.body | test(\"${SEAT:-(?m)^seat: (specs|plan|review)/[0-9]+(#[0-9]+)?[ \\t]*\\r?$}\"))]"
 gh api repos/<owner>/<repo>/pulls/<pr>/reviews \
-  --jq "[.[] | select(.body | test(\"$SEAT\"))]"
+  --jq "[.[] | select(.body | test(\"${SEAT:-(?m)^seat: (specs|plan|review)/[0-9]+(#[0-9]+)?[ \\t]*\\r?$}\"))]"
 ```
 
 **The filter belongs on every query, not just the first.** It is what makes
@@ -197,8 +197,10 @@ point, whereas a *valid* verdict whose seat line picked up a stray space or
 a `\r` would silently drop its seat's entire dossier and present as a false
 vacancy. So the pattern absorbs trailing blanks and an optional carriage
 return, and nothing else — an annotation still begins with a visible
-character and is still excluded. Where the orchestrator cannot edit the artifact — a distinct
-posting identity, or a permission refusal — the record described under
+character and is still excluded.
+
+Where the orchestrator cannot edit the artifact — a distinct posting
+identity, or a permission refusal — the record described under
 *Prior-finding disposition* names the voided verdict instead, and a
 reconstructing pass consults it before counting passes. Either way the
 discriminator is a forge artifact.
@@ -208,6 +210,13 @@ seat: the seat is unchanged and one of its passes is void. Generations
 replace a seat (*Retirement and generation*); they do not invalidate a
 single pass, and overloading them for that would make a seat key stop
 denoting a seat.
+
+**Pass ordinal on the `specs` surface.** On the `specs` surface, finding
+identifiers `s<N>-F<M>` key `<N>` to the seat's pass ordinal. When a
+single review pass emits multiple dossier comments (such as a primary
+verdict followed by an addendum or continuation comment on the same
+pass), those entries belong to that single pass and SHALL NOT inflate the
+pass ordinal for subsequent passes.
 
 ## Instantiating a seated pass
 
@@ -221,8 +230,11 @@ The brief that instantiates a seated pass carries **references only**:
   disposition*.
 
 It carries no diff, no summary, no assessment, no rationale, and no other
-content that originates in the authoring session. A seated pass retrieves
-every artifact it reads itself, from the forge's own command-line tool.
+content that originates in the authoring session. It SHALL NOT characterize,
+summarize, or interpret the contents, status, or relationships of the
+referenced records (e.g. asserting whether prior comments supersede each
+other or what a prior finding concluded). A seated pass retrieves every
+artifact it reads itself, from the forge's own command-line tool.
 
 **The cold-start independence guarantee is unchanged**
 ([`artifacts/core/agents/pr-reviewer/AGENT.md`](../artifacts/core/agents/pr-reviewer/AGENT.md)
