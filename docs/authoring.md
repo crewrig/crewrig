@@ -9,6 +9,12 @@ the tool-specific outputs for Gemini CLI, Claude Code, and GitHub Copilot CLI.
 This page is the conceptual overview; the normative format contract lives in
 [`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
 
+This page's scope is the component pipeline — skills, agents, and commands —
+and stops there. It does not cover CrewRig's separate extension model
+(code-based capabilities declared in their own `extension.json`, such as MCP
+servers, lifecycle hooks, and per-CLI packaging); see
+[Extension authoring](extension-authoring.md) for that model's entry point.
+
 ## The single-source zone
 
 All authored components live under `artifacts/`, organized into tiers that

@@ -47,6 +47,16 @@
           "title": "Authoring skills, agents & commands",
           "path": "docs/authoring.md",
           "nav_order": 10
+        },
+        {
+          "title": "Extension authoring",
+          "path": "docs/extension-authoring.md",
+          "nav_order": 20
+        },
+        {
+          "title": "Extension MCP servers",
+          "path": "docs/extension-mcp-servers.md",
+          "nav_order": 30
         }
       ]
     },
