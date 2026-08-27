@@ -1,7 +1,7 @@
 ---
 id: "0187"
 slug: linux-owner-read-ci-coverage
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 985
