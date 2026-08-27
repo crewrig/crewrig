@@ -120,6 +120,12 @@ The re-spawn columns are minimums. Every re-spawn SHALL apply the
 Security rule* if the touched surface qualifies; the engine does not
 override the rule, it inherits it.
 
+**Delta-spec baseline reset.** When a `spec`-class iteration produces
+and merges a new delta-spec PR, the return to the PLAN stage initiates a
+fresh planning baseline against the amended specification: the PLAN-revision
+counter resets to zero for that subsequent iteration (per
+[`docs/plan-review-protocol.md`](plan-review-protocol.md) → *PLAN-loop cap*).
+
 ## Class tagging discipline
 
 Every reviewer finding SHALL carry exactly one `class:` field whose
