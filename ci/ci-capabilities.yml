@@ -707,6 +707,7 @@ capabilities:
           - "scripts/tests/test-assembly-verification.sh"
           - "scripts/tests/test-artifact-build-install-scope.sh"
           - "scripts/tests/test-component-tier-resolution.sh"
+          - "scripts/tests/test-pr-logbook-label-scope.sh"
           - "scripts/lib/**"
           - "artifacts/**"
       - on: push
@@ -718,6 +719,7 @@ capabilities:
           - "scripts/tests/test-assembly-verification.sh"
           - "scripts/tests/test-artifact-build-install-scope.sh"
           - "scripts/tests/test-component-tier-resolution.sh"
+          - "scripts/tests/test-pr-logbook-label-scope.sh"
           - "scripts/lib/**"
           - "artifacts/**"
     portability: portable
@@ -731,6 +733,7 @@ capabilities:
       - bash scripts/tests/test-assembly-verification.sh
       - bash scripts/tests/test-artifact-build-install-scope.sh
       - bash scripts/tests/test-component-tier-resolution.sh
+      - bash scripts/tests/test-pr-logbook-label-scope.sh
 
   - id: markdown-links
     name: "Check relative Markdown link integrity"
