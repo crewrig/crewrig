@@ -716,7 +716,7 @@ lint-markdown:
   image: node:22
   script:
     - "npm install -g markdownlint-cli"
-    - "markdownlint \"**/*.md\" --ignore node_modules --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md'"
+    - "markdownlint \"**/*.md\" --ignore node_modules --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

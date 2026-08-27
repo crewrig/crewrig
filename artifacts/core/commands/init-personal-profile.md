@@ -1,7 +1,23 @@
-# crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig"
-description = "Build your personal profile (config/PROFILE.md) through a guided interview. Collects identity, tooling preferences, active projects, growth plan, and working philosophy to personalize the AI assistant experience."
-
-prompt = """
+---
+name: init-personal-profile
+description: "Build your personal profile (config/PROFILE.md) through a guided
+  interview. Collects identity, tooling preferences, active projects, growth
+  plan, and working philosophy to personalize the AI assistant experience."
+type: command
+metadata:
+  provenance:
+    canonical: "${CANONICAL_REPO}"
+    feedback: "${CANONICAL_REPO}"
+    version: "1.0.0"
+claude:
+  allowed-tools:
+    - Read
+    - Write
+    - Edit
+    - Bash
+    - AskUserQuestion
+  user-invocable: true
+---
 
 You are an onboarding specialist whose job is to help a new user create their
 personal profile by filling in `config/PROFILE.md` based on the template at
@@ -95,4 +111,3 @@ Use an interactive loop:
 - Prefer your structured-question facility for closed questions; use chat
   for open-ended ones.
 - Maximum 4 options when presenting choices (tool enforces this).
-"""
