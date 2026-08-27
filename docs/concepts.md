@@ -22,12 +22,13 @@ them with a numeric prefix from `00` to `60`:
 | 50 | `config/teams/<TEAM>.md` | Team practices and norms |
 | 60 | `config/TOOLS.md` | Memory architecture and MCP servers |
 
-The three supported tools consume the same source files but load them
+The four supported tools consume the same source files but load them
 differently: Gemini CLI uses numeric-prefix files in `~/.gemini/` with enforced
-priority order, Claude Code combines them additively from `~/.claude/rules/`, and
+priority order, Claude Code combines them additively from `~/.claude/rules/`,
 GitHub Copilot CLI applies them as `*.instructions.md` files in
-`~/.copilot/instructions/`. The build pipeline that reconciles these differences
-is documented in the [CLI support matrix](cli-matrix.md).
+`~/.copilot/instructions/`, and Antigravity CLI loads them from
+`~/.gemini/antigravity-cli/`. The build pipeline that reconciles these
+differences is documented in the [CLI support matrix](cli-matrix.md).
 
 ## Core, overlay, and examples layering
 
@@ -50,12 +51,12 @@ policy for catalogs like `config/expertise/` and `config/teams/` — lives in th
 
 ## Multi-CLI parity
 
-CrewRig implements each feature symmetrically across Gemini CLI, Claude Code, and
-GitHub Copilot CLI. Silent asymmetry is prohibited: where a feature cannot be
-mirrored on a given tool, the gap must be justified with concrete evidence that
-the target tool lacks the mechanism, rather than left unexplained. The per-tool
-integration points, parity checks, and gap-acceptance evidence are tracked in
-the [CLI support matrix](cli-matrix.md).
+CrewRig implements each feature symmetrically across Gemini CLI, Claude Code,
+GitHub Copilot CLI, and Antigravity CLI. Silent asymmetry is prohibited: where
+a feature cannot be mirrored on a given tool, the gap must be justified with
+concrete evidence that the target tool lacks the mechanism, rather than left
+unexplained. The per-tool integration points, parity checks, and
+gap-acceptance evidence are tracked in the [CLI support matrix](cli-matrix.md).
 
 ## Shared cross-tool memory
 

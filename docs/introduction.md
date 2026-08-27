@@ -2,10 +2,11 @@
 
 <!-- crewrig-doc: section=introduction nav_order=10 published=true title="Introduction" -->
 
-CrewRig is a centralized configuration framework for three command-line AI
+CrewRig is a centralized configuration framework for four command-line AI
 coding assistants — [Gemini CLI](https://github.com/google-gemini/gemini-cli),
-[Claude Code](https://claude.ai/code), and
-[GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli).
+[Claude Code](https://claude.ai/code),
+[GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli),
+and [Antigravity CLI](https://antigravity.google).
 Rather than configuring each tool by hand and re-doing the work for every
 teammate and every project, CrewRig holds a single source of truth and compiles
 it into the directory layout each tool expects.
@@ -18,8 +19,9 @@ pillars it stands on, and where to read next.
 CrewRig sits **between** you and the AI assistants. You edit source files once,
 in this repository; build and setup scripts deploy them into each tool's
 configuration directory (`~/.gemini/`, `~/.claude/rules/`,
-`~/.copilot/instructions/` for context, plus project-scoped outputs for skills
-and agents). Three concerns share that pipeline:
+`~/.copilot/instructions/`, `~/.gemini/antigravity-cli/` for context, plus
+project-scoped outputs for skills and agents). Three concerns share that
+pipeline:
 
 - **Who the assistant is for you** — a layered stack of context files that
   encode your identity, seniority, team, role, and tooling.
@@ -46,13 +48,13 @@ load-bearing ideas; the rest of the documentation elaborates them.
    CLI is available in another.
 3. **Skill, agent, and command authoring** — `artifacts/` is the single-source
    zone where these components are written once and compiled by
-   `scripts/build-components.sh` into outputs for all three supported tools.
+   `scripts/build-components.sh` into outputs for all four supported tools.
 4. **Harness engineering** — a built-in feedback loop where agents invoke the
    `harness-report` skill to tag frictions during real work, and the
    `harness-curator` skill clusters those frictions into actionable GitHub
    issues.
 5. **Multi-CLI parity** — features are implemented symmetrically across the
-   three tools. Silent asymmetry is prohibited; every parity gap requires
+   four tools. Silent asymmetry is prohibited; every parity gap requires
    concrete evidence that the missing mechanism does not exist in the target
    tool.
 
