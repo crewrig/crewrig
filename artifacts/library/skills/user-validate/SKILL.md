@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.5.0"
+    version: "1.6.0"
 claude:
   allowed-tools:
     - Read
@@ -78,14 +78,27 @@ missing; the `internal` backend is the guaranteed floor on every CLI.
    (binary absent from PATH), **fall back to the `internal` backend for this
    gate AND tell the user** the fallback happened. Do not error out.
 
-2. **Invoke exactly (spec 0080 R6):**
+2. **Bespoke presentation generation (spec 0189 R1/R5).**
+   - When **any** cross-cutting presentation preference is active (`translate=on`
+     with non-English preferred language, `pedagogy != simple` such as
+     `contextual` or `professor`, `illustration=on`, or custom `theme`), the
+     skill SHALL construct a bespoke presentation document (typically a temporary
+     HTML file in `/tmp/gate-presentation-*.html`) embodying the active language
+     translation, pedagogical context, theme styling, and embedded image assets,
+     and pass that file to `plannotator`.
+   - Raw passthrough of the repository source file directly to `plannotator` is
+     permitted **only** when all cross-cutting enhancements are disabled
+     (`translate=off`, `pedagogy=simple`, `illustration=off`, default theme).
+
+3. **Invoke exactly (spec 0080 R6, spec 0189 R1):**
 
    ```sh
-   plannotator annotate <artifact-file> --gate --json
+   plannotator annotate <presentation-or-artifact-file> --gate --json
    ```
 
-   Pass the artifact as a file argument. Run it **detached**, not foreground —
-   human review can far exceed a synchronous tool-call budget:
+   Pass the presentation file (or raw artifact file on clean passthrough) as a
+   file argument. Run it **detached**, not foreground — human review can far
+   exceed a synchronous tool-call budget:
 
    - **Claude Code (verified).** Launch with the Bash tool
      `run_in_background: true` and consume the re-invocation the harness delivers
@@ -97,12 +110,12 @@ missing; the `internal` backend is the guaranteed floor on every CLI.
      is available at gate time; **if none is feasible, degrade to the `internal`
      backend** and inform the user (same fallback path as R4).
 
-3. **Dual validation (spec 0080 R7).** Treat the decision as complete **only
+4. **Dual validation (spec 0080 R7).** Treat the decision as complete **only
    when BOTH** the process exit status is `0` **AND** stdout carries a valid
    gate JSON object. A non-zero exit OR absent/malformed stdout is a
    non-approval — do not guess.
 
-4. **Decision mapping (spec 0080 R8).**
+5. **Decision mapping (spec 0080 R8).**
 
    | Observed | Outcome |
    |---|---|
@@ -237,30 +250,31 @@ narrating it.
 
 **Rules for a caller-built presentation:**
 
-- **Embed the real substance (spec 0104 R3).** When `pedagogy=professor` and/or
-  `translate=on`, the presentation SHALL embed the **concrete changed content
-  itself** — a rendered diff excerpt, or the added or changed prose verbatim —
+- **Embed the real substance (spec 0104 R3, spec 0189 R2).** When
+  `pedagogy=professor` and/or `translate=on`, the presentation SHALL embed the
+  **concrete changed content itself** — a rendered diff excerpt, or the added or
+  changed prose verbatim — alongside pedagogical context and decision implications,
   not only a prose summary describing what changed.
 - **Show enough of a change set to judge it independently (spec 0104 R4).** For
   a decision over a change set or diff — a merge-authorization gate, for
   instance — show enough of the actual modified content for the reviewing user
   to judge the change **independently**, rather than relying solely on a prior
   REVIEW verdict.
-- **Translate the embedded substance, presentation-only (spec 0104 R5).** When
+- **Translate the embedded substance, presentation-only (spec 0104 R5, spec 0189 R3).** When
   `translate=on`, translate the embedded substance itself within the
   presentation, consistent with the `translate` boundary (see *Cross-cutting
   options → `translate`*): the translation is presentation-only and the
   repository artifact stays in English — never written back translated
   (`AGENTS.md` → *Language*).
-- **Raw passthrough carries no obligation (spec 0104 R6).** When you pass the
-  raw artifact file directly to the review viewer without building a bespoke
-  presentation, the viewer already renders the full substance, so no separate
-  substance-embedding step is required.
+- **Raw passthrough boundary (spec 0104 R6, spec 0189 R5).** When no translation,
+  custom pedagogy levels (`pedagogy=simple`), or illustrations are configured,
+  raw artifact passthrough to the validator remains supported without requiring
+  a bespoke intermediate presentation document.
 
-**Presentation-only (spec 0104 R7).** This obligation does **not** modify the
-invocation command, the dual-validation rule, the decision mapping, or the
-defined semantics of the `translate` / `pedagogy` / `illustration` cross-cutting
-options; it only clarifies how a caller-built presentation applies them.
+**Presentation-only (spec 0104 R7, spec 0189 R3).** This obligation does **not**
+modify the invocation command, the dual-validation rule, the decision mapping,
+or the defined semantics of the `translate` / `pedagogy` / `illustration`
+cross-cutting options; it clarifies how a caller-built presentation applies them.
 
 **Compliant vs thin example (spec 0104 R4).** A compliant merge-authorization
 presentation embeds the real change; a thin one summarizes it away:
@@ -303,15 +317,15 @@ gate realizes the structured question without downgrading to prose.
 
 ## Cross-cutting options
 
-### `translate` (spec 0080 R12)
+### `translate` (spec 0080 R12, spec 0189 R3)
 
 When `translate=on` and the user's preferred language is not English, translate
 **only the transient gate presentation** shown to the user — the artifact copy
-displayed, the question, and the option text. The **repository artifact stays in
-English**; never write a translated copy back to the repo (`AGENTS.md` →
-*Language*). Translation is presentation-only.
+displayed, the contextual commentary, the question, and the option text. The
+**repository artifact stays in English**; never write a translated copy back to
+the repo (`AGENTS.md` → *Language*). Translation is presentation-only.
 
-### `pedagogy` (spec 0080 R13)
+### `pedagogy` (spec 0080 R13, spec 0189 R1/R2)
 
 Frame each validation request per the level:
 
@@ -319,9 +333,10 @@ Frame each validation request per the level:
 - **`contextual`** (default) — the global context, the concerned part, and the
   precise ask.
 - **`professor`** — a full pedagogical re-explanation of the arbitration
-  situation (what is being decided, why, what each choice implies).
+  situation (what is being decided, why, what each choice implies) alongside
+  complete substance embedding.
 
-### `illustration` (spec 0080 R14)
+### `illustration` (spec 0080 R14, spec 0189 R4)
 
 Honoured **only when `backend=plannotator` AND a browser image surface is
 available** — otherwise **silently ignored** (no error, no note). Because
@@ -330,6 +345,15 @@ display is a function of browser availability, not of the driving CLI (uniform
 across all four CLIs, not a per-CLI asymmetry — spec 0080 OQ4). When honoured,
 generation is **best-effort** via the `nano-banana` skill; if it is unavailable
 or fails, proceed with the gate without the illustration.
+
+**Inline Base64 Data URI Requirement (spec 0189 R4).** When illustrations or
+local image assets are referenced in an HTML presentation document passed to
+`plannotator`, all image data SHALL be encoded and embedded as self-contained
+inline base64 data URIs (`data:image/png;base64,...` or
+`data:image/jpeg;base64,...`) rather than local file system path URIs
+(`file://`). Modern web browser security sandboxes block loading `file://` URIs
+from rendered pages, causing local images to fail to display unless inlined as
+data URIs.
 
 ### `theme` (spec 0174 R1/R2)
 
