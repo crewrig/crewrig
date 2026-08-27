@@ -5,7 +5,8 @@
 Skills, agents, and commands are CrewRig's reusable agent capabilities. The
 core idea is **author once, compile everywhere**: you write a single Markdown
 source file with YAML frontmatter, and `scripts/build-components.sh` generates
-the tool-specific outputs for Gemini CLI, Claude Code, and GitHub Copilot CLI.
+the tool-specific outputs for Gemini CLI, Claude Code, GitHub Copilot CLI, and
+Antigravity CLI.
 This page is the conceptual overview; the normative format contract lives in
 [`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
 
