@@ -1,7 +1,7 @@
 ---
 id: "0165"
 slug: repair-mempalace-http-residue
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 984
