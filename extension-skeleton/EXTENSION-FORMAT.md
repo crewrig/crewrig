@@ -345,10 +345,12 @@ section survives.
 | `mcpServers[name].command` | string | Executable name (stdio only, required, non-empty) |
 | `mcpServers[name].args` | string[] | Arguments (stdio only). Supports the ONE neutral path token, `${extensionRoot}` (spec 0180 requirement 6) — no other `${...}` token is admissible here |
 | `mcpServers[name].env` | object | Env vars (stdio only). Arbitrary `${VAR}` interpolation admissible, EXCEPT the five known path tokens |
+| `mcpServers[name].cwd` | string | Working directory (stdio only, optional). Supports `${extensionRoot}` path token (spec 0185) |
+| `mcpServers[name].timeout` | number \| string | Timeout threshold (optional, stdio/http/sse — spec 0185) |
 | `mcpServers[name].url` | string | Endpoint (http/sse only, required, non-empty) |
 | `mcpServers[name].headers` | object | HTTP headers (http/sse only). Same token rule as `env` |
 
-No other key is admissible on either shape (`cwd`, `timeout`, `trust`, `description`, `includeTools`, `excludeTools` all refused — see the MCP comment block above for the tracked follow-up).
+No other key is admissible on either shape (`trust`, `description`, `includeTools`, `excludeTools` all refused).
 
 ### Declaration subjects (optional, generic top-level sections)
 

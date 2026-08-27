@@ -86,11 +86,19 @@ out="$(ext_validate_mcp_shape "$m" 2>&1)"; rc=$?
   && ok "missing stdio command is a validation error" \
   || bad "missing command should fail: rc=$rc out=$out"
 
-m="$(write_manifest '{"name":"x","mcpServers":{"a":{"command":"node","cwd":"/tmp"}}}')"
+m="$(write_manifest '{"name":"x","mcpServers":{"a":{"command":"node","cwd":"/tmp","timeout":30}}}')"
+ext_validate_mcp_shape "$m" >/dev/null 2>&1 && ok "valid stdio with cwd and timeout passes (spec 0185)" \
+  || bad "valid stdio with cwd and timeout should pass"
+
+m="$(write_manifest '{"name":"x","mcpServers":{"a":{"transport":"http","url":"https://x","timeout":60}}}')"
+ext_validate_mcp_shape "$m" >/dev/null 2>&1 && ok "valid http with timeout passes (spec 0185)" \
+  || bad "valid http with timeout should pass"
+
+m="$(write_manifest '{"name":"x","mcpServers":{"a":{"command":"node","description":"my server"}}}')"
 out="$(ext_validate_mcp_shape "$m" 2>&1)"; rc=$?
-[ "$rc" -ne 0 ] && [[ "$out" == *"inadmissible key 'cwd'"* ]] \
-  && ok "a non-vocabulary key (cwd) is a loud error, not a silent drop (R5)" \
-  || bad "cwd should fail: rc=$rc out=$out"
+[ "$rc" -ne 0 ] && [[ "$out" == *"inadmissible key 'description'"* ]] \
+  && ok "a non-vocabulary key (description) is a loud error, not a silent drop (R5)" \
+  || bad "description should fail: rc=$rc out=$out"
 
 m="$(write_manifest '{"name":"x","mcpServers":"not-an-object"}')"
 ext_validate_mcp_shape "$m" >/dev/null 2>&1 \
@@ -135,6 +143,10 @@ m="$(write_manifest '{"name":"x","mcpServers":{"a":{"command":"${extensionRoot}/
 ext_validate_mcp_tokens "$m" >/dev/null 2>&1 \
   && ok "\${extensionRoot} in command is admissible" || bad "extensionRoot in command should pass"
 
+m="$(write_manifest '{"name":"x","mcpServers":{"a":{"command":"node","cwd":"${extensionRoot}/subdir"}}}')"
+ext_validate_mcp_tokens "$m" >/dev/null 2>&1 \
+  && ok "\${extensionRoot} in cwd is admissible (spec 0185)" || bad "extensionRoot in cwd should pass"
+
 # The step-13 exact-token mutation target: a target-specific token that is
 # NOT ${extensionRoot} must be refused by the ALLOWLIST, even though it is
 # never individually enumerated.
@@ -143,6 +155,12 @@ out="$(ext_validate_mcp_tokens "$m" 2>&1)"; rc=$?
 [ "$rc" -ne 0 ] && [[ "$out" == *'${extensionPath}'* ]] \
   && ok "a target-specific token (\${extensionPath}) in command is refused by the allowlist" \
   || bad "extensionPath in command should fail: rc=$rc out=$out"
+
+m="$(write_manifest '{"name":"x","mcpServers":{"a":{"command":"node","cwd":"${extensionPath}/subdir"}}}')"
+out="$(ext_validate_mcp_tokens "$m" 2>&1)"; rc=$?
+[ "$rc" -ne 0 ] && [[ "$out" == *'${extensionPath}'* ]] \
+  && ok "a target-specific token (\${extensionPath}) in cwd is refused by the allowlist" \
+  || bad "extensionPath in cwd should fail: rc=$rc out=$out"
 
 # The case a five-entry denylist would have missed (v1-F9): gemini-cli's own
 # ${/} variable, never individually listed — the allowlist catches it anyway.
@@ -174,26 +192,26 @@ ext_validate_mcp_tokens "$m" >/dev/null 2>&1 \
 # ---------------------------------------------------------------------------
 echo "4. ext_mcp_native — R2/R6/R7/R8 per-target translation"
 # ---------------------------------------------------------------------------
-m="$(write_manifest '{"name":"x","mcpServers":{"default":{"command":"node","args":["${extensionRoot}/dist/index.js"]}}}')"
+m="$(write_manifest '{"name":"x","mcpServers":{"default":{"command":"node","args":["${extensionRoot}/dist/index.js"],"cwd":"${extensionRoot}/sub","timeout":45}}}')"
 
 gem="$(ext_mcp_native gemini "$m")"
-jq -e '.default.args[0] == "${extensionPath}/dist/index.js"' <<< "$gem" >/dev/null 2>&1 \
-  && ok "gemini — neutral token rewritten to \${extensionPath} (Gemini's own load-time resolver)" \
+jq -e '.default.args[0] == "${extensionPath}/dist/index.js" and .default.cwd == "${extensionPath}/sub" and .default.timeout == 45' <<< "$gem" >/dev/null 2>&1 \
+  && ok "gemini — neutral tokens rewritten to \${extensionPath} (args and cwd), timeout preserved" \
   || bad "gemini rewrite wrong: $gem"
 
 cla="$(ext_mcp_native claude "$m")"
-jq -e '.default.args[0] == "${CLAUDE_PLUGIN_ROOT}/dist/index.js"' <<< "$cla" >/dev/null 2>&1 \
-  && ok "claude — neutral token rewritten to \${CLAUDE_PLUGIN_ROOT} (Claude's own load-time resolver)" \
+jq -e '.default.args[0] == "${CLAUDE_PLUGIN_ROOT}/dist/index.js" and .default.cwd == "${CLAUDE_PLUGIN_ROOT}/sub" and .default.timeout == 45' <<< "$cla" >/dev/null 2>&1 \
+  && ok "claude — neutral tokens rewritten to \${CLAUDE_PLUGIN_ROOT} (args and cwd), timeout preserved" \
   || bad "claude rewrite wrong: $cla"
 
 cop="$(ext_mcp_native copilot "$m")"
-jq -e '.default.args[0] == "${COPILOT_PLUGIN_ROOT}/dist/index.js" and .default.type == "stdio"' <<< "$cop" >/dev/null 2>&1 \
-  && ok "copilot — neutral token rewritten to \${COPILOT_PLUGIN_ROOT} (confirmed live-spawn, docs/runbooks/extension-mcp-token-probe.md)" \
+jq -e '.default.args[0] == "${COPILOT_PLUGIN_ROOT}/dist/index.js" and .default.cwd == "${COPILOT_PLUGIN_ROOT}/sub" and .default.timeout == 45 and .default.type == "stdio"' <<< "$cop" >/dev/null 2>&1 \
+  && ok "copilot — neutral tokens rewritten to \${COPILOT_PLUGIN_ROOT} (args and cwd), timeout preserved" \
   || bad "copilot rewrite wrong: $cop"
 
 agy="$(ext_mcp_native antigravity "$m")"
-jq -e '.default.args[0] == "${extensionRoot}/dist/index.js"' <<< "$agy" >/dev/null 2>&1 \
-  && ok "antigravity — neutral token LEFT UNRESOLVED (Option A: scripts/install-antigravity-extension.sh resolves it post-install)" \
+jq -e '.default.args[0] == "${extensionRoot}/dist/index.js" and .default.cwd == "${extensionRoot}/sub" and .default.timeout == 45' <<< "$agy" >/dev/null 2>&1 \
+  && ok "antigravity — neutral tokens LEFT UNRESOLVED (args and cwd), timeout preserved" \
   || bad "antigravity should leave the token unresolved: $agy"
 
 m_empty="$(write_manifest '{"name":"x"}')"
