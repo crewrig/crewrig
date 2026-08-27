@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.0"
+    version: "1.3.1"
 ---
 
 
@@ -80,12 +80,13 @@ an existing feature issue (scan the PR body for `Closes #N`, `Fixes #N`,
    (`AGENTS.md` → *Forge Access*); the framework ships no forge MCP
    server, so a host-provided one is an optional convenience, not the
    default.
-2. Ensure the issue carries the `logbook` label — add it with
-   `gh issue edit <N> --add-label logbook` if absent.
+2. The feature issue **IS** the logbook (`AGENTS.md` → *Logbook Issues → Rule A*).
+   Do not add the `logbook` label to a pre-existing feature issue.
 3. Do **not** create a new logbook issue. The feature ticket is the logbook.
 
 A standalone logbook issue is only warranted when the PR has no upstream
 feature ticket (hotfix, dependency bump, automation run with no prior ticket).
+A dedicated logbook issue uses the `logbook` label (`gh issue create ... --label logbook`).
 
 A logbook is *not* a status update. It is the record the next agent
 will read to avoid your mistakes. Optimize for that reader.

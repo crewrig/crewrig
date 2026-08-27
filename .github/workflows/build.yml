@@ -699,6 +699,7 @@ jobs:
               - 'scripts/tests/test-assembly-verification.sh'
               - 'scripts/tests/test-artifact-build-install-scope.sh'
               - 'scripts/tests/test-component-tier-resolution.sh'
+              - 'scripts/tests/test-pr-logbook-label-scope.sh'
               - 'scripts/lib/**'
               - 'artifacts/**'
       - name: Install yq
@@ -724,6 +725,9 @@ jobs:
       - name: Test Component Tier Resolution
         if: steps.filter.outputs.frontmatter == 'true'
         run: bash scripts/tests/test-component-tier-resolution.sh
+      - name: Test PR Logbook Label Scope
+        if: steps.filter.outputs.frontmatter == 'true'
+        run: bash scripts/tests/test-pr-logbook-label-scope.sh
   markdown-links:
     runs-on: ubuntu-latest
     steps:

@@ -649,6 +649,7 @@ frontmatter:
     - "bash scripts/tests/test-assembly-verification.sh"
     - "bash scripts/tests/test-artifact-build-install-scope.sh"
     - "bash scripts/tests/test-component-tier-resolution.sh"
+    - "bash scripts/tests/test-pr-logbook-label-scope.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -658,6 +659,7 @@ frontmatter:
         - "scripts/tests/test-assembly-verification.sh"
         - "scripts/tests/test-artifact-build-install-scope.sh"
         - "scripts/tests/test-component-tier-resolution.sh"
+        - "scripts/tests/test-pr-logbook-label-scope.sh"
         - "scripts/lib/**"
         - "artifacts/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -668,6 +670,7 @@ frontmatter:
         - "scripts/tests/test-assembly-verification.sh"
         - "scripts/tests/test-artifact-build-install-scope.sh"
         - "scripts/tests/test-component-tier-resolution.sh"
+        - "scripts/tests/test-pr-logbook-label-scope.sh"
         - "scripts/lib/**"
         - "artifacts/**"
 
