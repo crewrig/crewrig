@@ -432,7 +432,9 @@ while remaining yours to shape:
 ## Migrating an extension off the retired declaration shape (spec 0183)
 
 **If you own no extension in this repository or in a fork of it, this
-section does not apply to you** — skip to *Troubleshooting* below.
+section does not apply to you** — skip to *Troubleshooting* below. For the
+current extension authoring model, see
+[Extension authoring](extension-authoring.md).
 
 Spec 0183 retires, with no compatibility window, the legacy
 `components.<subject>.enabled` declaration shape and five per-CLI keys

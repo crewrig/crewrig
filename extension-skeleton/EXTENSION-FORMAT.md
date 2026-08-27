@@ -1,13 +1,18 @@
-# Unified Extension Manifest — `extension.json`
+# Extension Format — Manifest, Render, and Delivery Contract
 
-This document specifies the generic declaration model for extensions in this
-monorepo (spec 0173, as amended by
-`specs/0173-extension-declaration-model.delta-01.md`). A single
-`extension.json` per extension is the extension's **only** hand-authored
-manifest: every declaration subject — commands, skills, agents, hooks, MCP
-servers, context — lives in a generic top-level section, declared exactly
-once, and every CLI-native file a specific command-line tool consumes is
-**produced from that single declaration** by `scripts/build-extension.sh`.
+This document is the normative contract for CrewRig's extension model: the
+generic declaration manifest, the render that produces each supported
+command-line tool's native form from it, the delivery paths that reach an
+adopter, and the neutral hook, context, and scaffolding material each
+sub-spec added (spec 0173, as amended by
+`specs/0173-extension-declaration-model.delta-01.md`). Unless a citation
+below names a different spec, an unqualified `requirement N` or `R<N>` in
+this document refers to spec 0173 as amended. A single `extension.json` per
+extension is the extension's **only** hand-authored manifest: every
+declaration subject — commands, skills, agents, hooks, MCP servers,
+context — lives in a generic top-level section, declared exactly once, and
+every CLI-native file a specific command-line tool consumes is **produced
+from that single declaration** by `scripts/build-extension.sh`.
 
 ## Format
 
@@ -90,21 +95,22 @@ other generated-output-class member.
   // ============================================================
   // MCP SERVERS (optional) — a generic declaration subject (spec 0180,
   // issue #1006). Declare each server ONCE, in the SAME neutral vocabulary
-  // the org-level channel of spec 0091 already uses (requirement 2) — the
+  // the org-level channel of spec 0091 already uses (spec 0180 requirement 2) — the
   // shared translator (scripts/lib/common.sh's org_mcp_to_native) derives
-  // every target's native shape from this one declaration (requirement 3).
-  // No per-CLI top-level section may carry an MCP server key (requirement 3);
+  // every target's native shape from this one declaration (spec 0180
+  // requirement 3). No per-CLI top-level section may carry an MCP server
+  // key (spec 0180 requirement 3);
   // declaring one there is a manifest validation error.
   //
   // Each key is a server name (convention: "default" for single-server
   // extensions), except the FRAMEWORK-RESERVED names `mempalace` and
-  // `sequentialthinking` (requirement 12) — declaring a server under either
+  // `sequentialthinking` (spec 0180 requirement 12) — declaring a server under either
   // is a manifest validation error naming the extension and the reserved
   // name.
   //
-  // Vocabulary (requirement 1 — a non-conforming declaration is a hard
-  // build failure, never a silent transformation, per requirement 5's clean
-  // break):
+  // Vocabulary (spec 0180 requirement 1 — a non-conforming declaration is a
+  // hard build failure, never a silent transformation, per spec 0180
+  // requirement 5's clean break):
   //   transport  "stdio" | "http" | "sse". Absent means "stdio".
   //   stdio      command (required, non-empty), args (optional), env (optional)
   //   http/sse   url (required, non-empty), headers (optional)
@@ -115,11 +121,11 @@ other generated-output-class member.
   // follow-up issue linked from docs/cli-matrix.md's MCP row for the
   // rationale and the two vendor citations behind it).
   //
-  // The ONE neutral path token (requirement 6): ${extensionRoot} — a
+  // The ONE neutral path token (spec 0180 requirement 6): ${extensionRoot} — a
   // command or arg pointing inside the extension's own installed directory
   // names ONLY this token, never a target-specific one. Each target
-  // resolves it through its OWN named party and moment (requirement 7),
-  // pinned by live evidence (requirement 9,
+  // resolves it through its OWN named party and moment (spec 0180 requirement 7),
+  // pinned by live evidence (spec 0180 requirement 9,
   // docs/runbooks/extension-mcp-token-probe.md) — never assumed:
   //   Gemini        rewritten to ${extensionPath} at RENDER time; gemini-cli
   //                 itself resolves that token when it LOADS the extension
@@ -139,16 +145,16 @@ other generated-output-class member.
   //                 scripts/install-antigravity-extension.sh's POST-INSTALL
   //                 step rewrites it, once the real installed directory is
   //                 knowable — never a render-time absolute path
-  //                 (requirement 8).
+  //                 (spec 0180 requirement 8).
   //
-  // Requirement 14 (server code layout): an extension that ships its own MCP
+  // Spec 0180 requirement 14 (server code layout): an extension that ships its own MCP
   // server implementation keeps its SOURCE under one source directory
   // (`src/` below) and its EXECUTABLE OUTPUT under one build-output
   // directory (`dist/` below), both at the extension root — a declared
   // `command`/`args` names the build output, never a source file. An
   // extension that declares only servers it does not itself implement
   // carries neither directory. Compiling the source is the extension's own
-  // build step, out of scope for this render (requirement 16 only requires
+  // build step, out of scope for this render (spec 0180 requirement 16 only requires
   // that whatever build output IS present travels with the declaration).
   // ============================================================
   "mcpServers": {
@@ -216,7 +222,7 @@ other generated-output-class member.
   // command-line-tool-neutral Markdown source, reached through this
   // generic `context` section — see *Context rendering* below for the
   // render-variable vocabulary. An extension declaring no `context` section
-  // produces no context output on any target (R1) — this section is
+  // produces no context output on any target (spec 0181 R1) — this section is
   // entirely optional.
   "context": {
     "source": "CONTEXT.md"
@@ -334,10 +340,10 @@ section survives.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `mcpServers` | object | MCP server definitions, one per-CLI translation for all four tools (requirement 2/3). Name must not be a framework-reserved name (`mempalace`, `sequentialthinking` — requirement 12) |
+| `mcpServers` | object | MCP server definitions, one per-CLI translation for all four tools (spec 0180 requirement 2/3). Name must not be a framework-reserved name (`mempalace`, `sequentialthinking` — spec 0180 requirement 12) |
 | `mcpServers[name].transport` | string | `"stdio"` (default) \| `"http"` \| `"sse"` |
 | `mcpServers[name].command` | string | Executable name (stdio only, required, non-empty) |
-| `mcpServers[name].args` | string[] | Arguments (stdio only). Supports the ONE neutral path token, `${extensionRoot}` (requirement 6) — no other `${...}` token is admissible here |
+| `mcpServers[name].args` | string[] | Arguments (stdio only). Supports the ONE neutral path token, `${extensionRoot}` (spec 0180 requirement 6) — no other `${...}` token is admissible here |
 | `mcpServers[name].env` | object | Env vars (stdio only). Arbitrary `${VAR}` interpolation admissible, EXCEPT the five known path tokens |
 | `mcpServers[name].url` | string | Endpoint (http/sse only, required, non-empty) |
 | `mcpServers[name].headers` | object | HTTP headers (http/sse only). Same token rule as `env` |
@@ -397,7 +403,7 @@ source into one output per target, resolving a small render-variable
 vocabulary against `scripts/lib/extension-targets.json`'s own knowledge of
 each target and the extension's own declared commands/skills. An extension
 declaring no `context` section produces no context output on any target
-(R1) and stays valid.
+(spec 0181 R1) and stays valid.
 
 **Delivery per target** — the render's own knowledge, never authored:
 
@@ -424,11 +430,11 @@ to an extension author for any other purpose.
 | `${ONLY:<t>[,<t>…]}` … `${ENDONLY}` | span kept only on the named targets |
 | `${EXCEPT:<t>[,<t>…]}` … `${ENDEXCEPT}` | span kept on every target **except** those named |
 
-A reference to an undeclared command/skill fails the render (R5) — the
+A reference to an undeclared command/skill fails the render (spec 0181 R5) — the
 permitted path is to declare the entry, never a hand-written literal.
 `${COMMAND:x}` / `${SKILL:x}` resolve against `extension-targets.json`'s
 `commandRef` / `skillRef` columns, per-target templates using `{ext}` / `{name}`
-placeholders — an author never restates a namespace or invocation form (R4).
+placeholders — an author never restates a namespace or invocation form (spec 0181 R4).
 
 **Pass order — `(b)` `(a)` `(c)` `(d)` `(e)`, mask first.** `(b)` replaces
 every literal `$${` with a reserved sentinel byte (an author writes
@@ -457,7 +463,7 @@ by construction, containment and crossing pairs alike.
 `UNCLOSED-BLOCK`, `STRAY-BLOCK-END`, `MISMATCHED-BLOCK-END`,
 `NESTED-BLOCK`, `UNRESOLVED-REFERENCE`. A surviving `${IDENT}` /
 `${IDENT:arg}` whose `IDENT` has the ALL-CAPS shape of a vocabulary token
-but matches none **warns**, never fails — the accepted residual of R4's
+but matches none **warns**, never fails — the accepted residual of spec 0181 R4's
 verbatim-passthrough guarantee (a hard error here would also claim a
 legitimate literal like `${extensionPath}`).
 
@@ -507,9 +513,9 @@ not. These three extra fields are what let two hooks that differ only in
 their neutral event produce distinguishable gap entries rather than
 colliding on one `hooks@<target>` key — see `hello-world`'s own
 `accepted-gaps.json` for a worked example (its `prompt-logger` hook has no
-counterpart on the Antigravity CLI). The `context` subject — whose own
-sub-spec has not landed — keeps using the coarser `{subject, target}` shape
-these extra fields are absent from.
+counterpart on the Antigravity CLI). The `context` subject (spec 0181)
+keeps using the coarser `{subject, target}` shape these extra fields are
+absent from.
 
 ## Delivery paths (requirements 20, 21, 22)
 
@@ -587,7 +593,7 @@ extension.json ──render──> dist-{claude,copilot,antigravity}-plugin/<nam
                           ├── mcp_config.json (Antigravity) # Generated, ${extensionRoot} LEFT
                           │                                #   UNRESOLVED — see
                           │                                #   scripts/install-antigravity-extension.sh
-                          ├── dist/ (when mcpServers present)  # Copied — requirement 16, the
+                          ├── dist/ (when mcpServers present)  # Copied — spec 0180 requirement 16, the
                           │                                    #   build output travels with
                           │                                    #   the declaration that names it
                           ├── CLAUDE.md (Claude)             # RENDERED from CONTEXT.md (spec 0181),
@@ -629,7 +635,7 @@ The shared translator (`scripts/lib/extension-hooks.sh`, invoked by
 `scripts/build-extension.sh`) renders every declared hook into each target's
 own native shape. Where a declared event or matcher class has no counterpart
 on a target, the render emits a build warning and records the gap rather
-than approximating it — see *Unmappable-declaration policy* below. The full
+than approximating it — see *Unmappable-declaration policy* above. The full
 per-target correspondence — which neutral event maps to which target event,
 the hook file, the matcher form, the time unit and the extension-root
 token — is the normative, evidence-backed

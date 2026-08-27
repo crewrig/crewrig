@@ -20,8 +20,9 @@ where `--plugin-dir`/the marketplace loader already reads `CLAUDE.md` today
 reaches, unaffected by this change.
 
 **(b) Invocation reference.** Documented, not re-probed:
-`extension-skeleton/EXTENSION-FORMAT.md:80` — "For Claude Code: also the
-plugin namespace (skills become `/name:skill`)". The reference extension's
+`extension-skeleton/EXTENSION-FORMAT.md`'s Complete Schema section — 'For
+Claude Code: also the plugin namespace (skills become `/name:skill`).' The
+reference extension's
 own committed `CLAUDE.md` already asserts the same form for both a command
 and a skill: `` `/hello-world:hello` command`` and
 `` `/hello-world:greeter` skill``. **Verdict: MAPPED.** Namespaced,

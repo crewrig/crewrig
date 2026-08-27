@@ -312,8 +312,10 @@ task check-components           # Drift detection (CI)
 ### Extensions (optional)
 
 Extensions are code-based capabilities (TypeScript MCP servers) packaged
-as independent npm modules. From a single `extension.json` manifest,
-install scripts generate both Gemini extensions and Claude Code plugins:
+as independent npm modules. From a single `extension.json` manifest, the
+shared render produces the tool-native form for all four supported
+command-line tools (Gemini CLI, Claude Code, GitHub Copilot CLI,
+Antigravity CLI):
 
 **All CLIs (umbrella installer):**
 
@@ -338,7 +340,8 @@ task build-claude-plugin EXT=hello-world
 task install-claude-plugin EXT=hello-world
 ```
 
-See `extensions/core/hello-world/` for a complete example,
+See [Extension authoring](docs/extension-authoring.md) for the authoring
+model, `extensions/core/hello-world/` for a complete example,
 `extension-skeleton/EXTENSION-FORMAT.md` for the manifest specification,
 and `extension-skeleton/` as a starting template.
 

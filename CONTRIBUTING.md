@@ -125,6 +125,8 @@ build steps), create a full extension with an `extension.json` manifest.
 
 A single `extension.json` renders for all four supported command-line
 tools (Gemini CLI, Claude Code, Copilot CLI, Antigravity CLI). See
+[Extension authoring](docs/extension-authoring.md) for the authoring model
+and
 [`extension-skeleton/EXTENSION-FORMAT.md`](extension-skeleton/EXTENSION-FORMAT.md)
 for the complete manifest specification.
 
