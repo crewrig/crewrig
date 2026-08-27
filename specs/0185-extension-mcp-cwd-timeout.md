@@ -1,7 +1,7 @@
 ---
 id: "0185"
 slug: extension-mcp-cwd-timeout
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1035

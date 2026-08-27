@@ -149,6 +149,24 @@ jq -e '.atlassian.serverUrl == "https://mcp.atlassian.example/mcp"
   && ok "antigravity http -> {serverUrl,headers}: manifest 'url' translated to 'serverUrl', headers preserved" \
   || bad "antigravity remote shape wrong (expected serverUrl, no url/type, headers kept): $AGY"
 
+# Spec 0185: cwd and timeout in org-level declarations
+NEUTRAL_CWD_TIMEOUT="$(printf '{"stdio_srv":{"transport":"stdio","command":"run","args":["-v"],"env":{"K":"V"},"cwd":"/opt/work","timeout":30},"remote_srv":{"transport":"http","url":"https://api.example/mcp","headers":{"H":"1"},"timeout":45}}')"
+GEM_CWD="$(org_mcp_to_native gemini "$NEUTRAL_CWD_TIMEOUT" 2>/dev/null)"
+jq -e '.stdio_srv.cwd == "/opt/work" and .stdio_srv.timeout == 30 and .remote_srv.timeout == 45 and .remote_srv.httpUrl' <<<"$GEM_CWD" >/dev/null 2>&1 \
+  && ok "gemini org translation preserves cwd and timeout (spec 0185)" || bad "gemini org cwd/timeout wrong: $GEM_CWD"
+
+COP_CWD="$(org_mcp_to_native copilot "$NEUTRAL_CWD_TIMEOUT" 2>/dev/null)"
+jq -e '.stdio_srv.cwd == "/opt/work" and .stdio_srv.timeout == 30 and .stdio_srv.type == "stdio" and .remote_srv.timeout == 45 and .remote_srv.type == "http"' <<<"$COP_CWD" >/dev/null 2>&1 \
+  && ok "copilot org translation preserves cwd and timeout (spec 0185)" || bad "copilot org cwd/timeout wrong: $COP_CWD"
+
+AGY_CWD="$(org_mcp_to_native antigravity "$NEUTRAL_CWD_TIMEOUT" 2>/dev/null)"
+jq -e '.stdio_srv.cwd == "/opt/work" and .stdio_srv.timeout == 30 and .remote_srv.timeout == 45 and .remote_srv.serverUrl' <<<"$AGY_CWD" >/dev/null 2>&1 \
+  && ok "antigravity org translation preserves cwd and timeout (spec 0185)" || bad "antigravity org cwd/timeout wrong: $AGY_CWD"
+
+CLA_CWD="$(org_mcp_to_native claude "$NEUTRAL_CWD_TIMEOUT" 2>/dev/null)"
+jq -e '.stdio_srv.cwd == "/opt/work" and .stdio_srv.timeout == 30 and .remote_srv.timeout == 45 and .remote_srv.type == "http"' <<<"$CLA_CWD" >/dev/null 2>&1 \
+  && ok "claude org translation preserves cwd and timeout (spec 0185)" || bad "claude org cwd/timeout wrong: $CLA_CWD"
+
 # ---------------------------------------------------------------------------
 echo "3. apply_org_mcp_servers — fold precedence (R6/R10/R11)"
 # ---------------------------------------------------------------------------

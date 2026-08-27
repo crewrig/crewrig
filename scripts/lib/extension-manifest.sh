@@ -211,14 +211,15 @@ ext_gap_dir() {
 # than minting a second translator.
 
 # ext_validate_mcp_shape <manifest> — R1/R5/R15 as a hard failure (PLAN v5
-# step 2). Closes four fail-open paths a pre-validation draft ran live
-# against org_mcp_to_native: an unknown transport passed through silently, a
-# missing endpoint delivered as a bare `null`, and a non-vocabulary key
-# (`cwd`, `timeout`, `trust`, ...) dropped without a trace. R5's clean break
-# means a non-conforming declaration is a manifest validation error, not a
-# silent transformation. Prints one VALIDATION-ERROR line per offense to
-# stderr and returns non-zero; silent and returns 0 when `.mcpServers` is
-# absent/null (R1: omitting the section stays valid) or every entry conforms.
+# step 2, updated by spec 0185 to admit cwd and timeout). Closes four fail-open
+# paths a pre-validation draft ran live against org_mcp_to_native: an unknown
+# transport passed through silently, a missing endpoint delivered as a bare
+# `null`, and a non-vocabulary key (`trust`, `description`, ...) dropped without
+# a trace. R5's clean break means a non-conforming declaration is a manifest
+# validation error, not a silent transformation. Prints one VALIDATION-ERROR line
+# per offense to stderr and returns non-zero; silent and returns 0 when
+# `.mcpServers` is absent/null (R1: omitting the section stays valid) or every
+# entry conforms.
 ext_validate_mcp_shape() {
   local manifest="$1" errors=0
   jq -e 'has("mcpServers") and (.mcpServers != null)' "$manifest" >/dev/null 2>&1 || return 0
@@ -254,9 +255,9 @@ ext_validate_mcp_shape() {
       while IFS= read -r key; do
         [ -z "$key" ] && continue
         case "$key" in
-          transport|command|args|env) ;;
+          transport|command|args|env|cwd|timeout) ;;
           *)
-            echo "VALIDATION-ERROR: $manifest — mcpServers.$name (transport stdio) declares inadmissible key '$key' (admissible: transport, command, args, env)" >&2
+            echo "VALIDATION-ERROR: $manifest — mcpServers.$name (transport stdio) declares inadmissible key '$key' (admissible: transport, command, args, env, cwd, timeout)" >&2
             errors=$((errors + 1))
             ;;
         esac
@@ -270,9 +271,9 @@ ext_validate_mcp_shape() {
       while IFS= read -r key; do
         [ -z "$key" ] && continue
         case "$key" in
-          transport|url|headers) ;;
+          transport|url|headers|timeout) ;;
           *)
-            echo "VALIDATION-ERROR: $manifest — mcpServers.$name (transport $transport) declares inadmissible key '$key' (admissible: transport, url, headers)" >&2
+            echo "VALIDATION-ERROR: $manifest — mcpServers.$name (transport $transport) declares inadmissible key '$key' (admissible: transport, url, headers, timeout)" >&2
             errors=$((errors + 1))
             ;;
         esac
@@ -327,7 +328,7 @@ EXT_MCP_KNOWN_PATH_TOKENS='${extensionRoot} ${extensionPath} ${CLAUDE_PLUGIN_ROO
 # ext_validate_mcp_tokens <manifest> — R6/R9 positional token rule,
 # REPLACING a five-entry denylist (which is fail-open by construction: it
 # never covers a token nobody has listed yet, e.g. gemini-cli's own `${/}`).
-#   - In `command`/`args`: an ALLOWLIST — the ONLY admissible `${...}` is
+#   - In `command`/`args`/`cwd`: an ALLOWLIST — the ONLY admissible `${...}` is
 #     `${extensionRoot}`. Fail-closed: any other `${...}` token there,
 #     known or not, is refused.
 #   - In `env`/`headers` VALUES: a small DENYLIST of the five known path
@@ -343,13 +344,13 @@ ext_validate_mcp_tokens() {
     local entry leaf token cmdargs envheaders known
     entry="$(jq -c --arg n "$name" '.mcpServers[$n]' "$manifest")"
 
-    cmdargs="$(jq -r '[(.command // empty)] + (.args // []) | .[]' <<< "$entry")"
+    cmdargs="$(jq -r '[(.command // empty)] + (.args // []) + [(.cwd // empty)] | .[]' <<< "$entry")"
     while IFS= read -r leaf; do
       [ -z "$leaf" ] && continue
       while IFS= read -r token; do
         [ -z "$token" ] && continue
         if [ "$token" != '${extensionRoot}' ]; then
-          echo "VALIDATION-ERROR: $manifest — mcpServers.$name declares '$token' inside command/args; the only admissible path token there is \${extensionRoot}" >&2
+          echo "VALIDATION-ERROR: $manifest — mcpServers.$name declares '$token' inside command/args/cwd; the only admissible path token there is \${extensionRoot}" >&2
           errors=$((errors + 1))
         fi
       done < <(printf '%s' "$leaf" | grep -oE '\$\{[^}]*\}' || true)

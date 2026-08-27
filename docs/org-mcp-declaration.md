@@ -69,6 +69,8 @@ Each entry under `.mcpServers` is keyed by the server name and carries a
 | `command` | `stdio` | Executable to launch the server. |
 | `args` | `stdio` | Argument array (optional). |
 | `env` | `stdio` | Environment variables map (optional). |
+| `cwd` | `stdio` | Working directory (optional, spec 0185). |
+| `timeout` | all | Timeout threshold (optional, spec 0185). |
 | `url` | `http` / `sse` | Endpoint the CLI connects to. |
 | `headers` | `http` / `sse` | Request headers map, e.g. an `Authorization` bearer (optional). |
 

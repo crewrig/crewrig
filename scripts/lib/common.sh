@@ -210,6 +210,8 @@ org_mcp_to_native() {
                 { command: $e.command }
                 + (if $e.args then { args: $e.args } else {} end)
                 + (if $e.env  then { env:  $e.env  } else {} end)
+                + (if $e.cwd  then { cwd:  $e.cwd  } else {} end)
+                + (if $e.timeout then { timeout: $e.timeout } else {} end)
                 + (if $cli == "copilot" then { type: "stdio" } else {} end)
             ) }
           elif $cli == "antigravity" then
@@ -217,6 +219,7 @@ org_mcp_to_native() {
             { key: $name, value: (
                 { serverUrl: $e.url }
                 + (if $e.headers then { headers: $e.headers } else {} end)
+                + (if $e.timeout then { timeout: $e.timeout } else {} end)
             ) }
           elif $cli == "gemini" then
             # Gemini remote shape (defect repair, spec 0180 PLAN v5 step 4):
@@ -225,11 +228,13 @@ org_mcp_to_native() {
             { key: $name, value: (
                 (if $t == "http" then { httpUrl: $e.url } else { url: $e.url } end)
                 + (if $e.headers then { headers: $e.headers } else {} end)
+                + (if $e.timeout then { timeout: $e.timeout } else {} end)
             ) }
           else
             { key: $name, value: (
                 { type: $t, url: $e.url }
                 + (if $e.headers then { headers: $e.headers } else {} end)
+                + (if $e.timeout then { timeout: $e.timeout } else {} end)
             ) }
           end
       )
