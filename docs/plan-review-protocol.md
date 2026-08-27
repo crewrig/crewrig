@@ -39,7 +39,12 @@ section before listing any new findings. The audit section SHALL
 enumerate every reviewer-minted ID (`v<N>-F<M>`) raised across all prior
 review passes and state its disposition in the revised plan: *addressed*,
 *superseded*, or *withdrawn with reason*. Any unaddressed prior finding
-SHALL cause the review pass to return a `### Verdict: REQUEST CHANGES`.
+whose class or severity warrants a plan revision SHALL cause the review
+pass to return a `### Verdict: REQUEST CHANGES`. Non-blocking prior-finding
+residue (e.g. wording corrections or mechanical adjustments that do not
+alter the architectural approach) MAY instead be disposed as DEV-routed named
+edits recorded directly in the review verdict without consuming a revision
+iteration.
 
 **On this surface the two clauses above already discharge the seat
 contract's finding-identifier, disposition-record and audit obligations.**
@@ -59,7 +64,7 @@ for id in <review-comment-ids>; do
   gh api repos/crewrig/crewrig/issues/comments/$id --jq .body | grep -c '^\*\*Finding '
 done
 # Count rows in the plan comment's traceability table
-grep -c '^| v[0-9]* | [0-9]' <plan-comment>
+grep -c '^| v[0-9]* | v[0-9]*-F[0-9]*' <plan-comment>
 ```
 
 **Finding class taxonomy.** Every plan-review finding SHALL carry
@@ -92,11 +97,20 @@ and team sizing* table, not restated here). On halt, the orchestrator
 SHALL post a structured summary on the logbook issue and escalate to
 the user regardless of interaction mode; it SHALL NOT auto-approve the
 halted plan, and the loop resumes only on explicit user instruction,
-which MAY lift the cap for that ticket (R3–R4 of spec 0138). A review
-returned for retagging — a malformed verdict per `docs/plan-format.md`
-→ *Finding tag schema* and `docs/retroactive-loop.md` → *Class tagging
-discipline* — does not count as a revision (R5 of spec 0138). A plan
-approved on its first cold review consumes zero revisions.
+which MAY lift the cap for that ticket (R3–R4 of spec 0138).
+
+The cap counts verdicts that send a plan back for revision; arbitration
+folds, message-crossing splits, and reviews returned for retagging — a
+malformed verdict per `docs/plan-format.md` → *Finding tag schema* and
+`docs/retroactive-loop.md` → *Class tagging discipline* — do not count as
+revisions (R5 of spec 0138). A plan approved on its first cold review
+consumes zero revisions.
+
+When a plan review routes an iteration out to the SPECS stage for
+delta-spec authoring (via a `class: spec` finding), the resulting approved
+delta-spec establishes a new specification baseline. Returning to the PLAN
+stage initiates a fresh planning cycle against that revised baseline and
+resets the PLAN-revision counter to zero for the new iteration.
 
 These clauses bound the plan's size and the loop's length; they remove no item from the reviewer's checklist at any tier.
 

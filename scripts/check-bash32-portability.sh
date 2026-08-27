@@ -253,7 +253,7 @@ HITS="$( printf '%s\n' "$RAW" \
          | grep -v 'acknowledged-exception:' || true )"
 
 if [ -n "$HITS" ]; then
-  hits_count="$(printf '%s\n' "$HITS" | wc -l | tr -d '[:space:]')"
+  hits_count="$(printf '%s\n' "$HITS" | grep -c . | tr -d '[:space:]')"
   echo "FAILED: $hits_count line(s) use a forbidden Bash 4+ construct:" >&2
   echo "" >&2
   printf '%s\n' "$HITS" >&2
@@ -279,7 +279,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 array_guard_scan "$REPO_DIR"
 if [ -n "$ARRAY_GUARD_HITS" ]; then
-  ag_hits_count="$(printf '%s\n' "$ARRAY_GUARD_HITS" | wc -l | tr -d '[:space:]')"
+  ag_hits_count="$(printf '%s\n' "$ARRAY_GUARD_HITS" | grep -c . | tr -d '[:space:]')"
   echo "FAILED: $ag_hits_count array value expansion(s) are unguarded:" >&2
   echo "" >&2
   printf '%s\n' "$ARRAY_GUARD_HITS" >&2

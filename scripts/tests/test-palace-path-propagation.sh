@@ -32,7 +32,10 @@ assert_eq() {
 assert_contains() {
   local haystack="$1" needle="$2" label="$3"
   TESTS_RUN=$((TESTS_RUN + 1))
-  if echo "$haystack" | grep -Fq -e "$needle"; then
+  # Pure-bash containment: `echo | grep -Fq` under pipefail turns an EARLY
+  # match into a false FAIL — grep exits on match, echo takes SIGPIPE (141),
+  # and pipefail reports the pipeline failed.
+  if [[ "$haystack" == *"$needle"* ]]; then
     echo "  PASS: $label"
     TESTS_PASSED=$((TESTS_PASSED + 1))
   else
@@ -45,7 +48,7 @@ assert_contains() {
 assert_not_contains() {
   local haystack="$1" needle="$2" label="$3"
   TESTS_RUN=$((TESTS_RUN + 1))
-  if ! echo "$haystack" | grep -Fq -e "$needle"; then
+  if [[ "$haystack" != *"$needle"* ]]; then
     echo "  PASS: $label"
     TESTS_PASSED=$((TESTS_PASSED + 1))
   else
