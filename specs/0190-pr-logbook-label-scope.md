@@ -1,7 +1,7 @@
 ---
 id: "0190"
 slug: pr-logbook-label-scope
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1063
