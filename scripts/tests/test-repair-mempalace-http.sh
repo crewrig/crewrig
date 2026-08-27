@@ -297,37 +297,74 @@ rm -f "${TEST_HOME}/.gemini/settings.json" "${link_target}" \
 # Each half reports separately on purpose. The fixture needs two independent
 # things — the width/value stat reports, and read access granted by something
 # other than the mode bits — and they fail on different platforms for
-# different reasons. A single message covering both told a Linux reader that
-# stat reported "'4060' rather than '4060'" while the real blocker was that a
-# named POSIX ACL naming the file's own owner is stored and inert, so setfacl
-# exits 0 having granted nothing.
+# different reasons.
+#
+# Under macOS Darwin, an extended ACL (chmod +a) grants the owner read while
+# preserving stat mode bits. Under Linux POSIX.1e, named ACLs naming the owner
+# are inert; foreign ownership with group read (via non-interactive sudo -n)
+# is used instead so the test process reads the file through group bits while
+# the owner triad denies read.
 make_owner_unreadable_backup() {
   local path="$1" want_chmod="$2" want_mode="$3" got
-  if ! chmod "${want_chmod}" "${path}" 2>/dev/null; then
-    printf 'chmod %s was refused here\n' "${want_chmod}"
-    return 1
+  local acl_err=""
+
+  # 1. Try standard chmod + ACL first (macOS, or Linux if effective).
+  if chmod "${want_chmod}" "${path}" 2>/dev/null; then
+    got="$(mode_of "${path}")"
+    if [ "${got}" = "${want_mode}" ]; then
+      if chmod +a "user:$(id -un) allow read" "${path}" 2>/dev/null \
+         || setfacl -m "u:$(id -un):r" "${path}" 2>/dev/null; then
+        if jq -e . "${path}" >/dev/null 2>&1; then
+          got="$(mode_of "${path}")"
+          if [ "${got}" = "${want_mode}" ]; then
+            return 0
+          fi
+        else
+          acl_err="the ACL primitive exited 0 but granted nothing — the file is still unreadable, so the restore would reject it before file_mode (a named POSIX ACL naming the owner itself is stored and inert)"
+        fi
+      else
+        acl_err="no ACL primitive here — chmod +a and setfacl both failed"
+      fi
+    else
+      acl_err="stat here reports '${got}' for a 0${want_chmod} file, not '${want_mode}' — this probe does not report that width (BSD %Lp drops the setuid bit)"
+    fi
+  else
+    acl_err="chmod ${want_chmod} was refused here"
   fi
-  got="$(mode_of "${path}")"
-  if [ "${got}" != "${want_mode}" ]; then
-    printf "stat here reports '%s' for a 0%s file, not '%s' — this probe does not report that width (BSD %%Lp drops the setuid bit)\n" \
-      "${got}" "${want_chmod}" "${want_mode}"
-    return 1
+
+  # 2. If ACL didn't grant read access, try foreign ownership with group read (Linux with sudo -n).
+  if sudo -n true 2>/dev/null; then
+    local foreign_user="" u
+    for u in nobody daemon root _spotlight bin sys; do
+      if id "$u" >/dev/null 2>&1 && [ "$(id -u "$u" 2>/dev/null)" != "$(id -u)" ]; then
+        foreign_user="$u"
+        break
+      fi
+    done
+    if [ -n "${foreign_user}" ]; then
+      local target_chmod="${want_chmod}" target_mode="${want_mode}"
+      # Under foreign ownership, the owner triad is unreadable and the group triad provides read.
+      # For mode 100 (owner execute-only), group read is mode 140.
+      if [ "${want_chmod}" = "100" ]; then
+        target_chmod="140"
+        target_mode="140"
+      fi
+      if sudo -n chown "${foreign_user}:$(id -g)" "${path}" 2>/dev/null \
+         && sudo -n chmod "${target_chmod}" "${path}" 2>/dev/null; then
+        got="$(mode_of "${path}")"
+        if [ "${got}" = "${target_mode}" ] && jq -e . "${path}" >/dev/null 2>&1; then
+          return 0
+        fi
+      fi
+    fi
   fi
-  if ! chmod +a "user:$(id -un) allow read" "${path}" 2>/dev/null \
-     && ! setfacl -m "u:$(id -un):r" "${path}" 2>/dev/null; then
-    printf 'no ACL primitive here — chmod +a and setfacl both failed\n'
-    return 1
+
+  if [ -n "${acl_err}" ]; then
+    printf '%s\n' "${acl_err}"
+  else
+    printf 'failed to construct owner-unreadable readable fixture\n'
   fi
-  if ! jq -e . "${path}" >/dev/null 2>&1; then
-    printf 'the ACL primitive exited 0 but granted nothing — the file is still unreadable, so the restore would reject it before file_mode (a named POSIX ACL naming the owner itself is stored and inert)\n'
-    return 1
-  fi
-  got="$(mode_of "${path}")"
-  if [ "${got}" != "${want_mode}" ]; then
-    printf "the ACL changed the reported mode to '%s'\n" "${got}"
-    return 1
-  fi
-  return 0
+  return 1
 }
 
 # assert_converges_at_600 <label> — run the restore over the fixture already in
@@ -403,10 +440,13 @@ setuid_probe="${TEST_HOME}/.setuid-probe"
 : > "${setuid_probe}"
 chmod 4755 "${setuid_probe}" 2>/dev/null
 if [ "$(mode_of "${setuid_probe}")" != "4755" ] && command -v gstat >/dev/null 2>&1; then
-  gnu_shim="$(mktemp -d)"
-  printf '#!/bin/sh\nexec %s "$@"\n' "$(command -v gstat)" > "${gnu_shim}/stat"
-  chmod +x "${gnu_shim}/stat"
-  PATH="${gnu_shim}:${PATH}"
+  if gnu_shim="$(mktemp -d 2>/dev/null)" && [ -n "${gnu_shim}" ] && [ -d "${gnu_shim}" ]; then
+    printf '#!/bin/sh\nexec %s "$@"\n' "$(command -v gstat)" > "${gnu_shim}/stat"
+    chmod +x "${gnu_shim}/stat"
+    PATH="${gnu_shim}:${PATH}"
+  else
+    gnu_shim=""
+  fi
 fi
 rm -f "${setuid_probe}"
 printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["setuid"]}}}' \
