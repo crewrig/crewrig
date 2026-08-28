@@ -376,11 +376,11 @@ and the frontmatter slug SHALL match exactly.
 `<NN>` (delta suffix) is zero-padded to two digits and unique within
 its parent.
 
-## Linting hints
+## Spec linter
 
-The format is designed to be machine-checkable. A future spec linter
-(not in scope for issue #167) will rely on the invariants below; spec
-authors and reviewers SHOULD anticipate them.
+The format is machine-checked by the spec linter (`scripts/lib/spec-linter.js`,
+invoked via `task spec:lint` and enforced in CI on every pull request via the
+`lint-specs` job). The linter enforces the following invariants:
 
 - The file SHALL pass `markdownlint-cli` with the project's
   `.markdownlintrc` configuration (CI invocation: `markdownlint
@@ -399,7 +399,5 @@ authors and reviewers SHOULD anticipate them.
   intermediate H2 wrapper is allowed.
 - Enum-valued fields SHALL contain a value from the listed set; any
   other value is a lint error.
-
-Implementing the linter itself, wiring it into CI, and back-filling
-existing specs are out of scope for this document and are tracked in
-issue #178.
+- Status invariants are verified per the transition rules described above
+  (governed by Spec 0109 and Spec 0168).
