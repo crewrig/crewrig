@@ -463,6 +463,16 @@ else
 fi
 echo ""
 
+# Clean up superseded ~/.gemini/GEMINI.md context file (spec 0061 delta-02, issue #1082)
+# An earlier version of this setup generated ~/.gemini/GEMINI.md. If left behind,
+# Antigravity CLI discovers it and loads duplicate stale rules alongside ~/.gemini/config/AGENTS.md.
+LEGACY_GEMINI_MD="${HOME}/.gemini/GEMINI.md"
+if [ -f "$LEGACY_GEMINI_MD" ] && grep -q '<!-- crewrig-section:' "$LEGACY_GEMINI_MD" 2>/dev/null; then
+  rm -f "$LEGACY_GEMINI_MD"
+  echo "  Removed superseded context file: $LEGACY_GEMINI_MD"
+  echo ""
+fi
+
 echo "===================================="
 echo "  Setup complete"
 echo "===================================="

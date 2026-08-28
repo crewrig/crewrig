@@ -641,6 +641,9 @@ jobs:
       - name: Test Setup Ensure Tier Built
         if: steps.filter.outputs.setup == 'true'
         run: bash scripts/tests/test-setup-ensure-tier-built.sh
+      - name: Test Setup Gemini Md Cleanup
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-setup-gemini-md-cleanup.sh
   misc:
     runs-on: ubuntu-latest
     steps:
