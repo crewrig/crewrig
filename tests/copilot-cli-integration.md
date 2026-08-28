@@ -13,7 +13,7 @@ Worktree: `.worktrees/issue-50/`. Date: 2026-05-20.
 | JSON well-formedness — `hooks/copilot-transcript-hooks.json` | ✅ | parses cleanly; 5 hook events declared (SessionStart, UserPromptSubmit, PostToolUse, Stop, SessionEnd) using `${COPILOT_PROJECT_DIR:-$PWD}` |
 | JSON well-formedness — `extension-skeleton/base/.github/copilot/extension.json` | ✅ | parses cleanly at the time of this report (2026-05-20); the file was deleted by issue #1004 (spec 0173 requirement 16) — an unconsumed manifest under a generic-schema render is a build output, not a hand-authored source, and no script ever read it. Historical row, not a live check. |
 | Build target — `bash scripts/build-components.sh --target copilot` | ✅ | exits 0, emits `.github/skills/` and `.github/agents/` |
-| Skill parity — count `community-config/skills/` vs `.github/skills/` | ✅ | 14 vs 14 |
+| Skill parity — count `community-config/skills/` vs `.github/skills/` | ✅ | 14 vs 14 at the time of this report (2026-05-20). **Correction (2026-08-27):** superseded by issue #1077 (spec 0191) — `init-personal-profile` and `init-soul` were promoted to `artifacts/core/commands/` sources, so `.github/skills/` now carries two entries the source count above never had. Historical row, not a live check. |
 | Agent parity — count `community-config/agents/` vs `.github/agents/` | ✅ | 21 vs 21 |
 | Build round-trip — wipe `.github/{skills,agents}` and rebuild | ✅ | full target rebuild is clean; `git status --porcelain` shows no drift on previously-tracked files after `scripts/build-components.sh` |
 | Script executable — `scripts/setup-copilot-interactive.sh` | ✅ | `+x` present |
@@ -152,6 +152,11 @@ expected count. The build round-trip is clean end-to-end.
 under `community-config/skills/` — these are host-level skills not managed by the
 project build pipeline, which is the expected behavior.
 
+**Correction (2026-08-27):** superseded by issue #1077 (spec 0191) — both are now
+`artifacts/core/commands/` sources compiled by the project build pipeline into
+`.github/skills/` like every other skill; this observation no longer holds.
+Historical row, not a live check.
+
 ---
 
 ### Functional validation summary
@@ -182,3 +187,8 @@ correctly loaded and discoverable by the live CLI after a clean rebuild.
 etc.) appear in the session available-skills list but are not present in
 `community-config/skills/` — these are managed at the Ollama platform level, outside
 the project build pipeline. Expected behavior.
+
+**Correction (2026-08-27):** superseded by issue #1077 (spec 0191) — `init-personal-profile`
+and `init-soul` are now `artifacts/core/commands/` sources compiled by the project build
+pipeline like every other skill; this observation no longer holds. Historical row, not a
+live check.

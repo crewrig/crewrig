@@ -268,6 +268,42 @@ claude /init-soul
 task setup-claude-interactive
 ```
 
+### Copilot CLI
+
+```bash
+git clone git@github.com:crewrig/crewrig.git
+cd crewrig
+
+# Generate your personal profile
+copilot -i "/init-personal-profile"
+
+# Customize the agent identity
+copilot -i "/init-soul"
+
+# Run the interactive setup (deploys to ~/.copilot/)
+task setup-copilot-interactive
+```
+
+### Antigravity CLI
+
+```bash
+git clone git@github.com:crewrig/crewrig.git
+cd crewrig
+
+# --new-project anchors the session to this clone — without it, on a machine
+# with other Antigravity projects, agy resolves against whichever project was
+# last active instead of the current directory.
+
+# Generate your personal profile
+agy -i "/init-personal-profile" --new-project
+
+# Customize the agent identity
+agy -i "/init-soul" --new-project
+
+# Run the interactive setup (deploys to ~/.gemini/config/)
+task setup-antigravity-interactive
+```
+
 ### What happens step by step
 
 1. **`/init-personal-profile`** walks you through an interview to

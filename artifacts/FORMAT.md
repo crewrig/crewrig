@@ -23,6 +23,14 @@ and Claude Code.
 | `command` | `commands/<name>.md` | `.gemini/commands/<name>.toml` | `.claude/skills/<name>/SKILL.md` |
 | `agent` | `agents/<name>/AGENT.md` | `.gemini/agents/<name>.md` | `.claude/agents/<name>/AGENT.md` |
 
+This table shows the two outputs common to every component kind; each kind
+also compiles to GitHub Copilot CLI (`.github/skills/…` or `.github/agents/…`)
+and Antigravity CLI (`.agents/skills/…` or `.agents/agents/…`). Neither Copilot
+nor Antigravity has a first-class slash-command file format, so `command`
+sources compile to a wrapper skill on both — four build outputs in total, not
+two. The full four-surface breakdown for `command` is in
+[Build Outputs](#build-outputs) below.
+
 Hooks, policies, and MCP servers use JSON formats and are handled
 separately by the build script (merged into tool-specific config files).
 
@@ -155,7 +163,7 @@ to the skill root (e.g. `scripts/curate.sh`), so the same invocation
 works regardless of whether the skill lives at project level
 (`.gemini/.claude/`) or user level (`~/.gemini/`, `~/.claude/`).
 
-### Command: `artifacts/community/commands/<name>.md`
+### Command: `artifacts/<tier>/commands/<name>.md`
 
 Gemini CLI → `.gemini/commands/<name>.toml`
 
@@ -174,9 +182,40 @@ Claude Code → `.claude/skills/<name>/SKILL.md`
 name: <name>
 description: <description>
 user-invocable: true
+allowed-tools:        # from claude.allowed-tools (if present)
+  - Read
+  - Bash
 ---
 <body>
 ```
+
+GitHub Copilot CLI → `.github/skills/<name>/SKILL.md`
+
+```yaml
+---
+name: <name>
+description: "<description>"
+allowed-tools:         # from claude.allowed-tools (if present)
+  - Read
+  - Bash
+---
+<body>
+```
+
+Antigravity CLI → `.agents/skills/<name>/SKILL.md`
+
+```yaml
+---
+name: <name>
+description: "<description>"
+---
+<body>
+```
+
+Neither Copilot nor Antigravity has a first-class slash-command file format,
+so `build_commands` compiles a command source into a user-invocable skill on
+both — the same fallback `build_skills` and `build_agents` already use for
+their own Copilot and Antigravity outputs.
 
 ### Agent: `artifacts/core/agents/<name>/AGENT.md`
 

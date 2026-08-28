@@ -349,7 +349,9 @@ tasks:
         msg: "markdownlint-cli is required. Install with: npm install -g markdownlint-cli"
     # extensions/**/commands/*.md are pivot command sources (the body IS the
     # prompt, not prose) — exclude them from prose linting (spec 0042).
-    cmd: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore 'extensions/**/commands/*.md'
+    # artifacts/*/commands/*.md are the same kind of pivot command source at
+    # the artifacts tier (spec 0191) — same rationale, same exclusion.
+    cmd: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
 
   spec:lint:
     desc: "Lint spec files for format compliance (markdown + custom semantic rules)"
@@ -361,8 +363,9 @@ tasks:
       - sh: command -v markdownlint >/dev/null 2>&1
         msg: "markdownlint-cli is required. Install with: npm install -g markdownlint-cli"
     # Mirror the lint-markdown exclusion: extension command pivots are prompt
-    # sources, not prose (spec 0042).
-    cmd: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore 'extensions/**/commands/*.md' --fix
+    # sources, not prose (spec 0042). artifacts/*/commands/*.md are the same
+    # kind of pivot command source at the artifacts tier (spec 0191).
+    cmd: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md' --fix
 
   # --- Transcript Management ---
 

@@ -1,7 +1,7 @@
 ---
 id: "0191"
 slug: init-skills-artifact-promotion
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1077

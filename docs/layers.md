@@ -129,6 +129,16 @@ SDLC lifecycle tools:
 | `artifacts/core/agents/pr-reviewer/` | Lifecycle agent — PR reviewer specialist. |
 | `artifacts/core/agents/architect/` | Lifecycle agent — architect specialist (plan and design). |
 
+Guided bootstrap command sources (spec 0191) — compiled to all four CLI
+surfaces via `build_commands`, the only build path that gives Gemini CLI a
+native slash command (`.gemini/commands/<name>.toml`) rather than a skill;
+see `artifacts/FORMAT.md` → *Build Outputs → Command*:
+
+| Path | Description |
+|---|---|
+| `artifacts/core/commands/init-personal-profile.md` | Guided interview writing `config/PROFILE.md`. |
+| `artifacts/core/commands/init-soul.md` | Guided interview writing `config/SOUL.md`. |
+
 Core rules files (deployed to user home at a fixed priority number):
 
 | Path | Description |
@@ -236,7 +246,7 @@ from the examples layer.
 | `artifacts/community/hooks/` | Lifecycle hooks specific to the organization. |
 | `artifacts/community/policies/` | Organization-level policy files. |
 | `artifacts/community/themes/` | UI theme files specific to the organization. |
-| `artifacts/community/commands/` | Organization-specific slash-command definitions. |
+| `artifacts/community/commands/` | Organization-specific slash-command definitions. Not the only tier the `command` kind lives in — `artifacts/core/commands/` (see *Core layer* above) carries the upstream-owned bootstrap commands (spec 0191). |
 | `artifacts/community/skills/` | Sandbox for the organization's own role skills, not yet validated for the organization layer. |
 | `artifacts/community/agents/` | Sandbox for the organization's own agents, not yet validated for the organization layer. |
 | `artifacts/org/skills/` | Organization-validated role skills — promoted from `artifacts/community/` after internal review. Compiled by the tier-agnostic build like any other tier (ADR-0011, spec 0019); installed to the user home on opt-in. |

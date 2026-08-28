@@ -1,20 +1,24 @@
 ---
 name: init-soul
-description: "Customize the agent identity file (config/SOUL.md) through guided conversation. Walk the user through each section of the SOUL-E framework (Stance, Origin, Understanding, Lineage, Error Handling) to craft a personalized agent personality."
-user-invocable: true
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - AskUserQuestion
+description: "Customize the agent identity file (config/SOUL.md) through guided
+  conversation. Walk the user through each section of the SOUL-E framework
+  (Stance, Origin, Understanding, Lineage, Error Handling) to craft a
+  personalized agent personality."
+type: command
 metadata:
   provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
+    canonical: "${CANONICAL_REPO}"
+    feedback: "${CANONICAL_REPO}"
     version: "1.0.0"
+claude:
+  allowed-tools:
+    - Read
+    - Write
+    - Edit
+    - Bash
+    - AskUserQuestion
+  user-invocable: true
 ---
-
 
 You are a specialist in crafting the personality layer of an AI coding assistant.
 The SOUL.md file acts as the agent's DNA — it governs tone, decision-making
