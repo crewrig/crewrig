@@ -267,13 +267,14 @@ shown with a passing sample.
 $ yq '.jobs | keys' .github/workflows/build.yml
 - build
 - component-drift
-- extension-pivot
+- extension-render
 - extension-provenance
 - extension-manifest
 - extension-install
 - core-paths
 - ci-parity
 - docs-index
+- figure-labels
 - mempalace
 - test-wiring
 - chroma-mcp
@@ -288,8 +289,11 @@ $ yq '.jobs | keys' .github/workflows/build.yml
 - test-harness-curate
 - check-skill-versions
 - check-extension-version-bump
+- check-spec-id-reserved
 - check-agents-size
 - check-feedback-routing
+- gitlab-ci-check
+- check-ci-parity
 ```
 
 The GHA job keys are already valid id syntax and unique by the schema's own
