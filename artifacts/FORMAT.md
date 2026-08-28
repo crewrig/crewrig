@@ -379,12 +379,12 @@ The `metadata.provenance.version` field follows
 | **MINOR** (`1.0.1 → 1.1.0`) | Additive change. New section, new recognition signal, new payload field, new optional behavior. Backward-compatible — agents following `1.0.x` keep working unchanged. |
 | **MAJOR** (`1.1.0 → 2.0.0`) | Breaking contract change. Removed payload fields, renamed required fields, semantics flip. Forks pinning `1.x` need to migrate consciously. |
 
-**Bump rule.** Every PR that touches a `SKILL.md` or `AGENT.md`
-source under any artifact tier — `artifacts/core/`, `artifacts/library/`,
-or `artifacts/community/` — MUST bump `metadata.provenance.version` in the
-same diff. CI enforces this via `scripts/check-skill-versions.sh` (see
-`task check-skill-versions` for the local invocation). The same discipline
-extends to the upstream-owned extension tiers `extensions/core/` and
+**Bump rule.** Every PR that touches a `SKILL.md`, `AGENT.md`, or
+`commands/*.md` source under any artifact tier — `artifacts/core/`,
+`artifacts/library/`, or `artifacts/community/` — MUST bump
+`metadata.provenance.version` in the same diff. CI enforces this via
+`scripts/check-skill-versions.sh` (see `task check-skill-versions` for
+the local invocation). The same discipline extends to the upstream-owned extension tiers `extensions/core/` and
 `extensions/library/`, where the `version` instead rides on the
 provenance carrier (the first-body-line `<!-- crewrig-provenance:
 version="…" … -->` HTML comment per spec 0043, not frontmatter — Gemini

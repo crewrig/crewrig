@@ -1,8 +1,8 @@
 #!/bin/bash
-# check-skill-versions.sh — Enforce the version-bump rule on skill sources.
+# check-skill-versions.sh — Enforce the version-bump rule on component sources.
 #
 # Per artifacts/FORMAT.md → Version semantics, every PR that touches
-# a skill or agent source under artifacts/core/, artifacts/library/, or
+# a skill, command, or agent source under artifacts/core/, artifacts/library/, or
 # artifacts/community/ MUST bump `metadata.provenance.version` in the same
 # diff. This script enforces the rule.
 #
@@ -35,7 +35,7 @@ if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
   }
 fi
 
-# Collect changed skill/agent sources, split by status (A=added, M=modified).
+# Collect changed component sources, split by status (A=added, M=modified).
 # New files (A) start at 1.0.0 by definition — no bump required until they
 # land on the base branch and are subsequently modified. Only modified files
 # (M) are subject to the version-bump rule.
@@ -52,16 +52,19 @@ done < <(git diff --name-status "$BASE_REF" -- \
   'artifacts/core/skills/*/SKILL.md' \
   'artifacts/library/skills/*/SKILL.md' \
   'artifacts/community/skills/*/SKILL.md' \
+  'artifacts/core/commands/*.md' \
+  'artifacts/library/commands/*.md' \
+  'artifacts/community/commands/*.md' \
   'artifacts/core/agents/*/AGENT.md' \
   'artifacts/library/agents/*/AGENT.md' \
   'artifacts/community/agents/*/AGENT.md' 2>/dev/null || true)
 
 if [ "${#modified[@]}" -eq 0 ]; then
-  echo "OK: no existing skill/agent sources modified vs $BASE_REF."
+  echo "OK: no existing component sources modified vs $BASE_REF."
   exit 0
 fi
 
-echo "Checking version bumps on ${#modified[@]} modified skill/agent source(s)..."
+echo "Checking version bumps on ${#modified[@]} modified component source(s)..."
 
 failures=()
 for f in ${modified[@]+"${modified[@]}"}; do
@@ -96,4 +99,4 @@ if [ "${#failures[@]}" -gt 0 ]; then
 fi
 
 echo ""
-echo "OK: all changed skill/agent sources include a version bump."
+echo "OK: all changed component sources include a version bump."

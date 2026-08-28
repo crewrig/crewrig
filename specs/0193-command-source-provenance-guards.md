@@ -1,7 +1,7 @@
 ---
 id: "0193"
 slug: command-source-provenance-guards
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1079

@@ -9,6 +9,9 @@ Affected paths:
 - `artifacts/core/skills/*/SKILL.md`
 - `artifacts/library/skills/*/SKILL.md`
 - `artifacts/community/skills/*/SKILL.md`
+- `artifacts/core/commands/*.md`
+- `artifacts/library/commands/*.md`
+- `artifacts/community/commands/*.md`
 - `artifacts/core/agents/*/AGENT.md`
 - `artifacts/library/agents/*/AGENT.md`
 - `artifacts/community/agents/*/AGENT.md`
@@ -23,7 +26,7 @@ comment per spec 0043), NOT in frontmatter — Gemini CLI 0.42.0+ rejects
 non-`name`/`description` frontmatter keys on the in-place source. The bump
 is enforced by `scripts/check-extension-version-bump.sh` (spec 0044), which
 compares the carrier version against the base ref. `extensions/org` is
-adopter-owned and exempt; commands carry no provenance/version.
+adopter-owned and exempt.
 
 **Exemption — new components do not bump in-branch.** Components
 introduced on a feature branch start at `1.0.0` and stay there until the
