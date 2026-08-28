@@ -655,6 +655,7 @@ capabilities:
       - bash scripts/tests/test-setup-catalogue-picker.sh
       - bash scripts/tests/test-setup-ensure-tier-built.sh
       - bash scripts/tests/test-setup-gemini-md-cleanup.sh
+      - bash scripts/tests/test-setup-init-command-instructions.sh
 
   - id: misc
     name: "Run miscellaneous portability and reservation checks"

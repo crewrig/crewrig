@@ -1,7 +1,7 @@
 ---
 id: "0192"
 slug: setup-init-command-instructions
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1071

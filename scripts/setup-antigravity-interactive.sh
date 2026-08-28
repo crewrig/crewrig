@@ -73,7 +73,7 @@ MISSING_PREREQS=()
 check_finalized() {
   local file="$1" label="$2" skill="$3"
   if [ ! -f "$file" ]; then
-    MISSING_PREREQS+=("$label is missing — run: agy $skill")
+    MISSING_PREREQS+=("$label is missing — run: agy -i \"$skill\" --new-project")
   fi
 }
 

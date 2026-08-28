@@ -589,6 +589,7 @@ setup:
     - "bash scripts/tests/test-setup-catalogue-picker.sh"
     - "bash scripts/tests/test-setup-ensure-tier-built.sh"
     - "bash scripts/tests/test-setup-gemini-md-cleanup.sh"
+    - "bash scripts/tests/test-setup-init-command-instructions.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:

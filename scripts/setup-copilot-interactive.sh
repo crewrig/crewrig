@@ -65,7 +65,7 @@ MISSING_PREREQS=()
 check_finalized() {
   local file="$1" label="$2" skill="$3"
   if [ ! -f "$file" ]; then
-    MISSING_PREREQS+=("$label is missing — run: $skill")
+    MISSING_PREREQS+=("$label is missing — run: copilot -i \"$skill\"")
   fi
 }
 
