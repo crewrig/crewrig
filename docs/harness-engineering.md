@@ -21,8 +21,9 @@ Frictions become shipped improvements through a four-stage loop:
    moment a recognition signal fires. Each tag lands as a structured entry in
    the global `harness-friction` memory wing.
 2. **Cluster** — the `harness-curator` skill reads the tagged frictions,
-   clusters them by subcategory, and opens one descriptive GitHub issue per
-   cluster against the repository declared in each component's provenance block.
+   clusters them by subcategory, and opens one descriptive forge issue
+   (GitHub, GitLab, or Gitea) per cluster against the repository declared
+   in each component's provenance block.
 3. **Fix** — the issues are addressed through the normal branch/PR workflow; the
    internal agent crew handles the implementation cycle.
 4. **Re-install** — after a fix ships, the build is regenerated and reinstalled.
@@ -72,7 +73,8 @@ Each friction carries a structured payload — at minimum a non-empty
 `writer_agent` and one `evidence:` entry, plus optional `canonical`, `severity`,
 and `suggestion` fields. The full payload schema, the recognition-signal
 definitions, and the rules for what *not* to tag are specified normatively in
-the framework's tool rules (the priority-60 core rules file), which the
+the system-context store (`~/.crewrig/system-context/friction-logging.md`,
+source: `artifacts/core/system-context/friction-logging.md`), which the
 `harness-report` skill operationalizes.
 
 ## What not to tag
@@ -83,7 +85,7 @@ goes wrong:
 - One-off mistakes the agent made that the system did not cause belong in the
   agent's diary, not the friction wing.
 - Bugs in the user's code under review belong in the project logbook issue.
-- Missing features belong in a regular GitHub issue, not a friction report.
+- Missing features belong in a regular forge issue, not a friction report.
 
 ## Where to read next
 
