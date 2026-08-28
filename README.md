@@ -290,11 +290,15 @@ task setup-copilot-interactive
 git clone git@github.com:crewrig/crewrig.git
 cd crewrig
 
+# --new-project anchors the session to this clone — without it, on a machine
+# with other Antigravity projects, agy resolves against whichever project was
+# last active instead of the current directory.
+
 # Generate your personal profile
-agy -i "/init-personal-profile"
+agy -i "/init-personal-profile" --new-project
 
 # Customize the agent identity
-agy -i "/init-soul"
+agy -i "/init-soul" --new-project
 
 # Run the interactive setup (deploys to ~/.gemini/config/)
 task setup-antigravity-interactive
