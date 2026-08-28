@@ -51,6 +51,25 @@ Body.
 EOF
 }
 
+# Render a minimal command source with the given version string.
+render_command() {
+  local version="$1"
+  cat <<EOF
+---
+name: example-cmd
+description: Example command used as a test fixture.
+type: command
+metadata:
+  provenance:
+    version: "$version"
+---
+
+# Example Command
+
+Prompt body.
+EOF
+}
+
 # Set up a fresh temp git repo and return its path on stdout.
 new_repo() {
   local dir
@@ -172,6 +191,58 @@ else
   echo "FAIL  Case 4 — remote probing (crewrig, no origin) (expected exit 0, got $actual_exit)"
   fail=$((fail + 1))
 fi
+
+# -------------------------------------------------------------------------
+# Case 5 — Status A: new command source (artifacts/core/commands/*.md) → exit 0
+# -------------------------------------------------------------------------
+repo5="$(new_repo)"
+(
+  cd "$repo5"
+  echo "seed" > README.md
+  git add README.md
+  git commit -q -m "seed"
+
+  mkdir -p artifacts/core/commands
+  render_command "1.0.0" > artifacts/core/commands/new-cmd.md
+  git add artifacts/core/commands/new-cmd.md
+  git commit -q -m "add new command"
+)
+run_case "Case 5 — new command (status A) requires no bump" "$repo5" 0
+
+# -------------------------------------------------------------------------
+# Case 6 — Status M: existing command modified without bump → exit 1
+# -------------------------------------------------------------------------
+repo6="$(new_repo)"
+(
+  cd "$repo6"
+  mkdir -p artifacts/core/commands
+  render_command "1.0.0" > artifacts/core/commands/old-cmd.md
+  git add artifacts/core/commands/old-cmd.md
+  git commit -q -m "seed old-cmd at 1.0.0"
+
+  printf '\nExtra line.\n' >> artifacts/core/commands/old-cmd.md
+  git add artifacts/core/commands/old-cmd.md
+  git commit -q -m "tweak command, forget version bump"
+)
+run_case "Case 6 — modified command without bump fails" "$repo6" 1
+
+# -------------------------------------------------------------------------
+# Case 7 — Status M: existing command modified with bump → exit 0
+# -------------------------------------------------------------------------
+repo7="$(new_repo)"
+(
+  cd "$repo7"
+  mkdir -p artifacts/core/commands
+  render_command "1.0.0" > artifacts/core/commands/old-cmd.md
+  git add artifacts/core/commands/old-cmd.md
+  git commit -q -m "seed old-cmd at 1.0.0"
+
+  render_command "1.0.1" > artifacts/core/commands/old-cmd.md
+  printf '\nExtra line.\n' >> artifacts/core/commands/old-cmd.md
+  git add artifacts/core/commands/old-cmd.md
+  git commit -q -m "patch bump command"
+)
+run_case "Case 7 — modified command with bump passes" "$repo7" 0
 
 # -------------------------------------------------------------------------
 # Summary

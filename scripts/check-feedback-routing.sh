@@ -63,7 +63,7 @@ checked=0
 skipped=0
 failures=()
 
-# Collect every SKILL.md / AGENT.md source under the upstream-owned tiers.
+# Collect every SKILL.md / AGENT.md / commands/*.md source under the upstream-owned tiers.
 # `while read` rather than `mapfile` for bash 3.2 compat (macOS default).
 sources=()
 while IFS= read -r f; do
@@ -72,7 +72,7 @@ while IFS= read -r f; do
 done < <(
   for root in ${TIER_ROOTS[@]+"${TIER_ROOTS[@]}"}; do
     [ -d "$root" ] || continue
-    find "$root" -type f \( -name 'SKILL.md' -o -name 'AGENT.md' \) 2>/dev/null
+    find "$root" -type f \( -name 'SKILL.md' -o -name 'AGENT.md' -o -path '*/commands/*.md' \) 2>/dev/null
   done | sort
 )
 

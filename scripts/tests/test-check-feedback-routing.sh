@@ -70,6 +70,27 @@ Body.
 EOF
 }
 
+# Render a minimal command source with the given feedback value.
+render_command_with_feedback() {
+  local feedback="$1"
+  cat <<EOF
+---
+name: example-cmd
+description: Example command used as a test fixture.
+type: command
+metadata:
+  provenance:
+    canonical: "\${CANONICAL_REPO}"
+    feedback: "$feedback"
+    version: "1.0.0"
+---
+
+# Example Command
+
+Prompt body.
+EOF
+}
+
 # Build a fresh tree root containing one core skill source and return its path.
 new_tree() {
   local dir
@@ -126,6 +147,22 @@ render_skill_with_feedback '${FEEDBACK_REPO}' > "$tree4/artifacts/community/skil
 # Keep the upstream example canonical so only the community source diverges.
 render_skill_with_feedback '${CANONICAL_REPO}' > "$tree4/artifacts/core/skills/example/SKILL.md"
 run_case "Case 4 — adopter-owned tier is exempt" "$tree4" 0
+
+# -------------------------------------------------------------------------
+# Case 5 — upstream command source with feedback == canonical → exit 0
+# -------------------------------------------------------------------------
+tree5="$(new_tree)"
+mkdir -p "$tree5/artifacts/core/commands"
+render_command_with_feedback '${CANONICAL_REPO}' > "$tree5/artifacts/core/commands/example-cmd.md"
+run_case "Case 5 — upstream command feedback == canonical passes" "$tree5" 0
+
+# -------------------------------------------------------------------------
+# Case 6 — upstream command source with feedback != canonical → exit 1
+# -------------------------------------------------------------------------
+tree6="$(new_tree)"
+mkdir -p "$tree6/artifacts/core/commands"
+render_command_with_feedback '${FEEDBACK_REPO}' > "$tree6/artifacts/core/commands/example-cmd.md"
+run_case "Case 6 — upstream command feedback != canonical fails" "$tree6" 1
 
 # -------------------------------------------------------------------------
 # Summary
