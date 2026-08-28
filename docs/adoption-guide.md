@@ -20,10 +20,10 @@ Before starting, ensure the following are in place:
   CrewRig, hosted on any Git platform (GitHub, GitLab, Gitea, or a
   self-hosted instance). The repository may be public or private and
   will serve as the overlay configuration home for the organization.
-- **The target CLI tools installed** — Claude Code, Gemini CLI, and/or
-  GitHub Copilot CLI, whichever CLIs the organization uses. The guide
-  does not cover installing those tools; treat them as installed before
-  proceeding.
+- **The target CLI tools installed** — Gemini CLI, Claude Code,
+  GitHub Copilot CLI, and/or Antigravity CLI, whichever CLIs the
+  organization uses. The guide does not cover installing those tools;
+  treat them as installed before proceeding.
 
 ## Step 1 — Set up the organization repository
 
@@ -222,6 +222,8 @@ output directories:
 .gemini/agents/        Gemini CLI agents
 .github/skills/        GitHub Copilot CLI skills
 .github/agents/        GitHub Copilot CLI agents
+.agents/skills/        Antigravity CLI skills
+.agents/agents/        Antigravity CLI agents
 ```
 
 Commit the built outputs so the repository always contains up-to-date CLI
@@ -231,7 +233,8 @@ from scratch:
 ```bash
 git add .claude/skills .claude/agents \
         .gemini/skills .gemini/agents \
-        .github/skills .github/agents
+        .github/skills .github/agents \
+        .agents/skills .agents/agents
 git commit -m "⚙️ Build CLI components for <YOUR-ORG>"
 ```
 
@@ -292,6 +295,18 @@ This naming convention is specific to GitHub Copilot CLI and differs from
 both Claude Code (plain `.md` files in `~/.claude/rules/`) and Gemini CLI
 (numeric-prefix `.md` files in `~/.gemini/`). The setup script handles the
 naming automatically.
+
+### Antigravity CLI
+
+```bash
+bash scripts/setup-antigravity-interactive.sh
+```
+
+Deploys context to `~/.gemini/config/AGENTS.md` and MCP server configurations
+to `~/.gemini/config/mcp_config.json`. The setup script concatenates the
+numbered-priority context files into a single `AGENTS.md` file and registers
+the configured MCP servers automatically. Requires the `agy` binary on your
+PATH.
 
 ### Symlink vs. copy mode
 
