@@ -2,8 +2,9 @@
 
 CrewRig is a centralized configuration framework for
 [Gemini CLI](https://github.com/google-gemini/gemini-cli),
-[Claude Code](https://claude.ai/code), and
-[GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli).
+[Claude Code](https://claude.ai/code),
+[GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli), and
+[Antigravity CLI](https://antigravity.google).
 It serves three complementary
 purposes:
 
@@ -29,6 +30,7 @@ workflow is the product in action.
 | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `~/.gemini/` | `task setup-gemini-interactive` |
 | [Claude Code](https://claude.ai/code) | `~/.claude/rules/` | `task setup-claude-interactive` |
 | [GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli) | Split: `.github/copilot/` + `.github/skills/` + `.github/agents/` (workspace-level) | `task setup-copilot-interactive` |
+| [Antigravity CLI](https://antigravity.google) | `~/.gemini/config/` | `task setup-antigravity-interactive` |
 
 All platforms share the same source configuration files in `config/` and
 `artifacts/`. Setup and build scripts deploy them into the
@@ -57,14 +59,15 @@ to form the agent's full context:
 enforced priority order. **Claude Code** loads them from `~/.claude/rules/`
 as additive context (all files combine, no override). **GitHub Copilot CLI**
 loads them from `~/.copilot/instructions/` as `*.instructions.md` files,
-applied to all sessions.
+applied to all sessions. **Antigravity CLI** loads them from
+`~/.gemini/config/AGENTS.md`.
 
 ### Artifact Zone
 
 `artifacts/` is the single-source zone where skills, agents, and commands
 are written **once** and compiled into outputs for all CLIs. Contributors
 edit a single Markdown file with YAML frontmatter; the build step produces
-Gemini CLI, Claude Code, and GitHub Copilot CLI targets.
+Gemini CLI, Claude Code, GitHub Copilot CLI, and Antigravity CLI targets.
 
 | Type | Description |
 |---|---|
@@ -174,8 +177,9 @@ Organizations that wish to adopt CrewRig without contributing upstream should
 follow the **[Adoption Guide](docs/adoption-guide.md)** — a step-by-step
 walkthrough covering fork initialization, overlay configuration, build
 pipeline, CLI deployment, and upstream synchronization. The guide covers all
-three supported CLIs (Claude Code, Gemini CLI, GitHub Copilot CLI) and is the
-primary onboarding surface for adopting organizations.
+four supported CLIs (Gemini CLI, Claude Code, GitHub Copilot CLI,
+Antigravity CLI) and is the primary onboarding surface for adopting
+organizations.
 
 ## Lifecycle Scenario
 
@@ -226,6 +230,8 @@ harness loop:
 |------|-------|----------------------|---------|
 | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `npm i -g @google/gemini-cli` | same | same |
 | [Claude Code](https://claude.ai/code) | `npm i -g @anthropic-ai/claude-code` | same | same |
+| [GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli) | `npm i -g @github/copilot` | same | same |
+| [Antigravity CLI](https://antigravity.google) | See [Antigravity install](https://antigravity.google) (`agy`) | same | same |
 | [Task](https://taskfile.dev/) | `brew install go-task` | `sh -c "$(curl -ssL https://taskfile.dev/install.sh)"` | `choco install go-task` or `scoop install task` |
 | [fzf](https://github.com/junegunn/fzf) | `brew install fzf` | `sudo apt install fzf` | `choco install fzf` or `scoop install fzf` |
 | [uv](https://github.com/astral-sh/uv) | `brew install uv` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` | `powershell -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
