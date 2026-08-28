@@ -53,7 +53,8 @@ to form the agent's full context:
 | 30 | `config/PROFILE.md` | Personal information |
 | 40 | `config/expertise/<ROLE>.md` | Technical specialization |
 | 50 | `config/teams/<TEAM>.md` | Team practices and norms |
-| 60 | `config/TOOLS.md` | Memory architecture and MCP servers |
+| 60 | `artifacts/core/rules/60-tools.md` | Memory architecture and core tool rules |
+| 65 | `config/TOOLS.md` | Organization-specific tool guidelines |
 
 **Gemini CLI** loads these via numeric-prefix files in `~/.gemini/` with
 enforced priority order. **Claude Code** loads them from `~/.claude/rules/`

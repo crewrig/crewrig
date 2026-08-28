@@ -10,7 +10,7 @@ normatively; the goal here is shared vocabulary, not exhaustive coverage.
 
 An AI assistant's behavior is shaped by a stack of context files, each
 addressing one concern and combined in a fixed priority order. CrewRig organizes
-them with a numeric prefix from `00` to `60`:
+them with a numeric prefix from `00` to `65`:
 
 | Priority | Source | Concern |
 |----------|--------|---------|
@@ -20,7 +20,8 @@ them with a numeric prefix from `00` to `60`:
 | 30 | `config/PROFILE.md` | Personal information |
 | 40 | `config/expertise/<ROLE>.md` | Technical specialization |
 | 50 | `config/teams/<TEAM>.md` | Team practices and norms |
-| 60 | `config/TOOLS.md` | Memory architecture and MCP servers |
+| 60 | `artifacts/core/rules/60-tools.md` | Memory architecture and core tool rules |
+| 65 | `config/TOOLS.md` | Organization-specific tool guidelines |
 
 The four supported tools consume the same source files but load them
 differently: Gemini CLI uses numeric-prefix files in `~/.gemini/` with enforced
