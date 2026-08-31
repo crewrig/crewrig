@@ -585,7 +585,10 @@ for cli in claude gemini copilot antigravity; do
     order_fail="${order_fail} ${cli}(no-anchor)"
     continue
   fi
-  if [ "$call_line" $cmp "$anchor_line" ]; then :; else order_fail="${order_fail} ${cli}"; fi
+  case "$cmp" in
+    -lt) [ "$call_line" -lt "$anchor_line" ] || order_fail="${order_fail} ${cli}" ;;
+    -gt) [ "$call_line" -gt "$anchor_line" ] || order_fail="${order_fail} ${cli}" ;;
+  esac
 done
 [ -z "${order_fail}" ] \
   && ok "every ensure_mempalace_http call is ordered after (never before) its script's stdio write" \
