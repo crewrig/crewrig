@@ -1477,52 +1477,117 @@ mcp_report_assistant_arrangements() {
   return 0
 }
 
-# offer_mcp_http_switch <repo_dir> <cli>
+# ensure_mempalace_http <repo_dir> <cli> — make the shared MemPalace MCP HTTP
+# daemon the default outcome of a setup run (spec 0113 delta-02, R17-R20),
+# replacing the opt-in offer_mcp_http_switch.
 #
-# Called by each setup script after it has written its MCP configuration
-# (spec 0113 R3). Without this, a setup run would leave that assistant on the
-# previous stdio arrangement — and worse, SILENTLY UNDO an earlier switch:
-# `mempalace` is in MCP_RESERVED_NAMES, so merge_preexisting_mcp_servers
+# Call each setup script's instance AFTER the stdio-shaped write it must
+# survive: `mempalace` is in MCP_RESERVED_NAMES, so merge_preexisting_mcp_servers
 # deliberately does not preserve an operator's entry under that name, and the
-# framework write that replaces it is stdio-shaped. A user who ran the switch
-# and later re-ran any setup would find the lock contention back with nothing
-# explaining why.
+# framework write that replaces it is stdio-shaped. Running the helper after
+# that write lets its HTTP registration overwrite the stdio entry instead of
+# being clobbered by it.
+#
+# Probe-first flow (R18): the "is the daemon actually serving" decision is
+# made with the positive authenticated accept probe `_mcp_daemon_probe_accepts`
+# — NEVER with /healthz (`_health_mcp_daemon`), whose endpoint is
+# require_auth=False and answers 200 in every state, satisfied by a stale
+# process and therefore green for exactly the wrong reason (the rationale for
+# retiring it as a serving predicate: spec 0139 delta-01 / issue #880). The
+# token is read tolerantly BEFORE the probe — a token failure must never abort
+# before the probe, because converging stdio against a daemon that would have
+# answered is exactly the lockout R20 forbids; an unreadable token probes with
+# a placeholder bearer instead (a serving daemon answers 401, a dead one
+# nothing).
+#
+# Exit contract:
+#   0 — the HTTP entry is registered;
+#   1 — no usable serving daemon exists (R19 trigger): the probe never
+#       accepted, the supervisor install failed, or the token was never
+#       provisionable — the caller restores the previous (stdio) arrangement;
+#   2 — the daemon is probe-verified serving but the registration could not
+#       be completed: the register write failed, or the accepting probe ran
+#       on the placeholder bearer because no readable token exists (e.g. an
+#       unauthenticated impostor answering on the port). Converging stdio
+#       against a daemon whose serving-ness is proven would violate R20, so
+#       the caller keeps the existing entry and reports.
 #
 # SCOPE, stated rather than implied: this switches THIS assistant only. The
 # machine-wide all-or-nothing obligation (R4, delta R12-R14) belongs to
 # `switch-mempalace-http.sh`; a single-CLI run sits outside it by design, so it
 # reports which other assistants it is leaving behind instead of pretending to
 # have converged the machine.
-offer_mcp_http_switch() {
-  local repo_dir="$1" cli="$2" token other state left=""
+ensure_mempalace_http() {
+  local repo_dir="$1" cli="$2" host port token other state left=""
+  local token_placeholder=0
   CREWRIG_REPO_DIR="$repo_dir"
+  host="${MEMPALACE_MCP_HOST:-$MCP_DAEMON_HOST_DEFAULT}"
+  port="${MEMPALACE_MCP_PORT:-$MCP_DAEMON_PORT_DEFAULT}"
   echo ""
-  echo "Shared memory daemon (spec 0113):"
+  echo "Shared memory daemon (spec 0113 delta-02): defaulting $cli to HTTP."
   echo "  Without it, every session spawns its own memory server and only the"
   echo "  first one to write can write — the rest are refused for their whole life."
-  local choice
-  choice=$(echo -e "yes\nno" | fzf --height 10% \
-    --header "Reach shared memory through the shared daemon? (recommended)")
-  if [ "$choice" != "yes" ]; then
-    echo "  Skipped — this assistant keeps spawning its own memory server."
-    return 0
+
+  # Tolerant token read (v2-F1): NO short-circuit on this call — a token
+  # failure must not abort before the probe; fall back to a placeholder
+  # bearer instead and let the probe decide, so a serving daemon is still
+  # registered against rather than bypassed for stdio.
+  token="$(mcp_token_read_or_create)" || true
+  if [ -z "$token" ]; then
+    token="crewrig-setup-placeholder-not-a-credential"
+    token_placeholder=1
+    echo "  NOTE: no readable bearer token — probing with a placeholder bearer."
   fi
-  if ! install_mcp_daemon "$repo_dir"; then
-    echo "  ERROR: the daemon is not serving — leaving this assistant unchanged."
-    echo "         Registering it against a daemon that is not there would break"
-    echo "         every session (R5: fail visibly, never fall back silently)."
-    return 1
+
+  if ! _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
+    echo "  Daemon not accepting on ${host}:${port} — installing and starting it (R18)..."
+    if ! install_mcp_daemon "$repo_dir"; then
+      # install_mcp_daemon fails on two distinct paths; the token check after
+      # it distinguishes token-provisioning refusal from start refusal.
+      if ! mcp_token_read_or_create >/dev/null 2>&1; then
+        echo "  ERROR: the MCP bearer token could not be provisioned (R19)."
+      else
+        echo "  ERROR: the daemon supervisor refused to install or start (R19)."
+      fi
+      _mempalace_repair_report
+      return 1
+    fi
+    token="$(mcp_token_read_or_create)" || true
+    if [ -z "$token" ]; then
+      echo "  ERROR: the installer succeeded but no usable bearer token exists (R19)."
+      _mempalace_repair_report
+      return 1
+    fi
+    token_placeholder=0
+    if ! _mcp_daemon_probe_accepts "$host" "$port" "$token"; then
+      echo "  ERROR: the daemon was installed but still refuses authenticated requests (R19)."
+      _mempalace_repair_report
+      return 1
+    fi
+  elif [ "$token_placeholder" -eq 1 ]; then
+    # v3-F2 routing: the accepting probe ran on the placeholder bearer, so the
+    # daemon's serving-ness is proven but no readable credential exists to
+    # register with (an unauthenticated impostor on the port is the hostile
+    # variant). Exit 2, not exit 1: restoring stdio against a probe-verified
+    # serving daemon would violate R20.
+    echo "  WARNING: the daemon on ${host}:${port} is verified serving but no"
+    echo "           readable bearer token exists for this palace, so registration"
+    echo "           would point $cli at a credential that does not authenticate."
+    echo "           Keeping the existing registration untouched (exit 2)."
+    _mempalace_repair_report
+    return 2
   fi
-  token="$(mcp_token_read_or_create)" || {
-    echo "  ERROR: could not read the bearer token — leaving this assistant unchanged."
-    return 1
-  }
-  if register_mempalace_mcp "$cli" "$token"; then
-    echo "  $cli now reaches shared memory through the daemon."
-  else
-    echo "  ERROR: could not switch $cli."
-    return 1
+
+  if ! register_mempalace_mcp "$cli" "$token"; then
+    # Exit 2: the daemon is probe-verified serving here — only the write
+    # failed. The caller must keep the existing entry (it points at a serving
+    # daemon) and report, never converge to stdio (R20).
+    echo "  ERROR: registering $cli against the verified-serving daemon failed (exit 2)."
+    _mempalace_repair_report
+    return 2
   fi
+
+  echo "  $cli now reaches shared memory through the daemon."
   for other in claude gemini copilot antigravity; do
     [ "$other" = "$cli" ] && continue
     mcp_assistant_present "$other" || continue
@@ -1540,6 +1605,14 @@ offer_mcp_http_switch() {
   echo ""
   echo "  Restart any running $cli session to pick this up."
   return 0
+}
+
+# _mempalace_repair_report — the repair tail every failure exit prints, so an
+# operator is never left with an unexplained state and no next step.
+_mempalace_repair_report() {
+  echo "  Repair: run 'task mempalace:status' to inspect the daemon, then"
+  echo "          'task mempalace:switch-http' for the machine-wide conversion,"
+  echo "          and re-run setup afterwards."
 }
 
 # uninstall_daemon_supervisor <launchd_label> <systemd_unit>

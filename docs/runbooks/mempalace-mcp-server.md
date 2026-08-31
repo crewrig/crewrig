@@ -38,7 +38,7 @@ task mempalace:switch-http
 
 1. Provisions a bearer token if one does not already exist for this palace
    — this happens **first**: the daemon launcher refuses to start without
-   one, by design (`install_mcp_daemon`, `scripts/lib/common.sh:812-830`).
+   one, by design (`install_mcp_daemon`, `scripts/lib/common.sh:927`).
 2. Installs the daemon launcher and starts it under the supervisor (launchd
    on macOS, systemd user unit on Linux), which waits for the daemon to
    report healthy.

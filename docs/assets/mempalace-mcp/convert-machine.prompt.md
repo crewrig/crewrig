@@ -11,7 +11,7 @@ shared MemPalace MCP HTTP daemon, run via `task mempalace:switch-http`
 version of this figure showed the daemon starting before the token was
 provisioned — backwards.** Step order re-verified against the actual
 source rather than the outer script's call sequence alone:
-`install_mcp_daemon` (`scripts/lib/common.sh:812-830`) mints the bearer
+`install_mcp_daemon` (`scripts/lib/common.sh:927`) mints the bearer
 token as its **first** statement — the comment above that line states why
 ("The token must exist before the launcher runs: it refuses to serve
 without one, by design") — and only then calls `install_mcp_launcher` and

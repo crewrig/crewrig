@@ -536,24 +536,89 @@ else
   nope "an assistant is only tracked after a SUCCESSFUL switch — a failed one is abandoned"
 fi
 
-# --- 9. Every setup script wires the switch (R3, F5) -------------------------
+# --- 9. Every setup script wires HTTP-by-default (spec 0113 delta-02, R17) ---
 echo ""
-echo "Setup scripts switch their assistant (R3):"
-missing=""
-for cli in claude gemini copilot antigravity; do
-  grep -q "offer_mcp_http_switch" "${REPO_DIR}/scripts/setup-${cli}-interactive.sh" || missing="${missing} ${cli}"
-done
-[ -z "${missing}" ] \
-  && ok "all four setup scripts offer the switch" \
-  || nope "setup scripts still stdio-only:${missing} — a later run would silently revert the switch"
+echo "Setup scripts wire ensure_mempalace_http (delta-02 R17):"
 
+# (a) presence — each of the four setup scripts must call the helper.
 # The revert is not hypothetical: `mempalace` is reserved, so the preservation
 # helper deliberately drops an operator entry under that name and the framework
-# rewrites it stdio-shaped. Assert the reservation still holds, since that is
-# what makes wiring every setup mandatory rather than merely tidy.
+# rewrites it stdio-shaped. Assert the reservation still holds below, since it
+# is what makes wiring every setup mandatory rather than merely tidy.
+missing=""
+for cli in claude gemini copilot antigravity; do
+  grep -qF 'ensure_mempalace_http "$REPO_DIR"'" ${cli}" \
+    "${REPO_DIR}/scripts/setup-${cli}-interactive.sh" || missing="${missing} ${cli}"
+done
+[ -z "${missing}" ] \
+  && ok "all four setup scripts call ensure_mempalace_http" \
+  || nope "setup script(s) dropped the HTTP-by-default wiring:${missing} — mempalace is reserved, so a later run there would silently revert to stdio"
+
 grep -q 'MCP_RESERVED_NAMES=(mempalace' "${REPO_DIR}/scripts/lib/common.sh" \
   && ok "mempalace is still a reserved name (so setups must switch it themselves)" \
   || nope "mempalace is no longer reserved — re-check whether the setups still need to switch"
+
+# (b) order — each ensure_mempalace_http call must come AFTER its script's
+# stdio-shaped write (template `mv` for Gemini/Copilot, the final atomic
+# MCP_BASE write for Antigravity), so the HTTP entry overwrites the stdio one
+# instead of the reverse. For Claude the anchor is the R19 stdio fallback
+# register, and the direction is inverted: `register_mempalace_mcp` and the
+# fallback must sit AFTER the call — a stdio register preceding the call would
+# be overwritten by nothing and clobber an HTTP entry the call is about to
+# write (the exact defect this section guards).
+order_fail=""
+for cli in claude gemini copilot antigravity; do
+  script="${REPO_DIR}/scripts/setup-${cli}-interactive.sh"
+  grep -nF 'ensure_mempalace_http "$REPO_DIR"'" ${cli}" "$script" > /dev/null 2>&1 \
+    || { order_fail="${order_fail} ${cli}(no-call)"; continue; }
+  call_line="$(grep -nF 'ensure_mempalace_http "$REPO_DIR"'" ${cli}" "$script" | head -1 | cut -d: -f1)"
+  case "$cli" in
+    claude)      anchor_pat='mcp_register_user mempalace' ; cmp='-lt' ;;
+    gemini)      anchor_pat='mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"' ; cmp='-gt' ;;
+    copilot)     anchor_pat='mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"' ; cmp='-gt' ;;
+    antigravity) anchor_pat='mv "${AGY_MCP_CONFIG}.tmp" "$AGY_MCP_CONFIG"' ; cmp='-gt' ;;
+  esac
+  # -F, not BRE: the anchors carry literal `{`, which BSD grep parses as the
+  # start of an interval expression and fails on.
+  anchor_line="$(grep -nF "$anchor_pat" "$script" | head -1 | cut -d: -f1)"
+  if [ -z "$call_line" ] || [ -z "$anchor_line" ]; then
+    order_fail="${order_fail} ${cli}(no-anchor)"
+    continue
+  fi
+  case "$cmp" in
+    -lt) [ "$call_line" -lt "$anchor_line" ] || order_fail="${order_fail} ${cli}" ;;
+    -gt) [ "$call_line" -gt "$anchor_line" ] || order_fail="${order_fail} ${cli}" ;;
+  esac
+done
+[ -z "${order_fail}" ] \
+  && ok "every ensure_mempalace_http call is ordered after (never before) its script's stdio write" \
+  || nope "ordering violated:${order_fail} — the stdio-shaped write would clobber the HTTP entry"
+
+# Extract the helper body (comment lines stripped) for the predicate tests.
+helper_body="$(awk '/^ensure_mempalace_http\(\) \{/{f=1;next} f&&/^\}/{exit} f' \
+  "${REPO_DIR}/scripts/lib/common.sh" | grep -v '^[[:space:]]*#')"
+
+# (c) predicate — the serving gate must be the positive authenticated accept
+# probe, NEVER /healthz, which answers 200 in every state (spec 0139
+# delta-01 / issue #880) and would be green for exactly the wrong reason.
+if printf '%s' "$helper_body" | grep -q '_mcp_daemon_probe_accepts' \
+   && ! printf '%s' "$helper_body" | grep -q '_health_mcp_daemon'; then
+  ok "ensure_mempalace_http gates serving on _mcp_daemon_probe_accepts, not /healthz"
+else
+  nope "ensure_mempalace_http's serving gate is not the authenticated accept probe — /healthz returns 200 in every state"
+fi
+
+# (d) failure tolerance — the pre-probe token read must carry NO short-circuit:
+# a token failure must not abort before the acceptance gate (the tolerant read
+# necessarily precedes the probe; routing a token failure straight to the R19
+# fallback would converge stdio against a daemon that would have answered).
+pre_probe="$(printf '%s\n' "$helper_body" | awk '/_mcp_daemon_probe_accepts/{exit} {print}')"
+tok_pre="$(printf '%s' "$pre_probe" | grep 'mcp_token_read_or_create' || true)"
+if [ -n "$tok_pre" ] && ! printf '%s' "$tok_pre" | grep -Eq '\|\| *(return|exit)'; then
+  ok "the pre-probe token read carries no short-circuit (a token failure cannot abort before the probe)"
+else
+  nope "the pre-probe mcp_token_read_or_create call short-circuits (a token failure aborts before any probe)"
+fi
 
 # --- 10. The daemon must OUTLIVE the reaper (#749) ---------------------------
 # The defect this guards shipped once and was invisible to every static check:

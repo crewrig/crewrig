@@ -198,7 +198,7 @@ else
 fi
 echo ""
 
-# MemPalace (opt-in, persistent agent memory)
+# MemPalace (persistent agent memory) — HTTP by default (spec 0113 delta-02)
 echo "MemPalace MCP server (persistent agent memory):"
 MEMPALACE_INSTALLED=0
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
@@ -216,39 +216,46 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
     echo "         Install a supported version with: pipx install --force 'mempalace>=${MEMPALACE_MIN_VERSION},<${MEMPALACE_MAX_VERSION_EXCLUSIVE}'"
     exit 1
   fi
-  # MCP entry goes through the shared-daemon http wrapper (issue #98, ADR 0006).
+  # stdio fallback entry goes through the shared-daemon http wrapper
+  # (issue #98, ADR 0006).
   MEMPALACE_WRAPPER="$REPO_DIR/scripts/lib/mempalace-http-wrapper.py"
   echo "  Detected interpreter: $MEMPALACE_PYTHON_BIN (mempalace $MEMPALACE_VERSION)"
-  echo "  Full command:         $MEMPALACE_PYTHON_BIN $MEMPALACE_WRAPPER"
-  if mcp_is_registered mempalace; then
-    echo "  Currently registered. If the existing entry does not use the http wrapper, re-register it."
-    REPLACE_MEMPALACE=$(echo -e "yes\nno" | fzf --height 10% \
-      --header "Replace existing MemPalace registration with the http-wrapper entry?")
-    if [ "$REPLACE_MEMPALACE" = "yes" ]; then
-      # Install the ChromaDB daemon supervisor BEFORE writing the wrapper into MCP config.
-      install_chroma_daemon "$REPO_DIR"
-      offer_mcp_http_switch "$REPO_DIR" claude || true
+  # Tier-1 ordering unchanged: the ChromaDB supervisor installs before any
+  # mempalace registration is written, HTTP or stdio.
+  install_chroma_daemon "$REPO_DIR"
+  ensure_mempalace_http "$REPO_DIR" claude
+  _mempalace_rc=$?
+  case "$_mempalace_rc" in
+    0)
+      MEMPALACE_INSTALLED=1
+      ;;
+    1)
+      # R19: no usable serving daemon. No post-write stdio register remains on
+      # the success path, so nothing above can overwrite a registered HTTP
+      # entry; here the helper could not establish one, so converge to stdio
+      # UNCONDITIONALLY — an existing http entry is replaced, not kept, since
+      # no daemon is serving behind it (R19 without exception).
       claude mcp remove --scope user mempalace >/dev/null 2>&1 || true
       if mcp_register_user mempalace bash "$REPO_DIR/scripts/lib/tls-exec.sh" "$MEMPALACE_PYTHON_BIN" "$MEMPALACE_WRAPPER"; then
         MEMPALACE_INSTALLED=1
+        echo "  Converged mempalace to the stdio http-wrapper entry (no serving daemon available)."
+      else
+        echo "  ERROR: could not register even the stdio fallback for mempalace."
       fi
-    else
-      echo "  Existing registration kept."
-      MEMPALACE_INSTALLED=1
-    fi
-  else
-    INSTALL_MEMPALACE=$(echo -e "yes\nno" | fzf --height 10% --header "Install MemPalace MCP server now?")
-    if [ "$INSTALL_MEMPALACE" = "yes" ]; then
-      # Install the ChromaDB daemon supervisor BEFORE writing the wrapper into MCP config.
-      install_chroma_daemon "$REPO_DIR"
-      if mcp_register_user mempalace bash "$REPO_DIR/scripts/lib/tls-exec.sh" "$MEMPALACE_PYTHON_BIN" "$MEMPALACE_WRAPPER"; then
+      ;;
+    2)
+      # The daemon is verified serving but the HTTP registration write failed,
+      # or the accepting probe ran on a placeholder bearer. An existing entry
+      # is kept untouched — it points at a verified-serving daemon — because
+      # converging stdio here would violate R20.
+      if mcp_is_registered mempalace; then
+        echo "  Existing mempalace registration kept (the daemon is verified serving)."
         MEMPALACE_INSTALLED=1
+      else
+        echo "  WARNING: no mempalace registration could be written although the daemon is verified serving."
       fi
-    else
-      echo "  MemPalace install skipped."
-      echo "  To install later: claude mcp add --scope user mempalace -- $MEMPALACE_PYTHON_BIN $MEMPALACE_WRAPPER"
-    fi
-  fi
+      ;;
+  esac
 fi
 
 # --- Org-declared MCP servers (spec 0091) ---
