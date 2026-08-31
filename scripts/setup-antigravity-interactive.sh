@@ -183,7 +183,6 @@ if [ -z "$MEMPALACE_PYTHON_BIN" ]; then
   MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
 fi
 
-INSTALL_MEMPALACE_AGY=no
 if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   MEMPALACE_VERSION="$(mempalace_installed_version "$MEMPALACE_PYTHON_BIN")"
   if ! mempalace_version_in_range "$MEMPALACE_PYTHON_BIN"; then
@@ -192,8 +191,6 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
     exit 1
   fi
   echo "  Detected MemPalace interpreter: $MEMPALACE_PYTHON_BIN (mempalace $MEMPALACE_VERSION)"
-  INSTALL_MEMPALACE_AGY=$(echo -e "yes\nno" | fzf --height 10% \
-    --header "Include MemPalace MCP server in mcp_config.json?")
 fi
 
 # Build the base mcp_config.json content (no mempalace yet).
@@ -202,12 +199,16 @@ fi
 # Start from an empty mcpServers object; MCP entries are patched in below.
 MCP_BASE='{"mcpServers":{}}'
 
+# MemPalace is detected → HTTP by default (spec 0113 delta-02 R17): the
+# stdio-shaped entry is patched into MCP_BASE unconditionally and the
+# shared-daemon HTTP registration after the final write replaces it. No
+# opt-in prompt remains; when MemPalace is absent nothing is registered, as
+# before.
 INSTALL_MEMPALACE=0
-if [ "$INSTALL_MEMPALACE_AGY" = "yes" ]; then
+if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   # Install the shared ChromaDB HTTP daemon supervisor (issue #98) before
   # writing the wrapper into mcp_config.json — first-launch ordering matters.
   install_chroma_daemon "$REPO_DIR"
-  offer_mcp_http_switch "$REPO_DIR" antigravity || true
 
   # Patch mcpServers.mempalace with the detected python and substitute the
   # __CREWRIG_REPO_DIR__ placeholder in args with the repo root so the
@@ -253,6 +254,33 @@ ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
 if [ -f "$ORG_MCP_MANIFEST" ]; then
   ORG_MCP_NATIVE="$(org_mcp_to_native antigravity "$(read_org_mcp_manifest "$ORG_MCP_MANIFEST")")"
   apply_org_mcp_servers "$ORG_MCP_NATIVE" "$AGY_MCP_CONFIG" "$PREEXISTING_MCP" "$MCP_BACKUP"
+fi
+
+# MemPalace HTTP by default (spec 0113 delta-02 R17-R20). Runs AFTER the final
+# atomic MCP_BASE write above and after both folds — reserved names never
+# appear in a preserved side (MCP_RESERVED_NAMES), so no fold touches this
+# entry. Exit handling mirrors the Gemini setup: 0 = HTTP registered; 1 = the
+# stdio entry stays (R19); 2 = the stdio entry stays with a loud lockout
+# warning (R20 — no stdio convergence against a probe-verified serving daemon).
+if [ "${INSTALL_MEMPALACE:-0}" -eq 1 ]; then
+  ensure_mempalace_http "$REPO_DIR" antigravity
+  _mempalace_rc=$?
+  case "$_mempalace_rc" in
+    0)
+      echo "  MemPalace reaches shared memory through the HTTP daemon."
+      ;;
+    1)
+      echo "  WARNING: mempalace stays on the stdio arrangement — no shared"
+      echo "           daemon could be established. Sessions will contend for"
+      echo "           the palace writer lock until the daemon is up."
+      ;;
+    2)
+      echo "  LOCKOUT WARNING: the daemon is verified serving but registration"
+      echo "           could not be completed, so the stdio entry just written"
+      echo "           will be refused by the shared writer lock (MCP error"
+      echo "           -32001) in every session."
+      ;;
+  esac
 fi
 echo "  Installed: mcp_config.json"
 echo ""

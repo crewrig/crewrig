@@ -178,7 +178,6 @@ if [ -z "$MEMPALACE_PYTHON_BIN" ]; then
   MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
 fi
 
-INSTALL_MEMPALACE_GEMINI=no
 if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   MEMPALACE_VERSION="$(mempalace_installed_version "$MEMPALACE_PYTHON_BIN")"
   if ! mempalace_version_in_range "$MEMPALACE_PYTHON_BIN"; then
@@ -187,15 +186,17 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
     exit 1
   fi
   echo "  Detected MemPalace interpreter: $MEMPALACE_PYTHON_BIN (mempalace $MEMPALACE_VERSION)"
-  INSTALL_MEMPALACE_GEMINI=$(echo -e "yes\nno" | fzf --height 10% \
-    --header "Include MemPalace MCP server in settings.json?")
 fi
 
-if [ "$INSTALL_MEMPALACE_GEMINI" = "yes" ]; then
+# MemPalace is detected → HTTP by default (spec 0113 delta-02 R17): the
+# patched stdio template is written unconditionally and the shared-daemon
+# HTTP registration below replaces it. No opt-in prompt remains; the
+# mempalace-out branch below only handles MemPalace-absent, which registers
+# nothing, as before.
+if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   # Install the shared ChromaDB HTTP daemon supervisor (issue #98) before
   # writing the wrapper into settings.json — first-launch ordering matters.
   install_chroma_daemon "$REPO_DIR"
-  offer_mcp_http_switch "$REPO_DIR" gemini || true
 
   # Copy template, then patch mcpServers.mempalace.command with the detected
   # python and substitute the __CREWRIG_REPO_DIR__ placeholder in args with
@@ -238,6 +239,35 @@ ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
 if [ -f "$ORG_MCP_MANIFEST" ]; then
   ORG_MCP_NATIVE="$(org_mcp_to_native gemini "$(read_org_mcp_manifest "$ORG_MCP_MANIFEST")")"
   apply_org_mcp_servers "$ORG_MCP_NATIVE" "$SETTINGS_TARGET" "$PREEXISTING_MCP" "$MCP_BACKUP"
+fi
+
+# MemPalace HTTP by default (spec 0113 delta-02 R17-R20). Runs AFTER the
+# stdio-shaped template write above and after both folds — reserved names
+# never appear in a preserved side (MCP_RESERVED_NAMES), so no fold touches
+# this entry. Exit handling: 0 = HTTP registered; 1 = no usable serving
+# daemon, the just-written stdio entry stays (the previous arrangement, R19
+# with an empty registration); 2 = daemon verified serving but registration
+# not completed, the stdio entry stays WITH a loud lockout warning (R20
+# forbids converging against a probe-verified serving daemon).
+if [ "${MEMPALACE_INSTALLED:-0}" -eq 1 ]; then
+  ensure_mempalace_http "$REPO_DIR" gemini
+  _mempalace_rc=$?
+  case "$_mempalace_rc" in
+    0)
+      echo "  MemPalace reaches shared memory through the HTTP daemon."
+      ;;
+    1)
+      echo "  WARNING: mempalace stays on the stdio arrangement — no shared"
+      echo "           daemon could be established. Sessions will contend for"
+      echo "           the palace writer lock until the daemon is up."
+      ;;
+    2)
+      echo "  LOCKOUT WARNING: the daemon is verified serving but registration"
+      echo "           could not be completed, so the stdio entry just written"
+      echo "           will be refused by the shared writer lock (MCP error"
+      echo "           -32001) in every session."
+      ;;
+  esac
 fi
 echo ""
 

@@ -163,10 +163,11 @@ the rest of its life, refusing every sibling session with MCP error
 `-32001` (*"Peer MCP writer active"*). Converting a machine to a single
 supervised MCP HTTP daemon that every CLI registers against —
 `task mempalace:switch-http` — removes that contention between sibling
-sessions by construction. **This conversion is opt-in and per-machine**:
-until it is run on a given machine, each session still spawns its own stdio
-server there, and a peer-writer refusal stays the expected case, not an
-already-solved one. See
+sessions by construction. Every CrewRig setup run defaults a machine to this
+arrangement: setup probes the daemon, installs and starts it, and registers
+the HTTP entry without a prompt (spec 0113 delta-02); `task
+mempalace:switch-http` remains the machine-wide all-or-nothing converger for
+machines set up before that change or where one CLI's setup failed. See
 [the runbook](docs/runbooks/mempalace-mcp-server.md) for the conversion
 command, daily operations, and the token-replacement procedure, and
 [ADR 0016](docs/adr/0016-shared-mempalace-mcp-http-server.md) for the
