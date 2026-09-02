@@ -27,7 +27,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MATRIX="${REPO_DIR}/docs/cli-matrix.md"
 DEFAULTS_TOML="${REPO_DIR}/tests/e2e/defaults.toml"
 
-SCENARIOS=(01-layered-context 02-cross-tool-memory 03-skill-build 04-harness-loop 05-copilot-model-routing)
+SCENARIOS=(01-layered-context 02-cross-tool-memory 03-skill-build 04-harness-loop 05-copilot-model-routing 06-agent-surface-consumption)
 
 # --- 0. Sources exist -------------------------------------------------------
 for f in "$MATRIX" "$DEFAULTS_TOML"; do

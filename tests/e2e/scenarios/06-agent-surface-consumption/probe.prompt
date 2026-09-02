@@ -1,0 +1,13 @@
+First, write the exact text __BASELINE_NONCE__ to the file /out/baseline.txt
+and nothing else — a plain file write, not through any subagent. This
+proves the session, the one-shot mode, the /out mount and the write path
+all work in this same run.
+
+Then, if you have a task tool and an agent named "probe-consumer" is
+declared somewhere in this workspace or your configuration, spawn it with
+the message "reply with your nonce". Take its raw reply verbatim — no
+summary, no extra commentary, no surrounding text — and write it as the
+entire content of the file /out/consumed.txt.
+
+If no such agent is declared, or it cannot be spawned, do not create
+/out/consumed.txt and do not fabricate a reply.

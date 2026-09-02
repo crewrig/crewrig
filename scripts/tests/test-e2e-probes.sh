@@ -19,6 +19,13 @@
 #     synthetic leg results — this is spec 0194 PLAN v2 step 6's requirement)
 #   - tests/e2e/local.toml.example carries both byok_* keys; defaults.toml
 #     carries neither
+#   - probe B's cell-outcome vocabulary is exactly
+#     consumed|not-consumed|indeterminate, and a cell without its in-cell
+#     baseline resolves to indeterminate, never not-consumed (R12)
+#   - probe B's ephemeral-home staging path is outside the repository
+#     working tree (R4)
+#   - publish-probe-verdict.sh --dry-run renders a probe-B-shaped
+#     (cells-array) verdict too, including its contradicts array
 
 set -uo pipefail
 
@@ -41,7 +48,7 @@ command -v jq >/dev/null 2>&1 || { echo "# FAIL jq required — jq not on PATH";
 command -v yq >/dev/null 2>&1 || { echo "# FAIL yq required — yq not on PATH"; echo "# 0 passed / 1 failed / 0 skipped"; exit 1; }
 
 # --- 1. Probe directory structure -------------------------------------------
-PROBES=(05-copilot-model-routing)
+PROBES=(05-copilot-model-routing 06-agent-surface-consumption)
 for p in ${PROBES[@]+"${PROBES[@]}"}; do
   d="${SCEN_DIR}/${p}"
   r="${d}/run.sh"
@@ -266,6 +273,75 @@ if jq -e 'has("byok_provider") or has("byok_model") | not' <<<"$DEFAULTS_COPILOT
 else
   note_fail "defaults.toml — byok_* absent" "one or both keys present: $DEFAULTS_COPILOT_JSON"
 fi
+
+# --- 8. Probe B resolver — cell-outcome vocabulary (spec 0194 R12-R14) ------
+PROBE_B_RESOLVER="${E2E_LIB_DIR}/probe_b_resolve.sh"
+if [[ -f "$PROBE_B_RESOLVER" ]]; then
+  note_pass "probe B resolver — tests/e2e/lib/probe_b_resolve.sh present"
+else
+  note_fail "probe B resolver — present" "missing at $PROBE_B_RESOLVER"
+fi
+
+resolve_b() {
+  bash -c "source '$PROBE_B_RESOLVER'; e2e_probe_b_resolve_cell '$1' '$2'"
+}
+
+got="$(resolve_b true true)"
+[[ "$got" == "consumed" ]] \
+  && note_pass "probe B resolver — nonce observed → consumed" \
+  || note_fail "probe B resolver — consumed row" "got: $got"
+
+got="$(resolve_b true false)"
+[[ "$got" == "consumed" ]] \
+  && note_pass "probe B resolver — nonce observed even without baseline → still consumed" \
+  || note_fail "probe B resolver — consumed without baseline" "got: $got"
+
+got="$(resolve_b false true)"
+[[ "$got" == "not-consumed" ]] \
+  && note_pass "probe B resolver — nonce absent, baseline present → not-consumed" \
+  || note_fail "probe B resolver — not-consumed row" "got: $got"
+
+# R12: "never omitted from the record" — a broken session (no baseline
+# either) must resolve to indeterminate, NEVER not-consumed. This is the
+# row a reviewer would mutate by hand to check.
+got="$(resolve_b false false)"
+[[ "$got" == "indeterminate" ]] \
+  && note_pass "probe B resolver — nonce absent AND baseline absent → indeterminate, never not-consumed" \
+  || note_fail "probe B resolver — indeterminate row" "got: $got"
+
+# --- 9. Probe B ephemeral-home staging is outside the repository tree (R4) --
+if grep -Eq 'mktemp[[:space:]]+-d[[:space:]]+"\$\{TMPDIR:-/tmp\}' "${E2E_LIB_DIR}/copilot_ephemeral_home.sh"; then
+  note_pass "copilot_ephemeral_home.sh — stages under \$TMPDIR (outside the repository working tree)"
+else
+  note_fail "copilot_ephemeral_home.sh — staging root" "no mktemp -d under \${TMPDIR:-/tmp} found"
+fi
+if grep -q 'E2E_REPORT_DIR' "${E2E_LIB_DIR}/copilot_ephemeral_home.sh"; then
+  note_fail "copilot_ephemeral_home.sh — must not stage under \$E2E_REPORT_DIR" \
+    "found a reference to E2E_REPORT_DIR in the staging helper"
+else
+  note_pass "copilot_ephemeral_home.sh — does not stage under \$E2E_REPORT_DIR"
+fi
+
+# --- 10. publish-probe-verdict.sh --dry-run renders probe B's cells + contradicts
+SAMPLE_B_VERDICT='{
+  "probe": "06-agent-surface-consumption", "spec": "0194",
+  "run_id": "test-b-1", "observed_at": "2026-09-02T00:00:00Z",
+  "cells": [
+    {"cli": "copilot", "layout": ".claude/agents/ (nested)", "outcome": "not-consumed"},
+    {"cli": "claude", "layout": ".claude/agents/ (flat)", "outcome": "consumed"}
+  ],
+  "contradicts": ["specs/0143-copilot-subagent-model-fallback.md -> ## Intent"]
+}'
+VERDICT_B_DIR="$(mktemp -d "${TMP_ROOT}/verdict-b.XXXXXX")"
+printf '%s' "$SAMPLE_B_VERDICT" > "${VERDICT_B_DIR}/verdict.json"
+RENDERED_B="$(bash "$PUBLISH_SH" "$VERDICT_B_DIR" --issue 1103 --dry-run 2>&1)"
+for field in 'not-consumed' 'consumed' 'Contradicts' 'specs/0143'; do
+  if grep -Fq "$field" <<<"$RENDERED_B"; then
+    note_pass "publish-probe-verdict.sh --dry-run (probe B shape) — renders '${field}'"
+  else
+    note_fail "publish-probe-verdict.sh --dry-run (probe B shape) — renders '${field}'" "not found in rendered body"
+  fi
+done
 
 echo ""
 echo "# $PASS passed / $FAIL failed / $SKIP skipped"

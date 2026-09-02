@@ -162,3 +162,11 @@ applies_to  = ["claude", "gemini", "copilot"]
 [scenarios.05-copilot-model-routing]
 description = "Differential probe for github/copilot-cli#4437 — does a model: hint in a repo agent declaration break BYOK subagent routing?"
 applies_to  = ["copilot"]
+
+# [scenarios.06-agent-surface-consumption] — probe B (spec 0194 R12-R15).
+# Determines, per CLI and per per-file layout, whether that CLI's agent
+# reader consumes a repository .claude/agents/ declaration. Grounds epic
+# #1100's compiled-layout seam. R12 "at least" — covers copilot and claude.
+[scenarios.06-agent-surface-consumption]
+description = "Per-CLI, per-layout determination of whether .claude/agents/ declarations are consumed (nested vs flat)."
+applies_to  = ["copilot", "claude"]

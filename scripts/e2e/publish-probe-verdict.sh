@@ -71,19 +71,38 @@ fi
 command -v jq >/dev/null 2>&1 || { printf 'ERROR: jq is required.\n' >&2; exit 1; }
 
 PROBE="$(jq -r '.probe' "$VERDICT_JSON")"
-VERDICT="$(jq -r '.verdict' "$VERDICT_JSON")"
 RUN_ID="$(jq -r '.run_id' "$VERDICT_JSON")"
 OBSERVED_AT="$(jq -r '.observed_at' "$VERDICT_JSON")"
-CLI="$(jq -r '.cli' "$VERDICT_JSON")"
-CLI_VERSION="$(jq -r '.cli_version' "$VERDICT_JSON")"
+
+# Two verdict shapes share this publisher (PLAN v2 step 30): probe A's
+# single top-level `verdict`/`cli`/`cli_version`, and probe B's per-cell
+# `cells` array (no single verdict). Render whichever is present.
+HAS_VERDICT="$(jq -r 'has("verdict")' "$VERDICT_JSON")"
+HAS_CELLS="$(jq -r 'has("cells")' "$VERDICT_JSON")"
 
 BODY_FILE="$(mktemp "${TMPDIR:-/tmp}/crewrig-probe-verdict-body.XXXXXX")"
 trap 'rm -f "$BODY_FILE"' EXIT
 
 {
   printf '## Probe verdict — `%s`\n\n' "$PROBE"
-  printf '**Verdict:** `%s`  \n' "$VERDICT"
-  printf '**CLI:** %s (%s)  \n' "$CLI" "$CLI_VERSION"
+  if [[ "$HAS_VERDICT" == "true" ]]; then
+    VERDICT="$(jq -r '.verdict' "$VERDICT_JSON")"
+    CLI="$(jq -r '.cli' "$VERDICT_JSON")"
+    CLI_VERSION="$(jq -r '.cli_version' "$VERDICT_JSON")"
+    printf '**Verdict:** `%s`  \n' "$VERDICT"
+    printf '**CLI:** %s (%s)  \n' "$CLI" "$CLI_VERSION"
+  fi
+  if [[ "$HAS_CELLS" == "true" ]]; then
+    printf '**Cells:**\n\n'
+    jq -r '.cells[] | "- \(.cli) / \(.layout): **\(.outcome)**"' "$VERDICT_JSON"
+    printf '\n'
+    n_contradicts="$(jq '(.contradicts // []) | length' "$VERDICT_JSON")"
+    if [[ "$n_contradicts" -gt 0 ]]; then
+      printf '**Contradicts:**\n\n'
+      jq -r '.contradicts[] | "- \(.)"' "$VERDICT_JSON"
+      printf '\n'
+    fi
+  fi
   printf '**Run:** `%s`, observed %s\n\n' "$RUN_ID" "$OBSERVED_AT"
   printf '<details><summary>verdict.json (verbatim)</summary>\n\n'
   printf '```json\n'
