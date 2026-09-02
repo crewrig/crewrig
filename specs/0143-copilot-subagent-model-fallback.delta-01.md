@@ -29,6 +29,11 @@ script, no compiled output and no continuous-integration guard is touched here,
 and requirement 7 below pins that the current, mapping-less tree keeps producing
 exactly what it produces today.
 
+**Surface, not file pattern.** Where the meaning is the output surface, the text
+below names the directory — `.claude/agents/` — rather than a file pattern
+within it. Copilot CLI reads that directory, so a later change to the per-file
+layout of the compiled outputs under it requires no delta of this delta.
+
 Requirement numbering continues the parent's sequence, which ends at
 requirement 5 — per the precedent of
 `specs/0112-spec-id-reservation.delta-01.md`.
@@ -51,27 +56,29 @@ do while none does.
    supported CLI, the compiled agent outputs SHALL carry no `model:` frontmatter
    field, and the checks of requirement 4 SHALL pass unchanged on the committed
    repository tree.
-3. **R8.** A specification that enables `model:` emission into
-   `.claude/agents/*/AGENT.md` SHALL first establish that Copilot CLI subagents
-   on BYOK/Ollama providers are not re-exposed to the silent routing failure of
-   `github/copilot-cli#4437`. Two paths are permitted: a condition on the Claude
-   Code output surface that withholds the emission while a Copilot CLI reader may
-   consume it, or evidence that the upstream defect is fixed. Absent either path,
-   emission into `.claude/agents/*/AGENT.md` SHALL remain prohibited. This
-   requirement constrains that surface alone.
+3. **R8.** A specification that enables `model:` emission into the
+   `.claude/agents/` output surface SHALL first establish that Copilot CLI
+   subagents on BYOK/Ollama providers are not re-exposed to the silent routing
+   failure of `github/copilot-cli#4437`. Two paths are permitted: a condition on
+   the Claude Code output surface that withholds the emission while a Copilot CLI
+   reader may consume it, or evidence that the upstream defect is fixed. Absent
+   either path, emission into that surface SHALL remain prohibited. This
+   requirement constrains the `.claude/agents/` surface alone, whatever per-file
+   layout the compiled outputs under it adopt.
 
 ### The shared-read hazard behind requirement 8
 
 Per the parent's own `## Intent`, Copilot CLI inspects `.claude/agents` — Claude
 Code's output surface, not its own. The consequence outlives the parent's
 prohibition: while `github/copilot-cli#4437` is unfixed, a `model:` field
-emitted into `.claude/agents/*/AGENT.md` is read by Copilot CLI and routes its
+emitted anywhere under `.claude/agents/` is read by Copilot CLI and routes its
 subagents to a model a BYOK/Ollama provider does not serve, silently, regardless
 of what `.github/agents/` carries. A per-CLI mapping is therefore not by itself
 sufficient protection: the Claude Code surface is shared, so a Claude-only
-mapping entry still reaches Copilot CLI. Requirement 8 exists so that the
-mapping spec family cannot enable emission into that surface without
-confronting the hazard first.
+mapping entry still reaches Copilot CLI. The hazard attaches to the directory
+Copilot CLI reads, not to any file name within it, which is why requirement 8
+names the surface. Requirement 8 exists so that the mapping spec family cannot
+enable emission into that surface without confronting the hazard first.
 
 ### Out of scope additions
 
@@ -97,7 +104,7 @@ And   the compiled output of every agent and CLI to which no resolution applies
 **Scenario:** emission into the Claude Code surface without the Copilot guard
 
 ```text
-Given a specification enables model: emission into .claude/agents/*/AGENT.md
+Given a specification enables model: emission into the .claude/agents/ surface
 And   it neither withholds that emission from a Copilot CLI reader nor carries
       evidence that github/copilot-cli#4437 is fixed
 When  that specification is reviewed
@@ -118,7 +125,7 @@ And   the specification is not approved
    - Replacement R1:
 
      > **R1.** `scripts/build-components.sh` SHALL NOT emit into a compiled
-     > `.claude/agents/*/AGENT.md` output file a `model:` frontmatter field whose
+     > agent output under `.claude/agents/` a `model:` frontmatter field whose
      > value originates anywhere other than a model-mapping resolution for Claude
      > Code. Where no such resolution applies to an agent, that agent's compiled
      > output SHALL carry no `model:` field at all.
@@ -157,7 +164,7 @@ And   the specification is not approved
    - Replacement R3:
 
      > **R3.** `scripts/build-components.sh` SHALL regenerate all committed
-     > `.claude/agents/*/AGENT.md` files in the repository tree so that each
+     > agent outputs under `.claude/agents/` in the repository tree so that each
      > carries exactly the `model:` field its applicable model-mapping resolution
      > directs, and no `model:` field where no resolution applies to it.
 
