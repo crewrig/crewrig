@@ -13,6 +13,15 @@
 #   "<verdict>|<reason-or-empty>" on stdout. Rows are tried in order; the
 #   first match wins, and the order IS the contract:
 #
+#   Provenance of the *_nonce_observed inputs (issue #1107 fix 1): as of
+#   spec 0194's hardening, these booleans are transcript-derived — the
+#   caller (tests/e2e/scenarios/05-copilot-model-routing/run.sh) computes
+#   them from tests/e2e/lib/probe_spawn_markers.sh's
+#   nonce_in_spawn_result, not from grepping leg.txt (which the
+#   orchestrating session can forge — see that module's header for the
+#   live reproduction). This function's contract, truth table and body are
+#   unchanged; only what the caller feeds it got harder to fake.
+#
 #   | control | efficacy | efficacy    | bearing | bearing | verdict         |
 #   | nonce   | nonce    | symptom     | nonce   | symptom |                 |
 #   |---------|----------|-------------|---------|---------|-----------------|

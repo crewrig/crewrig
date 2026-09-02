@@ -166,6 +166,16 @@ e2e_chown_bootstrap() {
 # whether to invoke a (cli, scenario) pair or emit a TAP `# SKIP unconfigured`
 # line. Echoes a one-line reason to stderr explaining which path matched.
 #
+# Side effect (issue #1107 fix 2, spec 0194 R9 record accuracy): sets the
+# global E2E_AUTH_READY_CREDENTIAL_PATH to a short symbolic label naming
+# the path that actually matched, before every successful `return 0` —
+# "" on a 78 return. The runner (tests/e2e/run.sh) reads this immediately
+# after calling e2e_auth_ready and exports it as E2E_CREDENTIAL_PATH for
+# scenario scripts to record in a verdict, so a probe's `credential_path`
+# field names the path that was actually selected rather than a hardcoded
+# guess (the bug: probe A's verdict recorded "COPILOT_GITHUB_TOKEN" even
+# on a run authenticated via the workstation credential).
+#
 # Decision tree:
 #   claude   → on-disk marker (~/.crewrig-e2e/claude/.credentials.json),
 #              else ANTHROPIC_API_KEY in the host shell.
@@ -189,14 +199,17 @@ e2e_auth_ready() {
   local cli="$1"
   local dir
   dir="$(e2e_cli_dir "$cli")"
+  E2E_AUTH_READY_CREDENTIAL_PATH=""
   case "$cli" in
     claude)
       if [[ -s "${dir}/.credentials.json" ]]; then
         e2e_info "[$cli] auth ready: on-disk marker ${dir}/.credentials.json"
+        E2E_AUTH_READY_CREDENTIAL_PATH="on-disk-credential"
         return 0
       fi
       if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
         e2e_info "[$cli] auth ready: ANTHROPIC_API_KEY set in host shell"
+        E2E_AUTH_READY_CREDENTIAL_PATH="ANTHROPIC_API_KEY"
         return 0
       fi
       e2e_info "[$cli] auth NOT ready: no marker file, no ANTHROPIC_API_KEY"
@@ -205,10 +218,12 @@ e2e_auth_ready() {
     gemini)
       if [[ -s "${dir}/oauth_creds.json" ]]; then
         e2e_info "[$cli] auth ready: on-disk marker ${dir}/oauth_creds.json"
+        E2E_AUTH_READY_CREDENTIAL_PATH="on-disk-credential"
         return 0
       fi
       if [[ -n "${GEMINI_API_KEY:-}" ]]; then
         e2e_info "[$cli] auth ready: GEMINI_API_KEY set in host shell"
+        E2E_AUTH_READY_CREDENTIAL_PATH="GEMINI_API_KEY"
         return 0
       fi
       e2e_info "[$cli] auth NOT ready: no marker file, no GEMINI_API_KEY"
@@ -217,10 +232,12 @@ e2e_auth_ready() {
     copilot)
       if [[ -n "${COPILOT_GITHUB_TOKEN:-}" ]]; then
         e2e_info "[$cli] auth ready: COPILOT_GITHUB_TOKEN set in host shell"
+        E2E_AUTH_READY_CREDENTIAL_PATH="COPILOT_GITHUB_TOKEN"
         return 0
       fi
       if [[ -n "${GH_TOKEN:-}" ]]; then
         e2e_info "[$cli] auth ready: GH_TOKEN set in host shell (fallback)"
+        E2E_AUTH_READY_CREDENTIAL_PATH="GH_TOKEN"
         return 0
       fi
       # Workstation credential passthrough (spec 0194 R1-R2): the persisted
@@ -231,6 +248,7 @@ e2e_auth_ready() {
       # unconfigured pair).
       if [[ -s "${dir}/config.json" ]]; then
         e2e_info "[$cli] auth ready: workstation credential ${dir}/config.json"
+        E2E_AUTH_READY_CREDENTIAL_PATH="workstation-credential"
         return 0
       fi
       # Ollama Cloud path (ADR 0002 Decision 8): no GitHub token needed when
@@ -238,6 +256,7 @@ e2e_auth_ready() {
       # credential. Accept if the keypair is present and non-empty.
       if [[ -s "$(e2e_cli_dir ollama)/id_ed25519" ]]; then
         e2e_info "[$cli] auth ready: Ollama Cloud keypair present ($(e2e_cli_dir ollama)/id_ed25519)"
+        E2E_AUTH_READY_CREDENTIAL_PATH="ollama-cloud-keypair"
         return 0
       fi
       e2e_info "[$cli] auth NOT ready: no credential found. Start 'copilot' and run '/login' (or \`task e2e:auth:copilot\` to copy the workstation credential into the bundle), or set COPILOT_GITHUB_TOKEN / GH_TOKEN."

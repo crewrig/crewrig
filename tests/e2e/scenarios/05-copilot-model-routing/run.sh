@@ -25,6 +25,15 @@
 # The verdict is resolved by tests/e2e/lib/probe_a_resolve.sh (sourced
 # below) — see that file for the full truth table and finding v2-F1.
 # Verdict vocabulary: BUG-PRESENT | BUG-ABSENT | INDETERMINATE (spec 0194 R9).
+#
+# Per-leg nonce credit is derived from the CLI-generated spawn-result
+# markers in the leg's own transcript (tests/e2e/lib/probe_spawn_markers.sh),
+# not from leg.txt — issue #1107 fix 1: live run 20260902T132406Z-088f
+# proved leg.txt orchestrator-writable and forgeable (the orchestrating
+# session read the nonce out of the agent declaration and wrote it there
+# itself, on legs whose own spawn markers read "Agent completed but
+# produced no response."). leg.txt is retained in the verdict as
+# corroboration only.
 
 set -euo pipefail
 
@@ -44,6 +53,17 @@ source "${E2E_LIB_DIR}/copilot_ephemeral_home.sh"
 source "${E2E_LIB_DIR}/mask_command.sh"
 # shellcheck source=../../lib/probe_a_resolve.sh
 source "${E2E_LIB_DIR}/probe_a_resolve.sh"
+# shellcheck source=../../lib/probe_spawn_markers.sh
+source "${E2E_LIB_DIR}/probe_spawn_markers.sh"
+
+# Credential path actually selected by e2e_auth_ready (scripts/e2e/lib/
+# auth-common.sh) — exported by the runner (spec 0194 R9 record accuracy;
+# issue #1107 fix 2). Optional, not required: a direct-invocation caller
+# (e.g. the hermetic skip-path tests) that bypasses the runner's auth gate
+# has no such decision to report — "unknown" is honest there, unlike the
+# previously hardcoded "COPILOT_GITHUB_TOKEN" literal, which recorded a
+# path even when a different one had actually authenticated the run.
+E2E_CREDENTIAL_PATH="${E2E_CREDENTIAL_PATH:-unknown}"
 
 SCENARIO_TAP="${E2E_REPORT_DIR}/scenario.tap"
 
@@ -103,8 +123,11 @@ SYMPTOM_RE='Agent completed but produced no response\.|not found on provider|HTT
 mkdir -p "${E2E_REPORT_DIR}/out"
 
 # run_leg <leg-name> <template-file>
-# Returns via globals: LEG_NONCE_OBSERVED (true|false), LEG_SYMPTOM_MATCHED
-# (true|false), LEG_EVIDENCE (truncated stdout+stderr sample).
+# Returns via globals: LEG_NONCE_OBSERVED (true|false — the primary,
+# spawn-marker-derived observable; issue #1107 fix 1), LEG_SPAWN_OBSERVED,
+# LEG_SUBAGENT_RESPONDED, LEG_SPAWN_MODEL, LEG_LEGTXT_NONCE_OBSERVED
+# (corroboration only — see below), LEG_SYMPTOM_MATCHED (true|false),
+# LEG_EVIDENCE (truncated stdout+stderr sample).
 run_leg() {
   local leg="$1" template="$2"
   local nonce fixture_dir host_out container_name
@@ -157,11 +180,23 @@ run_leg() {
     cp "${host_out}/stdout" "$answer_file" 2>/dev/null || true
   fi
 
+  # Corroboration-only (issue #1107 fix 1): leg.txt is orchestrator-
+  # writable and forgeable — live run 20260902T132406Z-088f proved the
+  # orchestrating session reads the nonce straight out of the agent
+  # declaration and writes it here itself after its own spawn produced no
+  # response. Recorded in the verdict for transparency; never fed to the
+  # resolver.
   if grep -Fq "$nonce" "$answer_file" 2>/dev/null; then
-    LEG_NONCE_OBSERVED=true
+    LEG_LEGTXT_NONCE_OBSERVED=true
   else
-    LEG_NONCE_OBSERVED=false
+    LEG_LEGTXT_NONCE_OBSERVED=false
   fi
+
+  # Primary observable: the CLI-generated spawn-result markers in the
+  # transcript (tests/e2e/lib/probe_spawn_markers.sh) — the orchestrating
+  # session does not control these.
+  IFS='|' read -r LEG_SPAWN_OBSERVED LEG_SUBAGENT_RESPONDED LEG_NONCE_OBSERVED LEG_SPAWN_MODEL \
+    <<<"$(e2e_probe_spawn_signals "${host_out}/stdout" "Probe-router" "$nonce")"
 
   local combined
   combined="$(cat "${host_out}/stdout" "${host_out}/stderr" 2>/dev/null || true)"
@@ -177,12 +212,15 @@ run_leg() {
 
 run_leg control_no_hint  agent-control.md.tmpl
 CONTROL_OBSERVED="$LEG_NONCE_OBSERVED"; CONTROL_EVIDENCE="$LEG_EVIDENCE"
+CONTROL_SPAWN_OBSERVED="$LEG_SPAWN_OBSERVED"; CONTROL_SUBAGENT_RESPONDED="$LEG_SUBAGENT_RESPONDED"; CONTROL_LEGTXT_OBSERVED="$LEG_LEGTXT_NONCE_OBSERVED"
 
 run_leg hint_efficacy    agent-hint-efficacy.md.tmpl
 EFFICACY_OBSERVED="$LEG_NONCE_OBSERVED"; EFFICACY_SYMPTOM="$LEG_SYMPTOM_MATCHED"; EFFICACY_EVIDENCE="$LEG_EVIDENCE"
+EFFICACY_SPAWN_OBSERVED="$LEG_SPAWN_OBSERVED"; EFFICACY_SUBAGENT_RESPONDED="$LEG_SUBAGENT_RESPONDED"; EFFICACY_LEGTXT_OBSERVED="$LEG_LEGTXT_NONCE_OBSERVED"
 
 run_leg model_bearing    agent-model-bearing.md.tmpl
 BEARING_OBSERVED="$LEG_NONCE_OBSERVED"; BEARING_SYMPTOM="$LEG_SYMPTOM_MATCHED"; BEARING_EVIDENCE="$LEG_EVIDENCE"
+BEARING_SPAWN_OBSERVED="$LEG_SPAWN_OBSERVED"; BEARING_SUBAGENT_RESPONDED="$LEG_SUBAGENT_RESPONDED"; BEARING_LEGTXT_OBSERVED="$LEG_LEGTXT_NONCE_OBSERVED"
 
 # --------------------------------------------------------------------------
 # Row-1 failure path (PLAN v2 step 2, finding v2-F4): control nonce absent.
@@ -194,6 +232,9 @@ BEARING_OBSERVED="$LEG_NONCE_OBSERVED"; BEARING_SYMPTOM="$LEG_SYMPTOM_MATCHED"; 
 # --------------------------------------------------------------------------
 FALLBACK_OBSERVED=""
 FALLBACK_EVIDENCE=""
+FALLBACK_SPAWN_OBSERVED=""
+FALLBACK_SUBAGENT_RESPONDED=""
+FALLBACK_LEGTXT_OBSERVED=""
 if [[ "$CONTROL_OBSERVED" != "true" ]]; then
   fallback_nonce="crewrig-probe-$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
   fallback_decl_src="$(mktemp "${TMPDIR:-/tmp}/crewrig-e2e-probe-a-fallback.XXXXXX")"
@@ -240,11 +281,16 @@ if [[ "$CONTROL_OBSERVED" != "true" ]]; then
   fb_answer="${fb_host_out}/leg.txt"
   [[ -s "$fb_answer" ]] || cp "${fb_host_out}/stdout" "$fb_answer" 2>/dev/null || true
 
+  # Corroboration-only (issue #1107 fix 1) — see run_leg()'s header above.
   if grep -Fq "$fallback_nonce" "$fb_answer" 2>/dev/null; then
-    FALLBACK_OBSERVED=true
+    FALLBACK_LEGTXT_OBSERVED=true
   else
-    FALLBACK_OBSERVED=false
+    FALLBACK_LEGTXT_OBSERVED=false
   fi
+
+  IFS='|' read -r FALLBACK_SPAWN_OBSERVED FALLBACK_SUBAGENT_RESPONDED FALLBACK_OBSERVED _fallback_spawn_model \
+    <<<"$(e2e_probe_spawn_signals "${fb_host_out}/stdout" "Probe-router" "$fallback_nonce")"
+
   FALLBACK_EVIDENCE="$(cat "${fb_host_out}/stdout" "${fb_host_out}/stderr" 2>/dev/null | tr '\n' ' ' | head -c 300)"
 
   # Escalation note (PLAN v2 step 2 failure path) — written for a human/agent
@@ -296,20 +342,32 @@ jq -n \
   --arg declared_provider "$BYOK_PROVIDER" \
   --arg declared_model "$BYOK_MODEL" \
   --argjson effective_command "$MASKED_COMMAND_JSON" \
-  --arg credential_path "COPILOT_GITHUB_TOKEN" \
+  --arg credential_path "$E2E_CREDENTIAL_PATH" \
   --arg surface ".claude/agents/" \
   --arg layout "nested (.claude/agents/<n>/AGENT.md)" \
   --arg upstream_issue "github/copilot-cli#4437" \
   --arg control_nonce_observed "$CONTROL_OBSERVED" \
   --arg control_evidence "$CONTROL_EVIDENCE" \
+  --arg control_spawn_observed "$CONTROL_SPAWN_OBSERVED" \
+  --arg control_subagent_responded "$CONTROL_SUBAGENT_RESPONDED" \
+  --arg control_legtxt_observed "$CONTROL_LEGTXT_OBSERVED" \
   --arg efficacy_model "crewrig-probe-no-such-model" \
   --arg efficacy_nonce_observed "$EFFICACY_OBSERVED" \
   --arg efficacy_evidence "$EFFICACY_EVIDENCE" \
+  --arg efficacy_spawn_observed "$EFFICACY_SPAWN_OBSERVED" \
+  --arg efficacy_subagent_responded "$EFFICACY_SUBAGENT_RESPONDED" \
+  --arg efficacy_legtxt_observed "$EFFICACY_LEGTXT_OBSERVED" \
   --arg bearing_model "sonnet" \
   --arg bearing_nonce_observed "$BEARING_OBSERVED" \
   --arg bearing_evidence "$BEARING_EVIDENCE" \
+  --arg bearing_spawn_observed "$BEARING_SPAWN_OBSERVED" \
+  --arg bearing_subagent_responded "$BEARING_SUBAGENT_RESPONDED" \
+  --arg bearing_legtxt_observed "$BEARING_LEGTXT_OBSERVED" \
   --arg fallback_observed "$FALLBACK_OBSERVED" \
   --arg fallback_evidence "$FALLBACK_EVIDENCE" \
+  --arg fallback_spawn_observed "$FALLBACK_SPAWN_OBSERVED" \
+  --arg fallback_subagent_responded "$FALLBACK_SUBAGENT_RESPONDED" \
+  --arg fallback_legtxt_observed "$FALLBACK_LEGTXT_OBSERVED" \
   '{
     probe: $probe, spec: $spec,
     run_id: $run_id, observed_at: $observed_at,
@@ -320,11 +378,11 @@ jq -n \
     credential_path: $credential_path,
     surface: $surface, layout: $layout,
     legs: {
-      control_no_hint: {model_value: null, nonce_observed: ($control_nonce_observed == "true"), evidence: $control_evidence},
-      hint_efficacy: {model_value: $efficacy_model, nonce_observed: ($efficacy_nonce_observed == "true"), evidence: $efficacy_evidence},
-      model_bearing: {model_value: $bearing_model, nonce_observed: ($bearing_nonce_observed == "true"), evidence: $bearing_evidence}
+      control_no_hint: {model_value: null, nonce_observed: ($control_nonce_observed == "true"), evidence: $control_evidence, spawn_observed: ($control_spawn_observed == "true"), subagent_responded: ($control_subagent_responded == "true"), legtxt_nonce_observed: ($control_legtxt_observed == "true")},
+      hint_efficacy: {model_value: $efficacy_model, nonce_observed: ($efficacy_nonce_observed == "true"), evidence: $efficacy_evidence, spawn_observed: ($efficacy_spawn_observed == "true"), subagent_responded: ($efficacy_subagent_responded == "true"), legtxt_nonce_observed: ($efficacy_legtxt_observed == "true")},
+      model_bearing: {model_value: $bearing_model, nonce_observed: ($bearing_nonce_observed == "true"), evidence: $bearing_evidence, spawn_observed: ($bearing_spawn_observed == "true"), subagent_responded: ($bearing_subagent_responded == "true"), legtxt_nonce_observed: ($bearing_legtxt_observed == "true")}
     },
-    fallback_control: (if $fallback_observed == "" then null else {layout: "~/.copilot/agents/<n>.md", nonce_observed: ($fallback_observed == "true"), evidence: $fallback_evidence} end),
+    fallback_control: (if $fallback_observed == "" then null else {layout: "~/.copilot/agents/<n>.md", nonce_observed: ($fallback_observed == "true"), evidence: $fallback_evidence, spawn_observed: ($fallback_spawn_observed == "true"), subagent_responded: ($fallback_subagent_responded == "true"), legtxt_nonce_observed: ($fallback_legtxt_observed == "true")} end),
     upstream_issue: $upstream_issue
   }' > "${E2E_REPORT_DIR}/verdict.json"
 

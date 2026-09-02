@@ -15,8 +15,15 @@
 #   1. scripts/e2e/auth-ollama.sh must contain a docker `-v` flag binding
 #      a host path to /home/agent/.ollama (literal or `.${CLI}` form
 #      with CLI=ollama) inside the container.
-#   2. tests/e2e/local.toml.example must declare a `[cli.copilot].mounts`
-#      entry whose container path is /home/agent/.ollama.
+#   2. tests/e2e/local.toml.example must get the keypair to a writable
+#      ~/.ollama in the copilot scenario container, by EITHER of two
+#      admissible shapes: a direct `[cli.copilot].mounts` entry whose
+#      container path is /home/agent/.ollama (the original shape), OR the
+#      copy-into-writable pattern (issue #1107) — a mounts entry at a side
+#      path plus an in-container `command` step that copies it into
+#      ~/.ollama before launch (a direct :ro mount AT ~/.ollama breaks
+#      recent ollama clients, which write temp state there and fail with
+#      EROFS).
 #
 # Static-only: parses the script and the TOML; does not execute docker.
 
@@ -81,19 +88,35 @@ else
   if [[ -z "$JSON" ]]; then
     note_fail "local.toml.example parses as TOML" "yq parse error"
   else
-    # Any entry in [cli.copilot].mounts whose container path is
-    # /home/agent/.ollama satisfies the contract. Read-only (`:ro`)
-    # suffix is allowed but not required.
-    if jq -e '
+    # Shape (a) — the original direct mount: any [cli.copilot].mounts entry
+    # whose container path is /home/agent/.ollama. Read-only (`:ro`) suffix
+    # is allowed but not required.
+    DIRECT_MOUNT="$(jq -e '
           .cli.copilot.mounts // []
           | map(select(test("/home/agent/\\.ollama(:|$)")))
           | length > 0
-        ' <<< "$JSON" >/dev/null; then
-      note_pass "[cli.copilot].mounts — entry targeting /home/agent/.ollama present"
+        ' <<< "$JSON" 2>/dev/null)" || DIRECT_MOUNT="false"
+
+    # Shape (b) — copy-into-writable (issue #1107): a mounts entry at ANY
+    # container path (the read-only staging side path) whose in-container
+    # `command` copies into ~/.ollama before launch. Requires evidence of
+    # BOTH a mount and a copy step — a command mentioning ~/.ollama with no
+    # mount at all would not actually stage the keypair into the container.
+    HAS_ANY_MOUNT="$(jq -e '(.cli.copilot.mounts // []) | length > 0' <<< "$JSON" 2>/dev/null)" || HAS_ANY_MOUNT="false"
+    CMD_JSON="$(jq -c '.cli.copilot.command // []' <<< "$JSON")"
+    COPY_INTO_WRITABLE="false"
+    if [[ "$HAS_ANY_MOUNT" == "true" ]] \
+       && grep -q '~/.ollama' <<< "$CMD_JSON" \
+       && grep -Eq 'cp[[:space:]]' <<< "$CMD_JSON"; then
+      COPY_INTO_WRITABLE="true"
+    fi
+
+    if [[ "$DIRECT_MOUNT" == "true" || "$COPY_INTO_WRITABLE" == "true" ]]; then
+      note_pass "[cli.copilot] — keypair reaches a writable ~/.ollama in-container (direct mount or copy-into-writable, issue #114/#1107)"
     else
-      got="$(jq -c '.cli.copilot.mounts // []' <<< "$JSON")"
-      note_fail "[cli.copilot].mounts — entry targeting /home/agent/.ollama present" \
-        "no mount for .ollama found (issue #114). Current mounts=$got"
+      got_mounts="$(jq -c '.cli.copilot.mounts // []' <<< "$JSON")"
+      note_fail "[cli.copilot] — keypair reaches a writable ~/.ollama in-container" \
+        "neither a direct /home/agent/.ollama mount nor a copy-into-writable command found (issue #114/#1107). mounts=$got_mounts command=$CMD_JSON"
     fi
   fi
 fi
