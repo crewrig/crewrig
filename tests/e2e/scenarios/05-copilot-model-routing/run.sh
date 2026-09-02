@@ -92,7 +92,7 @@ probe_argv+=(-p)
 
 # `copilot --version` from the same image in the same run (never the
 # committed docker/e2e/.versions.lock, which drifts against `:latest`).
-COPILOT_VERSION="$(docker run --rm "$E2E_IMAGE" copilot --version 2>/dev/null || echo unknown)"
+COPILOT_VERSION="$(docker run --rm "$E2E_IMAGE" copilot --version 2>/dev/null | head -n1 || echo unknown)"
 
 # Symptom strings recorded at docs/cli-matrix.md:168.
 SYMPTOM_RE='Agent completed but produced no response\.|not found on provider|HTTP 404'
@@ -199,6 +199,11 @@ if [[ "$CONTROL_OBSERVED" != "true" ]]; then
   bundle_dir="${E2E_CREWRIG_E2E_HOME}/copilot"
   ephemeral_home="$(e2e_stage_copilot_ephemeral_home "$bundle_dir" "probe-router" "$fallback_decl_src")"
   rm -f "$fallback_decl_src"
+  # Cleanup MUST be registered here, in this shell — not inside the helper,
+  # which runs in the command-substitution subshell above and would delete
+  # the staging dir before docker ever mounts it (see the helper's header
+  # comment for the reproduction).
+  trap 'rm -rf "$ephemeral_home"' EXIT
 
   fb_host_out="${E2E_REPORT_DIR}/out/fallback_control"
   mkdir -p "$fb_host_out"

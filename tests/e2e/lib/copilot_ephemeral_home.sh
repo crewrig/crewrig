@@ -19,19 +19,29 @@
 # `~/.crewrig-e2e/copilot/agents/<name>.md` — a probe fixture corrupting a
 # persisted credential, which R4 forbids independently of any .gitignore
 # entry. The mechanism below never touches the real bundle: it stages a
-# throwaway COPY under `mktemp -d`, outside the repository working tree,
-# cleaned by an EXIT trap, and the caller substitutes that path for the
-# mount's host side.
+# throwaway COPY under `mktemp -d`, outside the repository working tree, and
+# the caller substitutes that path for the mount's host side.
 #
 # Contract:
 #   e2e_stage_copilot_ephemeral_home <bundle_dir> <agent_name> <decl_src>
 #     Copies <bundle_dir> (if it exists) into a fresh mktemp -d staging root,
 #     writes <decl_src> to <staging>/agents/<agent_name>.md (the flat
 #     per-file layout `~/.copilot/agents/<name>.md` — the only layout the
-#     public reference documents), tightens modes to 0700/0600, registers an
-#     EXIT trap to remove the staging root, and echoes the staging root path
-#     on stdout. Safe to call more than once per process: each call composes
-#     with any EXIT trap already registered rather than clobbering it.
+#     public reference documents), tightens modes to 0700/0600, and echoes
+#     the staging root path on stdout.
+#
+#     CALLER MUST REGISTER ITS OWN CLEANUP — this function does NOT set an
+#     EXIT trap itself. It is always invoked via command substitution
+#     (`staging="$(e2e_stage_copilot_ephemeral_home ...)"`), which runs in a
+#     SUBSHELL: a trap set inside that subshell fires the instant the
+#     subshell exits — i.e. immediately after this function returns, before
+#     the caller ever uses the path — deleting the staging directory before
+#     Docker can mount it (reproduced empirically: `docker run -v
+#     <now-absent-path>:...` then fails with "error while creating mount
+#     source path ... chown ... permission denied", the same daemon message
+#     step 15 documents for a genuinely-absent bind source). The caller
+#     registers `trap 'rm -rf "$staging"' EXIT` (or composes with its own
+#     existing trap) AFTER capturing the returned path.
 #
 #   e2e_copilot_home_mount_override <new_home> [<mode>]
 #     Echoes a single `-v` mount spec substituting <new_home> for the
@@ -47,13 +57,6 @@ e2e_stage_copilot_ephemeral_home() {
     printf 'e2e_stage_copilot_ephemeral_home: mktemp -d failed\n' >&2
     return 1
   }
-
-  # Compose with any EXIT trap already registered by the caller (e.g. its own
-  # report bookkeeping) rather than clobbering it.
-  local prior_trap
-  prior_trap="$(trap -p EXIT | sed -E "s/^trap -- '(.*)' EXIT\$/\\1/")"
-  # shellcheck disable=SC2064 # intentional: expand $staging now, not at trap time
-  trap "rm -rf '${staging}'; ${prior_trap}" EXIT
 
   if [[ -d "$bundle_dir" ]]; then
     cp -a "${bundle_dir}/." "${staging}/" 2>/dev/null || true
