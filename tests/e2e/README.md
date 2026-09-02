@@ -113,14 +113,16 @@ example routes Copilot through Ollama Cloud so local validation does not burn re
 
 ```toml
 [cli.copilot]
-command  = ["ollama", "launch", "copilot", "--model", "deepseek-v4-pro:cloud", "--"]
+command  = ["ollama", "launch", "copilot", "--model", "glm-5.3-flash:cloud", "--"]
 env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]
 ```
 
 With that override active, run `task e2e:auth:ollama` once first: it registers the test account's
-Ed25519 keypair under `~/.crewrig-e2e/ollama/` and bind-mounts it read-only into the copilot container
-— without it, `ollama launch` fails with an auth error. The runner writes the merged `effective.json`
-at the top of each run; inspect it under the report directory when debugging config resolution.
+Ed25519 keypair under `~/.crewrig-e2e/ollama/`. `local.toml.example`'s actual `[cli.copilot]` block
+mounts that keypair read-only at a side path and copies it into a writable `~/.ollama` in-container
+before launch (copy-into-writable — a direct `:ro` mount at `~/.ollama` breaks recent ollama clients,
+which write temp state there and fail with EROFS). The runner writes the merged `effective.json` at
+the top of each run; inspect it under the report directory when debugging config resolution.
 
 ## Adding a new scenario
 

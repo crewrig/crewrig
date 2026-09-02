@@ -11,13 +11,22 @@
 #
 # Common use case: route Copilot through Ollama Cloud for local validation
 # without spending real GitHub Copilot quota. The wrapper below:
-#   1. Starts `ollama serve` in the background with OLLAMA_MODELS redirected
-#      to /tmp/ so the :ro mount on ~/.ollama does not block writes.
-#   2. Reads the Ed25519 keypair directly from /home/agent/.ollama (mounted
-#      read-only) — the path Ollama reads keypairs from.
-#   3. Launches `ollama launch copilot --model deepseek-v4-pro:cloud` with
+#   1. Copies the Ed25519 keypair from the read-only credential mount
+#      (/run/ollama-creds) into a writable ~/.ollama, tightening modes to
+#      0700 (dirs) / 0600 (files) — the copy-into-writable pattern. A
+#      direct :ro mount AT ~/.ollama (the prior shape) breaks recent
+#      ollama clients, which write their own temp state under ~/.ollama
+#      and fail with EROFS against a read-only bind mount there (issue
+#      #1107).
+#   2. Starts `ollama serve` in the background with OLLAMA_MODELS redirected
+#      to /tmp/ so its own writes never depend on ~/.ollama being writable
+#      for anything beyond the keypair copied into it above.
+#   3. Launches `ollama launch copilot --model glm-5.3-flash:cloud` with
 #      --yes (skip confirmation) and --allow-all (permit file writes in
 #      non-interactive mode).
+#
+# The harness targets the LATEST ollama client — no version pin (maintainer
+# policy; see issue #1107).
 #
 # Prerequisites:
 #   task e2e:auth:ollama   — register the Ed25519 keypair once
@@ -25,18 +34,18 @@
 
 # When this override is active, run `task e2e:auth:ollama` once to register
 # the dedicated test account's Ed25519 keypair under
-# ${CREWRIG_E2E_HOME}/ollama/. The mount at /home/agent/.ollama keeps the
-# source read-only; ollama serve reads the keypair directly from there
-# (OLLAMA_MODELS=/tmp/ollama-models redirects writes off the :ro mount).
+# ${CREWRIG_E2E_HOME}/ollama/. The mount at /run/ollama-creds keeps the
+# source read-only; the in-container setup step below copies it into a
+# writable ~/.ollama before ollama serve/launch run — see point 1 above.
 [cli.copilot]
-command       = ["bash", "-c", "OLLAMA_MODELS=/tmp/ollama-models ollama serve >/dev/null 2>&1 & sleep 3 && exec ollama launch copilot --model deepseek-v4-pro:cloud --yes -- --allow-all \"$@\"", "sh"]
-mounts        = ["${CREWRIG_E2E_HOME}/ollama:/home/agent/.ollama:ro"]
+command       = ["bash", "-c", "mkdir -p ~/.ollama && cp -r /run/ollama-creds/. ~/.ollama/ && find ~/.ollama -type f -exec chmod 600 {} + && find ~/.ollama -type d -exec chmod 700 {} + && (OLLAMA_MODELS=/tmp/ollama-models ollama serve >/dev/null 2>&1 &) && sleep 3 && exec ollama launch copilot --model glm-5.3-flash:cloud --yes -- --allow-all \"$@\"", "sh"]
+mounts        = ["${CREWRIG_E2E_HOME}/ollama:/run/ollama-creds:ro"]
 env_keys      = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]
 # Declarative label for probe A (05-copilot-model-routing, spec 0194 R8-R11) —
 # the scenario backs this against the effective `command` above before
 # trusting it (a declared-but-unbacked pair exits 78 naming the mismatch).
 byok_provider = "ollama-cloud"
-byok_model    = "deepseek-v4-pro:cloud"
+byok_model    = "glm-5.3-flash:cloud"
 
 # Re-use the OAuth token minted by `task e2e:auth:claude` instead of
 # `ANTHROPIC_JUDGE_API_KEY`. The claude-code driver reads the access
