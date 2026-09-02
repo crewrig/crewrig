@@ -120,6 +120,45 @@ else
 fi
 rm -rf "$TMP_HOME/.crewrig-e2e/claude"
 
+# --- Case 9: workstation credential — copilot config.json alone (spec 0194 R1-R2) ---
+mkdir -p "$TMP_HOME/.crewrig-e2e/copilot"
+echo '{"placeholder":"x"}' > "$TMP_HOME/.crewrig-e2e/copilot/config.json"
+run_auth_ready copilot
+rc=$?
+if [[ $rc -eq 0 ]]; then
+  note_pass "workstation credential (config.json) alone → copilot returns 0"
+else
+  note_fail "workstation credential → copilot=0" "got rc=$rc"
+fi
+
+# --- Case 10: config.json + COPILOT_GITHUB_TOKEN — token wins precedence (D2) ---
+err10="$(run_auth_ready_stderr copilot COPILOT_GITHUB_TOKEN=primary)"
+rc=$?
+if [[ $rc -eq 0 ]] && grep -q "COPILOT_GITHUB_TOKEN" <<< "$err10" && ! grep -q "config.json" <<< "$err10"; then
+  note_pass "config.json + COPILOT_GITHUB_TOKEN → ready, message names the env var not the marker"
+else
+  note_fail "config.json + COPILOT_GITHUB_TOKEN precedence" "rc=$rc stderr: $err10"
+fi
+
+# --- Case 11: an EMPTY config.json is NOT a credential (-s, not -f) -------
+: > "$TMP_HOME/.crewrig-e2e/copilot/config.json"
+run_auth_ready copilot
+rc=$?
+if [[ $rc -eq 78 ]]; then
+  note_pass "empty config.json → copilot returns 78 (not ready)"
+else
+  note_fail "empty config.json → copilot=78" "got rc=$rc"
+fi
+rm -rf "$TMP_HOME/.crewrig-e2e/copilot"
+
+# --- Case 12: not-ready diagnostic names a command, not only a variable ---
+err12="$(run_auth_ready_stderr copilot)"
+if grep -qiE "copilot|task e2e:auth:copilot" <<< "$err12"; then
+  note_pass "copilot not-ready diagnostic names a command"
+else
+  note_fail "copilot not-ready diagnostic names a command" "stderr: $err12"
+fi
+
 # --- Case 8: unknown CLI → non-zero with clear error ---------------------
 # e2e_auth_ready calls e2e_die for unknown CLI → exit 1.
 err8="$(run_auth_ready_stderr nonesuch)"

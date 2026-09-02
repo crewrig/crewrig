@@ -70,11 +70,12 @@ fi
 # Unlike claude/gemini, copilot does NOT call e2e_chown_bootstrap (no
 # interactive container), but this script still persists config.json (which
 # carries the GitHub Copilot auth token) and instruction files under $DIR.
-# Assert the 0700/0600 invariant explicitly so a permissive umask on the host
-# cannot leave the bundle world-readable.
-chmod 700 "$DIR"
-find "$DIR" -type d -exec chmod 700 {} +
-find "$DIR" -type f -exec chmod 600 {} +
+# e2e_assert_bundle_modes (spec 0194 R5) is the shared, idempotent
+# implementation of this invariant so a permissive umask on the host cannot
+# leave the bundle world-readable — and, per R5's second sentence, the same
+# helper is what the runner re-asserts after a scenario writes into the
+# bundle (tests/e2e/run.sh), not only here at credential-establishment time.
+e2e_assert_bundle_modes "$CLI"
 
 cat >&2 <<'BANNER'
 ================================================================================

@@ -45,7 +45,8 @@ rm -f /tmp/auth-common-source.err
 
 # --- 3. Declared helpers exist as functions ----------------------------------
 HELPERS=(e2e_die e2e_skip e2e_info e2e_require_docker e2e_require_image \
-         e2e_e2e_home e2e_cli_dir e2e_chown_bootstrap)
+         e2e_e2e_home e2e_cli_dir e2e_chown_bootstrap \
+         e2e_ensure_bundle_dir e2e_assert_bundle_modes)
 for fn in ${HELPERS[@]+"${HELPERS[@]}"}; do
   if bash -c "set -euo pipefail; source '$LIB'; declare -F '$fn' >/dev/null"; then
     note_pass "helper '$fn' — declared as function"
@@ -161,6 +162,61 @@ else
 fi
 
 rm -rf "$tmp_home" "$poison_bin"
+
+# --- 8. e2e_ensure_bundle_dir — absent path, then idempotence (spec 0194 step 14) ---
+tmp_home2="$(mktemp -d)"
+got_mode() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
+
+CREWRIG_E2E_HOME="$tmp_home2" bash -c "source '$LIB'; e2e_ensure_bundle_dir claude"
+rc=$?
+root_mode="$(got_mode "$tmp_home2/.crewrig-e2e")"
+dir_mode="$(got_mode "$tmp_home2/.crewrig-e2e/claude")"
+if [[ "$rc" -eq 0 && "$root_mode" == "700" && "$dir_mode" == "700" ]]; then
+  note_pass "e2e_ensure_bundle_dir — creates absent root + per-CLI dir at 0700"
+else
+  note_fail "e2e_ensure_bundle_dir — absent path" "rc=$rc root_mode=$root_mode dir_mode=$dir_mode"
+fi
+
+# Idempotence — a second call on the same (now-present) path is a no-op success.
+CREWRIG_E2E_HOME="$tmp_home2" bash -c "source '$LIB'; e2e_ensure_bundle_dir claude"
+rc=$?
+if [[ "$rc" -eq 0 ]]; then
+  note_pass "e2e_ensure_bundle_dir — idempotent on a second call"
+else
+  note_fail "e2e_ensure_bundle_dir — idempotent" "got rc=$rc"
+fi
+rm -rf "$tmp_home2"
+
+# --- 9. e2e_assert_bundle_modes — fixture tree seeded loose, corrected after ---
+tmp_home3="$(mktemp -d)"
+bundle_dir3="${tmp_home3}/.crewrig-e2e/claude"
+mkdir -p "${bundle_dir3}/sub"
+touch "${bundle_dir3}/a.json" "${bundle_dir3}/sub/b.json"
+chmod 755 "$bundle_dir3" "${bundle_dir3}/sub"
+chmod 644 "${bundle_dir3}/a.json" "${bundle_dir3}/sub/b.json"
+
+CREWRIG_E2E_HOME="$tmp_home3" bash -c "source '$LIB'; e2e_assert_bundle_modes claude"
+rc=$?
+if [[ "$rc" -eq 0 ]]; then
+  note_pass "e2e_assert_bundle_modes — returns 0 on a correctable fixture"
+else
+  note_fail "e2e_assert_bundle_modes — correctable fixture" "got rc=$rc"
+fi
+
+all_ok=true
+for p in "$bundle_dir3" "${bundle_dir3}/sub"; do
+  [[ "$(got_mode "$p")" == "700" ]] || all_ok=false
+done
+for p in "${bundle_dir3}/a.json" "${bundle_dir3}/sub/b.json"; do
+  [[ "$(got_mode "$p")" == "600" ]] || all_ok=false
+done
+if [[ "$all_ok" == "true" ]]; then
+  note_pass "e2e_assert_bundle_modes — 0755/0644 fixture corrected to 0700/0600"
+else
+  note_fail "e2e_assert_bundle_modes — correction" \
+    "dir=$(got_mode "$bundle_dir3") sub=$(got_mode "${bundle_dir3}/sub") a=$(got_mode "${bundle_dir3}/a.json") b=$(got_mode "${bundle_dir3}/sub/b.json")"
+fi
+rm -rf "$tmp_home3"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed, $SKIP skipped"

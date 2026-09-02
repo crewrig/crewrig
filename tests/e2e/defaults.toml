@@ -89,13 +89,24 @@ mounts       = [
 env_keys     = ["GEMINI_API_KEY"]
 
 [cli.copilot]
-# Copilot uses the env-var auth path (ADR 0002 Decision 4); no on-disk creds,
-# so `mounts` is intentionally empty. COPILOT_GITHUB_TOKEN is the canonical
-# var; GH_TOKEN is honored as a fallback by e2e_auth_ready (see ADR 0002).
+# Copilot accepts either an env-var token (ADR 0002 Decision 4 —
+# COPILOT_GITHUB_TOKEN canonical, GH_TOKEN a fallback honored by
+# e2e_auth_ready) OR the workstation's own persisted credential (spec 0194
+# R1-R3): scripts/e2e/auth-copilot.sh already copies ~/.copilot/config.json
+# into the bundle, and the mount below is what makes that copy visible to
+# scenario containers. Mode is `rw` because Copilot writes session-state/
+# into its config dir at runtime (tests/e2e/scenarios/01-layered-context/
+# run.sh:102-103 records the same fact for the CLI's rules-dir mount) — the
+# residual (a container can corrupt or replace the copied config.json) is
+# accepted and stated in tests/e2e/README.md. The runner's
+# e2e_ensure_bundle_dir / e2e_assert_bundle_modes bracket keeps the host
+# path safe to mount and its modes correct (spec 0194 R5).
 image        = "crewrig/e2e-copilot:latest"
 command      = ["copilot"]
 command_args = []
-mounts       = []
+mounts       = [
+  "${CREWRIG_E2E_HOME}/copilot:/home/agent/.copilot:rw"
+]
 env_keys     = ["COPILOT_GITHUB_TOKEN"]
 
 # [judge] — LLM-as-judge wrapper config (see ADR 0004 Decision 4 and
