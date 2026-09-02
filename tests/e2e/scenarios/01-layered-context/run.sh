@@ -79,18 +79,29 @@ probe_argv=("${_cli_cmd[@]}" -p)
 PROBE_PROMPT="$(cat "${E2E_SCENARIO_DIR}/probe.prompt")"
 EXPECTED_RE="$(head -n1 "${E2E_SCENARIO_DIR}/expected.regex")"
 
-# Rules dir — written by the matching auth flow. Soft-skip if absent so
-# this scenario can run on a clean machine without false failures.
+# Rules dir — written by the matching auth flow. Soft-skip if absent OR
+# EMPTY so this scenario can run on a clean machine without false failures.
+#
+# v2-F2: non-emptiness, not mere existence. spec 0194 step 15 makes the
+# runner call e2e_ensure_bundle_dir before every case for every CLI — which
+# creates this exact directory, empty, on a machine that never ran
+# `task e2e:auth:<cli>`. A directory-existence guard would then mount an
+# empty rules dir and fail structurally instead of skipping — a regression
+# on this, the most-used scenario, for all three CLIs (checked: no other
+# scenario keys a skip on bundle-dir existence).
 rules_dir="${E2E_CREWRIG_E2E_HOME}/${E2E_CLI}"
-if [[ ! -d "$rules_dir" ]]; then
+if [[ ! -d "$rules_dir" || -z "$(ls -A "$rules_dir" 2>/dev/null)" ]]; then
   scenario_skip "no auth/rules dir at ${rules_dir} (run \`task e2e:auth:${E2E_CLI}\`)"
 fi
 
-# Container-side rules mount target.
+# Container-side rules mount target. Copilot is absent here on purpose: its
+# mount now comes from the effective per-CLI config ([cli.copilot].mounts,
+# tests/e2e/defaults.toml, spec 0194 step 16) rather than a hardcoded arm —
+# declaring it in both places risks the duplicate-mount-mode conflict
+# scripts/tests/test-e2e-scenarios-structure.sh's guard checks for.
 case "$E2E_CLI" in
   claude)  rules_mount_target="/home/agent/.claude" ;;
   gemini)  rules_mount_target="/home/agent/.gemini" ;;
-  copilot) rules_mount_target="/home/agent/.copilot" ;;
 esac
 
 # Host out-dir bound into the container at /out for the answer file.
@@ -98,13 +109,6 @@ host_out="${E2E_REPORT_DIR}/out"
 mkdir -p "$host_out"
 
 container_name="crewrig-e2e-01-${E2E_CLI}-${E2E_RUN_ID:-adhoc}"
-
-# Copilot writes session-state/ into its config dir at runtime; mount rw
-# so those writes succeed. Claude and Gemini do not need write access.
-case "$E2E_CLI" in
-  copilot) rules_mount_mode="rw" ;;
-  *)       rules_mount_mode="ro" ;;
-esac
 
 docker_argv=(
   docker run --rm --name "$container_name"
@@ -115,13 +119,14 @@ docker_argv=(
 # /home/agent/.gemini from /run/gemini-creds + /run/gemini-rules
 # in-container (issue #148 Decision 5 Revision 2). Adding a third bind-
 # mount at /home/agent/.gemini would collide with the bootstrap's
-# `cp -a /run/gemini-creds/. /home/agent/.gemini/` self-source.
+# `cp -a /run/gemini-creds/. /home/agent/.gemini/` self-source. Copilot has
+# no arm here either — see the mount-target case above.
 case "$E2E_CLI" in
-  claude|copilot)
-    docker_argv+=(-v "${rules_dir}:${rules_mount_target}:${rules_mount_mode}")
+  claude)
+    docker_argv+=(-v "${rules_dir}:${rules_mount_target}:ro")
     ;;
-  gemini)
-    : # No host-side rules mount — bootstrapped via defaults.toml. See above.
+  gemini|copilot)
+    : # No host-side rules mount here — see the comments above.
     ;;
 esac
 # Mounts from effective config (e.g. Ollama keypair dir from local.toml).

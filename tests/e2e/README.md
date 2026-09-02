@@ -36,8 +36,10 @@ Use per-image targets (`task e2e:build:claude`, etc.) when iterating on a single
 
 ### `~/.crewrig-e2e/` layout
 
-The auth scripts write credentials into a dedicated host directory the runner mounts read-only
-at scenario time:
+The auth scripts write credentials into a dedicated host directory. Mount mode at scenario time
+is **per-CLI, not universally read-only**: claude and gemini mount `:ro`; copilot mounts `:rw`
+because the CLI writes `session-state/` into its config dir at runtime — see *Authentication
+strategy* below for the residual risk that carries.
 
 ```text
 ~/.crewrig-e2e/
@@ -46,7 +48,8 @@ at scenario time:
 ├── gemini/     # mode 0700; full ~/.gemini bundle minus antigravity*, tmp/,
 │               #   *.bak|*.ori|*.orig. oauth_creds.json + settings.json are
 │               #   load-bearing; bundle holds a long-lived OAuth refresh token.
-└── copilot/    # empty by design — token lives in $COPILOT_GITHUB_TOKEN.
+└── copilot/    # config.json (workstation credential, spec 0194) +
+                #   instructions/ (layered-context rules). Mounted :rw.
 ```
 
 > ⚠️ **Treat `~/.crewrig-e2e/gemini/` like `~/.ssh/`.** Not encrypted at rest: `oauth_creds.json`
@@ -68,9 +71,12 @@ CLI's atomic writes (`projects.json`, etc.) never mutate the host bundle (issue 
 - **Gemini CLI** — interactive `gemini` inside `crewrig/e2e-gemini`. Pick **"Login with Google"**
   and `/quit` at the welcome prompt. Both `oauth_creds.json` and `settings.json` must land under
   `~/.crewrig-e2e/gemini/`. Headless override: `GEMINI_API_KEY` (or `GOOGLE_API_KEY` for Vertex).
-- **GitHub Copilot CLI** — env-var PAT path (no on-disk file). The script prints the PAT-creation URL,
-  recommended fine-grained scopes (resource owner = test account; Copilot = Read & write), the
-  `export COPILOT_GITHUB_TOKEN=…` line, and a **90-day** expiry reminder, then sanity-checks the token.
+- **GitHub Copilot CLI** — env-var PAT (`COPILOT_GITHUB_TOKEN`, `GH_TOKEN` fallback) or the
+  workstation's own already-authenticated `~/.copilot/config.json`, copied into the bundle. Prints
+  the PAT-creation URL, scopes, the `export COPILOT_GITHUB_TOKEN=…` line, and a **90-day** expiry
+  reminder, then sanity-checks whichever credential is present. **Linux precondition (unverified):**
+  the post-run mode re-assert is confirmed only on macOS Docker Desktop's uid remapping — a
+  differently-uid'd Linux host may see it fail loudly rather than silently.
 
 See [ADR 0002](../../docs/adr/0002-e2e-auth-flow.md) and `scripts/e2e/auth-{claude,gemini,copilot}.sh`.
 
@@ -118,30 +124,12 @@ at the top of each run; inspect it under the report directory when debugging con
 
 ## Adding a new scenario
 
-Each scenario is a host-side orchestrator that drives Docker itself. See
-[`scenarios/README.md`](scenarios/README.md) for the full contract; the short version:
-
-1. Create `scenarios/<name>/` with an executable `run.sh` (copy an existing scenario as a
-   template) plus any fixtures.
-2. Source the assertion helpers via the runner-exported `E2E_LIB_DIR`:
-
-   ```bash
-   set -euo pipefail
-   : "${E2E_LIB_DIR:?runner must export E2E_LIB_DIR}"
-   source "${E2E_LIB_DIR}/assert.sh"
-   source "${E2E_LIB_DIR}/structural.sh"
-   source "${E2E_LIB_DIR}/llm_judge.sh"
-   ```
-
-3. Emit a TAP subtest plan to `${E2E_REPORT_DIR}/scenario.tap`. Exit codes: `0` → ok, `78` → skip
-   (with a stdout diagnostic), anything else → not ok.
-4. Add a `[scenarios.<name>]` table to `defaults.toml` (`description`, `applies_to`).
-5. Add one row per CLI × scenario to `docs/cli-matrix.md`.
-
-Discovery is by file presence plus the TOML table — no runner change needed. The full env-var contract
-(`E2E_LIB_DIR`, `E2E_REPORT_DIR`, `E2E_CLI`, `E2E_IMAGE`, `E2E_EFFECTIVE_JSON`, `E2E_CREWRIG_E2E_HOME`,
-`E2E_SCENARIO_DIR`, `E2E_RUN_ID`) is documented in [`scenarios/README.md`](scenarios/README.md); the
-assertion API reference lives in [`lib/README.md`](lib/README.md).
+Each scenario is a host-side orchestrator that drives Docker itself — the registration steps and
+the env-var contract (`E2E_LIB_DIR`, `E2E_REPORT_DIR`, `E2E_CLI`, `E2E_IMAGE`, `E2E_EFFECTIVE_JSON`,
+`E2E_CREWRIG_E2E_HOME`, `E2E_SCENARIO_DIR`, `E2E_RUN_ID`) are in
+[`scenarios/README.md`](scenarios/README.md); the assertion API reference is in
+[`lib/README.md`](lib/README.md). Discovery is by file presence plus the TOML table — no runner
+change needed.
 
 ## Authentication strategy
 
@@ -150,9 +138,10 @@ properties follow:
 
 - **Isolation from personal CLI state.** Credentials live under `~/.crewrig-e2e/<cli>/`, never in
   `~/.claude`, `~/.gemini`, or `~/.copilot`; personal transcript history and quota stay clean.
-- **Read-only volume mounts at scenario time.** Once authenticated, the runner bind-mounts each per-CLI
-  dir with `:ro`; a deliberate write inside the container must fail with "Read-only file system" — one
-  of the shipped assertions.
+- **Read-only where the CLI allows it, read-write where it must write.** Claude and Gemini mount
+  `:ro` (a deliberate write must fail with "Read-only file system" — a shipped assertion). Copilot
+  mounts `:rw` (it writes `session-state/` at runtime), so a container can corrupt the copied
+  `config.json` — a residual risk `e2e_assert_bundle_modes` keeps in check, not eliminates.
 - **No API keys on disk.** `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GH_TOKEN`, `COPILOT_GITHUB_TOKEN`,
   `ANTHROPIC_JUDGE_API_KEY`, and the Ollama Cloud token are read from the host shell and passed via
   `docker run -e <NAME>` — NEVER written under `~/.crewrig-e2e/` (the auth scripts refuse key material).

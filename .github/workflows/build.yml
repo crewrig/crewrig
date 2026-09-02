@@ -527,6 +527,8 @@ jobs:
             e2e:
               - 'scripts/tests/test-e2e-*.sh'
               - 'tests/e2e/**'
+              - 'scripts/e2e/**'
+              - 'docs/cli-matrix.md'
       - name: Install yq
         if: steps.filter.outputs.e2e == 'true'
         run: |
@@ -572,6 +574,9 @@ jobs:
       - name: Test E2E Llm Judge Lib
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
         run: bash scripts/tests/test-e2e-llm-judge-lib.sh
+      - name: Test E2E Probes
+        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/tests/test-e2e-probes.sh
       - name: Test E2E Readme
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
         run: bash scripts/tests/test-e2e-readme.sh

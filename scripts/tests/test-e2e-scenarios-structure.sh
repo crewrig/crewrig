@@ -30,7 +30,7 @@ SCEN_DIR="${REPO_DIR}/tests/e2e/scenarios"
 DEFAULTS_TOML="${REPO_DIR}/tests/e2e/defaults.toml"
 README="${SCEN_DIR}/README.md"
 
-SCENARIOS=(01-layered-context 02-cross-tool-memory 03-skill-build 04-harness-loop)
+SCENARIOS=(01-layered-context 02-cross-tool-memory 03-skill-build 04-harness-loop 05-copilot-model-routing 06-agent-surface-consumption)
 
 # --- 1. Each scenario dir + run.sh present and executable --------------------
 for s in ${SCENARIOS[@]+"${SCENARIOS[@]}"}; do
@@ -92,6 +92,69 @@ else
                 "no '[scenarios.${s}]' header found"
     fi
   done
+fi
+
+# --- 6. Duplicate-mount guard (PLAN v2 step 19) -----------------------------
+# A scenario that consumes a CLI's effective `.mounts` array (the
+# expand_mount loop) must not ALSO hardcode a `-v` targeting the same
+# container path unless the resolved mount string is byte-identical to the
+# declared one — a mismatch is fatal (measured in PLAN v2 step 17: same
+# target, different source or mode -> docker exit 125 "Duplicate mount
+# point"). This is the mutation-resistant form of that measurement: it
+# would have caught 01-layered-context's now-removed copilot arm colliding
+# with defaults.toml's [cli.copilot].mounts (spec 0194 step 16).
+#
+# One documented exception: 01-layered-context/claude's hardcoded
+# `${rules_dir}:${rules_mount_target}:ro` composition IS byte-identical to
+# defaults.toml's own [cli.claude].mounts[0] (both expand
+# `${CREWRIG_E2E_HOME}/claude` the same way) — tolerated, not hidden.
+#
+# A scenario that sources tests/e2e/lib/copilot_ephemeral_home.sh
+# implements its own reviewed substitution mechanism for the copilot target
+# (v2-F4: never mount the real bundle rw for a probe fixture) rather than a
+# hardcoded duplicate, so it is exempted from the copilot check here.
+if [[ -f "$DEFAULTS_TOML" ]] && command -v yq >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+  DEFAULTS_JSON="$(yq -p=toml -o=json '.' "$DEFAULTS_TOML" 2>/dev/null)"
+  KNOWN_BYTE_IDENTICAL_DUPLICATES=("01-layered-context:claude:/home/agent/.claude")
+
+  for s in ${SCENARIOS[@]+"${SCENARIOS[@]}"}; do
+    r="${SCEN_DIR}/${s}/run.sh"
+    [[ -f "$r" ]] || continue
+    grep -Fq 'expand_mount' "$r" || continue
+
+    uses_ephemeral_home=false
+    grep -Fq 'copilot_ephemeral_home.sh' "$r" && uses_ephemeral_home=true
+
+    for cli in claude gemini copilot; do
+      if [[ "$cli" == "copilot" && "$uses_ephemeral_home" == "true" ]]; then
+        note_pass "scenario '$s' — [cli.copilot] target handled by the reviewed ephemeral-home substitution (v2-F4), not a hardcoded duplicate"
+        continue
+      fi
+      declared_targets=()
+      while IFS= read -r line || [ -n "$line" ]; do
+        declared_targets+=("$line")
+      done < <(jq -r --arg c "$cli" '.cli[$c].mounts // [] | .[] | split(":")[1] // empty' <<<"$DEFAULTS_JSON")
+      for target in ${declared_targets[@]+"${declared_targets[@]}"}; do
+        [[ -z "$target" ]] && continue
+        hits="$(grep -Fv 'expand_mount' "$r" | grep -v '^[[:space:]]*#' | grep -Fc -- "$target" || true)"
+        if [[ "$hits" -gt 0 ]]; then
+          exception_key="${s}:${cli}:${target}"
+          allowed=false
+          for k in ${KNOWN_BYTE_IDENTICAL_DUPLICATES[@]+"${KNOWN_BYTE_IDENTICAL_DUPLICATES[@]}"}; do
+            [[ "$k" == "$exception_key" ]] && allowed=true && break
+          done
+          if [[ "$allowed" == "true" ]]; then
+            note_pass "scenario '$s' — hardcoded '$target' for [cli.$cli] is the documented byte-identical duplicate"
+          else
+            note_fail "scenario '$s' — no undocumented duplicate mount to [cli.$cli] target '$target'" \
+              "target also declared in defaults.toml [cli.$cli].mounts and is not a documented byte-identical exception — verify the resolved mount string matches exactly, or remove the hardcoded arm (regression class: PLAN v2 step 17)"
+          fi
+        fi
+      done
+    done
+  done
+else
+  note_skip "duplicate-mount guard" "yq/jq/defaults.toml unavailable"
 fi
 
 echo ""

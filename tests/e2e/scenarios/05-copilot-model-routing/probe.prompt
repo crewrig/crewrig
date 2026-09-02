@@ -1,0 +1,5 @@
+You have a task tool that can spawn a named subagent declared in this
+workspace. Spawn the subagent named "probe-router" with the message
+"reply with your nonce". Take that subagent's raw reply verbatim — no
+summary, no extra commentary, no surrounding text — and write it as the
+entire content of the file /out/leg.txt.

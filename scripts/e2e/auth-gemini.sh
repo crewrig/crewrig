@@ -65,9 +65,9 @@ find "$DIR" -maxdepth 2 -type f \( -name '*.bak' -o -name '*.ori' -o -name '*.or
 # Normalize modes inside $DIR (Med-2 from the #148 security review). The
 # 0600 invariant on oauth_creds.json was previously implicit on whatever
 # the Gemini CLI happened to write; assert it. Belt-and-braces against a
-# future CLI release loosening file modes.
-find "$DIR" -type d -exec chmod 700 {} +
-find "$DIR" -type f -exec chmod 600 {} +
+# future CLI release loosening file modes. e2e_assert_bundle_modes (spec
+# 0194 R5) is the shared, idempotent implementation of this triple.
+e2e_assert_bundle_modes "$CLI"
 
 # Post-flight: oauth_creds.json is the load-bearing file; settings.json holds
 # the selected auth type and is written on first menu choice. Both must be

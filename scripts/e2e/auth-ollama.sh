@@ -49,10 +49,9 @@ docker run --rm -it \
 # immediately after the container exits — BEFORE the post-flight checks —
 # minimizes shared-dev-box exposure of the private key. Normalize file modes
 # too (Med-2 from #148) so id_ed25519 gets 0600 even if `ollama signin`
-# happens to write it with looser perms.
-chmod 700 "$DIR"
-find "$DIR" -type d -exec chmod 700 {} +
-find "$DIR" -type f -exec chmod 600 {} +
+# happens to write it with looser perms. e2e_assert_bundle_modes (spec 0194
+# R5) is the shared, idempotent implementation of this triple.
+e2e_assert_bundle_modes "$CLI"
 
 # Post-flight: id_ed25519 is the load-bearing private key; id_ed25519.pub
 # is its public counterpart registered with ollama.com.

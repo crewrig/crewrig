@@ -4,8 +4,8 @@
 # Locks ADR 0003's v1 contract for the runner:
 #   - --dry-run never spawns containers
 #   - report dir <ts>-<rand> is created with effective.json
-#   - TAP 13 header + a `1..11` plan line — defaults.toml defines 4 scenarios
-#     which expand to 11 (scenario,cli) pairs; every pair dry-run-SKIPs, so the
+#   - TAP 13 header + a `1..14` plan line — defaults.toml defines 6 scenarios
+#     which expand to 14 (scenario,cli) pairs; every pair dry-run-SKIPs, so the
 #     plan line and exit 0 hold whether or not CLI auth is configured
 #   - --keep N prunes older report dirs
 #   - --cli <invalid> and unknown flag fail with usage hint
@@ -111,10 +111,10 @@ if grep -q '^TAP version 13$' <<< "$out1"; then
 else
   note_fail "TAP version 13 header" "stdout: $(echo "$out1" | head -3 | tr '\n' '|')"
 fi
-if grep -q '^1\.\.11$' <<< "$out1"; then
-  note_pass "1..11 plan line present (4 scenarios → 11 (scenario,cli) pairs)"
+if grep -q '^1\.\.14$' <<< "$out1"; then
+  note_pass "1..14 plan line present (6 scenarios → 14 (scenario,cli) pairs)"
 else
-  note_fail "1..11 plan line" "stdout: $(echo "$out1" | tr '\n' '|')"
+  note_fail "1..14 plan line" "stdout: $(echo "$out1" | tr '\n' '|')"
 fi
 
 # --- Case 5: --keep N prunes older report dirs ----------------------------
@@ -217,16 +217,16 @@ fi
 
 # --- Case 9: default scenario set (all) enumerates every (scenario,cli) pair ---
 # Scenarios are now populated in defaults.toml, so the default (no --scenario)
-# enumerates all (scenario,cli) pairs and yields the 1..11 plan. We assert the
+# enumerates all (scenario,cli) pairs and yields the 1..14 plan. We assert the
 # default behavior because there's no "all" sentinel in v1 — the default IS
 # "all". Every pair dry-run-SKIPs, so the plan line and exit 0 are identical
 # whether or not CLI auth is configured (CI has none).
 out9="$(bash "$RUN_SH" --dry-run 2>/dev/null)"
 rc9=$?
-if [[ $rc9 -eq 0 ]] && grep -q '^1\.\.11$' <<< "$out9"; then
-  note_pass "default scenario set (all) → 1..11 plan line"
+if [[ $rc9 -eq 0 ]] && grep -q '^1\.\.14$' <<< "$out9"; then
+  note_pass "default scenario set (all) → 1..14 plan line"
 else
-  note_fail "default scenario set → 1..11" "rc=$rc9 stdout=$(echo "$out9" | tr '\n' '|')"
+  note_fail "default scenario set → 1..14" "rc=$rc9 stdout=$(echo "$out9" | tr '\n' '|')"
 fi
 post9_dirs=()
 while IFS= read -r line || [ -n "$line" ]; do post9_dirs+=("$line"); done \

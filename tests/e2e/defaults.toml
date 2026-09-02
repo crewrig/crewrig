@@ -8,6 +8,20 @@
 #     command_args  = ["<extra>", ...]          # optional, default []
 #     mounts        = ["host:container[:mode]"] # required, may be []
 #     env_keys      = ["VAR_NAME", ...]         # required, may be []
+#     byok_provider = "<name>"                  # optional, cli.copilot only — the
+#                                                #   bring-your-own-key provider
+#                                                #   probe A (05-copilot-model-
+#                                                #   routing, spec 0194) is
+#                                                #   exercised against. Unset here;
+#                                                #   the default machine skips
+#                                                #   probe A. Declarative only —
+#                                                #   the scenario additionally
+#                                                #   requires .command to differ
+#                                                #   from a defaults-only merge
+#                                                #   before it trusts the label.
+#     byok_model    = "<name>"                  # optional, cli.copilot only — the
+#                                                #   model exercised through that
+#                                                #   provider. Same backing rule.
 #
 #   [scenarios.<name>]                          # populated by issue #80
 #     description  = "..."
@@ -75,13 +89,23 @@ mounts       = [
 env_keys     = ["GEMINI_API_KEY"]
 
 [cli.copilot]
-# Copilot uses the env-var auth path (ADR 0002 Decision 4); no on-disk creds,
-# so `mounts` is intentionally empty. COPILOT_GITHUB_TOKEN is the canonical
-# var; GH_TOKEN is honored as a fallback by e2e_auth_ready (see ADR 0002).
+# Copilot accepts either an env-var token (ADR 0002 Decision 4 —
+# COPILOT_GITHUB_TOKEN canonical, GH_TOKEN a fallback honored by
+# e2e_auth_ready) OR the workstation's own persisted credential (spec 0194
+# R1-R3): scripts/e2e/auth-copilot.sh already copies ~/.copilot/config.json
+# into the bundle, and the mount below is what makes that copy visible to
+# scenario containers. Mode is `rw` because Copilot writes session-state/
+# into its config dir at runtime — the residual (a container can corrupt
+# or replace the copied config.json) is
+# accepted and stated in tests/e2e/README.md. The runner's
+# e2e_ensure_bundle_dir / e2e_assert_bundle_modes bracket keeps the host
+# path safe to mount and its modes correct (spec 0194 R5).
 image        = "crewrig/e2e-copilot:latest"
 command      = ["copilot"]
 command_args = []
-mounts       = []
+mounts       = [
+  "${CREWRIG_E2E_HOME}/copilot:/home/agent/.copilot:rw"
+]
 env_keys     = ["COPILOT_GITHUB_TOKEN"]
 
 # [judge] — LLM-as-judge wrapper config (see ADR 0004 Decision 4 and
@@ -126,3 +150,22 @@ applies_to  = ["claude", "gemini", "copilot"]
 [scenarios.04-harness-loop]
 description = "harness-report → MemPalace → harness-curator round-trip."
 applies_to  = ["claude", "gemini", "copilot"]
+
+# [scenarios.05-copilot-model-routing] — probe A (spec 0194 R8-R11). Adjudicates
+# github/copilot-cli#4437: a `model:` hint in a repository agent declaration on
+# a bring-your-own-key session either fires the upstream bug or it does not.
+# Declarative-only precondition (byok_provider/byok_model above); the scenario
+# itself verifies the declaration is backed before trusting it. Not gated by
+# requirements 1-7 — runs on whichever Copilot credential path is already
+# ready (spec 0194 R10).
+[scenarios.05-copilot-model-routing]
+description = "Differential probe for github/copilot-cli#4437 — does a model: hint in a repo agent declaration break BYOK subagent routing?"
+applies_to  = ["copilot"]
+
+# [scenarios.06-agent-surface-consumption] — probe B (spec 0194 R12-R15).
+# Determines, per CLI and per per-file layout, whether that CLI's agent
+# reader consumes a repository .claude/agents/ declaration. Grounds epic
+# #1100's compiled-layout seam. R12 "at least" — covers copilot and claude.
+[scenarios.06-agent-surface-consumption]
+description = "Per-CLI, per-layout determination of whether .claude/agents/ declarations are consumed (nested vs flat)."
+applies_to  = ["copilot", "claude"]

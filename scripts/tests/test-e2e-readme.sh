@@ -59,12 +59,27 @@ else
             "no line containing both '90' and PAT/day/expiry/rotation keyword"
 fi
 
-# --- Security posture statement (read-only) ---------------------------------
+# --- Security posture statement (per-CLI, not universal read-only) ---------
+# Tightened per spec 0194 PLAN v2 step 21: the file must NOT claim every
+# mount is read-only (false since Copilot's :rw bundle mount, step 16) and
+# MUST name the copilot read-write exception explicitly.
 if grep -qiE 'read-only|:ro\b' "$README"; then
   note_pass "tests/e2e/README.md — read-only mount posture documented"
 else
   note_fail "tests/e2e/README.md — read-only mount posture" \
             "neither 'read-only' nor ':ro' found"
+fi
+if grep -qiE 'mounts? read-only|read-only volume mounts at scenario time' "$README"; then
+  note_fail "tests/e2e/README.md — no universal read-only claim" \
+            "found a phrase asserting every mount is read-only — false since Copilot's :rw bundle mount"
+else
+  note_pass "tests/e2e/README.md — does not claim every mount is read-only"
+fi
+if grep -qiE 'copilot.*:rw|:rw.*copilot' "$README"; then
+  note_pass "tests/e2e/README.md — names the copilot read-write exception"
+else
+  note_fail "tests/e2e/README.md — copilot read-write exception" \
+            "no line naming copilot alongside ':rw'"
 fi
 
 # --- Cross-references to the epic / child issues ----------------------------

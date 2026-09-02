@@ -1,7 +1,9 @@
 # E2E pillar scenarios
 
-Four host-orchestrated scenarios that exercise CrewRig's load-bearing
-surfaces end-to-end. Governed by
+Host-orchestrated scenarios that exercise CrewRig's load-bearing surfaces
+end-to-end. The first four are ADR 0005's pillar scenarios; scenarios 05
+and 06 are probes (spec 0194) that ship under the same discovery mechanism
+without claiming pillar status. Governed by
 [ADR 0005](../../../docs/adr/0005-e2e-pillar-scenarios.md); discovery
 metadata lives in `tests/e2e/defaults.toml`.
 
@@ -11,6 +13,8 @@ metadata lives in `tests/e2e/defaults.toml`.
 | 02 | `02-cross-tool-memory` | A drawer written by CLI A is read by CLI B via a shared MemPalace sidecar. |
 | 03 | `03-skill-build` | `scripts/build-components.sh` emits the per-CLI artifacts (skills, agents, commands). |
 | 04 | `04-harness-loop` | `harness-report` → MemPalace → `harness-curator` round-trip. |
+| 05 | `05-copilot-model-routing` | Probe A (spec 0194 R8-R11) — differential verdict on `github/copilot-cli#4437`: does a `model:` hint break BYOK subagent routing? Copilot-only. |
+| 06 | `06-agent-surface-consumption` | Probe B (spec 0194 R12-R15) — which repository agent-declaration surfaces and per-file layouts does each covered CLI actually consume? Covers Copilot and Claude Code. |
 
 ## Scenario contract
 
@@ -43,7 +47,7 @@ Every scenario sources the assertion libs and writes a TAP subtest plan
 to `${E2E_REPORT_DIR}/scenario.tap` for drill-down. The runner captures
 the scenario's stdout/stderr alongside.
 
-## Adding a fifth scenario
+## Adding another scenario
 
 1. Drop a new directory under `tests/e2e/scenarios/<name>/` with an
    executable `run.sh` (start from any existing scenario as template).

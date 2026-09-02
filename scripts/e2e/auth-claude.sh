@@ -78,16 +78,14 @@ docker run --rm -it \
   || e2e_die "[$CLI] interactive container exited non-zero. Re-run after resolving the error above."
 
 # Close the world-writable window opened by e2e_chown_bootstrap (Med-1 from
-# the #148 security review, applied to claude per issue #161). The shared
-# helper sets $DIR to a+rwx so the container's `agent` UID can write during
-# the interactive login; tightening immediately after the container exits —
-# BEFORE the post-flight checks and the API-key grep — minimizes shared-dev-box
-# exposure. Then normalize file modes (Med-2 from #148): the 0600 invariant on
-# .credentials.json / .claude.json was previously implicit on whatever the
-# Claude CLI happened to write; assert it explicitly.
-chmod 700 "$DIR"
-find "$DIR" -type d -exec chmod 700 {} +
-find "$DIR" -type f -exec chmod 600 {} +
+# the #148 security review, applied to claude per issue #161) and normalize
+# file modes (Med-2 from #148: the 0600 invariant on .credentials.json /
+# .claude.json was previously implicit on whatever the Claude CLI happened
+# to write). e2e_assert_bundle_modes (spec 0194 R5) is the shared, idempotent
+# implementation of this triple — tightening immediately after the
+# container exits, BEFORE the post-flight checks and the API-key grep,
+# minimizes shared-dev-box exposure.
+e2e_assert_bundle_modes "$CLI"
 
 # Post-flight: both .credentials.json AND .claude.json must land on disk for
 # subsequent non-interactive runs to skip the login prompt (upstream:

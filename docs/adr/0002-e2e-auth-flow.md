@@ -164,6 +164,26 @@ fallback path is open), but the env-var precedence chain means we
 get a strictly simpler v1 with the same scenario coverage. Filing
 device-flow as a follow-up when a real scenario demands it.
 
+**Disposition (2026-09-02, spec 0194, issue #1103).** The "Stretch" bullet
+above is realised, in a different shape than headless device-flow
+persistence: `scripts/e2e/auth-copilot.sh` copies the developer
+workstation's own already-authenticated `~/.copilot/config.json` into
+`~/.crewrig-e2e/copilot/config.json` (a **passthrough** of an existing
+session, not a new interactive `copilot /login` container flow), the
+readiness decision (`e2e_auth_ready`, `scripts/e2e/lib/auth-common.sh`)
+treats that file's presence as ready, and the bundle mounts read-write at
+`/home/agent/.copilot` (`tests/e2e/defaults.toml`). Headless device-flow
+persistence — a fresh, non-interactive login inside the container itself —
+was **not** realised; it remains exactly the deferred stretch goal this
+Decision already named. Re-verified at authoring time:
+`gh issue view 77 --json state,stateReason,closedAt` reports `state:
+CLOSED`, `stateReason: COMPLETED`, `closedAt: 2026-05-23T15:28:56Z`
+(pull request 83). Spec 0194's own `## Out of scope` section states
+"issue #77 stays open until its owner decides otherwise" — an assertion
+this disposition contradicts; the delta (re-track, re-open, or record as
+abandoned) stays an open maintainer call, named here rather than
+resolved silently.
+
 ## Decision 5 — Mount-and-run protocol per CLI
 
 Auth flow (one-shot, interactive, RW):
