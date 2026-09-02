@@ -25,7 +25,8 @@
 #
 #   v2-F1: an efficacy-leg nonce absence is corroborating evidence the
 #   `model:` hint is live ONLY when backed by one of the documented symptom
-#   strings (docs/cli-matrix.md:168). An uncorroborated absence — a
+#   strings (docs/cli-matrix.md's "[GAP] Copilot CLI subagent model routing
+#   on BYOK/Ollama" bullet, row 4). An uncorroborated absence — a
 #   transient timeout, quota exhaustion, a nondeterministic prose reply — is
 #   not evidence, and used to fall straight through to row 3/4 (`BUG-ABSENT`
 #   reachable on an uncorroborated silence). The row above closes that gap.

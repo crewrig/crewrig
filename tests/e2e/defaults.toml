@@ -95,9 +95,8 @@ env_keys     = ["GEMINI_API_KEY"]
 # R1-R3): scripts/e2e/auth-copilot.sh already copies ~/.copilot/config.json
 # into the bundle, and the mount below is what makes that copy visible to
 # scenario containers. Mode is `rw` because Copilot writes session-state/
-# into its config dir at runtime (tests/e2e/scenarios/01-layered-context/
-# run.sh:102-103 records the same fact for the CLI's rules-dir mount) — the
-# residual (a container can corrupt or replace the copied config.json) is
+# into its config dir at runtime — the residual (a container can corrupt
+# or replace the copied config.json) is
 # accepted and stated in tests/e2e/README.md. The runner's
 # e2e_ensure_bundle_dir / e2e_assert_bundle_modes bracket keeps the host
 # path safe to mount and its modes correct (spec 0194 R5).

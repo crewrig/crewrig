@@ -94,7 +94,8 @@ probe_argv+=(-p)
 # committed docker/e2e/.versions.lock, which drifts against `:latest`).
 COPILOT_VERSION="$(docker run --rm "$E2E_IMAGE" copilot --version 2>/dev/null | head -n1 || echo unknown)"
 
-# Symptom strings recorded at docs/cli-matrix.md:168.
+# Symptom strings recorded in docs/cli-matrix.md's "[GAP] Copilot CLI
+# subagent model routing on BYOK/Ollama" bullet (row 4).
 SYMPTOM_RE='Agent completed but produced no response\.|not found on provider|HTTP 404'
 
 mkdir -p "${E2E_REPORT_DIR}/out"
