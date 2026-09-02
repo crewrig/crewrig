@@ -8,6 +8,20 @@
 #     command_args  = ["<extra>", ...]          # optional, default []
 #     mounts        = ["host:container[:mode]"] # required, may be []
 #     env_keys      = ["VAR_NAME", ...]         # required, may be []
+#     byok_provider = "<name>"                  # optional, cli.copilot only — the
+#                                                #   bring-your-own-key provider
+#                                                #   probe A (05-copilot-model-
+#                                                #   routing, spec 0194) is
+#                                                #   exercised against. Unset here;
+#                                                #   the default machine skips
+#                                                #   probe A. Declarative only —
+#                                                #   the scenario additionally
+#                                                #   requires .command to differ
+#                                                #   from a defaults-only merge
+#                                                #   before it trusts the label.
+#     byok_model    = "<name>"                  # optional, cli.copilot only — the
+#                                                #   model exercised through that
+#                                                #   provider. Same backing rule.
 #
 #   [scenarios.<name>]                          # populated by issue #80
 #     description  = "..."
@@ -126,3 +140,14 @@ applies_to  = ["claude", "gemini", "copilot"]
 [scenarios.04-harness-loop]
 description = "harness-report → MemPalace → harness-curator round-trip."
 applies_to  = ["claude", "gemini", "copilot"]
+
+# [scenarios.05-copilot-model-routing] — probe A (spec 0194 R8-R11). Adjudicates
+# github/copilot-cli#4437: a `model:` hint in a repository agent declaration on
+# a bring-your-own-key session either fires the upstream bug or it does not.
+# Declarative-only precondition (byok_provider/byok_model above); the scenario
+# itself verifies the declaration is backed before trusting it. Not gated by
+# requirements 1-7 — runs on whichever Copilot credential path is already
+# ready (spec 0194 R10).
+[scenarios.05-copilot-model-routing]
+description = "Differential probe for github/copilot-cli#4437 — does a model: hint in a repo agent declaration break BYOK subagent routing?"
+applies_to  = ["copilot"]

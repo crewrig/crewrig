@@ -29,9 +29,14 @@
 # source read-only; ollama serve reads the keypair directly from there
 # (OLLAMA_MODELS=/tmp/ollama-models redirects writes off the :ro mount).
 [cli.copilot]
-command  = ["bash", "-c", "OLLAMA_MODELS=/tmp/ollama-models ollama serve >/dev/null 2>&1 & sleep 3 && exec ollama launch copilot --model deepseek-v4-pro:cloud --yes -- --allow-all \"$@\"", "sh"]
-mounts   = ["${CREWRIG_E2E_HOME}/ollama:/home/agent/.ollama:ro"]
-env_keys = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]
+command       = ["bash", "-c", "OLLAMA_MODELS=/tmp/ollama-models ollama serve >/dev/null 2>&1 & sleep 3 && exec ollama launch copilot --model deepseek-v4-pro:cloud --yes -- --allow-all \"$@\"", "sh"]
+mounts        = ["${CREWRIG_E2E_HOME}/ollama:/home/agent/.ollama:ro"]
+env_keys      = ["COPILOT_GITHUB_TOKEN", "OLLAMA_HOST"]
+# Declarative label for probe A (05-copilot-model-routing, spec 0194 R8-R11) —
+# the scenario backs this against the effective `command` above before
+# trusting it (a declared-but-unbacked pair exits 78 naming the mismatch).
+byok_provider = "ollama-cloud"
+byok_model    = "deepseek-v4-pro:cloud"
 
 # Re-use the OAuth token minted by `task e2e:auth:claude` instead of
 # `ANTHROPIC_JUDGE_API_KEY`. The claude-code driver reads the access

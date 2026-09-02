@@ -590,11 +590,15 @@ capabilities:
         paths:
           - "scripts/tests/test-e2e-*.sh"
           - "tests/e2e/**"
+          - "scripts/e2e/**"
+          - "docs/cli-matrix.md"
       - on: push
         branches: [main, "release/**"]
         paths:
           - "scripts/tests/test-e2e-*.sh"
           - "tests/e2e/**"
+          - "scripts/e2e/**"
+          - "docs/cli-matrix.md"
       - on: manual
     portability: portable
     changeset-gated: true
@@ -614,6 +618,7 @@ capabilities:
       - bash scripts/tests/test-e2e-judge-config.sh
       - bash scripts/tests/test-e2e-libs-readme.sh
       - bash scripts/tests/test-e2e-llm-judge-lib.sh
+      - bash scripts/tests/test-e2e-probes.sh
       - bash scripts/tests/test-e2e-readme.sh
       - bash scripts/tests/test-e2e-report.sh
       - bash scripts/tests/test-e2e-runner-delegation.sh

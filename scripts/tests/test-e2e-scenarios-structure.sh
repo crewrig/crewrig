@@ -30,7 +30,7 @@ SCEN_DIR="${REPO_DIR}/tests/e2e/scenarios"
 DEFAULTS_TOML="${REPO_DIR}/tests/e2e/defaults.toml"
 README="${SCEN_DIR}/README.md"
 
-SCENARIOS=(01-layered-context 02-cross-tool-memory 03-skill-build 04-harness-loop)
+SCENARIOS=(01-layered-context 02-cross-tool-memory 03-skill-build 04-harness-loop 05-copilot-model-routing)
 
 # --- 1. Each scenario dir + run.sh present and executable --------------------
 for s in ${SCENARIOS[@]+"${SCENARIOS[@]}"}; do
