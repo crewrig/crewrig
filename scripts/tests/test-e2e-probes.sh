@@ -26,6 +26,15 @@
 #     working tree (R4)
 #   - publish-probe-verdict.sh --dry-run renders a probe-B-shaped
 #     (cells-array) verdict too, including its contradicts array
+#   - probe A's row-1 fallback control, and probe B's cell 3 (its
+#     independently-authored twin), each stage an ephemeral home and never
+#     mount the real persisted credential bundle directly (finding v2-F4;
+#     added by the DEV-stage tester audit of #1103 — neither call site had
+#     a hermetic regression guard before, though the hazard is a static
+#     property, not a live-only one, so R19 does not exempt it)
+#   - tests/e2e/run.sh brackets every scenario case with
+#     e2e_ensure_bundle_dir before / e2e_assert_bundle_modes after, in BOTH
+#     the delegation and the legacy direct-docker branch (R5; same audit)
 
 set -uo pipefail
 
@@ -80,6 +89,79 @@ for key in '.cli.copilot.command' '.cli.copilot.mounts' '.cli.copilot.env_keys';
     note_fail "probe A — argv assembly reads '${key}'" "no occurrence in $RUN_A"
   fi
 done
+
+# --- 2b. Row-1 fallback control (finding v2-F4) never mounts the real
+# persisted bundle directly — only the mktemp -d ephemeral home. Structural,
+# not live-only (R19): the hazard v2-F4 named is a static property of which
+# path feeds `-v`, so a regression here is hermetically detectable. Extracts
+# the `if [[ "$CONTROL_OBSERVED" != "true" ]]; then ... fi` block (the row-1
+# failure path) by its unindented `fi`, which the nested ifs inside it do
+# not match (they're indented).
+FALLBACK_BLOCK="$(sed -n '/^if \[\[ "\$CONTROL_OBSERVED" != "true" \]\]; then$/,/^fi$/p' "$RUN_A")"
+if [[ -z "$FALLBACK_BLOCK" ]]; then
+  note_fail "probe A — row-1 fallback block located" \
+            "could not find the CONTROL_OBSERVED-guarded block in $RUN_A"
+else
+  note_pass "probe A — row-1 fallback block located"
+  if grep -Eq '\-v[[:space:]]+"\$\{?bundle_dir\}?' <<<"$FALLBACK_BLOCK"; then
+    note_fail "probe A — row-1 fallback never mounts \$bundle_dir directly (v2-F4)" \
+              "found a -v mount referencing \$bundle_dir directly — this would write into the developer's real persisted credential bundle"
+  else
+    note_pass "probe A — row-1 fallback never mounts \$bundle_dir directly (v2-F4)"
+  fi
+  if grep -Fq 'e2e_stage_copilot_ephemeral_home "$bundle_dir"' <<<"$FALLBACK_BLOCK" \
+     && grep -Fq 'e2e_copilot_home_mount_override "$ephemeral_home"' <<<"$FALLBACK_BLOCK"; then
+    note_pass "probe A — row-1 fallback stages and mounts the ephemeral home (v2-F4)"
+  else
+    note_fail "probe A — row-1 fallback ephemeral-home staging (v2-F4)" \
+              "expected both a 'e2e_stage_copilot_ephemeral_home \"\$bundle_dir\"' call and a 'e2e_copilot_home_mount_override \"\$ephemeral_home\"' call in the fallback block"
+  fi
+fi
+
+# --- 2c. Probe B cell 3 (cross-cell control, finding v2-F4's twin) also
+# never mounts the real bundle directly — same hazard, same helper, a second
+# independently-authored call site (PLAN v2 step 26).
+RUN_B="${SCEN_DIR}/06-agent-surface-consumption/run.sh"
+EPHEMERAL_BLOCK="$(sed -n '/^  elif \[\[ "\$mount_mode" == "ephemeral-home" \]\]; then$/,/^  fi$/p' "$RUN_B")"
+if [[ -z "$EPHEMERAL_BLOCK" ]]; then
+  note_fail "probe B — ephemeral-home cell block located" \
+            "could not find the mount_mode==ephemeral-home block in $RUN_B"
+else
+  note_pass "probe B — ephemeral-home cell block located"
+  if grep -Eq '\-v[[:space:]]+"\$\{?bundle_dir\}?' <<<"$EPHEMERAL_BLOCK"; then
+    note_fail "probe B — cell 3 never mounts \$bundle_dir directly (v2-F4 twin)" \
+              "found a -v mount referencing \$bundle_dir directly — this would write into the developer's real persisted credential bundle"
+  else
+    note_pass "probe B — cell 3 never mounts \$bundle_dir directly (v2-F4 twin)"
+  fi
+  if grep -Fq 'e2e_stage_copilot_ephemeral_home "$bundle_dir"' <<<"$EPHEMERAL_BLOCK" \
+     && grep -Fq 'e2e_copilot_home_mount_override "$ephemeral_home"' <<<"$EPHEMERAL_BLOCK"; then
+    note_pass "probe B — cell 3 stages and mounts the ephemeral home (v2-F4 twin)"
+  else
+    note_fail "probe B — cell 3 ephemeral-home staging (v2-F4 twin)" \
+              "expected both a 'e2e_stage_copilot_ephemeral_home \"\$bundle_dir\"' call and a 'e2e_copilot_home_mount_override \"\$ephemeral_home\"' call in the cell 3 block"
+  fi
+fi
+
+# --- 2d. tests/e2e/run.sh brackets EVERY scenario case with ensure-before /
+# assert-after (spec 0194 R5, PLAN v2 step 15) — in BOTH the delegation
+# branch and the legacy direct-docker branch. Structural: an
+# e2e_ensure_bundle_dir call and its e2e_assert_bundle_modes counterpart must
+# each appear exactly twice (once per branch), in ensure-then-assert order —
+# not just once, which would silently leave one branch (and one of R10's two
+# "requirements 1-7 unrealised" paths, per PLAN v2 step 15) unbracketed.
+RUNNER_SH="${REPO_DIR}/tests/e2e/run.sh"
+mapfile -t _bracket_calls < <(grep -n 'e2e_ensure_bundle_dir "\$cli"\|e2e_assert_bundle_modes "\$cli"' "$RUNNER_SH" | sed -E 's/^[0-9]+:[[:space:]]*//')
+if [[ "${#_bracket_calls[@]}" -eq 4 \
+      && "${_bracket_calls[0]}" == 'e2e_ensure_bundle_dir "$cli"' \
+      && "${_bracket_calls[1]}" == 'e2e_assert_bundle_modes "$cli"' \
+      && "${_bracket_calls[2]}" == 'e2e_ensure_bundle_dir "$cli"' \
+      && "${_bracket_calls[3]}" == 'e2e_assert_bundle_modes "$cli"' ]]; then
+  note_pass "tests/e2e/run.sh — ensure-before/assert-after brackets both branches (R5)"
+else
+  note_fail "tests/e2e/run.sh — ensure-before/assert-after brackets both branches (R5)" \
+            "expected exactly 2 ensure+assert pairs in ensure,assert,ensure,assert order; got: ${_bracket_calls[*]+"${_bracket_calls[*]}"}"
+fi
 
 # --- 3. Probe A skip path — byok_* absent -----------------------------------
 TMP_ROOT="$(mktemp -d -t crewrig-probe-a-test.XXXXXX)"
