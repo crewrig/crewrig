@@ -307,9 +307,11 @@ Then  the probe counts as uncovered rather than as passing
   ever removed — the repository's history carries no removal — so requirements
   1 through 7 complete and generalise the surface that ADR 0002 Decision 4
   deferred, rather than restore anything.
-- Choosing between headless device-flow persistence and passthrough of the
-  workstation's existing credential. Requirements 1 through 7 admit either;
-  the choice belongs to the PLAN stage.
+- Headless device-flow credential persistence — the surface that ADR 0002
+  Decision 4 deferred to issue #77. The maintainer confirmed at the content
+  gate of 2026-09-02 that it stays out of scope: requirements 1 through 7 are
+  satisfied by the Copilot credential the developer's workstation already
+  holds, and issue #77 stays open until its owner decides otherwise.
 - Deliberately widening the Claude Code or Gemini CLI credential surfaces.
   Both already have a working credential path; they change here only where a
   mechanism the Copilot path needs also serves them.
@@ -324,19 +326,9 @@ Then  the probe counts as uncovered rather than as passing
 
 ## Open questions
 
-- [GROUNDING:] `scripts/e2e/auth-copilot.sh` already copies the workstation's
-  `~/.copilot/config.json` into the per-developer credential bundle and asserts
-  `0700`/`0600` on it, and `tests/e2e/scenarios/01-layered-context/run.sh`
-  already mounts that bundle into the container read-write — so a
-  workstation-credential passthrough partially exists, against the premise
-  under which deliverable 1 was decided at the spec 0143 delta-01 content gate
-  (Copilot end-to-end being token-only). Three surfaces still state the older
-  premise: the `[cli.copilot]` comment in `tests/e2e/defaults.toml` ("no
-  on-disk creds"), and two passages of `tests/e2e/README.md` ("empty by
-  design", and read-only mounts at scenario time). Requirements 1 through 7 are
-  drafted as completion and generalisation of the existing mechanism —
-  readiness recognition, declaration in the run configuration rather than in
-  one scenario, the mode invariant after a run, and the documentation
-  correction — not as its creation. Confirm that scope at the content gate, or
-  narrow requirements 3 and 6 if the intended deliverable was only the token
-  path.
+None. The one grounding question raised at authoring — that a
+workstation-credential passthrough already partially exists, against the
+premise under which deliverable 1 was decided — was closed by the maintainer
+at the content gate on 2026-09-02, on the completion-and-generalisation scope:
+requirements 1 through 7 stand as authored. The written closure is the comment
+of that date on the issue #1103 logbook (comment 5505910382).
