@@ -1,7 +1,7 @@
 ---
 id: "0194"
 slug: e2e-copilot-auth-and-probes
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1103
