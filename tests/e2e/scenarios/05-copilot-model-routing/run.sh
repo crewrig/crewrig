@@ -40,6 +40,8 @@ set -euo pipefail
 source "${E2E_LIB_DIR}/expand.sh"
 # shellcheck source=../../lib/copilot_ephemeral_home.sh
 source "${E2E_LIB_DIR}/copilot_ephemeral_home.sh"
+# shellcheck source=../../lib/mask_command.sh
+source "${E2E_LIB_DIR}/mask_command.sh"
 # shellcheck source=../../lib/probe_a_resolve.sh
 source "${E2E_LIB_DIR}/probe_a_resolve.sh"
 
@@ -271,8 +273,13 @@ RESOLVED="$(e2e_probe_a_resolve "$CONTROL_OBSERVED" "$EFFICACY_OBSERVED" "$EFFIC
 VERDICT="${RESOLVED%%|*}"
 REASON="${RESOLVED#*|}"
 
-MASKED_COMMAND_JSON="$(jq -c '.cli.copilot.command' "$E2E_EFFECTIVE_JSON" \
-  | jq -c '[.[] | split(" ") | map(if test("^[A-Za-z_][A-Za-z0-9_]*=") then sub("=.*$"; "=***") else . end) | join(" ")]')"
+# DEV-stage tester audit finding (high): the original split(" ")-based mask
+# missed --flag=value secrets and mangled quoted values containing a
+# space. e2e_mask_command_json (tests/e2e/lib/mask_command.sh) fixes both
+# with a single regex pass over each whole element — see that file for the
+# full history and scripts/tests/test-e2e-probes.sh for the locked
+# regression covering both bypass shapes.
+MASKED_COMMAND_JSON="$(jq -c '.cli.copilot.command' "$E2E_EFFECTIVE_JSON" | e2e_mask_command_json)"
 
 RUN_ID_FIELD="${E2E_RUN_ID:-adhoc}"
 OBSERVED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"

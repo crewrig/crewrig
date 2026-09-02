@@ -35,6 +35,12 @@
 #   - tests/e2e/run.sh brackets every scenario case with
 #     e2e_ensure_bundle_dir before / e2e_assert_bundle_modes after, in BOTH
 #     the delegation and the legacy direct-docker branch (R5; same audit)
+#   - tests/e2e/lib/mask_command.sh masks both bypass shapes the tester
+#     audit found in the first implementation (a flag-style --key=value
+#     secret; a quoted value containing a space), preserves array element
+#     count/order (jq's --args silently drops a literal "-c" element
+#     without a trailing "--"), and probe A's run.sh calls the shared
+#     function rather than a private re-implementation of it (v2-F3)
 
 set -uo pipefail
 
@@ -315,21 +321,28 @@ got="$(resolve true false true true false)"
 
 # The mutation the reviewer of v1 would have performed by hand: BUG-ABSENT
 # must be UNREACHABLE while hint_efficacy.nonce_observed is true, for every
-# combination of the remaining three booleans.
+# combination of the remaining THREE booleans (efficacy_symptom included —
+# a DEV-stage tester audit caught an earlier version of this loop that
+# fixed efficacy_symptom=false and called two varied booleans "exhaustive";
+# row 2 of the resolver short-circuits on efficacy alone, before
+# efficacy_symptom is ever consulted, so the outcome does not change — but
+# the test now proves that rather than assuming it).
 unreachable_ok=true
-for bearing in true false; do
-  for bearing_symptom in true false; do
-    got="$(resolve true true false "$bearing" "$bearing_symptom")"
-    verdict="${got%%|*}"
-    if [[ "$verdict" == "BUG-ABSENT" ]]; then
-      unreachable_ok=false
-      note_fail "resolver — BUG-ABSENT unreachable while efficacy nonce present" \
-        "control=true efficacy=true bearing=$bearing bearing_symptom=$bearing_symptom → $got"
-    fi
+for efficacy_symptom in true false; do
+  for bearing in true false; do
+    for bearing_symptom in true false; do
+      got="$(resolve true true "$efficacy_symptom" "$bearing" "$bearing_symptom")"
+      verdict="${got%%|*}"
+      if [[ "$verdict" == "BUG-ABSENT" ]]; then
+        unreachable_ok=false
+        note_fail "resolver — BUG-ABSENT unreachable while efficacy nonce present" \
+          "control=true efficacy=true efficacy_symptom=$efficacy_symptom bearing=$bearing bearing_symptom=$bearing_symptom → $got"
+      fi
+    done
   done
 done
 [[ "$unreachable_ok" == "true" ]] \
-  && note_pass "resolver — BUG-ABSENT is unreachable while hint_efficacy.nonce_observed is true (exhaustive)"
+  && note_pass "resolver — BUG-ABSENT is unreachable while hint_efficacy.nonce_observed is true (exhaustive over all 3 remaining booleans)"
 
 # BUG-PRESENT only reachable when efficacy absent+corroborated, bearing absent+symptom.
 got="$(resolve true false true false true)"
@@ -424,6 +437,90 @@ for field in 'not-consumed' 'consumed' 'Contradicts' 'specs/0143'; do
     note_fail "publish-probe-verdict.sh --dry-run (probe B shape) — renders '${field}'" "not found in rendered body"
   fi
 done
+
+# --- 11. Command masking (finding v2-F3) survives both bypass shapes -------
+# DEV-stage tester audit (high): the first implementation split each
+# command-array element on a plain space and masked whole words starting
+# with a bare identifier. Two bypasses: (a) a `--flag=value` secret never
+# matched (no leading dash allowed), (b) a quoted value containing a space
+# was split across words by the naive split, masking only the first
+# fragment and leaving the rest of the secret in the clear. Both are
+# regression-locked here against the actual shared function, not a
+# re-implementation of it.
+MASK_LIB="${E2E_LIB_DIR}/mask_command.sh"
+if [[ -f "$MASK_LIB" ]]; then
+  note_pass "mask_command.sh — tests/e2e/lib/mask_command.sh present"
+else
+  note_fail "mask_command.sh — present" "missing at $MASK_LIB"
+fi
+
+mask_str() {
+  bash -c "source '$MASK_LIB'; e2e_mask_command_string \"\$1\"" _ "$1"
+}
+
+# Bypass (a): flag-style assignment (--flag=value).
+got="$(mask_str 'ollama launch copilot --api-key=sk-abc123 --yes')"
+if [[ "$got" == *'--api-key=***'* && "$got" != *'sk-abc123'* ]]; then
+  note_pass "mask_command — bypass (a) flag-style secret (--api-key=...) is masked"
+else
+  note_fail "mask_command — bypass (a) flag-style secret" "got: $got"
+fi
+# Untouched: a space-separated flag with no '=' carries no secret shape.
+if [[ "$got" == *'ollama launch copilot'*'--yes'* ]]; then
+  note_pass "mask_command — bypass (a) case leaves non-assignment argv untouched"
+else
+  note_fail "mask_command — bypass (a) collateral damage" "got: $got"
+fi
+
+# Bypass (b): quoted value containing a space.
+got="$(mask_str 'OLLAMA_API_KEY="sk secret withspace" ollama serve')"
+if [[ "$got" == *'OLLAMA_API_KEY=***'* && "$got" != *'secret withspace'* && "$got" != *'sk secret'* ]]; then
+  note_pass "mask_command — bypass (b) quoted value with an internal space is fully masked"
+else
+  note_fail "mask_command — bypass (b) quoted-with-space secret" "got: $got"
+fi
+
+# Assignment right after a shell quote/operator boundary (e.g. inside a
+# `bash -c "..."` wrapper), not only at start-of-string or after whitespace.
+got="$(mask_str 'bash -c "OLLAMA_MODELS=/tmp/x ollama launch copilot"')"
+if [[ "$got" == *'OLLAMA_MODELS=***'* && "$got" != *'/tmp/x'* ]]; then
+  note_pass "mask_command — assignment right after an opening quote is masked"
+else
+  note_fail "mask_command — quote-boundary assignment" "got: $got"
+fi
+
+# e2e_mask_command_json preserves element COUNT and ORDER — regression for
+# a second bug found while fixing this: jq's --args re-parses a positional
+# argument that merely looks like a flag (a literal "-c" element) as one of
+# jq's own options unless a bare "--" follows --args, silently dropping it.
+JSON_IN='["bash","-c","OLLAMA_API_KEY=\"sk secret\" ollama serve --api-key=sk-xyz","sh"]'
+JSON_OUT="$(bash -c "source '$MASK_LIB'; e2e_mask_command_json" <<<"$JSON_IN")"
+n_in="$(jq 'length' <<<"$JSON_IN")"
+n_out="$(jq 'length' <<<"$JSON_OUT" 2>/dev/null || echo -1)"
+if [[ "$n_out" == "$n_in" ]]; then
+  note_pass "mask_command_json — preserves element count ($n_in) including a literal '-c' element"
+else
+  note_fail "mask_command_json — element count preserved" "input had $n_in elements, output '$JSON_OUT' has $n_out"
+fi
+if jq -e '.[1] == "-c"' <<<"$JSON_OUT" >/dev/null 2>&1; then
+  note_pass "mask_command_json — a literal '-c' array element survives (not swallowed by jq --args)"
+else
+  note_fail "mask_command_json — '-c' element survives" "got: $JSON_OUT"
+fi
+if grep -q 'sk secret' <<<"$JSON_OUT" || grep -q 'sk-xyz' <<<"$JSON_OUT"; then
+  note_fail "mask_command_json — no secret leaks through the full array pipeline" "got: $JSON_OUT"
+else
+  note_pass "mask_command_json — no secret leaks through the full array pipeline"
+fi
+
+# --- 12. Probe A's run.sh calls the shared masking function, not a private
+# re-implementation of it (so a future fix here reaches every call site).
+if grep -Fq 'e2e_mask_command_json' "$RUN_A" && grep -Fq "source \"\${E2E_LIB_DIR}/mask_command.sh\"" "$RUN_A"; then
+  note_pass "probe A — uses the shared e2e_mask_command_json (finding v2-F3)"
+else
+  note_fail "probe A — uses the shared masking function" \
+            "expected both a source of mask_command.sh and a call to e2e_mask_command_json in $RUN_A"
+fi
 
 echo ""
 echo "# $PASS passed / $FAIL failed / $SKIP skipped"
