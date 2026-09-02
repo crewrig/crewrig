@@ -1,0 +1,16 @@
+● Probe-router(glm-5.3-flash:cloud) Probe nonce emission
+  └ crewrig-probe-de91a90702907b2b
+
+● Create leg.txt +1
+  └ /out/leg.txt
+
+● Read leg.txt
+  │ /out/leg.txt
+  └ 1 line read
+
+Done. The `probe-router` subagent replied with its nonce, and I wrote it verbatim to `/out/leg.txt`:
+
+```
+crewrig-probe-de91a90702907b2b
+```
+

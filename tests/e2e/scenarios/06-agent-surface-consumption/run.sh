@@ -24,6 +24,14 @@
 # and adds only cross-cell evidence. Claude has no documented user-level
 # agent layout (grep -rn '~/\.claude/agents' docs/ artifacts/ returns
 # nothing), so its cells record control: in-cell-liveness-baseline-only.
+#
+# Per-cell consumption credit is derived from the CLI-generated
+# spawn-result markers in the cell's own transcript (tests/e2e/lib/
+# probe_spawn_markers.sh), not from consumed.txt or a raw grep of stdout —
+# issue #1107 fix 1's audit of probe A's same hole (analysis comment on
+# #1103): both prior observables are orchestrator-writable/readable and so
+# forgeable in the same way leg.txt was proven forgeable for probe A. Both
+# are retained in each cell's `observable` object as corroboration only.
 
 set -euo pipefail
 
@@ -41,6 +49,8 @@ source "${E2E_LIB_DIR}/expand.sh"
 source "${E2E_LIB_DIR}/copilot_ephemeral_home.sh"
 # shellcheck source=../../lib/probe_b_resolve.sh
 source "${E2E_LIB_DIR}/probe_b_resolve.sh"
+# shellcheck source=../../lib/probe_spawn_markers.sh
+source "${E2E_LIB_DIR}/probe_spawn_markers.sh"
 
 SCENARIO_TAP="${E2E_REPORT_DIR}/scenario.tap"
 
@@ -75,7 +85,9 @@ CELLS_JSON="[]"
 
 # run_cell <cell-key> <layout-desc> <path-desc> <mount-mode: workspace|ephemeral-home>
 # Sets globals: CELL_OUTCOME, CELL_NONCE, CELL_BASELINE_OBSERVED,
-# CELL_NONCE_OBSERVED, CELL_EVIDENCE.
+# CELL_NONCE_OBSERVED (spawn-marker-derived; issue #1107 fix 1),
+# CELL_SPAWN_OBSERVED, CELL_SUBAGENT_RESPONDED, CELL_LEGACY_NONCE_OBSERVED
+# (corroboration only — see below), CELL_EVIDENCE.
 run_cell() {
   local cell="$1" layout="$2" path_desc="$3" mount_mode="$4"
   local nonce baseline_nonce
@@ -162,12 +174,24 @@ run_cell() {
   else
     CELL_BASELINE_OBSERVED=false
   fi
+  # Corroboration-only (issue #1107 fix 1's probe-B twin): consumed.txt and
+  # raw stdout are both orchestrator-writable/forgeable — the same hazard
+  # the analysis comment on #1103 proved live for probe A (a session
+  # reading the nonce out of the agent declaration after a failed spawn
+  # and writing it itself). Recorded for transparency; never fed to the
+  # resolver.
   if grep -Fq "$nonce" "${host_out}/consumed.txt" 2>/dev/null \
      || grep -Fq "$nonce" "${host_out}/stdout" 2>/dev/null; then
-    CELL_NONCE_OBSERVED=true
+    CELL_LEGACY_NONCE_OBSERVED=true
   else
-    CELL_NONCE_OBSERVED=false
+    CELL_LEGACY_NONCE_OBSERVED=false
   fi
+
+  # Primary observable: the CLI-generated spawn-result markers in the
+  # transcript (tests/e2e/lib/probe_spawn_markers.sh) — the orchestrating
+  # session does not control these.
+  IFS='|' read -r CELL_SPAWN_OBSERVED CELL_SUBAGENT_RESPONDED CELL_NONCE_OBSERVED CELL_SPAWN_MODEL \
+    <<<"$(e2e_probe_spawn_signals "${host_out}/stdout" "Probe-consumer" "$nonce")"
 
   CELL_OUTCOME="$(e2e_probe_b_resolve_cell "$CELL_NONCE_OBSERVED" "$CELL_BASELINE_OBSERVED")"
   CELL_EVIDENCE="$(cat "${host_out}/stdout" "${host_out}/stderr" 2>/dev/null | tr '\n' ' ' | head -c 300)"
@@ -186,6 +210,9 @@ emit_cell_json() {
     --arg outcome "$CELL_OUTCOME" \
     --arg nonce_observed "$CELL_NONCE_OBSERVED" \
     --arg baseline_observed "$CELL_BASELINE_OBSERVED" \
+    --arg spawn_observed "$CELL_SPAWN_OBSERVED" \
+    --arg subagent_responded "$CELL_SUBAGENT_RESPONDED" \
+    --arg legacy_nonce_observed "$CELL_LEGACY_NONCE_OBSERVED" \
     --arg evidence "$CELL_EVIDENCE" \
     --arg control "$control" \
     --arg role "$role" \
@@ -193,7 +220,7 @@ emit_cell_json() {
     '. + [{
       cli: $cli, cli_version: $cli_version, surface: $surface, layout: $layout,
       path: $path, outcome: $outcome,
-      observable: {nonce_observed: ($nonce_observed == "true"), baseline_observed: ($baseline_observed == "true"), evidence: $evidence},
+      observable: {nonce_observed: ($nonce_observed == "true"), baseline_observed: ($baseline_observed == "true"), spawn_observed: ($spawn_observed == "true"), subagent_responded: ($subagent_responded == "true"), legacy_nonce_observed: ($legacy_nonce_observed == "true"), evidence: $evidence},
       control: $control, role: $role, observed_at: $observed_at
     }]' <<<"$CELLS_JSON")"
 }

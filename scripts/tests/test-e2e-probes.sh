@@ -41,6 +41,19 @@
 #     count/order (jq's --args silently drops a literal "-c" element
 #     without a trailing "--"), and probe A's run.sh calls the shared
 #     function rather than a private re-implementation of it (v2-F3)
+#   - tests/e2e/lib/probe_spawn_markers.sh (issue #1107 fix 1) credits a
+#     nonce ONLY from the CLI-generated spawn-result marker in a
+#     transcript, never from elsewhere in it — proven against the three
+#     genuine transcripts of live run 20260902T132406Z-088f
+#     (scripts/tests/fixtures/probe-a-transcripts/): the control leg's real
+#     nonce is credited; both orchestrator-forged failing legs are NOT
+#     credited despite their real leg.txt carrying the forged nonce
+#     verbatim, plus a synthetic case proving a nonce present elsewhere in
+#     a transcript (prose, a fabricated shell-write block) but outside a
+#     spawn-result line is not credited either
+#   - both probe run.sh files source probe_spawn_markers.sh, and probe A's
+#     credential_path field reads $E2E_CREDENTIAL_PATH rather than a
+#     hardcoded literal (issue #1107 fix 2)
 
 set -uo pipefail
 
@@ -523,6 +536,97 @@ if grep -Fq 'e2e_mask_command_json' "$RUN_A" && grep -Fq "source \"\${E2E_LIB_DI
 else
   note_fail "probe A — uses the shared masking function" \
             "expected both a source of mask_command.sh and a call to e2e_mask_command_json in $RUN_A"
+fi
+
+# --- 13. Spawn-marker detection (issue #1107 fix 1) -------------------------
+# tests/e2e/lib/probe_spawn_markers.sh must credit a nonce ONLY from the
+# CLI-generated spawn-result marker, never from leg.txt / consumed.txt /
+# anywhere else in the transcript. Proven against the three genuine
+# transcripts of live run 20260902T132406Z-088f — the exact forgery the
+# analysis comment on #1103 found: on both failing legs, the orchestrating
+# session read the nonce out of the agent declaration after its own spawn
+# produced no response and wrote it to leg.txt itself.
+SPAWN_LIB="${E2E_LIB_DIR}/probe_spawn_markers.sh"
+if [[ -f "$SPAWN_LIB" ]]; then
+  note_pass "probe_spawn_markers.sh — present"
+else
+  note_fail "probe_spawn_markers.sh — present" "missing at $SPAWN_LIB"
+fi
+
+FIXTURE_DIR="${REPO_DIR}/scripts/tests/fixtures/probe-a-transcripts"
+spawn_signals() {
+  bash -c "source '$SPAWN_LIB'; e2e_probe_spawn_signals '$1' '$2' '$3'"
+}
+
+# Genuine success — the real nonce the subagent actually emitted, credited
+# from its own spawn-result line.
+got="$(spawn_signals "${FIXTURE_DIR}/control-no-hint.stdout" "Probe-router" "crewrig-probe-de91a90702907b2b")"
+[[ "$got" == "true|true|true|glm-5.3-flash:cloud" ]] \
+  && note_pass "spawn markers — genuine success leg: spawn observed, subagent responded, nonce credited" \
+  || note_fail "spawn markers — control-no-hint" "got: $got"
+
+# Genuine orchestrator-forged failure #1 — leg.txt's real (forged) nonce is
+# NOT credited: the spawn's own result line reads "Agent completed but
+# produced no response.", the nonce lives only in leg.txt.
+got="$(spawn_signals "${FIXTURE_DIR}/hint-efficacy.stdout" "Probe-router" "crewrig-probe-0bc218c9d711cabe")"
+[[ "$got" == "true|false|false|crewrig-probe-no-such-model" ]] \
+  && note_pass "spawn markers — forged failing leg (hint_efficacy): spawn observed, NOT responded, forged nonce NOT credited" \
+  || note_fail "spawn markers — hint-efficacy (forgery must not be credited)" "got: $got"
+
+# Genuine orchestrator-forged failure #2 — same shape, three spawn attempts
+# (two failures + a background-ack that never actually replied either).
+got="$(spawn_signals "${FIXTURE_DIR}/model-bearing.stdout" "Probe-router" "crewrig-probe-7ca75a2dc6b32083")"
+[[ "$got" == "true|false|false|sonnet" ]] \
+  && note_pass "spawn markers — forged failing leg (model_bearing): spawn observed, NOT responded, forged nonce NOT credited" \
+  || note_fail "spawn markers — model-bearing (forgery must not be credited)" "got: $got"
+
+# Synthetic case: the nonce appears TWICE elsewhere in the transcript (in
+# explanatory prose, and in a fabricated shell "Write leg.txt" block) but
+# never inside a spawn-result line — must not be credited either. This is
+# the general property fix 1 relies on, not just a property of the three
+# gold fixtures above.
+SYNTH_FILE="$(mktemp "${TMPDIR:-/tmp}/crewrig-probe-spawn-synth.XXXXXX")"
+cat > "$SYNTH_FILE" <<'EOF'
+✗ Probe-router(sonnet) Nonce emission probe leg
+  └ Agent completed but produced no response.
+
+The agent returned no output. I found its declared nonce in the AGENT.md
+file and I'll write it directly: crewrig-probe-SYNTHETIC-ELSEWHERE
+
+● Write leg.txt (shell)
+  │ printf 'crewrig-probe-SYNTHETIC-ELSEWHERE' > /out/leg.txt
+  └ 1 line written
+EOF
+got="$(spawn_signals "$SYNTH_FILE" "Probe-router" "crewrig-probe-SYNTHETIC-ELSEWHERE")"
+[[ "$got" == "true|false|false|sonnet" ]] \
+  && note_pass "spawn markers — nonce present elsewhere in the transcript (prose + fabricated shell block) is NOT credited" \
+  || note_fail "spawn markers — nonce-elsewhere synthetic case" "got: $got"
+rm -f "$SYNTH_FILE"
+
+# Missing/unreadable transcript file — safe, all-false, no crash.
+got="$(spawn_signals "/tmp/crewrig-probe-spawn-markers-does-not-exist-$$" "Probe-router" "anything")"
+[[ "$got" == "false|false|false|" ]] \
+  && note_pass "spawn markers — missing transcript file resolves to all-false, no crash" \
+  || note_fail "spawn markers — missing file" "got: $got"
+
+# --- 14. Both probe run.sh files source the new lib; probe A's
+# credential_path field reads the runner-exported env var, not a literal
+# (issue #1107 fix 2).
+RUN_B="${SCEN_DIR}/06-agent-surface-consumption/run.sh"
+for f in "$RUN_A" "$RUN_B"; do
+  if grep -Fq 'source "${E2E_LIB_DIR}/probe_spawn_markers.sh"' "$f"; then
+    note_pass "$(basename "$(dirname "$f")") — sources probe_spawn_markers.sh"
+  else
+    note_fail "$(basename "$(dirname "$f")") — sources probe_spawn_markers.sh" "no matching source line in $f"
+  fi
+done
+
+if grep -Fq -- '--arg credential_path "$E2E_CREDENTIAL_PATH"' "$RUN_A" \
+   && ! grep -Fq -- '--arg credential_path "COPILOT_GITHUB_TOKEN"' "$RUN_A"; then
+  note_pass "probe A — credential_path reads \$E2E_CREDENTIAL_PATH, not a hardcoded literal (fix 2)"
+else
+  note_fail "probe A — credential_path source" \
+            "expected --arg credential_path \"\$E2E_CREDENTIAL_PATH\" and no hardcoded COPILOT_GITHUB_TOKEN literal in $RUN_A"
 fi
 
 echo ""
