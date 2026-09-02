@@ -152,7 +152,7 @@ else
 fi
 
 # Verify world-writable bits are set (a+rwx → mode ends in 7 for o-bits).
-mode="$(stat -f '%Lp' "$target_dir" 2>/dev/null || stat -c '%a' "$target_dir")"
+mode="$(stat -c '%a' "$target_dir" 2>/dev/null || stat -f '%Lp' "$target_dir")"
 # Last digit = other; must include r(4)+w(2)+x(1) = 7.
 if [[ "${mode: -1}" == "7" ]]; then
   note_pass "e2e_chown_bootstrap — target dir is world-writable (mode $mode)"
@@ -165,7 +165,7 @@ rm -rf "$tmp_home" "$poison_bin"
 
 # --- 8. e2e_ensure_bundle_dir — absent path, then idempotence (spec 0194 step 14) ---
 tmp_home2="$(mktemp -d)"
-got_mode() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
+got_mode() { stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"; }
 
 CREWRIG_E2E_HOME="$tmp_home2" bash -c "source '$LIB'; e2e_ensure_bundle_dir claude"
 rc=$?

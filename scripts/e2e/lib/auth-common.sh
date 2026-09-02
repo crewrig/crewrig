@@ -85,10 +85,10 @@ e2e_ensure_bundle_dir() {
   dir="$(e2e_cli_dir "$cli")"
   mkdir -p "$dir"
   chmod 700 "$root" "$dir"
-  if [[ "$(stat -f '%Lp' "$root" 2>/dev/null || stat -c '%a' "$root")" != "700" ]]; then
+  if [[ "$(stat -c '%a' "$root" 2>/dev/null || stat -f '%Lp' "$root")" != "700" ]]; then
     e2e_die "[$cli] e2e_ensure_bundle_dir: could not chmod 700 the e2e root ${root}."
   fi
-  if [[ "$(stat -f '%Lp' "$dir" 2>/dev/null || stat -c '%a' "$dir")" != "700" ]]; then
+  if [[ "$(stat -c '%a' "$dir" 2>/dev/null || stat -f '%Lp' "$dir")" != "700" ]]; then
     e2e_die "[$cli] e2e_ensure_bundle_dir: could not chmod 700 ${dir}."
   fi
 }
@@ -121,7 +121,7 @@ e2e_assert_bundle_modes() {
   local bad=""
   while IFS= read -r -d '' p; do
     local mode
-    mode="$(stat -f '%Lp' "$p" 2>/dev/null || stat -c '%a' "$p")"
+    mode="$(stat -c '%a' "$p" 2>/dev/null || stat -f '%Lp' "$p")"
     if [[ -d "$p" && "$mode" != "700" ]] || [[ -f "$p" && "$mode" != "600" ]]; then
       bad="${bad}${p}(${mode}) "
     fi
