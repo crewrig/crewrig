@@ -52,6 +52,20 @@ run_auth_ready_stderr() {
     bash -c "set -uo pipefail; source '$LIB'; e2e_auth_ready '$cli'" 2>&1 >/dev/null
 }
 
+# Variant that captures the E2E_AUTH_READY_CREDENTIAL_PATH side effect
+# (issue #1107 fix 2, spec 0194 R9 record accuracy) — the function call and
+# the printf run in the SAME shell instance (not a subshell), so the
+# global survives between them.
+run_auth_ready_credpath() {
+  local cli="$1"; shift
+  env -i \
+    HOME="$TMP_HOME" \
+    CREWRIG_E2E_HOME="$TMP_HOME" \
+    PATH="$PATH" \
+    "$@" \
+    bash -c "set -uo pipefail; source '$LIB'; e2e_auth_ready '$cli' >/dev/null 2>&1; printf '%s' \"\${E2E_AUTH_READY_CREDENTIAL_PATH:-}\""
+}
+
 # --- Case 1: sourceable + function exists ---------------------------------
 if bash -c "set -uo pipefail; source '$LIB'; declare -F e2e_auth_ready >/dev/null"; then
   note_pass "auth-common.sh sourceable; e2e_auth_ready declared"
@@ -158,6 +172,54 @@ if grep -qiE "copilot|task e2e:auth:copilot" <<< "$err12"; then
 else
   note_fail "copilot not-ready diagnostic names a command" "stderr: $err12"
 fi
+
+# --- Case 13: E2E_AUTH_READY_CREDENTIAL_PATH names the path actually
+# selected (issue #1107 fix 2, spec 0194 R9 record accuracy) — the runner
+# reads this side effect and exports it as E2E_CREDENTIAL_PATH so probe A's
+# verdict stops hardcoding "COPILOT_GITHUB_TOKEN" regardless of which path
+# actually authenticated the run.
+got="$(run_auth_ready_credpath copilot COPILOT_GITHUB_TOKEN=x)"
+[[ "$got" == "COPILOT_GITHUB_TOKEN" ]] \
+  && note_pass "credential path — copilot/COPILOT_GITHUB_TOKEN labeled COPILOT_GITHUB_TOKEN" \
+  || note_fail "credential path — copilot/COPILOT_GITHUB_TOKEN" "got: '$got'"
+
+got="$(run_auth_ready_credpath copilot GH_TOKEN=x)"
+[[ "$got" == "GH_TOKEN" ]] \
+  && note_pass "credential path — copilot/GH_TOKEN labeled GH_TOKEN" \
+  || note_fail "credential path — copilot/GH_TOKEN" "got: '$got'"
+
+mkdir -p "$TMP_HOME/.crewrig-e2e/copilot"
+echo '{"placeholder":"x"}' > "$TMP_HOME/.crewrig-e2e/copilot/config.json"
+got="$(run_auth_ready_credpath copilot)"
+[[ "$got" == "workstation-credential" ]] \
+  && note_pass "credential path — copilot/config.json labeled workstation-credential" \
+  || note_fail "credential path — copilot/config.json" "got: '$got'"
+rm -rf "$TMP_HOME/.crewrig-e2e/copilot"
+
+mkdir -p "$TMP_HOME/.crewrig-e2e/ollama"
+echo 'fake-key' > "$TMP_HOME/.crewrig-e2e/ollama/id_ed25519"
+got="$(run_auth_ready_credpath copilot)"
+[[ "$got" == "ollama-cloud-keypair" ]] \
+  && note_pass "credential path — copilot/ollama keypair labeled ollama-cloud-keypair" \
+  || note_fail "credential path — copilot/ollama keypair" "got: '$got'"
+rm -rf "$TMP_HOME/.crewrig-e2e/ollama"
+
+got="$(run_auth_ready_credpath claude ANTHROPIC_API_KEY=x)"
+[[ "$got" == "ANTHROPIC_API_KEY" ]] \
+  && note_pass "credential path — claude/ANTHROPIC_API_KEY labeled ANTHROPIC_API_KEY" \
+  || note_fail "credential path — claude/ANTHROPIC_API_KEY" "got: '$got'"
+
+got="$(run_auth_ready_credpath gemini GEMINI_API_KEY=x)"
+[[ "$got" == "GEMINI_API_KEY" ]] \
+  && note_pass "credential path — gemini/GEMINI_API_KEY labeled GEMINI_API_KEY" \
+  || note_fail "credential path — gemini/GEMINI_API_KEY" "got: '$got'"
+
+# Not-ready path leaves the label empty (checked without polluting stderr
+# expectations elsewhere).
+got="$(run_auth_ready_credpath copilot)"
+[[ "$got" == "" ]] \
+  && note_pass "credential path — not-ready copilot leaves the label empty" \
+  || note_fail "credential path — not-ready leaves it empty" "got: '$got'"
 
 # --- Case 8: unknown CLI → non-zero with clear error ---------------------
 # e2e_auth_ready calls e2e_die for unknown CLI → exit 1.

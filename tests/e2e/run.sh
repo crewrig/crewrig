@@ -244,11 +244,16 @@ for scenario in "${SELECTED_SCENARIOS[@]}"; do
 
     desc="${cli}/${scenario}"
 
-    # Auth gate.
+    # Auth gate. e2e_auth_ready sets E2E_AUTH_READY_CREDENTIAL_PATH as a
+    # side effect on a ready result (spec 0194 R9 record accuracy; issue
+    # #1107 fix 2) — captured immediately so a later call for a different
+    # cli/scenario pair cannot overwrite it before this pair's scenario
+    # script runs.
     if ! e2e_auth_ready "$cli"; then
       tap_emit skip "$desc" "unconfigured (run \`task e2e:auth:${cli}\`)"
       continue
     fi
+    credential_path="${E2E_AUTH_READY_CREDENTIAL_PATH:-unknown}"
 
     image="$(jq -r --arg c "$cli" '.cli[$c].image' "$EFFECTIVE_JSON")"
     case_dir="${REPORT_DIR}/${cli}/${scenario}"
@@ -285,6 +290,7 @@ for scenario in "${SELECTED_SCENARIOS[@]}"; do
           E2E_CREWRIG_E2E_HOME="$(e2e_e2e_home)" \
           E2E_SCENARIO_DIR="${SCRIPT_DIR}/scenarios/${scenario}" \
           E2E_RUN_ID="$(basename "$REPORT_DIR")" \
+          E2E_CREDENTIAL_PATH="$credential_path" \
           "$scenario_script" \
           >"${case_dir}/stdout" \
           2>"${case_dir}/stderr"
