@@ -130,7 +130,10 @@ if [[ -f "$DEFAULTS_TOML" ]] && command -v yq >/dev/null 2>&1 && command -v jq >
         note_pass "scenario '$s' — [cli.copilot] target handled by the reviewed ephemeral-home substitution (v2-F4), not a hardcoded duplicate"
         continue
       fi
-      mapfile -t declared_targets < <(jq -r --arg c "$cli" '.cli[$c].mounts // [] | .[] | split(":")[1] // empty' <<<"$DEFAULTS_JSON")
+      declared_targets=()
+      while IFS= read -r line || [ -n "$line" ]; do
+        declared_targets+=("$line")
+      done < <(jq -r --arg c "$cli" '.cli[$c].mounts // [] | .[] | split(":")[1] // empty' <<<"$DEFAULTS_JSON")
       for target in ${declared_targets[@]+"${declared_targets[@]}"}; do
         [[ -z "$target" ]] && continue
         hits="$(grep -Fv 'expand_mount' "$r" | grep -v '^[[:space:]]*#' | grep -Fc -- "$target" || true)"

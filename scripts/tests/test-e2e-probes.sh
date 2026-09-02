@@ -157,7 +157,10 @@ fi
 # not just once, which would silently leave one branch (and one of R10's two
 # "requirements 1-7 unrealised" paths, per PLAN v2 step 15) unbracketed.
 RUNNER_SH="${REPO_DIR}/tests/e2e/run.sh"
-mapfile -t _bracket_calls < <(grep -n 'e2e_ensure_bundle_dir "\$cli"\|e2e_assert_bundle_modes "\$cli"' "$RUNNER_SH" | sed -E 's/^[0-9]+:[[:space:]]*//')
+_bracket_calls=()
+while IFS= read -r line || [ -n "$line" ]; do
+  _bracket_calls+=("$line")
+done < <(grep -n 'e2e_ensure_bundle_dir "\$cli"\|e2e_assert_bundle_modes "\$cli"' "$RUNNER_SH" | sed -E 's/^[0-9]+:[[:space:]]*//')
 if [[ "${#_bracket_calls[@]}" -eq 4 \
       && "${_bracket_calls[0]}" == 'e2e_ensure_bundle_dir "$cli"' \
       && "${_bracket_calls[1]}" == 'e2e_assert_bundle_modes "$cli"' \
