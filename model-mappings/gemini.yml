@@ -1,0 +1,189 @@
+# CrewRig — Gemini CLI model mapping (spec 0197 R38-R40).
+#
+# Normative shape: docs/model-mapping-format.md. Core layer, sync policy
+# `strict` (.crewrig/core-paths.txt, docs/layers.md). This file DESCRIBES: it
+# emits nothing and builds nothing. The resolution that reads it is seam (d)
+# part 2 of epic #1100; the hermetic gate over it is
+# scripts/check-model-mappings.sh (spec 0197 R46-R51).
+#
+# Grounding is per declaration (docs/model-mapping-format.md, Decision B).
+# "RR" abbreviates the live-verification research report, issue #1111
+# comment 5523492666.
+#
+# `encodes.intelligence` names the vendor FAMILY token shared by two
+# offerings at different rungs (`flash`, on both gemini-3.5-flash and
+# gemini-3.1-flash-lite), never the rung itself — the rung distinction lives
+# entirely in `provides.intelligence`. Clause (iii) of the checker's A10
+# encodes-disagreement assertion is therefore vacuous for this axis on this
+# mapping: neither `flash` nor `pro` is a member of the closed intelligence
+# domain, so no comparison against `provides.intelligence` ever applies.
+
+target: gemini
+
+surfaces:
+  - id: frontmatter
+    kind: frontmatter
+    items:
+      - item: model
+        key: model
+        domain:
+          values: [gemini-3.1-flash-lite, gemini-3.5-flash, gemini-3.1-pro-preview]
+        grounds:
+          - declares: key
+            citation: >-
+              RR -> Gemini CLI -> Declaration surface, citing the bundled
+              subagents.md table, which documents the native `model` key on a
+              `.gemini/agents/*.md` frontmatter surface.
+          - declares: domain
+            citation: >-
+              RR -> Gemini CLI -> Model-id spelling: all three identifiers
+              this mapping's offerings name appear verbatim in the
+              `customAliases` enumeration. The bundled documentation
+              illustrates the model surface with concrete identifiers and
+              documents no alias domain, so concrete identifiers are what
+              this mapping names (spec 0197 Decision 5).
+      - item: temperature
+        key: temperature
+        domain:
+          type: number
+          min: 0.0
+          max: 2.0
+        grounds:
+          - declares: key
+            citation: >-
+              RR -> Gemini CLI -> Declaration surface, citing the bundled
+              subagents.md table, which documents the native `temperature`
+              key on the same frontmatter surface.
+          - declares: domain
+            citation: >-
+              RR -> Gemini CLI -> Declaration surface: the bundled
+              subagents.md table states the admitted range 0.0 through 2.0
+              for `temperature`.
+      - item: max-turns
+        key: max_turns
+        domain:
+          type: integer
+          min: 1
+        grounds:
+          - declares: key
+            citation: >-
+              RR -> Gemini CLI -> Declaration surface, citing the bundled
+              subagents.md table, which documents the native `max_turns` key
+              (snake_case, unlike this vocabulary's kebab-case `max-turns`
+              item) on the same frontmatter surface.
+          - declares: domain
+            citation: >-
+              RR -> Gemini CLI -> Declaration surface: the bundled
+              subagents.md table states an integer of at least 1 for
+              `max_turns`.
+
+  - id: settings-overrides
+    kind: out-of-band
+    location: >-
+      settings.json `modelConfigs.overrides`, matched to an agent by
+      `overrideScope` (spec 0197 R40). Recorded as evidence directing no
+      emission (R12) — this mapping declares no guidance surface, so
+      reasoning and the three generation knobs below are dropped with the
+      reason unsupported-on-cli rather than directed here.
+    items:
+      - item: reasoning
+        grounds:
+          - declares: item
+            citation: >-
+              RR -> Gemini CLI -> No native reasoning field: `thinkingLevel` /
+              `thinkingBudget` are reachable only through `settings.json`
+              `modelConfigs.overrides`, never through the agent-file
+              frontmatter surface (spec 0197 Premise 2).
+      - item: top-p
+        grounds:
+          - declares: item
+            citation: >-
+              RR -> Gemini CLI -> No native reasoning field: `topP` is
+              reachable only through `settings.json`
+              `modelConfigs.overrides`.
+      - item: top-k
+        grounds:
+          - declares: item
+            citation: >-
+              RR -> Gemini CLI -> No native reasoning field: `topK` is
+              reachable only through `settings.json`
+              `modelConfigs.overrides`.
+      - item: max-output-tokens
+        grounds:
+          - declares: item
+            citation: >-
+              RR -> Gemini CLI -> No native reasoning field: `maxOutputTokens`
+              is reachable only through `settings.json`
+              `modelConfigs.overrides`.
+
+offerings:
+  - id: gemini-3.1-flash-lite
+    rank: 1
+    native-value: gemini-3.1-flash-lite
+    provides:
+      intelligence: low
+      specialization: general
+    encodes:
+      intelligence: flash
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Gemini CLI -> Model-id spelling: `gemini-3.1-flash-lite`
+          appears verbatim in the `customAliases` enumeration.
+      - declares: provides.intelligence
+        assumption: >-
+          The rung rests on the vendor's own family naming — pro above flash
+          above flash-lite — which is observable in the identifier but is not
+          a capability measurement (spec 0197 `## Open questions`).
+      - declares: supports-reasoning-surface
+        citation: >-
+          This mapping's frontmatter surface declares no reasoning item
+          (spec 0197 R40), so A17 forces false structurally.
+
+  - id: gemini-3.5-flash
+    rank: 2
+    native-value: gemini-3.5-flash
+    provides:
+      intelligence: medium
+      specialization: general
+    encodes:
+      intelligence: flash
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Gemini CLI -> Model-id spelling: `gemini-3.5-flash` appears
+          verbatim in the `customAliases` enumeration.
+      - declares: provides.intelligence
+        assumption: >-
+          Same ground as `gemini-3.1-flash-lite` above: vendor family naming,
+          not a capability measurement (spec 0197 `## Open questions`).
+      - declares: supports-reasoning-surface
+        citation: >-
+          This mapping's frontmatter surface declares no reasoning item
+          (spec 0197 R40), so A17 forces false structurally.
+
+  - id: gemini-3.1-pro-preview
+    rank: 3
+    native-value: gemini-3.1-pro-preview
+    provides:
+      intelligence: high
+      specialization: general
+    encodes:
+      intelligence: pro
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Gemini CLI -> Model-id spelling: `gemini-3.1-pro-preview`
+          appears verbatim in the `customAliases` enumeration.
+      - declares: provides.intelligence
+        assumption: >-
+          Same ground as the two flash offerings above: vendor family naming
+          — pro above flash — not a capability measurement (spec 0197
+          `## Open questions`).
+      - declares: supports-reasoning-surface
+        citation: >-
+          This mapping's frontmatter surface declares no reasoning item
+          (spec 0197 R40), so A17 forces false structurally.
