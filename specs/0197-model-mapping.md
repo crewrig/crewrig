@@ -31,10 +31,11 @@ version probes, `--help` text, on-disk vendor documentation and schemas, and
 read-only configuration inspection. Where the report left an item unconfirmed
 and a mapping cell needs it, the cell is a **documented assumption** and the
 matching entry in `## Open questions` says so. Vendor web documentation is not
-an admissible source for a mapping cell in this spec; the live install is. Two
+an admissible source for a mapping cell in this spec; the live install is. Some
 cells rest on a second kind of evidence, recorded as such: a decision the
-maintainer took at this spec's content gate, cited below as *the content gate
-of issue #1111*.
+maintainer took at a content gate of this spec, cited below as *the content
+gate of issue #1111* and, for the decisions of the second gate, *content gate
+v2 of issue #1111*.
 
 **Vocabulary.** A **target** is one supported CLI, named by the identifier that
 repository tooling already uses for it — `claude`, `gemini`, `copilot`,
@@ -238,8 +239,9 @@ assumptions in the mapping files — that orchestrators honor such guidance
 reliably, for which the maintainer's live experience is the whole of the
 evidence; and that prose naming a model inside `.claude/agents/` does not itself
 disturb a GitHub Copilot CLI reader, which probe A never tested because every
-one of its legs set a `model:` field. `## Open questions` proposes probe C in
-the issue #1103 harness to settle the second, covering the neighbouring cell in
+one of its legs set a `model:` field. `## Open questions` records probe C —
+directed at content gate v2 and tracked as a dedicated end-to-end ticket — to
+settle the second, covering the neighbouring cell in
 the same run: whether a non-`model` frontmatter key such as `effort:` is
 likewise inert for that reader.
 
@@ -532,16 +534,22 @@ mappings, and 46 through 51 the validation surface.
     Having no frontmatter surface, that mapping expresses none of the five
     tuning knobs of spec 0195, each of which is therefore dropped with the
     reason `unsupported-on-cli`.
-44. The Antigravity CLI mapping SHALL declare exactly six composite offerings,
+44. The Antigravity CLI mapping SHALL declare exactly five composite offerings,
     ranked ascending, drawn from the fourteen identifiers `agy models` reports —
     `gemini-3.8-flash-low`, `gemini-3.8-flash-medium` and `gemini-3.8-flash-high`
     each providing the `medium` rung and encoding the reasoning rung their suffix
-    names; `gemini-3.1-pro-low` and `gemini-3.1-pro-high` each providing the
-    `high` rung and likewise encoding their suffix; and
-    `claude-opus-4-6-thinking` providing the `xhigh` rung and encoding the `high`
-    reasoning rung. It SHALL record the remaining eight observed identifiers as
-    evidence it declares no offering for, and SHALL carry every rung assignment
-    as an assumption.
+    names, and `gemini-3.1-pro-low` and `gemini-3.1-pro-high` each providing the
+    `high` rung and likewise encoding their suffix. It SHALL declare no offering
+    naming a model outside the Google family, on the ground the maintainer gave
+    at the content gate of issue #1111 — the plan under which Antigravity CLI
+    serves those models is markedly less generous than the one serving the
+    Google family — and that ground SHALL be recorded as a citation of the gate
+    rather than as an assumption. The `high` rung is therefore the highest rung
+    this mapping declares, so a declared `xhigh`, `xxhigh` or `max` rung selects
+    between the two `gemini-3.1-pro` offerings under the ceiling clause of
+    requirement 17 rather than reaching any non-Google model. It SHALL record
+    the remaining nine observed identifiers as evidence it declares no offering
+    for, and SHALL carry every rung assignment as an assumption.
 45. Every offering, surface item and guard term across the four core default
     mappings SHALL trace to an observation of the live-verification research
     report of issue #1111 or to the content gate of that issue, except where
@@ -855,14 +863,19 @@ no closure is owed on the logbook issue.
   harness would settle it with two cells against one BYOK session — a
   description naming a model, and a non-`model` frontmatter key such as
   `effort:`, the neighbouring case requirement 31 also leaves directed while the
-  guard withholds `model:`. Until that run, both cells are marked assumptions in
-  the mapping file.
+  guard withholds `model:`. The maintainer directed at content gate v2 of
+  issue #1111 that this be tested in the end-to-end harness; probe C is tracked
+  as a dedicated e2e ticket opened from that gate. Until that run, both cells
+  are marked assumptions in the mapping file.
 - [GROUNDING:] **confirm.** Whether an orchestrating model honors a guidance
   statement reliably enough for a mapping to depend on it is supported only by
   the maintainer's own live experience of Claude Code, recorded at the content
-  gate of issue #1111. No probe covers it, and the two targets that use the
-  surface — Claude Code and Antigravity CLI — carry it as an assumption. The
-  maintainer is asked to confirm that the surface may bear this weight; the
+  gate of issue #1111. No probe covers it today, and the two targets that use
+  the surface — Claude Code and Antigravity CLI — carry it as an assumption. The
+  maintainer directed at content gate v2 of issue #1111 that the reliability of
+  the surface be tested in the end-to-end harness alongside probe C, under the
+  same dedicated e2e ticket opened from that gate. The maintainer is asked to
+  confirm that the surface may bear this weight; the
   non-blocking invariant of requirement 15 bounds the cost of the assumption
   being wrong to an agent inheriting the session model.
 - [GROUNDING:] **audit.** Whether Claude Code's `effort:` field is refused or
@@ -879,19 +892,21 @@ no closure is owed on the logbook issue.
   `unserved-value` per requirement 19. A later delta populates the windows once
   an observation grounds them.
 - [GROUNDING:] **confirm.** The intelligence rungs assigned to the three Gemini
-  offerings in requirement 39 and to the six Antigravity offerings in
+  offerings in requirement 39 and to the five Antigravity offerings in
   requirement 44 rest on the vendors' own family naming — pro above flash above
-  flash-lite, opus above the flash classes, and the higher version within a
-  family — which is observable in the identifiers themselves but is not a
+  flash-lite, and the higher version within a family — which is observable in the identifiers themselves but is not a
   capability measurement. Every assignment is carried as an assumption in the
   mapping files.
-- [GROUNDING:] **audit.** Requirement 44 declares six of the fourteen
-  identifiers `agy models` reports. The eight it leaves undeclared are the
-  `gemini-3.7-flash` and `gemini-3.6-flash` generations, superseded by
-  `gemini-3.8-flash` within the same family, and `claude-sonnet-4-6` and
-  `gpt-oss-120b-medium`, each of which would be unreachable behind a
-  lower-ranked offering at the same rung. They are recorded in the mapping as
-  observed rather than dropped from the record.
+- [GROUNDING:] **audit.** Requirement 44 declares five of the fourteen
+  identifiers `agy models` reports. The nine it leaves undeclared fall into two
+  groups with two distinct grounds. Six are superseded generations — the three
+  `gemini-3.7-flash` variants and the three `gemini-3.6-flash` variants —
+  displaced by `gemini-3.8-flash` within the same family. Three are non-Google
+  models the maintainer excluded at the content gate of issue #1111 for the
+  comparative ungenerosity of the plan serving them on that CLI:
+  `claude-sonnet-4-6`, `claude-opus-4-6-thinking` and `gpt-oss-120b-medium`.
+  All nine are recorded in the mapping as observed rather than dropped from the
+  record.
 - [GROUNDING:] **audit.** Whether Gemini CLI 0.46.0 accepts `model:`,
   `temperature:` and `max_turns:` in `.gemini/agents/*.md` was not re-probed. The
   bundled documentation of that release enumerates all three; this repository's
