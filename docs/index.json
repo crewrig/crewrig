@@ -130,6 +130,11 @@
           "title": "Extension hook events",
           "path": "docs/extension-hook-events.md",
           "nav_order": 80
+        },
+        {
+          "title": "Model mapping format",
+          "path": "docs/model-mapping-format.md",
+          "nav_order": 90
         }
       ]
     },

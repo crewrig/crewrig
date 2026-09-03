@@ -78,6 +78,12 @@ contract — never flowing back upstream.
 | `ci/` | Platform-neutral CI capability reference (`ci/ci-capabilities.yml`). One entry per CI job — the engine-agnostic source of truth that the per-engine pipelines (GitHub Actions today, GitLab CI and others later) are derived from and drift-checked against. Core/`strict`; its normative shape is `docs/ci-reference-format.md` (ADR-0012). Top-level rather than under `.github/` so the reference reads as engine-neutral, not GitHub-owned. |
 | `.gitlab-ci.yml` | Generated GitLab CI pipeline (spec 0048). The derived GitLab form of the portable subset of `ci/ci-capabilities.yml` — one job per portable capability, produced by `scripts/build-ci.sh`. Core/`strict` (engine-neutral generated output, upstream-owned). Never hand-edited: `bash scripts/build-ci.sh --check` guards it against drift from the reference in CI. The GitHub Actions workflows under `.github/workflows/` are NOT generated (spec 0048 R5); only GitLab is derived here. |
 
+### Model mappings (spec 0197)
+
+| Path | Description |
+|---|---|
+| `model-mappings/` | Per-CLI model mapping artifacts (`model-mappings/<target>.yml`, one per supported target) declaring which models a target can reach, what each provides, and how the spec 0195 capability vocabulary turns into that target's native fields and prose. Core/`strict`; its normative shape is `docs/model-mapping-format.md`; its hermetic gate is `scripts/check-model-mappings.sh`. Top-level rather than under `artifacts/`: a mapping is a build input, not a component, and nothing deploys it to a CLI (spec 0197 Decision 1). |
+
 ### Build and install tooling
 
 | Path | Description |

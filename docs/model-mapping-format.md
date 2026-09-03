@@ -18,7 +18,7 @@ of epic #1100, out of scope here (spec 0197 → *Out of scope*).
 
 A mapping is a committed declaration, one per target, that says which models a
 command-line interface can reach, what each model provides, and how the
-vocabulary of [spec 0195](0195-agent-capability-profile.md) turns into that
+vocabulary of [spec 0195](../specs/0195-agent-capability-profile.md) turns into that
 target's native fields and prose. It is a *description*: nothing in the
 repository reads a mapping at the end of this ticket, and the checker
 (`scripts/check-model-mappings.sh`) is an authoring-time gate over a proposed

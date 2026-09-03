@@ -652,6 +652,30 @@ jobs:
       - name: Test Setup Init Command Instructions
         if: steps.filter.outputs.setup == 'true'
         run: bash scripts/tests/test-setup-init-command-instructions.sh
+  check-model-mappings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-model-mappings:
+              - 'model-mappings/**'
+              - 'docs/model-mapping-format.md'
+              - 'scripts/check-model-mappings.sh'
+              - 'scripts/tests/test-check-model-mappings.sh'
+      - name: Install yq
+        if: steps.filter.outputs.check-model-mappings == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Check Model Mappings
+        if: steps.filter.outputs.check-model-mappings == 'true'
+        run: bash scripts/check-model-mappings.sh
+      - name: Test Check Model Mappings
+        if: steps.filter.outputs.check-model-mappings == 'true'
+        run: bash scripts/tests/test-check-model-mappings.sh
   misc:
     runs-on: ubuntu-latest
     steps:
@@ -670,6 +694,7 @@ jobs:
               - 'scripts/tests/test-check-spec-id-reserved.sh'
               - 'scripts/reserve-spec-id.sh'
               - 'scripts/check-spec-id-reserved.sh'
+              - 'model-mappings/**'
       - uses: actions/setup-python@v5
         if: steps.filter.outputs.misc == 'true'
         with:

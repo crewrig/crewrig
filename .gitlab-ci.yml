@@ -631,6 +631,7 @@ misc:
         - "scripts/tests/test-check-spec-id-reserved.sh"
         - "scripts/reserve-spec-id.sh"
         - "scripts/check-spec-id-reserved.sh"
+        - "model-mappings/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-no-machine-paths.sh"
@@ -642,6 +643,7 @@ misc:
         - "scripts/tests/test-check-spec-id-reserved.sh"
         - "scripts/reserve-spec-id.sh"
         - "scripts/check-spec-id-reserved.sh"
+        - "model-mappings/**"
 
 frontmatter:
   image: debian:stable-slim
@@ -680,6 +682,29 @@ frontmatter:
         - "scripts/tests/test-pr-logbook-label-scope.sh"
         - "scripts/lib/**"
         - "artifacts/**"
+
+check-model-mappings:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/check-model-mappings.sh"
+    - "bash scripts/tests/test-check-model-mappings.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "model-mappings/**"
+        - "docs/model-mapping-format.md"
+        - "scripts/check-model-mappings.sh"
+        - "scripts/tests/test-check-model-mappings.sh"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "model-mappings/**"
+        - "docs/model-mapping-format.md"
+        - "scripts/check-model-mappings.sh"
+        - "scripts/tests/test-check-model-mappings.sh"
 
 markdown-links:
   image: python:3.12
