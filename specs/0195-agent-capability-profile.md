@@ -1,7 +1,7 @@
 ---
 id: "0195"
 slug: agent-capability-profile
-status: draft
+status: approved
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 1109
