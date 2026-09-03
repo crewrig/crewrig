@@ -58,7 +58,7 @@ that already carries what it will read:
 - `grounds` carries nothing R15–R28 needs; it exists for R5 alone.
 
 R15's non-failure invariant, R16's omitted-axis case, R20's `general`
-fallback, R22's diagnostic note, and R27's drop-record shape are behaviours of
+fallback, R22's diagnostic note, and R27's drop-record shape are behaviors of
 the resolver alone and reach no cell of a mapping file.
 
 ## Node shapes and closed key sets
@@ -271,11 +271,30 @@ Four obligations the assertion table enforces beyond the literal text of R4,
 each because leaving it unchecked would let a spec-legal-looking mapping ship
 broken:
 
-1. **A composite offering must provide what it encodes.** An offering whose
-   `encodes:` names a characteristic SHALL also declare that characteristic
-   under `provides:` (A10, clause i) — otherwise Decision A's disagreement
-   check rejects every composite offering before its real teeth (clause iii)
-   can run.
+1. **A composite offering must provide what it encodes, and a shared family
+   token is expected, not a gap.** `encodes:` is a mapping from characteristic
+   to the `-`-delimited token of `native-value` that encodes it (R48,
+   Decision A), and A10 asserts it on three clauses: (i) the characteristic is
+   a key of `provides` — an offering whose `encodes:` names a characteristic
+   SHALL also declare that characteristic under `provides:`, otherwise the
+   disagreement check rejects every composite offering before its real teeth
+   can run; (ii) the token is a `-`-delimited segment of `native-value`; (iii)
+   where that token is itself a member of the characteristic's closed spec
+   0195 domain, it SHALL equal `provides.<characteristic>`. Clause (iii) has
+   real teeth on a `reasoning` token — `gemini-3.8-flash-low` encoding
+   `reasoning: low` must also *provide* `low`, and does — but it is
+   **deliberately vacuous** on a family token that is not itself a domain
+   member: `intelligence: flash` and `intelligence: haiku` name a vendor
+   family or alias, not a rung, so clause (iii) never fires on them. A family
+   token MAY be shared by two offerings at two different rungs — the Gemini
+   mapping's `gemini-3.1-flash-lite` (`low`) and `gemini-3.5-flash`
+   (`medium`) both encode `intelligence: flash` — and this is the intended
+   reading, not a gap clause (iii) failed to catch: the rung distinction
+   lives entirely in `provides.intelligence`, and the encoded family token
+   exists to satisfy clause (i)/(ii) alone. A reader auditing A10's coverage
+   should expect this vacuity on every family-named `intelligence` encoding
+   and reserve suspicion for a `reasoning` encoding, where clause (iii) is
+   the assertion doing the real work.
 2. **Every offering must declare `provides.intelligence`.** R4 does not
    single out the `intelligence` characteristic, so an offering that declares
    none is schema-legal today and permanently unselectable under R17 — dead

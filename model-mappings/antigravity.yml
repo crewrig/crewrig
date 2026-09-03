@@ -130,7 +130,17 @@ offerings:
       - declares: native-value
         citation: >-
           RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.1-pro-low` among its fourteen reported identifiers.
+          `gemini-3.1-pro-low` among its fourteen reported identifiers. Rank 4
+          is the lower of the two ranks this mapping gives its two `high`-rung
+          offerings (`gemini-3.1-pro-low` and `gemini-3.1-pro-high`, the
+          mapping's highest declared rung), so R23's lowest-rank pick selects
+          THIS offering — not `gemini-3.1-pro-high` — whenever the candidate
+          set is the pair of them: at the declared `high` rung itself absent a
+          narrowing `reasoning` declaration, and under R17's ceiling clause
+          for a declared `xhigh`, `xxhigh` or `max` rung, since this mapping
+          declares no higher rung (confirmed by hand, by
+          `scripts/check-model-mappings.sh --print-selection` and by the
+          golden per-rung table in `scripts/tests/test-check-model-mappings.sh`).
       - declares: provides.intelligence
         assumption: >-
           The rung rests on the vendor's own family naming — pro above
@@ -156,13 +166,20 @@ offerings:
       - declares: native-value
         citation: >-
           RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.1-pro-high` among its fourteen reported identifiers. Under
-          R17's ceiling clause this offering (rank 5, the lowest-ranked at the
-          mapping's highest declared rung) also serves a declared `xhigh`,
-          `xxhigh` or `max` rung — this mapping declares no higher rung, on
-          the ground `## Open questions` and R44 record (the plan under which
-          Antigravity CLI serves non-Google models is markedly less generous
-          than the one serving the Google family).
+          `gemini-3.1-pro-high` among its fourteen reported identifiers. Rank 5
+          is the HIGHER of this mapping's two `high`-rung ranks, so R23's
+          lowest-rank pick never selects this offering from the intelligence
+          axis alone — `gemini-3.1-pro-low` (rank 4) is selected instead, both
+          at the declared `high` rung and under R17's ceiling clause for a
+          declared `xhigh`, `xxhigh` or `max` rung (confirmed by hand, by
+          `scripts/check-model-mappings.sh --print-selection` and by the
+          golden per-rung table in `scripts/tests/test-check-model-mappings.sh`
+          — an earlier version of this citation claimed the opposite and was
+          corrected). This offering is reached only through R21's
+          encoded-reasoning narrowing: a profile declaring `reasoning: high`
+          alongside an `intelligence` rung that both `pro-low` and `pro-high`
+          satisfy narrows the `high`-rung candidate set to the offering whose
+          encoded reasoning token matches exactly, which is this one.
       - declares: provides.intelligence
         assumption: >-
           Same ground as `gemini-3.1-pro-low` above: vendor family naming,

@@ -3,7 +3,7 @@
 # (spec 0197 R46-R51, PLAN v2 step 7 of issue #1114).
 #
 # The `scripts/tests/test-check-feedback-routing.sh` idiom: `set -uo pipefail`
-# without `-e` (exit behaviour is asserted via explicit pass/fail counters, not
+# without `-e` (exit behavior is asserted via explicit pass/fail counters, not
 # by letting the harness abort on the first non-zero exit), `mktemp -d` +
 # `trap`, `render_*` fixture generators, a `run_case` pass/fail counter, and a
 # closing `[ "$fail" -eq 0 ]`.
