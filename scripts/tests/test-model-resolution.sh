@@ -303,6 +303,30 @@ else
   bad "R7 tail clause — tuning knobs directed while intelligence absent" "n_fm=${#EMIT_FM_LINES[@]} n_diag=$(diag_count)" "${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}"
 fi
 
+# --- rule (d) — the five narrowings, v3-F3's remaining gap: no committed
+# claude.yml offering declares a context window, so a context floor always
+# empties the narrowing and is abandoned (spec 0197's own scenario).
+write_fixture "$FIXTURE" "intelligence: medium" "context: 1000000"
+resolve_agent probe "$FIXTURE" claude
+if [ "$RESOLVED_OFFERING_ID" = "haiku" ] \
+  && diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.context\t1000000\tunserved-value')"; then
+  ok "rule (d) — a context floor no claude offering declares is dropped, selection unchanged (haiku)"
+else
+  bad "rule (d) — context narrowing" "offering=$RESOLVED_OFFERING_ID" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
+# --- rule (d) — the general specialization fallback (R10, spec 0195 R12):
+# no committed gemini offering serves an unenumerated specialization, so it
+# falls back to general and records one unserved-value drop.
+write_fixture "$FIXTURE" "intelligence: high" "specialization: image-generation"
+resolve_agent probe "$FIXTURE" gemini
+if [ "$RESOLVED_OFFERING_ID" = "gemini-3.1-pro-preview" ] \
+  && diag_has "$(printf 'model-drop\tprobe\tgemini\tmetadata.model.specialization\timage-generation\tunserved-value')"; then
+  ok "rule (d) — a specialization no gemini offering serves falls back to general"
+else
+  bad "rule (d) — specialization fallback" "offering=$RESOLVED_OFFERING_ID" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
 # --- M7 — remove (g)(0) condition (i) from a scratch copy of the resolver;
 # both C13(i) and the rule-(b) case above must turn red.
 M7_LIB="$TMP_ROOT/model-resolve.m7.sh"
