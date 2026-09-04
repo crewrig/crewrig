@@ -288,6 +288,21 @@ else
   bad "rule (b) — intelligence-absent + reasoning declared" "n_diag=$(diag_count)" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
 fi
 
+# --- R7's tail clause — intelligence absent SHALL still direct the tuning
+# knobs the target expresses on its frontmatter surface.
+write_fixture "$FIXTURE" "reasoning: medium" "tuning:
+  temperature: 0.5
+  max-turns: 7"
+resolve_agent probe "$FIXTURE" gemini
+if [ -z "$RESOLVED_OFFERING_ID" ] \
+  && fm_has "temperature: 0.5" && fm_has "max_turns: 7" \
+  && [ "$(diag_count)" -eq 1 ] \
+  && diag_has "$(printf 'model-drop\tprobe\tgemini\tmetadata.model.reasoning\tmedium\tunserved-value')"; then
+  ok "R7 tail clause — intelligence absent still directs the tuning knobs the target expresses"
+else
+  bad "R7 tail clause — tuning knobs directed while intelligence absent" "n_fm=${#EMIT_FM_LINES[@]} n_diag=$(diag_count)" "${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}"
+fi
+
 # --- M7 — remove (g)(0) condition (i) from a scratch copy of the resolver;
 # both C13(i) and the rule-(b) case above must turn red.
 M7_LIB="$TMP_ROOT/model-resolve.m7.sh"
