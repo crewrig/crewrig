@@ -6,4 +6,6 @@ metadata:
     intelligence: medium
     reasoning: medium
 ---
-Fixture body. Not a real agent; used only by scripts/tests/test-model-resolution.sh.
+# Fixture Body
+
+Not a real agent; used only by scripts/tests/test-model-resolution.sh.
