@@ -1,7 +1,7 @@
 ---
 id: "0198"
 slug: build-mapping-resolution
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1116
