@@ -304,18 +304,128 @@ else
     [ "$(diag_count)" -eq 1 ]
   )
   m7_rule_b_red=$?
-  (
-    . "$M7_LIB"
-    write_fixture "$FIXTURE" "intelligence: medium"
-    resolve_agent probe "$FIXTURE" gemini
-    [ "${#EMIT_FM_LINES[@]}" -eq 1 ]
-  )
-  m7_gemini_still_one_fm=$?
   if [ "$m7_rule_b_red" -ne 0 ]; then
     ok "M7 — removing (g)(0) condition (i) turns the rule-(b) exhaustiveness case red (a second record appears)"
   else
     bad "M7 — removing (g)(0) condition (i) did not turn the rule-(b) case red" "the eligibility gate is not load-bearing as written"
   fi
+fi
+
+echo ""
+echo "=== C11-C13 — emission (plan steps 4, 6, 7): real builds in throwaway roots ==="
+
+# setup_emission_root <root> [<yq-expr against a copy of model-mappings/claude.yml>...]
+# A throwaway artifacts/core/agents/probe/AGENT.md (the canonical fixture),
+# a copy of the real crewrig.config.toml (risk 5: load_crewrig_config's own
+# "not found" warning lands on stderr, the same stream the record
+# assertions read), and a copy of model-mappings/ — mutated in place by
+# each yq expression against claude.yml, if any are given.
+setup_emission_root() {
+  local root="$1"
+  shift
+  mkdir -p "$root/artifacts/core/agents/probe"
+  cp "$FIXTURES_DIR/canonical-medium-reasoning.md" "$root/artifacts/core/agents/probe/AGENT.md"
+  cp "$REPO_DIR/crewrig.config.toml" "$root/crewrig.config.toml"
+  cp -r "$REPO_DIR/model-mappings" "$root/model-mappings"
+  local e
+  for e in "$@"; do
+    yq eval -i "$e" "$root/model-mappings/claude.yml" >/dev/null
+  done
+}
+
+# --- C11 — R6's standalone exercise, all four identity clauses -------------
+C11_ROOT="$TMP_ROOT/c11-root"
+setup_emission_root "$C11_ROOT" '.guard.state = "directed"'
+C11_FIXTURE="$C11_ROOT/artifacts/core/agents/probe/AGENT.md"
+
+resolve_out="$(REPO_DIR="$C11_ROOT" bash "$BUILD_SCRIPT" --resolve "$C11_FIXTURE" claude 2>"$TMP_ROOT/c11-resolve.err")"
+c11_resolve_native="$(printf '%s\n' "$resolve_out" | sed -n 's/^native: //p')"
+c11_resolve_fm="$(printf '%s\n' "$resolve_out" | sed -n 's/^fm: //p' | sort)"
+
+REPO_DIR="$C11_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>"$TMP_ROOT/c11-build.err"
+c11_compiled_fm="$(extract_frontmatter "$C11_ROOT/.claude/agents/probe-canonical/AGENT.md" | grep -E '^(model|effort):' | sort)"
+c11_compiled_model="$(extract_frontmatter "$C11_ROOT/.claude/agents/probe-canonical/AGENT.md" | grep '^model:' | sed 's/^model: //')"
+
+# (ii) directed items via a baseline diff: the same fixture without its
+# metadata.model block, built in a second throwaway root, diffed against
+# the compiled output above — the added lines must equal --resolve's fm:
+# set exactly (no provenance-splice filtering needed, unlike a source diff).
+C11_BASE_ROOT="$TMP_ROOT/c11-base-root"
+setup_emission_root "$C11_BASE_ROOT" '.guard.state = "directed"'
+sed '/^metadata:/,/reasoning: medium/d' "$C11_FIXTURE" > "$C11_BASE_ROOT/artifacts/core/agents/probe/AGENT.md"
+REPO_DIR="$C11_BASE_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
+c11_base_fm="$(extract_frontmatter "$C11_BASE_ROOT/.claude/agents/probe-canonical/AGENT.md" | grep -E '^(model|effort):' | sort)"
+c11_added_lines="$(diff <(printf '%s\n' "$c11_base_fm") <(printf '%s\n' "$c11_compiled_fm") | sed -n 's/^> //p' | sort)"
+
+# (iii)/(iv) drop records and notes: the two stderr sets are equal.
+c11_resolve_diag="$(sort "$TMP_ROOT/c11-resolve.err")"
+c11_build_diag="$(sort "$TMP_ROOT/c11-build.err")"
+
+if [ "$c11_resolve_native" = "$c11_compiled_model" ] \
+  && [ "$c11_resolve_fm" = "$c11_added_lines" ] \
+  && [ "$c11_resolve_diag" = "$c11_build_diag" ]; then
+  ok "C11 — --resolve and the build agree: offering, directed items (baseline diff), drop records and notes"
+else
+  bad "C11 — R6's standalone exercise" \
+    "native=[$c11_resolve_native] compiled_model=[$c11_compiled_model]" \
+    "resolve_fm=[$c11_resolve_fm] added_lines=[$c11_added_lines]" \
+    "resolve_diag=[$c11_resolve_diag]" "build_diag=[$c11_build_diag]"
+fi
+
+# --- C12 (partial: claude, copilot, antigravity — gemini joins in the step
+#     10 commit once its emission is wired) — R5's --target independence.
+C12_ALL_ROOT="$TMP_ROOT/c12-all-root"
+C12_CLAUDE_ROOT="$TMP_ROOT/c12-claude-root"
+C12_COPILOT_ROOT="$TMP_ROOT/c12-copilot-root"
+C12_ANTIGRAVITY_ROOT="$TMP_ROOT/c12-antigravity-root"
+for r in "$C12_ALL_ROOT" "$C12_CLAUDE_ROOT" "$C12_COPILOT_ROOT" "$C12_ANTIGRAVITY_ROOT"; do
+  setup_emission_root "$r"
+done
+REPO_DIR="$C12_ALL_ROOT" bash "$BUILD_SCRIPT" --target all >/dev/null 2>"$TMP_ROOT/c12-all.err"
+REPO_DIR="$C12_CLAUDE_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>"$TMP_ROOT/c12-claude.err"
+REPO_DIR="$C12_COPILOT_ROOT" bash "$BUILD_SCRIPT" --target copilot >/dev/null 2>"$TMP_ROOT/c12-copilot.err"
+REPO_DIR="$C12_ANTIGRAVITY_ROOT" bash "$BUILD_SCRIPT" --target antigravity >/dev/null 2>"$TMP_ROOT/c12-antigravity.err"
+
+c12_ok=1
+c12_detail=""
+assert_slice() {
+  local label="$1" all_file="$2" single_file="$3" all_err_grep="$4" single_err="$5"
+  if ! diff -q "$all_file" "$single_file" >/dev/null 2>&1; then
+    c12_ok=0
+    c12_detail="$c12_detail
+  $label output differs between --target all and --target $label"
+  fi
+  local a s
+  a="$(grep -F "	$all_err_grep	" "$TMP_ROOT/c12-all.err" | sort)"
+  s="$(sort "$single_err")"
+  if [ "$a" != "$s" ]; then
+    c12_ok=0
+    c12_detail="$c12_detail
+  $label stderr slice differs between --target all and --target $label"
+  fi
+}
+assert_slice claude "$C12_ALL_ROOT/.claude/agents/probe-canonical/AGENT.md" "$C12_CLAUDE_ROOT/.claude/agents/probe-canonical/AGENT.md" claude "$TMP_ROOT/c12-claude.err"
+assert_slice copilot "$C12_ALL_ROOT/.github/agents/probe-canonical.md" "$C12_COPILOT_ROOT/.github/agents/probe-canonical.md" copilot "$TMP_ROOT/c12-copilot.err"
+assert_slice antigravity "$C12_ALL_ROOT/.agents/agents/probe-canonical/AGENT.md" "$C12_ANTIGRAVITY_ROOT/.agents/agents/probe-canonical/AGENT.md" antigravity "$TMP_ROOT/c12-antigravity.err"
+
+if [ "$c12_ok" -eq 1 ]; then
+  ok "C12 (partial: claude/copilot/antigravity) — --target all's per-target slice equals the matching --target <X> run, output and stderr"
+else
+  bad "C12 (partial) — R5's --target independence" "$c12_detail"
+fi
+
+# --- C13(iii) — the compiled frontmatter carries no key beyond what an
+# intelligence-only profile's own axes direct.
+C13_ROOT="$TMP_ROOT/c13-root"
+setup_emission_root "$C13_ROOT"
+sed '/reasoning: medium/d' "$C13_ROOT/artifacts/core/agents/probe/AGENT.md" > "$TMP_ROOT/c13-fixture.tmp"
+mv "$TMP_ROOT/c13-fixture.tmp" "$C13_ROOT/artifacts/core/agents/probe/AGENT.md"
+REPO_DIR="$C13_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
+c13_keys="$(extract_frontmatter "$C13_ROOT/.claude/agents/probe-canonical/AGENT.md" | yq -r 'keys | .[]' | sort | tr '\n' ' ')"
+if [ "$c13_keys" = "description name " ]; then
+  ok "C13(iii) — intelligence-only profile compiles with no frontmatter key beyond name/description"
+else
+  bad "C13(iii) — intelligence-only profile's compiled frontmatter key set" "got: $c13_keys"
 fi
 
 echo ""
