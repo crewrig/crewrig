@@ -1,0 +1,278 @@
+# CrewRig — Antigravity CLI model mapping (spec 0197 R43-R44).
+#
+# Normative shape: docs/model-mapping-format.md. Core layer, sync policy
+# `strict` (.crewrig/core-paths.txt, docs/layers.md). This file DESCRIBES: it
+# emits nothing and builds nothing. The resolution that reads it is seam (d)
+# part 2 of epic #1100; the hermetic gate over it is
+# scripts/check-model-mappings.sh (spec 0197 R46-R51).
+#
+# No frontmatter surface exists on this target (spec 0197 Premise 1): AGENT.md
+# carries `name` and `description` alone, and `--model`/`--effort` are
+# session-level flags of the whole invocation, not a per-agent field. The
+# declination is stated on the guidance surface instead.
+#
+# Every offering here is composite (spec 0197 Decision 7): its native
+# identifier encodes both a capability-class token (`flash`/`pro`) and a
+# reasoning-rung token (`low`/`medium`/`high`) in one `-`-delimited value, so
+# each offering declares `provides.reasoning` alongside `provides.intelligence`
+# — matching what it encodes, per the checker's A10 clause (i) — and reasoning
+# is served by model selection, not by a second field.
+
+target: antigravity
+
+surfaces:
+  - id: guidance
+    kind: guidance
+    carries: [model]
+    template: |
+      Run this agent on the {{model}} model.
+    items:
+      - item: model
+        grounds:
+          - declares: item
+            assumption: >-
+              Same assumption spec 0197 R35 imposes on Claude Code's guidance
+              surface: an orchestrating session asked in prose to run an
+              agent on a named model does so. The whole of the evidence is
+              the maintainer's live experience, recorded at the content gate
+              of issue #1111; the live-verification research report tested
+              no orchestrator behaviour (spec 0197 R43).
+
+offerings:
+  - id: gemini-3.8-flash-low
+    rank: 1
+    native-value: gemini-3.8-flash-low
+    provides:
+      intelligence: medium
+      reasoning: low
+      specialization: general
+    encodes:
+      intelligence: flash
+      reasoning: low
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.8-flash-low` among its fourteen reported identifiers.
+      - declares: provides.intelligence
+        assumption: >-
+          The rung rests on the vendor's own family naming — pro above
+          flash — observable in the identifier but not a capability
+          measurement (spec 0197 `## Open questions`).
+      - declares: provides.reasoning
+        assumption: >-
+          The rung rests on the identifier's own suffix, observable but not a
+          capability measurement, per the same open question.
+
+  - id: gemini-3.8-flash-medium
+    rank: 2
+    native-value: gemini-3.8-flash-medium
+    provides:
+      intelligence: medium
+      reasoning: medium
+      specialization: general
+    encodes:
+      intelligence: flash
+      reasoning: medium
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.8-flash-medium` among its fourteen reported identifiers.
+      - declares: provides.intelligence
+        assumption: >-
+          Same ground as `gemini-3.8-flash-low` above: vendor family naming,
+          not a capability measurement.
+      - declares: provides.reasoning
+        assumption: >-
+          Same ground as `gemini-3.8-flash-low` above: the identifier's own
+          suffix, not a capability measurement.
+
+  - id: gemini-3.8-flash-high
+    rank: 3
+    native-value: gemini-3.8-flash-high
+    provides:
+      intelligence: medium
+      reasoning: high
+      specialization: general
+    encodes:
+      intelligence: flash
+      reasoning: high
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.8-flash-high` among its fourteen reported identifiers.
+      - declares: provides.intelligence
+        assumption: >-
+          Same ground as `gemini-3.8-flash-low` above: vendor family naming,
+          not a capability measurement.
+      - declares: provides.reasoning
+        assumption: >-
+          Same ground as `gemini-3.8-flash-low` above: the identifier's own
+          suffix, not a capability measurement.
+
+  - id: gemini-3.1-pro-low
+    rank: 4
+    native-value: gemini-3.1-pro-low
+    provides:
+      intelligence: high
+      reasoning: low
+      specialization: general
+    encodes:
+      intelligence: pro
+      reasoning: low
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.1-pro-low` among its fourteen reported identifiers. Rank 4
+          is the lower of the two ranks this mapping gives its two `high`-rung
+          offerings (`gemini-3.1-pro-low` and `gemini-3.1-pro-high`, the
+          mapping's highest declared rung), so R23's lowest-rank pick selects
+          THIS offering — not `gemini-3.1-pro-high` — whenever the candidate
+          set is the pair of them: at the declared `high` rung itself absent a
+          narrowing `reasoning` declaration, and under R17's ceiling clause
+          for a declared `xhigh`, `xxhigh` or `max` rung, since this mapping
+          declares no higher rung (confirmed by hand, by
+          `scripts/check-model-mappings.sh --print-selection` and by the
+          golden per-rung table in `scripts/tests/test-check-model-mappings.sh`).
+      - declares: provides.intelligence
+        assumption: >-
+          The rung rests on the vendor's own family naming — pro above
+          flash — observable in the identifier but not a capability
+          measurement (spec 0197 `## Open questions`).
+      - declares: provides.reasoning
+        assumption: >-
+          The rung rests on the identifier's own suffix, observable but not a
+          capability measurement, per the same open question.
+
+  - id: gemini-3.1-pro-high
+    rank: 5
+    native-value: gemini-3.1-pro-high
+    provides:
+      intelligence: high
+      reasoning: high
+      specialization: general
+    encodes:
+      intelligence: pro
+      reasoning: high
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.1-pro-high` among its fourteen reported identifiers. Rank 5
+          is the HIGHER of this mapping's two `high`-rung ranks, so R23's
+          lowest-rank pick never selects this offering from the intelligence
+          axis alone — `gemini-3.1-pro-low` (rank 4) is selected instead, both
+          at the declared `high` rung and under R17's ceiling clause for a
+          declared `xhigh`, `xxhigh` or `max` rung (confirmed by hand, by
+          `scripts/check-model-mappings.sh --print-selection` and by the
+          golden per-rung table in `scripts/tests/test-check-model-mappings.sh`
+          — an earlier version of this citation claimed the opposite and was
+          corrected). This offering is reached only through R21's
+          encoded-reasoning narrowing: a profile declaring `reasoning: high`
+          alongside an `intelligence` rung that both `pro-low` and `pro-high`
+          satisfy narrows the `high`-rung candidate set to the offering whose
+          encoded reasoning token matches exactly, which is this one.
+      - declares: provides.intelligence
+        assumption: >-
+          Same ground as `gemini-3.1-pro-low` above: vendor family naming,
+          not a capability measurement.
+      - declares: provides.reasoning
+        assumption: >-
+          Same ground as `gemini-3.1-pro-low` above: the identifier's own
+          suffix, not a capability measurement.
+
+observed-not-declared:
+  - native-value: gemini-3.7-flash-low
+    ground: >-
+      Superseded generation, displaced by gemini-3.8-flash-low within the
+      same family (spec 0197 R44).
+    grounds:
+      - declares: ground
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.7-flash-low` alongside the newer `gemini-3.8-flash-low`.
+  - native-value: gemini-3.7-flash-medium
+    ground: >-
+      Superseded generation, displaced by gemini-3.8-flash-medium within the
+      same family (spec 0197 R44).
+    grounds:
+      - declares: ground
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.7-flash-medium` alongside the newer
+          `gemini-3.8-flash-medium`.
+  - native-value: gemini-3.7-flash-high
+    ground: >-
+      Superseded generation, displaced by gemini-3.8-flash-high within the
+      same family (spec 0197 R44).
+    grounds:
+      - declares: ground
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.7-flash-high` alongside the newer `gemini-3.8-flash-high`.
+  - native-value: gemini-3.6-flash-low
+    ground: >-
+      Superseded generation, displaced by gemini-3.8-flash-low within the
+      same family (spec 0197 R44).
+    grounds:
+      - declares: ground
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.6-flash-low` alongside the newer `gemini-3.8-flash-low`.
+  - native-value: gemini-3.6-flash-medium
+    ground: >-
+      Superseded generation, displaced by gemini-3.8-flash-medium within the
+      same family (spec 0197 R44).
+    grounds:
+      - declares: ground
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.6-flash-medium` alongside the newer
+          `gemini-3.8-flash-medium`.
+  - native-value: gemini-3.6-flash-high
+    ground: >-
+      Superseded generation, displaced by gemini-3.8-flash-high within the
+      same family (spec 0197 R44).
+    grounds:
+      - declares: ground
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.6-flash-high` alongside the newer `gemini-3.8-flash-high`.
+  - native-value: claude-sonnet-4-6
+    ground: >-
+      Non-Google model excluded at the content gate of issue #1111: the plan
+      under which Antigravity CLI serves this model is markedly less
+      generous than the one serving the Google family (spec 0197 R44).
+    grounds:
+      - declares: ground
+        citation: >-
+          Content gate of issue #1111 (spec 0197 R44) — the exclusion is
+          carried as a citation of the gate, never as an assumption.
+  - native-value: claude-opus-4-6-thinking
+    ground: >-
+      Non-Google model excluded at the content gate of issue #1111: the plan
+      under which Antigravity CLI serves this model is markedly less
+      generous than the one serving the Google family (spec 0197 R44).
+    grounds:
+      - declares: ground
+        citation: >-
+          Content gate of issue #1111 (spec 0197 R44) — the exclusion is
+          carried as a citation of the gate, never as an assumption.
+  - native-value: gpt-oss-120b-medium
+    ground: >-
+      Non-Google model excluded at the content gate of issue #1111: the plan
+      under which Antigravity CLI serves this model is markedly less
+      generous than the one serving the Google family (spec 0197 R44).
+    grounds:
+      - declares: ground
+        citation: >-
+          Content gate of issue #1111 (spec 0197 R44) — the exclusion is
+          carried as a citation of the gate, never as an assumption.

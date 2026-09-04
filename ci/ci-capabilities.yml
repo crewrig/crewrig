@@ -677,6 +677,7 @@ capabilities:
           - "scripts/tests/test-check-spec-id-reserved.sh"
           - "scripts/reserve-spec-id.sh"
           - "scripts/check-spec-id-reserved.sh"
+          - "model-mappings/**"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -689,6 +690,7 @@ capabilities:
           - "scripts/tests/test-check-spec-id-reserved.sh"
           - "scripts/reserve-spec-id.sh"
           - "scripts/check-spec-id-reserved.sh"
+          - "model-mappings/**"
     portability: portable
     changeset-gated: true
     requires:
@@ -741,6 +743,31 @@ capabilities:
       - bash scripts/tests/test-artifact-build-install-scope.sh
       - bash scripts/tests/test-component-tier-resolution.sh
       - bash scripts/tests/test-pr-logbook-label-scope.sh
+
+  - id: check-model-mappings
+    name: "Check model-mapping conformance and run its mutation test suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "model-mappings/**"
+          - "docs/model-mapping-format.md"
+          - "scripts/check-model-mappings.sh"
+          - "scripts/tests/test-check-model-mappings.sh"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "model-mappings/**"
+          - "docs/model-mapping-format.md"
+          - "scripts/check-model-mappings.sh"
+          - "scripts/tests/test-check-model-mappings.sh"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
+      - bash scripts/check-model-mappings.sh
+      - bash scripts/tests/test-check-model-mappings.sh
 
   - id: markdown-links
     name: "Check relative Markdown link integrity"

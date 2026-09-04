@@ -1,0 +1,95 @@
+# CrewRig — GitHub Copilot CLI model mapping (spec 0197 R41-R42).
+#
+# Normative shape: docs/model-mapping-format.md. Core layer, sync policy
+# `strict` (.crewrig/core-paths.txt, docs/layers.md). This file DESCRIBES: it
+# emits nothing and builds nothing. The resolution that reads it is seam (d)
+# part 2 of epic #1100; the hermetic gate over it is
+# scripts/check-model-mappings.sh (spec 0197 R46-R51).
+#
+# Zero offerings, by design (R41): the model lineup actually served to this
+# CLI is a property of the deployment, not of the core layer, and naming an
+# unserved model reproduces the silent routing failure of
+# github/copilot-cli#4437. Both surfaces this mapping observes are named as
+# recorded evidence directing no emission (R12), never as directable.
+#
+# `contextTier`, the third native field of `~/.copilot/config.json`
+# `subagents.agents.<name>`, has no item in this vocabulary's closed set
+# (docs/model-mapping-format.md, "Item vocabulary"). It is recorded in the
+# out-of-band surface's `location:` prose rather than smuggled in as a new
+# `item:` value (spec 0197 R12's "an item this vocabulary can declare").
+
+target: copilot
+
+surfaces:
+  - id: agent-file-model
+    kind: frontmatter
+    items:
+      - item: model
+        key: model
+        domain:
+          values: []
+        grounds:
+          - declares: key
+            citation: >-
+              RR -> GitHub Copilot CLI -> Declaration surface:
+              `AgentInfo.model` in the bundled `api.schema.json`
+              (`.github/agents/<name>.md` frontmatter).
+          - declares: domain
+            citation: >-
+              R41's zero-offerings ground: the served model lineup is a
+              property of the deployment (a GitHub-routed deployment and a
+              bring-your-own-key deployment reach disjoint sets), so the core
+              layer names no admissible native value here — an empty domain
+              is the honest encoding rather than a reclassification of this
+              surface's kind (spec 0197 Decision C).
+
+  - id: copilot-config
+    kind: out-of-band
+    location: >-
+      ~/.copilot/config.json subagents.agents.<name>, carrying the native
+      fields `model`, `effortLevel` (this vocabulary's reasoning item, native
+      spelling) and `contextTier` (a native field this vocabulary admits no
+      item for, recorded here as evidence per spec 0197 R12 rather than as a
+      directable item).
+    items:
+      - item: model
+        grounds:
+          - declares: item
+            citation: >-
+              RR -> GitHub Copilot CLI -> Declaration surface:
+              `SubagentSettingsEntry.model` in the bundled `api.schema.json`.
+      - item: reasoning
+        grounds:
+          - declares: item
+            citation: >-
+              RR -> GitHub Copilot CLI -> Declaration surface:
+              `SubagentSettingsEntry.effortLevel` in the bundled
+              `api.schema.json`, plus `copilot help config`'s prose — the
+              native spelling of this vocabulary's reasoning item.
+
+offerings: []
+
+zero-offerings:
+  ground: >-
+    The model lineup actually served to GitHub Copilot CLI is a property of
+    the deployment rather than of the core layer: a GitHub-routed deployment
+    and a bring-your-own-key deployment reach disjoint sets of models.
+    Naming a model the deployment does not serve reproduces the silent
+    routing failure of github/copilot-cli#4437, adjudicated BUG-PRESENT on
+    run 20260902T153919Z-0aa9 (spec 0197 R41).
+  condition: >-
+    A later delta may declare an offering once either github/copilot-cli#4437
+    is established fixed, or the offerings are restricted to models the
+    deployment's provider is established to serve — deployment knowledge that
+    reaches a mapping through the organization-level override channel of
+    seam (e) rather than through the core layer (spec 0197 R42). The
+    guidance surface a later delta might add is not read as lifting this
+    condition on its own: the ground here is the unknown lineup, not an
+    absent field, and prose naming an unserved model misdirects an
+    orchestrator exactly as a field does.
+  grounds:
+    - declares: ground
+      citation: >-
+        Probe run 20260902T153919Z-0aa9 of issue #1103, verdict BUG-PRESENT
+        against github/copilot-cli#4437 on GitHub Copilot CLI 1.0.82 (spec
+        0197 R41).

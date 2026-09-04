@@ -407,6 +407,13 @@ tasks:
     desc: "Reject Bash 4+ constructs in scripts/ and hooks/ (local mirror of the CI guard, spec 0111)"
     cmd: bash {{.REPO_DIR}}/scripts/check-bash32-portability.sh
 
+  check-model-mappings:
+    desc: "Check model-mapping conformance against docs/model-mapping-format.md (local mirror of the CI guard, spec 0197)"
+    preconditions:
+      - sh: command -v yq >/dev/null 2>&1
+        msg: "yq is required. Install with: brew install yq"
+    cmd: bash {{.REPO_DIR}}/scripts/check-model-mappings.sh
+
   skill:check:
     desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
     silent: true

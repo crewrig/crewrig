@@ -143,3 +143,9 @@ ci	strict
 # Generated GitLab CI pipeline (spec 0048). Derived from ci/ci-capabilities.yml
 # by scripts/build-ci.sh; drift-guarded by `bash scripts/build-ci.sh --check`.
 .gitlab-ci.yml	strict
+
+# Model mappings (spec 0197). A build input, not a component — nothing
+# deploys it to a CLI — so top-level rather than under artifacts/. Its
+# normative shape is docs/model-mapping-format.md; its hermetic gate is
+# scripts/check-model-mappings.sh.
+model-mappings	strict
