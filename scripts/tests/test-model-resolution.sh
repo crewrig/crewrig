@@ -567,6 +567,20 @@ else
   bad "M6 — haiku encodes reasoning: medium" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
 fi
 
+# --- R30 build-twice diff — rendering is idempotent: a second build over an
+# unchanged source and mapping produces a byte-identical output, and no
+# rendered prose is ever appended to prose a previous build appended.
+R30_ROOT="$TMP_ROOT/r30-root"
+setup_emission_root "$R30_ROOT"
+REPO_DIR="$R30_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
+cp "$R30_ROOT/.claude/agents/probe-canonical/AGENT.md" "$TMP_ROOT/r30-first.md"
+REPO_DIR="$R30_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
+if diff -q "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical/AGENT.md" >/dev/null 2>&1; then
+  ok "R30 — a second build over an unchanged source/mapping is byte-identical (rendering is idempotent)"
+else
+  bad "R30 — build-twice diff" "$(diff "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical/AGENT.md")"
+fi
+
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
