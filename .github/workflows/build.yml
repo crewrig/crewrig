@@ -37,11 +37,13 @@ jobs:
             component-drift:
               - 'scripts/build-components.sh'
               - 'scripts/test-build-components.sh'
+              - 'scripts/tests/test-model-resolution.sh'
               - 'scripts/lib/**'
               - 'artifacts/**'
               - 'extensions/**'
               - '.crewrig/core-paths.txt'
               - 'docs/layers.md'
+              - 'model-mappings/**'
       - name: Install yq
         if: steps.filter.outputs.component-drift == 'true'
         run: |
@@ -51,13 +53,16 @@ jobs:
         if: steps.filter.outputs.component-drift == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt') }}
+          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'model-mappings/**') }}
       - name: Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt" --key-env "" -- bash scripts/build-components.sh --target all --check
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,model-mappings/**" --key-env "" -- bash scripts/build-components.sh --target all --check
       - name: Test Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt" --key-env "" -- bash scripts/test-build-components.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,model-mappings/**" --key-env "" -- bash scripts/test-build-components.sh
+      - name: Test Model Resolution
+        if: steps.filter.outputs.component-drift == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,model-mappings/**" --key-env "" -- bash scripts/tests/test-model-resolution.sh
   extension-render:
     runs-on: ubuntu-latest
     steps:
@@ -676,6 +681,29 @@ jobs:
       - name: Test Check Model Mappings
         if: steps.filter.outputs.check-model-mappings == 'true'
         run: bash scripts/tests/test-check-model-mappings.sh
+  check-agent-profiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-agent-profiles:
+              - 'artifacts/**'
+              - 'scripts/check-agent-profiles.sh'
+              - 'scripts/tests/test-check-agent-profiles.sh'
+      - name: Install yq
+        if: steps.filter.outputs.check-agent-profiles == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Check Agent Profiles
+        if: steps.filter.outputs.check-agent-profiles == 'true'
+        run: bash scripts/check-agent-profiles.sh
+      - name: Test Check Agent Profiles
+        if: steps.filter.outputs.check-agent-profiles == 'true'
+        run: bash scripts/tests/test-check-agent-profiles.sh
   misc:
     runs-on: ubuntu-latest
     steps:
