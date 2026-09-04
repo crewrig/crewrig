@@ -132,6 +132,17 @@ write_fixture() {
   } > "$path"
 }
 
+# mutated_root <suffix> <yq-expr against a copy of model-mappings/claude.yml>
+# Echoes the throwaway REPO_DIR root.
+mutated_root() {
+  local suffix="$1" expr="$2" root
+  root="$TMP_ROOT/mut-$suffix"
+  mkdir -p "$root/model-mappings"
+  cp -r "$REPO_DIR/model-mappings"/* "$root/model-mappings/"
+  yq eval -i "$expr" "$root/model-mappings/claude.yml" >/dev/null
+  echo "$root"
+}
+
 # diag_has <line...> — true iff every given literal line is a member of
 # DIAG_LINES (set by the most recent resolve_agent call).
 diag_has() {
@@ -327,6 +338,47 @@ else
   bad "rule (d) — specialization fallback" "offering=$RESOLVED_OFFERING_ID" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
 fi
 
+# --- rule (e) — an inexact encoded match is noted, not dropped (spec 0197's
+# own scenario): antigravity's high-rung offerings encode low and high, none
+# encodes medium, so the nearest-below rung (low, pro-low) is selected.
+write_fixture "$FIXTURE" "intelligence: high" "reasoning: medium"
+resolve_agent probe "$FIXTURE" antigravity
+if [ "$RESOLVED_OFFERING_ID" = "gemini-3.1-pro-low" ] \
+  && [ "$(diag_count)" -eq 1 ] \
+  && diag_has "$(printf 'model-note\tprobe\tantigravity\treasoning-rung-substituted\tdeclared=medium encoded=low')"; then
+  ok "rule (e) — an inexact encoded match selects the nearest lower rung and notes it, no drop"
+else
+  bad "rule (e) — inexact encoded match" "offering=$RESOLVED_OFFERING_ID n_diag=$(diag_count)" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
+# --- (g)(5) — R13: a reasoning rung the projection declares unmapped is
+# dropped out-of-range-for-target, never resolved to an adjacent rung
+# (spec 0197's own scenario: claude.yml projects none: unmapped).
+write_fixture "$FIXTURE" "intelligence: high" "reasoning: none"
+resolve_agent probe "$FIXTURE" claude
+if [ "$RESOLVED_OFFERING_ID" = "sonnet" ] \
+  && [ "${#EMIT_FM_LINES[@]}" -eq 0 ] \
+  && diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.reasoning\tnone\tout-of-range-for-target')"; then
+  ok "(g)(5) — reasoning: none projects unmapped on claude, dropped out-of-range-for-target, never resolved to low"
+else
+  bad "(g)(5) — unmapped projection" "offering=$RESOLVED_OFFERING_ID n_fm=${#EMIT_FM_LINES[@]}" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
+# --- D12/D17's second disjunct — R14 fires on "no offering was selected at
+# all", not only on a refusing offering. Unreachable on any committed
+# mapping (risk 9): a temp claude.yml copy with offerings: [] keeps its
+# frontmatter reasoning surface, so the empty candidate set (D17) reaches
+# (g)(4)'s second clause instead of (g)(3) taking the item first.
+D12_ROOT="$(mutated_root d12 '.offerings = []')"
+write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
+REPO_DIR="$D12_ROOT" resolve_agent probe "$FIXTURE" claude
+if [ -z "$RESOLVED_OFFERING_ID" ] \
+  && diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunsupported-on-model')"; then
+  ok "D12/D17 — no offering selected at all still fires R14's second disjunct (temp mapping, risk 9)"
+else
+  bad "D12/D17 — R14's no-offering-selected disjunct" "offering=$RESOLVED_OFFERING_ID" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
 # --- M7 — remove (g)(0) condition (i) from a scratch copy of the resolver;
 # both C13(i) and the rule-(b) case above must turn red.
 M7_LIB="$TMP_ROOT/model-resolve.m7.sh"
@@ -520,17 +572,6 @@ fi
 
 echo ""
 echo "=== Mutations M1-M6 (plan step 14; M7 already ran above) ==="
-
-# mutated_root <suffix> <yq-expr against a copy of model-mappings/claude.yml>
-# Echoes the throwaway REPO_DIR root.
-mutated_root() {
-  local suffix="$1" expr="$2" root
-  root="$TMP_ROOT/mut-$suffix"
-  mkdir -p "$root/model-mappings"
-  cp -r "$REPO_DIR/model-mappings"/* "$root/model-mappings/"
-  yq eval -i "$expr" "$root/model-mappings/claude.yml" >/dev/null
-  echo "$root"
-}
 
 # --- M1 — change haiku's native-value; the emitted sentence must change ---
 M1_ROOT="$(mutated_root m1 '.offerings[0]."native-value" = "haiku-mutated-M1"')"
