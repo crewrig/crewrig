@@ -480,5 +480,93 @@ else
 fi
 
 echo ""
+echo "=== Mutations M1-M6 (plan step 14; M7 already ran above) ==="
+
+# mutated_root <suffix> <yq-expr against a copy of model-mappings/claude.yml>
+# Echoes the throwaway REPO_DIR root.
+mutated_root() {
+  local suffix="$1" expr="$2" root
+  root="$TMP_ROOT/mut-$suffix"
+  mkdir -p "$root/model-mappings"
+  cp -r "$REPO_DIR/model-mappings"/* "$root/model-mappings/"
+  yq eval -i "$expr" "$root/model-mappings/claude.yml" >/dev/null
+  echo "$root"
+}
+
+# --- M1 — change haiku's native-value; the emitted sentence must change ---
+M1_ROOT="$(mutated_root m1 '.offerings[0]."native-value" = "haiku-mutated-M1"')"
+write_fixture "$FIXTURE" "intelligence: medium"
+REPO_DIR="$M1_ROOT" resolve_agent probe "$FIXTURE" claude
+if [ "$EMIT_PROSE" = "Run this agent on the haiku-mutated-M1 model." ]; then
+  ok "M1 — mutating haiku's native-value changes the emitted description sentence"
+else
+  bad "M1 — mutating haiku's native-value" "got prose: [$EMIT_PROSE]"
+fi
+
+# --- M2 — deleting reasoning: medium removes the reasoning drop and adds
+# no other record (the before/after contrast: C1's fixture has 2 records,
+# the reasoning axis removed leaves exactly 1 — the guard note alone).
+write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
+resolve_agent probe "$FIXTURE" claude
+m2_before_count=$(diag_count)
+write_fixture "$FIXTURE" "intelligence: medium"
+resolve_agent probe "$FIXTURE" claude
+m2_after_count=$(diag_count)
+if [ "$m2_before_count" -eq 2 ] && [ "$m2_after_count" -eq 1 ] \
+  && ! diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunsupported-on-model')"; then
+  ok "M2 — removing reasoning: medium drops the reasoning record and adds no other (2 records -> 1)"
+else
+  bad "M2 — removing reasoning: medium" "before=$m2_before_count after=$m2_after_count"
+fi
+
+# --- M3 — flip guard.state to directed: model: appears, guard note vanishes
+M3_ROOT="$(mutated_root m3 '.guard.state = "directed"')"
+write_fixture "$FIXTURE" "intelligence: medium"
+REPO_DIR="$M3_ROOT" resolve_agent probe "$FIXTURE" claude
+if fm_has "model: haiku" && [ "$(diag_count)" -eq 0 ]; then
+  ok "M3 — flipping guard.state to directed emits model: and the guard-withheld note vanishes"
+else
+  bad "M3 — guard.state directed" "n_fm=${#EMIT_FM_LINES[@]} n_diag=$(diag_count)"
+fi
+
+# --- M4 — adding an offering moves the C3 agreement table in lockstep -----
+M4_ROOT="$(mutated_root m4 '.offerings += [{"id": "m4-cheap", "rank": 0, "native-value": "m4-cheap", "provides": {"intelligence": "xhigh", "specialization": "general"}, "encodes": {"intelligence": "m4-cheap"}, "supports-reasoning-surface": false, "grounds": [{"declares": "native-value", "assumption": "mutation fixture"}, {"declares": "provides.intelligence", "assumption": "mutation fixture"}, {"declares": "supports-reasoning-surface", "assumption": "mutation fixture"}]}]')"
+write_fixture "$FIXTURE" "intelligence: xhigh"
+REPO_DIR="$M4_ROOT" resolve_agent probe "$FIXTURE" claude
+m4_resolver_pick="$RESOLVED_OFFERING_ID"
+m4_checker_pick="$(bash "$SCRIPT_DIR/check-model-mappings.sh" --print-selection "$M4_ROOT/model-mappings/claude.yml" | awk -F'\t' '$2 == "xhigh" { print $3 }')"
+if [ "$m4_resolver_pick" = "m4-cheap" ] && [ "$m4_checker_pick" = "m4-cheap" ]; then
+  ok "M4 — adding a rank-0 offering moves both the resolver's pick and the checker's agreement table to it"
+else
+  bad "M4 — adding an offering" "resolver=$m4_resolver_pick checker=$m4_checker_pick"
+fi
+
+# --- M5 — rename {{model}} to {{modell}}: sentence omitted, never rendered
+# literally (an unrecognised placeholder is dropped, not passed through).
+M5_ROOT="$(mutated_root m5 '(.surfaces[] | select(.id == "guidance") | .template) = "Run this agent on the {{modell}} model.\nGive its work {{reasoning}} reasoning effort.\n"')"
+write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
+REPO_DIR="$M5_ROOT" resolve_agent probe "$FIXTURE" claude
+if [ -z "$EMIT_PROSE" ] || ! printf '%s' "$EMIT_PROSE" | grep -qF '{{modell}}'; then
+  if [ -z "$EMIT_PROSE" ]; then
+    ok "M5 — an unrecognised {{modell}} placeholder omits its sentence (both template lines dropped, empty prose)"
+  else
+    bad "M5 — unrecognised placeholder rendered literally" "prose=[$EMIT_PROSE]"
+  fi
+else
+  bad "M5 — unrecognised placeholder rendered literally" "prose=[$EMIT_PROSE]"
+fi
+
+# --- M6 — haiku encodes reasoning: medium: C1's unsupported-on-model drop
+# disappears (D11's directed-by-selection guard now fires on this cell).
+M6_ROOT="$(mutated_root m6 '.offerings[0].encodes.reasoning = "medium"')"
+write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
+REPO_DIR="$M6_ROOT" resolve_agent probe "$FIXTURE" claude
+if ! diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunsupported-on-model')"; then
+  ok "M6 — haiku encoding reasoning: medium makes D11's guard fire; C1's unsupported-on-model drop disappears"
+else
+  bad "M6 — haiku encodes reasoning: medium" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
+echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
