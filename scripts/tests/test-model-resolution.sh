@@ -143,6 +143,25 @@ mutated_root() {
   echo "$root"
 }
 
+# setup_emission_root <root> [<yq-expr against a copy of model-mappings/claude.yml>...]
+# A throwaway artifacts/core/agents/probe/AGENT.md (the canonical fixture),
+# a copy of the real crewrig.config.toml (risk 5: load_crewrig_config's own
+# "not found" warning lands on stderr, the same stream the record
+# assertions read), and a copy of model-mappings/ — mutated in place by
+# each yq expression against claude.yml, if any are given.
+setup_emission_root() {
+  local root="$1"
+  shift
+  mkdir -p "$root/artifacts/core/agents/probe"
+  cp "$FIXTURES_DIR/canonical-medium-reasoning.md" "$root/artifacts/core/agents/probe/AGENT.md"
+  cp "$REPO_DIR/crewrig.config.toml" "$root/crewrig.config.toml"
+  cp -r "$REPO_DIR/model-mappings" "$root/model-mappings"
+  local e
+  for e in "$@"; do
+    yq eval -i "$e" "$root/model-mappings/claude.yml" >/dev/null
+  done
+}
+
 # diag_has <line...> — true iff every given literal line is a member of
 # DIAG_LINES (set by the most recent resolve_agent call).
 diag_has() {
@@ -379,6 +398,48 @@ else
   bad "D12/D17 — R14's no-offering-selected disjunct" "offering=$RESOLVED_OFFERING_ID" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
 fi
 
+# --- C10 — a guidance surface retired without touching the resolver. With
+# the shared-read guard withheld and no guidance surface left to redirect
+# onto, the model item is now unsupported-on-cli rather than directed
+# nowhere; R44's "no line of the emission is changed" is discharged by this
+# case's own construction (no resolver line changed to write it).
+C10_ROOT="$(mutated_root c10 'del(.surfaces[] | select(.id == "guidance"))')"
+write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
+REPO_DIR="$C10_ROOT" resolve_agent probe "$FIXTURE" claude
+if [ "$RESOLVED_OFFERING_ID" = "haiku" ] && [ -z "$EMIT_PROSE" ] \
+  && diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.intelligence\tmedium\tunsupported-on-cli')"; then
+  ok "C10 — retiring the guidance surface: no prose anywhere, model dropped unsupported-on-cli"
+else
+  bad "C10 — guidance surface retired" "offering=$RESOLVED_OFFERING_ID prose=[$EMIT_PROSE]" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
+# --- C9 — a mapping change without regenerated outputs fails the drift
+# check, plus a mechanical assertion that model-mappings/** sits at all
+# seven CI edit sites (R45/R46) — not a "documented CI scenario" standing
+# in for a test.
+C9_ROOT="$TMP_ROOT/c9-root"
+setup_emission_root "$C9_ROOT"
+REPO_DIR="$C9_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
+yq eval -i '.offerings[0]."native-value" = "haiku-drifted"' "$C9_ROOT/model-mappings/claude.yml"
+c9_out="$(REPO_DIR="$C9_ROOT" bash "$BUILD_SCRIPT" --target claude --check 2>&1)"
+c9_rc=$?
+if [ "$c9_rc" -ne 0 ] && printf '%s\n' "$c9_out" | grep -q "^DRIFT:"; then
+  ok "C9 — a mapping change without regenerated outputs fails the drift check"
+else
+  bad "C9 — mapping-only drift" "exit=$c9_rc" "$c9_out"
+fi
+
+# Scoped to the component-drift block alone: ci-capabilities.yml and
+# build.yml both name model-mappings/** elsewhere too (check-model-mappings'
+# own trigger, the misc capability), which the R45 obligation does not bind.
+c9_cap_count="$(awk '/^  - id: component-drift/{f=1} f && /^  - id:/ && !/component-drift/{exit} f' "$REPO_DIR/ci/ci-capabilities.yml" | grep -c 'model-mappings/\*\*')"
+c9_gha_count="$(awk '/^  component-drift:/{f=1} f && /^  [a-z-]+:$/ && !/component-drift/{exit} f' "$REPO_DIR/.github/workflows/build.yml" | grep -c 'model-mappings/\*\*')"
+if [ "$c9_cap_count" -eq 3 ] && [ "$c9_gha_count" -ge 4 ]; then
+  ok "C9 — model-mappings/** sits at all seven CI edit sites (3 in ci-capabilities.yml, $c9_gha_count in build.yml)"
+else
+  bad "C9 — mechanical CI edit-site count" "ci-capabilities.yml=$c9_cap_count build.yml=$c9_gha_count"
+fi
+
 # --- M7 — remove (g)(0) condition (i) from a scratch copy of the resolver;
 # both C13(i) and the rule-(b) case above must turn red.
 M7_LIB="$TMP_ROOT/model-resolve.m7.sh"
@@ -405,26 +466,6 @@ fi
 echo ""
 echo "=== C11-C13 — emission (plan steps 4, 6, 7): real builds in throwaway roots ==="
 
-# setup_emission_root <root> [<yq-expr against a copy of model-mappings/claude.yml>...]
-# A throwaway artifacts/core/agents/probe/AGENT.md (the canonical fixture),
-# a copy of the real crewrig.config.toml (risk 5: load_crewrig_config's own
-# "not found" warning lands on stderr, the same stream the record
-# assertions read), and a copy of model-mappings/ — mutated in place by
-# each yq expression against claude.yml, if any are given.
-setup_emission_root() {
-  local root="$1"
-  shift
-  mkdir -p "$root/artifacts/core/agents/probe"
-  cp "$FIXTURES_DIR/canonical-medium-reasoning.md" "$root/artifacts/core/agents/probe/AGENT.md"
-  cp "$REPO_DIR/crewrig.config.toml" "$root/crewrig.config.toml"
-  cp -r "$REPO_DIR/model-mappings" "$root/model-mappings"
-  local e
-  for e in "$@"; do
-    yq eval -i "$e" "$root/model-mappings/claude.yml" >/dev/null
-  done
-}
-
-# --- C11 — R6's standalone exercise, all four identity clauses -------------
 C11_ROOT="$TMP_ROOT/c11-root"
 setup_emission_root "$C11_ROOT" '.guard.state = "directed"'
 C11_FIXTURE="$C11_ROOT/artifacts/core/agents/probe/AGENT.md"

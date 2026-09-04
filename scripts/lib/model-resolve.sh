@@ -697,17 +697,31 @@ _resolve_item() {
     expressed_fm=false
   fi
 
+  # The guard (Claude Code only) withholds the `model` item's FRONTMATTER
+  # surface specifically (R20/R31); it is folded into the expressibility
+  # test itself — `fm_ok` — rather than applied only at the final directed
+  # step, because a mapping that declares no guidance surface at all (C10:
+  # retiring the guidance surface without touching a resolver line) then
+  # has no surface left to redirect onto, and (g)(3) must see that and drop
+  # unsupported-on-cli rather than silently directing the item nowhere.
+  local guard_suppressed=false
+  if [ "$item" = model ] && [ "$guard_state" = withheld ]; then
+    guard_suppressed=true
+  fi
+  local fm_ok="$expressed_fm"
+  [ "$guard_suppressed" = true ] && fm_ok=false
+
   # (g)(3) — expressibility (R16; D16 narrows the predicate for a tuning
   # knob to frontmatter-only, R15's second sentence being the rule specific
   # to those items).
   if [ "$is_knob" = true ]; then
-    if [ "$expressed_fm" != true ]; then
+    if [ "$fm_ok" != true ]; then
       _diag_drop "$agent" "$target" "$(_dotted_path "$item")" "$(_declared_value_of "$item")" "unsupported-on-cli"
       IT_DISPOSED[$idx]=true
       return 0
     fi
   else
-    if [ "$expressed_fm" != true ] && [ "$expressed_gd" != true ]; then
+    if [ "$fm_ok" != true ] && [ "$expressed_gd" != true ]; then
       _diag_drop "$agent" "$target" "$(_dotted_path "$item")" "$(_declared_value_of "$item")" "unsupported-on-cli"
       IT_DISPOSED[$idx]=true
       return 0
@@ -746,15 +760,13 @@ _resolve_item() {
     fi
   fi
 
-  # (g)(7)/(g)(8) — direct. The guard (Claude Code only) gates the `model`
-  # item's FRONTMATTER emission alone (R20/R31); its guidance emission is
-  # unaffected, which is what lets both surfaces carry the same value under
-  # a directed guard (spec 0197 R14) with no further special-casing.
+  # (g)(7)/(g)(8) — direct. Reaching here with `guard_suppressed` true means
+  # (g)(3) did NOT drop the item, so `expressed_gd` is guaranteed true — the
+  # guidance surface is where the withheld model item lands, and the one
+  # note names the guard and every holding term (D3).
   IT_DISPOSED[$idx]=true
   IT_DIRECTED[$idx]=true
-  local fm_ok="$expressed_fm"
-  if [ "$item" = model ] && [ "$guard_state" = withheld ]; then
-    fm_ok=false
+  if [ "$guard_suppressed" = true ]; then
     local terms; terms=$(mapping_guard_holding_terms "$handle")
     _diag_note "$agent" "$target" "guard-withheld" "terms=$terms surface=guidance"
   fi
