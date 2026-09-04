@@ -370,6 +370,39 @@ else
   bad "rule (e) — inexact encoded match" "offering=$RESOLVED_OFFERING_ID n_diag=$(diag_count)" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
 fi
 
+# --- R24/D16 — a tuning knob is dropped unsupported-on-cli wherever the
+# target's FRONTMATTER surface declares no item for it, even where a
+# guidance surface exists (claude) or no surface at all exists (antigravity)
+# — D16's item-class-specific (g)(3) predicate, frontmatter-only for knobs.
+write_fixture "$FIXTURE" "intelligence: medium" "tuning:
+  temperature: 0.5"
+resolve_agent probe "$FIXTURE" claude
+if diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.tuning.temperature\t0.5\tunsupported-on-cli')"; then
+  ok "R24/D16 — claude drops a tuning knob unsupported-on-cli (frontmatter declares none, guidance is irrelevant)"
+else
+  bad "R24/D16 — claude tuning knob drop" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
+resolve_agent probe "$FIXTURE" antigravity
+if diag_has "$(printf 'model-drop\tprobe\tantigravity\tmetadata.model.tuning.temperature\t0.5\tunsupported-on-cli')"; then
+  ok "R24/D16 — antigravity drops a tuning knob unsupported-on-cli (no frontmatter surface at all)"
+else
+  bad "R24/D16 — antigravity tuning knob drop" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
+# --- (g)(6) — R15's first sentence: a tuning knob's declared value falls
+# outside the domain gemini's frontmatter surface declares for it.
+write_fixture "$FIXTURE" "intelligence: medium" "tuning:
+  temperature: 5.0"
+resolve_agent probe "$FIXTURE" gemini
+gemini_fm_joined=$(printf '%s\n' ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"})
+if ! printf '%s' "$gemini_fm_joined" | grep -q '^temperature:' \
+  && diag_has "$(printf 'model-drop\tprobe\tgemini\tmetadata.model.tuning.temperature\t5.0\tout-of-range-for-target')"; then
+  ok "(g)(6) — an out-of-domain tuning value is dropped out-of-range-for-target"
+else
+  bad "(g)(6) — tuning value out of domain" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
 # --- (g)(5) — R13: a reasoning rung the projection declares unmapped is
 # dropped out-of-range-for-target, never resolved to an adjacent rung
 # (spec 0197's own scenario: claude.yml projects none: unmapped).
