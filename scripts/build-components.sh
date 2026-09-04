@@ -271,10 +271,11 @@ provenance_block() {
 }
 
 # Returns a single-line HTML comment carrying provenance, or empty if the
-# frontmatter has no `metadata.provenance` key. Used for Gemini agents,
-# whose CLI 0.42.0+ rejects any frontmatter key outside `name`/`description`
-# — so the provenance has to travel in the body instead. The comment is
-# stable, greppable, and ignored by Markdown renderers.
+# frontmatter has no `metadata.provenance` key. Used for Gemini agents:
+# `metadata:` is rejected there (issue #54; re-confirmed live for Gemini CLI
+# 0.46.0 by the spec 0198 R22 re-probe, issue #1116) — so the provenance has
+# to travel in the body instead. The comment is stable, greppable, and
+# ignored by Markdown renderers.
 gemini_provenance_comment() {
   local frontmatter="$1"
   local has_prov
@@ -843,19 +844,39 @@ build_agents() {
     # `tools`, `model`, etc. The body becomes the system prompt. A directory
     # layout or a frontmatter-less body is not discovered.
     if [ "$TARGET" = "gemini" ] || [ "$TARGET" = "all" ]; then
-      # Gemini CLI 0.42.0+ rejects any frontmatter key outside `name` /
-      # `description`. Provenance therefore travels as an HTML comment at
-      # the top of the body — see gemini_provenance_comment() and the
-      # "Agent provenance" row in docs/cli-matrix.md.
+      # Gemini CLI 0.42.0 rejected this repository's own `type:` and
+      # `metadata:` keys (issue #54); the re-probe of spec 0198 requirement
+      # 22 (issue #1116) re-confirmed that narrower rejection is still true
+      # on 0.46.0 and additionally confirmed `model:`, `temperature:` and
+      # `max_turns:` ARE accepted, per the bundled subagents.md reference.
+      # `metadata:` therefore still travels as an HTML comment on the body's
+      # first line — see gemini_provenance_comment() and the "Agent
+      # provenance" row in docs/cli-matrix.md — while a resolved capability
+      # profile's model/temperature/max_turns items are appended to the
+      # frontmatter below, same as every other target (spec 0198 R21).
+      resolve_agent "$name" "$source" gemini
+      local model_diag_line
+      for model_diag_line in ${DIAG_LINES[@]+"${DIAG_LINES[@]}"}; do
+        emit_diag_line "$model_diag_line"
+      done
+
+      local gemini_description="$description${EMIT_PROSE:+ $EMIT_PROSE}"
       local gemini_source_frontmatter
       gemini_source_frontmatter=$(extract_frontmatter "$source")
       local gemini_prov_comment
       gemini_prov_comment=$(gemini_provenance_comment "$gemini_source_frontmatter")
+      local gemini_frontmatter="name: $name
+description: \"$gemini_description\""
+      local model_fm_line
+      for model_fm_line in ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}; do
+        gemini_frontmatter="$gemini_frontmatter
+$model_fm_line"
+      done
+
       local gemini_content
       gemini_content=$(cat <<GEMINI_EOF
 ---
-name: $name
-description: "$description"
+$gemini_frontmatter
 ---
 $gemini_prov_comment
 $body

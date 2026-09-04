@@ -372,16 +372,21 @@ else
     "resolve_diag=[$c11_resolve_diag]" "build_diag=[$c11_build_diag]"
 fi
 
-# --- C12 (partial: claude, copilot, antigravity — gemini joins in the step
-#     10 commit once its emission is wired) — R5's --target independence.
+# --- C12 — R5's --target independence, all four targets. Claude is the
+# first branch that appends a fragment under an in-place-append defect
+# (gemini declares no guidance surface, so its branch appends nothing), so
+# all four are compared, not claude alone (a claude-only comparison would be
+# vacuous for exactly the mechanism this case exists to catch).
 C12_ALL_ROOT="$TMP_ROOT/c12-all-root"
+C12_GEMINI_ROOT="$TMP_ROOT/c12-gemini-root"
 C12_CLAUDE_ROOT="$TMP_ROOT/c12-claude-root"
 C12_COPILOT_ROOT="$TMP_ROOT/c12-copilot-root"
 C12_ANTIGRAVITY_ROOT="$TMP_ROOT/c12-antigravity-root"
-for r in "$C12_ALL_ROOT" "$C12_CLAUDE_ROOT" "$C12_COPILOT_ROOT" "$C12_ANTIGRAVITY_ROOT"; do
+for r in "$C12_ALL_ROOT" "$C12_GEMINI_ROOT" "$C12_CLAUDE_ROOT" "$C12_COPILOT_ROOT" "$C12_ANTIGRAVITY_ROOT"; do
   setup_emission_root "$r"
 done
 REPO_DIR="$C12_ALL_ROOT" bash "$BUILD_SCRIPT" --target all >/dev/null 2>"$TMP_ROOT/c12-all.err"
+REPO_DIR="$C12_GEMINI_ROOT" bash "$BUILD_SCRIPT" --target gemini >/dev/null 2>"$TMP_ROOT/c12-gemini.err"
 REPO_DIR="$C12_CLAUDE_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>"$TMP_ROOT/c12-claude.err"
 REPO_DIR="$C12_COPILOT_ROOT" bash "$BUILD_SCRIPT" --target copilot >/dev/null 2>"$TMP_ROOT/c12-copilot.err"
 REPO_DIR="$C12_ANTIGRAVITY_ROOT" bash "$BUILD_SCRIPT" --target antigravity >/dev/null 2>"$TMP_ROOT/c12-antigravity.err"
@@ -404,14 +409,15 @@ assert_slice() {
   $label stderr slice differs between --target all and --target $label"
   fi
 }
+assert_slice gemini "$C12_ALL_ROOT/.gemini/agents/probe-canonical.md" "$C12_GEMINI_ROOT/.gemini/agents/probe-canonical.md" gemini "$TMP_ROOT/c12-gemini.err"
 assert_slice claude "$C12_ALL_ROOT/.claude/agents/probe-canonical/AGENT.md" "$C12_CLAUDE_ROOT/.claude/agents/probe-canonical/AGENT.md" claude "$TMP_ROOT/c12-claude.err"
 assert_slice copilot "$C12_ALL_ROOT/.github/agents/probe-canonical.md" "$C12_COPILOT_ROOT/.github/agents/probe-canonical.md" copilot "$TMP_ROOT/c12-copilot.err"
 assert_slice antigravity "$C12_ALL_ROOT/.agents/agents/probe-canonical/AGENT.md" "$C12_ANTIGRAVITY_ROOT/.agents/agents/probe-canonical/AGENT.md" antigravity "$TMP_ROOT/c12-antigravity.err"
 
 if [ "$c12_ok" -eq 1 ]; then
-  ok "C12 (partial: claude/copilot/antigravity) — --target all's per-target slice equals the matching --target <X> run, output and stderr"
+  ok "C12 — --target all's per-target slice equals the matching --target <X> run, output and stderr, all four targets"
 else
-  bad "C12 (partial) — R5's --target independence" "$c12_detail"
+  bad "C12 — R5's --target independence" "$c12_detail"
 fi
 
 # --- C13(iii) — the compiled frontmatter carries no key beyond what an
@@ -426,6 +432,51 @@ if [ "$c13_keys" = "description name " ]; then
   ok "C13(iii) — intelligence-only profile compiles with no frontmatter key beyond name/description"
 else
   bad "C13(iii) — intelligence-only profile's compiled frontmatter key set" "got: $c13_keys"
+fi
+
+# --- C13(ii) — the gemini half: no fm: line for temperature/max_turns and
+# zero model-drop records for an intelligence-only profile (via --resolve,
+# so the case is independent of any Gemini emission gate).
+write_fixture "$FIXTURE" "intelligence: medium"
+resolve_agent probe "$FIXTURE" gemini
+fm_joined=$(printf '%s\n' ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"})
+if fm_has "model: gemini-3.5-flash" \
+  && ! printf '%s' "$fm_joined" | grep -q '^temperature:' \
+  && ! printf '%s' "$fm_joined" | grep -q '^max_turns:' \
+  && [ "$(diag_count)" -eq 0 ]; then
+  ok "C13(ii) — intelligence-only profile on gemini: model directed, no tuning fm lines, zero model-drop records"
+else
+  bad "C13(ii) — intelligence-only profile on gemini" "n_fm=${#EMIT_FM_LINES[@]} n_diag=$(diag_count)" "${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}"
+fi
+
+# --- R21 accept branch — a golden Gemini frontmatter case: a profile
+# declaring all three Gemini-expressible items compiles model/temperature/
+# max_turns in the mapping's declared item order, and the guidance-less
+# target emits no prose.
+R21_ROOT="$TMP_ROOT/r21-root"
+setup_emission_root "$R21_ROOT"
+cat > "$R21_ROOT/artifacts/core/agents/probe/AGENT.md" <<'EOF'
+---
+name: probe
+description: "Probe."
+metadata:
+  model:
+    intelligence: high
+    tuning:
+      temperature: 0.7
+      max-turns: 12
+---
+Body.
+EOF
+REPO_DIR="$R21_ROOT" bash "$BUILD_SCRIPT" --target gemini >/dev/null 2>/dev/null
+r21_fm="$(extract_frontmatter "$R21_ROOT/.gemini/agents/probe.md" | grep -E '^(model|temperature|max_turns):')"
+r21_expected="model: gemini-3.1-pro-preview
+temperature: 0.7
+max_turns: 12"
+if [ "$r21_fm" = "$r21_expected" ]; then
+  ok "R21 accept branch — Gemini frontmatter golden: model, temperature, max_turns in mapping order, no prose"
+else
+  bad "R21 accept branch — Gemini frontmatter golden" "expected:" "$r21_expected" "got:" "$r21_fm"
 fi
 
 echo ""
