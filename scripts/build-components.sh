@@ -35,6 +35,15 @@ TIER_FILTER=""
 
 LIST_OUTPUT_DIRS=false
 
+# spec 0198 R6/R34: --resolve exercises the resolution for one named agent
+# source and one named target with no compiled output written; --diagnostics
+# names an additional destination for the drop records and diagnostic notes
+# the build (or --resolve) emits, on top of the standard-error stream they
+# are written to either way.
+RESOLVE_SOURCE=""
+RESOLVE_TARGET=""
+DIAGNOSTICS_PATH=""
+
 # --- Parse arguments ---
 # Note: do not seed TARGET from $1. The previous form `TARGET="${1:-all}"`
 # silently set TARGET to `--check` when invoked as `bash ... --check`,
@@ -46,6 +55,8 @@ while [[ $# -gt 0 ]]; do
     --tier)             TIER_FILTER="$TIER_FILTER $2"; shift 2 ;;
     --check)            CHECK_MODE=true; shift ;;
     --list-output-dirs) LIST_OUTPUT_DIRS=true; shift ;;
+    --resolve)          RESOLVE_SOURCE="$2"; RESOLVE_TARGET="$3"; shift 3 ;;
+    --diagnostics)      DIAGNOSTICS_PATH="$2"; shift 2 ;;
     *)                  shift ;;
   esac
 done
@@ -125,7 +136,50 @@ command -v yq >/dev/null 2>&1 || { echo "Error: yq is required. Install with: br
 # shellcheck source=lib/component-resolve.sh
 . "$(dirname "$0")/lib/component-resolve.sh"
 
+# --- Shared model resolution (spec 0198) ---
+# Supplies mapping_in_force() and the rest of the addressing-grammar
+# accessors, profile_read(), and resolve_agent() — the single resolution
+# path this build and its --resolve exercise both call for a given
+# (agent, target) pair (R6).
+# shellcheck source=lib/model-resolve.sh
+. "$(dirname "$0")/lib/model-resolve.sh"
+
 DRIFT_FOUND=false
+
+# emit_diag_line <line> — writes one drop record or diagnostic note (spec
+# 0198 R32/R33) to standard error, and additionally to DIAGNOSTICS_PATH when
+# one is named (R34). Nothing here is ever committed to the repository.
+emit_diag_line() {
+  local line="$1"
+  echo "$line" >&2
+  if [ -n "$DIAGNOSTICS_PATH" ]; then
+    echo "$line" >> "$DIAGNOSTICS_PATH"
+  fi
+  return 0
+}
+
+# --- --resolve fast-exit arm (spec 0198 R6, R34) ---
+# Exercises resolve_agent for one named agent source and one named target,
+# writing no compiled output, before the yq prerequisite check above would
+# otherwise be redundant work — --diagnostics needs no crewrig.config.toml
+# placeholder resolution, so this runs ahead of load_crewrig_config below.
+if [ -n "$RESOLVE_SOURCE" ]; then
+  [ -n "$DIAGNOSTICS_PATH" ] && : > "$DIAGNOSTICS_PATH"
+  # yaml_field() is defined later in this file (Helpers, below); inlined
+  # here rather than called out of order.
+  resolve_agent_name="$(extract_frontmatter "$RESOLVE_SOURCE" | yq -r '.name' 2>/dev/null || true)"
+  resolve_agent "$resolve_agent_name" "$RESOLVE_SOURCE" "$RESOLVE_TARGET"
+  [ -n "$RESOLVED_OFFERING_ID" ] && echo "offering: $RESOLVED_OFFERING_ID"
+  [ -n "$RESOLVED_NATIVE_VALUE" ] && echo "native: $RESOLVED_NATIVE_VALUE"
+  for resolve_fm_line in ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}; do
+    echo "fm: $resolve_fm_line"
+  done
+  [ -n "$EMIT_PROSE" ] && echo "prose: $EMIT_PROSE"
+  for resolve_diag_line in ${DIAG_LINES[@]+"${DIAG_LINES[@]}"}; do
+    emit_diag_line "$resolve_diag_line"
+  done
+  exit 0
+fi
 
 # --- Crewrig fork configuration ---
 # Reads crewrig.config.toml at the repo root. Each `key = "value"` line becomes
@@ -217,10 +271,11 @@ provenance_block() {
 }
 
 # Returns a single-line HTML comment carrying provenance, or empty if the
-# frontmatter has no `metadata.provenance` key. Used for Gemini agents,
-# whose CLI 0.42.0+ rejects any frontmatter key outside `name`/`description`
-# — so the provenance has to travel in the body instead. The comment is
-# stable, greppable, and ignored by Markdown renderers.
+# frontmatter has no `metadata.provenance` key. Used for Gemini agents:
+# `metadata:` is rejected there (issue #54; re-confirmed live for Gemini CLI
+# 0.46.0 by the spec 0198 R22 re-probe, issue #1116) — so the provenance has
+# to travel in the body instead. The comment is stable, greppable, and
+# ignored by Markdown renderers.
 gemini_provenance_comment() {
   local frontmatter="$1"
   local has_prov
@@ -789,19 +844,39 @@ build_agents() {
     # `tools`, `model`, etc. The body becomes the system prompt. A directory
     # layout or a frontmatter-less body is not discovered.
     if [ "$TARGET" = "gemini" ] || [ "$TARGET" = "all" ]; then
-      # Gemini CLI 0.42.0+ rejects any frontmatter key outside `name` /
-      # `description`. Provenance therefore travels as an HTML comment at
-      # the top of the body — see gemini_provenance_comment() and the
-      # "Agent provenance" row in docs/cli-matrix.md.
+      # Gemini CLI 0.42.0 rejected this repository's own `type:` and
+      # `metadata:` keys (issue #54); the re-probe of spec 0198 requirement
+      # 22 (issue #1116) re-confirmed that narrower rejection is still true
+      # on 0.46.0 and additionally confirmed `model:`, `temperature:` and
+      # `max_turns:` ARE accepted, per the bundled subagents.md reference.
+      # `metadata:` therefore still travels as an HTML comment on the body's
+      # first line — see gemini_provenance_comment() and the "Agent
+      # provenance" row in docs/cli-matrix.md — while a resolved capability
+      # profile's model/temperature/max_turns items are appended to the
+      # frontmatter below, same as every other target (spec 0198 R21).
+      resolve_agent "$name" "$source" gemini
+      local model_diag_line
+      for model_diag_line in ${DIAG_LINES[@]+"${DIAG_LINES[@]}"}; do
+        emit_diag_line "$model_diag_line"
+      done
+
+      local gemini_description="$description${EMIT_PROSE:+ $EMIT_PROSE}"
       local gemini_source_frontmatter
       gemini_source_frontmatter=$(extract_frontmatter "$source")
       local gemini_prov_comment
       gemini_prov_comment=$(gemini_provenance_comment "$gemini_source_frontmatter")
+      local gemini_frontmatter="name: $name
+description: \"$gemini_description\""
+      local model_fm_line
+      for model_fm_line in ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}; do
+        gemini_frontmatter="$gemini_frontmatter
+$model_fm_line"
+      done
+
       local gemini_content
       gemini_content=$(cat <<GEMINI_EOF
 ---
-name: $name
-description: "$description"
+$gemini_frontmatter
 ---
 $gemini_prov_comment
 $body
@@ -814,8 +889,22 @@ GEMINI_EOF
 
     # --- Claude Code output: AGENT.md (with frontmatter) ---
     if [ "$TARGET" = "claude" ] || [ "$TARGET" = "all" ]; then
+      # spec 0198: resolve the agent's capability profile (if any) against
+      # the mapping in force for this target BEFORE composing this target's
+      # own description holder — a profile-less source (PROFILE_PRESENT
+      # false) leaves EMIT_FM_LINES empty and EMIT_PROSE empty, which is
+      # what keeps this branch byte-identical to its pre-spec-0198 output
+      # (R26). $description itself is never reassigned (R5's --target
+      # independence, step 8) — each target composes its own holder.
+      resolve_agent "$name" "$source" claude
+      local model_diag_line
+      for model_diag_line in ${DIAG_LINES[@]+"${DIAG_LINES[@]}"}; do
+        emit_diag_line "$model_diag_line"
+      done
+
+      local claude_description="$description${EMIT_PROSE:+ $EMIT_PROSE}"
       local claude_frontmatter="name: $name
-description: \"$description\""
+description: \"$claude_description\""
 
       local license compatibility
       license=$(yaml_field "$source" "license")
@@ -829,6 +918,14 @@ license: $license"
 compatibility: \"$compatibility\""
       fi
 
+      # Directed frontmatter keys (model, then reasoning -> effort), in the
+      # order resolve_agent already assembled (D8: the mapping's declared
+      # frontmatter item order).
+      local model_fm_line
+      for model_fm_line in ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}; do
+        claude_frontmatter="$claude_frontmatter
+$model_fm_line"
+      done
 
       local claude_content
       claude_content=$(cat <<CLAUDE_EOF
@@ -847,11 +944,29 @@ CLAUDE_EOF
     # public Copilot reference. We adopt .github/agents/<name>.md mirroring
     # the skill layout. See docs/cli-matrix.md and the ADR.
     if [ "$TARGET" = "copilot" ] || [ "$TARGET" = "all" ]; then
+      # spec 0198: while model-mappings/copilot.yml declares zero offerings
+      # (R23), every declared item drops unsupported-on-cli and both
+      # EMIT_FM_LINES and EMIT_PROSE stay empty — this branch's output is
+      # then byte-identical to what it was before this resolution existed.
+      resolve_agent "$name" "$source" copilot
+      local model_diag_line
+      for model_diag_line in ${DIAG_LINES[@]+"${DIAG_LINES[@]}"}; do
+        emit_diag_line "$model_diag_line"
+      done
+
+      local copilot_description="$description${EMIT_PROSE:+ $EMIT_PROSE}"
+      local copilot_frontmatter="name: $name
+description: \"$copilot_description\""
+      local model_fm_line
+      for model_fm_line in ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}; do
+        copilot_frontmatter="$copilot_frontmatter
+$model_fm_line"
+      done
+
       local copilot_content
       copilot_content=$(cat <<COPILOT_EOF
 ---
-name: $name
-description: "$description"
+$copilot_frontmatter
 ---
 
 $body
@@ -862,8 +977,18 @@ COPILOT_EOF
 
     # --- Antigravity CLI output: AGENT.md (directory layout, models Claude Code path) ---
     if [ "$TARGET" = "antigravity" ] || [ "$TARGET" = "all" ]; then
+      # spec 0198: model-mappings/antigravity.yml declares no frontmatter
+      # surface at all, so EMIT_FM_LINES is always empty here; the model
+      # item (when directed) reaches this target's description alone.
+      resolve_agent "$name" "$source" antigravity
+      local model_diag_line
+      for model_diag_line in ${DIAG_LINES[@]+"${DIAG_LINES[@]}"}; do
+        emit_diag_line "$model_diag_line"
+      done
+
+      local antigravity_description="$description${EMIT_PROSE:+ $EMIT_PROSE}"
       local antigravity_frontmatter="name: $name
-description: \"$description\""
+description: \"$antigravity_description\""
 
       local license compatibility
       license=$(yaml_field "$source" "license")
@@ -922,6 +1047,12 @@ enable_mcp_tools: $enable_mcp_tools"
         antigravity_frontmatter="$antigravity_frontmatter
 enable_subagent_tools: $enable_subagent_tools"
       fi
+
+      local model_fm_line
+      for model_fm_line in ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}; do
+        antigravity_frontmatter="$antigravity_frontmatter
+$model_fm_line"
+      done
 
       local antigravity_content
       antigravity_content=$(cat <<ANTIGRAVITY_EOF

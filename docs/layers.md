@@ -163,7 +163,11 @@ Built by `scripts/build-components.sh` from `artifacts/`. These
 directories are **assembly zones**: after a build they contain both
 core-provided harness components and the adopting organization's own compiled
 components. They are never edited directly; the source of truth is always
-`artifacts/`.
+`artifacts/` — except a compiled **agent** output, which is regenerated
+from `artifacts/` **and** `model-mappings/` together (spec 0198 requirement
+41): the build resolves each agent source's capability profile, when it
+declares one, against the mapping in force for the target it compiles for,
+so a change to either regenerates the output.
 
 An adopting organization may activate only a subset of CLIs; the sync
 mechanism respects this scope. The detailed assembly model (which CLI outputs
