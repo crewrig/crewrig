@@ -525,6 +525,88 @@ else
   fail=$((fail + 1))
 fi
 
+# --- Pass 3 (mapping in force) rejection coverage (tester F1, issue #1119
+# comment 5559189900; spec 0199 R31, R32, R35 scenarios 7 and 9) -------------
+# Both fixtures below are rejected ONLY once the core and org channel files
+# are merged: pass 1 (core alone, an untouched copy of the committed
+# claude.yml) and pass 2 (org alone) each stay green in isolation, so the
+# case is a live proof of R31 (pass 3 runs the merged mapping through the
+# same checker) and R32 (the rejection is reported against the
+# "(mapping in force)" label, never against either source file's own
+# label). Both run the checker in its default no-argument mode, the only
+# invocation shape that reaches pass 3 for a target discovered from the
+# repository's own model-mappings/ glob.
+
+# --- Scenario 7 — a cross-file rank collision: an org-added offering claims
+# rank 1, which the untouched core claude.yml already assigns to `haiku`.
+# Neither pass 1 (core alone: rank 1 used once) nor pass 2 (org alone: one
+# offering, no collision partner) can see the collision; only the merged
+# offering set carries both at once.
+PASS3_RANK_ROOT="$TMP_ROOT/pass3-rank-root"
+setup_pass3_root "$PASS3_RANK_ROOT"
+cp "$REPO_DIR/model-mappings/claude.yml" "$PASS3_RANK_ROOT/model-mappings/claude.yml"
+cat > "$PASS3_RANK_ROOT/model-mappings/claude.org.yml" <<'EOF'
+target: claude
+
+offerings:
+  - id: org-extra
+    rank: 1
+    native-value: sonnet
+    provides:
+      intelligence: medium
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: "org citation for native-value"
+      - declares: provides.intelligence
+        citation: "org citation for intelligence"
+      - declares: supports-reasoning-surface
+        assumption: "org assumption for supports-reasoning-surface"
+EOF
+p3_out="$(CREWRIG_REPO_DIR="$PASS3_RANK_ROOT" bash "$SCRIPT_UNDER_TEST" 2>&1)"; p3_rc=$?
+if [ "$p3_rc" -eq 1 ] \
+  && printf '%s\n' "$p3_out" | grep -qF "model-mappings/claude (mapping in force): A7" \
+  && ! printf '%s\n' "$p3_out" | grep -qF "model-mappings/claude.yml: A7" \
+  && ! printf '%s\n' "$p3_out" | grep -qF "model-mappings/claude.org.yml: A7"; then
+  echo "PASS  pass 3 catches a cross-file rank collision invisible to pass 1 and pass 2 (A7, scenario 7)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  pass 3 cross-file rank collision (scenario 7)"
+  echo "  --- output ---"
+  printf '%s\n' "$p3_out" | sed 's/^/  /'
+  echo "  --------------"
+  fail=$((fail + 1))
+fi
+
+# --- Scenario 9 — an org file flips guard.state to directed alone (no
+# `id:`, terms inherited unchanged from core). Pass 2 (org alone) sees ZERO
+# guard terms, so its "directed but a term holds" check is vacuously silent;
+# pass 1 (core alone) is the untouched, already-green withheld guard. Only
+# the merged mapping in force carries the directed state together with the
+# two inherited core terms that still hold, which A23 catches.
+PASS3_GUARD_ROOT="$TMP_ROOT/pass3-guard-root"
+setup_pass3_root "$PASS3_GUARD_ROOT"
+cp "$REPO_DIR/model-mappings/claude.yml" "$PASS3_GUARD_ROOT/model-mappings/claude.yml"
+cat > "$PASS3_GUARD_ROOT/model-mappings/claude.org.yml" <<'EOF'
+target: claude
+guard:
+  state: directed
+EOF
+p3g_out="$(CREWRIG_REPO_DIR="$PASS3_GUARD_ROOT" bash "$SCRIPT_UNDER_TEST" 2>&1)"; p3g_rc=$?
+if [ "$p3g_rc" -eq 1 ] \
+  && printf '%s\n' "$p3g_out" | grep -qF "model-mappings/claude (mapping in force): A23" \
+  && ! printf '%s\n' "$p3g_out" | grep -qF "model-mappings/claude.yml: A23" \
+  && ! printf '%s\n' "$p3g_out" | grep -qF "model-mappings/claude.org.yml: A23"; then
+  echo "PASS  pass 3 catches a directed guard composed across files with still-holding inherited terms (A23, scenario 9)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  pass 3 directed guard across files (scenario 9)"
+  echo "  --- output ---"
+  printf '%s\n' "$p3g_out" | sed 's/^/  /'
+  echo "  --------------"
+  fail=$((fail + 1))
+fi
+
 # --- --print-selection label: field 1 is model-mappings/<target> for every
 # target, never a materialized path (R36) --------------------------------
 labels="$(bash "$SCRIPT_UNDER_TEST" --print-selection | awk -F'\t' '{print $1}' | sort -u)"
