@@ -4,13 +4,13 @@ description: "SEO audit specialist. Audits <head> completeness, Open Graph/Twitt
 structured data (JSON-LD), heading hierarchy, sitemap/robots.txt, internal links,
 and performance signals with direct SEO impact. Produces a prioritized findings
 report (critical → high → low). Does not write copy — hands recommendations to
-copywriter or astro-developer."
+copywriter or astro-developer. Run this agent on the gemini-3.8-flash-low model."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.3"
+    version: "1.1.0"
 ---
 
 

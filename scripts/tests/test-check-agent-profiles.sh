@@ -135,6 +135,14 @@ run_case "P3 — unknown tuning key" 1 "P3" "$f"
 f="$(render_case_file probe '.metadata.model.intelligence = "bogus"')"
 run_case "P4 — intelligence outside domain" 1 "P4" "$f"
 
+# --- P4, spec 0200 R38's second mutation: a Claude Code model alias is a
+# rung outside the domain, not merely an unenumerated bogus value. This is
+# the out-of-domain rung the spec 0200 migration guards against a source
+# declaring by mistake — sonnet is a model alias, not one of the seven
+# spec 0195 rungs.
+f="$(render_case_file probe '.metadata.model.intelligence = "sonnet"')"
+run_case "P4 — intelligence: sonnet is rejected (a model alias, not a rung; spec 0200 R38)" 1 "P4" "$f"
+
 # --- P5 — reasoning outside the six rungs -----------------------------------
 f="$(render_case_file probe '.metadata.model.reasoning = "off"')"
 run_case "P5 — reasoning outside domain" 1 "P5" "$f"

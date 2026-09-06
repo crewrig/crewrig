@@ -4,12 +4,12 @@ description: "Generic implementation agent. Writes, edits, and refactors code
   with the smallest correct change. Verifies locally before reporting done."
 type: agent
 metadata:
-  claude:
-    model: sonnet
+  model:
+    intelligence: high
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.3"
+    version: "1.3.0"
 ---
 
 # Developer Agent

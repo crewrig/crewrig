@@ -3,13 +3,13 @@ name: frontend-developer
 description: "UI implementation specialist. Translates designer token files and component
 anatomy specs into production-ready CSS and markup. Ensures WCAG 2.1 AA
 compliance, optimizes asset delivery, and hands off to astro-developer for
-framework wiring. Does NOT own Astro-specific build concerns."
+framework wiring. Does NOT own Astro-specific build concerns. Run this agent on the sonnet model."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.3"
+    version: "1.1.0"
 ---
 
 

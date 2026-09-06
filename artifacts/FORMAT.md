@@ -111,8 +111,17 @@ The `claude:` section adds Claude Code-specific frontmatter fields:
 | `disable-model-invocation` | boolean | `false` | Prevent auto-invocation? |
 | `context` | string | *(none)* | Run context (`fork` for isolated subagent) |
 | `agent` | string | *(none)* | Agent type (`Explore`, `Plan`, etc.) |
-| `model` | string | *(none)* | Model override |
-| `effort` | string | *(none)* | Effort level override |
+
+**`model` and `effort` are native Claude Code per-agent frontmatter keys, not
+`claude:`-section fields an agent source authors.** A compiled Claude Code
+agent output's `model:` and `effort:` frontmatter, when present, is written
+by a model-mapping resolution (spec 0198) directing a source's capability
+profile onto that surface — never by a source declaring
+`claude.model` or `claude.effort` under its `claude:` section. A
+source-authored `claude.model` or `claude.effort` is read by no build step
+(spec 0200 requirement 26). The two keys stay recorded here, and not
+deleted, because `model-mappings/claude.yml` grounds both of its
+frontmatter items on a citation of this record.
 
 ### `metadata.model:` (optional, agent sources only)
 
@@ -123,6 +132,13 @@ concrete model, vendor, or CLI-namespaced key — and is optional: a source
 carrying no `metadata.model:` mapping, or one that declares no axis and no
 tuning knob, keeps exactly the behavior it has today (session-model
 inheritance). Skills and commands do not carry this field.
+
+`metadata.model:` is the **only** surface on which an agent source
+declares a model need — there is no other key, on any section, that
+states one. On the upstream-owned tiers (`artifacts/core/` and
+`artifacts/library/`), a source's `metadata:` block admits exactly two
+keys, `provenance` and `model`; `scripts/check-component-metadata-keys.sh`
+is the gate that rejects any other (spec 0200 requirement 8).
 
 | Key | Type | Domain | Unconstrained state |
 |---|---|---|---|

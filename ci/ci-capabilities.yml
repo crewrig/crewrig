@@ -57,11 +57,13 @@ capabilities:
           - "scripts/build-components.sh"
           - "scripts/test-build-components.sh"
           - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
           - "model-mappings/**"
       - on: push
         branches: [main, "release/**"]
@@ -69,11 +71,13 @@ capabilities:
           - "scripts/build-components.sh"
           - "scripts/test-build-components.sh"
           - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
           - "model-mappings/**"
     portability: portable
     changeset-gated: true
@@ -84,16 +88,19 @@ capabilities:
         - "scripts/build-components.sh"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
         - "scripts/lib/**"
         - "artifacts/**"
         - "extensions/**"
         - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
         - "model-mappings/**"
       env: []
     command:
       - bash scripts/build-components.sh --target all --check
       - bash scripts/test-build-components.sh
       - bash scripts/tests/test-model-resolution.sh
+      - bash scripts/tests/test-agent-profile-migration.sh
 
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
@@ -802,6 +809,29 @@ capabilities:
     command:
       - bash scripts/check-agent-profiles.sh
       - bash scripts/tests/test-check-agent-profiles.sh
+
+  - id: check-metadata-keys
+    name: "Check the component metadata: closed key set and run its mutation test suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "artifacts/**"
+          - "scripts/check-component-metadata-keys.sh"
+          - "scripts/tests/test-check-component-metadata-keys.sh"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "artifacts/**"
+          - "scripts/check-component-metadata-keys.sh"
+          - "scripts/tests/test-check-component-metadata-keys.sh"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
+      - bash scripts/check-component-metadata-keys.sh
+      - bash scripts/tests/test-check-component-metadata-keys.sh
 
   - id: markdown-links
     name: "Check relative Markdown link integrity"

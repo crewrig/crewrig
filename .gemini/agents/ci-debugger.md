@@ -3,8 +3,9 @@ name: ci-debugger
 description: "Specialist agent for diagnosing and fixing failing GitHub Actions
 pipelines. Systematically produces a
 symptom → hypothesis → evidence → fix chain."
+model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.0.3" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Debugger Agent
 

@@ -1,8 +1,9 @@
 ---
 name: developer
 description: "Generic implementation agent. Writes, edits, and refactors code with the smallest correct change. Verifies locally before reporting done."
+model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.2.3" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.3.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Developer Agent
 

@@ -140,6 +140,11 @@
           "title": "Org model mapping override channel",
           "path": "docs/org-model-mapping-override.md",
           "nav_order": 100
+        },
+        {
+          "title": "Agent capability-profile migration",
+          "path": "docs/agent-profile-migration.md",
+          "nav_order": 110
         }
       ]
     },

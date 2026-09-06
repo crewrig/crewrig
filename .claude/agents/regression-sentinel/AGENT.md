@@ -1,12 +1,12 @@
 ---
 name: regression-sentinel
-description: "Runs a smoke or regression pass against a staging or production URL. Diffs results against a stored baseline and surfaces new failures with screenshots and traces."
+description: "Runs a smoke or regression pass against a staging or production URL. Diffs results against a stored baseline and surfaces new failures with screenshots and traces. Run this agent on the haiku model."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.2"
+    version: "1.1.0"
 ---
 
 

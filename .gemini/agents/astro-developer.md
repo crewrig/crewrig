@@ -5,8 +5,9 @@ projects, implements pages/layouts/components, wires Content Collections,
 configures integrations, handles deployment, and diagnoses build failures.
 Receives tokens from designer, copy from copywriter, and hands off to
 seo-specialist and accessibility-auditor."
+model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.0.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Astro Developer Agent
 

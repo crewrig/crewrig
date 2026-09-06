@@ -71,6 +71,20 @@ parent session. A model mismatch causes spawned agents to fail silently
 — no output, no file edits, no error — which makes
 **the `Agent` spawn effectively non-functional.**
 
+Since spec 0200, a compiled Claude Code or Antigravity CLI agent output's
+`description` may carry guidance prose naming the Anthropic or Google
+model that agent's declared capability profile resolves to (spec 0197
+R14, spec 0198). **That guidance prose is a statement of the work's
+need, and it is subordinate to this rule wherever the two disagree.** On
+a non-default model provider, the rule's own resolution — matching the
+parent orchestrator's model, by explicit parameter or by inheritance —
+governs the spawn; the compiled prose is advisory and never overrides it.
+No mapping and no agent source changes on this account: spec 0197 R14
+forbids the guidance prose from introducing a frontmatter field, so it
+can never force a spawn's model by itself, and this statement exists so
+a session on a non-default provider is not directed into the silent-
+failure mode this rule exists to prevent.
+
 ## On CLIs with no multi-agent coordination surface (e.g. Gemini CLI)
 
 A CLI that lacks the `SendMessage` / `TaskCreate` coordination bus reaches

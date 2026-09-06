@@ -1,12 +1,12 @@
 ---
 name: visual-regression-tester
-description: "Detects unintended visual changes between two states of a page by comparing screenshots at multiple viewports. Uses Playwright's toHaveScreenshot or equivalent diff thresholds."
+description: "Detects unintended visual changes between two states of a page by comparing screenshots at multiple viewports. Uses Playwright's toHaveScreenshot or equivalent diff thresholds. Run this agent on the gemini-3.8-flash-low model."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.3"
+    version: "1.1.0"
 ---
 
 

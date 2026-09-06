@@ -8,12 +8,12 @@ description: "Independent PR reviewer agent. Spawns cold — receives a
   (`gh`)."
 type: agent
 metadata:
-  claude:
-    model: sonnet
+  model:
+    intelligence: high
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.0"
+    version: "1.4.0"
 claude:
   allowed-tools:
     - Bash

@@ -1,8 +1,9 @@
 ---
 name: pr-logbook
 description: "Generic PR and logbook composer agent. Drafts titles, bodies, test plans, logbook entries, and squash-merge commit messages that conform to the project's AGENTS.md conventions."
+model: gemini-3.5-flash
 ---
-<!-- crewrig-provenance: version="1.1.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # PR & Logbook Agent
 

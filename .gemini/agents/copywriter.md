@@ -4,8 +4,9 @@ description: "Content production specialist. Interviews the product brief, produ
 content outline for review, then writes final page copy (hero, features,
 social proof, CTA). Delivers structured Markdown ready for handoff to
 frontend-developer or astro-developer. Does NOT make layout or visual decisions."
+model: gemini-3.5-flash
 ---
-<!-- crewrig-provenance: version="1.0.3" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Copywriter Agent
 

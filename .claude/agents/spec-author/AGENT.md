@@ -1,11 +1,11 @@
 ---
 name: spec-author
-description: "Specification authoring agent. Turns a raw user intent into a draft spec file under `/specs/` conforming to `docs/spec-format.md`, in the interaction mode declared by the parent ticket."
+description: "Specification authoring agent. Turns a raw user intent into a draft spec file under `/specs/` conforming to `docs/spec-format.md`, in the interaction mode declared by the parent ticket. Run this agent on the sonnet model."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.1"
+    version: "1.2.0"
 ---
 
 

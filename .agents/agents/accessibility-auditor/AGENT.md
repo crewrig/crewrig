@@ -4,13 +4,13 @@ description: "WCAG 2.1 Level AA compliance auditor. Runs an automated baseline s
 manually verifies keyboard navigation, color contrast, interactive element
 accessibility, image alt text quality, ARIA correctness, and motion preferences.
 Produces a structured findings report (violation → warning → informational).
-Does not implement fixes — hands the report to frontend-developer or astro-developer."
+Does not implement fixes — hands the report to frontend-developer or astro-developer. Run this agent on the gemini-3.8-flash-low model."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.3"
+    version: "1.1.0"
 ---
 
 

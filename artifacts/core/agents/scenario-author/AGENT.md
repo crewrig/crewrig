@@ -7,12 +7,12 @@ description: "Writes automated test scenarios from a natural-language
 type: agent
 license: Apache-2.0
 metadata:
-  claude:
-    model: haiku
+  model:
+    intelligence: medium
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.0.3"
+    version: "1.1.0"
 ---
 
 # Scenario Author Agent

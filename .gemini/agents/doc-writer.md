@@ -1,8 +1,9 @@
 ---
 name: doc-writer
 description: "Generic documentation agent. Drafts ADRs, READMEs, in-code docstrings, and reference material. Optimizes for documents that age well and stays close to the code where possible."
+model: gemini-3.5-flash
 ---
-<!-- crewrig-provenance: version="1.1.3" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Doc Writer Agent
 

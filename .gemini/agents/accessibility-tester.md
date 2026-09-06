@@ -1,8 +1,9 @@
 ---
 name: accessibility-tester
 description: "Runs WCAG 2.1/2.2 (AA/AAA) compliance checks on a page or user flow using axe-core. Reports violations by impact level with remediation guidance and outputs a CI-ready test suite."
+model: gemini-3.5-flash
 ---
-<!-- crewrig-provenance: version="1.0.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Accessibility Tester Agent
 
