@@ -108,6 +108,45 @@ else
 fi
 
 echo ""
+echo "=== O0 — silent org channel stubs: drift check green, compiled agent trees byte-identical (spec 0199 plan step 1; R8, R9, R47) ==="
+
+# AGENT_TREES — the four compiled agent output trees reclassified
+# `regenerable` by this ticket (spec 0199 R43). Upstream's four org channel
+# stubs (model-mappings/*.org.yml) declare nothing, so no compiled output may
+# move on their account (R47): the byte-identity check below is what proves
+# that structurally rather than by inspection.
+AGENT_TREES=".claude/agents .gemini/agents .github/agents .agents/agents"
+
+# hash_agent_trees — SHA-256 of every file under the four compiled agent
+# trees, one "<hash> <repo-relative-path>" line per file, sorted by path. A
+# per-run baseline: O0 pins it before any production edit and re-compares it
+# once at the close of this suite (below), after every other case in this
+# file — including every throwaway-root build this suite runs — has had its
+# chance to leave something behind in the real, non-overridden $REPO_DIR.
+hash_agent_trees() {
+  local tree
+  for tree in $AGENT_TREES; do
+    [ -d "$REPO_DIR/$tree" ] || continue
+    find "$REPO_DIR/$tree" -type f | sort | while IFS= read -r f; do
+      if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$f"
+      else
+        sha256sum "$f"
+      fi
+    done | sed "s#$REPO_DIR/##"
+  done
+}
+
+O0_BASELINE="$(hash_agent_trees)"
+
+out="$(bash "$BUILD_SCRIPT" --target all --check 2>&1)"; rc=$?
+if [ "$rc" -eq 0 ] && printf '%s\n' "$out" | grep -qF "OK: All generated files match source."; then
+  ok "O0 — silent org channel stubs: --target all --check exits 0 printing the OK line"
+else
+  bad "O0 — silent org channel stubs: --target all --check exits 0" "exit=$rc" "$out"
+fi
+
+echo ""
 echo "=== C1/C3-C7, C13(i) — the resolution rule engine (plan steps 2, 3, 8) ==="
 
 . "$SCRIPT_DIR/lib/model-resolve.sh"
@@ -733,6 +772,15 @@ if diff -q "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical/AG
   ok "R30 — a second build over an unchanged source/mapping is byte-identical (rendering is idempotent)"
 else
   bad "R30 — build-twice diff" "$(diff "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical/AGENT.md")"
+fi
+
+echo ""
+echo "=== O0 (closing) — the four compiled agent trees are still byte-identical to the pre-suite baseline ==="
+O0_FINAL="$(hash_agent_trees)"
+if [ "$O0_FINAL" = "$O0_BASELINE" ]; then
+  ok "O0 (closing) — compiled agent trees byte-identical to the O0 baseline (no compiled output moved)"
+else
+  bad "O0 (closing) — compiled agent trees changed during this suite" "$(diff <(printf '%s\n' "$O0_BASELINE") <(printf '%s\n' "$O0_FINAL"))"
 fi
 
 echo ""
