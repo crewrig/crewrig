@@ -41,39 +41,46 @@ component-drift:
         - "scripts/build-components.sh"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
         - "scripts/lib/**"
         - "artifacts/**"
         - "extensions/**"
         - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
         - "model-mappings/**"
     paths:
       - .ci-cache/
   script:
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,model-mappings/**\" --key-env \"\" -- bash scripts/build-components.sh --target all --check"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,model-mappings/**\" --key-env \"\" -- bash scripts/test-build-components.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,model-mappings/**\" --key-env \"\" -- bash scripts/tests/test-model-resolution.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**\" --key-env \"\" -- bash scripts/build-components.sh --target all --check"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**\" --key-env \"\" -- bash scripts/test-build-components.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**\" --key-env \"\" -- bash scripts/tests/test-model-resolution.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**\" --key-env \"\" -- bash scripts/tests/test-agent-profile-migration.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.sh"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
         - "scripts/lib/**"
         - "artifacts/**"
         - "extensions/**"
         - ".crewrig/core-paths.txt"
         - "docs/layers.md"
+        - "docs/agent-profile-migration.md"
         - "model-mappings/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.sh"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
         - "scripts/lib/**"
         - "artifacts/**"
         - "extensions/**"
         - ".crewrig/core-paths.txt"
         - "docs/layers.md"
+        - "docs/agent-profile-migration.md"
         - "model-mappings/**"
 
 extension-render:

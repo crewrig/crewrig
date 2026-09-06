@@ -57,11 +57,13 @@ capabilities:
           - "scripts/build-components.sh"
           - "scripts/test-build-components.sh"
           - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
           - "model-mappings/**"
       - on: push
         branches: [main, "release/**"]
@@ -69,11 +71,13 @@ capabilities:
           - "scripts/build-components.sh"
           - "scripts/test-build-components.sh"
           - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
           - "model-mappings/**"
     portability: portable
     changeset-gated: true
@@ -84,16 +88,19 @@ capabilities:
         - "scripts/build-components.sh"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
         - "scripts/lib/**"
         - "artifacts/**"
         - "extensions/**"
         - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
         - "model-mappings/**"
       env: []
     command:
       - bash scripts/build-components.sh --target all --check
       - bash scripts/test-build-components.sh
       - bash scripts/tests/test-model-resolution.sh
+      - bash scripts/tests/test-agent-profile-migration.sh
 
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"

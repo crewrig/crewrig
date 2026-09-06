@@ -38,11 +38,13 @@ jobs:
               - 'scripts/build-components.sh'
               - 'scripts/test-build-components.sh'
               - 'scripts/tests/test-model-resolution.sh'
+              - 'scripts/tests/test-agent-profile-migration.sh'
               - 'scripts/lib/**'
               - 'artifacts/**'
               - 'extensions/**'
               - '.crewrig/core-paths.txt'
               - 'docs/layers.md'
+              - 'docs/agent-profile-migration.md'
               - 'model-mappings/**'
       - name: Install yq
         if: steps.filter.outputs.component-drift == 'true'
@@ -53,16 +55,19 @@ jobs:
         if: steps.filter.outputs.component-drift == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'model-mappings/**') }}
+          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**') }}
       - name: Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,model-mappings/**" --key-env "" -- bash scripts/build-components.sh --target all --check
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/build-components.sh --target all --check
       - name: Test Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,model-mappings/**" --key-env "" -- bash scripts/test-build-components.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/test-build-components.sh
       - name: Test Model Resolution
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,model-mappings/**" --key-env "" -- bash scripts/tests/test-model-resolution.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/tests/test-model-resolution.sh
+      - name: Test Agent Profile Migration
+        if: steps.filter.outputs.component-drift == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/tests/test-agent-profile-migration.sh
   extension-render:
     runs-on: ubuntu-latest
     steps:
