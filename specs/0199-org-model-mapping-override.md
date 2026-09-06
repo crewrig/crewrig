@@ -1,7 +1,7 @@
 ---
 id: "0199"
 slug: org-model-mapping-override
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1119
