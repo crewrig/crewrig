@@ -99,7 +99,7 @@ web-conformity-checker medium'
 echo "=== T1 — R36: component-drift's --check command is still wired ==="
 
 t1_command_list="$(yq '.capabilities[] | select(.id=="component-drift") | .command[]' "$CI_CAPABILITIES" 2>/dev/null)"
-if printf '%s\n' "$t1_command_list" | grep -qF 'bash scripts/build-components.sh --target all --check'; then
+if grep -qF 'bash scripts/build-components.sh --target all --check' <<< "$t1_command_list"; then
   ok "T1 — component-drift's command: list carries the --check invocation"
 else
   bad "T1 — component-drift's command: list carries the --check invocation" "$t1_command_list"
@@ -116,7 +116,7 @@ assert_claude() {
   desc="$(printf '%s\n' "$fm" | yq -r '.description' 2>/dev/null)"
   has_model="$(printf '%s\n' "$fm" | yq 'has("model")' 2>/dev/null || echo false)"
   has_effort="$(printf '%s\n' "$fm" | yq 'has("effort")' 2>/dev/null || echo false)"
-  if printf '%s' "$desc" | grep -qF "Run this agent on the $alias model." \
+  if grep -qF "Run this agent on the $alias model." <<< "$desc" \
      && [ "$has_model" = false ] && [ "$has_effort" = false ]; then
     ok "T2 — .claude/agents/$name/AGENT.md carries the $alias guidance sentence, no model:/effort:"
   else
@@ -132,7 +132,7 @@ assert_gemini() {
   fm="$(extract_frontmatter "$REPO_DIR/.gemini/agents/$name.md")"
   got_model="$(printf '%s\n' "$fm" | yq -r '.model' 2>/dev/null)"
   desc="$(printf '%s\n' "$fm" | yq -r '.description' 2>/dev/null)"
-  if [ "$got_model" = "$model_id" ] && ! printf '%s' "$desc" | grep -qF "Run this agent on the"; then
+  if [ "$got_model" = "$model_id" ] && ! grep -qF "Run this agent on the" <<< "$desc"; then
     ok "T2 — .gemini/agents/$name.md carries model: $model_id, no guidance sentence"
   else
     bad "T2 — .gemini/agents/$name.md carries model: $model_id, no guidance sentence" \
@@ -147,7 +147,7 @@ assert_antigravity() {
   fm="$(extract_frontmatter "$REPO_DIR/.agents/agents/$name/AGENT.md")"
   desc="$(printf '%s\n' "$fm" | yq -r '.description' 2>/dev/null)"
   has_model="$(printf '%s\n' "$fm" | yq 'has("model")' 2>/dev/null || echo false)"
-  if printf '%s' "$desc" | grep -qF "Run this agent on the $offering model." && [ "$has_model" = false ]; then
+  if grep -qF "Run this agent on the $offering model." <<< "$desc" && [ "$has_model" = false ]; then
     ok "T2 — .agents/agents/$name/AGENT.md carries the $offering guidance sentence, no model:"
   else
     bad "T2 — .agents/agents/$name/AGENT.md carries the $offering guidance sentence, no model:" \
@@ -164,7 +164,7 @@ assert_copilot() {
   desc="$(printf '%s\n' "$fm" | yq -r '.description' 2>/dev/null)"
   has_model="$(printf '%s\n' "$fm" | yq 'has("model")' 2>/dev/null || echo false)"
   has_effort="$(printf '%s\n' "$fm" | yq 'has("effort")' 2>/dev/null || echo false)"
-  if [ "$has_model" = false ] && [ "$has_effort" = false ] && ! printf '%s' "$desc" | grep -qF "Run this agent on the"; then
+  if [ "$has_model" = false ] && [ "$has_effort" = false ] && ! grep -qF "Run this agent on the" <<< "$desc"; then
     ok "T2 — .github/agents/$name.md carries no model:/effort:, no guidance sentence"
   else
     bad "T2 — .github/agents/$name.md carries no model:/effort:, no guidance sentence" \
@@ -268,7 +268,7 @@ for out in "$T5_ROOT/dist/library/.claude/agents/harness-curator/AGENT.md" \
   has_model="$(printf '%s\n' "$fm" | yq 'has("model")' 2>/dev/null || echo false)"
   has_effort="$(printf '%s\n' "$fm" | yq 'has("effort")' 2>/dev/null || echo false)"
   desc="$(printf '%s\n' "$fm" | yq -r '.description' 2>/dev/null)"
-  if [ "$has_model" != false ] || [ "$has_effort" != false ] || printf '%s' "$desc" | grep -qF "Run this agent on the"; then
+  if [ "$has_model" != false ] || [ "$has_effort" != false ] || grep -qF "Run this agent on the" <<< "$desc"; then
     t5_outputs_ok=0
   fi
 done
@@ -408,10 +408,10 @@ mkdir -p "$M1_ROOT"
 yq eval -i --front-matter=process '.metadata.model.intelligence = "medium"' "$M1_ROOT/artifacts/core/agents/developer/AGENT.md"
 m1_out="$(REPO_DIR="$M1_ROOT" bash "$BUILD_SCRIPT" --target all --check 2>&1)"; m1_rc=$?
 if [ "$m1_rc" -ne 0 ] \
-   && printf '%s\n' "$m1_out" | grep -q '\.claude/agents/developer/AGENT\.md differs from source' \
-   && printf '%s\n' "$m1_out" | grep -q '\.gemini/agents/developer\.md differs from source' \
-   && printf '%s\n' "$m1_out" | grep -q '\.agents/agents/developer/AGENT\.md differs from source' \
-   && ! printf '%s\n' "$m1_out" | grep -q '\.github/agents/developer\.md differs from source'; then
+   && grep -q '\.claude/agents/developer/AGENT\.md differs from source' <<< "$m1_out" \
+   && grep -q '\.gemini/agents/developer\.md differs from source' <<< "$m1_out" \
+   && grep -q '\.agents/agents/developer/AGENT\.md differs from source' <<< "$m1_out" \
+   && ! grep -q '\.github/agents/developer\.md differs from source' <<< "$m1_out"; then
   ok "R40 — component-drift's --check reds on an unregenerated profile edit, naming .claude/.gemini/.agents but not .github"
 else
   bad "R40 — component-drift's --check reds on an unregenerated profile edit, naming .claude/.gemini/.agents but not .github" \

@@ -52,7 +52,7 @@ run_case() {
   fi
   if [ -n "$expected_ids" ]; then
     for id in $expected_ids; do
-      printf '%s\n' "$out" | grep -qF ": ${id} " || ok=0
+      grep -qF ": ${id} " <<< "$out" || ok=0
     done
   fi
   if [ "$ok" -eq 1 ]; then
@@ -114,7 +114,7 @@ EOF
 )"
 run_case "R38 mutation 1 — metadata.claude is rejected, naming the metadata: path" 1 "K1" "$f"
 out="$(bash "$SCRIPT_UNDER_TEST" "$f" 2>&1)" || true
-if printf '%s\n' "$out" | grep -qF 'metadata.claude'; then
+if grep -qF 'metadata.claude' <<< "$out"; then
   echo "PASS  rejection names metadata.claude, not the top-level section"
   pass=$((pass + 1))
 else
@@ -216,7 +216,7 @@ echo "=== Section 3 — default-glob mode over the real tree, and prerequisite f
 
 # --- default-glob mode over the real repository: 45 sources, currently clean
 out="$(bash "$SCRIPT_UNDER_TEST" 2>&1)"; rc=$?
-if [ "$rc" -eq 0 ] && printf '%s\n' "$out" | grep -qE '^OK: 45 source\(s\) checked'; then
+if [ "$rc" -eq 0 ] && grep -qE '^OK: 45 source\(s\) checked' <<< "$out"; then
   echo "PASS  default-glob mode reports 45 sources, clean"
   pass=$((pass + 1))
 else

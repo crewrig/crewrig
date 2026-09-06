@@ -56,7 +56,7 @@ echo "=== C2 — the committed agent outputs are pinned and derivable (baseline 
 
 # --- C2(a) — bash scripts/build-components.sh --target all --check exits 0 -
 out="$(bash "$BUILD_SCRIPT" --target all --check 2>&1)"; rc=$?
-if [ "$rc" -eq 0 ] && printf '%s\n' "$out" | grep -qF "OK: All generated files match source."; then
+if [ "$rc" -eq 0 ] && grep -qF "OK: All generated files match source." <<< "$out"; then
   ok "C2(a) — --target all --check exits 0 on the untouched tree"
 else
   bad "C2(a) — --target all --check exits 0 on the untouched tree" "exit=$rc" "$out"
@@ -151,7 +151,7 @@ hash_agent_trees() {
 O0_BASELINE="$(hash_agent_trees)"
 
 out="$(bash "$BUILD_SCRIPT" --target all --check 2>&1)"; rc=$?
-if [ "$rc" -eq 0 ] && printf '%s\n' "$out" | grep -qF "OK: All generated files match source."; then
+if [ "$rc" -eq 0 ] && grep -qF "OK: All generated files match source." <<< "$out"; then
   ok "O0 — silent org channel stubs: --target all --check exits 0 printing the OK line"
 else
   bad "O0 — silent org channel stubs: --target all --check exits 0" "exit=$rc" "$out"
@@ -328,7 +328,7 @@ EXPECTED_UNREADABLE_NOTE="$(printf 'model-note\tprobe\tgemini\tunreadable-cell\t
 c7_resolve_ok=$?
 checker_out="$(bash "$SCRIPT_DIR/check-model-mappings.sh" "$MALFORMED_ROOT/model-mappings/gemini.yml" 2>&1)"
 checker_rc=$?
-if [ "$checker_rc" -eq 1 ] && printf '%s\n' "$checker_out" | grep -qF ': A9 '; then
+if [ "$checker_rc" -eq 1 ] && grep -qF ': A9 ' <<< "$checker_out"; then
   c7_checker_ok=1
 else
   c7_checker_ok=0
@@ -446,7 +446,7 @@ write_fixture "$FIXTURE" "intelligence: medium" "tuning:
   temperature: 5.0"
 resolve_agent probe "$FIXTURE" gemini
 gemini_fm_joined=$(printf '%s\n' ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"})
-if ! printf '%s' "$gemini_fm_joined" | grep -q '^temperature:' \
+if ! grep -q '^temperature:' <<< "$gemini_fm_joined" \
   && diag_has "$(printf 'model-drop\tprobe\tgemini\tmetadata.model.tuning.temperature\t5.0\tout-of-range-for-target')"; then
   ok "(g)(6) — an out-of-domain tuning value is dropped out-of-range-for-target"
 else
@@ -506,7 +506,7 @@ REPO_DIR="$C9_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
 yq eval -i '.offerings[0]."native-value" = "haiku-drifted"' "$C9_ROOT/model-mappings/claude.yml"
 c9_out="$(REPO_DIR="$C9_ROOT" bash "$BUILD_SCRIPT" --target claude --check 2>&1)"
 c9_rc=$?
-if [ "$c9_rc" -ne 0 ] && printf '%s\n' "$c9_out" | grep -q "^DRIFT:"; then
+if [ "$c9_rc" -ne 0 ] && grep -q "^DRIFT:" <<< "$c9_out"; then
   ok "C9 — a mapping change without regenerated outputs fails the drift check"
 else
   bad "C9 — mapping-only drift" "exit=$c9_rc" "$c9_out"
@@ -656,8 +656,8 @@ write_fixture "$FIXTURE" "intelligence: medium"
 resolve_agent probe "$FIXTURE" gemini
 fm_joined=$(printf '%s\n' ${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"})
 if fm_has "model: gemini-3.5-flash" \
-  && ! printf '%s' "$fm_joined" | grep -q '^temperature:' \
-  && ! printf '%s' "$fm_joined" | grep -q '^max_turns:' \
+  && ! grep -q '^temperature:' <<< "$fm_joined" \
+  && ! grep -q '^max_turns:' <<< "$fm_joined" \
   && [ "$(diag_count)" -eq 0 ]; then
   ok "C13(ii) — intelligence-only profile on gemini: model directed, no tuning fm lines, zero model-drop records"
 else
@@ -750,7 +750,7 @@ fi
 M5_ROOT="$(mutated_root m5 '(.surfaces[] | select(.id == "guidance") | .template) = "Run this agent on the {{modell}} model.\nGive its work {{reasoning}} reasoning effort.\n"')"
 write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
 REPO_DIR="$M5_ROOT" resolve_agent probe "$FIXTURE" claude
-if [ -z "$EMIT_PROSE" ] || ! printf '%s' "$EMIT_PROSE" | grep -qF '{{modell}}'; then
+if [ -z "$EMIT_PROSE" ] || ! grep -qF '{{modell}}' <<< "$EMIT_PROSE"; then
   if [ -z "$EMIT_PROSE" ]; then
     ok "M5 — an unrecognised {{modell}} placeholder omits its sentence (both template lines dropped, empty prose)"
   else
@@ -982,7 +982,7 @@ offerings:
         assumption: O5 drift fixture
 EOF
 o5d_out="$(REPO_DIR="$O5D_ROOT" bash "$BUILD_SCRIPT" --target claude --check 2>&1)"; o5d_rc=$?
-if [ "$o5d_rc" -ne 0 ] && printf '%s\n' "$o5d_out" | grep -q "^DRIFT:"; then
+if [ "$o5d_rc" -ne 0 ] && grep -q "^DRIFT:" <<< "$o5d_out"; then
   ok "R39 — a substituting org override whose outputs are not regenerated fails the drift check"
 else
   bad "R39 — substituting org override drift" "exit=$o5d_rc" "$o5d_out"
@@ -1194,7 +1194,7 @@ if diff -q "$SCRIPT_DIR/lib/model-resolve.sh" "$M8_LIB" >/dev/null 2>&1; then
 else
   m8_result="$(assert_accessor_invariance "$M8_LIB" "M8")"
   m8_differing="${m8_result#*$'\t'}"
-  if printf '%s\n' "$m8_differing" | grep -qxF "mapping_item_key"; then
+  if grep -qxF "mapping_item_key" <<< "$m8_differing"; then
     ok "M8 — mutating an untouched accessor (mapping_item_key) turns O8's invariance case red"
   else
     bad "M8 — mutating mapping_item_key did not turn O8 red" "differing=[$m8_differing]"
