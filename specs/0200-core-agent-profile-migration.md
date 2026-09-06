@@ -1,7 +1,7 @@
 ---
 id: "0200"
 slug: core-agent-profile-migration
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1123
