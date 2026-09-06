@@ -1,0 +1,14 @@
+# CrewRig — organization-level override channel for the GitHub Copilot CLI
+# model mapping (spec 0199).
+#
+# Org-owned, excluded from upstream synchronization (.crewrig/core-paths.txt,
+# docs/layers.md): upstream ships this file present but silent, carrying no
+# offering, no surface, no template, no guard state and no secret. An
+# adopting organization changes what this target resolves to by populating
+# it — see docs/org-model-mapping-override.md for the schema, the merge
+# rules, and how to declare an override. A fresh adopter that never edits
+# this file observes the mapping in force stay exactly the core mapping
+# (model-mappings/copilot.yml, zero offerings), byte for byte (spec 0199
+# R7-R9).
+
+target: copilot

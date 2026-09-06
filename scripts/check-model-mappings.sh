@@ -1,17 +1,41 @@
 #!/bin/bash
 # check-model-mappings.sh — Hermetic checker for model-mappings/<target>.yml
-# (spec 0197 R46-R51).
+# and its org-owned override channel model-mappings/<target>.org.yml
+# (spec 0197 R46-R51; spec 0199 R29-R36).
 #
-# Decidable from a mapping file and the domains of spec 0195 alone (R46): no
-# network access, no installed CLI, no agent source is resolved. This check
-# is an AUTHORING-TIME gate over a proposed change; its rejection SHALL NOT
-# become a resolution failure (R51) — a mapping this check rejects is still
-# resolvable against, degrading the cells it cannot read (seam (d)).
+# Decidable from the mapping files and the domains of spec 0195 alone (R46,
+# R33): no network access, no installed CLI, no agent source is resolved.
+# This check is an AUTHORING-TIME gate over a proposed change; its rejection
+# SHALL NOT become a resolution failure (R51, spec 0199 R34) — a mapping this
+# check rejects is still resolvable against, degrading the cells it cannot
+# read (seam (d)).
 #
 # The normative shape this script validates against is
 # docs/model-mapping-format.md; the closed spec 0195 domains it pins
 # literally are documented there too, alongside the update obligation on a
 # future spec 0195 delta.
+#
+# Classification runs before any assertion. A file whose basename matches
+# `*.org.yml` is an ORG CHANNEL FILE for the target named by the basename
+# minus `.org.yml`; every other `*.yml` is a CORE MAPPING for the target
+# named by the basename minus `.yml`. The work list is the union of both
+# stem sets, one entry per target, over which three passes run (spec 0199
+# Decision 5):
+#
+#   Pass 1 — the core mapping alone (today's check, unchanged). Skipped for
+#            a target whose only file is an org stem (R17's absent-core
+#            case): there is no core document to assert against.
+#   Pass 2 — the org channel file alone, with four adjustments relaxing the
+#            surface/guard NODE's own required-key obligation (R30 binds
+#            full parity only to offerings, surface items and guard terms —
+#            the two node kinds it does not name may omit a required key)
+#            and five new assertions over the org-only `remove:` /
+#            `replaces-core:` keys (A28-A32).
+#   Pass 3 — the mapping in force: obtained by calling
+#            scripts/lib/model-resolve.sh's `mapping_in_force`, never by
+#            re-implementing the merge, then run through today's check
+#            unchanged (R31). Skipped when the target's mapping in force is
+#            empty (a silent org stem with no core mapping).
 #
 # Usage:
 #   bash scripts/check-model-mappings.sh                    # conform mode,
@@ -21,23 +45,33 @@
 #   bash scripts/check-model-mappings.sh --print-selection [<file> …]
 #
 # Conform mode prints, per rejection, one line to stderr:
-#   <file>: <assertion-id> <message>
-# and accumulates rather than stopping at the first rejection, so a fixture
-# that trips two classes reports both ids (docs/model-mapping-format.md,
-# "Node shapes and closed key sets" onward, is the assertion table's home;
-# the id set is A1-A27, plus the synthetic A0 for a file that does not parse
-# as YAML at all).
+#   <label>: <assertion-id> <message>
+# where <label> names which of the three sources the rejection concerns
+# (spec 0199 R32) — `model-mappings/<t>.yml`, `model-mappings/<t>.org.yml`,
+# or `model-mappings/<t> (mapping in force)` — always repository-relative,
+# never the location of a materialized merged document. Rejections
+# accumulate rather than stopping at the first one, so a fixture that trips
+# two classes reports both ids (docs/model-mapping-format.md, "Node shapes
+# and closed key sets" onward, is the assertion table's home; the id set is
+# A1-A32, plus the synthetic A0 for a file that does not parse as YAML at
+# all).
 #
-# --print-selection mode runs no assertion. For each file (default
-# model-mappings/*.yml, or the named files), it simulates R17's
+# --print-selection mode runs no assertion. With no file arguments, it
+# iterates the deduped target set discovered from model-mappings/*.yml and
+# computes the selection over each target's MAPPING IN FORCE (spec 0199
+# R36); with explicit file arguments, it reads each named file directly,
+# exactly as before this spec. Either way it simulates R17's
 # floor-plus-ceiling candidate formation and R23's lowest-rank pick over the
 # seven intelligence rungs, and prints one line per rung per mapping on
 # stdout:
-#   <file><TAB><rung><TAB><offering-id>
-# <offering-id> is empty when no offering could be selected (a mapping
-# declaring zero offerings, or none of whose offerings declares
-# provides.intelligence). It exits 0 unless a prerequisite fails (see below);
-# it never exits 1, because it renders no verdict.
+#   <label><TAB><rung><TAB><offering-id>
+# <label> is a stable identifier — `model-mappings/<target>` in the default
+# mode, the named file's own stem-derived label when arguments are given —
+# never the location of a materialized merged document (R36). <offering-id>
+# is empty when no offering could be selected (a mapping declaring zero
+# offerings, or none of whose offerings declares provides.intelligence). It
+# exits 0 unless a prerequisite fails (see below); it never exits 1, because
+# it renders no verdict.
 #
 # Exit codes:
 #   0  conform mode: every named/default mapping file conforms.
@@ -108,6 +142,77 @@ else
     exit 2
   fi
 fi
+
+# --- Classification (spec 0199 R2, R29, R32) ---------------------------------
+# TARGETS / CORE_PATH / ORG_PATH — parallel arrays (bash 3.2 has no
+# associative arrays). Built once from $FILES, independent of MODE, so both
+# conform mode and print-selection's default (no-argument) branch share one
+# classification pass.
+TARGETS=()
+CORE_PATH=()
+ORG_PATH=()
+
+# _target_index <target> — echoes the index of <target> in TARGETS, or
+# empty. Pure lookup, no mutation: safe to call via command substitution
+# (unlike the append below, which a subshell would discard — see the
+# resolver's own D11/D9 rationale in scripts/lib/model-resolve.sh).
+_target_index() {
+  local want="$1" i
+  for i in "${!TARGETS[@]}"; do
+    [ "${TARGETS[$i]}" = "$want" ] && { echo "$i"; return; }
+  done
+  echo ""
+  return 0
+}
+
+for f in ${FILES[@]+"${FILES[@]}"}; do
+  base=$(basename "$f")
+  stem=""
+  kind=""
+  case "$base" in
+    *.org.yml) stem="${base%.org.yml}"; kind=org ;;
+    *.yml)     stem="${base%.yml}"; kind=core ;;
+    *)         continue ;;
+  esac
+  idx=$(_target_index "$stem")
+  if [ -z "$idx" ]; then
+    TARGETS+=("$stem")
+    CORE_PATH+=("")
+    ORG_PATH+=("")
+    idx=$((${#TARGETS[@]} - 1))
+  fi
+  if [ "$kind" = "org" ]; then
+    ORG_PATH[$idx]="$f"
+  else
+    CORE_PATH[$idx]="$f"
+  fi
+done
+
+# CHECK_MERGE_DIR — the checker's own root for pass 3's merge (D7, D11): the
+# library removes only a root it itself derived, so a caller that sets
+# MAPPING_MERGE_DIR owns cleanup. This trap is that cleanup; no merged
+# document survives this run (spec 0199 R27).
+CHECK_MERGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/crewrig-check-merge.XXXXXX")"
+trap 'rm -rf "$CHECK_MERGE_DIR"' EXIT
+
+# mapping_in_force_for <target> — sources the library inside a subshell (D7):
+# scripts/lib/model-resolve.sh declares OFF_IDS/OFF_RANKS/OFF_INTEL and eight
+# siblings that collide by name with this script's own (below), so sourcing
+# it in the parent would clobber them. extract_frontmatter is stubbed
+# because the library's header requires the caller to have defined it before
+# sourcing; this checker resolves no agent source, so the stub is never
+# called (R33's hermeticity is unaffected).
+mapping_in_force_for() {
+  local target="$1"
+  (
+    REPO_DIR="$REPO_DIR"
+    extract_frontmatter() { :; }
+    MAPPING_MERGE_DIR="$CHECK_MERGE_DIR"
+    . "$REPO_DIR/scripts/lib/model-resolve.sh"
+    mapping_in_force "$target"
+  )
+  return 0
+}
 
 # --- Small helpers -----------------------------------------------------------
 
@@ -224,11 +329,19 @@ grounds_kind_for() {
 # --- Failure accumulator -----------------------------------------------------
 
 FAILURES=()
+# CURRENT_FILE is the path yq reads; CURRENT_LABEL is what fail() prints
+# (spec 0199 R32) — always repository-relative, constructed from the target
+# name rather than derived from CURRENT_FILE, so a pass-3 merged document's
+# machine-specific temp path never reaches a rejection line. IS_ORG_PASS
+# gates the org-file relaxations and the org-only assertions (spec 0199
+# R29-R30).
 CURRENT_FILE=""
+CURRENT_LABEL=""
+IS_ORG_PASS=false
 fail() {
-  # $1 = assertion id, $2 = message. Uses CURRENT_FILE, set by check_file.
-  echo "${CURRENT_FILE}: ${1} ${2}" >&2
-  FAILURES+=("${CURRENT_FILE}: ${1} ${2}")
+  # $1 = assertion id, $2 = message. Uses CURRENT_LABEL, set by the caller.
+  echo "${CURRENT_LABEL}: ${1} ${2}" >&2
+  FAILURES+=("${CURRENT_LABEL}: ${1} ${2}")
   return 0
 }
 
@@ -404,20 +517,32 @@ select_for_rung() {
 # --- Per-node assertion passes -----------------------------------------------
 
 check_target() {
-  local target stem
+  # $1 = the target name this file/pass is classified under (the filename
+  # stem with a trailing .org.yml or .yml removed by the caller) — spec 0199
+  # R2: the declared target SHALL agree with the target the FILENAME
+  # identifies, not with some other basename-derived stem.
+  local want_target="$1" target
   target=$(yq -r '.target // ""' "$CURRENT_FILE")
-  stem=$(basename "$CURRENT_FILE" .yml)
   case " $TARGET_VOCAB " in
     *" $target "*) : ;;
     *) fail A1 "target '$target' is not one of {$TARGET_VOCAB}" ;;
   esac
-  [ "$target" != "$stem" ] && fail A2 "target '$target' disagrees with filename stem '$stem'"
+  [ "$target" != "$want_target" ] && fail A2 "target '$target' disagrees with filename stem '$want_target'"
   return 0
 }
 
 check_toplevel_shape() {
-  check_required_keys "." "target surfaces offerings" "the top-level document"
-  check_closed_keys "." "target surfaces offerings guard zero-offerings observed-not-declared" "the top-level document"
+  if [ "$IS_ORG_PASS" = true ]; then
+    # R3: an org channel file's required set reduces to `target` alone —
+    # every other top-level key is an override, absent by default — and its
+    # closed set gains the two org-only keys requirement 13 (remove) and
+    # requirement 15 (replaces-core) introduce.
+    check_required_keys "." "target" "the top-level document"
+    check_closed_keys "." "target surfaces offerings guard zero-offerings observed-not-declared remove replaces-core" "the top-level document"
+  else
+    check_required_keys "." "target surfaces offerings" "the top-level document"
+    check_closed_keys "." "target surfaces offerings guard zero-offerings observed-not-declared" "the top-level document"
+  fi
   return 0
 }
 
@@ -458,28 +583,45 @@ check_duplicate_ids_and_ranks() {
 }
 
 check_surfaces() {
-  local n i kind path label required allowed
+  local n i kind path label required allowed has_id has_template
   n=$(yq '.surfaces // [] | length' "$CURRENT_FILE")
   local fcount=0 gcount=0
   for ((i = 0; i < n; i++)); do
     path=".surfaces[$i]"
     kind=$(yq -r "${path}.kind // \"\"" "$CURRENT_FILE")
-    case " frontmatter guidance out-of-band " in
-      *" $kind "*) : ;;
-      *) fail A19 "surfaces[$i] kind '$kind' is outside frontmatter|guidance|out-of-band" ;;
-    esac
-    [ "$kind" = "frontmatter" ] && fcount=$((fcount + 1))
-    [ "$kind" = "guidance" ] && gcount=$((gcount + 1))
-
-    case "$kind" in
-      frontmatter) required="id kind items"; allowed="id kind items" ;;
-      guidance)    required="id kind carries template items"; allowed="id kind carries template items" ;;
-      out-of-band) required="id kind location items"; allowed="id kind location items" ;;
-      *)           required="id kind"; allowed="id kind items carries template location" ;;
-    esac
     label="surfaces[$i]"
-    check_required_keys "$path" "$required" "$label"
-    check_closed_keys "$path" "$allowed" "$label"
+
+    if [ "$IS_ORG_PASS" = true ] && [ -z "$kind" ]; then
+      # R30/Decision 2: an org surface node carrying no `kind:` is a scalar
+      # override at `surfaces/<id>/template` (Decision 2's address table),
+      # not a whole node — A19's kind-vocabulary check does not apply, and
+      # neither does the surface node's own required-key obligation (only
+      # offerings, surface items and guard terms keep it, per R30).
+      has_id=$(yq "${path} | has(\"id\")" "$CURRENT_FILE")
+      has_template=$(yq "${path} | has(\"template\")" "$CURRENT_FILE")
+      if [ "$has_id" != "true" ] || [ "$has_template" != "true" ]; then
+        fail A32 "$label carries neither kind nor (id and template) — it occupies no address the addressing grammar publishes"
+      fi
+      check_closed_keys "$path" "id kind items carries template location" "$label"
+    else
+      case " frontmatter guidance out-of-band " in
+        *" $kind "*) : ;;
+        *) fail A19 "surfaces[$i] kind '$kind' is outside frontmatter|guidance|out-of-band" ;;
+      esac
+      [ "$kind" = "frontmatter" ] && fcount=$((fcount + 1))
+      [ "$kind" = "guidance" ] && gcount=$((gcount + 1))
+
+      case "$kind" in
+        frontmatter) required="id kind items"; allowed="id kind items" ;;
+        guidance)    required="id kind carries template items"; allowed="id kind carries template items" ;;
+        out-of-band) required="id kind location items"; allowed="id kind location items" ;;
+        *)           required="id kind"; allowed="id kind items carries template location" ;;
+      esac
+      if [ "$IS_ORG_PASS" != true ]; then
+        check_required_keys "$path" "$required" "$label"
+      fi
+      check_closed_keys "$path" "$allowed" "$label"
+    fi
 
     if [ "$kind" = "out-of-band" ]; then
       local has_tmpl
@@ -717,12 +859,31 @@ check_guard() {
   local target has_guard
   target=$(yq -r '.target // ""' "$CURRENT_FILE")
   has_guard=$(yq '. | has("guard")' "$CURRENT_FILE")
-  if [ "$target" = "claude" ] && [ "$has_guard" != "true" ]; then
+  # A13 binds the CORE mapping alone: an org file need not restate a guard
+  # the core already declares, and an org file that DOES touch the guard is
+  # validated on its own shape below regardless of this check.
+  if [ "$IS_ORG_PASS" != true ] && [ "$target" = "claude" ] && [ "$has_guard" != "true" ]; then
     fail A13 "target is claude but declares no guard block"
   fi
   [ "$has_guard" != "true" ] && return
 
-  check_required_keys ".guard" "id spec state terms" "guard"
+  local has_id=true
+  if [ "$IS_ORG_PASS" = true ]; then
+    has_id=$(yq '.guard | has("id")' "$CURRENT_FILE")
+    local has_state
+    has_state=$(yq '.guard | has("state")' "$CURRENT_FILE")
+    if [ "$has_id" != "true" ] && [ "$has_state" != "true" ]; then
+      fail A32 "guard carries neither id nor state — it occupies no address the addressing grammar publishes"
+    fi
+  fi
+  # R30/Decision 2: the guard NODE's own required-key obligation relaxes
+  # when the org file substitutes only `guard/state` (no `id:`) — the
+  # core's other guard keys (terms, spec) survive into the merge and are
+  # not restated here. The closed key set still binds: guard admits no key
+  # beyond id/spec/state/terms whether core- or org-owned.
+  if [ "$IS_ORG_PASS" != true ] || [ "$has_id" = "true" ]; then
+    check_required_keys ".guard" "id spec state terms" "guard"
+  fi
   check_closed_keys ".guard" "id spec state terms" "guard"
 
   local state
@@ -734,7 +895,13 @@ check_guard() {
 
   local nterms
   nterms=$(yq '.guard.terms // [] | length' "$CURRENT_FILE")
-  [ "$nterms" -ne 2 ] && fail A22 "guard.terms has $nterms entries; exactly two are required"
+  # R30/Decision 2: a `guard/state` sub-node override (no `id:`) need not
+  # restate the core's two terms, so the exactly-two obligation binds only
+  # when the org guard carries its own `id:` (a whole-node replace) or when
+  # this is a core file / the merged mapping in force (pass 1 / pass 3).
+  if [ "$IS_ORG_PASS" != true ] || [ "$has_id" = "true" ]; then
+    [ "$nterms" -ne 2 ] && fail A22 "guard.terms has $nterms entries; exactly two are required"
+  fi
 
   local i tid h any_holds=0
   for ((i = 0; i < nterms; i++)); do
@@ -801,16 +968,69 @@ check_zero_offerings_and_observed() {
   return 0
 }
 
+# --- Org-only keys: remove / replaces-core (spec 0199 R11, R13-R16; A28-A32,
+# excluding the two A32 sub-cases check_surfaces/check_guard already emit) --
+
+# VALID_ADDR_RE — the six address shapes docs/model-mapping-format.md ->
+# "Addressing" publishes (spec 0199 R11). A `remove:` entry outside this
+# grammar is A28; `guard` and `guard/terms/<id>` match it but are singled out
+# as A29 by the case dispatch in check_org_overrides, per requirement 14.
+VALID_ADDR_RE='^(offerings/[^/]+|surfaces/[^/]+/template|surfaces/[^/]+|guard/terms/[^/]+|guard/state|guard)$'
+
+check_org_overrides() {
+  local has_replaces replaces_tag replaces_val="" substituting=false
+  local has_remove remove_tag n i entry
+
+  has_replaces=$(yq '. | has("replaces-core")' "$CURRENT_FILE")
+  if [ "$has_replaces" = "true" ]; then
+    replaces_tag=$(yq '."replaces-core" | tag' "$CURRENT_FILE")
+    if [ "$replaces_tag" != "!!bool" ]; then
+      fail A31 "replaces-core is not a boolean"
+    else
+      replaces_val=$(yq -r '."replaces-core"' "$CURRENT_FILE")
+      [ "$replaces_val" = "true" ] && substituting=true
+    fi
+  fi
+
+  has_remove=$(yq '. | has("remove")' "$CURRENT_FILE")
+  [ "$has_remove" != "true" ] && return 0
+
+  remove_tag=$(yq '.remove | tag' "$CURRENT_FILE")
+  if [ "$remove_tag" != "!!seq" ]; then
+    fail A31 "remove is not a sequence"
+    return 0
+  fi
+
+  n=$(yq '.remove | length' "$CURRENT_FILE")
+  if [ "$substituting" = true ] && [ "$n" -gt 0 ]; then
+    fail A30 "replaces-core substitutes together with a non-empty remove list, which requirement 16 forbids"
+  fi
+
+  for ((i = 0; i < n; i++)); do
+    entry=$(yq -r ".remove[$i]" "$CURRENT_FILE")
+    case "$entry" in
+      guard|guard/terms/*)
+        fail A29 "remove entry '$entry' names the guard, which requirement 14 forbids removing"
+        ;;
+      *)
+        if ! printf '%s' "$entry" | grep -qE "$VALID_ADDR_RE"; then
+          fail A28 "remove entry '$entry' is not an address the addressing grammar of requirement 11 publishes"
+        fi
+        ;;
+    esac
+  done
+  return 0
+}
+
 # --- Orchestration for one file ---------------------------------------------
 
 check_file() {
-  CURRENT_FILE="$1"
   local perr
   if ! perr=$(yq e '.' "$CURRENT_FILE" 2>&1 >/dev/null); then
     fail A0 "does not parse as YAML: $perr"
     return
   fi
-  check_target
+  check_target "$1"
   check_toplevel_shape
   check_duplicate_ids_and_ranks
   check_surfaces
@@ -819,21 +1039,43 @@ check_file() {
   check_guard
   check_selection_totality
   check_zero_offerings_and_observed
+  [ "$IS_ORG_PASS" = true ] && check_org_overrides
   return 0
 }
 
-# --- print-selection mode ----------------------------------------------------
+# --- print-selection mode (spec 0199 R36) ------------------------------------
 
 print_selection() {
-  local file rung name sel
-  for file in ${FILES[@]+"${FILES[@]}"}; do
-    load_offerings "$file"
-    for rung in 1 2 3 4 5 6 7; do
-      name=$(intel_name_at "$rung")
-      sel=$(select_for_rung "$rung")
-      printf '%s\t%s\t%s\n' "$file" "$name" "$sel"
+  local file rung name sel label stem target
+  if [ "${#ARGS[@]}" -eq 0 ]; then
+    # Default mode: iterate the deduped target set and compute the
+    # selection over each target's MAPPING IN FORCE, never over a single
+    # file's own content — an org override changes the selection.
+    for target in ${TARGETS[@]+"${TARGETS[@]}"}; do
+      label="model-mappings/${target}"
+      load_offerings "$(mapping_in_force_for "$target")"
+      for rung in 1 2 3 4 5 6 7; do
+        name=$(intel_name_at "$rung")
+        sel=$(select_for_rung "$rung")
+        printf '%s\t%s\t%s\n' "$label" "$name" "$sel"
+      done
     done
-  done
+  else
+    # Explicit file arguments: read each named file directly, exactly as
+    # before this spec — only the printed label changes, to a stable
+    # identifier derived from the file's own stem rather than its path.
+    for file in ${FILES[@]+"${FILES[@]}"}; do
+      stem=$(basename "$file" .yml)
+      target="${stem%.org}"
+      label="model-mappings/${target}"
+      load_offerings "$file"
+      for rung in 1 2 3 4 5 6 7; do
+        name=$(intel_name_at "$rung")
+        sel=$(select_for_rung "$rung")
+        printf '%s\t%s\t%s\n' "$label" "$name" "$sel"
+      done
+    done
+  fi
   return 0
 }
 
@@ -844,13 +1086,37 @@ if [ "$MODE" = "print-selection" ]; then
   exit 0
 fi
 
-for f in ${FILES[@]+"${FILES[@]}"}; do
-  check_file "$f"
+for idx in "${!TARGETS[@]}"; do
+  target="${TARGETS[$idx]}"
+
+  if [ -n "${CORE_PATH[$idx]}" ]; then
+    CURRENT_FILE="${CORE_PATH[$idx]}"
+    CURRENT_LABEL="model-mappings/${target}.yml"
+    IS_ORG_PASS=false
+    check_file "$target"
+  fi
+
+  if [ -n "${ORG_PATH[$idx]}" ]; then
+    CURRENT_FILE="${ORG_PATH[$idx]}"
+    CURRENT_LABEL="model-mappings/${target}.org.yml"
+    IS_ORG_PASS=true
+    check_file "$target"
+  fi
+
+  # Pass 3 — the mapping in force (R31). Skipped when empty: a silent org
+  # stem with no core mapping short-circuits to no handle at all.
+  merged="$(mapping_in_force_for "$target")"
+  if [ -n "$merged" ]; then
+    CURRENT_FILE="$merged"
+    CURRENT_LABEL="model-mappings/${target} (mapping in force)"
+    IS_ORG_PASS=false
+    check_file "$target"
+  fi
 done
 
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   echo "" >&2
-  echo "FAILED: ${#FAILURES[@]} rejection(s) across ${#FILES[@]} mapping file(s) (spec 0197 R47-R50)." >&2
+  echo "FAILED: ${#FAILURES[@]} rejection(s) across ${#FILES[@]} mapping file(s) (spec 0197 R47-R50; spec 0199 R29-R31)." >&2
   exit 1
 fi
 

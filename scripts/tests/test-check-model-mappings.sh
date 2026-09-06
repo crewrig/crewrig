@@ -407,6 +407,142 @@ else
 fi
 
 echo ""
+echo "=== Section 1b — org channel classification and org-only assertions (spec 0199, plan steps 2, 7, 8) ==="
+
+# render_org_silent — a valid, minimal org channel file declaring nothing,
+# structurally matching the shipped stub (spec 0199 R7).
+render_org_silent() {
+  cat <<'EOF'
+target: claude
+EOF
+}
+
+# render_case_org_file <stem> <yq-expr>... — a fresh org channel file at
+# <stem>.org.yml (default content: render_org_silent), mutated in place by
+# each yq expression in order. Echoes the resulting file path.
+render_case_org_file() {
+  local stem="$1"
+  shift
+  local dir f e
+  dir="$(mktemp -d "$TMP_ROOT/case.XXXXXX")"
+  f="$dir/${stem}.org.yml"
+  render_org_silent > "$f"
+  for e in "$@"; do
+    yq eval -i "$e" "$f" >/dev/null
+  done
+  echo "$f"
+}
+
+# setup_pass3_root <root> — a throwaway CREWRIG_REPO_DIR carrying only
+# scripts/lib/model-resolve.sh (the file pass 3 sources fresh per target, D7)
+# and an empty model-mappings/ the test populates itself. Outside
+# artifacts/ and model-mappings/ (D10): no tier discovery, no drift guard,
+# and the checker's own default glob never sees it.
+setup_pass3_root() {
+  local root="$1"
+  mkdir -p "$root/model-mappings" "$root/scripts/lib"
+  cp "$REPO_DIR/scripts/lib/model-resolve.sh" "$root/scripts/lib/model-resolve.sh"
+}
+
+# --- silent stub accepted (R7, R8) ------------------------------------------
+f="$(render_case_org_file claude)"
+run_case "silent stub accepted" 0 "" "$f"
+
+# --- org target outside vocabulary (A1) -------------------------------------
+f="$(render_case_org_file claude '.target = "bogus"')"
+run_case "org target outside vocabulary" 1 "A1" "$f"
+
+# --- org filename disagreement (A2, R2) -------------------------------------
+f="$(render_case_org_file other)"
+run_case "org filename disagreement" 1 "A2" "$f"
+
+# --- remove: outside the R11 address grammar (A28) --------------------------
+f="$(render_case_org_file claude '.remove = ["offerings"]')"
+run_case "remove: outside the grammar" 1 "A28" "$f"
+
+# --- remove: names the guard (A29, R14) -------------------------------------
+f="$(render_case_org_file claude '.remove = ["guard"]')"
+run_case "remove: names the guard" 1 "A29" "$f"
+
+# --- remove: names a guard term (A29, R14) ----------------------------------
+f="$(render_case_org_file claude '.remove = ["guard/terms/x"]')"
+run_case "remove: names a guard term" 1 "A29" "$f"
+
+# --- replaces-core: substituting together with remove: (A30, R16) ----------
+f="$(render_case_org_file claude '."replaces-core" = true' '.remove = ["offerings/x"]')"
+run_case "both replaces-core: and remove:" 1 "A30" "$f"
+
+# --- replaces-core: not a boolean (A31) -------------------------------------
+f="$(render_case_org_file claude '."replaces-core" = "yes"')"
+run_case 'replaces-core: "yes"' 1 "A31" "$f"
+
+# --- org node at no published address (A32) ---------------------------------
+f="$(render_case_org_file claude '.surfaces = [{"id": "x"}]')"
+run_case "org node at no published address" 1 "A32" "$f"
+
+# --- ungrounded org offering (A4, no relaxation — R4, R30, Decision 8) -----
+f="$(render_case_org_file claude '.offerings = [{"id": "x", "rank": 1, "native-value": "x", "provides": {"intelligence": "medium"}, "supports-reasoning-surface": false}]')"
+run_case "ungrounded org offering" 1 "A4" "$f"
+
+# --- org key outside the closed set (A3, R3) --------------------------------
+f="$(render_case_org_file claude '.bogus = "x"')"
+run_case "org key outside the closed set" 1 "A3" "$f"
+
+# --- core file carrying remove: (A3) — org-only keys stay org-only --------
+f="$(render_case_file claude '.remove = ["offerings/beta"]')"
+run_case "core file carrying remove:" 1 "A3" "$f"
+
+# --- org file with no sibling core mapping (R17) ----------------------------
+R17_ROOT="$TMP_ROOT/r17-root"
+setup_pass3_root "$R17_ROOT"
+cat > "$R17_ROOT/model-mappings/gemini.org.yml" <<'EOF'
+target: gemini
+
+surfaces:
+  - id: frontmatter
+    kind: frontmatter
+    items:
+      - item: model
+        key: model
+        domain:
+          values: [only-model]
+        grounds:
+          - declares: key
+            citation: cite-key
+          - declares: domain
+            citation: cite-domain
+
+offerings: []
+EOF
+r17_out="$(CREWRIG_REPO_DIR="$R17_ROOT" bash "$SCRIPT_UNDER_TEST" "$R17_ROOT/model-mappings/gemini.org.yml" 2>&1)"; r17_rc=$?
+if [ "$r17_rc" -eq 0 ]; then
+  echo "PASS  org file with no sibling core mapping conforms (exit 0, pass 1 does not run)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  org file with no sibling core mapping conforms (exit 0, pass 1 does not run)"
+  echo "  --- output ---"
+  printf '%s\n' "$r17_out" | sed 's/^/  /'
+  fail=$((fail + 1))
+fi
+
+# --- --print-selection label: field 1 is model-mappings/<target> for every
+# target, never a materialized path (R36) --------------------------------
+labels="$(bash "$SCRIPT_UNDER_TEST" --print-selection | awk -F'\t' '{print $1}' | sort -u)"
+expected_labels="model-mappings/antigravity
+model-mappings/claude
+model-mappings/copilot
+model-mappings/gemini"
+if [ "$labels" = "$expected_labels" ]; then
+  echo "PASS  --print-selection label field 1 is model-mappings/<target> for every target, never a path"
+  pass=$((pass + 1))
+else
+  echo "FAIL  --print-selection label set"
+  echo "  expected: $expected_labels"
+  echo "  got:      $labels"
+  fail=$((fail + 1))
+fi
+
+echo ""
 echo "=== Section 2 — golden per-rung selection tables (committed mappings) ==="
 
 RUNGS="minimal low medium high xhigh xxhigh max"
