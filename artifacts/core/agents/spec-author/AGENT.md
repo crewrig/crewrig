@@ -5,12 +5,12 @@ description: "Specification authoring agent. Turns a raw user intent into
   in the interaction mode declared by the parent ticket."
 type: agent
 metadata:
-  claude:
-    model: sonnet
+  model:
+    intelligence: high
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.1"
+    version: "1.2.0"
 ---
 
 # Spec Author Agent

@@ -9,12 +9,12 @@ description: |
 type: agent
 license: Apache-2.0
 metadata:
-  claude:
-    model: sonnet
+  model:
+    intelligence: high
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.0.2"
+    version: "1.1.0"
 ---
 
 # Astro Developer Agent

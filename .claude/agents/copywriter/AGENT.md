@@ -3,13 +3,13 @@ name: copywriter
 description: "Content production specialist. Interviews the product brief, produces a
 content outline for review, then writes final page copy (hero, features,
 social proof, CTA). Delivers structured Markdown ready for handoff to
-frontend-developer or astro-developer. Does NOT make layout or visual decisions."
+frontend-developer or astro-developer. Does NOT make layout or visual decisions. Run this agent on the haiku model."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.3"
+    version: "1.1.0"
 ---
 
 

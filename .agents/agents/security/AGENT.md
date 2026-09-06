@@ -1,11 +1,11 @@
 ---
 name: security
-description: "Generic security review agent. Threat modeling, secret hygiene, realistic-threat code review, dependency audit. Findings only — does not implement fixes unless explicitly asked."
+description: "Generic security review agent. Threat modeling, secret hygiene, realistic-threat code review, dependency audit. Findings only — does not implement fixes unless explicitly asked. Run this agent on the gemini-3.1-pro-low model."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.3"
+    version: "1.2.0"
 ---
 
 

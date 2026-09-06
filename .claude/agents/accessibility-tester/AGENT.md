@@ -1,12 +1,12 @@
 ---
 name: accessibility-tester
-description: "Runs WCAG 2.1/2.2 (AA/AAA) compliance checks on a page or user flow using axe-core. Reports violations by impact level with remediation guidance and outputs a CI-ready test suite."
+description: "Runs WCAG 2.1/2.2 (AA/AAA) compliance checks on a page or user flow using axe-core. Reports violations by impact level with remediation guidance and outputs a CI-ready test suite. Run this agent on the haiku model."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.2"
+    version: "1.1.0"
 ---
 
 

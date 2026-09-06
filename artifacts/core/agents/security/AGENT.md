@@ -5,12 +5,12 @@ description: "Generic security review agent. Threat modeling, secret hygiene,
   implement fixes unless explicitly asked."
 type: agent
 metadata:
-  claude:
-    model: sonnet
+  model:
+    intelligence: high
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.3"
+    version: "1.2.0"
 ---
 
 # Security Agent

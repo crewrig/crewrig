@@ -52,7 +52,7 @@ extract_frontmatter() {
   awk 'NR==1 && /^---$/{inblk=1; next} inblk && /^---$/{exit} inblk{print}' "$1"
 }
 
-echo "=== C2 — profile-less source is byte-identical (baseline harness) ==="
+echo "=== C2 — the committed agent outputs are pinned and derivable (baseline harness) ==="
 
 # --- C2(a) — bash scripts/build-components.sh --target all --check exits 0 -
 out="$(bash "$BUILD_SCRIPT" --target all --check 2>&1)"; rc=$?
@@ -65,8 +65,18 @@ fi
 # --- C2(b) — pinned extract_frontmatter block of three committed outputs ---
 # Pins the frontmatter of the 'architect' agent on three targets (Claude,
 # Gemini, Antigravity — the fourth, GitHub Copilot CLI, is pinned in the
-# emission suite once its case exists). A byte-for-byte literal, not a
-# regex: any drift in these three outputs must turn this red.
+# emission suite once its case exists — scripts/tests/test-agent-profile-migration.sh
+# case T2). A byte-for-byte literal *modulo one interpolation*, not a regex:
+# any drift in these three outputs must turn this red. The expected
+# provenance version is read from the source itself
+# (artifacts/core/agents/architect/AGENT.md), not pinned as a literal — spec
+# 0200 PLAN v2 Decision 8 (v1-F1): pinning it literally makes this case expire
+# on architect's every future MINOR version bump, which is the defect class
+# this migration already falsified once. Deriving it instead keeps every byte
+# pinned AND adds a real assertion: the compiled provenance version equals its
+# source's, i.e. the inject_provenance splice is faithful.
+ARCHITECT_VERSION="$(extract_frontmatter "$REPO_DIR/artifacts/core/agents/architect/AGENT.md" | yq -r '.metadata.provenance.version')"
+
 assert_frontmatter() {
   local label="$1" file="$2" expected="$3" got
   got="$(extract_frontmatter "$REPO_DIR/$file")"
@@ -78,26 +88,27 @@ assert_frontmatter() {
 }
 
 assert_frontmatter ".claude/agents/architect/AGENT.md" ".claude/agents/architect/AGENT.md" \
-'name: architect
-description: "Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius."
+"name: architect
+description: \"Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius. Run this agent on the opus model.\"
 metadata:
   provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.3"'
+    canonical: \"https://github.com/crewrig/crewrig\"
+    feedback: \"https://github.com/crewrig/crewrig\"
+    version: \"$ARCHITECT_VERSION\""
 
 assert_frontmatter ".gemini/agents/architect.md" ".gemini/agents/architect.md" \
 'name: architect
-description: "Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius."'
+description: "Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius."
+model: gemini-3.1-pro-preview'
 
 assert_frontmatter ".agents/agents/architect/AGENT.md" ".agents/agents/architect/AGENT.md" \
-'name: architect
-description: "Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius."
+"name: architect
+description: \"Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius. Run this agent on the gemini-3.1-pro-low model.\"
 metadata:
   provenance:
-    canonical: "https://github.com/crewrig/crewrig"
-    feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.3"'
+    canonical: \"https://github.com/crewrig/crewrig\"
+    feedback: \"https://github.com/crewrig/crewrig\"
+    version: \"$ARCHITECT_VERSION\""
 
 # --- C2(c) — the 88-file surface is exactly 22 core agent sources x 4 targets
 n_sources=$(find "$REPO_DIR/artifacts/core/agents" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')

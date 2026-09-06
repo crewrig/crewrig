@@ -5,12 +5,12 @@ description: "Generic test-authoring agent. Writes high-signal regression tests,
   the test against the bug."
 type: agent
 metadata:
-  claude:
-    model: sonnet
+  model:
+    intelligence: high
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.3"
+    version: "1.2.0"
 ---
 
 # Tester Agent

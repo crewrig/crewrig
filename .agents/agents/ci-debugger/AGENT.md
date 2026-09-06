@@ -2,13 +2,13 @@
 name: ci-debugger
 description: "Specialist agent for diagnosing and fixing failing GitHub Actions
 pipelines. Systematically produces a
-symptom → hypothesis → evidence → fix chain."
+symptom → hypothesis → evidence → fix chain. Run this agent on the gemini-3.1-pro-low model."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.3"
+    version: "1.1.0"
 ---
 
 

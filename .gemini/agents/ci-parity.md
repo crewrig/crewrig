@@ -6,8 +6,9 @@ interprets its fail-closed output, classifies each divergence by kind,
 and reconciles it — auto-applying only the deterministic
 regenerate-and-re-verify case, and diagnosing-and-proposing for every
 judgment-bearing case."
+model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Parity Agent
 

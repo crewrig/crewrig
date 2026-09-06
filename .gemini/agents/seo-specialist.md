@@ -5,8 +5,9 @@ structured data (JSON-LD), heading hierarchy, sitemap/robots.txt, internal links
 and performance signals with direct SEO impact. Produces a prioritized findings
 report (critical → high → low). Does not write copy — hands recommendations to
 copywriter or astro-developer."
+model: gemini-3.5-flash
 ---
-<!-- crewrig-provenance: version="1.0.3" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # SEO Specialist Agent
 

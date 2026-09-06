@@ -5,12 +5,12 @@ description: "Generic PR and logbook composer agent. Drafts titles, bodies,
   to the project's AGENTS.md conventions."
 type: agent
 metadata:
-  claude:
-    model: haiku
+  model:
+    intelligence: medium
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.2"
+    version: "1.2.0"
 ---
 
 # PR & Logbook Agent

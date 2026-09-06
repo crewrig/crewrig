@@ -1,8 +1,9 @@
 ---
 name: scenario-author
 description: "Writes automated test scenarios from a natural-language description of a user journey. Generates Playwright TypeScript or RobotFramework .robot files with page-object model, fixtures, and meaningful assertions."
+model: gemini-3.5-flash
 ---
-<!-- crewrig-provenance: version="1.0.3" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Scenario Author Agent
 
