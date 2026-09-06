@@ -249,10 +249,12 @@ jobs:
           filters: |
             core-paths:
               - 'scripts/check-core-paths.sh'
+              - 'scripts/sync-from-upstream.sh'
               - 'scripts/tests/test-check-core-paths.sh'
               - 'scripts/tests/test-sync-from-upstream.sh'
               - '.crewrig/core-paths.txt'
               - 'docs/layers.md'
+              - 'model-mappings/**'
       - name: Install yq
         if: steps.filter.outputs.core-paths == 'true'
         run: |

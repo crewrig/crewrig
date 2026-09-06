@@ -292,18 +292,22 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-core-paths.sh"
+          - "scripts/sync-from-upstream.sh"
           - "scripts/tests/test-check-core-paths.sh"
           - "scripts/tests/test-sync-from-upstream.sh"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
+          - "model-mappings/**"
       - on: push
         branches: [main, "release/**"]
         paths:
           - "scripts/check-core-paths.sh"
+          - "scripts/sync-from-upstream.sh"
           - "scripts/tests/test-check-core-paths.sh"
           - "scripts/tests/test-sync-from-upstream.sh"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
+          - "model-mappings/**"
     portability: portable
     changeset-gated: true
     requires:
