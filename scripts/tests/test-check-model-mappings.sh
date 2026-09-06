@@ -407,6 +407,224 @@ else
 fi
 
 echo ""
+echo "=== Section 1b — org channel classification and org-only assertions (spec 0199, plan steps 2, 7, 8) ==="
+
+# render_org_silent — a valid, minimal org channel file declaring nothing,
+# structurally matching the shipped stub (spec 0199 R7).
+render_org_silent() {
+  cat <<'EOF'
+target: claude
+EOF
+}
+
+# render_case_org_file <stem> <yq-expr>... — a fresh org channel file at
+# <stem>.org.yml (default content: render_org_silent), mutated in place by
+# each yq expression in order. Echoes the resulting file path.
+render_case_org_file() {
+  local stem="$1"
+  shift
+  local dir f e
+  dir="$(mktemp -d "$TMP_ROOT/case.XXXXXX")"
+  f="$dir/${stem}.org.yml"
+  render_org_silent > "$f"
+  for e in "$@"; do
+    yq eval -i "$e" "$f" >/dev/null
+  done
+  echo "$f"
+}
+
+# setup_pass3_root <root> — a throwaway CREWRIG_REPO_DIR carrying only
+# scripts/lib/model-resolve.sh (the file pass 3 sources fresh per target, D7)
+# and an empty model-mappings/ the test populates itself. Outside
+# artifacts/ and model-mappings/ (D10): no tier discovery, no drift guard,
+# and the checker's own default glob never sees it.
+setup_pass3_root() {
+  local root="$1"
+  mkdir -p "$root/model-mappings" "$root/scripts/lib"
+  cp "$REPO_DIR/scripts/lib/model-resolve.sh" "$root/scripts/lib/model-resolve.sh"
+}
+
+# --- silent stub accepted (R7, R8) ------------------------------------------
+f="$(render_case_org_file claude)"
+run_case "silent stub accepted" 0 "" "$f"
+
+# --- org target outside vocabulary (A1) -------------------------------------
+f="$(render_case_org_file claude '.target = "bogus"')"
+run_case "org target outside vocabulary" 1 "A1" "$f"
+
+# --- org filename disagreement (A2, R2) -------------------------------------
+f="$(render_case_org_file other)"
+run_case "org filename disagreement" 1 "A2" "$f"
+
+# --- remove: outside the R11 address grammar (A28) --------------------------
+f="$(render_case_org_file claude '.remove = ["offerings"]')"
+run_case "remove: outside the grammar" 1 "A28" "$f"
+
+# --- remove: names the guard (A29, R14) -------------------------------------
+f="$(render_case_org_file claude '.remove = ["guard"]')"
+run_case "remove: names the guard" 1 "A29" "$f"
+
+# --- remove: names a guard term (A29, R14) ----------------------------------
+f="$(render_case_org_file claude '.remove = ["guard/terms/x"]')"
+run_case "remove: names a guard term" 1 "A29" "$f"
+
+# --- replaces-core: substituting together with remove: (A30, R16) ----------
+f="$(render_case_org_file claude '."replaces-core" = true' '.remove = ["offerings/x"]')"
+run_case "both replaces-core: and remove:" 1 "A30" "$f"
+
+# --- replaces-core: not a boolean (A31) -------------------------------------
+f="$(render_case_org_file claude '."replaces-core" = "yes"')"
+run_case 'replaces-core: "yes"' 1 "A31" "$f"
+
+# --- org node at no published address (A32) ---------------------------------
+f="$(render_case_org_file claude '.surfaces = [{"id": "x"}]')"
+run_case "org node at no published address" 1 "A32" "$f"
+
+# --- ungrounded org offering (A4, no relaxation — R4, R30, Decision 8) -----
+f="$(render_case_org_file claude '.offerings = [{"id": "x", "rank": 1, "native-value": "x", "provides": {"intelligence": "medium"}, "supports-reasoning-surface": false}]')"
+run_case "ungrounded org offering" 1 "A4" "$f"
+
+# --- org key outside the closed set (A3, R3) --------------------------------
+f="$(render_case_org_file claude '.bogus = "x"')"
+run_case "org key outside the closed set" 1 "A3" "$f"
+
+# --- core file carrying remove: (A3) — org-only keys stay org-only --------
+f="$(render_case_file claude '.remove = ["offerings/beta"]')"
+run_case "core file carrying remove:" 1 "A3" "$f"
+
+# --- org file with no sibling core mapping (R17) ----------------------------
+R17_ROOT="$TMP_ROOT/r17-root"
+setup_pass3_root "$R17_ROOT"
+cat > "$R17_ROOT/model-mappings/gemini.org.yml" <<'EOF'
+target: gemini
+
+surfaces:
+  - id: frontmatter
+    kind: frontmatter
+    items:
+      - item: model
+        key: model
+        domain:
+          values: [only-model]
+        grounds:
+          - declares: key
+            citation: cite-key
+          - declares: domain
+            citation: cite-domain
+
+offerings: []
+EOF
+r17_out="$(CREWRIG_REPO_DIR="$R17_ROOT" bash "$SCRIPT_UNDER_TEST" "$R17_ROOT/model-mappings/gemini.org.yml" 2>&1)"; r17_rc=$?
+if [ "$r17_rc" -eq 0 ]; then
+  echo "PASS  org file with no sibling core mapping conforms (exit 0, pass 1 does not run)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  org file with no sibling core mapping conforms (exit 0, pass 1 does not run)"
+  echo "  --- output ---"
+  printf '%s\n' "$r17_out" | sed 's/^/  /'
+  fail=$((fail + 1))
+fi
+
+# --- Pass 3 (mapping in force) rejection coverage (tester F1, issue #1119
+# comment 5559189900; spec 0199 R31, R32, R35 scenarios 7 and 9) -------------
+# Both fixtures below are rejected ONLY once the core and org channel files
+# are merged: pass 1 (core alone, an untouched copy of the committed
+# claude.yml) and pass 2 (org alone) each stay green in isolation, so the
+# case is a live proof of R31 (pass 3 runs the merged mapping through the
+# same checker) and R32 (the rejection is reported against the
+# "(mapping in force)" label, never against either source file's own
+# label). Both run the checker in its default no-argument mode, the only
+# invocation shape that reaches pass 3 for a target discovered from the
+# repository's own model-mappings/ glob.
+
+# --- Scenario 7 — a cross-file rank collision: an org-added offering claims
+# rank 1, which the untouched core claude.yml already assigns to `haiku`.
+# Neither pass 1 (core alone: rank 1 used once) nor pass 2 (org alone: one
+# offering, no collision partner) can see the collision; only the merged
+# offering set carries both at once.
+PASS3_RANK_ROOT="$TMP_ROOT/pass3-rank-root"
+setup_pass3_root "$PASS3_RANK_ROOT"
+cp "$REPO_DIR/model-mappings/claude.yml" "$PASS3_RANK_ROOT/model-mappings/claude.yml"
+cat > "$PASS3_RANK_ROOT/model-mappings/claude.org.yml" <<'EOF'
+target: claude
+
+offerings:
+  - id: org-extra
+    rank: 1
+    native-value: sonnet
+    provides:
+      intelligence: medium
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: "org citation for native-value"
+      - declares: provides.intelligence
+        citation: "org citation for intelligence"
+      - declares: supports-reasoning-surface
+        assumption: "org assumption for supports-reasoning-surface"
+EOF
+p3_out="$(CREWRIG_REPO_DIR="$PASS3_RANK_ROOT" bash "$SCRIPT_UNDER_TEST" 2>&1)"; p3_rc=$?
+if [ "$p3_rc" -eq 1 ] \
+  && printf '%s\n' "$p3_out" | grep -qF "model-mappings/claude (mapping in force): A7" \
+  && ! printf '%s\n' "$p3_out" | grep -qF "model-mappings/claude.yml: A7" \
+  && ! printf '%s\n' "$p3_out" | grep -qF "model-mappings/claude.org.yml: A7"; then
+  echo "PASS  pass 3 catches a cross-file rank collision invisible to pass 1 and pass 2 (A7, scenario 7)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  pass 3 cross-file rank collision (scenario 7)"
+  echo "  --- output ---"
+  printf '%s\n' "$p3_out" | sed 's/^/  /'
+  echo "  --------------"
+  fail=$((fail + 1))
+fi
+
+# --- Scenario 9 — an org file flips guard.state to directed alone (no
+# `id:`, terms inherited unchanged from core). Pass 2 (org alone) sees ZERO
+# guard terms, so its "directed but a term holds" check is vacuously silent;
+# pass 1 (core alone) is the untouched, already-green withheld guard. Only
+# the merged mapping in force carries the directed state together with the
+# two inherited core terms that still hold, which A23 catches.
+PASS3_GUARD_ROOT="$TMP_ROOT/pass3-guard-root"
+setup_pass3_root "$PASS3_GUARD_ROOT"
+cp "$REPO_DIR/model-mappings/claude.yml" "$PASS3_GUARD_ROOT/model-mappings/claude.yml"
+cat > "$PASS3_GUARD_ROOT/model-mappings/claude.org.yml" <<'EOF'
+target: claude
+guard:
+  state: directed
+EOF
+p3g_out="$(CREWRIG_REPO_DIR="$PASS3_GUARD_ROOT" bash "$SCRIPT_UNDER_TEST" 2>&1)"; p3g_rc=$?
+if [ "$p3g_rc" -eq 1 ] \
+  && printf '%s\n' "$p3g_out" | grep -qF "model-mappings/claude (mapping in force): A23" \
+  && ! printf '%s\n' "$p3g_out" | grep -qF "model-mappings/claude.yml: A23" \
+  && ! printf '%s\n' "$p3g_out" | grep -qF "model-mappings/claude.org.yml: A23"; then
+  echo "PASS  pass 3 catches a directed guard composed across files with still-holding inherited terms (A23, scenario 9)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  pass 3 directed guard across files (scenario 9)"
+  echo "  --- output ---"
+  printf '%s\n' "$p3g_out" | sed 's/^/  /'
+  echo "  --------------"
+  fail=$((fail + 1))
+fi
+
+# --- --print-selection label: field 1 is model-mappings/<target> for every
+# target, never a materialized path (R36) --------------------------------
+labels="$(bash "$SCRIPT_UNDER_TEST" --print-selection | awk -F'\t' '{print $1}' | sort -u)"
+expected_labels="model-mappings/antigravity
+model-mappings/claude
+model-mappings/copilot
+model-mappings/gemini"
+if [ "$labels" = "$expected_labels" ]; then
+  echo "PASS  --print-selection label field 1 is model-mappings/<target> for every target, never a path"
+  pass=$((pass + 1))
+else
+  echo "FAIL  --print-selection label set"
+  echo "  expected: $expected_labels"
+  echo "  got:      $labels"
+  fail=$((fail + 1))
+fi
+
+echo ""
 echo "=== Section 2 — golden per-rung selection tables (committed mappings) ==="
 
 RUNGS="minimal low medium high xhigh xxhigh max"

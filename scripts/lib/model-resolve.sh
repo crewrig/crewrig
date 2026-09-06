@@ -16,12 +16,12 @@
 # substitution, so a non-zero yq exit can never propagate through `set -e`
 # to abort the build. `resolve_agent` itself always returns 0 (R4).
 #
-# R2's addressing-grammar constraint is reviewable mechanically: the literal
-# path segment naming the per-target mapping directory appears exactly once
-# in this file, inside `mapping_in_force`, and `mapping_surface_of_kind` is
-# the library's only reader of the surface-classifying YAML field, confining
-# D15's one documented deviation from the published grammar to a single
-# function.
+# R2's addressing-grammar constraint is reviewable mechanically: the two
+# mapping-path literals (the core mapping and its org-owned override
+# channel, spec 0199) appear in this file only inside `mapping_in_force` and
+# nowhere else, and `mapping_surface_of_kind` is the library's only reader
+# of the surface-classifying YAML field, confining D15's one documented
+# deviation from the published grammar to a single function.
 
 # --- Rung ladders (spec 0195 R6, R10) ----------------------------------------
 INTELLIGENCE_RUNGS="minimal low medium high xhigh xxhigh max"
@@ -66,16 +66,448 @@ _int_or_zero() {
   return 0
 }
 
-# --- R2: the single named point ----------------------------------------------
-# mapping_in_force <target> — echoes an opaque handle (today: the path to
-# the per-target mapping file, one file per target under the top-level
-# mapping directory) when the file exists, empty otherwise. No other
-# function re-derives this path; the path literal appears exactly once in
-# this file, on the assignment line immediately below.
+# --- R2: the single named point (spec 0199 R10-R28: the org-level override
+#     merge) ------------------------------------------------------------------
+# mapping_in_force <target> — echoes an opaque handle to the mapping in
+# force for <target>: the core mapping alone when the org channel file is
+# absent or declares nothing (byte for byte — spec 0199 R8, R9), otherwise a
+# path to a materialized merge of the two. Empty when neither exists. No
+# other function re-derives either mapping-path literal; both appear only
+# in this function.
 mapping_in_force() {
-  local target="$1" f
-  f="$REPO_DIR/model-mappings/${target}.yml"
-  [ -f "$f" ] && printf '%s' "$f"
+  local target="$1" core org
+  core="$REPO_DIR/model-mappings/${target}.yml"
+  org="$REPO_DIR/model-mappings/${target}.org.yml"
+
+  if [ ! -f "$org" ] || _org_channel_declares_nothing "$org"; then
+    [ -f "$core" ] && printf '%s' "$core"
+    return 0
+  fi
+
+  _merge_mapping "$core" "$org" "$target"
+  return 0
+}
+
+# _org_channel_declares_nothing <org-file> — true iff the org channel file
+# declares no offering, no surface, no guard, no remove entry and no
+# substituting replaces-core (spec 0199 R8). Checked before anything is
+# read, materialized or reported, which is what makes the absence of an
+# org channel file indistinguishable from one declaring nothing (R9).
+_org_channel_declares_nothing() {
+  local org="$1" n
+  n=$(yq '(.surfaces // []) | length' "$org" 2>/dev/null || echo 0)
+  [ "$n" != "0" ] && return 1
+  n=$(yq '(.offerings // []) | length' "$org" 2>/dev/null || echo 0)
+  [ "$n" != "0" ] && return 1
+  [ "$(yq '. | has("guard")' "$org" 2>/dev/null || echo false)" = "true" ] && return 1
+  n=$(yq '(.remove // []) | length' "$org" 2>/dev/null || echo 0)
+  [ "$n" != "0" ] && return 1
+  [ "$(yq '."replaces-core" // false' "$org" 2>/dev/null || echo false)" = "true" ] && return 1
+  return 0
+}
+
+# _mapping_merge_root — a pure function of the environment: no side effect,
+# no assignment that must survive a command-substitution boundary. `$$` is
+# the PID of the shell that started and is identical inside `$( … )`
+# (measured on bash 5.3.15 and /bin/bash 3.2.57 — PLAN v2 -> "The merge"),
+# so the parent, a subshell, and `mapping_merge_cleanup` all compute the
+# same root without any of them remembering it (D11).
+_mapping_merge_root() {
+  local base
+  if [ -n "${MAPPING_MERGE_DIR:-}" ]; then
+    printf '%s' "${MAPPING_MERGE_DIR%/}"
+  else
+    base="${TMPDIR:-/tmp}"
+    base="${base%/}"
+    printf '%s' "$base/crewrig-mapping-$$"
+  fi
+  return 0
+}
+
+# _mapping_sha256 <target> <core-path> <org-path> — the SHA-256 hex digest
+# of a NUL-separated concatenation of the target name, the core mapping's
+# bytes (empty when <core-path> does not exist) and the org channel file's
+# bytes. Carries the repository's existing shasum/sha256sum fallback idiom
+# (scripts/lib/common.sh, `mcp_launcher_source_sha`); defined locally
+# because this library does not source common.sh and pass 3 of
+# scripts/check-model-mappings.sh sources this library alone (D7).
+_mapping_sha256() {
+  local target="$1" core="$2" org="$3"
+  if command -v shasum >/dev/null 2>&1; then
+    { printf '%s\0' "$target"; [ -f "$core" ] && cat "$core"; printf '\0'; cat "$org"; } \
+      | shasum -a 256 | awk '{print $1}'
+  else
+    { printf '%s\0' "$target"; [ -f "$core" ] && cat "$core"; printf '\0'; cat "$org"; } \
+      | sha256sum | awk '{print $1}'
+  fi
+  return 0
+}
+
+# _list_index_by_id <file> <listpath> <id> — echoes the index of the first
+# element of <listpath> (a yq expression, e.g. ".offerings") whose `.id`
+# equals <id>, or nothing.
+_list_index_by_id() {
+  local file="$1" listpath="$2" want="$3" n j
+  n=$(yq "(${listpath} // []) | length" "$file" 2>/dev/null || echo 0)
+  for ((j = 0; j < n; j++)); do
+    if [ "$(yq -r "${listpath}[$j].id // \"\"" "$file" 2>/dev/null)" = "$want" ]; then
+      printf '%s' "$j"
+      return 0
+    fi
+  done
+  return 0
+}
+
+# _emit_substituting_disposition <target> <address> <listpath> <id> <core-or-empty>
+# Under `replaces-core:` substituting, an org-declared node is labelled
+# `replaced` when the core mapping (read for classification only, D6, never
+# for the composed document) declares the same address, `no-effect`
+# otherwise (spec 0199 R19's second clause) — never `added`, because
+# substitution consults no core to add onto.
+_emit_substituting_disposition() {
+  local target="$1" addr="$2" listpath="$3" id="$4" core_ref="$5" disp=no-effect
+  if [ -n "$core_ref" ] && [ -n "$(_list_index_by_id "$core_ref" "$listpath" "$id")" ]; then
+    disp=replaced
+  fi
+  printf 'mapping-merge\t%s\t%s\t%s\n' "$target" "$addr" "$disp" >&2
+  return 0
+}
+
+# _merge_offerings <composed> <org> <target> — whole-node replace-or-add at
+# `offerings/<id>` (spec 0199 R10, R12).
+_merge_offerings() {
+  local composed="$1" org="$2" target="$3" n i id cidx disp node
+  n=$(yq '(.offerings // []) | length' "$org" 2>/dev/null || echo 0)
+  for ((i = 0; i < n; i++)); do
+    id=$(yq -r ".offerings[$i].id" "$org")
+    cidx=$(_list_index_by_id "$composed" ".offerings" "$id")
+    node=$(yq -o=json ".offerings[$i]" "$org")
+    if [ -n "$cidx" ]; then
+      yq eval -i ".offerings[$cidx] = ${node}" "$composed" >/dev/null
+      disp=replaced
+    else
+      yq eval -i ".offerings += [${node}]" "$composed" >/dev/null
+      disp=added
+    fi
+    printf 'mapping-merge\t%s\tofferings/%s\t%s\n' "$target" "$id" "$disp" >&2
+  done
+  return 0
+}
+
+# _merge_surfaces <composed> <org> <target> — an org surface node carrying
+# `kind:` is a whole-node replace-or-add at `surfaces/<id>`; one carrying
+# `template:` and no `kind:` is a scalar replace at `surfaces/<id>/template`
+# (spec 0199 R10-R12, Decision 2).
+_merge_surfaces() {
+  local composed="$1" org="$2" target="$3"
+  local n i id has_kind cidx disp node tmpl
+  n=$(yq '(.surfaces // []) | length' "$org" 2>/dev/null || echo 0)
+  for ((i = 0; i < n; i++)); do
+    id=$(yq -r ".surfaces[$i].id // \"\"" "$org")
+    has_kind=$(yq ".surfaces[$i] | has(\"kind\")" "$org")
+    cidx=$(_list_index_by_id "$composed" ".surfaces" "$id")
+    if [ "$has_kind" = "true" ]; then
+      node=$(yq -o=json ".surfaces[$i]" "$org")
+      if [ -n "$cidx" ]; then
+        yq eval -i ".surfaces[$cidx] = ${node}" "$composed" >/dev/null
+        disp=replaced
+      else
+        yq eval -i ".surfaces += [${node}]" "$composed" >/dev/null
+        disp=added
+      fi
+      printf 'mapping-merge\t%s\tsurfaces/%s\t%s\n' "$target" "$id" "$disp" >&2
+    else
+      tmpl=$(yq -o=json ".surfaces[$i].template" "$org")
+      if [ -n "$cidx" ]; then
+        yq eval -i ".surfaces[$cidx].template = ${tmpl}" "$composed" >/dev/null
+        disp=replaced
+      else
+        node=$(yq -o=json ".surfaces[$i]" "$org")
+        yq eval -i ".surfaces += [${node}]" "$composed" >/dev/null
+        disp=added
+      fi
+      printf 'mapping-merge\t%s\tsurfaces/%s/template\t%s\n' "$target" "$id" "$disp" >&2
+    fi
+  done
+  return 0
+}
+
+# _merge_guard <composed> <org> <target> — org `.guard` carrying `id:` is a
+# whole-node replace at `guard`; carrying `state:` and no `id:` is a scalar
+# replace at `guard/state`; each `.guard.terms[]` entry (when `.guard`
+# carries no `id:`) is its own whole-term replace-or-add at
+# `guard/terms/<id>` (spec 0199 R10-R12, Decision 2).
+_merge_guard() {
+  local composed="$1" org="$2" target="$3"
+  local has_guard has_id
+  has_guard=$(yq '. | has("guard")' "$org" 2>/dev/null || echo false)
+  [ "$has_guard" != "true" ] && return 0
+  has_id=$(yq '.guard // {} | has("id")' "$org" 2>/dev/null || echo false)
+
+  if [ "$has_id" = "true" ]; then
+    local node disp
+    node=$(yq -o=json '.guard' "$org")
+    if [ "$(yq '. | has("guard")' "$composed" 2>/dev/null)" = "true" ]; then disp=replaced; else disp=added; fi
+    yq eval -i ".guard = ${node}" "$composed" >/dev/null
+    printf 'mapping-merge\t%s\tguard\t%s\n' "$target" "$disp" >&2
+    return 0
+  fi
+
+  local has_state
+  has_state=$(yq '.guard // {} | has("state")' "$org" 2>/dev/null || echo false)
+  if [ "$has_state" = "true" ]; then
+    local val disp
+    val=$(yq -o=json '.guard.state' "$org")
+    if [ "$(yq '.guard // {} | has("state")' "$composed" 2>/dev/null)" = "true" ]; then disp=replaced; else disp=added; fi
+    yq eval -i ".guard.state = ${val}" "$composed" >/dev/null
+    printf 'mapping-merge\t%s\tguard/state\t%s\n' "$target" "$disp" >&2
+  fi
+
+  local nterms ti tid tidx tnode tdisp
+  nterms=$(yq '(.guard.terms // []) | length' "$org" 2>/dev/null || echo 0)
+  for ((ti = 0; ti < nterms; ti++)); do
+    tid=$(yq -r ".guard.terms[$ti].id" "$org")
+    tidx=$(_list_index_by_id "$composed" ".guard.terms" "$tid")
+    tnode=$(yq -o=json ".guard.terms[$ti]" "$org")
+    if [ -n "$tidx" ]; then
+      yq eval -i ".guard.terms[$tidx] = ${tnode}" "$composed" >/dev/null
+      tdisp=replaced
+    else
+      yq eval -i ".guard.terms += [${tnode}]" "$composed" >/dev/null
+      tdisp=added
+    fi
+    printf 'mapping-merge\t%s\tguard/terms/%s\t%s\n' "$target" "$tid" "$tdisp" >&2
+  done
+  return 0
+}
+
+# _apply_removes <composed> <org> <target> — a `remove:` entry naming
+# `guard` or `guard/terms/<id>` is rejected by the checker (R14) but
+# ignored here (R34, O12): a file the checker rejects still resolves. Every
+# other valid address is removed when present, or recorded `no-effect`
+# (R19) when the address does not exist in <composed>.
+_apply_removes() {
+  local composed="$1" org="$2" target="$3"
+  local n i entry
+  n=$(yq '(.remove // []) | length' "$org" 2>/dev/null || echo 0)
+  for ((i = 0; i < n; i++)); do
+    entry=$(yq -r ".remove[$i]" "$org")
+    case "$entry" in
+      guard|guard/terms/*)
+        continue
+        ;;
+      offerings/*)
+        local oid="${entry#offerings/}" oidx
+        oidx=$(_list_index_by_id "$composed" ".offerings" "$oid")
+        if [ -n "$oidx" ]; then
+          yq eval -i "del(.offerings[$oidx])" "$composed" >/dev/null
+          printf 'mapping-merge\t%s\t%s\tremoved\n' "$target" "$entry" >&2
+        else
+          printf 'mapping-merge\t%s\t%s\tno-effect\n' "$target" "$entry" >&2
+        fi
+        ;;
+      surfaces/*/template)
+        local sid="${entry#surfaces/}" sidx
+        sid="${sid%/template}"
+        sidx=$(_list_index_by_id "$composed" ".surfaces" "$sid")
+        if [ -n "$sidx" ] && [ "$(yq ".surfaces[$sidx] | has(\"template\")" "$composed" 2>/dev/null)" = "true" ]; then
+          yq eval -i "del(.surfaces[$sidx].template)" "$composed" >/dev/null
+          printf 'mapping-merge\t%s\t%s\tremoved\n' "$target" "$entry" >&2
+        else
+          printf 'mapping-merge\t%s\t%s\tno-effect\n' "$target" "$entry" >&2
+        fi
+        ;;
+      surfaces/*)
+        local sid2="${entry#surfaces/}" sidx2
+        sidx2=$(_list_index_by_id "$composed" ".surfaces" "$sid2")
+        if [ -n "$sidx2" ]; then
+          yq eval -i "del(.surfaces[$sidx2])" "$composed" >/dev/null
+          printf 'mapping-merge\t%s\t%s\tremoved\n' "$target" "$entry" >&2
+        else
+          printf 'mapping-merge\t%s\t%s\tno-effect\n' "$target" "$entry" >&2
+        fi
+        ;;
+      guard/state)
+        if [ "$(yq '.guard // {} | has("state")' "$composed" 2>/dev/null)" = "true" ]; then
+          yq eval -i 'del(.guard.state)' "$composed" >/dev/null
+          printf 'mapping-merge\t%s\t%s\tremoved\n' "$target" "$entry" >&2
+        else
+          printf 'mapping-merge\t%s\t%s\tno-effect\n' "$target" "$entry" >&2
+        fi
+        ;;
+      *)
+        # Outside the R11 grammar (A28 territory): no address to act on.
+        :
+        ;;
+    esac
+  done
+  return 0
+}
+
+# _reorder_merged <composed> — deterministic node order (spec 0199 R26),
+# applied last: offerings ascending by (rank, id); every other array
+# already carries the right order by construction (core order for a
+# retained or replaced address, then org-only additions in org declaration
+# order — the natural result of replace-in-place-else-append above); and
+# top-level keys in the order docs/model-mapping-format.md -> "Top level"
+# publishes, dropping any key that resolves empty.
+_reorder_merged() {
+  local composed="$1" tmp
+  tmp=$(mktemp "$(dirname "$composed")/.reorder.XXXXXX")
+  yq eval '{
+    "target": .target,
+    "surfaces": .surfaces,
+    "offerings": (.offerings // [] | sort_by(.rank, .id)),
+    "guard": .guard,
+    "zero-offerings": ."zero-offerings",
+    "observed-not-declared": ."observed-not-declared"
+  } | with_entries(select(.value != null))' "$composed" > "$tmp"
+  mv -f "$tmp" "$composed"
+  return 0
+}
+
+# _emit_duplicate_rank_notes <composed> <target> — spec 0199 R20-R21: a
+# duplicate rank in the offering set in force does not fail the merge, and
+# is recorded exactly once per colliding rank, naming the rank and every
+# colliding identifier in ascending lexicographic order (the same order
+# rule (f) of scripts/lib/model-resolve.sh's own resolve_agent then breaks
+# the tie by, once the offerings are sorted — R21 falls out of that order
+# rather than a resolver-side tie-break, so this note is documentary).
+_emit_duplicate_rank_notes() {
+  local composed="$1" target="$2" dup_json n i rank ids
+  dup_json=$(yq -o=json '[(.offerings // []) | group_by(.rank) | .[] | select(length > 1)]' "$composed" 2>/dev/null || echo '[]')
+  n=$(printf '%s' "$dup_json" | yq 'length' 2>/dev/null || echo 0)
+  for ((i = 0; i < n; i++)); do
+    rank=$(printf '%s' "$dup_json" | yq -r ".[$i][0].rank")
+    ids=$(printf '%s' "$dup_json" | yq -r ".[$i] | sort_by(.id) | [.[].id] | join(\",\")")
+    printf 'mapping-merge-note\t%s\tduplicate-rank\trank=%s offerings=%s\n' "$target" "$rank" "$ids" >&2
+  done
+  return 0
+}
+
+# _merge_mapping <core> <org> <target> — echoes the path to the merged
+# document (spec 0199 R10-R28). The cache is `[ -f "$out" ]` on a
+# content-addressed path (R26 both clauses, R28): the merge for one target
+# happens at most once per build invocation, and every resolution in that
+# invocation for that target reads the same document. The content address
+# is a DIRECTORY component, `$root/$digest/${target}.yml` — not the
+# basename — so `basename … .yml` still yields `$target` and
+# `scripts/check-model-mappings.sh`'s pass 3 (which reuses this file's own
+# `check_target`) sees a meaningful stem rather than a spurious A2.
+_merge_mapping() {
+  local core="$1" org="$2" target="$3"
+  local root digest doc_dir out composed tmp
+
+  root=$(_mapping_merge_root)
+  if { [ -e "$root" ] && [ ! -O "$root" ]; }; then
+    # Ownership guard (Risks -> "The temporary root's name is predictable"):
+    # degrade per R22 rather than fail or read a planted document.
+    printf 'mapping-merge-note\t%s\tmerge-unavailable\troot=%s\n' "$target" "$root" >&2
+    [ -f "$core" ] && printf '%s' "$core"
+    return 0
+  fi
+  mkdir -p -m 700 "$root" 2>/dev/null
+  if [ ! -O "$root" ]; then
+    printf 'mapping-merge-note\t%s\tmerge-unavailable\troot=%s\n' "$target" "$root" >&2
+    [ -f "$core" ] && printf '%s' "$core"
+    return 0
+  fi
+
+  digest=$(_mapping_sha256 "$target" "$core" "$org")
+  doc_dir="$root/$digest"
+  out="$doc_dir/${target}.yml"
+  if [ -f "$out" ]; then
+    printf '%s' "$out"
+    return 0
+  fi
+  mkdir -p "$doc_dir"
+
+  local substituting core_ref=""
+  substituting=$(yq '."replaces-core" // false' "$org" 2>/dev/null || echo false)
+
+  composed=$(mktemp "$doc_dir/.compose.XXXXXX")
+
+  if [ ! -f "$core" ] || [ "$substituting" = "true" ]; then
+    # R15, R17 (primary clause): the composition is the org document
+    # alone. The core is not consulted for it — only, when it exists, for
+    # the dispositions below (D6, C2).
+    cat "$org" > "$composed"
+    [ -f "$core" ] && core_ref="$core"
+
+    local n i id
+    n=$(yq '(.offerings // []) | length' "$org" 2>/dev/null || echo 0)
+    for ((i = 0; i < n; i++)); do
+      id=$(yq -r ".offerings[$i].id" "$org")
+      _emit_substituting_disposition "$target" "offerings/$id" ".offerings" "$id" "$core_ref"
+    done
+    n=$(yq '(.surfaces // []) | length' "$org" 2>/dev/null || echo 0)
+    for ((i = 0; i < n; i++)); do
+      id=$(yq -r ".surfaces[$i].id // \"\"" "$org")
+      _emit_substituting_disposition "$target" "surfaces/$id" ".surfaces" "$id" "$core_ref"
+    done
+    if [ "$(yq '. | has("guard")' "$org" 2>/dev/null)" = "true" ]; then
+      local core_has_guard=false
+      if [ -n "$core_ref" ] && [ "$(yq '. | has("guard")' "$core_ref" 2>/dev/null)" = "true" ]; then
+        core_has_guard=true
+      fi
+      if [ "$core_has_guard" = true ]; then
+        printf 'mapping-merge\t%s\tguard\treplaced\n' "$target" >&2
+      else
+        printf 'mapping-merge\t%s\tguard\tno-effect\n' "$target" >&2
+      fi
+    fi
+
+    # R16/A30 already forbids `remove:` alongside a substituting
+    # replaces-core, so a `remove:` entry is reachable here only via the
+    # absent-core branch — where every entry is no-effect (R19), since the
+    # core declares no address at all.
+    n=$(yq '(.remove // []) | length' "$org" 2>/dev/null || echo 0)
+    for ((i = 0; i < n; i++)); do
+      local rentry
+      rentry=$(yq -r ".remove[$i]" "$org")
+      printf 'mapping-merge\t%s\t%s\tno-effect\n' "$target" "$rentry" >&2
+    done
+  else
+    # R10, R12: start from the core; each org-declared node replaces its
+    # addressed core node in place, or is appended when the address is new.
+    cat "$core" > "$composed"
+    _merge_offerings "$composed" "$org" "$target"
+    _merge_surfaces "$composed" "$org" "$target"
+    _merge_guard "$composed" "$org" "$target"
+    _apply_removes "$composed" "$org" "$target"
+  fi
+
+  # Strip the two org-only top-level keys (R31, R25): the merged document
+  # is shape-identical to a core mapping, so every existing accessor reads
+  # it unchanged.
+  yq eval -i 'del(.remove) | del(."replaces-core")' "$composed" >/dev/null
+
+  _emit_duplicate_rank_notes "$composed" "$target"
+  _reorder_merged "$composed"
+
+  tmp=$(mktemp "$doc_dir/.merge.XXXXXX")
+  cat "$composed" > "$tmp"
+  rm -f "$composed"
+  mv -f "$tmp" "$out"
+
+  # The merge counter (R28's proving case): a file, not a variable, so it
+  # survives the command-substitution boundary the same way the cache does.
+  printf '%s\n' "$target" >> "$root/.merges"
+
+  printf '%s' "$out"
+  return 0
+}
+
+# mapping_merge_cleanup — removes the temporary root `_mapping_merge_root`
+# derives, re-deriving it rather than reading a variable (R27). D11: when
+# the caller set MAPPING_MERGE_DIR, that directory belongs to the caller
+# (the checker's CHECK_MERGE_DIR, the test suites' TMP_ROOT — each already
+# owns its own trap), so this function removes nothing and returns 0.
+mapping_merge_cleanup() {
+  [ -n "${MAPPING_MERGE_DIR:-}" ] && return 0
+  local root
+  root=$(_mapping_merge_root)
+  [ -n "$root" ] && rm -rf "$root"
   return 0
 }
 

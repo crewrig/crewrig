@@ -108,6 +108,45 @@ else
 fi
 
 echo ""
+echo "=== O0 — silent org channel stubs: drift check green, compiled agent trees byte-identical (spec 0199 plan step 1; R8, R9, R47) ==="
+
+# AGENT_TREES — the four compiled agent output trees reclassified
+# `regenerable` by this ticket (spec 0199 R43). Upstream's four org channel
+# stubs (model-mappings/*.org.yml) declare nothing, so no compiled output may
+# move on their account (R47): the byte-identity check below is what proves
+# that structurally rather than by inspection.
+AGENT_TREES=".claude/agents .gemini/agents .github/agents .agents/agents"
+
+# hash_agent_trees — SHA-256 of every file under the four compiled agent
+# trees, one "<hash> <repo-relative-path>" line per file, sorted by path. A
+# per-run baseline: O0 pins it before any production edit and re-compares it
+# once at the close of this suite (below), after every other case in this
+# file — including every throwaway-root build this suite runs — has had its
+# chance to leave something behind in the real, non-overridden $REPO_DIR.
+hash_agent_trees() {
+  local tree
+  for tree in $AGENT_TREES; do
+    [ -d "$REPO_DIR/$tree" ] || continue
+    find "$REPO_DIR/$tree" -type f | sort | while IFS= read -r f; do
+      if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$f"
+      else
+        sha256sum "$f"
+      fi
+    done | sed "s#$REPO_DIR/##"
+  done
+}
+
+O0_BASELINE="$(hash_agent_trees)"
+
+out="$(bash "$BUILD_SCRIPT" --target all --check 2>&1)"; rc=$?
+if [ "$rc" -eq 0 ] && printf '%s\n' "$out" | grep -qF "OK: All generated files match source."; then
+  ok "O0 — silent org channel stubs: --target all --check exits 0 printing the OK line"
+else
+  bad "O0 — silent org channel stubs: --target all --check exits 0" "exit=$rc" "$out"
+fi
+
+echo ""
 echo "=== C1/C3-C7, C13(i) — the resolution rule engine (plan steps 2, 3, 8) ==="
 
 . "$SCRIPT_DIR/lib/model-resolve.sh"
@@ -733,6 +772,665 @@ if diff -q "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical/AG
   ok "R30 — a second build over an unchanged source/mapping is byte-identical (rendering is idempotent)"
 else
   bad "R30 — build-twice diff" "$(diff "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical/AGENT.md")"
+fi
+
+echo ""
+echo "=== O1-O12 — the org-level override merge (spec 0199, plan step 5) ==="
+
+# org_root <suffix> <target> <org-content> — a throwaway REPO_DIR root
+# carrying an untouched copy of model-mappings/ except <target>.org.yml,
+# overwritten with <org-content>. Echoes the root. Outside artifacts/ and
+# model-mappings/ (D10): no tier discovery, no drift guard, and the
+# checker's own default glob never sees it.
+org_root() {
+  local suffix="$1" target="$2" content="$3" root
+  root="$TMP_ROOT/org-$suffix"
+  mkdir -p "$root/model-mappings"
+  cp -r "$REPO_DIR/model-mappings"/* "$root/model-mappings/"
+  printf '%s\n' "$content" > "$root/model-mappings/${target}.org.yml"
+  echo "$root"
+}
+
+# --- O1 — an absent org file and a silent one are indistinguishable -------
+O1_ABSENT_ROOT="$TMP_ROOT/o1-absent"
+mkdir -p "$O1_ABSENT_ROOT/model-mappings"
+cp "$REPO_DIR/model-mappings/claude.yml" "$O1_ABSENT_ROOT/model-mappings/claude.yml"
+O1_SILENT_ROOT="$TMP_ROOT/o1-silent"
+mkdir -p "$O1_SILENT_ROOT/model-mappings"
+cp "$REPO_DIR/model-mappings/claude.yml" "$O1_SILENT_ROOT/model-mappings/claude.yml"
+cp "$REPO_DIR/model-mappings/claude.org.yml" "$O1_SILENT_ROOT/model-mappings/claude.org.yml"
+
+write_fixture "$FIXTURE" "intelligence: medium"
+o1_absent_err="$TMP_ROOT/o1-absent.err"
+REPO_DIR="$O1_ABSENT_ROOT" resolve_agent probe "$FIXTURE" claude 2>"$o1_absent_err"
+o1_absent_handle="$(REPO_DIR="$O1_ABSENT_ROOT" mapping_in_force claude)"
+o1_absent_offering="$RESOLVED_OFFERING_ID"
+
+o1_silent_err="$TMP_ROOT/o1-silent.err"
+REPO_DIR="$O1_SILENT_ROOT" resolve_agent probe "$FIXTURE" claude 2>"$o1_silent_err"
+o1_silent_handle="$(REPO_DIR="$O1_SILENT_ROOT" mapping_in_force claude)"
+o1_silent_offering="$RESOLVED_OFFERING_ID"
+
+if [ "$o1_absent_offering" = "$o1_silent_offering" ] \
+  && [ "$o1_absent_offering" = "haiku" ] \
+  && [ "$o1_absent_handle" = "$O1_ABSENT_ROOT/model-mappings/claude.yml" ] \
+  && [ "$o1_silent_handle" = "$O1_SILENT_ROOT/model-mappings/claude.yml" ] \
+  && [ ! -s "$o1_absent_err" ] && [ ! -s "$o1_silent_err" ]; then
+  ok "O1 — an absent org file and a silent one are indistinguishable: same handle shape, same resolution, empty merge stderr"
+else
+  bad "O1 — absent vs silent org file" "absent=$o1_absent_offering silent=$o1_silent_offering" "$(cat "$o1_absent_err" "$o1_silent_err")"
+fi
+
+# --- O2 — replace one offering (R10, R12, R18) -----------------------------
+O2_ROOT="$(org_root o2 claude 'target: claude
+offerings:
+  - id: opus
+    rank: 3
+    native-value: opus-org-o2
+    provides:
+      intelligence: xhigh
+      specialization: general
+    encodes:
+      intelligence: opus
+    supports-reasoning-surface: true
+    grounds:
+      - declares: native-value
+        assumption: O2 fixture
+      - declares: provides.intelligence
+        assumption: O2 fixture')"
+# A shared, TMP_ROOT-scoped merge directory for every direct resolve_agent
+# call below: cleaned by the suite's own TMP_ROOT trap, so none of these
+# ad-hoc merges ever falls back to the auto-derived ${TMPDIR}/crewrig-mapping-$$
+# root a real build would use and clean itself (R27's proving cases are O10
+# and O11, which use their own explicit roots).
+DIRECT_MERGE_DIR="$TMP_ROOT/direct-merge-dir"
+mkdir -p "$DIRECT_MERGE_DIR"
+
+write_fixture "$FIXTURE" "intelligence: xhigh"
+o2_err="$TMP_ROOT/o2.err"
+REPO_DIR="$O2_ROOT" MAPPING_MERGE_DIR="$DIRECT_MERGE_DIR" resolve_agent probe "$FIXTURE" claude 2>"$o2_err"
+o2_handle="$(REPO_DIR="$O2_ROOT" MAPPING_MERGE_DIR="$DIRECT_MERGE_DIR" mapping_in_force claude)"
+o2_old_field_gone=1
+grep -qF 'Declaration surface: `opus` appears' "$o2_handle" && o2_old_field_gone=0
+if [ "$RESOLVED_NATIVE_VALUE" = "opus-org-o2" ] \
+  && grep -qF "$(printf 'mapping-merge\tclaude\tofferings/opus\treplaced')" "$o2_err" \
+  && [ "$o2_old_field_gone" -eq 1 ]; then
+  ok "O2 — replace one offering: emitted native value changes, report names offerings/opus replaced, no core field survives"
+else
+  bad "O2 — replace one offering" "native=$RESOLVED_NATIVE_VALUE old_field_gone=$o2_old_field_gone" "$(cat "$o2_err")"
+fi
+
+# --- O3 — add an offering at an unused rank, above every core offering -----
+O3_ROOT="$(org_root o3 claude 'target: claude
+offerings:
+  - id: o3-super
+    rank: 10
+    native-value: o3-super-native
+    provides:
+      intelligence: max
+      specialization: general
+    encodes:
+      intelligence: o3-super
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O3 fixture
+      - declares: provides.intelligence
+        assumption: O3 fixture
+      - declares: supports-reasoning-surface
+        assumption: O3 fixture')"
+write_fixture "$FIXTURE" "intelligence: max"
+o3_err="$TMP_ROOT/o3.err"
+REPO_DIR="$O3_ROOT" MAPPING_MERGE_DIR="$DIRECT_MERGE_DIR" resolve_agent probe "$FIXTURE" claude 2>"$o3_err"
+if [ "$RESOLVED_OFFERING_ID" = "o3-super" ] \
+  && grep -qF "$(printf 'mapping-merge\tclaude\tofferings/o3-super\tadded')" "$o3_err"; then
+  ok "O3 — add an offering at an unused rank above every core offering: selected at intelligence: max, reported added"
+else
+  bad "O3 — add an offering" "offering=$RESOLVED_OFFERING_ID" "$(cat "$o3_err")"
+fi
+
+# --- O4 — remove: [offerings/sonnet]: unselectable, selection stays total -
+O4_ROOT="$(org_root o4 claude 'target: claude
+remove: [offerings/sonnet]')"
+o4_err="$TMP_ROOT/o4.err"
+o4_ok=1
+for o4_rung in medium high xhigh xxhigh max; do
+  write_fixture "$FIXTURE" "intelligence: $o4_rung"
+  REPO_DIR="$O4_ROOT" MAPPING_MERGE_DIR="$DIRECT_MERGE_DIR" resolve_agent probe "$FIXTURE" claude 2>>"$o4_err"
+  [ "$RESOLVED_OFFERING_ID" = "sonnet" ] && o4_ok=0
+  [ -z "$RESOLVED_OFFERING_ID" ] && o4_ok=0
+done
+if [ "$o4_ok" -eq 1 ] && grep -qF "$(printf 'mapping-merge\tclaude\tofferings/sonnet\tremoved')" "$o4_err"; then
+  ok "O4 — remove: [offerings/sonnet]: unselectable at every rung, reported removed, selection stays total"
+else
+  bad "O4 — remove: an offering" "$(cat "$o4_err")"
+fi
+
+# --- O5 — replaces-core: substituting -------------------------------------
+O5_ROOT="$(org_root o5 claude 'target: claude
+replaces-core: true
+surfaces:
+  - id: guidance
+    kind: guidance
+    carries: [model]
+    template: |
+      ORG template using {{model}}.
+    items:
+      - item: model
+        grounds:
+          - declares: item
+            assumption: O5 fixture
+offerings:
+  - id: o5-only
+    rank: 1
+    native-value: o5-only-native
+    provides:
+      intelligence: medium
+      specialization: general
+    encodes:
+      intelligence: o5-only
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O5 fixture
+      - declares: provides.intelligence
+        assumption: O5 fixture
+      - declares: supports-reasoning-surface
+        assumption: O5 fixture')"
+write_fixture "$FIXTURE" "intelligence: medium"
+REPO_DIR="$O5_ROOT" MAPPING_MERGE_DIR="$DIRECT_MERGE_DIR" resolve_agent probe "$FIXTURE" claude
+if [ "$RESOLVED_OFFERING_ID" = "o5-only" ] && [ "$EMIT_PROSE" = "ORG template using o5-only-native." ]; then
+  ok "O5 — replaces-core: substituting: only the org offering is a candidate, its template renders"
+else
+  bad "O5 — replaces-core substituting" "offering=$RESOLVED_OFFERING_ID prose=[$EMIT_PROSE]"
+fi
+# R39: the drift check is evaluated against the merged result — a
+# substituting org file whose compiled outputs are not regenerated fails.
+O5D_ROOT="$TMP_ROOT/o5d-root"
+setup_emission_root "$O5D_ROOT"
+REPO_DIR="$O5D_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
+cat > "$O5D_ROOT/model-mappings/claude.org.yml" <<'EOF'
+target: claude
+replaces-core: true
+offerings:
+  - id: o5d-only
+    rank: 1
+    native-value: o5d-only-native
+    provides:
+      intelligence: medium
+      specialization: general
+    encodes:
+      intelligence: o5d-only
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O5 drift fixture
+      - declares: provides.intelligence
+        assumption: O5 drift fixture
+      - declares: supports-reasoning-surface
+        assumption: O5 drift fixture
+EOF
+o5d_out="$(REPO_DIR="$O5D_ROOT" bash "$BUILD_SCRIPT" --target claude --check 2>&1)"; o5d_rc=$?
+if [ "$o5d_rc" -ne 0 ] && printf '%s\n' "$o5d_out" | grep -q "^DRIFT:"; then
+  ok "R39 — a substituting org override whose outputs are not regenerated fails the drift check"
+else
+  bad "R39 — substituting org override drift" "exit=$o5d_rc" "$o5d_out"
+fi
+
+# --- O6 — org-only target over a core mapping declaring zero offerings ----
+O6_ROOT="$TMP_ROOT/o6-root"
+mkdir -p "$O6_ROOT/model-mappings"
+cp -r "$REPO_DIR/model-mappings"/* "$O6_ROOT/model-mappings/"
+cat > "$O6_ROOT/model-mappings/copilot.org.yml" <<'EOF'
+target: copilot
+surfaces:
+  - id: agent-file-model
+    kind: frontmatter
+    items:
+      - item: model
+        key: model
+        domain:
+          values: [o6-model]
+        grounds:
+          - declares: key
+            assumption: O6 fixture
+          - declares: domain
+            assumption: O6 fixture
+offerings:
+  - id: o6-offering
+    rank: 1
+    native-value: o6-model
+    provides:
+      intelligence: medium
+      specialization: general
+    encodes:
+      intelligence: o6
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O6 fixture
+      - declares: provides.intelligence
+        assumption: O6 fixture
+      - declares: supports-reasoning-surface
+        assumption: O6 fixture
+EOF
+write_fixture "$FIXTURE" "intelligence: medium"
+REPO_DIR="$O6_ROOT" MAPPING_MERGE_DIR="$DIRECT_MERGE_DIR" resolve_agent probe "$FIXTURE" copilot
+if fm_has "model: o6-model"; then
+  ok "O6 — an org-only target override over a zero-offerings core mapping (copilot shape) emits where none existed before"
+else
+  bad "O6 — org-only target over zero-offerings core" "n_fm=${#EMIT_FM_LINES[@]}" "${EMIT_FM_LINES[@]+"${EMIT_FM_LINES[@]}"}"
+fi
+
+# --- O6b — no core mapping at all for the target ---------------------------
+O6B_ROOT="$TMP_ROOT/o6b-root"
+mkdir -p "$O6B_ROOT/model-mappings"
+cp -r "$REPO_DIR/model-mappings"/* "$O6B_ROOT/model-mappings/"
+cat > "$O6B_ROOT/model-mappings/o6bfake.org.yml" <<'EOF'
+target: o6bfake
+remove: [offerings/nonexistent]
+surfaces:
+  - id: fm
+    kind: frontmatter
+    items:
+      - item: model
+        key: model
+        domain:
+          values: [o6b-model]
+        grounds:
+          - declares: key
+            assumption: O6b fixture
+          - declares: domain
+            assumption: O6b fixture
+offerings:
+  - id: o6b-offering
+    rank: 1
+    native-value: o6b-model
+    provides:
+      intelligence: medium
+      specialization: general
+    encodes:
+      intelligence: o6b
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O6b fixture
+      - declares: provides.intelligence
+        assumption: O6b fixture
+      - declares: supports-reasoning-surface
+        assumption: O6b fixture
+EOF
+write_fixture "$FIXTURE" "intelligence: medium"
+o6b_err="$TMP_ROOT/o6b.err"
+REPO_DIR="$O6B_ROOT" MAPPING_MERGE_DIR="$DIRECT_MERGE_DIR" resolve_agent probe "$FIXTURE" o6bfake 2>"$o6b_err"
+if [ "$RESOLVED_OFFERING_ID" = "o6b-offering" ] \
+  && ! diag_has "$(printf 'model-note\tprobe\to6bfake\tno-mapping\tno mapping file is present for target o6bfake')" \
+  && grep -qF "$(printf 'mapping-merge\to6bfake\tofferings/nonexistent\tno-effect')" "$o6b_err"; then
+  ok "O6b — no core mapping at all: resolution succeeds against the org file alone, no no-mapping note, a remove: entry is no-effect"
+else
+  bad "O6b — no core mapping at all" "offering=$RESOLVED_OFFERING_ID" "$(cat "$o6b_err")" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
+# --- O7 — determinism: two merges of identical inputs under two distinct --
+# MAPPING_MERGE_DIR roots are byte-identical, offerings ordered by (rank,
+# id). A single root would make the second merge a cache HIT returning the
+# same path, so `cmp` would compare a file with itself — a green
+# certifying nothing (v1-F1's row D). The two paths are asserted to differ
+# BEFORE the byte comparison, so this case cannot pass vacuously.
+O7_ROOT="$(org_root o7 claude 'target: claude
+offerings:
+  - id: o7-zzz
+    rank: 5
+    native-value: o7-zzz-native
+    provides:
+      intelligence: high
+      specialization: general
+    encodes:
+      intelligence: o7zzz
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O7 fixture
+      - declares: provides.intelligence
+        assumption: O7 fixture
+      - declares: supports-reasoning-surface
+        assumption: O7 fixture
+  - id: o7-aaa
+    rank: 5
+    native-value: o7-aaa-native
+    provides:
+      intelligence: high
+      specialization: general
+    encodes:
+      intelligence: o7aaa
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O7 fixture
+      - declares: provides.intelligence
+        assumption: O7 fixture
+      - declares: supports-reasoning-surface
+        assumption: O7 fixture')"
+O7_DIR_A="$TMP_ROOT/o7-merge-a"
+O7_DIR_B="$TMP_ROOT/o7-merge-b"
+mkdir -p "$O7_DIR_A" "$O7_DIR_B"
+o7_handle_a="$(REPO_DIR="$O7_ROOT" MAPPING_MERGE_DIR="$O7_DIR_A" mapping_in_force claude)"
+o7_handle_b="$(REPO_DIR="$O7_ROOT" MAPPING_MERGE_DIR="$O7_DIR_B" mapping_in_force claude)"
+o7_order="$(yq -r '.offerings[] | select(.rank == 5) | .id' "$o7_handle_a" | tr '\n' ' ')"
+if [ "$o7_handle_a" != "$o7_handle_b" ] \
+  && cmp -s "$o7_handle_a" "$o7_handle_b" \
+  && [ "$o7_order" = "o7-aaa o7-zzz " ]; then
+  ok "O7 — determinism: two merges under distinct roots are byte-identical (paths differ, bytes do not), offerings ordered by (rank, id)"
+else
+  bad "O7 — determinism" "handle_a=[$o7_handle_a] handle_b=[$o7_handle_b] order=[$o7_order]"
+fi
+rm -rf "$O7_DIR_A" "$O7_DIR_B"
+
+# --- O8 — accessor invariance (R24, R25) ------------------------------------
+# _hash_function_blocks <file> — one "<name><TAB><sha256>" line per
+# top-level function (a block opens at ^[_a-zA-Z][_a-zA-Z0-9]*\(\) \{ in
+# column 1 and closes at ^}). Compared against the committed golden: the
+# case passes iff every name present in BOTH maps carries the same hash,
+# except `mapping_in_force` — falsifiable in one byte (M8 below).
+_hash_function_blocks() {
+  local file="$1" name="" buf="" line
+  while IFS= read -r line; do
+    if [ -z "$name" ] && [[ "$line" =~ ^[_a-zA-Z][_a-zA-Z0-9]*\(\)\ \{ ]]; then
+      name="${line%%(*}"
+      buf="$line"$'\n'
+      continue
+    fi
+    if [ -n "$name" ]; then
+      buf="$buf$line"$'\n'
+      if [ "$line" = "}" ]; then
+        local h
+        if command -v shasum >/dev/null 2>&1; then
+          h=$(printf '%s' "$buf" | shasum -a 256 | awk '{print $1}')
+        else
+          h=$(printf '%s' "$buf" | sha256sum | awk '{print $1}')
+        fi
+        printf '%s\t%s\n' "$name" "$h"
+        name=""
+        buf=""
+      fi
+    fi
+  done < "$file"
+}
+O8_GOLDEN="$SCRIPT_DIR/tests/fixtures/model-resolve-accessor-hashes.txt"
+assert_accessor_invariance() {
+  local lib="$1" label="$2" current deleted differing
+  current="$(_hash_function_blocks "$lib" | sort)"
+  deleted="$(comm -23 <(cut -f1 "$O8_GOLDEN" | sort) <(printf '%s\n' "$current" | cut -f1))"
+  differing="$(awk -F'\t' 'NR==FNR{g[$1]=$2; next} ($1 in g) && g[$1]!=$2 {print $1}' "$O8_GOLDEN" <(printf '%s\n' "$current") | sort)"
+  printf '%s\t%s' "$deleted" "$differing"
+}
+o8_result="$(assert_accessor_invariance "$SCRIPT_DIR/lib/model-resolve.sh" "O8")"
+o8_deleted="${o8_result%%$'\t'*}"
+o8_differing="${o8_result#*$'\t'}"
+if [ -z "$o8_deleted" ] && [ "$o8_differing" = "mapping_in_force" ]; then
+  ok "O8 — accessor invariance: every pre-existing accessor is byte-identical except mapping_in_force"
+else
+  bad "O8 — accessor invariance" "deleted=[$o8_deleted] differing=[$o8_differing]"
+fi
+
+# --- M8 — accessor invariance is falsifiable in one byte: mutating
+# mapping_item_key (an existing, untouched accessor) must turn O8 red.
+M8_LIB="$TMP_ROOT/model-resolve.m8.sh"
+sed 's/mapping_item_key() {/mapping_item_key() {\n  : # M8 mutation/' \
+  "$SCRIPT_DIR/lib/model-resolve.sh" > "$M8_LIB"
+if diff -q "$SCRIPT_DIR/lib/model-resolve.sh" "$M8_LIB" >/dev/null 2>&1; then
+  bad "M8 — mutation actually changed the resolver source" "sed pattern did not match; mutation is a no-op"
+else
+  m8_result="$(assert_accessor_invariance "$M8_LIB" "M8")"
+  m8_differing="${m8_result#*$'\t'}"
+  if printf '%s\n' "$m8_differing" | grep -qxF "mapping_item_key"; then
+    ok "M8 — mutating an untouched accessor (mapping_item_key) turns O8's invariance case red"
+  else
+    bad "M8 — mutating mapping_item_key did not turn O8 red" "differing=[$m8_differing]"
+  fi
+fi
+
+# --- O9 — a duplicate rank across core and org does not fail ---------------
+O9_ROOT="$(org_root o9 claude 'target: claude
+offerings:
+  - id: zzz-dup
+    rank: 2
+    native-value: zzz-dup-native
+    provides:
+      intelligence: high
+      specialization: general
+    encodes:
+      intelligence: zzzdup
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O9 fixture
+      - declares: provides.intelligence
+        assumption: O9 fixture
+      - declares: supports-reasoning-surface
+        assumption: O9 fixture')"
+O9_MERGE_DIR="$TMP_ROOT/o9-merge-dir"
+mkdir -p "$O9_MERGE_DIR"
+write_fixture "$FIXTURE" "intelligence: high"
+o9_err="$TMP_ROOT/o9.err"
+: > "$o9_err"
+REPO_DIR="$O9_ROOT" MAPPING_MERGE_DIR="$O9_MERGE_DIR" resolve_agent probe "$FIXTURE" claude 2>>"$o9_err"
+o9_first="$RESOLVED_OFFERING_ID"
+REPO_DIR="$O9_ROOT" MAPPING_MERGE_DIR="$O9_MERGE_DIR" resolve_agent probe "$FIXTURE" claude 2>>"$o9_err"
+o9_second="$RESOLVED_OFFERING_ID"
+o9_note_count="$(grep -cF "$(printf 'mapping-merge-note\tclaude\tduplicate-rank')" "$o9_err")"
+rm -rf "$O9_MERGE_DIR"
+if [ "$o9_first" = "sonnet" ] && [ "$o9_second" = "sonnet" ] \
+  && [ "$o9_note_count" -eq 1 ] \
+  && grep -qF "$(printf 'mapping-merge-note\tclaude\tduplicate-rank\trank=2 offerings=sonnet,zzz-dup')" "$o9_err"; then
+  ok "O9 — a duplicate rank across core and org does not fail: the lower identifier is selected, exactly one note across two resolutions"
+else
+  bad "O9 — duplicate rank" "first=$o9_first second=$o9_second note_count=$o9_note_count" "$(cat "$o9_err")"
+fi
+
+# --- O10 — a merged document is removed when the build that created it ----
+# ends (R27), on BOTH exit paths a build can take: the main build/--check
+# path (cleanup_check_staging) and the --resolve fast-exit arm (v2-F6),
+# which exits before the trap installing that cleanup is even reached.
+O10_ROOT="$TMP_ROOT/o10-root"
+setup_emission_root "$O10_ROOT"
+cat > "$O10_ROOT/model-mappings/claude.org.yml" <<'EOF'
+target: claude
+offerings:
+  - id: o10-org-extra
+    rank: 21
+    native-value: o10-org-extra-native
+    provides:
+      intelligence: max
+      specialization: general
+    encodes:
+      intelligence: o10org
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O10 fixture
+      - declares: provides.intelligence
+        assumption: O10 fixture
+      - declares: supports-reasoning-surface
+        assumption: O10 fixture
+EOF
+
+# In-process assertion: the live handle a merge produces lies outside
+# $REPO_DIR (spec 0197 R2/scripts/check-no-machine-paths.sh's partial net —
+# the stable defence is this assertion, not the path pattern).
+O10_INPROC_DIR="$TMP_ROOT/o10-inproc-dir"
+mkdir -p "$O10_INPROC_DIR"
+o10_inproc_handle="$(REPO_DIR="$O10_ROOT" MAPPING_MERGE_DIR="$O10_INPROC_DIR" mapping_in_force claude)"
+case "$o10_inproc_handle" in
+  "$O10_ROOT"/*) o10_outside_repo=0 ;;
+  *)             o10_outside_repo=1 ;;
+esac
+
+# Main build path: TMPDIR is a case-owned directory, MAPPING_MERGE_DIR
+# unset, so the build derives its own root and its own trap removes it.
+O10_CASE_TMP="$TMP_ROOT/o10-case-tmp"
+mkdir -p "$O10_CASE_TMP"
+REPO_DIR="$O10_ROOT" TMPDIR="$O10_CASE_TMP" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
+o10_build_rc=$?
+o10_stray_after_build="$(find "$O10_CASE_TMP" -maxdepth 1 -name 'crewrig-mapping-*' 2>/dev/null)"
+o10_committed_stray="$(find "$O10_ROOT" -name '*.merge.*' -o -name '.merges' 2>/dev/null)"
+
+# --resolve fast-exit arm: same populated fixture, same TMPDIR isolation —
+# this arm exits before the EXIT trap at build-components.sh:508 is
+# installed, so nothing else could clean up on its behalf without the
+# explicit mapping_merge_cleanup call v2-F6 adds.
+O10_RESOLVE_TMP="$TMP_ROOT/o10-resolve-tmp"
+mkdir -p "$O10_RESOLVE_TMP"
+REPO_DIR="$O10_ROOT" TMPDIR="$O10_RESOLVE_TMP" bash "$BUILD_SCRIPT" \
+  --resolve "$O10_ROOT/artifacts/core/agents/probe/AGENT.md" claude >/dev/null 2>/dev/null
+o10_resolve_rc=$?
+o10_stray_after_resolve="$(find "$O10_RESOLVE_TMP" -maxdepth 1 -name 'crewrig-mapping-*' 2>/dev/null)"
+
+if [ "$o10_build_rc" -eq 0 ] && [ "$o10_resolve_rc" -eq 0 ] \
+  && [ -z "$o10_stray_after_build" ] && [ -z "$o10_stray_after_resolve" ] \
+  && [ -z "$o10_committed_stray" ] \
+  && [ "$o10_outside_repo" -eq 1 ]; then
+  ok "O10 — a merged document is removed when the build ends, on both the main build path and the --resolve fast-exit arm; the live handle lies outside \$REPO_DIR"
+else
+  bad "O10 — merged document cleanup" \
+    "build_rc=$o10_build_rc resolve_rc=$o10_resolve_rc outside_repo=$o10_outside_repo" \
+    "stray_after_build=[$o10_stray_after_build]" "stray_after_resolve=[$o10_stray_after_resolve]" \
+    "committed_stray=[$o10_committed_stray]"
+fi
+
+# --- M10 — deleting the mapping_merge_cleanup call from cleanup_check_staging
+# must turn O10's build-path assertion red: without it, O10 would certify
+# only that no merge happened, never that cleanup itself works. Run from a
+# scratch scripts/ directory (a symlinked lib/, so every OTHER library stays
+# real) rather than a bare copy: build-components.sh sources its siblings
+# relative to its own $(dirname "$0"), and a copy dropped elsewhere cannot
+# find them.
+M10_SCRIPTS="$TMP_ROOT/m10-scripts"
+mkdir -p "$M10_SCRIPTS"
+ln -s "$SCRIPT_DIR/lib" "$M10_SCRIPTS/lib"
+ln -s "$SCRIPT_DIR/tests" "$M10_SCRIPTS/tests"
+M10_BUILD="$M10_SCRIPTS/build-components.sh"
+sed 's/^  mapping_merge_cleanup$/  : # M10: cleanup call removed/' "$BUILD_SCRIPT" > "$M10_BUILD"
+if [ "$(grep -c '^  mapping_merge_cleanup$' "$BUILD_SCRIPT")" -lt 1 ] || diff -q "$BUILD_SCRIPT" "$M10_BUILD" >/dev/null 2>&1; then
+  bad "M10 — mutation actually changed build-components.sh" "sed pattern did not match; mutation is a no-op"
+else
+  M10_CASE_TMP="$TMP_ROOT/m10-case-tmp"
+  mkdir -p "$M10_CASE_TMP"
+  m10_out="$(REPO_DIR="$O10_ROOT" TMPDIR="$M10_CASE_TMP" bash "$M10_BUILD" --target claude 2>&1)"; m10_rc=$?
+  m10_stray="$(find "$M10_CASE_TMP" -maxdepth 1 -name 'crewrig-mapping-*' 2>/dev/null)"
+  rm -rf "$M10_CASE_TMP"
+  if [ "$m10_rc" -eq 0 ] && [ -n "$m10_stray" ]; then
+    ok "M10 — deleting the mapping_merge_cleanup call from cleanup_check_staging turns O10's build-path assertion red"
+  else
+    bad "M10 — deleting the cleanup call did not leave a stray root" "rc=$m10_rc" "$m10_out"
+  fi
+fi
+
+# --- O11 — the merge counter (R28's proving case) ---------------------------
+O11_ROOT="$TMP_ROOT/o11-root"
+setup_emission_root "$O11_ROOT"
+mkdir -p "$O11_ROOT/artifacts/core/agents/probe2"
+cat > "$O11_ROOT/artifacts/core/agents/probe2/AGENT.md" <<'EOF'
+---
+name: probe2
+description: "Probe agent 2."
+metadata:
+  model:
+    intelligence: medium
+---
+Body.
+EOF
+for o11_t in claude gemini copilot antigravity; do
+  cat > "$O11_ROOT/model-mappings/${o11_t}.org.yml" <<EOF
+target: ${o11_t}
+offerings:
+  - id: o11-extra-${o11_t}
+    rank: 20
+    native-value: o11-extra-native
+    provides:
+      intelligence: max
+      specialization: general
+    encodes:
+      intelligence: o11extra
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: O11 fixture
+      - declares: provides.intelligence
+        assumption: O11 fixture
+      - declares: supports-reasoning-surface
+        assumption: O11 fixture
+EOF
+done
+# Two distinct roots, not a reused one plus a deleted counter file: the
+# cached merged document under the first root would otherwise survive
+# untouched into the second run, silently skipping "claude" a second time
+# and undercounting exactly the target that carried it (the same class of
+# hazard O7 guards on the read side).
+O11_MERGE_DIR_1="$TMP_ROOT/o11-merge-dir-1"
+O11_MERGE_DIR_2="$TMP_ROOT/o11-merge-dir-2"
+mkdir -p "$O11_MERGE_DIR_1" "$O11_MERGE_DIR_2"
+REPO_DIR="$O11_ROOT" MAPPING_MERGE_DIR="$O11_MERGE_DIR_1" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
+o11_claude_count="$(wc -l < "$O11_MERGE_DIR_1/.merges" | tr -d ' ')"
+REPO_DIR="$O11_ROOT" MAPPING_MERGE_DIR="$O11_MERGE_DIR_2" bash "$BUILD_SCRIPT" --target all >/dev/null 2>/dev/null
+o11_all_count="$(wc -l < "$O11_MERGE_DIR_2/.merges" | tr -d ' ')"
+o11_all_targets="$(sort -u "$O11_MERGE_DIR_2/.merges" | wc -l | tr -d ' ')"
+rm -rf "$O11_MERGE_DIR_1" "$O11_MERGE_DIR_2"
+if [ "$o11_claude_count" -eq 1 ] && [ "$o11_all_count" -eq 4 ] && [ "$o11_all_targets" -eq 4 ]; then
+  ok "O11 — the merge counter: exactly 1 merge for --target claude (two agent sources), exactly 4 over 4 distinct targets for --target all"
+else
+  bad "O11 — merge counter" "claude=$o11_claude_count all=$o11_all_count all_targets=$o11_all_targets"
+fi
+
+# --- M11 — replacing the `[ -f "$out" ]` cache short-circuit with an
+# unconditional merge must turn O11's count assertion red (2 merges for one
+# resolution pair called twice, not 1): without this mutation, O11 would
+# certify only that a merge happened at all, never that the cache works.
+M11_LIB="$TMP_ROOT/model-resolve.m11.sh"
+sed 's/if \[ -f "\$out" \]; then/if false; then/' "$SCRIPT_DIR/lib/model-resolve.sh" > "$M11_LIB"
+if diff -q "$SCRIPT_DIR/lib/model-resolve.sh" "$M11_LIB" >/dev/null 2>&1; then
+  bad "M11 — mutation actually changed the resolver source" "sed pattern did not match; mutation is a no-op"
+else
+  (
+    unset -f mapping_in_force _merge_mapping resolve_agent 2>/dev/null
+    . "$M11_LIB"
+    M11_MERGE_DIR="$TMP_ROOT/m11-merge-dir"
+    mkdir -p "$M11_MERGE_DIR"
+    write_fixture "$FIXTURE" "intelligence: high"
+    REPO_DIR="$O9_ROOT" MAPPING_MERGE_DIR="$M11_MERGE_DIR" resolve_agent probe "$FIXTURE" claude >/dev/null
+    REPO_DIR="$O9_ROOT" MAPPING_MERGE_DIR="$M11_MERGE_DIR" resolve_agent probe "$FIXTURE" claude >/dev/null
+    m11_count="$(wc -l < "$M11_MERGE_DIR/.merges" | tr -d ' ')"
+    rm -rf "$M11_MERGE_DIR"
+    [ "$m11_count" -eq 1 ]
+  )
+  if [ $? -ne 0 ]; then
+    ok "M11 — removing the cache short-circuit turns O11's merge-count assertion red (2 merges, not 1)"
+  else
+    bad "M11 — removing the cache short-circuit did not turn the count red" "still exactly 1 merge"
+  fi
+fi
+
+# --- O12 — remove: [guard] is ignored by the merge, the resolution degrades
+O12_ROOT="$(org_root o12 claude 'target: claude
+remove: [guard]')"
+write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
+REPO_DIR="$O12_ROOT" MAPPING_MERGE_DIR="$DIRECT_MERGE_DIR" resolve_agent probe "$FIXTURE" claude
+o12_handle="$(REPO_DIR="$O12_ROOT" MAPPING_MERGE_DIR="$DIRECT_MERGE_DIR" mapping_in_force claude)"
+if [ "$RESOLVED_OFFERING_ID" = "haiku" ] \
+  && [ "$(yq '. | has("guard")' "$o12_handle" 2>/dev/null)" = "true" ] \
+  && diag_has "$(printf 'model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance')"; then
+  ok "O12 — remove: [guard] (rejected by the checker, R14) is ignored by the merge: the guard survives, resolution degrades rather than fails"
+else
+  bad "O12 — remove: [guard]" "offering=$RESOLVED_OFFERING_ID" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
+fi
+
+echo ""
+echo "=== O0 (closing) — the four compiled agent trees are still byte-identical to the pre-suite baseline ==="
+O0_FINAL="$(hash_agent_trees)"
+if [ "$O0_FINAL" = "$O0_BASELINE" ]; then
+  ok "O0 (closing) — compiled agent trees byte-identical to the O0 baseline (no compiled output moved)"
+else
+  bad "O0 (closing) — compiled agent trees changed during this suite" "$(diff <(printf '%s\n' "$O0_BASELINE") <(printf '%s\n' "$O0_FINAL"))"
 fi
 
 echo ""

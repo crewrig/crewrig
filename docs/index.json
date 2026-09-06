@@ -135,6 +135,11 @@
           "title": "Model mapping format",
           "path": "docs/model-mapping-format.md",
           "nav_order": 90
+        },
+        {
+          "title": "Org model mapping override channel",
+          "path": "docs/org-model-mapping-override.md",
+          "nav_order": 100
         }
       ]
     },
