@@ -21,11 +21,13 @@
 #                  whose local content had diverged is reported.
 #   excluded       Org-owned. Never guarded, never restored, never touched.
 #
-# Nested exclusion: an `excluded` entry nested under a `strict`/`adopt-on-edit`
-# parent (e.g. `specs/org` under `specs`, `.crewrig/.synced-markers` under
-# `.crewrig`) is carved out of BOTH the parent's dirty guard and its restore
-# via a `:(exclude)` git pathspec, so org content under a core parent can
-# never abort the sync nor be overwritten.
+# Nested exclusion: an `excluded` entry nested under a
+# `strict`/`adopt-on-edit`/`regenerable` parent (e.g. `specs/org` under
+# `specs`, `.crewrig/.synced-markers` under `.crewrig`,
+# `model-mappings/*.org.yml` under `model-mappings`) is carved out of BOTH
+# the parent's dirty guard and its restore via a `:(exclude)` git pathspec,
+# so org content under a core parent can never abort the sync nor be
+# overwritten.
 #
 # `.crewrig/.synced-markers/` holds per-path last-synced upstream blob SHAs
 # (adopt-on-edit state). It is committed by the adopter (durable across a

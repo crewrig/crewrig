@@ -36,7 +36,98 @@ change, never a resolution-time failure (spec 0197 R51).
 - **Not under `artifacts/`.** A mapping is a build input, not a component:
   nothing deploys it to a CLI (spec 0197 Decision 1).
 
-## The R15–R28 band this artifact carries but does not implement
+## Organization-level override channel (spec 0199)
+
+An adopting organization changes what a target resolves to without editing
+the core mapping, through a second, org-owned file beside it.
+
+- **Path:** `model-mappings/<target>.org.yml` — one file per target,
+  paired with the core mapping it overrides (spec 0199 R1).
+- **Layer:** org-owned, `excluded` from upstream synchronization, nested
+  under the strict `model-mappings` parent in
+  [`docs/layers.md`](layers.md) and `.crewrig/core-paths.txt` (spec 0199 R5).
+- **Shipped state:** upstream ships one such file per supported target,
+  each declaring `target: <target>` alone and nothing else — no offering,
+  no surface, no template, no guard state, no secret. A fresh adopter's
+  mapping in force is byte-for-byte the core mapping until it populates the
+  channel itself (R7-R9). An adopter-facing how-to lives at
+  [`docs/org-model-mapping-override.md`](org-model-mapping-override.md).
+- **Shape:** shape-identical to a core mapping — the same node kinds, key
+  sets and value domains this document makes normative — plus two org-only
+  top-level keys: `remove:` (a list of addresses to remove, R13) and
+  `replaces-core:` (a boolean, default `false`, R15). Every offering,
+  surface item and guard term an org file declares carries the same
+  `grounds:` grounding as a core declaration, with no relaxation on account
+  of being org-owned (R4, R30, Decision 8).
+
+### Addressing an override (R10-R12)
+
+An override is expressed at one of the six addresses the *Addressing*
+section above publishes. Which address an org-declared node occupies is
+derived from its shape — the parent node's own required identity key —
+not from a new heuristic:
+
+| Org document shape | Address | Effect |
+|---|---|---|
+| `.offerings[]` element with `id: X` | `offerings/X` | whole-node replace, or add |
+| `.surfaces[]` element carrying `kind:` | `surfaces/<id>` | whole-node replace, or add |
+| `.surfaces[]` element carrying `template:` and no `kind:` | `surfaces/<id>/template` | scalar replace; the core surface's other keys survive |
+| `.guard` carrying `id:` | `guard` | whole-node replace |
+| `.guard` carrying `state:` and no `id:` | `guard/state` | scalar replace |
+| `.guard.terms[]` element with `id: Y`, `.guard` carrying no `id:` | `guard/terms/Y` | whole-term replace, or add |
+| anything else | — | rejected |
+
+An org-declared node whose address the core mapping does not declare is
+**added** to the mapping in force; one whose address the core does declare
+**replaces** that core node entirely — no field of the replaced core node
+survives into the merged node (R12, Decision 2).
+
+### `remove:` (R13-R14)
+
+A top-level `remove:` list names addresses to take out of circulation. A
+node so named is absent from the mapping in force. `remove:` may not name
+`guard` or an address of the form `guard/terms/<id>`: that guard encodes a
+live upstream defect (spec 0143 delta-01), and deleting it would silently
+re-enable the defect for the organization's own fork. An organization with
+evidence the defect no longer applies replaces `guard/state` instead, and
+meets the same evidence obligation the checker demands of a core mapping.
+
+### `replaces-core:` (R15-R17)
+
+A top-level `replaces-core: true` substitutes the whole mapping for its
+target: the core mapping is not consulted for composition, and the mapping
+in force is the org channel file alone. It defaults to `false` (not
+substituting) when absent, and may not be declared together with a
+non-empty `remove:` list — the two are mutually exclusive (R16).
+
+Where a target has an org channel file and no core mapping at all, the
+composition **degenerates to the same substituting case**: the mapping in
+force is the org file alone, served exactly as a target whose core mapping
+declared the same content — including a target the core layer leaves
+unconfigured through a mapping declaring zero offerings (R17). No `remove:`
+entry can have an effect in that case, since the core declares no address
+at all; each is recorded as having had no effect rather than silently
+dropped (R19).
+
+### Validation (R29-R32)
+
+`scripts/check-model-mappings.sh` validates three things per target:
+
+1. **The core mapping alone**, unchanged, when one exists.
+2. **The org channel file alone** — the same assertion table as a core
+   mapping, with two relaxations: the surface node and the guard node may
+   omit their own required keys (an org file may be a partial, addressed
+   override rather than a complete node — the two node kinds requirement
+   30 does not name), and five additional assertions validate `remove:`
+   and `replaces-core:` against the rules above.
+3. **The mapping in force** — the merged result — against the full
+   assertion set requirements 47 through 50 of spec 0197 make normative,
+   which is where the invariants that spanned both files actually live: rank
+   total order, selection totality, and guard evidence. An org file that is
+   impeccable alone can still collide with a core rank it never saw.
+
+Each rejection names which of the three sources it concerns, so an author
+is told which file to edit.
 
 Requirements 15 through 28 of spec 0197 govern how a profile *resolves*
 against a mapping — a rule about performing a resolution, never a rule about

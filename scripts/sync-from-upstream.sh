@@ -27,8 +27,9 @@
 #                  diverged is reported on stdout.
 #   excluded       Org-owned. Never guarded, never restored, never touched.
 #
-# An `excluded` entry nested under a `strict`/`adopt-on-edit` parent (e.g.
-# `specs/org` under `specs`, `.crewrig/.synced-markers` under `.crewrig`) is
+# An `excluded` entry nested under a `strict`/`adopt-on-edit`/`regenerable`
+# parent (e.g. `specs/org` under `specs`, `.crewrig/.synced-markers` under
+# `.crewrig`, `model-mappings/*.org.yml` under `model-mappings`) is
 # carved out of BOTH the parent's dirty guard and its restore via a
 # `:(exclude)` git pathspec — so org content under a core parent can neither
 # abort the sync nor be overwritten.
@@ -62,9 +63,9 @@
 #   - Anti-pollution guard: aborts the history-preserving step (without
 #     committing, leaving the already-restored files in the working tree) if
 #     the working tree carries an uncommitted change outside the governed set
-#     — every `strict`/`adopt-on-edit` manifest entry, minus any nested
-#     `excluded` child — plus the .crewrig/.synced-markers/ bookkeeping
-#     directory.
+#     — every `strict`/`adopt-on-edit`/`regenerable` manifest entry, minus
+#     any nested `excluded` child — plus the .crewrig/.synced-markers/
+#     bookkeeping directory.
 #   - Signing refusal: aborts the history-preserving step (same posture as
 #     the anti-pollution guard — no commit, branch tip unmoved, restored
 #     files left in the working tree) when the repository is configured to
@@ -366,8 +367,9 @@ reconcile_dir() {
 
 # ---------------------------------------------------------------------------
 # path_is_governed <path>
-# Return 0 iff <path> is covered by the union of every `strict` or
-# `adopt-on-edit` entry declared in .crewrig/core-paths.txt, MINUS any
+# Return 0 iff <path> is covered by the union of every `strict`,
+# `adopt-on-edit`, or `regenerable` entry declared in .crewrig/core-paths.txt,
+# MINUS any
 # `excluded` entry nested under one of those governed parents (e.g.
 # `specs/org` under `specs`, `docs/org` under `docs`) — carved out the same
 # way the dirty-guard and apply loops carve them out, via
@@ -665,9 +667,9 @@ if [ "$PRESERVE_HISTORY" = true ]; then
   fi
 
   # R8 — anti-pollution guard: reject any uncommitted change outside the
-  # governed set — every `strict`/`adopt-on-edit` manifest entry, minus any
-  # `excluded` child nested under it — plus the .crewrig/.synced-markers/
-  # bookkeeping directory (path_is_governed).
+  # governed set — every `strict`/`adopt-on-edit`/`regenerable` manifest
+  # entry, minus any `excluded` child nested under it — plus the
+  # .crewrig/.synced-markers/ bookkeeping directory (path_is_governed).
   # On violation, print the offending path(s), leave the already-restored
   # files in the working tree, create no commit, exit non-zero.
   UNGOVERNED=()
