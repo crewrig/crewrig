@@ -149,3 +149,12 @@ ci	strict
 # normative shape is docs/model-mapping-format.md; its hermetic gate is
 # scripts/check-model-mappings.sh.
 model-mappings	strict
+# Organization-level override channel (spec 0199 R1, R5). One `excluded`
+# line per target rather than a single `model-mappings/*.org.yml` wildcard:
+# the nested-exclusion test in sync-from-upstream.sh is a quoted `case`
+# match (`case "$member" in "$excl"/*|"$excl")`), so a wildcard entry would
+# be compared literally against each member path and carve out nothing.
+model-mappings/claude.org.yml	excluded
+model-mappings/gemini.org.yml	excluded
+model-mappings/copilot.org.yml	excluded
+model-mappings/antigravity.org.yml	excluded
