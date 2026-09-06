@@ -738,6 +738,27 @@ check-agent-profiles:
         - "scripts/check-agent-profiles.sh"
         - "scripts/tests/test-check-agent-profiles.sh"
 
+check-metadata-keys:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "bash scripts/check-component-metadata-keys.sh"
+    - "bash scripts/tests/test-check-component-metadata-keys.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "artifacts/**"
+        - "scripts/check-component-metadata-keys.sh"
+        - "scripts/tests/test-check-component-metadata-keys.sh"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "artifacts/**"
+        - "scripts/check-component-metadata-keys.sh"
+        - "scripts/tests/test-check-component-metadata-keys.sh"
+
 markdown-links:
   image: python:3.12
   script:

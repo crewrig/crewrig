@@ -803,6 +803,29 @@ capabilities:
       - bash scripts/check-agent-profiles.sh
       - bash scripts/tests/test-check-agent-profiles.sh
 
+  - id: check-metadata-keys
+    name: "Check the component metadata: closed key set and run its mutation test suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "artifacts/**"
+          - "scripts/check-component-metadata-keys.sh"
+          - "scripts/tests/test-check-component-metadata-keys.sh"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "artifacts/**"
+          - "scripts/check-component-metadata-keys.sh"
+          - "scripts/tests/test-check-component-metadata-keys.sh"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    command:
+      - bash scripts/check-component-metadata-keys.sh
+      - bash scripts/tests/test-check-component-metadata-keys.sh
+
   - id: markdown-links
     name: "Check relative Markdown link integrity"
     trigger:

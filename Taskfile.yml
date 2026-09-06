@@ -421,6 +421,13 @@ tasks:
         msg: "yq is required. Install with: brew install yq"
     cmd: bash {{.REPO_DIR}}/scripts/check-agent-profiles.sh
 
+  check-metadata-keys:
+    desc: "Check the metadata: closed key set on artifacts/core/** and artifacts/library/** (local mirror of the CI guard, spec 0200)"
+    preconditions:
+      - sh: command -v yq >/dev/null 2>&1
+        msg: "yq is required. Install with: brew install yq"
+    cmd: bash {{.REPO_DIR}}/scripts/check-component-metadata-keys.sh
+
   skill:check:
     desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
     silent: true
