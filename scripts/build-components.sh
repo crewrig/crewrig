@@ -178,6 +178,9 @@ if [ -n "$RESOLVE_SOURCE" ]; then
   for resolve_diag_line in ${DIAG_LINES[@]+"${DIAG_LINES[@]}"}; do
     emit_diag_line "$resolve_diag_line"
   done
+  # spec 0199 R27: this arm exits before the trap at :508 is installed, so
+  # nothing else ever calls mapping_merge_cleanup on this arm's behalf.
+  mapping_merge_cleanup
   exit 0
 fi
 
@@ -503,6 +506,12 @@ cleanup_check_staging() {
   # the script's exit status. A bare `[ -n "" ] && rm` would exit 1 when the
   # staging root was never created (normal build), failing the whole build.
   [ -n "$CHECK_STAGING_ROOT" ] && rm -rf "$CHECK_STAGING_ROOT"
+  # spec 0199 R27: a merged document materialized during this build is
+  # removed when the build ends. The library removes only a root it itself
+  # derived (D11), so this is a no-op whenever the caller set
+  # MAPPING_MERGE_DIR (the checker, the test suites) — each already owns
+  # its own trap for that directory.
+  mapping_merge_cleanup
   return 0
 }
 trap cleanup_check_staging EXIT
