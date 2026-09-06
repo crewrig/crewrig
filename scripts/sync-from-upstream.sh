@@ -7,7 +7,7 @@
 # Reads the upstream URL from crewrig.config.toml (canonical_repo field).
 #
 # Policy-driven (spec 0020). Each .crewrig/core-paths.txt entry carries one
-# of three policies (default `strict` when the column is absent):
+# of four policies (default `strict` when the column is absent):
 #
 #   strict         Upstream-owned. A local modification relative to FETCH_HEAD
 #                  aborts the sync — revert or promote the change to overlay
@@ -16,6 +16,15 @@
 #                  permanently. The "modified?" decision is stateless and
 #                  two-tier (committed marker fast path, then upstream-history
 #                  membership). Never aborts the sync.
+#   regenerable    Upstream-owned content the component build regenerates
+#                  (spec 0199 R42) — today, the four compiled agent output
+#                  trees. Restores exactly as `strict` restores, including
+#                  the spec-0064 orphan cleanup, but NEVER aborts on a local
+#                  divergence: under an organization-level model-mapping
+#                  override the divergence is the build's own correct
+#                  output, and this script cannot run the build to tell the
+#                  two apart. Each restored member whose local content had
+#                  diverged is reported on stdout.
 #   excluded       Org-owned. Never guarded, never restored, never touched.
 #
 # An `excluded` entry nested under a `strict`/`adopt-on-edit` parent (e.g.
@@ -377,7 +386,7 @@ path_is_governed() {
   esac
   for i in "${!PATHS[@]}"; do
     case "${POLICIES[$i]}" in
-      strict|adopt-on-edit) ;;
+      strict|adopt-on-edit|regenerable) ;;
       *) continue ;;
     esac
     gov="${PATHS[$i]}"
@@ -519,7 +528,7 @@ for i in "${!PATHS[@]}"; do
       # Org-owned: never touched.
       continue
       ;;
-    strict)
+    strict|regenerable)
       if ! resolves_at_fetch_head "$path"; then
         echo "Warning: skipping manifest entry absent from upstream: $path" >&2
         continue
@@ -535,6 +544,14 @@ for i in "${!PATHS[@]}"; do
             case "$member" in "$excl"/*|"$excl") skip=1; break ;; esac
           done < <(excluded_children_of "$path")
           [ "$skip" -eq 1 ] && continue
+          # spec 0199 R42/R48: under `regenerable`, a local divergence never
+          # aborts (the dirty-core loop above only ever populates DIRTY for
+          # `strict`), but every member restored over a divergence is
+          # reported — checked BEFORE the restore, since afterwards the
+          # member no longer looks dirty.
+          if [ "$policy" = "regenerable" ] && strict_blob_is_dirty "$member"; then
+            echo "Restored (diverged, regenerable): $member"
+          fi
           git restore --source=FETCH_HEAD --worktree -- "$member"
         done < <(git ls-tree -r --name-only FETCH_HEAD -- "$path/" 2>/dev/null)
         # Delete locally tracked files absent from FETCH_HEAD (spec 0064 orphan cleanup).
@@ -551,6 +568,9 @@ for i in "${!PATHS[@]}"; do
           fi
         done < <(cd "$REPO_DIR" && git ls-files -- "$path/")
       else
+        if [ "$policy" = "regenerable" ] && strict_blob_is_dirty "$path"; then
+          echo "Restored (diverged, regenerable): $path"
+        fi
         spec=()
         while IFS= read -r -d '' item; do
           spec+=("$item")
