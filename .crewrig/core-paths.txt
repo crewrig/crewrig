@@ -10,6 +10,15 @@
 #   strict         Upstream-owned. A local modification halts the sync.
 #   adopt-on-edit  Upstream-owned until the adopter modifies it, then
 #                  preserved permanently (never overwritten, never aborts).
+#   regenerable    Upstream-owned content the component build regenerates
+#                  (spec 0199 R42) — today, the four compiled agent output
+#                  trees. Restores exactly as strict restores (including the
+#                  spec-0064 orphan cleanup), but never aborts the sync on a
+#                  local divergence: under an organization-level model-mapping
+#                  override, the divergence is the build's own correct
+#                  output, and this policy exists because the sync cannot run
+#                  the build to tell the two apart. Each restored member
+#                  whose local content had diverged is reported.
 #   excluded       Org-owned. Never guarded, never restored, never touched.
 #
 # Nested exclusion: an `excluded` entry nested under a `strict`/`adopt-on-edit`
@@ -75,9 +84,14 @@ artifacts/library
 
 # Built outputs
 .claude/skills
-.claude/agents
+# The four compiled AGENT output trees below are `regenerable` (spec 0199
+# R43): a build regenerates them from artifacts/ AND model-mappings/
+# together, so an organization-level mapping override can make them
+# legitimately diverge from upstream. The compiled SKILL and COMMAND trees
+# stay `strict` (spec 0199 R45, Decision 7) — no mapping ever reaches one.
+.claude/agents	regenerable
 .gemini/skills
-.gemini/agents
+.gemini/agents	regenerable
 .gemini/commands
 .github/copilot-instructions.md
 .github/copilot
@@ -89,7 +103,7 @@ artifacts/library
 # #605) keeps the rest of `.github/copilot/` (e.g. extension.json) guarded.
 .github/copilot/settings.json	excluded
 .github/skills
-.github/agents
+.github/agents	regenerable
 .github/workflows
 # The `.agents` root is deliberately NOT claimed whole (spec 0121 → Out of
 # scope): no CLI output root is, and claiming this one would sweep in
@@ -100,7 +114,7 @@ artifacts/library
 # `.agents/settings.local.json` is untracked (.gitignore) and stays unlisted,
 # so it is never guarded and never restored (spec 0121 R4).
 .agents/skills
-.agents/agents
+.agents/agents	regenerable
 
 # Extension distribution channel
 extension-skeleton

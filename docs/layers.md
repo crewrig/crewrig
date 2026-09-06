@@ -167,7 +167,13 @@ components. They are never edited directly; the source of truth is always
 from `artifacts/` **and** `model-mappings/` together (spec 0198 requirement
 41): the build resolves each agent source's capability profile, when it
 declares one, against the mapping in force for the target it compiles for,
-so a change to either regenerates the output.
+so a change to either regenerates the output. That is why the four compiled
+agent output trees carry the sync policy `regenerable` (spec 0199 R43)
+rather than `strict`: an organization-level override of the mapping in
+force (`docs/org-model-mapping-override.md`) makes those four outputs
+legitimately diverge from upstream, and `scripts/sync-from-upstream.sh`
+cannot run the build to tell that apart from a hand edit. The compiled
+skill and command trees reach no mapping, so they stay `strict` (R45).
 
 An adopting organization may activate only a subset of CLIs; the sync
 mechanism respects this scope. The detailed assembly model (which CLI outputs
@@ -176,18 +182,18 @@ exist, how org artifacts integrate) is defined in spec 0012 sub-spec E2.
 | Path | Description |
 |---|---|
 | `.claude/skills/` | Compiled Claude Code skill definitions. |
-| `.claude/agents/` | Compiled Claude Code agent definitions. |
+| `.claude/agents/` | Compiled Claude Code agent definitions. Reclassified `regenerable`, replacing the manifest's implicit `strict` default (spec 0199 R43 / spec 0121 delta-01 R9). |
 | `.gemini/skills/` | Compiled Gemini CLI skill definitions. |
-| `.gemini/agents/` | Compiled Gemini CLI agent definitions. |
+| `.gemini/agents/` | Compiled Gemini CLI agent definitions. Reclassified `regenerable` (spec 0199 R43 / spec 0121 delta-01 R9). |
 | `.gemini/commands/` | Compiled Gemini CLI slash-command definitions (bootstrap helpers). |
 | `.github/skills/` | Compiled GitHub Copilot skill definitions. |
-| `.github/agents/` | Compiled GitHub Copilot agent definitions. |
+| `.github/agents/` | Compiled GitHub Copilot agent definitions. Reclassified `regenerable` (spec 0199 R43 / spec 0121 delta-01 R9). |
 | `.github/copilot-instructions.md` | Copilot system prompt built from `AGENTS.md`. |
 | `.github/workflows/` | CI/CD pipeline definitions. |
 | `.github/copilot/` | GitHub Copilot workspace configuration. |
 | `.github/copilot/settings.json` | Committed workspace settings, `strict` by default as a member of `.github/copilot/` above — except its `hooks` key, which the transcript-hooks opt-in in `setup-copilot-interactive.sh` deliberately rewrites locally with an absolute path (ADR-0001 Discovery finding #8). Reclassified `excluded`, nested under the strict `.github/copilot/` parent (spec 0097 / issue #605), so that designed-in local mutation no longer aborts `scripts/sync-from-upstream.sh`; sibling members such as `extension.json` remain `strict` and still abort on a local diff. |
 | `.agents/skills/` | Compiled Antigravity CLI skill definitions. |
-| `.agents/agents/` | Compiled Antigravity CLI agent definitions. |
+| `.agents/agents/` | Compiled Antigravity CLI agent definitions. Reclassified `regenerable` (spec 0199 R43 / spec 0121 delta-01 R9). |
 
 ### Extension distribution channel
 

@@ -20,6 +20,11 @@
 #
 # Policy semantics (spec 0020) mirror sync-from-upstream.sh:
 #   strict / adopt-on-edit  Upstream-owned content — MUST resolve at HEAD.
+#   regenerable             Upstream-owned content the component build
+#                           regenerates (spec 0199 R42) — MUST resolve at
+#                           HEAD, exactly as strict/adopt-on-edit do; the
+#                           forward loop below never distinguishes it from
+#                           them.
 #   excluded                Org-owned — not guaranteed tracked in every
 #                           clone, so explicitly NOT checked.
 # The path/policy split logic below is intentionally identical to the
@@ -36,9 +41,10 @@
 #      dir_is_governed() below mirrors it EXCEPT for the
 #      `.crewrig/.synced-markers` short-circuit (sync-from-upstream.sh:369),
 #      which is the R8 marker-bookkeeping carve-out and can never name a build
-#      output. Everything else — the strict/adopt-on-edit policy filter, the
-#      nested-`excluded`-child carve-out, and continuing the scan rather than
-#      concluding when such a child matches — is the identical rule.
+#      output. Everything else — the strict/adopt-on-edit/regenerable policy
+#      filter, the nested-`excluded`-child carve-out, and continuing the scan
+#      rather than concluding when such a child matches — is the identical
+#      rule.
 #
 # Declared output set (spec 0125): `scripts/build-components.sh` is queried directly
 # via `--list-output-dirs` to obtain its declared output directories. The build
@@ -117,17 +123,19 @@ fi
 # dir_is_governed <dir>
 # Mirror of path_is_governed() in sync-from-upstream.sh (line 366), minus its
 # `.crewrig/.synced-markers` short-circuit — no build output can live there.
-# Governed iff some strict/adopt-on-edit entry covers <dir>, with no `excluded`
-# entry nested strictly under THAT entry covering it. Consulting excluded
-# ancestors, or concluding on the first excluded match instead of continuing
-# the scan, would both be stricter than the sync actually is — and reachable:
-# `.agents excluded` + `.agents/skills strict` is governed for the sync.
+# Governed iff some strict/adopt-on-edit/regenerable entry covers <dir>, with
+# no `excluded` entry nested strictly under THAT entry covering it (spec 0121
+# delta-01 R8: a `regenerable` path counts as governed for this purpose, same
+# as strict/adopt-on-edit). Consulting excluded ancestors, or concluding on
+# the first excluded match instead of continuing the scan, would both be
+# stricter than the sync actually is — and reachable: `.agents excluded` +
+# `.agents/skills strict` is governed for the sync.
 # ---------------------------------------------------------------------------
 dir_is_governed() {
   local dir="$1" i j gov skip
   for i in "${!PATHS[@]}"; do
     case "${POLICIES[$i]}" in
-      strict|adopt-on-edit) ;;
+      strict|adopt-on-edit|regenerable) ;;
       *) continue ;;
     esac
     gov="${PATHS[$i]}"
@@ -172,14 +180,14 @@ if [ "${#failures[@]}" -gt 0 ]; then
     echo "  - $p" >&2
   done
   echo "" >&2
-  echo "Every strict/adopt-on-edit entry in .crewrig/core-paths.txt must resolve to" >&2
-  echo "tracked content at HEAD (spec 0031). Either commit the missing content, or" >&2
-  echo "remove the manifest entry (and its docs/layers.md row, per the co-maintenance" >&2
-  echo "rule in AGENTS.md)." >&2
+  echo "Every strict/adopt-on-edit/regenerable entry in .crewrig/core-paths.txt must" >&2
+  echo "resolve to tracked content at HEAD (spec 0031). Either commit the missing" >&2
+  echo "content, or remove the manifest entry (and its docs/layers.md row, per the" >&2
+  echo "co-maintenance rule in AGENTS.md)." >&2
   exit 1
 fi
 
-echo "OK: all $checked strict/adopt-on-edit core-paths entries resolve at HEAD."
+echo "OK: all $checked strict/adopt-on-edit/regenerable core-paths entries resolve at HEAD."
 
 # ---------------------------------------------------------------------------
 # Reverse direction, part 2 — every derived directory must carry a guarantee
@@ -200,10 +208,64 @@ if [ "${#UNGOVERNED[@]}" -gt 0 ]; then
   done
   echo "" >&2
   echo "Every directory the component build writes component outputs into must be" >&2
-  echo "governed by .crewrig/core-paths.txt with a strict or adopt-on-edit policy" >&2
-  echo "(spec 0121 R2). Add the entry, and its docs/layers.md row in the same diff" >&2
-  echo "per the co-maintenance rule in AGENTS.md." >&2
+  echo "governed by .crewrig/core-paths.txt with a strict, adopt-on-edit, or" >&2
+  echo "regenerable policy (spec 0121 R2, spec 0121 delta-01 R8). Add the entry, and" >&2
+  echo "its docs/layers.md row in the same diff per the co-maintenance rule in" >&2
+  echo "AGENTS.md." >&2
   exit 1
 fi
 
 echo "OK: all ${#DERIVED[@]} built-output directories derived from scripts/build-components.sh are governed."
+
+# ---------------------------------------------------------------------------
+# Reverse direction, part 3 — every supported target's org channel file
+# carries an `excluded` manifest carve-out (spec 0199 R41). Enumerated from
+# HEAD, not from the manifest itself: a target whose only file is an org
+# stem (no core mapping, R17) must not be a blind spot here, so the
+# supported-target set is derived from BOTH `<target>.yml` and
+# `<target>.org.yml` stems under model-mappings/, deduped.
+# ---------------------------------------------------------------------------
+TARGET_STEMS=()
+while IFS= read -r mm_line; do
+  [ -z "$mm_line" ] && continue
+  mm_base="$(basename "$mm_line")"
+  case "$mm_base" in
+    *.org.yml) mm_stem="${mm_base%.org.yml}" ;;
+    *.yml)     mm_stem="${mm_base%.yml}" ;;
+    *)         continue ;;
+  esac
+  mm_found=0
+  for mm_existing in ${TARGET_STEMS[@]+"${TARGET_STEMS[@]}"}; do
+    [ "$mm_existing" = "$mm_stem" ] && { mm_found=1; break; }
+  done
+  [ "$mm_found" -eq 0 ] && TARGET_STEMS+=("$mm_stem")
+done < <(git -C "$REPO_DIR" ls-tree -r --name-only HEAD -- "model-mappings/" 2>/dev/null)
+
+UNCARVED_TARGETS=()
+for mm_target in ${TARGET_STEMS[@]+"${TARGET_STEMS[@]}"}; do
+  mm_carved=0
+  for i in "${!PATHS[@]}"; do
+    if [ "${PATHS[$i]}" = "model-mappings/${mm_target}.org.yml" ] && [ "${POLICIES[$i]}" = "excluded" ]; then
+      mm_carved=1
+      break
+    fi
+  done
+  [ "$mm_carved" -eq 0 ] && UNCARVED_TARGETS+=("$mm_target")
+done
+
+if [ "${#UNCARVED_TARGETS[@]}" -gt 0 ]; then
+  echo "" >&2
+  echo "FAILED: ${#UNCARVED_TARGETS[@]} of ${#TARGET_STEMS[@]} supported target(s) have no" >&2
+  echo "excluded org channel carve-out in .crewrig/core-paths.txt:" >&2
+  for mm_target in ${UNCARVED_TARGETS[@]+"${UNCARVED_TARGETS[@]}"}; do
+    echo "  - $mm_target (expected: model-mappings/${mm_target}.org.yml  excluded)" >&2
+  done
+  echo "" >&2
+  echo "Every supported target's org channel file must carry an excluded manifest" >&2
+  echo "entry (spec 0199 R41), nested under the strict model-mappings parent. Add" >&2
+  echo "the entry, and its docs/layers.md row in the same diff per the" >&2
+  echo "co-maintenance rule in AGENTS.md." >&2
+  exit 1
+fi
+
+echo "OK: all ${#TARGET_STEMS[@]} supported target(s) carry an excluded org channel carve-out."

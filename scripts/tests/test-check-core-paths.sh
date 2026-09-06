@@ -37,6 +37,19 @@
 #      which no other case constrains now that the matcher accepts non-leading
 #      calls and is therefore indentation-insensitive.
 #
+#   Spec 0199 cases (issue #1119, plan step 13)
+#   m. A built-output directory with a `regenerable` manifest entry passes
+#      the reverse direction (R46, first clause).
+#   n. A phantom `regenerable` entry still fails the forward direction (R46,
+#      second clause) — the policy is still governed, not excluded.
+#   o. A supported target with a core mapping and no `excluded` org channel
+#      carve-out fails, naming the target (R41-1).
+#   p. The control for case o: a target with both a core mapping and the
+#      carve-out passes (R41-2).
+#   q. A target with only an org channel file (no core mapping) and no
+#      manifest carve-out fails, naming it — the org-only target (R17) is
+#      not a blind spot to the enumeration (R41-3).
+#
 # Cases a-d commit a stub `scripts/build-components.sh` with no call sites, so
 # the derived set is empty in half the suite — the accumulator-empty path the
 # array guards in check-core-paths.sh must survive under bash 3.2 `set -u`. The
@@ -268,7 +281,7 @@ done
     fail=$((fail + 1))
   fi
 
-  if echo "$CHECK_STDOUT" | grep -qF "OK: all 2 strict/adopt-on-edit core-paths entries resolve at HEAD."; then
+  if echo "$CHECK_STDOUT" | grep -qF "OK: all 2 strict/adopt-on-edit/regenerable core-paths entries resolve at HEAD."; then
     echo "PASS  case-c: OK line emitted on stdout with the checked count"
     pass=$((pass + 1))
   else
@@ -303,7 +316,7 @@ done
   fi
 
   # Only the strict entry should be counted (the excluded one is not checked).
-  if echo "$CHECK_STDOUT" | grep -qF "OK: all 1 strict/adopt-on-edit core-paths entries resolve at HEAD."; then
+  if echo "$CHECK_STDOUT" | grep -qF "OK: all 1 strict/adopt-on-edit/regenerable core-paths entries resolve at HEAD."; then
     echo "PASS  case-d: excluded entry omitted from the checked count"
     pass=$((pass + 1))
   else
@@ -637,6 +650,160 @@ done
     pass=$((pass + 1))
   else
     echo "FAIL  case-l: stderr did not name .newcli/skills"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case m — spec 0199 R46 (first clause): a built-output directory with a
+#          `regenerable` manifest entry passes the reverse direction, exactly
+#          as a `strict` entry does (case f).
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    ".newcli/skills/demo/SKILL.md" "built output" \
+    "scripts/build-components.sh" "$BUILD_STUB_NEWCLI"
+  write_manifest "$repo" $'real.txt\tstrict\n.newcli/skills\tregenerable\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-m: a built-output directory with a regenerable entry passes the reverse direction"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-m: expected exit 0, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case n — spec 0199 R46 (second clause): a `regenerable` entry that does not
+#          resolve at HEAD still fails the forward direction, exactly as a
+#          `strict` entry does (case a) — `regenerable` is still a governed,
+#          not an excluded, policy.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    "scripts/build-components.sh" "$BUILD_STUB_NONE"
+  write_manifest "$repo" $'real.txt\tstrict\n.newcli/skills\tregenerable\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-n: a phantom regenerable entry fails the forward direction (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-n: expected exit 1, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF "FAIL .newcli/skills (regenerable)"; then
+    echo "PASS  case-n: stderr names the failing regenerable entry"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-n: stderr did not name .newcli/skills (regenerable)"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case o — spec 0199 R41-1: a supported target with a core mapping and no
+#          `excluded` org channel carve-out fails, naming the target.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    "model-mappings/claude.yml" "core mapping content" \
+    "scripts/build-components.sh" "$BUILD_STUB_NONE"
+  write_manifest "$repo" $'real.txt\tstrict\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-o: a target with no excluded org channel carve-out fails (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-o: expected exit 1, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF -- "- claude (expected: model-mappings/claude.org.yml  excluded)"; then
+    echo "PASS  case-o: stderr names the uncarved target claude"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-o: stderr did not name claude"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case p — spec 0199 R41-2: a supported target with both a core mapping and
+#          an `excluded` org channel carve-out passes. The control for case o.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    "model-mappings/claude.yml" "core mapping content" \
+    "model-mappings/claude.org.yml" "org channel content" \
+    "scripts/build-components.sh" "$BUILD_STUB_NONE"
+  write_manifest "$repo" $'real.txt\tstrict\nmodel-mappings/claude.org.yml\texcluded\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-p: a target with both a core mapping and an excluded org carve-out passes"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-p: expected exit 0, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case q — spec 0199 R41-3, R17: a target with only an org channel file (no
+#          core mapping) and no manifest carve-out fails, naming it — the
+#          org-only target is not a blind spot to the enumeration.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" \
+    "real.txt" "tracked content" \
+    "model-mappings/onlyorg.org.yml" "org-only channel content" \
+    "scripts/build-components.sh" "$BUILD_STUB_NONE"
+  write_manifest "$repo" $'real.txt\tstrict\n'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-q: an org-only target with no manifest carve-out fails (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-q: expected exit 1, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF -- "- onlyorg (expected: model-mappings/onlyorg.org.yml  excluded)"; then
+    echo "PASS  case-q: stderr names the org-only target onlyorg"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-q: stderr did not name onlyorg"
     echo "      actual stderr: $CHECK_STDERR"
     fail=$((fail + 1))
   fi
