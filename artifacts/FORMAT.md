@@ -21,7 +21,7 @@ and Claude Code.
 |------|----------------|-------------------|--------------------|
 | `skill` | `skills/<name>/SKILL.md` | `.gemini/skills/<name>/SKILL.md` | `.claude/skills/<name>/SKILL.md` |
 | `command` | `commands/<name>.md` | `.gemini/commands/<name>.toml` | `.claude/skills/<name>/SKILL.md` |
-| `agent` | `agents/<name>/AGENT.md` | `.gemini/agents/<name>.md` | `.claude/agents/<name>/AGENT.md` |
+| `agent` | `agents/<name>/AGENT.md` | `.gemini/agents/<name>.md` | `.claude/agents/<name>.md` |
 
 This table shows the two outputs common to every component kind; each kind
 also compiles to GitHub Copilot CLI (`.github/skills/…` or `.github/agents/…`)
@@ -302,7 +302,7 @@ metadata:          # propagated when source declares metadata.provenance
 <body — becomes the agent's system prompt>
 ```
 
-Claude Code → `.claude/agents/<name>/AGENT.md`
+Claude Code → `.claude/agents/<name>.md`
 
 ```yaml
 ---
@@ -511,7 +511,7 @@ The build script (`scripts/build-components.sh`) requires:
    The contrast is worth stating, because both halves are load-bearing:
 
    - **Legal.** `architect` exists as both a skill and an agent. A skill lands
-     in `.claude/skills/architect`, an agent in `.claude/agents/architect` —
+     in `.claude/skills/architect`, an agent in `.claude/agents/architect.md` —
      different landing zones, so the pair builds. Eight other name pairs in
      this repository are legal for the same reason. A `core` component may
      likewise share a name with an overlay one: `core` lands in the committed
