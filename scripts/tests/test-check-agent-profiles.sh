@@ -249,7 +249,7 @@ cp "$REPO_DIR/crewrig.config.toml" "$BUILD_ROOT/crewrig.config.toml"
 cp -r "$REPO_DIR/model-mappings" "$BUILD_ROOT/model-mappings"
 build_out="$(REPO_DIR="$BUILD_ROOT" bash "$BUILD_SCRIPT" --target claude 2>&1)"
 build_rc=$?
-if [ "$build_rc" -eq 0 ] && [ -f "$BUILD_ROOT/.claude/agents/probe/AGENT.md" ]; then
+if [ "$build_rc" -eq 0 ] && [ -f "$BUILD_ROOT/.claude/agents/probe.md" ]; then
   echo "PASS  build still compiles an offending source (degrading the unreadable key, not failing)"
   pass=$((pass + 1))
 else

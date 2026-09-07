@@ -112,15 +112,15 @@ echo "=== T2 — R14,R16,R17,R18: one real committed source per rung, all four t
 # sentence naming <alias>; no model: or effort: frontmatter key.
 assert_claude() {
   local name="$1" alias="$2" fm has_model has_effort desc
-  fm="$(extract_frontmatter "$REPO_DIR/.claude/agents/$name/AGENT.md")"
+  fm="$(extract_frontmatter "$REPO_DIR/.claude/agents/$name.md")"
   desc="$(printf '%s\n' "$fm" | yq -r '.description' 2>/dev/null)"
   has_model="$(printf '%s\n' "$fm" | yq 'has("model")' 2>/dev/null || echo false)"
   has_effort="$(printf '%s\n' "$fm" | yq 'has("effort")' 2>/dev/null || echo false)"
   if grep -qF "Run this agent on the $alias model." <<< "$desc" \
      && [ "$has_model" = false ] && [ "$has_effort" = false ]; then
-    ok "T2 — .claude/agents/$name/AGENT.md carries the $alias guidance sentence, no model:/effort:"
+    ok "T2 — .claude/agents/$name.md carries the $alias guidance sentence, no model:/effort:"
   else
-    bad "T2 — .claude/agents/$name/AGENT.md carries the $alias guidance sentence, no model:/effort:" \
+    bad "T2 — .claude/agents/$name.md carries the $alias guidance sentence, no model:/effort:" \
       "description=$desc" "has_model=$has_model has_effort=$has_effort"
   fi
 }
@@ -259,7 +259,7 @@ else
 fi
 
 t5_outputs_ok=1
-for out in "$T5_ROOT/dist/library/.claude/agents/harness-curator/AGENT.md" \
+for out in "$T5_ROOT/dist/library/.claude/agents/harness-curator.md" \
            "$T5_ROOT/dist/library/.gemini/agents/harness-curator.md" \
            "$T5_ROOT/dist/library/.github/agents/harness-curator.md" \
            "$T5_ROOT/dist/library/.agents/agents/harness-curator/AGENT.md"; do
@@ -408,7 +408,7 @@ mkdir -p "$M1_ROOT"
 yq eval -i --front-matter=process '.metadata.model.intelligence = "medium"' "$M1_ROOT/artifacts/core/agents/developer/AGENT.md"
 m1_out="$(REPO_DIR="$M1_ROOT" bash "$BUILD_SCRIPT" --target all --check 2>&1)"; m1_rc=$?
 if [ "$m1_rc" -ne 0 ] \
-   && grep -q '\.claude/agents/developer/AGENT\.md differs from source' <<< "$m1_out" \
+   && grep -q '\.claude/agents/developer\.md differs from source' <<< "$m1_out" \
    && grep -q '\.gemini/agents/developer\.md differs from source' <<< "$m1_out" \
    && grep -q '\.agents/agents/developer/AGENT\.md differs from source' <<< "$m1_out" \
    && ! grep -q '\.github/agents/developer\.md differs from source' <<< "$m1_out"; then

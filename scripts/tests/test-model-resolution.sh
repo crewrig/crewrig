@@ -87,7 +87,7 @@ assert_frontmatter() {
   fi
 }
 
-assert_frontmatter ".claude/agents/architect/AGENT.md" ".claude/agents/architect/AGENT.md" \
+assert_frontmatter ".claude/agents/architect.md" ".claude/agents/architect.md" \
 "name: architect
 description: \"Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius. Run this agent on the opus model.\"
 metadata:
@@ -558,8 +558,8 @@ c11_resolve_native="$(printf '%s\n' "$resolve_out" | sed -n 's/^native: //p')"
 c11_resolve_fm="$(printf '%s\n' "$resolve_out" | sed -n 's/^fm: //p' | sort)"
 
 REPO_DIR="$C11_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>"$TMP_ROOT/c11-build.err"
-c11_compiled_fm="$(extract_frontmatter "$C11_ROOT/.claude/agents/probe-canonical/AGENT.md" | grep -E '^(model|effort):' | sort)"
-c11_compiled_model="$(extract_frontmatter "$C11_ROOT/.claude/agents/probe-canonical/AGENT.md" | grep '^model:' | sed 's/^model: //')"
+c11_compiled_fm="$(extract_frontmatter "$C11_ROOT/.claude/agents/probe-canonical.md" | grep -E '^(model|effort):' | sort)"
+c11_compiled_model="$(extract_frontmatter "$C11_ROOT/.claude/agents/probe-canonical.md" | grep '^model:' | sed 's/^model: //')"
 
 # (ii) directed items via a baseline diff: the same fixture without its
 # metadata.model block, built in a second throwaway root, diffed against
@@ -569,7 +569,7 @@ C11_BASE_ROOT="$TMP_ROOT/c11-base-root"
 setup_emission_root "$C11_BASE_ROOT" '.guard.state = "directed"'
 sed '/^metadata:/,/reasoning: medium/d' "$C11_FIXTURE" > "$C11_BASE_ROOT/artifacts/core/agents/probe/AGENT.md"
 REPO_DIR="$C11_BASE_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
-c11_base_fm="$(extract_frontmatter "$C11_BASE_ROOT/.claude/agents/probe-canonical/AGENT.md" | grep -E '^(model|effort):' | sort)"
+c11_base_fm="$(extract_frontmatter "$C11_BASE_ROOT/.claude/agents/probe-canonical.md" | grep -E '^(model|effort):' | sort)"
 c11_added_lines="$(diff <(printf '%s\n' "$c11_base_fm") <(printf '%s\n' "$c11_compiled_fm") | sed -n 's/^> //p' | sort)"
 
 # (iii)/(iv) drop records and notes: the two stderr sets are equal.
@@ -625,7 +625,7 @@ assert_slice() {
   fi
 }
 assert_slice gemini "$C12_ALL_ROOT/.gemini/agents/probe-canonical.md" "$C12_GEMINI_ROOT/.gemini/agents/probe-canonical.md" gemini "$TMP_ROOT/c12-gemini.err"
-assert_slice claude "$C12_ALL_ROOT/.claude/agents/probe-canonical/AGENT.md" "$C12_CLAUDE_ROOT/.claude/agents/probe-canonical/AGENT.md" claude "$TMP_ROOT/c12-claude.err"
+assert_slice claude "$C12_ALL_ROOT/.claude/agents/probe-canonical.md" "$C12_CLAUDE_ROOT/.claude/agents/probe-canonical.md" claude "$TMP_ROOT/c12-claude.err"
 assert_slice copilot "$C12_ALL_ROOT/.github/agents/probe-canonical.md" "$C12_COPILOT_ROOT/.github/agents/probe-canonical.md" copilot "$TMP_ROOT/c12-copilot.err"
 assert_slice antigravity "$C12_ALL_ROOT/.agents/agents/probe-canonical/AGENT.md" "$C12_ANTIGRAVITY_ROOT/.agents/agents/probe-canonical/AGENT.md" antigravity "$TMP_ROOT/c12-antigravity.err"
 
@@ -642,7 +642,7 @@ setup_emission_root "$C13_ROOT"
 sed '/reasoning: medium/d' "$C13_ROOT/artifacts/core/agents/probe/AGENT.md" > "$TMP_ROOT/c13-fixture.tmp"
 mv "$TMP_ROOT/c13-fixture.tmp" "$C13_ROOT/artifacts/core/agents/probe/AGENT.md"
 REPO_DIR="$C13_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
-c13_keys="$(extract_frontmatter "$C13_ROOT/.claude/agents/probe-canonical/AGENT.md" | yq -r 'keys | .[]' | sort | tr '\n' ' ')"
+c13_keys="$(extract_frontmatter "$C13_ROOT/.claude/agents/probe-canonical.md" | yq -r 'keys | .[]' | sort | tr '\n' ' ')"
 if [ "$c13_keys" = "description name " ]; then
   ok "C13(iii) — intelligence-only profile compiles with no frontmatter key beyond name/description"
 else
@@ -777,12 +777,12 @@ fi
 R30_ROOT="$TMP_ROOT/r30-root"
 setup_emission_root "$R30_ROOT"
 REPO_DIR="$R30_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
-cp "$R30_ROOT/.claude/agents/probe-canonical/AGENT.md" "$TMP_ROOT/r30-first.md"
+cp "$R30_ROOT/.claude/agents/probe-canonical.md" "$TMP_ROOT/r30-first.md"
 REPO_DIR="$R30_ROOT" bash "$BUILD_SCRIPT" --target claude >/dev/null 2>/dev/null
-if diff -q "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical/AGENT.md" >/dev/null 2>&1; then
+if diff -q "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical.md" >/dev/null 2>&1; then
   ok "R30 — a second build over an unchanged source/mapping is byte-identical (rendering is idempotent)"
 else
-  bad "R30 — build-twice diff" "$(diff "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical/AGENT.md")"
+  bad "R30 — build-twice diff" "$(diff "$TMP_ROOT/r30-first.md" "$R30_ROOT/.claude/agents/probe-canonical.md")"
 fi
 
 echo ""

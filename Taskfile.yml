@@ -484,7 +484,7 @@ tasks:
         done
 
         # --- Agent mirrors (optional, but must be symmetric when present) ---
-        CLAUDE_AGENT=".claude/agents/${NAME}/AGENT.md"
+        CLAUDE_AGENT=".claude/agents/${NAME}.md"
         GEMINI_AGENT=".gemini/agents/${NAME}.md"
         COPILOT_AGENT=".github/agents/${NAME}.md"
         present=0
