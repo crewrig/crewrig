@@ -132,6 +132,14 @@ git add crewrig.config.toml
 git commit -m "⚙️ Initialise crewrig.config.toml for <YOUR-ORG>"
 ```
 
+### Model-mapping overrides — the org-owned channel
+
+`model-mappings/<target>.org.yml` is the org-owned channel through which your organization changes what a declared `intelligence` rung resolves to on each target. One file ships per target, present and empty — editing none of them changes nothing.
+
+Beyond a core mapping's shape, an org file adds exactly two keys: `remove:`, to take an offering, surface, or guard state out of circulation, and `replaces-core:`, to replace the core mapping outright for that target. The channel is excluded from upstream synchronization, so your edits never conflict with an upstream update.
+
+The full schema and worked examples are in [`docs/org-model-mapping-override.md`](org-model-mapping-override.md); the mapping shape it overrides is normative in [`docs/model-mapping-format.md`](model-mapping-format.md).
+
 ## Step 3 — Initialize the organization identity
 
 Copy the organization identity template and populate its sections.
@@ -495,6 +503,14 @@ rather than the framework directly, its published artifact form changes
 starting with the first `hello-world` major release published after this
 change — check that release's own asset for confirmation rather than
 assuming a specific version number here.
+
+## Migrating to the CLI-agnostic model declaration (specs 0200, 0201)
+
+A fork that declares no capability profile on its own agent sources and populates no override-channel file takes **no action**: its own agent sources keep the behavior they have today.
+
+A stale per-agent directory left under the user's Claude Code agent directory by the retired compiled layout needs **no manual action** either — it is removed at the next assisted setup. A synchronizing fork lands on the flat compiled layout without acting, because the compiled agent output trees carry the `regenerable` synchronization policy.
+
+The full account — what changed, why, and the per-agent migration record — is in [`docs/agent-profile-migration.md`](agent-profile-migration.md).
 
 ## Troubleshooting
 
