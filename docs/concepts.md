@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: section=concepts nav_order=10 published=true title="Core concepts" -->
 
-This page introduces the five concepts that recur throughout CrewRig at a
+This page introduces the six concepts that recur throughout CrewRig at a
 conceptual level. Each links to the detailed documentation that specifies it
 normatively; the goal here is shared vocabulary, not exhaustive coverage.
 
@@ -58,6 +58,21 @@ a feature cannot be mirrored on a given tool, the gap must be justified with
 concrete evidence that the target tool lacks the mechanism, rather than left
 unexplained. The per-tool integration points, parity checks, and
 gap-acceptance evidence are tracked in the [CLI support matrix](cli-matrix.md).
+
+## The CLI-agnostic model declaration
+
+An agent source declares what its work needs from a model as a capability profile, carried in the source under `metadata.model:` — never a concrete model, a vendor, or a CLI-namespaced key.
+
+A per-target mapping decides what that profile resolves to on each of the four supported command-line interfaces, and the build performs that resolution when components are compiled, per [spec 0198](../specs/0198-build-mapping-resolution.md).
+
+A resolution never fails a build; when a target cannot serve what the profile asks for, it records what it could not serve instead, per [spec 0197](../specs/0197-model-mapping.md).
+
+The compiled Claude Code agent output is one flat file per agent, per [spec 0201](../specs/0201-flat-compiled-agent-layout.md).
+
+The declaration itself is detailed in
+[Authoring skills, agents & commands](authoring.md), and the mapping format
+each target's resolution follows is normative in
+[the model-mapping format reference](model-mapping-format.md).
 
 ## Shared cross-tool memory
 
