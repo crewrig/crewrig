@@ -10,6 +10,8 @@ This is the HOW record of that change: the per-source translation table,
 the adopter-facing migration note, the corrected tiering audit, the
 narrowing this change set's own requirement 22 forces on two of the
 parent spec's requirements, and the observable diagnostic-stream change.
+The authoring-facing account of what a capability profile is and how a
+source declares one lives in [`docs/authoring.md`](authoring.md).
 
 ## The 23-row translation table
 
@@ -93,7 +95,7 @@ spec 0200 already name and correct.
 | # | Class | Hits |
 |---|---|---|
 | 1 | The 22 sources being migrated — the `metadata.claude.model` line this change set removes | `artifacts/core/agents/*/AGENT.md`, one each before the change. **After the change: 0** |
-| 2 | Mapping-file worked examples in documentation | `docs/model-mapping-format.md:309,344,378,398` (`:344` is `Haiku`, capitalized) and `docs/org-model-mapping-override.md:57,59,64,73,83,86` |
+| 2 | Mapping-file worked examples in documentation | `docs/model-mapping-format.md:312,347,381,401` (`:347` is `Haiku`, capitalized) and `docs/org-model-mapping-override.md:57,59,64,73,83,86` |
 | 3 | E2E LLM-judge backend model ids (versioned API ids, not agent tiers) | `docs/adr/0004-e2e-assertion-libs.md:230`, `docs/adr/0008-judge-oauth-auth-mode.md:130`, `tests/e2e/defaults.toml:119`, `tests/e2e/local.toml.example:57`, `tests/e2e/lib/llm_judge.sh:18,103,119,120`, `tests/e2e/lib/README.md:77` |
 | 4 | The deliberately model-bearing Copilot-routing probe fixture | `tests/e2e/scenarios/05-copilot-model-routing/agent-model-bearing.md.tmpl:4`, with `…/run.sh:21,360` and `tests/e2e/lib/probe_spawn_markers.sh:95` |
 | 5 | The Claude GitHub Action's own `model:` input | `.github/workflows/claude.yml:27` |

@@ -14,13 +14,16 @@ This document describes the artifact. It builds nothing, resolves nothing,
 and reads no agent source: the resolution that consumes a mapping is seam (d)
 of epic #1100, out of scope here (spec 0197 → *Out of scope*).
 
+The authoring-facing account of what a source declares — before this
+document's mapping format takes over — lives in
+[`docs/authoring.md`](authoring.md).
+
 ## Purpose and scope
 
 A mapping is a committed declaration, one per target, that says which models a
 command-line interface can reach, what each model provides, and how the
 vocabulary of [spec 0195](../specs/0195-agent-capability-profile.md) turns into that
-target's native fields and prose. It is a *description*: nothing in the
-repository reads a mapping at the end of this ticket, and the checker
+target's native fields and prose. It is a *description*: a mapping is read on every compilation of an agent source ([spec 0198](../specs/0198-build-mapping-resolution.md)), and the checker
 (`scripts/check-model-mappings.sh`) is an authoring-time gate over a proposed
 change, never a resolution-time failure (spec 0197 R51).
 
@@ -295,9 +298,9 @@ of the file (R6, R7). The addressing grammar:
 | `guard/state` | the guard's recorded state |
 | `guard/terms/<id>` | one guard term, by its `id` |
 
-This document defines the addressability; it does not define the override
-channel itself, its location, its format, or its precedence (R7 — that is
-seam (e)'s contract, not this one's).
+This document defines the addressability the override channel uses; the
+channel itself — its location, its format, and its precedence — is defined
+above, in *Organization-level override channel (spec 0199)*.
 
 ## Grounding — the `grounds:` list (R5, Decision B)
 
