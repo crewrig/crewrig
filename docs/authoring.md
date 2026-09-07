@@ -71,31 +71,15 @@ Prompt content here — shared across all tools, written once.
 
 ## Declaring a model need
 
-An agent source — and only an agent source — declares what its work needs
-from a model. It does so as a **capability profile** under `metadata.model:`,
-naming characteristics such as `intelligence`, never a concrete model, a
-vendor, or a CLI-namespaced key: the retired `metadata.claude.model` is no
-longer an available way to choose an agent's model. On the upstream-owned
-tiers (`core`, `library`), a source's `metadata:` block admits exactly two
-keys, `provenance` and `model`. A source that carries no `metadata.model:`
-block keeps session-model inheritance and needs no edit.
+An agent source — and only an agent source — declares what its work needs from a model. It does so as a **capability profile** under `metadata.model:`, naming characteristics such as `intelligence`, never a concrete model, a vendor, or a CLI-namespaced key: the retired `metadata.claude.model` is no longer an available way to choose an agent's model.
 
-What a declared profile resolves to on each target, and how the build
-performs that resolution, is
-[`docs/model-mapping-format.md`](model-mapping-format.md)'s contract; how an
-adopting organization changes that outcome for its own fork is
-[`docs/org-model-mapping-override.md`](org-model-mapping-override.md)'s; what
-the migration of the core agents and of the compiled Claude Code layout asks
-of that organization is
-[`docs/agent-profile-migration.md`](agent-profile-migration.md)'s. The closed
-frontmatter shape itself is normative on
-[`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
+On the upstream-owned tiers (`core`, `library`), a source's `metadata:` block admits exactly two keys, `provenance` and `model`. A source that carries no `metadata.model:` block keeps session-model inheritance and needs no edit.
+
+What a declared profile resolves to on each target, and how the build performs that resolution, is [`docs/model-mapping-format.md`](model-mapping-format.md)'s contract; how an adopting organization changes that outcome for its own fork is [`docs/org-model-mapping-override.md`](org-model-mapping-override.md)'s; what the migration of the core agents and of the compiled Claude Code layout asks of that organization is [`docs/agent-profile-migration.md`](agent-profile-migration.md)'s. The closed frontmatter shape itself is normative on [`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
 
 ### Worked examples
 
-Every emission below was printed by `bash scripts/build-components.sh
---resolve <agent-source> <target>` against `main` at `18b026d`, not composed
-by hand — re-run the same command at that commit to re-derive it.
+Every emission below was printed by `bash scripts/build-components.sh --resolve <agent-source> <target>` against `main` at `18b026d`, not composed by hand — re-run the same command at that commit to re-derive it.
 
 `artifacts/core/agents/doc-writer/AGENT.md` declares:
 
