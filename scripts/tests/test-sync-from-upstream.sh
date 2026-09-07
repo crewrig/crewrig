@@ -2661,7 +2661,7 @@ STUB
   upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
   init_git_repo "$upstream"
   make_initial_commit "$upstream" \
-    ".claude/agents/dev/AGENT.md" "upstream agent content"
+    ".claude/agents/dev.md" "upstream agent content"
 
   adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
   init_git_repo "$adopter"
@@ -2669,10 +2669,10 @@ STUB
   mkdir -p "$adopter/.crewrig"
   printf '.claude/agents\tregenerable\n' > "$adopter/.crewrig/core-paths.txt"
   make_initial_commit "$adopter" \
-    ".claude/agents/dev/AGENT.md" "upstream agent content"
+    ".claude/agents/dev.md" "upstream agent content"
   # Diverge locally — representative of an org override regenerating the
   # compiled output without the fork syncing since.
-  printf 'regenerated content\n' > "$adopter/.claude/agents/dev/AGENT.md"
+  printf 'regenerated content\n' > "$adopter/.claude/agents/dev.md"
 
   actual_exit=0
   stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>/dev/null)" || actual_exit=$?
@@ -2682,12 +2682,12 @@ STUB
     echo "FAIL  case-qq: expected exit 0, got $actual_exit"
     ok=0
   fi
-  restored="$(cat "$adopter/.claude/agents/dev/AGENT.md" 2>/dev/null)"
+  restored="$(cat "$adopter/.claude/agents/dev.md" 2>/dev/null)"
   if [ "$restored" != "upstream agent content" ]; then
     echo "FAIL  case-qq: diverged agent output was not restored (got '$restored')"
     ok=0
   fi
-  if ! echo "$stdout_out" | grep -qF "Restored (diverged, regenerable): .claude/agents/dev/AGENT.md"; then
+  if ! echo "$stdout_out" | grep -qF "Restored (diverged, regenerable): .claude/agents/dev.md"; then
     echo "FAIL  case-qq: missing 'Restored (diverged, regenerable)' report line"
     echo "      actual stdout: $stdout_out"
     ok=0
@@ -2735,10 +2735,10 @@ STUB
   upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
   init_git_repo "$upstream"
   make_initial_commit "$upstream" \
-    ".claude/agents/dev/AGENT.md" "upstream agent v1" \
+    ".claude/agents/dev.md" "upstream agent v1" \
     "other.txt" "other content"
   commit_files "$upstream" "advance agent" \
-    ".claude/agents/dev/AGENT.md" "upstream agent v2"
+    ".claude/agents/dev.md" "upstream agent v2"
 
   adopter_strict="$(mktemp -d "$TMP_ROOT/adopter-strict.XXXXXX")"
   init_git_repo "$adopter_strict"
@@ -2746,7 +2746,7 @@ STUB
   mkdir -p "$adopter_strict/.crewrig"
   printf '.claude/agents\tstrict\nother.txt\tstrict\n' > "$adopter_strict/.crewrig/core-paths.txt"
   make_initial_commit "$adopter_strict" \
-    ".claude/agents/dev/AGENT.md" "upstream agent v1" \
+    ".claude/agents/dev.md" "upstream agent v1" \
     "other.txt" "other content"
 
   adopter_regen="$(mktemp -d "$TMP_ROOT/adopter-regen.XXXXXX")"
@@ -2755,7 +2755,7 @@ STUB
   mkdir -p "$adopter_regen/.crewrig"
   printf '.claude/agents\tregenerable\nother.txt\tstrict\n' > "$adopter_regen/.crewrig/core-paths.txt"
   make_initial_commit "$adopter_regen" \
-    ".claude/agents/dev/AGENT.md" "upstream agent v1" \
+    ".claude/agents/dev.md" "upstream agent v1" \
     "other.txt" "other content"
 
   strict_exit=0
@@ -2803,7 +2803,7 @@ STUB
 {
   upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
   init_git_repo "$upstream"
-  make_initial_commit "$upstream" ".claude/agents/dev/AGENT.md" "upstream agent"
+  make_initial_commit "$upstream" ".claude/agents/dev.md" "upstream agent"
 
   # crewrig.config.toml and .crewrig/core-paths.txt are committed via a
   # direct `add -A` (not make_initial_commit, which stages only the file
@@ -2816,11 +2816,11 @@ STUB
   printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
   mkdir -p "$adopter/.crewrig"
   printf '.claude/agents\tregenerable\n' > "$adopter/.crewrig/core-paths.txt"
-  mkdir -p "$adopter/.claude/agents/dev"
-  printf 'upstream agent\n' > "$adopter/.claude/agents/dev/AGENT.md"
+  mkdir -p "$adopter/.claude/agents"
+  printf 'upstream agent\n' > "$adopter/.claude/agents/dev.md"
   git -C "$adopter" add -A
   git -C "$adopter" commit -q -m initial
-  printf 'regenerated locally, uncommitted\n' > "$adopter/.claude/agents/dev/AGENT.md"
+  printf 'regenerated locally, uncommitted\n' > "$adopter/.claude/agents/dev.md"
 
   actual_exit=0
   ( cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" --preserve-history >/dev/null 2>&1 ) || actual_exit=$?
@@ -2837,8 +2837,8 @@ STUB
   printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter2/crewrig.config.toml"
   mkdir -p "$adopter2/.crewrig"
   printf '.claude/agents\tregenerable\n' > "$adopter2/.crewrig/core-paths.txt"
-  mkdir -p "$adopter2/.claude/agents/dev"
-  printf 'upstream agent\n' > "$adopter2/.claude/agents/dev/AGENT.md"
+  mkdir -p "$adopter2/.claude/agents"
+  printf 'upstream agent\n' > "$adopter2/.claude/agents/dev.md"
   git -C "$adopter2" add -A
   git -C "$adopter2" commit -q -m initial
   printf 'ungoverned local edit\n' > "$adopter2/notes.md"
@@ -2899,6 +2899,76 @@ STUB
   fi
   if [ "$ok" -eq 1 ]; then
     echo "PASS  case-uu: orphan cleanup still runs under regenerable, active member preserved"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case ww — spec 0201: a fork lands on the new flat compiled-agent layout
+# without acting. Upstream ships both agents flat; the adopter's tree still
+# holds the retired nested `.claude/agents/dev/AGENT.md` (never migrated) and
+# a locally diverged flat `.claude/agents/tester.md`. The sync must not
+# abort: `dev.md` is restored fresh, the retired `dev/AGENT.md` is removed as
+# an upstream-deleted orphan, and the diverged `tester.md` is restored and
+# reported rather than silently overwritten.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    ".claude/agents/dev.md" "upstream dev content" \
+    ".claude/agents/tester.md" "upstream tester content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf '.claude/agents\tregenerable\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    ".claude/agents/dev/AGENT.md" "retired nested dev content" \
+    ".claude/agents/tester.md" "upstream tester content"
+  # Diverge the flat tester output locally, uncommitted — same shape as case qq.
+  printf 'locally diverged tester content\n' > "$adopter/.claude/agents/tester.md"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>/dev/null)" || actual_exit=$?
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-ww: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  restored_dev="$(cat "$adopter/.claude/agents/dev.md" 2>/dev/null)"
+  if [ "$restored_dev" != "upstream dev content" ]; then
+    echo "FAIL  case-ww: dev.md was not restored from upstream (got '$restored_dev')"
+    ok=0
+  fi
+  if [ -f "$adopter/.claude/agents/dev/AGENT.md" ]; then
+    echo "FAIL  case-ww: retired nested .claude/agents/dev/AGENT.md was not removed"
+    ok=0
+  fi
+  # A leftover empty .claude/agents/dev/ directory is expected residue (no
+  # empty-directory pruning in sync-from-upstream.sh — see spec 0201 PLAN v2
+  # *Risks*), not asserted here.
+  if ! echo "$stdout_out" | grep -qF "Removed (upstream-deleted): .claude/agents/dev/AGENT.md"; then
+    echo "FAIL  case-ww: missing 'Removed (upstream-deleted)' report line for the retired nested output"
+    echo "      actual stdout: $stdout_out"
+    ok=0
+  fi
+  restored_tester="$(cat "$adopter/.claude/agents/tester.md" 2>/dev/null)"
+  if [ "$restored_tester" != "upstream tester content" ]; then
+    echo "FAIL  case-ww: diverged tester.md was not restored from upstream (got '$restored_tester')"
+    ok=0
+  fi
+  if ! echo "$stdout_out" | grep -qF "Restored (diverged, regenerable): .claude/agents/tester.md"; then
+    echo "FAIL  case-ww: missing 'Restored (diverged, regenerable)' report line for tester.md"
+    echo "      actual stdout: $stdout_out"
+    ok=0
+  fi
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-ww: a fork lands on the new flat layout without acting — retired nested output removed, diverged flat output restored and reported"
     pass=$((pass + 1))
   else
     fail=$((fail + 1))

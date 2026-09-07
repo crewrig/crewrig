@@ -64,15 +64,9 @@ for cli_dir in ".claude" ".gemini" ".github"; do
     FAILURES+=("MISSING overlay skill '$OVERLAY_SKILL' in dist/community/$cli_dir/skills/")
   fi
 
-  # Overlay agent check — Claude uses a directory; Gemini and Copilot use flat files.
-  if [ "$cli_dir" = ".claude" ]; then
-    if [ ! -f "$overlay_agents_dir/$OVERLAY_AGENT/AGENT.md" ]; then
-      FAILURES+=("MISSING overlay agent '$OVERLAY_AGENT' in dist/community/$cli_dir/agents/")
-    fi
-  else
-    if [ ! -f "$overlay_agents_dir/$OVERLAY_AGENT.md" ]; then
-      FAILURES+=("MISSING overlay agent '$OVERLAY_AGENT' in dist/community/$cli_dir/agents/")
-    fi
+  # Overlay agent check — all three CLIs use flat files.
+  if [ ! -f "$overlay_agents_dir/$OVERLAY_AGENT.md" ]; then
+    FAILURES+=("MISSING overlay agent '$OVERLAY_AGENT' in dist/community/$cli_dir/agents/")
   fi
 done
 

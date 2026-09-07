@@ -896,7 +896,7 @@ GEMINI_EOF
       check_or_write "$out_root/.gemini/agents/$name.md" "$gemini_content"
     fi
 
-    # --- Claude Code output: AGENT.md (with frontmatter) ---
+    # --- Claude Code output: <name>.md (flat file, with frontmatter) ---
     if [ "$TARGET" = "claude" ] || [ "$TARGET" = "all" ]; then
       # spec 0198: resolve the agent's capability profile (if any) against
       # the mapping in force for this target BEFORE composing this target's
@@ -945,7 +945,7 @@ $claude_frontmatter
 $body
 CLAUDE_EOF
       )
-      check_or_write "$out_root/.claude/agents/$name/AGENT.md" "$claude_content" "$source"
+      check_or_write "$out_root/.claude/agents/$name.md" "$claude_content" "$source"
     fi
 
     # --- GitHub Copilot CLI output: <name>.md (flat file, by parallelism with Gemini) ---

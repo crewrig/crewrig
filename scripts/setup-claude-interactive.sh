@@ -377,8 +377,7 @@ CLAUDE_AGENTS_HOME="$CLAUDE_HOME/agents"
 
 # install_tier_to_home <tier> — copy a staged tier's Claude skills and agents
 # into the user home. Skills land in ~/.claude/skills/<name>/, agents in
-# ~/.claude/agents/<name>/ (Claude's directory layout). No-op if the tier was
-# not built.
+# ~/.claude/agents/<name>.md (flat file). No-op if the tier was not built.
 install_tier_to_home() {
   local tier="$1"
   local staging="$REPO_DIR/dist/$tier/.claude"
@@ -399,13 +398,15 @@ install_tier_to_home() {
   fi
   if [ -d "$staging/agents" ]; then
     mkdir -p "$CLAUDE_AGENTS_HOME"
-    for agent_dir in "$staging/agents"/*/; do
-      [ -d "$agent_dir" ] || continue
+    for agent_file in "$staging/agents"/*.md; do
+      [ -f "$agent_file" ] || continue
       local agent_name
-      agent_name="$(basename "$agent_dir")"
-      rm -rf "${CLAUDE_AGENTS_HOME:?}/$agent_name"
-      cp -R "$agent_dir" "$CLAUDE_AGENTS_HOME/$agent_name"
-      echo "  Installed agent: $tier/$agent_name -> ~/.claude/agents/$agent_name"
+      agent_name="$(basename "$agent_file" .md)"
+      if [ -d "${CLAUDE_AGENTS_HOME:?}/$agent_name" ]; then
+        rm -rf "${CLAUDE_AGENTS_HOME:?}/$agent_name"
+      fi
+      cp "$agent_file" "$CLAUDE_AGENTS_HOME/$agent_name.md"
+      echo "  Installed agent: $tier/$agent_name -> ~/.claude/agents/$agent_name.md"
     done
   fi
 }

@@ -343,7 +343,7 @@ installed_targets() {
       [ -d "$entry" ] || continue
       [ -f "$entry/AGENT.md" ] || continue
       name="$(_component_declared_name "$entry/AGENT.md" "$(basename "$entry")")"
-      _component_emit_target "$tier_class" ".claude/agents/$name"    "$tier" "agents"
+      _component_emit_target "$tier_class" ".claude/agents/$name.md" "$tier" "agents"
       _component_emit_target "$tier_class" ".gemini/agents/$name.md" "$tier" "agents"
       _component_emit_target "$tier_class" ".github/agents/$name.md" "$tier" "agents"
       _component_emit_target "$tier_class" ".agents/agents/$name"    "$tier" "agents"

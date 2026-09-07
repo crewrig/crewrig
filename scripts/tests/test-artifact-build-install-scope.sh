@@ -68,6 +68,23 @@ Body content.
 EOF
 }
 
+# Seed a synthetic tier with one agent under a throwaway REPO_DIR.
+# Args: <repo-root> <tier> <agent-name>
+seed_agent() {
+  local root="$1" tier="$2" agent="$3"
+  mkdir -p "$root/artifacts/$tier/agents/$agent"
+  cat > "$root/artifacts/$tier/agents/$agent/AGENT.md" <<EOF
+---
+name: $agent
+description: "Synthetic agent in tier $tier for spec 0201 tests."
+---
+
+# ${agent}
+
+Body content.
+EOF
+}
+
 # Every synthetic repo needs a config so the placeholder validator passes.
 write_config() {
   local root="$1"
@@ -101,6 +118,9 @@ seed_skill "$SCEN_ROOT" "$NOVEL_TIER" "demo-novel-skill"
 seed_skill "$SCEN_ROOT" "org" "demo-org-skill"
 seed_skill "$SCEN_ROOT" "community" "demo-community-skill"
 seed_skill "$SCEN_ROOT" "core" "demo-core-skill"
+# spec 0201 (R10-R13) — a synthetic org agent, so the install half below
+# exercises the flat-file agent layout and the stale-directory cleanup.
+seed_agent "$SCEN_ROOT" "org" "demo-org-agent"
 
 # Snapshot the build script hash to prove tier-agnosticism: the novel tier
 # compiles without the script changing.
@@ -161,6 +181,16 @@ export REPO_DIR CLAUDE_SKILLS_HOME CLAUDE_AGENTS_HOME
 # Bring the production function into scope.
 load_real_install_fn "$CLAUDE_SETUP"
 
+# spec 0201 (R10-R13) — pre-seed a stale per-agent directory from the retired
+# nested layout, plus two decoys the install must never touch, BEFORE any
+# install runs. Seeding after the run would test nothing: (b) would find the
+# stale directory it is meant to prove removed already absent.
+mkdir -p "$CLAUDE_AGENTS_HOME/demo-org-agent"
+echo "stale nested content" > "$CLAUDE_AGENTS_HOME/demo-org-agent/AGENT.md"
+echo "operator note" > "$CLAUDE_AGENTS_HOME/operator-note.md"
+mkdir -p "$CLAUDE_AGENTS_HOME/unrelated-agent"
+echo "unrelated" > "$CLAUDE_AGENTS_HOME/unrelated-agent/AGENT.md"
+
 # ---------------------------------------------------------------------
 # Scenario 1 (install half) — opting the org tier in copies it into HOME.
 # (Calling install_tier_to_home org is exactly what the opt-in `yes` branch
@@ -171,6 +201,28 @@ org_home="$CLAUDE_SKILLS_HOME/demo-org-skill/SKILL.md"
 ok="true"; detail=""
 [ -f "$org_home" ] || { ok="false"; detail="org skill not installed into temp HOME at $org_home"; }
 report "Scenario 1 (install): opted-in org tier lands in user HOME" "$ok" "$detail"
+
+# spec 0201 (R10) — the org agent lands as one regular flat file.
+agent_home="$CLAUDE_AGENTS_HOME/demo-org-agent.md"
+ok="true"; detail=""
+[ -f "$agent_home" ] && [ ! -L "$agent_home" ] \
+  || { ok="false"; detail="org agent not installed as a regular file at $agent_home"; }
+report "Scenario 1 (install): opted-in org agent lands as a flat file in user HOME (R10)" "$ok" "$detail"
+
+# spec 0201 (R11) — the stale same-name directory from a prior nested-layout
+# install is removed as part of this run.
+ok="true"; detail=""
+[ ! -d "$CLAUDE_AGENTS_HOME/demo-org-agent" ] \
+  || { ok="false"; detail="stale nested directory demo-org-agent/ was not removed (R11)"; }
+report "Install removes a stale same-name agent directory (R11)" "$ok" "$detail"
+
+# spec 0201 (R12) — entries unrelated to an installed agent name are untouched.
+ok="true"; detail=""
+[ -f "$CLAUDE_AGENTS_HOME/operator-note.md" ] \
+  || { ok="false"; detail="unrelated operator-note.md was removed (R12 violation)"; }
+[ -d "$CLAUDE_AGENTS_HOME/unrelated-agent" ] \
+  || { ok="false"; detail="unrelated-agent/ directory was removed (R12 violation)"; }
+report "Install does not remove entries unrelated to installed agents (R12)" "$ok" "$detail"
 
 # ---------------------------------------------------------------------
 # Scenario 3 (install half) — WITHOUT opt-in, community never reaches HOME.
@@ -191,6 +243,21 @@ ok="true"; detail=""
 [ -f "$CLAUDE_SKILLS_HOME/demo-community-skill/SKILL.md" ] \
   || { ok="false"; detail="community install is a silent no-op even when invoked"; }
 report "Scenario 3 (guard): community DOES install when explicitly opted in" "$ok" "$detail"
+
+# spec 0201 (R11, no-op clause) — assertion (d). By this point the stale
+# demo-org-agent/ directory is gone (removed by the first org install above),
+# so this is a genuine no-stale-directory run, not a repeat of the same
+# assertion under a different name. Remove the installed file, capturing the
+# real exit status (the two `install_tier_to_home` calls above discard theirs
+# with `>/dev/null 2>&1`; this is the one assertion that must not) rather than
+# relying on the leftover file to satisfy "still installs the file" for the
+# wrong reason.
+rm -f "$CLAUDE_AGENTS_HOME/demo-org-agent.md"
+install_tier_to_home org && d_exit=0 || d_exit=$?
+ok="true"; detail=""
+[ "$d_exit" -eq 0 ] && [ -f "$CLAUDE_AGENTS_HOME/demo-org-agent.md" ] \
+  || { ok="false"; detail="install into a HOME with no stale directory failed or did not re-create the file (exit=$d_exit)"; }
+report "Install into a HOME with no stale directory is a clean no-op re-install, exit 0 (R11 no-op clause)" "$ok" "$detail"
 
 # =====================================================================
 # Opt-in gate invariant (structural) — the fzf-driven decision cannot be

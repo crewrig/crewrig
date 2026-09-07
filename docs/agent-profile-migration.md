@@ -223,3 +223,17 @@ layout — is a later, separate ticket; when it lands, it moves the files
 this change set regenerates to a new path and regenerates the same
 content there. It re-decides no profile this change set declares
 (requirement 34).
+
+**Follow-up (spec 0201, issue #1127).** The move requirement 34 anticipated
+has happened: seam (g) landed the flat `.claude/agents/<name>.md` compiled
+layout, regenerating the same 22 sources' content at the new path rather
+than re-deciding any profile. An adopter who deployed the retired nested
+layout into `~/.claude/agents/<name>/` before this move has the stale
+directory removed automatically, with no manual action, at their next
+assisted Claude Code setup — the setup's `install_tier_to_home` now installs
+each agent as a flat `<name>.md` file and removes any same-name directory
+already present. A synchronizing fork lands on the new layout without
+acting either: the compiled agent trees carry the `regenerable` policy
+(`.crewrig/core-paths.txt`), so the next `scripts/sync-from-upstream.sh` run
+restores the new flat files, removes the retired nested ones as orphans, and
+reports rather than aborts on any member a fork had locally diverged.

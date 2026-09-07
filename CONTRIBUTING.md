@@ -112,7 +112,7 @@ task check-components           # Drift detection (CI)
 |------|--------|---------------|--------------------|
 | Skill | `skills/<name>/SKILL.md` | `.gemini/skills/<name>/SKILL.md` | `.claude/skills/<name>/SKILL.md` |
 | Command | `commands/<name>.md` | `.gemini/commands/<name>.toml` | `.claude/skills/<name>/SKILL.md` |
-| Agent | `agents/<name>/AGENT.md` | `agents/<name>/PROMPT.md` | `.claude/agents/<name>/AGENT.md` |
+| Agent | `agents/<name>/AGENT.md` | `agents/<name>/PROMPT.md` | `.claude/agents/<name>.md` |
 | Hook | `hooks/` | hooks.json | settings.json merge |
 | Policy | `policies/` | YAML rule file | settings.json permissions |
 | MCP server | `mcp-servers/` | settings.json merge | `claude mcp add --scope user` |
