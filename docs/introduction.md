@@ -48,7 +48,9 @@ load-bearing ideas; the rest of the documentation elaborates them.
    CLI is available in another.
 3. **Skill, agent, and command authoring** — `artifacts/` is the single-source
    zone where these components are written once and compiled by
-   `scripts/build-components.sh` into outputs for all four supported tools.
+   `scripts/build-components.sh` into outputs for all four supported tools; an
+   agent source declares what its work needs from a model as a **capability profile** rather than naming a model
+   ([spec 0195](../specs/0195-agent-capability-profile.md)).
 4. **Harness engineering** — a built-in feedback loop where agents invoke the
    `harness-report` skill to tag frictions during real work, and the
    `harness-curator` skill clusters those frictions into actionable GitHub

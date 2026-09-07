@@ -175,6 +175,12 @@ fields or prose lives in `model-mappings/<target>.yml`, normatively
 described in [`docs/model-mapping-format.md`](../docs/model-mapping-format.md);
 the resolution that reads a mapping and a profile together is
 `scripts/lib/model-resolve.sh`, consumed by `scripts/build-components.sh`.
+How an adopting organization changes what a mapping resolves to for its own
+fork is documented in
+[`docs/org-model-mapping-override.md`](../docs/org-model-mapping-override.md);
+what the migration of the core agents and of the compiled Claude Code layout
+asks of that organization is documented in
+[`docs/agent-profile-migration.md`](../docs/agent-profile-migration.md).
 
 **Obligation:** a later delta of spec 0195 that changes one of the domains
 above SHALL update this section and `scripts/check-agent-profiles.sh` in

@@ -12,7 +12,7 @@ purposes:
   assistants behave for a specific user's role, team, and seniority.
 - **Shared artifact zones** — `artifacts/` is the single-source zone where
   skills, agents, and commands are authored once and compiled into outputs
-  for all supported CLIs.
+  for all supported CLIs; an agent source declares what its work needs from a model as a **capability profile** ([spec 0195](specs/0195-agent-capability-profile.md)) rather than naming one — see [`docs/model-mapping-format.md`](docs/model-mapping-format.md) for what each CLI resolves it to.
 - **Harness engineering** — a built-in feedback loop lets agents tag
   frictions encountered during real work; the harness curator clusters
   those frictions into actionable GitHub issues, closing the loop
