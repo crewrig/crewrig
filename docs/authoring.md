@@ -69,12 +69,77 @@ type: skill
 Prompt content here — shared across all tools, written once.
 ```
 
+## Declaring a model need
+
+An agent source — and only an agent source — declares what its work needs
+from a model. It does so as a **capability profile** under `metadata.model:`,
+naming characteristics such as `intelligence`, never a concrete model, a
+vendor, or a CLI-namespaced key: the retired `metadata.claude.model` is no
+longer an available way to choose an agent's model. On the upstream-owned
+tiers (`core`, `library`), a source's `metadata:` block admits exactly two
+keys, `provenance` and `model`. A source that carries no `metadata.model:`
+block keeps session-model inheritance and needs no edit.
+
+What a declared profile resolves to on each target, and how the build
+performs that resolution, is
+[`docs/model-mapping-format.md`](model-mapping-format.md)'s contract; how an
+adopting organization changes that outcome for its own fork is
+[`docs/org-model-mapping-override.md`](org-model-mapping-override.md)'s; what
+the migration of the core agents and of the compiled Claude Code layout asks
+of that organization is
+[`docs/agent-profile-migration.md`](agent-profile-migration.md)'s. The closed
+frontmatter shape itself is normative on
+[`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
+
+### Worked examples
+
+Every emission below was printed by `bash scripts/build-components.sh
+--resolve <agent-source> <target>` against `main` at `18b026d`, not composed
+by hand — re-run the same command at that commit to re-derive it.
+
+`artifacts/core/agents/doc-writer/AGENT.md` declares:
+
+```yaml
+metadata:
+  model:
+    intelligence: medium
+```
+
+| Target | Emission |
+|---|---|
+| Claude Code | guidance `Run this agent on the haiku model.` appended to `description`; no `model:` frontmatter field |
+| Gemini CLI | frontmatter `model: gemini-3.5-flash` |
+| GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
+| Antigravity CLI | guidance `Run this agent on the gemini-3.8-flash-low model.` |
+
+`artifacts/core/agents/developer/AGENT.md` declares `intelligence: high`:
+
+| Target | Emission |
+|---|---|
+| Claude Code | guidance `Run this agent on the sonnet model.`; no `model:` frontmatter field |
+| Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
+| GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
+| Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
+
+`artifacts/core/agents/architect/AGENT.md` declares `intelligence: xhigh`:
+
+| Target | Emission |
+|---|---|
+| Claude Code | guidance `Run this agent on the opus model.`; no `model:` frontmatter field |
+| Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
+| GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
+| Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
+
+`artifacts/library/agents/harness-curator/AGENT.md` carries no
+`metadata.model:` block — the **profile-less** case: all four targets emit
+nothing.
+
 ## The build
 
 `scripts/build-components.sh` is the compiler. It is tier-agnostic: it discovers
 every tier directory under `artifacts/` and compiles each one, routing the
 output by tier. Core components are written into the committed project tree
-(`.claude/`, `.gemini/`, `.github/`); non-core tiers are written into a
+(`.claude/`, `.gemini/`, `.github/`, `.agents/`); non-core tiers are written into a
 gitignored staging tree from which the setup scripts install to the user home.
 
 ```bash
