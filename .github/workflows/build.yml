@@ -734,6 +734,25 @@ jobs:
       - name: Test Check Component Metadata Keys
         if: steps.filter.outputs.check-metadata-keys == 'true'
         run: bash scripts/tests/test-check-component-metadata-keys.sh
+  check-claude-agent-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-claude-agent-layout:
+              - '.claude/agents/**'
+              - 'scripts/check-claude-agent-layout.sh'
+              - 'scripts/tests/test-check-claude-agent-layout.sh'
+              - 'scripts/build-components.sh'
+      - name: Check Claude Agent Layout
+        if: steps.filter.outputs.check-claude-agent-layout == 'true'
+        run: bash scripts/check-claude-agent-layout.sh
+      - name: Test Check Claude Agent Layout
+        if: steps.filter.outputs.check-claude-agent-layout == 'true'
+        run: bash scripts/tests/test-check-claude-agent-layout.sh
   misc:
     runs-on: ubuntu-latest
     steps:

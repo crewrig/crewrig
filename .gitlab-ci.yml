@@ -766,6 +766,25 @@ check-metadata-keys:
         - "scripts/check-component-metadata-keys.sh"
         - "scripts/tests/test-check-component-metadata-keys.sh"
 
+check-claude-agent-layout:
+  image: debian:stable-slim
+  script:
+    - "bash scripts/check-claude-agent-layout.sh"
+    - "bash scripts/tests/test-check-claude-agent-layout.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - ".claude/agents/**"
+        - "scripts/check-claude-agent-layout.sh"
+        - "scripts/tests/test-check-claude-agent-layout.sh"
+        - "scripts/build-components.sh"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - ".claude/agents/**"
+        - "scripts/check-claude-agent-layout.sh"
+        - "scripts/tests/test-check-claude-agent-layout.sh"
+        - "scripts/build-components.sh"
+
 markdown-links:
   image: python:3.12
   script:

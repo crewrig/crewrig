@@ -833,6 +833,29 @@ capabilities:
       - bash scripts/check-component-metadata-keys.sh
       - bash scripts/tests/test-check-component-metadata-keys.sh
 
+  - id: check-claude-agent-layout
+    name: "Check the compiled Claude Code agent tree is flat and run its mutation test suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - ".claude/agents/**"
+          - "scripts/check-claude-agent-layout.sh"
+          - "scripts/tests/test-check-claude-agent-layout.sh"
+          - "scripts/build-components.sh"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - ".claude/agents/**"
+          - "scripts/check-claude-agent-layout.sh"
+          - "scripts/tests/test-check-claude-agent-layout.sh"
+          - "scripts/build-components.sh"
+    portability: portable
+    changeset-gated: true
+    command:
+      - bash scripts/check-claude-agent-layout.sh
+      - bash scripts/tests/test-check-claude-agent-layout.sh
+
   - id: markdown-links
     name: "Check relative Markdown link integrity"
     trigger:
