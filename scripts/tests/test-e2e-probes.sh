@@ -76,7 +76,7 @@ command -v jq >/dev/null 2>&1 || { echo "# FAIL jq required — jq not on PATH";
 command -v yq >/dev/null 2>&1 || { echo "# FAIL yq required — yq not on PATH"; echo "# 0 passed / 1 failed / 0 skipped"; exit 1; }
 
 # --- 1. Probe directory structure -------------------------------------------
-PROBES=(05-copilot-model-routing 06-agent-surface-consumption)
+PROBES=(05-copilot-model-routing 06-agent-surface-consumption 07-guidance-surface)
 for p in ${PROBES[@]+"${PROBES[@]}"}; do
   d="${SCEN_DIR}/${p}"
   r="${d}/run.sh"
@@ -613,13 +613,20 @@ got="$(spawn_signals "/tmp/crewrig-probe-spawn-markers-does-not-exist-$$" "Probe
 # credential_path field reads the runner-exported env var, not a literal
 # (issue #1107 fix 2).
 RUN_B="${SCEN_DIR}/06-agent-surface-consumption/run.sh"
-for f in "$RUN_A" "$RUN_B"; do
+RUN_C="${SCEN_DIR}/07-guidance-surface/run.sh"
+for f in "$RUN_A" "$RUN_B" "$RUN_C"; do
   if grep -Fq 'source "${E2E_LIB_DIR}/probe_spawn_markers.sh"' "$f"; then
     note_pass "$(basename "$(dirname "$f")") — sources probe_spawn_markers.sh"
   else
     note_fail "$(basename "$(dirname "$f")") — sources probe_spawn_markers.sh" "no matching source line in $f"
   fi
 done
+
+if grep -Fq 'source "${E2E_LIB_DIR}/probe_c_resolve.sh"' "$RUN_C"; then
+  note_pass "07-guidance-surface — sources probe_c_resolve.sh"
+else
+  note_fail "07-guidance-surface — sources probe_c_resolve.sh" "no matching source line in $RUN_C"
+fi
 
 if grep -Fq -- '--arg credential_path "$E2E_CREDENTIAL_PATH"' "$RUN_A" \
    && ! grep -Fq -- '--arg credential_path "COPILOT_GITHUB_TOKEN"' "$RUN_A"; then
@@ -628,6 +635,101 @@ else
   note_fail "probe A — credential_path source" \
             "expected --arg credential_path \"\$E2E_CREDENTIAL_PATH\" and no hardcoded COPILOT_GITHUB_TOKEN literal in $RUN_A"
 fi
+
+# --- 15. Probe C resolver tests (spec 0203 R9-R12) -------------------------
+RESOLVER_C="${E2E_LIB_DIR}/probe_c_resolve.sh"
+if [[ -f "$RESOLVER_C" ]]; then
+  note_pass "probe C resolver — tests/e2e/lib/probe_c_resolve.sh present"
+else
+  note_fail "probe C resolver — present" "missing at $RESOLVER_C"
+fi
+
+# Cell C1 resolution
+got_c1_ok="$(bash -c "source '$RESOLVER_C'; e2e_probe_c_resolve_c1 true true true false")"
+[[ "$got_c1_ok" == "IGNORED|prose-inert-subagent-responded" ]] \
+  && note_pass "probe C resolver — C1 subagent responded → IGNORED (prose inert)" \
+  || note_fail "probe C resolver — C1 inert" "got: $got_c1_ok"
+
+got_c1_dist="$(bash -c "source '$RESOLVER_C'; e2e_probe_c_resolve_c1 true false false true")"
+[[ "$got_c1_dist" == "DISTURBED|prose-disturbs-routing" ]] \
+  && note_pass "probe C resolver — C1 subagent failed with symptom → DISTURBED" \
+  || note_fail "probe C resolver — C1 disturbed" "got: $got_c1_dist"
+
+got_c1_indet="$(bash -c "source '$RESOLVER_C'; e2e_probe_c_resolve_c1 false false false false")"
+[[ "$got_c1_indet" == "INDETERMINATE|session-broken-or-unresponsive" ]] \
+  && note_pass "probe C resolver — C1 baseline absent → INDETERMINATE" \
+  || note_fail "probe C resolver — C1 baseline absent" "got: $got_c1_indet"
+
+# Cell C2 resolution
+got_c2_ok="$(bash -c "source '$RESOLVER_C'; e2e_probe_c_resolve_c2 true true true false")"
+[[ "$got_c2_ok" == "IGNORED|effort-frontmatter-inert" ]] \
+  && note_pass "probe C resolver — C2 effort frontmatter subagent responded → IGNORED" \
+  || note_fail "probe C resolver — C2 inert" "got: $got_c2_ok"
+
+got_c2_dist="$(bash -c "source '$RESOLVER_C'; e2e_probe_c_resolve_c2 true false false true")"
+[[ "$got_c2_dist" == "DISTURBED|effort-frontmatter-disturbs-routing" ]] \
+  && note_pass "probe C resolver — C2 effort frontmatter failed with symptom → DISTURBED" \
+  || note_fail "probe C resolver — C2 disturbed" "got: $got_c2_dist"
+
+# Cell C3 guidance resolution (Claude Code)
+got_c3_hon="$(bash -c "source '$RESOLVER_C'; e2e_probe_c_resolve_c3 true true true haiku haiku sonnet")"
+[[ "$got_c3_hon" == "HONOURED|requested-model-selected" ]] \
+  && note_pass "probe C resolver — C3 requested model spawned → HONOURED" \
+  || note_fail "probe C resolver — C3 honoured" "got: $got_c3_hon"
+
+got_c3_ign="$(bash -c "source '$RESOLVER_C'; e2e_probe_c_resolve_c3 true true true sonnet haiku sonnet")"
+[[ "$got_c3_ign" == "IGNORED|session-or-default-model-selected" ]] \
+  && note_pass "probe C resolver — C3 default model spawned instead of requested → IGNORED" \
+  || note_fail "probe C resolver — C3 ignored" "got: $got_c3_ign"
+
+got_c3_dist="$(bash -c "source '$RESOLVER_C'; e2e_probe_c_resolve_c3 true false false '' haiku sonnet")"
+[[ "$got_c3_dist" == "DISTURBED|guidance-caused-failure" ]] \
+  && note_pass "probe C resolver — C3 guidance caused failure → DISTURBED" \
+  || note_fail "probe C resolver — C3 disturbed" "got: $got_c3_dist"
+
+# Cell C4 guidance resolution (Antigravity CLI)
+got_c4_hon="$(bash -c "source '$RESOLVER_C'; e2e_probe_c_resolve_c4 true true true gemini-3.8-flash-low gemini-3.8-flash-low gemini-3.8-flash-high")"
+[[ "$got_c4_hon" == "HONOURED|requested-model-selected" ]] \
+  && note_pass "probe C resolver — C4 requested model spawned → HONOURED" \
+  || note_fail "probe C resolver — C4 honoured" "got: $got_c4_hon"
+
+# Probe C skip path for unsupported CLI (e.g. gemini)
+REPORT_C_DIR="$(mktemp -d "${TMP_ROOT}/report-c.XXXXXX")"
+rc_c=0
+E2E_LIB_DIR="$E2E_LIB_DIR" \
+  E2E_REPORT_DIR="$REPORT_C_DIR" \
+  E2E_CLI="gemini" \
+  E2E_IMAGE="fake:latest" \
+  E2E_EFFECTIVE_JSON="$effective" \
+  E2E_CREWRIG_E2E_HOME="${TMP_ROOT}/home/.crewrig-e2e" \
+  E2E_SCENARIO_DIR="${SCEN_DIR}/07-guidance-surface" \
+  E2E_RUN_ID="test-c" \
+  bash "$RUN_C" >"${REPORT_C_DIR}/stdout" 2>"${REPORT_C_DIR}/stderr" || rc_c=$?
+if [[ "$rc_c" -eq 78 ]]; then
+  note_pass "probe C — skip (78) for unsupported CLI (gemini)"
+else
+  note_fail "probe C — skip for unsupported CLI" "got rc=$rc_c"
+fi
+
+# publish-probe-verdict.sh --dry-run renders probe C cells
+SAMPLE_C_VERDICT='{
+  "probe": "07-guidance-surface", "spec": "0203",
+  "run_id": "test-c-1", "observed_at": "2026-09-09T00:00:00Z",
+  "cells": [
+    {"cell": "C1", "cli": "copilot", "outcome": "IGNORED", "reason": "prose-inert-subagent-responded"},
+    {"cell": "C3", "cli": "claude", "outcome": "HONOURED", "reason": "requested-model-selected"}
+  ]
+}'
+VERDICT_C_DIR="$(mktemp -d "${TMP_ROOT}/verdict-c.XXXXXX")"
+printf '%s' "$SAMPLE_C_VERDICT" > "${VERDICT_C_DIR}/verdict.json"
+RENDERED_C="$(bash "$PUBLISH_SH" "$VERDICT_C_DIR" --issue 1113 --dry-run 2>&1)"
+for field in '07-guidance-surface' 'C1 (copilot)' 'IGNORED' 'prose-inert' 'C3 (claude)' 'HONOURED'; do
+  if grep -Fq "$field" <<<"$RENDERED_C"; then
+    note_pass "publish-probe-verdict.sh --dry-run — renders probe C '${field}'"
+  else
+    note_fail "publish-probe-verdict.sh --dry-run — renders probe C '${field}'" "not found in rendered body"
+  fi
+done
 
 echo ""
 echo "# $PASS passed / $FAIL failed / $SKIP skipped"

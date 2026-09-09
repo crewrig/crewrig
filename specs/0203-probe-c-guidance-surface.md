@@ -1,7 +1,7 @@
 ---
 id: "0203"
 slug: probe-c-guidance-surface
-status: approved
+status: implemented
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 1113
