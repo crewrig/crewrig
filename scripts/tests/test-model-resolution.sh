@@ -103,7 +103,7 @@ model: gemini-3.1-pro-preview'
 
 assert_frontmatter ".agents/agents/architect/AGENT.md" ".agents/agents/architect/AGENT.md" \
 "name: architect
-description: \"Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius. Run this agent on the gemini-3.1-pro-low model.\"
+description: \"Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius. Run this agent on the gemini-3.1-pro-high model.\"
 metadata:
   provenance:
     canonical: \"https://github.com/crewrig/crewrig\"
@@ -282,7 +282,7 @@ if [ "$RESOLVED_OFFERING_ID" = "gemini-3.8-flash-high" ] \
   && [ "${#EMIT_FM_LINES[@]}" -eq 0 ] \
   && [ "$EMIT_PROSE" = "Run this agent on the gemini-3.8-flash-high model." ] \
   && [ "$(diag_count)" -eq 0 ]; then
-  ok "C4 — composite offering: gemini-3.8-flash-high selected (medium-rung floor selects gemini-3.8-flash-low alone), zero records"
+  ok "C4 — composite offering: gemini-3.8-flash-high selected (medium-rung floor selects gemini-3.8-flash-medium alone), zero records"
 else
   bad "C4 — composite offering carries reasoning" "offering=$RESOLVED_OFFERING_ID prose=[$EMIT_PROSE] n_diag=$(diag_count)"
 fi

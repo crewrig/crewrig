@@ -5,7 +5,7 @@ and reconciling the divergences it reports. Runs the harness,
 interprets its fail-closed output, classifies each divergence by kind,
 and reconciles it — auto-applying only the deterministic
 regenerate-and-re-verify case, and diagnosing-and-proposing for every
-judgment-bearing case. Run this agent on the gemini-3.1-pro-low model."
+judgment-bearing case. Run this agent on the gemini-3.1-pro-high model."
 license: Apache-2.0
 metadata:
   provenance:

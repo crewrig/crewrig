@@ -1,6 +1,6 @@
 ---
 name: architect
-description: "Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius. Run this agent on the gemini-3.1-pro-low model."
+description: "Generic architecture agent. Drafts ADRs, runs design reviews, proposes alternatives with explicit trade-offs, and maps blast radius. Run this agent on the gemini-3.1-pro-high model."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

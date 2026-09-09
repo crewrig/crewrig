@@ -1,6 +1,6 @@
 ---
 name: web-conformity-checker
-description: "Verifies that a page or site matches a given specification — design system, functional requirements, or API contract. Produces a gap report and optionally a Playwright assertion script. Run this agent on the gemini-3.8-flash-low model."
+description: "Verifies that a page or site matches a given specification — design system, functional requirements, or API contract. Produces a gap report and optionally a Playwright assertion script. Run this agent on the gemini-3.8-flash-medium model."
 license: Apache-2.0
 metadata:
   provenance:

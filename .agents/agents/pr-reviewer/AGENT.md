@@ -1,6 +1,6 @@
 ---
 name: pr-reviewer
-description: "Independent PR reviewer agent. Spawns cold — receives a references-only brief (seat key, PR number, the revision the seat last examined, where its prior verdicts live), never authoring-session context. Activates the pr-reviewer skill to audit the diff, runs linter scripts against changed files, and posts a structured review verdict via the forge CLI (`gh`). Run this agent on the gemini-3.1-pro-low model."
+description: "Independent PR reviewer agent. Spawns cold — receives a references-only brief (seat key, PR number, the revision the seat last examined, where its prior verdicts live), never authoring-session context. Activates the pr-reviewer skill to audit the diff, runs linter scripts against changed files, and posts a structured review verdict via the forge CLI (`gh`). Run this agent on the gemini-3.1-pro-high model."
 enable_write_tools: true
 metadata:
   provenance:

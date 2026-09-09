@@ -1,6 +1,6 @@
 ---
 name: accessibility-tester
-description: "Runs WCAG 2.1/2.2 (AA/AAA) compliance checks on a page or user flow using axe-core. Reports violations by impact level with remediation guidance and outputs a CI-ready test suite. Run this agent on the gemini-3.8-flash-low model."
+description: "Runs WCAG 2.1/2.2 (AA/AAA) compliance checks on a page or user flow using axe-core. Reports violations by impact level with remediation guidance and outputs a CI-ready test suite. Run this agent on the gemini-3.8-flash-medium model."
 license: Apache-2.0
 metadata:
   provenance:

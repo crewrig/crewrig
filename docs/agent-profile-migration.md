@@ -19,28 +19,28 @@ source declares one lives in [`docs/authoring.md`](authoring.md).
 
 | Source | Tier before | Rung after | Claude Code | Gemini CLI | GitHub Copilot CLI | Antigravity CLI |
 |---|---|---|---|---|---|---|
-| `accessibility-auditor` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
-| `accessibility-tester` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
-| `architect` | `opus` | `xhigh` | prose, `opus` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `astro-developer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `ci-configurator` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `ci-debugger` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `ci-parity` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `copywriter` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
-| `designer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `developer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `doc-writer` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
-| `frontend-developer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `pr-logbook` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
-| `pr-reviewer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `regression-sentinel` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
-| `scenario-author` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
-| `security` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `seo-specialist` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
-| `spec-author` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `tester` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-low` |
-| `visual-regression-tester` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
-| `web-conformity-checker` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-low` |
+| `accessibility-auditor` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
+| `accessibility-tester` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
+| `architect` | `opus` | `xhigh` | prose, `opus` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `astro-developer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `ci-configurator` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `ci-debugger` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `ci-parity` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `copywriter` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
+| `designer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `developer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `doc-writer` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
+| `frontend-developer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `pr-logbook` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
+| `pr-reviewer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `regression-sentinel` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
+| `scenario-author` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
+| `security` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `seo-specialist` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
+| `spec-author` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `tester` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
+| `visual-regression-tester` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
+| `web-conformity-checker` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
 | `harness-curator` | *(none)* | *(none)* | unchanged | unchanged | unchanged | unchanged |
 
 23 rows: 22 migrated sources plus `harness-curator`, the tree's one

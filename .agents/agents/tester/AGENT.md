@@ -1,6 +1,6 @@
 ---
 name: tester
-description: "Generic test-authoring agent. Writes high-signal regression tests, enumerates priority edge cases, and verifies fixes by failing-then-passing the test against the bug. Run this agent on the gemini-3.1-pro-low model."
+description: "Generic test-authoring agent. Writes high-signal regression tests, enumerates priority edge cases, and verifies fixes by failing-then-passing the test against the bug. Run this agent on the gemini-3.1-pro-high model."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

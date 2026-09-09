@@ -39,34 +39,8 @@ surfaces:
               no orchestrator behaviour (spec 0197 R43).
 
 offerings:
-  - id: gemini-3.8-flash-low
-    rank: 1
-    native-value: gemini-3.8-flash-low
-    provides:
-      intelligence: medium
-      reasoning: low
-      specialization: general
-    encodes:
-      intelligence: flash
-      reasoning: low
-    supports-reasoning-surface: false
-    grounds:
-      - declares: native-value
-        citation: >-
-          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.8-flash-low` among its fourteen reported identifiers.
-      - declares: provides.intelligence
-        assumption: >-
-          The rung rests on the vendor's own family naming — pro above
-          flash — observable in the identifier but not a capability
-          measurement (spec 0197 `## Open questions`).
-      - declares: provides.reasoning
-        assumption: >-
-          The rung rests on the identifier's own suffix, observable but not a
-          capability measurement, per the same open question.
-
   - id: gemini-3.8-flash-medium
-    rank: 2
+    rank: 1
     native-value: gemini-3.8-flash-medium
     provides:
       intelligence: medium
@@ -81,14 +55,47 @@ offerings:
         citation: >-
           RR -> Antigravity CLI -> Declaration surface: `agy models` lists
           `gemini-3.8-flash-medium` among its fourteen reported identifiers.
+          Rank 1 is the lowest rank this mapping declares, so R23's
+          lowest-rank pick selects this offering whenever the candidate set
+          includes it and reasoning is omitted: at the declared `medium`
+          rung (spec 0197 delta-01, issue #1134).
       - declares: provides.intelligence
         assumption: >-
-          Same ground as `gemini-3.8-flash-low` above: vendor family naming,
+          Same ground as `gemini-3.8-flash-low` below: vendor family naming,
           not a capability measurement.
       - declares: provides.reasoning
         assumption: >-
-          Same ground as `gemini-3.8-flash-low` above: the identifier's own
+          Same ground as `gemini-3.8-flash-low` below: the identifier's own
           suffix, not a capability measurement.
+
+  - id: gemini-3.8-flash-low
+    rank: 2
+    native-value: gemini-3.8-flash-low
+    provides:
+      intelligence: medium
+      reasoning: low
+      specialization: general
+    encodes:
+      intelligence: flash
+      reasoning: low
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.8-flash-low` among its fourteen reported identifiers.
+          Rank 2 is higher than `gemini-3.8-flash-medium` (rank 1), so this
+          offering is reached when R21 narrows to encoded reasoning `low`
+          (spec 0197 delta-01, issue #1134).
+      - declares: provides.intelligence
+        assumption: >-
+          The rung rests on the vendor's own family naming — pro above
+          flash — observable in the identifier but not a capability
+          measurement (spec 0197 `## Open questions`).
+      - declares: provides.reasoning
+        assumption: >-
+          The rung rests on the identifier's own suffix, observable but not a
+          capability measurement, per the same open question.
 
   - id: gemini-3.8-flash-high
     rank: 3
@@ -106,6 +113,8 @@ offerings:
         citation: >-
           RR -> Antigravity CLI -> Declaration surface: `agy models` lists
           `gemini-3.8-flash-high` among its fourteen reported identifiers.
+          Rank 3 is reached when R21 narrows to encoded reasoning `high`
+          at the `medium` intelligence rung (spec 0197 delta-01, issue #1134).
       - declares: provides.intelligence
         assumption: >-
           Same ground as `gemini-3.8-flash-low` above: vendor family naming,
@@ -115,44 +124,8 @@ offerings:
           Same ground as `gemini-3.8-flash-low` above: the identifier's own
           suffix, not a capability measurement.
 
-  - id: gemini-3.1-pro-low
-    rank: 4
-    native-value: gemini-3.1-pro-low
-    provides:
-      intelligence: high
-      reasoning: low
-      specialization: general
-    encodes:
-      intelligence: pro
-      reasoning: low
-    supports-reasoning-surface: false
-    grounds:
-      - declares: native-value
-        citation: >-
-          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.1-pro-low` among its fourteen reported identifiers. Rank 4
-          is the lower of the two ranks this mapping gives its two `high`-rung
-          offerings (`gemini-3.1-pro-low` and `gemini-3.1-pro-high`, the
-          mapping's highest declared rung), so R23's lowest-rank pick selects
-          THIS offering — not `gemini-3.1-pro-high` — whenever the candidate
-          set is the pair of them: at the declared `high` rung itself absent a
-          narrowing `reasoning` declaration, and under R17's ceiling clause
-          for a declared `xhigh`, `xxhigh` or `max` rung, since this mapping
-          declares no higher rung (confirmed by hand, by
-          `scripts/check-model-mappings.sh --print-selection` and by the
-          golden per-rung table in `scripts/tests/test-check-model-mappings.sh`).
-      - declares: provides.intelligence
-        assumption: >-
-          The rung rests on the vendor's own family naming — pro above
-          flash — observable in the identifier but not a capability
-          measurement (spec 0197 `## Open questions`).
-      - declares: provides.reasoning
-        assumption: >-
-          The rung rests on the identifier's own suffix, observable but not a
-          capability measurement, per the same open question.
-
   - id: gemini-3.1-pro-high
-    rank: 5
+    rank: 4
     native-value: gemini-3.1-pro-high
     provides:
       intelligence: high
@@ -166,27 +139,58 @@ offerings:
       - declares: native-value
         citation: >-
           RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.1-pro-high` among its fourteen reported identifiers. Rank 5
-          is the HIGHER of this mapping's two `high`-rung ranks, so R23's
-          lowest-rank pick never selects this offering from the intelligence
-          axis alone — `gemini-3.1-pro-low` (rank 4) is selected instead, both
-          at the declared `high` rung and under R17's ceiling clause for a
-          declared `xhigh`, `xxhigh` or `max` rung (confirmed by hand, by
+          `gemini-3.1-pro-high` among its fourteen reported identifiers. Rank 4
+          is the lower of the two ranks this mapping gives its two `high`-rung
+          offerings (`gemini-3.1-pro-high` and `gemini-3.1-pro-low`, the
+          mapping's highest declared rung), so R23's lowest-rank pick selects
+          THIS offering — not `gemini-3.1-pro-low` — whenever the candidate
+          set is the pair of them: at the declared `high` rung itself absent a
+          narrowing `reasoning` declaration, and under R17's ceiling clause
+          for a declared `xhigh`, `xxhigh` or `max` rung, since this mapping
+          declares no higher rung (confirmed by hand, by
           `scripts/check-model-mappings.sh --print-selection` and by the
-          golden per-rung table in `scripts/tests/test-check-model-mappings.sh`
-          — an earlier version of this citation claimed the opposite and was
-          corrected). This offering is reached only through R21's
-          encoded-reasoning narrowing: a profile declaring `reasoning: high`
-          alongside an `intelligence` rung that both `pro-low` and `pro-high`
-          satisfy narrows the `high`-rung candidate set to the offering whose
-          encoded reasoning token matches exactly, which is this one.
+          golden per-rung table in `scripts/tests/test-check-model-mappings.sh`;
+          spec 0197 delta-01, issue #1134).
       - declares: provides.intelligence
         assumption: >-
-          Same ground as `gemini-3.1-pro-low` above: vendor family naming,
+          The rung rests on the vendor's own family naming — pro above
+          flash — observable in the identifier but not a capability
+          measurement (spec 0197 `## Open questions`).
+      - declares: provides.reasoning
+        assumption: >-
+          The rung rests on the identifier's own suffix, observable but not a
+          capability measurement, per the same open question.
+
+  - id: gemini-3.1-pro-low
+    rank: 5
+    native-value: gemini-3.1-pro-low
+    provides:
+      intelligence: high
+      reasoning: low
+      specialization: general
+    encodes:
+      intelligence: pro
+      reasoning: low
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.1-pro-low` among its fourteen reported identifiers. Rank 5
+          is the HIGHER of this mapping's two `high`-rung ranks, so R23's
+          lowest-rank pick never selects this offering from the intelligence
+          axis alone — `gemini-3.1-pro-high` (rank 4) is selected instead, both
+          at the declared `high` rung and under R17's ceiling clause for a
+          declared `xhigh`, `xxhigh` or `max` rung (spec 0197 delta-01,
+          issue #1134). This offering is reached when R21 narrows to encoded
+          reasoning `low` (or as nearest-lower fallback for `medium`).
+      - declares: provides.intelligence
+        assumption: >-
+          Same ground as `gemini-3.1-pro-high` above: vendor family naming,
           not a capability measurement.
       - declares: provides.reasoning
         assumption: >-
-          Same ground as `gemini-3.1-pro-low` above: the identifier's own
+          Same ground as `gemini-3.1-pro-high` above: the identifier's own
           suffix, not a capability measurement.
 
 observed-not-declared:
