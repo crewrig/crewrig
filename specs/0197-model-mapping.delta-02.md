@@ -1,7 +1,7 @@
 ---
 id: "0197"
 slug: model-mapping
-status: approved
+status: implemented
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 1135

@@ -99,7 +99,7 @@ offerings:
       specialization: general
     encodes:
       intelligence: haiku
-    supports-reasoning-surface: false
+    supports-reasoning-surface: true
     grounds:
       - declares: native-value
         citation: >-
@@ -111,17 +111,17 @@ offerings:
           Spec 0195 R7's normative anchor table calibrates rung 3 `medium` on
           Claude Code `haiku` (spec 0197 R36).
       - declares: supports-reasoning-surface
-        assumption: >-
-          The per-model fact is unconfirmed: neither `claude --help` nor
-          artifacts/FORMAT.md states an effort carve-out for Haiku either way
-          (RR -> Claude Code -> Per-model constraints). Carried as an
-          assumption on the fact, as spec 0197 R36 requires.
+        citation: >-
+          Live empirical verification on Claude Code 2.1.263: the `haiku` alias
+          resolves to `claude-haiku-4-5-20251001`, which natively supports
+          extended thinking. An agent defined with `model: haiku` and `effort:
+          medium` cleanly executes and emits thinking tokens without error
+          (spec 0197 delta-02 R36).
       - declares: supports-reasoning-surface.behavior
         citation: >-
-          Content gate of issue #1111: the maintainer directed that an
-          unsupported effort be ignored rather than raised as an error, which
-          is the behaviour this `false` encodes (spec 0197 R36). R15 makes both
-          readings of the underlying fact non-blocking either way.
+          Spec 0197 delta-02 R36: with `supports-reasoning-surface: true`,
+          Claude Code directs a declared reasoning rung to `effort:` in
+          frontmatter and to the guidance surface prose without dropping.
   - id: sonnet
     rank: 2
     native-value: sonnet

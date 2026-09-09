@@ -242,12 +242,11 @@ FIXTURE="$TMP_ROOT/probe.md"
 write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
 resolve_agent probe "$FIXTURE" claude
 if [ "$RESOLVED_OFFERING_ID" = "haiku" ] \
-  && [ "${#EMIT_FM_LINES[@]}" -eq 0 ] \
-  && [ "$EMIT_PROSE" = "Run this agent on the haiku model." ] \
-  && [ "$(diag_count)" -eq 2 ] \
-  && diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunsupported-on-model')" \
-              "$(printf 'model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance')"; then
-  ok "C1 — canonical example: haiku selected, no fm fields, reasoning sentence omitted, one drop + one guard note"
+  && fm_has "effort: medium" \
+  && [ "$EMIT_PROSE" = "Run this agent on the haiku model. Give its work medium reasoning effort." ] \
+  && [ "$(diag_count)" -eq 1 ] \
+  && diag_has "$(printf 'model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance')"; then
+  ok "C1 — canonical example: haiku selected, effort: medium in frontmatter, 2-line guidance prose, zero drops + one guard note"
 else
   bad "C1 — canonical example" "offering=$RESOLVED_OFFERING_ID prose=[$EMIT_PROSE] n_fm=${#EMIT_FM_LINES[@]}" "${DIAG_LINES[@]+"${DIAG_LINES[@]}"}"
 fi
@@ -707,14 +706,14 @@ else
   bad "M1 — mutating haiku's native-value" "got prose: [$EMIT_PROSE]"
 fi
 
-# --- M2 — deleting reasoning: medium removes the reasoning drop and adds
-# no other record (the before/after contrast: C1's fixture has 2 records,
-# the reasoning axis removed leaves exactly 1 — the guard note alone).
+# --- M2 — removing reasoning: medium drops the reasoning record and adds
+# no other (the before/after contrast: with unsupported-on-model, 2 records -> 1).
+M2_ROOT="$(mutated_root m2 '.offerings[0]["supports-reasoning-surface"] = false')"
 write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
-resolve_agent probe "$FIXTURE" claude
+REPO_DIR="$M2_ROOT" resolve_agent probe "$FIXTURE" claude
 m2_before_count=$(diag_count)
 write_fixture "$FIXTURE" "intelligence: medium"
-resolve_agent probe "$FIXTURE" claude
+REPO_DIR="$M2_ROOT" resolve_agent probe "$FIXTURE" claude
 m2_after_count=$(diag_count)
 if [ "$m2_before_count" -eq 2 ] && [ "$m2_after_count" -eq 1 ] \
   && ! diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunsupported-on-model')"; then
@@ -750,19 +749,15 @@ fi
 M5_ROOT="$(mutated_root m5 '(.surfaces[] | select(.id == "guidance") | .template) = "Run this agent on the {{modell}} model.\nGive its work {{reasoning}} reasoning effort.\n"')"
 write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
 REPO_DIR="$M5_ROOT" resolve_agent probe "$FIXTURE" claude
-if [ -z "$EMIT_PROSE" ] || ! grep -qF '{{modell}}' <<< "$EMIT_PROSE"; then
-  if [ -z "$EMIT_PROSE" ]; then
-    ok "M5 — an unrecognised {{modell}} placeholder omits its sentence (both template lines dropped, empty prose)"
-  else
-    bad "M5 — unrecognised placeholder rendered literally" "prose=[$EMIT_PROSE]"
-  fi
+if [ "$EMIT_PROSE" = "Give its work medium reasoning effort." ] && ! grep -qF '{{modell}}' <<< "$EMIT_PROSE"; then
+  ok "M5 — an unrecognised {{modell}} placeholder omits its sentence (line 1 omitted, line 2 survives)"
 else
   bad "M5 — unrecognised placeholder rendered literally" "prose=[$EMIT_PROSE]"
 fi
 
-# --- M6 — haiku encodes reasoning: medium: C1's unsupported-on-model drop
-# disappears (D11's directed-by-selection guard now fires on this cell).
-M6_ROOT="$(mutated_root m6 '.offerings[0].encodes.reasoning = "medium"')"
+# --- M6 — haiku encodes reasoning: medium: with supports-reasoning-surface false,
+# D11's directed-by-selection guard suppresses the unsupported-on-model drop.
+M6_ROOT="$(mutated_root m6 '.offerings[0]["supports-reasoning-surface"] = false | .offerings[0].encodes.reasoning = "medium"')"
 write_fixture "$FIXTURE" "intelligence: medium" "reasoning: medium"
 REPO_DIR="$M6_ROOT" resolve_agent probe "$FIXTURE" claude
 if ! diag_has "$(printf 'model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunsupported-on-model')"; then
