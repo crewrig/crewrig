@@ -174,17 +174,17 @@ assert_copilot() {
 
 assert_claude doc-writer haiku
 assert_gemini doc-writer gemini-3.5-flash
-assert_antigravity doc-writer gemini-3.8-flash-low
+assert_antigravity doc-writer gemini-3.8-flash-medium
 assert_copilot doc-writer
 
 assert_claude developer sonnet
 assert_gemini developer gemini-3.1-pro-preview
-assert_antigravity developer gemini-3.1-pro-low
+assert_antigravity developer gemini-3.1-pro-high
 assert_copilot developer
 
 assert_claude architect opus
 assert_gemini architect gemini-3.1-pro-preview
-assert_antigravity architect gemini-3.1-pro-low
+assert_antigravity architect gemini-3.1-pro-high
 assert_copilot architect
 
 echo ""

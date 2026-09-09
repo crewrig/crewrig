@@ -3,7 +3,7 @@ name: copywriter
 description: "Content production specialist. Interviews the product brief, produces a
 content outline for review, then writes final page copy (hero, features,
 social proof, CTA). Delivers structured Markdown ready for handoff to
-frontend-developer or astro-developer. Does NOT make layout or visual decisions. Run this agent on the gemini-3.8-flash-low model."
+frontend-developer or astro-developer. Does NOT make layout or visual decisions. Run this agent on the gemini-3.8-flash-medium model."
 license: Apache-2.0
 metadata:
   provenance:

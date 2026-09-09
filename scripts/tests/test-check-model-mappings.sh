@@ -667,8 +667,8 @@ else
 fi
 
 if assert_selection_table "$REPO_DIR/model-mappings/antigravity.yml" \
-     gemini-3.8-flash-low gemini-3.8-flash-low gemini-3.8-flash-low \
-     gemini-3.1-pro-low gemini-3.1-pro-low gemini-3.1-pro-low gemini-3.1-pro-low; then
+     gemini-3.8-flash-medium gemini-3.8-flash-medium gemini-3.8-flash-medium \
+     gemini-3.1-pro-high gemini-3.1-pro-high gemini-3.1-pro-high gemini-3.1-pro-high; then
   echo "PASS  antigravity.yml golden per-rung table"
   pass=$((pass + 1))
 else
@@ -793,16 +793,16 @@ assert_yq "copilot declares a zero-offerings block" "$COPILOT_MAP" '. | has("zer
 # encodes.
 ANTIGRAVITY_MAP="$REPO_DIR/model-mappings/antigravity.yml"
 assert_yq "antigravity has exactly five offerings" "$ANTIGRAVITY_MAP" '.offerings | length' "5"
-assert_yq "antigravity offering 1 encodes and provides matching reasoning (low)" "$ANTIGRAVITY_MAP" \
-  '.offerings[0].encodes.reasoning + "|" + .offerings[0].provides.reasoning' "low|low"
-assert_yq "antigravity offering 2 encodes and provides matching reasoning (medium)" "$ANTIGRAVITY_MAP" \
-  '.offerings[1].encodes.reasoning + "|" + .offerings[1].provides.reasoning' "medium|medium"
+assert_yq "antigravity offering 1 encodes and provides matching reasoning (medium)" "$ANTIGRAVITY_MAP" \
+  '.offerings[0].encodes.reasoning + "|" + .offerings[0].provides.reasoning' "medium|medium"
+assert_yq "antigravity offering 2 encodes and provides matching reasoning (low)" "$ANTIGRAVITY_MAP" \
+  '.offerings[1].encodes.reasoning + "|" + .offerings[1].provides.reasoning' "low|low"
 assert_yq "antigravity offering 3 encodes and provides matching reasoning (high)" "$ANTIGRAVITY_MAP" \
   '.offerings[2].encodes.reasoning + "|" + .offerings[2].provides.reasoning' "high|high"
-assert_yq "antigravity offering 4 encodes and provides matching reasoning (low)" "$ANTIGRAVITY_MAP" \
-  '.offerings[3].encodes.reasoning + "|" + .offerings[3].provides.reasoning' "low|low"
-assert_yq "antigravity offering 5 encodes and provides matching reasoning (high)" "$ANTIGRAVITY_MAP" \
-  '.offerings[4].encodes.reasoning + "|" + .offerings[4].provides.reasoning' "high|high"
+assert_yq "antigravity offering 4 encodes and provides matching reasoning (high)" "$ANTIGRAVITY_MAP" \
+  '.offerings[3].encodes.reasoning + "|" + .offerings[3].provides.reasoning' "high|high"
+assert_yq "antigravity offering 5 encodes and provides matching reasoning (low)" "$ANTIGRAVITY_MAP" \
+  '.offerings[4].encodes.reasoning + "|" + .offerings[4].provides.reasoning' "low|low"
 
 # Named edit 3 (antigravity half) — the guidance item's ground is an
 # assumption, not a citation.

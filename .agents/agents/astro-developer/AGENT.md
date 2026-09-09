@@ -4,7 +4,7 @@ description: "Specialist implementer for Astro projects. Scaffolds and configure
 projects, implements pages/layouts/components, wires Content Collections,
 configures integrations, handles deployment, and diagnoses build failures.
 Receives tokens from designer, copy from copywriter, and hands off to
-seo-specialist and accessibility-auditor. Run this agent on the gemini-3.1-pro-low model."
+seo-specialist and accessibility-auditor. Run this agent on the gemini-3.1-pro-high model."
 license: Apache-2.0
 metadata:
   provenance:
