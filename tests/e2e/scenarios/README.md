@@ -15,6 +15,7 @@ metadata lives in `tests/e2e/defaults.toml`.
 | 04 | `04-harness-loop` | `harness-report` → MemPalace → `harness-curator` round-trip. |
 | 05 | `05-copilot-model-routing` | Probe A (spec 0194 R8-R11) — differential verdict on `github/copilot-cli#4437`: does a `model:` hint break BYOK subagent routing? Copilot-only. |
 | 06 | `06-agent-surface-consumption` | Probe B (spec 0194 R12-R15) — which repository agent-declaration surfaces and per-file layouts does each covered CLI actually consume? Covers Copilot and Claude Code. |
+| 07 | `07-guidance-surface` | Probe C (spec 0203) — evaluates guidance-surface prose vs Copilot reader, effort: frontmatter key inertness, and orchestrator guidance reliability. Covers Copilot and Claude Code. |
 
 ## Scenario contract
 

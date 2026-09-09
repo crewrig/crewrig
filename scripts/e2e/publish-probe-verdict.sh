@@ -94,7 +94,7 @@ trap 'rm -f "$BODY_FILE"' EXIT
   fi
   if [[ "$HAS_CELLS" == "true" ]]; then
     printf '**Cells:**\n\n'
-    jq -r '.cells[] | "- \(.cli) / \(.layout): **\(.outcome)**"' "$VERDICT_JSON"
+    jq -r '.cells[] | if has("cell") then "- \(.cell) (\(.cli)): **\(.outcome)** — \(.reason // "")" else "- \(.cli) / \(.layout): **\(.outcome)**" end' "$VERDICT_JSON"
     printf '\n'
     n_contradicts="$(jq '(.contradicts // []) | length' "$VERDICT_JSON")"
     if [[ "$n_contradicts" -gt 0 ]]; then

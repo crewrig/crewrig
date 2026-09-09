@@ -169,3 +169,11 @@ applies_to  = ["copilot"]
 [scenarios.06-agent-surface-consumption]
 description = "Per-CLI, per-layout determination of whether .claude/agents/ declarations are consumed (nested vs flat)."
 applies_to  = ["copilot", "claude"]
+
+# [scenarios.07-guidance-surface] — probe C (spec 0203). Evaluates guidance-surface
+# prose vs Copilot reader, effort: frontmatter key, and orchestrator guidance
+# reliability. Grounds spec 0197 assumptions.
+[scenarios.07-guidance-surface]
+description = "Probe C (spec 0203) — evaluates prose vs Copilot reader, effort: frontmatter, and orchestrator guidance reliability."
+applies_to  = ["copilot", "claude"]
+
