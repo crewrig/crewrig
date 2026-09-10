@@ -748,12 +748,12 @@ assert_yq "claude offering 4 is fable, rank 4, rung xxhigh" "$CLAUDE_MAP" \
   '.offerings[3].id + "|" + (.offerings[3].rank | tostring) + "|" + .offerings[3].provides.intelligence' \
   "fable|4|xxhigh"
 
-# haiku: supports-reasoning-surface false, with both R36 grounds present and
-# of the right kind (assumption on the fact, citation on the behavior).
-assert_yq "claude haiku supports-reasoning-surface is false" "$CLAUDE_MAP" \
-  '.offerings[0]."supports-reasoning-surface" | tostring' "false"
-assert_yq "claude haiku carries an assumption ground on supports-reasoning-surface" "$CLAUDE_MAP" \
-  '[.offerings[0].grounds[] | select(.declares == "supports-reasoning-surface")] | .[0] | has("assumption")' "true"
+# haiku: supports-reasoning-surface true, with both R36 grounds present and
+# of the right kind (citation on the fact per spec 0197 delta-02, citation on the behavior).
+assert_yq "claude haiku supports-reasoning-surface is true" "$CLAUDE_MAP" \
+  '.offerings[0]."supports-reasoning-surface" | tostring' "true"
+assert_yq "claude haiku carries a citation ground on supports-reasoning-surface" "$CLAUDE_MAP" \
+  '[.offerings[0].grounds[] | select(.declares == "supports-reasoning-surface")] | .[0] | has("citation")' "true"
 assert_yq "claude haiku carries a citation ground on supports-reasoning-surface.behavior" "$CLAUDE_MAP" \
   '[.offerings[0].grounds[] | select(.declares == "supports-reasoning-surface.behavior")] | .[0] | has("citation")' "true"
 
