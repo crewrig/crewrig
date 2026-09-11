@@ -107,8 +107,8 @@ assert_exists() {
 
 assert_absent() {
   local name="$1" path="$2"
-  if [ -f "$path" ]; then
-    echo "FAIL  $name (expected $path to be absent, but it was copied)"
+  if [ -e "$path" ]; then
+    echo "FAIL  $name (expected $path to be absent, but it exists)"
     fail=$((fail + 1))
   else
     echo "PASS  $name ($path correctly absent)"
@@ -116,14 +116,15 @@ assert_absent() {
   fi
 }
 
-# --- Case 1: AGENT.md + sibling PROMPT.md, default glob ---
+# --- Case 1: AGENT.md + sibling PROMPT.md, flattened output (spec 0201 delta-01) ---
 t1="$(new_dir)"
 write_manifest "$t1"
 write_agent_md "$t1/agents/demo-agent/AGENT.md"
 write_prompt_md "$t1/agents/demo-agent/PROMPT.md"
 out1="$t1/dist-claude-plugin/demo-agents-glob"
 bash "$SCRIPT_UNDER_TEST" "$t1" "$out1" >/dev/null 2>&1
-assert_exists "Case 1 — AGENT.md copied" "$out1/agents/demo-agent/AGENT.md"
+assert_exists "Case 1 — flattened demo-agent.md copied" "$out1/agents/demo-agent.md"
+assert_absent "Case 1 — nested demo-agent/ directory absent" "$out1/agents/demo-agent"
 assert_absent "Case 1 — sibling PROMPT.md NOT copied" "$out1/agents/demo-agent/PROMPT.md"
 
 # --- Case 2: AGENT.md only, no sibling (no regression on normal case) ---
@@ -132,7 +133,8 @@ write_manifest "$t2"
 write_agent_md "$t2/agents/demo-agent/AGENT.md"
 out2="$t2/dist-claude-plugin/demo-agents-glob"
 bash "$SCRIPT_UNDER_TEST" "$t2" "$out2" >/dev/null 2>&1
-assert_exists "Case 2 — AGENT.md copied (no sibling)" "$out2/agents/demo-agent/AGENT.md"
+assert_exists "Case 2 — flattened demo-agent.md copied (no sibling)" "$out2/agents/demo-agent.md"
+assert_absent "Case 2 — nested demo-agent/ directory absent" "$out2/agents/demo-agent"
 
 echo ""
 echo "Results: $pass passed, $fail failed"

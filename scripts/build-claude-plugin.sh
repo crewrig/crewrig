@@ -216,32 +216,33 @@ if [ "$COMMANDS_ENABLED" = "true" ] && [ "$CONVERT_TO_SKILLS" = "true" ] && [ -d
   done
 fi
 
-# --- Copy agents ---
+# --- Copy agents (flattened to <name>.md) ---
 # An agent dir is a pivot-authoring location: it may hold sibling files for
 # other CLIs alongside the Claude pivot source AGENT.md (e.g. PROMPT.md is the
 # Gemini pivot source — see extension-skeleton/agent/agents/sample-agent/PROMPT.md).
-# `cp -r` of the whole directory would drag such siblings into the Claude
-# plugin, where Claude Code registers them as bogus extra agents (issue #600).
-# Copy only the files matched by the fixed default glob (agents/*/AGENT.md),
-# file by file, preserving the relative path. The per-extension override key
-# `claude.agents` is retired (spec 0183 R7): it was read by this builder only
-# as an override whose own default was this same glob, and both committed
-# manifests already carried `[]`, so the default already applied everywhere.
+# Sibling files must not leak into the Claude plugin output. Furthermore,
+# Claude Code's plugin component loader discovers only flat `agents/*.md` files
+# directly under the plugin root and does not scan subdirectories (spec 0201
+# delta-01 R32). Each source agent (whether nested `agents/<name>/AGENT.md` or
+# flat `agents/<name>.md`) is packaged as a flat file `agents/<name>.md`.
 AGENTS_ENABLED=$(ext_subject_present "$MANIFEST" agents)
 AGENTS_LOCATION=$(ext_subject_location "$MANIFEST" agents "agents/")
 if [ "$AGENTS_ENABLED" = "true" ] && [ -d "$EXT_DIR/$AGENTS_LOCATION" ]; then
-  AGENTS_GLOBS="${AGENTS_LOCATION}*/AGENT.md"
-  while IFS= read -r glob_pattern; do
-    [ -n "$glob_pattern" ] || continue
-    for src_file in "$EXT_DIR/"$glob_pattern; do
-      [ -f "$src_file" ] || continue
-      rel_path="${src_file#"$EXT_DIR"/}"
-      dest_file="$OUTPUT_DIR/$rel_path"
-      mkdir -p "$(dirname "$dest_file")"
-      cp "$src_file" "$dest_file"
-      echo "  Copied agent file: $rel_path"
-    done
-  done < <(echo "$AGENTS_GLOBS")
+  mkdir -p "$OUTPUT_DIR/agents"
+  for agent_entry in "$EXT_DIR/$AGENTS_LOCATION"*; do
+    [ -e "$agent_entry" ] || continue
+    if [ -d "$agent_entry" ]; then
+      agent_name=$(basename "$agent_entry")
+      if [ -f "$agent_entry/AGENT.md" ]; then
+        cp "$agent_entry/AGENT.md" "$OUTPUT_DIR/agents/$agent_name.md"
+        echo "  Copied agent (flattened): $agent_name"
+      fi
+    elif [ -f "$agent_entry" ] && [ "${agent_entry##*.}" = "md" ]; then
+      agent_name=$(basename "$agent_entry")
+      cp "$agent_entry" "$OUTPUT_DIR/agents/$agent_name"
+      echo "  Copied agent: ${agent_name%.md}"
+    fi
+  done
 fi
 
 # --- Deliver hook handlers (spec 0179) ---

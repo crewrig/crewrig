@@ -127,7 +127,7 @@ CLAUDE.md
 package.json
 skills/greeter/SKILL.md
 skills/hello/SKILL.md
-agents/reference-guide/AGENT.md
+agents/reference-guide.md
 hooks/hooks.json
 hooks/prompt-logger.sh
 hooks/shell-logger.sh
