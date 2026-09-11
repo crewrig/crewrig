@@ -609,6 +609,84 @@ got="$(spawn_signals "/tmp/crewrig-probe-spawn-markers-does-not-exist-$$" "Probe
   && note_pass "spawn markers — missing transcript file resolves to all-false, no crash" \
   || note_fail "spawn markers — missing file" "got: $got"
 
+# Claude Code JSON structured telemetry — genuine success
+CLAUDE_JSON_SUCCESS="$(mktemp "${TMPDIR:-/tmp}/crewrig-probe-claude-success.XXXXXX")"
+cat > "$CLAUDE_JSON_SUCCESS" <<'EOF'
+{
+  "type": "result",
+  "subtype": "success",
+  "result": "Spawned probe-consumer and wrote crewrig-probe-b-CLAUDE-SUCCESS to /out/consumed.txt",
+  "modelUsage": {"claude-3-7-sonnet-20250219": {"inputTokens": 10}},
+  "subagent_stats": {
+    "total_spawned": 1,
+    "total_completed": 1,
+    "total_errored": 0,
+    "by_type": {
+      "probe-consumer": {
+        "spawned": 1,
+        "completed": 1,
+        "errored": 0
+      }
+    }
+  }
+}
+EOF
+got="$(spawn_signals "$CLAUDE_JSON_SUCCESS" "Probe-consumer" "crewrig-probe-b-CLAUDE-SUCCESS")"
+[[ "$got" == "true|true|true|claude-3-7-sonnet-20250219" ]] \
+  && note_pass "spawn markers — Claude Code JSON: genuine success (spawned, responded, nonce credited)" \
+  || note_fail "spawn markers — Claude Code JSON success" "got: $got"
+rm -f "$CLAUDE_JSON_SUCCESS"
+
+# Claude Code JSON structured telemetry — agent not declared / unspawned
+CLAUDE_JSON_UNSPAWNED="$(mktemp "${TMPDIR:-/tmp}/crewrig-probe-claude-unspawned.XXXXXX")"
+cat > "$CLAUDE_JSON_UNSPAWNED" <<'EOF'
+{
+  "type": "result",
+  "subtype": "success",
+  "result": "No such agent probe-consumer declared. Wrote baseline only.",
+  "modelUsage": {"claude-3-7-sonnet-20250219": {"inputTokens": 10}},
+  "subagent_stats": {
+    "total_spawned": 0,
+    "total_completed": 0,
+    "total_errored": 0,
+    "by_type": {}
+  }
+}
+EOF
+got="$(spawn_signals "$CLAUDE_JSON_UNSPAWNED" "Probe-consumer" "crewrig-probe-b-CLAUDE-NONCE")"
+[[ "$got" == "false|false|false|claude-3-7-sonnet-20250219" ]] \
+  && note_pass "spawn markers — Claude Code JSON: unspawned agent (not credited, spawn not observed)" \
+  || note_fail "spawn markers — Claude Code JSON unspawned" "got: $got"
+rm -f "$CLAUDE_JSON_UNSPAWNED"
+
+# Claude Code JSON structured telemetry — subagent errored
+CLAUDE_JSON_ERRORED="$(mktemp "${TMPDIR:-/tmp}/crewrig-probe-claude-errored.XXXXXX")"
+cat > "$CLAUDE_JSON_ERRORED" <<'EOF'
+{
+  "type": "result",
+  "subtype": "error",
+  "result": "Agent probe-consumer failed with error: timeout",
+  "modelUsage": {"claude-3-7-sonnet-20250219": {"inputTokens": 10}},
+  "subagent_stats": {
+    "total_spawned": 1,
+    "total_completed": 0,
+    "total_errored": 1,
+    "by_type": {
+      "probe-consumer": {
+        "spawned": 1,
+        "completed": 0,
+        "errored": 1
+      }
+    }
+  }
+}
+EOF
+got="$(spawn_signals "$CLAUDE_JSON_ERRORED" "Probe-consumer" "crewrig-probe-b-CLAUDE-NONCE")"
+[[ "$got" == "true|false|false|claude-3-7-sonnet-20250219" ]] \
+  && note_pass "spawn markers — Claude Code JSON: errored subagent (spawn observed, not responded)" \
+  || note_fail "spawn markers — Claude Code JSON errored" "got: $got"
+rm -f "$CLAUDE_JSON_ERRORED"
+
 # --- 14. Both probe run.sh files source the new lib; probe A's
 # credential_path field reads the runner-exported env var, not a literal
 # (issue #1107 fix 2).
