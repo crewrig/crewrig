@@ -74,6 +74,9 @@ PROBE_PROMPT_TMPL="$(cat "${E2E_SCENARIO_DIR}/probe.prompt")"
 probe_argv=("${_cli_cmd[@]}")
 if [[ ${#_cli_args[@]} -gt 0 ]]; then probe_argv+=("${_cli_args[@]}"); fi
 probe_argv+=(-p)
+if [[ "$E2E_CLI" == "claude" ]]; then
+  probe_argv+=(--dangerously-skip-permissions --output-format json)
+fi
 
 case "$E2E_CLI" in
   copilot) CLI_VERSION="$(docker run --rm "$E2E_IMAGE" copilot --version 2>/dev/null | head -n1 || echo unknown)" ;;
@@ -96,6 +99,7 @@ run_cell() {
 
   local host_out="${E2E_REPORT_DIR}/out/${cell}"
   mkdir -p "$host_out"
+  chmod 777 "$host_out"
 
   local prompt="${PROBE_PROMPT_TMPL//__BASELINE_NONCE__/${baseline_nonce}}"
 

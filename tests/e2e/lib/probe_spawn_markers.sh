@@ -91,6 +91,40 @@ e2e_probe_spawn_signals() {
   local agent_lc
   agent_lc="$(printf '%s' "$agent" | tr '[:upper:]' '[:lower:]')"
 
+  # Fast path for Claude Code structured JSON output (--output-format json).
+  # Claude Code's engine populates .subagent_stats.by_type[<agent>] directly,
+  # which cannot be forged or hallucinated by the model.
+  if command -v jq >/dev/null 2>&1; then
+    if jq -e '.subagent_stats' "$file" >/dev/null 2>&1; then
+      local spawned completed errored
+      spawned="$(jq -r --arg a "$agent_lc" '
+        [(.subagent_stats.by_type // {}) | to_entries[] | select((.key | ascii_downcase) == $a) | if (.value | type) == "object" then (.value.spawned // 0) else (.value // 0) end] | add // 0
+      ' "$file" 2>/dev/null || echo 0)"
+      completed="$(jq -r --arg a "$agent_lc" '
+        . as $root
+        | [(.subagent_stats.by_type // {}) | to_entries[] | select((.key | ascii_downcase) == $a) | if (.value | type) == "object" then (.value.completed // 0) else (if (($root.subagent_stats.completed // $root.subagent_stats.total_completed // 0) > 0 and ($root.subagent_stats.failed // $root.subagent_stats.total_errored // 0) == 0) then (.value // 0) else 0 end) end] | add // 0
+      ' "$file" 2>/dev/null || echo 0)"
+      errored="$(jq -r --arg a "$agent_lc" '
+        . as $root
+        | [(.subagent_stats.by_type // {}) | to_entries[] | select((.key | ascii_downcase) == $a) | if (.value | type) == "object" then (.value.errored // 0) else ($root.subagent_stats.failed // $root.subagent_stats.total_errored // 0) end] | add // 0
+      ' "$file" 2>/dev/null || echo 0)"
+      if [[ "${spawned:-0}" -gt 0 ]]; then
+        spawn_observed=true
+      fi
+      if [[ "${completed:-0}" -gt 0 && "${errored:-0}" -eq 0 ]]; then
+        subagent_responded=true
+      fi
+      if [[ "$spawn_observed" == "true" && "$subagent_responded" == "true" ]]; then
+        if grep -Fq "$nonce" "$file" 2>/dev/null; then
+          nonce_in_result=true
+        fi
+      fi
+      model="$(jq -r '(.modelUsage // {}) | keys | .[0] // "claude"' "$file" 2>/dev/null || echo "claude")"
+      printf '%s|%s|%s|%s\n' "$spawn_observed" "$subagent_responded" "$nonce_in_result" "$model"
+      return 0
+    fi
+  fi
+
   # Split any marker glued mid-line onto its own line — observed live:
   # "...output.✗ Probe-router(sonnet) ..." with no newline between the
   # prior sentence and the glyph — so a line-oriented walk cannot miss it.

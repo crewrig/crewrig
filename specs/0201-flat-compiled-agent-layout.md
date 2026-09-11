@@ -330,12 +330,16 @@ own documented `~/.copilot/agents/` surface. Its own verdict comment states the
 consequence for this seam verbatim: *"migrating compiled outputs to the flat
 layout does NOT remove Copilot's consumption of the `.claude/agents/` surface —
 the R8 guard remains necessary regardless of per-file layout."* Nothing about
-the Copilot emission or the shared-read guard changes here. The same run leaves
-**both Claude cells `indeterminate`** (the workstation credential had expired,
-`control: in-cell-liveness-baseline-only`), so probe B establishes nothing about
-Claude Code either way; the documentation quoted above is the whole of the
-evidence for the target layout, and it is sufficient — it is the vendor's own
-statement of the supported form.
+the Copilot emission or the shared-read guard changes here. The initial run
+`20260902T154627Z-0d89` left **both Claude cells `indeterminate`** (the
+workstation credential had expired, `control: in-cell-liveness-baseline-only`),
+so probe B established nothing about Claude Code either way at that time.
+Confirmatory re-run `20260911T181123Z-179e` (issue #1103, comment
+[5638783943](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5638783943);
+issue #1139) following workstation re-authentication recorded **both Claude
+cells `consumed`**, corroborating the vendor documentation quoted above with live
+execution evidence. That documentation remains the normative basis of the layout
+decision.
 
 ## Contradictions with merged specs
 
