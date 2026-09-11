@@ -384,9 +384,11 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 | `claude.bin` | string | `cli-only-concept` | Executables directory → `bin/` |
 
 Every agent file the `agents` subject discovers (default glob
-`agents/*/AGENT.md`) is copied verbatim, preserving its relative path — no
-per-extension override key survives (spec 0183 R7): the fixed default was
-already what every committed manifest resolved to.
+`agents/*/AGENT.md`) is packaged as a flat file `agents/<name>.md` into the
+plugin archive (spec 0201 delta-01, issue #1140), matching Claude Code's
+top-level plugin component loader — no per-extension override key survives
+(spec 0183 R7): the fixed default was already what every committed manifest
+resolved to.
 
 Copilot CLI and Antigravity CLI carry **no per-CLI section**: both keys they
 once admitted (`copilot.pluginName`, `antigravity.pluginName`) were judged

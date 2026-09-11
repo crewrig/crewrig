@@ -1,7 +1,7 @@
 ---
 id: "0201"
 slug: flat-compiled-agent-layout
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1140
