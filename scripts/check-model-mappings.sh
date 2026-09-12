@@ -743,7 +743,7 @@ check_offerings() {
     local nv domvals
     nv=$(yq -r "${path}.\"native-value\" // \"\"" "$CURRENT_FILE")
     domvals=$(frontmatter_model_domain)
-    if [ -n "$domvals" ] && ! printf '%s\n' "$domvals" | grep -qxF "$nv"; then
+    if [ -n "$domvals" ] && ! grep -qxF "$nv" <<< "$domvals"; then
       fail A9 "$label native-value '$nv' is outside the frontmatter model item's declared domain"
     fi
   done
@@ -785,7 +785,7 @@ check_provides_value() {
       ;;
     specialization)
       v=$(yq -r "${path}.provides.specialization" "$CURRENT_FILE")
-      printf '%s' "$v" | grep -qE '^[a-z][a-z0-9]*(-[a-z0-9]+)*$' || fail A8 "$label provides.specialization '$v' is not a kebab-case token"
+      [[ "$v" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]] || fail A8 "$label provides.specialization '$v' is not a kebab-case token"
       ;;
   esac
   return 0
@@ -848,7 +848,7 @@ check_frontmatter_reasoning_projection() {
       continue
     fi
     img=$(yq -r "${rpath}.projection.\"$rung\"" "$CURRENT_FILE")
-    if [ "$img" != "unmapped" ] && ! printf '%s\n' "$dom_values" | grep -qxF "$img"; then
+    if [ "$img" != "unmapped" ] && ! grep -qxF "$img" <<< "$dom_values"; then
       fail A9 "the frontmatter reasoning item's projection for rung '$rung' directs '$img', outside the declared domain"
     fi
   done
@@ -1013,7 +1013,7 @@ check_org_overrides() {
         fail A29 "remove entry '$entry' names the guard, which requirement 14 forbids removing"
         ;;
       *)
-        if ! printf '%s' "$entry" | grep -qE "$VALID_ADDR_RE"; then
+        if ! [[ "$entry" =~ $VALID_ADDR_RE ]]; then
           fail A28 "remove entry '$entry' is not an address the addressing grammar of requirement 11 publishes"
         fi
         ;;

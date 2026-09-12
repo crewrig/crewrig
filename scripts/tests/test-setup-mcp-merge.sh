@@ -103,8 +103,8 @@ assert_absent() {
 # assert_warn <label> <name> — a warning names the server AND points at the backup.
 assert_warn() {
   local label="$1" name="$2"
-  if printf '%s' "$OUT" | grep -q "'$name'" \
-     && printf '%s' "$OUT" | grep -qF "$BACKUP_REF"; then
+  if grep -q "'$name'" <<< "$OUT" \
+     && grep -qF "$BACKUP_REF" <<< "$OUT"; then
     ok "$label: warning names '$name' and points at the backup"
   else
     bad "$label: missing R9 warning for '$name' (out: $OUT)"
@@ -114,7 +114,7 @@ assert_warn() {
 # assert_no_warn <label> <name>
 assert_no_warn() {
   local label="$1" name="$2"
-  if printf '%s' "$OUT" | grep -q "'$name'"; then
+  if grep -q "'$name'" <<< "$OUT"; then
     bad "$label: unexpected warning for '$name'"
   else
     ok "$label: no warning for '$name'"
@@ -252,7 +252,7 @@ if [ -n "$LAST_BACKUP_PATH" ] && [ -f "$LAST_BACKUP_PATH" ]; then
 else
   bad "backup_file failed to set valid LAST_BACKUP_PATH (got: '$LAST_BACKUP_PATH')"
 fi
-if printf '%s' "$out_5a" | grep -q "Backed up: valid_src.json ->"; then
+if grep -q "Backed up: valid_src.json ->" <<< "$out_5a"; then
   ok "backup_file reports success on stdout"
 else
   bad "backup_file missing success message on stdout (got: '$out_5a')"
@@ -289,12 +289,12 @@ if [ -z "$LAST_BACKUP_PATH" ]; then
 else
   bad "backup_file published nonexistent LAST_BACKUP_PATH on failure (got: '$LAST_BACKUP_PATH')"
 fi
-if printf '%s' "$out_5c" | grep -q "WARNING: Failed to back up src.json"; then
+if grep -q "WARNING: Failed to back up src.json" <<< "$out_5c"; then
   ok "backup_file emits warning on stderr when backup fails"
 else
   bad "backup_file missing failure warning (got: '$out_5c')"
 fi
-if printf '%s' "$out_5c" | grep -q "Backed up:"; then
+if grep -q "Backed up:" <<< "$out_5c"; then
   bad "backup_file falsely reported success when copy failed"
 else
   ok "backup_file does not falsely report success when copy fails"

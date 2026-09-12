@@ -1213,7 +1213,7 @@ while IFS=: read -r cli type setup_name cmd_name; do
   if [ -z "$declared" ]; then
     ok="false"
     detail="${detail}${detail:+$'\n'}$cli/$type: no component_set_staging_roots declaration in the command or the libraries it sources, while its setup reads dist/<tier>/$setup_root"
-  elif ! printf '%s\n' "$declared" | grep -Fqx -- "$setup_root/$type"; then
+  elif ! grep -Fqx -- "$setup_root/$type" <<< "$declared"; then
     ok="false"
     detail="${detail}${detail:+$'\n'}$cli/$type: the command declares no staging root equal to the setup's ($setup_root/$type); it declares: $(printf '%s' "$declared" | tr '\n' ' ')"
   fi

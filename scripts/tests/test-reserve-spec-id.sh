@@ -367,7 +367,7 @@ expect() {
 # sentence around it. Every pattern below survives any rewording that keeps the
 # message useful, and fails any change that drops what the user needs.
 expect_stderr_matches() {
-  if printf '%s' "$TOOL_ERR" | grep -Eq "$2"; then
+  if grep -Eq "$2" <<< "$TOOL_ERR"; then
     record_pass "$1"
   else
     record_fail "$1" "stderr does not match /$2/"
@@ -376,7 +376,7 @@ expect_stderr_matches() {
 
 # expect_stdout_matches <name> <ere>
 expect_stdout_matches() {
-  if printf '%s' "$TOOL_OUT" | grep -Eqi "$2"; then
+  if grep -Eqi "$2" <<< "$TOOL_OUT"; then
     record_pass "$1"
   else
     record_fail "$1" "stdout does not match /$2/"

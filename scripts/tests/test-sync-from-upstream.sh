@@ -348,7 +348,7 @@ run_case_dirty_report() {
     fi
   done
   for p in ${absent[@]+"${absent[@]}"}; do
-    if printf '%s\n' "$stderr_out" | grep -qxF "  $p"; then
+    if grep -qxF "  $p" <<< "$stderr_out"; then
       echo "FAIL  $name (stderr names '$p' as its own line, which it must not)"
       ok=0
     fi

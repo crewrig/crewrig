@@ -425,7 +425,7 @@ expect_wiring_fault() {
 # right file was blamed": a run can reach the right exit code while having drawn
 # the wrong specs into the change under test.
 expect_log_not_matching() {
-  if printf '%s' "$CHECK_LOG" | grep -Eq "$2"; then
+  if grep -Eq "$2" <<< "$CHECK_LOG"; then
     record_fail "$1" "output matches /$2/ and should not"$'\n      '"$CHECK_LOG"
   else
     record_pass "$1"
@@ -434,7 +434,7 @@ expect_log_not_matching() {
 
 # expect_log_matches <name> <ere>
 expect_log_matches() {
-  if printf '%s' "$CHECK_LOG" | grep -Eq "$2"; then
+  if grep -Eq "$2" <<< "$CHECK_LOG"; then
     record_pass "$1"
   else
     record_fail "$1" "output does not match /$2/"$'\n      '"$CHECK_LOG"

@@ -69,7 +69,7 @@ run_case() {
   fi
   if [ -n "$expected_ids" ]; then
     for id in $expected_ids; do
-      printf '%s\n' "$out" | grep -qF ": ${id} " || ok=0
+      grep -qF ": ${id} " <<< "$out" || ok=0
     done
   fi
   if [ "$ok" -eq 1 ]; then
@@ -363,7 +363,7 @@ f="$dir/claude.yml"
 render_base > "$f"
 yq eval -i '.offerings[0].grounds += [{"declares": "provides.intelligence.rung", "assumption": "contradicts the citation above"}]' "$f" >/dev/null
 out="$(bash "$SCRIPT_UNDER_TEST" "$f" 2>&1)"; rc=$?
-if [ "$rc" -eq 1 ] && printf '%s\n' "$out" | grep -qF ": A25 " && ! printf '%s\n' "$out" | grep -qF ": A24 "; then
+if [ "$rc" -eq 1 ] && grep -qF ": A25 " <<< "$out" && ! grep -qF ": A24 " <<< "$out"; then
   echo "PASS  A25 regression — open aspect vocabulary closed (v2-F3), A24 does not co-fire"
   pass=$((pass + 1))
 else
@@ -565,9 +565,9 @@ offerings:
 EOF
 p3_out="$(CREWRIG_REPO_DIR="$PASS3_RANK_ROOT" bash "$SCRIPT_UNDER_TEST" 2>&1)"; p3_rc=$?
 if [ "$p3_rc" -eq 1 ] \
-  && printf '%s\n' "$p3_out" | grep -qF "model-mappings/claude (mapping in force): A7" \
-  && ! printf '%s\n' "$p3_out" | grep -qF "model-mappings/claude.yml: A7" \
-  && ! printf '%s\n' "$p3_out" | grep -qF "model-mappings/claude.org.yml: A7"; then
+  && grep -qF "model-mappings/claude (mapping in force): A7" <<< "$p3_out" \
+  && ! grep -qF "model-mappings/claude.yml: A7" <<< "$p3_out" \
+  && ! grep -qF "model-mappings/claude.org.yml: A7" <<< "$p3_out"; then
   echo "PASS  pass 3 catches a cross-file rank collision invisible to pass 1 and pass 2 (A7, scenario 7)"
   pass=$((pass + 1))
 else
@@ -594,9 +594,9 @@ guard:
 EOF
 p3g_out="$(CREWRIG_REPO_DIR="$PASS3_GUARD_ROOT" bash "$SCRIPT_UNDER_TEST" 2>&1)"; p3g_rc=$?
 if [ "$p3g_rc" -eq 1 ] \
-  && printf '%s\n' "$p3g_out" | grep -qF "model-mappings/claude (mapping in force): A23" \
-  && ! printf '%s\n' "$p3g_out" | grep -qF "model-mappings/claude.yml: A23" \
-  && ! printf '%s\n' "$p3g_out" | grep -qF "model-mappings/claude.org.yml: A23"; then
+  && grep -qF "model-mappings/claude (mapping in force): A23" <<< "$p3g_out" \
+  && ! grep -qF "model-mappings/claude.yml: A23" <<< "$p3g_out" \
+  && ! grep -qF "model-mappings/claude.org.yml: A23" <<< "$p3g_out"; then
   echo "PASS  pass 3 catches a directed guard composed across files with still-holding inherited terms (A23, scenario 9)"
   pass=$((pass + 1))
 else
