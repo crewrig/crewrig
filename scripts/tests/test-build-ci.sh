@@ -56,7 +56,7 @@ assert_eq() {
 
 assert_contains() {
   local name="$1" haystack="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF "$needle"; then
+  if grep -qF "$needle" <<< "$haystack"; then
     echo "PASS  $name"
     pass=$((pass + 1))
   else

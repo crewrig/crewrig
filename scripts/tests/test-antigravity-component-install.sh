@@ -367,10 +367,10 @@ S7B_OUT="$(migrate_antigravity_superseded_components "$S7B/superseded" "$S7B/art
 [ -e "$S7B/superseded/skills/harness-report" ] \
   && bad "control: the genuinely served component was NOT migrated — this section would prove nothing" \
   || ok "control: the genuinely served component is still migrated away"
-printf '%s\n' "$S7B_OUT" | grep -qF "rm -rf $S7B/superseded/skills/a.b" \
+grep -qF "rm -rf $S7B/superseded/skills/a.b" <<< "$S7B_OUT" \
   && ok "the regexp-shaped name is reported as residue, not silently kept" \
   || bad "'a.b' survived without being reported — got: $S7B_OUT"
-printf '%s\n' "$S7B_OUT" | grep -qF "rm -rf $S7B/superseded/skills/harness" \
+grep -qF "rm -rf $S7B/superseded/skills/harness" <<< "$S7B_OUT" \
   && ok "the prefix name is reported as residue, not silently kept" \
   || bad "'harness' survived without being reported — got: $S7B_OUT"
 

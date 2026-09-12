@@ -65,20 +65,20 @@ actual="$(extract_frontmatter "$fixture")"
 
 # The bug surfaces as `nested: value` (or the embedded `---` separators)
 # bleeding into the output.
-if printf '%s\n' "$actual" | grep -q 'nested: value'; then
+if grep -q 'nested: value' <<< "$actual"; then
   printf 'FAIL: extracted frontmatter leaked body content. Expected only {name, description}; got: %s\n' \
     "$(printf '%s' "$actual" | tr '\n' '|')" >&2
   exit 1
 fi
 
 # Positive assertions — the real frontmatter must still be present.
-if ! printf '%s\n' "$actual" | grep -qx 'name: test-skill'; then
+if ! grep -qx 'name: test-skill' <<< "$actual"; then
   printf 'FAIL: expected "name: test-skill" in output; got: %s\n' \
     "$(printf '%s' "$actual" | tr '\n' '|')" >&2
   exit 1
 fi
 
-if ! printf '%s\n' "$actual" | grep -qx 'description: A test skill'; then
+if ! grep -qx 'description: A test skill' <<< "$actual"; then
   printf 'FAIL: expected "description: A test skill" in output; got: %s\n' \
     "$(printf '%s' "$actual" | tr '\n' '|')" >&2
   exit 1

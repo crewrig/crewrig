@@ -635,6 +635,7 @@ misc:
     - "bash scripts/check-gemini-overlay-enrollment.sh"
     - "bash scripts/tests/test-check-gemini-overlay-enrollment.sh"
     - "bash scripts/tests/test-check-bash32-portability.sh"
+    - "bash scripts/tests/test-check-pipefail-grep.sh"
     - "bash scripts/tests/test-reserve-spec-id.sh"
     - "bash scripts/tests/test-check-spec-id-reserved.sh"
   rules:
@@ -645,6 +646,8 @@ misc:
         - "scripts/check-gemini-overlay-enrollment.sh"
         - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
         - "scripts/tests/test-check-bash32-portability.sh"
+        - "scripts/check-pipefail-grep.sh"
+        - "scripts/tests/test-check-pipefail-grep.sh"
         - "scripts/tests/test-reserve-spec-id.sh"
         - "scripts/tests/test-check-spec-id-reserved.sh"
         - "scripts/reserve-spec-id.sh"
@@ -657,6 +660,8 @@ misc:
         - "scripts/check-gemini-overlay-enrollment.sh"
         - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
         - "scripts/tests/test-check-bash32-portability.sh"
+        - "scripts/check-pipefail-grep.sh"
+        - "scripts/tests/test-check-pipefail-grep.sh"
         - "scripts/tests/test-reserve-spec-id.sh"
         - "scripts/tests/test-check-spec-id-reserved.sh"
         - "scripts/reserve-spec-id.sh"
@@ -935,6 +940,7 @@ grep-anti-patterns:
         fi
         echo "Rule 1 clean."
     - "bash scripts/check-bash32-portability.sh"
+    - "bash scripts/check-pipefail-grep.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:

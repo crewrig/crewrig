@@ -81,8 +81,8 @@ fi
 if command -v task >/dev/null 2>&1; then
   if list_out="$( ( cd "$REPO_ROOT" && task --list 2>&1 ) )"; then
     for entry in ${ENTRIES[@]+"${ENTRIES[@]}"}; do
-      if printf '%s\n' "$list_out" | grep -qE "(^|\s)\* ${entry}:" \
-         || printf '%s\n' "$list_out" | grep -qE "(^|\s)${entry}:"; then
+      if grep -qE "(^|\s)\* ${entry}:" <<< "$list_out" \
+         || grep -qE "(^|\s)${entry}:" <<< "$list_out"; then
         note_pass "task --list shows: $entry"
       else
         note_fail "task --list shows: $entry" "not found in 'task --list' output"

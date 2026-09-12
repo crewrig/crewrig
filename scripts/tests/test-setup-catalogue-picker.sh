@@ -187,21 +187,21 @@ $(extract_selection_block "$path" "  # Team" "fi")"
     continue
   fi
 
-  if printf '%s\n' "$block" | grep -qE '^\s*exit 1\s*$'; then
+  if grep -qE '^\s*exit 1\s*$' <<< "$block"; then
     bad "$s: a bare 'exit 1' remains inside the selection block"
   else
     ok "$s: zero remaining 'exit 1' inside the selection block"
   fi
 
   for category in team expertise level; do
-    if printf '%s\n' "$block" | grep -qE "rm -f \"[^\"]*\.selected_${category}\""; then
+    if grep -qE "rm -f \"[^\"]*\.selected_${category}\"" <<< "$block"; then
       ok "$s: $category skip branch removes the stale .selected_$category marker"
     else
       bad "$s: no 'rm -f .../.selected_$category' found on the $category skip branch"
     fi
   done
 
-  if printf '%s\n' "$block" | grep -q "pick_catalogue_entry"; then
+  if grep -q "pick_catalogue_entry" <<< "$block"; then
     ok "$s: uses the shared pick_catalogue_entry helper"
   else
     bad "$s: does not call pick_catalogue_entry"
@@ -280,13 +280,13 @@ EOF
   [ "$smoke_rc" -eq 0 ] && ok "smoke test: extracted block exits 0 under an empty team catalogue" \
     || bad "smoke test: extracted block exited $smoke_rc (should have continued, not aborted)"
 
-  if printf '%s' "$smoke_out" | grep -q "SMOKE_TEST_CONTINUED_PAST_SKIP"; then
+  if grep -q "SMOKE_TEST_CONTINUED_PAST_SKIP" <<< "$smoke_out"; then
     ok "smoke test: execution continued past the team/expertise skips to the trailing marker"
   else
     bad "smoke test: trailing marker not reached — script likely aborted on the empty catalogue"
   fi
 
-  if printf '%s' "$smoke_out" | grep -q "Level: junior"; then
+  if grep -q "Level: junior" <<< "$smoke_out"; then
     ok "smoke test: level selection (third category) still ran and installed 'junior'"
   else
     bad "smoke test: level selection output not found — third category was not reached"

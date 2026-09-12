@@ -225,7 +225,7 @@ check_file() {
   has_v=$(printf '%s\n' "$fm" | yq '.metadata.model | has("specialization")' 2>/dev/null || echo false)
   if [ "$has_v" = true ]; then
     v=$(printf '%s\n' "$fm" | yq -r '.metadata.model.specialization' 2>/dev/null)
-    printf '%s' "$v" | grep -qE '^[a-z][a-z0-9]*(-[a-z0-9]+)*$' || fail P9 "specialization '$v' is not a kebab-case token"
+    [[ "$v" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]] || fail P9 "specialization '$v' is not a kebab-case token"
   fi
 
   # P10 — tuning: present but not a mapping. Ground corrected per v3-F4: a

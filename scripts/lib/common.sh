@@ -2384,7 +2384,7 @@ migrate_antigravity_superseded_components() {
       # a LITERAL. Read as a regexp it would over-match — a directory named
       # `a.b` would satisfy a served name `axb` — and this predicate's true
       # branch deletes.
-      if printf '%s\n' "$names" | grep -qxF -- "$declared"; then
+      if grep -qxF -- "$declared" <<< "$names"; then
         in_set=1
       fi
       local has_prov=0

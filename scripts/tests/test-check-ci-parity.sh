@@ -122,7 +122,7 @@ expect_exit() {
 expect_in() {
   local stream="$1" needle="$2" label="$3" hay
   case "$stream" in out) hay="$CHECK_STDOUT" ;; *) hay="$CHECK_STDERR" ;; esac
-  if printf '%s' "$hay" | grep -qF "$needle"; then
+  if grep -qF "$needle" <<< "$hay"; then
     ok "$label"
   else
     ko "$label: $stream missing '$needle'"
@@ -134,7 +134,7 @@ expect_in() {
 refute_in() {
   local stream="$1" needle="$2" label="$3" hay
   case "$stream" in out) hay="$CHECK_STDOUT" ;; *) hay="$CHECK_STDERR" ;; esac
-  if printf '%s' "$hay" | grep -qF "$needle"; then
+  if grep -qF "$needle" <<< "$hay"; then
     ko "$label: $stream unexpectedly contains '$needle'"
     echo "      $stream: $hay"
   else
