@@ -424,7 +424,7 @@ for unit in "${REPO_DIR}/config/launchd/com.mempalace.mcp-server.plist" \
   # plist, whose every body line is indented — an injected
   # <string>token=SECRET</string> passed as "commentary".
   body="$(sed -e 's/<!--.*-->//g' -e '/<!--/,/-->/d' -e 's/^[[:space:]]*#.*$//' "${unit}")"
-  if printf '%s' "${body}" | grep -qiE 'token[=[:space:]]*[A-Za-z0-9_-]{8,}|MEMPALACE_MCP_HTTP_TOKEN'; then
+  if grep -qiE 'token[=[:space:]]*[A-Za-z0-9_-]{8,}|MEMPALACE_MCP_HTTP_TOKEN' <<< "${body}"; then
     nope "$(basename "${unit}") carries a token outside commentary"
   else
     ok "$(basename "${unit}") carries no credential"
@@ -601,8 +601,8 @@ helper_body="$(awk '/^ensure_mempalace_http\(\) \{/{f=1;next} f&&/^\}/{exit} f' 
 # (c) predicate — the serving gate must be the positive authenticated accept
 # probe, NEVER /healthz, which answers 200 in every state (spec 0139
 # delta-01 / issue #880) and would be green for exactly the wrong reason.
-if printf '%s' "$helper_body" | grep -q '_mcp_daemon_probe_accepts' \
-   && ! printf '%s' "$helper_body" | grep -q '_health_mcp_daemon'; then
+if grep -q '_mcp_daemon_probe_accepts' <<< "$helper_body" \
+   && ! grep -q '_health_mcp_daemon' <<< "$helper_body"; then
   ok "ensure_mempalace_http gates serving on _mcp_daemon_probe_accepts, not /healthz"
 else
   nope "ensure_mempalace_http's serving gate is not the authenticated accept probe — /healthz returns 200 in every state"
@@ -614,7 +614,7 @@ fi
 # fallback would converge stdio against a daemon that would have answered).
 pre_probe="$(printf '%s\n' "$helper_body" | awk '/_mcp_daemon_probe_accepts/{exit} {print}')"
 tok_pre="$(printf '%s' "$pre_probe" | grep 'mcp_token_read_or_create' || true)"
-if [ -n "$tok_pre" ] && ! printf '%s' "$tok_pre" | grep -Eq '\|\| *(return|exit)'; then
+if [ -n "$tok_pre" ] && ! grep -Eq '\|\| *(return|exit)' <<< "$tok_pre"; then
   ok "the pre-probe token read carries no short-circuit (a token failure cannot abort before the probe)"
 else
   nope "the pre-probe mcp_token_read_or_create call short-circuits (a token failure aborts before any probe)"

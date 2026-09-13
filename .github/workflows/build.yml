@@ -767,6 +767,8 @@ jobs:
               - 'scripts/check-gemini-overlay-enrollment.sh'
               - 'scripts/tests/test-check-gemini-overlay-enrollment.sh'
               - 'scripts/tests/test-check-bash32-portability.sh'
+              - 'scripts/check-pipefail-grep.sh'
+              - 'scripts/tests/test-check-pipefail-grep.sh'
               - 'scripts/tests/test-reserve-spec-id.sh'
               - 'scripts/tests/test-check-spec-id-reserved.sh'
               - 'scripts/reserve-spec-id.sh'
@@ -791,6 +793,9 @@ jobs:
       - name: Test Check Bash32 Portability
         if: steps.filter.outputs.misc == 'true'
         run: bash scripts/tests/test-check-bash32-portability.sh
+      - name: Test Check Pipefail Grep
+        if: steps.filter.outputs.misc == 'true'
+        run: bash scripts/tests/test-check-pipefail-grep.sh
       - name: Test Reserve Spec Id
         if: steps.filter.outputs.misc == 'true'
         run: bash scripts/tests/test-reserve-spec-id.sh

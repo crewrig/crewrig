@@ -347,7 +347,7 @@ sync_status() {
       needle="declare -$token"
     fi
     checked=$((checked + 1))
-    if ! printf '%s\n' "$rule5" | grep -qF -- "$needle"; then
+    if ! grep -qF -- "$needle" <<< "$rule5"; then
       missing="${missing:+$missing, }$needle"
     fi
   done <<SYNC_ROWS
@@ -701,7 +701,7 @@ $unguarded"
     bad "case-j: query on a violating tree gave exit $CHECK_EXIT, $j_ill ill-shaped of $j_rows row(s) (stdout: $CHECK_STDOUT)"
   fi
 
-  if ! printf '%s\n' "$CHECK_STDOUT" | grep -qE '^(OK|FAILED):'; then
+  if ! grep -qE '^(OK|FAILED):' <<< "$CHECK_STDOUT"; then
     ok "case-j: the query renders no verdict — neither an OK nor a FAILED line (R3)"
   else
     bad "case-j: the query emitted a verdict line (stdout: $CHECK_STDOUT)"
@@ -732,8 +732,8 @@ $unguarded"
   # where it would be misdiagnosed.
   run_check "$repo" --bogus-argument
   if [ "$CHECK_EXIT" -eq 2 ] \
-     && printf '%s\n' "$CHECK_STDERR" | grep -qF -- '--bogus-argument' \
-     && ! printf '%s\n' "$CHECK_STDOUT" | grep -qE '^OK:'; then
+     && grep -qF -- '--bogus-argument' <<< "$CHECK_STDERR" \
+     && ! grep -qE '^OK:' <<< "$CHECK_STDOUT"; then
     ok "case-j: an unrecognised argument exits 2 and names itself, with no verdict on stdout"
   else
     bad "case-j: unrecognised argument gave exit $CHECK_EXIT (stdout: $CHECK_STDOUT) (stderr: $CHECK_STDERR)"

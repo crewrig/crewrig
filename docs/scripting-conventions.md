@@ -305,6 +305,60 @@ tags the line with `# acknowledged-exception: <reason>` and the check honours it
 
 ---
 
+## Rule 6 — No writer piped into `grep -q` under `set -o pipefail`
+
+Never pipe a writer (such as `printf ... | grep -q` or `echo ... | grep -q`) directly
+into `grep -q` in scripts running under `set -o pipefail`. Use a Bash 3.2-portable
+here-string (`grep -q ... <<< "$var"`) or native regex / pattern match (`[[ "$var" =~ ... ]]`
+or `case ... in`).
+
+### Why
+
+Under `set -o pipefail`, the exit code of a pipeline is the exit code of the last
+(rightmost) command to exit with a non-zero status, or zero if all commands exited
+successfully.
+
+`grep -q` exits immediately upon finding its first match and closes its standard input.
+If the writer command (`printf`, `echo`, etc.) is still writing or attempting to flush
+its buffer when `grep -q` closes the pipe, the writer receives `SIGPIPE` (signal 13).
+Under `pipefail`, the non-zero exit status of the writer (141 = 128 + 13) causes the
+entire pipeline to fail with status 141, even though `grep -q` matched and exited 0.
+
+While macOS often masks this issue because small outputs fit entirely within default kernel
+pipe buffers before `grep -q` runs, Linux environments (such as GitHub Actions runners
+and Docker containers) frequently encounter buffer exhaustion or scheduling differences,
+leading to sporadic or deterministic test failures under `set -o pipefail`.
+
+### Bad
+
+```bash
+set -eo pipefail
+if printf '%s\n' "$list" | grep -q "^item"; then
+  echo "Found item"
+fi
+```
+
+### Good
+
+Use a here-string, which does not run the writer in a subshell pipeline subject to `SIGPIPE`:
+
+```bash
+set -eo pipefail
+if grep -q "^item" <<< "$list"; then
+  echo "Found item"
+fi
+```
+
+Or for single-token scalar checks, use native Bash conditional expressions:
+
+```bash
+if [[ "$val" =~ ^item ]]; then
+  echo "Found item"
+fi
+```
+
+---
+
 ## Acknowledged exceptions
 
 If a real reason justifies breaking one of these rules (e.g. a third-party
@@ -333,13 +387,14 @@ discussed in the PR.
 
 `.github/workflows/scripting-conventions.yml` runs a small `grep` pass on
 `scripts/` and `hooks/` to flag new occurrences of the chained-test pattern
-(Rule 3) and bare `except` (Rule 1), and invokes
+(Rule 3) and bare `except` (Rule 1), invokes
 `scripts/check-bash32-portability.sh` for the forbidden Bash 4+ constructs
-(Rule 5). The same three run on GitLab, from the shared capability declaration
-in `ci/ci-capabilities.yml`. The Rule 5 check is a script rather than an inline
-`grep` block so a maintainer can run it locally — `task check-bash32-portability`
-— and so its declared set lives in one data file instead of being hand-copied
-per engine.
+(Rule 5), and invokes `scripts/check-pipefail-grep.sh` for writer-to-grep-q
+pipelines under pipefail (Rule 6). The same checks run on GitLab, from the shared capability declaration
+in `ci/ci-capabilities.yml`. The Rule 5 and Rule 6 checks are scripts rather than inline
+`grep` blocks so a maintainer can run them locally — `task check-bash32-portability`
+and `bash scripts/check-pipefail-grep.sh` — and so that self-tests and input verification
+are reliably enforced.
 
-All three are intentionally lightweight; they do not try to be a full linter.
+All checks are intentionally lightweight; they do not try to be a full linter.
 False positives are handled with the `acknowledged-exception` tag.

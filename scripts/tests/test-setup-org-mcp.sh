@@ -184,7 +184,7 @@ OUT="$(apply_org_mcp_servers "$ORG_NATIVE" "$CFG" "$PRE" "$BK" 2>&1)"
 jq -e '.mcpServers.mempalace.command == "bash"' "$CFG" >/dev/null 2>&1 \
   && ok "R10: reserved 'mempalace' stays framework-managed (org 'evil' NOT applied)" \
   || bad "R10: mempalace must not be displaced by the org declaration"
-printf '%s' "$OUT" | grep -q "mempalace" \
+grep -q "mempalace" <<< "$OUT" \
   && ok "R10: non-silent warning names the reserved collision" \
   || bad "R10: missing reserved-collision warning (out: $OUT)"
 
@@ -197,7 +197,7 @@ printf '%s' "$OUT" | grep -q "mempalace" \
 jq -e '.mcpServers.atlassian.httpUrl and (.mcpServers.atlassian | has("command") | not)' "$CFG" >/dev/null 2>&1 \
   && ok "R11: org 'atlassian' overrides the operator entry (org wins)" \
   || bad "R11: org atlassian should win over operator"
-if printf '%s' "$OUT" | grep -q "'atlassian'" && printf '%s' "$OUT" | grep -qF "$BK"; then
+if grep -q "'atlassian'" <<< "$OUT" && grep -qF "$BK" <<< "$OUT"; then
   ok "R11: non-silent warning names 'atlassian' and points at the backup"
 else
   bad "R11: missing override warning + backup pointer (out: $OUT)"
@@ -279,7 +279,7 @@ LOG="$TMP_ROOT/claude-r10.log"; : > "$LOG"
 export CLAUDE_STUB_LOG="$LOG" CLAUDE_STUB_REGISTERED="" CLAUDE_STUB_ADD_FAIL=0
 printf '{"mcpServers":{"mempalace":{"transport":"stdio","command":"evil"}}}' > "$TMP_ROOT/man-r10.json"
 R10_OUT="$(register_org_mcp_claude "$TMP_ROOT/man-r10.json" "$TMP_ROOT/nonexistent.claude.json" 2>&1)"
-printf '%s' "$R10_OUT" | grep -q "mempalace" && ok "claude R10: reserved skip warns" || bad "claude R10: no warning ($R10_OUT)"
+grep -q "mempalace" <<< "$R10_OUT" && ok "claude R10: reserved skip warns" || bad "claude R10: no warning ($R10_OUT)"
 grep -q "mcp add" "$LOG" && bad "claude R10: reserved name must NOT be added" || ok "claude R10: no 'mcp add' issued for reserved name"
 
 # 5b. New non-reserved name -> `claude mcp add` with the translated argv.
@@ -299,7 +299,7 @@ export CLAUDE_STUB_LOG="$LOG" CLAUDE_STUB_REGISTERED="acme" CLAUDE_STUB_ADD_FAIL
 printf '{"mcpServers":{"acme":{"transport":"stdio","command":"acme-NEW"}}}' > "$TMP_ROOT/man-r11.json"
 R11_OUT="$(register_org_mcp_claude "$TMP_ROOT/man-r11.json" "$CLAUDE_CFG" 2>&1)"
 grep -q "mcp remove" "$LOG" && ok "claude R11: attempts remove-then-add" || bad "claude R11: no remove attempted (log: $(cat "$LOG"))"
-printf '%s' "$R11_OUT" | grep -qi "restor" \
+grep -qi "restor" <<< "$R11_OUT" \
   && ok "claude R11 guard: a failed re-add is surfaced (restore message)" \
   || bad "claude R11 guard: failed re-add not surfaced (out: $R11_OUT)"
 if [ "$(jq -r '.mcpServers.acme.command' "$CLAUDE_CFG")" = "OPERATOR-ORIGINAL" ]; then

@@ -434,7 +434,7 @@ want_any() {
 
 # want_no_line <exact line> — stdout must not carry that line exactly
 want_no_line() {
-  if printf '%s\n' "$OUT" | grep -qxF -- "$1"; then
+  if grep -qxF -- "$1" <<< "$OUT"; then
     WHY="stdout carries the line '$1', which it must not"
     return 1
   fi
@@ -688,7 +688,7 @@ case_7() {
   want_out "entries: 2" || return 1
   # The release must carry a timestamp, not just a name: an investigation asks
   # when as well as who.
-  if ! printf '%s\n' "$OUT" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z	release	alice'; then
+  if ! grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z	release	alice' <<< "$OUT"; then
     WHY="history has no timestamped release line for alice"
     return 1
   fi
@@ -827,7 +827,7 @@ case_11() {
   want_out "state: unclaimed" || return 1
   want_out "last-holder: alice" || return 1
   want_out "last-action: release" || return 1
-  if ! printf '%s\n' "$OUT" | grep -qE '^last-at: [0-9]{4}-[0-9]{2}-[0-9]{2}T'; then
+  if ! grep -qE '^last-at: [0-9]{4}-[0-9]{2}-[0-9]{2}T' <<< "$OUT"; then
     WHY="status carries no last-at timestamp for the departed holder"
     return 1
   fi

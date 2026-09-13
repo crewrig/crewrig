@@ -55,7 +55,7 @@ run_case() {
   fi
   if [ -n "$expected_ids" ]; then
     for id in $expected_ids; do
-      printf '%s\n' "$out" | grep -qF ": ${id} " || ok=0
+      grep -qF ": ${id} " <<< "$out" || ok=0
     done
   fi
   if [ "$ok" -eq 1 ]; then

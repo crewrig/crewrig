@@ -48,7 +48,7 @@ extract_frontmatter() {
 offenders=""
 for f in "$GEMINI_DIR"/*.md; do
   fm=$(extract_frontmatter "$f")
-  if printf '%s\n' "$fm" | grep -Eq '^(metadata|type):'; then
+  if grep -Eq '^(metadata|type):' <<< "$fm"; then
     offenders="$offenders\n  $f"
   fi
 done
@@ -90,7 +90,7 @@ for spec in "claude:$CLAUDE_DIR" "copilot:$COPILOT_DIR"; do
   while IFS= read -r f; do
     count=$((count + 1))
     fm=$(extract_frontmatter "$f")
-    if ! printf '%s\n' "$fm" | grep -q '^metadata:'; then
+    if ! grep -q '^metadata:' <<< "$fm"; then
       missing="$missing\n  $f"
     fi
   done < <(find "$dir" -type f -name '*.md')

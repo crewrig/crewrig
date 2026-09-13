@@ -343,7 +343,7 @@ reconcile_dir() {
 
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    if printf '%s\n' "$u_list" | grep -Fxq "$f" && [ ! -e "$REPO_DIR/$f" ]; then
+    if grep -Fxq "$f" <<< "$u_list" && [ ! -e "$REPO_DIR/$f" ]; then
       # Upstream has it, org doesn't.
       if path_in_org_history "$f"; then
         # R2 — org deleted it; stays gone.
@@ -355,7 +355,7 @@ reconcile_dir() {
         [ -n "$new_sha" ] && write_marker "$f" "$new_sha"
         echo "Added (new upstream file): $f" >&2
       fi
-    elif ! printf '%s\n' "$u_list" | grep -Fxq "$f"; then
+    elif ! grep -Fxq "$f" <<< "$u_list"; then
       # Org has it, upstream dropped/never had it → org-owned, never touched.
       :
     else

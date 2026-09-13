@@ -62,3 +62,8 @@ jobs:
         # maintainer can run the same check locally.
         # See docs/scripting-conventions.md, Rule 5.
         run: bash scripts/check-bash32-portability.sh
+
+      - name: Flag printf piped to grep -q under pipefail in governed scripts
+        # Rule 6 — writer piped into grep -q fails under set -o pipefail on Linux.
+        # See docs/scripting-conventions.md, Rule 6.
+        run: bash scripts/check-pipefail-grep.sh

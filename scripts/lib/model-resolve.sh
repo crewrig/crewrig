@@ -1286,11 +1286,11 @@ _render_guidance() {
       _diag_note "$agent" "$target" "unrenderable-fragment" "rendered guidance fragment would alter the compiled description's YAML structure"
       return 0
       ;;
+    *$'\r'*)
+      _diag_note "$agent" "$target" "unrenderable-fragment" "rendered guidance fragment carries a CR"
+      return 0
+      ;;
   esac
-  if printf '%s' "$joined" | grep -qU $'\r'; then
-    _diag_note "$agent" "$target" "unrenderable-fragment" "rendered guidance fragment carries a CR"
-    return 0
-  fi
 
   EMIT_PROSE="$joined"
   return 0

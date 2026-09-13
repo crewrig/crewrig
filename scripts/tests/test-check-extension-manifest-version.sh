@@ -62,7 +62,7 @@ run_case() {
 
   local ok=1
   [ "$actual_exit" -eq "$expected_exit" ] || ok=0
-  if [ -n "$offender" ] && ! printf '%s' "$out" | grep -q "$offender"; then
+  if [ -n "$offender" ] && ! grep -q "$offender" <<< "$out"; then
     ok=0
   fi
 

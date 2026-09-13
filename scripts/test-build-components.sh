@@ -86,8 +86,8 @@ write_config "$BAD_B"
 run_bundler
 ok="true"
 [ "$EXIT" -eq 1 ] || ok="false"
-printf '%s' "$STDERR" | grep -q "malformed" || ok="false"
-printf '%s' "$STDERR" | grep -qF "$BAD_B" || ok="false"
+grep -q "malformed" <<< "$STDERR" || ok="false"
+grep -qF "$BAD_B" <<< "$STDERR" || ok="false"
 report "(b) file:// scheme rejected" "$ok"
 
 # --- Case (c): /blob/<branch>/<path> → exit 1, stderr cites "malformed" ---
@@ -97,7 +97,7 @@ write_config "$BAD_C"
 run_bundler
 ok="true"
 [ "$EXIT" -eq 1 ] || ok="false"
-printf '%s' "$STDERR" | grep -q "malformed" || ok="false"
+grep -q "malformed" <<< "$STDERR" || ok="false"
 report "(c) /blob/<branch>/<path> rejected" "$ok"
 
 echo ""
