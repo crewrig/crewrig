@@ -1,7 +1,7 @@
 ---
 id: "0204"
 slug: protect-org-compiled-skills-from-sync-orphan-cleanup
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1137
@@ -9,10 +9,6 @@ version: 1.0.0
 ---
 
 # Protect organization-owned compiled skills from synchronization orphan cleanup
-
-## Architectural Context and Decisions
-
-### Background
 
 CrewRig defines compiled output directories (`.claude/skills/`,
 `.gemini/skills/`, `.gemini/commands/`, `.github/skills/`, and
@@ -35,9 +31,9 @@ Consequently, whenever an adopting organization commits its own compiled
 skills or commands, running `scripts/sync-from-upstream.sh` deletes them
 as spurious upstream orphans.
 
-### Alternatives Considered
+**Alternatives Considered:**
 
-1. **Reclassify compiled skill and command trees to `regenerable`.**
+1. *Reclassify compiled skill and command trees to `regenerable`.*
    Under spec 0199 Decision 6 and test case `uu`, directory entries governed
    by `regenerable` execute the identical spec 0064 orphan cleanup loop as
    `strict` entries. Reclassifying skill trees to `regenerable` would not
@@ -48,7 +44,7 @@ as spurious upstream orphans.
    would sacrifice detection of accidental modifications to core skills.
    *Rejected.*
 
-2. **Introduce a fifth synchronization policy.**
+2. *Introduce a fifth synchronization policy.*
    Adding an explicit policy token (e.g. `assembly`) in
    `.crewrig/core-paths.txt` would necessitate alterations to manifest
    parsing, `scripts/check-core-paths.sh`, and documentation across
@@ -58,7 +54,7 @@ as spurious upstream orphans.
    complexity without functional benefit over refining orphan cleanup.
    *Rejected.*
 
-3. **Exclude organization-tier compiled outputs from orphan cleanup.**
+3. *Exclude organization-tier compiled outputs from orphan cleanup.*
    In assembly directories, orphan cleanup distinguishes between files
    that upstream previously provided and subsequently deleted, and files
    originating from the organization's own definitions under `artifacts/org/`.
@@ -160,5 +156,5 @@ And no working tree files are modified or deleted.
 
 ## Open questions
 
-*(None. All design alternatives were evaluated and resolved in the Architectural
-Context and Decisions section.)*
+*(None. All design alternatives were evaluated and resolved in the introductory
+context section.)*
