@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.6.0"
+    version: "1.6.1"
 claude:
   allowed-tools:
     - Read
@@ -336,7 +336,7 @@ Frame each validation request per the level:
   situation (what is being decided, why, what each choice implies) alongside
   complete substance embedding.
 
-### `illustration` (spec 0080 R14, spec 0189 R4)
+### `illustration` (spec 0080 R14, spec 0189 R4, spec 0189 delta-01 R6/R7)
 
 Honoured **only when `backend=plannotator` AND a browser image surface is
 available** — otherwise **silently ignored** (no error, no note). Because
@@ -345,6 +345,18 @@ display is a function of browser availability, not of the driving CLI (uniform
 across all four CLIs, not a per-CLI asymmetry — spec 0080 OQ4). When honoured,
 generation is **best-effort** via the `nano-banana` skill; if it is unavailable
 or fails, proceed with the gate without the illustration.
+
+**Pedagogical value requirement (never decorative, spec 0189 delta-01 R6).**
+Generated images or graphical assets in validation presentation documents SHALL
+be reserved strictly for pedagogical benefit (such as explaining architectural
+schemas, component boundaries, sequence flows, or decision trade-offs).
+Generating purely decorative illustrations is prohibited as an unnecessary
+expense and distraction.
+
+**Inline SVG preference for diagrams (spec 0189 delta-01 R7).** When schematic
+diagrams or structural visualizations are needed in a presentation document,
+authors SHALL prefer self-contained inline SVG markup over AI-generated raster
+images.
 
 **Inline Base64 Data URI Requirement (spec 0189 R4).** When illustrations or
 local image assets are referenced in an HTML presentation document passed to
