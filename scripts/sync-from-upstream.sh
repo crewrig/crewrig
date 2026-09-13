@@ -211,6 +211,48 @@ upstream_has_blob() {
 }
 
 # ---------------------------------------------------------------------------
+# is_org_component_output <tracked-path>
+# Return 0 iff <tracked-path> is a compiled output corresponding to an active
+# organization-tier component definition under artifacts/org/ (spec 0204).
+# ---------------------------------------------------------------------------
+is_org_component_output() {
+  local file="$1" comp=""
+  case "$file" in
+    .claude/skills/*|.gemini/skills/*|.github/skills/*|.agents/skills/*)
+      comp="${file#*/skills/}"
+      comp="${comp%%/*}"
+      ;;
+    .gemini/commands/*.toml)
+      comp="${file#.gemini/commands/}"
+      comp="${comp%.toml}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  [ -n "$comp" ] || return 1
+
+  local org_root="$REPO_DIR/artifacts/org"
+  [ -d "$org_root" ] || return 1
+
+  # Direct match: directory under artifacts/org/skills/<comp> or command file artifacts/org/commands/<comp>.md
+  if [ -d "$org_root/skills/$comp" ] || [ -f "$org_root/commands/$comp.md" ]; then
+    return 0
+  fi
+
+  # Fallback: declared name: in YAML frontmatter may differ from the directory/file name
+  local src
+  for src in "$org_root/skills"/*/SKILL.md "$org_root/commands"/*.md; do
+    [ -f "$src" ] || continue
+    if grep -q "^name:[[:space:]]*[\"']\?${comp}[\"']\?[[:space:]]*\$" "$src" 2>/dev/null; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# ---------------------------------------------------------------------------
 # resolves_at_fetch_head <path>
 # Return 0 iff <path> resolves to an object (blob OR tree) in the fetched
 # upstream tree. `git cat-file -e FETCH_HEAD:<path>` succeeds for either
@@ -564,6 +606,11 @@ for i in "${!PATHS[@]}"; do
             case "$tracked" in "$excl"/*|"$excl") skip=1; break ;; esac
           done < <(excluded_children_of "$path")
           [ "$skip" -eq 1 ] && continue
+          # spec 0204: preserve locally tracked compiled outputs corresponding to
+          # active organization-tier component definitions under artifacts/org/
+          if is_org_component_output "$tracked"; then
+            continue
+          fi
           if ! git ls-tree FETCH_HEAD -- "$tracked" 2>/dev/null | grep -q .; then
             rm -f "$REPO_DIR/$tracked"
             echo "Removed (upstream-deleted): $tracked"

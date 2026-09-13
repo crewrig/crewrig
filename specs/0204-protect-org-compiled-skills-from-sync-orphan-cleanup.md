@@ -1,7 +1,7 @@
 ---
 id: "0204"
 slug: protect-org-compiled-skills-from-sync-orphan-cleanup
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1137

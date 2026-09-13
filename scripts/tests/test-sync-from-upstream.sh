@@ -168,6 +168,13 @@
 #  vv. An org channel file nested under the still-`strict` `model-mappings`
 #      parent is neither restored nor able to abort the sync — the R5
 #      carve-out this ticket's manifest entries rely on (R5).
+#  ww. A fork lands on the new flat compiled-agent layout without acting (spec 0201).
+#
+# Spec-0204 organization-tier compiled skill/command preservation cases (issue #1137):
+#  xx. Active org-owned compiled skill under strict directory is preserved across sync (R1, R2).
+#  yy. Active org-owned compiled command under strict directory is preserved across sync (R1, R2).
+#  zz. Upstream-deleted core skill is removed by orphan cleanup (R3).
+#  aaa. Retired organization skill is cleaned up as orphan when definition removed (R4).
 #
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
@@ -3004,6 +3011,192 @@ STUB
     pass=$((pass + 1))
   else
     echo "FAIL  case-vv: org channel file was modified: '$org_after'"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case xx — spec 0204 R1, R2: active organization-owned compiled skill
+# under strict compiled directory is preserved across sync and no removal
+# notice is emitted.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    ".claude/skills/developer/SKILL.md" "upstream developer skill content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig" "$adopter/artifacts/org/skills/org-helper"
+  printf '.claude/skills\tstrict\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    ".claude/skills/developer/SKILL.md" "upstream developer skill content" \
+    "artifacts/org/skills/org-helper/SKILL.md" "org helper source" \
+    ".claude/skills/org-helper/SKILL.md" "org helper compiled output"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>/dev/null)" || actual_exit=$?
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-xx: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if [ ! -f "$adopter/.claude/skills/org-helper/SKILL.md" ]; then
+    echo "FAIL  case-xx: org skill was removed by sync"
+    ok=0
+  fi
+  if echo "$stdout_out" | grep -qF "Removed (upstream-deleted): .claude/skills/org-helper/SKILL.md"; then
+    echo "FAIL  case-xx: removal notice emitted for preserved org skill"
+    ok=0
+  fi
+  if [ ! -f "$adopter/.claude/skills/developer/SKILL.md" ]; then
+    echo "FAIL  case-xx: active upstream skill was removed"
+    ok=0
+  fi
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-xx: active org-owned compiled skill preserved across sync"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case yy — spec 0204 R1, R2: active organization-owned compiled command
+# under strict compiled directory is preserved across sync.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    ".gemini/commands/core-cmd.toml" "upstream core command"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig" "$adopter/artifacts/org/commands"
+  printf '.gemini/commands\tstrict\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    ".gemini/commands/core-cmd.toml" "upstream core command" \
+    "artifacts/org/commands/org-cmd.md" "org command source" \
+    ".gemini/commands/org-cmd.toml" "org command compiled output"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>/dev/null)" || actual_exit=$?
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-yy: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if [ ! -f "$adopter/.gemini/commands/org-cmd.toml" ]; then
+    echo "FAIL  case-yy: org command was removed by sync"
+    ok=0
+  fi
+  if echo "$stdout_out" | grep -qF "Removed (upstream-deleted): .gemini/commands/org-cmd.toml"; then
+    echo "FAIL  case-yy: removal notice emitted for preserved org command"
+    ok=0
+  fi
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-yy: active org-owned compiled command preserved across sync"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case zz — spec 0204 R3: upstream-deleted core skill is removed by orphan cleanup.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    ".claude/skills/active-core/SKILL.md" "active core content" \
+    ".claude/skills/retired-core/SKILL.md" "retired core content"
+  git -C "$upstream" rm -q -r ".claude/skills/retired-core"
+  git -C "$upstream" commit -q -m "remove retired core skill"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf '.claude/skills\tstrict\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    ".claude/skills/active-core/SKILL.md" "active core content" \
+    ".claude/skills/retired-core/SKILL.md" "retired core content"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>/dev/null)" || actual_exit=$?
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-zz: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if [ -f "$adopter/.claude/skills/retired-core/SKILL.md" ]; then
+    echo "FAIL  case-zz: upstream-deleted core skill was not removed"
+    ok=0
+  fi
+  if ! echo "$stdout_out" | grep -qF "Removed (upstream-deleted): .claude/skills/retired-core/SKILL.md"; then
+    echo "FAIL  case-zz: missing 'Removed (upstream-deleted)' report line for core skill"
+    ok=0
+  fi
+  if [ ! -f "$adopter/.claude/skills/active-core/SKILL.md" ]; then
+    echo "FAIL  case-zz: active core skill was incorrectly removed"
+    ok=0
+  fi
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-zz: upstream-deleted core skill is removed by orphan cleanup"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case aaa — spec 0204 R4: retired organization skill is cleaned up as an
+# orphan when its definition under artifacts/org/ is removed.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    ".claude/skills/active-core/SKILL.md" "active core content"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig" "$adopter/artifacts/org/skills"
+  printf '.claude/skills\tstrict\n' > "$adopter/.crewrig/core-paths.txt"
+  # Adopter has a tracked compiled skill, but no corresponding source in artifacts/org/skills/
+  make_initial_commit "$adopter" \
+    ".claude/skills/active-core/SKILL.md" "active core content" \
+    ".claude/skills/retired-org/SKILL.md" "stale compiled output with no source"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>/dev/null)" || actual_exit=$?
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-aaa: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if [ -f "$adopter/.claude/skills/retired-org/SKILL.md" ]; then
+    echo "FAIL  case-aaa: retired org skill was not removed"
+    ok=0
+  fi
+  if ! echo "$stdout_out" | grep -qF "Removed (upstream-deleted): .claude/skills/retired-org/SKILL.md"; then
+    echo "FAIL  case-aaa: missing 'Removed (upstream-deleted)' report line for retired org skill"
+    ok=0
+  fi
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-aaa: retired organization skill is cleaned up as orphan"
+    pass=$((pass + 1))
+  else
     fail=$((fail + 1))
   fi
 }
