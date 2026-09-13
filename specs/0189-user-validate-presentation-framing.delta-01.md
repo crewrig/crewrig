@@ -1,7 +1,7 @@
 ---
 id: "0189"
 slug: user-validate-presentation-framing
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1155
