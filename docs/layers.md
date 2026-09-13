@@ -174,6 +174,9 @@ force (`docs/org-model-mapping-override.md`) makes those four outputs
 legitimately diverge from upstream, and `scripts/sync-from-upstream.sh`
 cannot run the build to tell that apart from a hand edit. The compiled
 skill and command trees reach no mapping, so they stay `strict` (R45).
+While governed by `strict`, their organization-owned compiled outputs
+(corresponding to active definitions under `artifacts/org/`) are preserved
+across upstream synchronization rather than purged as orphans (spec 0204).
 
 An adopting organization may activate only a subset of CLIs; the sync
 mechanism respects this scope. The detailed assembly model (which CLI outputs
