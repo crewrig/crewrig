@@ -116,7 +116,8 @@ Four cross-cutting options tune each request:
   translated, the repository artifact stays English.
 - *pedagogy* — `simple` | `contextual` | `professor` framing.
 - *illustration* — best-effort, honoured only with the `plannotator` backend
-  and an image-displaying surface.
+  and an image-displaying surface (strictly reserved for pedagogical
+  diagrams/schemas, never decorative; inline SVG preferred).
 - *theme* — `auto` (or `system`) | `dark` | `light` theme styling for
   bespoke HTML presentations.
 
