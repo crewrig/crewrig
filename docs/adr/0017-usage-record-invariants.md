@@ -127,6 +127,20 @@ Each invariant is documented in the usage record format guide (`docs/usage-recor
 - **Con:** A default is invisible — old records slipping through would be miscounted or misdirected. The contract is weakened by pretending backward compatibility is possible when the meaning of a field has changed.
 - **Verdict:** Rejected in favor of explicit rejection. Legacy data has its own migration spec; the contract itself is cleaner without a default.
 
+### Readings recorded for downstream seams
+
+#### JSON Schema validation and ADR-0012's narrowed scope
+
+ADR-0012 rejected JSON Schema as a reference validator ("introduces a validator toolchain absent from CI today, against the YAML/`yq` decision"), scoping that decision to the CI-reference job, which relies on `yq` for validation. This ADR's usage record contract runs a different CI job that invokes a different tool: `node@22` is already present in the CI environment, and `ajv` (the reference JSON Schema validator for Node.js) is installed as an explicit devDependency. The narrower scope of ADR-0012's rejection — tied to the `yq`-only reference job — does not transfer to this contract.
+
+#### R5 and R21: raw presence and status visibility
+
+R5 specifies that the `raw` sub-object is the default obligation at capture: every record carries its source vendor's verbatim payload when `rawStatus: "complete"`. R21 names the downstream degradations: `rawStatus` values of `truncated`, `externalized`, and `elided` represent post-capture transformations. The schema permits a `captured` record without a `raw` object only when `rawStatus` is `externalized` (with a corresponding `rawRef` to the externalized payload) or `elided` (when the payload is dropped entirely). This design allows downstream seam (c, #1170) to apply size-management and externalization policies without breaking the schema contract.
+
+#### Capture-time rawStatus obligation
+
+Every record at the point of capture carries `rawStatus: "complete"` and the full `raw` block. The states `truncated`, `externalized`, and `elided` are only reachable through a post-capture transformation — a storage decision, compression, or audit policy applied by a downstream system. A consumer seeing a record with `rawStatus` other than `complete` knows the transformation has already occurred.
+
 ## References
 
 - **Spec 0205** (issue #1168): Usage record model — the CLI-agnostic contract for token-consumption records.
