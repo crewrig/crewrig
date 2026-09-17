@@ -19,9 +19,11 @@ displaying it — so a unit of model consumption reported from any of the four
 CLIs carries the same shape and the same meaning regardless of its origin or
 its fidelity. A person or a downstream tool inspecting a record can tell,
 without guessing, which model handled the request, how many tokens fell into
-each recognized class, whether the number reflects a single request or a
-coarser aggregate, and whether the source could be read at all — never a
-silent zero standing in for a measurement that was never taken.
+each recognized class, what kind of interaction the request served — a
+user's prompt, a tool result fed back to the model, or the CLI's own
+housekeeping — whether the number reflects a single request or a coarser
+aggregate, and whether the source could be read at all — never a silent zero
+standing in for a measurement that was never taken.
 
 ## Requirements
 
@@ -131,6 +133,21 @@ silent zero standing in for a measurement that was never taken.
     together with its identity block, so that capturing the same source
     unit twice yields the same record identifier and no consumer needs a
     lookup table to recognize a re-capture.
+23. Every `captured` record SHALL carry an interaction class naming what the
+    request served, as exactly one of: `user-turn`, a request whose newest
+    input was a user message; `tool-continuation`, a request whose newest
+    input was one or more tool results returned to the model;
+    `agent-internal`, a request the CLI issued for its own purposes, such
+    as context compaction, summarization, model routing, or title
+    generation; or `unknown`, when the source exposes no signal that
+    decides the class. The source vendor's original stop or finish reason,
+    when it reports one, SHALL be preserved in the raw sub-object.
+24. The five token-count classes SHALL remain counts for the whole request
+    and SHALL NOT be apportioned across the messages composing the
+    request's input — user prompt, tool results, system context — nor
+    across the parts of its output — text, tool-call arguments,
+    reasoning beyond what the vendor itself reports. A record SHALL NOT
+    present an estimated per-message split as a measured count.
 
 ## Scenarios
 
@@ -211,6 +228,27 @@ Then  the record with no attribution block validates, the record with a
       price field is rejected
 ```
 
+**Scenario:** A tool-continuation request is classified and counted whole
+
+```text
+Given a Claude Code source record for a request whose newest input was a
+      tool result and whose vendor stop reason names a tool use
+When  the usage record is built from that source
+Then  the record's interaction class is tool-continuation, its five
+      token-count classes hold the request's complete counts, and the raw
+      sub-object carries the vendor's original stop reason
+```
+
+**Scenario:** Interaction class is unknown when the source is silent
+
+```text
+Given an Antigravity CLI source that exposes cumulative counters and no
+      signal about what the latest request served
+When  the usage record is built from that source
+Then  the record's interaction class is unknown, and no class is guessed
+      from the counters' magnitude or timing
+```
+
 **Scenario:** A truncated raw payload stays distinguishable from a complete one
 
 ```text
@@ -239,6 +277,10 @@ Then  the consumer can tell from the record itself which raw sub-object is
 - The text of the architecture decision record mandated by requirement 19
   — authored during the implementation of this specification, not in this
   spec-PR (the one-file rule).
+- Apportioning a request's input tokens across its constituent messages
+  (user prompt, tool results, system context) or its output tokens across
+  text and tool-call arguments — no source reports such a split, so any
+  such figure would be an estimate, not a measurement (requirement 24).
 - Any change to the behavior, output format, or configuration surface of
   the four CLIs themselves.
 
@@ -280,12 +322,13 @@ implementation, not a constraint any requirement above depends on.
 | `timing.requestInstant` | timestamp | always | Requirement 12. |
 | `timing.captureInstant` | timestamp | always | Requirement 12. |
 | `modelId` | string | `captured` only | Requirement 8; verbatim, including a literal `"auto"`. |
+| `interaction` | enum: `user-turn` \| `tool-continuation` \| `agent-internal` \| `unknown` | `captured` only | Requirement 23; e.g. Copilot `initiator`, Claude Code `query_source` plus stop reason, Gemini tool-call presence — signals, not the classification rule. |
 | `tokens.netInput` | integer ≥ 0 | `captured` only | Requirements 2, 3. |
 | `tokens.cacheRead` | integer ≥ 0 | `captured` only | Requirement 2. |
 | `tokens.cacheWrite` | integer ≥ 0, or a per-tier map | `captured` only | Requirements 2, 4. |
 | `tokens.output` | integer ≥ 0 | `captured` only | Requirement 2. |
 | `tokens.reasoning` | integer ≥ 0 | `captured` only | Requirement 2. |
-| `raw` | object | `captured` only | Requirement 5; vendor's original fields verbatim. |
+| `raw` | object | `captured` only | Requirements 5, 23; vendor's original fields verbatim, including its stop or finish reason. |
 | `uncapturedReason` | string | `uncaptured` only | Requirement 6. |
 | `attribution.taskHandoffKey` | string | optional | Requirement 14. |
 | `attribution.externalAsset` | object `{kind, ref}` | optional | Requirement 14; `kind` ∈ `{forge-issue, jira-key, shared-file}`. |
