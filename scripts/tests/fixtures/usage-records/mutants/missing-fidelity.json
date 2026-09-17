@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "recordId": "8479a61aabc208cd49ae92d2bb7219b748d262ff9d57d7790382e1909b4a0c29",
+  "idempotencyKey": "mutant-missing-fidelity-001",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "2.1.4",
+    "captureChannel": "own-record-tail",
+    "formatFingerprint": "sha256:9f1c2b7e4a5d6f809c1b2e3a4d5f6081"
+  },
+  "identity": {
+    "sessionId": "mutant-session-missing-fidelity",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-09-16T09:12:03.221Z",
+    "captureInstant": "2026-09-16T09:12:04.884Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 100,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 50,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "anthropic",
+    "usage": {
+      "input_tokens": 100,
+      "output_tokens": 50
+    }
+  },
+  "rawStatus": "complete"
+}

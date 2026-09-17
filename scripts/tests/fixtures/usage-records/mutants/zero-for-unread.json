@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "09ced4344cffab2f07fd5530a1742be95103c59a40c20302822dc816807c0c3e",
+  "idempotencyKey": "mutant-zero-for-unread-001",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "2.1.4",
+    "captureChannel": "own-record-tail",
+    "formatFingerprint": "sha256:9f1c2b7e4a5d6f809c1b2e3a4d5f6081"
+  },
+  "identity": {
+    "sessionId": "mutant-session-zero-for-unread",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-09-16T09:45:00.000Z",
+    "captureInstant": "2026-09-16T09:45:00.512Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "unknown",
+  "tokens": {
+    "netInput": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 0,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "anthropic",
+    "uncapturedReasonHint": "usage block absent from the transcript tail; source could not be read at capture time",
+    "usage": null
+  },
+  "rawStatus": "complete"
+}
