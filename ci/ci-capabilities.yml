@@ -1113,6 +1113,38 @@ capabilities:
       - npm install
       - npm audit --audit-level=critical
 
+  # usage-record-schema validates the usage record contract (spec 0205).
+  # Deliberately NOT changeset-gated: the fail-safe job (ci-changeset-coverage.sh)
+  # provisions python@3.12 + yq and no Node, so a node@22 capability must never
+  # enter its execution set.
+  - id: usage-record-schema
+    name: "Validate usage record schema and fixtures"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "schemas/**"
+          - "scripts/lib/usage-record-validator.js"
+          - "scripts/tests/test-usage-record-schema.sh"
+          - "scripts/tests/fixtures/usage-records/**"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "schemas/**"
+          - "scripts/lib/usage-record-validator.js"
+          - "scripts/tests/test-usage-record-schema.sh"
+          - "scripts/tests/fixtures/usage-records/**"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - bash scripts/tests/test-usage-record-schema.sh
+
   # gitlab-ci-check is the generator's own drift gate (spec 0048 R6/R7),
   # registered as a portable capability so the verification surface is itself
   # contract-described, not a hidden gate. Its command diffs the committed

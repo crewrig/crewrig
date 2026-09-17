@@ -1,7 +1,7 @@
 ---
 id: "0205"
 slug: usage-record-model
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1168

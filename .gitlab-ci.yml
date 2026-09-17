@@ -962,6 +962,29 @@ audit:
         - "**/mcp.json.template"
         - "**/extension.json"
 
+usage-record-schema:
+  image: node:22
+  script:
+    - "npm install"
+    - "bash scripts/tests/test-usage-record-schema.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "schemas/**"
+        - "scripts/lib/usage-record-validator.js"
+        - "scripts/tests/test-usage-record-schema.sh"
+        - "scripts/tests/fixtures/usage-records/**"
+        - "package.json"
+        - "package-lock.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "schemas/**"
+        - "scripts/lib/usage-record-validator.js"
+        - "scripts/tests/test-usage-record-schema.sh"
+        - "scripts/tests/fixtures/usage-records/**"
+        - "package.json"
+        - "package-lock.json"
+
 gitlab-ci-check:
   image: debian:stable-slim
   before_script:

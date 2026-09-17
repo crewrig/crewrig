@@ -174,3 +174,9 @@ model-mappings/claude.org.yml	excluded
 model-mappings/gemini.org.yml	excluded
 model-mappings/copilot.org.yml	excluded
 model-mappings/antigravity.org.yml	excluded
+
+# Usage record schema (spec 0205). A build input, not a component — nothing
+# deploys it to a CLI — so top-level rather than under artifacts/. Its
+# normative shape is docs/usage-record-format.md; its hermetic gate is
+# scripts/lib/usage-record-validator.js.
+schemas	strict

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "f220be4e5ffcb0e9f12977510f87f29a25a87028eb917987137f71a90df21562",
+  "idempotencyKey": "msg-0002",
+  "provenance": {
+    "cli": "gemini-cli",
+    "cliVersion": "0.9.3",
+    "captureChannel": "headless-envelope",
+    "formatFingerprint": "sha256:1a2b3c4d5e6f708192a3b4c5d6e7f809"
+  },
+  "identity": {
+    "sessionId": "gemini-cli-session-20260915-002",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-09-15T09:20:11.004Z",
+    "captureInstant": "2026-09-15T09:20:12.550Z"
+  },
+  "modelId": "gemini-2.5-pro",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 3800,
+    "cacheRead": 1200,
+    "cacheWrite": 0,
+    "output": 214,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "google",
+    "usageMetadata": {
+      "promptTokenCount": 5000,
+      "cachedContentTokenCount": 1200,
+      "candidatesTokenCount": 214
+    }
+  },
+  "rawStatus": "complete"
+}

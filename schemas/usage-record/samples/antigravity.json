@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "session-cumulative",
+  "recordId": "ce131d29862ab92ddc538192a476ef0427799ad44fae858279daa7acb34edfaa",
+  "idempotencyKey": "cumulative-window-2026-09-15T00-00Z--2026-09-15T01-00Z",
+  "provenance": {
+    "cli": "antigravity",
+    "cliVersion": "1.2.0",
+    "captureChannel": "statusline-shim",
+    "formatFingerprint": "sha256:2b3c4d5e6f708192a3b4c5d6e7f80912"
+  },
+  "identity": {
+    "sessionId": "antigravity-session-20260915-004",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-09-15T09:00:00.000Z",
+    "captureInstant": "2026-09-15T10:00:00.000Z"
+  },
+  "modelId": "auto",
+  "interaction": "unknown",
+  "tokens": {
+    "netInput": 15420,
+    "cacheRead": 8900,
+    "cacheWrite": 0,
+    "output": 2110,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "antigravity",
+    "modelName": "auto",
+    "cumulativeCounters": {
+      "inputTokens": 24320,
+      "cachedTokens": 8900,
+      "outputTokens": 2110
+    }
+  },
+  "rawStatus": "complete"
+}

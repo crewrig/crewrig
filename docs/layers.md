@@ -84,6 +84,12 @@ contract — never flowing back upstream.
 |---|---|
 | `model-mappings/` | Per-CLI model mapping artifacts (`model-mappings/<target>.yml`, one per supported target) declaring which models a target can reach, what each provides, and how the spec 0195 capability vocabulary turns into that target's native fields and prose. Core/`strict`; its normative shape is `docs/model-mapping-format.md`; its hermetic gate is `scripts/check-model-mappings.sh`. Top-level rather than under `artifacts/`: a mapping is a build input, not a component, and nothing deploys it to a CLI (spec 0197 Decision 1). Each core mapping is paired with an org-owned override channel, `model-mappings/<target>.org.yml` — see *Org overlay carve-outs in core trees* below (spec 0199). |
 
+### Usage record schema (spec 0205)
+
+| Path | Description |
+|---|---|
+| `schemas/` | The CLI-agnostic, versioned contract for a unit of model-token consumption (`schemas/usage-record/v1.schema.json`, JSON Schema draft 2020-12) plus its per-CLI conforming samples (`schemas/usage-record/samples/`). Core/`strict`; its normative shape is `docs/usage-record-format.md`; its hermetic gate is `scripts/lib/usage-record-validator.js` run by `scripts/tests/test-usage-record-schema.sh`. Top-level rather than under `artifacts/`: the schema is a build input read by every downstream seam of the token-consumption epic, not a component, and nothing deploys it to a CLI — the same reasoning `model-mappings/` above rests on (spec 0197 Decision 1). |
+
 ### Build and install tooling
 
 | Path | Description |

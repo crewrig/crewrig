@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "841100d8ff5216fb1656592564deb8109e0e8f10c156d0f6aad5a1bb76ddae59",
+  "idempotencyKey": "req_01HXAMPLE0000000000000001-correction-01",
+  "corrects": "e6b0fcca737a7f332eec7d720cf1ade116638ea3b47084618ed9c267f1df6aeb",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "2.1.4",
+    "captureChannel": "own-record-tail",
+    "formatFingerprint": "sha256:9f1c2b7e4a5d6f809c1b2e3a4d5f6081"
+  },
+  "identity": {
+    "sessionId": "claude-code-session-20260915-001",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-09-15T09:12:03.221Z",
+    "captureInstant": "2026-09-16T14:05:22.009Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "tool-continuation",
+  "tokens": {
+    "netInput": 812,
+    "cacheRead": 41230,
+    "cacheWrite": {
+      "ephemeral_5m_input_tokens": 3204,
+      "ephemeral_1h_input_tokens": 512
+    },
+    "output": 341,
+    "reasoning": 118
+  },
+  "rawStatus": "externalized",
+  "rawRef": "mempalace://crewrig/task-handoff/1168/raw/e6b0fcca737a7f332eec7d720cf1ade116638ea3b47084618ed9c267f1df6aeb"
+}
