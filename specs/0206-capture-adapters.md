@@ -1,7 +1,7 @@
 ---
 id: "0206"
 slug: capture-adapters
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1169
