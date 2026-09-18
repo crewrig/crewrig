@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "e6b0fcca737a7f332eec7d720cf1ade116638ea3b47084618ed9c267f1df6aeb",
+  "idempotencyKey": "req_01HXAMPLE0000000000000001",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "2.1.4",
+    "captureChannel": "own-record-tail",
+    "formatFingerprint": "sha256:9f1c2b7e4a5d6f809c1b2e3a4d5f6081"
+  },
+  "identity": {
+    "sessionId": "claude-code-session-20260915-001",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-09-15T09:12:03.221Z",
+    "captureInstant": "2026-09-15T09:12:04.884Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "tool-continuation",
+  "tokens": {
+    "netInput": 812,
+    "cacheRead": 41230,
+    "cacheWrite": {
+      "ephemeral_5m_input_tokens": 3204,
+      "ephemeral_1h_input_tokens": 512
+    },
+    "output": 341,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "anthropic",
+    "usage": {
+      "input_tokens": 812,
+      "cache_read_input_tokens": 41230,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 3204,
+        "ephemeral_1h_input_tokens": 512
+      },
+      "output_tokens": 341
+    },
+    "stop_reason": "tool_use"
+  },
+  "rawStatus": "complete",
+  "attribution": {
+    "taskHandoffKey": "crewrig/task-handoff/1168",
+    "externalAsset": {
+      "kind": "forge-issue",
+      "ref": "crewrig/crewrig#1168"
+    }
+  }
+}

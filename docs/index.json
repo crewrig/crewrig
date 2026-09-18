@@ -145,6 +145,11 @@
           "title": "Agent capability-profile migration",
           "path": "docs/agent-profile-migration.md",
           "nav_order": 110
+        },
+        {
+          "title": "Usage record format",
+          "path": "docs/usage-record-format.md",
+          "nav_order": 120
         }
       ]
     },
@@ -241,6 +246,11 @@
           "title": "ADR 0016 — Shared MemPalace MCP HTTP server",
           "path": "docs/adr/0016-shared-mempalace-mcp-http-server.md",
           "nav_order": 160
+        },
+        {
+          "title": "ADR 0017 — Usage record invariants",
+          "path": "docs/adr/0017-usage-record-invariants.md",
+          "nav_order": 170
         }
       ]
     }

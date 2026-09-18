@@ -1,0 +1,38 @@
+name: Usage Record Schema Check
+
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "schemas/**"
+      - "scripts/lib/usage-record-validator.js"
+      - "scripts/tests/test-usage-record-schema.sh"
+      - "scripts/tests/fixtures/usage-records/**"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "schemas/**"
+      - "scripts/lib/usage-record-validator.js"
+      - "scripts/tests/test-usage-record-schema.sh"
+      - "scripts/tests/fixtures/usage-records/**"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  usage-record-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate usage record schema and fixtures
+        run: bash scripts/tests/test-usage-record-schema.sh

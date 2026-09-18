@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/crewrig/crewrig/main/schemas/usage-record/v1.schema.json",
+  "title": "CrewRig usage record (v1)",
+  "description": "The CLI-agnostic, versioned contract for a unit of model-token consumption (spec 0205). A record carries exactly one of two kinds — captured, for a unit a source successfully yielded, or uncaptured, for a unit a source could not yield (R1) — and never a silent zero standing in for a measurement that was never taken (R6).",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0",
+      "description": "R13: the schema version this record conforms to. A v2 of this contract is a new sibling file (v2.schema.json), never an edit of v1; a consumer refuses a record declaring a version it does not recognize rather than guess at an unrecognized field."
+    },
+    "kind": {
+      "enum": ["captured", "uncaptured"],
+      "description": "R1: exactly one of the two record kinds. No third or implicit kind exists."
+    },
+    "fidelity": {
+      "enum": ["per-request", "run-total", "session-cumulative"],
+      "description": "R7: no default is assumed when the field is absent; fidelity is therefore required at the root, not merely recommended."
+    },
+    "recordId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "R22: sha256(identity.sessionId + U+001F + idempotencyKey), lowercase hex, so the identifier is derivable from the idempotency key together with the identity block alone, and a re-capture of the same source unit yields the same recordId."
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "description": "R9: uniquely identifies the captured or attempted unit within its source, so reading the same underlying source data more than once does not yield two records recognized as distinct."
+    },
+    "corrects": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "R20: optional. Names the recordId this record corrects. A correction to a previously written record is always a new record; a normative field of the old record is never mutated in place."
+    },
+    "provenance": {
+      "type": "object",
+      "description": "R10: capture provenance naming the source CLI, its version, the capture channel, and a format fingerprint of the source data at capture time.",
+      "properties": {
+        "cli": {
+          "enum": ["claude-code", "gemini-cli", "copilot-cli", "antigravity"]
+        },
+        "cliVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "captureChannel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "formatFingerprint": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["cli", "cliVersion", "captureChannel", "formatFingerprint"],
+      "additionalProperties": false
+    },
+    "identity": {
+      "type": "object",
+      "description": "R11: the session the request belongs to, the parent session (when the request originates from a subordinate agent), an agent identifier or name, and the project root the session ran against.",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parentSessionId": {
+          "type": ["string", "null"],
+          "description": "Absent or null when the session has no parent."
+        },
+        "agentId": {
+          "type": ["string", "null"],
+          "description": "Absent or null only when the record originates from the CLI's own top-level driver rather than a named agent."
+        },
+        "projectRoot": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["sessionId", "projectRoot"],
+      "additionalProperties": false
+    },
+    "timing": {
+      "type": "object",
+      "description": "R12: two distinct timing values — the instant the request occurred and the instant the record itself was captured. The two are permitted to differ, and neither is derived from the other.",
+      "properties": {
+        "requestInstant": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "captureInstant": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["requestInstant", "captureInstant"],
+      "additionalProperties": false
+    },
+    "modelId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "R8: the literal string the source CLI reports for this request, unresolved and unmapped to any canonical or vendor-neutral identifier — including when that literal string is a placeholder such as an unresolved automatic-selection marker (e.g. \"auto\")."
+    },
+    "interaction": {
+      "enum": ["user-turn", "tool-continuation", "agent-internal", "unknown"],
+      "description": "R23: what the request served. \"unknown\" only when the source exposes no signal that decides the class — never guessed from counters' magnitude or timing."
+    },
+    "tokens": {
+      "type": "object",
+      "description": "R2/R6: five normalized, non-negative token-count classes for the whole request, never apportioned across its constituent messages or output parts (R24). A class the request genuinely did not exercise is recorded as zero — but see the allOf conditional below: a captured record whose five classes are ALL zero is rejected by this schema, because that shape can only represent an unread source, and R6 requires an unread source to take the uncaptured kind and carry raw provenance, never a zero-valued captured record.",
+      "properties": {
+        "netInput": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "R2/R3: excludes any token count the source vendor already reports as cached."
+        },
+        "cacheRead": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cacheWrite": {
+          "description": "R2/R4: a single untiered figure when the source vendor exposes only one, or a structured per-tier map preserving any tier distinction the vendor exposes (e.g. a short-lived versus a long-lived cache write), never invented or artificially split.",
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minProperties": 1
+            }
+          ]
+        },
+        "output": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoning": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["netInput", "cacheRead", "cacheWrite", "output", "reasoning"],
+      "additionalProperties": false
+    },
+    "raw": {
+      "type": "object",
+      "description": "R5: the source vendor's original field names and their original values, unaltered, including its stop or finish reason (R23), so the normalization stays independently auditable and recomputable. Vendor territory — deliberately left open, not closed with additionalProperties."
+    },
+    "rawStatus": {
+      "enum": ["complete", "truncated", "externalized", "elided"],
+      "description": "R21: whether raw is present in full (\"complete\"), present but cut down (\"truncated\"), moved out of the record with a reference (\"externalized\", see rawRef), or dropped with no reference at all (\"elided\"). R5 requires \"complete\" at capture time; the other three states are reachable only through a post-capture transformation owned by a downstream seam."
+    },
+    "rawRef": {
+      "type": "string",
+      "minLength": 1,
+      "description": "R21: a reference to the externalized raw payload; carried only alongside rawStatus == \"externalized\"."
+    },
+    "uncapturedReason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "R6: raw provenance describing what was attempted and why it failed."
+    },
+    "attribution": {
+      "type": "object",
+      "description": "R14: optional. A CrewRig task-handoff key, or an external work-tracking asset reference naming its own kind, or both. A record without an attribution block and a record with one are both conforming.",
+      "properties": {
+        "taskHandoffKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "externalAsset": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$",
+              "description": "R14: an open registry (documented in docs/usage-record-format.md), so a future kind added to it is a MINOR addition, never a breaking schema-version change."
+            },
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["kind", "ref"],
+          "additionalProperties": false
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    }
+  },
+  "required": ["schemaVersion", "kind", "fidelity", "recordId", "idempotencyKey", "provenance", "identity", "timing"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "(A) A captured record carries its captured-only fields. R2/R6: at least one of its five token classes must reflect actual consumption — all five at zero can only represent an unread source, which R6 requires to be an uncaptured record instead, never a zero-valued captured one. The `required: [\"kind\"]` guard keeps this block from firing vacuously on a record that omits `kind` entirely (`properties` alone asserts nothing about presence).",
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": { "const": "captured" }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["modelId", "interaction", "tokens", "rawStatus"],
+        "anyOf": [
+          { "type": "object", "properties": { "tokens": { "type": "object", "properties": { "netInput": { "type": "integer", "minimum": 1 } } } } },
+          { "type": "object", "properties": { "tokens": { "type": "object", "properties": { "cacheRead": { "type": "integer", "minimum": 1 } } } } },
+          { "type": "object", "properties": { "tokens": { "type": "object", "properties": { "output": { "type": "integer", "minimum": 1 } } } } },
+          { "type": "object", "properties": { "tokens": { "type": "object", "properties": { "reasoning": { "type": "integer", "minimum": 1 } } } } },
+          {
+            "type": "object",
+            "properties": {
+              "tokens": {
+                "type": "object",
+                "properties": {
+                  "cacheWrite": {
+                    "anyOf": [
+                      { "type": "integer", "minimum": 1 },
+                      { "type": "object", "not": { "additionalProperties": { "const": 0 } } }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "description": "(B) An uncaptured record carries no captured-only field and no token-count class (R6). The `required: [\"kind\"]` guard keeps this block from firing vacuously on a record that omits `kind` entirely.",
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": { "const": "uncaptured" }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["uncapturedReason"],
+        "allOf": [
+          { "not": { "required": ["tokens"] } },
+          { "not": { "required": ["raw"] } },
+          { "not": { "required": ["rawStatus"] } },
+          { "not": { "required": ["rawRef"] } },
+          { "not": { "required": ["modelId"] } },
+          { "not": { "required": ["interaction"] } }
+        ]
+      }
+    },
+    {
+      "description": "(C) rawStatus complete or truncated carries raw and no rawRef (R21). The `required: [\"rawStatus\"]` guard keeps this block from firing vacuously on a record that omits rawStatus entirely (e.g. an uncaptured record).",
+      "if": {
+        "type": "object",
+        "properties": {
+          "rawStatus": { "enum": ["complete", "truncated"] }
+        },
+        "required": ["rawStatus"]
+      },
+      "then": {
+        "required": ["raw"],
+        "not": { "required": ["rawRef"] }
+      }
+    },
+    {
+      "description": "(D) rawStatus externalized carries rawRef and no raw (R21). The `required: [\"rawStatus\"]` guard keeps this block from firing vacuously on a record that omits rawStatus entirely.",
+      "if": {
+        "type": "object",
+        "properties": {
+          "rawStatus": { "const": "externalized" }
+        },
+        "required": ["rawStatus"]
+      },
+      "then": {
+        "required": ["rawRef"],
+        "not": { "required": ["raw"] }
+      }
+    },
+    {
+      "description": "(E) rawStatus elided carries neither raw nor rawRef (R21). The `required: [\"rawStatus\"]` guard keeps this block from firing vacuously on a record that omits rawStatus entirely.",
+      "if": {
+        "type": "object",
+        "properties": {
+          "rawStatus": { "const": "elided" }
+        },
+        "required": ["rawStatus"]
+      },
+      "then": {
+        "allOf": [
+          { "not": { "required": ["raw"] } },
+          { "not": { "required": ["rawRef"] } }
+        ]
+      }
+    }
+  ]
+}
