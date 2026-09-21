@@ -187,9 +187,28 @@ Fidelity: `run-total`
 | `rawStatus` | Static | `"complete"` |  |
 | `idempotencyKey` | Derived | `run-total:<sessionId>` when a session id is present, fallback to `run-total:sha256(launch_instant + argv_digest)` | Keys are stable across re-runs of the same invocation; the fallback avoids collisions between run-total and per-request keys |
 
+## Usage root directory
+
+The capture system stores all persistent state under a **usage root** directory, configurable via the `CREWRIG_USAGE_ROOT` environment variable:
+
+```text
+export CREWRIG_USAGE_ROOT=/path/to/custom/root  # Optional; default is ${HOME}/.crewrig/usage
+```
+
+**Default:** `${HOME}/.crewrig/usage`
+
+**Subdirectories:** Under the usage root, the capture system creates and maintains:
+
+- `state/<cli>/` — Cursor files (high-water markers), stamp sidecars, memoized `version.json` per CLI, and configuration like `antigravity-statusline.json` (cursor-owned, never pruned by spec 0207)
+- `spool/` — Spooled records awaiting hand-off to spec 0207's storage backend (drained before 0207's first write)
+
+**Specification 0207 coordination:** The 0207 implementation honors the same `CREWRIG_USAGE_ROOT` variable and reads the spool from it (entry criterion). After 0207 lands and the spool is drained, the same root and `state/` directory remain in use.
+
+**Testing:** When running tests, `CREWRIG_USAGE_ROOT` is pointed at a temporary directory (`mktemp -d`) to avoid interfering with the operator's own `~/.crewrig/usage/` directory.
+
 ## Cursor semantics and the stamp sidecar
 
-Per-source high-water state lives at `~/.crewrig/usage/state/<cli>/<sourceKey>.json`, holding:
+Per-source high-water state lives at `<usage root>/state/<cli>/<sourceKey>.json`, holding:
 
 ```json
 {
@@ -247,6 +266,17 @@ Moving, renaming, or deleting the checkout breaks the wired absolute path. The t
 
 **This is the accepted cost of the in-repo absolute path** — the same cost `hooks/worktree-git-guard.sh` carries since spec 0169. Mitigations, in order of operator experience:
 
+0. **Linked-worktree protection:** Each installer calls `warn_if_linked_worktree` and warns when the checkout is a linked git worktree (detected via `git rev-parse --git-common-dir` differing from `.git`). The warning message is:
+
+   ```text
+   WARNING: this checkout is a linked git worktree (<path>).
+            The usage-capture wiring above points INTO this checkout — running
+            'git worktree remove' on it breaks the wired hook silently
+            until this installer is re-run against a durable checkout.
+   ```
+
+   **Recommendation:** Run the installers from the main checkout, not from a linked worktree created via `git worktree add`.
+
 1. Each installer prints the wired absolute path at install time, so the dependency is disclosed rather than discovered.
 2. `docs/usage-capture.md` (this file) states the dependency and names the recovery: re-run the installer.
 3. The data itself is recoverable regardless: `scripts/usage-backfill.sh --reset-cursors` re-derives from the CLIs' own durable history everything a dead live path missed.
@@ -259,7 +289,7 @@ bash scripts/usage-backfill.sh [--reset-cursors]
 
 **Flags:**
 
-- `--reset-cursors`: Clear `~/.crewrig/usage/state/<cli>/` so a machine whose spool was discarded before spec 0207 landed can re-derive from the CLIs' own durable history. The true record of source is the CLIs themselves, and this flag lets you recover from a lost spool.
+- `--reset-cursors`: Clear `<usage root>/state/<cli>/` (cursor files, stamp sidecars, and memoized versions) so a machine whose spool was discarded before spec 0207 landed can re-derive from the CLIs' own durable history. The true record of source is the CLIs themselves, and this flag lets you recover from a lost spool. Use this when you've deleted `<usage root>/spool/` and want to re-populate it from the CLIs' own source records.
 
 **Output:**
 
