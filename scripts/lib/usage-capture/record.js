@@ -39,6 +39,17 @@ const FIDELITY_VALUES = Object.freeze(['per-request', 'run-total', 'session-cumu
 const INTERACTION_VALUES = Object.freeze(['user-turn', 'tool-continuation', 'agent-internal', 'unknown']);
 const RAW_STATUS_VALUES = Object.freeze(['complete', 'truncated', 'externalized', 'elided']);
 
+// The full root key set schemas/usage-record/v1.schema.json declares
+// (additionalProperties: false there too) — assertRecordShape() rejects any
+// root key outside this set (PLAN v3-F1 tester gap: a `price` field, which
+// 0206 never emits and 0205's schema has no property for, must be rejected
+// here too, not only by the schema ajv sees in CI).
+const ROOT_ALLOWED_KEYS = Object.freeze([
+  'schemaVersion', 'kind', 'fidelity', 'recordId', 'idempotencyKey', 'corrects',
+  'provenance', 'identity', 'timing', 'modelId', 'interaction', 'tokens', 'raw',
+  'rawStatus', 'rawRef', 'uncapturedReason', 'attribution',
+]);
+
 function usageRoot() {
   return process.env.CREWRIG_USAGE_ROOT || path.join(os.homedir(), '.crewrig', 'usage');
 }
@@ -246,10 +257,21 @@ function isNonNegativeNumber(v) {
 // step 1/step 2). Not a schema validator: it is the cheapest check that
 // keeps a malformed record out of the hand-off, deliberately narrower than
 // schemas/usage-record/v1.schema.json (ajv is a devDependency, unavailable
-// in a hook's own process). Returns { ok: true } or { ok: false, reason }.
+// in a hook's own process) — but sink.js's own header states the invariant
+// this function MUST uphold regardless: it never passes a record the merged
+// schema rejects (scripts/tests/test-usage-capture.sh proves it against
+// every scripts/tests/fixtures/usage-records/mutants/*.json and
+// derivation/recordid-mismatch.json). Returns { ok: true } or
+// { ok: false, reason }.
 function assertRecordShape(record) {
   if (!record || typeof record !== 'object') {
     return { ok: false, reason: 'record is not an object' };
+  }
+
+  for (const key of Object.keys(record)) {
+    if (!ROOT_ALLOWED_KEYS.includes(key)) {
+      return { ok: false, reason: `unexpected root key: ${key}` };
+    }
   }
 
   const rootRequired = ['schemaVersion', 'kind', 'fidelity', 'recordId', 'idempotencyKey', 'provenance', 'identity', 'timing'];
@@ -327,8 +349,39 @@ function assertRecordShape(record) {
     if (!RAW_STATUS_VALUES.includes(record.rawStatus)) {
       return { ok: false, reason: `unexpected rawStatus: ${record.rawStatus}` };
     }
-  } else if (!hasNonEmptyString(record.uncapturedReason)) {
-    return { ok: false, reason: 'uncapturedReason missing or empty' };
+
+    // R2/R6, schema block (A): a captured record whose five token classes are
+    // ALL zero can only represent an unread source — R6 requires that to be
+    // an uncaptured record instead, never a zero-valued captured one.
+    const cwHasNonZero = isNonNegativeNumber(cw) ? cw > 0 : Object.values(cw).some((v) => v > 0);
+    const anyNonZero = tokens.netInput > 0 || tokens.cacheRead > 0 || tokens.output > 0 || tokens.reasoning > 0 || cwHasNonZero;
+    if (!anyNonZero) {
+      return { ok: false, reason: 'tokens: all five classes are zero — a captured record can never represent an unread source (R6)' };
+    }
+
+    // R21, schema blocks (C)/(D)/(E): raw/rawRef presence is tied to rawStatus.
+    const hasRaw = 'raw' in record;
+    const hasRawRef = 'rawRef' in record;
+    if (record.rawStatus === 'complete' || record.rawStatus === 'truncated') {
+      if (!hasRaw) return { ok: false, reason: `rawStatus "${record.rawStatus}" requires raw to be present` };
+      if (hasRawRef) return { ok: false, reason: `rawStatus "${record.rawStatus}" forbids rawRef` };
+    } else if (record.rawStatus === 'externalized') {
+      if (!hasNonEmptyString(record.rawRef)) return { ok: false, reason: 'rawStatus "externalized" requires a non-empty rawRef' };
+      if (hasRaw) return { ok: false, reason: 'rawStatus "externalized" forbids raw' };
+    } else if (record.rawStatus === 'elided') {
+      if (hasRaw) return { ok: false, reason: 'rawStatus "elided" forbids raw' };
+      if (hasRawRef) return { ok: false, reason: 'rawStatus "elided" forbids rawRef' };
+    }
+  } else {
+    if (!hasNonEmptyString(record.uncapturedReason)) {
+      return { ok: false, reason: 'uncapturedReason missing or empty' };
+    }
+    // Schema block (B): an uncaptured record carries no captured-only field.
+    for (const key of ['tokens', 'raw', 'rawStatus', 'rawRef', 'modelId', 'interaction']) {
+      if (key in record) {
+        return { ok: false, reason: `kind "uncaptured" forbids ${key}` };
+      }
+    }
   }
 
   const expected = deriveRecordId(identity.sessionId, record.idempotencyKey);
