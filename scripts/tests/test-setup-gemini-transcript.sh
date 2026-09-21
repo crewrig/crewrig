@@ -71,12 +71,19 @@ echo "§2 setup patch transform (R2, R3)"
 ENVP="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3"
 HOOK_TARGET="$TMP_ROOT/gemini/hooks/mempalace-transcript.sh"
 GUARD_TARGET="$REPO_DIR/hooks/worktree-git-guard.sh"
+CAPTURE_TARGET="$REPO_DIR/hooks/usage-capture.sh"
 PATCHED="$TMP_ROOT/patched.json"
 
-jq --arg envp "$ENVP" --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" '
+# usage-capture.sh (spec 0206) is substituted IN PLACE (preserving its own
+# argv) and WITHOUT the env prefix — it reads no MEMPALACE_TRANSCRIPT_ENABLED
+# variable and is wired the guard's way, never copied out. Mirrors
+# scripts/setup-gemini-interactive.sh's own transform.
+jq --arg envp "$ENVP" --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" --arg capture_path "$CAPTURE_TARGET" '
   (.. | objects | select(.type? == "command")) |=
     (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard.sh")))
      then .command = ("bash " + $guard_path)
+     elif (.command | contains("usage-capture.sh"))
+     then .command = (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/usage-capture.sh"; $capture_path))
      else .command = ($envp + " " + (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/mempalace-transcript.sh"; $hook_path)))
      end)' \
   "$MANIFEST" > "$PATCHED" 2>/dev/null

@@ -69,12 +69,17 @@ fi
 echo "§2 setup patch transform (R2, R3)"
 HOOK_TARGET="$TMP_ROOT/claude/hooks/mempalace-transcript.sh"
 GUARD_TARGET="$REPO_DIR/hooks/worktree-git-guard.sh"
+CAPTURE_TARGET="$REPO_DIR/hooks/usage-capture.sh"
 PATCHED="$TMP_ROOT/patched.json"
 
-jq --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" \
+# usage-capture.sh (spec 0206) is in the guard's class, not the transcript
+# hook's: an in-repo absolute path, never an installed copy — the third
+# gsub below mirrors scripts/setup-claude-interactive.sh's own transform.
+jq --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" --arg capture_path "$CAPTURE_TARGET" \
   '(.. | objects | select(.type? == "command") | .command) |=
      (gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path) |
-      gsub("\\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"; $guard_path))' \
+      gsub("\\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"; $guard_path) |
+      gsub("\\$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh"; $capture_path))' \
   "$MANIFEST" > "$PATCHED" 2>/dev/null
 
 if jq -e . "$PATCHED" >/dev/null 2>&1; then
