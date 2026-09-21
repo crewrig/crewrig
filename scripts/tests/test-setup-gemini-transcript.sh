@@ -15,6 +15,17 @@
 #        in-repo absolute path (without env prefix).
 #   R3 — zero ${GEMINI_PROJECT_DIR} placeholder tokens survive in the patched output.
 #
+# §3 (spec 0206, PLAN v3 step 18) — usage-capture.sh wiring:
+#   (a) AfterModel carries TWO DISTINCT installed commands, one naming
+#       usage-capture.sh.
+#   (b) the capture command is an in-repo absolute path ending in
+#       /hooks/usage-capture.sh, carrying no unresolved ${GEMINI_PROJECT_DIR}
+#       token and no MEMPALACE_TRANSCRIPT_ENABLED prefix (it is substituted
+#       IN PLACE, preserving its own argv, never prefixed with the env
+#       string the transcript hook gets).
+#   (c) usage-capture.sh is never install_file'd, and none appears under this
+#       test's sandboxed installed-hooks directory.
+#
 # HERMETIC: no HOME writes, no network, no interactive script runs. All
 # transforms target throwaway paths under a temp root removed on exit.
 #
@@ -117,6 +128,49 @@ if grep -q '\${GEMINI_PROJECT_DIR}' "$PATCHED"; then
   bad "surviving \${GEMINI_PROJECT_DIR} token found in patched output"
 else
   ok "zero \${GEMINI_PROJECT_DIR} placeholder tokens survive in patched output"
+fi
+
+# ---------------------------------------------------------------------------
+# §3. usage-capture.sh wiring (spec 0206, PLAN v3 step 18).
+# ---------------------------------------------------------------------------
+echo "§3 usage-capture.sh wiring"
+
+cmd0="$(jq -r '.hooks.AfterModel[0].hooks[0].command // ""' "$PATCHED" 2>/dev/null)"
+cmd1="$(jq -r '.hooks.AfterModel[0].hooks[1].command // ""' "$PATCHED" 2>/dev/null)"
+
+# (a) two distinct commands, one naming usage-capture.sh.
+if [ -n "$cmd0" ] && [ -n "$cmd1" ] && [ "$cmd0" != "$cmd1" ] \
+   && { [[ "$cmd0" == *usage-capture.sh* ]] || [[ "$cmd1" == *usage-capture.sh* ]]; }; then
+  ok "(a) AfterModel carries two distinct commands, one naming usage-capture.sh"
+else
+  bad "(a) AfterModel does not carry two distinct commands with one naming usage-capture.sh (cmd0: $cmd0 | cmd1: $cmd1)"
+fi
+
+capture_cmd="$cmd0"
+[[ "$capture_cmd" == *usage-capture.sh* ]] || capture_cmd="$cmd1"
+
+# (b) in-repo absolute path (substituted IN PLACE, argv preserved), no
+# unresolved token, no env prefix.
+if [[ "$capture_cmd" == "bash $CAPTURE_TARGET gemini-cli AfterModel" ]] \
+   && [[ "$capture_cmd" != *'${GEMINI_PROJECT_DIR}'* ]] && [[ "$capture_cmd" != *MEMPALACE_TRANSCRIPT_ENABLED* ]]; then
+  ok "(b) AfterModel capture command is the in-repo absolute path, argv preserved, no token, no env prefix"
+else
+  bad "(b) AfterModel capture command malformed (got: $capture_cmd)"
+fi
+
+# (c) usage-capture.sh is never install_file'd, and none appears under this
+# test's sandboxed installed-hooks directory.
+if grep -qE 'install_file[^#]*usage-capture\.sh' "$SETUP"; then
+  bad "(c) $SETUP appears to install_file usage-capture.sh — it must be wired by in-repo absolute path, never copied"
+else
+  ok "(c) $SETUP never install_file's usage-capture.sh"
+fi
+SANDBOX_HOOKS_DIR="$(dirname "$HOOK_TARGET")"
+mkdir -p "$SANDBOX_HOOKS_DIR"
+if [ -f "$SANDBOX_HOOKS_DIR/usage-capture.sh" ]; then
+  bad "(c) usage-capture.sh unexpectedly exists under the sandboxed installed hooks directory ($SANDBOX_HOOKS_DIR)"
+else
+  ok "(c) no usage-capture.sh under the sandboxed installed hooks directory ($SANDBOX_HOOKS_DIR)"
 fi
 
 # ---------------------------------------------------------------------------
