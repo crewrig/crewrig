@@ -1,7 +1,7 @@
 ---
 id: "0207"
 slug: usage-record-storage
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1170
