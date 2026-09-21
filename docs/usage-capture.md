@@ -76,7 +76,7 @@ Fidelity: `per-request`
 | `provenance.cli` | Static | `"gemini-cli"` |  |
 | `provenance.cliVersion` | Memoized subprocess | `gemini --version` — cached by binary mtime/size, written to `~/.crewrig/usage/state/gemini-cli/version.json` | Not present in the session record; resolved once per binary upgrade |
 | `provenance.captureChannel` | Static | `"own-record-tail"` |  |
-| `provenance.formatFingerprint` | Assertion result | SHA256 of sorted key paths corresponding to the generation (legacy `.json`, `.json` with `kind`/`summary`, or `.jsonl` `$set`-patch) | Detects schema changes; three generations supported |
+| `provenance.formatFingerprint` | Assertion result | SHA256 of sorted key paths corresponding to the generation: legacy `.json` (no `kind`), `.json` with `kind` (plus a virtual `container.json` key path), or `.jsonl` `$set`-patch (plus a virtual `container.jsonl` key path) | Detects schema changes; three generations supported. The virtual `container.json`/`container.jsonl` key paths carry the container-shape fact `deriveFromFile` already resolves from the file extension — never an optional field like `summary`, which the CLI fills in asynchronously and is absent on roughly half of live `kind`-carrying sessions (i2-F1) |
 | `identity.sessionId` | Header field | Transcript header's own `sessionId` |  |
 | `identity.projectRoot` | Reverse index | `~/.gemini/projects.json` structure: `{"projects": {"<absolute path>": "<short name>", …}}` — lookup the header's `projectHash` against the nested `projects` keys | On backfill, `projectHash` is re-verified to match via `sha256()` |
 | `identity.agentId` | Static | `null` — no field in the source carries it | See `parentSessionId` below |
@@ -96,7 +96,7 @@ Fidelity: `per-request`
 **Generations supported:**
 
 - **Legacy monolithic `<sessionId>.json`:** A single JSON object carrying a `kind` field (or missing it for pre-`kind` installations)
-- **Generation 2 `<sessionId>.json` with `kind` and `summary`:** The header gains a `summary` field; entries remain the same shape
+- **Generation 2 `<sessionId>.json` with `kind`:** The header gains a `kind` field (`summary` sometimes rides along too, but it is filled in asynchronously by the Gemini CLI and is not asserted by the fingerprint — i2-F1); entries remain the same shape
 - **Generation 3 `<sessionId>.jsonl`:** The file becomes a JSONL journal of `$set`-patch operations. The adapter reduces the patches to entry state before emitting.
 
 **Subagent mystery:** The specification requires that every subagent-linkage value come from a field the source assigns (spec 0206 R12). Gemini CLI's subagent transcripts (`chats/<parentSessionId>/<sub>.jsonl`) carry a header with `directories[0]` and a parent-directory enclosure, but no `parentSessionId` field in the header itself. The parent linkage is therefore preserved in `raw.sourceDirectory` and documented as a gap (see *Documented gaps* below).

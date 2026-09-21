@@ -9,8 +9,9 @@
 // carrying its own fingerprint:
 //   legacy-json        a whole `.json` file: {sessionId, projectHash,
 //                      startTime, lastUpdated, messages: [...]}, no `kind`.
-//   json-kind-summary  a whole `.json` file with a top-level `kind` (and
-//                      `summary`) alongside `messages`.
+//   json-kind-summary  a whole `.json` file with a top-level `kind`
+//                      alongside `messages` (`summary` sometimes rides
+//                      along too, but see the note below).
 //   jsonl              newline-delimited: line 1 is the header
 //                      {sessionId, projectHash, startTime, lastUpdated,
 //                      kind}; later lines are EITHER a `$set`-patch
@@ -18,6 +19,26 @@
 //                      object — both are reduced to entry state before
 //                      emitting, and only an entry carrying `tokens` (a
 //                      completed response) is a candidate record.
+//
+// json-kind-summary and jsonl both carry a `kind` at the header (one as the
+// whole file's own top level, the other as line 1's own field), so
+// `header.kind` alone cannot tell the two apart. #1169 iteration 1 asserted
+// `header.summary` for that — but `summary` is filled in asynchronously by
+// the Gemini CLI, not a structural trait of the generation: review i2-F1
+// found it absent on roughly half of live json-kind-summary sessions on the
+// authoring machine, each of which then derived as a permanent
+// `uncaptured` record (recordId collides with the would-be `captured` one,
+// and the spool is a strict atomic create). The discriminator instead has
+// to be the one fact `deriveFromFile` already established unconditionally
+// before either whole-JSON generation is even parsed: the CONTAINER shape
+// (`.json` vs `.jsonl`). Each generation's keyPaths therefore asserts a
+// virtual `container.json` / `container.jsonl` key path, resolved against a
+// small synthetic object the adapter itself builds from that shape fact
+// (`{ json: true }` / `{ jsonl: true }`) — never against an optional field
+// the source may or may not have filled in yet. `record.fingerprint()`
+// hashes it exactly like any other asserted key path (see its own header
+// comment for the general virtual-key-path convention). `summary` is no
+// longer read at all — it never carried anything `raw` needed either.
 //
 // Field sources:
 //   provenance.cli        = "gemini-cli"
@@ -95,12 +116,12 @@ function resolveProjectRootByHash(projectHash) {
   return null;
 }
 
-function fingerprintFor(header, entry, keyPaths) {
-  return record.fingerprint({ header, entry }, keyPaths);
+function fingerprintFor(header, entry, container, keyPaths) {
+  return record.fingerprint({ header, entry, container }, keyPaths);
 }
 
-function recordFromEntry(header, entry, { cwd, generationKeyPaths, sourceDirectory, now }) {
-  const fp = fingerprintFor(header, entry, generationKeyPaths);
+function recordFromEntry(header, entry, { cwd, generationKeyPaths, generationContainer, sourceDirectory, now }) {
+  const fp = fingerprintFor(header, entry, generationContainer, generationKeyPaths);
   const sessionId = header.sessionId;
   const projectRoot = cwd || resolveProjectRootByHash(header.projectHash) || 'unknown';
   const identity = { sessionId: sessionId || 'unknown', parentSessionId: null, agentId: null, projectRoot };
@@ -212,7 +233,8 @@ function readHeader(filePath) {
 
 function deriveFromJsonl(filePath, { cwd, sourceDirectory, now }) {
   const header = readHeader(filePath);
-  const keyPaths = ['header.kind', 'entry.tokens.input', 'entry.tokens.output'];
+  const container = { jsonl: true };
+  const keyPaths = ['container.jsonl', 'header.kind', 'entry.tokens.input', 'entry.tokens.output'];
 
   const cur = cursorLib.readCursor(CLI, filePath);
   const { lines, newOffset, headDigest, mtimeMs } = tailNewLines(filePath, cur);
@@ -229,7 +251,7 @@ function deriveFromJsonl(filePath, { cwd, sourceDirectory, now }) {
   }
 
   const records = Array.from(byKey.values()).map((entry) =>
-    recordFromEntry(header, entry, { cwd, generationKeyPaths: keyPaths, sourceDirectory, now })
+    recordFromEntry(header, entry, { cwd, generationKeyPaths: keyPaths, generationContainer: container, sourceDirectory, now })
   );
 
   cursorLib.writeCursor(CLI, filePath, { ...cur, byteOffset: newOffset, headDigest });
@@ -241,19 +263,19 @@ function deriveFromJsonl(filePath, { cwd, sourceDirectory, now }) {
 function deriveFromWholeJson(filePath, { cwd, sourceDirectory, now }) {
   const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   const header = { sessionId: data.sessionId, projectHash: data.projectHash, kind: data.kind };
-  // `summary` is what distinguishes this generation from jsonl's own header
-  // line (neither carries it) — asserted only when the source itself has
-  // the key, so the fingerprint still fails toward `unrecognized` for a
-  // json-kind-summary session that turns out not to carry one (R17).
-  if (typeof data.summary === 'string') header.summary = data.summary;
+  const container = { json: true };
+  // `container.json` (vs jsonl's own `container.jsonl`) is what distinguishes
+  // this generation from jsonl's own header line, which also carries
+  // `header.kind` — see the module header comment (i2-F1) for why this
+  // cannot be an optional source field like `header.summary` any more.
   const keyPaths = data.kind
-    ? ['header.kind', 'header.summary', 'entry.tokens.input', 'entry.tokens.output']
-    : ['entry.tokens.input', 'entry.tokens.output'];
+    ? ['container.json', 'header.kind', 'entry.tokens.input', 'entry.tokens.output']
+    : ['container.json', 'entry.tokens.input', 'entry.tokens.output'];
 
   const messages = Array.isArray(data.messages) ? data.messages : [];
   return messages
     .filter((entry) => entry.tokens)
-    .map((entry) => recordFromEntry(header, entry, { cwd, generationKeyPaths: keyPaths, sourceDirectory, now }));
+    .map((entry) => recordFromEntry(header, entry, { cwd, generationKeyPaths: keyPaths, generationContainer: container, sourceDirectory, now }));
 }
 
 function deriveFromFile(filePath, opts) {

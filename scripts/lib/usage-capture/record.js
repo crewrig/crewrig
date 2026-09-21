@@ -78,6 +78,21 @@ function hasPath(obj, keyPath) {
 // { ok: true, formatFingerprint } when every key path resolves on obj, or
 // { ok: false, missing } naming what did not — the caller turns that into an
 // uncaptured record (R17).
+//
+// Virtual key paths (i2-F1, #1169): every asserted key path MUST resolve to
+// true on 100% of the records the adapter means to capture, never merely on
+// most of them — an optional or asynchronously-filled source field is not a
+// valid discriminator, since a record legitimately missing it derives as
+// `uncaptured` (R17) instead of `captured`, permanently (recordId collides
+// with the would-be captured record and the spool is a strict atomic
+// create). When no field the source itself always carries can distinguish
+// two generations, a caller may assert a VIRTUAL key path instead: one that
+// resolves against a small synthetic object the caller builds itself from a
+// fact it already established unconditionally (e.g. which file extension it
+// is deriving from), merged alongside the real source object passed to this
+// function — never against a field read from the source. See
+// adapters/gemini-cli.js for the worked example (`container.json` /
+// `container.jsonl`).
 function fingerprint(obj, keyPaths) {
   const sorted = Array.from(new Set(keyPaths)).sort();
   const missing = sorted.filter((p) => !hasPath(obj, p));
