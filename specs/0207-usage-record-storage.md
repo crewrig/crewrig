@@ -20,8 +20,9 @@ identifier, to a local journal that alone constitutes the record of truth
 and remains fully readable, correctable, and queryable with no other system
 present. When the shared MemPalace daemon is reachable, the same record is
 additionally mirrored into an indexed, cross-tool-visible copy inside the
-project's own memory space, slimmed down and pointing back at the journal
-for its full detail; when the daemon is not reachable, mirroring simply
+project's own memory space — slimmed down and pointing back at the journal
+for its full detail when the record carries a raw sub-object, unchanged when
+it records a failed capture; when the daemon is not reachable, mirroring simply
 waits, and nothing about writing or reading a record is affected. A person
 operating without MemPalace never notices its absence; a person operating
 with it gets the same journal plus a searchable index that catches up on
@@ -104,16 +105,20 @@ text inside a usage record.
     entry; that a correction adds an entry and mutates none; that reads
     by session, by agent, by period, by task-handoff key, and by external
     asset reference each return exactly the records expected for that
-    read; and that a read narrowed by a fidelity filter returns only the
-    records declaring that fidelity.
+    read; that a read narrowed by a fidelity filter returns only the
+    records declaring that fidelity; and that records written concurrently
+    for one partition each yield exactly one whole entry and each writer
+    receives the outcome for its own record.
 23. A continuous-integration suite SHALL verify, against a fake shared
     MemPalace daemon conforming to the readiness and teardown precedent
     already established for this repository's daemon test fixtures, that
-    N records written while the daemon is unreachable are all journaled,
-    that the daemon subsequently becoming reachable produces a catch-up
-    creating exactly N mirrored drawers, and that each of those drawers
-    carries an externalized raw status with a reference back to its own
-    journal entry.
+    N records written while the daemon is unreachable — at least one of
+    them of kind `uncaptured` — are all journaled, that the daemon
+    subsequently becoming reachable produces a catch-up creating exactly N
+    mirrored drawers, that each drawer of a `captured` record carries an
+    externalized raw status with a reference back to its own journal
+    entry, and that each drawer of an `uncaptured` record carries the
+    record unchanged with no raw status and no reference added.
 24. The storage contract SHALL report, for every record it is handed, a
     write outcome that is exactly one of: stored, duplicate, or
     rejected-with-reason.
@@ -189,11 +194,13 @@ Then  the journal entry is written, the record is marked pending for the
 
 ```text
 Given N records were written to the journal while the shared MemPalace
-      daemon was unreachable, and none of them were mirrored
+      daemon was unreachable, none of them mirrored, and at least one of
+      them an uncaptured record
 When  the shared MemPalace daemon becomes reachable and a catch-up runs
-Then  exactly N mirrored drawers are created, each carrying the record's
-      normalized fields, an externalized raw status, and a reference back
-      to its own journal entry
+Then  exactly N mirrored drawers are created; each drawer of a captured
+      record carries the record's normalized fields, an externalized raw
+      status and a reference back to its own journal entry, and each
+      drawer of an uncaptured record carries the record unchanged
 ```
 
 **Scenario:** Records are read by period and by session
