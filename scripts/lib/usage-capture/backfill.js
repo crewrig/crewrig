@@ -41,34 +41,52 @@ function walk(dir, predicate, results) {
   return results;
 }
 
-function submitAll(records) {
-  let stored = 0;
+// emptyCounts() / submitAll() — a `rejected` outcome is a SKIP, never a
+// throw (spec 0207 review hand-over, DEV follow-up issue #1169): a period
+// the 0207 storage has already pruned is expected to come back rejected on
+// every subsequent backfill over that period, and silently dropping the
+// count would make that backfill look short with no visible reason. Every
+// outcome sink.submit() can return is tallied: `stored` and `duplicate` as
+// plain counters, `rejected` broken down BY REASON so "3 rejected" is never
+// the whole story.
+function emptyCounts() {
+  return { stored: 0, duplicate: 0, rejected: {} };
+}
+
+function submitAll(records, counts) {
   for (const rec of records) {
     const result = sink.submit(rec);
-    if (result.status === 'stored') stored += 1;
+    if (result.status === 'stored') {
+      counts.stored += 1;
+    } else if (result.status === 'duplicate') {
+      counts.duplicate += 1;
+    } else if (result.status === 'rejected') {
+      const reason = result.reason || 'unknown';
+      counts.rejected[reason] = (counts.rejected[reason] || 0) + 1;
+    }
   }
-  return stored;
 }
 
 function backfillClaudeCode() {
+  const counts = emptyCounts();
   const root = path.join(os.homedir(), '.claude', 'projects');
-  if (!fs.existsSync(root)) return { stored: 0, sources: 0 };
+  if (!fs.existsSync(root)) return { ...counts, sources: 0 };
   // Main session files only. claude-code.js's own capture() auto-discovers
   // each session's sibling <session>/subagents/ directory, so a subagent
   // file must NOT also be enumerated here — that would double-derive it
   // under two different top-level `transcriptPath` calls.
   const sep = path.sep;
   const sessionFiles = walk(root, (name, full) => name.endsWith('.jsonl') && !full.includes(`${sep}subagents${sep}`));
-  let stored = 0;
   for (const file of sessionFiles) {
-    stored += submitAll(claudeCode.capture({ transcriptPath: file, cwd: null }));
+    submitAll(claudeCode.capture({ transcriptPath: file, cwd: null }), counts);
   }
-  return { stored, sources: sessionFiles.length };
+  return { ...counts, sources: sessionFiles.length };
 }
 
 function backfillGeminiCli() {
+  const counts = emptyCounts();
   const root = path.join(os.homedir(), '.gemini', 'tmp');
-  if (!fs.existsSync(root)) return { stored: 0, sources: 0 };
+  if (!fs.existsSync(root)) return { ...counts, sources: 0 };
   // Top-level session files directly under each project's own chats/
   // directory only. A subagent transcript lives one directory deeper
   // (chats/<parentSessionId>/<sub>.jsonl) and gemini-cli.js's own capture()
@@ -80,17 +98,18 @@ function backfillGeminiCli() {
     const parts = rel.split(path.sep);
     return parts.length === 3 && parts[1] === 'chats';
   });
-  let stored = 0;
   for (const file of sessionFiles) {
-    stored += submitAll(geminiCli.capture({ transcriptPath: file, cwd: null }));
+    submitAll(geminiCli.capture({ transcriptPath: file, cwd: null }), counts);
   }
-  return { stored, sources: sessionFiles.length };
+  return { ...counts, sources: sessionFiles.length };
 }
 
 function backfillCopilotCli() {
+  const counts = emptyCounts();
   const storePath = path.join(os.homedir(), '.copilot', 'session-store.db');
-  if (!fs.existsSync(storePath)) return { stored: 0, sources: 0 };
-  return { stored: submitAll(copilotCli.capture({ storePath })), sources: 1 };
+  if (!fs.existsSync(storePath)) return { ...counts, sources: 0 };
+  submitAll(copilotCli.capture({ storePath }), counts);
+  return { ...counts, sources: 1 };
 }
 
 function usageRoot() {
@@ -117,7 +136,16 @@ function main() {
   };
 
   for (const [cli, r] of Object.entries(results)) {
-    console.log(`${cli}: ${r.stored} record(s) stored from ${r.sources} source(s)`);
+    const rejectedTotal = Object.values(r.rejected).reduce((a, b) => a + b, 0);
+    const rejectedBreakdown =
+      rejectedTotal > 0
+        ? ` (${Object.entries(r.rejected)
+            .map(([reason, count]) => `${reason}: ${count}`)
+            .join(', ')})`
+        : '';
+    console.log(
+      `${cli}: ${r.stored} stored, ${r.duplicate} duplicate, ${rejectedTotal} rejected${rejectedBreakdown} — from ${r.sources} source(s)`
+    );
   }
 }
 
