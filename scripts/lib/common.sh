@@ -2428,3 +2428,32 @@ migrate_antigravity_superseded_components() {
   fi
   return 0
 }
+
+# warn_if_linked_worktree <repo_dir> <label>
+#
+# spec 0206 plan v3 orchestrator addition (issue #1169): the usage-capture
+# shim and the Antigravity statusline shim are wired by their IN-REPO
+# ABSOLUTE PATH, the same treatment hooks/worktree-git-guard.sh's own
+# GUARD_ABS already carries (spec 0206 Risks — "the accepted cost of the
+# in-repo absolute path"). That path dies the moment `git worktree remove`
+# clears the checkout it points into. Warn the operator, at install time,
+# when the checkout being installed FROM is itself a linked git worktree — a
+# ticket `.worktrees/<id>/` or an Orca workspace — so the dependency is
+# disclosed rather than discovered later as a silently dead hook.
+#
+# `git rev-parse --git-common-dir` names the repository's SHARED .git
+# directory: run with `-C repo_dir`, it prints the literal relative string
+# `.git` from the MAIN checkout (whose cwd already equals repo_dir) and an
+# ABSOLUTE path from any linked worktree (scripts/worktree-claim.sh l. 21-26
+# documents the same property for the same reason).
+warn_if_linked_worktree() {
+  local repo_dir="$1" label="$2"
+  local common_dir
+  common_dir="$(git -C "$repo_dir" rev-parse --git-common-dir 2>/dev/null || true)"
+  if [ -n "$common_dir" ] && [ "$common_dir" != ".git" ]; then
+    echo "  WARNING: this checkout is a linked git worktree ($repo_dir)."
+    echo "           The $label wiring above points INTO this checkout — running"
+    echo "           'git worktree remove' on it breaks the wired hook silently"
+    echo "           until this installer is re-run against a durable checkout."
+  fi
+}
