@@ -407,16 +407,29 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     fi
     GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
     GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
+    CAPTURE_SCRIPT_SRC="$REPO_DIR/hooks/usage-capture.sh"
+    CAPTURE_ABS="$(cd "$(dirname "$CAPTURE_SCRIPT_SRC")" && pwd -P)/$(basename "$CAPTURE_SCRIPT_SRC")"
     HOOKS_PATCHED_TMP="$(mktemp)"
     # The Copilot CLI hooks schema keys `hooks` by camelCase event name
-    # (object of event -> array). Rewrite `preToolUse` command to the in-repo
-    # guard path (without env prefix), and lifecycle event commands to the
-    # installed hook path with env prefix.
-    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" '
+    # (object of event -> array), and `agentStop`/`sessionEnd` now each carry
+    # TWO commands (spec 0206). Unlike the Claude/Gemini `gsub` substitutions
+    # above, this branch REBUILDS each command deterministically from the
+    # event key the manifest is already keyed by — there is no token to
+    # substitute in the source (the source command already names
+    # usage-capture.sh literally) — so a per-ENTRY dispatch, not a per-array
+    # one, is what keeps the two commands on one event from colliding into a
+    # duplicate transcript-hook invocation.
+    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" --arg capture_path "$CAPTURE_ABS" '
       (.hooks // {}) |= with_entries(
+        .key as $event |
         if .key == "preToolUse"
         then .value |= map(.command = ("bash " + ($guard_path | tojson)))
-        else .value |= map(.command = ($envp + " bash " + ($hook_path | tojson)))
+        else .value |= map(
+          if (.command | contains("usage-capture.sh"))
+          then .command = ("bash " + ($capture_path | tojson) + " copilot-cli " + $event)
+          else .command = ($envp + " bash " + ($hook_path | tojson))
+          end
+        )
         end
       )' \
       "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
@@ -429,6 +442,8 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     cp "$HOOKS_PATCHED_TMP" "$USER_HOOKS_JSON"
     echo "  User-level transcript hooks deployed to $USER_HOOKS_JSON"
     echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
+    echo "  Usage capture wired to $CAPTURE_ABS (in-repo absolute path)"
+    warn_if_linked_worktree "$REPO_DIR" "usage capture"
     rm -f "$HOOKS_PATCHED_TMP"
   else
     echo "  Transcript activation canceled."
