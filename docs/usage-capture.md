@@ -339,7 +339,7 @@ These framework-owned launch sites have been adopted to emit one `run-total` rec
 
 Antigravity's own session record exposes **no field that a token count can be tied to with confidence**. The capture seam therefore reads from the statusline channel instead, which yields session-cumulative records (`fidelity: "session-cumulative"`), not per-request ones.
 
-**Evidence:** The session record at `~/.gemini/antigravity-cli/settings.json` carries only `{conversation_id, ...}` and conversation-content fields. No per-request or per-turn metadata exists. A vendor-documented alternative channel offering per-request granularity does not exist as of 2026-09-21. This gap is honest, documented, and will be revisited if Antigravity publishes a richer API surface.
+**Evidence:** Antigravity's own conversation store is opaque protobuf and is not read by this adapter at all (spec 0206's adapter matrix, `specs/0206-capture-adapters.md`) — no field of that store ties to a token count. `~/.gemini/antigravity-cli/settings.json` is Antigravity's *configuration* file, the same file `statusLine.command` is wired into (see *Payload-delivery mechanism* above); it is not a session or conversation record, and `conversation_id` is a field of the statusline payload itself (see the field table above), not something `settings.json` holds. The statusline payload is therefore the only usage-bearing channel this adapter has, and it names no per-request or per-turn identifier. A vendor-documented alternative channel offering per-request granularity does not exist as of 2026-09-21. This gap is honest, documented, and will be revisited if Antigravity publishes a richer API surface.
 
 ### Gemini subagent parent-session linkage
 
