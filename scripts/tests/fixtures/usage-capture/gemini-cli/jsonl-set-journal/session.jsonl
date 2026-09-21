@@ -1,0 +1,4 @@
+{"sessionId":"gemini-fixture-jsonl-001","projectHash":"fixture-hash-jsonl","startTime":"2026-09-15T09:20:00.000Z","lastUpdated":"2026-09-15T09:25:00.000Z","kind":"chat"}
+{"$set":{"messages":[{"id":"resp-jsonl-0001","type":"gemini","timestamp":"2026-09-15T09:20:03.000Z","model":"gemini-3.8-pro","toolCalls":[],"tokens":{"input":3000,"cached":500,"output":150,"thoughts":0}}]}}
+{"$set":{"messages":[{"id":"resp-jsonl-0001","type":"gemini","timestamp":"2026-09-15T09:20:03.000Z","model":"gemini-3.8-pro","toolCalls":[],"tokens":{"input":3000,"cached":500,"output":410,"thoughts":25}},{"id":"resp-jsonl-0002","type":"gemini","timestamp":"2026-09-15T09:22:11.000Z","model":"gemini-3.8-pro","toolCalls":[{"name":"grep"}],"tokens":{"input":3300,"cached":500,"output":90,"thoughts":0}}]}}
+{"id":"resp-jsonl-0003","type":"gemini","timestamp":"2026-09-15T09:24:45.000Z","model":"gemini-3.8-pro","toolCalls":[],"tokens":{"input":1200,"cached":0,"output":60,"thoughts":0}}

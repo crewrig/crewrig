@@ -1,0 +1,8 @@
+{
+  "adapter": "gemini-cli",
+  "description": "Main transcript (header.sessionId gemini-parent-fixture-001) plus its sibling chats/<sessionId>/sub-1.jsonl subagent transcript — the parentSessionId/agentId-null gap (R12), preserved in raw.sourceDirectory instead.",
+  "transcriptPath": "chats/main.jsonl",
+  "captured": 2,
+  "uncaptured": 0,
+  "total": 2
+}

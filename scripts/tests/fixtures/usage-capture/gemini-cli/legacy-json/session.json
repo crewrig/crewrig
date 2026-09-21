@@ -1,0 +1,24 @@
+{
+  "sessionId": "gemini-fixture-legacy-001",
+  "projectHash": "fixture-hash-legacy",
+  "startTime": "2026-09-15T09:00:00.000Z",
+  "lastUpdated": "2026-09-15T09:05:00.000Z",
+  "messages": [
+    {
+      "id": "resp-legacy-0001",
+      "type": "gemini",
+      "timestamp": "2026-09-15T09:00:04.000Z",
+      "model": "gemini-3.8-pro",
+      "toolCalls": [],
+      "tokens": {"input": 5000, "cached": 1200, "output": 640, "thoughts": 80}
+    },
+    {
+      "id": "resp-legacy-0002",
+      "type": "gemini",
+      "timestamp": "2026-09-15T09:04:10.000Z",
+      "model": "gemini-3.8-pro",
+      "toolCalls": [{"name": "read_file"}],
+      "tokens": {"input": 6100, "cached": 1200, "output": 210, "thoughts": 0}
+    }
+  ]
+}

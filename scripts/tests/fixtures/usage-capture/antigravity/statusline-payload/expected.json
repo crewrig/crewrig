@@ -1,0 +1,11 @@
+{
+  "adapter": "antigravity",
+  "payloadFile": "payload.json",
+  "description": "One statusline snapshot. First read against a fresh cursor always yields one captured record (R5/R30 — modelId recorded verbatim, display label and all). A second read of the SAME payload (unchanged counters) must yield zero records.",
+  "captured": 1,
+  "uncaptured": 0,
+  "total": 1,
+  "modelId": "Gemini 3.8 Flash (Medium)",
+  "fidelity": "session-cumulative",
+  "interaction": "unknown"
+}

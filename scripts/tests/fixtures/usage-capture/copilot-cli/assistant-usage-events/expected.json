@@ -1,0 +1,11 @@
+{
+  "adapter": "copilot-cli",
+  "description": "schema_version 8 store with two rows: one user-initiated call and one sub-agent call carrying agent_id/parent_tool_call_id.",
+  "captured": 2,
+  "uncaptured": 0,
+  "total": 2,
+  "rows": [
+    {"id": 1, "interaction": "user-turn", "agentId": null},
+    {"id": 2, "interaction": "agent-internal", "agentId": "agent-fixture-77"}
+  ]
+}

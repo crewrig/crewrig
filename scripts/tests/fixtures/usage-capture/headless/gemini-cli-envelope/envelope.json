@@ -1,0 +1,10 @@
+{
+  "session_id": "gemini-headless-fixture-001",
+  "stats": {
+    "models": {
+      "gemini-3.8-pro": {
+        "tokens": {"prompt": 5200, "cached": 800, "candidates": 430, "thoughts": 60}
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "adapter": "headless-envelope",
+  "cli": "copilot-cli",
+  "envelopeFile": "envelope.json",
+  "description": "--usage-output-file envelope shape: currentModel + modelMetrics, NO session id anywhere in this file (verified live, DEV follow-up) — falls back to the run-total-unreported sentinel identity, but modelId IS reported (currentModel).",
+  "captured": 1,
+  "uncaptured": 0,
+  "total": 1,
+  "modelId": "gpt-5-copilot",
+  "fidelity": "run-total",
+  "sessionIdReported": false
+}

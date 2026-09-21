@@ -1,0 +1,8 @@
+{
+  "adapter": "gemini-cli",
+  "description": "Whole-file .json generation carrying a top-level kind/summary alongside messages, one completed response.",
+  "transcriptPath": "session.json",
+  "captured": 1,
+  "uncaptured": 0,
+  "total": 1
+}

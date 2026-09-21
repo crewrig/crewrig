@@ -1,0 +1,14 @@
+{
+  "conversation_id": "antigravity-headless-fixture-conv-001",
+  "status": "ok",
+  "response": "fixture response text",
+  "duration_seconds": 4.2,
+  "num_turns": 1,
+  "usage": {
+    "input_tokens": 1800,
+    "output_tokens": 210,
+    "thinking_tokens": 30,
+    "cache_read_tokens": 400,
+    "total_tokens": 2440
+  }
+}

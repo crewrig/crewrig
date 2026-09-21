@@ -1,0 +1,11 @@
+{
+  "session_id": "claude-headless-fixture-001",
+  "modelUsage": {
+    "claude-sonnet-5": {
+      "inputTokens": 3400,
+      "cacheReadInputTokens": 900,
+      "cacheCreationInputTokens": 120,
+      "outputTokens": 610
+    }
+  }
+}

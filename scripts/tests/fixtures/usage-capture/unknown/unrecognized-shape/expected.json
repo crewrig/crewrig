@@ -1,0 +1,8 @@
+{
+  "adapter": "claude-code",
+  "description": "R28: an entry that reaches the fingerprint check (message.usage is present, so it is not silently skipped) but whose usage object carries total_tokens/billed_tokens instead of the asserted input_tokens/output_tokens key paths — no adapter's fingerprint matches this shape.",
+  "transcriptPath": "session.jsonl",
+  "captured": 0,
+  "uncaptured": 1,
+  "total": 1
+}

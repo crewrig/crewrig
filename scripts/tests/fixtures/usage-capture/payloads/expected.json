@@ -1,0 +1,5 @@
+{
+  "description": "Hook-payload serializations step 11's bash regex must survive (readable) or correctly fall through on (unreadable). __TRANSCRIPT_PATH__ is a placeholder the test substitutes with a real absolute temp-file path at runtime.",
+  "readable": ["compact-snake-case.json", "spaced-snake-case.json", "camel-case.json"],
+  "unreadable": ["no-path-key.json", "unresolvable-path.json"]
+}
