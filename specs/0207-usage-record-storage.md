@@ -62,10 +62,10 @@ text inside a usage record.
 10. When the shared MemPalace daemon is reachable, the storage contract
     SHALL create exactly one mirrored drawer per record, placed in the
     project's own memory space, in a room dedicated to usage records.
-11. A mirrored drawer's content SHALL carry the record's normalized fields
-    with its raw status set to externalized and a reference pointing back
-    at the record's own journal entry, and SHALL NOT carry the record's
-    full raw sub-object.
+11. For a record of kind `captured`, a mirrored drawer's content SHALL
+    carry the record's normalized fields with its raw status set to
+    externalized and a reference pointing back at the record's own journal
+    entry, and SHALL NOT carry the record's full raw sub-object.
 12. The storage contract SHALL mark, in state local to the storage
     contract, whether each record has already been mirrored, so that a
     later catch-up can determine which records are still pending.
@@ -101,9 +101,11 @@ text inside a usage record.
     daemon present, that a batch of schema-valid records written through
     the storage contract yields a journal whose every entry validates
     against the usage-record schema; that rewriting the same batch adds no
-    entry; that a correction adds an entry and mutates none; and that
-    reads by session, by agent, by period, and by task-handoff key each
-    return exactly the records expected for that read.
+    entry; that a correction adds an entry and mutates none; that reads
+    by session, by agent, by period, by task-handoff key, and by external
+    asset reference each return exactly the records expected for that
+    read; and that a read narrowed by a fidelity filter returns only the
+    records declaring that fidelity.
 23. A continuous-integration suite SHALL verify, against a fake shared
     MemPalace daemon conforming to the readiness and teardown precedent
     already established for this repository's daemon test fixtures, that
@@ -120,6 +122,18 @@ text inside a usage record.
     since the capture step already excludes conversation text, no
     conversation text SHALL ever reach the journal or the mirror through
     this contract.
+26. Two or more writers handing records to the storage contract at the
+    same time for the same journal partition — a parent session and its
+    subordinate agents completing together being the ordinary case —
+    SHALL NOT corrupt, interleave within, or lose one another's entries;
+    every journal entry SHALL be present whole or not at all, and the
+    write outcome returned to each writer SHALL describe that writer's own
+    record.
+27. A record of kind `uncaptured` — which carries no raw sub-object and no
+    raw status — SHALL be mirrored as exactly one drawer carrying the
+    record unchanged, so that a failed capture is as visible in the mirror
+    as in the journal; the slimming of requirement 11 applies to `captured`
+    records only.
 
 ## Scenarios
 
@@ -213,6 +227,39 @@ Then  every one of those operations succeeds using only the journal, and
       no operation depends on a mirror ever having existed
 ```
 
+**Scenario:** Filtered reads by external asset and by fidelity
+
+```text
+Given a journal holding records attributed to two different external
+      asset references and declaring two different fidelities
+When  a read is requested for one external asset reference and,
+      separately, a read narrowed to one fidelity
+Then  the first read returns exactly the records carrying that reference,
+      and the second returns exactly the records declaring that fidelity
+```
+
+**Scenario:** Concurrent writers to one partition lose nothing
+
+```text
+Given a parent session and two of its subordinate agents each handing one
+      record to the storage contract for the same CLI and period at the
+      same instant
+When  the three writes proceed concurrently
+Then  the partition holds exactly three whole entries, each writer receives
+      the outcome for its own record, and no entry is truncated,
+      interleaved, or missing
+```
+
+**Scenario:** An uncaptured record is mirrored unchanged
+
+```text
+Given an uncaptured record (no raw sub-object, no raw status) written to
+      the journal while the shared MemPalace daemon is reachable
+When  the storage contract mirrors it
+Then  exactly one drawer is created carrying the record unchanged, and no
+      raw status or raw reference is added to it
+```
+
 ## Out of scope
 
 - Capture and its per-CLI triggers, addressed by the capture-adapters
@@ -260,7 +307,7 @@ sub-object replaced by a pointer back at the journal:
 ```json
 {
   "schemaVersion": "...",
-  "kind": "captured",
+  "kind": "captured",              // an uncaptured record is mirrored unchanged (R27)
   "recordId": "...",
   "fidelity": "...",
   "provenance": { "...": "..." },
