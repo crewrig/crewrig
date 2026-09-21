@@ -56,6 +56,14 @@
 
 set -uo pipefail
 
+# usage-capture (spec 0206 PLAN v3 step 15): this script is an adopted
+# framework-owned headless launch site. All three Copilot CLI calls below
+# are wrapped via --usage-output-file (a documented side channel, verified
+# live to leave stdout/stderr unaffected).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=scripts/lib/usage-headless.sh
+. "$SCRIPT_DIR/lib/usage-headless.sh"
+
 COPILOT_BIN="${COPILOT_BIN:-copilot}"
 CLAUDE_BIN_NAME="${CLAUDE_BIN:-claude}"
 PROBE_COPILOT_TIMEOUT="${PROBE_COPILOT_TIMEOUT:-120}"
@@ -195,13 +203,17 @@ if command -v timeout >/dev/null 2>&1; then
 else
   TIMEOUT_CMD=()
 fi
+copilot_usage_out="$WORK/copilot-usage-1.json"
+copilot_launch_instant="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
 ${TIMEOUT_CMD[@]+"${TIMEOUT_CMD[@]}"} "$COPILOT_BIN" \
   --plugin-dir "$ROOT_DIR" \
   --plugin-dir "$SUBDIR_DIR" \
   -p "Run the shell command: echo hello-world-probe" \
   --allow-all-tools --add-dir "$WORK" \
+  --usage-output-file "$copilot_usage_out" \
   > "$copilot_out" 2>&1
 copilot_rc=$?
+usage_headless_capture_usage_file copilot-cli "$copilot_usage_out" "$copilot_launch_instant"
 
 echo "  copilot exit status: $copilot_rc"
 root_fired=0
@@ -224,9 +236,12 @@ EOF
   cat > "$ROOT_TOKEN_DIR/hooks.json" <<EOF
 {"version":1,"disableAllHooks":false,"hooks":{"preToolUse":[{"type":"command","matcher":".*","command":"echo \"CWD=\$(pwd) ROOT=\${COPILOT_PLUGIN_ROOT:-unset}\" >> $LOG"}]}}
 EOF
+  copilot_usage_out_2="$WORK/copilot-usage-2.json"
+  copilot_launch_instant_2="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
   ${TIMEOUT_CMD[@]+"${TIMEOUT_CMD[@]}"} "$COPILOT_BIN" --plugin-dir "$ROOT_TOKEN_DIR" \
     -p "Run the shell command: echo hello-world-probe-2" \
-    --allow-all-tools --add-dir "$WORK" > /dev/null 2>&1
+    --allow-all-tools --add-dir "$WORK" --usage-output-file "$copilot_usage_out_2" > /dev/null 2>&1
+  usage_headless_capture_usage_file copilot-cli "$copilot_usage_out_2" "$copilot_launch_instant_2"
   echo "  $(cat "$LOG" 2>/dev/null || echo '(no output captured)')"
   echo ""
 
@@ -245,9 +260,12 @@ EOF
   {"type":"command","matcher":"bash","command":"echo MARKER_BASH >> $LOG"}
 ]}}
 EOF
+  copilot_usage_out_3="$WORK/copilot-usage-3.json"
+  copilot_launch_instant_3="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
   ${TIMEOUT_CMD[@]+"${TIMEOUT_CMD[@]}"} "$COPILOT_BIN" --plugin-dir "$MATCHER_DIR" \
     -p "Run the shell command: echo hello-world-probe-3" \
-    --allow-all-tools --add-dir "$WORK" > /dev/null 2>&1
+    --allow-all-tools --add-dir "$WORK" --usage-output-file "$copilot_usage_out_3" > /dev/null 2>&1
+  usage_headless_capture_usage_file copilot-cli "$copilot_usage_out_3" "$copilot_launch_instant_3"
   echo "  $(cat "$LOG" 2>/dev/null || echo '(no output captured — re-run)')"
   echo ""
 fi

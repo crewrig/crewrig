@@ -73,6 +73,20 @@ WHAT="${1:-all}"
 
 command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required." >&2; exit 1; }
 
+# usage-capture (spec 0206 PLAN v3 step 15): this script is one of the
+# adopted framework-owned headless launch sites. Q1's Copilot CLI calls are
+# wrapped via --usage-output-file (a documented side channel, verified live
+# to leave stdout/stderr unaffected); Q2/Q3's `agy -p` call is wrapped via
+# the JSON-response-rewrite helper (verified live byte-identical to
+# plain-text mode on this machine). Q4's calls are NOT wrapped: neither
+# Claude Code's `mcp list` nor Copilot's `mcp get --json` is a model call —
+# there is no usage envelope to read (same reasoning step 15's own
+# exclusion list already applies to `--version`/`mcp list` invocations
+# elsewhere).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=scripts/lib/usage-headless.sh
+. "$SCRIPT_DIR/lib/usage-headless.sh"
+
 EXIT_OK=0
 EXIT_PRECONDITION=1
 EXIT_INCONCLUSIVE=2
@@ -140,9 +154,14 @@ EOF
     HOME="$isolated_home" copilot plugin install "$plugin_dir" >/dev/null 2>&1
     rm -f "$log"
     local sess_out="$WORK/copilot-session-$i.log"
+    local usage_out="$WORK/copilot-usage-$i.json"
+    local launch_instant
+    launch_instant="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
     if HOME="$isolated_home" GH_TOKEN="$gh_token" timeout 60 copilot \
         -p "reply with the single word OK and call no tools" --allow-all-tools --no-color \
+        --usage-output-file "$usage_out" \
         </dev/null >"$sess_out" 2>&1; then :; else true; fi
+    usage_headless_capture_usage_file copilot-cli "$usage_out" "$launch_instant"
     if [ -s "$log" ]; then
       echo "  form='$label' ($cmd)  ->  SPAWNED"
       sed 's/^/    /' "$log"
@@ -234,8 +253,17 @@ EOF
   echo "-- Q2: relative command resolution (live session, forced tool-name listing) --"
   rm -f "$log"
   local sess_out="$WORK/agy-session.log"
+  local launch_instant
+  launch_instant="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
   if timeout 90 agy -p "List the names of every MCP tool available to you in this session, one per line, exactly as they are named, and nothing else." \
-      </dev/null >"$sess_out" 2>&1; then :; else true; fi
+      --output-format json </dev/null >"$sess_out" 2>&1; then :; else true; fi
+  # usage-capture (spec 0206): $sess_out currently holds the raw JSON
+  # envelope. This derives+submits one run-total record and rewrites
+  # $sess_out to hold exactly its own `.response` field — verified live
+  # byte-identical to plain-text-mode stdout — so every check below reads
+  # what it would have without this wrapping. A parse failure (stderr noise
+  # merged in by `2>&1`, or a timeout) leaves $sess_out untouched.
+  usage_headless_agy_rewrite_json_response "$sess_out" "$launch_instant"
   if grep -q "probe-args" "$sess_out" 2>/dev/null; then
     echo "  VERDICT: 'probe-args' IS in the tool list with a bare relative command — relative resolution WORKS."
     if [ -s "$log" ]; then echo "  (and the stub actually ran — spawn confirmed)"; fi
