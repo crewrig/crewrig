@@ -17,11 +17,27 @@
 //                      "run-total:sha256(launch instant + argv digest)" so a
 //                      run-total key can never collide with a per-request key
 //   modelId          = the envelope's own model field where it reports one.
-//                      Antigravity's turn envelope and Copilot's terminal
-//                      `result` event name NONE (probes 3/10) — those land
-//                      on the sentinel "(unreported)", never a value
-//                      borrowed from another source (R30).
+//                      Antigravity's own turn envelope names NONE (verified
+//                      live, DEV follow-up: `agy -p ... --output-format
+//                      json` returns {conversation_id, status, response,
+//                      duration_seconds, num_turns, usage} — no model key)
+//                      — that lands on the sentinel "(unreported)", never a
+//                      value borrowed from another source (R30). Copilot's
+//                      `--usage-output-file` DOES report one, as
+//                      `currentModel` (verified live the same session).
 //   interaction      = "unknown"
+//
+// Per-CLI envelope shapes verified live on the authoring machine (DEV
+// follow-up, issue #1169):
+//   antigravity  (agy -p ... --output-format json):
+//     {conversation_id, status, response, duration_seconds, num_turns,
+//      usage: {input_tokens, output_tokens, thinking_tokens,
+//      cache_read_tokens, total_tokens}} — snake_case, no model, no
+//      session_id (conversation_id is the only identifier).
+//   copilot-cli  (copilot ... --usage-output-file <file>):
+//     {..., currentModel, modelMetrics: {<model>: {usage: {inputTokens,
+//      outputTokens, cacheReadTokens, cacheWriteTokens, reasoningTokens}}},
+//      ...} — no session id in this file at all.
 
 'use strict';
 
@@ -39,6 +55,7 @@ const UNREPORTED_MODEL = '(unreported)';
 // all-zero tokens object — never invented).
 function extractSessionId(cli, envelope) {
   if (!envelope) return null;
+  if (cli === 'antigravity') return envelope.conversation_id || null;
   return envelope.session_id || envelope.sessionId || null;
 }
 
@@ -57,8 +74,10 @@ function extractModel(cli, envelope) {
     const models = Object.keys(envelope.stats.models);
     return models.length > 0 ? models[0] : UNREPORTED_MODEL;
   }
-  // Antigravity's turn envelope and Copilot's terminal `result` event name
-  // no model (probes 3/10) — both fall through to the sentinel here.
+  if (cli === 'copilot-cli' && envelope.currentModel) {
+    return envelope.currentModel;
+  }
+  // Antigravity's own turn envelope names no model at all (verified live).
   return envelope.model || UNREPORTED_MODEL;
 }
 
@@ -84,6 +103,26 @@ function extractTokens(cli, envelope) {
       cacheWrite: 0,
       output: first.candidates,
       reasoning: first.thoughts,
+    };
+  }
+  if (cli === 'antigravity' && envelope.usage && typeof envelope.usage === 'object') {
+    const u = envelope.usage;
+    return {
+      netInput: u.input_tokens,
+      cacheRead: u.cache_read_tokens,
+      cacheWrite: 0,
+      output: u.output_tokens,
+      reasoning: u.thinking_tokens,
+    };
+  }
+  if (cli === 'copilot-cli' && envelope.currentModel && envelope.modelMetrics && envelope.modelMetrics[envelope.currentModel]) {
+    const u = envelope.modelMetrics[envelope.currentModel].usage || {};
+    return {
+      netInput: u.inputTokens,
+      cacheRead: u.cacheReadTokens,
+      cacheWrite: u.cacheWriteTokens,
+      output: u.outputTokens,
+      reasoning: u.reasoningTokens,
     };
   }
   if (envelope.usage && typeof envelope.usage === 'object') {
