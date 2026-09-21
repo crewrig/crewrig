@@ -241,8 +241,13 @@ function deriveFromJsonl(filePath, { cwd, sourceDirectory, now }) {
 function deriveFromWholeJson(filePath, { cwd, sourceDirectory, now }) {
   const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   const header = { sessionId: data.sessionId, projectHash: data.projectHash, kind: data.kind };
+  // `summary` is what distinguishes this generation from jsonl's own header
+  // line (neither carries it) — asserted only when the source itself has
+  // the key, so the fingerprint still fails toward `unrecognized` for a
+  // json-kind-summary session that turns out not to carry one (R17).
+  if (typeof data.summary === 'string') header.summary = data.summary;
   const keyPaths = data.kind
-    ? ['header.kind', 'entry.tokens.input', 'entry.tokens.output']
+    ? ['header.kind', 'header.summary', 'entry.tokens.input', 'entry.tokens.output']
     : ['entry.tokens.input', 'entry.tokens.output'];
 
   const messages = Array.isArray(data.messages) ? data.messages : [];

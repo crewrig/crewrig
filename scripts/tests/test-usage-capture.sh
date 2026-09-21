@@ -51,6 +51,11 @@
 #         (c) exit-0 contract (R15) — node missing from PATH, CLI override
 #             pointed at a nonexistent path, and a throwing stub: exit 0 and
 #             zero bytes of output in all three cases.
+#   §8  i1-F1 (review/1169#1) — the three gemini-cli format generations
+#       (legacy-json, json-kind-summary, jsonl-set-journal) derive pairwise
+#       distinct provenance.formatFingerprint values, matching PLAN v3 step 6
+#       and docs/usage-capture.md's own "three generations, three
+#       fingerprints" claim.
 #
 # HERMETIC: CREWRIG_USAGE_ROOT is pinned to a throwaway temp directory for
 # every invocation in this suite. Nothing is ever written under the real
@@ -98,7 +103,7 @@ bad() { echo "FAIL  $1"; if [ -n "${2:-}" ]; then printf '%s\n' "$2" | sed 's/^/
 
 FIXTURE_ROOT="$(mktemp -d)"
 WORK_ROOT="$(mktemp -d)"
-trap 'rm -rf "$FIXTURE_ROOT" "$WORK_ROOT"' EXIT
+trap 'rm -rf "$FIXTURE_ROOT" "$WORK_ROOT" "${FP_ROOT:-}"' EXIT
 
 # derive <outdir> <mode> [args...] — invokes usage-capture-derive.js with
 # CREWRIG_USAGE_ROOT pinned to FIXTURE_ROOT throughout (named edit 2), and
@@ -454,6 +459,43 @@ if [ "$RC" -eq 0 ] && [ -z "$OUT" ]; then
   ok "§7(c): a throwing stub — exit 0, zero bytes of output"
 else
   bad "§7(c): throwing stub — exit $RC, output: '$OUT'"
+fi
+
+# ---------------------------------------------------------------------------
+echo
+echo "=== §8 i1-F1: gemini-cli's three format generations derive pairwise-distinct formatFingerprint values ==="
+
+# A FRESH CREWRIG_USAGE_ROOT, distinct from $FIXTURE_ROOT — §1 already
+# derived from these same three fixture files against $FIXTURE_ROOT, and
+# gemini-cli's jsonl generation is cursor-tracked (byteOffset keyed on the
+# absolute source path), so reusing $FIXTURE_ROOT here would see the jsonl
+# fixture as already fully consumed and derive zero records (R23
+# idempotence — correct behavior, wrong root for what this section needs).
+FP_ROOT="$(mktemp -d)"
+
+fp_for() {
+  local label="$1" transcript="$2"
+  local outdir="$WORK_ROOT/fp-$label"
+  local rc
+  CREWRIG_USAGE_ROOT="$FP_ROOT" node $NODE_FLAGS "$DERIVE_JS" gemini-cli "$FIXTURES_DIR/gemini-cli/$transcript" --out "$outdir" >/dev/null 2>&1
+  rc=$?
+  if [ "$rc" -ne 0 ] || [ ! -f "$outdir/rec-0.json" ]; then
+    echo ""
+    return
+  fi
+  jq -r '.provenance.formatFingerprint' "$outdir/rec-0.json"
+}
+
+FP_LEGACY="$(fp_for legacy-json legacy-json/session.json)"
+FP_KINDSUM="$(fp_for json-kind-summary json-kind-summary/session.json)"
+FP_JSONL="$(fp_for jsonl-set-journal jsonl-set-journal/session.jsonl)"
+
+if [ -n "$FP_LEGACY" ] && [ -n "$FP_KINDSUM" ] && [ -n "$FP_JSONL" ] \
+   && [ "$FP_LEGACY" != "$FP_KINDSUM" ] && [ "$FP_LEGACY" != "$FP_JSONL" ] && [ "$FP_KINDSUM" != "$FP_JSONL" ]; then
+  ok "i1-F1: legacy-json/json-kind-summary/jsonl-set-journal formatFingerprint values are pairwise distinct"
+else
+  bad "i1-F1: expected three pairwise-distinct formatFingerprint values" \
+    "legacy-json=$FP_LEGACY json-kind-summary=$FP_KINDSUM jsonl-set-journal=$FP_JSONL"
 fi
 
 # ---------------------------------------------------------------------------
