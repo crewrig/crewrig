@@ -60,6 +60,22 @@ tasks:
     desc: "End the shared MemPalace MCP HTTP daemon and remove its supervisor unit. Run this BEFORE reverting the ticket that introduced it — the launcher lives outside the repository, so a revert alone would leave a unit that keeps autostarting."
     cmd: bash {{.REPO_DIR}}/scripts/uninstall-mcp-daemon.sh
 
+  usage:query:
+    desc: "Read usage records by session, agent+parent, period, task-handoff key, or external asset reference (spec 0207). JSONL output. Usage: task usage:query -- --session <id> | --period <YYYY-MM> [--cli <cli>] | ..."
+    cmd: bash {{.REPO_DIR}}/scripts/usage-query.sh {{.CLI_ARGS}}
+
+  usage:prune:
+    desc: "Remove a period's usage-record journal entries and mirrored drawers together (spec 0207). Never automatic. Usage: task usage:prune -- <cli> <YYYY-MM> [--force | --unprune]"
+    cmd: bash {{.REPO_DIR}}/scripts/usage-prune.sh {{.CLI_ARGS}}
+
+  usage:mirror:
+    desc: "Run the MemPalace catch-up for pending usage-record mirror markers (spec 0207). Usage: task usage:mirror -- [--reconcile]"
+    cmd: bash {{.REPO_DIR}}/scripts/usage-mirror.sh {{.CLI_ARGS}}
+
+  usage:drain:
+    desc: "One-shot, unbounded drain of the usage-capture spool into the usage-record journal (spec 0207 R-L). Pays the first-drain cost once, at a time the operator chooses."
+    cmd: bash {{.REPO_DIR}}/scripts/usage-drain.sh
+
   setup:playwright-mcp:
     desc: "Install the Playwright MCP server globally (opt-in). Registers @playwright/mcp in Claude Code and Gemini CLI user-scope config. Idempotent — safe to re-run."
     cmds:

@@ -985,6 +985,41 @@ usage-record-schema:
         - "package.json"
         - "package-lock.json"
 
+usage-storage:
+  image: node:22
+  script:
+    - "npm install"
+    - "bash scripts/tests/test-usage-storage.sh"
+    - "bash scripts/tests/test-usage-storage-mirror.sh"
+    - "node scripts/build-usage-validator.js --check"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/usage-store/**"
+        - "scripts/usage-query.sh"
+        - "scripts/usage-prune.sh"
+        - "scripts/usage-mirror.sh"
+        - "scripts/usage-drain.sh"
+        - "scripts/build-usage-validator.js"
+        - "scripts/tests/test-usage-storage*.sh"
+        - "scripts/tests/fixtures/usage-storage/**"
+        - "schemas/**"
+        - "package.json"
+        - "package-lock.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/usage-store/**"
+        - "scripts/usage-query.sh"
+        - "scripts/usage-prune.sh"
+        - "scripts/usage-mirror.sh"
+        - "scripts/usage-drain.sh"
+        - "scripts/build-usage-validator.js"
+        - "scripts/tests/test-usage-storage*.sh"
+        - "scripts/tests/fixtures/usage-storage/**"
+        - "schemas/**"
+        - "package.json"
+        - "package-lock.json"
+
 gitlab-ci-check:
   image: debian:stable-slim
   before_script:

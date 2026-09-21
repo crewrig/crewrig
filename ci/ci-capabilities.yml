@@ -1145,6 +1145,53 @@ capabilities:
       - npm install
       - bash scripts/tests/test-usage-record-schema.sh
 
+  # usage-storage validates the usage-record storage contract (spec 0207):
+  # the journal write path, the wing derivation, the drain/sweep, the mirror
+  # gating and catch-up against a fake daemon, and the ajv-precompiled
+  # standalone validator's own drift gate. Deliberately NOT changeset-gated,
+  # for the same reason usage-record-schema above is not — a node@22
+  # capability must never enter the fail-safe job's python-only execution
+  # set.
+  - id: usage-storage
+    name: "Validate the usage-record storage contract"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/usage-store/**"
+          - "scripts/usage-query.sh"
+          - "scripts/usage-prune.sh"
+          - "scripts/usage-mirror.sh"
+          - "scripts/usage-drain.sh"
+          - "scripts/build-usage-validator.js"
+          - "scripts/tests/test-usage-storage*.sh"
+          - "scripts/tests/fixtures/usage-storage/**"
+          - "schemas/**"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/usage-store/**"
+          - "scripts/usage-query.sh"
+          - "scripts/usage-prune.sh"
+          - "scripts/usage-mirror.sh"
+          - "scripts/usage-drain.sh"
+          - "scripts/build-usage-validator.js"
+          - "scripts/tests/test-usage-storage*.sh"
+          - "scripts/tests/fixtures/usage-storage/**"
+          - "schemas/**"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - bash scripts/tests/test-usage-storage.sh
+      - bash scripts/tests/test-usage-storage-mirror.sh
+      - node scripts/build-usage-validator.js --check
+
   # gitlab-ci-check is the generator's own drift gate (spec 0048 R6/R7),
   # registered as a portable capability so the verification surface is itself
   # contract-described, not a hidden gate. Its command diffs the committed
