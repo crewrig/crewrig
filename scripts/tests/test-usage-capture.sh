@@ -46,8 +46,8 @@
 #             source not newer, all three payloads/ serializations take the
 #             fast path and none reaches cli.js; (ii) under the SAME
 #             conditions, a payload the extraction cannot read (no path key,
-#             a path key whose value is not an existing absolute path) still
-#             reaches cli.js.
+#             a path key whose value is not an existing absolute path, or a
+#             relative path) still reaches cli.js.
 #         (c) exit-0 contract (R15) — node missing from PATH, CLI override
 #             pointed at a nonexistent path, and a throwing stub: exit 0 and
 #             zero bytes of output in all three cases.
@@ -405,6 +405,36 @@ for f in "$FIXTURES_DIR"/payloads/no-path-key.json \
     bad "§7(b)(ii): $name (unreadable) took the fast path — v2-F2 has regressed"
   fi
 done
+
+# (ii)(iv) i1-F2 (review/1169#1): relative-path.json exercises the
+# "$src" == /* conjunct SPECIFICALLY. Unlike the two fixtures above (an
+# absolute path that fails -f, and no src at all — both of which fall
+# through even without that conjunct), this scenario gives -f "$src", a
+# fresh stamp, AND the freshness check all their OWN, real, passing setup —
+# a dedicated cwd holding the literal "relative/p.jsonl" and a stamp keyed
+# on that same literal (source_key hashes the raw, unresolved string, never
+# an absolute-resolved one — hooks/usage-capture.sh's own source_key()) —
+# so the absolute-path conjunct is the ONLY thing standing between this
+# case and the fast path. Without this setup, a relative fixture would fall
+# through for the same reason the other two already do, and the assertion
+# would not detect a regression of the "$src" == /* conjunct itself (the
+# gap review/1169#1 flagged: the committed fixtures never actually drove
+# this branch).
+REL_ROOT="$(mktemp -d)"
+REL_CWD="$(mktemp -d)"
+mkdir -p "$REL_CWD/relative"
+echo "fixture transcript content" > "$REL_CWD/relative/p.jsonl"
+mkdir -p "$REL_ROOT/state/claude-code"
+touch "$REL_ROOT/state/claude-code/$(source_key "relative/p.jsonl").stamp"
+MARKER="$WORK_ROOT/marker-relative-path.json"
+rm -f "$MARKER"
+(cd "$REL_CWD" && STUB_MARKER="$MARKER" CREWRIG_USAGE_CAPTURE_TEST=1 CREWRIG_USAGE_CAPTURE_CLI="$STUB_DIR/marker-stub.js" \
+  CREWRIG_USAGE_ROOT="$REL_ROOT" bash "$CAPTURE_ABS" claude-code Stop < "$FIXTURES_DIR/payloads/relative-path.json" >/dev/null 2>&1)
+if [ -f "$MARKER" ]; then
+  ok "§7(b)(ii): relative-path.json reaches cli.js even with -f/stamp/freshness all satisfied — only the absolute-path conjunct blocks it (i1-F2)"
+else
+  bad "§7(b)(ii): relative-path.json wrongly took the fast path — the \"\$src\" == /* guard has regressed (i1-F2)"
+fi
 
 # (iii) with the source NEWER than the stamp, the compact payload reaches cli.js.
 NEWER_ROOT="$(mktemp -d)"
