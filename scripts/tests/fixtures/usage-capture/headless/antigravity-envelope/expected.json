@@ -1,0 +1,12 @@
+{
+  "adapter": "headless-envelope",
+  "cli": "antigravity",
+  "envelopeFile": "envelope.json",
+  "description": "agy -p --output-format json turn envelope, verified live DEV follow-up: snake_case, no model key at all, no session_id (conversation_id is the only identifier) — modelId MUST land on the (unreported) sentinel (R30: never a value borrowed from another source).",
+  "captured": 1,
+  "uncaptured": 0,
+  "total": 1,
+  "modelId": "(unreported)",
+  "fidelity": "run-total",
+  "sessionIdReported": false
+}

@@ -1,0 +1,1 @@
+{"type":"assistant","sessionId":"unknown-fixture-session-001","cwd":"/home/agent/workspaces/example","version":"99.0.0","timestamp":"2026-09-15T11:00:00.000Z","requestId":"req_unknown_0001","uuid":"uuid-unknown-0001","message":{"role":"assistant","model":"some-future-model","stop_reason":"end_turn","usage":{"total_tokens":900,"billed_tokens":900}}}

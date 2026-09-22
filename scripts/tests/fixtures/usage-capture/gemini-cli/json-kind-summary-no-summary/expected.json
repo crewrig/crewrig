@@ -1,0 +1,8 @@
+{
+  "adapter": "gemini-cli",
+  "description": "Whole-file .json generation carrying a top-level kind but no summary (i2-F1: summary is filled in asynchronously by the Gemini CLI, not a structural trait — about half of live json-kind-summary sessions on the authoring machine lack it), one completed response.",
+  "transcriptPath": "session.json",
+  "captured": 1,
+  "uncaptured": 0,
+  "total": 1
+}

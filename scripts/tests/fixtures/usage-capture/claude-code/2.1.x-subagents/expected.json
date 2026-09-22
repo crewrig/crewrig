@@ -1,0 +1,9 @@
+{
+  "adapter": "claude-code",
+  "description": "Main session record plus its sibling session/subagents/agent-fixture01.jsonl — the agentId/agent-internal interaction path.",
+  "transcriptPath": "session.jsonl",
+  "captured": 2,
+  "uncaptured": 0,
+  "total": 2,
+  "subagentAgentId": "agent-fixture01"
+}

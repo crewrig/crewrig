@@ -1,0 +1,12 @@
+{
+  "adapter": "headless-envelope",
+  "cli": "claude-code",
+  "envelopeFile": "envelope.json",
+  "description": "--output-format json envelope shape: modelUsage keyed by model, one run-total record.",
+  "captured": 1,
+  "uncaptured": 0,
+  "total": 1,
+  "modelId": "claude-sonnet-5",
+  "fidelity": "run-total",
+  "sessionId": "claude-headless-fixture-001"
+}

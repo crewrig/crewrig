@@ -1,0 +1,8 @@
+{
+  "adapter": "gemini-cli",
+  "description": "Legacy monolithic .json generation: no top-level kind, whole-file messages array, two completed responses.",
+  "transcriptPath": "session.json",
+  "captured": 2,
+  "uncaptured": 0,
+  "total": 2
+}

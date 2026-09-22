@@ -1,0 +1,427 @@
+// record.js — shared normalizer for the usage-capture module tree (spec 0206
+// PLAN v3 step 1). Every adapter builds its records through captured() /
+// uncaptured() here rather than assembling the schemas/usage-record/v1
+// shape by hand, so the derivation rules below (recordId, the closed
+// captureChannel vocabulary, the five-class token defaulting) live in one
+// place.
+//
+// CREWRIG_USAGE_ROOT (default ${HOME}/.crewrig/usage) is resolved here and
+// re-exported so every consumer in this module tree — sink.js, spool.js,
+// cursor.js, and this file's own cliVersionFor() — reads the SAME root
+// (PLAN v3 named edit 2).
+
+'use strict';
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const crypto = require('crypto');
+const { execFileSync } = require('child_process');
+
+// U+001F, byte-identical to scripts/lib/usage-record-validator.js's own
+// UNIT_SEPARATOR (R22 derivation: sha256(sessionId + U+001F + idempotencyKey)).
+// Not imported from that file — it is a CLI entry point with no exports —
+// so the literal is duplicated here and kept in sync by inspection.
+const UNIT_SEPARATOR = '\u001f';
+
+const CLI_VALUES = Object.freeze(['claude-code', 'gemini-cli', 'copilot-cli', 'antigravity']);
+
+// The closed captureChannel vocabulary (PLAN v3 step 1) — exactly the four
+// values the merged schemas/usage-record/samples/*.json already use.
+const CAPTURE_CHANNELS = Object.freeze([
+  'own-record-tail',
+  'sqlite-assistant-usage-events',
+  'statusline-shim',
+  'headless-envelope',
+]);
+
+const FIDELITY_VALUES = Object.freeze(['per-request', 'run-total', 'session-cumulative']);
+const INTERACTION_VALUES = Object.freeze(['user-turn', 'tool-continuation', 'agent-internal', 'unknown']);
+const RAW_STATUS_VALUES = Object.freeze(['complete', 'truncated', 'externalized', 'elided']);
+
+// The full root key set schemas/usage-record/v1.schema.json declares
+// (additionalProperties: false there too) — assertRecordShape() rejects any
+// root key outside this set (PLAN v3-F1 tester gap: a `price` field, which
+// 0206 never emits and 0205's schema has no property for, must be rejected
+// here too, not only by the schema ajv sees in CI).
+const ROOT_ALLOWED_KEYS = Object.freeze([
+  'schemaVersion', 'kind', 'fidelity', 'recordId', 'idempotencyKey', 'corrects',
+  'provenance', 'identity', 'timing', 'modelId', 'interaction', 'tokens', 'raw',
+  'rawStatus', 'rawRef', 'uncapturedReason', 'attribution',
+]);
+
+function usageRoot() {
+  return process.env.CREWRIG_USAGE_ROOT || path.join(os.homedir(), '.crewrig', 'usage');
+}
+
+function deriveRecordId(sessionId, idempotencyKey) {
+  return crypto.createHash('sha256').update(`${sessionId}${UNIT_SEPARATOR}${idempotencyKey}`).digest('hex');
+}
+
+function nowInstant() {
+  return new Date().toISOString();
+}
+
+function hasPath(obj, keyPath) {
+  const segs = keyPath.split('.');
+  let cur = obj;
+  for (const seg of segs) {
+    if (cur === null || typeof cur !== 'object' || !(seg in cur)) return false;
+    cur = cur[seg];
+  }
+  return true;
+}
+
+// fingerprint(obj, keyPaths) — the asserted key-path set, sorted, hashed as a
+// SET (never over content): a fixture and a live source of the same
+// generation carry the same formatFingerprint (PLAN v3 step 1). Returns
+// { ok: true, formatFingerprint } when every key path resolves on obj, or
+// { ok: false, missing } naming what did not — the caller turns that into an
+// uncaptured record (R17).
+//
+// Virtual key paths (i2-F1, #1169): every asserted key path MUST resolve to
+// true on 100% of the records the adapter means to capture, never merely on
+// most of them — an optional or asynchronously-filled source field is not a
+// valid discriminator, since a record legitimately missing it derives as
+// `uncaptured` (R17) instead of `captured`, permanently (recordId collides
+// with the would-be captured record and the spool is a strict atomic
+// create). When no field the source itself always carries can distinguish
+// two generations, a caller may assert a VIRTUAL key path instead: one that
+// resolves against a small synthetic object the caller builds itself from a
+// fact it already established unconditionally (e.g. which file extension it
+// is deriving from), merged alongside the real source object passed to this
+// function — never against a field read from the source. See
+// adapters/gemini-cli.js for the worked example (`container.json` /
+// `container.jsonl`).
+function fingerprint(obj, keyPaths) {
+  const sorted = Array.from(new Set(keyPaths)).sort();
+  const missing = sorted.filter((p) => !hasPath(obj, p));
+  if (missing.length > 0) {
+    return { ok: false, missing };
+  }
+  const digest = crypto.createHash('sha256').update(sorted.join('\n')).digest('hex');
+  return { ok: true, formatFingerprint: `sha256:${digest}` };
+}
+
+// mapTokens(...) — the five-class token mapper. A class the source genuinely
+// did not report is recorded as zero (R8), never omitted. cacheWrite is the
+// one class that may be a structured per-tier map instead of a plain integer
+// (R9); callers pass either shape through untouched.
+function mapTokens({ netInput, cacheRead, cacheWrite, output, reasoning }) {
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  let cw;
+  if (cacheWrite && typeof cacheWrite === 'object') {
+    cw = {};
+    for (const [tier, v] of Object.entries(cacheWrite)) {
+      cw[tier] = num(v);
+    }
+  } else {
+    cw = num(cacheWrite);
+  }
+  return {
+    netInput: num(netInput),
+    cacheRead: num(cacheRead),
+    cacheWrite: cw,
+    output: num(output),
+    reasoning: num(reasoning),
+  };
+}
+
+function normalizeIdentity({ sessionId, parentSessionId = null, agentId = null, projectRoot }) {
+  // R2/R12: never omitted — a response with no subordinate-agent linkage
+  // still carries an explicit null, not an absent field.
+  return {
+    sessionId,
+    parentSessionId: parentSessionId === undefined ? null : parentSessionId,
+    agentId: agentId === undefined ? null : agentId,
+    projectRoot,
+  };
+}
+
+// captured(...) — build a `kind: "captured"` record. `raw` is the source
+// vendor's original fields, unaltered (R5/R18 — an adapter passes only the
+// key paths it already asserted, never full conversational content).
+function captured({
+  provenance,
+  identity,
+  timing,
+  modelId,
+  interaction,
+  tokens,
+  raw,
+  rawStatus = 'complete',
+  fidelity,
+  idempotencyKey,
+  corrects,
+  attribution,
+}) {
+  const normIdentity = normalizeIdentity(identity);
+  const record = {
+    schemaVersion: '1.0.0',
+    kind: 'captured',
+    fidelity,
+    recordId: deriveRecordId(normIdentity.sessionId, idempotencyKey),
+    idempotencyKey,
+    provenance,
+    identity: normIdentity,
+    timing,
+    modelId,
+    interaction,
+    tokens,
+    raw,
+    rawStatus,
+  };
+  if (corrects) record.corrects = corrects;
+  if (attribution) record.attribution = attribution;
+  return record;
+}
+
+// uncaptured(...) — build a `kind: "uncaptured"` record (R6/R16/R17): no
+// token class, no raw, no modelId — only the failure's own provenance.
+function uncaptured({ provenance, identity, timing, idempotencyKey, uncapturedReason, fidelity }) {
+  const normIdentity = normalizeIdentity(identity);
+  return {
+    schemaVersion: '1.0.0',
+    kind: 'uncaptured',
+    fidelity,
+    recordId: deriveRecordId(normIdentity.sessionId, idempotencyKey),
+    idempotencyKey,
+    provenance,
+    identity: normIdentity,
+    timing,
+    uncapturedReason,
+  };
+}
+
+function stateDir(cli) {
+  return path.join(usageRoot(), 'state', cli);
+}
+
+function resolveBinaryPath(binary) {
+  try {
+    const out = execFileSync('/bin/sh', ['-c', `command -v -- ${binary}`], { encoding: 'utf8' }).trim();
+    return out || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function readJsonSafe(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (err) {
+    return null;
+  }
+}
+
+function writeJsonAtomic(file, data) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`);
+  fs.renameSync(tmp, file);
+}
+
+// cliVersionFor(cli, opts) — memoized `<bin> --version` resolver (PLAN v3
+// step 1): a subprocess runs at most once per binary upgrade, never once per
+// firing (Gemini's AfterModel fires five times per prompt). Keyed on the
+// resolved binary's {path, mtimeMs, size}, persisted to
+// ~/.crewrig/usage/state/<cli>/version.json. Returns null when the binary
+// cannot be resolved or run, so callers fall back to a prior cached value or
+// leave cliVersion to another source.
+function cliVersionFor(cli, { binary, versionArgs = ['--version'], parse } = {}) {
+  const versionFile = path.join(stateDir(cli), 'version.json');
+  const cached = readJsonSafe(versionFile);
+
+  const resolvedPath = resolveBinaryPath(binary);
+  if (!resolvedPath) {
+    return cached ? cached.version : null;
+  }
+
+  let stat;
+  try {
+    stat = fs.statSync(resolvedPath);
+  } catch (err) {
+    return cached ? cached.version : null;
+  }
+
+  if (cached && cached.path === resolvedPath && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+    return cached.version;
+  }
+
+  let raw;
+  try {
+    raw = execFileSync(resolvedPath, versionArgs, { encoding: 'utf8', timeout: 5000 }).trim();
+  } catch (err) {
+    return cached ? cached.version : null;
+  }
+  const version = parse ? parse(raw) : raw;
+  writeJsonAtomic(versionFile, { path: resolvedPath, mtimeMs: stat.mtimeMs, size: stat.size, version });
+  return version;
+}
+
+function hasNonEmptyString(v) {
+  return typeof v === 'string' && v.length > 0;
+}
+
+function isNonNegativeNumber(v) {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0;
+}
+
+// assertRecordShape(record) — the dependency-free structural precheck
+// sink.js runs before handing a record to the storage boundary (PLAN v3
+// step 1/step 2). Not a schema validator: it is the cheapest check that
+// keeps a malformed record out of the hand-off, deliberately narrower than
+// schemas/usage-record/v1.schema.json (ajv is a devDependency, unavailable
+// in a hook's own process) — but sink.js's own header states the invariant
+// this function MUST uphold regardless: it never passes a record the merged
+// schema rejects (scripts/tests/test-usage-capture.sh proves it against
+// every scripts/tests/fixtures/usage-records/mutants/*.json and
+// derivation/recordid-mismatch.json). Returns { ok: true } or
+// { ok: false, reason }.
+function assertRecordShape(record) {
+  if (!record || typeof record !== 'object') {
+    return { ok: false, reason: 'record is not an object' };
+  }
+
+  for (const key of Object.keys(record)) {
+    if (!ROOT_ALLOWED_KEYS.includes(key)) {
+      return { ok: false, reason: `unexpected root key: ${key}` };
+    }
+  }
+
+  const rootRequired = ['schemaVersion', 'kind', 'fidelity', 'recordId', 'idempotencyKey', 'provenance', 'identity', 'timing'];
+  for (const key of rootRequired) {
+    if (!(key in record)) {
+      return { ok: false, reason: `missing root key: ${key}` };
+    }
+  }
+
+  if (record.schemaVersion !== '1.0.0') {
+    return { ok: false, reason: `unexpected schemaVersion: ${record.schemaVersion}` };
+  }
+  if (record.kind !== 'captured' && record.kind !== 'uncaptured') {
+    return { ok: false, reason: `unexpected kind: ${record.kind}` };
+  }
+  if (!FIDELITY_VALUES.includes(record.fidelity)) {
+    return { ok: false, reason: `unexpected fidelity: ${record.fidelity}` };
+  }
+  if (!hasNonEmptyString(record.idempotencyKey)) {
+    return { ok: false, reason: 'idempotencyKey missing or empty' };
+  }
+
+  const prov = record.provenance || {};
+  for (const key of ['cli', 'cliVersion', 'captureChannel', 'formatFingerprint']) {
+    if (!hasNonEmptyString(prov[key])) {
+      return { ok: false, reason: `provenance.${key} missing or empty` };
+    }
+  }
+  if (!CLI_VALUES.includes(prov.cli)) {
+    return { ok: false, reason: `unexpected provenance.cli: ${prov.cli}` };
+  }
+  if (!CAPTURE_CHANNELS.includes(prov.captureChannel)) {
+    return { ok: false, reason: `unexpected provenance.captureChannel: ${prov.captureChannel}` };
+  }
+
+  const identity = record.identity || {};
+  if (!hasNonEmptyString(identity.sessionId)) {
+    return { ok: false, reason: 'identity.sessionId missing or empty' };
+  }
+  if (!hasNonEmptyString(identity.projectRoot)) {
+    return { ok: false, reason: 'identity.projectRoot missing or empty' };
+  }
+
+  const timing = record.timing || {};
+  if (!hasNonEmptyString(timing.requestInstant)) {
+    return { ok: false, reason: 'timing.requestInstant missing or empty' };
+  }
+  if (!hasNonEmptyString(timing.captureInstant)) {
+    return { ok: false, reason: 'timing.captureInstant missing or empty' };
+  }
+
+  if (record.kind === 'captured') {
+    if (!hasNonEmptyString(record.modelId)) {
+      return { ok: false, reason: 'modelId missing or empty' };
+    }
+    if (!INTERACTION_VALUES.includes(record.interaction)) {
+      return { ok: false, reason: `unexpected interaction: ${record.interaction}` };
+    }
+    const tokens = record.tokens;
+    if (!tokens || typeof tokens !== 'object') {
+      return { ok: false, reason: 'tokens missing' };
+    }
+    for (const cls of ['netInput', 'cacheRead', 'output', 'reasoning']) {
+      if (!isNonNegativeNumber(tokens[cls])) {
+        return { ok: false, reason: `tokens.${cls} is not a non-negative number` };
+      }
+    }
+    const cw = tokens.cacheWrite;
+    const cwOk =
+      isNonNegativeNumber(cw) ||
+      (cw && typeof cw === 'object' && Object.values(cw).length > 0 && Object.values(cw).every(isNonNegativeNumber));
+    if (!cwOk) {
+      return { ok: false, reason: 'tokens.cacheWrite is not a non-negative number or a non-empty tier map' };
+    }
+    if (!RAW_STATUS_VALUES.includes(record.rawStatus)) {
+      return { ok: false, reason: `unexpected rawStatus: ${record.rawStatus}` };
+    }
+
+    // R2/R6, schema block (A): a captured record whose five token classes are
+    // ALL zero can only represent an unread source — R6 requires that to be
+    // an uncaptured record instead, never a zero-valued captured one.
+    const cwHasNonZero = isNonNegativeNumber(cw) ? cw > 0 : Object.values(cw).some((v) => v > 0);
+    const anyNonZero = tokens.netInput > 0 || tokens.cacheRead > 0 || tokens.output > 0 || tokens.reasoning > 0 || cwHasNonZero;
+    if (!anyNonZero) {
+      return { ok: false, reason: 'tokens: all five classes are zero — a captured record can never represent an unread source (R6)' };
+    }
+
+    // R21, schema blocks (C)/(D)/(E): raw/rawRef presence is tied to rawStatus.
+    const hasRaw = 'raw' in record;
+    const hasRawRef = 'rawRef' in record;
+    if (record.rawStatus === 'complete' || record.rawStatus === 'truncated') {
+      if (!hasRaw) return { ok: false, reason: `rawStatus "${record.rawStatus}" requires raw to be present` };
+      if (hasRawRef) return { ok: false, reason: `rawStatus "${record.rawStatus}" forbids rawRef` };
+    } else if (record.rawStatus === 'externalized') {
+      if (!hasNonEmptyString(record.rawRef)) return { ok: false, reason: 'rawStatus "externalized" requires a non-empty rawRef' };
+      if (hasRaw) return { ok: false, reason: 'rawStatus "externalized" forbids raw' };
+    } else if (record.rawStatus === 'elided') {
+      if (hasRaw) return { ok: false, reason: 'rawStatus "elided" forbids raw' };
+      if (hasRawRef) return { ok: false, reason: 'rawStatus "elided" forbids rawRef' };
+    }
+  } else {
+    if (!hasNonEmptyString(record.uncapturedReason)) {
+      return { ok: false, reason: 'uncapturedReason missing or empty' };
+    }
+    // Schema block (B): an uncaptured record carries no captured-only field.
+    for (const key of ['tokens', 'raw', 'rawStatus', 'rawRef', 'modelId', 'interaction']) {
+      if (key in record) {
+        return { ok: false, reason: `kind "uncaptured" forbids ${key}` };
+      }
+    }
+  }
+
+  const expected = deriveRecordId(identity.sessionId, record.idempotencyKey);
+  if (record.recordId !== expected) {
+    return { ok: false, reason: `recordId mismatch (expected ${expected}, found ${record.recordId})` };
+  }
+
+  return { ok: true };
+}
+
+module.exports = {
+  UNIT_SEPARATOR,
+  CLI_VALUES,
+  CAPTURE_CHANNELS,
+  FIDELITY_VALUES,
+  INTERACTION_VALUES,
+  RAW_STATUS_VALUES,
+  usageRoot,
+  stateDir,
+  deriveRecordId,
+  nowInstant,
+  fingerprint,
+  mapTokens,
+  captured,
+  uncaptured,
+  cliVersionFor,
+  assertRecordShape,
+};

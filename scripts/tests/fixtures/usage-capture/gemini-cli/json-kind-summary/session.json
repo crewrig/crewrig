@@ -1,0 +1,18 @@
+{
+  "sessionId": "gemini-fixture-kindsum-001",
+  "projectHash": "fixture-hash-kindsum",
+  "startTime": "2026-09-15T09:10:00.000Z",
+  "lastUpdated": "2026-09-15T09:15:00.000Z",
+  "kind": "chat",
+  "summary": "A fixture conversation about nothing in particular.",
+  "messages": [
+    {
+      "id": "resp-kindsum-0001",
+      "type": "gemini",
+      "timestamp": "2026-09-15T09:10:04.000Z",
+      "model": "gemini-3.8-flash",
+      "toolCalls": [],
+      "tokens": {"input": 2200, "cached": 0, "output": 305, "thoughts": 0}
+    }
+  ]
+}

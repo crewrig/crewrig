@@ -1,0 +1,14 @@
+{
+  "currentModel": "gpt-5-copilot",
+  "modelMetrics": {
+    "gpt-5-copilot": {
+      "usage": {
+        "inputTokens": 2100,
+        "outputTokens": 340,
+        "cacheReadTokens": 500,
+        "cacheWriteTokens": 60,
+        "reasoningTokens": 15
+      }
+    }
+  }
+}

@@ -147,6 +147,11 @@
           "nav_order": 110
         },
         {
+          "title": "Usage capture architecture",
+          "path": "docs/usage-capture.md",
+          "nav_order": 115
+        },
+        {
           "title": "Usage record format",
           "path": "docs/usage-record-format.md",
           "nav_order": 120

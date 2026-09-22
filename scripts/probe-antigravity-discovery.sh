@@ -54,6 +54,15 @@
 
 set -euo pipefail
 
+# usage-capture (spec 0206 PLAN v3 step 15): this script is an adopted
+# framework-owned headless launch site. probe_ask()'s `agy -p` call is
+# wrapped via the JSON-response-rewrite helper (verified live
+# byte-identical to plain-text mode on this machine, for this exact
+# prompt shape among others).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=scripts/lib/usage-headless.sh
+. "$SCRIPT_DIR/lib/usage-headless.sh"
+
 AGY_BIN="${AGY_BIN:-agy}"
 AGY_PROBE_TIMEOUT="${AGY_PROBE_TIMEOUT:-300}"
 AGY_PROBE_ASK_SHAPE="${AGY_PROBE_ASK_SHAPE:-captured}"
@@ -240,9 +249,22 @@ run_bounded() {
 ASK_STATUS_FILE=""
 
 probe_ask() {
-  local prompt="$1" out st=0
+  local prompt="$1" out st=0 launch_instant
   out="$(mktemp)"
-  run_bounded "$out" "$AGY_BIN" -p "$prompt" || st=$?
+  launch_instant="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+  run_bounded "$out" "$AGY_BIN" -p "$prompt" --output-format json || st=$?
+  # usage-capture (spec 0206): $out currently holds the raw JSON envelope (or
+  # a truncated fragment / nothing on a timeout). This derives+submits one
+  # run-total record and rewrites $out to hold exactly its own `.response`
+  # field — verified live byte-identical to plain-text-mode stdout, INCLUDING
+  # for this exact prompt shape, on this machine. Runs BEFORE the
+  # classification below: a rewrite can change $out's size (a JSON envelope
+  # is never byte-empty even when `.response` is), so the EMPTY/OK verdict
+  # must see the rewritten (text-equivalent) content, not the raw JSON's own
+  # non-emptiness. A parse failure (a timeout truncated $out, or agy wrote a
+  # non-JSON error) leaves $out untouched — the classification below then
+  # sees exactly what it would have without this wrapping.
+  usage_headless_agy_rewrite_json_response "$out" "$launch_instant"
   if [ "$st" -eq 124 ]; then
     printf 'TIMEOUT\n' > "$ASK_STATUS_FILE"
   elif [ ! -s "$out" ]; then

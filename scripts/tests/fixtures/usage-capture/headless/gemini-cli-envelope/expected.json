@@ -1,0 +1,12 @@
+{
+  "adapter": "headless-envelope",
+  "cli": "gemini-cli",
+  "envelopeFile": "envelope.json",
+  "description": "--output-format json envelope shape: stats.models keyed by model, one run-total record.",
+  "captured": 1,
+  "uncaptured": 0,
+  "total": 1,
+  "modelId": "gemini-3.8-pro",
+  "fidelity": "run-total",
+  "sessionId": "gemini-headless-fixture-001"
+}

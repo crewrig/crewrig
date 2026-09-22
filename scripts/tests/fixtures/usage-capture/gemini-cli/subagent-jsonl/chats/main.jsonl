@@ -1,0 +1,2 @@
+{"sessionId":"gemini-parent-fixture-001","projectHash":"fixture-hash-subagent","startTime":"2026-09-15T09:30:00.000Z","lastUpdated":"2026-09-15T09:32:00.000Z","kind":"chat"}
+{"$set":{"messages":[{"id":"resp-parent-0001","type":"gemini","timestamp":"2026-09-15T09:30:05.000Z","model":"gemini-3.8-pro","toolCalls":[],"tokens":{"input":4100,"cached":900,"output":220,"thoughts":0}}]}}
