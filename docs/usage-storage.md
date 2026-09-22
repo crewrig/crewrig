@@ -21,7 +21,7 @@ The journal partitions records by their source CLI and calendar month, storing o
 <root>/pruned/<cli>/<YYYY-MM>.json                     # marker: period was pruned (R20)
 <root>/locks/*.lock                                    # advisory locks for drain and mirror
 <root>/tmp/.*                                          # temp files from write/mirror (swept)
-<root>/spool/                                          # 0206-owned: records awaiting drain
+<root>/spool/                                          # legacy: 0206's pre-hand-over buffer, drained if present
 ```
 
 `<root>` defaults to `~/.crewrig/usage` and is overridable via `CREWRIG_USAGE_ROOT`.
@@ -148,13 +148,13 @@ This command recomputes the set of pending markers by walking the entire journal
 
 ## Drain (spool → journal)
 
-Records captured by spec 0206 (capture) are written to a spool (`<root>/spool/`) and must be moved into the journal by an explicit drain operation. The drain is triggered automatically on every journal write (if the spool is non-empty) and can be run explicitly via:
+Spec 0206's capture step now writes straight through this storage contract's own `write(record)` — the spool hand-over is complete (see [Usage capture](usage-capture.md#spool-hand-over-to-spec-0207)). `<root>/spool/` is therefore a **legacy directory**: it exists only on a machine that ran 0206's capture step before the hand-over, and holds whatever records were spooled at that point. The drain moves any such leftover records into the journal; it is triggered automatically on every journal write (if the spool is non-empty and present at all) and can be run explicitly via:
 
 ```bash
 task usage:drain
 ```
 
-Each spooled record is validated and written to the journal via the standard write path (which may return `stored`, `duplicate`, or `rejected`). Only `stored` and `duplicate` records are unlinked from the spool; `rejected` records are left in place (to avoid losing the only copy of a record 0206 already accepted). The drain is budgeted: it stops once `CREWRIG_USAGE_DRAIN_BUDGET_MS` elapses, leaving the rest for the next write or explicit drain.
+Each spooled record is validated and written to the journal via the standard write path (which may return `stored`, `duplicate`, or `rejected`). Only `stored` and `duplicate` records are unlinked from the spool; `rejected` records are left in place (to avoid losing the only copy of a record 0206 already accepted). The drain is budgeted: it stops once `CREWRIG_USAGE_DRAIN_BUDGET_MS` elapses, leaving the rest for the next write or explicit drain. On a machine that never ran 0206's capture step before the hand-over, `<root>/spool/` never exists and the drain is a no-op.
 
 ### First drain cost
 

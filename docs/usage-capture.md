@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: section=reference nav_order=115 published=true title="Usage capture architecture" -->
 
-The usage-capture seam implements spec 0206, deriving one usage record for every completed model-request a CLI source records, plus one summary record for every non-interactive CLI invocation. This page documents the capture architecture, the per-CLI adapter mechanics, the cursor and spool semantics, the in-repo-absolute-path installation contract, and the documented gaps.
+The usage-capture seam implements spec 0206, deriving one usage record for every completed model-request a CLI source records, plus one summary record for every non-interactive CLI invocation. This page documents the capture architecture, the per-CLI adapter mechanics, the cursor semantics, the in-repo-absolute-path installation contract, and the documented gaps.
 
 ## Architecture overview
 
@@ -11,7 +11,7 @@ The capture step is a **Node module tree** under `scripts/lib/usage-capture/`, i
 - **Live capture:** `hooks/usage-capture.sh` — a sibling hook to `hooks/mempalace-transcript.sh`, wired by in-repo absolute path into the existing `Stop` / `SessionEnd` / `AfterModel` / `agentStop` events on Claude Code, Gemini CLI, Copilot CLI, and Antigravity (statusline display).
 - **Backfill:** `scripts/usage-backfill.sh` — a command-line tool that replays the same per-CLI adapters against records already present on a machine, taking the same derivation rules the live path uses.
 
-No storage backend, write format, or retention policy is implemented by this specification (spec 0206 R25). The capture module exposes a pure interface `sink.submit(record) → { status: 'stored' | 'duplicate' | 'rejected', reason? }` — the three outcomes spec 0207 R24 defines — and until 0207 lands, resolves to a **spool**: one file per record under `~/.crewrig/usage/spool/<recordId>.json`, holding the record verbatim, with no index, no prune ledger, and no query surface. That entire directory is drained by the 0207 implementation before its own first write (see *Spool hand-over to spec 0207* below).
+No storage backend, write format, or retention policy is implemented by this specification (spec 0206 R25). The capture module exposes a pure interface `sink.submit(record) → { status: 'stored' | 'duplicate' | 'rejected', reason? }` — the three outcomes spec 0207 R24 defines — and resolves to spec 0207's own storage contract: `scripts/lib/usage-store/journal.js`'s `write(record)` (see [Usage storage](usage-storage.md)). The hand-over from spec 0206's original spool is complete (see *Spool hand-over to spec 0207* below); a machine that ran 0206 before the hand-over has any leftover `~/.crewrig/usage/spool/` files drained into the journal on the next write, and `CREWRIG_USAGE_ROOT` is unchanged throughout.
 
 ### Module tree structure
 
@@ -20,8 +20,7 @@ scripts/lib/usage-capture/
 ├── index.js                 # Main dispatcher: capture({ cli, event, payload })
 ├── cli.js                   # CLI entry point: reads payload from file, calls index.js
 ├── record.js                # Shared normalizer: captured/uncaptured constructors, recordId derivation, fingerprints
-├── sink.js                  # Storage boundary: structural precheck + spool resolution
-├── spool.js                 # Drain-only buffer: fs.linkSync() for atomic dedup
+├── sink.js                  # Storage boundary: structural precheck + spec 0207's journal
 ├── cursor.js                # Per-source high-water state at ~/.crewrig/usage/state/<cli>/
 ├── adapters/
 │   ├── claude-code.js       # Reads ~/.claude/projects/<project>/<session>.jsonl + subagents
@@ -200,9 +199,10 @@ export CREWRIG_USAGE_ROOT=/path/to/custom/root  # Optional; default is ${HOME}/.
 **Subdirectories:** Under the usage root, the capture system creates and maintains:
 
 - `state/<cli>/` — Cursor files (high-water markers), stamp sidecars, memoized `version.json` per CLI, and configuration like `antigravity-statusline.json` (cursor-owned, never pruned by spec 0207)
-- `spool/` — Spooled records awaiting hand-off to spec 0207's storage backend (drained before 0207's first write)
+- `journal/`, `mirror/`, `cache/`, `pruned/`, `locks/`, `tmp/` — spec 0207's own storage contract; see [Usage storage](usage-storage.md) for the full layout
+- `spool/` — legacy directory from spec 0206's original hand-over buffer; present only on a machine that ran 0206 before the hand-over, and drained into the journal on the next write
 
-**Specification 0207 coordination:** The 0207 implementation honors the same `CREWRIG_USAGE_ROOT` variable and reads the spool from it (entry criterion). After 0207 lands and the spool is drained, the same root and `state/` directory remain in use.
+**Specification 0207 coordination:** The 0207 implementation honors the same `CREWRIG_USAGE_ROOT` variable throughout — the capture step and the storage contract share one root and one `state/` directory.
 
 **Testing:** When running tests, `CREWRIG_USAGE_ROOT` is pointed at a temporary directory (`mktemp -d`) to avoid interfering with the operator's own `~/.crewrig/usage/` directory.
 
@@ -226,7 +226,7 @@ Per-source high-water state lives at `<usage root>/state/<cli>/<sourceKey>.json`
 
 **Stamp sidecar:** After a successful capture pass, a zero-byte file `<sourceKey>.stamp` is touched (via `utimes()`) to the source's own mtime. The hook's fast path uses a bash `-nt` test: `[[ "$src" -nt "$stamp" ]]` costs nothing (builtin mtime comparison) and skips Node entirely when nothing new has appeared. This sidecar is the fast path's only visible artifact on the filesystem.
 
-**Backfill idempotence:** A second backfill run over the same source set adds zero new records, because the sink's recordId-based dedup (via `fs.linkSync()`) recognizes records already written to the spool.
+**Backfill idempotence:** A second backfill run over the same source set adds zero new records, because the sink's recordId-based dedup (via `fs.linkSync()`) recognizes records already written to the journal.
 
 **Spec 0207 prune rule:** The 0207 implementation's prune-by-period command SHALL NOT touch `~/.crewrig/usage/state/`. Resetting a cursor would make the next backfill re-derive pruned records, defeating the retention policy. The state directory is cursor-owned and off-limits.
 
@@ -289,7 +289,7 @@ bash scripts/usage-backfill.sh [--reset-cursors]
 
 **Flags:**
 
-- `--reset-cursors`: Clear `<usage root>/state/<cli>/` (cursor files, stamp sidecars, and memoized versions) so a machine whose spool was discarded before spec 0207 landed can re-derive from the CLIs' own durable history. The true record of source is the CLIs themselves, and this flag lets you recover from a lost spool. Use this when you've deleted `<usage root>/spool/` and want to re-populate it from the CLIs' own source records.
+- `--reset-cursors`: Clear `<usage root>/state/<cli>/` (cursor files, stamp sidecars, and memoized versions) so a machine whose journal was discarded can re-derive from the CLIs' own durable history. The true record of source is the CLIs themselves, and this flag lets you recover from a lost journal.
 
 **Output:**
 
@@ -307,14 +307,9 @@ copilot-cli: 2,885 stored, 2 duplicate, 0 rejected
 
 ## Spool hand-over to spec 0207
 
-Until spec 0207 lands, captured records are written to `~/.crewrig/usage/spool/<recordId>.json`, one file per record, verbatim, with no index, partition scheme, retention policy, or prune ledger.
+The hand-over is complete. `scripts/lib/usage-capture/sink.js` writes each captured record straight through the storage contract (`scripts/lib/usage-store/journal.js`'s `write(record)`) — no adapter or hook changed in the process, and `CREWRIG_USAGE_ROOT` is the same root throughout.
 
-**Spec 0207's entry criteria:**
-
-1. Drain `~/.crewrig/usage/spool/` before its own first write. Delete each spooled file only after that record's journal write returned `stored` or `duplicate`.
-2. Never prune `~/.crewrig/usage/state/`. Resetting a cursor would make the next backfill re-derive pruned records.
-
-After 0207 merges and the journal is operational, `scripts/lib/usage-capture/sink.js` will be re-pointed to the journal, `spool.js` will be deleted, and every adapter and hook remains unchanged.
+Before this hand-over, captured records were written to `~/.crewrig/usage/spool/<recordId>.json`, one file per record, verbatim, with no index, partition scheme, retention policy, or prune ledger. That original buffer, `spool.js`, is deleted. A machine that ran 0206's capture step before the hand-over may still carry leftover files under `~/.crewrig/usage/spool/`; the journal's own `drainAndSweep()` drains them into the journal on its first write per process, deleting each spooled file only after that record's journal write returns `stored` or `duplicate` — nothing captured under 0206 is lost.
 
 ## Adopted launch sites (non-interactive runs)
 
