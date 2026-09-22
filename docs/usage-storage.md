@@ -318,7 +318,7 @@ bash scripts/usage-prune.sh <cli> <YYYY-MM>
 **Immediate, complete purge** (all data under `CREWRIG_USAGE_ROOT`):
 
 ```bash
-rm -rf <root>/journal/ <root>/mirror/ <root>/cache/ <root>/tmp/
+rm -rf <root>/journal/ <root>/mirror/ <root>/cache/ <root>/tmp/ <root>/declarations/ <root>/ledger/
 ```
 
 Neither command touches `<root>/state/` (owned by 0206). After purging, subsequent writes will create new journal entries and mirror drawers starting fresh.
