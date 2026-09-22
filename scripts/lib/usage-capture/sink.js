@@ -1,9 +1,11 @@
 // sink.js — the spec 0207 storage boundary, and the only thing spec 0206
 // ships on the storage side (PLAN v3 step 2). `submit(record)` is a PURE
-// INTERFACE: spec 0207 / issue #1170 owns whatever backend eventually sits
-// behind it. Until 0207 merges, it resolves to spool.js (step 3) — a
-// drain-only buffer, never a storage backend, write format or retention
-// policy (R25).
+// INTERFACE: spec 0207 / issue #1170 owns whatever backend sits behind it.
+// It now resolves to scripts/lib/usage-store/journal.js's write() (PLAN v3
+// step 5) — spool.js's drain-only buffer and its hand-over are history.
+// journal.js's own drainAndSweep() keeps draining any leftover
+// <root>/spool/*.json files on its first write per process, so a machine
+// that ran 0206 before this change loses nothing.
 //
 // The three outcomes below are frozen against spec 0207 R24 and MUST NOT
 // grow a fourth without a spec change:
@@ -21,7 +23,7 @@
 'use strict';
 
 const { assertRecordShape } = require('./record');
-const spool = require('./spool');
+const journal = require('../usage-store/journal');
 
 const VALID_STATUSES = new Set(['stored', 'duplicate', 'rejected']);
 
@@ -31,7 +33,7 @@ function submit(record) {
     return { status: 'rejected', reason: shape.reason };
   }
 
-  const result = spool.submit(record);
+  const result = journal.write(record);
   if (!VALID_STATUSES.has(result.status)) {
     // A backend that returns a fourth status is a programming error in this
     // module tree, not a runtime condition to swallow silently.

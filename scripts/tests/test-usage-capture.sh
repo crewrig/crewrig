@@ -337,11 +337,31 @@ CAPTURE_ABS="$(cd "$(dirname "$CAPTURE_SHIM")" && pwd -P)/$(basename "$CAPTURE_S
 INSTALLED_CWD="$(mktemp -d)"
 INSTALLED_ROOT="$(mktemp -d)"
 (cd "$INSTALLED_CWD" && CREWRIG_USAGE_ROOT="$INSTALLED_ROOT" bash "$CAPTURE_ABS" claude-code Stop <<< '{"transcript_path":"/home/agent/does/not/exist/unused.jsonl"}') >/dev/null 2>&1
-SPOOL_COUNT=$(find "$INSTALLED_ROOT/spool" -type f 2>/dev/null | wc -l | tr -d ' ')
-if [ "$SPOOL_COUNT" = "1" ]; then
-  ok "§7(a): invoked by absolute path from a cwd that is NOT the repository — exactly one spool file appears"
+JOURNAL_COUNT=$(find "$INSTALLED_ROOT/journal" -name '*.json' ! -name '*.wing.json' 2>/dev/null | wc -l | tr -d ' ')
+if [ "$JOURNAL_COUNT" = "1" ]; then
+  ok "§7(a): invoked by absolute path from a cwd that is NOT the repository — exactly one journal entry appears"
 else
-  bad "§7(a): expected exactly one spool file, found $SPOOL_COUNT under $INSTALLED_ROOT/spool"
+  bad "§7(a): expected exactly one journal entry, found $JOURNAL_COUNT under $INSTALLED_ROOT/journal"
+fi
+
+# ---------------------------------------------------------------------------
+echo
+echo "=== §7(a') a leftover <root>/spool/<recordId>.json (0206 hand-over) is drained into the journal on the next capture ==="
+
+DRAIN_ROOT="$(mktemp -d)"
+mkdir -p "$DRAIN_ROOT/spool"
+LEFTOVER_RECORD="$(node $NODE_FLAGS -e "console.log(JSON.stringify(require('$REPO_DIR/schemas/usage-record/samples/gemini-cli.json')))")"
+LEFTOVER_ID="$(node $NODE_FLAGS -e "console.log(require('$REPO_DIR/schemas/usage-record/samples/gemini-cli.json').recordId)")"
+printf '%s\n' "$LEFTOVER_RECORD" > "$DRAIN_ROOT/spool/$LEFTOVER_ID.json"
+
+(cd "$INSTALLED_CWD" && CREWRIG_USAGE_ROOT="$DRAIN_ROOT" bash "$CAPTURE_ABS" claude-code Stop <<< '{"transcript_path":"/home/agent/does/not/exist/unused.jsonl"}') >/dev/null 2>&1
+
+DRAINED_ENTRY="$(find "$DRAIN_ROOT/journal" -name "$LEFTOVER_ID.json" 2>/dev/null)"
+SPOOL_LEFTOVER_COUNT=$(find "$DRAIN_ROOT/spool" -type f 2>/dev/null | wc -l | tr -d ' ')
+if [ -n "$DRAINED_ENTRY" ] && [ "$SPOOL_LEFTOVER_COUNT" = "0" ]; then
+  ok "§7(a'): a hand-placed <root>/spool/<recordId>.json is drained into the journal on the next capture, and spool/ is emptied"
+else
+  bad "§7(a'): leftover spool record was not drained (journal entry found: '${DRAINED_ENTRY:-<none>}', spool/ files remaining: $SPOOL_LEFTOVER_COUNT)"
 fi
 
 # ---------------------------------------------------------------------------
