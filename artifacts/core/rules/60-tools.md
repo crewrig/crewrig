@@ -258,6 +258,11 @@ semantic similarity heuristics:
    that the task has been picked up. Treat the checkpoint write as part
    of the recovery itself, not as a chore to do "after the work".
 
+   **Also record the session's usage declaration** before any task work
+   begins (spec 0208 R3): `bash scripts/usage-task.sh set --task-key
+   <handoff_key> --channel protocol`; `handoff_key` is the bare decimal
+   ticket number, identical across every CLI.
+
 **Why not `mempalace_search` without a wing filter?** The `transcripts`
 wing typically contains thousands of raw transcript drawers, many
 mentioning `[TASK:ongoing]` literally as documentation. Without a wing
@@ -300,7 +305,7 @@ approximation (the true ratio varies by tokenizer and content).
 | Sweep component | Payload | ≈ tokens (@ ~4 B/tok) | Cap |
 |---|---|---|---|
 | Core sweep (the six numbered steps): `mempalace_status` + scoped `[TASK:ongoing]` search + `diary_read(last_n≤5)` + one `kg_query` + conditional checkpoint write | documented estimate (see issue #415) | — | ~8 KB (~2,000 tok) |
-| Optional store mirror: the 5 × `~/.crewrig/system-context/*.md` files, verbatim | 12,339 B | ~3,085 | ~16 KB (~4,000 tok) |
+| Optional store mirror: the 5 × `~/.crewrig/system-context/*.md` files, verbatim | 16,315 B | ~4,079 | ~16 KB (~4,000 tok) |
 | **Total wake-up (with mirror)** | | | **~24 KB (~6,000 tok)** |
 
 **Overflow rule.** If the budget would be exceeded, shed the optional

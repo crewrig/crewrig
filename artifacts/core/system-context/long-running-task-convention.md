@@ -56,7 +56,11 @@ lessons: <what was learned>
   provenance explicit on every entry.
 - `handoff_key` — deterministic anchor. Matches the `<task-id>` in the
   title line; useful for cross-referencing across drawer revisions or
-  related tasks.
+  related tasks. A write that establishes or resumes a drawer SHALL also
+  record the session's usage declaration before any task work (spec 0208
+  R3), via `bash scripts/usage-task.sh set --task-key <handoff_key>
+  --channel protocol`; `handoff_key` is the bare decimal ticket number,
+  identical across every CLI.
 - `visible_to` — visibility allowlist. `["*"]` is the global default
   (visible to every agent). `["<agent>"]` restricts to a specific agent.
   `["<a>", "<b>"]` scopes to multiple agents. Reading agents apply the
