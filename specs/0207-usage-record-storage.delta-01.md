@@ -12,17 +12,16 @@ version: 1.1.0
 
 ## ADDED
 
-1. **New requirement (R28) — Explicit prune reaches registered derived
-   stores.** An explicit prune of a period SHALL also remove, together
-   with the journal entries and mirrored drawers removed for that
-   period, every derived store a later specification has registered
-   with the storage contract for that period, leaving none of the
-   registered derived stores behind on its own.
+1. **New requirement (R28) — Explicit prune reaches items in registered
+   derived stores.** An explicit prune of a period SHALL also remove,
+   together with that period's journal entries and mirrored drawers,
+   every item that any derived store registered with the storage
+   contract holds for that period, leaving no such item behind on its
+   own.
 2. **New requirement (R29) — Removal only through the explicit prune.**
-   A derived store a later specification has registered with the
-   storage contract SHALL never be removed by an automatic expiry;
-   removal of such a store SHALL occur only through the explicit prune
-   naming the period to remove.
+   No item a registered derived store holds SHALL ever be removed by
+   an automatic expiry; such items SHALL be removed only through the
+   explicit prune naming their period.
 3. **New requirement (R30) — Registration leaves existing entries
    untouched.** Registering a derived store with the storage contract
    SHALL NOT alter any journal entry, sidecar, marker, or mirrored
@@ -38,6 +37,17 @@ version: 1.1.0
    behavior.** An explicit prune of a period for which no derived store
    has anything recorded SHALL behave exactly as it did before this
    delta.
+6. **New requirement (R33) — Continuous-integration acceptance
+   criterion for the registered-derived-store prune.** A
+   continuous-integration suite SHALL verify, with no shared memory
+   service present and under the same root override the storage
+   contract already reads, that an explicit prune of a period removes
+   the items of two registered derived stores for that period together
+   with the journal entries and mirrored drawers, and reports each
+   store with the count of items it removed; and that an explicit
+   prune of a period for which no registered derived store has
+   anything recorded behaves exactly as it did before this delta, with
+   no derived store named in the report.
 
 **Scenario:** Pruning removes registered derived stores together with the journal and mirror
 
@@ -66,17 +76,16 @@ Then  the journal entries and mirrored drawers are removed together and
 ## MODIFIED
 
 **R19** — the explicit prune requirement SHALL be widened to also reach
-every derived store a later specification has registered with the
-storage contract.
+every item a registered derived store holds for the pruned period.
 
 > Original R19: *"An explicit prune of a period SHALL remove both the
 > journal entries for that period and their mirrored drawers together,
 > leaving neither behind on its own."*
 
 Replacement: An explicit prune of a period SHALL remove the journal
-entries for that period, their mirrored drawers, and every derived
-store registered with the storage contract for that period, together,
-leaving none of them behind on its own.
+entries for that period, their mirrored drawers, and every item any
+registered derived store holds for that period, together, leaving none
+of them behind on its own.
 
 The parent's two `## Out of scope` bullets for seams (d) and (e) are
 restated so each seam stays out of scope except for the prune
@@ -131,15 +140,15 @@ silently widening spec 0207's prune on its own, this delta establishes
 a single obligation: a later specification registers its derived store
 with the storage contract, and the explicit prune, already the sole
 removal path for journal entries and mirrored drawers (R18), reaches
-every store registered for the pruned period. Five requirements are
-added above (28 through 32, one sentence per obligation for clarity)
-and satisfy both spec 0208 requirement 17 and spec 0209 requirement 37
-without either spec needing to restate spec 0207's prune contract
-itself.
+every registered store's items for the pruned period. Six requirements
+are added above (28 through 33, one sentence per obligation for
+clarity) and satisfy both spec 0208 requirement 17 and spec 0209
+requirement 37 without either spec needing to restate spec 0207's
+prune contract itself.
 
 MINOR bump (`1.0.0` → `1.1.0`) per `docs/spec-format.md` →
 *Versioning*: an additive normative change — one new requirement
-(split into requirements 28 through 32) — plus a reworded R19 that
+(split into requirements 28 through 33) — plus a reworded R19 that
 keeps every existing obligation of the original (journal entries and
 mirrored drawers removed together, leaving neither behind on its own)
 intact while adding registered derived stores to the same removal.
