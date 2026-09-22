@@ -59,6 +59,7 @@ All variables are optional and have safe defaults.
 - **`CREWRIG_USAGE_MIRROR`** — Set to `0` to disable automatic mirror catch-up on write. Pending markers are still created; only the detached spawn is skipped. Default: enabled (not `0`).
 - **`CREWRIG_USAGE_MIRROR_BACKOFF_MS`** — Backoff duration after MemPalace becomes unreachable before attempting another catch-up. Defaults to `600000` (10 minutes). While this duration is active, no new catch-up is spawned, though pending markers accumulate.
 - **`CREWRIG_USAGE_MIRROR_LOCK_STALE_MS`** — Staleness threshold for the mirror catch-up lock. A lock older than this is considered stale and may be forcibly acquired. Defaults to `900000` (15 minutes).
+- **`CREWRIG_USAGE_MIRROR_WAIT_MS`** — Only consulted by an *explicit* catch-up (see below). Bound on how long it polls a contended lock before giving up. Defaults to `CREWRIG_USAGE_MIRROR_LOCK_STALE_MS`, so in practice an explicit catch-up always succeeds — a peer that never releases the lock is, by definition, stale by then.
 
 ### Drain (spool → journal)
 
@@ -113,7 +114,16 @@ When the token file is present:
 
 1. A pending marker is created at `<root>/mirror/pending/<cli>/<period>/<recordId>`.
 2. The unreachable stamp is checked. If it exists and is younger than `CREWRIG_USAGE_MIRROR_BACKOFF_MS`, the write returns without spawning.
-3. Otherwise, a detached catch-up process (`bash scripts/usage-mirror.sh`) is spawned to move markers from `pending/` to `mirrored/` by creating drawers in MemPalace.
+3. Otherwise, a detached catch-up process (`bash scripts/usage-mirror.sh --from-write`) is spawned to move markers from `pending/` to `mirrored/` by creating drawers in MemPalace.
+
+### Explicit vs. write-time catch-up, and the mirror lock
+
+Every catch-up (write-time or operator-invoked) serializes on a single `mirror.lock` file. The two callers treat contention differently:
+
+- **Write-time (detached, `--from-write`)** — a single, non-blocking lock attempt. If another child already holds the lock, this one exits immediately with nothing done; the sibling in progress owns the drain, and the next write's own spawn will retry if pending markers remain.
+- **Explicit (`bash scripts/usage-mirror.sh`, with or without `--reconcile`, invoked by an operator or CI without `--from-write`)** — on a contended lock, polls every 100 ms until the lock is released or goes stale (bounded by `CREWRIG_USAGE_MIRROR_WAIT_MS`, defaulting to `CREWRIG_USAGE_MIRROR_LOCK_STALE_MS`), then runs its own pass. This is what lets an operator run `usage-mirror.sh` right after a batch of writes and rely on every marker pending at that moment having been attempted, rather than silently losing the race to a detached write-time child and returning having mirrored nothing.
+
+Whichever caller does acquire the lock drains `pending/` in a loop — repeating its pass until the directory is empty or a pass makes no further progress — rather than a single pass. This absorbs markers created by sibling writes while the drain was running, instead of stranding them for "the next write" to spawn a fresh catch-up for.
 
 ### Unreachable backoff
 

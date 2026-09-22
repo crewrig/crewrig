@@ -874,6 +874,104 @@ else
 fi
 
 echo
+echo "=== MUTATION: explicit catch-up losing a contended-lock race (i1-F2) ==="
+MUTANT_LOCKRACE_CLI=codex-cli
+MUTANT_LOCKRACE_PERIOD="2020-05"
+MUTANT_LOCKRACE_RIDS_FILE="$HELPERS_DIR/lockrace-rids.txt"
+: > "$MUTANT_LOCKRACE_RIDS_FILE"
+
+i=1
+while [ "$i" -le 3 ]; do
+  f="$HELPERS_DIR/lockrace-$i.json"
+  MR_CLI="$MUTANT_LOCKRACE_CLI" MR_SESSION="lockrace-session-$i" MR_IDEMKEY="lockrace-key-$i" \
+    MR_REQUEST_INSTANT="2020-05-01T00:00:00.000Z" CREWRIG_USAGE_MIRROR=0 run_driver make-record > "$f"
+  rid="$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).recordId)" "$f")"
+  echo "$rid" >> "$MUTANT_LOCKRACE_RIDS_FILE"
+  # CREWRIG_USAGE_MIRROR=0: keep write-time detached spawns out of this
+  # scenario entirely — the only catch-up in flight must be the one this
+  # case drives itself, or the simulated lock-hold below is meaningless.
+  CREWRIG_USAGE_MIRROR=0 run_driver write "$f" >/dev/null
+  i=$((i + 1))
+done
+
+MIRROR_LOCK="$USAGE_ROOT/locks/mirror.lock"
+mkdir -p "$(dirname "$MIRROR_LOCK")"
+
+lockrace_all_mirrored() {
+  local rid all=1
+  while IFS= read -r rid; do
+    [ -f "$(mirrored_marker_path "$MUTANT_LOCKRACE_CLI" "$MUTANT_LOCKRACE_PERIOD" "$rid")" ] || all=0
+  done < "$MUTANT_LOCKRACE_RIDS_FILE"
+  echo "$all"
+}
+
+# --- (i) fixed behavior: hold locks/mirror.lock ourselves (simulating a
+#     live peer catch-up), release it after a short, bounded delay, and
+#     confirm the explicit foreground catch-up WAITS instead of losing the
+#     race — the exact shape of the CI flake this fixes (a live peer holds
+#     the lock when the explicit `usage-mirror.sh` in test (e)'s setup
+#     runs right after a batch of writes).
+: > "$MIRROR_LOCK" # fresh mtime — simulates a live peer holding the lock
+( sleep 0.5; rm -f "$MIRROR_LOCK" ) &
+releaser_pid="$!"
+CREWRIG_USAGE_MIRROR_WAIT_MS=5000 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null
+wait "$releaser_pid" 2>/dev/null || true
+
+if [ "$(lockrace_all_mirrored)" -eq 1 ]; then
+  ok "FIXED: the explicit catch-up waited out a contended lock and mirrored all 3 records"
+else
+  bad "FIXED: the explicit catch-up should have waited out the contended lock and mirrored all 3 records"
+fi
+
+# --- (ii) mutant: revert fix (a) alone — the explicit caller falls back to
+#     the same single non-blocking attempt as the write-time detached
+#     spawn — and repeat the identical scenario on a freshly-pending copy
+#     of the SAME 3 records.
+while IFS= read -r rid; do
+  rm -f "$(mirrored_marker_path "$MUTANT_LOCKRACE_CLI" "$MUTANT_LOCKRACE_PERIOD" "$rid")"
+  pm="$(pending_marker_path "$MUTANT_LOCKRACE_CLI" "$MUTANT_LOCKRACE_PERIOD" "$rid")"
+  mkdir -p "$(dirname "$pm")"
+  : > "$pm"
+done < "$MUTANT_LOCKRACE_RIDS_FILE"
+
+MUTATOR_4="$HELPERS_DIR/mutator-lockrace.js"
+cat > "$MUTATOR_4" <<'MUTATOR_EOF'
+const fs = require('fs');
+const path = process.argv[2];
+let src = fs.readFileSync(path, 'utf8');
+const marker = "const acquired = explicit\n    ? await acquireLockWaiting(lockFile, staleMs, envMs('CREWRIG_USAGE_MIRROR_WAIT_MS', staleMs))\n    : tryAcquireLock(lockFile, staleMs);";
+if (!src.includes(marker)) {
+  console.error('FATAL: explicit-wait lock-acquisition marker not found in mirror.js');
+  process.exit(1);
+}
+src = src.split(marker).join('const acquired = tryAcquireLock(lockFile, staleMs); // mutation: explicit wait dropped');
+fs.writeFileSync(path, src);
+MUTATOR_EOF
+node "$MUTATOR_4" "$MIRROR_JS"
+
+: > "$MIRROR_LOCK" # fresh mtime — simulates a live peer holding the lock again
+( sleep 0.5; rm -f "$MIRROR_LOCK" ) &
+releaser_pid_2="$!"
+CREWRIG_USAGE_MIRROR_WAIT_MS=5000 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null
+wait "$releaser_pid_2" 2>/dev/null || true
+git -C "$REPO_DIR" checkout -- scripts/lib/usage-store/mirror.js
+
+if [ "$(lockrace_all_mirrored)" -eq 0 ]; then
+  ok "MUTATION RED: without fix (a), the explicit catch-up loses the contended-lock race and leaves records unmirrored"
+else
+  bad "MUTATION not red: the explicit catch-up mirrored everything even with fix (a) reverted"
+fi
+if git -C "$REPO_DIR" diff --quiet -- scripts/lib/usage-store/mirror.js; then
+  ok "mirror.js is restored to its committed content after the lock-race mutation"
+else
+  bad "mirror.js was NOT fully restored after the lock-race mutation"
+fi
+
+# Tidy: mirror the 3 records for real so they don't linger pending for the
+# rest of the suite. The lock is uncontended by now (both releasers ran).
+bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null || true
+
+echo
 echo "=== Summary: $pass passed, $fail failed ==="
 if [ "$fail" -gt 0 ]; then
   exit 1

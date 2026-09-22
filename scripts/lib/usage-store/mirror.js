@@ -218,6 +218,18 @@ function readOrRepairSidecar(cli, per, recordId, record) {
 // stamp read, no spawn, no probe, not one byte under <root>/mirror/;
 // present ⇒ one pending marker, then a detached catch-up unless a fresh
 // unreachable stamp or CREWRIG_USAGE_MIRROR=0 forbids it.
+//
+// The detached spawn passes `--from-write`, which keeps catchUp() on its
+// original NON-BLOCKING single lock attempt (contended ⇒ `{ ran: false }`
+// immediately — another child already holds the lock and the next write's
+// spawn will retry). Whichever child DOES acquire the lock drains pending/
+// in a loop (drainPending(), below) rather than a single pass, so markers
+// created by sibling writes while it runs are not stranded for "the next
+// write" to pick up. An operator or CI invocation of `usage-mirror.sh`
+// WITHOUT `--from-write` is treated as explicit (catchUp({ explicit: true
+// })): on a contended lock it waits with bounded polling instead of giving
+// up (see acquireLockWaiting()), so its post-condition — every marker
+// pending at call time has been attempted — actually holds.
 function onWrite(record, entryPath, wingInfo) {
   if (!fs.existsSync(mcp.tokenPath())) {
     return;
@@ -251,7 +263,7 @@ function onWrite(record, entryPath, wingInfo) {
   }
 
   const scriptPath = path.join(__dirname, '..', '..', 'usage-mirror.sh');
-  const child = spawn('bash', [scriptPath], { detached: true, stdio: 'ignore' });
+  const child = spawn('bash', [scriptPath, '--from-write'], { detached: true, stdio: 'ignore' });
   child.unref();
 }
 
@@ -284,6 +296,30 @@ function tryAcquireLock(lockFile, staleMs) {
     return true;
   } catch (err) {
     return false; // another process won the retry
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// acquireLockWaiting(lockFile, staleMs, waitMs) — the explicit entrypoint's
+// bounded-polling counterpart to tryAcquireLock(): retries every 100ms
+// until either the lock is acquired (the live peer released it, or
+// tryAcquireLock's own staleness check reclaimed it once age > staleMs) or
+// waitMs elapses. Defaulting waitMs to staleMs (see catchUp()) means this
+// always succeeds within ~staleMs in practice — a peer that never releases
+// is, by definition, stale by then — so the caller's "every pending marker
+// has been attempted" post-condition holds barring a pathological repeat
+// steal-race (tryAcquireLock's own single retry-after-unlink loses again on
+// every single poll).
+async function acquireLockWaiting(lockFile, staleMs, waitMs) {
+  const pollMs = 100;
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    if (tryAcquireLock(lockFile, staleMs)) return true;
+    if (Date.now() >= deadline) return false;
+    await sleep(Math.min(pollMs, Math.max(0, deadline - Date.now())));
   }
 }
 
@@ -384,14 +420,44 @@ async function walkPending() {
   }
 }
 
-async function catchUp() {
+// drainPending() — repeats walkPending() until pending/ is empty or a pass
+// makes no progress (a transport failure breaks walkPending() early, so the
+// count is unchanged and this stops rather than spinning). This is what
+// lets the lock's winner — write-time detached child or explicit run alike
+// — absorb markers created by sibling writes while it was working, instead
+// of leaving them for "the next write" to spawn a fresh catch-up for.
+async function drainPending() {
+  for (;;) {
+    const before = listMarkers(layout.mirrorPendingRoot()).length;
+    if (before === 0) return;
+    await walkPending();
+    const after = listMarkers(layout.mirrorPendingRoot()).length;
+    if (after === 0 || after >= before) return;
+  }
+}
+
+// catchUp(opts) — opts.explicit (default false) distinguishes the two
+// callers documented at onWrite() above:
+//   - explicit: false (write-time detached spawn, `--from-write`) — a
+//     single non-blocking lock attempt; contended ⇒ `{ ran: false }`
+//     immediately, the peer already in progress owns the drain.
+//   - explicit: true (operator/CI run of usage-mirror.sh with no flag, or
+//     `--reconcile`) — waits on a contended lock (acquireLockWaiting())
+//     instead of giving up, so its post-condition holds: every marker
+//     pending at call time gets attempted.
+async function catchUp(opts) {
+  const explicit = !!(opts && opts.explicit);
   const lockFile = layout.lockPath('mirror');
   const staleMs = envMs('CREWRIG_USAGE_MIRROR_LOCK_STALE_MS', 900000);
-  if (!tryAcquireLock(lockFile, staleMs)) {
+
+  const acquired = explicit
+    ? await acquireLockWaiting(lockFile, staleMs, envMs('CREWRIG_USAGE_MIRROR_WAIT_MS', staleMs))
+    : tryAcquireLock(lockFile, staleMs);
+  if (!acquired) {
     return { ran: false };
   }
   try {
-    await walkPending();
+    await drainPending();
     return { ran: true };
   } finally {
     try {
@@ -448,9 +514,9 @@ function recreatePendingMarkers() {
   }
 }
 
-async function reconcile() {
+async function reconcile(opts) {
   recreatePendingMarkers();
-  return catchUp();
+  return catchUp(opts);
 }
 
 module.exports = {
@@ -464,11 +530,18 @@ module.exports = {
 
 if (require.main === module) {
   const args = process.argv.slice(2);
-  const run = args.includes('--reconcile') ? reconcile : catchUp;
+  // `--from-write` marks the write-time detached spawn (see onWrite() above);
+  // its absence means an operator or CI invocation, treated as explicit.
+  const explicit = !args.includes('--from-write');
+  const run = () => (args.includes('--reconcile') ? reconcile({ explicit }) : catchUp({ explicit }));
   run()
     .then((result) => {
       if (result && result.ran === false) {
-        console.log('usage-store mirror: another process already holds the catch-up lock — skipped.');
+        console.log(
+          explicit
+            ? 'usage-store mirror: gave up waiting for the catch-up lock — a peer still holds it.'
+            : 'usage-store mirror: another process already holds the catch-up lock — skipped.'
+        );
       } else {
         console.log('usage-store mirror: catch-up complete.');
       }
