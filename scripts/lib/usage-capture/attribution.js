@@ -201,7 +201,7 @@ function resolveRemote(config, branch) {
 }
 
 // parseRemoteUrl(url) — the scp-like SSH form (git@host:owner/repo.git) and
-// https://host/owner/repo[.git], entirely offline.
+// an "https" URL of the form host/owner/repo[.git], entirely offline.
 function parseRemoteUrl(url) {
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) {
     const m = url.match(/^(?:[^@\s]+@)?([^:\s]+):(.+?)(?:\.git)?\/?$/);
