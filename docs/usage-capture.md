@@ -305,6 +305,14 @@ copilot-cli: 2,885 stored, 2 duplicate, 0 rejected
 
 **Recovery use case:** If the live hook path breaks (e.g., checkout moved), run the backfill to re-derive everything the live path missed.
 
+## Attribution resolution and the sidecar
+
+When `submit(record, ctx)` hands the record to the storage contract, the record's attribution is resolved from one of four ordered channels (spec 0208 R1): explicit human declaration, the `CREWRIG_TASK` environment variable, the current worktree or branch, or the session-start protocol. Attribution is a **one-time resolution** — once resolved at hand-over, it is never re-derived, and the journal entry itself stays byte-identical to what capture produced (spec 0208 R16).
+
+The resolving channel and its outcome (attributed or unattributed, with failure reason if validation failed) are recorded in a `.attr.json` sidecar beside the journal entry, for durable, inspectable audit without mutating the record schema (which closes on exactly `taskHandoffKey` and `externalAsset` fields). Backfill performs the same resolution over historical records, using the same pure `resolveAttribution(record, ctx)` function; context for backfill sets `declarations: false` and `cwd: null` to disable the live channels (channels 1, 3, 4) and resolve only from `CREWRIG_TASK`, so a historical record has no attribution unless the environment explicitly provides one.
+
+See [Usage attribution](usage-attribution.md) for the full contract, the channels, the declaration record, the ledger, and rollup surfaces.
+
 ## Spool hand-over to spec 0207
 
 The hand-over is complete. `scripts/lib/usage-capture/sink.js` writes each captured record straight through the storage contract (`scripts/lib/usage-store/journal.js`'s `write(record)`) — no adapter or hook changed in the process, and `CREWRIG_USAGE_ROOT` is the same root throughout.
