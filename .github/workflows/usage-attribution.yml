@@ -1,0 +1,44 @@
+name: Usage Attribution Check
+
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-capture/**"
+      - "scripts/usage-task.sh"
+      - "scripts/usage-attribute.sh"
+      - "scripts/tests/test-usage-attribution.sh"
+      - "scripts/tests/fixtures/usage-attribution/**"
+      - "schemas/**"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-capture/**"
+      - "scripts/usage-task.sh"
+      - "scripts/usage-attribute.sh"
+      - "scripts/tests/test-usage-attribution.sh"
+      - "scripts/tests/fixtures/usage-attribution/**"
+      - "schemas/**"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  usage-attribution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate the declaration channels, ledger, and rollups (no daemon)
+        run: bash scripts/tests/test-usage-attribution.sh

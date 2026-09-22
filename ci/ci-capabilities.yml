@@ -1206,6 +1206,8 @@ capabilities:
           - "scripts/usage-prune.sh"
           - "scripts/usage-mirror.sh"
           - "scripts/usage-drain.sh"
+          - "scripts/usage-task.sh"
+          - "scripts/usage-attribute.sh"
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
           - "scripts/tests/fixtures/usage-storage/**"
@@ -1220,6 +1222,8 @@ capabilities:
           - "scripts/usage-prune.sh"
           - "scripts/usage-mirror.sh"
           - "scripts/usage-drain.sh"
+          - "scripts/usage-task.sh"
+          - "scripts/usage-attribute.sh"
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
           - "scripts/tests/fixtures/usage-storage/**"
@@ -1234,6 +1238,52 @@ capabilities:
       - bash scripts/tests/test-usage-storage.sh
       - bash scripts/tests/test-usage-storage-mirror.sh
       - node scripts/build-usage-validator.js --check
+
+  # usage-attribution validates spec 0208's declaration channels, attribution
+  # ledger, and per-fidelity rollups: the resolver's four-channel order and
+  # offline worktree-or-branch derivation, the append-only ledger's read-time
+  # override, and the registered-derived-store prune reach (spec 0207
+  # delta-01 R28/R33). Deliberately NOT changeset-gated, for the same reason
+  # usage-storage above is not — a node@22 capability must never enter the
+  # fail-safe job's python-only execution set. The capture tree is in the
+  # paths filter because the resolution point is scripts/lib/usage-capture/
+  # index.js and the backfill's no-channel rule is backfill.js: without it,
+  # an edit dropping the resolveAttribution() call would leave usage-capture
+  # green (it asserts nothing about attribution), usage-storage green (it
+  # does not fire on the capture tree), and usage-attribution not run at all.
+  - id: usage-attribution
+    name: "Validate the usage-attribution declaration channels and ledger"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/usage-store/**"
+          - "scripts/lib/usage-capture/**"
+          - "scripts/usage-task.sh"
+          - "scripts/usage-attribute.sh"
+          - "scripts/tests/test-usage-attribution.sh"
+          - "scripts/tests/fixtures/usage-attribution/**"
+          - "schemas/**"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/usage-store/**"
+          - "scripts/lib/usage-capture/**"
+          - "scripts/usage-task.sh"
+          - "scripts/usage-attribute.sh"
+          - "scripts/tests/test-usage-attribution.sh"
+          - "scripts/tests/fixtures/usage-attribution/**"
+          - "schemas/**"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - bash scripts/tests/test-usage-attribution.sh
 
   # gitlab-ci-check is the generator's own drift gate (spec 0048 R6/R7),
   # registered as a portable capability so the verification surface is itself
