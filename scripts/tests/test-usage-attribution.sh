@@ -697,9 +697,9 @@ node -e "
 const fs = require('fs');
 const p = process.argv[1];
 let src = fs.readFileSync(p, 'utf8');
-const marker = \"isEntry: isLedgerEntry,\n    },\n  ];\";
+const marker = \"  ];\n}\n\n// --- Mirror\";
 if (!src.includes(marker)) { console.error('FATAL: derivedStores() marker not found in layout.js'); process.exit(1); }
-const addition = \"isEntry: isLedgerEntry,\n    },\n    {\n      id: 'test-store',\n      scope: 'cli-period',\n      dirFor: (cli, per) => path.join(resolveRoot(), 'test-cli-period-store', cli, per),\n      isEntry: (name) => /^test-entry-.*\\\\.json\$/.test(name),\n    },\n  ];\";
+const addition = \"    {\n      id: 'test-store',\n      scope: 'cli-period',\n      dirFor: (cli, per) => path.join(resolveRoot(), 'test-cli-period-store', cli, per),\n      isEntry: (name) => /^test-entry-.*\\\\.json\$/.test(name),\n    },\n  ];\n}\n\n// --- Mirror\";
 src = src.replace(marker, addition);
 fs.writeFileSync(p, src);
 " "$LAYOUT_JS"
@@ -922,9 +922,9 @@ node -e "
 const fs = require('fs');
 const p = process.argv[1];
 let src = fs.readFileSync(p, 'utf8');
-const marker = \"isEntry: isLedgerEntry,\n    },\n  ];\";
+const marker = \"  ];\n}\n\n// --- Mirror\";
 if (!src.includes(marker)) { console.error('FATAL: derivedStores() marker not found in layout.js'); process.exit(1); }
-const addition = \"isEntry: isLedgerEntry,\n    },\n    {\n      id: 'test-store',\n      scope: 'cli-period',\n      dirFor: (cli, per) => path.join(resolveRoot(), 'test-cli-period-store', cli, per),\n      isEntry: (name) => /^test-entry-.*\\\\.json\$/.test(name),\n    },\n  ];\";
+const addition = \"    {\n      id: 'test-store',\n      scope: 'cli-period',\n      dirFor: (cli, per) => path.join(resolveRoot(), 'test-cli-period-store', cli, per),\n      isEntry: (name) => /^test-entry-.*\\\\.json\$/.test(name),\n    },\n  ];\n}\n\n// --- Mirror\";
 src = src.replace(marker, addition);
 fs.writeFileSync(p, src);
 " "$LAYOUT_JS"
