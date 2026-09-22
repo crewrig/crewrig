@@ -875,7 +875,7 @@ fi
 
 echo
 echo "=== MUTATION: explicit catch-up losing a contended-lock race (i1-F2) ==="
-MUTANT_LOCKRACE_CLI=codex-cli
+MUTANT_LOCKRACE_CLI=claude-code
 MUTANT_LOCKRACE_PERIOD="2020-05"
 MUTANT_LOCKRACE_RIDS_FILE="$HELPERS_DIR/lockrace-rids.txt"
 : > "$MUTANT_LOCKRACE_RIDS_FILE"
