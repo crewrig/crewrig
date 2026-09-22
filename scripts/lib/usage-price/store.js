@@ -97,6 +97,10 @@ async function computePriceObject(record, opts) {
       resolution = { step: resolved.step, reason: resolved.reason };
     } else {
       resolution = { step: resolved.step, entryKey: resolved.entryKey, family: resolved.family };
+      // R4: the primary source's own per-entry source URL, when it declares
+      // one for the resolved entry — absent (never fabricated) otherwise.
+      const sourceUrl = pricelist.entryUrl(resolved.entry);
+      if (sourceUrl) resolution.sourceUrl = sourceUrl;
       const computed = compute.computeUsd(record, resolved.entry);
       amountUsd = computed.amountUsd;
       breakdown = computed;

@@ -1460,6 +1460,49 @@ else
   bad "R38: alias re-resolution did not behave as expected" "$r38_alias"
 fi
 
+# R4 — a price entry's provenance carries the primary source's own per-entry
+# source URL when the primary source declares one for the resolved entry.
+# claude-sonnet-5 (r38_exact) declares none; claude-sonnet-4-6 (r38_alias,
+# reached via alias) declares one — both branches asserted off the two R38
+# calls above, no new fixture records needed.
+r38_exact_source_url="$(jget "$r38_exact" "v.resolution.sourceUrl")"
+if [ "$r38_exact_source_url" = "undefined" ]; then
+  ok "R4: an entry declaring no per-entry source stays absent from resolution.sourceUrl, never fabricated"
+else
+  bad "R4: resolution.sourceUrl should be absent for claude-sonnet-5 (declares no source)" "$r38_exact"
+fi
+
+r38_alias_source_url="$(jget "$r38_alias" "v.resolution.sourceUrl")"
+if [ "$r38_alias_source_url" = "https://models.litellm.ai/pricing#claude-sonnet-4-6" ]; then
+  ok "R4: the resolved entry's own declared source URL is threaded onto resolution.sourceUrl"
+else
+  bad "R4: resolution.sourceUrl was not threaded from the resolved entry" "$r38_alias"
+fi
+
+STORE_JS="$REPO_DIR/scripts/lib/usage-price/store.js"
+node -e "
+const fs = require('fs');
+const p = process.argv[1];
+let src = fs.readFileSync(p, 'utf8');
+const needle = 'if (sourceUrl) resolution.sourceUrl = sourceUrl;';
+if (!src.includes(needle)) { console.error('FATAL: R4 sourceUrl marker not found in store.js'); process.exit(1); }
+src = src.replace(needle, '// MUTATION: R4 sourceUrl thread dropped');
+fs.writeFileSync(p, src);
+" "$STORE_JS"
+mut_r4_alias="$(run_driver compute-price "$FIXTURES_DIR/records/alias-resolution-gemini.json")"
+git -C "$REPO_DIR" checkout -- "$STORE_JS"
+mut_r4_source_url="$(jget "$mut_r4_alias" "v.resolution.sourceUrl")"
+if [ "$mut_r4_source_url" = "undefined" ]; then
+  ok "MUTATION RED: dropping the R4 sourceUrl thread makes it absent from a price whose entry declares one"
+else
+  bad "MUTATION not red: resolution.sourceUrl still present after dropping the thread" "$mut_r4_alias"
+fi
+if git -C "$REPO_DIR" diff --quiet -- "$STORE_JS"; then
+  ok "store.js is restored after the R4 mutation"
+else
+  bad "store.js was NOT fully restored after the R4 mutation"
+fi
+
 r38_org="$(PRICE_ORG_FILE="$FIXTURES_DIR/org/model-prices.org.json" run_driver resolve-and-compute "$FIXTURES_DIR/records/exact-match-claude-code.json")"
 r38_org_step="$(jget "$r38_org" "v.resolution.step")"
 r38_org_rate="$(jget "$r38_org" "v.components.netInput.rate")"

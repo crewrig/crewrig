@@ -8,6 +8,8 @@ A computed price is a comparative reference figure that shows what a period of m
 
 Computed prices are based on LiteLLM's `model_prices_and_context_window.json` price list, published in the [BerriAI/litellm](https://github.com/BerriAI/litellm) repository under the **MIT licence**. The framework pins this list to one identifiable commit SHA, downloaded at that exact commit (never at `HEAD` or a later commit), so prices remain reproducible over time even as the vendor updates rates. The pinned snapshot is stored under `<root>/pricelist/` with `PINNED.json` as the pointer file, recording the SHA, fetch instant, ETag (when available), and entry count. When you refresh the price list, you replace only the pointer and the blob at that SHA; earlier snapshots remain on disk.
 
+Beyond this snapshot-level identity, an individual price also carries entry-level provenance: when the primary source declares its own source URL for the specific entry a price resolved against, the price's `resolution.sourceUrl` field carries that URL. This is the primary source's own declaration for that entry, never a constructed or guessed link — when the resolved entry declares no such URL, the field is simply absent.
+
 ## Adding and correcting entries
 
 To add a price entry the primary source does not declare, or to correct one or more fields of a primary-source entry, maintain a `model-prices.org.json` file at the project root with the structure:
