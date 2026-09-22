@@ -1145,6 +1145,49 @@ capabilities:
       - npm install
       - bash scripts/tests/test-usage-record-schema.sh
 
+  # usage-capture validates the spec 0206 capture-adapter module tree.
+  # Deliberately NOT changeset-gated, mirroring usage-record-schema above:
+  # the fail-safe job (ci-changeset-coverage.sh) provisions no Node.
+  - id: usage-capture
+    name: "Validate usage capture adapters and fixtures"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "hooks/usage-capture.sh"
+          - "hooks/antigravity-statusline-shim.sh"
+          - "hooks/claude-transcript-hooks.json"
+          - "hooks/gemini-transcript-hooks.json"
+          - "hooks/copilot-transcript-hooks.json"
+          - "scripts/lib/usage-capture/**"
+          - "scripts/lib/usage-headless.sh"
+          - "scripts/usage-backfill.sh"
+          - "scripts/tests/test-usage-capture.sh"
+          - "scripts/tests/fixtures/usage-capture/**"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "hooks/usage-capture.sh"
+          - "hooks/antigravity-statusline-shim.sh"
+          - "hooks/claude-transcript-hooks.json"
+          - "hooks/gemini-transcript-hooks.json"
+          - "hooks/copilot-transcript-hooks.json"
+          - "scripts/lib/usage-capture/**"
+          - "scripts/lib/usage-headless.sh"
+          - "scripts/usage-backfill.sh"
+          - "scripts/tests/test-usage-capture.sh"
+          - "scripts/tests/fixtures/usage-capture/**"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - bash scripts/tests/test-usage-capture.sh
+
   # usage-storage validates the usage-record storage contract (spec 0207):
   # the journal write path, the wing derivation, the drain/sweep, the mirror
   # gating and catch-up against a fake daemon, and the ajv-precompiled

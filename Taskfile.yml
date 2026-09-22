@@ -308,6 +308,10 @@ tasks:
         msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
     cmd: bash {{.REPO_DIR}}/scripts/import-copilot-history.sh
 
+  usage:backfill:
+    desc: "Replay usage-record capture for Claude Code, Gemini CLI and Copilot CLI against history already on this machine (idempotent; pass --reset-cursors to re-derive from scratch, spec 0206)"
+    cmd: bash {{.REPO_DIR}}/scripts/usage-backfill.sh {{.CLI_ARGS}}
+
   build-components-copilot:
     desc: Build community components for GitHub Copilot CLI only
     preconditions:

@@ -1,0 +1,11 @@
+{
+  "adapter": "copilot-cli",
+  "description": "R18: events.jsonl is read for cliVersion (session.start.data.copilotVersion) only — never for a token value. The poison line's 999999999 figures must never appear in the derived record's tokens.",
+  "captured": 1,
+  "uncaptured": 0,
+  "total": 1,
+  "sessionId": "copilot-poison-fixture-001",
+  "expectedCliVersion": "9.9.9-fixture",
+  "expectedTokens": {"netInput": 321, "cacheRead": 12, "cacheWrite": 3, "output": 45, "reasoning": 1},
+  "poisonValue": 999999999
+}

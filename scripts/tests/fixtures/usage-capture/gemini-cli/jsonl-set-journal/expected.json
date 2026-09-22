@@ -1,0 +1,8 @@
+{
+  "adapter": "gemini-cli",
+  "description": "jsonl generation: header line + a $set-patch revising resp-jsonl-0001 twice (collapses to its last write) and introducing resp-jsonl-0002, plus one flat (non-$set) entry line resp-jsonl-0003.",
+  "transcriptPath": "session.jsonl",
+  "captured": 3,
+  "uncaptured": 0,
+  "total": 3
+}

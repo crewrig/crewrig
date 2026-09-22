@@ -466,14 +466,20 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     fi
     GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
     GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
-    # Rewrite every nested command to use the installed absolute hook path
-    # or the in-repo absolute guard path instead of the source-file's
-    # "$CLAUDE_PROJECT_DIR/..." tokens.
+    CAPTURE_SCRIPT_SRC="$REPO_DIR/hooks/usage-capture.sh"
+    CAPTURE_ABS="$(cd "$(dirname "$CAPTURE_SCRIPT_SRC")" && pwd -P)/$(basename "$CAPTURE_SCRIPT_SRC")"
+    # Rewrite every nested command to use the installed absolute hook path,
+    # the in-repo absolute guard path, or the in-repo absolute usage-capture
+    # path instead of the source-file's "$CLAUDE_PROJECT_DIR/..." tokens.
+    # usage-capture.sh is NEVER copied out (spec 0206): its whole job is to
+    # reach scripts/lib/usage-capture/, so it is wired the guard's way, not
+    # the transcript hook's.
     HOOKS_PATCHED_TMP="$(mktemp)"
-    jq --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" \
+    jq --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" --arg capture_path "$CAPTURE_ABS" \
       '(.. | objects | select(.type? == "command") | .command) |=
          (gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path) |
-          gsub("\\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"; $guard_path))' \
+          gsub("\\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"; $guard_path) |
+          gsub("\\$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh"; $capture_path))' \
       "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
     if grep -q '\$CLAUDE_PROJECT_DIR' "$HOOKS_PATCHED_TMP"; then
       echo "  ERROR: Unresolved \$CLAUDE_PROJECT_DIR token in patched hooks." >&2
@@ -488,6 +494,8 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     echo "  Transcript hooks merged into settings.json"
     echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
     echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
+    echo "  Usage capture wired to $CAPTURE_ABS (in-repo absolute path)"
+    warn_if_linked_worktree "$REPO_DIR" "usage capture"
     echo "  env patched: $ENV_PATCH"
   else
     echo "  Transcript activation canceled by user."

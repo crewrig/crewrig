@@ -985,6 +985,41 @@ usage-record-schema:
         - "package.json"
         - "package-lock.json"
 
+usage-capture:
+  image: node:22
+  script:
+    - "npm install"
+    - "bash scripts/tests/test-usage-capture.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "hooks/usage-capture.sh"
+        - "hooks/antigravity-statusline-shim.sh"
+        - "hooks/claude-transcript-hooks.json"
+        - "hooks/gemini-transcript-hooks.json"
+        - "hooks/copilot-transcript-hooks.json"
+        - "scripts/lib/usage-capture/**"
+        - "scripts/lib/usage-headless.sh"
+        - "scripts/usage-backfill.sh"
+        - "scripts/tests/test-usage-capture.sh"
+        - "scripts/tests/fixtures/usage-capture/**"
+        - "package.json"
+        - "package-lock.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "hooks/usage-capture.sh"
+        - "hooks/antigravity-statusline-shim.sh"
+        - "hooks/claude-transcript-hooks.json"
+        - "hooks/gemini-transcript-hooks.json"
+        - "hooks/copilot-transcript-hooks.json"
+        - "scripts/lib/usage-capture/**"
+        - "scripts/lib/usage-headless.sh"
+        - "scripts/usage-backfill.sh"
+        - "scripts/tests/test-usage-capture.sh"
+        - "scripts/tests/fixtures/usage-capture/**"
+        - "package.json"
+        - "package-lock.json"
+
 usage-storage:
   image: node:22
   script:

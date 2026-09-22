@@ -1,0 +1,15 @@
+{
+  "version": "1.2.6",
+  "session_id": "antigravity-fixture-session-001",
+  "conversation_id": "antigravity-fixture-conv-001",
+  "workspace": {"project_dir": "/home/agent/workspaces/example"},
+  "model": {"id": "Gemini 3.8 Flash (Medium)"},
+  "context_window": {
+    "current_usage": {
+      "input_tokens": 12000,
+      "output_tokens": 900,
+      "cache_read_input_tokens": 4000,
+      "cache_creation_input_tokens": 250
+    }
+  }
+}

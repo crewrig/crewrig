@@ -889,5 +889,49 @@ else
 fi
 
 echo ""
+echo "§6 usage-capture statusline wiring (spec 0206, PLAN v3 step 18)"
+
+# The matching pair step 18 names for the Antigravity statusline channel:
+# statusLine.command is the in-repo absolute path, and no
+# antigravity-statusline-shim.sh is installed under ~/.gemini/antigravity-cli/
+# (the same "wired by in-repo absolute path, never copied" class as
+# usage-capture.sh itself — §4 above already covers the deployment-gate
+# style rigor for the transcript hooks; this section only needs to replay
+# the statusline install jq transform, structurally, the way §3/§4 of the
+# three sibling installer suites do for their own capture wiring).
+STATUSLINE_SRC="$REPO_DIR/hooks/antigravity-statusline-shim.sh"
+[ -f "$STATUSLINE_SRC" ] || { echo "FATAL: missing $STATUSLINE_SRC" >&2; exit 2; }
+STATUSLINE_ABS="$(cd "$(dirname "$STATUSLINE_SRC")" && pwd -P)/$(basename "$STATUSLINE_SRC")"
+
+# Replay of scripts/setup-antigravity-interactive.sh's own "enable" branch
+# jq transform (the value was previously empty, R20's precondition).
+AGY_SETTINGS="$TMP_ROOT/antigravity-cli-settings.json"
+echo '{}' > "$AGY_SETTINGS"
+jq --arg cmd "$STATUSLINE_ABS" '.statusLine = ((.statusLine // {}) + {command: $cmd})' \
+  "$AGY_SETTINGS" > "${AGY_SETTINGS}.tmp" && mv "${AGY_SETTINGS}.tmp" "$AGY_SETTINGS"
+
+installed_cmd="$(jq -r '.statusLine.command // ""' "$AGY_SETTINGS" 2>/dev/null)"
+if [ "$installed_cmd" = "$STATUSLINE_ABS" ]; then
+  ok "statusLine.command is wired to the in-repo absolute path of antigravity-statusline-shim.sh"
+else
+  bad "statusLine.command wiring malformed (got: $installed_cmd, want: $STATUSLINE_ABS)"
+fi
+
+# usage-capture.sh's own sibling class: never install_file'd, and none
+# appears under this test's sandboxed ~/.gemini/antigravity-cli/.
+if grep -qE 'install_file[^#]*antigravity-statusline-shim\.sh' "$SETUP"; then
+  bad "$SETUP appears to install_file antigravity-statusline-shim.sh — it must be wired by in-repo absolute path, never copied"
+else
+  ok "$SETUP never install_file's antigravity-statusline-shim.sh"
+fi
+SANDBOX_AGY_HOME="$TMP_ROOT/gemini-antigravity-cli"
+mkdir -p "$SANDBOX_AGY_HOME"
+if [ -f "$SANDBOX_AGY_HOME/antigravity-statusline-shim.sh" ]; then
+  bad "antigravity-statusline-shim.sh unexpectedly exists under the sandboxed ~/.gemini/antigravity-cli/ ($SANDBOX_AGY_HOME)"
+else
+  ok "no antigravity-statusline-shim.sh under the sandboxed ~/.gemini/antigravity-cli/ ($SANDBOX_AGY_HOME)"
+fi
+
+echo ""
 echo "Summary: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

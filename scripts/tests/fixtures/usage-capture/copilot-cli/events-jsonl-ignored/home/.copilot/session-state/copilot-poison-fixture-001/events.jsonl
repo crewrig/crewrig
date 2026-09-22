@@ -1,0 +1,2 @@
+{"type":"session.start","data":{"copilotVersion":"9.9.9-fixture"}}
+{"type":"usage.poison","data":{"totalTokens":999999999,"inputTokens":999999999,"outputTokens":999999999}}

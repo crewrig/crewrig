@@ -429,14 +429,22 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     fi
     GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
     GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
+    CAPTURE_SCRIPT_SRC="$REPO_DIR/hooks/usage-capture.sh"
+    CAPTURE_ABS="$(cd "$(dirname "$CAPTURE_SCRIPT_SRC")" && pwd -P)/$(basename "$CAPTURE_SCRIPT_SRC")"
     # Rewrite every nested command: substitute the source-file tokens with the
-    # installed absolute path for transcripts (prefixed by env vars) or the
-    # in-repo absolute path for the worktree git guard (without env prefix).
+    # installed absolute path for transcripts (prefixed by env vars), the
+    # in-repo absolute path for the worktree git guard (without env prefix),
+    # or the in-repo absolute path for usage-capture.sh, substituted IN PLACE
+    # (preserving its own argv) and WITHOUT the env prefix — spec 0206:
+    # usage-capture.sh reads no MEMPALACE_TRANSCRIPT_ENABLED variable, and it
+    # is wired the guard's way (never copied out), not the transcript hook's.
     # Hooks become independent of any project-dir variable resolution.
-    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" '
+    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" --arg capture_path "$CAPTURE_ABS" '
       (.. | objects | select(.type? == "command")) |=
         (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard.sh")))
          then .command = ("bash " + $guard_path)
+         elif (.command | contains("usage-capture.sh"))
+         then .command = (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/usage-capture.sh"; $capture_path))
          else .command = ($envp + " " + (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/mempalace-transcript.sh"; $hook_path)))
          end)' \
       "$HOOKS_SRC" > "${SETTINGS_TARGET}.hooks.tmp"
@@ -452,6 +460,8 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     echo "  Transcript hooks merged into settings.json"
     echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
     echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
+    echo "  Usage capture wired to $CAPTURE_ABS (in-repo absolute path)"
+    warn_if_linked_worktree "$REPO_DIR" "usage capture"
   else
     echo "  Transcript activation canceled by user."
   fi

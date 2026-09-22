@@ -1,0 +1,8 @@
+{
+  "adapter": "claude-code",
+  "description": "2.1.x main-session jsonl: one streaming duplicate pair sharing requestId (collapses to one record) plus one uuid-fallback record, plus a leading user line with no usage (skipped).",
+  "transcriptPath": "session.jsonl",
+  "captured": 2,
+  "uncaptured": 0,
+  "total": 2
+}
