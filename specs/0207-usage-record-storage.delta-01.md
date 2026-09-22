@@ -1,7 +1,7 @@
 ---
 id: "0207"
 slug: usage-record-storage
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1170
@@ -151,4 +151,5 @@ MINOR bump (`1.0.0` → `1.1.0`) per `docs/spec-format.md` →
 (split into requirements 28 through 33) — plus a reworded R19 that
 keeps every existing obligation of the original (journal entries and
 mirrored drawers removed together, leaving neither behind on its own)
-intact while adding registered derived stores to the same removal.
+intact while adding every item a registered derived store holds for the
+period to the same removal.
