@@ -18,6 +18,7 @@ The journal partitions records by their source CLI and calendar month, storing o
 <root>/declarations/session/<key>.json                # session-scoped declaration record (spec 0208)
 <root>/declarations/project/<key>.json                # project-scoped declaration record (spec 0208)
 <root>/ledger/<YYYY-MM>/<entryId>.json                # append-only attribution ledger entry (spec 0208)
+<root>/prices/<cli>/<YYYY-MM>/<recordId>.price.json   # derived: computed price per record (spec 0209)
 <root>/mirror/pending/<cli>/<YYYY-MM>/<recordId>       # marker: record awaiting mirroring
 <root>/mirror/mirrored/<cli>/<YYYY-MM>/<recordId>      # marker: record already mirrored
 <root>/mirror/unreachable.stamp                        # timestamp: daemon was unreachable
@@ -208,7 +209,7 @@ This command:
 
 1. Writes a pruned marker to `<root>/pruned/<cli>/<YYYY-MM>.json` FIRST, protecting the period against repopulation even if the prune crashes mid-operation.
 2. Deletes each record's drawer (if mirrored), markers, sidecars (both `.wing.json` and `.attr.json`), and journal entry in that order.
-3. **Walks the registry of derived stores** (spec 0207 delta-01 R28) and removes items from each registered store for that period. The attribution ledger (spec 0208) is a registered derived store; every ledger entry whose own `timestamp` falls within the pruned period is removed. For each derived store reached, the prune reports how many items it removed.
+3. **Walks the registry of derived stores** (spec 0207 delta-01 R28) and removes items from each registered store for that period. The attribution ledger (spec 0208) and the price store (spec 0209) are registered derived stores; every ledger entry and price entry whose own `timestamp` (or computation date, for prices) falls within the pruned period is removed. For each derived store reached, the prune reports how many items it removed.
 4. If any mirrored drawer exists and the MemPalace daemon is unreachable, refuses the operation and exits non-zero to preserve consistency.
 
 The command refuses to prune the current or future period unless `--force` is passed.

@@ -165,6 +165,11 @@
           "title": "Usage attribution",
           "path": "docs/usage-attribution.md",
           "nav_order": 135
+        },
+        {
+          "title": "Usage pricing",
+          "path": "docs/usage-pricing.md",
+          "nav_order": 140
         }
       ]
     },
