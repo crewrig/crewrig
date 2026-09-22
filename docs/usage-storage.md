@@ -14,6 +14,10 @@ The journal partitions records by their source CLI and calendar month, storing o
 ```text
 <root>/journal/<cli>/<YYYY-MM>/<recordId>.json        # one record per file
 <root>/journal/<cli>/<YYYY-MM>/<recordId>.wing.json   # sidecar: the wing derivation
+<root>/journal/<cli>/<YYYY-MM>/<recordId>.attr.json   # sidecar: the attribution channel and outcome (spec 0208)
+<root>/declarations/session/<key>.json                # session-scoped declaration record (spec 0208)
+<root>/declarations/project/<key>.json                # project-scoped declaration record (spec 0208)
+<root>/ledger/<YYYY-MM>/<entryId>.json                # append-only attribution ledger entry (spec 0208)
 <root>/mirror/pending/<cli>/<YYYY-MM>/<recordId>       # marker: record awaiting mirroring
 <root>/mirror/mirrored/<cli>/<YYYY-MM>/<recordId>      # marker: record already mirrored
 <root>/mirror/unreachable.stamp                        # timestamp: daemon was unreachable
@@ -33,6 +37,10 @@ The period `YYYY-MM` is always the UTC calendar month of `timing.requestInstant`
 ### Wing sidecar
 
 Each journal entry is accompanied by a `.wing.json` sidecar carrying the MemPalace wing the record resolved to at write time, plus its derivation method and the project root. The sidecar is immutable after the entry is written and never re-derived by a later mirror path; if a sidecar is lost (killed between write and link), it is repaired by the next write of the same record ID using the seven-rule cascade described in *Wing resolution* below.
+
+### Attribution sidecar
+
+Each journal entry is accompanied by a `.attr.json` sidecar carrying the attribution channel that resolved the record's task and the outcome (attributed or unattributed, with failure reason if validation failed). The sidecar is immutable after the entry is written. Spec 0208 records the channel and outcome because the record schema closes on exactly two fields (`taskHandoffKey` and `externalAsset`) and forbids adding new fields; the sidecar provides a durable, inspectable audit trail of which channel resolved the attribution without mutating the record itself (spec 0208 R16 — writing a ledger entry never mutates a record).
 
 ## Write outcomes
 
@@ -178,7 +186,15 @@ The `bash scripts/usage-query.sh` command retrieves records from the journal (or
 
 All read operations accept an optional `--fidelity <per-request|run-total|session-cumulative>` filter to narrow results.
 
-Records returned by read operations are verbatim journal entries. Each carries its original `schemaVersion`, so downstream processing can handle multiple schema versions if needed.
+Records returned by read operations are verbatim journal entries, **unless an attribution ledger entry (spec 0208) names a matching session, agent, or period** — in that case, the ledger entry's task-handoff key and/or external asset reference **overrides** the record's own attribution at read time. The underlying record in the journal is never modified (spec 0208 R16); only the returned result carries the overridden attribution.
+
+To read records with their original attribution, bypassing any ledger overrides:
+
+```bash
+bash scripts/usage-query.sh --task-key 1171 --no-ledger
+```
+
+Each record carries its original `schemaVersion`, so downstream processing can handle multiple schema versions if needed.
 
 ## Prune and unprune
 
@@ -191,10 +207,13 @@ bash scripts/usage-prune.sh <cli> <YYYY-MM>
 This command:
 
 1. Writes a pruned marker to `<root>/pruned/<cli>/<YYYY-MM>.json` FIRST, protecting the period against repopulation even if the prune crashes mid-operation.
-2. Deletes each record's drawer (if mirrored), markers, sidecar, and journal entry in that order.
-3. If any mirrored drawer exists and the MemPalace daemon is unreachable, refuses the operation and exits non-zero to preserve consistency.
+2. Deletes each record's drawer (if mirrored), markers, sidecars (both `.wing.json` and `.attr.json`), and journal entry in that order.
+3. **Walks the registry of derived stores** (spec 0207 delta-01 R28) and removes items from each registered store for that period. The attribution ledger (spec 0208) is a registered derived store; every ledger entry whose own `timestamp` falls within the pruned period is removed. For each derived store reached, the prune reports how many items it removed.
+4. If any mirrored drawer exists and the MemPalace daemon is unreachable, refuses the operation and exits non-zero to preserve consistency.
 
 The command refuses to prune the current or future period unless `--force` is passed.
+
+A period for which no derived store has anything recorded still prints a report naming only the journal and mirror removal, with no derived-store entry (spec 0207 delta-01 R32).
 
 ### Unprune
 
@@ -217,8 +236,17 @@ bash scripts/usage-backfill.sh --reset-cursors
 To purge everything the storage contract owns under `CREWRIG_USAGE_ROOT`, remove these directories:
 
 ```bash
-rm -rf <root>/journal <root>/mirror <root>/cache <root>/tmp
+rm -rf <root>/journal <root>/declarations <root>/ledger <root>/mirror <root>/cache <root>/tmp
 ```
+
+This removes:
+
+- **`<root>/journal/`** — All usage records and their `.wing.json` and `.attr.json` sidecars.
+- **`<root>/declarations/`** — All session-scoped and project-scoped declaration records (spec 0208).
+- **`<root>/ledger/`** — The entire append-only attribution ledger (spec 0208).
+- **`<root>/mirror/`** — All pending and mirrored markers, and the unreachable stamp.
+- **`<root>/cache/`** — Cached wing derivations (disposable and will be re-derived on next write).
+- **`<root>/tmp/`** — Temporary files from aborted writes.
 
 **Do NOT remove `<root>/state/`** — that directory is owned by spec 0206 (capture) and must not be touched by the storage contract.
 
@@ -267,7 +295,7 @@ A usage record carries:
 - **Interaction class** — What the request served: user-turn, tool-continuation, agent-internal, or unknown.
 - **Vendor `raw` block** — The source CLI's original fields and values (optional, externalized in the mirror).
 - **Provenance** — The source CLI, its version, the capture channel, and a format fingerprint.
-- **Attribution (optional)** — A CrewRig task-handoff key and/or an external work-tracking asset reference.
+- **Attribution (optional)** — A CrewRig task-handoff key and/or an external work-tracking asset reference (captured at write time; see [Usage attribution](usage-attribution.md) for ledger and sidecar details).
 
 ### What a record never holds
 
@@ -291,7 +319,7 @@ bash scripts/usage-prune.sh <cli> <YYYY-MM>
 **Immediate, complete purge** (all data under `CREWRIG_USAGE_ROOT`):
 
 ```bash
-rm -rf <root>/journal/ <root>/mirror/ <root>/cache/ <root>/tmp/
+rm -rf <root>/journal/ <root>/mirror/ <root>/cache/ <root>/tmp/ <root>/declarations/ <root>/ledger/
 ```
 
 Neither command touches `<root>/state/` (owned by 0206). After purging, subsequent writes will create new journal entries and mirror drawers starting fresh.

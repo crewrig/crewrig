@@ -337,7 +337,7 @@ CAPTURE_ABS="$(cd "$(dirname "$CAPTURE_SHIM")" && pwd -P)/$(basename "$CAPTURE_S
 INSTALLED_CWD="$(mktemp -d)"
 INSTALLED_ROOT="$(mktemp -d)"
 (cd "$INSTALLED_CWD" && CREWRIG_USAGE_ROOT="$INSTALLED_ROOT" bash "$CAPTURE_ABS" claude-code Stop <<< '{"transcript_path":"/home/agent/does/not/exist/unused.jsonl"}') >/dev/null 2>&1
-JOURNAL_COUNT=$(find "$INSTALLED_ROOT/journal" -name '*.json' ! -name '*.wing.json' 2>/dev/null | wc -l | tr -d ' ')
+JOURNAL_COUNT=$(find "$INSTALLED_ROOT/journal" -name '*.json' ! -name '*.wing.json' ! -name '*.attr.json' 2>/dev/null | wc -l | tr -d ' ')
 if [ "$JOURNAL_COUNT" = "1" ]; then
   ok "§7(a): invoked by absolute path from a cwd that is NOT the repository — exactly one journal entry appears"
 else

@@ -13,7 +13,9 @@
 // pruned period, (d) mkdir the partition, (e) link the entry, (e') link the
 // sidecar (AFTER the entry — the entry is the record of truth; BEFORE the
 // mirror hand-off — every later mirror path consumes the resolved wing
-// instead of re-deriving it), (f) the mirror hand-off — entered only on
+// instead of re-deriving it), (e'') link the attribution sidecar (spec 0208
+// PLAN v3 step 5) — runs on stored and duplicate like (e'), before the
+// duplicate early return, (f) the mirror hand-off — entered only on
 // `stored`, never on `duplicate` or `rejected`.
 
 'use strict';
@@ -41,9 +43,13 @@ function tmpName(recordId, tag) {
   return path.join(layout.tmpDir(), `.${recordId}.${tag}.${process.pid}.${process.hrtime.bigint()}.tmp`);
 }
 
-// writeInner(record) — the 3(a)-3(f) path with NO drainAndSweep() call, so
-// drain() (below) can call it directly without re-entering the drain lock.
-function writeInner(record) {
+// writeInner(record, meta) — the 3(a)-3(f) path with NO drainAndSweep()
+// call, so drain() (below) can call it directly without re-entering the
+// drain lock. `meta` (spec 0208's attribution resolution — {channel,
+// outcome, reason, assetReason, attribution}) is optional: undefined skips
+// (e'') rather than throwing, since two merged suites call journal.write()
+// with one argument.
+function writeInner(record, meta) {
   // (a) validate
   const valid = validateRecord(record);
   if (!valid) {
@@ -105,6 +111,31 @@ function writeInner(record) {
   } catch (err) {
     fs.unlinkSync(sidecarTmp);
     if (err.code !== 'EEXIST') throw err;
+  }
+
+  // (e'') link the attribution sidecar — runs on BOTH stored and duplicate,
+  // like (e'). meta === undefined skips this step entirely.
+  if (meta !== undefined) {
+    const attrPath = layout.attributionSidecar(cli, per, recordId);
+    const attrTmp = tmpName(recordId, 'attr');
+    fs.writeFileSync(
+      attrTmp,
+      JSON.stringify({
+        channel: meta.channel,
+        outcome: meta.outcome,
+        reason: meta.reason,
+        assetReason: meta.assetReason,
+        attribution: meta.attribution,
+        resolvedAt: new Date().toISOString(),
+      })
+    );
+    try {
+      fs.linkSync(attrTmp, attrPath);
+      fs.unlinkSync(attrTmp);
+    } catch (err) {
+      fs.unlinkSync(attrTmp);
+      if (err.code !== 'EEXIST') throw err;
+    }
   }
 
   if (status === 'duplicate') {
@@ -267,9 +298,9 @@ function drainAndSweep() {
   }
 }
 
-function write(record) {
+function write(record, meta) {
   drainAndSweep();
-  return writeInner(record);
+  return writeInner(record, meta);
 }
 
 module.exports = { write, drainAndSweep };

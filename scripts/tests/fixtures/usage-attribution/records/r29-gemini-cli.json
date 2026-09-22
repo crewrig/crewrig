@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "cfded9e76b3afd913b2eef377f14a6fc8627aa18872c24a80c84e28e69a56c8b",
+  "idempotencyKey": "attr-r29-gemini-key",
+  "provenance": {
+    "cli": "gemini-cli",
+    "cliVersion": "0.9.3",
+    "captureChannel": "headless-envelope",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "attr-r29-gemini-session",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "unknown"
+  },
+  "timing": {
+    "requestInstant": "2026-05-05T09:05:00.000Z",
+    "captureInstant": "2026-05-05T09:05:00.000Z"
+  },
+  "modelId": "gemini-2.5-pro",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 222,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 33,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "test-fixture",
+    "usage": {
+      "input_tokens": 222,
+      "output_tokens": 33
+    }
+  },
+  "rawStatus": "complete"
+}

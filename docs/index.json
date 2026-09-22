@@ -160,6 +160,11 @@
           "title": "Usage storage",
           "path": "docs/usage-storage.md",
           "nav_order": 130
+        },
+        {
+          "title": "Usage attribution",
+          "path": "docs/usage-attribution.md",
+          "nav_order": 135
         }
       ]
     },

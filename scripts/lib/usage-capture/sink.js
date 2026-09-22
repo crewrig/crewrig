@@ -27,13 +27,13 @@ const journal = require('../usage-store/journal');
 
 const VALID_STATUSES = new Set(['stored', 'duplicate', 'rejected']);
 
-function submit(record) {
+function submit(record, meta) {
   const shape = assertRecordShape(record);
   if (!shape.ok) {
     return { status: 'rejected', reason: shape.reason };
   }
 
-  const result = journal.write(record);
+  const result = journal.write(record, meta);
   if (!VALID_STATUSES.has(result.status)) {
     // A backend that returns a fourth status is a programming error in this
     // module tree, not a runtime condition to swallow silently.

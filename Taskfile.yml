@@ -61,8 +61,16 @@ tasks:
     cmd: bash {{.REPO_DIR}}/scripts/uninstall-mcp-daemon.sh
 
   usage:query:
-    desc: "Read usage records by session, agent+parent, period, task-handoff key, or external asset reference (spec 0207). JSONL output. Usage: task usage:query -- --session <id> | --period <YYYY-MM> [--cli <cli>] | ..."
+    desc: "Read usage records by session, agent+parent, period, task-handoff key, or external asset reference (spec 0207/0208). JSONL output. Usage: task usage:query -- --session <id> | --period <YYYY-MM> [--cli <cli>] | --task-key <key> [--rollup [--combined]] | ..."
     cmd: bash {{.REPO_DIR}}/scripts/usage-query.sh {{.CLI_ARGS}}
+
+  usage:task:
+    desc: "Write, read, or clear the current session's usage-attribution declaration record (spec 0208). Usage: task usage:task -- set --channel explicit|protocol [--task-key <key>] [--asset <kind>:<ref>] | show | clear"
+    cmd: bash {{.REPO_DIR}}/scripts/usage-task.sh {{.CLI_ARGS}}
+
+  usage:attribute:
+    desc: "Append to, list, or inspect the append-only attribution ledger (spec 0208). Usage: task usage:attribute -- add (--session <id> | --agent <id> --parent <id> | --period <YYYY-MM>) (--task-key <key> | --asset <kind>:<ref>) --reason <text> | list | explain --record <id> --cli <cli> --period <YYYY-MM>"
+    cmd: bash {{.REPO_DIR}}/scripts/usage-attribute.sh {{.CLI_ARGS}}
 
   usage:prune:
     desc: "Remove a period's usage-record journal entries and mirrored drawers together (spec 0207). Never automatic. Usage: task usage:prune -- <cli> <YYYY-MM> [--force | --unprune]"

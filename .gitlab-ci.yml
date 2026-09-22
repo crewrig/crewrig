@@ -1035,6 +1035,8 @@ usage-storage:
         - "scripts/usage-prune.sh"
         - "scripts/usage-mirror.sh"
         - "scripts/usage-drain.sh"
+        - "scripts/usage-task.sh"
+        - "scripts/usage-attribute.sh"
         - "scripts/build-usage-validator.js"
         - "scripts/tests/test-usage-storage*.sh"
         - "scripts/tests/fixtures/usage-storage/**"
@@ -1048,9 +1050,40 @@ usage-storage:
         - "scripts/usage-prune.sh"
         - "scripts/usage-mirror.sh"
         - "scripts/usage-drain.sh"
+        - "scripts/usage-task.sh"
+        - "scripts/usage-attribute.sh"
         - "scripts/build-usage-validator.js"
         - "scripts/tests/test-usage-storage*.sh"
         - "scripts/tests/fixtures/usage-storage/**"
+        - "schemas/**"
+        - "package.json"
+        - "package-lock.json"
+
+usage-attribution:
+  image: node:22
+  script:
+    - "npm install"
+    - "bash scripts/tests/test-usage-attribution.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-capture/**"
+        - "scripts/usage-task.sh"
+        - "scripts/usage-attribute.sh"
+        - "scripts/tests/test-usage-attribution.sh"
+        - "scripts/tests/fixtures/usage-attribution/**"
+        - "schemas/**"
+        - "package.json"
+        - "package-lock.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-capture/**"
+        - "scripts/usage-task.sh"
+        - "scripts/usage-attribute.sh"
+        - "scripts/tests/test-usage-attribution.sh"
+        - "scripts/tests/fixtures/usage-attribution/**"
         - "schemas/**"
         - "package.json"
         - "package-lock.json"

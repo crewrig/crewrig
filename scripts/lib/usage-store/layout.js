@@ -67,6 +67,21 @@ function entryToRecordId(name) {
   return name.slice(0, name.length - '.json'.length);
 }
 
+// The attribution sidecar (spec 0208 PLAN v3 step 1): the channel a record
+// resolved through at write time, durable and beside its entry, never
+// re-derived. Disjoint from ENTRY_RE and WING_SIDECAR_RE by the same
+// argument as the wing sidecar — the schema's recordId pattern plus a
+// distinct suffix.
+function attributionSidecar(cli, period, recordId) {
+  return path.join(partitionDir(cli, period), `${recordId}.attr.json`);
+}
+
+const ATTR_SIDECAR_RE = /^[0-9a-f]{64}\.attr\.json$/;
+
+function isAttributionSidecar(name) {
+  return ATTR_SIDECAR_RE.test(name);
+}
+
 // period(record) — the UTC YYYY-MM of timing.requestInstant, NEVER
 // captureInstant: a backfill run today over an August request must land in
 // August, or a prune of August leaves it behind (R19).
@@ -75,6 +90,60 @@ function period(record) {
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, '0');
   return `${y}-${m}`;
+}
+
+// --- Declarations (spec 0208 PLAN v3 step 1) --------------------------------
+// Hashed-key idiom wingMemo() already uses (l. 112-115 below), so a session
+// id or a checkout root carrying '/' or ':' cannot escape the directory.
+
+function declarationsDir() {
+  return path.join(resolveRoot(), 'declarations');
+}
+
+function sessionDeclaration(sessionId) {
+  const key = crypto.createHash('sha256').update(sessionId).digest('hex').slice(0, 32);
+  return path.join(declarationsDir(), 'session', `${key}.json`);
+}
+
+function projectDeclaration(checkoutRoot) {
+  const key = crypto.createHash('sha256').update(checkoutRoot).digest('hex').slice(0, 24);
+  return path.join(declarationsDir(), 'project', `${key}.json`);
+}
+
+// --- Attribution ledger (spec 0208 PLAN v3 step 1) --------------------------
+
+function ledgerRoot() {
+  return path.join(resolveRoot(), 'ledger');
+}
+
+function ledgerPeriodDir(per) {
+  return path.join(ledgerRoot(), per);
+}
+
+function ledgerEntry(per, entryId) {
+  return path.join(ledgerPeriodDir(per), `${entryId}.json`);
+}
+
+const LEDGER_ENTRY_RE = /^[0-9a-f]{64}\.json$/;
+
+function isLedgerEntry(name) {
+  return LEDGER_ENTRY_RE.test(name);
+}
+
+// derivedStores() — the registry spec 0207 delta-01 R28 removal walks. One
+// key name, arity dispatched by `scope`: dirFor(period) for scope 'period',
+// dirFor(cli, period) for scope 'cli-period' (handshake:
+// https://github.com/crewrig/crewrig/issues/1172#issuecomment-5774287936).
+// The ledger is the only member this ticket registers; #1172 appends one.
+function derivedStores() {
+  return [
+    {
+      id: 'attribution-ledger',
+      scope: 'period',
+      dirFor: (per) => ledgerPeriodDir(per),
+      isEntry: isLedgerEntry,
+    },
+  ];
 }
 
 // --- Mirror --------------------------------------------------------------
@@ -163,10 +232,20 @@ module.exports = {
   partitionDir,
   journalEntry,
   wingSidecar,
+  attributionSidecar,
   isEntry,
   isWingSidecar,
+  isAttributionSidecar,
   entryToRecordId,
   period,
+  declarationsDir,
+  sessionDeclaration,
+  projectDeclaration,
+  ledgerRoot,
+  ledgerPeriodDir,
+  ledgerEntry,
+  isLedgerEntry,
+  derivedStores,
   mirrorDir,
   mirrorPendingRoot,
   mirrorMirroredRoot,
