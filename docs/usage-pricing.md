@@ -23,12 +23,13 @@ To add a price entry the primary source does not declare, or to correct one or m
 
 This org override table is never part of the pinned primary source; it is always your own, maintainable file. When resolving a model identifier to a price, the framework checks both tables in a specific order:
 
-1. **`org-exact`** — If the org table declares the model identifier, use the org entry (takes precedence over primary-source exact matches).
-2. **`exact`** — If only the primary source declares it, use that entry.
-3. **`alias`** — If either table declares the entry as an alias, follow the target within the same pinned snapshot.
-4. **`family`** — If no exact or alias match exists, try a same-family fallback (e.g., `gemini-2-flash` matches vendor family `gemini-2`).
-5. **`org-added`** — If still no match, check the org table again for entries only it declares.
-6. **`unpriced`** — If no candidate resolves, mark the record as unpriced rather than guessing.
+1. **`sentinel`** — If the model identifier is a placeholder like `(unreported)` or Antigravity's automatic-selection label, mark it unpriced without further resolution.
+2. **`org-exact`** — If the org table declares the model identifier, use the org entry (takes precedence over primary-source exact matches).
+3. **`exact`** — If only the primary source declares it, use that entry.
+4. **`alias`** — If either table declares the entry as an alias, follow the target within the same pinned snapshot.
+5. **`family`** — If no exact or alias match exists, try a same-family fallback (e.g., `gemini-2-flash` matches vendor family `gemini-2`).
+6. **`org-added`** — If still no match, check the org table again for entries only it declares.
+7. **`unpriced`** — If no candidate resolves, mark the record as unpriced rather than guessing.
 
 The org table occupies two positions in this ladder: `org-exact` (before primary exact), and `org-added` (after family fallback). This design ensures your corrections always win, and your additions fill gaps after all primary-source strategies are exhausted.
 
@@ -106,13 +107,13 @@ This invokes the fetcher once, in-process, on explicit human command, reaches Op
 
 Computed prices may be under-estimates in the following cases, each flagged in the price object:
 
-1. **Context-cache storage costs** (spec R15) — Google model entries in the primary source do not expose a schema field for cache-storage cost, so any vendor cache-storage charge for those models is not included in the computed price. The price carries an `underEstimate` flag naming `"context-cache-storage"`.
+1. **Context-cache storage costs** (spec R15) — Google model entries in the primary source do not expose a schema field for cache-storage cost, so any vendor cache-storage charge for those models is not included in the computed price. The price carries an `underEstimate` flag naming `"context-cache-storage-per-hour"`.
 
-2. **Tiered pricing** (spec R19) — Some vendors bill different rates for tiered usage buckets (e.g., tier 1 up to 1M tokens, tier 2 above). When the primary source exposes only one rate field for a price component, the framework cannot represent the tier boundary, so the computed price uses the available rate and flags `"tiered-pricing"` as an unpriced component.
+2. **Tiered pricing** (spec R19) — Some vendors bill different rates for tiered usage buckets (e.g., tier 1 up to 1M tokens, tier 2 above). When the primary source exposes only a tiered schema with no flat rate for a price component (e.g., only `input_cost_per_token_above_*` tiers exist with no base `input_cost_per_token`), the component's price cannot be computed and the affected class (such as `netInput`) is added to `unpricedComponents`.
 
-3. **Reasoning-token divergence** (spec R16) — Some vendors charge separately for reasoning tokens, but the primary source sometimes reports reasoning-token cost as identical to the completion-token field (a duplicate), indicating no separate reasoning cost is tracked. When this occurs, the framework prices reasoning tokens as output tokens and does not add them again, avoiding a double-charge. The price is accurate for that model, but may not account for recent vendor changes to reasoning pricing that the snapshot has not yet recorded.
+3. **Reasoning-token divergence** (spec R16) — When a resolved entry declares both `output_cost_per_token` and a different `output_cost_per_reasoning_token`, the framework prices reasoning tokens at the output rate and does not apply the separate reasoning rate. The price then carries `unpricedComponents: ["reasoning-rate-divergence"]` because the schema does not declare whether `tokens.reasoning` is a subset of `tokens.output`, and the adapters genuinely disagree on this boundary.
 
-4. **Regional surcharges** (spec R17) — When a record does not name a region (most do not), no regional surcharge is applied, even if the vendor bills one. If you have pinned the region in your record, the surcharge is included; otherwise it is omitted. The price carries an `underEstimate` flag naming `"regional-surcharge"` only when the record names a region but the primary source does not expose a regional surcharge field for that model.
+4. **Regional surcharges** (spec R17) — The regional uplift is never applied. No adapter emits a region today, and pinning a region on a record is out of scope. When a resolved entry declares one of `regional_endpoint_uplift_multiplier`, `regional_processing_uplift_multiplier_eu`, or `regional_processing_uplift_multiplier_us`, the price carries an informational `regionalUpliftAvailable` array naming those unapplied fields, marking them for potential use when an adapter later emits a region.
 
 These under-estimates are documented so you know where computed prices may differ from actual vendor invoices. They are never treated as zero or omitted silently.
 
