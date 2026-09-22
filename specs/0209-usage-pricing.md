@@ -1,7 +1,7 @@
 ---
 id: "0209"
 slug: usage-pricing
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1172
@@ -398,14 +398,7 @@ Then  the period's stored prices are removed together with its usage
 
 ## Open questions
 
-- [GROUNDING:] Spec 0207 (storage), requirements 18 through 20, scopes the
-  explicit period-scoped prune to journal entries and their mirrored
-  drawers only; it names no third, sibling store. Requirement 37 above asks
-  the same prune to also remove a period's stored prices. Reconcile before
-  approval: either the implementation realizing this specification extends
-  spec 0207's prune to a third store in the same diff, or a delta-spec of
-  spec 0207 is opened alongside it. The maintainer is asked to confirm
-  which path at the content gate.
+(none)
 
 ## Price source alternatives (informative)
 
@@ -441,3 +434,14 @@ OpenRouter automatically may be pursued independently of this
 specification. If granted, switching the primary source to OpenRouter is an
 adapter change against the contract this specification defines, not a
 change to the contract itself.
+
+**Resolved at the content gate — prune reconciliation with spec 0207.**
+Requirement 37 asks the explicit period-scoped prune to remove a period's
+stored prices, while spec 0207's requirements 18 through 20 name only
+journal entries and their mirrored drawers. The owner settled the
+reconciliation at the `user-validate` gate (approved without annotation):
+a **delta-spec of spec 0207** (`0207-delta-01`) extends the prune to the
+derived stores that later seams declare; it is opened at the PLAN stage of
+this specification and merges before its implementation starts. The
+implementation realizing this specification does not extend spec 0207's
+prune behavior without that delta.
