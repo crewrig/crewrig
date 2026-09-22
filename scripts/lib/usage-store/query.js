@@ -1,11 +1,11 @@
-// query.js — R15-R17's read surface (spec 0207 PLAN v3 step 9). Every
-// journal walk enumerates with layout.isEntry() and nothing else, so a
-// sidecar is never opened, parsed or returned. A --period read (with
-// --cli) opens exactly one partition directory (R6); every other selector
-// walks and streams, O(records in the retained window). Output is JSONL,
-// one verbatim record per line — R17 holds by construction, since
-// schemaVersion is required at the schema root and entries are returned
-// verbatim.
+// query.js — R15-R17's read surface (spec 0207 PLAN v3 step 9), plus spec
+// 0208 R15's read-time ledger application and R20-R24's rollup surface
+// (PLAN v3 step 8). Every journal walk enumerates with layout.isEntry() and
+// nothing else, so a sidecar is never opened, parsed or returned. A
+// --period read (with --cli) opens exactly one partition directory (R6);
+// every other selector walks and streams, O(records in the retained
+// window). Output is JSONL, one record per line — verbatim unless a ledger
+// override applies; --no-ledger returns the entry verbatim.
 
 'use strict';
 
@@ -13,6 +13,8 @@ const fs = require('fs');
 const path = require('path');
 
 const layout = require('./layout');
+const ledger = require('./ledger');
+const rollup = require('./rollup');
 
 function readEntry(full) {
   try {
@@ -145,11 +147,26 @@ function listUndrained() {
   return out;
 }
 
+function applyLedgerOverrides(records) {
+  const overrides = ledger.overridesFor(records);
+  if (overrides.size === 0) return records;
+  return records.map((r) => {
+    const entry = overrides.get(r.recordId);
+    if (!entry) return r;
+    const attribution = {};
+    if (entry.taskHandoffKey) attribution.taskHandoffKey = entry.taskHandoffKey;
+    if (entry.externalAsset) attribution.externalAsset = entry.externalAsset;
+    return Object.assign({}, r, { attribution });
+  });
+}
+
 function run(opts) {
   if (opts.undrained) return listUndrained();
   if (opts.pending) return applyFidelity(listPending(), opts.fidelity);
 
   let records;
+  let postFilter = null;
+
   if (opts.period) {
     if (opts.cli) {
       records = readPartition(opts.cli, opts.period);
@@ -173,16 +190,24 @@ function run(opts) {
       (r) => r.identity.agentId === opts.agent && r.identity.parentSessionId === opts.parent
     );
   } else if (opts.taskKey) {
-    records = walkAllEntries().filter(
-      (r) => r.attribution && r.attribution.taskHandoffKey === opts.taskKey
-    );
+    records = walkAllEntries();
+    postFilter = (r) => r.attribution && r.attribution.taskHandoffKey === opts.taskKey;
   } else if (opts.asset) {
     const [kind, ref] = splitAsset(opts.asset);
-    records = walkAllEntries().filter((r) => matchAsset(r, kind, ref));
+    records = walkAllEntries();
+    postFilter = (r) => matchAsset(r, kind, ref);
   } else {
     throw new Error(
       'no selector given — one of --session, --agent+--parent, --period, --task-key, --asset, --undrained, --pending is required'
     );
+  }
+
+  if (opts.noLedger !== true) {
+    records = applyLedgerOverrides(records);
+  }
+
+  if (postFilter) {
+    records = records.filter(postFilter);
   }
 
   return applyFidelity(records, opts.fidelity);
@@ -223,6 +248,15 @@ function parseArgs(argv) {
       case '--pending':
         opts.pending = true;
         break;
+      case '--no-ledger':
+        opts.noLedger = true;
+        break;
+      case '--rollup':
+        opts.rollup = true;
+        break;
+      case '--combined':
+        opts.combined = true;
+        break;
       default:
         throw new Error(`unrecognized argument: ${a}`);
     }
@@ -250,7 +284,14 @@ if (require.main === module) {
     console.error(`FATAL: ${err.message}`);
     process.exit(2);
   }
-  for (const r of results) {
-    process.stdout.write(`${JSON.stringify(r)}\n`);
+  if (opts.rollup) {
+    const summary = rollup.rollup(results, { combined: opts.combined });
+    if (opts.taskKey) summary.taskHandoffKey = opts.taskKey;
+    if (opts.asset) summary.asset = opts.asset;
+    process.stdout.write(`${JSON.stringify(summary)}\n`);
+  } else {
+    for (const r of results) {
+      process.stdout.write(`${JSON.stringify(r)}\n`);
+    }
   }
 }
