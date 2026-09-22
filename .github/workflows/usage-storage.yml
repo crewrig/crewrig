@@ -1,0 +1,54 @@
+name: Usage Storage Check
+
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-store/**"
+      - "scripts/usage-query.sh"
+      - "scripts/usage-prune.sh"
+      - "scripts/usage-mirror.sh"
+      - "scripts/usage-drain.sh"
+      - "scripts/build-usage-validator.js"
+      - "scripts/tests/test-usage-storage*.sh"
+      - "scripts/tests/fixtures/usage-storage/**"
+      - "schemas/**"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-store/**"
+      - "scripts/usage-query.sh"
+      - "scripts/usage-prune.sh"
+      - "scripts/usage-mirror.sh"
+      - "scripts/usage-drain.sh"
+      - "scripts/build-usage-validator.js"
+      - "scripts/tests/test-usage-storage*.sh"
+      - "scripts/tests/fixtures/usage-storage/**"
+      - "schemas/**"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  usage-storage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate the usage-record storage contract (no daemon)
+        run: bash scripts/tests/test-usage-storage.sh
+
+      - name: Validate the usage-record mirror against a fake daemon
+        run: bash scripts/tests/test-usage-storage-mirror.sh
+
+      - name: Verify the standalone validator matches the generator
+        run: node scripts/build-usage-validator.js --check

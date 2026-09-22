@@ -155,6 +155,11 @@
           "title": "Usage record format",
           "path": "docs/usage-record-format.md",
           "nav_order": 120
+        },
+        {
+          "title": "Usage storage",
+          "path": "docs/usage-storage.md",
+          "nav_order": 130
         }
       ]
     },
