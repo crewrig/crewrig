@@ -1,0 +1,42 @@
+name: Usage Pricing Check
+
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-price/**"
+      - "scripts/usage-price.sh"
+      - "scripts/tests/test-usage-pricing*.sh"
+      - "scripts/tests/fixtures/usage-pricing/**"
+      - "model-prices.org.json"
+      - "scripts/lib/usage-store/**"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-price/**"
+      - "scripts/usage-price.sh"
+      - "scripts/tests/test-usage-pricing*.sh"
+      - "scripts/tests/fixtures/usage-pricing/**"
+      - "model-prices.org.json"
+      - "scripts/lib/usage-store/**"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  usage-pricing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate the model-id resolution, arithmetic, and prune reach (no network)
+        run: bash scripts/tests/test-usage-pricing.sh

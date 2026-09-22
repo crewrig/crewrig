@@ -130,11 +130,50 @@ function isLedgerEntry(name) {
   return LEDGER_ENTRY_RE.test(name);
 }
 
+// --- Price store (spec 0209 PLAN v2 step 7) ---------------------------------
+// Mirrors journalEntry()'s own shape: <root>/prices/<cli>/<YYYY-MM>/, so the
+// period-scoped prune that already walks journal/<cli>/<YYYY-MM>/ reaches
+// the price partition at the same granularity via derivedStores() below.
+
+function pricesRoot() {
+  return path.join(resolveRoot(), 'prices');
+}
+
+function pricePartitionDir(cli, per) {
+  return path.join(pricesRoot(), cli, per);
+}
+
+function priceEntry(cli, per, recordId) {
+  return path.join(pricePartitionDir(cli, per), `${recordId}.price.json`);
+}
+
+// Disjoint from ENTRY_RE, WING_SIDECAR_RE and ATTR_SIDECAR_RE by the same
+// argument those carry: the schema's recordId pattern plus a distinct
+// suffix no other file in a journal or price partition uses.
+const PRICE_ENTRY_RE = /^[0-9a-f]{64}\.price\.json$/;
+
+function isPriceEntry(name) {
+  return PRICE_ENTRY_RE.test(name);
+}
+
+function pricelistDir() {
+  return path.join(resolveRoot(), 'pricelist');
+}
+
+function pinnedPointer() {
+  return path.join(pricelistDir(), 'PINNED.json');
+}
+
+function fxDir() {
+  return path.join(resolveRoot(), 'fx');
+}
+
 // derivedStores() — the registry spec 0207 delta-01 R28 removal walks. One
 // key name, arity dispatched by `scope`: dirFor(period) for scope 'period',
 // dirFor(cli, period) for scope 'cli-period' (handshake:
 // https://github.com/crewrig/crewrig/issues/1172#issuecomment-5774287936).
-// The ledger is the only member this ticket registers; #1172 appends one.
+// DEV 0208 (#1171) registered the ledger; this ticket (#1172) appends the
+// price store as a second member — an append, not a redeclaration.
 function derivedStores() {
   return [
     {
@@ -142,6 +181,12 @@ function derivedStores() {
       scope: 'period',
       dirFor: (per) => ledgerPeriodDir(per),
       isEntry: isLedgerEntry,
+    },
+    {
+      id: 'price-store',
+      scope: 'cli-period',
+      dirFor: (cli, per) => pricePartitionDir(cli, per),
+      isEntry: isPriceEntry,
     },
   ];
 }
@@ -245,6 +290,13 @@ module.exports = {
   ledgerPeriodDir,
   ledgerEntry,
   isLedgerEntry,
+  pricesRoot,
+  pricePartitionDir,
+  priceEntry,
+  isPriceEntry,
+  pricelistDir,
+  pinnedPointer,
+  fxDir,
   derivedStores,
   mirrorDir,
   mirrorPendingRoot,

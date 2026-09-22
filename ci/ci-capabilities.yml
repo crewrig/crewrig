@@ -1285,6 +1285,53 @@ capabilities:
       - npm install
       - bash scripts/tests/test-usage-attribution.sh
 
+  # usage-pricing validates spec 0209's comparative pricing engine: the
+  # model-id resolution pipeline (exact/alias/family/org fallback), the
+  # cache-tier and long-context arithmetic against the real LiteLLM field
+  # names, currency conversion against a fixed ECB fixture (including the
+  # freshness and suppression FX cases), the three-timestamp and
+  # --as-of-today contract, the per-fidelity rollup rules, and the R37
+  # registered-derived-store prune reach (the two-store case delta-01 R33
+  # requires). Fully offline — a hand-built ~14-entry fixture price list,
+  # never the real 2.9 MB snapshot. Deliberately NOT changeset-gated, for
+  # the same reason usage-storage above is not — a node@22 capability must
+  # never enter the fail-safe job's python-only execution set. The
+  # usage-store tree is in the paths filter because step 9 of the plan puts
+  # both halves of the R37 mechanism there (derivedStores() in layout.js,
+  # the walk in prune.js): without it, a changeset touching only layout.js
+  # or prune.js would not run the suite that owns the R37 assertion.
+  - id: usage-pricing
+    name: "Validate the usage-pricing model-id resolution, arithmetic, and prune reach"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/usage-price/**"
+          - "scripts/usage-price.sh"
+          - "scripts/tests/test-usage-pricing*.sh"
+          - "scripts/tests/fixtures/usage-pricing/**"
+          - "model-prices.org.json"
+          - "scripts/lib/usage-store/**"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/usage-price/**"
+          - "scripts/usage-price.sh"
+          - "scripts/tests/test-usage-pricing*.sh"
+          - "scripts/tests/fixtures/usage-pricing/**"
+          - "model-prices.org.json"
+          - "scripts/lib/usage-store/**"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - bash scripts/tests/test-usage-pricing.sh
+
   # gitlab-ci-check is the generator's own drift gate (spec 0048 R6/R7),
   # registered as a portable capability so the verification surface is itself
   # contract-described, not a hidden gate. Its command diffs the committed

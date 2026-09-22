@@ -218,8 +218,9 @@ rejected while the period was pruned — recover those with:
 
 To purge everything this storage contract writes under CREWRIG_USAGE_ROOT,
 remove <root>/journal/, <root>/mirror/, <root>/cache/, <root>/tmp/,
-<root>/declarations/, and <root>/ledger/. The <recordId>.attr.json
-attribution sidecars live inside <root>/journal/ and are removed with it.`);
+<root>/declarations/, <root>/ledger/, <root>/prices/, <root>/pricelist/,
+and <root>/fx/. The <recordId>.attr.json attribution sidecars live inside
+<root>/journal/ and are removed with it.`);
 }
 
 module.exports = { prune, unprune, currentPeriod };

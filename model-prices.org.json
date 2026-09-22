@@ -1,0 +1,5 @@
+{
+  "_note": "Org-owned price-list override channel (spec 0209 R6-R9). Setup reads ONLY the 'entries' and 'copilot' objects below. 'entries' maps a model identifier to a primary-source-shaped entry (the same field set LiteLLM's model_prices_and_context_window.json exposes per entry), plus an optional 'aliasOf': '<id>' pointing at another entry (org-declared or primary-source) to re-resolve through instead of pricing this entry directly. Where an entry here shares an identifier with the pinned primary source, this entry is the one a price is computed from (R7); a price computed from an org-declared entry carries provenance naming this table as its source (R8). 'copilot.plan' names the account's Copilot billing arrangement — 'current-billing' (R20 first-party figures preferred when present) or 'legacy-premium-request' (R21: every price carries a legacy-plan reference-price caveat). This file is org-owned and excluded from upstream sync; it ships empty and carries no operational price data. See docs/usage-pricing.md.",
+  "entries": {},
+  "copilot": {}
+}
