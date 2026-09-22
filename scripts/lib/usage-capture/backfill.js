@@ -17,10 +17,20 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const sink = require('./sink');
+const { submit } = require('./index');
 const claudeCode = require('./adapters/claude-code');
 const geminiCli = require('./adapters/gemini-cli');
 const copilotCli = require('./adapters/copilot-cli');
+
+// historicalCtx() — spec 0208: declarations: false and cwd: null together
+// make every one of the four attribution channels structurally absent
+// (attribution.js), because the checkout state read today does not
+// correspond to the branch checked out when a historical request ran
+// (rejected alternative, PLAN v3). Every backfilled record resolves
+// unattributed; the ledger is the designed correction instrument.
+function historicalCtx() {
+  return { now: Date.now(), env: {}, cwd: null, declarations: false, memo: new Map() };
+}
 
 function walk(dir, predicate, results) {
   results = results || [];
@@ -53,9 +63,9 @@ function emptyCounts() {
   return { stored: 0, duplicate: 0, rejected: {} };
 }
 
-function submitAll(records, counts) {
+function submitAll(records, counts, ctx) {
   for (const rec of records) {
-    const result = sink.submit(rec);
+    const result = submit(rec, ctx);
     if (result.status === 'stored') {
       counts.stored += 1;
     } else if (result.status === 'duplicate') {
@@ -67,7 +77,7 @@ function submitAll(records, counts) {
   }
 }
 
-function backfillClaudeCode() {
+function backfillClaudeCode(ctx) {
   const counts = emptyCounts();
   const root = path.join(os.homedir(), '.claude', 'projects');
   if (!fs.existsSync(root)) return { ...counts, sources: 0 };
@@ -78,12 +88,12 @@ function backfillClaudeCode() {
   const sep = path.sep;
   const sessionFiles = walk(root, (name, full) => name.endsWith('.jsonl') && !full.includes(`${sep}subagents${sep}`));
   for (const file of sessionFiles) {
-    submitAll(claudeCode.capture({ transcriptPath: file, cwd: null }), counts);
+    submitAll(claudeCode.capture({ transcriptPath: file, cwd: null }), counts, ctx);
   }
   return { ...counts, sources: sessionFiles.length };
 }
 
-function backfillGeminiCli() {
+function backfillGeminiCli(ctx) {
   const counts = emptyCounts();
   const root = path.join(os.homedir(), '.gemini', 'tmp');
   if (!fs.existsSync(root)) return { ...counts, sources: 0 };
@@ -99,16 +109,16 @@ function backfillGeminiCli() {
     return parts.length === 3 && parts[1] === 'chats';
   });
   for (const file of sessionFiles) {
-    submitAll(geminiCli.capture({ transcriptPath: file, cwd: null }), counts);
+    submitAll(geminiCli.capture({ transcriptPath: file, cwd: null }), counts, ctx);
   }
   return { ...counts, sources: sessionFiles.length };
 }
 
-function backfillCopilotCli() {
+function backfillCopilotCli(ctx) {
   const counts = emptyCounts();
   const storePath = path.join(os.homedir(), '.copilot', 'session-store.db');
   if (!fs.existsSync(storePath)) return { ...counts, sources: 0 };
-  submitAll(copilotCli.capture({ storePath }), counts);
+  submitAll(copilotCli.capture({ storePath }), counts, ctx);
   return { ...counts, sources: 1 };
 }
 
@@ -129,10 +139,11 @@ function main() {
     resetCursors();
   }
 
+  const ctx = historicalCtx();
   const results = {
-    'claude-code': backfillClaudeCode(),
-    'gemini-cli': backfillGeminiCli(),
-    'copilot-cli': backfillCopilotCli(),
+    'claude-code': backfillClaudeCode(ctx),
+    'gemini-cli': backfillGeminiCli(ctx),
+    'copilot-cli': backfillCopilotCli(ctx),
   };
 
   for (const [cli, r] of Object.entries(results)) {
