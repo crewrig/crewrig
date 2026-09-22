@@ -90,6 +90,7 @@ register_real_home_dir_for_cleanup() {
   REAL_HOME_DIRS_TO_CLEAN="$REAL_HOME_DIRS_TO_CLEAN $1"
 }
 
+# shellcheck disable=SC2329  # invoked via trap cleanup EXIT, not dead
 cleanup() {
   stop_fake
   for f in $MUTATION_GUARD_FILES; do
@@ -273,8 +274,10 @@ journal_entry_path() { echo "$USAGE_ROOT/journal/$1/$2/$3.json"; }
 wing_sidecar_path() { echo "$USAGE_ROOT/journal/$1/$2/$3.wing.json"; }
 pending_marker_path() { echo "$USAGE_ROOT/mirror/pending/$1/$2/$3"; }
 mirrored_marker_path() { echo "$USAGE_ROOT/mirror/mirrored/$1/$2/$3"; }
+# shellcheck disable=SC2329  # kept for parity with layout.js's full path API and the sibling suite, which does call it
 pruned_marker_path() { echo "$USAGE_ROOT/pruned/$1/$2.json"; }
 
+# shellcheck disable=SC2329  # used by the sibling suite (test-usage-storage.sh); kept here for parity
 wait_for_file() {
   local path="$1" tries="$2" n=0
   while [ "$n" -lt "$tries" ]; do
@@ -425,8 +428,9 @@ fi
 
 # Per-record content checks: captured -> externalized+rawRef, no raw;
 # uncaptured -> byte-identical to its journal entry, no rawStatus/rawRef.
+# (the uncaptured record is singular, so its two checks below assert
+# directly instead of accumulating into a summary variable.)
 captured_checks_ok=1
-uncaptured_checks_ok=1
 i=1
 while [ "$i" -le 5 ]; do
   rid="$(sed -n "${i}p" "$DOWN_RIDS_FILE")"

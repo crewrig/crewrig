@@ -78,6 +78,7 @@ register_real_home_dir_for_cleanup() {
   REAL_HOME_DIRS_TO_CLEAN="$REAL_HOME_DIRS_TO_CLEAN $1"
 }
 
+# shellcheck disable=SC2329  # invoked via trap cleanup EXIT, not dead
 cleanup() {
   # Safety net: if a mutation phase was interrupted before its own restore
   # ran, never leave a tracked file mutated on disk.
@@ -311,6 +312,7 @@ journal_entry_path() { echo "$USAGE_ROOT/journal/$1/$2/$3.json"; }
 wing_sidecar_path() { echo "$USAGE_ROOT/journal/$1/$2/$3.wing.json"; }
 partition_dir() { echo "$USAGE_ROOT/journal/$1/$2"; }
 pending_marker_path() { echo "$USAGE_ROOT/mirror/pending/$1/$2/$3"; }
+# shellcheck disable=SC2329  # kept for parity with layout.js's full path API and the sibling mirror suite, which does call it
 mirrored_marker_path() { echo "$USAGE_ROOT/mirror/mirrored/$1/$2/$3"; }
 pruned_marker_path() { echo "$USAGE_ROOT/pruned/$1/$2.json"; }
 drain_lock_path() { echo "$USAGE_ROOT/locks/drain.lock"; }
@@ -345,15 +347,15 @@ for f in "$SAMPLES_DIR"/*.json; do
   sidecar="$(wing_sidecar_path "$cli" "$per" "$rid")"
 
   if [ -f "$entry" ]; then
-    ok "sample $name has a journal entry at ${entry#$USAGE_ROOT/}"
+    ok "sample $name has a journal entry at ${entry#"$USAGE_ROOT"/}"
   else
-    bad "sample $name has NO journal entry at ${entry#$USAGE_ROOT/}"
+    bad "sample $name has NO journal entry at ${entry#"$USAGE_ROOT"/}"
   fi
 
   if [ -f "$sidecar" ]; then
-    ok "sample $name has exactly one sidecar at ${sidecar#$USAGE_ROOT/}"
+    ok "sample $name has exactly one sidecar at ${sidecar#"$USAGE_ROOT"/}"
   else
-    bad "sample $name has NO sidecar at ${sidecar#$USAGE_ROOT/}"
+    bad "sample $name has NO sidecar at ${sidecar#"$USAGE_ROOT"/}"
   fi
 
   set +e
@@ -693,7 +695,7 @@ chmod +x "$STUB_BIN_DIR/bash"
 
 GATE_FILE="$HELPERS_DIR/gate-record.json"
 MR_CLI=claude-code MR_SESSION="gate-session-1" MR_IDEMKEY="gate-key-1" run_driver make-record > "$GATE_FILE"
-PATH="$STUB_BIN_DIR:$PATH" CREWRIG_USAGE_MIRROR= run_driver write "$GATE_FILE" >/dev/null
+PATH="$STUB_BIN_DIR:$PATH" CREWRIG_USAGE_MIRROR='' run_driver write "$GATE_FILE" >/dev/null
 
 if [ -d "$USAGE_ROOT/mirror" ]; then
   bad "mirror/ was created even though no token file exists"
