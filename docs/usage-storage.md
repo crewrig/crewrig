@@ -299,4 +299,4 @@ Neither command touches `<root>/state/` (owned by 0206). After purging, subseque
 ## See also
 
 - [Usage record format](usage-record-format.md) — The schema and field definitions for usage records (spec 0205).
-- [Usage capture](usage-capture.md) — How records are generated and written to the spool (spec 0206).
+- [Spec 0206 — capture adapters](../specs/0206-capture-adapters.md) — How records are generated and written to the spool. The capture layer's reference page (`usage-capture.md`) arrives with spec 0206's implementation.
