@@ -7,9 +7,9 @@
 # CREWRIG_USAGE_ROOT is a fresh mktemp -d per case; MEMPALACE_PALACE_PATH is a
 # temp path with no token file; CREWRIG_USAGE_CAPTURE_TEST=1;
 # CREWRIG_USAGE_MIRROR=0. Offline, no daemon, no network. Every synthetic
-# checkout is built under a temp root from files this suite writes itself, or
-# from a real branch's own blob read via `git show` (read-only) — no real
-# checkout of this machine is written to.
+# checkout is built entirely under a temp root from files this suite writes
+# itself (including literal spec-file fixtures) — no remote ref is read and
+# no real checkout of this machine is written to.
 #
 # Preflight: node on PATH, or a FATAL and exit 2 — never a silent pass.
 #
@@ -337,7 +337,19 @@ fi
 BRANCH_I="$SYN_PARENT/branch-i"
 build_checkout "$BRANCH_I" "spec/0208-usage-attribution"
 mkdir -p "$BRANCH_I/specs"
-git -C "$REPO_DIR" show crewrig/main:specs/0208-usage-attribution.md > "$BRANCH_I/specs/0208-usage-attribution.md"
+cat > "$BRANCH_I/specs/0208-usage-attribution.md" <<'SPEC_0208_EOF'
+---
+id: "0208"
+slug: usage-attribution
+status: implemented
+complexity: standard
+interaction-mode: INTERMEDIATE
+related-issue: 1171
+version: 1.0.0
+---
+
+# Usage attribution — declaration channels, an attribution ledger, and per-fidelity rollups
+SPEC_0208_EOF
 out="$(ATTR_CTX_CWD="$BRANCH_I" run_driver resolve "$FIXTURES_DIR/r25-branch-i.json")"
 if grep -qF '"taskHandoffKey":"1171"' <<< "$out" && grep -qF '"channel":"worktree"' <<< "$out"; then
   ok "R25 (i) spec branch positive: resolves to 1171 via spec-file:related-issue, never 208"
@@ -380,7 +392,19 @@ fi
 BRANCH_IV="$SYN_PARENT/branch-iv"
 build_checkout "$BRANCH_IV" "feat/0203-probe-c-guidance-surface"
 mkdir -p "$BRANCH_IV/specs"
-git -C "$REPO_DIR" show crewrig/feat/0203-probe-c-guidance-surface:specs/0203-probe-c-guidance-surface.md > "$BRANCH_IV/specs/0203-probe-c-guidance-surface.md"
+cat > "$BRANCH_IV/specs/0203-probe-c-guidance-surface.md" <<'SPEC_0203_EOF'
+---
+id: "0203"
+slug: probe-c-guidance-surface
+status: implemented
+complexity: small
+interaction-mode: MINIMAL
+related-issue: 1113
+version: 1.0.0
+---
+
+# Probe C — guidance-surface prose vs Copilot reader, effort: frontmatter, and orchestrator guidance reliability
+SPEC_0203_EOF
 out="$(ATTR_CTX_CWD="$BRANCH_IV" run_driver resolve "$FIXTURES_DIR/r25-branch-iv.json")"
 if grep -qF '"taskHandoffKey":"1113"' <<< "$out"; then
   ok "R25 (iv) v2-F2 positive: feat/0203-probe-c-guidance-surface resolves to 1113, never 203"

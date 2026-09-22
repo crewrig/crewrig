@@ -240,6 +240,7 @@ rm -rf <root>/journal <root>/declarations <root>/ledger <root>/mirror <root>/cac
 ```
 
 This removes:
+
 - **`<root>/journal/`** — All usage records and their `.wing.json` and `.attr.json` sidecars.
 - **`<root>/declarations/`** — All session-scoped and project-scoped declaration records (spec 0208).
 - **`<root>/ledger/`** — The entire append-only attribution ledger (spec 0208).

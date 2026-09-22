@@ -59,6 +59,7 @@ When a ticket identifier is resolved, the channel additionally derives a `forge-
 - If no qualifying remote is found or the remote URL's host is not recognized, the ticket-handoff key alone is returned, together with a stated reason explaining which rule step found no qualifying remote.
 
 Examples:
+
 - `.worktrees/1171/` on a branch with `origin` pointing at `git@github.com:crewrig/crewrig.git` → `taskHandoffKey: "1171"`, `externalAsset: {kind: "forge-issue", ref: "crewrig/crewrig#1171"}`.
 - `spec/0208-usage-attribution` on a branch with upstream `hcross` (a fork pointing at `git@github.com:hcross/crewrig.git`) → `taskHandoffKey: "1171"` (from `related-issue`), `externalAsset: {kind: "forge-issue", ref: "hcross/crewrig#1171"}` (from the fork's own upstream).
 - The fork-remote residue (R8's documented limitation): a fork clone derives a different `forge-issue` asset ref than a canonical clone for the same task-handoff key — the key itself is unaffected. This is the one case a task key is textually identical across CLIs but its external asset is not. **Recourse:** declare the task explicitly via `--channel explicit` to bypass this derivation and assert the asset you intend.
