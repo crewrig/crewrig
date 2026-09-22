@@ -1,7 +1,7 @@
 ---
 id: "0208"
 slug: usage-attribution
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1171
