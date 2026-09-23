@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "1e80b581278d8cee11dd9d3f47256a5f97bb5f901df838ca303f92259fc79689",
+  "idempotencyKey": "usage-pricing-fixture-key-alias-01",
+  "provenance": {
+    "cli": "gemini-cli",
+    "cliVersion": "0.9.3",
+    "captureChannel": "headless-envelope",
+    "formatFingerprint": "sha256:1a2b3c4d5e6f708192a3b4c5d6e7f809"
+  },
+  "identity": {
+    "sessionId": "usage-pricing-fixture-session-alias",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-08-11T09:20:11.004Z",
+    "captureInstant": "2026-08-11T09:20:12.550Z"
+  },
+  "modelId": "sonnet-legacy-alias",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 3800,
+    "cacheRead": 1200,
+    "cacheWrite": 0,
+    "output": 214,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "google",
+    "usageMetadata": {
+      "promptTokenCount": 5000,
+      "cachedContentTokenCount": 1200,
+      "candidatesTokenCount": 214
+    }
+  },
+  "rawStatus": "complete"
+}

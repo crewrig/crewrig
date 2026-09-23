@@ -1,0 +1,8 @@
+{
+  "sha": "fixture0000000000000000000000000000000",
+  "etag": "\"fixture-etag-0001\"",
+  "fetchedAt": "2026-09-01T00:00:00.000Z",
+  "sourceUrl": "https://raw.githubusercontent.com/BerriAI/litellm/fixture0000000000000000000000000000000/model_prices_and_context_window.json",
+  "entryCount": 9,
+  "bytes": 0
+}

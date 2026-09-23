@@ -64,6 +64,10 @@ tasks:
     desc: "Read usage records by session, agent+parent, period, task-handoff key, or external asset reference (spec 0207/0208). JSONL output. Usage: task usage:query -- --session <id> | --period <YYYY-MM> [--cli <cli>] | --task-key <key> [--rollup [--combined]] | ..."
     cmd: bash {{.REPO_DIR}}/scripts/usage-query.sh {{.CLI_ARGS}}
 
+  usage:price:
+    desc: "Compute comparative reference prices for usage records against a pinned LiteLLM snapshot (spec 0209). Never an invoice. Usage: task usage:price -- --period <YYYY-MM> [--cli <cli>] [--currency <ISO4217>] [--as-of-today] [--rollup] | --refresh-pricelist [--sha <sha>] | --refresh-fx [--fx-mirror frankfurter] | --cross-check <modelId>"
+    cmd: bash {{.REPO_DIR}}/scripts/usage-price.sh {{.CLI_ARGS}}
+
   usage:task:
     desc: "Write, read, or clear the current session's usage-attribution declaration record (spec 0208). Usage: task usage:task -- set --channel explicit|protocol [--task-key <key>] [--asset <kind>:<ref>] | show | clear"
     cmd: bash {{.REPO_DIR}}/scripts/usage-task.sh {{.CLI_ARGS}}

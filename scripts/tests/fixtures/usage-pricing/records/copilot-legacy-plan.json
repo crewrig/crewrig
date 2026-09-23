@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "81a8e573dd7df7c9cd1569cdf4e33294743972100264a431d5e73442e7d14493",
+  "idempotencyKey": "usage-pricing-fixture-key-copilot-01",
+  "provenance": {
+    "cli": "copilot-cli",
+    "cliVersion": "0.0.3",
+    "captureChannel": "sqlite-assistant-usage-events",
+    "formatFingerprint": "sha256:7c8d9e0f1a2b3c4d5e6f708192a3b4c5"
+  },
+  "identity": {
+    "sessionId": "usage-pricing-fixture-session-copilot",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-08-12T09:31:47.118Z",
+    "captureInstant": "2026-08-12T09:31:48.902Z"
+  },
+  "modelId": "gpt-5",
+  "interaction": "agent-internal",
+  "tokens": {
+    "netInput": 1520,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 96,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "github-copilot",
+    "initiator": "agent",
+    "usage": {
+      "prompt_tokens": 1520,
+      "completion_tokens": 96
+    }
+  },
+  "rawStatus": "complete"
+}

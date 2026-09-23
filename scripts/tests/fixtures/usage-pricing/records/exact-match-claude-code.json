@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "61b44ef2ef1923d6daf98a7c19b2896df722cb47f411005b0357245c6b086406",
+  "idempotencyKey": "usage-pricing-fixture-key-exact-01",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "2.1.4",
+    "captureChannel": "own-record-tail",
+    "formatFingerprint": "sha256:9f1c2b7e4a5d6f809c1b2e3a4d5f6081"
+  },
+  "identity": {
+    "sessionId": "usage-pricing-fixture-session-exact",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-08-10T09:12:03.221Z",
+    "captureInstant": "2026-08-10T09:12:04.884Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 812,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 341,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "anthropic",
+    "usage": {
+      "input_tokens": 812,
+      "output_tokens": 341
+    },
+    "stop_reason": "end_turn"
+  },
+  "rawStatus": "complete"
+}

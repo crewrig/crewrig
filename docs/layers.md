@@ -295,6 +295,7 @@ sync.
 | `model-mappings/claude.org.yml` | Organization-owned override channel for the Claude Code model mapping, nested beside the core `model-mappings/claude.yml` it overrides. Excluded from upstream sync. Ships silent (no offering, no surface, no template, no guard state, no secret); see [`docs/org-model-mapping-override.md`](org-model-mapping-override.md) (spec 0199). |
 | `model-mappings/gemini.org.yml` | Organization-owned override channel for the Gemini CLI model mapping, nested beside `model-mappings/gemini.yml`. Excluded from upstream sync. Ships silent (spec 0199). |
 | `model-mappings/copilot.org.yml` | Organization-owned override channel for the GitHub Copilot CLI model mapping, nested beside `model-mappings/copilot.yml`. Excluded from upstream sync. Ships silent (spec 0199). |
+| `model-prices.org.json` | Organization-owned price-list override channel (spec 0209): a root-level manifest declaring price entries the pinned LiteLLM primary source does not carry, or replacing one or more fields of a primary-source entry, plus the account's Copilot billing plan (`copilot.plan`). Follows the `<name>.org.<ext>` convention of `AGENTS.org.md` and `mcp-servers.org.json`; ships empty (`{"entries": {}, "copilot": {}}`, no operational price data). Excluded from upstream sync. |
 | `model-mappings/antigravity.org.yml` | Organization-owned override channel for the Antigravity CLI model mapping, nested beside `model-mappings/antigravity.yml`. Excluded from upstream sync. Ships silent (spec 0199). |
 
 ### Adopter-managed sync state (spec 0020)

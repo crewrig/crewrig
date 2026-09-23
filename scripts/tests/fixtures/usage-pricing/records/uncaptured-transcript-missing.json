@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "uncaptured",
+  "fidelity": "per-request",
+  "recordId": "f729ed47a30582da37c58fe3ac41e6b1c65d5a5247a683869e599b018e1c3742",
+  "idempotencyKey": "usage-pricing-fixture-key-uncaptured-01",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "2.1.4",
+    "captureChannel": "own-record-tail",
+    "formatFingerprint": "sha256:9f1c2b7e4a5d6f809c1b2e3a4d5f6081"
+  },
+  "identity": {
+    "sessionId": "usage-pricing-fixture-session-uncaptured",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/workspaces/crewrig"
+  },
+  "timing": {
+    "requestInstant": "2026-08-13T09:45:00.000Z",
+    "captureInstant": "2026-08-13T09:45:00.512Z"
+  },
+  "uncapturedReason": "session transcript file referenced by this request was rotated out and deleted before the capture step could open it"
+}
