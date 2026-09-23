@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "80208c7c0a626dfb9cf0c394116cdfde273dab62fedfcc5b8d0283eede25a409",
+  "idempotencyKey": "c01-ctl-root",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "1.0.0",
+    "captureChannel": "test-fixture",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "sess-ctl-root",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/SENTINEL-PROJECT-ROOT-51d2"
+  },
+  "timing": {
+    "requestInstant": "2026-10-09T10:00:00.000Z",
+    "captureInstant": "2026-10-09T10:00:00.000Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 10,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 1,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "test-fixture",
+    "usage": {}
+  },
+  "rawStatus": "complete"
+}

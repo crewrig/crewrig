@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "2a2185617e97722b689d96a2cf58006fd8d5582a92cc7bb4f0b44459a7dd74bf",
+  "idempotencyKey": "c02-ctl-child",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "1.0.0",
+    "captureChannel": "test-fixture",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "sess-ctl-child",
+    "parentSessionId": "sess-ctl-root",
+    "agentId": "ctl\u0001\u0007\r\u001b\u001f|\u007f|\u0080\u0085\u009f|\u2028\u2029|tab\there",
+    "projectRoot": "/home/agent/SENTINEL-PROJECT-ROOT-51d2"
+  },
+  "timing": {
+    "requestInstant": "2026-10-09T10:30:00.000Z",
+    "captureInstant": "2026-10-09T10:30:00.000Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 10,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 1,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "test-fixture",
+    "usage": {}
+  },
+  "rawStatus": "complete",
+  "attribution": {
+    "externalAsset": {
+      "kind": "github-issue",
+      "ref": "ctl\u0001\u0007\r\u001b\u001f|\u007f|\u0080\u0085\u009f|\u2028\u2029|tab\there"
+    }
+  }
+}

@@ -168,6 +168,18 @@ function fxDir() {
   return path.join(resolveRoot(), 'fx');
 }
 
+// --- Dashboard export (spec 0210 PLAN v2 step 1) ----------------------------
+// An operator-facing export, not a derived store: deliberately absent from
+// derivedStores(), so a prune never removes it.
+
+function dashboardDir() {
+  return path.join(resolveRoot(), 'dashboard');
+}
+
+function dashboardFile() {
+  return path.join(dashboardDir(), 'usage-dashboard.html');
+}
+
 // derivedStores() — the registry spec 0207 delta-01 R28 removal walks. One
 // key name, arity dispatched by `scope`: dirFor(period) for scope 'period',
 // dirFor(cli, period) for scope 'cli-period' (handshake:
@@ -297,6 +309,8 @@ module.exports = {
   pricelistDir,
   pinnedPointer,
   fxDir,
+  dashboardDir,
+  dashboardFile,
   derivedStores,
   mirrorDir,
   mirrorPendingRoot,

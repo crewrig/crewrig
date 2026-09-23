@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "9cc4c2141175a0894ba19629ce0b938d02b5eb6cf6489fb15197ed93d19278f1",
+  "idempotencyKey": "r19-ny-2026-12-31",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "1.0.0",
+    "captureChannel": "test-fixture",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "sess-ny",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/SENTINEL-PROJECT-ROOT-51d2"
+  },
+  "timing": {
+    "requestInstant": "2026-12-31T20:00:00.000Z",
+    "captureInstant": "2026-12-31T20:00:00.000Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 10,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 1,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "test-fixture",
+    "usage": {},
+    "transcriptExcerpt": "SENTINEL-CONVERSATION-TEXT-7f3a9c"
+  },
+  "rawStatus": "complete"
+}
