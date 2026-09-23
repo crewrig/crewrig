@@ -687,6 +687,29 @@ install_daemon_supervisor() {
   return 0
 }
 
+tls_exec_installed_path() {
+  printf '%s\n' "${MEMPALACE_TLS_EXEC_PATH:-$HOME/.crewrig/tls-exec.sh}"
+}
+
+# Install the TLS-delegation wrapper outside the repository tree, mirroring
+# install_mcp_launcher's rationale: a launchd/systemd supervisor invoking a
+# program under a TCC-protected checkout (~/Documents, ~/Desktop,
+# ~/Downloads) gets a silent `Operation not permitted` (exit 126) that a
+# foreground, user-invoked process never hits (issue #1189). The wrapper
+# itself carries no placeholders, so this is a plain copy, not a sed pass.
+install_tls_exec_wrapper() {
+  local dst src
+  dst="$(tls_exec_installed_path)"
+  src="$CREWRIG_REPO_DIR/scripts/lib/tls-exec.sh"
+  if [ ! -f "$src" ]; then
+    echo "  ERROR: $src missing — tls-exec wrapper not shipped."
+    return 1
+  fi
+  mkdir -p "$(dirname "$dst")"
+  cp "$src" "$dst"
+  chmod 755 "$dst"
+}
+
 # Materialise callback for the ChromaDB unit. Placeholders are chroma-specific:
 # the plist on disk is user-agnostic (no hardcoded $HOME) and is filled here
 # with the detected mempalace interpreter and chroma binary so the supervised
@@ -715,12 +738,14 @@ _materialise_chroma_unit() {
     esac
   fi
 
+  install_tls_exec_wrapper || return 1
+
   sed \
     -e "s|__MEMPALACE_HOME__|${mempalace_home}|g" \
     -e "s|__PIPX_PYTHON__|${pipx_py}|g" \
     -e "s|__CHROMA_BIN__|${chroma_bin}|g" \
     -e "s|__CHROMA_PALACE_PATH__|${chroma_palace_path}|g" \
-    -e "s|__TLS_EXEC__|${CREWRIG_REPO_DIR}/scripts/lib/tls-exec.sh|g" \
+    -e "s|__TLS_EXEC__|$(tls_exec_installed_path)|g" \
     "$src" > "$dst"
 
   if grep -qE '__[A-Z][A-Z0-9_]*__' "$dst" 2>/dev/null; then
