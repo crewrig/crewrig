@@ -1,0 +1,71 @@
+{
+  "_comment": "Hand-derived expectations over records/*.json plus the ledger entry {period: 2026-11} -> task-split-b the suite appends (spec 0210, PLAN v2 step 12). Token sums follow D4's one placement rule: one contributing pass over the selection (each session-cumulative session contributes its last snapshot only), then placement by requestInstant.",
+  "wholeStore": {
+    "recordCount": 15,
+    "capturedCount": 14,
+    "uncapturedCount": 1,
+    "unpricedCount": 1,
+    "pricedCount": 13,
+    "unconvertedCount": 0,
+    "tokens": {
+      "per-request": { "netInput": 5285, "cacheRead": 500, "output": 679, "reasoning": 0 },
+      "run-total": { "netInput": 4000, "cacheRead": 1000, "output": 800, "reasoning": 100 },
+      "session-cumulative": { "netInput": 3800, "cacheRead": 200, "output": 350, "reasoning": 0 }
+    },
+    "perRequestCacheWrite": { "5m": 40, "1h": 60 }
+  },
+  "gapsScope": {
+    "_comment": "--session sess-gaps: one unpriced (r12), one uncaptured (r13), one priced (r14). Unpriced tokens stay in the token sums (R8 interpretation, D3); only r14 is priced: 100 * 3e-6 + 10 * 15e-6 USD.",
+    "selector": ["--session", "sess-gaps"],
+    "recordCount": 3,
+    "capturedCount": 2,
+    "uncapturedCount": 1,
+    "pricedCount": 1,
+    "unpricedCount": 1,
+    "unconvertedCount": 0,
+    "combinedNetInput": 150,
+    "combinedOutput": 15,
+    "amountUsd": 0.00045
+  },
+  "cleanScope": {
+    "_comment": "--session sess-alpha: neither an uncaptured nor an unpriced record; r01 alone is 1000 * 3e-6 + 200 * 15e-6 = 0.006 USD.",
+    "selector": ["--session", "sess-alpha"],
+    "recordCount": 2,
+    "uncapturedCount": 0,
+    "unpricedCount": 0
+  },
+  "noPricedScope": {
+    "selector": ["--model", "vendorless-model-zz"],
+    "recordCount": 1,
+    "pricedCount": 0,
+    "unpricedCount": 1,
+    "absent": "no-priced-record"
+  },
+  "mixedTask": {
+    "key": "task-mixed",
+    "mixed": ["per-request", "session-cumulative"],
+    "perRequestNetInput": 3000,
+    "sessionCumulativeNetInput": 500,
+    "combinedNetInput": 3500
+  },
+  "splitTasks": {
+    "_comment": "sess-split's October snapshot keeps task-split-a; the ledger {period: 2026-11} entry moves every November record to task-split-b. Per-key passes (D4): a = r15 alone, b = r16 + r18.",
+    "task-split-a": { "sessionCumulativeNetInput": 400 },
+    "task-split-b": { "sessionCumulativeNetInput": 2400 }
+  },
+  "divergence": {
+    "_comment": "Case 13.8: usage:query --period P --rollup filters first; the dashboard's --period places the one pass's contributions.",
+    "2026-09": { "usageQuerySessionCumulativeNetInput": 1200, "dashboardSessionCumulativeNetInput": 500 },
+    "2026-10": { "usageQuerySessionCumulativeNetInput": 1300, "dashboardSessionCumulativeNetInput": 900 }
+  },
+  "supersededOnlyDay": {
+    "day": "2026-09-20",
+    "matchingSnapshots": 2
+  },
+  "isoWeekW53": {
+    "key": "2026-W53",
+    "recordCount": 2,
+    "perRequestNetInput": 30
+  },
+  "months": ["2026-09", "2026-10", "2026-11", "2026-12", "2027-01"]
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "run-total",
+  "recordId": "86e458f33518471c83f5dbbef645c267c3d9a0803c64e111d9007bc9ab45f25d",
+  "idempotencyKey": "r11-rt-gemini",
+  "provenance": {
+    "cli": "gemini-cli",
+    "cliVersion": "1.0.0",
+    "captureChannel": "test-fixture",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "sess-rt",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/SENTINEL-PROJECT-ROOT-51d2"
+  },
+  "timing": {
+    "requestInstant": "2026-10-06T09:00:00.000Z",
+    "captureInstant": "2026-10-06T09:00:00.000Z"
+  },
+  "modelId": "gemini-3.8-flash",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 4000,
+    "cacheRead": 1000,
+    "cacheWrite": 0,
+    "output": 800,
+    "reasoning": 100
+  },
+  "raw": {
+    "vendor": "test-fixture",
+    "usage": {},
+    "transcriptExcerpt": "SENTINEL-CONVERSATION-TEXT-7f3a9c"
+  },
+  "rawStatus": "complete",
+  "attribution": {
+    "externalAsset": {
+      "kind": "github-issue",
+      "ref": "crewrig/crewrig#1"
+    }
+  }
+}

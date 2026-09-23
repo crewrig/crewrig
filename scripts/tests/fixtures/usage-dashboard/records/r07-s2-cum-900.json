@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "session-cumulative",
+  "recordId": "67d88ba880f00bbd02c0ac027c768430304d9c7d99e43e6ca50ce40493cf74ec",
+  "idempotencyKey": "r07-s2-cum-900",
+  "provenance": {
+    "cli": "gemini-cli",
+    "cliVersion": "1.0.0",
+    "captureChannel": "test-fixture",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "sess-s2",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/SENTINEL-PROJECT-ROOT-51d2"
+  },
+  "timing": {
+    "requestInstant": "2026-10-01T01:00:00.000Z",
+    "captureInstant": "2026-10-01T01:00:00.000Z"
+  },
+  "modelId": "gemini-3.8-flash",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 900,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 90,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "test-fixture",
+    "usage": {},
+    "transcriptExcerpt": "SENTINEL-CONVERSATION-TEXT-7f3a9c"
+  },
+  "rawStatus": "complete"
+}

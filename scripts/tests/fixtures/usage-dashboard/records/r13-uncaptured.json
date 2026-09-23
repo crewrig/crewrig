@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "uncaptured",
+  "fidelity": "per-request",
+  "recordId": "a5f551ee73b063ad38c1b9a17485758697bf2ad1d09644566df75e805dc2043c",
+  "idempotencyKey": "r13-uncaptured",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "1.0.0",
+    "captureChannel": "test-fixture",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "sess-gaps",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "/home/agent/SENTINEL-PROJECT-ROOT-51d2"
+  },
+  "timing": {
+    "requestInstant": "2026-10-07T11:00:00.000Z",
+    "captureInstant": "2026-10-07T11:00:00.000Z"
+  },
+  "uncapturedReason": "transcript missing; last prompt was: SENTINEL-CONVERSATION-TEXT-7f3a9c"
+}
