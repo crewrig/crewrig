@@ -710,6 +710,51 @@ const cmds = {
     if (errs.length) fail(errs.join('\n'));
     console.log('OK');
   },
+  // session-subtree <unfilteredView> <filteredView> <sessionId> — i1-F1: the
+  // --session X view's sessions[X] group lists the same agents, with equal
+  // tokens, prices and tallies, as the unfiltered view's sessions[X].
+  'session-subtree'(fa, fb, sid) {
+    const a = readJson(fa).sessions.find((s) => s.sessionId === sid);
+    const b = readJson(fb).sessions.find((s) => s.sessionId === sid);
+    if (!a) fail(`the unfiltered view has no session ${sid}`);
+    if (!b) fail(`the --session ${sid} view has no session ${sid}`);
+    if (a.agents.length === 0) fail(`fixture precondition: ${sid} has no agent in the unfiltered view`);
+    const errs = [];
+    const d = groupDiff(a, b);
+    if (d) errs.push(`sessions[${sid}]: ${d}`);
+    const ia = a.agents.map((x) => x.agentId);
+    const ib = b.agents.map((x) => x.agentId);
+    if (JSON.stringify(ia) !== JSON.stringify(ib)) errs.push(`agents ${JSON.stringify(ib)} != unfiltered ${JSON.stringify(ia)}`);
+    for (const x of a.agents) {
+      const y = b.agents.find((z) => z.agentId === x.agentId);
+      if (!y) continue;
+      const dd = groupDiff(x, y);
+      if (dd) errs.push(`agent ${JSON.stringify(x.agentId)}: ${dd}`);
+    }
+    if (errs.length) fail(errs.join('\n'));
+    console.log(`OK ${ia.length} agents`);
+  },
+  // session-block <htmlFile|txtFile> <sessionId> — the rendered drill-down
+  // block of one session (HTML <details> or the text "session X" block).
+  'session-block'(file, sid) {
+    const src = fs.readFileSync(file, 'utf8');
+    let block = null;
+    if (/<details>/.test(src)) {
+      const re = /<details><summary>Session <code>([\s\S]*?)<\/code>[\s\S]*?<\/details>/g;
+      let m;
+      while ((m = re.exec(src)) !== null) if (decodeEntities(m[1]) === sid) block = m[0];
+    } else {
+      const lines = src.split('\n');
+      const i = lines.findIndex((l) => l.startsWith(`session ${sid} `));
+      if (i !== -1) {
+        let j = i + 1;
+        while (j < lines.length && !/^session /.test(lines[j]) && !/^== /.test(lines[j])) j += 1;
+        block = lines.slice(i, j).join('\n');
+      }
+    }
+    if (block === null) fail(`no drill-down block for session ${sid}`);
+    process.stdout.write(block);
+  },
   'iso-week'(day) {
     console.log(isoWeekKey(day));
   },
@@ -2469,6 +2514,63 @@ if (errs.length) { console.log(errs.join("\n")); process.exit(1); }
   fi
 }
 
+# =============================================================================
+# Review finding i1-F1 (PR #1195): a --session X view of a session WITH
+# subordinate agents lists the same agents as the unfiltered view's
+# sessions[X], with equal tokens, prices and tallies, in every form; and
+# never states "No subordinate agent" for X. (13.10 keeps the R6 case of a
+# session with no agent.) sess-parent has agent-reviewer and the hostile
+# sub-agent in the fixture.
+# =============================================================================
+case_session_subtree() {
+  local root out rc msg f sid=sess-parent
+  fresh_root_into root
+  out="$(new_out_dir)"
+  if ! start_server; then
+    bad "$(L 'i1-F1 form B starts')" "$(cat "$SERVER_LOG")"
+    return 0
+  fi
+  dash report --json >"$out/whole.json" 2>/dev/null || true
+  three_forms "$out" sub --session "$sid"
+  forms_b "$out" sub --session "$sid"
+  stop_server
+  for f in A C B Bv; do
+    rc=0
+    msg="$(drv session-subtree "$out/whole.json" "$out/sub.$f.json" "$sid" 2>&1)" || rc=$?
+    if [ "$rc" -eq 0 ]; then
+      record_view "$out/sub.$f.json"
+      ok "$(L "i1-F1 form $f (--session $sid): sessions[$sid] lists the unfiltered view's agents with equal totals and tallies ($msg)")"
+    else
+      bad "$(L "i1-F1 form $f (--session $sid): sessions[$sid] lists the unfiltered view's agents with equal totals and tallies")" "$msg"
+    fi
+  done
+  local n
+  n="$(vget "$out/whole.json" "v.sessions.find((s) => s.sessionId === '$sid').agents.length")"
+  for f in A.html B.html C.txt; do
+    local block cells
+    block="$(drv session-block "$out/sub.$f" "$sid" 2>&1 || true)"
+    if [ "${f#C}" != "$f" ]; then
+      cells="$(grep -c '^agent-reviewer ' <<<"$block" || true)"
+    else
+      cells="$(grep -oE "data-k=\"sessions\.[0-9]+\.agents\.[0-9]+\.recordCount\"" <<<"$block" | wc -l | tr -d ' ')"
+    fi
+    if ! grep -qF 'No subordinate agent' <<<"$block" && grep -qF 'agent-reviewer' <<<"$block" && { [ "${f#C}" != "$f" ] && [ "$cells" = "1" ] || [ "$cells" = "$n" ]; }; then
+      ok "$(L "i1-F1 form ${f%%.*} renders $sid's agents in its drill-down, never \"No subordinate agent\"")"
+    else
+      bad "$(L "i1-F1 form ${f%%.*} renders $sid's agents in its drill-down, never \"No subordinate agent\"")" "agent rows: $cells (want $n); block: $(head -c 400 <<<"$block")"
+    fi
+  done
+  for f in A B; do
+    rc=0
+    msg="$(drv cells "$out/sub.$f.html" "$out/sub.$f.json")" || rc=$?
+    if [ "$rc" -eq 0 ]; then
+      ok "$(L "i1-F1 form $f (--session $sid): every rendered figure, drill-down included, equals format(value)")"
+    else
+      bad "$(L "i1-F1 form $f (--session $sid): every rendered figure, drill-down included, equals format(value)")" "$msg"
+    fi
+  done
+}
+
 # --- Main pass -------------------------------------------------------------
 run_case() {
   "$1" || true
@@ -2511,6 +2613,8 @@ run_all_cases() {
   run_case case_text_stable
   echo; echo "=== D6: refused and malformed arguments ==="
   run_case case_arguments
+  echo; echo "=== Review i1-F1: --session view of a session with agents ==="
+  run_case case_session_subtree
   echo; echo "=== Hardening: control characters; symlink at --out ==="
   run_case case_control_chars
 }
@@ -2616,6 +2720,9 @@ else
   mutate M12 "$D/model.js" 's/contributingRecords\(records\);/contributingRecords(records.filter(place));/' case_placement "13.7"
   # M14 esc() stops mapping control characters to U+FFFD (hardening, d9ab9e8).
   mutate M14 "$D/html.js" 's/\n\s*\.replace\(\/\[\\u0000[^\n]*//' case_control_chars "hardening (HTML controls)"
+  # M15 source.js reverts to reading only sessionId === X for --session X
+  # (review finding i1-F1: the subordinate agents' records drop out).
+  mutate M15 "$D/source.js" 's/const subordinates = sel\.session \? readSubordinates\([^;]*;/const subordinates = [];/' case_session_subtree "i1-F1"
   # M13 source.js stops reading at month(U).
   mutate M13 "$D/source.js" 's/ && touched\.size === 0\) break;/) break;/' case_placement "13.7"
 fi
