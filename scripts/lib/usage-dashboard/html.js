@@ -6,8 +6,9 @@
 // @import is ever emitted, so a conforming browser has nothing to fetch.
 //
 // The view model is embedded once, in <script type="application/json">,
-// escaped by embedJson(): every `<`, `>`, `&`, U+2028 and U+2029 in the
-// JSON.stringify output becomes its six-character JSON escape (backslash,
+// escaped by embedJson(): every `<`, `>`, `&`, DEL, C1 control, U+2028 and
+// U+2029 in the JSON.stringify output (which already escapes C0 controls)
+// becomes its six-character JSON escape (backslash,
 // `u`, four hex digits). JSON syntax outside string literals never contains
 // those characters, so each replacement lands inside a string literal and
 // JSON.parse restores the original exactly; with no raw `<` left, neither
@@ -58,8 +59,12 @@ function csp(mode) {
   return `default-src 'none'; style-src 'sha256-${STYLE_HASH}'; img-src 'none'; form-action ${formAction}; base-uri 'none'`;
 }
 
+// esc(s) — HTML text and attribute escaping. C0 controls other than tab
+// and newline, DEL and the C1 controls become U+FFFD, so the file cannot
+// drive a terminal when printed.
 function esc(s) {
   return String(s)
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, '\ufffd')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -68,7 +73,7 @@ function esc(s) {
 }
 
 function embedJson(view) {
-  return JSON.stringify(view).replace(/[<>&\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+  return JSON.stringify(view).replace(/[<>&\u007f-\u009f\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
 }
 
 function tableHead() {

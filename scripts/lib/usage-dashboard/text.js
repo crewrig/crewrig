@@ -95,8 +95,11 @@ function renderText(view) {
   return `${out.join('\n')}\n`;
 }
 
+// renderJson(view) — JSON.stringify already escapes C0 controls; DEL, the
+// C1 controls, U+2028 and U+2029 become six-character JSON escapes too, so
+// the output cannot drive a terminal and JSON.parse restores it exactly.
 function renderJson(view) {
-  return `${JSON.stringify(view)}\n`;
+  return `${JSON.stringify(view).replace(/[\u007f-\u009f\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'))}\n`;
 }
 
 module.exports = { renderText, renderJson };

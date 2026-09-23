@@ -12,6 +12,11 @@ on:
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
       - "scripts/lib/usage-price/**"
+      - "scripts/usage-query.sh"
+      - "scripts/usage-price.sh"
+      - "scripts/usage-attribute.sh"
+      - "scripts/usage-prune.sh"
+      - "schemas/usage-record/**"
       - "package.json"
       - "package-lock.json"
   push:
@@ -25,8 +30,16 @@ on:
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
       - "scripts/lib/usage-price/**"
+      - "scripts/usage-query.sh"
+      - "scripts/usage-price.sh"
+      - "scripts/usage-attribute.sh"
+      - "scripts/usage-prune.sh"
+      - "schemas/usage-record/**"
       - "package.json"
       - "package-lock.json"
+
+permissions:
+  contents: read
 
 jobs:
   usage-dashboard:

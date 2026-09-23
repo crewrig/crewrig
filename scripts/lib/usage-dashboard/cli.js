@@ -13,6 +13,7 @@
 
 'use strict';
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -54,17 +55,24 @@ function parseCommand(argv) {
 }
 
 // writePage(file, content) — atomic (tmp + rename), mode 0600; the default
-// directory is created and kept at 0700. Modes are set with chmod after the
-// write so the umask cannot widen them.
+// directory is created and kept at 0700. The temp name carries a random
+// suffix and is created O_EXCL ('wx'), so a planted file or symlink makes
+// the write fail instead of being followed; its mode is set through the
+// descriptor so the umask cannot widen it. rename() replaces, never
+// follows, a symlink at the final path.
 function writePage(file, content) {
   const dir = path.dirname(file);
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   if (dir === layout.dashboardDir()) fs.chmodSync(dir, 0o700);
-  const tmp = path.join(dir, `.${path.basename(file)}.${process.pid}.${Date.now()}.tmp`);
-  fs.writeFileSync(tmp, content, { mode: 0o600 });
-  fs.chmodSync(tmp, 0o600);
+  const tmp = path.join(dir, `.${path.basename(file)}.${crypto.randomBytes(16).toString('hex')}.tmp`);
+  const fd = fs.openSync(tmp, 'wx', 0o600);
+  try {
+    fs.fchmodSync(fd, 0o600);
+    fs.writeFileSync(fd, content);
+  } finally {
+    fs.closeSync(fd);
+  }
   fs.renameSync(tmp, file);
-  fs.chmodSync(file, 0o600);
 }
 
 async function run(argv) {
