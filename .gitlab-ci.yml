@@ -1115,6 +1115,37 @@ usage-pricing:
         - "package.json"
         - "package-lock.json"
 
+usage-dashboard:
+  image: node:22
+  script:
+    - "npm install"
+    - "bash scripts/tests/test-usage-dashboard.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/usage-dashboard/**"
+        - "scripts/usage-dashboard.sh"
+        - "scripts/tests/test-usage-dashboard*.sh"
+        - "scripts/tests/fixtures/usage-dashboard/**"
+        - "scripts/tests/fixtures/usage-pricing/**"
+        - "model-prices.org.json"
+        - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-price/**"
+        - "package.json"
+        - "package-lock.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/usage-dashboard/**"
+        - "scripts/usage-dashboard.sh"
+        - "scripts/tests/test-usage-dashboard*.sh"
+        - "scripts/tests/fixtures/usage-dashboard/**"
+        - "scripts/tests/fixtures/usage-pricing/**"
+        - "model-prices.org.json"
+        - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-price/**"
+        - "package.json"
+        - "package-lock.json"
+
 gitlab-ci-check:
   image: debian:stable-slim
   before_script:

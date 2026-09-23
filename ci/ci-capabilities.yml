@@ -1332,6 +1332,49 @@ capabilities:
       - npm install
       - bash scripts/tests/test-usage-pricing.sh
 
+  # usage-dashboard is spec 0210's three-form agreement, injection and
+  # loopback-bind suite (PLAN v2 steps 13-15). Fully offline, reusing the
+  # usage-pricing fixture price list. Not changeset-gated, for the same
+  # node@22 reason as usage-pricing above. The usage-store and usage-price
+  # trees and model-prices.org.json are in the paths filter because the view
+  # model reads through both (priceRecord() loads the org table on every
+  # call), so a change to either can shift a figure the dashboard shows.
+  - id: usage-dashboard
+    name: "Validate the usage dashboard's three delivery forms, injection safety, and loopback bind"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/usage-dashboard/**"
+          - "scripts/usage-dashboard.sh"
+          - "scripts/tests/test-usage-dashboard*.sh"
+          - "scripts/tests/fixtures/usage-dashboard/**"
+          - "scripts/tests/fixtures/usage-pricing/**"
+          - "model-prices.org.json"
+          - "scripts/lib/usage-store/**"
+          - "scripts/lib/usage-price/**"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/usage-dashboard/**"
+          - "scripts/usage-dashboard.sh"
+          - "scripts/tests/test-usage-dashboard*.sh"
+          - "scripts/tests/fixtures/usage-dashboard/**"
+          - "scripts/tests/fixtures/usage-pricing/**"
+          - "model-prices.org.json"
+          - "scripts/lib/usage-store/**"
+          - "scripts/lib/usage-price/**"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - bash scripts/tests/test-usage-dashboard.sh
+
   # gitlab-ci-check is the generator's own drift gate (spec 0048 R6/R7),
   # registered as a portable capability so the verification surface is itself
   # contract-described, not a hidden gate. Its command diffs the committed
