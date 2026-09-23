@@ -88,6 +88,18 @@ tasks:
     desc: "One-shot, unbounded drain of the usage-capture spool into the usage-record journal (spec 0207 R-L). Pays the first-drain cost once, at a time the operator chooses."
     cmd: bash {{.REPO_DIR}}/scripts/usage-drain.sh
 
+  usage:dashboard:
+    desc: "Generate the usage dashboard as one self-contained, offline HTML file (spec 0210 form A) at <root>/dashboard/usage-dashboard.html. Reference figures, never an invoice. Usage: task usage:dashboard -- [--session <id> | --agent <id> --parent <id> | --task-key <key> | --asset <kind>:<ref> | --cli <cli>] [--from <YYYY-MM-DD>] [--to <YYYY-MM-DD>] [--period <YYYY-MM>] [--model <id>] [--bucket day|week|month] [--currency <ISO4217>] [--as-of-today] [--out <path>]"
+    cmd: bash {{.REPO_DIR}}/scripts/usage-dashboard.sh page {{.CLI_ARGS}}
+
+  usage:dashboard:serve:
+    desc: "Serve the live usage dashboard on 127.0.0.1 only, in the foreground (spec 0210 form B); stop it with Ctrl-C or its Stop action. Writes nothing. Usage: task usage:dashboard:serve -- [--port <n>] (default 41920; filters are request parameters, e.g. /?period=2026-09)"
+    cmd: bash {{.REPO_DIR}}/scripts/usage-dashboard.sh serve {{.CLI_ARGS}}
+
+  usage:dashboard:report:
+    desc: "Print the usage dashboard as a plain-text report, or its view model as JSON (spec 0210 form C). Usage: task usage:dashboard:report -- [same filters as usage:dashboard] [--as-of-today] [--json]"
+    cmd: bash {{.REPO_DIR}}/scripts/usage-dashboard.sh report {{.CLI_ARGS}}
+
   setup:playwright-mcp:
     desc: "Install the Playwright MCP server globally (opt-in). Registers @playwright/mcp in Claude Code and Gemini CLI user-scope config. Idempotent — safe to re-run."
     cmds:
