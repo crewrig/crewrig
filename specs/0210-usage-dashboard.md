@@ -1,7 +1,7 @@
 ---
 id: "0210"
 slug: usage-dashboard
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1173
