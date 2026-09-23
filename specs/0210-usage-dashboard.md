@@ -100,14 +100,15 @@ epic's earlier seams already capture.
     request it serves, never reusing a view model computed for an earlier
     request.
 16. Form B SHALL offer a live action that recomputes the view model's
-    prices as of today (spec 0209 requirement 28); that action MAY
-    overwrite the stored computed price spec 0209's price derived store
-    already persists for each record it recomputes, and SHALL NOT write to
-    the usage-record journal, the attribution ledger, or any declaration
-    record.
-17. Form B SHALL expose no request path, other than requirement 16's
-    recompute action, that writes a usage record, a price, an
-    attribution-ledger entry, or a declaration record.
+    prices as of today (spec 0209 requirement 28) for that view alone;
+    that action SHALL NOT write to the price derived store spec 0209
+    already persists, the usage-record journal, the attribution ledger, or
+    any declaration record. Persisting a price recomputed as of today
+    remains the responsibility of the existing explicit pricing command
+    (`task usage:price -- --as-of-today`), which form B MAY point the
+    operator to.
+17. Form B SHALL NOT write a usage record, a price, an attribution-ledger
+    entry, or a declaration record, through any request path it exposes.
 18. Form B SHALL refuse to start when its configured loopback port is
     already bound by another process, and SHALL state that conflict to the
     operator, rather than silently selecting a different port or silently
@@ -128,9 +129,8 @@ epic's earlier seams already capture.
     needs no such dependency.
 22. None of the three forms SHALL display a prompt, a response, or any
     other conversation text, since none of the read surfaces this
-    specification's view model consumes ever carries one (spec 0205
-    requirement 15's raw sub-object exclusion, spec 0206 requirement 18's
-    capture-time exclusion).
+    specification's view model consumes ever carries one (spec 0206
+    requirement 18's capture-time exclusion).
 23. The documentation this specification requires (requirement 31, below)
     SHALL carry a personal-data note stating who can read each form's
     generated output, where form A's generated file lives once created, how
@@ -243,15 +243,18 @@ Then  form B refuses to start and states the port conflict to the operator,
       rather than silently selecting a different port
 ```
 
-**Scenario:** Form B's recompute action writes only the price derived store
+**Scenario:** Form B's recompute action leaves every stored price file
+unchanged
 
 ```text
 Given form B is serving a view for a fixture scope whose records already
-      carry stored prices
+      carry stored prices, each stored price file's content hashed before
+      the action runs
 When  the recompute-as-of-today action is invoked
-Then  the stored price for each recomputed record may change, and neither
-      the usage-record journal, the attribution ledger, nor any
-      declaration record is written
+Then  the view shows each record's price recomputed as of today, every
+      stored price file's content hash is unchanged from before the
+      action ran, and neither the usage-record journal, the attribution
+      ledger, nor any declaration record is written
 ```
 
 **Scenario:** A filter matching no record shows an explicit empty result
@@ -310,8 +313,9 @@ Then  every view renders correctly using only the local journal, and none
   and the operator's own loopback binding for form B, consistent with spec
   0207's and spec 0209's own stance on encryption and access control.
 - Any change to MemPalace itself, its retention policy, or the storage and
-  pricing contracts' own write paths beyond the read surfaces and the one
-  recompute write path this specification names.
+  pricing contracts' own write paths — this specification names read
+  surfaces only; form B's recompute action (requirement 16) computes for
+  its own view and persists nothing.
 - A per-token-class monetary breakdown of a computed price (the seam-(e)
   carry-over) — spec 0209's `computePriceObject()` persists only a record's
   total amount; decomposing it into per-class components is a change to
@@ -365,5 +369,4 @@ contract surface only, never prescribing an implementation:
   `<root>` defaulting to `~/.crewrig/usage`, overridable with
   `CREWRIG_USAGE_ROOT`.
 - Existing parity precedent: `task usage:query` and `task usage:price`
-  (`Taskfile.yml`), already identical across the four CLIs
-  (`docs/cli-matrix.md` row 8d).
+  (`Taskfile.yml`), already identical across the four CLIs.
