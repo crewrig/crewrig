@@ -1,0 +1,372 @@
+---
+id: "0210"
+slug: usage-dashboard
+status: approved
+complexity: standard
+interaction-mode: INTERMEDIATE
+related-issue: 1173
+version: 1.0.0
+---
+
+# Usage dashboard — one view model rendered as a static page, a loopback server, and a terminal report
+
+## Intent
+
+This specification defines the dashboard and tracked-asset navigation surface
+for the token-consumption epic: the one place a person goes to see what a
+period, a session, an agent, a CLI, or a macro-task actually consumed and
+what that consumption would have cost in comparison, all drawn from exactly
+one view model built once from the storage and pricing contracts already on
+`main` so that a static page opened offline, a local server a person starts
+and stops on their own machine, and a terminal report each show the same
+figures for the same question. A person choosing any one of the three forms
+sees the same token counts, the same fidelity flags, the same `uncaptured`
+and `unpriced` counts never hidden and never shown as zero, and the same
+comparative price carrying its three timestamps and its reference-not-invoice
+statement, as a person who chose either of the other two — the delivery form
+is a matter of where and how a person wants to look, never a matter of what
+the numbers say. Every figure traces back to a session, an agent, a task, or
+an external asset a person already recognizes, and nothing the dashboard
+reads ever carries a prompt or a response — only the activity metadata the
+epic's earlier seams already capture.
+
+## Requirements
+
+1. A single view model SHALL be built once per invocation, reading only spec
+   0207's storage read surface and spec 0209's pricing read surface, and
+   SHALL be the sole source of figures for whichever of the three delivery
+   forms (A, B, or C) renders it; no delivery form SHALL derive a token
+   count, a fidelity classification, or a price independently of that view
+   model.
+2. Given an identical period, filter selection, currency, and price-list
+   snapshot, the three delivery forms SHALL report identical token counts,
+   identical per-fidelity breakdowns, identical `uncaptured` and `unpriced`
+   counts, and identical prices for that same scope; a difference in any of
+   those figures between two forms given the same inputs is a defect this
+   specification's continuous-integration suite (below) SHALL catch.
+3. The view model SHALL report token counts by period — day, week, or month,
+   selectable — broken down by token class and by model, for whatever scope
+   (session, agent, task, CLI, or the whole store) is being viewed.
+4. The view model SHALL report a comparative price for the scope being
+   viewed, carrying the three timestamps and the reference-figure statement
+   spec 0209 already defines (spec 0209 requirements 27 and 31); a scope
+   containing no priced record SHALL report an explicit absence of a price,
+   never a zero standing in for one.
+5. The view model SHALL report token counts and comparative price broken
+   down per source CLI, alongside the whole-scope figure.
+6. The view model SHALL support drilling down from a session to that
+   session's own subordinate agents; a session carrying no subordinate agent
+   SHALL show that absence explicitly, never omit the session from the
+   drill-down surface.
+7. The view model SHALL surface task and macro-task rollups (spec 0208),
+   each rollup figure declaring the fidelity it was computed from —
+   `per-request`, `run-total`, or `session-cumulative` — or, when more than
+   one fidelity is combined, the explicit mixed marker spec 0208 and spec
+   0209 already define (spec 0208 requirement 21, spec 0209 requirement 33);
+   no rollup figure SHALL be presented as one undifferentiated number
+   without that declaration.
+8. `uncaptured` records and records whose model identifier resolved to
+   `unpriced` SHALL be counted separately from every token-count sum and
+   every price sum in every view the dashboard presents, and SHALL never be
+   hidden, omitted, or represented as a zero contribution to a sum; a scope
+   containing zero `uncaptured` or zero `unpriced` records SHALL report that
+   count as an explicit zero, never omit the count itself.
+9. All three delivery forms SHALL accept the same filter vocabulary: session
+   identifier, agent identifier or name, model identifier, task-handoff key
+   or external asset reference, and a date range.
+10. Form B SHALL accept requirement 9's filters as parameters of a live
+    request, re-evaluated for that request; form C SHALL accept them as
+    command-line options; form A's generation command SHALL accept them as
+    options that scope which data the one generated file embeds. A filter
+    combination matching no record SHALL be presented, in every form, as an
+    explicit empty result, never as an error and never as a silently blank
+    output indistinguishable from an unfiltered empty store.
+11. Form A SHALL be one self-contained file, generated by one command, with
+    every figure it displays embedded in the file itself, requiring no
+    network access to view, and containing no reference to an external
+    script, stylesheet, or font.
+12. Form A's own file SHALL state, within the file, the instant it was
+    generated and the exact command — including the option that recomputes
+    prices as of today (spec 0209 requirement 28) — that would regenerate
+    an equivalent file with current figures.
+13. Form A SHALL remain operable by keyboard alone, SHALL provide a text
+    alternative for every chart or other graphical figure it presents, and
+    SHALL remain legible under both a light and a dark color scheme.
+14. Form B SHALL bind only to the loopback interface, SHALL offer no
+    configuration option that widens that binding to a routable interface,
+    and SHALL provide an explicit action to start it and an explicit action
+    to stop it.
+15. Form B SHALL re-read the storage and pricing read surfaces for every
+    request it serves, never reusing a view model computed for an earlier
+    request.
+16. Form B SHALL offer a live action that recomputes the view model's
+    prices as of today (spec 0209 requirement 28) for that view alone;
+    that action SHALL NOT write to the price derived store spec 0209
+    already persists, the usage-record journal, the attribution ledger, or
+    any declaration record. Persisting a price recomputed as of today
+    remains the responsibility of the existing explicit pricing command
+    (`task usage:price -- --as-of-today`), which form B MAY point the
+    operator to.
+17. Form B SHALL NOT write a usage record, a price, an attribution-ledger
+    entry, or a declaration record, through any request path it exposes.
+18. Form B SHALL refuse to start when its configured loopback port is
+    already bound by another process, and SHALL state that conflict to the
+    operator, rather than silently selecting a different port or silently
+    failing to start.
+19. Form C SHALL render as plain text readable without color, in a stable
+    column order that does not vary between two invocations given the same
+    inputs, and SHALL additionally offer a machine-readable output variant,
+    since the view model it renders is already structured data and a
+    machine-readable variant costs no additional read.
+20. Every one of the three forms SHALL carry, immediately next to every
+    price it displays, the reference-figure-not-invoice statement and the
+    three timestamps spec 0209 already defines (spec 0209 requirements 27
+    and 31).
+21. None of the three forms SHALL require the shared MemPalace daemon to be
+    installed or reachable to produce any of its views; all three SHALL
+    read exclusively through the storage contract's own local-journal read
+    surface (spec 0207), which spec 0207 requirement 8 already guarantees
+    needs no such dependency.
+22. None of the three forms SHALL display a prompt, a response, or any
+    other conversation text, since none of the read surfaces this
+    specification's view model consumes ever carries one (spec 0206
+    requirement 18's capture-time exclusion).
+23. The documentation this specification requires (requirement 31, below)
+    SHALL carry a personal-data note stating who can read each form's
+    generated output, where form A's generated file lives once created, how
+    long a generated file or a running form B instance persists, and the
+    fact that sharing form A's generated file shares every figure and
+    identifier it displays.
+24. The dashboard SHALL present each token class as a token count (net
+    input, cache read, cache write, output, reasoning) and SHALL present
+    price at the granularity spec 0209's price derived store actually
+    persists — one total per record, and a sum of per-record totals for any
+    period, task, or CLI grouping — and SHALL NOT present a per-token-class
+    monetary breakdown, since spec 0209's `computePriceObject()` computes
+    and stores only a record's total amount and no per-class component of
+    that amount; the per-class token counts already required by requirement
+    3 give a reader the volume driving a scope's price without needing that
+    money broken out by class.
+25. The three delivery forms SHALL each be realized as one `task` command,
+    identical in name and behavior across the four CLIs this framework
+    supports, consistent with the existing `usage:query` and `usage:price`
+    commands' own parity; `docs/cli-matrix.md` is where seam (h), issue
+    #1174, records that parity for this seam.
+26. A continuous-integration suite SHALL verify, offline, against a
+    fixture set of usage records and a fixture price store, that all three
+    delivery forms report identical token counts, identical per-fidelity
+    breakdowns, identical `uncaptured` and `unpriced` counts, and identical
+    prices for the same period, filter, and currency selection.
+27. That suite SHALL verify that a fixture scope containing at least one
+    `uncaptured` record and at least one `unpriced` record reports both
+    counts explicitly and never as a zero folded into a token-count or
+    price sum, and that a fixture scope containing neither reports both
+    counts as an explicit zero.
+28. That suite SHALL verify that form A's generated file contains no
+    external script, stylesheet, or font reference, and that generating and
+    then opening that file triggers no network request.
+29. That suite SHALL verify that form B refuses to bind to any configured
+    interface other than loopback.
+30. That suite SHALL verify that a record's fidelity flag and a rollup's
+    mixed-fidelity marker propagate unchanged from the view model into the
+    output of all three forms.
+31. The implementation realizing this specification SHALL ship a
+    user-facing documentation page explaining how to read the dashboard's
+    views and how to interpret a comparative price, distinct from the
+    existing technical documentation for the storage and pricing contracts
+    (`docs/usage-storage.md`, `docs/usage-pricing.md`).
+
+## Scenarios
+
+**Scenario:** Three forms agree on the same figures
+
+```text
+Given a fixture set of usage records and a fixture price store, and one
+      period, one filter selection, one currency, and one price-list
+      snapshot
+When  form A is generated, form B is queried, and form C is run, each with
+      that same period, filter selection, currency, and snapshot
+Then  the three forms report identical token counts, identical per-fidelity
+      breakdowns, identical uncaptured and unpriced counts, and identical
+      prices
+```
+
+**Scenario:** Uncaptured and unpriced counts are shown even at zero
+
+```text
+Given a fixture scope containing no uncaptured record and no record whose
+      model identifier resolved to unpriced
+When  any of the three forms renders that scope
+Then  the form reports an uncaptured count of zero and an unpriced count of
+      zero, neither omitted nor folded into a token-count or price sum
+```
+
+**Scenario:** Uncaptured and unpriced counts are never hidden when present
+
+```text
+Given a fixture scope containing one uncaptured record and one record whose
+      model identifier resolved to unpriced, alongside priced captured
+      records
+When  any of the three forms renders that scope
+Then  the form reports both counts explicitly, separate from every
+      token-count and price sum, and neither count is presented as zero
+```
+
+**Scenario:** Form A carries its own regeneration instructions and no
+network reference
+
+```text
+Given form A has just been generated for a fixture scope
+When  the generated file is inspected and opened without network access
+Then  the file states its own generation instant and the exact command,
+      including the as-of-today recompute option, that regenerates it, and
+      the file contains no external script, stylesheet, or font reference
+      and triggers no network request when opened
+```
+
+**Scenario:** Form B refuses a non-loopback bind
+
+```text
+Given form B's start action is invoked with a configuration naming a
+      routable interface
+When  form B attempts to start
+Then  form B refuses to bind to that interface, and no configuration option
+      exists that would let it succeed in doing so
+```
+
+**Scenario:** Form B refuses to start when its port is already taken
+
+```text
+Given another process already bound to form B's configured loopback port
+When  form B's start action is invoked
+Then  form B refuses to start and states the port conflict to the operator,
+      rather than silently selecting a different port
+```
+
+**Scenario:** Form B's recompute action leaves every stored price file
+unchanged
+
+```text
+Given form B is serving a view for a fixture scope whose records already
+      carry stored prices, each stored price file's content hashed before
+      the action runs
+When  the recompute-as-of-today action is invoked
+Then  the view shows each record's price recomputed as of today, every
+      stored price file's content hash is unchanged from before the
+      action ran, and neither the usage-record journal, the attribution
+      ledger, nor any declaration record is written
+```
+
+**Scenario:** A filter matching no record shows an explicit empty result
+
+```text
+Given a filter selection that matches no record in the fixture store
+When  each of the three forms renders that filter selection
+Then  each form presents an explicit empty result for that selection, not
+      an error and not output indistinguishable from an unfiltered empty
+      store
+```
+
+**Scenario:** A mixed-fidelity rollup's marker propagates unchanged
+
+```text
+Given a task-handoff key attributed to both per-request and
+      session-cumulative records
+When  the task's rollup is rendered in each of the three forms
+Then  each form's combined total carries the same mixed marker naming both
+      fidelities, and none of the three forms silently sums the two
+      fidelities without that marker
+```
+
+**Scenario:** A session with no subordinate agents shows that absence
+explicitly
+
+```text
+Given a session carrying no subordinate agent in the fixture store
+When  the dashboard's drill-down from that session is rendered in any form
+      that offers drill-down
+Then  the session appears with an explicit empty set of subordinate agents,
+      never omitted from the drill-down surface
+```
+
+**Scenario:** The dashboard operates with the shared MemPalace daemon
+unreachable
+
+```text
+Given the shared MemPalace daemon is unreachable and a fixture store exists
+      only in the local journal
+When  each of the three forms renders a view over that fixture store
+Then  every view renders correctly using only the local journal, and none
+      of the three forms reports an error or a degraded view attributable
+      to the daemon's absence
+```
+
+## Out of scope
+
+- New capture or pricing rules or semantics — seam (b), issue #1169, and
+  seam (e), issue #1172.
+- Invoicing, budget alerts, or any spend-limit enforcement.
+- Hosted, multi-user, or non-loopback deployment of form B.
+- Authentication or access control for any of the three forms — a
+  single-operator, single-machine surface whose only boundary is the
+  operating system's own filesystem permissions on form A's generated file
+  and the operator's own loopback binding for form B, consistent with spec
+  0207's and spec 0209's own stance on encryption and access control.
+- Any change to MemPalace itself, its retention policy, or the storage and
+  pricing contracts' own write paths — this specification names read
+  surfaces only; form B's recompute action (requirement 16) computes for
+  its own view and persists nothing.
+- A per-token-class monetary breakdown of a computed price (the seam-(e)
+  carry-over) — spec 0209's `computePriceObject()` persists only a record's
+  total amount; decomposing it into per-class components is a change to
+  spec 0209's own data shape, not addressed here (see requirement 24).
+- Building or maintaining the `docs/cli-matrix.md` rows that record this
+  seam's four-CLI parity — seam (h), issue #1174.
+- Integrating the dashboard's user-facing documentation page into the
+  organization-facing documentation set or navigation — seam (g), issue
+  #1175.
+- Historical backfill or recomputation of prices for periods predating this
+  specification's implementation (spec 0209's own out-of-scope bullet
+  already excludes this).
+- Chart rendering technology, page styling, or any other implementation
+  choice for realizing forms A, B, or C.
+- Any change to the behavior, output format, or configuration surface of
+  the four CLIs themselves.
+
+## Open questions
+
+- [USER-PARKED] Whether the three delivery forms over one view model push
+  this specification's complexity tier from `standard` to `large`. The
+  owner's SPECS-opening note on issue #1173 explicitly left this judgment
+  to the review seat rather than deciding it here; `complexity: standard`
+  above is the frontmatter default pending that call.
+
+## Read surfaces and delivery forms (informative)
+
+This section is informative and non-normative — a starting point for the
+implementation, not a constraint any requirement above depends on. Names
+verified against `crewrig/main` @ `e65fb16`.
+
+| Form | What it is | Decision |
+|---|---|---|
+| A | A self-contained static HTML page generated by a `task` command: data embedded, works offline, opens in any browser | Retained |
+| B | A local server bound to the loopback interface, re-reading the store per request, with a live "recompute as of today" action | Retained |
+| C | A terminal report | Retained |
+| D | A hosted artifact | Rejected: the data would leave the machine (sovereignty, GDPR) and it would serve one CLI only, breaking parity |
+
+Read surfaces this specification's view model consumes, cited as the
+contract surface only, never prescribing an implementation:
+
+- `scripts/lib/usage-store/query.js` — `run(selector)`, `parseArgs(argv)`.
+- `scripts/lib/usage-store/rollup.js` — `lastSnapshots(records)`,
+  `contributingRecords(records)`, `sumTokens(records)`,
+  `rollup(records, opts)`.
+- `scripts/lib/usage-price/store.js` — `readPrices(selector)`,
+  `priceSelector(selector, opts)`, `priceRecord(record, opts)`,
+  `computePriceObject(record, opts)`.
+- `scripts/lib/usage-price/rollup.js` — `rollup(selector, opts)`.
+- Store layout: `<root>/prices/<cli>/<YYYY-MM>/<recordId>.price.json`,
+  `<root>` defaulting to `~/.crewrig/usage`, overridable with
+  `CREWRIG_USAGE_ROOT`.
+- Existing parity precedent: `task usage:query` and `task usage:price`
+  (`Taskfile.yml`), already identical across the four CLIs.
