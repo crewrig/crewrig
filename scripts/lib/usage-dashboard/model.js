@@ -313,12 +313,15 @@ async function build(filters, opts) {
   const currency = o.currency || filtersMod.DEFAULTS.currency;
   const asOfToday = !!o.asOfToday;
 
-  const { records, storeHasEntries } = source.read(filters);
+  const { records, subordinates, storeHasEntries } = source.read(filters);
   const place = filtersMod.placementPredicate(filters.placement);
 
   const main = placedOf(passAndPlace(records, place));
   const admitted = records.filter(place).length;
   const supersededCount = admitted - main.length;
+  // A --session view's drill-down lists the session's subordinate agents
+  // exactly as the whole-store view does; they stay out of every other group.
+  const agentsOnly = placedOf(passAndPlace(subordinates, place));
   const tasks = perKeyPasses(records, taskKeyOf, place);
   const assets = perKeyPasses(records, assetKeyOf, place);
 
@@ -326,7 +329,7 @@ async function build(filters, opts) {
   const prices = new Map();
   if (pricing.available) {
     const org = priceStore.loadOrgTable();
-    const toPrice = [main, ...tasks.map((t) => t.placed), ...assets.map((a) => a.placed)];
+    const toPrice = [main, agentsOnly, ...tasks.map((t) => t.placed), ...assets.map((a) => a.placed)];
     for (const list of toPrice) {
       for (const r of list) {
         if (r.kind !== 'captured' || prices.has(r.recordId)) continue;
@@ -359,7 +362,7 @@ async function build(filters, opts) {
     },
     byCli: keyedGroups(main, (r) => r.provenance.cli, ctx),
     byModel: keyedGroups(main, (r) => r.modelId || null, ctx),
-    sessions: buildSessions(main, ctx),
+    sessions: buildSessions(main.concat(agentsOnly), ctx),
     tasks: tasks.map((t) => ({ taskHandoffKey: t.key, ...group(t.placed, ctx) })),
     assets: assets.map((a) => {
       const [kind, ref] = JSON.parse(a.key);

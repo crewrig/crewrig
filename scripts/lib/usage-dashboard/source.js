@@ -68,8 +68,29 @@ function isSessionCumulative(r) {
   return r.kind === 'captured' && r.fidelity === 'session-cumulative';
 }
 
-// read(filters) -> {records, monthsInStore, storeHasEntries}. Records are
-// sorted by recordId so every subset a grouping takes sums in one order.
+function byRecordId(a, b) {
+  return a.recordId < b.recordId ? -1 : a.recordId > b.recordId ? 1 : 0;
+}
+
+// readSubordinates(sel, months, base) — for a --session S selection, the
+// records of S's subordinate agents: they carry their own sessionId with
+// parentSessionId = S, so query.run({session}) never returns them. Every
+// other selection predicate still applies. They feed the drill-down only
+// (spec 0210 R6), never the selection's totals.
+function readSubordinates(sel, months, base) {
+  const rest = filtersMod.selectionPredicate({ ...sel, session: undefined });
+  const out = [];
+  for (const month of months) {
+    for (const r of query.run({ period: month, cli: sel.cli, ...base })) {
+      if (r.identity.parentSessionId === sel.session && rest(r)) out.push(r);
+    }
+  }
+  return out.sort(byRecordId);
+}
+
+// read(filters) -> {records, subordinates, monthsInStore, storeHasEntries}.
+// Records are sorted by recordId so every subset a grouping takes sums in
+// one order.
 function read(filters) {
   const sel = filters.selection || {};
   const pred = filtersMod.selectionPredicate(sel);
@@ -107,8 +128,9 @@ function read(filters) {
     }
   }
 
-  records.sort((a, b) => (a.recordId < b.recordId ? -1 : a.recordId > b.recordId ? 1 : 0));
-  return { records, monthsInStore: store.months, storeHasEntries: store.hasEntries };
+  records.sort(byRecordId);
+  const subordinates = sel.session ? readSubordinates(sel, store.months, base) : [];
+  return { records, subordinates, monthsInStore: store.months, storeHasEntries: store.hasEntries };
 }
 
 module.exports = { read, scanStore };

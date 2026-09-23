@@ -72,7 +72,10 @@ tallies.
   and the rows beneath it break the tokens down per fidelity.
 - **Sessions and agents.** A session's row covers the session's own records.
   Each subordinate agent is listed beneath it by its agent identifier. A
-  session with no subordinate agent says `No subordinate agent`.
+  session with no subordinate agent says `No subordinate agent`. With
+  `--session <id>`, the drill-down still lists that session's subordinate
+  agents, exactly as the whole-store view does, but the totals and every
+  other table cover the session's own records only.
 - **Tasks and assets** follow `task usage:query -- --task-key <key> --rollup`:
   each key is rolled up on its own. A session can contribute to more than one
   task, so the task rows need not add up to the totals.
