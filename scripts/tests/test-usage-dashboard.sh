@@ -2386,6 +2386,89 @@ case_arguments() {
   done
 }
 
+# =============================================================================
+# Hardening (commit d9ab9e8): control characters in identifiers, and a
+# symlink planted at form A's --out path. The fixture records-controls/
+# carries an agentId and an asset ref holding C0 (with CR and ESC), DEL, C1,
+# U+2028/U+2029 and a tab.
+# =============================================================================
+case_control_chars() {
+  local root out rc victim
+  fresh_root_into root empty
+  out="$(new_out_dir)"
+  drv pin-only "$PRICING_FIXTURES_DIR"
+  drv write-dir "$FIXTURES_DIR/records-controls"
+  local fixture="$FIXTURES_DIR/records-controls/c02-ctl-child.json"
+  dash report --json >"$out/c.json" 2>"$out/c.err" || true
+  rc=0
+  msg="$(node -e '
+const fs = require("fs");
+const raw = fs.readFileSync(process.argv[1], "utf8");
+const want = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const bad = new RegExp("[\\x7f-\\x9f" + String.fromCharCode(0x2028, 0x2029) + "]");
+const errs = [];
+if (bad.test(raw)) errs.push("a raw DEL, C1, U+2028 or U+2029 character is in the --json output");
+for (const hex of ["007f", "0080", "0085", "009f", "2028", "2029"]) {
+  if (!raw.includes("\\" + "u" + hex)) errs.push(`no \\u${hex} escape in the --json output`);
+}
+const v = JSON.parse(raw);
+const agents = v.sessions.flatMap((s) => s.agents || []).map((a) => a.agentId);
+if (!agents.includes(want.identity.agentId)) errs.push("the agentId does not JSON.parse-round-trip exactly");
+if (!v.assets.map((a) => a.ref).includes(want.attribution.externalAsset.ref)) errs.push("the asset ref does not JSON.parse-round-trip exactly");
+if (errs.length) { console.log(errs.join("\n")); process.exit(1); }
+' "$out/c.json" "$fixture" 2>&1)" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    ok "$(L 'hardening: report --json escapes U+007F-U+009F, U+2028, U+2029 as \uXXXX and round-trips the identifiers exactly')"
+  else
+    bad "$(L 'hardening: report --json escapes U+007F-U+009F, U+2028, U+2029 as \uXXXX and round-trips the identifiers exactly')" "$msg $(head -3 "$out/c.err")"
+  fi
+
+  dash page --out "$out/c.html" >/dev/null 2>"$out/p.err" || true
+  rc=0
+  msg="$(node -e '
+const fs = require("fs");
+const html = fs.readFileSync(process.argv[1], "utf8");
+const want = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const block = /<script\b[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script/i.exec(html);
+const errs = [];
+if (!block) { console.log("no JSON block"); process.exit(1); }
+const markup = html.replace(block[1], "");
+const ctl = /[\x00-\x08\x0b-\x1f\x7f-\x9f]/;
+const m = ctl.exec(markup);
+if (m) errs.push(`markup carries a raw control character U+${m[0].charCodeAt(0).toString(16).padStart(4, "0")}`);
+if (!markup.includes(String.fromCharCode(0xfffd))) errs.push("markup carries no U+FFFD replacement character");
+if (!markup.includes("tab" + String.fromCharCode(9) + "here")) errs.push("the tab was not kept in the markup");
+const tags = (markup.match(/<[A-Za-z][^>]*>/g) || []).join("\n");
+if (ctl.test(tags)) errs.push("an attribute carries a raw control character");
+if (new RegExp("[\\x7f-\\x9f" + String.fromCharCode(0x2028, 0x2029) + "]").test(block[1])) errs.push("the JSON block carries a raw DEL, C1, U+2028 or U+2029");
+const v = JSON.parse(block[1]);
+const agents = v.sessions.flatMap((s) => s.agents || []).map((a) => a.agentId);
+if (!agents.includes(want.identity.agentId)) errs.push("the embedded agentId does not JSON.parse-round-trip exactly");
+if (!v.assets.map((a) => a.ref).includes(want.attribution.externalAsset.ref)) errs.push("the embedded asset ref does not JSON.parse-round-trip exactly");
+if (errs.length) { console.log(errs.join("\n")); process.exit(1); }
+' "$out/c.html" "$fixture" 2>&1)" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    ok "$(L 'hardening: HTML text and attributes map C0 (not tab/newline), DEL and C1 to U+FFFD; the embedded JSON round-trips exactly')"
+  else
+    bad "$(L 'hardening: HTML text and attributes map C0 (not tab/newline), DEL and C1 to U+FFFD; the embedded JSON round-trips exactly')" "$msg $(head -3 "$out/p.err")"
+  fi
+
+  # A symlink pre-planted at the final --out path is replaced, not followed.
+  victim="$out/victim.txt"
+  printf 'victim-content\n' >"$victim"
+  mkdir -p "$out/sl"
+  ln -s "$victim" "$out/sl/usage-dashboard.html"
+  rc=0
+  dash page --out "$out/sl/usage-dashboard.html" >"$out/sl.out" 2>&1 || rc=$?
+  local mode=""
+  [ -f "$out/sl/usage-dashboard.html" ] && mode="$(node -e 'console.log((require("fs").lstatSync(process.argv[1]).mode & 0o777).toString(8))' "$out/sl/usage-dashboard.html")"
+  if [ "$rc" -eq 0 ] && [ "$(cat "$victim")" = "victim-content" ] && [ ! -L "$out/sl/usage-dashboard.html" ] && [ "$mode" = "600" ] && drv extract "$out/sl/usage-dashboard.html" >/dev/null 2>&1; then
+    ok "$(L 'hardening: page --out onto a planted symlink replaces the link (mode 600) and never writes through it')"
+  else
+    bad "$(L 'hardening: page --out onto a planted symlink replaces the link (mode 600) and never writes through it')" "exit $rc; victim now: $(head -c 80 "$victim"); link still a symlink: $([ -L "$out/sl/usage-dashboard.html" ] && echo yes || echo no); mode $mode; $(head -3 "$out/sl.out")"
+  fi
+}
+
 # --- Main pass -------------------------------------------------------------
 run_case() {
   "$1" || true
@@ -2428,6 +2511,8 @@ run_all_cases() {
   run_case case_text_stable
   echo; echo "=== D6: refused and malformed arguments ==="
   run_case case_arguments
+  echo; echo "=== Hardening: control characters; symlink at --out ==="
+  run_case case_control_chars
 }
 
 run_all_cases
@@ -2517,7 +2602,7 @@ else
   # M6 recompute (every build) prices with store: true.
   mutate M6 "$D/model.js" 's/store: false,/store: true,/' case_readonly "13.16"
   # M7 embedJson stops escaping <.
-  mutate M7 "$D/html.js" 's/\[<>&\\u2028\\u2029\]/[>&\\u2028\\u2029]/' case_static_page "13.12"
+  mutate M7 "$D/html.js" 's/(function embedJson[\s\S]*?\.replace\(\/\[)</$1/' case_static_page "13.12"
   # M8 D2's offline line is removed (the guard's driver unsets the variable
   # the rest of the suite exports, which would otherwise mask this mutation).
   mutate M8 "$D/model.js" "s/process\\.env\\.CREWRIG_USAGE_OFFLINE\\s*=\\s*'1';?//" case_readonly "13.16 (offline guard)"
@@ -2529,6 +2614,8 @@ else
   mutate M11 "$D/text.js" 's/if \(r\.statement\) out\.push\([^;]*;//' case_agreement "13.2"
   # M12 model.js applies the placement predicate BEFORE contributingRecords.
   mutate M12 "$D/model.js" 's/contributingRecords\(records\);/contributingRecords(records.filter(place));/' case_placement "13.7"
+  # M14 esc() stops mapping control characters to U+FFFD (hardening, d9ab9e8).
+  mutate M14 "$D/html.js" 's/\n\s*\.replace\(\/\[\\u0000[^\n]*//' case_control_chars "hardening (HTML controls)"
   # M13 source.js stops reading at month(U).
   mutate M13 "$D/source.js" 's/ && touched\.size === 0\) break;/) break;/' case_placement "13.7"
 fi
