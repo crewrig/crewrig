@@ -220,10 +220,12 @@ mirrored stops the check before any prune, because the prune removes a
 waiting record's marker without contacting MemPalace, even when a drawer for
 it already exists. A mirrored record's marker is removed only after MemPalace
 has answered the prune's deletion request. The check does not list
-MemPalace's drawers independently, and it trusts that answer: `main` counts
-any reply that is not a protocol error as a completed deletion, including a
-reply in which MemPalace itself reports that the deletion failed. A
-`removed` verdict is therefore only as good as the daemon's own
+MemPalace's drawers independently
+([#1206](https://github.com/crewrig/crewrig/issues/1206)), and it trusts
+that answer: `main` counts any reply that is not a protocol error as a
+completed deletion, including a reply in which MemPalace itself reports that
+the deletion failed ([#1211](https://github.com/crewrig/crewrig/issues/1211)).
+A `removed` verdict is therefore only as good as the daemon's own
 acknowledgment.
 
 **When the verdict is `UNVERIFIED`**, the removal step has not run and the
