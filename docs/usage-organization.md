@@ -81,6 +81,15 @@ Outside the usage root:
   request and response, and Claude Code's carries the turn's last assistant
   message (see [Personal-data note](usage-capture.md#personal-data-note)).
   Derived from recorded activity.
+- **The non-interactive wrapper's temporary files.**
+  `scripts/lib/usage-headless.sh` stages output in temporary files in the
+  system temp directory: the model's reply it extracts from Antigravity CLI's
+  JSON envelope for the adopted Antigravity launch sites, and the whole output
+  of any run wrapped as a structured-output run. It deletes them at the end of
+  the call without a trap, so a killed run can leave them behind. **These
+  files can hold conversation text**, the model's reply (see
+  [Personal-data note](usage-capture.md#personal-data-note)). Derived from
+  recorded activity.
 
 The feature never writes the CLIs' own session records. It only reads them.
 
@@ -96,8 +105,10 @@ mirror does not hold it, because drawers externalize `raw`. The fix is
 tracked in [#1201](https://github.com/crewrig/crewrig/issues/1201); see
 [Headless envelope](usage-capture.md#headless-envelope-run-total-all-clis).
 
-The transient hook payload file described above is the other place where
-conversation text can appear, for the length of one hook call.
+Outside the journal, conversation text can also appear in the transient
+files listed above: the hook payload file and the non-interactive wrapper's
+temporary files, for the length of one call, or longer when a killed call
+leaves them behind.
 
 ## Retention
 
@@ -338,8 +349,8 @@ What stays after procedure (b), and whose it is:
   records can be derived again.
 - **Two writers that start again on their own.** Running an adopted launch
   site afterwards writes a usage record to the usage root again, and an agent
-  session that follows the deployed session-start rules while resuming a
-  task-handoff drawer writes a declaration there again (see
+  session that follows the deployed session-start rules while establishing or
+  resuming a task-handoff drawer writes a declaration there again (see
   [What writes usage data whatever you chose](usage-guide.md#what-writes-usage-data-whatever-you-chose)).
   `main` offers no switch that stops either of them.
 
@@ -374,5 +385,6 @@ Three more points hold for such a deployment:
   still write usage records whenever they run, whatever was chosen at install
   time, and `main` offers no switch that stops them.
 - The session-start declaration writer does not fire: it runs only when an
-  agent resumes a task-handoff drawer, which needs MemPalace.
+  agent establishes or resumes a task-handoff drawer, and both need MemPalace
+  (`artifacts/core/system-context/long-running-task-convention.md`).
 - The removal procedures' mirror check reports `nothing mirrored`.

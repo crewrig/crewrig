@@ -93,10 +93,11 @@ Two writers do not depend on your answers above:
   [Adopted launch sites](usage-capture.md#adopted-launch-sites-non-interactive-runs).
   `main` offers no switch that stops this channel.
 - **Session-start declarations.** The deployed session-start rules tell an
-  agent that resumes a task-handoff drawer in MemPalace to record the task it
-  works on, with `scripts/usage-task.sh set --channel protocol`. Each such
-  session writes one declaration (a task key) under the usage root, even with
-  capture off. `main` offers no switch that stops it. See
+  agent that establishes or resumes a task-handoff drawer in MemPalace to
+  record the task it works on, with
+  `scripts/usage-task.sh set --channel protocol`. Each such session writes one
+  declaration (a task key) under the usage root, even with capture off.
+  `main` offers no switch that stops it. See
   [Session-start protocol recording](usage-attribution.md#session-start-protocol-recording).
 
 ## What is recorded, and what never is
@@ -165,8 +166,9 @@ Commands, filters, tallies, and the empty-result banners are in
   never what a vendor billed you. See [Usage pricing](usage-pricing.md) and
   [Interpreting a comparative price](usage-dashboard.md#interpreting-a-comparative-price).
 - **Copilot CLI has two billing regimes.** For an account on current billing,
-  the price uses the CLI's own per-token figures when a record carries them,
-  and the price list otherwise (spec 0209 R20). For an account on a legacy
+  the price uses the CLI's own first-party figures (a dollar amount, or an
+  AIU count priced at the organization's declared rate) when a record carries
+  them, and the price list otherwise (spec 0209 R20). For an account on a legacy
   premium-request plan, the price comes from the price list and carries a
   caveat naming it a legacy-plan reference price, not the account's billed
   cost (spec 0209 R21). The plan is declared by the organization, as
