@@ -79,14 +79,21 @@ no-duplication rule, and 31 and 32 the CLI matrix and the website.
    written, naming the installer prompt, setting, or manual step involved,
    and SHALL state the date on which that description was verified against
    `main`. Where no installer path disables capture on a CLI, the guide SHALL
-   say so and SHALL describe only the manual steps that do exist.
+   say so and SHALL describe only the manual steps that do exist. The guide
+   SHALL also state that the framework-owned non-interactive launch sites
+   `docs/usage-capture.md` → *Adopted launch sites* lists write usage records
+   whenever they run, whatever was chosen at install time, SHALL link to that
+   section rather than list the sites, and SHALL state whether `main` offers
+   any switch that stops that channel; the organization note SHALL state the
+   same.
 8. The user guide and the organization note SHALL NOT describe an enable or
    disable path that `main` does not provide.
 9. While enabling capture on Claude Code, Gemini CLI, or Copilot CLI remains
    part of the same installer opt-in that wires conversation-transcript
    recording into MemPalace, the user guide SHALL disclose that coupling
-   where it describes enabling capture on those CLIs, SHALL state what that
-   opt-in additionally installs and records, and SHALL state what the
+   where it describes enabling capture on those CLIs, SHALL state everything
+   else that opt-in installs and records on each of them — every further hook
+   it wires and every setting it writes — and SHALL state what the
    coupling means on a machine without MemPalace. The guide SHALL NOT carry
    that disclosure once `main` no longer couples the two.
 10. The user guide SHALL state, in categories, what a usage record holds and
@@ -109,10 +116,9 @@ no-duplication rule, and 31 and 32 the CLI matrix and the website.
 13. The user guide SHALL explain how to interpret a comparative price and
     SHALL make each of these points, each linked to the per-seam section that
     defines the behavior: every price is a reference figure, not an invoice;
-    Copilot CLI has two billing regimes — usage-based AI Credits for
-    current-billing accounts since 2026-06-01, and premium-request
-    multipliers for legacy annual plans — and the comparative price relates
-    to each as spec 0209 requirements 20 and 21 define; Claude Code
+    Copilot CLI accounts fall under one of two billing regimes — current
+    billing and a legacy premium-request plan — and the comparative price
+    relates to each as spec 0209 requirements 20 and 21 define; Claude Code
     subscriptions and Gemini CLI free tiers bill nothing per token, so a price
     for their records is what the same consumption would cost at listed rates,
     not what the person paid; and a Google model's cache-storage cost is not
@@ -128,11 +134,16 @@ no-duplication rule, and 31 and 32 the CLI matrix and the website.
     links to its mechanics: backfill to `docs/usage-capture.md`, prune and
     unprune to `docs/usage-storage.md`, and removal to the organization note.
 16. The organization note SHALL be the single reference for retention,
-    access, and removal of the data the usage feature holds. For each
-    location the feature writes — the journal and its sidecars, the
-    declarations, the attribution ledger, the price store, the MemPalace
-    mirror, each dashboard form's output, and the capture state — it SHALL
-    state what that location holds and who can read it.
+    access, and removal of the data the usage feature holds. Its account of
+    what is held and who can read it SHALL be stated as a rule over the whole
+    usage root — every location the feature writes there is covered, and a
+    location the feature starts writing after this specification is covered
+    without editing the note — plus the locations the feature writes outside
+    it: the MemPalace mirror and each dashboard form's output. Locations MAY
+    be named as examples, never as a closed list. Every location that can
+    hold usage records or data derived from recorded activity SHALL be
+    identified as such, including any location holding records verbatim
+    before they reach the journal.
 17. The organization note SHALL state that no record, ledger entry, or price
     expires on its own and that data stays until an explicit prune or
     removal, so that retention is the adopting organization's decision.
@@ -154,7 +165,9 @@ no-duplication rule, and 31 and 32 the CLI matrix and the website.
     invoke a usage-capture entry point. Procedure (b) SHALL name the outputs
     a person may have placed outside the usage root — a form A page written
     to a chosen path, redirected form C output — as the person's own to
-    delete.
+    delete, and SHALL state that running an adopted non-interactive launch
+    site afterwards writes to the usage root again, for as long as `main`
+    offers no switch that stops that channel.
 21. After a person follows procedure (a), no item derived from recorded
     activity SHALL remain under the usage root or in the MemPalace mirror,
     except the capture state; the note SHALL state what the capture state
@@ -165,7 +178,12 @@ no-duplication rule, and 31 and 32 the CLI matrix and the website.
     a named list of exceptions, so that a location the feature starts writing
     under the usage root after this specification is covered without editing
     the procedure; neither procedure SHALL rest on a closed list of
-    directories to remove.
+    directories to remove. Each procedure SHALL state its preconditions — at
+    least whether MemPalace must be reachable for the mirror's drawers to be
+    removed, and how the current and future periods, which the period prune
+    refuses without an explicit override, are handled — and SHALL end with a
+    check a person can run to confirm the outcome requirement 20 or 21
+    states.
 23. The organization note SHALL explain the price-source decision as one
     already taken: the MIT-licensed LiteLLM price list pinned to one commit is
     the primary source, OpenRouter is reached only on an explicit, one-shot,
@@ -266,6 +284,23 @@ When a reviewer follows a draft procedure (b) that deletes the usage root
 before disabling Antigravity capture
 Then the status-line command still invokes the capture shim, the installer no
 longer offers its removal, and the draft fails requirement 20
+
+**Scenario:** A probe run after complete removal
+
+Given a person has followed removal procedure (b)
+When a framework-owned non-interactive launch site listed under *Adopted
+launch sites* runs afterwards
+Then the usage root is written again, and the user guide and the
+organization note have both said so, linked to that section, and stated
+whether `main` offers a switch that stops that channel
+
+**Scenario:** Removal attempted while MemPalace is unreachable
+
+Given records were mirrored and the MemPalace daemon is not reachable
+When a person starts removal procedure (b)
+Then the procedure's stated preconditions have told the person that the
+mirror's drawers cannot be removed until MemPalace is reachable, and its
+closing check reports any drawer that remains
 
 **Scenario:** Purging data while capture stays enabled
 
