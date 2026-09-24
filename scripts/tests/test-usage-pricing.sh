@@ -1287,6 +1287,103 @@ else
 fi
 
 # =============================================================================
+# Case 16 — an uncaptured record in a --period selection never reaches
+# model-id resolution: the per-record path marks it, stores nothing for it,
+# and never prices it at zero (R34, #1194)
+# =============================================================================
+echo
+echo "=== Case 16: uncaptured record in a --period selection (R34, #1194) ==="
+new_root_and_pin_into C16_ROOT
+C16_PERIOD="$(node -e "const d=new Date(); console.log(d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0'))")"
+C16_INSTANT="$(node -e "console.log(new Date().toISOString())")"
+
+MR_SESSION="c16-captured-session" MR_IDEMKEY="c16-k1" MR_MODEL_ID="claude-sonnet-5" MR_REQUEST_INSTANT="$C16_INSTANT" \
+  run_driver make-record > "$HELPERS_DIR/c16-captured.json"
+MR_KIND="uncaptured" MR_SESSION="c16-uncaptured-session" MR_IDEMKEY="c16-k2" MR_REQUEST_INSTANT="$C16_INSTANT" \
+  MR_UNCAPTURED_REASON="c16: transcript unavailable" run_driver make-record > "$HELPERS_DIR/c16-uncaptured.json"
+run_driver write "$HELPERS_DIR/c16-captured.json" >/dev/null
+run_driver write "$HELPERS_DIR/c16-uncaptured.json" >/dev/null
+C16_CAPTURED_ID="$(jget "$(cat "$HELPERS_DIR/c16-captured.json")" 'v.recordId')"
+C16_UNCAPTURED_ID="$(jget "$(cat "$HELPERS_DIR/c16-uncaptured.json")" 'v.recordId')"
+
+c16_rollup_before="$(bash "$REPO_DIR/scripts/usage-price.sh" --period "$C16_PERIOD" --cli claude-code --rollup)"
+
+c16_rc=0
+c16_out="$(bash "$REPO_DIR/scripts/usage-price.sh" --period "$C16_PERIOD" --cli claude-code 2>"$HELPERS_DIR/c16-stderr.txt")" || c16_rc=$?
+c16_lines="$(printf '%s\n' "$c16_out" | grep -c . || true)"
+if [ "$c16_rc" = "0" ] && [ "$c16_lines" = "2" ]; then
+  ok "--period over one captured + one uncaptured record exits 0 with one JSONL line per selected record"
+else
+  bad "--period over a selection holding an uncaptured record did not complete (rc=$c16_rc, lines=$c16_lines)" "$c16_out
+$(cat "$HELPERS_DIR/c16-stderr.txt")"
+fi
+
+c16_line_of() {
+  # $1 = recordId — prints that record's JSONL line, or {} when absent.
+  printf '%s\n' "$c16_out" | node -e "
+const id = process.argv[1];
+const lines = require('fs').readFileSync(0, 'utf8').split('\n').filter(Boolean);
+const hit = lines.map((l) => { try { return JSON.parse(l); } catch (e) { return null; } }).find((o) => o && o.recordId === id);
+console.log(JSON.stringify(hit || {}));
+" "$1"
+}
+c16_captured_line="$(c16_line_of "$C16_CAPTURED_ID")"
+c16_uncaptured_line="$(c16_line_of "$C16_UNCAPTURED_ID")"
+
+if [ "$(jget "$c16_captured_line" "typeof v.amount === 'number' && v.amount > 0 && !v.uncaptured && !v.unpriced")" = "true" ]; then
+  ok "the captured record's line carries a numeric, non-zero amount"
+else
+  bad "the captured record's line does not carry a numeric amount" "$c16_captured_line"
+fi
+if [ "$(jget "$c16_uncaptured_line" "v.uncaptured === true && v.kind === 'uncaptured' && v.amount === null && v.amountUsd === null && !Object.prototype.hasOwnProperty.call(v, 'unpriced') && v.resolution && v.resolution.step === 'uncaptured'")" = "true" ]; then
+  ok "the uncaptured record's line is marked uncaptured:true, amount:null, and carries no unpriced flag (a separate R34 tally)"
+else
+  bad "the uncaptured record's line is not the expected uncaptured marker" "$c16_uncaptured_line"
+fi
+
+c16_uncaptured_price_files="$(find "$C16_ROOT/prices" -name "$C16_UNCAPTURED_ID.price.json" 2>/dev/null || true)"
+c16_captured_price_files="$(find "$C16_ROOT/prices" -name "$C16_CAPTURED_ID.price.json" 2>/dev/null || true)"
+if [ -z "$c16_uncaptured_price_files" ] && [ -n "$c16_captured_price_files" ]; then
+  ok "no price file is stored under <root>/prices/** for the uncaptured record (the captured one is stored)"
+else
+  bad "the price store holds the wrong files for Case 16" "uncaptured: ${c16_uncaptured_price_files:-<none>}
+captured: ${c16_captured_price_files:-<none>}"
+fi
+
+c16_rollup_after="$(bash "$REPO_DIR/scripts/usage-price.sh" --period "$C16_PERIOD" --cli claude-code --rollup)"
+if [ "$(jget "$c16_rollup_after" "v.uncapturedCount === 1 && v.combined.unpricedCount === 0 && v.byFidelity['per-request'].count === 1")" = "true" ] \
+  && [ "$c16_rollup_after" = "$c16_rollup_before" ]; then
+  ok "--rollup on the same selection still reports uncapturedCount:1, unpricedCount:0, and is unchanged by the per-record run"
+else
+  bad "--rollup on the Case 16 selection changed or mis-tallies the uncaptured record" "before: $c16_rollup_before
+after:  $c16_rollup_after"
+fi
+
+node -e "
+const fs = require('fs');
+const p = process.argv[1];
+let src = fs.readFileSync(p, 'utf8');
+const needle = \"if (record.kind !== 'captured') return uncapturedMarker(record, currency);\";
+if (!src.includes(needle)) { console.error('FATAL: uncaptured-guard marker not found in store.js'); process.exit(1); }
+src = src.replace(needle, '// MUTATION: uncaptured guard dropped');
+fs.writeFileSync(p, src);
+" "$STORE_JS"
+mut16_rc=0
+bash "$REPO_DIR/scripts/usage-price.sh" --period "$C16_PERIOD" --cli claude-code --no-store \
+  >/dev/null 2>"$HELPERS_DIR/mut16-stderr.txt" || mut16_rc=$?
+git -C "$REPO_DIR" checkout -- "$STORE_JS"
+if [ "$mut16_rc" != "0" ] && grep -qF "toLowerCase" "$HELPERS_DIR/mut16-stderr.txt"; then
+  ok "MUTATION RED: dropping the uncaptured guard sends the record into model-id resolution, which throws (toLowerCase of undefined)"
+else
+  bad "MUTATION not red: the selection still priced without the uncaptured guard (rc=$mut16_rc)" "$(cat "$HELPERS_DIR/mut16-stderr.txt")"
+fi
+if git -C "$REPO_DIR" diff --quiet -- "$STORE_JS"; then
+  ok "store.js is restored after Case 16's mutation"
+else
+  bad "store.js was NOT fully restored after Case 16's mutation"
+fi
+
+# =============================================================================
 # Named ladder fixtures (v1-F2)
 # =============================================================================
 echo

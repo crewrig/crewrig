@@ -580,16 +580,14 @@ const cmds = {
     seedFx(pricingDir);
     writeRecords(path.join(fixturesDir, 'records'));
   },
-  // prime-usd <recordsDir> — stores a USD price for every captured fixture
-  // record through 0209's own priceRecord() (store: true). Not
-  // `usage-price.sh --period`: on origin/main @ ab480c0 that command throws
-  // on a selection holding an uncaptured record (resolve(undefined) ->
-  // "Cannot read properties of undefined (reading 'toLowerCase')").
+  // prime-usd <recordsDir> — stores a USD price for every fixture record
+  // through 0209's own priceRecord() (store: true). An uncaptured fixture
+  // gets priceRecord()'s non-stored R34 marker, so only the captured ones
+  // land under <root>/prices/**.
   async 'prime-usd'(dir) {
     const store = req('scripts/lib/usage-price/store.js');
     for (const name of fs.readdirSync(dir).filter((n) => n.endsWith('.json')).sort()) {
-      const r = readJson(path.join(dir, name));
-      if (r.kind === 'captured') await store.priceRecord(r, { currency: 'USD' });
+      await store.priceRecord(readJson(path.join(dir, name)), { currency: 'USD' });
     }
   },
   'pin-only'(pricingDir) {
