@@ -1,7 +1,7 @@
 ---
 id: "0212"
 slug: usage-documentation
-status: approved
+status: implemented
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 1175
