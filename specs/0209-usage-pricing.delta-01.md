@@ -84,14 +84,15 @@ version: 1.1.0
    fixture holding one `session-cumulative` session wholly inside a period
    P (snapshots at 100, 300, and 500 tokens) and one `session-cumulative`
    session straddling the end of P (a 700-token snapshot in P's last hour
-   and a 900-token snapshot in the following period P+1): that the rollup
-   of prices over P counts only the first session, at the price of its
+   and a 900-token snapshot in the following period P+1), with no
+   selection filter applied to the period rollups: that the rollup of
+   prices over P counts only the first session, at the price of its
    500-token snapshot; that the rollup over P+1 counts the straddling
    session at the price of its 900-token snapshot; that the P and P+1
    contributions sum to the prices of the two sessions' last snapshots,
-   which, with no selection filter applied, each session's own
-   session-scoped rollup reports; that each figure equals spec 0210's dashboard figure for
-   the same period; and that, after an explicit prune of P+1, the rollup
+   as each session's own session-scoped rollup reports them; that each
+   figure equals spec 0210's dashboard figure for the same period; and
+   that, after an explicit prune of P+1, the rollup
    over P counts the straddling session at the price of its 700-token
    snapshot, now its last surviving one.
 
