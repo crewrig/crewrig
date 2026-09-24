@@ -13,19 +13,10 @@
 #   R2 — the setup transform rewrites mempalace-transcript.sh to the installed
 #        target path and worktree-git-guard.sh to the in-repo absolute path.
 #   R3 — zero $CLAUDE_PROJECT_DIR placeholder tokens survive in the patched output.
-#
-# §3 (spec 0206, PLAN v3 step 18) — usage-capture.sh wiring:
-#   (a) the Stop/SessionEnd events each carry TWO DISTINCT installed
-#       commands, one of them naming usage-capture.sh.
-#   (b) the capture command is an in-repo absolute path ending in
-#       /hooks/usage-capture.sh, carrying no unresolved $CLAUDE_PROJECT_DIR
-#       token and no MEMPALACE_TRANSCRIPT_ENABLED prefix.
-#   (c) usage-capture.sh is never install_file'd — the installer's own source
-#       names no such call, and no usage-capture.sh appears under this test's
-#       sandboxed installed-hooks directory. (a)+(c) together are the pair
-#       that catches plan v2's step-14 defect (v2-F1): a manifest wired to an
-#       INSTALLED copy target instead of the in-repo absolute path — (c) is
-#       the one that observes the copy-out directly.
+#   spec 0211 R2 — the session-recording manifest registers no usage-capture.sh
+#        command: usage capture has its own opt-in, covered (with the
+#        never-copied invariant for usage-capture.sh) by
+#        scripts/tests/test-setup-usage-capture-optin.sh.
 #
 # HERMETIC: no HOME writes, no network, no interactive script runs. All
 # transforms target throwaway paths under a temp root removed on exit.
@@ -82,17 +73,12 @@ fi
 echo "§2 setup patch transform (R2, R3)"
 HOOK_TARGET="$TMP_ROOT/claude/hooks/mempalace-transcript.sh"
 GUARD_TARGET="$REPO_DIR/hooks/worktree-git-guard.sh"
-CAPTURE_TARGET="$REPO_DIR/hooks/usage-capture.sh"
 PATCHED="$TMP_ROOT/patched.json"
 
-# usage-capture.sh (spec 0206) is in the guard's class, not the transcript
-# hook's: an in-repo absolute path, never an installed copy — the third
-# gsub below mirrors scripts/setup-claude-interactive.sh's own transform.
-jq --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" --arg capture_path "$CAPTURE_TARGET" \
+jq --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" \
   '(.. | objects | select(.type? == "command") | .command) |=
      (gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path) |
-      gsub("\\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"; $guard_path) |
-      gsub("\\$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh"; $capture_path))' \
+      gsub("\\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"; $guard_path))' \
   "$MANIFEST" > "$PATCHED" 2>/dev/null
 
 if jq -e . "$PATCHED" >/dev/null 2>&1; then
@@ -126,49 +112,12 @@ else
   ok "zero \$CLAUDE_PROJECT_DIR placeholder tokens survive in patched output"
 fi
 
-# ---------------------------------------------------------------------------
-# §3. usage-capture.sh wiring (spec 0206, PLAN v3 step 18).
-# ---------------------------------------------------------------------------
-echo "§3 usage-capture.sh wiring"
-
-for ev in Stop SessionEnd; do
-  cmd0="$(jq -r --arg ev "$ev" '.hooks[$ev][0].hooks[0].command // ""' "$PATCHED" 2>/dev/null)"
-  cmd1="$(jq -r --arg ev "$ev" '.hooks[$ev][0].hooks[1].command // ""' "$PATCHED" 2>/dev/null)"
-
-  # (a) two distinct commands, one naming usage-capture.sh.
-  if [ -n "$cmd0" ] && [ -n "$cmd1" ] && [ "$cmd0" != "$cmd1" ] \
-     && { [[ "$cmd0" == *usage-capture.sh* ]] || [[ "$cmd1" == *usage-capture.sh* ]]; }; then
-    ok "(a) event '$ev' carries two distinct commands, one naming usage-capture.sh"
-  else
-    bad "(a) event '$ev' does not carry two distinct commands with one naming usage-capture.sh (cmd0: $cmd0 | cmd1: $cmd1)"
-  fi
-
-  capture_cmd="$cmd0"
-  [[ "$capture_cmd" == *usage-capture.sh* ]] || capture_cmd="$cmd1"
-
-  # (b) in-repo absolute path, no unresolved token, no env prefix.
-  if [[ "$capture_cmd" == *"\"$CAPTURE_TARGET\""* ]] && [[ "$capture_cmd" == */hooks/usage-capture.sh\"* ]] \
-     && [[ "$capture_cmd" != *'$CLAUDE_PROJECT_DIR'* ]] && [[ "$capture_cmd" != *MEMPALACE_TRANSCRIPT_ENABLED* ]]; then
-    ok "(b) event '$ev' capture command is the in-repo absolute path, no token, no env prefix"
-  else
-    bad "(b) event '$ev' capture command malformed (got: $capture_cmd)"
-  fi
-done
-
-# (c) usage-capture.sh is never install_file'd, and none appears under this
-# test's sandboxed installed-hooks directory (the one that observes a
-# copy-out directly — v2-F1's exact defect).
-if grep -qE 'install_file[^#]*usage-capture\.sh' "$SETUP"; then
-  bad "(c) $SETUP appears to install_file usage-capture.sh — it must be wired by in-repo absolute path, never copied"
+# spec 0211 R2 — session recording no longer registers usage capture.
+if jq -e '[.. | objects | select(.type? == "command") | .command | select(contains("usage-capture.sh"))] | length == 0' \
+     "$PATCHED" >/dev/null 2>&1; then
+  ok "no patched command names usage-capture.sh (spec 0211 R2)"
 else
-  ok "(c) $SETUP never install_file's usage-capture.sh"
-fi
-SANDBOX_HOOKS_DIR="$(dirname "$HOOK_TARGET")"
-mkdir -p "$SANDBOX_HOOKS_DIR"
-if [ -f "$SANDBOX_HOOKS_DIR/usage-capture.sh" ]; then
-  bad "(c) usage-capture.sh unexpectedly exists under the sandboxed installed hooks directory ($SANDBOX_HOOKS_DIR)"
-else
-  ok "(c) no usage-capture.sh under the sandboxed installed hooks directory ($SANDBOX_HOOKS_DIR)"
+  bad "a patched session-recording command names usage-capture.sh (spec 0211 R2)"
 fi
 
 # ---------------------------------------------------------------------------

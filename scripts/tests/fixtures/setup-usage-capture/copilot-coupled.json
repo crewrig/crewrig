@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "disableAllHooks": false,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "command": "bash \"__GUARD_ABS__\""
+      }
+    ],
+    "sessionStart": [
+      {
+        "type": "command",
+        "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash \"__HOOK_TARGET__\""
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash \"__HOOK_TARGET__\""
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash \"__HOOK_TARGET__\""
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash \"__HOOK_TARGET__\""
+      },
+      {
+        "type": "command",
+        "command": "bash \"__CAPTURE_ABS__\" copilot-cli agentStop"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash \"__HOOK_TARGET__\""
+      },
+      {
+        "type": "command",
+        "command": "bash \"__CAPTURE_ABS__\" copilot-cli sessionEnd"
+      }
+    ]
+  }
+}

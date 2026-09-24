@@ -1,0 +1,70 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"__GUARD_ABS__\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"__HOOK_TARGET__\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"__HOOK_TARGET__\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"__HOOK_TARGET__\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"__CAPTURE_ABS__\" claude-code Stop"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"__HOOK_TARGET__\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"__CAPTURE_ABS__\" claude-code SessionEnd"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "MEMPALACE_TRANSCRIPT_ENABLED": "1"
+  }
+}

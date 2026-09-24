@@ -1,0 +1,64 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "transcript-git-guard",
+            "command": "bash __GUARD_ABS__"
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "transcript-user-prompt",
+            "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash __HOOK_TARGET__"
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "transcript-tool-use",
+            "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash __HOOK_TARGET__"
+          }
+        ]
+      }
+    ],
+    "AfterModel": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "transcript-agent-response",
+            "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash __HOOK_TARGET__"
+          },
+          {
+            "type": "command",
+            "name": "usage-capture-agent-response",
+            "command": "bash __CAPTURE_ABS__ gemini-cli AfterModel"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "transcript-session-end",
+            "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash __HOOK_TARGET__"
+          }
+        ]
+      }
+    ]
+  }
+}
