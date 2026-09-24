@@ -155,6 +155,14 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > capability also declares `requires.history-depth: full` so the base ref resolves
 > for the changeset short-circuit. This paragraph discharges the `ci/`
 > CLI-matrix-update obligation for spec 0157.
+>
+> **Usage tracking, end to end (spec 0212).** Rows 8, 8c, 8d, 11 and 11b
+> describe the usage-capture wiring and commands CLI by CLI. How those pieces
+> fit together is explained in the
+> [usage architecture overview](usage-overview.md), and how a person switches
+> capture on and off on each CLI, reads the dashboard, and removes the data is
+> explained in the [usage guide](usage-guide.md). This entry adds links only;
+> the rows, their verdicts, and their evidence are unchanged.
 
 ## Parity gaps
 
