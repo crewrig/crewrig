@@ -16,6 +16,17 @@
 // recomputes rather than returning the wrong denomination. `--as-of-today`
 // always recomputes, re-resolving the fixing through fx's own freshness
 // gate and stamping a fresh computedAt, regardless of cache validity (R28).
+//
+// Uncaptured records (R34): a record whose kind is not `captured` carries no
+// modelId and no tokens by contract (docs/usage-record-format.md ->
+// Uncaptured), so priceRecord() never hands it to model-id resolution. The
+// guard sits here, at the caller, not in resolve.js: R34 counts `uncaptured`
+// and `unpriced` as two SEPARATE tallies, and a resolver-level guard would
+// silently fold the former into the latter. Such a record gets a non-stored
+// marker instead — `uncaptured: true`, `amount: null`, never `unpriced`,
+// never a numeric zero — and nothing is written under pricesRoot() for it:
+// there is no price to store, and a stored file would later be read back by
+// readPrices() as if it were one.
 
 'use strict';
 
@@ -144,12 +155,32 @@ async function computePriceObject(record, opts) {
   return price;
 }
 
+// uncapturedMarker(record, currency) — the non-stored R34 marker a record of
+// kind `uncaptured` receives in place of a price (see the file-top note):
+// field names match a priced object's, with no amount, no snapshot and no
+// timestamps, because nothing was computed.
+function uncapturedMarker(record, currency) {
+  return {
+    recordId: record.recordId,
+    cli: record.provenance.cli,
+    kind: 'uncaptured',
+    uncaptured: true,
+    amount: null,
+    amountUsd: null,
+    currency,
+    resolution: { step: 'uncaptured' },
+    disclaimer: 'reference figure, not an invoice',
+  };
+}
+
 // priceRecord(record, opts) — the read-through entry point every caller
 // (the CLI, rollup.js) uses. opts: {currency, asOfToday, store, ctx,
-// pricelistSnapshot, org}.
+// pricelistSnapshot, org}. A record whose kind is not `captured` returns
+// uncapturedMarker() before any cache read, resolution or write (R34).
 async function priceRecord(record, opts) {
   opts = opts || {};
   const currency = opts.currency || 'USD';
+  if (record.kind !== 'captured') return uncapturedMarker(record, currency);
   const asOfToday = !!opts.asOfToday;
   const doStore = opts.store !== false;
   const pricelistSnapshot = opts.pricelistSnapshot || pricelist.pinned();
@@ -177,7 +208,8 @@ async function priceRecord(record, opts) {
 }
 
 // priceSelector(selector, opts) — computes (and by default stores) a price
-// for every record the selector matches (0207's own read surface).
+// for every record the selector matches (0207's own read surface); an
+// uncaptured record yields its non-stored marker in the same position (R34).
 async function priceSelector(selector, opts) {
   const records = query.run(selector);
   const results = [];

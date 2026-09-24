@@ -7,9 +7,11 @@
 // --refresh-fx[--fx-mirror], --cross-check.
 //
 // Output is JSONL, one price per line, each carrying the three R27
-// timestamps, the resolution step, every flag, and the R31 disclaimer;
-// --rollup emits one JSON object with the per-fidelity sums, the mixed
-// marker, and the two separate tallies.
+// timestamps, the resolution step, every flag, and the R31 disclaimer; an
+// uncaptured record's line is instead store.js's R34 marker (`uncaptured:
+// true`, `amount: null`, no timestamps, never stored); --rollup emits one
+// JSON object with the per-fidelity sums, the mixed marker, and the two
+// separate tallies.
 //
 // Seam (f) (#1173) consumes store.readPrices(selector) and rollup.rollup
 // (selector) plus the <root>/prices/** layout directly — this file is the
