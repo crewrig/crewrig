@@ -35,6 +35,27 @@ This org override table is never part of the pinned primary source; it is always
 
 The org table occupies two positions in this ladder: `org-exact` (before primary exact), and `org-added` (after family fallback). This design ensures your corrections always win, and your additions fill gaps after all primary-source strategies are exhausted.
 
+### Declaring a Copilot CLI billing plan
+
+No usage record names the billing plan of the Copilot CLI account that produced it, so the org table declares it, in an optional `copilot` object beside `entries`. Both keys are optional:
+
+```json
+{
+  "entries": {},
+  "copilot": {
+    "plan": "legacy-premium-request",
+    "aiuRateUsd": 0.04
+  }
+}
+```
+
+- **`copilot.plan`** names the account's billing arrangement: `current-billing` or `legacy-premium-request`.
+  - `legacy-premium-request` (spec 0209 R21): every `copilot-cli` price computed from the price list carries the caveat `"copilot": {"legacyPlanReference": true, "caveat": "legacy-plan-reference-price"}` in the price object, naming it a legacy-plan reference price rather than the account's billed cost. A price computed from the CLI's own first-party figures carries no caveat, and neither does an unpriced record.
+  - `current-billing` (spec 0209 R20), any other value, or no declaration at all adds no caveat. A current-billing record is priced from the CLI's own first-party figures when its `raw` block carries them, and from the price list otherwise. No capture adapter records first-party figures today, so every Copilot CLI price on `main` comes from the price list.
+- **`copilot.aiuRateUsd`** is the US-dollar rate per AIU. It is read only for a record whose `raw` block carries both `total_nano_aiu` and `request_multiplier`, which the first-party path then prices at this rate. The framework never infers a rate from an account's usage. No capture adapter puts those two fields in `raw` today, so on `main` this key changes no price. The `0.04` above is illustrative, not a published rate.
+
+`model-prices.org.json` ships with an empty `copilot` object, so no plan is declared until the adopting organization declares one.
+
 ## Refreshing the price list and exchange rates
 
 Use `--refresh-pricelist` to fetch the current primary-source snapshot by its commit SHA:
