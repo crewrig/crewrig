@@ -23,11 +23,15 @@ const FIDELITIES = ['per-request', 'run-total', 'session-cumulative'];
 // than merely asserted. Sums each fidelity bucket; emits a combined total
 // only when opts.combined, carrying `mixed: [<every fidelity combined>]`
 // (R33); `uncaptured` and `unpriced` are two separate tallies, neither
-// contributing a zero to any total (R34).
+// contributing a zero to any total (R34). A --period P selector reads
+// query.rollupInput()'s window and places after the last-snapshot choice
+// (spec 0209 delta-01 R43-R45), so a session-cumulative session counts only
+// in the month of its last snapshot over the whole selection. Each bucket
+// reports pricedCount = count - unpricedCount (R47).
 async function rollup(selector, opts) {
   opts = opts || {};
-  const records = query.run(selector);
-  const { byFidelity, uncaptured } = storageRollup.contributingRecords(records);
+  const { records, place } = query.rollupInput(selector);
+  const { byFidelity, uncaptured } = storageRollup.contributingRecords(records, place);
 
   const pricelistSnapshot = opts.pricelistSnapshot || pricelist.pinned();
   const org = opts.org || store.loadOrgTable();
@@ -44,7 +48,7 @@ async function rollup(selector, opts) {
         sum += price.amount;
       }
     }
-    return { sum, unpricedCount, count: bucketRecords.length };
+    return { sum, pricedCount: bucketRecords.length - unpricedCount, unpricedCount, count: bucketRecords.length };
   }
 
   const result = {

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "captured",
+  "fidelity": "session-cumulative",
+  "recordId": "1591060cb96b1d057a9ff862d32c4b369d82a47a99ba7b05160c0cfebf50c999",
+  "idempotencyKey": "attr-d01-session-b-sc-1",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "2.1.4",
+    "captureChannel": "own-record-tail",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "d01-session-b",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "unknown"
+  },
+  "timing": {
+    "requestInstant": "2026-05-31T23:00:00.000Z",
+    "captureInstant": "2026-05-31T23:00:01.000Z"
+  },
+  "modelId": "claude-sonnet-5",
+  "interaction": "user-turn",
+  "tokens": {
+    "netInput": 700,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "output": 0,
+    "reasoning": 0
+  },
+  "raw": {
+    "vendor": "test-fixture",
+    "usage": {
+      "input_tokens": 700,
+      "output_tokens": 0
+    }
+  },
+  "rawStatus": "complete"
+}

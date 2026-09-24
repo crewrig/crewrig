@@ -1,5 +1,6 @@
 // source.js — the dashboard's one read of the journal (spec 0210 R1/R21;
-// PLAN v2 D7, step 4). Reads only through 0207's query.run(); layout.js
+// PLAN v2 D7, step 4). Reads only through 0207's query module (run() and
+// readWindow(), which itself reads through run()); layout.js
 // supplies the journal root and the entry-name predicate, never a path this
 // module then opens as a record.
 //
@@ -9,13 +10,12 @@
 //
 // 1. A walking selector (--session, --agent+--parent, --task-key, --asset, in
 //    that priority) already reads every partition: one run(), no widening.
-// 2. Otherwise the months are the sorted union of journalRoot()/<cli>/<YYYY-MM>
-//    names, each read with run({period, cli?}). Months before month(lower)
-//    are skipped: a record sits in its own requestInstant month, and an
-//    earlier record can never be the last snapshot of a session that has an
-//    in-range one. Past month(upper), only captured session-cumulative
-//    records of sessions touched in range are kept — the only later records
-//    that can supersede an in-range snapshot — up to the newest month.
+// 2. Otherwise the records are query.readWindow()'s over the store's months
+//    (the sorted union of journalRoot()/<cli>/<YYYY-MM> names), from
+//    month(lower) to month(upper) plus the later captured session-cumulative
+//    records of sessions touched in range. The period rollups of
+//    usage:query and usage:price read the same window (spec 0209 delta-01),
+//    so the dashboard and both commands share one lookahead.
 
 'use strict';
 
@@ -64,10 +64,6 @@ function walkingSelector(sel) {
   return null;
 }
 
-function isSessionCumulative(r) {
-  return r.kind === 'captured' && r.fidelity === 'session-cumulative';
-}
-
 function byRecordId(a, b) {
   return a.recordId < b.recordId ? -1 : a.recordId > b.recordId ? 1 : 0;
 }
@@ -109,23 +105,15 @@ function read(filters) {
       const day = buckets.dayKey(r.timing.requestInstant);
       return (!lower || day >= lower) && (!upper || day <= upper);
     };
-    const touched = new Set();
-
-    for (const month of store.months) {
-      if (lowerMonth && month < lowerMonth) continue;
-      if (upperMonth && month > upperMonth && touched.size === 0) break;
-      const got = query.run({ period: month, cli: sel.cli, ...base }).filter(pred);
-      if (!upperMonth || month <= upperMonth) {
-        for (const r of got) {
-          records.push(r);
-          if (isSessionCumulative(r) && inRange(r)) touched.add(r.identity.sessionId);
-        }
-      } else {
-        for (const r of got) {
-          if (isSessionCumulative(r) && touched.has(r.identity.sessionId)) records.push(r);
-        }
-      }
-    }
+    records = query.readWindow({
+      fromMonth: lowerMonth,
+      toMonth: upperMonth,
+      inRange,
+      admit: pred,
+      cli: sel.cli,
+      noLedger: sel.noLedger,
+      months: store.months,
+    });
   }
 
   records.sort(byRecordId);

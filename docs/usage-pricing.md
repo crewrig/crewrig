@@ -105,6 +105,21 @@ scripts/lib/usage-price/cli.js --cross-check gpt-4-turbo
 
 This invokes the fetcher once, in-process, on explicit human command, reaches OpenRouter only after you explicitly request it, and writes nothing—neither cache file nor stored price. The framework ships the fetcher in every fork, but it is never invoked automatically and reaches OpenRouter only on your explicit one-shot human-initiated read, which the OpenRouter Terms of Service section 7 (Prohibited Conduct) permits as a use case outside the ban on *"scripts, robots or any other means or processes … to scrape or copy"*.
 
+## Period rollups
+
+`task usage:query -- --period P --rollup` and `task usage:price -- --period P --rollup` sum a calendar month. `per-request`, `run-total`, and `uncaptured` records count in the month of their own `timing.requestInstant`. A `session-cumulative` session counts once, through its last snapshot, and only in one month:
+
+- The last snapshot is chosen over every snapshot of the session that the selection admits, in every month, not only among those inside `P`. The last is the one with the latest `timing.requestInstant`, ties broken by the latest `timing.captureInstant`, then by the greatest `recordId`.
+- The selection (`--cli`, `--fidelity`, and the attribution ledger unless `--no-ledger`) applies before that choice. The period applies after it.
+- The session counts in the month holding its last snapshot's `timing.requestInstant`, and in no other month. A month that holds only earlier snapshots of the session receives nothing from it: no price, no priced count, and no `unpriced` count.
+
+A session with a 700-token snapshot on the last evening of September and a 900-token snapshot early on 1 October counts 900 tokens in October and nothing in September. Summing the months therefore counts each session exactly once, and a month's figures agree with the dashboard's for the same month (see [Usage dashboard](usage-dashboard.md)). Each `usage:price --rollup` fidelity bucket reports `sum`, `pricedCount`, `unpricedCount`, and `count`.
+
+The figures are computed from the snapshots in the store at the time of the rollup and are never frozen, so an ended month's `session-cumulative` figure can still move in two ways:
+
+1. **A straddling session keeps recording.** A session that was active when the month ended records a later snapshot in the next month. It then leaves the ended month and counts in the later one.
+2. **A later month is pruned.** An explicit `task usage:prune` of a later month removes the snapshot that was a session's last. The session's last *surviving* snapshot then counts, which can bring it back into the ended month.
+
 ## Known under-estimates
 
 Computed prices may be under-estimates in the following cases, each flagged in the price object:
