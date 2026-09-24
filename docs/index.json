@@ -185,6 +185,11 @@
           "title": "Usage pricing",
           "path": "docs/usage-pricing.md",
           "nav_order": 140
+        },
+        {
+          "title": "Usage dashboard",
+          "path": "docs/usage-dashboard.md",
+          "nav_order": 145
         }
       ]
     },

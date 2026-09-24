@@ -1,6 +1,6 @@
 # Usage dashboard
 
-<!-- crewrig-doc: published=false -->
+<!-- crewrig-doc: section=reference nav_order=145 published=true title="Usage dashboard" -->
 
 The usage dashboard is the one place to see what a period, a session, an
 agent, a CLI, a task, or an external asset consumed, and what that
