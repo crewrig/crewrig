@@ -8,8 +8,12 @@
 # This file owns every read and every write of a capture entry in a CLI's hook
 # configuration: detection, enable, keep, remove, and the preservation step the
 # session-recording writer runs (merge_session_recording_hooks). Ownership is
-# decided by CONTENT, never by position: a capture entry is any command naming
-# `/hooks/usage-capture.sh`, wherever that path points (R10).
+# decided by CONTENT, never by position: a capture entry is a command that
+# invokes a script path ending in `/hooks/usage-capture.sh` with the argv
+# `<cli-id> <Event>` crewrig writes, wherever that path points (R10). The
+# signature is positive (see uc_sig_re) so an operator's own hook that merely
+# names a script called usage-capture.sh is never removed, kept, deduplicated
+# or re-pointed (#1174, security review S2).
 #
 # <cli> is one of `claude`, `gemini`, `copilot`:
 #   - claude / gemini are GROUPED: .hooks[<Event>][] = {<selector keys>, hooks:[handler…]}
@@ -34,18 +38,42 @@
 # Every program is compiled with `--arg shape grouped|flat`.
 # shellcheck disable=SC2016  # jq program text, not shell expansions
 _UC_JQ_DEFS='
-def uc_is_capture:
-  (type == "object")
-  and ((.command // "") | if type == "string"
-       then test("/hooks/usage-capture\\.sh([\"\\x27 ]|$)") else false end);
+# The capture signature, matched against the WHOLE command:
+#   [VAR=value ...] [env] [bash|sh] <path> <cli-id> <Event>
+# <path> is double-quoted, single-quoted, or an unquoted token (the legacy
+# Gemini form of origin/main), and ends in `/hooks/usage-capture.sh`; <cli-id>
+# is one of the three crewrig ids. `pre` and `post` are kept so a re-point rebuilds
+# the command around a new, double-quoted path without touching anything else.
+def uc_sig_re:
+  "\\A(?<pre>\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh)\\s+)?)"
+  + "(?:\"(?<dq>[^\"]*/hooks/usage-capture\\.sh)\"|\\x27(?<sq>[^\\x27]*/hooks/usage-capture\\.sh)\\x27|(?<uq>[^\\s\"\\x27]*/hooks/usage-capture\\.sh))"
+  + "(?<post>\\s+(?:claude-code|gemini-cli|copilot-cli)\\s+[A-Za-z]+\\s*)\\z";
 
-# The registered script path: quoted form first, then an unquoted token.
-def uc_path:
-  (.command // "") as $c
-  | if ($c | type) != "string" then null
-    else ([$c | capture("\"(?<p>[^\"]*/hooks/usage-capture\\.sh)\"") | .p][0]
-          // [$c | capture("(?<p>[^\"\\x27 ]*/hooks/usage-capture\\.sh)(?:[\"\\x27 ]|$)") | .p][0])
-    end;
+# The one legacy form an unquoted token cannot express: origin/main wrote the
+# Gemini command unquoted, so a checkout path with a space gave
+# `bash /My Projects/.../hooks/usage-capture.sh gemini-cli AfterModel`. Only
+# that exact shape (absolute path, plain `bash`, Gemini argv) is recognised.
+def uc_legacy_re:
+  "\\A(?<pre>bash\\s+)(?<uq>/[^\"\\x27\\n]*/hooks/usage-capture\\.sh)(?<post>\\s+gemini-cli\\s+AfterModel\\s*)\\z";
+
+# {pre, path, post, quoted} for a capture handler, null for anything else.
+def uc_parse:
+  if type == "object" and ((.type // "command") == "command")
+     and ((.command | type) == "string")
+  then ([.command | capture(uc_sig_re), capture(uc_legacy_re)] | if length > 0
+          then .[0] | {pre, path: (.dq // .sq // .uq), post, quoted: (.uq == null)}
+          else null end)
+  else null end;
+
+def uc_is_capture: uc_parse != null;
+
+# The registered script path, quotes stripped.
+def uc_path: uc_parse | if . == null then null else .path end;
+
+# Rebuild a capture handler around a new script path, double-quoted.
+def uc_with_path($p):
+  uc_parse as $x
+  | if $x == null then . else .command = ($x.pre + "\"" + $p + "\"" + $x.post) end;
 
 # Every handler as {event, selector, handler}; selector is the group object
 # minus its `hooks` key on grouped shapes, null on the flat shape.
@@ -111,13 +139,18 @@ def uc_add($x):
 
 def uc_reinject($fp): uc_strip | reduce $fp[] as $x (.; uc_add($x));
 
-# keep (a): re-point, in place, a capture handler whose path vanished.
+# keep (a): re-point, in place, a capture handler whose path vanished. Only the
+# path token changes (it comes back double-quoted); prefix and argv are kept.
+# A live path left unquoted with a space in it (the legacy Gemini form above,
+# which never ran) keeps its path and only gains the quotes.
+def uc_needs_quotes: uc_parse | . != null and (.quoted | not) and (.path | test("\\s"));
+
 def uc_repoint_handler($vanished; $abs):
-  if uc_is_capture then
-    uc_path as $p
-    | if $p != null and any($vanished[]; . == $p)
-      then .command |= (split($p) | join($abs)) else . end
-  else . end;
+  uc_path as $p
+  | if $p == null then .
+    elif any($vanished[]; . == $p) then uc_with_path($abs)
+    elif uc_needs_quotes then uc_with_path($p)
+    else . end;
 
 def uc_repoint_event($vanished; $abs):
   if $shape == "flat" then map(uc_repoint_handler($vanished; $abs))
@@ -125,43 +158,71 @@ def uc_repoint_event($vanished; $abs):
            then .hooks |= map(uc_repoint_handler($vanished; $abs)) else . end)
   end;
 
-# keep (b): keep only the first capture handler of one event, pruning a group
-# that this deletion alone emptied.
-def uc_dedup_event:
-  if $shape == "flat" then
-    [foreach .[] as $h ({seen: false, keep: true};
-       if ($h | uc_is_capture)
-       then (if .seen then {seen: true, keep: false} else {seen: true, keep: true} end)
-       else {seen: .seen, keep: true} end;
-       select(.keep) | $h)]
-  else
-    [foreach .[] as $g ({seen: false, drop: false, g: null};
-       if ($g | type) == "object" and ($g.hooks | type) == "array" then
-         ($g.hooks | length) as $n
-         | (reduce $g.hooks[] as $h ({seen: .seen, hs: []};
-              if ($h | uc_is_capture)
-              then (if .seen then . else (.hs += [$h] | .seen = true) end)
-              else .hs += [$h] end)) as $r
-         | {seen: $r.seen,
-            drop: ($n > 0 and ($r.hs | length) == 0),
-            g: ($g | .hooks = $r.hs)}
-       else {seen: .seen, drop: false, g: $g} end;
-       select(.drop | not) | .g)]
+# keep (b): keep exactly one capture handler of one event and delete the
+# others, pruning a group that this deletion alone emptied. The survivor is the
+# first handler whose path is live; failing that the first unresolvable one
+# (a `$…`, `~…` or relative path, never judged); failing that the first one
+# (#1174 i1-F6: a live command is never dropped in favour of a dead one).
+def uc_rank($live; $vanished):
+  uc_path as $p
+  | if any($live[]; . == $p) then 0
+    elif any($vanished[]; . == $p) then 2
+    else 1 end;
+
+def uc_event_handlers:
+  if $shape == "flat" then .[]
+  else .[] | select(type == "object" and (.hooks | type) == "array") | .hooks[] end;
+
+def uc_dedup_event($live; $vanished):
+  ([uc_event_handlers | select(uc_is_capture) | uc_rank($live; $vanished)] | min) as $best
+  | if $best == null then . else
+    if $shape == "flat" then
+      [foreach .[] as $h ({done: false, keep: true};
+         if ($h | uc_is_capture) then
+           (if (.done | not) and (($h | uc_rank($live; $vanished)) == $best)
+            then {done: true, keep: true} else {done: .done, keep: false} end)
+         else {done: .done, keep: true} end;
+         select(.keep) | $h)]
+    else
+      [foreach .[] as $g ({done: false, drop: false, g: null};
+         if ($g | type) == "object" and ($g.hooks | type) == "array" then
+           ($g.hooks | length) as $n
+           | (reduce $g.hooks[] as $h ({done: .done, hs: []};
+                if ($h | uc_is_capture) then
+                  (if (.done | not) and (($h | uc_rank($live; $vanished)) == $best)
+                   then (.hs += [$h] | .done = true) else . end)
+                else .hs += [$h] end)) as $r
+           | {done: $r.done,
+              drop: ($n > 0 and ($r.hs | length) == 0),
+              g: ($g | .hooks = $r.hs)}
+         else {done: .done, drop: false, g: $g} end;
+         select(.drop | not) | .g)]
+    end
   end;
 
 def uc_event_has_capture($e):
   any(uc_footprint[]; .event == $e);
 
-# keep (a)-(c) on the R5 events only; capture handlers on any other event are
+# keep (b), (a), (c) on the R5 events only — dedup first, so the survivor is
+# chosen on the paths as registered; capture handlers on any other event are
 # left untouched (R11: keep "SHALL change no other entry").
-def uc_keep($r5; $vanished; $abs; $fragfp; $target):
+def uc_keep_dedup($r5; $live; $vanished):
   reduce $r5[] as $e (.;
     if (.hooks | type) == "object" and (.hooks[$e] | type) == "array"
-    then .hooks[$e] |= (uc_repoint_event($vanished; $abs) | uc_dedup_event)
-    else . end)
+    then .hooks[$e] |= uc_dedup_event($live; $vanished) else . end);
+
+def uc_r5_paths($r5):
+  [uc_footprint[] | select(.event as $e | any($r5[]; . == $e))
+   | .handler | uc_path | select(. != null)] | uc_distinct;
+
+def uc_keep($r5; $live; $vanished; $abs; $fragfp; $target):
+  uc_keep_dedup($r5; $live; $vanished)
+  | reduce $r5[] as $e (.;
+      if (.hooks | type) == "object" and (.hooks[$e] | type) == "array"
+      then .hooks[$e] |= uc_repoint_event($vanished; $abs) else . end)
   | reduce $fragfp[] as $x (.;
       if uc_event_has_capture($x.event) then .
-      else uc_add($x | .handler.command |= (split($abs) | join($target))) end);
+      else uc_add($x | .handler |= uc_with_path($target)) end);
 '
 
 # --- small internals ------------------------------------------------------------
@@ -189,6 +250,33 @@ _uc_token() {
 _uc_jq() {
   local shape="$1"; shift
   jq --arg shape "$shape" "$@"
+}
+
+# _uc_unsafe_path <path> — 0 when the path cannot be spliced, double-quoted,
+# into a shell command without changing its meaning: it holds `"`, `$`, a
+# backtick, a backslash or a newline (#1174, security review S3).
+_uc_unsafe_path() {
+  local nl='
+'
+  case "$1" in
+    *'"'*|*'$'*|*'`'*|*'\'*|*"$nl"*) return 0 ;;
+  esac
+  return 1
+}
+
+# _uc_unresolvable_path <path> — 0 when setup cannot judge whether the path
+# resolves: it is relative, or holds `$` or a backtick the hook's shell would
+# expand (`$HOME/…`, `${CLAUDE_PROJECT_DIR}/…`, `~/…`). Such a path is never
+# "vanished" and never re-pointed (#1174, security review S2).
+_uc_unresolvable_path() {
+  case "$1" in
+    /*) ;;
+    *) return 0 ;;
+  esac
+  case "$1" in
+    *'$'*|*'`'*) return 0 ;;
+  esac
+  return 1
 }
 
 # _uc_is_object <file> — 0 when the file parses as one JSON object.
@@ -226,15 +314,26 @@ _uc_create_empty() {
 # --- public API -----------------------------------------------------------------
 
 # usage_capture_abs <repo_dir> — the in-repo absolute path of the capture
-# script (CAPTURE_ABS), physical (`pwd -P`). Returns 1 when it does not exist.
+# script (CAPTURE_ABS), physical (`pwd -P`). Returns 1 when it does not exist,
+# or when the checkout path holds a character that would change the meaning of
+# the double-quoted hook command (`"`, `$`, backtick, backslash, newline).
 usage_capture_abs() {
-  local src="$1/hooks/usage-capture.sh" dir
+  local src="$1/hooks/usage-capture.sh" dir abs
+  if _uc_unsafe_path "$1"; then
+    echo "  ERROR: the checkout path $1 contains a character (\" \$ \` \\ or a newline) that cannot be wired safely into a hook command; move the checkout to a path without it." >&2
+    return 1
+  fi
   if [ ! -f "$src" ]; then
     echo "  ERROR: capture script not found at $src." >&2
     return 1
   fi
   dir="$(cd "$(dirname "$src")" && pwd -P)" || return 1
-  printf '%s/%s\n' "$dir" "$(basename "$src")"
+  abs="$dir/$(basename "$src")"
+  if _uc_unsafe_path "$abs"; then
+    echo "  ERROR: the checkout path $dir contains a character (\" \$ \` \\ or a newline) that cannot be wired safely into a hook command; move the checkout to a path without it." >&2
+    return 1
+  fi
+  printf '%s\n' "$abs"
 }
 
 # usage_capture_fragment <cli> <repo_dir> — print the CLI's capture fragment
@@ -263,6 +362,14 @@ usage_capture_fragment() {
       return 1
       ;;
   esac
+  # Round trip: every command the fragment registers must read back as a
+  # capture handler, or detection, keep and remove would not recognise it.
+  if ! _uc_jq "$(_uc_shape "$cli")" -e \
+      "$_UC_JQ_DEFS [.. | objects | select(.type? == \"command\")] | length > 0 and all(uc_is_capture)" \
+      >/dev/null 2>&1 <<< "$out"; then
+    echo "  ERROR: the $cli capture fragment $frag_src does not match the capture signature." >&2
+    return 1
+  fi
   printf '%s\n' "$out"
 }
 
@@ -361,12 +468,17 @@ usage_capture_enable() {
 }
 
 # usage_capture_keep <cli> <config> <repo_dir> — R11. On the R5 events:
-# (a) re-point in place a handler whose registered path no longer resolves,
-# (b) drop all but the first capture handler, (c) add the fragment handler to
-# an event that has none. Writes nothing (and backs up nothing) on a no-op.
+# (b) keep one capture handler per event — the first live one, else the first
+# unresolvable one, else the first — (a) re-point in place a kept handler whose
+# registered path no longer resolves, (c) add the fragment handler to an event
+# that has none. A path is live when it is absolute, holds no `$` or backtick,
+# and `[ -f ]` finds it; vanished when absolute, expansion-free and missing;
+# unresolvable otherwise, and then left as it is. Writes nothing (and backs up
+# nothing) on a no-op.
 usage_capture_keep() {
   local cli="$1" config="$2" repo_dir="$3" shape frag abs r5 fragfp
-  local paths p vanished_list="" target="" vanished missing wrote_abs=0 before after
+  local paths p vanished_list="" live_list="" target="" vanished live missing
+  local repointed requoted wrote_abs=0 before after
   shape="$(_uc_shape "$cli")" || return 1
   if [ ! -f "$config" ]; then
     echo "  No usage-capture entry in $config; nothing to keep."
@@ -382,12 +494,19 @@ usage_capture_keep() {
   fragfp="$(_uc_jq "$shape" -c "$_UC_JQ_DEFS uc_footprint" <<< "$frag")" || return 1
   # Paths registered on the R5 events, in order.
   paths="$(_uc_jq "$shape" -r --argjson r5 "$r5" \
-    "$_UC_JQ_DEFS [uc_footprint[] | select(.event as \$e | any(\$r5[]; . == \$e)) | .handler | uc_path | select(. != null)] | uc_distinct | .[]" \
+    "$_UC_JQ_DEFS uc_r5_paths(\$r5) | .[]" \
     "$config")" || return 1
+  # Paths are decoded from JSON one per line (a path cannot hold a newline
+  # once usage_capture_abs refuses it; a hand-written one would split into
+  # fragments that match nothing and so change nothing).
   while IFS= read -r p; do
     [ -n "$p" ] || continue
-    if [ -f "$p" ]; then
-      [ -n "$target" ] || target="$p"
+    if _uc_unresolvable_path "$p"; then
+      continue
+    elif [ -f "$p" ]; then
+      live_list="${live_list}${p}
+"
+      if [ -z "$target" ] && ! _uc_unsafe_path "$p"; then target="$p"; fi
     else
       vanished_list="${vanished_list}${p}
 "
@@ -395,13 +514,14 @@ usage_capture_keep() {
   done <<< "$paths"
   [ -n "$target" ] || target="$abs"
   vanished="$(printf '%s' "$vanished_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')" || return 1
+  live="$(printf '%s' "$live_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')" || return 1
   # Events of R5 with no capture handler before this run: (c) adds one there.
   missing="$(_uc_jq "$shape" -r --argjson r5 "$r5" \
     "$_UC_JQ_DEFS [\$r5[] as \$e | select(any(uc_footprint[]; .event == \$e) | not) | \$e] | length" \
     "$config")" || return 1
-  local program="$_UC_JQ_DEFS uc_keep(\$r5; \$vanished; \$abs; \$fragfp; \$target)"
+  local program="$_UC_JQ_DEFS uc_keep(\$r5; \$live; \$vanished; \$abs; \$fragfp; \$target)"
   before="$(jq -c '.' "$config")" || return 1
-  after="$(_uc_jq "$shape" -c --argjson r5 "$r5" --argjson vanished "$vanished" \
+  after="$(_uc_jq "$shape" -c --argjson r5 "$r5" --argjson live "$live" --argjson vanished "$vanished" \
     --arg abs "$abs" --argjson fragfp "$fragfp" --arg target "$target" \
     "$program" "$config")" || return 1
   if [ "$before" = "$after" ]; then
@@ -410,14 +530,28 @@ usage_capture_keep() {
   fi
   backup_file "$config"
   write_json_config_secure "$config" --arg shape "$shape" --argjson r5 "$r5" \
-    --argjson vanished "$vanished" --arg abs "$abs" --argjson fragfp "$fragfp" \
-    --arg target "$target" "$program" \
+    --argjson live "$live" --argjson vanished "$vanished" --arg abs "$abs" \
+    --argjson fragfp "$fragfp" --arg target "$target" "$program" \
     || { echo "  ERROR: could not write $config." >&2; return 1; }
+  # Name only the vanished paths a kept handler really carried: one dropped as
+  # a duplicate was deleted, not re-pointed.
+  repointed="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" \
+    --argjson vanished "$vanished" \
+    "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | uc_r5_paths(\$r5) as \$now | \$vanished[] | select(. as \$v | any(\$now[]; . == \$v))" \
+    <<< "$before")" || repointed=""
   while IFS= read -r p; do
     [ -n "$p" ] || continue
     echo "  Usage capture re-pointed $p -> $abs"
     wrote_abs=1
-  done <<< "$vanished_list"
+  done <<< "$repointed"
+  requoted="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" \
+    --argjson vanished "$vanished" \
+    "$_UC_JQ_DEFS [uc_keep_dedup(\$r5; \$live; \$vanished) | uc_footprint[] | select(.event as \$e | any(\$r5[]; . == \$e)) | .handler | select(uc_needs_quotes) | uc_path | select(. as \$p | any(\$vanished[]; . == \$p) | not)] | uc_distinct | .[]" \
+    <<< "$before")" || requoted=""
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    echo "  Usage capture path quoted (it holds a space): $p"
+  done <<< "$requoted"
   if [ "$missing" != "0" ]; then
     echo "  Usage capture re-registered on $missing event(s) at $target"
     [ "$target" != "$abs" ] || wrote_abs=1

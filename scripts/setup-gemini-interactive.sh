@@ -476,9 +476,11 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     rm -f "$HOOKS_PATCHED_TMP"
   else
     echo "  Transcript activation canceled by user."
+    echo "  settings.json was rebuilt from its template above, so session-recording hooks and the worktree git guard from an earlier run were not kept; usage capture is carried over separately."
   fi
 else
   echo "  Session recording disabled (can enable later by re-running this script)."
+  echo "  settings.json was rebuilt from its template above, so session-recording hooks and the worktree git guard from an earlier run were not kept; usage capture is carried over separately."
 fi
 
 # --- Usage capture (opt-in, spec 0211) ---

@@ -24,14 +24,32 @@ MEMPALACE_MAX_VERSION_EXCLUSIVE="3.7"
 # (spec 0089 review F2, issue #982).
 LAST_BACKUP_PATH=""
 
+# Backups are owner-only whatever the target's mode (issue #1174, security
+# review S1): a config may hold the MemPalace bearer token, and `cp` alone
+# creates the copy at source-mode & ~umask, so a 0644 source gave a 0644 copy of
+# the credential. The copy is made under umask 077 and then forced to 0600 (the
+# chmod also covers a same-second name that already existed, which cp reuses
+# with its old mode). Every earlier `<target>.bak.*` regular file the user owns
+# is narrowed the same way first, so backups an older release left at 0644 stop
+# exposing the token. A symlink (target or backup) is never chmod-ed: chmod
+# follows links, and the link's own mode is meaningless. No `stat`: `[ -O ]` and
+# chmod are portable across bash 3.2, BSD and GNU.
 backup_file() {
-  local target="$1"
+  local target="$1" old
   LAST_BACKUP_PATH=""
+  for old in "$target".bak.*; do
+    if [ -f "$old" ] && [ ! -L "$old" ] && [ -O "$old" ]; then
+      chmod 600 "$old" 2>/dev/null || true
+    fi
+  done
   if [ -f "$target" ] || [ -L "$target" ]; then
     local stamp bak
     stamp="$(date +%Y%m%d-%H%M%S)"
     bak="${target}.bak.${stamp}"
-    if cp -P "$target" "$bak" 2>/dev/null && [ -e "$bak" ]; then
+    if ( umask 077; cp -P "$target" "$bak" ) 2>/dev/null && [ -e "$bak" ]; then
+      if [ -f "$bak" ] && [ ! -L "$bak" ] && ! chmod 600 "$bak" 2>/dev/null; then
+        echo "  WARNING: could not restrict ${bak##*/} to 0600" >&2
+      fi
       # shellcheck disable=SC2034  # read by scripts that source this lib (R9 warning), not here
       LAST_BACKUP_PATH="$bak"
       echo "  Backed up: ${target##*/} -> ${target##*/}.bak.${stamp}"
