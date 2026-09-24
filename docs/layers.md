@@ -209,7 +209,7 @@ exist, how org artifacts integrate) is defined in spec 0012 sub-spec E2.
 | Path | Description |
 |---|---|
 | `extension-skeleton/` | Scaffold templates for creating new CrewRig extensions. |
-| `hooks/` | Cross-CLI transcript hook configuration files (`claude-transcript-hooks.json`, `gemini-transcript-hooks.json`, `copilot-transcript-hooks.json`, `mempalace-transcript.sh`). |
+| `hooks/` | Cross-CLI hook configuration files and the hook scripts they wire: the session-recording manifests (`claude-transcript-hooks.json`, `gemini-transcript-hooks.json`, `copilot-transcript-hooks.json`, `antigravity-transcript-hooks.json`), the usage-capture fragments of the spec 0211 opt-in (`claude-usage-capture-hooks.json`, `gemini-usage-capture-hooks.json`, `copilot-usage-capture-hooks.json`), and the scripts `mempalace-transcript.sh`, `usage-capture.sh`, `worktree-git-guard.sh` and `antigravity-statusline-shim.sh`. |
 | `extensions/core/` | Upstream-shipped core extensions (e.g. the `hello-world` demo). Synced from upstream under the **strict** policy — a local modification halts the sync, consistent with `artifacts/core/`. |
 | `extensions/library/` | Upstream harness and shared extensions. Synced from upstream under the **strict** policy. Ships empty (populated upstream). |
 

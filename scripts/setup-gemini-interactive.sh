@@ -4,6 +4,8 @@ set -e
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 # shellcheck source=scripts/lib/tls-delegation.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/tls-delegation.sh"
+# shellcheck source=scripts/lib/usage-capture-optin.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/usage-capture-optin.sh"
 
 GEMINI_HOME="${HOME}/.gemini"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -169,6 +171,10 @@ backup_file "$SETTINGS_TARGET"
 # below, never after — see merge_preexisting_mcp_servers in common.sh.
 PREEXISTING_MCP="$(jq -c '.mcpServers // {}' "$SETTINGS_TARGET" 2>/dev/null || echo '{}')"
 MCP_BACKUP="$LAST_BACKUP_PATH"
+# The template write below erases every hook entry, so take the usage-capture
+# footprint first and put it back after the MCP folds (spec 0211 R13). An
+# unparsable file carries nothing over and is still repaired by the template.
+PREEXISTING_CAPTURE="$(usage_capture_footprint gemini "$SETTINGS_TARGET" 2>/dev/null)" || { PREEXISTING_CAPTURE='[]'; echo "  WARNING: $SETTINGS_TARGET is unreadable as JSON; no usage-capture entry carried over (the template rewrite below repairs the file)." >&2; }
 
 # Detect MemPalace Python interpreter (used to patch mcpServers.mempalace.command)
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
@@ -239,6 +245,12 @@ ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
 if [ -f "$ORG_MCP_MANIFEST" ]; then
   ORG_MCP_NATIVE="$(org_mcp_to_native gemini "$(read_org_mcp_manifest "$ORG_MCP_MANIFEST")")"
   apply_org_mcp_servers "$ORG_MCP_NATIVE" "$SETTINGS_TARGET" "$PREEXISTING_MCP" "$MCP_BACKUP"
+fi
+
+# Re-inject the usage-capture entries the template write erased (footprint taken
+# before it, above). No extra backup: the pre-run file was backed up above.
+if [ "$PREEXISTING_CAPTURE" != "[]" ]; then
+  usage_capture_reinject gemini "$SETTINGS_TARGET" "$PREEXISTING_CAPTURE" || echo "  WARNING: could not carry the usage-capture entries through the settings rewrite." >&2
 fi
 
 # MemPalace HTTP by default (spec 0113 delta-02 R17-R20). Runs AFTER the
@@ -401,7 +413,9 @@ done
 
 # --- Transcript hooks (opt-in) ---
 echo ""
-ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)")
+# `|| true`: under `set -e`, Esc makes fzf exit 130 and would abort setup before
+# the usage-capture question below; a canceled answer reads as a decline.
+ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)" || true)
 if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   HOOKS_SRC="$REPO_DIR/hooks/gemini-transcript-hooks.json"
   HOOK_SCRIPT_SRC="$REPO_DIR/hooks/mempalace-transcript.sh"
@@ -416,57 +430,79 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   echo "  5. Hardcode MEMPALACE_TRANSCRIPT_ENABLED=1 (and MEMPALACE_PYTHON if detected)"
   echo "     into each hook's command line — no shell-profile changes needed."
   echo ""
-  CONFIRM_TRANSCRIPTS=$(echo -e "yes\nno" | fzf --height 10% --header "Apply these changes to settings.json?")
+  CONFIRM_TRANSCRIPTS=$(echo -e "yes\nno" | fzf --height 10% --header "Apply these changes to settings.json?" || true)
   if [ "$CONFIRM_TRANSCRIPTS" = "yes" ]; then
     mkdir -p "$GEMINI_HOOKS_DIR"
     install_file "$HOOK_SCRIPT_SRC" "$HOOK_SCRIPT_TARGET" \
       "mempalace-transcript.sh -> ~/.gemini/hooks/mempalace-transcript.sh"
     chmod +x "$HOOK_SCRIPT_TARGET" 2>/dev/null || true
-    backup_file "$SETTINGS_TARGET"
     ENV_PREFIX='MEMPALACE_TRANSCRIPT_ENABLED=1'
     if [ -n "${MEMPALACE_PYTHON_BIN:-}" ]; then
       ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
     fi
     GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
     GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
-    CAPTURE_SCRIPT_SRC="$REPO_DIR/hooks/usage-capture.sh"
-    CAPTURE_ABS="$(cd "$(dirname "$CAPTURE_SCRIPT_SRC")" && pwd -P)/$(basename "$CAPTURE_SCRIPT_SRC")"
     # Rewrite every nested command: substitute the source-file tokens with the
-    # installed absolute path for transcripts (prefixed by env vars), the
-    # in-repo absolute path for the worktree git guard (without env prefix),
-    # or the in-repo absolute path for usage-capture.sh, substituted IN PLACE
-    # (preserving its own argv) and WITHOUT the env prefix — spec 0206:
-    # usage-capture.sh reads no MEMPALACE_TRANSCRIPT_ENABLED variable, and it
-    # is wired the guard's way (never copied out), not the transcript hook's.
-    # Hooks become independent of any project-dir variable resolution.
-    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" --arg capture_path "$CAPTURE_ABS" '
+    # installed absolute path for transcripts (prefixed by env vars) or the
+    # in-repo absolute path for the worktree git guard (without env prefix).
+    # Hooks become independent of any project-dir variable resolution. Usage
+    # capture is not part of this manifest: it has its own opt-in below
+    # (spec 0211).
+    HOOKS_PATCHED_TMP="$(mktemp)"
+    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" '
       (.. | objects | select(.type? == "command")) |=
         (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard.sh")))
          then .command = ("bash " + $guard_path)
-         elif (.command | contains("usage-capture.sh"))
-         then .command = (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/usage-capture.sh"; $capture_path))
          else .command = ($envp + " " + (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/mempalace-transcript.sh"; $hook_path)))
          end)' \
-      "$HOOKS_SRC" > "${SETTINGS_TARGET}.hooks.tmp"
-    if grep -q '\${GEMINI_PROJECT_DIR}' "${SETTINGS_TARGET}.hooks.tmp"; then
+      "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
+    if grep -q '\${GEMINI_PROJECT_DIR}' "$HOOKS_PATCHED_TMP"; then
       echo "  ERROR: Unresolved \${GEMINI_PROJECT_DIR} token in patched hooks." >&2
-      rm -f "${SETTINGS_TARGET}.hooks.tmp"
+      rm -f "$HOOKS_PATCHED_TMP"
       exit 1
     fi
-    jq -s '.[0] * .[1]' \
-      "$SETTINGS_TARGET" "${SETTINGS_TARGET}.hooks.tmp" > "${SETTINGS_TARGET}.tmp"
-    mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"
-    rm -f "${SETTINGS_TARGET}.hooks.tmp"
-    echo "  Transcript hooks merged into settings.json"
-    echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
-    echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
-    echo "  Usage capture wired to $CAPTURE_ABS (in-repo absolute path)"
-    warn_if_linked_worktree "$REPO_DIR" "usage capture"
+    # Backup-first and 0600 — this file holds the MemPalace bearer token once
+    # ensure_mempalace_http ran, and the former `jq > tmp; mv` widened it to
+    # umask mode. It also carries any registered capture command through the
+    # merge unchanged (spec 0211 R8).
+    if ! merge_session_recording_hooks gemini "$SETTINGS_TARGET" "$HOOKS_PATCHED_TMP"; then
+      echo "  Transcript activation FAILED — setup continues without it." >&2
+    else
+      echo "  Transcript hooks merged into settings.json"
+      echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
+      echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
+      warn_if_linked_worktree "$REPO_DIR" "worktree git guard"
+    fi
+    rm -f "$HOOKS_PATCHED_TMP"
   else
     echo "  Transcript activation canceled by user."
+    echo "  settings.json was rebuilt from its template above, so session-recording hooks and the worktree git guard from an earlier run were not kept; usage capture is carried over separately."
   fi
 else
   echo "  Session recording disabled (can enable later by re-running this script)."
+  echo "  settings.json was rebuilt from its template above, so session-recording hooks and the worktree git guard from an earlier run were not kept; usage capture is carried over separately."
+fi
+
+# --- Usage capture (opt-in, spec 0211) ---
+# Its own question, asked whatever the session-recording answer was (R1) and
+# never gated on MemPalace (R3): capture writes to the file-system journal.
+# Every read and write of a capture entry lives in scripts/lib/usage-capture-optin.sh.
+echo ""
+uc_rc=0
+UC_STATE="$(usage_capture_state gemini "$SETTINGS_TARGET")" || uc_rc=$?
+if [ "$uc_rc" -ne 0 ]; then
+  echo "  WARNING: cannot read $SETTINGS_TARGET as JSON; usage-capture step skipped." >&2
+else
+  if [ "$UC_STATE" = "absent" ]; then
+    usage_capture_disclose gemini "$SETTINGS_TARGET" "$REPO_DIR" || true
+    UC_ANSWER=$(printf 'no\nyes\n' | fzf --height 10% --header "Capture token usage for Gemini CLI? (opt-in, MemPalace not required)" || true)
+  else
+    UC_PATHS="$(usage_capture_paths gemini "$SETTINGS_TARGET")" || UC_PATHS=""
+    echo "Usage capture is registered in $SETTINGS_TARGET, at:"
+    printf '%s\n' "$UC_PATHS" | sed 's/^/  /'
+    UC_ANSWER=$(printf 'keep\nremove\n' | fzf --height 10% --header "Usage capture is registered for Gemini CLI. Keep it or remove it?" || true)
+  fi
+  usage_capture_apply gemini "$SETTINGS_TARGET" "$REPO_DIR" "$UC_STATE" "$UC_ANSWER" || echo "  Usage-capture step FAILED — setup continues." >&2
 fi
 
 # Clean up superseded ~/.gemini/GEMINI.md context file (spec 0061 delta-02, issue #1082)

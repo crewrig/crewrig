@@ -6,7 +6,7 @@
           {
             "type": "command",
             "name": "transcript-git-guard",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/worktree-git-guard.sh"
+            "command": "bash __GUARD_ABS__"
           }
         ]
       }
@@ -17,7 +17,7 @@
           {
             "type": "command",
             "name": "transcript-user-prompt",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.sh"
+            "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash __HOOK_TARGET__"
           }
         ]
       }
@@ -28,7 +28,7 @@
           {
             "type": "command",
             "name": "transcript-tool-use",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.sh"
+            "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash __HOOK_TARGET__"
           }
         ]
       }
@@ -39,7 +39,12 @@
           {
             "type": "command",
             "name": "transcript-agent-response",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.sh"
+            "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash __HOOK_TARGET__"
+          },
+          {
+            "type": "command",
+            "name": "usage-capture-agent-response",
+            "command": "bash __CAPTURE_ABS__ gemini-cli AfterModel"
           }
         ]
       }
@@ -50,7 +55,7 @@
           {
             "type": "command",
             "name": "transcript-session-end",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.sh"
+            "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash __HOOK_TARGET__"
           }
         ]
       }

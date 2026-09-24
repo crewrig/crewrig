@@ -1,0 +1,19 @@
+{
+  "theme": "Default",
+  "general": {
+    "vimMode": true
+  },
+  "hooks": {
+    "AfterModel": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "operator-after-model",
+            "command": "/opt/operator/bin/after-model.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh\""
+            "command": "bash \"__GUARD_ABS__\""
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh\""
+            "command": "bash \"__HOOK_TARGET__\""
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh\""
+            "command": "bash \"__HOOK_TARGET__\""
           }
         ]
       }
@@ -39,7 +39,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh\""
+            "command": "bash \"__HOOK_TARGET__\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"__CAPTURE_ABS__\" claude-code Stop"
           }
         ]
       }
@@ -50,10 +54,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh\""
+            "command": "bash \"__HOOK_TARGET__\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"__CAPTURE_ABS__\" claude-code SessionEnd"
           }
         ]
       }
     ]
+  },
+  "env": {
+    "MEMPALACE_TRANSCRIPT_ENABLED": "1"
   }
 }

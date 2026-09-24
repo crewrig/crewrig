@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "disableAllHooks": false,
+  "hooks": {
+    "agentStop": [
+      {
+        "type": "command",
+        "command": "/opt/operator/bin/notify-done.sh"
+      },
+      {
+        "type": "command",
+        "command": "bash \"__CAPTURE_ABS__\" copilot-cli agentStop"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "command": "bash \"__CAPTURE_ABS__\" copilot-cli sessionEnd"
+      }
+    ]
+  }
+}

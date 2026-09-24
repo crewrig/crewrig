@@ -1145,7 +1145,8 @@ capabilities:
       - npm install
       - bash scripts/tests/test-usage-record-schema.sh
 
-  # usage-capture validates the spec 0206 capture-adapter module tree.
+  # usage-capture validates the spec 0206 capture-adapter module tree and the
+  # spec 0211 per-CLI usage-capture opt-in (scripts/lib/usage-capture-optin.sh).
   # Deliberately NOT changeset-gated, mirroring usage-record-schema above:
   # the fail-safe job (ci-changeset-coverage.sh) provisions no Node.
   - id: usage-capture
@@ -1164,6 +1165,16 @@ capabilities:
           - "scripts/usage-backfill.sh"
           - "scripts/tests/test-usage-capture.sh"
           - "scripts/tests/fixtures/usage-capture/**"
+          - "hooks/claude-usage-capture-hooks.json"
+          - "hooks/gemini-usage-capture-hooks.json"
+          - "hooks/copilot-usage-capture-hooks.json"
+          - "scripts/lib/usage-capture-optin.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/setup-claude-interactive.sh"
+          - "scripts/setup-gemini-interactive.sh"
+          - "scripts/setup-copilot-interactive.sh"
+          - "scripts/tests/test-setup-usage-capture-optin.sh"
+          - "scripts/tests/fixtures/setup-usage-capture/**"
           - "package.json"
           - "package-lock.json"
       - on: push
@@ -1179,6 +1190,16 @@ capabilities:
           - "scripts/usage-backfill.sh"
           - "scripts/tests/test-usage-capture.sh"
           - "scripts/tests/fixtures/usage-capture/**"
+          - "hooks/claude-usage-capture-hooks.json"
+          - "hooks/gemini-usage-capture-hooks.json"
+          - "hooks/copilot-usage-capture-hooks.json"
+          - "scripts/lib/usage-capture-optin.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/setup-claude-interactive.sh"
+          - "scripts/setup-gemini-interactive.sh"
+          - "scripts/setup-copilot-interactive.sh"
+          - "scripts/tests/test-setup-usage-capture-optin.sh"
+          - "scripts/tests/fixtures/setup-usage-capture/**"
           - "package.json"
           - "package-lock.json"
     portability: portable
@@ -1187,6 +1208,7 @@ capabilities:
     command:
       - npm install
       - bash scripts/tests/test-usage-capture.sh
+      - bash scripts/tests/test-setup-usage-capture-optin.sh
 
   # usage-storage validates the usage-record storage contract (spec 0207):
   # the journal write path, the wing derivation, the drain/sweep, the mirror

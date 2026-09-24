@@ -1,7 +1,7 @@
 ---
 id: "0211"
 slug: usage-capture-opt-in
-status: approved
+status: implemented
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 1174

@@ -30,20 +30,12 @@
       {
         "type": "command",
         "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
-      },
-      {
-        "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/usage-capture.sh\" copilot-cli agentStop"
       }
     ],
     "sessionEnd": [
       {
         "type": "command",
         "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
-      },
-      {
-        "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/usage-capture.sh\" copilot-cli sessionEnd"
       }
     ]
   }

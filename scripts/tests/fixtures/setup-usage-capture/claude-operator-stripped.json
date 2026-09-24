@@ -1,0 +1,32 @@
+{
+  "model": "opus",
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/operator/bin/lint-on-edit.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/operator/bin/notify-done.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

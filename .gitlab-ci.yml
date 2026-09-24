@@ -990,6 +990,7 @@ usage-capture:
   script:
     - "npm install"
     - "bash scripts/tests/test-usage-capture.sh"
+    - "bash scripts/tests/test-setup-usage-capture-optin.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1003,6 +1004,16 @@ usage-capture:
         - "scripts/usage-backfill.sh"
         - "scripts/tests/test-usage-capture.sh"
         - "scripts/tests/fixtures/usage-capture/**"
+        - "hooks/claude-usage-capture-hooks.json"
+        - "hooks/gemini-usage-capture-hooks.json"
+        - "hooks/copilot-usage-capture-hooks.json"
+        - "scripts/lib/usage-capture-optin.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/setup-claude-interactive.sh"
+        - "scripts/setup-gemini-interactive.sh"
+        - "scripts/setup-copilot-interactive.sh"
+        - "scripts/tests/test-setup-usage-capture-optin.sh"
+        - "scripts/tests/fixtures/setup-usage-capture/**"
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -1017,6 +1028,16 @@ usage-capture:
         - "scripts/usage-backfill.sh"
         - "scripts/tests/test-usage-capture.sh"
         - "scripts/tests/fixtures/usage-capture/**"
+        - "hooks/claude-usage-capture-hooks.json"
+        - "hooks/gemini-usage-capture-hooks.json"
+        - "hooks/copilot-usage-capture-hooks.json"
+        - "scripts/lib/usage-capture-optin.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/setup-claude-interactive.sh"
+        - "scripts/setup-gemini-interactive.sh"
+        - "scripts/setup-copilot-interactive.sh"
+        - "scripts/tests/test-setup-usage-capture-optin.sh"
+        - "scripts/tests/fixtures/setup-usage-capture/**"
         - "package.json"
         - "package-lock.json"
 

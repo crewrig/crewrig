@@ -1,0 +1,16 @@
+{
+  "theme": "Default",
+  "hooks": {
+    "AfterModel": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "usage-capture-agent-response",
+            "command": "bash __CAPTURE_ABS__ gemini-cli AfterModel"
+          }
+        ]
+      }
+    ]
+  }
+}

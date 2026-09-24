@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "disableAllHooks": false,
+  "hooks": {
+    "agentStop": [
+      {
+        "type": "command",
+        "command": "/opt/operator/bin/notify-done.sh"
+      }
+    ]
+  }
+}
