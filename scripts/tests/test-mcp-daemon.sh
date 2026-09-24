@@ -1162,64 +1162,6 @@ case "${out}" in
   *) nope "missing eviction failure message: ${out}" ;;
 esac
 
-# --- 17. The MemPalace home exists before a supervisor starts (#1196) --------
-# Both supervised units log to append:%h/.mempalace/<daemon>.log (systemd) or
-# StandardOutPath (launchd) and chdir into ~/.mempalace. Neither supervisor
-# creates a missing parent directory: on a fresh machine systemd fails the
-# unit with status=209/STDOUT and restarts it forever. Each case runs in a
-# subshell against its own fresh HOME so it cannot depend on state an earlier
-# section left under TEST_HOME.
-echo ""
-echo "ensure_mempalace_home — the daemon home exists before the supervisor starts (#1196):"
-
-h17="${TEST_HOME}/home-1196-fresh"
-mkdir -p "${h17}"
-out="$(HOME="${h17}"; unset MEMPALACE_PALACE_PATH; ensure_mempalace_home 2>&1)"; rc=$?
-[ "${rc}" -eq 0 ] && [ -d "${h17}/.mempalace" ] && [ -d "${h17}/.mempalace/palace" ] \
-  && ok "a fresh HOME gets ~/.mempalace and ~/.mempalace/palace" \
-  || nope "fresh HOME not bootstrapped (rc=${rc}): ${out}"
-
-out="$(HOME="${h17}"; unset MEMPALACE_PALACE_PATH; ensure_mempalace_home 2>&1)"; rc=$?
-[ "${rc}" -eq 0 ] \
-  && ok "a rerun on an existing home is an idempotent success" \
-  || nope "rerun failed (rc=${rc}): ${out}"
-
-h17="${TEST_HOME}/home-1196-override"
-mkdir -p "${h17}"
-out="$(HOME="${h17}"; MEMPALACE_PALACE_PATH="${TEST_HOME}/elsewhere-palace" ensure_mempalace_home 2>&1)"; rc=$?
-[ "${rc}" -eq 0 ] && [ -d "${h17}/.mempalace" ] && [ ! -e "${h17}/.mempalace/palace" ] \
-  && [ ! -e "${TEST_HOME}/elsewhere-palace" ] \
-  && ok "a MEMPALACE_PALACE_PATH override creates the home but no palace directory" \
-  || nope "override case wrong (rc=${rc}): ${out}"
-
-h17="${TEST_HOME}/home-1196-blocked"
-mkdir -p "${h17}"
-: > "${h17}/.mempalace"
-out="$(HOME="${h17}"; unset MEMPALACE_PALACE_PATH; ensure_mempalace_home 2>&1)"; rc=$?
-[ "${rc}" -ne 0 ] \
-  && ok "an uncreatable home fails with a non-zero status" \
-  || nope "an uncreatable home reported success: ${out}"
-case "${out}" in
-  *"ERROR:"*"${h17}/.mempalace"*) ok "the failure names the directory it could not create" ;;
-  *) nope "no ERROR line naming the directory: ${out}" ;;
-esac
-
-# Structural: both installers must bootstrap the home BEFORE handing off to
-# install_daemon_supervisor — a call placed after it would come too late, since
-# the supervisor loads and health-polls the unit inside that call.
-for fn17 in install_chroma_daemon install_mcp_daemon; do
-  order17="$(awk -v fn="${fn17}" '
-    $0 ~ "^" fn "\\(\\) \\{" { inside = 1; next }
-    inside && /^}$/ { exit }
-    inside && /ensure_mempalace_home/ && !seen_sup { print "ensure" }
-    inside && /install_daemon_supervisor/ { if (!seen_sup) print "supervisor"; seen_sup = 1 }
-  ' "${REPO_DIR}/scripts/lib/common.sh" | tr '\n' ' ')"
-  case "${order17}" in
-    "ensure supervisor "*) ok "${fn17} calls ensure_mempalace_home before install_daemon_supervisor" ;;
-    *) nope "${fn17} does not call ensure_mempalace_home before install_daemon_supervisor (saw: ${order17})" ;;
-  esac
-done
-
 # Behavioural half: probed skip on the prerequisites the launcher actually
 # needs, mirroring section 10 — CI has no mempalace venv, so quote the reason
 # rather than silently passing.
@@ -1389,6 +1331,64 @@ else
     echo "       scripts/start-chroma-server.sh to exercise this half."
   fi
 fi
+
+# --- 17. The MemPalace home exists before a supervisor starts (#1196) --------
+# Both supervised units log to append:%h/.mempalace/<daemon>.log (systemd) or
+# StandardOutPath (launchd) and chdir into ~/.mempalace. Neither supervisor
+# creates a missing parent directory: on a fresh machine systemd fails the
+# unit with status=209/STDOUT and restarts it forever. Each case runs in a
+# subshell against its own fresh HOME so it cannot depend on state an earlier
+# section left under TEST_HOME.
+echo ""
+echo "ensure_mempalace_home — the daemon home exists before the supervisor starts (#1196):"
+
+h17="${TEST_HOME}/home-1196-fresh"
+mkdir -p "${h17}"
+out="$(HOME="${h17}"; unset MEMPALACE_PALACE_PATH; ensure_mempalace_home 2>&1)"; rc=$?
+[ "${rc}" -eq 0 ] && [ -d "${h17}/.mempalace" ] && [ -d "${h17}/.mempalace/palace" ] \
+  && ok "a fresh HOME gets ~/.mempalace and ~/.mempalace/palace" \
+  || nope "fresh HOME not bootstrapped (rc=${rc}): ${out}"
+
+out="$(HOME="${h17}"; unset MEMPALACE_PALACE_PATH; ensure_mempalace_home 2>&1)"; rc=$?
+[ "${rc}" -eq 0 ] \
+  && ok "a rerun on an existing home is an idempotent success" \
+  || nope "rerun failed (rc=${rc}): ${out}"
+
+h17="${TEST_HOME}/home-1196-override"
+mkdir -p "${h17}"
+out="$(HOME="${h17}"; MEMPALACE_PALACE_PATH="${TEST_HOME}/elsewhere-palace" ensure_mempalace_home 2>&1)"; rc=$?
+[ "${rc}" -eq 0 ] && [ -d "${h17}/.mempalace" ] && [ ! -e "${h17}/.mempalace/palace" ] \
+  && [ ! -e "${TEST_HOME}/elsewhere-palace" ] \
+  && ok "a MEMPALACE_PALACE_PATH override creates the home but no palace directory" \
+  || nope "override case wrong (rc=${rc}): ${out}"
+
+h17="${TEST_HOME}/home-1196-blocked"
+mkdir -p "${h17}"
+: > "${h17}/.mempalace"
+out="$(HOME="${h17}"; unset MEMPALACE_PALACE_PATH; ensure_mempalace_home 2>&1)"; rc=$?
+[ "${rc}" -ne 0 ] \
+  && ok "an uncreatable home fails with a non-zero status" \
+  || nope "an uncreatable home reported success: ${out}"
+case "${out}" in
+  *"ERROR:"*"${h17}/.mempalace"*) ok "the failure names the directory it could not create" ;;
+  *) nope "no ERROR line naming the directory: ${out}" ;;
+esac
+
+# Structural: both installers must bootstrap the home BEFORE handing off to
+# install_daemon_supervisor — a call placed after it would come too late, since
+# the supervisor loads and health-polls the unit inside that call.
+for fn17 in install_chroma_daemon install_mcp_daemon; do
+  order17="$(awk -v fn="${fn17}" '
+    $0 ~ "^" fn "\\(\\) \\{" { inside = 1; next }
+    inside && /^}$/ { exit }
+    inside && /^[[:space:]]*ensure_mempalace_home([[:space:]]|$)/ && !seen_sup { print "ensure" }
+    inside && /^[[:space:]]*install_daemon_supervisor([[:space:]]|$)/ { if (!seen_sup) print "supervisor"; seen_sup = 1 }
+  ' "${REPO_DIR}/scripts/lib/common.sh" | tr '\n' ' ')"
+  case "${order17}" in
+    "ensure supervisor "*) ok "${fn17} calls ensure_mempalace_home before install_daemon_supervisor" ;;
+    *) nope "${fn17} does not call ensure_mempalace_home before install_daemon_supervisor (saw: ${order17})" ;;
+  esac
+done
 
 echo ""
 echo "----------------------------------------"
