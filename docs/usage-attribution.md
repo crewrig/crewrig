@@ -4,6 +4,8 @@
 
 The usage attribution contract (spec 0208) resolves every usage record to the macro-task it served — either a CrewRig task-handoff key from the session-start protocol or another ticketing system, or an external work-tracking asset such as a forge issue — and provides an append-only ledger to correct or override that attribution after the fact without touching the record itself. A record's attribution resolves once, at capture time, from exactly one of four ordered declaration channels, and no later mutation of the record ever changes what resolution produced.
 
+This page is one stage of the usage feature; the [usage architecture overview](usage-overview.md) shows how the stages fit together.
+
 ## What attribution is
 
 **Attribution** answers the question "what task was this usage record serving?" A record carries no task information at capture time; attribution is resolved later, when the record is handed to storage, by evaluating four possible sources in fixed order:
@@ -320,19 +322,7 @@ This removes only the pruned marker, allowing new writes to the period again. Re
 
 ### Purge instructions
 
-To remove all attribution-related storage under `CREWRIG_USAGE_ROOT`:
-
-```bash
-rm -rf <root>/journal/ <root>/ledger/ <root>/declarations/ <root>/mirror/ <root>/cache/ <root>/tmp/
-```
-
-The attribution ledger and declarations directories are now part of the purge set (R30 extended):
-
-- `<root>/declarations/` — session-scoped and project-scoped declaration records.
-- `<root>/ledger/` — the append-only attribution ledger, organized by period.
-- `<root>/journal/<cli>/<YYYY-MM>/<recordId>.attr.json` — attribution sidecars, removed together with their corresponding journal entries.
-
-The `<root>/state/` directory is **not** touched — it is owned by spec 0206 (capture) and must not be removed by the storage contract.
+The prune above removes one period. Removing all attribution data at once (every declaration record, the whole ledger, and every `.attr.json` sidecar) is part of removing everything the feature holds, described once in [Removing usage data](usage-organization.md#removing-usage-data) in the organization note.
 
 ## Personal data
 
@@ -343,29 +333,7 @@ The `<root>/state/` directory is **not** touched — it is owned by spec 0206 (c
 
 A task-handoff key may be numerical (a ticket number like `1171`) or a named task identifier; an external asset reference may identify a forge issue, a Jira ticket, or a shared document. These are work-tracking identifiers, not personal data themselves, but they may reveal what a person was working on and when.
 
-### Who can read it
-
-- **Journal readers** — Anyone with read access to `<root>/journal/` can read declaration records and their corresponding records' attribution sidecars.
-- **Ledger readers** — Anyone with read access to `<root>/ledger/` can read the ledger, including the author and reason fields.
-- **Declaration readers** — Anyone with read access to `<root>/declarations/` can read the declaration records directly.
-
-The storage contract applies no encryption. Filesystem permissions and the operator's own access controls are the sole safeguards.
-
-### How to purge
-
-Purge everything under the root:
-
-```bash
-rm -rf <root>/declarations/ <root>/ledger/ <root>/journal/ <root>/mirror/ <root>/cache/ <root>/tmp/
-```
-
-Purge a specific period:
-
-```bash
-bash scripts/usage-prune.sh <cli> <YYYY-MM>
-```
-
-This removes all journal, ledger, and drawer entries for that period.
+Retention, who can read declarations, ledger entries, and sidecars, and how to remove them are stated once for the whole feature, in the [organization note](usage-organization.md).
 
 ## See also
 

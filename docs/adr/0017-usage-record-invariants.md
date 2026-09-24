@@ -4,6 +4,8 @@
 
 **Status:** Accepted — 2026-09-17 (spec 0205, issue #1168; owner-validated 2026-09-17 after developer and tester review)
 
+This ADR governs one stage of the usage feature; the [usage architecture overview](../usage-overview.md) shows how the stages fit together.
+
 ## Framing
 
 - **Goal.** Establish three non-negotiable invariants in the usage record contract so that downstream consumers can reason about the shape without ambiguity: model identifiers remain literal, fidelity is always typed, and an unmeasured source is never represented as a zero-valued record.

@@ -4,6 +4,8 @@
 
 The usage-capture seam implements spec 0206, deriving one usage record for every completed model-request a CLI source records, plus one summary record for every non-interactive CLI invocation. This page documents the capture architecture, the per-CLI adapter mechanics, the cursor semantics, the in-repo-absolute-path installation contract, and the documented gaps.
 
+This page is one stage of the usage feature; the [usage architecture overview](usage-overview.md) shows how the stages fit together.
+
 ## Architecture overview
 
 The capture step is a **Node module tree** under `scripts/lib/usage-capture/`, invoked by two thin entry points:
@@ -406,17 +408,10 @@ On the live path, `provenance.cliVersion` comes from the first line of `session-
 
 ## Personal-data note
 
-A usage record holds:
+This section states what the capture seam itself keeps. What a usage record holds, and never holds, is stated in [Usage storage → Personal data](usage-storage.md#personal-data).
 
-- **Session identifiers** (session id, project directory, conversation ids)
-- **System paths** (project root, where requests were served from)
-- **Model identifiers** (which model served each request, including user-chosen labels)
-- **Token counts** (consumption metrics)
+- **Capture state.** `<usage root>/state/` holds the per-source cursors and stamp sidecars (read positions in each CLI's own session record, keyed by a hash of the source path), the memoized CLI versions, and the Antigravity status-line marker, which records the prior and the installed `statusLine.command`. See [Cursor semantics and the stamp sidecar](#cursor-semantics-and-the-stamp-sidecar).
+- **A transient payload file.** `hooks/usage-capture.sh` and `hooks/antigravity-statusline-shim.sh` hand the payload the CLI gave them to Node through a temporary file in the system temp directory, and delete it once Node returns. Neither script sets a trap, so a hook killed during that call can leave the file behind. The file holds the CLI's hook payload verbatim, which can carry conversation text: the CLIs' own hook documentation, checked on 2026-09-24, lists the model request and response in Gemini CLI's `AfterModel` payload (`llm_request`, `llm_response`) and the turn's last assistant text in Claude Code's `Stop` payload (`last_assistant_message`). The non-interactive wrapper `scripts/lib/usage-headless.sh` stages output in temporary files the same way, also without a trap: the whole output of a run wrapped by `usage_headless_run`, and the model's reply that `usage_headless_agy_rewrite_json_response` extracts from Antigravity CLI's JSON envelope. Both can hold the model's reply text.
+- **What adapters copy into `raw`.** Each interactive adapter copies only the key paths its table in [Per-adapter field sources](#per-adapter-field-sources) enumerates, never message content. The exception is the headless envelope adapter, whose `raw` is the whole envelope (see [Headless envelope](#headless-envelope-run-total-all-clis)): Antigravity CLI's JSON envelope carries the model's `response` text, so `run-total` records from the adopted Antigravity launch sites hold that text until [#1201](https://github.com/crewrig/crewrig/issues/1201) is fixed.
 
-It does **not** hold:
-
-- Conversation text (prompts, responses, intermediate reasoning)
-- Tool invocation details
-- File contents or data references
-
-Usage records are a consumption audit, not a conversation log. Treat `~/.crewrig/usage/` with the same confidentiality you would a billing or telemetry database.
+Retention, who can read each location, and removal are stated once for the whole feature, in the [organization note](usage-organization.md).

@@ -4,6 +4,8 @@
 
 A computed price is a comparative reference figure that shows what a period of model consumption would have cost — never an invoice, a vendor reconciliation, or a budget forecast. Every computed price carries the disclaimer: **reference figure, not an invoice**. Prices are useful for understanding consumption patterns across vendors and models, rendered in any currency the framework supports, and persist separately from the usage record they were computed from.
 
+This page is one stage of the usage feature; the [usage architecture overview](usage-overview.md) shows how the stages fit together.
+
 ## Primary source
 
 Computed prices are based on LiteLLM's `model_prices_and_context_window.json` price list, published in the [BerriAI/litellm](https://github.com/BerriAI/litellm) repository under the **MIT licence**. The framework pins this list to one identifiable commit SHA, downloaded at that exact commit (never at `HEAD` or a later commit), so prices remain reproducible over time even as the vendor updates rates. The pinned snapshot is stored under `<root>/pricelist/` with `PINNED.json` as the pointer file, recording the SHA, fetch instant, ETag (when available), and entry count. When you refresh the price list, you replace only the pointer and the blob at that SHA; earlier snapshots remain on disk.
@@ -34,6 +36,27 @@ This org override table is never part of the pinned primary source; it is always
 7. **`unpriced`** — If no candidate resolves, mark the record as unpriced rather than guessing.
 
 The org table occupies two positions in this ladder: `org-exact` (before primary exact), and `org-added` (after family fallback). This design ensures your corrections always win, and your additions fill gaps after all primary-source strategies are exhausted.
+
+### Declaring a Copilot CLI billing plan
+
+No usage record names the billing plan of the Copilot CLI account that produced it, so the org table declares it, in an optional `copilot` object beside `entries`. Both keys are optional:
+
+```json
+{
+  "entries": {},
+  "copilot": {
+    "plan": "legacy-premium-request",
+    "aiuRateUsd": 0.04
+  }
+}
+```
+
+- **`copilot.plan`** names the account's billing arrangement: `current-billing` or `legacy-premium-request`.
+  - `legacy-premium-request` (spec 0209 R21): every `copilot-cli` price computed from the price list carries the caveat `"copilot": {"legacyPlanReference": true, "caveat": "legacy-plan-reference-price"}` in the price object, naming it a legacy-plan reference price rather than the account's billed cost. A price computed from the CLI's own first-party figures carries no caveat, and neither does an unpriced record.
+  - `current-billing` (spec 0209 R20), any other value, or no declaration at all adds no caveat. A current-billing record is priced from the CLI's own first-party figures when its `raw` block carries them, and from the price list otherwise. No capture adapter records first-party figures today, so every Copilot CLI price on `main` comes from the price list.
+- **`copilot.aiuRateUsd`** is the US-dollar rate per AIU. It is read only for a record whose `raw` block carries both `total_nano_aiu` and `request_multiplier`, which the first-party path then prices at this rate. The framework never infers a rate from an account's usage. No capture adapter puts those two fields in `raw` today, so on `main` this key changes no price. The `0.04` above is illustrative, not a published rate.
+
+`model-prices.org.json` ships with an empty `copilot` object, so no plan is declared until the adopting organization declares one.
 
 ## Refreshing the price list and exchange rates
 

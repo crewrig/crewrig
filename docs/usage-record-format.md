@@ -4,6 +4,8 @@
 
 The usage record is the versioned contract for a unit of model-token consumption captured from a CLI source. A record carries exactly one of two kinds — `captured` for a unit a source successfully yielded, or `uncaptured` for a unit a source could not yield — and declares the schema version it conforms to. This page documents the field structure, the reading rules for older schema versions, and the invariants that govern model identifiers, fidelity typing, and the absence of zero-standing-in-for-unmeasured-value.
 
+This page is one stage of the usage feature; the [usage architecture overview](usage-overview.md) shows how the stages fit together.
+
 ## Field reference
 
 | Field | Type | Required | Description |

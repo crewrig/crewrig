@@ -147,6 +147,21 @@
           "nav_order": 110
         },
         {
+          "title": "Usage guide",
+          "path": "docs/usage-guide.md",
+          "nav_order": 111
+        },
+        {
+          "title": "Usage architecture overview",
+          "path": "docs/usage-overview.md",
+          "nav_order": 112
+        },
+        {
+          "title": "Usage data: organization note",
+          "path": "docs/usage-organization.md",
+          "nav_order": 113
+        },
+        {
           "title": "Usage capture architecture",
           "path": "docs/usage-capture.md",
           "nav_order": 115
@@ -170,6 +185,11 @@
           "title": "Usage pricing",
           "path": "docs/usage-pricing.md",
           "nav_order": 140
+        },
+        {
+          "title": "Usage dashboard",
+          "path": "docs/usage-dashboard.md",
+          "nav_order": 145
         }
       ]
     },
