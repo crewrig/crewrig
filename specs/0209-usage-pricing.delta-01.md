@@ -45,10 +45,10 @@ version: 1.1.0
    (requirement 30), the same currency and fixing date (requirement 27),
    and the same selection (requirement 45),
    the sum of the periods' `session-cumulative` price contributions SHALL
-   equal the sum, over every session those periods count, of that
-   session's own `session-cumulative` price contribution as a rollup
-   scoped to that one session reports it; no session SHALL be counted in
-   more than one of those periods.
+   equal the sum, over every session those periods count, of the price of
+   that session's last snapshot among the snapshots that same selection
+   admits (requirement 45); no session SHALL be counted in more than one
+   of those periods.
 5. **New requirement (R47) — Agreement with the dashboard.** Given an
    identical period, selection (requirement 45), currency, fixing date,
    and price-list snapshot, a rollup of prices over a period SHALL report,
@@ -57,8 +57,7 @@ version: 1.1.0
    dashboard reports for that same period; this extends to the pricing
    contract's own period rollup the agreement spec 0210 requirement 2
    already requires among the dashboard's three delivery forms. A record
-   whose currency conversion failed is outside this requirement until
-   issue #1202 settles how the price rollup tallies it.
+   whose currency conversion failed is outside this requirement.
 6. **New requirement (R48) — Computed from the surviving snapshots, never
    frozen.** A period's `session-cumulative` price contribution SHALL be
    computed from the snapshots present in the store at computation time;
@@ -76,9 +75,9 @@ version: 1.1.0
    two ways requirement 48 lets an ended period's `session-cumulative`
    figure change: a straddling session still recording snapshots, and an
    explicit prune of a later period; and no organization-facing
-   documentation of the usage feature SHALL describe a divergence between
-   a period rollup of prices or tokens and spec 0210's dashboard on the
-   placement of a `session-cumulative` session.
+   documentation of the usage feature SHALL describe a divergence, on the
+   placement of a `session-cumulative` session, between a period rollup
+   and spec 0210's dashboard that the implementation does not exhibit.
 8. **New requirement (R50) — Continuous-integration acceptance criterion
    for period placement.** A continuous-integration suite SHALL verify,
    with no network access and against a pinned fixture price list, over a
@@ -89,8 +88,9 @@ version: 1.1.0
    of prices over P counts only the first session, at the price of its
    500-token snapshot; that the rollup over P+1 counts the straddling
    session at the price of its 900-token snapshot; that the P and P+1
-   contributions sum to the two sessions' own session-scoped
-   `session-cumulative` contributions; that each figure equals spec 0210's dashboard figure for
+   contributions sum to the prices of the two sessions' last snapshots,
+   which, with no selection filter applied, each session's own
+   session-scoped rollup reports; that each figure equals spec 0210's dashboard figure for
    the same period; and that, after an explicit prune of P+1, the rollup
    over P counts the straddling session at the price of its 700-token
    snapshot, now its last surviving one.
@@ -268,6 +268,12 @@ three delivery forms only, and spec 0210 states no placement rule of its
 own; its PLAN v2 D4 already applies reading A. R47 extends agreement to
 the pricing contract's period rollup without changing spec 0210, which is
 why no 0210 delta is needed.
+
+**Failed conversions.** R47 leaves a record whose currency conversion
+failed outside the agreement: on `main`, the price rollup adds that
+record's USD amount into a total in the requested currency while the
+dashboard tallies it as unconverted. Issue #1202 tracks that defect; a
+later delta settles the tally and may then widen R47.
 
 **Rejected alternative — reading B, filter-first.** "The last snapshot
 within the period" keeps an ended period's figure stable, which is its
