@@ -765,11 +765,47 @@ _health_chroma_daemon() {
   return 0
 }
 
+# ensure_mempalace_home
+#
+# Creates ~/.mempalace (and ~/.mempalace/palace, the default palace location)
+# before a supervised MemPalace daemon is started (issue #1196). Idempotent —
+# a no-op when the directories already exist.
+#
+# Both supervised units depend on this directory existing but never create
+# it: the systemd units set WorkingDirectory=%h/.mempalace and log through
+# StandardOutput/StandardError=append:%h/.mempalace/<daemon>.log, and the
+# launchd plists set WorkingDirectory and StandardOutPath to the same place.
+# Neither systemd's append: nor launchd's StandardOutPath/WorkingDirectory
+# creates a missing parent directory, so on a fresh machine systemd fails the
+# unit with status=209/STDOUT and restarts it in a loop. `mempalace init` is
+# no substitute: it takes a project directory to mine, it does not bootstrap
+# the home.
+#
+# The palace subdirectory is created only when MEMPALACE_PALACE_PATH is unset
+# or empty — an override points somewhere else, and this function does not
+# create arbitrary operator-chosen paths.
+ensure_mempalace_home() {
+  local home_dir="$HOME/.mempalace"
+  if ! mkdir -p "$home_dir" 2>/dev/null || [ ! -d "$home_dir" ]; then
+    echo "  ERROR: could not create the MemPalace home directory $home_dir." >&2
+    echo "         The supervised daemons log there and use it as their working directory." >&2
+    return 1
+  fi
+  if [ -z "${MEMPALACE_PALACE_PATH:-}" ]; then
+    if ! mkdir -p "$home_dir/palace" 2>/dev/null || [ ! -d "$home_dir/palace" ]; then
+      echo "  ERROR: could not create the default palace directory $home_dir/palace." >&2
+      return 1
+    fi
+  fi
+  return 0
+}
+
 install_chroma_daemon() {
   local repo_dir="$1"
   CREWRIG_REPO_DIR="$repo_dir"
   echo ""
   echo "Installing shared ChromaDB HTTP daemon supervisor (issue #98)..."
+  ensure_mempalace_home || return 1
   install_daemon_supervisor \
     "com.mempalace.chroma-server" \
     "mempalace-chroma-server" \
@@ -954,6 +990,7 @@ install_mcp_daemon() {
   CREWRIG_REPO_DIR="$repo_dir"
   echo ""
   echo "Installing shared MemPalace MCP HTTP daemon supervisor (spec 0113)..."
+  ensure_mempalace_home || return 1
   # The token must exist before the launcher runs: it refuses to serve without
   # one, by design (an empty token disables the bearer check upstream).
   if ! mcp_token_read_or_create >/dev/null; then
