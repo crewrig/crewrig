@@ -25,35 +25,48 @@ version: 1.1.0
    `unpriced` tally of requirement 34 for such a session SHALL be counted
    only in the period that requirement 43 places the session in.
 3. **New requirement (R45) — The last snapshot is chosen over the whole
-   session.** The last snapshot of requirements 43 and 44 SHALL be the
-   snapshot that spec 0208's per-fidelity rollup designates as the
-   session's own last snapshot (spec 0208 requirements 20 and 22), chosen
-   from every snapshot of that session present in the store, including
-   the snapshots that fall outside the period being rolled up; a snapshot
-   outside the period that is later than every in-period snapshot of the
-   same session SHALL supersede them.
+   session, within the selection.** The last snapshot of requirements 43
+   and 44 SHALL be chosen from every snapshot of that session present in
+   the store that the rollup's selection admits — the selection being
+   every filter other than a placement bound, that is the session, the
+   agent and parent session, the task-handoff key or external asset
+   reference (with the attribution ledger applied, spec 0208 requirement
+   15), the source CLI, and the fidelity — and a placement bound (the
+   period or span of time the rollup is scoped to, and, on spec 0210's
+   dashboard, the model filter) SHALL NOT restrict that choice but only
+   decide, afterwards, whether the chosen snapshot is counted; a snapshot
+   the selection admits that falls outside the period and is later than
+   every in-period snapshot of the same session SHALL therefore supersede
+   them. Among the admitted snapshots of one session, the last SHALL be
+   the one with the latest `timing.requestInstant`, ties broken by the
+   latest `timing.captureInstant`, then by the greatest `recordId`.
 4. **New requirement (R46) — Period rollups are additive.** For any set
    of disjoint periods, computed under the same price-list snapshot
-   (requirement 30), the same currency, and the same filter selection,
+   (requirement 30), the same currency and fixing date (requirement 27),
+   and the same selection (requirement 45),
    the sum of the periods' `session-cumulative` price contributions SHALL
    equal the sum, over every session those periods count, of that
    session's own `session-cumulative` price contribution as a rollup
    scoped to that one session reports it; no session SHALL be counted in
    more than one of those periods.
 5. **New requirement (R47) — Agreement with the dashboard.** Given an
-   identical period, filter selection, currency, and price-list snapshot,
-   a rollup of prices over a period SHALL report the same
-   `session-cumulative` price contribution, the same priced count, and
-   the same `unpriced` count as spec 0210's dashboard reports for that
-   same period; this extends to the pricing contract's own period rollup
-   the agreement spec 0210 requirement 2 already requires among the
-   dashboard's three delivery forms.
+   identical period, selection (requirement 45), currency, fixing date,
+   and price-list snapshot, a rollup of prices over a period SHALL report,
+   for its `session-cumulative` records, the same price contribution, the
+   same priced count, and the same `unpriced` count as spec 0210's
+   dashboard reports for that same period; this extends to the pricing
+   contract's own period rollup the agreement spec 0210 requirement 2
+   already requires among the dashboard's three delivery forms. A record
+   whose currency conversion failed is outside this requirement until
+   issue #1202 settles how the price rollup tallies it.
 6. **New requirement (R48) — Computed from the surviving snapshots, never
    frozen.** A period's `session-cumulative` price contribution SHALL be
    computed from the snapshots present in the store at computation time;
    it SHALL change after the period has ended when a session straddling
    the period's end records a later snapshot, and when an explicit prune
-   of a later period (requirement 37) removes the snapshot that was that
+   of a later period (spec 0207 requirement 19 as reworded by spec 0207
+   delta-01, together with requirement 37 for that period's stored
+   prices) removes the snapshot that was that
    session's last, making its last *surviving* snapshot the one requirement
    43 places; no rollup SHALL report an earlier figure retained for an
    ended period in place of the one so computed.
@@ -62,7 +75,10 @@ version: 1.1.0
    SHALL state the placement rule of requirements 43 through 45 and the
    two ways requirement 48 lets an ended period's `session-cumulative`
    figure change: a straddling session still recording snapshots, and an
-   explicit prune of a later period.
+   explicit prune of a later period; and no organization-facing
+   documentation of the usage feature SHALL describe a divergence between
+   a period rollup of prices or tokens and spec 0210's dashboard on the
+   placement of a `session-cumulative` session.
 8. **New requirement (R50) — Continuous-integration acceptance criterion
    for period placement.** A continuous-integration suite SHALL verify,
    with no network access and against a pinned fixture price list, over a
@@ -89,9 +105,11 @@ parent's `## Out of scope` already draws:
 - The placement of `per-request` records, `run-total` records, and
   `uncaptured` records is unchanged: each is counted in the period holding
   its own `timing.requestInstant`, as before this delta.
-- The definition of which snapshot is a session's own last snapshot,
-  including its tie-break, remains spec 0208's; this delta places that
-  snapshot's price, it does not redefine the choice.
+- The ordering R45 states is the one the storage contract's per-fidelity
+  rollup already applies on `main`; spec 0208 names the last snapshot
+  (requirements 20 and 22) without stating an ordering, and R45 makes it
+  normative for price rollups without changing which snapshot any
+  existing rollup designates.
 
 **Scenario:** A straddling session is placed in the later period
 
@@ -129,6 +147,21 @@ When  an explicit prune of P+1 removes the straddling session's 900-token
 Then  the rollup over P also counts the straddling session, at the price
       of its 700-token snapshot, now its last surviving snapshot, and no
       earlier figure for P is reported in its place
+```
+
+**Scenario:** The selection applies before the choice, the period after it
+
+```text
+Given a session-cumulative session with a 400-token snapshot in period P
+      attributed to task A, and a 600-token snapshot in period P+1 that
+      an attribution-ledger entry scoped to P+1 attributes to task B
+When  a rollup of prices is computed for task A over P, and for task B
+      over P+1
+Then  the rollup for task A over P counts that session at the price of
+      its 400-token snapshot, the last snapshot task A's selection admits,
+      and the rollup for task B over P+1 counts it at the price of its
+      600-token snapshot; the snapshot task A's selection does not admit
+      never supersedes one it does
 ```
 
 **Scenario:** A period holding only a superseded snapshot receives nothing
@@ -208,21 +241,27 @@ recorded at
 The same decision fixed the scope: this single delta of spec 0209, no
 delta of spec 0208, no delta of spec 0210.
 
-**Spec 0208 side — conformance, not a new requirement.** Spec 0209's
-parent `## Out of scope` keeps the per-fidelity rollup rule's own
-definition in spec 0208. This delta therefore states the placement for
-**price** rollups only. The change the implementing diff makes to the
-**token** rollup of `usage:query --period P --rollup` is a conformance fix
-to spec 0208 R22 as written — *"each session's own last snapshot SHALL
-stand as that session's entire contribution to the rollup"* — which a
-filter-first period rollup violates whenever a later snapshot of the same
-session exists outside the period: the in-period snapshot it keeps is not
-the session's own last snapshot. No 0208 requirement is added or
-reworded. Likewise, the tie-break that designates the last snapshot (by
-`timing.requestInstant`, then `timing.captureInstant`, then `recordId`)
-is spec 0208's, realized in `scripts/lib/usage-store/rollup.js`
-(`lastSnapshots`); R45 cites it rather than restating it, so the two
-trees cannot drift apart.
+**Spec 0208 side — an unspecified surface aligned, not a new 0208
+requirement.** Spec 0209's parent `## Out of scope` keeps the per-fidelity
+rollup rule's own definition in spec 0208, so this delta states the
+placement for **price** rollups only. Spec 0208 specifies rollups for a
+task-handoff key or an external asset reference (R20); it does not say
+whether a period is a selection filter or a placement bound, and so does
+not specify the period rollup `usage:query --period P --rollup` exposes.
+The implementing diff aligns that token rollup on the selection-versus-
+placement split R45 states, so the token figures of a period agree with
+the price figures and with the dashboard for the same period. That split
+is what keeps the change from reaching spec 0208's shipped task-key
+rollup: `usage:query --task-key K --rollup` keeps choosing each session's
+last snapshot among the snapshots attributed to K, since the task-handoff
+key is a selection filter, and remains unchanged. An earlier draft framed
+the token-side change as a conformance fix to spec 0208 R22; read that
+broadly, the same argument would condemn the task-key rollup too (seat
+`specs/1193#1`, finding s1-F2), so it is withdrawn in favor of the split.
+No 0208 requirement is added or reworded. Spec 0208 names the last
+snapshot without stating an ordering; the ordering R45 states is the one
+`lastSnapshots` in `scripts/lib/usage-store/rollup.js` already applies,
+so no existing rollup changes which snapshot it designates.
 
 **Spec 0210 side.** Spec 0210 R2 requires agreement among the dashboard's
 three delivery forms only, and spec 0210 states no placement rule of its
@@ -241,9 +280,12 @@ qualifier — *within the period* — that neither spec 0209 R32 nor spec
 
 **Accepted cost.** Reading A lets an ended period's figure move, in the
 two ways R48 names; the owner accepted that cost on condition that it is
-documented (R49). For #1175, `docs/usage-dashboard.md` → *Reading the
-views* stops describing a divergence between `usage:query` /
-`usage:price` and the dashboard once the implementing diff lands.
+documented (R49). The implementing diff of #1193 carries that
+documentation: `docs/usage-pricing.md` states the placement rule and both
+ways an ended period can move, and `docs/usage-dashboard.md` → *Reading
+the views* drops its paragraph on the divergence between `usage:query` /
+`usage:price` and the dashboard. The documentation work of #1175 builds
+on that state.
 
 **Test impact.** Case 13.8 of #1173 (`scripts/tests/test-usage-dashboard.sh`,
 `case_divergence`; expected values under the `divergence` key of
