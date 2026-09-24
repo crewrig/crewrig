@@ -33,10 +33,14 @@ function lastSnapshots(records) {
   return Array.from(bySession.values());
 }
 
-// contributingRecords(records) -> { byFidelity: {...}, uncaptured: [] }.
+// contributingRecords(records, place?) -> { byFidelity: {...}, uncaptured: [] }.
 // `kind: 'captured'` only ever lands in the fidelity buckets; every
 // `uncaptured` record lands in its own bucket, counted but never summed.
-function contributingRecords(records) {
+// place(r), when given, is a placement bound (spec 0209 delta-01 R45): it is
+// applied AFTER lastSnapshots() has chosen each session's last snapshot over
+// every record passed in, to every bucket and to `uncaptured` — never before,
+// or a later out-of-bound snapshot could not supersede an in-bound one.
+function contributingRecords(records, place) {
   const captured = records.filter((r) => r.kind === 'captured');
   const uncaptured = records.filter((r) => r.kind !== 'captured');
 
@@ -46,7 +50,11 @@ function contributingRecords(records) {
     'session-cumulative': lastSnapshots(captured),
   };
 
-  return { byFidelity, uncaptured };
+  if (!place) return { byFidelity, uncaptured };
+
+  const placed = {};
+  for (const f of FIDELITIES) placed[f] = byFidelity[f].filter(place);
+  return { byFidelity: placed, uncaptured: uncaptured.filter(place) };
 }
 
 // sumTokens(records) — the five token classes summed across `records`.
@@ -87,13 +95,14 @@ function sumTokens(records) {
   return sum;
 }
 
-// rollup(records, {combined}) — byFidelity's three sums always; combined
-// present only when requested and only carrying mixed: [<every fidelity it
-// combines>] (R21); uncapturedCount always present, zero included, never
-// folded into a token sum (R24).
+// rollup(records, {combined, place}) — byFidelity's three sums always;
+// combined present only when requested and only carrying mixed: [<every
+// fidelity it combines>] (R21); uncapturedCount always present, zero
+// included, never folded into a token sum (R24). place is forwarded to
+// contributingRecords().
 function rollup(records, opts) {
   opts = opts || {};
-  const { byFidelity, uncaptured } = contributingRecords(records);
+  const { byFidelity, uncaptured } = contributingRecords(records, opts.place);
 
   const result = {
     byFidelity: {

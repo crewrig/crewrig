@@ -10,6 +10,8 @@ on:
       - "scripts/tests/fixtures/usage-pricing/**"
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-dashboard/**"
+      - "scripts/usage-dashboard.sh"
       - "package.json"
       - "package-lock.json"
   push:
@@ -21,6 +23,8 @@ on:
       - "scripts/tests/fixtures/usage-pricing/**"
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-dashboard/**"
+      - "scripts/usage-dashboard.sh"
       - "package.json"
       - "package-lock.json"
 

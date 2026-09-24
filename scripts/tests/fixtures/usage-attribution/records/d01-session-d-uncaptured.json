@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "uncaptured",
+  "fidelity": "per-request",
+  "recordId": "448f8f1ce8b18ee657bd2c682b1e087b94e4ce7439cb3c21068b59c4d7051679",
+  "idempotencyKey": "attr-d01-session-d-uncaptured",
+  "provenance": {
+    "cli": "claude-code",
+    "cliVersion": "2.1.4",
+    "captureChannel": "own-record-tail",
+    "formatFingerprint": "sha256:00000000000000000000000000000000"
+  },
+  "identity": {
+    "sessionId": "d01-session-d",
+    "parentSessionId": null,
+    "agentId": null,
+    "projectRoot": "unknown"
+  },
+  "timing": {
+    "requestInstant": "2026-06-03T10:00:00.000Z",
+    "captureInstant": "2026-06-03T10:00:01.000Z"
+  },
+  "uncapturedReason": "test-fixture uncaptured reason"
+}

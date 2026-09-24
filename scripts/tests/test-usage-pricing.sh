@@ -2,7 +2,9 @@
 # test-usage-pricing.sh — the no-daemon, no-network suite for the
 # comparative-pricing engine (spec 0209 R38-R41, PLAN v2 step 12; plan/1172#2
 # APPROVE review's named edit 1, the delta-01 R33 two-store ownership note
-# https://github.com/crewrig/crewrig/issues/1172#issuecomment-5776029958).
+# https://github.com/crewrig/crewrig/issues/1172#issuecomment-5776029958). Cases
+# 17-18 cover spec 0209 delta-01 R43-R48 and R50 (issue #1193); Case 17 calls
+# the dashboard for the R47 agreement.
 #
 # Fully offline: CREWRIG_USAGE_ROOT is a fresh mktemp -d per case,
 # MEMPALACE_PALACE_PATH a temp path with no token file, CREWRIG_USAGE_OFFLINE=1,
@@ -81,7 +83,7 @@ fi
 
 # --- Sandbox -------------------------------------------------------------
 HELPERS_DIR="$(mktemp -d)"
-MUTATION_GUARD_FILES="scripts/lib/usage-price/resolve.js scripts/lib/usage-price/compute.js scripts/lib/usage-price/fx.js scripts/lib/usage-price/store.js scripts/lib/usage-price/rollup.js scripts/lib/usage-store/rollup.js scripts/lib/usage-store/prune.js"
+MUTATION_GUARD_FILES="scripts/lib/usage-price/resolve.js scripts/lib/usage-price/compute.js scripts/lib/usage-price/fx.js scripts/lib/usage-price/store.js scripts/lib/usage-price/rollup.js scripts/lib/usage-store/rollup.js scripts/lib/usage-store/prune.js scripts/lib/usage-store/query.js"
 CASE_ROOTS=""
 
 # shellcheck disable=SC2329  # invoked via trap cleanup EXIT, not dead
@@ -1381,6 +1383,195 @@ if git -C "$REPO_DIR" diff --quiet -- "$STORE_JS"; then
   ok "store.js is restored after Case 16's mutation"
 else
   bad "store.js was NOT fully restored after Case 16's mutation"
+fi
+
+# =============================================================================
+# Case 17 — period placement of a straddling session-cumulative session
+# (spec 0209 delta-01 R43, R45-R48, R50's acceptance criterion)
+# =============================================================================
+# Session A: 100/300/500 wholly in 2026-05. Session B: 700 in 2026-05's last
+# hour, 900 in 2026-06. Fixture price 3e-6 USD per netInput token, output 0.
+# Every amount is compared with |delta| <= 1e-12; counts are exact.
+# Red on main (filter-first): P = 0.0015, P + P+1 = 0.0042, every pricedCount
+# check, and the dashboard agreement for P. Pins of unchanged behavior: P+1
+# sum and count, the session rollups, and the post-prune sum and count.
+echo
+echo "=== Case 17: period placement of a straddling session (delta-01 R43-R48, R50) ==="
+new_root_and_pin_into C17_ROOT
+
+# approx <a> <b> — exit 0 when |a - b| <= 1e-12.
+approx() {
+  node -e "process.exit(Math.abs(Number(process.argv[1]) - Number(process.argv[2])) <= 1e-12 ? 0 : 1)" "$1" "$2"
+}
+
+# sc_record <session> <idemKey> <requestInstant> <netInput> [modelId] — writes
+# one session-cumulative record straight into the journal.
+sc_record() {
+  local out
+  MR_SESSION="$1" MR_IDEMKEY="$2" MR_REQUEST_INSTANT="$3" MR_NET_INPUT="$4" MR_OUTPUT=0 \
+    MR_FIDELITY="session-cumulative" MR_MODEL_ID="${5:-claude-sonnet-5}" run_driver make-record > "$HELPERS_DIR/$2.json"
+  out="$(run_driver write "$HELPERS_DIR/$2.json")"
+  grep -qF 'STATUS=stored' <<< "$out" || bad "fixture record $2 did NOT store" "$out"
+}
+
+# price_sc <selector...> — the session-cumulative bucket of usage:price --rollup
+# as "<sum>|<count>|<pricedCount>|<unpricedCount>".
+price_sc() {
+  local out
+  out="$(bash "$REPO_DIR/scripts/usage-price.sh" "$@" --rollup)"
+  jget "$out" "(b => [b.sum, b.count, b.pricedCount, b.unpricedCount].join('|'))(v.byFidelity['session-cumulative'])"
+}
+
+# dash_sc <period> — the dashboard's session-cumulative figures for --period
+# as "<amount>|<pricedCount>|<unpricedCount>|<netInput>".
+dash_sc() {
+  local out
+  out="$(bash "$REPO_DIR/scripts/usage-dashboard.sh" report --json --period "$1")"
+  jget "$out" "(p => [p.amount, p.pricedCount, p.unpricedCount, (v.totals.tokens.byFidelity['session-cumulative'] || {}).netInput].join('|'))(v.totals.price.byFidelity['session-cumulative'] || {})"
+}
+
+# query_sc <period> — usage:query --period --rollup session-cumulative netInput.
+query_sc() {
+  local out
+  out="$(bash "$REPO_DIR/scripts/usage-query.sh" --period "$1" --rollup)"
+  jget "$out" "v.byFidelity['session-cumulative'].netInput"
+}
+
+sc_record c17-session-a c17-a1 2026-05-10T10:00:00.000Z 100
+sc_record c17-session-a c17-a2 2026-05-10T11:00:00.000Z 300
+sc_record c17-session-a c17-a3 2026-05-10T12:00:00.000Z 500
+sc_record c17-session-b c17-b1 2026-05-31T23:00:00.000Z 700
+sc_record c17-session-b c17-b2 2026-06-01T01:00:00.000Z 900
+
+IFS='|' read -r c17_p_sum c17_p_count c17_p_priced c17_p_unpriced <<< "$(price_sc --period 2026-05)"
+IFS='|' read -r c17_n_sum c17_n_count c17_n_priced c17_n_unpriced <<< "$(price_sc --period 2026-06)"
+if approx "$c17_p_sum" 0.0015 && [ "$c17_p_count" = "1" ]; then
+  ok "--period 2026-05 --rollup: session-cumulative sum = 0.0015, count = 1 (A's 500-token snapshot only; B is placed in 2026-06)"
+else
+  bad "--period 2026-05 --rollup: expected sum 0.0015, count 1" "got sum=$c17_p_sum count=$c17_p_count"
+fi
+if approx "$c17_n_sum" 0.0027 && [ "$c17_n_count" = "1" ]; then
+  ok "--period 2026-06 --rollup: session-cumulative sum = 0.0027, count = 1 (B's 900-token snapshot)"
+else
+  bad "--period 2026-06 --rollup: expected sum 0.0027, count 1" "got sum=$c17_n_sum count=$c17_n_count"
+fi
+if [ "$c17_p_priced|$c17_p_unpriced|$c17_n_priced|$c17_n_unpriced" = "1|0|1|0" ]; then
+  ok "--period --rollup reports pricedCount = 1, unpricedCount = 0 for each of 2026-05 and 2026-06"
+else
+  bad "--period --rollup pricedCount/unpricedCount are wrong (expected 1|0|1|0)" "got $c17_p_priced|$c17_p_unpriced|$c17_n_priced|$c17_n_unpriced"
+fi
+
+c17_a_sum="$(price_sc --session c17-session-a | cut -d'|' -f1)"
+c17_b_sum="$(price_sc --session c17-session-b | cut -d'|' -f1)"
+if approx "$c17_a_sum" 0.0015 && approx "$c17_b_sum" 0.0027; then
+  ok "--session rollups: A = 0.0015, B = 0.0027"
+else
+  bad "--session rollups: expected A 0.0015, B 0.0027" "got A=$c17_a_sum B=$c17_b_sum"
+fi
+c17_periods="$(node -e "console.log(Number(process.argv[1]) + Number(process.argv[2]))" "$c17_p_sum" "$c17_n_sum")"
+c17_sessions="$(node -e "console.log(Number(process.argv[1]) + Number(process.argv[2]))" "$c17_a_sum" "$c17_b_sum")"
+if approx "$c17_periods" "$c17_sessions" && approx "$c17_periods" 0.0042; then
+  ok "R46: P + P+1 = 0.0042 = the two sessions' own rollups (no session counted twice)"
+else
+  bad "R46: P + P+1 does not equal A + B = 0.0042" "periods=$c17_periods sessions=$c17_sessions"
+fi
+
+for c17_m in 2026-05 2026-06; do
+  if [ "$c17_m" = "2026-05" ]; then
+    c17_line="$c17_p_sum|$c17_p_priced|$c17_p_unpriced"; c17_tok=500
+  else
+    c17_line="$c17_n_sum|$c17_n_priced|$c17_n_unpriced"; c17_tok=900
+  fi
+  IFS='|' read -r c17_d_amount c17_d_priced c17_d_unpriced c17_d_net <<< "$(dash_sc "$c17_m")"
+  c17_q_net="$(query_sc "$c17_m")"
+  IFS='|' read -r c17_sum c17_priced c17_unpriced <<< "$c17_line"
+  if approx "$c17_d_amount" "$c17_sum" && [ "$c17_d_priced|$c17_d_unpriced" = "$c17_priced|$c17_unpriced" ] \
+    && [ "$c17_d_net" = "$c17_tok" ] && [ "$c17_q_net" = "$c17_tok" ]; then
+    ok "R47 --period $c17_m: usage:price = dashboard (amount $c17_sum, pricedCount $c17_priced, unpricedCount $c17_unpriced) and usage:query = dashboard = $c17_tok tokens"
+  else
+    bad "R47 --period $c17_m: usage:price / usage:query disagree with the dashboard" "usage:price sum|priced|unpriced=$c17_line; dashboard amount|priced|unpriced|netInput=$c17_d_amount|$c17_d_priced|$c17_d_unpriced|$c17_d_net; usage:query netInput=$c17_q_net (expected $c17_tok)"
+  fi
+done
+
+# Mutation (pre-prune): rollupInput() always returns run(opts), i.e. the
+# filter-first read of P alone — B's 700-token snapshot is then counted in P.
+QUERY_JS="$REPO_DIR/scripts/lib/usage-store/query.js"
+node -e "
+const fs = require('fs');
+const p = process.argv[1];
+let src = fs.readFileSync(p, 'utf8');
+const marker = 'if (!opts.period || opts.undrained || opts.pending) return';
+if (!src.includes(marker)) { console.error('FATAL: rollupInput marker not found in usage-store/query.js'); process.exit(1); }
+src = src.replace(marker, 'return');
+fs.writeFileSync(p, src);
+" "$QUERY_JS"
+mut17_sum="$(price_sc --period 2026-05 | cut -d'|' -f1)"
+git -C "$REPO_DIR" checkout -- "$QUERY_JS"
+if ! approx "$mut17_sum" 0.0015 && approx "$mut17_sum" 0.0036; then
+  ok "MUTATION RED: a filter-first rollupInput() counts B's 700-token snapshot in 2026-05 (0.0036, not 0.0015)"
+else
+  bad "MUTATION not red: the 2026-05 figure did not regress to filter-first 0.0036" "got $mut17_sum"
+fi
+if git -C "$REPO_DIR" diff --quiet -- "$QUERY_JS"; then
+  ok "usage-store/query.js is restored after Case 17's mutation"
+else
+  bad "usage-store/query.js was NOT fully restored after Case 17's mutation"
+fi
+
+# R48: an explicit prune of P+1 makes B's 700-token snapshot its last
+# surviving one, which R43 places in P.
+bash "$REPO_DIR/scripts/usage-prune.sh" claude-code 2026-06 --force >/dev/null
+IFS='|' read -r c17_pp_sum c17_pp_count c17_pp_priced c17_pp_unpriced <<< "$(price_sc --period 2026-05)"
+if approx "$c17_pp_sum" 0.0036 && [ "$c17_pp_count" = "2" ]; then
+  ok "R48 after pruning 2026-06: --period 2026-05 --rollup sum = 0.0036, count = 2 (A 500 + B's surviving 700)"
+else
+  bad "R48 after pruning 2026-06: expected sum 0.0036, count 2" "got sum=$c17_pp_sum count=$c17_pp_count"
+fi
+IFS='|' read -r c17_d_amount c17_d_priced c17_d_unpriced c17_d_net <<< "$(dash_sc 2026-05)"
+if approx "$c17_d_amount" "$c17_pp_sum" && [ "$c17_pp_priced|$c17_pp_unpriced" = "2|0" ] \
+  && [ "$c17_d_priced|$c17_d_unpriced" = "2|0" ] && [ "$c17_d_net" = "1200" ]; then
+  ok "R47/R48 after pruning 2026-06: pricedCount = 2 and the dashboard agrees (amount 0.0036, pricedCount 2, 1200 tokens)"
+else
+  bad "R47/R48 after pruning 2026-06: usage:price and the dashboard disagree" "usage:price sum|priced|unpriced=$c17_pp_sum|$c17_pp_priced|$c17_pp_unpriced; dashboard=$c17_d_amount|$c17_d_priced|$c17_d_unpriced|$c17_d_net"
+fi
+
+# =============================================================================
+# Case 18 — a superseded snapshot contributes nothing, and the unpriced tally
+# follows the last snapshot (spec 0209 delta-01 R44)
+# =============================================================================
+# Session C: a priced 200-token snapshot in 2026-05, then a last snapshot in
+# 2026-06 whose model no longer resolves. Red on main (filter-first): the
+# 2026-05 zeros and every pricedCount check. Pins: the 2026-06 count and
+# unpricedCount.
+echo
+echo "=== Case 18: a superseded snapshot contributes nothing; unpriced follows the last snapshot (delta-01 R44) ==="
+new_root_and_pin_into C18_ROOT
+sc_record c18-session-c c18-c1 2026-05-20T10:00:00.000Z 200
+sc_record c18-session-c c18-c2 2026-06-02T10:00:00.000Z 600 totally-unresolvable-model-xyz
+
+IFS='|' read -r c18_p_sum c18_p_count c18_p_priced c18_p_unpriced <<< "$(price_sc --period 2026-05)"
+if [ "$c18_p_count|$c18_p_priced|$c18_p_unpriced" = "0|0|0" ] && approx "$c18_p_sum" 0; then
+  ok "--period 2026-05 --rollup: session-cumulative count = 0, pricedCount = 0, unpricedCount = 0, sum = 0 (the 2026-05 snapshot is superseded)"
+else
+  bad "--period 2026-05 --rollup: the superseded snapshot still contributes" "got sum=$c18_p_sum count=$c18_p_count priced=$c18_p_priced unpriced=$c18_p_unpriced"
+fi
+IFS='|' read -r c18_n_sum c18_n_count c18_n_priced c18_n_unpriced <<< "$(price_sc --period 2026-06)"
+if [ "$c18_n_count|$c18_n_unpriced" = "1|1" ]; then
+  ok "--period 2026-06 --rollup: session-cumulative count = 1, unpricedCount = 1 (the unpriced tally lands where the session is placed)"
+else
+  bad "--period 2026-06 --rollup: expected count 1, unpricedCount 1" "got count=$c18_n_count unpriced=$c18_n_unpriced"
+fi
+if [ "$c18_n_priced" = "0" ]; then
+  ok "--period 2026-06 --rollup: pricedCount = 0"
+else
+  bad "--period 2026-06 --rollup: pricedCount is NOT 0" "got $c18_n_priced"
+fi
+IFS='|' read -r _ c18_dp_priced c18_dp_unpriced _ <<< "$(dash_sc 2026-05)"
+IFS='|' read -r _ c18_dn_priced c18_dn_unpriced _ <<< "$(dash_sc 2026-06)"
+if [ "$c18_dp_priced|$c18_dp_unpriced|$c18_dn_priced|$c18_dn_unpriced" = "$c18_p_priced|$c18_p_unpriced|$c18_n_priced|$c18_n_unpriced" ]; then
+  ok "R47: the dashboard's pricedCount/unpricedCount agree for 2026-05 (0/0) and 2026-06 (0/1)"
+else
+  bad "R47: the dashboard's pricedCount/unpricedCount disagree with usage:price" "dashboard 05=$c18_dp_priced/$c18_dp_unpriced 06=$c18_dn_priced/$c18_dn_unpriced; usage:price 05=$c18_p_priced/$c18_p_unpriced 06=$c18_n_priced/$c18_n_unpriced"
 fi
 
 # =============================================================================

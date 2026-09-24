@@ -53,10 +53,14 @@
     "task-split-a": { "sessionCumulativeNetInput": 400 },
     "task-split-b": { "sessionCumulativeNetInput": 2400 }
   },
-  "divergence": {
-    "_comment": "Case 13.8: usage:query --period P --rollup filters first; the dashboard's --period places the one pass's contributions.",
-    "2026-09": { "usageQuerySessionCumulativeNetInput": 1200, "dashboardSessionCumulativeNetInput": 500 },
-    "2026-10": { "usageQuerySessionCumulativeNetInput": 1300, "dashboardSessionCumulativeNetInput": 900 }
+  "periodAgreement": {
+    "_comment": "Case 13.8 (spec 0209 delta-01 R47, R45): usage:query and usage:price --period P --rollup choose each session-cumulative session's last snapshot over the whole selection, then place it, as the dashboard does. 2026-09: r05 alone, 500 * 3e-6 + 50 * 15e-6 USD (sess-s2's r06 is superseded by r07). 2026-10: r07 alone, 900 * 2e-7 + 90 * 5e-7 USD (sess-split's r15 is superseded by r16). split: with the ledger {period: 2026-11} entry applied, r16 is task-split-b's, so r15 is task-split-a's last snapshot. Prices compare within 1e-12.",
+    "2026-09": { "sessionCumulativeNetInput": 500, "sessionCumulativeAmount": 0.00225, "pricedCount": 1, "unpricedCount": 0 },
+    "2026-10": { "sessionCumulativeNetInput": 900, "sessionCumulativeAmount": 0.000225, "pricedCount": 1, "unpricedCount": 0 },
+    "split": {
+      "task-split-a": { "period": "2026-10", "sessionCumulativeNetInput": 400 },
+      "task-split-b": { "period": "2026-11", "sessionCumulativeNetInput": 2400 }
+    }
   },
   "supersededOnlyDay": {
     "day": "2026-09-20",

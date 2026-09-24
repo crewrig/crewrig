@@ -2,7 +2,9 @@
 # test-usage-attribution.sh — the no-daemon suite for the usage-attribution
 # contract (spec 0208 R25-R29, PLAN v3 step 10; plan/1171#3 APPROVE review;
 # delta-01 R33's no-registered-store half, per the orchestrator's ownership
-# note https://github.com/crewrig/crewrig/issues/1172#issuecomment-5776029958).
+# note https://github.com/crewrig/crewrig/issues/1172#issuecomment-5776029958). The
+# delta-01 block pins spec 0209 delta-01 R43-R45 on the token rollup of
+# `usage:query --period P --rollup` (issue #1193).
 #
 # CREWRIG_USAGE_ROOT is a fresh mktemp -d per case; MEMPALACE_PALACE_PATH is a
 # temp path with no token file; CREWRIG_USAGE_CAPTURE_TEST=1;
@@ -681,6 +683,99 @@ if [ "$combined_netinput" = "666" ]; then
 else
   bad "R29: the combined rollup did NOT sum all three records" "got netInput=$combined_netinput (expected 666) / $combined_rollup"
 fi
+
+# =============================================================================
+# delta-01 — period token rollup (spec 0209 delta-01 R43-R45, 0208 surface)
+# =============================================================================
+# `usage:query --period P --rollup` chooses each session-cumulative session's
+# last snapshot over the whole selection, then keeps it only if it falls in P
+# (R45: the selection filters first, the period places afterwards). Fixture
+# (records/d01-*.json, cli claude-code): session A 100/300/500 wholly in
+# 2026-05; session B 700 in 2026-05's last hour, 900 in 2026-06; session C
+# (task d01-task-a) 400 in 2026-05, 600 in 2026-06; one per-request (50) and
+# one uncaptured record in 2026-06; a ledger {period: 2026-06} entry moves
+# every 2026-06 record to d01-task-b. Red on main (filter-first): the
+# 2026-05 figure (500, filter-first 1600) and its --cli / --fidelity
+# variants. Pins of unchanged behavior: the 2026-05 per-request 0 /
+# uncapturedCount 0 (later-month records never leak into P through the
+# lookahead), 2026-06, the one-partition listing, and the task-key rollups.
+echo
+echo "=== delta-01 — period token rollup (R45, 0208 surface) ==="
+D01_ROOT="$(new_case_root)"
+export CREWRIG_USAGE_ROOT="$D01_ROOT"
+export MEMPALACE_PALACE_PATH="$(mktemp -d)/palace"
+
+for f in d01-session-a-sc-1 d01-session-a-sc-2 d01-session-a-sc-3 d01-session-b-sc-1 d01-session-b-sc-2 d01-session-d-per-request d01-session-d-uncaptured; do
+  out="$(ATTR_CTX_CWD="$NO_GIT_CWD" run_driver submit "$FIXTURES_DIR/$f.json")"
+  grep -qF '"status":"stored"' <<< "$out" || bad "delta-01 fixture $f did NOT store" "$out"
+done
+for f in d01-session-c-sc-1 d01-session-c-sc-2; do
+  out="$(ATTR_CTX_CWD="$NO_GIT_CWD" ATTR_CTX_ENV_CREWRIG_TASK="d01-task-a" run_driver submit "$FIXTURES_DIR/$f.json")"
+  grep -qF '"status":"stored"' <<< "$out" || bad "delta-01 fixture $f did NOT store" "$out"
+done
+bash "$REPO_DIR/scripts/usage-attribute.sh" add --period 2026-06 --task-key d01-task-b \
+  --reason "usage-attribution suite: delta-01 moves every 2026-06 record to d01-task-b" --author "test-suite" >/dev/null
+
+# d01_fig <rollup-json> — "<session-cumulative netInput>,<per-request netInput>,<uncapturedCount>"
+d01_fig() {
+  node -e "const v = JSON.parse(process.argv[1]); console.log([v.byFidelity['session-cumulative'].netInput, v.byFidelity['per-request'].netInput, v.uncapturedCount].join(','))" "$1"
+}
+
+d01_may="$(bash "$REPO_DIR/scripts/usage-query.sh" --period 2026-05 --rollup)"
+d01_got="$(d01_fig "$d01_may")"
+if [ "${d01_got%%,*}" = "500" ]; then
+  ok "delta-01 --period 2026-05 --rollup: session-cumulative = 500 (A only; B and C are placed in 2026-06, filter-first would give 1600)"
+else
+  bad "delta-01 --period 2026-05 --rollup: session-cumulative is NOT 500" "got $d01_got / $d01_may"
+fi
+if [ "${d01_got#*,}" = "0,0" ]; then
+  ok "delta-01 --period 2026-05 --rollup: per-request = 0 and uncapturedCount = 0 (later-month records are never placed in P)"
+else
+  bad "delta-01 --period 2026-05 --rollup: a later-month per-request or uncaptured record leaked into P" "got $d01_got / $d01_may"
+fi
+
+d01_jun="$(bash "$REPO_DIR/scripts/usage-query.sh" --period 2026-06 --rollup)"
+d01_got="$(d01_fig "$d01_jun")"
+if [ "$d01_got" = "1500,50,1" ]; then
+  ok "delta-01 --period 2026-06 --rollup: session-cumulative = 1500 (B 900 + C 600), per-request = 50, uncapturedCount = 1"
+else
+  bad "delta-01 --period 2026-06 --rollup: expected 1500,50,1" "got $d01_got / $d01_jun"
+fi
+
+for d01_sel in "--cli claude-code" "--fidelity session-cumulative"; do
+  # shellcheck disable=SC2086  # $d01_sel is two words on purpose
+  d01_out="$(bash "$REPO_DIR/scripts/usage-query.sh" --period 2026-05 $d01_sel --rollup)"
+  d01_sc="$(node -e "console.log(JSON.parse(process.argv[1]).byFidelity['session-cumulative'].netInput)" "$d01_out")"
+  if [ "$d01_sc" = "500" ]; then
+    ok "delta-01 --period 2026-05 $d01_sel --rollup: session-cumulative = 500 (the selection filters before the choice)"
+  else
+    bad "delta-01 --period 2026-05 $d01_sel --rollup: session-cumulative is NOT 500" "got $d01_sc / $d01_out"
+  fi
+done
+
+d01_list="$(bash "$REPO_DIR/scripts/usage-query.sh" --period 2026-05)"
+d01_list_check="$(printf '%s\n' "$d01_list" | node -e "
+const lines = require('fs').readFileSync(0, 'utf8').split('\n').filter(Boolean);
+const months = lines.map((l) => JSON.parse(l).timing.requestInstant.slice(0, 7));
+console.log(lines.length + ':' + months.every((m) => m === '2026-05'));
+")"
+if [ "$d01_list_check" = "5:true" ]; then
+  ok "delta-01 plain listing --period 2026-05: exactly 5 lines, all in 2026-05 (the listing still reads one partition)"
+else
+  bad "delta-01 plain listing --period 2026-05: expected 5 lines all in 2026-05" "got $d01_list_check / $d01_list"
+fi
+
+for d01_pair in "d01-task-a:400" "d01-task-b:1500"; do
+  d01_key="${d01_pair%%:*}"
+  d01_want="${d01_pair#*:}"
+  d01_out="$(bash "$REPO_DIR/scripts/usage-query.sh" --task-key "$d01_key" --rollup)"
+  d01_sc="$(node -e "console.log(JSON.parse(process.argv[1]).byFidelity['session-cumulative'].netInput)" "$d01_out")"
+  if [ "$d01_sc" = "$d01_want" ]; then
+    ok "delta-01 --task-key $d01_key --rollup: session-cumulative = $d01_want (task-key rollups unchanged)"
+  else
+    bad "delta-01 --task-key $d01_key --rollup: session-cumulative is NOT $d01_want" "got $d01_sc / $d01_out"
+  fi
+done
 
 # =============================================================================
 # Prune — 0208 R17, delta-01 R31/R32/R33 no-store half

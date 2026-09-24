@@ -1393,8 +1393,8 @@ case_agreement() {
 # USD is pinned because 0209's priceBucket adds every non-unpriced amount,
 # unconverted ones included (usage-price/rollup.js), whereas a USD price is
 # always status 'ok' — so unconvertedCount = 0 by construction here.
-# --task-key is used, not --period, because 0209's period rollup filters
-# first and diverges from D4 for a straddling session (case 13.8). v2-F3:
+# --task-key is used here; the --period agreement (spec 0209 delta-01 R47)
+# is case 13.8's. v2-F3:
 # 0209's `combined` is {sum, unpricedCount, mixed} — it has no `count`, so
 # the combined mapping is amount ?? 0 <-> sum, unpricedCount <-> unpricedCount
 # and mixed <-> mixed, with no count row.
@@ -1732,27 +1732,60 @@ $d: $msg"
 }
 
 # =============================================================================
-# Case 13.8 — the stated divergence from the filter-first commands (D4).
-# `task usage:query -- --period P --rollup` reads month P and rolls it up,
-# so a session whose snapshots straddle the end of P contributes its last
-# in-P snapshot to P; the dashboard places the session's last snapshot in
-# the month it falls in. docs/usage-dashboard.md ("Reading the views")
-# cites this case: a change to either side's semantics shows up here.
+# Case 13.8 — period agreement with the commands (spec 0209 delta-01 R47, R45).
+# `usage:query --period P --rollup` and `usage:price --period P --rollup`
+# choose each session-cumulative session's last snapshot over the whole
+# selection, then keep it only if it falls in P, exactly as the dashboard's
+# --period does: for 2026-09 and 2026-10 (sess-s2's snapshots straddle
+# the month end) the tokens, the price, the priced count and the unpriced
+# count of the session-cumulative bucket are the same on both sides. Prices
+# are compared within |delta| <= 1e-12 (the dashboard's September amount is
+# 0.0022500000000000003). R45 on the ledger split: the ledger {period}
+# entry moves r16 to task-split-b, so r16 never supersedes r15 within
+# task-split-a. Filter-first gave 1200 / 1300 here; a change to either
+# side's semantics shows up in this case.
 # =============================================================================
-case_divergence() {
-  local root out m q dsh wq wd
+case_period_agreement() {
+  local root out m q qp dsh dp wq wp wpc wuc key want got
   fresh_root_into root
   out="$(new_out_dir)"
   for m in 2026-09 2026-10; do
     q="$(bash "$DASH_REPO/scripts/usage-query.sh" --period "$m" --rollup | node -e 'let s="";process.stdin.on("data",(c)=>s+=c).on("end",()=>console.log(JSON.parse(s).byFidelity["session-cumulative"].netInput))')"
+    qp="$(bash "$DASH_REPO/scripts/usage-price.sh" --period "$m" --rollup | node -e 'let s="";process.stdin.on("data",(c)=>s+=c).on("end",()=>{const b=JSON.parse(s).byFidelity["session-cumulative"];console.log([b.sum,b.pricedCount,b.unpricedCount].join("|"))})')"
     dash report --json --period "$m" >"$out/$m.json" 2>/dev/null || true
     dsh="$(vget "$out/$m.json" "v.totals.tokens.byFidelity['session-cumulative'].netInput" 2>&1)"
-    wq="$(expect "v.divergence['$m'].usageQuerySessionCumulativeNetInput")"
-    wd="$(expect "v.divergence['$m'].dashboardSessionCumulativeNetInput")"
-    if [ "$q" = "$wq" ] && [ "$dsh" = "$wd" ]; then
-      ok "$(L "13.8 --period $m: usage:query --rollup = $q, dashboard = $dsh (pinned divergence)")"
+    dp="$(vget "$out/$m.json" "(p => [p.amount, p.pricedCount, p.unpricedCount].join('|'))(v.totals.price.byFidelity['session-cumulative'])" 2>&1)"
+    wq="$(expect "v.periodAgreement['$m'].sessionCumulativeNetInput")"
+    wp="$(expect "v.periodAgreement['$m'].sessionCumulativeAmount")"
+    wpc="$(expect "v.periodAgreement['$m'].pricedCount")"
+    wuc="$(expect "v.periodAgreement['$m'].unpricedCount")"
+    if [ "$q" = "$wq" ] && [ "$dsh" = "$wq" ]; then
+      ok "$(L "13.8 --period $m: usage:query --rollup = dashboard = $wq session-cumulative tokens")"
     else
-      bad "$(L "13.8 --period $m: usage:query --rollup = $wq, dashboard = $wd (pinned divergence)")" "got usage:query $q, dashboard $dsh"
+      bad "$(L "13.8 --period $m: usage:query --rollup = dashboard = $wq session-cumulative tokens")" "got usage:query $q, dashboard $dsh"
+    fi
+    if node -e '
+const [q, d, want, pc, uc] = process.argv.slice(1);
+const [qs, qpc, quc] = q.split("|");
+const [ds, dpc, duc] = d.split("|");
+const near = (a, b) => Math.abs(Number(a) - Number(b)) <= 1e-12;
+process.exit(near(qs, want) && near(ds, want) && qpc === pc && dpc === pc && quc === uc && duc === uc ? 0 : 1);
+' "$qp" "$dp" "$wp" "$wpc" "$wuc"; then
+      ok "$(L "13.8 --period $m: usage:price --rollup = dashboard (amount $wp, pricedCount $wpc, unpricedCount $wuc)")"
+    else
+      bad "$(L "13.8 --period $m: usage:price --rollup = dashboard (amount $wp, pricedCount $wpc, unpricedCount $wuc)")" "got usage:price sum|priced|unpriced $qp, dashboard amount|priced|unpriced $dp"
+    fi
+  done
+  for key in task-split-a:2026-10 task-split-b:2026-11; do
+    m="${key#*:}"
+    key="${key%%:*}"
+    want="$(expect "v.periodAgreement.split['$key'].sessionCumulativeNetInput")"
+    dash report --json --task-key "$key" --period "$m" >"$out/$key-$m.json" 2>/dev/null || true
+    got="$(vget "$out/$key-$m.json" "v.totals.tokens.byFidelity['session-cumulative'].netInput" 2>&1)"
+    if [ "$got" = "$want" ]; then
+      ok "$(L "13.8 R45 --task-key $key --period $m: session-cumulative = $want (the selection, ledger applied, filters before the choice)")"
+    else
+      bad "$(L "13.8 R45 --task-key $key --period $m: session-cumulative = $want (the selection, ledger applied, filters before the choice)")" "got $got"
     fi
   done
 }
@@ -2587,8 +2620,8 @@ run_all_cases() {
   run_case case_buckets
   echo; echo "=== Case 13.7: placement equality ==="
   run_case case_placement
-  echo; echo "=== Case 13.8: stated divergence from usage:query --period --rollup ==="
-  run_case case_divergence
+  echo; echo "=== Case 13.8: period agreement with usage:query / usage:price --period --rollup ==="
+  run_case case_period_agreement
   echo; echo "=== Case 13.9 / 13.10: mixed marker; drill-down ==="
   run_case case_mixed_and_drilldown
   echo; echo "=== Case 13.11: empty states (no-match, store-empty, pruned, superseded-only) ==="
@@ -2721,8 +2754,9 @@ else
   # M15 source.js reverts to reading only sessionId === X for --session X
   # (review finding i1-F1: the subordinate agents' records drop out).
   mutate M15 "$D/source.js" 's/const subordinates = sel\.session \? readSubordinates\([^;]*;/const subordinates = [];/' case_session_subtree "i1-F1"
-  # M13 source.js stops reading at month(U).
-  mutate M13 "$D/source.js" 's/ && touched\.size === 0\) break;/) break;/' case_placement "13.7"
+  # M13 readWindow() (usage-store/query.js, the lookahead the dashboard and
+  # the period rollups share) stops reading at month(U).
+  mutate M13 "scripts/lib/usage-store/query.js" 's/ && touched\.size === 0\) break;/) break;/' case_placement "13.7"
 fi
 
 # --- HOME marker: re-assert unchanged --------------------------------------

@@ -2,10 +2,16 @@
 // 0208 R15's read-time ledger application and R20-R24's rollup surface
 // (PLAN v3 step 8). Every journal walk enumerates with layout.isEntry() and
 // nothing else, so a sidecar is never opened, parsed or returned. A
-// --period read (with --cli) opens exactly one partition directory (R6);
+// --period listing (with --cli) opens exactly one partition directory (R6);
 // every other selector walks and streams, O(records in the retained
 // window). Output is JSONL, one record per line — verbatim unless a ledger
 // override applies; --no-ledger returns the entry verbatim.
+//
+// A --period P --rollup is the exception to R6 (spec 0209 delta-01, R43-R45):
+// rollupInput() reads every month >= P through readWindow(), the one
+// cross-period lookahead the dashboard (scripts/lib/usage-dashboard/source.js)
+// also reads through, so each session-cumulative session's last snapshot is
+// chosen over the whole selection and only then placed in P or not.
 
 'use strict';
 
@@ -213,6 +219,95 @@ function run(opts) {
   return applyFidelity(records, opts.fidelity);
 }
 
+const MONTH_RE = /^\d{4}-\d{2}$/;
+
+// listMonths() — the sorted union of journalRoot()/<cli>/<YYYY-MM> names.
+function listMonths() {
+  const months = new Set();
+  const journalRoot = layout.journalRoot();
+  let clis;
+  try {
+    clis = fs.readdirSync(journalRoot);
+  } catch (err) {
+    return [];
+  }
+  for (const cli of clis) {
+    let periods;
+    try {
+      periods = fs.readdirSync(path.join(journalRoot, cli));
+    } catch (err) {
+      continue;
+    }
+    for (const per of periods) {
+      if (MONTH_RE.test(per)) months.add(per);
+    }
+  }
+  return Array.from(months).sort();
+}
+
+function isSessionCumulative(r) {
+  return r.kind === 'captured' && r.fidelity === 'session-cumulative';
+}
+
+// readWindow({fromMonth, toMonth, inRange, admit, cli, noLedger, months}) —
+// the records a placement window [fromMonth, toMonth] needs, each month read
+// with run({period, cli?}) and filtered by admit(r), the selection, BEFORE
+// the touched test. Months before fromMonth are skipped: a record sits in its
+// own requestInstant month, and an earlier record can never be the last
+// snapshot of a session that has an in-range one. Months up to toMonth are
+// kept whole. Past toMonth, only captured session-cumulative records of
+// sessions touched in range (inRange(r)) are kept — the only later records
+// that can supersede an in-range snapshot — up to the newest month. A null
+// bound is open. Placement is never applied here: the caller places after
+// the per-fidelity choice (rollup.contributingRecords(records, place)).
+function readWindow(opts) {
+  const lowerMonth = opts.fromMonth || null;
+  const upperMonth = opts.toMonth || null;
+  const inRange = opts.inRange || (() => true);
+  const admit = opts.admit || (() => true);
+  const base = opts.noLedger ? { noLedger: true } : {};
+  const months = opts.months || listMonths();
+  const records = [];
+  const touched = new Set();
+
+  for (const month of months) {
+    if (lowerMonth && month < lowerMonth) continue;
+    if (upperMonth && month > upperMonth && touched.size === 0) break;
+    const got = run({ period: month, cli: opts.cli, ...base }).filter(admit);
+    if (!upperMonth || month <= upperMonth) {
+      for (const r of got) {
+        records.push(r);
+        if (isSessionCumulative(r) && inRange(r)) touched.add(r.identity.sessionId);
+      }
+    } else {
+      for (const r of got) {
+        if (isSessionCumulative(r) && touched.has(r.identity.sessionId)) records.push(r);
+      }
+    }
+  }
+  return records;
+}
+
+// rollupInput(opts) -> {records, place}. A --period P rollup reads the
+// readWindow() of P under the selection (--cli, --fidelity, the ledger
+// unless --no-ledger) and returns the placement predicate "requestInstant in
+// P", which the rollup applies after the last-snapshot choice (R45). Every
+// other rollup reads what run() reads and places nothing.
+function rollupInput(opts) {
+  if (!opts.period || opts.undrained || opts.pending) return { records: run(opts), place: null };
+  const period = opts.period;
+  const place = (r) => layout.period(r) === period;
+  const records = readWindow({
+    fromMonth: period,
+    toMonth: period,
+    inRange: place,
+    admit: (r) => !opts.fidelity || r.fidelity === opts.fidelity,
+    cli: opts.cli,
+    noLedger: opts.noLedger === true,
+  });
+  return { records, place };
+}
+
 function parseArgs(argv) {
   const opts = {};
   for (let i = 0; i < argv.length; i++) {
@@ -267,7 +362,7 @@ function parseArgs(argv) {
   return opts;
 }
 
-module.exports = { run, parseArgs };
+module.exports = { run, parseArgs, listMonths, readWindow, rollupInput };
 
 if (require.main === module) {
   let opts;
@@ -278,14 +373,21 @@ if (require.main === module) {
     process.exit(2);
   }
   let results;
+  let place = null;
   try {
-    results = run(opts);
+    if (opts.rollup) {
+      const input = rollupInput(opts);
+      results = input.records;
+      place = input.place;
+    } else {
+      results = run(opts);
+    }
   } catch (err) {
     console.error(`FATAL: ${err.message}`);
     process.exit(2);
   }
   if (opts.rollup) {
-    const summary = rollup.rollup(results, { combined: opts.combined });
+    const summary = rollup.rollup(results, { combined: opts.combined, place });
     if (opts.taskKey) summary.taskHandoffKey = opts.taskKey;
     if (opts.asset) summary.asset = opts.asset;
     process.stdout.write(`${JSON.stringify(summary)}\n`);

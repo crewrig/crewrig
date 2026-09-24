@@ -107,12 +107,6 @@ are superseded by a later snapshot of the same session outside it`. The
 records exist in the store, but they add nothing, because a later snapshot
 already carries their tokens.
 
-`task usage:query -- --period P --rollup` and
-`task usage:price -- --period P --rollup` look only inside month `P`. For a
-session whose snapshots cross the end of `P`, they count the session's last
-snapshot *inside* `P`, while the dashboard counts it in the month of its very
-last snapshot. Their month `P` can therefore differ from the dashboard's.
-
 ### Empty results
 
 The dashboard names three kinds of empty result:
