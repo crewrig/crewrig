@@ -1,7 +1,7 @@
 ---
 id: "0212"
 slug: usage-documentation
-status: draft
+status: approved
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 1175
@@ -183,7 +183,9 @@ no-duplication rule, and 31 and 32 the CLI matrix and the website.
     removed, and how the current and future periods, which the period prune
     refuses without an explicit override, are handled — and SHALL end with a
     check a person can run to confirm the outcome requirement 20 or 21
-    states.
+    states. That check SHALL fail closed: where it cannot inspect a location
+    — the mirror while MemPalace is unreachable — it SHALL report that
+    location as unverified, never as removed.
 23. The organization note SHALL explain the price-source decision as one
     already taken: the MIT-licensed LiteLLM price list pinned to one commit is
     the primary source, OpenRouter is reached only on an explicit, one-shot,
@@ -300,7 +302,7 @@ Given records were mirrored and the MemPalace daemon is not reachable
 When a person starts removal procedure (b)
 Then the procedure's stated preconditions have told the person that the
 mirror's drawers cannot be removed until MemPalace is reachable, and its
-closing check reports any drawer that remains
+closing check reports the mirror as unverified rather than removed
 
 **Scenario:** Purging data while capture stays enabled
 
