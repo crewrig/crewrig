@@ -4,6 +4,8 @@
 
 A computed price is a comparative reference figure that shows what a period of model consumption would have cost — never an invoice, a vendor reconciliation, or a budget forecast. Every computed price carries the disclaimer: **reference figure, not an invoice**. Prices are useful for understanding consumption patterns across vendors and models, rendered in any currency the framework supports, and persist separately from the usage record they were computed from.
 
+This page is one stage of the usage feature; the [usage architecture overview](usage-overview.md) shows how the stages fit together.
+
 ## Primary source
 
 Computed prices are based on LiteLLM's `model_prices_and_context_window.json` price list, published in the [BerriAI/litellm](https://github.com/BerriAI/litellm) repository under the **MIT licence**. The framework pins this list to one identifiable commit SHA, downloaded at that exact commit (never at `HEAD` or a later commit), so prices remain reproducible over time even as the vendor updates rates. The pinned snapshot is stored under `<root>/pricelist/` with `PINNED.json` as the pointer file, recording the SHA, fetch instant, ETag (when available), and entry count. When you refresh the price list, you replace only the pointer and the blob at that SHA; earlier snapshots remain on disk.

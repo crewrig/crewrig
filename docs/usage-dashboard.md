@@ -12,6 +12,10 @@ other conversation text: it only reads activity metadata.
 
 Every price the dashboard shows is a **reference figure, not an invoice**.
 
+This page is one stage of the usage feature; the
+[usage architecture overview](usage-overview.md) shows how the stages fit
+together.
+
 ## The three forms and their commands
 
 The three forms render one view model, built once per command (once per
@@ -177,16 +181,15 @@ regenerates it, with and without `--as-of-today`.
 ## Personal-data note
 
 The dashboard shows session, agent, task, and asset identifiers, the models
-used, and when they were used. Treat its output as personal data.
+used, and when they were used. What each form writes, and where:
 
 - **Form A** writes one file, `<root>/dashboard/usage-dashboard.html`, with
-  mode `0600` in a directory with mode `0700`. Your own account (and the
-  system administrator) can read it. It stays until you regenerate or delete
-  it. `task usage:prune` does **not** remove it. **Sharing that file shares
-  every figure and identifier it shows.** With `--out <path>`, the file goes
-  where you choose, with the same `0600` mode.
-- **Form B** listens on `127.0.0.1` only, but loopback is not per user: any
-  account on the same machine can read the page while the server runs. It
-  persists nothing, and it ends when you stop it.
-- **Form C** writes to standard output, so its text goes wherever you
-  redirect it.
+  mode `0600` in a directory with mode `0700`. With `--out <path>`, the file
+  goes where you choose, with the same `0600` mode.
+- **Form B** listens on `127.0.0.1` only and writes no file.
+- **Form C** writes to standard output only.
+
+Who can read each form's output, how long it stays, and what sharing it
+exposes are stated in the organization note, under
+[Who can read each copy](usage-organization.md#who-can-read-each-copy) and
+[Retention](usage-organization.md#retention).

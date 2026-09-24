@@ -4,6 +4,8 @@
 
 The usage storage contract (spec 0207) provides an append-only local journal of usage records — the source of truth for consumption data — with optional mirroring into the shared MemPalace memory space when that daemon is reachable. A record written to the journal persists whether or not MemPalace is present; a record mirrored into MemPalace becomes queryable by session, agent, task, and external asset reference without altering the journal itself.
 
+This page is one stage of the usage feature; the [usage architecture overview](usage-overview.md) shows how the stages fit together.
+
 ## On-disk layout
 
 The journal partitions records by their source CLI and calendar month, storing one immutable file per record. This design differs from the spec's informative JSONL layout for two reasons:
@@ -234,22 +236,7 @@ bash scripts/usage-backfill.sh --reset-cursors
 
 ### Total purge
 
-To purge everything the storage contract owns under `CREWRIG_USAGE_ROOT`, remove these directories:
-
-```bash
-rm -rf <root>/journal <root>/declarations <root>/ledger <root>/mirror <root>/cache <root>/tmp
-```
-
-This removes:
-
-- **`<root>/journal/`** — All usage records and their `.wing.json` and `.attr.json` sidecars.
-- **`<root>/declarations/`** — All session-scoped and project-scoped declaration records (spec 0208).
-- **`<root>/ledger/`** — The entire append-only attribution ledger (spec 0208).
-- **`<root>/mirror/`** — All pending and mirrored markers, and the unreachable stamp.
-- **`<root>/cache/`** — Cached wing derivations (disposable and will be re-derived on next write).
-- **`<root>/tmp/`** — Temporary files from aborted writes.
-
-**Do NOT remove `<root>/state/`** — that directory is owned by spec 0206 (capture) and must not be touched by the storage contract.
+A prune removes one period. Removing everything the feature holds is a separate procedure, because it must also remove the MemPalace drawers and each CLI's capture wiring, in a set order: see [Removing usage data](usage-organization.md#removing-usage-data) in the organization note, which is the only home of that procedure.
 
 ## Vendored validator
 
@@ -282,7 +269,7 @@ The new validator is then automatically used on the next run of any storage comm
 
 ## Personal data
 
-This section addresses requirement R21: what data the journal and mirror hold, who can access it, and how to purge it.
+This section states what the journal and the mirror hold (spec 0207 R21). Retention, who can read each copy, and removal are stated once for the whole feature, in the [organization note](usage-organization.md).
 
 ### What a record holds
 
@@ -298,34 +285,13 @@ A usage record carries:
 - **Provenance** — The source CLI, its version, the capture channel, and a format fingerprint.
 - **Attribution (optional)** — A CrewRig task-handoff key and/or an external work-tracking asset reference (captured at write time; see [Usage attribution](usage-attribution.md) for ledger and sidecar details).
 
+A mirrored drawer carries the same record with its `raw` block externalized, as described in [Drawer structure](#drawer-structure) above: the drawer holds a reference to the journal entry, never the `raw` object itself.
+
 ### What a record never holds
 
-- **Conversation text** — No message bodies, prompts, or outputs from model inference. Spec 0206 (capture) excludes conversation text at the boundary, so none reaches the journal or mirror.
-
-### Who can read it
-
-- **Journal readers** — Anyone with read access to the operator's `<root>/journal/` directory (typically the operator and CI/CD systems running under their user).
-- **Mirror readers** — Anyone with read access to the operator's MemPalace drawer store (typically the operator and CI/CD systems running under the MemPalace daemon user).
-
-The storage contract itself applies no encryption; the operator's filesystem permissions and MemPalace's own access controls are the only safeguards.
-
-### How to purge
-
-**Explicit period prune:**
-
-```bash
-bash scripts/usage-prune.sh <cli> <YYYY-MM>
-```
-
-**Immediate, complete purge** (all data under `CREWRIG_USAGE_ROOT`):
-
-```bash
-rm -rf <root>/journal/ <root>/mirror/ <root>/cache/ <root>/tmp/ <root>/declarations/ <root>/ledger/
-```
-
-Neither command touches `<root>/state/` (owned by 0206). After purging, subsequent writes will create new journal entries and mirror drawers starting fresh.
+- **Conversation text** — No message bodies, prompts, or outputs from model inference, with one exception on `main` today. Spec 0206 (capture) excludes conversation text at the boundary, and every interactive capture channel copies only enumerated `raw` fields. The exception is the `headless-envelope` channel, whose `raw` block is the whole non-interactive output envelope: Antigravity CLI's envelope carries the model's `response` text, so the `run-total` records written by the adopted Antigravity launch sites hold that text in the journal. The mirror does not hold it, because a drawer externalizes `raw`. The correction is tracked in [#1201](https://github.com/crewrig/crewrig/issues/1201).
 
 ## See also
 
 - [Usage record format](usage-record-format.md) — The schema and field definitions for usage records (spec 0205).
-- [Spec 0206 — capture adapters](../specs/0206-capture-adapters.md) — How records are generated and written to the spool. The capture layer's reference page (`usage-capture.md`) arrives with spec 0206's implementation.
+- [Usage capture architecture](usage-capture.md) — How each CLI's usage is derived into records and handed to this storage contract (spec 0206).
