@@ -109,10 +109,11 @@ no-duplication rule, and 31 and 32 the CLI matrix and the website.
     section of a view answers, and SHALL link to `docs/usage-dashboard.md`
     for commands, filters, tallies, and empty-result banners.
 12. Wherever the user guide refers to the period in which a session-cumulative
-    session is counted, it SHALL link to `docs/usage-dashboard.md` → *The
-    placement rule for session-cumulative records* and SHALL NOT restate,
-    paraphrase, or give an example of that rule; the one-sentence summary
-    requirement 29 allows does not apply to it.
+    session is counted, it SHALL link to the per-seam section that states the
+    placement rule on `main` when the guide is written (spec 0209 delta-01
+    requirements 43 to 45 and 49) and SHALL NOT restate, paraphrase, or give
+    an example of that rule; the one-sentence summary requirement 29 allows
+    does not apply to it.
 13. The user guide SHALL explain how to interpret a comparative price and
     SHALL make each of these points, each linked to the per-seam section that
     defines the behavior: every price is a reference figure, not an invoice;
@@ -329,10 +330,12 @@ and links to the storage page's prune section
 
 **Scenario:** The period rule changes after the guide ships
 
-Given the user guide links to *The placement rule for session-cumulative
-records* and restates nothing of it
-When issue #1193 is decided and the dashboard page's rule is amended
-Then the user guide needs no edit to stay accurate
+Given the user guide links to the per-seam section that states the placement
+rule and restates nothing of it
+When the implementation of spec 0209 delta-01 (issue #1193) moves or amends
+the per-seam text that states the rule
+Then the user guide needs at most its link target updated, and none of its
+own prose
 
 **Scenario:** A legacy Copilot plan holder reads a price
 
@@ -432,7 +435,11 @@ enable/disable section is written once against the decoupled installers
 rather than disclosing a coupling that is about to disappear. If DEV must go
 first, requirement 9's disclosure applies and #1174 removes it. The link to
 the placement rule (requirement 12) keeps this specification independent of
-issue #1193; recheck #1193 before PLAN and before DEV.
+issue #1193. Spec 0209 delta-01 merged before this specification did; its
+requirement 49 places the rule in the organization-facing pricing
+documentation and forbids describing a divergence the implementation does
+not exhibit, which requirement 12's no-restatement rule already honours.
+PLAN resolves the link target against `main` at DEV time.
 
 **Why the purge moves rather than grows.** The owner's two decisions — the
 organization note is the single reference for removal, and the documented
