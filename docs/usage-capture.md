@@ -369,7 +369,7 @@ Spec 0206 → *Out of scope* deferred native OpenTelemetry export, as an oracle 
 - #1169 probe 9 showed Gemini's `telemetry.outfile` is concatenated raw SDK objects, not OTLP; its Gemini-specific `token.usage` metric dropped a second model's points in an auto-routed turn, so only the `gemini_cli.api_response` events (which do carry all six token fields) could serve, through one more bespoke parser; and `logPrompts` defaults to `true`, writing response text to disk unless overridden.
 - Enabling it repurposes the user's own CLI telemetry configuration.
 
-Format drift stays covered by the per-generation fixtures (spec 0206 R27) and `uncaptured` emission on an unknown fingerprint. **Reopen condition:** a CLI ships a stable local file exporter with content capture off by default.
+Copilot CLI does ship such an exporter (`COPILOT_OTEL_FILE_EXPORTER_PATH`, content capture off by default), but it reports the same vendor accounting the adapter already reads per call from `assistant_usage_events`, so as an oracle it would only catch a silent semantic drift. Shape drift stays covered by the per-generation fixtures (spec 0206 R27) and `uncaptured` emission on an unknown fingerprint. **Reopen condition:** a drift in a CLI's own record reaches the store undetected by the fingerprint and fixture guard (a mis-derived record found after the fact), or Claude Code ships a local file exporter — whichever comes first.
 
 ### Gemini subagent parent-session linkage
 
