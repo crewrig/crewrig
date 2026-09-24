@@ -342,7 +342,34 @@ These framework-owned launch sites have been adopted to emit one `run-total` rec
 
 Antigravity's own session record exposes **no field that a token count can be tied to with confidence**. The capture seam therefore reads from the statusline channel instead, which yields session-cumulative records (`fidelity: "session-cumulative"`), not per-request ones.
 
-**Evidence:** Antigravity's own conversation store is opaque protobuf and is not read by this adapter at all (spec 0206's adapter matrix, `specs/0206-capture-adapters.md`) — no field of that store ties to a token count. `~/.gemini/antigravity-cli/settings.json` is Antigravity's *configuration* file, the same file `statusLine.command` is wired into (see *Payload-delivery mechanism* above); it is not a session or conversation record, and `conversation_id` is a field of the statusline payload itself (see the field table above), not something `settings.json` holds. The statusline payload is therefore the only usage-bearing channel this adapter has, and it names no per-request or per-turn identifier. A vendor-documented alternative channel offering per-request granularity does not exist as of 2026-09-21. This gap is honest, documented, and will be revisited if Antigravity publishes a richer API surface.
+**Evidence** (the full chain is also recorded in `docs/cli-matrix.md` → *Parity gaps* → usage-capture granularity; each link is independent):
+
+1. **No hook payload carries usage.** The vendor's own `~/.gemini/antigravity-cli/builtin/skills/agy-customizations/docs/hooks.md`, read field by field, lists no token or model field on any event (#1167 triage).
+2. **The session store is opaque.** The per-conversation store a hook's `transcriptPath` points at is sqlite whose payload columns are protobuf blobs with no shipped `.proto`; no field could be tied to a token count with confidence (#1167, #1169). This adapter does not read it.
+3. **No local telemetry exporter.** Telemetry is outbound-only (`enableTelemetry`, internal `AnalyticsService`) and the binary carries no `OTEL_*` string (#1167).
+4. **Upstream request open.** [google-antigravity/antigravity-cli#366](https://github.com/google-antigravity/antigravity-cli/issues/366) — "Support Gemini CLI-compatible OTLP/OpenTelemetry token usage export" — is open as of 2026-09-24.
+
+`~/.gemini/antigravity-cli/settings.json` is Antigravity's *configuration* file, the same file `statusLine.command` is wired into (see *Payload-delivery mechanism* above); it is not a session or conversation record, and `conversation_id` is a field of the statusline payload itself (see the field table above). The statusline payload is therefore the only usage-bearing channel this adapter has, and it names no per-request or per-turn identifier. Revisit when #366 ships.
+
+### Gemini CLI trigger measurement
+
+The Gemini capture step rides `AfterModel` only; `AfterAgent` stays unregistered (spec 0206 R14: an extra end-of-turn event only after a measurement shows `AfterModel` insufficient). The measurements behind that choice, from the spec 0206 pre-freeze probes on #1169:
+
+- **Probe 1** — `AfterModel` fires **5 times per prompt** (streaming chunks); its payload carries only partial `usageMetadata`, so the session record stays the source and the hook is the trigger.
+- **Probe 7** — a full re-parse of the largest source measured costs **~142–168 ms** worst case (a Claude Code session deduplicated to 3,376 records), plus **~40–60 ms** Node start-up. No Gemini-specific re-parse timing was taken; the figure is the cross-CLI worst case.
+- **Fast path** — the bash `-nt` stamp test (see *Cursor semantics and the stamp sidecar*) keeps 4 of those 5 firings from spawning Node at all.
+
+A Gemini-specific timing that shows the per-firing cost too high is the measurement R14 names; until one exists, registering `AfterAgent` would be an unmeasured extra event.
+
+### OpenTelemetry oracle — abandoned
+
+Spec 0206 → *Out of scope* deferred native OpenTelemetry export, as an oracle or enrichment layer, to a later ticket. That ticket was not opened: the user ratified abandoning it on #1174 (2026-09-24, recorded on epic #1166). Reasons:
+
+- It covers at most two CLIs of four: Claude Code has no file exporter (an OTLP receiver process would be needed) and Antigravity exposes none (see the R22 evidence above).
+- #1169 probe 9 showed Gemini's `telemetry.outfile` is concatenated raw SDK objects, not OTLP; its Gemini-specific `token.usage` metric dropped a second model's points in an auto-routed turn, so only the `gemini_cli.api_response` events (which do carry all six token fields) could serve, through one more bespoke parser; and `logPrompts` defaults to `true`, writing response text to disk unless overridden.
+- Enabling it repurposes the user's own CLI telemetry configuration.
+
+Format drift stays covered by the per-generation fixtures (spec 0206 R27) and `uncaptured` emission on an unknown fingerprint. **Reopen condition:** a CLI ships a stable local file exporter with content capture off by default.
 
 ### Gemini subagent parent-session linkage
 
