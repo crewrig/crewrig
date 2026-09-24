@@ -36,9 +36,11 @@
 #       Security hardening (PR #1209 security review, seat finding i1-F6):
 #       (o) every backup is 0600 and older backups are narrowed (S1) ·
 #       (p) an operator hook merely naming /hooks/usage-capture.sh is never
-#       touched, an unexpanded `$…`/`~` path is never re-pointed, and the
+#       touched, nor a Gemini compound command or tool argument that ends in
+#       it (N1), an unexpanded `$…`/`~` path is never re-pointed, and the
 #       legacy coupled forms are still recognised (S2) · (q) a checkout path
-#       with a space works end to end (S3) · (r) usage_capture_abs refuses a
+#       with a space works end to end, and the legacy unquoted spaced form is
+#       capture only when its whole path exists (S3, N1) · (r) usage_capture_abs refuses a
 #       path that cannot be double-quoted safely (S3) · (s) keep on a
 #       duplicated event keeps the live command, not a re-pointed vanished one
 #       (i1-F6) · (t) a failed write leaves no temp file behind · (u) a
@@ -176,11 +178,24 @@ setup_script() { echo "$REPO_DIR/scripts/setup-$1-interactive.sh"; }
 # library: an optional `VAR=value` / `env` / `bash|sh` prefix, the script path
 # double-quoted, single-quoted or bare, then exactly `<cli-id> <Event>` and
 # nothing else, on a handler whose `.type` is absent or "command".
+# PLUS the legacy spaced Gemini form (contract amendments 1 and 2): exactly
+# `bash <abs path> gemini-cli AfterModel`, the path holding spaces but no
+# character the shell reads as syntax in an unquoted word, and capture ONLY when
+# that whole path is an existing file. jq cannot test that, so the shell side
+# (oracle_legacy_ok) passes the existing legacy paths as `$legacy_ok`; without
+# it the oracle recognises no legacy form.
 JQ_DEFS='
-def is_capture:
+def is_cmd:
   (type == "object") and ((.type // "command") == "command")
-  and ((.command | type) == "string")
+  and ((.command | type) == "string");
+def legacy_path:
+  .command | capture("\\Abash (?<p>/[^\\x00-\\x1f\\x7f\"\\x27;&|<>()$`\\\\*?\\[\\]{}#~]*/hooks/usage-capture\\.sh) gemini-cli AfterModel\\z") | .p;
+def is_c1:
+  is_cmd
   and (.command | test("\\A\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh)\\s+)?(?:\"[^\"]*/hooks/usage-capture\\.sh\"|\\x27[^\\x27]*/hooks/usage-capture\\.sh\\x27|[^\\s\"\\x27]*/hooks/usage-capture\\.sh)\\s+(?:claude-code|gemini-cli|copilot-cli)\\s+[A-Za-z]+\\s*\\z"));
+def is_capture:
+  is_c1
+  or (is_cmd and ([legacy_path] | any(.[]; . as $p | any(($ARGS.named.legacy_ok // [])[]; . == $p))));
 def handlers:
   (.hooks // {}) | to_entries[] | .key as $e | .value[] |
   if (type == "object" and has("hooks"))
@@ -191,7 +206,19 @@ def strip_capture_no_prune:
     if (type == "object" and has("hooks")) then .hooks |= map(select(is_capture | not))
     else select(is_capture | not) end)) else . end;
 '
-jqo() { local f="$1"; shift; jq -r "$@" "$f" 2>/dev/null; }
+# oracle_legacy_ok <file> — JSON array of the file's legacy-shaped paths
+# (legacy_path, on handlers that are not already C1) that exist.
+oracle_legacy_ok() {
+  local p ok="" cands
+  cands="$(jq -r "$JQ_DEFS"'[handlers | .h | select(is_cmd and (is_c1 | not)) | legacy_path] | unique | .[]' "$1" 2>/dev/null)"
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    if [ -f "$p" ]; then ok="${ok}${p}
+"; fi
+  done <<< "$cands"
+  printf '%s' "$ok" | jq -R -s -c 'split("\n") | map(select(length > 0))'
+}
+jqo() { local f="$1"; shift; jq -r --argjson legacy_ok "$(oracle_legacy_ok "$f")" "$@" "$f" 2>/dev/null; }
 capture_count() { jqo "$1" --arg ev "$2" "$JQ_DEFS"'[handlers | select(.e == $ev and (.h | is_capture))] | length'; }
 capture_cmds()  { jqo "$1" --arg ev "$2" "$JQ_DEFS"'handlers | select(.e == $ev and (.h | is_capture)) | .h.command'; }
 capture_events() { jqo "$1" "$JQ_DEFS"'[handlers | select(.h | is_capture) | .e] | unique | join(" ")'; }
@@ -205,7 +232,7 @@ def noncapture_view:
   | {rest: del(.hooks),
      hooks: [$all | map(.e) | unique[] as $e | {e: $e, hs: [$all[] | select(.e == $e) | del(.e)]}]};
 '
-noncapture_view() { jq -cS "$JQ_DEFS"'noncapture_view' "$1" 2>/dev/null; }
+noncapture_view() { jq -cS --argjson legacy_ok "$(oracle_legacy_ok "$1")" "$JQ_DEFS"'noncapture_view' "$1" 2>/dev/null; }
 json_eq() { [ "$(jq -cS . "$1" 2>/dev/null)" = "$(jq -cS . "$2" 2>/dev/null)" ] && [ -n "$(jq -cS . "$1" 2>/dev/null)" ]; }
 has_backup() { compgen -G "$1.bak.*" >/dev/null; }
 sorted_words() { printf '%s\n' $1 | sort | tr '\n' ' ' | sed 's/ $//'; }
@@ -1059,6 +1086,60 @@ for cli in $CLIS; do
   fi
   assert_capture_once_at "(p) keep over look-alikes" "$cli" "$cfg" "$CAPTURE_ABS"
 done
+# Security review N1: the legacy spaced Gemini form must not swallow an
+# operator compound command, nor a tool whose argument merely ends in
+# /hooks/usage-capture.sh (a spaced "path" that does not exist as a whole).
+# Each case sits alone on AfterModel beside an operator neighbour. The last
+# one is a compound whose whole `&&`-spanning text ALSO names an existing
+# file, so only the path class (never the existence test) can reject it.
+N1_PRE="$TMP_ROOT/p/n1/prep"
+N1_CAP="$TMP_ROOT/p/n1/tools/hooks/usage-capture.sh"
+mkdir -p "$(dirname "$N1_CAP")" "$(dirname "$N1_PRE && $N1_CAP")"
+printf '#!/bin/bash\nexit 0\n' > "$N1_CAP"
+printf '#!/bin/bash\nexit 0\n' > "$N1_PRE && $N1_CAP"
+N1_CASES="and|bash /opt/prep.sh && $CAPTURE_ABS gemini-cli AfterModel
+semi|bash /opt/notify.sh; bash $CAPTURE_ABS gemini-cli AfterModel
+toolarg|bash /x/tool /a b/hooks/usage-capture.sh gemini-cli AfterModel
+and-existing|bash $N1_PRE && $N1_CAP gemini-cli AfterModel"
+while IFS='|' read -r label c; do
+  [ -n "$label" ] || continue
+  base="$TMP_ROOT/p/n1-$label.json"
+  init_cfg gemini "$base"
+  add_cmds gemini "$base" AfterModel "echo operator" "$c"
+  state="$(usage_capture_state gemini "$base" 2>/dev/null)"
+  fpn="$(usage_capture_footprint gemini "$base" 2>/dev/null | jq 'length' 2>/dev/null)"
+  paths="$(usage_capture_paths gemini "$base" 2>/dev/null)"
+  if [ "$state" = "absent" ] && [ "$fpn" = "0" ] && [ -z "$paths" ] \
+     && [ "$(total_capture "$base")" = "0" ]; then
+    ok "(p) gemini N1 '$label' command is not capture: state absent, empty footprint, no path"
+  else
+    bad "(p) gemini N1 '$label' reads as capture: state=$state footprint=$fpn paths=$(tr '\n' ' ' <<< "$paths")"
+  fi
+  # remove: nothing of the file is capture, so every entry stays as it was.
+  cfg="$TMP_ROOT/p/n1-$label-remove/config.json"
+  mkdir -p "$(dirname "$cfg")"
+  cp "$base" "$cfg"
+  usage_capture_remove gemini "$cfg" >/dev/null 2>&1
+  if json_eq "$cfg" "$base" \
+     && [ "$(jq -r '.hooks.AfterModel[0].hooks[1].command' "$cfg" 2>/dev/null)" = "$c" ]; then
+    ok "(p) gemini N1 '$label': remove leaves the operator command byte-unchanged"
+  else
+    bad "(p) gemini N1 '$label': remove changed it: $(jq -c .hooks "$cfg" 2>/dev/null)"
+  fi
+  # keep: re-registers crewrig's capture beside it, never rewrites it.
+  cfg="$TMP_ROOT/p/n1-$label-keep/config.json"
+  mkdir -p "$(dirname "$cfg")"
+  cp "$base" "$cfg"
+  out="$(usage_capture_keep gemini "$cfg" "$REPO_DIR" 2>&1)"
+  if [ "$(noncapture_view "$cfg")" = "$(noncapture_view "$base")" ] \
+     && [ "$(jq -r '.hooks.AfterModel[0].hooks[1].command' "$cfg" 2>/dev/null)" = "$c" ] \
+     && [[ "$out" != *re-pointed* ]]; then
+    ok "(p) gemini N1 '$label': keep leaves the operator command byte-unchanged"
+  else
+    bad "(p) gemini N1 '$label': keep changed it (out: $out): $(jq -c .hooks "$cfg" 2>/dev/null)"
+  fi
+  assert_capture_once_at "(p) gemini N1 '$label' keep" gemini "$cfg" "$CAPTURE_ABS"
+done <<< "$N1_CASES"
 
 echo "§3 (p') S2: keep never re-points an unexpanded \$…, \${…} or ~ path"
 for cli in $CLIS; do
@@ -1150,7 +1231,8 @@ cfg="$TMP_ROOT/q/gemini-legacy/config.json"
 init_cfg gemini "$cfg"
 add_cmds gemini "$cfg" AfterModel "$(legacy_cmd gemini AfterModel "$SP_ABS")"
 paths="$(usage_capture_paths gemini "$cfg" 2>/dev/null)"
-if [ "$(usage_capture_state gemini "$cfg" 2>/dev/null)" = "installed" ] && [ "$paths" = "$SP_ABS" ]; then
+if [ "$(usage_capture_state gemini "$cfg" 2>/dev/null)" = "installed" ] && [ "$paths" = "$SP_ABS" ] \
+   && [ "$(capture_count "$cfg" AfterModel)" = "1" ]; then
   ok "(q) gemini legacy unquoted spaced command reads as capture at the whole spaced path"
 else
   bad "(q) gemini legacy unquoted spaced command: state=$(usage_capture_state gemini "$cfg" 2>/dev/null) paths='$(tr '\n' '|' <<< "$paths")'"
@@ -1164,6 +1246,38 @@ if cmp -s "$cfg" "$cfg.once"; then
 else
   bad "(q) gemini the second keep changed the command again: $(capture_cmds "$cfg" AfterModel)"
 fi
+# Contract amendment 2: the same legacy shape whose whole spaced path does not
+# exist is ambiguous, so it is NOT capture: detection ignores it, and keep and
+# remove leave it to the operator.
+GONE_SP="$TMP_ROOT/Gone Projects/crewrig/hooks/usage-capture.sh"
+c="$(legacy_cmd gemini AfterModel "$GONE_SP")"
+cfg="$TMP_ROOT/q/gemini-legacy-gone/config.json"
+init_cfg gemini "$cfg"
+add_cmds gemini "$cfg" AfterModel "$c"
+cp "$cfg" "$cfg.base"
+paths="$(usage_capture_paths gemini "$cfg" 2>/dev/null)"
+fpn="$(usage_capture_footprint gemini "$cfg" 2>/dev/null | jq 'length' 2>/dev/null)"
+if [ ! -e "$GONE_SP" ] && [ "$(usage_capture_state gemini "$cfg" 2>/dev/null)" = "absent" ] \
+   && [ "$fpn" = "0" ] && [ -z "$paths" ] && [ "$(total_capture "$cfg")" = "0" ]; then
+  ok "(q) gemini legacy spaced command at a path that does not exist is not capture"
+else
+  bad "(q) gemini legacy spaced command at a missing path: state=$(usage_capture_state gemini "$cfg" 2>/dev/null) footprint=$fpn paths='$(tr '\n' '|' <<< "$paths")'"
+fi
+usage_capture_remove gemini "$cfg" >/dev/null 2>&1
+if json_eq "$cfg" "$cfg.base"; then
+  ok "(q) gemini remove leaves the missing-path legacy command as it was"
+else
+  bad "(q) gemini remove changed the missing-path legacy command: $(jq -c .hooks "$cfg" 2>/dev/null)"
+fi
+out="$(usage_capture_keep gemini "$cfg" "$SP_REPO" 2>&1)"
+if [ "$(jq -r '.hooks.AfterModel[0].hooks[0].command' "$cfg" 2>/dev/null)" = "$c" ] \
+   && [ "$(noncapture_view "$cfg")" = "$(noncapture_view "$cfg.base")" ] \
+   && [[ "$out" != *re-pointed* ]] && [[ "$out" != *quoted* ]]; then
+  ok "(q) gemini keep neither re-points nor re-quotes the missing-path legacy command"
+else
+  bad "(q) gemini keep touched the missing-path legacy command (out: $out): $(jq -c .hooks "$cfg" 2>/dev/null)"
+fi
+assert_capture_once_at "(q) gemini keep beside a missing-path legacy command" gemini "$cfg" "$SP_ABS"
 
 echo "§3 (r) S3: usage_capture_abs refuses a path that cannot be double-quoted safely"
 r_n=0

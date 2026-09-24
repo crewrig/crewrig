@@ -52,15 +52,33 @@ def uc_sig_re:
 # The one legacy form an unquoted token cannot express: origin/main wrote the
 # Gemini command unquoted, so a checkout path with a space gave
 # `bash /My Projects/.../hooks/usage-capture.sh gemini-cli AfterModel`. Only
-# that exact shape (absolute path, plain `bash`, Gemini argv) is recognised.
+# the exact bytes main wrote are recognised: `bash `, an absolute path whose
+# one character outside a plain word is a space, ` gemini-cli AfterModel`.
+# The path class excludes every character the shell would read as syntax in
+# an unquoted word (`; & | < > ( ) $` backtick backslash quotes, glob, brace,
+# comment and tilde characters, control characters), so an operator compound
+# such as `bash /opt/prep.sh && <abs> gemini-cli AfterModel` never matches
+# (#1174, security review N1).
 def uc_legacy_re:
-  "\\A(?<pre>bash\\s+)(?<uq>/[^\"\\x27\\n]*/hooks/usage-capture\\.sh)(?<post>\\s+gemini-cli\\s+AfterModel\\s*)\\z";
+  "\\A(?<pre>bash )(?<uq>/[^\\x00-\\x1f\\x7f\"\\x27;&|<>()$`\\\\*?\\[\\]{}#~]*/hooks/usage-capture\\.sh)(?<post> gemini-cli AfterModel)\\z";
+
+# A spaced unquoted path is still ambiguous (`bash /x/tool /a b/hooks/…` is a
+# tool with an argument), so a legacy match is capture only when the WHOLE path
+# names an existing file. jq cannot test that: the shell tests each candidate
+# (uc_legacy_candidates) and passes the existing ones as `--argjson
+# uc_legacy_ok`; a program run without it recognises no legacy form.
+def uc_legacy_ok: $ARGS.named.uc_legacy_ok // [];
+
+def uc_is_command:
+  type == "object" and ((.type // "command") == "command")
+  and ((.command | type) == "string");
 
 # {pre, path, post, quoted} for a capture handler, null for anything else.
 def uc_parse:
-  if type == "object" and ((.type // "command") == "command")
-     and ((.command | type) == "string")
-  then ([.command | capture(uc_sig_re), capture(uc_legacy_re)] | if length > 0
+  if uc_is_command
+  then ([.command | capture(uc_sig_re),
+         (capture(uc_legacy_re) | select(.uq as $p | any(uc_legacy_ok[]; . == $p)))]
+        | if length > 0
           then .[0] | {pre, path: (.dq // .sq // .uq), post, quoted: (.uq == null)}
           else null end)
   else null end;
@@ -89,6 +107,12 @@ def uc_all_handlers:
 def uc_footprint: [uc_all_handlers | select(.handler | uc_is_capture)];
 
 def uc_distinct: reduce .[] as $x ([]; if any(.[]; . == $x) then . else . + [$x] end);
+
+# The paths of every legacy-shaped command the signature does not already
+# match, for the shell to test with `[ -f ]`.
+def uc_legacy_candidates:
+  [uc_all_handlers | .handler | select(uc_is_command) | .command
+   | select(test(uc_sig_re) | not) | capture(uc_legacy_re) | .uq] | uc_distinct;
 
 def uc_paths: [uc_footprint[] | .handler | uc_path | select(. != null)] | uc_distinct;
 
@@ -284,10 +308,33 @@ _uc_is_object() {
   jq -e 'type == "object"' "$1" >/dev/null 2>&1
 }
 
+# _uc_legacy_ok <shape> <config> — print, as a JSON array, the legacy spaced
+# Gemini paths (see uc_legacy_re) of the config that name an existing file.
+# Every program that classifies the handlers of <config> receives it as
+# `--argjson uc_legacy_ok`; an absent or unparsable config gives `[]`.
+_uc_legacy_ok() {
+  local shape="$1" config="$2" cands p ok=""
+  if [ ! -f "$config" ] || ! _uc_is_object "$config"; then
+    printf '[]\n'
+    return 0
+  fi
+  cands="$(_uc_jq "$shape" -r "$_UC_JQ_DEFS uc_legacy_candidates | .[]" "$config")" || return 1
+  # The path class holds no control character, so one path per line is exact.
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    if [ -f "$p" ]; then
+      ok="${ok}${p}
+"
+    fi
+  done <<< "$cands"
+  printf '%s' "$ok" | jq -R -s -c 'split("\n") | map(select(length > 0))' || return 1
+  return 0
+}
+
 # _uc_read <cli> <config> <jq-expr> — evaluate a read-only expression
 # on the config. Absent file → the expression evaluated on {}; unparsable → 2.
 _uc_read() {
-  local cli="$1" config="$2" expr="$3" shape
+  local cli="$1" config="$2" expr="$3" shape lg
   shape="$(_uc_shape "$cli")" || return 1
   if [ ! -f "$config" ]; then
     printf '{}' | _uc_jq "$shape" -c "$_UC_JQ_DEFS $expr" || return 1
@@ -297,7 +344,8 @@ _uc_read() {
     echo "  ERROR: $config is not readable as a JSON object." >&2
     return 2
   fi
-  _uc_jq "$shape" -c "$_UC_JQ_DEFS $expr" "$config" || return 2
+  lg="$(_uc_legacy_ok "$shape" "$config")" || return 2
+  _uc_jq "$shape" -c --argjson uc_legacy_ok "$lg" "$_UC_JQ_DEFS $expr" "$config" || return 2
   return 0
 }
 
@@ -404,7 +452,7 @@ usage_capture_state() {
 # strip every capture handler, then add back each footprint entry. No backup:
 # its callers own backups.
 usage_capture_reinject() {
-  local cli="$1" config="$2" fp="$3" shape
+  local cli="$1" config="$2" fp="$3" shape lg
   shape="$(_uc_shape "$cli")" || return 1
   if [ ! -f "$config" ] || ! _uc_is_object "$config"; then
     echo "  ERROR: $config is absent or not a JSON object; usage capture not re-injected." >&2
@@ -414,8 +462,9 @@ usage_capture_reinject() {
     echo "  ERROR: invalid usage-capture footprint." >&2
     return 1
   fi
+  lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
   write_json_config_secure "$config" --arg shape "$shape" --argjson fp "$fp" \
-    "$_UC_JQ_DEFS uc_reinject(\$fp)" || return 1
+    --argjson uc_legacy_ok "$lg" "$_UC_JQ_DEFS uc_reinject(\$fp)" || return 1
   return 0
 }
 
@@ -442,7 +491,7 @@ usage_capture_disclose() {
 
 # usage_capture_enable <cli> <config> <repo_dir> — register the fragment (R5, R9).
 usage_capture_enable() {
-  local cli="$1" config="$2" repo_dir="$3" shape frag events
+  local cli="$1" config="$2" repo_dir="$3" shape frag events lg
   shape="$(_uc_shape "$cli")" || return 1
   frag="$(usage_capture_fragment "$cli" "$repo_dir")" || return 1
   events="$(jq -r '.hooks | keys_unsorted | join(", ")' <<< "$frag")" || return 1
@@ -451,8 +500,10 @@ usage_capture_enable() {
       echo "  ERROR: $config is not a JSON object; usage capture not enabled." >&2
       return 1
     fi
+    lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
     backup_file "$config"
     write_json_config_secure "$config" --arg shape "$shape" --argjson frag "$frag" \
+      --argjson uc_legacy_ok "$lg" \
       "$_UC_JQ_DEFS (\$frag | uc_footprint) as \$ffp | uc_reinject(\$ffp)" \
       || { echo "  ERROR: could not write $config." >&2; return 1; }
   else
@@ -478,7 +529,7 @@ usage_capture_enable() {
 usage_capture_keep() {
   local cli="$1" config="$2" repo_dir="$3" shape frag abs r5 fragfp
   local paths p vanished_list="" live_list="" target="" vanished live missing
-  local repointed requoted wrote_abs=0 before after
+  local repointed requoted wrote_abs=0 before after lg
   shape="$(_uc_shape "$cli")" || return 1
   if [ ! -f "$config" ]; then
     echo "  No usage-capture entry in $config; nothing to keep."
@@ -492,8 +543,10 @@ usage_capture_keep() {
   abs="$(usage_capture_abs "$repo_dir")" || return 1
   r5="$(jq -c '.hooks | keys_unsorted' <<< "$frag")" || return 1
   fragfp="$(_uc_jq "$shape" -c "$_UC_JQ_DEFS uc_footprint" <<< "$frag")" || return 1
+  # Legacy spaced paths that exist, decided once on the file as it is now.
+  lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
   # Paths registered on the R5 events, in order.
-  paths="$(_uc_jq "$shape" -r --argjson r5 "$r5" \
+  paths="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson uc_legacy_ok "$lg" \
     "$_UC_JQ_DEFS uc_r5_paths(\$r5) | .[]" \
     "$config")" || return 1
   # Paths are decoded from JSON one per line (a path cannot hold a newline
@@ -516,13 +569,13 @@ usage_capture_keep() {
   vanished="$(printf '%s' "$vanished_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')" || return 1
   live="$(printf '%s' "$live_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')" || return 1
   # Events of R5 with no capture handler before this run: (c) adds one there.
-  missing="$(_uc_jq "$shape" -r --argjson r5 "$r5" \
+  missing="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson uc_legacy_ok "$lg" \
     "$_UC_JQ_DEFS [\$r5[] as \$e | select(any(uc_footprint[]; .event == \$e) | not) | \$e] | length" \
     "$config")" || return 1
   local program="$_UC_JQ_DEFS uc_keep(\$r5; \$live; \$vanished; \$abs; \$fragfp; \$target)"
   before="$(jq -c '.' "$config")" || return 1
   after="$(_uc_jq "$shape" -c --argjson r5 "$r5" --argjson live "$live" --argjson vanished "$vanished" \
-    --arg abs "$abs" --argjson fragfp "$fragfp" --arg target "$target" \
+    --arg abs "$abs" --argjson fragfp "$fragfp" --arg target "$target" --argjson uc_legacy_ok "$lg" \
     "$program" "$config")" || return 1
   if [ "$before" = "$after" ]; then
     echo "  Usage capture kept unchanged in $config"
@@ -531,12 +584,12 @@ usage_capture_keep() {
   backup_file "$config"
   write_json_config_secure "$config" --arg shape "$shape" --argjson r5 "$r5" \
     --argjson live "$live" --argjson vanished "$vanished" --arg abs "$abs" \
-    --argjson fragfp "$fragfp" --arg target "$target" "$program" \
+    --argjson fragfp "$fragfp" --arg target "$target" --argjson uc_legacy_ok "$lg" "$program" \
     || { echo "  ERROR: could not write $config." >&2; return 1; }
   # Name only the vanished paths a kept handler really carried: one dropped as
   # a duplicate was deleted, not re-pointed.
   repointed="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" \
-    --argjson vanished "$vanished" \
+    --argjson vanished "$vanished" --argjson uc_legacy_ok "$lg" \
     "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | uc_r5_paths(\$r5) as \$now | \$vanished[] | select(. as \$v | any(\$now[]; . == \$v))" \
     <<< "$before")" || repointed=""
   while IFS= read -r p; do
@@ -545,7 +598,7 @@ usage_capture_keep() {
     wrote_abs=1
   done <<< "$repointed"
   requoted="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" \
-    --argjson vanished "$vanished" \
+    --argjson vanished "$vanished" --argjson uc_legacy_ok "$lg" \
     "$_UC_JQ_DEFS [uc_keep_dedup(\$r5; \$live; \$vanished) | uc_footprint[] | select(.event as \$e | any(\$r5[]; . == \$e)) | .handler | select(uc_needs_quotes) | uc_path | select(. as \$p | any(\$vanished[]; . == \$p) | not)] | uc_distinct | .[]" \
     <<< "$before")" || requoted=""
   while IFS= read -r p; do
@@ -566,7 +619,7 @@ usage_capture_keep() {
 # usage_capture_remove <cli> <config> — R9, R12: delete every capture handler,
 # pruning only the containers that deletion emptied. Absent file → no write.
 usage_capture_remove() {
-  local cli="$1" config="$2" shape
+  local cli="$1" config="$2" shape lg
   shape="$(_uc_shape "$cli")" || return 1
   if [ ! -f "$config" ]; then
     echo "  No usage-capture entry to remove ($config does not exist)."
@@ -576,8 +629,10 @@ usage_capture_remove() {
     echo "  ERROR: $config is not a JSON object; usage capture not removed." >&2
     return 1
   fi
+  lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
   backup_file "$config"
-  write_json_config_secure "$config" --arg shape "$shape" "$_UC_JQ_DEFS uc_strip" \
+  write_json_config_secure "$config" --arg shape "$shape" --argjson uc_legacy_ok "$lg" \
+    "$_UC_JQ_DEFS uc_strip" \
     || { echo "  ERROR: could not write $config." >&2; return 1; }
   echo "  Usage capture removed from $config (every other entry left as it was)"
   return 0
@@ -622,7 +677,7 @@ usage_capture_apply() {
 # a registered capture command (R8). Refuses (returns 1, writes nothing) on a
 # config that is not a JSON object.
 merge_session_recording_hooks() {
-  local cli="$1" config="$2" patched="$3" env_patch="${4:-}" shape fp rc=0 created=0 program
+  local cli="$1" config="$2" patched="$3" env_patch="${4:-}" shape fp rc=0 created=0 program lg
   shape="$(_uc_shape "$cli")" || return 1
   fp="$(usage_capture_footprint "$cli" "$config")" || rc=$?
   if [ "$rc" -ne 0 ]; then
@@ -643,6 +698,9 @@ merge_session_recording_hooks() {
     gemini)  program='(. * $m[0]) | uc_reinject($fp)' ;;
     copilot) program='$m[0] | uc_reinject($fp)' ;;
   esac
+  # The same legacy classification the footprint above was read with, so the
+  # strip inside uc_reinject removes exactly the handlers it re-adds.
+  lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
   if [ -f "$config" ]; then
     backup_file "$config"
   else
@@ -650,7 +708,8 @@ merge_session_recording_hooks() {
     created=1
   fi
   if ! write_json_config_secure "$config" --arg shape "$shape" --slurpfile m "$patched" \
-      --argjson fp "$fp" --argjson patch "$env_patch" "$_UC_JQ_DEFS $program"; then
+      --argjson fp "$fp" --argjson patch "$env_patch" --argjson uc_legacy_ok "$lg" \
+      "$_UC_JQ_DEFS $program"; then
     [ "$created" -eq 0 ] || rm -f "$config"
     echo "  ERROR: could not write $config." >&2
     return 1
