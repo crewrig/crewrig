@@ -14,6 +14,8 @@ set -e
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 # shellcheck source=scripts/lib/tls-delegation.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/tls-delegation.sh"
+# shellcheck source=scripts/lib/usage-capture-optin.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/usage-capture-optin.sh"
 
 COPILOT_HOME="${HOME}/.copilot"
 COPILOT_INSTRUCTIONS="${COPILOT_HOME}/instructions"
@@ -382,19 +384,24 @@ for overlay_tier in community org; do
 done
 
 # --- Transcript hooks (opt-in) ---
-ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)")
+# The user-level hooks file is shared by session recording and usage capture,
+# so it is resolved outside both opt-ins.
+COPILOT_HOOKS_DIR="$COPILOT_HOME/hooks"
+USER_HOOKS_JSON="$COPILOT_HOOKS_DIR/copilot-transcript-hooks.json"
+# `|| true`: under `set -e`, Esc makes fzf exit 130 and would abort setup before
+# the usage-capture question below; a canceled answer reads as a decline.
+ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)" || true)
 if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   HOOKS_SRC="$REPO_DIR/hooks/copilot-transcript-hooks.json"
   HOOK_SCRIPT_SRC="$REPO_DIR/hooks/mempalace-transcript.sh"
-  COPILOT_HOOKS_DIR="$COPILOT_HOME/hooks"
   HOOK_SCRIPT_TARGET="$COPILOT_HOOKS_DIR/mempalace-transcript.sh"
   echo ""
-  USER_HOOKS_JSON="$COPILOT_HOOKS_DIR/copilot-transcript-hooks.json"
   echo "Activating transcript hooks will:"
   echo "  1. Install the hook script to $HOOK_SCRIPT_TARGET (project-independent)"
-  echo "  2. Deploy user-level hooks to $USER_HOOKS_JSON (fires for ALL projects)"
+  echo "  2. Deploy user-level hooks to $USER_HOOKS_JSON (fires for ALL projects),"
+  echo "     backing it up first when it exists"
   echo ""
-  CONFIRM=$(echo -e "yes\nno" | fzf --height 10% --header "Apply?")
+  CONFIRM=$(echo -e "yes\nno" | fzf --height 10% --header "Apply?" || true)
   if [ "$CONFIRM" = "yes" ]; then
     mkdir -p "$COPILOT_HOOKS_DIR"
     install_file "$HOOK_SCRIPT_SRC" "$HOOK_SCRIPT_TARGET" \
@@ -407,29 +414,18 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     fi
     GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
     GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
-    CAPTURE_SCRIPT_SRC="$REPO_DIR/hooks/usage-capture.sh"
-    CAPTURE_ABS="$(cd "$(dirname "$CAPTURE_SCRIPT_SRC")" && pwd -P)/$(basename "$CAPTURE_SCRIPT_SRC")"
     HOOKS_PATCHED_TMP="$(mktemp)"
     # The Copilot CLI hooks schema keys `hooks` by camelCase event name
-    # (object of event -> array), and `agentStop`/`sessionEnd` now each carry
-    # TWO commands (spec 0206). Unlike the Claude/Gemini `gsub` substitutions
-    # above, this branch REBUILDS each command deterministically from the
-    # event key the manifest is already keyed by — there is no token to
-    # substitute in the source (the source command already names
-    # usage-capture.sh literally) — so a per-ENTRY dispatch, not a per-array
-    # one, is what keeps the two commands on one event from colliding into a
-    # duplicate transcript-hook invocation.
-    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" --arg capture_path "$CAPTURE_ABS" '
+    # (object of event -> array). Unlike the Claude/Gemini `gsub`
+    # substitutions above, this branch REBUILDS each command deterministically
+    # per entry: `preToolUse` is the worktree git guard, every other entry the
+    # transcript hook. Usage capture is not part of this manifest: it has its
+    # own opt-in below (spec 0211).
+    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" '
       (.hooks // {}) |= with_entries(
-        .key as $event |
         if .key == "preToolUse"
         then .value |= map(.command = ("bash " + ($guard_path | tojson)))
-        else .value |= map(
-          if (.command | contains("usage-capture.sh"))
-          then .command = ("bash " + ($capture_path | tojson) + " copilot-cli " + $event)
-          else .command = ($envp + " bash " + ($hook_path | tojson))
-          end
-        )
+        else .value |= map(.command = ($envp + " bash " + ($hook_path | tojson)))
         end
       )' \
       "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
@@ -439,17 +435,43 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
       exit 1
     fi
     # User-level hooks: loaded by Copilot for every project (not just crewrig).
-    cp "$HOOKS_PATCHED_TMP" "$USER_HOOKS_JSON"
-    echo "  User-level transcript hooks deployed to $USER_HOOKS_JSON"
-    echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
-    echo "  Usage capture wired to $CAPTURE_ABS (in-repo absolute path)"
-    warn_if_linked_worktree "$REPO_DIR" "usage capture"
+    # Full replace as before, but backup-first, 0600, and carrying any
+    # registered capture command through unchanged (spec 0211 R8).
+    if ! merge_session_recording_hooks copilot "$USER_HOOKS_JSON" "$HOOKS_PATCHED_TMP"; then
+      echo "  Transcript activation FAILED — setup continues without it." >&2
+    else
+      echo "  User-level transcript hooks deployed to $USER_HOOKS_JSON"
+      echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
+      warn_if_linked_worktree "$REPO_DIR" "worktree git guard"
+    fi
     rm -f "$HOOKS_PATCHED_TMP"
   else
     echo "  Transcript activation canceled."
   fi
 else
   echo "  Session recording disabled (re-run this script to enable)."
+fi
+
+# --- Usage capture (opt-in, spec 0211) ---
+# Its own question, asked whatever the session-recording answer was (R1) and
+# never gated on MemPalace (R3): capture writes to the file-system journal.
+# Every read and write of a capture entry lives in scripts/lib/usage-capture-optin.sh.
+echo ""
+uc_rc=0
+UC_STATE="$(usage_capture_state copilot "$USER_HOOKS_JSON")" || uc_rc=$?
+if [ "$uc_rc" -ne 0 ]; then
+  echo "  WARNING: cannot read $USER_HOOKS_JSON as JSON; usage-capture step skipped." >&2
+else
+  if [ "$UC_STATE" = "absent" ]; then
+    usage_capture_disclose copilot "$USER_HOOKS_JSON" "$REPO_DIR" || true
+    UC_ANSWER=$(printf 'no\nyes\n' | fzf --height 10% --header "Capture token usage for Copilot CLI? (opt-in, MemPalace not required)" || true)
+  else
+    UC_PATHS="$(usage_capture_paths copilot "$USER_HOOKS_JSON")" || UC_PATHS=""
+    echo "Usage capture is registered in $USER_HOOKS_JSON, at:"
+    printf '%s\n' "$UC_PATHS" | sed 's/^/  /'
+    UC_ANSWER=$(printf 'keep\nremove\n' | fzf --height 10% --header "Usage capture is registered for Copilot CLI. Keep it or remove it?" || true)
+  fi
+  usage_capture_apply copilot "$USER_HOOKS_JSON" "$REPO_DIR" "$UC_STATE" "$UC_ANSWER" || echo "  Usage-capture step FAILED — setup continues." >&2
 fi
 
 echo ""

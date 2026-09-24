@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "AfterModel": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "usage-capture-agent-response",
+            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/usage-capture.sh gemini-cli AfterModel"
+          }
+        ]
+      }
+    ]
+  }
+}

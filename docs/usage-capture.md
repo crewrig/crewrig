@@ -8,7 +8,7 @@ The usage-capture seam implements spec 0206, deriving one usage record for every
 
 The capture step is a **Node module tree** under `scripts/lib/usage-capture/`, invoked by two thin entry points:
 
-- **Live capture:** `hooks/usage-capture.sh` — a sibling hook to `hooks/mempalace-transcript.sh`, wired by in-repo absolute path into the existing `Stop` / `SessionEnd` / `AfterModel` / `agentStop` events on Claude Code, Gemini CLI, Copilot CLI, and Antigravity (statusline display).
+- **Live capture:** `hooks/usage-capture.sh` — a sibling hook to `hooks/mempalace-transcript.sh`, wired by in-repo absolute path into the existing `Stop` / `SessionEnd` / `AfterModel` / `agentStop` events on Claude Code, Gemini CLI, Copilot CLI, and Antigravity (statusline display). On every CLI it is enabled by a **usage-capture opt-in of its own**, independent from the MemPalace session-recording opt-in in both directions (spec 0211): capture works on a machine where MemPalace is absent, and session recording works without capture. The question defaults to `no`; once capture is registered it becomes `keep`/`remove`, and `remove` is the removal path (see *Shim wiring* below; Antigravity keeps its statusline opt-in and removal of spec 0206 R20–R21).
 - **Backfill:** `scripts/usage-backfill.sh` — a command-line tool that replays the same per-CLI adapters against records already present on a machine, taking the same derivation rules the live path uses.
 
 No storage backend, write format, or retention policy is implemented by this specification (spec 0206 R25). The capture module exposes a pure interface `sink.submit(record) → { status: 'stored' | 'duplicate' | 'rejected', reason? }` — the three outcomes spec 0207 R24 defines — and resolves to spec 0207's own storage contract: `scripts/lib/usage-store/journal.js`'s `write(record)` (see [Usage storage](usage-storage.md)). The hand-over from spec 0206's original spool is complete (see *Spool hand-over to spec 0207* below); a machine that ran 0206 before the hand-over has any leftover `~/.crewrig/usage/spool/` files drained into the journal on the next write, and `CREWRIG_USAGE_ROOT` is unchanged throughout.
@@ -236,17 +236,28 @@ The capture step is wired by **in-repo absolute path**, never copied into any CL
 
 ### Shim wiring (Claude Code, Gemini CLI, Copilot CLI)
 
-Each installer computes the in-repo absolute path and substitutes it into the manifest:
+Each CLI's interactive setup asks a usage-capture question of its own (spec 0211), after its session-recording block and whatever that block's answer was. It is never gated on MemPalace: the capture command carries no MemPalace setting, and its records go to the file-system journal of spec 0207.
+
+The registered entries come from one **capture fragment** per CLI, holding exactly the capture events (spec 0206 R13–R14) and nothing else:
+
+- **Claude Code:** `hooks/claude-usage-capture-hooks.json` — `Stop` and `SessionEnd`, in `~/.claude/settings.json`
+- **Gemini CLI:** `hooks/gemini-usage-capture-hooks.json` — `AfterModel`, in `~/.gemini/settings.json`
+- **Copilot CLI:** `hooks/copilot-usage-capture-hooks.json` — `agentStop` and `sessionEnd`, in `~/.copilot/hooks/copilot-transcript-hooks.json` (the user-level file session recording also uses)
+
+The transcript manifests (`hooks/*-transcript-hooks.json`) no longer carry a capture entry, so accepting session recording registers no capture command. Before writing, setup substitutes the fragment's tokenized script path (`$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh`, `${GEMINI_PROJECT_DIR}/hooks/usage-capture.sh`, `${COPILOT_PROJECT_DIR:-$PWD}/hooks/usage-capture.sh`) with the in-repo absolute path:
 
 ```bash
 CAPTURE_ABS="$(cd "$(dirname "$CAPTURE_SCRIPT_SRC")" && pwd -P)/$(basename "$CAPTURE_SCRIPT_SRC")"
 ```
 
-Then registers the capture command on existing events:
+The question depends on what is already registered. Any command naming `/hooks/usage-capture.sh` counts, wherever its path points, including one the former coupled deployment wrote inside the session-recording opt-in:
 
-- **Claude Code:** `hooks/claude-transcript-hooks.json` — `Stop` and `SessionEnd`
-- **Gemini CLI:** `hooks/gemini-transcript-hooks.json` — `AfterModel`
-- **Copilot CLI:** `hooks/copilot-transcript-hooks.json` — `agentStop` and `sessionEnd`
+- **Nothing registered:** `no`/`yes`, default `no`. Setup first discloses the events, the path, the file it changes, that no prompt or response text is recorded, and that MemPalace is not required. An empty or canceled answer is `no`: nothing is written, and setup prints how to enable capture later.
+- **Already registered:** `keep`/`remove`, default `keep`.
+  - `keep` leaves exactly one capture command per event. It re-points a command only when its path no longer resolves, and says so. It writes nothing when nothing needs to change.
+  - `remove` backs the file up, deletes every capture command, and deletes a matcher group or an event key only when that deletion emptied it. The file then holds what it would hold had capture never been enabled.
+
+Every read and write of a capture entry lives in `scripts/lib/usage-capture-optin.sh`. Each write backs up an existing file first, goes through `write_json_config_secure` (the file ends 0600), and leaves every other hook entry and every non-hook setting as it was. The session-recording opt-in writes through the same library, so it never removes, duplicates or re-points a registered capture command. On Gemini CLI, where setup rewrites `~/.gemini/settings.json` from its template on every run, the registered capture entries are read before that rewrite and put back after it.
 
 The shim **is never copied** to `~/.claude/hooks/`, `~/.gemini/hooks/`, or `~/.copilot/hooks/`. Its whole job is to reach `scripts/lib/usage-capture/`, so it lives at the repository path where that module tree is a sibling.
 
@@ -270,7 +281,7 @@ Moving, renaming, or deleting the checkout breaks the wired absolute path. The t
 
    ```text
    WARNING: this checkout is a linked git worktree (<path>).
-            The usage-capture wiring above points INTO this checkout — running
+            The usage capture wiring above points INTO this checkout — running
             'git worktree remove' on it breaks the wired hook silently
             until this installer is re-run against a durable checkout.
    ```
@@ -278,7 +289,7 @@ Moving, renaming, or deleting the checkout breaks the wired absolute path. The t
    **Recommendation:** Run the installers from the main checkout, not from a linked worktree created via `git worktree add`.
 
 1. Each installer prints the wired absolute path at install time, so the dependency is disclosed rather than discovered.
-2. `docs/usage-capture.md` (this file) states the dependency and names the recovery: re-run the installer.
+2. `docs/usage-capture.md` (this file) states the dependency and names the recovery: re-run the installer from a durable checkout. On Claude Code, Gemini CLI and Copilot CLI, answering `keep` at the usage-capture question re-points a registered command whose path no longer resolves at that checkout's capture script, and reports each re-pointed path (spec 0211 R11).
 3. The data itself is recoverable regardless: `scripts/usage-backfill.sh --reset-cursors` re-derives from the CLIs' own durable history everything a dead live path missed.
 
 ## Backfill command
@@ -357,7 +368,7 @@ The Gemini capture step rides `AfterModel` only; `AfterAgent` stays unregistered
 
 - **Probe 1** — `AfterModel` fires **5 times per prompt** (streaming chunks); its payload carries only partial `usageMetadata`, so the session record stays the source and the hook is the trigger.
 - **Probe 7** — a full re-parse of the largest source measured costs **~142–168 ms** worst case (a Claude Code session deduplicated to 3,376 records). No Gemini-specific re-parse timing was taken; the figure is the cross-CLI worst case.
-- **PLAN v3 estimates, not probe results** — Node start-up adds an estimated **~40–60 ms** per spawn, and the bash `-nt` stamp test (see *Cursor semantics and the stamp sidecar*) is expected to keep 4 of the 5 firings from spawning Node, since only the last one finds a new response in the session record. Neither figure was measured.
+- **PLAN v3 estimates, not probe results** — Node start-up adds an estimated **~40–60 ms** per spawn, and the bash `-nt` stamp test (see *Cursor semantics and the stamp sidecar*) is expected to keep 4 of the 5 firings from spawning Node. That 4-of-5 figure is a PLAN v3 assumption, not a measurement. The fast path compares modification times (`hooks/usage-capture.sh`: the source must not be newer than its stamp), not record content, so any write to the session file during the turn, the user's own message included, sends that firing down the slow path. Neither figure was measured.
 
 A Gemini-specific timing that shows the per-firing cost too high is the measurement R14 names; until one exists, registering `AfterAgent` would be an unmeasured extra event.
 

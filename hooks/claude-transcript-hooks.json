@@ -40,10 +40,6 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh\" claude-code Stop"
           }
         ]
       }
@@ -55,10 +51,6 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh\" claude-code SessionEnd"
           }
         ]
       }

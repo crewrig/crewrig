@@ -14,6 +14,16 @@ on:
       - "scripts/usage-backfill.sh"
       - "scripts/tests/test-usage-capture.sh"
       - "scripts/tests/fixtures/usage-capture/**"
+      - "hooks/claude-usage-capture-hooks.json"
+      - "hooks/gemini-usage-capture-hooks.json"
+      - "hooks/copilot-usage-capture-hooks.json"
+      - "scripts/lib/usage-capture-optin.sh"
+      - "scripts/lib/common.sh"
+      - "scripts/setup-claude-interactive.sh"
+      - "scripts/setup-gemini-interactive.sh"
+      - "scripts/setup-copilot-interactive.sh"
+      - "scripts/tests/test-setup-usage-capture-optin.sh"
+      - "scripts/tests/fixtures/setup-usage-capture/**"
       - "package.json"
       - "package-lock.json"
   push:
@@ -29,6 +39,16 @@ on:
       - "scripts/usage-backfill.sh"
       - "scripts/tests/test-usage-capture.sh"
       - "scripts/tests/fixtures/usage-capture/**"
+      - "hooks/claude-usage-capture-hooks.json"
+      - "hooks/gemini-usage-capture-hooks.json"
+      - "hooks/copilot-usage-capture-hooks.json"
+      - "scripts/lib/usage-capture-optin.sh"
+      - "scripts/lib/common.sh"
+      - "scripts/setup-claude-interactive.sh"
+      - "scripts/setup-gemini-interactive.sh"
+      - "scripts/setup-copilot-interactive.sh"
+      - "scripts/tests/test-setup-usage-capture-optin.sh"
+      - "scripts/tests/fixtures/setup-usage-capture/**"
       - "package.json"
       - "package-lock.json"
 
@@ -48,3 +68,6 @@ jobs:
 
       - name: Validate usage capture adapters and fixtures
         run: bash scripts/tests/test-usage-capture.sh
+
+      - name: Validate the usage-capture opt-in of Claude Code, Gemini CLI and Copilot CLI
+        run: bash scripts/tests/test-setup-usage-capture-optin.sh

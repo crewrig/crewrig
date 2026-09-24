@@ -1,0 +1,525 @@
+#!/usr/bin/env bash
+# scripts/lib/usage-capture-optin.sh — the usage-capture opt-in of Claude Code,
+# Gemini CLI and Copilot CLI (spec 0211), decoupled from the MemPalace
+# session-recording opt-in. Sourced by setup-{claude,gemini,copilot}-interactive.sh
+# AFTER scripts/lib/common.sh (it uses backup_file, warn_if_linked_worktree and
+# write_json_config_secure). Do NOT execute directly.
+#
+# This file owns every read and every write of a capture entry in a CLI's hook
+# configuration: detection, enable, keep, remove, and the preservation step the
+# session-recording writer runs (merge_session_recording_hooks). Ownership is
+# decided by CONTENT, never by position: a capture entry is any command naming
+# `/hooks/usage-capture.sh`, wherever that path points (R10).
+#
+# <cli> is one of `claude`, `gemini`, `copilot`:
+#   - claude / gemini are GROUPED: .hooks[<Event>][] = {<selector keys>, hooks:[handler…]}
+#   - copilot is FLAT:             .hooks[<Event>][] = handler
+#
+# Contracts shared by every helper:
+#   - Failure contract. A helper returns non-zero on failure and never calls
+#     `exit`. The setups call these helpers from `||` / `if !` contexts, where
+#     bash suspends errexit INSIDE the function too — so each fallible command
+#     below is checked explicitly instead of trusting `set -e`.
+#   - Mode-safe writes. Every write goes through write_json_config_secure
+#     (umask-077 mktemp, forced 0600, mv only after a successful jq), so a
+#     failed write leaves the file byte-identical and no write can widen a file
+#     that holds the MemPalace bearer token. A file this library writes always
+#     ends 0600.
+#   - Readers return 2 on a file that exists but is not a JSON object; writers
+#     return 1 on it and write nothing.
+#
+# All JSON work happens in jq, through the one definitions string below.
+
+# --- jq definitions -----------------------------------------------------------
+# Every program is compiled with `--arg shape grouped|flat`.
+# shellcheck disable=SC2016  # jq program text, not shell expansions
+_UC_JQ_DEFS='
+def uc_is_capture:
+  (type == "object")
+  and ((.command // "") | if type == "string"
+       then test("/hooks/usage-capture\\.sh([\"\\x27 ]|$)") else false end);
+
+# The registered script path: quoted form first, then an unquoted token.
+def uc_path:
+  (.command // "") as $c
+  | if ($c | type) != "string" then null
+    else ([$c | capture("\"(?<p>[^\"]*/hooks/usage-capture\\.sh)\"") | .p][0]
+          // [$c | capture("(?<p>[^\"\\x27 ]*/hooks/usage-capture\\.sh)(?:[\"\\x27 ]|$)") | .p][0])
+    end;
+
+# Every handler as {event, selector, handler}; selector is the group object
+# minus its `hooks` key on grouped shapes, null on the flat shape.
+def uc_all_handlers:
+  (.hooks // {}) | if type == "object" then to_entries[] else empty end
+  | .key as $e
+  | (.value | if type == "array" then .[] else empty end)
+  | if $shape == "flat" then {event: $e, selector: null, handler: .}
+    elif (type == "object" and (.hooks | type) == "array")
+    then del(.hooks) as $sel | .hooks[] | {event: $e, selector: $sel, handler: .}
+    else empty end;
+
+def uc_footprint: [uc_all_handlers | select(.handler | uc_is_capture)];
+
+def uc_distinct: reduce .[] as $x ([]; if any(.[]; . == $x) then . else . + [$x] end);
+
+def uc_paths: [uc_footprint[] | .handler | uc_path | select(. != null)] | uc_distinct;
+
+# R12 pruning rule. A group is deleted only when it held >= 1 handler before and
+# none after; an event only when its array was non-empty before and empty
+# after; on the grouped (settings.json) shapes `.hooks` itself only when it was
+# non-empty before and {} after. The flat Copilot manifest keeps `.hooks`: its
+# schema keys belong to the file.
+def uc_strip_group:
+  if type == "object" and (.hooks | type) == "array" then
+    (.hooks | length > 0) as $had
+    | .hooks |= map(select(uc_is_capture | not))
+    | if $had and (.hooks | length) == 0 then empty else . end
+  else . end;
+
+def uc_strip:
+  if (.hooks | type) == "object" then
+    (.hooks | length > 0) as $had
+    | .hooks |= with_entries(
+        if (.value | type) == "array" then
+          (.value | length > 0) as $evhad
+          | .value |= (if $shape == "flat" then map(select(uc_is_capture | not))
+                       else map(uc_strip_group) end)
+          | if $evhad and (.value | length) == 0 then empty else . end
+        else . end)
+    | if $shape != "flat" and $had and .hooks == {} then del(.hooks) else . end
+  else . end;
+
+# Add one {event, selector, handler}. Grouped shapes join the FIRST group whose
+# selector equals the given one, else append a new selector + {hooks:[h]} group.
+def uc_add($x):
+  (if (.hooks | type) == "object" then .
+   elif .hooks == null then .hooks = {}
+   else error("hooks is not an object") end)
+  | (if (.hooks[$x.event] | type) == "array" then .
+     elif .hooks[$x.event] == null then .hooks[$x.event] = []
+     else error("hook event is not an array") end)
+  | if $shape == "flat" then .hooks[$x.event] += [$x.handler]
+    else
+      ($x.selector // {}) as $sel
+      | ([.hooks[$x.event] | to_entries[]
+          | select((.value | type) == "object" and (.value.hooks | type) == "array"
+                   and ((.value | del(.hooks)) == $sel))
+          | .key][0]) as $i
+      | if $i == null then .hooks[$x.event] += [$sel + {hooks: [$x.handler]}]
+        else .hooks[$x.event][$i].hooks += [$x.handler] end
+    end;
+
+def uc_reinject($fp): uc_strip | reduce $fp[] as $x (.; uc_add($x));
+
+# keep (a): re-point, in place, a capture handler whose path vanished.
+def uc_repoint_handler($vanished; $abs):
+  if uc_is_capture then
+    uc_path as $p
+    | if $p != null and any($vanished[]; . == $p)
+      then .command |= (split($p) | join($abs)) else . end
+  else . end;
+
+def uc_repoint_event($vanished; $abs):
+  if $shape == "flat" then map(uc_repoint_handler($vanished; $abs))
+  else map(if type == "object" and (.hooks | type) == "array"
+           then .hooks |= map(uc_repoint_handler($vanished; $abs)) else . end)
+  end;
+
+# keep (b): keep only the first capture handler of one event, pruning a group
+# that this deletion alone emptied.
+def uc_dedup_event:
+  if $shape == "flat" then
+    [foreach .[] as $h ({seen: false, keep: true};
+       if ($h | uc_is_capture)
+       then (if .seen then {seen: true, keep: false} else {seen: true, keep: true} end)
+       else {seen: .seen, keep: true} end;
+       select(.keep) | $h)]
+  else
+    [foreach .[] as $g ({seen: false, drop: false, g: null};
+       if ($g | type) == "object" and ($g.hooks | type) == "array" then
+         ($g.hooks | length) as $n
+         | (reduce $g.hooks[] as $h ({seen: .seen, hs: []};
+              if ($h | uc_is_capture)
+              then (if .seen then . else (.hs += [$h] | .seen = true) end)
+              else .hs += [$h] end)) as $r
+         | {seen: $r.seen,
+            drop: ($n > 0 and ($r.hs | length) == 0),
+            g: ($g | .hooks = $r.hs)}
+       else {seen: .seen, drop: false, g: $g} end;
+       select(.drop | not) | .g)]
+  end;
+
+def uc_event_has_capture($e):
+  any(uc_footprint[]; .event == $e);
+
+# keep (a)-(c) on the R5 events only; capture handlers on any other event are
+# left untouched (R11: keep "SHALL change no other entry").
+def uc_keep($r5; $vanished; $abs; $fragfp; $target):
+  reduce $r5[] as $e (.;
+    if (.hooks | type) == "object" and (.hooks[$e] | type) == "array"
+    then .hooks[$e] |= (uc_repoint_event($vanished; $abs) | uc_dedup_event)
+    else . end)
+  | reduce $fragfp[] as $x (.;
+      if uc_event_has_capture($x.event) then .
+      else uc_add($x | .handler.command |= (split($abs) | join($target))) end);
+'
+
+# --- small internals ------------------------------------------------------------
+
+# _uc_shape <cli> — prints grouped|flat; returns 1 on an unknown CLI.
+_uc_shape() {
+  case "$1" in
+    claude|gemini) printf 'grouped\n' ;;
+    copilot)       printf 'flat\n' ;;
+    *) echo "  ERROR: unknown CLI '$1' (expected claude, gemini or copilot)." >&2; return 1 ;;
+  esac
+}
+
+# _uc_token <cli> — the tokenized script path the fragment carries.
+_uc_token() {
+  case "$1" in
+    claude)  printf '%s\n' '$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh' ;;
+    gemini)  printf '%s\n' '${GEMINI_PROJECT_DIR}/hooks/usage-capture.sh' ;;
+    copilot) printf '%s\n' '${COPILOT_PROJECT_DIR:-$PWD}/hooks/usage-capture.sh' ;;
+    *) return 1 ;;
+  esac
+}
+
+# _uc_jq <shape> <jq args…> <program> <file> — run one read-only program.
+_uc_jq() {
+  local shape="$1"; shift
+  jq --arg shape "$shape" "$@"
+}
+
+# _uc_is_object <file> — 0 when the file parses as one JSON object.
+_uc_is_object() {
+  jq -e 'type == "object"' "$1" >/dev/null 2>&1
+}
+
+# _uc_read <cli> <config> <jq-expr> — evaluate a read-only expression
+# on the config. Absent file → the expression evaluated on {}; unparsable → 2.
+_uc_read() {
+  local cli="$1" config="$2" expr="$3" shape
+  shape="$(_uc_shape "$cli")" || return 1
+  if [ ! -f "$config" ]; then
+    printf '{}' | _uc_jq "$shape" -c "$_UC_JQ_DEFS $expr" || return 1
+    return 0
+  fi
+  if ! _uc_is_object "$config"; then
+    echo "  ERROR: $config is not readable as a JSON object." >&2
+    return 2
+  fi
+  _uc_jq "$shape" -c "$_UC_JQ_DEFS $expr" "$config" || return 2
+  return 0
+}
+
+# _uc_create_empty <config> — create an absent config as `{}` at 0600.
+_uc_create_empty() {
+  local config="$1" dir
+  dir="$(dirname "$config")"
+  if ! mkdir -p "$dir"; then return 1; fi
+  if ! ( umask 077; printf '{}\n' > "$config" ); then return 1; fi
+  chmod 600 "$config" || return 1
+  return 0
+}
+
+# --- public API -----------------------------------------------------------------
+
+# usage_capture_abs <repo_dir> — the in-repo absolute path of the capture
+# script (CAPTURE_ABS), physical (`pwd -P`). Returns 1 when it does not exist.
+usage_capture_abs() {
+  local src="$1/hooks/usage-capture.sh" dir
+  if [ ! -f "$src" ]; then
+    echo "  ERROR: capture script not found at $src." >&2
+    return 1
+  fi
+  dir="$(cd "$(dirname "$src")" && pwd -P)" || return 1
+  printf '%s/%s\n' "$dir" "$(basename "$src")"
+}
+
+# usage_capture_fragment <cli> <repo_dir> — print the CLI's capture fragment
+# (hooks/<cli>-usage-capture-hooks.json) with the tokenized script path
+# `<prefix>/hooks/usage-capture.sh` replaced, whole, by CAPTURE_ABS. Returns 1
+# when the fragment is missing or unparsable, or when a token survives.
+usage_capture_fragment() {
+  local cli="$1" repo_dir="$2" frag_src abs tok out
+  _uc_shape "$cli" >/dev/null || return 1
+  frag_src="$repo_dir/hooks/${cli}-usage-capture-hooks.json"
+  if [ ! -f "$frag_src" ]; then
+    echo "  ERROR: capture fragment not found at $frag_src." >&2
+    return 1
+  fi
+  abs="$(usage_capture_abs "$repo_dir")" || return 1
+  tok="$(_uc_token "$cli")" || return 1
+  if ! out="$(jq -c --arg tok "$tok" --arg abs "$abs" \
+      '(.. | objects | select(.type? == "command") | .command) |= (split($tok) | join($abs))' \
+      "$frag_src" 2>/dev/null)"; then
+    echo "  ERROR: capture fragment $frag_src is not valid JSON." >&2
+    return 1
+  fi
+  case "$out" in
+    *_PROJECT_DIR*)
+      echo "  ERROR: unresolved project-dir token in the $cli capture fragment." >&2
+      return 1
+      ;;
+  esac
+  printf '%s\n' "$out"
+}
+
+# usage_capture_footprint <cli> <config> — print the JSON array of
+# {event, selector, handler} for every capture handler. `[]` for an absent
+# file; returns 2 (file untouched) for one that is not a JSON object.
+usage_capture_footprint() {
+  _uc_read "$1" "$2" 'uc_footprint'
+}
+
+# usage_capture_paths <cli> <config> — print the distinct registered capture
+# script paths, one per line, in registration order. Returns 2 on unparsable JSON.
+usage_capture_paths() {
+  local out rc=0
+  out="$(_uc_read "$1" "$2" 'uc_paths | .[]')" || rc=$?
+  [ "$rc" -eq 0 ] || return "$rc"
+  # -c prints strings JSON-quoted; decode each line.
+  [ -n "$out" ] || return 0
+  printf '%s\n' "$out" | jq -r '.' || return 2
+}
+
+# usage_capture_state <cli> <config> — print `absent` or `installed`.
+# Returns 2 on unparsable JSON.
+usage_capture_state() {
+  local n rc=0
+  n="$(_uc_read "$1" "$2" 'uc_footprint | length')" || rc=$?
+  [ "$rc" -eq 0 ] || return "$rc"
+  if [ "$n" = "0" ]; then printf 'absent\n'; else printf 'installed\n'; fi
+}
+
+# usage_capture_reinject <cli> <config> <footprint_json> — one secure write:
+# strip every capture handler, then add back each footprint entry. No backup:
+# its callers own backups.
+usage_capture_reinject() {
+  local cli="$1" config="$2" fp="$3" shape
+  shape="$(_uc_shape "$cli")" || return 1
+  if [ ! -f "$config" ] || ! _uc_is_object "$config"; then
+    echo "  ERROR: $config is absent or not a JSON object; usage capture not re-injected." >&2
+    return 1
+  fi
+  if ! jq -e 'type == "array"' >/dev/null 2>&1 <<< "$fp"; then
+    echo "  ERROR: invalid usage-capture footprint." >&2
+    return 1
+  fi
+  write_json_config_secure "$config" --arg shape "$shape" --argjson fp "$fp" \
+    "$_UC_JQ_DEFS uc_reinject(\$fp)" || return 1
+  return 0
+}
+
+# usage_capture_disclose <cli> <config> <repo_dir> — the pre-write disclosure (R6).
+usage_capture_disclose() {
+  local cli="$1" config="$2" repo_dir="$3" frag abs events
+  frag="$(usage_capture_fragment "$cli" "$repo_dir")" || return 1
+  abs="$(usage_capture_abs "$repo_dir")" || return 1
+  events="$(jq -r '.hooks | keys_unsorted | join(", ")' <<< "$frag")" || return 1
+  echo "Enabling usage capture will:"
+  echo "  1. Register $abs"
+  echo "     on the $events event(s), in $config"
+  if [ "$cli" = "copilot" ]; then
+    echo "     (the same file session recording uses; its entries are left as they are)"
+  fi
+  echo "  2. Back up $config first when it exists, and change no other entry in it"
+  echo "  The capture script is wired in place, by its in-repo absolute path; it is never copied."
+  echo "  No prompt or response text is recorded: only token counts, model and timing."
+  echo "  MemPalace is not required: records go to the file-system usage journal."
+  warn_if_linked_worktree "$repo_dir" "usage capture"
+  echo ""
+  return 0
+}
+
+# usage_capture_enable <cli> <config> <repo_dir> — register the fragment (R5, R9).
+usage_capture_enable() {
+  local cli="$1" config="$2" repo_dir="$3" shape frag events
+  shape="$(_uc_shape "$cli")" || return 1
+  frag="$(usage_capture_fragment "$cli" "$repo_dir")" || return 1
+  events="$(jq -r '.hooks | keys_unsorted | join(", ")' <<< "$frag")" || return 1
+  if [ -f "$config" ]; then
+    if ! _uc_is_object "$config"; then
+      echo "  ERROR: $config is not a JSON object; usage capture not enabled." >&2
+      return 1
+    fi
+    backup_file "$config"
+    write_json_config_secure "$config" --arg shape "$shape" --argjson frag "$frag" \
+      "$_UC_JQ_DEFS (\$frag | uc_footprint) as \$ffp | uc_reinject(\$ffp)" \
+      || { echo "  ERROR: could not write $config." >&2; return 1; }
+  else
+    _uc_create_empty "$config" || { echo "  ERROR: could not create $config." >&2; return 1; }
+    if ! write_json_config_secure "$config" --argjson frag "$frag" '$frag'; then
+      rm -f "$config"
+      echo "  ERROR: could not write $config." >&2
+      return 1
+    fi
+  fi
+  echo "  Usage capture enabled on $events in $config"
+  return 0
+}
+
+# usage_capture_keep <cli> <config> <repo_dir> — R11. On the R5 events:
+# (a) re-point in place a handler whose registered path no longer resolves,
+# (b) drop all but the first capture handler, (c) add the fragment handler to
+# an event that has none. Writes nothing (and backs up nothing) on a no-op.
+usage_capture_keep() {
+  local cli="$1" config="$2" repo_dir="$3" shape frag abs r5 fragfp
+  local paths p vanished_list="" target="" vanished missing wrote_abs=0 before after
+  shape="$(_uc_shape "$cli")" || return 1
+  if [ ! -f "$config" ]; then
+    echo "  No usage-capture entry in $config; nothing to keep."
+    return 0
+  fi
+  if ! _uc_is_object "$config"; then
+    echo "  ERROR: $config is not a JSON object; usage capture left as it is." >&2
+    return 1
+  fi
+  frag="$(usage_capture_fragment "$cli" "$repo_dir")" || return 1
+  abs="$(usage_capture_abs "$repo_dir")" || return 1
+  r5="$(jq -c '.hooks | keys_unsorted' <<< "$frag")" || return 1
+  fragfp="$(_uc_jq "$shape" -c "$_UC_JQ_DEFS uc_footprint" <<< "$frag")" || return 1
+  # Paths registered on the R5 events, in order.
+  paths="$(_uc_jq "$shape" -r --argjson r5 "$r5" \
+    "$_UC_JQ_DEFS [uc_footprint[] | select(.event as \$e | any(\$r5[]; . == \$e)) | .handler | uc_path | select(. != null)] | uc_distinct | .[]" \
+    "$config")" || return 1
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    if [ -f "$p" ]; then
+      [ -n "$target" ] || target="$p"
+    else
+      vanished_list="${vanished_list}${p}
+"
+    fi
+  done <<< "$paths"
+  [ -n "$target" ] || target="$abs"
+  vanished="$(printf '%s' "$vanished_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')" || return 1
+  # Events of R5 with no capture handler before this run: (c) adds one there.
+  missing="$(_uc_jq "$shape" -r --argjson r5 "$r5" \
+    "$_UC_JQ_DEFS [\$r5[] as \$e | select(any(uc_footprint[]; .event == \$e) | not) | \$e] | length" \
+    "$config")" || return 1
+  local program="$_UC_JQ_DEFS uc_keep(\$r5; \$vanished; \$abs; \$fragfp; \$target)"
+  before="$(jq -c '.' "$config")" || return 1
+  after="$(_uc_jq "$shape" -c --argjson r5 "$r5" --argjson vanished "$vanished" \
+    --arg abs "$abs" --argjson fragfp "$fragfp" --arg target "$target" \
+    "$program" "$config")" || return 1
+  if [ "$before" = "$after" ]; then
+    echo "  Usage capture kept unchanged in $config"
+    return 0
+  fi
+  backup_file "$config"
+  write_json_config_secure "$config" --arg shape "$shape" --argjson r5 "$r5" \
+    --argjson vanished "$vanished" --arg abs "$abs" --argjson fragfp "$fragfp" \
+    --arg target "$target" "$program" \
+    || { echo "  ERROR: could not write $config." >&2; return 1; }
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    echo "  Usage capture re-pointed $p -> $abs"
+    wrote_abs=1
+  done <<< "$vanished_list"
+  if [ "$missing" != "0" ]; then
+    echo "  Usage capture re-registered on $missing event(s) at $target"
+    [ "$target" != "$abs" ] || wrote_abs=1
+  fi
+  echo "  Usage capture kept in $config (one entry per event)"
+  if [ "$wrote_abs" -eq 1 ]; then
+    warn_if_linked_worktree "$repo_dir" "usage capture"
+  fi
+  return 0
+}
+
+# usage_capture_remove <cli> <config> — R9, R12: delete every capture handler,
+# pruning only the containers that deletion emptied. Absent file → no write.
+usage_capture_remove() {
+  local cli="$1" config="$2" shape
+  shape="$(_uc_shape "$cli")" || return 1
+  if [ ! -f "$config" ]; then
+    echo "  No usage-capture entry to remove ($config does not exist)."
+    return 0
+  fi
+  if ! _uc_is_object "$config"; then
+    echo "  ERROR: $config is not a JSON object; usage capture not removed." >&2
+    return 1
+  fi
+  backup_file "$config"
+  write_json_config_secure "$config" --arg shape "$shape" "$_UC_JQ_DEFS uc_strip" \
+    || { echo "  ERROR: could not write $config." >&2; return 1; }
+  echo "  Usage capture removed from $config (every other entry left as it was)"
+  return 0
+}
+
+# usage_capture_apply <cli> <config> <repo_dir> <state> <answer> — the mapping
+# of a raw prompt answer, kept out of the setups so it is testable (R4, R10):
+#   absent    + yes    → enable; any other answer, empty included → no write
+#   installed + remove → remove; any other answer, empty included → keep
+# Any other state is rejected (non-zero, nothing written).
+usage_capture_apply() {
+  local cli="$1" config="$2" repo_dir="$3" state="$4" answer="$5"
+  _uc_shape "$cli" >/dev/null || return 1
+  case "$state" in
+    absent)
+      if [ "$answer" = "yes" ]; then
+        usage_capture_enable "$cli" "$config" "$repo_dir"
+        return $?
+      fi
+      echo "Usage capture not enabled (re-run scripts/setup-${cli}-interactive.sh to enable it)."
+      return 0
+      ;;
+    installed)
+      if [ "$answer" = "remove" ]; then
+        usage_capture_remove "$cli" "$config"
+        return $?
+      fi
+      usage_capture_keep "$cli" "$config" "$repo_dir"
+      return $?
+      ;;
+    *)
+      echo "  ERROR: unknown usage-capture state '$state'; nothing written." >&2
+      return 1
+      ;;
+  esac
+}
+
+# merge_session_recording_hooks <cli> <config> <patched_manifest> [<env_patch_json>]
+# The session-recording write of all three CLIs. It keeps each CLI's merge
+# semantics (Claude/Gemini `.[0] * .[1]`, Copilot full replace) and re-injects
+# the capture footprint it found, so it never removes, duplicates or re-points
+# a registered capture command (R8). Refuses (returns 1, writes nothing) on a
+# config that is not a JSON object.
+merge_session_recording_hooks() {
+  local cli="$1" config="$2" patched="$3" env_patch="${4:-}" shape fp rc=0 created=0 program
+  shape="$(_uc_shape "$cli")" || return 1
+  fp="$(usage_capture_footprint "$cli" "$config")" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "  ERROR: $config is not readable as JSON; session-recording hooks not merged." >&2
+    return 1
+  fi
+  if ! jq -e 'type == "object"' "$patched" >/dev/null 2>&1; then
+    echo "  ERROR: patched hook manifest $patched is not a JSON object." >&2
+    return 1
+  fi
+  [ -n "$env_patch" ] || env_patch='{}'
+  if ! jq -e 'type == "object"' >/dev/null 2>&1 <<< "$env_patch"; then
+    echo "  ERROR: invalid environment patch for $config." >&2
+    return 1
+  fi
+  case "$cli" in
+    claude)  program='(. * $m[0]) | (if ($patch | length) > 0 then .env = ((.env // {}) + $patch) else . end) | uc_reinject($fp)' ;;
+    gemini)  program='(. * $m[0]) | uc_reinject($fp)' ;;
+    copilot) program='$m[0] | uc_reinject($fp)' ;;
+  esac
+  if [ -f "$config" ]; then
+    backup_file "$config"
+  else
+    _uc_create_empty "$config" || { echo "  ERROR: could not create $config." >&2; return 1; }
+    created=1
+  fi
+  if ! write_json_config_secure "$config" --arg shape "$shape" --slurpfile m "$patched" \
+      --argjson fp "$fp" --argjson patch "$env_patch" "$_UC_JQ_DEFS $program"; then
+    [ "$created" -eq 0 ] || rm -f "$config"
+    echo "  ERROR: could not write $config." >&2
+    return 1
+  fi
+  return 0
+}
