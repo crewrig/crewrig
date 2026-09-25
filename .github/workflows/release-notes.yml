@@ -1,0 +1,36 @@
+name: Release Notes Render Check
+
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/monorepo-release.sh"
+      - "scripts/lib/release-notes/**"
+      - "scripts/tests/test-monorepo-release-notes.sh"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/monorepo-release.sh"
+      - "scripts/lib/release-notes/**"
+      - "scripts/tests/test-monorepo-release-notes.sh"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Render extension release notes through the monorepo release config
+        run: bash scripts/tests/test-monorepo-release-notes.sh

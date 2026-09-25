@@ -1159,6 +1159,38 @@ capabilities:
       - npm install
       - bash scripts/tests/test-usage-record-schema.sh
 
+  # release-notes renders an extension release note through the real
+  # scripts/monorepo-release.sh configuration against a hermetic fixture
+  # repository (issue #1225). Deliberately NOT changeset-gated, mirroring
+  # usage-record-schema above: the fail-safe job (ci-changeset-coverage.sh)
+  # provisions no Node.
+  - id: release-notes
+    name: "Render extension release notes through the monorepo release config"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/monorepo-release.sh"
+          - "scripts/lib/release-notes/**"
+          - "scripts/tests/test-monorepo-release-notes.sh"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/monorepo-release.sh"
+          - "scripts/lib/release-notes/**"
+          - "scripts/tests/test-monorepo-release-notes.sh"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@22
+      tools: [jq]
+    command:
+      - npm ci
+      - bash scripts/tests/test-monorepo-release-notes.sh
+
   # usage-capture validates the spec 0206 capture-adapter module tree and the
   # spec 0211 per-CLI usage-capture opt-in (scripts/lib/usage-capture-optin.sh).
   # Deliberately NOT changeset-gated, mirroring usage-record-schema above:

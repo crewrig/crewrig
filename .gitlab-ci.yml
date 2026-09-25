@@ -993,6 +993,29 @@ usage-record-schema:
         - "package.json"
         - "package-lock.json"
 
+release-notes:
+  image: node:22
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+  script:
+    - "npm ci"
+    - "bash scripts/tests/test-monorepo-release-notes.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/monorepo-release.sh"
+        - "scripts/lib/release-notes/**"
+        - "scripts/tests/test-monorepo-release-notes.sh"
+        - "package.json"
+        - "package-lock.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/monorepo-release.sh"
+        - "scripts/lib/release-notes/**"
+        - "scripts/tests/test-monorepo-release-notes.sh"
+        - "package.json"
+        - "package-lock.json"
+
 usage-capture:
   image: node:22
   script:

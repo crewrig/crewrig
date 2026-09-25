@@ -13,6 +13,13 @@ echo "Branch: $CURRENT_BRANCH"
 ROOT_DIR=$(pwd)
 export NODE_PATH="$ROOT_DIR/node_modules"
 
+# semantic-release-gitmoji is loaded through an ESM facade (issue #1225):
+# semantic-release-monorepo resolves wrapped steps with `import()`, which sees
+# only `analyzeCommits` on the CommonJS package, so its `generateNotes` was
+# silently skipped and every release note was empty. Absolute path, resolved
+# from this script's own location, because wrapStep imports it verbatim.
+GITMOJI_PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/release-notes/gitmoji-esm-shim.mjs"
+
 ERRORS=0
 
 for dir in extensions/*/*/; do
@@ -69,7 +76,7 @@ for dir in extensions/*/*/; do
   "branches": ["$CURRENT_BRANCH"],
   "tagFormat": "${EXT_NAME}-v\${version}",
   "plugins": [
-    ["semantic-release-gitmoji", {
+    ["$GITMOJI_PLUGIN", {
       "releaseRules": {
         "major": [":boom:"],
         "minor": [":sparkles:"],
