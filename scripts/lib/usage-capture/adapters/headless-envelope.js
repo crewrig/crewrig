@@ -142,12 +142,15 @@ function extractTokens(cli, envelope) {
 // read. Anything else, including every conversation-text field, is dropped.
 // Gemini's `stats` is reduced to `stats.models` (stats.tools and
 // stats.files are not copied). TIMING_KEYS are kept for every CLI because
-// extractTerminalTimestamp() reads them.
+// extractTerminalTimestamp() reads them. The copilot-cli pricing keys
+// (`pricing`, `total_nano_aiu`, `request_multiplier`) are what
+// scripts/lib/usage-price/copilot.js firstPartyCopilot() reads — keep the
+// two in step.
 const RAW_KEYS_BY_CLI = {
   antigravity: ['conversation_id', 'status', 'duration_seconds', 'num_turns', 'usage'],
   'claude-code': ['session_id', 'modelUsage', 'usage', 'total_cost_usd', 'duration_ms', 'num_turns'],
   'gemini-cli': ['session_id'],
-  'copilot-cli': ['currentModel', 'modelMetrics'],
+  'copilot-cli': ['currentModel', 'modelMetrics', 'pricing', 'total_nano_aiu', 'request_multiplier'],
 };
 const RAW_KEYS_DEFAULT = ['session_id', 'sessionId', 'model', 'usage'];
 const TIMING_KEYS = ['timestamp', 'terminal_timestamp'];

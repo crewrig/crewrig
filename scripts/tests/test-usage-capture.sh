@@ -68,6 +68,10 @@
 #       exactly `.response`, stores a record without the reply, never stages
 #       the reply in a file under $TMPDIR (checked after every node step),
 #       and leaves a non-JSON or non-string-response <out_file> byte-identical.
+#   §11 R20 stays live for headless Copilot records: the copilot-cli
+#       allow-list keeps `pricing`, `total_nano_aiu` and `request_multiplier`
+#       when present, and scripts/lib/usage-price/copilot.js
+#       firstPartyCopilot() still reads a first-party price off the record.
 #
 # HERMETIC: CREWRIG_USAGE_ROOT is pinned to a throwaway temp directory for
 # every invocation in this suite. Nothing is ever written under the real
@@ -782,6 +786,31 @@ for name in agy-nonjson.txt agy-nonstring.txt; do
     bad "§10: $name was modified — it must be left untouched"
   fi
 done
+
+# ---------------------------------------------------------------------------
+echo
+echo "=== §11 R20: the copilot-cli allow-list keeps the keys firstPartyCopilot() reads ==="
+
+PRICED_ENVELOPE="$WORK_ROOT/copilot-priced-envelope.json"
+jq '. + {pricing: {amountUsd: 0.25}, total_nano_aiu: 1500000000, request_multiplier: 1}' \
+  "$FIXTURES_DIR/headless/copilot-cli-envelope/envelope.json" > "$PRICED_ENVELOPE"
+derive "$WORK_ROOT/copilot-priced" headless copilot-cli "$PRICED_ENVELOPE"
+PRICED_REC="$WORK_ROOT/copilot-priced/rec-0.json"
+if [ "$DERIVE_RC" -eq 0 ] && jq -e '.raw.pricing.amountUsd == 0.25 and .raw.total_nano_aiu == 1500000000 and .raw.request_multiplier == 1' "$PRICED_REC" >/dev/null 2>&1; then
+  ok "§11: raw keeps pricing, total_nano_aiu and request_multiplier unaltered"
+else
+  bad "§11: raw dropped or altered a pricing key" "$(jq -c '.raw' "$PRICED_REC" 2>&1)"
+fi
+PRICED_SOURCE="$(node $NODE_FLAGS -e "
+  const rec = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const hit = require(process.argv[2]).firstPartyCopilot(rec, {});
+  process.stdout.write(hit ? hit.source : 'null');
+" "$PRICED_REC" "$SCRIPT_DIR/lib/usage-price/copilot.js" 2>&1)"
+if [ "$PRICED_SOURCE" = "raw.pricing" ]; then
+  ok "§11: firstPartyCopilot() reads the headless record's first-party price (source: raw.pricing)"
+else
+  bad "§11: firstPartyCopilot() found no first-party price on the headless record (got: $PRICED_SOURCE)"
+fi
 
 # ---------------------------------------------------------------------------
 echo

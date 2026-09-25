@@ -20,6 +20,9 @@
 // the rate from the pair's own presence would be a guess about an
 // account's billing arrangement — R12 forbids exactly that class of
 // heuristic for model ids, and the same discipline applies here).
+// A headless record's raw is the copilot-cli allow-list in
+// scripts/lib/usage-capture/adapters/headless-envelope.js (RAW_KEYS_BY_CLI):
+// a key read here must stay on that list.
 function firstPartyCopilot(record, org) {
   const raw = (record && record.raw) || {};
 

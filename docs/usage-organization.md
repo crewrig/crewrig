@@ -151,6 +151,23 @@ Neither procedure touches the CLIs' own session records, which the feature
 reads but never writes. They remain in place, and usage records can be
 derived from them again at any time with a backfill.
 
+### Older Antigravity records holding reply text
+
+Records written by an older checkout, before the non-interactive
+`headless-envelope` channel copied only enumerated fields, can still hold
+the model's reply. They are Antigravity CLI `run-total` records whose `raw`
+block has a `response` key. This lists them:
+
+```sh
+ROOT="${CREWRIG_USAGE_ROOT:-$HOME/.crewrig/usage}"
+find "$ROOT/journal/antigravity" -name '*.json' ! -name '*.wing.json' ! -name '*.attr.json' \
+  -exec jq -r 'select(.provenance.captureChannel == "headless-envelope"
+    and .provenance.cli == "antigravity"
+    and ((.raw // {}) | has("response"))) | input_filename' {} + 2>/dev/null
+```
+
+Procedure (a) below removes them, along with every other record.
+
 ### Before you start
 
 - **Nothing else runs.** Close every CLI session and agent, and run no
