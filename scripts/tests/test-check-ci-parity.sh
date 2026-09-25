@@ -33,6 +33,11 @@
 #          (GHA-only; OK line omits GitLab).
 #     P4b  Graceful degradation (S9/R11): missing .github/ → exit 0
 #          (GitLab-only; OK line omits GitHub Actions).
+#     P5   GHA preinstalled-tool exemption: a capability requiring `git` (or
+#          `diff`) is not flagged even with no setup step installing it —
+#          ubuntu-latest ships both (issue #1216).
+#     P6   `python3` tool requirement satisfied by `actions/setup-python`
+#          alone (no explicit apt-get install needed) — issue #1216.
 #
 #   Fail-closed (exit 1 each):
 #     S3   Drifted GHA business step → names github-actions.
@@ -48,6 +53,9 @@
 #     R4d  Missing fetch-depth: 0 where requires history-depth: full.
 #     R4t  Missing tool install (yq).
 #     R4r  Wrong runtime version (node-version).
+#     S12  Negative twin of P6: `python3` required, no setup-python AND no
+#          explicit install → still fails closed (guards against
+#          over-exemption — issue #1216).
 #
 # Usage:
 #   bash scripts/tests/test-check-ci-parity.sh
@@ -220,6 +228,51 @@ refute_in() {
   expect_exit 0 "P4b: GitLab-only repo passes (GitHub Actions absent)"
   expect_in out "GitLab"          "P4b: OK line names the present GitLab arm"
   refute_in out "GitHub Actions"  "P4b: OK line omits the absent GitHub Actions arm"
+}
+
+# ---------------------------------------------------------------------------
+# P5 — GHA preinstalled-tool exemption: `git` and `diff` are not flagged even
+# with no setup step installing them (ubuntu-latest ships both). GitLab has no
+# install recipe for either yet (delta-02 Scenario 2), so this arm is exercised
+# GHA-only (no .gitlab-ci.yml in the fixture) — otherwise Arm 2 would fail on
+# the unrelated, expected "no GitLab install recipe" error.
+# ---------------------------------------------------------------------------
+{
+  f="$(make_fixture)"
+  rm -f "$f/.gitlab-ci.yml"
+  yq -i '(.capabilities[] | select(.id == "check-agents-size") | .requires.tools) = ["git"]' \
+    "$f/ci/ci-capabilities.yml"
+
+  run_check "$f"
+  expect_exit 0 "P5a: 'git' tool requirement is not flagged on GitHub Actions"
+  refute_in err "requires tool 'git'" "P5a: no false-positive drift for git"
+}
+{
+  f="$(make_fixture)"
+  rm -f "$f/.gitlab-ci.yml"
+  yq -i '(.capabilities[] | select(.id == "check-agents-size") | .requires.tools) = ["diff"]' \
+    "$f/ci/ci-capabilities.yml"
+
+  run_check "$f"
+  expect_exit 0 "P5b: 'diff' tool requirement is not flagged on GitHub Actions"
+  refute_in err "requires tool 'diff'" "P5b: no false-positive drift for diff"
+}
+
+# ---------------------------------------------------------------------------
+# P6 — `python3` tool requirement satisfied by `actions/setup-python` alone.
+# figure-labels declares `requires.tools: [tesseract, python3]`; its GHA job
+# step[3] is the "Install python3" apt-get recipe — swap it for a bare
+# `actions/setup-python@v5` step (no explicit apt-get install) and confirm the
+# tool requirement still resolves.
+# ---------------------------------------------------------------------------
+{
+  f="$(make_fixture)"
+  yq -i '.jobs."figure-labels".steps[3] = {"name": "Set up Python", "uses": "actions/setup-python@v5", "with": {"python-version": "3.12"}}' \
+    "$f/.github/workflows/build.yml"
+
+  run_check "$f"
+  expect_exit 0 "P6: python3 requirement satisfied by actions/setup-python"
+  refute_in err "requires tool 'python3'" "P6: no false-positive drift for python3"
 }
 
 # ===========================================================================
@@ -401,6 +454,22 @@ refute_in() {
   expect_exit 1 "R4r: wrong runtime version fails closed"
   expect_in err "capability 'build' (github-actions)" "R4r: names capability + platform"
   expect_in err "node"                                "R4r: names the runtime mismatch"
+}
+
+# ---------------------------------------------------------------------------
+# S12 — Negative twin of P6: `python3` required, but the job has NEITHER
+# actions/setup-python NOR an explicit apt-get install → still fails closed.
+# Regression guard against turning the P6 fix into an unconditional exemption.
+# ---------------------------------------------------------------------------
+{
+  f="$(make_fixture)"
+  yq -i 'del(.jobs."figure-labels".steps[3])' \
+    "$f/.github/workflows/build.yml"
+
+  run_check "$f"
+  expect_exit 1 "S12: python3 requirement still fails closed with no setup step"
+  expect_in err "figure-labels"          "S12: names the capability"
+  expect_in err "requires tool 'python3'" "S12: names the unmet tool requirement"
 }
 
 # ---------------------------------------------------------------------------
