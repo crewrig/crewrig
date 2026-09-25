@@ -1007,6 +1007,7 @@ release-notes:
       changes:
         - "scripts/monorepo-release.sh"
         - "scripts/lib/release-notes/**"
+        - "scripts/lib/monorepo-release-lib.sh"
         - "scripts/tests/test-monorepo-release-notes.sh"
         - "package.json"
         - "package-lock.json"
@@ -1014,6 +1015,7 @@ release-notes:
       changes:
         - "scripts/monorepo-release.sh"
         - "scripts/lib/release-notes/**"
+        - "scripts/lib/monorepo-release-lib.sh"
         - "scripts/tests/test-monorepo-release-notes.sh"
         - "package.json"
         - "package-lock.json"

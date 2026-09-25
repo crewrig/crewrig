@@ -1173,6 +1173,7 @@ capabilities:
         paths:
           - "scripts/monorepo-release.sh"
           - "scripts/lib/release-notes/**"
+          - "scripts/lib/monorepo-release-lib.sh"
           - "scripts/tests/test-monorepo-release-notes.sh"
           - "package.json"
           - "package-lock.json"
@@ -1181,6 +1182,7 @@ capabilities:
         paths:
           - "scripts/monorepo-release.sh"
           - "scripts/lib/release-notes/**"
+          - "scripts/lib/monorepo-release-lib.sh"
           - "scripts/tests/test-monorepo-release-notes.sh"
           - "package.json"
           - "package-lock.json"
