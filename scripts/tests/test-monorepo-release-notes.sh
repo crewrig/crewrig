@@ -50,7 +50,7 @@ ng() { echo "FAIL  $1"; fail=$((fail + 1)); }
 # --- Fixture repository ------------------------------------------------------
 FIXTURE="$TMP_ROOT/repo"
 REMOTE="$TMP_ROOT/remote.git"
-git init -q --bare "$REMOTE"
+git init -q --bare -b main "$REMOTE"
 git init -q -b main "$FIXTURE"
 g() { git -C "$FIXTURE" -c user.name=fixture -c user.email=fixture@example.invalid "$@"; }
 g remote add origin "$REMOTE"
