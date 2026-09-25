@@ -864,11 +864,21 @@ stop_stub() {
 # (i) the golden main-heredoc config and (ii) emit_releaserc github publish —
 # both with the publish leg removed — must be byte-identical.
 #
-# NOTE (surprising, verified): this assertion passes even TODAY, despite
-# issue #1225 — both renders produce the SAME empty note, so they are
-# trivially byte-identical. That is a property of the bug (it is
-# config-independent), not evidence that #1225 is fixed. Flagged for the
-# team in the session report; not weakened here.
+# VACUOUS-PASS WARNING (surprising, verified — flagged in review): the
+# byte-identity assertion below passes even TODAY, despite issue #1225 —
+# both renders produce the SAME empty note, so they are trivially
+# byte-identical. That is a property of the bug (empty is empty regardless
+# of config), not evidence that #1225 is fixed or that this case is
+# actually exercising R21. A byte-identity check can ALWAYS pass vacuously
+# this way when its two inputs are both empty (or both broken identically),
+# so the non-empty assertion immediately below is not optional decoration:
+# without it, this case could not detect a regression that made BOTH
+# renders empty (or both wrong in the same way) — it would keep reporting
+# green. Once #1229's fix removes the stray `.releaserc.json` and #1225's
+# fix restores generateNotes, both assertions below should read PASS; until
+# then the non-empty one is expected to fail via ng_1225, and the
+# byte-identity one is expected to keep passing (vacuously) for the reason
+# above.
 # =============================================================================
 {
   read -r FIX ORIGIN_BARE HOME_FIX GITCONFIG_BASE <<< "$(make_fixture | tr '\n' ' ')"
@@ -910,6 +920,17 @@ stop_stub() {
     ok "11g: both fixed-date dry-run renders succeed"
     notes_i="$(printf '%s' "$result_i" | jq -r '.notes')"
     notes_ii="$(printf '%s' "$result_ii" | jq -r '.notes')"
+
+    # Guards the byte-identity check below against passing vacuously (see
+    # this block's header comment): two EMPTY strings are byte-identical
+    # too, so without this assertion a regression that emptied both renders
+    # would read as a pass, not a failure.
+    if printf '%s' "$notes_i" | grep -q '.' && printf '%s' "$notes_ii" | grep -q '.'; then
+      ok "11g: both rendered notes are non-empty (the byte-identity check below is meaningful)"
+    else
+      ng_1225 "11g: both rendered notes are non-empty (empty today makes the byte-identity check below vacuous)"
+    fi
+
     if [ "$notes_i" = "$notes_ii" ]; then
       ok "11g (R21): the two GitHub note renders are byte-identical at a fixed date"
     else
