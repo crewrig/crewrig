@@ -8,5 +8,19 @@
   "total": 1,
   "modelId": "gpt-5-copilot",
   "fidelity": "run-total",
-  "sessionIdReported": false
+  "sessionIdReported": false,
+  "expectedTokens": {
+    "netInput": 2100,
+    "cacheRead": 500,
+    "cacheWrite": 60,
+    "output": 340,
+    "reasoning": 15
+  },
+  "expectedRawKeys": [
+    "currentModel",
+    "modelMetrics"
+  ],
+  "forbiddenText": [
+    "CANARY-1201-COPILOT-UNENUMERATED"
+  ]
 }

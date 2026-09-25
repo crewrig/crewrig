@@ -56,6 +56,22 @@
 #       distinct provenance.formatFingerprint values, matching PLAN v3 step 6
 #       and docs/usage-capture.md's own "three generations, three
 #       fingerprints" claim.
+#   §9  R18 (issue #1201) — the headless envelope adapter copies only an
+#       allow-listed subset into `raw`. In §1, every headless fixture must
+#       declare `forbiddenText` canaries (none declared is a failure, never a
+#       vacuous pass), and no canary may appear in any derived record. §9
+#       itself derives the Antigravity fixture through a copy of the module
+#       tree with `raw: envelope || {}` restored, and asserts the canary IS
+#       then found, so the negative check is proven to bite.
+#   §10 R18 (issue #1201) — scripts/lib/usage-headless.sh's
+#       usage_headless_agy_rewrite_json_response rewrites <out_file> to
+#       exactly `.response`, stores a record without the reply, never stages
+#       the reply in a file under $TMPDIR (checked after every node step),
+#       and leaves a non-JSON or non-string-response <out_file> byte-identical.
+#   §11 R20 stays live for headless Copilot records: the copilot-cli
+#       allow-list keeps `pricing`, `total_nano_aiu` and `request_multiplier`
+#       when present, and scripts/lib/usage-price/copilot.js
+#       firstPartyCopilot() still reads a first-party price off the record.
 #
 # HERMETIC: CREWRIG_USAGE_ROOT is pinned to a throwaway temp directory for
 # every invocation in this suite. Nothing is ever written under the real
@@ -150,6 +166,107 @@ validate_dir() {
   return 0
 }
 
+# forbidden_hits <expected.json> <dir> — prints one line per forbiddenText
+# canary of <expected.json> found in any rec-*.json under <dir>. Empty output
+# means no canary leaked.
+forbidden_hits() {
+  local expected="$1" dir="$2" canary f
+  while IFS= read -r canary; do
+    [ -n "$canary" ] || continue
+    for f in "$dir"/rec-*.json; do
+      [ -f "$f" ] || continue
+      if grep -qF -- "$canary" "$f"; then
+        echo "$canary found in $(basename "$f")"
+      fi
+    done
+  done < <(jq -r '(.forbiddenText // [])[]' "$expected" 2>/dev/null)
+}
+
+# check_headless_fixture <label> <expected.json> <envelope file> <outdir> —
+# the §1 R18 checks for one headless-envelope fixture: forbiddenText is
+# declared and every canary is really in the envelope (so the negative check
+# cannot pass vacuously), no canary reaches the derived record, and the
+# fields the allow-list keeps (modelId, session id, tokens, raw keys) are
+# intact.
+check_headless_fixture() {
+  local label="$1" expected="$2" envelope="$3" outdir="$4"
+  local rec="$outdir/rec-0.json"
+  local n canary missing hits got want
+
+  n="$(jq '(.forbiddenText // []) | map(select(type == "string" and length > 0)) | length' "$expected" 2>/dev/null)"
+  if [ "${n:-0}" -gt 0 ]; then
+    ok "$label: expected.json declares $n forbiddenText canar(y/ies)"
+  else
+    bad "$label: expected.json declares no forbiddenText — refusing to pass the R18 check vacuously"
+    return
+  fi
+
+  missing=""
+  while IFS= read -r canary; do
+    grep -qF -- "$canary" "$envelope" || missing="$missing $canary"
+  done < <(jq -r '.forbiddenText[]' "$expected")
+  if [ -z "$missing" ]; then
+    ok "$label: every forbiddenText canary is present in the fixture envelope"
+  else
+    bad "$label: forbiddenText canaries missing from the fixture envelope:$missing"
+  fi
+
+  if [ ! -f "$rec" ]; then
+    bad "$label: no derived record at $rec — refusing to pass the R18 check vacuously"
+    return
+  fi
+  hits="$(forbidden_hits "$expected" "$outdir")"
+  if [ -z "$hits" ]; then
+    ok "$label: no forbiddenText canary appears in the derived record (R18)"
+  else
+    bad "$label: conversation text leaked into the derived record (R18)" "$hits"
+  fi
+
+  got="$(jq -r '.modelId' "$rec")"
+  want="$(jq -r '.modelId' "$expected")"
+  if [ "$got" = "$want" ]; then
+    ok "$label: modelId is $got"
+  else
+    bad "$label: modelId was '$got', expected '$want'"
+  fi
+
+  want="$(jq -r '.sessionId // empty' "$expected")"
+  if [ -n "$want" ]; then
+    got="$(jq -r '.identity.sessionId' "$rec")"
+    if [ "$got" = "$want" ]; then
+      ok "$label: identity.sessionId is $got"
+    else
+      bad "$label: identity.sessionId was '$got', expected '$want'"
+    fi
+  fi
+
+  got="$(jq -cS '.tokens' "$rec")"
+  want="$(jq -cS '.expectedTokens' "$expected")"
+  if [ "$got" = "$want" ]; then
+    ok "$label: derived tokens equal expectedTokens"
+  else
+    bad "$label: derived tokens ($got) do not equal expectedTokens ($want)"
+  fi
+
+  got="$(jq -c '.raw | keys' "$rec")"
+  want="$(jq -c '.expectedRawKeys | sort' "$expected")"
+  if [ "$got" = "$want" ]; then
+    ok "$label: raw holds exactly the allow-listed keys $got"
+  else
+    bad "$label: raw keys were $got, expected $want"
+  fi
+
+  if jq -e 'has("expectedRawStatsKeys")' "$expected" >/dev/null 2>&1; then
+    got="$(jq -c '.raw.stats | keys' "$rec")"
+    want="$(jq -c '.expectedRawStatsKeys | sort' "$expected")"
+    if [ "$got" = "$want" ]; then
+      ok "$label: raw.stats holds exactly $got"
+    else
+      bad "$label: raw.stats keys were $got, expected $want"
+    fi
+  fi
+}
+
 # ---------------------------------------------------------------------------
 echo "=== §1/§2/§4 fixture derivation: counts (R27), schema validity, idempotence ==="
 
@@ -231,6 +348,10 @@ for expected in $(find "$FIXTURES_DIR" -name expected.json | sort); do
     ok "$label: every derived record validates against v1.schema.json"
   else
     bad "$label: a derived record failed schema validation" "$VALIDATE_DETAIL"
+  fi
+
+  if [ "$adapter" = "headless-envelope" ]; then
+    check_headless_fixture "$label" "$expected" "$dir/$envelope_file" "$outdir"
   fi
 
   if [ "$label" = "unknown/unrecognized-shape" ]; then
@@ -546,6 +667,149 @@ if [ -n "$FP_LEGACY" ] && [ -n "$FP_KINDSUM" ] && [ -n "$FP_JSONL" ] \
 else
   bad "i1-F1: expected three pairwise-distinct formatFingerprint values" \
     "legacy-json=$FP_LEGACY json-kind-summary=$FP_KINDSUM jsonl-set-journal=$FP_JSONL"
+fi
+
+# ---------------------------------------------------------------------------
+echo
+echo "=== §9 R18 (#1201): the forbiddenText check bites — a whole-envelope raw leaks the canary ==="
+
+AGY_FIXTURE_DIR="$FIXTURES_DIR/headless/antigravity-envelope"
+MUT_LIB="$WORK_ROOT/mutant-lib"
+mkdir -p "$MUT_LIB"
+cp -R "$SCRIPT_DIR/lib/usage-capture" "$SCRIPT_DIR/lib/usage-store" "$MUT_LIB/"
+MUT_ADAPTER="$MUT_LIB/usage-capture/adapters/headless-envelope.js"
+sed 's/raw: pickRaw(cli, envelope),/raw: envelope || {},/' \
+  "$SCRIPT_DIR/lib/usage-capture/adapters/headless-envelope.js" > "$MUT_ADAPTER"
+if cmp -s "$MUT_ADAPTER" "$SCRIPT_DIR/lib/usage-capture/adapters/headless-envelope.js"; then
+  bad "§9: the mutation sed changed nothing — the adapter's raw line no longer reads 'raw: pickRaw(cli, envelope),'"
+else
+  export USAGE_CAPTURE_MODULE_ROOT="$MUT_LIB/usage-capture"
+  derive "$WORK_ROOT/mutant-antigravity" headless antigravity "$AGY_FIXTURE_DIR/envelope.json"
+  unset USAGE_CAPTURE_MODULE_ROOT
+  MUT_HITS="$(forbidden_hits "$AGY_FIXTURE_DIR/expected.json" "$WORK_ROOT/mutant-antigravity")"
+  if [ "$DERIVE_RC" -eq 0 ] && [ -n "$MUT_HITS" ]; then
+    ok "§9: with raw: envelope || {} restored, the canary IS found ($MUT_HITS) — the §1 negative check can fail"
+  else
+    bad "§9: the mutant adapter's record did not carry the canary (exit $DERIVE_RC) — the §1 negative check may pass vacuously" "$DERIVE_OUT"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+echo
+echo "=== §10 R18 (#1201): usage_headless_agy_rewrite_json_response rewrites in place, never stages the reply ==="
+
+AGY_CANARY="$(jq -r '.forbiddenText[0]' "$AGY_FIXTURE_DIR/expected.json")"
+AGY_USAGE_ROOT="$WORK_ROOT/agy-usage-root"
+AGY_TMPDIR="$WORK_ROOT/agy-tmpdir"
+AGY_HOME="$WORK_ROOT/agy-home"
+AGY_BIN="$WORK_ROOT/agy-bin"
+AGY_SCAN_LOG="$WORK_ROOT/agy-tmpdir-scan.log"
+mkdir -p "$AGY_USAGE_ROOT" "$AGY_TMPDIR" "$AGY_HOME" "$AGY_BIN"
+: > "$AGY_SCAN_LOG"
+
+# Two shims on a PATH that holds no real CLI binary (the same SAFETY rule
+# usage-capture-derive.js applies). The mktemp shim forces every temp path
+# under $AGY_TMPDIR with an explicit template: BSD mktemp on macOS does not
+# reliably honor $TMPDIR, GNU mktemp does, and the check must mean the same
+# on both. The node shim runs the real node, then records any file under
+# $AGY_TMPDIR holding the canary: a staging file that held the reply between
+# two node steps shows up here even if it is moved or removed later.
+REAL_NODE="$(command -v node)"
+REAL_MKTEMP="$(command -v mktemp)"
+cat > "$AGY_BIN/mktemp" <<SHIM_EOF
+#!/bin/bash
+exec "$REAL_MKTEMP" "\$@" "$AGY_TMPDIR/tmp.XXXXXXXXXX"
+SHIM_EOF
+cat > "$AGY_BIN/node" <<SHIM_EOF
+#!/bin/bash
+"$REAL_NODE" "\$@"
+rc=\$?
+grep -rlF -- "$AGY_CANARY" "$AGY_TMPDIR" >> "$AGY_SCAN_LOG" 2>/dev/null
+exit \$rc
+SHIM_EOF
+chmod +x "$AGY_BIN/mktemp" "$AGY_BIN/node"
+
+# agy_rewrite <out_file> — runs the function under the pinned environment.
+agy_rewrite() {
+  (
+    export PATH="$AGY_BIN:/usr/bin:/bin" HOME="$AGY_HOME" TMPDIR="$AGY_TMPDIR" CREWRIG_USAGE_ROOT="$AGY_USAGE_ROOT"
+    # shellcheck source=scripts/lib/usage-headless.sh
+    . "$SCRIPT_DIR/lib/usage-headless.sh"
+    usage_headless_agy_rewrite_json_response "$1" "2026-01-01T00:00:00.000Z"
+  ) >/dev/null 2>&1
+}
+
+AGY_OUT="$WORK_ROOT/agy-out.txt"
+AGY_WANT="$WORK_ROOT/agy-want.txt"
+cp "$AGY_FIXTURE_DIR/envelope.json" "$AGY_OUT"
+node $NODE_FLAGS -e "process.stdout.write(JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).response)" \
+  "$AGY_FIXTURE_DIR/envelope.json" > "$AGY_WANT"
+agy_rewrite "$AGY_OUT"
+
+if cmp -s "$AGY_OUT" "$AGY_WANT"; then
+  ok "§10: <out_file> now holds exactly the envelope's .response, byte for byte"
+else
+  bad "§10: <out_file> does not equal .response byte for byte" "$(od -c "$AGY_OUT" | head -5)"
+fi
+
+AGY_RECORDS="$(find "$AGY_USAGE_ROOT/journal" -name '*.json' ! -name '*.wing.json' ! -name '*.attr.json' 2>/dev/null | wc -l | tr -d ' ')"
+AGY_LEAKS="$(grep -rlF -- "$AGY_CANARY" "$AGY_USAGE_ROOT" 2>/dev/null)"
+if [ "$AGY_RECORDS" = "1" ] && [ -z "$AGY_LEAKS" ]; then
+  ok "§10: exactly one record stored under CREWRIG_USAGE_ROOT, and no file there holds the reply canary"
+else
+  bad "§10: expected one stored record and no canary under CREWRIG_USAGE_ROOT (records: $AGY_RECORDS)" "$AGY_LEAKS"
+fi
+
+if [ ! -s "$AGY_SCAN_LOG" ]; then
+  ok "§10: no file under TMPDIR held the reply after any node step (no staging file)"
+else
+  bad "§10: a file under TMPDIR held the reply canary between node steps" "$(sort -u "$AGY_SCAN_LOG")"
+fi
+
+AGY_LEFTOVER="$(find "$AGY_TMPDIR" -mindepth 1 2>/dev/null)"
+if [ -z "$AGY_LEFTOVER" ]; then
+  ok "§10: TMPDIR holds no leftover file after the call"
+else
+  bad "§10: TMPDIR holds leftover files after the call" "$AGY_LEFTOVER"
+fi
+
+# A non-JSON <out_file> (agy wrote an error, or a timeout truncated it) and a
+# JSON envelope without a string .response must both stay byte-identical.
+printf 'agy: error: deadline exceeded' > "$WORK_ROOT/agy-nonjson.txt"
+printf '{"conversation_id":"c","status":"error","response":null}\n' > "$WORK_ROOT/agy-nonstring.txt"
+for name in agy-nonjson.txt agy-nonstring.txt; do
+  cp "$WORK_ROOT/$name" "$WORK_ROOT/$name.orig"
+  agy_rewrite "$WORK_ROOT/$name"
+  if cmp -s "$WORK_ROOT/$name" "$WORK_ROOT/$name.orig"; then
+    ok "§10: $name is left byte-identical"
+  else
+    bad "§10: $name was modified — it must be left untouched"
+  fi
+done
+
+# ---------------------------------------------------------------------------
+echo
+echo "=== §11 R20: the copilot-cli allow-list keeps the keys firstPartyCopilot() reads ==="
+
+PRICED_ENVELOPE="$WORK_ROOT/copilot-priced-envelope.json"
+jq '. + {pricing: {amountUsd: 0.25}, total_nano_aiu: 1500000000, request_multiplier: 1}' \
+  "$FIXTURES_DIR/headless/copilot-cli-envelope/envelope.json" > "$PRICED_ENVELOPE"
+derive "$WORK_ROOT/copilot-priced" headless copilot-cli "$PRICED_ENVELOPE"
+PRICED_REC="$WORK_ROOT/copilot-priced/rec-0.json"
+if [ "$DERIVE_RC" -eq 0 ] && jq -e '.raw.pricing.amountUsd == 0.25 and .raw.total_nano_aiu == 1500000000 and .raw.request_multiplier == 1' "$PRICED_REC" >/dev/null 2>&1; then
+  ok "§11: raw keeps pricing, total_nano_aiu and request_multiplier unaltered"
+else
+  bad "§11: raw dropped or altered a pricing key" "$(jq -c '.raw' "$PRICED_REC" 2>&1)"
+fi
+PRICED_SOURCE="$(node $NODE_FLAGS -e "
+  const rec = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+  const hit = require(process.argv[2]).firstPartyCopilot(rec, {});
+  process.stdout.write(hit ? hit.source : 'null');
+" "$PRICED_REC" "$SCRIPT_DIR/lib/usage-price/copilot.js" 2>&1)"
+if [ "$PRICED_SOURCE" = "raw.pricing" ]; then
+  ok "§11: firstPartyCopilot() reads the headless record's first-party price (source: raw.pricing)"
+else
+  bad "§11: firstPartyCopilot() found no first-party price on the headless record (got: $PRICED_SOURCE)"
 fi
 
 # ---------------------------------------------------------------------------

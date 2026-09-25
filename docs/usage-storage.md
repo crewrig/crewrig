@@ -289,7 +289,7 @@ A mirrored drawer carries the same record with its `raw` block externalized, as 
 
 ### What a record never holds
 
-- **Conversation text** — No message bodies, prompts, or outputs from model inference, with one exception on `main` today. Spec 0206 (capture) excludes conversation text at the boundary, and every interactive capture channel copies only enumerated `raw` fields. The exception is the `headless-envelope` channel, whose `raw` block is the whole non-interactive output envelope: Antigravity CLI's envelope carries the model's `response` text, so the `run-total` records written by the adopted Antigravity launch sites hold that text in the journal. The mirror does not hold it, because a drawer externalizes `raw`. The correction is tracked in [#1201](https://github.com/crewrig/crewrig/issues/1201).
+- **Conversation text** — No message bodies, prompts, or outputs from model inference. Spec 0206 (capture) excludes conversation text at the boundary, and every capture channel, the non-interactive `headless-envelope` channel included, copies only enumerated `raw` fields.
 
 ## See also
 

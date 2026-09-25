@@ -8,5 +8,22 @@
   "total": 1,
   "modelId": "(unreported)",
   "fidelity": "run-total",
-  "sessionIdReported": false
+  "sessionIdReported": false,
+  "expectedTokens": {
+    "netInput": 1800,
+    "cacheRead": 400,
+    "cacheWrite": 0,
+    "output": 210,
+    "reasoning": 30
+  },
+  "expectedRawKeys": [
+    "conversation_id",
+    "duration_seconds",
+    "num_turns",
+    "status",
+    "usage"
+  ],
+  "forbiddenText": [
+    "CANARY-1201-AGY-RESPONSE"
+  ]
 }

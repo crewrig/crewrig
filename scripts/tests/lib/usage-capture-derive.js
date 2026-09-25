@@ -37,7 +37,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const MODULE_ROOT = path.join(__dirname, '..', '..', 'lib', 'usage-capture');
+// USAGE_CAPTURE_MODULE_ROOT points the driver at an alternate copy of the
+// module tree. test-usage-capture.sh uses it to derive through a mutated
+// adapter and prove a negative assertion can fail (issue #1201).
+const MODULE_ROOT = process.env.USAGE_CAPTURE_MODULE_ROOT
+  || path.join(__dirname, '..', '..', 'lib', 'usage-capture');
 
 // SAFETY (incident, this session): record.cliVersionFor() shells a memoized
 // `<bin> --version` for gemini-cli/copilot-cli/headless-envelope, resolved

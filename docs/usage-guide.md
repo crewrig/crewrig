@@ -121,13 +121,7 @@ and what each CLI's adapter copies is in
 [Per-adapter field sources](usage-capture.md#per-adapter-field-sources).
 
 A record never holds your prompts, the model's replies, tool inputs or
-outputs, or file contents, with **one exception on `main` today**. Records
-from the `headless-envelope` capture channel, of the `run-total` kind, keep
-the whole non-interactive output envelope. Antigravity CLI's envelope includes
-the model's reply text, so the records the adopted Antigravity launch sites
-write hold that text in the local journal. The fix is tracked in
-[#1201](https://github.com/crewrig/crewrig/issues/1201); see
-[Headless envelope](usage-capture.md#headless-envelope-run-total-all-clis).
+outputs, or file contents.
 
 ## Reading the dashboard
 

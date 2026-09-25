@@ -8,5 +8,22 @@
   "total": 1,
   "modelId": "gemini-3.8-pro",
   "fidelity": "run-total",
-  "sessionId": "gemini-headless-fixture-001"
+  "sessionId": "gemini-headless-fixture-001",
+  "expectedTokens": {
+    "netInput": 4400,
+    "cacheRead": 800,
+    "cacheWrite": 0,
+    "output": 430,
+    "reasoning": 60
+  },
+  "expectedRawKeys": [
+    "session_id",
+    "stats"
+  ],
+  "expectedRawStatsKeys": [
+    "models"
+  ],
+  "forbiddenText": [
+    "CANARY-1201-GEMINI-RESPONSE"
+  ]
 }

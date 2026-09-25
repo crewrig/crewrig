@@ -1,10 +1,22 @@
 {
   "session_id": "gemini-headless-fixture-001",
+  "response": "CANARY-1201-GEMINI-RESPONSE: the three failing tests now pass.",
   "stats": {
     "models": {
       "gemini-3.8-pro": {
-        "tokens": {"prompt": 5200, "cached": 800, "candidates": 430, "thoughts": 60}
+        "api": {"totalRequests": 2, "totalErrors": 0, "totalLatencyMs": 5310},
+        "tokens": {"prompt": 5200, "cached": 800, "candidates": 430, "thoughts": 60, "tool": 0, "total": 5690}
       }
-    }
+    },
+    "tools": {
+      "totalCalls": 1,
+      "totalSuccess": 1,
+      "totalFail": 0,
+      "totalDurationMs": 42,
+      "byName": {
+        "read_file": {"count": 1, "success": 1, "fail": 0, "durationMs": 42}
+      }
+    },
+    "files": {"totalLinesAdded": 12, "totalLinesRemoved": 3}
   }
 }

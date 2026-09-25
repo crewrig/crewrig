@@ -1,5 +1,20 @@
 {
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 8120,
+  "duration_api_ms": 7430,
+  "num_turns": 3,
+  "result": "CANARY-1201-CLAUDE-RESULT: the migration script now handles the empty-table case.",
   "session_id": "claude-headless-fixture-001",
+  "total_cost_usd": 0.0412,
+  "usage": {
+    "input_tokens": 3400,
+    "cache_creation_input_tokens": 120,
+    "cache_read_input_tokens": 900,
+    "output_tokens": 610,
+    "service_tier": "standard"
+  },
   "modelUsage": {
     "claude-sonnet-5": {
       "inputTokens": 3400,
@@ -7,5 +22,15 @@
       "cacheCreationInputTokens": 120,
       "outputTokens": 610
     }
-  }
+  },
+  "permission_denials": [
+    {
+      "tool_name": "Bash",
+      "tool_use_id": "toolu_fixture_001",
+      "tool_input": {
+        "command": "rm -rf build/ # CANARY-1201-CLAUDE-TOOL-INPUT"
+      }
+    }
+  ],
+  "uuid": "00000000-0000-4000-8000-000000001201"
 }
