@@ -1400,8 +1400,8 @@ case_agreement() {
 # R53), so the mapping holds per fidelity on pricedCount, unpricedCount and
 # unconvertedCount. Each key runs in USD, where a price is always status 'ok'
 # (unconvertedCount = 0), and in XXX, which the seeded fixing does not list,
-# so every priced record is unconverted (no-such-currency) on all three
-# fidelities. --task-key is used here; the --period agreement (spec 0209
+# so every priced record is unconverted (no-such-currency) in every fidelity
+# the key holds. --task-key is used here; the --period agreement (spec 0209
 # delta-01 R47) is case 13.8's. v2-F3: 0209's `combined` is {sum,
 # unpricedCount, unconvertedCount, mixed} — it has no `count`, so the combined
 # mapping is amount ?? 0 <-> sum, unpricedCount <-> unpricedCount,
