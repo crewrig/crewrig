@@ -139,9 +139,9 @@ Then  the per-request bucket's sum is the first record's EUR amount alone,
 Given a captured record priced at 0.42 USD from the pinned price list
 When  its price is requested in a currency the fixing lists no rate for
 Then  the price states an amount of 0.42 in USD, carries a conversion
-      status naming the missing currency and the date of the fixing it
-      consulted, and states no other currency as the denomination of its
-      amount
+      status naming the missing currency, carries as its own fixing date
+      (requirement 27) the date of the fixing it consulted, and states no
+      other currency as the denomination of its amount
 ```
 
 **Scenario:** A stored failure is not served after the fixing arrives
@@ -200,8 +200,8 @@ Replacement: Given an identical period, selection (requirement 45),
 currency, and price-list snapshot, and, record by record, the same fixing
 date carried by each record's price on both surfaces — no fixing date for
 a conversion that failed because no fixing was available (requirement
-51) — a rollup of prices over a period SHALL report, for its `session-cumulative` records, the same price
-contribution, the same priced count, the same `unpriced` count, and the
+51) — a rollup of prices over a period SHALL report, for its
+`session-cumulative` records, the same price contribution, the same priced count, the same `unpriced` count, and the
 same `unconverted` count as spec 0210's dashboard reports for that same
 period, a record whose currency conversion failed included; this extends
 to the pricing contract's own period rollup the agreement spec 0210
@@ -296,8 +296,10 @@ and forbids inventing the second. That is what makes the reworded R47's
 precondition checkable from each surface's per-record prices: a record
 that fails on the dashboard for want of a fixing (it computes without
 network access) but converts on the pricing side (whose freshness gate may
-retrieve one) carries different fixing dates on the two surfaces, and so
-falls outside R47 by its stated precondition rather than by inference.
+retrieve one) carries different fixing dates on the two surfaces; the
+precondition then does not hold for that period, so the period's
+comparison as a whole — not only that record — falls outside R47 by its
+stated precondition rather than by inference.
 
 **Spec 0210 side.** Spec 0210's own requirements name only the
 `uncaptured` and `unpriced` counts; its `unconverted` tally is the
@@ -332,9 +334,12 @@ returned four findings against revision `67205fc`:
 - *s1-F1 (blocking).* R51's first failure cause now reads "no fixing dated
   on or before the computation date is available to the computation",
   naming the never-retrieved, failed-retrieval, and no-network cases; R52,
-  R56, and the third scenario use the same availability wording, so the
-  empty- or stale-cache case the dashboard always hits falls under R51 and
-  therefore under R52 and R53.
+  R56, and the third scenario use the same availability wording, so an
+  empty cache, or one holding no fixing dated on or before the computation
+  date — the case the offline dashboard hits — falls under R51 and
+  therefore under R52 and R53. A cache that holds an older fixing dated on
+  or before the computation date is not a failure: requirement 22 converts
+  at that fixing, reporting its staleness, as before this delta.
 - *s1-F2.* R52 now binds a request for a record's price in a currency
   (USD when none is named) from the per-record pricing path, a rollup of
   prices, or spec 0210's dashboard, and states that a raw read of stored
@@ -352,3 +357,14 @@ returned four findings against revision `67205fc`:
   labelled as drawn by the parent's and delta-01's requirements, and the
   former prohibition on refusing a currency outright moved into R53 as a
   normative sentence.
+
+**Seat findings addressed (specs/1202#1, pass 2).** The second pass
+(<https://github.com/crewrig/crewrig/pull/1232#issuecomment-5836224152>)
+approved revision `aa6be52` with three non-blocking findings, addressed
+editorially: *s2-F1* — the pass-1 mapping above no longer calls a stale
+cache a failure, and states that a cache holding an older fixing on or
+before the computation date converts at it; *s2-F2* — the second scenario
+places the consulted fixing's date on the price's own requirement-27
+fixing date, not inside the conversion status; *s2-F3* — *Notes* →
+*Fixing date of a failed conversion* now reads R47's precondition as a
+whole-period one, as R47 states it.
