@@ -45,11 +45,13 @@ This section was verified against `main` at commit `c8baa79` on 2026-09-24.
 - **Off.** Run it again and answer `remove` to *Usage capture is registered
   for Gemini CLI. Keep it or remove it?* (default `keep`); see
   [Shim wiring](usage-capture.md#shim-wiring-claude-code-gemini-cli-copilot-cli).
-- **Before re-running.** This script rebuilds `~/.gemini/settings.json` from
-  its template on every run. Capture survives the rebuild, but the
-  session-recording hooks and the worktree git guard survive only if you
-  accept session recording again in the same run
-  ([#1210](https://github.com/crewrig/crewrig/issues/1210)).
+- **Before re-running.** This script merges `~/.gemini/settings.json` in
+  place and backs it up first to `settings.json.bak.<timestamp>`. Your own
+  keys, hooks and MCP servers are kept, whatever you answer, and so are
+  capture, the session-recording hooks and the worktree git guard. Deleting
+  a key the framework ships a default for brings the template value back on
+  the next run, so set a value to override it. Comments in the file are not
+  kept by a re-run; they remain in the timestamped backup.
 
 ### Copilot CLI
 
