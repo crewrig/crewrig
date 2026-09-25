@@ -100,7 +100,7 @@ run_driver_refused() {
 {
   : > "$SHIM_CALLS"
   run_driver_refused GITEA_ACTIONS=true
-  if [ "$RC" -eq 2 ] && printf '%s' "$ERR" | grep -q 'unsupported release forge: gitea'; then
+  if [ "$RC" -eq 2 ] && grep -q 'unsupported release forge: gitea' <<< "$ERR"; then
     ok "(a) GITEA_ACTIONS=true refuses, naming gitea"
   else
     ng "(a) GITEA_ACTIONS=true: expected exit 2 naming gitea, got rc=$RC: $ERR"
@@ -108,7 +108,7 @@ run_driver_refused() {
 
   : > "$SHIM_CALLS"
   run_driver_refused GITHUB_ACTIONS=true GITLAB_CI=true
-  if [ "$RC" -eq 2 ] && printf '%s' "$ERR" | grep -q 'unsupported release forge: ambiguous (github+gitlab)'; then
+  if [ "$RC" -eq 2 ] && grep -q 'unsupported release forge: ambiguous (github+gitlab)' <<< "$ERR"; then
     ok "(a) GITHUB_ACTIONS=true + GITLAB_CI=true refuses, naming the ambiguity"
   else
     ng "(a) ambiguous forge: expected exit 2 naming ambiguous, got rc=$RC: $ERR"
@@ -116,7 +116,7 @@ run_driver_refused() {
 
   : > "$SHIM_CALLS"
   run_driver_refused CI=true
-  if [ "$RC" -eq 2 ] && printf '%s' "$ERR" | grep -q 'unsupported release forge: unknown CI'; then
+  if [ "$RC" -eq 2 ] && grep -q 'unsupported release forge: unknown CI' <<< "$ERR"; then
     ok "(a) CI=true alone refuses, naming unknown CI"
   else
     ng "(a) unknown CI: expected exit 2 naming unknown CI, got rc=$RC: $ERR"
@@ -124,7 +124,7 @@ run_driver_refused() {
 
   : > "$SHIM_CALLS"
   run_driver_refused
-  if [ "$RC" -eq 2 ] && printf '%s' "$ERR" | grep -q 'unsupported release forge: none (not a CI environment)'; then
+  if [ "$RC" -eq 2 ] && grep -q 'unsupported release forge: none (not a CI environment)' <<< "$ERR"; then
     ok "(a) no CI variable at all refuses, naming 'none (not a CI environment)'"
   else
     ng "(a) no CI vars: expected exit 2 naming none, got rc=$RC: $ERR"
@@ -181,7 +181,7 @@ run_mode() {
 
   out_invalid1="$(RELEASE_DRY_RUN=maybe bash -c ". '$LIB'; release_mode" 2>&1)"
   rc_invalid1=$?
-  if [ "$rc_invalid1" -eq 2 ] && printf '%s' "$out_invalid1" | grep -q 'invalid RELEASE_DRY_RUN value'; then
+  if [ "$rc_invalid1" -eq 2 ] && grep -q 'invalid RELEASE_DRY_RUN value' <<< "$out_invalid1"; then
     ok "(b) an invalid RELEASE_DRY_RUN value is refused by name"
   else
     ng "(b) invalid RELEASE_DRY_RUN: expected exit 2 naming it, got rc=$rc_invalid1: $out_invalid1"
@@ -189,7 +189,7 @@ run_mode() {
 
   out_invalid2="$(DRY_RUN=1 bash -c ". '$LIB'; release_mode" 2>&1)"
   rc_invalid2=$?
-  if [ "$rc_invalid2" -eq 2 ] && printf '%s' "$out_invalid2" | grep -q 'invalid DRY_RUN value'; then
+  if [ "$rc_invalid2" -eq 2 ] && grep -q 'invalid DRY_RUN value' <<< "$out_invalid2"; then
     ok "(b) an invalid DRY_RUN value is refused by name"
   else
     ng "(b) invalid DRY_RUN: expected exit 2 naming it, got rc=$rc_invalid2: $out_invalid2"
@@ -200,7 +200,7 @@ run_mode() {
   out_mr="$(CI_PIPELINE_SOURCE=merge_request_event CI_COMMIT_BRANCH=main \
     bash -c ". '$LIB'; release_branch gitlab" 2>&1)"
   rc_mr=$?
-  if [ "$rc_mr" -eq 2 ] && printf '%s' "$out_mr" | grep -q 'not a branch pipeline (merge-request or tag)'; then
+  if [ "$rc_mr" -eq 2 ] && grep -q 'not a branch pipeline (merge-request or tag)' <<< "$out_mr"; then
     ok "(b) a GitLab merge-request pipeline is refused, naming 'not a branch pipeline (merge-request or tag)'"
   else
     ng "(b) merge-request pipeline: expected exit 2 with that wording, got rc=$rc_mr: $out_mr"
@@ -210,7 +210,7 @@ run_mode() {
   out_tag="$(CI_PIPELINE_SOURCE=push CI_COMMIT_BRANCH= \
     bash -c ". '$LIB'; release_branch gitlab" 2>&1)"
   rc_tag=$?
-  if [ "$rc_tag" -eq 2 ] && printf '%s' "$out_tag" | grep -q 'not a branch pipeline (merge-request or tag)'; then
+  if [ "$rc_tag" -eq 2 ] && grep -q 'not a branch pipeline (merge-request or tag)' <<< "$out_tag"; then
     ok "(b) an empty CI_COMMIT_BRANCH (tag pipeline) is refused with the same wording"
   else
     ng "(b) tag pipeline: expected exit 2 with that wording, got rc=$rc_tag: $out_tag"
@@ -327,7 +327,7 @@ run_mode() {
 # =============================================================================
 {
   cred_out="$(RELEASE_TOKEN=sentinel-XYZ-123 bash -c ". '$LIB'; release_credential github; echo \"GITHUB_TOKEN=\$GITHUB_TOKEN\"")"
-  if ! printf '%s' "$cred_out" | grep -vE '^GITHUB_TOKEN=' | grep -q 'sentinel-XYZ-123'; then
+  if ! grep -vE '^GITHUB_TOKEN=' <<< "$cred_out" | grep -q 'sentinel-XYZ-123'; then
     ok "(e) release_credential's own stdout never echoes the RELEASE_TOKEN value outside the exported var line"
   else
     ng "(e) release_credential printed the sentinel value somewhere unexpected: $cred_out"
@@ -335,7 +335,7 @@ run_mode() {
 
   missing_out="$(bash -c ". '$LIB'; release_credential github" 2>&1)"
   missing_rc=$?
-  if [ "$missing_rc" -eq 2 ] && printf '%s' "$missing_out" | grep -q 'no release credential: set GITHUB_TOKEN (or RELEASE_TOKEN)'; then
+  if [ "$missing_rc" -eq 2 ] && grep -q 'no release credential: set GITHUB_TOKEN (or RELEASE_TOKEN)' <<< "$missing_out"; then
     ok "(e) a missing GitHub credential is refused, naming GITHUB_TOKEN/RELEASE_TOKEN only"
   else
     ng "(e) missing GitHub credential: expected exit 2 naming it, got rc=$missing_rc: $missing_out"
@@ -343,7 +343,7 @@ run_mode() {
 
   missing_gl_out="$(bash -c ". '$LIB'; release_credential gitlab" 2>&1)"
   missing_gl_rc=$?
-  if [ "$missing_gl_rc" -eq 2 ] && printf '%s' "$missing_gl_out" | grep -q 'no release credential: set the masked CI/CD variable GITLAB_TOKEN (or RELEASE_TOKEN)'; then
+  if [ "$missing_gl_rc" -eq 2 ] && grep -q 'no release credential: set the masked CI/CD variable GITLAB_TOKEN (or RELEASE_TOKEN)' <<< "$missing_gl_out"; then
     ok "(e) a missing GitLab credential is refused, naming GITLAB_TOKEN/RELEASE_TOKEN only"
   else
     ng "(e) missing GitLab credential: expected exit 2 naming it, got rc=$missing_gl_rc: $missing_gl_out"
@@ -365,14 +365,23 @@ run_mode() {
 
   # KEEP_THIS_VAR (not "NOT_A_CREDENTIAL" — that name contains "credential"
   # as a substring and would correctly, not spuriously, get stripped).
+  #
+  # $LIB is passed as $1 (with `_` standing in for $0) rather than
+  # interpolated into the -c string: a single-quoted -c script needs no
+  # escaping at all, so the Rule 5 array guard below appears byte-for-byte
+  # as `${RELEASE_STRIP[@]+"${RELEASE_STRIP[@]}"}` — the literal form
+  # scripts/lib/bash32-array-guard.sh's scanner matches. An earlier, more
+  # naive double-quoted -c string required backslash-escaping that guard
+  # (`\${...}\"...`), which defeated the scanner's exact-substring match and
+  # read as unguarded even though it was semantically correct.
   strip_args="$(CI_REPOSITORY_URL=https://gitlab-ci-token:sentinel@example/x.git GITLAB_TOKEN=sentinel2 KEEP_THIS_VAR=keep \
-    bash -c ". '$LIB'; release_strip_args; printf '%s\n' \"\${RELEASE_STRIP[@]}\"")"
-  if printf '%s\n' "$strip_args" | grep -qx 'CI_REPOSITORY_URL' && printf '%s\n' "$strip_args" | grep -qx 'GITLAB_TOKEN'; then
+    bash -c '. "$1"; release_strip_args; printf "%s\n" ${RELEASE_STRIP[@]+"${RELEASE_STRIP[@]}"}' _ "$LIB")"
+  if grep -qx 'CI_REPOSITORY_URL' <<< "$strip_args" && grep -qx 'GITLAB_TOKEN' <<< "$strip_args"; then
     ok "(e) (v2-F2) release_strip_args strips both CI_REPOSITORY_URL and GITLAB_TOKEN"
   else
     ng "(e) release_strip_args did not strip the expected variables: $strip_args"
   fi
-  if ! printf '%s\n' "$strip_args" | grep -qx 'KEEP_THIS_VAR'; then
+  if ! grep -qx 'KEEP_THIS_VAR' <<< "$strip_args"; then
     ok "(e) release_strip_args leaves a non-credential variable alone"
   else
     ng "(e) release_strip_args over-stripped a non-credential variable"
@@ -385,7 +394,7 @@ run_mode() {
   if command -v node >/dev/null 2>&1; then
     rehearse_out="$(GITLAB_TOKEN=sentinel-glpat-abc123 node "$SCRIPT_DIR/lib/release-rehearse.mjs" main 2>&1)"
     rehearse_rc=$?
-    if [ "$rehearse_rc" -eq 2 ] && printf '%s' "$rehearse_out" | grep -q 'GITLAB_TOKEN' && ! printf '%s' "$rehearse_out" | grep -q 'sentinel-glpat-abc123'; then
+    if [ "$rehearse_rc" -eq 2 ] && grep -q 'GITLAB_TOKEN' <<< "$rehearse_out" && ! grep -q 'sentinel-glpat-abc123' <<< "$rehearse_out"; then
       ok "(e) release-rehearse.mjs refuses (exit 2) with GITLAB_TOKEN present, naming it without printing its value"
     else
       ng "(e) release-rehearse.mjs did not refuse as expected (rc=$rehearse_rc): $rehearse_out"
@@ -393,7 +402,7 @@ run_mode() {
 
     rehearse_out2="$(CI_REPOSITORY_URL=https://gitlab-ci-token:sentinel-def456@example.test/x.git node "$SCRIPT_DIR/lib/release-rehearse.mjs" main 2>&1)"
     rehearse_rc2=$?
-    if [ "$rehearse_rc2" -eq 2 ] && printf '%s' "$rehearse_out2" | grep -q 'CI_REPOSITORY_URL' && ! printf '%s' "$rehearse_out2" | grep -q 'sentinel-def456'; then
+    if [ "$rehearse_rc2" -eq 2 ] && grep -q 'CI_REPOSITORY_URL' <<< "$rehearse_out2" && ! grep -q 'sentinel-def456' <<< "$rehearse_out2"; then
       ok "(e) (v2-F2) release-rehearse.mjs also refuses on CI_REPOSITORY_URL, naming it without printing its value"
     else
       ng "(e) release-rehearse.mjs did not refuse on CI_REPOSITORY_URL as expected (rc=$rehearse_rc2): $rehearse_out2"

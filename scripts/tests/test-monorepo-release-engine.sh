@@ -312,7 +312,7 @@ run_driver() {
   else
     extra+=("GIT_CONFIG_GLOBAL=/dev/null")
   fi
-  ( cd "$fix" && env -i PATH="$CLEAN_PATH" HOME="$home" "${extra[@]}" \
+  ( cd "$fix" && env -i PATH="$CLEAN_PATH" HOME="$home" ${extra[@]+"${extra[@]}"} \
       bash "$fix/scripts/monorepo-release.sh" ) > "$out" 2> "$err"
   DRIVER_RC=$?
   DRIVER_OUT="$(cat "$out")"
@@ -323,7 +323,7 @@ run_driver() {
 # extension_line <ext> — the driver's own REHEARSAL/PUBLISHED/UNCHANGED line
 # for one extension, from the last captured DRIVER_OUT.
 extension_line() {
-  printf '%s\n' "$DRIVER_OUT" | grep -E "^(REHEARSAL|PUBLISHED|UNCHANGED|RELEASE-FAILED) $1 "
+  grep -E "^(REHEARSAL|PUBLISHED|UNCHANGED|RELEASE-FAILED) $1 " <<< "$DRIVER_OUT"
 }
 
 # =============================================================================
@@ -332,7 +332,7 @@ extension_line() {
 {
   read -r FIX ORIGIN_BARE HOME_FIX GITCONFIG <<< "$(make_fixture | tr '\n' ' ')"
 
-  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" "${GH_ENV[@]}" "RELEASE_DRY_RUN=true"
+  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" ${GH_ENV[@]+"${GH_ENV[@]}"} "RELEASE_DRY_RUN=true"
   gh_out="$DRIVER_OUT"
 
   if [ "$DRIVER_RC" -eq 0 ]; then
@@ -341,25 +341,25 @@ extension_line() {
     ng "11a: GitHub rehearsal exits 0 (rc=$DRIVER_RC): $DRIVER_ERR"
   fi
 
-  foo_line="$(printf '%s\n' "$gh_out" | grep -E '^REHEARSAL foo ')"
-  if printf '%s' "$foo_line" | grep -q 'version=1.3.0' \
-     && printf '%s' "$foo_line" | grep -q 'tag=foo-v1.3.0' \
-     && printf '%s' "$foo_line" | grep -q 'baseline=foo-v1.2.0'; then
+  foo_line="$(grep -E '^REHEARSAL foo ' <<< "$gh_out")"
+  if grep -q 'version=1.3.0' <<< "$foo_line" \
+     && grep -q 'tag=foo-v1.3.0' <<< "$foo_line" \
+     && grep -q 'baseline=foo-v1.2.0' <<< "$foo_line"; then
     ok "11a: GitHub rehearsal computes foo 1.3.0 / foo-v1.3.0 / baseline foo-v1.2.0"
   else
     ng "11a: GitHub rehearsal foo line wrong: '$foo_line'"
   fi
 
-  if printf '%s\n' "$gh_out" | grep -q 'UNCHANGED bar'; then
+  if grep -q 'UNCHANGED bar' <<< "$gh_out"; then
     ok "11a: GitHub rehearsal reports bar UNCHANGED"
   else
     ng "11a: GitHub rehearsal did not report bar UNCHANGED"
   fi
 
-  baz_line="$(printf '%s\n' "$gh_out" | grep -E '^REHEARSAL baz ')"
-  if printf '%s' "$baz_line" | grep -q 'version=1.0.0' \
-     && printf '%s' "$baz_line" | grep -q 'tag=baz-v1.0.0' \
-     && printf '%s' "$baz_line" | grep -q 'baseline=none'; then
+  baz_line="$(grep -E '^REHEARSAL baz ' <<< "$gh_out")"
+  if grep -q 'version=1.0.0' <<< "$baz_line" \
+     && grep -q 'tag=baz-v1.0.0' <<< "$baz_line" \
+     && grep -q 'baseline=none' <<< "$baz_line"; then
     ok "11a: GitHub rehearsal computes baz 1.0.0 / baz-v1.0.0 / baseline none (FIRST_RELEASE)"
   else
     ng "11a: GitHub rehearsal baz line wrong: '$baz_line'"
@@ -368,17 +368,17 @@ extension_line() {
   # The note text itself is printed on the lines right after the REHEARSAL
   # line, up to the next "--- Rehearsing" header. Extract it for foo.
   gh_notes="$(printf '%s\n' "$gh_out" | awk '/^REHEARSAL foo /{flag=1;next}/^--- Rehearsing:/{flag=0}flag')"
-  if printf '%s' "$gh_notes" | grep -q '.'; then
+  if grep -q '.' <<< "$gh_notes"; then
     ok "11a: GitHub rehearsal note for foo is non-empty (#1225 fixed)"
   else
     ng_1225 "11a: GitHub rehearsal note for foo is non-empty"
   fi
-  if printf '%s' "$gh_notes" | grep -qE 'https://github\.com/acme/fixture/commit/'; then
+  if grep -qE 'https://github\.com/acme/fixture/commit/' <<< "$gh_notes"; then
     ok "11a: GitHub note carries a commit link under acme/fixture"
   else
     ng_1225 "11a: GitHub note carries a commit link under acme/fixture"
   fi
-  if printf '%s' "$gh_notes" | grep -qE 'compare/foo-v1\.2\.0\.\.\.foo-v1\.3\.0'; then
+  if grep -qE 'compare/foo-v1\.2\.0\.\.\.foo-v1\.3\.0' <<< "$gh_notes"; then
     ok "11a: GitHub note's heading links the compare range foo-v1.2.0...foo-v1.3.0"
   else
     ng_1225 "11a: GitHub note's heading links the compare range foo-v1.2.0...foo-v1.3.0"
@@ -393,50 +393,50 @@ extension_line() {
     ng "11a: GitLab rehearsal exits 0 (rc=$DRIVER_RC): $DRIVER_ERR"
   fi
 
-  foo_line_gl="$(printf '%s\n' "$gl_out" | grep -E '^REHEARSAL foo ')"
-  if printf '%s' "$foo_line_gl" | grep -q 'version=1.3.0' \
-     && printf '%s' "$foo_line_gl" | grep -q 'tag=foo-v1.3.0' \
-     && printf '%s' "$foo_line_gl" | grep -q 'baseline=foo-v1.2.0'; then
+  foo_line_gl="$(grep -E '^REHEARSAL foo ' <<< "$gl_out")"
+  if grep -q 'version=1.3.0' <<< "$foo_line_gl" \
+     && grep -q 'tag=foo-v1.3.0' <<< "$foo_line_gl" \
+     && grep -q 'baseline=foo-v1.2.0' <<< "$foo_line_gl"; then
     ok "11a: GitLab rehearsal computes foo 1.3.0 / foo-v1.3.0 / baseline foo-v1.2.0 (same as GitHub)"
   else
     ng "11a: GitLab rehearsal foo line wrong: '$foo_line_gl'"
   fi
 
   gl_notes="$(printf '%s\n' "$gl_out" | awk '/^REHEARSAL foo /{flag=1;next}/^--- Rehearsing:/{flag=0}flag')"
-  if printf '%s' "$gl_notes" | grep -q '.'; then
+  if grep -q '.' <<< "$gl_notes"; then
     ok "11a: GitLab rehearsal note for foo is non-empty (#1225 fixed)"
   else
     ng_1225 "11a: GitLab rehearsal note for foo is non-empty"
   fi
   # Every link on GitLab must target the self-hosted host with its port, and
   # none may be protocol-relative or point at github.com (R20).
-  gl_links="$(printf '%s' "$gl_notes" | grep -oE '\]\(([^)]+)\)' | sed -E 's/^\]\(//; s/\)$//'; \
-              printf '%s' "$gl_notes" | grep -oE '<https?://[^>]+>' | sed -E 's/^<//; s/>$//')"
+  gl_links="$(grep -oE '\]\(([^)]+)\)' <<< "$gl_notes" | sed -E 's/^\]\(//; s/\)$//'; \
+              grep -oE '<https?://[^>]+>' <<< "$gl_notes" | sed -E 's/^<//; s/>$//')"
   if [ -z "$gl_links" ]; then
     ng_1225 "11a: GitLab note carries at least one link"
   else
-    bad_links="$(printf '%s\n' "$gl_links" | grep -vE "^https://gitlab\.example\.test:8443/" || true)"
+    bad_links="$(grep -vE "^https://gitlab\.example\.test:8443/" <<< "$gl_links" || true)"
     if [ -z "$bad_links" ]; then
       ok "11a: every GitLab note link targets the self-hosted host:port"
     else
       ng "11a: a GitLab note link does not target the self-hosted host:port: $bad_links"
     fi
-    if printf '%s\n' "$gl_links" | grep -q "^https://gitlab.example.test:8443/acme/sub/fixture/-/commit/"; then
+    if grep -q "^https://gitlab.example.test:8443/acme/sub/fixture/-/commit/" <<< "$gl_links"; then
       ok "11a: GitLab note carries a commit link under acme/sub/fixture"
     else
       ng_1225 "11a: GitLab note carries a commit link under acme/sub/fixture"
     fi
-    if printf '%s\n' "$gl_links" | grep -q "^https://gitlab.example.test:8443/acme/sub/fixture/-/compare/foo-v1.2.0...foo-v1.3.0$"; then
+    if grep -q "^https://gitlab.example.test:8443/acme/sub/fixture/-/compare/foo-v1.2.0...foo-v1.3.0$" <<< "$gl_links"; then
       ok "11a: GitLab note's heading links the compare range"
     else
       ng_1225 "11a: GitLab note's heading links the compare range"
     fi
-    if printf '%s\n' "$gl_links" | grep -q "^https://gitlab.example.test:8443/acme/sub/fixture/-/issues/12$"; then
+    if grep -q "^https://gitlab.example.test:8443/acme/sub/fixture/-/issues/12$" <<< "$gl_links"; then
       ok "11a: GitLab note links the in-project issue #12"
     else
       ng_1225 "11a: GitLab note links the in-project issue #12"
     fi
-    if printf '%s\n' "$gl_links" | grep -q "^https://gitlab.example.test:8443/other/lib/-/issues/3$"; then
+    if grep -q "^https://gitlab.example.test:8443/other/lib/-/issues/3$" <<< "$gl_links"; then
       ok "11a: GitLab note links the cross-project issue other/lib#3"
     else
       ng_1225 "11a: GitLab note links the cross-project issue other/lib#3"
@@ -446,20 +446,20 @@ extension_line() {
   # forge (gitmoji's issue regex only captures the last two path segments,
   # so it would otherwise resolve to the wrong GitLab project) — this holds
   # REGARDLESS of #1225, since "no link" is also true of an empty note.
-  if ! printf '%s' "$gh_notes" | grep -q 'sub/other'; then
+  if ! grep -q 'sub/other' <<< "$gh_notes"; then
     ok "11a (v2-F4): GitHub note carries no link for the nested ref acme/sub/other#5"
   else
     ng "11a (v2-F4): GitHub note unexpectedly links the nested ref acme/sub/other#5: $gh_notes"
   fi
-  if ! printf '%s' "$gl_notes" | grep -q 'sub/other'; then
+  if ! grep -q 'sub/other' <<< "$gl_notes"; then
     ok "11a (v2-F4): GitLab note carries no link for the nested ref acme/sub/other#5"
   else
     ng "11a (v2-F4): GitLab note unexpectedly links the nested ref acme/sub/other#5: $gl_notes"
   fi
 
-  baz_line_gl="$(printf '%s\n' "$gl_out" | grep -E '^REHEARSAL baz ')"
+  baz_line_gl="$(grep -E '^REHEARSAL baz ' <<< "$gl_out")"
   baz_notes_gl="$(printf '%s\n' "$gl_out" | awk '/^REHEARSAL baz /{flag=1;next}/^--- Rehearsing:|^$/{if(flag)flag=flag} flag' | head -5)"
-  if printf '%s' "$baz_line_gl" | grep -q 'baseline=none'; then
+  if grep -q 'baseline=none' <<< "$baz_line_gl"; then
     ok "11a: GitLab rehearsal also computes baz's baseline as none (FIRST_RELEASE)"
   else
     ng "11a: GitLab rehearsal baz baseline wrong: '$baz_line_gl'"
@@ -480,7 +480,7 @@ extension_line() {
 
   # Sentinel credentials in the OUTER env: rehearsal must need none of them,
   # and R11 says a credential is only ever named, never printed.
-  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" "${GH_ENV[@]}" "RELEASE_DRY_RUN=true" \
+  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" ${GH_ENV[@]+"${GH_ENV[@]}"} "RELEASE_DRY_RUN=true" \
     "GITLAB_TOKEN=sentinel-outer-9f3a" "RELEASE_TOKEN=sentinel-outer-b271"
 
   if [ "$DRIVER_RC" -eq 0 ]; then
@@ -488,7 +488,8 @@ extension_line() {
   else
     ng "11b: rehearsal failed with sentinel credentials present (rc=$DRIVER_RC): $DRIVER_ERR"
   fi
-  if ! printf '%s\n%s' "$DRIVER_OUT" "$DRIVER_ERR" | grep -qE 'sentinel-outer-9f3a|sentinel-outer-b271'; then
+  if ! { grep -qE 'sentinel-outer-9f3a|sentinel-outer-b271' <<< "$DRIVER_OUT" \
+         || grep -qE 'sentinel-outer-9f3a|sentinel-outer-b271' <<< "$DRIVER_ERR"; }; then
     ok "11b: neither sentinel credential value appears anywhere in the run's output"
   else
     ng "11b: a sentinel credential value leaked into the run's output"
@@ -509,7 +510,7 @@ extension_line() {
     || ng "11b: origin's refs changed during rehearsal"
 
   foo_line="$(extension_line foo)"
-  if printf '%s' "$foo_line" | grep -qE 'sha256=[0-9a-f]{64}'; then
+  if grep -qE 'sha256=[0-9a-f]{64}' <<< "$foo_line"; then
     ok "11b: the REHEARSAL line reports a sha256 digest for the built archive"
   else
     ng "11b: the REHEARSAL line carries no sha256: '$foo_line'"
@@ -538,7 +539,7 @@ exit 0
 EOF
   chmod +x "$FIX/.git/hooks/pre-push"
 
-  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" "${GH_ENV[@]}" "RELEASE_DRY_RUN=true"
+  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" ${GH_ENV[@]+"${GH_ENV[@]}"} "RELEASE_DRY_RUN=true"
 
   if [ "$DRIVER_RC" -eq 0 ] && [ ! -e "$HOOK_MARKER" ]; then
     ok "11b (v2-F3): the mirror push does not run the checkout's pre-push hook"
@@ -590,17 +591,17 @@ stop_stub() {
   else
     ng "11c: GitLab publish exits 0 (rc=$DRIVER_RC): $DRIVER_ERR"
   fi
-  if printf '%s\n' "$DRIVER_OUT" | grep -qE 'PUBLISHED foo tag=foo-v1\.3\.0 archive=foo-1\.3\.0\.tar\.gz sha256=[0-9a-f]{64}'; then
+  if grep -qE 'PUBLISHED foo tag=foo-v1\.3\.0 archive=foo-1\.3\.0\.tar\.gz sha256=[0-9a-f]{64}' <<< "$DRIVER_OUT"; then
     ok "11c: PUBLISHED line names foo, foo-v1.3.0 and its archive+sha256"
   else
     ng "11c: no matching PUBLISHED line for foo: $DRIVER_OUT"
   fi
-  if printf '%s\n' "$DRIVER_OUT" | grep -q 'UNCHANGED bar'; then
+  if grep -q 'UNCHANGED bar' <<< "$DRIVER_OUT"; then
     ok "11c: bar is reported UNCHANGED (nothing published for it)"
   else
     ng "11c: bar was not reported UNCHANGED"
   fi
-  if ! printf '%s\n%s' "$DRIVER_OUT" "$DRIVER_ERR" | grep -q 'sentinel-glpat-9c21'; then
+  if ! { grep -q 'sentinel-glpat-9c21' <<< "$DRIVER_OUT" || grep -q 'sentinel-glpat-9c21' <<< "$DRIVER_ERR"; }; then
     ok "11c: the GitLab token value never appears in the run's output (R11)"
   else
     ng "11c: the GitLab token value leaked into the run's output"
@@ -612,7 +613,7 @@ stop_stub() {
   # not read as a duplicate.
   put_count="$(grep '"method":"PUT"' "$STUB_LOG" 2>/dev/null | grep -c '"pkg":"foo"' || echo 0)"
   put_line="$(grep '"method":"PUT"' "$STUB_LOG" 2>/dev/null | grep '"pkg":"foo"')"
-  if [ "$put_count" -eq 1 ] && printf '%s' "$put_line" | grep -q '"pkg":"foo","version":"1.3.0","label":"foo-1.3.0.tar.gz"'; then
+  if [ "$put_count" -eq 1 ] && grep -q '"pkg":"foo","version":"1.3.0","label":"foo-1.3.0.tar.gz"' <<< "$put_line"; then
     ok "11c (R8): exactly one PUT to the generic package endpoint, foo/1.3.0/foo-1.3.0.tar.gz"
   else
     ng "11c (R8): expected exactly one matching PUT, got $put_count: $put_line"
@@ -620,14 +621,14 @@ stop_stub() {
 
   release_count="$(grep '"tag_name"' "$STUB_LOG" 2>/dev/null | grep -c '"tag_name":"foo-v1.3.0"' || echo 0)"
   release_line="$(grep '"tag_name":"foo-v1.3.0"' "$STUB_LOG" 2>/dev/null | head -1)"
-  if [ "$release_count" -eq 1 ] && printf '%s' "$release_line" | grep -q '"tag_name":"foo-v1.3.0"'; then
+  if [ "$release_count" -eq 1 ] && grep -q '"tag_name":"foo-v1.3.0"' <<< "$release_line"; then
     ok "11c (R9): exactly one POST .../releases with tag_name=foo-v1.3.0"
   else
     ng "11c (R9): expected exactly one release POST for foo-v1.3.0, got: $release_line"
   fi
   links_len="$(printf '%s' "$release_line" | jq '.body.assets.links | length' 2>/dev/null)"
   link_url="$(printf '%s' "$release_line" | jq -r '.body.assets.links[0].url' 2>/dev/null)"
-  if [ "$links_len" = "1" ] && printf '%s' "$link_url" | grep -qE '/packages/generic/foo/1\.3\.0/foo-1\.3\.0\.tar\.gz$'; then
+  if [ "$links_len" = "1" ] && grep -qE '/packages/generic/foo/1\.3\.0/foo-1\.3\.0\.tar\.gz$' <<< "$link_url"; then
     ok "11c (R9): the release's assets.links has exactly one entry, pointing at the uploaded package"
   else
     ng "11c (R9): assets.links is not the expected single package link (len=$links_len url=$link_url)"
@@ -646,7 +647,7 @@ stop_stub() {
   fi
 
   origin_tags="$(env -i PATH="$CLEAN_PATH" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git -C "$ORIGIN_BARE" tag -l)"
-  if printf '%s\n' "$origin_tags" | grep -q 'foo-v1.3.0'; then
+  if grep -q 'foo-v1.3.0' <<< "$origin_tags"; then
     ok "11c: origin carries the new tag foo-v1.3.0"
   else
     ng "11c: origin does not carry foo-v1.3.0. Tags: $origin_tags"
@@ -663,7 +664,7 @@ stop_stub() {
   # render at the release commit (Case 5 pattern from
   # test-release-package-extension.sh), never by re-packaging and diffing
   # sha256 alone.
-  published_sha="$(printf '%s\n' "$DRIVER_OUT" | grep -E '^PUBLISHED foo ' | sed -E 's/.*sha256=([0-9a-f]+)$/\1/')"
+  published_sha="$(grep -E '^PUBLISHED foo ' <<< "$DRIVER_OUT" | sed -E 's/.*sha256=([0-9a-f]+)$/\1/')"
   uploaded_file="$(find "$STUB_UPLOADS" -maxdepth 1 -type f -name 'foo-1.3.0-*' | head -1)"
   if [ -n "$uploaded_file" ]; then
     uploaded_sha="$(shasum -a 256 "$uploaded_file" | awk '{print $1}')"
@@ -735,12 +736,12 @@ stop_stub() {
   else
     ng "11d: the driver exited 0 despite a forced upload failure"
   fi
-  if printf '%s\n' "$DRIVER_OUT" | grep -q 'RELEASE-FAILED foo step=upload'; then
+  if grep -q 'RELEASE-FAILED foo step=upload' <<< "$DRIVER_OUT"; then
     ok "11d (R14): classified as step=upload"
   else
     ng "11d (R14): expected 'RELEASE-FAILED foo step=upload': $DRIVER_OUT"
   fi
-  if printf '%s\n' "$DRIVER_OUT" | grep -q 'RELEASE-INCOMPLETE-TAG foo-v1.3.0'; then
+  if grep -q 'RELEASE-INCOMPLETE-TAG foo-v1.3.0' <<< "$DRIVER_OUT"; then
     ok "11d (R14): reports the incomplete tag foo-v1.3.0 (the tag exists, the release does not)"
   else
     ng "11d (R14): expected 'RELEASE-INCOMPLETE-TAG foo-v1.3.0': $DRIVER_OUT"
@@ -793,13 +794,13 @@ stop_stub() {
   else
     ng "11e: the driver exited 0 despite a broken manifest"
   fi
-  if printf '%s\n' "$DRIVER_OUT" | grep -q 'RELEASE-FAILED foo step=package'; then
+  if grep -q 'RELEASE-FAILED foo step=package' <<< "$DRIVER_OUT"; then
     ok "11e (R14): classified as step=package"
   else
     ng "11e (R14): expected 'RELEASE-FAILED foo step=package': $DRIVER_OUT"
   fi
   origin_tags_11e="$(env -i PATH="$CLEAN_PATH" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git -C "$ORIGIN_BARE" tag -l)"
-  if ! printf '%s\n' "$origin_tags_11e" | grep -q 'foo-v1.3.0'; then
+  if ! grep -q 'foo-v1.3.0' <<< "$origin_tags_11e"; then
     ok "11e: no foo-v1.3.0 tag was created in origin"
   else
     ng "11e: a foo-v1.3.0 tag was created in origin despite the package step failing"
@@ -905,7 +906,7 @@ stop_stub() {
     cp "$config" "$FIX/extensions/core/foo/.releaserc.json"
     ( cd "$FIX/extensions/core/foo" && \
       env -i PATH="$CLEAN_PATH" HOME="$HOME_FIX" \
-        GIT_CONFIG_GLOBAL="$GITCONFIG_BASE" GIT_CONFIG_SYSTEM=/dev/null "${GH_ENV[@]}" \
+        GIT_CONFIG_GLOBAL="$GITCONFIG_BASE" GIT_CONFIG_SYSTEM=/dev/null ${GH_ENV[@]+"${GH_ENV[@]}"} \
         NODE_OPTIONS="--require $FIXTURE_DIR/fixed-date.cjs" \
         node "$REPO_DIR/scripts/lib/release-rehearse.mjs" main )
     rm -f "$FIX/extensions/core/foo/.releaserc.json"
@@ -925,7 +926,7 @@ stop_stub() {
     # this block's header comment): two EMPTY strings are byte-identical
     # too, so without this assertion a regression that emptied both renders
     # would read as a pass, not a failure.
-    if printf '%s' "$notes_i" | grep -q '.' && printf '%s' "$notes_ii" | grep -q '.'; then
+    if grep -q '.' <<< "$notes_i" && grep -q '.' <<< "$notes_ii"; then
       ok "11g: both rendered notes are non-empty (the byte-identity check below is meaningful)"
     else
       ng_1225 "11g: both rendered notes are non-empty (empty today makes the byte-identity check below vacuous)"
