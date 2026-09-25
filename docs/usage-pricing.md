@@ -112,7 +112,7 @@ When computing a price in a given currency on a given date, the framework checks
 - **`newestCached`** — The newest rate in the cache before refresh was attempted.
 - **`reason`** — Why the freshness gate fired and the refresh was suppressed or failed: `"offline"` (CREWRIG_USAGE_OFFLINE was set), `"network-error"` (ECB and mirror both failed), or `"mirror-disagreement"` (mirror reported a different date than requested).
 
-The gate makes at most one refresh attempt per computation date per run, whether that run is a `usage:price` invocation, a rollup, or a dashboard view. Every price the run converts on that date uses the same resolved fixing, and the next run sees any fixing written in between.
+The gate makes at most one refresh attempt per computation date per run, whether that run is a `usage:price` invocation or a rollup. A dashboard view never attempts a refresh, since it reads only the fixings already cached, yet it still resolves each computation date at most once per view. Every price a run or view converts on that date uses the same resolved fixing, and the next run sees any fixing written in between.
 
 ## Currency conversion
 
