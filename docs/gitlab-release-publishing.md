@@ -23,13 +23,25 @@ uses that file as its GitLab project's pipeline configuration as-is needs
 no pipeline-file change at all.
 
 A fork whose GitLab project points at a different top-level pipeline file
-can pull the two jobs in with GitLab's own `include:` keyword instead of
-replacing that file wholesale:
+can pull the generated pipeline in with GitLab's own `include:` keyword
+instead of replacing that file wholesale:
 
 ```yaml
 include:
   - local: ".gitlab-ci.yml"
 ```
+
+**This brings in every generated job** — all of `.gitlab-ci.yml`'s
+capabilities (45 as of this writing: `build`, the `check-*` and `lint-*`
+guards, `usage-*`, `release`/`release-rehearsal`/`release-tests`, and the
+rest), not just the two release jobs. GitLab's `include:` has no mechanism
+to cherry-pick a subset of an included file's jobs. If you want only
+`release` and `release-rehearsal` without the rest of the framework's own
+pipeline, do not `include:` the generated file at all — copy those two job
+definitions out of `.gitlab-ci.yml` into your own pipeline file instead.
+That copy is then yours to keep in sync by hand: it stops tracking
+`bash scripts/build-ci.sh` regenerations, which is the trade-off for not
+taking the other 43 jobs.
 
 The `release` job runs on push to `main` — the release branch, unchanged
 from the GitHub path. The `release-rehearsal` job is manual
@@ -77,13 +89,22 @@ remote.
    (merge-request or tag): run the release from a branch pipeline`;
    neither pipeline kind carries the running branch the rehearsal reports
    against.
-2. Set `RELEASE_DRY_RUN=true` (`DRY_RUN=true` is also accepted, kept for
-   compatibility with the switch name the existing local `DRY_RUN` flow
-   used). If both are set and disagree, `true` wins. Any value other than
-   `true`, `false`, or empty is refused.
+2. Set `RELEASE_DRY_RUN=true` (`DRY_RUN=true` is also accepted, kept as a
+   compatibility alias for the switch name predating this capability). If
+   both are set and disagree, `true` wins. Any value other than `true`,
+   `false`, or empty is refused.
 3. Run the job manually from the pipeline's job list.
 
 No token is needed or read in this mode.
+
+**There is no local rehearsal path.** The driver detects the forge from
+CI-provided environment variables and refuses to run at all outside a
+GitHub Actions or GitLab CI job — `RELEASE_DRY_RUN=true bash
+scripts/monorepo-release.sh` on a workstation exits with "unsupported
+release forge: none (not a CI environment)" before anything else runs.
+To inspect a computed release, push (or trigger a manual pipeline) and
+read the `release-rehearsal` job's log, rather than trying to reproduce it
+on a local checkout.
 
 ## Publishing
 
