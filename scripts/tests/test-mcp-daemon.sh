@@ -693,14 +693,38 @@ chmod 600 "${TEST_HOME}/.claude.json"
 
 # Force a mid-transaction failure on the SECOND assistant switched. `present`
 # is ordered claude, gemini, copilot, antigravity, so gemini is switched second.
-# Making its config DIRECTORY unwritable passes the R12 floor (the file itself
-# stays readable and writable) but makes write_json_config_secure's mktemp fail
-# — the failure lands in the APPLY loop, after claude has already been switched,
-# so the rollback must restore claude. gemini's backup_file silently no-ops
-# (it writes into the same unwritable directory), which is harmless.
-chmod 555 "${TEST_HOME}/.gemini"
+#
+# A `chmod 555` on gemini's config directory used to simulate this (making the
+# file itself stay readable/writable — passing the R12 floor — while
+# write_json_config_secure's mktemp failed on the directory). A containerized
+# CI runner as root (UID 0) bypasses Unix permission checks entirely, so under
+# root the simulated failure silently vanished and this whole scenario turned
+# into a no-op pass (issue #1215). Stub `mktemp` on PATH instead —
+# `${TEST_HOME}/bin` is already ahead of the real PATH for the claude/gemini/
+# copilot/agy stand-ins above — to fail deterministically for the ONE call
+# this scenario needs to fail: write_json_config_secure's
+# `mktemp "${cfg}.tmp.XXXXXX"` against gemini's settings.json. Every other
+# call is matched by path and passed through, INCLUDING claude's own write
+# inside this same transaction, which stays untouched and still succeeds.
+# The one exception is gemini's own restore during the rollback below: it
+# targets that same blocked path and fails too, exactly as it did when the
+# whole directory was unwritable — this test asserts nothing about that
+# restore, so the shared fate is harmless. The stub fails identically whether
+# the test runs as an ordinary user or as root, because it never consults the
+# filesystem's permission bits.
+REAL_MKTEMP="$(command -v mktemp)"
+cat > "${TEST_HOME}/bin/mktemp" <<STUB
+#!/usr/bin/env bash
+for arg in "\$@"; do
+  case "\$arg" in
+    "${TEST_HOME}/.gemini/settings.json.tmp."*) exit 1 ;;
+  esac
+done
+exec "${REAL_MKTEMP}" "\$@"
+STUB
+chmod +x "${TEST_HOME}/bin/mktemp"
 out1="$(switch_assistants_to_http "test-token" 2>&1)"; rc1=$?
-chmod 755 "${TEST_HOME}/.gemini"
+rm -f "${TEST_HOME}/bin/mktemp"
 
 [ "${rc1}" -ne 0 ] \
   && ok "a switch that fails partway returns non-zero" \

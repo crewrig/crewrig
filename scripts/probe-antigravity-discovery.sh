@@ -209,6 +209,26 @@ cleanup() {
 #
 # `wait "$pid" || st=$?` closes all three: the status is captured deliberately
 # and branched on, and never reaches `set -e` in either call shape.
+#
+# 4. `set -m` itself warns ("cannot enable job control in this shell") on some
+#    non-interactive Docker shells (issue #1215) and, under this script's own
+#    `set -euo pipefail`, a build where it returned non-zero would abort the
+#    whole probe right here — before the bounded command even starts. Both
+#    calls are therefore guarded with `2>/dev/null || true`: the warning never
+#    reaches the operator and a non-zero return can never trip `-e`.
+#
+#    That guard is a courtesy, not a functional fallback, and the surrounding
+#    code is NOT correct when job control genuinely fails to enable: a
+#    background job's pgid only diverges from the launching shell's once `-m`
+#    is active (verified directly), so without it `"$@" &` and the watchdog
+#    stay in THIS shell's own process group, `kill -TERM -- "-$pid"` targets a
+#    process group nothing leads, and the signal silently matches zero
+#    processes (already `2>/dev/null`). The bound then degrades to "wait for
+#    the command to exit on its own" — trap 1 above stops being closed, and a
+#    hung `agy` outlives the timeout instead of being killed by it. This
+#    ticket (#1215) scopes to silencing the spurious warning; re-deriving a
+#    watchdog that still works without job control is a separate, unfiled
+#    concern.
 run_bounded() {
   # run_bounded <output-file> <command> [args...]
   # Returns the command's status, or 124 when the bound was hit.
@@ -216,12 +236,12 @@ run_bounded() {
   local pid watchdog st=0 job_control_was_on=0
 
   case "$-" in *m*) job_control_was_on=1 ;; esac
-  set -m
+  set -m 2>/dev/null || true
   "$@" > "$out_file" 2>/dev/null &
   pid=$!
   ( sleep "$AGY_PROBE_TIMEOUT"; kill -TERM -- "-$pid" 2>/dev/null; ) &
   watchdog=$!
-  [ "$job_control_was_on" -eq 1 ] || set +m
+  [ "$job_control_was_on" -eq 1 ] || set +m 2>/dev/null || true
 
   # `2>/dev/null` suppresses only the shell's own "Terminated: 15" job notice,
   # which `set -m` makes it print on the bounded-out path. It does not touch $st.
