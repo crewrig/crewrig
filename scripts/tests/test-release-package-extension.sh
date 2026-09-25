@@ -148,6 +148,25 @@ else
   ng "Case 6 — did not refuse as expected (rc=$rc6):"$'\n'"$out6"
 fi
 
+# --- Case 6b (issue #1229, spec 0183 R17/R18): a .releaserc.json sitting in
+# --- the extension's own source directory (as scripts/monorepo-release.sh
+# --- writes there for the duration of its `npx semantic-release` run, before
+# --- removing it again) MUST NOT survive into the packaged archive ---------
+sandbox_releaserc="$(make_sandbox)"
+cat > "$sandbox_releaserc/extensions/core/hello-world/.releaserc.json" <<'EOF'
+{"extends": "semantic-release-monorepo", "branches": ["main"]}
+EOF
+OUT_RELEASERC="$sandbox_releaserc/release-out-releaserc"
+out_releaserc="$(cd "$sandbox_releaserc" && bash scripts/release-package-extension.sh hello-world --version "$VERSION" --out "$OUT_RELEASERC" 2>&1)"
+rc_releaserc=$?
+archive_releaserc="$OUT_RELEASERC/hello-world-$VERSION.tar.gz"
+if [ "$rc_releaserc" -eq 0 ] && [ -f "$archive_releaserc" ] \
+   && ! tar -tzf "$archive_releaserc" | grep -q '\.releaserc\.json$'; then
+  ok "Case 6b — a .releaserc.json sitting in the extension's own source directory does not survive into the packaged archive"
+else
+  ng "Case 6b — .releaserc.json leaked into the archive, or packaging failed (rc=$rc_releaserc):"$'\n'"$out_releaserc"$'\n'"$(tar -tzf "$archive_releaserc" 2>&1)"
+fi
+
 # ---------------------------------------------------------------------------
 # R19, both halves (ext_antigravity_resolve_tokens, scripts/lib/extension-install.sh)
 # ---------------------------------------------------------------------------
