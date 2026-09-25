@@ -1,7 +1,7 @@
 ---
 id: "0209"
 slug: usage-pricing
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1202
