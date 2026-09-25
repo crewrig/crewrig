@@ -1,7 +1,7 @@
 ---
 id: "0214"
 slug: gemini-settings-preserve
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1210
