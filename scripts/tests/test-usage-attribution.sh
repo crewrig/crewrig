@@ -15,7 +15,7 @@
 #
 # Preflight: node on PATH, or a FATAL and exit 2 — never a silent pass.
 #
-# Mutation discipline: each of the six named mutations edits a tracked module
+# Mutation discipline: each of the seven named mutations edits a tracked module
 # IN PLACE, proves the property goes red, then restores with
 # `git checkout -- <file>` — mirroring test-usage-storage.sh's own discipline.
 #
@@ -70,7 +70,7 @@ fi
 # --- Sandbox -------------------------------------------------------------
 HELPERS_DIR="$(mktemp -d)"
 SYN_PARENT="$(mktemp -d)"
-MUTATION_GUARD_FILES="scripts/lib/usage-capture/attribution.js scripts/lib/usage-store/checkout.js scripts/lib/usage-store/journal.js scripts/lib/usage-store/prune.js scripts/lib/usage-store/rollup.js scripts/lib/usage-store/layout.js"
+MUTATION_GUARD_FILES="scripts/lib/usage-capture/attribution.js scripts/lib/usage-store/checkout.js scripts/lib/usage-store/journal.js scripts/lib/usage-store/prune.js scripts/lib/usage-store/rollup.js scripts/lib/usage-store/layout.js scripts/lib/usage-store/query.js"
 CASE_ROOTS=""
 
 # shellcheck disable=SC2329  # invoked via trap cleanup EXIT, not dead
@@ -777,6 +777,74 @@ for d01_pair in "d01-task-a:400" "d01-task-b:1500"; do
   fi
 done
 
+# --- delta-01 x composed selectors (#1205) ---------------------------------
+# A selector given with --period narrows it, and never replaces it. The
+# fixture spans 2026-05 and 2026-06, so these are the cross-month cases a
+# single-month fixture cannot give: a walking selector that silently drops
+# --period returns the other month's records too. Red on main (the first
+# selector of run()'s if/else chain wins, so --period alone is read): every
+# case below except those marked "pin".
+# d01_lines <usage:query args...> — "<count>:<session>/<netInput>/<month>,..." of a listing.
+d01_lines() {
+  { bash "$REPO_DIR/scripts/usage-query.sh" "$@" || true; } | node -e "
+const lines = require('fs').readFileSync(0, 'utf8').split('\n').filter(Boolean).map(JSON.parse);
+const rows = lines.map((r) => [r.identity.sessionId, r.tokens ? r.tokens.netInput : 'u', r.timing.requestInstant.slice(0, 7)].join('/')).sort();
+console.log(lines.length + ':' + rows.join(','));
+"
+}
+d01_expect_lines() {
+  # $1 = description, $2 = expected d01_lines output, rest = usage:query args
+  local desc="$1" want="$2" got
+  shift 2
+  got="$(d01_lines "$@")"
+  if [ "$got" = "$want" ]; then ok "$desc"; else bad "$desc" "expected $want / got $got"; fi
+}
+d01_expect_lines "delta-01 listing --period 2026-05 --session d01-session-b: exactly B's 700-token May record (never its June one)" \
+  "1:d01-session-b/700/2026-05" --period 2026-05 --session d01-session-b
+d01_expect_lines "delta-01 listing --period 2026-06 --task-key d01-task-a --no-ledger: exactly C's own-attribution June record" \
+  "1:d01-session-c/600/2026-06" --period 2026-06 --task-key d01-task-a --no-ledger
+d01_expect_lines "delta-01 listing --period 2026-06 --task-key d01-task-a: nothing (the ledger moved C's June record to d01-task-b)" \
+  "0:" --period 2026-06 --task-key d01-task-a
+# pin: every 2026-06 record is d01-task-b after the ledger, so this equals the
+# plain June listing; it guards the ledger-then-filter order (a task-key test
+# on the entries' own attribution would return 0 lines).
+d01_expect_lines "delta-01 listing --period 2026-06 --task-key d01-task-b: the four June records, the task key tested after the ledger (pin)" \
+  "4:d01-session-b/900/2026-06,d01-session-c/600/2026-06,d01-session-d/50/2026-06,d01-session-d/u/2026-06" \
+  --period 2026-06 --task-key d01-task-b
+
+# Token rollups under a selection (R45: filter by the selection, choose each
+# session's last snapshot, then place). C (d01-task-a on its own attribution)
+# is 400 in 2026-05 and 600 in 2026-06, and the ledger moves the 600 to
+# d01-task-b. Under d01-task-a, C's June snapshot is outside the selection
+# and must not supersede its May one: 400. The wrong figures name the bug:
+# 500 when the key is ignored (main), 0 for choose-then-filter.
+d01_expect_fig() {
+  # $1 = description, $2 = expected d01_fig, rest = usage:query args (before --rollup)
+  local desc="$1" want="$2" out got
+  shift 2
+  out="$(bash "$REPO_DIR/scripts/usage-query.sh" "$@" --rollup)"
+  got="$(d01_fig "$out")"
+  if [ "$got" = "$want" ]; then ok "$desc"; else bad "$desc" "expected $want / got $got / $out"; fi
+}
+d01_a_may="$(bash "$REPO_DIR/scripts/usage-query.sh" --period 2026-05 --task-key d01-task-a --rollup)"
+d01_a_may_check="$(node -e "const v = JSON.parse(process.argv[1]); console.log(v.byFidelity['session-cumulative'].netInput + ':' + v.taskHandoffKey)" "$d01_a_may")"
+if [ "$d01_a_may_check" = "400:d01-task-a" ]; then
+  ok "delta-01 --period 2026-05 --task-key d01-task-a --rollup: session-cumulative = 400 under taskHandoffKey d01-task-a (C's later d01-task-b snapshot does not supersede)"
+else
+  bad "delta-01 --period 2026-05 --task-key d01-task-a --rollup: expected 400:d01-task-a (500 = key ignored, 0 = choose-then-filter)" "got $d01_a_may_check / $d01_a_may"
+fi
+d01_expect_fig "delta-01 --period 2026-05 --task-key d01-task-a --no-ledger --rollup: 0 (C's own-attribution June snapshot is d01-task-a, so it supersedes and C is placed in June)" \
+  "0,0,0" --period 2026-05 --task-key d01-task-a --no-ledger
+# pin: every June record is d01-task-b, so the key narrows nothing here.
+d01_expect_fig "delta-01 --period 2026-06 --task-key d01-task-b --rollup: 1500,50,1 (pin)" \
+  "1500,50,1" --period 2026-06 --task-key d01-task-b
+d01_expect_fig "delta-01 --period 2026-05 --task-key d01-task-b --rollup: 0 (R46: 0 + 1500 = the --task-key d01-task-b rollup above)" \
+  "0,0,0" --period 2026-05 --task-key d01-task-b
+d01_expect_fig "delta-01 --period 2026-05 --session d01-session-a --rollup: 500 (pin)" \
+  "500,0,0" --period 2026-05 --session d01-session-a
+d01_expect_fig "delta-01 --period 2026-05 --session d01-session-b --rollup: 0 (B's last snapshot is placed in 2026-06)" \
+  "0,0,0" --period 2026-05 --session d01-session-b
+
 # =============================================================================
 # Prune — 0208 R17, delta-01 R31/R32/R33 no-store half
 # =============================================================================
@@ -1124,6 +1192,35 @@ if git -C "$REPO_DIR" diff --quiet -- "$ROLLUP_JS"; then
   ok "rollup.js is restored to its committed content after MUTATION 6"
 else
   bad "rollup.js was NOT fully restored after MUTATION 6"
+fi
+
+echo
+echo "=== MUTATION 7 (#1205): rollupInput() admitting on --fidelity only ==="
+QUERY_JS="$REPO_DIR/scripts/lib/usage-store/query.js"
+node -e "
+const fs = require('fs');
+const p = process.argv[1];
+let src = fs.readFileSync(p, 'utf8');
+const marker = '    admit: selectionPredicate(opts),';
+if (!src.includes(marker)) { console.error('FATAL: rollupInput admit marker not found in usage-store/query.js'); process.exit(1); }
+src = src.replace(marker, '    admit: (r) => !opts.fidelity || r.fidelity === opts.fidelity, // MUTATION-7');
+fs.writeFileSync(p, src);
+" "$QUERY_JS"
+
+export CREWRIG_USAGE_ROOT="$D01_ROOT"
+mut7_rollup="$(bash "$REPO_DIR/scripts/usage-query.sh" --period 2026-05 --task-key d01-task-a --rollup)"
+git -C "$REPO_DIR" checkout -- "$QUERY_JS"
+mut7_sc="$(node -e "console.log(JSON.parse(process.argv[1]).byFidelity['session-cumulative'].netInput)" "$mut7_rollup")"
+
+if [ "$mut7_sc" = "500" ]; then
+  ok "MUTATION 7 RED: a fidelity-only admit ignores --task-key, and --period 2026-05 --task-key d01-task-a regresses to 500 (not 400)"
+else
+  bad "MUTATION 7 not red: the 2026-05 d01-task-a rollup did not regress to 500" "got $mut7_sc / $mut7_rollup"
+fi
+if git -C "$REPO_DIR" diff --quiet -- "$QUERY_JS"; then
+  ok "query.js is restored to its committed content after MUTATION 7"
+else
+  bad "query.js was NOT fully restored after MUTATION 7"
 fi
 
 # =============================================================================

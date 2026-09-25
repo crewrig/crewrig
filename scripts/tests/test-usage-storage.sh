@@ -57,7 +57,7 @@ USAGE_ROOT="$(mktemp -d)"
 PALACE_PARENT="$(mktemp -d)"
 HELPERS_DIR="$(mktemp -d)"
 SYN_PARENT="$(mktemp -d)"
-MUTATION_GUARD_FILES="scripts/lib/usage-store/journal.js scripts/lib/usage-store/mirror.js scripts/lib/usage-store/validator/validate.js"
+MUTATION_GUARD_FILES="scripts/lib/usage-store/journal.js scripts/lib/usage-store/mirror.js scripts/lib/usage-store/validator/validate.js scripts/lib/usage-store/query.js"
 
 # tokenPath() is hardcoded to $HOME/.mempalace/server/<hash>/token by both
 # mcp.js and common.sh's mcp_token_path — there is no override, and this
@@ -558,6 +558,46 @@ if bash "$REPO_DIR/scripts/usage-query.sh" --agent "query-agent-1" >/dev/null 2>
   bad "--agent without --parent should be refused (R15 pairing)"
 else
   ok "--agent without --parent is refused (R15 pairing enforcement)"
+fi
+
+# Composed selectors (#1205): every selector given is ANDed, and --period
+# stays the primary read. All five R1-R5 records sit in QUERY_PERIOD, so the
+# --period-plus-walking cases below prove the walking selector narrows the
+# period read; the cross-month half (a walking selector must not drop
+# --period) lives in test-usage-attribution.sh's delta-01 block. Red on main
+# (first selector wins): every case but the --cli claude-code pin.
+# query_ids <args...> — the sorted recordIds usage:query returns.
+query_ids() {
+  { bash "$REPO_DIR/scripts/usage-query.sh" "$@" || true; } | jq -r '.recordId' | sort
+}
+composed_case() {
+  # $1 = description, $2 = expected sorted ids, rest = usage:query args
+  local desc="$1" want="$2" got
+  shift 2
+  got="$(query_ids "$@")"
+  if [ "$got" = "$want" ]; then ok "$desc"; else bad "$desc" "got: $(printf '%s' "$got" | tr '\n' ' ')"; fi
+}
+composed_case "--period+--task-key returns exactly R3" "$R3_RID" \
+  --period "$QUERY_PERIOD" --task-key "query-task-key-1"
+composed_case "--period+--asset returns exactly R4" "$R4_RID" \
+  --period "$QUERY_PERIOD" --asset "forge-issue:crewrig/crewrig#9999"
+composed_case "--period+--session returns exactly R1" "$R1_RID" \
+  --period "$QUERY_PERIOD" --session "query-session-1"
+composed_case "--period+--agent+--parent returns exactly R2" "$R2_RID" \
+  --period "$QUERY_PERIOD" --agent "query-agent-1" --parent "query-parent-1"
+composed_case "--session+--cli gemini-cli returns nothing (R1 is claude-code)" "" \
+  --session "query-session-1" --cli gemini-cli
+composed_case "--session+--cli claude-code returns exactly R1" "$R1_RID" \
+  --session "query-session-1" --cli claude-code
+
+set +e
+bad_asset_out="$(bash "$REPO_DIR/scripts/usage-query.sh" --period "$QUERY_PERIOD" --asset bad 2>&1)"
+bad_asset_rc=$?
+set -e
+if [ "$bad_asset_rc" -eq 2 ] && grep -qF -- '--asset must be <kind>:<ref>' <<< "$bad_asset_out"; then
+  ok "--period+--asset bad exits 2 with the <kind>:<ref> error (a malformed --asset is never silently ignored)"
+else
+  bad "--period+--asset bad did not exit 2 with the <kind>:<ref> error" "rc=$bad_asset_rc / $bad_asset_out"
 fi
 
 # --- (f) concurrency (R26): 8 simultaneous writers to ONE partition ---------
@@ -1476,6 +1516,40 @@ else
   bad "mirror.js was NOT fully restored after the gate mutation"
 fi
 rm -rf "$MUTANT_GATE_ROOT" "$MUTANT_GATE_PALACE_PARENT"
+
+# (a) of #1205's step 10: run()'s final filter by the whole selection turned
+# into a no-op. run() still narrows on the ledger-invariant clauses (identity,
+# --cli, --fidelity) BEFORE the ledger, so the --period+--session,
+# --period+--agent+--parent and --session+--cli cases stay green under this
+# mutation by design; only the attribution clauses (--task-key, --asset),
+# which can only be tested after the ledger, go red. Re-uses section (e)'s
+# R1-R5 fixture, still in CREWRIG_USAGE_ROOT's 2021-03 partitions.
+echo
+echo "=== MUTATION: query.run() skipping its final filter by the selection (#1205) ==="
+QUERY_JS="$REPO_DIR/scripts/lib/usage-store/query.js"
+node -e "
+const fs = require('fs');
+const p = process.argv[1];
+let src = fs.readFileSync(p, 'utf8');
+const marker = '  return records.filter(pred);\n}';
+if (!src.includes(marker)) { console.error('FATAL: run() final-filter marker not found in usage-store/query.js'); process.exit(1); }
+src = src.replace(marker, '  return records;\n}');
+fs.writeFileSync(p, src);
+" "$QUERY_JS"
+mut_task_ids="$(query_ids --period "$QUERY_PERIOD" --task-key "query-task-key-1")"
+mut_asset_ids="$(query_ids --period "$QUERY_PERIOD" --asset "forge-issue:crewrig/crewrig#9999")"
+git -C "$REPO_DIR" checkout -- scripts/lib/usage-store/query.js
+if [ "$mut_task_ids" != "$R3_RID" ] && [ "$mut_asset_ids" != "$R4_RID" ]; then
+  ok "MUTATION RED: without the final filter, --period+--task-key and --period+--asset return more than R3 / R4"
+else
+  bad "MUTATION not red: --period+--task-key / --period+--asset still narrowed without the final filter" \
+    "task-key: $(printf '%s' "$mut_task_ids" | tr '\n' ' ') / asset: $(printf '%s' "$mut_asset_ids" | tr '\n' ' ')"
+fi
+if git -C "$REPO_DIR" diff --quiet -- scripts/lib/usage-store/query.js; then
+  ok "query.js is restored to its committed content after the final-filter mutation"
+else
+  bad "query.js was NOT fully restored after the final-filter mutation"
+fi
 
 # --- (n) state/ is exported by layout.js and touched by nothing here -------
 echo

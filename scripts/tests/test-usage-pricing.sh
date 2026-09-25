@@ -4,7 +4,8 @@
 # APPROVE review's named edit 1, the delta-01 R33 two-store ownership note
 # https://github.com/crewrig/crewrig/issues/1172#issuecomment-5776029958). Cases
 # 17-18 cover spec 0209 delta-01 R43-R48 and R50 (issue #1193); Case 17 calls
-# the dashboard for the R47 agreement.
+# the dashboard for the R47 agreement, and Case 19 extends it to a --period
+# rollup narrowed by --task-key (issue #1205).
 #
 # Fully offline: CREWRIG_USAGE_ROOT is a fresh mktemp -d per case,
 # MEMPALACE_PALACE_PATH a temp path with no token file, CREWRIG_USAGE_OFFLINE=1,
@@ -1467,18 +1468,22 @@ price_sc() {
   jget "$out" "(b => [b.sum, b.count, b.pricedCount, b.unpricedCount].join('|'))(v.byFidelity['session-cumulative'])"
 }
 
-# dash_sc <period> — the dashboard's session-cumulative figures for --period
-# as "<amount>|<pricedCount>|<unpricedCount>|<netInput>".
+# dash_sc <period> [selector...] — the dashboard's session-cumulative figures
+# for --period (and any further selection) as
+# "<amount>|<pricedCount>|<unpricedCount>|<netInput>".
 dash_sc() {
-  local out
-  out="$(bash "$REPO_DIR/scripts/usage-dashboard.sh" report --json --period "$1")"
+  local out period="$1"
+  shift
+  out="$(bash "$REPO_DIR/scripts/usage-dashboard.sh" report --json --period "$period" "$@")"
   jget "$out" "(p => [p.amount, p.pricedCount, p.unpricedCount, (v.totals.tokens.byFidelity['session-cumulative'] || {}).netInput].join('|'))(v.totals.price.byFidelity['session-cumulative'] || {})"
 }
 
-# query_sc <period> — usage:query --period --rollup session-cumulative netInput.
+# query_sc <period> [selector...] — usage:query --period --rollup
+# session-cumulative netInput.
 query_sc() {
-  local out
-  out="$(bash "$REPO_DIR/scripts/usage-query.sh" --period "$1" --rollup)"
+  local out period="$1"
+  shift
+  out="$(bash "$REPO_DIR/scripts/usage-query.sh" --period "$period" "$@" --rollup)"
   jget "$out" "v.byFidelity['session-cumulative'].netInput"
 }
 
@@ -1618,6 +1623,48 @@ if [ "$c18_dp_priced|$c18_dp_unpriced|$c18_dn_priced|$c18_dn_unpriced" = "$c18_p
 else
   bad "R47: the dashboard's pricedCount/unpricedCount disagree with usage:price" "dashboard 05=$c18_dp_priced/$c18_dp_unpriced 06=$c18_dn_priced/$c18_dn_unpriced; usage:price 05=$c18_p_priced/$c18_p_unpriced 06=$c18_n_priced/$c18_n_unpriced"
 fi
+
+# =============================================================================
+# Case 19 — a --period rollup narrowed by --task-key agrees with the dashboard
+# (spec 0209 delta-01 R45/R47, issue #1205)
+# =============================================================================
+# The key is seeded by --session ledger entries. K1 (c19-task) straddles:
+# 200 in 2026-05, 400 in 2026-06, so it is placed in 2026-06. K2 (c19-task)
+# is 300 in 2026-05 only. O1 (no key) is 1000 in 2026-05 and O2 (no key) 800
+# in 2026-06. Fixture price 3e-6 USD per netInput token, output 0. Expected
+# under --task-key c19-task: 2026-05 = K2 300 (0.0009), 2026-06 = K1 400
+# (0.0012). Red on main (--period wins and the key is ignored): 2026-05 =
+# 1300 (0.0039), 2026-06 = 1200 (0.0036), and every dashboard agreement.
+echo
+echo "=== Case 19: --period + --task-key rollup agrees with the dashboard (delta-01 R45/R47, #1205) ==="
+new_root_and_pin_into C19_ROOT
+sc_record c19-session-k1 c19-k1a 2026-05-20T10:00:00.000Z 200
+sc_record c19-session-k1 c19-k1b 2026-06-02T10:00:00.000Z 400
+sc_record c19-session-k2 c19-k2a 2026-05-12T10:00:00.000Z 300
+sc_record c19-session-o1 c19-o1a 2026-05-15T10:00:00.000Z 1000
+sc_record c19-session-o2 c19-o2a 2026-06-05T10:00:00.000Z 800
+for c19_s in c19-session-k1 c19-session-k2; do
+  bash "$REPO_DIR/scripts/usage-attribute.sh" add --session "$c19_s" --task-key c19-task \
+    --reason "usage-pricing suite: Case 19 attributes $c19_s to c19-task" --author "test-suite" >/dev/null
+done
+
+for c19_pair in "2026-05:0.0009:300" "2026-06:0.0012:400"; do
+  IFS=':' read -r c19_m c19_want_sum c19_want_tok <<< "$c19_pair"
+  IFS='|' read -r c19_sum c19_count c19_priced c19_unpriced <<< "$(price_sc --period "$c19_m" --task-key c19-task)"
+  IFS='|' read -r c19_d_amount c19_d_priced c19_d_unpriced c19_d_net <<< "$(dash_sc "$c19_m" --task-key c19-task)"
+  c19_q_net="$(query_sc "$c19_m" --task-key c19-task)"
+  if approx "$c19_sum" "$c19_want_sum" && [ "$c19_count|$c19_priced|$c19_unpriced" = "1|1|0" ]; then
+    ok "--period $c19_m --task-key c19-task --rollup: usage:price sum = $c19_want_sum, count = pricedCount = 1, unpricedCount = 0"
+  else
+    bad "--period $c19_m --task-key c19-task --rollup: expected sum $c19_want_sum, 1|1|0" "got sum=$c19_sum count|priced|unpriced=$c19_count|$c19_priced|$c19_unpriced"
+  fi
+  if approx "$c19_d_amount" "$c19_sum" && [ "$c19_d_priced|$c19_d_unpriced" = "$c19_priced|$c19_unpriced" ] \
+    && [ "$c19_d_net" = "$c19_want_tok" ] && [ "$c19_q_net" = "$c19_want_tok" ]; then
+    ok "R47 --period $c19_m --task-key c19-task: usage:price = dashboard (amount $c19_sum, pricedCount $c19_priced, unpricedCount $c19_unpriced) and usage:query = dashboard = $c19_want_tok tokens"
+  else
+    bad "R47 --period $c19_m --task-key c19-task: usage:price / usage:query disagree with the dashboard" "usage:price sum|priced|unpriced=$c19_sum|$c19_priced|$c19_unpriced; dashboard amount|priced|unpriced|netInput=$c19_d_amount|$c19_d_priced|$c19_d_unpriced|$c19_d_net; usage:query netInput=$c19_q_net (expected $c19_want_tok)"
+  fi
+done
 
 # =============================================================================
 # Named ladder fixtures (v1-F2)
