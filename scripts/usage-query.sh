@@ -14,8 +14,14 @@
 #   bash scripts/usage-query.sh --pending
 #   ... any of the above plus --fidelity <per-request|run-total|session-cumulative>
 #   ... any of the above plus --no-ledger (skip R15's ledger application)
-#   ... --task-key/--asset plus --rollup [--combined] (spec 0208 R20-R24; one
-#       JSON object instead of one record per line)
+#   ... any selector plus --rollup [--combined] (spec 0208 R20-R24; one JSON
+#       object instead of one record per line)
+#
+# Selectors compose (#1205): --session, --agent+--parent, --period,
+# --task-key, --asset, --cli and --fidelity are ANDed. A listing with
+# --period reads only that month's partitions; with --rollup, --period is a
+# placement bound instead (spec 0209 delta-01, docs/usage-pricing.md).
+# --pending honours --fidelity only; --undrained takes no filter.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 exec node --disable-warning=ExperimentalWarning "$SCRIPT_DIR/lib/usage-store/query.js" "$@"

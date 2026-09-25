@@ -212,27 +212,12 @@ function argvToShell(argv) {
   return argv.map((a) => (a.startsWith('--') ? a : shellQuote(a))).join(' ');
 }
 
-function matchAsset(record, spec) {
-  const idx = spec.indexOf(':');
-  const kind = spec.slice(0, idx);
-  const ref = spec.slice(idx + 1);
-  const asset = record.attribution && record.attribution.externalAsset;
-  return !!asset && asset.kind === kind && asset.ref === ref;
-}
-
 // selectionPredicate(selection) — D7's AND post-filter over every selection
-// predicate, on the ledger-applied attribution query.run() returns.
+// predicate, on the ledger-applied attribution query.run() returns. It is
+// query.selectionPredicate() itself (#1205): the dashboard and usage:query /
+// usage:price share one definition of the selection, so they cannot drift.
 function selectionPredicate(selection) {
-  const s = selection || {};
-  return (r) => {
-    if (s.session && r.identity.sessionId !== s.session) return false;
-    if (s.agent && (r.identity.agentId !== s.agent || r.identity.parentSessionId !== s.parent)) return false;
-    if (s.taskKey && !(r.attribution && r.attribution.taskHandoffKey === s.taskKey)) return false;
-    if (s.asset && !matchAsset(r, s.asset)) return false;
-    if (s.cli && r.provenance.cli !== s.cli) return false;
-    if (s.fidelity && r.fidelity !== s.fidelity) return false;
-    return true;
-  };
+  return query.selectionPredicate(selection);
 }
 
 // placementBounds(placement) -> {lower, upper}: the inclusive UTC day range

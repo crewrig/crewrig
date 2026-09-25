@@ -1,17 +1,24 @@
 // query.js — R15-R17's read surface (spec 0207 PLAN v3 step 9), plus spec
 // 0208 R15's read-time ledger application and R20-R24's rollup surface
 // (PLAN v3 step 8). Every journal walk enumerates with layout.isEntry() and
-// nothing else, so a sidecar is never opened, parsed or returned. A
-// --period listing (with --cli) opens exactly one partition directory (R6);
-// every other selector walks and streams, O(records in the retained
-// window). Output is JSONL, one record per line — verbatim unless a ledger
-// override applies; --no-ledger returns the entry verbatim.
+// nothing else, so a sidecar is never opened, parsed or returned. Output is
+// JSONL, one record per line — verbatim unless a ledger override applies;
+// --no-ledger returns the entry verbatim.
 //
-// A --period P --rollup is the exception to R6 (spec 0209 delta-01, R43-R45):
-// rollupInput() reads every month >= P through readWindow(), the one
-// cross-period lookahead the dashboard (scripts/lib/usage-dashboard/source.js)
-// also reads through, so each session-cumulative session's last snapshot is
-// chosen over the whole selection and only then placed in P or not.
+// Selectors compose (#1205): selectionPredicate() is the one definition of
+// the selection, the AND of every selector given, and the dashboard
+// (scripts/lib/usage-dashboard/filters.js) delegates to it. --period is not
+// a clause of that AND. For a listing it is the primary read: a --period
+// listing (with --cli) opens exactly one partition directory (R6), and
+// without --period the journal is walked and streamed, O(records in the
+// retained window).
+//
+// For a --period P --rollup the period is a placement bound instead, the
+// exception to R6 (spec 0209 delta-01, R43-R45): rollupInput() reads every
+// month >= P through readWindow(), the one cross-period lookahead the
+// dashboard (scripts/lib/usage-dashboard/source.js) also reads through, so
+// each session-cumulative session's last snapshot is chosen over the whole
+// selection and only then placed in P or not.
 
 'use strict';
 
@@ -166,57 +173,68 @@ function applyLedgerOverrides(records) {
   });
 }
 
+// selectionPredicate(sel) — the one definition of "the selection" (#1205):
+// the AND of --session, --agent+--parent, --task-key, --asset, --cli and
+// --fidelity, each clause active only when given. --period is not a clause.
+// The --asset spec is split once, here, so a malformed value throws before
+// any read. The task-key and asset clauses test the attribution a record
+// carries, so callers apply them to ledger-applied records unless
+// --no-ledger (spec 0208 R15).
+function selectionPredicate(sel) {
+  const s = sel || {};
+  const asset = s.asset ? splitAsset(s.asset) : null;
+  return (r) => {
+    if (s.session && r.identity.sessionId !== s.session) return false;
+    if (s.agent && (r.identity.agentId !== s.agent || r.identity.parentSessionId !== s.parent)) return false;
+    if (s.taskKey && !(r.attribution && r.attribution.taskHandoffKey === s.taskKey)) return false;
+    if (asset && !matchAsset(r, asset[0], asset[1])) return false;
+    if (s.cli && r.provenance.cli !== s.cli) return false;
+    if (s.fidelity && r.fidelity !== s.fidelity) return false;
+    return true;
+  };
+}
+
+// readPeriod(per, cli) — a --period listing's partition read: one partition
+// with --cli (R6), else that month's partition of every CLI.
+function readPeriod(per, cli) {
+  if (cli) return readPartition(cli, per);
+  const records = [];
+  let clis;
+  try {
+    clis = fs.readdirSync(layout.journalRoot());
+  } catch (err) {
+    clis = [];
+  }
+  for (const c of clis) {
+    records.push(...readPartition(c, per));
+  }
+  return records;
+}
+
+// run(opts) — one primary read (the --period partitions, else a journal
+// walk), narrowed on the ledger-invariant clauses (identity, --cli,
+// --fidelity) before the ledger is applied, then filtered by the whole
+// selection. The ledger replaces only attribution, and resolves each record
+// on its own, so the early narrowing cannot change which records match.
 function run(opts) {
   if (opts.undrained) return listUndrained();
   if (opts.pending) return applyFidelity(listPending(), opts.fidelity);
 
-  let records;
-  let postFilter = null;
-
-  if (opts.period) {
-    if (opts.cli) {
-      records = readPartition(opts.cli, opts.period);
-    } else {
-      records = [];
-      const journalRoot = layout.journalRoot();
-      let clis;
-      try {
-        clis = fs.readdirSync(journalRoot);
-      } catch (err) {
-        clis = [];
-      }
-      for (const cli of clis) {
-        records.push(...readPartition(cli, opts.period));
-      }
-    }
-  } else if (opts.session) {
-    records = walkAllEntries().filter((r) => r.identity.sessionId === opts.session);
-  } else if (opts.agent) {
-    records = walkAllEntries().filter(
-      (r) => r.identity.agentId === opts.agent && r.identity.parentSessionId === opts.parent
-    );
-  } else if (opts.taskKey) {
-    records = walkAllEntries();
-    postFilter = (r) => r.attribution && r.attribution.taskHandoffKey === opts.taskKey;
-  } else if (opts.asset) {
-    const [kind, ref] = splitAsset(opts.asset);
-    records = walkAllEntries();
-    postFilter = (r) => matchAsset(r, kind, ref);
-  } else {
+  if (!opts.period && !opts.session && !opts.agent && !opts.taskKey && !opts.asset) {
     throw new Error(
       'no selector given — one of --session, --agent+--parent, --period, --task-key, --asset, --undrained, --pending is required'
     );
   }
 
+  const pred = selectionPredicate(opts);
+  let records = opts.period ? readPeriod(opts.period, opts.cli) : walkAllEntries();
+  records = records.filter(selectionPredicate({ ...opts, taskKey: undefined, asset: undefined }));
+
   if (opts.noLedger !== true) {
     records = applyLedgerOverrides(records);
   }
 
-  if (postFilter) {
-    records = records.filter(postFilter);
-  }
-
-  return applyFidelity(records, opts.fidelity);
+  return records.filter(pred);
 }
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -289,10 +307,12 @@ function readWindow(opts) {
 }
 
 // rollupInput(opts) -> {records, place}. A --period P rollup reads the
-// readWindow() of P under the selection (--cli, --fidelity, the ledger
-// unless --no-ledger) and returns the placement predicate "requestInstant in
-// P", which the rollup applies after the last-snapshot choice (R45). Every
-// other rollup reads what run() reads and places nothing.
+// readWindow() of P, admitting only what selectionPredicate(opts) admits
+// (every selector given, on ledger-applied attribution unless --no-ledger),
+// and returns the placement predicate "requestInstant in P", which the
+// rollup applies after the last-snapshot choice (R45): filter by the
+// selection, choose the last snapshot, then place. Every other rollup reads
+// what run() reads and places nothing.
 function rollupInput(opts) {
   if (!opts.period || opts.undrained || opts.pending) return { records: run(opts), place: null };
   const period = opts.period;
@@ -301,7 +321,7 @@ function rollupInput(opts) {
     fromMonth: period,
     toMonth: period,
     inRange: place,
-    admit: (r) => !opts.fidelity || r.fidelity === opts.fidelity,
+    admit: selectionPredicate(opts),
     cli: opts.cli,
     noLedger: opts.noLedger === true,
   });
@@ -362,7 +382,7 @@ function parseArgs(argv) {
   return opts;
 }
 
-module.exports = { run, parseArgs, listMonths, readWindow, rollupInput };
+module.exports = { run, parseArgs, listMonths, readWindow, rollupInput, selectionPredicate };
 
 if (require.main === module) {
   let opts;

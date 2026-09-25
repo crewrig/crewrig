@@ -251,7 +251,10 @@ A rollup aggregates records by task-handoff key or external asset reference, rep
 bash scripts/usage-query.sh --task-key 1171 --rollup
 bash scripts/usage-query.sh --asset forge-issue:crewrig/crewrig#1171 --rollup
 bash scripts/usage-query.sh --task-key 1171 --rollup --combined
+bash scripts/usage-query.sh --period 2026-09 --task-key 1171 --rollup
 ```
+
+Selectors compose, so the last line rolls up only task 1171's records. With `--period`, a `session-cumulative` session counts through its last snapshot in the selection, and only in the month holding that snapshot (see [Period rollups](usage-pricing.md#period-rollups)).
 
 ### Rollup output shape
 

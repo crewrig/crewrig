@@ -4,9 +4,10 @@
 // supplies the journal root and the entry-name predicate, never a path this
 // module then opens as a record.
 //
-// query.run() honours only the first selector of its if/else chain, so one
-// primary run() is issued and every other selection predicate is an AND
-// post-filter. Placement predicates are never applied here (D4).
+// query.run() ANDs every selector it is given (#1205). One primary run() is
+// still issued and the shared selection predicate is re-applied as an AND
+// post-filter, which is idempotent. Placement predicates are never applied
+// here (D4).
 //
 // 1. A walking selector (--session, --agent+--parent, --task-key, --asset, in
 //    that priority) already reads every partition: one run(), no widening.
