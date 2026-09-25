@@ -16,6 +16,13 @@
 // recomputes rather than returning the wrong denomination. `--as-of-today`
 // always recomputes, re-resolving the fixing through fx's own freshness
 // gate and stamping a fresh computedAt, regardless of cache validity (R28).
+// A stored price whose conversion status names a failure is never reused,
+// whatever currency is requested (spec 0209 delta-02 R52): only `ok` and
+// `not-applicable` pass, so a failure — including a pre-delta entry whose USD
+// amount is labelled with the requested currency — is computed again and heals
+// once a fixing is available. readPrices() is not a pricing request and may
+// still return a stored failure, which R51 labels USD. priceSelector() threads
+// one fx memo through its pass (fx.js header, clause (f)) to bound the retry.
 //
 // Uncaptured records (R34): a record whose kind is not `captured` carries no
 // modelId and no tokens by contract (docs/usage-record-format.md ->
@@ -64,8 +71,11 @@ function atomicWriteJson(filePath, obj) {
   fs.renameSync(tmp, filePath);
 }
 
+const USABLE_CONVERSION_STATUSES = new Set(['ok', 'not-applicable']);
+
 function isStoredPriceUsable(stored, { currency, pricelistSha }) {
   if (!stored) return false;
+  if (!stored.conversion || !USABLE_CONVERSION_STATUSES.has(stored.conversion.status)) return false;
   const storedCurrency = (stored.conversion && stored.conversion.currency) || stored.currency || 'USD';
   if (storedCurrency !== currency) return false;
   if (!stored.snapshot || stored.snapshot.sha !== pricelistSha) return false;
@@ -143,10 +153,13 @@ async function computePriceObject(record, opts) {
   } else if (currency !== 'USD') {
     const converted = await fx.convert(amountUsd, currency, computationDate, ctx);
     price.amount = converted.amount;
-    price.currency = currency;
     price.conversion = converted.conversion;
     price.fixingDate = converted.conversion.fixingDate || null;
-    if (converted.fxStaleness) price.fxStaleness = converted.fxStaleness;
+    // R51: a failed conversion keeps its USD amount, labelled USD.
+    if (converted.conversion.status === 'ok') {
+      price.currency = currency;
+      if (converted.fxStaleness) price.fxStaleness = converted.fxStaleness;
+    }
   }
   if (breakdown.regionalUpliftAvailable) price.regionalUpliftAvailable = breakdown.regionalUpliftAvailable;
   if (copilotInfo) price.copilot = copilotInfo;
@@ -171,6 +184,16 @@ function uncapturedMarker(record, currency) {
     resolution: { step: 'uncaptured' },
     disclaimer: 'reference figure, not an invoice',
   };
+}
+
+// classifyPrice(price) — the one partition of a contributing captured record's
+// price that both the period rollup and spec 0210's dashboard count by
+// (delta-02 R47, R53, R54): `unpriced`, `unconverted` (any conversion status
+// other than `ok`), or `priced`.
+function classifyPrice(price) {
+  if (price.unpriced === true) return 'unpriced';
+  if (!price.conversion || price.conversion.status !== 'ok') return 'unconverted';
+  return 'priced';
 }
 
 // priceRecord(record, opts) — the read-through entry point every caller
@@ -211,10 +234,12 @@ async function priceRecord(record, opts) {
 // for every record the selector matches (0207's own read surface); an
 // uncaptured record yields its non-stored marker in the same position (R34).
 async function priceSelector(selector, opts) {
+  opts = opts || {};
+  const ctx = { ...opts.ctx, fxMemo: (opts.ctx && opts.ctx.fxMemo) || new Map() };
   const records = query.run(selector);
   const results = [];
   for (const record of records) {
-    results.push(await priceRecord(record, opts));
+    results.push(await priceRecord(record, { ...opts, ctx }));
   }
   return results;
 }
@@ -244,6 +269,7 @@ module.exports = {
   loadOrgTable,
   orgTablePath,
   computePriceObject,
+  classifyPrice,
   priceRecord,
   priceSelector,
   readPrices,

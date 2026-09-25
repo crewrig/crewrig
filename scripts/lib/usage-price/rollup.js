@@ -22,12 +22,18 @@ const FIDELITIES = ['per-request', 'run-total', 'session-cumulative'];
 // priceRecord()'s own cache-validity check is what makes this true rather
 // than merely asserted. Sums each fidelity bucket; emits a combined total
 // only when opts.combined, carrying `mixed: [<every fidelity combined>]`
-// (R33); `uncaptured` and `unpriced` are two separate tallies, neither
-// contributing a zero to any total (R34). A --period P selector reads
-// query.rollupInput()'s window and places after the last-snapshot choice
-// (spec 0209 delta-01 R43-R45), so a session-cumulative session counts only
-// in the month of its last snapshot over the whole selection. Each bucket
-// reports pricedCount = count - unpricedCount (R47).
+// (R33). `uncaptured`, `unpriced` and `unconverted` are three separate
+// tallies, none contributing a zero to any total (R34 as modified by
+// delta-02): each captured record is counted by store.classifyPrice(), the
+// rule spec 0210's dashboard counts by (delta-02 R47), and an unconverted
+// record's amount — a USD amount under R51 — enters no sum (R53). A --period
+// P selector reads query.rollupInput()'s window and places after the
+// last-snapshot choice (spec 0209 delta-01 R43-R45), so a session-cumulative
+// session counts only in the month of its last snapshot over the whole
+// selection. Each bucket reports pricedCount = the records whose amount
+// entered its sum, and pricedCount + unpricedCount + unconvertedCount = count
+// (delta-02 R54). One fx memo is threaded through the whole pass (fx.js
+// header, clause (f)).
 async function rollup(selector, opts) {
   opts = opts || {};
   const { records, place } = query.rollupInput(selector);
@@ -36,19 +42,26 @@ async function rollup(selector, opts) {
   const pricelistSnapshot = opts.pricelistSnapshot || pricelist.pinned();
   const org = opts.org || store.loadOrgTable();
   const currency = opts.currency || 'USD';
+  const ctx = { ...opts.ctx, fxMemo: (opts.ctx && opts.ctx.fxMemo) || new Map() };
 
   async function priceBucket(bucketRecords) {
     let sum = 0;
+    let pricedCount = 0;
     let unpricedCount = 0;
+    let unconvertedCount = 0;
     for (const record of bucketRecords) {
-      const price = await store.priceRecord(record, { ...opts, pricelistSnapshot, org, currency });
-      if (price.unpriced) {
+      const price = await store.priceRecord(record, { ...opts, ctx, pricelistSnapshot, org, currency });
+      const cls = store.classifyPrice(price);
+      if (cls === 'unpriced') {
         unpricedCount += 1;
+      } else if (cls === 'unconverted') {
+        unconvertedCount += 1;
       } else {
+        pricedCount += 1;
         sum += price.amount;
       }
     }
-    return { sum, pricedCount: bucketRecords.length - unpricedCount, unpricedCount, count: bucketRecords.length };
+    return { sum, pricedCount, unpricedCount, unconvertedCount, count: bucketRecords.length };
   }
 
   const result = {
@@ -67,7 +80,8 @@ async function rollup(selector, opts) {
     const mixed = FIDELITIES.filter((f) => result.byFidelity[f].count > 0);
     const sum = mixed.reduce((acc, f) => acc + result.byFidelity[f].sum, 0);
     const unpricedCount = mixed.reduce((acc, f) => acc + result.byFidelity[f].unpricedCount, 0);
-    result.combined = { sum, unpricedCount, mixed };
+    const unconvertedCount = mixed.reduce((acc, f) => acc + result.byFidelity[f].unconvertedCount, 0);
+    result.combined = { sum, unpricedCount, unconvertedCount, mixed };
   }
 
   return result;

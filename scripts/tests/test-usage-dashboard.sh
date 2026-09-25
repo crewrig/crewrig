@@ -949,10 +949,11 @@ const cmds = {
   'require-closure'(dir) {
     console.log(requireClosure(dir).join('\n'));
   },
-  // rollup0209 <taskKey> — spec 0209's own rollup, store:false, USD, combined.
-  async rollup0209(taskKey) {
+  // rollup0209 <taskKey> [currency] — spec 0209's own rollup, store:false,
+  // combined; currency defaults to USD.
+  async rollup0209(taskKey, currency) {
     const priceRollup = req('scripts/lib/usage-price/rollup.js');
-    const r = await priceRollup.rollup({ taskKey }, { store: false, combined: true, currency: 'USD' });
+    const r = await priceRollup.rollup({ taskKey }, { store: false, combined: true, currency: currency || 'USD' });
     console.log(JSON.stringify(r));
   },
   // cross0209 <viewFile> <rollupFile> — v1-F5/v2-F3's explicit mapping.
@@ -966,12 +967,16 @@ const cmds = {
       const o = r.byFidelity[f];
       if (!amountEq(d.amount === null ? 0 : d.amount, o.sum)) errs.push(`${f}: amount ?? 0 = ${d.amount} != sum ${o.sum}`);
       if (d.pricedCount + d.unpricedCount + d.unconvertedCount !== o.count) errs.push(`${f}: tally sum != count ${o.count}`);
+      if (d.pricedCount !== o.pricedCount) errs.push(`${f}: pricedCount ${d.pricedCount} != ${o.pricedCount}`);
       if (d.unpricedCount !== o.unpricedCount) errs.push(`${f}: unpricedCount ${d.unpricedCount} != ${o.unpricedCount}`);
-      if (d.unconvertedCount !== 0) errs.push(`${f}: unconvertedCount ${d.unconvertedCount} != 0 under USD`);
+      if (d.unconvertedCount !== o.unconvertedCount) errs.push(`${f}: unconvertedCount ${d.unconvertedCount} != ${o.unconvertedCount}`);
+      if (r.currency === 'USD' && d.unconvertedCount !== 0) errs.push(`${f}: unconvertedCount ${d.unconvertedCount} != 0 under USD`);
     }
-    // v2-F3: 0209's combined is {sum, unpricedCount, mixed} — no count row.
+    // v2-F3: 0209's combined is {sum, unpricedCount, unconvertedCount, mixed}
+    // — no count row and no pricedCount.
     if (!amountEq(p.amount === null ? 0 : p.amount, r.combined.sum)) errs.push(`combined: amount ?? 0 = ${p.amount} != sum ${r.combined.sum}`);
     if (p.unpricedCount !== r.combined.unpricedCount) errs.push(`combined: unpricedCount ${p.unpricedCount} != ${r.combined.unpricedCount}`);
+    if (p.unconvertedCount !== r.combined.unconvertedCount) errs.push(`combined: unconvertedCount ${p.unconvertedCount} != ${r.combined.unconvertedCount}`);
     const dm = firstDiff(p.mixed, r.combined.mixed, 'mixed');
     if (dm) errs.push(`combined: ${dm}`);
     if (v.totals.uncapturedCount !== r.uncapturedCount) errs.push(`uncapturedCount ${v.totals.uncapturedCount} != ${r.uncapturedCount}`);
@@ -1390,14 +1395,17 @@ case_agreement() {
 
 # =============================================================================
 # Case 13.3 — 0209 cross-check through the explicit mapping (v1-F5, v2-F3).
-# USD is pinned because 0209's priceBucket adds every non-unpriced amount,
-# unconverted ones included (usage-price/rollup.js), whereas a USD price is
-# always status 'ok' — so unconvertedCount = 0 by construction here.
-# --task-key is used here; the --period agreement (spec 0209 delta-01 R47)
-# is case 13.8's. v2-F3:
-# 0209's `combined` is {sum, unpricedCount, mixed} — it has no `count`, so
-# the combined mapping is amount ?? 0 <-> sum, unpricedCount <-> unpricedCount
-# and mixed <-> mixed, with no count row.
+# Both surfaces count through spec 0209's store.classifyPrice(), and 0209's
+# rollup keeps an unconverted amount out of every sum (spec 0209 delta-02
+# R53), so the mapping holds per fidelity on pricedCount, unpricedCount and
+# unconvertedCount. Each key runs in USD, where a price is always status 'ok'
+# (unconvertedCount = 0), and in XXX, which the seeded fixing does not list,
+# so every priced record is unconverted (no-such-currency) in every fidelity
+# the key holds. --task-key is used here; the --period agreement (spec 0209
+# delta-01 R47) is case 13.8's. v2-F3: 0209's `combined` is {sum,
+# unpricedCount, unconvertedCount, mixed} — it has no `count`, so the combined
+# mapping is amount ?? 0 <-> sum, unpricedCount <-> unpricedCount,
+# unconvertedCount <-> unconvertedCount and mixed <-> mixed, with no count row.
 # =============================================================================
 case_0209() {
   local root out rc msg key
@@ -1417,6 +1425,20 @@ case_0209() {
       ok "$(L "13.3 [$key] totals.price maps onto usage-price rollup() per fidelity and combined (no count row)")"
     else
       bad "$(L "13.3 [$key] totals.price maps onto usage-price rollup() per fidelity and combined (no count row)")" "$msg"
+    fi
+    dash report --json --task-key "$key" --currency XXX >"$out/$key.xxx.json" 2>"$out/$key.xxx.err" || true
+    if json_ok "$out/$key.xxx.json"; then
+      record_view "$out/$key.xxx.json"
+      drv rollup0209 "$key" XXX >"$out/$key.xxx.0209.json"
+      rc=0
+      msg="$(drv cross0209 "$out/$key.xxx.json" "$out/$key.xxx.0209.json")" || rc=$?
+      if [ "$rc" -eq 0 ] && [ "$(vget "$out/$key.xxx.0209.json" "(v.combined.unconvertedCount > 0) + '|' + (v.combined.sum === 0)")" = "true|true" ]; then
+        ok "$(L "13.3 [$key XXX] unconverted records map onto usage-price rollup() per fidelity and combined, outside every sum")"
+      else
+        bad "$(L "13.3 [$key XXX] unconverted records map onto usage-price rollup() per fidelity and combined, outside every sum")" "${msg:-combined: $(cat "$out/$key.xxx.0209.json")}"
+      fi
+    else
+      bad "$(L "13.3 [$key XXX] report --json yields a view model")" "$(head -5 "$out/$key.xxx.err")"
     fi
     bash "$DASH_REPO/scripts/usage-query.sh" --task-key "$key" --rollup --combined >"$out/$key.query.json"
     rc=0

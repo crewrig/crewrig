@@ -112,11 +112,25 @@ When computing a price in a given currency on a given date, the framework checks
 - **`newestCached`** — The newest rate in the cache before refresh was attempted.
 - **`reason`** — Why the freshness gate fired and the refresh was suppressed or failed: `"offline"` (CREWRIG_USAGE_OFFLINE was set), `"network-error"` (ECB and mirror both failed), or `"mirror-disagreement"` (mirror reported a different date than requested).
 
+The gate makes at most one refresh attempt per computation date per run, whether that run is a `usage:price` invocation or a rollup. A dashboard view never attempts a refresh, since it reads only the fixings already cached, yet it still resolves each computation date at most once per view. Every price a run or view converts on that date uses the same resolved fixing, and the next run sees any fixing written in between.
+
 ## Currency conversion
 
 Prices are denominated in USD by the primary source. When you request a price in another currency, the framework converts it using the European Central Bank's daily reference rate for that currency. The conversion uses the most recent published fixing on or before the computation date—never a fixing dated after that date. Because ECB rates are EUR-based (the XML feed carries no EUR row), cross-rates are computed as `rate(target) / rate(USD)` or `1 / rate(USD)` for EUR-to-USD conversions.
 
 Every currency-converted price is attributed to the European Central Bank as the rate of record. Prices can be converted to any ISO 4217 currency code the ECB publishes rates for.
+
+### When a conversion fails
+
+A conversion fails when no fixing dated on or before the computation date is available (none was retrieved, the retrieval failed, or the run is offline), or when the selected fixing lists no rate for the requested currency. The price then carries:
+
+- **`amount`** — The USD amount, unconverted, with **`currency: "USD"`**. No price states a currency its amount is not denominated in.
+- **`conversion.status`** — `no-fixing-on-or-before` or `no-such-currency`, naming which failure occurred, and **`conversion.requested`** — the currency that was asked for.
+- **`fixingDate`** — The date of the fixing that was consulted on `no-such-currency`, and `null` on `no-fixing-on-or-before`, since no fixing was available.
+
+A failed conversion is never served from the price store. Any later request for the record's price, in any currency, computes it again, so a run after `task usage:price -- --refresh-fx` receives the converted price. The same holds for a failure stored before this rule, whose USD amount is labelled with the requested currency: the next request for the record recomputes it. A raw read of the stored prices (`store.readPrices()`) computes nothing and may still return a stored failure, which carries the truthful USD label.
+
+A period rollup counts such a record in its `unconverted` tally and never adds its amount to a sum (see *Period rollups* below).
 
 ## Cross-check against OpenRouter
 
@@ -136,7 +150,7 @@ This invokes the fetcher once, in-process, on explicit human command, reaches Op
 - The selection (`--cli`, `--fidelity`, and the attribution ledger, which `usage:query` alone lets you skip with `--no-ledger`) applies before that choice. The period applies after it.
 - The session counts in the month holding its last snapshot's `timing.requestInstant`, and in no other month. A month that holds only earlier snapshots of the session receives nothing from it: no price, no priced count, and no `unpriced` count.
 
-A session with a 700-token snapshot on the last evening of September and a 900-token snapshot early on 1 October counts 900 tokens in October and nothing in September. Summing the months therefore counts each session exactly once, and a month's figures agree with the dashboard's for the same month and the same `--cli` and `--fidelity` (see [Usage dashboard](usage-dashboard.md)). Both commands ignore `--session`, `--agent`, `--task-key`, and `--asset` when `--period` is given, while the dashboard applies them, so do not combine those selectors with `--period` here ([#1205](https://github.com/crewrig/crewrig/issues/1205)). Each `usage:price --rollup` fidelity bucket reports `sum`, `pricedCount`, `unpricedCount`, and `count`.
+A session with a 700-token snapshot on the last evening of September and a 900-token snapshot early on 1 October counts 900 tokens in October and nothing in September. Summing the months therefore counts each session exactly once, and a month's figures agree with the dashboard's for the same month and the same `--cli` and `--fidelity` (see [Usage dashboard](usage-dashboard.md)). Both commands ignore `--session`, `--agent`, `--task-key`, and `--asset` when `--period` is given, while the dashboard applies them, so do not combine those selectors with `--period` here ([#1205](https://github.com/crewrig/crewrig/issues/1205)). Each `usage:price --rollup` fidelity bucket reports `sum`, `pricedCount`, `unpricedCount`, `unconvertedCount`, and `count`. Every captured record in a bucket is counted in exactly one of the three tallies, so `pricedCount + unpricedCount + unconvertedCount = count`. `pricedCount` counts exactly the records whose amount entered `sum`. A record whose conversion failed is counted in `unconvertedCount` and its amount never enters a sum. An `unpriced` record stays in `unpricedCount`, and an `uncaptured` record stays in the top-level `uncapturedCount`. The combined total reports `sum`, `unpricedCount`, `unconvertedCount`, and `mixed`.
 
 The figures are computed from the snapshots in the store at the time of the rollup and are never frozen, so an ended month's `session-cumulative` figure can still move in two ways:
 
