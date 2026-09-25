@@ -1,0 +1,42 @@
+{{#if lastRelease.gitTag}}
+# [v{{nextRelease.version}}](@@PROJECT_URL@@/-/compare/{{lastRelease.gitTag}}...{{nextRelease.gitTag}}) ({{datetime "UTC:yyyy-mm-dd"}})
+{{else}}
+# v{{nextRelease.version}} ({{datetime "UTC:yyyy-mm-dd"}})
+{{/if}}
+
+{{#with commits}}
+{{#if sparkles}}
+## ✨ New Features
+{{#each sparkles}}
+- {{> commitTemplate}}
+{{/each}}
+{{/if}}
+
+{{#if bug}}
+## 🐛 Bug Fixes
+{{#each bug}}
+- {{> commitTemplate}}
+{{/each}}
+{{/if}}
+
+{{#if ambulance}}
+## 🚑 Critical Hotfixes
+{{#each ambulance}}
+- {{> commitTemplate}}
+{{/each}}
+{{/if}}
+
+{{#if lock}}
+## 🔒 Security Issues
+{{#each lock}}
+- {{> commitTemplate}}
+{{/each}}
+{{/if}}
+
+{{#if boom}}
+## 💥 Breaking Changes
+{{#each boom}}
+- {{> commitTemplate}}
+{{/each}}
+{{/if}}
+{{/with}}
