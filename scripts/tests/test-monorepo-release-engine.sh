@@ -106,20 +106,28 @@ ng_1225() {
 # clean_git <home> <checkout> <args...> — every git call against a fixture
 # checkout, with a fully-controlled environment: no ambient
 # CI/GIT_CONFIG_*/credential variable, no real ~/.gitconfig (commit.gpgsign,
-# credential helpers), a resolvable `node`/`git`/`jq`/`tar` PATH. <home> is a
-# required, explicit argument rather than a global — this function is often
-# called through a `$(... | ...)` pipeline (make_fixture's own callers pipe
-# its stdout through `tr`), and bash runs every non-last stage of a pipeline
-# in a SUBSHELL, so a global assigned inside one call never survives to the
-# next: an earlier draft of this suite relied on a global `$FAKE_HOME` here
-# and it silently read as unset (masked by the deliberate absence of `-e` in
-# this suite — see the file header), turning several before/after
-# comparisons into vacuous empty-string-equals-empty-string passes. Taking
-# <home> as a parameter removes the hazard structurally.
+# credential helpers), no real SYSTEM gitconfig either (this machine's
+# Homebrew git ships one at its own sysconfdir, outside /etc/gitconfig, so
+# `env -i` alone does not shadow it — `git config --system --list` here
+# reports `credential.helper=osxkeychain` even under a from-scratch HOME; a
+# sibling suite's PR #1226 broke on a CI runner precisely because a fixture
+# relied on config the AUTHOR's machine supplied ambiently — see the
+# GIT_CONFIG_SYSTEM=/dev/null below), a resolvable `node`/`git`/`jq`/`tar`
+# PATH. <home> is a required, explicit argument rather than a global — this
+# function is often called through a `$(... | ...)` pipeline (make_fixture's
+# own callers pipe its stdout through `tr`), and bash runs every non-last
+# stage of a pipeline in a SUBSHELL, so a global assigned inside one call
+# never survives to the next: an earlier draft of this suite relied on a
+# global `$FAKE_HOME` here and it silently read as unset (masked by the
+# deliberate absence of `-e` in this suite — see the file header), turning
+# several before/after comparisons into vacuous
+# empty-string-equals-empty-string passes. Taking <home> as a parameter
+# removes the hazard structurally.
 clean_git() {
   local home="$1" checkout="$2"
   shift 2
-  env -i PATH="$CLEAN_PATH" HOME="$home" git -C "$checkout" "$@"
+  env -i PATH="$CLEAN_PATH" HOME="$home" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    git -C "$checkout" "$@"
 }
 
 # write_global_gitconfig <file> <origin-bare> [<extra-url> <extra-target>] —
@@ -239,14 +247,21 @@ make_fixture() {
   clean_git "$home" "$fix" add -A
   clean_git "$home" "$fix" commit -q -m ":sparkles: baz first feature"
 
+  # --initial-branch=main is NOT redundant with a hermetic env: without it,
+  # a bare init's HEAD symref name falls back to init.defaultBranch (or the
+  # compiled-in default), which existed only via THIS machine's global
+  # gitconfig — a CI runner with no such default left HEAD dangling and
+  # broke `git fetch` (sibling PR #1226). Pinned explicitly here regardless
+  # of GIT_CONFIG_GLOBAL/SYSTEM being nulled below.
   origin_bare="$root/origin.git"
-  env -i PATH="$CLEAN_PATH" git init -q --bare --initial-branch=main "$origin_bare" >/dev/null
+  env -i PATH="$CLEAN_PATH" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    git init -q --bare --initial-branch=main "$origin_bare" >/dev/null
 
   local gitconfig
   gitconfig="$root/gitconfig-global"
   write_global_gitconfig "$gitconfig" "$origin_bare"
   clean_git "$home" "$fix" remote add origin "$NEUTRAL_ORIGIN_URL"
-  env -i PATH="$CLEAN_PATH" HOME="$home" GIT_CONFIG_GLOBAL="$gitconfig" \
+  env -i PATH="$CLEAN_PATH" HOME="$home" GIT_CONFIG_GLOBAL="$gitconfig" GIT_CONFIG_SYSTEM=/dev/null \
     git -C "$fix" push -q origin main --tags
 
   ln -s "$REPO_DIR/node_modules" "$fix/node_modules"
@@ -286,8 +301,16 @@ run_driver() {
   local out err
   out="$(mktemp "$TMP_ROOT/out.XXXXXX")"
   err="$(mktemp "$TMP_ROOT/err.XXXXXX")"
+  # GIT_CONFIG_SYSTEM=/dev/null unconditionally: this machine's Homebrew git
+  # ships its OWN system config (credential.helper=osxkeychain, outside
+  # /etc/gitconfig) that `env -i` alone does not shadow. GIT_CONFIG_GLOBAL
+  # defaults to /dev/null too when the caller has no insteadOf redirect of
+  # its own to install (gitconfig == "-").
+  extra+=("GIT_CONFIG_SYSTEM=/dev/null")
   if [ "$gitconfig" != "-" ]; then
     extra+=("GIT_CONFIG_GLOBAL=$gitconfig")
+  else
+    extra+=("GIT_CONFIG_GLOBAL=/dev/null")
   fi
   ( cd "$fix" && env -i PATH="$CLEAN_PATH" HOME="$home" "${extra[@]}" \
       bash "$fix/scripts/monorepo-release.sh" ) > "$out" 2> "$err"
@@ -453,7 +476,7 @@ extension_line() {
   refs_before="$(clean_git "$HOME_FIX" "$FIX" for-each-ref)"
   status_before="$(clean_git "$HOME_FIX" "$FIX" status --porcelain=v1 --ignored)"
   worktree_before="$(clean_git "$HOME_FIX" "$FIX" worktree list)"
-  origin_refs_before="$(env -i PATH="$CLEAN_PATH" git -C "$ORIGIN_BARE" for-each-ref)"
+  origin_refs_before="$(env -i PATH="$CLEAN_PATH" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git -C "$ORIGIN_BARE" for-each-ref)"
 
   # Sentinel credentials in the OUTER env: rehearsal must need none of them,
   # and R11 says a credential is only ever named, never printed.
@@ -474,7 +497,7 @@ extension_line() {
   refs_after="$(clean_git "$HOME_FIX" "$FIX" for-each-ref)"
   status_after="$(clean_git "$HOME_FIX" "$FIX" status --porcelain=v1 --ignored)"
   worktree_after="$(clean_git "$HOME_FIX" "$FIX" worktree list)"
-  origin_refs_after="$(env -i PATH="$CLEAN_PATH" git -C "$ORIGIN_BARE" for-each-ref)"
+  origin_refs_after="$(env -i PATH="$CLEAN_PATH" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git -C "$ORIGIN_BARE" for-each-ref)"
 
   [ "$refs_before" = "$refs_after" ] && ok "11b: the checkout's refs are unchanged by rehearsal" \
     || ng "11b: the checkout's refs changed during rehearsal"
@@ -622,13 +645,13 @@ stop_stub() {
     ng "11c: bar was unexpectedly uploaded"
   fi
 
-  origin_tags="$(env -i PATH="$CLEAN_PATH" git -C "$ORIGIN_BARE" tag -l)"
+  origin_tags="$(env -i PATH="$CLEAN_PATH" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git -C "$ORIGIN_BARE" tag -l)"
   if printf '%s\n' "$origin_tags" | grep -q 'foo-v1.3.0'; then
     ok "11c: origin carries the new tag foo-v1.3.0"
   else
     ng "11c: origin does not carry foo-v1.3.0. Tags: $origin_tags"
   fi
-  origin_subject="$(env -i PATH="$CLEAN_PATH" git -C "$ORIGIN_BARE" log -1 --format=%s main)"
+  origin_subject="$(env -i PATH="$CLEAN_PATH" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git -C "$ORIGIN_BARE" log -1 --format=%s main)"
   if [ "$origin_subject" = "🔖 foo-v1.3.0 [skip ci]" ]; then
     ok "11c: origin's main HEAD is the release commit"
   else
@@ -672,6 +695,7 @@ stop_stub() {
 
     FRESH_OUT="$TMP_ROOT/fresh-render-11c"
     fresh_render_log="$(cd "$FIX" && env -i PATH="$CLEAN_PATH" HOME="$HOME_FIX" \
+      GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
       bash scripts/release-package-extension.sh foo --version 1.3.0 --out "$FRESH_OUT" 2>&1)"
     fresh_archive="$FRESH_OUT/foo-1.3.0.tar.gz"
     if [ -f "$fresh_archive" ]; then
@@ -774,7 +798,7 @@ stop_stub() {
   else
     ng "11e (R14): expected 'RELEASE-FAILED foo step=package': $DRIVER_OUT"
   fi
-  origin_tags_11e="$(env -i PATH="$CLEAN_PATH" git -C "$ORIGIN_BARE" tag -l)"
+  origin_tags_11e="$(env -i PATH="$CLEAN_PATH" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git -C "$ORIGIN_BARE" tag -l)"
   if ! printf '%s\n' "$origin_tags_11e" | grep -q 'foo-v1.3.0'; then
     ok "11e: no foo-v1.3.0 tag was created in origin"
   else
@@ -870,7 +894,8 @@ stop_stub() {
     local config="$1"
     cp "$config" "$FIX/extensions/core/foo/.releaserc.json"
     ( cd "$FIX/extensions/core/foo" && \
-      env -i PATH="$CLEAN_PATH" HOME="$HOME_FIX" GIT_CONFIG_GLOBAL="$GITCONFIG_BASE" "${GH_ENV[@]}" \
+      env -i PATH="$CLEAN_PATH" HOME="$HOME_FIX" \
+        GIT_CONFIG_GLOBAL="$GITCONFIG_BASE" GIT_CONFIG_SYSTEM=/dev/null "${GH_ENV[@]}" \
         NODE_OPTIONS="--require $FIXTURE_DIR/fixed-date.cjs" \
         node "$REPO_DIR/scripts/lib/release-rehearse.mjs" main )
     rm -f "$FIX/extensions/core/foo/.releaserc.json"

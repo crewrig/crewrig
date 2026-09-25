@@ -85,7 +85,8 @@ run_driver_refused() {
   cwd="$(mktemp -d "$TMP_ROOT/cwd.XXXXXX")"
   out="$(mktemp "$TMP_ROOT/out.XXXXXX")"
   err="$(mktemp "$TMP_ROOT/err.XXXXXX")"
-  ( cd "$cwd" && env -i PATH="$SHIM_PATH" HOME="$TMP_ROOT" "$@" bash "$DRIVER" ) > "$out" 2> "$err"
+  ( cd "$cwd" && env -i PATH="$SHIM_PATH" HOME="$TMP_ROOT" \
+      GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null "$@" bash "$DRIVER" ) > "$out" 2> "$err"
   RC=$?
   OUT="$(cat "$out")"
   ERR="$(cat "$err")"
