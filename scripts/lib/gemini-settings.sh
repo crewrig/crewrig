@@ -44,9 +44,13 @@ _GS_JQ_DEFS='
 # runs to its `*/`, or to the end of the text when it is never closed. Each
 # comment becomes ONE SPACE, never the empty string, so the tokens on either
 # side are not joined (`1/**/2` stays two tokens and is rejected, as
-# JSON.parse rejects it). No alternative can match the empty string.
+# JSON.parse rejects it). A string never closed runs to the end of the text,
+# as it does in strip-json-comments, where nothing after it is a comment. No
+# alternative can match the empty string, and every loop is possessive, with
+# alternatives that start on distinct characters: no match ever backtracks
+# (an adversarial run of escaped quotes took seconds with a backtracking loop).
 def gs_strip_jsonc:
-  gsub("(?<s>\"(?:[^\"\\\\]|\\\\.)*\")|//[^\n]*|/\\*(?:[^*]|\\*+[^*/])*(?:\\*+/|\\**\\z)";
+  gsub("(?<s>\"(?:[^\"\\\\]|\\\\[\\s\\S])*+(?:\"|\\z))|//[^\n]*+|/\\*(?:[^*]|\\*++[^*/])*+(?:\\*++/|\\**+\\z)";
        if .s then .s else " " end);
 
 # JSON.parse grammar check of text that jq already parsed. jq accepts literals
@@ -251,12 +255,28 @@ gemini_settings_write() (
     return 1
   }
   _gs_fail2() {
+    # Best effort first: the target holds the merged settings, operator MCP
+    # secrets included, whatever mode a failed fold's rename gave it.
+    chmod 600 "$target" 2>/dev/null
     # A failed 0089 / 0091 fold leaves its "${config}.tmp" behind.
     rm -f "${target}.tmp"
     echo "  ERROR: $target holds the merged settings, but $1 did not complete." >&2
     [ -z "$bak" ] || echo "         The prior file is preserved in the timestamped backup: $bak" >&2
     return 2
   }
+
+  # Temporary files: the snapshot "${target}.tmp.XXXXXX", and the files made
+  # next to it ("${snap}.cls.XXXXXX" by gemini_settings_normalise,
+  # "${snap}.tmp.XXXXXX" by write_json_config_secure). Any of them can hold the
+  # bearer token, so an interrupted run removes them. `snap` is emptied right
+  # after the rename, so the cleanup never touches the renamed target.
+  _gs_cleanup() {
+    [ -z "$snap" ] || rm -f "$snap" "$snap".*
+  }
+  trap '_gs_cleanup' EXIT
+  trap '_gs_cleanup; exit 129' HUP
+  trap '_gs_cleanup; exit 130' INT
+  trap '_gs_cleanup; exit 143' TERM
 
   mkdir -p "$(dirname "$target")" || { _gs_fail1 "cannot create $(dirname "$target")"; return 1; }
 
@@ -300,6 +320,12 @@ EOF
   snap=""
   chmod 600 "$target" || { _gs_fail2 "restricting it to 0600"; return 2; }
 
+  # The 0089 / 0091 helpers write through the predictable "${target}.tmp" with
+  # `>` then `mv`: a stale one an older setup left behind would be truncated in
+  # place, keep its old mode (0644), and hand that mode to the target. Removed
+  # here, it is created fresh, owner-only, under this subshell's umask 077.
+  rm -f "${target}.tmp" || { _gs_fail2 "removing the stale ${target}.tmp"; return 2; }
+
   # Spec 0089: its R9 warnings for every reserved name the file held. The fold
   # itself is a content no-op here: every non-reserved server is already kept.
   merge_preexisting_mcp_servers "$pre" "$target" "$bak" \
@@ -311,8 +337,7 @@ EOF
       || { _gs_fail2 "the org MCP server fold (spec 0091)"; return 2; }
   fi
 
-  # The helpers write through a predictable "${config}.tmp": created 0600 under
-  # this umask, but a stale one from a crashed run keeps its old mode.
+  # Belt and braces after the helpers' own renames.
   chmod 600 "$target" || { _gs_fail2 "restricting it to 0600"; return 2; }
   return 0
 )

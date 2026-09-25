@@ -691,6 +691,21 @@ out_has "11d ERROR names the backup" "The prior file is preserved in the timesta
 expect_mode600 "11d"
 expect_no_tmp "11d"
 
+# 11e rc 2 with a stale 0644 "settings.json.tmp" an older setup left behind: the
+# 0089 / 0091 helpers write through that predictable name with `>` then `mv`,
+# so a truncated stale file would hand its 0644 mode to the target, which holds
+# the operator's MCP secrets (security review of #1210, finding 1).
+new_case
+printf '{"ui": {"theme": "x"}, "mcpServers": {"github": {"command": "gh-mcp", "env": {"GITHUB_TOKEN": "OPERATOR-SECRET"}}}}\n' > "$T"
+chmod 600 "$T"
+( umask 022; printf 'stale\n' > "$T.tmp" ); chmod 644 "$T.tmp"
+RC=0
+( PATH="$STUB_DIR/jq-org-fails:$PATH"; gemini_settings_write "$T" "$TEMPLATE" "$REPO_DIR" "$FAKE_PY" '{"org-only": {"command": "org-cmd"}}' ) > "$OUT" 2> "$ERR" || RC=$?
+expect_rc "11e stale 0644 settings.json.tmp, org fold failure" 2
+expect_json "11e operator server kept" '.mcpServers.github.env.GITHUB_TOKEN' '"OPERATOR-SECRET"'
+expect_mode600 "11e"
+expect_no_tmp "11e"
+
 # ---------------------------------------------------------------------------
 echo "12. A large plain-JSON file is processed quickly (plan review v1-F2)"
 # ---------------------------------------------------------------------------
@@ -708,6 +723,28 @@ expect_rc "12 large file" 0
 if [ "$elapsed" -le 5 ]; then ok "12 merged in ${elapsed}s (bound: 5s)"; else bad "12 merge took ${elapsed}s (bound: 5s)"; fi
 expect_json "12 every hook entry kept" '.hooks.Notification | length' '900'
 out_lacks "12 no comment warning" "$COMMENT_WARN"
+
+# 12b The same shape with comments: the comment scan runs, over a ~64 KB file
+# whose every string holds `//` and `/*` (security review of #1210, finding 4:
+# the scan used to backtrack). The bound is generous on purpose.
+new_case
+{
+  echo '// operator notes'
+  jq -n '{hooks: {Notification: [range(0; 280) | {matcher: "*", hooks: [{type: "command",
+    command: ("echo entry \(.) // not a comment /* nor this */ padding-padding-padding-padding")}]}]}}' \
+    | sed 's|"matcher"|/* entry */ "matcher"|'
+} > "$T"
+size="$(wc -c < "$T" | tr -d '[:space:]')"
+if [ "$size" -ge 60000 ]; then ok "12b fixture is ~64 KB of JSONC ($size bytes)"; else bad "12b fixture too small ($size bytes)"; fi
+started=$SECONDS
+gs_write "" ""
+elapsed=$((SECONDS - started))
+expect_rc "12b large commented file" 0
+if [ "$elapsed" -le 5 ]; then ok "12b merged in ${elapsed}s (bound: 5s)"; else bad "12b merge took ${elapsed}s (bound: 5s)"; fi
+expect_json "12b every hook entry kept, strings intact" \
+  '[(.hooks.Notification | length), .hooks.Notification[7].hooks[0].command]' \
+  '[280, "echo entry 7 // not a comment /* nor this */ padding-padding-padding-padding"]'
+out_has "12b comment warning" "WARNING: $T $COMMENT_WARN"
 
 # ---------------------------------------------------------------------------
 echo "13. Setup wiring (R15, R16)"
