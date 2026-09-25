@@ -1010,15 +1010,21 @@ capabilities:
   # NO `tools:` KEY, deliberately. The generated GitLab job runs on the default
   # `debian:stable-slim` image, which ships no git, so git is installed
   # CONDITIONALLY as the first line of `command:` — a business step, not setup.
-  # Declaring `tools: [git]` instead would fail check-ci-parity.sh Arm 1 unless
-  # three coordinated edits landed (a `tool_install_lines` recipe in
-  # build-ci.sh, an `install_recipe_tool` pattern in check-ci-parity.sh, and a
-  # hand-authored GHA install step); this shape needs none of them. Note the
-  # `lint-markdown` analogy is looser than it looks: that job's inline install
-  # IS recognized by `install_recipe_tool()` and skipped as setup, whereas this
-  # git line stays a business step matching `command[0]` verbatim — which is why
-  # it must carry NO nested `sudo` (`normalize_cmd` strips only a *leading* one,
-  # so a nested `sudo` would diverge from the declared command).
+  # Declaring `tools: [git]` instead would still fail check-ci-parity.sh Arm 2
+  # (reference↔GitLab): `git`/`diff` have no `tool_install_lines` recipe in
+  # build-ci.sh, so a GitLab job needing either hard-errors at generation time.
+  # Arm 1 (GitHub Actions) no longer blocks this — since #1216, check-ci-parity.sh
+  # treats `git`/`diff` as preinstalled on ubuntu-latest, the same as `jq`, so
+  # neither an `install_recipe_tool` pattern nor a hand-authored GHA install
+  # step is needed there anymore. This shape still needs none of it — the one
+  # remaining edit to declare `tools: [git]` here would be adding that GitLab
+  # `tool_install_lines` recipe. Note the `lint-markdown` analogy is looser
+  # than it looks: that job's inline install IS recognized by
+  # `install_recipe_tool()` and skipped as setup, whereas this git line stays
+  # a business step matching
+  # `command[0]` verbatim — which is why it must carry NO nested `sudo`
+  # (`normalize_cmd` strips only a *leading* one, so a nested `sudo` would
+  # diverge from the declared command).
   - id: check-spec-id-reserved
     name: "Verify every spec id added by the change was secured"
     trigger:
