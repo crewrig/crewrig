@@ -259,12 +259,16 @@ verdict rests on MemPalace's own report of success.
 usage root is still there. When the check stopped on a waiting record, it
 has removed nothing. When it stopped during the prunes, the months pruned
 before the stop are already gone, from the usage root and from MemPalace
-alike. Either way, fix the cause reported on stderr — by `usage-mirror.sh`
-(a `failed:` or `stopping this pass` line) when the check stopped on a
-waiting record, or by the prune's FATAL line (MemPalace unreachable, or
-MemPalace not confirming a deletion) when it stopped during the prunes — and
-run the whole procedure again from the start; every step can be repeated
-safely. One case no shipped command resolves yet: a mirrored marker whose
+alike. Either way, fix the cause, then run the whole procedure again from
+the start; every step can be repeated safely. When the check stopped on a
+waiting record, `usage-mirror.sh` names the cause on stderr with a `failed:`
+or `stopping this pass` line. When it printed neither, MemPalace was
+unreachable: the catch-up only wrote `unreachable.stamp`
+([Unreachable backoff](usage-storage.md#unreachable-backoff)), so make
+MemPalace reachable. An operator run of `usage-mirror.sh` does not wait out
+that backoff. When the check stopped during the prunes, the prune's FATAL
+line names the cause: MemPalace unreachable, or MemPalace not confirming a
+deletion. One case no shipped command resolves yet: a mirrored marker whose
 journal entry is already gone, which the check reports as a marker left
 without a journal entry. Its drawer cannot be found without that entry. The
 same holds for drawers left behind by the older purge instructions, which

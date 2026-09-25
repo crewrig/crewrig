@@ -230,7 +230,7 @@ function failureMessage(payload) {
   if (!payload || typeof payload !== 'object' || !payload.error) {
     return 'tool did not report success';
   }
-  const detail = payload.hint || payload.details;
+  const detail = payload.details || payload.hint; // the specific details outrank the generic hint
   return detail ? `${payload.error} (${detail})` : `${payload.error}`;
 }
 
