@@ -194,7 +194,7 @@ cleanup() {
 
 # --- The bounded call --------------------------------------------------------
 #
-# THREE TRAPS SIT ON THIS FUNCTION, all of them measured on Bash 3.2.57:
+# FOUR TRAPS SIT ON THIS FUNCTION, all of them measured on Bash 3.2.57:
 #
 # 1. `kill "$pid"` reaches the backgrounded WRAPPER, not the process it forked.
 #    A timed-out `agy` therefore outlives the EXIT trap that removes the
@@ -227,8 +227,8 @@ cleanup() {
 #    the command to exit on its own" — trap 1 above stops being closed, and a
 #    hung `agy` outlives the timeout instead of being killed by it. This
 #    ticket (#1215) scopes to silencing the spurious warning; re-deriving a
-#    watchdog that still works without job control is a separate, unfiled
-#    concern.
+#    watchdog that still works without job control is tracked separately in
+#    issue #1222.
 run_bounded() {
   # run_bounded <output-file> <command> [args...]
   # Returns the command's status, or 124 when the bound was hit.
