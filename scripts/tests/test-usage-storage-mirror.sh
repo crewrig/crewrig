@@ -59,7 +59,7 @@ bad() {
 USAGE_ROOT="$(mktemp -d)"
 PALACE_PARENT="$(mktemp -d)"
 HELPERS_DIR="$(mktemp -d)"
-MUTATION_GUARD_FILES="scripts/lib/usage-store/mirror.js scripts/lib/usage-store/prune.js"
+MUTATION_GUARD_FILES="scripts/lib/usage-store/mirror.js scripts/lib/usage-store/prune.js scripts/lib/usage-store/mcp.js"
 
 FAKE_PID=""
 FAKE_LOG="$HELPERS_DIR/fake-calls.jsonl"
@@ -307,6 +307,39 @@ log_count() {
 
 drawer_count() {
   node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'))).length)" "$FAKE_DRAWERS"
+}
+
+drawers_for_source() {
+  # $1 = source_file (an absolute journal entry path)
+  node -e "
+const d = JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+console.log(Object.values(d).filter((v) => v.source_file === process.argv[2]).length);
+" "$FAKE_DRAWERS" "$1"
+}
+
+pending_count() {
+  # every marker under pending/, across all CLIs and periods
+  if [ -d "$USAGE_ROOT/mirror/pending" ]; then
+    find "$USAGE_ROOT/mirror/pending" -type f | wc -l | tr -d ' '
+  else
+    echo 0
+  fi
+}
+
+fake_tool_failure() {
+  # $1 = tool name, $2 = shape name, or the bare word null to clear it
+  local shape_json="null"
+  [ "$2" = "null" ] || shape_json="\"$2\""
+  fake_control "{\"toolFailure\":{\"tool\":\"$1\",\"shape\":$shape_json}}"
+}
+
+write_quiet_record() {
+  # $1 = record file, $2 = cli, $3 = session, $4 = idempotency key,
+  # $5 = request instant. Writes with CREWRIG_USAGE_MIRROR=0 (no detached
+  # spawn races the case) and prints the recordId.
+  MR_CLI="$2" MR_SESSION="$3" MR_IDEMKEY="$4" MR_REQUEST_INSTANT="$5" run_driver make-record > "$1"
+  CREWRIG_USAGE_MIRROR=0 run_driver write "$1" >/dev/null
+  node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).recordId)" "$1"
 }
 
 # Create the token file at the derived path — this suite's mirror gate is
@@ -567,10 +600,16 @@ echo
 echo "=== (d) prune: N delete_by_source calls; refuses with the daemon down ==="
 
 stop_fake
-if bash "$REPO_DIR/scripts/usage-prune.sh" "$DAEMON_DOWN_PHASE_CLI" "$DAEMON_DOWN_PERIOD" >/dev/null 2>&1; then
+DOWN_PRUNE_ERR="$HELPERS_DIR/down-prune.err"
+if bash "$REPO_DIR/scripts/usage-prune.sh" "$DAEMON_DOWN_PHASE_CLI" "$DAEMON_DOWN_PERIOD" >/dev/null 2>"$DOWN_PRUNE_ERR"; then
   bad "pruning a period with mirrored drawers should have refused while the daemon is down"
 else
   ok "pruning a period with mirrored drawers refuses while the daemon is down"
+fi
+if grep -qF 'daemon is unreachable' "$DOWN_PRUNE_ERR"; then
+  ok "the daemon-down refusal says the daemon is unreachable"
+else
+  bad "the daemon-down refusal does not say 'daemon is unreachable'" "$(cat "$DOWN_PRUNE_ERR")"
 fi
 
 still_all_present=1
@@ -709,6 +748,181 @@ else
   bad "mempalace_search was called $search_calls time(s) — v2-F2 removed its only caller"
 fi
 
+# --- (g) delete_by_source tool-level failures keep the record (#1211) ------
+#     MemPalace answers, but does not confirm the deletion: every shape must
+#     refuse the prune with the "did not confirm" wording (never the
+#     "unreachable" one), after exactly one delete call, keeping the mirrored
+#     marker, the entry, the wing sidecar and the drawer. The period is in the
+#     past because prune() refuses the current and later periods without
+#     --force.
+echo
+echo "=== (g) delete_by_source tool-level failures: prune refuses, record kept ==="
+TOOLFAIL_DEL_CLI=gemini-cli
+TOOLFAIL_DEL_PERIOD="2019-03"
+TOOLFAIL_DEL_RID="$(write_quiet_record "$HELPERS_DIR/toolfail-del.json" "$TOOLFAIL_DEL_CLI" \
+  "toolfail-del-session" "toolfail-del-key" "2019-03-01T00:00:00.000Z")"
+bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null
+
+TOOLFAIL_DEL_ENTRY="$(journal_entry_path "$TOOLFAIL_DEL_CLI" "$TOOLFAIL_DEL_PERIOD" "$TOOLFAIL_DEL_RID")"
+TOOLFAIL_DEL_SIDECAR="$(wing_sidecar_path "$TOOLFAIL_DEL_CLI" "$TOOLFAIL_DEL_PERIOD" "$TOOLFAIL_DEL_RID")"
+TOOLFAIL_DEL_MIRRORED="$(mirrored_marker_path "$TOOLFAIL_DEL_CLI" "$TOOLFAIL_DEL_PERIOD" "$TOOLFAIL_DEL_RID")"
+if [ -f "$TOOLFAIL_DEL_MIRRORED" ] && [ "$(drawers_for_source "$TOOLFAIL_DEL_ENTRY")" -eq 1 ]; then
+  ok "setup: the (g) record is mirrored and its drawer exists"
+else
+  bad "setup: expected the (g) record mirrored with exactly one drawer before injecting delete failures"
+fi
+
+TOOLFAIL_DEL_ERR="$HELPERS_DIR/toolfail-del.err"
+for shape in success-false dry-run no-success-key is-error not-json-text no-text-content no-result; do
+  fake_tool_failure mempalace_delete_by_source "$shape"
+  deletes_before="$(log_count mempalace_delete_by_source)"
+  if bash "$REPO_DIR/scripts/usage-prune.sh" "$TOOLFAIL_DEL_CLI" "$TOOLFAIL_DEL_PERIOD" >/dev/null 2>"$TOOLFAIL_DEL_ERR"; then
+    bad "[$shape] the prune exited 0 although MemPalace did not confirm the deletion"
+  else
+    ok "[$shape] the prune exits non-zero"
+  fi
+  deletes_delta=$(($(log_count mempalace_delete_by_source) - deletes_before))
+  if [ "$deletes_delta" -eq 1 ]; then
+    ok "[$shape] exactly one delete_by_source call was made"
+  else
+    bad "[$shape] expected exactly one delete_by_source call, got $deletes_delta"
+  fi
+  if grep -qF 'did not confirm' "$TOOLFAIL_DEL_ERR" && ! grep -qF 'unreachable' "$TOOLFAIL_DEL_ERR"; then
+    ok "[$shape] the FATAL line says MemPalace did not confirm, and never 'unreachable'"
+  else
+    bad "[$shape] the FATAL line is not the 'did not confirm' refusal" "$(cat "$TOOLFAIL_DEL_ERR")"
+  fi
+  if [ -f "$TOOLFAIL_DEL_MIRRORED" ] && [ -f "$TOOLFAIL_DEL_ENTRY" ] && [ -f "$TOOLFAIL_DEL_SIDECAR" ]; then
+    ok "[$shape] the mirrored marker, the entry and the wing sidecar are kept"
+  else
+    bad "[$shape] the refused prune removed the mirrored marker, the entry or the wing sidecar"
+  fi
+  if [ "$(drawers_for_source "$TOOLFAIL_DEL_ENTRY")" -eq 1 ]; then
+    ok "[$shape] the drawer is still in the fake"
+  else
+    bad "[$shape] the drawer for the record is gone although the prune refused"
+  fi
+done
+
+fake_tool_failure mempalace_delete_by_source null
+if bash "$REPO_DIR/scripts/usage-prune.sh" "$TOOLFAIL_DEL_CLI" "$TOOLFAIL_DEL_PERIOD" >/dev/null 2>&1; then
+  ok "recovery: the prune succeeds once MemPalace confirms the deletion"
+else
+  bad "recovery: the prune still failed after clearing the injected delete failure"
+fi
+if [ ! -f "$TOOLFAIL_DEL_ENTRY" ] && [ ! -f "$TOOLFAIL_DEL_SIDECAR" ] && [ ! -f "$TOOLFAIL_DEL_MIRRORED" ]; then
+  ok "recovery: the entry, the wing sidecar and the mirrored marker are removed"
+else
+  bad "recovery: the entry, the wing sidecar or the mirrored marker survived the successful prune"
+fi
+if [ "$(drawers_for_source "$TOOLFAIL_DEL_ENTRY")" -eq 0 ]; then
+  ok "recovery: zero drawers remain for the record's source_file"
+else
+  bad "recovery: $(drawers_for_source "$TOOLFAIL_DEL_ENTRY") drawer(s) remain for the record's source_file"
+fi
+
+# --- (h) add_drawer failures: the pass continues or stops (#1211, v1-F1) ---
+#     success: false is one record's failure — log it, try the next record.
+#     Anything else MemPalace answers without success: true means the tool
+#     cannot serve any call — stop after that ONE call, without the
+#     unreachable stamp (the daemon did answer). The call counts are the
+#     contract: 2 versus 1.
+echo
+echo "=== (h) add_drawer failures: per-record continues, palace-wide stops ==="
+TOOLFAIL_ADD_CLI=copilot-cli
+TOOLFAIL_ADD_PERIOD="2019-04"
+TOOLFAIL_ADD_STAMP="$USAGE_ROOT/mirror/unreachable.stamp"
+rm -f "$TOOLFAIL_ADD_STAMP"
+
+TOOLFAIL_ADD_RID_1="$(write_quiet_record "$HELPERS_DIR/toolfail-add-1.json" "$TOOLFAIL_ADD_CLI" \
+  "toolfail-add-session-1" "toolfail-add-key-1" "2019-04-01T00:00:00.000Z")"
+TOOLFAIL_ADD_RID_2="$(write_quiet_record "$HELPERS_DIR/toolfail-add-2.json" "$TOOLFAIL_ADD_CLI" \
+  "toolfail-add-session-2" "toolfail-add-key-2" "2019-04-01T00:00:00.000Z")"
+TOOLFAIL_ADD_ENTRY_1="$(journal_entry_path "$TOOLFAIL_ADD_CLI" "$TOOLFAIL_ADD_PERIOD" "$TOOLFAIL_ADD_RID_1")"
+TOOLFAIL_ADD_ENTRY_2="$(journal_entry_path "$TOOLFAIL_ADD_CLI" "$TOOLFAIL_ADD_PERIOD" "$TOOLFAIL_ADD_RID_2")"
+
+toolfail_add_both_pending() {
+  [ -f "$(pending_marker_path "$TOOLFAIL_ADD_CLI" "$TOOLFAIL_ADD_PERIOD" "$TOOLFAIL_ADD_RID_1")" ] &&
+    [ -f "$(pending_marker_path "$TOOLFAIL_ADD_CLI" "$TOOLFAIL_ADD_PERIOD" "$TOOLFAIL_ADD_RID_2")" ] &&
+    [ ! -f "$(mirrored_marker_path "$TOOLFAIL_ADD_CLI" "$TOOLFAIL_ADD_PERIOD" "$TOOLFAIL_ADD_RID_1")" ] &&
+    [ ! -f "$(mirrored_marker_path "$TOOLFAIL_ADD_CLI" "$TOOLFAIL_ADD_PERIOD" "$TOOLFAIL_ADD_RID_2")" ]
+}
+
+if toolfail_add_both_pending && [ "$(pending_count)" -eq 2 ]; then
+  ok "setup: pending/ holds exactly the two (h) markers"
+else
+  bad "setup: expected pending/ to hold exactly the two (h) markers, found $(pending_count)"
+fi
+
+TOOLFAIL_ADD_ERR="$HELPERS_DIR/toolfail-add.err"
+# shape:expected add_drawer calls for the pass
+for spec in success-false:2 no-success-key:1 not-json-text:1; do
+  shape="${spec%%:*}"
+  expected_calls="${spec##*:}"
+  fake_tool_failure mempalace_add_drawer "$shape"
+  adds_before="$(log_count mempalace_add_drawer)"
+  if bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>"$TOOLFAIL_ADD_ERR"; then
+    ok "[$shape] usage-mirror.sh exits 0"
+  else
+    bad "[$shape] usage-mirror.sh exited non-zero" "$(cat "$TOOLFAIL_ADD_ERR")"
+  fi
+  adds_delta=$(($(log_count mempalace_add_drawer) - adds_before))
+  if [ "$adds_delta" -eq "$expected_calls" ]; then
+    ok "[$shape] the pass made exactly $expected_calls add_drawer call(s)"
+  else
+    bad "[$shape] expected $expected_calls add_drawer call(s) in the pass, got $adds_delta"
+  fi
+  if toolfail_add_both_pending; then
+    ok "[$shape] both markers stay in pending/"
+  else
+    bad "[$shape] a marker left pending/ although MemPalace did not report success"
+  fi
+  if [ "$shape" = "success-false" ]; then
+    failed_lines="$(grep -cF 'failed:' "$TOOLFAIL_ADD_ERR" || true)"
+    if [ "$failed_lines" -eq 2 ]; then
+      ok "[$shape] stderr holds one 'failed:' line per record (2)"
+    else
+      bad "[$shape] expected 2 'failed:' lines on stderr, got $failed_lines" "$(cat "$TOOLFAIL_ADD_ERR")"
+    fi
+  else
+    if grep -qF 'stopping this pass' "$TOOLFAIL_ADD_ERR"; then
+      ok "[$shape] stderr says the pass is stopping"
+    else
+      bad "[$shape] stderr does not say 'stopping this pass'" "$(cat "$TOOLFAIL_ADD_ERR")"
+    fi
+  fi
+  if [ ! -f "$TOOLFAIL_ADD_STAMP" ]; then
+    ok "[$shape] no unreachable.stamp is written (the daemon answered)"
+  else
+    bad "[$shape] unreachable.stamp was written although the daemon answered"
+    rm -f "$TOOLFAIL_ADD_STAMP"
+  fi
+  if [ "$(drawers_for_source "$TOOLFAIL_ADD_ENTRY_1")" -eq 0 ] && [ "$(drawers_for_source "$TOOLFAIL_ADD_ENTRY_2")" -eq 0 ]; then
+    ok "[$shape] no drawer exists for either record"
+  else
+    bad "[$shape] a drawer exists for an (h) record although add_drawer failed"
+  fi
+done
+
+fake_tool_failure mempalace_add_drawer null
+bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null
+if [ -f "$(mirrored_marker_path "$TOOLFAIL_ADD_CLI" "$TOOLFAIL_ADD_PERIOD" "$TOOLFAIL_ADD_RID_1")" ] &&
+  [ -f "$(mirrored_marker_path "$TOOLFAIL_ADD_CLI" "$TOOLFAIL_ADD_PERIOD" "$TOOLFAIL_ADD_RID_2")" ]; then
+  ok "recovery: both markers move to mirrored/ once add_drawer succeeds"
+else
+  bad "recovery: at least one (h) marker did not reach mirrored/"
+fi
+if [ "$(drawers_for_source "$TOOLFAIL_ADD_ENTRY_1")" -eq 1 ] && [ "$(drawers_for_source "$TOOLFAIL_ADD_ENTRY_2")" -eq 1 ]; then
+  ok "recovery: exactly one drawer per (h) record"
+else
+  bad "recovery: expected exactly one drawer per (h) record"
+fi
+if [ "$(pending_count)" -eq 0 ]; then
+  ok "recovery: pending/ is empty (the rename mutation's drawer delta relies on it)"
+else
+  bad "recovery: pending/ still holds $(pending_count) marker(s)"
+fi
+
 # --- Mutation discipline: this suite's share of the brief's named mutations -
 # Each edits a tracked module IN PLACE, proves the property goes red against
 # the fake daemon, then restores with `git checkout --` before continuing.
@@ -843,7 +1057,7 @@ cat > "$MUTATOR_3" <<'MUTATOR_EOF'
 const fs = require('fs');
 const path = process.argv[2];
 let src = fs.readFileSync(path, 'utf8');
-const marker = "const result = await mcp.deleteBySource({ source_file: entryPath, dry_run: false });\n    if (!result.ok) {\n      return { ok: false };\n    }";
+const marker = "const result = await mcp.deleteBySource({ source_file: entryPath, dry_run: false });\n    if (!result.ok) {\n      return { ok: false, kind: result.kind, message: result.message };\n    }";
 if (!src.includes(marker)) {
   console.error('FATAL: delete_by_source call marker not found in prune.js');
   process.exit(1);
@@ -974,6 +1188,197 @@ fi
 # Tidy: mirror the 3 records for real so they don't linger pending for the
 # rest of the suite. The lock is uncontended by now (both releasers ran).
 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null || true
+
+MCP_JS="$REPO_DIR/scripts/lib/usage-store/mcp.js"
+
+echo
+echo "=== MUTATION: mcp.js accepting a tool-level failure as acknowledged (#1211) ==="
+MUTANT_ACK_CLI=antigravity
+MUTANT_ACK_PERIOD="2019-05"
+MUTANT_ACK_RID="$(write_quiet_record "$HELPERS_DIR/mutant-ack.json" "$MUTANT_ACK_CLI" \
+  "mutant-ack-session" "mutant-ack-key" "2019-05-01T00:00:00.000Z")"
+bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null
+MUTANT_ACK_ENTRY="$(journal_entry_path "$MUTANT_ACK_CLI" "$MUTANT_ACK_PERIOD" "$MUTANT_ACK_RID")"
+MUTANT_ACK_MIRRORED="$(mirrored_marker_path "$MUTANT_ACK_CLI" "$MUTANT_ACK_PERIOD" "$MUTANT_ACK_RID")"
+if [ -f "$MUTANT_ACK_MIRRORED" ] && [ "$(drawers_for_source "$MUTANT_ACK_ENTRY")" -eq 1 ]; then
+  ok "setup: the acknowledgment-mutation record is mirrored with one drawer"
+else
+  bad "setup: expected the acknowledgment-mutation record mirrored with one drawer"
+fi
+
+MUTATOR_5="$HELPERS_DIR/mutator-require-success.js"
+cat > "$MUTATOR_5" <<'MUTATOR_EOF'
+const fs = require('fs');
+const path = process.argv[2];
+let src = fs.readFileSync(path, 'utf8');
+const marker = "if (payload && typeof payload === 'object' && payload.success === true) return res;";
+if (!src.includes(marker)) {
+  console.error('FATAL: requireSuccess acknowledgment marker not found in mcp.js');
+  process.exit(1);
+}
+src = src.split(marker).join('return res; // mutation: any answer counts as acknowledged');
+fs.writeFileSync(path, src);
+MUTATOR_EOF
+
+fake_tool_failure mempalace_delete_by_source success-false
+node "$MUTATOR_5" "$MCP_JS"
+if bash "$REPO_DIR/scripts/usage-prune.sh" "$MUTANT_ACK_CLI" "$MUTANT_ACK_PERIOD" >/dev/null 2>&1; then
+  mutant_ack_rc=0
+else
+  mutant_ack_rc=1
+fi
+git -C "$REPO_DIR" checkout -- scripts/lib/usage-store/mcp.js
+fake_tool_failure mempalace_delete_by_source null
+
+if [ "$mutant_ack_rc" -eq 0 ] && [ ! -f "$MUTANT_ACK_MIRRORED" ] && [ "$(drawers_for_source "$MUTANT_ACK_ENTRY")" -eq 1 ]; then
+  ok "MUTATION RED: without requireSuccess, a success:false delete is taken as done — the marker is gone while the drawer survives"
+else
+  bad "MUTATION not red: expected exit 0, marker gone and drawer kept (rc=$mutant_ack_rc)"
+fi
+if git -C "$REPO_DIR" diff --quiet -- scripts/lib/usage-store/mcp.js; then
+  ok "mcp.js is restored to its committed content after the acknowledgment mutation"
+else
+  bad "mcp.js was NOT fully restored after the acknowledgment mutation"
+fi
+
+echo
+echo "=== MUTATION: prune.js dropping dry_run: false from delete_by_source (#1211, v1-F2) ==="
+MUTANT_DRYRUN_CLI=antigravity
+MUTANT_DRYRUN_PERIOD="2019-06"
+MUTANT_DRYRUN_RID="$(write_quiet_record "$HELPERS_DIR/mutant-dryrun.json" "$MUTANT_DRYRUN_CLI" \
+  "mutant-dryrun-session" "mutant-dryrun-key" "2019-06-01T00:00:00.000Z")"
+bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null
+MUTANT_DRYRUN_ENTRY="$(journal_entry_path "$MUTANT_DRYRUN_CLI" "$MUTANT_DRYRUN_PERIOD" "$MUTANT_DRYRUN_RID")"
+MUTANT_DRYRUN_MIRRORED="$(mirrored_marker_path "$MUTANT_DRYRUN_CLI" "$MUTANT_DRYRUN_PERIOD" "$MUTANT_DRYRUN_RID")"
+if [ -f "$MUTANT_DRYRUN_MIRRORED" ] && [ "$(drawers_for_source "$MUTANT_DRYRUN_ENTRY")" -eq 1 ]; then
+  ok "setup: the dry-run-mutation record is mirrored with one drawer"
+else
+  bad "setup: expected the dry-run-mutation record mirrored with one drawer"
+fi
+
+MUTATOR_6="$HELPERS_DIR/mutator-dry-run.js"
+cat > "$MUTATOR_6" <<'MUTATOR_EOF'
+const fs = require('fs');
+const path = process.argv[2];
+let src = fs.readFileSync(path, 'utf8');
+const marker = 'mcp.deleteBySource({ source_file: entryPath, dry_run: false })';
+if (!src.includes(marker)) {
+  console.error('FATAL: delete_by_source dry_run: false marker not found in prune.js');
+  process.exit(1);
+}
+src = src.split(marker).join('mcp.deleteBySource({ source_file: entryPath })');
+fs.writeFileSync(path, src);
+MUTATOR_EOF
+
+MUTANT_DRYRUN_ERR="$HELPERS_DIR/mutant-dryrun.err"
+node "$MUTATOR_6" "$PRUNE_JS"
+if bash "$REPO_DIR/scripts/usage-prune.sh" "$MUTANT_DRYRUN_CLI" "$MUTANT_DRYRUN_PERIOD" >/dev/null 2>"$MUTANT_DRYRUN_ERR"; then
+  mutant_dryrun_rc=0
+else
+  mutant_dryrun_rc=1
+fi
+git -C "$REPO_DIR" checkout -- scripts/lib/usage-store/prune.js
+
+last_delete_line="$(grep -F '"tool":"mempalace_delete_by_source"' "$FAKE_LOG" | tail -n 1)"
+if [ "$mutant_dryrun_rc" -eq 1 ] && grep -qF 'dry run' "$MUTANT_DRYRUN_ERR"; then
+  ok "MUTATION RED: without dry_run: false, the server's default dry run makes the prune refuse, naming the dry run"
+else
+  bad "MUTATION not red: expected a non-zero prune naming the dry run (rc=$mutant_dryrun_rc)" "$(cat "$MUTANT_DRYRUN_ERR")"
+fi
+if [ -f "$MUTANT_DRYRUN_MIRRORED" ] && [ -f "$MUTANT_DRYRUN_ENTRY" ] && [ "$(drawers_for_source "$MUTANT_DRYRUN_ENTRY")" -eq 1 ]; then
+  ok "MUTATION RED: the mirrored marker, the entry and the drawer are all kept after the dry run"
+else
+  bad "MUTATION: the dry-run prune removed the marker, the entry or the drawer"
+fi
+if printf '%s' "$last_delete_line" | grep -qF '"dry_run":true'; then
+  ok "the fake's last delete call was resolved as a dry run (absent dry_run is the server default)"
+else
+  bad "the fake's last delete call was not a dry run" "$last_delete_line"
+fi
+if git -C "$REPO_DIR" diff --quiet -- scripts/lib/usage-store/prune.js; then
+  ok "prune.js is restored to its committed content after the dry-run mutation"
+else
+  bad "prune.js was NOT fully restored after the dry-run mutation"
+fi
+if bash "$REPO_DIR/scripts/usage-prune.sh" "$MUTANT_DRYRUN_CLI" "$MUTANT_DRYRUN_PERIOD" >/dev/null 2>&1 &&
+  [ ! -f "$MUTANT_DRYRUN_ENTRY" ] && [ "$(drawers_for_source "$MUTANT_DRYRUN_ENTRY")" -eq 0 ]; then
+  ok "the unmutated prune then succeeds and removes the entry and the drawer"
+else
+  bad "the unmutated prune did not complete after the dry-run mutation was restored"
+fi
+
+echo
+echo "=== FAULT INJECTION: the decoder throws inside the response handler (#1211, v1-F3) ==="
+# Green by design: its red is a build without call()'s catch-all, where the
+# throw is an uncaught listener exception that kills the catch-up before its
+# finally, leaving mirror.lock behind until it goes stale.
+FAULT_CLI=claude-code
+FAULT_PERIOD="2019-07"
+FAULT_RID="$(write_quiet_record "$HELPERS_DIR/fault.json" "$FAULT_CLI" \
+  "fault-session" "fault-key" "2019-07-01T00:00:00.000Z")"
+FAULT_PENDING="$(pending_marker_path "$FAULT_CLI" "$FAULT_PERIOD" "$FAULT_RID")"
+FAULT_MIRRORED="$(mirrored_marker_path "$FAULT_CLI" "$FAULT_PERIOD" "$FAULT_RID")"
+if [ -f "$FAULT_PENDING" ]; then
+  ok "setup: the fault-injection record is pending"
+else
+  bad "setup: expected the fault-injection record to be pending"
+fi
+
+MUTATOR_7="$HELPERS_DIR/mutator-decoder-throws.js"
+cat > "$MUTATOR_7" <<'MUTATOR_EOF'
+const fs = require('fs');
+const path = process.argv[2];
+let src = fs.readFileSync(path, 'utf8');
+const marker = 'function decodeToolResult(parsed) {';
+if (!src.includes(marker)) {
+  console.error('FATAL: decodeToolResult signature marker not found in mcp.js');
+  process.exit(1);
+}
+src = src.split(marker).join("function decodeToolResult(parsed) { throw new Error('fault injection');");
+fs.writeFileSync(path, src);
+MUTATOR_EOF
+
+FAULT_ERR="$HELPERS_DIR/fault.err"
+node "$MUTATOR_7" "$MCP_JS"
+if bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>"$FAULT_ERR"; then
+  fault_rc=0
+else
+  fault_rc=$?
+fi
+git -C "$REPO_DIR" checkout -- scripts/lib/usage-store/mcp.js
+
+if [ "$fault_rc" -eq 0 ]; then
+  ok "a throwing decoder does not crash the catch-up (exit 0)"
+else
+  bad "a throwing decoder crashed the catch-up (exit $fault_rc)" "$(cat "$FAULT_ERR")"
+fi
+if [ ! -e "$USAGE_ROOT/locks/mirror.lock" ]; then
+  ok "mirror.lock is released after the throwing decoder"
+else
+  bad "mirror.lock was left behind by the throwing decoder"
+  rm -f "$USAGE_ROOT/locks/mirror.lock"
+fi
+if [ -f "$FAULT_PENDING" ] && [ ! -f "$FAULT_MIRRORED" ]; then
+  ok "the marker stays pending after the throwing decoder"
+else
+  bad "the marker left pending/ although the response could not be decoded"
+fi
+if grep -qF 'stopping this pass' "$FAULT_ERR"; then
+  ok "stderr says the pass is stopping"
+else
+  bad "stderr does not say 'stopping this pass'" "$(cat "$FAULT_ERR")"
+fi
+if git -C "$REPO_DIR" diff --quiet -- scripts/lib/usage-store/mcp.js; then
+  ok "mcp.js is restored to its committed content after the fault injection"
+else
+  bad "mcp.js was NOT fully restored after the fault injection"
+fi
+bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null
+if [ -f "$FAULT_MIRRORED" ] && [ "$(pending_count)" -eq 0 ]; then
+  ok "recovery: the fault-injection record is mirrored and pending/ is empty"
+else
+  bad "recovery: the fault-injection record is not mirrored, or pending/ still holds $(pending_count) marker(s)"
+fi
 
 echo
 echo "=== Summary: $pass passed, $fail failed ==="

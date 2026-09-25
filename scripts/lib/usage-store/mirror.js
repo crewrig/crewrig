@@ -377,7 +377,7 @@ async function mirrorOneMarker(cli, per, recordId) {
   if (!record) {
     // The entry is gone — most likely a prune raced ahead of this catch-up.
     // The prune owns removing this marker; leave it for the prune to find.
-    return { transport: false };
+    return { stop: false };
   }
 
   const wingInfo = readOrRepairSidecar(cli, per, recordId, record);
@@ -390,14 +390,26 @@ async function mirrorOneMarker(cli, per, recordId) {
   });
 
   if (!result.ok) {
+    if (result.kind === 'tool-error') {
+      // A per-record failure (R13): log and continue, leaving the marker in
+      // pending/ for the next catch-up.
+      console.error(`usage-store mirror: ${cli}/${per}/${recordId} failed: ${result.message || 'unknown error'}`);
+      return { stop: false };
+    }
     if (result.kind === 'transport') {
       touchUnreachableStamp();
-      return { transport: true };
+      return { stop: true };
     }
-    // A per-record failure (R13): log and continue, leaving the marker in
-    // pending/ for the next catch-up.
-    console.error(`usage-store mirror: ${cli}/${per}/${recordId} failed: ${result.message || 'unknown error'}`);
-    return { transport: false };
+    // tool-unavailable, or any kind added later (mcp.js header): the daemon
+    // answered but cannot serve the tool at all, so every later call would
+    // fail the same way. Stop the pass after this one call, without the
+    // stamp — the daemon is reachable. Only tool-error continues, so an
+    // unknown kind is bounded by default.
+    console.error(
+      `usage-store mirror: MemPalace cannot serve mempalace_add_drawer (${result.message || 'unknown error'}) — ` +
+        `stopping this pass; ${cli}/${per}/${recordId} and every later marker stay pending.`
+    );
+    return { stop: true };
   }
 
   clearUnreachableStamp();
@@ -409,19 +421,19 @@ async function mirrorOneMarker(cli, per, recordId) {
   } catch (err) {
     // a racing process already moved it — the drawer exists either way
   }
-  return { transport: false };
+  return { stop: false };
 }
 
 async function walkPending() {
   const markers = listMarkers(layout.mirrorPendingRoot());
   for (const m of markers) {
     const r = await mirrorOneMarker(m.cli, m.per, m.recordId);
-    if (r.transport) break;
+    if (r.stop) break;
   }
 }
 
 // drainPending() — repeats walkPending() until pending/ is empty or a pass
-// makes no progress (a transport failure breaks walkPending() early, so the
+// makes no progress (a stopping failure breaks walkPending() early, so the
 // count is unchanged and this stops rather than spinning). This is what
 // lets the lock's winner — write-time detached child or explicit run alike
 // — absorb markers created by sibling writes while it was working, instead
