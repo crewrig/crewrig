@@ -27,8 +27,9 @@ version: 1.1.0
    GitLab instance at any host name and a project nested under one or
    more GitLab groups. A GitLab release note SHALL NOT carry a link to
    `github.com` for a commit, a comparison or an issue of the released
-   project, and SHALL NOT carry a link lacking a host. A GitLab release
-   note SHALL carry a compare link wherever the GitHub release note of
+   project, and SHALL NOT carry a link whose host is not the publishing
+   forge's, such as a protocol-relative link that a renderer resolves to
+   another host. A GitLab release note SHALL carry a compare link wherever the GitHub release note of
    the same release carries one.
 3. **New requirement (R21) — The GitHub release note is unchanged.**
    For a given repository history and release date, the release note the
@@ -52,7 +53,8 @@ And   its heading links a comparison of foo-v1.2.0 and foo-v1.3.0 on
       gitlab.example.org
 And   its "#42" reference links an issue of platform/tools/crewrig on
       gitlab.example.org
-And   no link in the description targets github.com or lacks a host
+And   no link in the description targets github.com or any host other
+      than gitlab.example.org
 ```
 
 **Scenario:** The GitHub note is untouched by the GitLab leg
@@ -196,7 +198,7 @@ still forbids a second derivation of the entries themselves.
 Minimal change, and byte-identity across forges on the commit lines. But
 every commit link on a GitLab-only adopter's release points at a
 repository that does not exist, the compare link disappears, and issue
-references render with no host. A note whose links are broken for the
+references resolve to the wrong host. A note whose links are broken for the
 exact adopter the parent spec serves fails R1's intent.
 
 **Rejected alternative — (c) one forge-neutral template for both forges.**
