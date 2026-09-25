@@ -171,10 +171,10 @@ Each spooled record is validated and written to the journal via the standard wri
 
 ### First drain cost
 
-The first drain of a session may incur significant I/O as spooled records accumulate over months or years. The budget defaults to 2 seconds per write; plan accordingly. On first drain, consider raising the budget:
+On a machine that ran 0206's capture step before the spool hand-over, the first drain is a one-time cost that scales with whatever 0206 spooled before the hand-over; the legacy spool no longer grows. Hook-triggered writes drain under the 2-second default budget, so a large leftover spool can take several writes to empty. To pay the whole cost once, at a time you choose, run the one-shot drain, which runs with no budget:
 
 ```bash
-CREWRIG_USAGE_DRAIN_BUDGET_MS=60000 bash scripts/usage-write.sh  # 60-second budget for first write
+task usage:drain  # equivalently: bash scripts/usage-drain.sh
 ```
 
 ## Read surface

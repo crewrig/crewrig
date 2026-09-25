@@ -1400,6 +1400,52 @@ else
   bad "a plain write still fails after --unprune" "$unprune_write_out"
 fi
 
+# The help carries no whole-root purge list of its own (#1207, spec 0212):
+# it points at the single removal procedure, and the heading it names must
+# exist. The token checks assert the rule (no root path, no removal
+# command), not a copy of the layout, so they do not drift with layout.js.
+if help_out="$(node "$REPO_DIR/scripts/lib/usage-store/prune.js" --help 2>&1)"; then
+  ok "prune.js --help exits 0"
+else
+  bad "prune.js --help exited non-zero" "$help_out"
+fi
+if grep -qF 'docs/usage-organization.md' <<< "$help_out" && grep -qF 'Removing usage data' <<< "$help_out"; then
+  ok "prune.js --help points at docs/usage-organization.md -> Removing usage data"
+else
+  bad "prune.js --help does not point at the single removal procedure" "$help_out"
+fi
+if grep -qF '<root>/' <<< "$help_out"; then
+  bad "prune.js --help names a <root>/ path — it must not carry its own purge list" "$help_out"
+else
+  ok "prune.js --help names no <root>/ path"
+fi
+if grep -qF -- 'rm -' <<< "$help_out"; then
+  bad "prune.js --help carries an rm - command — a whole-root removal leaves drawers and capture wiring behind" "$help_out"
+else
+  ok "prune.js --help carries no rm - command"
+fi
+if grep -qxF '## Removing usage data' "$REPO_DIR/docs/usage-organization.md"; then
+  ok "docs/usage-organization.md carries the '## Removing usage data' heading the help names"
+else
+  bad "docs/usage-organization.md lost the '## Removing usage data' heading the help names"
+fi
+missing_scripts=""
+while IFS= read -r script_token; do
+  # Strip trailing prose punctuation (a sentence-ending "." etc.).
+  while [ -n "$script_token" ] && case "$script_token" in *[.,\)\`]) true ;; *) false ;; esac; do
+    script_token="${script_token%?}"
+  done
+  [ -n "$script_token" ] || continue
+  if [ ! -e "$REPO_DIR/$script_token" ]; then
+    missing_scripts="$missing_scripts $script_token"
+  fi
+done < <(grep -oE 'scripts/[A-Za-z0-9_./-]+' "$REPO_DIR/docs/usage-storage.md" | sort -u)
+if [ -z "$missing_scripts" ]; then
+  ok "every scripts/ path named in docs/usage-storage.md exists"
+else
+  bad "docs/usage-storage.md names scripts/ paths that do not exist:$missing_scripts"
+fi
+
 # --- (o) node scripts/build-usage-validator.js --check ----------------------
 echo
 echo "=== (o) build-usage-validator.js --check: clean, then a named drift reason ==="
