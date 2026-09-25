@@ -49,6 +49,19 @@ def gs_strip_jsonc:
   gsub("(?<s>\"(?:[^\"\\\\]|\\\\.)*\")|//[^\n]*|/\\*(?:[^*]|\\*+[^*/])*(?:\\*+/|\\**\\z)";
        if .s then .s else " " end);
 
+# JSON.parse grammar check of text that jq already parsed. jq accepts literals
+# JSON.parse rejects (`01`, `+1`, `.5`, `1.`, `Infinity`, `NaN`, `nan`), and
+# would silently change their values, so a text passes only when it is, token
+# for token, strict JSON: string literals, structural characters, JSON
+# whitespace, `true` / `false` / `null`, and numbers of the JSON grammar
+# `-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?` ending at a token boundary.
+# One anchored `test`, every alternative starting on a distinct character and
+# every loop possessive, so the match is linear and never backtracks.
+def gs_strict_json:
+  test("\\A(?:\"(?:[^\"\\\\]|\\\\.)*+\"|[\\[\\]{}:, \\t\\n\\r]"
+       + "|(?:true|false|null)(?![0-9A-Za-z_$])"
+       + "|-?(?:0|[1-9][0-9]*+)(?:\\.[0-9]++)?(?:[eE][+-]?[0-9]++)?(?![0-9A-Za-z_$.+-]))*+\\z");
+
 # Classify the raw bytes of an existing file. Output: one line
 # "<state> <had_comments>", then the snapshot document on one line.
 #   object  — a JSON object once comments are removed;
@@ -63,14 +76,17 @@ def gs_classify:
   | if startswith("﻿") then {state: "invalid", comments: false, doc: {}}
     else
       ((try fromjson catch null) as $fast
-       | if ($fast | type) == "object" then {state: "object", comments: false, doc: $fast}
+       | if ($fast | type) == "object" then
+           (if gs_strict_json then {state: "object", comments: false, doc: $fast}
+            else {state: "invalid", comments: false, doc: {}} end)
          else
            (gs_strip_jsonc) as $s
            | ($s != $raw) as $c
            | if ($s | test("\\A[ \\t\\n\\r]*\\z")) then {state: "empty", comments: $c, doc: {}}
              else
                ((try ($s | fromjson) catch null) as $o
-                | if ($o | type) == "object" then {state: "object", comments: $c, doc: $o}
+                | if ($o | type) == "object" and ($s | gs_strict_json)
+                  then {state: "object", comments: $c, doc: $o}
                   else {state: "invalid", comments: $c, doc: {}} end)
              end
          end)

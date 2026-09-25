@@ -464,9 +464,9 @@ EOF
 # against Gemini CLI's own strip-json-comments + JSON.parse: "Unexpected
 # number", "Unexpected token 'I'"). R12 makes Gemini's reading the reference,
 # so such a file is not a JSON object and takes the repair path, exactly like
-# `1/**/2` above (plan review v1-F1). `nan`, the one literal of this class the
-# plan review recorded as an accepted jq-only acceptance, is deliberately not
-# asserted here.
+# `1/**/2` above (plan review v1-F1). `nan` is rejected too: the orchestrator's
+# decision on #1210 supersedes the plan review's acceptance of it as a jq-only
+# literal, for consistency with JSON.parse.
 while IFS='|' read -r label content; do
   new_case
   printf '%s\n' "$content" > "$T"
@@ -478,6 +478,28 @@ while IFS='|' read -r label content; do
 done <<'EOF'
 leading-zero number|{"ui": {"theme": "x"}, "retries": 01}
 Infinity literal|{"ui": {"theme": "x"}, "limit": Infinity}
+nan literal|{"ui": {"theme": "x"}, "limit": nan}
+plus-signed number|{"ui": {"theme": "x"}, "retries": +1}
+leading-zero number after a comment|{"ui": {"theme": "x"}, /* c */ "retries": 007}
+EOF
+
+# 6c. The strict-grammar check of 6b never rejects a number JSON.parse accepts,
+# on the plain-JSON path and on the comment-stripping path, and never looks
+# inside a string literal.
+while IFS='|' read -r label content expected; do
+  new_case
+  printf '%s\n' "$content" > "$T"
+  gs_write "" ""
+  expect_rc "6c $label" 0
+  # Compared with jq ==, not as text: jq 1.7+ keeps a number's literal form.
+  expect_json "6c $label: merged as an object, value kept" "(.n == $expected)" 'true'
+  out_lacks "6c $label: no not-a-JSON-object warning" "$INVALID_WARN"
+done <<'EOF'
+negative zero|{"n": -0}|-0
+upper-case exponent with sign|{"n": 1E+2}|100
+fraction with negative exponent|{"n": 0.5e-3}|0.0005
+number list after a comment|/* c */ {"n": [0, -1.5, 10e2, true, false, null]}|[0, -1.5, 1000, true, false, null]
+rejected forms inside a string|{"n": "01 +1 .5 Infinity NaN nan 0x1"}|"01 +1 .5 Infinity NaN nan 0x1"
 EOF
 
 # ---------------------------------------------------------------------------
