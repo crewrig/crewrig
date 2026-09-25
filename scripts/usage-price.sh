@@ -14,6 +14,11 @@
 #   bash scripts/usage-price.sh --refresh-pricelist [--sha <sha>]
 #   bash scripts/usage-price.sh --refresh-fx [--fx-mirror frankfurter]
 #   bash scripts/usage-price.sh --cross-check <modelId>
+#
+# Selectors compose (#1205): --session, --agent+--parent, --period,
+# --task-key, --asset, --cli and --fidelity are ANDed. With --rollup,
+# --period is a placement bound instead (spec 0209 delta-01,
+# docs/usage-pricing.md).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 exec node --disable-warning=ExperimentalWarning "$SCRIPT_DIR/lib/usage-price/cli.js" "$@"

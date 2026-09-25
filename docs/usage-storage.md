@@ -179,7 +179,7 @@ CREWRIG_USAGE_DRAIN_BUDGET_MS=60000 bash scripts/usage-write.sh  # 60-second bud
 
 ## Read surface
 
-The `bash scripts/usage-query.sh` command retrieves records from the journal (or from pending mirrors). Output is JSONL, one record per line. Selectors are mutually exclusive (provide exactly one):
+The `bash scripts/usage-query.sh` command retrieves records from the journal (or from pending mirrors). Output is JSONL, one record per line. Give at least one of `--session`, `--agent` with `--parent`, `--period`, `--task-key`, or `--asset`. Selectors compose: every further selector, plus `--cli` and `--fidelity`, narrows the result (AND), and `--task-key` and `--asset` test the ledger-applied attribution unless `--no-ledger` is given. A listing with `--period` returns only that month's records and reads only its partitions. With `--rollup`, `--period` is a placement bound instead (see [Period rollups](usage-pricing.md#period-rollups)). `--pending` honours `--fidelity` only, and `--undrained` takes no filter.
 
 - **`--session <id>`** — All records in the session. Requires the full session ID.
 - **`--agent <id> --parent <parentSessionId>`** — All records from the named agent within its parent session.
@@ -189,7 +189,7 @@ The `bash scripts/usage-query.sh` command retrieves records from the journal (or
 - **`--undrained`** — Records still in the spool (spooled file or spool stray from a crash).
 - **`--pending`** — Records awaiting mirroring (in `<root>/mirror/pending/`).
 
-All read operations accept an optional `--fidelity <per-request|run-total|session-cumulative>` filter to narrow results.
+Every read operation except `--undrained` accepts an optional `--fidelity <per-request|run-total|session-cumulative>` filter to narrow results.
 
 Records returned by read operations are verbatim journal entries, **unless an attribution ledger entry (spec 0208) names a matching session, agent, or period** — in that case, the ledger entry's task-handoff key and/or external asset reference **overrides** the record's own attribution at read time. The underlying record in the journal is never modified (spec 0208 R16); only the returned result carries the overridden attribution.
 
