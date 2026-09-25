@@ -10,8 +10,8 @@
 // timestamps, the resolution step, every flag, and the R31 disclaimer; an
 // uncaptured record's line is instead store.js's R34 marker (`uncaptured:
 // true`, `amount: null`, no timestamps, never stored); --rollup emits one
-// JSON object with the per-fidelity sums, the mixed marker, and the two
-// separate tallies.
+// JSON object with the per-fidelity sums, the mixed marker, the three bucket
+// tallies (pricedCount, unpricedCount, unconvertedCount) and uncapturedCount.
 //
 // Seam (f) (#1173) consumes store.readPrices(selector) and rollup.rollup
 // (selector) plus the <root>/prices/** layout directly — this file is the

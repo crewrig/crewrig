@@ -19,7 +19,15 @@
 //       "this fixing is wrong".
 //   (e) No fixing at all after the gate has run -> {status:
 //       "no-fixing-on-or-before"}; an ISO 4217 code the fixing does not list
-//       -> "no-such-currency", never a guess.
+//       -> "no-such-currency", never a guess. The latter carries the consulted
+//       fixing's date as conversion.fixingDate (spec 0209 delta-02 R51).
+//   (f) Per-pass memo: when ctx.fxMemo is a Map, resolve() runs at most once
+//       per (date, mirror) and every later call in that pass reuses the same
+//       promise — so re-attempting failed conversions (delta-02 R52) costs one
+//       refresh attempt per computation date per pass, not one per record. The
+//       caller owns the Map (one per usage:price run, rollup or dashboard
+//       build); it is never held at module level, because a long-lived form-B
+//       server must see a fixing a later --refresh-fx writes.
 //
 // ctx.fetchFixings is the injection seam the suite uses to stay offline
 // while exercising both the freshness and the suppression paths.
@@ -170,8 +178,8 @@ function ageDaysBetween(computationDate, fixingDate) {
   return Math.round(ms / 86400000);
 }
 
-// resolve(date, ctx) — see module header for the full rule.
-async function resolve(date, ctx = {}) {
+// resolveOnce(date, ctx) — see module header for the full rule.
+async function resolveOnce(date, ctx = {}) {
   const offline = process.env.CREWRIG_USAGE_OFFLINE === '1';
   let newest = newestCachedDate();
   const gateFires = !newest || newest < date;
@@ -208,6 +216,15 @@ async function resolve(date, ctx = {}) {
   return result;
 }
 
+// resolve(date, ctx) — resolveOnce(), memoised per pass in ctx.fxMemo when the
+// caller provides one (header clause (f)).
+function resolve(date, ctx = {}) {
+  if (!(ctx.fxMemo instanceof Map)) return resolveOnce(date, ctx);
+  const key = `${date}|${ctx.mirror || ''}`;
+  if (!ctx.fxMemo.has(key)) ctx.fxMemo.set(key, resolveOnce(date, ctx));
+  return ctx.fxMemo.get(key);
+}
+
 // crossRate(fixing, ccy) — the USD -> ccy multiplier, or null when the
 // fixing does not list `ccy` (no-such-currency).
 function crossRate(fixing, ccy) {
@@ -234,7 +251,7 @@ async function convert(amountUsd, ccy, date, ctx = {}) {
 
   const rate = crossRate(resolved.fixing, ccy);
   if (rate === null) {
-    return { amount: amountUsd, conversion: { status: 'no-such-currency', requested: ccy } };
+    return { amount: amountUsd, conversion: { status: 'no-such-currency', requested: ccy, fixingDate: resolved.fixingDate } };
   }
 
   const out = {

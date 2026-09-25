@@ -36,12 +36,10 @@ function byRecordId(a, b) {
   return a.recordId < b.recordId ? -1 : a.recordId > b.recordId ? 1 : 0;
 }
 
-// D3's partition of a contributing captured record's price.
-function classify(price) {
-  if (price.unpriced === true) return 'unpriced';
-  if (!price.conversion || price.conversion.status !== 'ok') return 'unconverted';
-  return 'priced';
-}
+// D3's partition of a contributing captured record's price — spec 0209's own
+// store.classifyPrice(), the one rule its period rollup also counts by, so the
+// two surfaces agree by construction (spec 0209 delta-02 R47).
+const classify = priceStore.classifyPrice;
 
 function passAndPlace(records, place) {
   const { byFidelity, uncaptured } = storageRollup.contributingRecords(records);
@@ -329,13 +327,18 @@ async function build(filters, opts) {
   const prices = new Map();
   if (pricing.available) {
     const org = priceStore.loadOrgTable();
+    // One fx memo per build (so per request for form B), never module-level:
+    // a re-attempted failed conversion (spec 0209 delta-02 R52) costs one FX
+    // resolution per computation date per view, and the next view sees a
+    // fixing a later --refresh-fx wrote.
+    const fxMemo = new Map();
     const toPrice = [main, agentsOnly, ...tasks.map((t) => t.placed), ...assets.map((a) => a.placed)];
     for (const list of toPrice) {
       for (const r of list) {
         if (r.kind !== 'captured' || prices.has(r.recordId)) continue;
         prices.set(
           r.recordId,
-          await priceStore.priceRecord(r, { currency, asOfToday, store: false, pricelistSnapshot: snapshot, org })
+          await priceStore.priceRecord(r, { currency, asOfToday, store: false, pricelistSnapshot: snapshot, org, ctx: { fxMemo } })
         );
       }
     }

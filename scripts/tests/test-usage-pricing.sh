@@ -1023,9 +1023,9 @@ node -e "
 const fs = require('fs');
 const p = process.argv[1];
 let src = fs.readFileSync(p, 'utf8');
-const marker = 'result.combined = { sum, unpricedCount, mixed };';
+const marker = 'result.combined = { sum, unpricedCount, unconvertedCount, mixed };';
 if (!src.includes(marker)) { console.error('FATAL: combined-mixed marker not found in usage-price/rollup.js'); process.exit(1); }
-src = src.replace(marker, 'result.combined = { sum, unpricedCount }; // MUTATION: mixed marker dropped');
+src = src.replace(marker, 'result.combined = { sum, unpricedCount, unconvertedCount }; // MUTATION: mixed marker dropped');
 fs.writeFileSync(p, src);
 " "$PRICE_ROLLUP_JS"
 mut12_rollup="$(run_driver rollup "$C11_PERIOD" claude-code)"
@@ -1071,15 +1071,21 @@ node -e "
 const fs = require('fs');
 const p = process.argv[1];
 let src = fs.readFileSync(p, 'utf8');
-const needle = \`      if (price.unpriced) {
+const needle = \`      if (cls === 'unpriced') {
         unpricedCount += 1;
+      } else if (cls === 'unconverted') {
+        unconvertedCount += 1;
       } else {
+        pricedCount += 1;
         sum += price.amount;
       }\`;
 if (!src.includes(needle)) { console.error('FATAL: unpriced-tally marker not found in usage-price/rollup.js'); process.exit(1); }
-const replacement = \`      if (false && price.unpriced) { // MUTATION: unpriced counted as a zero-cost record
+const replacement = \`      if (false && cls === 'unpriced') { // MUTATION: unpriced counted as a zero-cost record
         unpricedCount += 1;
+      } else if (cls === 'unconverted') {
+        unconvertedCount += 1;
       } else {
+        pricedCount += 1;
         sum += price.amount || 0;
       }\`;
 src = src.replace(needle, replacement);
@@ -2163,6 +2169,124 @@ if [ "$c19h_unconv" = "true|true" ]; then
 else
   bad "19h R53: the two passes do not count all three records unconverted" "$c19h"
 fi
+
+# --- Case 19 mutations M19-1..M19-5 (in place, restored with git checkout) ---
+# c19_mutate <file> <label> <needle> <replacement> — FATAL when the anchor is missing.
+c19_mutate() {
+  node -e "
+const fs = require('fs');
+const [p, label, needle, replacement] = process.argv.slice(1);
+const src = fs.readFileSync(p, 'utf8');
+if (!src.includes(needle)) { console.error('FATAL: ' + label + ' marker not found in ' + p); process.exit(1); }
+fs.writeFileSync(p, src.replace(needle, replacement));
+" "$@"
+}
+
+# c19_restored <file> <mutationId> — asserts the file is back to its committed content.
+c19_restored() {
+  if git -C "$REPO_DIR" diff --quiet -- "$1"; then
+    ok "$(basename "$1") is restored after $2"
+  else
+    bad "$(basename "$1") was NOT fully restored after $2"
+  fi
+}
+
+# M19-1 (store.js): a failed conversion is labelled with the requested currency.
+c19_seed_root C19_M1_ROOT
+c19_mutate "$STORE_JS" "R51 USD-label" "if (converted.conversion.status === 'ok') {" \
+  "if (true) { // MUTATION: a failed conversion labelled with the requested currency"
+mut19_1="$(c19_price p1 EUR)"
+git -C "$REPO_DIR" checkout -- "$STORE_JS"
+if [ "$(jget "$mut19_1" "v.currency")" = "EUR" ] && [ "$(jget "$mut19_1" "(v.conversion || {}).status")" = "no-fixing-on-or-before" ]; then
+  ok "MUTATION RED (M19-1 -> 19a): labelling a failure with the requested currency states EUR on a USD amount"
+else
+  bad "MUTATION not red (M19-1 -> 19a): the failed price is still labelled USD" "$mut19_1"
+fi
+c19_restored "$STORE_JS" "M19-1"
+
+# M19-2 (fx.js): no-such-currency drops the consulted fixing's date.
+c19_seed_root C19_M2_ROOT
+c19_seed_fx
+c19_mutate "$FX_JS" "no-such-currency fixingDate" \
+  "conversion: { status: 'no-such-currency', requested: ccy, fixingDate: resolved.fixingDate } };" \
+  "conversion: { status: 'no-such-currency', requested: ccy } }; // MUTATION: consulted fixing date dropped"
+mut19_2="$(c19_price p1 JPY)"
+git -C "$REPO_DIR" checkout -- "$FX_JS"
+if [ "$(jget "$mut19_2" "(v.conversion || {}).status === 'no-such-currency' && v.fixingDate === null")" = "true" ]; then
+  ok "MUTATION RED (M19-2 -> 19e): dropping the consulted fixing date leaves the JPY failure with fixingDate null"
+else
+  bad "MUTATION not red (M19-2 -> 19e): the JPY failure still carries a fixing date" "$mut19_2"
+fi
+c19_restored "$FX_JS" "M19-2"
+
+# M19-3 (store.js): the R52 status guard is removed. 19d stays green under it
+# (R51's USD label already misses the EUR currency check — plan/1202#1 v1-F1);
+# 19f(1-3) and 19g prove the guard. The 19e state (stored JPY failures labelled
+# USD) is rebuilt here rather than inherited from the main sequence.
+c19_seed_root C19_M3_ROOT
+c19_seed_fx
+c19_mutate "$STORE_JS" "R52 status-guard" \
+  "  if (!stored.conversion || !USABLE_CONVERSION_STATUSES.has(stored.conversion.status)) return false;" \
+  "  // MUTATION: R52 status guard removed"
+c19_rollup JPY >/dev/null
+mut19_3_dash="$(c19_dash USD)"
+mut19_3_p1="$(c19_price p1)"
+mut19_3_roll="$(c19_rollup USD)"
+jget "$(c19_stored p1)" "JSON.stringify(Object.assign(v, { amount: v.amountUsd, currency: 'EUR', fixingDate: null, conversion: { status: 'no-fixing-on-or-before', requested: 'EUR' } }))" > "$C19G_LEGACY"
+run_driver plant-price "$HELPERS_DIR/c19-p1.json" "$C19G_LEGACY" >/dev/null
+mut19_3_legacy="$(c19_price p1 EUR)"
+git -C "$REPO_DIR" checkout -- "$STORE_JS"
+if [ "$(jget "$mut19_3_dash" "((v.totals || {}).price || {}).unconvertedCount > 0")" = "true" ]; then
+  ok "MUTATION RED (M19-3 -> 19f(1)): without the guard the dashboard's USD view serves stored failures as unconverted"
+else
+  bad "MUTATION not red (M19-3 -> 19f(1)): the dashboard's USD view still recomputes" "$(jget "$mut19_3_dash" "JSON.stringify((v.totals || {}).price)")"
+fi
+if [ "$(jget "$mut19_3_p1" "(v.conversion || {}).status")" = "no-such-currency" ]; then
+  ok "MUTATION RED (M19-3 -> 19f(2)): without the guard a USD request is served p1's stored JPY failure"
+else
+  bad "MUTATION not red (M19-3 -> 19f(2)): the USD request still recomputes" "$mut19_3_p1"
+fi
+if [ "$(jget "$mut19_3_roll" "(v.combined || {}).unconvertedCount > 0")" = "true" ]; then
+  ok "MUTATION RED (M19-3 -> 19f(3)): without the guard the USD rollup counts stored failures as unconverted"
+else
+  bad "MUTATION not red (M19-3 -> 19f(3)): the USD rollup still recomputes" "$mut19_3_roll"
+fi
+if [ "$(jget "$mut19_3_legacy" "(v.conversion || {}).status")" = "no-fixing-on-or-before" ]; then
+  ok "MUTATION RED (M19-3 -> 19g): without the guard the pre-delta EUR-labelled failure is served"
+else
+  bad "MUTATION not red (M19-3 -> 19g): the pre-delta entry is still recomputed" "$mut19_3_legacy"
+fi
+c19_restored "$STORE_JS" "M19-3"
+
+# M19-4 (rollup.js): the unconverted branch also adds its USD amount to the sum.
+c19_seed_root C19_M4_ROOT
+c19_mutate "$PRICE_ROLLUP_JS" "unconverted-tally" "        unconvertedCount += 1;" \
+  "        unconvertedCount += 1;
+        sum += price.amount; // MUTATION: an unconverted USD amount summed"
+mut19_4="$(c19_rollup EUR)"
+git -C "$REPO_DIR" checkout -- "$PRICE_ROLLUP_JS"
+mut19_4_sum="$(jget "$mut19_4" "v.byFidelity['per-request'].sum")"
+if ! approx "$mut19_4_sum" "$C19_P0_EUR" && approx "$mut19_4_sum" "$(node -e "console.log(Number(process.argv[1]) + 0.006)" "$C19_P0_EUR")"; then
+  ok "MUTATION RED (M19-4 -> 19b): summing unconverted amounts adds p1's 0.006 USD into the EUR per-request sum"
+else
+  bad "MUTATION not red (M19-4 -> 19b): the per-request sum is unchanged" "$mut19_4"
+fi
+c19_restored "$PRICE_ROLLUP_JS" "M19-4"
+
+# M19-5 (fx.js): the per-pass memo is bypassed.
+new_root_and_pin_into C19_M5_ROOT
+c19_write p0 p1 p2
+c19_mutate "$FX_JS" "fx-memo" "  if (!(ctx.fxMemo instanceof Map)) return resolveOnce(date, ctx);" \
+  "  return resolveOnce(date, ctx); // MUTATION: per-pass memo bypassed"
+mut19_5="$(run_driver rollup-fetch-count 2026-09 EUR)"
+git -C "$REPO_DIR" checkout -- "$FX_JS"
+mut19_5_calls="$(printf '%s\n' "$mut19_5" | sed -n '2p;4p' | paste -sd'|' -)"
+if [ "$mut19_5_calls" = "FETCHER_CALLS=3|FETCHER_CALLS=3" ]; then
+  ok "MUTATION RED (M19-5 -> 19h): bypassing the memo makes one refresh attempt per record (3 per pass)"
+else
+  bad "MUTATION not red (M19-5 -> 19h): expected FETCHER_CALLS=3 in each pass" "$mut19_5_calls"
+fi
+c19_restored "$FX_JS" "M19-5"
 
 # =============================================================================
 # Summary
