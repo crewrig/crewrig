@@ -1401,7 +1401,7 @@ else
 fi
 
 # The help carries no whole-root purge list of its own (#1207, spec 0212):
-# it points at the single removal procedure, and the heading it names must
+# it points at the two removal procedures, and the heading it names must
 # exist. The token checks assert the rule (no root path, no removal
 # command), not a copy of the layout, so they do not drift with layout.js.
 if help_out="$(node "$REPO_DIR/scripts/lib/usage-store/prune.js" --help 2>&1)"; then
@@ -1412,7 +1412,7 @@ fi
 if grep -qF 'docs/usage-organization.md' <<< "$help_out" && grep -qF 'Removing usage data' <<< "$help_out"; then
   ok "prune.js --help points at docs/usage-organization.md -> Removing usage data"
 else
-  bad "prune.js --help does not point at the single removal procedure" "$help_out"
+  bad "prune.js --help does not point at the removal procedures" "$help_out"
 fi
 if grep -qF '<root>/' <<< "$help_out"; then
   bad "prune.js --help names a <root>/ path — it must not carry its own purge list" "$help_out"

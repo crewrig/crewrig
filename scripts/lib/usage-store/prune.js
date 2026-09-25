@@ -228,8 +228,9 @@ deleted entries, sidecars, or drawers, and does not recover records
 rejected while the period was pruned — recover those with:
   bash scripts/usage-backfill.sh --reset-cursors
 
-To remove all usage data, follow the single procedure in
-docs/usage-organization.md → "Removing usage data". Deleting the
+To remove all usage data, follow one of the two procedures in
+docs/usage-organization.md → "Removing usage data": purge the data
+while capture stays enabled, or remove the feature entirely. Deleting the
 CREWRIG_USAGE_ROOT directory is not enough on its own: it leaves the
 mirrored MemPalace drawers and each CLI's capture wiring behind.`);
 }
