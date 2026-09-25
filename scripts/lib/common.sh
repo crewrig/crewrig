@@ -71,9 +71,12 @@ MCP_RESERVED_NAMES=(mempalace sequentialthinking)
 #
 # Folds an operator's pre-existing MCP server declarations back into a
 # freshly-written framework MCP config so custom (non-reserved) servers survive
-# a setup run (spec 0089). The three overwrite-based setups (Gemini, Copilot,
-# Antigravity) each call this ONE helper at their write step, which is what
-# keeps them symmetric (R5) and is the only shape R11's hermetic test can
+# a setup run (spec 0089). The two overwrite-based setups (Copilot, Antigravity)
+# call this ONE helper right after their template write. Gemini merges
+# settings.json in place (spec 0214) and calls it from gemini_settings_write
+# (scripts/lib/gemini-settings.sh) after that merge, where the fold is a content
+# no-op and the helper supplies the R9 warnings. One helper for all three is
+# what keeps them symmetric (R5) and is the only shape R11's hermetic test can
 # exercise without fzf / the `agy` guard / the chroma daemon.
 #
 # Policy (all owned here):
@@ -94,7 +97,7 @@ MCP_RESERVED_NAMES=(mempalace sequentialthinking)
 #
 # Args:
 #   $1 pre_run_mcpservers_json — the target's `.mcpServers` captured BEFORE the
-#      framework overwrite (a JSON object; "" or "{}" when none pre-existed).
+#      framework write (a JSON object; "" or "{}" when none pre-existed).
 #   $2 framework_config_path   — the just-written framework config; rewritten in
 #      place (atomic tmp + mv).
 #   $3 backup_ref              — timestamped backup path named in the R9 warning
@@ -1562,11 +1565,11 @@ mcp_report_assistant_arrangements() {
 # replacing the opt-in offer_mcp_http_switch.
 #
 # Call each setup script's instance AFTER the stdio-shaped write it must
-# survive: `mempalace` is in MCP_RESERVED_NAMES, so merge_preexisting_mcp_servers
-# deliberately does not preserve an operator's entry under that name, and the
-# framework write that replaces it is stdio-shaped. Running the helper after
-# that write lets its HTTP registration overwrite the stdio entry instead of
-# being clobbered by it.
+# survive: `mempalace` is in MCP_RESERVED_NAMES, so neither
+# merge_preexisting_mcp_servers nor the Gemini in-place merge (spec 0214)
+# preserves a prior entry under that name, and the framework write that
+# replaces it is stdio-shaped. Running the helper after that write lets its
+# HTTP registration replace the stdio entry instead of being clobbered by it.
 #
 # Probe-first flow (R18): the "is the daemon actually serving" decision is
 # made with the positive authenticated accept probe `_mcp_daemon_probe_accepts`

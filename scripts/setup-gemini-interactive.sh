@@ -6,6 +6,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/tls-delegation.sh"
 # shellcheck source=scripts/lib/usage-capture-optin.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/usage-capture-optin.sh"
+# shellcheck source=scripts/lib/gemini-settings.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/gemini-settings.sh"
 
 GEMINI_HOME="${HOME}/.gemini"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -158,23 +160,14 @@ fi  # end: SKIP_RULES_CONFIG guard for shared configuration
 offer_tls_delegation
 echo ""
 
-# --- settings.json install + MCP server patching ---
+# --- settings.json merge + MCP server registration (spec 0214) ---
+# The existing ~/.gemini/settings.json is merged in place, never rebuilt from
+# config/gemini/settings.json: every operator key and every hook entry is kept,
+# and only the context-file list and the reserved MCP entries are
+# framework-owned. The whole write lives in scripts/lib/gemini-settings.sh.
 echo "Configuring ~/.gemini/settings.json..."
 SETTINGS_TARGET="$GEMINI_HOME/settings.json"
 SETTINGS_SRC="$REPO_DIR/config/gemini/settings.json"
-
-backup_file "$SETTINGS_TARGET"
-
-# Capture the operator's pre-existing MCP declarations + the backup path BEFORE
-# the framework overwrites settings.json, so non-reserved servers can be folded
-# back in after the write (spec 0089 R2/R4). Must run before the template copy
-# below, never after — see merge_preexisting_mcp_servers in common.sh.
-PREEXISTING_MCP="$(jq -c '.mcpServers // {}' "$SETTINGS_TARGET" 2>/dev/null || echo '{}')"
-MCP_BACKUP="$LAST_BACKUP_PATH"
-# The template write below erases every hook entry, so take the usage-capture
-# footprint first and put it back after the MCP folds (spec 0211 R13). An
-# unparsable file carries nothing over and is still repaired by the template.
-PREEXISTING_CAPTURE="$(usage_capture_footprint gemini "$SETTINGS_TARGET" 2>/dev/null)" || { PREEXISTING_CAPTURE='[]'; echo "  WARNING: $SETTINGS_TARGET is unreadable as JSON; no usage-capture entry carried over (the template rewrite below repairs the file)." >&2; }
 
 # Detect MemPalace Python interpreter (used to patch mcpServers.mempalace.command)
 MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
@@ -195,66 +188,51 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
 fi
 
 # MemPalace is detected → HTTP by default (spec 0113 delta-02 R17): the
-# patched stdio template is written unconditionally and the shared-daemon
-# HTTP registration below replaces it. No opt-in prompt remains; the
-# mempalace-out branch below only handles MemPalace-absent, which registers
-# nothing, as before.
+# stdio-shaped reserved entry is written by the merge below and the
+# shared-daemon HTTP registration further down replaces it. No opt-in prompt
+# remains; MemPalace-absent registers nothing, as before.
 if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   # Install the shared ChromaDB HTTP daemon supervisor (issue #98) before
   # writing the wrapper into settings.json — first-launch ordering matters.
   install_chroma_daemon "$REPO_DIR"
-
-  # Copy template, then patch mcpServers.mempalace.command with the detected
-  # python and substitute the __CREWRIG_REPO_DIR__ placeholder in args with
-  # the repo root so the http-wrapper resolves to an absolute path.
-  jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" --arg py "$MEMPALACE_PYTHON_BIN" --arg repo "$REPO_DIR" \
-    '.mcpServers.mempalace.command = "bash"
-     | .mcpServers.mempalace.args = ([$tlsexec, $py]
-         + (.mcpServers.mempalace.args | map(gsub("__CREWRIG_REPO_DIR__"; $repo))))' \
-    "$SETTINGS_SRC" > "${SETTINGS_TARGET}.tmp" && mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"
-  echo "  Installed: settings.json (mempalace patched with detected Python + wrapper path)"
   MEMPALACE_INSTALLED=1
 else
-  # Copy template with mempalace removed from mcpServers
-  jq 'del(.mcpServers.mempalace)' \
-    "$SETTINGS_SRC" > "${SETTINGS_TARGET}.tmp" && mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"
-  echo "  Installed: settings.json (mempalace omitted from mcpServers)"
   MEMPALACE_INSTALLED=0
 fi
 
-# Route the sequentialthinking MCP server through tls-exec.sh so its npx package
-# fetch inherits custom-CA trust when consented (spec 0084 R2/R9). Runs in both
-# the mempalace-in and mempalace-out branches.
-jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" '
-  if .mcpServers.sequentialthinking then
-    .mcpServers.sequentialthinking.args = ([$tlsexec, .mcpServers.sequentialthinking.command]
-      + .mcpServers.sequentialthinking.args)
-    | .mcpServers.sequentialthinking.command = "bash"
-  else . end' \
-  "$SETTINGS_TARGET" > "${SETTINGS_TARGET}.tmp" && mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"
-
-# Fold the operator's pre-existing non-reserved MCP servers back over the
-# framework config (spec 0089). Framework reserved entries (mempalace /
-# sequentialthinking) — including their spec-0084 TLS wrapping — are untouched.
-merge_preexisting_mcp_servers "$PREEXISTING_MCP" "$SETTINGS_TARGET" "$MCP_BACKUP"
-
-# Fold org-declared MCP servers (spec 0091) over the just-merged config, AFTER
-# the 0089 operator fold, so precedence is framework-reserved > org > operator.
-# Guarded on manifest presence, like the AGENTS.org.md fan-out.
+# Org-declared MCP servers (spec 0091), folded by the merge AFTER the spec 0089
+# operator fold, so precedence is framework-reserved > org > operator. Guarded
+# on manifest presence, like the AGENTS.org.md fan-out.
+ORG_MCP_NATIVE=""
 ORG_MCP_MANIFEST="$REPO_DIR/mcp-servers.org.json"
 if [ -f "$ORG_MCP_MANIFEST" ]; then
   ORG_MCP_NATIVE="$(org_mcp_to_native gemini "$(read_org_mcp_manifest "$ORG_MCP_MANIFEST")")"
-  apply_org_mcp_servers "$ORG_MCP_NATIVE" "$SETTINGS_TARGET" "$PREEXISTING_MCP" "$MCP_BACKUP"
 fi
 
-# Re-inject the usage-capture entries the template write erased (footprint taken
-# before it, above). No extra backup: the pre-run file was backed up above.
-if [ "$PREEXISTING_CAPTURE" != "[]" ]; then
-  usage_capture_reinject gemini "$SETTINGS_TARGET" "$PREEXISTING_CAPTURE" || echo "  WARNING: could not carry the usage-capture entries through the settings rewrite." >&2
+# Backup first, then the merge, the reserved MCP entries (mempalace patched
+# with the detected Python, sequentialthinking TLS-wrapped per spec 0084) and
+# both MCP folds. The function prints its own ERROR line naming the backup.
+settings_rc=0
+gemini_settings_write "$SETTINGS_TARGET" "$SETTINGS_SRC" "$REPO_DIR" "$MEMPALACE_PYTHON_BIN" "$ORG_MCP_NATIVE" || settings_rc=$?
+case "$settings_rc" in
+  0) ;;
+  2)
+    echo "  settings.json was merged but its MCP servers are incomplete — setup aborted. Re-run this script." >&2
+    exit 1
+    ;;
+  *)
+    echo "  settings.json was not changed — setup aborted." >&2
+    exit 1
+    ;;
+esac
+if [ "$MEMPALACE_INSTALLED" -eq 1 ]; then
+  echo "  Merged: settings.json (existing content kept; mempalace registered with the detected Python + wrapper path)"
+else
+  echo "  Merged: settings.json (existing content kept; mempalace omitted from mcpServers)"
 fi
 
 # MemPalace HTTP by default (spec 0113 delta-02 R17-R20). Runs AFTER the
-# stdio-shaped template write above and after both folds — reserved names
+# stdio-shaped merge above and after both folds — reserved names
 # never appear in a preserved side (MCP_RESERVED_NAMES), so no fold touches
 # this entry. Exit handling: 0 = HTTP registered; 1 = no usable serving
 # daemon, the just-written stdio entry stays (the previous arrangement, R19
@@ -476,11 +454,11 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     rm -f "$HOOKS_PATCHED_TMP"
   else
     echo "  Transcript activation canceled by user."
-    echo "  settings.json was rebuilt from its template above, so session-recording hooks and the worktree git guard from an earlier run were not kept; usage capture is carried over separately."
+    echo "  Any session-recording hooks and worktree git guard an earlier run registered in settings.json are left in place."
   fi
 else
   echo "  Session recording disabled (can enable later by re-running this script)."
-  echo "  settings.json was rebuilt from its template above, so session-recording hooks and the worktree git guard from an earlier run were not kept; usage capture is carried over separately."
+  echo "  Any session-recording hooks and worktree git guard an earlier run registered in settings.json are left in place."
 fi
 
 # --- Usage capture (opt-in, spec 0211) ---
