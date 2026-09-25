@@ -6,8 +6,9 @@
 # Units under test:
 #   - scripts/lib/usage-capture-optin.sh — the ONE implementation of every
 #     read and write of a capture entry: detection, enable, keep, remove, the
-#     answer mapping (`usage_capture_apply`), the Gemini carry-over
-#     (`usage_capture_footprint` / `usage_capture_reinject`) and the
+#     answer mapping (`usage_capture_apply`), the footprint / reinject pair
+#     (`usage_capture_footprint` / `usage_capture_reinject`, library API; the
+#     Gemini setup no longer carries capture over, spec 0214 R16) and the
 #     session-recording merge that must preserve capture
 #     (`merge_session_recording_hooks`). The setups call these helpers; this
 #     suite calls the SAME helpers directly, never a transcription (R15).
@@ -29,7 +30,7 @@
 #       (f) `keep` re-points a vanished path and only a vanished path (R11)
 #       with the linked-worktree warning (R6) · (f') a non-R5 capture handler
 #       survives `keep` · (g)/(h) `remove` prunes (R12) · (i) enable+remove
-#       round trip · (j) Gemini template-rewrite carry-over (R13) ·
+#       round trip · (j) footprint / reinject library contract ·
 #       (k) the registered command writes a journal record with no MemPalace
 #       (R3) · (l) unparsable input is never written · (m) file mode stays or
 #       ends 0600 · (n) helpers return, never exit, under `bash -e`.
@@ -48,7 +49,8 @@
 #       target is left untouched.
 #   §4  Structural (R1, R4, R10, R15): prompt placement, defaults, `|| true`
 #       guards, every library call site guarded, not gated on MemPalace,
-#       Gemini carry-over ordering, and the never-copied invariant for
+#       the Gemini settings merge preceding the usage-capture step with no
+#       carry-over (spec 0214 R16), and the never-copied invariant for
 #       usage-capture.sh (moved here from the three transcript suites).
 #   §5  R14: the Antigravity setup and hooks reference neither the new
 #       library nor the fragments.
@@ -381,8 +383,7 @@ for cli in $CLIS; do
   if [ -z "$block" ]; then
     bad "setup-$cli-interactive.sh: no session-recording block found (ENABLE_TRANSCRIPTS= at column 0)"
   # R2 forbids naming the capture COMMAND (its script, its path, or a helper
-  # that builds or registers it). Prose naming the feature is allowed, e.g.
-  # Gemini's decline line saying that capture is carried over (i1-F7).
+  # that builds or registers it). Prose naming the feature is allowed (i1-F7).
   elif grep -qE "$R2_CAPTURE_RE" <<< "$block"; then
     bad "setup-$cli-interactive.sh: the session-recording block still names the capture command: $(grep -nE "$R2_CAPTURE_RE" <<< "$block" | head -3 | tr '\n' ' ')"
   else
@@ -761,7 +762,10 @@ for fixture in claude-nohooks claude-operator-stripped gemini-operator-stripped 
   fi
 done
 
-echo "§3 (j) Gemini: the capture entry survives the settings template rewrite (R13)"
+# Library contract of usage_capture_footprint / usage_capture_reinject. No setup
+# calls reinject since spec 0214 (Gemini merges settings.json in place and its
+# hooks survive, R16); footprint still backs merge_session_recording_hooks.
+echo "§3 (j) footprint / reinject library contract: a footprint reinjected into the Gemini template is 'installed'"
 cfg="$TMP_ROOT/j/settings.json"
 materialize "gemini-coupled.json" "$cfg"
 fp="$(usage_capture_footprint gemini "$cfg" 2>/dev/null)"
@@ -775,7 +779,7 @@ cp "$GEMINI_TEMPLATE" "$cfg"
 usage_capture_reinject gemini "$cfg" "$fp" >/dev/null 2>&1
 rc=$?
 if [ "$rc" -eq 0 ] && [ "$(usage_capture_state gemini "$cfg" 2>/dev/null)" = "installed" ]; then
-  ok "(j) after template rewrite + reinject the install is 'installed'"
+  ok "(j) after a template copy + reinject the install is 'installed'"
 else
   bad "(j) reinject rc=$rc, state '$(usage_capture_state gemini "$cfg" 2>/dev/null)'"
 fi
@@ -1547,27 +1551,22 @@ for d in "$HOME/.claude/hooks" "$HOME/.gemini/hooks" "$HOME/.copilot/hooks"; do
   fi
 done
 
-# Gemini: footprint before the template write, reinject after the org-MCP fold.
+# Gemini (spec 0214 R16): settings.json is merged in place, so every hook entry,
+# capture included, survives on its own. The setup carries nothing over: it
+# calls neither footprint nor reinject, and its settings write precedes the
+# usage-capture step, which therefore reads the merged file.
 S="$(setup_script gemini)"
-fp_ln="$(grep -nE 'usage_capture_footprint[[:space:]]+gemini' "$S" | grep -vE '^[0-9]+:[[:space:]]*#' | head -1 | cut -d: -f1)"
-bak_ln="$(grep -nE '^backup_file "\$SETTINGS_TARGET"' "$S" | head -1 | cut -d: -f1)"
-tpl_ln="$(grep -nE '"\$SETTINGS_SRC"' "$S" | grep -vE 'SETTINGS_SRC=' | head -1 | cut -d: -f1)"
-fold_ln="$(grep -nE 'apply_org_mcp_servers' "$S" | grep -vE '^[0-9]+:[[:space:]]*#' | head -1 | cut -d: -f1)"
-ri_ln="$(grep -nE 'usage_capture_reinject[[:space:]]+gemini' "$S" | grep -vE '^[0-9]+:[[:space:]]*#' | head -1 | cut -d: -f1)"
-if [ -n "$fp_ln" ] && [ -n "$bak_ln" ] && [ -n "$tpl_ln" ] && [ "$fp_ln" -gt "$bak_ln" ] && [ "$fp_ln" -lt "$tpl_ln" ]; then
-  ok "setup-gemini: the capture footprint is taken after the backup (l. $bak_ln) and before the template write (l. $tpl_ln)"
+if grep -vE '^[[:space:]]*#' "$S" | grep -qE 'usage_capture_(footprint|reinject)'; then
+  bad "setup-gemini: still calls usage_capture_footprint or usage_capture_reinject"
 else
-  bad "setup-gemini: footprint l. $fp_ln not between backup l. $bak_ln and template write l. $tpl_ln"
+  ok "setup-gemini: calls neither usage_capture_footprint nor usage_capture_reinject"
 fi
-if [ -n "$fp_ln" ] && joined "$S" | grep -E "^[0-9]+:.*usage_capture_footprint[[:space:]]+gemini" | grep -q "'\[\]'"; then
-  ok "setup-gemini: the footprint falls back to '[]' on an unparsable file"
+gsw_ln="$(grep -nE '^[[:space:]]*gemini_settings_write[[:space:]]' "$S" | head -1 | cut -d: -f1)"
+ucs_ln="$(grep -nE 'usage_capture_state[[:space:]]+gemini' "$S" | grep -vE '^[0-9]+:[[:space:]]*#' | head -1 | cut -d: -f1)"
+if [ -n "$gsw_ln" ] && [ -n "$ucs_ln" ] && [ "$gsw_ln" -lt "$ucs_ln" ]; then
+  ok "setup-gemini: the settings write (l. $gsw_ln) precedes the usage-capture step (l. $ucs_ln)"
 else
-  bad "setup-gemini: the footprint line carries no '[]' fallback"
-fi
-if [ -n "$ri_ln" ] && [ -n "$fold_ln" ] && [ "$ri_ln" -gt "$fold_ln" ]; then
-  ok "setup-gemini: the capture reinject (l. $ri_ln) follows the org-MCP fold (l. $fold_ln)"
-else
-  bad "setup-gemini: reinject l. $ri_ln does not follow the org-MCP fold l. $fold_ln"
+  bad "setup-gemini: settings write l. $gsw_ln does not precede the usage-capture step l. $ucs_ln"
 fi
 
 # ---------------------------------------------------------------------------

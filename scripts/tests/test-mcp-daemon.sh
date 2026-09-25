@@ -559,8 +559,9 @@ grep -q 'MCP_RESERVED_NAMES=(mempalace' "${REPO_DIR}/scripts/lib/common.sh" \
   || nope "mempalace is no longer reserved — re-check whether the setups still need to switch"
 
 # (b) order — each ensure_mempalace_http call must come AFTER its script's
-# stdio-shaped write (template `mv` for Gemini/Copilot, the final atomic
-# MCP_BASE write for Antigravity), so the HTTP entry overwrites the stdio one
+# stdio-shaped write (the gemini_settings_write in-place merge for Gemini,
+# spec 0214; the template `mv` for Copilot; the final atomic MCP_BASE write for
+# Antigravity), so the HTTP entry overwrites the stdio one
 # instead of the reverse. For Claude the anchor is the R19 stdio fallback
 # register, and the direction is inverted: `register_mempalace_mcp` and the
 # fallback must sit AFTER the call — a stdio register preceding the call would
@@ -574,7 +575,7 @@ for cli in claude gemini copilot antigravity; do
   call_line="$(grep -nF 'ensure_mempalace_http "$REPO_DIR"'" ${cli}" "$script" | head -1 | cut -d: -f1)"
   case "$cli" in
     claude)      anchor_pat='mcp_register_user mempalace' ; cmp='-lt' ;;
-    gemini)      anchor_pat='mv "${SETTINGS_TARGET}.tmp" "$SETTINGS_TARGET"' ; cmp='-gt' ;;
+    gemini)      anchor_pat='gemini_settings_write "$SETTINGS_TARGET"' ; cmp='-gt' ;;
     copilot)     anchor_pat='mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"' ; cmp='-gt' ;;
     antigravity) anchor_pat='mv "${AGY_MCP_CONFIG}.tmp" "$AGY_MCP_CONFIG"' ; cmp='-gt' ;;
   esac

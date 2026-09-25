@@ -3,9 +3,11 @@
 # preservation-on-setup behaviour (spec 0089).
 #
 # Unit under test: merge_preexisting_mcp_servers() in scripts/lib/common.sh,
-# the single shared helper the three overwrite-based setups (Gemini, Copilot,
+# the single shared helper the two overwrite-based setups (Copilot,
 # Antigravity) call to fold an operator's pre-existing MCP declarations back
-# over the framework-written config. The helper owns the whole policy, so it is
+# over the framework-written config, and that the Gemini setup calls from
+# gemini_settings_write (scripts/lib/gemini-settings.sh) after its in-place
+# merge (spec 0214), for the R9 warnings. The helper owns the whole policy, so it is
 # the hermetic surface for R11 — the interactive scripts themselves cannot run
 # end-to-end in CI (fzf prompts, the `agy` guard, the launchd/systemd chroma
 # daemon), so they are exercised structurally instead (§3, §4).
@@ -19,11 +21,13 @@
 #     pre-existed, while every non-reserved declaration is still retained.
 #   R9 — each reserved-name collision (replace on selection, remove on decline)
 #     emits a non-silent warning naming the server and pointing at the backup.
-#   R11 — asserted per framework-doc shape below AND, for each of the three
-#     scripts, that the operator's pre-run config is CAPTURED BEFORE the
-#     framework overwrite (ordering) and that the capture actually reads the
-#     operator's servers (functional) — a plain call-site grep cannot catch a
-#     mis-timed or wrong-file capture (spec 0089 review F1).
+#   R11 — asserted per framework-doc shape below AND, for the two
+#     overwrite-based scripts, that the operator's pre-run config is CAPTURED
+#     BEFORE the framework overwrite (ordering) and that the capture actually
+#     reads the operator's servers (functional) — a plain call-site grep cannot
+#     catch a mis-timed or wrong-file capture (spec 0089 review F1). Gemini no
+#     longer overwrites: its capture-merge-fold sequence is one library
+#     function, exercised behaviourally by test-setup-gemini-settings-merge.sh.
 #
 # HERMETIC: no HOME writes, no interactive scripts run. Every merge operates on
 # throwaway temp files under a temp root removed on exit.
@@ -221,21 +225,32 @@ check_capture() {
   fi
 }
 
-check_capture setup-gemini-interactive.sh      SETTINGS_TARGET    '${SETTINGS_TARGET}.tmp'
 check_capture setup-copilot-interactive.sh     MCP_CONFIG_TARGET  '${MCP_CONFIG_TARGET}.tmp'
 check_capture setup-antigravity-interactive.sh AGY_MCP_CONFIG     '${AGY_MCP_CONFIG}.tmp'
 
 # ---------------------------------------------------------------------------
-echo "4. Setup-script parity (all three overwrite-based setups call the helper)"
+echo "4. Setup-script parity (all three file setups reach the helper)"
 # ---------------------------------------------------------------------------
-for s in setup-gemini-interactive.sh setup-copilot-interactive.sh \
-         setup-antigravity-interactive.sh; do
+for s in setup-copilot-interactive.sh setup-antigravity-interactive.sh; do
   if grep -q "merge_preexisting_mcp_servers" "$SETUP_DIR/$s"; then
     ok "invokes merge_preexisting_mcp_servers: $s"
   else
     bad "missing merge_preexisting_mcp_servers call: $s"
   fi
 done
+# Gemini (spec 0214): the setup calls gemini_settings_write, and that library
+# function is where the helper is called.
+GEMINI_LIB="$SETUP_DIR/lib/gemini-settings.sh"
+if grep -qE '^[[:space:]]*gemini_settings_write[[:space:]]' "$SETUP_DIR/setup-gemini-interactive.sh"; then
+  ok "invokes gemini_settings_write: setup-gemini-interactive.sh"
+else
+  bad "missing gemini_settings_write call: setup-gemini-interactive.sh"
+fi
+if grep -qE '^[[:space:]]*merge_preexisting_mcp_servers[[:space:]]' "$GEMINI_LIB"; then
+  ok "invokes merge_preexisting_mcp_servers: lib/gemini-settings.sh"
+else
+  bad "missing merge_preexisting_mcp_servers call: lib/gemini-settings.sh"
+fi
 
 # ---------------------------------------------------------------------------
 echo "5. backup_file helper behaviour (spec 0089 R9/R10, issue #982)"
