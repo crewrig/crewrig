@@ -12,11 +12,12 @@
 // attribution sidecar, unlink the wing sidecar, unlink the entry last (its
 // presence is what a re-run keys on). A record whose marker is in pending/
 // has no drawer, so its marker, sidecars and entry go with no daemon
-// contact (R8). With at least one mirrored/ marker for the period and the
-// daemon unreachable, the prune refuses and exits non-zero (R19). (3) after
-// every record, walk layout.derivedStores() and remove each registered
-// store's items for this period, reporting only a store it actually
-// reached (delta-01 R33's second clause).
+// contact (R8). Refuses when a mirrored drawer exists for the period and
+// MemPalace is unreachable or does not confirm the drawer's deletion: the
+// failing record's marker, sidecars and entry are kept, and the prune exits
+// non-zero (R19). (3) after every record, walk layout.derivedStores() and
+// remove each registered store's items for this period, reporting only a
+// store it actually reached (delta-01 R33's second clause).
 
 'use strict';
 
@@ -41,7 +42,7 @@ async function pruneRecord(cli, per, recordId) {
   if (isMirrored) {
     const result = await mcp.deleteBySource({ source_file: entryPath, dry_run: false });
     if (!result.ok) {
-      return { ok: false };
+      return { ok: false, kind: result.kind, message: result.message };
     }
     try {
       fs.unlinkSync(mirroredPath);
@@ -131,10 +132,21 @@ async function prune(cli, per, opts) {
   for (const recordId of recordIds) {
     const result = await pruneRecord(cli, per, recordId);
     if (!result.ok) {
-      console.error(
-        `FATAL: ${cli}/${per} has a mirrored drawer and the MemPalace daemon is unreachable — refusing to continue. ` +
-          `${removed} record(s) removed before the refusal; re-run once the daemon is reachable.`
-      );
+      const reason = result.message || 'unknown error';
+      if (result.kind === 'transport') {
+        console.error(
+          `FATAL: ${cli}/${per} has a mirrored drawer and the MemPalace daemon is unreachable (${reason}) — ` +
+            `refusing to continue. ${removed} record(s) removed before the refusal; re-run once the daemon is reachable.`
+        );
+      } else {
+        // tool-error or tool-unavailable (mcp.js header): the daemon answered
+        // but did not acknowledge the deletion, so nothing of this record goes.
+        console.error(
+          `FATAL: ${cli}/${per}: MemPalace did not confirm deleting the drawer of record ${recordId} (${reason}) — ` +
+            `refusing to continue; its journal entry, sidecars and mirrored marker are kept. ` +
+            `${removed} record(s) removed before the refusal; re-run once MemPalace reports the deletion as successful.`
+        );
+      }
       process.exitCode = 1;
       return;
     }
@@ -208,8 +220,8 @@ function printHelp() {
 Removes a period's journal entries and mirrored drawers together (spec 0207
 R18-R20). Never automatic — no expiry code path exists in this contract.
 Refuses a period >= the current one unless --force. Refuses when a
-mirrored drawer exists for the period and the MemPalace daemon is
-unreachable.
+mirrored drawer exists for the period and MemPalace is unreachable or does
+not confirm the drawer's deletion.
 
 --unprune restores writability to a pruned period ONLY. It does not restore
 deleted entries, sidecars, or drawers, and does not recover records

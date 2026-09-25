@@ -222,13 +222,13 @@ usage_mirror_gate() {
   bash scripts/usage-mirror.sh
   n=$(find "$ROOT/mirror/pending" -type f 2>/dev/null | wc -l | tr -d ' ')
   if [ "$n" != "0" ]; then
-    USAGE_MIRROR_VERDICT="UNVERIFIED ($n pending marker(s): MemPalace unreachable or a record failed to mirror)"
+    USAGE_MIRROR_VERDICT="UNVERIFIED ($n pending marker(s): MemPalace unreachable or unable to serve, or a record failed to mirror)"
     echo "MemPalace mirror: $USAGE_MIRROR_VERDICT"
     return 1
   fi
   while IFS= read -r d; do
     if ! bash scripts/usage-prune.sh "$(basename "$(dirname "$d")")" "$(basename "$d")" --force; then
-      USAGE_MIRROR_VERDICT="UNVERIFIED (MemPalace unreachable while pruning $d)"
+      USAGE_MIRROR_VERDICT="UNVERIFIED (MemPalace unreachable or deletion not confirmed while pruning $d)"
       echo "MemPalace mirror: $USAGE_MIRROR_VERDICT"
       return 1
     fi
@@ -247,28 +247,33 @@ usage_mirror_gate() {
 The verdict rests on the mirror's own markers. A record still waiting to be
 mirrored stops the check before any prune, because the prune removes a
 waiting record's marker without contacting MemPalace, even when a drawer for
-it already exists. A mirrored record's marker is removed only after MemPalace
-has answered the prune's deletion request. The check does not list
-MemPalace's drawers independently
-([#1206](https://github.com/crewrig/crewrig/issues/1206)), and it trusts
-that answer: `main` counts any reply that is not a protocol error as a
-completed deletion, including a reply in which MemPalace itself reports that
-the deletion failed ([#1211](https://github.com/crewrig/crewrig/issues/1211)).
-A `removed` verdict is therefore only as good as the daemon's own
-acknowledgment.
+it already exists. A mirrored record's marker is removed only after
+MemPalace reports the prune's deletion request as successful; any other
+answer, including one in which MemPalace reports that the deletion failed,
+stops the prune and keeps the marker. The check does not list MemPalace's
+drawers independently
+([#1206](https://github.com/crewrig/crewrig/issues/1206)), so a `removed`
+verdict rests on MemPalace's own report of success.
 
 **When the verdict is `UNVERIFIED`**, the removal step has not run and the
 usage root is still there. When the check stopped on a waiting record, it
 has removed nothing. When it stopped during the prunes, the months pruned
 before the stop are already gone, from the usage root and from MemPalace
-alike. Either way, make MemPalace reachable and run the whole procedure again
-from the start; every step can be repeated safely. One case no shipped command
-resolves yet: a mirrored marker whose journal entry is already gone, which
-the check reports as a marker left without a journal entry. Its drawer
-cannot be found without that entry. The same holds for drawers left behind by
-the older purge instructions, which deleted `journal/` and `mirror/` without
-removing any drawer. Both cases are tracked in
-[#1206](https://github.com/crewrig/crewrig/issues/1206).
+alike. Either way, fix the cause, then run the whole procedure again from
+the start; every step can be repeated safely. When the check stopped on a
+waiting record, `usage-mirror.sh` names the cause on stderr with a `failed:`
+or `stopping this pass` line. When it printed neither, MemPalace was
+unreachable: the catch-up only wrote `unreachable.stamp`
+([Unreachable backoff](usage-storage.md#unreachable-backoff)), so make
+MemPalace reachable. An operator run of `usage-mirror.sh` does not wait out
+that backoff. When the check stopped during the prunes, the prune's FATAL
+line names the cause: MemPalace unreachable, or MemPalace not confirming a
+deletion. One case no shipped command resolves yet: a mirrored marker whose
+journal entry is already gone, which the check reports as a marker left
+without a journal entry. Its drawer cannot be found without that entry. The
+same holds for drawers left behind by the older purge instructions, which
+deleted `journal/` and `mirror/` without removing any drawer. Both cases are
+tracked in [#1206](https://github.com/crewrig/crewrig/issues/1206).
 
 ### Procedure (a): purge the stored data while capture stays enabled
 

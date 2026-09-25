@@ -140,6 +140,8 @@ Whichever caller does acquire the lock drains `pending/` in a loop — repeating
 
 When a mirror operation fails with a transport error (daemon unreachable), the `unreachable.stamp` file is written. Subsequent write operations check this stamp's age; if it is younger than the backoff window, no new catch-up is spawned, though pending markers continue to accumulate. Once the backoff expires, the next write spawns a fresh catch-up attempt. This prevents thundering-herd spawning when the daemon is down.
 
+When MemPalace answers but cannot serve the call at all (an error without a `success` field, `isError`, or a malformed reply), the catch-up stops its pass after that one call, without writing the stamp, so a backlog costs at most one call per write. A failure MemPalace reports for one record (`success: false`) is logged, and the pass moves on to the next record.
+
 ### Drawer structure
 
 A mirrored drawer is created per record, in the project's own memory space under the `usage-records` room. The drawer's content depends on the record's kind:
@@ -212,7 +214,7 @@ This command:
 1. Writes a pruned marker to `<root>/pruned/<cli>/<YYYY-MM>.json` FIRST, protecting the period against repopulation even if the prune crashes mid-operation.
 2. Deletes each record's drawer (if mirrored), markers, sidecars (both `.wing.json` and `.attr.json`), and journal entry in that order.
 3. **Walks the registry of derived stores** (spec 0207 delta-01 R28) and removes items from each registered store for that period. The attribution ledger (spec 0208) and the price store (spec 0209) are registered derived stores; every ledger entry and price entry for records in that period is removed. Prices are partitioned by their record's request instant, so a price is removed when its underlying record's period matches the pruned period. For each derived store reached, the prune reports how many items it removed.
-4. If any mirrored drawer exists and the MemPalace daemon is unreachable, refuses the operation and exits non-zero to preserve consistency.
+4. If any mirrored drawer exists and MemPalace is unreachable or does not confirm the drawer's deletion, refuses the operation and exits non-zero to preserve consistency.
 
 The command refuses to prune the current or future period unless `--force` is passed.
 
