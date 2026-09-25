@@ -160,12 +160,20 @@ block has a `response` key. This lists them:
 
 ```sh
 ROOT="${CREWRIG_USAGE_ROOT:-$HOME/.crewrig/usage}"
-find "$ROOT/journal/antigravity" -name '*.json' ! -name '*.wing.json' ! -name '*.attr.json' \
-  -exec jq -r 'select(.provenance.captureChannel == "headless-envelope"
-    and .provenance.cli == "antigravity"
-    and ((.raw // {}) | has("response"))) | input_filename' {} + 2>/dev/null
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq is required to list these records" >&2
+elif [ ! -d "$ROOT/journal/antigravity" ]; then
+  echo "no Antigravity journal under $ROOT" >&2
+else
+  find "$ROOT/journal/antigravity" -name '*.json' ! -name '*.wing.json' ! -name '*.attr.json' \
+    -exec jq -r 'select(.provenance.captureChannel == "headless-envelope"
+      and .provenance.cli == "antigravity"
+      and ((.raw // {}) | has("response"))) | input_filename' {} +
+fi
 ```
 
+With `jq` present and a journal in place, no output means no such record.
+A missing `jq` or journal is reported on stderr, never as an empty list.
 Procedure (a) below removes them, along with every other record.
 
 ### Before you start
