@@ -1,7 +1,7 @@
 {
   "conversation_id": "antigravity-headless-fixture-conv-001",
   "status": "ok",
-  "response": "fixture response text",
+  "response": "CANARY-1201-AGY-RESPONSE: here is the refactored parser you asked for.",
   "duration_seconds": 4.2,
   "num_turns": 1,
   "usage": {

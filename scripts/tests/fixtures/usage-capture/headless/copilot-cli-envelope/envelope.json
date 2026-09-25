@@ -10,5 +10,6 @@
         "reasoningTokens": 15
       }
     }
-  }
+  },
+  "unenumeratedTextField": "CANARY-1201-COPILOT-UNENUMERATED: synthetic key, not part of the real usage file"
 }

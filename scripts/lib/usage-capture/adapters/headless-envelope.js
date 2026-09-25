@@ -26,6 +26,12 @@
 //                      `--usage-output-file` DOES report one, as
 //                      `currentModel` (verified live the same session).
 //   interaction      = "unknown"
+//   raw              = an allow-listed subset of the envelope (pickRaw()),
+//                      never the whole envelope — spec 0206 R18. Each
+//                      allowed top-level key is copied unaltered (R8) when
+//                      present and never invented when absent. The reply
+//                      text (`response`, `result`) and tool input
+//                      (`permission_denials`) are never copied.
 //
 // Per-CLI envelope shapes verified live on the authoring machine (DEV
 // follow-up, issue #1169):
@@ -131,6 +137,35 @@ function extractTokens(cli, envelope) {
   return {};
 }
 
+// RAW_KEYS_BY_CLI — the top-level envelope keys pickRaw() copies per CLI:
+// identifiers, counters, and the token/model blocks the extractors above
+// read. Anything else, including every conversation-text field, is dropped.
+// Gemini's `stats` is reduced to `stats.models` (stats.tools and
+// stats.files are not copied). TIMING_KEYS are kept for every CLI because
+// extractTerminalTimestamp() reads them.
+const RAW_KEYS_BY_CLI = {
+  antigravity: ['conversation_id', 'status', 'duration_seconds', 'num_turns', 'usage'],
+  'claude-code': ['session_id', 'modelUsage', 'usage', 'total_cost_usd', 'duration_ms', 'num_turns'],
+  'gemini-cli': ['session_id'],
+  'copilot-cli': ['currentModel', 'modelMetrics'],
+};
+const RAW_KEYS_DEFAULT = ['session_id', 'sessionId', 'model', 'usage'];
+const TIMING_KEYS = ['timestamp', 'terminal_timestamp'];
+
+function pickRaw(cli, envelope) {
+  const raw = {};
+  if (!envelope || typeof envelope !== 'object') return raw;
+  const keys = (RAW_KEYS_BY_CLI[cli] || RAW_KEYS_DEFAULT).concat(TIMING_KEYS);
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(envelope, key)) raw[key] = envelope[key];
+  }
+  if (cli === 'gemini-cli' && envelope.stats && typeof envelope.stats === 'object'
+      && Object.prototype.hasOwnProperty.call(envelope.stats, 'models')) {
+    raw.stats = { models: envelope.stats.models };
+  }
+  return raw;
+}
+
 function capture({ cli, envelope, launchInstant, projectRoot, now = record.nowInstant } = {}) {
   const captureInstant = now();
   const sessionId = extractSessionId(cli, envelope);
@@ -159,7 +194,7 @@ function capture({ cli, envelope, launchInstant, projectRoot, now = record.nowIn
     modelId: extractModel(cli, envelope),
     interaction: 'unknown',
     tokens: record.mapTokens(extractTokens(cli, envelope)),
-    raw: envelope || {},
+    raw: pickRaw(cli, envelope),
     rawStatus: 'complete',
     fidelity: 'run-total',
     idempotencyKey,

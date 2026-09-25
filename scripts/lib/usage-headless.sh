@@ -30,7 +30,9 @@
 #     listing). A parse failure (a timeout truncated the file, or agy wrote
 #     a non-JSON error) leaves <out_file> COMPLETELY UNTOUCHED — a caller's
 #     own empty/error classification downstream sees exactly what it would
-#     have without this wrapping.
+#     have without this wrapping. The rewrite happens in place: the reply is
+#     never staged in a second temp file, so the caller's own <out_file> is
+#     the only file that ever holds it.
 #
 # All three resolve CREWRIG_USAGE_ROOT (default ${HOME}/.crewrig/usage) AT
 # CALL TIME — before any per-invocation `HOME=` override the caller applies
@@ -137,42 +139,43 @@ usage_headless_capture_usage_file() {
 #
 # See the file header. <out_file> must already hold the raw stdout of an
 # `agy ... --output-format json` invocation (or be empty/partial on a
-# timeout). Derives and submits one run-total record, then rewrites
-# <out_file> to hold exactly its own `.response` field — proven live
-# byte-identical to agy's plain-text-mode stdout. Leaves <out_file>
-# UNTOUCHED if it is empty or does not parse as JSON with a string
-# `.response` field.
+# timeout). Three steps: a Node step validates <out_file> (parses as JSON,
+# `.response` is a string) without writing anything; only then is one
+# run-total record derived and submitted; then a second Node step rewrites
+# <out_file> in place to hold exactly its own `.response` field — proven
+# live byte-identical to agy's plain-text-mode stdout. No temp file ever
+# holds the reply (spec 0206 R18): the extractor script lives in a mktemp -d
+# directory, but it holds code only. Leaves <out_file> UNTOUCHED if it is
+# empty or does not parse as JSON with a string `.response` field.
 usage_headless_agy_rewrite_json_response() {
   local out_file="$1" launch_instant="$2"
   [ -s "$out_file" ] || return 0
-
-  local response_file
-  response_file="$(mktemp)"
 
   local extractor_dir extractor
   extractor_dir="$(mktemp -d)"
   extractor="$extractor_dir/extract-response.js"
   cat > "$extractor" <<'NODE_EXTRACT_EOF'
 const fs = require('fs');
-const envelopeFile = process.argv[2];
-const responseFile = process.argv[3];
+const mode = process.argv[2];
+const envelopeFile = process.argv[3];
 let envelope;
 try {
   envelope = JSON.parse(fs.readFileSync(envelopeFile, 'utf8'));
 } catch (err) {
   process.exit(1);
 }
-if (typeof envelope.response !== 'string') {
+if (!envelope || typeof envelope.response !== 'string') {
   process.exit(1);
 }
-fs.writeFileSync(responseFile, envelope.response);
+if (mode === 'rewrite') {
+  fs.writeFileSync(envelopeFile, envelope.response);
+}
 NODE_EXTRACT_EOF
 
-  if node "$extractor" "$out_file" "$response_file" 2>/dev/null; then
+  if node "$extractor" check "$out_file" 2>/dev/null; then
     _usage_headless_submit_envelope_file antigravity "$out_file" "$launch_instant"
-    mv "$response_file" "$out_file"
+    node "$extractor" rewrite "$out_file" 2>/dev/null
   fi
 
-  rm -f "$response_file"
   rm -rf "$extractor_dir"
 }

@@ -81,34 +81,27 @@ Outside the usage root:
   request and response, and Claude Code's carries the turn's last assistant
   message (see [Personal-data note](usage-capture.md#personal-data-note)).
   Derived from recorded activity.
-- **The non-interactive wrapper's temporary files.**
-  `scripts/lib/usage-headless.sh` stages output in temporary files in the
-  system temp directory: the model's reply it extracts from Antigravity CLI's
-  JSON envelope for the adopted Antigravity launch sites, and the whole output
-  of any run wrapped as a structured-output run. It deletes them at the end of
-  the call without a trap, so a killed run can leave them behind. **These
-  files can hold conversation text**, the model's reply (see
-  [Personal-data note](usage-capture.md#personal-data-note)). Derived from
-  recorded activity.
+- **The non-interactive wrapper's whole-output file.**
+  `usage_headless_run` in `scripts/lib/usage-headless.sh` stages the whole
+  output of a run it wraps in a temporary file in the system temp directory.
+  It deletes the file at the end of the call without a trap, so a killed run
+  can leave it behind. **That file can hold conversation text**, the model's
+  reply (see [Personal-data note](usage-capture.md#personal-data-note)).
+  Derived from recorded activity. The Antigravity CLI rewrite
+  (`usage_headless_agy_rewrite_json_response`) stages nothing: it rewrites
+  the launch site's own output file in place.
 
 The feature never writes the CLIs' own session records. It only reads them.
 
 ## Conversation text
 
 No usage record holds prompts, model replies, tool inputs or outputs, or file
-contents, **with one exception on `main` today**. Records of the `run-total`
-kind from the `headless-envelope` capture channel keep the whole
-non-interactive output envelope in their `raw` block, and Antigravity CLI's
-envelope carries the model's `response` text. The records that the adopted
-Antigravity launch sites write therefore hold reply text in the journal. The
-mirror does not hold it, because drawers externalize `raw`. The fix is
-tracked in [#1201](https://github.com/crewrig/crewrig/issues/1201); see
-[Headless envelope](usage-capture.md#headless-envelope-run-total-all-clis).
+contents. Every capture channel, the non-interactive `headless-envelope`
+channel included, copies only enumerated fields into a record's `raw` block.
 
-Outside the journal, conversation text can also appear in the transient
-files listed above: the hook payload file and the non-interactive wrapper's
-temporary files, for the length of one call, or longer when a killed call
-leaves them behind.
+Conversation text can appear only in the transient files listed above: the
+hook payload file and the whole-output file of `usage_headless_run`, for the
+length of one call, or longer when a killed call leaves them behind.
 
 ## Retention
 

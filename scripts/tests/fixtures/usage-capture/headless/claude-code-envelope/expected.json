@@ -8,5 +8,24 @@
   "total": 1,
   "modelId": "claude-sonnet-5",
   "fidelity": "run-total",
-  "sessionId": "claude-headless-fixture-001"
+  "sessionId": "claude-headless-fixture-001",
+  "expectedTokens": {
+    "netInput": 3400,
+    "cacheRead": 900,
+    "cacheWrite": 120,
+    "output": 610,
+    "reasoning": 0
+  },
+  "expectedRawKeys": [
+    "duration_ms",
+    "modelUsage",
+    "num_turns",
+    "session_id",
+    "total_cost_usd",
+    "usage"
+  ],
+  "forbiddenText": [
+    "CANARY-1201-CLAUDE-RESULT",
+    "CANARY-1201-CLAUDE-TOOL-INPUT"
+  ]
 }
