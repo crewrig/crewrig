@@ -275,15 +275,36 @@ else
 fi
 
 # 5c. Target cannot be copied (forcing cp failure when writing backup next to target)
+#
+# A `chmod 555` on the directory used to simulate this, but a containerized CI
+# runner as root (UID 0) bypasses Unix permission checks entirely, so under
+# root `cp` would silently succeed and this whole case would turn into a
+# no-op pass (issue #1215). Stub `cp` on PATH instead, scoped to this one
+# invocation of backup_file via a PATH assignment prefix (verified not to leak
+# outside the command it prefixes): any argument under `$no_write_dir` fails
+# deterministically, so both the source being backed up and the sibling
+# backup destination trip it, exactly reproducing the write failure
+# `backup_file` must handle — regardless of the runner's UID.
 no_write_dir="$TMP_ROOT/nowrite_dir"
 mkdir -p "$no_write_dir"
 unwritable_target="$no_write_dir/src.json"
 echo '{"test":1}' > "$unwritable_target"
-chmod 555 "$no_write_dir"
+cp_stub_dir="$TMP_ROOT/cp_stub_bin"
+mkdir -p "$cp_stub_dir"
+real_cp="$(command -v cp)"
+cat > "$cp_stub_dir/cp" <<STUB
+#!/usr/bin/env bash
+for arg in "\$@"; do
+  case "\$arg" in
+    "${no_write_dir}"/*) exit 1 ;;
+  esac
+done
+exec "${real_cp}" "\$@"
+STUB
+chmod +x "$cp_stub_dir/cp"
 out_5c_file="$TMP_ROOT/out_5c.txt"
-backup_file "$unwritable_target" > "$out_5c_file" 2>&1
+PATH="$cp_stub_dir:$PATH" backup_file "$unwritable_target" > "$out_5c_file" 2>&1
 out_5c="$(cat "$out_5c_file")"
-chmod 755 "$no_write_dir"
 if [ -z "$LAST_BACKUP_PATH" ]; then
   ok "backup_file leaves LAST_BACKUP_PATH empty when cp fails (issue #982)"
 else
