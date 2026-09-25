@@ -51,6 +51,15 @@ Declare `GITLAB_TOKEN` under **Settings → CI/CD → Variables**, marked
 generated pipeline sets for you (`RELEASE_TOKEN`) — there is nothing else
 to name or wire up.
 
+**`GITLAB_TOKEN` is the only credential that pushes the release commit and
+tag.** Before running the engine, the `release` job explicitly resets git's
+credential helper list for the process
+(`GIT_CONFIG_KEY_n=credential.helper` set to an empty value). This also
+neutralizes a GitLab Runner configured with the `FF_GIT_URLS_WITHOUT_TOKENS`
+feature flag, which would otherwise inject the CI job token through a
+credential helper and let it authenticate the push instead — silently, and
+with a different identity and permission set than the token you declared.
+
 `release-rehearsal` needs none of these: it never publishes, so it never
 resolves a credential (see below).
 
@@ -63,9 +72,10 @@ remote.
 
 1. Trigger it from a **branch pipeline** for the branch you want to
    rehearse — for example, a `Run pipeline` for that branch, or a push
-   pipeline that reaches the manual job. It is refused, naming the
-   reason, if it is triggered from a merge-request pipeline or a tag
-   pipeline; neither carries the running branch the rehearsal reports
+   pipeline that reaches the manual job. Triggered from a merge-request
+   or a tag pipeline, it refuses with `not a branch pipeline
+   (merge-request or tag): run the release from a branch pipeline`;
+   neither pipeline kind carries the running branch the rehearsal reports
    against.
 2. Set `RELEASE_DRY_RUN=true` (`DRY_RUN=true` is also accepted, kept for
    compatibility with the switch name the existing local `DRY_RUN` flow
@@ -86,7 +96,7 @@ identical in scope to what the GitHub path does on its own `main`.
 
 | Line | Mode | Meaning |
 |---|---|---|
-| `REHEARSAL <ext> version=<v> tag=<t> baseline=<lastTag\|none> archive=<name> sha256=<h>` | Rehearsal | The extension's next release, computed and packaged but not published. The release note follows this line. |
+| `REHEARSAL <ext> version=<v> tag=<t> baseline=<tag\|none> archive=<name> sha256=<h>` | Rehearsal | The extension's next release, computed and packaged but not published. The release note follows this line. |
 | `UNCHANGED <ext>` | Either | No release-worthy change since the extension's previous release; nothing was produced. |
 | `PUBLISHED <ext> tag=<t> archive=<name> sha256=<h>` | Publish | The extension was released; the tag, archive name, and archive checksum are as reported. |
 | `RELEASE-FAILED <ext> step=<step>` | Publish | A step failed for that extension (see below); the run exits non-zero. Other extensions are still reported independently. |
@@ -196,13 +206,19 @@ paths*: download the release's archive and extract it locally, or run
 `bash scripts/install-extension.sh install <name>` from a checkout of the
 fork.
 
-## Known limitation — cross-project issue references into a nested group
+## Known limitation — a cross-project issue reference two or more groups deep gets no link
 
 An issue reference inside a commit subject that points at a **different**
-project nested two or more groups deep — for example `(acme/sub/other#5)`
-— resolves against only the last two path segments of that reference, so
-it links a project that does not exist (`.../sub/other/-/issues/5` instead
-of `.../acme/sub/other/-/issues/5`). A reference to an issue in the
-released project itself is unaffected, whatever its own nesting depth.
-Avoid a cross-project issue reference into a nested-group project in a
-commit subject on a GitLab-hosted fork until this is addressed.
+project nested two or more GitLab groups deep — for example
+`(acme/sub/other#5)` — is not recognized as an issue reference at all: the
+upstream `semantic-release-gitmoji` dependency's own issue-detection regex
+requires the character right before an `owner/repo#N` reference to not
+itself be part of a path, so a second `/` immediately before the match
+rejects it outright. The reference gets **no link** on either forge — it
+is neither dropped nor misrouted to a wrong project; the text
+`acme/sub/other#5` stays in the note exactly as written in the commit
+subject. A single-level cross-project reference (`acme/other#5`) is
+unaffected and links normally, and a reference to an issue in the released
+project itself is unaffected whatever that project's own nesting depth.
+This is a pre-existing limitation of the upstream dependency, present on
+the GitHub path too — it is not introduced by the GitLab leg.
