@@ -169,7 +169,9 @@ the tallies show how many were left out.
   fresher fixing, run `task usage:price -- --refresh-fx`, then regenerate.
 - **Stored prices are reused only when they fit.** A stored price is used
   when its currency and price-list snapshot match the view. Otherwise the
-  dashboard recomputes the price for the view, without storing it.
+  dashboard recomputes the price for the view, without storing it. A stored
+  failed conversion is never reused: it is recomputed, so a view regenerated
+  after `task usage:price -- --refresh-fx` converts it.
 - **Persisting goes through `task usage:price`.** No form of the dashboard
   writes a price. The server's **Recompute prices as of today** button
   recomputes for that view only. To store prices recomputed as of today, run
