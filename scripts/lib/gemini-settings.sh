@@ -49,8 +49,10 @@ _GS_JQ_DEFS='
 # alternative can match the empty string, and every loop is possessive, with
 # alternatives that start on distinct characters: no match ever backtracks
 # (an adversarial run of escaped quotes took seconds with a backtracking loop).
+# The kept branch spans whole runs of non-comment text, so gsub (~0.5 ms a match)
+# pays per comment, not per string; known limit: comments every few bytes stay slow.
 def gs_strip_jsonc:
-  gsub("(?<s>\"(?:[^\"\\\\]|\\\\[\\s\\S])*+(?:\"|\\z))|//[^\n]*+|/\\*(?:[^*]|\\*++[^*/])*+(?:\\*++/|\\**+\\z)";
+  gsub("(?<s>(?:[^\"/]++|\"(?:[^\"\\\\]|\\\\[\\s\\S])*+(?:\"|\\z)|/(?![/*]))++)|//[^\n]*+|/\\*(?:[^*]|\\*++[^*/])*+(?:\\*++/|\\**+\\z)";
        if .s then .s else " " end);
 
 # JSON.parse grammar check of text that jq already parsed. jq accepts literals
