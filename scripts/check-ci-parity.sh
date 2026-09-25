@@ -442,8 +442,20 @@ check_gha_job() {
   esac
   while IFS= read -r rt; do
     [ -z "$rt" ] && continue
-    # jq is preinstalled on GitHub Actions ubuntu-latest runners; GitLab CI installs it via tool_install_lines.
-    [ "$rt" = "jq" ] && continue
+    # jq, git, and diff (diffutils) are preinstalled on GitHub Actions
+    # ubuntu-latest runners. GitLab CI installs jq via tool_install_lines;
+    # git/diff have no GitLab recipe yet, so a capability declaring them
+    # still fails Arm 2 (reference↔GitLab) until one is added there.
+    case "$rt" in
+      jq|git|diff) continue ;;
+    esac
+    # A setup-python step (any version) satisfies a bare `python3` tool
+    # requirement the same way it satisfies `requires.runtime: python@X` above
+    # — it is a genuine setup step, not a business step the command list must
+    # exhibit.
+    if [ "$rt" = "python3" ] && [ -n "$prov_python" ]; then
+      continue
+    fi
     in_list "$rt" "$prov_tools" || \
       fail "capability '$id' (github-actions): requires tool '$rt' but no setup step installs it (R4)"
   done <<< "$req_tools"
