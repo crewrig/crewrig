@@ -446,12 +446,16 @@ extension_line() {
   # forge (gitmoji's issue regex only captures the last two path segments,
   # so it would otherwise resolve to the wrong GitLab project) — this holds
   # REGARDLESS of #1225, since "no link" is also true of an empty note.
-  if ! grep -q 'sub/other' <<< "$gh_notes"; then
+  # Only LINK TARGETS are inspected: the reference itself stays in the commit
+  # subject verbatim on both forges (R19), so the note's text carries it.
+  gh_targets_f4="$(grep -oE '\]\(([^)]+)\)' <<< "$gh_notes" || true)"
+  gl_targets_f4="$(grep -oE '\]\(([^)]+)\)' <<< "$gl_notes" || true)"
+  if ! grep -q 'sub/other' <<< "$gh_targets_f4"; then
     ok "11a (v2-F4): GitHub note carries no link for the nested ref acme/sub/other#5"
   else
     ng "11a (v2-F4): GitHub note unexpectedly links the nested ref acme/sub/other#5: $gh_notes"
   fi
-  if ! grep -q 'sub/other' <<< "$gl_notes"; then
+  if ! grep -q 'sub/other' <<< "$gl_targets_f4"; then
     ok "11a (v2-F4): GitLab note carries no link for the nested ref acme/sub/other#5"
   else
     ng "11a (v2-F4): GitLab note unexpectedly links the nested ref acme/sub/other#5: $gl_notes"
@@ -891,8 +895,11 @@ stop_stub() {
   . "$SCRIPT_DIR/lib/monorepo-release-lib.sh"
 
   golden_i="$TMP_ROOT/golden-11g.json"
-  jq --arg root "$FIX" '
-    walk(if type == "string" then gsub("/ROOT"; $root) else . end)
+  # The golden's facade path points at the driver's own library (issue #1225),
+  # which the fixture does not carry: map it to this checkout's library first,
+  # then map the remaining /ROOT paths to the fixture.
+  jq --arg root "$FIX" --arg lib "$REPO_DIR/scripts/lib/" '
+    walk(if type == "string" then (split("/ROOT/scripts/lib/") | join($lib) | gsub("/ROOT"; $root)) else . end)
     | .plugins |= map(select(type != "array" or .[0] != "@semantic-release/github"))
   ' "$FIXTURE_DIR/github-releaserc.golden.json" > "$golden_i"
 

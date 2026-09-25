@@ -233,7 +233,12 @@ run_mode() {
   if [ ! -f "$golden" ]; then
     ng "(c) golden fixture missing: $golden"
   else
-    actual="$(bash -c ". '$LIB'; emit_releaserc github publish foo /ROOT /ROOT/dist/release/foo main" | jq -S .)"
+    # The gitmoji facade is resolved from the library's own location (issue
+    # #1225), not from <root>; map that one real prefix back to the golden's
+    # placeholder, the same literal substitution the golden generator applies.
+    actual="$(bash -c ". '$LIB'; emit_releaserc github publish foo /ROOT /ROOT/dist/release/foo main" \
+      | jq -S --arg lib "$REPO_DIR/scripts/lib/" \
+          'walk(if type == "string" then (split($lib) | join("/ROOT/scripts/lib/")) else . end)')"
     expected="$(jq -S . "$golden")"
     if [ "$actual" = "$expected" ]; then
       ok "(c) emit_releaserc github publish is byte-for-byte (jq -S .) the committed golden"

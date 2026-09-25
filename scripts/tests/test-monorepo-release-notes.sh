@@ -114,9 +114,16 @@ chmod +x "$BIN/npx"
 LOG="$TMP_ROOT/release.log"
 (
   cd "$FIXTURE" || exit 2
-  # Scrub CI markers so the script and the engine see a local dry run.
-  env -u CI -u GITHUB_ACTIONS -u GITHUB_REF -u GITHUB_HEAD_REF -u GITLAB_CI \
-    PATH="$BIN:$PATH" DRY_RUN=true bash "$SCRIPT_DIR/monorepo-release.sh"
+  # The driver is forge-aware (spec 0213): it refuses to run outside a
+  # detected CI, and its rehearsal mode (DRY_RUN=true) no longer calls `npx`.
+  # So it runs in GitHub PUBLISH mode, the path that generates the real config
+  # and calls `npx semantic-release`; the stubbed `npx` above turns that call
+  # into a dry run, and the driver.mjs env scrub keeps the engine from seeing
+  # any CI marker or the placeholder credential.
+  env -u CI -u GITHUB_REF -u GITHUB_HEAD_REF -u GITLAB_CI -u GITEA_ACTIONS \
+    -u DRY_RUN -u RELEASE_DRY_RUN -u GITHUB_TOKEN -u GH_TOKEN \
+    GITHUB_ACTIONS=true RELEASE_TOKEN=fixture-placeholder \
+    PATH="$BIN:$PATH" bash "$SCRIPT_DIR/monorepo-release.sh"
 ) > "$LOG" 2>&1
 rc=$?
 
