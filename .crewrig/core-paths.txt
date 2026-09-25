@@ -156,6 +156,13 @@ scripts/build-docs-index.sh	strict
 
 # Continuous-integration reference (spec 0047)
 ci	strict
+# `ci/org/` is the adopting organization's own CI overlay (e.g.
+# `ci/org/gitlab-ci.custom.yml`) — upstream never ships content there.
+# Nested exclusion under the strict `ci` parent (same pattern as `specs/org`
+# under `specs`, `docs/org` under `docs`), so an org overlay can never abort
+# the sync's strict dirty guard, and is never swept up by the strict
+# directory's spec-0064 orphan-cleanup pass (issue #1213).
+ci/org	excluded
 
 # Generated GitLab CI pipeline (spec 0048). Derived from ci/ci-capabilities.yml
 # by scripts/build-ci.sh; drift-guarded by `bash scripts/build-ci.sh --check`.

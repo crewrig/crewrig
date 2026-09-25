@@ -176,6 +176,11 @@
 #  zz. Upstream-deleted core skill is removed by orphan cleanup (R3).
 #  aaa. Retired organization skill is cleaned up as orphan when definition removed (R4).
 #
+# Spec-0064/0020 regression case (issue #1213):
+#  bbb. `ci/org/` declared `excluded` (nested under the strict `ci` parent,
+#       same pattern as case s for `specs/org`) is NOT deleted by the strict
+#       directory's orphan-cleanup pass, and does not abort the dirty guard.
+#
 # Usage:
 #   bash scripts/tests/test-sync-from-upstream.sh
 
@@ -3195,6 +3200,64 @@ STUB
   fi
   if [ "$ok" -eq 1 ]; then
     echo "PASS  case-aaa: retired organization skill is cleaned up as orphan"
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case bbb — issue #1213: `ci/org/` is an `excluded` entry nested under the
+# strict `ci` parent (same pattern as case s for `specs/org` under `specs`).
+# An adopter's org-owned CI overlay file under `ci/org/` — absent from
+# FETCH_HEAD, since upstream never ships adopter content — must survive both
+# the strict dirty guard AND the spec-0064 orphan-cleanup deletion pass.
+#
+# Before the fix (manifest carries `ci	strict` with no nested `ci/org
+# excluded` line), the orphan-cleanup pass in the apply loop deletes
+# ci/org/gitlab-ci.custom.yml and reports it on stdout as
+# "Removed (upstream-deleted)" — the sync does not abort, it silently erases
+# the adopter's overlay. This case pins the FIXED manifest shape.
+# ---------------------------------------------------------------------------
+{
+  upstream="$(mktemp -d "$TMP_ROOT/upstream.XXXXXX")"
+  init_git_repo "$upstream"
+  make_initial_commit "$upstream" \
+    "ci/ci-capabilities.yml" "upstream CI capability reference"
+
+  adopter="$(mktemp -d "$TMP_ROOT/adopter.XXXXXX")"
+  init_git_repo "$adopter"
+  printf 'canonical_repo = "%s"\n' "$upstream" > "$adopter/crewrig.config.toml"
+  mkdir -p "$adopter/.crewrig"
+  printf 'ci\tstrict\nci/org\texcluded\n' > "$adopter/.crewrig/core-paths.txt"
+  make_initial_commit "$adopter" \
+    "ci/ci-capabilities.yml" "upstream CI capability reference" \
+    "ci/org/gitlab-ci.custom.yml" "org-owned CI overlay content"
+
+  actual_exit=0
+  stdout_out="$(cd "$adopter" && CREWRIG_REPO_DIR="$adopter" bash "$SCRIPT_UNDER_TEST" 2>/dev/null)" || actual_exit=$?
+
+  ok=1
+  if [ "$actual_exit" -ne 0 ]; then
+    echo "FAIL  case-bbb: expected exit 0, got $actual_exit"
+    ok=0
+  fi
+  if [ ! -f "$adopter/ci/org/gitlab-ci.custom.yml" ]; then
+    echo "FAIL  case-bbb: excluded child ci/org/gitlab-ci.custom.yml was incorrectly deleted"
+    ok=0
+  fi
+  if [ -f "$adopter/ci/org/gitlab-ci.custom.yml" ] && \
+     [ "$(cat "$adopter/ci/org/gitlab-ci.custom.yml")" != "org-owned CI overlay content" ]; then
+    echo "FAIL  case-bbb: ci/org/gitlab-ci.custom.yml content was modified"
+    ok=0
+  fi
+  if echo "$stdout_out" | grep -qF "Removed (upstream-deleted): ci/org"; then
+    echo "FAIL  case-bbb: stdout contained unexpected 'Removed' line for excluded ci/org path"
+    echo "      actual stdout: $stdout_out"
+    ok=0
+  fi
+  if [ "$ok" -eq 1 ]; then
+    echo "PASS  case-bbb: excluded ci/org child not deleted by strict-ci orphan cleanup"
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
