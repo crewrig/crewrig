@@ -104,13 +104,17 @@ backup that keeps them.
     once its comments and whitespace are removed, the setup SHALL produce the
     same JSON document — the same keys, values, and array order — that it
     produces today for an absent file, for the same answers and the same
-    environment.
+    environment. A file that held comments and nothing else SHALL also cause
+    the comment warning of requirement 12; it SHALL NOT cause the
+    not-a-JSON-object warning of requirement 12.
 12. The setup SHALL read an existing `~/.gemini/settings.json` the way Gemini
     CLI reads it: comments removed, then the remainder parsed as JSON (the
     reference behavior is `JSON.parse(stripJsonComments(...))` in
     `packages/cli/src/config/settings.ts` of `google-gemini/gemini-cli`).
-    Whether the file is a JSON object SHALL be decided on the content after
-    comment removal. A file that holds comments and is a JSON object after
+    Comment removal SHALL leave the content of JSON strings intact, so that a
+    `//` or `/*` inside a string value — such as the URL of the template's
+    `$schema` key — is never taken for a comment. Whether the file is a JSON
+    object SHALL be decided on the content after comment removal. A file that holds comments and is a JSON object after
     their removal SHALL be merged as requirements 1 to 10 prescribe, and the
     setup SHALL emit a non-silent warning stating that its comments are not
     kept in the rewritten file and are preserved in the timestamped backup,
@@ -160,8 +164,9 @@ backup that keeps them.
     still not a JSON object after comment removal is repaired with the
     requirement 12 warning, and an empty file is treated as absent; (f) two
     consecutive runs with the same answers leave the same JSON document;
-    (g) a file holding comments is merged, keeping its operator content, with
-    the requirement 12 comment warning; and (h) a seed beneath a non-object
+    (g) a file holding comments, and holding `//` and `/*` inside string
+    values, is merged, keeping its operator content and those string values
+    unchanged, with the requirement 12 comment warning; and (h) a seed beneath a non-object
     ancestor is not written, while a non-object `context` is replaced with the
     requirement 7 warning.
 
@@ -272,7 +277,8 @@ Then  setup warns, naming the file and the path of its timestamped backup,
 Given a ~/.gemini/settings.json holding only whitespace and a comment
 When  setup runs
 Then  the resulting file is the same JSON document a fresh install produces
-      for the same answers, and it has mode 0600
+      for the same answers, it has mode 0600, and setup emits the comment
+      warning but not the not-a-JSON-object warning
 ```
 
 **Scenario:** A non-object ancestor blocks a seed but not a framework-owned key
