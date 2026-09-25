@@ -1,0 +1,3 @@
+[`{{commit.short}}`](@@PROJECT_URL@@/-/commit/{{commit.short}}) {{subject}} {{#if issues}}(Issues:{{#each issues}} [`{{text}}`]({{link}}){{/each}}){{/if}}{{#if wip}}{{#each wip}}
+    - [`{{commit.short}}`](@@PROJECT_URL@@/-/commit/{{commit.short}}) {{subject}}{{/each}}
+{{/if}}

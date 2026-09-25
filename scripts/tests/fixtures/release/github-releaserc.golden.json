@@ -1,0 +1,57 @@
+{
+  "branches": [
+    "main"
+  ],
+  "extends": "semantic-release-monorepo",
+  "plugins": [
+    [
+      "/ROOT/scripts/lib/release-notes/gitmoji-esm-shim.mjs",
+      {
+        "releaseRules": {
+          "major": [
+            ":boom:"
+          ],
+          "minor": [
+            ":sparkles:"
+          ],
+          "patch": [
+            ":bug:",
+            ":ambulance:",
+            ":lock:",
+            ":zap:"
+          ]
+        }
+      }
+    ],
+    "@semantic-release/changelog",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "for m in package.json extension.json; do [ -f \"$m\" ] && jq --arg v \"${nextRelease.version}\" '.version=$v' \"$m\" > \"$m.tmp\" && mv \"$m.tmp\" \"$m\"; done; bash /ROOT/scripts/release-package-extension.sh foo --version ${nextRelease.version} --out /ROOT/dist/release/foo"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "label": "foo (installable tree)",
+            "path": "/ROOT/dist/release/foo/*.tar.gz"
+          }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": [
+          "package.json",
+          "extension.json",
+          "CHANGELOG.md"
+        ],
+        "message": "🔖 foo-v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ]
+  ],
+  "tagFormat": "foo-v${version}"
+}
