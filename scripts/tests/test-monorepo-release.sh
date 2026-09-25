@@ -79,7 +79,8 @@ SHIM_PATH="$SHIM_DIR:$PATH"
 # run_driver_refused <env-assignment...> — runs the real top-level driver
 # from a neutral, empty cwd (no git repo at all — every case below refuses at
 # forge detection, BEFORE release_branch's `git rev-parse` would ever run),
-# with the npx shim first on PATH. Sets RC/OUT/ERR.
+# with the npx shim first on PATH. Sets RC/ERR (every case only asserts the
+# exit code and stderr's refusal message, never stdout or the cwd itself).
 run_driver_refused() {
   local cwd out err
   cwd="$(mktemp -d "$TMP_ROOT/cwd.XXXXXX")"
@@ -88,10 +89,8 @@ run_driver_refused() {
   ( cd "$cwd" && env -i PATH="$SHIM_PATH" HOME="$TMP_ROOT" \
       GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null "$@" bash "$DRIVER" ) > "$out" 2> "$err"
   RC=$?
-  OUT="$(cat "$out")"
   ERR="$(cat "$err")"
   rm -f "$out" "$err"
-  RUN_CWD="$cwd"
 }
 
 # =============================================================================

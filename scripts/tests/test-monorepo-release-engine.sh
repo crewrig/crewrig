@@ -9,17 +9,6 @@
 # built under a mktemp'd TMP_ROOT, and the real `origin` remote is a local
 # bare repository — no network call ever leaves 127.0.0.1.
 #
-# KNOWN, DOCUMENTED FAILURES (issue #1225): every extension release note
-# currently renders EMPTY on `main` (semantic-release-monorepo's ESM plugin
-# wrapper cannot see CommonJS semantic-release-gitmoji's `generateNotes`
-# step). Issue #1225 fixes this upstream of this branch; until it merges and
-# this branch rebases, every assertion that depends on note CONTENT (entries,
-# links) fails for that single, well-understood reason. Those assertions are
-# marked `ng_1225` below instead of `ng`, and are counted separately so the
-# summary line names them. They are written the way they will need to look
-# once #1225 lands — weakening them to pass today would defeat their purpose
-# as a regression guard.
-#
 # Fixture construction (mirrors the real repository just enough for the real
 # engine to run for real):
 #   - scripts/ is a full copy of the real scripts/ (minus scripts/tests, not
@@ -86,18 +75,9 @@ trap cleanup EXIT
 
 pass=0
 fail=0
-bug_1225_count=0
 
 ok() { echo "PASS  $1"; pass=$((pass + 1)); }
 ng() { echo "FAIL  $1"; fail=$((fail + 1)); }
-# ng_1225 — a failure attributable ONLY to issue #1225 (empty release notes).
-# Counted in `fail` (the assertion IS false today) and separately in
-# `bug_1225_count`, so the final summary can name them without hiding them.
-ng_1225() {
-  echo "FAIL  $1 (KNOWN: issue #1225 — release notes render empty on main)"
-  fail=$((fail + 1))
-  bug_1225_count=$((bug_1225_count + 1))
-}
 
 # =============================================================================
 # Fixture construction
@@ -203,7 +183,6 @@ make_fixture() {
   mkext "$fix" bar 0.4.1
   mkext "$fix" baz 0.0.0
 
-  FAKE_HOME="$home"
   clean_git "$home" "$fix" init -q -b main
   clean_git "$home" "$fix" config user.name fixture
   clean_git "$home" "$fix" config user.email fixture@example.invalid
@@ -371,17 +350,17 @@ extension_line() {
   if grep -q '.' <<< "$gh_notes"; then
     ok "11a: GitHub rehearsal note for foo is non-empty (#1225 fixed)"
   else
-    ng_1225 "11a: GitHub rehearsal note for foo is non-empty"
+    ng "11a: GitHub rehearsal note for foo is non-empty"
   fi
   if grep -qE 'https://github\.com/acme/fixture/commit/' <<< "$gh_notes"; then
     ok "11a: GitHub note carries a commit link under acme/fixture"
   else
-    ng_1225 "11a: GitHub note carries a commit link under acme/fixture"
+    ng "11a: GitHub note carries a commit link under acme/fixture"
   fi
   if grep -qE 'compare/foo-v1\.2\.0\.\.\.foo-v1\.3\.0' <<< "$gh_notes"; then
     ok "11a: GitHub note's heading links the compare range foo-v1.2.0...foo-v1.3.0"
   else
-    ng_1225 "11a: GitHub note's heading links the compare range foo-v1.2.0...foo-v1.3.0"
+    ng "11a: GitHub note's heading links the compare range foo-v1.2.0...foo-v1.3.0"
   fi
 
   run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" "$(gl_env)" "RELEASE_DRY_RUN=true"
@@ -406,14 +385,14 @@ extension_line() {
   if grep -q '.' <<< "$gl_notes"; then
     ok "11a: GitLab rehearsal note for foo is non-empty (#1225 fixed)"
   else
-    ng_1225 "11a: GitLab rehearsal note for foo is non-empty"
+    ng "11a: GitLab rehearsal note for foo is non-empty"
   fi
   # Every link on GitLab must target the self-hosted host with its port, and
   # none may be protocol-relative or point at github.com (R20).
   gl_links="$(grep -oE '\]\(([^)]+)\)' <<< "$gl_notes" | sed -E 's/^\]\(//; s/\)$//'; \
               grep -oE '<https?://[^>]+>' <<< "$gl_notes" | sed -E 's/^<//; s/>$//')"
   if [ -z "$gl_links" ]; then
-    ng_1225 "11a: GitLab note carries at least one link"
+    ng "11a: GitLab note carries at least one link"
   else
     bad_links="$(grep -vE "^https://gitlab\.example\.test:8443/" <<< "$gl_links" || true)"
     if [ -z "$bad_links" ]; then
@@ -424,22 +403,22 @@ extension_line() {
     if grep -q "^https://gitlab.example.test:8443/acme/sub/fixture/-/commit/" <<< "$gl_links"; then
       ok "11a: GitLab note carries a commit link under acme/sub/fixture"
     else
-      ng_1225 "11a: GitLab note carries a commit link under acme/sub/fixture"
+      ng "11a: GitLab note carries a commit link under acme/sub/fixture"
     fi
     if grep -q "^https://gitlab.example.test:8443/acme/sub/fixture/-/compare/foo-v1.2.0...foo-v1.3.0$" <<< "$gl_links"; then
       ok "11a: GitLab note's heading links the compare range"
     else
-      ng_1225 "11a: GitLab note's heading links the compare range"
+      ng "11a: GitLab note's heading links the compare range"
     fi
     if grep -q "^https://gitlab.example.test:8443/acme/sub/fixture/-/issues/12$" <<< "$gl_links"; then
       ok "11a: GitLab note links the in-project issue #12"
     else
-      ng_1225 "11a: GitLab note links the in-project issue #12"
+      ng "11a: GitLab note links the in-project issue #12"
     fi
     if grep -q "^https://gitlab.example.test:8443/other/lib/-/issues/3$" <<< "$gl_links"; then
       ok "11a: GitLab note links the cross-project issue other/lib#3"
     else
-      ng_1225 "11a: GitLab note links the cross-project issue other/lib#3"
+      ng "11a: GitLab note links the cross-project issue other/lib#3"
     fi
   fi
   # v2-F4: the NESTED cross-project reference must get NO link on either
@@ -462,11 +441,30 @@ extension_line() {
   fi
 
   baz_line_gl="$(grep -E '^REHEARSAL baz ' <<< "$gl_out")"
-  baz_notes_gl="$(printf '%s\n' "$gl_out" | awk '/^REHEARSAL baz /{flag=1;next}/^--- Rehearsing:|^$/{if(flag)flag=flag} flag' | head -5)"
   if grep -q 'baseline=none' <<< "$baz_line_gl"; then
     ok "11a: GitLab rehearsal also computes baz's baseline as none (FIRST_RELEASE)"
   else
     ng "11a: GitLab rehearsal baz baseline wrong: '$baz_line_gl'"
+  fi
+
+  # R4/R20: a first release (no prior tag) has no baseline to compare
+  # against, so its note's heading carries no compare link, on EITHER forge
+  # (gitmoji's own default-template condition: `{{#if compareUrl}}` /
+  # `{{#if lastRelease.gitTag}}`, both false here). Same awk idiom as
+  # gh_notes/gl_notes above.
+  baz_notes_gh="$(printf '%s\n' "$gh_out" | awk '/^REHEARSAL baz /{flag=1;next}/^--- Rehearsing:/{flag=0}flag')"
+  baz_notes_gl="$(printf '%s\n' "$gl_out" | awk '/^REHEARSAL baz /{flag=1;next}/^--- Rehearsing:/{flag=0}flag')"
+  baz_targets_gh="$(grep -oE '\]\(([^)]+)\)' <<< "$baz_notes_gh" || true)"
+  baz_targets_gl="$(grep -oE '\]\(([^)]+)\)' <<< "$baz_notes_gl" || true)"
+  if ! grep -q 'compare' <<< "$baz_targets_gh"; then
+    ok "11a (R4/R20): baz's GitHub note (first release) carries no compare link"
+  else
+    ng "11a (R4/R20): baz's GitHub note unexpectedly carries a compare link: $baz_notes_gh"
+  fi
+  if ! grep -q 'compare' <<< "$baz_targets_gl"; then
+    ok "11a (R4/R20): baz's GitLab note (first release) carries no compare link"
+  else
+    ng "11a (R4/R20): baz's GitLab note unexpectedly carries a compare link: $baz_notes_gl"
   fi
 }
 
@@ -639,7 +637,7 @@ stop_stub() {
   fi
   description="$(printf '%s' "$release_line" | jq -r '.body.description' 2>/dev/null)"
   if [ "$description" = "foo-v1.3.0" ]; then
-    ng_1225 "11c (R9): the release description carries the real release note (falls back to the bare tag when the note is empty)"
+    ng "11c (R9): the release description carries the real release note (falls back to the bare tag when the note is empty)"
   else
     ok "11c (R9): the release description carries the real release note: $description"
   fi
@@ -869,21 +867,15 @@ stop_stub() {
 # (i) the golden main-heredoc config and (ii) emit_releaserc github publish —
 # both with the publish leg removed — must be byte-identical.
 #
-# VACUOUS-PASS WARNING (surprising, verified — flagged in review): the
-# byte-identity assertion below passes even TODAY, despite issue #1225 —
-# both renders produce the SAME empty note, so they are trivially
-# byte-identical. That is a property of the bug (empty is empty regardless
-# of config), not evidence that #1225 is fixed or that this case is
-# actually exercising R21. A byte-identity check can ALWAYS pass vacuously
-# this way when its two inputs are both empty (or both broken identically),
-# so the non-empty assertion immediately below is not optional decoration:
-# without it, this case could not detect a regression that made BOTH
-# renders empty (or both wrong in the same way) — it would keep reporting
-# green. Once #1229's fix removes the stray `.releaserc.json` and #1225's
-# fix restores generateNotes, both assertions below should read PASS; until
-# then the non-empty one is expected to fail via ng_1225, and the
-# byte-identity one is expected to keep passing (vacuously) for the reason
-# above.
+# VACUOUS-PASS GUARD (structural, not incidental): a byte-identity check
+# passes trivially whenever its two inputs are both empty (or both broken
+# the same way) — that was observed here firsthand while issue #1225 was
+# still open, when this same assertion passed for the wrong reason (both
+# renders rendered empty). The non-empty assertion immediately below is
+# therefore not optional decoration: without it, a future regression that
+# emptied (or identically broke) BOTH renders would keep reporting green
+# here. Both assertions are expected to PASS now that #1225 is fixed —
+# if either one fails, treat it as a real regression, not a known gap.
 # =============================================================================
 {
   read -r FIX ORIGIN_BARE HOME_FIX GITCONFIG_BASE <<< "$(make_fixture | tr '\n' ' ')"
@@ -936,7 +928,7 @@ stop_stub() {
     if grep -q '.' <<< "$notes_i" && grep -q '.' <<< "$notes_ii"; then
       ok "11g: both rendered notes are non-empty (the byte-identity check below is meaningful)"
     else
-      ng_1225 "11g: both rendered notes are non-empty (empty today makes the byte-identity check below vacuous)"
+      ng "11g: both rendered notes are non-empty (an empty render here makes the byte-identity check below vacuous)"
     fi
 
     if [ "$notes_i" = "$notes_ii" ]; then
@@ -950,5 +942,5 @@ stop_stub() {
 }
 
 echo ""
-echo "Results: $pass passed, $fail failed ($bug_1225_count attributable to issue #1225)"
-[ "$fail" -eq "$bug_1225_count" ]
+echo "Results: $pass passed, $fail failed"
+[ "$fail" -eq 0 ]
