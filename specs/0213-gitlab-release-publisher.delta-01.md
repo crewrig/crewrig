@@ -1,7 +1,7 @@
 ---
 id: "0213"
 slug: gitlab-release-publisher
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1217
