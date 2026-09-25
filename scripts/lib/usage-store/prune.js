@@ -228,11 +228,11 @@ deleted entries, sidecars, or drawers, and does not recover records
 rejected while the period was pruned — recover those with:
   bash scripts/usage-backfill.sh --reset-cursors
 
-To purge everything this storage contract writes under CREWRIG_USAGE_ROOT,
-remove <root>/journal/, <root>/mirror/, <root>/cache/, <root>/tmp/,
-<root>/declarations/, <root>/ledger/, <root>/prices/, <root>/pricelist/,
-and <root>/fx/. The <recordId>.attr.json attribution sidecars live inside
-<root>/journal/ and are removed with it.`);
+To remove all usage data, follow one of the two procedures in
+docs/usage-organization.md → "Removing usage data": purge the data
+while capture stays enabled, or remove the feature entirely. Deleting the
+CREWRIG_USAGE_ROOT directory is not enough on its own: it leaves the
+mirrored MemPalace drawers and each CLI's capture wiring behind.`);
 }
 
 module.exports = { prune, unprune, currentPeriod };

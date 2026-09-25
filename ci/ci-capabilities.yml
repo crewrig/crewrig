@@ -1277,12 +1277,15 @@ capabilities:
           - "scripts/usage-drain.sh"
           - "scripts/usage-task.sh"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-backfill.sh"
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
           - "scripts/tests/fixtures/usage-storage/**"
           - "schemas/**"
           - "package.json"
           - "package-lock.json"
+          - "docs/usage-storage.md"
+          - "docs/usage-organization.md"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -1293,12 +1296,15 @@ capabilities:
           - "scripts/usage-drain.sh"
           - "scripts/usage-task.sh"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-backfill.sh"
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
           - "scripts/tests/fixtures/usage-storage/**"
           - "schemas/**"
           - "package.json"
           - "package-lock.json"
+          - "docs/usage-storage.md"
+          - "docs/usage-organization.md"
     portability: portable
     requires:
       runtime: node@22
