@@ -173,7 +173,10 @@ overrides only `releaseRules`, so every default below is in force):
 - `lib/helper/resolve-issue-ref.js` resolves an issue reference to
   `https://github.com/...` on `github.com` and to
   `{baseUrl}//{owner}/{repo}/issues/{ref}` otherwise; with the empty
-  default `baseUrl` that yields a link with no host.
+  default `baseUrl` that yields the protocol-relative
+  `//{owner}/{repo}/issues/{ref}`, which a renderer resolves with
+  `{owner}` as the host (`https://{owner}/{repo}/issues/{ref}`), so the
+  link targets the wrong host.
 - `lib/assets/templates/default-template.hbs` puts the run date
   (`UTC:yyyy-mm-dd`) in the heading, so two runs of the same history on
   different days never produce byte-identical notes; requirement 19
