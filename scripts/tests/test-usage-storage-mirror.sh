@@ -1290,7 +1290,7 @@ if [ -f "$MUTANT_DRYRUN_MIRRORED" ] && [ -f "$MUTANT_DRYRUN_ENTRY" ] && [ "$(dra
 else
   bad "MUTATION: the dry-run prune removed the marker, the entry or the drawer"
 fi
-if printf '%s' "$last_delete_line" | grep -qF '"dry_run":true'; then
+if grep -qF '"dry_run":true' <<< "$last_delete_line"; then
   ok "the fake's last delete call was resolved as a dry run (absent dry_run is the server default)"
 else
   bad "the fake's last delete call was not a dry run" "$last_delete_line"
