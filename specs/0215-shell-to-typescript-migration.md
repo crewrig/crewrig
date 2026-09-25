@@ -21,6 +21,11 @@ repository, the four supported CLIs keep working on all three operating
 systems, and at no point during the migration does a script lose behaviour or
 does the shell footprint grow back.
 
+Every migrated script is also readable and understandable with a low cognitive
+load: small, well-decomposed, strongly typed modules let a maintainer grasp one
+file at a time, and they are cheaper and more reliable for lighter coding
+models to read and edit, because each change needs fewer tokens of context.
+
 This is the parent spec of a `large`-tier ticket. It states the invariants of
 the whole migration and declares its decomposition into sub-specs; it does not
 specify how any individual script is rewritten. Its requirements encode the
@@ -35,12 +40,30 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
    with no compilation, bundling or transpilation step between the repository
    checkout and execution.
 
-2. **Runtime and distribution (binding 1).** Migrated TypeScript sources SHALL
-   use erasable syntax only — no construct that type stripping cannot remove
-   without code generation (`enum`, `namespace` with runtime content, parameter
-   properties, legacy decorators, `import =` aliases). A CI check SHALL reject
-   any non-erasable construct, and a CI check SHALL type-check every TypeScript
-   source, because type stripping executes code without checking types.
+2. **TypeScript conventions and code quality (binding 1 and user gate).** (a)
+   *Erasable syntax — blocking.* Migrated TypeScript sources SHALL use erasable
+   syntax only — no construct that type stripping cannot remove without code
+   generation (`enum`, `namespace` with runtime content, parameter properties,
+   legacy decorators, `import =` aliases). A CI check SHALL reject any
+   non-erasable construct, and a CI check SHALL type-check every TypeScript
+   source, because type stripping executes code without checking types. (b)
+   *Strict typing — blocking.* Every TypeScript source SHALL be type-checked in
+   the compiler's strict mode. A CI check SHALL fail the build on any explicit
+   `any` — including `as any` and `any` used as a generic argument — on any
+   `@ts-ignore` or `@ts-nocheck` directive, and on any `@ts-expect-error`
+   directive that does not carry a written justification on the same line.
+   `unknown` SHALL be the permitted type at trust boundaries (parsed JSON,
+   command-line arguments, environment variables, subprocess output), and every
+   `unknown` value SHALL be narrowed before use. (c) *File size —
+   non-blocking.* Every TypeScript source file, tests included, SHOULD stay at
+   or under 300 lines, every line counted (comments and blank lines included),
+   through functional decomposition. A CI check SHALL report every TypeScript
+   file over 300 lines as a warning naming the file and its line count, and
+   SHALL NOT fail the build on that ground: the limit is a review signal, not a
+   gate. The JavaScript files tracked when the ratchet lands (requirement 16)
+   SHALL be exempt from this check until each is converted to TypeScript. The
+   lint tooling these checks need SHALL be a `devDependency` only, never a
+   runtime dependency (requirement 6), and SHALL be chosen by sub-spec A.
 
 3. **Runtime and distribution (binding 1).** The supported distribution channel
    SHALL be the repository checkout: every migrated script SHALL run from a
@@ -262,7 +285,7 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
 
     | # | Proposed sub-spec | Covers | Depends on |
     |---|---|---|---|
-    | A | Foundations | Ratchet and allowlist (R10–R12); first-install dependency step and its npm command (R6); TypeScript conventions, type-check and erasable-syntax check (R2); Node floor check (R4); `windows-latest` CI scaffolding and timing harness (R15, R17); shared path, line-ending and temporary-file handling (R22) | — |
+    | A | Foundations | Ratchet and allowlist (R10–R12); first-install dependency step and its npm command (R6); TypeScript conventions: type-check, erasable-syntax check, strict-typing check and non-blocking 300-line size warning, with their `devDependency`-only lint tooling (R2); Node floor check (R4); `windows-latest` CI scaffolding and timing harness (R15, R17); shared path, line-ending and temporary-file handling (R22) | — |
     | B | Windows hook command lines | Measured `docs/cli-matrix.md` row for the four CLIs (R18) | A |
     | C | Hooks and CLI integration points | `usage-capture`, `worktree-git-guard`, `mempalace-transcript` (hook JSON) and `antigravity-statusline-shim` (statusline); command-line rewiring and installed-command rewrite; per-script budgets (R15) | A, B |
     | D | OS service management | Windows equivalent of LaunchAgents and user units (R20) | A |
@@ -318,6 +341,20 @@ before its guard runs
 When the hook's `windows-latest` CI job runs the timing assertion
 Then the job fails, naming the hook, its budget and the measured time, and the
 pull request cannot merge.
+
+**Scenario:** An oversized TypeScript file warns without failing
+
+Given a pull request that adds a 350-line TypeScript source file
+When CI runs the file-size check
+Then the check reports a warning naming the file and its 350-line count, and
+the build still passes on that ground.
+
+**Scenario:** An explicit `any` fails the strict-typing check
+
+Given a pull request that introduces `as any` in a TypeScript source file
+When CI runs the strict-typing check
+Then the check fails, naming the file, the line and the forbidden construct,
+and the pull request cannot merge.
 
 **Scenario:** A new shell script is rejected by the ratchet
 
