@@ -605,6 +605,7 @@ e2e:
 setup:
   image: debian:stable-slim
   before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
@@ -617,6 +618,7 @@ setup:
     - "bash scripts/tests/test-setup-ensure-tier-built.sh"
     - "bash scripts/tests/test-setup-gemini-md-cleanup.sh"
     - "bash scripts/tests/test-setup-init-command-instructions.sh"
+    - "bash scripts/tests/test-setup-gemini-settings-merge.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:

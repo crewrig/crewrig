@@ -666,6 +666,9 @@ jobs:
       - name: Test Setup Init Command Instructions
         if: steps.filter.outputs.setup == 'true'
         run: bash scripts/tests/test-setup-init-command-instructions.sh
+      - name: Test Setup Gemini Settings Merge
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-setup-gemini-settings-merge.sh
   check-model-mappings:
     runs-on: ubuntu-latest
     steps:
