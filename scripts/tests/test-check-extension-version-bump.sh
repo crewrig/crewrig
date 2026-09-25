@@ -181,6 +181,108 @@ repo6="$(new_repo)"
 )
 run_case "Case 6 — NEW carrier with empty version fails" "$repo6" 1
 
+# Case 7 (issue #1214) — a BASE_REF ending in `/` (an unexpanded CI variable)
+# is normalized to unset rather than handed to git verbatim, falling through
+# to the default remote-probe derivation.
+#
+# The exit code alone cannot pin this: `git diff --name-status "$BASE_REF" --
+# ... 2>/dev/null || true` swallows a slash-terminated ref's git error and
+# yields an EMPTY diff, which the script reads as "nothing to check" and
+# exits 0 — the same code a real, correctly-resolved pass produces. Silently
+# skipping the check is the more dangerous shape of this bug (a forgotten
+# bump would slip through undetected), so this asserts on OUTPUT: the
+# per-file "OK" line only appears when the diff genuinely ran and found the
+# bumped file, and the false-negative skip message must be absent.
+#
+# The remote is fetched right after the seed commit, before the bump commit,
+# so a real pass means the base ref actually predates the change.
+repo7="$(new_repo)"
+(
+  cd "$repo7"
+  git branch -m main
+  mkdir -p "$(dirname "$SKILL_PATH")"
+  render_skill "1.0.0" > "$SKILL_PATH"
+  git add "$SKILL_PATH"
+  git commit -q -m "seed at 1.0.0"
+
+  git remote add crewrig "$repo7"
+  git fetch crewrig >/dev/null 2>&1
+
+  render_skill "1.0.1" "Extra line." > "$SKILL_PATH"
+  git add "$SKILL_PATH"
+  git commit -q -m "patch bump"
+)
+actual_exit=0
+case7_output=$( ( cd "$repo7" && BASE_REF="crewrig/" bash "$SCRIPT_UNDER_TEST" 2>&1 ) ) || actual_exit=$?
+if [ "$actual_exit" -eq 0 ] \
+  && echo "$case7_output" | grep -q "OK   $SKILL_PATH" \
+  && ! echo "$case7_output" | grep -q "no existing extension skill/agent sources modified"; then
+  echo "PASS  Case 7 — trailing-slash BASE_REF is normalized to unset, diff genuinely ran (exit $actual_exit)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 7 — trailing-slash BASE_REF is normalized to unset (expected exit 0 with the bump found, got exit $actual_exit)"
+  echo "Output:"
+  echo "$case7_output"
+  fail=$((fail + 1))
+fi
+
+# Case 8 (issue #1214) — dynamic trunk fallback, positive control. The
+# reference remote carries NO `main` branch at all (trunk is `develop`), so
+# the default derivation must fall back to `<remote>/develop`.
+repo8="$(new_repo)"
+(
+  cd "$repo8"
+  git branch -m develop
+  mkdir -p "$(dirname "$SKILL_PATH")"
+  render_skill "1.0.0" > "$SKILL_PATH"
+  git add "$SKILL_PATH"
+  git commit -q -m "seed at 1.0.0"
+
+  git remote add crewrig "$repo8"
+  git fetch crewrig >/dev/null 2>&1
+
+  render_skill "1.0.1" "Extra line." > "$SKILL_PATH"
+  git add "$SKILL_PATH"
+  git commit -q -m "patch bump"
+)
+actual_exit=0
+( cd "$repo8" && env -u BASE_REF bash "$SCRIPT_UNDER_TEST" >/dev/null 2>&1 ) || actual_exit=$?
+if [ "$actual_exit" -eq 0 ]; then
+  echo "PASS  Case 8 — no main branch falls back to develop, bump recognized (exit $actual_exit)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 8 — no main branch falls back to develop, bump recognized (expected exit 0, got $actual_exit)"
+  fail=$((fail + 1))
+fi
+
+# Case 9 (issue #1214) — same develop-only trunk, negative control: NO version
+# bump. Proves the fallback engaged the check against `develop` for real.
+repo9="$(new_repo)"
+(
+  cd "$repo9"
+  git branch -m develop
+  mkdir -p "$(dirname "$SKILL_PATH")"
+  render_skill "1.0.0" > "$SKILL_PATH"
+  git add "$SKILL_PATH"
+  git commit -q -m "seed at 1.0.0"
+
+  git remote add crewrig "$repo9"
+  git fetch crewrig >/dev/null 2>&1
+
+  render_skill "1.0.0" "Extra line." > "$SKILL_PATH"
+  git add "$SKILL_PATH"
+  git commit -q -m "tweak body, forget bump"
+)
+actual_exit=0
+( cd "$repo9" && env -u BASE_REF bash "$SCRIPT_UNDER_TEST" >/dev/null 2>&1 ) || actual_exit=$?
+if [ "$actual_exit" -eq 1 ]; then
+  echo "PASS  Case 9 — develop fallback negative control: missing bump still fails (exit $actual_exit)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 9 — develop fallback negative control: missing bump still fails (expected exit 1, got $actual_exit)"
+  fail=$((fail + 1))
+fi
+
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

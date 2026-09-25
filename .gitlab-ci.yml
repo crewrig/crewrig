@@ -219,6 +219,8 @@ extension-manifest:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-manifest-version.sh"
+        - "scripts/check-extension-version-bump.sh"
+        - "scripts/lib/base-ref-resolve.sh"
         - "scripts/tests/test-check-extension-manifest-version.sh"
         - "scripts/tests/test-check-extension-version-bump.sh"
         - "extensions/**"
@@ -226,6 +228,8 @@ extension-manifest:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-manifest-version.sh"
+        - "scripts/check-extension-version-bump.sh"
+        - "scripts/lib/base-ref-resolve.sh"
         - "scripts/tests/test-check-extension-manifest-version.sh"
         - "scripts/tests/test-check-extension-version-bump.sh"
         - "extensions/**"
@@ -652,6 +656,7 @@ misc:
         - "scripts/tests/test-check-spec-id-reserved.sh"
         - "scripts/reserve-spec-id.sh"
         - "scripts/check-spec-id-reserved.sh"
+        - "scripts/lib/base-ref-resolve.sh"
         - "model-mappings/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
@@ -666,6 +671,7 @@ misc:
         - "scripts/tests/test-check-spec-id-reserved.sh"
         - "scripts/reserve-spec-id.sh"
         - "scripts/check-spec-id-reserved.sh"
+        - "scripts/lib/base-ref-resolve.sh"
         - "model-mappings/**"
 
 frontmatter:
@@ -686,6 +692,7 @@ frontmatter:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/tests/test-extract-frontmatter.sh"
+        - "scripts/check-skill-versions.sh"
         - "scripts/tests/test-check-skill-versions.sh"
         - "scripts/tests/test-check-feedback-routing.sh"
         - "scripts/tests/test-assembly-verification.sh"
@@ -697,6 +704,7 @@ frontmatter:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/tests/test-extract-frontmatter.sh"
+        - "scripts/check-skill-versions.sh"
         - "scripts/tests/test-check-skill-versions.sh"
         - "scripts/tests/test-check-feedback-routing.sh"
         - "scripts/tests/test-assembly-verification.sh"

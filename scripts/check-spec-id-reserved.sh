@@ -89,7 +89,15 @@
 
 set -euo pipefail
 
-REPO_DIR="${CREWRIG_REPO_DIR:-"$(cd "$(dirname "$0")/.." && pwd)"}"
+# SCRIPT_DIR is this script's OWN on-disk location — deliberately not derived
+# from REPO_DIR, which CREWRIG_REPO_DIR may point at an unrelated fixture
+# directory (used by the self-test). The shared base-ref helper lives beside
+# this script regardless of which repository is under test.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/lib/base-ref-resolve.sh
+source "$SCRIPT_DIR/lib/base-ref-resolve.sh"
+
+REPO_DIR="${CREWRIG_REPO_DIR:-"$(cd "$SCRIPT_DIR/.." && pwd)"}"
 MANIFEST="$REPO_DIR/.crewrig/core-paths.txt"
 
 CARRIER_PRIMARY="refs/spec-ids/"
@@ -273,7 +281,13 @@ default_remote() {
 # is guaranteed present, so branch 2 always resolves there. Injecting an explicit
 # BASE_REF into the generated YAML would mean teaching build-ci.sh to emit
 # arbitrary `variables:` entries, which the plan deliberately avoids.
-BASE_REF="${1:-${BASE_REF:-}}"
+#
+# A BASE_REF ending in `/` (e.g. "origin/" from an unexpanded CI variable on a
+# push event) is normalized to unset here, BEFORE the emptiness check below —
+# otherwise it is non-empty, skips branch 1's derivation entirely, and reaches
+# the resolvability check on line ~307 as a literal slash-terminated ref, which
+# git rejects (issue #1214).
+BASE_REF="$(normalize_base_ref "${1:-${BASE_REF:-}}")"
 
 if [ -z "$BASE_REF" ]; then
   base_remote_name="$(default_remote)"
@@ -300,7 +314,12 @@ if [ -z "$BASE_REF" ]; then
     fi
     BASE_REF="${base_remote_name}/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}"
   else
-    BASE_REF="${base_remote_name}/main"
+    # Outside CI, `<remote>/main` remains the nominal default; an adopter
+    # whose trunk is `develop` (or a fork with no local `main`) falls back to
+    # it ONLY when `main` does not verify (issue #1214). This branch alone —
+    # never the CI target-branch branch above, which already names an exact
+    # ref — gets the dynamic fallback.
+    BASE_REF="$(default_base_ref "$base_remote_name" "$REPO_DIR")"
   fi
 fi
 

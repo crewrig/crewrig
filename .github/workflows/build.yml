@@ -191,6 +191,8 @@ jobs:
           filters: |
             extension-manifest:
               - 'scripts/check-extension-manifest-version.sh'
+              - 'scripts/check-extension-version-bump.sh'
+              - 'scripts/lib/base-ref-resolve.sh'
               - 'scripts/tests/test-check-extension-manifest-version.sh'
               - 'scripts/tests/test-check-extension-version-bump.sh'
               - 'extensions/**'
@@ -773,6 +775,7 @@ jobs:
               - 'scripts/tests/test-check-spec-id-reserved.sh'
               - 'scripts/reserve-spec-id.sh'
               - 'scripts/check-spec-id-reserved.sh'
+              - 'scripts/lib/base-ref-resolve.sh'
               - 'model-mappings/**'
       - uses: actions/setup-python@v5
         if: steps.filter.outputs.misc == 'true'
@@ -812,6 +815,7 @@ jobs:
           filters: |
             frontmatter:
               - 'scripts/tests/test-extract-frontmatter.sh'
+              - 'scripts/check-skill-versions.sh'
               - 'scripts/tests/test-check-skill-versions.sh'
               - 'scripts/tests/test-check-feedback-routing.sh'
               - 'scripts/tests/test-assembly-verification.sh'

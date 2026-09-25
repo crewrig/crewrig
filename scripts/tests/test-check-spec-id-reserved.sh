@@ -176,6 +176,39 @@ new_fixture() {
   git -C "$work" checkout -q -b feature
 }
 
+# new_develop_fixture <name>
+# Like new_fixture, but the reference repository's trunk is `develop` — no
+# `main` branch exists at all, upstream or locally. Exercises the dynamic
+# main-to-develop fallback (issue #1214): outside CI, with no explicit base,
+# `<remote>/main` does not verify, so the default falls back to
+# `<remote>/develop` instead of hard-failing.
+new_develop_fixture() {
+  local name="$1"
+  local root="$TMP_ROOT/$name"
+  local bare="$root/bare.git"
+  local work="$root/work"
+
+  mkdir -p "$root"
+  git init -q --bare "$bare"
+  git init -q "$work"
+  git -C "$work" config user.email "test@example.com"
+  git -C "$work" config user.name "Test"
+  git -C "$work" config commit.gpgsign false
+  git -C "$work" symbolic-ref HEAD refs/heads/develop
+
+  mkdir -p "$work/specs" "$work/.crewrig"
+  printf 'specs\tstrict\nspecs/org\texcluded\n' > "$work/.crewrig/core-paths.txt"
+  printf '# base\n' > "$work/README.md"
+  git -C "$work" add -A
+  git -C "$work" commit -q -m "base"
+  git -C "$work" remote add crewrig "$bare"
+  git -C "$work" remote add origin "$bare"
+  git -C "$work" push -q crewrig develop
+  git -C "$work" fetch -q crewrig
+  git -C "$work" fetch -q origin
+  git -C "$work" checkout -q -b feature
+}
+
 fixture_bare() { echo "$TMP_ROOT/$1/bare.git"; }
 fixture_work() { echo "$TMP_ROOT/$1/work"; }
 
@@ -870,6 +903,35 @@ run_check_based c18 "" "CREWRIG_SPEC_ID_ORIGIN=same"
 expect_pass_verdict "Case 18 — outside CI the base defaults to <remote>/main"
 expect_log_matches "Case 18 — and the resolved base is reported as such" \
   'Base ref: (crewrig|origin)/main'
+
+# Case 18b (issue #1214) — a BASE_REF ending in `/` (an unexpanded CI
+# variable, e.g. a push event or an interpolated merge-request target-branch
+# variable that came back empty) is normalized to unset rather than handed to
+# git verbatim, and falls through to the exact same default as Case 18.
+# Without normalization, "crewrig/" is non-empty so branch 1's derivation is
+# skipped entirely, and the resolvability check on line ~307 hands git a
+# literal slash-terminated ref, which fails and drives the run to a wiring
+# fault instead of this pass.
+new_fixture c18b
+reserve c18b refs/spec-ids/0305 0305 705
+add_spec c18b specs/0305-mine.md 0305 mine 705
+run_check_based c18b "crewrig/" "CREWRIG_SPEC_ID_ORIGIN=same"
+expect_pass_verdict "Case 18b — a trailing-slash BASE_REF is normalized to unset, not handed to git verbatim"
+expect_log_matches "Case 18b — and resolves to the same default as an unset BASE_REF" \
+  'Base ref: (crewrig|origin)/main'
+
+# Case 18c (issue #1214) — the dynamic trunk fallback. Outside CI, with no
+# explicit base, a repository whose reference remote carries NO `main` branch
+# at all (trunk is `develop`) must not hard-fail: `<remote>/main` fails to
+# verify, so the default falls back to `<remote>/develop` rather than the
+# previous hardcoded `<remote>/main`.
+new_develop_fixture c18c
+reserve c18c refs/spec-ids/0306 0306 706
+add_spec c18c specs/0306-mine.md 0306 mine 706
+run_check_based c18c "" "CREWRIG_SPEC_ID_ORIGIN=same"
+expect_pass_verdict "Case 18c — a repository with no main branch falls back to develop"
+expect_log_matches "Case 18c — and the resolved base is reported as develop, not main" \
+  'Base ref: (crewrig|origin)/develop'
 
 # Case 19 — precedence, the rung that makes the ladder a ladder. An explicit
 # base outranks the target-branch variable, so a caller that knows the answer is

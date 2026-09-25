@@ -142,22 +142,45 @@ function gitCapture(args, cwd) {
 }
 
 // resolveBaseRef() — the base ref to compare against, resolved exactly as
-// scripts/check-skill-versions.sh:24-33 does so the repository has one idiom
-// rather than two: `BASE_REF` when set, else the first remote matching
-// `crewrig|origin` (falling back to the first remote at all) with `/main`
-// appended. Verifies the ref, retrying once behind a shallow-clone `--depth=50`
-// fetch, and returns an `error` (never a silent fallback) if it still does not
-// resolve. The linter's positional arguments are spec targets, so `BASE_REF` is
-// the only override — that is the one difference from the shell sibling.
+// scripts/lib/base-ref-resolve.sh does (sourced by check-skill-versions.sh and
+// check-extension-version-bump.sh) so the repository has one idiom rather than
+// two, mirrored here in JS rather than shared by sourcing: `BASE_REF` when
+// set, else the first remote matching `crewrig|origin` (falling back to the
+// first remote at all) with `/main` appended, falling back to `/develop` when
+// `main` does not verify (issue #1214). The linter's positional arguments are
+// spec targets, so `BASE_REF` is the only override — that is the one
+// difference from the shell sibling.
+//
+// A BASE_REF ending in `/` (an unexpanded CI variable, e.g. an interpolated
+// `github.event.pull_request.base.ref` on a push event) is treated as unset
+// rather than handed to git verbatim — git fails closed on a slash-terminated
+// ref (issue #1214), which without this normalization surfaced here as the
+// `error` return below, hard-failing the whole check (exit 2).
 function resolveBaseRef() {
     let ref = process.env.BASE_REF;
+    if (ref && ref.endsWith('/')) {
+        ref = undefined;
+    }
     if (!ref) {
         const remotes = gitCapture(['remote']).stdout.split('\n').map((r) => r.trim()).filter(Boolean);
         const preferred = remotes.find((r) => /crewrig|origin/.test(r)) || remotes[0];
         if (!preferred) {
             return { error: 'no git remote is configured, so no default base ref could be derived' };
         }
-        ref = `${preferred}/main`;
+        // `main` is the nominal trunk and stays the preferred default; the
+        // fallback to `develop` fires ONLY when `main` does not verify —
+        // neither verifying is not an error here, `main` is kept regardless
+        // so the fetch-retry below produces its usual error message rather
+        // than a second silent guess.
+        const mainRef = `${preferred}/main`;
+        const developRef = `${preferred}/develop`;
+        if (gitCapture(['rev-parse', '--verify', mainRef]).status === 0) {
+            ref = mainRef;
+        } else if (gitCapture(['rev-parse', '--verify', developRef]).status === 0) {
+            ref = developRef;
+        } else {
+            ref = mainRef;
+        }
     }
 
     if (gitCapture(['rev-parse', '--verify', ref]).status === 0) {

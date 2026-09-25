@@ -624,6 +624,56 @@ run_base_case "Case 32 — unresolvable base ref inside a repository fails close
   "$GITFIX" "specs" 2 "no-such-base" "BASE_REF" "-"
 
 # -------------------------------------------------------------------------
+# Case 32b (issue #1214) — a BASE_REF ending in `/` (an unexpanded CI
+# variable, e.g. a push event or an interpolated merge-request target-branch
+# variable that came back empty) is normalized to unset rather than handed to
+# git verbatim, and falls through to the same default derivation Case 29
+# exercises. Without normalization, "origin/" is non-empty so the default
+# derivation is skipped, and `git rev-parse --verify "origin/"` fails while
+# the fetch-retry's derived branch name is empty — resolveBaseRef() returns
+# an error and the linter exits 2 instead of running the check.
+# -------------------------------------------------------------------------
+run_base_case "Case 32b — a trailing-slash BASE_REF is normalized to unset" \
+  "$GITFIX" "specs" 0 "origin/" "-" "specs/0200-on-base.md"
+
+# -------------------------------------------------------------------------
+# Case 32c (issue #1214) — the dynamic trunk fallback. Outside CI, with no
+# explicit base, a repository whose reference remote carries NO `main` branch
+# at all (trunk is `develop`) must not hard-fail: `<remote>/main` fails to
+# verify, so the default falls back to `<remote>/develop` rather than the
+# previous hardcoded `<remote>/main`. Its own fixture, since GITFIX's trunk is
+# `main`.
+# -------------------------------------------------------------------------
+GITFIX_DEV="$TMP_ROOT/gitfix-develop"
+mkdir -p "$GITFIX_DEV/specs"
+cp "$ROOT_DIR/.markdownlintrc" "$GITFIX_DEV/"
+ln -s "$ROOT_DIR/node_modules" "$GITFIX_DEV/node_modules"
+(
+  cd "$GITFIX_DEV" || exit 1
+  git init -q
+  git symbolic-ref HEAD refs/heads/develop
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git config commit.gpgsign false
+)
+
+render_spec "0210" "on-develop-base" "draft" > "$GITFIX_DEV/specs/0210-on-develop-base.md"
+(
+  cd "$GITFIX_DEV" || exit 1
+  git add specs
+  git commit -q -m "base branch content on develop"
+  # A remote-tracking `origin/develop` and deliberately NO `main` ref anywhere
+  # — local or remote — so the default derivation's first choice cannot
+  # verify and must fall back.
+  git remote add origin "$GITFIX_DEV"
+  git fetch -q origin 2>/dev/null
+)
+
+run_base_case "Case 32c — a repository with no main branch falls back to develop" \
+  "$GITFIX_DEV" "specs" 1 "-" \
+  "specs/0210-on-develop-base.md" "-"
+
+# -------------------------------------------------------------------------
 # Case 33 — outside any git work tree there is no change under test and so no
 # base branch to be the discriminator: the check is skipped, and says so on
 # stderr. Pins the other half of the Case 32 decision — the skip is

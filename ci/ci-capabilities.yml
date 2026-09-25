@@ -234,6 +234,8 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-extension-manifest-version.sh"
+          - "scripts/check-extension-version-bump.sh"
+          - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/test-check-extension-manifest-version.sh"
           - "scripts/tests/test-check-extension-version-bump.sh"
           - "extensions/**"
@@ -242,6 +244,8 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-extension-manifest-version.sh"
+          - "scripts/check-extension-version-bump.sh"
+          - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/test-check-extension-manifest-version.sh"
           - "scripts/tests/test-check-extension-version-bump.sh"
           - "extensions/**"
@@ -697,6 +701,7 @@ capabilities:
           - "scripts/tests/test-check-spec-id-reserved.sh"
           - "scripts/reserve-spec-id.sh"
           - "scripts/check-spec-id-reserved.sh"
+          - "scripts/lib/base-ref-resolve.sh"
           - "model-mappings/**"
       - on: push
         branches: [main, "release/**"]
@@ -712,6 +717,7 @@ capabilities:
           - "scripts/tests/test-check-spec-id-reserved.sh"
           - "scripts/reserve-spec-id.sh"
           - "scripts/check-spec-id-reserved.sh"
+          - "scripts/lib/base-ref-resolve.sh"
           - "model-mappings/**"
     portability: portable
     changeset-gated: true
@@ -734,6 +740,7 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/tests/test-extract-frontmatter.sh"
+          - "scripts/check-skill-versions.sh"
           - "scripts/tests/test-check-skill-versions.sh"
           - "scripts/tests/test-check-feedback-routing.sh"
           - "scripts/tests/test-assembly-verification.sh"
@@ -746,6 +753,7 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/tests/test-extract-frontmatter.sh"
+          - "scripts/check-skill-versions.sh"
           - "scripts/tests/test-check-skill-versions.sh"
           - "scripts/tests/test-check-feedback-routing.sh"
           - "scripts/tests/test-assembly-verification.sh"
