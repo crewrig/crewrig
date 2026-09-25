@@ -512,6 +512,15 @@ A stale per-agent directory left under the user's Claude Code agent directory by
 
 The full account — what changed, why, and the per-agent migration record — is in [`docs/agent-profile-migration.md`](agent-profile-migration.md).
 
+## Enabling GitLab release publishing (optional)
+
+A GitLab-hosted fork can publish extension releases the same way the
+upstream GitHub-hosted repository does, from two generated pipeline jobs
+(`release`, `release-rehearsal`) that need no adopter-authored release
+automation. See [GitLab release publishing](gitlab-release-publishing.md)
+for the CI/CD variables to declare, how to run a non-publishing rehearsal,
+how to publish, and how to complete or retract an incomplete tag.
+
 ## Troubleshooting
 
 ### `crewrig.config.toml` absent or has empty values
@@ -622,3 +631,21 @@ repository, not the fork.
    not-yet-synced fork, `release-extension.yml`) from the fork's Actions
    tab, or remove or override the workflow file, before the next
    triggering push.
+
+### GitLab release job refuses immediately, naming a missing credential {#gitlab-release-missing-token}
+
+**Cause:** The `GITLAB_TOKEN` CI/CD variable is not declared, or is empty,
+on the GitLab project running the `release` job. See
+[GitLab release publishing](gitlab-release-publishing.md) → *Variables*.
+
+**Effect:** The `release` job exits non-zero before writing anything or
+contacting any forge — it refuses by naming the missing variable rather
+than failing deeper in the engine, and it never prints a credential to the
+job log (spec 0213 requirement 11).
+
+**Resolution:** Declare a masked `GITLAB_TOKEN` CI/CD variable — a project
+access token with the `api` and `write_repository` scopes, on a role
+allowed to push to the protected `main` branch and create tags — under
+**Settings → CI/CD → Variables**, then re-run the pipeline. The manual
+`release-rehearsal` job needs no credential at all and can be used to
+exercise the rest of the pipeline first.

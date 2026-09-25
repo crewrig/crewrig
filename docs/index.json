@@ -190,6 +190,11 @@
           "title": "Usage dashboard",
           "path": "docs/usage-dashboard.md",
           "nav_order": 145
+        },
+        {
+          "title": "GitLab release publishing",
+          "path": "docs/gitlab-release-publishing.md",
+          "nav_order": 150
         }
       ]
     },
