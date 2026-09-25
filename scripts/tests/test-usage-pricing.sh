@@ -351,6 +351,41 @@ function cmdPeriodOf() {
   console.log(layout.period(record));
 }
 
+// plant-price <recordFile> <priceJsonFile> — writes a price file verbatim at
+// the record's own layout.priceEntry() path (Case 19g's pre-delta entry).
+function cmdPlantPrice() {
+  const layout = req('scripts/lib/usage-store/layout.js');
+  const record = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+  const price = JSON.parse(fs.readFileSync(process.argv[4], 'utf8'));
+  const filePath = layout.priceEntry(record.provenance.cli, layout.period(record), record.recordId);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(price, null, 2));
+  console.log(`PLANTED ${filePath}`);
+}
+
+// rollup-fetch-count <period> <currency> — two rollup() passes in ONE process
+// with the freshness gate live (CREWRIG_USAGE_OFFLINE deleted in-process) and
+// an injected ctx.fetchFixings that counts its calls and always fails as a
+// network error would. Prints each pass's result, then FETCHER_CALLS=<n>.
+async function cmdRollupFetchCount() {
+  const period = process.argv[3];
+  const currency = process.argv[4];
+  delete process.env.CREWRIG_USAGE_OFFLINE;
+  const priceRollup = req('scripts/lib/usage-price/rollup.js');
+  let calls = 0;
+  const fetchFixings = async () => {
+    calls += 1;
+    throw new Error('injected network error');
+  };
+  const opts = { combined: true, currency, ctx: { fetchFixings } };
+  for (let pass = 1; pass <= 2; pass++) {
+    calls = 0;
+    const r = await priceRollup.rollup({ period }, opts);
+    console.log(JSON.stringify(r));
+    console.log(`FETCHER_CALLS=${calls}`);
+  }
+}
+
 function main() {
   const cmd = process.argv[2];
   switch (cmd) {
@@ -376,6 +411,10 @@ function main() {
       return cmdRollup();
     case 'period-of':
       return cmdPeriodOf();
+    case 'plant-price':
+      return cmdPlantPrice();
+    case 'rollup-fetch-count':
+      return cmdRollupFetchCount();
     default:
       console.error(`unknown driver command: ${cmd}`);
       process.exit(2);
@@ -1840,6 +1879,290 @@ fi
 # derivedStores() registry (attribution-ledger + price-store) that DEV
 # 0208/0209 already ship — Case 14 above. derivedStores() itself is never
 # mutated by this suite.
+
+# =============================================================================
+# Case 19 — a failed currency conversion keeps its USD amount labelled USD, is
+# tallied apart as unconverted, and is re-attempted rather than served from
+# the store (spec 0209 delta-02 R51-R54, R34 and R47 as modified; R56)
+# =============================================================================
+# Records, period 2026-09, CLI claude-code (fixture price 3e-6 USD per netInput
+# token, output 0): p0 = 0.003 and p1 = 0.006 USD per-request; u1 per-request
+# with an unresolvable model; s1a/s1b one session-cumulative session whose last
+# snapshot s1b = 0.0012 USD; x1 uncaptured; p2 = 0.009 USD serves 19h only.
+# The FX fixtures list USD and GBP only, so JPY is the missing currency and EUR
+# converts at 1 / rate(USD). Sub-cases are labelled in execution order: 19d
+# seeds the fixtures 19e reads (plan v1's 19e and 19d, swapped per
+# plan/1202#1 v1-F2).
+echo
+echo "=== Case 19: a failed conversion is labelled USD, tallied apart, and re-attempted (delta-02 R51-R54, R56) ==="
+
+MR_SESSION="c19-p0" MR_IDEMKEY="c19-p0" MR_REQUEST_INSTANT="2026-09-10T10:00:00.000Z" MR_NET_INPUT=1000 MR_OUTPUT=0 \
+  run_driver make-record > "$HELPERS_DIR/c19-p0.json"
+MR_SESSION="c19-p1" MR_IDEMKEY="c19-p1" MR_REQUEST_INSTANT="2026-09-10T11:00:00.000Z" MR_NET_INPUT=2000 MR_OUTPUT=0 \
+  run_driver make-record > "$HELPERS_DIR/c19-p1.json"
+MR_SESSION="c19-p2" MR_IDEMKEY="c19-p2" MR_REQUEST_INSTANT="2026-09-10T12:00:00.000Z" MR_NET_INPUT=3000 MR_OUTPUT=0 \
+  run_driver make-record > "$HELPERS_DIR/c19-p2.json"
+MR_SESSION="c19-u1" MR_IDEMKEY="c19-u1" MR_REQUEST_INSTANT="2026-09-10T13:00:00.000Z" MR_OUTPUT=0 \
+  MR_MODEL_ID="totally-unresolvable-model-xyz" run_driver make-record > "$HELPERS_DIR/c19-u1.json"
+MR_SESSION="c19-s1" MR_IDEMKEY="c19-s1a" MR_REQUEST_INSTANT="2026-09-11T10:00:00.000Z" MR_NET_INPUT=100 MR_OUTPUT=0 \
+  MR_FIDELITY="session-cumulative" run_driver make-record > "$HELPERS_DIR/c19-s1a.json"
+MR_SESSION="c19-s1" MR_IDEMKEY="c19-s1b" MR_REQUEST_INSTANT="2026-09-11T12:00:00.000Z" MR_NET_INPUT=400 MR_OUTPUT=0 \
+  MR_FIDELITY="session-cumulative" run_driver make-record > "$HELPERS_DIR/c19-s1b.json"
+MR_KIND="uncaptured" MR_SESSION="c19-x1" MR_IDEMKEY="c19-x1" MR_REQUEST_INSTANT="2026-09-10T14:00:00.000Z" \
+  MR_UNCAPTURED_REASON="c19: transcript unavailable" run_driver make-record > "$HELPERS_DIR/c19-x1.json"
+
+# c19_write <name...> — writes the named Case 19 records into the journal.
+c19_write() {
+  local n out
+  for n in "$@"; do
+    out="$(run_driver write "$HELPERS_DIR/c19-$n.json")"
+    grep -qF 'STATUS=stored' <<< "$out" || bad "Case 19 fixture record $n did NOT store" "$out"
+  done
+}
+
+# c19_seed_root <varname> — a fresh pinned root holding every Case 19 record
+# but p2, with p0 stored in EUR (status ok, amount in C19_P0_EUR) while both FX
+# fixtures were cached, and the FX cache then removed.
+c19_seed_root() {
+  new_root_and_pin_into "$1"
+  c19_write p0 p1 u1 s1a s1b x1
+  run_driver seed-fx "$FIXTURES_DIR/fx/2026-09-18.json" >/dev/null
+  run_driver seed-fx "$FIXTURES_DIR/fx/2026-09-21.json" >/dev/null
+  C19_P0_EUR="$(jget "$(PRICE_CURRENCY=EUR run_driver price-record "$HELPERS_DIR/c19-p0.json")" \
+    "(v.conversion || {}).status === 'ok' && v.currency === 'EUR' ? v.amount : 'not-converted'")"
+  rm -rf "$CREWRIG_USAGE_ROOT/fx"
+}
+
+c19_seed_fx() {
+  run_driver seed-fx "$FIXTURES_DIR/fx/2026-09-18.json" >/dev/null
+  run_driver seed-fx "$FIXTURES_DIR/fx/2026-09-21.json" >/dev/null
+}
+
+# c19_price <name> [currency] — the per-record read-through path (stores).
+c19_price() {
+  PRICE_CURRENCY="${2:-USD}" run_driver price-record "$HELPERS_DIR/c19-$1.json"
+}
+
+# c19_rollup <currency> / c19_dash <currency> — both surfaces over one selection.
+c19_rollup() {
+  bash "$REPO_DIR/scripts/usage-price.sh" --period 2026-09 --cli claude-code --rollup --currency "$1"
+}
+c19_dash() {
+  bash "$REPO_DIR/scripts/usage-dashboard.sh" report --json --period 2026-09 --cli claude-code --currency "$1"
+}
+
+# c19_stored <name> — the record's stored price file, or {} when absent.
+c19_stored() {
+  local id f
+  id="$(jget "$(cat "$HELPERS_DIR/c19-$1.json")" 'v.recordId')"
+  f="$(find "$CREWRIG_USAGE_ROOT/prices" -name "$id.price.json" 2>/dev/null | head -1)"
+  if [ -n "$f" ]; then cat "$f"; else echo '{}'; fi
+}
+
+# c19_bucket <rollupJson> <fidelity> — "<sum>|<count>|<priced>|<unpriced>|<unconverted>".
+c19_bucket() {
+  jget "$1" "(b => [b.sum, b.count, b.pricedCount, b.unpricedCount, b.unconvertedCount].join('|'))((v.byFidelity || {})['$2'] || {})"
+}
+
+# c19_dash_sc <viewJson> — the dashboard's session-cumulative figures as
+# "<amount ?? 0>|<priced>|<unpriced>|<unconverted>".
+c19_dash_sc() {
+  jget "$1" "(p => [p.amount === null || p.amount === undefined ? 0 : p.amount, p.pricedCount, p.unpricedCount, p.unconvertedCount].join('|'))(((v.totals || {}).price || {byFidelity: {}}).byFidelity['session-cumulative'] || {})"
+}
+
+C19_PARTITION="['per-request', 'run-total', 'session-cumulative'].every((f) => { const b = v.byFidelity[f]; return b.pricedCount + b.unpricedCount + b.unconvertedCount === b.count; })"
+C19_NO_UNCONVERTED="['per-request', 'run-total', 'session-cumulative'].every((f) => v.byFidelity[f].unconvertedCount === 0) && v.combined.unconvertedCount === 0"
+# The fixing-date range the dashboard reports for session c19-s1 (s1b alone).
+C19_S1_FIXING="JSON.stringify(((v.sessions || []).find((s) => s.sessionId === 'c19-s1') || {price: {timestamps: {}}}).price.timestamps.fixingDate)"
+
+c19_seed_root C19_ROOT
+if [ "$C19_P0_EUR" = "not-converted" ]; then
+  bad "Case 19 setup: p0 did not store a converted EUR price while the fixtures were cached"
+fi
+
+# --- 19a (R51, no fixing): EUR with no fixing on or before the date ----------
+c19a="$(c19_price p1 EUR)"
+if [ "$(jget "$c19a" "v.amountUsd > 0 && v.amount === v.amountUsd && v.currency === 'USD'")" = "true" ]; then
+  ok "19a R51: an EUR price with no fixing on or before the computation date keeps its USD amount, labelled USD"
+else
+  bad "19a R51: the failed EUR conversion is not a USD amount labelled USD" "$c19a"
+fi
+if [ "$(jget "$c19a" "(v.conversion || {}).status === 'no-fixing-on-or-before' && v.conversion.requested === 'EUR' && v.fixingDate === null")" = "true" ]; then
+  ok "19a R51: it carries status no-fixing-on-or-before, requested EUR, and no fixing date"
+else
+  bad "19a R51: the failure status, requested currency or fixing date is wrong" "$c19a"
+fi
+
+# --- 19b (R53, R54, R34): the EUR rollup tallies failures apart --------------
+c19b_rc=0
+c19b="$(c19_rollup EUR 2>"$HELPERS_DIR/c19b-stderr.txt")" || c19b_rc=$?
+if [ "$c19b_rc" = "0" ] && [ "$(jget "$c19b" "v.currency === 'EUR'")" = "true" ]; then
+  ok "19b R53: --rollup --currency EUR over failed conversions exits 0"
+else
+  bad "19b R53: --rollup --currency EUR failed (rc=$c19b_rc)" "$c19b
+$(cat "$HELPERS_DIR/c19b-stderr.txt")"
+fi
+IFS='|' read -r c19b_pr_sum c19b_pr_count c19b_pr_priced c19b_pr_unpriced c19b_pr_unconv <<< "$(c19_bucket "$c19b" per-request)"
+if approx "$c19b_pr_sum" "$C19_P0_EUR" && [ "$c19b_pr_count|$c19b_pr_priced|$c19b_pr_unpriced|$c19b_pr_unconv" = "3|1|1|1" ]; then
+  ok "19b R53/R54: per-request sum = p0's EUR amount alone; count 3 = priced 1 + unpriced 1 + unconverted 1"
+else
+  bad "19b R53/R54: per-request expected sum $C19_P0_EUR and count|priced|unpriced|unconverted 3|1|1|1" "got sum=$c19b_pr_sum $c19b_pr_count|$c19b_pr_priced|$c19b_pr_unpriced|$c19b_pr_unconv"
+fi
+IFS='|' read -r c19b_sc_sum c19b_sc_count c19b_sc_priced c19b_sc_unpriced c19b_sc_unconv <<< "$(c19_bucket "$c19b" session-cumulative)"
+if approx "$c19b_sc_sum" 0 && [ "$c19b_sc_count|$c19b_sc_priced|$c19b_sc_unpriced|$c19b_sc_unconv" = "1|0|0|1" ]; then
+  ok "19b R53/R54: session-cumulative sum 0, count 1 = unconverted 1 (s1b's USD amount enters no sum)"
+else
+  bad "19b R53/R54: session-cumulative expected sum 0 and count|priced|unpriced|unconverted 1|0|0|1" "got sum=$c19b_sc_sum $c19b_sc_count|$c19b_sc_priced|$c19b_sc_unpriced|$c19b_sc_unconv"
+fi
+if [ "$(jget "$c19b" "(v.byFidelity || {})['run-total'] && v.byFidelity['run-total'].count === 0 && v.byFidelity['run-total'].unconvertedCount === 0")" = "true" ]; then
+  ok "19b R53: the empty run-total bucket reports unconvertedCount 0 (reported even when zero)"
+else
+  bad "19b R53: the run-total bucket does not report unconvertedCount 0" "$c19b"
+fi
+c19b_comb_sum="$(jget "$c19b" '(v.combined || {}).sum')"
+if approx "$c19b_comb_sum" "$C19_P0_EUR" \
+  && [ "$(jget "$c19b" "(v.combined || {}).unconvertedCount === 2 && v.combined.unpricedCount === 1 && v.uncapturedCount === 1")" = "true" ]; then
+  ok "19b R53/R34: combined sum = p0's EUR amount; unconverted 2, unpriced 1 and uncaptured 1 are three distinct tallies"
+else
+  bad "19b R53/R34: the combined total or the uncaptured tally is wrong" "$c19b"
+fi
+if [ "$(jget "$c19b" "$C19_PARTITION")" = "true" ]; then
+  ok "19b R54: priced + unpriced + unconverted = count in every bucket"
+else
+  bad "19b R54: the three tallies do not partition every bucket" "$c19b"
+fi
+c19b_s1b="$(c19_stored s1b)"
+if [ "$(jget "$c19b_s1b" "v.currency === 'USD' && v.amount === v.amountUsd && (v.conversion || {}).status === 'no-fixing-on-or-before' && v.fixingDate === null")" = "true" ]; then
+  ok "19b R51: the rollup stores s1b's failure labelled USD, with no fixing date"
+else
+  bad "19b R51: s1b's stored failure is not labelled USD with no fixing date" "$c19b_s1b"
+fi
+
+# --- 19c (R47): the dashboard agrees over the same empty FX cache ------------
+c19c_rc=0
+c19c="$(c19_dash EUR 2>"$HELPERS_DIR/c19c-stderr.txt")" || c19c_rc=$?
+IFS='|' read -r c19c_amount c19c_priced c19c_unpriced c19c_unconv <<< "$(c19_dash_sc "$c19c")"
+if [ "$c19c_rc" = "0" ] && approx "$c19c_amount" "$c19b_sc_sum" \
+  && [ "$c19c_priced|$c19c_unpriced|$c19c_unconv" = "$c19b_sc_priced|$c19b_sc_unpriced|$c19b_sc_unconv" ]; then
+  ok "19c R47: the dashboard's EUR session-cumulative figures equal the rollup's (amount ?? 0 = sum; priced|unpriced|unconverted = $c19c_priced|$c19c_unpriced|$c19c_unconv)"
+else
+  bad "19c R47: the dashboard and the rollup disagree on session-cumulative (rc=$c19c_rc)" "dashboard amount|priced|unpriced|unconverted=$c19c_amount|$c19c_priced|$c19c_unpriced|$c19c_unconv; rollup sum|priced|unpriced|unconverted=$c19b_sc_sum|$c19b_sc_priced|$c19b_sc_unpriced|$c19b_sc_unconv
+$(cat "$HELPERS_DIR/c19c-stderr.txt")"
+fi
+if [ "$(jget "$c19c" "$C19_S1_FIXING")" = "null" ] && [ "$(jget "$(c19_stored s1b)" 'v.fixingDate')" = "null" ]; then
+  ok "19c R47 precondition: s1b carries no fixing date on both surfaces"
+else
+  bad "19c R47 precondition: s1b's fixing date differs between the surfaces" "dashboard: $(jget "$c19c" "$C19_S1_FIXING"); stored: $(jget "$(c19_stored s1b)" 'v.fixingDate')"
+fi
+
+# --- 19d (R52, retry): the fixing arrives, the stored failure is not served --
+c19_seed_fx
+c19d="$(c19_price p1 EUR)"
+c19d_expected="$(node -e "console.log(Number(process.argv[1]) / 1.149)" "$(jget "$c19d" 'v.amountUsd')")"
+if [ "$(jget "$c19d" "(v.conversion || {}).status === 'ok' && v.currency === 'EUR' && v.conversion.rateOfRecord === 'ECB' && v.fixingDate === '2026-09-21'")" = "true" ] \
+  && approx "$(jget "$c19d" 'v.amount')" "$c19d_expected"; then
+  ok "19d R52: once a fixing is available, a second EUR request is converted (ok, EUR, ECB, fixingDate 2026-09-21), not served the stored failure"
+else
+  bad "19d R52: the second EUR request did not receive the converted price" "$c19d"
+fi
+c19d_roll="$(c19_rollup EUR)"
+if [ "$(jget "$c19d_roll" "$C19_NO_UNCONVERTED && v.byFidelity['per-request'].pricedCount === 2 && v.byFidelity['session-cumulative'].pricedCount === 1")" = "true" ] \
+  && approx "$(jget "$c19d_roll" "v.byFidelity['per-request'].sum")" "$(node -e "console.log(0.009 / 1.149)")" \
+  && approx "$(jget "$c19d_roll" "v.byFidelity['session-cumulative'].sum")" "$(node -e "console.log(0.0012 / 1.149)")"; then
+  ok "19d R52/R53: the EUR rollup then converts p1 and s1b (per-request priced 2, session-cumulative priced 1, every unconvertedCount 0)"
+else
+  bad "19d R52/R53: the EUR rollup still carries a failure after the fixing arrived" "$c19d_roll"
+fi
+
+# --- 19e (R51, missing rate): JPY is not listed by the fixing ----------------
+c19e="$(c19_price p1 JPY)"
+if [ "$(jget "$c19e" "v.amountUsd > 0 && v.amount === v.amountUsd && v.currency === 'USD'")" = "true" ]; then
+  ok "19e R51: a JPY price the fixing lists no rate for keeps its USD amount, labelled USD"
+else
+  bad "19e R51: the failed JPY conversion is not a USD amount labelled USD" "$c19e"
+fi
+if [ "$(jget "$c19e" "(v.conversion || {}).status === 'no-such-currency' && v.conversion.requested === 'JPY' && v.fixingDate === '2026-09-21'")" = "true" ]; then
+  ok "19e R51: it carries status no-such-currency, requested JPY, and the consulted fixing's date 2026-09-21"
+else
+  bad "19e R51: the failure status, requested currency or consulted fixing date is wrong" "$c19e"
+fi
+c19e_roll="$(c19_rollup JPY)"
+IFS='|' read -r c19e_pr_sum c19e_pr_count c19e_pr_priced c19e_pr_unpriced c19e_pr_unconv <<< "$(c19_bucket "$c19e_roll" per-request)"
+IFS='|' read -r c19e_sc_sum c19e_sc_count c19e_sc_priced c19e_sc_unpriced c19e_sc_unconv <<< "$(c19_bucket "$c19e_roll" session-cumulative)"
+if approx "$c19e_pr_sum" 0 && approx "$c19e_sc_sum" 0 \
+  && [ "$c19e_pr_count|$c19e_pr_priced|$c19e_pr_unpriced|$c19e_pr_unconv" = "3|0|1|2" ] \
+  && [ "$c19e_sc_count|$c19e_sc_priced|$c19e_sc_unpriced|$c19e_sc_unconv" = "1|0|0|1" ] \
+  && [ "$(jget "$c19e_roll" "(v.combined || {}).sum === 0 && v.combined.unconvertedCount === 3 && v.combined.unpricedCount === 1")" = "true" ] \
+  && [ "$(jget "$c19e_roll" "$C19_PARTITION")" = "true" ]; then
+  ok "19e R53/R54: the JPY rollup counts every priced record unconverted (per-request 2, session-cumulative 1, combined 3), u1 stays unpriced, and no sum holds a USD amount"
+else
+  bad "19e R53/R54: the JPY rollup mis-tallies the missing-rate failures" "$c19e_roll"
+fi
+c19e_dash="$(c19_dash JPY)"
+IFS='|' read -r c19e_d_amount c19e_d_priced c19e_d_unpriced c19e_d_unconv <<< "$(c19_dash_sc "$c19e_dash")"
+if approx "$c19e_d_amount" "$c19e_sc_sum" \
+  && [ "$c19e_d_priced|$c19e_d_unpriced|$c19e_d_unconv" = "$c19e_sc_priced|$c19e_sc_unpriced|$c19e_sc_unconv" ]; then
+  ok "19e R47 (v1-F3): the dashboard's JPY session-cumulative figures equal the rollup's over the seeded fixings (priced|unpriced|unconverted = $c19e_d_priced|$c19e_d_unpriced|$c19e_d_unconv)"
+else
+  bad "19e R47 (v1-F3): the dashboard and the rollup disagree on JPY session-cumulative" "dashboard=$c19e_d_amount|$c19e_d_priced|$c19e_d_unpriced|$c19e_d_unconv; rollup sum|priced|unpriced|unconverted=$c19e_sc_sum|$c19e_sc_priced|$c19e_sc_unpriced|$c19e_sc_unconv"
+fi
+c19e_d_fixing="$(jget "$c19e_dash" "$C19_S1_FIXING")"
+c19e_s_fixing="$(jget "$(c19_stored s1b)" 'v.fixingDate')"
+if [ "$c19e_d_fixing" = '{"min":"2026-09-21","max":"2026-09-21"}' ] && [ "$c19e_s_fixing" = "2026-09-21" ]; then
+  ok "19e R47 precondition: s1b carries fixing date 2026-09-21 on both surfaces"
+else
+  bad "19e R47 precondition: s1b's fixing date differs between the surfaces" "dashboard: $c19e_d_fixing; stored: $c19e_s_fixing"
+fi
+
+# --- 19f (R52 x R51): USD requests over stored failures labelled USD ---------
+c19f_dash="$(c19_dash USD)"
+if [ "$(jget "$c19f_dash" "((v.totals || {}).price || {}).unconvertedCount === 0 && v.totals.price.pricedCount === 3 && v.totals.price.unpricedCount === 1")" = "true" ]; then
+  ok "19f(1) R52: the dashboard's USD view over stored JPY failures counts them priced (3), unpriced 1, unconverted 0"
+else
+  bad "19f(1) R52: the dashboard's USD view served a stored failure" "$(jget "$c19f_dash" "JSON.stringify((v.totals || {}).price)")"
+fi
+c19f_p1="$(c19_price p1)"
+if [ "$(jget "$c19f_p1" "(v.conversion || {}).status === 'ok' && !Object.prototype.hasOwnProperty.call(v.conversion, 'requested') && v.currency === 'USD'")" = "true" ]; then
+  ok "19f(2) R51/R52: a USD request over p1's stored failure carries status ok and no requested currency"
+else
+  bad "19f(2) R51/R52: the USD request was served a failed conversion status" "$c19f_p1"
+fi
+c19f_roll="$(c19_rollup USD)"
+if [ "$(jget "$c19f_roll" "$C19_NO_UNCONVERTED && v.byFidelity['per-request'].pricedCount === 2 && v.byFidelity['session-cumulative'].pricedCount === 1")" = "true" ] \
+  && approx "$(jget "$c19f_roll" "v.byFidelity['per-request'].sum")" 0.009 \
+  && approx "$(jget "$c19f_roll" "v.byFidelity['session-cumulative'].sum")" 0.0012; then
+  ok "19f(3) R52/R53: the USD rollup recomputes p0 and s1b from their stored failures (sums 0.009 and 0.0012) with every unconvertedCount 0"
+else
+  bad "19f(3) R52/R53: the USD rollup counted a stored failure" "$c19f_roll"
+fi
+
+# --- 19g (R52, legacy heal): a pre-delta entry labelled EUR ------------------
+C19G_LEGACY="$HELPERS_DIR/c19g-legacy.json"
+jget "$(c19_stored p1)" "JSON.stringify(Object.assign(v, { amount: v.amountUsd, currency: 'EUR', fixingDate: null, conversion: { status: 'no-fixing-on-or-before', requested: 'EUR' } }))" > "$C19G_LEGACY"
+run_driver plant-price "$HELPERS_DIR/c19-p1.json" "$C19G_LEGACY" >/dev/null
+c19g="$(c19_price p1 EUR)"
+if [ "$(jget "$c19g" "(v.conversion || {}).status === 'ok' && v.currency === 'EUR' && v.conversion.rateOfRecord === 'ECB' && v.fixingDate === '2026-09-21'")" = "true" ]; then
+  ok "19g R52: a pre-delta stored failure (USD amount labelled EUR) is recomputed, not served, and converts"
+else
+  bad "19g R52: the pre-delta stored failure was served" "$c19g"
+fi
+
+# --- 19h (R52 cost bound): one refresh attempt per date per pass -------------
+new_root_and_pin_into C19H_ROOT
+c19_write p0 p1 p2
+c19h="$(run_driver rollup-fetch-count 2026-09 EUR)"
+c19h_calls="$(printf '%s\n' "$c19h" | sed -n '2p;4p' | paste -sd'|' -)"
+if [ "$c19h_calls" = "FETCHER_CALLS=1|FETCHER_CALLS=1" ]; then
+  ok "19h R52 cost bound: one refresh attempt per computation date per pass (1 then 1 — not one per record, not one per process)"
+else
+  bad "19h R52 cost bound: expected FETCHER_CALLS=1 in each of the two passes" "$c19h_calls"
+fi
+c19h_unconv="$(printf '%s\n' "$c19h" | sed -n '1p;3p' | while IFS= read -r l; do jget "$l" "(b => b.unconvertedCount === 3 && b.pricedCount === 0 && b.sum === 0)(v.byFidelity['per-request'])"; done | paste -sd'|' -)"
+if [ "$c19h_unconv" = "true|true" ]; then
+  ok "19h R53: with every retrieval failing, all three records are unconverted in both passes"
+else
+  bad "19h R53: the two passes do not count all three records unconverted" "$c19h"
+fi
 
 # =============================================================================
 # Summary
