@@ -694,7 +694,9 @@ expect_no_tmp "11d"
 # 11e rc 2 with a stale 0644 "settings.json.tmp" an older setup left behind: the
 # 0089 / 0091 helpers write through that predictable name with `>` then `mv`,
 # so a truncated stale file would hand its 0644 mode to the target, which holds
-# the operator's MCP secrets (security review of #1210, finding 1).
+# the operator's MCP secrets (security review of #1210, finding 1). This asserts
+# the end state of rc 2 only: the final chmod also restores 0600, so 11f is the
+# case that fails without the stale-name removal.
 new_case
 printf '{"ui": {"theme": "x"}, "mcpServers": {"github": {"command": "gh-mcp", "env": {"GITHUB_TOKEN": "OPERATOR-SECRET"}}}}\n' > "$T"
 chmod 600 "$T"
@@ -705,6 +707,30 @@ expect_rc "11e stale 0644 settings.json.tmp, org fold failure" 2
 expect_json "11e operator server kept" '.mcpServers.github.env.GITHUB_TOKEN' '"OPERATOR-SECRET"'
 expect_mode600 "11e"
 expect_no_tmp "11e"
+
+# 11f A "settings.json.tmp" pre-planted as a symlink to a file someone else can
+# read (security review of #1210, exp4). The 0089 fold writes through that
+# predictable name with `>` then `mv`: without the stale-name removal before
+# the folds, the merged settings, operator secrets included, land in the link
+# target, and the rename turns settings.json into that symlink. 11e cannot see
+# this, because the final chmod hides the mode window.
+new_case
+printf '{"ui": {"theme": "x"}, "mcpServers": {"github": {"command": "gh-mcp", "env": {"GITHUB_TOKEN": "SENTINEL-11F"}}}}\n' > "$T"
+chmod 600 "$T"
+PLANTED="$HOME/planted.json"
+( umask 000; : > "$PLANTED" ); chmod 666 "$PLANTED"
+ln -s "$PLANTED" "$T.tmp"
+gs_write "" ""
+expect_rc "11f planted settings.json.tmp symlink" 0
+if grep -q 'SENTINEL-11F' "$PLANTED" 2>/dev/null; then
+  bad "11f the planted symlink target received the operator secret"
+else
+  ok "11f the planted symlink target did not receive the operator secret"
+fi
+if [ -f "$T" ] && [ ! -L "$T" ]; then ok "11f settings.json is a regular file, not a symlink"; else bad "11f settings.json is not a regular file ($(ls -l "$T" 2>&1))"; fi
+expect_mode600 "11f"
+expect_json "11f operator server kept in settings.json" '.mcpServers.github.env.GITHUB_TOKEN' '"SENTINEL-11F"'
+expect_no_tmp "11f"
 
 # ---------------------------------------------------------------------------
 echo "12. A large plain-JSON file is processed quickly (plan review v1-F2)"
