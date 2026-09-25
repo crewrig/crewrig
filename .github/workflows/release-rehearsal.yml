@@ -1,26 +1,22 @@
-name: Analyze & Release (Monorepo)
+name: Rehearse Release (Monorepo)
 
+# Manual, credential-free rehearsal of the monorepo release (spec 0213 R12):
+# computes each extension's next version, tag and release note and builds its
+# archive, publishing nothing. Mirrors the `release-rehearsal` capability in
+# ci/ci-capabilities.yml.
 on:
-  push:
-    branches: [main]
-    tags-ignore:
-      - "**"
   workflow_dispatch:
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  release:
+  release-rehearsal:
     runs-on: ubuntu-latest
-    if: github.repository == 'crewrig/crewrig'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -35,10 +31,7 @@ jobs:
       - name: Install dependencies
         run: npm install --include=dev
 
-      # The driver sets the release commit identity itself on GitHub
-      # (scripts/lib/monorepo-release-lib.sh release_identity) and reads the
-      # credential from the portable key RELEASE_TOKEN (spec 0213).
-      - name: Run monorepo release
+      - name: Rehearse monorepo release
         env:
-          RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_DRY_RUN: "true"
         run: bash scripts/monorepo-release.sh

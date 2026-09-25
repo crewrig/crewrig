@@ -1,0 +1,54 @@
+name: Release Driver Tests
+
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/monorepo-release.sh"
+      - "scripts/lib/monorepo-release-lib.sh"
+      - "scripts/lib/release-rehearse.mjs"
+      - "scripts/lib/release-notes/**"
+      - "scripts/tests/test-monorepo-release*.sh"
+      - "scripts/tests/fixtures/release/**"
+      - "scripts/release-package-extension.sh"
+      - "scripts/build-extension.sh"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/monorepo-release.sh"
+      - "scripts/lib/monorepo-release-lib.sh"
+      - "scripts/lib/release-rehearse.mjs"
+      - "scripts/lib/release-notes/**"
+      - "scripts/tests/test-monorepo-release*.sh"
+      - "scripts/tests/fixtures/release/**"
+      - "scripts/release-package-extension.sh"
+      - "scripts/build-extension.sh"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  release-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Install dependencies
+        run: npm install --include=dev
+
+      - name: Test the release driver (hermetic)
+        run: bash scripts/tests/test-monorepo-release.sh
+
+      - name: Test the release driver (real engine, local forge stub)
+        run: bash scripts/tests/test-monorepo-release-engine.sh

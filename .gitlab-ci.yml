@@ -1239,3 +1239,73 @@ check-ci-parity:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+release:
+  image: node:22
+  variables:
+    GIT_DEPTH: "0"
+    RELEASE_TOKEN: "$GITLAB_TOKEN"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "npm install --include=dev"
+    - "bash scripts/monorepo-release.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$/'
+
+release-rehearsal:
+  image: node:22
+  variables:
+    GIT_DEPTH: "0"
+    RELEASE_DRY_RUN: "true"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "npm install --include=dev"
+    - "bash scripts/monorepo-release.sh"
+  rules:
+    - if: ''
+      when: manual
+
+release-tests:
+  image: node:22
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "npm install --include=dev"
+    - "bash scripts/tests/test-monorepo-release.sh"
+    - "bash scripts/tests/test-monorepo-release-engine.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/monorepo-release.sh"
+        - "scripts/lib/monorepo-release-lib.sh"
+        - "scripts/lib/release-rehearse.mjs"
+        - "scripts/lib/release-notes/**"
+        - "scripts/tests/test-monorepo-release*.sh"
+        - "scripts/tests/fixtures/release/**"
+        - "scripts/release-package-extension.sh"
+        - "scripts/build-extension.sh"
+        - "package.json"
+        - "package-lock.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/monorepo-release.sh"
+        - "scripts/lib/monorepo-release-lib.sh"
+        - "scripts/lib/release-rehearse.mjs"
+        - "scripts/lib/release-notes/**"
+        - "scripts/tests/test-monorepo-release*.sh"
+        - "scripts/tests/fixtures/release/**"
+        - "scripts/release-package-extension.sh"
+        - "scripts/build-extension.sh"
+        - "package.json"
+        - "package-lock.json"

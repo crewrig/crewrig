@@ -1572,22 +1572,97 @@ capabilities:
   # the property this capability asserted (a tag-triggered release path)
   # is retired, not relocated.
 
-  # release-monorepo.yml runs the semantic-release monorepo pipeline on push to
-  # main (.github/workflows/release-monorepo.yml lines 3-7).
+  # release runs the monorepo release driver (scripts/monorepo-release.sh) on
+  # push to main. Portable since spec 0213: the SAME driver and engine
+  # (semantic-release) publish on both legs — GitHub Actions
+  # (.github/workflows/release-monorepo.yml, @semantic-release/github) and
+  # GitLab CI (the generated `release` job, @semantic-release/gitlab to the
+  # generic package registry plus a GitLab release). The driver detects the
+  # forge itself and sets the GitHub commit identity itself, so the business
+  # steps are identical on both engines. The credential crosses the engines
+  # under the one env key RELEASE_TOKEN (spec 0131 compares env KEYS): its
+  # GitLab value is the masked CI/CD variable $GITLAB_TOKEN (a project access
+  # token with api + write_repository, allowed to push to the protected
+  # release branch and to create tags); its GitHub value is
+  # secrets.GITHUB_TOKEN. yq is required by the packager's render step
+  # (scripts/build-extension.sh). Full history: the engine reads every tag.
   - id: release
     name: "Run the monorepo semantic-release pipeline"
     trigger:
       - on: push
         branches: [main]
-    portability: specific
-    exception:
-      engine: github-actions
-      evidence: >
-        Runs `scripts/monorepo-release.sh` driven by the GitHub
-        `${{ secrets.GITHUB_TOKEN }}` with `issues: write` /
-        `pull-requests: write` permissions to create GitHub Releases and
-        comment on GitHub issues/PRs
-        (.github/workflows/release-monorepo.yml lines 9-44). The release
-        tooling targets the GitHub Releases and GitHub issue APIs, which have
-        no faithful equivalent on GitLab CI, so the capability is hand-authored
-        per engine, not generated.
+    portability: portable
+    requires:
+      runtime: node@22
+      tools: [jq, yq]
+      history-depth: full
+    env:
+      RELEASE_TOKEN: "$GITLAB_TOKEN"
+    command:
+      - npm install --include=dev
+      - bash scripts/monorepo-release.sh
+
+  # release-rehearsal runs the same driver in rehearsal mode on demand
+  # (spec 0213 R12): it computes each extension's next version, tag and
+  # release note and builds the archive, with NO credential — the engine's dry
+  # run happens in a throwaway clone whose every git remote operation is
+  # redirected to a throwaway local mirror, and the config carries no publish
+  # plugin. On GitLab run it from a branch pipeline (the driver refuses a
+  # merge-request or tag pipeline).
+  - id: release-rehearsal
+    name: "Rehearse the monorepo release without publishing"
+    trigger:
+      - on: manual
+    portability: portable
+    requires:
+      runtime: node@22
+      tools: [jq, yq]
+      history-depth: full
+    env:
+      RELEASE_DRY_RUN: "true"
+    command:
+      - npm install --include=dev
+      - bash scripts/monorepo-release.sh
+
+  # release-tests exercises the release driver (spec 0213 R17): the hermetic
+  # driver test and the real-engine test against a local forge stub.
+  # Deliberately NOT changeset-gated, for the same reason usage-storage above
+  # is not — a node@22 capability must never enter the fail-safe job's
+  # python-only execution set.
+  - id: release-tests
+    name: "Test the forge-aware monorepo release driver"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/monorepo-release.sh"
+          - "scripts/lib/monorepo-release-lib.sh"
+          - "scripts/lib/release-rehearse.mjs"
+          - "scripts/lib/release-notes/**"
+          - "scripts/tests/test-monorepo-release*.sh"
+          - "scripts/tests/fixtures/release/**"
+          - "scripts/release-package-extension.sh"
+          - "scripts/build-extension.sh"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/monorepo-release.sh"
+          - "scripts/lib/monorepo-release-lib.sh"
+          - "scripts/lib/release-rehearse.mjs"
+          - "scripts/lib/release-notes/**"
+          - "scripts/tests/test-monorepo-release*.sh"
+          - "scripts/tests/fixtures/release/**"
+          - "scripts/release-package-extension.sh"
+          - "scripts/build-extension.sh"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@22
+      tools: [jq, yq]
+    command:
+      - npm install --include=dev
+      - bash scripts/tests/test-monorepo-release.sh
+      - bash scripts/tests/test-monorepo-release-engine.sh
