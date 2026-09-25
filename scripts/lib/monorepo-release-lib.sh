@@ -229,12 +229,15 @@ release_prepare_cmd() {
 # guard) — do not drop it when editing this config.
 #
 # The gitmoji plugin is referenced through its ESM facade
-# scripts/lib/release-notes/gitmoji-esm-shim.mjs, by absolute path under
-# <root> (issue #1225): semantic-release-monorepo resolves wrapped steps with
-# `import()`, which sees only `analyzeCommits` on the CommonJS package, so the
-# bare package name left every note empty. Both legs use the facade, so the
-# GitHub note R21 freezes is the one it renders. The rehearsal passes its clone
-# as <root>, so it loads the clone's own facade.
+# scripts/lib/release-notes/gitmoji-esm-shim.mjs (issue #1225):
+# semantic-release-monorepo resolves wrapped steps with `import()`, which sees
+# only `analyzeCommits` on the CommonJS package, so the bare package name left
+# every note empty. As in #1225, the facade's absolute path is resolved from
+# this library's own location (wrapStep imports the name verbatim), not from
+# <root>, so a driver run against another checkout still finds it. Both legs
+# and both modes use the facade, so the GitHub note R21 freezes is the one it
+# renders; the rehearsal clone is at the same commit, so its facade is the same
+# file.
 #
 # No `gemini-extension.json` arm in prepareCmd: it is a BUILD OUTPUT under the
 # render-at-publication model (spec 0173 delta-01), never a committed sibling.
@@ -261,7 +264,7 @@ emit_releaserc() {
     --arg ext "$ext" \
     --arg out "$out" \
     --arg branch "$branch" \
-    --arg gitmoji_plugin "$root/scripts/lib/release-notes/gitmoji-esm-shim.mjs" \
+    --arg gitmoji_plugin "$RELEASE_LIB_DIR/release-notes/gitmoji-esm-shim.mjs" \
     --arg prepare "$(release_prepare_cmd "$root" "$ext" "$out" '${nextRelease.version}')" \
     --arg repo "$repo_url" \
     --arg purl "$project_url" \

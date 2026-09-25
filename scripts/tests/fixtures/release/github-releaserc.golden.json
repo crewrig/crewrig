@@ -5,7 +5,7 @@
   "extends": "semantic-release-monorepo",
   "plugins": [
     [
-      "semantic-release-gitmoji",
+      "/ROOT/scripts/lib/release-notes/gitmoji-esm-shim.mjs",
       {
         "releaseRules": {
           "major": [

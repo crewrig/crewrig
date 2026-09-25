@@ -24,12 +24,14 @@
 #   bash scripts/tests/fixtures/release/generate-github-golden.sh [<ref>] \
 #     > scripts/tests/fixtures/release/github-releaserc.golden.json
 #
-# <ref> defaults to 4739512, the last `main` commit whose
-# scripts/monorepo-release.sh still carried the heredoc. It must name a commit
-# of that shape; the script refuses when the driver it runs writes no config.
+# <ref> defaults to bbd6cf6, the last `main` commit whose
+# scripts/monorepo-release.sh still carried the heredoc — the one that already
+# loads semantic-release-gitmoji through its ESM facade (issue #1225), so the
+# golden is the config whose note R21 freezes. It must name a commit of that
+# shape; the script refuses when the driver it runs writes no config.
 set -euo pipefail
 
-REF="${1:-4739512}"
+REF="${1:-bbd6cf6}"
 REPO_DIR="$(cd "$(dirname "$0")/../../../.." && pwd)"
 
 if ! git -C "$REPO_DIR" cat-file -e "$REF:scripts/monorepo-release.sh" 2>/dev/null; then
