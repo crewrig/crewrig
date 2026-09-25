@@ -10,18 +10,28 @@
 #   bash scripts/check-skill-versions.sh [<base-ref>]
 #
 # Default base ref: probes remotes for crewrig or origin, falls back to the
-# first available remote, and appends /main. CI passes BASE_REF env var
-# pointing at the PR's *target* branch (`base.ref` in GitHub Actions
-# context) — NOT the PR's source/head branch. The guard diffs the PR
+# first available remote, then prefers /main, falling back to /develop when
+# the reference remote carries no main branch (issue #1214). CI passes
+# BASE_REF env var pointing at the PR's *target* branch (`base.ref` in GitHub
+# Actions context) — NOT the PR's source/head branch. The guard diffs the PR
 # against what it's about to merge into, so changes that haven't yet
-# landed in the base are subject to the bump rule.
+# landed in the base are subject to the bump rule. A BASE_REF ending in `/`
+# (an unexpanded CI variable) is normalized to unset rather than handed to
+# git verbatim — see scripts/lib/base-ref-resolve.sh.
 #
 # Exits 0 if all changed sources include a version bump, non-zero (with a
 # per-file failure list) otherwise.
 
 set -euo pipefail
 
-BASE_REF="${1:-${BASE_REF:-$(git remote | grep -E -m1 'crewrig|origin' || git remote | head -1)/main}}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/lib/base-ref-resolve.sh
+source "$SCRIPT_DIR/lib/base-ref-resolve.sh"
+
+BASE_REF="$(normalize_base_ref "${1:-${BASE_REF:-}}")"
+if [ -z "$BASE_REF" ]; then
+  BASE_REF="$(default_base_ref "$(git remote | grep -E -m1 'crewrig|origin' || git remote | head -1)")"
+fi
 
 # Make sure the base is fetched. CI runners do shallow clones by default.
 if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then

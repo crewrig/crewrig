@@ -40,8 +40,11 @@
 #   bash scripts/check-extension-version-bump.sh [<base-ref>]
 #
 # Default base ref mirrors check-skill-versions.sh: probe remotes for crewrig or
-# origin, fall back to the first remote, append /main. CI passes BASE_REF env
-# pointing at the PR's *target* branch.
+# origin, fall back to the first remote, then prefer /main, falling back to
+# /develop when the reference remote carries no main branch (issue #1214). CI
+# passes BASE_REF env pointing at the PR's *target* branch. A BASE_REF ending
+# in `/` (an unexpanded CI variable) is normalized to unset rather than handed
+# to git verbatim — see scripts/lib/base-ref-resolve.sh.
 #
 # Exits 0 if all modified extension sources include a version bump (or are
 # exempt), non-zero (with a per-file failure list) otherwise.
@@ -51,8 +54,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/provenance-carrier.sh
 source "$SCRIPT_DIR/lib/provenance-carrier.sh"
+# shellcheck source=scripts/lib/base-ref-resolve.sh
+source "$SCRIPT_DIR/lib/base-ref-resolve.sh"
 
-BASE_REF="${1:-${BASE_REF:-$(git remote | grep -E -m1 'crewrig|origin' || git remote | head -1)/main}}"
+BASE_REF="$(normalize_base_ref "${1:-${BASE_REF:-}}")"
+if [ -z "$BASE_REF" ]; then
+  BASE_REF="$(default_base_ref "$(git remote | grep -E -m1 'crewrig|origin' || git remote | head -1)")"
+fi
 
 # Make sure the base is fetched. CI runners do shallow clones by default.
 if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then

@@ -245,6 +245,126 @@ repo7="$(new_repo)"
 run_case "Case 7 — modified command with bump passes" "$repo7" 0
 
 # -------------------------------------------------------------------------
+# Case 8 (issue #1214) — a BASE_REF ending in `/` (an unexpanded CI variable,
+# e.g. a push event or an interpolated merge-request target-branch variable
+# that came back empty) is normalized to unset rather than handed to git
+# verbatim.
+#
+# The exit code alone cannot pin this: `git diff --name-status "$BASE_REF" --
+# ... 2>/dev/null || true` on line 51 swallows a slash-terminated ref's git
+# error and yields an EMPTY diff, which the script reads as "nothing to
+# check" and exits 0 — the same code a real, correctly-resolved pass produces.
+# Silently skipping the check is the more dangerous shape of this bug (a
+# forgotten bump would slip through undetected), so this asserts on OUTPUT:
+# the per-file "OK" line only appears when the diff genuinely ran and found
+# the bumped file, and the false-negative skip message must be absent.
+#
+# The remote is fetched right after the SEED commit, before the bump commit —
+# unlike Case 4, whose fetch-after-both-commits fixture can only prove
+# resolution succeeds, never that the resulting base ref actually predates the
+# change.
+# -------------------------------------------------------------------------
+repo8="$(new_repo)"
+(
+  cd "$repo8"
+  git branch -m main
+  mkdir -p artifacts/core/skills/old-skill
+  render_skill "1.0.0" > artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
+  git commit -q -m "seed old-skill at 1.0.0"
+
+  git remote add crewrig "$repo8"
+  git fetch crewrig >/dev/null 2>&1
+
+  render_skill "1.0.1" > artifacts/core/skills/old-skill/SKILL.md
+  printf '\nExtra line.\n' >> artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
+  git commit -q -m "patch bump"
+)
+
+actual_exit=0
+case8_output=$( ( cd "$repo8" && BASE_REF="crewrig/" bash "$SCRIPT_UNDER_TEST" 2>&1 ) ) || actual_exit=$?
+if [ "$actual_exit" -eq 0 ] \
+  && echo "$case8_output" | grep -q "OK   artifacts/core/skills/old-skill/SKILL.md" \
+  && ! echo "$case8_output" | grep -q "no existing component sources modified"; then
+  echo "PASS  Case 8 — trailing-slash BASE_REF is normalized to unset, diff genuinely ran (exit $actual_exit)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 8 — trailing-slash BASE_REF is normalized to unset (expected exit 0 with the bump found, got exit $actual_exit)"
+  echo "Output:"
+  echo "$case8_output"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
+# Case 9 (issue #1214) — dynamic trunk fallback, positive control. The
+# reference remote carries NO `main` branch at all — trunk is `develop` — so
+# the default derivation must fall back to `<remote>/develop` rather than
+# hard-failing on a hardcoded `<remote>/main`. Same fetch-before-bump shape as
+# Case 8, so exit 0 means the bump was actually found via `crewrig/develop`.
+# -------------------------------------------------------------------------
+repo9="$(new_repo)"
+(
+  cd "$repo9"
+  git branch -m develop
+  mkdir -p artifacts/core/skills/old-skill
+  render_skill "1.0.0" > artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
+  git commit -q -m "seed old-skill at 1.0.0"
+
+  git remote add crewrig "$repo9"
+  git fetch crewrig >/dev/null 2>&1
+
+  render_skill "1.0.1" > artifacts/core/skills/old-skill/SKILL.md
+  printf '\nExtra line.\n' >> artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
+  git commit -q -m "patch bump"
+)
+
+actual_exit=0
+( cd "$repo9" && env -u BASE_REF bash "$SCRIPT_UNDER_TEST" >/dev/null 2>&1 ) || actual_exit=$?
+if [ "$actual_exit" -eq 0 ]; then
+  echo "PASS  Case 9 — no main branch falls back to develop, bump recognized (exit $actual_exit)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 9 — no main branch falls back to develop, bump recognized (expected exit 0, got $actual_exit)"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
+# Case 10 (issue #1214) — same develop-only trunk, negative control: NO
+# version bump. Proves the fallback actually engaged the check against
+# `develop` rather than the check silently no-op'ing (which would also read
+# as exit 0 on Case 9 alone).
+# -------------------------------------------------------------------------
+repo10="$(new_repo)"
+(
+  cd "$repo10"
+  git branch -m develop
+  mkdir -p artifacts/core/skills/old-skill
+  render_skill "1.0.0" > artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
+  git commit -q -m "seed old-skill at 1.0.0"
+
+  git remote add crewrig "$repo10"
+  git fetch crewrig >/dev/null 2>&1
+
+  printf '\nExtra line.\n' >> artifacts/core/skills/old-skill/SKILL.md
+  git add artifacts/core/skills/old-skill/SKILL.md
+  git commit -q -m "tweak body, forget version bump"
+)
+
+actual_exit=0
+( cd "$repo10" && env -u BASE_REF bash "$SCRIPT_UNDER_TEST" >/dev/null 2>&1 ) || actual_exit=$?
+if [ "$actual_exit" -eq 1 ]; then
+  echo "PASS  Case 10 — develop fallback negative control: missing bump still fails (exit $actual_exit)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 10 — develop fallback negative control: missing bump still fails (expected exit 1, got $actual_exit)"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
 # Summary
 # -------------------------------------------------------------------------
 echo ""
