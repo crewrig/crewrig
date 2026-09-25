@@ -233,6 +233,23 @@ render_gemini() {
     rm -f "$build_dir/$stray"
   done < <(ext_class_scan "$build_dir" "$GENERATED_CLASS")
 
+  # Strip release-tooling debris the verbatim copy may have carried over
+  # (issue #1229, spec 0183 R17/R18). scripts/monorepo-release.sh writes
+  # .releaserc.json directly into the extension's OWN source directory for
+  # the duration of its `npx semantic-release` run — needed there because
+  # semantic-release-monorepo reads it from the package root it scopes to —
+  # and removes it again once that run returns. `@semantic-release/exec`'s
+  # prepareCmd (which packages this very tree) fires mid-run, while the file
+  # still exists, so a plain verbatim copy captures it. It is deliberately
+  # NOT folded into $GENERATED_CLASS: that class means "an output THIS
+  # render pipeline itself produces from a declaration, reachable through a
+  # documented delivery path in EXTENSION-FORMAT.md" (see the arm (a)
+  # COMMITTED message above) — nothing here ever produces .releaserc.json,
+  # and there is no declaration that would. It is simply foreign debris from
+  # an unrelated tool that must never survive into any rendered tree,
+  # regardless of how it got there.
+  rm -f "$build_dir/.releaserc.json"
+
   local description version context_fname mcp_servers themes rc=0
   description="$(jq -r '.description // ""' "$manifest")"
   version="$(ext_version "$manifest")"
