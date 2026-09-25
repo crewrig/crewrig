@@ -1,7 +1,7 @@
 ---
 id: "0215"
 slug: shell-to-typescript-migration
-status: draft
+status: approved
 complexity: large
 interaction-mode: INTERMEDIATE
 related-issue: 1231
@@ -57,16 +57,32 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
    stripping; how it achieves this is left to sub-spec A.
 
 5. **Runtime and distribution (binding 1).** The prerequisites for a first
-   install SHALL be limited to Git, Node.js 24 LTS, the Python toolchain
-   MemPalace already requires, and the target CLI itself. A POSIX shell SHALL
-   NOT be a prerequisite on any operating system once the setup/install/manage
-   step of the strangler order (requirement 8) has shipped.
+   install SHALL be limited to Git, Node.js 24 LTS together with the npm that
+   ships with it, the Python toolchain MemPalace already requires, and the
+   target CLI itself. A first install SHALL need network access to the npm
+   registry, for the dependency step of requirement 6, in addition to the
+   network access the CLI and MemPalace installs already need. A POSIX shell
+   SHALL NOT be a prerequisite on any operating system once the
+   setup/install/manage step of the strangler order (requirement 8) has
+   shipped.
 
-6. **Runtime and distribution (binding 1).** Every third-party runtime
-   dependency a migrated script introduces SHALL be pinned by the repository
-   lockfile and SHALL be justified in the sub-spec that introduces it; a
-   sub-spec that needs no third-party dependency SHALL rely on the Node.js
-   standard library alone.
+6. **Runtime and distribution (binding 1).** The first-install entry point
+   SHALL use the Node.js standard library alone up to and including the step
+   where it installs the repository's lockfile-pinned production dependencies —
+   `npm ci --omit=dev` or an equivalent npm command fixed by sub-spec A — and
+   no migrated script SHALL import a third-party package before that step has
+   run. That step SHALL install only the transitive closure of the root
+   package's `dependencies`: no `devDependencies` (the release and lint
+   tooling) and no package needed only by a workspace under `extensions/`;
+   sub-spec A SHALL verify the chosen command against the root `package.json`
+   workspaces and SHALL name it. Release tooling and other `devDependencies`
+   SHALL NOT be required at runtime. Every third-party runtime dependency SHALL
+   be declared under `dependencies`, pinned by the lockfile and justified in
+   the sub-spec that introduces it; at authoring time the root package declares
+   none, so a sub-spec that needs no third-party package SHALL rely on the
+   Node.js standard library alone. When the dependency step fails, the entry
+   point SHALL exit non-zero with the npm diagnostic and SHALL NOT continue
+   with a partial install.
 
 7. **Scope and strangler order (binding 2).** The migration scope SHALL be
    every tracked shell script in the repository — measured by issue #1191 at
@@ -128,25 +144,42 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
     request, after the TypeScript version has shipped green on Linux CI and on
     its `windows-latest` job (requirement 17). A script with no Bash test SHALL
     gain a black-box test before or with its migration, and that test SHALL
-    then play the oracle role.
+    then play the oracle role. For a sourced shell library (a file under
+    `scripts/lib/` that callers `source` rather than execute), the oracle SHALL
+    be the black-box tests of the scripts that consume it. A Bash test that
+    sources such a library to call its functions in-process cannot run against
+    a TypeScript module, so, as the single bounded exception to this rule, it
+    MAY migrate or be retired in the same pull request as the library, on two
+    conditions: before that pull request, every behaviour it asserts SHALL be
+    covered by an unchanged black-box test of a consumer script, and the
+    sub-spec SHALL list each such test and name its substitute consumer-level
+    tests. The end-to-end harness — `tests/e2e/run.sh`, `tests/e2e/lib/` and
+    `tests/e2e/scenarios/` — SHALL be classified as tests, not scripts: it
+    SHALL migrate in step (e), and its oracle SHALL be that every scenario
+    returns the same verdict for each CLI before and after its migration.
 
 14. **Oracle rule (binding 4).** A migrated script SHALL preserve the
     observable contract of the script it replaces — command-line arguments,
     exit codes, standard output, standard error and files written — except
     where its sub-spec lists a deviation explicitly and justifies it.
 
-15. **Hooks (binding 5).** Every migrated hook SHALL be wired in
-    `hooks/*-transcript-hooks.json` and `hooks/*-usage-capture-hooks.json` as a
-    direct `node "<path>/<hook>.ts"` command line, with no dispatcher and no
-    intermediate CrewRig entry point. Setup SHALL rewrite already-installed
-    hook command lines to the new form on its next run. Each hook sub-spec
-    SHALL set a per-hook latency budget — stated as an upper bound on
+15. **Hooks and other CLI integration points (binding 5).** Every command line
+    that setup wires into a CLI to run a CrewRig script — the hooks in
+    `hooks/*-transcript-hooks.json` and `hooks/*-usage-capture-hooks.json`, the
+    statusline command that `scripts/setup-antigravity-interactive.sh` wires to
+    `hooks/antigravity-statusline-shim.sh`, and any integration point added
+    later — SHALL, once its script migrates, be a direct `node
+    "<path>/<script>.ts"` command line, with no dispatcher and no intermediate
+    CrewRig entry point. Setup SHALL rewrite already-installed command lines to
+    the new form on its next run. Each sub-spec that migrates such a script
+    SHALL set a per-script latency budget — stated as an upper bound on
     wall-clock time from process start to exit, Node.js start-up included, over
-    a stated number of runs — and a timing assertion in that hook's
+    a stated number of runs — and a timing assertion in that script's
     `windows-latest` CI job SHALL fail the build when the budget is exceeded. A
-    hook on a hot path SHALL keep a cheap guard in its entry module and SHALL
+    script on a hot path SHALL keep a cheap guard in its entry module and SHALL
     load the rest of its module graph through a lazy `import()` only when the
-    guard finds work to do. A hook SHALL NOT migrate before its budget is set.
+    guard finds work to do. No such script SHALL migrate before its budget is
+    set.
 
 16. **Permitted languages (binding 6).** The code base SHALL contain only three
     kinds of scripting code: TypeScript, which SHALL be the only language for
@@ -208,12 +241,15 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
 
 23. **Cross-cutting — External POSIX tools.** A migrated script SHALL NOT spawn
     `jq`, `yq`, `awk`, `sed`, `grep`, `mktemp`, `curl`, `ln` or any other
-    POSIX-only utility. Spawning Git, the forge CLIs (`gh`, `glab`, `tea`), the
-    four supported CLIs, the Python toolchain for the `mempalace` exception,
-    and the host operating system's service manager is permitted. JSON handling
-    SHALL use the Node.js standard library; the YAML library, where one is
-    needed, SHALL be chosen by the first sub-spec that needs it and reused by
-    every later one.
+    POSIX-only utility. Spawning Git, npm, the forge CLIs (`gh`, `glab`,
+    `tea`), the four supported CLIs, the Python toolchain for the `mempalace`
+    exception, and the host operating system's service manager is permitted.
+    JSON handling SHALL use the Node.js standard library. YAML handling SHALL
+    use `js-yaml`, the library already pinned in the lockfile (as a
+    `devDependency` at authoring time; the first sub-spec that needs it at
+    runtime SHALL move it to `dependencies` under requirement 6); a sub-spec
+    MAY replace it only with a written justification, and SHALL then migrate
+    every existing use so that one YAML library remains.
 
 24. **Decomposition and termination.** This ticket SHALL be delivered through
     sub-specs, each a separate ticket with its own spec file, spec-PR and
@@ -226,35 +262,46 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
 
     | # | Proposed sub-spec | Covers | Depends on |
     |---|---|---|---|
-    | A | Foundations | Ratchet and allowlist (R10–R12); TypeScript conventions, type-check and erasable-syntax check (R2); Node floor check (R4); `windows-latest` CI scaffolding and timing harness (R15, R17); shared path, line-ending and temporary-file handling (R22) | — |
+    | A | Foundations | Ratchet and allowlist (R10–R12); first-install dependency step and its npm command (R6); TypeScript conventions, type-check and erasable-syntax check (R2); Node floor check (R4); `windows-latest` CI scaffolding and timing harness (R15, R17); shared path, line-ending and temporary-file handling (R22) | — |
     | B | Windows hook command lines | Measured `docs/cli-matrix.md` row for the four CLIs (R18) | A |
-    | C | Hooks | `usage-capture`, `worktree-git-guard`, `mempalace-transcript`, `antigravity-statusline-shim`; hook JSON rewiring and installed-hook rewrite; per-hook budgets (R15) | A, B |
+    | C | Hooks and CLI integration points | `usage-capture`, `worktree-git-guard`, `mempalace-transcript` (hook JSON) and `antigravity-statusline-shim` (statusline); command-line rewiring and installed-command rewrite; per-script budgets (R15) | A, B |
     | D | OS service management | Windows equivalent of LaunchAgents and user units (R20) | A |
     | E | Symbolic links | Link-or-copy fallback (R21) | A |
     | F | Setup, install, manage and import | The 18 `scripts/{setup,install,manage,import}-*.sh` entry points and their helpers | C, D, E |
     | G | Build | `scripts/build-*.sh` and their helpers; byte-identical outputs (R22) | F |
     | H | Skill- and extension-bundled scripts | `artifacts/**/skills/*/scripts/`, `extensions/`, `extension-skeleton/`; YAML library reuse (R23) | G |
     | I | CI checks | `scripts/check-*.sh` and the remaining non-`mempalace` Python (R16) | H |
-    | J | Tests and final removal | The Bash test suites under `scripts/tests/` and `tests/`, retirement of shell-specific conventions, `Taskfile.yml`, empty allowlist | I |
+    | J | Tests and final removal | The Bash test suites under `scripts/tests/` and `tests/`, including the end-to-end harness (R13); retirement of shell-specific conventions; `Taskfile.yml` tasks rewritten to permitted commands (R25); empty allowlist | I |
 
 25. **Decomposition and termination.** The parent ticket SHALL terminate only
     when all of the following hold on `main`: the ratchet allowlist is empty;
-    no tracked shell script exists; no hook file, `Taskfile.yml` task, workflow
-    step, documentation page or skill instruction invokes a shell script; every
-    sub-spec carries `status: implemented`; and every migrated user-facing
-    entry point has a green `windows-latest` job.
+    no tracked shell script exists; no hook file, CLI integration point,
+    `Taskfile.yml` task, workflow step, documentation page or skill instruction
+    invokes a shell script; every sub-spec carries `status: implemented`; and
+    every migrated user-facing entry point has a green `windows-latest` job.
+    `Taskfile.yml` SHALL remain as a contributor convenience, and each of its
+    tasks SHALL invoke only commands that requirement 23 permits — `node`,
+    `npm`, Git and the other listed tools — never a shell script or a
+    POSIX-only utility. Keeping it is the simpler option: the task runner
+    interprets `cmds:` with its own embedded, cross-platform interpreter, so,
+    like the workflow `run:` steps excluded under *Out of scope*, it needs no
+    POSIX shell. No user-facing install or run path SHALL require the task
+    runner.
 
 ## Scenarios
 
 **Scenario:** Windows user installs CrewRig without a POSIX layer
 
-Given a Windows machine with Git, Node.js 24 LTS, Python and Claude Code
-installed, and neither Git Bash on the `PATH` nor WSL enabled
+Given a Windows machine with network access and Git, Node.js 24 LTS (with its
+npm), Python and Claude Code installed, and neither Git Bash on the `PATH` nor
+WSL enabled
 When the user clones the repository and runs the Claude Code setup entry point
 from PowerShell after step (b) of the strangler order has shipped
-Then setup completes with exit code zero, deploys the rules, skills and agents,
-wires every hook as a `node "…/<hook>.ts"` command line, and a new Claude Code
-session runs those hooks without error.
+Then setup installs the lockfile-pinned production dependencies before any
+migrated script imports a third-party package, installs no `devDependencies`,
+completes with exit code zero, deploys the rules, skills and agents, wires every
+hook as a `node "…/<hook>.ts"` command line, and a new Claude Code session runs
+those hooks without error.
 
 **Scenario:** Migrated hook stays within its latency budget
 
@@ -295,6 +342,23 @@ also rewrites `scripts/tests/test-foo.sh`
 When the pull request is reviewed
 Then the reviewer rejects it as a violation of the oracle rule, and the test
 rewrite is split into a later pull request.
+
+**Scenario:** A sourced library migrates with its unit test
+
+Given `scripts/lib/model-resolve.sh` is sourced by consumer scripts and by a
+Bash test that calls its functions in-process
+When the pull request that migrates the library also retires that test
+Then it is accepted only if every behaviour the test asserted is already
+covered by an unchanged black-box test of a consumer script, and the sub-spec
+names those substitute tests; otherwise the reviewer rejects it under the
+oracle rule.
+
+**Scenario:** Dependency step fails at first install
+
+Given a first install on a machine that cannot reach the npm registry
+When setup reaches the production-dependency step
+Then setup exits non-zero with the npm diagnostic, imports no third-party
+package, and does not continue with a partial install.
 
 **Scenario:** Unsupported Node.js version
 
