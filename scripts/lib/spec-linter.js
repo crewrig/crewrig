@@ -1,8 +1,23 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const yaml = require('js-yaml');
-const semver = require('semver');
+
+// require() throws a raw MODULE_NOT_FOUND stack trace when a lint dependency
+// isn't installed (spec 0225 requirement 2) — wrap each one so a fresh
+// checkout gets one actionable line naming the missing module and the
+// bootstrap command, instead of a Node.js stack trace.
+function requireLintDependency(moduleName) {
+    try {
+        return require(moduleName);
+    } catch (err) {
+        console.error(`[ERROR] Missing dependency '${moduleName}', required by scripts/lib/spec-linter.js.`);
+        console.error(`Run: task lint-bootstrap  (installs js-yaml, semver, and markdownlint-cli)`);
+        process.exit(1);
+    }
+}
+
+const yaml = requireLintDependency('js-yaml');
+const semver = requireLintDependency('semver');
 
 const STATUS_ENUM = ['draft', 'approved', 'implemented', 'archived', 'superseded'];
 const COMPLEXITY_ENUM = ['trivial', 'small', 'standard', 'large'];
@@ -566,6 +581,20 @@ function run() {
     // Resolved before the (slow) markdownlint pass so a base-ref wiring fault
     // surfaces immediately instead of after a full lint run.
     const baseContext = resolveBaseContext(uniqueFiles);
+
+    // Preflight: confirm markdownlint-cli resolves (locally or globally)
+    // before shelling out to the real pass below, so an unresolvable
+    // package fails with our own actionable message instead of npm's opaque
+    // "could not determine executable to run" error (spec 0225 requirement
+    // 3). --no-install keeps this network-free. This adds one extra
+    // subprocess spawn (measured ~350ms-1.1s) to every markdownlint pass,
+    // including the already-provisioned happy path (PLAN v2 finding v2-F2).
+    const markdownlintPreflight = spawnSync('npx', ['--no-install', 'markdownlint', '--version']);
+    if (markdownlintPreflight.error || markdownlintPreflight.status !== 0) {
+        console.error(`[ERROR] markdownlint-cli is not resolvable (neither locally nor globally).`);
+        console.error(`Run: task lint-bootstrap  (installs js-yaml, semver, and markdownlint-cli)`);
+        process.exit(1);
+    }
 
     console.log(`Running markdownlint-cli on ${uniqueFiles.length} files...`);
     const lintResult = spawnSync('npx', ['markdownlint', ...uniqueFiles, '-c', '.markdownlintrc'], { stdio: 'inherit' });
