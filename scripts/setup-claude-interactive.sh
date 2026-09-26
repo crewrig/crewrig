@@ -225,8 +225,8 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   # Tier-1 ordering unchanged: the ChromaDB supervisor installs before any
   # mempalace registration is written, HTTP or stdio.
   install_chroma_daemon "$REPO_DIR"
-  ensure_mempalace_http "$REPO_DIR" claude
-  _mempalace_rc=$?
+  _mempalace_rc=0
+  ensure_mempalace_http "$REPO_DIR" claude || _mempalace_rc=$?
   case "$_mempalace_rc" in
     0)
       MEMPALACE_INSTALLED=1

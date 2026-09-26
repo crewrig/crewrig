@@ -263,8 +263,8 @@ fi
 # stdio entry stays (R19); 2 = the stdio entry stays with a loud lockout
 # warning (R20 — no stdio convergence against a probe-verified serving daemon).
 if [ "${INSTALL_MEMPALACE:-0}" -eq 1 ]; then
-  ensure_mempalace_http "$REPO_DIR" antigravity
-  _mempalace_rc=$?
+  _mempalace_rc=0
+  ensure_mempalace_http "$REPO_DIR" antigravity || _mempalace_rc=$?
   case "$_mempalace_rc" in
     0)
       echo "  MemPalace reaches shared memory through the HTTP daemon."
