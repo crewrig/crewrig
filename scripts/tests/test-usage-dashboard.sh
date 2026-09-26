@@ -2791,11 +2791,19 @@ fi
 if [ "$HOME_USAGE_MARKER_BEFORE" = "$HOME_USAGE_MARKER_AFTER" ]; then
   ok "\$HOME/.crewrig/usage is unchanged by the suite"
 else
-  # A raw snapshot mismatch is not automatically a failure (spec 0216): a
-  # concurrently running, capture-enabled sibling session may legitimately
-  # write into the real usage root the whole time this suite runs. Classify
-  # each difference instead of failing on any difference:
-  #   - a path that disappeared is always a failure (R2/R4, scenario 3);
+  # A raw snapshot mismatch is not automatically a failure (spec 0216, as
+  # amended by delta-01): a concurrently running, capture-enabled sibling
+  # session may legitimately write into the real usage root the whole time
+  # this suite runs, including promoting a mirror-sync entry from its
+  # pending queue to its mirrored queue (identical basename, different
+  # parent — scripts/lib/usage-store/layout.js pendingMarker()/
+  # mirroredMarker()). Classify each difference instead of failing on any
+  # difference:
+  #   - a disappeared path under .../mirror/pending/... is excused only
+  #     when a file with the identical basename is present, after the run,
+  #     under .../mirror/mirrored/... (delta-01 R2, scenario 4) — that is
+  #     the pipeline's own documented promotion, not data loss;
+  #   - every other disappeared path is always a failure (R2, scenario 3);
   #   - a newly observed path is a failure only when its basename matches a
   #     file this suite itself produced under one of its own sandboxed
   #     $CASE_ROOTS (R3) — usage-store artifacts are named after a sha256
@@ -2818,7 +2826,57 @@ else
     # shellcheck disable=SC2086  # deliberate word split of the $CASE_ROOTS path list
     home_own_basenames="$(find $CASE_ROOTS -type f -print0 2>/dev/null | xargs -0 -n1 basename 2>/dev/null | LC_ALL=C sort -u)"
   fi
-  home_offenders="$home_removed"
+  # Basenames present, after the run, under the mirrored queue — used below
+  # to excuse a pending-queue disappearance that is really a promotion.
+  home_mirrored_basenames=""
+  if [ -n "$home_after_list" ]; then
+    home_old_ifs="$IFS"
+    IFS="
+"
+    for home_after_path in $home_after_list; do
+      case "$home_after_path" in
+        */mirror/mirrored/*)
+          home_after_base="$(basename "$home_after_path")"
+          if [ -n "$home_mirrored_basenames" ]; then
+            home_mirrored_basenames="$home_mirrored_basenames
+$home_after_base"
+          else
+            home_mirrored_basenames="$home_after_base"
+          fi
+          ;;
+      esac
+    done
+    IFS="$home_old_ifs"
+  fi
+  # Classify each removed path: excuse it only when it was a pending-queue
+  # entry (delta-01 R2 (a)) AND an identically named file now exists in the
+  # mirrored queue (delta-01 R2 (b)); every other removal is an offender.
+  home_offenders=""
+  if [ -n "$home_removed" ]; then
+    home_old_ifs="$IFS"
+    IFS="
+"
+    for home_removed_path in $home_removed; do
+      home_removed_excused=0
+      case "$home_removed_path" in
+        */mirror/pending/*)
+          home_removed_base="$(basename "$home_removed_path")"
+          if [ -n "$home_mirrored_basenames" ] && grep -qxF "$home_removed_base" <<< "$home_mirrored_basenames"; then
+            home_removed_excused=1
+          fi
+          ;;
+      esac
+      if [ "$home_removed_excused" -eq 0 ]; then
+        if [ -n "$home_offenders" ]; then
+          home_offenders="$home_offenders
+$home_removed_path"
+        else
+          home_offenders="$home_removed_path"
+        fi
+      fi
+    done
+    IFS="$home_old_ifs"
+  fi
   if [ -n "$home_added" ]; then
     home_old_ifs="$IFS"
     IFS="
