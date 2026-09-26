@@ -263,6 +263,20 @@ semantic similarity heuristics:
    <handoff_key> --channel protocol`; `handoff_key` is the bare decimal
    ticket number, identical across every CLI.
 
+**Reviewer-seat exemption.** A seated pass — an agent instantiated per
+`docs/reviewer-seat.md` → *Instantiating a seated pass*, occupying the
+`specs`, `plan`, or `review` surface, on any pass ordinal of that seat —
+skips step 3 (cross-tool handoff lookup) and step 6 (mandatory checkpoint
+write) of this sweep. It still runs steps 1, 2, 4, and 5 unchanged. Both
+skipped steps read and write the project's `task-handoff` drawer, which
+carries the *authoring session's* own progress notes: reading it would
+hand a cold seat exactly the context its references-only brief forbids,
+and step 6 would log a nonsensical "resumption" for a pass that never
+resumes anything. Every other role — the orchestrator, a `developer` pass,
+an `architect` pass acting outside a seated review, `pr-logbook`, etc. —
+stays fully bound to all six steps. See `AGENTS.md` → *Session Bootstrap*
+and `docs/reviewer-seat.md` → *Session Bootstrap for a seated pass*.
+
 **Why not `mempalace_search` without a wing filter?** The `transcripts`
 wing typically contains thousands of raw transcript drawers, many
 mentioning `[TASK:ongoing]` literally as documentation. Without a wing
