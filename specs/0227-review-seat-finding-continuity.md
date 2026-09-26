@@ -1,7 +1,7 @@
 ---
 id: "0227"
 slug: review-seat-finding-continuity
-status: draft
+status: approved
 complexity: trivial
 interaction-mode: AUTO
 related-issue: 1270
