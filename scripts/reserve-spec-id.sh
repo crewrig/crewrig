@@ -463,7 +463,7 @@ $(printf '%s\n' "$tags_out" | ids_from_ls_remote "$CARRIER_TAGS")"
 # bytes/objects transferred since the whole matching set is re-fetched (and
 # the scratch copy re-deleted) on every call.
 find_issue_reservation_in() {
-  local prefix="$1" pattern="$2" probe="refs/spec-id-issue-probe/$$" \
+  local pattern="$1" probe="refs/spec-id-issue-probe/$$" \
       line ref msg id=""
   if ! git -C "$REPO_DIR" fetch --no-tags --quiet --force \
         "$REMOTE" "+${pattern}:${probe}/*" 2>/dev/null; then
@@ -492,9 +492,9 @@ EOF
 # which one is configured for writing.
 find_issue_reservation() {
   local id
-  id="$(find_issue_reservation_in "$CARRIER_PRIMARY" "$UPSTREAM_PATTERN_PRIMARY")"
+  id="$(find_issue_reservation_in "$UPSTREAM_PATTERN_PRIMARY")"
   if [ -z "$id" ]; then
-    id="$(find_issue_reservation_in "$CARRIER_TAGS" "$UPSTREAM_PATTERN_TAGS")"
+    id="$(find_issue_reservation_in "$UPSTREAM_PATTERN_TAGS")"
   fi
   printf '%s' "$id"
 }

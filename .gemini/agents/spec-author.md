@@ -3,7 +3,7 @@ name: spec-author
 description: "Specification authoring agent. Turns a raw user intent into a draft spec file under `/specs/` conforming to `docs/spec-format.md`, in the interaction mode declared by the parent ticket."
 model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.2.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.3.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Spec Author Agent
 
