@@ -360,12 +360,16 @@ items carry parity load, tracked in their own tickets:
   (#174). No CLI-specific gap is anticipated.
 - The retroactive routing engine (#172) is orchestrator-side logic.
   Claude Code's single implicit session team makes it directly
-  expressible — delegation via `Agent` (with an explicit
-  `subagent_type`), tracking via `TaskCreate`, and coordination via
-  `SendMessage`; Gemini CLI's sequential-spawn parity (per `AGENTS.md`
-  → *On CLIs with no multi-agent coordination surface*) requires loop
-  bookkeeping in the orchestrator's conversation state. Copilot CLI
-  parity will be assessed in #172.
+  expressible via its two confirmed-present coordination primitives —
+  delegation via `Agent` (with an explicit `subagent_type`) and
+  coordination via `SendMessage`. `TaskCreate` tracking is used only
+  when the harness exposes it; see `docs/cli-matrix.md` → *Parity
+  gaps* for the confirmed-absent status recorded against issue #1267
+  rather than re-asserting unconditional availability here. Gemini
+  CLI's sequential-spawn parity (per `AGENTS.md` → *On CLIs with no
+  multi-agent coordination surface*) requires loop bookkeeping in the
+  orchestrator's conversation state. Copilot CLI parity will be
+  assessed in #172.
 - The interaction-mode notification surface (#173) reuses the
   logbook issue, which is GitHub-side and therefore CLI-agnostic.
 
