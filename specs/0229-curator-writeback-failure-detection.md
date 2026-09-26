@@ -1,7 +1,7 @@
 ---
 id: "0229"
 slug: curator-writeback-failure-detection
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1272

@@ -903,6 +903,60 @@ assert "match_existing strips exactly one leading token, not more" "None" \
 assert "existing_issue_url fails open on missing forge binary" "True" \
   "$(apply_eval 'import os; os.environ["PATH"]="/nonexistent"; OUT = (m._existing_issue_url("gitea","o/r","k") is None)' 2>/dev/null)"
 
+# --- Issue #1272: _stamp_drawer write-back verification (PLAN Step 6) ----
+# _stamp_drawer re-fetches, appends `opened_as: <url>`, writes back, then
+# re-fetches once more to CONFIRM the stamp landed — a `tool_update_drawer`
+# call that raises, returns a falsy `success`, or silently no-ops must not
+# be assumed successful. Monkeypatching `m.tool_get_drawer` /
+# `m.tool_update_drawer` works because apply.py's `main()` binds those two
+# names as module globals (`global tool_get_drawer, tool_update_drawer`
+# right before the function-local import) — `_stamp_drawer` resolves them
+# from the module's global namespace at call time, so a test-time
+# assignment on `m` is visible to it without ever running `main()`.
+
+# A: update_drawer reports success:false without raising — must be treated
+# as a failure, not swallowed.
+assert "stamp_drawer returns False when update_drawer reports success:false" "True" \
+  "$(apply_eval 'm.tool_get_drawer = lambda **kw: {"content": "original"}; m.tool_update_drawer = lambda **kw: {"success": False, "error": "nope"}; OUT = (m._stamp_drawer("id", "http://x") is False)')"
+
+# B: get_drawer returns an error shape (no `content` key) on the pre-update
+# read — _stamp_drawer must return False WITHOUT ever calling
+# update_drawer. Proven by wiring update_drawer to raise if invoked: if
+# _stamp_drawer still returns False cleanly, the raise never fired.
+assert "stamp_drawer returns False on pre-update get_drawer error, without calling update_drawer" "True" \
+  "$(apply_eval 'm.tool_get_drawer = lambda **kw: {"error": "not found"}; m.tool_update_drawer = lambda **kw: (_ for _ in ()).throw(AssertionError("should not be called")); OUT = (m._stamp_drawer("id", "http://x") is False)')"
+
+# C: the "lying success" case — update_drawer reports success:True, but the
+# post-update verification re-read comes back WITHOUT the `opened_as:` line
+# (simulating a write that reported success but did not durably land).
+# _stamp_drawer must still return False. A call-counter closure proves the
+# SAME tool_get_drawer stub is invoked twice (pre-update read + post-update
+# verification re-read), not that a second distinct stub was substituted.
+assert "stamp_drawer returns False on lying success (update ok, reread missing stamp)" "True" \
+  "$(apply_eval '
+_calls = []
+def _get(**kw):
+    _calls.append(1)
+    return {"content": "original"}
+m.tool_get_drawer = _get
+m.tool_update_drawer = lambda **kw: {"success": True}
+OUT = (m._stamp_drawer("id", "http://example.com/1") is False) and (len(_calls) == 2)
+')"
+
+# D (closes plan finding v1-F1): a "revert must fail" SOURCE-TEXT guard —
+# reads apply.py's raw text directly (bypassing the imported module `m`
+# entirely, since the whole point is that a mocked/imported-module test
+# cannot see this regression class) and asserts the `global tool_get_drawer,
+# tool_update_drawer` line sits immediately before the `from
+# mempalace.mcp_server import …` line. Delete the `global` line and
+# `tool_get_drawer`/`tool_update_drawer` silently become function-locals
+# inside main() — every _stamp_drawer call above would then raise
+# NameError at the module level instead of resolving the test doubles, a
+# regression class Assertions A-C (which only ever see the post-import
+# behavior through `m`) cannot detect on their own.
+assert "global tool_get_drawer/tool_update_drawer line immediately precedes the mempalace import" "True" \
+  "$(apply_eval 'import os; _lines = open(os.environ["APPLY_PATH"]).read().splitlines(); _idx = next(i for i, l in enumerate(_lines) if l.strip() == "from mempalace.mcp_server import tool_get_drawer, tool_update_drawer"); OUT = (_lines[_idx - 1].strip() == "global tool_get_drawer, tool_update_drawer")')"
+
 # --- Smoke test: setup-labels.sh bootstrap (offline, --dry-run only) -----
 # Offline assertions on the dry-run plan — never contacts GitHub. Mirrors
 # the norm.* sub-case shape used in the apply.py normalization block
