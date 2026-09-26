@@ -657,6 +657,9 @@ jobs:
       - name: Test Setup Org Mcp
         if: steps.filter.outputs.setup == 'true'
         run: bash scripts/tests/test-setup-org-mcp.sh
+      - name: Test Setup Mcp Fold Secrets Argv
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-setup-mcp-fold-secrets-argv.sh
       - name: Test Setup Catalogue Picker
         if: steps.filter.outputs.setup == 'true'
         run: bash scripts/tests/test-setup-catalogue-picker.sh

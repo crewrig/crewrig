@@ -27,8 +27,12 @@
 #   - jq only. The setup requires jq and nothing else for this path.
 #   - No secret on argv. The existing file can hold the MemPalace bearer token
 #     (register_mempalace_mcp), so its content only ever reaches jq as input or
-#     through --slurpfile; the reserved values are redacted to `{}` before the
-#     MCP server map is handed to the 0089 / 0091 helpers as --argjson.
+#     through --slurpfile. The reserved values are redacted to `{}` before the
+#     MCP server map is handed to the 0089 / 0091 helpers, and those helpers'
+#     own internals (issue #1248) now also route this data through
+#     --slurpfile from a private 0600 temp file — never --argjson — writing
+#     the result through write_json_config_secure, so nothing they touch
+#     reaches jq's argv either.
 #   - Owner-only. gemini_settings_write runs under umask 077 and ends with the
 #     target at 0600 (R13).
 #
@@ -260,7 +264,11 @@ gemini_settings_write() (
     # Best effort first: the target holds the merged settings, operator MCP
     # secrets included, whatever mode a failed fold's rename gave it.
     chmod 600 "$target" 2>/dev/null
-    # A failed 0089 / 0091 fold leaves its "${config}.tmp" behind.
+    # This `rm -f "${target}.tmp"` is a defensive no-op against a stale file
+    # from a version of the 0089 / 0091 helpers predating issue #1248: they
+    # now write through write_json_config_secure's own mktemp'd name and
+    # clean up their own temp file on any failure path, so they no longer
+    # leave a predictable "${config}.tmp" behind. Kept for safety.
     rm -f "${target}.tmp"
     echo "  ERROR: $target holds the merged settings, but $1 did not complete." >&2
     [ -z "$bak" ] || echo "         The prior file is preserved in the timestamped backup: $bak" >&2
@@ -322,10 +330,12 @@ EOF
   snap=""
   chmod 600 "$target" || { _gs_fail2 "restricting it to 0600"; return 2; }
 
-  # The 0089 / 0091 helpers write through the predictable "${target}.tmp" with
-  # `>` then `mv`: a stale one an older setup left behind would be truncated in
-  # place, keep its old mode (0644), and hand that mode to the target. Removed
-  # here, it is created fresh, owner-only, under this subshell's umask 077.
+  # Kept defensively, not because the current 0089 / 0091 helpers need it:
+  # they now write through write_json_config_secure's own mktemp'd temp name
+  # (issue #1248), so they no longer leave a predictable "${target}.tmp"
+  # behind. This guards only against a stale one left by an older setup
+  # version, which would otherwise be truncated in place, keep its old mode
+  # (0644), and hand that mode to the target.
   rm -f "${target}.tmp" || { _gs_fail2 "removing the stale ${target}.tmp"; return 2; }
 
   # Spec 0089: its R9 warnings for every reserved name the file held. The fold

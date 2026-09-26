@@ -236,8 +236,8 @@ if [ "$INSTALL_SEQTHINK" = "yes" ]; then
   echo "  sequentialthinking MCP server configured."
 fi
 
-# Write atomically.
-echo "$MCP_BASE" | jq '.' > "${AGY_MCP_CONFIG}.tmp" && mv "${AGY_MCP_CONFIG}.tmp" "$AGY_MCP_CONFIG"
+# Write atomically (mktemp'd staging name, 0600, no symlink follow).
+echo "$MCP_BASE" | write_json_config_secure_from "$AGY_MCP_CONFIG" - '.'
 
 # Fold the operator's pre-existing non-reserved MCP servers back over the
 # framework base (spec 0089) — this is what preserves an existing Antigravity
