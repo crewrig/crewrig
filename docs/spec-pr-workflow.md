@@ -55,6 +55,33 @@ it; the loser is refused and retries automatically.
 Ids are never reused and a gap in the sequence is fine. An abandoned
 reservation is harmless: no expiry, no reclamation pass, no release protocol.
 
+### Pre-allocating an id for a sibling session
+
+An orchestrating session that spawns sibling sessions for parallel tickets
+sometimes wants to tell a sibling, in its kickoff brief, which spec id it
+will use — for example so the sibling's branch name is known before that
+sibling ever runs `spec-author`. That claim is only true once the
+orchestrator has actually run:
+
+```sh
+bash scripts/reserve-spec-id.sh --id <NNNN> --issue <sibling-issue>
+```
+
+for that id, in the same step it creates the sibling's branch or spawns the
+sibling session — **before** communicating the "reserved" claim. Asserting a
+computed or predicted id in a brief, without this command actually securing
+it, was exactly the friction issue #1265 (`specs/0112-spec-id-reservation.delta-02.md`)
+exists to close: `git ls-remote` at the time showed no reservation for
+either claimed id.
+
+Once secured this way, the sibling session's ordinary `spec-author`
+invocation — `reserve-spec-id.sh --issue <sibling-issue>`, with no `--id`,
+per its unchanged contract (`artifacts/core/skills/spec-author/SKILL.md` →
+*ID allocation*) — reuses that exact id instead of computing a new one, per
+spec 0112 delta-02 requirements 17-18. Nothing else has to change on the
+sibling's side: it does not need to know, or trust, that a reservation was
+pre-made — the tool tells it.
+
 ### Offline, and contributing from a fork
 
 Both cases reach the same exit code, `3`: the id is allocated locally but

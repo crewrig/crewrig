@@ -814,6 +814,88 @@ expect_rc "Case 27 — a carrier setting naming no namespace exits 1" 1
 expect_stderr_matches "Case 27 — and stderr names the file to fix" 'spec-id-carrier'
 
 # ---------------------------------------------------------------------------
+# Group F — per-issue reservation reuse (requirements 17, 18; spec 0112 delta-02)
+# ---------------------------------------------------------------------------
+
+# Case 28 — an orchestrator pre-secures a specific id for a sibling issue via
+# --id/--issue; the sibling's own later --issue-only invocation (the only form
+# its spec-author skill contract permits) reuses that exact id instead of
+# computing a new one, and creates no second reservation for the same issue.
+new_fixture c28 specs/0001-a.md
+run_tool c28 --id 0500 --issue 970
+expect_rc "Case 28 — the orchestrator's pre-allocation secures cleanly" 0
+run_tool c28 --issue 970
+expect_rc "Case 28 — the sibling's --issue-only call also exits 0" 0
+expect "Case 28 — and reuses the pre-secured id, not a new one" "stdout" \
+  "$(printf '%s' "$TOOL_OUT" | tr -d '[:space:]')" "0500"
+expect "Case 28 — exactly one reservation exists for this fixture's ids" "count" \
+  "$(remote_count c28 'refs/spec-ids/*')" "1"
+
+# Case 29 — idempotent retry: an --issue-only invocation that already secured
+# an id (as if a prior run crashed after securing but before the caller
+# recorded the result) gets the SAME id back on a later --issue-only call for
+# the same issue, rather than allocating and orphaning a second one.
+new_fixture c29 specs/0001-a.md
+run_tool c29 --issue 971
+first_id="$(printf '%s' "$TOOL_OUT" | tr -d '[:space:]')"
+run_tool c29 --issue 971
+expect_rc "Case 29 — the retried --issue-only call exits 0" 0
+expect "Case 29 — and returns the same id as the first call" "stdout" \
+  "$(printf '%s' "$TOOL_OUT" | tr -d '[:space:]')" "$first_id"
+expect "Case 29 — exactly one reservation exists, not two" "count" \
+  "$(remote_count c29 'refs/spec-ids/*')" "1"
+
+# Case 30 — the reuse check reads BOTH carriers, not only the one configured
+# for writing. A reservation already secured under the tags carrier is found
+# even though this invocation's carrier setting points at the default.
+new_fixture c30 specs/0001-a.md
+set_carrier c30 'refs/tags/spec-id/'
+run_tool c30 --id 0500 --issue 972
+drop_carrier c30
+run_tool_env_carrier c30 refs/spec-ids/ --issue 972
+expect_rc "Case 30 — the default-carrier invocation exits 0" 0
+expect "Case 30 — and finds the reservation held under the tags carrier" "stdout" \
+  "$(printf '%s' "$TOOL_OUT" | tr -d '[:space:]')" "0500"
+expect_no_ref_matching "Case 30 — no second reservation is created under the default carrier" \
+  c30 'refs/spec-ids/0500'
+
+# Case 31 — negative/regression: a second, unrelated issue with no
+# reservation of its own is unaffected by the first issue's existing
+# reservation and still gets a freshly computed next-free id.
+new_fixture c31 specs/0001-a.md specs/0002-b.md specs/0003-c.md
+run_tool c31 --issue 973
+run_tool c31 --issue 974
+expect_rc "Case 31 — the second, unrelated issue's call exits 0" 0
+expect "Case 31 — and gets a distinct, freshly computed id" "stdout" \
+  "$(printf '%s' "$TOOL_OUT" | tr -d '[:space:]')" "0005"
+expect "Case 31 — two reservations now exist, one per issue" "count" \
+  "$(remote_count c31 'refs/spec-ids/*')" "2"
+
+# Case 32 — a TRUE concurrent race for the SAME issue. The sleeping
+# pre-receive hook holds both processes' first push in flight long enough
+# that both compute the identical candidate id before either resolves.
+# Exactly one wins the CAS; the loser's very next retry attempt re-runs the
+# reservation-reuse check (requirement 18) and finds the winner's reservation
+# for the shared issue, adopts it, and exits 0 without pushing a second,
+# orphaned reservation. Without the per-attempt recheck this fixes, the loser
+# would instead compute and push a distinct second id for the same issue.
+new_fixture c32 specs/0001-a.md
+install_sleeping_hook c32 2
+run_tool_bg c32 c32a --issue 980
+run_tool_bg c32 c32b --issue 980
+wait
+expect "Case 32 — both concurrent invocations for the same issue exit 0" "rc" \
+  "$(bg_rc c32a)$(bg_rc c32b)" "00"
+expect "Case 32 — and report the identical id" "stdout" \
+  "$(bg_out c32a)" "$(bg_out c32b)"
+expect "Case 32 — exactly one reservation is secured, not two" "count" \
+  "$(remote_count c32 'refs/spec-ids/*')" "1"
+holder="$(reservation_message c32 "refs/spec-ids/$(bg_out c32a)")"
+expect "Case 32 — and it names the shared issue" "message" \
+  "$holder" "reserve $(bg_out c32a) for issue #980"
+rm -f "$(fixture_bare c32)/hooks/pre-receive"
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 echo ""
