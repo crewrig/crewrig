@@ -2352,8 +2352,56 @@ fi
 if [ "$HOME_USAGE_MARKER_BEFORE" = "$HOME_USAGE_MARKER_AFTER" ]; then
   ok "\$HOME/.crewrig/usage is unchanged after the run"
 else
-  bad "\$HOME/.crewrig/usage CHANGED during the run" "before: $HOME_USAGE_MARKER_BEFORE
-after: $HOME_USAGE_MARKER_AFTER"
+  # A raw snapshot mismatch is not automatically a failure (spec 0216): a
+  # concurrently running, capture-enabled sibling session may legitimately
+  # write into the real usage root the whole time this suite runs. Classify
+  # each difference instead of failing on any difference:
+  #   - a path that disappeared is always a failure (R2/R4, scenario 3);
+  #   - a newly observed path is a failure only when its basename matches a
+  #     file this suite itself produced under one of its own sandboxed
+  #     $CASE_ROOTS (R3) — usage-store artifacts are named after a sha256
+  #     recordId (scripts/lib/usage-store/layout.js), so a basename match is
+  #     sha256-strength evidence the suite's own output leaked out;
+  #   - anything else is a concurrent writer's unrelated, benign activity
+  #     (R3, R5) and is not a failure.
+  home_before_list="$HOME_USAGE_MARKER_BEFORE"
+  [ "$home_before_list" = "<absent>" ] && home_before_list=""
+  home_after_list="$HOME_USAGE_MARKER_AFTER"
+  [ "$home_after_list" = "<absent>" ] && home_after_list=""
+  home_print_list() {
+    [ -n "$1" ] && printf '%s\n' "$1"
+    return 0
+  }
+  home_removed="$(LC_ALL=C comm -23 <(home_print_list "$home_before_list") <(home_print_list "$home_after_list"))"
+  home_added="$(LC_ALL=C comm -13 <(home_print_list "$home_before_list") <(home_print_list "$home_after_list"))"
+  home_own_basenames=""
+  if [ -n "$CASE_ROOTS" ]; then
+    # shellcheck disable=SC2086  # deliberate word split of the $CASE_ROOTS path list
+    home_own_basenames="$(find $CASE_ROOTS -type f -print0 2>/dev/null | xargs -0 -n1 basename 2>/dev/null | LC_ALL=C sort -u)"
+  fi
+  home_offenders="$home_removed"
+  if [ -n "$home_added" ]; then
+    home_old_ifs="$IFS"
+    IFS="
+"
+    for home_added_path in $home_added; do
+      home_added_base="$(basename "$home_added_path")"
+      if grep -qxF "$home_added_base" <<< "$home_own_basenames"; then
+        if [ -n "$home_offenders" ]; then
+          home_offenders="$home_offenders
+$home_added_path"
+        else
+          home_offenders="$home_added_path"
+        fi
+      fi
+    done
+    IFS="$home_old_ifs"
+  fi
+  if [ -z "$home_offenders" ]; then
+    ok "\$HOME/.crewrig/usage is unchanged after the run"
+  else
+    bad "\$HOME/.crewrig/usage CHANGED during the run" "$home_offenders"
+  fi
 fi
 
 if [ "$fail" -gt 0 ]; then
