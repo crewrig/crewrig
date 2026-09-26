@@ -1,7 +1,7 @@
 ---
 id: "0218"
 slug: usage-suite-dirty-tree-trap
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1260
