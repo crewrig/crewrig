@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.0"
+    version: "1.5.0"
 ---
 
 
@@ -63,6 +63,40 @@ review needs to see that signal in writing.
 mandatory reading narrows (step 3), but the CI state of the artifact's
 current head stays inside it on every pass. There is no pass on which
 this preflight is skippable.
+
+#### Waiting on a pending check
+
+A `run_in_background` task or the `Monitor` tool's completion signal is
+a hint, never proof. Both watch a process from outside the check
+itself, and either can report "done" while the check the forge actually
+tracks is still pending, still queued, or has since been re-triggered.
+Treat either signal as a cue to look, not as the look itself.
+
+Whenever a required check was observed `pending` at any point during
+the current review pass, the last thing done before composing the
+verdict — no matter how that wait was carried out — is one direct,
+synchronous query of the check's live state: `gh pr checks <number>` or
+the equivalent `gh api repos/<owner>/<repo>/commits/<sha>/check-runs`
+call. A verdict is never written off a background or monitor signal
+alone; the direct query is what the CI status section actually reports.
+
+The recommended way to wait in the first place is a foreground bounded
+retry loop — fixed attempt count, fixed inter-attempt delay, run
+synchronously in the reviewer's own turn — rather than a background
+task or a live monitor, because the loop's own exit condition already
+*is* the direct query:
+
+```bash
+for i in $(seq 1 10); do
+  gh pr checks <number> --repo <owner/repo> && break
+  sleep 30
+done
+```
+
+If the loop exhausts its attempts without every required check
+resolving, treat the check as still pending per the classification
+above — do not fall back to a background or monitor signal to call it
+done.
 
 ### 2. Read the project conventions
 
