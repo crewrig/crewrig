@@ -18,7 +18,8 @@ MEMPALACE_MAX_VERSION_EXCLUSIVE="3.7"
 # LAST_BACKUP_PATH — set by every backup_file call so a caller can name the
 # backup it just produced (spec 0089 R9 warning). Deterministic on ALL paths:
 # the path of the backup when one was made, the empty string when the target
-# was absent, or when backup creation failed. Initialising it unconditionally
+# was absent, when backup creation failed, or when 99 same-second collisions
+# exhausted the .NN suffix range (issue #1246). Initialising it unconditionally
 # means a caller reading it after a no-backup call never sees a prior call's
 # value, never sees a nonexistent backup path, and never trips `set -u`
 # (spec 0089 review F2, issue #982).
@@ -43,16 +44,32 @@ backup_file() {
     fi
   done
   if [ -f "$target" ] || [ -L "$target" ]; then
-    local stamp bak
+    local stamp bak n
     stamp="$(date +%Y%m%d-%H%M%S)"
     bak="${target}.bak.${stamp}"
+    if [ -e "$bak" ] || [ -L "$bak" ]; then
+      # Same-second collision (issue #1246): a prior backup_file call already
+      # claimed this second's name. Probe zero-padded .NN suffixes rather than
+      # letting `cp -P` silently overwrite the earlier backup — `-e`/`-L` both
+      # checked because `-P` preserves symlinks and a dangling symlink still
+      # occupies the name.
+      n=1
+      while { [ -e "${target}.bak.${stamp}.$(printf '%02d' "$n")" ] || [ -L "${target}.bak.${stamp}.$(printf '%02d' "$n")" ]; } && [ "$n" -lt 99 ]; do
+        n=$((n + 1))
+      done
+      if [ -e "${target}.bak.${stamp}.$(printf '%02d' "$n")" ] || [ -L "${target}.bak.${stamp}.$(printf '%02d' "$n")" ]; then
+        echo "  WARNING: could not find a free backup name for ${target##*/} after 99 same-second collisions — skipping this backup." >&2
+        return 0
+      fi
+      bak="${target}.bak.${stamp}.$(printf '%02d' "$n")"
+    fi
     if ( umask 077; cp -P "$target" "$bak" ) 2>/dev/null && [ -e "$bak" ]; then
       if [ -f "$bak" ] && [ ! -L "$bak" ] && ! chmod 600 "$bak" 2>/dev/null; then
         echo "  WARNING: could not restrict ${bak##*/} to 0600" >&2
       fi
       # shellcheck disable=SC2034  # read by scripts that source this lib (R9 warning), not here
       LAST_BACKUP_PATH="$bak"
-      echo "  Backed up: ${target##*/} -> ${target##*/}.bak.${stamp}"
+      echo "  Backed up: ${target##*/} -> ${bak##*/}"
     else
       echo "  WARNING: Failed to back up ${target##*/} (could not create ${bak##*/})" >&2
     fi

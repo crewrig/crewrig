@@ -177,6 +177,24 @@ out="$(umask 077; bash "${REPAIR}" --restore-backup 2>&1)"; rc=$?
   || nope "restore exited ${rc}"
 
 echo ""
+echo "R5 — a same-second-collision '.NN' suffix backup does not break lexical recency (issue #1246):"
+# backup_file's issue #1246 fix appends a zero-padded .NN suffix on a
+# same-second collision (settings.json.bak.<stamp>.01). The suffix must not
+# disturb the invariant most_recent_usable_backup relies on (comment above its
+# definition, scripts/repair-mempalace-http.sh): appending it to an EARLIER
+# stamp still sorts lexically before a later, unsuffixed stamp, so a
+# collision-suffixed backup from an older second never shadows a genuinely
+# newer one.
+printf '%s\n' '{"mcpServers":{"mempalace":{"command":"bash","args":["middle"]}}}' \
+  > "${TEST_HOME}/.gemini/settings.json.bak.20260102-000000.01"
+chmod 644 "${TEST_HOME}/.gemini/settings.json.bak.20260102-000000.01"
+residue_config > "${TEST_HOME}/.gemini/settings.json"
+bash "${REPAIR}" --restore-backup >/dev/null 2>&1
+[ "$(jq -c '.mcpServers.mempalace' "${TEST_HOME}/.gemini/settings.json")" = '{"command":"bash","args":["newer"]}' ] \
+  && ok "a '.NN'-suffixed backup between two unsuffixed stamps does not shadow the true most-recent backup" \
+  || nope "a '.NN'-suffixed backup broke lexical-recency ordering"
+
+echo ""
 echo "R5 — a restored config carrying a bearer token stays 0600:"
 printf '%s\n' '{"mcpServers":{"mempalace":{"type":"http","url":"http://127.0.0.1:1/mcp","headers":{"Authorization":"Bearer x"}}}}' \
   > "${TEST_HOME}/.gemini/settings.json.bak.20260103-000000"
