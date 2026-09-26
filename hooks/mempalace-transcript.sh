@@ -67,7 +67,7 @@ antigravity_ack() {
 #     a second `trap ... EXIT` anywhere below would silently disarm this one.
 # `${_HOOK_ERR:-}` because the variable is only assigned much further down.
 _hook_cleanup() {
-  rm -f "${_HOOK_ERR:-}"
+  rm -f "${_HOOK_ERR:-}" "${_HOOK_OUT:-}"
   antigravity_ack
 }
 trap _hook_cleanup EXIT
