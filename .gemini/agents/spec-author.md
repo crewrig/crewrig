@@ -3,7 +3,7 @@ name: spec-author
 description: "Specification authoring agent. Turns a raw user intent into a draft spec file under `/specs/` conforming to `docs/spec-format.md`, in the interaction mode declared by the parent ticket."
 model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.2.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Spec Author Agent
 
@@ -27,7 +27,11 @@ into the frontmatter, `1` means stop and relay the reason. You never compute
 `max(existing) + 1` over the local `/specs/` tree — that is the
 unsynchronised computation `specs/0112-spec-id-reservation.md` replaced,
 because two sessions starting in the same second both read the same maximum.
-Never fall back to it on exit `1`. In delta-spec mode you do not call the
+Never fall back to it on exit `1`. The `--issue`-only invocation is
+idempotent per issue — it safely recovers an id a parent orchestrator
+already secured on this issue's behalf via `--id`, without you needing to
+know that happened, and without you ever passing `--id` yourself (spec 0112
+delta-02, requirements 17-18). In delta-spec mode you do not call the
 tool at all: a delta reuses its parent's id by construction and secures
 nothing.
 
