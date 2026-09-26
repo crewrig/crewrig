@@ -259,6 +259,80 @@ def _existing_issue_url(forge: str, repo_ref: str, cluster_key: str) -> Optional
         return None
 
 
+def _stamp_drawer(did: str, url: str) -> bool:
+    """Stamp `opened_as: <url>` on drawer `did` and verify the write stuck.
+
+    Re-fetches the drawer, appends the correlation line, writes it back,
+    then re-fetches once more to confirm the exact substring landed —
+    closing the silent-writeback-failure gap (issue #1272): a
+    `tool_update_drawer` call that raises, returns a falsy `success`, or
+    silently no-ops must be caught here rather than assumed successful.
+    Any failure prints one `warn:` line (mirroring the existing write-back
+    warning style) and returns False; only a fully-verified round trip
+    returns True.
+    """
+    try:
+        drawer = tool_get_drawer(drawer_id=did)
+    except Exception as e:  # noqa: BLE001 — any read failure is a stamp failure
+        print(
+            f"  warn: failed to stamp opened_as on drawer {did}: "
+            f"get_drawer raised {e}",
+            file=sys.stderr,
+        )
+        return False
+    if not isinstance(drawer, dict) or "content" not in drawer or drawer.get("error"):
+        print(
+            f"  warn: failed to stamp opened_as on drawer {did}: "
+            f"get_drawer returned unexpected shape {drawer!r}",
+            file=sys.stderr,
+        )
+        return False
+
+    new_content = drawer["content"].rstrip() + f"\nopened_as: {url}\n"
+
+    try:
+        result = tool_update_drawer(drawer_id=did, content=new_content)
+    except Exception as e:  # noqa: BLE001 — any write failure is a stamp failure
+        print(
+            f"  warn: failed to stamp opened_as on drawer {did}: "
+            f"update_drawer raised {e}",
+            file=sys.stderr,
+        )
+        return False
+    if not isinstance(result, dict) or not result.get("success"):
+        print(
+            f"  warn: failed to stamp opened_as on drawer {did}: "
+            f"update_drawer returned {result!r}",
+            file=sys.stderr,
+        )
+        return False
+
+    try:
+        reread = tool_get_drawer(drawer_id=did)
+    except Exception as e:  # noqa: BLE001 — any re-read failure is a stamp failure
+        print(
+            f"  warn: failed to stamp opened_as on drawer {did}: "
+            f"verification get_drawer raised {e}",
+            file=sys.stderr,
+        )
+        return False
+    if (
+        not isinstance(reread, dict)
+        or "content" not in reread
+        or reread.get("error")
+        or f"opened_as: {url}" not in reread["content"]
+    ):
+        print(
+            f"  warn: failed to stamp opened_as on drawer {did}: "
+            "verification re-read did not contain the expected "
+            "'opened_as' stamp",
+            file=sys.stderr,
+        )
+        return False
+
+    return True
+
+
 def _collect_drawer_ids(cluster: dict) -> tuple[list[str], int]:
     """Return (present_ids, missing_count). Caller emits a stderr warning
     when missing > 0 so frictions without `_drawer_id` are surfaced rather
@@ -339,6 +413,7 @@ def main() -> int:
     # URLs and the run summary go through _real_stdout so the caller
     # can capture them; progress messages route to stderr explicitly.
     _real_stdout = os.fdopen(os.dup(1), "w", encoding="utf-8", closefd=False)
+    global tool_get_drawer, tool_update_drawer
     from mempalace.mcp_server import tool_get_drawer, tool_update_drawer
 
     opened = []
@@ -386,16 +461,8 @@ def main() -> int:
                     file=sys.stderr,
                 )
             for did in drawer_ids:
-                try:
-                    drawer = tool_get_drawer(drawer_id=did)
-                    new_content = drawer["content"].rstrip() + f"\nopened_as: {url}\n"
-                    tool_update_drawer(drawer_id=did, content=new_content)
-                except Exception as wb_err:  # noqa: BLE001 — best-effort write-back
+                if not _stamp_drawer(did, url):
                     writeback_failures += 1
-                    print(
-                        f"  warn: failed to stamp opened_as on drawer {did}: {wb_err}",
-                        file=sys.stderr,
-                    )
         except subprocess.CalledProcessError as e:
             failures.append({"cluster": c["cluster_key"], "error": e.stderr.strip()})
 
@@ -422,6 +489,8 @@ def main() -> int:
         for f in failures:
             print(f"  - {f['cluster']}: {f['error']}", file=sys.stderr)
         return 4
+    if writeback_failures:
+        return 5
     return 0
 
 
