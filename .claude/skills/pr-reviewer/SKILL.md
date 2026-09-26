@@ -120,8 +120,8 @@ task or a live monitor, because the loop's own exit condition already
 ```bash
 for i in $(seq 1 10); do
   gh pr checks <number> --repo <owner/repo>
-  status=$?
-  [ "$status" -ne 8 ] && break   # anything but "still pending" ends the wait
+  rc=$?
+  [ "$rc" -ne 8 ] && break   # anything but "still pending" ends the wait
   sleep 30
 done
 ```
