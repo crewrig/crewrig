@@ -61,6 +61,22 @@ the approach, escalate to `architect` for a design pass before
 spawning the developer — that is the existing Template 1 step 1, not
 a new step.
 
+**User-intent fidelity rule**: When an `Agent` spawn brief restates a
+proposal the user has already made, the part of the brief stating what
+the user asked for SHALL quote the user's own wording verbatim — a
+direct quote, not a paraphrase. The spawned agent MAY be asked to
+identify risks or implementation concerns with that proposal, but the
+proposal itself SHALL NOT be presented as one option among alternatives
+the agent is free to invent or prefer in its place. Before adopting a
+sub-agent recommendation that changes, narrows, or reframes the user's
+original proposal, the orchestrator SHALL re-check that recommendation
+against the user's literal statement — recovered from the conversation
+itself, not from an intermediate summary — and SHALL surface any
+discrepancy to the user rather than silently adopting the reframed
+version. This rule applies to every `Agent` spawn whose brief restates
+a user proposal, regardless of the spawned role (`architect`,
+`developer`, or any other specialist).
+
 **Model compatibility rule**: When the orchestrating Claude Code session
 runs on a non-Anthropic backend (Ollama, Ollama Cloud, or any
 non-default model provider), every spawned `Agent` MUST use the same
