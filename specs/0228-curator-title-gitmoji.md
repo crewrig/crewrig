@@ -1,7 +1,7 @@
 ---
 id: "0228"
 slug: curator-title-gitmoji
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1273
