@@ -1,7 +1,7 @@
 ---
 id: "0216"
 slug: usage-home-guard-concurrent-capture
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1259
