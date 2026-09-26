@@ -93,15 +93,22 @@ task or a live monitor, because the loop's own exit condition already
 
 ```bash
 for i in $(seq 1 10); do
-  gh pr checks <number> --repo <owner/repo> && break
+  gh pr checks <number> --repo <owner/repo>
+  status=$?
+  [ "$status" -ne 8 ] && break   # anything but "still pending" ends the wait
   sleep 30
 done
 ```
 
-If the loop exhausts its attempts without every required check
-resolving, treat the check as still pending per the classification
-above — do not fall back to a background or monitor signal to call it
-done.
+`gh pr checks` exits `8` specifically for "checks pending"; any other
+exit code — `0` (all passing) or a non-zero, non-`8` failure — means the
+checks have already resolved, one way or the other, and the wait is
+over. Whether the loop ends by resolving or by exhausting its attempts,
+what happens next is unchanged: the R2 direct, synchronous query above
+is what actually determines the check's bucket (`pass`, `fail`, or
+`pending`). Never assume a bucket from the loop's exit alone — a
+required check that failed throughout the wait window must not be
+reported as still pending.
 
 ### 2. Read the project conventions
 
