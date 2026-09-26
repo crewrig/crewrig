@@ -264,11 +264,16 @@ identifier — as exactly one of:
 
 - `addressed`, naming the commit or revision that addressed it;
 - `superseded`;
-- `withdrawn`, with a stated reason.
+- `withdrawn`, with a stated reason;
+- `ledger`, naming the ledger entry — the disposition a non-blocking
+  finding routed to the deferred-findings ledger carries, per
+  [`docs/retroactive-loop.md`](retroactive-loop.md) → *Journalling*.
 
 The orchestrator makes that record on the artifact under review or in the
 logbook journal entry for the iteration, and the instantiation brief names
-its location.
+its location. A `ledger`-disposed finding's record is the journal line
+[`docs/retroactive-loop.md`](retroactive-loop.md) → *Journalling* already
+mandates; no second record is required for it.
 
 **On the `plan` surface there is nothing new to write.** The revised
 plan's existing finding traceability table
