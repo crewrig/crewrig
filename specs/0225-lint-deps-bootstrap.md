@@ -1,7 +1,7 @@
 ---
 id: "0225"
 slug: lint-deps-bootstrap
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1263
