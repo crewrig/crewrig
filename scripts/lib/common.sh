@@ -1269,7 +1269,8 @@ restore_mempalace_registration() {
   if [ "$captured" = "null" ] || [ -z "$captured" ]; then
     write_json_config_secure "$cfg" 'del(.mcpServers.mempalace)' || return 1
   else
-    write_json_config_secure "$cfg" --argjson v "$captured" '.mcpServers.mempalace = $v' || return 1
+    CREWRIG_MCP_RESTORE="$captured" write_json_config_secure "$cfg" \
+      '.mcpServers.mempalace = ($ENV.CREWRIG_MCP_RESTORE | fromjson)' || return 1
   fi
   return 0
 }
@@ -1299,16 +1300,16 @@ register_mempalace_mcp() {
         chmod 600 "$cfg" || return 1
       fi
       claude mcp remove --scope user mempalace >/dev/null 2>&1 || true
-      write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
-        '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$auth}}' \
+      CREWRIG_MCP_AUTH="Bearer ${token}" write_json_config_secure "$cfg" --arg url "$url" \
+        '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$ENV.CREWRIG_MCP_AUTH}}' \
         || return 1
       return 0
       ;;
     gemini|copilot)
       cfg="$(mcp_assistant_config_path "$cli")"
       [ -f "$cfg" ] || return 1
-      write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
-        '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$auth}}' \
+      CREWRIG_MCP_AUTH="Bearer ${token}" write_json_config_secure "$cfg" --arg url "$url" \
+        '.mcpServers.mempalace = {type:"http", url:$url, headers:{Authorization:$ENV.CREWRIG_MCP_AUTH}}' \
         || return 1
       return 0
       ;;
@@ -1317,8 +1318,8 @@ register_mempalace_mcp() {
       # type key — grounded in docs/cli-matrix.md row 7h.
       cfg="$(mcp_assistant_config_path "$cli")"
       [ -f "$cfg" ] || return 1
-      write_json_config_secure "$cfg" --arg url "$url" --arg auth "Bearer ${token}" \
-        '.mcpServers.mempalace = {serverUrl:$url, headers:{Authorization:$auth}}' \
+      CREWRIG_MCP_AUTH="Bearer ${token}" write_json_config_secure "$cfg" --arg url "$url" \
+        '.mcpServers.mempalace = {serverUrl:$url, headers:{Authorization:$ENV.CREWRIG_MCP_AUTH}}' \
         || return 1
       return 0
       ;;
