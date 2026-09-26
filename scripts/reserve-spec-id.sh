@@ -445,6 +445,60 @@ $(printf '%s\n' "$primary_out" | ids_from_ls_remote "$CARRIER_PRIMARY")
 $(printf '%s\n' "$tags_out" | ids_from_ls_remote "$CARRIER_TAGS")"
 }
 
+# The id already reserved for $ISSUE within one carrier namespace, or empty if
+# none. Requirements 17/18: this closes two failure modes at once — an
+# orchestrator's `--id <ID> --issue <N>` pre-allocation made on a sibling's
+# behalf is not silently orphaned by that sibling's own later `--issue`-only
+# invocation, and a crashed/retried `--issue`-only invocation for the same
+# issue recovers its own prior id instead of allocating and orphaning a
+# second one.
+#
+# ONE batch fetch of every ref under the given pattern into a disposable,
+# per-invocation scratch namespace, then ONE `for-each-ref` pass reads every
+# candidate's recording issue in a single process — not a fetch per ref.
+# `refs/spec-ids/*` only grows (abandoned reservations are permanent, per
+# requirement 5), so a per-ref fetch (reusing recorded_issue() in a loop)
+# would degrade every year this repository accumulates more ids; this stays
+# O(1) in round trips regardless of corpus size, though still O(n) in
+# bytes/objects transferred since the whole matching set is re-fetched (and
+# the scratch copy re-deleted) on every call.
+find_issue_reservation_in() {
+  local prefix="$1" pattern="$2" probe="refs/spec-id-issue-probe/$$" \
+      line ref msg id=""
+  if ! git -C "$REPO_DIR" fetch --no-tags --quiet --force \
+        "$REMOTE" "+${pattern}:${probe}/*" 2>/dev/null; then
+    return 0
+  fi
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    ref="${line%% *}"
+    msg="${line#* }"
+    case "$msg" in
+      *"issue #$ISSUE")
+        id="${ref#"$probe"/}"
+        break
+        ;;
+    esac
+  done <<EOF
+$(git -C "$REPO_DIR" for-each-ref --format='%(refname) %(subject)' "$probe" 2>/dev/null)
+EOF
+  git -C "$REPO_DIR" for-each-ref --format='delete %(refname)' "$probe" 2>/dev/null \
+    | git -C "$REPO_DIR" update-ref --stdin 2>/dev/null || true
+  printf '%s' "$id"
+}
+
+# Tries the primary carrier, then the tags carrier — mirroring how the
+# allocated-set reader (load_allocated_ids) already reads both regardless of
+# which one is configured for writing.
+find_issue_reservation() {
+  local id
+  id="$(find_issue_reservation_in "$CARRIER_PRIMARY" "$UPSTREAM_PATTERN_PRIMARY")"
+  if [ -z "$id" ]; then
+    id="$(find_issue_reservation_in "$CARRIER_TAGS" "$UPSTREAM_PATTERN_TAGS")"
+  fi
+  printf '%s' "$id"
+}
+
 # The next free four-digit id above everything allocated. Requirement 5 accepts
 # gaps, so this is a high-water mark, not a hole-filler.
 next_free_id() {
@@ -551,6 +605,19 @@ while :; do
     if ! $REMOTE_READABLE; then
       emit_unsecured "$(next_free_id)" \
         "the reservation namespace on '$REMOTE' could not be read, so the allocated set is incomplete"
+    fi
+    # Requirements 17/18. Reached only on the --issue-only path (WANT_ID is
+    # always empty here: every branch of the --id path exits or fails before
+    # ever falling through to `ID=""`), so ISSUE names a real ticket, not an
+    # opaque caller-chosen identifier. Re-checked on every attempt -- not
+    # just the first -- so a concurrent invocation for the SAME issue that
+    # wins the race between our own attempts is still detected here instead
+    # of this session pushing a second, orphaned reservation for that issue.
+    EXISTING_ID="$(find_issue_reservation)"
+    if [ -n "$EXISTING_ID" ]; then
+      note "Notice: issue #$ISSUE already secured $EXISTING_ID. Reusing it; no new reservation made."
+      printf '%s\n' "$EXISTING_ID"
+      exit 0
     fi
     ID="$(next_free_id)"
   fi
