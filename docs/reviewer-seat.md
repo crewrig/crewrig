@@ -305,6 +305,27 @@ to record each stage artifact, and because the instantiation brief names
 the locations of the prior verdicts — a seat never performs a forge-wide
 search to find its own record.
 
+**The `review` seat's `<M>` counts findings, not pull requests, within a
+fixed `<N>`.** `<N>` tracks the `iter:N` label ordinal exactly as the table
+above states, and only that label's advance moves it. A ticket can still
+present a seat with more than one implementation pull request under the
+same `iter:N` — a replacement pull request opened without a new DEV-loop
+iteration, for example after a branch had to be recreated — and on that
+second pull request `<M>` continues from the seat's last-minted value for
+that `<N>` rather than resetting to 1. A seat that minted `i1-F1`..`i1-F5`
+on the first pull request continues at `i1-F6` on the second; it never
+re-mints `i1-F1`. This is the same uniqueness the identifier format above
+already promises ("unique and stable for the life of the seat"), stated
+explicitly for the case a single pull request cannot make visible on its
+own: the seat's dossier (*Seat dossier*, reconstructed per *Reconstructing
+a dossier*) spans every pull request the seat has reviewed, so a pass
+opening on the second pull request enumerates the first pull request's
+identifiers before minting its own. When that enumeration cannot be
+completed — the first pull request's verdicts are unreachable — the pass
+does not guess a continuation value for `<M>`: the existing *Vacant seat*
+rule governs, unchanged, and the pass declares the seat vacant rather than
+silently restarting at `<N>-F1` or fabricating one.
+
 ## Prior-finding audit
 
 From its second pass onward, a seated pass opens its verdict with a
