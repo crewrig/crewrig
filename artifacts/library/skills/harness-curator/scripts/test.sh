@@ -231,6 +231,12 @@ echo "  PASS yq-merge.body contains date range"
 YQ_LABELS=$(echo "$YQ" | jq -c '.labels')
 assert "yq-merge.labels" '["harness-feedback","room:prompt","severity:med"]' "$YQ_LABELS"
 
+# spec 0228 R2/R4: dominant room "prompt" → 💬 prefix, label and title agree
+# on the same dominant-room source.
+YQ_TITLE_CHECK=$(echo "$YQ" | jq -r '.title')
+assert "yq-merge.title Gitmoji prefix (prompt -> 💬)" \
+  "💬 Friction cluster: yq-merge (2 reports)" "$YQ_TITLE_CHECK"
+
 # No branch_name field anymore — V0 opens issues, not MRs.
 YQ_HAS_BRANCH=$(echo "$YQ" | jq 'has("branch_name")')
 assert "yq-merge.has(branch_name)" "false" "$YQ_HAS_BRANCH"
@@ -245,6 +251,11 @@ echo "  PASS severity:high singleton promoted to cluster"
 # severity:high label propagates on the high-severity cluster.
 HIGH_LABELS=$(echo "$HIGH" | jq -c '.labels')
 assert "gh-body-truncation.labels" '["harness-feedback","room:tool","severity:high"]' "$HIGH_LABELS"
+
+# spec 0228 R2/R4: dominant room "tool" → 🐛 prefix.
+HIGH_TITLE_CHECK=$(echo "$HIGH" | jq -r '.title')
+assert "gh-body-truncation.title Gitmoji prefix (tool -> 🐛)" \
+  "🐛 Friction cluster: gh-body-truncation (1 report)" "$HIGH_TITLE_CHECK"
 
 # Single-day cluster: gh-body-truncation has 1 friction with one date —
 # body should render the "(single day)" form, not a bare date.
@@ -325,6 +336,11 @@ assert "block-scalar-generalized suggestion (no swallow)" \
   "Inline one-line suggestion stays correctly parsed." \
   "$(echo "$GEN" | jq -r '.frictions[0].suggestion')"
 
+# spec 0228 R2/R4: dominant room "behavior" → 🚸 prefix.
+GEN_TITLE_CHECK=$(echo "$GEN" | jq -r '.title')
+assert "block-scalar-generalized.title Gitmoji prefix (behavior -> 🚸)" \
+  "🚸 Friction cluster: block-scalar-generalized (1 report)" "$GEN_TITLE_CHECK"
+
 # R4/R5 — drw-012 is correlated (`opened_as`) AND carries a NON-empty
 # block-scalar suggestion → classified `resolved`, NOT empty_suggestion. It is
 # counted in skipped_resolved (asserted above as 3), must NOT appear in skipped[]
@@ -400,6 +416,59 @@ echo "$FOLD_SUGG" | grep -q "MARKER-FOLD-TAIL" || {
 echo "  PASS block-scalar-folded suggestion preserves full body (>)"
 [ "$FOLD_SUGG" != ">" ] || { echo "FAIL: drw-016 suggestion collapsed to bare '>' indicator" >&2; exit 1; }
 echo "  PASS block-scalar-folded suggestion is not the bare indicator"
+
+# --- spec 0228: curator title Gitmoji prefix ------------------------------
+# The fixture above already exercises tool -> 🐛 (gh-body-truncation),
+# prompt -> 💬 (yq-merge), and behavior -> 🚸 (block-scalar-generalized)
+# end-to-end. The remaining two fixed rooms (process, format), the 🔧
+# fallback, and the "single shared computation" guard (R1) are cheaper to
+# probe as direct unit calls — load curate.py via importlib (no MemPalace,
+# no stdin fixture) the same way the apply.py Finding-2 block below does.
+CURATE="$SKILL_DIR/scripts/curate.py"
+[ -f "$CURATE" ] || { echo "FAIL: curate.py missing: $CURATE" >&2; exit 1; }
+
+curate_eval() {
+  CURATE_PATH="$CURATE" python3 -c '
+import importlib.util, os, sys
+_spec = importlib.util.spec_from_file_location("curate_mod", os.environ["CURATE_PATH"])
+_m = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_m)
+_ns = {"m": _m}
+exec(sys.argv[1], _ns)
+sys.stdout.write(str(_ns["OUT"]))
+' "$1"
+}
+
+# R2 — process -> 📝, format -> 🎨 (the two fixed-table mappings the fixture
+# above does not already exercise end-to-end).
+assert "compose_body process room -> 📝" "📝 Friction cluster: k (1 report)" \
+  "$(curate_eval 'title, _ = m.compose_body("k", [{"_room": "process"}], "r"); OUT = title')"
+assert "compose_body format room -> 🎨" "🎨 Friction cluster: k (1 report)" \
+  "$(curate_eval 'title, _ = m.compose_body("k", [{"_room": "format"}], "r"); OUT = title')"
+
+# R3 — an unmapped dominant room (neither the 5 fixed rooms nor the
+# `cluster_key_for` "unknown" fallback) still gets the 🔧 fallback, not an
+# unprefixed title and not an exception.
+assert "compose_body unmapped room -> 🔧 fallback" "🔧 Friction cluster: k (1 report)" \
+  "$(curate_eval 'title, _ = m.compose_body("k", [{"_room": "some-future-room"}], "r"); OUT = title')"
+
+# R3 — the `unknown` room (a friction with no recorded `_room` at all) also
+# falls back to 🔧 rather than raising.
+assert "compose_body no _room key -> 🔧 fallback" "🔧 Friction cluster: k (1 report)" \
+  "$(curate_eval 'title, _ = m.compose_body("k", [{}], "r"); OUT = title')"
+
+# R4 — exact shape: emoji + one space + the pre-existing text, byte-identical
+# in every other position (plural "reports" branch).
+assert "compose_body title exact shape (plural)" "🐛 Friction cluster: k (2 reports)" \
+  "$(curate_eval 'title, _ = m.compose_body("k", [{"_room":"tool"},{"_room":"tool"}], "r"); OUT = title')"
+
+# R1 — single shared computation: cluster_labels()'s room:<dominant> label
+# and compose_body()'s emoji must read the SAME dominant-room source. Proven
+# by monkeypatching the module-level `_dominant_room` and checking BOTH
+# call sites reflect the patched value — a reverted implementation that
+# hand-rolls two independent tallies would not move when this is patched,
+# so this assertion is what bites that regression.
+assert "label and title emoji share the same _dominant_room computation" "True" \
+  "$(curate_eval 'm._dominant_room = lambda cluster: "process"; cluster = [{"_room": "tool"}]; title, _ = m.compose_body("k", cluster, "r"); labels = m.cluster_labels(cluster); OUT = title.startswith("📝 ") and ("room:process" in labels)')"
 
 # --- apply.py orchestration (--dry-run-apply) ----------------------------
 # Pipe the curator JSON through apply.py --dry-run-apply. Each cluster
@@ -785,6 +854,46 @@ assert "match_existing returns None on no title match" "None" \
 # match cluster_key `k`. Drop the anchor and this returns a truthy title → red.
 assert "match_existing anchor blocks k vs k-merge collision" "None" \
   "$(apply_eval 'OUT = m._match_existing([{"title":"Friction cluster: k-merge (2 reports)"}], "k")')"
+
+# --- spec 0105 delta-02 R5: Gitmoji-prefixed title matching ---------------
+# Once curate.py (spec 0228) starts composing `<emoji> Friction cluster: …`
+# titles, _match_existing must still recognize them at position (b) —
+# stripped of exactly one leading non-word/non-whitespace run + whitespace —
+# while position (a) (unconditional start-of-title) keeps firing first for
+# titles opened before this change.
+
+# Scenario: a Gitmoji-prefixed title matches its own cluster key.
+assert "match_existing matches Gitmoji-prefixed title (own key)" "True" \
+  "$(apply_eval 'OUT = bool(m._match_existing([{"title":"🐛 Friction cluster: yq (3 reports)"}], "yq"))')"
+
+# Scenario: a Gitmoji-prefixed title for a SIBLING cluster key must NOT
+# false-positive — the trailing `( ` anchor still disambiguates yq vs
+# yq-merge even after the leading-token strip.
+assert "match_existing Gitmoji-prefixed sibling key does not collide" "None" \
+  "$(apply_eval 'OUT = m._match_existing([{"title":"🎨 Friction cluster: yq-merge (2 reports)"}], "yq")')"
+
+# Scenario: a pre-existing, un-prefixed title (opened before spec 0228)
+# still matches unconditionally — position (a) is tried first and this case
+# never needs the stripped-prefix path.
+assert "match_existing still matches un-prefixed pre-existing title" "True" \
+  "$(apply_eval 'OUT = bool(m._match_existing([{"title":"Friction cluster: yq (3 reports)"}], "yq"))')"
+
+# Position (a)-tried-first is observable: a title starting with the bare
+# prefix already matches at (a), so it must match regardless of whether a
+# stripped-prefix path exists at all — a regression that removed (a) entirely
+# but kept (b) would still pass the two cases above by accident if (b)'s
+# regex happened not to strip anything, so pin the returned value (the title
+# itself, since no url field is present) to prove which item was matched.
+assert "match_existing returns the un-prefixed title verbatim via (a)" \
+  "Friction cluster: yq (3 reports)" \
+  "$(apply_eval 'OUT = m._match_existing([{"title":"Friction cluster: yq (3 reports)"}], "yq")')"
+
+# Only ONE leading run is stripped — a second, space-separated token after
+# the Gitmoji must NOT also be stripped away. This pins the "(b) strips
+# exactly one run" wording: a looser implementation that stripped repeatedly
+# would wrongly match here.
+assert "match_existing strips exactly one leading token, not more" "None" \
+  "$(apply_eval 'OUT = m._match_existing([{"title":"🐛 extra Friction cluster: yq (3 reports)"}], "yq")')"
 
 # Fail-open (spec R6) — validates the deliberate `except Exception` broadening.
 # With `tea` absent (PATH scrubbed), subprocess.run raises FileNotFoundError,

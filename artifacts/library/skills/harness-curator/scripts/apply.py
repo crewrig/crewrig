@@ -19,6 +19,7 @@ run the script standalone for debugging.
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from typing import Optional
@@ -185,25 +186,41 @@ def _dedup_list_cmd(forge: str, repo_ref: str, cluster_key: str) -> list[str]:
     ]
 
 
+# One leading run of non-word, non-whitespace characters followed by
+# whitespace — the optional single-token Gitmoji-and-space prefix
+# `compose_body()` now composes (spec 0105 delta-02 R5, position (b)).
+_LEADING_TOKEN_RE = re.compile(r"^[^\w\s]+\s+")
+
+
 def _match_existing(items: list, cluster_key: str) -> Optional[str]:
-    """Pure title-prefix matcher (no I/O) for the dedup skip decision (R5).
+    """Pure title-prefix matcher (no I/O) for the dedup skip decision
+    (spec 0105 R5, as replaced by delta-02).
 
-    Returns a truthy value for the first item whose title starts with
-    `Friction cluster: <key> (` — the matched issue's URL if any of
-    `url` / `web_url` / `html_url` is present (read defensively across the
-    forges' differing JSON shapes, for the caller's log line only), else the
-    matched **title** as a non-None placeholder so the caller's `if existing:`
-    still skips. The skip decision is therefore title-only and independent of
-    any forge-specific URL field (spec R5). Returns `None` only when no title
-    matches.
+    Returns a truthy value for the first item whose title matches the
+    canonical prefix `Friction cluster: <key> (` at either of two
+    positions: (a) at the very start of the title — the original,
+    unconditionally-preserved behavior, tried first — or, only when (a)
+    does not match, (b) immediately after stripping one leading run of
+    non-word, non-whitespace characters followed by whitespace (an
+    optional single-token Gitmoji prefix, e.g. `🐛 `). The matched item's
+    URL is returned if any of `url` / `web_url` / `html_url` is present
+    (read defensively across the forges' differing JSON shapes, for the
+    caller's log line only), else the matched **title** as a non-None
+    placeholder so the caller's `if existing:` still skips. Returns `None`
+    only when no title matches at either position.
 
-    The trailing ` (` anchor is load-bearing — it prevents substring
-    collisions between sibling cluster keys (e.g. `yq` vs `yq-merge`).
+    The trailing ` (` anchor is load-bearing at whichever position makes
+    the match — it prevents substring collisions between sibling cluster
+    keys (e.g. `yq` vs `yq-merge`).
     """
     prefix = f"Friction cluster: {cluster_key} ("
     for item in items:
         title = item.get("title", "")
-        if title.startswith(prefix):
+        matched = title.startswith(prefix)
+        if not matched:
+            stripped = _LEADING_TOKEN_RE.sub("", title, count=1)
+            matched = stripped.startswith(prefix)
+        if matched:
             return (
                 item.get("url")
                 or item.get("web_url")
