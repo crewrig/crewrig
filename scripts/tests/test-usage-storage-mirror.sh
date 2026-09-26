@@ -19,7 +19,12 @@
 # Mutation discipline (this suite's share of the brief's five named
 # mutations): each is applied by editing a tracked module IN PLACE, proven
 # red against the fake daemon, then restored with `git checkout -- <file>`
-# before the suite continues.
+# before the suite continues. The entry guard below refuses to run against a
+# tree that is ALREADY dirty on any MUTATION_GUARD_FILES entry; the EXIT
+# trap's own checkout safety net only fires once that guard has confirmed a
+# clean starting point (MUTATION_GUARD_CONFIRMED_CLEAN), so a caller's
+# pre-existing uncommitted edits are refused, never silently discarded
+# (#1250).
 #
 # Usage:
 #   bash scripts/tests/test-usage-storage-mirror.sh
@@ -60,6 +65,16 @@ USAGE_ROOT="$(mktemp -d)"
 PALACE_PARENT="$(mktemp -d)"
 HELPERS_DIR="$(mktemp -d)"
 MUTATION_GUARD_FILES="scripts/lib/usage-store/mirror.js scripts/lib/usage-store/prune.js scripts/lib/usage-store/mcp.js"
+# Set to 1 only once the entry dirty-tree guard below has confirmed every
+# MUTATION_GUARD_FILES entry is clean at commit HEAD. cleanup()'s checkout
+# loop is gated on this flag so that a caller's own pre-existing uncommitted
+# edits to these files — the exact condition the entry guard refuses to run
+# against — are never touched by the EXIT trap. Before this flag existed,
+# the trap fired unconditionally on any exit (including the guard's own
+# `exit 2` refusal) and `git checkout --`'d any dirty guard file it found,
+# silently destroying uncommitted work the guard had just refused to run
+# against (#1250).
+MUTATION_GUARD_CONFIRMED_CLEAN=0
 
 FAKE_PID=""
 FAKE_LOG="$HELPERS_DIR/fake-calls.jsonl"
@@ -93,11 +108,13 @@ register_real_home_dir_for_cleanup() {
 # shellcheck disable=SC2329  # invoked via trap cleanup EXIT, not dead
 cleanup() {
   stop_fake
-  for f in $MUTATION_GUARD_FILES; do
-    if ! git -C "$REPO_DIR" diff --quiet -- "$f" 2>/dev/null; then
-      git -C "$REPO_DIR" checkout -- "$f" 2>/dev/null || true
-    fi
-  done
+  if [ "$MUTATION_GUARD_CONFIRMED_CLEAN" = "1" ]; then
+    for f in $MUTATION_GUARD_FILES; do
+      if ! git -C "$REPO_DIR" diff --quiet -- "$f" 2>/dev/null; then
+        git -C "$REPO_DIR" checkout -- "$f" 2>/dev/null || true
+      fi
+    done
+  fi
   for d in $REAL_HOME_DIRS_TO_CLEAN; do
     rm -rf "$d" 2>/dev/null || true
   done
@@ -117,6 +134,7 @@ for f in $MUTATION_GUARD_FILES; do
     exit 2
   fi
 done
+MUTATION_GUARD_CONFIRMED_CLEAN=1
 
 # --- Pick a free ephemeral port, never 41893 (the real daemon's port) ------
 FAKE_PORT="$(node -e "
@@ -247,6 +265,26 @@ function cmdWrite() {
   if (result.reason) console.log(`REASON=${result.reason}`);
 }
 
+// cmdCallAddDrawer() — issue #1240, case (i): a direct mcp.addDrawer() probe,
+// bypassing journal.js/mirror.js entirely, so a test can assert the `kind`
+// mcp.js's call() classifies a JSON-RPC error-code answer as, without any
+// pending-marker or breaker interaction. Prints KIND=<res.kind|ok> and
+// MESSAGE=<res.message> once the promise settles.
+function cmdCallAddDrawer() {
+  const mcp = req('scripts/lib/usage-store/mcp.js');
+  const args = {
+    wing: envOr('MR_WING', 'kind-classification-wing'),
+    room: 'usage-records',
+    content: envOr('MR_CONTENT', JSON.stringify({ probe: true })),
+    source_file: envOr('MR_SOURCE_FILE', '/tmp/kind-classification-probe.json'),
+    added_by: envOr('MR_ADDED_BY', 'test-fixture-probe'),
+  };
+  mcp.addDrawer(args).then((res) => {
+    console.log(`KIND=${res.ok ? 'ok' : res.kind}`);
+    console.log(`MESSAGE=${res.message || ''}`);
+  });
+}
+
 function main() {
   const cmd = process.argv[2];
   switch (cmd) {
@@ -254,6 +292,8 @@ function main() {
       return cmdMakeRecord();
     case 'write':
       return cmdWrite();
+    case 'call-add-drawer':
+      return cmdCallAddDrawer();
     default:
       console.error(`unknown driver command: ${cmd}`);
       process.exit(2);
@@ -331,6 +371,47 @@ fake_tool_failure() {
   local shape_json="null"
   [ "$2" = "null" ] || shape_json="\"$2\""
   fake_control "{\"toolFailure\":{\"tool\":\"$1\",\"shape\":$shape_json}}"
+}
+
+# fake_jsonrpc_error() — issue #1240, case (i): arms the raw JSON-RPC `error`
+# envelope shape with a caller-chosen code, so a probe call can assert how
+# mcp.js's call() classifies that exact code (tool-error vs tool-unavailable).
+fake_jsonrpc_error() {
+  # $1 = tool name, $2 = JSON-RPC error code (integer, may be negative)
+  fake_control "{\"toolFailure\":{\"tool\":\"$1\",\"shape\":\"jsonrpc-error\",\"code\":$2}}"
+}
+
+# fake_tool_failure_for_sources() — issue #1240, case (j): poisons a SUBSET
+# of records for a tool (matched by recordId, extracted from source_file's
+# basename) while every other record answers normally — the fixture's
+# `sourceToolFailure` control. Pass zero record ids to arm-with-nothing
+# (equivalent to clearing); use fake_clear_source_tool_failure() to clear
+# both tools at once.
+fake_tool_failure_for_sources() {
+  # $1 = tool name, $2 = shape name, $3.. = poisoned record ids
+  local tool="$1" shape="$2"
+  shift 2
+  local ids_json
+  ids_json="$(node -e "console.log(JSON.stringify(process.argv.slice(1)))" "$@")"
+  fake_control "{\"sourceToolFailure\":{\"tool\":\"$tool\",\"shape\":\"$shape\",\"recordIds\":$ids_json}}"
+}
+
+fake_clear_source_tool_failure() {
+  fake_control '{"sourceToolFailure":null}'
+}
+
+# set_marker_mtime() — issue #1240, case (j): pins a pending marker's mtime
+# to an exact, caller-chosen instant, so the backlog's initial
+# listMarkers()-visible ordering is deterministic regardless of how fast (or
+# slow) this suite creates the records — real wall-clock creation order is
+# NOT relied upon for the pass-by-pass call-count math.
+set_marker_mtime() {
+  # $1 = marker path, $2 = epoch milliseconds
+  node -e "
+const fs = require('fs');
+const t = new Date(Number(process.argv[2]));
+fs.utimesSync(process.argv[1], t, t);
+" "$1" "$2"
 }
 
 write_quiet_record() {
@@ -923,6 +1004,211 @@ else
   bad "recovery: pending/ still holds $(pending_count) marker(s)"
 fi
 
+# --- (i) JSON-RPC error-code classification (#1240) -------------------------
+#     mcp.js's call() classifies a raw JSON-RPC `error` answer through a
+#     CLOSED allow-list: -32000 and -32602 stay `tool-error` (a per-call
+#     failure — log and move on); every other code, including the palace's
+#     own preflight-refusal codes -32001/-32002/-32003 and a code this suite
+#     has never seen before (-32099), is `tool-unavailable` (the daemon
+#     answered, but the tool cannot serve ANY call right now). Driven
+#     directly through mcp.addDrawer() (the driver's call-add-drawer
+#     command), bypassing mirror.js entirely — this is a classification
+#     unit, not a catch-up scenario, and asserting it this way keeps it
+#     independent of anything mirror.js does with the `kind` afterward.
+echo
+echo "=== (i) JSON-RPC error-code classification (#1240) ==="
+
+assert_jsonrpc_kind() {
+  # $1 = JSON-RPC error code, $2 = expected mcp.js `kind`
+  local code="$1" expected="$2" out kind
+  fake_jsonrpc_error mempalace_add_drawer "$code"
+  out="$(MR_SOURCE_FILE="$HELPERS_DIR/jsonrpc-probe-${code}.json" run_driver call-add-drawer)"
+  kind="$(printf '%s\n' "$out" | sed -n 's/^KIND=//p')"
+  if [ "$kind" = "$expected" ]; then
+    ok "[$code] classified as $expected"
+  else
+    bad "[$code] expected kind '$expected', got '$kind'" "$out"
+  fi
+}
+
+for code in -32000 -32602; do
+  assert_jsonrpc_kind "$code" "tool-error"
+done
+for code in -32001 -32002 -32003 -32099; do
+  assert_jsonrpc_kind "$code" "tool-unavailable"
+done
+
+fake_tool_failure mempalace_add_drawer null
+
+# --- (j) breaker + ordering fix, end-to-end through mirror.js (#1240) -------
+#     A backlog of 3 chronically-poisoned ("poisoned") records and 2 healthy
+#     ones, laid out in this INITIAL pending order (oldest first): the 3
+#     poisoned markers, THEN the 2 healthy ones — explicit mtimes below,
+#     never real wall-clock creation order (this suite creates all 5 within
+#     the same fraction of a second). CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER
+#     is pinned to 3 for this case: a small, explicit override for a fast and
+#     fully deterministic test (the shipped default is 5 — this suite never
+#     exercises that literal default value; case (i) tests classification,
+#     not the breaker, and this case only needs SOME cap that evenly divides
+#     the poisoned group's size).
+#
+#     CONFIRMED (not hypothetical — verified against the landed diff):
+#     drainPending() keeps looping internally after a breaker trip, only
+#     stopping once a pass makes zero progress. So the SECOND
+#     `usage-mirror.sh` invocation below chains TWO internal walkPending()
+#     calls together: the 2 healthy + 3 poisoned (5 calls, progress made —
+#     the 2 healthy succeeded), then immediately another internal pass over
+#     the now poisoned-only backlog (3 more calls, breaker trips again, zero
+#     progress this time — drainPending() stops). That is 8 calls in one
+#     external invocation, not 5 — the call counts below are (3 / 8 / 3), and
+#     pass 2 is where the healthy backlog gets unstuck AND the poisoned
+#     backlog gets its second breaker trip, both within the same invocation.
+#
+#     Given that, three successive `usage-mirror.sh` invocations play out
+#     exactly as follows (poisoned records are interchangeable with each
+#     other, and healthy records are interchangeable with each other, so
+#     this shape does not depend on which specific record lands in which
+#     position within its own group):
+#       pass 1 (3 calls): the 3 poisoned markers, oldest — 3 consecutive
+#         tool-error answers trips the breaker on the 3rd call, before the 2
+#         healthy markers are ever reached. Each poisoned marker's mtime is
+#         bumped (touchPendingMarkerMtime()), sorting all 3 behind
+#         everything else for the next listMarkers(). drainPending() sees
+#         zero progress (nothing succeeded) and stops after this one
+#         internal walkPending() call.
+#       pass 2 (8 calls = 5 + 3): internal walkPending() call #1 — the 2
+#         healthy markers (now the oldest) succeed and move to mirrored/,
+#         THEN the 3 poisoned markers (freshly re-sorted-last) are hit again
+#         — 3 more consecutive tool-error answers trips the breaker again, on
+#         this internal call's 5th call overall. drainPending() sees progress
+#         (before=5 pending, after=3 pending) and loops again: internal
+#         walkPending() call #2 — only the 3 poisoned markers remain, the
+#         breaker trips a third time after 3 more calls, zero progress this
+#         time, drainPending() stops. Total for this invocation: 5 + 3 = 8.
+#         This IS the starvation fix: the healthy backlog is delayed until
+#         the next catch-up pass runs — a subsequent write's spawn or an
+#         explicit operator run (see Risks: nothing in this repository
+#         re-triggers the mirror on a schedule), never permanently stuck
+#         behind the SAME poisoned records the way D1h's literal
+#         breaker-without-ordering proposal would have caused.
+#       pass 3 (3 calls): only the 3 poisoned markers remain pending; the
+#         breaker trips again on the 3rd call, same shape as pass 1 — the
+#         backlog's new steady state (zero progress, drainPending() stops
+#         after this one internal call).
+#     A final pass reconfirms that steady state: the 2 healthy records stay
+#     mirrored, the 3 poisoned ones stay pending, forever — never lost,
+#     never silently retried without bound.
+echo
+echo "=== (j) breaker + ordering fix, end-to-end through mirror.js (#1240) ======"
+JBREAKER_CLI=claude-code
+JBREAKER_PERIOD="2018-08"
+JBREAKER_BASE_MS=100000000000         # far in the past — the 3 poisoned markers
+JBREAKER_HEALTHY_BASE_MS=100001000000 # later than the poisoned base, still far in the past — the 2 healthy markers
+
+JBREAKER_POISON_RIDS_FILE="$HELPERS_DIR/jbreaker-poison-rids.txt"
+JBREAKER_HEALTHY_RIDS_FILE="$HELPERS_DIR/jbreaker-healthy-rids.txt"
+: > "$JBREAKER_POISON_RIDS_FILE"
+: > "$JBREAKER_HEALTHY_RIDS_FILE"
+
+i=1
+while [ "$i" -le 3 ]; do
+  f="$HELPERS_DIR/jbreaker-poison-$i.json"
+  rid="$(write_quiet_record "$f" "$JBREAKER_CLI" "jbreaker-poison-session-$i" "jbreaker-poison-key-$i" "2018-08-01T00:00:00.000Z")"
+  echo "$rid" >>"$JBREAKER_POISON_RIDS_FILE"
+  set_marker_mtime "$(pending_marker_path "$JBREAKER_CLI" "$JBREAKER_PERIOD" "$rid")" "$((JBREAKER_BASE_MS + i))"
+  i=$((i + 1))
+done
+
+i=1
+while [ "$i" -le 2 ]; do
+  f="$HELPERS_DIR/jbreaker-healthy-$i.json"
+  rid="$(write_quiet_record "$f" "$JBREAKER_CLI" "jbreaker-healthy-session-$i" "jbreaker-healthy-key-$i" "2018-08-01T00:00:00.000Z")"
+  echo "$rid" >>"$JBREAKER_HEALTHY_RIDS_FILE"
+  set_marker_mtime "$(pending_marker_path "$JBREAKER_CLI" "$JBREAKER_PERIOD" "$rid")" "$((JBREAKER_HEALTHY_BASE_MS + i))"
+  i=$((i + 1))
+done
+
+JBREAKER_POISON_IDS="$(tr '\n' ' ' <"$JBREAKER_POISON_RIDS_FILE")"
+# shellcheck disable=SC2086  # word-splitting the space-separated record ids is intentional here
+fake_tool_failure_for_sources mempalace_add_drawer success-false $JBREAKER_POISON_IDS
+
+jbreaker_all_healthy_mirrored() {
+  local rid all=1
+  while IFS= read -r rid; do
+    [ -f "$(mirrored_marker_path "$JBREAKER_CLI" "$JBREAKER_PERIOD" "$rid")" ] || all=0
+  done <"$JBREAKER_HEALTHY_RIDS_FILE"
+  echo "$all"
+}
+
+jbreaker_all_poisoned_pending() {
+  local rid all=1
+  while IFS= read -r rid; do
+    [ -f "$(pending_marker_path "$JBREAKER_CLI" "$JBREAKER_PERIOD" "$rid")" ] || all=0
+    [ -f "$(mirrored_marker_path "$JBREAKER_CLI" "$JBREAKER_PERIOD" "$rid")" ] && all=0
+  done <"$JBREAKER_POISON_RIDS_FILE"
+  echo "$all"
+}
+
+JBREAKER_ERR="$HELPERS_DIR/jbreaker.err"
+
+before="$(log_count mempalace_add_drawer)"
+CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=3 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>"$JBREAKER_ERR"
+pass1_calls=$(($(log_count mempalace_add_drawer) - before))
+if [ "$pass1_calls" -eq 3 ]; then
+  ok "pass 1: exactly 3 add_drawer calls (the 3 poisoned markers, breaker trips on the 3rd)"
+else
+  bad "pass 1: expected exactly 3 add_drawer calls, got $pass1_calls"
+fi
+if grep -qF 'breaker tripped' "$JBREAKER_ERR"; then
+  ok "pass 1: stderr says the breaker tripped"
+else
+  bad "pass 1: stderr does not say the breaker tripped" "$(cat "$JBREAKER_ERR")"
+fi
+if [ "$(jbreaker_all_healthy_mirrored)" -eq 0 ] && [ "$(jbreaker_all_poisoned_pending)" -eq 1 ]; then
+  ok "pass 1: the 2 healthy markers are not reached yet — still pending behind the poisoned head"
+else
+  bad "pass 1: expected the 2 healthy markers still pending and the 3 poisoned markers still pending"
+fi
+
+before="$(log_count mempalace_add_drawer)"
+CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=3 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>"$JBREAKER_ERR"
+pass2_calls=$(($(log_count mempalace_add_drawer) - before))
+if [ "$pass2_calls" -eq 8 ]; then
+  ok "pass 2: exactly 8 add_drawer calls (2 healthy + 3 poisoned = 5, then drainPending() loops again over the poisoned-only backlog for 3 more)"
+else
+  bad "pass 2: expected exactly 8 add_drawer calls, got $pass2_calls"
+fi
+if [ "$(jbreaker_all_healthy_mirrored)" -eq 1 ]; then
+  ok "pass 2: THE FIX — the 2 healthy markers are mirrored, no longer starved behind the poisoned records"
+else
+  bad "pass 2: expected the 2 healthy markers mirrored once the reordering took effect"
+fi
+if [ "$(jbreaker_all_poisoned_pending)" -eq 1 ]; then
+  ok "pass 2: the 3 poisoned markers are still pending (never lost, never silently dropped)"
+else
+  bad "pass 2: expected the 3 poisoned markers still pending"
+fi
+
+before="$(log_count mempalace_add_drawer)"
+CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=3 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>"$JBREAKER_ERR"
+pass3_calls=$(($(log_count mempalace_add_drawer) - before))
+if [ "$pass3_calls" -eq 3 ]; then
+  ok "pass 3: exactly 3 add_drawer calls (only the 3 poisoned markers remain — the new steady state)"
+else
+  bad "pass 3: expected exactly 3 add_drawer calls, got $pass3_calls"
+fi
+
+before="$(log_count mempalace_add_drawer)"
+CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=3 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>"$JBREAKER_ERR"
+pass4_calls=$(($(log_count mempalace_add_drawer) - before))
+if [ "$pass4_calls" -eq 3 ] && [ "$(jbreaker_all_healthy_mirrored)" -eq 1 ] && [ "$(jbreaker_all_poisoned_pending)" -eq 1 ]; then
+  ok "recovery: a final pass confirms the steady state — healthy fully mirrored, poisoned still pending, the breaker still bounding every pass"
+else
+  bad "recovery: expected the steady state (3 calls, healthy mirrored, poisoned pending) to hold on a final pass"
+fi
+
+fake_clear_source_tool_failure
+
 # --- Mutation discipline: this suite's share of the brief's named mutations -
 # Each edits a tracked module IN PLACE, proves the property goes red against
 # the fake daemon, then restores with `git checkout --` before continuing.
@@ -1378,6 +1664,175 @@ if [ -f "$FAULT_MIRRORED" ] && [ "$(pending_count)" -eq 0 ]; then
   ok "recovery: the fault-injection record is mirrored and pending/ is empty"
 else
   bad "recovery: the fault-injection record is not mirrored, or pending/ still holds $(pending_count) marker(s)"
+fi
+
+echo
+echo "=== MUTATION: breaker cap removed (#1240, case j's load-bearing proof) ==="
+# Simulated via CONFIG, not a source-code splice: the K-consecutive-failure
+# cap is exposed as the documented env var CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER
+# (spelled out verbatim in this ticket's own brief), so setting it absurdly
+# high is a guaranteed-correct way to disable the cap against ANY conforming
+# implementation — unlike a literal-marker source patch, it cannot go stale
+# if mirror.js's internal variable/function names differ from this suite's
+# guess. No git-tracked file is touched, so there is nothing to restore.
+#
+# A fresh copy of case (j)'s exact backlog shape (3 poisoned oldest, 2
+# healthy newer, same mtimes). With the cap removed, a SINGLE invocation
+# must reach every marker (no early stop protects the pass), so both healthy
+# markers are mirrored after just ONE run — case (j) itself needed 2 runs
+# (pass 1 stopped at 3 calls before ever reaching the healthy pair). That
+# contrast is the load-bearing proof: without the cap, nothing bounds a pass
+# short of exhausting (or making zero progress against) the whole backlog.
+MUTANT_NOCAP_CLI=gemini-cli
+MUTANT_NOCAP_PERIOD="2018-09"
+MUTANT_NOCAP_BASE_MS=100000000000
+MUTANT_NOCAP_HEALTHY_BASE_MS=100001000000
+MUTANT_NOCAP_POISON_RIDS_FILE="$HELPERS_DIR/mutant-nocap-poison-rids.txt"
+MUTANT_NOCAP_HEALTHY_RIDS_FILE="$HELPERS_DIR/mutant-nocap-healthy-rids.txt"
+: >"$MUTANT_NOCAP_POISON_RIDS_FILE"
+: >"$MUTANT_NOCAP_HEALTHY_RIDS_FILE"
+
+i=1
+while [ "$i" -le 3 ]; do
+  f="$HELPERS_DIR/mutant-nocap-poison-$i.json"
+  rid="$(write_quiet_record "$f" "$MUTANT_NOCAP_CLI" "mutant-nocap-poison-session-$i" "mutant-nocap-poison-key-$i" "2018-09-01T00:00:00.000Z")"
+  echo "$rid" >>"$MUTANT_NOCAP_POISON_RIDS_FILE"
+  set_marker_mtime "$(pending_marker_path "$MUTANT_NOCAP_CLI" "$MUTANT_NOCAP_PERIOD" "$rid")" "$((MUTANT_NOCAP_BASE_MS + i))"
+  i=$((i + 1))
+done
+i=1
+while [ "$i" -le 2 ]; do
+  f="$HELPERS_DIR/mutant-nocap-healthy-$i.json"
+  rid="$(write_quiet_record "$f" "$MUTANT_NOCAP_CLI" "mutant-nocap-healthy-session-$i" "mutant-nocap-healthy-key-$i" "2018-09-01T00:00:00.000Z")"
+  echo "$rid" >>"$MUTANT_NOCAP_HEALTHY_RIDS_FILE"
+  set_marker_mtime "$(pending_marker_path "$MUTANT_NOCAP_CLI" "$MUTANT_NOCAP_PERIOD" "$rid")" "$((MUTANT_NOCAP_HEALTHY_BASE_MS + i))"
+  i=$((i + 1))
+done
+
+MUTANT_NOCAP_POISON_IDS="$(tr '\n' ' ' <"$MUTANT_NOCAP_POISON_RIDS_FILE")"
+# shellcheck disable=SC2086  # word-splitting the space-separated record ids is intentional here
+fake_tool_failure_for_sources mempalace_add_drawer success-false $MUTANT_NOCAP_POISON_IDS
+
+mutant_nocap_all_healthy_mirrored() {
+  local rid all=1
+  while IFS= read -r rid; do
+    [ -f "$(mirrored_marker_path "$MUTANT_NOCAP_CLI" "$MUTANT_NOCAP_PERIOD" "$rid")" ] || all=0
+  done <"$MUTANT_NOCAP_HEALTHY_RIDS_FILE"
+  echo "$all"
+}
+
+CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=999999 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>&1
+if [ "$(mutant_nocap_all_healthy_mirrored)" -eq 1 ]; then
+  ok "MUTATION RED: with the cap effectively removed, a single pass reaches and mirrors both healthy records — case (j) needed 2 passes for the same shape"
+else
+  bad "MUTATION not red: expected both healthy records mirrored after one uncapped pass"
+fi
+
+fake_clear_source_tool_failure
+
+echo
+echo "=== MUTATION: mtime-touch removed — reproduces D1h's starvation flaw (#1240) ==="
+# Regex-based (not exact-literal-line) source mutation: comments out any
+# call site of touchPendingMarkerMtime(...), regardless of its exact
+# argument list — this only assumes the FUNCTION NAME the brief specifies
+# verbatim, not its call shape, so it survives small formatting differences
+# in the developer's actual diff. If the marker genuinely cannot be found
+# (the function was named something else), this is reported as a single
+# clearly-labeled setup failure instead of aborting the whole suite.
+#
+# Same backlog shape as case (j) (3 poisoned oldest, 2 healthy newer) but
+# with the mtime bump disabled: the poisoned markers' mtimes never change,
+# so they stay at the HEAD of listMarkers()'s ascending order forever. Pass
+# 1 hits them, trips the breaker, and stops before ever reaching the 2
+# healthy markers — same as case (j)'s real pass 1. But pass 2 (and every
+# pass after it) sees the IDENTICAL order, because nothing moved the
+# poisoned markers out of the way: the healthy pair is stuck behind the same
+# 3 poisoned records forever. This is D1h's exact starvation flaw.
+MUTANT_NOTOUCH_CLI=copilot-cli
+MUTANT_NOTOUCH_PERIOD="2018-10"
+MUTANT_NOTOUCH_BASE_MS=100000000000
+MUTANT_NOTOUCH_HEALTHY_BASE_MS=100001000000
+MUTANT_NOTOUCH_POISON_RIDS_FILE="$HELPERS_DIR/mutant-notouch-poison-rids.txt"
+MUTANT_NOTOUCH_HEALTHY_RIDS_FILE="$HELPERS_DIR/mutant-notouch-healthy-rids.txt"
+: >"$MUTANT_NOTOUCH_POISON_RIDS_FILE"
+: >"$MUTANT_NOTOUCH_HEALTHY_RIDS_FILE"
+
+i=1
+while [ "$i" -le 3 ]; do
+  f="$HELPERS_DIR/mutant-notouch-poison-$i.json"
+  rid="$(write_quiet_record "$f" "$MUTANT_NOTOUCH_CLI" "mutant-notouch-poison-session-$i" "mutant-notouch-poison-key-$i" "2018-10-01T00:00:00.000Z")"
+  echo "$rid" >>"$MUTANT_NOTOUCH_POISON_RIDS_FILE"
+  set_marker_mtime "$(pending_marker_path "$MUTANT_NOTOUCH_CLI" "$MUTANT_NOTOUCH_PERIOD" "$rid")" "$((MUTANT_NOTOUCH_BASE_MS + i))"
+  i=$((i + 1))
+done
+i=1
+while [ "$i" -le 2 ]; do
+  f="$HELPERS_DIR/mutant-notouch-healthy-$i.json"
+  rid="$(write_quiet_record "$f" "$MUTANT_NOTOUCH_CLI" "mutant-notouch-healthy-session-$i" "mutant-notouch-healthy-key-$i" "2018-10-01T00:00:00.000Z")"
+  echo "$rid" >>"$MUTANT_NOTOUCH_HEALTHY_RIDS_FILE"
+  set_marker_mtime "$(pending_marker_path "$MUTANT_NOTOUCH_CLI" "$MUTANT_NOTOUCH_PERIOD" "$rid")" "$((MUTANT_NOTOUCH_HEALTHY_BASE_MS + i))"
+  i=$((i + 1))
+done
+
+MUTANT_NOTOUCH_POISON_IDS="$(tr '\n' ' ' <"$MUTANT_NOTOUCH_POISON_RIDS_FILE")"
+# shellcheck disable=SC2086  # word-splitting the space-separated record ids is intentional here
+fake_tool_failure_for_sources mempalace_add_drawer success-false $MUTANT_NOTOUCH_POISON_IDS
+
+mutant_notouch_all_healthy_mirrored() {
+  local rid all=1
+  while IFS= read -r rid; do
+    [ -f "$(mirrored_marker_path "$MUTANT_NOTOUCH_CLI" "$MUTANT_NOTOUCH_PERIOD" "$rid")" ] || all=0
+  done <"$MUTANT_NOTOUCH_HEALTHY_RIDS_FILE"
+  echo "$all"
+}
+
+MUTATOR_8="$HELPERS_DIR/mutator-touch-removed.js"
+cat >"$MUTATOR_8" <<'MUTATOR_EOF'
+const fs = require('fs');
+const path = process.argv[2];
+let src = fs.readFileSync(path, 'utf8');
+const re = /^(\s*)touchPendingMarkerMtime\([^)]*\)\s*;\s*$/m;
+if (!re.test(src)) {
+  console.error('FATAL: no touchPendingMarkerMtime(...) call site found in mirror.js');
+  process.exit(1);
+}
+src = src.replace(re, '$1// mutation: touchPendingMarkerMtime() call disabled');
+fs.writeFileSync(path, src);
+MUTATOR_EOF
+
+if node "$MUTATOR_8" "$MIRROR_JS"; then
+  # Pinned to 3, same as case (j): the default threshold (5) would never
+  # trip against only 3 poisoned markers, which would starve this mutation
+  # of the very breaker trip it needs to prove D1h's flaw — the ordering fix
+  # (or its absence) only matters once the breaker actually stops a pass
+  # before reaching the healthy markers.
+  CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=3 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>&1
+  CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=3 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>&1
+  git -C "$REPO_DIR" checkout -- scripts/lib/usage-store/mirror.js
+
+  if [ "$(mutant_notouch_all_healthy_mirrored)" -eq 0 ]; then
+    ok "MUTATION RED: without touchPendingMarkerMtime(), the healthy pair is starved behind the same 3 poisoned records across repeated passes (D1h's flaw)"
+  else
+    bad "MUTATION not red: the healthy pair got mirrored even with the mtime-touch disabled"
+  fi
+  if git -C "$REPO_DIR" diff --quiet -- scripts/lib/usage-store/mirror.js; then
+    ok "mirror.js is restored to its committed content after the mtime-touch mutation"
+  else
+    bad "mirror.js was NOT fully restored after the mtime-touch mutation"
+  fi
+
+  fake_clear_source_tool_failure
+  bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null
+  bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null
+  if [ "$(mutant_notouch_all_healthy_mirrored)" -eq 1 ]; then
+    ok "the unmutated mirror.js then recovers: the healthy pair reaches mirrored/ once the touch is restored"
+  else
+    bad "the unmutated mirror.js did not recover the healthy pair after the mtime-touch mutation was restored"
+  fi
+else
+  bad "MUTATION SETUP: no touchPendingMarkerMtime(...) call site found in mirror.js — this test's assumed function name does not match the landed diff; update scripts/tests/test-usage-storage-mirror.sh's MUTATOR_8 regex to match"
+  git -C "$REPO_DIR" checkout -- scripts/lib/usage-store/mirror.js 2>/dev/null || true
+  fake_clear_source_tool_failure
 fi
 
 echo
