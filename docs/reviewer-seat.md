@@ -256,6 +256,33 @@ dossier entry*. Left unvoided it is byte-indistinguishable from a consumed
 verdict, and a later pass would count it as one — inflating the `specs`
 pass ordinal and auditing findings this rule says must not be consumed.
 
+## Session Bootstrap for a seated pass
+
+Every session — including a seated pass — is otherwise bound by
+[`AGENTS.md`](../AGENTS.md) → *Session Bootstrap* to the six-step
+deterministic sweep defined in
+[`artifacts/core/rules/60-tools.md`](../artifacts/core/rules/60-tools.md)
+→ *Memory Activation Protocol → Session Start*. A **seated pass** is
+exempt from two of those six steps: step 3 (the cross-tool handoff
+lookup) and step 6 (the mandatory checkpoint write). It still runs steps
+1, 2, 4, and 5 unchanged.
+
+Both exempted steps read and write the project's `task-handoff` drawer,
+which carries the *authoring session's* own progress notes. Handing that
+content to a seated pass would breach exactly what *Instantiating a
+seated pass* above closes: the references-only brief and the cold-start
+independence guarantee, both of which forbid authoring-session context
+from reaching the pass by any channel. Step 6 fails on its own terms
+too — it exists to log a resumption, and a review pass never resumes
+anything; there is no prior work of its own for it to pick up.
+
+This exemption tracks **seat occupancy**, not role name. A pass is exempt
+only while it is instantiated as a seated pass per *Instantiating a
+seated pass* above, occupying the `specs`, `plan`, or `review` surface.
+An `architect` pass *authoring* a plan — not occupying that ticket's
+`plan` surface as its reviewer — is not exempt, nor is any other
+non-seated role; each stays fully bound to all six steps.
+
 ## Prior-finding disposition
 
 Before a seat's pass N+1 (for N ≥ 1), the disposition of every finding in
@@ -473,3 +500,4 @@ justifies it.
 - Plan review protocol — [`docs/plan-review-protocol.md`](plan-review-protocol.md) and plan format — [`docs/plan-format.md`](plan-format.md).
 - Agent Team Protocol — [`docs/agent-team-protocol.md`](agent-team-protocol.md).
 - Reviewer sources — [`artifacts/core/agents/pr-reviewer/AGENT.md`](../artifacts/core/agents/pr-reviewer/AGENT.md), [`artifacts/core/skills/pr-reviewer/SKILL.md`](../artifacts/core/skills/pr-reviewer/SKILL.md), [`artifacts/core/skills/architect/SKILL.md`](../artifacts/core/skills/architect/SKILL.md), [`artifacts/core/skills/spec-author/SKILL.md`](../artifacts/core/skills/spec-author/SKILL.md).
+- Session Bootstrap — [`AGENTS.md`](../AGENTS.md) → *Session Bootstrap*.

@@ -39,6 +39,20 @@ Skipping the sweep is a process violation equivalent to missing a lifecycle
 stage. A REVIEW pass that audits a session where the sweep was omitted SHALL
 emit a `class: tech` finding citing this section.
 
+**Reviewer-seat exemption.** A seated pass — an agent instantiated per
+[`docs/reviewer-seat.md`](docs/reviewer-seat.md) → *Instantiating a seated
+pass*, occupying the `specs`, `plan`, or `review` surface, on any pass
+ordinal of that seat — skips step 3 (cross-tool handoff lookup) and step 6
+(mandatory checkpoint write) of the sweep above, and still runs steps 1, 2,
+4, and 5 unchanged. The preceding paragraph's "process violation" rule and
+its accompanying `class: tech` finding do NOT apply to a seated pass's
+correctly-reasoned skip of steps 3 and 6 — see
+[`docs/reviewer-seat.md`](docs/reviewer-seat.md) → *Session Bootstrap for a
+seated pass* for the full rationale. Every other role — the orchestrator, a
+`developer` pass, an `architect` pass acting outside a seated review,
+`pr-logbook`, etc. — remains fully bound by the unmodified six-step sweep,
+with no exemption.
+
 Additionally, before opening any new ticket worktree, perform the additive,
 non-destructive session-start worktree-backlog surfacing in
 [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) → *Worktree
