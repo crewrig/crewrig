@@ -253,6 +253,8 @@ A `state == MERGED` result is positive confirmation the branch has merged. A bra
 
 **Session end — confirmed-merge sweep.** When the session reaches its end, account for the worktrees under `.worktrees/` and, for every worktree whose pull request is positively confirmed `MERGED` by the command above, remove the worktree together with its local branch by following the ordered cleanup procedure documented earlier in this section (verify the merge landed → `git worktree remove` → `git branch -D` → close the logbook issue) — do not invent a new sequence. A worktree whose pull request is still open, whose branch carries unmerged or uncommitted work, or whose merge status cannot be positively confirmed SHALL be left in place and surfaced for later adjudication — never removed. This mirrors the *Stray-file discovery — no unilateral action* discipline above: a worktree's mere presence or apparent staleness never authorizes removal, and positive confirmation of a merged pull request is the sole precondition for removing any worktree.
 
+When an orchestrator pre-allocates a spec id for a sibling session at this kickoff moment, see `docs/spec-pr-workflow.md` → *Pre-allocating an id for a sibling session* for the obligation to actually secure it via `reserve-spec-id.sh --id <ID> --issue <N>` before asserting it "reserved."
+
 ## Built Components
 
 Source files under `artifacts/` are compiled into `.gemini/` and `.claude/` by `scripts/build-components.sh`. The CI `check-components` job fails if the built outputs drift from sources.
