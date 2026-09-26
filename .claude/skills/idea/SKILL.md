@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
+    version: "1.1.0"
 ---
 
 
@@ -184,6 +184,36 @@ Example composition prefix:
 ...
 ```
 
+## Candidate designation (R15/R16)
+
+When two or more proposals survive triage (R7) and have not been merged via
+composition (R9), the session owner SHALL designate exactly one surviving
+proposal or composition as the current candidate before any vote comment can
+count toward the governance threshold (R3/R10). The designation is a
+top-level comment matching exactly the form `[CANDIDATE] Proposal: <title>`
+— mirroring the bracket-prefix convention already established by
+`[TRIAGE-REJECTED]` (R7) and `[COMPOSITION]` (R9) — where `<title>` names a
+proposal or composition already present in the session. A `[CANDIDATE]`
+comment naming a title absent from the session is invalid and designates
+nothing.
+
+**Required vs. implicit.** A `[CANDIDATE]` comment is mandatory once two or
+more surviving, non-composed proposals exist after triage. When exactly one
+proposal survives triage and no `[CANDIDATE]` comment has ever been posted in
+the session, that lone survivor is the implicit candidate from the moment it
+alone survives — no `[CANDIDATE]` comment is required for its votes to count.
+
+**Re-designation rule.** Posting a new valid `[CANDIDATE]` comment voids
+every vote comment posted before it. Eligible voters must recast their vote
+against the newly designated candidate for it to count toward the governance
+threshold.
+
+Example candidate designation comment:
+
+```markdown
+[CANDIDATE] Proposal: <title>
+```
+
 ## Consensus protocol (R10)
 
 The official vote mechanism is structured vote comments on the session issue.
@@ -200,6 +230,14 @@ VOTE: ABSTAIN
 - Emoji reactions on the session issue MAY serve as informal signals but are
   **not** counted toward any governance threshold.
 - Only votes posted as top-level comments (not as replies to other comments) count.
+
+A vote comment binds to the proposal or composition named by the most
+recently posted valid `[CANDIDATE]` comment at the time the vote was cast —
+or to the implicit candidate (R16) when exactly one proposal survives triage
+and no `[CANDIDATE]` comment has been posted. See *Candidate designation
+(R15/R16)* above. The *Threshold calculation* below counts only vote
+comments posted after the current candidate's designation timestamp;
+re-designation voids and requires eligible voters to recast their votes.
 
 ### Threshold calculation
 
