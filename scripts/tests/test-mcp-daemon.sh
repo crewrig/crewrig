@@ -1415,6 +1415,87 @@ for fn17 in install_chroma_daemon install_mcp_daemon; do
   esac
 done
 
+
+# --- 18. Bearer token never reaches jq's argv (#1247) ------------------------
+# register_mempalace_mcp and restore_mempalace_registration used to pass the
+# token to jq via --arg/--argjson, which lands on jq's own argv — world-
+# readable via /proc/<pid>/cmdline on Linux. They now deliver it through
+# $ENV.<VAR> instead, reading a same-command env-var prefix assignment. Stub
+# jq to log every invocation's full argv (quoting-safe: a loop over "$@", not
+# "$*", so an embedded space in one argument cannot be mistaken for a second
+# one) and prove the token substring never appears there — then, with the
+# real jq restored, prove the configs were actually written (so the argv
+# guard cannot pass merely because a write silently failed).
+echo ""
+echo "Bearer token off jq's argv (#1247):"
+
+REAL_JQ="$(command -v jq)"
+JQ_ARGV_LOG="${TEST_HOME}/jq-argv.log"
+: > "${JQ_ARGV_LOG}"
+cat > "${TEST_HOME}/bin/jq" <<STUB
+#!/usr/bin/env bash
+{ for a in "\$@"; do printf '%s\x1f' "\$a"; done; printf '\n'; } >> "${JQ_ARGV_LOG}"
+exec "${REAL_JQ}" "\$@"
+STUB
+chmod +x "${TEST_HOME}/bin/jq"
+
+# ${TEST_HOME}/bin already holds the no-op claude/gemini/copilot/agy stubs
+# section 11 installed above; that section restored PATH to ORIG_PATH at its
+# end, so re-prepend the same bin dir rather than recreate them.
+export PATH="${TEST_HOME}/bin:${ORIG_PATH}"
+
+# Fresh, empty configs for all four assistants, at the exact paths
+# mcp_assistant_config_path resolves for this test's $HOME.
+mkdir -p "${TEST_HOME}/.gemini/config" "${TEST_HOME}/.copilot"
+echo '{"mcpServers":{}}' > "${TEST_HOME}/.claude.json"
+echo '{"mcpServers":{}}' > "${TEST_HOME}/.gemini/settings.json"
+echo '{"mcpServers":{}}' > "${TEST_HOME}/.copilot/mcp-config.json"
+echo '{"mcpServers":{}}' > "${TEST_HOME}/.gemini/config/mcp_config.json"
+chmod 600 "${TEST_HOME}/.claude.json" "${TEST_HOME}/.gemini/settings.json" \
+  "${TEST_HOME}/.copilot/mcp-config.json" "${TEST_HOME}/.gemini/config/mcp_config.json"
+
+TEST_TOKEN_18="test-token-argv-guard-1247"
+
+for cli18 in claude gemini copilot antigravity; do
+  register_mempalace_mcp "${cli18}" "${TEST_TOKEN_18}" >/dev/null 2>&1
+  rc18=$?
+  [ "${rc18}" -eq 0 ] \
+    && ok "register_mempalace_mcp ${cli18} succeeds under the jq-argv-logging stub" \
+    || nope "register_mempalace_mcp ${cli18} failed (rc=${rc18})"
+done
+
+# Sanity-check the capture actually embeds the token, so the restore below is
+# not exercising a vacuous (null) capture.
+cap18="$(capture_mempalace_registration gemini)"
+case "${cap18}" in
+  *"${TEST_TOKEN_18}"*) ok "the capture actually embeds the test token (restore below is non-vacuous)" ;;
+  *) nope "captured registration does not contain the test token: ${cap18}" ;;
+esac
+
+restore_mempalace_registration gemini "${cap18}" >/dev/null 2>&1
+rc18r=$?
+[ "${rc18r}" -eq 0 ] \
+  && ok "restore_mempalace_registration gemini succeeds under the jq-argv-logging stub" \
+  || nope "restore_mempalace_registration gemini failed (rc=${rc18r})"
+
+if grep -qF "${TEST_TOKEN_18}" "${JQ_ARGV_LOG}"; then
+  nope "the token substring appears in jq's logged argv — it leaked onto argv"
+else
+  ok "the token substring never appears in any jq invocation's argv"
+fi
+
+# Restore PATH to the real jq before reading the four configs back.
+export PATH="${ORIG_PATH}"
+rm -f "${TEST_HOME}/bin/jq"
+
+for cli18cfg in claude gemini copilot antigravity; do
+  cfg18="$(mcp_assistant_config_path "${cli18cfg}")"
+  auth18="$(jq -e -r '.mcpServers.mempalace.headers.Authorization' "${cfg18}" 2>/dev/null)"
+  [ "${auth18}" = "Bearer ${TEST_TOKEN_18}" ] \
+    && ok "${cli18cfg}'s config carries the correct Authorization header (the write did not silently fail)" \
+    || nope "${cli18cfg}'s config Authorization is wrong or missing: got [${auth18}]"
+done
+
 echo ""
 echo "----------------------------------------"
 echo "  passed: ${PASS}   failed: ${FAIL}"

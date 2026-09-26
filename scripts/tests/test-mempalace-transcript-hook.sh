@@ -100,7 +100,7 @@ fi
 # -------------------------------------------------------------------------
 # Test 4 — Issue #93: stderr must not be merged into stdout.
 # -------------------------------------------------------------------------
-CURL_LINE="$(grep -nE 'curl -s -S' "$HOOK" || true)"
+CURL_LINE="$(grep -nE 'curl -K - -s -S' "$HOOK" || true)"
 if [ -z "$CURL_LINE" ]; then
   record FAIL "issue-93: stderr not merged with stdout on curl call" \
     "cannot locate curl invocation line"
@@ -268,13 +268,20 @@ trap 'rm -rf "$TMPDIR_T2" "$TMPDIR_T7" "$TMPDIR_T23" "$TMPDIR_T25"' EXIT
 EXPLICIT_TOKEN_CURL="$TMPDIR_T25/curl"
 cat > "$EXPLICIT_TOKEN_CURL" <<EOF
 #!/bin/bash
+# Log our own full argv first (issue #1247) — the fix moves the bearer token
+# off argv entirely, delivered via a -K - stdin config instead of an -H flag,
+# so a regression back to -H "Authorization: Bearer ..." must show up here as
+# a token substring in captured-argv.txt, not merely as a broken capture below.
+printf '%s\n' "\$*" > "$TMPDIR_T25/captured-argv.txt"
 auth_header=""
-while [ \$# -gt 0 ]; do
-  if [ "\$1" = "-H" ] && [[ "\$2" =~ ^Authorization:[[:space:]]*Bearer ]]; then
-    auth_header="\$2"
-    break
-  fi
-  shift
+while IFS= read -r line; do
+  case "\$line" in
+    'header = "'*'"')
+      auth_header="\${line#header = \"}"
+      auth_header="\${auth_header%\"}"
+      break
+      ;;
+  esac
 done
 echo "\$auth_header" > "$TMPDIR_T25/captured-auth.txt"
 echo '{"jsonrpc": "2.0", "id": 1, "result": {"isError": false, "content": [{"text": "OK"}]}}'
@@ -298,6 +305,18 @@ if [ -f "$TMPDIR_T25/captured-auth.txt" ] && grep -q 'custom-secret-token' "$TMP
 else
   record FAIL "spec-0167-r1: MEMPALACE_DAEMON_TOKEN_FILE injects explicit bearer token" \
     "captured auth: $(cat "$TMPDIR_T25/captured-auth.txt" 2>/dev/null)"
+fi
+
+# Argv-absence guard (#1247): the token must never appear on curl's own argv
+# — only on the stdin config the assertion above proves reaches curl. This
+# mirrors test-mcp-daemon.sh's own jq-argv guard (section 18) so a regression
+# back to `-H "Authorization: Bearer ..."` fails loud here too, not just via a
+# capture that happens to still succeed.
+if [ -f "$TMPDIR_T25/captured-argv.txt" ] && ! grep -qF 'custom-secret-token' "$TMPDIR_T25/captured-argv.txt"; then
+  record PASS "issue-1247: bearer token never appears on curl's argv"
+else
+  record FAIL "issue-1247: bearer token never appears on curl's argv" \
+    "captured argv: $(cat "$TMPDIR_T25/captured-argv.txt" 2>/dev/null)"
 fi
 
 STDERR_MISSING="$TMPDIR_T25/stderr-missing"

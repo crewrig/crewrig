@@ -247,6 +247,7 @@ if [ -n "$CONTENT" ]; then
   TRANSCRIPT_ROOM="$ROOM_ID"
   TRANSCRIPT_AGENT="transcript-hook"
   _HOOK_ERR="${TMPDIR:-/tmp}/mempalace-hook-$$.err"
+  _HOOK_OUT="${TMPDIR:-/tmp}/mempalace-hook-$$.out"
 
   # Temporarily disable `set -e` so a non-zero exit does not abort
   # the hook before we can log the failure.
@@ -278,7 +279,7 @@ if [ -n "$CONTENT" ]; then
       echo "DAEMON_UNREACHABLE: token file not found at $TOKEN_FILE" >&2
       exit 4
     fi
-    TOKEN="$(cat "$TOKEN_FILE")"
+    TOKEN="$(tr -d '[:space:]' < "$TOKEN_FILE")"
     HOST="${MEMPALACE_MCP_HOST:-127.0.0.1}"
     PORT="${MEMPALACE_MCP_PORT:-41893}"
 
@@ -301,11 +302,28 @@ if [ -n "$CONTENT" ]; then
         }
       }')
 
-    CURL_OUT="$(curl -s -S --max-time 5 -X POST "http://${HOST}:${PORT}/mcp" \
-      -H "Content-Type: application/json" \
-      -H "Authorization: Bearer $TOKEN" \
-      -d "$PAYLOAD" 2>"$_HOOK_ERR")"
-    CURL_RC=$?
+    # The bearer reaches curl through a config read from stdin (`-K -`), never
+    # through an `-H` argv flag — on Linux /proc/<pid>/cmdline is
+    # world-readable, so any local uid sampling the process table while this
+    # hook runs harvests the credential otherwise (mirrors
+    # `_mcp_daemon_probe_accepts`, scripts/lib/common.sh).
+    #
+    # This script runs under `set -euo pipefail` (top of file), so `$?` after
+    # a `printf | curl` pipeline captured via `X="$(a | b)"` would, under
+    # pipefail, reflect printf's exit status whenever it is the rightmost
+    # non-zero one — and PIPESTATUS for that inner pipe does not survive back
+    # out of the command-substitution subshell to be read afterward (verified
+    # empirically; the array is already reset once that subshell exits). The
+    # pipe therefore runs directly (not nested inside `$(...)`), with curl's
+    # stdout captured to a file instead, so PIPESTATUS[1] — curl's own exit
+    # code, the second element of this two-stage pipeline — is still valid
+    # immediately after it.
+    printf 'header = "Authorization: Bearer %s"\n' "$TOKEN" \
+      | curl -K - -s -S --max-time 5 -X POST "http://${HOST}:${PORT}/mcp" \
+        -H "Content-Type: application/json" \
+        -d "$PAYLOAD" >"$_HOOK_OUT" 2>"$_HOOK_ERR"
+    CURL_RC=${PIPESTATUS[1]}
+    CURL_OUT="$(cat "$_HOOK_OUT" 2>/dev/null)"
 
     if [ "$CURL_RC" -ne 0 ]; then
       echo "DAEMON_UNREACHABLE: ${HOST}:${PORT} — curl exit $CURL_RC: $(cat "$_HOOK_ERR" 2>/dev/null | tr '\n' ' ')" >&2
