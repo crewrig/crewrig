@@ -19,7 +19,7 @@ TMP_ROOT="$(mktemp -d)"
 # Cases 49-50 (spec 0225) each need their own disjoint temp root (see the
 # comments at each case for why). ${VAR:-} guards the trap against `set -u`
 # when a case's variable is assigned only after this trap is installed.
-trap 'rm -rf "$TMP_ROOT" "${CASE49_ROOT:-}" "${CASE50_ROOT:-}" "${CASE50_PREFIX:-}"' EXIT
+trap 'rm -rf "$TMP_ROOT" "${CASE49_ROOT:-}" "${CASE50_ROOT:-}" "${CASE50_PREFIX:-}" "${CASE51_ROOT:-}"' EXIT
 
 # Copy markdownlint config to temp root
 cp "$ROOT_DIR/.markdownlintrc" "$TMP_ROOT/"
@@ -1133,6 +1133,43 @@ else
   echo "FAIL  Case 50 — expected exit 1 from the markdownlint-cli preflight only, got exit $case50_exit"
   echo "Output:"
   echo "$case50_output"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
+# Case 51 (pr-reviewer finding i1-F1, PR #1305) — js-yaml IS present but
+# broken (a syntax error inside the installed package, not an absent
+# module): requireLintDependency() must NOT misreport this as "Missing
+# dependency" — that would hide a real bug behind the same friendly message
+# spec 0225 introduced for the opposite problem (a genuinely absent
+# dependency). It must let the real error surface instead.
+#
+# Constructed with its own disjoint node_modules (same isolation rationale
+# as Case 49/50) holding a js-yaml package whose entry point throws a
+# SyntaxError at require()-time — a real, present, but broken install.
+# -------------------------------------------------------------------------
+CASE51_ROOT="$(mktemp -d)"
+mkdir -p "$CASE51_ROOT/node_modules/js-yaml"
+cat > "$CASE51_ROOT/node_modules/js-yaml/package.json" <<'EOF'
+{"name": "js-yaml", "main": "index.js"}
+EOF
+cat > "$CASE51_ROOT/node_modules/js-yaml/index.js" <<'EOF'
+const x = ;
+EOF
+cp "$LINTER_JS" "$CASE51_ROOT/spec-linter.js"
+render_spec "0051" "broken-dep" "draft" > "$CASE51_ROOT/0051-broken-dep.md"
+
+case51_exit=0
+case51_output=$( ( cd "$CASE51_ROOT" && node spec-linter.js 0051-broken-dep.md 2>&1 ) ) || case51_exit=$?
+if [ "$case51_exit" -ne 0 ] \
+  && ! echo "$case51_output" | grep -qF "Missing dependency" \
+  && echo "$case51_output" | grep -qE "SyntaxError|Unexpected token"; then
+  echo "PASS  Case 51 — a broken (present) dependency surfaces its real error, not a false 'missing' report"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 51 — expected the real SyntaxError to surface, not a 'Missing dependency' misreport, got exit $case51_exit"
+  echo "Output:"
+  echo "$case51_output"
   fail=$((fail + 1))
 fi
 

@@ -10,6 +10,12 @@ function requireLintDependency(moduleName) {
     try {
         return require(moduleName);
     } catch (err) {
+        if (err.code !== 'MODULE_NOT_FOUND') {
+            // Not a missing-dependency failure (e.g. the installed package
+            // itself is broken) — surface the real error rather than
+            // misreporting it as "missing" (pr-reviewer finding i1-F1).
+            throw err;
+        }
         console.error(`[ERROR] Missing dependency '${moduleName}', required by scripts/lib/spec-linter.js.`);
         console.error(`Run: task lint-bootstrap  (installs js-yaml, semver, and markdownlint-cli)`);
         process.exit(1);
