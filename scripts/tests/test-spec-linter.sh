@@ -16,7 +16,10 @@ if [ ! -f "$LINTER_JS" ]; then
 fi
 
 TMP_ROOT="$(mktemp -d)"
-trap 'rm -rf "$TMP_ROOT"' EXIT
+# Cases 49-50 (spec 0225) each need their own disjoint temp root (see the
+# comments at each case for why). ${VAR:-} guards the trap against `set -u`
+# when a case's variable is assigned only after this trap is installed.
+trap 'rm -rf "$TMP_ROOT" "${CASE49_ROOT:-}" "${CASE50_ROOT:-}" "${CASE50_PREFIX:-}"' EXIT
 
 # Copy markdownlint config to temp root
 cp "$ROOT_DIR/.markdownlintrc" "$TMP_ROOT/"
@@ -89,6 +92,14 @@ write_core_paths_fixture() {
 
 # -------------------------------------------------------------------------
 # Case 1 — Happy path: valid spec → exit 0
+#
+# Also stands as the spec 0225 regression case for "the two new preflights
+# (requireLintDependency, the markdownlint-cli --version preflight) don't
+# regress the working case": it runs with the real node_modules symlink
+# (line 24) and an unscrubbed PATH, so both preflights resolve their targets
+# and fall through to the real markdownlint pass. Cases 49-50 below cover the
+# two ways those preflights fail closed; this is the control that they don't
+# also fail open.
 # -------------------------------------------------------------------------
 spec1="0001-happy-path.md"
 render_spec "0001" "happy-path" "draft" > "$TMP_ROOT/$spec1"
@@ -1019,6 +1030,111 @@ git -C "$GITFIX5" commit -q -m "fix non-spec issue"
 run_base_case "Case 48 — implementation branch with no matching spec file passes (spec 0168 R2)" \
   "$GITFIX5" "specs" 0 "main" \
   "-" "matches spec id"
+
+# -------------------------------------------------------------------------
+# Case 49 (spec 0225 requirement 2) — a missing js-yaml/semver produces one
+# actionable line naming the missing module and the bootstrap command, never
+# a raw Node.js MODULE_NOT_FOUND stack trace.
+#
+# Uses its own disjoint mktemp -d root, NOT a subdirectory of $TMP_ROOT:
+# $TMP_ROOT already carries the node_modules symlink set up at the top of
+# this file (line ~26 after the trap above), and Node's require() resolution
+# walks UP the directory tree looking for a node_modules folder at every
+# ancestor level — a subdirectory of $TMP_ROOT would still resolve
+# js-yaml/semver through that symlink one level up. A disjoint root
+# guarantees no node_modules exists anywhere in the parent chain.
+#
+# js-yaml is required before semver in spec-linter.js, so it is the
+# dependency whose absence fires first — confirmed empirically (a bare `node
+# spec-linter.js` in a node_modules-free directory reports 'js-yaml', not
+# 'semver'), not assumed, since require() gives no ordering guarantee that
+# isn't pinned to this file's own require() order.
+# -------------------------------------------------------------------------
+CASE49_ROOT="$(mktemp -d)"
+cp "$LINTER_JS" "$CASE49_ROOT/spec-linter.js"
+render_spec "0049" "no-deps" "draft" > "$CASE49_ROOT/0049-no-deps.md"
+
+case49_exit=0
+case49_output=$( ( cd "$CASE49_ROOT" && node spec-linter.js 0049-no-deps.md 2>&1 ) ) || case49_exit=$?
+if [ "$case49_exit" -eq 1 ] \
+  && echo "$case49_output" | grep -qF "Missing dependency 'js-yaml'" \
+  && echo "$case49_output" | grep -qF "Run: task lint-bootstrap" \
+  && ! echo "$case49_output" | grep -qE '^[[:space:]]+at ' \
+  && ! echo "$case49_output" | grep -qF "MODULE_NOT_FOUND"; then
+  echo "PASS  Case 49 — missing js-yaml/semver reports one actionable line, no stack trace (exit 1)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 49 — expected exit 1 naming the missing dependency without a stack trace, got exit $case49_exit"
+  echo "Output:"
+  echo "$case49_output"
+  fail=$((fail + 1))
+fi
+
+# -------------------------------------------------------------------------
+# Case 50 (spec 0225 requirement 3) — js-yaml/semver present but
+# markdownlint-cli unresolvable: the new preflight (spec-linter.js's
+# `spawnSync('npx', ['--no-install', 'markdownlint', '--version'])` call)
+# fails closed with our own message, and the real markdownlint pass
+# ("Running markdownlint-cli on N files...") is never reached.
+#
+# Two isolation concerns, both confirmed empirically rather than assumed:
+#
+# 1. PATH must still resolve `node`/`npx` (the linter re-execs npx as a
+#    subprocess) but must not resolve markdownlint-cli. Per PLAN v2 finding
+#    v1-F2, `dirname "$(command -v node)"` alone is NOT sufficient on every
+#    machine: this development machine has markdownlint-cli installed
+#    globally as an nvm global package, whose shim (`markdownlint`) lives in
+#    that exact same bin directory as `node`/`npx` — so a PATH scrubbed to
+#    only that directory still resolves it (verified: `command -v
+#    markdownlint` on this machine resolves inside the nvm node bin dir).
+#    Restricting PATH to a directory holding only `node`/`npx` symlinks does
+#    NOT fix this either — npm resolves a global package relative to its own
+#    install prefix (`npm config get prefix`), not by re-scanning PATH, so a
+#    colocated global install still resolves regardless of which directory
+#    PATH points at.
+# 2. What DOES make this deterministic: pointing `NPM_CONFIG_PREFIX` at an
+#    empty prefix directory for this one invocation. That overrides where
+#    npm looks for a global install, independent of PATH content or of
+#    whether the host happens to have markdownlint-cli installed globally.
+#    Verified empirically: without this override the case below passes
+#    (falsely, via the global install) with exit 0; with it, npx's own
+#    "could not determine executable to run" fires (piped, never printed,
+#    since spec-linter.js's preflight spawnSync call has no stdio:'inherit'
+#    — confirmed absent from this output), and spec-linter.js's own
+#    preflight then reports its own message and exits 1.
+#
+# `env -u BASE_REF` at line ~544 (Cases 28+) is the precedent this reuses for
+# scoping one invocation's environment.
+# -------------------------------------------------------------------------
+CASE50_ROOT="$(mktemp -d)"
+mkdir -p "$CASE50_ROOT/node_modules"
+ln -s "$ROOT_DIR/node_modules/js-yaml" "$CASE50_ROOT/node_modules/js-yaml"
+ln -s "$ROOT_DIR/node_modules/semver" "$CASE50_ROOT/node_modules/semver"
+cp "$ROOT_DIR/.markdownlintrc" "$CASE50_ROOT/"
+render_spec "0050" "no-markdownlint" "draft" > "$CASE50_ROOT/0050-no-markdownlint.md"
+
+CASE50_PREFIX="$(mktemp -d)"
+mkdir -p "$CASE50_PREFIX/lib/node_modules"
+
+NODE_BIN_DIR="$(dirname "$(command -v node)")"
+
+case50_exit=0
+case50_output=$( ( cd "$CASE50_ROOT" \
+  && env PATH="$NODE_BIN_DIR:/usr/bin:/bin" NPM_CONFIG_PREFIX="$CASE50_PREFIX" \
+       node "$LINTER_JS" 0050-no-markdownlint.md 2>&1 ) ) || case50_exit=$?
+if [ "$case50_exit" -eq 1 ] \
+  && echo "$case50_output" | grep -qF "markdownlint-cli is not resolvable" \
+  && echo "$case50_output" | grep -qF "Run: task lint-bootstrap" \
+  && ! echo "$case50_output" | grep -qF "Running markdownlint-cli on" \
+  && ! echo "$case50_output" | grep -qF "could not determine executable to run"; then
+  echo "PASS  Case 50 — missing markdownlint-cli fails closed before the real pass (exit 1)"
+  pass=$((pass + 1))
+else
+  echo "FAIL  Case 50 — expected exit 1 from the markdownlint-cli preflight only, got exit $case50_exit"
+  echo "Output:"
+  echo "$case50_output"
+  fail=$((fail + 1))
+fi
 
 # -------------------------------------------------------------------------
 # Summary

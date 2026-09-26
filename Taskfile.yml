@@ -386,11 +386,33 @@ tasks:
 
   # --- Linting ---
 
+  lint-bootstrap:
+    desc: "Install every dependency the spec and Markdown linters need (js-yaml, semver, markdownlint-cli), and report on shellcheck (spec 0225 requirement 1)"
+    cmds:
+      - |
+        set -euo pipefail
+        echo "Installing npm dependencies (js-yaml, semver, markdownlint-cli)..."
+        if [ -f {{.REPO_DIR}}/package-lock.json ]; then
+          npm ci
+        else
+          npm install
+        fi
+        echo ""
+        if command -v shellcheck >/dev/null 2>&1; then
+          echo "shellcheck: found ($(shellcheck --version | grep -i version | head -1))"
+        else
+          echo "shellcheck: not found on PATH."
+          echo "  shellcheck is a system package outside npm's reach — install it with:"
+          echo "    brew install shellcheck        (macOS)"
+          echo "    apt-get install shellcheck     (Debian/Ubuntu)"
+          echo "    https://github.com/koalaman/shellcheck#installing"
+        fi
+
   lint-markdown:
     desc: Check all Markdown files for lint compliance
     preconditions:
-      - sh: command -v markdownlint >/dev/null 2>&1
-        msg: "markdownlint-cli is required. Install with: npm install -g markdownlint-cli"
+      - sh: command -v markdownlint >/dev/null 2>&1 || npx --no-install markdownlint --version >/dev/null 2>&1
+        msg: "markdownlint-cli is required. Run: task lint-bootstrap (or: npm install -g markdownlint-cli)"
     # extensions/**/commands/*.md are pivot command sources (the body IS the
     # prompt, not prose) — exclude them from prose linting (spec 0042).
     # artifacts/*/commands/*.md are the same kind of pivot command source at
@@ -404,8 +426,8 @@ tasks:
   fix-markdown:
     desc: Auto-fix Markdown formatting issues
     preconditions:
-      - sh: command -v markdownlint >/dev/null 2>&1
-        msg: "markdownlint-cli is required. Install with: npm install -g markdownlint-cli"
+      - sh: command -v markdownlint >/dev/null 2>&1 || npx --no-install markdownlint --version >/dev/null 2>&1
+        msg: "markdownlint-cli is required. Run: task lint-bootstrap (or: npm install -g markdownlint-cli)"
     # Mirror the lint-markdown exclusion: extension command pivots are prompt
     # sources, not prose (spec 0042). artifacts/*/commands/*.md are the same
     # kind of pivot command source at the artifacts tier (spec 0191).
