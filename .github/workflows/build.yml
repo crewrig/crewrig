@@ -651,6 +651,9 @@ jobs:
       - name: Test Setup Mcp Merge
         if: steps.filter.outputs.setup == 'true'
         run: bash scripts/tests/test-setup-mcp-merge.sh
+      - name: Test Setup Mempalace Rc Guard
+        if: steps.filter.outputs.setup == 'true'
+        run: bash scripts/tests/test-setup-mempalace-rc-guard.sh
       - name: Test Setup Org Mcp
         if: steps.filter.outputs.setup == 'true'
         run: bash scripts/tests/test-setup-org-mcp.sh

@@ -678,6 +678,7 @@ capabilities:
       - bash scripts/tests/test-setup-validation-backend.sh
       - bash scripts/tests/test-tls-delegation.sh
       - bash scripts/tests/test-setup-mcp-merge.sh
+      - bash scripts/tests/test-setup-mempalace-rc-guard.sh
       - bash scripts/tests/test-setup-org-mcp.sh
       - bash scripts/tests/test-setup-catalogue-picker.sh
       - bash scripts/tests/test-setup-ensure-tier-built.sh

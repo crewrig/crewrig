@@ -240,8 +240,8 @@ fi
 # not completed, the stdio entry stays WITH a loud lockout warning (R20
 # forbids converging against a probe-verified serving daemon).
 if [ "${MEMPALACE_INSTALLED:-0}" -eq 1 ]; then
-  ensure_mempalace_http "$REPO_DIR" gemini
-  _mempalace_rc=$?
+  _mempalace_rc=0
+  ensure_mempalace_http "$REPO_DIR" gemini || _mempalace_rc=$?
   case "$_mempalace_rc" in
     0)
       echo "  MemPalace reaches shared memory through the HTTP daemon."
