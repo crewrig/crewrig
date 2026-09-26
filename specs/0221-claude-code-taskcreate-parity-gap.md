@@ -1,7 +1,7 @@
 ---
 id: "0221"
 slug: claude-code-taskcreate-parity-gap
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1267

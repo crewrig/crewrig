@@ -31,24 +31,32 @@ rework is high.
 
 Claude Code runs a single implicit session team: the orchestrating session
 *is* the team, so there is no team-creation step. Within that implicit team,
-the following three primitives are **mandatory**:
+the following two primitives are confirmed present in the harness's tool
+surface and **mandatory**:
 
 1. **`Agent`** — delegate work to a specialist by spawning it with an
    explicit `subagent_type` matching the role (`architect`, `developer`,
    `tester`, `security`, `doc-writer`, `pr-reviewer`, `pr-logbook`, etc.).
    The spawn happens within the implicit session team — there is no
    `TeamCreate`.
-2. **`TaskCreate`** — assign **one task per agent role** for tracking. Each
-   task targets a specific specialist with a self-contained brief.
-3. **`SendMessage`** — coordinate progress, hand off intermediate
+2. **`SendMessage`** — coordinate progress, hand off intermediate
    artifacts, and unblock teammates. All cross-agent communication flows
    through this tool — never through plain text replies.
 
+**`TaskCreate`** — assign **one task per agent role** for tracking — is
+used when the harness exposes it, but is confirmed absent from the
+current Claude Code harness's tool surface (`docs/cli-matrix.md` →
+*Parity gaps*, issue #1267). That absence is neither a protocol
+violation an agent must work around nor a condition a REVIEW pass may
+cite for a `tech`-class finding; proceed with `Agent` and `SendMessage`
+alone when `TaskCreate` is unavailable.
+
 **Single-source brief rule**: The `Agent` spawn prompt is the
 authoritative brief — it must be self-contained because spawned agents
-inherit no conversation context. Use `TaskCreate` for tracking only:
-its `description` should be a one-liner (e.g. `"Implement feature X — full brief in Agent prompt"`), not a duplicate of the Agent prompt. Never write the same
-brief in both places.
+inherit no conversation context. When `TaskCreate` is available, use it
+for tracking only: its `description` should be a one-liner (e.g.
+`"Implement feature X — full brief in Agent prompt"`), not a duplicate of
+the Agent prompt. Never write the same brief in both places.
 
 **Verified-claim rule**: Technical assertions embedded in a developer
 brief (package names, install paths, command flags, file locations,
@@ -130,7 +138,7 @@ applies to issue-anchored work, however small the fix looks.
 
 ## Worktree Isolation
 
-Parallel agent teams operating on the same git working directory collide on branch checkout and the staging index, corrupting each other's work. To prevent this, the orchestrating agent **MUST** create a dedicated git worktree **before** issuing any `TaskCreate` call or `Agent` spawn for the ticket:
+Parallel agent teams operating on the same git working directory collide on branch checkout and the staging index, corrupting each other's work. To prevent this, the orchestrating agent **MUST** create a dedicated git worktree **before** issuing the `Agent` spawn for the ticket — and before any `TaskCreate` call too, when the harness exposes it:
 
 ```sh
 git worktree add -b <branch-name> .worktrees/<ticket-id> crewrig/main
@@ -443,8 +451,9 @@ retaining its dossier — see
 Six rules govern how teammates report back inside a team and how the team-lead interprets their signals.
 
 **Rule 1 — Report before idle.** Every agent operating inside a team
-(delegated via `Agent` and tracked via `TaskCreate`) MUST send a message to
-`team-lead` via `SendMessage` with a result summary before its turn ends.
+(delegated via `Agent`, and tracked via `TaskCreate` when the harness
+exposes it) MUST send a message to `team-lead` via `SendMessage` with a
+result summary before its turn ends.
 Going idle without sending a result message is a protocol violation. The
 result message must include: the task identifier, the outcome, and any
 artifact (file path, diff summary, verdict, etc.) the team lead needs to
