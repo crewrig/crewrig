@@ -33,9 +33,12 @@
 #
 # Assertions per (script, rc):
 #   - the harness reaches a trailing marker (__SURVIVED__) — the core
-#     regression check. On the pre-fix two-line shape this is never reached
-#     for rc=1/rc=2, because the bare call aborts the harness first (verified
-#     by hand against the pre-fix file text while authoring this test).
+#     regression check. Run against the pre-fix file text (the two-line shape,
+#     no `  _mempalace_rc=0` anchor line), extract_fragment's anchor grep finds
+#     nothing and the harness never even gets built; run anyway with the old
+#     shape spliced in directly, the bare call aborts the harness under its own
+#     `set -e` before `_mempalace_rc=$?` runs for rc=1/rc=2 — both checked by
+#     hand against the pre-fix file text while authoring this test.
 #   - the documented case-branch text for that rc is printed.
 #   - (rc=0 only, sanity) the success path still behaves as documented.
 #
