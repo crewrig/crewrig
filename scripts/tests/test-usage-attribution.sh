@@ -72,14 +72,23 @@ HELPERS_DIR="$(mktemp -d)"
 SYN_PARENT="$(mktemp -d)"
 MUTATION_GUARD_FILES="scripts/lib/usage-capture/attribution.js scripts/lib/usage-store/checkout.js scripts/lib/usage-store/journal.js scripts/lib/usage-store/prune.js scripts/lib/usage-store/rollup.js scripts/lib/usage-store/layout.js scripts/lib/usage-store/query.js"
 CASE_ROOTS=""
+# Set to 1 only once the entry dirty-tree guard below has confirmed every
+# MUTATION_GUARD_FILES entry is clean at commit HEAD. cleanup()'s checkout
+# loop is gated on this flag so that a caller's own pre-existing uncommitted
+# edits to these files — the exact condition the entry guard refuses to run
+# against — are never touched by the EXIT trap (test-usage-storage-mirror.sh
+# carries the same gate under #1250; this suite lacked it, per #1260).
+MUTATION_GUARD_CONFIRMED_CLEAN=0
 
 # shellcheck disable=SC2329  # invoked via trap cleanup EXIT, not dead
 cleanup() {
-  for f in $MUTATION_GUARD_FILES; do
-    if ! git -C "$REPO_DIR" diff --quiet -- "$f" 2>/dev/null; then
-      git -C "$REPO_DIR" checkout -- "$f" 2>/dev/null || true
-    fi
-  done
+  if [ "$MUTATION_GUARD_CONFIRMED_CLEAN" = "1" ]; then
+    for f in $MUTATION_GUARD_FILES; do
+      if ! git -C "$REPO_DIR" diff --quiet -- "$f" 2>/dev/null; then
+        git -C "$REPO_DIR" checkout -- "$f" 2>/dev/null || true
+      fi
+    done
+  fi
   rm -rf "$HELPERS_DIR" "$SYN_PARENT" 2>/dev/null || true
   for d in $CASE_ROOTS; do
     rm -rf "$d" 2>/dev/null || true
@@ -106,6 +115,7 @@ for f in $MUTATION_GUARD_FILES; do
     exit 2
   fi
 done
+MUTATION_GUARD_CONFIRMED_CLEAN=1
 
 new_case_root() {
   local d
@@ -1221,6 +1231,97 @@ if git -C "$REPO_DIR" diff --quiet -- "$QUERY_JS"; then
   ok "query.js is restored to its committed content after MUTATION 7"
 else
   bad "query.js was NOT fully restored after MUTATION 7"
+fi
+
+# =============================================================================
+# REGRESSION (#1260, spec 0218): dirty-tree trap ordering
+# =============================================================================
+echo
+echo "=== REGRESSION 1260-A: dirty-tree refusal preserves an operator's uncommitted edit ==="
+GUARD_PROBE_FILE_REL="scripts/lib/usage-capture/attribution.js"
+GUARD_PROBE_FILE="$REPO_DIR/$GUARD_PROBE_FILE_REL"
+if git -C "$REPO_DIR" diff --quiet -- "$GUARD_PROBE_FILE" 2>/dev/null; then
+  ok "REGRESSION 1260-A setup: $GUARD_PROBE_FILE is clean before seeding the probe edit"
+else
+  bad "REGRESSION 1260-A setup: $GUARD_PROBE_FILE is unexpectedly dirty before seeding the probe edit"
+fi
+printf '\n// #1260 dirty-tree-trap probe marker\n' >> "$GUARD_PROBE_FILE"
+GUARD_PROBE_CONTENT_BEFORE="$(cat "$GUARD_PROBE_FILE")"
+GUARD_PROBE_SUBPROC_OUT="$HELPERS_DIR/regression-1260-dirty-tree.out"
+if bash "$REPO_DIR/scripts/tests/test-usage-attribution.sh" >"$GUARD_PROBE_SUBPROC_OUT" 2>&1; then
+  bad "REGRESSION 1260-A: the nested suite should have refused against the dirty $GUARD_PROBE_FILE, but exited 0"
+else
+  ok "REGRESSION 1260-A: the nested suite exits non-zero against the dirty $GUARD_PROBE_FILE"
+fi
+if grep -qF "FATAL: $GUARD_PROBE_FILE_REL has uncommitted changes" "$GUARD_PROBE_SUBPROC_OUT"; then
+  ok "REGRESSION 1260-A: the nested suite's FATAL names the dirty guard file"
+else
+  bad "REGRESSION 1260-A: the nested suite's output does not carry the dirty-tree FATAL for $GUARD_PROBE_FILE" "$(cat "$GUARD_PROBE_SUBPROC_OUT")"
+fi
+GUARD_PROBE_CONTENT_AFTER="$(cat "$GUARD_PROBE_FILE")"
+if [ "$GUARD_PROBE_CONTENT_BEFORE" = "$GUARD_PROBE_CONTENT_AFTER" ]; then
+  ok "REGRESSION 1260-A: the probe edit survives the nested suite's EXIT trap (never reverted on dirty-tree refusal)"
+else
+  bad "REGRESSION 1260-A: the probe edit was reverted by the nested suite's EXIT trap despite the dirty-tree refusal"
+fi
+git -C "$REPO_DIR" checkout -- "$GUARD_PROBE_FILE"
+if git -C "$REPO_DIR" diff --quiet -- "$GUARD_PROBE_FILE" 2>/dev/null; then
+  ok "REGRESSION 1260-A cleanup: $GUARD_PROBE_FILE is restored to its committed content"
+else
+  bad "REGRESSION 1260-A cleanup: $GUARD_PROBE_FILE failed to restore to its committed content"
+fi
+
+echo
+echo "=== REGRESSION 1260-B: a clean-tree interrupted mutation still restores ==="
+if git -C "$REPO_DIR" diff --quiet -- "$GUARD_PROBE_FILE" 2>/dev/null; then
+  ok "REGRESSION 1260-B setup: $GUARD_PROBE_FILE is clean before the interrupted-copy case"
+else
+  bad "REGRESSION 1260-B setup: $GUARD_PROBE_FILE is unexpectedly dirty before the interrupted-copy case"
+fi
+# The copy lives beside the original (scripts/tests/) rather than under a
+# bare mktemp -d: this suite's own SCRIPT_DIR/REPO_DIR derivation is computed
+# from $0's directory (see the top of this file), so a copy invoked from an
+# unrelated temp directory would derive the WRONG $REPO_DIR and its inherited
+# cleanup() would silently no-op against some other path instead of this
+# repository. Placing the copy at the same depth keeps that derivation
+# correct while still being disposable (removed at the end of this case).
+CASEB_COPY="$SCRIPT_DIR/tests/.regression-1260-caseb-copy-attribution.sh"
+cp "$REPO_DIR/scripts/tests/test-usage-attribution.sh" "$CASEB_COPY"
+CASEB_INSERT_FILE="$HELPERS_DIR/regression-1260-caseb-insert.txt"
+cat > "$CASEB_INSERT_FILE" <<EOF
+printf '\n// #1260 case-B interrupt marker\n' >> "$GUARD_PROBE_FILE"
+exit 1
+EOF
+node -e '
+const fs = require("fs");
+const copyPath = process.argv[1];
+const insertPath = process.argv[2];
+const anchor = "MUTATION_GUARD_CONFIRMED_CLEAN=1";
+const insertText = fs.readFileSync(insertPath, "utf8").replace(/\n$/, "");
+const lines = fs.readFileSync(copyPath, "utf8").split("\n");
+const idx = lines.findIndex((l) => l.trim() === anchor);
+if (idx === -1) { console.error("FATAL: anchor line (" + anchor + ") not found in the case-B copy"); process.exit(1); }
+lines.splice(idx + 1, 0, insertText);
+fs.writeFileSync(copyPath, lines.join("\n"));
+' "$CASEB_COPY" "$CASEB_INSERT_FILE"
+CASEB_OUT="$HELPERS_DIR/regression-1260-caseb.out"
+if bash "$CASEB_COPY" >"$CASEB_OUT" 2>&1; then
+  bad "REGRESSION 1260-B: the case-B copy should have exited non-zero (interrupted right after its own mutation) but exited 0"
+else
+  ok "REGRESSION 1260-B: the case-B copy exits non-zero, as expected for the modeled interruption"
+fi
+if git -C "$REPO_DIR" diff --quiet -- "$GUARD_PROBE_FILE" 2>/dev/null; then
+  ok "REGRESSION 1260-B: $GUARD_PROBE_FILE is restored to its committed content by the copy's inherited EXIT trap despite the modeled interruption"
+else
+  bad "REGRESSION 1260-B: $GUARD_PROBE_FILE was NOT restored after the modeled interruption" "$(cat "$CASEB_OUT")"
+  git -C "$REPO_DIR" checkout -- "$GUARD_PROBE_FILE" 2>/dev/null || true
+fi
+rm -f "$CASEB_COPY"
+if git -C "$REPO_DIR" diff --quiet -- "$GUARD_PROBE_FILE" 2>/dev/null; then
+  ok "REGRESSION 1260-B cleanup: $GUARD_PROBE_FILE's final state is clean"
+else
+  bad "REGRESSION 1260-B cleanup: $GUARD_PROBE_FILE is unexpectedly dirty after the case-B regression section"
+  git -C "$REPO_DIR" checkout -- "$GUARD_PROBE_FILE" 2>/dev/null || true
 fi
 
 # =============================================================================
