@@ -105,6 +105,16 @@ is what actually determines the check's bucket (`pass`, `fail`, or
 required check that failed throughout the wait window must not be
 reported as still pending.
 
+A non-`8` exit is not automatically a resolved-failing check, though:
+`gh help exit-codes` documents that any command failure — network
+hiccup, timeout, rate-limit — also returns the same generic exit `1`
+as a genuine check failure, so the loop alone cannot tell the two
+apart. The R2 direct, synchronous query is what disambiguates them,
+because it must cite an actual named check and its status; if that
+final query itself comes back as a bare connection error rather than
+a named check/status, treat it as a cue to retry the query, not as
+grounds to report the check failed or pending.
+
 ### 2. Read the project conventions
 
 Open `AGENTS.md` at the repo root (or the project's equivalent) and
