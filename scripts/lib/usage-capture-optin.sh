@@ -121,25 +121,34 @@ def uc_paths: [uc_footprint[] | .handler | uc_path | select(. != null)] | uc_dis
 # after; on the grouped (settings.json) shapes `.hooks` itself only when it was
 # non-empty before and {} after. The flat Copilot manifest keeps `.hooks`: its
 # schema keys belong to the file.
-def uc_strip_group:
+# Generic strip machinery, parameterized on an ownership predicate, so the R12
+# pruning rule (a group is dropped only when it held >= 1 handler before and
+# none after; likewise an event, and `.hooks` itself on a grouped shape) is
+# written once. uc_strip / uc_strip_group keep their names and uc_is_capture
+# for every existing caller; sr_strip (#1234) reuses the same machinery with
+# sr_is_own instead of duplicating it.
+def uc_strip_group_by(is_own):
   if type == "object" and (.hooks | type) == "array" then
     (.hooks | length > 0) as $had
-    | .hooks |= map(select(uc_is_capture | not))
+    | .hooks |= map(select(is_own | not))
     | if $had and (.hooks | length) == 0 then empty else . end
   else . end;
 
-def uc_strip:
+def uc_strip_by(is_own):
   if (.hooks | type) == "object" then
     (.hooks | length > 0) as $had
     | .hooks |= with_entries(
         if (.value | type) == "array" then
           (.value | length > 0) as $evhad
-          | .value |= (if $shape == "flat" then map(select(uc_is_capture | not))
-                       else map(uc_strip_group) end)
+          | .value |= (if $shape == "flat" then map(select(is_own | not))
+                       else map(uc_strip_group_by(is_own)) end)
           | if $evhad and (.value | length) == 0 then empty else . end
         else . end)
     | if $shape != "flat" and $had and .hooks == {} then del(.hooks) else . end
   else . end;
+
+def uc_strip_group: uc_strip_group_by(uc_is_capture);
+def uc_strip: uc_strip_by(uc_is_capture);
 
 # Add one {event, selector, handler}. Grouped shapes join the FIRST group whose
 # selector equals the given one, else append a new selector + {hooks:[h]} group.
@@ -162,6 +171,46 @@ def uc_add($x):
     end;
 
 def uc_reinject($fp): uc_strip | reduce $fp[] as $x (.; uc_add($x));
+
+# A session-recording handler this framework wrote: the WHOLE command is an
+# optional `VAR=value…`/`env`/`bash|sh` prefix (the same `pre` shape
+# uc_sig_re anchors, so an env-var prefix on Gemini or a bare `bash` wrapper
+# on Claude is free to vary) around a path — double-quoted, single-quoted or
+# bare — ending in `/mempalace-transcript.sh` or `/worktree-git-guard.sh`,
+# and nothing else (plan/1234#1 v1-F1: an EARLIER, unanchored version of this
+# predicate matched anywhere in the command, so an operator hook that merely
+# chained its own script with `&& bash .../mempalace-transcript.sh` was
+# misclassified as framework-owned and silently dropped — a narrower
+# recurrence of #1234 itself). These commands carry no distinguishing argv of
+# their own — unlike the `<cli-id> <Event>` a capture command always carries
+# (R10), they take none, because the script reads the firing event from its
+# own hook payload — so anchoring the path suffix as the ENTIRE remainder of
+# the command is what makes this "content, never position" rather than
+# "substring, anywhere", the same discipline uc_sig_re already applies to its
+# own `<cli-id> <Event>` suffix. An installed copy sits under a `hooks/`
+# directory on both CLIs, but nothing here assumes that literal segment
+# name, only that a `/` precedes the basename.
+def sr_is_own:
+  uc_is_command
+  and (.command | test(
+    "\\A\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh)\\s+)?"
+    + "(?:\"[^\"]*/(?:mempalace-transcript|worktree-git-guard)\\.sh\""
+    + "|\\x27[^\\x27]*/(?:mempalace-transcript|worktree-git-guard)\\.sh\\x27"
+    + "|[^\\s\"\\x27]*/(?:mempalace-transcript|worktree-git-guard)\\.sh)"
+    + "\\s*\\z"));
+
+def sr_strip: uc_strip_by(sr_is_own);
+
+# Refresh, in place, the session-recording handlers this run owns: strip
+# every handler sr_is_own picks out, then add manifest $m handlers back
+# fresh (uc_add joins the existing group at the same selector — matcher on
+# Claude, the sole `{hooks:[...]}` group on Gemini — or opens a new one).
+# Anything uc_strip_by(sr_is_own) does not select is left exactly where it
+# was: a hook an operator registered on the same event, and a registered
+# usage-capture command, survive without help from uc_reinject (#1234 — the
+# merge no longer replaces the whole per-event array, only the entries this
+# framework owns in it).
+def sr_merge($m): sr_strip | reduce ($m | uc_all_handlers) as $x (.; uc_add($x));
 
 # keep (a): re-point, in place, a capture handler whose path vanished. Only the
 # path token changes (it comes back double-quoted); prefix and argv are kept.
@@ -671,11 +720,15 @@ usage_capture_apply() {
 }
 
 # merge_session_recording_hooks <cli> <config> <patched_manifest> [<env_patch_json>]
-# The session-recording write of all three CLIs. It keeps each CLI's merge
-# semantics (Claude/Gemini `.[0] * .[1]`, Copilot full replace) and re-injects
-# the capture footprint it found, so it never removes, duplicates or re-points
-# a registered capture command (R8). Refuses (returns 1, writes nothing) on a
-# config that is not a JSON object.
+# The session-recording write of all three CLIs. Claude and Gemini refresh
+# this framework's own session-recording handlers in place (sr_merge, keyed
+# on sr_is_own) instead of replacing the whole per-event array, so an
+# operator's own hook registered on the same event survives a run that
+# accepts or re-accepts session recording (#1234); Copilot keeps its full
+# replace. uc_reinject($fp) on top of that additionally re-asserts the
+# capture footprint it found canonically, so it never removes, duplicates or
+# re-points a registered capture command (R8). Refuses (returns 1, writes
+# nothing) on a config that is not a JSON object.
 merge_session_recording_hooks() {
   local cli="$1" config="$2" patched="$3" env_patch="${4:-}" shape fp rc=0 created=0 program lg
   shape="$(_uc_shape "$cli")" || return 1
@@ -694,8 +747,8 @@ merge_session_recording_hooks() {
     return 1
   fi
   case "$cli" in
-    claude)  program='(. * $m[0]) | (if ($patch | length) > 0 then .env = ((.env // {}) + $patch) else . end) | uc_reinject($fp)' ;;
-    gemini)  program='(. * $m[0]) | uc_reinject($fp)' ;;
+    claude)  program='sr_merge($m[0]) | (if ($patch | length) > 0 then .env = ((.env // {}) + $patch) else . end) | uc_reinject($fp)' ;;
+    gemini)  program='sr_merge($m[0]) | uc_reinject($fp)' ;;
     copilot) program='$m[0] | uc_reinject($fp)' ;;
   esac
   # The same legacy classification the footprint above was read with, so the
