@@ -71,6 +71,7 @@ All variables are optional and have safe defaults.
 - **`CREWRIG_USAGE_MIRROR_BACKOFF_MS`** — Backoff duration after MemPalace becomes unreachable before attempting another catch-up. Defaults to `600000` (10 minutes). While this duration is active, no new catch-up is spawned, though pending markers accumulate.
 - **`CREWRIG_USAGE_MIRROR_LOCK_STALE_MS`** — Staleness threshold for the mirror catch-up lock. A lock older than this is considered stale and may be forcibly acquired. Defaults to `900000` (15 minutes).
 - **`CREWRIG_USAGE_MIRROR_WAIT_MS`** — Only consulted by an *explicit* catch-up (see below). Bound on how long it polls a contended lock before giving up. Defaults to `CREWRIG_USAGE_MIRROR_LOCK_STALE_MS`, so in practice an explicit catch-up always succeeds — a peer that never releases the lock is, by definition, stale by then.
+- **`CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER`** — Count of consecutive per-record `tool-error` answers within a single catch-up pass before the pass stops early, to bound the cost of a persistently failing backlog. A failing record's pending marker has its mtime bumped so it is deprioritized behind the rest of the backlog on the next pass, rather than blocking it forever. Defaults to `5`.
 
 ### Drain (spool → journal)
 
@@ -141,6 +142,8 @@ Whichever caller does acquire the lock drains `pending/` in a loop — repeating
 When a mirror operation fails with a transport error (daemon unreachable), the `unreachable.stamp` file is written. Subsequent write operations check this stamp's age; if it is younger than the backoff window, no new catch-up is spawned, though pending markers continue to accumulate. Once the backoff expires, the next write spawns a fresh catch-up attempt. This prevents thundering-herd spawning when the daemon is down.
 
 When MemPalace answers but cannot serve the call at all (an error without a `success` field, `isError`, or a malformed reply), the catch-up stops its pass after that one call, without writing the stamp, so a backlog costs at most one call per write. A failure MemPalace reports for one record (`success: false`) is logged, and the pass moves on to the next record.
+
+When MemPalace keeps answering a per-record `tool-error` for several markers in a row, the catch-up stops that pass after `CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER` (default 5) consecutive failures, without writing the stamp — the daemon is reachable, only that record is not. Each failing marker's own mtime is bumped so the next catch-up pass tries markers in a different order, moving the just-failed ones behind whatever else is pending. Catch-up passes run only on a new write's detached spawn or an explicit operator/CI invocation (`bash scripts/usage-mirror.sh`, `task usage:mirror`) — there is no scheduled or cron-triggered run — so a healthy tail stuck behind more failing markers than the breaker's threshold stays pending until one of those triggers actually fires, not on a fixed timer.
 
 ### Drawer structure
 

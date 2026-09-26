@@ -25,22 +25,42 @@
 //     malformed MEMPALACE_MCP_PORT), a connection refusal, a timeout, a
 //     non-2xx status or a body that is not JSON. mirror.js stamps
 //     unreachable.stamp and stops; prune.js refuses.
-//   - `tool-error` — this one call failed: a JSON-RPC `error` answer
-//     (left as is, see #1240), a payload with `success: false` (every
-//     handled per-call failure of both mutating tools carries it), or a
-//     delete answered as a dry run. mirror.js logs it and moves on to the
-//     next record; prune.js refuses.
+//   - `tool-error` — this one call failed: a JSON-RPC `error` answer whose
+//     `code` is in `PER_CALL_JSONRPC_ERROR_CODES` (below), a payload with
+//     `success: false` (every handled per-call failure of both mutating
+//     tools carries it), or a delete answered as a dry run. mirror.js logs
+//     it and moves on to the next record; prune.js refuses.
 //   - `tool-unavailable` — the daemon answered but the tool cannot serve
 //     ANY call right now: a payload with no `success` key (`_no_palace()`
 //     and backend errors), `isError: true`, a malformed or empty envelope,
-//     or an exception while handling the response. mirror.js stops its
-//     pass after that one call WITHOUT stamping (the daemon is reachable);
-//     prune.js refuses.
-// `isError` is classified as palace-wide only because MemPalace 3.6.0
-// never sets it; MCP gives it per-call semantics, so a MemPalace that
-// adopts it for per-record failures would make one bad record stop every
-// pass. #1240 re-examines this classification together with the JSON-RPC
-// preflight refusals.
+//     an exception while handling the response, or a JSON-RPC `error`
+//     answer whose `code` is NOT in `PER_CALL_JSONRPC_ERROR_CODES`. mirror.js
+//     stops its pass after that one call WITHOUT stamping (the daemon is
+//     reachable); prune.js refuses.
+//
+// `PER_CALL_JSONRPC_ERROR_CODES` is a CLOSED allow-list: `-32000` (the
+// generic per-call tool exception) and `-32602` (invalid params) are the
+// only codes classified `tool-error`. Every other code — including the
+// three preflight refusals MemPalace 3.6.0 answers BEFORE it ever reaches
+// tool logic (`-32001` peer holds the writer lease, `-32002` SQLite
+// integrity failure, `-32003` read-only palace) — defaults to
+// `tool-unavailable`, and so does any future or otherwise unrecognized
+// code. These three refusals are palace-wide conditions, not a single
+// record's failure: every later call in the same pass would fail the same
+// way, so classifying them as `tool-error` (continue to the next record)
+// would re-open the O(N²) cost #1240 exists to close, walking the entire
+// backlog one failing call at a time instead of stopping after the first.
+// Defaulting an unrecognized code to `tool-unavailable` is the
+// conservative choice for the same reason: worst case it wastes one
+// pass-stop on a code that turns out to be per-call, whereas
+// misclassifying a palace-wide refusal as `tool-error` reopens exactly
+// that cost.
+//
+// `isError` in the installed MemPalace 3.6.0 (`mempalace/mcp_server.py`) is
+// never set (confirmed: 0 occurrences), so treating it as `tool-unavailable`
+// (decodeToolResult(), below) remains correct and needs no code change: MCP
+// itself defines `isError` as per-call, but since MemPalace never emits it,
+// there is no live case where the current classification causes a problem.
 //
 // The two mutating wrappers require a positive acknowledgment
 // (requireSuccess(): `success: true`), and deleteBySource() also rejects an
@@ -59,6 +79,11 @@ const path = require('path');
 const MCP_DAEMON_HOST_DEFAULT = '127.0.0.1';
 const MCP_DAEMON_PORT_DEFAULT = '41893';
 const CALL_TIMEOUT_MS = 2000;
+
+// The closed per-call allow-list — see the header comment above. Every
+// other JSON-RPC error code, including the three preflight refusals
+// (-32001/-32002/-32003), defaults to `tool-unavailable`.
+const PER_CALL_JSONRPC_ERROR_CODES = new Set([-32000, -32602]);
 
 function endpoint() {
   return {
@@ -197,7 +222,8 @@ function call(tool, args) {
                 return;
               }
               if (parsed && parsed.error) {
-                settle({ ok: false, kind: 'tool-error', message: parsed.error.message || 'tool error' });
+                const kind = PER_CALL_JSONRPC_ERROR_CODES.has(parsed.error.code) ? 'tool-error' : 'tool-unavailable';
+                settle({ ok: false, kind, message: parsed.error.message || 'tool error' });
                 return;
               }
               settle(decodeToolResult(parsed));

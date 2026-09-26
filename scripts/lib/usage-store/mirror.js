@@ -35,6 +35,16 @@ function envMs(name, def) {
   return Number.isFinite(n) ? n : def;
 }
 
+// envInt(name, def) — same shape as envMs() above, for a plain integer
+// count (the tool-error breaker threshold) rather than a millisecond
+// duration, hence a distinct helper.
+function envInt(name, def) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return def;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : def;
+}
+
 // --- Wing resolution (7a) ----------------------------------------------------
 
 const inProcessWingCache = new Map();
@@ -339,6 +349,20 @@ function clearUnreachableStamp() {
 
 // --- Catch-up (7d) -----------------------------------------------------------
 
+// A filesystem with coarse mtime resolution (e.g. FAT32's ~2s granularity)
+// can tie-break a touch against a same-tick creation, falling back to
+// readdir order for that one comparison. Self-healing: a touched marker's
+// mtime keeps advancing relative to untouched ones on every subsequent
+// failure, so this delays convergence by at most a pass or two — it does
+// not reopen D1h's "forever" failure mode.
+function markerMtimeMs(cli, per, recordId) {
+  try {
+    return fs.statSync(layout.pendingMarker(cli, per, recordId)).mtimeMs;
+  } catch (err) {
+    return Infinity;
+  }
+}
+
 function listMarkers(root) {
   const out = [];
   let clis;
@@ -368,7 +392,26 @@ function listMarkers(root) {
       }
     }
   }
+  // Ascending by pending-marker mtime: a marker whose mtime was bumped by
+  // touchPendingMarkerMtime() (a prior tool-error) sorts behind the rest of
+  // the backlog on this and later catch-up passes, instead of occupying
+  // the head of readdir order forever (see markerMtimeMs() above).
+  out.sort((a, b) => markerMtimeMs(a.cli, a.per, a.recordId) - markerMtimeMs(b.cli, b.per, b.recordId));
   return out;
+}
+
+// touchPendingMarkerMtime(cli, per, recordId) — best-effort: bumps a
+// failing record's pending marker to the current time so listMarkers()'s
+// ascending sort deprioritizes it behind the rest of the backlog on the
+// next catch-up pass. Wrapped in try/catch: a racing prune or an already
+// vanished marker must not throw.
+function touchPendingMarkerMtime(cli, per, recordId) {
+  try {
+    const now = new Date();
+    fs.utimesSync(layout.pendingMarker(cli, per, recordId), now, now);
+  } catch (err) {
+    // best-effort — a racing prune or a vanished marker is not our problem
+  }
 }
 
 async function mirrorOneMarker(cli, per, recordId) {
@@ -377,7 +420,7 @@ async function mirrorOneMarker(cli, per, recordId) {
   if (!record) {
     // The entry is gone — most likely a prune raced ahead of this catch-up.
     // The prune owns removing this marker; leave it for the prune to find.
-    return { stop: false };
+    return { stop: false, kind: 'missing-entry' };
   }
 
   const wingInfo = readOrRepairSidecar(cli, per, recordId, record);
@@ -392,13 +435,18 @@ async function mirrorOneMarker(cli, per, recordId) {
   if (!result.ok) {
     if (result.kind === 'tool-error') {
       // A per-record failure (R13): log and continue, leaving the marker in
-      // pending/ for the next catch-up.
+      // pending/ for the next catch-up, but deprioritize it (bump its
+      // marker's mtime) so a chronically-failing record does not occupy
+      // the head of the next pass's ascending-mtime order forever (see
+      // listMarkers()/markerMtimeMs() above). walkPending() counts
+      // consecutive tool-error outcomes to drive its breaker.
       console.error(`usage-store mirror: ${cli}/${per}/${recordId} failed: ${result.message || 'unknown error'}`);
-      return { stop: false };
+      touchPendingMarkerMtime(cli, per, recordId);
+      return { stop: false, kind: 'tool-error' };
     }
     if (result.kind === 'transport') {
       touchUnreachableStamp();
-      return { stop: true };
+      return { stop: true, kind: 'transport' };
     }
     // tool-unavailable, or any kind added later (mcp.js header): the daemon
     // answered but cannot serve the tool at all, so every later call would
@@ -409,7 +457,7 @@ async function mirrorOneMarker(cli, per, recordId) {
       `usage-store mirror: MemPalace cannot serve mempalace_add_drawer (${result.message || 'unknown error'}) — ` +
         `stopping this pass; ${cli}/${per}/${recordId} and every later marker stay pending.`
     );
-    return { stop: true };
+    return { stop: true, kind: 'tool-unavailable' };
   }
 
   clearUnreachableStamp();
@@ -421,23 +469,49 @@ async function mirrorOneMarker(cli, per, recordId) {
   } catch (err) {
     // a racing process already moved it — the drawer exists either way
   }
-  return { stop: false };
+  return { stop: false, kind: 'success' };
 }
 
+// walkPending() — one pass over the current pending/ backlog. Beyond the
+// existing per-call `stop` signal (a stamped `transport` failure, or a
+// `tool-unavailable` answer), this tracks a running count of CONSECUTIVE
+// `tool-error` outcomes and trips a breaker once it reaches
+// CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER (default 5): a chronically
+// failing backlog would otherwise cost one call per record, every pass,
+// forever. The counter resets on any non-tool-error outcome (success
+// included), so only a genuine RUN of failures trips it.
 async function walkPending() {
   const markers = listMarkers(layout.mirrorPendingRoot());
+  const threshold = envInt('CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER', 5);
+  let consecutiveToolErrors = 0;
   for (const m of markers) {
     const r = await mirrorOneMarker(m.cli, m.per, m.recordId);
+    if (r.kind === 'tool-error') {
+      consecutiveToolErrors += 1;
+      if (consecutiveToolErrors >= threshold) {
+        console.error(
+          `usage-store mirror: breaker tripped after ${threshold} consecutive tool-error answers — stopping this pass early.`
+        );
+        break;
+      }
+    } else {
+      consecutiveToolErrors = 0;
+    }
     if (r.stop) break;
   }
 }
 
 // drainPending() — repeats walkPending() until pending/ is empty or a pass
-// makes no progress (a stopping failure breaks walkPending() early, so the
-// count is unchanged and this stops rather than spinning). This is what
-// lets the lock's winner — write-time detached child or explicit run alike
-// — absorb markers created by sibling writes while it was working, instead
-// of leaving them for "the next write" to spawn a fresh catch-up for.
+// makes no progress (a stopping failure, OR the tool-error breaker tripping,
+// breaks walkPending() early). A breaker-triggered stop is still compatible
+// with the `after >= before ⇒ stop` progress check below: every record that
+// succeeded before the breaker tripped moved from pending/ to mirrored/, so
+// `after < before` unless literally zero records succeeded that pass — in
+// which case stopping is correct anyway, since another pass would only
+// repeat the same run of failures. This is what lets the lock's winner —
+// write-time detached child or explicit run alike — absorb markers created
+// by sibling writes while it was working, instead of leaving them for "the
+// next write" to spawn a fresh catch-up for.
 async function drainPending() {
   for (;;) {
     const before = listMarkers(layout.mirrorPendingRoot()).length;

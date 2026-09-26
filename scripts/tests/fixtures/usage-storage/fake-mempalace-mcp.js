@@ -61,7 +61,7 @@
 //       delete calls 1..N succeed, N+1.. answer HTTP 500, which the client
 //       reads as `transport` (case (e)). Evaluated BEFORE toolFailure.
 //   {"toolFailure": {"tool": "<mempalace_add_drawer|mempalace_delete_by_source>",
-//                    "shape": "<shape>" | null}}
+//                    "shape": "<shape>" | null, "code": <int>}}
 //       while a shape is armed, every call to that tool answers HTTP 200 with
 //       the shape, mutates no drawer, and still logs one line. Shapes:
 //         success-false   — payload {success: false, error}: a per-record
@@ -74,8 +74,31 @@
 //         not-json-text   — raw result {content: [text 'not json']}.
 //         no-text-content — raw result {content: []}.
 //         no-result       — whole response {jsonrpc, id}: no result, no error.
+//         jsonrpc-error   — a raw JSON-RPC `error` envelope (issue #1240):
+//                           {jsonrpc, id, error: {code: <"code">, message}},
+//                           simulating a preflight refusal or a per-call
+//                           exception raised by the real daemon BEFORE the
+//                           tool ever runs. `code` is REQUIRED (an integer)
+//                           when this shape is armed — a missing/non-integer
+//                           code answers HTTP 400. add_drawer only.
 //       An unknown tool or shape answers HTTP 400, so a typo in the suite
 //       aborts it (curl -f under set -e) instead of silently arming nothing.
+//   {"sourceToolFailure": {"tool": "<mempalace_add_drawer|mempalace_delete_by_source>",
+//                          "shape": "<shape>", "code": <int>|null,
+//                          "recordIds": ["<recordId>", ...]} | null}
+//       issue #1240, case (j): like `toolFailure`, but scoped to specific
+//       records instead of the whole tool. `recordIds` is matched against
+//       the CALL's own recordId, derived from `args.source_file`'s basename
+//       (`layout.journalEntry()`'s own shape: `<recordId>.json`) with the
+//       `.json` suffix stripped — never re-derived any other way, so a test
+//       can point this at exactly the record ids write_quiet_record() (or
+//       the sibling suite's own driver) printed back to it. A call whose
+//       recordId is IN the set answers with `shape` (source-specific,
+//       checked FIRST); every other call to that tool falls through to the
+//       tool-wide `toolFailure` control (if armed) or the normal success
+//       path. `null` clears both tools' source-scoped controls in one shot.
+//       Same shape/code validation and HTTP 400-on-typo behavior as
+//       `toolFailure` above.
 
 'use strict';
 
@@ -128,8 +151,15 @@ function jsonRpcRawResult(id, result) {
   return JSON.stringify({ jsonrpc: '2.0', id, result });
 }
 
-function jsonRpcError(id, message) {
-  return JSON.stringify({ jsonrpc: '2.0', id, error: { code: -32000, message } });
+// jsonRpcError(id, code, message) — a raw JSON-RPC `error` envelope, used
+// both for this fixture's own protocol-level answers (unsupported method,
+// unknown tool — always code -32000, unchanged behavior) and for the
+// `jsonrpc-error` toolFailure/sourceToolFailure shape (issue #1240), which
+// lets a test pick ANY code, including the ones mcp.js's closed allow-list
+// classifies as `tool-unavailable` (-32001/-32002/-32003, or an unknown
+// code such as -32099).
+function jsonRpcError(id, code, message) {
+  return JSON.stringify({ jsonrpc: '2.0', id, error: { code, message } });
 }
 
 function dryRunPayload(sourceFile, matchCount) {
@@ -165,8 +195,21 @@ function resolveDryRun(args) {
 let deleteCallsSoFar = 0;
 let failDeleteAfter = null; // null = never fail; N = calls 1..N succeed, N+1.. fail
 const toolFailure = { mempalace_add_drawer: null, mempalace_delete_by_source: null };
+const toolFailureCode = { mempalace_add_drawer: null, mempalace_delete_by_source: null };
+// sourceToolFailure — issue #1240, case (j): per-record poisoning, checked
+// BEFORE the tool-wide toolFailure control. null (the default) means no
+// record is source-poisoned for that tool.
+const sourceToolFailure = { mempalace_add_drawer: null, mempalace_delete_by_source: null };
 const SHAPES = {
-  mempalace_add_drawer: ['success-false', 'no-success-key', 'is-error', 'not-json-text', 'no-text-content', 'no-result'],
+  mempalace_add_drawer: [
+    'success-false',
+    'no-success-key',
+    'is-error',
+    'not-json-text',
+    'no-text-content',
+    'no-result',
+    'jsonrpc-error',
+  ],
   mempalace_delete_by_source: [
     'success-false',
     'no-success-key',
@@ -175,11 +218,24 @@ const SHAPES = {
     'not-json-text',
     'no-text-content',
     'no-result',
+    'jsonrpc-error',
   ],
 };
 
-// injectedBody(shape, id, args) — the HTTP 200 body for an armed shape.
-function injectedBody(shape, id, args) {
+// extractRecordId(sourceFile) — layout.journalEntry()'s own shape is
+// <recordId>.json; this is the ONLY place a recordId is derived from a
+// source_file, matching every other call site's convention of reading an
+// already-known id rather than re-deriving one (mirror.js's own header
+// comment, v2-F1). Returns null for a missing/malformed source_file rather
+// than throwing — an unmatched recordId simply never matches a poisoned set.
+function extractRecordId(sourceFile) {
+  if (typeof sourceFile !== 'string' || !sourceFile) return null;
+  return path.basename(sourceFile).replace(/\.json$/, '');
+}
+
+// injectedBody(shape, id, args, code) — the HTTP 200 body for an armed
+// shape. `code` is only consulted by the `jsonrpc-error` shape.
+function injectedBody(shape, id, args, code) {
   switch (shape) {
     case 'success-false':
       return jsonRpcResult(id, { success: false, error: 'injected tool failure (test control)' });
@@ -197,6 +253,8 @@ function injectedBody(shape, id, args) {
       return jsonRpcRawResult(id, { content: [] });
     case 'no-result':
       return JSON.stringify({ jsonrpc: '2.0', id });
+    case 'jsonrpc-error':
+      return jsonRpcError(id, code, 'injected tool failure (test control)');
     default:
       throw new Error(`unknown toolFailure shape: ${shape}`);
   }
@@ -204,7 +262,10 @@ function injectedBody(shape, id, args) {
 
 function handleAddDrawer(id, args) {
   const { wing, room, content, source_file: sourceFile, added_by: addedBy } = args || {};
-  const shape = toolFailure.mempalace_add_drawer;
+  const recordId = extractRecordId(sourceFile);
+  const srcFail = sourceToolFailure.mempalace_add_drawer;
+  const poisoned = !!(srcFail && recordId && srcFail.recordIds.has(recordId));
+  const shape = poisoned ? srcFail.shape : toolFailure.mempalace_add_drawer;
   if (shape) {
     appendLog({
       tool: 'mempalace_add_drawer',
@@ -213,8 +274,9 @@ function handleAddDrawer(id, args) {
       source_file: sourceFile,
       added_by: addedBy,
       injected_tool_failure: shape,
+      injected_source_poisoned: poisoned,
     });
-    return injectedBody(shape, id, args);
+    return injectedBody(shape, id, args, poisoned ? srcFail.code : toolFailureCode.mempalace_add_drawer);
   }
 
   const drawId = drawerId(wing, room, content);
@@ -247,15 +309,19 @@ function handleDeleteBySource(id, args) {
 
   const { source_file: sourceFile } = args || {};
   const dryRun = resolveDryRun(args);
-  const shape = toolFailure.mempalace_delete_by_source;
+  const recordId = extractRecordId(sourceFile);
+  const srcFail = sourceToolFailure.mempalace_delete_by_source;
+  const poisoned = !!(srcFail && recordId && srcFail.recordIds.has(recordId));
+  const shape = poisoned ? srcFail.shape : toolFailure.mempalace_delete_by_source;
   if (shape) {
     appendLog({
       tool: 'mempalace_delete_by_source',
       source_file: sourceFile,
       dry_run: dryRun,
       injected_tool_failure: shape,
+      injected_source_poisoned: poisoned,
     });
-    return injectedBody(shape, id, args);
+    return injectedBody(shape, id, args, poisoned ? srcFail.code : toolFailureCode.mempalace_delete_by_source);
   }
 
   if (dryRun) {
@@ -318,10 +384,59 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ ok: false, error: `unknown toolFailure tool/shape: ${tf.tool}/${tf.shape}` }));
           return;
         }
+        if (tf.shape === 'jsonrpc-error' && !Number.isInteger(tf.code)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: `jsonrpc-error requires an integer code, got: ${tf.code}` }));
+          return;
+        }
         toolFailure[tf.tool] = tf.shape;
+        toolFailureCode[tf.tool] = tf.shape === 'jsonrpc-error' ? tf.code : null;
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'sourceToolFailure')) {
+        const stf = body.sourceToolFailure;
+        if (stf === null) {
+          sourceToolFailure.mempalace_add_drawer = null;
+          sourceToolFailure.mempalace_delete_by_source = null;
+        } else {
+          const allowed = SHAPES[stf.tool];
+          if (!allowed || !allowed.includes(stf.shape) || !Array.isArray(stf.recordIds)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                ok: false,
+                error: `unknown sourceToolFailure tool/shape or non-array recordIds: ${stf.tool}/${stf.shape}`,
+              })
+            );
+            return;
+          }
+          if (stf.shape === 'jsonrpc-error' && !Number.isInteger(stf.code)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: `jsonrpc-error requires an integer code, got: ${stf.code}` }));
+            return;
+          }
+          sourceToolFailure[stf.tool] = {
+            shape: stf.shape,
+            code: stf.shape === 'jsonrpc-error' ? stf.code : null,
+            recordIds: new Set(stf.recordIds),
+          };
+        }
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, failDeleteAfter, toolFailure }));
+      res.end(
+        JSON.stringify({
+          ok: true,
+          failDeleteAfter,
+          toolFailure,
+          sourcePoisonedCounts: {
+            mempalace_add_drawer: sourceToolFailure.mempalace_add_drawer
+              ? sourceToolFailure.mempalace_add_drawer.recordIds.size
+              : 0,
+            mempalace_delete_by_source: sourceToolFailure.mempalace_delete_by_source
+              ? sourceToolFailure.mempalace_delete_by_source.recordIds.size
+              : 0,
+          },
+        })
+      );
     });
     return;
   }
@@ -353,7 +468,7 @@ const server = http.createServer((req, res) => {
 
     if (body.method !== 'tools/call') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(jsonRpcError(body.id, `unsupported method: ${body.method}`));
+      res.end(jsonRpcError(body.id, -32000, `unsupported method: ${body.method}`));
       return;
     }
 
@@ -361,7 +476,7 @@ const server = http.createServer((req, res) => {
     const handler = TOOLS[toolName];
     if (!handler) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(jsonRpcError(body.id, `unknown tool: ${toolName}`));
+      res.end(jsonRpcError(body.id, -32000, `unknown tool: ${toolName}`));
       return;
     }
     const result = handler(body.id, body.params.arguments);
