@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.0"
+    version: "1.5.0"
 ---
 
 
@@ -68,6 +68,32 @@ review needs to see that signal in writing.
 mandatory reading narrows (step 3), but the CI state of the artifact's
 current head stays inside it on every pass. There is no pass on which
 this preflight is skippable.
+
+**Iteration-label self-heal.** Before minting any finding identifier (the
+`i<N>-F<M>` / `s<N>-F<M>` scheme defined in *Finding class taxonomy*
+below), check whether the pull request carries any label matching
+`iter:N`:
+
+```bash
+gh pr view <number> --repo <owner/repo> --json labels --jq '.labels[].name' | grep -E '^iter:[0-9]+$'
+```
+
+- If no `iter:N` label is present, apply `iter:1` yourself before
+  proceeding: `gh pr edit <number> --repo <owner/repo> --add-label
+  "iter:1"`. This backstops the orchestrator's own labeling step in
+  `docs/retroactive-loop.md` → *REVIEW launch trigger* — this skill's
+  own identifier-minting scheme depends on the label, so it must never
+  be missing when this skill runs.
+- If an `iter:N` label is already present, leave it untouched and
+  derive every finding identifier this pass mints from its `<N>` value.
+- If the `gh pr edit --add-label` call itself fails (missing label
+  definition, permission denial, connectivity error), state the
+  failure explicitly in the verdict's CI status section rather than
+  silently proceeding as if `iter:1` had been applied — do not mint
+  finding identifiers under an assumed `N` in that case.
+- This check runs on **every** pass against a given PR, not only a
+  seat's first pass — the bound in step 3 narrows re-examination of
+  file content, never this label check.
 
 ### 2. Read the project conventions
 
@@ -256,9 +282,10 @@ through the matrix as if blocking.
 **Reviewer-minted identifiers.** Alongside the `class:` field, every
 finding carries an identifier that names the pass that raised it and stays
 stable for the life of the seat: `i<N>-F<M>` on the `review` surface,
-where `<N>` is the iteration ordinal the `iter:N` label carried when the
-pass ran; `s<N>-F<M>` on the `specs` surface, where `<N>` is the seat's
-pass ordinal counted across every artifact of that surface. These are what
+where `<N>` is the iteration ordinal the PR's `iter:N` label carries after
+step 1's self-heal check — never assumed or hardcoded; `s<N>-F<M>` on the
+`specs` surface, where `<N>` is the seat's pass ordinal counted across
+every artifact of that surface. These are what
 the next pass's prior-finding audit enumerates
 (`docs/reviewer-seat.md` → *Finding identifiers*).
 

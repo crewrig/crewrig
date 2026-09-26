@@ -101,6 +101,17 @@ is fully autonomous from the moment the PR exists — no user gate fires
 until the max-iteration guardrail (see *Max-iteration guardrail*) or the
 final merge-authorization request.
 
+**Self-healing backstop.** Step 1 above is an orchestrator obligation,
+not a suggestion — but if it is ever missed and the `pr-reviewer` seat
+is spawned before the `iter:1` label lands, the `pr-reviewer` skill's
+own Preflight step notices the missing `iter:N` label and applies
+`iter:1` itself before minting any finding identifier
+(`artifacts/core/skills/pr-reviewer/SKILL.md` → *Iteration-label
+self-heal*). This is a second line of defense, not a relaxation of
+step 1: the orchestrator SHALL still apply the label before spawning.
+The two surfaces stay in lockstep per the *Routing matrix* convention
+below.
+
 ## Routing matrix
 
 The matrix below is the engine's authoritative reference. It is also
