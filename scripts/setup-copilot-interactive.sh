@@ -264,16 +264,15 @@ if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
   # Copy template, patch mcpServers.mempalace.command with the detected
   # python, and substitute __CREWRIG_REPO_DIR__ in args so the
   # http-wrapper resolves to an absolute path (mirrors Gemini setup).
-  jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" --arg py "$MEMPALACE_PYTHON_BIN" --arg repo "$REPO_DIR" \
+  write_json_config_secure_from "$MCP_CONFIG_TARGET" "$MCP_CONFIG_SRC" \
+    --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" --arg py "$MEMPALACE_PYTHON_BIN" --arg repo "$REPO_DIR" \
     '.mcpServers.mempalace.command = "bash"
      | .mcpServers.mempalace.args = ([$tlsexec, $py]
-         + (.mcpServers.mempalace.args | map(gsub("__CREWRIG_REPO_DIR__"; $repo))))' \
-    "$MCP_CONFIG_SRC" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
+         + (.mcpServers.mempalace.args | map(gsub("__CREWRIG_REPO_DIR__"; $repo))))'
   echo "  Installed: mcp-config.json (mempalace patched with detected Python + wrapper path)"
   MEMPALACE_INSTALLED=1
 else
-  jq 'del(.mcpServers.mempalace)' \
-    "$MCP_CONFIG_SRC" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
+  write_json_config_secure_from "$MCP_CONFIG_TARGET" "$MCP_CONFIG_SRC" 'del(.mcpServers.mempalace)'
   echo "  Installed: mcp-config.json (mempalace omitted from mcpServers)"
   MEMPALACE_INSTALLED=0
 fi
@@ -281,13 +280,12 @@ fi
 # Route the sequentialthinking MCP server through tls-exec.sh so its npx package
 # fetch inherits custom-CA trust when consented (spec 0084 R2/R9). Runs in both
 # the mempalace-in and mempalace-out branches.
-jq --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" '
+write_json_config_secure "$MCP_CONFIG_TARGET" --arg tlsexec "$REPO_DIR/scripts/lib/tls-exec.sh" '
   if .mcpServers.sequentialthinking then
     .mcpServers.sequentialthinking.args = ([$tlsexec, .mcpServers.sequentialthinking.command]
       + .mcpServers.sequentialthinking.args)
     | .mcpServers.sequentialthinking.command = "bash"
-  else . end' \
-  "$MCP_CONFIG_TARGET" > "${MCP_CONFIG_TARGET}.tmp" && mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"
+  else . end'
 
 # Fold the operator's pre-existing non-reserved MCP servers back over the
 # framework config (spec 0089). Framework reserved entries (mempalace /

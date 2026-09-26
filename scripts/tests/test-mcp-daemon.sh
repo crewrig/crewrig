@@ -576,8 +576,8 @@ for cli in claude gemini copilot antigravity; do
   case "$cli" in
     claude)      anchor_pat='mcp_register_user mempalace' ; cmp='-lt' ;;
     gemini)      anchor_pat='gemini_settings_write "$SETTINGS_TARGET"' ; cmp='-gt' ;;
-    copilot)     anchor_pat='mv "${MCP_CONFIG_TARGET}.tmp" "$MCP_CONFIG_TARGET"' ; cmp='-gt' ;;
-    antigravity) anchor_pat='mv "${AGY_MCP_CONFIG}.tmp" "$AGY_MCP_CONFIG"' ; cmp='-gt' ;;
+    copilot)     anchor_pat='write_json_config_secure_from "$MCP_CONFIG_TARGET" "$MCP_CONFIG_SRC"' ; cmp='-gt' ;;
+    antigravity) anchor_pat='write_json_config_secure_from "$AGY_MCP_CONFIG" - '"'"'.'"'"'' ; cmp='-gt' ;;
   esac
   # -F, not BRE: the anchors carry literal `{`, which BSD grep parses as the
   # start of an interval expression and fails on.

@@ -119,6 +119,20 @@ MCP_RESERVED_NAMES=(mempalace sequentialthinking)
 #      place (atomic tmp + mv).
 #   $3 backup_ref              — timestamped backup path named in the R9 warning
 #      (may be empty when the target did not pre-exist).
+
+# _mktemp_secret_file <path_prefix>
+# mktemp a private 0600 temp file next to <path_prefix>, for JSON that may
+# hold a secret and must reach jq via --slurpfile rather than --argjson
+# (never on argv — visible to other local users via /proc/<pid>/cmdline or
+# `ps -axo args`). Echoes the path on success; the caller MUST rm -f it when
+# done. Returns 1 on failure.
+_mktemp_secret_file() {
+  local prefix="$1" f
+  f="$(umask 077; mktemp "${prefix}.secret.XXXXXX")" || return 1
+  chmod 600 "$f" || { rm -f "$f"; return 1; }
+  printf '%s' "$f"
+}
+
 merge_preexisting_mcp_servers() {
   local pre_run="$1" config_path="$2" backup_ref="$3"
   [ -n "$pre_run" ] || pre_run='{}'
@@ -155,10 +169,23 @@ merge_preexisting_mcp_servers() {
   # framework reserved entries survive and operator non-reserved entries win
   # verbatim over any same-named framework default (e.g. a hand-customised
   # `github`).
-  jq --argjson pre "$pre_run" --argjson reserved "$reserved_json" \
-    'def preserved: reduce $reserved[] as $r ($pre; del(.[$r]));
-     .mcpServers = ((.mcpServers // {}) + preserved)' \
-    "$config_path" > "${config_path}.tmp" && mv "${config_path}.tmp" "$config_path"
+
+  # $pre_run can hold an operator's own secret (e.g. a non-reserved server's
+  # env token) — write it to a private 0600 temp file and hand it to jq via
+  # --slurpfile, never --argjson, so it never reaches jq's argv.
+  local pre_file
+  pre_file="$(_mktemp_secret_file "$config_path")" || return 1
+  printf '%s' "$pre_run" > "$pre_file" || { rm -f "$pre_file"; return 1; }
+
+  # Written through write_json_config_secure: mktemp'd output name (no
+  # predictable "${config_path}.tmp" a pre-planted symlink could hijack),
+  # 0600, atomic rename, no symlink follow.
+  write_json_config_secure "$config_path" --slurpfile pre "$pre_file" --argjson reserved "$reserved_json" \
+    'def preserved: reduce $reserved[] as $r ($pre[0]; del(.[$r]));
+     .mcpServers = ((.mcpServers // {}) + preserved)'
+  local rc=$?
+  rm -f "$pre_file"
+  return $rc
 }
 
 # --- Org-declared MCP servers (spec 0091) ------------------------------------
@@ -313,12 +340,21 @@ apply_org_mcp_servers() {
     fi
   done
 
+  # $org_native and $preexisting can each hold an operator's or the org
+  # manifest's own secret (env/header values) — private 0600 temp files +
+  # --slurpfile for both, never --argjson, so neither reaches jq's argv.
+  local org_file pre_file
+  org_file="$(_mktemp_secret_file "$config_path")" || return 1
+  printf '%s' "$org_native" > "$org_file" || { rm -f "$org_file"; return 1; }
+  pre_file="$(_mktemp_secret_file "$config_path")" || { rm -f "$org_file"; return 1; }
+  printf '%s' "$preexisting" > "$pre_file" || { rm -f "$org_file" "$pre_file"; return 1; }
+
   # R11 — a non-reserved org name that collides with an operator pre-existing
   # entry wins; warn (non-silent) and point at the backup.
   local collisions c
-  collisions="$(jq -rn --argjson org "$org_native" --argjson pre "$preexisting" --argjson reserved "$reserved_json" '
-    $org | keys[] as $k
-    | select( ($pre | has($k)) and (($reserved | index($k)) | not) )
+  collisions="$(jq -rn --slurpfile org "$org_file" --slurpfile pre "$pre_file" --argjson reserved "$reserved_json" '
+    $org[0] | keys[] as $k
+    | select( ($pre[0] | has($k)) and (($reserved | index($k)) | not) )
     | $k' 2>/dev/null)"
   while IFS= read -r c; do
     [ -n "$c" ] || continue
@@ -326,11 +362,14 @@ apply_org_mcp_servers() {
     echo "           The prior entry is preserved in the timestamped backup: ${backup_ref:-(none)}"
   done <<< "$collisions"
 
-  # Fold: org (minus reserved) wins over whatever the config holds.
-  jq --argjson org "$org_native" --argjson reserved "$reserved_json" \
-    'def org_min_reserved: reduce $reserved[] as $r ($org; del(.[$r]));
-     .mcpServers = ((.mcpServers // {}) + org_min_reserved)' \
-    "$config_path" > "${config_path}.tmp" && mv "${config_path}.tmp" "$config_path"
+  # Fold: org (minus reserved) wins over whatever the config holds, written
+  # through write_json_config_secure (mktemp'd output name, 0600, atomic).
+  write_json_config_secure "$config_path" --slurpfile org "$org_file" --argjson reserved "$reserved_json" \
+    'def org_min_reserved: reduce $reserved[] as $r ($org[0]; del(.[$r]));
+     .mcpServers = ((.mcpServers // {}) + org_min_reserved)'
+  local rc=$?
+  rm -f "$org_file" "$pre_file"
+  return $rc
 }
 
 # org_mcp_to_claude_argv <name> <neutral_entry_json>
@@ -1882,6 +1921,37 @@ write_json_config_secure() {
     echo "  ERROR: $cfg holds a bearer token and could not be restricted to 0600." >&2
     return 1
   }
+  return 0
+}
+
+# write_json_config_secure_from <dest> <src|-> <jq_program> [jq_args...]
+#
+# Same guarantees as write_json_config_secure (mktemp'd tmp name, 0600,
+# atomic rename, no symlink follow) for a config that does not yet exist, or
+# whose entire content is being replaced from a DIFFERENT source rather than
+# transformed in place. <src> is a file path to copy from, or the literal
+# "-" to read the caller's stdin. Stages <src>/stdin into a fresh mktemp'd
+# 0600 file next to <dest>, transforms it in place via write_json_config_secure
+# (reusing its exact, already-tested contract rather than widening it), then
+# `mv`s the staged file onto <dest> — rename(2) never follows a symlink at
+# the destination, so this is safe regardless of <dest>'s prior state (absent,
+# a regular file, or a pre-planted symlink).
+write_json_config_secure_from() {
+  local dest="$1" src="$2"; shift 2
+  local stage
+  stage="$(umask 077; mktemp "${dest}.stage.XXXXXX")" || return 1
+  chmod 600 "$stage" || { rm -f "$stage"; return 1; }
+  if [ "$src" = "-" ]; then
+    cat > "$stage" || { rm -f "$stage"; return 1; }
+  else
+    cp "$src" "$stage" || { rm -f "$stage"; return 1; }
+  fi
+  if ! write_json_config_secure "$stage" "$@"; then
+    rm -f "$stage"
+    return 1
+  fi
+  mv "$stage" "$dest" || { rm -f "$stage"; return 1; }
+  chmod 600 "$dest" || return 1
   return 0
 }
 

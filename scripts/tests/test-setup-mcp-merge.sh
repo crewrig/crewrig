@@ -225,8 +225,8 @@ check_capture() {
   fi
 }
 
-check_capture setup-copilot-interactive.sh     MCP_CONFIG_TARGET  '${MCP_CONFIG_TARGET}.tmp'
-check_capture setup-antigravity-interactive.sh AGY_MCP_CONFIG     '${AGY_MCP_CONFIG}.tmp'
+check_capture setup-copilot-interactive.sh     MCP_CONFIG_TARGET  'write_json_config_secure_from "$MCP_CONFIG_TARGET"'
+check_capture setup-antigravity-interactive.sh AGY_MCP_CONFIG     'write_json_config_secure_from "$AGY_MCP_CONFIG"'
 
 # ---------------------------------------------------------------------------
 echo "4. Setup-script parity (all three file setups reach the helper)"
