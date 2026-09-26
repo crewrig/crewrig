@@ -1052,17 +1052,17 @@ fake_tool_failure mempalace_add_drawer null
 #     not the breaker, and this case only needs SOME cap that evenly divides
 #     the poisoned group's size).
 #
-#     ASSUMPTION this case depends on (double-check once mirror.js's real
-#     diff lands): a breaker trip stops the WHOLE catchUp()/drainPending()
-#     run for that invocation — not just the current internal walkPending()
-#     — deferring the rest of the backlog to the NEXT catch-up pass. If
-#     instead drainPending() keeps looping internally after a trip (only
-#     stopping on "no progress", as it already does today for unrelated
-#     reasons), a single `usage-mirror.sh` invocation would chain multiple
-#     internal walkPending() calls together and the call counts below
-#     (3 / 5 / 3) would need to become (3 / 8 / 3) with pass 2 and pass 3
-#     collapsed into one invocation — see this case's own header note in the
-#     handback report.
+#     CONFIRMED (not hypothetical — verified against the landed diff):
+#     drainPending() keeps looping internally after a breaker trip, only
+#     stopping once a pass makes zero progress. So the SECOND
+#     `usage-mirror.sh` invocation below chains TWO internal walkPending()
+#     calls together: the 2 healthy + 3 poisoned (5 calls, progress made —
+#     the 2 healthy succeeded), then immediately another internal pass over
+#     the now poisoned-only backlog (3 more calls, breaker trips again, zero
+#     progress this time — drainPending() stops). That is 8 calls in one
+#     external invocation, not 5 — the call counts below are (3 / 8 / 3), and
+#     pass 2 is where the healthy backlog gets unstuck AND the poisoned
+#     backlog gets its second breaker trip, both within the same invocation.
 #
 #     Given that, three successive `usage-mirror.sh` invocations play out
 #     exactly as follows (poisoned records are interchangeable with each
@@ -1073,11 +1073,18 @@ fake_tool_failure mempalace_add_drawer null
 #         tool-error answers trips the breaker on the 3rd call, before the 2
 #         healthy markers are ever reached. Each poisoned marker's mtime is
 #         bumped (touchPendingMarkerMtime()), sorting all 3 behind
-#         everything else for the next listMarkers().
-#       pass 2 (5 calls): the 2 healthy markers (now the oldest) succeed and
-#         move to mirrored/, THEN the 3 poisoned markers (freshly
-#         re-sorted-last) are hit again — 3 more consecutive tool-error
-#         answers trips the breaker again, on this pass's 5th call overall.
+#         everything else for the next listMarkers(). drainPending() sees
+#         zero progress (nothing succeeded) and stops after this one
+#         internal walkPending() call.
+#       pass 2 (8 calls = 5 + 3): internal walkPending() call #1 — the 2
+#         healthy markers (now the oldest) succeed and move to mirrored/,
+#         THEN the 3 poisoned markers (freshly re-sorted-last) are hit again
+#         — 3 more consecutive tool-error answers trips the breaker again, on
+#         this internal call's 5th call overall. drainPending() sees progress
+#         (before=5 pending, after=3 pending) and loops again: internal
+#         walkPending() call #2 — only the 3 poisoned markers remain, the
+#         breaker trips a third time after 3 more calls, zero progress this
+#         time, drainPending() stops. Total for this invocation: 5 + 3 = 8.
 #         This IS the starvation fix: the healthy backlog is delayed until
 #         the next catch-up pass runs — a subsequent write's spawn or an
 #         explicit operator run (see Risks: nothing in this repository
@@ -1086,7 +1093,8 @@ fake_tool_failure mempalace_add_drawer null
 #         breaker-without-ordering proposal would have caused.
 #       pass 3 (3 calls): only the 3 poisoned markers remain pending; the
 #         breaker trips again on the 3rd call, same shape as pass 1 — the
-#         backlog's new steady state.
+#         backlog's new steady state (zero progress, drainPending() stops
+#         after this one internal call).
 #     A final pass reconfirms that steady state: the 2 healthy records stay
 #     mirrored, the 3 poisoned ones stay pending, forever — never lost,
 #     never silently retried without bound.
@@ -1165,10 +1173,10 @@ fi
 before="$(log_count mempalace_add_drawer)"
 CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=3 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>"$JBREAKER_ERR"
 pass2_calls=$(($(log_count mempalace_add_drawer) - before))
-if [ "$pass2_calls" -eq 5 ]; then
-  ok "pass 2: exactly 5 add_drawer calls (2 healthy now sorted first, then the 3 poisoned again)"
+if [ "$pass2_calls" -eq 8 ]; then
+  ok "pass 2: exactly 8 add_drawer calls (2 healthy + 3 poisoned = 5, then drainPending() loops again over the poisoned-only backlog for 3 more)"
 else
-  bad "pass 2: expected exactly 5 add_drawer calls, got $pass2_calls"
+  bad "pass 2: expected exactly 8 add_drawer calls, got $pass2_calls"
 fi
 if [ "$(jbreaker_all_healthy_mirrored)" -eq 1 ]; then
   ok "pass 2: THE FIX — the 2 healthy markers are mirrored, no longer starved behind the poisoned records"
@@ -1793,8 +1801,13 @@ fs.writeFileSync(path, src);
 MUTATOR_EOF
 
 if node "$MUTATOR_8" "$MIRROR_JS"; then
-  bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>&1
-  bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>&1
+  # Pinned to 3, same as case (j): the default threshold (5) would never
+  # trip against only 3 poisoned markers, which would starve this mutation
+  # of the very breaker trip it needs to prove D1h's flaw — the ordering fix
+  # (or its absence) only matters once the breaker actually stops a pass
+  # before reaching the healthy markers.
+  CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=3 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>&1
+  CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER=3 bash "$REPO_DIR/scripts/usage-mirror.sh" >/dev/null 2>&1
   git -C "$REPO_DIR" checkout -- scripts/lib/usage-store/mirror.js
 
   if [ "$(mutant_notouch_all_healthy_mirrored)" -eq 0 ]; then
