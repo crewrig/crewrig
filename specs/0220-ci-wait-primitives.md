@@ -1,7 +1,7 @@
 ---
 id: "0220"
 slug: ci-wait-primitives
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1261
