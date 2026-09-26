@@ -2,7 +2,7 @@
 id: "0112"
 slug: spec-id-reservation
 status: draft
-complexity: small
+complexity: standard
 interaction-mode: AUTO
 related-issue: 1265
 version: 1.2.0
@@ -48,11 +48,8 @@ pre-allocation silently orphaned by the sibling's own session.
 
 1. **R17.** When `scripts/reserve-spec-id.sh` is invoked without `--id` (the
    ordinary `--issue <N>`-only path) for an issue that already holds a
-   secured reservation anywhere in the allocated set for its corpus — read
-   across both upstream carriers, `refs/spec-ids/*` and
-   `refs/tags/spec-id/*`, exactly as the tool already reads both when
-   computing the allocated set regardless of which carrier is configured for
-   writing — the tool SHALL return that existing id and SHALL make no
+   secured reservation within the set of unavailable ids for its corpus
+   (requirement 3), the tool SHALL return that existing id and SHALL make no
    additional push to secure a new one. The invocation SHALL still report
    success (the id is, and remains, secured).
 
