@@ -2811,12 +2811,12 @@ else
     [ -n "$1" ] && printf '%s\n' "$1"
     return 0
   }
-  home_removed="$(comm -23 <(home_print_list "$home_before_list") <(home_print_list "$home_after_list"))"
-  home_added="$(comm -13 <(home_print_list "$home_before_list") <(home_print_list "$home_after_list"))"
+  home_removed="$(LC_ALL=C comm -23 <(home_print_list "$home_before_list") <(home_print_list "$home_after_list"))"
+  home_added="$(LC_ALL=C comm -13 <(home_print_list "$home_before_list") <(home_print_list "$home_after_list"))"
   home_own_basenames=""
   if [ -n "$CASE_ROOTS" ]; then
     # shellcheck disable=SC2086  # deliberate word split of the $CASE_ROOTS path list
-    home_own_basenames="$(find $CASE_ROOTS -type f 2>/dev/null | xargs -n1 basename 2>/dev/null | LC_ALL=C sort -u)"
+    home_own_basenames="$(find $CASE_ROOTS -type f -print0 2>/dev/null | xargs -0 -n1 basename 2>/dev/null | LC_ALL=C sort -u)"
   fi
   home_offenders="$home_removed"
   if [ -n "$home_added" ]; then
@@ -2825,7 +2825,7 @@ else
 "
     for home_added_path in $home_added; do
       home_added_base="$(basename "$home_added_path")"
-      if printf '%s\n' "$home_own_basenames" | grep -qxF "$home_added_base"; then
+      if grep -qxF "$home_added_base" <<< "$home_own_basenames"; then
         if [ -n "$home_offenders" ]; then
           home_offenders="$home_offenders
 $home_added_path"
