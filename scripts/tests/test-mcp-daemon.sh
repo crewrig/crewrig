@@ -306,13 +306,19 @@ grep -q "${tok}" "${launcher}" 2>/dev/null \
 # `register_mempalace_mcp` explains the hazard in prose that quotes the very
 # flag being banned.
 #
-# Scope: the two files this spec governs, swept through the same helper as the
-# fixture below — the executable witness that every shape the pattern claims to
-# catch is caught, that a pure comment is still excluded, and that the swept
-# paths were actually read. The one deliberate occurrence in the repository,
-# scripts/tests/test-setup-org-mcp.sh, asserts the org-MCP argv shape on
-# purpose and carries a comment saying so at its own call site (spec 0149 R4);
-# no other occurrence exists under scripts/.
+# Scope: the three files this spec governs, swept through the same helper as
+# the fixture below — the executable witness that every shape the pattern
+# claims to catch is caught, that a pure comment is still excluded, and that
+# the swept paths were actually read. hooks/mempalace-transcript.sh joined the
+# swept set alongside scripts/lib/common.sh and this file itself (issue #1247,
+# cold-review finding i1-F2): it carried this exact pattern via curl -H until
+# that ticket moved it to a `-K -` stdin config, and a static guard belongs
+# next to the dynamic argv-stub test (test-mempalace-transcript-hook.sh) that
+# already exercises the same regression on that file. The one deliberate
+# occurrence in the repository, scripts/tests/test-setup-org-mcp.sh, asserts
+# the org-MCP argv shape on purpose and carries a comment saying so at its own
+# call site (spec 0149 R4); no other occurrence exists under scripts/ or
+# hooks/.
 argv_scheme="Bea""rer"
 argv_hdr="Authoriz""ation"
 argv_hdr_lc="$(printf '%s' "${argv_hdr}" | tr '[:upper:]' '[:lower:]')"
@@ -402,7 +408,8 @@ esac
 
 argv_bearer_hits="$(_argv_bearer_hits \
   "${REPO_DIR}/scripts/lib/common.sh" \
-  "${REPO_DIR}/scripts/tests/test-mcp-daemon.sh")"
+  "${REPO_DIR}/scripts/tests/test-mcp-daemon.sh" \
+  "${REPO_DIR}/hooks/mempalace-transcript.sh")"
 # Asserted BEFORE the sweep verdict, and separately from it: a clean sweep and
 # a sweep that searched nothing are the same empty string, so the emptiness
 # below carries information only once the paths are known to have been read.
