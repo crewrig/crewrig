@@ -350,6 +350,50 @@ else
   bad "backup_file failed to preserve symlink as backup (got: '$LAST_BACKUP_PATH')"
 fi
 
+# 5e. Same-second collision: two backup_file calls on the same target within
+# the same wall-clock second must not silently overwrite the first backup
+# (issue #1246). `date` is stubbed on PATH, scoped to each backup_file call
+# (same technique as 5c's `cp` stub), so both calls resolve to the identical
+# fixed stamp regardless of real time, forcing a deterministic collision.
+date_stub_dir="$TMP_ROOT/date_stub_bin"
+mkdir -p "$date_stub_dir"
+cat > "$date_stub_dir/date" <<'STUB'
+#!/usr/bin/env bash
+echo "20260101-120000"
+STUB
+chmod +x "$date_stub_dir/date"
+
+collision_target="$TMP_ROOT/collision_src.json"
+echo -n 'A' > "$collision_target"
+first_backup="${collision_target}.bak.20260101-120000"
+second_backup="${collision_target}.bak.20260101-120000.01"
+
+PATH="$date_stub_dir:$PATH" backup_file "$collision_target" >/dev/null 2>&1
+if [ "$LAST_BACKUP_PATH" = "$first_backup" ]; then
+  ok "backup_file (issue #1246): first same-second backup keeps the unsuffixed name"
+else
+  bad "backup_file (issue #1246): expected first backup at '$first_backup', got LAST_BACKUP_PATH='$LAST_BACKUP_PATH'"
+fi
+
+echo -n 'B' > "$collision_target"
+PATH="$date_stub_dir:$PATH" backup_file "$collision_target" >/dev/null 2>&1
+
+if [ -f "$first_backup" ] && [ "$(cat "$first_backup")" = 'A' ]; then
+  ok "backup_file (issue #1246): first backup survives the second call's same-second collision"
+else
+  bad "backup_file (issue #1246): first backup was overwritten by the collision (got: '$(cat "$first_backup" 2>/dev/null)')"
+fi
+if [ -f "$second_backup" ] && [ "$(cat "$second_backup")" = 'B' ]; then
+  ok "backup_file (issue #1246): collision gets a distinctly-named second backup ('.01')"
+else
+  bad "backup_file (issue #1246): expected a distinct second backup at '$second_backup'"
+fi
+if [ "$LAST_BACKUP_PATH" = "$second_backup" ]; then
+  ok "backup_file (issue #1246): LAST_BACKUP_PATH points at the second backup after collision"
+else
+  bad "backup_file (issue #1246): LAST_BACKUP_PATH expected '$second_backup', got '$LAST_BACKUP_PATH'"
+fi
+
 # ---------------------------------------------------------------------------
 echo ""
 echo "RESULT: $pass passed, $fail failed"
