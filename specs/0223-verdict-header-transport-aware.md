@@ -1,7 +1,7 @@
 ---
 id: "0223"
 slug: verdict-header-transport-aware
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1271
