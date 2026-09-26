@@ -16,7 +16,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.7.0"
+    version: "1.8.0"
 claude:
   allowed-tools:
     - Read
@@ -91,7 +91,7 @@ document on stdout:
       "cluster_key": "yq-merge",
       "cluster_size": 3,
       "target_repo": "https://github.com/crewrig/crewrig",
-      "title": "Friction cluster: yq-merge (3 reports)",
+      "title": "💬 Friction cluster: yq-merge (3 reports)",
       "body": "<markdown>",
       "labels": ["harness-feedback", "room:prompt", "severity:med"],
       "frictions": [...]
@@ -114,6 +114,13 @@ document on stdout:
   ]
 }
 ```
+
+Each `title` carries a per-room Gitmoji prefix chosen from the cluster's
+dominant room (`tool` → 🐛, `process` → 📝, `behavior` → 🚸, `format` → 🎨,
+`prompt` → 💬; any other/unknown dominant room → 🔧), the same dominant
+room the `room:<dominant>` label above names — so a maintainer scanning the
+open-issues list recognizes a curator-authored issue's category at a
+glance.
 
 ### 2. Validate the output before opening anything
 

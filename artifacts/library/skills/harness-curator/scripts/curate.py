@@ -410,6 +410,35 @@ def cluster_date_range(cluster: List[Dict[str, Any]]) -> str:
     return f"{dates[0]} → {dates[-1]}"
 
 
+# Fixed room -> Gitmoji table (spec 0228 R2), plus a fallback (R3) for any
+# other or unknown dominant room. No other table SHALL be introduced or
+# consulted.
+ROOM_GITMOJI: Dict[str, str] = {
+    "tool": "🐛",
+    "process": "📝",
+    "behavior": "🚸",
+    "format": "🎨",
+    "prompt": "💬",
+}
+FALLBACK_GITMOJI = "🔧"
+
+
+def _dominant_room(cluster: List[Dict[str, Any]]) -> str:
+    """Return the cluster's dominant friction room.
+
+    Most-frequent `_room` value across the cluster's frictions, ties broken
+    alphabetically for determinism. This is the single shared computation
+    (spec 0228 R1) consumed by both `cluster_labels()` (the `room:<dominant>`
+    label) and `compose_body()` (the issue title's Gitmoji prefix) — no
+    second, independently-tallied room-detection pass exists for the title,
+    so the label and the emoji can never disagree about which room a cluster
+    is attributed to."""
+    rooms: Dict[str, int] = defaultdict(int)
+    for f in cluster:
+        rooms[f.get("_room", "unknown")] += 1
+    return sorted(rooms.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+
+
 def compose_body(
     cluster_key: str,
     cluster: List[Dict[str, Any]],
@@ -417,7 +446,8 @@ def compose_body(
 ) -> Tuple[str, str]:
     """Return (title, markdown_body)."""
     size = len(cluster)
-    title = f"Friction cluster: {cluster_key} ({size} report{'s' if size != 1 else ''})"
+    emoji = ROOM_GITMOJI.get(_dominant_room(cluster), FALLBACK_GITMOJI)
+    title = f"{emoji} Friction cluster: {cluster_key} ({size} report{'s' if size != 1 else ''})"
     lines: List[str] = []
     lines.append(f"## Friction cluster: `{cluster_key}`")
     lines.append("")
@@ -494,14 +524,12 @@ def cluster_labels(cluster: List[Dict[str, Any]]) -> List[str]:
     Adds `room:<dominant>` (most-frequent room in the cluster; ties broken
     alphabetically for determinism) and `severity:<max>` (worst severity in
     the cluster, since the cluster qualified through that worst case)."""
-    rooms: Dict[str, int] = defaultdict(int)
     worst_severity = "low"
     for f in cluster:
-        rooms[f.get("_room", "unknown")] += 1
         sev = f.get("severity", "med")
         if SEVERITY_RANK.get(sev, 1) > SEVERITY_RANK.get(worst_severity, 0):
             worst_severity = sev
-    dominant_room = sorted(rooms.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+    dominant_room = _dominant_room(cluster)
     return [
         "harness-feedback",
         f"room:{dominant_room}",
