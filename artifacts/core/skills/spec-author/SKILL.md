@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.7.0"
+    version: "1.7.1"
 claude:
   allowed-tools:
     - Read
@@ -403,6 +403,16 @@ the skill interprets:
 The marker is emitted on stdout line 2 in the exact frontmatter form, so the
 skill pastes it rather than composing it. The exit code already carries the
 boolean; the line exists to be copied.
+
+The `--issue <N>` invocation is idempotent per issue: if this issue already
+holds a secured reservation — from an earlier invocation of this exact
+command, or because a parent orchestrator secured a specific id on this
+issue's behalf via `--id <ID> --issue <N>` before spawning this session —
+the tool returns that existing id instead of computing a new one, and no
+second reservation is created (`specs/0112-spec-id-reservation.delta-02.md`,
+requirements 17-18). The skill does not need to know which of these
+happened, and this does not change its own contract below: it continues to
+never pass `--id` itself.
 
 Three obligations, each closing a tempting shortcut:
 
