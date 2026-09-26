@@ -27,10 +27,12 @@ never re-mints a finding identifier a prior pass on that seat already used.
 2. `docs/reviewer-seat.md` SHALL keep the existing rule that `<N>` tracks
    only the `iter:N` label ordinal unchanged — this spec does not
    redefine `<N>`.
-3. The clarification SHALL introduce no new store, service, or mechanical
-   check: the seat's dossier — already reconstructible from the forge per
-   `docs/reviewer-seat.md` → *Reconstructing a dossier* — remains the sole
-   mechanism a pass consults before minting its next identifier.
+3. When the seat's dossier cannot be reconstructed across the two pull
+   requests, `docs/reviewer-seat.md`'s existing `Vacant seat` rule SHALL
+   govern that case unchanged — the clarification SHALL NOT introduce a
+   silent fallback (guessing a continuation value for `<M>`, or silently
+   restarting it at 1) for a dossier gap this spec does not otherwise
+   resolve.
 
 ## Scenarios
 
@@ -52,6 +54,18 @@ When the ticket's DEV loop completes another retroactive iteration and the
 Then the next pass mints its findings as `i2-F1`, `i2-F2`, ... — `<N>`
 advances and `<M>` restarts under the new `<N>`, exactly as the existing
 identifier format already implies
+
+**Scenario:** Dossier unreconstructable across the two pull requests
+
+Given the first pull request's verdicts are unreachable — for example the
+pull request was deleted, so the forge query in `docs/reviewer-seat.md` →
+*Reconstructing a dossier* returns nothing for it
+When a pass begins on the second pull request under the same `iter:N` label
+Then the pass does not guess a continuation value for `<M>`: it declares
+the seat vacant per `docs/reviewer-seat.md` → *Vacant seat*, runs a full
+examination of the second pull request, and records the vacancy and its
+cause — it neither silently restarts at `<N>-F1` nor silently fabricates a
+continuation
 
 ## Out of scope
 
