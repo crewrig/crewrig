@@ -277,6 +277,20 @@ merge_sr() {
   fi
 }
 
+# operator_handlers <file> — every handler {e,s,h} whose command is one of
+# the fixtures' own operator scripts (#1234; distinct from a capture handler,
+# which is_capture already classifies, and from a session-recording handler,
+# which is neither).
+operator_handlers() {
+  jq -cS "$JQ_DEFS"'[handlers | select(.h.command | startswith("/opt/operator/"))] | sort' "$1" 2>/dev/null
+}
+# session_recording_handlers <file> — every handler {e,s,h} that is neither
+# an operator fixture command nor a capture command: exactly what
+# merge_session_recording_hooks itself is meant to own (#1234).
+session_recording_handlers() {
+  jq -cS "$JQ_DEFS"'[handlers | select(((.h.command | startswith("/opt/operator/")) or (.h | is_capture)) | not)] | sort' "$1" 2>/dev/null
+}
+
 # assert_capture_once_at <label> <cli> <file> <script path> [legacy] — R5:
 # exactly the R5 events, exactly once each, at exactly the given path, in the
 # quoted form, or in the e344e54 form when the 5th argument is `legacy`.
@@ -550,6 +564,83 @@ for cli in $CLIS; do
     bad "(d) $cli two merges over a coupled install changed it: $(jq -c "$JQ_DEFS"'[handlers | select(.h | is_capture) | .e]' "$cfg" 2>/dev/null)"
   fi
   if has_backup "$cfg"; then ok "(d) $cli the merge backs the file up first"; else bad "(d) $cli the merge took no backup"; fi
+done
+
+echo "§3 (d') the session-recording merge preserves an operator hook on the same event (#1234; Claude and Gemini only, R8's sibling for a non-capture hook)"
+for cli in claude gemini; do
+  patched="$TMP_ROOT/dprime/$cli-patched.json"
+  mkdir -p "$TMP_ROOT/dprime"
+  patched_manifest "$cli" "$patched"
+  # *-operator-stripped.json registers an operator hook on an event this
+  # framework also writes: claude's on Stop (same "" matcher as our own) and
+  # PreToolUse (a different matcher, "Edit" vs "Bash"); gemini's on
+  # AfterModel (the sole, matcher-less group our own handler joins too).
+  # Before the fix, `. * $m[0]` replaced that whole per-event array.
+  cfg="$TMP_ROOT/dprime/$cli/config.json"
+  materialize "$cli-operator-stripped.json" "$cfg"
+  before_ops="$(operator_handlers "$cfg")"
+  rc1=0
+  merge_sr "$cli" "$cfg" "$patched" >/dev/null 2>&1 || rc1=$?
+  after_ops="$(operator_handlers "$cfg")"
+  if [ "$rc1" -eq 0 ] && [ -n "$before_ops" ] && [ "$before_ops" != "[]" ] && [ "$before_ops" = "$after_ops" ]; then
+    ok "(d') $cli the operator hook on the same event survives the merge"
+  else
+    bad "(d') $cli operator hooks lost or changed: rc=$rc1 before=$before_ops after=$after_ops"
+  fi
+  sr_after1="$(session_recording_handlers "$cfg")"
+  sr_want="$(jq -cS "$JQ_DEFS"'[handlers] | sort' "$patched" 2>/dev/null)"
+  if [ -n "$sr_want" ] && [ "$sr_after1" = "$sr_want" ]; then
+    ok "(d') $cli every session-recording handler of the manifest was added"
+  else
+    bad "(d') $cli session-recording handlers do not match the manifest: got=$sr_after1 want=$sr_want"
+  fi
+  rc2=0
+  merge_sr "$cli" "$cfg" "$patched" >/dev/null 2>&1 || rc2=$?
+  if [ "$rc2" -eq 0 ] && [ "$(operator_handlers "$cfg")" = "$before_ops" ] \
+     && [ "$(session_recording_handlers "$cfg")" = "$sr_after1" ]; then
+    ok "(d') $cli a second merge is a fixed point: no lost operator hook, no duplicated session-recording handler"
+  else
+    bad "(d') $cli a second merge changed the operator or session-recording handlers"
+  fi
+done
+
+echo "§3 (d'') plan/1234#1 v1-F1: a compound operator command that merely CHAINS one of this framework's script names is not misclassified as owned"
+# sr_is_own must anchor the WHOLE command (mirroring uc_sig_re), not just
+# search for the basename anywhere in it: chaining an operator's own script
+# with one of ours, in EITHER order, is an operator's own command, never one
+# this framework wrote, and stripping it would silently drop it exactly like
+# #1234 itself. Both orderings are covered (plan/1234 v2 review): a partial
+# regression that dropped only the leading `\A` or only the trailing `\z`
+# anchor would otherwise pass unnoticed on one of them.
+for cli in claude gemini; do
+  for order in leading trailing; do
+    patched="$TMP_ROOT/dprimeprime/$cli-$order-patched.json"
+    mkdir -p "$TMP_ROOT/dprimeprime/$cli-$order"
+    patched_manifest "$cli" "$patched"
+    cfg="$TMP_ROOT/dprimeprime/$cli-$order/config.json"
+    if [ "$order" = "leading" ]; then
+      compound="/opt/operator/bin/pre-check.sh && bash /opt/other-checkout/hooks/mempalace-transcript.sh"
+    else
+      compound="bash /opt/other-checkout/hooks/mempalace-transcript.sh && /opt/operator/bin/post-check.sh"
+    fi
+    case "$cli" in
+      claude)
+        jq -n --arg cmd "$compound" \
+          '{hooks: {PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: $cmd}]}]}}' > "$cfg"
+        ;;
+      gemini)
+        jq -n --arg cmd "$compound" \
+          '{hooks: {BeforeTool: [{hooks: [{type: "command", name: "operator-compound", command: $cmd}]}]}}' > "$cfg"
+        ;;
+    esac
+    rc=0
+    merge_sr "$cli" "$cfg" "$patched" >/dev/null 2>&1 || rc=$?
+    if [ "$rc" -eq 0 ] && [ "$(jq --arg c "$compound" '[.hooks[][] | .hooks[] | select(.command == $c)] | length' "$cfg")" = "1" ]; then
+      ok "(d'') $cli $order compound command survives the merge unstripped"
+    else
+      bad "(d'') $cli $order compound command was stripped or duplicated: rc=$rc $(jq -c '.hooks' "$cfg" 2>/dev/null)"
+    fi
+  done
 done
 
 echo "§3 (e) a coupled install is detected as installed and kept (R10, R11, R13; scenarios 5, 6)"
