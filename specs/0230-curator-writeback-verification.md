@@ -1,7 +1,7 @@
 ---
 id: "0230"
 slug: curator-writeback-verification
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1272
