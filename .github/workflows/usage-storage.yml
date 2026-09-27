@@ -8,6 +8,7 @@ on:
       - "scripts/usage-query.sh"
       - "scripts/usage-prune.sh"
       - "scripts/usage-mirror.sh"
+      - "scripts/usage-inventory.sh"
       - "scripts/usage-drain.sh"
       - "scripts/usage-task.sh"
       - "scripts/usage-attribute.sh"
@@ -27,6 +28,7 @@ on:
       - "scripts/usage-query.sh"
       - "scripts/usage-prune.sh"
       - "scripts/usage-mirror.sh"
+      - "scripts/usage-inventory.sh"
       - "scripts/usage-drain.sh"
       - "scripts/usage-task.sh"
       - "scripts/usage-attribute.sh"
@@ -63,6 +65,9 @@ jobs:
 
       - name: Validate the usage-record mirror against a fake daemon
         run: bash scripts/tests/test-usage-storage-mirror.sh
+
+      - name: Validate the MemPalace drawer inventory against a fake daemon
+        run: bash scripts/tests/test-usage-storage-inventory.sh
 
       - name: Verify the standalone validator matches the generator
         run: node scripts/build-usage-validator.js --check

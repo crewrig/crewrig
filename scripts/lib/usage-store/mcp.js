@@ -289,4 +289,64 @@ function deleteBySource(args) {
   return call('mempalace_delete_by_source', args).then(requireSuccess).then(rejectDryRun);
 }
 
-module.exports = { endpoint, tokenPath, call, addDrawer, deleteBySource };
+// --- Inventory wrappers (spec 0239, issue #1206) ----------------------------
+// Four additional read/delete wrappers over call(), for
+// scripts/lib/usage-store/inventory.js. Unlike addDrawer()/deleteBySource()
+// above, none of these four tools documents a success/isError contract this
+// file's header has verified against MemPalace's own server source — so none
+// of these wrappers calls requireSuccess() or invents one. Each is a thin
+// pass-through: call()'s own decodeToolResult() already resolves to
+// `{ok:true, result:<parsed payload>}` for a well-formed JSON-RPC envelope, or
+// to one of the three not-ok kinds documented at the top of this file for
+// anything else. inventory.js is responsible for interpreting `result`'s own
+// shape defensively — this file stays a transport layer, never a domain-shape
+// validator.
+//
+// The payload shapes below were confirmed EMPIRICALLY against the live,
+// installed MemPalace daemon during DEV of issue #1206 (2026-09-27), not
+// assumed from the tools' parameter schemas alone:
+//   - mempalace_list_wings()          -> {wings: {<wingName>: <drawerCount>, ...}}
+//     (an object keyed by wing name, NOT an array; the count is across every
+//     room in that wing, not just usage-records).
+//   - mempalace_list_drawers({...})   -> {drawers: [{drawer_id, wing, room,
+//     content_preview, metadata: {filed_at, source_file, added_by, ...},
+//     chunks, chunk_ids}], total, count, offset, limit}. content_preview is
+//     truncated — never confirm a drawer from it (spec 0239 R2).
+//   - mempalace_get_drawer(drawer_id) -> {drawer_id, content: "<JSON text>",
+//     wing, room, metadata, chunks, chunk_ids}. `content` is the drawer's full
+//     text, unlike list_drawers' truncated preview.
+//   - mempalace_delete_drawer(drawer_id) takes ONLY drawer_id — confirmed via
+//     its live tool schema: no `dry_run` parameter exists, unlike
+//     deleteBySource() above — and its description states the deletion is
+//     irreversible. NOT exercised live during this verification pass, to
+//     avoid an irreversible side effect; this wrapper therefore carries no
+//     dry-run semantics of its own. The dry-run-by-default behavior (spec
+//     0239 R7) and the added wide-deletion confirmation (R16) are entirely
+//     inventory.js's responsibility, never this module's or the server's.
+function listWings() {
+  return call('mempalace_list_wings', {});
+}
+
+function listDrawers(args) {
+  return call('mempalace_list_drawers', args || {});
+}
+
+function getDrawer(drawerId) {
+  return call('mempalace_get_drawer', { drawer_id: drawerId });
+}
+
+function deleteDrawer(drawerId) {
+  return call('mempalace_delete_drawer', { drawer_id: drawerId });
+}
+
+module.exports = {
+  endpoint,
+  tokenPath,
+  call,
+  addDrawer,
+  deleteBySource,
+  listWings,
+  listDrawers,
+  getDrawer,
+  deleteDrawer,
+};
