@@ -270,6 +270,45 @@ assert_eq "Case L0 — generate with env mapping succeeds" 0 "$RC"
 l_out="$(cat "$tl/.gitlab-ci.yml")"
 assert_contains "Case L1 — generated job contains env variable under variables" "$l_out" 'BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"'
 
+# Case M (spec 0234) — a rejected capability leaves an existing .gitlab-ci.yml byte-identical.
+tm="$(new_tree)"
+cat > "$tm/ci/ci-capabilities.yml" <<'YML'
+capabilities:
+  - id: build
+    name: "Build"
+    trigger:
+      - on: push
+        branches: [main]
+    portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+YML
+run_in "$tm"
+assert_eq "Case M0 — initial valid generation succeeds" 0 "$RC"
+initial_content="$(cat "$tm/.gitlab-ci.yml")"
+
+cat > "$tm/ci/ci-capabilities.yml" <<'YML'
+capabilities:
+  - id: broken
+    name: "Broken"
+    trigger:
+      - on: push
+        branches: [main]
+    portability: portable
+    requires:
+      tools: [nonexistent-tool]
+    command:
+      - nonexistent-tool --run
+YML
+run_in "$tm"
+assert_eq "Case M1 — generation fails on invalid capability" 1 "$RC"
+after_fail_content="$(cat "$tm/.gitlab-ci.yml")"
+assert_eq "Case M2 — existing .gitlab-ci.yml remains byte-identical after failure" "$initial_content" "$after_fail_content"
+tmp_files_left="$(find "$tm" -name '.gitlab-ci.yml.tmp.*' | wc -l | tr -d ' ')"
+assert_eq "Case M3 — temporary files are cleaned up on failure" "0" "$tmp_files_left"
+
 # -------------------------------------------------------------------------
 echo ""
 echo "Results: $pass passed, $fail failed"
