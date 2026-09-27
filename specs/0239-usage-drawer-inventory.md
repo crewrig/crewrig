@@ -1,7 +1,7 @@
 ---
 id: "0239"
 slug: usage-drawer-inventory
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1206

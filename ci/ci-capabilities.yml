@@ -1319,6 +1319,7 @@ capabilities:
           - "scripts/usage-query.sh"
           - "scripts/usage-prune.sh"
           - "scripts/usage-mirror.sh"
+          - "scripts/usage-inventory.sh"
           - "scripts/usage-drain.sh"
           - "scripts/usage-task.sh"
           - "scripts/usage-attribute.sh"
@@ -1338,6 +1339,7 @@ capabilities:
           - "scripts/usage-query.sh"
           - "scripts/usage-prune.sh"
           - "scripts/usage-mirror.sh"
+          - "scripts/usage-inventory.sh"
           - "scripts/usage-drain.sh"
           - "scripts/usage-task.sh"
           - "scripts/usage-attribute.sh"
@@ -1357,6 +1359,7 @@ capabilities:
       - npm install
       - bash scripts/tests/test-usage-storage.sh
       - bash scripts/tests/test-usage-storage-mirror.sh
+      - bash scripts/tests/test-usage-storage-inventory.sh
       - node scripts/build-usage-validator.js --check
 
   # usage-attribution validates spec 0208's declaration channels, attribution

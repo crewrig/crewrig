@@ -319,7 +319,7 @@ else
   bad "expected 1 drawer remaining in wing-b" "$(count_drawers wing-b)"
 fi
 REMAINING="$(fake_control '{"countDrawers":{"wing":"wing-b"}}')"
-if printf '%s' "$REMAINING" | grep -qF "$BAD_ID"; then
+if grep -qF "$BAD_ID" <<< "$REMAINING"; then
   ok "the surviving drawer is the unrecognized one, by id"
 else
   bad "the surviving drawer is not the expected unrecognized one" "$REMAINING"
@@ -442,13 +442,13 @@ else
   bad "expected selectedTotal=2 for the 2026-02 filter" "$OUT"
 fi
 BY_WING="$(json_field "$OUT" byWing)"
-if printf '%s' "$BY_WING" | grep -qF '"wing-f2":2' && ! printf '%s' "$BY_WING" | grep -qF 'wing-f1'; then
+if grep -qF '"wing-f2":2' <<< "$BY_WING" && ! grep -qF 'wing-f1' <<< "$BY_WING"; then
   ok "the filtered result is grouped by wing correctly (only wing-f2, count 2)"
 else
   bad "expected byWing grouping to show only wing-f2:2" "$BY_WING"
 fi
 BY_CLI="$(json_field "$OUT" byCli)"
-if printf '%s' "$BY_CLI" | grep -qF '"claude-code":1' && printf '%s' "$BY_CLI" | grep -qF '"copilot-cli":1'; then
+if grep -qF '"claude-code":1' <<< "$BY_CLI" && grep -qF '"copilot-cli":1' <<< "$BY_CLI"; then
   ok "the filtered result is grouped by CLI correctly (claude-code:1, copilot-cli:1)"
 else
   bad "expected byCli grouping to show claude-code:1 and copilot-cli:1" "$BY_CLI"
@@ -516,7 +516,7 @@ else
   bad "expected scope=all with no --wing given" "$OUT"
 fi
 WINGS_SWEPT="$(json_field "$OUT" wingsSwept)"
-if printf '%s' "$WINGS_SWEPT" | grep -qF 'wing-i1' && printf '%s' "$WINGS_SWEPT" | grep -qF 'wing-i2'; then
+if grep -qF 'wing-i1' <<< "$WINGS_SWEPT" && grep -qF 'wing-i2' <<< "$WINGS_SWEPT"; then
   ok "both wings are named in the swept scope"
 else
   bad "expected both wing-i1 and wing-i2 in wingsSwept" "$WINGS_SWEPT"
@@ -563,7 +563,7 @@ echo "=== (extra) text-mode output and basic CLI plumbing ==="
 reset_fake
 seed_drawer wing-text "$(make_content claude-code 2026-03-21T00:00:00.000Z "$(new_record_id)")" >/dev/null
 run_inventory --wing wing-text
-if [ "$EC" -eq 0 ] && printf '%s' "$OUT" | grep -qF 'scope: explicit'; then
+if [ "$EC" -eq 0 ] && grep -qF 'scope: explicit' <<< "$OUT"; then
   ok "text-mode output (no --json) reports the scope in plain text"
 else
   bad "expected text-mode output to mention the scope" "EC=$EC OUT=$OUT"

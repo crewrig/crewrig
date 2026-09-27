@@ -1105,6 +1105,7 @@ usage-storage:
     - "npm install"
     - "bash scripts/tests/test-usage-storage.sh"
     - "bash scripts/tests/test-usage-storage-mirror.sh"
+    - "bash scripts/tests/test-usage-storage-inventory.sh"
     - "node scripts/build-usage-validator.js --check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
@@ -1113,6 +1114,7 @@ usage-storage:
         - "scripts/usage-query.sh"
         - "scripts/usage-prune.sh"
         - "scripts/usage-mirror.sh"
+        - "scripts/usage-inventory.sh"
         - "scripts/usage-drain.sh"
         - "scripts/usage-task.sh"
         - "scripts/usage-attribute.sh"
@@ -1131,6 +1133,7 @@ usage-storage:
         - "scripts/usage-query.sh"
         - "scripts/usage-prune.sh"
         - "scripts/usage-mirror.sh"
+        - "scripts/usage-inventory.sh"
         - "scripts/usage-drain.sh"
         - "scripts/usage-task.sh"
         - "scripts/usage-attribute.sh"
