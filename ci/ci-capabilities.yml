@@ -936,6 +936,47 @@ capabilities:
       - npm install -g markdownlint-cli
       - markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
 
+  # Spec 0238 R1-R3, R13: the shell / JavaScript / Python footprint ratchet.
+  # No `paths:` filter and not changeset-gated: any change may add a shell
+  # file, so the ratchet runs on every change. Its list-growth and Python arms
+  # diff against the merge-base with BASE_REF, hence `history-depth: full`.
+  # Standard library only, so no `npm ci`.
+  - id: ratchet
+    name: "Shell, JavaScript and Python footprint ratchet"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+    env:
+      BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts
+
+  # Spec 0238 R4-R8, R12, R13: type-check, erasable syntax, Oxlint type-aware
+  # strict typing (max-lines as a non-blocking warning) and Oxfmt check mode
+  # on every tracked *.ts outside the built-copy trees. No `paths:` filter: a
+  # lockfile, tsconfig.json or lint-config change must re-run it too.
+  - id: lint-typescript
+    name: "TypeScript type-check, erasable syntax, lint and format"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
+
   # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves
   # the change's base ref, so the job needs full source history — declared as
   # `history-depth: full`, same as the two version-bump guards below.

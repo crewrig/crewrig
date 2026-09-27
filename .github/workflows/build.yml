@@ -997,6 +997,57 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0238 R1-R3: shell / JavaScript / Python footprint ratchet. No path
+  # filter: any change may add a shell file. Full history for the merge-base.
+  ratchet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Test the ratchet
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts
+
+      - name: Run the ratchet
+        env:
+          # The list-growth and Python arms diff against the PR's target
+          # branch. On a push the empty value hands the check back to its own
+          # default derivation (first `crewrig|origin` remote + /main).
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0238 R4-R8: TypeScript type-check, erasable syntax, Oxlint
+  # type-aware strict typing and Oxfmt check mode. No path filter.
+  lint-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install the TypeScript toolchain
+        run: npm ci
+
+      - name: Test the TypeScript checks
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts
+
+      - name: Check TypeScript sources
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   lint-specs:
     runs-on: ubuntu-latest
     steps:
