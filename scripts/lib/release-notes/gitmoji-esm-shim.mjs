@@ -20,7 +20,17 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const gitmoji = require('semantic-release-gitmoji');
 
-export const { analyzeCommits, generateNotes } = gitmoji;
+export const { analyzeCommits } = gitmoji;
+
+export async function generateNotes(pluginConfig, context) {
+  const notes = await gitmoji.generateNotes(pluginConfig, context);
+  if (typeof notes === 'string') {
+    // Drop doubled 'v' prefix when semantic-release-monorepo maps nextRelease.version
+    // to the full git tag (issue #1227): e.g. '# vnotes-fixture-v1.0.0' -> '# notes-fixture-v1.0.0'
+    return notes.replace(/^# (\[?)v([a-zA-Z0-9_.-]+-v\d)/m, '# $1$2');
+  }
+  return notes;
+}
 
 // Fail loudly if an upgrade of the package adds, renames or drops a step, so
 // this facade can never again hide a step from the engine silently.

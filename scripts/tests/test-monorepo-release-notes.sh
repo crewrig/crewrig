@@ -170,6 +170,14 @@ else
   ok "release note excludes commits outside the extension"
 fi
 
+if grep -qE '^# (\[)?vnotes-fixture-v' "$NOTES_OUT"; then
+  ng "release note heading drops doubled v prefix"
+elif grep -qE '^# (\[)?notes-fixture-v' "$NOTES_OUT"; then
+  ok "release note heading drops doubled v prefix"
+else
+  ng "release note heading has unexpected format (got: $(head -n 1 "$NOTES_OUT"))"
+fi
+
 if [ ! -f "$EXT_DIR/.releaserc.json" ]; then
   ok "generated .releaserc.json is cleaned up"
 else
