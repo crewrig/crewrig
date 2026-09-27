@@ -1,13 +1,13 @@
 name: Cancel workflow on failure
 description: >-
-  Cancels the current workflow run when the calling job has failed, so that
-  independent sibling jobs stop early instead of running to completion on a
-  workflow that is already doomed to fail.
+  Cancels the current workflow run, so that independent sibling jobs stop
+  early instead of running to completion on a workflow that is already
+  doomed to fail. Intended to be invoked only from a step gated on
+  `if: failure()` in the calling job.
 runs:
   using: composite
   steps:
-    - if: failure()
-      shell: bash
+    - shell: bash
       run: gh run cancel "${GITHUB_RUN_ID}" --repo "${GITHUB_REPOSITORY}"
       env:
         GH_TOKEN: ${{ github.token }}

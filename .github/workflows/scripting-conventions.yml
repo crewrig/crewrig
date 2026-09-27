@@ -9,7 +9,7 @@ on:
       - ".github/workflows/scripting-conventions.yml"
 
 concurrency:
-  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -72,5 +72,5 @@ jobs:
         # See docs/scripting-conventions.md, Rule 6.
         run: bash scripts/check-pipefail-grep.sh
       - name: Cancel workflow on job failure
-        if: always()
+        if: failure()
         uses: ./.github/actions/cancel-on-failure
