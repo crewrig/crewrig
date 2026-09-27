@@ -387,11 +387,11 @@ tasks:
   # --- Linting ---
 
   lint-bootstrap:
-    desc: "Install every dependency the spec and Markdown linters need (js-yaml, semver, markdownlint-cli), and report on shellcheck (spec 0225 requirement 1)"
+    desc: "Install every dependency the spec, Markdown and TypeScript linters need (js-yaml, semver, markdownlint-cli, typescript, oxlint, oxfmt), and report on shellcheck (spec 0225 requirement 1)"
     cmds:
       - |
         set -euo pipefail
-        echo "Installing npm dependencies (js-yaml, semver, markdownlint-cli)..."
+        echo "Installing npm dependencies (js-yaml, semver, markdownlint-cli, typescript, oxlint, oxfmt)..."
         if [ -f {{.REPO_DIR}}/package-lock.json ]; then
           npm ci
         else
@@ -418,6 +418,55 @@ tasks:
     # artifacts/*/commands/*.md are the same kind of pivot command source at
     # the artifacts tier (spec 0191) — same rationale, same exclusion.
     cmd: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
+
+  # Spec 0238 R15: local entry points running exactly the CI commands of the
+  # `ratchet` and `lint-typescript` jobs (ci/ci-capabilities.yml). The ratchet
+  # is standard-library only, so it needs no `npm ci`.
+  ratchet:
+    desc: "Run the shell / JavaScript / Python footprint ratchet, as CI does (spec 0238 R1-R3)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts
+
+  lint-ts:
+    desc: "Run every TypeScript check CI runs: type-check, erasable syntax, Oxlint, Oxfmt (spec 0238 R4-R8)"
+    preconditions:
+      - sh: test -x node_modules/.bin/tsc && test -x node_modules/.bin/oxlint && test -x node_modules/.bin/oxfmt
+        msg: "The TypeScript toolchain (typescript, oxlint, oxfmt) is required. Run: task lint-bootstrap"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
+
+  typecheck-ts:
+    desc: "Type-check every tracked TypeScript source in strict mode (spec 0238 R4)"
+    preconditions:
+      - sh: test -x node_modules/.bin/tsc && test -x node_modules/.bin/oxlint && test -x node_modules/.bin/oxfmt
+        msg: "The TypeScript toolchain (typescript, oxlint, oxfmt) is required. Run: task lint-bootstrap"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts --step typecheck
+
+  erasable-ts:
+    desc: "Reject TypeScript syntax Node type stripping cannot erase (spec 0238 R5)"
+    preconditions:
+      - sh: test -x node_modules/.bin/tsc && test -x node_modules/.bin/oxlint && test -x node_modules/.bin/oxfmt
+        msg: "The TypeScript toolchain (typescript, oxlint, oxfmt) is required. Run: task lint-bootstrap"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts --step erasable
+
+  oxlint-ts:
+    desc: "Run Oxlint type-aware strict typing and the max-lines warning (spec 0238 R6-R7)"
+    preconditions:
+      - sh: test -x node_modules/.bin/tsc && test -x node_modules/.bin/oxlint && test -x node_modules/.bin/oxfmt
+        msg: "The TypeScript toolchain (typescript, oxlint, oxfmt) is required. Run: task lint-bootstrap"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts --step lint
+
+  format-ts:
+    desc: "Check TypeScript formatting with Oxfmt (spec 0238 R8)"
+    preconditions:
+      - sh: test -x node_modules/.bin/tsc && test -x node_modules/.bin/oxlint && test -x node_modules/.bin/oxfmt
+        msg: "The TypeScript toolchain (typescript, oxlint, oxfmt) is required. Run: task lint-bootstrap"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts --step format
+
+  format-ts:fix:
+    desc: "Rewrite every tracked TypeScript source with Oxfmt (local convenience, not a CI mirror)"
+    preconditions:
+      - sh: test -x node_modules/.bin/tsc && test -x node_modules/.bin/oxlint && test -x node_modules/.bin/oxfmt
+        msg: "The TypeScript toolchain (typescript, oxlint, oxfmt) is required. Run: task lint-bootstrap"
+    cmd: git ls-files -z '*.ts' ':!:.claude/**' ':!:.gemini/**' ':!:.github/**' ':!:.agents/**' | xargs -0 node_modules/.bin/oxfmt --write
 
   spec:lint:
     desc: "Lint spec files for format compliance (markdown + custom semantic rules)"
