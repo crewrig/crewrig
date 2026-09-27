@@ -1325,6 +1325,29 @@ else
 fi
 
 # =============================================================================
+# docs/usage-attribution.md names no dangling scripts/ path (#1249, same class
+# as #1207's guard in test-usage-storage.sh for docs/usage-storage.md)
+# =============================================================================
+echo
+echo "=== docs/usage-attribution.md: every named scripts/ path exists ==="
+missing_scripts=""
+while IFS= read -r script_token; do
+  # Strip trailing prose punctuation (a sentence-ending "." etc.).
+  while [ -n "$script_token" ] && case "$script_token" in *[.,\)\`]) true ;; *) false ;; esac; do
+    script_token="${script_token%?}"
+  done
+  [ -n "$script_token" ] || continue
+  if [ ! -e "$REPO_DIR/$script_token" ]; then
+    missing_scripts="$missing_scripts $script_token"
+  fi
+done < <(grep -oE 'scripts/[A-Za-z0-9_./-]+' "$REPO_DIR/docs/usage-attribution.md" | sort -u)
+if [ -z "$missing_scripts" ]; then
+  ok "every scripts/ path named in docs/usage-attribution.md exists"
+else
+  bad "docs/usage-attribution.md names scripts/ paths that do not exist:$missing_scripts"
+fi
+
+# =============================================================================
 # Summary
 # =============================================================================
 echo

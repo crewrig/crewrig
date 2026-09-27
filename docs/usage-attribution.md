@@ -38,10 +38,12 @@ A later explicit declaration replaces the earlier one in full (R2 — "full repl
 The `CREWRIG_TASK` environment variable, when set, declares a task-handoff key and/or an external asset reference:
 
 ```bash
-CREWRIG_TASK=1171 bash scripts/usage-capture.sh
-CREWRIG_TASK='forge-issue:crewrig/crewrig#1171' bash scripts/usage-capture.sh
-CREWRIG_TASK='1171:forge-issue:github.com/owner/repo#number' bash scripts/usage-capture.sh  # both key and asset
+export CREWRIG_TASK=1171
+export CREWRIG_TASK='forge-issue:crewrig/crewrig#1171'
+export CREWRIG_TASK='1171:forge-issue:github.com/owner/repo#number'  # both key and asset
 ```
+
+The operator exports the variable in the shell that launches the CLI session (or sets it in the CLI's own environment configuration); the running session's own hooks read it when a usage record is captured — there is no script to invoke directly.
 
 The syntax is `<key>`, `<kind>:<ref>`, or `<key>:<kind>:<ref>` (colon-delimited). This channel is present when the variable is set and non-empty.
 
