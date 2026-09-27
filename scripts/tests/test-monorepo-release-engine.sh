@@ -691,7 +691,7 @@ stop_stub() {
     # defect (spec 0183 R17/R18's exact-tree guarantee), not a byproduct of
     # this fixture.
     if tar -tzf "$uploaded_file" | grep -qE '^(\./)?\.releaserc\.json$'; then
-      ng "11c (R17/R18, NEW FINDING — not #1225): the published archive carries a stray .releaserc.json (see this block's comment for the mechanism)"
+      ng "11c (R17/R18): the published archive carries a stray .releaserc.json"
     else
       ok "11c (R17/R18): the published archive carries no stray .releaserc.json"
     fi
@@ -902,13 +902,11 @@ stop_stub() {
 
   render_notes() {
     local config="$1"
-    cp "$config" "$FIX/extensions/core/foo/.releaserc.json"
     ( cd "$FIX/extensions/core/foo" && \
       env -i PATH="$CLEAN_PATH" HOME="$HOME_FIX" \
         GIT_CONFIG_GLOBAL="$GITCONFIG_BASE" GIT_CONFIG_SYSTEM=/dev/null ${GH_ENV[@]+"${GH_ENV[@]}"} \
         NODE_OPTIONS="--require $FIXTURE_DIR/fixed-date.cjs" \
-        node "$REPO_DIR/scripts/lib/release-rehearse.mjs" main )
-    rm -f "$FIX/extensions/core/foo/.releaserc.json"
+        node "$REPO_DIR/scripts/lib/release-rehearse.mjs" main "$config" )
   }
 
   result_i="$(render_notes "$golden_i" 2>"$TMP_ROOT/11g-i.err")"

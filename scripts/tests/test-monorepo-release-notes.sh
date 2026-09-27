@@ -75,19 +75,27 @@ BIN="$TMP_ROOT/bin"
 mkdir -p "$BIN"
 
 cat > "$TMP_ROOT/driver.mjs" <<'EOF'
-// Runs semantic-release programmatically in dry-run with the .releaserc.json
-// that scripts/monorepo-release.sh generated in the current directory.
-import { readFileSync, writeFileSync } from 'node:fs';
+// Runs semantic-release programmatically in dry-run with the config
+// passed via --extends from scripts/monorepo-release.sh.
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-const [repoDir, notesOut, resultOut, remote] = process.argv.slice(2);
+const [repoDir, notesOut, resultOut, remote, ...rest] = process.argv.slice(2);
 const require = createRequire(`${repoDir}/package.json`);
 const { default: semanticRelease } = await import(
   pathToFileURL(require.resolve('semantic-release')).href
 );
 
-const config = JSON.parse(readFileSync('.releaserc.json', 'utf8'));
+// Ensure .releaserc.json was NOT written inside the extension directory (spec 0235)
+if (existsSync('.releaserc.json')) {
+  throw new Error('Found .releaserc.json inside extension directory during release run');
+}
+
+const extendsIdx = rest.indexOf('--extends');
+const rawExtends = extendsIdx !== -1 ? rest[extendsIdx + 1] : '.releaserc.json';
+const configPath = rawExtends.split(',').pop();
+const config = JSON.parse(readFileSync(configPath, 'utf8'));
 // Keep only what git and the engine need; drop every CI marker so env-ci
 // resolves the branch from the fixture's git state, not the host runner.
 const env = { PATH: process.env.PATH, HOME: process.env.HOME };
@@ -106,7 +114,7 @@ EOF
 
 cat > "$BIN/npx" <<EOF
 #!/bin/bash
-exec node "$TMP_ROOT/driver.mjs" "$REPO_DIR" "$NOTES_OUT" "$RESULT_OUT" "file://$REMOTE"
+exec node "$TMP_ROOT/driver.mjs" "$REPO_DIR" "$NOTES_OUT" "$RESULT_OUT" "file://$REMOTE" "\$@"
 EOF
 chmod +x "$BIN/npx"
 

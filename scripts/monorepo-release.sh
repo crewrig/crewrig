@@ -90,14 +90,15 @@ release_publish() {
     rm -rf "$out"
     mkdir -p "$out"
 
-    emit_releaserc "$RELEASE_FORGE" publish "$ext" "$ROOT_DIR" "$out" "$RELEASE_BRANCH" > "${dir}.releaserc.json"
+    releaserc="$ROOT_DIR/dist/release/$ext.releaserc.json"
+    emit_releaserc "$RELEASE_FORGE" publish "$ext" "$ROOT_DIR" "$out" "$RELEASE_BRANCH" > "$releaserc"
 
     log="$logdir/$ext.log"
     echo "Running semantic-release for $ext..."
     cd "$dir"
-    npx semantic-release --branches "$RELEASE_BRANCH" 2>&1 | tee "$log"
+    npx semantic-release --branches "$RELEASE_BRANCH" --extends "semantic-release-monorepo,$releaserc" 2>&1 | tee "$log"
     rc=${PIPESTATUS[0]}
-    rm -f .releaserc.json
+    rm -f "$releaserc"
     cd "$ROOT_DIR"
 
     tag="$(release_created_tag "$log")"
@@ -200,15 +201,16 @@ release_rehearse() {
     echo "--- Rehearsing: $ext ---"
     out="$r/out/$ext"
     mkdir -p "$out"
-    emit_releaserc "$RELEASE_FORGE" rehearsal "$ext" "$r/clone" "$out" "$RELEASE_BRANCH" > "${dir}.releaserc.json"
+    releaserc="$r/$ext.releaserc.json"
+    emit_releaserc "$RELEASE_FORGE" rehearsal "$ext" "$r/clone" "$out" "$RELEASE_BRANCH" > "$releaserc"
 
     json="$r/$ext.json"
-    if ! (cd "$dir" && env ${RELEASE_STRIP[@]+"${RELEASE_STRIP[@]}"} node "$ROOT_DIR/scripts/lib/release-rehearse.mjs" "$RELEASE_BRANCH") > "$json"; then
+    if ! (cd "$dir" && env ${RELEASE_STRIP[@]+"${RELEASE_STRIP[@]}"} node "$ROOT_DIR/scripts/lib/release-rehearse.mjs" "$RELEASE_BRANCH" "$releaserc") > "$json"; then
       echo "RELEASE-FAILED $ext step=engine"
       ERRORS=1
       continue
     fi
-    rm -f "${dir}.releaserc.json"
+    rm -f "$releaserc"
 
     released="$(jq -r '.released' "$json")"
     if [ "$released" != "true" ]; then

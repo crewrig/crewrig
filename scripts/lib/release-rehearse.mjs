@@ -29,6 +29,7 @@
 // redirected to a throwaway local mirror; dry-run also skips every plugin
 // step with side effects (prepare, publish, success, fail, addChannel).
 
+import { readFile } from "node:fs/promises";
 import semanticRelease from "semantic-release";
 
 const CREDENTIAL_NAME = /token|password|credential|secret|private/i;
@@ -44,15 +45,21 @@ if (present.length > 0) {
 }
 
 const branch = process.argv[2];
+const configFile = process.argv[3];
 if (!branch) {
-  process.stderr.write("Usage: node scripts/lib/release-rehearse.mjs <branch>\n");
+  process.stderr.write("Usage: node scripts/lib/release-rehearse.mjs <branch> [configFile]\n");
   process.exit(2);
 }
 
 let result;
 try {
+  let options = { dryRun: true, branches: [branch] };
+  if (configFile) {
+    const config = JSON.parse(await readFile(configFile, "utf8"));
+    options = { ...options, ...config };
+  }
   result = await semanticRelease(
-    { dryRun: true, branches: [branch] },
+    options,
     { cwd: process.cwd(), env: process.env, stdout: process.stderr, stderr: process.stderr },
   );
 } catch (error) {
