@@ -9,7 +9,7 @@ import {
 
 const server = new Server(
   { name: "${SKELETON_NAME}", version: "0.1.0" },
-  { capabilities: { tools: {} } }
+  { capabilities: { tools: {} } },
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({

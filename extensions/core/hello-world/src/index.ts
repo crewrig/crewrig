@@ -10,7 +10,7 @@ import {
 
 const server = new Server(
   { name: "hello-world", version: "0.1.0" },
-  { capabilities: { tools: {} } }
+  { capabilities: { tools: {} } },
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({

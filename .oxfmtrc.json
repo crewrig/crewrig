@@ -1,0 +1,4 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [".claude/**", ".gemini/**", ".github/**", ".agents/**", "**/node_modules/**", "**/dist/**"]
+}
