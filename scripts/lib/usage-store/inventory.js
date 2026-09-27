@@ -29,18 +29,32 @@
 // solely by its own MemPalace drawer id and content, never a filename or path
 // convention (R12).
 //
-// mcp.js's four inventory wrappers (listWings/listDrawers/getDrawer/
-// deleteDrawer) are thin pass-throughs with no invented success-field
-// contract (see mcp.js's own header) — every non-ok result from any of them
-// makes the WHOLE touched scope "unconfirmed": exit non-zero, never reported
-// as empty or removed (R8/R9). A reachable, fully-answered sweep that simply
-// finds zero wings, zero room members, or only unrecognized members is a
-// legitimate empty confirmed inventory instead (R15): exit zero. Running the
-// inventory operation makes no write of any kind — listWings/listDrawers/
-// getDrawer are the only calls a plain run makes (R13); deleteDrawer is
-// reachable only from the removal path's own `--commit` branch, and only
-// ever addresses a drawer this SAME run's own confirmed+filtered result set
-// selected (R5/R6/R14) — an external drawer id is never accepted.
+// mcp.js's four inventory wrappers: listWings/listDrawers/getDrawer are thin
+// pass-throughs with no invented success-field contract (see mcp.js's own
+// header), while deleteDrawer DOES carry a verified success-field contract
+// and is wired through requireSuccess() inside mcp.js itself. Either way,
+// every non-ok result from any of them makes the WHOLE touched scope
+// "unconfirmed": exit non-zero, never reported as empty or removed (R8/R9).
+// getDrawer's own content-less error payload (a well-formed envelope with no
+// `content` string — see mcp.js's header and confirmOneDrawer() below) is
+// likewise treated as non-ok for this purpose, distinct from a drawer whose
+// content parses fine but fails schema/CLI recognition. A reachable,
+// fully-answered sweep that simply finds zero wings, zero room members, or
+// only unrecognized members is a legitimate empty confirmed inventory
+// instead (R15): exit zero. Running the inventory operation makes no write
+// of any kind — listWings/listDrawers/getDrawer are the only calls a plain
+// run makes (R13); deleteDrawer is reachable only from the removal path's
+// own `--commit` branch, and only ever addresses a drawer this SAME run's
+// own confirmed+filtered result set selected (R5/R6/R14) — an external
+// drawer id is never accepted.
+//
+// The per-drawer getDrawer()+confirm step runs with bounded concurrency
+// (CONCURRENCY, below) rather than one drawer at a time: sequential fetches
+// measured ~48ms/drawer live against this project's own ~24,765-drawer
+// installation, making the default all-wings sweep take roughly 20 minutes.
+// See CONCURRENCY's own comment and sweep()'s for the exact fail-closed
+// policy under concurrency (R9 still holds: the whole scope goes
+// unconfirmed on the first failure found, never a partial result).
 //
 // The removal path defaults to a dry run (R7): `--commit` is required to
 // delete anything. A wide deletion — more confirmed+selected drawers than
@@ -70,6 +84,21 @@ function envInt(name, def) {
 }
 
 const WIDE_DELETE_THRESHOLD = envInt('CREWRIG_USAGE_INVENTORY_WIDE_DELETE_THRESHOLD', 25);
+
+// CONCURRENCY (i1-F3 review finding, PR #1361) — sweep()'s per-drawer
+// mempalace_get_drawer fetch-and-confirm loop used to run strictly
+// sequentially at ~48ms/drawer measured live against this project's own
+// installation (~24,765 drawers in the usage-records room), which put the
+// default all-wings sweep docs/usage-organization.md's usage_mirror_gate
+// third check calls unconditionally at roughly 20 minutes. These are
+// independent, order-independent read calls (each drawer's confirmation
+// depends on nothing but its own content), so they are safe to run
+// concurrently in bounded chunks — see confirmOneDrawer()/sweep() below for
+// the fail-closed policy under concurrency. 16 is this repository's own
+// judgment call (not spec-derived), chosen because it turns the measured
+// ~20-minute sequential sweep into roughly 1-2 minutes without overwhelming
+// the MemPalace daemon with an unbounded burst of simultaneous requests.
+const CONCURRENCY = envInt('CREWRIG_USAGE_INVENTORY_CONCURRENCY', 16);
 
 // --- Schema-driven recognition (R2, R12) -------------------------------------
 
@@ -212,12 +241,77 @@ async function listAllDrawers(wing) {
   return { ok: true, items };
 }
 
+// confirmOneDrawer(wing, preview, recognizedSchemas) — the per-drawer unit of
+// work inside sweep()'s worker pool (i1-F3 review finding, PR #1361). Fetches
+// ONE drawer's own full content (R2: never the listing's truncated
+// content_preview) and classifies it. Returns a fatal `{ok:false, kind,
+// message}` for any non-ok mcp.getDrawer() call, OR (i1-F2 review finding)
+// for a well-formed envelope whose payload itself signals failure — a normal
+// 200 response with no usable `content` string, `mempalace_get_drawer`'s only
+// failure shape (see mcp.js's own header comment). That is deliberately NOT
+// the same outcome as a drawer whose content parses fine but fails schema/CLI
+// recognition (confirmDrawer() below correctly routes that to `excluded`,
+// returned here as a non-fatal `{excluded: {...}}`): a content-less payload
+// means MemPalace could not actually serve this drawer at all, so R9's
+// fail-closed contract applies — the caller aborts the WHOLE sweep as
+// unconfirmed, never silently drops the drawer from the count. Pure and
+// side-effect-free (no shared mutable state touched), so it is safe to run
+// concurrently across a chunk of drawers via Promise.all.
+async function confirmOneDrawer(wing, preview, recognizedSchemas) {
+  const drawerId = preview && preview.drawer_id;
+  if (typeof drawerId !== 'string' || !drawerId) {
+    return { excluded: { wing, drawerId: null, reason: 'a room member preview carries no drawer_id' } };
+  }
+  const fullResult = await mcp.getDrawer(drawerId);
+  if (!fullResult.ok) {
+    return {
+      ok: false,
+      kind: fullResult.kind,
+      message: `fetching drawer "${drawerId}" in wing "${wing}": ${fullResult.message || 'unknown error'}`,
+    };
+  }
+  const payload = fullResult.result;
+  const hasContent = payload && typeof payload === 'object' && typeof payload.content === 'string';
+  if (!hasContent) {
+    const detail = payload && typeof payload === 'object' && typeof payload.error === 'string' ? payload.error : 'no usable content';
+    return {
+      ok: false,
+      kind: 'tool-error',
+      message: `fetching drawer "${drawerId}" in wing "${wing}": ${detail}`,
+    };
+  }
+  const verdict = confirmDrawer(payload.content, recognizedSchemas);
+  if (!verdict.confirmed) {
+    return { excluded: { wing, drawerId, reason: verdict.reason } };
+  }
+  return { confirmed: { wing, drawerId, cli: verdict.cli, period: verdict.period, recordId: verdict.recordId } };
+}
+
 // sweep(opts) — the read-only core (R13 holds by construction: only
 // listWings/listDrawers/getDrawer are called here). ANY non-ok call anywhere
 // in the sweep makes the WHOLE touched scope unconfirmed (R9): the function
 // returns {ok:false, ...} immediately rather than a partial result. A
 // reachable, fully-answered sweep that simply finds nothing confirmable is a
 // legitimate empty result (R15).
+//
+// Concurrency policy (i1-F3 review finding, PR #1361): each wing's drawer
+// list is walked in fixed-size chunks of CONCURRENCY, confirmed concurrently
+// within a chunk via Promise.all, one chunk at a time. Promise.all here never
+// rejects — confirmOneDrawer() resolves to a classification object for every
+// input, it never throws — so no request is ever orphaned or left running
+// unobserved. Once a whole chunk has settled, the first fatal (`ok:false`)
+// result found aborts the sweep immediately WITHOUT starting the next chunk
+// or the next wing; requests already in flight within the CURRENT chunk are
+// never cancelled (this transport has no cancellation primitive — see
+// mcp.js's call()), but no request from a LATER chunk is ever issued once a
+// chunk has produced a fatal result. This bounds the "wasted" work a failure
+// can cause to at most one in-flight chunk (CONCURRENCY drawers), not the
+// whole remaining sweep, while still satisfying R9 exactly: the function
+// never returns a partial confirmed/excluded set alongside a fatal result.
+// Confirmed/excluded classification, and the ORDER of both arrays, is
+// identical to the previous strictly-sequential implementation: chunks are
+// still processed in list order, one at a time, and Promise.all resolves in
+// the same order its input array was given.
 async function sweep(opts) {
   opts = opts || {};
   const recognizedSchemas = loadRecognizedSchemas();
@@ -238,34 +332,19 @@ async function sweep(opts) {
         message: `listing drawers for wing "${wing}": ${drawersResult.message || 'unknown error'}`,
       };
     }
-    for (const preview of drawersResult.items) {
-      const drawerId = preview && preview.drawer_id;
-      if (typeof drawerId !== 'string' || !drawerId) {
-        excluded.push({ wing, drawerId: null, reason: 'a room member preview carries no drawer_id' });
-        continue;
+    for (let i = 0; i < drawersResult.items.length; i += CONCURRENCY) {
+      const chunk = drawersResult.items.slice(i, i + CONCURRENCY);
+      // eslint-disable-next-line no-await-in-loop -- deliberate: chunks are
+      // processed one at a time so a failure never starts a later chunk.
+      const results = await Promise.all(chunk.map((preview) => confirmOneDrawer(wing, preview, recognizedSchemas)));
+      const fatal = results.find((r) => r.ok === false);
+      if (fatal) {
+        return fatal;
       }
-      // R2: confirmation reads the drawer's own FULL content, never the
-      // listing's truncated content_preview.
-      const fullResult = await mcp.getDrawer(drawerId);
-      if (!fullResult.ok) {
-        return {
-          ok: false,
-          kind: fullResult.kind,
-          message: `fetching drawer "${drawerId}" in wing "${wing}": ${fullResult.message || 'unknown error'}`,
-        };
+      for (const result of results) {
+        if (result.confirmed) confirmed.push(result.confirmed);
+        else if (result.excluded) excluded.push(result.excluded);
       }
-      const verdict = confirmDrawer(fullResult.result && fullResult.result.content, recognizedSchemas);
-      if (!verdict.confirmed) {
-        excluded.push({ wing, drawerId, reason: verdict.reason });
-        continue;
-      }
-      confirmed.push({
-        wing,
-        drawerId,
-        cli: verdict.cli,
-        period: verdict.period,
-        recordId: verdict.recordId,
-      });
     }
   }
 
@@ -340,10 +419,22 @@ function parseArgs(argv) {
       i += 1;
       const raw = argv[i];
       if (raw === undefined) throw new Error('--wing requires a value');
-      args.wings = raw
+      const wings = raw
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+      // i1-F4 review finding (PR #1361): an explicitly-empty --wing value
+      // (a literal "", or a value made only of commas/whitespace) must NOT
+      // silently widen the scope to the all-wings default — resolveWings()'s
+      // `explicitWings.length > 0` guard cannot itself distinguish "no --wing
+      // given" from "an empty --wing list", so this is rejected here,
+      // eagerly, as a clear error instead.
+      if (wings.length === 0) {
+        throw new Error(
+          '--wing was given an explicitly empty value (no wing name found) — omit --wing entirely for the default all-wings sweep, or pass at least one wing name'
+        );
+      }
+      args.wings = wings;
     } else if (a === '--cli') {
       i += 1;
       if (argv[i] === undefined) throw new Error('--cli requires a value');
@@ -385,7 +476,14 @@ them exist.
 
 With no --wing, sweeps every wing MemPalace reports (the default scope) and
 states so in its output. --wing restricts the sweep to an explicit,
-comma-separated list.
+comma-separated list; an explicitly empty --wing value (no wing name found)
+is rejected rather than silently widened to the all-wings default.
+
+Per-drawer content fetches run with bounded concurrency (default 16;
+override: CREWRIG_USAGE_INVENTORY_CONCURRENCY). Sweep time still scales with
+the swept room's total drawer count, so this can take real time on a large,
+established installation — see docs/usage-storage.md's "Inventory and purge
+(MemPalace-only)" section for the measured cost.
 
 "delete" only ever removes a drawer THIS SAME run's own confirmed, filtered
 inventory selected, addressed by its own MemPalace drawer id. It defaults to
@@ -561,6 +659,7 @@ module.exports = {
   extractDrawerPage,
   resolveWings,
   listAllDrawers,
+  confirmOneDrawer,
   sweep,
   applyFilters,
   buildReport,
@@ -568,6 +667,7 @@ module.exports = {
   runDelete,
   main,
   WIDE_DELETE_THRESHOLD,
+  CONCURRENCY,
 };
 
 if (require.main === module) {

@@ -287,6 +287,15 @@ marker-based passes above would have missed it. Only when all three checks
 agree that the scope holds no confirmed drawer does the verdict become
 `removed`.
 
+This third check sweeps every wing MemPalace reports, and its cost scales
+with the `usage-records` room's total drawer count across the whole palace —
+not just this machine's own records. On a large, established installation
+this closing check can take real time (see
+[Inventory and purge (MemPalace-only)](usage-storage.md#inventory-and-purge-mempalace-only)
+for the measured cost and the `CREWRIG_USAGE_INVENTORY_CONCURRENCY`
+override); do not assume a hang if this step runs noticeably longer than the
+marker-based passes above it.
+
 **When the verdict is `UNVERIFIED`**, the removal step has not run and the
 usage root is still there. When the check stopped on a waiting record, it
 has removed nothing. When it stopped during the prunes, the months pruned

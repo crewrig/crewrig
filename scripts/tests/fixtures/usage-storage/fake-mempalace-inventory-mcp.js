@@ -73,8 +73,27 @@
 //                           so the fixture's in-memory store survives the
 //                           simulated outage (unlike actually stopping and
 //                           restarting this process, which would lose it).
+//         success-false   — a well-formed 200 envelope whose PAYLOAD (not
+//                           the JSON-RPC envelope) is
+//                           `{success:false, error:"..."}"}` — the exact
+//                           shape confirmed against the installed MemPalace
+//                           server source for mempalace_delete_drawer's
+//                           "not found"/already-deleted case (i1-F1, PR
+//                           #1361). Used against mempalace_delete_drawer.
+//         no-content-error — a well-formed 200 envelope whose PAYLOAD is
+//                           `{error:"..."}"}` with no `content` key and no
+//                           `success` key — mempalace_get_drawer's own only
+//                           failure shape, confirmed against the installed
+//                           server source (i1-F2, PR #1361). Used against
+//                           mempalace_get_drawer.
 //       An unknown tool or shape, or a jsonrpc-error with no integer code,
 //       answers HTTP 400.
+//   {"latency": {"tool": "<any tool name>", "ms": <int>}}
+//       delays that tool's response by <ms> milliseconds (0 clears the
+//       delay). Lets the suite demonstrate that sweep()'s per-drawer
+//       confirmation loop runs with real concurrency (i1-F3, PR #1361)
+//       rather than one drawer at a time, by timing a seeded batch under a
+//       constrained CREWRIG_USAGE_INVENTORY_CONCURRENCY=1 vs. a higher one.
 
 'use strict';
 
@@ -115,7 +134,16 @@ const toolFailureCode = {
   mempalace_get_drawer: null,
   mempalace_delete_drawer: null,
 };
-const SHAPES = ['not-json-text', 'no-text-content', 'is-error', 'no-result', 'jsonrpc-error', 'transport-500'];
+const SHAPES = ['not-json-text', 'no-text-content', 'is-error', 'no-result', 'jsonrpc-error', 'transport-500', 'success-false', 'no-content-error'];
+
+// wing/room member calls' own response latency, keyed by tool name (ms; 0 or
+// absent = no delay). See the header comment's {"latency": {...}} control op.
+const toolLatency = {
+  mempalace_list_wings: 0,
+  mempalace_list_drawers: 0,
+  mempalace_get_drawer: 0,
+  mempalace_delete_drawer: 0,
+};
 
 function jsonRpcResult(id, payload) {
   return JSON.stringify({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(payload) }] } });
@@ -144,6 +172,16 @@ function injected(shape, id, code) {
       return { status: 200, body: jsonRpcError(id, code, 'injected tool failure (test control)') };
     case 'transport-500':
       return { status: 500, body: JSON.stringify({ error: 'injected transport failure (test control)' }) };
+    case 'success-false':
+      // A well-formed tool result whose PAYLOAD is {success:false, ...} —
+      // the real mempalace_delete_drawer shape for an already-deleted or
+      // unknown drawer id (i1-F1). NOT a JSON-RPC-level error.
+      return { status: 200, body: jsonRpcResult(id, { success: false, error: 'injected success:false payload (test control)' }) };
+    case 'no-content-error':
+      // A well-formed tool result whose PAYLOAD is {error: ...} with no
+      // `content` key and no `success` key — mempalace_get_drawer's only
+      // real failure shape (i1-F2). NOT a JSON-RPC-level error.
+      return { status: 200, body: jsonRpcResult(id, { error: 'injected content-less error payload (test control)' }) };
     default:
       throw new Error(`unknown toolFailure shape: ${shape}`);
   }
@@ -271,8 +309,18 @@ function handleControl(req, res) {
       toolFailureCode[tf.tool] = tf.shape === 'jsonrpc-error' ? tf.code : null;
     }
 
+    if (Object.prototype.hasOwnProperty.call(body, 'latency')) {
+      const lt = body.latency || {};
+      if (!Object.prototype.hasOwnProperty.call(toolLatency, lt.tool) || !Number.isInteger(lt.ms) || lt.ms < 0) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: `unknown latency tool or non-negative-integer ms: ${lt.tool}/${lt.ms}` }));
+        return;
+      }
+      toolLatency[lt.tool] = lt.ms;
+    }
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, toolFailure }));
+    res.end(JSON.stringify({ ok: true, toolFailure, toolLatency }));
   });
 }
 
@@ -327,8 +375,16 @@ const server = http.createServer((req, res) => {
       return;
     }
     const { status, body: respBody } = handler(parsedBody.id, parsedBody.params.arguments);
-    res.writeHead(status, { 'Content-Type': 'application/json' });
-    res.end(respBody);
+    const delayMs = toolLatency[toolName] || 0;
+    const send = () => {
+      res.writeHead(status, { 'Content-Type': 'application/json' });
+      res.end(respBody);
+    };
+    if (delayMs > 0) {
+      setTimeout(send, delayMs);
+    } else {
+      send();
+    }
   });
 });
 

@@ -221,6 +221,17 @@ tool_failure() {
   fake_control "{\"toolFailure\":{\"tool\":\"$tool\",\"shape\":$shape_json,\"code\":$code}}" >/dev/null
 }
 
+# set_latency(tool, ms) — delays that tool's fixture response by <ms>; 0
+# clears it. Used to demonstrate sweep()'s bounded concurrency (i1-F3).
+set_latency() {
+  fake_control "{\"latency\":{\"tool\":\"$1\",\"ms\":$2}}" >/dev/null
+}
+
+# now_ms() — wall-clock milliseconds, for the concurrency timing scenario.
+now_ms() {
+  node -e "console.log(Date.now())"
+}
+
 # run_inventory(...) — runs the CLI under test; sets OUT (stdout) and EC
 # (exit code) as globals. Never lets a non-zero exit trip this suite's own
 # `set -e` (this is the CLI's job to report, not this suite's to survive).
@@ -540,6 +551,149 @@ if [ "$EC" -eq 0 ] && [ "$(json_field "$OUT" outcome)" = "deleted" ]; then
   ok "supplying the exact --confirm-count for the all-wings scope allows the deletion to proceed"
 else
   bad "expected outcome=deleted for the all-wings deletion with the correct --confirm-count" "EC=$EC OUT=$OUT"
+fi
+
+# --- (j) deleteDrawer checks the tool's own success field (i1-F1) ----------
+echo
+echo "=== (j) a delete_drawer answer of {success:false} is reported unconfirmed, not deleted ==="
+reset_fake
+J_ID="$(seed_drawer wing-j "$(make_content claude-code 2026-03-25T00:00:00.000Z "$(new_record_id)")")"
+
+tool_failure mempalace_delete_drawer success-false
+run_inventory delete --wing wing-j --commit --json
+if [ "$EC" -ne 0 ] && [ "$(json_field "$OUT" outcome)" = "unconfirmed" ]; then
+  ok "a {success:false} delete_drawer answer reports outcome=unconfirmed (never 'deleted'), non-zero exit"
+else
+  bad "expected outcome=unconfirmed, non-zero exit, for a {success:false} delete_drawer answer" "EC=$EC OUT=$OUT"
+fi
+tool_failure mempalace_delete_drawer null
+if [ "$(count_drawers wing-j)" = "1" ]; then
+  ok "the drawer survives: a {success:false} answer never removed it from deletedIds/the store"
+else
+  bad "expected wing-j's drawer to survive a {success:false} delete_drawer answer" "$(count_drawers wing-j)"
+fi
+if grep -qF "$J_ID" <<< "$(fake_control '{"countDrawers":{"wing":"wing-j"}}')"; then
+  ok "the surviving drawer is the same one, by id"
+else
+  bad "expected the surviving drawer to be $J_ID" "$(fake_control '{"countDrawers":{"wing":"wing-j"}}')"
+fi
+
+# --- (k) getDrawer's content-less error payload aborts the sweep (i1-F2) ---
+echo
+echo "=== (k) a get_drawer answer with no usable content aborts the sweep as unconfirmed, not excluded ==="
+reset_fake
+seed_drawer wing-k "$(make_content claude-code 2026-03-26T00:00:00.000Z "$(new_record_id)")" >/dev/null
+
+tool_failure mempalace_get_drawer no-content-error
+run_inventory --wing wing-k --json
+if [ "$EC" -ne 0 ] && [ "$(json_field "$OUT" outcome)" = "unconfirmed" ]; then
+  ok "a content-less get_drawer payload aborts the WHOLE sweep as unconfirmed"
+else
+  bad "expected outcome=unconfirmed, non-zero exit, for a content-less get_drawer payload" "EC=$EC OUT=$OUT"
+fi
+tool_failure mempalace_get_drawer null
+run_inventory --wing wing-k --json
+if [ "$EC" -eq 0 ] && [ "$(json_field "$OUT" confirmedTotal)" = "1" ]; then
+  ok "clearing the injected shape restores normal confirmation (sanity check)"
+else
+  bad "expected normal confirmation once the injected shape is cleared" "EC=$EC OUT=$OUT"
+fi
+
+# --- (l) bounded concurrency preserves correctness and is actually concurrent (i1-F3) ---
+echo
+echo "=== (l) sweep()'s per-drawer fetch runs with bounded concurrency, correctly, across multiple chunks ==="
+reset_fake
+CONC_WING="wing-l"
+CONC_COUNT=10
+CONC_IDS=""
+i=1
+while [ "$i" -le "$CONC_COUNT" ]; do
+  rid="$(new_record_id)"
+  content="$(make_content claude-code "2026-04-$(printf '%02d' "$i")T00:00:00.000Z" "$rid")"
+  did="$(seed_drawer "$CONC_WING" "$content")"
+  CONC_IDS="$CONC_IDS $did"
+  i=$((i + 1))
+done
+
+LATENCY_MS=40
+set_latency mempalace_get_drawer "$LATENCY_MS"
+
+# Force strictly-sequential behavior first (concurrency=1) — this is the
+# CORRECTNESS baseline: with $CONC_COUNT drawers and a per-drawer $LATENCY_MS
+# delay, this run must take at least $CONC_COUNT * $LATENCY_MS.
+export CREWRIG_USAGE_INVENTORY_CONCURRENCY=1
+SEQ_START="$(now_ms)"
+run_inventory --wing "$CONC_WING" --json
+SEQ_MS=$(( $(now_ms) - SEQ_START ))
+unset CREWRIG_USAGE_INVENTORY_CONCURRENCY
+if [ "$EC" -eq 0 ] && [ "$(json_field "$OUT" confirmedTotal)" = "$CONC_COUNT" ]; then
+  ok "concurrency=1: all $CONC_COUNT seeded drawers are confirmed"
+else
+  bad "expected confirmedTotal=$CONC_COUNT at concurrency=1" "EC=$EC OUT=$OUT"
+fi
+SEQ_SELECTED="$(json_field "$OUT" selected)"
+for did in $CONC_IDS; do
+  if ! grep -qF "$did" <<< "$SEQ_SELECTED"; then
+    bad "expected drawer $did in the concurrency=1 selected set" "$SEQ_SELECTED"
+  fi
+done
+ok "concurrency=1: every seeded drawer id is present in the selected set"
+
+# Now with real concurrency — same drawers, same latency, higher concurrency.
+export CREWRIG_USAGE_INVENTORY_CONCURRENCY=8
+CONC_START="$(now_ms)"
+run_inventory --wing "$CONC_WING" --json
+CONC_MS=$(( $(now_ms) - CONC_START ))
+unset CREWRIG_USAGE_INVENTORY_CONCURRENCY
+if [ "$EC" -eq 0 ] && [ "$(json_field "$OUT" confirmedTotal)" = "$CONC_COUNT" ]; then
+  ok "concurrency=8: all $CONC_COUNT seeded drawers are STILL confirmed (correctness unaffected by concurrency)"
+else
+  bad "expected confirmedTotal=$CONC_COUNT at concurrency=8" "EC=$EC OUT=$OUT"
+fi
+CONC_SELECTED="$(json_field "$OUT" selected)"
+for did in $CONC_IDS; do
+  if ! grep -qF "$did" <<< "$CONC_SELECTED"; then
+    bad "expected drawer $did in the concurrency=8 selected set" "$CONC_SELECTED"
+  fi
+done
+ok "concurrency=8: every seeded drawer id is present in the selected set"
+if [ "$SEQ_SELECTED" = "$CONC_SELECTED" ]; then
+  ok "the selected array is byte-identical between concurrency=1 and concurrency=8 (order preserved)"
+else
+  bad "expected the selected array to be identical regardless of concurrency" "seq=$SEQ_SELECTED conc=$CONC_SELECTED"
+fi
+
+set_latency mempalace_get_drawer 0
+
+if [ "$SEQ_MS" -ge $((CONC_COUNT * LATENCY_MS)) ]; then
+  ok "concurrency=1 baseline took at least ${CONC_COUNT}x${LATENCY_MS}ms (${SEQ_MS}ms), confirming the fixture's latency actually applies"
+else
+  bad "expected the concurrency=1 baseline to take at least $((CONC_COUNT * LATENCY_MS))ms" "SEQ_MS=$SEQ_MS"
+fi
+# Generous margin: concurrency=8 over 10 drawers needs only 2 sequential
+# rounds (~2*40ms=80ms) plus overhead, vs. concurrency=1's ~400ms — assert
+# it is at least noticeably faster, not an exact ratio, to stay robust on a
+# loaded CI machine.
+if [ "$CONC_MS" -lt "$SEQ_MS" ]; then
+  ok "concurrency=8 (${CONC_MS}ms) is measurably faster than concurrency=1 (${SEQ_MS}ms) — the per-drawer loop IS running concurrently"
+else
+  bad "expected concurrency=8 to be faster than concurrency=1" "SEQ_MS=$SEQ_MS CONC_MS=$CONC_MS"
+fi
+
+# --- (m) an explicitly-empty --wing value is rejected, not silently widened (i1-F4) ---
+echo
+echo "=== (m) --wing \"\" is rejected with a clear error, never silently widened to all-wings ==="
+reset_fake
+run_inventory --wing ""
+if [ "$EC" -eq 2 ]; then
+  ok "--wing \"\" (an explicitly empty value) exits with status 2, the same as any other bad argument"
+else
+  bad "expected exit 2 for --wing \"\"" "EC=$EC OUT=$OUT"
+fi
+if grep -qiF "empty" "$HELPERS_DIR/inv-stderr.log"; then
+  ok "the error message names the empty-value condition"
+else
+  bad "expected the error message to mention the empty --wing value" "$(cat "$HELPERS_DIR/inv-stderr.log")"
 fi
 
 # --- (extra) R13: a plain inventory run writes nothing -----------------------

@@ -291,16 +291,18 @@ function deleteBySource(args) {
 
 // --- Inventory wrappers (spec 0239, issue #1206) ----------------------------
 // Four additional read/delete wrappers over call(), for
-// scripts/lib/usage-store/inventory.js. Unlike addDrawer()/deleteBySource()
-// above, none of these four tools documents a success/isError contract this
-// file's header has verified against MemPalace's own server source — so none
-// of these wrappers calls requireSuccess() or invents one. Each is a thin
-// pass-through: call()'s own decodeToolResult() already resolves to
-// `{ok:true, result:<parsed payload>}` for a well-formed JSON-RPC envelope, or
-// to one of the three not-ok kinds documented at the top of this file for
-// anything else. inventory.js is responsible for interpreting `result`'s own
-// shape defensively — this file stays a transport layer, never a domain-shape
-// validator.
+// scripts/lib/usage-store/inventory.js. Of these four, `deleteDrawer` DOES
+// carry a verified success/error contract — see its own comment below — and
+// is wired through requireSuccess() exactly like addDrawer()/deleteBySource()
+// above. The remaining three (listWings/listDrawers/getDrawer) are read-only
+// and documented no success/isError contract this file's header has verified
+// against MemPalace's own server source, so they stay thin pass-throughs:
+// call()'s own decodeToolResult() already resolves to `{ok:true,
+// result:<parsed payload>}` for a well-formed JSON-RPC envelope, or to one of
+// the three not-ok kinds documented at the top of this file for anything
+// else. inventory.js is responsible for interpreting each of THEIR results'
+// own shape defensively — this file stays a transport layer, never a
+// domain-shape validator, for those three.
 //
 // The payload shapes below were confirmed EMPIRICALLY against the live,
 // installed MemPalace daemon during DEV of issue #1206 (2026-09-27), not
@@ -313,16 +315,33 @@ function deleteBySource(args) {
 //     chunks, chunk_ids}], total, count, offset, limit}. content_preview is
 //     truncated — never confirm a drawer from it (spec 0239 R2).
 //   - mempalace_get_drawer(drawer_id) -> {drawer_id, content: "<JSON text>",
-//     wing, room, metadata, chunks, chunk_ids}. `content` is the drawer's full
-//     text, unlike list_drawers' truncated preview.
+//     wing, room, metadata, chunks, chunk_ids} on success. Its ONLY failure
+//     shape, confirmed by reading the installed MemPalace server source
+//     (mempalace/mcp_server.py, tool_get_drawer()), is a normal 200 JSON-RPC
+//     envelope whose payload is `{"error": "Drawer not found: ..."}"}` (or any
+//     other server-side exception message) — no `content` key, no `success`
+//     key. `call()`'s envelope decoder resolves this to `{ok:true,
+//     result:{error:...}}` (a well-formed envelope, just a content-less
+//     payload), so inventory.js must check for a usable `content` string
+//     itself before treating a getDrawer() result as confirmable (see
+//     inventory.js's sweep()/confirmOneDrawer()).
 //   - mempalace_delete_drawer(drawer_id) takes ONLY drawer_id — confirmed via
 //     its live tool schema: no `dry_run` parameter exists, unlike
 //     deleteBySource() above — and its description states the deletion is
-//     irreversible. NOT exercised live during this verification pass, to
-//     avoid an irreversible side effect; this wrapper therefore carries no
-//     dry-run semantics of its own. The dry-run-by-default behavior (spec
-//     0239 R7) and the added wide-deletion confirmation (R16) are entirely
-//     inventory.js's responsibility, never this module's or the server's.
+//     irreversible. Its success/error contract WAS confirmed by reading the
+//     installed MemPalace server source (mempalace/mcp_server.py,
+//     tool_delete_drawer()) rather than exercised live (an irreversible side
+//     effect to avoid during verification): it returns the SAME
+//     `{"success": true/false, ...}` convention addDrawer()/deleteBySource()
+//     already rely on — e.g. `{"success": false, "error": "Drawer not found:
+//     ..."}"}` on a normal 200 envelope for an already-deleted or unknown
+//     drawer id. deleteDrawer() below is therefore wired through
+//     requireSuccess(), so a `{success:false}` answer classifies as
+//     `tool-error` (a confirmed per-call failure), never `{ok:true}`. The
+//     dry-run-by-default behavior (spec 0239 R7) and the added wide-deletion
+//     confirmation (R16) remain entirely inventory.js's responsibility, never
+//     this module's or the server's — `mempalace_delete_drawer` has no
+//     dry-run semantics of its own.
 function listWings() {
   return call('mempalace_list_wings', {});
 }
@@ -336,7 +355,7 @@ function getDrawer(drawerId) {
 }
 
 function deleteDrawer(drawerId) {
-  return call('mempalace_delete_drawer', { drawer_id: drawerId });
+  return call('mempalace_delete_drawer', { drawer_id: drawerId }).then(requireSuccess);
 }
 
 module.exports = {
