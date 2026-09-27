@@ -187,6 +187,22 @@ for shape in captured direct; do
     # Do not leave them behind for the next case to trip over.
     printf '%s\n' "$survivors" | awk '{print $1}' | while read -r p; do kill -9 "$p" 2>/dev/null; done
   fi
+
+  # Issue #1222: Verify that timeout is effective even when job control is forced inactive
+  run_probe hang-no-jc "$shape" STUB_MODE=hang AGY_FORCE_NO_JOB_CONTROL=1
+  [ "$(verdict_for "$RUN_OUT" crewrig-probe-skill-config)" = "INDETERMINATE" ] \
+    && ok "[$shape] no-job-control: a call that exceeds the bound is INDETERMINATE" \
+    || bad "[$shape] no-job-control: a bounded-out call was not INDETERMINATE"
+  [ "$RUN_ST" -ne 0 ] && ok "[$shape] no-job-control: a bounded-out run exits non-zero" \
+    || bad "[$shape] no-job-control: a bounded-out run exited 0"
+
+  survivors="$(ps -A -o pid=,command= 2>/dev/null | grep "$HANG_MARKER" | grep -v grep || true)"
+  if [ -z "$survivors" ]; then
+    ok "[$shape] no-job-control: nothing survives the bounded-out case"
+  else
+    bad "[$shape] no-job-control: a forked child outlived the bound: $survivors"
+    printf '%s\n' "$survivors" | awk '{print $1}' | while read -r p; do kill -9 "$p" 2>/dev/null; done
+  fi
   echo ""
 done
 
