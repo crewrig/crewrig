@@ -599,8 +599,7 @@ e2e:
         - "tests/e2e/**"
         - "scripts/e2e/**"
         - "docs/cli-matrix.md"
-    - if: ''
-      when: manual
+    - when: manual
 
 setup:
   image: debian:stable-slim
@@ -1276,8 +1275,7 @@ release-rehearsal:
     - "npm install --include=dev"
     - "bash scripts/monorepo-release.sh"
   rules:
-    - if: ''
-      when: manual
+    - when: manual
 
 release-tests:
   image: node:22
