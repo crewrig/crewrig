@@ -417,7 +417,7 @@ tasks:
     # prompt, not prose) — exclude them from prose linting (spec 0042).
     # artifacts/*/commands/*.md are the same kind of pivot command source at
     # the artifacts tier (spec 0191) — same rationale, same exclusion.
-    cmd: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
+    cmd: markdownlint "**/*.md" --ignore node_modules --ignore '**/node_modules/**' --ignore extension-skeleton --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
 
   # Spec 0238 R15: local entry points running exactly the CI commands of the
   # `ratchet` and `lint-typescript` jobs (ci/ci-capabilities.yml). The ratchet
@@ -480,7 +480,7 @@ tasks:
     # Mirror the lint-markdown exclusion: extension command pivots are prompt
     # sources, not prose (spec 0042). artifacts/*/commands/*.md are the same
     # kind of pivot command source at the artifacts tier (spec 0191).
-    cmd: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md' --fix
+    cmd: markdownlint "**/*.md" --ignore node_modules --ignore '**/node_modules/**' --ignore extension-skeleton --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md' --fix
 
   # --- Transcript Management ---
 
