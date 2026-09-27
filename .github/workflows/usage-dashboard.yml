@@ -44,6 +44,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   usage-dashboard:
