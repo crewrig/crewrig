@@ -20,6 +20,10 @@ on:
       - "package.json"
       - "package-lock.json"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   usage-record-schema:
     runs-on: ubuntu-latest
@@ -36,3 +40,6 @@ jobs:
 
       - name: Validate usage record schema and fixtures
         run: bash scripts/tests/test-usage-record-schema.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure

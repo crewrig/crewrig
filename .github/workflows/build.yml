@@ -9,6 +9,10 @@ on:
       - "**"
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,6 +29,9 @@ jobs:
 
       - name: Build all extensions
         run: npm run build --workspaces --if-present
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   component-drift:
     runs-on: ubuntu-latest
@@ -68,6 +75,9 @@ jobs:
       - name: Test Agent Profile Migration
         if: steps.filter.outputs.component-drift == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/tests/test-agent-profile-migration.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   extension-render:
     runs-on: ubuntu-latest
     steps:
@@ -157,6 +167,9 @@ jobs:
       - name: Test Create Extension Combinations
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/tests/test-create-extension-combinations.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   extension-provenance:
     runs-on: ubuntu-latest
     steps:
@@ -181,6 +194,9 @@ jobs:
       - name: Test Check Extension Provenance
         if: steps.filter.outputs.extension-provenance == 'true'
         run: bash scripts/tests/test-check-extension-provenance.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   extension-manifest:
     runs-on: ubuntu-latest
     steps:
@@ -211,6 +227,9 @@ jobs:
       - name: Test Check Extension Version Bump
         if: steps.filter.outputs.extension-manifest == 'true'
         run: bash scripts/tests/test-check-extension-version-bump.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   extension-install:
     runs-on: ubuntu-latest
     steps:
@@ -246,6 +265,9 @@ jobs:
       - name: Test Install Extension All
         if: steps.filter.outputs.extension-install == 'true'
         run: bash scripts/tests/test-install-extension-all.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   core-paths:
     runs-on: ubuntu-latest
     steps:
@@ -276,6 +298,9 @@ jobs:
       - name: Test Sync From Upstream
         if: steps.filter.outputs.core-paths == 'true'
         run: bash scripts/tests/test-sync-from-upstream.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   ci-parity:
     runs-on: ubuntu-latest
     steps:
@@ -311,6 +336,9 @@ jobs:
       - name: Test Build Ci
         if: steps.filter.outputs.ci-parity == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/tests/test-build-ci.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   docs-index:
     runs-on: ubuntu-latest
     steps:
@@ -334,6 +362,9 @@ jobs:
       - name: Test Build Docs Index
         if: steps.filter.outputs.docs-index == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**" --key-env "" -- bash scripts/tests/test-build-docs-index.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   figure-labels:
     runs-on: ubuntu-latest
     steps:
@@ -360,6 +391,9 @@ jobs:
       - name: Test Check Figure Labels
         if: steps.filter.outputs.figure-labels == 'true'
         run: bash scripts/tests/test-check-figure-labels.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   mempalace:
     runs-on: ubuntu-latest
     steps:
@@ -436,6 +470,9 @@ jobs:
       - name: Test System Context Store
         if: steps.filter.outputs.mempalace == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-system-context-store.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   test-wiring:
     runs-on: ubuntu-latest
     steps:
@@ -473,6 +510,9 @@ jobs:
       - name: Test Worktree Git Guard
         if: steps.filter.outputs.test-wiring == 'true'
         run: bash scripts/tests/test-worktree-git-guard.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   chroma-mcp:
     runs-on: ubuntu-latest
     steps:
@@ -530,6 +570,9 @@ jobs:
       - name: Test Worktree Claim
         if: steps.filter.outputs.chroma-mcp == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-worktree-claim.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   e2e:
     runs-on: ubuntu-latest
     steps:
@@ -624,6 +667,9 @@ jobs:
       - name: Test E2E Versions Lock
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
         run: bash scripts/tests/test-e2e-versions-lock.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   setup:
     runs-on: ubuntu-latest
     steps:
@@ -675,6 +721,9 @@ jobs:
       - name: Test Setup Gemini Settings Merge
         if: steps.filter.outputs.setup == 'true'
         run: bash scripts/tests/test-setup-gemini-settings-merge.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   check-model-mappings:
     runs-on: ubuntu-latest
     steps:
@@ -699,6 +748,9 @@ jobs:
       - name: Test Check Model Mappings
         if: steps.filter.outputs.check-model-mappings == 'true'
         run: bash scripts/tests/test-check-model-mappings.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   check-agent-profiles:
     runs-on: ubuntu-latest
     steps:
@@ -722,6 +774,9 @@ jobs:
       - name: Test Check Agent Profiles
         if: steps.filter.outputs.check-agent-profiles == 'true'
         run: bash scripts/tests/test-check-agent-profiles.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   check-metadata-keys:
     runs-on: ubuntu-latest
     steps:
@@ -745,6 +800,9 @@ jobs:
       - name: Test Check Component Metadata Keys
         if: steps.filter.outputs.check-metadata-keys == 'true'
         run: bash scripts/tests/test-check-component-metadata-keys.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   check-claude-agent-layout:
     runs-on: ubuntu-latest
     steps:
@@ -764,6 +822,9 @@ jobs:
       - name: Test Check Claude Agent Layout
         if: steps.filter.outputs.check-claude-agent-layout == 'true'
         run: bash scripts/tests/test-check-claude-agent-layout.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   misc:
     runs-on: ubuntu-latest
     steps:
@@ -814,6 +875,9 @@ jobs:
       - name: Test Check Spec Id Reserved
         if: steps.filter.outputs.misc == 'true'
         run: bash scripts/tests/test-check-spec-id-reserved.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   frontmatter:
     runs-on: ubuntu-latest
     steps:
@@ -859,6 +923,9 @@ jobs:
       - name: Test PR Logbook Label Scope
         if: steps.filter.outputs.frontmatter == 'true'
         run: bash scripts/tests/test-pr-logbook-label-scope.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   markdown-links:
     runs-on: ubuntu-latest
     steps:
@@ -884,6 +951,9 @@ jobs:
       - name: Test Check Markdown Links
         if: steps.filter.outputs.markdown-links == 'true'
         run: bash scripts/tests/test-check-markdown-links.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   changeset-coverage:
     runs-on: ubuntu-latest
     steps:
@@ -899,6 +969,9 @@ jobs:
           python-version: "3.12"
       - name: Fail-safe full check suite (spec 0147 R5)
         run: bash scripts/ci-changeset-coverage.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
@@ -920,6 +993,9 @@ jobs:
         # are the same kind of pivot command source at the artifacts tier (spec
         # 0191) — same rationale, same exclusion.
         run: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   lint-specs:
     runs-on: ubuntu-latest
@@ -963,6 +1039,9 @@ jobs:
         # pass/fail, so bypassing the wrapper would cost symmetry and buy no
         # observable distinction.
         run: task spec:lint
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   test-harness-curate:
     runs-on: ubuntu-latest
@@ -971,6 +1050,9 @@ jobs:
 
       - name: Smoke-test harness curator
         run: bash artifacts/library/skills/harness-curator/scripts/test.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   check-skill-versions:
     runs-on: ubuntu-latest
@@ -984,6 +1066,9 @@ jobs:
         env:
           BASE_REF: origin/${{ github.event.pull_request.base.ref }}
         run: bash scripts/check-skill-versions.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   check-extension-version-bump:
     runs-on: ubuntu-latest
@@ -997,6 +1082,9 @@ jobs:
         env:
           BASE_REF: origin/${{ github.event.pull_request.base.ref }}
         run: bash scripts/check-extension-version-bump.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   check-spec-id-reserved:
     runs-on: ubuntu-latest
@@ -1035,6 +1123,9 @@ jobs:
           CREWRIG_PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           CREWRIG_PR_BASE_REPO: ${{ github.repository }}
         run: bash scripts/check-spec-id-reserved.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   check-agents-size:
     runs-on: ubuntu-latest
@@ -1043,6 +1134,9 @@ jobs:
 
       - name: Check AGENTS.md file size
         run: bash scripts/check-agents-size.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   check-feedback-routing:
     runs-on: ubuntu-latest
@@ -1056,6 +1150,9 @@ jobs:
 
       - name: Enforce upstream-tier feedback routing (spec 0030)
         run: bash scripts/check-feedback-routing.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   gitlab-ci-check:
     runs-on: ubuntu-latest
@@ -1069,6 +1166,9 @@ jobs:
 
       - name: Verify the generated GitLab pipeline matches the contract (spec 0048)
         run: bash scripts/build-ci.sh --check
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
 
   check-ci-parity:
     runs-on: ubuntu-latest
@@ -1082,3 +1182,6 @@ jobs:
 
       - name: Verify the reference, GitHub Actions, and GitLab pipelines agree (spec 0049)
         run: bash scripts/check-ci-parity.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
