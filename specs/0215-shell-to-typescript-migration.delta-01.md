@@ -13,34 +13,39 @@ version: 2.0.0
 ## ADDED
 
 1. **New requirement (R26) — Shell-only tooling exception (binding 2,
-   narrowed at delta-01).** A
-    tracked script whose sole purpose is to lint, check, or guard shell
-    syntax or shell-specific portability — at authoring time
-    `scripts/lint-shell.sh`, `scripts/check-bash32-portability.sh`,
-    `scripts/check-pipefail-grep.sh`, `scripts/lib/bash32-array-guard.sh`,
-    and their Bash tests — checks a property that no longer exists once
-    the last shell file is removed. Such a script SHALL NOT migrate to
-    TypeScript. It SHALL instead be retired — deleted, with its CI wiring
-    removed — in the same pull request that removes the last tracked
-    shell file (the terminal act of requirement 8's step (e)). This
-    narrows binding 2 as voted in issue #1192, which required every
-    tracked shell script to migrate with no such carve-out. The narrowing
-    was decided by @hcross on issue #1231, following the architect-led
-    decomposition's finding (comment
-    <https://github.com/crewrig/crewrig/issues/1231#issuecomment-5857477069>)
-    that porting this tooling into TypeScript ahead of the shell files it
-    checks would ship a replacement immediately deleted at step (e) — a
-    throwaway migration with no runtime benefit.
+   narrowed at delta-01).** A tracked script whose sole purpose is to
+   lint, check, or guard shell syntax or shell-specific portability
+   checks a property that no longer exists once the last shell file is
+   removed. Such a script SHALL NOT migrate to TypeScript. It SHALL
+   instead be retired — deleted, together with any CI wiring and Bash
+   test it has — in the same pull request that removes the last tracked
+   shell file (the terminal act of requirement 8's step (e)). At
+   authoring time this covers `scripts/check-bash32-portability.sh`,
+   `scripts/check-pipefail-grep.sh` and `scripts/lib/bash32-array-guard.sh`
+   — each with its own CI wiring and its own dedicated Bash test — and
+   the skill-bundled `artifacts/core/skills/pr-reviewer/scripts/lint-shell.sh`,
+   which has neither: it runs as part of the `pr-reviewer` skill's own
+   logic (row H, step (d) of requirement 24's decomposition table), not
+   as a top-level CI check, and carries no dedicated Bash test. This
+   narrows binding 2 as voted in issue #1192, which required every
+   tracked shell script to migrate with no such carve-out. The narrowing
+   was decided by @hcross on issue #1231, following the architect-led
+   decomposition's finding (comment
+   <https://github.com/crewrig/crewrig/issues/1231#issuecomment-5857477069>)
+   that porting this tooling into TypeScript ahead of the shell files it
+   checks would ship a replacement immediately deleted at step (e) — a
+   throwaway migration with no runtime benefit.
 
 **Scenario:** Shell-only tooling is retired instead of migrated
 
 Given the pull request that removes the last tracked shell script and
 closes step (e) of the strangler order
 When that pull request lands
-Then `scripts/lint-shell.sh`, `scripts/check-bash32-portability.sh`,
-`scripts/check-pipefail-grep.sh`, `scripts/lib/bash32-array-guard.sh` and
-their Bash tests are deleted along with it, no TypeScript replacement for
-any of them is added, and their CI wiring is removed in the same pull
+Then `scripts/check-bash32-portability.sh`, `scripts/check-pipefail-grep.sh`,
+`scripts/lib/bash32-array-guard.sh` and their Bash tests are deleted along
+with it, `artifacts/core/skills/pr-reviewer/scripts/lint-shell.sh` is
+deleted alongside them, no TypeScript replacement for any of the four is
+added, and the CI wiring of the first three is removed in the same pull
 request.
 
 ## MODIFIED
@@ -119,7 +124,7 @@ Original:
 
 Replacement:
 
-> | G | Build | `scripts/build-*.sh` and their helpers; byte-identical outputs (R22) | A |
+> | G | Build | `scripts/build-*.sh` and their helpers; byte-identical outputs (R22) | C |
 > | F | Setup, install, manage and import | The 18 `scripts/{setup,install,manage,import}-*.sh` entry points and their helpers | C, D, E, G |
 
 The scenario "Windows user installs CrewRig without a POSIX layer" — the
