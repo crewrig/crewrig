@@ -28,6 +28,10 @@ on:
       - "package.json"
       - "package-lock.json"
 
+concurrency:
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   release-tests:
     runs-on: ubuntu-latest
@@ -52,3 +56,6 @@ jobs:
 
       - name: Test the release driver (real engine, local forge stub)
         run: bash scripts/tests/test-monorepo-release-engine.sh
+      - name: Cancel workflow on job failure
+        if: always()
+        uses: ./.github/actions/cancel-on-failure

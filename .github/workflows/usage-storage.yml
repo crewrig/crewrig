@@ -40,6 +40,10 @@ on:
       - "docs/usage-storage.md"
       - "docs/usage-organization.md"
 
+concurrency:
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   usage-storage:
     runs-on: ubuntu-latest
@@ -62,3 +66,6 @@ jobs:
 
       - name: Verify the standalone validator matches the generator
         run: node scripts/build-usage-validator.js --check
+      - name: Cancel workflow on job failure
+        if: always()
+        uses: ./.github/actions/cancel-on-failure

@@ -38,6 +38,10 @@ on:
       - "package.json"
       - "package-lock.json"
 
+concurrency:
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -57,3 +61,6 @@ jobs:
 
       - name: Validate the usage dashboard's three delivery forms (no network, no daemon)
         run: bash scripts/tests/test-usage-dashboard.sh
+      - name: Cancel workflow on job failure
+        if: always()
+        uses: ./.github/actions/cancel-on-failure

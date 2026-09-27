@@ -8,6 +8,10 @@ on:
       - "hooks/**"
       - ".github/workflows/scripting-conventions.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   grep-anti-patterns:
     runs-on: ubuntu-latest
@@ -67,3 +71,6 @@ jobs:
         # Rule 6 — writer piped into grep -q fails under set -o pipefail on Linux.
         # See docs/scripting-conventions.md, Rule 6.
         run: bash scripts/check-pipefail-grep.sh
+      - name: Cancel workflow on job failure
+        if: always()
+        uses: ./.github/actions/cancel-on-failure

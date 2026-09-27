@@ -20,6 +20,10 @@ on:
       - "package.json"
       - "package-lock.json"
 
+concurrency:
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   release-notes:
     runs-on: ubuntu-latest
@@ -36,3 +40,6 @@ jobs:
 
       - name: Render extension release notes through the monorepo release config
         run: bash scripts/tests/test-monorepo-release-notes.sh
+      - name: Cancel workflow on job failure
+        if: always()
+        uses: ./.github/actions/cancel-on-failure
