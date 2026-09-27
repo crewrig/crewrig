@@ -30,7 +30,10 @@ This is the parent spec of a `large`-tier ticket. It states the invariants of
 the whole migration and declares its decomposition into sub-specs; it does not
 specify how any individual script is rewritten. Its requirements encode the
 seven bindings resolved unanimously in IDEA session issue #1192 (parent study
-issue #1191) and are not open to re-negotiation at sub-spec level.
+issue #1191) and are not open to re-negotiation at sub-spec level, with one
+narrowing agreed at the SPECS stage and recorded in requirement 13: the oracle
+rule (binding 4) admits bounded exceptions for tests that call a sourced shell
+library in-process and for shell-only assertions such as syntax checks.
 
 ## Requirements
 
@@ -52,18 +55,24 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
    `any` — including `as any` and `any` used as a generic argument — on any
    `@ts-ignore` or `@ts-nocheck` directive, and on any `@ts-expect-error`
    directive that does not carry a written justification on the same line.
-   `unknown` SHALL be the permitted type at trust boundaries (parsed JSON,
-   command-line arguments, environment variables, subprocess output), and every
-   `unknown` value SHALL be narrowed before use. (c) *File size —
-   non-blocking.* Every TypeScript source file, tests included, SHOULD stay at
-   or under 300 lines, every line counted (comments and blank lines included),
-   through functional decomposition. A CI check SHALL report every TypeScript
-   file over 300 lines as a warning naming the file and its line count, and
-   SHALL NOT fail the build on that ground: the limit is a review signal, not a
-   gate. The JavaScript files tracked when the ratchet lands (requirement 16)
-   SHALL be exempt from this check until each is converted to TypeScript. The
-   lint tooling these checks need SHALL be a `devDependency` only, never a
-   runtime dependency (requirement 6), and SHALL be chosen by sub-spec A.
+   Every value entering at a trust boundary — the result of `JSON.parse`,
+   `Response.json()` or a YAML parse, command-line arguments, environment
+   variables, subprocess output — SHALL be typed `unknown` explicitly at that
+   boundary, and every `unknown` value SHALL be narrowed before use. The same
+   check SHALL also fail on any unsafe use of an implicitly `any`-typed value
+   (assignment, member access, call, argument or return), which covers library
+   declarations such as `JSON.parse` that return `any`; the `no-unsafe-*` rule
+   family of typescript-eslint is one existing implementation, and sub-spec A
+   chooses the tool. (c) *File size — non-blocking.* Every TypeScript source
+   file, tests included, SHOULD stay at or under 300 lines, every line counted
+   (comments and blank lines included), through functional decomposition. A CI
+   check SHALL report every TypeScript file over 300 lines as a warning naming
+   the file and its line count, and SHALL NOT fail the build on that ground:
+   the limit is a review signal, not a gate. The JavaScript files tracked when
+   the ratchet lands (requirement 16) SHALL be exempt from this check until
+   each is converted to TypeScript. The lint tooling these checks need SHALL be
+   a `devDependency` only, never a runtime dependency (requirement 6), and
+   SHALL be chosen by sub-spec A.
 
 3. **Runtime and distribution (binding 1).** The supported distribution channel
    SHALL be the repository checkout: every migrated script SHALL run from a
@@ -105,7 +114,16 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
    none, so a sub-spec that needs no third-party package SHALL rely on the
    Node.js standard library alone. When the dependency step fails, the entry
    point SHALL exit non-zero with the npm diagnostic and SHALL NOT continue
-   with a partial install.
+   with a partial install. Setup SHALL re-run this dependency step on every
+   run, not only on the first install, so that a dependency added by a later
+   change is installed by the next setup run. When a migrated script
+   nevertheless cannot resolve a third-party package — typically after a `git
+   pull` that added a runtime dependency without setup being re-run — it SHALL
+   exit non-zero with a diagnostic naming the missing package and instructing
+   the user to re-run setup, never with an unhandled module-resolution error.
+   For a script wired at a CLI integration point (requirement 15), that failure
+   SHALL NOT block the CLI beyond what the CLI's own semantics for a failing
+   hook or statusline command impose; sub-specs A and C decide how.
 
 7. **Scope and strangler order (binding 2).** The migration scope SHALL be
    every tracked shell script in the repository — measured by issue #1191 at
@@ -160,26 +178,43 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
     the migration introduces, SHALL be written in TypeScript under requirements
     1–3.
 
-13. **Oracle rule (binding 4).** A script and its Bash test SHALL NOT migrate
-    in the same pull request. While the script migrates, its existing Bash test
-    SHALL remain unchanged in its assertions and SHALL pass against the
-    TypeScript version on Linux CI; the test SHALL migrate only in a later pull
-    request, after the TypeScript version has shipped green on Linux CI and on
-    its `windows-latest` job (requirement 17). A script with no Bash test SHALL
-    gain a black-box test before or with its migration, and that test SHALL
-    then play the oracle role. For a sourced shell library (a file under
-    `scripts/lib/` that callers `source` rather than execute), the oracle SHALL
-    be the black-box tests of the scripts that consume it. A Bash test that
-    sources such a library to call its functions in-process cannot run against
-    a TypeScript module, so, as the single bounded exception to this rule, it
-    MAY migrate or be retired in the same pull request as the library, on two
-    conditions: before that pull request, every behaviour it asserts SHALL be
-    covered by an unchanged black-box test of a consumer script, and the
-    sub-spec SHALL list each such test and name its substitute consumer-level
-    tests. The end-to-end harness — `tests/e2e/run.sh`, `tests/e2e/lib/` and
-    `tests/e2e/scenarios/` — SHALL be classified as tests, not scripts: it
-    SHALL migrate in step (e), and its oracle SHALL be that every scenario
-    returns the same verdict for each CLI before and after its migration.
+13. **Oracle rule (binding 4, narrowed at the SPECS stage).** A script and its
+    Bash test SHALL NOT migrate in the same pull request. While the script
+    migrates, its existing Bash test SHALL remain unchanged in its assertions
+    and SHALL pass against the TypeScript version on Linux CI; the test SHALL
+    migrate only in a later pull request, after the TypeScript version has
+    shipped green on Linux CI and on its `windows-latest` job (requirement 17).
+    A script with no Bash test SHALL gain a black-box test before or with its
+    migration, and that test SHALL then play the oracle role. A *sourced shell
+    library* is any tracked shell file that callers `source` rather than
+    execute, wherever it lives (at authoring time, among others,
+    `scripts/lib/common.sh`, `scripts/lib/model-resolve.sh`,
+    `scripts/e2e/lib/auth-common.sh` and the files under `tests/e2e/lib/`). The
+    oracle of a sourced library SHALL be the black-box tests of the scripts
+    that consume it. A Bash test that sources such a library to call its
+    functions in-process cannot run against a TypeScript module, so, as a first
+    bounded exception to this rule, it MAY migrate or be retired in the same
+    pull request as the library, on two conditions: before that pull request,
+    every behaviour it asserts SHALL be covered by an unchanged black-box test
+    of a consumer script, and the sub-spec SHALL list each such test and name
+    its substitute consumer-level tests. An assertion that checks a property
+    only a shell file has — such as the `bash -n` syntax check in
+    `scripts/tests/test-e2e-auth-scripts.sh` — is not an oracle, has no
+    TypeScript equivalent, and SHALL be removed in the pull request that
+    migrates the file it checks. These two exceptions narrow binding 4 as voted
+    in issue #1192, which had none; both were introduced at the SPECS stage of
+    issue #1231, the first recorded with the co-owner notified in pull request
+    #1239 (comment 5840136187), the second added in the revision answering that
+    pull request's second review pass. The end-to-end harness — `tests/e2e/`
+    (`run.sh`, `lib/`, `scenarios/`) and `scripts/e2e/` (the `auth-*.sh`
+    account-setup scripts, `publish-probe-verdict.sh` and `lib/`) — SHALL be
+    classified as tests, not scripts, and SHALL migrate in step (e). Within it,
+    an executable file that has its own Bash test (for example
+    `scripts/e2e/publish-probe-verdict.sh`, exercised by
+    `scripts/tests/test-e2e-probes.sh`) SHALL follow the ordinary rule above, a
+    sourced library SHALL follow the sourced-library rule, and the oracle of
+    the harness as a whole SHALL be that every scenario returns the same
+    verdict for each CLI before and after its migration.
 
 14. **Oracle rule (binding 4).** A migrated script SHALL preserve the
     observable contract of the script it replaces — command-line arguments,
@@ -285,16 +320,16 @@ issue #1191) and are not open to re-negotiation at sub-spec level.
 
     | # | Proposed sub-spec | Covers | Depends on |
     |---|---|---|---|
-    | A | Foundations | Ratchet and allowlist (R10–R12); first-install dependency step and its npm command (R6); TypeScript conventions: type-check, erasable-syntax check, strict-typing check and non-blocking 300-line size warning, with their `devDependency`-only lint tooling (R2); Node floor check (R4); `windows-latest` CI scaffolding and timing harness (R15, R17); shared path, line-ending and temporary-file handling (R22) | — |
+    | A | Foundations | Ratchet and allowlist (R10–R12); dependency step re-run on every setup, its npm command and the missing-dependency diagnostic (R6); TypeScript conventions: type-check, erasable-syntax check, strict-typing check and non-blocking 300-line size warning, with their `devDependency`-only lint tooling (R2); Node floor check (R4); `windows-latest` CI scaffolding and timing harness (R15, R17); shared path, line-ending and temporary-file handling (R22) | — |
     | B | Windows hook command lines | Measured `docs/cli-matrix.md` row for the four CLIs (R18) | A |
     | C | Hooks and CLI integration points | `usage-capture`, `worktree-git-guard`, `mempalace-transcript` (hook JSON) and `antigravity-statusline-shim` (statusline); command-line rewiring and installed-command rewrite; per-script budgets (R15) | A, B |
     | D | OS service management | Windows equivalent of LaunchAgents and user units (R20) | A |
     | E | Symbolic links | Link-or-copy fallback (R21) | A |
     | F | Setup, install, manage and import | The 18 `scripts/{setup,install,manage,import}-*.sh` entry points and their helpers | C, D, E |
     | G | Build | `scripts/build-*.sh` and their helpers; byte-identical outputs (R22) | F |
-    | H | Skill- and extension-bundled scripts | `artifacts/**/skills/*/scripts/`, `extensions/`, `extension-skeleton/`; YAML library reuse (R23) | G |
+    | H | Skill- and extension-bundled scripts | `artifacts/**/skills/*/scripts/`, `extensions/`, `extension-skeleton/`; `js-yaml` reuse (R23) | G |
     | I | CI checks | `scripts/check-*.sh` and the remaining non-`mempalace` Python (R16) | H |
-    | J | Tests and final removal | The Bash test suites under `scripts/tests/` and `tests/`, including the end-to-end harness (R13); retirement of shell-specific conventions; `Taskfile.yml` tasks rewritten to permitted commands (R25); empty allowlist | I |
+    | J | Tests and final removal | The Bash test suites under `scripts/tests/` and `tests/`, including the end-to-end harness under `tests/e2e/` and `scripts/e2e/` (R13); retirement of shell-specific conventions; `Taskfile.yml` tasks rewritten to permitted commands (R25); empty allowlist | I |
 
 25. **Decomposition and termination.** The parent ticket SHALL terminate only
     when all of the following hold on `main`: the ratchet allowlist is empty;
@@ -397,6 +432,16 @@ When setup reaches the production-dependency step
 Then setup exits non-zero with the npm diagnostic, imports no third-party
 package, and does not continue with a partial install.
 
+**Scenario:** A pulled change adds a runtime dependency
+
+Given an installed checkout, and a `git pull` that brings a migrated hook
+importing a newly added runtime dependency
+When the CLI fires that hook before the user re-runs setup
+Then the hook exits non-zero with a diagnostic naming the missing package and
+telling the user to re-run setup, shows no unhandled module-resolution error,
+and does not block the CLI beyond the CLI's own semantics for a failing hook;
+and the next setup run installs the dependency, after which the hook succeeds.
+
 **Scenario:** Unsupported Node.js version
 
 Given a machine where `node --version` reports Node.js 20, which cannot execute
@@ -453,7 +498,8 @@ Then every generated, committed file is byte-identical across the three runs.
 - Node.js version management on the user's machine (nvm-windows, fnm, Volta);
   CrewRig checks the floor (requirement 4) but does not install Node.js.
 - The implementation of any individual script, the concrete latency budget
-  values, the Windows service mechanism and the YAML library — each belongs to
-  the sub-spec named in requirement 24.
+  values, the Windows service mechanism and any justified replacement of the
+  `js-yaml` library that requirement 23 imposes — each belongs to the sub-spec
+  named in requirement 24.
 
 ## Open questions
