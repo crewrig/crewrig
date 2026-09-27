@@ -198,7 +198,11 @@ emit_rules() {
     # (the `manual` case has no `$CI_…` predicate of its own).
     cond="${cond# && }"
 
-    echo "    - if: '$cond'"
+    if [ -n "$cond" ]; then
+      echo "    - if: '$cond'"
+    elif [ "$kind" = "manual" ]; then
+      echo "    - when: manual"
+    fi
 
     # Path filter → changes:
     local paths
@@ -212,7 +216,7 @@ emit_rules() {
       done <<< "$paths"
     fi
 
-    if [ "$kind" = "manual" ]; then
+    if [ "$kind" = "manual" ] && [ -n "$cond" ]; then
       echo "      when: manual"
     fi
   done
