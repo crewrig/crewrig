@@ -165,7 +165,7 @@ const CASE_C_BODY =
     first_call_failed = False
     try:
         factory()
-    except Exception:
+    except RuntimeError:
         first_call_failed = True
     second = factory()
     third = factory()
