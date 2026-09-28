@@ -239,21 +239,62 @@ usage_mirror_gate() {
     echo "MemPalace mirror: $USAGE_MIRROR_VERDICT"
     return 1
   fi
+  local inv_out inv_confirmed
+  inv_out="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts --json 2>/dev/null || true)"
+  inv_confirmed="$(printf '%s' "$inv_out" | node -e '
+    let s = "";
+    process.stdin.on("data", (d) => { s += d; });
+    process.stdin.on("end", () => {
+      try {
+        const o = JSON.parse(s);
+        process.stdout.write(o.outcome === "inventory" && typeof o.confirmedTotal === "number" ? String(o.confirmedTotal) : "unconfirmed");
+      } catch (e) {
+        process.stdout.write("unconfirmed");
+      }
+    });
+  ' 2>/dev/null || echo unconfirmed)"
+  if [ "$inv_confirmed" = "unconfirmed" ] || [ -z "$inv_confirmed" ]; then
+    USAGE_MIRROR_VERDICT="UNVERIFIED (usage-inventory.ts could not confirm MemPalace's usage-records room, across all wings)"
+    echo "MemPalace mirror: $USAGE_MIRROR_VERDICT"
+    return 1
+  fi
+  if [ "$inv_confirmed" != "0" ]; then
+    USAGE_MIRROR_VERDICT="UNVERIFIED ($inv_confirmed confirmed drawer(s) still found in MemPalace's usage-records room, across all wings)"
+    echo "MemPalace mirror: $USAGE_MIRROR_VERDICT"
+    return 1
+  fi
   USAGE_MIRROR_VERDICT="removed"
   echo "MemPalace mirror: $USAGE_MIRROR_VERDICT"
 }
 ```
 
-The verdict rests on the mirror's own markers. A record still waiting to be
-mirrored stops the check before any prune, because the prune removes a
-waiting record's marker without contacting MemPalace, even when a drawer for
-it already exists. A mirrored record's marker is removed only after
-MemPalace reports the prune's deletion request as successful; any other
-answer, including one in which MemPalace reports that the deletion failed,
-stops the prune and keeps the marker. The check does not list MemPalace's
-drawers independently
-([#1206](https://github.com/crewrig/crewrig/issues/1206)), so a `removed`
-verdict rests on MemPalace's own report of success.
+The verdict now rests on three checks that must all agree, not on the
+mirror's own markers alone. A record still waiting to be mirrored stops the
+check before any prune, because the prune removes a waiting record's marker
+without contacting MemPalace, even when a drawer for it already exists. A
+mirrored record's marker is removed only after MemPalace reports the prune's
+deletion request as successful; any other answer, including one in which
+MemPalace reports that the deletion failed, stops the prune and keeps the
+marker. Once the marker-based passes agree, the check ALSO calls
+`node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts --json` (see
+[Inventory and purge (MemPalace-only)](usage-storage.md#inventory-and-purge-mempalace-only)
+for its own invocation, filters, and exit-status contract) with no wing
+restriction, so a `removed` verdict rests on MemPalace's own inventory of the
+`usage-records` room directly, not solely on the absence of local markers — a
+drawer left behind by an older, informal purge, or one whose local journal
+entry is already gone, is now caught by this third check even though the
+marker-based passes above would have missed it. Only when all three checks
+agree that the scope holds no confirmed drawer does the verdict become
+`removed`.
+
+This third check sweeps every wing MemPalace reports, and its cost scales
+with the `usage-records` room's total drawer count across the whole palace —
+not just this machine's own records. On a large, established installation
+this closing check can take real time (see
+[Inventory and purge (MemPalace-only)](usage-storage.md#inventory-and-purge-mempalace-only)
+for the measured cost and the `CREWRIG_USAGE_INVENTORY_CONCURRENCY`
+override); do not assume a hang if this step runs noticeably longer than the
+marker-based passes above it.
 
 **When the verdict is `UNVERIFIED`**, the removal step has not run and the
 usage root is still there. When the check stopped on a waiting record, it
@@ -268,12 +309,12 @@ unreachable: the catch-up only wrote `unreachable.stamp`
 MemPalace reachable. An operator run of `usage-mirror.sh` does not wait out
 that backoff. When the check stopped during the prunes, the prune's FATAL
 line names the cause: MemPalace unreachable, or MemPalace not confirming a
-deletion. One case no shipped command resolves yet: a mirrored marker whose
-journal entry is already gone, which the check reports as a marker left
-without a journal entry. Its drawer cannot be found without that entry. The
-same holds for drawers left behind by the older purge instructions, which
-deleted `journal/` and `mirror/` without removing any drawer. Both cases are
-tracked in [#1206](https://github.com/crewrig/crewrig/issues/1206).
+deletion. When the check stopped on the third, inventory-based pass, either
+`usage-inventory.ts` could not confirm the sweep (MemPalace unreachable or
+unable to serve — fix that and re-run) or it found confirmed drawers still
+present: use `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts delete` (see
+[Inventory and purge (MemPalace-only)](usage-storage.md#inventory-and-purge-mempalace-only))
+to remove them, then run the whole procedure again from the start.
 
 ### Procedure (a): purge the stored data while capture stays enabled
 

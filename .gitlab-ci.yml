@@ -1100,11 +1100,12 @@ usage-capture:
         - "package-lock.json"
 
 usage-storage:
-  image: node:22
+  image: node:24
   script:
     - "npm install"
     - "bash scripts/tests/test-usage-storage.sh"
     - "bash scripts/tests/test-usage-storage-mirror.sh"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts"
     - "node scripts/build-usage-validator.js --check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
@@ -1113,12 +1114,14 @@ usage-storage:
         - "scripts/usage-query.sh"
         - "scripts/usage-prune.sh"
         - "scripts/usage-mirror.sh"
+        - "scripts/usage-inventory.ts"
         - "scripts/usage-drain.sh"
         - "scripts/usage-task.sh"
         - "scripts/usage-attribute.sh"
         - "scripts/usage-backfill.sh"
         - "scripts/build-usage-validator.js"
         - "scripts/tests/test-usage-storage*.sh"
+        - "scripts/tests/usage-inventory.test.ts"
         - "scripts/tests/fixtures/usage-storage/**"
         - "schemas/**"
         - "package.json"
@@ -1131,12 +1134,14 @@ usage-storage:
         - "scripts/usage-query.sh"
         - "scripts/usage-prune.sh"
         - "scripts/usage-mirror.sh"
+        - "scripts/usage-inventory.ts"
         - "scripts/usage-drain.sh"
         - "scripts/usage-task.sh"
         - "scripts/usage-attribute.sh"
         - "scripts/usage-backfill.sh"
         - "scripts/build-usage-validator.js"
         - "scripts/tests/test-usage-storage*.sh"
+        - "scripts/tests/usage-inventory.test.ts"
         - "scripts/tests/fixtures/usage-storage/**"
         - "schemas/**"
         - "package.json"

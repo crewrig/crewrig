@@ -243,6 +243,48 @@ bash scripts/usage-backfill.sh --reset-cursors
 
 A prune removes one period. Removing everything the feature holds is a separate procedure, because it must also remove the MemPalace drawers and each CLI's capture wiring, in a set order: see [Removing usage data](usage-organization.md#removing-usage-data) in the organization note, which is the only home of that procedure.
 
+## Inventory and purge (MemPalace-only)
+
+`node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts` inventories, and can remove, drawers filed in MemPalace's `usage-records` room directly — independent of the local usage root, the local journal, and the mirror markers under it (spec 0239, issue [#1206](https://github.com/crewrig/crewrig/issues/1206)). It runs and produces a complete inventory even when `CREWRIG_USAGE_ROOT`, its journal, and `<root>/mirror/` are all absent, so it can find a drawer whose journal entry was already deleted — because the entry was lost, or because an older, informal purge removed the local usage root without removing the drawer.
+
+```bash
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts                                      # inventory, default scope (every wing)
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts --wing crewrig --cli claude-code      # narrowed inventory
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts --period 2026-08 --json               # one month, structured output
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts delete --wing crewrig                 # dry run (default): reports what would delete
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts delete --wing crewrig --commit        # actually deletes (below the wide-delete threshold)
+```
+
+(`task usage:inventory -- ...` runs the same command through the Taskfile wrapper.)
+
+### Confirmation
+
+Before any drawer counts, lists, groups, or is offered for removal, its own full content (never `mempalace_list_drawers`' truncated preview) is fetched and confirmed: it must parse as JSON, its `schemaVersion` must match a version one of `schemas/usage-record/*.schema.json` declares, and its `provenance.cli` must be one of that matched schema's own `provenance.cli` enum values. This is schema-driven, never a hardcoded version — a later schema version this repository ships is picked up with no code change. A room member that fails this confirmation (not JSON, or an unrecognized `schemaVersion`/`provenance.cli`) is excluded from every count, listing, grouping, and removal the command performs, and is never deleted by it.
+
+### Scope, grouping, and filters
+
+With no `--wing`, the command sweeps every wing `mempalace_list_wings` reports — the default, because the usage root and its MemPalace mirror are one person's personal installation on their own machine, never a room shared across unrelated people on one palace, so an all-wings sweep is the scope that actually finds cross-project orphaned drawers. `--wing <name>[,<name>...]` restricts the sweep to an explicit list. Either way, the command states in its own output which scope it actually swept.
+
+The confirmed inventory groups by wing, by `provenance.cli`, and by the recorded period (the UTC `YYYY-MM` of `timing.requestInstant`, derived the same way `scripts/lib/usage-store/layout.js`'s `period()` function derives a period elsewhere in this store). `--cli <cli>` and `--period <YYYY-MM>` filter the confirmed set independently of each other and of the wing scope; `--json` emits the same report as a single structured object instead of text.
+
+Sweep time scales with the swept room's total drawer count, not with how many of those drawers actually match a filter: every confirmed drawer's own full content is fetched with `mempalace_get_drawer`, one call per drawer, before any `--wing`/`--cli`/`--period` filter is applied. This can be significant on an established installation — measured live against this project's own MemPalace installation (tens of thousands of drawers filed in the `usage-records` room across the palace), an all-wings sweep took on the order of tens of minutes before the per-drawer fetches were parallelized. The fetches now run with bounded concurrency (default `16`; override with `CREWRIG_USAGE_INVENTORY_CONCURRENCY`), which cuts that cost roughly proportionally, but the underlying scaling with drawer count remains: a large, long-lived installation should still expect a noticeably slower sweep than a small or fresh one, especially for an all-wings default scope.
+
+### Removal
+
+`delete` addresses every deletion solely by the drawer's own MemPalace drawer id, from this SAME run's own confirmed and filtered result set — never through a `source_file` match, and never through an externally supplied id. It defaults to a dry run, mirroring the dry-run default `mempalace_delete_by_source` itself already applies: pass `--commit` to actually delete. A run whose scope resolves to more than `CREWRIG_USAGE_INVENTORY_WIDE_DELETE_THRESHOLD` confirmed, selected drawers (default `25`; override via that environment variable), or whose scope is every wing, additionally requires `--confirm-count <N>`, where `N` must equal the exact selected count the same invocation's own dry-run pass computed — so a wide deletion cannot be passed reflexively without having seen the count first.
+
+A removal scoped by `--wing`, `--cli`, or `--period` only ever deletes a confirmed drawer matching every filter given for that run; a confirmed drawer belonging to a different wing, CLI, or period is never touched, even when it sits in the same room.
+
+### Exit status
+
+The command is runnable non-interactively and reports its outcome through both a process exit status and a structured summary (`--json`): exit zero only for a completed inventory (an empty confirmed inventory — zero wings, zero room members, or only unrecognized members — is a legitimate, reportable outcome, not an error) or, for a removal run, once every drawer it selected for deletion is confirmed deleted. Exit non-zero for every other outcome, including one where MemPalace could not be reached, answered with a daemon-wide refusal, or could not confirm a requested deletion — such a scope is reported as unconfirmed, never as an empty inventory or a completed removal.
+
+Running the inventory operation, including one scoped by wing, CLI, or period filters, makes no write of any kind to MemPalace and no write to any location under the usage root; the only write this command performs is the removal path's own drawer deletion.
+
+### Known limitation: local mirror markers are not reconciled
+
+When the removal path deletes a drawer for which a local mirror marker under `<usage root>/mirror/mirrored/` still exists, this command does NOT attempt to reconcile or remove that local marker. This is a documented known limitation, not a defect: `scripts/lib/usage-store/prune.js` remains the existing path that keeps a local marker and its MemPalace drawer in sync when the local journal is still present.
+
 ## Vendored validator
 
 The validator (`scripts/lib/usage-store/validator/validate.js`) is a precompiled ajv validator generated from `schemas/usage-record/v1.schema.json` (spec 0205). It is committed to the repository because:

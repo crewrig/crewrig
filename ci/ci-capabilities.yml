@@ -1319,12 +1319,14 @@ capabilities:
           - "scripts/usage-query.sh"
           - "scripts/usage-prune.sh"
           - "scripts/usage-mirror.sh"
+          - "scripts/usage-inventory.ts"
           - "scripts/usage-drain.sh"
           - "scripts/usage-task.sh"
           - "scripts/usage-attribute.sh"
           - "scripts/usage-backfill.sh"
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
+          - "scripts/tests/usage-inventory.test.ts"
           - "scripts/tests/fixtures/usage-storage/**"
           - "schemas/**"
           - "package.json"
@@ -1338,12 +1340,14 @@ capabilities:
           - "scripts/usage-query.sh"
           - "scripts/usage-prune.sh"
           - "scripts/usage-mirror.sh"
+          - "scripts/usage-inventory.ts"
           - "scripts/usage-drain.sh"
           - "scripts/usage-task.sh"
           - "scripts/usage-attribute.sh"
           - "scripts/usage-backfill.sh"
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
+          - "scripts/tests/usage-inventory.test.ts"
           - "scripts/tests/fixtures/usage-storage/**"
           - "schemas/**"
           - "package.json"
@@ -1352,11 +1356,21 @@ capabilities:
           - "docs/usage-organization.md"
     portability: portable
     requires:
-      runtime: node@22
+      # node@24 (bumped from node@22): scripts/usage-inventory.ts and its test
+      # run directly from .ts source via Node's built-in type stripping (spec
+      # 0238), which requires Node >= 24 — see DEVELOPMENT.md, "TypeScript
+      # toolchain and ratchet". Kept its own id, distinct from the `ratchet`/
+      # `lint-typescript` capabilities (spec 0238 R1-R8): this capability
+      # validates the usage-record storage contract, not the TypeScript
+      # toolchain itself, and no `tsc`/Oxlint/Oxfmt tool is needed here — a
+      # plain `node --test` on .ts sources needs no `npm ci` of its own beyond
+      # what this capability already runs for schema validation.
+      runtime: node@24
     command:
       - npm install
       - bash scripts/tests/test-usage-storage.sh
       - bash scripts/tests/test-usage-storage-mirror.sh
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts
       - node scripts/build-usage-validator.js --check
 
   # usage-attribution validates spec 0208's declaration channels, attribution

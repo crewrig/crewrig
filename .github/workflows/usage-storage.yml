@@ -8,12 +8,14 @@ on:
       - "scripts/usage-query.sh"
       - "scripts/usage-prune.sh"
       - "scripts/usage-mirror.sh"
+      - "scripts/usage-inventory.ts"
       - "scripts/usage-drain.sh"
       - "scripts/usage-task.sh"
       - "scripts/usage-attribute.sh"
       - "scripts/usage-backfill.sh"
       - "scripts/build-usage-validator.js"
       - "scripts/tests/test-usage-storage*.sh"
+      - "scripts/tests/usage-inventory.test.ts"
       - "scripts/tests/fixtures/usage-storage/**"
       - "schemas/**"
       - "package.json"
@@ -27,12 +29,14 @@ on:
       - "scripts/usage-query.sh"
       - "scripts/usage-prune.sh"
       - "scripts/usage-mirror.sh"
+      - "scripts/usage-inventory.ts"
       - "scripts/usage-drain.sh"
       - "scripts/usage-task.sh"
       - "scripts/usage-attribute.sh"
       - "scripts/usage-backfill.sh"
       - "scripts/build-usage-validator.js"
       - "scripts/tests/test-usage-storage*.sh"
+      - "scripts/tests/usage-inventory.test.ts"
       - "scripts/tests/fixtures/usage-storage/**"
       - "schemas/**"
       - "package.json"
@@ -52,7 +56,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # node@24 (bumped from node@22): scripts/usage-inventory.ts and its
+          # test now run directly from .ts source via Node's built-in type
+          # stripping (spec 0238), which requires Node >= 24 — see
+          # DEVELOPMENT.md, "TypeScript toolchain and ratchet".
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -63,6 +71,9 @@ jobs:
 
       - name: Validate the usage-record mirror against a fake daemon
         run: bash scripts/tests/test-usage-storage-mirror.sh
+
+      - name: Validate the MemPalace drawer inventory against a fake daemon
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts
 
       - name: Verify the standalone validator matches the generator
         run: node scripts/build-usage-validator.js --check
