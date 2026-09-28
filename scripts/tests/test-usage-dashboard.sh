@@ -2167,7 +2167,11 @@ case_port_conflict() {
   local root
   fresh_root_into root
   held_log="$out/held.log"
-  drv hold-port >"$held_log" 2>&1 &
+  # Not `drv hold-port &` (issue #1371): `drv` is a shell function, so `$!`
+  # after backgrounding it is the backgrounding subshell's PID, not node's —
+  # killing it in cleanup()/below orphans the still-listening node child.
+  # Spawning `node` directly here makes `$!` node's own PID.
+  USAGE_TEST_REPO_DIR="$DASH_REPO" node --disable-warning=ExperimentalWarning "$DRIVER" hold-port >"$held_log" 2>&1 &
   held_pid=$!
   BG_PIDS="$BG_PIDS $held_pid"
   while [ $i -lt 100 ] && ! grep -q '^PORT=' "$held_log"; do
@@ -2899,6 +2903,18 @@ $home_added_path"
   else
     bad "\$HOME/.crewrig/usage is unchanged by the suite" "$home_offenders"
   fi
+fi
+
+# Regression check (#1371): no `driver.js hold-port` listener started by
+# this run outlives its case's own teardown. $DRIVER is unique per run
+# (under $HELPERS_DIR), so this only ever matches processes we spawned.
+echo
+echo "=== Regression: no driver.js hold-port process outlives this run ==="
+orphaned_hold_ports="$(pgrep -fl "$DRIVER hold-port" 2>/dev/null || true)"
+if [ -z "$orphaned_hold_ports" ]; then
+  ok "no driver.js hold-port process outlives this run"
+else
+  bad "no driver.js hold-port process outlives this run" "$orphaned_hold_ports"
 fi
 
 echo
