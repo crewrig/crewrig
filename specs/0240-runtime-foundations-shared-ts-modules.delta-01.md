@@ -91,8 +91,14 @@ Replacement:
 >    rather than a violation. The clause is deliberately not "named":
 >    this spec introduces no manifest or list where overlap-package names
 >    are recorded, so a delta that wanted such a record would have to
->    name where it lives; `scripts/lib/require-dependency.ts` (requirement
->    7) keeps an overlap package from being imported without needing one.
+>    name where it lives. The SHALL NOT clause is stated as a bare
+>    normative bar, not as a description of an existing enforcement
+>    mechanism: `scripts/lib/require-dependency.ts` (requirement 7) guards
+>    only a caller that resolves the package through its `loadDependency`
+>    function, and nothing in this spec yet stops a migrated script's
+>    static `import` of an overlap package from bypassing that guard,
+>    since the package genuinely exists on disk once the dependency step
+>    has installed it.
 
 Requirement 5 — the dependency step's re-run condition, aligned with
 `specs/0215-shell-to-typescript-migration.delta-02.md`'s narrowing of
