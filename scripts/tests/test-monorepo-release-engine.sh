@@ -177,6 +177,9 @@ make_fixture() {
 
   cp -R "$SCRIPT_DIR" "$fix/scripts"
   rm -rf "$fix/scripts/tests"
+  # The changelog facade lints CHANGELOG.md with the repository's own
+  # markdownlint configuration before the release commit (issue #1364).
+  cp "$REPO_DIR/.markdownlintrc" "$fix/.markdownlintrc"
   printf 'node_modules/\ndist/\nbuild/\n' > "$fix/.gitignore"
 
   mkext "$fix" foo 1.2.0
