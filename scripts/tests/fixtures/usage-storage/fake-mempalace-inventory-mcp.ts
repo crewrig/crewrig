@@ -128,11 +128,18 @@ function ensureWing(wing: string): Map<string, DrawerEntry> {
 }
 
 function makeDrawerId(wing: string, content: string): string {
-  const digest = createHash("sha256").update(`${wing}|${ROOM}|${content}`).digest("hex").slice(0, 24);
+  const digest = createHash("sha256")
+    .update(`${wing}|${ROOM}|${content}`)
+    .digest("hex")
+    .slice(0, 24);
   return `drawer_${wing}_${ROOM}_${digest}`;
 }
 
-type ToolName = "mempalace_list_wings" | "mempalace_list_drawers" | "mempalace_get_drawer" | "mempalace_delete_drawer";
+type ToolName =
+  | "mempalace_list_wings"
+  | "mempalace_list_drawers"
+  | "mempalace_get_drawer"
+  | "mempalace_delete_drawer";
 
 type Shape =
   | "not-json-text"
@@ -178,7 +185,11 @@ const toolLatency: Record<ToolName, number> = {
 };
 
 function jsonRpcResult(id: unknown, payload: unknown): string {
-  return JSON.stringify({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(payload) }] } });
+  return JSON.stringify({
+    jsonrpc: "2.0",
+    id,
+    result: { content: [{ type: "text", text: JSON.stringify(payload) }] },
+  });
 }
 function jsonRpcRawResult(id: unknown, result: unknown): string {
   return JSON.stringify({ jsonrpc: "2.0", id, result });
@@ -198,27 +209,48 @@ interface HandlerResult {
 function injected(shape: Shape, id: unknown, code: number | null): HandlerResult {
   switch (shape) {
     case "not-json-text":
-      return { status: 200, body: jsonRpcRawResult(id, { content: [{ type: "text", text: "not json" }] }) };
+      return {
+        status: 200,
+        body: jsonRpcRawResult(id, { content: [{ type: "text", text: "not json" }] }),
+      };
     case "no-text-content":
       return { status: 200, body: jsonRpcRawResult(id, { content: [] }) };
     case "is-error":
-      return { status: 200, body: jsonRpcRawResult(id, { content: [{ type: "text", text: "{}" }], isError: true }) };
+      return {
+        status: 200,
+        body: jsonRpcRawResult(id, { content: [{ type: "text", text: "{}" }], isError: true }),
+      };
     case "no-result":
       return { status: 200, body: JSON.stringify({ jsonrpc: "2.0", id }) };
     case "jsonrpc-error":
-      return { status: 200, body: jsonRpcError(id, code as number, "injected tool failure (test control)") };
+      return {
+        status: 200,
+        body: jsonRpcError(id, code as number, "injected tool failure (test control)"),
+      };
     case "transport-500":
-      return { status: 500, body: JSON.stringify({ error: "injected transport failure (test control)" }) };
+      return {
+        status: 500,
+        body: JSON.stringify({ error: "injected transport failure (test control)" }),
+      };
     case "success-false":
       // A well-formed tool result whose PAYLOAD is {success:false, ...} —
       // the real mempalace_delete_drawer shape for an already-deleted or
       // unknown drawer id (i1-F1). NOT a JSON-RPC-level error.
-      return { status: 200, body: jsonRpcResult(id, { success: false, error: "injected success:false payload (test control)" }) };
+      return {
+        status: 200,
+        body: jsonRpcResult(id, {
+          success: false,
+          error: "injected success:false payload (test control)",
+        }),
+      };
     case "no-content-error":
       // A well-formed tool result whose PAYLOAD is {error: ...} with no
       // `content` key and no `success` key — mempalace_get_drawer's only
       // real failure shape (i1-F2). NOT a JSON-RPC-level error.
-      return { status: 200, body: jsonRpcResult(id, { error: "injected content-less error payload (test control)" }) };
+      return {
+        status: 200,
+        body: jsonRpcResult(id, { error: "injected content-less error payload (test control)" }),
+      };
     default: {
       const exhaustive: never = shape;
       throw new Error(`unknown toolFailure shape: ${String(exhaustive)}`);
@@ -249,7 +281,8 @@ function handleListDrawers(id: unknown, args: ListDrawersArgs | undefined): Hand
   const { wing, room, limit, offset } = args ?? {};
   const effLimit = Number.isInteger(limit) ? (limit as number) : 20;
   const effOffset = Number.isInteger(offset) ? (offset as number) : 0;
-  const wingMap = (wing !== undefined ? store.get(wing) : undefined) ?? new Map<string, DrawerEntry>();
+  const wingMap =
+    (wing !== undefined ? store.get(wing) : undefined) ?? new Map<string, DrawerEntry>();
   const all = room === ROOM ? [...wingMap.entries()] : [];
   const total = all.length;
   const page = all.slice(effOffset, effOffset + effLimit).map(([drawerId, entry]) => ({
@@ -261,7 +294,13 @@ function handleListDrawers(id: unknown, args: ListDrawersArgs | undefined): Hand
   }));
   return {
     status: 200,
-    body: jsonRpcResult(id, { drawers: page, total, count: page.length, offset: effOffset, limit: effLimit }),
+    body: jsonRpcResult(id, {
+      drawers: page,
+      total,
+      count: page.length,
+      offset: effOffset,
+      limit: effLimit,
+    }),
   };
 }
 
@@ -297,7 +336,10 @@ function handleDeleteDrawer(id: unknown, args: { drawer_id?: string } | undefine
     for (const wingMap of store.values()) {
       if (wingMap.has(drawerId)) {
         wingMap.delete(drawerId);
-        return { status: 200, body: jsonRpcResult(id, { success: true, drawer_id: drawerId, deleted: true }) };
+        return {
+          status: 200,
+          body: jsonRpcResult(id, { success: true, drawer_id: drawerId, deleted: true }),
+        };
       }
     }
   }
@@ -307,8 +349,10 @@ function handleDeleteDrawer(id: unknown, args: { drawer_id?: string } | undefine
 const TOOLS: Record<ToolName, (id: unknown, args: unknown) => HandlerResult> = {
   mempalace_list_wings: (id) => handleListWings(id),
   mempalace_list_drawers: (id, args) => handleListDrawers(id, args as ListDrawersArgs | undefined),
-  mempalace_get_drawer: (id, args) => handleGetDrawer(id, args as { drawer_id?: string } | undefined),
-  mempalace_delete_drawer: (id, args) => handleDeleteDrawer(id, args as { drawer_id?: string } | undefined),
+  mempalace_get_drawer: (id, args) =>
+    handleGetDrawer(id, args as { drawer_id?: string } | undefined),
+  mempalace_delete_drawer: (id, args) =>
+    handleDeleteDrawer(id, args as { drawer_id?: string } | undefined),
 };
 
 function isToolName(value: unknown): value is ToolName {
@@ -362,12 +406,22 @@ function handleControl(req: http.IncomingMessage, res: http.ServerResponse): voi
       const shape = tf.shape;
       if (!isToolName(tool) || (shape !== null && !SHAPES.includes(shape as Shape))) {
         res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: false, error: `unknown toolFailure tool/shape: ${String(tool)}/${String(shape)}` }));
+        res.end(
+          JSON.stringify({
+            ok: false,
+            error: `unknown toolFailure tool/shape: ${String(tool)}/${String(shape)}`,
+          }),
+        );
         return;
       }
       if (shape === "jsonrpc-error" && !Number.isInteger(tf.code)) {
         res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: false, error: `jsonrpc-error requires an integer code, got: ${String(tf.code)}` }));
+        res.end(
+          JSON.stringify({
+            ok: false,
+            error: `jsonrpc-error requires an integer code, got: ${String(tf.code)}`,
+          }),
+        );
         return;
       }
       toolFailure[tool] = (shape ?? null) as Shape | null;
@@ -380,7 +434,12 @@ function handleControl(req: http.IncomingMessage, res: http.ServerResponse): voi
       const ms = lt.ms;
       if (!isToolName(tool) || !Number.isInteger(ms) || (ms as number) < 0) {
         res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: false, error: `unknown latency tool or non-negative-integer ms: ${String(tool)}/${String(ms)}` }));
+        res.end(
+          JSON.stringify({
+            ok: false,
+            error: `unknown latency tool or non-negative-integer ms: ${String(tool)}/${String(ms)}`,
+          }),
+        );
         return;
       }
       toolLatency[tool] = ms as number;
@@ -431,7 +490,13 @@ const server = http.createServer((req, res) => {
     if (!isRecord(parsedBody) || parsedBody.method !== "tools/call") {
       const id = isRecord(parsedBody) ? parsedBody.id : null;
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(jsonRpcError(id, -32000, `unsupported method: ${isRecord(parsedBody) ? String(parsedBody.method) : "unknown"}`));
+      res.end(
+        jsonRpcError(
+          id,
+          -32000,
+          `unsupported method: ${isRecord(parsedBody) ? String(parsedBody.method) : "unknown"}`,
+        ),
+      );
       return;
     }
 

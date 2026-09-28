@@ -68,7 +68,14 @@ import { tokenPath as mcpTokenPath } from "../lib/usage-store/mcp.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CLI = path.join(REPO, "scripts", "usage-inventory.ts");
-const FIXTURE = path.join(REPO, "scripts", "tests", "fixtures", "usage-storage", "fake-mempalace-inventory-mcp.ts");
+const FIXTURE = path.join(
+  REPO,
+  "scripts",
+  "tests",
+  "fixtures",
+  "usage-storage",
+  "fake-mempalace-inventory-mcp.ts",
+);
 
 interface Run {
   ec: number;
@@ -140,9 +147,13 @@ const homeDirsToClean: string[] = [];
 const tempDirsToClean: string[] = [];
 
 async function startFake(): Promise<void> {
-  fakeProc = spawn(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", FIXTURE, String(FAKE_PORT), FAKE_TOKEN], {
-    stdio: ["ignore", "ignore", "pipe"],
-  });
+  fakeProc = spawn(
+    process.execPath,
+    ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", FIXTURE, String(FAKE_PORT), FAKE_TOKEN],
+    {
+      stdio: ["ignore", "ignore", "pipe"],
+    },
+  );
   const deadline = Date.now() + 5000;
   for (;;) {
     try {
@@ -185,8 +196,16 @@ function makeContent(cli: string, requestInstant: string, recordId: string): str
     fidelity: "per-request",
     recordId,
     idempotencyKey: `test-idem-${recordId.slice(0, 8)}`,
-    provenance: { cli, cliVersion: "1.0.0", captureChannel: "test-fixture", formatFingerprint: `sha256:${"0".repeat(32)}` },
-    identity: { sessionId: `test-session-${recordId.slice(0, 8)}`, projectRoot: "/tmp/test-project" },
+    provenance: {
+      cli,
+      cliVersion: "1.0.0",
+      captureChannel: "test-fixture",
+      formatFingerprint: `sha256:${"0".repeat(32)}`,
+    },
+    identity: {
+      sessionId: `test-session-${recordId.slice(0, 8)}`,
+      projectRoot: "/tmp/test-project",
+    },
     timing: { requestInstant, captureInstant: requestInstant },
     uncapturedReason: "test-fixture seeded record",
   });
@@ -204,16 +223,24 @@ async function seedDrawer(wing: string, content: string, explicitId?: string): P
 }
 
 async function countDrawers(wing: string): Promise<number> {
-  const res = await fakeControl<{ ok: boolean; count: number; drawerIds: string[] }>({ countDrawers: { wing } });
+  const res = await fakeControl<{ ok: boolean; count: number; drawerIds: string[] }>({
+    countDrawers: { wing },
+  });
   return res.count;
 }
 
 async function drawerIdsFor(wing: string): Promise<string[]> {
-  const res = await fakeControl<{ ok: boolean; count: number; drawerIds: string[] }>({ countDrawers: { wing } });
+  const res = await fakeControl<{ ok: boolean; count: number; drawerIds: string[] }>({
+    countDrawers: { wing },
+  });
   return res.drawerIds;
 }
 
-async function toolFailure(tool: string, shape: string | null, code: number | null = null): Promise<void> {
+async function toolFailure(
+  tool: string,
+  shape: string | null,
+  code: number | null = null,
+): Promise<void> {
   await fakeControl({ toolFailure: { tool, shape, code } });
 }
 
@@ -230,10 +257,14 @@ function runInventory(args: string[], extraEnv: Record<string, string> = {}): Ru
     MEMPALACE_MCP_PORT: String(FAKE_PORT),
     ...extraEnv,
   };
-  const res = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", CLI, ...args], {
-    encoding: "utf8",
-    env,
-  });
+  const res = spawnSync(
+    process.execPath,
+    ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", CLI, ...args],
+    {
+      encoding: "utf8",
+      env,
+    },
+  );
   return { ec: res.status ?? 1, out: res.stdout ?? "", err: res.stderr ?? "" };
 }
 
@@ -241,12 +272,17 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
   before(async () => {
     PALACE_PARENT = fs.mkdtempSync(path.join(os.tmpdir(), "usage-inventory-test-palace-"));
     tempDirsToClean.push(PALACE_PARENT);
-    USAGE_ROOT = path.join(untouchedTempPath("usage-inventory-test-root"), "nonexistent-usage-root");
+    USAGE_ROOT = path.join(
+      untouchedTempPath("usage-inventory-test-root"),
+      "nonexistent-usage-root",
+    );
     process.env.MEMPALACE_PALACE_PATH = path.join(PALACE_PARENT, "palace");
 
     FAKE_PORT = await freePort();
     if (FAKE_PORT === 41893) {
-      throw new Error("the OS handed back the real daemon's port (41893) for the fake — refusing to proceed.");
+      throw new Error(
+        "the OS handed back the real daemon's port (41893) for the fake — refusing to proceed.",
+      );
     }
     FAKE_TOKEN = `fake-mempalace-inventory-token-${process.pid}-${randomInt(1_000_000_000)}`;
 
@@ -257,7 +293,9 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
     TOKEN_PATH = mcpTokenPath();
     const tokenDir = path.dirname(TOKEN_PATH);
     if (fs.existsSync(tokenDir)) {
-      throw new Error(`${tokenDir} already exists — refusing to touch pre-existing state under $HOME/.mempalace/.`);
+      throw new Error(
+        `${tokenDir} already exists — refusing to touch pre-existing state under $HOME/.mempalace/.`,
+      );
     }
     homeDirsToClean.push(tokenDir);
     fs.mkdirSync(tokenDir, { recursive: true });
@@ -274,18 +312,30 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
 
   test("(a) a drawer orphaned by a lost journal entry is found and confirmed from its own content alone", async () => {
     await resetFake();
-    assert.equal(fs.existsSync(USAGE_ROOT), false, "setup: the local usage root genuinely does not exist");
+    assert.equal(
+      fs.existsSync(USAGE_ROOT),
+      false,
+      "setup: the local usage root genuinely does not exist",
+    );
 
     const orphanRid = newRecordId();
     const orphanContent = makeContent("claude-code", "2026-03-15T10:00:00.000Z", orphanRid);
     const orphanDrawerId = await seedDrawer("wing-a", orphanContent);
 
     const run = runInventory(["--wing", "wing-a", "--json"]);
-    assert.equal(run.ec, 0, `inventory exits 0 with no local usage root, journal, or mirror markers present\n${run.err}`);
+    assert.equal(
+      run.ec,
+      0,
+      `inventory exits 0 with no local usage root, journal, or mirror markers present\n${run.err}`,
+    );
     const parsed = parseOut(run);
     assert.equal(parsed.outcome, "inventory");
     assert.equal(parsed.confirmedTotal, 1, "exactly 1 confirmed drawer (the orphan)");
-    assert.equal(parsed.selected?.[0]?.drawerId, orphanDrawerId, "the orphaned drawer is identified solely by its own MemPalace drawer id");
+    assert.equal(
+      parsed.selected?.[0]?.drawerId,
+      orphanDrawerId,
+      "the orphaned drawer is identified solely by its own MemPalace drawer id",
+    );
   });
 
   test("(b) an unrecognized room member is excluded from every count/listing and is never deleted", async () => {
@@ -298,13 +348,32 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
     const run = runInventory(["--wing", "wing-b", "--json"]);
     const parsed = parseOut(run);
     assert.equal(run.ec, 0);
-    assert.equal(parsed.confirmedTotal, 1, "the unrecognized member is excluded from the count (confirmed=1)");
-    assert.equal(parsed.excludedTotal, 1, "the unrecognized member is excluded from the count (excluded=1)");
+    assert.equal(
+      parsed.confirmedTotal,
+      1,
+      "the unrecognized member is excluded from the count (confirmed=1)",
+    );
+    assert.equal(
+      parsed.excludedTotal,
+      1,
+      "the unrecognized member is excluded from the count (excluded=1)",
+    );
 
     const del = runInventory(["delete", "--wing", "wing-b", "--commit", "--json"]);
-    assert.equal(del.ec, 0, `the delete run (only the recognized drawer selected) succeeds\n${del.err}`);
-    assert.equal(await countDrawers("wing-b"), 1, "exactly 1 drawer remains in wing-b — the unrecognized one, never deleted");
-    assert.ok((await drawerIdsFor("wing-b")).includes(badId), "the surviving drawer is the unrecognized one, by id");
+    assert.equal(
+      del.ec,
+      0,
+      `the delete run (only the recognized drawer selected) succeeds\n${del.err}`,
+    );
+    assert.equal(
+      await countDrawers("wing-b"),
+      1,
+      "exactly 1 drawer remains in wing-b — the unrecognized one, never deleted",
+    );
+    assert.ok(
+      (await drawerIdsFor("wing-b")).includes(badId),
+      "the surviving drawer is the unrecognized one, by id",
+    );
   });
 
   test("(c) dry run is the default: reports what would delete, deletes nothing", async () => {
@@ -315,39 +384,77 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
     const run = runInventory(["delete", "--wing", "wing-c", "--json"]);
     const parsed = parseOut(run);
     assert.equal(run.ec, 0, run.err);
-    assert.equal(parsed.outcome, "dry-run", "a delete run without --commit reports outcome=dry-run and exits 0");
+    assert.equal(
+      parsed.outcome,
+      "dry-run",
+      "a delete run without --commit reports outcome=dry-run and exits 0",
+    );
     assert.equal(parsed.selectedTotal, 1, "the dry run reports exactly 1 drawer it would delete");
-    assert.equal(await countDrawers("wing-c"), 1, "the drawer is still present in MemPalace after the dry run");
+    assert.equal(
+      await countDrawers("wing-c"),
+      1,
+      "the drawer is still present in MemPalace after the dry run",
+    );
   });
 
   test("(d) a wide deletion requires an added confirmation beyond --commit", async () => {
     await resetFake();
     for (let i = 1; i <= 3; i += 1) {
-      await seedDrawer("wing-d", makeContent("claude-code", `2026-06-0${i}T00:00:00.000Z`, newRecordId()));
+      await seedDrawer(
+        "wing-d",
+        makeContent("claude-code", `2026-06-0${i}T00:00:00.000Z`, newRecordId()),
+      );
     }
 
     const wideEnv = { CREWRIG_USAGE_INVENTORY_WIDE_DELETE_THRESHOLD: "2" };
     const refused = runInventory(["delete", "--wing", "wing-d", "--commit", "--json"], wideEnv);
     const refusedParsed = parseOut(refused);
     assert.notEqual(refused.ec, 0);
-    assert.equal(refusedParsed.outcome, "confirmation-required", "3 confirmed drawers over a threshold of 2 refuses without --confirm-count");
-    assert.equal(await countDrawers("wing-d"), 3, "nothing was deleted by the refused wide-deletion attempt");
+    assert.equal(
+      refusedParsed.outcome,
+      "confirmation-required",
+      "3 confirmed drawers over a threshold of 2 refuses without --confirm-count",
+    );
+    assert.equal(
+      await countDrawers("wing-d"),
+      3,
+      "nothing was deleted by the refused wide-deletion attempt",
+    );
 
     const requiredCount = refusedParsed.requiredConfirmCount;
     assert.equal(typeof requiredCount, "number");
     const confirmed = runInventory(
-      ["delete", "--wing", "wing-d", "--commit", "--confirm-count", String(requiredCount), "--json"],
+      [
+        "delete",
+        "--wing",
+        "wing-d",
+        "--commit",
+        "--confirm-count",
+        String(requiredCount),
+        "--json",
+      ],
       wideEnv,
     );
     const confirmedParsed = parseOut(confirmed);
-    assert.equal(confirmed.ec, 0, "supplying the exact --confirm-count reported allows the wide deletion to proceed");
+    assert.equal(
+      confirmed.ec,
+      0,
+      "supplying the exact --confirm-count reported allows the wide deletion to proceed",
+    );
     assert.equal(confirmedParsed.outcome, "deleted");
-    assert.equal(await countDrawers("wing-d"), 0, "all 3 drawers are deleted once the added confirmation matches");
+    assert.equal(
+      await countDrawers("wing-d"),
+      0,
+      "all 3 drawers are deleted once the added confirmation matches",
+    );
   });
 
   test("(e) MemPalace unreachable: fail-closed, unconfirmed, deletes nothing", async () => {
     await resetFake();
-    await seedDrawer("wing-e", makeContent("claude-code", "2026-07-01T00:00:00.000Z", newRecordId()));
+    await seedDrawer(
+      "wing-e",
+      makeContent("claude-code", "2026-07-01T00:00:00.000Z", newRecordId()),
+    );
 
     // transport-500 simulates an unreachable daemon WITHOUT stopping this
     // process, so the fixture's in-memory store (and the seeded drawer)
@@ -357,29 +464,61 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
     const listRun = runInventory(["--wing", "wing-e", "--json"]);
     const listParsed = parseOut(listRun);
     assert.notEqual(listRun.ec, 0);
-    assert.equal(listParsed.outcome, "unconfirmed", "inventory reports outcome=unconfirmed and exits non-zero when MemPalace is unreachable");
+    assert.equal(
+      listParsed.outcome,
+      "unconfirmed",
+      "inventory reports outcome=unconfirmed and exits non-zero when MemPalace is unreachable",
+    );
 
     const delRun = runInventory(["delete", "--wing", "wing-e", "--commit", "--json"]);
     const delParsed = parseOut(delRun);
     assert.notEqual(delRun.ec, 0);
-    assert.equal(delParsed.outcome, "unconfirmed", "a --commit delete run also reports unconfirmed when MemPalace is unreachable");
+    assert.equal(
+      delParsed.outcome,
+      "unconfirmed",
+      "a --commit delete run also reports unconfirmed when MemPalace is unreachable",
+    );
 
     await toolFailure("mempalace_list_drawers", null);
-    assert.equal(await countDrawers("wing-e"), 1, "the drawer survives entirely — nothing was deleted while MemPalace was unreachable");
+    assert.equal(
+      await countDrawers("wing-e"),
+      1,
+      "the drawer survives entirely — nothing was deleted while MemPalace was unreachable",
+    );
   });
 
   test("(f) grouped, filtered inventory across many wings, many CLIs, many periods", async () => {
     await resetFake();
-    await seedDrawer("wing-f1", makeContent("claude-code", "2026-01-10T00:00:00.000Z", newRecordId()));
-    await seedDrawer("wing-f1", makeContent("gemini-cli", "2026-01-15T00:00:00.000Z", newRecordId()));
-    await seedDrawer("wing-f2", makeContent("claude-code", "2026-02-10T00:00:00.000Z", newRecordId()));
-    await seedDrawer("wing-f2", makeContent("copilot-cli", "2026-02-20T00:00:00.000Z", newRecordId()));
+    await seedDrawer(
+      "wing-f1",
+      makeContent("claude-code", "2026-01-10T00:00:00.000Z", newRecordId()),
+    );
+    await seedDrawer(
+      "wing-f1",
+      makeContent("gemini-cli", "2026-01-15T00:00:00.000Z", newRecordId()),
+    );
+    await seedDrawer(
+      "wing-f2",
+      makeContent("claude-code", "2026-02-10T00:00:00.000Z", newRecordId()),
+    );
+    await seedDrawer(
+      "wing-f2",
+      makeContent("copilot-cli", "2026-02-20T00:00:00.000Z", newRecordId()),
+    );
 
     const run = runInventory(["--wing", "wing-f1,wing-f2", "--period", "2026-02", "--json"]);
     const parsed = parseOut(run);
     assert.equal(run.ec, 0);
-    assert.equal(parsed.selectedTotal, 2, "a period filter across many wings selects only that month's confirmed drawers (2 of 4)");
-    assert.deepEqual(parsed.byWing, { "wing-f2": 2 }, "the filtered result is grouped by wing correctly (only wing-f2, count 2)");
+    assert.equal(
+      parsed.selectedTotal,
+      2,
+      "a period filter across many wings selects only that month's confirmed drawers (2 of 4)",
+    );
+    assert.deepEqual(
+      parsed.byWing,
+      { "wing-f2": 2 },
+      "the filtered result is grouped by wing correctly (only wing-f2, count 2)",
+    );
     assert.deepEqual(
       parsed.byCli,
       { "claude-code": 1, "copilot-cli": 1 },
@@ -389,80 +528,149 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
 
   test("(g) deleting exactly one confirmed drawer, addressed by its own MemPalace drawer id", async () => {
     await resetFake();
-    const oneId = await seedDrawer("wing-g", makeContent("claude-code", "2026-03-01T00:00:00.000Z", newRecordId()));
+    const oneId = await seedDrawer(
+      "wing-g",
+      makeContent("claude-code", "2026-03-01T00:00:00.000Z", newRecordId()),
+    );
 
     const run = runInventory(["delete", "--wing", "wing-g", "--commit", "--json"]);
     const parsed = parseOut(run);
     assert.equal(run.ec, 0, `expected outcome=deleted\n${run.err}`);
     assert.equal(parsed.outcome, "deleted");
-    assert.deepEqual(parsed.deletedDrawerIds, [oneId], "exactly one drawer was deleted, addressed by its own drawer id");
+    assert.deepEqual(
+      parsed.deletedDrawerIds,
+      [oneId],
+      "exactly one drawer was deleted, addressed by its own drawer id",
+    );
     assert.equal(await countDrawers("wing-g"), 0, "wing-g now holds zero drawers");
   });
 
   test("(h) a wing-scoped removal never reaches a confirmed drawer in another wing", async () => {
     await resetFake();
-    await seedDrawer("wing-h1", makeContent("claude-code", "2026-03-05T00:00:00.000Z", newRecordId()));
-    await seedDrawer("wing-h2", makeContent("claude-code", "2026-03-05T00:00:00.000Z", newRecordId()));
+    await seedDrawer(
+      "wing-h1",
+      makeContent("claude-code", "2026-03-05T00:00:00.000Z", newRecordId()),
+    );
+    await seedDrawer(
+      "wing-h2",
+      makeContent("claude-code", "2026-03-05T00:00:00.000Z", newRecordId()),
+    );
 
     const run = runInventory(["delete", "--wing", "wing-h1", "--commit", "--json"]);
     assert.equal(run.ec, 0, `the wing-h1-scoped delete run succeeds\n${run.err}`);
     assert.equal(await countDrawers("wing-h1"), 0, "wing-h1's confirmed drawer is deleted");
-    assert.equal(await countDrawers("wing-h2"), 1, "wing-h2's confirmed drawer is untouched despite sitting in the same room");
+    assert.equal(
+      await countDrawers("wing-h2"),
+      1,
+      "wing-h2's confirmed drawer is untouched despite sitting in the same room",
+    );
   });
 
   test("(i) an all-wings sweep is the actual default when no --wing is given", async () => {
     await resetFake();
-    await seedDrawer("wing-i1", makeContent("claude-code", "2026-03-10T00:00:00.000Z", newRecordId()));
-    await seedDrawer("wing-i2", makeContent("claude-code", "2026-03-10T00:00:00.000Z", newRecordId()));
+    await seedDrawer(
+      "wing-i1",
+      makeContent("claude-code", "2026-03-10T00:00:00.000Z", newRecordId()),
+    );
+    await seedDrawer(
+      "wing-i2",
+      makeContent("claude-code", "2026-03-10T00:00:00.000Z", newRecordId()),
+    );
 
     const run = runInventory(["--json"]);
     const parsed = parseOut(run);
     assert.equal(run.ec, 0);
     assert.equal(parsed.scope, "all", "the default scope is reported as 'all'");
-    assert.ok(parsed.wingsSwept?.includes("wing-i1") && parsed.wingsSwept.includes("wing-i2"), "both wings are named in the swept scope");
-    assert.equal(parsed.confirmedTotal, 2, "both seeded drawers are confirmed in the all-wings sweep");
+    assert.ok(
+      parsed.wingsSwept?.includes("wing-i1") && parsed.wingsSwept.includes("wing-i2"),
+      "both wings are named in the swept scope",
+    );
+    assert.equal(
+      parsed.confirmedTotal,
+      2,
+      "both seeded drawers are confirmed in the all-wings sweep",
+    );
 
     // An all-wings scope is itself "wide" (R16), regardless of drawer count.
     const refused = runInventory(["delete", "--commit", "--json"]);
     const refusedParsed = parseOut(refused);
     assert.notEqual(refused.ec, 0);
-    assert.equal(refusedParsed.outcome, "confirmation-required", "an all-wings deletion refuses without --confirm-count, even below the drawer-count threshold");
+    assert.equal(
+      refusedParsed.outcome,
+      "confirmation-required",
+      "an all-wings deletion refuses without --confirm-count, even below the drawer-count threshold",
+    );
 
-    const confirmed = runInventory(["delete", "--commit", "--confirm-count", String(refusedParsed.requiredConfirmCount), "--json"]);
+    const confirmed = runInventory([
+      "delete",
+      "--commit",
+      "--confirm-count",
+      String(refusedParsed.requiredConfirmCount),
+      "--json",
+    ]);
     const confirmedParsed = parseOut(confirmed);
-    assert.equal(confirmed.ec, 0, "supplying the exact --confirm-count for the all-wings scope allows the deletion to proceed");
+    assert.equal(
+      confirmed.ec,
+      0,
+      "supplying the exact --confirm-count for the all-wings scope allows the deletion to proceed",
+    );
     assert.equal(confirmedParsed.outcome, "deleted");
   });
 
   test("(j) a delete_drawer answer of {success:false} is reported unconfirmed, not deleted (i1-F1)", async () => {
     await resetFake();
-    const jId = await seedDrawer("wing-j", makeContent("claude-code", "2026-03-25T00:00:00.000Z", newRecordId()));
+    const jId = await seedDrawer(
+      "wing-j",
+      makeContent("claude-code", "2026-03-25T00:00:00.000Z", newRecordId()),
+    );
 
     await toolFailure("mempalace_delete_drawer", "success-false");
     const run = runInventory(["delete", "--wing", "wing-j", "--commit", "--json"]);
     const parsed = parseOut(run);
     assert.notEqual(run.ec, 0);
-    assert.equal(parsed.outcome, "unconfirmed", "a {success:false} delete_drawer answer reports outcome=unconfirmed (never 'deleted')");
+    assert.equal(
+      parsed.outcome,
+      "unconfirmed",
+      "a {success:false} delete_drawer answer reports outcome=unconfirmed (never 'deleted')",
+    );
 
     await toolFailure("mempalace_delete_drawer", null);
-    assert.equal(await countDrawers("wing-j"), 1, "the drawer survives: a {success:false} answer never removed it");
-    assert.ok((await drawerIdsFor("wing-j")).includes(jId), "the surviving drawer is the same one, by id");
+    assert.equal(
+      await countDrawers("wing-j"),
+      1,
+      "the drawer survives: a {success:false} answer never removed it",
+    );
+    assert.ok(
+      (await drawerIdsFor("wing-j")).includes(jId),
+      "the surviving drawer is the same one, by id",
+    );
   });
 
   test("(k) a get_drawer answer with no usable content aborts the sweep as unconfirmed, not excluded (i1-F2)", async () => {
     await resetFake();
-    await seedDrawer("wing-k", makeContent("claude-code", "2026-03-26T00:00:00.000Z", newRecordId()));
+    await seedDrawer(
+      "wing-k",
+      makeContent("claude-code", "2026-03-26T00:00:00.000Z", newRecordId()),
+    );
 
     await toolFailure("mempalace_get_drawer", "no-content-error");
     const failing = runInventory(["--wing", "wing-k", "--json"]);
     const failingParsed = parseOut(failing);
     assert.notEqual(failing.ec, 0);
-    assert.equal(failingParsed.outcome, "unconfirmed", "a content-less get_drawer payload aborts the WHOLE sweep as unconfirmed");
+    assert.equal(
+      failingParsed.outcome,
+      "unconfirmed",
+      "a content-less get_drawer payload aborts the WHOLE sweep as unconfirmed",
+    );
 
     await toolFailure("mempalace_get_drawer", null);
     const recovered = runInventory(["--wing", "wing-k", "--json"]);
     const recoveredParsed = parseOut(recovered);
-    assert.equal(recovered.ec, 0, "clearing the injected shape restores normal confirmation (sanity check)");
+    assert.equal(
+      recovered.ec,
+      0,
+      "clearing the injected shape restores normal confirmation (sanity check)",
+    );
     assert.equal(recoveredParsed.confirmedTotal, 1);
   });
 
@@ -473,7 +681,16 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
     const LATENCY_MS = 40;
     const concIds: string[] = [];
     for (let i = 1; i <= CONC_COUNT; i += 1) {
-      concIds.push(await seedDrawer(CONC_WING, makeContent("claude-code", `2026-04-${String(i).padStart(2, "0")}T00:00:00.000Z`, newRecordId())));
+      concIds.push(
+        await seedDrawer(
+          CONC_WING,
+          makeContent(
+            "claude-code",
+            `2026-04-${String(i).padStart(2, "0")}T00:00:00.000Z`,
+            newRecordId(),
+          ),
+        ),
+      );
     }
 
     await setLatency("mempalace_get_drawer", LATENCY_MS);
@@ -482,24 +699,45 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
     // CORRECTNESS baseline: with CONC_COUNT drawers and a per-drawer
     // LATENCY_MS delay, this run must take at least CONC_COUNT * LATENCY_MS.
     const seqStart = Date.now();
-    const seqRun = runInventory(["--wing", CONC_WING, "--json"], { CREWRIG_USAGE_INVENTORY_CONCURRENCY: "1" });
+    const seqRun = runInventory(["--wing", CONC_WING, "--json"], {
+      CREWRIG_USAGE_INVENTORY_CONCURRENCY: "1",
+    });
     const seqMs = Date.now() - seqStart;
     const seqParsed = parseOut(seqRun);
     assert.equal(seqRun.ec, 0);
-    assert.equal(seqParsed.confirmedTotal, CONC_COUNT, `concurrency=1: all ${CONC_COUNT} seeded drawers are confirmed`);
+    assert.equal(
+      seqParsed.confirmedTotal,
+      CONC_COUNT,
+      `concurrency=1: all ${CONC_COUNT} seeded drawers are confirmed`,
+    );
     const seqIds = (seqParsed.selected ?? []).map((d) => d.drawerId);
-    for (const id of concIds) assert.ok(seqIds.includes(id), `expected drawer ${id} in the concurrency=1 selected set`);
+    for (const id of concIds)
+      assert.ok(seqIds.includes(id), `expected drawer ${id} in the concurrency=1 selected set`);
 
     // Now with real concurrency — same drawers, same latency, higher concurrency.
     const concStart = Date.now();
-    const concRun = runInventory(["--wing", CONC_WING, "--json"], { CREWRIG_USAGE_INVENTORY_CONCURRENCY: "8" });
+    const concRun = runInventory(["--wing", CONC_WING, "--json"], {
+      CREWRIG_USAGE_INVENTORY_CONCURRENCY: "8",
+    });
     const concMs = Date.now() - concStart;
     const concParsed = parseOut(concRun);
     assert.equal(concRun.ec, 0);
-    assert.equal(concParsed.confirmedTotal, CONC_COUNT, `concurrency=8: all ${CONC_COUNT} seeded drawers are STILL confirmed`);
+    assert.equal(
+      concParsed.confirmedTotal,
+      CONC_COUNT,
+      `concurrency=8: all ${CONC_COUNT} seeded drawers are STILL confirmed`,
+    );
     const concIdsSelected = (concParsed.selected ?? []).map((d) => d.drawerId);
-    for (const id of concIds) assert.ok(concIdsSelected.includes(id), `expected drawer ${id} in the concurrency=8 selected set`);
-    assert.deepEqual(seqParsed.selected, concParsed.selected, "the selected array is byte-identical between concurrency=1 and concurrency=8 (order preserved)");
+    for (const id of concIds)
+      assert.ok(
+        concIdsSelected.includes(id),
+        `expected drawer ${id} in the concurrency=8 selected set`,
+      );
+    assert.deepEqual(
+      seqParsed.selected,
+      concParsed.selected,
+      "the selected array is byte-identical between concurrency=1 and concurrency=8 (order preserved)",
+    );
 
     await setLatency("mempalace_get_drawer", 0);
 
@@ -511,19 +749,29 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
     // rounds (~2*40ms=80ms) plus overhead, vs. concurrency=1's ~400ms —
     // assert it is at least noticeably faster, not an exact ratio, to stay
     // robust on a loaded CI machine.
-    assert.ok(concMs < seqMs, `expected concurrency=8 (${concMs}ms) to be faster than concurrency=1 (${seqMs}ms)`);
+    assert.ok(
+      concMs < seqMs,
+      `expected concurrency=8 (${concMs}ms) to be faster than concurrency=1 (${seqMs}ms)`,
+    );
   });
 
   test('(m) --wing "" is rejected with a clear error, never silently widened to all-wings (i1-F4)', async () => {
     await resetFake();
     const run = runInventory(["--wing", ""]);
     assert.equal(run.ec, 2, `expected exit 2 for --wing ""\n${run.err}`);
-    assert.match(run.err.toLowerCase(), /empty/, "the error message names the empty-value condition");
+    assert.match(
+      run.err.toLowerCase(),
+      /empty/,
+      "the error message names the empty-value condition",
+    );
   });
 
   test("(extra) a plain inventory run makes no write of any kind (R13)", async () => {
     await resetFake();
-    await seedDrawer("wing-r13", makeContent("claude-code", "2026-03-20T00:00:00.000Z", newRecordId()));
+    await seedDrawer(
+      "wing-r13",
+      makeContent("claude-code", "2026-03-20T00:00:00.000Z", newRecordId()),
+    );
     const before_ = await countDrawers("wing-r13");
     runInventory(["--wing", "wing-r13", "--json"]);
     runInventory(["--wing", "wing-r13", "--json"]);
@@ -534,10 +782,17 @@ describe("spec 0239 usage-storage inventory suite (issue #1206)", () => {
 
   test("(extra) text-mode output and basic CLI plumbing sanity", async () => {
     await resetFake();
-    await seedDrawer("wing-text", makeContent("claude-code", "2026-03-21T00:00:00.000Z", newRecordId()));
+    await seedDrawer(
+      "wing-text",
+      makeContent("claude-code", "2026-03-21T00:00:00.000Z", newRecordId()),
+    );
     const run = runInventory(["--wing", "wing-text"]);
     assert.equal(run.ec, 0);
-    assert.match(run.out, /scope: explicit/, "text-mode output (no --json) reports the scope in plain text");
+    assert.match(
+      run.out,
+      /scope: explicit/,
+      "text-mode output (no --json) reports the scope in plain text",
+    );
 
     const bad = runInventory(["--unrecognized-flag"]);
     assert.equal(bad.ec, 2, "an unrecognized CLI argument exits with status 2");

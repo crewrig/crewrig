@@ -191,10 +191,16 @@ export function loadRecognizedSchemas(): RecognizedSchema[] {
     const schemaVersionSchema = parsed.properties.schemaVersion;
     const version = isRecord(schemaVersionSchema) ? schemaVersionSchema.const : undefined;
     const provenanceSchema = parsed.properties.provenance;
-    const provenancePropsSchema = isRecord(provenanceSchema) ? provenanceSchema.properties : undefined;
+    const provenancePropsSchema = isRecord(provenanceSchema)
+      ? provenanceSchema.properties
+      : undefined;
     const cliSchema = isRecord(provenancePropsSchema) ? provenancePropsSchema.cli : undefined;
     const cliEnum = isRecord(cliSchema) ? cliSchema.enum : undefined;
-    if (typeof version === "string" && Array.isArray(cliEnum) && cliEnum.every((c) => typeof c === "string")) {
+    if (
+      typeof version === "string" &&
+      Array.isArray(cliEnum) &&
+      cliEnum.every((c) => typeof c === "string")
+    ) {
       schemas.push({ version, cliEnum: cliEnum as string[] });
     }
   }
@@ -225,7 +231,10 @@ export type ConfirmVerdict = ConfirmedVerdict | UnconfirmedVerdict;
 // provenance.cli for THAT matched version, and a derivable period. Returns
 // {confirmed:false, reason} for the first thing that fails, or
 // {confirmed:true, cli, period, recordId}.
-export function confirmDrawer(contentText: unknown, recognizedSchemas: RecognizedSchema[]): ConfirmVerdict {
+export function confirmDrawer(
+  contentText: unknown,
+  recognizedSchemas: RecognizedSchema[],
+): ConfirmVerdict {
   if (typeof contentText !== "string") {
     return { confirmed: false, reason: "drawer carries no content text" };
   }
@@ -240,7 +249,10 @@ export function confirmDrawer(contentText: unknown, recognizedSchemas: Recognize
   }
   const match = recognizedSchemas.find((s) => s.version === parsed.schemaVersion);
   if (!match) {
-    return { confirmed: false, reason: `unrecognized schemaVersion: ${JSON.stringify(parsed.schemaVersion)}` };
+    return {
+      confirmed: false,
+      reason: `unrecognized schemaVersion: ${JSON.stringify(parsed.schemaVersion)}`,
+    };
   }
   const provenance = parsed.provenance;
   const cli = isRecord(provenance) ? provenance.cli : undefined;
@@ -254,7 +266,10 @@ export function confirmDrawer(contentText: unknown, recognizedSchemas: Recognize
     return { confirmed: false, reason: "timing.requestInstant is missing or unparseable" };
   }
   if (typeof period !== "string" || !PERIOD_RE.test(period)) {
-    return { confirmed: false, reason: "timing.requestInstant did not derive a valid YYYY-MM period" };
+    return {
+      confirmed: false,
+      reason: "timing.requestInstant did not derive a valid YYYY-MM period",
+    };
   }
   return { confirmed: true, cli, period, recordId: parsed.recordId };
 }
@@ -311,7 +326,11 @@ export async function resolveWings(explicitWings: string[] | null): Promise<Wing
   }
   const wings = extractWingNames(res.result);
   if (!wings) {
-    return { ok: false, kind: "tool-unavailable", message: "mempalace_list_wings answered an unrecognized shape" };
+    return {
+      ok: false,
+      kind: "tool-unavailable",
+      message: "mempalace_list_wings answered an unrecognized shape",
+    };
   }
   return { ok: true, wings, scope: "all" };
 }
@@ -336,7 +355,11 @@ export async function listAllDrawers(wing: string): Promise<DrawersResult> {
     }
     const page = extractDrawerPage(res.result);
     if (!page) {
-      return { ok: false, kind: "tool-unavailable", message: "mempalace_list_drawers answered an unrecognized shape" };
+      return {
+        ok: false,
+        kind: "tool-unavailable",
+        message: "mempalace_list_drawers answered an unrecognized shape",
+      };
     }
     items.push(...page.items);
     offset += page.items.length;
@@ -392,7 +415,9 @@ export async function confirmOneDrawer(
 ): Promise<ConfirmOneResult> {
   const drawerId = isRecord(preview) ? preview.drawer_id : undefined;
   if (typeof drawerId !== "string" || !drawerId) {
-    return { excluded: { wing, drawerId: null, reason: "a room member preview carries no drawer_id" } };
+    return {
+      excluded: { wing, drawerId: null, reason: "a room member preview carries no drawer_id" },
+    };
   }
   const fullResult = await mcpGetDrawer(drawerId);
   if (!fullResult.ok) {
@@ -405,7 +430,8 @@ export async function confirmOneDrawer(
   const payload = fullResult.result;
   const hasContent = isRecord(payload) && typeof payload.content === "string";
   if (!hasContent) {
-    const detail = isRecord(payload) && typeof payload.error === "string" ? payload.error : "no usable content";
+    const detail =
+      isRecord(payload) && typeof payload.error === "string" ? payload.error : "no usable content";
     return {
       ok: false,
       kind: "tool-error",
@@ -416,7 +442,15 @@ export async function confirmOneDrawer(
   if (!verdict.confirmed) {
     return { excluded: { wing, drawerId, reason: verdict.reason } };
   }
-  return { confirmed: { wing, drawerId, cli: verdict.cli, period: verdict.period, recordId: verdict.recordId } };
+  return {
+    confirmed: {
+      wing,
+      drawerId,
+      cli: verdict.cli,
+      period: verdict.period,
+      recordId: verdict.recordId,
+    },
+  };
 }
 
 export interface SweepOk {
@@ -481,7 +515,9 @@ export async function sweep(opts: SweepOpts = {}): Promise<SweepResult> {
       // Chunks are processed one at a time, deliberately: a failure in this
       // chunk must never start the next one (see this function's own header
       // comment for the exact fail-closed policy under concurrency).
-      const results = await Promise.all(chunk.map((preview) => confirmOneDrawer(wing, preview, recognizedSchemas)));
+      const results = await Promise.all(
+        chunk.map((preview) => confirmOneDrawer(wing, preview, recognizedSchemas)),
+      );
       const fatal = results.find((r): r is ConfirmOneFatal => "ok" in r && r.ok === false);
       if (fatal) {
         return fatal;
@@ -506,7 +542,10 @@ export interface Filters {
 // applyFilters() — --cli and --period are independently usable (R3) and
 // compose with AND when both are given; each narrows the SAME run's own
 // confirmed set, never a different or externally supplied one.
-export function applyFilters(confirmedList: ConfirmedDrawer[], filters: Filters = {}): ConfirmedDrawer[] {
+export function applyFilters(
+  confirmedList: ConfirmedDrawer[],
+  filters: Filters = {},
+): ConfirmedDrawer[] {
   return confirmedList.filter((d) => {
     if (filters.cli && d.cli !== filters.cli) return false;
     if (filters.period && d.period !== filters.period) return false;
@@ -628,7 +667,8 @@ export function parseArgs(argv: string[]): Args {
       const value = argv[i];
       if (value === undefined) throw new Error("--confirm-count requires a value");
       const n = Number(value);
-      if (!Number.isInteger(n) || n < 0) throw new Error(`--confirm-count must be a non-negative integer, got: ${value}`);
+      if (!Number.isInteger(n) || n < 0)
+        throw new Error(`--confirm-count must be a non-negative integer, got: ${value}`);
       args.confirmCount = n;
     } else if (a === "--help" || a === "-h") {
       args.help = true;
@@ -687,7 +727,13 @@ still present.`);
 export function printUnconfirmed(sweepFailure: NotOk, json: boolean): void {
   const message = `MemPalace inventory: UNCONFIRMED (${sweepFailure.kind}: ${sweepFailure.message || "unknown error"})`;
   if (json) {
-    console.log(JSON.stringify({ outcome: "unconfirmed", kind: sweepFailure.kind, message: sweepFailure.message ?? null }));
+    console.log(
+      JSON.stringify({
+        outcome: "unconfirmed",
+        kind: sweepFailure.kind,
+        message: sweepFailure.message ?? null,
+      }),
+    );
   } else {
     console.error(message);
   }
@@ -698,18 +744,24 @@ export function printInventory(report: Report, json: boolean): void {
     console.log(JSON.stringify({ outcome: "inventory", ...report }));
     return;
   }
-  console.log(`MemPalace usage-record inventory — scope: ${report.scope} (${report.wingsSwept.join(", ") || "none"})`);
+  console.log(
+    `MemPalace usage-record inventory — scope: ${report.scope} (${report.wingsSwept.join(", ") || "none"})`,
+  );
   if (report.filters.cli || report.filters.period) {
     console.log(
       `Filters: ${report.filters.cli ? `cli=${report.filters.cli} ` : ""}${report.filters.period ? `period=${report.filters.period}` : ""}`.trim(),
     );
   }
-  console.log(`Confirmed: ${report.confirmedTotal} (selected by filters: ${report.selectedTotal}); excluded (unrecognized): ${report.excludedTotal}`);
+  console.log(
+    `Confirmed: ${report.confirmedTotal} (selected by filters: ${report.selectedTotal}); excluded (unrecognized): ${report.excludedTotal}`,
+  );
   console.log(`By wing: ${JSON.stringify(report.byWing)}`);
   console.log(`By CLI: ${JSON.stringify(report.byCli)}`);
   console.log(`By period: ${JSON.stringify(report.byPeriod)}`);
   for (const d of report.selected) {
-    console.log(`  ${d.drawerId}  wing=${d.wing}  cli=${d.cli}  period=${d.period}  recordId=${d.recordId}`);
+    console.log(
+      `  ${d.drawerId}  wing=${d.wing}  cli=${d.cli}  period=${d.period}  recordId=${d.recordId}`,
+    );
   }
 }
 
@@ -718,17 +770,31 @@ export function printDryRun(report: Report, json: boolean): void {
     console.log(JSON.stringify({ outcome: "dry-run", ...report }));
     return;
   }
-  console.log(`MemPalace inventory delete — DRY RUN (pass --commit to actually delete). Scope: ${report.scope} (${report.wingsSwept.join(", ") || "none"})`);
+  console.log(
+    `MemPalace inventory delete — DRY RUN (pass --commit to actually delete). Scope: ${report.scope} (${report.wingsSwept.join(", ") || "none"})`,
+  );
   console.log(`Would delete ${report.selectedTotal} confirmed drawer(s):`);
   for (const d of report.selected) {
-    console.log(`  ${d.drawerId}  wing=${d.wing}  cli=${d.cli}  period=${d.period}  recordId=${d.recordId}`);
+    console.log(
+      `  ${d.drawerId}  wing=${d.wing}  cli=${d.cli}  period=${d.period}  recordId=${d.recordId}`,
+    );
   }
 }
 
 export function printConfirmationRequired(report: Report, json: boolean): void {
-  const reason = report.scope === "all" ? "an all-wings sweep" : `more than ${WIDE_DELETE_THRESHOLD} confirmed drawer(s)`;
+  const reason =
+    report.scope === "all"
+      ? "an all-wings sweep"
+      : `more than ${WIDE_DELETE_THRESHOLD} confirmed drawer(s)`;
   if (json) {
-    console.log(JSON.stringify({ outcome: "confirmation-required", requiredConfirmCount: report.selectedTotal, reason, ...report }));
+    console.log(
+      JSON.stringify({
+        outcome: "confirmation-required",
+        requiredConfirmCount: report.selectedTotal,
+        reason,
+        ...report,
+      }),
+    );
     return;
   }
   console.error(
@@ -739,14 +805,27 @@ export function printConfirmationRequired(report: Report, json: boolean): void {
 
 export function printDeleted(report: Report, deletedIds: string[], json: boolean): void {
   if (json) {
-    console.log(JSON.stringify({ outcome: "deleted", deletedCount: deletedIds.length, deletedDrawerIds: deletedIds, ...report }));
+    console.log(
+      JSON.stringify({
+        outcome: "deleted",
+        deletedCount: deletedIds.length,
+        deletedDrawerIds: deletedIds,
+        ...report,
+      }),
+    );
     return;
   }
   console.log(`MemPalace inventory delete — deleted ${deletedIds.length} confirmed drawer(s):`);
   for (const id of deletedIds) console.log(`  ${id}`);
 }
 
-export function printDeletionUnconfirmed(report: Report, deletedIds: string[], failedDrawer: ConfirmedDrawer, failure: NotOk, json: boolean): void {
+export function printDeletionUnconfirmed(
+  report: Report,
+  deletedIds: string[],
+  failedDrawer: ConfirmedDrawer,
+  failure: NotOk,
+  json: boolean,
+): void {
   const message = `MemPalace inventory delete — UNCONFIRMED after ${deletedIds.length}/${report.selectedTotal} deletion(s): ${failedDrawer.drawerId} (${failure.kind}: ${failure.message || "unknown error"})`;
   if (json) {
     console.log(
