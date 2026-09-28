@@ -254,6 +254,15 @@ _max_keepalive_connections = int(
     os.environ.get("MEMPALACE_CHROMA_MAX_KEEPALIVE_CONNECTIONS", "4")
 )
 
+# Process-wide lazy-singleton client cache (spec 0242 R1-R5). Guarded by a
+# plain lock acquired on every call rather than double-checked locking: the
+# issue's own investigation established that under the current HTTP-transport
+# deployment, mempalace's mcp_server.py serializes every request behind a
+# single global lock, so _http_factory() is never invoked concurrently today —
+# this lock is defensive insurance for a future deployment, not a hot path.
+_client_lock = threading.Lock()
+_cached_client = None
+
 
 def _build_pool_settings() -> "_chromadb.Settings":
     """Build a fresh connection-pool ``Settings`` object for one ``HttpClient``.
@@ -276,6 +285,17 @@ def _http_factory(path=None, settings=None, **kwargs):
     Ignores the caller-supplied ``path``/``settings`` — the HTTP daemon owns
     the index. All callers in MemPalace pass these but they are meaningless
     once routing goes over the wire.
+
+    Returns the same process-wide ``HttpClient`` instance on every call after
+    the first (spec 0242 R1-R2), instead of building a new client — and a new
+    connection pool — every time MemPalace's own ``_get_client()`` re-invokes
+    this factory on a ``chroma.sqlite3`` mtime/inode change. The pool caps
+    from ``_build_pool_settings()`` apply once, to that single cached client
+    (R3). ``_cached_client`` is assigned only after the constructor returns
+    successfully: if it raises, the lock is still released (the ``with``
+    block's ``__exit__`` runs regardless) and the cache stays ``None``, so the
+    next call is free to retry the build rather than being poisoned by the
+    failed attempt (R5).
     """
     # TODO(ADR-0006): the caller-supplied ``path``/``settings`` are still
     # ignored — reconfigure the daemon via the ``MEMPALACE_CHROMA_HOST`` /
@@ -283,7 +303,11 @@ def _http_factory(path=None, settings=None, **kwargs):
     # is no longer entirely unused, though: an internally-built,
     # pool-bound ``Settings`` (see ``_build_pool_settings()``) is always
     # applied to cap this session's connection footprint against the daemon.
-    return _chromadb.HttpClient(host=_host, port=_port, settings=_build_pool_settings())
+    global _cached_client
+    with _client_lock:
+        if _cached_client is None:
+            _cached_client = _chromadb.HttpClient(host=_host, port=_port, settings=_build_pool_settings())
+        return _cached_client
 
 
 _chromadb.PersistentClient = _http_factory  # type: ignore[assignment]
