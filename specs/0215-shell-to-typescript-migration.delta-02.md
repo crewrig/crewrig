@@ -88,9 +88,11 @@ Replacement:
 >    failing hook or statusline command impose; sub-specs A and C decide
 >    how.
 >
->    This narrows binding 1 as voted in issue #1192, which required the
->    dependency step to re-run unconditionally on every setup invocation.
->    The narrowing was decided by @hcross on issue #1324 (PLAN review
+>    This narrows the re-run condition that PR #1239's own SPECS review
+>    added to requirement 6 (finding s2-F4, addressed at `072db8e`) to
+>    encode binding 1's runtime requirement; binding 1 as voted in issue
+>    #1192 did not itself specify a re-run cadence. The narrowing was
+>    decided by @hcross on issue #1324 (PLAN review
 >    finding v1-F2 of sub-spec A2,
 >    `specs/0240-runtime-foundations-shared-ts-modules.md`, comment
 >    <https://github.com/crewrig/crewrig/issues/1324#issuecomment-5866754935>),
@@ -107,6 +109,19 @@ Replacement:
 >    `package-lock.json`'s content and therefore its hash, so the next setup
 >    run still re-installs; the diagnostic still covers the window between
 >    such a pull and the next setup run.
+
+Requirement 24's decomposition table — row A's `Covers` cell, corrected
+to describe the lockfile-hash-gated re-run instead of an unconditional
+one, so the immutable table does not tell a future reader the wrong
+cadence for R6:
+
+Original:
+
+> | A | Foundations | Ratchet and allowlist (R10–R12); dependency step re-run on every setup, its npm command and the missing-dependency diagnostic (R6); TypeScript conventions: type-check, erasable-syntax check, strict-typing check and non-blocking 300-line size warning, with their `devDependency`-only lint tooling (R2); Node floor check (R4); `windows-latest` CI scaffolding and timing harness (R15, R17); shared path, line-ending and temporary-file handling (R22) | — |
+
+Replacement:
+
+> | A | Foundations | Ratchet and allowlist (R10–R12); dependency step re-run gated on the lockfile content hash, its npm command and the missing-dependency diagnostic (R6, narrowed at delta-02); TypeScript conventions: type-check, erasable-syntax check, strict-typing check and non-blocking 300-line size warning, with their `devDependency`-only lint tooling (R2); Node floor check (R4); `windows-latest` CI scaffolding and timing harness (R15, R17); shared path, line-ending and temporary-file handling (R22) | — |
 
 ## REMOVED
 
