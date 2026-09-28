@@ -239,6 +239,15 @@ release_prepare_cmd() {
 # renders; the rehearsal clone is at the same commit, so its facade is the same
 # file.
 #
+# The changelog step is likewise referenced through a facade,
+# scripts/lib/release-notes/changelog-plugin.ts (issue #1364), resolved from
+# this library's own location: it writes CHANGELOG.md through the real
+# @semantic-release/changelog, but with the note normalised to be lint-safe
+# under a single `# Changelog` title, and lints the file with the repository's
+# .markdownlintrc before @semantic-release/git commits it — the `[skip ci]`
+# release commit is never linted by CI, so that check has to happen here. The
+# release note itself (forge body, commit message) is not touched.
+#
 # No `gemini-extension.json` arm in prepareCmd: it is a BUILD OUTPUT under the
 # render-at-publication model (spec 0173 delta-01), never a committed sibling.
 #
@@ -265,6 +274,7 @@ emit_releaserc() {
     --arg out "$out" \
     --arg branch "$branch" \
     --arg gitmoji_plugin "$RELEASE_LIB_DIR/release-notes/gitmoji-esm-shim.mjs" \
+    --arg changelog_plugin "$RELEASE_LIB_DIR/release-notes/changelog-plugin.ts" \
     --arg prepare "$(release_prepare_cmd "$root" "$ext" "$out" '${nextRelease.version}')" \
     --arg repo "$repo_url" \
     --arg purl "$project_url" \
@@ -301,7 +311,7 @@ emit_releaserc() {
         tagFormat: ($ext + "-v${version}"),
         plugins: (
           [[$gitmoji_plugin, $gitmoji],
-           "@semantic-release/changelog",
+           $changelog_plugin,
            ["@semantic-release/exec", {prepareCmd: $prepare}]]
           + $publish
           + [["@semantic-release/git", {

@@ -238,7 +238,12 @@ run_mode() {
     actual="$(bash -c ". '$LIB'; emit_releaserc github publish foo /ROOT /ROOT/dist/release/foo main" \
       | jq -S --arg lib "$REPO_DIR/scripts/lib/" \
           'walk(if type == "string" then (split($lib) | join("/ROOT/scripts/lib/")) else . end)')"
-    expected="$(jq -S . "$golden")"
+    # One deliberate delta from the historical golden (issue #1364): the bare
+    # "@semantic-release/changelog" step is replaced by the lint-safe changelog
+    # facade, referenced by path like the gitmoji one. Everything else —
+    # including the note-shaping gitmoji entry R21 freezes — stays byte-for-byte.
+    expected="$(jq -S '.plugins |= map(if . == "@semantic-release/changelog"
+        then "/ROOT/scripts/lib/release-notes/changelog-plugin.ts" else . end)' "$golden")"
     if [ "$actual" = "$expected" ]; then
       ok "(c) emit_releaserc github publish is byte-for-byte (jq -S .) the committed golden"
     else
