@@ -245,15 +245,17 @@ A prune removes one period. Removing everything the feature holds is a separate 
 
 ## Inventory and purge (MemPalace-only)
 
-`bash scripts/usage-inventory.sh` inventories, and can remove, drawers filed in MemPalace's `usage-records` room directly — independent of the local usage root, the local journal, and the mirror markers under it (spec 0239, issue [#1206](https://github.com/crewrig/crewrig/issues/1206)). It runs and produces a complete inventory even when `CREWRIG_USAGE_ROOT`, its journal, and `<root>/mirror/` are all absent, so it can find a drawer whose journal entry was already deleted — because the entry was lost, or because an older, informal purge removed the local usage root without removing the drawer.
+`node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts` inventories, and can remove, drawers filed in MemPalace's `usage-records` room directly — independent of the local usage root, the local journal, and the mirror markers under it (spec 0239, issue [#1206](https://github.com/crewrig/crewrig/issues/1206)). It runs and produces a complete inventory even when `CREWRIG_USAGE_ROOT`, its journal, and `<root>/mirror/` are all absent, so it can find a drawer whose journal entry was already deleted — because the entry was lost, or because an older, informal purge removed the local usage root without removing the drawer.
 
 ```bash
-bash scripts/usage-inventory.sh                                      # inventory, default scope (every wing)
-bash scripts/usage-inventory.sh --wing crewrig --cli claude-code      # narrowed inventory
-bash scripts/usage-inventory.sh --period 2026-08 --json               # one month, structured output
-bash scripts/usage-inventory.sh delete --wing crewrig                 # dry run (default): reports what would delete
-bash scripts/usage-inventory.sh delete --wing crewrig --commit        # actually deletes (below the wide-delete threshold)
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts                                      # inventory, default scope (every wing)
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts --wing crewrig --cli claude-code      # narrowed inventory
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts --period 2026-08 --json               # one month, structured output
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts delete --wing crewrig                 # dry run (default): reports what would delete
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts delete --wing crewrig --commit        # actually deletes (below the wide-delete threshold)
 ```
+
+(`task usage:inventory -- ...` runs the same command through the Taskfile wrapper.)
 
 ### Confirmation
 

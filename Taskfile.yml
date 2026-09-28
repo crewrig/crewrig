@@ -82,7 +82,7 @@ tasks:
 
   usage:inventory:
     desc: "Inventory (and, on request, purge) usage-record drawers directly in MemPalace's usage-records room, independent of the local usage root, journal, or mirror markers (spec 0239). Usage: task usage:inventory -- [list] [--wing <name>[,<name>...]] [--cli <cli>] [--period <YYYY-MM>] [--json] | delete [same filters] [--commit [--confirm-count <N>]]"
-    cmd: bash {{.REPO_DIR}}/scripts/usage-inventory.sh {{.CLI_ARGS}}
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/usage-inventory.ts {{.CLI_ARGS}}
 
   usage:mirror:
     desc: "Run the MemPalace catch-up for pending usage-record mirror markers (spec 0207). Usage: task usage:mirror -- [--reconcile]"

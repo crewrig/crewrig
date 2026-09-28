@@ -240,7 +240,7 @@ usage_mirror_gate() {
     return 1
   fi
   local inv_out inv_confirmed
-  inv_out="$(bash scripts/usage-inventory.sh --json 2>/dev/null || true)"
+  inv_out="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts --json 2>/dev/null || true)"
   inv_confirmed="$(printf '%s' "$inv_out" | node -e '
     let s = "";
     process.stdin.on("data", (d) => { s += d; });
@@ -254,7 +254,7 @@ usage_mirror_gate() {
     });
   ' 2>/dev/null || echo unconfirmed)"
   if [ "$inv_confirmed" = "unconfirmed" ] || [ -z "$inv_confirmed" ]; then
-    USAGE_MIRROR_VERDICT="UNVERIFIED (usage-inventory.sh could not confirm MemPalace's usage-records room, across all wings)"
+    USAGE_MIRROR_VERDICT="UNVERIFIED (usage-inventory.ts could not confirm MemPalace's usage-records room, across all wings)"
     echo "MemPalace mirror: $USAGE_MIRROR_VERDICT"
     return 1
   fi
@@ -276,7 +276,7 @@ mirrored record's marker is removed only after MemPalace reports the prune's
 deletion request as successful; any other answer, including one in which
 MemPalace reports that the deletion failed, stops the prune and keeps the
 marker. Once the marker-based passes agree, the check ALSO calls
-`bash scripts/usage-inventory.sh --json` (see
+`node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts --json` (see
 [Inventory and purge (MemPalace-only)](usage-storage.md#inventory-and-purge-mempalace-only)
 for its own invocation, filters, and exit-status contract) with no wing
 restriction, so a `removed` verdict rests on MemPalace's own inventory of the
@@ -310,9 +310,9 @@ MemPalace reachable. An operator run of `usage-mirror.sh` does not wait out
 that backoff. When the check stopped during the prunes, the prune's FATAL
 line names the cause: MemPalace unreachable, or MemPalace not confirming a
 deletion. When the check stopped on the third, inventory-based pass, either
-`usage-inventory.sh` could not confirm the sweep (MemPalace unreachable or
+`usage-inventory.ts` could not confirm the sweep (MemPalace unreachable or
 unable to serve — fix that and re-run) or it found confirmed drawers still
-present: use `bash scripts/usage-inventory.sh delete` (see
+present: use `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts delete` (see
 [Inventory and purge (MemPalace-only)](usage-storage.md#inventory-and-purge-mempalace-only))
 to remove them, then run the whole procedure again from the start.
 
