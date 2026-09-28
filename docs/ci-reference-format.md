@@ -168,7 +168,7 @@ The requirement is a closed-vocabulary mapping mirroring R12's own enumeration:
 
 | Key | Type | Meaning | Example |
 |---|---|---|---|
-| `runtime` | string | The language runtime and version, as `<name>@<version>`. | `node@22`, `python@3.12` |
+| `runtime` | string, or list of strings | The language runtime(s) and version, as `<name>@<version>`. A capability whose command genuinely needs more than one language (e.g. a job that runs both `bash`/`python3` test scripts and a `node --test` suite) declares each; the FIRST entry is the primary runtime the GitLab derivation bases the job's Docker `image:` on, and any further entry is installed alongside it via `before_script` (never replacing the image). | `node@22`, `python@3.12`, `[python@3.12, node@24]` |
 | `tools` | list of strings | Additional tools the command needs on `PATH`. | `[yq]`, `[task]`, `[jq]` |
 | `history-depth` | enum | `full` when the command needs the complete source history (e.g. a base-ref diff); omitted otherwise. | `full` |
 
@@ -229,8 +229,9 @@ The GitLab pipeline generator `scripts/build-ci.sh` (spec 0048) is the
 reference's consumer: it reads `command` + `requires` for every `portable`
 capability and produces `.gitlab-ci.yml` at the repo root. For each capability
 it emits one job keyed by the capability `id` (the C2 primary path below), with
-`requires` translated into the GitLab setup boilerplate — `runtime` →
-`image:`, `tools` → `before_script:` installs, `history-depth: full` →
+`requires` translated into the GitLab setup boilerplate — `runtime`'s FIRST
+entry → `image:`, any further `runtime` entry AND every `tools` entry →
+`before_script:` installs, `history-depth: full` →
 `variables: { GIT_DEPTH: "0" }` — and `command` becoming the job's `script:`.
 The boilerplate is the generator's own output; it is never written back into
 the reference (the R12 need-vs-mechanism boundary). Engine-specific

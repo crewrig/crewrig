@@ -133,6 +133,16 @@ assert_contains "Case E — check-skill-versions history-depth full → GIT_DEPT
 cc_job="$(yq '.["ci-parity"]' "$REAL_OUTPUT")"
 assert_contains "Case F — ci-parity tools:[yq] → before_script yq install" "$cc_job" '/usr/local/bin/yq'
 
+# Case F1 (spec 0242, issue #1370) — a capability declaring MORE THAN ONE
+# runtime (`mempalace`: [python@3.12, node@24]) gets its image from the FIRST
+# entry, and every further entry installed alongside it in before_script —
+# never replacing the image, and never dropping the tools install it already
+# had.
+mempalace_job="$(yq '.mempalace' "$REAL_OUTPUT")"
+assert_contains "Case F1a — first requires.runtime entry (python@3.12) becomes the image" "$mempalace_job" 'image: python:3.12'
+assert_contains "Case F1b — a further requires.runtime entry (node@24) installs Node in before_script" "$mempalace_job" 'setup_24.x'
+assert_contains "Case F1c — the secondary-runtime install does not drop the tools:[yq] install" "$mempalace_job" '/usr/local/bin/yq'
+
 # Case F2 (spec 0147 R6/R7) — a cached capability emits a GitLab `cache:` block
 # keyed from the declared cache.files, and wraps its hermetic `bash scripts/`
 # commands in the cache-guard.

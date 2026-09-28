@@ -205,6 +205,31 @@ interface RunResult {
   stderr: string;
 }
 
+interface PoolKwargs {
+  chroma_http_max_connections: number;
+  chroma_http_max_keepalive_connections: number;
+}
+
+/** Case A's JSON report shape (`sys.modules["__main__"]._http_factory` called sequentially). */
+interface ReuseReport {
+  ids: number[];
+  build_count: number;
+  pool_kwargs: PoolKwargs;
+}
+
+/** Case B's JSON report shape (8 concurrent racing callers). */
+interface RaceReport {
+  ids: number[];
+  build_count: number;
+}
+
+/** Case C's JSON report shape (a failed lazy build followed by recovery). */
+interface RecoveryReport {
+  first_call_failed: boolean;
+  second_third_same_instance: boolean;
+  build_count: number;
+}
+
 /** Runs the real wrapper under `--transport http` against a fixture's PYTHONPATH. */
 function runWrapper(fixtureDir: string, failOnCall = 0): RunResult {
   const env: NodeJS.ProcessEnv = {
@@ -229,7 +254,7 @@ describe("spec 0242 — _http_factory() process-wide client reuse", () => {
     const run = runWrapper(fixture);
     assert.equal(run.status, 0, `wrapper exited ${run.status}: ${run.stderr}`);
 
-    const report = JSON.parse(run.stdout);
+    const report = JSON.parse(run.stdout) as ReuseReport;
     assert.equal(report.ids.length, 20);
     assert.equal(new Set(report.ids).size, 1, "every call must return the identical instance");
     // call #1 is Step 3's startup probe, call #2 is the one lazy build the
@@ -248,7 +273,7 @@ describe("spec 0242 — _http_factory() process-wide client reuse", () => {
     const run = runWrapper(fixture);
     assert.equal(run.status, 0, `wrapper exited ${run.status}: ${run.stderr}`);
 
-    const report = JSON.parse(run.stdout);
+    const report = JSON.parse(run.stdout) as RaceReport;
     assert.equal(report.ids.length, 8);
     assert.equal(new Set(report.ids).size, 1, "a race must not leave more than one live client");
     assert.equal(report.build_count, 2, "the race must still resolve to a single build");
@@ -273,8 +298,12 @@ describe("spec 0242 — _http_factory() process-wide client reuse", () => {
         `induced failure instead of _http_factory()): ${run.stderr}`,
     );
 
-    const report = JSON.parse(run.stdout);
-    assert.equal(report.first_call_failed, true, "the first _http_factory() call must surface the induced failure");
+    const report = JSON.parse(run.stdout) as RecoveryReport;
+    assert.equal(
+      report.first_call_failed,
+      true,
+      "the first _http_factory() call must surface the induced failure",
+    );
     assert.equal(
       report.second_third_same_instance,
       true,
@@ -283,6 +312,10 @@ describe("spec 0242 — _http_factory() process-wide client reuse", () => {
     // call #1: probe (succeeds). call #2: first _http_factory() call (fails,
     // not cached). call #3: retry (succeeds, cached). No further calls: the
     // third _http_factory() invocation is a cache hit.
-    assert.equal(report.build_count, 3, "recovery must build exactly once after the failed attempt");
+    assert.equal(
+      report.build_count,
+      3,
+      "recovery must build exactly once after the failed attempt",
+    );
   });
 });
