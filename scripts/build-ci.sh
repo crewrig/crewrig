@@ -120,6 +120,40 @@ tool_install_lines() {
   esac
 }
 
+# Map a SECONDARY `requires.runtime` entry — any beyond the first, which
+# `runtime_to_image()` turns into the job's Docker image — to the
+# before_script install line(s) that make it available alongside the image's
+# own runtime. A portable capability MAY need more than one runtime (e.g.
+# `mempalace`: the image is `python:3.12` for its existing test scripts, and
+# node@24 is installed here for its TypeScript test); this mirrors
+# `tool_install_lines`'s need-vs-mechanism split, just keyed by runtime rather
+# than by tool name.
+secondary_runtime_install_lines() {
+  local runtime="$1"
+  case "$runtime" in
+    node@*)
+      local major="${runtime#node@}"
+      major="${major%%.*}"
+      # NodeSource's setup script, not apt: Debian's own repos lag the pinned
+      # major version, and every node@X capability elsewhere in the reference
+      # (ratchet, lint-typescript) means the exact major, not "whatever apt has".
+      echo "curl -fsSL https://deb.nodesource.com/setup_${major}.x | bash -"
+      echo 'apt-get install -y --no-install-recommends nodejs'
+      ;;
+    python@*)
+      # Unlike the node case, apt's python3 is an acceptable secondary install:
+      # no capability pins an exact minor here, matching the pre-existing
+      # `tools: [python3]` recipe above (figure-labels), which never pins one
+      # either.
+      echo 'apt-get update && apt-get install -y --no-install-recommends python3'
+      ;;
+    *)
+      echo "Error: unknown secondary runtime '$runtime' — no GitLab install recipe." >&2
+      exit 1
+      ;;
+  esac
+}
+
 # --- Trigger → GitLab rules translation (neutral vocabulary, spec 0047 R2) --
 
 # Emit GitLab `rules:` entries for one capability's `trigger[]` list. The
@@ -229,10 +263,19 @@ emit_rules() {
 emit_job() {
   local id="$1"
 
-  local runtime
-  runtime=$(yq -r ".capabilities[] | select(.id == \"$id\") | .requires.runtime // \"\"" "$REFERENCE")
+  # `.requires.runtime` may be a bare scalar (every pre-existing capability)
+  # or a list (a capability needing more than one runtime, e.g. `mempalace`:
+  # python@3.12 + node@24) — normalized to one entry per line either way. The
+  # FIRST entry becomes the job's Docker image (unchanged behaviour for every
+  # scalar-only capability); any further entries are installed alongside it
+  # in before_script, below.
+  local runtimes
+  runtimes=$(yq -r ".capabilities[] | select(.id == \"$id\") | .requires.runtime as \$rt | (\$rt | select(tag == \"!!seq\")) // [\$rt] | .[]" "$REFERENCE")
+  local primary_runtime secondary_runtimes
+  primary_runtime=$(printf '%s\n' "$runtimes" | head -1)
+  secondary_runtimes=$(printf '%s\n' "$runtimes" | tail -n +2)
   local image
-  image=$(runtime_to_image "$runtime")
+  image=$(runtime_to_image "$primary_runtime")
 
   echo ""
   echo "$id:"
@@ -260,23 +303,35 @@ emit_job() {
     fi
   fi
 
-  # before_script: tool installs satisfying requires.tools.
+  # before_script: secondary-runtime and tool installs satisfying
+  # requires.runtime (beyond the primary/image entry) and requires.tools.
   # The install lines are gathered via command substitution (NOT process
-  # substitution) so that an unknown tool — for which tool_install_lines has
-  # no recipe — propagates its non-zero exit to `set -e` and fails the whole
-  # derivation closed (delta-02 Scenario 2: a command needing an undeclared
-  # tool is rejected). A `< <(...)` process substitution would swallow that
+  # substitution) so that an unknown runtime or tool — for which the install
+  # functions below have no recipe — propagates its non-zero exit to `set -e`
+  # and fails the whole derivation closed (delta-02 Scenario 2: a command
+  # needing an undeclared tool is rejected; the same now applies to a
+  # secondary runtime). A `< <(...)` process substitution would swallow that
   # exit in a subshell.
   local tools
   tools=$(yq -r ".capabilities[] | select(.id == \"$id\") | .requires.tools // [] | .[]" "$REFERENCE")
+  local before_lines=""
+  if [ -n "$secondary_runtimes" ]; then
+    local sr lines
+    while IFS= read -r sr; do
+      [ -z "$sr" ] && continue
+      lines=$(secondary_runtime_install_lines "$sr")
+      before_lines="${before_lines}${before_lines:+$'\n'}${lines}"
+    done <<< "$secondary_runtimes"
+  fi
   if [ -n "$tools" ]; then
-    local before_lines=""
     local t lines
     while IFS= read -r t; do
       [ -z "$t" ] && continue
       lines=$(tool_install_lines "$t")
       before_lines="${before_lines}${before_lines:+$'\n'}${lines}"
     done <<< "$tools"
+  fi
+  if [ -n "$before_lines" ]; then
     echo "  before_script:"
     local line
     while IFS= read -r line; do

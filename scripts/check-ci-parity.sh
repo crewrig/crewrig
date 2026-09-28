@@ -118,6 +118,22 @@ self_installs_tool() {
 
 in_list() { grep -qxF "$1" <<< "$2"; }
 
+# True if any newline-separated entry in `$2` starts with prefix `$1`. Used for
+# `requires.runtime`, which MAY declare more than one runtime (spec 0047
+# delta-02 R12 extended for a capability whose command list genuinely needs
+# two languages, e.g. `mempalace`: python@3.12 for its existing test scripts,
+# node@24 for its TypeScript test) — checking "is EITHER runtime declared"
+# rather than "does the single value equal this".
+in_list_prefix() { grep -q "^$1" <<< "$2"; }
+
+# The two call sites below select `.requires.runtime` with a different yq
+# prefix (validity rule 6 indexes by `[$i]`, Arm 1 selects by `.id`), but both
+# apply this SAME suffix to normalize it to one runtime-spec per line,
+# regardless of whether the reference declares it as a bare scalar (every
+# pre-existing capability) or a list (a capability needing more than one
+# runtime, e.g. `mempalace`: python@3.12 + node@24). Absent entirely yields
+# nothing, matching the old scalar `// ""` default.
+
 # Extract the file list from a GHA `hashFiles('a', 'b')` cache-key expression
 # (spec 0147 R6/R7). The engine's hashFiles() is the mechanism; the reference
 # declares the same inputs as the need. Echoes one file per line.
@@ -193,18 +209,26 @@ for ((i = 0; i < cap_count; i++)); do
     else
       cmds=$(yq -r ".capabilities[$i].command[]" "$REFERENCE")
       cmds_norm=" $(normalize_cmd "$cmds") "
-      runtime=$(yq -r ".capabilities[$i].requires.runtime // \"\"" "$REFERENCE")
+      runtime=$(yq -r ".capabilities[$i].requires.runtime as \$rt | (\$rt | select(tag == \"!!seq\")) // [\$rt] | .[]" "$REFERENCE")
+      runtime_display=$(tr '\n' ',' <<< "$runtime" | sed 's/,$//')
+      [ -z "$runtime_display" ] && runtime_display="unset"
       req_tools=$(yq -r ".capabilities[$i].requires.tools // [] | .[]" "$REFERENCE")
 
       # Runtime tokens — a command invoking node/npm or python needs the
-      # matching runtime declared.
+      # matching runtime declared among (possibly several) requires.runtime
+      # entries: a portable capability MAY need more than one runtime (e.g.
+      # `mempalace`: python@3.12 for its existing test scripts, node@24 for
+      # its TypeScript test), so this checks "is EITHER declared", not "does
+      # the single value equal this".
       case "$cmds_norm" in
         *" npm "*|*" npx "*|*" node "*)
-          case "$runtime" in node@*) ;; *) verr "$label: command needs the node runtime but requires.runtime is '${runtime:-unset}' (validity rule 6)" ;; esac ;;
+          in_list_prefix "node@" "$runtime" || \
+            verr "$label: command needs the node runtime but requires.runtime is '$runtime_display' (validity rule 6)" ;;
       esac
       case "$cmds_norm" in
         *" python "*|*" python3 "*|*" pip "*|*" pip3 "*)
-          case "$runtime" in python@*) ;; *) verr "$label: command needs the python runtime but requires.runtime is '${runtime:-unset}' (validity rule 6)" ;; esac ;;
+          in_list_prefix "python@" "$runtime" || \
+            verr "$label: command needs the python runtime but requires.runtime is '$runtime_display' (validity rule 6)" ;;
       esac
 
       # Tool tokens — a command invoking yq/jq/task/markdownlint needs the tool
@@ -371,7 +395,7 @@ check_gha_job() {
   local id="$1" wf="$2" jk="$3"
   local ncmd runtime req_tools hist nsteps
   ncmd=$(yq ".capabilities[] | select(.id == \"$id\") | .command | length" "$REFERENCE")
-  runtime=$(yq -r ".capabilities[] | select(.id == \"$id\") | .requires.runtime // \"\"" "$REFERENCE")
+  runtime=$(yq -r ".capabilities[] | select(.id == \"$id\") | .requires.runtime as \$rt | (\$rt | select(tag == \"!!seq\")) // [\$rt] | .[]" "$REFERENCE")
   req_tools=$(yq -r ".capabilities[] | select(.id == \"$id\") | .requires.tools // [] | .[]" "$REFERENCE")
   hist=$(yq -r ".capabilities[] | select(.id == \"$id\") | .requires.history-depth // \"\"" "$REFERENCE")
   nsteps=$(yq ".jobs.\"$jk\".steps | length" "$wf")
@@ -425,21 +449,28 @@ check_gha_job() {
     fail "capability '$id' (github-actions): job '$jk' exhibits $ci of $ncmd declared business steps (R3)"
   fi
 
-  # R4 — requires satisfied by setup, judged by presence/equivalence.
-  case "$runtime" in
-    node@*)
-      local want="${runtime#node@}"
-      [ "${prov_node%%.*}" = "${want%%.*}" ] || \
-        fail "capability '$id' (github-actions): requires runtime '$runtime' but setup provides node '${prov_node:-none}' (R4)"
-      ;;
-    python@*)
-      local want="${runtime#python@}"
-      case "$prov_python" in
-        "$want"*) ;;
-        *) fail "capability '$id' (github-actions): requires runtime '$runtime' but setup provides python '${prov_python:-none}' (R4)" ;;
-      esac
-      ;;
-  esac
+  # R4 — requires satisfied by setup, judged by presence/equivalence. A
+  # capability MAY declare more than one runtime (e.g. `mempalace`:
+  # python@3.12 + node@24), so every declared entry is checked independently
+  # against the setup steps recorded above.
+  local runtime_entry want
+  while IFS= read -r runtime_entry; do
+    [ -z "$runtime_entry" ] && continue
+    case "$runtime_entry" in
+      node@*)
+        want="${runtime_entry#node@}"
+        [ "${prov_node%%.*}" = "${want%%.*}" ] || \
+          fail "capability '$id' (github-actions): requires runtime '$runtime_entry' but setup provides node '${prov_node:-none}' (R4)"
+        ;;
+      python@*)
+        want="${runtime_entry#python@}"
+        case "$prov_python" in
+          "$want"*) ;;
+          *) fail "capability '$id' (github-actions): requires runtime '$runtime_entry' but setup provides python '${prov_python:-none}' (R4)" ;;
+        esac
+        ;;
+    esac
+  done <<< "$runtime"
   while IFS= read -r rt; do
     [ -z "$rt" ] && continue
     # jq, git, and diff (diffutils) are preinstalled on GitHub Actions

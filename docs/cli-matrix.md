@@ -163,6 +163,26 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > capture on and off on each CLI, reads the dashboard, and removes the data is
 > explained in the [usage guide](usage-guide.md). This entry adds links only;
 > the rows, their verdicts, and their evidence are unchanged.
+>
+> **Multi-runtime `requires.runtime` (spec 0242).** `requires.runtime` in
+> `ci/ci-capabilities.yml` now optionally accepts a list, not only a bare
+> scalar: a portable capability whose command genuinely needs more than one
+> language runtime declares each entry. The `mempalace` capability is the
+> first to do so (`requires.runtime: [python@3.12, node@24]`) because it
+> gained a TypeScript client-reuse test (issue #1370) alongside its existing
+> python3-based test scripts. The FIRST entry still becomes the GitLab
+> derivation's Docker `image:` — unchanged for every other capability, which
+> still declares a bare scalar — and any further entry is installed alongside
+> it via `before_script` (`scripts/build-ci.sh`'s new
+> `secondary_runtime_install_lines()`), mirrored on the check side by
+> `scripts/check-ci-parity.sh`'s validity rule 6 and Arm 1 requirement check.
+> This is an engine-neutral widening of the CI-capability-reference schema: it
+> introduces no CLI-specific surface (no Claude Code, Gemini CLI, Copilot
+> CLI, or Antigravity CLI integration point) and changes no existing
+> capability's generated behavior. `scripts/build-ci.sh` is a
+> `scripts/build-*.sh` script and therefore on the *CLI Matrix Maintenance*
+> trigger surface; this paragraph discharges that CLI-matrix-update
+> obligation for spec 0242.
 
 ## Parity gaps
 

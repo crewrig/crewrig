@@ -1,7 +1,7 @@
 ---
 id: "0242"
 slug: mempalace-http-client-reuse
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1370

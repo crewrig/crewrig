@@ -439,6 +439,7 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/tests/test-mempalace-*.sh"
+          - "scripts/tests/mempalace-http-client-reuse.test.ts"
           - "scripts/tests/test-system-context-store.sh"
           - "scripts/tests/test-setup-antigravity-transcript.sh"
           - "scripts/tests/test-setup-claude-transcript.sh"
@@ -453,6 +454,7 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/tests/test-mempalace-*.sh"
+          - "scripts/tests/mempalace-http-client-reuse.test.ts"
           - "scripts/tests/test-system-context-store.sh"
           - "scripts/tests/test-setup-antigravity-transcript.sh"
           - "scripts/tests/test-setup-claude-transcript.sh"
@@ -466,11 +468,16 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
-      runtime: python@3.12
+      # python@3.12 is the primary/image runtime (unchanged); node@24 is a
+      # SECONDARY runtime this job also needs for its TypeScript test
+      # (mempalace-http-client-reuse.test.ts) — installed alongside the
+      # image rather than replacing it (spec 0242, issue #1370).
+      runtime: [python@3.12, node@24]
       tools: [yq]
     cache:
       files:
         - "scripts/tests/test-mempalace-*.sh"
+        - "scripts/tests/mempalace-http-client-reuse.test.ts"
         - "scripts/tests/test-system-context-store.sh"
         - "scripts/tests/test-setup-antigravity-transcript.sh"
         - "scripts/tests/test-setup-claude-transcript.sh"
@@ -483,6 +490,7 @@ capabilities:
         - "artifacts/library/skills/harness-report/**"
       env: []
     command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-http-client-reuse.test.ts
       - bash scripts/tests/test-mempalace-transcript-hook.sh
       - bash scripts/tests/test-setup-antigravity-transcript.sh
       - bash scripts/tests/test-setup-claude-transcript.sh

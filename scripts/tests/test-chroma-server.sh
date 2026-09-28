@@ -193,19 +193,22 @@ else
 fi
 
 # Test 14 — `settings=` MUST appear on BOTH chromadb.HttpClient(...) call
-# sites the wrapper constructs — the startup probe and _http_factory()'s
-# return statement (spec 0088 R4/R8). This is the regression lock: a future
-# refactor that drops `settings=` from either call site re-introduces an
-# unbounded connection pool on that code path.
+# sites the wrapper constructs — the startup probe and the process-wide
+# cached client _http_factory() lazily builds (spec 0088 R4/R8, spec 0242
+# R1-R3). This is the regression lock: a future refactor that drops
+# `settings=` from either call site re-introduces an unbounded connection
+# pool on that code path. Spec 0242 changed _http_factory()'s call site from
+# a bare `return _chromadb.HttpClient(...)` to a cached `_cached_client =
+# _chromadb.HttpClient(...)` assignment, hence the updated grep target below.
 if [[ -f "$WRAPPER_PY" ]]; then
   probe_line="$(grep -n "_probe = _chromadb\.HttpClient(" "$WRAPPER_PY" | head -1)"
-  factory_return_line="$(grep -n "return _chromadb\.HttpClient(" "$WRAPPER_PY" | head -1)"
+  factory_return_line="$(grep -n "_cached_client = _chromadb\.HttpClient(" "$WRAPPER_PY" | head -1)"
   if [[ -z "$probe_line" ]]; then
     note_fail "settings= applied at both wrapper HttpClient call sites" \
       "no '_probe = _chromadb.HttpClient(...)' line found"
   elif [[ -z "$factory_return_line" ]]; then
     note_fail "settings= applied at both wrapper HttpClient call sites" \
-      "no 'return _chromadb.HttpClient(...)' line found"
+      "no '_cached_client = _chromadb.HttpClient(...)' line found"
   elif [[ "$probe_line" == *"settings="* && "$factory_return_line" == *"settings="* ]]; then
     note_pass "settings= applied at both wrapper HttpClient call sites"
   else
