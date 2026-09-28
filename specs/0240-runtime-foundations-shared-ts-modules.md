@@ -19,10 +19,10 @@ Discharges parent requirements 1, 3, 4, 5, 6, 15 (the timing-harness half),
 `specs/0238-shell-ratchet-and-typescript-toolchain.md` (issue #1321): every
 TypeScript source this spec introduces is written to, and checked by, A1's
 already-approved ratchet and toolchain gates. This spec neither restates nor
-re-decides A1's tool choices, and does not depend on the wording of the
-proposed, unenacted `0215.delta-01` (build-step reordering, shell-only
-tooling retirement) — none of this spec's requirements assume either
-proposal, and none would change if neither is ever enacted.*
+re-decides A1's tool choices. `0215.delta-01` (pull request #1357, merged)
+reorders the strangler steps and retires shell-only tooling; this spec's
+requirements are unaffected by it either way — none of them assumes either
+change, and none would need to change had the delta gone the other way.*
 
 ## Intent
 
@@ -290,12 +290,11 @@ the reference already records it as engine-specific with evidence.
   #1334), and the measured Windows hook command-line matrix (sub-spec B,
   issue #1322, deferred pending a Windows environment per the logbook on
   issue #1231).
-- Reordering the migration's strangler steps, or retiring rather than
-  migrating the shell-only lint and portability tooling
+- The strangler-step reordering and the shell-only tooling retirement
   (`lint-shell.sh`, `check-bash32-portability.sh`,
-  `scripts/lib/bash32-array-guard.sh`). Both are proposed, unenacted changes
-  in `0215.delta-01` (pull request #1357); this spec depends on neither
-  proposal and its requirements hold whichever way that delta is resolved.
+  `scripts/lib/bash32-array-guard.sh`) that `0215.delta-01` (pull request
+  #1357, merged) enacted. This spec's requirements are unaffected by that
+  delta and would hold identically had it gone the other way.
 - Replacing the `js-yaml` library, or any other justified-replacement
   decision under parent requirement 23. Sub-spec H (issue #1337) owns that
   question if it arises.
