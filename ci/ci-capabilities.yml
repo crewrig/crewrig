@@ -1672,7 +1672,8 @@ capabilities:
       - bash scripts/monorepo-release.sh
 
   # release-tests exercises the release driver (spec 0213 R17): the hermetic
-  # driver test and the real-engine test against a local forge stub.
+  # driver test, the real-engine test against a local forge stub, and the
+  # lint-safe changelog facade test (issue #1364).
   # Deliberately NOT changeset-gated, for the same reason usage-storage above
   # is not — a node@22 capability must never enter the fail-safe job's
   # python-only execution set.
@@ -1687,6 +1688,8 @@ capabilities:
           - "scripts/lib/release-rehearse.mjs"
           - "scripts/lib/release-notes/**"
           - "scripts/tests/test-monorepo-release*.sh"
+          - "scripts/tests/release-changelog.test.ts"
+          - ".markdownlintrc"
           - "scripts/tests/fixtures/release/**"
           - "scripts/release-package-extension.sh"
           - "scripts/build-extension.sh"
@@ -1700,6 +1703,8 @@ capabilities:
           - "scripts/lib/release-rehearse.mjs"
           - "scripts/lib/release-notes/**"
           - "scripts/tests/test-monorepo-release*.sh"
+          - "scripts/tests/release-changelog.test.ts"
+          - ".markdownlintrc"
           - "scripts/tests/fixtures/release/**"
           - "scripts/release-package-extension.sh"
           - "scripts/build-extension.sh"
@@ -1713,3 +1718,4 @@ capabilities:
       - npm install --include=dev
       - bash scripts/tests/test-monorepo-release.sh
       - bash scripts/tests/test-monorepo-release-engine.sh
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-changelog.test.ts
