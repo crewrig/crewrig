@@ -291,10 +291,12 @@ the reference already records it as engine-specific with evidence.
   issue #1322, deferred pending a Windows environment per the logbook on
   issue #1231).
 - The strangler-step reordering and the shell-only tooling retirement
-  (`lint-shell.sh`, `check-bash32-portability.sh`,
-  `scripts/lib/bash32-array-guard.sh`) that `0215.delta-01` (pull request
-  #1357, merged) enacted. This spec's requirements are unaffected by that
-  delta and would hold identically had it gone the other way.
+  (`scripts/check-bash32-portability.sh`, `scripts/check-pipefail-grep.sh`,
+  `scripts/lib/bash32-array-guard.sh` and
+  `artifacts/core/skills/pr-reviewer/scripts/lint-shell.sh`, per
+  requirement 26) that `0215.delta-01` (pull request #1357, merged)
+  enacted. This spec's requirements are unaffected by that delta and would
+  hold identically had it gone the other way.
 - Replacing the `js-yaml` library, or any other justified-replacement
   decision under parent requirement 23. Sub-spec H (issue #1337) owns that
   question if it arises.
