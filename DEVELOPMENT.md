@@ -172,6 +172,61 @@ Running `/<skill-name>` inside a Claude Code session also confirms that a skill 
 
 For iterative development, prefer the `--plugin-dir` flag documented in the [Link Mode](#link-mode) section — it skips the marketplace step.
 
+## TypeScript toolchain and ratchet
+
+New code is TypeScript, run directly from its `.ts` source by Node's
+built-in type stripping (Node ≥ 24), with no build step. Spec 0238 adds
+two blocking CI jobs, `ratchet` and `lint-typescript`, on both CI engines.
+The Taskfile runs exactly the commands CI runs:
+
+| Task | What it checks |
+|---|---|
+| `task ratchet` | shell / JavaScript / Python footprint ratchet (no `npm ci` needed) |
+| `task lint-ts` | every TypeScript check below, in one run |
+| `task typecheck-ts` | `tsc` strict type-check (`tsconfig.json`) |
+| `task erasable-ts` | no `enum`, runtime `namespace`, parameter property, decorator or `import =` |
+| `task oxlint-ts` | Oxlint type-aware: no `any`, no `@ts-ignore`/`@ts-nocheck`, justified `@ts-expect-error` only, no unsafe `any` flow; files over 300 lines warn without failing |
+| `task format-ts` | Oxfmt check mode on `*.ts` |
+| `task format-ts:fix` | rewrite every tracked `*.ts` with Oxfmt (local convenience) |
+
+Run `task lint-bootstrap` once to install the toolchain. The four built
+trees (`.claude/`, `.gemini/`, `.github/`, `.agents/`) are excluded from
+every check.
+
+**The ratchet.** `ci/shell-allowlist.txt` and `ci/js-baseline.txt` list the
+shell and JavaScript files tracked when spec 0238 landed. They are
+generated and can only shrink:
+
+- Adding a shell script (`*.sh`, or any file with a `bash`/`sh` shebang)
+  or a JavaScript file fails CI. Write TypeScript instead.
+- When a PR migrates or deletes a listed file, delete its line in the same
+  PR. A stale line fails CI. `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts --write`
+  regenerates both lists and never adds an entry.
+- A new JavaScript file is admitted only as the Node.js floor guard or as a
+  configuration file a third-party tool requires in JavaScript. Add it to
+  `ci/js-exceptions.txt` as `<path><TAB><node-floor-guard|tool-config> <NNNN> <reason>`,
+  where `NNNN` is the spec that names and justifies the file.
+- An added Python file must import the `mempalace` library.
+
+**Why `--disable-warning=MODULE_TYPELESS_PACKAGE_JSON`.** The root
+`package.json` has no `"type"` field, because most baseline JavaScript is
+CommonJS. Node therefore detects each `.ts` entry point as ESM by syntax
+and prints that warning. Every entry point passes the flag. For the same
+reason `tsconfig.json` uses `module: preserve` with
+`moduleResolution: bundler` rather than `nodenext`.
+
+**Dependency notes.**
+
+- The root pins `@types/node` `^24` while `extensions/core/hello-world`
+  keeps `^22.15.0`. That is deliberate: the root `tsc` resolves the root
+  copy, the workspace build its own. Do not "align" them in a Renovate PR.
+- `extension-skeleton/mcp-server/src/index.ts` type-checks against
+  `@modelcontextprotocol/sdk` only because the `hello-world` workspace's
+  copy is hoisted. If that workspace drops the SDK, the skeleton stops
+  type-checking.
+- Oxfmt is pre-1.0 and pinned exactly. A Renovate PR that bumps it must run
+  `task format-ts:fix` in the same PR.
+
 ## Branching Strategy
 
 - Create a feature branch from `main`: `feat/my-extension`

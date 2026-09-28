@@ -2,7 +2,7 @@
 name: pr-reviewer
 description: "Independent PR review skill. Activate to audit a pull request cold — without authoring context — covering correctness, convention compliance, test coverage, and linter findings. Emits a structured verdict (Approve / Request Changes / Comment)."
 license: Apache-2.0
-compatibility: "Requires bash and gh CLI (for diff fetch and review post). Optional: shellcheck (lint-shell.sh), markdownlint (lint-markdown.sh), ruff or flake8 (lint-python.sh). Missing tools degrade gracefully."
+compatibility: "Requires bash and gh CLI (for diff fetch and review post). Optional: shellcheck (lint-shell.sh), markdownlint (lint-markdown.sh), ruff or flake8 (lint-python.sh), Node >= 24 with oxlint and oxfmt (lint-typescript.ts). Missing tools degrade gracefully."
 allowed-tools:
   - Read
   - Bash
@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.6.0"
+    version: "1.7.0"
 ---
 
 
@@ -193,6 +193,15 @@ Select scripts based on file extensions in the changed-files list, then
 invoke each with the matching subset of paths. Capture stdout and exit
 code; treat exit 0 as no findings, exit 1 as findings present.
 
+`lint-typescript.ts` is invoked through Node, from the repository root
+so it finds the repository's `.oxlintrc.json`, `.oxfmtrc.json` and
+`node_modules/.bin`: `node lint-typescript.ts <changed *.ts files>`. It
+needs Node >= 24 (unflagged type stripping). On an older Node the
+interpreter fails before the script's own degrade path can run, so
+treat a non-zero exit that printed no `lint-typescript:` line — or a
+Node version below 24 — as "tool unavailable, skipped", never as a
+finding. The real Node floor guard is owned by sub-spec A2 (#1324).
+
 See *Scripts* below for the full table.
 
 ### 5. Compose the structured review
@@ -301,7 +310,7 @@ the role that opened it. Full rule: `docs/agent-team-protocol.md` →
 
 ## Scripts
 
-The skill ships five linter scripts under `scripts/`. Each accepts
+The skill ships six linter scripts under `scripts/`. Each accepts
 file paths as positional arguments, prints findings to stdout, and
 returns exit 0 (clean) or exit 1 (findings).
 
@@ -312,9 +321,11 @@ returns exit 0 (clean) or exit 1 (findings).
 | `lint-skill.sh` | `SKILL.md` | required frontmatter fields, version bumped vs `BASE_REF` | yq absent (grep fallback) |
 | `lint-python.sh` | `*.py` | ruff or flake8 output, bare `print(` in non-test files | both ruff and flake8 absent |
 | `lint-json.sh` | `*.json` | `jq` parse, trailing-comma heuristic | jq absent |
+| `lint-typescript.ts` | `*.ts` | Oxlint type-aware strict typing (`no-explicit-any`, `ban-ts-comment`, `no-unsafe-*`), Oxfmt check mode; `max-lines` > 300 is a non-blocking warning | oxlint or oxfmt absent (per tool) |
 
-All five scripts use `command -v <tool>` before invoking optional
-tools and print a one-line note when degrading, so a missing tool
+The five shell scripts use `command -v <tool>` before invoking optional
+tools, and `lint-typescript.ts` resolves `./node_modules/.bin` then
+`PATH`; all six print a one-line note when degrading, so a missing tool
 never aborts the review.
 
 ## Finding class taxonomy

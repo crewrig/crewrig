@@ -1,0 +1,14 @@
+# js-exceptions.txt — JavaScript files admitted outside ci/js-baseline.txt (spec 0238 R3).
+#
+# Format, one entry per line (TAB between path and reason):
+#
+#   <path><TAB><category> <NNNN> <free text>
+#
+# <category> is exactly one of the two exceptions spec 0238 R3 permits:
+#   node-floor-guard  the Node.js floor guard (sub-spec A2, issue #1324);
+#   tool-config       a configuration file a third-party tool mandates in JavaScript.
+# <NNNN> is the id of an existing specs/NNNN-*.md that names and justifies the file.
+#
+# Enforced by scripts/check-ratchet.ts (rule js-exception-unjustified). Unlike
+# ci/js-baseline.txt this list may grow, one justified entry at a time.
+# Lines starting with '#' are comments; every other line is an entry.
