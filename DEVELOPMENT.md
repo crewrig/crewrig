@@ -227,6 +227,56 @@ reason `tsconfig.json` uses `module: preserve` with
 - Oxfmt is pre-1.0 and pinned exactly. A Renovate PR that bumps it must run
   `task format-ts:fix` in the same PR.
 
+## Node.js floor and production dependencies
+
+Spec 0240 (sub-spec A2 of the shell-to-TypeScript migration) sets the
+runtime foundations every migrated script builds on.
+
+**Node.js floor.** CrewRig needs Node.js 24 or later.
+`scripts/lib/node-floor-guard.js` checks it: below 24 it prints one line
+naming the detected version, the floor and <https://nodejs.org/en/download>,
+and exits 1; otherwise it exits 0 silently. It is plain ES5 CommonJS so it
+runs on releases that cannot strip types, and it is the one JavaScript file
+admitted through `ci/js-exceptions.txt` as `node-floor-guard`. It ships
+unwired: sub-spec F1 (#1335) calls it from setup.
+
+**Production dependencies.** The four `scripts/setup-*-interactive.sh`
+scripts run `npm ci --omit=dev --workspaces=false` right after the spec 0084
+TLS offer, through `scripts/lib/tls-exec.sh`. The step is gated on the
+`package-lock.json` hash:
+
+- It runs only when `package-lock.json` changed since the last successful
+  run, or `node_modules/` is missing. Otherwise setup prints
+  `Production dependencies: skipped — package-lock.json unchanged ...`.
+- When it runs, `npm ci` **deletes `node_modules/`** first, so the dev
+  toolchain is gone afterwards. Re-run `task lint-bootstrap` before
+  `task lint-ts`.
+- `task lint-bootstrap` does not invalidate the record, so the next setup
+  run does not wipe the toolchain again.
+- The record is `.crewrig-state/production-deps.sha256` (git-ignored, one
+  per checkout or worktree). Delete it to force a re-install.
+- On failure setup aborts with npm's own diagnostic and removes
+  `node_modules/`, so no partial tree looks usable.
+
+Load a production dependency through `loadDependency` in
+`scripts/lib/require-dependency.ts`. A declared but missing package then
+raises a "re-run setup" diagnostic instead of a raw module-resolution
+error. That bar only covers callers of `loadDependency`: never import an
+overlap package (installed only because a root `devDependencies` entry is
+also a workspace dependency) statically.
+
+**Shared modules (R11 layout).** A migrated script keeps its shell path
+with `.sh` changed to `.ts`. A new shared module that replaces no single
+script lives under `scripts/lib/`, is named after its concern, and stays
+under 300 lines. Use the existing ones rather than re-deriving the logic:
+`paths.ts` (join, real path, repository root), `line-endings.ts` (LF
+normalisation), `tmp-file.ts` (owner-only temporary file, atomic publish)
+and `require-dependency.ts`.
+
+**Checks.** `task test-runtime-foundations` runs the CI suites.
+`task timing-budget -- --runs <N> --budget-ms <M> -- <script>` times a
+script the way the `windows-node-floor-guard` job does.
+
 ## Branching Strategy
 
 - Create a feature branch from `main`: `feat/my-extension`
