@@ -41,8 +41,18 @@ function fakeApi(answers: Record<string, ApiResponse>): { api: Api; calls: Call[
   return { api, calls };
 }
 
-const FOO: ReleaseEntry = { ext: "foo", version: "1.3.0", tag: "foo-v1.3.0", notes: "# foo-v1.3.0\n\n- ✨ a" };
-const BAZ: ReleaseEntry = { ext: "baz", version: "1.0.0", tag: "baz-v1.0.0", notes: "# baz-v1.0.0" };
+const FOO: ReleaseEntry = {
+  ext: "foo",
+  version: "1.3.0",
+  tag: "foo-v1.3.0",
+  notes: "# foo-v1.3.0\n\n- ✨ a",
+};
+const BAZ: ReleaseEntry = {
+  ext: "baz",
+  version: "1.0.0",
+  tag: "baz-v1.0.0",
+  notes: "# baz-v1.0.0",
+};
 
 const PULLS = "/repos/acme/fixture/pulls";
 const DISPATCH = "/repos/acme/fixture/actions/workflows/build.yml/dispatches";
@@ -95,7 +105,10 @@ describe("syncReleasePr", () => {
   test("opens the PR when none is open, then dispatches the checks on its head", async () => {
     const { calls, out } = await run([FOO], {
       [`GET ${PULLS}`]: { status: 200, body: [] },
-      [`POST ${PULLS}`]: { status: 201, body: { number: 7, html_url: "https://github.com/acme/fixture/pull/7" } },
+      [`POST ${PULLS}`]: {
+        status: 201,
+        body: { number: 7, html_url: "https://github.com/acme/fixture/pull/7" },
+      },
       [`POST ${DISPATCH}`]: { status: 204, body: null },
     });
     assert.equal(calls[0]?.path, `${PULLS}?state=open&base=main&head=acme%3Arelease-pr%2Fmain`);
@@ -105,7 +118,11 @@ describe("syncReleasePr", () => {
       base: "main",
       body: renderBody([FOO], "main"),
     });
-    assert.deepEqual(calls[2], { method: "POST", path: DISPATCH, body: { ref: "release-pr/main" } });
+    assert.deepEqual(calls[2], {
+      method: "POST",
+      path: DISPATCH,
+      body: { ref: "release-pr/main" },
+    });
     assert.deepEqual(out, [
       "RELEASE-PR opened #7 https://github.com/acme/fixture/pull/7",
       "RELEASE-PR-CHECKS dispatched build.yml ref=release-pr/main",
@@ -119,8 +136,14 @@ describe("syncReleasePr", () => {
       [`POST ${DISPATCH}`]: { status: 204, body: null },
     });
     assert.equal(calls.filter((c) => c.method === "POST" && c.path === PULLS).length, 0);
-    assert.deepEqual(calls[1]?.body, { title: renderTitle([FOO, BAZ]), body: renderBody([FOO, BAZ], "main") });
-    assert.deepEqual(out, ["RELEASE-PR updated #7 u7", "RELEASE-PR-CHECKS dispatched build.yml ref=release-pr/main"]);
+    assert.deepEqual(calls[1]?.body, {
+      title: renderTitle([FOO, BAZ]),
+      body: renderBody([FOO, BAZ], "main"),
+    });
+    assert.deepEqual(out, [
+      "RELEASE-PR updated #7 u7",
+      "RELEASE-PR-CHECKS dispatched build.yml ref=release-pr/main",
+    ]);
   });
 
   test("a 403 on create (Actions may not open PRs) degrades to a manual link, still dispatching", async () => {
@@ -170,12 +193,17 @@ describe("syncReleasePr", () => {
 
 describe("CLI", () => {
   test("parseEntries rejects an entry without a tag", () => {
-    assert.throws(() => parseEntries('[{"ext":"foo","version":"1.0.0"}]'), /lacks ext, version or tag/);
+    assert.throws(
+      () => parseEntries('[{"ext":"foo","version":"1.0.0"}]'),
+      /lacks ext, version or tag/,
+    );
     assert.deepEqual(parseEntries("[]"), []);
   });
 
   test("main refuses (exit 2) without a token, naming only the variables", async () => {
-    const code = await main(["sync", "main", "release-pr/main", "/nonexistent"], { GITHUB_REPOSITORY: "a/b" });
+    const code = await main(["sync", "main", "release-pr/main", "/nonexistent"], {
+      GITHUB_REPOSITORY: "a/b",
+    });
     assert.equal(code, 2);
   });
 

@@ -68,6 +68,12 @@ else
   [ -n "${GITHUB_REPOSITORY:-}" ] || release_refuse "GITHUB_REPOSITORY is not set"
 fi
 if [ "$RELEASE_MODE" = "publish" ]; then
+  # The release PR's own head branch is never a release branch: its versions
+  # are committed but unmerged, so every extension would classify as publish
+  # and be tagged from an unreviewed branch (issue #1379).
+  case "$RELEASE_FORGE:$RELEASE_BRANCH" in
+    github:release-pr/*) release_refuse "refusing to publish from a release PR branch ($RELEASE_BRANCH): merge the release PR instead" ;;
+  esac
   release_credential "$RELEASE_FORGE"
 fi
 
@@ -311,7 +317,7 @@ release_engine_run() {
 }
 
 release_github() {
-  local r dir ext json released version tag notes manifest head prepare_failed=0
+  local r dir ext json released version tag notes manifest head incomplete=0
   local -a publish_dirs=() pending_dirs=()
   r="$RELEASE_TMP/release-pr"
   mkdir -p "$r"
@@ -329,6 +335,7 @@ release_github() {
     if ! release_engine_run "$r" "$dir" "$ext" rehearsal "$json"; then
       echo "RELEASE-FAILED $ext step=engine"
       ERRORS=1
+      incomplete=1
       continue
     fi
     released="$(jq -r '.released' "$json")"
@@ -357,7 +364,7 @@ release_github() {
        || [ "$(jq -r '.released' "$json")" != "true" ]; then
       echo "RELEASE-FAILED $ext step=$(release_failed_step "$r/$ext.prepare.log")"
       ERRORS=1
-      prepare_failed=1
+      incomplete=1
       # Drop the failed extension's partial changes; earlier commits stay.
       git -C "$r/clone" reset -q --hard
       git -C "$r/clone" clean -q -fd
@@ -373,8 +380,9 @@ release_github() {
   done
 
   # 4. Push the release branch, then open/update/close the release PR and
-  # dispatch its required checks. A run whose preparation failed and left
-  # nothing to propose must not close a release PR still open.
+  # dispatch its required checks. A run in which an extension could not be
+  # classified or prepared, and which is left with nothing to propose, must
+  # not close a release PR still open: it may carry that extension.
   if [ "$(jq 'length' "$r/entries.json")" -gt 0 ]; then
     # --no-verify: a push FROM the checkout would run its pre-push hook.
     if ! git fetch -q "$r/clone" "refs/heads/$RELEASE_BRANCH" \
@@ -384,7 +392,7 @@ release_github() {
       return 0
     fi
     echo "RELEASE-PR-BRANCH $head"
-  elif [ "$prepare_failed" -eq 1 ]; then
+  elif [ "$incomplete" -eq 1 ]; then
     return 0
   fi
   if ! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$SCRIPT_DIR/release-pr.ts" \

@@ -24,8 +24,15 @@ permissions:
   pull-requests: write
   actions: write
 
-# Two runs must never prepare the release branch or publish at the same time;
-# the later one waits and then sees the earlier one's tags.
+# Two runs must never prepare the release branch or publish at the same time.
+# A running release is never cancelled; GitHub keeps at most ONE pending run
+# per group, so a burst of pushes collapses to the newest pending run, which
+# classifies from its own (newer) main. A merged release PR whose run was
+# dropped that way is then published by that newer run, tagged on its newer
+# commit (same committed version; the note also lists the commits in
+# between) — unless those commits raise the computed version, in which case
+# the extension is re-proposed at that version in the release PR and the
+# merged version is skipped rather than tagged.
 concurrency:
   group: release-monorepo
   cancel-in-progress: false

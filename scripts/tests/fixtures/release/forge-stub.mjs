@@ -31,7 +31,7 @@
 // It also answers the four GitHub REST calls scripts/lib/release-pr.ts makes
 // for the release-PR flow (issue #1379), under GITHUB_API_URL=http://127.0.0.1:<port>:
 //
-//   GET   /repos/:owner/:repo/pulls                        -> 200 []
+//   GET   /repos/:owner/:repo/pulls                        -> 200 [] ([{number: 5}] with OPEN_PR=1)
 //   POST  /repos/:owner/:repo/pulls                        -> 201 {number: 1, html_url}
 //   PATCH /repos/:owner/:repo/pulls/:n                     -> 200 {number, html_url}
 //   POST  /repos/:owner/:repo/actions/workflows/:wf/dispatches -> 204
@@ -60,6 +60,8 @@ if (!portFile || !logFile || !uploadDir) {
 
 fs.mkdirSync(uploadDir, { recursive: true });
 const FAIL_UPLOAD = process.env.FAIL_UPLOAD === "1";
+// OPEN_PR=1: the GitHub pulls listing answers one open release PR (#5).
+const OPEN_PR = process.env.OPEN_PR === "1";
 
 function appendLog(entry) {
   fs.appendFileSync(logFile, `${JSON.stringify({ ts: new Date().toISOString(), ...entry })}\n`);
@@ -99,7 +101,7 @@ const GITHUB_ROUTES = [
     pattern: /^\/repos\/([^/]+)\/([^/]+)\/pulls$/,
     handle: (req, res) => {
       appendLog({ method: "GET", path: req.url });
-      sendJson(res, 200, []);
+      sendJson(res, 200, OPEN_PR ? [{ number: 5, html_url: "http://forge-stub.invalid/pull/5" }] : []);
     },
   },
   {

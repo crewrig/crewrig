@@ -1062,6 +1062,42 @@ stop_stub() {
   stop_stub
 }
 
+# --- 11i: an extension that cannot be classified never closes an open release
+# PR (review i1-F2), and publishing from a release PR branch is refused
+# (review i1-F5).
+{
+  read -r FIX ORIGIN_BARE HOME_FIX GITCONFIG <<< "$(make_fixture | tr '\n' ' ')"
+  # foo and baz (the two releasable extensions) get an unreadable manifest,
+  # so their classification fails and nothing is left to propose.
+  for e in foo baz; do
+    printf '{ not json\n' > "$FIX/extensions/core/$e/package.json"
+  done
+  clean_git "$HOME_FIX" "$FIX" commit -q -am ":bug: break foo and baz manifests"
+  env -i PATH="$CLEAN_PATH" HOME="$HOME_FIX" GIT_CONFIG_GLOBAL="$GITCONFIG" GIT_CONFIG_SYSTEM=/dev/null \
+    git -C "$FIX" push -q origin main
+  start_stub "OPEN_PR=1"
+  GH_PUSH_ENV=(GITHUB_ACTIONS=true GITHUB_ACTION=run GITHUB_EVENT_NAME=push
+               GITHUB_REF=refs/heads/main GITHUB_REPOSITORY=acme/fixture GITHUB_SERVER_URL=https://github.com
+               "GITHUB_API_URL=http://127.0.0.1:$STUB_PORT" GITHUB_TOKEN=sentinel-ghs-7f3a)
+  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" ${GH_PUSH_ENV[@]+"${GH_PUSH_ENV[@]}"}
+  if [ "$DRIVER_RC" -ne 0 ] && grep -q '^RELEASE-FAILED foo step=engine$' <<< "$DRIVER_OUT" \
+     && ! grep -q '"method":"PATCH"' "$STUB_LOG" 2>/dev/null \
+     && ! grep -q '^RELEASE-PR ' <<< "$DRIVER_OUT"; then
+    ok "11i: a classification failure fails the run and leaves the open release PR alone (no close)"
+  else
+    ng "11i: a classification failure closed or touched the open release PR (rc=$DRIVER_RC): $DRIVER_OUT"
+  fi
+  stop_stub
+
+  clean_git "$HOME_FIX" "$FIX" checkout -q -b release-pr/main
+  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" ${GH_PUSH_ENV[@]+"${GH_PUSH_ENV[@]}"}
+  if [ "$DRIVER_RC" -eq 2 ] && grep -q 'refusing to publish from a release PR branch (release-pr/main)' <<< "$DRIVER_ERR"; then
+    ok "11i: GitHub publish from a release-pr/* branch is refused before anything runs"
+  else
+    ng "11i: GitHub publish from release-pr/main was not refused (rc=$DRIVER_RC): $DRIVER_ERR"
+  fi
+}
+
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

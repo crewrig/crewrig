@@ -52,7 +52,9 @@ release PR is opened for them: there is no loop. A new release PR appears
 only when new releasable commits land.
 
 Do not push to `release-pr/main`: it is regenerated from `main` on every
-push. The release commits carry no `[skip ci]`, since that token on the
+push. The driver refuses to publish from a `release-pr/*` branch (its
+versions are committed but unmerged), so running the release workflow by
+hand on that branch exits with an error instead of tagging it. The release commits carry no `[skip ci]`, since that token on the
 merged head commit would suppress the very run that publishes them.
 
 ## When the PR cannot be opened automatically
@@ -74,6 +76,9 @@ updates it.
 - `RELEASE-PR-CHECKS dispatched build.yml ref=release-pr/main`.
 - `RELEASE-FAILED release-pr step=push|pr` — the branch push or the PR/API
   call failed; the run fails.
+
+A run in which an extension could not be classified or prepared, and which
+is left with nothing to propose, fails without touching an open release PR.
 
 ## GitLab
 

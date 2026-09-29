@@ -93,7 +93,8 @@ export function renderBody(entries: ReleaseEntry[], base: string): string {
     "",
   ].join("\n");
   const notes = entries.map(
-    (e) => `<details>\n<summary>${e.tag} release note</summary>\n\n${e.notes.trim()}\n\n</details>\n`,
+    (e) =>
+      `<details>\n<summary>${e.tag} release note</summary>\n\n${e.notes.trim()}\n\n</details>\n`,
   );
   let body = [head, ...notes].join("\n");
   if (body.length > BODY_LIMIT) {
@@ -108,7 +109,8 @@ function asPullRequests(body: unknown): PullRequest[] {
 }
 
 function asPullRequest(body: unknown): PullRequest {
-  if (typeof body !== "object" || body === null) throw new Error("release-pr: malformed pull request");
+  if (typeof body !== "object" || body === null)
+    throw new Error("release-pr: malformed pull request");
   const { number, html_url } = body as Record<string, unknown>;
   if (typeof number !== "number" || typeof html_url !== "string")
     throw new Error("release-pr: malformed pull request");
@@ -121,7 +123,9 @@ function expect(res: ApiResponse, ok: number[], what: string): void {
       typeof res.body === "object" && res.body !== null && "message" in res.body
         ? String((res.body as { message: unknown }).message)
         : "";
-    throw new Error(`release-pr: ${what} failed with HTTP ${res.status}${message ? `: ${message}` : ""}`);
+    throw new Error(
+      `release-pr: ${what} failed with HTTP ${res.status}${message ? `: ${message}` : ""}`,
+    );
   }
 }
 
@@ -138,7 +142,9 @@ export async function syncReleasePr(opts: SyncOptions, io: SyncIo): Promise<void
       io.out("RELEASE-PR none");
       return;
     }
-    const closed = await io.api("PATCH", `/repos/${repository}/pulls/${open.number}`, { state: "closed" });
+    const closed = await io.api("PATCH", `/repos/${repository}/pulls/${open.number}`, {
+      state: "closed",
+    });
     expect(closed, [200], `closing release PR #${open.number}`);
     io.out(`RELEASE-PR closed #${open.number}`);
     return;
@@ -147,7 +153,10 @@ export async function syncReleasePr(opts: SyncOptions, io: SyncIo): Promise<void
   const title = renderTitle(entries);
   const body = renderBody(entries, base);
   if (open !== undefined) {
-    const updated = await io.api("PATCH", `/repos/${repository}/pulls/${open.number}`, { title, body });
+    const updated = await io.api("PATCH", `/repos/${repository}/pulls/${open.number}`, {
+      title,
+      body,
+    });
     expect(updated, [200], `updating release PR #${open.number}`);
     io.out(`RELEASE-PR updated #${open.number} ${open.html_url}`);
   } else {
@@ -168,9 +177,13 @@ export async function syncReleasePr(opts: SyncOptions, io: SyncIo): Promise<void
     }
   }
 
-  const dispatched = await io.api("POST", `/repos/${repository}/actions/workflows/${opts.workflow}/dispatches`, {
-    ref: head,
-  });
+  const dispatched = await io.api(
+    "POST",
+    `/repos/${repository}/actions/workflows/${opts.workflow}/dispatches`,
+    {
+      ref: head,
+    },
+  );
   expect(dispatched, [204], `dispatching ${opts.workflow} on ${head}`);
   io.out(`RELEASE-PR-CHECKS dispatched ${opts.workflow} ref=${head}`);
 }
@@ -223,7 +236,9 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv): Promise<numb
   const token = env.GITHUB_TOKEN || env.GH_TOKEN || "";
   const repository = env.GITHUB_REPOSITORY || "";
   if (token === "" || repository === "") {
-    process.stderr.write("release-pr: GITHUB_TOKEN (or GH_TOKEN) and GITHUB_REPOSITORY are required\n");
+    process.stderr.write(
+      "release-pr: GITHUB_TOKEN (or GH_TOKEN) and GITHUB_REPOSITORY are required\n",
+    );
     return 2;
   }
   const summaryFile = env.GITHUB_STEP_SUMMARY || "";
