@@ -5,9 +5,9 @@
 # user-configured status line IS the only trigger this channel has. This
 # shim tees the payload to the capture step's Antigravity adapter
 # (scripts/lib/usage-capture/adapters/antigravity.js, via cli.js — the same
-# module tree hooks/usage-capture.sh reaches) and then reproduces the
-# payload it received UNCHANGED on stdout, so the operator's own status-line
-# display is not altered by this ticket's own capture step.
+# module tree hooks/usage-capture.sh reaches). When a priorStatusLineCommand
+# was configured, the shim streams the payload to it on stdin and forwards its
+# stdout. When absent or empty, nothing is emitted on stdout (spec 0241).
 #
 # THIS FILE IS NEVER COPIED OUT of the repository, exactly like
 # hooks/usage-capture.sh (spec 0206 PLAN v3 step 11): its whole job is to
@@ -16,9 +16,7 @@
 # installed only when that value was previously empty (R20).
 #
 # Exit code: ALWAYS 0, the same R15 contract hooks/usage-capture.sh carries —
-# a capture failure here must never break the status-line display, and the
-# reproduced payload is written BEFORE the capture step runs, so the display
-# is never blocked on it either.
+# a capture failure or prior-command failure must never break the status-line display.
 #
 # Environment: the same CREWRIG_USAGE_ROOT / CREWRIG_USAGE_CAPTURE_CLI /
 # CREWRIG_USAGE_CAPTURE_TEST contract hooks/usage-capture.sh documents.
@@ -31,13 +29,23 @@ fi
 
 payload="$(cat)"
 
-# Reproduce the payload unchanged FIRST: the display must never wait on, or
-# be altered by, the capture step below.
-printf '%s' "$payload"
+# If a prior status-line command was configured, stream the payload to it
+# and reproduce ITS output on stdout. If no prior command was configured,
+# emit nothing: the user had no status line before us, so dumping raw JSON
+# would pollute the terminal status bar (issue #1363, spec 0241).
+CREWRIG_USAGE_ROOT="${CREWRIG_USAGE_ROOT:-${HOME}/.crewrig/usage}"
+STATUSLINE_MARKER="$CREWRIG_USAGE_ROOT/state/antigravity-statusline.json"
+
+if [ -f "$STATUSLINE_MARKER" ]; then
+  PRIOR_CMD="$(jq -r '.priorStatusLineCommand // empty' "$STATUSLINE_MARKER" 2>/dev/null || true)"
+  if [ -n "$PRIOR_CMD" ]; then
+    printf '%s' "$payload" | sh -c "$PRIOR_CMD" || true
+  fi
+fi
 
 tmp="$(mktemp)"
 printf '%s' "$payload" > "$tmp"
-CREWRIG_USAGE_ROOT="${CREWRIG_USAGE_ROOT:-${HOME}/.crewrig/usage}" \
+CREWRIG_USAGE_ROOT="$CREWRIG_USAGE_ROOT" \
   node --disable-warning=ExperimentalWarning "$CLI_JS" --cli antigravity --event statusline --payload-file "$tmp" >/dev/null 2>&1
 rm -f "$tmp"
 
