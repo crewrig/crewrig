@@ -160,6 +160,10 @@ fi  # end: SKIP_RULES_CONFIG guard for shared configuration
 offer_tls_delegation
 echo ""
 
+# --- Production dependencies (spec 0240 R4-R6; after the spec 0084 TLS offer) ---
+install_production_dependencies "$REPO_DIR" || exit 1
+echo ""
+
 # --- settings.json merge + MCP server registration (spec 0214) ---
 # The existing ~/.gemini/settings.json is merged in place, never rebuilt from
 # config/gemini/settings.json: every operator key and every hook entry is kept,

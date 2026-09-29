@@ -165,6 +165,10 @@ mkdir -p "$(dirname "$AGY_MCP_CONFIG")"
 offer_tls_delegation
 echo ""
 
+# --- Production dependencies (spec 0240 R4-R6; after the spec 0084 TLS offer) ---
+install_production_dependencies "$REPO_DIR" || exit 1
+echo ""
+
 backup_file "$AGY_MCP_CONFIG"
 
 # Capture the operator's pre-existing MCP declarations + the backup path BEFORE

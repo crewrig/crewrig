@@ -53,3 +53,7 @@ dist-antigravity-*/
 
 # GitHub Copilot CLI plugin build outputs
 dist-copilot-plugin/
+
+# Per-checkout setup state: the production-dependency step records the
+# package-lock.json hash of its last successful run here (spec 0240 R5).
+.crewrig-state/

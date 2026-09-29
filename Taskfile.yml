@@ -430,6 +430,18 @@ tasks:
     desc: "Run the shell / JavaScript / Python footprint ratchet, as CI does (spec 0238 R1-R3)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts
 
+  # Spec 0240 R13-R14: local entry points for the runtime-foundations suites
+  # (the exact CI command of the `runtime-foundations` capability) and a
+  # passthrough to the timing-budget harness, e.g.
+  #   task timing-budget -- --runs 10 --budget-ms 750 -- scripts/lib/node-floor-guard.js
+  test-runtime-foundations:
+    desc: "Run the floor guard, dependency-step and shared-module suites, as CI does (spec 0240)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+
+  timing-budget:
+    desc: "Time a Node.js script against a budget (spec 0240 R13); pass the harness arguments after --"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts {{.CLI_ARGS}}
+
   lint-ts:
     desc: "Run every TypeScript check CI runs: type-check, erasable syntax, Oxlint, Oxfmt (spec 0238 R4-R8)"
     preconditions:

@@ -569,6 +569,87 @@ ensure_tier_built() {
   return 0
 }
 
+# install_production_dependencies <repo_dir>
+# The production-dependency step of spec 0240 R4-R6 (delta-01 R4/R5), shared
+# by the four scripts/setup-*-interactive.sh scripts so they cannot drift.
+#
+# Runs `npm ci --omit=dev --workspaces=false` at <repo_dir>, through
+# scripts/lib/tls-exec.sh so npm inherits the spec 0084 custom-CA trust, and
+# gates it on the SHA-256 of <repo_dir>/package-lock.json: the hash of the last
+# successful run is recorded in <repo_dir>/.crewrig-state/production-deps.sha256
+# (git-ignored, per checkout, outside node_modules/ so a contributor's full
+# `npm ci` from `task lint-bootstrap` does not erase it).
+#
+#   - node_modules/ missing        → the record is dropped, the step runs;
+#   - record equals the lock hash  → skip, with a named report and its reason;
+#   - otherwise                    → the record is dropped, then npm ci runs.
+#
+# On an npm failure: npm's own diagnostic is left on the terminal, a one-line
+# ERROR is printed, node_modules/ is removed (no partial tree is left looking
+# usable, R6), no record is written, and 1 is returned. Returns 0 on success
+# or skip; 1 when npm is missing or fails. The caller exits on 1.
+install_production_dependencies() {
+  local repo_dir="$1"
+  local lockfile="$repo_dir/package-lock.json"
+  local state_dir="$repo_dir/.crewrig-state"
+  local stamp="$state_dir/production-deps.sha256"
+  local lock_hash="" recorded="" tmp_stamp=""
+
+  # Refuse an empty or foreign directory before anything below can rm in it.
+  if [ -z "$repo_dir" ] || [ ! -f "$repo_dir/package.json" ]; then
+    echo "ERROR: install_production_dependencies: '$repo_dir' is not a repository checkout." >&2
+    return 1
+  fi
+
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "Error: npm is required but not installed (it ships with Node.js)." >&2
+    echo "Install Node.js 24 or later from https://nodejs.org/en/download" >&2
+    return 1
+  fi
+
+  if [ -f "$lockfile" ]; then
+    if command -v shasum >/dev/null 2>&1; then
+      lock_hash="$(shasum -a 256 "$lockfile" | cut -d' ' -f1)"
+    else
+      lock_hash="$(sha256sum "$lockfile" | cut -d' ' -f1)"
+    fi
+  fi
+
+  # A removed tree means there is no record of a successful run to trust.
+  if [ ! -d "$repo_dir/node_modules" ]; then
+    rm -f "$stamp"
+  fi
+
+  if [ -f "$stamp" ]; then
+    recorded="$(cat "$stamp")"
+  fi
+  if [ -n "$lock_hash" ] && [ "$recorded" = "$lock_hash" ]; then
+    echo "Production dependencies: skipped — package-lock.json unchanged since the last successful install (sha256 ${lock_hash:0:12}). Delete .crewrig-state/production-deps.sha256 to force a re-install."
+    return 0
+  fi
+
+  # Drop the record BEFORE installing so an interrupted install never leaves
+  # a stale one behind.
+  rm -f "$stamp"
+  echo "Production dependencies: running 'npm ci --omit=dev --workspaces=false'..."
+  if ! (cd "$repo_dir" && bash "$repo_dir/scripts/lib/tls-exec.sh" npm ci --omit=dev --workspaces=false); then
+    echo "ERROR: production dependency install failed — setup aborted; re-run setup once the cause above is fixed." >&2
+    rm -rf "$repo_dir/node_modules"
+    return 1
+  fi
+
+  # Record the run atomically. `set -e` does not apply inside a function
+  # called with `|| exit 1`, so every step is checked; a failed write only
+  # means the next setup re-runs the step, so it warns rather than aborts.
+  if mkdir -p "$state_dir" && tmp_stamp="$(mktemp "$state_dir/.production-deps.XXXXXX")" \
+    && printf '%s\n' "$lock_hash" >"$tmp_stamp" && mv -f "$tmp_stamp" "$stamp"; then
+    return 0
+  fi
+  [ -n "$tmp_stamp" ] && rm -f "$tmp_stamp"
+  echo "WARNING: could not record $stamp — the next setup run will re-install production dependencies." >&2
+  return 0
+}
+
 mempalace_installed_version() {
   "$1" -c "from importlib.metadata import version; print(version('mempalace'))" 2>/dev/null
 }

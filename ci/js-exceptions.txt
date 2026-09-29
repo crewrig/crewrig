@@ -12,3 +12,4 @@
 # Enforced by scripts/check-ratchet.ts (rule js-exception-unjustified). Unlike
 # ci/js-baseline.txt this list may grow, one justified entry at a time.
 # Lines starting with '#' are comments; every other line is an entry.
+scripts/lib/node-floor-guard.js	node-floor-guard 0240 Node.js floor guard, plain JS so it runs on releases that cannot strip types (spec 0240 R1-R2)
