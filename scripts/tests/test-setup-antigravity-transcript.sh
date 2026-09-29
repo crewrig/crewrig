@@ -933,5 +933,71 @@ else
 fi
 
 echo ""
+echo "§7 usage-capture statusline shim prior command (spec 0241)"
+
+USAGE_ROOT_7="$TMP_ROOT/usage-state-7"
+mkdir -p "$USAGE_ROOT_7/state"
+STATE_MARKER_7="$USAGE_ROOT_7/state/antigravity-statusline.json"
+
+TEST_CLI_JS="$TMP_ROOT/test-cli.js"
+cat > "$TEST_CLI_JS" <<'EOF'
+const fs = require('fs');
+const file = process.argv[process.argv.indexOf('--payload-file') + 1];
+fs.writeFileSync(process.env.MOCK_PAYLOAD_OUT, fs.readFileSync(file));
+EOF
+chmod +x "$TEST_CLI_JS"
+
+MOCK_PAYLOAD_OUT="$TMP_ROOT/payload-7.out"
+
+run_shim_7() {
+  rm -f "$MOCK_PAYLOAD_OUT"
+  CREWRIG_USAGE_ROOT="$USAGE_ROOT_7" \
+  CREWRIG_USAGE_CAPTURE_TEST=1 \
+  CREWRIG_USAGE_CAPTURE_CLI="$TEST_CLI_JS" \
+  MOCK_PAYLOAD_OUT="$MOCK_PAYLOAD_OUT" \
+    bash "$STATUSLINE_SRC"
+}
+
+# Case A: Missing state marker file -> stdout empty, exit 0, cli.js called
+rm -f "$STATE_MARKER_7"
+SHIM_OUT="$(printf '{"turn":1}' | run_shim_7)"
+SHIM_STATUS=$?
+if [ $SHIM_STATUS -eq 0 ] && [ -z "$SHIM_OUT" ] && [ "$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)" = '{"turn":1}' ]; then
+  ok "Case A: missing marker file emits nothing on stdout, exits 0, executes cli.js"
+else
+  bad "Case A failed: exit=$SHIM_STATUS out='$SHIM_OUT' payload='$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)'"
+fi
+
+# Case B: Configured priorStatusLineCommand -> stdin piped to prior cmd, stdout reproduced, exits 0, cli.js called
+echo '{"priorStatusLineCommand":"cat | sed s/turn/epoch/"}' > "$STATE_MARKER_7"
+SHIM_OUT="$(printf '{"turn":1}' | run_shim_7)"
+SHIM_STATUS=$?
+if [ $SHIM_STATUS -eq 0 ] && [ "$SHIM_OUT" = '{"epoch":1}' ] && [ "$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)" = '{"turn":1}' ]; then
+  ok "Case B: configured command receives payload and emits output, exits 0, executes cli.js"
+else
+  bad "Case B failed: exit=$SHIM_STATUS out='$SHIM_OUT' payload='$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)'"
+fi
+
+# Case C: Failing priorStatusLineCommand -> shim exits 0, cli.js called
+echo '{"priorStatusLineCommand":"cat >/dev/null; exit 7"}' > "$STATE_MARKER_7"
+SHIM_OUT="$(printf '{"turn":1}' | run_shim_7)"
+SHIM_STATUS=$?
+if [ $SHIM_STATUS -eq 0 ] && [ "$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)" = '{"turn":1}' ]; then
+  ok "Case C: failing prior command does not fail shim (exits 0), executes cli.js"
+else
+  bad "Case C failed: exit=$SHIM_STATUS payload='$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)'"
+fi
+
+# Case D: Empty string priorStatusLineCommand -> stdout empty, exit 0, cli.js called
+echo '{"priorStatusLineCommand":""}' > "$STATE_MARKER_7"
+SHIM_OUT="$(printf '{"turn":1}' | run_shim_7)"
+SHIM_STATUS=$?
+if [ $SHIM_STATUS -eq 0 ] && [ -z "$SHIM_OUT" ] && [ "$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)" = '{"turn":1}' ]; then
+  ok "Case D: empty string prior command emits nothing on stdout, exits 0, executes cli.js"
+else
+  bad "Case D failed: exit=$SHIM_STATUS out='$SHIM_OUT' payload='$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)'"
+fi
+
+echo ""
 echo "Summary: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
