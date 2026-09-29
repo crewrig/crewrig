@@ -493,8 +493,9 @@ scripts/
 ├── link-extensions.sh                # Symlink extensions for local dev
 ├── manage-claude-component.sh        # Claude Code component manager
 ├── manage-workspace-component.sh     # Gemini component manager
-├── monorepo-release.sh               # Monorepo release driver — bumps versions, calls release-package-extension.sh, publishes the release
+├── monorepo-release.sh               # Monorepo release driver — bumps versions, calls release-package-extension.sh, publishes the release (GitHub: through a release PR, docs/github-release-pr.md)
 ├── release-package-extension.sh      # The ONE place a release artifact's shape is decided: renders, asserts, archives (spec 0183)
+├── release-pr.ts                     # Opens/updates/closes the GitHub release PR and dispatches its required checks (issue #1379)
 ├── package-extension.sh              # Manually package a single extension at its current committed version (delegates to release-package-extension.sh)
 ├── package-extensions.sh             # Manually package every extension (delegates to package-extension.sh)
 ├── prune-transcripts.sh              # Remove old transcript archives

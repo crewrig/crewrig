@@ -57,7 +57,11 @@ g remote add origin "$REMOTE"
 
 EXT_DIR="$FIXTURE/extensions/core/notes-fixture"
 mkdir -p "$EXT_DIR"
-printf '{\n  "name": "notes-fixture",\n  "version": "0.0.0",\n  "private": true\n}\n' > "$EXT_DIR/package.json"
+# The committed version is already the one the engine computes (a first
+# release, 1.0.0): since the GitHub release-PR flow (issue #1379) that is what
+# a merged release PR looks like, and the only case in which GitHub publish
+# mode calls `npx semantic-release` — the call this suite intercepts.
+printf '{\n  "name": "notes-fixture",\n  "version": "1.0.0",\n  "private": true\n}\n' > "$EXT_DIR/package.json"
 g add -A && g commit -q -m "🎉 Scaffold notes-fixture"
 
 echo a > "$EXT_DIR/a.txt"
@@ -118,6 +122,19 @@ exec node "$TMP_ROOT/driver.mjs" "$REPO_DIR" "$NOTES_OUT" "$RESULT_OUT" "file://
 EOF
 chmod +x "$BIN/npx"
 
+# --- GitHub API stand-in --------------------------------------------------------
+# After publishing, GitHub publish mode syncs the release PR (issue #1379);
+# the shared forge stub answers those calls on 127.0.0.1.
+STUB_PORT_FILE="$TMP_ROOT/stub.port"
+node "$SCRIPT_DIR/tests/fixtures/release/forge-stub.mjs" "$STUB_PORT_FILE" "$TMP_ROOT/stub.jsonl" "$TMP_ROOT/uploads" \
+  > /dev/null 2>&1 &
+STUB_PID=$!
+trap 'kill "$STUB_PID" >/dev/null 2>&1; rm -rf "$TMP_ROOT"' EXIT
+for _ in $(seq 1 50); do
+  [ -s "$STUB_PORT_FILE" ] && break
+  sleep 0.1
+done
+
 # --- Run the real release script ---------------------------------------------
 LOG="$TMP_ROOT/release.log"
 (
@@ -127,10 +144,15 @@ LOG="$TMP_ROOT/release.log"
   # So it runs in GitHub PUBLISH mode, the path that generates the real config
   # and calls `npx semantic-release`; the stubbed `npx` above turns that call
   # into a dry run, and the driver.mjs env scrub keeps the engine from seeing
-  # any CI marker or the placeholder credential.
-  env -u CI -u GITHUB_REF -u GITHUB_HEAD_REF -u GITLAB_CI -u GITEA_ACTIONS \
+  # any CI marker or the placeholder credential. The driver's own
+  # classification dry run (issue #1379) runs under env-ci, so the GitHub
+  # push-event markers are pinned rather than inherited from the host runner
+  # (a pull_request host event would make env-ci skip the run).
+  env -u CI -u GITHUB_HEAD_REF -u GITHUB_BASE_REF -u GITHUB_EVENT_PATH -u GITLAB_CI -u GITEA_ACTIONS \
     -u DRY_RUN -u RELEASE_DRY_RUN -u GITHUB_TOKEN -u GH_TOKEN \
-    GITHUB_ACTIONS=true RELEASE_TOKEN=fixture-placeholder \
+    GITHUB_ACTIONS=true GITHUB_REF=refs/heads/main GITHUB_EVENT_NAME=push \
+    GITHUB_SERVER_URL=https://github.com GITHUB_REPOSITORY=acme/notes-fixture \
+    GITHUB_API_URL="http://127.0.0.1:$(cat "$STUB_PORT_FILE")" RELEASE_TOKEN=fixture-placeholder \
     PATH="$BIN:$PATH" bash "$SCRIPT_DIR/monorepo-release.sh"
 ) > "$LOG" 2>&1
 rc=$?

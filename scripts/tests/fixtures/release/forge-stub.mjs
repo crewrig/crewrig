@@ -28,6 +28,14 @@
 //     -> 201 { id: 1, web_url: "<a stub URL>" } (fail.js's issue creation on
 //        a run that fails after publish's verifyConditions).
 //
+// It also answers the four GitHub REST calls scripts/lib/release-pr.ts makes
+// for the release-PR flow (issue #1379), under GITHUB_API_URL=http://127.0.0.1:<port>:
+//
+//   GET   /repos/:owner/:repo/pulls                        -> 200 []
+//   POST  /repos/:owner/:repo/pulls                        -> 201 {number: 1, html_url}
+//   PATCH /repos/:owner/:repo/pulls/:n                     -> 200 {number, html_url}
+//   POST  /repos/:owner/:repo/actions/workflows/:wf/dispatches -> 204
+//
 // Every request is appended to <logFile> as one JSON line: {method, path,
 // query, ts}, so the suite can assert exactly which endpoints were hit (and,
 // for the upload endpoint, exactly once — R8/R9).
@@ -76,7 +84,53 @@ function sendJson(res, status, body) {
 // Every pattern is anchored under /api/v4/projects/:id — the fixture always
 // runs with CI_PROJECT_ID=7, but the id is captured, not hard-coded, so a
 // future fixture change does not silently desync the stub.
+async function jsonBody(req) {
+  const body = await readBody(req);
+  try {
+    return JSON.parse(body.toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+const GITHUB_ROUTES = [
+  {
+    method: "GET",
+    pattern: /^\/repos\/([^/]+)\/([^/]+)\/pulls$/,
+    handle: (req, res) => {
+      appendLog({ method: "GET", path: req.url });
+      sendJson(res, 200, []);
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/repos\/([^/]+)\/([^/]+)\/pulls$/,
+    handle: async (req, res, match) => {
+      appendLog({ method: "POST", path: req.url, body: await jsonBody(req) });
+      sendJson(res, 201, { number: 1, html_url: `http://forge-stub.invalid/${match[1]}/${match[2]}/pull/1` });
+    },
+  },
+  {
+    method: "PATCH",
+    pattern: /^\/repos\/([^/]+)\/([^/]+)\/pulls\/(\d+)$/,
+    handle: async (req, res, match) => {
+      appendLog({ method: "PATCH", path: req.url, body: await jsonBody(req) });
+      sendJson(res, 200, { number: Number(match[3]), html_url: `http://forge-stub.invalid/pull/${match[3]}` });
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/repos\/([^/]+)\/([^/]+)\/actions\/workflows\/([^/]+)\/dispatches$/,
+    handle: async (req, res) => {
+      appendLog({ method: "POST", path: req.url, body: await jsonBody(req) });
+      res.writeHead(204);
+      res.end();
+    },
+  },
+];
+
 const ROUTES = [
+  ...GITHUB_ROUTES,
   {
     method: "GET",
     pattern: /^\/api\/v4\/projects\/([^/]+)$/,

@@ -213,6 +213,44 @@ release_prepare_cmd() {
     "$4" "$1" "$2" "$4" "$3"
 }
 
+# release_sync_cmd <version> — the exec plugin's prepareCmd in `prepare` mode
+# (GitHub release-PR flow, issue #1379): only the manifest lockstep half of
+# release_prepare_cmd (spec 0044). Nothing is packaged while the release PR is
+# being prepared; the archive is built when the merged release is published.
+release_sync_cmd() {
+  printf 'for m in package.json extension.json; do [ ! -f "$m" ] || { jq --arg v "%s" '"'"'.version=$v'"'"' "$m" > "$m.tmp" && mv "$m.tmp" "$m"; } || exit 1; done' \
+    "$1"
+}
+
+# release_classify <released> <next-version> <manifest-version> — the GitHub
+# release-PR flow's per-extension decision (issue #1379), from the engine's
+# dry run on the branch head and the extension's committed package.json
+# version:
+#   unchanged — the engine computes no release;
+#   publish   — the committed version already IS the computed next version:
+#               a release PR carrying that bump has been merged, so the
+#               release is tagged and published now;
+#   pending   — the computed version is not committed yet: it goes into the
+#               release PR.
+# A published extension is never also pending, so merging a release PR
+# publishes it without opening another release PR for it.
+release_classify() {
+  if [ "$1" != "true" ]; then
+    echo unchanged
+  elif [ "$2" = "$3" ]; then
+    echo publish
+  else
+    echo pending
+  fi
+}
+
+# release_pr_branch <branch> — the head branch of the release PR targeting
+# <branch> (issue #1379). Outside `main`'s ruleset, and outside the
+# `release/**` maintenance-branch namespace the CI triggers already cover.
+release_pr_branch() {
+  printf 'release-pr/%s' "$1"
+}
+
 # emit_releaserc <forge> <mode> <ext> <root> <out> <branch> — writes the
 # engine config to stdout, built with jq (never string-concatenated).
 #
@@ -224,9 +262,24 @@ release_prepare_cmd() {
 # first, the synced siblings would miss the release commit and re-introduce the
 # divergence check-extension-manifest-version.sh forbids — and the package step
 # would run against a tree not yet carrying its own release version. The
-# `[skip ci]` token in the git `message` MUST be preserved: it is what stops the
-# release commit from re-triggering the build pipeline (and the divergence
-# guard) — do not drop it when editing this config.
+# `[skip ci]` token in the GitLab publish `message` MUST be preserved: it is
+# what stops the release commit, pushed to the release branch with a token
+# that DOES trigger pipelines there, from re-triggering the build pipeline
+# (and the divergence guard) — do not drop it when editing this config.
+#
+# GitHub release-PR flow (issue #1379). The `main-protected` ruleset requires
+# the `ratchet` and `lint-typescript` checks, so no commit can be pushed to the
+# release branch from the runner. The GitHub legs therefore split in two:
+#   - `prepare` runs in the throwaway clone (scripts/monorepo-release.sh):
+#     changelog, manifest sync (release_sync_cmd, no packaging) and the git
+#     commit — whose message carries NO `[skip ci]`: the commit reaches `main`
+#     only through the release PR, and a `[skip ci]` head commit (rebase merge,
+#     or the squash message of a one-commit PR) would suppress the very
+#     release workflow run that publishes it. No publish leg.
+#   - `publish` runs in the checkout once that PR is merged: the committed
+#     manifests already carry the version, so there is no changelog and no git
+#     step — the engine only packages, tags the merged commit, pushes the tag
+#     (never a branch) and creates the forge release.
 #
 # The gitmoji plugin is referenced through its ESM facade
 # scripts/lib/release-notes/gitmoji-esm-shim.mjs (issue #1225):
@@ -263,7 +316,7 @@ emit_releaserc() {
     project_url="$CI_PROJECT_URL"
     server_url="$CI_SERVER_URL"
     repo_url="$(release_forge_url gitlab)"
-  elif [ "$mode" = "rehearsal" ]; then
+  elif [ "$mode" != "publish" ]; then
     repo_url="$(release_forge_url github)"
   fi
   # shellcheck disable=SC2016  # ${nextRelease.version} is the engine's placeholder, not a shell expansion
@@ -276,6 +329,7 @@ emit_releaserc() {
     --arg gitmoji_plugin "$RELEASE_LIB_DIR/release-notes/gitmoji-esm-shim.mjs" \
     --arg changelog_plugin "$RELEASE_LIB_DIR/release-notes/changelog-plugin.ts" \
     --arg prepare "$(release_prepare_cmd "$root" "$ext" "$out" '${nextRelease.version}')" \
+    --arg sync "$(release_sync_cmd '${nextRelease.version}')" \
     --arg repo "$repo_url" \
     --arg purl "$project_url" \
     --arg surl "$server_url" \
@@ -305,19 +359,22 @@ emit_releaserc() {
            {path: ($out + "/*.tar.gz"), target: "generic_package", packageName: $ext}
          ]}]]
        end) as $publish
+    | ($forge == "github" and $mode == "publish") as $tag_only
     | {
         extends: "semantic-release-monorepo",
         branches: [$branch],
         tagFormat: ($ext + "-v${version}"),
         plugins: (
-          [[$gitmoji_plugin, $gitmoji],
-           $changelog_plugin,
-           ["@semantic-release/exec", {prepareCmd: $prepare}]]
+          [[$gitmoji_plugin, $gitmoji]]
+          + (if $tag_only then [] else [$changelog_plugin] end)
+          + [["@semantic-release/exec", {prepareCmd: (if $mode == "prepare" then $sync else $prepare end)}]]
           + $publish
-          + [["@semantic-release/git", {
+          + (if $tag_only then [] else [["@semantic-release/git", {
                assets: ["package.json", "extension.json", "CHANGELOG.md"],
-               message: ("🔖 " + $ext + "-v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}")
-             }]]
+               message: (if $mode == "prepare"
+                 then "🔖 " + $ext + "-v${nextRelease.version}\n\n${nextRelease.notes}"
+                 else "🔖 " + $ext + "-v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}" end)
+             }]] end)
         )
       }
     + (if $repo != "" then {repositoryUrl: $repo} else {} end)

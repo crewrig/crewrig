@@ -1267,6 +1267,10 @@ capabilities:
           - "scripts/lib/release-notes/**"
           - "scripts/lib/monorepo-release-lib.sh"
           - "scripts/tests/test-monorepo-release-notes.sh"
+          - "scripts/lib/release-rehearse.mjs"
+          - "scripts/lib/release-pr.ts"
+          - "scripts/release-pr.ts"
+          - "scripts/tests/fixtures/release/forge-stub.mjs"
           - "package.json"
           - "package-lock.json"
       - on: push
@@ -1276,6 +1280,10 @@ capabilities:
           - "scripts/lib/release-notes/**"
           - "scripts/lib/monorepo-release-lib.sh"
           - "scripts/tests/test-monorepo-release-notes.sh"
+          - "scripts/lib/release-rehearse.mjs"
+          - "scripts/lib/release-pr.ts"
+          - "scripts/release-pr.ts"
+          - "scripts/tests/fixtures/release/forge-stub.mjs"
           - "package.json"
           - "package-lock.json"
     portability: portable
@@ -1723,6 +1731,11 @@ capabilities:
   # release branch and to create tags); its GitHub value is
   # secrets.GITHUB_TOKEN. yq is required by the packager's render step
   # (scripts/build-extension.sh). Full history: the engine reads every tag.
+  # The business steps diverge on one point, inside the driver (issue #1379,
+  # docs/github-release-pr.md): on GitHub the release commit goes through a
+  # release PR (branch release-pr/main, required checks dispatched through
+  # build.yml's workflow_dispatch) because GitHub offers no ruleset bypass
+  # for the Actions token; GitLab keeps pushing it to the protected branch.
   - id: release
     name: "Run the monorepo semantic-release pipeline"
     trigger:
@@ -1763,7 +1776,8 @@ capabilities:
 
   # release-tests exercises the release driver (spec 0213 R17): the hermetic
   # driver test, the real-engine test against a local forge stub, and the
-  # lint-safe changelog facade test (issue #1364).
+  # lint-safe changelog facade test (issue #1364), and the GitHub release-PR
+  # sync test (issue #1379).
   # Deliberately NOT changeset-gated, for the same reason usage-storage above
   # is not — a node@22 capability must never enter the fail-safe job's
   # python-only execution set.
@@ -1776,6 +1790,10 @@ capabilities:
           - "scripts/monorepo-release.sh"
           - "scripts/lib/monorepo-release-lib.sh"
           - "scripts/lib/release-rehearse.mjs"
+          - "scripts/lib/release-pr.ts"
+          - "scripts/release-pr.ts"
+          - "scripts/tests/release-pr.test.ts"
+          - ".github/workflows/release-monorepo.yml"
           - "scripts/lib/release-notes/**"
           - "scripts/tests/test-monorepo-release*.sh"
           - "scripts/tests/release-changelog.test.ts"
@@ -1791,6 +1809,10 @@ capabilities:
           - "scripts/monorepo-release.sh"
           - "scripts/lib/monorepo-release-lib.sh"
           - "scripts/lib/release-rehearse.mjs"
+          - "scripts/lib/release-pr.ts"
+          - "scripts/release-pr.ts"
+          - "scripts/tests/release-pr.test.ts"
+          - ".github/workflows/release-monorepo.yml"
           - "scripts/lib/release-notes/**"
           - "scripts/tests/test-monorepo-release*.sh"
           - "scripts/tests/release-changelog.test.ts"
@@ -1809,3 +1831,4 @@ capabilities:
       - bash scripts/tests/test-monorepo-release.sh
       - bash scripts/tests/test-monorepo-release-engine.sh
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-changelog.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-pr.test.ts

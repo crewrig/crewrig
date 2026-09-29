@@ -31,6 +31,13 @@
 #               still present in its own environment.
 #   (f)       — docs/gitlab-release-publishing.md names no
 #               `extensions install` command (ruling 1).
+#   (g) #1379 — the GitHub release-PR flow's building blocks: the
+#               release_classify decision table (a merged bump publishes,
+#               never re-proposes: no release-PR loop), the `prepare` config
+#               (no publish leg, manifest-only sync, a git message without
+#               `[skip ci]`), the release PR branch name, and the release
+#               workflow's `actions: write` permission and non-cancelling
+#               concurrency.
 #
 # Usage:
 #   bash scripts/tests/test-monorepo-release.sh
@@ -238,14 +245,16 @@ run_mode() {
     actual="$(bash -c ". '$LIB'; emit_releaserc github publish foo /ROOT /ROOT/dist/release/foo main" \
       | jq -S --arg lib "$REPO_DIR/scripts/lib/" \
           'walk(if type == "string" then (split($lib) | join("/ROOT/scripts/lib/")) else . end)')"
-    # One deliberate delta from the historical golden (issue #1364): the bare
-    # "@semantic-release/changelog" step is replaced by the lint-safe changelog
-    # facade, referenced by path like the gitmoji one. Everything else —
+    # One deliberate delta from the historical golden (issue #1379): GitHub
+    # publish runs only once a release PR carrying the version bump and the
+    # changelog is merged, so its config drops the changelog and git steps —
+    # it packages, tags and creates the release. (The #1364 changelog facade
+    # now lives in the `prepare` config, case (g).) Everything else —
     # including the note-shaping gitmoji entry R21 freezes — stays byte-for-byte.
-    expected="$(jq -S '.plugins |= map(if . == "@semantic-release/changelog"
-        then "/ROOT/scripts/lib/release-notes/changelog-plugin.ts" else . end)' "$golden")"
+    expected="$(jq -S '.plugins |= map(select(. != "@semantic-release/changelog"
+        and (type != "array" or .[0] != "@semantic-release/git")))' "$golden")"
     if [ "$actual" = "$expected" ]; then
-      ok "(c) emit_releaserc github publish is byte-for-byte (jq -S .) the committed golden"
+      ok "(c) emit_releaserc github publish is (jq -S .) the committed golden minus changelog and git (#1379)"
     else
       ng "(c) emit_releaserc github publish diverges from the golden: $(diff <(echo "$expected") <(echo "$actual"))"
     fi
@@ -283,13 +292,22 @@ run_mode() {
   gl_publish="$(CI_PROJECT_URL=https://gitlab.example.test/acme/foo CI_SERVER_URL=https://gitlab.example.test \
     bash -c ". '$LIB'; CI_PROJECT_URL=\$CI_PROJECT_URL CI_SERVER_URL=\$CI_SERVER_URL emit_releaserc gitlab publish foo /ROOT /ROOT/out main")"
 
-  shared_fields='{extends, branches, tagFormat, "gitmoji_rules": .plugins[0][1].releaseRules, "prepare": .plugins[2][1].prepareCmd, "git": .plugins[-1]}'
+  # Plugins are selected by name, not index: GitHub publish carries no
+  # changelog or git step since the release-PR flow (#1379).
+  shared_fields='{extends, branches, tagFormat, "gitmoji_rules": .plugins[0][1].releaseRules, "prepare": (.plugins[] | select(type == "array" and .[0] == "@semantic-release/exec") | .[1].prepareCmd)}'
   gh_shared="$(printf '%s' "$gh_publish" | jq -S "$shared_fields")"
   gl_shared="$(printf '%s' "$gl_publish" | jq -S "$shared_fields")"
   if [ "$gh_shared" = "$gl_shared" ]; then
-    ok "(d) extends/branches/tagFormat/analyzer rules/prepareCmd/git entry are equal across forges"
+    ok "(d) extends/branches/tagFormat/analyzer rules/prepareCmd are equal across forges"
   else
     ng "(d) the shared core diverges across forges: $(diff <(echo "$gh_shared") <(echo "$gl_shared"))"
+  fi
+
+  gl_git_msg="$(printf '%s' "$gl_publish" | jq -r '.plugins[] | select(type == "array" and .[0] == "@semantic-release/git") | .[1].message')"
+  if grep -q '\[skip ci\]' <<< "$gl_git_msg"; then
+    ok "(d) the GitLab publish release commit keeps its [skip ci] token (direct push, unchanged)"
+  else
+    ng "(d) the GitLab publish release commit lost its [skip ci] token: $gl_git_msg"
   fi
 
   gh_has_repo="$(printf '%s' "$gh_publish" | jq 'has("repositoryUrl")')"
@@ -455,6 +473,95 @@ run_mode() {
     else
       ok "(f) every mention of 'extensions install' coexists with the required 'unmeasured' hedge"
     fi
+  fi
+}
+
+# =============================================================================
+# (g) #1379 — GitHub release-PR flow building blocks
+# =============================================================================
+{
+  classify() { bash -c '. "$1"; release_classify "$2" "$3" "$4"' _ "$LIB" "$@"; }
+  [ "$(classify false '' 1.2.0)" = "unchanged" ] \
+    && ok "(g) no computed release classifies as unchanged" \
+    || ng "(g) no computed release did not classify as unchanged"
+  [ "$(classify true 1.3.0 1.2.0)" = "pending" ] \
+    && ok "(g) a computed version not yet committed classifies as pending (goes into the release PR)" \
+    || ng "(g) an uncommitted computed version did not classify as pending"
+  [ "$(classify true 1.3.0 1.3.0)" = "publish" ] \
+    && ok "(g) a committed version equal to the computed one (merged release PR) classifies as publish, not pending (no loop)" \
+    || ng "(g) a merged release PR did not classify as publish"
+  [ "$(classify true 1.0.0 0.0.0)" = "pending" ] \
+    && ok "(g) a first release (0.0.0 committed, 1.0.0 computed) classifies as pending" \
+    || ng "(g) a first release did not classify as pending"
+
+  pr_branch="$(bash -c '. "$1"; release_pr_branch main' _ "$LIB")"
+  [ "$pr_branch" = "release-pr/main" ] \
+    && ok "(g) the release PR branch of main is release-pr/main" \
+    || ng "(g) the release PR branch of main is wrong: $pr_branch"
+
+  gh_prepare="$(GITHUB_SERVER_URL=https://github.com GITHUB_REPOSITORY=acme/fixture \
+    bash -c '. "$1"; emit_releaserc github prepare foo /ROOT /ROOT/out main' _ "$LIB")"
+  prep_publish="$(printf '%s' "$gh_prepare" | jq '[.plugins[] | select(type == "array" and (.[0] == "@semantic-release/github" or .[0] == "@semantic-release/gitlab"))] | length')"
+  [ "$prep_publish" = "0" ] \
+    && ok "(g) the prepare config carries no publish leg" \
+    || ng "(g) the prepare config carries a publish leg ($prep_publish)"
+  prep_msg="$(printf '%s' "$gh_prepare" | jq -r '.plugins[] | select(type == "array" and .[0] == "@semantic-release/git") | .[1].message')"
+  # shellcheck disable=SC2016  # the engine's placeholders, not shell expansions
+  if [ "$prep_msg" = "$(printf '🔖 foo-v${nextRelease.version}\n\n${nextRelease.notes}')" ]; then
+    ok "(g) the prepare release commit message has no [skip ci] (it would suppress the publishing run on main)"
+  else
+    ng "(g) the prepare release commit message is wrong: $prep_msg"
+  fi
+  prep_cmd="$(printf '%s' "$gh_prepare" | jq -r '.plugins[] | select(type == "array" and .[0] == "@semantic-release/exec") | .[1].prepareCmd')"
+  if grep -q 'jq --arg v' <<< "$prep_cmd" && ! grep -q 'release-package-extension' <<< "$prep_cmd"; then
+    ok "(g) the prepare prepareCmd syncs the manifests without packaging"
+  else
+    ng "(g) the prepare prepareCmd is wrong: $prep_cmd"
+  fi
+  if printf '%s' "$gh_prepare" | jq -e '.plugins | map(select(type == "string" and endswith("changelog-plugin.ts"))) | length == 1' >/dev/null; then
+    ok "(g) the prepare config writes the changelog through the lint-safe facade (#1364)"
+  else
+    ng "(g) the prepare config lacks the changelog facade"
+  fi
+  if [ "$(printf '%s' "$gh_prepare" | jq -r '.repositoryUrl')" = "https://github.com/acme/fixture.git" ]; then
+    ok "(g) the prepare config names the real forge URL (redirected to the mirror in the clone)"
+  else
+    ng "(g) the prepare config repositoryUrl is wrong"
+  fi
+
+  # The manifest-only sync actually rewrites both manifests, and tolerates a
+  # missing extension.json.
+  sync_dir="$(mktemp -d "$TMP_ROOT/sync.XXXXXX")"
+  printf '{"name":"foo","version":"1.2.0"}\n' > "$sync_dir/package.json"
+  printf '{"name":"foo","version":"1.2.0"}\n' > "$sync_dir/extension.json"
+  sync_cmd="$(bash -c '. "$1"; release_sync_cmd 1.3.0' _ "$LIB")"
+  if (cd "$sync_dir" && sh -c "$sync_cmd") \
+     && [ "$(jq -r .version "$sync_dir/package.json")" = "1.3.0" ] \
+     && [ "$(jq -r .version "$sync_dir/extension.json")" = "1.3.0" ]; then
+    ok "(g) release_sync_cmd rewrites package.json and extension.json to the release version"
+  else
+    ng "(g) release_sync_cmd did not rewrite both manifests"
+  fi
+  rm -f "$sync_dir/extension.json"
+  if (cd "$sync_dir" && sh -c "$(bash -c '. "$1"; release_sync_cmd 1.4.0' _ "$LIB")") \
+     && [ "$(jq -r .version "$sync_dir/package.json")" = "1.4.0" ]; then
+    ok "(g) release_sync_cmd succeeds without an extension.json"
+  else
+    ng "(g) release_sync_cmd failed without an extension.json"
+  fi
+
+  wf="$REPO_DIR/.github/workflows/release-monorepo.yml"
+  if grep -qE '^  actions: write$' "$wf" && grep -qE '^  cancel-in-progress: false$' "$wf"; then
+    ok "(g) the release workflow may dispatch the checks (actions: write) and never cancels a running release"
+  else
+    ng "(g) the release workflow lacks actions: write or its non-cancelling concurrency"
+  fi
+  if grep -qE '^  workflow_dispatch:' "$REPO_DIR/.github/workflows/build.yml" \
+     && grep -qE '^  ratchet:$' "$REPO_DIR/.github/workflows/build.yml" \
+     && grep -qE '^  lint-typescript:$' "$REPO_DIR/.github/workflows/build.yml"; then
+    ok "(g) build.yml accepts workflow_dispatch and defines the required ratchet and lint-typescript jobs"
+  else
+    ng "(g) build.yml cannot be dispatched or lacks a required job"
   fi
 }
 

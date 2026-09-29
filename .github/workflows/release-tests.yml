@@ -7,6 +7,10 @@ on:
       - "scripts/monorepo-release.sh"
       - "scripts/lib/monorepo-release-lib.sh"
       - "scripts/lib/release-rehearse.mjs"
+      - "scripts/lib/release-pr.ts"
+      - "scripts/release-pr.ts"
+      - "scripts/tests/release-pr.test.ts"
+      - ".github/workflows/release-monorepo.yml"
       - "scripts/lib/release-notes/**"
       - "scripts/tests/test-monorepo-release*.sh"
       - "scripts/tests/release-changelog.test.ts"
@@ -22,6 +26,10 @@ on:
       - "scripts/monorepo-release.sh"
       - "scripts/lib/monorepo-release-lib.sh"
       - "scripts/lib/release-rehearse.mjs"
+      - "scripts/lib/release-pr.ts"
+      - "scripts/release-pr.ts"
+      - "scripts/tests/release-pr.test.ts"
+      - ".github/workflows/release-monorepo.yml"
       - "scripts/lib/release-notes/**"
       - "scripts/tests/test-monorepo-release*.sh"
       - "scripts/tests/release-changelog.test.ts"
@@ -63,6 +71,9 @@ jobs:
 
       - name: Test the lint-safe changelog facade (issue #1364)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-changelog.test.ts
+
+      - name: Test the GitHub release-PR sync (issue #1379)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-pr.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
