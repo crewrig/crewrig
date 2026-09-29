@@ -875,6 +875,27 @@ lint-typescript:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+runtime-foundations:
+  image: node:24
+  script:
+    - "npm ci"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+node-floor-guard:
+  image: node:20
+  script:
+    - "if node scripts/lib/node-floor-guard.js >guard.out 2>&1; then echo \"guard accepted Node $(node -v)\"; exit 1; fi"
+    - "grep -F \"$(node -v) detected\" guard.out"
+    - "grep -F \"requires Node.js >= 24\" guard.out"
+    - "grep -F \"https://nodejs.org/en/download\" guard.out"
+    - "if grep -E \"SyntaxError|ERR_|Cannot find module\" guard.out; then exit 1; fi"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
 lint-specs:
   image: node:22
   variables:

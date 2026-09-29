@@ -985,6 +985,47 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
 
+  # Spec 0240 R4-R11, R13, R16: the Node.js floor guard, the production-
+  # dependency step and the shared scripts/lib/ TypeScript modules, verified by
+  # their node --test suites. No `paths:` filter, like `ratchet`: the suites
+  # are fast, and a lockfile or setup-script change must re-run them.
+  # production-dependencies.test.ts needs the npm registry and skips itself,
+  # with a message, when `npm ping` fails.
+  - id: runtime-foundations
+    name: "Node.js floor guard, production-dependency step and shared TS modules"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+
+  # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release
+  # that cannot strip types. Each command is plain POSIX so the job needs no
+  # TypeScript; the grep tokens are the guard's stable diagnostic contract
+  # (scripts/lib/node-floor-guard.js header).
+  - id: node-floor-guard
+    name: "Node.js floor guard rejects a pre-24 release"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@20
+    command:
+      - 'if node scripts/lib/node-floor-guard.js >guard.out 2>&1; then echo "guard accepted Node $(node -v)"; exit 1; fi'
+      - 'grep -F "$(node -v) detected" guard.out'
+      - 'grep -F "requires Node.js >= 24" guard.out'
+      - 'grep -F "https://nodejs.org/en/download" guard.out'
+      - 'if grep -E "SyntaxError|ERR_|Cannot find module" guard.out; then exit 1; fi'
+
   # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves
   # the change's base ref, so the job needs full source history — declared as
   # `history-depth: full`, same as the two version-bump guards below.
@@ -1628,6 +1669,33 @@ capabilities:
         a GitHub-hosted product with no faithful equivalent on GitLab CI
         (GitLab Pages is a distinct surface with its own job contract), so the
         deploy capability is hand-authored per engine, not generated.
+
+  # --- Engine-specific: Windows runner scaffolding (spec 0240 R12-R15) -----
+
+  # The reusable `windows-latest` job shape: Node.js 24 invoked from a
+  # non-POSIX interpreter (pwsh), the portable shared-module suites, and the
+  # timing-budget harness applied to the floor guard. Later sub-specs copy the
+  # job and record each copy here the same way.
+  - id: windows-node-floor-guard
+    name: "Windows scaffolding: floor guard, shared modules and timing budget"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-node-floor-guard`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 70-81), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15).
 
   # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
   # (spec 0183 R23, issue #1008): it packaged the committed source tree via

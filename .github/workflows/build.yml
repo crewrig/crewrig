@@ -1056,6 +1056,89 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0240 R4-R11, R13, R16: floor guard, production-dependency step and
+  # shared scripts/lib/ TypeScript modules. No path filter, like `ratchet`.
+  runtime-foundations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test the runtime foundations
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0240 R3: the floor guard's failure path on a real pre-24 Node.js.
+  node-floor-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run the guard and expect a rejection
+        run: 'if node scripts/lib/node-floor-guard.js >guard.out 2>&1; then echo "guard accepted Node $(node -v)"; exit 1; fi'
+
+      - name: Diagnostic names the detected version
+        run: 'grep -F "$(node -v) detected" guard.out'
+
+      - name: Diagnostic names the required floor
+        run: 'grep -F "requires Node.js >= 24" guard.out'
+
+      - name: Diagnostic names where to obtain Node.js
+        run: 'grep -F "https://nodejs.org/en/download" guard.out'
+
+      - name: No module-loading or syntax error instead
+        run: 'if grep -E "SyntaxError|ERR_|Cannot find module" guard.out; then exit 1; fi'
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # TEMPLATE (spec 0240 R12-R15) — the reusable `windows-latest` job shape.
+  # A later sub-spec copies this job, renames it, points the three steps at
+  # its own migrated script and suites, states its own --budget-ms next to its
+  # script, and records the copy in ci/ci-capabilities.yml as
+  # `portability: specific` (engine github-actions: GitLab exposes no Windows
+  # runner). Steps run under pwsh, a non-POSIX interpreter, on purpose.
+  # Budget: 750 ms initial for node-floor-guard.js, to be recalibrated to
+  # max(3 x observed max, 300 ms) rounded up to 50 ms after the first run.
+  windows-node-floor-guard:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Test the portable shared modules
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/node-floor-guard.test.ts
+
+      # '--' is quoted so pwsh hands it to node verbatim rather than reading
+      # it as its own end-of-parameters token.
+      - name: Floor guard timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 '--' scripts/lib/node-floor-guard.js
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   lint-specs:
     runs-on: ubuntu-latest
     steps:
