@@ -75,6 +75,29 @@ describe("loadDependency", () => {
     });
   });
 
+  test("a copy found only in a parent directory's node_modules is not accepted", async () => {
+    const outer = fs.mkdtempSync(path.join(os.tmpdir(), "crewrig-reqdep-outer-"));
+    temps.push(outer);
+    const stray = path.join(outer, "node_modules", "stray");
+    fs.mkdirSync(stray, { recursive: true });
+    fs.writeFileSync(
+      path.join(stray, "package.json"),
+      JSON.stringify({ name: "stray", main: "index.js" }),
+    );
+    fs.writeFileSync(path.join(stray, "index.js"), "module.exports = 'outside';\n");
+    const checkout = path.join(outer, "checkout");
+    fs.mkdirSync(checkout);
+    const manifestPath = path.join(checkout, "package.json");
+    fs.writeFileSync(
+      manifestPath,
+      JSON.stringify({ name: "fixture", dependencies: { stray: "1.0.0" } }),
+    );
+    await assert.rejects(
+      loadDependency("stray", { manifestPath, resolveFrom: manifestPath }),
+      MissingDependencyError,
+    );
+  });
+
   test("defaults to the repository root manifest", async () => {
     // The root declares no production dependency today, so any name is refused
     // by the phantom-import guard, never resolved.

@@ -7,6 +7,9 @@
 // crosses a file system), exclusively (`wx`, so a concurrent caller can never
 // open the same file), with mode 0o600 where the platform honours POSIX modes,
 // and it is removed on every failure path. Standard library only (R16).
+//
+// On Windows the mode is ignored and the file inherits its directory's ACL,
+// exactly as the mktemp-based shell helpers behave under Git Bash.
 
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
@@ -80,7 +83,11 @@ export function publishTemp(tmp: TempFile, data: string | Uint8Array): void {
         // already closed
       }
     }
-    fs.rmSync(tmp.path, { force: true });
+    try {
+      fs.rmSync(tmp.path, { force: true });
+    } catch {
+      // keep the original error: it is the one the caller needs
+    }
     throw error;
   }
 }

@@ -217,11 +217,8 @@ describe("install_production_dependencies (stub npm)", () => {
     assert.match(res.stderr, /ERROR: production dependency install failed/);
     assert.equal(fs.existsSync(path.join(fx.checkout, "node_modules")), false);
     assert.equal(stamp(fx), undefined);
-    const state = fs.readdirSync(path.join(fx.checkout, ".crewrig-state"));
-    assert.deepEqual(
-      state.filter((f) => f.startsWith("production-deps.sha256.tmp.")),
-      [],
-    );
+    // Neither the stamp nor any temporary stamp file is left behind.
+    assert.deepEqual(fs.readdirSync(path.join(fx.checkout, ".crewrig-state")), []);
   });
 
   test("6. TLS routing: npm runs through tls-exec.sh and sees the managed CA", () => {

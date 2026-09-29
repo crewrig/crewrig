@@ -593,7 +593,13 @@ install_production_dependencies() {
   local lockfile="$repo_dir/package-lock.json"
   local state_dir="$repo_dir/.crewrig-state"
   local stamp="$state_dir/production-deps.sha256"
-  local lock_hash="" recorded=""
+  local lock_hash="" recorded="" tmp_stamp=""
+
+  # Refuse an empty or foreign directory before anything below can rm in it.
+  if [ -z "$repo_dir" ] || [ ! -f "$repo_dir/package.json" ]; then
+    echo "ERROR: install_production_dependencies: '$repo_dir' is not a repository checkout." >&2
+    return 1
+  fi
 
   if ! command -v npm >/dev/null 2>&1; then
     echo "Error: npm is required but not installed (it ships with Node.js)." >&2
@@ -632,9 +638,15 @@ install_production_dependencies() {
     return 1
   fi
 
-  mkdir -p "$state_dir"
-  printf '%s\n' "$lock_hash" >"$stamp.tmp.$$"
-  mv -f "$stamp.tmp.$$" "$stamp"
+  # Record the run atomically. `set -e` does not apply inside a function
+  # called with `|| exit 1`, so every step is checked; a failed write only
+  # means the next setup re-runs the step, so it warns rather than aborts.
+  if mkdir -p "$state_dir" && tmp_stamp="$(mktemp "$state_dir/.production-deps.XXXXXX")" \
+    && printf '%s\n' "$lock_hash" >"$tmp_stamp" && mv -f "$tmp_stamp" "$stamp"; then
+    return 0
+  fi
+  [ -n "$tmp_stamp" ] && rm -f "$tmp_stamp"
+  echo "WARNING: could not record $stamp — the next setup run will re-install production dependencies." >&2
   return 0
 }
 

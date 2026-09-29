@@ -86,5 +86,12 @@ export async function loadDependency(
     if (isModuleNotFoundFor(error, name)) throw new MissingDependencyError(name);
     throw error;
   }
+  // Node's resolution also walks every parent directory's node_modules/ (for
+  // example $HOME/node_modules). Only a copy installed in this checkout, and
+  // so pinned by its lockfile, counts; anything else is "not installed".
+  const ownModules = path.join(fs.realpathSync.native(path.dirname(resolveFrom)), "node_modules");
+  if (!fs.realpathSync.native(resolved).startsWith(ownModules + path.sep)) {
+    throw new MissingDependencyError(name);
+  }
   return (await import(pathToFileURL(resolved).href)) as unknown;
 }
