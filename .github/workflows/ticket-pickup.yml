@@ -7,25 +7,19 @@ on:
     branches: [main, "release/**"]
     paths:
       - "scripts/ticket-pickup.ts"
-      - "scripts/lib/ticket-ownership.ts"
-      - "scripts/lib/ticket-pickup.ts"
-      - "scripts/lib/forge-assignment.ts"
-      - "scripts/lib/forge-detect.ts"
+      - "scripts/lib/ticket-*.ts"
+      - "scripts/lib/forge-*.ts"
       - "scripts/lib/ts-scope.ts"
-      - "scripts/tests/ticket-ownership.test.ts"
-      - "scripts/tests/ticket-pickup.test.ts"
+      - "scripts/tests/ticket-*.test.ts"
       - "scripts/tests/fixtures/ticket-pickup/**"
   push:
     branches: [main, "release/**"]
     paths:
       - "scripts/ticket-pickup.ts"
-      - "scripts/lib/ticket-ownership.ts"
-      - "scripts/lib/ticket-pickup.ts"
-      - "scripts/lib/forge-assignment.ts"
-      - "scripts/lib/forge-detect.ts"
+      - "scripts/lib/ticket-*.ts"
+      - "scripts/lib/forge-*.ts"
       - "scripts/lib/ts-scope.ts"
-      - "scripts/tests/ticket-ownership.test.ts"
-      - "scripts/tests/ticket-pickup.test.ts"
+      - "scripts/tests/ticket-*.test.ts"
       - "scripts/tests/fixtures/ticket-pickup/**"
 
 concurrency:
