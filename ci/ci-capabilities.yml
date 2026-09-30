@@ -1034,6 +1034,40 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts
 
+  # Spec 0244 (issue #1387): the cross-contributor ticket-pickup check — the
+  # pure ownership model and the end-to-end tool against the in-process fake
+  # forge (GitHub, GitLab, Gitea wire shapes).
+  - id: ticket-pickup
+    name: "Ticket-pickup ownership check (spec 0244)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/ticket-pickup.ts"
+          - "scripts/lib/ticket-ownership.ts"
+          - "scripts/lib/forge-assignment.ts"
+          - "scripts/lib/forge-detect.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/tests/ticket-ownership.test.ts"
+          - "scripts/tests/ticket-pickup.test.ts"
+          - "scripts/tests/fixtures/ticket-pickup/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/ticket-pickup.ts"
+          - "scripts/lib/ticket-ownership.ts"
+          - "scripts/lib/forge-assignment.ts"
+          - "scripts/lib/forge-detect.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/tests/ticket-ownership.test.ts"
+          - "scripts/tests/ticket-pickup.test.ts"
+          - "scripts/tests/fixtures/ticket-pickup/**"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
+
   # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release
   # that cannot strip types. Each command is plain POSIX so the job needs no
   # TypeScript; the grep tokens are the guard's stable diagnostic contract
