@@ -25,10 +25,13 @@ records row 37e and its measured-surface entry as `conforming`, but the module
 refuses to produce a Windows Antigravity `statusLine.command`, with a diagnostic
 naming the reason and #1392, until a later delta sets a shape that does not
 depend on the lookup. macOS and Linux are unchanged. The Antigravity CLI hooks
-surface (working directory `~/.gemini/config`, row 37b) is not changed by this
-delta. This delta runs under the release-branch regime of
+surface is not changed by this delta; rows 37 to 37d do not record its working
+directory, so requirement 33 makes the current-directory lookup hazard an
+assessment that any later row must make before it wires that surface on
+Windows. This delta runs under the release-branch regime of
 `specs/0215-shell-to-typescript-migration.delta-04.md`: its spec-PR targets
-`release/1231-ts-migration`. The version is a MAJOR bump because a requirement
+`release/1231-ts-migration`. Revised after seat `specs/1326` pass 7 (findings
+`s7-F1`, `s7-F2` and `s7-F3`). The version is a MAJOR bump because a requirement
 the in-flight implementation was written against — that a `conforming` entry
 yields a command line — is invalidated.*
 
@@ -40,8 +43,8 @@ Windows, the four fields of requirement 18 as the source measurement states them
 — interpreter `cmd.exe` (the command wrapped by `agy.exe` as `cmd /c "<command>"`
 with each inner `"` escaped as `\"`, which `cmd.exe` does not honour, so a
 double-quoted argument does not group); quoting `cmd-no-grouping`; working
-directory the directory `agy` is started in (not `~/.gemini/config`, not set
-through `ANTIGRAVITY_PROJECT_DIR`); path separators both accepted — and a fifth,
+directory the directory `agy` is started in (`ANTIGRAVITY_PROJECT_DIR` is not
+set); path separators both accepted — and a fifth,
 the planted-binary result: a `node.cmd` placed in that working directory ran on
 every status-line draw and the real `node` ran on none. The row and the
 constant's entry of requirement 18 SHALL carry these caveats, stated as the
@@ -65,11 +68,13 @@ that this ticket makes, and only for the planted-binary case; it does not turn
 the row's ARM64 or version caveats into findings about x64 or about another
 Antigravity CLI release. The test of requirement 18 SHALL also fail when the
 planted-binary result recorded in row 37e and the one carried by the constant's
-entry differ, or when either is absent while the entry is `conforming`. The
-null case: a row or entry that omits the planted-binary result is malformed, and
-the module SHALL treat a Windows `statusLine.command` entry that lacks it as
-`unmeasured` and refuse under the diagnostic of requirement 18 for an absent
-entry. The permitted path for a reader who needs a different Windows,
+entry differ, when the entry lacks the result whatever its status, or when the
+row lacks it while the entry carries it. The null case: a row or entry that
+omits the planted-binary result is malformed, and the module SHALL treat a
+Windows `statusLine.command` entry that lacks it as unmeasured — whatever its
+status, `contradicting` included — and refuse under the diagnostic of
+requirement 18 for an absent entry, which requirement 32(a) states. The
+permitted path for a reader who needs a different Windows,
 architecture or release coverage: a later delta that records its own measurement
 in a new row or a revised entry, in one diff, never a silent widening of this
 one.
@@ -78,18 +83,39 @@ one.
 Antigravity `statusLine.command` the module SHALL report exactly one refusal
 diagnostic, chosen from the constant alone by the entry's state, and that
 diagnostic SHALL come before, and SHALL replace, any judgement of the checkout
-path under requirement 17: (a) no entry, or an entry without the planted-binary
-result — the surface is unmeasured (requirement 18); (b) a `contradicting`
-entry — the recorded shape (requirement 18); (c) a `conforming` entry — the
-working-directory lookup of requirement 16(c), named in the wording of that
-item. The three are mutually exclusive, because one entry state selects one of
-them, so no ordering among them is needed; the ordering that matters is each of
-them against requirement 17, and each precedes it, because each concerns the
-surface and none concerns the path. A checkout path that requirement 17 would
+path under requirement 17: (a) no entry, or an entry that lacks the
+planted-binary result whatever its status — the surface is unmeasured
+(requirement 18); (b) an entry that carries the planted-binary result and is
+`contradicting` — the recorded shape (requirement 18); (c) an entry that
+carries the planted-binary result and is `conforming` — the working-directory
+lookup of requirement 16(c), named in the wording of that item. The three are
+mutually exclusive by construction: (b) and (c) apply only to an entry that
+carries the planted-binary result, and an entry that lacks it, `contradicting`
+included, falls under (a) and under no other, which is also what requirement 31
+and its guard test provide. No ordering among them is needed; the ordering
+that matters is each of them against requirement 17, and each precedes it,
+because each concerns the surface and none concerns the path. A checkout path that requirement 17 would
 refuse gives the same single diagnostic as one it would accept. The null case:
 on macOS and Linux, and for every surface other than the Windows Antigravity
 `statusLine.command`, none of (a) to (c) applies and requirement 17 is judged as
 before.
+
+**Requirement 33 — The hooks surface is assessed before it is wired on
+Windows.** Rows 37 to 37d of `docs/cli-matrix.md` do not record the working
+directory of Antigravity CLI's hooks surface. This delta does not change that
+surface or the form that requirement 16(c) gives it. No later row SHALL wire the
+Antigravity CLI hooks surface on Windows until the same current-directory lookup
+hazard has been assessed for it and the result recorded in `docs/cli-matrix.md`:
+the working directory measured, and a planted-binary check — a `node.cmd` placed
+in that directory, recording which program the `cmd.exe` that parses its hook
+command lines launches — made as for row 37e, with the result and its caveats
+carried the way requirement 31 carries them. The null case: a row that does not
+wire that surface on Windows is not bound by this requirement. The permitted
+paths when the assessment finds that the lookup applies: the row refuses the
+hooks surface on Windows as requirement 16(c) now refuses the statusline, or a
+delta of this spec sets a shape that does not depend on the lookup, in one diff
+with the row that records the assessment. Ticket #1392 is where the safe form of
+the statusline is designed, and is the reference for this assessment.
 
 **Scenario:** A conforming row 37e still does not wire a Windows statusline
 
@@ -122,6 +148,16 @@ Then the planted `node.cmd` runs and the real `node` does not; and when the
 planted one does not run, the job fails naming the premise of the refusal, so
 the refusal is revisited instead of staying on an outdated premise.
 
+**Scenario:** An entry without the planted-binary result is unmeasured
+
+Given a constant whose Windows Antigravity `statusLine.command` entry has the
+status `contradicting` (then `conforming`) and records no planted-binary result
+When setup is asked for that `statusLine.command`, and when the guard test runs
+Then the module produces no command line and reports the diagnostic that the
+surface is unmeasured, not the recorded-shape one and not the
+working-directory-lookup one, and the guard test fails naming the missing
+planted-binary result.
+
 **Out of scope item.** The safe form of a Windows Antigravity CLI
 `statusLine.command` — an absolute interpreter path, a generated shim, or any
 other form that does not depend on the `cmd.exe` working-directory lookup —
@@ -129,11 +165,13 @@ which is ticket #1392, through its own specs, plan and measurement; and any
 delta of spec 0215 that a form with an intermediate entry point would need.
 This delta chooses none of the candidate forms.
 
-**Out of scope item.** The Antigravity CLI hooks surface, wired by later rows:
-its form stays that of requirement 16(c), and this delta neither measures nor
-assesses whether a bare `node` there carries a lookup exposure. Row 37b records
-its working directory as `~/.gemini/config`, which is not the directory the
-user starts `agy` in.
+**Out of scope item.** Changing the Antigravity CLI hooks surface, wired by
+later rows: its form stays that of requirement 16(c), and this delta neither
+measures its working directory nor assesses whether a bare `node` there carries
+a lookup exposure. Rows 37 to 37d do not record that directory, and the only
+statement of it in the record is an unrecorded parenthetical observation in
+the comment of ticket #1389. That assessment is a precondition on the later row
+that wires the surface on Windows (requirement 33), not work of this delta.
 
 **Out of scope item.** Reading, setting or unsetting the Windows
 `NoDefaultCurrentDirectoryInExePath` policy. The refusal does not depend on it:
@@ -205,7 +243,9 @@ Replacement:
 >     lookup, landing in one diff with the row and the entry of requirement 18.
 >     Should row 37e ever record an interpreter or quoting other than row 37b's,
 >     the module likewise refuses (requirement 18). The hooks surface, wired by
->     later rows, keeps the form of this item, and this delta does not change it.
+>     later rows, keeps the form of this item, and this delta does not change it;
+>     requirement 33 makes the lookup hazard an assessment that precedes the
+>     wiring of that surface on Windows.
 >     Every absolute path SHALL use forward slashes on Windows (rows 37b and 37d)
 >     and be the physical path of the checkout.
 
@@ -310,15 +350,20 @@ Replacement:
 >     that diff SHALL add the entry as `conforming`. The module SHALL refuse to
 >     produce a Windows statusline command line in every state of the entry, with
 >     one diagnostic chosen from the constant alone (requirement 32): when the
->     entry is absent, saying the surface is unmeasured; when the entry is
->     `contradicting`, naming the recorded shape; and when the entry is
->     `conforming`, naming the working-directory lookup of requirement 16(c) and
->     ticket #1392. The refusal of requirement 16(c) is thus decided from the
->     constant alone, and the module SHALL NOT read `docs/cli-matrix.md` at run
->     time. When it refuses, setup SHALL change neither `statusLine.command` nor
->     `<usage root>/state/antigravity-statusline.json`, SHALL leave an existing
->     statusline command as registered, without a backup, and SHALL report the
->     refusal as requirement 26 reports a command it left. A test, which does
+>     entry is absent, or lacks the planted-binary result whatever its status,
+>     saying the surface is unmeasured; when the entry carries that result and is
+>     `contradicting`, naming the recorded shape; and when it carries that result
+>     and is `conforming`, naming the working-directory lookup of requirement
+>     16(c) and ticket #1392. The refusal of requirement 16(c) is thus decided
+>     from the constant alone, and the module SHALL NOT read `docs/cli-matrix.md`
+>     at run time. When it refuses, setup SHALL change neither
+>     `statusLine.command` nor `<usage root>/state/antigravity-statusline.json`,
+>     SHALL leave an existing statusline command as registered, without a backup,
+>     and SHALL report the refusal as requirement 26 reports a command it left.
+>     The implementation PR SHALL also record the refusal as a parity gap, with
+>     the evidence of row 37e and ticket #1392, in `docs/cli-matrix.md`, as
+>     parent requirement 19 of spec 0215 requires of every (CLI × operating
+>     system) cell where a migrated component cannot work. A test, which does
 >     read the matrix, SHALL fail when the presence of row 37e and the presence
 >     of the entry disagree, when the entry's recorded interpreter and quoting
 >     differ from row 37e's, or as requirement 31 provides for the
@@ -436,17 +481,51 @@ Replacement:
 > surface from that same checkout, it writes nothing, names the space and the
 > path, and the gap is recorded in `docs/cli-matrix.md`.
 
-Requirements 19, 26, 27 and 30, and the scenarios "A Windows statusline line is
-not written before it is measured" and "Row 37e contradicts the hooks-surface
-shape", need no change, and their absence is recorded here so it is a decision.
-Requirement 19's rewrite of `statusLine.command` and requirement 26's report
-already cover a command the module declines to produce, by requirement 18 as
-reworded above; the two scenarios keep describing the `unmeasured` and
-`contradicting` states, which this delta leaves in force; requirement 27 lists
-deviations from the shell behaviour, and a status line that cannot be wired on
-Windows is a parity gap under parent requirement 19, not a deviation; and
-requirement 30 already requires row 37e and the parity-gap entry to be
-documented. Requirement 20's and requirement 22's behaviour is untouched.
+Scenario "Row 37e contradicts the hooks-surface shape" — its entry now carries
+the planted-binary result, because an entry without it is unmeasured under
+requirement 32(a), so the `Given` names it. The original scenario:
+
+Original:
+
+> **Scenario:** Row 37e contradicts the hooks-surface shape
+>
+> Given row 37e records that Antigravity CLI parses `statusLine.command` with an
+> interpreter or quoting other than row 37b's, and the constant's entry carries
+> that recorded shape with the status `contradicting`
+> When setup is asked for a Windows `statusLine.command`
+> Then the module refuses with a diagnostic naming the recorded shape, no command
+> line is written, and the guard test passes; no command line is written until a
+> delta of this spec sets the shape, landing in one diff with the row and the
+> entry.
+
+Replacement:
+
+> **Scenario:** Row 37e contradicts the hooks-surface shape (reworded at delta-02)
+>
+> Given row 37e records that Antigravity CLI parses `statusLine.command` with an
+> interpreter or quoting other than row 37b's, and the constant's entry carries
+> that recorded shape and the planted-binary result with the status
+> `contradicting`
+> When setup is asked for a Windows `statusLine.command`
+> Then the module refuses with a diagnostic naming the recorded shape, no command
+> line is written, and the guard test passes; no command line is written until a
+> delta of this spec sets the shape, landing in one diff with the row and the
+> entry.
+
+Requirements 19, 26, 27 and 30, and the scenario "A Windows statusline line is
+not written before it is measured", need no change, and their absence is
+recorded here so it is a decision. Requirement 19's rewrite of
+`statusLine.command` and requirement 26's report already cover a command the
+module declines to produce, by requirement 18 as reworded above; the scenario
+keeps describing the state with no entry, which this delta leaves in force;
+requirement 27 lists deviations from the shell behaviour, and a status line that
+cannot be wired on Windows is a parity gap under parent requirement 19, not a
+deviation; and requirement 30, which lists the documentation pages, workflow
+files and manifests to update and names neither row 37e nor a parity-gap entry,
+is left as it stands because the recording of row 37e is the duty of
+requirements 18 and 31 and the recording of the parity gap the duty of
+requirement 18 as reworded above. Requirement 20's and requirement 22's
+behaviour is untouched.
 
 ## REMOVED
 
