@@ -87,7 +87,10 @@ function backup(settings: string, log: (line: string) => void): boolean {
 export function installStatusline(target: StatuslineTarget, log: (line: string) => void): number {
   const built = shimCommand(target);
   if ("refusal" in built) {
-    log(`  ERROR: ${built.refusal}`);
+    // Reported like a command R26 leaves (spec 0243 R18): neither settings nor
+    // marker is touched and no backup is made. Exit 1 tells setup that capture
+    // is not enabled; an existing command stays exactly as registered.
+    log(`  Antigravity usage capture: left statusLine.command (${built.refusal})`);
     return 1;
   }
   const settings = readJsonObject(target.settings) ?? {};

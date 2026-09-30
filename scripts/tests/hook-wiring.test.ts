@@ -267,15 +267,48 @@ describe("statusline (R19, R20, D5)", () => {
     assert.equal(fs.existsSync(p.marker), false);
   });
 
-  test("a Windows statusline install is refused (cwd-first lookup, #1392), writing nothing (R18)", () => {
+  test("a Windows statusline install is refused (lookup diagnostic, #1392), writing nothing (R18)", () => {
     const p = paths();
     const res = run("install", p, "--platform", "win32");
     assert.equal(res.status, 1);
-    assert.match(res.stdout, /current directory/);
+    assert.match(res.stdout, /left statusLine\.command/);
+    assert.match(res.stdout, /from the directory the user starts Antigravity CLI in/);
     assert.match(res.stdout, /#1392/);
     assert.equal(fs.existsSync(p.settings), false);
     assert.equal(fs.existsSync(p.marker), false);
   });
+
+  test(
+    "a Windows refusal leaves an existing statusline command byte-identical, with no backup and no marker, for a path with a space too (R18, R32)",
+    { skip: !posix },
+    () => {
+      const outputs: string[] = [];
+      for (const name of ["co", "Ana Diaz"]) {
+        const repo = fixtureRepo(name);
+        const dir = path.dirname(repo);
+        const p = {
+          repo,
+          settings: path.join(dir, "agy", "settings.json"),
+          marker: path.join(dir, "usage", "state", "antigravity-statusline.json"),
+        };
+        fs.mkdirSync(path.dirname(p.settings), { recursive: true });
+        const before = JSON.stringify({ statusLine: { command: "my-own-status --x", padding: 1 } });
+        fs.writeFileSync(p.settings, before);
+        const install = run("install", p, "--platform", "win32");
+        assert.equal(install.status, 1, install.stdout + install.stderr);
+        outputs.push(install.stdout.replaceAll(repo, "<repo>"));
+        assert.equal(fs.readFileSync(p.settings, "utf8"), before);
+        assert.equal(fs.existsSync(p.marker), false);
+        assert.deepEqual(backups(p.settings), []);
+        const rewrite = run("rewrite", p, "--platform", "win32");
+        assert.equal(rewrite.status, 0, rewrite.stdout + rewrite.stderr);
+        assert.equal(fs.readFileSync(p.settings, "utf8"), before);
+        assert.deepEqual(backups(p.settings), []);
+      }
+      assert.equal(outputs[0], outputs[1], "the same diagnostic whether the path has a space");
+      assert.ok(!outputs[1]?.includes("whitespace"), outputs[1]);
+    },
+  );
 
   test(
     "rewrite of a bare .sh command completes the write order and leaves the prior command",

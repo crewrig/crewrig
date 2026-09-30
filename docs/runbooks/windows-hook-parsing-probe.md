@@ -123,22 +123,46 @@ The other session commands measured on 2026-09-30:
 - Antigravity CLI: `agy --print "Reply with the single word OK."`, **run from the interactive console session**. From a key-authenticated SSH logon it fails with `Error: authentication timed out.` before any hook runs. A temporary scheduled task works: put the session command in a `.cmd` file under `C:\crewrig-probe`, then run `schtasks /create /tn crewrig-probe-agy /tr <file> /sc once /st 23:59 /it /f`, `schtasks /run /tn crewrig-probe-agy`, wait for it to finish, and run `schtasks /delete /tn crewrig-probe-agy /f`.
 
 Antigravity CLI's status line, one case at a time, from the interactive console
-session (the same `agy` authentication constraint as above; the status line is
-drawn when the interactive session renders it, so start `agy` without
-`--print`, send one prompt, and quit):
+session (the same `agy` authentication constraint as above). No prompt is
+needed and none can be scripted: `agy` runs `statusLine.command` on every
+render of its idle start-up screen (8 to 12 draws in about 60 s), so start `agy`
+interactively in `C:\crewrig-probe\proj`, let the start-up screen render for
+about 60 s, then quit. Do not try to send a prompt with `SendKeys` or
+`AppActivate` by process id: the keystrokes never reach the window, because
+Windows Terminal hosts the console.
+
+The driver that worked is a `schtasks /it` task, created as for the session
+commands above, that runs this PowerShell script (save it as
+`C:\crewrig-probe\drive-agy.ps1`):
+
+```powershell
+$p = Start-Process cmd.exe -ArgumentList '/k','agy' -WorkingDirectory C:\crewrig-probe\proj -PassThru
+Start-Sleep 60
+taskkill /T /F /PID $p.Id
+```
+
+The task's command is `powershell -NoProfile -File C:\crewrig-probe\drive-agy.ps1`
+(pass it as `/tr`), created, run, waited on and deleted for each case:
 
 ```sh
 for id in I Q0 Q1 Q4 P P2d; do
   vm "$P install antigravity-statusline --only $id"
-  # start agy in the interactive console session, send one prompt, quit
+  # run the drive-agy.ps1 task (schtasks /create ... /it, /run, wait ~65 s, /delete)
   vm "$P collect antigravity-statusline"
   vm "$P restore antigravity-statusline"
 done
 ```
 
 Read the interpreter, quoting, working directory and separators from the
-`launched=` groups and the parent chain, as for the hook targets. They become
-row 37e of `docs/cli-matrix.md`.
+`launched=` groups and the parent chain, as for the hook targets. `collect`
+prints only the first record, and the `wmic` parent chain it shows is often
+`[]`, because the short-lived `cmd /c` has already exited by the time the
+snapshot is taken (4 of 12 records caught it on this surface). For the parent
+chain, read the raw records under `out\antigravity-statusline\` instead. They
+become row 37e of `docs/cli-matrix.md`.
+
+*Source: corrections by @hcross on the row 37e measurement,
+<https://github.com/crewrig/crewrig/issues/1389#issuecomment-5915177073>.*
 
 Exit status (case `X1`, spec 0243 R12), one real turn per CLI, macOS or
 Windows: `install <cli> --only X1`, run the session command, `collect <cli>`
