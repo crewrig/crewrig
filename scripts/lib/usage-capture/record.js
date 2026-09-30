@@ -197,9 +197,15 @@ function stateDir(cli) {
   return path.join(usageRoot(), 'state', cli);
 }
 
+// A child's stderr must never reach the hook's own: execFileSync inherits it
+// by default, and hooks/usage-capture.ts is run by the CLI directly, with no
+// shell redirection around it (spec 0243 R5) — a `<bin> --version` that warns
+// (a Node.js-based CLI printing a DeprecationWarning) would otherwise leak.
+const QUIET_CHILD = ['ignore', 'pipe', 'ignore'];
+
 function resolveBinaryPath(binary) {
   try {
-    const out = execFileSync('/bin/sh', ['-c', `command -v -- ${binary}`], { encoding: 'utf8' }).trim();
+    const out = execFileSync('/bin/sh', ['-c', `command -v -- ${binary}`], { encoding: 'utf8', stdio: QUIET_CHILD }).trim();
     return out || null;
   } catch (err) {
     return null;
@@ -250,7 +256,7 @@ function cliVersionFor(cli, { binary, versionArgs = ['--version'], parse } = {})
 
   let raw;
   try {
-    raw = execFileSync(resolvedPath, versionArgs, { encoding: 'utf8', timeout: 5000 }).trim();
+    raw = execFileSync(resolvedPath, versionArgs, { encoding: 'utf8', timeout: 5000, stdio: QUIET_CHILD }).trim();
   } catch (err) {
     return cached ? cached.version : null;
   }
