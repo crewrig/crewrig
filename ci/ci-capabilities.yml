@@ -925,7 +925,11 @@ capabilities:
         branches: [main, "release/**"]
     portability: portable
     requires:
-      runtime: python@3.12
+      # python@3.12 is the primary/image runtime (unchanged); node@24 is a
+      # SECONDARY runtime: the full suite this fail-safe runs includes the setup
+      # suites, whose capture-enabled cases hit the Node.js floor guard (spec
+      # 0243 R24, v1-F2) on a default Node.js 22 (#1391 CI).
+      runtime: [python@3.12, node@24]
       tools: [yq]
       history-depth: full
     command:

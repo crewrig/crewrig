@@ -981,6 +981,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # Secondary runtime: the full suite includes the setup suites, whose
+      # capture-enabled cases hit the Node.js floor guard (spec 0243 R24, v1-F2)
+      # on ubuntu-latest's default Node.js 22 (#1391 CI).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - name: Fail-safe full check suite (spec 0147 R5)
         run: bash scripts/ci-changeset-coverage.sh
       - name: Cancel workflow on job failure

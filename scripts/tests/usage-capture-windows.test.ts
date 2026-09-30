@@ -233,7 +233,7 @@ describe("the command line of each CLI, through its interpreter", { skip: !WINDO
 });
 
 describe("b1: the Antigravity statusLine.command is refused on Windows (spec 0243 R28(b1), R32(c))", () => {
-  const refusals = ["C:/Users/ana/crewrig", "C:/Users/Ana Diaz/crewrig"].map((root) =>
+  const refusals = ["C:/work/crewrig", "C:/work space/crewrig"].map((root) =>
     hookCommandLine({
       cli: "antigravity",
       surface: "statusline",
