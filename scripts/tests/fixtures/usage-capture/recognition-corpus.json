@@ -45,6 +45,11 @@
     "note": "VAR=value, env and bash prefix; single-quoted path"
   },
   {
+    "command": "env A=1 bash \"/x/hooks/usage-capture.sh\" claude-code Stop",
+    "capture": false,
+    "note": "env followed by NAME=value is outside the R20 signature (spec 0243 delta-01, s4-F1)"
+  },
+  {
     "command": "/bin/bash \"/x/hooks/usage-capture.sh\" claude-code Stop",
     "capture": true,
     "note": "interpreter given by path"

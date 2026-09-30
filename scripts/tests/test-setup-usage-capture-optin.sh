@@ -1802,6 +1802,45 @@ for cli in $CLIS; do
   fi
 done
 
+echo "§6 (c3) keep on an assignment-prefixed command with a vanished path (spec 0243 delta-01, s4-F2)"
+WIN_BIN="$TMP_ROOT/v/winbin"
+mkdir -p "$WIN_BIN"
+printf '#!/bin/sh\n[ "$1" = "-s" ] && echo MINGW64_NT-10.0-19045 || exec /usr/bin/uname "$@"\n' > "$WIN_BIN/uname"
+chmod +x "$WIN_BIN/uname"
+GONE_SH="$TMP_ROOT/v/gone-checkout/hooks/usage-capture.sh"
+for cli in $CLIS; do
+  for target in posix windows; do
+    cfg="$TMP_ROOT/v/$cli-$target-vanished/config.json"
+    materialize "$cli-coupled.json" "$cfg" "$GONE_SH"
+    jq 'walk(if type == "string" and test("usage-capture\\.sh") then "CREWRIG_USAGE_ROOT=/Volumes/enc/usage " + . else . end)' "$cfg" > "$cfg.tmp" && mv "$cfg.tmp" "$cfg"
+    cp "$cfg" "$cfg.orig"
+    if [ "$target" = windows ]; then
+      out="$( (PATH="$WIN_BIN:$PATH"; usage_capture_keep "$cli" "$cfg" "$REPO_DIR") 2>&1)"; rc=$?
+    else
+      out="$(usage_capture_keep "$cli" "$cfg" "$REPO_DIR" 2>&1)"; rc=$?
+    fi
+    ev1="$(cli_events "$cli" | awk '{print $1}')"
+    if [ "$target" = windows ] && [ "$cli" != claude ]; then
+      if [ "$rc" -eq 0 ] && cmp -s "$cfg" "$cfg.orig" && ! has_backup "$cfg" \
+         && [[ "$out" == *"left $GONE_SH: keeps an environment prefix (CREWRIG_USAGE_ROOT=...)"* ]] \
+         && [[ "$out" != *re-pointed* ]] && [[ "$out" != *"/Volumes/enc/usage"* ]]; then
+        ok "(6c3) $cli on Windows: a vanished path behind NAME=value is left and reported by name"
+      else
+        bad "(6c3) $cli on Windows rc=$rc, changed=$(cmp -s "$cfg" "$cfg.orig" && echo no || echo yes) (out: $out)"
+      fi
+    else
+      got="$(capture_cmds "$cfg" "$ev1")"
+      if [ "$rc" -eq 0 ] && [[ "$out" == *re-pointed* ]] && [ "$(backup_count "$cfg")" = "1" ] \
+         && [ "$(file_mode "$cfg")" = "600" ] \
+         && [[ "$got" == "CREWRIG_USAGE_ROOT=/Volumes/enc/usage bash \"$CAPTURE_SH_ABS\" "* ]]; then
+        ok "(6c3) $cli on $target: the vanished path is re-pointed keeping the prefix, backup first, 0600"
+      else
+        bad "(6c3) $cli on $target rc=$rc backups=$(backup_count "$cfg") cmd='$got' (out: $out)"
+      fi
+    fi
+  done
+done
+
 echo "§6 (d) below the Node.js floor nothing is written (R24, D3, v1-F2)"
 REAL_NODE="$(command -v node)"
 LOW_BIN="$TMP_ROOT/v/lownode/bin"
