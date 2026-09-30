@@ -67,9 +67,13 @@ instruction in the same session (R13).
 | `4` | Undecidable (R4, R13): a tie in the record. | Any own assignment left in place and reported. |
 | `5` | The self-assignment did not take (R14), typically a fork contributor without permission to assign themselves. | Issue still free; one maintainer request posted (see below). |
 
-Output is one JSON line on stdout — `verdict`, `owner`, `self`, `forge`,
-`actions[]` (every write attempted and its outcome), `delays` — and one
-human sentence on stderr.
+Output is one JSON line on stdout and one human sentence on stderr. The JSON
+carries `verdict`, `issue`, `owner`, `self`, `forge`, `actions[]` (every
+write attempted, as `{op, target, ok, error?}` with `op` one of `add`,
+`remove`, `set`, `comment`), `delays`, an optional `reason`, and `exit`. The
+final `verdict` is one of `proceed` (`0`), `cannot-determine` (`2`),
+`owned-by-other` (`3`), `undecidable` (`4`) and `assignment-not-recorded`
+(`5`).
 
 ### How the owner is determined
 
@@ -104,14 +108,14 @@ Undecidable means **not yours**: no contributor involved is the owner. They
 settle it by agreement recorded in a comment, leave the issue free, and the
 agreed contributor then takes it as a free ticket (R4).
 
-### Verdicts
+### Decisions
 
-| Situation | Verdict | Writes | Exit |
+| Situation | Decision | Writes | Exit |
 |---|---|---|---|
 | Free | `assign-self`, then re-determine | add self | per the new determination |
 | Owner = self, assigned | `proceed` | none | `0` |
-| Owner = self, displaced by a later assignment | `restore-self-then-proceed` | add self; others untouched | `0` |
-| Owner ≠ self, self assigned | `restore-owner-then-withdraw` | restore owner, then remove self | `3` |
+| Owner = self, displaced by a later assignment | `restore-self`, then proceed | add self; others untouched | `0` |
+| Owner ≠ self, self assigned | `withdraw` | restore the owner if displaced, then remove self | `3` |
 | Owner ≠ self, self not assigned | `owned-by-other` | none | `3` |
 | Undecidable | — | none | `4` or `2` |
 
@@ -157,8 +161,9 @@ reference remote: `github.com`, then `gitlab.*` or a host listed in
 | Restore owner, withdraw self | add owner → confirming read → remove self | one atomic `PUT` of `(current − {self}) ∪ {owner}` | add-only step → confirming read → remove-only step; never one replacing `PATCH` |
 
 Gitea's dedicated assignee endpoints are detected once per run from the
-server itself (its version or its published API description), never inferred
-from a failed write. A single replacing `PATCH` is never issued on Gitea:
+server's version (`tea api version`, compared with the first release assumed
+to ship them, 1.27.0, pending live verification; a Forgejo version string is
+read through its Gitea part), never inferred from a failed write. A single replacing `PATCH` is never issued on Gitea:
 the server deletes the old assignees before adding the new ones, in separate
 transactions, which would expose a transient empty set.
 

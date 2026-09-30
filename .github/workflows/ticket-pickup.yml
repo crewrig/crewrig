@@ -8,6 +8,7 @@ on:
     paths:
       - "scripts/ticket-pickup.ts"
       - "scripts/lib/ticket-ownership.ts"
+      - "scripts/lib/ticket-pickup.ts"
       - "scripts/lib/forge-assignment.ts"
       - "scripts/lib/forge-detect.ts"
       - "scripts/lib/ts-scope.ts"
@@ -19,6 +20,7 @@ on:
     paths:
       - "scripts/ticket-pickup.ts"
       - "scripts/lib/ticket-ownership.ts"
+      - "scripts/lib/ticket-pickup.ts"
       - "scripts/lib/forge-assignment.ts"
       - "scripts/lib/forge-detect.ts"
       - "scripts/lib/ts-scope.ts"
