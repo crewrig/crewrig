@@ -663,3 +663,48 @@ describe("regressions: PR #1396 review pass 1", () => {
     neverFree(f);
   });
 });
+
+// Regressions of PR #1396 review pass 2 (seat review/1387, finding i2-F1): the
+// legacy GitLab removal notes carry no username, so they must fail closed.
+describe("regressions: PR #1396 review pass 2", () => {
+  /** alice leaves (legacy note only), bob takes the free issue, alice is added then removed again. */
+  function legacyHistory(body: string): FakeForge {
+    const f = new FakeForge("gitlab")
+      .issue(7)
+      .human("alice", 7, { add: ["alice"] })
+      .advance(1000);
+    f.mutate(7, "alice", [{ user: "alice", op: "remove" }], { recorded: false });
+    f.rawNotes.push({ id: 950, issue: 7, at: f.now, author: "alice", body });
+    f.advance(1000)
+      .human("bob", 7, { add: ["bob"] })
+      .advance(1000);
+    f.human("carol", 7, { add: ["alice"] })
+      .advance(1000)
+      .human("carol", 7, { remove: ["alice"] });
+    return f.advance(1000);
+  }
+
+  test("i2-F1: a label removal mentioning assignees stays ignored (the widened guard is not a substring match)", async () => {
+    const f = new FakeForge("gitlab").issue(7).human("alice", 7, { add: ["alice"] });
+    f.rawNotes.push({
+      id: 951,
+      issue: 7,
+      at: f.now + 1,
+      author: "carol",
+      body: 'removed ~"assignee-needed" label',
+    });
+    expect(await pickup(f.advance(1000), "bob", 7), 3, "alice");
+  });
+
+  for (const body of ["removed assignee", "Removed assignee", "removed all assignees"])
+    test(`i2-F1: the legacy note '${body}' fails closed and the rightful owner is never withdrawn`, async () => {
+      const f = legacyHistory(body);
+      assert.deepEqual(f.assignees(7), ["bob"]);
+      const view = await pickup(f, "carol", 7, ["--read-only"]);
+      expect(view, 2, null);
+      assert.match(view.stderr, /unparsed GitLab assignment note/);
+      expect(await pickup(f, "bob", 7), 2, null);
+      assert.deepEqual(f.writes, []);
+      assert.deepEqual(f.assignees(7), ["bob"]);
+    });
+});
