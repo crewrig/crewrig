@@ -4,13 +4,13 @@
     "agentStop": [
       {
         "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/usage-capture.sh\" copilot-cli agentStop"
+        "command": "node \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/usage-capture.ts\" copilot-cli agentStop"
       }
     ],
     "sessionEnd": [
       {
         "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/usage-capture.sh\" copilot-cli sessionEnd"
+        "command": "node \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/usage-capture.ts\" copilot-cli sessionEnd"
       }
     ]
   }

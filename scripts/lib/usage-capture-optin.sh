@@ -9,8 +9,11 @@
 # configuration: detection, enable, keep, remove, and the preservation step the
 # session-recording writer runs (merge_session_recording_hooks). Ownership is
 # decided by CONTENT, never by position: a capture entry is a command that
-# invokes a script path ending in `/hooks/usage-capture.sh` with the argv
-# `<cli-id> <Event>` crewrig writes, wherever that path points (R10). The
+# invokes a script path ending in `/hooks/usage-capture.sh` (the legacy shell
+# entry) or `/hooks/usage-capture.ts` (the direct `node` entry, spec 0243) with
+# the argv `<cli-id> <Event>` crewrig writes, wherever that path points (R10,
+# spec 0243 R20). The TypeScript twin of this predicate is
+# scripts/lib/hook-recognition.ts; both are run over one corpus. The
 # signature is positive (see uc_sig_re) so an operator's own hook that merely
 # names a script called usage-capture.sh is never removed, kept, deduplicated
 # or re-pointed (#1174, security review S2).
@@ -32,21 +35,27 @@
 #   - Readers return 2 on a file that exists but is not a JSON object; writers
 #     return 1 on it and write nothing.
 #
-# All JSON work happens in jq, through the one definitions string below.
+# All JSON work happens in jq, through the one definitions string below, except
+# the two operations that need the direct command line (spec 0243 R16, R23):
+# rendering the fragment and rewriting legacy commands run in
+# scripts/hook-wiring.ts, reached through `node` once the Node.js floor is met
+# (usage_capture_require_node_floor). No configuration content ever reaches an
+# argument list.
 
 # --- jq definitions -----------------------------------------------------------
 # Every program is compiled with `--arg shape grouped|flat`.
 # shellcheck disable=SC2016  # jq program text, not shell expansions
 _UC_JQ_DEFS='
 # The capture signature, matched against the WHOLE command:
-#   [VAR=value ...] [env] [bash|sh] <path> <cli-id> <Event>
+#   [VAR=value ...] [env] [bash|sh|node] <path> <cli-id> <Event>
 # <path> is double-quoted, single-quoted, or an unquoted token (the legacy
-# Gemini form of origin/main), and ends in `/hooks/usage-capture.sh`; <cli-id>
+# Gemini form of origin/main), and ends in `/hooks/usage-capture.sh` or
+# `/hooks/usage-capture.ts` (spec 0243 R20); <cli-id>
 # is one of the three crewrig ids. `pre` and `post` are kept so a re-point rebuilds
 # the command around a new, double-quoted path without touching anything else.
 def uc_sig_re:
-  "\\A(?<pre>\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh)\\s+)?)"
-  + "(?:\"(?<dq>[^\"]*/hooks/usage-capture\\.sh)\"|\\x27(?<sq>[^\\x27]*/hooks/usage-capture\\.sh)\\x27|(?<uq>[^\\s\"\\x27]*/hooks/usage-capture\\.sh))"
+  "\\A(?<pre>\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh|node)\\s+)?)"
+  + "(?:\"(?<dq>[^\"]*/hooks/usage-capture\\.(?:sh|ts))\"|\\x27(?<sq>[^\\x27]*/hooks/usage-capture\\.(?:sh|ts))\\x27|(?<uq>[^\\s\"\\x27]*/hooks/usage-capture\\.(?:sh|ts)))"
   + "(?<post>\\s+(?:claude-code|gemini-cli|copilot-cli)\\s+[A-Za-z]+\\s*)\\z";
 
 # The one legacy form an unquoted token cannot express: origin/main wrote the
@@ -73,13 +82,16 @@ def uc_is_command:
   type == "object" and ((.type // "command") == "command")
   and ((.command | type) == "string");
 
-# {pre, path, post, quoted} for a capture handler, null for anything else.
+# {pre, path, ext, post, quoted} for a capture handler, null for anything else;
+# ext is `ts` for the direct entry and `sh` for the legacy shell script.
 def uc_parse:
   if uc_is_command
   then ([.command | capture(uc_sig_re),
          (capture(uc_legacy_re) | select(.uq as $p | any(uc_legacy_ok[]; . == $p)))]
         | if length > 0
-          then .[0] | {pre, path: (.dq // .sq // .uq), post, quoted: (.uq == null)}
+          then .[0] | (.dq // .sq // .uq) as $p
+               | {pre, path: $p, ext: (if ($p | endswith(".ts")) then "ts" else "sh" end),
+                  post, quoted: (.uq == null)}
           else null end)
   else null end;
 
@@ -87,6 +99,7 @@ def uc_is_capture: uc_parse != null;
 
 # The registered script path, quotes stripped.
 def uc_path: uc_parse | if . == null then null else .path end;
+def uc_ext: uc_parse | if . == null then null else .ext end;
 
 # Rebuild a capture handler around a new script path, double-quoted.
 def uc_with_path($p):
@@ -213,22 +226,35 @@ def sr_strip: uc_strip_by(sr_is_own);
 def sr_merge($m): sr_strip | reduce ($m | uc_all_handlers) as $x (.; uc_add($x));
 
 # keep (a): re-point, in place, a capture handler whose path vanished. Only the
-# path token changes (it comes back double-quoted); prefix and argv are kept.
-# A live path left unquoted with a space in it (the legacy Gemini form above,
-# which never ran) keeps its path and only gains the quotes.
+# path token changes (it comes back double-quoted); prefix and argv are kept, and
+# so is the form: a `.ts` handler goes to the current checkout'"'"'s `.ts`, a `.sh`
+# handler to its `.sh` (spec 0243 R22). A live path left unquoted with a space
+# in it (the legacy Gemini form above, which never ran) keeps its path and only
+# gains the quotes.
 def uc_needs_quotes: uc_parse | . != null and (.quoted | not) and (.path | test("\\s"));
 
-def uc_repoint_handler($vanished; $abs):
+# A command whose prefix opens with a NAME=value word (only those that precede
+# any `env`/interpreter: `env NAME=value …` is outside the signature). Windows
+# PowerShell, which Gemini CLI and Copilot CLI use there, cannot run one (row
+# 37c), so $ps (that target) leaves a vanished path on such a command as it is
+# rather than re-pointing it (spec 0243 delta-01, s4-F2). On POSIX the re-point
+# keeps the prefix.
+def uc_assign_prefixed:
+  uc_parse | . != null and (.pre | test("^\\s*[A-Za-z_][A-Za-z0-9_]*="));
+
+def uc_repoint_handler($vanished; $abs_sh; $abs_ts; $ps):
   uc_path as $p
   | if $p == null then .
-    elif any($vanished[]; . == $p) then uc_with_path($abs)
+    elif any($vanished[]; . == $p) then
+      if $ps and uc_assign_prefixed then .
+      else uc_with_path(if uc_ext == "ts" then $abs_ts else $abs_sh end) end
     elif uc_needs_quotes then uc_with_path($p)
     else . end;
 
-def uc_repoint_event($vanished; $abs):
-  if $shape == "flat" then map(uc_repoint_handler($vanished; $abs))
+def uc_repoint_event($vanished; $abs_sh; $abs_ts; $ps):
+  if $shape == "flat" then map(uc_repoint_handler($vanished; $abs_sh; $abs_ts; $ps))
   else map(if type == "object" and (.hooks | type) == "array"
-           then .hooks |= map(uc_repoint_handler($vanished; $abs)) else . end)
+           then .hooks |= map(uc_repoint_handler($vanished; $abs_sh; $abs_ts; $ps)) else . end)
   end;
 
 # keep (b): keep exactly one capture handler of one event and delete the
@@ -288,11 +314,25 @@ def uc_r5_paths($r5):
   [uc_footprint[] | select(.event as $e | any($r5[]; . == $e))
    | .handler | uc_path | select(. != null)] | uc_distinct;
 
-def uc_keep($r5; $live; $vanished; $abs; $fragfp; $target):
+# The vanished-path handlers of the R5 events that uc_keep leaves as they are
+# on a PowerShell target, as "path<TAB>NAME=..., NAME=..." lines (names only,
+# never values: they may be credentials).
+def uc_ps_left($r5; $vanished; $ps):
+  if $ps then
+    [uc_footprint[] | select(.event as $e | any($r5[]; . == $e)) | .handler
+     | select(uc_assign_prefixed)
+     | (uc_path) as $p | select(any($vanished[]; . == $p))
+     | uc_parse.pre as $pre
+     | [$p, ([$pre | match("(?:^|\\s)([A-Za-z_][A-Za-z0-9_]*)=";"g").captures[0].string | . + "=..."] | join(", "))]
+     | @tsv]
+    | uc_distinct
+  else [] end;
+
+def uc_keep($r5; $live; $vanished; $abs_sh; $abs_ts; $fragfp; $target; $ps):
   uc_keep_dedup($r5; $live; $vanished)
   | reduce $r5[] as $e (.;
       if (.hooks | type) == "object" and (.hooks[$e] | type) == "array"
-      then .hooks[$e] |= uc_repoint_event($vanished; $abs) else . end)
+      then .hooks[$e] |= uc_repoint_event($vanished; $abs_sh; $abs_ts; $ps) else . end)
   | reduce $fragfp[] as $x (.;
       if uc_event_has_capture($x.event) then .
       else uc_add($x | .handler |= uc_with_path($target)) end);
@@ -309,20 +349,21 @@ _uc_shape() {
   esac
 }
 
-# _uc_token <cli> — the tokenized script path the fragment carries.
-_uc_token() {
-  case "$1" in
-    claude)  printf '%s\n' '$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh' ;;
-    gemini)  printf '%s\n' '${GEMINI_PROJECT_DIR}/hooks/usage-capture.sh' ;;
-    copilot) printf '%s\n' '${COPILOT_PROJECT_DIR:-$PWD}/hooks/usage-capture.sh' ;;
-    *) return 1 ;;
-  esac
-}
-
 # _uc_jq <shape> <jq args…> <program> <file> — run one read-only program.
 _uc_jq() {
   local shape="$1"; shift
   jq --arg shape "$shape" "$@"
+}
+
+# _uc_powershell_target <cli> — 0 on Gemini CLI and Copilot CLI running on
+# Windows, where the hook command line is read by Windows PowerShell 5.1 and a
+# NAME=value prefix is not runnable (row 37c).
+_uc_powershell_target() {
+  case "$1" in
+    gemini|copilot)
+      case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) return 0 ;; esac ;;
+  esac
+  return 1
 }
 
 # _uc_unsafe_path <path> — 0 when the path cannot be spliced, double-quoted,
@@ -410,12 +451,47 @@ _uc_create_empty() {
 
 # --- public API -----------------------------------------------------------------
 
-# usage_capture_abs <repo_dir> — the in-repo absolute path of the capture
-# script (CAPTURE_ABS), physical (`pwd -P`). Returns 1 when it does not exist,
-# or when the checkout path holds a character that would change the meaning of
-# the double-quoted hook command (`"`, `$`, backtick, backslash, newline).
+# The checkout this library sits in: it owns the floor guard and the wiring
+# tool, whatever checkout a <repo_dir> argument names (that one only supplies the
+# fragments and the hook scripts to register).
+_UC_LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+
+# usage_capture_require_node_floor — the Node.js floor precondition of every
+# write of the direct form (spec 0243 R24, D3). Runs the floor guard of
+# spec 0240 R1 with the `node` found on PATH; prints its diagnostic and returns 1
+# below the floor. When no `node` is on PATH the guard cannot print anything, so
+# this prints the diagnostic itself (v1-F2). Never called by `remove`.
+usage_capture_require_node_floor() {
+  local guard="$_UC_LIB_ROOT/scripts/lib/node-floor-guard.js"
+  if ! command -v node >/dev/null 2>&1; then
+    echo "  ERROR: crewrig: Node.js was not found on PATH; usage capture requires Node.js >= 24. Install a supported release from https://nodejs.org/en/download" >&2
+    return 1
+  fi
+  if [ ! -f "$guard" ]; then
+    echo "  ERROR: Node.js floor guard not found at $guard." >&2
+    return 1
+  fi
+  node "$guard" || return 1
+  return 0
+}
+
+# _uc_hook_wiring <repo_dir> <args…> — run scripts/hook-wiring.ts against the
+# checkout <repo_dir>. The two flags silence the type-stripping notices of
+# Node.js 24.0-24.2 and the typeless package scope; neither hides an error.
+_uc_hook_wiring() {
+  local repo_dir="$1"; shift
+  node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
+    "$_UC_LIB_ROOT/scripts/hook-wiring.ts" "$@" --repo "$repo_dir"
+}
+
+# usage_capture_abs <repo_dir> [sh|ts] — the in-repo absolute path of the capture
+# script (CAPTURE_ABS), physical (`pwd -P`); the extension defaults to `ts`, the
+# direct entry setup registers. Returns 1 when it does not exist, or when the
+# checkout path holds a character that would change the meaning of the
+# double-quoted hook command (`"`, `$`, backtick, backslash, newline).
 usage_capture_abs() {
-  local src="$1/hooks/usage-capture.sh" dir abs
+  local ext="${2:-ts}" src dir abs
+  src="$1/hooks/usage-capture.$ext"
   if _uc_unsafe_path "$1"; then
     echo "  ERROR: the checkout path $1 contains a character (\" \$ \` \\ or a newline) that cannot be wired safely into a hook command; move the checkout to a path without it." >&2
     return 1
@@ -434,23 +510,23 @@ usage_capture_abs() {
 }
 
 # usage_capture_fragment <cli> <repo_dir> — print the CLI's capture fragment
-# (hooks/<cli>-usage-capture-hooks.json) with the tokenized script path
-# `<prefix>/hooks/usage-capture.sh` replaced, whole, by CAPTURE_ABS. Returns 1
-# when the fragment is missing or unparsable, or when a token survives.
+# (hooks/<cli>-usage-capture-hooks.json) with every command built by
+# scripts/hook-wiring.ts render (spec 0243 R16, R26): the direct `node` form
+# with the script's physical absolute path, no token left. Returns 1 when the
+# Node.js floor is not met, the fragment is missing or unparsable, or a command
+# is refused.
 usage_capture_fragment() {
-  local cli="$1" repo_dir="$2" frag_src abs tok out
+  local cli="$1" repo_dir="$2" frag_src out
   _uc_shape "$cli" >/dev/null || return 1
   frag_src="$repo_dir/hooks/${cli}-usage-capture-hooks.json"
   if [ ! -f "$frag_src" ]; then
     echo "  ERROR: capture fragment not found at $frag_src." >&2
     return 1
   fi
-  abs="$(usage_capture_abs "$repo_dir")" || return 1
-  tok="$(_uc_token "$cli")" || return 1
-  if ! out="$(jq -c --arg tok "$tok" --arg abs "$abs" \
-      '(.. | objects | select(.type? == "command") | .command) |= (split($tok) | join($abs))' \
-      "$frag_src" 2>/dev/null)"; then
-    echo "  ERROR: capture fragment $frag_src is not valid JSON." >&2
+  usage_capture_require_node_floor || return 1
+  usage_capture_abs "$repo_dir" ts >/dev/null || return 1
+  if ! out="$(_uc_hook_wiring "$repo_dir" render "$cli")"; then
+    echo "  ERROR: could not render the $cli capture fragment $frag_src." >&2
     return 1
   fi
   case "$out" in
@@ -468,6 +544,18 @@ usage_capture_fragment() {
     return 1
   fi
   printf '%s\n' "$out"
+}
+
+# usage_capture_rewrite <cli> <config> <repo_dir> — rewrite every legacy capture
+# command of the configuration to the direct form, one command per event
+# (spec 0243 R19, R21, R22), through scripts/hook-wiring.ts. Below the Node.js
+# floor it prints the guard's diagnostic and changes nothing (R24). A second run
+# writes nothing.
+usage_capture_rewrite() {
+  local cli="$1" config="$2" repo_dir="$3"
+  _uc_shape "$cli" >/dev/null || return 1
+  usage_capture_require_node_floor || return 1
+  _uc_hook_wiring "$repo_dir" rewrite "$cli" --config "$config"
 }
 
 # usage_capture_footprint <cli> <config> — print the JSON array of
@@ -519,13 +607,20 @@ usage_capture_reinject() {
 
 # usage_capture_disclose <cli> <config> <repo_dir> — the pre-write disclosure (R6).
 usage_capture_disclose() {
-  local cli="$1" config="$2" repo_dir="$3" frag abs events
+  local cli="$1" config="$2" repo_dir="$3" frag abs events cmds
+  # The floor guard comes first: the fragment is rendered through `node`, and a
+  # Node.js below the floor must be met with the guard's diagnostic, not a raw
+  # Node.js error (v1-F2, spec 0243 R24).
+  usage_capture_require_node_floor || return 1
   frag="$(usage_capture_fragment "$cli" "$repo_dir")" || return 1
   abs="$(usage_capture_abs "$repo_dir")" || return 1
   events="$(jq -r '.hooks | keys_unsorted | join(", ")' <<< "$frag")" || return 1
+  cmds="$(jq -r '[.. | objects | select(.type? == "command") | .command] | unique | .[]' <<< "$frag")" || return 1
   echo "Enabling usage capture will:"
   echo "  1. Register $abs"
   echo "     on the $events event(s), in $config"
+  echo "     as a direct node command (no shell wrapper; needs Node.js 24 or later when the hook fires):"
+  printf '%s\n' "$cmds" | sed 's/^/       /'
   if [ "$cli" = "copilot" ]; then
     echo "     (the same file session recording uses; its entries are left as they are)"
   fi
@@ -576,10 +671,11 @@ usage_capture_enable() {
 # unresolvable otherwise, and then left as it is. Writes nothing (and backs up
 # nothing) on a no-op.
 usage_capture_keep() {
-  local cli="$1" config="$2" repo_dir="$3" shape frag abs r5 fragfp
-  local paths p vanished_list="" live_list="" target="" vanished live missing
-  local repointed requoted wrote_abs=0 before after lg
+  local cli="$1" config="$2" repo_dir="$3" shape frag abs abs_sh r5 fragfp
+  local paths p vanished_list="" live_list="" target="" target_ts="" vanished live missing
+  local repointed requoted wrote_abs=0 before after lg ps=false left
   shape="$(_uc_shape "$cli")" || return 1
+  if _uc_powershell_target "$cli"; then ps=true; fi
   if [ ! -f "$config" ]; then
     echo "  No usage-capture entry in $config; nothing to keep."
     return 0
@@ -589,7 +685,8 @@ usage_capture_keep() {
     return 1
   fi
   frag="$(usage_capture_fragment "$cli" "$repo_dir")" || return 1
-  abs="$(usage_capture_abs "$repo_dir")" || return 1
+  abs="$(usage_capture_abs "$repo_dir" ts)" || return 1
+  abs_sh="$(usage_capture_abs "$repo_dir" sh)" || return 1
   r5="$(jq -c '.hooks | keys_unsorted' <<< "$frag")" || return 1
   fragfp="$(_uc_jq "$shape" -c "$_UC_JQ_DEFS uc_footprint" <<< "$frag")" || return 1
   # Legacy spaced paths that exist, decided once on the file as it is now.
@@ -615,17 +712,35 @@ usage_capture_keep() {
     fi
   done <<< "$paths"
   [ -n "$target" ] || target="$abs"
+  # A handler added to an event that has none is the fragment's (direct) one, so
+  # it points at the `.ts` of the checkout the live registered path belongs to
+  # when that exists, else at the current checkout (spec 0243 R22).
+  target_ts="$abs"
+  if [ "$target" != "$abs" ] && [ -f "${target%.*}.ts" ] && ! _uc_unsafe_path "${target%.*}.ts"; then
+    target_ts="${target%.*}.ts"
+  fi
   vanished="$(printf '%s' "$vanished_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')" || return 1
   live="$(printf '%s' "$live_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')" || return 1
   # Events of R5 with no capture handler before this run: (c) adds one there.
   missing="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson uc_legacy_ok "$lg" \
     "$_UC_JQ_DEFS [\$r5[] as \$e | select(any(uc_footprint[]; .event == \$e) | not) | \$e] | length" \
     "$config")" || return 1
-  local program="$_UC_JQ_DEFS uc_keep(\$r5; \$live; \$vanished; \$abs; \$fragfp; \$target)"
+  local program="$_UC_JQ_DEFS uc_keep(\$r5; \$live; \$vanished; \$abs_sh; \$abs; \$fragfp; \$target; \$ps)"
   before="$(jq -c '.' "$config")" || return 1
   after="$(_uc_jq "$shape" -c --argjson r5 "$r5" --argjson live "$live" --argjson vanished "$vanished" \
-    --arg abs "$abs" --argjson fragfp "$fragfp" --arg target "$target" --argjson uc_legacy_ok "$lg" \
-    "$program" "$config")" || return 1
+    --arg abs "$abs" --arg abs_sh "$abs_sh" --argjson fragfp "$fragfp" --arg target "$target_ts" \
+    --argjson ps "$ps" --argjson uc_legacy_ok "$lg" "$program" "$config")" || return 1
+  # A vanished path on an assignment-prefixed command is not re-pointed on a
+  # PowerShell target: say so by name (spec 0243 delta-01, s4-F2).
+  left="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" --argjson vanished "$vanished" \
+    --argjson ps "$ps" --argjson uc_legacy_ok "$lg" \
+    "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | uc_ps_left(\$r5; \$vanished; \$ps)[]" \
+    <<< "$before")" || left=""
+  local lp ln
+  while IFS=$'\t' read -r lp ln; do
+    [ -n "$lp" ] || continue
+    echo "  Usage capture left $lp: keeps an environment prefix ($ln) that PowerShell on Windows cannot run; left as it is."
+  done <<< "$left"
   if [ "$before" = "$after" ]; then
     echo "  Usage capture kept unchanged in $config"
     return 0
@@ -633,13 +748,13 @@ usage_capture_keep() {
   backup_file "$config"
   write_json_config_secure "$config" --arg shape "$shape" --argjson r5 "$r5" \
     --argjson live "$live" --argjson vanished "$vanished" --arg abs "$abs" \
-    --argjson fragfp "$fragfp" --arg target "$target" --argjson uc_legacy_ok "$lg" "$program" \
+    --argjson fragfp "$fragfp" --arg target "$target_ts" --arg abs_sh "$abs_sh" --argjson ps "$ps" --argjson uc_legacy_ok "$lg" "$program" \
     || { echo "  ERROR: could not write $config." >&2; return 1; }
   # Name only the vanished paths a kept handler really carried: one dropped as
   # a duplicate was deleted, not re-pointed.
   repointed="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" \
-    --argjson vanished "$vanished" --argjson uc_legacy_ok "$lg" \
-    "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | uc_r5_paths(\$r5) as \$now | \$vanished[] | select(. as \$v | any(\$now[]; . == \$v))" \
+    --argjson vanished "$vanished" --argjson ps "$ps" --argjson uc_legacy_ok "$lg" \
+    "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | ([uc_ps_left(\$r5; \$vanished; \$ps)[] | split(\"\\t\")[0]]) as \$left | uc_r5_paths(\$r5) as \$now | \$vanished[] | select(. as \$v | any(\$now[]; . == \$v) and (any(\$left[]; . == \$v) | not))" \
     <<< "$before")" || repointed=""
   while IFS= read -r p; do
     [ -n "$p" ] || continue
@@ -655,8 +770,8 @@ usage_capture_keep() {
     echo "  Usage capture path quoted (it holds a space): $p"
   done <<< "$requoted"
   if [ "$missing" != "0" ]; then
-    echo "  Usage capture re-registered on $missing event(s) at $target"
-    [ "$target" != "$abs" ] || wrote_abs=1
+    echo "  Usage capture re-registered on $missing event(s) at $target_ts"
+    [ "$target_ts" != "$abs" ] || wrote_abs=1
   fi
   echo "  Usage capture kept in $config (one entry per event)"
   if [ "$wrote_abs" -eq 1 ]; then
@@ -690,7 +805,11 @@ usage_capture_remove() {
 # usage_capture_apply <cli> <config> <repo_dir> <state> <answer> — the mapping
 # of a raw prompt answer, kept out of the setups so it is testable (R4, R10):
 #   absent    + yes    → enable; any other answer, empty included → no write
-#   installed + remove → remove; any other answer, empty included → keep
+#   installed + remove → remove; any other answer, empty included → keep, then
+#                        rewrite every legacy command to the direct form
+# Every path that writes the direct form first meets the Node.js floor (spec 0243
+# R24, D3): below it the guard's diagnostic is printed, nothing is written and
+# the status is non-zero. `remove` never depends on Node.js.
 # Any other state is rejected (non-zero, nothing written).
 usage_capture_apply() {
   local cli="$1" config="$2" repo_dir="$3" state="$4" answer="$5"
@@ -698,6 +817,7 @@ usage_capture_apply() {
   case "$state" in
     absent)
       if [ "$answer" = "yes" ]; then
+        usage_capture_require_node_floor || return 1
         usage_capture_enable "$cli" "$config" "$repo_dir"
         return $?
       fi
@@ -709,7 +829,9 @@ usage_capture_apply() {
         usage_capture_remove "$cli" "$config"
         return $?
       fi
-      usage_capture_keep "$cli" "$config" "$repo_dir"
+      usage_capture_require_node_floor || return 1
+      usage_capture_keep "$cli" "$config" "$repo_dir" || return 1
+      usage_capture_rewrite "$cli" "$config" "$repo_dir"
       return $?
       ;;
     *)

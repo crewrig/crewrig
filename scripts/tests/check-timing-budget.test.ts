@@ -5,6 +5,8 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -15,6 +17,7 @@ import {
   measure,
   parseArgs,
   type Clock,
+  type RunExtras,
   type Runner,
 } from "../check-timing-budget.ts";
 
@@ -57,6 +60,129 @@ describe("parseArgs", () => {
   test("rejects a missing separator or budget", () => {
     assert.throws(() => parseArgs(["--runs", "2", "--budget-ms", "50"]), /missing '--/);
     assert.throws(() => parseArgs(["--runs", "2", "--", "a.js"]), /--budget-ms/);
+  });
+});
+
+describe("--stdin-file and --env-tmpdir", () => {
+  test("parseArgs reads both options and omits them when absent", () => {
+    const opts = parseArgs([
+      "--runs",
+      "1",
+      "--budget-ms",
+      "5",
+      "--stdin-file",
+      "in.json",
+      "--env-tmpdir",
+      "CREWRIG_USAGE_ROOT",
+      "--",
+      "a.js",
+    ]);
+    assert.equal(opts.stdinFile, "in.json");
+    assert.equal(opts.envTmpdir, "CREWRIG_USAGE_ROOT");
+    assert.equal("stdinFile" in parseArgs(BASE), false);
+  });
+
+  test("rejects an empty file name and a non-identifier variable name", () => {
+    assert.throws(
+      () => parseArgs(["--runs", "1", "--budget-ms", "5", "--stdin-file", "", "--", "a"]),
+      /needs a value/,
+    );
+    assert.throws(
+      () => parseArgs(["--runs", "1", "--budget-ms", "5", "--env-tmpdir", "A-B", "--", "a"]),
+      /environment variable name/,
+    );
+  });
+
+  test("every run gets the stdin bytes and a fresh empty directory, removed afterwards", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "timing-test-"));
+    try {
+      const stdinFile = path.join(tmp, "payload.json");
+      fs.writeFileSync(stdinFile, '{"a":1}');
+      const opts = parseArgs([
+        "--runs",
+        "3",
+        "--budget-ms",
+        "100",
+        "--stdin-file",
+        stdinFile,
+        "--env-tmpdir",
+        "USAGE_DIR",
+        "--",
+        "s.js",
+      ]);
+      const seen: string[] = [];
+      const run: Runner = (_argv, extras: RunExtras = {}) => {
+        assert.equal(extras.stdin?.toString("utf8"), '{"a":1}');
+        const dir = extras.env?.USAGE_DIR ?? "";
+        assert.ok(fs.statSync(dir).isDirectory());
+        assert.deepEqual(fs.readdirSync(dir), [], "the directory starts empty");
+        fs.writeFileSync(path.join(dir, "left-behind"), "x");
+        seen.push(dir);
+        return 0;
+      };
+      measure(opts, run, fakeClock([1, 1, 1]));
+      assert.equal(new Set(seen).size, 3, "a distinct directory per run");
+      for (const dir of seen) assert.equal(fs.existsSync(dir), false);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("the directory is removed when the runner throws", () => {
+    const opts = parseArgs(["--runs", "1", "--budget-ms", "5", "--env-tmpdir", "D", "--", "s.js"]);
+    let dir = "";
+    const run: Runner = (_argv, extras) => {
+      dir = extras?.env?.D ?? "";
+      throw new Error("boom");
+    };
+    assert.throws(() => measure(opts, run), /boom/);
+    assert.equal(fs.existsSync(dir), false);
+  });
+
+  test("without the options a run gets no extras", () => {
+    let got: RunExtras | undefined;
+    measure(parseArgs(BASE), (_argv, extras) => ((got = extras), 0), fakeClock([1, 1, 1]));
+    assert.deepEqual(got, {});
+  });
+
+  test("CLI end to end: the child reads stdin and sees an empty per-run directory", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "timing-e2e-"));
+    try {
+      const stdinFile = path.join(tmp, "in.txt");
+      fs.writeFileSync(stdinFile, "hello");
+      const child = path.join(tmp, "child.js");
+      fs.writeFileSync(
+        child,
+        [
+          "const fs = require('node:fs');",
+          "const dir = process.env.RUN_DIR;",
+          "const input = fs.readFileSync(0, 'utf8');",
+          "process.exit(input === 'hello' && dir && fs.readdirSync(dir).length === 0 ? 0 : 3);",
+        ].join("\n"),
+      );
+      const res = spawnSync(
+        process.execPath,
+        [
+          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+          HARNESS,
+          "--runs",
+          "2",
+          "--budget-ms",
+          "60000",
+          "--stdin-file",
+          stdinFile,
+          "--env-tmpdir",
+          "RUN_DIR",
+          "--",
+          child,
+        ],
+        { encoding: "utf8" },
+      );
+      assert.equal(res.status, 0, res.stderr);
+      assert.match(res.stdout, /child\.js within 60000 ms over 2 runs/);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
 

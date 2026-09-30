@@ -1,0 +1,167 @@
+[
+  {
+    "command": "bash \"/srv/co/crewrig/hooks/usage-capture.sh\" claude-code Stop",
+    "capture": true,
+    "note": "legacy form, double-quoted path"
+  },
+  {
+    "command": "node \"/srv/co/crewrig/hooks/usage-capture.ts\" claude-code Stop",
+    "capture": true,
+    "note": "direct form, double-quoted path"
+  },
+  {
+    "command": "bash /srv/co/crewrig/hooks/usage-capture.sh gemini-cli AfterModel",
+    "capture": true,
+    "note": "legacy Gemini form of origin/main, unquoted path"
+  },
+  {
+    "command": "node /srv/co/crewrig/hooks/usage-capture.ts gemini-cli AfterModel",
+    "capture": true,
+    "note": "direct form, unquoted path"
+  },
+  {
+    "command": "node C:/work/x/crewrig/hooks/usage-capture.ts copilot-cli agentStop",
+    "capture": true,
+    "note": "Windows drive path with forward slashes, unquoted"
+  },
+  {
+    "command": "node \"C:/work/x/My Projects/crewrig/hooks/usage-capture.ts\" copilot-cli sessionEnd",
+    "capture": true,
+    "note": "Windows drive path with a space, quoted"
+  },
+  {
+    "command": "node \"C:\\work\\x\\crewrig/hooks/usage-capture.ts\" claude-code SessionEnd",
+    "capture": true,
+    "note": "JSON-escaped backslashes before the hooks directory: only the /hooks/ segment matters"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 node \"/x/hooks/usage-capture.ts\" claude-code Stop",
+    "capture": true,
+    "note": "VAR=value prefix"
+  },
+  {
+    "command": "FOO=1 env bash '/x/hooks/usage-capture.sh' claude-code Stop",
+    "capture": true,
+    "note": "VAR=value, env and bash prefix; single-quoted path"
+  },
+  {
+    "command": "env A=1 bash \"/x/hooks/usage-capture.sh\" claude-code Stop",
+    "capture": false,
+    "note": "env followed by NAME=value is outside the R20 signature (spec 0243 delta-01, s4-F1)"
+  },
+  {
+    "command": "/bin/bash \"/x/hooks/usage-capture.sh\" claude-code Stop",
+    "capture": true,
+    "note": "interpreter given by path"
+  },
+  {
+    "command": "sh \"/x/hooks/usage-capture.sh\" copilot-cli agentStop",
+    "capture": true,
+    "note": "sh interpreter"
+  },
+  {
+    "command": "bash \"/x/hooks/usage-capture.sh\" claude-code Stop   ",
+    "capture": true,
+    "note": "trailing whitespace"
+  },
+  {
+    "command": "node \"/My Projects/x/hooks/usage-capture.ts\" claude-code SessionEnd",
+    "capture": true,
+    "note": "quoted path with a space"
+  },
+  {
+    "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh\" claude-code Stop",
+    "capture": true,
+    "note": "tokenised path of the committed manifest, legacy"
+  },
+  {
+    "command": "node \"${GEMINI_PROJECT_DIR}/hooks/usage-capture.ts\" gemini-cli AfterModel",
+    "capture": true,
+    "note": "tokenised path of the committed manifest, direct"
+  },
+  {
+    "command": "node \"/x/a\\\\b/hooks/usage-capture.ts\" claude-code Stop",
+    "capture": true,
+    "note": "a backslash inside a quoted path is still recognised; building a command for such a path is refused instead (v1-F1)"
+  },
+  {
+    "command": "node \"/opt/tools/usage-capture.ts\" other-tool Stop",
+    "capture": false,
+    "note": "look-alike: no /hooks/ directory and another tool's arguments"
+  },
+  {
+    "command": "node \"/opt/tools/hooks/usage-capture.ts\" other-tool Stop",
+    "capture": false,
+    "note": "look-alike: right script name, unknown CLI id"
+  },
+  {
+    "command": "bash /opt/prep.sh && bash /x/hooks/usage-capture.sh claude-code Stop",
+    "capture": false,
+    "note": "operator compound command ending in ours (#1174 N1)"
+  },
+  {
+    "command": "bash \"/x/hooks/usage-capture.sh\" claude-code Stop && echo done",
+    "capture": false,
+    "note": "operator compound command starting with ours"
+  },
+  {
+    "command": "bash \"/x/hooks/usage-capture.sh\" claude-code Stop; rm -rf /tmp/x",
+    "capture": false,
+    "note": "trailing command after a semicolon"
+  },
+  {
+    "command": "bash \"/x/hooks/usage-capture.sh\" claude-code Stop\nrm -rf /tmp/x",
+    "capture": false,
+    "note": "second line after ours"
+  },
+  {
+    "command": "bash \"/x/hooks/usage-capture.sh\" claude-code",
+    "capture": false,
+    "note": "event missing"
+  },
+  {
+    "command": "bash \"/x/hooks/usage-capture.sh\" claude-code Stop extra",
+    "capture": false,
+    "note": "an extra argument"
+  },
+  {
+    "command": "bash \"/x/hooks/my-usage-capture.sh\" claude-code Stop",
+    "capture": false,
+    "note": "another script whose name ends in ours"
+  },
+  {
+    "command": "node \"/x/hooks/usage-capture.mjs\" claude-code Stop",
+    "capture": false,
+    "note": "another extension"
+  },
+  {
+    "command": "python3 \"/x/hooks/usage-capture.ts\" claude-code Stop",
+    "capture": false,
+    "note": "another interpreter"
+  },
+  {
+    "command": "node --disable-warning=ExperimentalWarning \"/x/hooks/usage-capture.ts\" claude-code Stop",
+    "capture": false,
+    "note": "an interpreter flag is not part of the shape crewrig writes"
+  },
+  {
+    "command": "node C:\\work\\x\\crewrig\\hooks\\usage-capture.ts claude-code Stop",
+    "capture": false,
+    "note": "backslash separators are never written (row 37d)"
+  },
+  {
+    "command": "bash /My Projects/crewrig/hooks/usage-capture.sh gemini-cli AfterModel",
+    "capture": false,
+    "note": "legacy spaced Gemini form: capture only when the whole path exists, which a corpus row cannot state"
+  },
+  {
+    "command": "bash \"/x/hooks/mempalace-transcript.sh\"",
+    "capture": false,
+    "note": "a sibling hook of this framework"
+  },
+  {
+    "command": "usage-capture.ts claude-code Stop",
+    "capture": false,
+    "note": "bare relative script name"
+  }
+]

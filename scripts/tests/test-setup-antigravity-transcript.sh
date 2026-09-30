@@ -892,29 +892,114 @@ echo ""
 echo "§6 usage-capture statusline wiring (spec 0206, PLAN v3 step 18)"
 
 # The matching pair step 18 names for the Antigravity statusline channel:
-# statusLine.command is the in-repo absolute path, and no
-# antigravity-statusline-shim.sh is installed under ~/.gemini/antigravity-cli/
+# statusLine.command is `node "<in-repo absolute path>"` (spec 0243 R16), and no
+# antigravity-statusline-shim file is installed under ~/.gemini/antigravity-cli/
 # (the same "wired by in-repo absolute path, never copied" class as
-# usage-capture.sh itself — §4 above already covers the deployment-gate
-# style rigor for the transcript hooks; this section only needs to replay
-# the statusline install jq transform, structurally, the way §3/§4 of the
-# three sibling installer suites do for their own capture wiring).
-STATUSLINE_SRC="$REPO_DIR/hooks/antigravity-statusline-shim.sh"
+# usage-capture itself — §4 above already covers the deployment-gate
+# style rigor for the transcript hooks). The install and rewrite are the real
+# scripts/hook-wiring.ts calls scripts/setup-antigravity-interactive.sh makes
+# (spec 0243 R19, R23), not a replay of a jq transform.
+STATUSLINE_SRC="$REPO_DIR/hooks/antigravity-statusline-shim.ts"
+STATUSLINE_SH="$REPO_DIR/hooks/antigravity-statusline-shim.sh"
 [ -f "$STATUSLINE_SRC" ] || { echo "FATAL: missing $STATUSLINE_SRC" >&2; exit 2; }
+[ -f "$STATUSLINE_SH" ] || { echo "FATAL: missing $STATUSLINE_SH" >&2; exit 2; }
 STATUSLINE_ABS="$(cd "$(dirname "$STATUSLINE_SRC")" && pwd -P)/$(basename "$STATUSLINE_SRC")"
+STATUSLINE_SH_ABS="$(cd "$(dirname "$STATUSLINE_SH")" && pwd -P)/$(basename "$STATUSLINE_SH")"
+STATUSLINE_DIRECT="node \"$STATUSLINE_ABS\""
+agy_wiring() {
+  node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
+    "$REPO_DIR/scripts/hook-wiring.ts" "$@" --repo "$REPO_DIR"
+}
+file_mode_6() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1" 2>/dev/null; }
 
-# Replay of scripts/setup-antigravity-interactive.sh's own "enable" branch
-# jq transform (the value was previously empty, R20's precondition).
+# The "enable" branch: the value was previously empty (R20's precondition).
 AGY_SETTINGS="$TMP_ROOT/antigravity-cli-settings.json"
-echo '{}' > "$AGY_SETTINGS"
-jq --arg cmd "$STATUSLINE_ABS" '.statusLine = ((.statusLine // {}) + {command: $cmd})' \
-  "$AGY_SETTINGS" > "${AGY_SETTINGS}.tmp" && mv "${AGY_SETTINGS}.tmp" "$AGY_SETTINGS"
+AGY_MARKER="$TMP_ROOT/antigravity-statusline-marker.json"
+echo '{"theme":"dark"}' > "$AGY_SETTINGS"
+agy_wiring statusline install --settings "$AGY_SETTINGS" --marker "$AGY_MARKER" >/dev/null 2>&1
+rc=$?
 
 installed_cmd="$(jq -r '.statusLine.command // ""' "$AGY_SETTINGS" 2>/dev/null)"
-if [ "$installed_cmd" = "$STATUSLINE_ABS" ]; then
-  ok "statusLine.command is wired to the in-repo absolute path of antigravity-statusline-shim.sh"
+if [ "$rc" -eq 0 ] && [ "$installed_cmd" = "$STATUSLINE_DIRECT" ] \
+   && [ "$(jq -r '.installedStatusLineCommand' "$AGY_MARKER")" = "$STATUSLINE_DIRECT" ] \
+   && [ "$(jq -r '.priorStatusLineCommand' "$AGY_MARKER")" = "" ] \
+   && [ "$(jq -r '.theme' "$AGY_SETTINGS")" = "dark" ]; then
+  ok "statusLine.command is wired to the direct node form of antigravity-statusline-shim.ts, marker and other keys recorded"
 else
-  bad "statusLine.command wiring malformed (got: $installed_cmd, want: $STATUSLINE_ABS)"
+  bad "statusLine.command wiring malformed (rc=$rc, got: $installed_cmd, want: $STATUSLINE_DIRECT)"
+fi
+if [ "$(file_mode_6 "$AGY_SETTINGS")" = "600" ] && [ "$(file_mode_6 "$AGY_MARKER")" = "600" ]; then
+  ok "the install leaves settings.json and the marker at 0600"
+else
+  bad "the install left modes $(file_mode_6 "$AGY_SETTINGS")/$(file_mode_6 "$AGY_MARKER"), want 600/600"
+fi
+echo '{"statusLine":{"command":"echo prior"}}' > "$TMP_ROOT/agy-foreign.json"
+agy_wiring statusline install --settings "$TMP_ROOT/agy-foreign.json" --marker "$TMP_ROOT/agy-foreign-marker.json" >/dev/null 2>&1
+if [ $? -ne 0 ] && [ "$(jq -r '.statusLine.command' "$TMP_ROOT/agy-foreign.json")" = "echo prior" ] && [ ! -e "$TMP_ROOT/agy-foreign-marker.json" ]; then
+  ok "install refuses a statusLine.command this framework did not install and writes nothing (R20)"
+else
+  bad "install touched a foreign statusLine.command"
+fi
+
+# Rewrite of an installation made by the previous release (bare .sh path), and
+# the crash states of the D5 write order (v1-F6): (a) marker, (b) settings,
+# (c) marker again.
+rewrite_case() {
+  local label="$1" settings_cmd="$2" marker_json="$3" want_marker_prev="$4"
+  echo "{\"statusLine\":{\"command\":$(jq -n --arg c "$settings_cmd" '$c')},\"keep\":1}" > "$AGY_SETTINGS"
+  printf '%s\n' "$marker_json" > "$AGY_MARKER"
+  agy_wiring statusline rewrite --settings "$AGY_SETTINGS" --marker "$AGY_MARKER" >/dev/null 2>&1
+  local rc=$?
+  if [ "$rc" -eq 0 ] && [ "$(jq -r '.statusLine.command' "$AGY_SETTINGS")" = "$STATUSLINE_DIRECT" ] \
+     && [ "$(jq -r '.installedStatusLineCommand' "$AGY_MARKER")" = "$STATUSLINE_DIRECT" ] \
+     && [ "$(jq -r 'has("previousInstalledStatusLineCommand")' "$AGY_MARKER")" = "$want_marker_prev" ] \
+     && [ "$(jq -r '.keep' "$AGY_SETTINGS")" = "1" ]; then
+    ok "$label"
+  else
+    bad "$label (rc=$rc, settings=$(jq -c . "$AGY_SETTINGS"), marker=$(jq -c . "$AGY_MARKER"))"
+  fi
+}
+LEGACY_MARKER="$(jq -nc --arg c "$STATUSLINE_SH_ABS" '{priorStatusLineCommand:"echo prior", installedStatusLineCommand:$c, installedBy:"t"}')"
+rewrite_case "rewrite: a bare .sh statusLine.command becomes the direct form; the marker follows without a transitional key" \
+  "$STATUSLINE_SH_ABS" "$LEGACY_MARKER" false
+if [ "$(jq -r '.priorStatusLineCommand' "$AGY_MARKER")" = "echo prior" ]; then
+  ok "rewrite keeps the recorded prior status-line command"
+else
+  bad "rewrite lost priorStatusLineCommand"
+fi
+cp "$AGY_SETTINGS" "$AGY_SETTINGS.done"; cp "$AGY_MARKER" "$AGY_MARKER.done"
+agy_wiring statusline rewrite --settings "$AGY_SETTINGS" --marker "$AGY_MARKER" >/dev/null 2>&1
+if cmp -s "$AGY_SETTINGS" "$AGY_SETTINGS.done" && cmp -s "$AGY_MARKER" "$AGY_MARKER.done"; then
+  ok "a second rewrite writes nothing"
+else
+  bad "a second rewrite changed a file"
+fi
+AFTER_A="$(jq -nc --arg n "$STATUSLINE_DIRECT" --arg o "$STATUSLINE_SH_ABS" \
+  '{priorStatusLineCommand:"", installedStatusLineCommand:$n, previousInstalledStatusLineCommand:$o, installedBy:"t"}')"
+rewrite_case "crash after write (a): settings still hold the old command, the marker names both; the next run completes the rewrite" \
+  "$STATUSLINE_SH_ABS" "$AFTER_A" false
+rewrite_case "crash after write (b): settings already hold the new command; the next run drops the transitional key" \
+  "$STATUSLINE_DIRECT" "$AFTER_A" false
+FOREIGN_MARKER="$(jq -nc --arg c "$STATUSLINE_SH_ABS" '{priorStatusLineCommand:"", installedStatusLineCommand:$c, installedBy:"t"}')"
+echo '{"statusLine":{"command":"echo foreign"}}' > "$AGY_SETTINGS"
+printf '%s\n' "$FOREIGN_MARKER" > "$AGY_MARKER"
+cp "$AGY_SETTINGS" "$AGY_SETTINGS.orig"
+agy_wiring statusline rewrite --settings "$AGY_SETTINGS" --marker "$AGY_MARKER" >/dev/null 2>&1
+if cmp -s "$AGY_SETTINGS" "$AGY_SETTINGS.orig"; then
+  ok "rewrite leaves a statusLine.command that is neither recorded value untouched"
+else
+  bad "rewrite changed a foreign statusLine.command"
+fi
+# Structural: the setup recognises both recorded values, and removes without Node.js.
+if grep -q 'previousInstalledStatusLineCommand' "$SETUP" && grep -q 'PREVIOUS_INSTALLED_CMD' "$SETUP"; then
+  ok "setup-antigravity recognises the transitional previousInstalledStatusLineCommand as the framework's (v1-F6)"
+else
+  bad "setup-antigravity does not recognise previousInstalledStatusLineCommand"
+fi
+if grep -q 'write_json_config_secure "$AGY_SETTINGS"' "$SETUP" && ! grep -qE 'AGY_SETTINGS.*\.tmp' "$SETUP"; then
+  ok "setup-antigravity removes the statusline through the 0600 atomic writer, with no jq > .tmp && mv left"
+else
+  bad "setup-antigravity still writes settings.json through a jq > .tmp && mv block"
 fi
 
 # usage-capture.sh's own sibling class: never install_file'd, and none
@@ -939,13 +1024,18 @@ USAGE_ROOT_7="$TMP_ROOT/usage-state-7"
 mkdir -p "$USAGE_ROOT_7/state"
 STATE_MARKER_7="$USAGE_ROOT_7/state/antigravity-statusline.json"
 
-TEST_CLI_JS="$TMP_ROOT/test-cli.js"
-cat > "$TEST_CLI_JS" <<'EOF'
+# Test-only capture override (spec 0243 R9): with CREWRIG_USAGE_CAPTURE_TEST set,
+# the shim runs this script as a separate node process with
+# `--cli <cli> --event <event> --payload-file <file>`. The retired
+# scripts/lib/usage-capture/cli.js used to be the default target of that contract;
+# this stub stands in for it and records the staged payload.
+CAPTURE_OVERRIDE_SCRIPT="$TMP_ROOT/capture-override.js"
+cat > "$CAPTURE_OVERRIDE_SCRIPT" <<'EOF'
 const fs = require('fs');
 const file = process.argv[process.argv.indexOf('--payload-file') + 1];
 fs.writeFileSync(process.env.MOCK_PAYLOAD_OUT, fs.readFileSync(file));
 EOF
-chmod +x "$TEST_CLI_JS"
+chmod +x "$CAPTURE_OVERRIDE_SCRIPT"
 
 MOCK_PAYLOAD_OUT="$TMP_ROOT/payload-7.out"
 
@@ -953,47 +1043,47 @@ run_shim_7() {
   rm -f "$MOCK_PAYLOAD_OUT"
   CREWRIG_USAGE_ROOT="$USAGE_ROOT_7" \
   CREWRIG_USAGE_CAPTURE_TEST=1 \
-  CREWRIG_USAGE_CAPTURE_CLI="$TEST_CLI_JS" \
+  CREWRIG_USAGE_CAPTURE_CLI="$CAPTURE_OVERRIDE_SCRIPT" \
   MOCK_PAYLOAD_OUT="$MOCK_PAYLOAD_OUT" \
-    bash "$STATUSLINE_SRC"
+    bash "$STATUSLINE_SH"
 }
 
-# Case A: Missing state marker file -> stdout empty, exit 0, cli.js called
+# Case A: Missing state marker file -> stdout empty, exit 0, capture override script ran
 rm -f "$STATE_MARKER_7"
 SHIM_OUT="$(printf '{"turn":1}' | run_shim_7)"
 SHIM_STATUS=$?
 if [ $SHIM_STATUS -eq 0 ] && [ -z "$SHIM_OUT" ] && [ "$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)" = '{"turn":1}' ]; then
-  ok "Case A: missing marker file emits nothing on stdout, exits 0, executes cli.js"
+  ok "Case A: missing marker file emits nothing on stdout, exits 0, runs the capture override script"
 else
   bad "Case A failed: exit=$SHIM_STATUS out='$SHIM_OUT' payload='$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)'"
 fi
 
-# Case B: Configured priorStatusLineCommand -> stdin piped to prior cmd, stdout reproduced, exits 0, cli.js called
+# Case B: Configured priorStatusLineCommand -> stdin piped to prior cmd, stdout reproduced, exits 0, capture override script ran
 echo '{"priorStatusLineCommand":"cat | sed s/turn/epoch/"}' > "$STATE_MARKER_7"
 SHIM_OUT="$(printf '{"turn":1}' | run_shim_7)"
 SHIM_STATUS=$?
 if [ $SHIM_STATUS -eq 0 ] && [ "$SHIM_OUT" = '{"epoch":1}' ] && [ "$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)" = '{"turn":1}' ]; then
-  ok "Case B: configured command receives payload and emits output, exits 0, executes cli.js"
+  ok "Case B: configured command receives payload and emits output, exits 0, runs the capture override script"
 else
   bad "Case B failed: exit=$SHIM_STATUS out='$SHIM_OUT' payload='$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)'"
 fi
 
-# Case C: Failing priorStatusLineCommand -> shim exits 0, cli.js called
+# Case C: Failing priorStatusLineCommand -> shim exits 0, capture override script ran
 echo '{"priorStatusLineCommand":"cat >/dev/null; exit 7"}' > "$STATE_MARKER_7"
 SHIM_OUT="$(printf '{"turn":1}' | run_shim_7)"
 SHIM_STATUS=$?
 if [ $SHIM_STATUS -eq 0 ] && [ "$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)" = '{"turn":1}' ]; then
-  ok "Case C: failing prior command does not fail shim (exits 0), executes cli.js"
+  ok "Case C: failing prior command does not fail shim (exits 0), runs the capture override script"
 else
   bad "Case C failed: exit=$SHIM_STATUS payload='$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)'"
 fi
 
-# Case D: Empty string priorStatusLineCommand -> stdout empty, exit 0, cli.js called
+# Case D: Empty string priorStatusLineCommand -> stdout empty, exit 0, capture override script ran
 echo '{"priorStatusLineCommand":""}' > "$STATE_MARKER_7"
 SHIM_OUT="$(printf '{"turn":1}' | run_shim_7)"
 SHIM_STATUS=$?
 if [ $SHIM_STATUS -eq 0 ] && [ -z "$SHIM_OUT" ] && [ "$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)" = '{"turn":1}' ]; then
-  ok "Case D: empty string prior command emits nothing on stdout, exits 0, executes cli.js"
+  ok "Case D: empty string prior command emits nothing on stdout, exits 0, runs the capture override script"
 else
   bad "Case D failed: exit=$SHIM_STATUS out='$SHIM_OUT' payload='$(cat "$MOCK_PAYLOAD_OUT" 2>/dev/null)'"
 fi

@@ -1,7 +1,8 @@
 // check-timing-budget.ts — reusable timing-assertion harness (spec 0240 R13-R14).
 //
 // Usage:
-//   node scripts/check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>] -- <node argv…>
+//   node scripts/check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>]
+//        [--stdin-file <path>] [--env-tmpdir <NAME>] -- <node argv…>
 //
 // Runs `node <node argv…>` N times with the current Node.js binary, timing each
 // run from spawn to exit with `performance.now()`, so Node.js start-up is
@@ -10,6 +11,12 @@
 // and the harness exits 1. A run whose exit code differs from --expect-exit
 // (default 0) also fails the check. On success it prints min / median / max.
 //
+// --stdin-file <path> feeds that file's bytes to every run's standard input
+// (default: no stdin), read once before the first run so file I/O is never timed.
+// --env-tmpdir <NAME> gives every run a fresh, empty temporary directory
+// exported to the child as $NAME and removed afterwards (spec 0243 R15: a hook
+// that writes a record must start from an empty usage root each time).
+//
 // The budget lives in each CI job's own command line, not in a manifest, so a
 // later sub-spec copies the job and states its own budget next to its script.
 // Standard library only (spec 0240 R16). Exit codes: 0 pass, 1 budget or exit
@@ -17,6 +24,8 @@
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
 
@@ -25,6 +34,14 @@ export interface Options {
   budgetMs: number;
   expectExit: number;
   argv: string[];
+  stdinFile?: string;
+  envTmpdir?: string;
+}
+
+/** What a run receives beyond its argv: stdin bytes and extra environment. */
+export interface RunExtras {
+  stdin?: Buffer;
+  env?: Record<string, string>;
 }
 
 export interface RunResult {
@@ -33,7 +50,7 @@ export interface RunResult {
 }
 
 /** Spawns one run and returns its exit status; injectable for tests. */
-export type Runner = (argv: readonly string[]) => number | null;
+export type Runner = (argv: readonly string[], extras?: RunExtras) => number | null;
 /** Returns a monotonic timestamp in milliseconds; injectable for tests. */
 export type Clock = () => number;
 
@@ -47,6 +64,11 @@ function positiveInt(flag: string, raw: string | undefined): number {
   return value;
 }
 
+function nonEmpty(flag: string, raw: string | undefined): string {
+  if (raw === undefined || raw === "") throw new UsageError(`${flag} needs a value`);
+  return raw;
+}
+
 /** Parse the command line (without `node` and the script path). */
 export function parseArgs(args: readonly string[]): Options {
   const sep = args.indexOf("--");
@@ -57,22 +79,41 @@ export function parseArgs(args: readonly string[]): Options {
   let runs: number | undefined;
   let budgetMs: number | undefined;
   let expectExit = 0;
+  let stdinFile: string | undefined;
+  let envTmpdir: string | undefined;
   for (let i = 0; i < flags.length; i += 2) {
     const flag = flags[i];
     const value = flags[i + 1];
     if (flag === "--runs") runs = positiveInt(flag, value);
     else if (flag === "--budget-ms") budgetMs = positiveInt(flag, value);
     else if (flag === "--expect-exit") expectExit = positiveInt(flag, value);
-    else throw new UsageError(`unknown option '${flag ?? ""}'`);
+    else if (flag === "--stdin-file") stdinFile = nonEmpty(flag, value);
+    else if (flag === "--env-tmpdir") {
+      envTmpdir = nonEmpty(flag, value);
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(envTmpdir)) {
+        throw new UsageError(`--env-tmpdir needs an environment variable name, got '${envTmpdir}'`);
+      }
+    } else throw new UsageError(`unknown option '${flag ?? ""}'`);
   }
   if (runs === undefined || runs < 1) throw new UsageError("--runs <N> (N >= 1) is required");
   if (budgetMs === undefined) throw new UsageError("--budget-ms <M> is required");
-  return { runs, budgetMs, expectExit, argv: args.slice(sep + 1) };
+  return {
+    runs,
+    budgetMs,
+    expectExit,
+    argv: args.slice(sep + 1),
+    ...(stdinFile === undefined ? {} : { stdinFile }),
+    ...(envTmpdir === undefined ? {} : { envTmpdir }),
+  };
 }
 
 /** The default runner: the current Node.js binary, output discarded. */
-export const spawnNode: Runner = (argv) =>
-  spawnSync(process.execPath, argv, { stdio: "ignore" }).status;
+export const spawnNode: Runner = (argv, extras = {}) =>
+  spawnSync(process.execPath, argv, {
+    stdio: [extras.stdin === undefined ? "ignore" : "pipe", "ignore", "ignore"],
+    ...(extras.stdin === undefined ? {} : { input: extras.stdin }),
+    ...(extras.env === undefined ? {} : { env: { ...process.env, ...extras.env } }),
+  }).status;
 
 /** Time `opts.runs` runs of `opts.argv`. */
 export function measure(
@@ -81,10 +122,26 @@ export function measure(
   clock: Clock = performance.now.bind(performance),
 ): RunResult[] {
   const results: RunResult[] = [];
+  const stdin = opts.stdinFile === undefined ? undefined : fs.readFileSync(opts.stdinFile);
   for (let i = 0; i < opts.runs; i++) {
-    const start = clock();
-    const status = run(opts.argv);
-    results.push({ ms: clock() - start, status });
+    // Set-up and clean-up of the per-run directory stay outside the timed span.
+    const dir =
+      opts.envTmpdir === undefined
+        ? undefined
+        : fs.mkdtempSync(path.join(os.tmpdir(), "timing-budget-"));
+    const extras: RunExtras = {
+      ...(stdin === undefined ? {} : { stdin }),
+      ...(dir === undefined || opts.envTmpdir === undefined
+        ? {}
+        : { env: { [opts.envTmpdir]: dir } }),
+    };
+    try {
+      const start = clock();
+      const status = run(opts.argv, extras);
+      results.push({ ms: clock() - start, status });
+    } finally {
+      if (dir !== undefined) fs.rmSync(dir, { recursive: true, force: true });
+    }
   }
   return results;
 }
@@ -134,7 +191,7 @@ export function main(args: readonly string[], run?: Runner, clock?: Clock): numb
   } catch (error) {
     if (!(error instanceof UsageError)) throw error;
     process.stderr.write(
-      `timing-budget: ${error.message}\nusage: check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>] -- <node argv…>\n`,
+      `timing-budget: ${error.message}\nusage: check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>] [--stdin-file <path>] [--env-tmpdir <NAME>] -- <node argv…>\n`,
     );
     return 2;
   }

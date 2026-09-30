@@ -59,10 +59,14 @@ while IFS= read -r hit; do
       failures=$((failures + 1))
     fi
   done < <(printf '%s\n' "$content" | grep -oE "$PATTERN")
+# The third exclusion is file-scoped: a merged, immutable delta-spec whose
+# scenario uses an example Windows checkout path (C:/Users/ana/crewrig); owner
+# decision on #1326, pending a spec 0081 decision on example Windows paths in specs.
 done < <(git -C "$REPO_DIR" grep -nE "$PATTERN" -- \
            . \
            ':(exclude)scripts/check-no-machine-paths.sh' \
-           ':(exclude)scripts/tests/test-check-no-machine-paths.sh' || true)
+           ':(exclude)scripts/tests/test-check-no-machine-paths.sh' \
+           ':(exclude)specs/0243-usage-capture-hooks-typescript.delta-02.md' || true)
 
 if [ "$failures" -gt 0 ]; then
   echo "" >&2

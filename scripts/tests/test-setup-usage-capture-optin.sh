@@ -86,6 +86,8 @@ CLIS="claude gemini copilot"
 
 for f in "$COMMON_LIB" "$OPTIN_LIB" "$CLAUDE_SESSION_FIXTURE" "$GEMINI_TEMPLATE" \
          "$REPO_DIR/hooks/usage-capture.sh" \
+         "$REPO_DIR/hooks/usage-capture.ts" \
+         "$REPO_DIR/scripts/hook-wiring.ts" \
          "$REPO_DIR/hooks/claude-usage-capture-hooks.json" \
          "$REPO_DIR/hooks/gemini-usage-capture-hooks.json" \
          "$REPO_DIR/hooks/copilot-usage-capture-hooks.json"; do
@@ -121,7 +123,10 @@ fail=0
 ok()  { echo "  ok: $1"; pass=$((pass + 1)); }
 bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 
-CAPTURE_ABS="$(cd "$REPO_DIR/hooks" && pwd -P)/usage-capture.sh"
+# CAPTURE_ABS is the direct entry the opt-in registers (spec 0243); the legacy
+# shell script path is CAPTURE_SH_ABS, the form the coupled fixtures carry.
+CAPTURE_ABS="$(cd "$REPO_DIR/hooks" && pwd -P)/usage-capture.ts"
+CAPTURE_SH_ABS="$(cd "$REPO_DIR/hooks" && pwd -P)/usage-capture.sh"
 GUARD_ABS="$(cd "$REPO_DIR/hooks" && pwd -P)/worktree-git-guard.sh"
 
 # --- per-CLI tables (bash 3.2: no associative arrays) ------------------------
@@ -140,9 +145,14 @@ cli_tag() {
   esac
 }
 # expected_cmd <cli> <event> <script path> — the exact command the opt-in
-# writes: `bash "<path>" <cli-id> <Event>` on every CLI (contract C4).
+# writes: `node "<path>" <cli-id> <Event>` for the direct `.ts` entry on every
+# CLI (spec 0243 R16), and the legacy `bash "<path>" <cli-id> <Event>` for a
+# `.sh` path (contract C4), which the opt-in keeps recognising and rewriting.
 expected_cmd() {
-  printf 'bash "%s" %s %s' "$3" "$(cli_tag "$1")" "$2"
+  case "$3" in
+    *.ts) printf 'node "%s" %s %s' "$3" "$(cli_tag "$1")" "$2" ;;
+    *)    printf 'bash "%s" %s %s' "$3" "$(cli_tag "$1")" "$2" ;;
+  esac
 }
 # legacy_cmd <cli> <event> <script path> — the command the coupled deployment
 # wrote (e344e54, origin/main). It is the same except for Gemini's unquoted
@@ -194,7 +204,7 @@ def legacy_path:
   .command | capture("\\Abash (?<p>/[^\\x00-\\x1f\\x7f\"\\x27;&|<>()$`\\\\*?\\[\\]{}#~]*/hooks/usage-capture\\.sh) gemini-cli AfterModel\\z") | .p;
 def is_c1:
   is_cmd
-  and (.command | test("\\A\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh)\\s+)?(?:\"[^\"]*/hooks/usage-capture\\.sh\"|\\x27[^\\x27]*/hooks/usage-capture\\.sh\\x27|[^\\s\"\\x27]*/hooks/usage-capture\\.sh)\\s+(?:claude-code|gemini-cli|copilot-cli)\\s+[A-Za-z]+\\s*\\z"));
+  and (.command | test("\\A\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh|node)\\s+)?(?:\"[^\"]*/hooks/usage-capture\\.(?:sh|ts)\"|\\x27[^\\x27]*/hooks/usage-capture\\.(?:sh|ts)\\x27|[^\\s\"\\x27]*/hooks/usage-capture\\.(?:sh|ts))\\s+(?:claude-code|gemini-cli|copilot-cli)\\s+[A-Za-z]+\\s*\\z"));
 def is_capture:
   is_c1
   or (is_cmd and ([legacy_path] | any(.[]; . as $p | any(($ARGS.named.legacy_ok // [])[]; . == $p))));
@@ -237,6 +247,7 @@ def noncapture_view:
 noncapture_view() { jq -cS --argjson legacy_ok "$(oracle_legacy_ok "$1")" "$JQ_DEFS"'noncapture_view' "$1" 2>/dev/null; }
 json_eq() { [ "$(jq -cS . "$1" 2>/dev/null)" = "$(jq -cS . "$2" 2>/dev/null)" ] && [ -n "$(jq -cS . "$1" 2>/dev/null)" ]; }
 has_backup() { compgen -G "$1.bak.*" >/dev/null; }
+backup_count() { compgen -G "$1.bak.*" 2>/dev/null | wc -l | tr -d ' '; }
 sorted_words() { printf '%s\n' $1 | sort | tr '\n' ' ' | sed 's/ $//'; }
 
 # file_mode <file> — portable: GNU `stat -c %a`, else BSD `stat -f %Lp`.
@@ -251,7 +262,7 @@ file_mode() {
 
 # materialize <fixture> <dest> [capture path] — substitute the placeholders.
 materialize() {
-  local name="$1" dest="$2" cap="${3:-$CAPTURE_ABS}" cli="${1%%-*}"
+  local name="$1" dest="$2" cap="${3:-$CAPTURE_SH_ABS}" cli="${1%%-*}"
   mkdir -p "$(dirname "$dest")"
   jq --arg c "$cap" --arg h "$HOME/.$cli/hooks/mempalace-transcript.sh" --arg g "$GUARD_ABS" \
     'walk(if type == "string"
@@ -353,20 +364,21 @@ for cli in $CLIS; do
   coupled="$TMP_ROOT/coupled-$cli.json"
   materialize "$cli-coupled.json" "$coupled"
   for ev in $(cli_events "$cli"); do
-    # The coupled command with its bare path double-quoted: a no-op on Claude
-    # and Copilot, whose coupled path was already quoted.
-    want="$(capture_cmds "$coupled" "$ev" | sed -E 's#^bash ([^ "]*/hooks/usage-capture\.sh) #bash "\1" #')"
-    if [ -n "$want" ] && [ "$(capture_cmds "$frag_out" "$ev")" = "$want" ] \
-       && [ "$want" = "$(expected_cmd "$cli" "$ev" "$CAPTURE_ABS")" ]; then
-      ok "$cli '$ev' substituted fragment command is the coupled deployment's, path double-quoted"
+    # The coupled command's `<cli-id> <Event>` arguments, which the direct form
+    # keeps verbatim (spec 0243 R16, R26): only the interpreter and the script
+    # path change.
+    want="$(capture_cmds "$coupled" "$ev" | sed -E 's#^bash "?[^ "]*/hooks/usage-capture\.sh"? ##')"
+    if [ -n "$want" ] && [ "$(capture_cmds "$frag_out" "$ev")" = "$(expected_cmd "$cli" "$ev" "$CAPTURE_ABS")" ] \
+       && [ "$(capture_cmds "$frag_out" "$ev")" = "node \"$CAPTURE_ABS\" $want" ]; then
+      ok "$cli '$ev' substituted fragment command is the direct node form, with the coupled deployment's arguments"
     else
-      bad "$cli '$ev' fragment command '$(capture_cmds "$frag_out" "$ev")' != '$want'"
+      bad "$cli '$ev' fragment command '$(capture_cmds "$frag_out" "$ev")' != 'node \"$CAPTURE_ABS\" $want'"
     fi
   done
   if [ "$cli" = "gemini" ]; then
     # The fixture must keep the origin/main (unquoted) form: it is what the
     # migration detection of (e), (g) and (j) is exercised against.
-    if [ "$(capture_cmds "$coupled" AfterModel)" = "$(legacy_cmd gemini AfterModel "$CAPTURE_ABS")" ]; then
+    if [ "$(capture_cmds "$coupled" AfterModel)" = "$(legacy_cmd gemini AfterModel "$CAPTURE_SH_ABS")" ]; then
       ok "gemini-coupled.json still carries the legacy unquoted capture command"
     else
       bad "gemini-coupled.json capture command is '$(capture_cmds "$coupled" AfterModel)' (want the legacy unquoted form)"
@@ -517,7 +529,7 @@ for cli in $CLIS; do
   patched_manifest "$cli" "$patched"
   # Capture-only install whose command names another checkout's script: the
   # merge must neither drop, duplicate nor re-point it.
-  other="$TMP_ROOT/d/other-checkout/hooks/usage-capture.sh"
+  other="$TMP_ROOT/d/other-checkout/hooks/usage-capture.ts"
   cfg="$TMP_ROOT/d/$cli/config.json"
   mkdir -p "$(dirname "$cfg")"
   jq --arg from "$CAPTURE_ABS" --arg to "$other" \
@@ -654,21 +666,46 @@ for cli in $CLIS; do
   else
     bad "(e) $cli coupled install is state '$state'"
   fi
+  # keep now also brings a legacy command to the direct form (spec 0243 R19):
+  # the first run rewrites it (backup first) and changes nothing else; the
+  # second run and an explicit keep are byte-identical with no new backup (R22).
   rc1=0; rc2=0
   out="$(usage_capture_apply "$cli" "$cfg" "$REPO_DIR" installed "" 2>&1)" || rc1=$?
+  cp "$cfg" "$cfg.after1"
+  nb1="$(backup_count "$cfg")"
   usage_capture_apply "$cli" "$cfg" "$REPO_DIR" installed "" >/dev/null 2>&1 || rc2=$?
-  if [ "$rc1" -eq 0 ] && [ "$rc2" -eq 0 ] && cmp -s "$cfg" "$cfg.orig" && ! has_backup "$cfg"; then
-    ok "(e) $cli empty answer twice = keep: byte-identical, no backup"
+  if [ "$rc1" -eq 0 ] && [ "$rc2" -eq 0 ] && cmp -s "$cfg" "$cfg.after1" && [ "$nb1" = "1" ] \
+     && [ "$(backup_count "$cfg")" = "1" ]; then
+    ok "(e) $cli empty answer = keep: rewritten once (one backup), the second run byte-identical, no new backup"
   else
-    bad "(e) $cli empty answer rc=$rc1/$rc2, file changed or backed up"
+    bad "(e) $cli empty answer rc=$rc1/$rc2, backups=$nb1/$(backup_count "$cfg"), second run changed the file"
+  fi
+  if [ "$(noncapture_view "$cfg")" = "$(noncapture_view "$cfg.orig")" ]; then
+    ok "(e) $cli keep leaves every non-capture entry as it was"
+  else
+    bad "(e) $cli keep changed a non-capture entry"
+  fi
+  rw_ok=1
+  for ev in $(cli_events "$cli"); do
+    [ "$(capture_cmds "$cfg" "$ev")" = "$(expected_cmd "$cli" "$ev" "$CAPTURE_ABS")" ] || rw_ok=0
+  done
+  if [ "$rw_ok" -eq 1 ]; then
+    ok "(e) $cli keep rewrote every legacy capture command to the direct form, same events and arguments (R19)"
+  else
+    bad "(e) $cli keep did not rewrite to the direct form: $(capture_cmds "$cfg" "$(cli_events "$cli" | awk '{print $1}')")"
   fi
   if [[ "$out" == *re-pointed* ]]; then
     bad "(e) $cli keep reported a re-point on a path that resolves"
   else
     ok "(e) $cli keep reports no re-point on a path that resolves"
   fi
+  if [[ "$out" == *"rewrote"* ]]; then
+    ok "(e) $cli keep reports the rewrite by name and count (R26)"
+  else
+    bad "(e) $cli keep printed no rewrite report: $out"
+  fi
   usage_capture_apply "$cli" "$cfg" "$REPO_DIR" installed "keep" >/dev/null 2>&1
-  if cmp -s "$cfg" "$cfg.orig"; then ok "(e) $cli explicit keep is byte-identical"; else bad "(e) $cli explicit keep changed the file"; fi
+  if cmp -s "$cfg" "$cfg.after1" && [ "$(backup_count "$cfg")" = "1" ]; then ok "(e) $cli explicit keep is byte-identical"; else bad "(e) $cli explicit keep changed the file"; fi
 
   # R11 "exactly once": a duplicated capture handler is collapsed by keep.
   dup="$TMP_ROOT/e/$cli-dup/config.json"
@@ -693,6 +730,7 @@ WT_MAIN="$TMP_ROOT/wt/main"
 WT_LINKED="$TMP_ROOT/wt/linked"
 mkdir -p "$WT_MAIN/hooks"
 printf '#!/bin/bash\nexit 0\n' > "$WT_MAIN/hooks/usage-capture.sh"
+printf '// stub\n' > "$WT_MAIN/hooks/usage-capture.ts"
 cp "$REPO_DIR"/hooks/*-usage-capture-hooks.json "$WT_MAIN/hooks/"
 if git -C "$WT_MAIN" init -q 2>/dev/null \
    && git -C "$WT_MAIN" add hooks \
@@ -727,7 +765,9 @@ for cli in $CLIS; do
   else
     bad "(f) $cli keep rc=$rc did not report a re-point (out: $out)"
   fi
-  assert_capture_once_at "(f) after re-point" "$cli" "$cfg" "$CAPTURE_ABS"
+  # keep is form-preserving: a vanished `.sh` goes to the current checkout's `.sh`
+  # (the rewrite to the direct form is a separate step, spec 0243 R22).
+  assert_capture_once_at "(f) after re-point" "$cli" "$cfg" "$CAPTURE_SH_ABS"
   if [ "$(noncapture_view "$cfg")" = "$(noncapture_view "$cfg.orig")" ]; then
     ok "(f) $cli the re-point changed no other entry"
   else
@@ -875,7 +915,7 @@ else
   bad "(j) reinject rc=$rc, state '$(usage_capture_state gemini "$cfg" 2>/dev/null)'"
 fi
 # The carried-over entry is the coupled one, verbatim: still unquoted.
-assert_capture_once_at "(j)" gemini "$cfg" "$CAPTURE_ABS" legacy
+assert_capture_once_at "(j)" gemini "$cfg" "$CAPTURE_SH_ABS" legacy
 if [ "$(jq -cS 'del(.hooks)' "$cfg" 2>/dev/null)" = "$(jq -cS 'del(.hooks)' "$GEMINI_TEMPLATE")" ]; then
   ok "(j) reinject changed nothing but the capture entry"
 else
@@ -1047,7 +1087,6 @@ add_cmds() {
   esac
   jq --arg ev "$ev" --argjson a "$arr" "$prog" "$file" > "$file.t" && mv "$file.t" "$file"
 }
-backup_count() { compgen -G "$1.bak.*" 2>/dev/null | wc -l | tr -d ' '; }
 empty_groups() { jqo "$1" '[.hooks // {} | .[]? | .[]? | select(type == "object" and (.hooks | type) == "array" and (.hooks | length) == 0)] | length'; }
 OLD_STAMP="20200101-000000"
 
@@ -1269,8 +1308,8 @@ for cli in $CLIS; do
   materialize "$cli-coupled.json" "$cfg"
   n="$(usage_capture_footprint "$cli" "$cfg" 2>/dev/null | jq 'length' 2>/dev/null)"
   paths="$(usage_capture_paths "$cli" "$cfg" 2>/dev/null)"
-  if [ "$n" = "$(cli_events "$cli" | wc -w | tr -d ' ')" ] && [ "$paths" = "$CAPTURE_ABS" ]; then
-    ok "(p'') $cli coupled install: one capture handler per R5 event, registered path $CAPTURE_ABS"
+  if [ "$n" = "$(cli_events "$cli" | wc -w | tr -d ' ')" ] && [ "$paths" = "$CAPTURE_SH_ABS" ]; then
+    ok "(p'') $cli coupled install: one capture handler per R5 event, registered path $CAPTURE_SH_ABS"
   else
     bad "(p'') $cli coupled install: footprint=$n paths=$(tr '\n' ' ' <<< "$paths")"
   fi
@@ -1281,8 +1320,13 @@ SP_REPO="$TMP_ROOT/My Projects/crewrig"
 mkdir -p "$SP_REPO/scripts/lib"
 cp -R "$REPO_DIR/hooks" "$SP_REPO/"
 cp -R "$REPO_DIR/scripts/lib/usage-capture" "$REPO_DIR/scripts/lib/usage-store" "$SP_REPO/scripts/lib/"
+# The direct entry (spec 0243) loads the shared TypeScript modules and looks
+# for the repository root (a `.git` entry) above itself.
+cp "$REPO_DIR"/scripts/lib/*.ts "$SP_REPO/scripts/lib/"
+mkdir -p "$SP_REPO/.git"
 [ ! -d "$REPO_DIR/node_modules" ] || ln -s "$REPO_DIR/node_modules" "$SP_REPO/node_modules"
-SP_ABS="$(cd "$SP_REPO/hooks" && pwd -P)/usage-capture.sh"
+SP_ABS="$(cd "$SP_REPO/hooks" && pwd -P)/usage-capture.ts"
+SP_SH_ABS="$(cd "$SP_REPO/hooks" && pwd -P)/usage-capture.sh"
 for cli in $CLIS; do
   cfg="$TMP_ROOT/q/$cli/config.json"
   rc=0
@@ -1324,9 +1368,9 @@ done
 # recognised whole, and keep only adds the quotes, once.
 cfg="$TMP_ROOT/q/gemini-legacy/config.json"
 init_cfg gemini "$cfg"
-add_cmds gemini "$cfg" AfterModel "$(legacy_cmd gemini AfterModel "$SP_ABS")"
+add_cmds gemini "$cfg" AfterModel "$(legacy_cmd gemini AfterModel "$SP_SH_ABS")"
 paths="$(usage_capture_paths gemini "$cfg" 2>/dev/null)"
-if [ "$(usage_capture_state gemini "$cfg" 2>/dev/null)" = "installed" ] && [ "$paths" = "$SP_ABS" ] \
+if [ "$(usage_capture_state gemini "$cfg" 2>/dev/null)" = "installed" ] && [ "$paths" = "$SP_SH_ABS" ] \
    && [ "$(capture_count "$cfg" AfterModel)" = "1" ]; then
   ok "(q) gemini legacy unquoted spaced command reads as capture at the whole spaced path"
 else
@@ -1335,7 +1379,7 @@ fi
 usage_capture_keep gemini "$cfg" "$SP_REPO" >/dev/null 2>&1
 cp "$cfg" "$cfg.once"
 usage_capture_keep gemini "$cfg" "$SP_REPO" >/dev/null 2>&1
-assert_capture_once_at "(q) legacy spaced form after keep" gemini "$cfg" "$SP_ABS"
+assert_capture_once_at "(q) legacy spaced form after keep" gemini "$cfg" "$SP_SH_ABS"
 if cmp -s "$cfg" "$cfg.once"; then
   ok "(q) gemini a second keep after the re-quote is a byte-identical no-op"
 else
@@ -1412,9 +1456,9 @@ else
 fi
 d="$TMP_ROOT/r/it's (a&b)"
 mkdir -p "$d/hooks"
-printf '#!/bin/bash\nexit 0\n' > "$d/hooks/usage-capture.sh"
+printf '// stub\n' > "$d/hooks/usage-capture.ts"
 so="$(usage_capture_abs "$d" 2>/dev/null)"
-if [ "$so" = "$(cd "$d/hooks" && pwd -P)/usage-capture.sh" ]; then
+if [ "$so" = "$(cd "$d/hooks" && pwd -P)/usage-capture.ts" ]; then
   ok "(r) usage_capture_abs accepts a path with a quote, parentheses and an ampersand"
 else
   bad "(r) usage_capture_abs on \"$d\" printed '$so'"
@@ -1671,6 +1715,188 @@ for f in "$REPO_DIR/scripts/setup-antigravity-interactive.sh" "$REPO_DIR"/hooks/
     ok "${f#"$REPO_DIR"/} references neither the new library nor the fragments"
   fi
 done
+
+# ---------------------------------------------------------------------------
+# §6. Spec 0243: the direct form, its recognition corpus and the Node.js floor.
+# ---------------------------------------------------------------------------
+echo "§6 (a) recognition corpus, shared with hook-recognition.test.ts (spec 0243 R20)"
+CORPUS="$REPO_DIR/scripts/tests/fixtures/usage-capture/recognition-corpus.json"
+corpus_n=0
+corpus_bad=0
+while IFS= read -r row; do
+  cmd="$(jq -r '.command' <<< "$row")"
+  want="$(jq -r '.capture' <<< "$row")"
+  got="$(jq -n --arg shape grouped --arg c "$cmd" "$_UC_JQ_DEFS {type: \"command\", command: \$c} | uc_is_capture")"
+  corpus_n=$((corpus_n + 1))
+  if [ "$got" != "$want" ]; then
+    corpus_bad=$((corpus_bad + 1))
+    bad "(6a) uc_is_capture($cmd) = $got, corpus says $want ($(jq -r '.note' <<< "$row"))"
+  fi
+done < <(jq -c '.[]' "$CORPUS")
+if [ "$corpus_n" -gt 0 ] && [ "$corpus_bad" -eq 0 ]; then
+  ok "(6a) uc_is_capture agrees with all $corpus_n corpus rows"
+fi
+
+echo "§6 (b) rewrite: a legacy command becomes direct exactly once, other entries untouched (R19, R22)"
+for cli in $CLIS; do
+  cfg="$TMP_ROOT/v/$cli/config.json"
+  materialize "$cli-operator.json" "$cfg"
+  cp "$cfg" "$cfg.orig"
+  out="$(usage_capture_rewrite "$cli" "$cfg" "$REPO_DIR" 2>&1)"; rc=$?
+  ev1="$(cli_events "$cli" | awk '{print $1}')"
+  if [ "$rc" -eq 0 ] && [ "$(capture_cmds "$cfg" "$ev1")" = "$(expected_cmd "$cli" "$ev1" "$CAPTURE_ABS")" ] \
+     && [ "$(noncapture_view "$cfg")" = "$(noncapture_view "$cfg.orig")" ] && [ "$(backup_count "$cfg")" = "1" ] \
+     && [ "$(file_mode "$cfg")" = "600" ]; then
+    ok "(6b) $cli rewrite: direct form, other entries preserved, one backup, 0600"
+  else
+    bad "(6b) $cli rewrite rc=$rc backups=$(backup_count "$cfg") mode=$(file_mode "$cfg") cmd='$(capture_cmds "$cfg" "$ev1")' (out: $out)"
+  fi
+  cp "$cfg" "$cfg.first"
+  out2="$(usage_capture_rewrite "$cli" "$cfg" "$REPO_DIR" 2>&1)"; rc2=$?
+  if [ "$rc2" -eq 0 ] && cmp -s "$cfg" "$cfg.first" && [ "$(backup_count "$cfg")" = "1" ]; then
+    ok "(6b) $cli a second rewrite writes nothing and creates no backup"
+  else
+    bad "(6b) $cli second rewrite rc=$rc2 changed the file or added a backup (out: $out2)"
+  fi
+  # A legacy and a direct command on one event end as exactly one (R22, v1-F3).
+  twin="$TMP_ROOT/v/$cli-twin/config.json"
+  mkdir -p "$(dirname "$twin")"
+  materialize "$cli-coupled.json" "$twin"
+  add_cmds "$cli" "$twin" "$ev1" "$(expected_cmd "$cli" "$ev1" "$CAPTURE_ABS")"
+  usage_capture_rewrite "$cli" "$twin" "$REPO_DIR" >/dev/null 2>&1
+  if [ "$(capture_count "$twin" "$ev1")" = "1" ] && [ "$(capture_cmds "$twin" "$ev1")" = "$(expected_cmd "$cli" "$ev1" "$CAPTURE_ABS")" ]; then
+    ok "(6b) $cli a legacy and a direct command on '$ev1' end as one direct command"
+  else
+    bad "(6b) $cli twin on '$ev1': $(capture_count "$twin" "$ev1") command(s): $(capture_cmds "$twin" "$ev1" | tr '\n' '|')"
+  fi
+done
+
+echo "§6 (c) a legacy command whose checkout has no .ts is left, with the reason (R21)"
+OLD_CO="$TMP_ROOT/v/old-checkout/hooks"
+mkdir -p "$OLD_CO"
+printf '#!/bin/bash\nexit 0\n' > "$OLD_CO/usage-capture.sh"
+for cli in $CLIS; do
+  cfg="$TMP_ROOT/v/$cli-old/config.json"
+  materialize "$cli-coupled.json" "$cfg" "$OLD_CO/usage-capture.sh"
+  cp "$cfg" "$cfg.orig"
+  out="$(usage_capture_rewrite "$cli" "$cfg" "$REPO_DIR" 2>&1)"; rc=$?
+  if [ "$rc" -eq 0 ] && cmp -s "$cfg" "$cfg.orig" && ! has_backup "$cfg" && [[ "$out" == *"no .ts next to the registered .sh"* ]]; then
+    ok "(6c) $cli an older checkout's command is left as it is, and the report says why"
+  else
+    bad "(6c) $cli rc=$rc, changed=$(cmp -s "$cfg" "$cfg.orig" && echo no || echo yes) (out: $out)"
+  fi
+done
+
+echo "§6 (c2) a legacy command with an environment prefix is left byte-identical and reported by name (security review finding 3, spec 0243 delta-01)"
+for cli in $CLIS; do
+  cfg="$TMP_ROOT/v/$cli-envprefix/config.json"
+  materialize "$cli-coupled.json" "$cfg"
+  jq 'walk(if type == "string" and test("usage-capture\\.sh") then "CREWRIG_USAGE_ROOT=/Volumes/enc/usage " + . else . end)' "$cfg" > "$cfg.tmp" && mv "$cfg.tmp" "$cfg"
+  cp "$cfg" "$cfg.orig"
+  out="$(usage_capture_rewrite "$cli" "$cfg" "$REPO_DIR" 2>&1)"; rc=$?
+  if [ "$rc" -eq 0 ] && cmp -s "$cfg" "$cfg.orig" && ! has_backup "$cfg" \
+     && [[ "$out" == *"environment prefix (CREWRIG_USAGE_ROOT=...)"* ]] && [[ "$out" != *"/Volumes/enc/usage"* ]]; then
+    ok "(6c2) $cli a prefixed command is left as it is, and the report names the variable, not its value"
+  else
+    bad "(6c2) $cli rc=$rc, changed=$(cmp -s "$cfg" "$cfg.orig" && echo no || echo yes) (out: $out)"
+  fi
+done
+
+echo "§6 (c3) keep on an assignment-prefixed command with a vanished path (spec 0243 delta-01, s4-F2)"
+WIN_BIN="$TMP_ROOT/v/winbin"
+mkdir -p "$WIN_BIN"
+printf '#!/bin/sh\n[ "$1" = "-s" ] && echo MINGW64_NT-10.0-19045 || exec /usr/bin/uname "$@"\n' > "$WIN_BIN/uname"
+chmod +x "$WIN_BIN/uname"
+GONE_SH="$TMP_ROOT/v/gone-checkout/hooks/usage-capture.sh"
+for cli in $CLIS; do
+  for target in posix windows; do
+    cfg="$TMP_ROOT/v/$cli-$target-vanished/config.json"
+    materialize "$cli-coupled.json" "$cfg" "$GONE_SH"
+    jq 'walk(if type == "string" and test("usage-capture\\.sh") then "CREWRIG_USAGE_ROOT=/Volumes/enc/usage " + . else . end)' "$cfg" > "$cfg.tmp" && mv "$cfg.tmp" "$cfg"
+    cp "$cfg" "$cfg.orig"
+    if [ "$target" = windows ]; then
+      out="$( (PATH="$WIN_BIN:$PATH"; usage_capture_keep "$cli" "$cfg" "$REPO_DIR") 2>&1)"; rc=$?
+    else
+      out="$(usage_capture_keep "$cli" "$cfg" "$REPO_DIR" 2>&1)"; rc=$?
+    fi
+    ev1="$(cli_events "$cli" | awk '{print $1}')"
+    if [ "$target" = windows ] && [ "$cli" != claude ]; then
+      if [ "$rc" -eq 0 ] && cmp -s "$cfg" "$cfg.orig" && ! has_backup "$cfg" \
+         && [[ "$out" == *"left $GONE_SH: keeps an environment prefix (CREWRIG_USAGE_ROOT=...)"* ]] \
+         && [[ "$out" != *re-pointed* ]] && [[ "$out" != *"/Volumes/enc/usage"* ]]; then
+        ok "(6c3) $cli on Windows: a vanished path behind NAME=value is left and reported by name"
+      else
+        bad "(6c3) $cli on Windows rc=$rc, changed=$(cmp -s "$cfg" "$cfg.orig" && echo no || echo yes) (out: $out)"
+      fi
+    else
+      got="$(capture_cmds "$cfg" "$ev1")"
+      if [ "$rc" -eq 0 ] && [[ "$out" == *re-pointed* ]] && [ "$(backup_count "$cfg")" = "1" ] \
+         && [ "$(file_mode "$cfg")" = "600" ] \
+         && [[ "$got" == "CREWRIG_USAGE_ROOT=/Volumes/enc/usage bash \"$CAPTURE_SH_ABS\" "* ]]; then
+        ok "(6c3) $cli on $target: the vanished path is re-pointed keeping the prefix, backup first, 0600"
+      else
+        bad "(6c3) $cli on $target rc=$rc backups=$(backup_count "$cfg") cmd='$got' (out: $out)"
+      fi
+    fi
+  done
+done
+
+echo "§6 (d) below the Node.js floor nothing is written (R24, D3, v1-F2)"
+REAL_NODE="$(command -v node)"
+LOW_BIN="$TMP_ROOT/v/lownode/bin"
+mkdir -p "$LOW_BIN"
+cat > "$LOW_BIN/node" <<EOF
+#!/bin/sh
+# A node whose floor guard reports a 20.x release; anything else is the real node.
+case "\$1" in
+  *node-floor-guard.js)
+    exec "$REAL_NODE" -e 'var v = require(process.argv[1]).evaluate("v20.19.5"); process.stderr.write(v.message + "\\n"); process.exit(v.ok ? 0 : 1)' "\$1" ;;
+esac
+exec "$REAL_NODE" "\$@"
+EOF
+chmod +x "$LOW_BIN/node"
+for cli in $CLIS; do
+  # installed + keep: the legacy command stays, the diagnostic names 20 and 24.
+  cfg="$TMP_ROOT/v/$cli-low/config.json"
+  materialize "$cli-coupled.json" "$cfg"
+  cp "$cfg" "$cfg.orig"
+  out="$(PATH="$LOW_BIN:$PATH" usage_capture_apply "$cli" "$cfg" "$REPO_DIR" installed keep 2>&1)"; rc=$?
+  if [ "$rc" -ne 0 ] && cmp -s "$cfg" "$cfg.orig" && ! has_backup "$cfg" && [[ "$out" == *"20.19.5"* ]] && [[ "$out" == *"requires Node.js >= 24"* ]]; then
+    ok "(6d) $cli Node 20, installed + keep: legacy command untouched, no backup, diagnostic names 20 and 24"
+  else
+    bad "(6d) $cli Node 20 keep rc=$rc changed=$(cmp -s "$cfg" "$cfg.orig" && echo no || echo yes) (out: $out)"
+  fi
+  # absent + disclose: the guard's diagnostic, not a raw Node.js error.
+  cfg="$TMP_ROOT/v/$cli-low-absent/config.json"
+  out="$(PATH="$LOW_BIN:$PATH" usage_capture_disclose "$cli" "$cfg" "$REPO_DIR" 2>&1)"; rc=$?
+  if [ "$rc" -ne 0 ] && [[ "$out" == *"requires Node.js >= 24"* ]] && [[ "$out" != *ERR_* ]] && [[ "$out" != *"Enabling usage capture"* ]]; then
+    ok "(6d) $cli Node 20, absent state: disclosure prints the guard's diagnostic first"
+  else
+    bad "(6d) $cli Node 20 disclose rc=$rc (out: $out)"
+  fi
+  # absent + yes: nothing is written.
+  out="$(PATH="$LOW_BIN:$PATH" usage_capture_apply "$cli" "$cfg" "$REPO_DIR" absent yes 2>&1)"; rc=$?
+  if [ "$rc" -ne 0 ] && [ ! -e "$cfg" ] && [[ "$out" == *"requires Node.js >= 24"* ]]; then
+    ok "(6d) $cli Node 20, absent + yes: capture is not enabled and nothing is created"
+  else
+    bad "(6d) $cli Node 20 enable rc=$rc, file exists=$([ -e "$cfg" ] && echo yes || echo no) (out: $out)"
+  fi
+  # remove never depends on Node.js.
+  cfg="$TMP_ROOT/v/$cli-low-remove/config.json"
+  materialize "$cli-coupled.json" "$cfg"
+  PATH="$LOW_BIN:$PATH" usage_capture_apply "$cli" "$cfg" "$REPO_DIR" installed remove >/dev/null 2>&1; rc=$?
+  if [ "$rc" -eq 0 ] && [ "$(total_capture "$cfg")" = "0" ]; then
+    ok "(6d) $cli Node 20: remove still works (it never depends on Node.js)"
+  else
+    bad "(6d) $cli Node 20 remove rc=$rc, $(total_capture "$cfg") capture command(s) remain"
+  fi
+done
+out="$(PATH=/nonexistent-crewrig-path usage_capture_require_node_floor 2>&1)"; rc=$?
+if [ "$rc" -ne 0 ] && [[ "$out" == *"Node.js was not found on PATH"* ]] && [[ "$out" == *">= 24"* ]]; then
+  ok "(6d) with no node on PATH the floor check prints its own diagnostic"
+else
+  bad "(6d) no node on PATH: rc=$rc (out: $out)"
+fi
 
 # ---------------------------------------------------------------------------
 echo ""

@@ -691,6 +691,12 @@ jobs:
               - 'scripts/tests/test-tls-delegation.sh'
               - 'scripts/setup-*.sh'
               - 'scripts/lib/**'
+      # The v1-F2 floor guard (spec 0243 R24) refuses to write the direct form on
+      # a Node.js below 24, and ubuntu-latest defaults to 22 (#1391 CI).
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.setup == 'true'
+        with:
+          node-version: 24
       - name: Install yq
         if: steps.filter.outputs.setup == 'true'
         run: |
@@ -975,6 +981,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # Secondary runtime: the full suite includes the setup suites, whose
+      # capture-enabled cases hit the Node.js floor guard (spec 0243 R24, v1-F2)
+      # on ubuntu-latest's default Node.js 22 (#1391 CI).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - name: Fail-safe full check suite (spec 0147 R5)
         run: bash scripts/ci-changeset-coverage.sh
       - name: Cancel workflow on job failure
@@ -1105,6 +1117,23 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0243 R5: the usage-capture hook entries print nothing on the oldest
+  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
+  usage-capture-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+
+      - name: Entry form and unstubbed silence runs on Node.js 24.0.0
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # TEMPLATE (spec 0240 R12-R15) — the reusable `windows-latest` job shape.
   # A later sub-spec copies this job, renames it, points the three steps at
   # its own migrated script and suites, states its own --budget-ms next to its
@@ -1135,6 +1164,59 @@ jobs:
       # it as its own end-of-parameters token.
       - name: Floor guard timing budget
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 '--' scripts/lib/node-floor-guard.js
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0243 R15, R28: the usage-capture row's copy of the template above.
+  # pwsh is the interpreter of every step. Budgets were recalibrated at plan
+  # step 26 from the first green run (run 36738818466, job 109967462294) to
+  # max(3 x the largest observed run, 300 ms) rounded up to the next 50 ms,
+  # only where lower than the initial 750 / 2000 / 2000 ms of R15; each is
+  # stated next to its script.
+  windows-usage-capture:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Both entries run, and each CLI's command line launches through its interpreter
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-capture-windows.test.ts
+
+      - name: No deprecation reaches the entries
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-deprecations.test.ts
+
+      # Writes the transcripts, payloads and a real stamp, and exports
+      # CREWRIG_USAGE_ROOT and the TIMING_*_PAYLOAD paths to the steps below.
+      - name: Timing fixtures
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/usage-capture-timing-fixtures.ts "$env:RUNNER_TEMP\usage-capture-timing"
+
+      # Budget: 400 ms for hooks/usage-capture.ts on the fast path (fresh stamp,
+      # nothing to capture). Observed max 120.5 ms over 10 runs (run
+      # 36738818466); 3 x 120.5 = 361.5 -> 400; was 750. '--' is quoted so pwsh
+      # hands it to node verbatim.
+      - name: Fast path timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 400 --stdin-file $env:TIMING_FAST_PAYLOAD '--' hooks/usage-capture.ts claude-code Stop
+
+      # Budget: 1000 ms for hooks/usage-capture.ts on the slow path (one fixture
+      # payload captured into an empty usage root per run). Observed max
+      # 320.2 ms over 10 runs (run 36738818466); 3 x 320.2 = 960.6 -> 1000; was
+      # 2000.
+      - name: Slow path timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 1000 --stdin-file $env:TIMING_SLOW_PAYLOAD --env-tmpdir CREWRIG_USAGE_ROOT '--' hooks/usage-capture.ts claude-code Stop
+
+      # Budget: 550 ms for hooks/antigravity-statusline-shim.ts with no prior
+      # command (the prior command's own time is excluded). Observed max
+      # 182.9 ms over 10 runs (run 36738818466); 3 x 182.9 = 548.7 -> 550; was
+      # 2000.
+      - name: Statusline shim timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 550 --stdin-file $env:TIMING_SHIM_PAYLOAD --env-tmpdir CREWRIG_USAGE_ROOT '--' hooks/antigravity-statusline-shim.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
