@@ -7,8 +7,10 @@
 // capability exercises them too. The interpreter legs need Windows and are
 // skipped elsewhere. The `cmd /c` leg proves the launch semantics of that
 // interpreter, not which interpreter Antigravity CLI uses for a status line:
-// that is row 37e's to state, and the statusline leg follows whatever
-// MEASURED_SURFACES records (or asserts the refusal while it records nothing).
+// that is row 37e's to state. Row 37e records `cmd.exe` and a cwd-first lookup
+// of a bare `node` (#1389, security review finding 1), so the statusline leg
+// asserts the module's refusal (#1392) and the `cmd /c` leg documents the
+// hazard with a planted node.cmd.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -199,25 +201,28 @@ describe("the command line of each CLI, through its interpreter", { skip: !WINDO
     });
   }
 
-  test("antigravity statusLine: follows row 37e, or is refused while unmeasured", () => {
+  test("antigravity statusLine: refused, the cwd-first lookup being unsafe (row 37e, #1392)", () => {
     const measured = MEASURED_SURFACES.find(
       (m) => m.cli === "antigravity" && m.surface === "statusline" && m.os === "win32",
     );
+    assert.equal(measured?.interpreterLookup, "cwd-first");
     const built = commandFor("antigravity", "statusline", SHIM);
-    if (measured === undefined) {
-      assert.equal(built.ok, false);
-      assert.match(built.ok ? "" : built.refusal, /unmeasured/);
-      return;
-    }
-    if (measured.status === "contradicting") {
-      assert.equal(built.ok, false);
-      return;
-    }
-    assert.ok(built.ok, built.ok ? "" : built.refusal);
-    const [file, args] = invocation(measured.interpreter, built.command);
-    const root = freshRoot();
-    const res = spawnWith(file, args, root, read(fixtures.shimPayload));
-    assert.equal(res.status, 0, res.stderr);
-    assert.ok(records(root).length > 0, `no record from: ${built.command}`);
+    assert.equal(built.ok, false);
+    assert.match(built.ok ? "" : built.refusal, /current directory[^]*#1392/);
+  });
+
+  test("cmd /c resolves a bare node from the working directory first (security review finding 1)", () => {
+    // Documents the hazard row 37e records on Antigravity CLI: a repository that
+    // ships node.cmd wins over the real node. Deterministic: the planted file
+    // only writes a marker, and the same probe without it runs the real node.
+    const cwd = fs.mkdtempSync(path.join(work, "planted-"));
+    const marker = path.join(cwd, "planted.txt");
+    const command = "node -v";
+    const baseline = spawnSync("cmd", ["/c", command], { cwd, encoding: "utf8" });
+    assert.match(baseline.stdout, /^v\d+\./, baseline.stderr);
+    fs.writeFileSync(path.join(cwd, "node.cmd"), `@echo planted> "${marker}"\r\n`);
+    const planted = spawnSync("cmd", ["/c", command], { cwd, encoding: "utf8" });
+    assert.equal(fs.existsSync(marker), true, "the planted node.cmd did not run");
+    assert.doesNotMatch(planted.stdout, /^v\d+\./, "the real node ran despite node.cmd");
   });
 });
