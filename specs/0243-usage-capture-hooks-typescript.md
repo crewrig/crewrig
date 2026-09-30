@@ -127,8 +127,11 @@ and the mechanism that does so is the one the other hook migrations reuse.
    guard SHALL exit zero without capture work if and only if all of the
    following hold: a source path was obtained — for `copilot-cli` the fixed
    path `<home>/.copilot/session-store.db`, for the other two the decoded value
-   of the payload's top-level `transcript_path` or `transcriptPath` string,
-   taken from the payload parsed as JSON and never from its raw text, so that a
+   of the payload's top-level `transcript_path` string, or, when that value is
+   falsy, of `transcriptPath` — the selection
+   `scripts/lib/usage-capture/index.js` makes, so both keys present and
+   different key the stamp on the value capture uses — taken from the payload
+   parsed as JSON and never from its raw text, so that a
    Windows path written `C:\\Users\\x\\t.jsonl` in the payload is the string
    `C:\Users\x\t.jsonl` before any other decision; that path is absolute on the
    running platform; it names an existing file; a stamp file for it exists at
@@ -269,13 +272,22 @@ and the mechanism that does so is the one the other hook migrations reuse.
     Windows with the probe of spec 0237 and add a row 37e to
     `docs/cli-matrix.md` (interpreter, quoting, working directory, path
     separators) before setup writes a Windows statusline command line. The
-    module SHALL hold a constant that records which (CLI, surface, operating
-    system) triples are measured, holding no Windows statusline entry until the
-    implementation PR adds row 37e and sets it in the same diff; it SHALL refuse
-    to produce a Windows statusline command line while the constant lacks that
-    entry, with a diagnostic saying the surface is unmeasured, and SHALL NOT read
-    `docs/cli-matrix.md` at run time. A test SHALL fail when the constant and the
-    presence of row 37e disagree. macOS and Linux are unaffected.
+    module SHALL hold a constant with one entry per measured (CLI, surface,
+    operating system) triple, each entry carrying the recorded interpreter and
+    quoting rule and a status, `conforming` when they equal row 37b's for
+    Antigravity CLI and `contradicting` when they differ. It SHALL hold no
+    Windows statusline entry until the implementation PR adds row 37e and the
+    entry in the same diff. The module SHALL refuse to produce a Windows
+    statusline command line when the entry is absent, with a diagnostic saying
+    the surface is unmeasured, and when the entry is `contradicting`, with a
+    diagnostic naming the recorded shape, so the refusal of requirement 16(c) is
+    decided from the constant alone; it SHALL NOT read `docs/cli-matrix.md` at
+    run time. A test, which does read the matrix, SHALL fail when the presence
+    of row 37e and the presence of the entry disagree, or when the entry's
+    recorded interpreter and quoting differ from row 37e's. A delta of this spec
+    that resets the shape after a `contradicting` row SHALL land in one diff
+    with the row and the entry, so no head shows them out of step. macOS and
+    Linux are unaffected.
 
 19. **Rewrite on the next setup run.** On every run of
     `scripts/setup-claude-interactive.sh`, `scripts/setup-gemini-interactive.sh`,
@@ -552,16 +564,19 @@ When setup is asked for a Windows Antigravity `statusLine.command`, from a
 checkout path with or without a space
 Then the module refuses with the diagnostic saying the surface is unmeasured —
 not the unsafe-path one — and macOS and Linux still receive their command line;
-and a test fails if the constant and the presence of row 37e in
+and a test fails if the presence of the entry and of row 37e in
 `docs/cli-matrix.md` disagree.
 
 **Scenario:** Row 37e contradicts the hooks-surface shape
 
 Given row 37e records that Antigravity CLI parses `statusLine.command` with an
-interpreter or quoting other than row 37b's
+interpreter or quoting other than row 37b's, and the constant's entry carries
+that recorded shape with the status `contradicting`
 When setup is asked for a Windows `statusLine.command`
-Then the module refuses, and no command line is written until a delta of this
-spec sets the shape.
+Then the module refuses with a diagnostic naming the recorded shape, no command
+line is written, and the guard test passes; no command line is written until a
+delta of this spec sets the shape, landing in one diff with the row and the
+entry.
 
 **Scenario:** A budget regression breaks the job
 
