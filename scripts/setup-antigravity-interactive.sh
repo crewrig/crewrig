@@ -480,45 +480,79 @@ echo ""
 # never touches the latter (R14 — hooks/antigravity-transcript-hooks.json
 # stays untouched).
 #
-# hooks/antigravity-statusline-shim.sh is NEVER copied out of the repository
-# (same class as hooks/usage-capture.sh): the installer wires
-# statusLine.command to its own in-repo absolute path, ONLY when that value
-# was previously empty (R20) — a populated foreign value is left untouched
-# and the parity gap is recorded instead of installing a shim over it.
-STATUSLINE_SCRIPT_SRC="$REPO_DIR/hooks/antigravity-statusline-shim.sh"
-STATUSLINE_ABS="$(cd "$(dirname "$STATUSLINE_SCRIPT_SRC")" && pwd -P)/$(basename "$STATUSLINE_SCRIPT_SRC")"
+# hooks/antigravity-statusline-shim.ts is NEVER copied out of the repository
+# (same class as hooks/usage-capture.ts): the installer wires
+# statusLine.command to `node "<in-repo absolute path>"` (spec 0243 R16), ONLY
+# when that value was previously empty (R20) — a populated foreign value is left
+# untouched and the parity gap is recorded instead of installing a shim over it.
+# The command line and both writes come from scripts/hook-wiring.ts (spec 0243
+# R19, R23), reached through `node` once the Node.js floor is met; the removal
+# needs no Node.js.
 AGY_SETTINGS="$AGY_HOME/settings.json"
 CREWRIG_USAGE_ROOT="${CREWRIG_USAGE_ROOT:-${HOME}/.crewrig/usage}"
 STATUSLINE_MARKER="$CREWRIG_USAGE_ROOT/state/antigravity-statusline.json"
 
+# agy_statusline_node_floor — the floor precondition of every write of the
+# direct form (spec 0243 R24, v1-F2). The guard prints its own diagnostic below
+# the floor; with no `node` on PATH it cannot, so this prints one. Inlined here
+# rather than reusing the usage-capture library, which this script does not
+# source (spec 0211 R14).
+agy_statusline_node_floor() {
+  if ! command -v node >/dev/null 2>&1; then
+    echo "  ERROR: crewrig: Node.js was not found on PATH; usage capture requires Node.js >= 24. Install a supported release from https://nodejs.org/en/download" >&2
+    return 1
+  fi
+  node "$REPO_DIR/scripts/lib/node-floor-guard.js" || return 1
+}
+agy_hook_wiring() {
+  node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
+    "$REPO_DIR/scripts/hook-wiring.ts" "$@" --repo "$REPO_DIR"
+}
+
+# The command is the framework's when it equals the recorded installed value OR
+# the transitional one a rewrite leaves between its two writes (spec 0243 D5,
+# v1-F6): a crash after either write still reads as installed.
 STATUSLINE_INSTALLED_BY_US=0
 if [ -f "$STATUSLINE_MARKER" ]; then
   INSTALLED_CMD="$(jq -r '.installedStatusLineCommand // empty' "$STATUSLINE_MARKER" 2>/dev/null)"
+  PREVIOUS_INSTALLED_CMD="$(jq -r '.previousInstalledStatusLineCommand // empty' "$STATUSLINE_MARKER" 2>/dev/null)"
   CURRENT_CMD_CHECK=""
   if [ -f "$AGY_SETTINGS" ]; then
     CURRENT_CMD_CHECK="$(jq -r '.statusLine.command // empty' "$AGY_SETTINGS" 2>/dev/null)"
   fi
-  if [ -n "$INSTALLED_CMD" ] && [ "$INSTALLED_CMD" = "$CURRENT_CMD_CHECK" ]; then
+  if [ -n "$CURRENT_CMD_CHECK" ] && { [ "$CURRENT_CMD_CHECK" = "$INSTALLED_CMD" ] || [ "$CURRENT_CMD_CHECK" = "$PREVIOUS_INSTALLED_CMD" ]; }; then
     STATUSLINE_INSTALLED_BY_US=1
   fi
 fi
 
 if [ "$STATUSLINE_INSTALLED_BY_US" -eq 1 ]; then
-  echo "Antigravity usage capture is installed (statusLine.command wired to $INSTALLED_CMD)."
+  echo "Antigravity usage capture is installed (statusLine.command wired to $CURRENT_CMD_CHECK)."
   STATUSLINE_ACTION=$(echo -e "keep\nremove" | fzf --height 10% \
     --header "Antigravity usage capture is installed — keep it, or remove it (restores the prior statusLine.command, R21)?")
   if [ "$STATUSLINE_ACTION" = "remove" ]; then
     PRIOR_CMD="$(jq -r '.priorStatusLineCommand // empty' "$STATUSLINE_MARKER" 2>/dev/null)"
     backup_file "$AGY_SETTINGS"
+    # The prior command travels from the marker to the settings inside jq, never
+    # on an argument list (spec 0243 R23); the write is 0600 and atomic.
     if [ -n "$PRIOR_CMD" ]; then
-      jq --arg cmd "$PRIOR_CMD" '.statusLine.command = $cmd' "$AGY_SETTINGS" > "${AGY_SETTINGS}.tmp" && mv "${AGY_SETTINGS}.tmp" "$AGY_SETTINGS"
+      # shellcheck disable=SC2016  # jq program text, not a shell expansion
+      write_json_config_secure "$AGY_SETTINGS" --slurpfile m "$STATUSLINE_MARKER" \
+        '.statusLine.command = $m[0].priorStatusLineCommand'
     else
-      jq 'del(.statusLine.command)' "$AGY_SETTINGS" > "${AGY_SETTINGS}.tmp" && mv "${AGY_SETTINGS}.tmp" "$AGY_SETTINGS"
+      write_json_config_secure "$AGY_SETTINGS" 'del(.statusLine.command)'
     fi
     rm -f "$STATUSLINE_MARKER"
     echo "  Antigravity usage capture removed; statusLine.command restored to its prior value."
   else
     echo "  Antigravity usage capture kept."
+    # Bring a legacy `.sh` command to the direct form (spec 0243 R19): below the
+    # floor nothing is rewritten and the diagnostic says why.
+    if agy_statusline_node_floor; then
+      agy_hook_wiring statusline rewrite --settings "$AGY_SETTINGS" --marker "$STATUSLINE_MARKER" \
+        || echo "  Antigravity usage capture rewrite FAILED — setup continues." >&2
+    else
+      echo "  statusLine.command left as it is." >&2
+    fi
   fi
 else
   ENABLE_USAGE_CAPTURE=$(echo -e "no\nyes" | fzf --height 10% --header "Enable Antigravity CLI usage capture (statusline channel, opt-in)?")
@@ -534,19 +568,16 @@ else
       echo "  unavailable for Antigravity CLI on this installation (documented parity gap,"
       echo "  R22: no field of this CLI's own session record ties to a token count, and no"
       echo "  vendor-documented alternative channel exposes that granularity today)."
-    else
-      mkdir -p "$(dirname "$STATUSLINE_MARKER")"
+    elif agy_statusline_node_floor; then
       mkdir -p "$AGY_HOME"
-      [ -f "$AGY_SETTINGS" ] || echo "{}" > "$AGY_SETTINGS"
-      backup_file "$AGY_SETTINGS"
-      jq --arg cmd "$STATUSLINE_ABS" '.statusLine = ((.statusLine // {}) + {command: $cmd})' \
-        "$AGY_SETTINGS" > "${AGY_SETTINGS}.tmp" && mv "${AGY_SETTINGS}.tmp" "$AGY_SETTINGS"
-      jq -n --arg prior "$CURRENT_STATUSLINE" --arg installed "$STATUSLINE_ABS" \
-        '{priorStatusLineCommand: $prior, installedStatusLineCommand: $installed, installedBy: "crewrig-setup-antigravity-interactive"}' \
-        > "${STATUSLINE_MARKER}.tmp" && mv "${STATUSLINE_MARKER}.tmp" "$STATUSLINE_MARKER"
-      echo "  Usage capture wired to $STATUSLINE_ABS (in-repo absolute path)"
-      warn_if_linked_worktree "$REPO_DIR" "usage capture"
-      echo "  Prior statusLine.command (empty) recorded at $STATUSLINE_MARKER"
+      if agy_hook_wiring statusline install --settings "$AGY_SETTINGS" --marker "$STATUSLINE_MARKER"; then
+        warn_if_linked_worktree "$REPO_DIR" "usage capture"
+        echo "  Prior statusLine.command (empty) recorded at $STATUSLINE_MARKER"
+      else
+        echo "  Antigravity usage capture NOT enabled — setup continues." >&2
+      fi
+    else
+      echo "  Antigravity usage capture NOT enabled — setup continues." >&2
     fi
   else
     echo "  Antigravity usage capture disabled (can enable later by re-running this script)."
