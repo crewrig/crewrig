@@ -28,10 +28,16 @@ all contributors share, and this convention makes it authoritative.
 
 ## Requirements
 
-1. The assignment recorded on the forge SHALL be the single authoritative
-   record of who owns a ticket. An issue with an assignee SHALL be owned by
-   that assignee; an issue with no assignee SHALL be free. No other record —
-   agent memory, a local file, a comment, a chat message — SHALL override it.
+1. The forge's assignment record on an issue — its current assignees and the
+   assignment history in its timeline — SHALL be the single authoritative
+   record of who owns a ticket. An issue with no current assignee SHALL be
+   free. Otherwise its owner SHALL be the contributor whose assignment
+   appears earliest in the timeline since the issue was last released, a
+   release being a change that leaves the issue without any assignee; in the
+   ordinary case this is simply its sole assignee. A single change that
+   removes one contributor's assignment and adds another's SHALL NOT count as
+   a release. No other record — agent memory, a local file, a comment, a chat
+   message — SHALL override it.
 2. A ticket owned by one contributor SHALL NOT be worked on by any other
    contributor, nor by an agent acting on another contributor's behalf.
    "Worked on" covers every authoring action that produces a deliverable for
@@ -45,16 +51,18 @@ all contributors share, and this convention makes it authoritative.
    first authoring action listed in requirement 2.
 4. An issue SHALL carry at most one assignee. Other contributors SHALL
    participate through comments, review suggestions, or commit co-authorship,
-   never through a second assignment. When contributors assign themselves
-   concurrently, the contributor whose assignment appears earliest in the
-   forge's issue timeline since the issue was last without any assignee SHALL
-   own it. This SHALL hold whether the forge adds a later assignment next to
-   the earlier one or replaces the earlier one with it: every later
-   contributor SHALL remove their own assignment and, when theirs displaced
-   the owner's, restore the owner's. When the timeline cannot establish which
-   assignment came first, the issue SHALL be treated as owned by none of
-   them, no agent SHALL start on it, and the contributors involved SHALL
-   reduce it to one assignee by agreement.
+   never through a second assignment. Every legitimate change of owner — a
+   release (requirement 6), a transfer (requirement 7), a takeover
+   (requirement 8), or a maintainer's assignment (requirement 14) — SHALL
+   pass through a release: the current owner's assignment is removed before
+   the next owner's is added. An assignment added while another contributor
+   owns the issue — whether the forge keeps it next to the owner's or
+   replaces the owner's with it — SHALL confer no ownership; the contributor
+   it names SHALL remove it and, when it displaced the owner's, restore the
+   owner's. When the timeline cannot establish which assignment came first,
+   the issue SHALL be treated as owned by none of the contributors involved,
+   no agent SHALL start on it, and they SHALL reduce it to one assignee by
+   agreement.
 5. Assigning an epic SHALL lock the epic issue only. Each sub-ticket SHALL be
    free or owned according to its own assignment. The epic's assignee SHALL be
    the arbiter of how its sub-tickets are split and distributed, and a
@@ -63,14 +71,16 @@ all contributors share, and this convention makes it authoritative.
    own assignment and leave a status comment stating what is done and what
    remains. A ticket with no remaining work SHALL be closed rather than
    released.
-7. A ticket SHALL change owner only with the current assignee's written
+7. A ticket SHALL change owner only with the current owner's written
    consent, recorded as a comment on the issue, except under the stale-lock
-   path of requirement 8.
+   path of requirement 8. The transfer SHALL remove the current owner's
+   assignment before adding the new owner's.
 8. When an owned ticket shows no activity by its assignee for a nudge delay,
    another contributor MAY ask for it in a comment that mentions the assignee.
    If the assignee has not answered within a further grace delay, that
-   contributor MAY take the ticket over, leaving a takeover comment that links
-   the unanswered request. The defaults SHALL be 14 days for the nudge delay
+   contributor MAY take the ticket over — removing the assignee's assignment,
+   then adding their own — leaving a takeover comment that links the
+   unanswered request. The defaults SHALL be 14 days for the nudge delay
    and 7 days for the grace delay, and an adopting organization SHALL be able
    to override both. Activity SHALL mean any comment on the issue, commit on
    any of the ticket's branches, or update to any of its pull requests by the
@@ -90,41 +100,43 @@ all contributors share, and this convention makes it authoritative.
     review is requested, in addition to the pre-merge update required by
     `AGENTS.md` → *Branching Strategy* → *Up-to-date merge precondition*.
 11. At ticket pickup, before any authoring action listed in requirement 2, an
-    agent SHALL compare the issue's assignees with the identity of its current
+    agent SHALL determine the issue's owner under requirement 1 — from the
+    current assignees and the timeline together, never from the current
+    assignee list alone — and compare it with the identity of its current
     forge user:
-    - assigned to someone else only → the agent SHALL stop, name the assignee,
-      and surface the permitted paths (ask the assignee, wait for the
-      stale-lock path of requirement 8, or pick another ticket), without
-      creating any branch, spec-id reservation, or worktree;
-    - assigned to its own user only → the agent SHALL proceed;
-    - several assignees including its own user → the agent SHALL apply
-      requirement 4: proceed only when its own user's assignment is the
-      earliest, otherwise remove its own user's assignment and stop as in the
-      first case;
-    - free → the agent SHALL assign its own user, then read the issue's
-      timeline and determine the owner under requirement 4 from the
-      assignment events since the issue was last without any assignee — not
-      from the current assignee list alone, which on a forge that replaces
-      assignments never shows the race. It SHALL proceed only when that owner
-      is its own user; otherwise it SHALL undo its own assignment, restore the
-      owner's if it displaced it, and stop as in the first case.
+    - owned by someone else → the agent SHALL stop, name the owner, and
+      surface the permitted paths (ask the owner, wait for the stale-lock
+      path of requirement 8, or pick another ticket), without creating any
+      branch, spec-id reservation, or worktree. When its own user holds an
+      assignment on the issue, the agent SHALL first remove it and, when that
+      assignment displaced the owner's, restore the owner's;
+    - owned by its own user → the agent SHALL proceed, first restoring its
+      own user's assignment when a later assignment displaced it;
+    - free → the agent SHALL assign its own user, then determine the owner
+      again under requirement 1 and apply this requirement to the result. It
+      SHALL proceed only when that owner is its own user.
 12. The requirement-11 check SHALL behave identically on GitHub, GitLab, and
     Gitea, through each forge's own command-line tool, consistent with
     `AGENTS.md` → *Forge Access*, and SHALL require no credential beyond the
     one the contributor already holds for that tool.
 13. When the agent cannot establish either side of the requirement-11
-    comparison — forge unreachable, current user undeterminable, issue
-    unreadable, or timeline unreadable when requirement 4 needs it — it SHALL
-    fail closed: stop before any authoring action and report which side could
-    not be read. Proceeding without the check SHALL require the user's
-    explicit instruction in the same session.
-14. When the post-assignment re-read of requirement 11 shows that the
-    self-assignment did not take effect — typically a contributor without the
+    comparison — forge unreachable, current user undeterminable, issue or
+    timeline unreadable — it SHALL fail closed: stop before any authoring
+    action and report which side could not be read. When the agent had
+    already assigned its own user before failing, it SHALL report that
+    assignment to the user as left in place. Such a leftover assignment SHALL
+    confer ownership only when requirement 1 grants it, and the next pickup of
+    the issue, by any contributor, SHALL resolve it under requirement 11.
+    Proceeding without the check SHALL require the user's explicit
+    instruction in the same session.
+14. When the post-assignment determination of requirement 11 still finds the
+    issue free — the self-assignment did not take effect — typically a contributor without the
     permission to assign themselves, such as a fork contributor, whose
     assignment the forge may drop silently — the agent SHALL stop before any
     authoring action, report that the assignment could not be recorded, and
     ask a maintainer, in a comment on the issue, to assign the ticket to its
-    user. The ticket SHALL remain free until a maintainer records that
+    user, instead of stopping as in requirement 11's first case. The ticket
+    SHALL remain free until a maintainer records that
     assignment; the agent SHALL proceed only once it has.
 15. The requirement-11 check SHALL be wired into every framework path through
     which an agent picks up a ticket for authoring, on every supported
@@ -185,7 +197,7 @@ Given issue #N is assigned to contributor A
 And   A has shown no activity on it for 14 days
 When  contributor B comments on #N mentioning A and asking for the ticket
 And   A has not answered 7 days later
-Then  B may reassign #N to themselves
+Then  B may remove A's assignment, then assign themselves
 And   leaves a takeover comment linking the unanswered request
 ```
 
@@ -204,8 +216,8 @@ And   A remains the arbiter of how the epic's sub-tickets are distributed
 ```text
 Given issue #N has no assignee
 And   contributors A and B each ask their agent to start work on #N at the same moment
-When  both agents assign their own user, then re-read the assignees
-Then  both see A and B assigned, and the timeline shows A's assignment first
+When  both agents assign their own user, then determine the owner from the timeline
+Then  both find A's assignment first since #N was last released
 And   A's agent proceeds
 And   B's agent removes B's assignment and stops before any authoring action, naming A as the owner
 ```
@@ -215,10 +227,21 @@ And   B's agent removes B's assignment and stops before any authoring action, na
 ```text
 Given issue #N has no assignee, on a forge where a new assignment replaces the current one
 And   contributor A's agent assigns A, reads the timeline, finds A as the owner, and proceeds
-When  contributor B's agent then assigns B, which removes A's assignment
-And   B's agent reads the timeline since #N was last without any assignee
-Then  it finds A's assignment first
+When  contributor B's agent then assigns B, which replaces A's assignment in one change
+And   B's agent determines the owner from the timeline since #N was last released
+Then  it finds A's assignment first, the replacement not counting as a release
 And   B's agent restores A's assignment, removes B's, and stops before any authoring action, naming A
+```
+
+**Scenario:** a session interrupted right after a displacing self-assignment
+
+```text
+Given contributor A owns issue #N, on a forge where a new assignment replaces the current one
+And   contributor B's agent assigned B, replacing A's assignment, then failed closed before undoing it
+When  either contributor's agent next picks up #N
+Then  it determines from the timeline that A still owns #N, the replacement not counting as a release
+And   B's agent removes B's assignment and restores A's, then stops naming A
+And   A's agent restores A's assignment and proceeds
 ```
 
 **Scenario:** a contributor without assign permission picks up a free ticket
@@ -226,8 +249,8 @@ And   B's agent restores A's assignment, removes B's, and stops before any autho
 ```text
 Given issue #N has no assignee
 And   contributor F, working from a fork, cannot assign themselves on the reference repository
-When  F's agent assigns F and re-reads the assignees
-Then  the re-read shows no assignee
+When  F's agent assigns F and determines the owner again
+Then  #N is still free, the forge having dropped the assignment
 And   the agent stops before any authoring action and asks a maintainer, in a comment on #N, to assign F
 And   #N remains free for everyone until a maintainer records the assignment
 ```
@@ -247,7 +270,7 @@ And   any other push by B to that branch requires A's explicit invitation
 Given contributor A owns issue #N
 When  contributor B asks for #N in a comment
 And   A replies on #N agreeing to hand it over
-Then  B may reassign #N to themselves
+Then  A's assignment is removed, then B's is added
 And   without that written consent, and outside the stale-lock path, B's agent refuses #N as owned by A
 ```
 
