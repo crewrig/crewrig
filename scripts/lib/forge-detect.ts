@@ -161,6 +161,10 @@ const NOTE_BOTH = new RegExp(`^assigned to (${LIST}) and unassigned (${LIST})$`)
 const NOTE_ADD = new RegExp(`^assigned to (${LIST})$`);
 const NOTE_REMOVE = new RegExp(`^unassigned (${LIST})$`);
 
+/** System notes that embed user-chosen text, so "assign" in them says nothing about assignees. */
+const QUOTING_NOTE =
+  /^(?:changed (?:the )?(?:title|description|milestone)\b|(?:added|removed|scoped)\b[^\n]*~|added \d+ (?:new )?commits?\b|created branch\b|mentioned in\b)/i;
+
 function handles(list: string): string[] {
   return [...list.matchAll(/@([\w.-]+)/g)].map((m) => norm(m[1] ?? ""));
 }
@@ -182,8 +186,10 @@ export function parseGitlabNote(body: string): { user: string; op: "add" | "remo
   if (add?.[1] !== undefined) return handles(add[1]).map((user) => ({ user, op: "add" as const }));
   const rm = NOTE_REMOVE.exec(text);
   if (rm?.[1] !== undefined) return handles(rm[1]).map((user) => ({ user, op: "remove" as const }));
-  // Fail closed only on assignment-shaped notes, never on a title or label mentioning "assign" (i1-F1).
-  if (/^(?:re|un)?assigned\b/i.test(text))
+  // Any other note that talks about assignment fails closed (i2-F1: `removed assignee`,
+  // `removed all assignees`, `reassigned to @b`, …), except the notes whose wording
+  // quotes free text — a title, label, milestone, commit or branch name (i1-F1).
+  if (/assign/i.test(text) && !QUOTING_NOTE.test(text))
     throw new ForgeError(`unparsed GitLab assignment note: '${text}'`);
   return null;
 }
