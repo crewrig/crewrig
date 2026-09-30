@@ -74,13 +74,15 @@ Outside the usage root:
   `--out` to a chosen path, and terminal-report output redirected to a file
   (see [Personal-data note](usage-dashboard.md#personal-data-note)). Derived
   from recorded activity.
-- **A transient hook payload file.** Each capture hook stages the payload its
-  CLI hands it in a temporary file in the system temp directory, for the
-  length of one call, and a killed hook can leave the file behind. **That
-  file can hold conversation text**: Gemini CLI's payload carries the model
-  request and response, and Claude Code's carries the turn's last assistant
-  message (see [Personal-data note](usage-capture.md#personal-data-note)).
-  Derived from recorded activity.
+- **A transient hook payload file, test override only.** The capture hooks
+  read the payload their CLI hands them into memory and stage it in no file.
+  Only the test-only override (`CREWRIG_USAGE_CAPTURE_TEST` set together with
+  `CREWRIG_USAGE_CAPTURE_CLI`) writes it to an owner-only temporary file for
+  the length of one call and removes it when the call returns. Such a file
+  can hold conversation text: Gemini CLI's payload carries the model request
+  and response, and Claude Code's carries the turn's last assistant message
+  (see [Personal-data note](usage-capture.md#personal-data-note)). Derived
+  from recorded activity.
 - **The non-interactive wrapper's whole-output file.**
   `usage_headless_run` in `scripts/lib/usage-headless.sh` stages the whole
   output of a run it wraps in a temporary file in the system temp directory.
@@ -100,8 +102,8 @@ contents. Every capture channel, the non-interactive `headless-envelope`
 channel included, copies only enumerated fields into a record's `raw` block.
 
 Conversation text can appear only in the transient files listed above: the
-hook payload file and the whole-output file of `usage_headless_run`, for the
-length of one call, or longer when a killed call leaves them behind.
+test-override payload file and the whole-output file of `usage_headless_run`,
+for the length of one call, or longer when a killed call leaves them behind.
 
 ## Retention
 
@@ -388,7 +390,7 @@ still includes consumption from before the purge.
      echo "MemPalace mirror: ${USAGE_MIRROR_VERDICT:-UNVERIFIED (the mirror check has not run in this shell)}"
      for f in "$HOME/.claude/settings.json" "$HOME/.gemini/settings.json" \
        "$HOME/.copilot/hooks/copilot-transcript-hooks.json" "$HOME/.gemini/antigravity-cli/settings.json"; do
-       if [ -f "$f" ] && grep -qE 'usage-capture\.sh|antigravity-statusline-shim\.sh' "$f"; then
+       if [ -f "$f" ] && grep -qE 'usage-capture\.(sh|ts)|antigravity-statusline-shim\.(sh|ts)' "$f"; then
          hits="$hits $f"
        fi
      done
