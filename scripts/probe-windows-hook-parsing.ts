@@ -8,7 +8,9 @@
 // Usage (each subcommand accepts --root <dir>; setup also accepts --home <dir>):
 //   node probe.ts setup                      create the layout beside kit/
 //   node probe.ts install <cli> [--only I,Q3] snapshot + write the probe hooks
-//   node probe.ts record <cli> <case> [...]  (run BY the hooks) write one record
+//   node probe.ts record <cli> <case> [...] [--exit <n>]
+//                                            (run BY the hooks) write one record,
+//                                            then exit <n> (default 0, never 2)
 //   node probe.ts collect <cli>              print the records, one group each
 //   node probe.ts restore <cli>              restore the config, verify SHA-256
 //   node probe.ts verify-clean               prove nothing is left installed
@@ -27,8 +29,14 @@
 // always lands in <root>/out/<cli>/ whichever copy ran. No environment
 // variable under test is ever read to find the output directory.
 //
-// `record` exits 0 with empty stdout, so no CLI reads its output as a hook
-// decision. Exit codes: 0 success, 1 check failed, 2 usage error.
+// `record` writes nothing to stdout, so no CLI reads its output as a hook
+// decision, and exits 0 unless `--exit <n>` asks otherwise (case X1). Exit
+// codes of the other subcommands: 0 success, 1 check failed, 2 usage error.
+//
+// The fifth target `antigravity-statusline` measures the `statusLine.command`
+// surface of ~/.gemini/antigravity-cli/settings.json (spec 0243 R18), a single
+// slot: each case is installed alone with `install antigravity-statusline
+// --only <id>` and restored with `restore` before the next.
 
 import { spawnSync, type SpawnSyncOptionsWithStringEncoding } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -37,7 +45,13 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const CLIS = ["claude", "gemini", "copilot", "antigravity"] as const;
+export const CLIS = [
+  "claude",
+  "gemini",
+  "copilot",
+  "antigravity",
+  "antigravity-statusline",
+] as const;
 export type Cli = (typeof CLIS)[number];
 
 export const MARKER = ".crewrig-probe-root";
@@ -50,6 +64,7 @@ export const PROJECT_VAR: Record<Cli, string> = {
   gemini: "GEMINI_PROJECT_DIR",
   copilot: "COPILOT_PROJECT_DIR",
   antigravity: "ANTIGRAVITY_PROJECT_DIR",
+  "antigravity-statusline": "ANTIGRAVITY_PROJECT_DIR",
 };
 
 /** User-level hook surface per CLI, relative to the home directory (row 8). */
@@ -58,7 +73,11 @@ export const CONFIG_FILE: Record<Cli, string[]> = {
   gemini: [".gemini", "settings.json"],
   copilot: [".copilot", "hooks", "copilot-transcript-hooks.json"],
   antigravity: [".gemini", "config", "hooks.json"],
+  "antigravity-statusline": [".gemini", "antigravity-cli", "settings.json"],
 };
+
+/** The cases that make sense on the statusLine surface (plan step 17). */
+export const STATUSLINE_CASES = ["I", "Q0", "Q1", "Q4", "P", "P2d"] as const;
 
 export interface ProbeCase {
   id: string;
@@ -109,12 +128,14 @@ export function casesFor(cli: Cli, root: string): ProbeCase[] {
     gemini: `node \${${v}}/.crewrig-probe/probe.ts record gemini M`,
     copilot: `node "\${${v}:-$PWD}/.crewrig-probe/probe.ts" record copilot M`,
     antigravity: "node .crewrig-probe/probe.ts record antigravity M",
+    "antigravity-statusline": "node .crewrig-probe/probe.ts record antigravity-statusline M",
   };
   const deployed: Record<Cli, string> = {
     claude: `node "${proj}" record claude D`,
     gemini: `MEMPALACE_TRANSCRIPT_ENABLED=1 node ${proj} record gemini D`,
     copilot: `node "${proj}" record copilot D`,
     antigravity: `node ${proj} record antigravity D Stop`,
+    "antigravity-statusline": `node ${proj} record antigravity-statusline D`,
   };
   const cases: ProbeCase[] = [
     { id: "I", command: rec("I") },
@@ -138,10 +159,15 @@ export function casesFor(cli: Cli, root: string): ProbeCase[] {
     { id: "P2e", command: rec("P2e", "./r/x") },
     { id: "P3a", command: rec("P3a", "/c/crewrig-probe/x") },
     { id: "P3b", command: rec("P3b", "/x/y:/z") },
+    // Exit status 1 (never 2: it blocks Claude Code's Stop). Spec 0243 R12.
+    { id: "X1", command: rec("X1", "--exit", "1") },
   ];
   if (cli === "copilot") {
     cases.push({ id: "I-bash", key: "bash", command: rec("I-bash") });
     cases.push({ id: "I-ps", key: "powershell", command: rec("I-ps") });
+  }
+  if (cli === "antigravity-statusline") {
+    return cases.filter((c) => (STATUSLINE_CASES as readonly string[]).includes(c.id));
   }
   return cases;
 }
@@ -158,8 +184,23 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+/**
+ * Set exactly one `statusLine.command`, keeping every other key. The surface is
+ * a single slot, so one case is installed at a time.
+ */
+export function mergeStatusLine(existing: Json, cases: ProbeCase[]): Json {
+  const [only, ...extra] = cases;
+  if (only === undefined || extra.length > 0) {
+    throw new UsageError(
+      `install antigravity-statusline holds one statusLine.command: pass --only <id> (${STATUSLINE_CASES.join(", ")})`,
+    );
+  }
+  return { ...existing, statusLine: { ...asObject(existing.statusLine), command: only.command } };
+}
+
 /** Merge the probe entries into an existing (or empty) config object. */
 export function mergeHooks(cli: Cli, existing: Json, cases: ProbeCase[]): Json {
+  if (cli === "antigravity-statusline") return mergeStatusLine(existing, cases);
   const out: Json = { ...existing };
   if (cli === "antigravity") {
     out[PROBE_TAG] = {
@@ -304,6 +345,10 @@ export function selectCases(cli: Cli, root: string, only: string[] | null): Prob
 
 export function install(root: string, cli: Cli, io: Io, only: string[] | null = null): number {
   const cases = selectCases(cli, root, only);
+  if (cli === "antigravity-statusline" && cases.length !== 1) {
+    // Refuse before anything is snapshotted or written.
+    mergeStatusLine({}, cases);
+  }
   const state = readState(root);
   if (state.clis[cli]?.installed === true) {
     io.err(`install: ${cli} is already installed; run 'restore ${cli}' first`);
@@ -534,16 +579,41 @@ function readStdin(timeoutMs: number): Promise<string> {
   });
 }
 
+/**
+ * Split a trailing `--exit <n>` off the hook's arguments. Only 0, 1 and 3-255
+ * are honoured: exit 2 blocks a Claude Code `Stop`, so it is never emitted,
+ * and a malformed request must not turn into a blocking status either — it is
+ * recorded and the hook exits 0.
+ */
+export function parseExit(args: readonly string[]): {
+  args: string[];
+  exit: number;
+  error: string | null;
+} {
+  const at = args.indexOf("--exit");
+  if (at < 0) return { args: [...args], exit: 0, error: null };
+  const raw = args[at + 1];
+  const rest = [...args.slice(0, at), ...args.slice(at + 2)];
+  const n = raw !== undefined && /^\d{1,3}$/.test(raw) ? Number(raw) : Number.NaN;
+  if (!Number.isInteger(n) || n > 255 || n === 2) {
+    return { args: rest, exit: 0, error: `--exit ${raw ?? "<missing>"} refused` };
+  }
+  return { args: rest, exit: n, error: null };
+}
+
 export async function record(self: string, argv: readonly string[]): Promise<number> {
   const t0 = Date.now();
   const root = findRoot(path.dirname(self));
   if (root === null) return 1;
   const cli = parseCli(argv[0]);
   const id = (argv[1] ?? "unnamed").replace(/[^A-Za-z0-9-]/g, "_");
+  const requested = parseExit(argv.slice(2));
   const rec: Json = {
     cli,
     case: id,
-    args: argv.slice(2),
+    args: requested.args,
+    exitRequested: requested.exit,
+    exitError: requested.error,
     argv: process.argv,
     scriptPath: self,
     execPath: process.execPath,
@@ -574,7 +644,7 @@ export async function record(self: string, argv: readonly string[]): Promise<num
   rec.parentChainError = error ?? null;
   rec.timingsMs = { firstWrite: t1 - t0, stdin: t2 - t1, parentChain: Date.now() - t2 };
   write();
-  return 0;
+  return requested.exit;
 }
 
 export function collect(root: string, cli: Cli, io: Io): number {
@@ -586,7 +656,12 @@ export function collect(root: string, cli: Cli, io: Io): number {
     const id = String(rec.case);
     byCase.set(id, [...(byCase.get(id) ?? []), rec]);
   }
-  const only = fs.existsSync(statePath(root)) ? (readState(root).clis[cli]?.only ?? null) : null;
+  // The statusLine surface installs one case at a time, so `only` would list
+  // just the last one; its whole (six-case) table is always shown.
+  const only =
+    cli !== "antigravity-statusline" && fs.existsSync(statePath(root))
+      ? (readState(root).clis[cli]?.only ?? null)
+      : null;
   for (const c of selectCases(cli, root, only)) {
     const recs = byCase.get(c.id) ?? [];
     io.out(`[${c.id}] launched=${recs.length > 0 ? "yes" : "no"} records=${recs.length}`);
@@ -595,6 +670,10 @@ export function collect(root: string, cli: Cli, io: Io): number {
     if (rec === undefined) continue;
     const pv = asObject(rec.projectVar);
     io.out(`  args: ${JSON.stringify(rec.args)}`);
+    if (typeof rec.exitRequested === "number" && rec.exitRequested !== 0) {
+      io.out(`  exit status requested: ${String(rec.exitRequested)}`);
+    }
+    if (typeof rec.exitError === "string") io.out(`  exitError: ${rec.exitError}`);
     io.out(`  scriptPath: ${String(rec.scriptPath)}  cwd: ${String(rec.cwd)}`);
     io.out(`  ${String(pv.name)} in hook env: ${JSON.stringify(pv.value)}`);
     for (const p of asArray(rec.parentChain)) {

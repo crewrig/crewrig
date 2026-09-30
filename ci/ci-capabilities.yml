@@ -1055,6 +1055,25 @@ capabilities:
       - 'grep -F "https://nodejs.org/en/download" guard.out'
       - 'if grep -E "SyntaxError|ERR_|Cannot find module" guard.out; then exit 1; fi'
 
+  # Spec 0243 R5: the hook entries print nothing on the oldest Node.js 24
+  # release, where type stripping still emits an ExperimentalWarning. The
+  # suite runs the entry form check and the unstubbed silence runs of every
+  # CLI's slow path (v1-F5) under exactly 24.0.0. No `paths:` filter, like
+  # node-floor-guard: the suite is fast and any shared-module change can
+  # reintroduce a warning.
+  - id: usage-capture-node-24-0
+    name: "Usage-capture hook entries are silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-entry-form.test.ts
+
   # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves
   # the change's base ref, so the job needs full source history — declared as
   # `history-depth: full`, same as the two version-bump guards below.
@@ -1353,6 +1372,19 @@ capabilities:
           - "scripts/setup-copilot-interactive.sh"
           - "scripts/tests/test-setup-usage-capture-optin.sh"
           - "scripts/tests/fixtures/setup-usage-capture/**"
+          - "hooks/usage-capture.ts"
+          - "hooks/antigravity-statusline-shim.ts"
+          - "scripts/lib/hook-*.ts"
+          - "scripts/hook-wiring.ts"
+          - "scripts/check-timing-budget.ts"
+          - "scripts/setup-antigravity-interactive.sh"
+          - "scripts/tests/antigravity-statusline-shim.test.ts"
+          - "scripts/tests/test-setup-antigravity-transcript.sh"
+          - "scripts/tests/hook-*"
+          - "scripts/tests/lib/hook-*"
+          - "scripts/tests/usage-capture-*"
+          - "scripts/tests/lib/usage-capture-*"
+          - "docs/cli-matrix.md"
           - "package.json"
           - "package-lock.json"
       - on: push
@@ -1378,15 +1410,29 @@ capabilities:
           - "scripts/setup-copilot-interactive.sh"
           - "scripts/tests/test-setup-usage-capture-optin.sh"
           - "scripts/tests/fixtures/setup-usage-capture/**"
+          - "hooks/usage-capture.ts"
+          - "hooks/antigravity-statusline-shim.ts"
+          - "scripts/lib/hook-*.ts"
+          - "scripts/hook-wiring.ts"
+          - "scripts/check-timing-budget.ts"
+          - "scripts/setup-antigravity-interactive.sh"
+          - "scripts/tests/antigravity-statusline-shim.test.ts"
+          - "scripts/tests/test-setup-antigravity-transcript.sh"
+          - "scripts/tests/hook-*"
+          - "scripts/tests/lib/hook-*"
+          - "scripts/tests/usage-capture-*"
+          - "scripts/tests/lib/usage-capture-*"
+          - "docs/cli-matrix.md"
           - "package.json"
           - "package-lock.json"
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
     command:
       - npm install
       - bash scripts/tests/test-usage-capture.sh
       - bash scripts/tests/test-setup-usage-capture-optin.sh
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-statusline-shim.test.ts scripts/tests/hook-*.test.ts scripts/tests/usage-capture-*.test.ts
 
   # usage-storage validates the usage-record storage contract (spec 0207):
   # the journal write path, the wing derivation, the drain/sweep, the mirror
@@ -1733,6 +1779,31 @@ capabilities:
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15).
+
+  # Spec 0243 R28: the usage-capture row's copy of the template above. Both
+  # TypeScript entries run from pwsh, the command line of each CLI runs through
+  # the interpreter row 37 of docs/cli-matrix.md records for it, and three
+  # timing budgets (R15) apply to the fast path, the slow path and the shim.
+  - id: windows-usage-capture
+    name: "Windows usage capture: entries, per-CLI command lines and timing budgets"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-usage-capture`). GitLab CI,
+        as configured for this repository, exposes no Windows runner: every
+        generated GitLab job derives its `image` from `requires.runtime`
+        through `runtime_to_image` (scripts/build-ci.sh lines 70-81), which
+        maps only to Linux Docker images, and .gitlab-ci.yml declares no
+        runner `tags:` that could select a Windows executor. There is no
+        faithful equivalent on the other supported engines (spec 0240 R15,
+        spec 0243 R28).
 
   # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
   # (spec 0183 R23, issue #1008): it packaged the committed source tree via

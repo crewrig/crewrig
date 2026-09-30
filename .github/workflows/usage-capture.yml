@@ -24,6 +24,19 @@ on:
       - "scripts/setup-copilot-interactive.sh"
       - "scripts/tests/test-setup-usage-capture-optin.sh"
       - "scripts/tests/fixtures/setup-usage-capture/**"
+      - "hooks/usage-capture.ts"
+      - "hooks/antigravity-statusline-shim.ts"
+      - "scripts/lib/hook-*.ts"
+      - "scripts/hook-wiring.ts"
+      - "scripts/check-timing-budget.ts"
+      - "scripts/setup-antigravity-interactive.sh"
+      - "scripts/tests/antigravity-statusline-shim.test.ts"
+      - "scripts/tests/test-setup-antigravity-transcript.sh"
+      - "scripts/tests/hook-*"
+      - "scripts/tests/lib/hook-*"
+      - "scripts/tests/usage-capture-*"
+      - "scripts/tests/lib/usage-capture-*"
+      - "docs/cli-matrix.md"
       - "package.json"
       - "package-lock.json"
   push:
@@ -49,6 +62,19 @@ on:
       - "scripts/setup-copilot-interactive.sh"
       - "scripts/tests/test-setup-usage-capture-optin.sh"
       - "scripts/tests/fixtures/setup-usage-capture/**"
+      - "hooks/usage-capture.ts"
+      - "hooks/antigravity-statusline-shim.ts"
+      - "scripts/lib/hook-*.ts"
+      - "scripts/hook-wiring.ts"
+      - "scripts/check-timing-budget.ts"
+      - "scripts/setup-antigravity-interactive.sh"
+      - "scripts/tests/antigravity-statusline-shim.test.ts"
+      - "scripts/tests/test-setup-antigravity-transcript.sh"
+      - "scripts/tests/hook-*"
+      - "scripts/tests/lib/hook-*"
+      - "scripts/tests/usage-capture-*"
+      - "scripts/tests/lib/usage-capture-*"
+      - "docs/cli-matrix.md"
       - "package.json"
       - "package-lock.json"
 
@@ -64,7 +90,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -75,6 +101,9 @@ jobs:
 
       - name: Validate the usage-capture opt-in of Claude Code, Gemini CLI and Copilot CLI
         run: bash scripts/tests/test-setup-usage-capture-optin.sh
+
+      - name: Validate the TypeScript hook entries, wiring and deprecation channel
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-statusline-shim.test.ts scripts/tests/hook-*.test.ts scripts/tests/usage-capture-*.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

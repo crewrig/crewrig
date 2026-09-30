@@ -20,8 +20,11 @@ import {
   CONFIG_FILE,
   casesFor,
   mergeHooks,
+  mergeStatusLine,
+  parseExit,
   parseWmicList,
   redactEnv,
+  STATUSLINE_CASES,
   type Cli,
 } from "../probe-windows-hook-parsing.ts";
 
@@ -45,6 +48,10 @@ function run(
   return { status: r.status, out: r.stdout, err: r.stderr };
 }
 
+// The statusLine surface is a single slot: it is installed one case at a time
+// (see the "antigravity-statusline" suite), never as a whole table.
+const HOOK_CLIS = CLIS.filter((c) => c !== "antigravity-statusline");
+
 const kit = (): string => path.join(root, "kit", "probe.ts");
 const cfg = (cli: Cli): string => path.join(home, ...CONFIG_FILE[cli]);
 
@@ -64,7 +71,7 @@ afterEach(() => {
 });
 
 describe("install then restore", () => {
-  for (const cli of CLIS) {
+  for (const cli of HOOK_CLIS) {
     test(`${cli}: a pre-existing file is byte-identical after restore`, () => {
       fs.mkdirSync(path.dirname(cfg(cli)), { recursive: true });
       const original = Buffer.from('{\n  "theme": "dark",\r\n  "x": 1\n}');
@@ -252,6 +259,154 @@ describe("install --only", () => {
     assert.equal(i.status, 2);
     assert.match(i.err, /unknown case/);
     assert.equal(fs.existsSync(cfg("gemini")), false);
+  });
+});
+
+describe("antigravity-statusline", () => {
+  const settings = (): string => cfg("antigravity-statusline");
+
+  test("targets ~/.gemini/antigravity-cli/settings.json, not the hooks surface", () => {
+    assert.deepEqual(CONFIG_FILE["antigravity-statusline"], [
+      ".gemini",
+      "antigravity-cli",
+      "settings.json",
+    ]);
+    assert.notDeepEqual(CONFIG_FILE["antigravity-statusline"], CONFIG_FILE.antigravity);
+  });
+
+  test("the case table is exactly I Q0 Q1 Q4 P P2d", () => {
+    assert.deepEqual(
+      casesFor("antigravity-statusline", "C:/r").map((c) => c.id),
+      ["I", "Q0", "Q1", "Q4", "P", "P2d"],
+    );
+    assert.deepEqual([...STATUSLINE_CASES], ["I", "Q0", "Q1", "Q4", "P", "P2d"]);
+  });
+
+  test("mergeStatusLine sets exactly one statusLine.command and keeps the rest", () => {
+    const [one] = casesFor("antigravity-statusline", "C:/r");
+    assert.ok(one !== undefined);
+    const merged = mergeStatusLine(
+      { theme: "dark", statusLine: { type: "command", command: "echo old", padding: 1 } },
+      [one],
+    );
+    assert.deepEqual(merged, {
+      theme: "dark",
+      statusLine: { type: "command", command: one.command, padding: 1 },
+    });
+    assert.deepEqual(mergeStatusLine({}, [one]), { statusLine: { command: one.command } });
+    assert.deepEqual(mergeHooks("antigravity-statusline", {}, [one]), {
+      statusLine: { command: one.command },
+    });
+  });
+
+  test("mergeStatusLine refuses zero or several cases", () => {
+    const cases = casesFor("antigravity-statusline", "C:/r");
+    assert.throws(() => mergeStatusLine({}, []), /--only <id>/);
+    assert.throws(() => mergeStatusLine({}, cases), /--only <id>/);
+  });
+
+  test("install without --only, or with several ids, is a usage error that writes nothing", () => {
+    for (const args of [
+      ["install", "antigravity-statusline"],
+      ["install", "antigravity-statusline", "--only", "I,Q1"],
+    ]) {
+      const r = run(kit(), args);
+      assert.equal(r.status, 2);
+      assert.match(r.err, /holds one statusLine\.command/);
+    }
+    assert.equal(fs.existsSync(settings()), false);
+    assert.equal(run(kit(), ["verify-clean"]).status, 0);
+  });
+
+  test("install --only writes one command, restore is byte-identical, then the next case", () => {
+    fs.mkdirSync(path.dirname(settings()), { recursive: true });
+    const original = Buffer.from(
+      '{\n  "theme": "dark",\r\n  "statusLine": {"command": "echo hi"}\n}',
+    );
+    fs.writeFileSync(settings(), original);
+    for (const id of STATUSLINE_CASES) {
+      const i = run(kit(), ["install", "antigravity-statusline", "--only", id]);
+      assert.equal(i.status, 0, i.err);
+      const got = JSON.parse(fs.readFileSync(settings(), "utf8")) as {
+        theme: string;
+        statusLine: { command: string };
+      };
+      assert.equal(got.theme, "dark");
+      const expected = casesFor("antigravity-statusline", fs.realpathSync(root)).find(
+        (c) => c.id === id,
+      );
+      assert.equal(got.statusLine.command, expected?.command);
+      assert.match(got.statusLine.command, new RegExp(` record antigravity-statusline ${id}\\b`));
+      const r = run(kit(), ["restore", "antigravity-statusline"]);
+      assert.equal(r.status, 0, r.err);
+      assert.deepEqual(fs.readFileSync(settings()), original);
+    }
+    assert.equal(run(kit(), ["verify-clean"]).status, 0);
+  });
+
+  test("a record lands in out/antigravity-statusline and collect lists the whole table", () => {
+    const r = run(kit(), ["record", "antigravity-statusline", "Q1", "a b"], '{"cwd":"C:/p"}');
+    assert.equal(r.status, 0, r.err);
+    assert.equal(r.out, "");
+    assert.equal(fs.readdirSync(path.join(root, "out", "antigravity-statusline")).length, 1);
+    assert.equal(run(kit(), ["install", "antigravity-statusline", "--only", "I"]).status, 0);
+    const c = run(kit(), ["collect", "antigravity-statusline"]);
+    assert.match(c.out, /\[Q1\] launched=yes/);
+    assert.match(c.out, /\[P2d\] launched=no/);
+    assert.equal(run(kit(), ["restore", "antigravity-statusline"]).status, 0);
+  });
+});
+
+describe("record --exit (case X1, spec 0243 R12)", () => {
+  test("X1 is in the hook CLIs' tables with exactly `--exit 1`, and not on the statusLine surface", () => {
+    for (const cli of HOOK_CLIS) {
+      const x1 = casesFor(cli, "C:/r").find((c) => c.id === "X1");
+      assert.ok(x1 !== undefined, cli);
+      assert.match(x1.command, new RegExp(` record ${cli} X1 --exit 1$`));
+    }
+    assert.equal(
+      casesFor("antigravity-statusline", "C:/r").some((c) => c.id === "X1"),
+      false,
+    );
+  });
+
+  test("parseExit honours 0, 1 and 3-255, never emits 2, and strips the flag from args", () => {
+    assert.deepEqual(parseExit(["a", "--exit", "1"]), { args: ["a"], exit: 1, error: null });
+    assert.deepEqual(parseExit([]), { args: [], exit: 0, error: null });
+    assert.equal(parseExit(["--exit", "255"]).exit, 255);
+    assert.equal(parseExit(["--exit", "0"]).exit, 0);
+    for (const bad of ["2", "256", "-1", "x", "1.5", "0x1"]) {
+      const p = parseExit(["--exit", bad]);
+      assert.equal(p.exit, 0, bad);
+      assert.match(p.error ?? "", /refused/);
+    }
+    const missing = parseExit(["--exit"]);
+    assert.equal(missing.exit, 0);
+    assert.match(missing.error ?? "", /refused/);
+  });
+
+  test("record --exit 1 writes the complete record, prints nothing and exits 1", () => {
+    const r = run(kit(), ["record", "claude", "X1", "--exit", "1"], "{}");
+    assert.equal(r.status, 1);
+    assert.equal(r.out, "");
+    const dir = path.join(root, "out", "claude");
+    const rec = JSON.parse(
+      fs.readFileSync(path.join(dir, fs.readdirSync(dir)[0] ?? ""), "utf8"),
+    ) as { args: unknown; exitRequested: number; stdin: unknown; parentChain: unknown };
+    assert.deepEqual(rec.args, []);
+    assert.equal(rec.exitRequested, 1);
+    assert.deepEqual(rec.stdin, { keys: [], values: {} });
+    assert.match(run(kit(), ["collect", "claude"]).out, /exit status requested: 1/);
+  });
+
+  test("record --exit 2 is refused: exit 0 and the refusal is recorded", () => {
+    const r = run(kit(), ["record", "claude", "X1", "--exit", "2"], "");
+    assert.equal(r.status, 0);
+    assert.match(run(kit(), ["collect", "claude"]).out, /exitError: --exit 2 refused/);
+  });
+
+  test("without --exit the record still exits 0", () => {
+    assert.equal(run(kit(), ["record", "gemini", "I"], "").status, 0);
   });
 });
 
