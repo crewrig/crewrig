@@ -163,10 +163,11 @@ describe("unsafe paths are refused with a diagnostic naming the character (R17, 
 });
 
 describe("measured surfaces (R18)", () => {
-  test("holds the four hooks-surface Windows triples and no Antigravity statusline entry yet", () => {
+  test("holds the four hooks-surface Windows triples and the Antigravity statusline one (row 37e)", () => {
     const keys = MEASURED_SURFACES.map((m) => `${m.cli}/${m.surface}/${m.os}`).sort();
     assert.deepEqual(keys, [
       "antigravity/hooks/win32",
+      "antigravity/statusline/win32",
       "claude/hooks/win32",
       "copilot/hooks/win32",
       "gemini/hooks/win32",
@@ -174,15 +175,37 @@ describe("measured surfaces (R18)", () => {
     assert.ok(MEASURED_SURFACES.every((m) => m.status === "conforming"));
   });
 
-  test("a Windows statusline command line is refused as unmeasured", () => {
+  test("the row 37e entry conforms to row 37b but is flagged cwd-first", () => {
+    const entry = MEASURED_SURFACES.find(
+      (m) => m.cli === "antigravity" && m.surface === "statusline",
+    );
+    assert.equal(entry?.interpreter, "cmd.exe");
+    assert.equal(entry?.quoting, "cmd");
+    assert.equal(entry?.status, "conforming");
+    assert.equal(entry?.interpreterLookup, "cwd-first");
+    const hooks = MEASURED_SURFACES.find((m) => m.cli === "antigravity" && m.surface === "hooks");
+    assert.equal(hooks?.interpreterLookup, undefined, "the hooks surface is unchanged");
+  });
+
+  test("a Windows statusline command line is refused, naming the current-directory lookup and #1392", () => {
     const message = refusal(build("antigravity", "win32", "C:/x/hooks/s.ts", "statusline"));
-    assert.ok(message.includes("unmeasured"), message);
+    assert.ok(message.includes("current directory") && message.includes("#1392"), message);
+    assert.ok(message.includes("CWE-427") && !message.includes("unmeasured"), message);
   });
 
   test("the surface diagnostic wins over the path diagnostic", () => {
-    const message = refusal(build("antigravity", "win32", "C:/my dir/hooks/s.ts", "statusline"));
-    assert.ok(message.includes("unmeasured"), message);
-    assert.ok(!message.includes("checkout path"), message);
+    for (const script of ["C:/my dir/hooks/s.ts", "C:/a&b/hooks/s.ts", "C:/a$b/hooks/s.ts"]) {
+      const message = refusal(build("antigravity", "win32", script, "statusline"));
+      assert.ok(message.includes("#1392"), message);
+      assert.ok(!message.includes("checkout path"), message);
+    }
+  });
+
+  test("the hooks surface and macOS/Linux statusline are unchanged", () => {
+    assert.equal(build("antigravity", "win32", "C:/x/hooks/usage-capture.ts").ok, true);
+    for (const platform of ["darwin", "linux"] as const) {
+      assert.equal(build("antigravity", platform, "/x/hooks/s.ts", "statusline").ok, true);
+    }
   });
 
   test("a conforming statusline entry yields the cmd.exe shape", () => {

@@ -267,11 +267,12 @@ describe("statusline (R19, R20, D5)", () => {
     assert.equal(fs.existsSync(p.marker), false);
   });
 
-  test("a Windows statusline install is refused as unmeasured, writing nothing (R18)", () => {
+  test("a Windows statusline install is refused (cwd-first lookup, #1392), writing nothing (R18)", () => {
     const p = paths();
     const res = run("install", p, "--platform", "win32");
     assert.equal(res.status, 1);
-    assert.match(res.stdout, /unmeasured/);
+    assert.match(res.stdout, /current directory/);
+    assert.match(res.stdout, /#1392/);
     assert.equal(fs.existsSync(p.settings), false);
     assert.equal(fs.existsSync(p.marker), false);
   });

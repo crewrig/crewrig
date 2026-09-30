@@ -27,16 +27,25 @@ export interface MeasuredSurface {
   readonly quoting: Quoting;
   /** `conforming` when interpreter and quoting equal row 37b's, else `contradicting`. */
   readonly status: "conforming" | "contradicting";
+  /**
+   * How the interpreter finds a bare `node`. `cwd-first` means it searches the
+   * current directory before `PATH` (`cmd.exe`, CWE-427), so a repository
+   * holding `node.cmd` would run instead of Node.js: the module writes no
+   * command line for such a surface. Absent means `path-only`.
+   */
+  readonly interpreterLookup?: "path-only" | "cwd-first";
 }
 
 /**
- * One entry per measured (CLI, surface, operating system) triple (R18). Today:
- * the four hooks-surface Windows triples of rows 37-37d. There is deliberately
- * NO Antigravity `statusline` entry until row 37e lands with its measurement,
- * in the same diff (R18); until then the module refuses "unmeasured".
+ * One entry per measured (CLI, surface, operating system) triple (R18): the
+ * four hooks-surface Windows triples of rows 37-37d and the Antigravity
+ * `statusline` triple of row 37e (#1389). The latter is conforming to row 37b
+ * but flagged `cwd-first`: `cmd.exe` resolves a bare `node` from the working
+ * directory first, which a repository can hijack (security review finding 1,
+ * spec 0243 delta-02), so the module refuses it until #1392 settles a form.
  *
  * Row 37e carries `[measured: interpreter=<v>; quoting=<v>]` with the same
- * tokens as `interpreter` and `quoting` here.
+ * tokens as `interpreter` and `quoting` here; a test compares them.
  */
 export const MEASURED_SURFACES: readonly MeasuredSurface[] = [
   {
@@ -70,6 +79,15 @@ export const MEASURED_SURFACES: readonly MeasuredSurface[] = [
     interpreter: "cmd.exe",
     quoting: "cmd",
     status: "conforming",
+  },
+  {
+    cli: "antigravity",
+    surface: "statusline",
+    os: "win32",
+    interpreter: "cmd.exe",
+    quoting: "cmd",
+    status: "conforming",
+    interpreterLookup: "cwd-first",
   },
 ];
 
@@ -139,6 +157,13 @@ export function hookCommandLine(
       return {
         ok: false,
         refusal: `${cli} ${surface} on Windows is measured as interpreter ${measured.interpreter} with ${measured.quoting} quoting, which contradicts the shape this tool writes; no command line is written until a spec 0243 delta sets its shape.`,
+      };
+    }
+    // Precedes the path diagnostics (R17): whatever the path, the form is unsafe.
+    if (measured.interpreterLookup === "cwd-first") {
+      return {
+        ok: false,
+        refusal: `${cli} ${surface} on Windows runs its command through ${measured.interpreter}, which looks a bare 'node' up in the current directory before PATH (CWE-427): a repository holding node.cmd, node.bat or node.exe would run instead of Node.js. No command line is written until #1392 settles a form that does not depend on that lookup.`,
       };
     }
     cmdExe = measured.interpreter === "cmd.exe";

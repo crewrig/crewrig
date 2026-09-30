@@ -691,6 +691,12 @@ jobs:
               - 'scripts/tests/test-tls-delegation.sh'
               - 'scripts/setup-*.sh'
               - 'scripts/lib/**'
+      # The v1-F2 floor guard (spec 0243 R24) refuses to write the direct form on
+      # a Node.js below 24, and ubuntu-latest defaults to 22 (#1391 CI).
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.setup == 'true'
+        with:
+          node-version: 24
       - name: Install yq
         if: steps.filter.outputs.setup == 'true'
         run: |
