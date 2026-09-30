@@ -3,7 +3,7 @@ id: "0215"
 slug: shell-to-typescript-migration
 status: draft
 complexity: large
-interaction-mode: MINIMAL
+interaction-mode: INTERMEDIATE
 related-issue: 1231
 version: 4.1.0
 ---
@@ -150,16 +150,18 @@ repository at `main @ 982a657`.
     to — the base ref is `origin/release/1231-ts-migration` wherever the
     protocol names `main`: the worktree of the ticket is created from it
     (`docs/agent-team-protocol.md:144`, `git worktree add -b <branch>
-    .worktrees/<ticket-id> <remote>/release/1231-ts-migration`); the
-    reviewer-seat brief names it, as a reference, among the references it
-    carries; a `pr-reviewer` diffs against it, and reads the pull request's
-    actual `baseRefName` rather than assuming `main`
+    .worktrees/<ticket-id> <remote>/release/1231-ts-migration`); a
+    `pr-reviewer` reads the pull request's actual `baseRefName` rather than
+    assuming `main`, and diffs against it
     (`docs/agent-team-protocol.md:192`, the inspection recipe
     `git diff <remote>/main...<remote>/<branch>` becomes
     `git diff <remote>/release/1231-ts-migration...<remote>/<branch>`); and the
     pre-push rebase of a feature branch
     (`docs/agent-team-protocol.md:216`) targets it. An orchestrator briefing a
-    sub-agent SHALL state the base ref in the brief.
+    sub-agent SHALL state the base ref in the brief, except for a
+    reviewer-seat brief, whose closed reference list
+    (`docs/reviewer-seat.md`) is unchanged: the seated `pr-reviewer` derives
+    the base from the pull request itself.
 
 1. **New requirement (R35) — CI coverage of the release branch.** The release branch SHALL rely on
     the checks that already trigger on it, and the gaps below are recorded, not
@@ -175,8 +177,8 @@ repository at `main @ 982a657`.
       `windows-hook-probe.yml` and the `usage-*.yml` workflows, each of which
       lists `release/**` beside `main`.
     - Do not run on the release branch: `pages.yml` (push on `main`,
-      `communication/**` only), `release-monorepo.yml` (push on `main`, see
-      requirement 36), and `security-mcp.yml` (pull request to `main` only).
+      `communication/**` only), `release-monorepo.yml` (push on `main` and manual
+      dispatch, see requirement 36), and `security-mcp.yml` (pull request to `main` only).
       `release-rehearsal.yml` is `workflow_dispatch`-only and can be dispatched
       on any ref by hand; `claude.yml` and `copilot.yml` react to comments and
       do not depend on a branch. `pages.yml` is not a gap: it publishes a site
@@ -203,8 +205,9 @@ repository at `main @ 982a657`.
       `metadata.provenance.version` is measured against the release branch.
 
 1. **New requirement (R36) — No release during the migration.** `release-monorepo.yml` runs on a
-    push to `main` only (`.github/workflows/release-monorepo.yml:3-5`), so the
-    release branch produces no tag, no GitHub release and no release pull
+    push to `main` and on manual dispatch
+    (`.github/workflows/release-monorepo.yml:3-8`), and a push to the release
+    branch starts no run of it, so the release branch produces no tag, no GitHub release and no release pull
     request — this is intended, and no release of the migrated content SHALL be
     made from it. Releases of changes that are not part of the epic continue
     from `main` exactly as before, and the version commits they produce reach
