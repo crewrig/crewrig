@@ -86,9 +86,9 @@ describe("legacy → direct (R19)", () => {
     assert.equal(group?.hooks[0]?.["command"], direct(dir, "gemini-cli", "AfterModel"));
   });
 
-  test("the env/bash prefix of the legacy form is dropped: the direct form carries none (R16)", () => {
+  test("an interpreter-only prefix of the legacy form is dropped: the direct form carries none (R16)", () => {
     const dir = checkout("d");
-    const result = run(claudeConfig(`FOO=1 bash "${dir}/usage-capture.sh" claude-code Stop`));
+    const result = run(claudeConfig(`sh "${dir}/usage-capture.sh" claude-code Stop`));
     assert.deepEqual(stopCommands(result.config), [direct(dir, "claude-code", "Stop")]);
   });
 });
@@ -151,6 +151,52 @@ describe("only where the target exists (R21)", () => {
       assert.ok(result.lines[0]?.detail.includes("'\\'"), result.lines[0]?.detail);
     },
   );
+});
+
+describe("an environment prefix the direct form cannot carry (security review finding 3, spec 0243 delta-01)", () => {
+  const prefixed = (dir: string, prefix: string): string =>
+    `${prefix}${legacy(dir, "claude-code", "Stop")}`;
+
+  test("CREWRIG_USAGE_ROOT=… bash …/usage-capture.sh stays byte-identical and is reported by name", () => {
+    const dir = checkout("envroot");
+    const command = prefixed(dir, "CREWRIG_USAGE_ROOT=/Volumes/enc/usage ");
+    const input = claudeConfig(command);
+    const result = run(input);
+    assert.equal(result.changed, false);
+    assert.equal(result.rewrote, 0);
+    assert.equal(result.left, 1);
+    assert.deepEqual(stopCommands(result.config), [command]);
+    assert.equal(JSON.stringify(result.config), JSON.stringify(input));
+    const detail = result.lines[0]?.detail ?? "";
+    assert.equal(result.lines[0]?.kind, "left");
+    assert.ok(detail.includes("environment prefix (CREWRIG_USAGE_ROOT=...)"), detail);
+    assert.ok(detail.includes("cannot carry"), detail);
+  });
+
+  test("the report names every variable and never echoes a value", () => {
+    const dir = checkout("envmany");
+    const result = run(claudeConfig(prefixed(dir, "A_TOKEN=hunter2 CREWRIG_USAGE_ROOT=/x ")));
+    const detail = result.lines[0]?.detail ?? "";
+    assert.ok(detail.includes("A_TOKEN=..., CREWRIG_USAGE_ROOT=..."), detail);
+    assert.ok(!detail.includes("hunter2") && !detail.includes("/x"), detail);
+  });
+
+  test("a prefixed command stays recognised: a plain twin is rewritten, the prefixed duplicate is deduplicated", () => {
+    const dir = checkout("envdedup");
+    const result = run(
+      claudeConfig(legacy(dir, "claude-code", "Stop"), prefixed(dir, "CREWRIG_USAGE_ROOT=/x ")),
+    );
+    assert.deepEqual(stopCommands(result.config), [direct(dir, "claude-code", "Stop")]);
+    assert.equal(result.rewrote, 1);
+    assert.equal(result.dropped, 1);
+  });
+
+  test("an already-direct command with a prefix keeps its own reason", () => {
+    const dir = checkout("envdirect");
+    const result = run(claudeConfig(`CREWRIG_USAGE_ROOT=/x ${direct(dir, "claude-code", "Stop")}`));
+    assert.equal(result.changed, false);
+    assert.ok(result.lines[0]?.detail.includes("already the direct form"), result.lines[0]?.detail);
+  });
 });
 
 describe("look-alikes are never touched (R20)", () => {

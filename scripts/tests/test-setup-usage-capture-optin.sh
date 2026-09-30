@@ -1787,6 +1787,21 @@ for cli in $CLIS; do
   fi
 done
 
+echo "§6 (c2) a legacy command with an environment prefix is left byte-identical and reported by name (security review finding 3, spec 0243 delta-01)"
+for cli in $CLIS; do
+  cfg="$TMP_ROOT/v/$cli-envprefix/config.json"
+  materialize "$cli-coupled.json" "$cfg"
+  jq 'walk(if type == "string" and test("usage-capture\\.sh") then "CREWRIG_USAGE_ROOT=/Volumes/enc/usage " + . else . end)' "$cfg" > "$cfg.tmp" && mv "$cfg.tmp" "$cfg"
+  cp "$cfg" "$cfg.orig"
+  out="$(usage_capture_rewrite "$cli" "$cfg" "$REPO_DIR" 2>&1)"; rc=$?
+  if [ "$rc" -eq 0 ] && cmp -s "$cfg" "$cfg.orig" && ! has_backup "$cfg" \
+     && [[ "$out" == *"environment prefix (CREWRIG_USAGE_ROOT=...)"* ]] && [[ "$out" != *"/Volumes/enc/usage"* ]]; then
+    ok "(6c2) $cli a prefixed command is left as it is, and the report names the variable, not its value"
+  else
+    bad "(6c2) $cli rc=$rc, changed=$(cmp -s "$cfg" "$cfg.orig" && echo no || echo yes) (out: $out)"
+  fi
+done
+
 echo "§6 (d) below the Node.js floor nothing is written (R24, D3, v1-F2)"
 REAL_NODE="$(command -v node)"
 LOW_BIN="$TMP_ROOT/v/lownode/bin"
