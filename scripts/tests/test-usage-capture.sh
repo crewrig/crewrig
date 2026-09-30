@@ -44,10 +44,10 @@
 #             $PWD-independent.
 #         (b) PLAN v3-F1 named edit 1 — (i) with a stamp present and the
 #             source not newer, all three payloads/ serializations take the
-#             fast path and none reaches cli.js; (ii) under the SAME
+#             fast path and none reaches the capture step; (ii) under the SAME
 #             conditions, a payload the extraction cannot read (no path key,
 #             a path key whose value is not an existing absolute path, or a
-#             relative path) still reaches cli.js.
+#             relative path) still reaches the capture step.
 #         (c) exit-0 contract (R15) — node missing from PATH, CLI override
 #             pointed at a nonexistent path, and a throwing stub: exit 0 and
 #             zero bytes of output in all three cases.
@@ -513,7 +513,7 @@ fs.writeFileSync(process.env.STUB_MARKER, process.argv.slice(2).join(' '));
 EOF
 
 # (i) all three readable payloads/ serializations: stamp present, source not
-# newer — fast path, cli.js never reached.
+# newer — fast path, capture step never reached.
 for f in "$FIXTURES_DIR"/payloads/compact-snake-case.json \
          "$FIXTURES_DIR"/payloads/spaced-snake-case.json \
          "$FIXTURES_DIR"/payloads/camel-case.json; do
@@ -524,14 +524,14 @@ for f in "$FIXTURES_DIR"/payloads/compact-snake-case.json \
   STUB_MARKER="$MARKER" CREWRIG_USAGE_CAPTURE_TEST=1 CREWRIG_USAGE_CAPTURE_CLI="$STUB_DIR/marker-stub.js" \
     CREWRIG_USAGE_ROOT="$ASYM_ROOT" bash "$CAPTURE_ABS" claude-code Stop <<< "$payload" >/dev/null 2>&1
   if [ ! -f "$MARKER" ]; then
-    ok "§7(b)(i): $name takes the fast path, cli.js not reached (stamp present, source not newer)"
+    ok "§7(b)(i): $name takes the fast path, capture step not reached (stamp present, source not newer)"
   else
-    bad "§7(b)(i): $name reached cli.js — expected the fast path"
+    bad "§7(b)(i): $name reached the capture step — expected the fast path"
   fi
 done
 
 # (ii) the two unreadable payloads/ fixtures, SAME stamp/mtime conditions —
-# must still reach cli.js. This is v2-F2 itself, and the assertion (i)
+# must still reach the capture step. This is v2-F2 itself, and the assertion (i)
 # deliberately does NOT cover (plan review, named edit 1).
 for f in "$FIXTURES_DIR"/payloads/no-path-key.json \
          "$FIXTURES_DIR"/payloads/unresolvable-path.json; do
@@ -541,7 +541,7 @@ for f in "$FIXTURES_DIR"/payloads/no-path-key.json \
   STUB_MARKER="$MARKER" CREWRIG_USAGE_CAPTURE_TEST=1 CREWRIG_USAGE_CAPTURE_CLI="$STUB_DIR/marker-stub.js" \
     CREWRIG_USAGE_ROOT="$ASYM_ROOT" bash "$CAPTURE_ABS" claude-code Stop < "$f" >/dev/null 2>&1
   if [ -f "$MARKER" ]; then
-    ok "§7(b)(ii): $name (unreadable) reaches cli.js even with a stamp present and source not newer (v2-F2)"
+    ok "§7(b)(ii): $name (unreadable) reaches the capture step even with a stamp present and source not newer (v2-F2)"
   else
     bad "§7(b)(ii): $name (unreadable) took the fast path — v2-F2 has regressed"
   fi
@@ -572,12 +572,12 @@ rm -f "$MARKER"
 (cd "$REL_CWD" && STUB_MARKER="$MARKER" CREWRIG_USAGE_CAPTURE_TEST=1 CREWRIG_USAGE_CAPTURE_CLI="$STUB_DIR/marker-stub.js" \
   CREWRIG_USAGE_ROOT="$REL_ROOT" bash "$CAPTURE_ABS" claude-code Stop < "$FIXTURES_DIR/payloads/relative-path.json" >/dev/null 2>&1)
 if [ -f "$MARKER" ]; then
-  ok "§7(b)(ii): relative-path.json reaches cli.js even with -f/stamp/freshness all satisfied — only the absolute-path conjunct blocks it (i1-F2)"
+  ok "§7(b)(ii): relative-path.json reaches the capture step even with -f/stamp/freshness all satisfied — only the absolute-path conjunct blocks it (i1-F2)"
 else
   bad "§7(b)(ii): relative-path.json wrongly took the fast path — the \"\$src\" == /* guard has regressed (i1-F2)"
 fi
 
-# (iii) with the source NEWER than the stamp, the compact payload reaches cli.js.
+# (iii) with the source NEWER than the stamp, the compact payload reaches the capture step.
 NEWER_ROOT="$(mktemp -d)"
 NEWER_SRC="$(mktemp)"
 mkdir -p "$NEWER_ROOT/state/claude-code"
@@ -591,7 +591,7 @@ payload="$(sed "s#__TRANSCRIPT_PATH__#$NEWER_SRC#" "$FIXTURES_DIR/payloads/compa
 STUB_MARKER="$MARKER" CREWRIG_USAGE_CAPTURE_TEST=1 CREWRIG_USAGE_CAPTURE_CLI="$STUB_DIR/marker-stub.js" \
   CREWRIG_USAGE_ROOT="$NEWER_ROOT" bash "$CAPTURE_ABS" claude-code Stop <<< "$payload" >/dev/null 2>&1
 if [ -f "$MARKER" ]; then
-  ok "§7(b)(iii): source newer than the stamp — the compact payload reaches cli.js"
+  ok "§7(b)(iii): source newer than the stamp — the compact payload reaches the capture step"
 else
   bad "§7(b)(iii): source newer than the stamp — the compact payload wrongly took the fast path"
 fi

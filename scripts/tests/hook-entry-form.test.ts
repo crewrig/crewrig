@@ -78,6 +78,45 @@ describe("entry form (R5)", () => {
   }
 });
 
+/** Static contract of the hook sources: the tracked set and the dependency rule (R3, R11). */
+describe("static contract (R3, R11)", () => {
+  const HOOK_SOURCES = [
+    path.join("hooks", "usage-capture.ts"),
+    path.join("hooks", "antigravity-statusline-shim.ts"),
+    path.join("scripts", "lib", "usage-capture", "hook-run.ts"),
+  ];
+
+  /** Code lines only: full-line `//` and block-comment lines may name retired files. */
+  function codeOnly(file: string): string {
+    return fs
+      .readFileSync(path.join(REPO, file), "utf8")
+      .split("\n")
+      .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
+      .join("\n");
+  }
+
+  test("scripts/lib/usage-capture/cli.js is retired and no hook source names it", () => {
+    assert.equal(
+      fs.existsSync(path.join(REPO, "scripts", "lib", "usage-capture", "cli.js")),
+      false,
+    );
+    for (const file of HOOK_SOURCES) {
+      assert.doesNotMatch(codeOnly(file), /usage-capture\/cli\b/, file);
+    }
+  });
+
+  test("the entries and the runner import only node: built-ins or repository files (no third party)", () => {
+    const specifier = /(?:\bfrom\s*|\bimport\(\s*|\brequire\(\s*)["']([^"']+)["']/g;
+    for (const file of HOOK_SOURCES) {
+      const found = [...codeOnly(file).matchAll(specifier)].map((m) => m[1] ?? "");
+      assert.ok(found.length > 0, `${file}: expected to find import specifiers`);
+      for (const spec of found) {
+        assert.ok(spec.startsWith("node:") || spec.startsWith("."), `${file} imports ${spec}`);
+      }
+    }
+  });
+});
+
 let work: string;
 let stubbed: FixtureTree;
 let lazy: FixtureTree;
