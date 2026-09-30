@@ -3,11 +3,17 @@ description: >-
   Cancels the current workflow run, so that independent sibling jobs stop
   early instead of running to completion on a workflow that is already
   doomed to fail. Intended to be invoked only from a step gated on
-  `if: failure()` in the calling job.
+  `if: failure()` in the calling job. The calling workflow must grant
+  `actions: write` to the GITHUB_TOKEN. Cancellation is best-effort: a
+  refused cancel (e.g. the read-only token of a fork pull request) emits a
+  warning instead of failing the step, since the job has already failed.
 runs:
   using: composite
   steps:
     - shell: bash
-      run: gh run cancel "${GITHUB_RUN_ID}" --repo "${GITHUB_REPOSITORY}"
+      run: |
+        if ! gh run cancel "${GITHUB_RUN_ID}" --repo "${GITHUB_REPOSITORY}"; then
+          echo "::warning title=cancel-on-failure::Could not cancel run ${GITHUB_RUN_ID}; sibling jobs will run to completion. Check that the workflow grants 'actions: write'."
+        fi
       env:
         GH_TOKEN: ${{ github.token }}
