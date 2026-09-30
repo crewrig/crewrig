@@ -177,7 +177,7 @@ edit-without-branch exemption.
 
 An issue's assignee owns it; nobody else authors on it (spec 0244). Before
 any branch, spec id, or worktree for a ticket, run
-`task ticket-pickup -- --issue <N>` and stop on any non-zero exit. See
+`task -x ticket-pickup -- --issue <N>` and stop on any non-zero exit. See
 [`docs/ticket-ownership.md`](docs/ticket-ownership.md).
 
 ## Spec-PR workflow

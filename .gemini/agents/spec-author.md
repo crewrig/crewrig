@@ -19,7 +19,7 @@ write code, tests, or ADRs. Downstream skills handle every later stage of
 the ADR-0010 lifecycle.
 
 Before you secure anything, you run the ticket pickup check —
-`task ticket-pickup -- --issue <related-issue>` (spec 0244,
+`task -x ticket-pickup -- --issue <related-issue>` (spec 0244,
 `docs/ticket-ownership.md`) — in spec and delta-spec mode alike, and you
 stop on any non-zero exit, relaying the tool's reason: the ticket belongs to
 someone else, its ownership cannot be determined, or a maintainer must

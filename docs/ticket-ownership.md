@@ -35,7 +35,7 @@ worktree for the ticket, from the shared checkout — that is, before
 `git worktree add` (R11, R15). The primary form is the Taskfile entry:
 
 ```sh
-task ticket-pickup -- --issue <N>
+task -x ticket-pickup -- --issue <N>
 ```
 
 Without `task`, run the two commands it wraps as **two separate steps**, the
@@ -49,8 +49,16 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --i
 The steps are deliberately not chained with `&&`: Windows PowerShell 5.1,
 the shell some CLIs use on Windows, rejects that operator.
 
-`--read-only` reports the owner and writes nothing. Use it to confirm that a
-human transfer or takeover (below) passed through the free state.
+`-x` makes `task` return the tool's own exit code; without it, `task`
+reports every failure as `201`. The tool also accepts `--issue=<N>` or
+`#N`, and `--help`.
+
+`--read-only` reports the owner and writes nothing; it is not a pickup. It
+exits `0` whenever the owner could be determined — its `verdict` is then the
+decision a pickup would take (`assign-self` on a free issue, `restore-self`,
+`withdraw`, `owned-by-other` or `proceed`) — `4` when undecidable, and `2`
+when it cannot determine. Use it to confirm that a human transfer or
+takeover (below) passed through the free state.
 
 The agent **stops on any non-zero exit** and never hand-rolls the assignment
 mechanics. Proceeding without the check requires the user's explicit
@@ -61,7 +69,7 @@ instruction in the same session (R13).
 | Exit | Meaning | State left behind |
 |---|---|---|
 | `0` | Proceed: the current forge user owns the ticket. | Own assignment present (added or restored if needed). |
-| `1` | Usage or wiring error (bad argument, malformed delay key). | Nothing written. |
+| `1` | Usage or configuration error (bad argument, a delay key that is not a positive whole number). | Nothing written. |
 | `2` | Cannot determine (R13): forge unreachable, identity unknown, record unreadable or inconsistent, own write never became visible, or a write failed partway. | Reported on stderr and in `actions[]`, e.g. "owner A restored, own assignment still present". |
 | `3` | Owned by another contributor. The owner is named and the permitted paths are listed: ask the owner (R7), wait for the stale-lock path (R8), or pick another ticket. | Any own assignment withdrawn, the owner's restored if it had been displaced. |
 | `4` | Undecidable (R4, R13): a tie in the record. | Any own assignment left in place and reported. |
@@ -133,22 +141,25 @@ free ticket therefore takes about 3 s longer.
 **Silent drop (R14).** The case is classified from the current assignee
 list, not from the history:
 
-- self absent from the current list after the add → the forge dropped the
-  assignment → exit `5`. The tool does not retry the self-assignment. It posts
+- self absent and the list still empty after the add → the forge dropped
+  the assignment → exit `5`. The tool does not retry the self-assignment. It posts
   one comment asking a maintainer to assign the ticket, carrying the marker
-  `<!-- crewrig:ticket-pickup assign-request -->`, deduplicated since last
-  free. The ticket stays free until a maintainer records the assignment;
+  `<!-- crewrig:ticket-pickup assign-request -->`, deduplicated per user since
+  the issue was last free. The ticket stays free until a maintainer records the assignment;
+- self absent but the list not empty → a rival holds the issue → the normal
+  confirming decision runs, usually ending in exit `3`;
 - self present in the current list but its event not yet in the history →
-  a lagging read, retried a bounded number of times → exit `2` when the
-  retries run out.
+  a lagging read, retried up to 5 reads → exit `2` when the retries run out.
 
 ## Per-forge mechanics
 
 The check behaves identically on the three forges, through each forge's own
 CLI and the credential it already holds (R12, ADR 0015). Every call goes
-through the CLI's raw `api` subcommand. The forge is detected from the
-reference remote: `github.com`, then `gitlab.*` or a host listed in
-`CREWRIG_GITLAB_HOSTS`, otherwise Gitea.
+through the CLI's raw `api` subcommand. The repository comes from the remote
+named by `BASE_REF=<remote>/<branch>` when that remote exists, otherwise from
+the preferred remote (`crewrig`, then `origin`, else the first one). The
+forge is detected from that remote's host: `github.com`, then `gitlab.*` or a
+host listed in `CREWRIG_GITLAB_HOSTS`, otherwise Gitea.
 
 | | GitHub (`gh`) | GitLab (`glab`) | Gitea (`tea`) |
 |---|---|---|---|
@@ -163,7 +174,9 @@ reference remote: `github.com`, then `gitlab.*` or a host listed in
 Gitea's dedicated assignee endpoints are detected once per run from the
 server's version (`tea api version`, compared with the first release assumed
 to ship them, 1.27.0, pending live verification; a Forgejo version string is
-read through its Gitea part), never inferred from a failed write. A single replacing `PATCH` is never issued on Gitea:
+read through its Gitea part), cached per run, and never inferred from a failed
+write. Below that version, or when the version cannot be parsed, the tool
+uses the add-only / remove-only `PATCH`. A single replacing `PATCH` is never issued on Gitea:
 the server deletes the old assignees before adding the new ones, in separate
 transactions, which would expose a transient empty set.
 
@@ -217,8 +230,8 @@ free before the new assignment is recorded, so that R1 recognises the new
 owner. On GitHub and Gitea, events by one actor in the same second form one
 change, so a removal and an addition in the same second read as a
 replacement and keep the old owner. Remove first, confirm with
-`task ticket-pickup -- --issue <N> --read-only` that the issue reads as free,
-then take it. This split is intended behaviour, not a record gap: it is the
+`task -x ticket-pickup -- --issue <N> --read-only` that the issue reads as free
+(verdict `assign-self`), then take it. This split is intended behaviour, not a record gap: it is the
 only pattern R1 can read as a release followed by a take.
 
 ### Organization delays
@@ -232,7 +245,7 @@ ticket_nudge_days = "14"
 ticket_grace_days = "7"
 ```
 
-The keys must be identical for every contributor, which is why they live in
+Values must be positive whole numbers. The keys must be identical for every contributor, which is why they live in
 the shared overlay file rather than an environment variable. A malformed
 value makes the check exit `1`.
 

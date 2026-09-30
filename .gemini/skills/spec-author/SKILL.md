@@ -366,7 +366,7 @@ ownership check of `docs/ticket-ownership.md`
 spec and delta-spec mode alike:
 
 ```sh
-task ticket-pickup -- --issue <related-issue>
+task -x ticket-pickup -- --issue <related-issue>
 ```
 
 Without `task`, run `node scripts/lib/node-floor-guard.js`, then — only if
