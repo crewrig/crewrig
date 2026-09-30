@@ -205,12 +205,9 @@ describe("measured surfaces (R18, R31, R32)", () => {
 
   // R32(c): conforming entry with the result -> the working-directory lookup, #1392.
   test("(c) a conforming entry refuses with the lookup diagnostic naming #1392, for any path", () => {
-    const messages = [
-      "C:/Users/ana/crewrig",
-      "C:/Users/Ana Diaz/crewrig",
-      "C:/a&b/c",
-      "C:/a$b/c",
-    ].map((root) => refusal(build("antigravity", "win32", `${root}/hooks/s.ts`, "statusline")));
+    const messages = ["C:/work/crewrig", "C:/work space/crewrig", "C:/a&b/c", "C:/a$b/c"].map(
+      (root) => refusal(build("antigravity", "win32", `${root}/hooks/s.ts`, "statusline")),
+    );
     for (const message of messages) {
       assert.ok(message.includes("from the directory the user starts Antigravity CLI in"), message);
       assert.ok(message.includes("before PATH") && message.includes("#1392"), message);
