@@ -1,7 +1,7 @@
 ---
 id: "0237"
 slug: windows-hook-cli-matrix
-status: approved
+status: implemented
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 1322

@@ -884,6 +884,22 @@ runtime-foundations:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+windows-hook-probe:
+  image: node:24
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/probe-windows-hook-parsing.ts"
+        - "scripts/tests/probe-windows-hook-parsing.test.ts"
+        - "hooks/*-transcript-hooks.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/probe-windows-hook-parsing.ts"
+        - "scripts/tests/probe-windows-hook-parsing.test.ts"
+        - "hooks/*-transcript-hooks.json"
+
 node-floor-guard:
   image: node:20
   script:
