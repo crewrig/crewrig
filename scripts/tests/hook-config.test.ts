@@ -12,6 +12,7 @@ import { after, describe, test } from "node:test";
 
 import {
   backupFile,
+  type BackupResult,
   NotAJsonObjectError,
   readJsonObject,
   serialiseJson,
@@ -30,6 +31,7 @@ function tempDir(): string {
   return dir;
 }
 const posix = process.platform !== "win32";
+const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
 const mode = (file: string): number => fs.statSync(file).mode & 0o777;
 const NOW = new Date(2026, 8, 30, 12, 34, 56);
 const STAMP = "20260930-123456";
@@ -86,9 +88,30 @@ describe("writeJsonConfig", () => {
   );
 });
 
+function backupPath(result: BackupResult): string {
+  assert.equal(result.status, "made");
+  return result.status === "made" ? result.path : "";
+}
+
 describe("backupFile", () => {
+  test("an unwritable directory reports failed, not absent", { skip: !posix || isRoot }, () => {
+    const dir = tempDir();
+    const file = path.join(dir, "c.json");
+    fs.writeFileSync(file, "{}");
+    fs.chmodSync(dir, 0o555);
+    try {
+      const warnings: string[] = [];
+      assert.deepEqual(backupFile(file, { now: NOW, warn: (m) => warnings.push(m) }), {
+        status: "failed",
+      });
+      assert.equal(warnings.length, 1);
+    } finally {
+      fs.chmodSync(dir, 0o755);
+    }
+  });
+
   test("no target → no backup", () => {
-    assert.equal(backupFile(path.join(tempDir(), "none.json"), quiet), null);
+    assert.deepEqual(backupFile(path.join(tempDir(), "none.json"), quiet), { status: "absent" });
   });
 
   test(
@@ -98,10 +121,10 @@ describe("backupFile", () => {
       const file = path.join(tempDir(), "c.json");
       fs.writeFileSync(file, '{"token":"s3cret"}');
       fs.chmodSync(file, 0o644);
-      const made = backupFile(file, quiet);
+      const made = backupPath(backupFile(file, quiet));
       assert.equal(made, `${file}.bak.${STAMP}`);
-      assert.equal(fs.readFileSync(made ?? "", "utf8"), '{"token":"s3cret"}');
-      assert.equal(mode(made ?? ""), 0o600);
+      assert.equal(fs.readFileSync(made, "utf8"), '{"token":"s3cret"}');
+      assert.equal(mode(made), 0o600);
     },
   );
 
@@ -120,7 +143,7 @@ describe("backupFile", () => {
     const old = `${file}.bak.20200101-000000`;
     fs.writeFileSync(old, "{}");
     fs.chmodSync(old, 0o644);
-    assert.equal(backupFile(file, quiet), null);
+    assert.deepEqual(backupFile(file, quiet), { status: "absent" });
     assert.equal(mode(old), 0o600);
   });
 
@@ -143,7 +166,7 @@ describe("backupFile", () => {
     fs.chmodSync(real, 0o644);
     const link = path.join(dir, "c.json");
     fs.symlinkSync(real, link);
-    const made = backupFile(link, quiet) ?? "";
+    const made = backupPath(backupFile(link, quiet));
     assert.ok(fs.lstatSync(made).isSymbolicLink());
     assert.equal(fs.readlinkSync(made), real);
     assert.equal(mode(real), 0o644);
@@ -153,10 +176,8 @@ describe("backupFile", () => {
     const file = path.join(tempDir(), "c.json");
     fs.writeFileSync(file, "second");
     fs.writeFileSync(`${file}.bak.${STAMP}`, "first");
-    const one = backupFile(file, quiet);
-    assert.equal(one, `${file}.bak.${STAMP}.01`);
-    const two = backupFile(file, quiet);
-    assert.equal(two, `${file}.bak.${STAMP}.02`);
+    assert.equal(backupPath(backupFile(file, quiet)), `${file}.bak.${STAMP}.01`);
+    assert.equal(backupPath(backupFile(file, quiet)), `${file}.bak.${STAMP}.02`);
     assert.equal(fs.readFileSync(`${file}.bak.${STAMP}`, "utf8"), "first");
   });
 
@@ -164,17 +185,19 @@ describe("backupFile", () => {
     const file = path.join(tempDir(), "c.json");
     fs.writeFileSync(file, "{}");
     fs.symlinkSync("/nonexistent/target", `${file}.bak.${STAMP}`);
-    assert.equal(backupFile(file, quiet), `${file}.bak.${STAMP}.01`);
+    assert.equal(backupPath(backupFile(file, quiet)), `${file}.bak.${STAMP}.01`);
   });
 
-  test("after 99 collisions it warns and skips the backup", { skip: !posix }, () => {
+  test("after 99 collisions it warns and reports failed, not absent", { skip: !posix }, () => {
     const file = path.join(tempDir(), "c.json");
     fs.writeFileSync(file, "{}");
     fs.writeFileSync(`${file}.bak.${STAMP}`, "x");
     for (let n = 1; n <= 99; n++)
       fs.writeFileSync(`${file}.bak.${STAMP}.${String(n).padStart(2, "0")}`, "x");
     const warnings: string[] = [];
-    assert.equal(backupFile(file, { now: NOW, warn: (m) => warnings.push(m) }), null);
+    assert.deepEqual(backupFile(file, { now: NOW, warn: (m) => warnings.push(m) }), {
+      status: "failed",
+    });
     assert.equal(warnings.length, 1);
     assert.ok(warnings[0]?.includes("99 same-second collisions"));
   });

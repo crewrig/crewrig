@@ -158,7 +158,13 @@ function rewrite(repo: string, cli: WiredCli, config: string, platform: NodeJS.P
     return 0;
   }
   const backup = backupFile(config);
-  if (backup !== null) out(`  Backed up: ${path.basename(config)} -> ${path.basename(backup)}`);
+  if (backup.status === "failed") {
+    err(`  ERROR: could not back up ${config}; leaving it untouched (backup-first, R23).`);
+    return 1;
+  }
+  if (backup.status === "made") {
+    out(`  Backed up: ${path.basename(config)} -> ${path.basename(backup.path)}`);
+  }
   writeJsonConfig(config, result.config);
   out(
     `  Usage capture: rewrote ${result.rewrote}, left ${result.left}, dropped ${result.dropped} duplicate(s) in ${config}`,

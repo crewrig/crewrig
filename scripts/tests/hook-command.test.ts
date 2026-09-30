@@ -124,6 +124,22 @@ describe("unsafe paths are refused with a diagnostic naming the character (R17, 
     assert.equal(build("copilot", "win32", "C:/a`b/hooks/usage-capture.ts").ok, false);
   });
 
+  for (const [ch, name] of [
+    ["\u201C", "U+201C"],
+    ["\u201D", "U+201D"],
+    ["\u201E", "U+201E"],
+  ] as const) {
+    for (const cli of ["gemini", "copilot"] as const) {
+      test(`${cli} on Windows refuses the typographic quote ${name} (PowerShell string delimiter)`, () => {
+        const message = refusal(build(cli, "win32", `C:/a${ch}b/hooks/usage-capture.ts`));
+        assert.ok(message.includes(ch) && message.includes("PowerShell"), message);
+      });
+    }
+    test(`${name} is plain text to a POSIX shell and stays allowed there`, () => {
+      assert.equal(build("claude", "linux", `/tmp/a${ch}b/hooks/usage-capture.ts`).ok, true);
+    });
+  }
+
   for (const ch of [" ", "&", "|", "<", ">", "^", "%", "(", ")"]) {
     test(`cmd.exe (Antigravity hooks on Windows) refuses ${JSON.stringify(ch)}`, () => {
       assert.equal(build("antigravity", "win32", `C:/a${ch}b/hooks/usage-capture.ts`).ok, false);

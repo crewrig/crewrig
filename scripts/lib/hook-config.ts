@@ -115,14 +115,24 @@ export interface BackupOptions {
 }
 
 /**
- * Back `target` up as `<target>.bak.<YYYYMMDD-HHMMSS>[.NN]`, mode 0600.
- * Returns the backup path, or `null` when the target is absent, the copy
- * failed or 99 same-second collisions exhausted the suffix range.
+ * The outcome of {@link backupFile}. `failed` is distinct from `absent` so a
+ * caller can refuse to overwrite a config that has no restore point (R23
+ * backup-first; security review finding 2).
  */
-export function backupFile(target: string, options: BackupOptions = {}): string | null {
+export type BackupResult =
+  | { readonly status: "absent" }
+  | { readonly status: "made"; readonly path: string }
+  | { readonly status: "failed" };
+
+/**
+ * Back `target` up as `<target>.bak.<YYYYMMDD-HHMMSS>[.NN]`, mode 0600.
+ * `absent` when there is nothing to back up; `failed` when the target exists
+ * but the copy failed or 99 same-second collisions exhausted the suffix range.
+ */
+export function backupFile(target: string, options: BackupOptions = {}): BackupResult {
   const warn = options.warn ?? ((message: string) => process.stderr.write(`${message}\n`));
   narrowOldBackups(target);
-  if (!occupied(target)) return null;
+  if (!occupied(target)) return { status: "absent" };
 
   const base = `${target}.bak.${stampNow(options.now ?? new Date())}`;
   let backup = base;
@@ -131,9 +141,9 @@ export function backupFile(target: string, options: BackupOptions = {}): string 
     while (occupied(`${base}.${pad(n)}`) && n < 99) n++;
     if (occupied(`${base}.${pad(n)}`)) {
       warn(
-        `  WARNING: could not find a free backup name for ${path.basename(target)} after 99 same-second collisions — skipping this backup.`,
+        `  WARNING: could not find a free backup name for ${path.basename(target)} after 99 same-second collisions — no backup made.`,
       );
-      return null;
+      return { status: "failed" };
     }
     backup = `${base}.${pad(n)}`;
   }
@@ -152,7 +162,7 @@ export function backupFile(target: string, options: BackupOptions = {}): string 
     warn(
       `  WARNING: Failed to back up ${path.basename(target)} (could not create ${path.basename(backup)})`,
     );
-    return null;
+    return { status: "failed" };
   }
-  return backup;
+  return { status: "made", path: backup };
 }
