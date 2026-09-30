@@ -33,12 +33,13 @@ class Pickup {
   readonly report: Report;
   readonly t: Timing;
   wrote = false;
+  restored = false;
   constructor(a: ForgeAdapter, self: string, deps: PickupDeps, report: Report) {
     this.a = a;
     this.self = self;
     this.deps = deps;
     this.report = report;
-    this.t = { ...TIMING, ...deps.timing };
+    this.t = pickupTiming(deps);
   }
 
   async write(op: Action["op"], target: string, fn: () => Promise<void>): Promise<void> {
@@ -104,15 +105,26 @@ class Pickup {
       case "proceed":
         return this.confirm();
       case "restore-self":
+        // R11: owned by self, so restoring is no R14 retry; at most one restore.
+        if (this.restored)
+          return this.stop(
+            "cannot-determine",
+            2,
+            v.owner,
+            "own assignment displaced again after restoring it; left as found (spec 0244 R13)",
+          );
+        this.restored = this.wrote;
+        return this.assignSelf(rec, false);
       case "assign-self":
+        // R14 applies only while the issue reads free: never retry the self-assignment.
         if (this.wrote)
           return this.stop(
             "cannot-determine",
             2,
             null,
-            "own assignment disappeared after it was recorded; not retried (spec 0244 R14)",
+            "issue reads free again after the own assignment was recorded; not retried (spec 0244 R14)",
           );
-        return this.assignSelf(rec, v.kind === "assign-self");
+        return this.assignSelf(rec, true);
     }
   }
 
@@ -127,14 +139,15 @@ class Pickup {
     const before = addCount(rec, this.self);
     this.wrote = true;
     await this.write("add", this.self, () => this.a.add(this.self, rec.current));
+    // Wait until the write shows in the current list or the history (v2-F2):
+    // only a record still free after `lagReads` reads is an R14 drop.
     for (let read = 1; ; read++) {
       const now = await this.a.readRecord();
-      if (!now.current.includes(this.self)) {
-        if (now.current.length === 0 && wasFree) return this.requestAssignment(now);
-        return this.confirm();
-      }
+      const inCurrent = now.current.includes(this.self);
       if (addCount(now, this.self) > before) break;
       if (read >= this.t.lagReads) {
+        if (!inCurrent && now.current.length === 0 && wasFree) return this.requestAssignment(now);
+        if (!inCurrent) return this.confirm();
         return this.stop(
           "cannot-determine",
           2,
@@ -194,6 +207,10 @@ class Pickup {
       `the forge did not record the assignment of '${this.self}'; ${asked ? "a maintainer request is already open" : "a maintainer was asked to assign it"}; not retried`,
     );
   }
+}
+
+function pickupTiming(deps: PickupDeps): Timing {
+  return { ...TIMING, ...deps.timing };
 }
 
 const PATHS =
@@ -259,8 +276,14 @@ async function run(
   const adapter = createAdapter(forge, repo, args.issue, deps.run);
   const self = norm(await adapter.whoami());
   report.self = self;
-  const rec = await adapter.readRecord();
-  const v = verdictFor(determine(rec), rec.current, self);
+  let rec = await adapter.readRecord();
+  let v = verdictFor(determine(rec), rec.current, self);
+  if (v.kind === "cannot-determine") {
+    // One re-read: the issue and history GETs may straddle a rival write (a torn read).
+    await deps.sleep(pickupTiming(deps).confirmGapMs);
+    rec = await adapter.readRecord();
+    v = verdictFor(determine(rec), rec.current, self);
+  }
   const pickup = new Pickup(adapter, self, deps, report);
   if (!args.readOnly) return pickup.act(v, rec);
   const owner = "owner" in v ? v.owner : null;
