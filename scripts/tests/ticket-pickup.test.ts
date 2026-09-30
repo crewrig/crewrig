@@ -696,6 +696,13 @@ describe("regressions: PR #1396 review pass 2", () => {
     expect(await pickup(f.advance(1000), "bob", 7), 3, "alice");
   });
 
+  test("i2-F1: a capitalised `Assigned to @a` is outside the case-sensitive grammar and fails closed", async () => {
+    const f = new FakeForge("gitlab").issue(7).human("alice", 7, { add: ["alice"] });
+    f.rawNotes.push({ id: 952, issue: 7, at: f.now + 1, author: "bob", body: "Assigned to @bob" });
+    expect(await pickup(f.advance(1000), "carol", 7), 2, null);
+    assert.deepEqual(f.writes, []);
+  });
+
   for (const body of ["removed assignee", "Removed assignee", "removed all assignees"])
     test(`i2-F1: the legacy note '${body}' fails closed and the rightful owner is never withdrawn`, async () => {
       const f = legacyHistory(body);
