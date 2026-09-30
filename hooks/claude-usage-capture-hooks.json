@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh\" claude-code Stop"
+            "command": "node \"$CLAUDE_PROJECT_DIR/hooks/usage-capture.ts\" claude-code Stop"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/usage-capture.sh\" claude-code SessionEnd"
+            "command": "node \"$CLAUDE_PROJECT_DIR/hooks/usage-capture.ts\" claude-code SessionEnd"
           }
         ]
       }
