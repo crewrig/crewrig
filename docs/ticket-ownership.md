@@ -178,7 +178,7 @@ host listed in `CREWRIG_GITLAB_HOSTS`, otherwise Gitea.
 |---|---|---|---|
 | Identity | `gh api user` → `.login` | `glab api user` → `.username` | `tea api user` → `.login` |
 | Current assignees | `…/issues/N` → `.assignees[].login` | `projects/<path>/issues/N` → `.assignees[].username` | `…/issues/N` → `.assignees[].login` |
-| History | timeline events `assigned` / `unassigned` | system notes starting with `assigned` / `unassigned` / `reassigned`, parsed; one that fits no grammar pattern (including any `reassigned to @b`) → exit `2`; other system notes, such as title or label changes mentioning "assign", are ignored | timeline entries of `type: "assignees"` |
+| History | timeline events `assigned` / `unassigned` | system notes `assigned to @a[, @b and @c]`, `unassigned @a…` and `assigned to @b and unassigned @a`, parsed; any other system note mentioning "assign" (e.g. `removed assignee`, `reassigned to @b`, `changed assignee to @x`, a capitalised `Assigned to …`) → exit `2`; notes that quote user-chosen text (title, description, milestone and label changes, `added N commits`, `created branch`, `mentioned in`) are ignored | timeline entries of `type: "assignees"` |
 | Creation assignees recorded | yes | assumed not (pending live verification) | yes |
 | Add self (`assign-self`, issue read free) | `POST …/assignees` | `PUT` `assignee_ids: [self]` | dedicated `POST …/assignees` where the server exposes it, else an add-only `PATCH` |
 | Restore self (`restore-self`, own assignment displaced) | `POST …/assignees` with self; other assignees untouched | `PUT` `assignee_ids: [self, …current]`, self first; on a tier limited to one assignee this replaces the intruder, and the set is never empty | same write as *Add self*; other assignees untouched |
