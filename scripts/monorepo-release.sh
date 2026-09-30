@@ -9,8 +9,29 @@
 # anything is written (R10).
 #
 # Modes:
-#   publish   (default) — per extension, run `npx semantic-release` in the
-#             checkout with the forge's publish leg. Prints one of
+#   publish   (default) — on GitLab, per extension, run `npx semantic-release`
+#             in the checkout with the forge's publish leg, which commits the
+#             version to the release branch and tags it. On GitHub, the
+#             release-PR flow (issue #1379) — the `main-protected` ruleset
+#             rejects any runner-made commit on `main`:
+#               1. per extension, the engine's dry run (in the throwaway clone
+#                  described under rehearsal) classifies it (release_classify):
+#                  unchanged, publish (its committed version IS the computed
+#                  next version: a release PR was merged) or pending;
+#               2. every `publish` extension is released from the checkout —
+#                  packaged, tagged on the merged commit, the tag pushed (never
+#                  a branch), the forge release created;
+#               3. every `pending` extension is released FOR REAL inside the
+#                  clone, against the mirror, with no publish leg and no
+#                  credential: changelog + manifest bump + release commit;
+#               4. the clone's commits are force-pushed to the release PR
+#                  branch (release_pr_branch), and scripts/release-pr.ts opens
+#                  or updates the release PR (or closes a stale one) and
+#                  dispatches its required checks. It prints
+#                    PENDING <ext> version=<v> tag=<t>
+#                    RELEASE-PR ... / RELEASE-PR-MANUAL <url> / RELEASE-PR-CHECKS ...
+#                    RELEASE-FAILED release-pr step=<push|pr>
+#             Both forges print, per released extension, one of
 #               PUBLISHED <ext> tag=<t> archive=<file> sha256=<hex>
 #               UNCHANGED <ext>
 #               RELEASE-FAILED <ext> step=<verify|package|commit|upload|release|engine>
@@ -42,11 +63,17 @@ release_identity "$RELEASE_FORGE"
 if [ "$RELEASE_FORGE" = "gitlab" ]; then
   [ -n "${CI_PROJECT_URL:-}" ] || release_refuse "CI_PROJECT_URL is not set"
   [ -n "${CI_SERVER_URL:-}" ] || release_refuse "CI_SERVER_URL is not set"
-elif [ "$RELEASE_MODE" = "rehearsal" ]; then
+else
   [ -n "${GITHUB_SERVER_URL:-}" ] || release_refuse "GITHUB_SERVER_URL is not set"
   [ -n "${GITHUB_REPOSITORY:-}" ] || release_refuse "GITHUB_REPOSITORY is not set"
 fi
 if [ "$RELEASE_MODE" = "publish" ]; then
+  # The release PR's own head branch is never a release branch: its versions
+  # are committed but unmerged, so every extension would classify as publish
+  # and be tagged from an unreviewed branch (issue #1379).
+  case "$RELEASE_FORGE:$RELEASE_BRANCH" in
+    github:release-pr/*) release_refuse "refusing to publish from a release PR branch ($RELEASE_BRANCH): merge the release PR instead" ;;
+  esac
   release_credential "$RELEASE_FORGE"
 fi
 
@@ -59,14 +86,23 @@ export NODE_PATH="$ROOT_DIR/node_modules"
 
 ERRORS=0
 
+# One scratch root for the whole run, removed on exit.
+RELEASE_TMP="$(mktemp -d)"
+# shellcheck disable=SC2064  # expand RELEASE_TMP now
+trap "rm -rf '$RELEASE_TMP'" EXIT
+
 # ---------------------------------------------------------------------------
 # Publish mode
 # ---------------------------------------------------------------------------
+
+# release_publish [<extension-dir>...] — publish the given extension
+# directories (relative to ROOT_DIR, trailing slash), every extension when none
+# is given.
 release_publish() {
   local dir ext out log rc tag step archive dist_preexisted=0 logdir
-  logdir="$(mktemp -d)"
-  # shellcheck disable=SC2064  # expand logdir now
-  trap "rm -rf '$logdir'" EXIT
+  local -a dirs=()
+  logdir="$RELEASE_TMP/publish-logs"
+  mkdir -p "$logdir"
   if [ -d "$ROOT_DIR/dist" ]; then
     dist_preexisted=1
   fi
@@ -75,7 +111,15 @@ release_publish() {
     release_disable_credential_helpers
   fi
 
-  for dir in extensions/*/*/; do
+  if [ "$#" -gt 0 ]; then
+    dirs=("$@")
+  else
+    for dir in extensions/*/*/; do
+      dirs+=("$dir")
+    done
+  fi
+
+  for dir in ${dirs[@]+"${dirs[@]}"}; do
     [ -f "${dir}package.json" ] || continue
     ext=$(basename "$dir")
     echo ""
@@ -126,7 +170,7 @@ release_publish() {
   if [ "$dist_preexisted" -eq 0 ]; then
     rm -rf "$ROOT_DIR/dist"
   else
-    for dir in extensions/*/*/; do
+    for dir in ${dirs[@]+"${dirs[@]}"}; do
       [ -f "${dir}package.json" ] || continue
       rm -rf "$ROOT_DIR/dist/release/$(basename "$dir")"
     done
@@ -168,12 +212,11 @@ release_reconcile_tags() {
   done
 }
 
-release_rehearse() {
-  local r forge_url remote_head dir ext out json released version tag last notes archive
-  r="$(mktemp -d)"
-  # shellcheck disable=SC2064  # expand r now
-  trap "rm -rf '$r'" EXIT
-
+# release_make_mirror <r> — a throwaway bare mirror of HEAD (and its tags) at
+# <r>/mirror.git and a clone of it at <r>/clone, whose real forge URL is
+# redirected to the mirror, so every engine git operation stays local.
+release_make_mirror() {
+  local r="$1" forge_url remote_head
   git init --bare -q "$r/mirror.git"
   # --no-verify: pushing to the mirror is a push FROM the checkout, so it
   # would otherwise run the checkout's pre-push hook (plan review v2-F3).
@@ -191,6 +234,13 @@ release_rehearse() {
   forge_url="$(release_forge_url "$RELEASE_FORGE")"
   git -C "$r/clone" config "url.$r/mirror.git.insteadOf" "$forge_url"
   ln -s "$ROOT_DIR/node_modules" "$r/clone/node_modules"
+}
+
+release_rehearse() {
+  local r dir ext out json released version tag last notes archive
+  r="$RELEASE_TMP/rehearsal"
+  mkdir -p "$r"
+  release_make_mirror "$r"
 
   release_strip_args
 
@@ -246,8 +296,116 @@ release_rehearse() {
   done
 }
 
+# ---------------------------------------------------------------------------
+# GitHub publish mode — the release-PR flow (issue #1379)
+# ---------------------------------------------------------------------------
+
+# release_engine_run <r> <dir> <ext> <mode> <json> [apply] — the engine for one
+# extension of the clone, credential-free, through release-rehearse.mjs. Its
+# log goes to stderr and to <r>/<ext>.<mode>.log.
+release_engine_run() {
+  local r="$1" dir="$2" ext="$3" mode="$4" json="$5" apply="${6:-}" releaserc rc
+  releaserc="$r/$ext.$mode.releaserc.json"
+  emit_releaserc "$RELEASE_FORGE" "$mode" "$ext" "$r/clone" "$r/out/$ext" "$RELEASE_BRANCH" > "$releaserc"
+  # shellcheck disable=SC2086  # $apply is empty or the single word `apply`
+  (cd "$dir" && env ${RELEASE_STRIP[@]+"${RELEASE_STRIP[@]}"} node "$SCRIPT_DIR/lib/release-rehearse.mjs" "$RELEASE_BRANCH" "$releaserc" $apply) \
+    > "$json" 2> "$r/$ext.$mode.log"
+  rc=$?
+  cat "$r/$ext.$mode.log" >&2
+  rm -f "$releaserc"
+  return "$rc"
+}
+
+release_github() {
+  local r dir ext json released version tag notes manifest head incomplete=0
+  local -a publish_dirs=() pending_dirs=()
+  r="$RELEASE_TMP/release-pr"
+  mkdir -p "$r"
+  release_make_mirror "$r"
+  release_strip_args
+  head="$(release_pr_branch "$RELEASE_BRANCH")"
+
+  # 1. Classify every extension from the engine's dry run on the branch head.
+  for dir in "$r"/clone/extensions/*/*/; do
+    [ -f "${dir}package.json" ] || continue
+    ext=$(basename "$dir")
+    echo ""
+    echo "--- Analyzing: $ext ---"
+    json="$r/$ext.classify.json"
+    if ! release_engine_run "$r" "$dir" "$ext" rehearsal "$json"; then
+      echo "RELEASE-FAILED $ext step=engine"
+      ERRORS=1
+      incomplete=1
+      continue
+    fi
+    released="$(jq -r '.released' "$json")"
+    version="$(jq -r '.version // ""' "$json")"
+    manifest="$(jq -r '.version // ""' "${dir}package.json")"
+    case "$(release_classify "$released" "$version" "$manifest")" in
+      unchanged) echo "UNCHANGED $ext" ;;
+      publish) publish_dirs+=("${dir#"$r/clone/"}") ;;
+      pending) pending_dirs+=("$dir") ;;
+    esac
+  done
+
+  # 2. Publish the releases a merged release PR committed.
+  if [ "${#publish_dirs[@]}" -gt 0 ]; then
+    release_publish ${publish_dirs[@]+"${publish_dirs[@]}"}
+  fi
+
+  # 3. Commit every pending release in the clone, against the mirror.
+  printf '[]\n' > "$r/entries.json"
+  for dir in ${pending_dirs[@]+"${pending_dirs[@]}"}; do
+    ext=$(basename "$dir")
+    echo ""
+    echo "--- Preparing the release PR: $ext ---"
+    json="$r/$ext.prepare.json"
+    if ! release_engine_run "$r" "$dir" "$ext" prepare "$json" apply \
+       || [ "$(jq -r '.released' "$json")" != "true" ]; then
+      echo "RELEASE-FAILED $ext step=$(release_failed_step "$r/$ext.prepare.log")"
+      ERRORS=1
+      incomplete=1
+      # Drop the failed extension's partial changes; earlier commits stay.
+      git -C "$r/clone" reset -q --hard
+      git -C "$r/clone" clean -q -fd
+      continue
+    fi
+    version="$(jq -r '.version' "$json")"
+    tag="$(jq -r '.gitTag' "$json")"
+    notes="$(jq -r '.notes // ""' "$json")"
+    jq --arg ext "$ext" --arg version "$version" --arg tag "$tag" --arg notes "$notes" \
+      '. + [{ext: $ext, version: $version, tag: $tag, notes: $notes}]' "$r/entries.json" > "$r/entries.tmp"
+    mv "$r/entries.tmp" "$r/entries.json"
+    echo "PENDING $ext version=$version tag=$tag"
+  done
+
+  # 4. Push the release branch, then open/update/close the release PR and
+  # dispatch its required checks. A run in which an extension could not be
+  # classified or prepared, and which is left with nothing to propose, must
+  # not close a release PR still open: it may carry that extension.
+  if [ "$(jq 'length' "$r/entries.json")" -gt 0 ]; then
+    # --no-verify: a push FROM the checkout would run its pre-push hook.
+    if ! git fetch -q "$r/clone" "refs/heads/$RELEASE_BRANCH" \
+       || ! git push --no-verify --force -q origin "FETCH_HEAD:refs/heads/$head"; then
+      echo "RELEASE-FAILED release-pr step=push"
+      ERRORS=1
+      return 0
+    fi
+    echo "RELEASE-PR-BRANCH $head"
+  elif [ "$incomplete" -eq 1 ]; then
+    return 0
+  fi
+  if ! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$SCRIPT_DIR/release-pr.ts" \
+       sync "$RELEASE_BRANCH" "$head" "$r/entries.json"; then
+    echo "RELEASE-FAILED release-pr step=pr"
+    ERRORS=1
+  fi
+}
+
 if [ "$RELEASE_MODE" = "rehearsal" ]; then
   release_rehearse
+elif [ "$RELEASE_FORGE" = "github" ]; then
+  release_github
 else
   release_publish
 fi

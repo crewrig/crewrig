@@ -8,6 +8,10 @@ on:
       - "scripts/lib/release-notes/**"
       - "scripts/lib/monorepo-release-lib.sh"
       - "scripts/tests/test-monorepo-release-notes.sh"
+      - "scripts/lib/release-rehearse.mjs"
+      - "scripts/lib/release-pr.ts"
+      - "scripts/release-pr.ts"
+      - "scripts/tests/fixtures/release/forge-stub.mjs"
       - "package.json"
       - "package-lock.json"
   push:
@@ -17,6 +21,10 @@ on:
       - "scripts/lib/release-notes/**"
       - "scripts/lib/monorepo-release-lib.sh"
       - "scripts/tests/test-monorepo-release-notes.sh"
+      - "scripts/lib/release-rehearse.mjs"
+      - "scripts/lib/release-pr.ts"
+      - "scripts/release-pr.ts"
+      - "scripts/tests/fixtures/release/forge-stub.mjs"
       - "package.json"
       - "package-lock.json"
 

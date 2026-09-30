@@ -942,6 +942,163 @@ stop_stub() {
   fi
 }
 
+# =============================================================================
+# 11h — GitHub release-PR flow (issue #1379): a push to main never pushes main;
+# it commits the pending releases to release-pr/main, opens the release PR and
+# dispatches its required checks. Merging that PR then publishes (tags) every
+# bumped extension and opens NO new release PR (no loop).
+# =============================================================================
+{
+  read -r FIX ORIGIN_BARE HOME_FIX GITCONFIG <<< "$(make_fixture | tr '\n' ' ')"
+  main_before="$(git -C "$ORIGIN_BARE" rev-parse refs/heads/main)"
+  tags_before="$(git -C "$ORIGIN_BARE" tag -l | sort)"
+
+  start_stub
+  GH_PUSH_ENV=(GITHUB_ACTIONS=true GITHUB_ACTION=run GITHUB_EVENT_NAME=push
+               GITHUB_REF=refs/heads/main GITHUB_REPOSITORY=acme/fixture GITHUB_SERVER_URL=https://github.com
+               "GITHUB_API_URL=http://127.0.0.1:$STUB_PORT" GITHUB_TOKEN=sentinel-ghs-7f3a)
+  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" ${GH_PUSH_ENV[@]+"${GH_PUSH_ENV[@]}"}
+
+  if [ "$DRIVER_RC" -eq 0 ]; then
+    ok "11h: GitHub publish (release-PR preparation) exits 0"
+  else
+    ng "11h: GitHub publish (release-PR preparation) exits 0 (rc=$DRIVER_RC): $DRIVER_ERR"
+  fi
+  if grep -q '^PENDING foo version=1.3.0 tag=foo-v1.3.0$' <<< "$DRIVER_OUT" \
+     && grep -q '^PENDING baz version=1.0.0 tag=baz-v1.0.0$' <<< "$DRIVER_OUT" \
+     && grep -q '^UNCHANGED bar$' <<< "$DRIVER_OUT" \
+     && ! grep -q '^PUBLISHED ' <<< "$DRIVER_OUT"; then
+    ok "11h: foo and baz are PENDING, bar UNCHANGED, nothing PUBLISHED"
+  else
+    ng "11h: unexpected classification: $DRIVER_OUT"
+  fi
+  if [ "$(git -C "$ORIGIN_BARE" rev-parse refs/heads/main)" = "$main_before" ] \
+     && [ "$(git -C "$ORIGIN_BARE" tag -l | sort)" = "$tags_before" ]; then
+    ok "11h: origin main and origin tags are untouched (nothing pushed to the protected branch)"
+  else
+    ng "11h: origin main or its tags changed during release-PR preparation"
+  fi
+  subjects="$(git -C "$ORIGIN_BARE" log --format=%s "refs/heads/main..refs/heads/release-pr/main" 2>/dev/null)"
+  if [ "$(printf '%s\n' "$subjects" | sort | tr '\n' '|')" = "🔖 baz-v1.0.0|🔖 foo-v1.3.0|" ]; then
+    ok "11h: release-pr/main carries one release commit per pending extension, on top of main"
+  else
+    ng "11h: release-pr/main commits are wrong: '$subjects'"
+  fi
+  if ! git -C "$ORIGIN_BARE" log --format=%B "refs/heads/main..refs/heads/release-pr/main" 2>/dev/null | grep -q 'skip ci'; then
+    ok "11h: no release commit carries [skip ci] (the merge must start the publishing run)"
+  else
+    ng "11h: a release commit carries [skip ci]"
+  fi
+  foo_pkg="$(git -C "$ORIGIN_BARE" show refs/heads/release-pr/main:extensions/core/foo/package.json 2>/dev/null | jq -r .version)"
+  foo_ext="$(git -C "$ORIGIN_BARE" show refs/heads/release-pr/main:extensions/core/foo/extension.json 2>/dev/null | jq -r .version)"
+  if [ "$foo_pkg" = "1.3.0" ] && [ "$foo_ext" = "1.3.0" ] \
+     && git -C "$ORIGIN_BARE" show refs/heads/release-pr/main:extensions/core/foo/CHANGELOG.md 2>/dev/null | grep -q '^# Changelog'; then
+    ok "11h: the release branch bumps both foo manifests to 1.3.0 and writes its CHANGELOG.md"
+  else
+    ng "11h: the release branch foo manifests/changelog are wrong (package=$foo_pkg extension=$foo_ext)"
+  fi
+  pr_post="$(grep '"method":"POST"' "$STUB_LOG" 2>/dev/null | grep '/repos/acme/fixture/pulls"')"
+  dispatch="$(grep '/actions/workflows/build.yml/dispatches' "$STUB_LOG" 2>/dev/null)"
+  if [ "$(printf '%s' "$pr_post" | jq -r '.body.head + " " + .body.base + " " + .body.title' 2>/dev/null)" = "release-pr/main main 🔖 Release baz-v1.0.0, foo-v1.3.0" ] \
+     && grep -q '^RELEASE-PR opened #1 ' <<< "$DRIVER_OUT"; then
+    ok "11h: the release PR release-pr/main -> main is opened, titled with both tags"
+  else
+    ng "11h: the release PR was not opened as expected: $pr_post"
+  fi
+  if [ "$(printf '%s' "$dispatch" | jq -r '.body.ref' 2>/dev/null)" = "release-pr/main" ]; then
+    ok "11h: build.yml is dispatched on release-pr/main (the required checks run on the PR head)"
+  else
+    ng "11h: build.yml was not dispatched on release-pr/main: $dispatch"
+  fi
+  if ! { grep -q 'sentinel-ghs-7f3a' <<< "$DRIVER_OUT" || grep -q 'sentinel-ghs-7f3a' <<< "$DRIVER_ERR"; }; then
+    ok "11h: the GitHub token value never appears in the run's output (R11)"
+  else
+    ng "11h: the GitHub token value leaked into the run's output"
+  fi
+
+  # --- Merge the release PR (fast-forward, as a rebase merge would), then
+  # run the release on the merged main. The publish engine itself is an npx
+  # shim here — @semantic-release/github is exercised in production only —
+  # which records where it ran and which config it got.
+  git -C "$ORIGIN_BARE" update-ref refs/heads/main refs/heads/release-pr/main
+  env -i PATH="$CLEAN_PATH" HOME="$HOME_FIX" GIT_CONFIG_GLOBAL="$GITCONFIG" GIT_CONFIG_SYSTEM=/dev/null \
+    git -C "$FIX" fetch -q origin main
+  clean_git "$HOME_FIX" "$FIX" reset -q --hard FETCH_HEAD
+  NPX_DIR="$TMP_ROOT/npx-11h"
+  mkdir -p "$NPX_DIR/bin" "$NPX_DIR/calls"
+  {
+    printf '#!/bin/bash\n'
+    printf 'ext="$(basename "$PWD")"\n'
+    printf 'for a in "$@"; do\n'
+    printf '  case "$a" in semantic-release-monorepo,*) cp "${a#semantic-release-monorepo,}" "%s/calls/$ext.json" ;; esac\n' "$NPX_DIR"
+    printf 'done\n'
+    printf 'exit 0\n'
+  } > "$NPX_DIR/bin/npx"
+  chmod +x "$NPX_DIR/bin/npx"
+  : > "$STUB_LOG"
+  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" ${GH_PUSH_ENV[@]+"${GH_PUSH_ENV[@]}"} "PATH=$NPX_DIR/bin:$CLEAN_PATH"
+
+  if [ "$DRIVER_RC" -eq 0 ] && [ -f "$NPX_DIR/calls/foo.json" ] && [ -f "$NPX_DIR/calls/baz.json" ] \
+     && [ ! -f "$NPX_DIR/calls/bar.json" ]; then
+    ok "11h: after the merge, the publish engine runs for foo and baz only"
+  else
+    ng "11h: after the merge, the publish engine ran for: $(ls "$NPX_DIR/calls") (rc=$DRIVER_RC): $DRIVER_ERR"
+  fi
+  if jq -e '[.plugins[] | if type == "array" then .[0] else . end]
+            | (index("@semantic-release/github") != null)
+              and all(.[]; (. != "@semantic-release/git") and (endswith("changelog-plugin.ts") | not))' \
+       "$NPX_DIR/calls/foo.json" >/dev/null 2>&1; then
+    ok "11h: the post-merge publish config has the GitHub leg and no changelog/git step (it tags, never commits)"
+  else
+    ng "11h: the post-merge publish config is wrong"
+  fi
+  if ! grep -q '^PENDING ' <<< "$DRIVER_OUT" \
+     && grep -q '^RELEASE-PR none$' <<< "$DRIVER_OUT" \
+     && ! grep -q '"method":"POST"' "$STUB_LOG" 2>/dev/null; then
+    ok "11h: the merged release opens no new release PR and dispatches nothing (no loop)"
+  else
+    ng "11h: the merged release re-proposed something: $DRIVER_OUT"
+  fi
+  stop_stub
+}
+
+# --- 11i: an extension that cannot be classified never closes an open release
+# PR (review i1-F2), and publishing from a release PR branch is refused
+# (review i1-F5).
+{
+  read -r FIX ORIGIN_BARE HOME_FIX GITCONFIG <<< "$(make_fixture | tr '\n' ' ')"
+  # foo and baz (the two releasable extensions) get an unreadable manifest,
+  # so their classification fails and nothing is left to propose.
+  for e in foo baz; do
+    printf '{ not json\n' > "$FIX/extensions/core/$e/package.json"
+  done
+  clean_git "$HOME_FIX" "$FIX" commit -q -am ":bug: break foo and baz manifests"
+  env -i PATH="$CLEAN_PATH" HOME="$HOME_FIX" GIT_CONFIG_GLOBAL="$GITCONFIG" GIT_CONFIG_SYSTEM=/dev/null \
+    git -C "$FIX" push -q origin main
+  start_stub "OPEN_PR=1"
+  GH_PUSH_ENV=(GITHUB_ACTIONS=true GITHUB_ACTION=run GITHUB_EVENT_NAME=push
+               GITHUB_REF=refs/heads/main GITHUB_REPOSITORY=acme/fixture GITHUB_SERVER_URL=https://github.com
+               "GITHUB_API_URL=http://127.0.0.1:$STUB_PORT" GITHUB_TOKEN=sentinel-ghs-7f3a)
+  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" ${GH_PUSH_ENV[@]+"${GH_PUSH_ENV[@]}"}
+  if [ "$DRIVER_RC" -ne 0 ] && grep -q '^RELEASE-FAILED foo step=engine$' <<< "$DRIVER_OUT" \
+     && ! grep -q '"method":"PATCH"' "$STUB_LOG" 2>/dev/null \
+     && ! grep -q '^RELEASE-PR ' <<< "$DRIVER_OUT"; then
+    ok "11i: a classification failure fails the run and leaves the open release PR alone (no close)"
+  else
+    ng "11i: a classification failure closed or touched the open release PR (rc=$DRIVER_RC): $DRIVER_OUT"
+  fi
+  stop_stub
+
+  clean_git "$HOME_FIX" "$FIX" checkout -q -b release-pr/main
+  run_driver "$FIX" "$HOME_FIX" "$GITCONFIG" ${GH_PUSH_ENV[@]+"${GH_PUSH_ENV[@]}"}
+  if [ "$DRIVER_RC" -eq 2 ] && grep -q 'refusing to publish from a release PR branch (release-pr/main)' <<< "$DRIVER_ERR"; then
+    ok "11i: GitHub publish from a release-pr/* branch is refused before anything runs"
+  else
+    ng "11i: GitHub publish from release-pr/main was not refused (rc=$DRIVER_RC): $DRIVER_ERR"
+  fi
+}
+
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
+

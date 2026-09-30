@@ -7,10 +7,35 @@ on:
       - "**"
   workflow_dispatch:
 
+# Release-PR flow (issue #1379): the `main-protected` ruleset requires the
+# `ratchet` and `lint-typescript` checks, so this workflow never pushes to
+# `main`. A push to `main` publishes every release a merged release PR
+# committed (tag + GitHub release), then commits the still-pending releases to
+# the `release-pr/main` branch and opens or updates the release PR. Events made
+# with GITHUB_TOKEN start no workflow run, so the driver dispatches build.yml
+# on that branch to attach the required checks (hence `actions: write`).
+#
+# contents: push the release branch and tags, create releases;
+# pull-requests: open/update/close the release PR; issues: the GitHub
+# plugin's success/fail comments; actions: dispatch build.yml.
 permissions:
   contents: write
   issues: write
   pull-requests: write
+  actions: write
+
+# Two runs must never prepare the release branch or publish at the same time.
+# A running release is never cancelled; GitHub keeps at most ONE pending run
+# per group, so a burst of pushes collapses to the newest pending run, which
+# classifies from its own (newer) main. A merged release PR whose run was
+# dropped that way is then published by that newer run, tagged on its newer
+# commit (same committed version; the note also lists the commits in
+# between) — unless those commits raise the computed version, in which case
+# the extension is re-proposed at that version in the release PR and the
+# merged version is skipped rather than tagged.
+concurrency:
+  group: release-monorepo
+  cancel-in-progress: false
 
 jobs:
   release:

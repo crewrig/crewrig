@@ -1,9 +1,15 @@
 // release-rehearse.mjs — Run the release engine's dry run for ONE extension and
 // report its computed release as one JSON object (spec 0213 R12, PLAN v2 step 5).
 //
-// Usage (cwd = the extension directory of the rehearsal clone, which holds the
-// generated .releaserc.json):
-//   node scripts/lib/release-rehearse.mjs <branch>
+// Usage (cwd = the extension directory of the rehearsal clone):
+//   node scripts/lib/release-rehearse.mjs <branch> [configFile] [apply]
+//
+// `apply` (GitHub release-PR flow, issue #1379) runs the engine for real
+// instead of as a dry run — still inside the throwaway clone, whose every git
+// remote operation is redirected to the throwaway mirror, with the `prepare`
+// config (no publish leg) and every credential stripped. It writes the release
+// commit the release PR carries; the mirror's tag is discarded with the clone.
+// `ci: false` lets it run where the CI environment would otherwise decide.
 //
 // Output contract:
 //   - stdout carries exactly one line, written after the engine returned:
@@ -46,14 +52,15 @@ if (present.length > 0) {
 
 const branch = process.argv[2];
 const configFile = process.argv[3];
-if (!branch) {
-  process.stderr.write("Usage: node scripts/lib/release-rehearse.mjs <branch> [configFile]\n");
+const apply = process.argv[4] === "apply";
+if (!branch || (process.argv[4] !== undefined && !apply)) {
+  process.stderr.write("Usage: node scripts/lib/release-rehearse.mjs <branch> [configFile] [apply]\n");
   process.exit(2);
 }
 
 let result;
 try {
-  let options = { dryRun: true, branches: [branch] };
+  let options = apply ? { dryRun: false, ci: false, branches: [branch] } : { dryRun: true, branches: [branch] };
   if (configFile) {
     const config = JSON.parse(await readFile(configFile, "utf8"));
     options = { ...options, ...config };

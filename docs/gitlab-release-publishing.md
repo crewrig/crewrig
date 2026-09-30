@@ -10,9 +10,10 @@ what version an extension is at or what changed in it (spec 0213 +
 delta-01). No adopter-authored release automation is required — the two
 generated pipeline jobs below are the whole surface.
 
-This page covers only the GitLab side. The underlying engine, the
-per-extension archive shape, and the GitHub release path are unchanged
-and are not repeated here.
+This page covers only the GitLab side. The underlying engine and the
+per-extension archive shape are shared and are not repeated here. On
+GitHub the same engine runs through a release PR instead of pushing the
+release commit itself — see [GitHub release PR](github-release-pr.md).
 
 ## Enabling the pipeline jobs
 
