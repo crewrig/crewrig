@@ -608,7 +608,7 @@ e2e:
     - when: manual
 
 setup:
-  image: debian:stable-slim
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates

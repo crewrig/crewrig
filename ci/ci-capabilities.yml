@@ -681,6 +681,7 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
+      runtime: node@24
       tools: [jq, yq]
     command:
       - bash scripts/tests/test-setup-validation-backend.sh
