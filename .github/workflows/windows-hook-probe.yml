@@ -1,0 +1,37 @@
+name: Windows Hook Probe Check
+
+# Spec 0237 (issue #1322): mirrors the `windows-hook-probe` capability of
+# ci/ci-capabilities.yml.
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/probe-windows-hook-parsing.ts"
+      - "scripts/tests/probe-windows-hook-parsing.test.ts"
+      - "hooks/*-transcript-hooks.json"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/probe-windows-hook-parsing.ts"
+      - "scripts/tests/probe-windows-hook-parsing.test.ts"
+      - "hooks/*-transcript-hooks.json"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  windows-hook-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Test the Windows hook command-line parsing probe
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure

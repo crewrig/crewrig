@@ -1005,6 +1005,35 @@ capabilities:
       - npm ci
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
 
+  # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's
+  # install / restore contract, root resolution and wmic parser. The probe
+  # itself only runs on a real Windows host (docs/runbooks/
+  # windows-hook-parsing-probe.md); this job pins its host-independent logic.
+  # The test reads the four committed transcript manifests to check the
+  # installed JSON shape, hence their place in the paths filter. Deliberately
+  # NOT changeset-gated, for the same reason usage-storage is not: a node@24
+  # capability must never enter the fail-safe job's python-only execution set.
+  - id: windows-hook-probe
+    name: "Windows hook command-line parsing probe (spec 0237)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/probe-windows-hook-parsing.ts"
+          - "scripts/tests/probe-windows-hook-parsing.test.ts"
+          - "hooks/*-transcript-hooks.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/probe-windows-hook-parsing.ts"
+          - "scripts/tests/probe-windows-hook-parsing.test.ts"
+          - "hooks/*-transcript-hooks.json"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts
+
   # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release
   # that cannot strip types. Each command is plain POSIX so the job needs no
   # TypeScript; the grep tokens are the guard's stable diagnostic contract
