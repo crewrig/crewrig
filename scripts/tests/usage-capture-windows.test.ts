@@ -7,10 +7,12 @@
 // capability exercises them too. The interpreter legs need Windows and are
 // skipped elsewhere. The `cmd /c` leg proves the launch semantics of that
 // interpreter, not which interpreter Antigravity CLI uses for a status line:
-// that is row 37e's to state. Row 37e records `cmd.exe` and a cwd-first lookup
-// of a bare `node` (#1389, security review finding 1), so the statusline leg
-// asserts the module's refusal (#1392) and the `cmd /c` leg documents the
-// hazard with a planted node.cmd.
+// that is row 37e's to state. Row 37e records `cmd.exe` and a planted
+// `node.cmd` that wins over `PATH` (#1389, security review finding 1), so the
+// statusline legs are b1 (the module produces no command line and reports the
+// single diagnostic of R32(c), with and without a space in the path) and b2
+// (the planted-binary case through the invocation row 37e records), spec 0243
+// delta-02 R28(b).
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -201,28 +203,63 @@ describe("the command line of each CLI, through its interpreter", { skip: !WINDO
     });
   }
 
-  test("antigravity statusLine: refused, the cwd-first lookup being unsafe (row 37e, #1392)", () => {
-    const measured = MEASURED_SURFACES.find(
-      (m) => m.cli === "antigravity" && m.surface === "statusline" && m.os === "win32",
+  test("b2: a planted node.cmd wins over node through the row 37e invocation (premise of the refusal)", () => {
+    const cwd = fs.mkdtempSync(path.join(work, "planted-"));
+    const elsewhere = fs.mkdtempSync(path.join(work, "record-"));
+    const plantedLog = path.join(elsewhere, "planted.txt");
+    const realLog = path.join(elsewhere, "real.txt");
+    const script = path.join(elsewhere, "probe.js").replaceAll("\\", "/");
+    fs.writeFileSync(
+      script,
+      `require("node:fs").appendFileSync(${JSON.stringify(realLog)}, "real\\n");\n`,
     );
-    assert.equal(measured?.interpreterLookup, "cwd-first");
-    const built = commandFor("antigravity", "statusline", SHIM);
-    assert.equal(built.ok, false);
-    assert.match(built.ok ? "" : built.refusal, /current directory[^]*#1392/);
+    fs.writeFileSync(path.join(cwd, "node.cmd"), `@echo planted>> "${plantedLog}"\r\n`);
+    // The bare `node <abs> <args>` text of R16(c): a fixture, never produced by the module.
+    const command = `node ${script} claude-code Stop`;
+    // Row 37e: `cmd /c "<command>"`, the whole command in one pair of quotes, each inner `"` as `\"`.
+    const wrapped = `"${command.replaceAll('"', '\\"')}"`;
+    spawnSync("cmd.exe", ["/c", wrapped], {
+      cwd,
+      encoding: "utf8",
+      windowsVerbatimArguments: true,
+    });
+    const plantedRan = fs.existsSync(plantedLog);
+    const realRan = fs.existsSync(realLog);
+    assert.ok(
+      plantedRan && !realRan,
+      `The premise of the statusLine.command refusal no longer holds (planted node.cmd ran: ${plantedRan}; real node ran: ${realRan}): cmd /c no longer resolves a bare node from the working directory first. Revisit the refusal of spec 0243 R16(c)/R32 and ticket #1392 instead of leaving it on an outdated premise.`,
+    );
+  });
+});
+
+describe("b1: the Antigravity statusLine.command is refused on Windows (spec 0243 R28(b1), R32(c))", () => {
+  const refusals = ["C:/Users/ana/crewrig", "C:/Users/Ana Diaz/crewrig"].map((root) =>
+    hookCommandLine({
+      cli: "antigravity",
+      surface: "statusline",
+      platform: "win32",
+      scriptPath: `${root}/hooks/antigravity-statusline-shim.ts`,
+      args: [],
+    }),
+  );
+
+  test("no command line is produced, from a path with a space or without", () => {
+    for (const result of refusals) assert.equal(result.ok, false);
   });
 
-  test("cmd /c resolves a bare node from the working directory first (security review finding 1)", () => {
-    // Documents the hazard row 37e records on Antigravity CLI: a repository that
-    // ships node.cmd wins over the real node. Deterministic: the planted file
-    // only writes a marker, and the same probe without it runs the real node.
-    const cwd = fs.mkdtempSync(path.join(work, "planted-"));
-    const marker = path.join(cwd, "planted.txt");
-    const command = "node -v";
-    const baseline = spawnSync("cmd", ["/c", command], { cwd, encoding: "utf8" });
-    assert.match(baseline.stdout, /^v\d+\./, baseline.stderr);
-    fs.writeFileSync(path.join(cwd, "node.cmd"), `@echo planted> "${marker}"\r\n`);
-    const planted = spawnSync("cmd", ["/c", command], { cwd, encoding: "utf8" });
-    assert.equal(fs.existsSync(marker), true, "the planted node.cmd did not run");
-    assert.doesNotMatch(planted.stdout, /^v\d+\./, "the real node ran despite node.cmd");
+  test("the single diagnostic names the working-directory lookup and #1392, not the space", () => {
+    const messages = refusals.map((r) => (r.ok ? "" : r.refusal));
+    assert.equal(messages[0], messages[1], "the same diagnostic for both paths");
+    assert.match(messages[0] ?? "", /from the directory the user starts Antigravity CLI in/);
+    assert.match(messages[0] ?? "", /#1392/);
+    assert.doesNotMatch(messages[0] ?? "", /whitespace|checkout path|unmeasured|contradicts/);
+  });
+
+  test("the constant carries the planted-binary result of row 37e", () => {
+    const entry = MEASURED_SURFACES.find(
+      (m) => m.cli === "antigravity" && m.surface === "statusline" && m.os === "win32",
+    );
+    assert.equal(entry?.plantedBinary, "planted-runs");
+    assert.equal(entry?.status, "conforming");
   });
 });

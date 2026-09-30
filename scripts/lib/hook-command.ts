@@ -17,7 +17,13 @@ export type Surface = "hooks" | "statusline";
 /** The interpreter a CLI hands a Windows command line to (rows 37-37e). */
 export type Interpreter = "git-bash" | "powershell-5.1" | "cmd.exe";
 /** The quoting rule that interpreter applies (row 37b). */
-export type Quoting = "posix" | "powershell" | "cmd";
+export type Quoting = "posix" | "powershell" | "cmd-no-grouping";
+/**
+ * The planted-binary result of spec 0243 R31: a `node.cmd` placed in the
+ * surface's working directory ran on every draw and the real `node` on none.
+ * The only result recorded so far.
+ */
+export type PlantedBinaryResult = "planted-runs";
 
 export interface MeasuredSurface {
   readonly cli: Cli;
@@ -28,24 +34,29 @@ export interface MeasuredSurface {
   /** `conforming` when interpreter and quoting equal row 37b's, else `contradicting`. */
   readonly status: "conforming" | "contradicting";
   /**
-   * How the interpreter finds a bare `node`. `cwd-first` means it searches the
-   * current directory before `PATH` (`cmd.exe`, CWE-427), so a repository
-   * holding `node.cmd` would run instead of Node.js: the module writes no
-   * command line for such a surface. Absent means `path-only`.
+   * The planted-binary result (R31). Required of a Windows `statusline` entry:
+   * an entry without it is malformed and the module treats the surface as
+   * unmeasured whatever its status (R31, R32(a)).
    */
-  readonly interpreterLookup?: "path-only" | "cwd-first";
+  readonly plantedBinary?: PlantedBinaryResult;
+  /** The caveats the measurement was made under (R31), carried beside the result. */
+  readonly caveats?: readonly Caveat[];
 }
+
+/** The four caveats of R31, as the row 37e token names them. */
+export type Caveat = "arm64-vm" | "agy-1.2.14" | "idle-start-screen" | "node.cmd-only";
 
 /**
  * One entry per measured (CLI, surface, operating system) triple (R18): the
  * four hooks-surface Windows triples of rows 37-37d and the Antigravity
- * `statusline` triple of row 37e (#1389). The latter is conforming to row 37b
- * but flagged `cwd-first`: `cmd.exe` resolves a bare `node` from the working
- * directory first, which a repository can hijack (security review finding 1,
- * spec 0243 delta-02), so the module refuses it until #1392 settles a form.
+ * `statusline` triple of row 37e (#1389). The latter is `conforming` to row 37b
+ * and carries the planted-binary result: `cmd.exe` resolves a bare `node` from
+ * the working directory first, which a repository can hijack (security review
+ * finding 1, spec 0243 delta-02 R31), so the module refuses every Windows
+ * statusline command line until #1392 settles a form (R16(c), R32).
  *
- * Row 37e carries `[measured: interpreter=<v>; quoting=<v>]` with the same
- * tokens as `interpreter` and `quoting` here; a test compares them.
+ * Row 37e carries `[measured: interpreter=<v>; quoting=<v>; planted-binary=<v>;
+ * caveats=<v,…>]` with the same tokens as the entry; a test compares them.
  */
 export const MEASURED_SURFACES: readonly MeasuredSurface[] = [
   {
@@ -77,7 +88,7 @@ export const MEASURED_SURFACES: readonly MeasuredSurface[] = [
     surface: "hooks",
     os: "win32",
     interpreter: "cmd.exe",
-    quoting: "cmd",
+    quoting: "cmd-no-grouping",
     status: "conforming",
   },
   {
@@ -85,9 +96,13 @@ export const MEASURED_SURFACES: readonly MeasuredSurface[] = [
     surface: "statusline",
     os: "win32",
     interpreter: "cmd.exe",
-    quoting: "cmd",
+    quoting: "cmd-no-grouping",
     status: "conforming",
-    interpreterLookup: "cwd-first",
+    plantedBinary: "planted-runs",
+    // Windows 11 ARM64 VM (the CI job is x64); Antigravity CLI 1.2.14 (row 37b:
+    // 1.2.13); idle start-up screen only, no turn observed; `node.cmd` only,
+    // `NoDefaultCurrentDirectoryInExePath` unset, no alternative form measured.
+    caveats: ["arm64-vm", "agy-1.2.14", "idle-start-screen", "node.cmd-only"],
   },
 ];
 
@@ -130,10 +145,24 @@ export function physicalPath(scriptPath: string): string {
   return resolveReal(scriptPath);
 }
 
+/** The single refusal diagnostic of a Windows `statusLine.command` (R32 (a)-(c)). */
+function statuslineRefusal(cli: Cli, entry: MeasuredSurface | undefined): string {
+  if (entry === undefined || entry.plantedBinary === undefined) {
+    // (a) no entry, or an entry lacking the planted-binary result whatever its status.
+    return `${cli} statusline on Windows is unmeasured: no row of docs/cli-matrix.md records, with its planted-binary result, how ${cli} parses a statusLine.command there, so no command line is written for it.`;
+  }
+  if (entry.status === "contradicting") {
+    // (b)
+    return `${cli} statusline on Windows is measured as interpreter ${entry.interpreter} with ${entry.quoting} quoting, which contradicts the shape this tool writes; no command line is written until a spec 0243 delta sets its shape.`;
+  }
+  // (c)
+  return `${cli} statusline on Windows: the ${entry.interpreter} that runs its statusLine.command resolves the bare 'node' of the command from the directory the user starts ${cli === "antigravity" ? "Antigravity CLI" : cli} in, before PATH (CWE-427), so a repository shipping a node.cmd would run its own code on every draw of the status line (row 37e). No command line is written until ticket #1392 settles a form that does not depend on that lookup.`;
+}
+
 /**
  * Build the direct command line for one CLI and surface, or refuse.
  *
- * Refusal order (R17): the surface diagnostic of R18 comes first because it
+ * Refusal order (R17, R32): the surface diagnostic comes first because it
  * concerns the surface and precedes any judgement of the path.
  */
 export function hookCommandLine(
@@ -147,23 +176,22 @@ export function hookCommandLine(
   let powershell = false;
   if (windows) {
     const measured = findSurface(measuredSurfaces, cli, surface);
+    if (surface === "statusline") {
+      // R32: one diagnostic, chosen from the constant alone, that replaces any
+      // judgement of the path (R17). The module writes no Windows statusline
+      // command line in any state of the entry (R16(c), R18).
+      return { ok: false, refusal: statuslineRefusal(cli, measured) };
+    }
     if (measured === undefined) {
       return {
         ok: false,
-        refusal: `${cli} ${surface} on Windows is unmeasured: no row of docs/cli-matrix.md records how ${cli} parses a ${surface === "statusline" ? "statusLine.command" : "hook command line"} there, so no command line is written for it.`,
+        refusal: `${cli} ${surface} on Windows is unmeasured: no row of docs/cli-matrix.md records how ${cli} parses a hook command line there, so no command line is written for it.`,
       };
     }
     if (measured.status === "contradicting") {
       return {
         ok: false,
         refusal: `${cli} ${surface} on Windows is measured as interpreter ${measured.interpreter} with ${measured.quoting} quoting, which contradicts the shape this tool writes; no command line is written until a spec 0243 delta sets its shape.`,
-      };
-    }
-    // Precedes the path diagnostics (R17): whatever the path, the form is unsafe.
-    if (measured.interpreterLookup === "cwd-first") {
-      return {
-        ok: false,
-        refusal: `${cli} ${surface} on Windows runs its command through ${measured.interpreter}, which looks a bare 'node' up in the current directory before PATH (CWE-427): a repository holding node.cmd, node.bat or node.exe would run instead of Node.js. No command line is written until #1392 settles a form that does not depend on that lookup.`,
       };
     }
     cmdExe = measured.interpreter === "cmd.exe";
