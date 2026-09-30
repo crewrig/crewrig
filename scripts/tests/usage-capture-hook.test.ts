@@ -206,6 +206,24 @@ describe("guard (R6)", () => {
     assert.equal(graphLoaded(sc), false, "stamp present, store not newer: fast path");
   });
 
+  test("without CREWRIG_USAGE_ROOT the usage root is .crewrig/usage under the home directory (R8)", () => {
+    const sc = scenario();
+    const home = path.join(path.dirname(sc.source), "home");
+    const env = hookEnv({ HOME: home, USERPROFILE: home, MARKER: sc.marker });
+    delete env["CREWRIG_USAGE_ROOT"];
+    const payload = JSON.stringify({ transcript_path: sc.source });
+    const run = () =>
+      runEntry(tree.file("hooks", "usage-capture.ts"), ["claude-code", "Stop"], payload, env);
+
+    silentSuccess(run());
+    assert.ok(graphLoaded(sc), "no stamp under the home directory yet: capture");
+
+    fs.rmSync(sc.marker);
+    stamp({ ...sc, root: path.join(home, ".crewrig", "usage") });
+    silentSuccess(run());
+    assert.equal(graphLoaded(sc), false, "stamp under <home>/.crewrig/usage: fast path");
+  });
+
   test("the stamp key is the SHA-256 hex digest of the decoded source path", () => {
     const sc = scenario();
     stamp(sc);
