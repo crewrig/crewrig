@@ -369,6 +369,24 @@ for (const [label, make] of FORGES) {
       expect(await pickup(f, "bob", 7), 3, "alice");
     });
 
+    test("a torn first read (a rival write between the issue and history GETs) is re-read once", async () => {
+      const f = make().issue(7);
+      const direct = f.runAs("bob");
+      let torn = false;
+      const run = async (argv: readonly string[]) => {
+        const res = await direct(argv);
+        if (!torn && /issues\/7(\?|$)/.test(argv[argv.length - 1] ?? "")) {
+          torn = true;
+          f.human("alice", 7, { add: ["alice"] });
+        }
+        return res;
+      };
+      const r = await pickup(f, "bob", 7, [], { run });
+      assert.ok(torn, "the tear was not injected");
+      expect(r, 3, "alice");
+      assert.deepEqual(f.writes, []);
+    });
+
     test("a record that keeps changing between confirming reads fails closed", async () => {
       const f = make().issue(7);
       const direct = f.runAs("alice");
