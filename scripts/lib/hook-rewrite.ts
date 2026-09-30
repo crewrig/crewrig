@@ -156,6 +156,13 @@ export function rewriteConfig(input: JsonObject, options: RewriteOptions): Rewri
   return { config, lines, rewrote, left, dropped, changed: rewrote > 0 || dropped > 0 };
 }
 
+const ENV_ASSIGNMENT = /(?:^|\s)([A-Za-z_][A-Za-z0-9_]*)=/g;
+
+/** Names (never values: they may be credentials) of the `VAR=value` words in a command prefix. */
+function envPrefixNames(pre: string): string[] {
+  return [...pre.matchAll(ENV_ASSIGNMENT)].map((m) => m[1] ?? "");
+}
+
 function rewriteOne(
   ref: Ref,
   event: string,
@@ -168,6 +175,14 @@ function rewriteOne(
     line: { kind: "left", event, path: registered, detail },
   });
   if (ref.parse.ext === "ts") return left("already the direct form");
+  // The direct form is `node "<abs>" <args>` and carries no environment: dropping
+  // the prefix would silently redirect the records (security review finding 3,
+  // spec 0243 delta-01). The command stays recognised for keep/dedup/re-point/remove.
+  const envNames = envPrefixNames(ref.parse.pre);
+  if (envNames.length > 0) {
+    const shown = envNames.map((name) => `${name}=...`).join(", ");
+    return left(`keeps an environment prefix (${shown}) the direct form cannot carry`);
+  }
   if (rank(registered, exists) === 1)
     return left("its path cannot be resolved (variable or relative)");
   const target = `${registered.slice(0, -".sh".length)}.ts`;
