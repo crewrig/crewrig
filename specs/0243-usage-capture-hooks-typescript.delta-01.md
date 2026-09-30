@@ -52,8 +52,8 @@ only where the prefix still launches
 
 Given a settings file whose capture command is
 `CREWRIG_USAGE_ROOT=/Volumes/enc/usage bash "/old/hooks/usage-capture.sh" <cli-id> Stop`,
-with `/old/hooks/usage-capture.sh` no longer existing, for Claude Code, and the
-same for Gemini CLI and for Copilot CLI on Windows
+with `/old/hooks/usage-capture.sh` no longer existing, for Claude Code, and for
+Gemini CLI and Copilot CLI on each platform
 When the user re-runs setup for that CLI and keeps capture
 Then for Claude Code, and for Gemini CLI and Copilot CLI on macOS and Linux,
 the command is re-pointed at the current checkout's script with the prefix and
@@ -207,6 +207,8 @@ requirement 20 already accepts `NAME=value` words before the interpreter, and
 this delta adds no form to it, so the fixture corpus that both twins run is
 unchanged. Requirement 22's live-path rule and its idempotence are read as
 before; a left command writes nothing, so a second run still writes nothing.
+Its last sentence, that re-pointing a vanished path keeps working for both
+forms, holds except as requirement 19 provides.
 
 ## REMOVED
 
