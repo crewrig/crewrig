@@ -37,7 +37,7 @@ jobs:
           node-version: 24
 
       - name: Test the ticket-pickup ownership check
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts scripts/tests/ticket-pickup-smoke.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
