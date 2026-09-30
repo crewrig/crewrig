@@ -31,23 +31,25 @@ all contributors share, and this convention makes it authoritative.
 1. The assignment recorded on the forge SHALL be the single authoritative
    record of who owns a ticket. An issue with an assignee SHALL be owned by
    that assignee; an issue with no assignee SHALL be free. No other record —
-   agent memory, a local file, a chat message — SHALL override it.
+   agent memory, a local file, a comment, a chat message — SHALL override it.
 2. A ticket owned by one contributor SHALL NOT be worked on by any other
    contributor, nor by an agent acting on another contributor's behalf.
    "Worked on" covers every authoring action that produces a deliverable for
-   that ticket: creating its branch, securing its spec id, opening its
-   worktree, and opening or pushing to its pull request. Reading the ticket,
-   commenting on it, and reviewing its pull request SHALL remain permitted to
-   everyone.
+   that ticket: creating any of its branches (spec, delta-spec, or
+   implementation), securing its spec id, opening its worktree, and opening
+   or pushing to any of its pull requests. Reading the ticket, commenting on
+   it, and reviewing its pull requests SHALL remain permitted to everyone.
 3. A contributor taking a free ticket SHALL become its assignee before the
-   first authoring action listed in requirement 2. When two contributors
-   assign themselves concurrently, the earlier assignment in the forge's issue
-   timeline SHALL own the ticket, and the later one SHALL withdraw.
+   first authoring action listed in requirement 2.
 4. An issue SHALL carry at most one assignee. Other contributors SHALL
    participate through comments, review suggestions, or commit co-authorship,
-   never through a second assignment. An issue found with several assignees
-   SHALL be treated as owned by none of them until they reduce it to one, and
-   no agent SHALL start on it in the meantime.
+   never through a second assignment. Whenever an issue carries several
+   assignees — two concurrent self-assignments, or a manual edit — the
+   assignee whose assignment appears earliest in the forge's issue timeline
+   SHALL own it, and every later assignee SHALL remove their own assignment.
+   When the timeline cannot establish which assignment came first, the issue
+   SHALL be treated as owned by none of them, no agent SHALL start on it, and
+   the assignees SHALL reduce it to one by agreement.
 5. Assigning an epic SHALL lock the epic issue only. Each sub-ticket SHALL be
    free or owned according to its own assignment. The epic's assignee SHALL be
    the arbiter of how its sub-tickets are split and distributed, and a
@@ -65,46 +67,62 @@ all contributors share, and this convention makes it authoritative.
    contributor MAY take the ticket over, leaving a takeover comment that links
    the unanswered request. The defaults SHALL be 14 days for the nudge delay
    and 7 days for the grace delay, and an adopting organization SHALL be able
-   to override both. Activity SHALL mean any comment, commit on the ticket's
-   branch, or pull-request update by the assignee. A takeover SHALL never be
-   silent.
-9. No contributor SHALL push to a branch owned by another contributor's
-   ticket. Changes proposed to someone else's work SHALL go through review
-   suggestions or a pull request that targets their branch.
-10. Changes to files that most tickets touch — at least `docs/cli-matrix.md`,
-    `AGENTS.md`, `.crewrig/core-paths.txt`, and compiled component outputs —
-    SHALL be kept in short-lived pull requests rebased frequently on the
-    reference branch, and a change to a shared contract in such a file SHALL
-    be announced on the ticket's issue before its pull request is opened.
+   to override both. Activity SHALL mean any comment on the issue, commit on
+   any of the ticket's branches, or update to any of its pull requests by the
+   assignee. A takeover SHALL never be silent.
+9. No contributor SHALL push to a branch of a ticket owned by another
+   contributor. Changes proposed to someone else's work SHALL go through
+   review suggestions or a pull request that targets their branch. Two pushes
+   SHALL remain permitted: bringing the branch up to date with the reference
+   branch as required by `AGENTS.md` → *Branching Strategy* → *Up-to-date merge
+   precondition*, by the contributor about to merge it; and any push the owner
+   has explicitly invited in a comment on the issue or pull request.
+10. For a pull request that modifies a file most tickets touch — at least
+    `docs/cli-matrix.md`, `AGENTS.md`, `.crewrig/core-paths.txt`, and compiled
+    component outputs — a change to a shared contract in such a file SHALL be
+    announced on the ticket's issue before the pull request is opened, and the
+    pull request SHALL be brought up to date with the reference branch before
+    review is requested, in addition to the pre-merge update of requirement 9.
 11. At ticket pickup, before any authoring action listed in requirement 2, an
     agent SHALL compare the issue's assignees with the identity of its current
     forge user:
-    - assigned to someone else → the agent SHALL stop, name the assignee, and
-      surface the permitted paths (ask the assignee, wait for the stale-lock
-      path of requirement 8, or pick another ticket), without creating any
-      branch, spec-id reservation, or worktree;
-    - assigned to its own user → the agent SHALL proceed;
-    - free → the agent SHALL assign its own user, then proceed.
+    - assigned to someone else only → the agent SHALL stop, name the assignee,
+      and surface the permitted paths (ask the assignee, wait for the
+      stale-lock path of requirement 8, or pick another ticket), without
+      creating any branch, spec-id reservation, or worktree;
+    - assigned to its own user only → the agent SHALL proceed;
+    - several assignees including its own user → the agent SHALL apply
+      requirement 4: proceed only when its own user's assignment is the
+      earliest, otherwise remove its own user's assignment and stop as in the
+      first case;
+    - free → the agent SHALL assign its own user, then re-read the issue's
+      assignees and apply this requirement again to what it reads. It SHALL
+      proceed only when that re-read shows its own user as the owner.
 12. The requirement-11 check SHALL behave identically on GitHub, GitLab, and
     Gitea, through each forge's own command-line tool, consistent with
     `AGENTS.md` → *Forge Access*, and SHALL require no credential beyond the
     one the contributor already holds for that tool.
 13. When the agent cannot establish either side of the requirement-11
-    comparison — forge unreachable, current user undeterminable, or issue
-    unreadable — it SHALL fail closed: stop before any authoring action and
-    report which side could not be read. Proceeding without the check SHALL
-    require the user's explicit instruction in the same session.
-14. When the current user lacks the permission to assign themselves — a fork
-    contributor without triage rights, for instance — the agent SHALL post a
-    claim comment on the free issue and ask a maintainer to record the
-    assignment. That claim comment SHALL count as ownership under
-    requirement 1 until a maintainer assigns the ticket or 7 days pass
-    without an assignment, whichever comes first.
-15. The requirement-11 check SHALL be wired into every framework entry point
-    that picks up a ticket for authoring, starting with the `spec-author`
-    skill, on every supported command-line tool, and each modified skill or
-    agent source SHALL carry its version bump per `AGENTS.md` → *Version Bump
-    Convention*.
+    comparison — forge unreachable, current user undeterminable, issue
+    unreadable, or timeline unreadable when requirement 4 needs it — it SHALL
+    fail closed: stop before any authoring action and report which side could
+    not be read. Proceeding without the check SHALL require the user's
+    explicit instruction in the same session.
+14. When the post-assignment re-read of requirement 11 shows that the
+    self-assignment did not take effect — typically a contributor without the
+    permission to assign themselves, such as a fork contributor, whose
+    assignment the forge may drop silently — the agent SHALL stop before any
+    authoring action, report that the assignment could not be recorded, and
+    ask a maintainer, in a comment on the issue, to assign the ticket to its
+    user. The ticket SHALL remain free until a maintainer records that
+    assignment; the agent SHALL proceed only once it has.
+15. The requirement-11 check SHALL be wired into every framework path through
+    which an agent picks up a ticket for authoring, on every supported
+    command-line tool — at least: the `spec-author` skill at the SPECS stage;
+    the direct inline handling of a `trivial` ticket, which bypasses
+    `spec-author`; and the pickup of a ticket whose spec is already merged, at
+    the PLAN or DEV stage. Each modified skill or agent source SHALL carry its
+    version bump per `AGENTS.md` → *Version Bump Convention*.
 16. The convention SHALL be documented in the generic core — a reference
     document under `docs/` and a short section in `AGENTS.md` within its size
     budget (`specs/0067-agents-md-size-budget.md`) — and SHALL name no
@@ -124,6 +142,7 @@ Given issue #N has no assignee
 And   the contributor's agent is asked to start work on issue #N
 When  the agent runs its ticket-pickup check
 Then  the agent assigns issue #N to its current forge user
+And   re-reads the assignees and finds its own user as the sole owner
 And   only then creates the ticket's branch, spec-id reservation, or worktree
 And   the assignment is visible in the issue timeline to every contributor
 ```
@@ -168,6 +187,47 @@ And   its sub-ticket #S has no assignee
 When  contributor B's agent is asked to start work on #S
 Then  the agent treats #S as free and assigns it to B
 And   A remains the arbiter of how the epic's sub-tickets are distributed
+```
+
+**Scenario:** two contributors self-assign the same free ticket at once
+
+```text
+Given issue #N has no assignee
+And   contributors A and B each ask their agent to start work on #N at the same moment
+When  both agents assign their own user, then re-read the assignees
+Then  both see A and B assigned, and the timeline shows A's assignment first
+And   A's agent proceeds
+And   B's agent removes B's assignment and stops before any authoring action, naming A as the owner
+```
+
+**Scenario:** a contributor without assign permission picks up a free ticket
+
+```text
+Given issue #N has no assignee
+And   contributor F, working from a fork, cannot assign themselves on the reference repository
+When  F's agent assigns F and re-reads the assignees
+Then  the re-read shows no assignee
+And   the agent stops before any authoring action and asks a maintainer, in a comment on #N, to assign F
+And   #N remains free for everyone until a maintainer records the assignment
+```
+
+**Scenario:** the contributor about to merge updates someone else's branch
+
+```text
+Given contributor A owns issue #N and its approved pull request is behind the reference branch
+When  contributor B, about to merge that pull request, brings its branch up to date with the reference branch
+Then  the push is permitted by requirement 9
+And   any other push by B to that branch requires A's explicit invitation
+```
+
+**Scenario:** a contributor releases a ticket they cannot finish
+
+```text
+Given contributor A owns issue #N and has completed part of the work
+When  A decides to stop working on #N
+Then  A removes their own assignment
+And   leaves a status comment stating what is done and what remains
+And   #N becomes free for the next contributor whose agent picks it up
 ```
 
 ## Out of scope
