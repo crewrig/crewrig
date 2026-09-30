@@ -63,6 +63,8 @@ export interface Knobs {
   singleAssignee: boolean;
   /** Gitea server version answered by `/version` (selects dedicated endpoints vs PATCH). */
   giteaVersion: string;
+  /** Gitea `[api] MAX_RESPONSE_ITEMS`: the server caps every page's `limit` at this (i1-F3). */
+  pageCap: number;
   /** Users the forge silently refuses to assign (fork contributors, R14). */
   cannotAssign: Set<string>;
   /** Visibility lag applied to every subsequent agent write by these actors (ms). */
@@ -111,6 +113,7 @@ export class FakeForge {
       replaceOnAdd: false,
       singleAssignee: false,
       giteaVersion: "1.27.1",
+      pageCap: Number.POSITIVE_INFINITY,
       cannotAssign: new Set(),
       lagFor: new Map(),
       itemLag: 0,

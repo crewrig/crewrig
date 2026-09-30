@@ -509,39 +509,45 @@ describe("two concurrent pickups of a free ticket, every interleaving (PLAN v2 s
       false,
     ],
   ];
+  const matrix = [
+    [0, 0],
+    [0, 1500],
+    [400, 0],
+    [400, 1500],
+  ] as const;
   for (const [name, make, repairsNeverFree] of configs)
-    for (const callMs of [0, 400])
-      for (const lag of [0, 1500])
-        test(`${name}: call cost ${callMs} ms, rival visible after ${lag} ms`, async () => {
-          const runs = await exhaust(
-            () => {
-              const f = make({ lagFor: new Map([["bob", lag]]) }).issue(7);
-              f.callMs = callMs;
-              return f;
-            },
-            ["alice", "bob"],
-            7,
-            async ({ forge: f, results, trail }) => {
-              const codes = results.map((r) => r.code);
-              const ctx = `schedule [${trail}] exits ${codes.join("/")}: ${results.map((r) => r.stderr).join(" | ")}`;
-              assert.ok(codes.filter((c) => c === 0).length <= 1, `two pickups proceeded: ${ctx}`);
-              assert.ok(
-                codes.every((c) => [0, 2, 3, 4, 5].includes(c)),
-                ctx,
-              );
-              if (repairsNeverFree) neverFree(f);
-              const truth = await pickup(f.advance(DAY), "observer", 7, ["--read-only"]);
-              for (const r of results.filter((x) => x.code === 0))
-                assert.equal(r.report.owner, truth.report.owner, `a non-owner proceeded: ${ctx}`);
-              if (truth.code === 4) assert.ok(!codes.includes(0), `a tie exited 0: ${ctx}`);
-              assert.ok(!codes.includes(5), `R14 without any refused assignment: ${ctx}`);
-              const owner = results.findIndex((r) => r.report.self === truth.report.owner);
-              if (truth.report.verdict === "owned-by-other" && owner >= 0)
-                assert.equal(codes[owner], 0, `the first recorded taker did not proceed: ${ctx}`);
-            },
-          );
-          assert.ok(runs > 1);
-        });
+    // The accepted-risk Gitea 1.24 path asserts the least and costs the most: one point of the matrix.
+    for (const [callMs, lag] of repairsNeverFree ? matrix : matrix.slice(1, 2))
+      test(`${name}: call cost ${callMs} ms, rival visible after ${lag} ms`, async () => {
+        const runs = await exhaust(
+          () => {
+            const f = make({ lagFor: new Map([["bob", lag]]) }).issue(7);
+            f.callMs = callMs;
+            return f;
+          },
+          ["alice", "bob"],
+          7,
+          async ({ forge: f, results, trail }) => {
+            const codes = results.map((r) => r.code);
+            const ctx = `schedule [${trail}] exits ${codes.join("/")}: ${results.map((r) => r.stderr).join(" | ")}`;
+            assert.ok(codes.filter((c) => c === 0).length <= 1, `two pickups proceeded: ${ctx}`);
+            assert.ok(
+              codes.every((c) => [0, 2, 3, 4, 5].includes(c)),
+              ctx,
+            );
+            if (repairsNeverFree) neverFree(f);
+            const truth = await pickup(f.advance(DAY), "observer", 7, ["--read-only"]);
+            for (const r of results.filter((x) => x.code === 0))
+              assert.equal(r.report.owner, truth.report.owner, `a non-owner proceeded: ${ctx}`);
+            if (truth.code === 4) assert.ok(!codes.includes(0), `a tie exited 0: ${ctx}`);
+            assert.ok(!codes.includes(5), `R14 without any refused assignment: ${ctx}`);
+            const owner = results.findIndex((r) => r.report.self === truth.report.owner);
+            if (truth.report.verdict === "owned-by-other" && owner >= 0)
+              assert.equal(codes[owner], 0, `the first recorded taker did not proceed: ${ctx}`);
+          },
+        );
+        assert.ok(runs > 1);
+      });
 });
 
 // Regressions of two gaps the interleaving test found in the first cut of the tool.
@@ -576,5 +582,84 @@ describe("regressions: R11 restore after displacement, R14 lagged own write", ()
       0,
       "a maintainer was asked to assign an already-recorded assignment",
     );
+  });
+});
+
+// Regressions of PR #1396 review pass 1 (seat review/1387, findings i1-F1..i1-F4).
+describe("regressions: PR #1396 review pass 1", () => {
+  for (const body of [
+    "changed title from **Fix assignee menu** to **Fix assignee dropdown**",
+    'added ~"needs-assignment" label',
+    "changed the description to mention the reassignment policy",
+  ])
+    test(`i1-F1: a GitLab system note merely mentioning "assign" is ignored: ${body}`, async () => {
+      const f = new FakeForge("gitlab").issue(7).human("alice", 7, { add: ["alice"] });
+      f.rawNotes.push({ id: 900, issue: 7, at: f.now + 1, author: "carol", body });
+      expect(await pickup(f.advance(1000), "bob", 7), 3, "alice");
+      expect(await pickup(f, "alice", 7), 0, "alice");
+    });
+
+  test("i1-F1: the legacy `reassigned to @b` wording still fails closed", async () => {
+    const f = new FakeForge("gitlab").issue(7).human("alice", 7, { add: ["alice"] });
+    f.rawNotes.push({
+      id: 901,
+      issue: 7,
+      at: f.now + 1,
+      author: "bob",
+      body: "reassigned to @bob",
+    });
+    expect(await pickup(f.advance(1000), "carol", 7), 2, null);
+  });
+
+  test("i1-F2: every tea call is bound to the repository's git remote", async () => {
+    const f = new FakeForge("gitea").issue(7);
+    const r = await pickup(f, "alice", 7, [], { remoteName: () => "upstream" });
+    expect(r, 0, "alice");
+    const tea = f.calls.map((c) => c.slice("alice: ".length).split(" "));
+    assert.ok(tea.length > 3);
+    for (const argv of tea)
+      assert.deepEqual(argv.slice(0, 4), ["tea", "api", "--remote", "upstream"], argv.join(" "));
+  });
+
+  test("i1-F3: a Gitea server page cap below 50 still reads the whole timeline", async () => {
+    // True owner is bob: alice released, bob took, alice was added, bob left, never free since bob.
+    const f = new FakeForge("gitea", { pageCap: 1 }).issue(7);
+    f.human("alice", 7, { add: ["alice"] })
+      .advance(1000)
+      .human("alice", 7, { remove: ["alice"] });
+    f.advance(1000)
+      .human("bob", 7, { add: ["bob"] })
+      .advance(1000)
+      .human("alice", 7, { add: ["alice"] });
+    f.advance(1000)
+      .human("bob", 7, { remove: ["bob"] })
+      .advance(1000);
+    const r = await pickup(f, "carol", 7, ["--read-only"]);
+    expect(r, 0, "bob");
+    const g = new FakeForge("gitea", { pageCap: 20 }).issue(7);
+    for (let i = 0; i < 45; i++) g.advance(1000).say("carol", 7, `note ${i}`);
+    g.advance(1000).human("alice", 7, { add: ["alice"] });
+    expect(await pickup(g, "bob", 7), 3, "alice");
+  });
+
+  test("i1-F4: at most one restoration per pickup when the first read already yields restore-self", async () => {
+    const f = new FakeForge("github")
+      .issue(7)
+      .human("alice", 7, { add: ["alice"] })
+      .advance(5000);
+    f.human("bob", 7, { remove: ["alice"], add: ["bob"] }).advance(60_000);
+    f.afterWrite = (actor) => {
+      if (actor !== "alice") return;
+      f.advance(1000).human("bob", 7, { remove: ["alice"] });
+    };
+    const r = await pickup(f, "alice", 7);
+    expect(r, 2, "alice");
+    assert.equal(
+      writesBy(f, "alice").length,
+      1,
+      `restored more than once: ${writesBy(f, "alice").join("; ")}`,
+    );
+    assert.match(r.stderr, /displaced again/);
+    neverFree(f);
   });
 });

@@ -38,7 +38,7 @@ function parse(rest: readonly string[]): Parsed {
     const a = rest[i] ?? "";
     const v = rest[i + 1] ?? "";
     if (a === "-X") [p.method, i] = [v, i + 1];
-    else if (a === "--hostname") i++;
+    else if (a === "--hostname" || a === "--remote" || a === "--login") i++;
     else if (a === "--jq") [p.jq, i] = [v, i + 1];
     else if (a === "-d") [p.data, i] = [JSON.parse(v) as unknown, i + 1];
     else if (a === "-f") {
@@ -120,9 +120,9 @@ function gitlabNote(m: Mutation): string {
   return add.length > 0 ? `assigned to ${list(add)}` : `unassigned ${list(rm)}`;
 }
 
-function page<T>(all: T[], path: string, size: string): T[] {
+function page<T>(all: T[], path: string, size: string, cap = Number.POSITIVE_INFINITY): T[] {
   const q = new URLSearchParams(path.split("?")[1] ?? "");
-  const per = Number(q.get(size) ?? "30");
+  const per = Math.min(Number(q.get(size) ?? "30"), cap);
   const p = Number(q.get("page") ?? "1");
   return all.slice((p - 1) * per, p * per);
 }
@@ -344,6 +344,7 @@ function gitea(f: FakeForge, actor: string, p: Parsed): RunResult {
         })),
         p.path,
         "limit",
+        f.knobs.pageCap,
       ),
     );
   if (sub === "/timeline") {
@@ -378,6 +379,7 @@ function gitea(f: FakeForge, actor: string, p: Parsed): RunResult {
         entries.map((x) => x.v),
         p.path,
         "limit",
+        f.knobs.pageCap,
       ),
     );
   }
