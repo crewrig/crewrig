@@ -88,28 +88,59 @@ and the mechanism that does so is the one the other hook migrations reuse.
    an unreadable or malformed payload, a missing or unwritable usage root, a
    capture step that throws, a test override that does not exist — the hook
    SHALL exit with status zero and SHALL write zero bytes to standard output and
-   standard error, including any warning Node.js itself would print while
-   loading the entry file, on every Node.js 24 release. A capture failure SHALL
-   still reach the storage boundary as an `uncaptured` record (spec 0206
-   requirement 16), never as output. The sole exception is requirement 12.
+   standard error, including every warning Node.js itself would print while
+   loading the entry file and the modules the entry loads lazily, on every
+   Node.js 24 release, with no Node.js flag and no environment variable on the
+   command line (requirement 16 fixes that form). A capture failure SHALL still
+   reach the storage boundary as an `uncaptured` record (spec 0206 requirement
+   16), never as output. The sole exception is requirement 12. The mechanism
+   SHALL be the following, chosen because it was reproduced on Node.js 24.0.0,
+   24.2.0, 24.3.0 and 24.13.1 under the repository's root `package.json`, which
+   has no `"type"` field, and because it changes no tracked file: (a) each entry
+   file carries no module syntax — no top-level `import` or `export` — so
+   Node.js loads it as CommonJS and prints no `MODULE_TYPELESS_PACKAGE_JSON`
+   warning for it, reaching `node:` built-ins with `require()` and everything
+   else with a dynamic `import()`, and declaring nothing at global scope; (b)
+   its first statement removes the process's `warning` listeners, which
+   silences the deferred warnings of the entry itself (Node.js 24.0.0 prints a
+   type-stripping `ExperimentalWarning` for it) and of every ECMAScript module
+   the entry then loads lazily, such as the shared modules of spec 0240 under
+   `scripts/lib/`, which the typeless root scope would otherwise warn about;
+   (c) the listeners are removed before the first lazy `import()`. Blast radius:
+   none on the tracked CommonJS files under `scripts/lib/usage-capture/` and
+   `scripts/lib/`, whose module type is untouched; the cost is a form rule on the
+   entry files only (and, by reuse, on the entry of every later hook row). The
+   alternatives were rejected: `"type": "module"` in the root `package.json`
+   would re-scope every tracked `.js` file; the same field in `scripts/lib/`
+   would re-scope the CommonJS files there; the same field in `hooks/` leaves
+   Node.js 24.0.0's `ExperimentalWarning` printed and adds a tracked file that
+   re-scopes every future hook entry; an `.mts` entry changes the parent's
+   `.ts` path and does not silence lazily loaded `.ts` modules; the
+   `--disable-warning` flag the repository's CI uses is a command-line change
+   parent requirement 15 rules out. The plan SHALL verify that the entry form
+   passes the toolchain gates of spec 0238.
 
 6. **Cheap guard before any work.** The entry module SHALL decide, using the
    Node.js standard library alone and without loading the capture module graph,
    whether there is anything to capture, and SHALL load that graph through a
    lazy `import()` only when the guard finds work (parent requirement 15). The
    guard SHALL exit zero without capture work if and only if all of the
-   following hold: a source path was extracted from the payload — for
-   `copilot-cli` the fixed path `<home>/.copilot/session-store.db`, for the other
-   two the `transcript_path` or `transcriptPath` value, tolerating any
-   whitespace around the colon; that path is absolute on the running platform;
-   it names an existing file; a stamp file for it exists at
+   following hold: a source path was obtained — for `copilot-cli` the fixed
+   path `<home>/.copilot/session-store.db`, for the other two the decoded value
+   of the payload's top-level `transcript_path` or `transcriptPath` string,
+   taken from the payload parsed as JSON and never from its raw text, so that a
+   Windows path written `C:\\Users\\x\\t.jsonl` in the payload is the string
+   `C:\Users\x\t.jsonl` before any other decision; that path is absolute on the
+   running platform; it names an existing file; a stamp file for it exists at
    `<usage root>/state/<cli>/<key>.stamp`; and the source is not newer than the
    stamp. `<key>` SHALL equal the `sourceKey()` of
    `scripts/lib/usage-capture/cursor.js` — the lowercase SHA-256 hex digest of the
-   source path — through one definition or through a test that proves the two
-   equal on a shared corpus. When any condition is in doubt, the guard SHALL
-   fall through to capture: a wrong guess costs one capture run, never a lost
-   record.
+   decoded source path, the very string the capture step wrote the stamp for —
+   through one definition or through a test that proves the two equal on a shared
+   corpus that includes escaped and Windows-style paths. A payload that does not
+   parse as a JSON object, or whose key is absent, not a string or empty, SHALL
+   fall through to capture, as SHALL any other condition in doubt: a wrong guess
+   costs one capture run, never a lost record.
 
 7. **Slow path.** When the guard finds work, the hook SHALL derive and store
    the records exactly as the shell wrapper's Node.js step did, through the
@@ -172,8 +203,10 @@ and the mechanism that does so is the one the other hook migrations reuse.
     configuration the shim SHALL then run the capture step for the `antigravity`
     CLI and the `statusline` event, in the shim's own process, adding to its own
     output the silence of requirement 5 (the prior command's standard error
-    excepted), and SHALL exit with status zero (spec 0241 requirements 3 to 5). The shim SHALL NOT run `sh` or any other POSIX-only interpreter
-    (parent requirement 23).
+    excepted), and SHALL exit with status zero (spec 0241 requirements 3 to 5).
+    The shim SHALL name no interpreter of its own: it hands the prior command
+    to the platform's default command interpreter, which on macOS and Linux is
+    `sh`, and on Windows SHALL never be a POSIX shell (parent requirement 23).
 
 15. **Budgets.** Each budget is an upper bound on wall-clock time from process
     start to process exit, Node.js start-up included, measured over 10
@@ -202,20 +235,32 @@ and the mechanism that does so is the one the other hook migrations reuse.
     `${COPILOT_PROJECT_DIR:-$PWD}` token, which those CLIs do not expand
     correctly on Windows (row 37c), and never a `NAME=value` prefix (row 37c,
     `CommandNotFoundException`) — and for Copilot CLI only under the `command`
-    or `powershell` key, never `bash` (row 37); (c) Antigravity CLI (`cmd.exe`):
+    or `powershell` key, never `bash` (row 37); (c) Antigravity CLI on Windows:
     `node <abs> <args>` with the path unquoted, because a double-quoted argument
-    does not group there (row 37b). Every absolute path SHALL use forward slashes
-    on Windows (rows 37b and 37d) and be the physical path of the checkout.
+    does not group in the `cmd.exe` that parses its hook command lines (row 37b).
+    Row 37b measured Antigravity CLI's hooks surface only, and the module wires
+    only its `statusLine.command` surface (requirement 18), so the form of
+    this item applies to `statusLine.command` on Windows if and only if row 37e
+    records the same interpreter and quoting for it. If row 37e records
+    otherwise, the module SHALL refuse a Windows `statusLine.command`, and a
+    delta of this spec SHALL set its shape before any is written; the hooks
+    surface, wired by later rows, keeps the form of this item. Every absolute
+    path SHALL use forward slashes on Windows (rows 37b and 37d) and be the
+    physical path of the checkout.
 
 17. **Unsafe path refusal.** The module SHALL refuse, with a diagnostic naming
     the character and the path and without writing anything, a checkout path
     that its target interpreter would read as syntax: `"`, `$`, a backtick or a
     newline for every interpreter, plus, for `cmd.exe`, whitespace and any of
-    `& | < > ^ % ( )`. Refusing is the null case of requirement 16(c): a
-    Windows checkout path containing a space cannot be wired for Antigravity
-    CLI, is reported as a parity gap per parent requirement 19 in
-    `docs/cli-matrix.md` in the implementation PR, and no command line that
-    cannot launch is ever written.
+    `& | < > ^ % ( )`. Refusing is the null case of requirement 16(c), and
+    applies to the Windows `statusLine.command` only once requirement 18 no
+    longer refuses it: a Windows checkout path containing a space cannot then
+    be wired for Antigravity CLI, is reported as a parity gap per parent
+    requirement 19 in `docs/cli-matrix.md` in the implementation PR, and no
+    command line that cannot launch is ever written. When requirements 17 and
+    18 would both refuse, the diagnostic of requirement 18 SHALL be the one
+    reported, since it concerns the surface and precedes any judgement of the
+    path.
 
 18. **Statusline surface unmeasured.** Row 37 records how each CLI parses a
     hook command line in its hooks file; `statusLine.command` in
@@ -223,9 +268,14 @@ and the mechanism that does so is the one the other hook migrations reuse.
     Windows parsing is not recorded. The implementation PR SHALL reproduce it on
     Windows with the probe of spec 0237 and add a row 37e to
     `docs/cli-matrix.md` (interpreter, quoting, working directory, path
-    separators) before setup writes a Windows statusline command line. Until
-    that row exists the module SHALL refuse to produce one for Windows, with a
-    diagnostic saying the surface is unmeasured; macOS and Linux are unaffected.
+    separators) before setup writes a Windows statusline command line. The
+    module SHALL hold a constant that records which (CLI, surface, operating
+    system) triples are measured, holding no Windows statusline entry until the
+    implementation PR adds row 37e and sets it in the same diff; it SHALL refuse
+    to produce a Windows statusline command line while the constant lacks that
+    entry, with a diagnostic saying the surface is unmeasured, and SHALL NOT read
+    `docs/cli-matrix.md` at run time. A test SHALL fail when the constant and the
+    presence of row 37e disagree. macOS and Linux are unaffected.
 
 19. **Rewrite on the next setup run.** On every run of
     `scripts/setup-claude-interactive.sh`, `scripts/setup-gemini-interactive.sh`,
@@ -300,7 +350,10 @@ and the mechanism that does so is the one the other hook migrations reuse.
     (requirements 16 and 26); the removal of the transient payload file
     (requirement 10); the exit status 1 of requirement 12; the platform-aware
     absolute-path and home-directory tests (requirements 6 and 8), which on
-    macOS and Linux behave as the shell tests did.
+    macOS and Linux behave as the shell tests did; and the reading of the
+    transcript path from the parsed payload's top-level key rather than from the
+    first textual match anywhere in it (requirement 6), so a path that occurs
+    only nested in the payload now reaches capture instead of the fast path.
 
 28. **`windows-latest` proof (parent requirement 17).** The implementation PR
     SHALL add jobs, copied from the template of spec 0240 requirement 12 and
@@ -312,7 +365,11 @@ and the mechanism that does so is the one the other hook migrations reuse.
     produced for each of the four CLIs through the invocation row 37 records
     for that CLI — `bash -c` for Claude Code, `powershell.exe -NoProfile
     -NonInteractive -Command` for Gemini CLI and Copilot CLI, `cmd /c` for
-    Antigravity CLI — and assert the hook ran; and (c) enforce the budgets of
+    Antigravity CLI's hooks surface, and the interpreter row 37e records for
+    its `statusLine.command` surface — and assert the hook ran; the
+    `cmd /c` leg proves the launch semantics of that interpreter, not which
+    interpreter Antigravity CLI uses for a status line, which is row 37e's
+    to state; and (c) enforce the budgets of
     requirement 15.
 
 29. **Oracle (parent requirement 13).** The scripts `hooks/usage-capture.sh` and
@@ -353,6 +410,38 @@ input
 Then it exits zero having written no byte, the capture module graph is never
 loaded, no override script is run, and on `windows-latest` its run stays within
 its 750 ms budget over 10 runs.
+
+**Scenario:** A healthy run is silent on an unmodified Node.js
+
+Given the repository's root `package.json` with no `"type"` field, Node.js 24
+started with no flag and no environment variable, and a fast-path payload, then
+a slow-path payload whose capture lazily loads an ECMAScript module under
+`scripts/lib/`
+When `hooks/usage-capture.ts` and `hooks/antigravity-statusline-shim.ts` each
+run through their real entry files
+Then every run exits zero and writes zero bytes to standard error, on the
+current Node.js 24 release and on Node.js 24.0.0 (which prints a type-stripping
+warning for an entry that does not remove its listeners first), on Linux and
+on `windows-latest`.
+
+**Scenario:** A Windows-style escaped path takes the fast path
+
+Given a payload whose text is `{"transcript_path":"C:\\Users\\x\\t.jsonl"}`
+on Windows — and, on macOS and Linux, one whose text is
+`{"transcript_path":"/tmp/a\/b.jsonl"}` — a stamp written by the capture step
+for the decoded path, and a source not newer than that stamp
+When the hook runs
+Then the guard decodes the path before deciding, finds the stamp keyed on the
+decoded string, exits zero without loading the capture module graph, and does
+not fall through to capture.
+
+**Scenario:** A payload that is not JSON goes to capture
+
+Given a payload that does not parse as a JSON object, or whose path key sits
+only inside a nested object
+When the hook runs
+Then it does not take the fast path, it runs capture, and it exits zero
+silently.
 
 **Scenario:** A payload that cannot be resolved goes to capture
 
@@ -441,23 +530,38 @@ Then setup prints the floor guard's diagnostic naming version 20 and the floor
 
 Given a `windows-latest` job with a temporary usage root
 When it runs the command line the module produces for each CLI through that CLI's
-interpreter invocation, from a checkout path that has no space for Antigravity
-CLI
+interpreter invocation — for Antigravity CLI the hooks-surface shape of row 37b
+and, once row 37e exists, the statusline shape it records — from a checkout path
+that has no space for Antigravity CLI
 Then all four launch the hook and a record or a fast-path exit results.
 
 **Scenario:** A Windows path with a space cannot be wired for Antigravity CLI
 
-Given a Windows checkout at `C:/Users/Ana Diaz/crewrig`
-When the module is asked for the Antigravity CLI command line
+Given row 37e records `cmd.exe` and unquoted-path parsing for
+`statusLine.command`, the module's measured-surface constant carries the entry,
+and a Windows checkout at `C:/Users/Ana Diaz/crewrig`
+When the module is asked for the Antigravity CLI `statusLine.command`
 Then it writes nothing, names the space and the path, and the gap is recorded in
 `docs/cli-matrix.md`.
 
 **Scenario:** A Windows statusline line is not written before it is measured
 
-Given `docs/cli-matrix.md` holds no row 37e
-When setup is asked for a Windows Antigravity `statusLine.command`
-Then the module refuses with a diagnostic saying the surface is unmeasured, and
-macOS and Linux still receive their command line.
+Given the module's measured-surface constant holds no Windows statusline entry,
+which is the state until the implementation PR adds row 37e
+When setup is asked for a Windows Antigravity `statusLine.command`, from a
+checkout path with or without a space
+Then the module refuses with the diagnostic saying the surface is unmeasured —
+not the unsafe-path one — and macOS and Linux still receive their command line;
+and a test fails if the constant and the presence of row 37e in
+`docs/cli-matrix.md` disagree.
+
+**Scenario:** Row 37e contradicts the hooks-surface shape
+
+Given row 37e records that Antigravity CLI parses `statusLine.command` with an
+interpreter or quoting other than row 37b's
+When setup is asked for a Windows `statusLine.command`
+Then the module refuses, and no command line is written until a delta of this
+spec sets the shape.
 
 **Scenario:** A budget regression breaks the job
 
@@ -505,7 +609,9 @@ as deviations or verification duties: the exit status of requirement 12, the
 initial budgets of requirement 15, the refusal rules of requirements 17, 18 and
 24, and the fate of `cli.js` (the plan's choice, requirement 3). The parent's
 example form `node "<path>/<script>.ts"` (requirement 15) is quoted for four of
-the five shapes and unquoted for Antigravity CLI on Windows because row 37b
-measured that `cmd.exe` does not group a double-quoted argument; the invariant
-of the parent — a direct `node` command line with no dispatcher — holds, and no
-delta of spec 0215 is needed.
+the five shapes and unquoted for Antigravity CLI's hooks surface on Windows
+because row 37b measured that `cmd.exe` does not group a double-quoted argument
+(its statusline surface follows row 37e, requirements 16 to 18); the invariant
+of the parent — a direct `node` command line with no dispatcher, no flag — holds,
+including for the silence mechanism of requirement 5, which needs no change of
+that form, and no delta of spec 0215 is needed.
