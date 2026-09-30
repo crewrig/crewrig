@@ -5,16 +5,15 @@
 // truncation) resets byteOffset to 0 — callers detect the mismatch and
 // choose to reset before deriving.
 //
-// sourceKey(sourcePath) IS THE CANONICAL DERIVATION shared with
-// hooks/usage-capture.sh's own `source_key()` bash function (named edit 2):
-// sha256 hex digest of the source's own absolute path (or, for a source with
-// no path — Copilot's fixed store, a fixed literal), no salt. Keep the two
-// definitions in sync; the shim's own comment points back here.
+// sourceKey(sourcePath) IS THE ONE CANONICAL DERIVATION: sha256 hex digest of
+// the source's own absolute path (or, for a source with no path — Copilot's
+// fixed store, a fixed literal), no salt. hooks/usage-capture.ts reaches it
+// through this module (spec 0243 R6, R8) instead of carrying a copy.
 //
-// touchStamp() maintains the stamp sidecar hooks/usage-capture.sh's own fast
-// path reads: after a successful pass, a zero-byte <sourceKey>.stamp is set
-// to the SOURCE's own mtime, so a pure-bash `-nt` test can decide "nothing
-// new" without spawning Node and without parsing JSON.
+// touchStamp() maintains the stamp sidecar hooks/usage-capture.ts's fast path
+// reads: after a successful pass, a zero-byte <sourceKey>.stamp is set to the
+// SOURCE's own mtime, so comparing the two mtimes decides "nothing new"
+// without loading the capture module graph and without parsing JSON.
 //
 // spec 0207's prune-by-period command SHALL NOT touch this directory (see
 // spool.js's own header) — resetting a cursor would make the next backfill

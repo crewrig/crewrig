@@ -13,7 +13,6 @@ scripts/lib/usage-capture/adapters/gemini-cli.js
 scripts/lib/usage-capture/adapters/headless-envelope.js
 scripts/lib/usage-capture/attribution.js
 scripts/lib/usage-capture/backfill.js
-scripts/lib/usage-capture/cli.js
 scripts/lib/usage-capture/cursor.js
 scripts/lib/usage-capture/index.js
 scripts/lib/usage-capture/record.js
