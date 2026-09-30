@@ -6,6 +6,7 @@ complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1387
 version: 1.0.0
+max-iterations: 6
 ---
 
 # A ticket assigned to one contributor is never worked on by another
@@ -62,14 +63,17 @@ all contributors share, and this convention makes it authoritative.
    - **Repairs preserve ownership.** Any correction an agent makes to the
      assignment record — withdrawing its own user's assignment from an issue
      someone else owns, or restoring an owner's assignment that a later one
-     displaced — SHALL keep the owner's ownership intact throughout, SHALL
-     never leave the issue in a state that another contributor's check under
-     requirement 11 would read as free.
+     displaced — SHALL keep the owner's ownership intact throughout, and
+     SHALL never leave the issue in a state that another contributor's check
+     under requirement 11 would read as free.
    - **Undecidable means not yours.** Whenever the record cannot establish
      who took the ticket first — including two assignments recorded at the
-     same instant — no contributor involved SHALL be treated as its owner, no
-     agent SHALL start on it, and the contributors involved SHALL settle it by
-     agreement, leaving one assignee.
+     same instant — no contributor involved SHALL be treated as its owner, and
+     no agent SHALL start on it. The contributors involved SHALL settle it by
+     agreement, recorded as a comment on the issue: they SHALL leave the
+     issue free, and the contributor agreed upon SHALL then take it as a free
+     ticket under requirement 3, which restarts the history requirement 1
+     reads.
 5. Assigning an epic SHALL lock the epic issue only. Each sub-ticket SHALL be
    free or owned according to its own assignment. The epic's assignee SHALL be
    the arbiter of how its sub-tickets are split and distributed, and a
@@ -125,8 +129,9 @@ all contributors share, and this convention makes it authoritative.
       it;
     - free → the agent SHALL assign its own user and determine the owner
       again. It SHALL proceed only when that owner is its own user; when the
-      issue is still free, requirement 14 SHALL apply; otherwise the agent
-      SHALL stop as in the first case.
+      issue is still free, requirement 14 SHALL apply; when the owner is
+      undecidable under requirement 4, requirement 13 SHALL apply; otherwise
+      the agent SHALL stop as in the first case.
 12. The requirement-11 check SHALL behave identically on GitHub, GitLab, and
     Gitea, through each forge's own command-line tool, consistent with
     `AGENTS.md` → *Forge Access*, and SHALL require no credential beyond the
@@ -138,7 +143,8 @@ all contributors share, and this convention makes it authoritative.
 13. When the agent cannot determine either side of the requirement-11
     comparison — forge unreachable, current user undeterminable, record
     unreadable, or the order of assignments undecidable under requirement 4 —
-    it SHALL fail closed: stop before any authoring action and report what
+    it SHALL fail closed, and this requirement SHALL prevail over every
+    branch of requirement 11: stop before any authoring action and report what
     could not be determined. When it had already assigned its own user, it
     SHALL report that assignment to the user as left in place; that
     assignment SHALL confer ownership only when requirement 1 grants it, and
@@ -212,8 +218,11 @@ And   proceeds only if the user explicitly instructs it to in the same session
 Given contributors A and B both took free issue #N, and the forge recorded both assignments at the same instant
 When  either contributor's agent runs its ticket-pickup check
 Then  it treats neither A nor B as the owner and stops before any authoring action
-And   reports that the order of assignments cannot be decided
-And   A and B settle #N by agreement, leaving one assignee
+And   reports that the order of assignments cannot be decided, leaving its own user's assignment in place
+When  A and B agree on #N that B takes it, then leave #N free
+And   B's agent picks up #N as a free ticket
+Then  B's agent assigns B, finds B as the owner, and proceeds
+And   A's agent, on a later pickup, refuses #N as owned by B
 ```
 
 **Scenario:** a stale ticket is taken over openly
