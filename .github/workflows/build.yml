@@ -1105,6 +1105,23 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0243 R5: the usage-capture hook entries print nothing on the oldest
+  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
+  usage-capture-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+
+      - name: Entry form and unstubbed silence runs on Node.js 24.0.0
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # TEMPLATE (spec 0240 R12-R15) — the reusable `windows-latest` job shape.
   # A later sub-spec copies this job, renames it, points the three steps at
   # its own migrated script and suites, states its own --budget-ms next to its
@@ -1135,6 +1152,53 @@ jobs:
       # it as its own end-of-parameters token.
       - name: Floor guard timing budget
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 '--' scripts/lib/node-floor-guard.js
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0243 R15, R28: the usage-capture row's copy of the template above.
+  # pwsh is the interpreter of every step. Budgets are the initial values of
+  # R15 (750 / 2000 / 2000 ms), each stated next to its script; plan step 26
+  # lowers them after the first green run to max(3 x the largest observed run,
+  # 300 ms) rounded up to 50 ms, only when that is lower.
+  windows-usage-capture:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Both entries run, and each CLI's command line launches through its interpreter
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-capture-windows.test.ts
+
+      - name: No deprecation reaches the entries
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-deprecations.test.ts
+
+      # Writes the transcripts, payloads and a real stamp, and exports
+      # CREWRIG_USAGE_ROOT and the TIMING_*_PAYLOAD paths to the steps below.
+      - name: Timing fixtures
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/usage-capture-timing-fixtures.ts "$env:RUNNER_TEMP\usage-capture-timing"
+
+      # Budget: 750 ms initial for hooks/usage-capture.ts on the fast path
+      # (fresh stamp, nothing to capture). '--' is quoted so pwsh hands it to
+      # node verbatim.
+      - name: Fast path timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 --stdin-file $env:TIMING_FAST_PAYLOAD '--' hooks/usage-capture.ts claude-code Stop
+
+      # Budget: 2000 ms initial for hooks/usage-capture.ts on the slow path
+      # (one fixture payload captured into an empty usage root per run).
+      - name: Slow path timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --stdin-file $env:TIMING_SLOW_PAYLOAD --env-tmpdir CREWRIG_USAGE_ROOT '--' hooks/usage-capture.ts claude-code Stop
+
+      # Budget: 2000 ms initial for hooks/antigravity-statusline-shim.ts with no
+      # prior command (the prior command's own time is excluded).
+      - name: Statusline shim timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --stdin-file $env:TIMING_SHIM_PAYLOAD --env-tmpdir CREWRIG_USAGE_ROOT '--' hooks/antigravity-statusline-shim.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
