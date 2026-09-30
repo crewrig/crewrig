@@ -16,6 +16,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..");
 const TOOL = path.join(REPO, "scripts", "hook-wiring.ts");
 const posix = process.platform !== "win32";
+// A read-only directory does not stop root: the failing-backup tests need a non-root user.
+const canDenyWrite = posix && !(typeof process.getuid === "function" && process.getuid() === 0);
 const CLIS: readonly WiredCli[] = ["claude", "gemini", "copilot"];
 
 const temps: string[] = [];
@@ -124,6 +126,29 @@ describe("rewrite (R19, R22, R23)", () => {
       ],
     },
   });
+
+  test(
+    "refuses the write, exit 1 and the file untouched, when the backup fails (security review finding 2)",
+    { skip: !canDenyWrite },
+    () => {
+      const repo = fixtureRepo();
+      const dir = path.join(path.dirname(repo), "locked");
+      fs.mkdirSync(dir);
+      const config = path.join(dir, "settings.json");
+      const before = JSON.stringify(legacyConfig(repo));
+      fs.writeFileSync(config, before);
+      fs.chmodSync(dir, 0o555);
+      try {
+        const res = wiring("rewrite", "claude", "--config", config, "--repo", repo);
+        assert.equal(res.status, 1, res.stdout + res.stderr);
+        assert.ok(res.stderr.includes("could not back up"), res.stderr);
+        assert.equal(fs.readFileSync(config, "utf8"), before);
+        assert.deepEqual(backups(config), []);
+      } finally {
+        fs.chmodSync(dir, 0o755);
+      }
+    },
+  );
 
   test(
     "rewrites, backs up first, ends 0600, reports by name and count; a second run writes nothing",
@@ -278,6 +303,55 @@ describe("statusline (R19, R20, D5)", () => {
         installedBy: "t",
       });
       assert.equal(backups(p.settings).length, 1);
+    },
+  );
+
+  test(
+    "install refuses, exit 1 with settings and marker untouched, when the backup fails (security review finding 2)",
+    { skip: !canDenyWrite },
+    () => {
+      const p = paths();
+      fs.mkdirSync(path.dirname(p.settings), { recursive: true });
+      const before = JSON.stringify({ theme: "dark" });
+      fs.writeFileSync(p.settings, before);
+      fs.chmodSync(path.dirname(p.settings), 0o555);
+      try {
+        const res = run("install", p);
+        assert.equal(res.status, 1, res.stdout + res.stderr);
+        assert.ok((res.stdout + res.stderr).includes("could not back up"), res.stdout + res.stderr);
+        assert.equal(fs.readFileSync(p.settings, "utf8"), before);
+        assert.equal(fs.existsSync(p.marker), false);
+      } finally {
+        fs.chmodSync(path.dirname(p.settings), 0o755);
+      }
+    },
+  );
+
+  test(
+    "rewrite refuses, exit 1 with settings and marker untouched, when the backup fails (security review finding 2)",
+    { skip: !canDenyWrite },
+    () => {
+      const p = paths();
+      const legacy = path.join(p.repo, "hooks", "antigravity-statusline-shim.sh");
+      fs.mkdirSync(path.dirname(p.settings), { recursive: true });
+      fs.mkdirSync(path.dirname(p.marker), { recursive: true });
+      const settings = JSON.stringify({ statusLine: { command: legacy } });
+      const marker = JSON.stringify({
+        priorStatusLineCommand: "",
+        installedStatusLineCommand: legacy,
+        installedBy: "t",
+      });
+      fs.writeFileSync(p.settings, settings);
+      fs.writeFileSync(p.marker, marker);
+      fs.chmodSync(path.dirname(p.settings), 0o555);
+      try {
+        const res = run("rewrite", p);
+        assert.equal(res.status, 1, res.stdout + res.stderr);
+        assert.equal(fs.readFileSync(p.settings, "utf8"), settings);
+        assert.equal(fs.readFileSync(p.marker, "utf8"), marker);
+      } finally {
+        fs.chmodSync(path.dirname(p.settings), 0o755);
+      }
     },
   );
 

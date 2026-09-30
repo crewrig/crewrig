@@ -89,6 +89,8 @@ export type HookCommandResult =
 
 const ARG_RE = /^[A-Za-z0-9._-]+$/;
 const CMD_UNSAFE = /[\s&|<>^%()]/;
+/** PowerShell reads the typographic double quotes U+201C, U+201D, U+201E as string delimiters. */
+const POWERSHELL_UNSAFE = /[\u201C\u201D\u201E]/;
 
 function findSurface(
   measured: readonly MeasuredSurface[],
@@ -124,6 +126,7 @@ export function hookCommandLine(
   const windows = platform === "win32";
 
   let cmdExe = false;
+  let powershell = false;
   if (windows) {
     const measured = findSurface(measuredSurfaces, cli, surface);
     if (measured === undefined) {
@@ -139,6 +142,7 @@ export function hookCommandLine(
       };
     }
     cmdExe = measured.interpreter === "cmd.exe";
+    powershell = measured.quoting === "powershell";
   }
 
   const script = windows ? request.scriptPath.replaceAll("\\", "/") : request.scriptPath;
@@ -152,11 +156,12 @@ export function hookCommandLine(
       ch === "\n" ||
       ch === "\r" ||
       ch === "\\" ||
-      (cmdExe && CMD_UNSAFE.test(ch));
+      (cmdExe && CMD_UNSAFE.test(ch)) ||
+      (powershell && POWERSHELL_UNSAFE.test(ch));
     if (unsafe) {
       return {
         ok: false,
-        refusal: `the checkout path ${script} contains ${describeChar(ch)}, which ${cmdExe ? "cmd.exe" : "the hook's shell"} would read as syntax; move the checkout to a path without it.`,
+        refusal: `the checkout path ${script} contains ${describeChar(ch)}, which ${cmdExe ? "cmd.exe" : powershell ? "PowerShell" : "the hook's shell"} would read as syntax; move the checkout to a path without it.`,
       };
     }
   }

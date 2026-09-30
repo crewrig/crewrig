@@ -70,9 +70,17 @@ function shimCommand(target: StatuslineTarget): { command: string } | { refusal:
   return built.ok ? { command: built.command } : { refusal: built.refusal };
 }
 
-function backup(settings: string, log: (line: string) => void): void {
+/** Back `settings` up; `false` means it exists but has no restore point, so the caller must not write. */
+function backup(settings: string, log: (line: string) => void): boolean {
   const made = backupFile(settings);
-  if (made !== null) log(`  Backed up: ${path.basename(settings)} -> ${path.basename(made)}`);
+  if (made.status === "failed") {
+    log(`  ERROR: could not back up ${settings}; leaving it untouched (backup-first, R23).`);
+    return false;
+  }
+  if (made.status === "made") {
+    log(`  Backed up: ${path.basename(settings)} -> ${path.basename(made.path)}`);
+  }
+  return true;
 }
 
 /** Fresh install: only over an empty `statusLine.command` (R20). Returns the exit status. */
@@ -96,6 +104,8 @@ export function installStatusline(target: StatuslineTarget, log: (line: string) 
   }
   fs.mkdirSync(path.dirname(target.marker), { recursive: true });
   fs.mkdirSync(path.dirname(target.settings), { recursive: true });
+  // Backup before anything is written, so a refusal leaves marker and settings untouched.
+  if (!backup(target.settings, log)) return 1;
   // Marker first: a crash before the settings write leaves a marker naming a
   // command nothing carries yet, which the next run simply overwrites.
   writeJsonConfig(target.marker, {
@@ -103,7 +113,6 @@ export function installStatusline(target: StatuslineTarget, log: (line: string) 
     [INSTALLED]: built.command,
     installedBy: "crewrig-setup-antigravity-interactive",
   });
-  backup(target.settings, log);
   writeJsonConfig(target.settings, setCommand(settings, built.command));
   log(`  Usage capture wired to ${built.command}`);
   return 0;
@@ -147,12 +156,12 @@ export function rewriteStatusline(target: StatuslineTarget, log: (line: string) 
     log(`  Antigravity usage capture: left statusLine.command (${built.refusal})`);
     return 0;
   }
+  if (!backup(target.settings, log)) return 1; // before (a): a refusal leaves marker and settings untouched
   writeJsonConfig(target.marker, {
     ...marker,
     [INSTALLED]: built.command,
     [TRANSITIONAL]: current,
   }); // (a)
-  backup(target.settings, log);
   writeJsonConfig(target.settings, setCommand(settings, built.command)); // (b)
   writeJsonConfig(target.marker, {
     ...withoutKey(marker, TRANSITIONAL),
