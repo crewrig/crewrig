@@ -38,18 +38,23 @@ all contributors share, and this convention makes it authoritative.
    that ticket: creating any of its branches (spec, delta-spec, or
    implementation), securing its spec id, opening its worktree, and opening
    or pushing to any of its pull requests. Reading the ticket, commenting on
-   it, and reviewing its pull requests SHALL remain permitted to everyone.
+   it, and reviewing its pull requests SHALL remain permitted to everyone, as
+   SHALL the pushes requirement 9 permits, together with the local checkout of
+   the branch those pushes require.
 3. A contributor taking a free ticket SHALL become its assignee before the
    first authoring action listed in requirement 2.
 4. An issue SHALL carry at most one assignee. Other contributors SHALL
    participate through comments, review suggestions, or commit co-authorship,
-   never through a second assignment. Whenever an issue carries several
-   assignees — two concurrent self-assignments, or a manual edit — the
-   assignee whose assignment appears earliest in the forge's issue timeline
-   SHALL own it, and every later assignee SHALL remove their own assignment.
-   When the timeline cannot establish which assignment came first, the issue
-   SHALL be treated as owned by none of them, no agent SHALL start on it, and
-   the assignees SHALL reduce it to one by agreement.
+   never through a second assignment. When contributors assign themselves
+   concurrently, the contributor whose assignment appears earliest in the
+   forge's issue timeline since the issue was last without any assignee SHALL
+   own it. This SHALL hold whether the forge adds a later assignment next to
+   the earlier one or replaces the earlier one with it: every later
+   contributor SHALL remove their own assignment and, when theirs displaced
+   the owner's, restore the owner's. When the timeline cannot establish which
+   assignment came first, the issue SHALL be treated as owned by none of
+   them, no agent SHALL start on it, and the contributors involved SHALL
+   reduce it to one assignee by agreement.
 5. Assigning an epic SHALL lock the epic issue only. Each sub-ticket SHALL be
    free or owned according to its own assignment. The epic's assignee SHALL be
    the arbiter of how its sub-tickets are split and distributed, and a
@@ -82,7 +87,8 @@ all contributors share, and this convention makes it authoritative.
     component outputs — a change to a shared contract in such a file SHALL be
     announced on the ticket's issue before the pull request is opened, and the
     pull request SHALL be brought up to date with the reference branch before
-    review is requested, in addition to the pre-merge update of requirement 9.
+    review is requested, in addition to the pre-merge update required by
+    `AGENTS.md` → *Branching Strategy* → *Up-to-date merge precondition*.
 11. At ticket pickup, before any authoring action listed in requirement 2, an
     agent SHALL compare the issue's assignees with the identity of its current
     forge user:
@@ -95,9 +101,13 @@ all contributors share, and this convention makes it authoritative.
       requirement 4: proceed only when its own user's assignment is the
       earliest, otherwise remove its own user's assignment and stop as in the
       first case;
-    - free → the agent SHALL assign its own user, then re-read the issue's
-      assignees and apply this requirement again to what it reads. It SHALL
-      proceed only when that re-read shows its own user as the owner.
+    - free → the agent SHALL assign its own user, then read the issue's
+      timeline and determine the owner under requirement 4 from the
+      assignment events since the issue was last without any assignee — not
+      from the current assignee list alone, which on a forge that replaces
+      assignments never shows the race. It SHALL proceed only when that owner
+      is its own user; otherwise it SHALL undo its own assignment, restore the
+      owner's if it displaced it, and stop as in the first case.
 12. The requirement-11 check SHALL behave identically on GitHub, GitLab, and
     Gitea, through each forge's own command-line tool, consistent with
     `AGENTS.md` → *Forge Access*, and SHALL require no credential beyond the
@@ -142,7 +152,7 @@ Given issue #N has no assignee
 And   the contributor's agent is asked to start work on issue #N
 When  the agent runs its ticket-pickup check
 Then  the agent assigns issue #N to its current forge user
-And   re-reads the assignees and finds its own user as the sole owner
+And   reads the timeline and finds its own user as the owner
 And   only then creates the ticket's branch, spec-id reservation, or worktree
 And   the assignment is visible in the issue timeline to every contributor
 ```
@@ -200,6 +210,17 @@ And   A's agent proceeds
 And   B's agent removes B's assignment and stops before any authoring action, naming A as the owner
 ```
 
+**Scenario:** on a forge that replaces assignments, the later self-assignment withdraws
+
+```text
+Given issue #N has no assignee, on a forge where a new assignment replaces the current one
+And   contributor A's agent assigns A, reads the timeline, finds A as the owner, and proceeds
+When  contributor B's agent then assigns B, which removes A's assignment
+And   B's agent reads the timeline since #N was last without any assignee
+Then  it finds A's assignment first
+And   B's agent restores A's assignment, removes B's, and stops before any authoring action, naming A
+```
+
 **Scenario:** a contributor without assign permission picks up a free ticket
 
 ```text
@@ -218,6 +239,16 @@ Given contributor A owns issue #N and its approved pull request is behind the re
 When  contributor B, about to merge that pull request, brings its branch up to date with the reference branch
 Then  the push is permitted by requirement 9
 And   any other push by B to that branch requires A's explicit invitation
+```
+
+**Scenario:** a ticket changes hands with the owner's consent
+
+```text
+Given contributor A owns issue #N
+When  contributor B asks for #N in a comment
+And   A replies on #N agreeing to hand it over
+Then  B may reassign #N to themselves
+And   without that written consent, and outside the stale-lock path, B's agent refuses #N as owned by A
 ```
 
 **Scenario:** a contributor releases a ticket they cannot finish
