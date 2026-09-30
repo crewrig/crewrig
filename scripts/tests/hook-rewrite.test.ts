@@ -191,6 +191,24 @@ describe("an environment prefix the direct form cannot carry (security review fi
     assert.equal(result.dropped, 1);
   });
 
+  test("`env NAME=value bash …` is outside the R20 signature: not recognised, so not reported as a prefix either (s4-F1)", () => {
+    const dir = checkout("envword");
+    const command = `env A=1 ${legacy(dir, "claude-code", "Stop")}`;
+    const input = claudeConfig(command);
+    const result = run(input);
+    assert.equal(result.changed, false);
+    assert.deepEqual(result.lines, [], "an unrecognised command yields no report line");
+    assert.deepEqual(result.config, input);
+    assert.deepEqual(stopCommands(result.config), [command]);
+  });
+
+  test("only the assignments before any env or interpreter count (s4-F1)", () => {
+    const dir = checkout("envlead");
+    const result = run(claudeConfig(prefixed(dir, "A=1 B=2 ")));
+    const detail = result.lines[0]?.detail ?? "";
+    assert.ok(detail.includes("(A=..., B=...)"), detail);
+  });
+
   test("an already-direct command with a prefix keeps its own reason", () => {
     const dir = checkout("envdirect");
     const result = run(claudeConfig(`CREWRIG_USAGE_ROOT=/x ${direct(dir, "claude-code", "Stop")}`));

@@ -156,11 +156,20 @@ export function rewriteConfig(input: JsonObject, options: RewriteOptions): Rewri
   return { config, lines, rewrote, left, dropped, changed: rewrote > 0 || dropped > 0 };
 }
 
-const ENV_ASSIGNMENT = /(?:^|\s)([A-Za-z_][A-Za-z0-9_]*)=/g;
+const LEADING_ASSIGNMENT = /\s*([A-Za-z_][A-Za-z0-9_]*)=\S*\s+/y;
 
-/** Names (never values: they may be credentials) of the `VAR=value` words in a command prefix. */
+/**
+ * Names (never values: they may be credentials) of the `NAME=value` words that
+ * precede any `env` or interpreter in a command prefix, and only those: the
+ * `env NAME=value …` form is outside the R20 signature and never recognised.
+ */
 function envPrefixNames(pre: string): string[] {
-  return [...pre.matchAll(ENV_ASSIGNMENT)].map((m) => m[1] ?? "");
+  const names: string[] = [];
+  LEADING_ASSIGNMENT.lastIndex = 0;
+  for (let m = LEADING_ASSIGNMENT.exec(pre); m !== null; m = LEADING_ASSIGNMENT.exec(pre)) {
+    names.push(m[1] ?? "");
+  }
+  return names;
 }
 
 function rewriteOne(

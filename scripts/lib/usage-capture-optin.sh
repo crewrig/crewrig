@@ -233,17 +233,28 @@ def sr_merge($m): sr_strip | reduce ($m | uc_all_handlers) as $x (.; uc_add($x))
 # gains the quotes.
 def uc_needs_quotes: uc_parse | . != null and (.quoted | not) and (.path | test("\\s"));
 
-def uc_repoint_handler($vanished; $abs_sh; $abs_ts):
+# A command whose prefix opens with a NAME=value word (only those that precede
+# any `env`/interpreter: `env NAME=value …` is outside the signature). Windows
+# PowerShell, which Gemini CLI and Copilot CLI use there, cannot run one (row
+# 37c), so $ps (that target) leaves a vanished path on such a command as it is
+# rather than re-pointing it (spec 0243 delta-01, s4-F2). On POSIX the re-point
+# keeps the prefix.
+def uc_assign_prefixed:
+  uc_parse | . != null and (.pre | test("^\\s*[A-Za-z_][A-Za-z0-9_]*="));
+
+def uc_repoint_handler($vanished; $abs_sh; $abs_ts; $ps):
   uc_path as $p
   | if $p == null then .
-    elif any($vanished[]; . == $p) then uc_with_path(if uc_ext == "ts" then $abs_ts else $abs_sh end)
+    elif any($vanished[]; . == $p) then
+      if $ps and uc_assign_prefixed then .
+      else uc_with_path(if uc_ext == "ts" then $abs_ts else $abs_sh end) end
     elif uc_needs_quotes then uc_with_path($p)
     else . end;
 
-def uc_repoint_event($vanished; $abs_sh; $abs_ts):
-  if $shape == "flat" then map(uc_repoint_handler($vanished; $abs_sh; $abs_ts))
+def uc_repoint_event($vanished; $abs_sh; $abs_ts; $ps):
+  if $shape == "flat" then map(uc_repoint_handler($vanished; $abs_sh; $abs_ts; $ps))
   else map(if type == "object" and (.hooks | type) == "array"
-           then .hooks |= map(uc_repoint_handler($vanished; $abs_sh; $abs_ts)) else . end)
+           then .hooks |= map(uc_repoint_handler($vanished; $abs_sh; $abs_ts; $ps)) else . end)
   end;
 
 # keep (b): keep exactly one capture handler of one event and delete the
@@ -303,11 +314,25 @@ def uc_r5_paths($r5):
   [uc_footprint[] | select(.event as $e | any($r5[]; . == $e))
    | .handler | uc_path | select(. != null)] | uc_distinct;
 
-def uc_keep($r5; $live; $vanished; $abs_sh; $abs_ts; $fragfp; $target):
+# The vanished-path handlers of the R5 events that uc_keep leaves as they are
+# on a PowerShell target, as "path<TAB>NAME=..., NAME=..." lines (names only,
+# never values: they may be credentials).
+def uc_ps_left($r5; $vanished; $ps):
+  if $ps then
+    [uc_footprint[] | select(.event as $e | any($r5[]; . == $e)) | .handler
+     | select(uc_assign_prefixed)
+     | (uc_path) as $p | select(any($vanished[]; . == $p))
+     | uc_parse.pre as $pre
+     | [$p, ([$pre | match("(?:^|\\s)([A-Za-z_][A-Za-z0-9_]*)=";"g").captures[0].string | . + "=..."] | join(", "))]
+     | @tsv]
+    | uc_distinct
+  else [] end;
+
+def uc_keep($r5; $live; $vanished; $abs_sh; $abs_ts; $fragfp; $target; $ps):
   uc_keep_dedup($r5; $live; $vanished)
   | reduce $r5[] as $e (.;
       if (.hooks | type) == "object" and (.hooks[$e] | type) == "array"
-      then .hooks[$e] |= uc_repoint_event($vanished; $abs_sh; $abs_ts) else . end)
+      then .hooks[$e] |= uc_repoint_event($vanished; $abs_sh; $abs_ts; $ps) else . end)
   | reduce $fragfp[] as $x (.;
       if uc_event_has_capture($x.event) then .
       else uc_add($x | .handler |= uc_with_path($target)) end);
@@ -328,6 +353,17 @@ _uc_shape() {
 _uc_jq() {
   local shape="$1"; shift
   jq --arg shape "$shape" "$@"
+}
+
+# _uc_powershell_target <cli> — 0 on Gemini CLI and Copilot CLI running on
+# Windows, where the hook command line is read by Windows PowerShell 5.1 and a
+# NAME=value prefix is not runnable (row 37c).
+_uc_powershell_target() {
+  case "$1" in
+    gemini|copilot)
+      case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) return 0 ;; esac ;;
+  esac
+  return 1
 }
 
 # _uc_unsafe_path <path> — 0 when the path cannot be spliced, double-quoted,
@@ -637,8 +673,9 @@ usage_capture_enable() {
 usage_capture_keep() {
   local cli="$1" config="$2" repo_dir="$3" shape frag abs abs_sh r5 fragfp
   local paths p vanished_list="" live_list="" target="" target_ts="" vanished live missing
-  local repointed requoted wrote_abs=0 before after lg
+  local repointed requoted wrote_abs=0 before after lg ps=false left
   shape="$(_uc_shape "$cli")" || return 1
+  if _uc_powershell_target "$cli"; then ps=true; fi
   if [ ! -f "$config" ]; then
     echo "  No usage-capture entry in $config; nothing to keep."
     return 0
@@ -688,11 +725,22 @@ usage_capture_keep() {
   missing="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson uc_legacy_ok "$lg" \
     "$_UC_JQ_DEFS [\$r5[] as \$e | select(any(uc_footprint[]; .event == \$e) | not) | \$e] | length" \
     "$config")" || return 1
-  local program="$_UC_JQ_DEFS uc_keep(\$r5; \$live; \$vanished; \$abs_sh; \$abs; \$fragfp; \$target)"
+  local program="$_UC_JQ_DEFS uc_keep(\$r5; \$live; \$vanished; \$abs_sh; \$abs; \$fragfp; \$target; \$ps)"
   before="$(jq -c '.' "$config")" || return 1
   after="$(_uc_jq "$shape" -c --argjson r5 "$r5" --argjson live "$live" --argjson vanished "$vanished" \
     --arg abs "$abs" --arg abs_sh "$abs_sh" --argjson fragfp "$fragfp" --arg target "$target_ts" \
-    --argjson uc_legacy_ok "$lg" "$program" "$config")" || return 1
+    --argjson ps "$ps" --argjson uc_legacy_ok "$lg" "$program" "$config")" || return 1
+  # A vanished path on an assignment-prefixed command is not re-pointed on a
+  # PowerShell target: say so by name (spec 0243 delta-01, s4-F2).
+  left="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" --argjson vanished "$vanished" \
+    --argjson ps "$ps" --argjson uc_legacy_ok "$lg" \
+    "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | uc_ps_left(\$r5; \$vanished; \$ps)[]" \
+    <<< "$before")" || left=""
+  local lp ln
+  while IFS=$'\t' read -r lp ln; do
+    [ -n "$lp" ] || continue
+    echo "  Usage capture left $lp: keeps an environment prefix ($ln) that PowerShell on Windows cannot run; left as it is."
+  done <<< "$left"
   if [ "$before" = "$after" ]; then
     echo "  Usage capture kept unchanged in $config"
     return 0
@@ -700,13 +748,13 @@ usage_capture_keep() {
   backup_file "$config"
   write_json_config_secure "$config" --arg shape "$shape" --argjson r5 "$r5" \
     --argjson live "$live" --argjson vanished "$vanished" --arg abs "$abs" \
-    --argjson fragfp "$fragfp" --arg target "$target_ts" --arg abs_sh "$abs_sh" --argjson uc_legacy_ok "$lg" "$program" \
+    --argjson fragfp "$fragfp" --arg target "$target_ts" --arg abs_sh "$abs_sh" --argjson ps "$ps" --argjson uc_legacy_ok "$lg" "$program" \
     || { echo "  ERROR: could not write $config." >&2; return 1; }
   # Name only the vanished paths a kept handler really carried: one dropped as
   # a duplicate was deleted, not re-pointed.
   repointed="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" \
-    --argjson vanished "$vanished" --argjson uc_legacy_ok "$lg" \
-    "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | uc_r5_paths(\$r5) as \$now | \$vanished[] | select(. as \$v | any(\$now[]; . == \$v))" \
+    --argjson vanished "$vanished" --argjson ps "$ps" --argjson uc_legacy_ok "$lg" \
+    "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | ([uc_ps_left(\$r5; \$vanished; \$ps)[] | split(\"\\t\")[0]]) as \$left | uc_r5_paths(\$r5) as \$now | \$vanished[] | select(. as \$v | any(\$now[]; . == \$v) and (any(\$left[]; . == \$v) | not))" \
     <<< "$before")" || repointed=""
   while IFS= read -r p; do
     [ -n "$p" ] || continue
