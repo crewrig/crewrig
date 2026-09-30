@@ -122,7 +122,7 @@ agreed contributor then takes it as a free ticket (R4).
 |---|---|---|---|
 | Free | `assign-self`, then re-determine | add self | per the new determination |
 | Owner = self, assigned | `proceed` | none | `0` |
-| Owner = self, displaced by a later assignment | `restore-self`, then proceed | add self; others untouched | `0` |
+| Owner = self, displaced by a later assignment | `restore-self`, then proceed | add self; others untouched, except on a GitLab tier limited to one assignee, where the write replaces the intruder | `0` |
 | Owner ≠ self, self assigned | `withdraw` | restore the owner if displaced, then remove self | `3` |
 | Owner ≠ self, self not assigned | `owned-by-other` | none | `3` |
 | Undecidable | — | none | `4` or `2` |
@@ -167,7 +167,8 @@ host listed in `CREWRIG_GITLAB_HOSTS`, otherwise Gitea.
 | Current assignees | `…/issues/N` → `.assignees[].login` | `projects/<path>/issues/N` → `.assignees[].username` | `…/issues/N` → `.assignees[].login` |
 | History | timeline events `assigned` / `unassigned` | assignment system notes, parsed; any assignment note outside the grammar → exit `2` | timeline entries of `type: "assignees"` |
 | Creation assignees recorded | yes | assumed not (pending live verification) | yes |
-| Add self | `POST …/assignees` | `PUT` `assignee_ids`, only after reading the issue free | dedicated `POST …/assignees` where the server exposes it, else an add-only `PATCH` |
+| Add self (`assign-self`, issue read free) | `POST …/assignees` | `PUT` `assignee_ids: [self]` | dedicated `POST …/assignees` where the server exposes it, else an add-only `PATCH` |
+| Restore self (`restore-self`, own assignment displaced) | `POST …/assignees` with self; other assignees untouched | `PUT` `assignee_ids: [self, …current]`, self first; on a tier limited to one assignee this replaces the intruder, and the set is never empty | same write as *Add self*; other assignees untouched |
 | Remove self | `DELETE …/assignees` | `PUT` `assignee_ids: current − {self}` (never empty: the owner is in it) | dedicated `DELETE …/assignees` where exposed, else a remove-only `PATCH` |
 | Restore owner, withdraw self | add owner → confirming read → remove self | one atomic `PUT` of `(current − {self}) ∪ {owner}` | add-only step → confirming read → remove-only step; never one replacing `PATCH` |
 
@@ -180,9 +181,12 @@ uses the add-only / remove-only `PATCH`. A single replacing `PATCH` is never iss
 the server deletes the old assignees before adding the new ones, in separate
 transactions, which would expose a transient empty set.
 
-Mechanics not yet verified live on a forge are recorded as gaps in
-[`docs/cli-matrix.md`](cli-matrix.md) → *Parity gaps*; until verified, the
-check fails closed on any record it cannot read.
+Mechanics not yet verified live on a forge — GitLab's note grammar, creation
+notes and `PUT` on the Free tier; Gitea's timeline type, `PATCH` grouping and
+endpoint minimum version — are recorded as gaps in
+[`docs/cli-matrix.md`](cli-matrix.md) → *Parity gaps*, and their live
+verification is tracked by issue #1397. Until verified, the check fails
+closed on any record it cannot read.
 
 ## Human procedures
 
