@@ -1163,10 +1163,11 @@ jobs:
         uses: ./.github/actions/cancel-on-failure
 
   # Spec 0243 R15, R28: the usage-capture row's copy of the template above.
-  # pwsh is the interpreter of every step. Budgets are the initial values of
-  # R15 (750 / 2000 / 2000 ms), each stated next to its script; plan step 26
-  # lowers them after the first green run to max(3 x the largest observed run,
-  # 300 ms) rounded up to 50 ms, only when that is lower.
+  # pwsh is the interpreter of every step. Budgets were recalibrated at plan
+  # step 26 from the first green run (run 36738818466, job 109967462294) to
+  # max(3 x the largest observed run, 300 ms) rounded up to the next 50 ms,
+  # only where lower than the initial 750 / 2000 / 2000 ms of R15; each is
+  # stated next to its script.
   windows-usage-capture:
     runs-on: windows-latest
     defaults:
@@ -1190,21 +1191,26 @@ jobs:
       - name: Timing fixtures
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/usage-capture-timing-fixtures.ts "$env:RUNNER_TEMP\usage-capture-timing"
 
-      # Budget: 750 ms initial for hooks/usage-capture.ts on the fast path
-      # (fresh stamp, nothing to capture). '--' is quoted so pwsh hands it to
-      # node verbatim.
+      # Budget: 400 ms for hooks/usage-capture.ts on the fast path (fresh stamp,
+      # nothing to capture). Observed max 120.5 ms over 10 runs (run
+      # 36738818466); 3 x 120.5 = 361.5 -> 400; was 750. '--' is quoted so pwsh
+      # hands it to node verbatim.
       - name: Fast path timing budget
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 --stdin-file $env:TIMING_FAST_PAYLOAD '--' hooks/usage-capture.ts claude-code Stop
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 400 --stdin-file $env:TIMING_FAST_PAYLOAD '--' hooks/usage-capture.ts claude-code Stop
 
-      # Budget: 2000 ms initial for hooks/usage-capture.ts on the slow path
-      # (one fixture payload captured into an empty usage root per run).
+      # Budget: 1000 ms for hooks/usage-capture.ts on the slow path (one fixture
+      # payload captured into an empty usage root per run). Observed max
+      # 320.2 ms over 10 runs (run 36738818466); 3 x 320.2 = 960.6 -> 1000; was
+      # 2000.
       - name: Slow path timing budget
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --stdin-file $env:TIMING_SLOW_PAYLOAD --env-tmpdir CREWRIG_USAGE_ROOT '--' hooks/usage-capture.ts claude-code Stop
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 1000 --stdin-file $env:TIMING_SLOW_PAYLOAD --env-tmpdir CREWRIG_USAGE_ROOT '--' hooks/usage-capture.ts claude-code Stop
 
-      # Budget: 2000 ms initial for hooks/antigravity-statusline-shim.ts with no
-      # prior command (the prior command's own time is excluded).
+      # Budget: 550 ms for hooks/antigravity-statusline-shim.ts with no prior
+      # command (the prior command's own time is excluded). Observed max
+      # 182.9 ms over 10 runs (run 36738818466); 3 x 182.9 = 548.7 -> 550; was
+      # 2000.
       - name: Statusline shim timing budget
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --stdin-file $env:TIMING_SHIM_PAYLOAD --env-tmpdir CREWRIG_USAGE_ROOT '--' hooks/antigravity-statusline-shim.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 550 --stdin-file $env:TIMING_SHIM_PAYLOAD --env-tmpdir CREWRIG_USAGE_ROOT '--' hooks/antigravity-statusline-shim.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
