@@ -31,6 +31,8 @@ export interface RepoRef {
   host: string;
   /** `owner/repo`, or `group/subgroup/project` on GitLab. */
   path: string;
+  /** Git remote name the repository was resolved from; binds the `tea` login (i1-F2). */
+  remote?: string;
 }
 
 /** `github.com` → github; `gitlab.com`, `gitlab.*` or a `CREWRIG_GITLAB_HOSTS` host → gitlab; else gitea. */
@@ -146,7 +148,8 @@ export async function pages(
   for (let page = 1; page <= 200; page++) {
     const batch = arr(parseJson(await call(run, argv(page)), what), what);
     out.push(...batch);
-    if (batch.length < PAGE) return out;
+    // Stop on an empty page only: a server may cap the page size below PAGE (i1-F3).
+    if (batch.length === 0) return out;
   }
   throw new ForgeError(`${what}: more than 200 pages`);
 }
@@ -179,7 +182,9 @@ export function parseGitlabNote(body: string): { user: string; op: "add" | "remo
   if (add?.[1] !== undefined) return handles(add[1]).map((user) => ({ user, op: "add" as const }));
   const rm = NOTE_REMOVE.exec(text);
   if (rm?.[1] !== undefined) return handles(rm[1]).map((user) => ({ user, op: "remove" as const }));
-  if (/assign/i.test(text)) throw new ForgeError(`unparsed GitLab assignment note: '${text}'`);
+  // Fail closed only on assignment-shaped notes, never on a title or label mentioning "assign" (i1-F1).
+  if (/^(?:re|un)?assigned\b/i.test(text))
+    throw new ForgeError(`unparsed GitLab assignment note: '${text}'`);
   return null;
 }
 

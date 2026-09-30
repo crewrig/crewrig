@@ -28,6 +28,8 @@ export interface PickupDeps {
   env: NodeJS.ProcessEnv;
   /** URL of the git remote whose forge holds the issue, or null when there is none. */
   remoteUrl: () => string | null;
+  /** Name of that git remote (binds the `tea` login, i1-F2); optional for doubles. */
+  remoteName?: () => string | null;
   /** Content of the overlay `crewrig.config.toml`, or null when absent. */
   readConfig: () => string | null;
   sleep: (ms: number) => Promise<void>;

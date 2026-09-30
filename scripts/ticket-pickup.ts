@@ -33,26 +33,30 @@ function runCli(argv: readonly string[]): Promise<RunResult> {
   });
 }
 
-function remoteUrl(): string | null {
+function remoteName(): string | null {
   try {
-    return resolveRemoteUrl();
+    return resolveRemoteName();
   } catch (e) {
     if (e instanceof WiringError) return null;
     throw e;
   }
 }
 
-function resolveRemoteUrl(): string | null {
+function remoteUrl(): string | null {
+  const remote = remoteName();
+  if (remote === null) return null;
+  const res = git(["remote", "get-url", remote]);
+  return res.status === 0 ? res.stdout.trim() : null;
+}
+
+function resolveRemoteName(): string | null {
   const baseRef = process.env.BASE_REF ?? "";
   const remotes = git(["remote"])
     .stdout.split("\n")
     .map((r) => r.trim())
     .filter((r) => r !== "");
   const fromBase = baseRef.split("/")[0] ?? "";
-  const remote = remotes.includes(fromBase) ? fromBase : preferredRemote();
-  if (remote === undefined) return null;
-  const res = git(["remote", "get-url", remote]);
-  return res.status === 0 ? res.stdout.trim() : null;
+  return remotes.includes(fromBase) ? fromBase : (preferredRemote() ?? null);
 }
 
 function readConfig(): string | null {
@@ -68,6 +72,7 @@ process.exitCode = await main(process.argv.slice(2), {
   run: runCli,
   env: process.env,
   remoteUrl,
+  remoteName,
   readConfig,
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   out: (line) => process.stdout.write(`${line}\n`),

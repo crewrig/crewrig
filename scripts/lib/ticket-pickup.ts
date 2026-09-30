@@ -1,11 +1,10 @@
-// ticket-pickup.ts — the spec 0244 R11 pickup check (PLAN v2 step 3, with
-// review edits v2-F1 and v2-F2). The CLI entry is scripts/ticket-pickup.ts.
-//
-// Sequence: read → verdict → optional write(s) → confirming reads → final
-// verdict. Exit codes: 0 proceed; 3 owned by another (own assignment
-// withdrawn); 4 undecidable (R4, R13; own assignment left in place); 5 the
-// self-assignment did not take (R14; maintainer asked once); 2 cannot
-// determine (R13), including a write that failed partway; 1 usage or wiring.
+// ticket-pickup.ts — the spec 0244 R11 pickup check (PLAN v2 step 3, v2-F2);
+// CLI entry: scripts/ticket-pickup.ts. Sequence: read → verdict → optional
+// write(s) → confirming reads → final verdict. Exit codes: 0 proceed; 3 owned
+// by another (own assignment withdrawn); 4 undecidable (R4, R13; own
+// assignment left in place); 5 the self-assignment did not take (R14;
+// maintainer asked once); 2 cannot determine (R13), including a write that
+// failed partway; 1 usage or wiring.
 // One JSON line goes to stdout and one human sentence to stderr.
 
 import type { ForgeAdapter } from "./forge-assignment.ts";
@@ -113,7 +112,7 @@ class Pickup {
             v.owner,
             "own assignment displaced again after restoring it; left as found (spec 0244 R13)",
           );
-        this.restored = this.wrote;
+        this.restored = true;
         return this.assignSelf(rec, false);
       case "assign-self":
         // R14 applies only while the issue reads free: never retry the self-assignment.
@@ -271,6 +270,7 @@ async function run(
     throw new ForgeError(
       `cannot identify the forge from git remote '${url ?? "(none)"}'; set BASE_REF=<remote>/main`,
     );
+  repo.remote = deps.remoteName?.() ?? undefined;
   const forge = detectForge(repo.host, deps.env);
   report.forge = forge;
   const adapter = createAdapter(forge, repo, args.issue, deps.run);
@@ -279,7 +279,7 @@ async function run(
   let rec = await adapter.readRecord();
   let v = verdictFor(determine(rec), rec.current, self);
   if (v.kind === "cannot-determine") {
-    // One re-read: the issue and history GETs may straddle a rival write (a torn read).
+    // Re-read once: the issue and history GETs may straddle a rival write.
     await deps.sleep(pickupTiming(deps).confirmGapMs);
     rec = await adapter.readRecord();
     v = verdictFor(determine(rec), rec.current, self);

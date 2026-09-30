@@ -202,7 +202,10 @@ function gitlab(repo: RepoRef, issue: number, run: Run): ForgeAdapter {
 
 function gitea(repo: RepoRef, issue: number, run: Run): ForgeAdapter {
   const base = `repos/${repo.path}/issues/${issue}`;
-  const tea = (...args: string[]): Promise<string> => call(run, ["tea", "api", ...args]);
+  // Bind the tea login to the remote the repository came from (i1-F2).
+  const teaApi =
+    repo.remote === undefined ? ["tea", "api"] : ["tea", "api", "--remote", repo.remote];
+  const tea = (...args: string[]): Promise<string> => call(run, [...teaApi, ...args]);
   const send = (method: string, path: string, body: Json): Promise<string> =>
     tea("-X", method, path, "-d", JSON.stringify(body));
   let dedicated: boolean | undefined;
@@ -227,7 +230,7 @@ function gitea(repo: RepoRef, issue: number, run: Run): ForgeAdapter {
       const is = obj(parseJson(await tea(base), "tea issue"), "tea issue");
       const timeline = await pages(
         run,
-        (p) => ["tea", "api", `${base}/timeline?page=${p}&limit=${PAGE}`],
+        (p) => [...teaApi, `${base}/timeline?page=${p}&limit=${PAGE}`],
         "tea timeline",
       );
       const items: AssignmentItem[] = timeline
@@ -261,7 +264,7 @@ function gitea(repo: RepoRef, issue: number, run: Run): ForgeAdapter {
     async comments() {
       const all = await pages(
         run,
-        (p) => ["tea", "api", `${base}/comments?page=${p}&limit=${PAGE}`],
+        (p) => [...teaApi, `${base}/comments?page=${p}&limit=${PAGE}`],
         "tea comments",
       );
       return all
