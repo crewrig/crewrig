@@ -163,19 +163,22 @@ host listed in `CREWRIG_GITLAB_HOSTS`, otherwise Gitea.
 
 - **Pinned to the resolved remote.** `gh` and `glab` calls carry
   `--hostname <host>`; every Gitea call is `tea api --remote <name>` (tea
-  0.16), with the remote name resolved above, so a contributor with several
+  0.16, no `--login`), with the remote name resolved above, so a contributor with several
   Gitea logins never reads another server's issue of the same number. The
   `tea` form is not yet tried against a live Gitea (#1397).
-- **Pagination.** A paginated read stops only on an **empty** page, never on
-  the first short one, at the cost of one extra call per read. A server whose
-  page size is below 50 (Gitea caps it at `[api] MAX_RESPONSE_ITEMS`)
-  therefore never truncates the history.
+- **Pagination.** The paged reads the tool drives itself — GitLab notes
+  (`per_page=50`), Gitea timeline and comments (`limit=50`) — stop only on an
+  **empty** page, never on the first short one, at the cost of one extra call
+  per read. A server whose page size is below 50 (Gitea caps it at
+  `[api] MAX_RESPONSE_ITEMS`) therefore never truncates the history. A read
+  that exceeds 200 pages exits `2`. GitHub reads use `gh api --paginate` and
+  are unaffected.
 
 | | GitHub (`gh`) | GitLab (`glab`) | Gitea (`tea`) |
 |---|---|---|---|
 | Identity | `gh api user` → `.login` | `glab api user` → `.username` | `tea api user` → `.login` |
 | Current assignees | `…/issues/N` → `.assignees[].login` | `projects/<path>/issues/N` → `.assignees[].username` | `…/issues/N` → `.assignees[].login` |
-| History | timeline events `assigned` / `unassigned` | system notes starting with `assigned` / `unassigned` / `reassigned`, parsed; one that fits no grammar pattern → exit `2`; other system notes, even ones mentioning "assign", are ignored | timeline entries of `type: "assignees"` |
+| History | timeline events `assigned` / `unassigned` | system notes starting with `assigned` / `unassigned` / `reassigned`, parsed; one that fits no grammar pattern (including any `reassigned to @b`) → exit `2`; other system notes, such as title or label changes mentioning "assign", are ignored | timeline entries of `type: "assignees"` |
 | Creation assignees recorded | yes | assumed not (pending live verification) | yes |
 | Add self (`assign-self`, issue read free) | `POST …/assignees` | `PUT` `assignee_ids: [self]` | dedicated `POST …/assignees` where the server exposes it, else an add-only `PATCH` |
 | Restore self (`restore-self`, own assignment displaced) | `POST …/assignees` with self; other assignees untouched | `PUT` `assignee_ids: [self, …current]`, self first; on a tier limited to one assignee this replaces the intruder, and the set is never empty | same write as *Add self*; other assignees untouched |
