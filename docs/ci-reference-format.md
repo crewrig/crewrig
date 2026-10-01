@@ -57,7 +57,7 @@ these keys:
 | `env` | optional | mapping | Optional dictionary of job-scoped environment variable keys and string values (spec 0131). |
 | `cache` | optional | mapping | The cache key-derivation **need**: `{files, env}` (see *Cache*). |
 | `cache-guard` | optional | boolean | Whether the job's `bash scripts/…` commands are wrapped in the coarse `scripts/ci-cache-guard.sh` (default `true`). Set `false` when a command manages its own fine-grained cache (see *Cache*). |
-| `changeset-gated` | optional | boolean | `true` marks a capability as part of a changeset-gated decomposition whose focused `paths:` sets the `changeset-coverage` fail-safe reads (spec 0147 R5). |
+| `changeset-gated` | optional | boolean | `true` marks a capability whose `command` list is executed by the exhaustive run (`changeset-coverage`, `scheduled` and `manual`; spec 0147 delta-01 R21), regardless of what changed. It no longer feeds a pull-request-time fail-safe: path ownership is decided by `scripts/check-path-ownership.ts` (see *Path ownership and the exemption lists*). |
 
 **Granularity — one capability is exactly one job (spec 0047 R1).** The steps
 *inside* a job are an implementation detail of that one capability, **not**
@@ -66,8 +66,13 @@ roughly two dozen steps; it was one capability, not two dozen. A candidate
 reference is not invalid for collapsing a job's steps into a single entry —
 that is the required shape. Spec 0147 decomposes that one capability into
 several focused, changeset-gated capabilities (each still exactly one job),
-each with a `paths:` filter and a `changeset-gated: true` marker, plus a
-`changeset-coverage` fail-safe with no `paths:` filter.
+each with a `paths:` filter and a `changeset-gated: true` marker. Two
+capabilities with no `paths:` filter complete the decomposition: the
+`path-ownership` check, which runs on every change and fails when a tracked
+file is owned by none of the focused capabilities and exempted by no list
+(spec 0147 delta-01 R11), and the `changeset-coverage` exhaustive run, which
+executes the commands of every changeset-gated capability on a schedule and on
+demand, never on a pull request (spec 0147 delta-01 R21).
 
 ## Neutral trigger vocabulary
 
@@ -238,6 +243,173 @@ the reference (the R12 need-vs-mechanism boundary). Engine-specific
 capabilities are skipped with no placeholder (spec 0048 R4), and the existing
 GitHub Actions workflows are **not** regenerated (spec 0048 R5) — they stay
 hand-authored and are only *described* here.
+
+## Path ownership and the exemption lists
+
+Spec 0147 delta-01 replaces the former pull-request-time fail-safe (a
+roughly 40-minute full suite whenever a changed file fell outside every
+focused `paths:` set) with a static check that costs seconds, and keeps the
+full suite as an exhaustive run. This section is the normative description of
+that mechanism.
+
+### The rules
+
+- **Ownership.** A tracked file is *owned* when it matches a glob in the
+  `paths:` of any `pull-request` trigger of any capability in
+  `ci/ci-capabilities.yml`. A `push`-only `paths:` confers no ownership, and a
+  capability with no `paths:` filter confers none either (it runs on every
+  change, so it owns nothing in particular).
+- **Evaluation.** `scripts/check-path-ownership.ts` evaluates **every** tracked
+  file (one `git ls-files -z`), reads the `paths:` from the reference at check
+  time (no embedded copy), and depends on no base ref, merge-base or
+  CI-provided revision variable (R12, R13).
+- **Exemption.** A file that no check exercises is declared in
+  `ci/path-ownership-exemptions.txt`, one `<glob><TAB><reason>` entry per line;
+  blank lines and `#` lines are ignored (R14). An exemption is used only for a
+  file that no check exercises, or that a capability with **no** `paths:`
+  filter exercises on every change (the reason then names that capability);
+  it is never used to silence a file that a `paths:`-filtered capability
+  exercises, which belongs in that capability's `paths:` (R17).
+- **Failure.** The check exits `1` when a tracked file is neither owned nor
+  exempt, listing each file and naming the two remedies: extend the `paths:`
+  of the capability whose checks exercise the file (and mirror the glob in that
+  job's GitHub path filter), or add a reasoned entry to the exemption list
+  (R15). It also exits `1` on an entry with an empty reason or a line without a
+  TAB, and on a *stale* entry, i.e. a glob that matches no tracked file (R16).
+  An entry whose every match is also owned is *redundant*: it is reported
+  with a `note:` line and never changes the exit code. Exit `2` is a wiring
+  fault (unreadable or malformed reference, an unsupported glob, no `git`).
+- **Success.** The check prints `path-ownership: OK: evaluated <N> tracked
+  files, owned <O>, exempt <E>` and exits `0` (R18). A file both owned and
+  exempt counts as owned, so `O + E = N`.
+
+### What the matcher implements
+
+The check ships its own small matcher (`scripts/lib/glob-engine.ts`) rather
+than bash `[[ == ]]`, whose `*` crosses `/` and whose `**/` requires a slash
+(R13). It implements exactly:
+
+| Form | Meaning |
+|---|---|
+| `*` | Zero or more characters other than `/`. |
+| `**/` | Zero or more directory levels, including none. |
+| trailing `**` | Everything below the preceding directory, at any depth. |
+| `?` | Exactly one character other than `/`. |
+
+Dotfiles are matched like any other name. Every other syntax fails closed
+with exit `2`: any of `{ } [ ] ( )`, a leading `!`, `/` or `./`, and a `**`
+that is not a whole path segment (for example `a**b`). A future `{a,b}` or
+`[x]` in a `paths:` is therefore a loud failure and never a wrong answer.
+
+**What is verified and what is assumed.** The matcher was cross-checked
+against `picomatch@4` with `dot: true` (the engine behind the GitHub path
+filter) on 349,041 (glob, tracked file) pairs formed by the 231 distinct
+`paths:` globs and the 1,511 tracked files at the time of writing: no
+difference. Its equivalence with GitLab `changes:` matching is an
+**assumption to verify**, not a claim: GitLab may treat a `**` that is not
+followed by `/` like `*`, which would make `dir/**` own one level only on
+GitLab. The trailing-`**` and `?` forms go beyond the two rules R13 states
+and rest on the `picomatch` cross-check alone.
+
+### The exemption lists
+
+- **Core list** `ci/path-ownership-exemptions.txt`: a core-layer path,
+  registered in `docs/layers.md` and, as `strict`, in
+  `.crewrig/core-paths.txt` (R24). Because it is `strict`, an adopter edit
+  halts the upstream sync.
+- **Organization overlay** `ci/org/path-ownership-exemptions.txt`: read in
+  addition to the core list with the same format and hygiene rules (R14 to
+  R17); absent is not an error. `ci/org/` is `excluded` from sync, so the
+  overlay never flows back upstream. The check evaluates the overlay like any
+  tracked file, so an adopter MUST list the overlay in itself (first line of
+  the file): `ci/org/path-ownership-exemptions.txt<TAB><reason>`. An implicit
+  exemption of the two list files was rejected because the spec does not state
+  it.
+- **Stale core entries, present remedy.** An adopter that removed a file the
+  core list exempts gets a red `path-ownership` (R16 fails an entry that
+  matches no tracked file, and the core list is `strict`, so the adopter
+  cannot edit it). Seven exempted files are in no `core-paths.txt` entry, so
+  adopters are free to delete them: `.oxfmtrc.json`, `.oxlintrc.json`,
+  `tsconfig.json`, `crewrig.config.toml.template`, `config/*.md.template`,
+  `config/claude/settings.json.template`, `.agents/settings.local.json.example`.
+  Until the spec grows a better answer, **the remedy is to restore the file,
+  even as an empty placeholder.** The gap in the requirements (the overlay
+  cannot neutralise a core entry) is routed to the deferred-findings ledger
+  ([#961](https://github.com/crewrig/crewrig/issues/961), see
+  `docs/retroactive-loop.md`) for a later spec delta.
+
+### The exhaustive run
+
+`changeset-coverage` is a portable capability with `scheduled` and `manual`
+triggers and no `pull-request` trigger. It runs
+`scripts/ci-changeset-coverage.sh`, which executes the `command` list of every
+`changeset-gated: true` capability unconditionally. It computes no diff and
+resolves no base ref. It exits `1` when any command failed and `2` when `yq`
+or the reference is missing. Its regression test,
+`scripts/tests/ci-changeset-coverage.test.ts`, stays on the pull-request path
+through the separate `changeset-coverage-test` capability (no `paths:`
+filter).
+
+`check-test-strays.sh` is diff-scoped by design (spec 0170): run bare by the
+exhaustive job it scans only the suites changed by `HEAD~1`, so the daily run
+adds nothing for that one command. It stays covered before merge because
+`test-wiring` owns `scripts/tests/**`.
+
+| Engine | `scheduled` | `manual` |
+|---|---|---|
+| GitHub Actions | Dedicated workflow `.github/workflows/changeset-coverage.yml`, `on.schedule` (daily, `17 3 * * *` UTC). A scheduled run uses the default branch `main` (GitHub behaviour, assumption to verify on the first run). | `workflow_dispatch` on the same workflow. |
+| GitLab CI | The generated job carries `rules: - if: '$CI_PIPELINE_SOURCE == "schedule"'`; the schedule itself is a CI/CD pipeline schedule created outside the pipeline file. | The generated job ends with `- when: manual`. |
+
+A dedicated workflow file is used on GitHub because a `schedule:` trigger on
+`build.yml` would start every one of its jobs on the cron. A failure is a
+red workflow run or pipeline on the ref it ran against; it is never reported
+only in a log (R22).
+
+### Operational prerequisites
+
+These four items live outside the repository's files; they are recorded here
+and in the body of the pull request that introduced the check.
+
+1. **GitHub schedule.** Nothing to configure: the cron is in the workflow
+   file. The file must be on `main` for `workflow_dispatch` to be offered; a
+   manual run on a `release/**` branch needs the file on that branch too (merge
+   `main` into it). Both are GitHub behaviours to verify in the first run.
+2. **GitLab pipeline schedule.** The maintainer of an adopting GitLab project
+   creates a CI/CD schedule with **target ref `main`**: a GitLab schedule runs
+   on the ref in its definition, and the neutral `scheduled` kind has no branch
+   attribute. In this repository the generated `.gitlab-ci.yml` is produced and
+   drift-checked but not executed on a live GitLab, so this item is
+   documentation here, not an action.
+3. **Required status check on `main-protected`.** A repository admin adds
+   `path-ownership` to the ruleset `main-protected` **after** the change
+   merges to `main` (adding the context before the job exists would block every
+   PR). A check that can never be skipped but is not required can still be
+   ignored at merge. Pull requests into `main` that were opened before the
+   context was added must be brought up to date (`gh pr update-branch`, or a
+   rebase on `main`) so that the job runs on them; until then the context
+   waits for a job that the old branch does not have.
+4. **Required status check on `release-protected`, deferred.** The admin adds
+   `path-ownership` to ruleset `release-protected` **only once `main` (with
+   this change) has been merged into every live `release/**` branch** and the
+   job is confirmed to exist there (the branch's `build.yml` shows
+   `path-ownership:`, or the sync pull request shows a green `path-ownership`
+   run). Before that, the release branch has no such job, so a required context
+   would never report and every pull request into that branch would wait
+   forever. Cost of deferring it indefinitely: unowned files can accumulate on
+   the release branch unchecked and surface only at the release-to-`main`
+   merge, where the check finally runs on the combined tree.
+
+### Known limitation: GitHub path filters are not compared
+
+The check reads ownership from the reference, but the GitHub trigger of each
+job is the hand-written `dorny/paths-filter` list, and
+`scripts/check-ci-parity.sh` does not compare `paths:` with those filters. A
+glob added to the reference but forgotten in the workflow would make
+`path-ownership` green while the owner job never starts. Whoever extends a
+capability's `paths:` mirrors the glob in that job's filter (and in its
+`hashFiles(...)` and `--key-files` lists when the capability is cache-guarded).
+Comparing the two sets in `check-ci-parity.sh` is tracked in
+[#1422](https://github.com/crewrig/crewrig/issues/1422).
 
 ## Traceability (contract C2)
 

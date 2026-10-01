@@ -1,0 +1,55 @@
+# Path-ownership exemptions (spec 0147 delta-01, R14-R17, R24).
+#
+# Format: one entry per line, `<glob><TAB><reason>` -- a real TAB character
+# separates the glob from the reason. Blank lines and lines starting with `#`
+# are ignored. An entry with an empty reason, or whose glob matches no tracked
+# file (a stale entry), fails `scripts/check-path-ownership.ts`; an entry
+# whose every match is also owned is reported as redundant without failing.
+#
+# Glob syntax is the one the checker implements: `*` (does not cross `/`),
+# `**/` (zero or more directories), a trailing `**`, and `?`. Any other
+# syntax is rejected. See docs/ci-reference-format.md, "Path ownership and
+# the exemption lists".
+#
+# R17 -- use an exemption only for a file that no check exercises, or that a
+# capability with no `paths:` filter exercises on every change (name that
+# capability in the reason). Never use it to silence a file that a
+# `paths:`-filtered capability exercises: add the glob to that capability's
+# `paths:` in ci/ci-capabilities.yml instead.
+#
+# Organization overlay (R24): an adopting organization lists its own files in
+# ci/org/path-ownership-exemptions.txt (same format, same rules, read in
+# addition to this core list; absent is not an error). The overlay is itself a
+# tracked file, so it MUST list itself on its first line (D7):
+#   ci/org/path-ownership-exemptions.txt<TAB><reason>
+#
+.agents/settings.local.json.example	Antigravity workspace-settings template, copied by hand to `settings.local.json`; no script or test under `scripts/` or `ci/` references it (classification deliberately unchanged by spec 0121).
+.crewrig/spec-id-carrier	Repository setting read only by `scripts/reserve-spec-id.sh` at authoring time; CI tests write a fixture carrier and never read this one.
+**/.gitkeep	Empty-directory placeholders; they contain no code or configuration.
+.gitattributes	Git line-ending attributes; no script or test reads the file.
+LICENSE	Licence text; no check reads it.
+renovate.json	Configuration of the external Renovate service, consumed outside CI.
+crewrig.config.toml.template	Adopter copy-to-activate template (`docs/adoption-guide.md`); no script or test reads it.
+config/.env.example	Reference listing of environment variables; no script or test reads it.
+config/*.md.template	Seed templates for the user-local overlay files, read interactively by the `init-soul` / `init-personal-profile` commands; no CI check reads them.
+config/claude/settings.json.template	Copied at install time by `scripts/setup-claude-interactive.sh` behind an interactive `fzf` prompt; no test reads it.
+config/release-monorepo.json	Documented as monorepo release configuration (`docs/layers.md`), but no script, test or workflow in the tree references the file name; candidate for a separate removal ticket.
+.oxfmtrc.json	Read by capability `lint-typescript` (no `paths:` filter): Oxfmt runs on every change through `scripts/check-typescript.ts`.
+.oxlintrc.json	Read by capability `lint-typescript` (no `paths:` filter): Oxlint runs on every change through `scripts/check-typescript.ts`.
+tsconfig.json	Read by capability `lint-typescript` (no `paths:` filter): `tsc -p tsconfig.json` runs on every change through `scripts/check-typescript.ts`.
+ci/js-baseline.txt	Read by capability `ratchet` (no `paths:` filter) through `scripts/check-ratchet.ts`, on every change.
+ci/js-exceptions.txt	Read by capability `ratchet` (no `paths:` filter) through `scripts/check-ratchet.ts`, on every change.
+ci/shell-allowlist.txt	Read by capability `ratchet` (no `paths:` filter) through `scripts/check-ratchet.ts`, on every change.
+docker/e2e/*.Dockerfile	Built only locally (`task e2e:build`); the image-contract test inspects built images and skips when none exists, so no CI check builds or reads the Dockerfiles.
+docker/e2e/.dockerignore	Consumed only by the local e2e image build; no CI check reads it.
+.github/actions/cancel-on-failure/action.yml	Composite action run only from a failing job's `if: failure()` step; no check exercises it.
+.github/workflows/claude.yml	Engine-specific bot-mention workflow (capability `claude`); its job key is traced by capability `check-ci-parity` (no `paths:` filter), which runs on every change; its behaviour is exercised only on GitHub.
+.github/workflows/copilot.yml	Engine-specific bot-mention workflow (capability `copilot`); its job key is traced by capability `check-ci-parity` (no `paths:` filter), which runs on every change; its behaviour is exercised only on GitHub.
+.github/workflows/pages.yml	Deploys `communication/**` after merge (capability `pages-deploy`, push-only, which confers no ownership); its job key is traced by capability `check-ci-parity` (no `paths:` filter), which runs on every change.
+.github/workflows/security-mcp.yml	Hosts the GitHub job of portable capability `audit`; capability `check-ci-parity` (no `paths:` filter) compares its business steps and runtime provisioning with the reference on every change.
+.github/workflows/ticket-pickup.yml	Hosts the GitHub job of portable capability `ticket-pickup`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
+.github/workflows/windows-hook-probe.yml	Hosts the GitHub job of portable capability `windows-hook-probe`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
+.github/workflows/usage-*.yml	Each hosts the GitHub job of one portable `usage-*` capability; capability `check-ci-parity` (no `paths:` filter) compares each with the reference on every change.
+.github/workflows/release-*.yml	Each hosts the GitHub job of one portable `release-*` capability (`release-notes`, `release-rehearsal`, `release-tests`); capability `check-ci-parity` (no `paths:` filter) compares each with the reference on every change.
+ci/path-ownership-exemptions.txt	Input of capability `path-ownership` (no `paths:` filter), which reads it on every change.
+.github/workflows/changeset-coverage.yml	Hosts the GitHub job of capability `changeset-coverage`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
