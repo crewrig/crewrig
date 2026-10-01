@@ -220,20 +220,39 @@ linter becomes non-conforming. That is a breaking normative change under
      body SHALL name it with the reason. `approved` is true of every merged
      delta-spec. `implemented` is a stronger claim, and this rule never makes
      it without evidence.
-   - **The determination is a function of the commit graph, so it agrees
-     across branches and never regresses.** The rule reads only `C_D`, the
-     merge commits reachable from `B`, and the forge's PR record, which is
-     the same for every branch. Two consequences follow:
+   - **The `implemented` / `approved` choice depends only on the commit
+     graph, so it agrees across branches and never regresses.** That choice
+     reads only `C_D`, the merge commits reachable from `B`, and the forge's
+     PR record, which is the same for every branch. Two consequences follow:
      - two branches whose heads reach the same implementation commits for
-       `N` give `D` the same status;
-     - a merge only adds reachable commits, so the status the rule gives on
-       a merge result is never lower than the status it gives on either
-       parent.
+       `N` give `D` the same choice;
+     - a merge only adds reachable commits, so the choice on a merge result
+       is never lower than on either parent.
 
-     When a sync of R31, or the final merge of R37, meets a conflict on a
-     `status` line, the conflict SHALL resolve to the value the rule gives
-     on the merge result. That value is the higher of the two sides, never a
-     regression.
+     The issue-state arms are not graph functions: the `archived` arm, and
+     the closed-as-completed ambiguity arm. An issue can be reopened, which
+     would turn `archived` back into `approved`. These arms are therefore
+     evaluated once, at correction time (Requirements 24 and 25). That is
+     consistent with the parent spec's out-of-scope rule that a correction
+     records the state at correction time, not a timeline. A later change
+     of issue state does not reopen a recorded status.
+   - **A reachable implementation beats `archived`.** `archived` means
+     "closed without implementation", so when an implementation PR for `N`
+     on `B` descends from `C_D`, the rule gives `implemented`, whatever the
+     state of issue `N`. The rule's order already says so, since the
+     `implemented` arm is evaluated first.
+   - **Conflict resolution.** When a sync of R31, or the final merge of R37,
+     meets a conflict on a `status` line, the conflict SHALL resolve as
+     follows:
+     - between `approved` and `implemented`, to `implemented`. That is the
+       graph-determined choice on the merge result, and never a regression;
+     - when one side is `archived`, to `implemented` if the merge result
+       reaches an implementation PR for `N` that descends from `C_D`, per
+       the precedence above; otherwise, to `archived`, the value recorded at
+       correction time;
+     - any other pair, including one involving `superseded`, is outside this
+       rule. It SHALL be resolved by hand, and named in the merging PR's
+       body, without regressing either side.
    - **Measured.** Applied at `main` @ `923e5510` and at release @
      `5479fd9e`, the rule gives the 40 files of Appendix A the same status
      on both branches, with the same evidence PRs. Applied on the release
