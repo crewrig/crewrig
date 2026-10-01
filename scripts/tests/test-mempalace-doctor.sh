@@ -1216,45 +1216,117 @@ has_exact "$S12I_OUT" "$(doctor_field_line "shebang interpreter:" "$S12I_VENV/bi
   "12i: a #!/usr/bin/env sh wrapper resolves to the venv python"
 assert_no_shell_interpreter "$S12I_OUT" "12i"
 
-# 12j — uv escapes an apostrophe in the venv path as `'\''`, which the
-# single-quoted parse stops at. The truncated path is never reported: with a
-# sibling `python` the wrapper resolves to it; without one, nothing resolves.
+# 12j — uv escapes an apostrophe in the venv path as `'\''`. The parse undoes
+# the escape, so the wrapper resolves to the TRUE full path — never the
+# truncated `$S12/j/it` — even with no sibling `python` to fall back on. A line 2
+# that is genuinely unparseable still falls back to the sibling, or to nothing.
 S12J_VENV="$S12/j/it's dir/mempalace"
 S12J_TRUNC="$S12/j/it"
 make_interpreter "$S12J_VENV/bin/python" "$S12_SITE"
-# (1) wrapper inside the venv, symlinked onto PATH: the sibling answers.
+# assert_not_truncated <report> <what>
+assert_not_truncated() {
+  if grep -qxF "$(doctor_field_line "shebang interpreter:" "$S12J_TRUNC")" "$1" \
+     || grep -qF ". $S12J_TRUNC  (" "$1"; then
+    bad "$2: the truncated path $S12J_TRUNC is reported"
+  else
+    ok "$2: the truncated path is neither reported nor a candidate"
+  fi
+}
+# (1) the uv wrapper copied onto PATH, no sibling: only the parse can answer.
 S12J1_HOME="$S12/j/1/home"
 S12J1_PATHDIR="$S12/j/1/bin"
 mkdir -p "$S12J1_HOME" "$S12J1_PATHDIR"
-make_sh_wrapper "$S12J_VENV/bin/mempalace" sq "$S12J_VENV/bin/python"
-ln -s "$S12J_VENV/bin/mempalace" "$S12J1_PATHDIR/mempalace"
+make_sh_wrapper "$S12J1_PATHDIR/mempalace" sq "$S12J_VENV/bin/python"
 S12J1_OUT="$S12/j/1/report.txt"
 run_doctor_isolated "$S12J1_HOME" "$S12J1_PATHDIR" "$S12_TOOLBIN" "$S12J1_OUT"
 has_exact "$S12J1_OUT" "$(doctor_field_line "shebang interpreter:" "$S12J_VENV/bin/python")" \
-  "12j: an apostrophe-escaped uv path falls back to the realpath's sibling python"
-lacks "$S12J1_OUT" "$S12J_TRUNC " "12j: the truncated exec-line path is never reported"
-if grep -qxF "$(doctor_field_line "shebang interpreter:" "$S12J_TRUNC")" "$S12J1_OUT"; then
-  bad "12j: section 2 reports the truncated path $S12J_TRUNC"
-else
-  ok "12j: section 2 does not report the truncated path"
-fi
+  "12j: an apostrophe-escaped uv path resolves to its full true path, with no sibling"
+has "$S12J1_OUT" "selection:              candidate 2: $S12J_VENV/bin/python" \
+  "12j: section 3 selects the un-escaped uv venv python"
+assert_not_truncated "$S12J1_OUT" "12j"
 assert_no_shell_interpreter "$S12J1_OUT" "12j"
-# (2) the same wrapper copied onto PATH with no sibling: unresolvable, cleanly.
+# (2) a genuinely unparseable line 2 (an unescaped apostrophe ends the quote
+# early, so the ` "$0"` anchor never follows): inside the venv, the sibling.
+# shellcheck disable=SC2016  # `$0` / `$@` are the wrapper's own text
+S12J_BADLINE='\x27\x27\x27exec\x27 \x27'"$S12J_VENV"'/bin/python\x27 "$0" "$@"'
+make_bad_wrapper() {
+  mkdir -p "$(dirname "$1")"
+  # shellcheck disable=SC2059  # the format is the wrapper text, by design
+  printf "#!/bin/sh\n${S12J_BADLINE}\n\x27 \x27\x27\x27\n" > "$1"
+  chmod +x "$1"
+}
 S12J2_HOME="$S12/j/2/home"
 S12J2_PATHDIR="$S12/j/2/bin"
 mkdir -p "$S12J2_HOME" "$S12J2_PATHDIR"
-make_sh_wrapper "$S12J2_PATHDIR/mempalace" sq "$S12J_VENV/bin/python"
+make_bad_wrapper "$S12J_VENV/bin/mempalace-bad"
+ln -s "$S12J_VENV/bin/mempalace-bad" "$S12J2_PATHDIR/mempalace"
 S12J2_OUT="$S12/j/2/report.txt"
 run_doctor_isolated "$S12J2_HOME" "$S12J2_PATHDIR" "$S12_TOOLBIN" "$S12J2_OUT"
-has "$S12J2_OUT" "NO SHEBANG INTERPRETER" \
-  "12j: with no sibling, an apostrophe-escaped uv path is reported as unresolvable"
-if grep -qxF "$(doctor_field_line "shebang interpreter:" "$S12J_TRUNC")" "$S12J2_OUT" \
-   || grep -qF ". $S12J_TRUNC  (" "$S12J2_OUT"; then
-  bad "12j: the truncated path $S12J_TRUNC is reported with no sibling"
-else
-  ok "12j: with no sibling, the truncated path is neither reported nor a candidate"
-fi
-assert_no_shell_interpreter "$S12J2_OUT" "12j (no sibling)"
+has_exact "$S12J2_OUT" "$(doctor_field_line "shebang interpreter:" "$S12J_VENV/bin/python")" \
+  "12j: an unparseable exec line falls back to the realpath's sibling python"
+assert_not_truncated "$S12J2_OUT" "12j (unparseable)"
+assert_no_shell_interpreter "$S12J2_OUT" "12j (unparseable)"
+# (3) the same unparseable wrapper copied onto PATH, no sibling: unresolvable.
+S12J3_HOME="$S12/j/3/home"
+S12J3_PATHDIR="$S12/j/3/bin"
+mkdir -p "$S12J3_HOME" "$S12J3_PATHDIR"
+make_bad_wrapper "$S12J3_PATHDIR/mempalace"
+S12J3_OUT="$S12/j/3/report.txt"
+run_doctor_isolated "$S12J3_HOME" "$S12J3_PATHDIR" "$S12_TOOLBIN" "$S12J3_OUT"
+has "$S12J3_OUT" "NO SHEBANG INTERPRETER" \
+  "12j: with no sibling, an unparseable exec line is reported as unresolvable"
+assert_not_truncated "$S12J3_OUT" "12j (unparseable, no sibling)"
+assert_no_shell_interpreter "$S12J3_OUT" "12j (unparseable, no sibling)"
+
+# 12k — a correctly parsed but broken interpreter is still named: a space-path
+# pipx venv whose `bin/python` dangles (the classic macOS breakage after a
+# Homebrew Python upgrade). Section 2 must name that exact path so the probe can
+# report it does not run — not NO SHEBANG INTERPRETER, not a sibling guess.
+S12K_HOME="$S12/k/home"
+S12K_PATHDIR="$S12/k/bin"
+S12K_VENV="$S12/k/Library/Application Support/pipx/venvs/mempalace"
+mkdir -p "$S12K_HOME" "$S12K_PATHDIR" "$S12K_VENV/bin"
+ln -s "$S12/k/nonexistent/python3.12" "$S12K_VENV/bin/python"
+make_sh_wrapper "$S12K_VENV/bin/mempalace" dq "$S12K_VENV/bin/python"
+ln -s "$S12K_VENV/bin/mempalace" "$S12K_PATHDIR/mempalace"
+S12K_OUT="$S12/k/report.txt"
+run_doctor_isolated "$S12K_HOME" "$S12K_PATHDIR" "$S12_TOOLBIN" "$S12K_OUT"
+has_exact "$S12K_OUT" "$(doctor_field_line "shebang interpreter:" "$S12K_VENV/bin/python")" \
+  "12k: a dangling venv python behind a /bin/sh wrapper is named as the shebang interpreter"
+lacks "$S12K_OUT" "NO SHEBANG INTERPRETER" \
+  "12k: a correctly parsed broken interpreter is not reported as unresolvable"
+assert_no_shell_interpreter "$S12K_OUT" "12k"
+
+# 12l — distlib double-quotes the path WITHOUT escaping, so a `$`, backtick or
+# backslash in it would be expanded by sh: the text is not the path sh execs and
+# is rejected (no sibling here, so nothing resolves). A plain space path is kept.
+csp_under() {
+  (
+    # shellcheck disable=SC1090,SC1091  # the library under test, by variable path
+    . "$COMMON_SH"
+    console_script_python "$1"
+  )
+}
+S12L="$S12/l"
+mkdir -p "$S12L"
+s12l_n=0
+# shellcheck disable=SC2016  # literal `$`, backtick and backslash, by design
+for s12l_case in 'plain dir' 'd$HOME' 'b`id`' 'k\x'; do
+  s12l_n=$((s12l_n + 1))
+  s12l_w="$S12L/w$s12l_n"
+  # shellcheck disable=SC2016  # `$0` / `$@` are the wrapper's own text
+  printf '#!/bin/sh\n%sexec%s "%s/bin/python" "$0" "$@"\n' "'''" "'" "/opt/$s12l_case" > "$s12l_w"
+  s12l_got="$(csp_under "$s12l_w")"
+  case "$s12l_case" in
+    'plain dir') s12l_want="/opt/plain dir/bin/python" ;;
+    *) s12l_want="" ;;
+  esac
+  if [ "$s12l_got" = "$s12l_want" ]; then
+    ok "12l: distlib path '/opt/$s12l_case' gives '${s12l_want:-<none>}'"
+  else
+    bad "12l: distlib path '/opt/$s12l_case' gave '$s12l_got', want '${s12l_want:-<none>}'"
+  fi
+done
 
 # ---------------------------------------------------------------------------
 echo ""

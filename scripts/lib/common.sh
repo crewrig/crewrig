@@ -709,12 +709,22 @@ resolve_symlink() {
 #         '''exec' "/venv path/bin/python" "$0" "$@"      (pip/distlib)
 #         '''exec' '/venv path/bin/python' "$0" "$@"      (uv)
 #         ' '''
-#     The interpreter is the quoted absolute path on line 2, accepted only when
-#     it is executable: a path the parse cannot read whole (e.g. uv's `'\''`
-#     escape of an apostrophe, which the single-quoted match stops at) would
-#     otherwise come back truncated. When that line names no usable absolute
-#     path (also distlib's relocatable form, which computes it at run time),
-#     the sibling `python` of the script's realpath is used when executable.
+#     The interpreter is the quoted absolute path on line 2. Truncation is
+#     detected in the parse, never on the filesystem: the quoted path must be
+#     followed by the ` "$0"` token both tools write next, so a parse that stops
+#     early cannot match. A whole path is returned even when it does not exist
+#     or is a dangling symlink (a pipx venv after a Homebrew Python upgrade), as
+#     for a plain shebang, so the doctor names and probes the broken interpreter.
+#     - uv escapes an apostrophe in the single-quoted path as `'\''`; the escape
+#       is accepted and undone, so such a path resolves to its true full value.
+#     - distlib (`enquote_executable`) wraps the path in double quotes with NO
+#       escaping. A `"` in the path cannot match the anchored pattern; a `$`,
+#       backtick or backslash would be expanded by sh, so the text is not the
+#       path sh execs — both are rejected. So is an interpreter option written
+#       between the path and `"$0"` (distlib's `post_interp`).
+#     When line 2 yields no path (also distlib's relocatable form, which
+#     computes it at run time), the sibling `python` of the script's realpath is
+#     used when executable — a guess, so unlike a parsed path it must exist.
 console_script_python() {
   local script="$1" line interp
   local -a words
@@ -740,15 +750,22 @@ console_script_python() {
   esac
 
   # Shell polyglot wrapper. The patterns live in variables so bash's `=~`
-  # treats them as regexes rather than literal strings.
-  local exec_line py=""
-  local re_dq="^'''exec' \"(/[^\"]+)\""
-  local re_sq="^'''exec' '(/[^']+)'"
+  # treats them as regexes rather than literal strings. Both are anchored on
+  # the ` "$0"` that follows the quoted interpreter, so a truncated parse fails.
+  local exec_line py="" q="'"
+  local esc="'\\''"
+  local re_dq="^'''exec' \"(/[^\"]+)\" \"\\\$0\""
+  local re_sq="^'''exec' '(/([^']|'\\\\'')*)' \"\\\$0\""
   exec_line="$(sed -n '2p' "$script" 2>/dev/null)"
-  if [[ "$exec_line" =~ $re_dq ]] || [[ "$exec_line" =~ $re_sq ]]; then
+  if [[ "$exec_line" =~ $re_dq ]]; then
     py="${BASH_REMATCH[1]}"
-    # A truncated parse names no real interpreter; fall through to the sibling.
-    [ -x "$py" ] || py=""
+    # distlib does not escape: sh would expand these, so the text is not the path.
+    case "$py" in
+      *'$'*|*'`'*|*\\*) py="" ;;
+    esac
+  elif [[ "$exec_line" =~ $re_sq ]]; then
+    py="${BASH_REMATCH[1]}"
+    py="${py//"$esc"/$q}"
   fi
   if [ -z "$py" ]; then
     local sibling
