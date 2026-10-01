@@ -30,7 +30,7 @@ tasks:
     preconditions:
       - sh: command -v pipx >/dev/null 2>&1
         msg: "pipx is required. Install with: brew install pipx (macOS) or apt-get install pipx (Linux)"
-    cmd: pipx install --force 'mempalace>=3.6.0,<3.7'
+    cmd: bash {{.REPO_DIR}}/scripts/lib/tls-exec.sh pipx install --force 'mempalace>=3.6.0,<3.7'
 
   mempalace:doctor:
     desc: "Report which MemPalace will actually answer on this machine — resolved path, interpreter and version behind every MemPalace command and every CLI's memory-server registration. Exits non-zero on divergence (spec 0108)."
