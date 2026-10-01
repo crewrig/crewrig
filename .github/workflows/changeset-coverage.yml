@@ -1,0 +1,35 @@
+name: Exhaustive Run
+
+# Spec 0147 delta-01 R21, R22: mirrors the `changeset-coverage` capability of
+# ci/ci-capabilities.yml. It runs every command of every changeset-gated
+# capability, with no diff and no base ref. It is deliberately a workflow of its
+# own: a `schedule:` trigger on build.yml would start every job of that file on
+# the cron. A scheduled run uses the default branch; `workflow_dispatch` runs it
+# on demand (the file must exist on the branch that is dispatched).
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changeset-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history, the same checkout as the other engines
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Exhaustive run of every changeset-gated check (spec 0147 delta-01 R21)
+        run: bash scripts/ci-changeset-coverage.sh
