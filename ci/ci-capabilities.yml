@@ -916,7 +916,10 @@ capabilities:
   # focused `paths:` sets from this reference (via yq, never hardcoded),
   # computes the changed files, and — when a changed file is not covered by the
   # union of the focused path sets — runs the full check suite; when every
-  # changed file is covered it is a fast no-op.
+  # changed file is covered it is a fast no-op. The job provisions python@3.12,
+  # yq and node@24 (the secondary runtime also runs this capability's own
+  # regression test and the `mempalace` TypeScript test in the full suite), so
+  # a `node@22` capability must still never be changeset-gated.
   - id: changeset-coverage
     name: "Fail-safe: run the full check suite when a change is uncovered"
     trigger:
@@ -926,11 +929,24 @@ capabilities:
         branches: [main, "release/**"]
     portability: portable
     requires:
-      runtime: python@3.12
+      runtime: [python@3.12, node@24]
       tools: [yq]
       history-depth: full
+    env:
+      # The base the change is diffed from (merge-base relative, see the
+      # script header). Engine-specific value, same key on both engines:
+      # GitHub supplies `pull_request.base.sha || before` in build.yml.
+      # GitLab: `$CI_MERGE_REQUEST_DIFF_BASE_SHA` is an assumption — verify
+      # against the GitLab predefined-variables reference. The assumption is
+      # acceptable because an empty value is treated as unset and falls through
+      # to CI_COMMIT_BEFORE_SHA, then to origin/main (over-inclusive, safe:
+      # spec 0147 R10). The asymmetry on push events is intentional: GitLab
+      # relies on CI_COMMIT_BEFORE_SHA, which the script already reads, while
+      # GitHub supplies `before` through CI_BASE_REF.
+      CI_BASE_REF: "$CI_MERGE_REQUEST_DIFF_BASE_SHA"
     command:
       - bash scripts/ci-changeset-coverage.sh
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage.test.ts
 
   - id: lint-markdown
     name: "Lint Markdown files"
@@ -1013,8 +1029,9 @@ capabilities:
   # windows-hook-parsing-probe.md); this job pins its host-independent logic.
   # The test reads the four committed transcript manifests to check the
   # installed JSON shape, hence their place in the paths filter. Deliberately
-  # NOT changeset-gated, for the same reason usage-storage is not: a node@24
-  # capability must never enter the fail-safe job's python-only execution set.
+  # NOT changeset-gated, for the same reason usage-storage is not: a node@22
+  # capability must never enter the fail-safe job's execution set (it
+  # provisions python@3.12, yq and node@24).
   - id: windows-hook-probe
     name: "Windows hook command-line parsing probe (spec 0237)"
     trigger:
@@ -1253,7 +1270,7 @@ capabilities:
 
   # usage-record-schema validates the usage record contract (spec 0205).
   # Deliberately NOT changeset-gated: the fail-safe job (ci-changeset-coverage.sh)
-  # provisions python@3.12 + yq and no Node, so a node@22 capability must never
+  # provisions python@3.12 + yq + node@24, so a node@22 capability must never
   # enter its execution set.
   - id: usage-record-schema
     name: "Validate usage record schema and fixtures"
@@ -1287,7 +1304,7 @@ capabilities:
   # scripts/monorepo-release.sh configuration against a hermetic fixture
   # repository (issue #1225). Deliberately NOT changeset-gated, mirroring
   # usage-record-schema above: the fail-safe job (ci-changeset-coverage.sh)
-  # provisions no Node.
+  # provisions node@24 only, so a node@22 capability must never enter it.
   - id: release-notes
     name: "Render extension release notes through the monorepo release config"
     trigger:
@@ -1328,7 +1345,8 @@ capabilities:
   # usage-capture validates the spec 0206 capture-adapter module tree and the
   # spec 0211 per-CLI usage-capture opt-in (scripts/lib/usage-capture-optin.sh).
   # Deliberately NOT changeset-gated, mirroring usage-record-schema above:
-  # the fail-safe job (ci-changeset-coverage.sh) provisions no Node.
+  # the fail-safe job (ci-changeset-coverage.sh) provisions node@24 only, so a
+  # node@22 capability must never enter it.
   - id: usage-capture
     name: "Validate usage capture adapters and fixtures"
     trigger:
@@ -1395,8 +1413,8 @@ capabilities:
   # gating and catch-up against a fake daemon, and the ajv-precompiled
   # standalone validator's own drift gate. Deliberately NOT changeset-gated,
   # for the same reason usage-record-schema above is not — a node@22
-  # capability must never enter the fail-safe job's python-only execution
-  # set.
+  # capability must never enter the fail-safe job's execution set (python@3.12,
+  # yq and node@24).
   - id: usage-storage
     name: "Validate the usage-record storage contract"
     trigger:
@@ -1467,8 +1485,8 @@ capabilities:
   # override, and the registered-derived-store prune reach (spec 0207
   # delta-01 R28/R33). Deliberately NOT changeset-gated, for the same reason
   # usage-storage above is not — a node@22 capability must never enter the
-  # fail-safe job's python-only execution set. The capture tree is in the
-  # paths filter because the resolution point is scripts/lib/usage-capture/
+  # fail-safe job's execution set (python@3.12, yq and node@24). The capture
+  # tree is in the paths filter because the resolution point is scripts/lib/usage-capture/
   # index.js and the backfill's no-channel rule is backfill.js: without it,
   # an edit dropping the resolveAttribution() call would leave usage-capture
   # green (it asserts nothing about attribution), usage-storage green (it
@@ -1519,8 +1537,8 @@ capabilities:
   # requires). Fully offline — a hand-built ~14-entry fixture price list,
   # never the real 2.9 MB snapshot. Deliberately NOT changeset-gated, for
   # the same reason usage-storage above is not — a node@22 capability must
-  # never enter the fail-safe job's python-only execution set. The
-  # usage-store tree is in the paths filter because step 9 of the plan puts
+  # never enter the fail-safe job's execution set (python@3.12, yq and
+  # node@24). The usage-store tree is in the paths filter because step 9 of the plan puts
   # both halves of the R37 mechanism there (derivedStores() in layout.js,
   # the walk in prune.js): without it, a changeset touching only layout.js
   # or prune.js would not run the suite that owns the R37 assertion.
@@ -1811,7 +1829,7 @@ capabilities:
   # sync test (issue #1379).
   # Deliberately NOT changeset-gated, for the same reason usage-storage above
   # is not — a node@22 capability must never enter the fail-safe job's
-  # python-only execution set.
+  # execution set (python@3.12, yq and node@24).
   - id: release-tests
     name: "Test the forge-aware monorepo release driver"
     trigger:

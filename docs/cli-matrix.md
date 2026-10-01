@@ -142,7 +142,11 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > `changeset-coverage` capability with no `paths:` filter runs
 > `scripts/ci-changeset-coverage.sh` on every change as the fail-safe (spec 0147
 > R5): when a changed file is not covered by the union of the focused `paths:`
-> sets it executes the full check suite; otherwise it is a fast no-op. This
+> sets it executes the full check suite; otherwise it is a fast no-op. The base is
+> supplied per engine through the capability `env` (`CI_BASE_REF`: the pull-request
+> base SHA, or the push `before` SHA, on GitHub Actions; the merge-request diff
+> base on GitLab) and the diff is merge-base relative, so a change targeting a
+> diverged `release/**` branch is not charged for that branch's own delta. This
 > paragraph discharges the `ci/` CLI-matrix-update obligation for spec 0147.
 >
 > **test-wiring fine-grained cache (spec 0157).** The `test-wiring` capability
