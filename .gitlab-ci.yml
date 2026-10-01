@@ -1083,6 +1083,38 @@ ticket-pickup:
         - "scripts/tests/ticket-*.test.ts"
         - "scripts/tests/fixtures/ticket-pickup/**"
 
+playwright-mcp:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/setup-playwright-mcp.ts"
+        - "scripts/lib/playwright-mcp*.ts"
+        - "scripts/lib/jsonc.ts"
+        - "scripts/lib/hook-config.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/gemini-settings.sh"
+        - "scripts/tests/playwright-mcp.test.ts"
+        - "scripts/tests/jsonc.test.ts"
+        - "scripts/tests/hook-config.test.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/setup-playwright-mcp.ts"
+        - "scripts/lib/playwright-mcp*.ts"
+        - "scripts/lib/jsonc.ts"
+        - "scripts/lib/hook-config.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/gemini-settings.sh"
+        - "scripts/tests/playwright-mcp.test.ts"
+        - "scripts/tests/jsonc.test.ts"
+        - "scripts/tests/hook-config.test.ts"
+
 node-floor-guard:
   image: node:20
   script:

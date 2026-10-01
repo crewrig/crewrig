@@ -13,7 +13,9 @@ import { after, describe, test } from "node:test";
 import {
   backupFile,
   type BackupResult,
+  LossyJsonError,
   NotAJsonObjectError,
+  readJsonConfig,
   readJsonObject,
   serialiseJson,
   writeJsonConfig,
@@ -200,5 +202,113 @@ describe("backupFile", () => {
     });
     assert.equal(warnings.length, 1);
     assert.ok(warnings[0]?.includes("99 same-second collisions"));
+  });
+});
+
+// spec 0245 R8, R12, R14 (PLAN v2 step 4; plan review v1-F4, v2-F1, v2-F4): the
+// opt-in reader. Without options it is `readJsonObject`; `jsonc` reads the
+// Gemini CLI dialect; `lossless` refuses input a rewrite would not reproduce.
+describe("readJsonConfig", () => {
+  function file(text: string): string {
+    const f = path.join(tempDir(), "c.json");
+    fs.writeFileSync(f, text);
+    return f;
+  }
+
+  test("absent file → null, and readJsonObject still returns exactly null (v2-F1)", () => {
+    const none = path.join(tempDir(), "none.json");
+    assert.strictEqual(readJsonConfig(none), null);
+    assert.strictEqual(readJsonConfig(none, { jsonc: true, lossless: true }), null);
+    assert.strictEqual(readJsonObject(none), null);
+  });
+
+  test("plain JSON → { doc, comments: false }", () => {
+    assert.deepEqual(readJsonConfig(file('{"a":{"b":[1,2]}}')), {
+      doc: { a: { b: [1, 2] } },
+      comments: false,
+    });
+  });
+
+  test("without jsonc, a commented file is refused (the default stays plain JSON)", () => {
+    const f = file('{"a":1} // c');
+    assert.throws(() => readJsonConfig(f), NotAJsonObjectError);
+    assert.throws(() => readJsonObject(f), NotAJsonObjectError);
+  });
+
+  test("jsonc: a commented file is read, comments: true", () => {
+    const f = file('{\n  // theme\n  "ui": {"theme": "x"}, /* n */ "n": 1\n}\n');
+    assert.deepEqual(readJsonConfig(f, { jsonc: true }), {
+      doc: { ui: { theme: "x" }, n: 1 },
+      comments: true,
+    });
+  });
+
+  test("jsonc: // and /* inside strings are not comments (no spurious R12 warning)", () => {
+    const f = file('{"url":"http://x/*y*/"}');
+    assert.deepEqual(readJsonConfig(f, { jsonc: true }), {
+      doc: { url: "http://x/*y*/" },
+      comments: false,
+    });
+  });
+
+  // v2-F4: `comments` is true only when a comment was actually removed.
+  for (const [label, text, comments] of [
+    ["zero-byte", "", false],
+    ["whitespace-only", " \n\t\r\n ", false],
+    ["comment-only", "// only a comment\n", true],
+    ["whitespace and block comment", "\n /* a\n b */ \n", true],
+  ] as const) {
+    test(`jsonc: ${label} file → { doc: {}, comments: ${comments} }`, () => {
+      assert.deepEqual(readJsonConfig(file(text), { jsonc: true }), { doc: {}, comments });
+    });
+  }
+
+  for (const [label, text] of [
+    ["a BOM", '\uFEFF{"a":1}'],
+    ["1/**/2", "1/**/2"],
+    ["invalid text after a comment", "// c\n{oops"],
+    ["a non-object", "[] // c"],
+  ] as const) {
+    test(`jsonc: ${label} → NotAJsonObjectError`, () => {
+      assert.throws(() => readJsonConfig(file(text), { jsonc: true }), NotAJsonObjectError);
+    });
+  }
+
+  test("lossless: an ordinary configuration is accepted", () => {
+    const text =
+      '{"mcpServers":{"a":{"command":"x","args":["-y"],"n":[0,1,-3,2.5]}},"t":true,"z":null}';
+    assert.deepEqual(readJsonConfig(file(text), { lossless: true })?.doc, JSON.parse(text));
+  });
+
+  for (const [label, text] of [
+    ["a duplicate key", '{"mcpServers":{"playwright":{},"playwright":{"x":1}}}'],
+    ["a duplicate key behind a comment (jsonc)", '{"a":1, // c\n "a":2}'],
+    ["a number that loses precision", '{"n":12345678901234567890}'],
+    ["a number that overflows", '{"n":1e400}'],
+    ["an integer-like key JS would reorder", '{"b":1,"10":2}'],
+  ] as const) {
+    test(`lossless: ${label} → LossyJsonError naming the file`, () => {
+      const f = file(text);
+      assert.throws(
+        () => readJsonConfig(f, { jsonc: true, lossless: true }),
+        (error: unknown) => error instanceof LossyJsonError && error.message.includes(f),
+      );
+    });
+  }
+
+  test("lossless: array positions and non-canonical numeric keys are not integer-like keys", () => {
+    const text = '{"a":[1,2,3],"01":1,"-1":2}';
+    assert.deepEqual(readJsonConfig(file(text), { lossless: true })?.doc, JSON.parse(text));
+  });
+
+  test("without lossless, lossy input keeps readJsonObject's behaviour (opt-in guard)", () => {
+    assert.deepEqual(readJsonObject(file('{"a":1,"a":2}')), { a: 2 });
+    assert.deepEqual(readJsonConfig(file('{"a":1,"a":2}'))?.doc, { a: 2 });
+    assert.deepEqual(readJsonConfig(file('{"b":1,"10":2,"n":1e400}'))?.doc, {
+      b: 1,
+      10: 2,
+      n: Infinity,
+    });
+    assert.deepEqual(readJsonObject(file('{"10":2}')), { 10: 2 });
   });
 });

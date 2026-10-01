@@ -11,11 +11,16 @@
 //   - the write is atomic (temporary file next to the target, 0600, rename),
 //     so a failure leaves the target byte-identical.
 //
+// `readJsonConfig` is an opt-in reader added for spec 0245: the Gemini CLI
+// JSONC dialect (`jsonc`) and a refusal of input a rewrite could not
+// reproduce (`lossless`). `readJsonObject` keeps its plain-JSON behaviour.
+//
 // Standard library only (spec 0240 R16).
 
 import fs from "node:fs";
 import path from "node:path";
 
+import { findDuplicateKey, stripJsonComments } from "./jsonc.ts";
 import { createTempNextTo, publishTemp } from "./tmp-file.ts";
 
 export type JsonObject = Record<string, unknown>;
@@ -28,25 +33,99 @@ export class NotAJsonObjectError extends Error {
   }
 }
 
-/** Parse `file` as one JSON object; `null` when the file does not exist. */
-export function readJsonObject(file: string): JsonObject | null {
-  let text: string;
+/**
+ * A configuration file `readJsonConfig` refuses under `lossless: true`: it
+ * parses, but rewriting it would change a declaration (spec 0245 R8).
+ */
+export class LossyJsonError extends Error {
+  readonly file: string;
+  readonly reason: string;
+  constructor(file: string, reason: string) {
+    super(`${file} cannot be rewritten without loss: ${reason}.`);
+    this.name = "LossyJsonError";
+    this.file = file;
+    this.reason = reason;
+  }
+}
+
+export interface ReadJsonConfigOptions {
+  /** Read the Gemini CLI JSONC dialect: comments removed, an empty text is `{}`. */
+  readonly jsonc?: boolean;
+  /** Throw {@link LossyJsonError} for input a rewrite could not reproduce. */
+  readonly lossless?: boolean;
+}
+
+export interface JsonConfig {
+  readonly doc: JsonObject;
+  /** `true` only when a comment was actually removed (`jsonc: true`). */
+  readonly comments: boolean;
+}
+
+const CANONICAL_INDEX = /^(?:0|[1-9][0-9]*)$/;
+const JSON_WHITESPACE_ONLY = /^[ \t\n\r]*$/;
+
+/** The reviver of `lossless: true`: no lossy number, no reordered key. */
+function losslessReviver(file: string) {
+  return function (this: unknown, key: string, value: unknown, context?: { source?: string }) {
+    if (!Array.isArray(this) && CANONICAL_INDEX.test(key) && Number(key) < 2 ** 32 - 1) {
+      throw new LossyJsonError(file, `key "${key}" is an integer-like key a rewrite would reorder`);
+    }
+    if (typeof value === "number" && context?.source !== undefined) {
+      if (JSON.stringify(value) !== context.source) {
+        throw new LossyJsonError(file, `number ${context.source} does not round-trip`);
+      }
+    }
+    return value;
+  };
+}
+
+/**
+ * Read `file` as one JSON object; `null` when the file does not exist. Throws
+ * {@link NotAJsonObjectError} when it does not parse as an object (a BOM
+ * included) and, under `lossless: true`, {@link LossyJsonError} for a
+ * duplicate key, a number literal that does not round-trip, or an
+ * integer-like key.
+ */
+export function readJsonConfig(
+  file: string,
+  options: ReadJsonConfigOptions = {},
+): JsonConfig | null {
+  let raw: string;
   try {
-    text = fs.readFileSync(file, "utf8");
+    raw = fs.readFileSync(file, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   }
+  let text = raw;
+  let comments = false;
+  if (options.jsonc === true) {
+    text = stripJsonComments(raw);
+    comments = text !== raw;
+    if (JSON_WHITESPACE_ONLY.test(text)) return { doc: {}, comments };
+  }
   let value: unknown;
   try {
-    value = JSON.parse(text);
-  } catch {
+    value = options.lossless === true ? JSON.parse(text, losslessReviver(file)) : JSON.parse(text);
+  } catch (error) {
+    if (error instanceof LossyJsonError) throw error;
     throw new NotAJsonObjectError(file);
   }
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new NotAJsonObjectError(file);
   }
-  return value as JsonObject;
+  if (options.lossless === true) {
+    const duplicate = findDuplicateKey(text);
+    if (duplicate !== null) {
+      throw new LossyJsonError(file, `duplicate key ${JSON.stringify(duplicate.join("."))}`);
+    }
+  }
+  return { doc: value as JsonObject, comments };
+}
+
+/** Parse `file` as one JSON object; `null` when the file does not exist. */
+export function readJsonObject(file: string): JsonObject | null {
+  return readJsonConfig(file)?.doc ?? null;
 }
 
 /** Serialise like `jq`: two-space indent and a trailing newline. */

@@ -107,6 +107,12 @@ explicitly (without editing your profile):
 - **MCP servers** are registered through `scripts/lib/tls-exec.sh`, a small
   wrapper that sources `~/.crewrig/tls-env.sh` (if present) and then `exec`s the
   real server command. A missing file makes the wrapper a transparent no-op.
+  The opt-in Playwright MCP server (`task setup:playwright-mcp`, spec 0245) is
+  registered the same way on all four assistants; the task requires
+  Node.js >= 24. If you ran `task setup:playwright-mcp` before it routed
+  through the wrapper, re-run it from the checkout you keep: it converges the
+  old registration in place (with a timestamped backup) and leaves a
+  customised `playwright` entry untouched.
 - **The supervised ChromaDB daemon** (launchd on macOS, systemd-user on Linux)
   runs its `ProgramArguments` / `ExecStart` through the same wrapper, so its
   embedding-model fetch on first indexing inherits the trust.

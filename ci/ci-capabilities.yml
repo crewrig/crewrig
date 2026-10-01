@@ -1246,6 +1246,45 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
 
+  # Spec 0245 (issue #1416): the opt-in Playwright MCP registration — the
+  # pure entry model, the JSONC scanner (byte parity with gs_strip_jsonc, so
+  # jq is required) and the hook-config.ts reader it extends.
+  - id: playwright-mcp
+    name: "Playwright MCP registration through tls-exec (spec 0245)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/setup-playwright-mcp.ts"
+          - "scripts/lib/playwright-mcp*.ts"
+          - "scripts/lib/jsonc.ts"
+          - "scripts/lib/hook-config.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/gemini-settings.sh"
+          - "scripts/tests/playwright-mcp.test.ts"
+          - "scripts/tests/jsonc.test.ts"
+          - "scripts/tests/hook-config.test.ts"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/setup-playwright-mcp.ts"
+          - "scripts/lib/playwright-mcp*.ts"
+          - "scripts/lib/jsonc.ts"
+          - "scripts/lib/hook-config.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/gemini-settings.sh"
+          - "scripts/tests/playwright-mcp.test.ts"
+          - "scripts/tests/jsonc.test.ts"
+          - "scripts/tests/hook-config.test.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts
+
   # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release
   # that cannot strip types. Each command is plain POSIX so the job needs no
   # TypeScript; the grep tokens are the guard's stable diagnostic contract

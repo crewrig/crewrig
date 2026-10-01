@@ -21,6 +21,8 @@
 #     pre-existed, while every non-reserved declaration is still retained.
 #   R9 — each reserved-name collision (replace on selection, remove on decline)
 #     emits a non-silent warning naming the server and pointing at the backup.
+#   spec 0245 R17 — a wrapped-form `playwright` entry (non-reserved) survives
+#     verbatim, with no warning (§2c).
 #   R11 — asserted per framework-doc shape below AND, for the two
 #     overwrite-based scripts, that the operator's pre-run config is CAPTURED
 #     BEFORE the framework overwrite (ordering) and that the capture actually
@@ -174,6 +176,26 @@ assert_absent   "B-decline" "mempalace"                 # R8 declined reserved r
 assert_absent   "B-decline" "sequentialthinking"        # R8 declined reserved removed
 assert_warn     "B-decline" "mempalace"
 assert_warn     "B-decline" "sequentialthinking"
+
+# ---------------------------------------------------------------------------
+echo "2c. A wrapped-form playwright entry survives a later setup run (spec 0245 R17)"
+# ---------------------------------------------------------------------------
+# `task setup:playwright-mcp` writes this entry; `playwright` stays a
+# non-reserved name (spec 0245 R7), so the interactive Copilot and Antigravity
+# setups must fold it back verbatim (spec 0089 R2-R3), with no warning. The
+# Copilot form carries `type:"stdio"`, the Antigravity form does not.
+PW_COPILOT='{"type":"stdio","command":"bash","args":["/repo/scripts/lib/tls-exec.sh","npx","@playwright/mcp@latest"]}'
+PW_AGY='{"command":"bash","args":["/repo/scripts/lib/tls-exec.sh","npx","@playwright/mcp@latest"]}'
+merge_run "R17-copilot" \
+  "{\"github\":$FW_GH,\"mempalace\":$FW_MEM,\"sequentialthinking\":$FW_SEQ}" \
+  "{\"playwright\":$PW_COPILOT,\"sequentialthinking\":$OP_SEQ}"
+assert_verbatim "R17-copilot" "playwright" "$PW_COPILOT"
+assert_no_warn  "R17-copilot" "playwright"
+merge_run "R17-antigravity" \
+  "{\"mempalace\":$FW_MEM,\"sequentialthinking\":$FW_SEQ}" \
+  "{\"playwright\":$PW_AGY}"
+assert_verbatim "R17-antigravity" "playwright" "$PW_AGY"
+assert_no_warn  "R17-antigravity" "playwright"
 
 # ---------------------------------------------------------------------------
 echo "3. Per-script capture wiring (spec 0089 R11 / review F1)"
