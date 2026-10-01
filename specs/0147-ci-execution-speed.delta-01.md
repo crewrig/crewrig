@@ -136,7 +136,9 @@ makes the answer reviewable.
 ### Measurement (current `main`)
 
 Method: for each tracked file at `1e6d886` (1,496 files), test the glob sets
-of `ci/ci-capabilities.yml` with bash-equivalent glob semantics.
+of `ci/ci-capabilities.yml`, under the shell glob semantics for the first row
+(the present script) and the engine glob semantics for the other two
+(requirement 13).
 
 | Ownership definition | Unowned files |
 |---|---|
@@ -384,9 +386,10 @@ consistent with requirements 11 and 23:
 > - Adding new checks or new coverage. The one exception is the path-ownership
 >   check (requirement 11), which guards the pipeline's own path mapping and
 >   adds no coverage of product behavior.
-> - Reducing the number of checks performed. No check is removed; the
->   pull-request-time full-suite branch of the fail-safe is not a check but a
->   scheduling of existing checks, and it is replaced by the exhaustive run.
+> - Reducing the number of checks performed. No check is removed. The
+>   pull-request-time full-suite branch of the fail-safe (the one enumerated
+>   exception of requirement 23) is replaced, and the checks it re-ran still
+>   run, on their own triggers and in the exhaustive run.
 
 ## REMOVED
 
