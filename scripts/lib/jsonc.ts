@@ -12,7 +12,10 @@
  * and strip-json-comments do:
  *   - a string literal is kept whole, so `//`, `/*` and an escaped quote
  *     inside it are never read as a comment; a string never closed runs to
- *     the end of the text;
+ *     the end of the text — unless the text ends in the lone backslash of an
+ *     unfinished escape: there gs_strip_jsonc matches no string, so the quote
+ *     is plain text, and this port follows it (strip-json-comments would run
+ *     the string to the end; both results are invalid JSON either way);
  *   - a line comment runs to (not including) the end of its line;
  *   - a block comment runs to its closing `*` + `/`, or to the end of the text
  *     when it is never closed;
@@ -26,19 +29,17 @@ export function stripJsonComments(text: string): string {
   while (i < n) {
     const c = text[i];
     if (c === '"') {
+      const start = i;
       i++;
-      while (i < n) {
-        const d = text[i];
-        if (d === "\\") {
-          i += 2;
-        } else if (d === '"') {
-          i++;
-          break;
-        } else {
-          i++;
-        }
+      while (i < n && text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
+      if (i < n) {
+        i++; // the closing quote
+      } else if (i > n) {
+        // A lone backslash ends the text: no string literal matches here, as
+        // in gs_strip_jsonc, so the quote is plain text and the scan resumes
+        // right after it (`"a//b\` becomes `"a `).
+        i = start + 1;
       }
-      if (i > n) i = n;
       continue;
     }
     if (c === "/" && text[i + 1] === "/") {

@@ -35,6 +35,13 @@ const CORPUS: readonly (readonly [string, string, string])[] = [
   ["unclosed block comment runs to EOF", '{"a":1} /* never closed', '{"a":1}  '],
   ["unclosed block ending in a star", '{"a":1} /* x *', '{"a":1}  '],
   ["unclosed string runs to EOF, nothing after is a comment", '{"a":"x // y', '{"a":"x // y'],
+  // Review i1-F1: an unclosed string ending in a lone backslash matches no
+  // string, so its quote is plain text and the scan resumes right after it,
+  // as gs_strip_jsonc does.
+  ["unclosed string ending in a backslash: the quote is plain text", '"a//b\\', '"a '],
+  ["text then an unclosed string ending in a backslash", 'x"//\\', 'x" '],
+  ["a quote and a lone backslash", '"\\', '"\\'],
+  ["an unclosed string of one char ending in a backslash", '"a\\', '"a\\'],
   ["1/**/2 stays two tokens", "1/**/2", "1 2"],
   ["a lone slash is not a comment", '{"a":1/2}', '{"a":1/2}'],
   ["BOM is kept", '\uFEFF{"a":1}', '\uFEFF{"a":1}'],
