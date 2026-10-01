@@ -36,6 +36,8 @@ render_spec() {
   local complexity="${4:-standard}"
   local extra_fm="${5:-}"
   local headings="${6:-}"
+  # 7th positional (spec 0109 delta-04): every pre-existing call keeps 123.
+  local related_issue="${7:-123}"
 
   if [ -z "$headings" ]; then
     headings=$(printf "## Intent\n\n## Requirements\n\n## Scenarios\n\n## Out of scope\n\n## Open questions")
@@ -48,7 +50,7 @@ slug: "$slug"
 status: "$status"
 complexity: "$complexity"
 version: 1.0.0
-related-issue: 123
+related-issue: $related_issue
 $extra_fm
 ---
 
@@ -578,20 +580,66 @@ run_base_case() {
   fi
 }
 
+# run_lint_case <name> <workdir> <branch> <expected_exit> [+<must>|-<must_not>]...
+# Like run_base_case, but with any number of assertions, and with the branch
+# under test pinned through BRANCH_NAME (resolveCurrentBranch()'s first source)
+# so an ambient CI branch variable cannot leak in. `+text` must appear in the
+# combined output, `-text` must not. BASE_REF is always `main`. Added for spec
+# 0109 delta-04 R27, whose cases each assert several files at once: naming the
+# right files AND not naming the wrong one is the observable contract.
+run_lint_case() {
+  local name="$1" workdir="$2" branch="$3" expected_exit="$4"
+  shift 4
+
+  local actual_exit=0 output ok=true why="" assertion
+  output=$( ( cd "$workdir" && BASE_REF=main BRANCH_NAME="$branch" node "$LINTER_JS" specs 2>&1 ) ) || actual_exit=$?
+
+  if [ "$actual_exit" -ne "$expected_exit" ]; then
+    ok=false
+    why="expected exit $expected_exit, got $actual_exit"
+  fi
+  for assertion in "$@"; do
+    case "$assertion" in
+      +*)
+        if ! printf '%s\n' "$output" | grep -qF -- "${assertion#+}"; then
+          ok=false
+          why="${why:+$why; }missing: ${assertion#+}"
+        fi
+        ;;
+      -*)
+        if printf '%s\n' "$output" | grep -qF -- "${assertion#-}"; then
+          ok=false
+          why="${why:+$why; }unexpected: ${assertion#-}"
+        fi
+        ;;
+    esac
+  done
+
+  if [ "$ok" = true ]; then
+    echo "PASS  $name (exit $actual_exit)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  $name ($why)"
+    echo "Output:"
+    echo "$output"
+    fail=$((fail + 1))
+  fi
+}
+
 # -------------------------------------------------------------------------
-# Case 28 (R2, Scenarios 1 and 3) — a non-delta spec present on the base
-# branch carrying `status: draft` is reported by name and fails; the
-# delta-spec sitting beside it, equally `draft` and equally on the base
-# branch, is NOT reported. One assertion covers both scenarios because the
-# exempt file and the flagged file are in the same invocation — an exit code
-# alone could not distinguish "flagged the right file" from "flagged both".
+# Case 28 (R2 as replaced by 0109 delta-04; the scenario MODIFIED item 3
+# replaces) — with no change relative to the base branch, BOTH files present
+# there carrying `status: draft` are named: the non-delta spec and the
+# delta-spec beside it. Before delta-04 this case asserted the opposite for the
+# delta (it was exempt); the inversion is the replaced scenario.
 #
-# This is the case R8 requires: delete the base-branch check from
-# spec-linter.js and this case goes red (exit 0, no offender named).
+# The exit code alone cannot discriminate here (0200 already makes it 1), so
+# the delta's name is the assertion that kills the mutation "restore the
+# `!isDelta` filter on the base-branch identification".
 # -------------------------------------------------------------------------
-run_base_case "Case 28 — draft non-delta spec on the base branch fails and is named" \
-  "$GITFIX" "specs" 1 "main" \
-  "specs/0200-on-base.md" "specs/0201-on-base-delta.delta-01.md"
+run_lint_case "Case 28 — draft spec AND draft delta-spec on the base branch both fail and are named" \
+  "$GITFIX" "main" 1 \
+  "+specs/0200-on-base.md" "+specs/0201-on-base-delta.delta-01.md"
 
 # -------------------------------------------------------------------------
 # Case 29 (R2) — same violation, but with BASE_REF unset so the base ref comes
@@ -609,6 +657,10 @@ run_base_case "Case 29 — default base-ref derivation (origin/main) enforces th
 # tree under test clears the violation, even though the base branch still
 # carries `draft`. This is what lets the check and the corpus correction land
 # in a single change (R6): the status read is the tree's, not the base's.
+#
+# Since 0109 delta-04 the `draft` delta 0201 is also identified, but this
+# change modifies only 0200, so 0201 is a bystander ([WARN], exit unaffected).
+# That is why Cases 30, 31 and 32b keep their exit 0 without touching 0201.
 # -------------------------------------------------------------------------
 render_spec "0200" "on-base" "implemented" "standard" "interaction-mode: INTERMEDIATE" \
   > "$GITFIX/specs/0200-on-base.md"
@@ -849,8 +901,9 @@ run_base_case "Case 38 — attribution that cannot be derived blocks, and says s
 # -------------------------------------------------------------------------
 # Cases 39-40 (delta-03 R16, covering R14/R15) — WORKING-DIRECTORY INDEPENDENCE.
 #
-# Both cases assert on `Non-delta specs present on the base branch` — the banner
-# only this check emits — and NOT on the offending file's path. The path is also
+# Both cases assert on `present on the base branch (main) carry 'status: draft'`
+# — the banner only this check emits (worded so it survives 0109 delta-04's
+# "Non-delta specs" → "Specs or delta-specs" rewording) — and NOT on the offending file's path. The path is also
 # printed by markdownlint on any rule violation in the fixture, and markdownlint's
 # own failure is exit 1, so a fixture that drifts out of conformance would satisfy
 # a path-plus-exit-code assertion while the check never executed. Measured: with
@@ -893,7 +946,7 @@ git -C "$GITFIX4" checkout -q -- .
 git -C "$GITFIX4" config --unset-all diff.relative 2>/dev/null || true
 run_base_case "Case 39 — an offender is identified from a subdirectory (R14)" \
   "$GITFIX4/sub" "specs" 1 "main" \
-  "Non-delta specs present on the base branch" "-"
+  "present on the base branch (main) carry 'status: draft'" "-"
 
 # -------------------------------------------------------------------------
 # Case 40 (R14, the attribution half) — same subdirectory run, with
@@ -922,7 +975,7 @@ git -C "$GITFIX4" config diff.relative true
 printf '\nEdited by the change under test.\n' >> "$GITFIX4/sub/specs/0240-nested-layout.md"
 run_base_case "Case 40 — attribution stays root-anchored under diff.relative (R14)" \
   "$GITFIX4/sub" "specs" 1 "main" \
-  "Non-delta specs present on the base branch" "[WARN]"
+  "present on the base branch (main) carry 'status: draft'" "[WARN]"
 
 # -------------------------------------------------------------------------
 # Case 41 — Leaked tool scaffolding tags outside code blocks → exit 1
@@ -977,7 +1030,7 @@ git -C "$GITFIX5" add specs/0301-new-feature.md
 git -C "$GITFIX5" commit -q -m "add spec in draft"
 run_base_case "Case 44 — new spec PR carrying draft status fails CI (spec 0168 R1)" \
   "$GITFIX5" "specs" 1 "main" \
-  "Non-delta specs added or modified by this change carry 'status: draft'" "-"
+  "added or modified by this change carry 'status: draft'" "-"
 
 # -------------------------------------------------------------------------
 # Case 45 (Spec 0168 R1) — Transitioning the new spec to `status: approved` (with
@@ -988,7 +1041,7 @@ git -C "$GITFIX5" add specs/0301-new-feature.md
 git -C "$GITFIX5" commit -q -m "transition spec to approved"
 run_base_case "Case 45 — new spec PR carrying approved status passes CI (spec 0168 R1)" \
   "$GITFIX5" "specs" 0 "main" \
-  "-" "Non-delta specs added or modified by this change carry 'status: draft'"
+  "-" "added or modified by this change carry 'status: draft'"
 
 # -------------------------------------------------------------------------
 # Case 46 (Spec 0168 R2) — An implementation PR on branch feat/0302-cool-feature
@@ -1004,7 +1057,7 @@ git -C "$GITFIX5" add docs/feature.js
 git -C "$GITFIX5" commit -q -m "implement feature without updating spec status"
 run_base_case "Case 46 — implementation PR without status: implemented fails CI (spec 0168 R2)" \
   "$GITFIX5" "specs" 1 "main" \
-  "matches spec id '0302', but specification" "-"
+  "specs/0302-cool-feature.md (current status: 'approved')" "-"
 
 # -------------------------------------------------------------------------
 # Case 47 (Spec 0168 R2) — An implementation PR that transitions the spec to
@@ -1015,11 +1068,13 @@ git -C "$GITFIX5" add specs/0302-cool-feature.md
 git -C "$GITFIX5" commit -q -m "transition spec 0302 to implemented"
 run_base_case "Case 47 — implementation PR with status: implemented passes CI (spec 0168 R2)" \
   "$GITFIX5" "specs" 0 "main" \
-  "-" "matches spec id '0302'"
+  "-" "(current status:"
 
 # -------------------------------------------------------------------------
-# Case 48 (Spec 0168 R2) — An implementation branch for a ticket that has no
-# matching spec file in specs/ (e.g. non-spec bug fix) is a clean pass.
+# Case 48 (Spec 0168 R2, 0109 delta-04 R22) — An implementation branch for a
+# ticket that has no matching spec file in specs/ (e.g. non-spec bug fix)
+# passes, and since delta-04 says so: the [NOTICE] names the resolved ticket
+# (999) so an unchecked branch never looks identical to a checked one.
 # -------------------------------------------------------------------------
 git -C "$GITFIX5" checkout -q main
 git -C "$GITFIX5" checkout -q -b fix/0999-no-such-spec
@@ -1027,9 +1082,263 @@ mkdir -p "$GITFIX5/docs"
 printf 'console.log("fix");\n' > "$GITFIX5/docs/fix.js"
 git -C "$GITFIX5" add docs/fix.js
 git -C "$GITFIX5" commit -q -m "fix non-spec issue"
-run_base_case "Case 48 — implementation branch with no matching spec file passes (spec 0168 R2)" \
-  "$GITFIX5" "specs" 0 "main" \
-  "-" "matches spec id"
+run_lint_case "Case 48 — implementation branch with no matching spec file passes with a notice (spec 0168 R2, 0109 delta-04 R22)" \
+  "$GITFIX5" "fix/0999-no-such-spec" 0 \
+  "+[NOTICE]" "+999" "-(current status:"
+
+# -------------------------------------------------------------------------
+# Cases 52-59 (spec 0109 delta-04 R27) — DELTA-SPECS FOLLOW THE LIFECYCLE
+# TABLE, AND AN IMPLEMENTATION BRANCH CHECKS EVERYTHING ITS TICKET IMPLEMENTS.
+#
+# Each case builds its own fixture from scratch (new_fixture), so no case
+# depends on another's state or order. Every fixture is one commit on `main`
+# holding the case's specs plus an unrelated docs file; the branch under test
+# is pinned through BRANCH_NAME, and the change under test is whatever the case
+# edits in the work tree afterwards (a tracked edit is part of `git diff`
+# against the merge base).
+#
+# R20 assertions key on the per-file line "<file> (current status: '<s>')",
+# which only the implementation-PR check prints; "-(current status:" therefore
+# means "no implementation-PR status violation".
+# -------------------------------------------------------------------------
+
+# new_fixture <name> — a fresh repository at $TMP_ROOT/<name>, HEAD on `main`,
+# with the markdownlint scaffolding untracked and docs/unrelated.md ready to be
+# committed. Prints the path.
+new_fixture() {
+  local dir="$TMP_ROOT/$1"
+  mkdir -p "$dir/specs" "$dir/docs"
+  cp "$ROOT_DIR/.markdownlintrc" "$dir/"
+  ln -s "$ROOT_DIR/node_modules" "$dir/node_modules"
+  printf '# Unrelated\n\nBody.\n' > "$dir/docs/unrelated.md"
+  (
+    cd "$dir" || exit 1
+    git init -q
+    git symbolic-ref HEAD refs/heads/main
+    git config user.email "test@example.com"
+    git config user.name "Test"
+    git config commit.gpgsign false
+  )
+  printf '%s\n' "$dir"
+}
+
+# put_spec <dir> <filename> <status> <related-issue> [extra_fm]
+# Renders a conformant spec or delta-spec (headings chosen from the filename)
+# with id/slug derived from <filename>. Any status past `draft` gets
+# `interaction-mode: AUTO`, so the per-file check stays green and a case fails
+# only for the reason it names.
+put_spec() {
+  local dir="$1" fname="$2" status="$3" related="$4" extra="${5:-}"
+  local stem="${fname%.md}"
+  stem="${stem%.delta-*}"
+  local id="${stem%%-*}" slug="${stem#*-}" headings=""
+  case "$fname" in
+    *.delta-*) headings="$(printf '## ADDED\n\n## MODIFIED\n\n## REMOVED')" ;;
+  esac
+  if [ "$status" != "draft" ]; then
+    extra="interaction-mode: AUTO${extra:+$'\n'$extra}"
+  fi
+  render_spec "$id" "$slug" "$status" "standard" "$extra" "$headings" "$related" \
+    > "$dir/specs/$fname"
+}
+
+# commit_base <dir> — record everything under specs/ and docs/ on `main`.
+commit_base() {
+  git -C "$1" add specs docs
+  git -C "$1" commit -q -m "base branch content"
+}
+
+# touch_unrelated <dir> — make the change under test non-empty without
+# touching any spec.
+touch_unrelated() {
+  printf '\nEdited by the change under test.\n' >> "$1/docs/unrelated.md"
+}
+
+# -------------------------------------------------------------------------
+# Cases 52a-c (R2 as replaced, R18; scenarios "a merged delta-spec recorded as
+# draft fails the change that touches it" and "a bystander is warned, and the
+# base branch's own build fails") — one `draft` delta-spec on the base branch,
+# nothing else. Unlike Case 28, the delta is the only offender, so the exit
+# code itself discriminates. Each sub-case resets the work tree first.
+# Kill-mutation for all three: restore `!isDelta` on the base-branch
+# identification. Red against the pre-delta-04 linter.
+# -------------------------------------------------------------------------
+FIX52="$(new_fixture case52)"
+put_spec "$FIX52" "0400-merged-delta.delta-01.md" "draft" 1400
+commit_base "$FIX52"
+
+git -C "$FIX52" checkout -q -- .
+run_lint_case "Case 52a — a draft delta-spec on the base branch fails a run with no change (R10)" \
+  "$FIX52" "main" 1 \
+  "+specs/0400-merged-delta.delta-01.md" \
+  "+present on the base branch (main) carry 'status: draft'" "-[WARN]"
+
+git -C "$FIX52" checkout -q -- .
+touch_unrelated "$FIX52"
+run_lint_case "Case 52b — a draft delta-spec the change does not touch is a warned bystander (R9)" \
+  "$FIX52" "main" 0 \
+  "+[WARN]" "+specs/0400-merged-delta.delta-01.md" "-[FAIL]"
+
+git -C "$FIX52" checkout -q -- .
+printf '\nEdited by the change under test.\n' >> "$FIX52/specs/0400-merged-delta.delta-01.md"
+run_lint_case "Case 52c — a change that modifies a draft delta-spec on the base branch fails (R2)" \
+  "$FIX52" "main" 1 \
+  "+specs/0400-merged-delta.delta-01.md" \
+  "+present on the base branch (main) carry 'status: draft'" "-[WARN]"
+
+# -------------------------------------------------------------------------
+# Case 53 (R19; scenario "a delta spec-PR still recorded as draft is
+# rejected") — a spec branch adds a delta-spec absent from the base branch.
+# Recorded `draft` it fails, naming the file; recorded `approved` the same
+# change passes. Kill-mutation: restore `!isDelta` on the 0168 R1 filter.
+# Red first: run 1 (run 2 is its control, green on both linters).
+# -------------------------------------------------------------------------
+FIX53="$(new_fixture case53)"
+put_spec "$FIX53" "0243-usage-capture-hooks-typescript.md" "approved" 1326
+commit_base "$FIX53"
+git -C "$FIX53" checkout -q -b spec/0243-usage-capture-hooks-typescript-delta-03
+put_spec "$FIX53" "0243-usage-capture-hooks-typescript.delta-03.md" "draft" 1392
+git -C "$FIX53" add specs
+git -C "$FIX53" commit -q -m "add delta-03 in draft"
+run_lint_case "Case 53 (run 1) — a delta spec-PR adding a draft delta-spec fails and names it (R19)" \
+  "$FIX53" "spec/0243-usage-capture-hooks-typescript-delta-03" 1 \
+  "+added or modified by this change carry 'status: draft'" \
+  "+specs/0243-usage-capture-hooks-typescript.delta-03.md"
+
+put_spec "$FIX53" "0243-usage-capture-hooks-typescript.delta-03.md" "approved" 1392
+run_lint_case "Case 53 (run 2) — the same delta spec-PR recorded approved passes (R19)" \
+  "$FIX53" "spec/0243-usage-capture-hooks-typescript-delta-03" 0 \
+  "-added or modified by this change carry 'status: draft'"
+
+# -------------------------------------------------------------------------
+# Case 54 (R20; scenario "an implementation branch named after its ticket
+# checks the delta-spec it implements") — feat/1392-…, no spec with id 1392,
+# so T = 1392, which matches 0243.delta-03 by `related-issue`.
+# Kill-mutation: match only `id === NNNN` (the 0168 R2 selection).
+# Red first: run 1. Run 2 is its control.
+# -------------------------------------------------------------------------
+FIX54="$(new_fixture case54)"
+put_spec "$FIX54" "0243-usage-capture-hooks-typescript.md" "implemented" 1326
+put_spec "$FIX54" "0243-usage-capture-hooks-typescript.delta-03.md" "draft" 1392
+commit_base "$FIX54"
+touch_unrelated "$FIX54"
+run_lint_case "Case 54 (run 1) — a ticket-numbered branch fails on the draft delta-spec of its ticket (R20)" \
+  "$FIX54" "feat/1392-agy-guarded-cmd-form" 1 \
+  "+specs/0243-usage-capture-hooks-typescript.delta-03.md (current status: 'draft')" \
+  "-specs/0243-usage-capture-hooks-typescript.md (current status:"
+
+put_spec "$FIX54" "0243-usage-capture-hooks-typescript.delta-03.md" "implemented" 1392
+run_lint_case "Case 54 (run 2) — the same branch passes once the delta-spec records implemented (R20)" \
+  "$FIX54" "feat/1392-agy-guarded-cmd-form" 0 \
+  "-(current status:" "-[NOTICE]"
+
+# -------------------------------------------------------------------------
+# Case 55 (R20; scenario "… checks a parent whose id differs from the
+# ticket") — feat/1326-…: the parent 0243 and two of its deltas all carry
+# `related-issue: 1326`; every one of the three is named.
+# Kill-mutation: restrict the matched set to non-delta specs.
+# Red first: yes (no spec has id 1326, so the 0168 R2 check inspects nothing).
+# -------------------------------------------------------------------------
+FIX55="$(new_fixture case55)"
+put_spec "$FIX55" "0243-usage-capture-hooks-typescript.md" "approved" 1326
+put_spec "$FIX55" "0243-usage-capture-hooks-typescript.delta-01.md" "draft" 1326
+put_spec "$FIX55" "0243-usage-capture-hooks-typescript.delta-02.md" "approved" 1326
+commit_base "$FIX55"
+touch_unrelated "$FIX55"
+run_lint_case "Case 55 — a ticket-numbered branch names the parent and every delta of its ticket (R20)" \
+  "$FIX55" "feat/1326-usage-capture-hooks-typescript" 1 \
+  "+specs/0243-usage-capture-hooks-typescript.md (current status: 'approved')" \
+  "+specs/0243-usage-capture-hooks-typescript.delta-01.md (current status: 'draft')" \
+  "+specs/0243-usage-capture-hooks-typescript.delta-02.md (current status: 'approved')"
+
+# -------------------------------------------------------------------------
+# Cases 56a-b (R20; scenario "an implementation branch named after a spec id
+# resolves to that spec's ticket") — feat/0209-usage-pricing: spec 0209 exists
+# with `related-issue: 1187`, so T = 1187, not 209.
+#   56a — GUARD case (plan finding v1-F1): green on the pre-delta-04 linter
+#         too, which selects `id === '0209'`. It names 0209 and must NOT name
+#         0002.delta-04 (`related-issue: 209`). Kill-mutation: use NNNN as T
+#         unconditionally (T = 209 names the 0002 delta and drops 0209).
+#   56b — red first: a delta of another spec sharing T = 1187 is named.
+#         Kill-mutation: check only the spec whose id is NNNN.
+# Both read the same run's fixture; they are split so each label is honest.
+# -------------------------------------------------------------------------
+FIX56="$(new_fixture case56)"
+put_spec "$FIX56" "0209-usage-pricing.md" "approved" 1187
+put_spec "$FIX56" "0002-spec-author-skill.md" "implemented" 150
+put_spec "$FIX56" "0002-spec-author-skill.delta-04.md" "approved" 209
+put_spec "$FIX56" "0210-pricing-follow-up.delta-01.md" "approved" 1187
+commit_base "$FIX56"
+touch_unrelated "$FIX56"
+run_lint_case "Case 56a — a spec-id branch checks its spec, not the file whose related-issue is NNNN (R20, guard)" \
+  "$FIX56" "feat/0209-usage-pricing" 1 \
+  "+specs/0209-usage-pricing.md (current status: 'approved')" \
+  "-specs/0002-spec-author-skill.delta-04.md"
+run_lint_case "Case 56b — a spec-id branch checks every file sharing its spec's related-issue (R20)" \
+  "$FIX56" "feat/0209-usage-pricing" 1 \
+  "+specs/0210-pricing-follow-up.delta-01.md (current status: 'approved')"
+
+# -------------------------------------------------------------------------
+# Cases 57a-b (R21; scenarios "a sync of main into the release branch is not
+# an implementation PR" and "the sync exclusion is limited to the chore form").
+#   57a — GUARD case: green on the pre-delta-04 linter (no spec has id 1231).
+#         Kill-mutation: drop the R21 guard (the 1231 spec is then named).
+#   57b — red first. Kill-mutation: widen the guard to any prefix.
+# -------------------------------------------------------------------------
+FIX57="$(new_fixture case57)"
+put_spec "$FIX57" "0215-shell-to-typescript-migration.md" "approved" 1231
+put_spec "$FIX57" "0250-sync-cleanup.md" "approved" 1500
+commit_base "$FIX57"
+touch_unrelated "$FIX57"
+run_lint_case "Case 57a — a chore/<NNNN>-sync-main* branch is not checked as an implementation PR (R21, guard)" \
+  "$FIX57" "chore/1231-sync-main-20261001" 0 \
+  "-(current status:" "-[NOTICE]"
+run_lint_case "Case 57b — the sync-main infix under another prefix is an ordinary implementation branch (R21)" \
+  "$FIX57" "feat/1500-sync-main-cleanup" 1 \
+  "+specs/0250-sync-cleanup.md (current status: 'approved')"
+
+# -------------------------------------------------------------------------
+# Case 58 (R20 terminal states; scenario "a terminal status sharing the ticket
+# does not block") — feat/1500-follow-up matches an `archived` delta-spec, a
+# `superseded` spec (plan finding v1-F2: both terminal states, so the
+# mutation `!['implemented','archived'].includes(status)` dies too) and an
+# `implemented` spec.
+#   run 1 — GUARD (plan finding v1-F1): green on the pre-delta-04 linter, which
+#           inspects nothing for 1500. Kill-mutation: fail on
+#           `status !== 'implemented'`. "-[NOTICE]" also pins that the matched
+#           set is non-empty, so this is a checked pass, not a null case.
+#   run 2 — red first: an `approved` file on the same ticket does fail.
+# -------------------------------------------------------------------------
+FIX58="$(new_fixture case58)"
+put_spec "$FIX58" "0260-follow-up.md" "implemented" 1500
+put_spec "$FIX58" "0260-follow-up.delta-01.md" "archived" 1500
+put_spec "$FIX58" "0261-replaced.md" "superseded" 1500 "superseded-by: \"0260\""
+commit_base "$FIX58"
+touch_unrelated "$FIX58"
+run_lint_case "Case 58 (run 1) — archived, superseded and implemented files on the ticket do not fail (R20, guard)" \
+  "$FIX58" "feat/1500-follow-up" 0 \
+  "-(current status:" "-[NOTICE]"
+
+put_spec "$FIX58" "0262-still-open.md" "approved" 1500
+git -C "$FIX58" add specs/0262-still-open.md
+run_lint_case "Case 58 (run 2) — an approved file on the same ticket does fail (R20)" \
+  "$FIX58" "feat/1500-follow-up" 1 \
+  "+specs/0262-still-open.md (current status: 'approved')" \
+  "-specs/0261-replaced.md (current status:" \
+  "-specs/0260-follow-up.delta-01.md (current status:"
+
+# -------------------------------------------------------------------------
+# Case 59 (R22; scenario "an implementation branch with no matching spec is
+# noticed, not failed") — fix/1500-typo and no file with related-issue 1500.
+# Kill-mutation: remove the notice. Red first: yes.
+# -------------------------------------------------------------------------
+FIX59="$(new_fixture case59)"
+put_spec "$FIX59" "0270-unrelated.md" "implemented" 1270
+commit_base "$FIX59"
+touch_unrelated "$FIX59"
+run_lint_case "Case 59 — a ticket-numbered branch matching no file prints the notice and exits zero (R22)" \
+  "$FIX59" "fix/1500-typo" 0 \
+  "+[NOTICE]" "+1500" "-(current status:"
 
 # -------------------------------------------------------------------------
 # Case 49 (spec 0225 requirement 2) — a missing js-yaml/semver produces one
