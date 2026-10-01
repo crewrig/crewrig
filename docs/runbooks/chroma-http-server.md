@@ -12,10 +12,14 @@ CLI session connects to it via `chromadb.HttpClient` through
 ## Prerequisites
 
 - **MemPalace** installed via `pipx` (`pipx install 'mempalace>=3.6.0,<3.7'`).
-  The interpreter at `~/.local/pipx/venvs/mempalace/bin/python` ships the
-  `chromadb` package the daemon needs.
+  The interpreter at `<pipx-home>/venvs/mempalace/bin/python` ships the
+  `chromadb` package the daemon needs. `<pipx-home>` is resolved the way pipx
+  itself resolves it: `$PIPX_HOME` when set, else `~/.local/pipx` when that
+  directory exists, else `~/Library/Application Support/pipx` on macOS and
+  `${XDG_DATA_HOME:-~/.local/share}/pipx` elsewhere (`mempalace_pipx_home` in
+  `scripts/lib/common.sh`; `pipx environment --value PIPX_HOME` prints it).
 - **`chroma` binary** available on `PATH`. The MemPalace pipx venv exposes
-  it at `~/.local/pipx/venvs/mempalace/bin/chroma`; symlink it into a
+  it at `<pipx-home>/venvs/mempalace/bin/chroma`; symlink it into a
   directory on `PATH` if needed.
 - **Free TCP port `8001` on `127.0.0.1`**. Override with
   `MEMPALACE_CHROMA_PORT` if collision (the supervisor unit and the

@@ -671,26 +671,142 @@ sys.exit(0 if mn <= v < mx else 1)
 EOF
 }
 
+# resolve_symlink <path>
+# Prints the path with every symlink hop followed and the directory component
+# normalised. Hand-rolled rather than `readlink -f`, which BSD readlink lacks on
+# older macOS — the two supported platforms must report the same fact.
+resolve_symlink() {
+  local target="$1" link hops=0
+  while [ -L "$target" ] && [ "$hops" -lt 32 ]; do
+    link="$(readlink "$target")"
+    case "$link" in
+      /*) target="$link" ;;
+      *)  target="$(dirname "$target")/${link}" ;;
+    esac
+    hops=$((hops + 1))
+  done
+  local dir
+  dir="$(cd "$(dirname "$target")" 2>/dev/null && pwd -P)"
+  if [ -z "$dir" ]; then
+    printf '%s' "$target"
+  else
+    printf '%s/%s' "$dir" "$(basename "$target")"
+  fi
+}
+
+# console_script_python <console-script-path>
+# Prints the Python interpreter a console script runs under, read from the
+# script as TEXT — the script itself is never executed. Returns non-zero when
+# no interpreter can be determined; a shell is never printed (issue #1417).
+#
+#   `#!/path/python`           -> /path/python
+#   `#!/usr/bin/env python3`   -> python3 (the second token)
+#   `#!/bin/sh` (or bash, dash, zsh, ksh — directly or via env) -> the polyglot
+#     wrapper pip/distlib and uv write when the venv path contains a space (the
+#     kernel cannot exec such a shebang), e.g. under macOS's default pipx home
+#     `~/Library/Application Support/pipx`:
+#         #!/bin/sh
+#         '''exec' "/venv path/bin/python" "$0" "$@"      (pip/distlib)
+#         '''exec' '/venv path/bin/python' "$0" "$@"      (uv)
+#         ' '''
+#     The interpreter is the quoted absolute path on line 2. When that line
+#     names no absolute path (e.g. distlib's relocatable form, which computes
+#     it at run time), the sibling `python` of the script's realpath is used
+#     when executable.
+console_script_python() {
+  local script="$1" line interp
+  local -a words
+  [ -f "$script" ] || return 1
+  line="$(head -n 1 "$script" 2>/dev/null)"
+  case "$line" in
+    '#!'*) ;;
+    *) return 1 ;;
+  esac
+  # `read -a`, not an unquoted `set --`: no pathname expansion of the line.
+  read -r -a words <<<"${line#\#!}"
+  interp="${words[0]:-}"
+  if [ "$(basename "${interp:-none}")" = "env" ]; then
+    interp="${words[1]:-}"
+  fi
+  [ -n "$interp" ] || return 1
+  case "$(basename "$interp")" in
+    sh|bash|dash|zsh|ksh) ;;
+    *)
+      printf '%s' "$interp"
+      return 0
+      ;;
+  esac
+
+  # Shell polyglot wrapper. The patterns live in variables so bash's `=~`
+  # treats them as regexes rather than literal strings.
+  local exec_line py=""
+  local re_dq="^'''exec' \"(/[^\"]+)\""
+  local re_sq="^'''exec' '(/[^']+)'"
+  exec_line="$(sed -n '2p' "$script" 2>/dev/null)"
+  if [[ "$exec_line" =~ $re_dq ]] || [[ "$exec_line" =~ $re_sq ]]; then
+    py="${BASH_REMATCH[1]}"
+  fi
+  if [ -z "$py" ]; then
+    local sibling
+    sibling="$(dirname "$(resolve_symlink "$script")")/python"
+    [ -x "$sibling" ] && py="$sibling"
+  fi
+  [ -n "$py" ] || return 1
+  case "$(basename "$py")" in
+    sh|bash|dash|zsh|ksh) return 1 ;;
+  esac
+  printf '%s' "$py"
+}
+
+# mempalace_pipx_home
+# Prints the directory pipx installs venvs under, by pipx's own resolution
+# order: a non-empty PIPX_HOME; else the legacy `~/.local/pipx` when it exists;
+# else the platform default (`~/Library/Application Support/pipx` on macOS,
+# `${XDG_DATA_HOME:-~/.local/share}/pipx` elsewhere). Only directory existence
+# is consulted — pipx itself is neither required nor invoked.
+mempalace_pipx_home() {
+  if [ -n "${PIPX_HOME:-}" ]; then
+    printf '%s' "$PIPX_HOME"
+  elif [ -d "$HOME/.local/pipx" ]; then
+    printf '%s' "$HOME/.local/pipx"
+  elif [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+    printf '%s' "$HOME/Library/Application Support/pipx"
+  else
+    printf '%s' "${XDG_DATA_HOME:-$HOME/.local/share}/pipx"
+  fi
+}
+
 # mempalace_python_candidates
 # Prints the interpreter candidates detect_mempalace_python considers, one per
-# line, highest priority first. Extracted from the helper below (spec 0108 R10)
-# so the operator diagnostic can report the very same ordered list the framework
-# would walk, and name a fallback selection instead of leaving it silent.
-# Candidate *ordering* only — no candidate is probed for a working mempalace
-# here; that is detect_mempalace_python's job.
+# line, highest priority first, without duplicates. Extracted from the helper
+# below (spec 0108 R10) so the operator diagnostic can report the very same
+# ordered list the framework would walk, and name a fallback selection instead
+# of leaving it silent. Candidate *ordering* only — no candidate is probed for a
+# working mempalace here; that is detect_mempalace_python's job.
+#
+#   1. the pipx venv, under the home pipx itself resolves (mempalace_pipx_home)
+#   2. the interpreter of the `mempalace` console script on PATH, read by
+#      console_script_python (shell wrappers resolved, never a shell)
+#   3. python3
+# Paths may contain spaces; one candidate per line, so consumers read lines.
 mempalace_python_candidates() {
   local candidates=()
-  candidates+=("$HOME/.local/pipx/venvs/mempalace/bin/python")
-  local mp_bin shebang_py
+  candidates+=("$(mempalace_pipx_home)/venvs/mempalace/bin/python")
+  local mp_bin script_py
   mp_bin="$(command -v mempalace 2>/dev/null || true)"
   if [ -n "$mp_bin" ] && [ -f "$mp_bin" ]; then
-    shebang_py="$(head -1 "$mp_bin" 2>/dev/null | sed -n 's|^#!\([^ ]*\).*|\1|p')"
-    [ -n "$shebang_py" ] && candidates+=("$shebang_py")
+    script_py="$(console_script_python "$mp_bin" || true)"
+    [ -n "$script_py" ] && candidates+=("$script_py")
   fi
   candidates+=("python3")
-  local py
+  local py seen=$'\n'
   for py in ${candidates[@]+"${candidates[@]}"}; do
-    [ -n "$py" ] && printf '%s\n' "$py"
+    [ -n "$py" ] || continue
+    case "$seen" in
+      *$'\n'"$py"$'\n'*) continue ;;
+    esac
+    seen="${seen}${py}"$'\n'
+    printf '%s\n' "$py"
   done
 }
 
