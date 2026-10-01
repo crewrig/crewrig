@@ -18,12 +18,26 @@
 # capability itself carries no such marker and no `paths:` filter, so it runs
 # on every change on both engines.
 #
-# Base-ref resolution (first non-empty wins):
+# Base-ref resolution (first candidate that is set AND resolves wins):
 #   CI_BASE_REF
 #   CI_MERGE_REQUEST_TARGET_BRANCH_SHA
 #   CI_COMMIT_BEFORE_SHA
 #   origin/main
-# If no base can be resolved, the script conservatively runs the full suite.
+# A candidate is UNSET when it is empty, the literal `null`, or all zeros
+# (GitHub `before` on a new branch, GitLab `CI_COMMIT_BEFORE_SHA` on a new
+# pipeline): the all-zero SHA is not a commit and must never be diffed. A set
+# candidate resolves as `origin/<candidate>` first (a bare branch name such as
+# `release/x`, the preferred reading on a CI checkout, which has no local
+# branches) and then as given (a SHA, `origin/x`, a local ref); each reading is
+# verified to be a commit. A set candidate that does not resolve is reported on
+# stderr and skipped (over-inclusive, never under-inclusive: R10).
+#
+# The diff is merge-base relative: the changed files are those between
+# `git merge-base <base> HEAD` and HEAD, i.e. what the change itself introduces,
+# not what the base gained since the change was cut (a two-dot diff against a
+# diverged `release/**` base would list its whole delta). If no base, no
+# merge-base or no diff can be established, the script conservatively runs the
+# full suite rather than exiting 0.
 #
 # Prerequisites: yq (mikefarah v4), git.
 
@@ -45,18 +59,40 @@ fi
 
 # --- Resolve the base ref ---------------------------------------------------
 
+# True when $1 is empty, `null` or all zeros: not a usable base.
+is_unset_candidate() {
+  case "$1" in
+    "" | null) return 0 ;;
+  esac
+  case "$1" in
+    *[!0]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+# Echo the first reading of $1 that verifies as a commit; return 1 otherwise.
+resolve_candidate() {
+  local ref
+  for ref in "origin/$1" "$1"; do
+    if git -C "$REPO_DIR" rev-parse --verify --quiet "${ref}^{commit}" >/dev/null 2>&1; then
+      echo "$ref"
+      return 0
+    fi
+  done
+  return 1
+}
+
 base_ref=""
-for cand in "${CI_BASE_REF:-}" "${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-}" "${CI_COMMIT_BEFORE_SHA:-}"; do
-  if [ -n "$cand" ] && [ "$cand" != "null" ]; then
-    base_ref="$cand"
+for cand in "${CI_BASE_REF:-}" "${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-}" "${CI_COMMIT_BEFORE_SHA:-}" "origin/main"; do
+  if is_unset_candidate "$cand"; then
+    continue
+  fi
+  if base_ref="$(resolve_candidate "$cand")"; then
     break
   fi
+  base_ref=""
+  echo "ci-changeset-coverage: base candidate '$cand' does not resolve to a commit — skipping." >&2
 done
-if [ -z "$base_ref" ]; then
-  if git rev-parse --verify origin/main >/dev/null 2>&1; then
-    base_ref="origin/main"
-  fi
-fi
 
 # --- Collect the focused path sets (changeset-gated capabilities) -----------
 
@@ -73,11 +109,21 @@ done < <(yq -r '.capabilities[] | select(.changeset-gated == true) | .id' "$REFE
 
 # --- Compute changed files --------------------------------------------------
 
+# Fail-safe (R10): when the base, the merge-base or the diff cannot be
+# established, run the full suite instead of concluding "nothing changed".
+merge_base=""
+changed=""
 if [ -z "$base_ref" ]; then
   echo "ci-changeset-coverage: no base ref resolvable — running the full check suite (fail-safe)."
   run_full_suite=1
+elif ! merge_base="$(git -C "$REPO_DIR" merge-base "$base_ref" HEAD)"; then
+  echo "ci-changeset-coverage: no merge-base between $base_ref and HEAD — running the full check suite (fail-safe)." >&2
+  run_full_suite=1
+elif ! changed="$(git -C "$REPO_DIR" diff --name-only "$merge_base" HEAD)"; then
+  echo "ci-changeset-coverage: cannot diff $merge_base..HEAD — running the full check suite (fail-safe)." >&2
+  run_full_suite=1
 else
-  changed="$(git -C "$REPO_DIR" diff --name-only "$base_ref" HEAD 2>/dev/null || true)"
+  echo "ci-changeset-coverage: base $base_ref, merge-base $merge_base."
   if [ -z "$changed" ]; then
     echo "ci-changeset-coverage: no changed files vs $base_ref — nothing to cover."
     exit 0
