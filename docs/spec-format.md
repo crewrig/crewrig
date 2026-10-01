@@ -201,14 +201,31 @@ table below is the contract.
 A `status` regression (e.g. `approved` → `draft`) is prohibited; if a
 spec must be re-opened, supersede it instead.
 
+**Delta-specs follow the same table.** A delta-spec carries its own `status`,
+and every row above applies to it exactly as to a non-delta spec:
+
+- `draft` while the delta-spec exists only on its spec branch;
+- `approved` once its own delta spec-PR has merged, the squash commit carrying
+  the status (see *Recording a status transition*);
+- `implemented` once the implementation PR for its `related-issue` has merged,
+  that PR's own commit carrying the status;
+- `archived` and `superseded` as defined above.
+
+A delta-spec's status and its parent's are independent: neither is derived
+from the other, and neither constrains the other. A delta-spec whose
+`related-issue` equals its parent's reaches `implemented` through the same
+implementation PR as the parent.
+
 ### No spec on `main` is a draft
 
-A spec file present on `main`, other than a delta-spec, SHALL NOT carry
-`status: draft`. A spec reaches `main` only by its own merged spec-PR, which is
-the trigger the table above assigns to `approved`; `draft` on `main` therefore
-records a contradiction rather than a lagging value, and leaves a reader unable
-to use `status` for the one question it exists to answer — "merged and in
-force" or "proposed but never landed".
+A spec file present on `main` — a non-delta spec or a delta-spec alike — SHALL
+NOT carry `status: draft`. A spec reaches `main` only by its own merged
+spec-PR, which is the trigger the table above assigns to `approved`; `draft` on
+`main` therefore records a contradiction rather than a lagging value, and
+leaves a reader unable to use `status` for the one question it exists to answer
+— "merged and in force" or "proposed but never landed". The only permitted
+path for `draft` is absence from the base branch: the spec-PR is still open, or
+it closed without merging and the file never landed.
 
 The rule is enforced mechanically rather than by recall. The spec linter
 (`scripts/lib/spec-linter.js`, run as `task spec:lint` in CI) enforces status
@@ -217,15 +234,17 @@ invariants across all pull requests and on `main` (governed by
 and [`specs/0168-spec-status-transition-enforcement.md`](../specs/0168-spec-status-transition-enforcement.md)):
 
 - **Spec PRs (`spec/<NNNN>-*` or introducing a new spec):** CI fails (`[FAIL]`)
-  if an added or modified non-delta spec file carries `status: draft`. The spec
-  must transition to `status: approved` (and declare `interaction-mode`) before
-  merging to `main`.
+  if an added or modified spec or delta-spec carries `status: draft`, naming
+  the file. The spec must transition to `status: approved` (and declare
+  `interaction-mode`) before merging to `main`. This is the CI counterpart of
+  the refusal `scripts/merge-spec-pr.sh` applies locally, so a spec-PR merged
+  by a direct `gh pr merge` is still caught before the merge.
 - **Implementation PRs (`(feat|fix|refactor|perf|chore)/<NNNN>-*`):** CI fails
-  (`[FAIL]`) if the corresponding specification file `specs/<NNNN>-*.md` does not
-  carry `status: implemented`.
-- **Base branch status check:** The linter names every non-delta spec already
-  present on the change's base branch that carries `status: draft`. Delta-specs
-  are exempt per Spec 0109.
+  (`[FAIL]`) on every spec and delta-spec the branch's ticket implements that
+  does not yet record `status: implemented`. See *The implementation-PR check*
+  below for how the ticket is resolved and which branches are excluded.
+- **Base branch status check:** The linter names every spec and delta-spec
+  already present on the change's base branch that carries `status: draft`.
 
 **Which build the violation fails, and which it only warns.** Being named and
 being failed are two different things, decided by two different questions. A
@@ -243,6 +262,45 @@ modifies, it reports every named spec as blocking and says so — an
 indeterminate answer never becomes an exemption.
 [`specs/0109-spec-status-invariant-on-main.delta-02.md`](../specs/0109-spec-status-invariant-on-main.delta-02.md)
 is the contract.
+
+#### The implementation-PR check
+
+On a branch named `(feat|fix|refactor|perf|chore)/<NNNN>-*`, the linter first
+resolves `<NNNN>` to a ticket number `T`, then checks every file that ticket
+implements. It reads only the tree under test; it needs no forge access.
+
+1. **Resolve the ticket.** When a non-delta spec with id `<NNNN>` exists in the
+   tree, the branch is named after a spec id, and `T` is that spec's
+   `related-issue`. Otherwise the branch is named after a ticket, and `T` is
+   `<NNNN>` read as an integer. So `feat/0209-…` checks what spec 0209's
+   ticket implements, and `feat/1392-…` checks what issue 1392 implements.
+2. **Check the matched set.** Every spec and delta-spec whose `related-issue`
+   equals `T` is checked. One recorded `draft` or `approved` fails the build,
+   and each is named. One recorded `implemented`, `archived` or `superseded`
+   never fails: the last two are terminal, and since a status cannot regress,
+   demanding `implemented` of them would block every later branch of that
+   ticket until someone recorded a false status. The matched set always
+   contains spec `<NNNN>` itself when it exists, so spec 0168 Requirement 2 is
+   widened, not replaced.
+3. **No match is a notice, not a failure.** When no file in the tree has
+   `related-issue` equal to `T`, the linter prints a non-blocking notice on
+   stderr naming `T` and stating that no spec or delta-spec was checked for
+   `status: implemented`. The exit status is unaffected. A `trivial` ticket
+   has no spec by design (ADR-0010 → *Complexity tiers*), so failing it would
+   be wrong; staying silent would make a missing spec look like a checked one.
+
+**Sync branches are not implementation PRs.** A branch named
+`chore/<NNNN>-sync-main*` — the form a sync of `main` into a release branch
+takes — does not run this check, because its number names the epic, whose own
+specs are legitimately not `implemented` until the release branch's final
+merge. The exclusion covers that one name form only: `feat/1500-sync-main-…`
+is an ordinary implementation branch and is checked, and every other check
+still runs on a sync PR. A branch that does not match the implementation form
+at all — a spec branch, the base branch's own build, a release branch's
+final-merge head — does not run the check either.
+
+[`specs/0109-spec-status-invariant-on-main.delta-04.md`](../specs/0109-spec-status-invariant-on-main.delta-04.md)
+is the contract for delta-spec statuses and for this check.
 
 ### Recording a status transition
 
@@ -301,6 +359,13 @@ because the spec-PR squash-merges, so both routes collapse to the same single
 commit on `main` carrying `status: approved`; a new commit needs only a plain
 `git push`, whereas an amend would force `git push --force-with-lease` and
 risk clobbering a concurrent reviewer or CI push on the shared branch.
+
+A delta spec-PR follows the same mechanic unchanged. On
+`spec/<NNNN>-<slug>-delta-<NN>`, after the approval event, a new commit sets
+the delta-spec's own frontmatter to `status: approved`; then `git push`, then
+`bash scripts/merge-spec-pr.sh`, which resolves that branch name to the delta
+file and refuses to merge it while it still reads `draft`. The parent spec's
+`status` is not touched.
 
 **Recording the `approved` → `implemented` transition (in the implementation
 PR).** The `implemented` transition is triggered by the merge of the
