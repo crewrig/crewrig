@@ -494,6 +494,7 @@ test-wiring:
         - "scripts/tests/test-check-test-wiring.sh"
         - "scripts/check-test-strays.sh"
         - "scripts/tests/test-check-test-strays.sh"
+        - "scripts/lib/base-ref-resolve.sh"
         - "scripts/tests/**"
         - "hooks/worktree-git-guard.sh"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -502,6 +503,7 @@ test-wiring:
         - "scripts/tests/test-check-test-wiring.sh"
         - "scripts/check-test-strays.sh"
         - "scripts/tests/test-check-test-strays.sh"
+        - "scripts/lib/base-ref-resolve.sh"
         - "scripts/tests/**"
         - "hooks/worktree-git-guard.sh"
 

@@ -500,6 +500,7 @@ jobs:
               - 'scripts/tests/test-check-test-wiring.sh'
               - 'scripts/check-test-strays.sh'
               - 'scripts/tests/test-check-test-strays.sh'
+              - 'scripts/lib/base-ref-resolve.sh'
               - 'scripts/tests/**'
               - 'hooks/worktree-git-guard.sh'
       - uses: actions/cache@v4
