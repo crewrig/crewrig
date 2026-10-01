@@ -42,6 +42,7 @@ const CORPUS: readonly (readonly [string, string, string])[] = [
   ["text then an unclosed string ending in a backslash", 'x"//\\', 'x" '],
   ["a quote and a lone backslash", '"\\', '"\\'],
   ["an unclosed string of one char ending in a backslash", '"a\\', '"a\\'],
+  ["escaped quotes then a lone backslash (i2-F1 shape)", '"\\"\\"\\"\\', '"\\"\\"\\"\\'],
   ["1/**/2 stays two tokens", "1/**/2", "1 2"],
   ["a lone slash is not a comment", '{"a":1/2}', '{"a":1/2}'],
   ["BOM is kept", '\uFEFF{"a":1}', '\uFEFF{"a":1}'],
@@ -72,6 +73,14 @@ describe("stripJsonComments", () => {
     const start = process.hrtime.bigint();
     assert.equal(stripJsonComments(text), text);
     assert.ok(process.hrtime.bigint() - start < 2_000_000_000n, "took over 2 s");
+
+    // Review i2-F1: the same run ending in a lone backslash leaves the string
+    // unclosed, so every escaped quote opens a rescan. Linear: ~1 ms at
+    // k = 40,000; the quadratic rescan took ~1.9 s there.
+    const unclosed = `"${'\\"'.repeat(40_000)}\\`;
+    const t0 = process.hrtime.bigint();
+    assert.equal(stripJsonComments(unclosed), unclosed);
+    assert.ok(process.hrtime.bigint() - t0 < 250_000_000n, "took over 250 ms (quadratic rescan)");
   });
 });
 
