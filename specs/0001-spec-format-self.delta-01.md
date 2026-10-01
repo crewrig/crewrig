@@ -1,7 +1,7 @@
 ---
 id: "0001"
 slug: spec-format-self
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 195

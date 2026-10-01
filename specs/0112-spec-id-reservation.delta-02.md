@@ -1,7 +1,7 @@
 ---
 id: "0112"
 slug: spec-id-reservation
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1265

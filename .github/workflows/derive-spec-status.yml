@@ -1,0 +1,43 @@
+name: Derive Spec Status Check
+
+# Spec 0109 delta-04 R23 (issue #1441): mirrors the `derive-spec-status`
+# capability of ci/ci-capabilities.yml.
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/derive-spec-status.ts"
+      - "scripts/lib/spec-status-derivation.ts"
+      - "scripts/lib/ts-scope.ts"
+      - "scripts/tests/derive-spec-status.test.ts"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/derive-spec-status.ts"
+      - "scripts/lib/spec-status-derivation.ts"
+      - "scripts/lib/ts-scope.ts"
+      - "scripts/tests/derive-spec-status.test.ts"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  derive-spec-status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Test the merged-spec status derivation
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
