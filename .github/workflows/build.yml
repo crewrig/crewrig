@@ -73,11 +73,77 @@ jobs:
       - name: Test Build Components
         if: steps.filter.outputs.component-drift == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/test-build-components.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  model-resolution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            model-resolution:
+              - 'scripts/build-components.sh'
+              - 'scripts/test-build-components.sh'
+              - 'scripts/tests/test-model-resolution.sh'
+              - 'scripts/tests/test-agent-profile-migration.sh'
+              - 'scripts/lib/**'
+              - 'artifacts/**'
+              - 'extensions/**'
+              - '.crewrig/core-paths.txt'
+              - 'docs/layers.md'
+              - 'docs/agent-profile-migration.md'
+              - 'model-mappings/**'
+      - name: Install yq
+        if: steps.filter.outputs.model-resolution == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.model-resolution == 'true'
+        with:
+          path: .ci-cache
+          key: model-resolution-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**') }}
       - name: Test Model Resolution
-        if: steps.filter.outputs.component-drift == 'true'
+        if: steps.filter.outputs.model-resolution == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/tests/test-model-resolution.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  agent-profile-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            agent-profile-migration:
+              - 'scripts/build-components.sh'
+              - 'scripts/test-build-components.sh'
+              - 'scripts/tests/test-model-resolution.sh'
+              - 'scripts/tests/test-agent-profile-migration.sh'
+              - 'scripts/lib/**'
+              - 'artifacts/**'
+              - 'extensions/**'
+              - '.crewrig/core-paths.txt'
+              - 'docs/layers.md'
+              - 'docs/agent-profile-migration.md'
+              - 'model-mappings/**'
+      - name: Install yq
+        if: steps.filter.outputs.agent-profile-migration == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.agent-profile-migration == 'true'
+        with:
+          path: .ci-cache
+          key: agent-profile-migration-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**') }}
       - name: Test Agent Profile Migration
-        if: steps.filter.outputs.component-drift == 'true'
+        if: steps.filter.outputs.agent-profile-migration == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/tests/test-agent-profile-migration.sh
       - name: Cancel workflow on job failure
         if: failure()
