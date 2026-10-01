@@ -647,9 +647,9 @@ pass_if() {
   fi
 }
 
-has_stderr() { printf '%s' "$CHECK_STDERR" | grep -qF -- "$1"; }
+has_stderr() { grep -qF -- "$1" <<< "$CHECK_STDERR"; }
 no_stderr()  { ! has_stderr "$1"; }
-has_stdout() { printf '%s' "$CHECK_STDOUT" | grep -qF -- "$1"; }
+has_stdout() { grep -qF -- "$1" <<< "$CHECK_STDOUT"; }
 no_stdout()  { ! has_stdout "$1"; }
 exit_is()    { [ "$CHECK_EXIT" -eq "$1" ]; }
 no_ref()     { ! fxgit -C "$1" rev-parse --verify --quiet "$2" >/dev/null 2>&1; }
