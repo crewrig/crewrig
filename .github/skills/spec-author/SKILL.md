@@ -6,7 +6,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.8.0"
+    version: "1.9.0"
 ---
 
 
@@ -356,6 +356,32 @@ The skill writes exactly one new file:
 The file SHALL conform to `docs/spec-format.md` (the normative format
 contract). Below is the skill-side summary; on any conflict, the format
 document wins.
+
+### Ticket pickup check
+
+Before anything else — before the id is secured, and before any branch,
+filename, or frontmatter exists — the skill runs the cross-contributor
+ownership check of `docs/ticket-ownership.md`
+(`specs/0244-multi-contributor-assignment.md`, requirements 11 and 15), in
+spec and delta-spec mode alike:
+
+```sh
+task -x ticket-pickup -- --issue <related-issue>
+```
+
+Without `task`, run `node scripts/lib/node-floor-guard.js`, then — only if
+it exits `0` — `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON
+scripts/ticket-pickup.ts --issue <related-issue>`, as two separate steps
+(never chained with `&&`).
+
+Only exit `0` lets the skill continue. On any other exit the skill SHALL
+stop before securing an id or creating a branch, and relay the tool's stderr
+sentence to the user: `3` names the owner and the permitted paths, `4` and
+`2` report what could not be determined, `5` reports that a maintainer was
+asked to assign the ticket. The skill SHALL NOT retry the check hoping for a
+different answer, SHALL NOT assign, unassign, or reassign anyone itself, and
+SHALL proceed without the check only on the user's explicit instruction in
+the same session.
 
 ### ID allocation
 

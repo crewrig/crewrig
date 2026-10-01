@@ -59,6 +59,14 @@
 #       report says only that. Neither divergence trigger nor the range trigger
 #       may stand in for the finding, because such a source contributes no
 #       version to compare and none to range-check.
+#   (l) issue #1417: a console script whose venv path contains a space is a
+#       `#!/bin/sh` polyglot wrapper (pip/distlib double-quoted form, uv
+#       single-quoted form). The interpreter is read from its exec line, or
+#       from the sibling `python` of the script's realpath when that line is
+#       unparseable — and a shell is NEVER reported as the interpreter, in
+#       section 2 or as a section-3 candidate. The pipx candidate follows pipx's
+#       own home resolution (`PIPX_HOME`, legacy `~/.local/pipx`, platform
+#       default) and the candidate list carries no duplicate.
 #   (k) R11 (structural): every CLI's launch path names the wrapper — for two
 #       CLIs in the setup script, for the other two in the committed MCP template
 #       the setup script patches. The assertion spans script AND template, or it
@@ -130,6 +138,11 @@ fi
 
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
+
+# Isolate pipx home resolution from the caller: the candidate list honours
+# PIPX_HOME and XDG_DATA_HOME, so an operator's own values would otherwise steer
+# which candidate 1 every scenario sees. Scenarios that need them set them.
+unset PIPX_HOME XDG_DATA_HOME
 
 # Isolate MCP port from production daemon on the test runner
 export MEMPALACE_MCP_PORT="$((19000 + (RANDOM % 900)))"
@@ -414,9 +427,15 @@ else
 fi
 
 # (e) R10 — candidate 1 (the pipx venv path under this fake HOME) does not exist,
-# so the selection falls back and must say so, with the winner's version.
+# so the selection falls back and must say so, with the winner's version. With
+# no PIPX_HOME and no legacy `~/.local/pipx`, candidate 1 is pipx's platform
+# default home — the same rule pipx itself applies.
+case "$(uname -s)" in
+  Darwin) S1_PIPX_CANDIDATE="$S1_HOME/Library/Application Support/pipx/venvs/mempalace/bin/python" ;;
+  *)      S1_PIPX_CANDIDATE="$S1_HOME/.local/share/pipx/venvs/mempalace/bin/python" ;;
+esac
 has "$S1_OUT" "fallback selected:" "R10: a fallback selection is announced, not silent"
-if grep -A3 "fallback selected:" "$S1_OUT" | grep -qF ".local/pipx/venvs/mempalace/bin/python"; then
+if grep -A3 "fallback selected:" "$S1_OUT" | grep -qF "($S1_PIPX_CANDIDATE)"; then
   ok "R10: names the highest-priority candidate that was skipped"
 else
   bad "R10: does not name the skipped candidate 1"
@@ -955,6 +974,359 @@ if grep -q "LOCKED OUT BY RUNNING DAEMON" "$S11/report.txt"; then
 else
   bad "doctor report missing lockout finding: $(cat "$S11/report.txt")"
 fi
+
+# ---------------------------------------------------------------------------
+echo "12. /bin/sh console-script wrappers and pipx home resolution (issue #1417)"
+# ---------------------------------------------------------------------------
+# pip/distlib and uv cannot put a path containing a space on a shebang line, so
+# for a venv under e.g. `~/Library/Application Support/pipx` they emit a
+# `#!/bin/sh` polyglot whose second line execs the real interpreter. Before
+# #1417 both the doctor and the candidate list took `/bin/sh` for the Python.
+
+# make_sh_wrapper <path> <form> [interpreter] [shebang]
+# <form>: dq (pip/distlib), sq (uv), reloc (distlib's relocatable form, whose
+# path is computed at run time and so cannot be read as text). <shebang>
+# defaults to `/bin/sh`. The sq form escapes an apostrophe in the path as `'\''`,
+# exactly as uv writes it.
+# shellcheck disable=SC2016  # `$0` / `$@` / `$(...)` are the wrapper's own text
+make_sh_wrapper() {
+  local path="$1" form="$2" interp="${3:-}" shebang="${4:-/bin/sh}"
+  local q3="'''" sq_interp
+  sq_interp="$(printf '%s' "$interp" | sed "s/'/'\\\\''/g")"
+  mkdir -p "$(dirname "$path")"
+  {
+    printf '#!%s\n' "$shebang"
+    case "$form" in
+      dq)    printf '%sexec'"'"' "%s" "$0" "$@"\n' "$q3" "$interp" ;;
+      sq)    printf '%sexec'"'"' '"'"'%s'"'"' "$0" "$@"\n' "$q3" "$sq_interp" ;;
+      reloc) printf '%sexec'"'"' "$(dirname -- "$(realpath -- "$0")")"/'"'"'python'"'"' "$0" "$@"\n' "$q3" ;;
+    esac
+    printf "' %s\n# fake console script — never executed by the doctor\n" "$q3"
+  } > "$path"
+  chmod +x "$path"
+}
+
+# assert_no_shell_interpreter <report> <what>
+assert_no_shell_interpreter() {
+  if grep -qE '^ +shebang interpreter: +(/usr)?/bin/(ba|da|z)?sh$' "$1"; then
+    bad "$2: a shell was reported as the interpreter"
+  else
+    ok "$2: no shell reported as the interpreter"
+  fi
+  if grep -qE '^ +[0-9]+\. (/usr)?/bin/(ba|da|z)?sh  \(' "$1"; then
+    bad "$2: a shell appears in the section-3 candidate list"
+  else
+    ok "$2: no shell in the section-3 candidate list"
+  fi
+  if grep -qE 'command not found|syntax error' "$1"; then
+    bad "$2: shell noise in the report — $(grep -m1 -E 'command not found|syntax error' "$1")"
+  else
+    ok "$2: no shell-interpreter noise (unknown-command or syntax errors)"
+  fi
+}
+
+S12="$TMP_ROOT/s12"
+mkdir -p "$S12"
+# Physical path: the realpath-based sibling fallback reports `pwd -P` paths, and
+# macOS's TMPDIR sits behind the /var -> /private/var symlink.
+S12="$(cd "$S12" && pwd -P)"
+S12_TOOLBIN="$S12/toolbin"
+make_toolbin "$S12_TOOLBIN"
+S12_SITE="$S12/site"
+make_fakesite "$S12_SITE" "$GOOD_VERSION"
+
+# 12a — pip/distlib double-quoted form, pipx-style symlink from a bin dir.
+S12A_HOME="$S12/a/home"
+S12A_PATHDIR="$S12/a/bin"
+S12A_VENV="$S12/a/Library/Application Support/pipx/venvs/mempalace"
+mkdir -p "$S12A_HOME" "$S12A_PATHDIR"
+make_interpreter "$S12A_VENV/bin/python" "$S12_SITE"
+make_sh_wrapper "$S12A_VENV/bin/mempalace"     dq "$S12A_VENV/bin/python"
+make_sh_wrapper "$S12A_VENV/bin/mempalace-mcp" dq "$S12A_VENV/bin/python"
+ln -s "$S12A_VENV/bin/mempalace"     "$S12A_PATHDIR/mempalace"
+ln -s "$S12A_VENV/bin/mempalace-mcp" "$S12A_PATHDIR/mempalace-mcp"
+S12A_OUT="$S12/a/report.txt"
+run_doctor_isolated "$S12A_HOME" "$S12A_PATHDIR" "$S12_TOOLBIN" "$S12A_OUT"
+s12a_rc=$?
+if [ "$s12a_rc" -eq 0 ]; then
+  ok "12a: a space-path venv behind a /bin/sh wrapper is a clean machine (exit 0)"
+else
+  bad "12a: exit $s12a_rc — $(grep -A6 'NOT OK' "$S12A_OUT" | head -8)"
+fi
+has_exact "$S12A_OUT" "$(doctor_field_line "shebang interpreter:" "$S12A_VENV/bin/python")" \
+  "12a: section 2 reads the venv python out of the double-quoted exec line"
+assert_no_shell_interpreter "$S12A_OUT" "12a"
+has "$S12A_OUT" "selection:              candidate 2: $S12A_VENV/bin/python" \
+  "12a: section 3 selects the wrapper-derived venv python"
+
+# 12b — uv single-quoted form.
+S12B_HOME="$S12/b/home"
+S12B_PATHDIR="$S12/b/bin"
+S12B_VENV="$S12/b/tool dir/mempalace"
+mkdir -p "$S12B_HOME" "$S12B_PATHDIR"
+make_interpreter "$S12B_VENV/bin/python" "$S12_SITE"
+make_sh_wrapper "$S12B_PATHDIR/mempalace" sq "$S12B_VENV/bin/python"
+S12B_OUT="$S12/b/report.txt"
+run_doctor_isolated "$S12B_HOME" "$S12B_PATHDIR" "$S12_TOOLBIN" "$S12B_OUT"
+has_exact "$S12B_OUT" "$(doctor_field_line "shebang interpreter:" "$S12B_VENV/bin/python")" \
+  "12b: section 2 reads the venv python out of uv's single-quoted exec line"
+assert_no_shell_interpreter "$S12B_OUT" "12b"
+has "$S12B_OUT" "selection:              candidate 2: $S12B_VENV/bin/python" \
+  "12b: section 3 selects the uv wrapper's venv python"
+
+# 12c — unparseable second line: the sibling `python` of the realpath answers.
+S12C_HOME="$S12/c/home"
+S12C_PATHDIR="$S12/c/bin"
+S12C_VENV="$S12/c/reloc venv"
+mkdir -p "$S12C_HOME" "$S12C_PATHDIR"
+make_interpreter "$S12C_VENV/bin/python" "$S12_SITE"
+make_sh_wrapper "$S12C_VENV/bin/mempalace" reloc
+ln -s "$S12C_VENV/bin/mempalace" "$S12C_PATHDIR/mempalace"
+S12C_OUT="$S12/c/report.txt"
+run_doctor_isolated "$S12C_HOME" "$S12C_PATHDIR" "$S12_TOOLBIN" "$S12C_OUT"
+has_exact "$S12C_OUT" "$(doctor_field_line "shebang interpreter:" "$S12C_VENV/bin/python")" \
+  "12c: an unparseable exec line falls back to the realpath's sibling python"
+assert_no_shell_interpreter "$S12C_OUT" "12c"
+has "$S12C_OUT" "selection:              candidate 2: $S12C_VENV/bin/python" \
+  "12c: section 3 selects the sibling python"
+
+# 12d — unparseable AND no sibling: nothing resolves, and still no shell.
+S12D_HOME="$S12/d/home"
+S12D_PATHDIR="$S12/d/bin"
+mkdir -p "$S12D_HOME" "$S12D_PATHDIR"
+make_sh_wrapper "$S12D_PATHDIR/mempalace" reloc
+S12D_OUT="$S12/d/report.txt"
+run_doctor_isolated "$S12D_HOME" "$S12D_PATHDIR" "$S12_TOOLBIN" "$S12D_OUT"
+has "$S12D_OUT" "NO SHEBANG INTERPRETER" \
+  "12d: an unresolvable wrapper is reported as such, not as a shell"
+assert_no_shell_interpreter "$S12D_OUT" "12d"
+
+# 12e — PIPX_HOME is honoured as candidate 1, and the list carries no duplicate.
+S12E_HOME="$S12/e/home"
+S12E_PATHDIR="$S12/e/bin"
+S12E_PIPX_HOME="$S12/e/custom pipx home"
+S12E_PY="$S12E_PIPX_HOME/venvs/mempalace/bin/python"
+mkdir -p "$S12E_HOME" "$S12E_PATHDIR"
+make_interpreter "$S12E_PY" "$S12_SITE"
+make_sh_wrapper "$S12E_PATHDIR/mempalace" dq "$S12E_PY"
+S12E_OUT="$S12/e/report.txt"
+PIPX_HOME="$S12E_PIPX_HOME" run_doctor_isolated "$S12E_HOME" "$S12E_PATHDIR" "$S12_TOOLBIN" "$S12E_OUT"
+has_exact "$S12E_OUT" "    1. $S12E_PY  (resolves)" "12e: PIPX_HOME's venv is candidate 1"
+has "$S12E_OUT" "selection:              candidate 1: $S12E_PY" "12e: candidate 1 is selected"
+lacks "$S12E_OUT" "fallback selected:" "12e: no fallback line when the PIPX_HOME venv wins"
+if [ "$(grep -cF ". $S12E_PY  (" "$S12E_OUT")" -eq 1 ]; then
+  ok "12e: the wrapper-derived candidate equal to candidate 1 is de-duplicated"
+else
+  bad "12e: $S12E_PY is listed more than once among the candidates"
+fi
+assert_no_shell_interpreter "$S12E_OUT" "12e"
+
+# 12f — legacy `~/.local/pipx` wins over the platform default when it exists.
+S12F_HOME="$S12/f/home"
+S12F_PATHDIR="$S12/f/bin"
+mkdir -p "$S12F_HOME/.local/pipx" "$S12F_PATHDIR"
+S12F_OUT="$S12/f/report.txt"
+run_doctor_isolated "$S12F_HOME" "$S12F_PATHDIR" "$S12_TOOLBIN" "$S12F_OUT"
+has_exact "$S12F_OUT" "    1. $S12F_HOME/.local/pipx/venvs/mempalace/bin/python  (does not resolve)" \
+  "12f: an existing legacy ~/.local/pipx is candidate 1, as pipx itself resolves it"
+
+# 12g — the stock default pipx home, no PIPX_HOME (the #1417 headline claim): the
+# venv pipx creates under this fake HOME is candidate 1 and is selected, with no
+# fallback line. Per platform, as pipx itself resolves it.
+case "$(uname -s)" in
+  Darwin) s12g_cases="darwin" ;;
+  *)      s12g_cases="xdg default" ;;
+esac
+for s12g_case in $s12g_cases; do
+  S12G_HOME="$S12/g-$s12g_case/home"
+  S12G_PATHDIR="$S12/g-$s12g_case/bin"
+  S12G_XDG=""
+  case "$s12g_case" in
+    darwin)  S12G_PIPX_HOME="$S12G_HOME/Library/Application Support/pipx" ;;
+    xdg)     S12G_XDG="$S12/g-$s12g_case/xdg data"
+             S12G_PIPX_HOME="$S12G_XDG/pipx" ;;
+    default) S12G_PIPX_HOME="$S12G_HOME/.local/share/pipx" ;;
+  esac
+  S12G_VENV="$S12G_PIPX_HOME/venvs/mempalace"
+  mkdir -p "$S12G_HOME" "$S12G_PATHDIR"
+  make_interpreter "$S12G_VENV/bin/python" "$S12_SITE"
+  make_sh_wrapper "$S12G_VENV/bin/mempalace" dq "$S12G_VENV/bin/python"
+  ln -s "$S12G_VENV/bin/mempalace" "$S12G_PATHDIR/mempalace"
+  S12G_OUT="$S12/g-$s12g_case/report.txt"
+  if [ -n "$S12G_XDG" ]; then
+    XDG_DATA_HOME="$S12G_XDG" run_doctor_isolated "$S12G_HOME" "$S12G_PATHDIR" "$S12_TOOLBIN" "$S12G_OUT"
+  else
+    run_doctor_isolated "$S12G_HOME" "$S12G_PATHDIR" "$S12_TOOLBIN" "$S12G_OUT"
+  fi
+  has_exact "$S12G_OUT" "    1. $S12G_VENV/bin/python  (resolves)" \
+    "12g ($s12g_case): the stock pipx home's venv is candidate 1"
+  has "$S12G_OUT" "selection:              candidate 1: $S12G_VENV/bin/python" \
+    "12g ($s12g_case): candidate 1 is selected"
+  lacks "$S12G_OUT" "fallback selected:" \
+    "12g ($s12g_case): no fallback line on a stock install"
+  assert_no_shell_interpreter "$S12G_OUT" "12g ($s12g_case)"
+done
+
+# 12h — every branch of mempalace_pipx_home, on any host: `uname` is stubbed in a
+# subshell that sources common.sh, so the Linux/XDG branches run on macOS too and
+# the Darwin branch runs on Linux.
+# pipx_home_under <uname-answer> <home> [xdg-data-home]
+pipx_home_under() {
+  (
+    unset PIPX_HOME XDG_DATA_HOME
+    HOME="$2"
+    [ -n "${3:-}" ] && export XDG_DATA_HOME="$3"
+    # shellcheck disable=SC1091  # the library under test, by absolute path
+    . "$COMMON_SH"
+    eval "uname() { printf '%s\n' '$1'; }"
+    mempalace_pipx_home
+  )
+}
+S12H_HOME="$S12/h/home"
+mkdir -p "$S12H_HOME"
+s12h_got="$(pipx_home_under Linux "$S12H_HOME" "$S12/h/xdg data")"
+if [ "$s12h_got" = "$S12/h/xdg data/pipx" ]; then
+  ok "12h: off macOS, a set XDG_DATA_HOME places the pipx home under it"
+else
+  bad "12h: XDG_DATA_HOME branch gave '$s12h_got'"
+fi
+s12h_got="$(pipx_home_under Linux "$S12H_HOME")"
+if [ "$s12h_got" = "$S12H_HOME/.local/share/pipx" ]; then
+  ok "12h: off macOS, an unset XDG_DATA_HOME falls back to ~/.local/share/pipx"
+else
+  bad "12h: XDG default branch gave '$s12h_got'"
+fi
+s12h_got="$(pipx_home_under Darwin "$S12H_HOME" "$S12/h/xdg data")"
+if [ "$s12h_got" = "$S12H_HOME/Library/Application Support/pipx" ]; then
+  ok "12h: on macOS the pipx home is ~/Library/Application Support/pipx, XDG_DATA_HOME notwithstanding"
+else
+  bad "12h: Darwin branch gave '$s12h_got'"
+fi
+
+# 12i — a `#!/usr/bin/env sh` wrapper resolves to the venv python, like /bin/sh.
+S12I_HOME="$S12/i/home"
+S12I_PATHDIR="$S12/i/bin"
+S12I_VENV="$S12/i/env sh venv"
+mkdir -p "$S12I_HOME" "$S12I_PATHDIR"
+make_interpreter "$S12I_VENV/bin/python" "$S12_SITE"
+make_sh_wrapper "$S12I_PATHDIR/mempalace" dq "$S12I_VENV/bin/python" "/usr/bin/env sh"
+S12I_OUT="$S12/i/report.txt"
+run_doctor_isolated "$S12I_HOME" "$S12I_PATHDIR" "$S12_TOOLBIN" "$S12I_OUT"
+has_exact "$S12I_OUT" "$(doctor_field_line "shebang interpreter:" "$S12I_VENV/bin/python")" \
+  "12i: a #!/usr/bin/env sh wrapper resolves to the venv python"
+assert_no_shell_interpreter "$S12I_OUT" "12i"
+
+# 12j — uv escapes an apostrophe in the venv path as `'\''`. The parse undoes
+# the escape, so the wrapper resolves to the TRUE full path — never the
+# truncated `$S12/j/it` — even with no sibling `python` to fall back on. A line 2
+# that is genuinely unparseable still falls back to the sibling, or to nothing.
+S12J_VENV="$S12/j/it's dir/mempalace"
+S12J_TRUNC="$S12/j/it"
+make_interpreter "$S12J_VENV/bin/python" "$S12_SITE"
+# assert_not_truncated <report> <what>
+assert_not_truncated() {
+  if grep -qxF "$(doctor_field_line "shebang interpreter:" "$S12J_TRUNC")" "$1" \
+     || grep -qF ". $S12J_TRUNC  (" "$1"; then
+    bad "$2: the truncated path $S12J_TRUNC is reported"
+  else
+    ok "$2: the truncated path is neither reported nor a candidate"
+  fi
+}
+# (1) the uv wrapper copied onto PATH, no sibling: only the parse can answer.
+S12J1_HOME="$S12/j/1/home"
+S12J1_PATHDIR="$S12/j/1/bin"
+mkdir -p "$S12J1_HOME" "$S12J1_PATHDIR"
+make_sh_wrapper "$S12J1_PATHDIR/mempalace" sq "$S12J_VENV/bin/python"
+S12J1_OUT="$S12/j/1/report.txt"
+run_doctor_isolated "$S12J1_HOME" "$S12J1_PATHDIR" "$S12_TOOLBIN" "$S12J1_OUT"
+has_exact "$S12J1_OUT" "$(doctor_field_line "shebang interpreter:" "$S12J_VENV/bin/python")" \
+  "12j: an apostrophe-escaped uv path resolves to its full true path, with no sibling"
+has "$S12J1_OUT" "selection:              candidate 2: $S12J_VENV/bin/python" \
+  "12j: section 3 selects the un-escaped uv venv python"
+assert_not_truncated "$S12J1_OUT" "12j"
+assert_no_shell_interpreter "$S12J1_OUT" "12j"
+# (2) a genuinely unparseable line 2 (an unescaped apostrophe ends the quote
+# early, so the ` "$0"` anchor never follows): inside the venv, the sibling.
+# shellcheck disable=SC2016  # `$0` / `$@` are the wrapper's own text
+S12J_BADLINE='\x27\x27\x27exec\x27 \x27'"$S12J_VENV"'/bin/python\x27 "$0" "$@"'
+make_bad_wrapper() {
+  mkdir -p "$(dirname "$1")"
+  # shellcheck disable=SC2059  # the format is the wrapper text, by design
+  printf "#!/bin/sh\n${S12J_BADLINE}\n\x27 \x27\x27\x27\n" > "$1"
+  chmod +x "$1"
+}
+S12J2_HOME="$S12/j/2/home"
+S12J2_PATHDIR="$S12/j/2/bin"
+mkdir -p "$S12J2_HOME" "$S12J2_PATHDIR"
+make_bad_wrapper "$S12J_VENV/bin/mempalace-bad"
+ln -s "$S12J_VENV/bin/mempalace-bad" "$S12J2_PATHDIR/mempalace"
+S12J2_OUT="$S12/j/2/report.txt"
+run_doctor_isolated "$S12J2_HOME" "$S12J2_PATHDIR" "$S12_TOOLBIN" "$S12J2_OUT"
+has_exact "$S12J2_OUT" "$(doctor_field_line "shebang interpreter:" "$S12J_VENV/bin/python")" \
+  "12j: an unparseable exec line falls back to the realpath's sibling python"
+assert_not_truncated "$S12J2_OUT" "12j (unparseable)"
+assert_no_shell_interpreter "$S12J2_OUT" "12j (unparseable)"
+# (3) the same unparseable wrapper copied onto PATH, no sibling: unresolvable.
+S12J3_HOME="$S12/j/3/home"
+S12J3_PATHDIR="$S12/j/3/bin"
+mkdir -p "$S12J3_HOME" "$S12J3_PATHDIR"
+make_bad_wrapper "$S12J3_PATHDIR/mempalace"
+S12J3_OUT="$S12/j/3/report.txt"
+run_doctor_isolated "$S12J3_HOME" "$S12J3_PATHDIR" "$S12_TOOLBIN" "$S12J3_OUT"
+has "$S12J3_OUT" "NO SHEBANG INTERPRETER" \
+  "12j: with no sibling, an unparseable exec line is reported as unresolvable"
+assert_not_truncated "$S12J3_OUT" "12j (unparseable, no sibling)"
+assert_no_shell_interpreter "$S12J3_OUT" "12j (unparseable, no sibling)"
+
+# 12k — a correctly parsed but broken interpreter is still named: a space-path
+# pipx venv whose `bin/python` dangles (the classic macOS breakage after a
+# Homebrew Python upgrade). Section 2 must name that exact path so the probe can
+# report it does not run — not NO SHEBANG INTERPRETER, not a sibling guess.
+S12K_HOME="$S12/k/home"
+S12K_PATHDIR="$S12/k/bin"
+S12K_VENV="$S12/k/Library/Application Support/pipx/venvs/mempalace"
+mkdir -p "$S12K_HOME" "$S12K_PATHDIR" "$S12K_VENV/bin"
+ln -s "$S12/k/nonexistent/python3.12" "$S12K_VENV/bin/python"
+make_sh_wrapper "$S12K_VENV/bin/mempalace" dq "$S12K_VENV/bin/python"
+ln -s "$S12K_VENV/bin/mempalace" "$S12K_PATHDIR/mempalace"
+S12K_OUT="$S12/k/report.txt"
+run_doctor_isolated "$S12K_HOME" "$S12K_PATHDIR" "$S12_TOOLBIN" "$S12K_OUT"
+has_exact "$S12K_OUT" "$(doctor_field_line "shebang interpreter:" "$S12K_VENV/bin/python")" \
+  "12k: a dangling venv python behind a /bin/sh wrapper is named as the shebang interpreter"
+lacks "$S12K_OUT" "NO SHEBANG INTERPRETER" \
+  "12k: a correctly parsed broken interpreter is not reported as unresolvable"
+assert_no_shell_interpreter "$S12K_OUT" "12k"
+
+# 12l — distlib double-quotes the path WITHOUT escaping, so a `$`, backtick or
+# backslash in it would be expanded by sh: the text is not the path sh execs and
+# is rejected (no sibling here, so nothing resolves). A plain space path is kept.
+csp_under() {
+  (
+    # shellcheck disable=SC1090,SC1091  # the library under test, by variable path
+    . "$COMMON_SH"
+    console_script_python "$1"
+  )
+}
+S12L="$S12/l"
+mkdir -p "$S12L"
+s12l_n=0
+# shellcheck disable=SC2016  # literal `$`, backtick and backslash, by design
+for s12l_case in 'plain dir' 'd$HOME' 'b`id`' 'k\x'; do
+  s12l_n=$((s12l_n + 1))
+  s12l_w="$S12L/w$s12l_n"
+  # shellcheck disable=SC2016  # `$0` / `$@` are the wrapper's own text
+  printf '#!/bin/sh\n%sexec%s "%s/bin/python" "$0" "$@"\n' "'''" "'" "/opt/$s12l_case" > "$s12l_w"
+  s12l_got="$(csp_under "$s12l_w")"
+  case "$s12l_case" in
+    'plain dir') s12l_want="/opt/plain dir/bin/python" ;;
+    *) s12l_want="" ;;
+  esac
+  if [ "$s12l_got" = "$s12l_want" ]; then
+    ok "12l: distlib path '/opt/$s12l_case' gives '${s12l_want:-<none>}'"
+  else
+    bad "12l: distlib path '/opt/$s12l_case' gave '$s12l_got', want '${s12l_want:-<none>}'"
+  fi
+done
 
 # ---------------------------------------------------------------------------
 echo ""

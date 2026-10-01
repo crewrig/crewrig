@@ -1,0 +1,47 @@
+name: Ticket Pickup Check
+
+# Spec 0244 (issue #1387): mirrors the `ticket-pickup` capability of
+# ci/ci-capabilities.yml.
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/ticket-pickup.ts"
+      - "scripts/lib/ticket-*.ts"
+      - "scripts/lib/forge-*.ts"
+      - "scripts/lib/ts-scope.ts"
+      - "scripts/tests/ticket-*.test.ts"
+      - "scripts/tests/fixtures/ticket-pickup/**"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/ticket-pickup.ts"
+      - "scripts/lib/ticket-*.ts"
+      - "scripts/lib/forge-*.ts"
+      - "scripts/lib/ts-scope.ts"
+      - "scripts/tests/ticket-*.test.ts"
+      - "scripts/tests/fixtures/ticket-pickup/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  ticket-pickup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Test the ticket-pickup ownership check
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure

@@ -3,7 +3,7 @@ name: spec-author
 description: "Specification authoring agent. Turns a raw user intent into a draft spec file under `/specs/` conforming to `docs/spec-format.md`, in the interaction mode declared by the parent ticket."
 model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.3.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.4.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Spec Author Agent
 
@@ -18,7 +18,14 @@ delta-spec mode, `/specs/<NNNN>-<slug>.delta-<NN>.md`) that conforms to
 write code, tests, or ADRs. Downstream skills handle every later stage of
 the ADR-0010 lifecycle.
 
-You secure the spec id **before** you write anything — before the filename,
+Before you secure anything, you run the ticket pickup check —
+`task -x ticket-pickup -- --issue <related-issue>` (spec 0244,
+`docs/ticket-ownership.md`) — in spec and delta-spec mode alike, and you
+stop on any non-zero exit, relaying the tool's reason: the ticket belongs to
+someone else, its ownership cannot be determined, or a maintainer must
+assign it. You never assign or unassign anyone yourself.
+
+Then you secure the spec id **before** you write anything — before the filename,
 the branch name, or the frontmatter exist. Run
 `bash scripts/reserve-spec-id.sh --issue <related-issue>` and read its exit
 code: `0` means the id is yours, `3` means it is allocated locally but

@@ -156,6 +156,10 @@ scripts/build-docs-index.sh	strict
 
 # Continuous-integration reference (spec 0047)
 ci	strict
+# Path-ownership exemption list (spec 0147 delta-01 R24): registered explicitly
+# although covered by `ci`, like `docs/index.json` under `docs`. The org overlay
+# `ci/org/path-ownership-exemptions.txt` needs no line: `ci/org` is `excluded`.
+ci/path-ownership-exemptions.txt	strict
 # `ci/org/` is the adopting organization's own CI overlay (e.g.
 # `ci/org/gitlab-ci.custom.yml`) — upstream never ships content there.
 # Nested exclusion under the strict `ci` parent (same pattern as `specs/org`

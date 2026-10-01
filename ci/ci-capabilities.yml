@@ -40,16 +40,88 @@ capabilities:
   # focused capability keeps the same trigger (pull-request + push to
   # main/release/**) but ADDS a `paths:` filter covering the files its checks
   # exercise, and is marked `changeset-gated: true` so the `changeset-coverage`
-  # fail-safe (R5) can read the focused path sets from this reference rather
-  # than hardcoding them. The union of the focused `paths:` sets covers every
-  # file the checks exercise; `changeset-coverage` (no `paths:` filter) is the
-  # fail-safe that runs the full suite when a changed file falls outside the
-  # union. Cached groups declare `cache:` (the key-derivation need: which files
-  # + which env vars the cache key is derived from); the engine cache syntax is
-  # the mechanism and is never written here (R6/R7).
+  # exhaustive run (spec 0147 delta-01 R21) can read the gated commands from
+  # this reference rather than hardcoding them. Every tracked file is either
+  # owned by one of the focused `paths:` sets or carries a reasoned exemption
+  # (`ci/path-ownership-exemptions.txt`), which the `path-ownership` capability
+  # (no `paths:` filter) checks statically on every change; the exhaustive run
+  # is the daily and on-demand net underneath. Cached groups declare `cache:`
+  # (the key-derivation need: which files + which env vars the cache key is
+  # derived from); the engine cache syntax is the mechanism and is never written
+  # here (R6/R7).
 
   - id: component-drift
     name: "Check community component drift and run build-component tests"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
+          - "model-mappings/**"
+          - ".agents/skills/**"
+          - ".claude/skills/**"
+          - ".gemini/skills/**"
+          - ".github/skills/**"
+          - ".gemini/commands/**"
+          - "crewrig.config.toml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
+          - "model-mappings/**"
+          - ".agents/skills/**"
+          - ".claude/skills/**"
+          - ".gemini/skills/**"
+          - ".github/skills/**"
+          - ".gemini/commands/**"
+          - "crewrig.config.toml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    cache:
+      files:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+        - ".agents/skills/**"
+        - ".claude/skills/**"
+        - ".gemini/skills/**"
+        - ".github/skills/**"
+        - ".gemini/commands/**"
+        - "crewrig.config.toml"
+      env: []
+    command:
+      - bash scripts/build-components.sh --target all --check
+      - bash scripts/test-build-components.sh
+
+  - id: model-resolution
+    name: "Run the model-resolution regression suite"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -97,9 +169,57 @@ capabilities:
         - "model-mappings/**"
       env: []
     command:
-      - bash scripts/build-components.sh --target all --check
-      - bash scripts/test-build-components.sh
       - bash scripts/tests/test-model-resolution.sh
+
+  - id: agent-profile-migration
+    name: "Run the agent-profile migration regression suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
+          - "model-mappings/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
+          - "model-mappings/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    cache:
+      files:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+      env: []
+    command:
       - bash scripts/tests/test-agent-profile-migration.sh
 
   - id: extension-render
@@ -450,6 +570,7 @@ capabilities:
           - "scripts/lib/**"
           - "artifacts/library/skills/mempalace/**"
           - "artifacts/library/skills/harness-report/**"
+          - "config/copilot/*.json.template"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -465,6 +586,7 @@ capabilities:
           - "scripts/lib/**"
           - "artifacts/library/skills/mempalace/**"
           - "artifacts/library/skills/harness-report/**"
+          - "config/copilot/*.json.template"
     portability: portable
     changeset-gated: true
     requires:
@@ -488,6 +610,7 @@ capabilities:
         - "scripts/lib/**"
         - "artifacts/library/skills/mempalace/**"
         - "artifacts/library/skills/harness-report/**"
+        - "config/copilot/*.json.template"
       env: []
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-http-client-reuse.test.ts
@@ -526,6 +649,7 @@ capabilities:
           - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
+          - "ci/test-wiring-exemptions.txt"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -536,6 +660,7 @@ capabilities:
           - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
+          - "ci/test-wiring-exemptions.txt"
     portability: portable
     changeset-gated: true
     cache:
@@ -569,6 +694,8 @@ capabilities:
           - "scripts/repair-mempalace-http.sh"
           - "scripts/switch-mempalace-http.sh"
           - "scripts/lib/**"
+          - "config/launchd/**"
+          - "config/systemd/**"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -582,6 +709,8 @@ capabilities:
           - "scripts/repair-mempalace-http.sh"
           - "scripts/switch-mempalace-http.sh"
           - "scripts/lib/**"
+          - "config/launchd/**"
+          - "config/systemd/**"
     portability: portable
     changeset-gated: true
     requires:
@@ -599,6 +728,8 @@ capabilities:
         - "scripts/repair-mempalace-http.sh"
         - "scripts/switch-mempalace-http.sh"
         - "scripts/lib/**"
+        - "config/launchd/**"
+        - "config/systemd/**"
       env: []
     command:
       - bash scripts/tests/test-chroma-fd-limits.sh
@@ -624,6 +755,8 @@ capabilities:
           - "tests/e2e/**"
           - "scripts/e2e/**"
           - "docs/cli-matrix.md"
+          - "docker/e2e/.versions.lock"
+          - ".gitignore"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -631,6 +764,8 @@ capabilities:
           - "tests/e2e/**"
           - "scripts/e2e/**"
           - "docs/cli-matrix.md"
+          - "docker/e2e/.versions.lock"
+          - ".gitignore"
       - on: manual
     portability: portable
     changeset-gated: true
@@ -673,6 +808,7 @@ capabilities:
           - "scripts/tests/test-tls-delegation.sh"
           - "scripts/setup-*.sh"
           - "scripts/lib/**"
+          - "mcp-servers.org.json"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -680,6 +816,7 @@ capabilities:
           - "scripts/tests/test-tls-delegation.sh"
           - "scripts/setup-*.sh"
           - "scripts/lib/**"
+          - "mcp-servers.org.json"
     portability: portable
     changeset-gated: true
     requires:
@@ -912,17 +1049,35 @@ capabilities:
       - bash scripts/check-markdown-links.sh
       - bash scripts/tests/test-check-markdown-links.sh
 
-  # changeset-coverage is the fail-safe (spec 0147 R5): it carries NO `paths:`
-  # filter, so it runs on every change on both engines. Its command reads the
-  # focused `paths:` sets from this reference (via yq, never hardcoded),
-  # computes the changed files, and — when a changed file is not covered by the
-  # union of the focused path sets — runs the full check suite; when every
-  # changed file is covered it is a fast no-op. The job provisions python@3.12,
-  # yq and node@24 (the secondary runtime also runs this capability's own
-  # regression test and the `mempalace` TypeScript test in the full suite), so
-  # a `node@22` capability must still never be changeset-gated.
+  # changeset-coverage is the exhaustive run (spec 0147 delta-01 R21): it has
+  # no pull-request and no push trigger. It runs `scheduled` (daily, on the
+  # default branch) and `manual`, and executes EVERY command of every
+  # `changeset-gated: true` capability unconditionally, reading them from this
+  # reference (via yq, never hardcoded). There is no diff and no base ref. The
+  # pull-request guarantee that used to be this job's run-time fail-safe is now
+  # the static `path-ownership` capability below. The job provisions
+  # python@3.12, yq and node@24 (the secondary runtime also runs the
+  # `mempalace` TypeScript test in the full suite), so a `node@22` capability
+  # must still never be changeset-gated. `history-depth: full` is kept so the
+  # gated commands see the same checkout on both engines.
   - id: changeset-coverage
-    name: "Fail-safe: run the full check suite when a change is uncovered"
+    name: "Exhaustive run of every changeset-gated check"
+    trigger:
+      - on: scheduled
+      - on: manual
+    portability: portable
+    requires:
+      runtime: [python@3.12, node@24]
+      tools: [yq]
+      history-depth: full
+    command:
+      - bash scripts/ci-changeset-coverage.sh
+
+  # changeset-coverage-test keeps the exhaustive script's regression test on the
+  # pull-request path (spec 0147 delta-01 R23). It has never been path-filtered
+  # and is not changeset-gated.
+  - id: changeset-coverage-test
+    name: "Test the exhaustive-run script"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -930,28 +1085,31 @@ capabilities:
         branches: [main, "release/**"]
     portability: portable
     requires:
-      # python@3.12 is the primary/image runtime (unchanged); node@24 is a
-      # SECONDARY runtime: the full suite this fail-safe runs includes the setup
-      # suites, whose capture-enabled cases hit the Node.js floor guard (spec
-      # 0243 R24, v1-F2) on a default Node.js 22 (#1391 CI).
-      runtime: [python@3.12, node@24]
+      runtime: node@24
       tools: [yq]
-      history-depth: full
-    env:
-      # The base the change is diffed from (merge-base relative, see the
-      # script header). Engine-specific value, same key on both engines:
-      # GitHub supplies `pull_request.base.sha || before` in build.yml.
-      # GitLab: `$CI_MERGE_REQUEST_DIFF_BASE_SHA` is an assumption — verify
-      # against the GitLab predefined-variables reference. The assumption is
-      # acceptable because an empty value is treated as unset and falls through
-      # to CI_COMMIT_BEFORE_SHA, then to origin/main (over-inclusive, safe:
-      # spec 0147 R10). The asymmetry on push events is intentional: GitLab
-      # relies on CI_COMMIT_BEFORE_SHA, which the script already reads, while
-      # GitHub supplies `before` through CI_BASE_REF.
-      CI_BASE_REF: "$CI_MERGE_REQUEST_DIFF_BASE_SHA"
     command:
-      - bash scripts/ci-changeset-coverage.sh
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage.test.ts
+
+  # path-ownership is the static ownership check (spec 0147 delta-01 R11-R18):
+  # every tracked file is owned by the `paths:` of a pull-request capability or
+  # exempted with a reason in ci/path-ownership-exemptions.txt (plus the
+  # optional adopter overlay ci/org/path-ownership-exemptions.txt). It reads only
+  # the working tree and this reference, never a base ref, so it has no
+  # `paths:` filter and cannot be skipped. `npm ci` provides `js-yaml`.
+  - id: path-ownership
+    name: "Check that every tracked file has an owner or a reasoned exemption"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts
 
   - id: lint-markdown
     name: "Lint Markdown files"
@@ -1057,6 +1215,36 @@ capabilities:
       runtime: node@24
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts
+
+  # Spec 0244 (issue #1387): the cross-contributor ticket-pickup check — the
+  # pure ownership model and the end-to-end tool against the in-process fake
+  # forge (GitHub, GitLab, Gitea wire shapes).
+  - id: ticket-pickup
+    name: "Ticket-pickup ownership check (spec 0244)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/ticket-pickup.ts"
+          - "scripts/lib/ticket-*.ts"
+          - "scripts/lib/forge-*.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/tests/ticket-*.test.ts"
+          - "scripts/tests/fixtures/ticket-pickup/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/ticket-pickup.ts"
+          - "scripts/lib/ticket-*.ts"
+          - "scripts/lib/forge-*.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/tests/ticket-*.test.ts"
+          - "scripts/tests/fixtures/ticket-pickup/**"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
 
   # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release
   # that cannot strip types. Each command is plain POSIX so the job needs no
@@ -1245,6 +1433,7 @@ capabilities:
           - "scripts/**"
           - "hooks/**"
           - ".github/workflows/scripting-conventions.yml"
+          - "ci/bash32-forbidden.txt"
     portability: portable
     command:
       - |

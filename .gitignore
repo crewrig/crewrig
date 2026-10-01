@@ -57,3 +57,7 @@ dist-copilot-plugin/
 # Per-checkout setup state: the production-dependency step records the
 # package-lock.json hash of its last successful run here (spec 0240 R5).
 .crewrig-state/
+
+# Claude Code runtime lock (session id, pid): an ephemeral tool-generated
+# file that docs/layers.md says MUST NOT be committed (spec 0147 delta-01 R19).
+.claude/scheduled_tasks.lock

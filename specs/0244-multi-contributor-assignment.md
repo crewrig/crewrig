@@ -1,7 +1,7 @@
 ---
 id: "0244"
 slug: multi-contributor-assignment
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1387
