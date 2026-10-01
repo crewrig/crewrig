@@ -7,6 +7,7 @@ on:
       - "scripts/**"
       - "hooks/**"
       - ".github/workflows/scripting-conventions.yml"
+      - "ci/bash32-forbidden.txt"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

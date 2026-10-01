@@ -46,8 +46,8 @@ detect_custom_tls_context() {
   # Signal 1: any standard cert/proxy variable already set in the environment.
   local v
   for v in NODE_EXTRA_CA_CERTS SSL_CERT_FILE REQUESTS_CA_BUNDLE PIP_CERT \
-           GIT_SSL_CAINFO CURL_CA_BUNDLE HTTPS_PROXY HTTP_PROXY \
-           CREWRIG_TLS_CA TLS_DELEGATION_CA; do
+           GIT_SSL_CAINFO CURL_CA_BUNDLE UV_SYSTEM_CERTS UV_NATIVE_TLS \
+           HTTPS_PROXY HTTP_PROXY CREWRIG_TLS_CA TLS_DELEGATION_CA; do
     if [ -n "${!v:-}" ]; then
       return 0
     fi
@@ -123,7 +123,10 @@ offer_tls_delegation() {
     printf 'export PIP_CERT=%q\n' "$ca"
     printf 'export GIT_SSL_CAINFO=%q\n' "$ca"
     printf 'export CURL_CA_BUNDLE=%q\n' "$ca"
-    printf 'export UV_NATIVE_TLS=1\n'
+    # uv: UV_SYSTEM_CERTS supersedes the deprecated UV_NATIVE_TLS, which
+    # current uv warns about on every call. A uv release that predates
+    # UV_SYSTEM_CERTS ignores it but still honours SSL_CERT_FILE above.
+    printf 'export UV_SYSTEM_CERTS=true\n'
   } > "${env_file}.tmp" && mv "${env_file}.tmp" "$env_file"
 
   # Reach the immediately-following setup bootstrap in this shell too.

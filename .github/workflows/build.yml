@@ -57,6 +57,12 @@ jobs:
               - 'docs/layers.md'
               - 'docs/agent-profile-migration.md'
               - 'model-mappings/**'
+              - '.agents/skills/**'
+              - '.claude/skills/**'
+              - '.gemini/skills/**'
+              - '.github/skills/**'
+              - '.gemini/commands/**'
+              - 'crewrig.config.toml'
       - name: Install yq
         if: steps.filter.outputs.component-drift == 'true'
         run: |
@@ -66,18 +72,84 @@ jobs:
         if: steps.filter.outputs.component-drift == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**') }}
+          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', '.agents/skills/**', '.claude/skills/**', '.gemini/skills/**', '.github/skills/**', '.gemini/commands/**', 'crewrig.config.toml') }}
       - name: Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/build-components.sh --target all --check
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml" --key-env "" -- bash scripts/build-components.sh --target all --check
       - name: Test Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/test-build-components.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml" --key-env "" -- bash scripts/test-build-components.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  model-resolution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            model-resolution:
+              - 'scripts/build-components.sh'
+              - 'scripts/test-build-components.sh'
+              - 'scripts/tests/test-model-resolution.sh'
+              - 'scripts/tests/test-agent-profile-migration.sh'
+              - 'scripts/lib/**'
+              - 'artifacts/**'
+              - 'extensions/**'
+              - '.crewrig/core-paths.txt'
+              - 'docs/layers.md'
+              - 'docs/agent-profile-migration.md'
+              - 'model-mappings/**'
+      - name: Install yq
+        if: steps.filter.outputs.model-resolution == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.model-resolution == 'true'
+        with:
+          path: .ci-cache
+          key: model-resolution-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**') }}
       - name: Test Model Resolution
-        if: steps.filter.outputs.component-drift == 'true'
+        if: steps.filter.outputs.model-resolution == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/tests/test-model-resolution.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  agent-profile-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            agent-profile-migration:
+              - 'scripts/build-components.sh'
+              - 'scripts/test-build-components.sh'
+              - 'scripts/tests/test-model-resolution.sh'
+              - 'scripts/tests/test-agent-profile-migration.sh'
+              - 'scripts/lib/**'
+              - 'artifacts/**'
+              - 'extensions/**'
+              - '.crewrig/core-paths.txt'
+              - 'docs/layers.md'
+              - 'docs/agent-profile-migration.md'
+              - 'model-mappings/**'
+      - name: Install yq
+        if: steps.filter.outputs.agent-profile-migration == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.agent-profile-migration == 'true'
+        with:
+          path: .ci-cache
+          key: agent-profile-migration-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**') }}
       - name: Test Agent Profile Migration
-        if: steps.filter.outputs.component-drift == 'true'
+        if: steps.filter.outputs.agent-profile-migration == 'true'
         run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/tests/test-agent-profile-migration.sh
       - name: Cancel workflow on job failure
         if: failure()
@@ -419,6 +491,7 @@ jobs:
               - 'scripts/lib/**'
               - 'artifacts/library/skills/mempalace/**'
               - 'artifacts/library/skills/harness-report/**'
+              - 'config/copilot/*.json.template'
       - name: Install yq
         if: steps.filter.outputs.mempalace == 'true'
         run: |
@@ -436,52 +509,52 @@ jobs:
         if: steps.filter.outputs.mempalace == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/tests/test-mempalace-*.sh', 'scripts/tests/mempalace-http-client-reuse.test.ts', 'scripts/tests/test-system-context-store.sh', 'scripts/tests/test-setup-antigravity-transcript.sh', 'scripts/tests/test-setup-claude-transcript.sh', 'scripts/tests/test-setup-copilot-transcript.sh', 'scripts/tests/test-setup-gemini-transcript.sh', 'scripts/tests/test-antigravity-component-install.sh', 'scripts/tests/test-antigravity-discovery-probe.sh', 'scripts/lib/**', 'artifacts/library/skills/mempalace/**', 'artifacts/library/skills/harness-report/**') }}
+          key: ${{ hashFiles('scripts/tests/test-mempalace-*.sh', 'scripts/tests/mempalace-http-client-reuse.test.ts', 'scripts/tests/test-system-context-store.sh', 'scripts/tests/test-setup-antigravity-transcript.sh', 'scripts/tests/test-setup-claude-transcript.sh', 'scripts/tests/test-setup-copilot-transcript.sh', 'scripts/tests/test-setup-gemini-transcript.sh', 'scripts/tests/test-antigravity-component-install.sh', 'scripts/tests/test-antigravity-discovery-probe.sh', 'scripts/lib/**', 'artifacts/library/skills/mempalace/**', 'artifacts/library/skills/harness-report/**', 'config/copilot/*.json.template') }}
       - name: Test Mempalace HTTP Client Reuse
         if: steps.filter.outputs.mempalace == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-http-client-reuse.test.ts
       - name: Test Mempalace Transcript Hook
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-transcript-hook.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-transcript-hook.sh
       - name: Test Setup Antigravity Transcript
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-setup-antigravity-transcript.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-setup-antigravity-transcript.sh
       - name: Test Setup Claude Transcript
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-setup-claude-transcript.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-setup-claude-transcript.sh
       - name: Test Worktree Git Guard
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-worktree-git-guard.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-worktree-git-guard.sh
       - name: Test Setup Copilot Transcript
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-setup-copilot-transcript.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-setup-copilot-transcript.sh
       - name: Test Setup Gemini Transcript
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-setup-gemini-transcript.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-setup-gemini-transcript.sh
       - name: Test Antigravity Component Install
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-antigravity-component-install.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-antigravity-component-install.sh
       - name: Test Antigravity Discovery Probe
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-antigravity-discovery-probe.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-antigravity-discovery-probe.sh
       - name: Test Mempalace Version Range
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-version-range.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-version-range.sh
       - name: Python3  M Pip Install   Quiet Packaging
         if: steps.filter.outputs.mempalace == 'true'
         run: python3 -m pip install --quiet packaging
       - name: Test Mempalace Pin
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-pin.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-pin.sh
       - name: Test Mempalace Runtime Guard
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-runtime-guard.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-runtime-guard.sh
       - name: Test Mempalace Doctor
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-mempalace-doctor.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-doctor.sh
       - name: Test System Context Store
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**" --key-env "" -- bash scripts/tests/test-system-context-store.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-system-context-store.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -503,6 +576,7 @@ jobs:
               - 'scripts/lib/base-ref-resolve.sh'
               - 'scripts/tests/**'
               - 'hooks/worktree-git-guard.sh'
+              - 'ci/test-wiring-exemptions.txt'
       - uses: actions/cache@v4
         if: steps.filter.outputs.test-wiring == 'true'
         with:
@@ -545,6 +619,8 @@ jobs:
               - 'scripts/repair-mempalace-http.sh'
               - 'scripts/switch-mempalace-http.sh'
               - 'scripts/lib/**'
+              - 'config/launchd/**'
+              - 'config/systemd/**'
       - name: Install yq
         if: steps.filter.outputs.chroma-mcp == 'true'
         run: |
@@ -558,31 +634,31 @@ jobs:
         if: steps.filter.outputs.chroma-mcp == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/tests/test-chroma-*.sh', 'scripts/tests/test-mcp-daemon.sh', 'scripts/tests/test-palace-path-propagation.sh', 'scripts/tests/test-repair-mempalace-http.sh', 'scripts/tests/test-rotate-mempalace-token.sh', 'scripts/tests/test-worktree-claim.sh', 'scripts/mcp-daemon.sh', 'scripts/repair-mempalace-http.sh', 'scripts/switch-mempalace-http.sh', 'scripts/lib/**') }}
+          key: ${{ hashFiles('scripts/tests/test-chroma-*.sh', 'scripts/tests/test-mcp-daemon.sh', 'scripts/tests/test-palace-path-propagation.sh', 'scripts/tests/test-repair-mempalace-http.sh', 'scripts/tests/test-rotate-mempalace-token.sh', 'scripts/tests/test-worktree-claim.sh', 'scripts/mcp-daemon.sh', 'scripts/repair-mempalace-http.sh', 'scripts/switch-mempalace-http.sh', 'scripts/lib/**', 'config/launchd/**', 'config/systemd/**') }}
       - name: Test Chroma Fd Limits
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-fd-limits.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-chroma-fd-limits.sh
       - name: Test Chroma Health Race
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-health-race.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-chroma-health-race.sh
       - name: Test Chroma Server
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-chroma-server.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-chroma-server.sh
       - name: Test Mcp Daemon
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-mcp-daemon.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-mcp-daemon.sh
       - name: Test Palace Path Propagation
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-palace-path-propagation.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-palace-path-propagation.sh
       - name: Test Repair Mempalace Http
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-repair-mempalace-http.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-repair-mempalace-http.sh
       - name: Test Rotate Mempalace Token
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-rotate-mempalace-token.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-rotate-mempalace-token.sh
       - name: Test Worktree Claim
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**" --key-env "" -- bash scripts/tests/test-worktree-claim.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-worktree-claim.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -599,6 +675,8 @@ jobs:
               - 'tests/e2e/**'
               - 'scripts/e2e/**'
               - 'docs/cli-matrix.md'
+              - 'docker/e2e/.versions.lock'
+              - '.gitignore'
       - name: Install yq
         if: steps.filter.outputs.e2e == 'true'
         run: |
@@ -696,6 +774,7 @@ jobs:
               - 'scripts/tests/test-tls-delegation.sh'
               - 'scripts/setup-*.sh'
               - 'scripts/lib/**'
+              - 'mcp-servers.org.json'
       # The v1-F2 floor guard (spec 0243 R24) refuses to write the direct form on
       # a Node.js below 24, and ubuntu-latest defaults to 22 (#1391 CI).
       - uses: actions/setup-node@v4
@@ -973,34 +1052,53 @@ jobs:
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
-  changeset-coverage:
+  # Spec 0147 delta-01 R21, R23: the exhaustive run lives in its own scheduled
+  # workflow (changeset-coverage.yml). Its script's regression test stays on the
+  # pull-request path here, with no path filter, like `ratchet`.
+  changeset-coverage-test:
     runs-on: ubuntu-latest
-    env:
-      CI_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # full history so the base ref resolves
+
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      # Secondary runtime: the full suite includes the setup suites, whose
-      # capture-enabled cases hit the Node.js floor guard (spec 0243 R24, v1-F2)
-      # on ubuntu-latest's default Node.js 22 (#1391 CI).
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Fail-safe full check suite (spec 0147 R5)
-        run: bash scripts/ci-changeset-coverage.sh
-      - name: Test the fail-safe base resolution (spec 0147 R5, issue #1402)
+
+      - name: Test the exhaustive-run script (spec 0147 delta-01 R21)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0147 delta-01 R11-R18: static path-ownership check. No path filter and
+  # no base ref: every tracked file is owned or exempted, on every change.
+  path-ownership:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test the path-ownership check
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts
+
+      - name: Check path ownership
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   lint-markdown:
     runs-on: ubuntu-latest
     steps:

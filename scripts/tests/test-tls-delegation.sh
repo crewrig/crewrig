@@ -50,7 +50,8 @@ bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 reset_tls_env() {
   unset TLS_DELEGATION TLS_DELEGATION_CA CREWRIG_TLS_CA \
         NODE_EXTRA_CA_CERTS SSL_CERT_FILE REQUESTS_CA_BUNDLE PIP_CERT \
-        GIT_SSL_CAINFO CURL_CA_BUNDLE HTTPS_PROXY HTTP_PROXY 2>/dev/null || true
+        GIT_SSL_CAINFO CURL_CA_BUNDLE UV_SYSTEM_CERTS UV_NATIVE_TLS \
+        HTTPS_PROXY HTTP_PROXY 2>/dev/null || true
 }
 
 fresh_home() {
@@ -67,6 +68,30 @@ if detect_custom_tls_context; then
   ok "detects an already-set certificate environment variable"
 else
   bad "did not detect a set certificate environment variable"
+fi
+reset_tls_env
+
+# The uv trust variables are signal-1 inputs too. These cases are only
+# meaningful on a host without admin-added CA anchors (signal 2): there, the
+# baseline with every variable unset does not fire, so a positive result proves
+# the variable itself is the trigger. On a host with anchors detection fires
+# regardless, so the cases are skipped (not counted) rather than passing
+# vacuously.
+host_anchors=0
+detect_custom_tls_context && host_anchors=1
+if [ "$host_anchors" -eq 1 ]; then
+  echo "  skip: host has admin CA anchors; uv variable detection not isolable"
+else
+  ok "baseline with no signal set does not fire"
+  for uv_var in UV_SYSTEM_CERTS UV_NATIVE_TLS; do
+    reset_tls_env
+    export "$uv_var=1"
+    if detect_custom_tls_context; then
+      ok "detects $uv_var set in the environment"
+    else
+      bad "did not detect $uv_var set in the environment"
+    fi
+  done
 fi
 reset_tls_env
 
@@ -89,8 +114,13 @@ rc=0; offer_tls_delegation >/dev/null 2>&1 || rc=$?
 [ -f "$ENVFILE" ] && ok "managed file written" || bad "managed file not written"
 grep -q "NODE_EXTRA_CA_CERTS=" "$ENVFILE" 2>/dev/null \
   && ok "exports NODE_EXTRA_CA_CERTS" || bad "missing NODE_EXTRA_CA_CERTS export"
-grep -q "UV_NATIVE_TLS=1" "$ENVFILE" 2>/dev/null \
-  && ok "sets UV_NATIVE_TLS=1 (native TLS delegation)" || bad "missing UV_NATIVE_TLS=1"
+grep -q "^export UV_SYSTEM_CERTS=true$" "$ENVFILE" 2>/dev/null \
+  && ok "sets UV_SYSTEM_CERTS=true (native TLS delegation)" || bad "missing UV_SYSTEM_CERTS=true"
+if grep -q "UV_NATIVE_TLS" "$ENVFILE" 2>/dev/null; then
+  bad "managed file still writes the deprecated UV_NATIVE_TLS"
+else
+  ok "does not write the deprecated UV_NATIVE_TLS"
+fi
 # Nothing written outside ~/.crewrig, and removable in one action.
 if rm "$ENVFILE" 2>/dev/null; then
   ok "removable in one action (rm ~/.crewrig/tls-env.sh)"
@@ -139,6 +169,20 @@ for s in setup-claude-interactive.sh setup-gemini-interactive.sh \
     bad "missing offer_tls_delegation call: $s"
   fi
 done
+
+# ---------------------------------------------------------------------------
+echo "7. Standalone MemPalace install inherits the trust (R2 runtime reach, R8 propagation)"
+install_cmd="$(awk '
+  /^  install-mempalace:/ { in_task = 1; next }
+  in_task && /^  [^ ]/ { exit }
+  in_task && /^    cmd:/ { sub(/^    cmd:[[:space:]]*/, ""); print; exit }
+' "$REPO_DIR/Taskfile.yml")"
+case "$install_cmd" in
+  "bash {{.REPO_DIR}}/scripts/lib/tls-exec.sh pipx install "*)
+    ok "task install-mempalace runs pipx through scripts/lib/tls-exec.sh" ;;
+  *)
+    bad "task install-mempalace bypasses tls-exec.sh (cmd: '$install_cmd')" ;;
+esac
 
 # ---------------------------------------------------------------------------
 echo ""

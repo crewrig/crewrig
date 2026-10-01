@@ -144,6 +144,8 @@ Parallel agent teams operating on the same git working directory collide on bran
 git worktree add -b <branch-name> .worktrees/<ticket-id> crewrig/main
 ```
 
+**Ticket pickup check first.** Before that `git worktree add` — and before any branch or spec-id reservation for the ticket — the orchestrator runs the cross-contributor ownership check from the shared checkout, `task -x ticket-pickup -- --issue <N>`, and stops on any non-zero exit ([`docs/ticket-ownership.md`](ticket-ownership.md), spec 0244 R2/R11). The check coordinates different contributors; the worktree claim below still coordinates the sessions of one contributor (spec 0244 R17).
+
 All file edits performed by the team — by every specialist, without exception — **MUST** happen inside `.worktrees/<ticket-id>/`. The main working directory is off-limits for the duration of the ticket; treat it as read-only.
 
 **Cwd verification (every spawned role).** Before issuing its first `Write`, `Edit`, or file-mutating `Bash` call, a sub-agent whose brief names a worktree path (`.worktrees/<ticket-id>/`) as its working location MUST verify that its own working directory resolves inside that worktree. This obligation attaches to the brief's target, not to the role — it applies identically to `developer`, `tester`, `doc-writer`, `architect`, or any other spawned specialist whenever the brief names a worktree path. Embed the following instruction verbatim in the spawned `Agent` prompt whenever the brief targets a worktree:
@@ -315,7 +317,10 @@ once per ticket, in the mode declared by the parent ticket (default
 INTERMEDIATE per ADR-0010).
 
 The skill runs as step 0 for every ticket whose complexity tier is
-NOT `trivial` (ADR-0010 → *Complexity tiers and team sizing*).
+NOT `trivial` (ADR-0010 → *Complexity tiers and team sizing*). Its
+first action is the ticket pickup check of
+[`docs/ticket-ownership.md`](ticket-ownership.md), before it secures
+the spec id; a non-zero exit stops the ticket (spec 0244 R15).
 `trivial`-tier tickets bypass `spec-author` entirely; the orchestrator
 handles them inline per the trivial-tier row of the ADR.
 
@@ -413,14 +418,18 @@ tiers and their exact compositions:
 
 | Tier | DEV-stage team | Notes |
 |---|---|---|
-| `trivial` | No team — orchestrator handles the work inline in a single turn. | Bypasses `spec-author` per *Standard Team Templates → Step 0*. The artifact-validation gate(s) of the declared interaction mode — realised through the `user-validate` skill — and the distinct merge-authorization gate still apply to inline work. |
+| `trivial` | No team — orchestrator handles the work inline in a single turn. | Bypasses `spec-author` per *Standard Team Templates → Step 0*, so the orchestrator runs the ticket pickup check (`task -x ticket-pickup -- --issue <N>`, [`docs/ticket-ownership.md`](ticket-ownership.md)) itself before its first authoring action, and stops on any non-zero exit. The artifact-validation gate(s) of the declared interaction mode — realised through the `user-validate` skill — and the distinct merge-authorization gate still apply to inline work. |
 | `small` | `developer` + `pr-logbook` + `pr-reviewer`. | No `architect` (the spec is its own architectural input). No `tester` unless the change carries a test surface; when added, slot `tester` between `developer` and `pr-logbook`. The *Security rule* still applies. |
 | `standard` | The matching Template (1 / 2 / 3) from *Standard Team Templates* above, unchanged. | Default tier when the frontmatter is silent. |
 | `large` | `architect`-led decomposition into one or more sub-specs **before** any `developer` spawn. | Each sub-spec is a separate ticket with its own SPECS-stage entry (a new spec file under `/specs/`, a new spec-PR, a new implementation-PR). The parent ticket coordinates; it does not implement. |
 
 **Selection rule.** The orchestrator SHALL read the `complexity`
 field from the merged spec's frontmatter at ticket pickup and SHALL
-NOT re-evaluate it mid-lifecycle. Per ADR-0010, the tier — like the
+NOT re-evaluate it mid-lifecycle. Picking up a ticket whose spec is
+already merged — at the PLAN or DEV stage — SHALL first run the
+ticket pickup check (`task -x ticket-pickup -- --issue <N>`,
+[`docs/ticket-ownership.md`](ticket-ownership.md)) before any branch
+or worktree; any non-zero exit stops the pickup (spec 0244 R15). Per ADR-0010, the tier — like the
 interaction mode — is immutable once SPECS merges; correcting a
 mis-tagged tier requires a delta-spec PR routed through the
 retroactive review loop (`class: spec`).

@@ -73,6 +73,11 @@
           "title": "Reviewer seat",
           "path": "docs/reviewer-seat.md",
           "nav_order": 20
+        },
+        {
+          "title": "Ticket ownership",
+          "path": "docs/ticket-ownership.md",
+          "nav_order": 30
         }
       ]
     },
@@ -301,6 +306,11 @@
           "title": "ADR 0017 — Usage record invariants",
           "path": "docs/adr/0017-usage-record-invariants.md",
           "nav_order": 170
+        },
+        {
+          "title": "ADR 0018 — Forge assignment record as the cross-contributor ticket lock",
+          "path": "docs/adr/0018-forge-assignment-ownership.md",
+          "nav_order": 180
         }
       ]
     }
