@@ -17,7 +17,9 @@
 #      the interpreter inside `.args`.
 #   2. "What resolves on your PATH" — for each of `mempalace` and
 #      `mempalace-mcp`, the resolved path, its realpath, the interpreter read
-#      from its shebang, and the version that interpreter serves.
+#      from its shebang (through a `#!/bin/sh` polyglot wrapper when the venv
+#      path contains a space — issue #1417), and the version that interpreter
+#      serves.
 #   3. "What a fresh setup would select" — the ordered interpreter candidate
 #      list, the winner, and an explicit line when the winner is not the
 #      highest-priority candidate (R10). This is what the NEXT setup run would
@@ -115,56 +117,17 @@ probe_get() {
   fi
 }
 
-# resolve_symlink <path>
-# Prints the path with every symlink hop followed and the directory component
-# normalised. Hand-rolled rather than `readlink -f`, which BSD readlink lacks on
-# older macOS — the two supported platforms must report the same fact.
-resolve_symlink() {
-  local target="$1" link hops=0
-  while [ -L "$target" ] && [ "$hops" -lt 32 ]; do
-    link="$(readlink "$target")"
-    case "$link" in
-      /*) target="$link" ;;
-      *)  target="$(dirname "$target")/${link}" ;;
-    esac
-    hops=$((hops + 1))
-  done
-  local dir
-  dir="$(cd "$(dirname "$target")" 2>/dev/null && pwd -P)"
-  if [ -z "$dir" ]; then
-    printf '%s' "$target"
-  else
-    printf '%s/%s' "$dir" "$(basename "$target")"
-  fi
-}
+# resolve_symlink lives in lib/common.sh, shared with the candidate list.
 
 # shebang_interpreter <console-script-path>
-# Reads the interpreter out of a console script's shebang as TEXT — the same
-# read detect_mempalace_python performs — and never execs the script itself.
-# An `#!/usr/bin/env python3` form is resolved to its second token, since the
-# first one would otherwise swallow the script argument.
+# Reads the interpreter out of a console script as TEXT — the very read
+# detect_mempalace_python's candidate list performs, through the shared
+# console_script_python in lib/common.sh — and never execs the script itself.
+# `#!/usr/bin/env python3` resolves to its second token, and a `#!/bin/sh`
+# polyglot wrapper (venv path with a space, issue #1417) to the interpreter its
+# exec line names; a shell is never returned.
 shebang_interpreter() {
-  local first second line
-  line="$(head -1 "$1" 2>/dev/null)"
-  case "$line" in
-    '#!'*) ;;
-    *) return 1 ;;
-  esac
-  line="${line#\#!}"
-  # shellcheck disable=SC2086  # deliberate word split of the shebang line
-  set -- $line
-  first="${1:-}"
-  second="${2:-}"
-  case "$(basename "${first:-none}")" in
-    env)
-      [ -n "$second" ] || return 1
-      printf '%s' "$second"
-      ;;
-    *)
-      [ -n "$first" ] || return 1
-      printf '%s' "$first"
-      ;;
-  esac
+  console_script_python "$1"
 }
 
 # evaluate <label> <interpreter> <pin_module> <common_sh> <probe_capture>
