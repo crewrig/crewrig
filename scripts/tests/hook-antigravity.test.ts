@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 
-import { GUARDED_PREFIX } from "../lib/hook-command.ts";
+import { GUARDED_PREFIX, MEASURED_SURFACES, type MeasuredSurface } from "../lib/hook-command.ts";
 import {
   keepAntigravityHooks,
   keepAntigravityHooksFile,
@@ -174,5 +174,79 @@ describe("remove (R34)", () => {
     );
     assert.equal(result.status, 0);
     assert.deepEqual(result.lines, []);
+  });
+});
+
+// Security review (MEDIUM): on Windows only the byte-equal rebuild is current (R34).
+describe("Windows: nothing but the current form is kept or removed (R34, R32)", () => {
+  const OPTIONS = { descriptor: FIXTURE, platform: "win32" } as const;
+  const NEAR_MISSES: [string, string][] = [
+    ["the bare form", `node ${SCRIPT} Stop`],
+    ["the prefix without `set`", `NoDefaultCurrentDirectoryInExePath=1&& node ${SCRIPT} Stop`],
+    ["a POSIX-prefix injection", `X=a&calc&& node ${SCRIPT} Stop`],
+  ];
+  const single = (command: string): Record<string, unknown> => ({
+    "crewrig-fixture-guard": { Stop: [{ type: "command", command }] },
+  });
+  /** The shipped constant with the hooks entry's guarded form hijacked: R32(d). */
+  const STATE_D: readonly MeasuredSurface[] = MEASURED_SURFACES.map((m) =>
+    m.cli === "antigravity" && m.surface === "hooks"
+      ? {
+          ...m,
+          guardedForm: [
+            { plant: "node.cmd", ran: "real" },
+            { plant: "node.bat", ran: "real" },
+            { plant: "node.exe", ran: "planted" },
+          ],
+        }
+      : m,
+  );
+
+  for (const [name, command] of NEAR_MISSES) {
+    test(`${name} is left by keep and untouched by remove`, () => {
+      const lines = keepAntigravityHooks(single(command), OPTIONS);
+      assert.deepEqual(
+        lines.map((l) => [l.kind, l.detail]),
+        [["left", "unrecognised shape"]],
+      );
+      const result = removeAntigravityHooks(single(command), OPTIONS);
+      assert.equal(result.removed, 0);
+      assert.deepEqual(result.config, single(command));
+      assert.deepEqual(
+        result.lines.map((l) => [l.kind, l.detail]),
+        [["left", "unrecognised shape"]],
+      );
+    });
+  }
+
+  test("(d): a guarded command is left by keep with the (d) diagnostic, not reported current", () => {
+    const lines = keepAntigravityHooks(single(GUARDED), { ...OPTIONS, measuredSurfaces: STATE_D });
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0]?.kind, "left");
+    const detail = lines[0]?.detail ?? "";
+    assert.notEqual(detail, "already the direct form");
+    assert.ok(detail.includes("hijacked") && detail.includes("row 37f"), detail);
+    assert.ok(detail.includes("#1392"), detail);
+  });
+
+  test("(d): remove still takes the framework's exact guarded form", () => {
+    const result = removeAntigravityHooks(single(GUARDED), {
+      ...OPTIONS,
+      measuredSurfaces: STATE_D,
+    });
+    assert.equal(result.removed, 1);
+    assert.deepEqual(result.config, {});
+  });
+
+  test("the near-misses stay recognised as direct form off Windows, where no guarded form is produced", () => {
+    // Unchanged non-win32 behaviour: the shared signature's verdict stands.
+    const lines = keepAntigravityHooks(single(`node "/repo/hooks/fixture-guard.ts" Stop`), {
+      descriptor: FIXTURE,
+      platform: "linux",
+    });
+    assert.deepEqual(
+      lines.map((l) => l.detail),
+      ["already the direct form"],
+    );
   });
 });

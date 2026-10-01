@@ -10,13 +10,19 @@
 // with `guardedPrefix` and change nothing here. Nothing wires this library into
 // a setup flow yet: that is C2/C3's work (delta-03 out-of-scope item).
 //
-//   - keep: report only. A recognised command (the guarded or direct form) is
-//     already the direct form; a command that names the descriptor's script but
-//     does not parse is left and reported as an unrecognised shape (R26). It
-//     never writes.
-//   - remove: delete recognised handlers, then prune only the groups, events
-//     and hook names that the deletion emptied. Every other handler stays
-//     byte-identical.
+//   - On Windows a command is current only when it equals, byte for byte, the
+//     command hook-command.ts builds for it in the hooks entry's R32 state (as
+//     hook-statusline.ts judges the status line). A bare `node <abs>`, or a
+//     near-miss the shared signature accepts through its POSIX `NAME=value`
+//     prefix, is never kept silently as current (R34); in a refusing state the
+//     command is left with the R32 diagnostic.
+//   - keep: report only, and never writes. A current command is already the
+//     direct form; any other command of the descriptor, or one that names its
+//     script but does not parse, is left and reported (R26).
+//   - remove: on Windows delete only a current command or the exact guarded
+//     form of the descriptor, elsewhere any recognised one, then prune only the
+//     groups, events and hook names that the deletion emptied. Every other
+//     handler stays byte-identical.
 //   - A guarded command met on macOS or Linux is an unrecognised shape: the
 //     module never produces it there (S4).
 //
@@ -26,6 +32,7 @@
 import path from "node:path";
 
 import { backupFile, readJsonObject, writeJsonConfig, type JsonObject } from "./hook-config.ts";
+import { hookCommandLine, type MeasuredSurface } from "./hook-command.ts";
 import type { HookDescriptor } from "./hook-descriptor.ts";
 import { parseHandler } from "./hook-recognition.ts";
 import type { ReportLine } from "./hook-rewrite.ts";
@@ -33,6 +40,8 @@ import type { ReportLine } from "./hook-rewrite.ts";
 export interface AntigravityHooksOptions {
   readonly descriptor: HookDescriptor;
   readonly platform: NodeJS.Platform;
+  /** Test seam: the measured-surface constant of hook-command.ts. */
+  readonly measuredSurfaces?: readonly MeasuredSurface[];
 }
 
 export interface AntigravityRemoveResult {
@@ -47,21 +56,62 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 const ESCAPE = /[.*+?^${}()|[\]\\]/g;
 
 type Verdict =
-  | { readonly kind: "recognised"; readonly path: string }
-  | { readonly kind: "unrecognised"; readonly path: string }
+  | {
+      readonly kind: "ours";
+      readonly path: string;
+      /** Already the current direct form: kept by keep. */
+      readonly current: boolean;
+      /** May be deleted by remove. */
+      readonly removable: boolean;
+      /** Why a non-current command is left. */
+      readonly detail: string;
+    }
   | { readonly kind: "foreign" };
 
-/** Whether one handler is the descriptor's command, one that only names its script, or another hook's. */
+const UNRECOGNISED = "unrecognised shape";
+
+/** Whether one handler is the descriptor's current command, another of its commands, or another hook's. */
 function judge(handler: unknown, options: AntigravityHooksOptions): Verdict {
-  const parse = parseHandler(handler, options.descriptor);
-  if (parse !== null && !(parse.guarded && options.platform !== "win32")) {
-    return { kind: "recognised", path: parse.path };
-  }
   const command = isRecord(handler) ? handler["command"] : undefined;
+  const parse = parseHandler(handler, options.descriptor);
+  if (parse !== null && typeof command === "string") {
+    if (options.platform !== "win32") {
+      // S4: the module never produces the guarded form off Windows.
+      return parse.guarded
+        ? { kind: "ours", path: parse.path, current: false, removable: false, detail: UNRECOGNISED }
+        : { kind: "ours", path: parse.path, current: true, removable: true, detail: "" };
+    }
+    // R34 on Windows: rebuild and compare bytes, as hook-statusline.ts does.
+    const request = {
+      cli: "antigravity",
+      surface: "hooks",
+      platform: "win32",
+      scriptPath: parse.path,
+      args: parse.post.split(/\s+/).filter((word) => word !== ""),
+    } as const;
+    const built =
+      options.measuredSurfaces === undefined
+        ? hookCommandLine(request)
+        : hookCommandLine(request, options.measuredSurfaces);
+    if (built.ok && built.command === command) {
+      return { kind: "ours", path: parse.path, current: true, removable: true, detail: "" };
+    }
+    // The exact guarded form is the framework's own even where the entry now
+    // refuses it, so remove may still take it; nothing else is.
+    return {
+      kind: "ours",
+      path: parse.path,
+      current: false,
+      removable: parse.guarded,
+      detail: built.ok ? UNRECOGNISED : built.refusal,
+    };
+  }
   if (typeof command !== "string") return { kind: "foreign" };
   const name = options.descriptor.basename.replace(ESCAPE, "\\$&");
   const named = new RegExp(`[^\\s"']*/hooks/${name}\\.(?:sh|ts)`).exec(command);
-  return named === null ? { kind: "foreign" } : { kind: "unrecognised", path: named[0] };
+  return named === null
+    ? { kind: "foreign" }
+    : { kind: "ours", path: named[0], current: false, removable: false, detail: UNRECOGNISED };
 }
 
 /** Every handler of the file with where it sits, in document order. */
@@ -95,7 +145,7 @@ export function keepAntigravityHooks(
       kind: "left",
       event,
       path: verdict.path,
-      detail: verdict.kind === "recognised" ? "already the direct form" : "unrecognised shape",
+      detail: verdict.current ? "already the direct form" : verdict.detail,
     });
   }
   return lines;
@@ -111,14 +161,13 @@ export function removeAntigravityHooks(
   /** Keep a handler, or drop it and report why. */
   const keeps = (event: string, handler: unknown): boolean => {
     const verdict = judge(handler, options);
-    if (verdict.kind === "recognised") {
+    if (verdict.kind === "foreign") return true;
+    if (verdict.removable) {
       lines.push({ kind: "dropped", event, path: verdict.path, detail: "removed" });
       removed++;
       return false;
     }
-    if (verdict.kind === "unrecognised") {
-      lines.push({ kind: "left", event, path: verdict.path, detail: "unrecognised shape" });
-    }
+    lines.push({ kind: "left", event, path: verdict.path, detail: verdict.detail });
     return true;
   };
 
