@@ -371,10 +371,25 @@ Status 2 is never probed, because it blocks on Claude Code `Stop`. If a probe sh
 
 **R12 was confirmed on the wired events.** On 2026-10-01 a direct project-scoped hook was registered on exactly the events `hooks/*-usage-capture-hooks.json` wires, in the same entry shape. It wrote one line to standard error, nothing to standard output, and exited with status 1; one real turn per CLI ran headless and interactive, and every wired event fired each time. Full results: [issue #1398](https://github.com/crewrig/crewrig/issues/1398#issuecomment-5935751970). The case `X1` of the spec 0237 probe (`record <cli> X1 --exit 1`) still fires on each CLI's prompt event (`UserPromptSubmit`, `BeforeAgent`, `userPromptSubmitted`, see `docs/runbooks/windows-hook-parsing-probe.md`), so it does not by itself cover `Stop`, `SessionEnd`, `AfterModel`, `agentStop` or `sessionEnd`.
 
-Two observed facts bear on whether a user sees the R12 diagnostic:
+**Where the R12 diagnostic is visible is an accepted gap (spec 0243 R37).** Writing the line to standard error does not by itself make it reach the user. The same probe measured what the user sees, on macOS, on every wired event, headless and interactive ([issue #1398](https://github.com/crewrig/crewrig/issues/1398#issuecomment-5935751970)):
 
-- **Copilot CLI shows no notice.** The failure reaches only `~/.copilot/logs/process-*.log` (`[ERROR] [rust:hooks] … Hook command failed with code 1`, then the standard-error line), so a Copilot CLI user is not told to re-run setup.
-- **Gemini CLI `AfterModel` fires once per streamed chunk.** It fired three times for a one-word reply, so the diagnostic line can repeat several times in one turn.
+- **Claude Code 2.1.285** (`Stop`, `SessionEnd`) shows it once per event. On `Stop`, the transcript shows `Stop hook error: Failed with non-blocking status code: <line>`, in interactive mode only. On `SessionEnd`, the terminal shows `SessionEnd hook [<command>] failed: <line>` after exit.
+- **Gemini CLI 0.46.0, interactive** (`AfterModel`) shows a generic notice once per firing: `⚠ Hook(s) [<name>] failed for event AfterModel. Press F12 to see the debug drawer for more details.` The diagnostic text itself, the package name and "re-run setup", appears only in the debug drawer behind F12.
+- **Gemini CLI 0.46.0, headless** (`AfterModel`) prints the line itself on standard error, `Hook system message: Warning: <line>`, once per firing.
+- **Copilot CLI 1.0.87** (`agentStop`, `sessionEnd`) shows nothing. The failure reaches only `~/.copilot/logs/process-*.log` (`[ERROR] [rust:hooks] … Hook command failed with code 1`, then the standard-error line), so a Copilot CLI user is not told to re-run setup.
+
+On Gemini CLI, in both modes, `AfterModel` fires once per streamed chunk (three times for a one-word reply), so the notice or the line can repeat several times in one turn. The measurement covers macOS only; Linux and Windows visibility was not measured. Antigravity CLI is out of reach: no capture hook is wired for it, and its status-line shim always exits zero (spec 0243 R14).
+
+This state is accepted as an explicit gap for as long as spec 0243 R11 holds. No entry point imports a third-party package, so no firing takes the R12 path and no user can meet the gap. See also *Parity gaps* in `docs/cli-matrix.md`.
+
+**Obligation on the change that makes the path reachable (spec 0243 R38).** The trigger is the first change that makes `hooks/usage-capture.ts`, or a module it loads, depend on a third-party package; that change must also amend R11. In the same pull request it must:
+
+- (a) make the diagnostic reach the user on every CLI whose capture fragment wires `hooks/usage-capture.ts`, during the session or at its end. A line written only to a log file does not count, nor does a generic notice that does not show the diagnostic text itself, such as the interactive Gemini CLI notice. Where a CLI offers no surface that reaches the user, the change records a per-CLI `[GAP]` in `docs/cli-matrix.md` → *Parity gaps* with that evidence instead;
+- (b) show the diagnostic at most once per turn on Gemini CLI, whatever the number of `AfterModel` firings;
+- (c) keep the exit-status contract of R12, never status 2, and probe any exit status or standard-output content its mechanism adds on each wired event, as #1398 did, to show it does not block or alter the turn;
+- (d) cite here one probe result per wired CLI and event, recorded on its ticket, showing the outcome of (a) and (b).
+
+The mechanism is left to that change. A setup or doctor check may complement an in-session surface but cannot satisfy (a) on its own, and a review of that change treats a missing item (a) to (d) as unmet.
 
 ## Backfill command
 
