@@ -35,6 +35,7 @@
 #   §11 R13 and the return codes (plan review v1-F3): backup first, rc 1, rc 2.
 #   §12 Plain-JSON fast path (plan review v1-F2): a ~200 KB file.
 #   §13 Structural checks on scripts/setup-gemini-interactive.sh (R15, R16).
+#   §14 Spec 0245 R17 — a wrapped-form `playwright` entry survives verbatim.
 #
 # HERMETIC: HOME is a temp root, so ~/.gemini is never touched. No fzf, no
 # MemPalace daemon, no network: register_mempalace_mcp only writes the file.
@@ -841,6 +842,26 @@ for headline in 'Transcript activation canceled by user.' 'Session recording dis
     bad "13 R15: message after '$headline' does not say it is left in place: $msg"
   fi
 done
+
+# ---------------------------------------------------------------------------
+echo "14. A wrapped-form playwright entry survives a setup run (spec 0245 R17)"
+# ---------------------------------------------------------------------------
+# `task setup:playwright-mcp` writes this entry; `playwright` stays a
+# non-reserved name (spec 0245 R7), so a full setup run keeps it verbatim —
+# same keys, same order, same values — and warns about nothing.
+PW_WRAPPED='{"command":"bash","args":["/old/clone/scripts/lib/tls-exec.sh","npx","@playwright/mcp@latest"]}'
+new_case
+printf '{"mcpServers":{"playwright":%s,"acme-tools":{"command":"acme"}}}\n' "$PW_WRAPPED" > "$T"
+setup_run "$FAKE_PY" "" yes yes yes
+expect_rc "14 full setup run over a wrapped playwright entry" 0
+got_pw="$(jq -c '.mcpServers.playwright' "$T" 2>/dev/null)"
+if [ "$got_pw" = "$PW_WRAPPED" ]; then
+  ok "14 playwright entry preserved verbatim (key order included)"
+else
+  bad "14 playwright entry changed: expected $PW_WRAPPED, got ${got_pw:-<absent>}"
+fi
+out_lacks "14 no warning names playwright" "'playwright'"
+out_lacks "14 no warning names playwright (stderr)" "'playwright'" "$ERR"
 
 # ---------------------------------------------------------------------------
 echo ""
