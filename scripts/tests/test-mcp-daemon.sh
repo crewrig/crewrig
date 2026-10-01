@@ -155,15 +155,6 @@ p_sym="$(MEMPALACE_PALACE_PATH="${sym_palace}" mcp_token_path)"
 # non-loopback bind, and its auth gate short-circuits on an empty one.
 echo ""
 
-# refuses_for_token <case-label> — run the launcher and assert it refused FOR
-# THE TOKEN, not merely that it exited non-zero.
-#
-# Checking the exit code alone is not enough and this was proven, not assumed:
-# with the token guards deliberately removed the suite still went green, because
-# the launcher then died on the unreachable ChromaDB dependency instead. A
-# refusal test that does not name the reason passes for whichever failure
-# happens first, which is the "green for the wrong reason" trap this file
-# exists to avoid. So: assert the diagnostic mentions the token.
 # run_launcher_bounded [launcher-script] — run the launcher (default
 # ${launcher}) and print its combined output; the return code is the launcher's.
 #
@@ -200,6 +191,15 @@ run_launcher_bounded() {
   return "${rc}"
 }
 
+# refuses_for_token <case-label> — run the launcher and assert it refused FOR
+# THE TOKEN, not merely that it exited non-zero.
+#
+# Checking the exit code alone is not enough and this was proven, not assumed:
+# with the token guards deliberately removed the suite still went green, because
+# the launcher then died on the unreachable ChromaDB dependency instead. A
+# refusal test that does not name the reason passes for whichever failure
+# happens first, which is the "green for the wrong reason" trap this file
+# exists to avoid. So: assert the diagnostic mentions the token.
 refuses_for_token() {
   local label="$1" out rc
   out="$(run_launcher_bounded)"; rc=$?
