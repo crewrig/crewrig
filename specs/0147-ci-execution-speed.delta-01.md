@@ -57,14 +57,17 @@ makes the answer reviewable.
   CI-provided revision variable.
 - **R13.** The path-ownership check SHALL read ownership from the `paths:` sets
   declared in `ci/ci-capabilities.yml` at check time and SHALL NOT embed a
-  copy of them. A file is owned only when a glob matches it under **both**
-  the glob semantics of `scripts/ci-changeset-coverage.sh` (bash `[[ == ]]`,
-  where a single `*` also matches `/`) and the semantics of the engines' own
-  path filters (a single `*` does not cross `/`; `**` does). A file matched
-  only under the shell semantics SHALL be reported as a failure of its own,
-  naming the glob, so that a file is never "owned" by a job that the engine
-  would not trigger. Every existing glob keeps its present meaning: none
-  diverges today.
+  copy of them. Ownership SHALL be decided with the semantics of the engines'
+  own path filters, because those decide whether a job runs: a single `*`
+  does not cross `/`, and `**/` matches any number of directory levels,
+  including none. The shell semantics of `scripts/ci-changeset-coverage.sh`
+  (bash `[[ == ]]`, where a single `*` crosses `/` and `**/` requires a
+  slash) SHALL NOT decide ownership, so that a file is never "owned" by a
+  job the engine would not trigger, and never "unowned" when it would. No
+  existing glob owns a file under the shell semantics that the engines would
+  not match; four root-level files that `**/*.md` reaches at the engines
+  (`AGENTS.org.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `DEVELOPMENT.md`) are
+  owned here although the shell script reports them unowned.
 - **R14.** Files that no check exercises SHALL be declared in a dedicated exemption
   list, `ci/path-ownership-exemptions.txt`, one entry per line in the form
   `<glob><TAB><reason>`; blank lines and lines starting with `#` are
@@ -90,7 +93,7 @@ makes the answer reviewable.
   evaluated, owned and exempt.
 - **R19.** The change that introduces the path-ownership check SHALL make it pass on
   its own tree **with no baseline file and no ratchet**: every file that is
-  unowned today (113 files on `main` at `1e6d886` once non-gated
+  unowned today (109 files on `main` at `1e6d886` once non-gated
   `paths:` on pull-request triggers count as ownership; see the measurement below) SHALL receive an
   owner or a reasoned exemption in that same change. Where a file is
   assigned to an owner, the owner SHALL be a capability whose checks
@@ -137,14 +140,15 @@ of `ci/ci-capabilities.yml` with bash-equivalent glob semantics.
 
 | Ownership definition | Unowned files |
 |---|---|
-| Union of `paths:` of `changeset-gated` capabilities only (the present fail-safe) | 191 |
-| Union of `paths:` of every capability with a `pull-request` trigger that declares them (this delta) | 113 |
+| Union of `paths:` of `changeset-gated` capabilities only, shell glob semantics (the present fail-safe) | 191 |
+| Same union, engine glob semantics (requirement 13) | 187 |
+| Union of `paths:` of every capability with a `pull-request` trigger that declares them, engine glob semantics (this delta) | 109 |
 
-The 113 are not 113 decisions. 52 are generated copies of the skill trees
-(`.agents/`, `.claude/`, `.gemini/`, `.github/` `skills/**`), 14 sit at the
+The 109 are not 109 decisions. 52 are generated copies of the skill trees
+(`.agents/`, `.claude/`, `.gemini/`, `.github/` `skills/**`), 10 sit at the
 repository root, 14 are `.github/workflows/*`, 13 are `config/*`, 7 are
 `docker/e2e/*`, 5 are `ci/*` and 8 are miscellaneous. They collapse into
-about fifteen globs. 78 of the 191 files are already owned by a non-gated
+about fifteen globs. 78 of the 187 files are already owned by a non-gated
 capability (for example `scripts/**` and `hooks/**` by `grep-anti-patterns`,
 and `package.json` by the usage and release capabilities), which is why the
 two figures differ. The release branch `release/1231-ts-migration` carried
@@ -246,14 +250,21 @@ When the pull request is reviewed
 Then the review rejects the entry and the file moves into that capability's
 `paths:` (requirement 17)
 
-**Scenario:** a glob owns a nested file only under shell semantics
+**Scenario:** a single `*` does not own a nested file
 
 Given a capability whose `paths:` holds `docs/*.md` and a tracked file
-`docs/nested/page.md`
+`docs/nested/page.md` that no other glob reaches
 When the path-ownership check runs
 Then the file counts as unowned
-And the failure names the glob `docs/*.md` as one that crosses `/` only under
-shell semantics
+And the failure lists it with the two remedies, because the engines would not
+trigger the job for that file
+
+**Scenario:** a `**/` glob owns a root-level file
+
+Given a capability whose `paths:` holds `**/package.json` and the tracked file
+`package.json` at the repository root
+When the path-ownership check runs
+Then the file counts as owned, as the engines would trigger the job
 
 **Scenario:** an adopter's own file is exempted in the overlay
 
@@ -356,6 +367,26 @@ It is replaced by:
 
 The amendment records in the normative text the reading that the coverage
 argument already argues, so that the text and the decision agree.
+
+**Out of scope bullets.** The parent says:
+
+> - Reordering, renaming, or removing existing checks — only their scheduling,
+>   grouping, and caching change.
+> - Adding new checks or new coverage.
+> - Reducing the number of checks performed.
+
+They are read with one added exception each, so that the corpus stays
+consistent with requirements 11 and 23:
+
+> - Reordering, renaming, or removing existing checks — only their scheduling,
+>   grouping, and caching change. The one exception is the pull-request-time
+>   full-suite branch of the fail-safe, which is replaced (requirement 23).
+> - Adding new checks or new coverage. The one exception is the path-ownership
+>   check (requirement 11), which guards the pipeline's own path mapping and
+>   adds no coverage of product behavior.
+> - Reducing the number of checks performed. No check is removed; the
+>   pull-request-time full-suite branch of the fail-safe is not a check but a
+>   scheduling of existing checks, and it is replaced by the exhaustive run.
 
 ## REMOVED
 
