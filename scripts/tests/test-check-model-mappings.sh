@@ -55,6 +55,24 @@ trap 'rm -rf "$TMP_ROOT"' EXIT
 pass=0
 fail=0
 
+# setup_pass3_root <root> — a throwaway CREWRIG_REPO_DIR carrying only
+# scripts/lib/model-resolve.sh (the file pass 3 sources fresh per target, D7)
+# and an empty model-mappings/ the test populates itself. Outside
+# artifacts/ and model-mappings/ (D10): no tier discovery, no drift guard,
+# and the checker's own default glob never sees it.
+setup_pass3_root() {
+  local root="$1"
+  mkdir -p "$root/model-mappings" "$root/scripts/lib"
+  cp "$REPO_DIR/scripts/lib/model-resolve.sh" "$root/scripts/lib/model-resolve.sh"
+}
+
+# run_case runs the checker against a hermetic CREWRIG_REPO_DIR (issue #1421):
+# pass 3 resolves the mapping in force under that root, so fixtures no longer
+# re-validate the real committed claude.yml once per case. Section 3 points
+# RUN_CASE_REPO_DIR back at $REPO_DIR for the real-file cases.
+RUN_CASE_REPO_DIR="$TMP_ROOT/run-case-root"
+setup_pass3_root "$RUN_CASE_REPO_DIR"
+
 # --- run_case ----------------------------------------------------------------
 # run_case <name> <expected-exit> "<space-separated expected assertion ids, or empty>" <file...>
 # Every expected id must appear in the output as "<something>: <ID> " —
@@ -63,7 +81,7 @@ run_case() {
   local name="$1" expected_exit="$2" expected_ids="$3"
   shift 3
   local out actual_exit=0 ok=1 id
-  out=$(bash "$SCRIPT_UNDER_TEST" "$@" 2>&1) || actual_exit=$?
+  out=$(CREWRIG_REPO_DIR="$RUN_CASE_REPO_DIR" bash "$SCRIPT_UNDER_TEST" "$@" 2>&1) || actual_exit=$?
   if [ "$actual_exit" -ne "$expected_exit" ]; then
     ok=0
   fi
@@ -433,17 +451,6 @@ render_case_org_file() {
   echo "$f"
 }
 
-# setup_pass3_root <root> — a throwaway CREWRIG_REPO_DIR carrying only
-# scripts/lib/model-resolve.sh (the file pass 3 sources fresh per target, D7)
-# and an empty model-mappings/ the test populates itself. Outside
-# artifacts/ and model-mappings/ (D10): no tier discovery, no drift guard,
-# and the checker's own default glob never sees it.
-setup_pass3_root() {
-  local root="$1"
-  mkdir -p "$root/model-mappings" "$root/scripts/lib"
-  cp "$REPO_DIR/scripts/lib/model-resolve.sh" "$root/scripts/lib/model-resolve.sh"
-}
-
 # --- silent stub accepted (R7, R8) ------------------------------------------
 f="$(render_case_org_file claude)"
 run_case "silent stub accepted" 0 "" "$f"
@@ -714,6 +721,7 @@ fi
 echo ""
 echo "=== Section 3 — committed content ==="
 
+RUN_CASE_REPO_DIR="$REPO_DIR"
 run_case "claude.yml conforms" 0 "" "$REPO_DIR/model-mappings/claude.yml"
 run_case "gemini.yml conforms" 0 "" "$REPO_DIR/model-mappings/gemini.yml"
 run_case "copilot.yml conforms" 0 "" "$REPO_DIR/model-mappings/copilot.yml"
