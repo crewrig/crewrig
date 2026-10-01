@@ -31,3 +31,14 @@ canonical_repo = "https://github.com/<YOUR-ORG>/<YOUR-REPO>"
 # artifacts/FORMAT.md (Provenance & Forks); enforced by
 # scripts/check-feedback-routing.sh.
 feedback_repo  = "https://github.com/<YOUR-ORG>/<YOUR-REPO>"
+
+# ticket_nudge_days / ticket_grace_days — the stale-lock delays of the
+# ticket-ownership convention (spec 0244 R8, docs/ticket-ownership.md).
+# When an owned ticket shows no activity by its assignee for the nudge delay,
+# another contributor may ask for it in a comment; if the assignee has not
+# answered within the further grace delay, that contributor may take it over
+# openly. Every contributor must read the same values, so set them here, not
+# per machine. Defaults: 14 and 7 days. Positive whole numbers of days only;
+# the ticket-pickup check exits 1 on a malformed value.
+# ticket_nudge_days = "14"
+# ticket_grace_days = "7"

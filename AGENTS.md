@@ -173,6 +173,13 @@ the same conversational turn are exempt from condition 3 (worktree), but
 NOT from conditions 1 (issue) and 2 (feature branch). There is no
 edit-without-branch exemption.
 
+## Ticket ownership
+
+An issue's assignee owns it; nobody else authors on it (spec 0244). Before
+any branch, spec id, or worktree for a ticket, run
+`task -x ticket-pickup -- --issue <N>` and stop on any non-zero exit. See
+[`docs/ticket-ownership.md`](docs/ticket-ownership.md).
+
 ## Spec-PR workflow
 
 This section operationalises the SPECS stage of the lifecycle defined in
@@ -295,17 +302,9 @@ stage) cell` table.
 
 ## Plan review protocol
 
-The PLAN stage of the lifecycle (per
-[ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md) →
-*Stage definitions → PLAN*) emits exactly one artifact: a Markdown
-comment posted on the logbook issue. The protocol below operationalises
-who authors that comment, who reviews it, what shape the review takes,
-and how revisions chain. The format of the plan comment itself —
-header conventions, mandatory sections, optional sections, finding tag
-schema — lives in [`docs/plan-format.md`](docs/plan-format.md) and is
-mandated by [`specs/0004-plan-format-and-review.md`](specs/0004-plan-format-and-review.md).
-This section SHALL NOT duplicate that schema; consult the format
-document for any field-level question.
+The PLAN stage emits one logbook-issue comment whose format lives in
+[`docs/plan-format.md`](docs/plan-format.md)
+([`specs/0004-plan-format-and-review.md`](specs/0004-plan-format-and-review.md)).
 
 See [`docs/plan-review-protocol.md`](docs/plan-review-protocol.md) for
 the authoring rule, the cold second-`architect` review rule, reviewer-minted IDs (`v<N>-F<M>`), prior-finding audits, the

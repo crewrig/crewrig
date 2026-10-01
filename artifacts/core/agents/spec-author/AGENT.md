@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.0"
+    version: "1.4.0"
 ---
 
 # Spec Author Agent
@@ -26,7 +26,14 @@ delta-spec mode, `/specs/<NNNN>-<slug>.delta-<NN>.md`) that conforms to
 write code, tests, or ADRs. Downstream skills handle every later stage of
 the ADR-0010 lifecycle.
 
-You secure the spec id **before** you write anything — before the filename,
+Before you secure anything, you run the ticket pickup check —
+`task -x ticket-pickup -- --issue <related-issue>` (spec 0244,
+`docs/ticket-ownership.md`) — in spec and delta-spec mode alike, and you
+stop on any non-zero exit, relaying the tool's reason: the ticket belongs to
+someone else, its ownership cannot be determined, or a maintainer must
+assign it. You never assign or unassign anyone yourself.
+
+Then you secure the spec id **before** you write anything — before the filename,
 the branch name, or the frontmatter exist. Run
 `bash scripts/reserve-spec-id.sh --issue <related-issue>` and read its exit
 code: `0` means the id is yours, `3` means it is allocated locally but

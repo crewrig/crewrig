@@ -108,7 +108,7 @@ function verifies(ref: string): boolean {
 }
 
 /** First remote matching `crewrig|origin`, else the first remote at all. */
-function preferredRemote(): string | undefined {
+export function preferredRemote(): string | undefined {
   const remotes = git(["remote"])
     .stdout.split("\n")
     .map((r) => r.trim())

@@ -443,6 +443,22 @@ tasks:
     desc: "Run the Windows hook command-line parsing probe's suite, as CI does (spec 0237)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts
 
+  # Spec 0244: the ticket-pickup ownership check. Run it before any branch,
+  # spec id or worktree for a ticket and stop on any non-zero exit, e.g.
+  #   task ticket-pickup -- --issue 1387
+  # Exit codes: 0 proceed, 1 usage, 2 cannot determine, 3 owned by another,
+  # 4 undecidable, 5 self-assignment not recorded (docs/ticket-ownership.md).
+  ticket-pickup:
+    desc: "Check who owns a ticket and claim it if free, before any authoring action (spec 0244)"
+    cmds:
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts {{.CLI_ARGS}}
+
+  # Spec 0244: the exact CI command of the `ticket-pickup` capability.
+  test-ticket-pickup:
+    desc: "Run the ticket-pickup check's suites (model, fake-forge end to end, interleavings), as CI does (spec 0244)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
+
   timing-budget:
     desc: "Time a Node.js script against a budget (spec 0240 R13); pass the harness arguments after --"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts {{.CLI_ARGS}}
