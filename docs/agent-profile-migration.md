@@ -6,7 +6,7 @@ The core agent sources declare CLI-agnostic capability profiles
 (`metadata.model:`) instead of a Claude Code model alias
 (`metadata.claude.model`), per [spec 0200](../specs/0200-core-agent-profile-migration.md)
 and [its delta-01](../specs/0200-core-agent-profile-migration.delta-01.md).
-This is the HOW record of this change: the per-source translation table,
+This is the HOW record of that change: the per-source translation table,
 the adopter-facing migration note, the corrected tiering audit, the
 narrowing this change set's own requirement 22 forces on two of the
 parent spec's requirements, and the observable diagnostic-stream change.
