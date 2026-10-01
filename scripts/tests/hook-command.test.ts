@@ -7,9 +7,15 @@ import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  AGY_OUTCOMES,
+  antigravityState,
+  GUARDED_PREFIX,
   hookCommandLine,
+  isHolding,
   MEASURED_SURFACES,
+  type AgyState,
   type Cli,
+  type GuardedFormResult,
   type MeasuredSurface,
   type Surface,
 } from "../lib/hook-command.ts";
@@ -77,9 +83,9 @@ describe("Windows shapes (R16b, R16c)", () => {
     });
   }
 
-  test("Antigravity hooks surface: the path is unquoted", () => {
+  test("Antigravity hooks surface: the path is unquoted, behind the guarded prefix (R16c, R33)", () => {
     const result = build("antigravity", "win32", backslashed);
-    assert.equal(result.ok && result.command, `node ${slashed} claude-code Stop`);
+    assert.equal(result.ok && result.command, `${GUARDED_PREFIX}node ${slashed} claude-code Stop`);
   });
 
   test("the Copilot fragment keeps the `command` key, never `bash` (row 37)", () => {
@@ -162,12 +168,23 @@ describe("unsafe paths are refused with a diagnostic naming the character (R17, 
   });
 });
 
-describe("measured surfaces (R18, R31, R32)", () => {
-  const statusline = (): MeasuredSurface | undefined =>
-    MEASURED_SURFACES.find((m) => m.cli === "antigravity" && m.surface === "statusline");
-  const entry = (extra: Partial<MeasuredSurface> = {}): MeasuredSurface => ({
+describe("measured surfaces (R18, R31, R32, R33)", () => {
+  const find = (surface: Surface): MeasuredSurface | undefined =>
+    MEASURED_SURFACES.find((m) => m.cli === "antigravity" && m.surface === surface);
+  const HOLDING: GuardedFormResult = [
+    { plant: "node.cmd", ran: "real" },
+    { plant: "node.bat", ran: "real" },
+    { plant: "node.exe", ran: "real" },
+  ];
+  // Scenario "A mixed guarded-form result is hijacked": cmd/bat bypassed, exe ran.
+  const MIXED: GuardedFormResult = [
+    { plant: "node.cmd", ran: "real" },
+    { plant: "node.bat", ran: "real" },
+    { plant: "node.exe", ran: "planted" },
+  ];
+  const entry = (surface: Surface, extra: Partial<MeasuredSurface> = {}): MeasuredSurface => ({
     cli: "antigravity",
-    surface: "statusline",
+    surface,
     os: "win32",
     interpreter: "cmd.exe",
     quoting: "cmd-no-grouping",
@@ -175,12 +192,42 @@ describe("measured surfaces (R18, R31, R32)", () => {
     plantedBinary: "planted-runs",
     ...extra,
   });
-  const noPlanted = (status: MeasuredSurface["status"]): MeasuredSurface => {
-    const { plantedBinary: _omitted, ...rest } = entry({ status });
-    return rest;
+  const without = (e: MeasuredSurface, key: "plantedBinary" | "guardedForm"): MeasuredSurface => {
+    const copy: Record<string, unknown> = { ...e };
+    delete copy[key];
+    return copy as unknown as MeasuredSurface;
+  };
+  const contradicting = {
+    status: "contradicting",
+    interpreter: "powershell-5.1",
+    quoting: "powershell",
+  } as const;
+  /** One entry per R32 state, for a given surface. */
+  const STATES: Record<AgyState, (surface: Surface) => MeasuredSurface | undefined> = {
+    a1: () => undefined,
+    a2: (s) => without(entry(s, { guardedForm: HOLDING }), "plantedBinary"),
+    a3: (s) => without(entry(s), "plantedBinary"),
+    a4: (s) => without(entry(s, contradicting), "plantedBinary"),
+    b: (s) => entry(s, { ...contradicting, guardedForm: HOLDING }),
+    c: (s) => entry(s),
+    d: (s) => entry(s, { guardedForm: MIXED }),
+    e: (s) => entry(s, { guardedForm: HOLDING }),
+  };
+  const ROOTS = ["C:/Users/ana/crewrig", "C:/Users/Ana Diaz/crewrig", "C:/a&b/c", "C:/a$b/c"];
+  const SCRIPT = (root: string, surface: Surface): string =>
+    `${root}/hooks/${surface === "statusline" ? "antigravity-statusline-shim" : "fixture-guard"}.ts`;
+  const forState = (state: AgyState, surface: Surface, root: string) => {
+    const e = STATES[state](surface);
+    return build(
+      "antigravity",
+      "win32",
+      SCRIPT(root, surface),
+      surface,
+      e === undefined ? [] : [e],
+    );
   };
 
-  test("holds the four hooks-surface Windows triples and the Antigravity statusline one (row 37e)", () => {
+  test("holds the four hooks-surface Windows triples and the Antigravity statusline one (rows 37-37f)", () => {
     const keys = MEASURED_SURFACES.map((m) => `${m.cli}/${m.surface}/${m.os}`).sort();
     assert.deepEqual(keys, [
       "antigravity/hooks/win32",
@@ -192,72 +239,246 @@ describe("measured surfaces (R18, R31, R32)", () => {
     assert.ok(MEASURED_SURFACES.every((m) => m.status === "conforming"));
   });
 
-  test("the row 37e entry conforms to row 37b, carries the planted-binary result and the four caveats (R31)", () => {
-    const e = statusline();
+  test("the row 37e entry carries the bare result, its caveats and a holding guarded-form result (R31)", () => {
+    const e = find("statusline");
     assert.equal(e?.interpreter, "cmd.exe");
     assert.equal(e?.quoting, "cmd-no-grouping");
     assert.equal(e?.status, "conforming");
     assert.equal(e?.plantedBinary, "planted-runs");
     assert.deepEqual(e?.caveats, ["arm64-vm", "agy-1.2.14", "idle-start-screen", "node.cmd-only"]);
-    const hooks = MEASURED_SURFACES.find((m) => m.cli === "antigravity" && m.surface === "hooks");
-    assert.equal(hooks?.plantedBinary, undefined, "the hooks surface is unchanged");
+    assert.deepEqual(e?.guardedForm, HOLDING);
+    assert.deepEqual(e?.guardedCaveats, [
+      "arm64-vm",
+      "agy-1.2.14",
+      "idle-start-screen",
+      "one-plant-cwd-only",
+      "marker-probe",
+      "node.exe-control-two-draws",
+    ]);
+    assert.equal(antigravityState(e), "e");
   });
 
-  // R32(c): conforming entry with the result -> the working-directory lookup, #1392.
-  test("(c) a conforming entry refuses with the lookup diagnostic naming #1392, for any path", () => {
-    const messages = ["C:/work/crewrig", "C:/work space/crewrig", "C:/a&b/c", "C:/a$b/c"].map(
-      (root) => refusal(build("antigravity", "win32", `${root}/hooks/s.ts`, "statusline")),
-    );
-    for (const message of messages) {
-      assert.ok(message.includes("from the directory the user starts Antigravity CLI in"), message);
-      assert.ok(message.includes("before PATH") && message.includes("#1392"), message);
-      assert.ok(!message.includes("unmeasured") && !message.includes("contradicts"), message);
-      assert.ok(!message.includes("checkout path") && !message.includes("whitespace"), message);
-    }
-    assert.equal(new Set(messages).size, 1, "one and the same diagnostic whatever the path");
+  test("the row 37f hooks entry carries the #1392 bare and guarded results, without the status-line-only caveats (R33)", () => {
+    const e = find("hooks");
+    const caveats = [
+      "arm64-vm",
+      "agy-1.2.14",
+      "stop-print-console",
+      "one-plant-cwd-only",
+      "marker-probe",
+    ];
+    assert.equal(e?.plantedBinary, "planted-runs");
+    assert.deepEqual(e?.caveats, caveats);
+    assert.deepEqual(e?.guardedCaveats, caveats);
+    assert.deepEqual(e?.guardedForm, HOLDING);
+    assert.equal(antigravityState(e), "e");
   });
 
-  // R32(a): no entry, or an entry lacking the result whatever its status.
-  test("(a) no entry -> unmeasured", () => {
-    const message = refusal(build("antigravity", "win32", "C:/x/hooks/s.ts", "statusline", []));
-    assert.ok(message.includes("unmeasured"), message);
+  test("GUARDED_PREFIX is the R34 text byte for byte, with one trailing space", () => {
+    assert.equal(GUARDED_PREFIX, "set NoDefaultCurrentDirectoryInExePath=1&& ");
   });
 
-  for (const status of ["contradicting", "conforming"] as const) {
-    test(`(a) a ${status} entry without the planted-binary result is unmeasured, not the recorded-shape or lookup diagnostic`, () => {
-      for (const root of ["C:/x", "C:/my dir"]) {
-        const message = refusal(
-          build("antigravity", "win32", `${root}/hooks/s.ts`, "statusline", [noPlanted(status)]),
-        );
-        assert.ok(message.includes("unmeasured"), message);
-        assert.ok(!message.includes("contradicts") && !message.includes("#1392"), message);
-        assert.ok(!message.includes("checkout path"), message);
+  test("antigravityState classifies each R32 row, exclusively", () => {
+    for (const state of Object.keys(STATES) as AgyState[]) {
+      for (const surface of ["statusline", "hooks"] as const) {
+        assert.equal(antigravityState(STATES[state](surface)), state, `${state}/${surface}`);
       }
+    }
+  });
+
+  test("a guarded-form result holds only when every candidate ran the real node; an empty one is hijacked (R32, S3)", () => {
+    assert.equal(isHolding(HOLDING), true);
+    assert.equal(isHolding(MIXED), false);
+    assert.equal(isHolding([]), false);
+    assert.equal(isHolding(undefined), false);
+    assert.equal(antigravityState(entry("statusline", { guardedForm: [] })), "d");
+  });
+
+  test("AGY_OUTCOMES is the R32 table, transcribed", () => {
+    const r = "refuse";
+    assert.deepEqual(AGY_OUTCOMES, {
+      a1: { statusline: r, hooks: r },
+      a2: { statusline: r, hooks: r },
+      a3: { statusline: r, hooks: "bare" },
+      a4: { statusline: r, hooks: r },
+      b: { statusline: r, hooks: r },
+      c: { statusline: r, hooks: "bare" },
+      d: { statusline: r, hooks: r },
+      e: { statusline: "guarded", hooks: "guarded" },
     });
+    assert.ok(Object.isFrozen(AGY_OUTCOMES));
+  });
+
+  // R32: every refusal precedes and replaces the path judgement (R17).
+  for (const state of Object.keys(STATES) as AgyState[]) {
+    for (const surface of ["statusline", "hooks"] as const) {
+      const outcome = AGY_OUTCOMES[state][surface];
+      if (outcome !== "refuse") continue;
+      test(`(${state}) ${surface}: one diagnostic whatever the path`, () => {
+        const messages = ROOTS.map((root) => refusal(forState(state, surface, root)));
+        assert.equal(new Set(messages).size, 1, messages.join("\n"));
+        assert.ok(!messages[0]?.includes("checkout path"), messages[0]);
+      });
+    }
   }
 
-  test("(b) a contradicting entry with the result names the recorded shape, before the path diagnostic", () => {
-    const contradicting = entry({
-      status: "contradicting",
-      interpreter: "powershell-5.1",
-      quoting: "powershell",
-    });
-    for (const root of ["C:/x", "C:/my dir", "C:/a$b"]) {
-      const message = refusal(
-        build("antigravity", "win32", `${root}/hooks/s.ts`, "statusline", [contradicting]),
+  test("(a1)-(a4) statusline: the delta-02 unmeasured text", () => {
+    for (const state of ["a1", "a2", "a3", "a4"] as const) {
+      const message = refusal(forState(state, "statusline", ROOTS[0] ?? ""));
+      assert.equal(
+        message,
+        "antigravity statusline on Windows is unmeasured: no row of docs/cli-matrix.md records, with its planted-binary result, how antigravity parses a statusLine.command there, so no command line is written for it.",
       );
-      assert.ok(message.includes("powershell-5.1") && message.includes("contradicts"), message);
-      assert.ok(!message.includes("#1392") && !message.includes("checkout path"), message);
     }
   });
 
-  test("the hooks surface and macOS/Linux statusline are unchanged", () => {
-    assert.equal(build("antigravity", "win32", "C:/x/hooks/usage-capture.ts").ok, true);
-    const spaced = refusal(build("antigravity", "win32", "C:/my dir/hooks/usage-capture.ts"));
+  test("(a1)/(a2) hooks: today's unmeasured hooks text, unchanged (v1-F5)", () => {
+    for (const state of ["a1", "a2"] as const) {
+      assert.equal(
+        refusal(forState(state, "hooks", ROOTS[0] ?? "")),
+        "antigravity hooks on Windows is unmeasured: no row of docs/cli-matrix.md records how antigravity parses a hook command line there, so no command line is written for it.",
+      );
+    }
+  });
+
+  test("(a4)/(b) hooks and (b) statusline: today's recorded-shape texts, unchanged (v1-F5)", () => {
+    for (const state of ["a4", "b"] as const) {
+      assert.equal(
+        refusal(forState(state, "hooks", ROOTS[0] ?? "")),
+        "antigravity hooks on Windows is measured as interpreter powershell-5.1 with powershell quoting, which contradicts the shape this tool writes; no command line is written until a spec 0243 delta sets its shape.",
+      );
+    }
+    assert.equal(
+      refusal(forState("b", "statusline", ROOTS[0] ?? "")),
+      "antigravity statusline on Windows is measured as interpreter powershell-5.1 with powershell quoting, which contradicts the shape this tool writes; no command line is written until a spec 0243 delta sets its shape.",
+    );
+  });
+
+  // Scenario "An entry without a guarded-form result keeps the delta-02 refusal".
+  test("(c) statusline: the delta-02 lookup diagnostic naming #1392, for both paths", () => {
+    for (const root of ["C:/Users/ana/crewrig", "C:/Users/Ana Diaz/crewrig"]) {
+      assert.equal(
+        refusal(forState("c", "statusline", root)),
+        "antigravity statusline on Windows: the cmd.exe that runs its statusLine.command resolves the bare 'node' of the command from the directory the user starts Antigravity CLI in, before PATH (CWE-427), so a repository shipping a node.cmd would run its own code on every draw of the status line (row 37e). No command line is written until ticket #1392 settles a form that does not depend on that lookup.",
+      );
+    }
+  });
+
+  // Scenarios "A guarded form that does not hold is refused" and "A mixed guarded-form result is hijacked".
+  test("(d) one hijacked diagnostic per surface, naming its row and #1392", () => {
+    const status = refusal(forState("d", "statusline", ROOTS[0] ?? ""));
+    const hooks = refusal(forState("d", "hooks", ROOTS[0] ?? ""));
+    for (const [message, row] of [
+      [status, "row 37e"],
+      [hooks, "row 37f"],
+    ] as const) {
+      assert.ok(message.includes("guarded form") && message.includes("hijacked"), message);
+      assert.ok(message.includes(row) && message.includes("#1392"), message);
+    }
+    assert.ok(status.includes("statusline") && hooks.includes("hooks"));
+    assert.notEqual(status, hooks);
+  });
+
+  test("(a3)/(c) hooks: the bare form of R16(c), judged by R17", () => {
+    for (const state of ["a3", "c"] as const) {
+      assert.deepEqual(forState(state, "hooks", "C:/Users/ana/crewrig"), {
+        ok: true,
+        command: "node C:/Users/ana/crewrig/hooks/fixture-guard.ts claude-code Stop",
+      });
+      assert.ok(
+        refusal(forState(state, "hooks", "C:/Users/Ana Diaz/crewrig")).includes("whitespace"),
+      );
+    }
+  });
+
+  // Scenario "A measured guarded form wires the Windows statusline".
+  test("(e) statusline: the guarded form from C:/Users/ana/crewrig, with the shipped constant", () => {
+    const result = hookCommandLine({
+      cli: "antigravity",
+      surface: "statusline",
+      platform: "win32",
+      scriptPath: "C:\\Users\\ana\\crewrig\\hooks\\antigravity-statusline-shim.ts",
+      args: [],
+    });
+    assert.deepEqual(result, {
+      ok: true,
+      command:
+        "set NoDefaultCurrentDirectoryInExePath=1&& node C:/Users/ana/crewrig/hooks/antigravity-statusline-shim.ts",
+    });
+  });
+
+  // Scenario "A path with a space is refused by the path for the statusline".
+  test("(e) statusline: a path with a space is refused by R17, not by a statusline diagnostic", () => {
+    const message = refusal(
+      build(
+        "antigravity",
+        "win32",
+        "C:/Users/Ana Diaz/crewrig/hooks/antigravity-statusline-shim.ts",
+        "statusline",
+      ),
+    );
+    assert.ok(
+      message.includes("whitespace") && message.includes("C:/Users/Ana Diaz/crewrig"),
+      message,
+    );
+    assert.ok(!message.includes("#1392") && !message.includes("unmeasured"), message);
+  });
+
+  // Scenario "The hooks surface receives the guarded form once row 37f exists".
+  test("(e) hooks: the guarded form, path unquoted and forward-slashed; a space is refused by R17", () => {
+    assert.deepEqual(
+      build("antigravity", "win32", "C:\\Users\\ana\\crewrig\\hooks\\fixture-guard.ts"),
+      {
+        ok: true,
+        command: `${GUARDED_PREFIX}node C:/Users/ana/crewrig/hooks/fixture-guard.ts claude-code Stop`,
+      },
+    );
+    const spaced = refusal(
+      build("antigravity", "win32", "C:/Users/Ana Diaz/crewrig/hooks/fixture-guard.ts"),
+    );
     assert.ok(spaced.includes("checkout path") && spaced.includes("whitespace"), spaced);
+    // Without its guarded-form result the hooks entry falls back to (c): the bare form.
+    const bare = without(find("hooks") ?? entry("hooks"), "guardedForm");
+    const result = build(
+      "antigravity",
+      "win32",
+      "C:/Users/ana/crewrig/hooks/fixture-guard.ts",
+      "hooks",
+      [bare],
+    );
+    assert.equal(
+      result.ok && result.command,
+      "node C:/Users/ana/crewrig/hooks/fixture-guard.ts claude-code Stop",
+    );
+  });
+
+  test("the guarded prefix's && and = are never judged as path characters (R17)", () => {
+    const result = forState("e", "statusline", "C:/Users/ana/crewrig");
+    assert.ok(result.ok && result.command.startsWith(GUARDED_PREFIX), JSON.stringify(result));
+  });
+
+  // Scenario "macOS and Linux are untouched".
+  test('macOS and Linux: node "<abs>" with no guarded prefix, on both surfaces', () => {
     for (const platform of ["darwin", "linux"] as const) {
-      assert.equal(build("antigravity", platform, "/x/hooks/s.ts", "statusline").ok, true);
-      assert.equal(build("antigravity", platform, "/x/hooks/s.ts", "statusline", []).ok, true);
+      for (const surface of ["statusline", "hooks"] as const) {
+        for (const measured of [undefined, [], [entry(surface, { guardedForm: HOLDING })]]) {
+          const result = build("antigravity", platform, "/x/crewrig/hooks/s.ts", surface, measured);
+          assert.deepEqual(result, {
+            ok: true,
+            command: 'node "/x/crewrig/hooks/s.ts" claude-code Stop',
+          });
+        }
+      }
+    }
+  });
+
+  test("the other CLIs on Windows keep their hooks shapes and never carry the guarded prefix", () => {
+    for (const cli of ["claude", "gemini", "copilot"] as const) {
+      const result = build(cli, "win32", "C:/x/hooks/usage-capture.ts");
+      assert.equal(
+        result.ok && result.command,
+        'node "C:/x/hooks/usage-capture.ts" claude-code Stop',
+      );
     }
   });
 });

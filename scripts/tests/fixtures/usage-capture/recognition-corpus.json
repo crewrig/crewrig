@@ -163,5 +163,25 @@
     "command": "usage-capture.ts claude-code Stop",
     "capture": false,
     "note": "bare relative script name"
+  },
+  {
+    "command": "set NoDefaultCurrentDirectoryInExePath=1&& node \"/repo/hooks/usage-capture.ts\" claude-code Stop",
+    "capture": false,
+    "note": "R34 regression pin (spec 0243 delta-03), not a failing-first test: the guarded cmd.exe prefix is not a usage-capture shape, quoted path"
+  },
+  {
+    "command": "set NoDefaultCurrentDirectoryInExePath=1&& node /repo/hooks/usage-capture.ts claude-code Stop",
+    "capture": false,
+    "note": "R34 regression pin (spec 0243 delta-03), not a failing-first test: the guarded cmd.exe prefix is not a usage-capture shape, unquoted POSIX path"
+  },
+  {
+    "command": "set NoDefaultCurrentDirectoryInExePath=1&& node C:/repo/hooks/usage-capture.ts claude-code Stop",
+    "capture": false,
+    "note": "R34 regression pin (spec 0243 delta-03), not a failing-first test: the guarded cmd.exe prefix is not a usage-capture shape, unquoted Windows drive path"
+  },
+  {
+    "command": "NoDefaultCurrentDirectoryInExePath=1 node \"/repo/hooks/usage-capture.ts\" claude-code Stop",
+    "capture": true,
+    "note": "R34 regression pin (spec 0243 delta-03), not a failing-first test: the same name as a POSIX NAME=value prefix stays recognised (delta-01 grammar unchanged)"
   }
 ]

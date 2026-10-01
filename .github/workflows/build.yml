@@ -1280,7 +1280,10 @@ jobs:
   # step 26 from the first green run (run 36738818466, job 109967462294) to
   # max(3 x the largest observed run, 300 ms) rounded up to the next 50 ms,
   # only where lower than the initial 750 / 2000 / 2000 ms of R15; each is
-  # stated next to its script.
+  # stated next to its script. Delta-03 R28(b): both Antigravity CLI surfaces
+  # run the guarded form through the `cmd /c "<command>"` wrapper of rows
+  # 37e/37f, with the b1 (path with a space), b2 (planted node.cmd/node.bat
+  # bypassed) and b3 (bare form still hijacked, premise of the guard) legs.
   windows-usage-capture:
     runs-on: windows-latest
     defaults:
@@ -1293,7 +1296,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Both entries run, and each CLI's command line launches through its interpreter
+      - name: Both entries run, each CLI and Antigravity surface command line launches through its interpreter, guarded-form b1-b3 legs
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-capture-windows.test.ts
 
       - name: No deprecation reaches the entries

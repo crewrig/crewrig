@@ -9,7 +9,9 @@ import path from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { GUARDED_PREFIX, MEASURED_SURFACES, type MeasuredSurface } from "../lib/hook-command.ts";
 import { USAGE_CAPTURE, type WiredCli } from "../lib/hook-descriptor.ts";
+import { installStatusline, rewriteStatusline } from "../lib/hook-statusline.ts";
 import { parseHandler } from "../lib/hook-recognition.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -267,46 +269,60 @@ describe("statusline (R19, R20, D5)", () => {
     assert.equal(fs.existsSync(p.marker), false);
   });
 
-  test("a Windows statusline install is refused (lookup diagnostic, #1392), writing nothing (R18)", () => {
-    const p = paths();
-    const res = run("install", p, "--platform", "win32");
-    assert.equal(res.status, 1);
-    assert.match(res.stdout, /left statusLine\.command/);
-    assert.match(res.stdout, /from the directory the user starts Antigravity CLI in/);
-    assert.match(res.stdout, /#1392/);
-    assert.equal(fs.existsSync(p.settings), false);
-    assert.equal(fs.existsSync(p.marker), false);
-  });
-
+  // Spec 0243 delta-03, scenario "A measured guarded form wires the Windows statusline".
   test(
-    "a Windows refusal leaves an existing statusline command byte-identical, with no backup and no marker, for a path with a space too (R18, R32)",
+    "a Windows statusline install writes the guarded form after a 0600 backup; keep then writes nothing (R16c, R22, R34)",
     { skip: !posix },
     () => {
-      const outputs: string[] = [];
-      for (const name of ["co", "Ana Diaz"]) {
-        const repo = fixtureRepo(name);
-        const dir = path.dirname(repo);
-        const p = {
-          repo,
-          settings: path.join(dir, "agy", "settings.json"),
-          marker: path.join(dir, "usage", "state", "antigravity-statusline.json"),
-        };
-        fs.mkdirSync(path.dirname(p.settings), { recursive: true });
-        const before = JSON.stringify({ statusLine: { command: "my-own-status --x", padding: 1 } });
-        fs.writeFileSync(p.settings, before);
-        const install = run("install", p, "--platform", "win32");
-        assert.equal(install.status, 1, install.stdout + install.stderr);
-        outputs.push(install.stdout.replaceAll(repo, "<repo>"));
-        assert.equal(fs.readFileSync(p.settings, "utf8"), before);
-        assert.equal(fs.existsSync(p.marker), false);
-        assert.deepEqual(backups(p.settings), []);
-        const rewrite = run("rewrite", p, "--platform", "win32");
-        assert.equal(rewrite.status, 0, rewrite.stdout + rewrite.stderr);
-        assert.equal(fs.readFileSync(p.settings, "utf8"), before);
-        assert.deepEqual(backups(p.settings), []);
-      }
-      assert.equal(outputs[0], outputs[1], "the same diagnostic whether the path has a space");
-      assert.ok(!outputs[1]?.includes("whitespace"), outputs[1]);
+      const p = paths();
+      fs.mkdirSync(path.dirname(p.settings), { recursive: true });
+      fs.writeFileSync(p.settings, JSON.stringify({ theme: "dark" }));
+      const res = run("install", p, "--platform", "win32");
+      assert.equal(res.status, 0, res.stdout + res.stderr);
+      const command = `${GUARDED_PREFIX}node ${path.join(p.repo, "hooks", "antigravity-statusline-shim.ts")}`;
+      assert.equal((json(p.settings)["statusLine"] as { command: string }).command, command);
+      assert.equal(json(p.marker)["installedStatusLineCommand"], command);
+      assert.equal(json(p.marker)["priorStatusLineCommand"], "");
+      const made = backups(p.settings);
+      assert.equal(made.length, 1);
+      assert.equal(mode(path.join(path.dirname(p.settings), made[0] ?? "")), 0o600);
+      assert.equal(mode(p.settings), 0o600);
+      assert.ok(!res.stdout.includes("current-directory lookup"), "no prior command: no R35 note");
+
+      const settingsBefore = fs.readFileSync(p.settings, "utf8");
+      const markerBefore = fs.readFileSync(p.marker, "utf8");
+      const keep = run("rewrite", p, "--platform", "win32");
+      assert.equal(keep.status, 0, keep.stdout + keep.stderr);
+      assert.match(keep.stdout, /left statusLine\.command \(already the direct form\)/);
+      assert.equal(fs.readFileSync(p.settings, "utf8"), settingsBefore);
+      assert.equal(fs.readFileSync(p.marker, "utf8"), markerBefore);
+      assert.equal(backups(p.settings).length, 1, "keep creates no backup");
+    },
+  );
+
+  // Spec 0243 delta-03, scenario "A path with a space is refused by the path for the statusline".
+  test(
+    "a Windows install from a path with a space is refused by R17, writing nothing, with no backup",
+    { skip: !posix },
+    () => {
+      const repo = fixtureRepo("Ana Diaz");
+      const dir = path.dirname(repo);
+      const p = {
+        repo,
+        settings: path.join(dir, "agy", "settings.json"),
+        marker: path.join(dir, "usage", "state", "antigravity-statusline.json"),
+      };
+      fs.mkdirSync(path.dirname(p.settings), { recursive: true });
+      const before = JSON.stringify({ statusLine: { padding: 1 } });
+      fs.writeFileSync(p.settings, before);
+      const res = run("install", p, "--platform", "win32");
+      assert.equal(res.status, 1, res.stdout + res.stderr);
+      assert.match(res.stdout, /left statusLine\.command/);
+      assert.ok(res.stdout.includes("whitespace") && res.stdout.includes("Ana Diaz"), res.stdout);
+      assert.ok(!res.stdout.includes("#1392"), res.stdout);
+      assert.equal(fs.readFileSync(p.settings, "utf8"), before);
+      assert.equal(fs.existsSync(p.marker), false);
+      assert.deepEqual(backups(p.settings), []);
     },
   );
 
@@ -401,5 +417,270 @@ describe("statusline (R19, R20, D5)", () => {
     const res = run("rewrite", p);
     assert.equal(res.status, 0);
     assert.equal(fs.readFileSync(p.settings, "utf8"), settings);
+  });
+});
+
+// Spec 0243 delta-03 R18, R34, R35 through the library, with the `measuredSurfaces`
+// seam standing in for an entry in another R32 state.
+describe("Windows statusline keep, upgrade and re-point (R34, R35)", () => {
+  const SHIM = (repo: string): string => path.join(repo, "hooks", "antigravity-statusline-shim.ts");
+  /** The shipped constant with the statusline entry taken back to R32(c): no guarded-form result. */
+  const STATE_C: readonly MeasuredSurface[] = MEASURED_SURFACES.map((m) => {
+    if (m.cli !== "antigravity" || m.surface !== "statusline") return m;
+    const copy: Record<string, unknown> = { ...m };
+    delete copy["guardedForm"];
+    delete copy["guardedCaveats"];
+    return copy as unknown as MeasuredSurface;
+  });
+
+  function setup(command: string, prior = "") {
+    const repo = fixtureRepo();
+    const dir = path.dirname(repo);
+    const settings = path.join(dir, "agy", "settings.json");
+    const marker = path.join(dir, "usage", "state", "antigravity-statusline.json");
+    fs.mkdirSync(path.dirname(settings), { recursive: true });
+    fs.mkdirSync(path.dirname(marker), { recursive: true });
+    fs.writeFileSync(settings, JSON.stringify({ statusLine: { command, padding: 2 } }));
+    fs.writeFileSync(
+      marker,
+      JSON.stringify({
+        priorStatusLineCommand: prior,
+        installedStatusLineCommand: command,
+        installedBy: "t",
+      }),
+    );
+    return { repo, settings, marker };
+  }
+  function rewrite(
+    t: { repo: string; settings: string; marker: string },
+    platform: NodeJS.Platform = "win32",
+    measuredSurfaces?: readonly MeasuredSurface[],
+  ): { status: number; log: string } {
+    const lines: string[] = [];
+    const status = rewriteStatusline(
+      { ...t, platform, ...(measuredSurfaces === undefined ? {} : { measuredSurfaces }) },
+      (line) => lines.push(line),
+    );
+    return { status, log: lines.join("\n") };
+  }
+  const read = (file: string): Record<string, unknown> =>
+    JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>;
+  const snapshot = (t: { settings: string; marker: string }) => [
+    fs.readFileSync(t.settings, "utf8"),
+    fs.readFileSync(t.marker, "utf8"),
+  ];
+
+  // Scenario "A framework statusline in the bare form is upgraded on Windows".
+  test(
+    "(e): a bare node <abs> is rewritten to the guarded form in the three ordered writes, after a backup",
+    { skip: !posix },
+    () => {
+      const t = setup("");
+      const own = `node ${SHIM(t.repo)}`;
+      fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: own, padding: 2 } }));
+      fs.writeFileSync(
+        t.marker,
+        JSON.stringify({
+          priorStatusLineCommand: "",
+          installedStatusLineCommand: own,
+          installedBy: "t",
+        }),
+      );
+      const res = rewrite(t);
+      assert.equal(res.status, 0, res.log);
+      const guarded = `${GUARDED_PREFIX}${own}`;
+      assert.deepEqual(read(t.settings)["statusLine"], { command: guarded, padding: 2 });
+      assert.deepEqual(read(t.marker), {
+        priorStatusLineCommand: "",
+        installedStatusLineCommand: guarded,
+        installedBy: "t",
+      });
+      assert.equal(backups(t.settings).length, 1);
+      assert.match(
+        res.log,
+        /rewrote statusLine\.command -> set NoDefaultCurrentDirectoryInExePath=1&& node /,
+      );
+      assert.ok(!res.log.includes("current-directory lookup"), "empty prior: no R35 note");
+    },
+  );
+
+  test(
+    "(c): a bare node <abs> is left byte-identical with the R32 diagnostic, no backup",
+    { skip: !posix },
+    () => {
+      const t = setup("");
+      const own = `node ${SHIM(t.repo)}`;
+      fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: own } }));
+      fs.writeFileSync(
+        t.marker,
+        JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: own }),
+      );
+      const before = snapshot(t);
+      const res = rewrite(t, "win32", STATE_C);
+      assert.equal(res.status, 0, res.log);
+      assert.match(
+        res.log,
+        /left statusLine\.command \(antigravity statusline on Windows: .*#1392/,
+      );
+      assert.deepEqual(snapshot(t), before);
+      assert.deepEqual(backups(t.settings), []);
+    },
+  );
+
+  test(
+    "(c): a guarded command is not kept as current where the module would refuse it (v1-F3)",
+    { skip: !posix },
+    () => {
+      const t = setup("");
+      const guarded = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
+      fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: guarded } }));
+      fs.writeFileSync(
+        t.marker,
+        JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: guarded }),
+      );
+      const before = snapshot(t);
+      const res = rewrite(t, "win32", STATE_C);
+      assert.ok(!res.log.includes("already the direct form"), res.log);
+      assert.match(
+        res.log,
+        /left statusLine\.command \(antigravity statusline on Windows: .*#1392/,
+      );
+      assert.deepEqual(snapshot(t), before);
+      assert.deepEqual(backups(t.settings), []);
+    },
+  );
+
+  test(
+    "(e): the guarded command is kept: nothing written, no backup (R34 keep, R22)",
+    { skip: !posix },
+    () => {
+      const t = setup("");
+      const guarded = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
+      fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: guarded } }));
+      fs.writeFileSync(
+        t.marker,
+        JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: guarded }),
+      );
+      const before = snapshot(t);
+      const res = rewrite(t);
+      assert.equal(res.status, 0, res.log);
+      assert.match(res.log, /left statusLine\.command \(already the direct form\)/);
+      assert.deepEqual(snapshot(t), before);
+      assert.deepEqual(backups(t.settings), []);
+    },
+  );
+
+  test(
+    "(e): a guarded command naming a moved checkout is re-pointed from the registered path's checkout",
+    { skip: !posix },
+    () => {
+      const t = setup("");
+      // A registered path that is not physical (a symlinked checkout) rebuilds to the physical one.
+      const link = path.join(path.dirname(t.repo), "link");
+      fs.symlinkSync(t.repo, link);
+      const registered = `${GUARDED_PREFIX}node ${SHIM(link)}`;
+      fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: registered } }));
+      fs.writeFileSync(
+        t.marker,
+        JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: registered }),
+      );
+      const res = rewrite(t);
+      assert.equal(res.status, 0, res.log);
+      const rebuilt = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
+      assert.equal((read(t.settings)["statusLine"] as { command: string }).command, rebuilt);
+      assert.equal(read(t.marker)["installedStatusLineCommand"], rebuilt);
+      assert.equal(backups(t.settings).length, 1);
+    },
+  );
+
+  // R35: the propagation note names the prior command.
+  test("the upgrade names a non-empty prior command in an R35 note", { skip: !posix }, () => {
+    const t = setup("", "mytool --brief");
+    const own = `node ${SHIM(t.repo)}`;
+    fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: own } }));
+    fs.writeFileSync(
+      t.marker,
+      JSON.stringify({ priorStatusLineCommand: "mytool --brief", installedStatusLineCommand: own }),
+    );
+    const res = rewrite(t);
+    assert.equal(res.status, 0, res.log);
+    assert.match(res.log, /rewrote statusLine\.command/);
+    assert.ok(res.log.includes("mytool --brief"), res.log);
+    assert.ok(res.log.includes("current-directory lookup"), res.log);
+  });
+
+  // Scenario "Only the framework's own guarded prefix is recognised".
+  for (const variant of [
+    (shim: string) => `set FOO=1&& node ${shim}`,
+    (shim: string) => `set NoDefaultCurrentDirectoryInExePath=1 && node ${shim}`,
+  ]) {
+    test(
+      `keep leaves ${JSON.stringify(variant("<shim>"))} as an unrecognised shape`,
+      { skip: !posix },
+      () => {
+        const t = setup("");
+        const command = variant(SHIM(t.repo));
+        fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command } }));
+        fs.writeFileSync(
+          t.marker,
+          JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: command }),
+        );
+        const before = snapshot(t);
+        const res = rewrite(t);
+        assert.match(res.log, /left statusLine\.command \(unrecognised shape\)/);
+        assert.deepEqual(snapshot(t), before);
+        assert.deepEqual(backups(t.settings), []);
+      },
+    );
+  }
+
+  test(
+    "macOS and Linux leave a guarded command as an unrecognised shape (S4)",
+    { skip: !posix },
+    () => {
+      for (const platform of ["darwin", "linux"] as const) {
+        const t = setup("");
+        const guarded = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
+        fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: guarded } }));
+        fs.writeFileSync(
+          t.marker,
+          JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: guarded }),
+        );
+        const before = snapshot(t);
+        const res = rewrite(t, platform);
+        assert.match(res.log, /left statusLine\.command \(unrecognised shape\)/);
+        assert.deepEqual(snapshot(t), before);
+      }
+    },
+  );
+
+  test('macOS and Linux keep a direct node "<abs>" as before', { skip: !posix }, () => {
+    const t = setup("");
+    const direct = `node "${SHIM(t.repo)}"`;
+    fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: direct } }));
+    fs.writeFileSync(t.marker, JSON.stringify({ installedStatusLineCommand: direct }));
+    const before = snapshot(t);
+    const res = rewrite(t, "linux");
+    assert.match(res.log, /already the direct form/);
+    assert.deepEqual(snapshot(t), before);
+  });
+
+  test("a Windows install under (c) is refused, writing nothing (R18)", { skip: !posix }, () => {
+    const repo = fixtureRepo();
+    const dir = path.dirname(repo);
+    const lines: string[] = [];
+    const status = installStatusline(
+      {
+        repo,
+        settings: path.join(dir, "agy", "settings.json"),
+        marker: path.join(dir, "usage", "state", "antigravity-statusline.json"),
+        platform: "win32",
+        measuredSurfaces: STATE_C,
+      },
+      (line) => lines.push(line),
+    );
+    assert.equal(status, 1);
+    assert.match(lines.join("\n"), /from the directory the user starts Antigravity CLI in.*#1392/);
+    assert.equal(fs.existsSync(path.join(dir, "agy", "settings.json")), false);
   });
 });
