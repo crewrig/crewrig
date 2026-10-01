@@ -352,9 +352,9 @@ render_spec "0042" "collision-b" "draft" > "$TMP_ROOT/$spec22b"
 case22_exit=0
 case22_output=$( ( cd "$TMP_ROOT" && node "$LINTER_JS" $spec22a $spec22b 2>&1 ) ) || case22_exit=$?
 if [ "$case22_exit" -eq 1 ] \
-  && echo "$case22_output" | grep -qF "$spec22a" \
-  && echo "$case22_output" | grep -qF "$spec22b" \
-  && echo "$case22_output" | grep -q 'Duplicate spec id "0042"'; then
+  && grep -qF "$spec22a" <<<"$case22_output" \
+  && grep -qF "$spec22b" <<<"$case22_output" \
+  && grep -q 'Duplicate spec id "0042"' <<<"$case22_output"; then
   echo "PASS  Case 22 — duplicate id across two original specs names both files (exit 1)"
   pass=$((pass + 1))
 else
@@ -401,9 +401,9 @@ render_spec "0050" "triple-c" "draft" > "$TMP_ROOT/$spec25c"
 case25_exit=0
 case25_output=$( ( cd "$TMP_ROOT" && node "$LINTER_JS" $spec25a $spec25b $spec25c 2>&1 ) ) || case25_exit=$?
 if [ "$case25_exit" -eq 1 ] \
-  && echo "$case25_output" | grep -qF "$spec25a" \
-  && echo "$case25_output" | grep -qF "$spec25b" \
-  && echo "$case25_output" | grep -qF "$spec25c"; then
+  && grep -qF "$spec25a" <<<"$case25_output" \
+  && grep -qF "$spec25b" <<<"$case25_output" \
+  && grep -qF "$spec25c" <<<"$case25_output"; then
   echo "PASS  Case 25 — three-way id collision names every colliding file (exit 1)"
   pass=$((pass + 1))
 else
@@ -431,7 +431,7 @@ write_core_paths_fixture "$TMP_ROOT/fixture-manifest-26" $'specs/experimental\te
 
 case26_exit=0
 case26_output=$( ( cd "$SCENARIO26_ROOT" && CREWRIG_REPO_DIR="$TMP_ROOT/fixture-manifest-26" node "$LINTER_JS" specs 2>&1 ) ) || case26_exit=$?
-if [ "$case26_exit" -eq 0 ] && ! echo "$case26_output" | grep -q "Duplicate spec id"; then
+if [ "$case26_exit" -eq 0 ] && ! grep -q "Duplicate spec id" <<<"$case26_output"; then
   echo "PASS  Case 26 — manifest-excluded file sharing an id with a real spec is not a duplicate (R5)"
   pass=$((pass + 1))
 else
@@ -448,7 +448,7 @@ fi
 # because the check is silently broken.
 case26b_exit=0
 case26b_output=$( ( cd "$SCENARIO26_ROOT" && node "$LINTER_JS" specs 2>&1 ) ) || case26b_exit=$?
-if [ "$case26b_exit" -eq 1 ] && echo "$case26b_output" | grep -q 'Duplicate spec id "0071"'; then
+if [ "$case26b_exit" -eq 1 ] && grep -q 'Duplicate spec id "0071"' <<<"$case26b_output"; then
   echo "PASS  Case 26b — negative control: without the exclusion override the 0071 collision is reported"
   pass=$((pass + 1))
 else
@@ -497,8 +497,8 @@ render_spec "0072" "good" "draft" > "$TMP_ROOT/$spec27b"
 case27_exit=0
 case27_output=$( ( cd "$TMP_ROOT" && node "$LINTER_JS" $spec27a $spec27b 2>&1 ) ) || case27_exit=$?
 if [ "$case27_exit" -eq 1 ] \
-  && echo "$case27_output" | grep -q "Failed to parse YAML frontmatter" \
-  && ! echo "$case27_output" | grep -q "Duplicate spec id"; then
+  && grep -q "Failed to parse YAML frontmatter" <<<"$case27_output" \
+  && ! grep -q "Duplicate spec id" <<<"$case27_output"; then
   echo "PASS  Case 27 — unparseable frontmatter does not leak a stale id into the cross-file check"
   pass=$((pass + 1))
 else
@@ -548,6 +548,11 @@ render_spec "0201" "on-base-delta" "draft" "standard" "" \
 # run_base_case <name> <workdir> <targets> <expected_exit> <base_ref|-> <must_contain|-> <must_not_contain|->
 # `-` for base_ref runs with BASE_REF explicitly *unset* (exercising the
 # default derivation) rather than inheriting an ambient value from the caller.
+# Output assertions use `grep -q … <<<"$output"`, never `echo "$output" | grep -q`:
+# under `set -o pipefail`, grep -q exits on the first match, the writer can take
+# SIGPIPE, and the pipeline then reports failure even though grep matched. That
+# made "must contain" assertions flaky under load and, worse, could turn a
+# matched "must NOT contain" into a silent pass.
 run_base_case() {
   local name="$1" workdir="$2" targets="$3" expected_exit="$4"
   local base_ref="$5" must="$6" must_not="$7"
@@ -562,10 +567,10 @@ run_base_case() {
   if [ "$actual_exit" -ne "$expected_exit" ]; then
     ok=false
   fi
-  if [ "$must" != "-" ] && ! echo "$output" | grep -qF "$must"; then
+  if [ "$must" != "-" ] && ! grep -qF "$must" <<<"$output"; then
     ok=false
   fi
-  if [ "$must_not" != "-" ] && echo "$output" | grep -qF "$must_not"; then
+  if [ "$must_not" != "-" ] && grep -qF "$must_not" <<<"$output"; then
     ok=false
   fi
 
@@ -601,13 +606,13 @@ run_lint_case() {
   for assertion in "$@"; do
     case "$assertion" in
       +*)
-        if ! printf '%s\n' "$output" | grep -qF -- "${assertion#+}"; then
+        if ! grep -qF -- "${assertion#+}" <<<"$output"; then
           ok=false
           why="${why:+$why; }missing: ${assertion#+}"
         fi
         ;;
       -*)
-        if printf '%s\n' "$output" | grep -qF -- "${assertion#-}"; then
+        if grep -qF -- "${assertion#-}" <<<"$output"; then
           ok=false
           why="${why:+$why; }unexpected: ${assertion#-}"
         fi
@@ -1366,10 +1371,10 @@ render_spec "0049" "no-deps" "draft" > "$CASE49_ROOT/0049-no-deps.md"
 case49_exit=0
 case49_output=$( ( cd "$CASE49_ROOT" && node spec-linter.js 0049-no-deps.md 2>&1 ) ) || case49_exit=$?
 if [ "$case49_exit" -eq 1 ] \
-  && echo "$case49_output" | grep -qF "Missing dependency 'js-yaml'" \
-  && echo "$case49_output" | grep -qF "Run: task lint-bootstrap" \
-  && ! echo "$case49_output" | grep -qE '^[[:space:]]+at ' \
-  && ! echo "$case49_output" | grep -qF "MODULE_NOT_FOUND"; then
+  && grep -qF "Missing dependency 'js-yaml'" <<<"$case49_output" \
+  && grep -qF "Run: task lint-bootstrap" <<<"$case49_output" \
+  && ! grep -qE '^[[:space:]]+at ' <<<"$case49_output" \
+  && ! grep -qF "MODULE_NOT_FOUND" <<<"$case49_output"; then
   echo "PASS  Case 49 — missing js-yaml/semver reports one actionable line, no stack trace (exit 1)"
   pass=$((pass + 1))
 else
@@ -1432,10 +1437,10 @@ case50_output=$( ( cd "$CASE50_ROOT" \
   && env PATH="$NODE_BIN_DIR:/usr/bin:/bin" NPM_CONFIG_PREFIX="$CASE50_PREFIX" \
        node "$LINTER_JS" 0050-no-markdownlint.md 2>&1 ) ) || case50_exit=$?
 if [ "$case50_exit" -eq 1 ] \
-  && echo "$case50_output" | grep -qF "markdownlint-cli is not resolvable" \
-  && echo "$case50_output" | grep -qF "Run: task lint-bootstrap" \
-  && ! echo "$case50_output" | grep -qF "Running markdownlint-cli on" \
-  && ! echo "$case50_output" | grep -qF "could not determine executable to run"; then
+  && grep -qF "markdownlint-cli is not resolvable" <<<"$case50_output" \
+  && grep -qF "Run: task lint-bootstrap" <<<"$case50_output" \
+  && ! grep -qF "Running markdownlint-cli on" <<<"$case50_output" \
+  && ! grep -qF "could not determine executable to run" <<<"$case50_output"; then
   echo "PASS  Case 50 — missing markdownlint-cli fails closed before the real pass (exit 1)"
   pass=$((pass + 1))
 else
@@ -1471,8 +1476,8 @@ render_spec "0051" "broken-dep" "draft" > "$CASE51_ROOT/0051-broken-dep.md"
 case51_exit=0
 case51_output=$( ( cd "$CASE51_ROOT" && node spec-linter.js 0051-broken-dep.md 2>&1 ) ) || case51_exit=$?
 if [ "$case51_exit" -ne 0 ] \
-  && ! echo "$case51_output" | grep -qF "Missing dependency" \
-  && echo "$case51_output" | grep -qE "SyntaxError|Unexpected token"; then
+  && ! grep -qF "Missing dependency" <<<"$case51_output" \
+  && grep -qE "SyntaxError|Unexpected token" <<<"$case51_output"; then
   echo "PASS  Case 51 — a broken (present) dependency surfaces its real error, not a false 'missing' report"
   pass=$((pass + 1))
 else
