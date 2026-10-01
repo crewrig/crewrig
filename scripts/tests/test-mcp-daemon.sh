@@ -155,6 +155,42 @@ p_sym="$(MEMPALACE_PALACE_PATH="${sym_palace}" mcp_token_path)"
 # non-loopback bind, and its auth gate short-circuits on an empty one.
 echo ""
 
+# run_launcher_bounded [launcher-script] — run the launcher (default
+# ${launcher}) and print its combined output; the return code is the launcher's.
+#
+# Bounded: the launcher's happy path is an exec into a server that never
+# returns, so any regression letting a refusal case through turns this suite
+# into a hang rather than a failure. No `timeout(1)` on stock macOS, hence a
+# hand-rolled bound: ${LAUNCHER_BOUND_S:-20} seconds of wall clock (`SECONDS`,
+# not an iteration count, since every poll also pays a fork), then `kill -9`.
+#
+# Invariant: no async helper may share a captured fd. Callers wrap this in
+# `$(...)`, which only sees EOF once EVERY process holding its stdout has
+# exited. The former `( sleep 20; kill -9 ... ) &` watchdog inherited that
+# stdout and outlived its own cancellation (`kill` hit the subshell, not its
+# `sleep`), so each call cost the full 20 s even when the launcher refused in
+# milliseconds (#1426, same failure family as #1371). The launcher's own
+# stdout/stderr go to a temp file, and the poll loop forks only a short-lived
+# foreground `sleep` that is gone before the function returns.
+run_launcher_bounded() {
+  local script="${1:-${launcher}}" bound="${LAUNCHER_BOUND_S:-20}"
+  local out_file rc start pid
+  out_file="$(mktemp)"
+  bash "${script}" >"${out_file}" 2>&1 &
+  pid=$!
+  start="${SECONDS}"
+  while kill -0 "${pid}" 2>/dev/null; do
+    if [ $((SECONDS - start)) -gt "${bound}" ]; then
+      kill -9 "${pid}" 2>/dev/null
+      break
+    fi
+    sleep 0.05
+  done
+  wait "${pid}" 2>/dev/null; rc=$?
+  cat "${out_file}"; rm -f "${out_file}"
+  return "${rc}"
+}
+
 # refuses_for_token <case-label> — run the launcher and assert it refused FOR
 # THE TOKEN, not merely that it exited non-zero.
 #
@@ -164,23 +200,6 @@ echo ""
 # refusal test that does not name the reason passes for whichever failure
 # happens first, which is the "green for the wrong reason" trap this file
 # exists to avoid. So: assert the diagnostic mentions the token.
-# Bounded: the launcher's happy path is an exec into a server that never
-# returns, so any regression letting a refusal case through turns this suite
-# into a hang rather than a failure. No `timeout(1)` on stock macOS, hence the
-# watchdog.
-run_launcher_bounded() {
-  local out_file rc
-  out_file="$(mktemp)"
-  bash "${launcher}" >"${out_file}" 2>&1 &
-  local pid=$!
-  ( sleep 20; kill -9 "${pid}" 2>/dev/null ) &
-  local watchdog=$!
-  wait "${pid}" 2>/dev/null; rc=$?
-  kill "${watchdog}" 2>/dev/null
-  cat "${out_file}"; rm -f "${out_file}"
-  return "${rc}"
-}
-
 refuses_for_token() {
   local label="$1" out rc
   out="$(run_launcher_bounded)"; rc=$?
@@ -254,6 +273,38 @@ accepts_token "an upstream-style token with - and _ is accepted"
 
 printf '  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  \n' > "${tok_file}"
 accepts_token "a valid token with surrounding whitespace is normalised, not rejected"
+
+# Hang-protection self-test (#1426). run_launcher_bounded exists to turn a hang
+# into a failure; prove it does, and that it does not tax the fast path (the
+# old watchdog made every call cost the full bound once wrapped in `$(...)`).
+echo ""
+echo "Hang-protection of the bounded launcher runner (#1426):"
+hang_stub="${TEST_HOME}/stub-hang.sh"
+fast_stub="${TEST_HOME}/stub-fast.sh"
+printf '#!/bin/bash\nexec sleep 300\n' > "${hang_stub}"
+printf '#!/bin/bash\necho stub-printed-this\nexit 0\n' > "${fast_stub}"
+
+t0="${SECONDS}"
+LAUNCHER_BOUND_S=2 run_launcher_bounded "${hang_stub}" >/dev/null; rc=$?
+dt=$((SECONDS - t0))
+if [ "${rc}" -ne 0 ] && [ "${dt}" -ge 2 ] && [ "${dt}" -lt 10 ]; then
+  ok "a launcher that never exits is killed at the bound (rc ${rc}, ${dt}s)"
+else
+  nope "never-exiting launcher: rc ${rc} after ${dt}s, expected non-zero in [2s,10s)"
+fi
+
+t0="${SECONDS}"
+out="$(LAUNCHER_BOUND_S=10 run_launcher_bounded "${fast_stub}")"; rc=$?
+dt=$((SECONDS - t0))
+case "${out}" in
+  *stub-printed-this*)
+    if [ "${dt}" -lt 5 ]; then
+      ok "a fast launcher returns promptly through \$(...) with its output (${dt}s, bound 10s)"
+    else
+      nope "fast launcher took ${dt}s through \$(...) against a 10s bound (watchdog holds the pipe?)"
+    fi ;;
+  *) nope "fast launcher output lost through \$(...): '${out}' (rc ${rc}, ${dt}s)" ;;
+esac
 
 # --- 3. The launcher never puts the token in argv ----------------------------
 echo ""
