@@ -46,7 +46,12 @@ after(() => {
   for (const dir of temps) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-/** The environment minus anything that would leak the caller's base ref or git state. */
+/**
+ * The environment minus anything that would leak the caller's base ref or git state,
+ * with the host's global and system git config switched off (a global
+ * `core.hooksPath`, say, must not run inside the fixture repositories). Used by
+ * both the fixture `git()` helper and the script under test.
+ */
 function cleanEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const key of [
@@ -59,7 +64,7 @@ function cleanEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
   ]) {
     delete env[key];
   }
-  return { ...env, ...extra };
+  return { ...env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", ...extra };
 }
 
 function git(dir: string, ...args: string[]): string {
@@ -237,7 +242,7 @@ describe("ci-changeset-coverage.sh", () => {
     assert.match(r.err, /does not resolve/);
   });
 
-  test("(h) [guard] empty diff: nothing to cover, exit 0", () => {
+  test("(h) [guard] empty diff and no skipped candidate (this is also the no-skip guard for (j)): nothing to cover, exit 0", () => {
     const dir = repo();
     const head = git(dir, "rev-parse", "HEAD");
     const r = run(dir, { CI_BASE_REF: head });
@@ -259,5 +264,17 @@ describe("ci-changeset-coverage.sh", () => {
     assert.equal(r.status, 0, r.err);
     assert.equal(r.suiteRan, true, r.out);
     assert.match(r.out, /later-base\.txt/);
+  });
+
+  test("(j) [discriminating] empty diff after a skipped base candidate (origin/main == HEAD): fail-safe full suite, never a silent exit 0", () => {
+    const dir = repo();
+    plantRemoteRef(dir, "main", git(dir, "rev-parse", "HEAD"));
+    const r = run(dir, { CI_BASE_REF: MISSING_SHA });
+    assert.equal(r.status, 0, r.err);
+    assert.equal(r.suiteRan, true, r.out);
+    assert.match(r.out, /base origin\/main/);
+    assert.match(r.err, /does not resolve/);
+    assert.match(r.err, /emptiness cannot be trusted/);
+    assert.doesNotMatch(r.out, /nothing to cover/);
   });
 });

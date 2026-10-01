@@ -30,7 +30,10 @@
 # `release/x`, the preferred reading on a CI checkout, which has no local
 # branches) and then as given (a SHA, `origin/x`, a local ref); each reading is
 # verified to be a commit. A set candidate that does not resolve is reported on
-# stderr and skipped (over-inclusive, never under-inclusive: R10).
+# stderr and skipped (over-inclusive, never under-inclusive: R10). Because the
+# fallback `origin/main` can equal HEAD on a `main` push, an EMPTY diff is
+# trusted as "nothing to cover" only when no set candidate was skipped; after a
+# skipped candidate the emptiness is untrustworthy and the full suite runs.
 #
 # The diff is merge-base relative: the changed files are those between
 # `git merge-base <base> HEAD` and HEAD, i.e. what the change itself introduces,
@@ -83,6 +86,7 @@ resolve_candidate() {
 }
 
 base_ref=""
+skipped_candidate=0
 for cand in "${CI_BASE_REF:-}" "${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-}" "${CI_COMMIT_BEFORE_SHA:-}" "origin/main"; do
   if is_unset_candidate "$cand"; then
     continue
@@ -91,6 +95,7 @@ for cand in "${CI_BASE_REF:-}" "${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-}" "${CI_C
     break
   fi
   base_ref=""
+  skipped_candidate=1
   echo "ci-changeset-coverage: base candidate '$cand' does not resolve to a commit — skipping." >&2
 done
 
@@ -125,36 +130,40 @@ elif ! changed="$(git -C "$REPO_DIR" diff --name-only "$merge_base" HEAD)"; then
 else
   echo "ci-changeset-coverage: base $base_ref, merge-base $merge_base."
   if [ -z "$changed" ]; then
-    echo "ci-changeset-coverage: no changed files vs $base_ref — nothing to cover."
-    exit 0
-  fi
-
-  # A changed file is covered iff it matches at least one focused path glob.
-  uncovered=""
-  while IFS= read -r file; do
-    [ -z "$file" ] && continue
-    covered=0
-    while IFS= read -r pat; do
-      [ -z "$pat" ] && continue
-      if [[ "$file" == $pat ]]; then
-        covered=1
-        break
-      fi
-    done <<< "$focused_paths"
-    if [ "$covered" -eq 0 ]; then
-      uncovered="${uncovered}${file}"$'\n'
+    if [ "$skipped_candidate" -eq 0 ]; then
+      echo "ci-changeset-coverage: no changed files vs $base_ref — nothing to cover."
+      exit 0
     fi
-  done <<< "$changed"
+    echo "ci-changeset-coverage: a set base candidate did not resolve and the diff against the fallback $base_ref is empty, so the emptiness cannot be trusted — running the full check suite (fail-safe)." >&2
+    run_full_suite=1
+  else
+    # A changed file is covered iff it matches at least one focused path glob.
+    uncovered=""
+    while IFS= read -r file; do
+      [ -z "$file" ] && continue
+      covered=0
+      while IFS= read -r pat; do
+        [ -z "$pat" ] && continue
+        if [[ "$file" == $pat ]]; then
+          covered=1
+          break
+        fi
+      done <<< "$focused_paths"
+      if [ "$covered" -eq 0 ]; then
+        uncovered="${uncovered}${file}"$'\n'
+      fi
+    done <<< "$changed"
 
-  if [ -z "$uncovered" ]; then
-    echo "ci-changeset-coverage: every changed file is covered by a focused path set — fast no-op."
-    exit 0
+    if [ -z "$uncovered" ]; then
+      echo "ci-changeset-coverage: every changed file is covered by a focused path set — fast no-op."
+      exit 0
+    fi
+
+    echo "ci-changeset-coverage: uncovered changed file(s):"
+    printf '%s' "$uncovered" | sed 's/^/  /'
+    echo "ci-changeset-coverage: running the full check suite (fail-safe, R5)."
+    run_full_suite=1
   fi
-
-  echo "ci-changeset-coverage: uncovered changed file(s):"
-  printf '%s' "$uncovered" | sed 's/^/  /'
-  echo "ci-changeset-coverage: running the full check suite (fail-safe, R5)."
-  run_full_suite=1
 fi
 
 # --- Run the full check suite ----------------------------------------------
