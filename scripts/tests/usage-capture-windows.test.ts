@@ -17,9 +17,11 @@
 //   diagnostic otherwise;
 // - b2: per surface, with a planted `node.cmd`, then a planted `node.bat`, in
 //   the working directory, the guarded form runs the real `node`;
-// - b3: per surface, the same command without the guarded prefix (the bare
-//   R16(c) text, a fixture the module never produces there) still runs the
-//   planted `node.cmd`, or the premise of the guard has moved;
+// - b3: per surface and per candidate b2 plants, the same command without the
+//   guarded prefix (the bare R16(c) text, a fixture the module never produces
+//   there) still runs the plant, or the premise of the guard has moved. Each b2
+//   leg thus has a paired control, so a runner whose PATHEXT lacks a candidate's
+//   extension fails b3 instead of passing b2 vacuously;
 // - R35: `node` and the shim's prior command see the variable set to `1`.
 
 import assert from "node:assert/strict";
@@ -313,24 +315,24 @@ describe("the command line of each CLI, through its interpreter", { skip: !WINDO
           "node sees NoDefaultCurrentDirectoryInExePath=1 exactly (R35)",
         );
       });
-    }
 
-    test(`b3: antigravity ${surface}, node.cmd planted in the cwd: the bare form still runs the plant (premise of the guard)`, () => {
-      const c = plantedCase("node.cmd");
-      const built = commandFor("antigravity", surface, c.script, ["claude-code", "Stop"]);
-      assert.ok(
-        built.ok && built.command.startsWith(GUARDED_PREFIX),
-        built.ok ? built.command : built.refusal,
-      );
-      // The bare `node <abs> <args>` text of R16(c): a fixture, never produced by the module here.
-      const bare = built.command.slice(GUARDED_PREFIX.length);
-      run(agyInvocation(bare), freshRoot(), "", c.cwd);
-      const ran = c.ran();
-      assert.ok(
-        ran.planted && !ran.real,
-        `The premise of the guard no longer holds on the ${surface} surface (planted node.cmd ran: ${ran.planted}; real node ran: ${ran.real}): cmd /c no longer resolves a bare node from the working directory first. Revisit the guarded form of spec 0243 R16(c)/R32 and ticket #1392 instead of keeping it on an outdated premise.`,
-      );
-    });
+      test(`b3: antigravity ${surface}, ${plant} planted in the cwd: the bare form still runs the plant (premise of the guard)`, () => {
+        const c = plantedCase(plant);
+        const built = commandFor("antigravity", surface, c.script, ["claude-code", "Stop"]);
+        assert.ok(
+          built.ok && built.command.startsWith(GUARDED_PREFIX),
+          built.ok ? built.command : built.refusal,
+        );
+        // The bare `node <abs> <args>` text of R16(c): a fixture, never produced by the module here.
+        const bare = built.command.slice(GUARDED_PREFIX.length);
+        run(agyInvocation(bare), freshRoot(), "", c.cwd);
+        const ran = c.ran();
+        assert.ok(
+          ran.planted && !ran.real,
+          `The premise of the guard no longer holds on the ${surface} surface (planted ${plant} ran: ${ran.planted}; real node ran: ${ran.real}): cmd /c no longer resolves a bare node from the working directory first. Revisit the guarded form of spec 0243 R16(c)/R32 and ticket #1392 instead of keeping it on an outdated premise.`,
+        );
+      });
+    }
   }
 });
 
