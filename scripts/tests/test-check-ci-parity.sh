@@ -57,6 +57,34 @@
 #          explicit install → still fails closed (guards against
 #          over-exemption — issue #1216).
 #
+#   GitHub path filters (spec 0049 delta-01 R12-R21; the executable form of
+#   R21). ONE GHA-only fixture carries ~30 capability-scoped mutations, each on
+#   a distinct capability, applied with one `yq -i` per file and checked by ONE
+#   harness run (R22: the self-test must stay within 1.20x of its baseline).
+#   Assertions are per capability (block_of / expect_side), plus a global count
+#   of the expected failures so a pass row that printed something, or a
+#   mutation that tripped an unrelated check, is caught.
+#     FX1-FX6   Divergence, both shapes: entry only in the reference / only on
+#               the GitHub side (two lists, R18), per-event mismatch on a
+#               dedicated workflow, in-job filter facing differing reference
+#               triggers, `dir/**` vs `dir/**/*` (R13).
+#     FX7-FX10  Exclusions on the GitHub side (R16): a `!` entry (in-job and
+#               dedicated), `paths-ignore` (dedicated and in-job shape).
+#     FX11-FX17 Triggers that differ, filtered vs unfiltered in both
+#               directions, event declared with `paths` on one side only in
+#               both directions, no comparable reference trigger.
+#     UX1-UX9   Fail closed (R17): two filter steps, two named filters, a
+#               filter not named after the capability, a non-list value, a
+#               non-string entry, a filters text that is not a mapping, an
+#               in-job filter plus workflow-level `paths`, a malformed
+#               reference `paths`, a filters text that is not valid YAML.
+#     PF1-PF5   Passing verdicts: absent vs unfiltered event (both ways),
+#               reordered/repeated/requoted entries (both shapes), `branches`
+#               not compared (R19), an in-job filter facing a capability with
+#               no `push` trigger (the s2-F1 decision).
+#     P1        also asserts its stdout is unchanged (R18, R24); P4b also
+#               asserts the comparison is skipped without `.github/` (R20).
+#
 # Usage:
 #   bash scripts/tests/test-check-ci-parity.sh
 
@@ -167,6 +195,14 @@ refute_in() {
   expect_in out "GitHub Actions" "P1: OK line enumerates GitHub Actions"
   expect_in out "GitLab"         "P1: OK line enumerates GitLab"
 
+  # R18/R24: the path-filter comparison adds nothing to the success reporting.
+  if [ "$CHECK_STDOUT" = "OK: reference, GitHub Actions, GitLab agree on the portable capability set; every pipeline job is traceable." ]; then
+    ok "P1: stdout is exactly the unchanged OK line"
+  else
+    ko "P1: stdout differs from the unchanged OK line"
+    echo "      out: $CHECK_STDOUT"
+  fi
+
   # P2a — the load-bearing fallback-regression guard: `deploy` (key != id
   # pages-deploy) must resolve via its `# ci-capability: pages-deploy`
   # annotation, never surfacing as untraceable on the conforming repo.
@@ -228,6 +264,7 @@ refute_in() {
   expect_exit 0 "P4b: GitLab-only repo passes (GitHub Actions absent)"
   expect_in out "GitLab"          "P4b: OK line names the present GitLab arm"
   refute_in out "GitHub Actions"  "P4b: OK line omits the absent GitHub Actions arm"
+  refute_in err "path filters diverge" "P4b: path-filter comparison skipped without .github/ (R20)"
 }
 
 # ---------------------------------------------------------------------------
@@ -515,6 +552,355 @@ refute_in() {
   expect_exit 1 "C1: cache key input divergence fails closed"
   expect_in err "capability 'ci-parity' (github-actions)" "C1: names the capability"
   expect_in err "cache key inputs diverge"                "C1: names the R6 divergence"
+}
+
+# ===========================================================================
+# GitHub path filters (spec 0049 delta-01, R12-R21)
+#
+# One GHA-only fixture (no .gitlab-ci.yml: the reference edits below would
+# otherwise add an unrelated Arm 2 failure, same precedent as P5/P6), one
+# mutation per capability, edits batched to ONE `yq -i` per file, ONE harness
+# run, then per-capability assertions. A workflow file is only touched through
+# the job (or `on:` of the dedicated workflow) of the capability under test: an
+# `on:` edit of build.yml would taint all 23 in-job capabilities at once.
+# ===========================================================================
+
+# block_of <capability> <fragment> — the failure block of one capability: the
+# `  DRIFT:` header line that names the capability and holds the fragment, plus
+# the indented lines that follow it, up to the next header (R18 message shape).
+block_of() {
+  printf '%s\n' "$CHECK_STDERR" | awk -v cap="capability '$1' (" -v frag="$2" '
+    /^  DRIFT: / { on = (index($0, cap) > 0 && index($0, frag) > 0) }
+    !/^  DRIFT: / && !/^    / { on = 0 }
+    on { print }'
+}
+
+# need_block <capability> <fragment> <label> — assert the block exists; the
+# block text is left in BLK for the assertions that follow.
+need_block() {
+  BLK="$(block_of "$1" "$2")"
+  if [ -n "$BLK" ]; then
+    ok "$3"
+  else
+    ko "$3: no DRIFT block for capability '$1' holding '$2'"
+  fi
+}
+
+# expect_in_block <block> <substring> <label> / refute_in_block
+expect_in_block() {
+  if grep -qF -- "$2" <<< "$1"; then ok "$3"; else ko "$3: block missing '$2'"; echo "      block: $1"; fi
+}
+refute_in_block() {
+  if grep -qF -- "$2" <<< "$1"; then ko "$3: block unexpectedly holds '$2'"; echo "      block: $1"; else ok "$3"; fi
+}
+
+# sorted <list> — the non-empty lines of a newline-joined list, sorted.
+sorted() { printf '%s\n' "$1" | awk 'NF' | sort; }
+
+# block_side <block> <ref|gh> — the entries of one labelled list of a block.
+block_side() {
+  printf '%s\n' "$1" | awk -v side="$2" '
+    /^    only in the reference:/ { s = "ref"; next }
+    /^    only on the GitHub side:/ { s = "gh"; next }
+    s == side && /^      - / { sub(/^      - /, ""); print }' | sort
+}
+
+# expect_side <block> <ref|gh> <label> <expected-entries> — the labelled list
+# equals the expected entries as a set (empty expectation = the list is empty).
+expect_side() {
+  local got want
+  if [ -z "$1" ]; then ko "$3: block missing"; return; fi
+  got="$(block_side "$1" "$2")"
+  want="$(sorted "$4")"
+  if [ "$got" = "$want" ]; then
+    ok "$3"
+  else
+    ko "$3: expected [$(printf '%s' "$want" | tr '\n' ' ')], got [$(printf '%s' "$got" | tr '\n' ' ')]"
+  fi
+}
+
+# expect_nblocks <capability> <n> <label> — the capability has exactly n
+# path-filter divergence blocks (R18: one block per mismatch).
+expect_nblocks() {
+  local n
+  n="$(grep -cF "capability '$1' (github-actions): path filters diverge on" <<< "$CHECK_STDERR")"
+  if [ "$n" -eq "$2" ]; then ok "$3"; else ko "$3: expected $2 divergence block(s), got $n"; fi
+}
+
+# ref_paths <capability> <trigger-kind> — the reference `paths` of the REAL
+# (unmutated) tree, one per line; the matrix derives its expected lists from it
+# so a later edit of a capability's paths does not break the self-test.
+ref_paths() {
+  yq -r "(.capabilities[] | select(.id == \"$1\") | .trigger[] | select(.on == \"$2\") | .paths[])" \
+    "$REPO_ROOT/ci/ci-capabilities.yml"
+}
+
+# filters_of <job> — yq path of the embedded `with.filters` text of the
+# dorny/paths-filter step of a build.yml job.
+filters_of() {
+  printf '(.jobs."%s".steps[] | select((.uses // "") | test("^dorny/paths-filter@")) | .with.filters)' "$1"
+}
+# cap_of <capability> — yq path of one reference capability.
+cap_of() { printf '(.capabilities[] | select(.id == "%s")' "$1"; }
+
+{
+  f="$(make_fixture)"
+  rm -f "$f/.gitlab-ci.yml"
+  wf="$f/.github/workflows"
+  want_drift=0
+  fails_before=$fail
+
+  # --- Reference side: one `yq -i`, rows keyed by capability id -------------
+  rx=''
+  # FX1  in-job   figure-labels: an entry only in the reference, on both triggers
+  rx+="$(cap_of figure-labels) | .trigger[].paths) += [\"zz/ref-only/**\"]"
+  # FX2  in-job   docs-index: 1 entry only in the reference (pull-request), 2 only in the filter
+  rx+=" | $(cap_of docs-index) | .trigger[] | select(.on == \"pull-request\") | .paths) += [\"zz/c/**\"]"
+  # FX3  dedic.   usage-storage: pull-request trigger gains an entry the workflow lacks
+  rx+=" | $(cap_of usage-storage) | .trigger[] | select(.on == \"pull-request\") | .paths) += [\"zz/d/**\"]"
+  # FX5  in-job   markdown-links: a different spelling of the same glob (R13)
+  rx+=" | $(cap_of markdown-links) | .trigger[].paths[] | select(. == \"docs/**\")) = \"docs/**/*\""
+  # FX11 in-job   check-model-mappings: only the push trigger differs
+  rx+=" | $(cap_of check-model-mappings) | .trigger[] | select(.on == \"push\") | .paths) += [\"zz/p/**\"]"
+  # FX12 in-job   mempalace: reference unfiltered, the in-job filter lists globs
+  rx+=" | del($(cap_of mempalace) | .trigger[].paths))"
+  # FX14 dedic.   windows-hook-probe: reference unfiltered, the workflow lists globs
+  rx+=" | del($(cap_of windows-hook-probe) | .trigger[].paths))"
+  # FX16 dedic.   audit: a reference push trigger with paths, a workflow with no push event
+  rx+=" | $(cap_of audit) | .trigger) += [{\"on\": \"push\", \"paths\": [\"zz/g/**\"]}]"
+  # FX17 in-job   extension-manifest: no comparable reference trigger at all
+  rx+=" | $(cap_of extension-manifest) | .trigger) = [{\"on\": \"manual\"}]"
+  # UX8  reference e2e: pull-request paths is a scalar
+  rx+=" | $(cap_of e2e) | .trigger[] | select(.on == \"pull-request\") | .paths) = \"x\""
+  # PF4  usage-pricing: branches differ on both sides (R19), path sets equal
+  rx+=" | $(cap_of usage-pricing) | .trigger[].branches) = [\"zz-ref\"]"
+  # PF5  ci-parity: in-job, no push trigger in the reference (the s2-F1 decision)
+  rx+=" | del($(cap_of ci-parity) | .trigger[] | select(.on == \"push\")))"
+  yq -i "$rx" "$f/ci/ci-capabilities.yml"
+
+  # --- build.yml: in-job filters, edited through their job text only --------
+  bx=''
+  # FX2  docs-index: two entries only in the filter
+  bx+="$(filters_of docs-index)"' += "  - zz/a/**\n  - zz/b/**\n"'
+  # FX7  frontmatter: a negated entry in the filter
+  bx+=' | '"$(filters_of frontmatter)"' += "  - \"!zz/neg/**\"\n"'
+  # FX13 chroma-mcp: the filter step is deleted (unfiltered job, filtered reference)
+  bx+=' | del(.jobs."chroma-mcp".steps[] | select((.uses // "") | test("^dorny/paths-filter@")))'
+  # UX1  setup: a second path-filter step
+  bx+=' | .jobs.setup.steps += [{"uses": "dorny/paths-filter@v3", "id": "filter2", "with": {"filters": "setup:\n  - zz/s/**\n"}}]'
+  # UX2  check-agent-profiles: a second named filter
+  bx+=' | '"$(filters_of check-agent-profiles)"' += "other-filter:\n  - zz/o/**\n"'
+  # UX3  check-metadata-keys: the only filter is not named after the capability
+  bx+=' | '"$(filters_of check-metadata-keys)"' |= sub("^check-metadata-keys:"; "other-name:")'
+  # UX4  check-claude-agent-layout: the filter value is a scalar
+  bx+=' | '"$(filters_of check-claude-agent-layout)"' = "check-claude-agent-layout: zz/x/**\n"'
+  # UX5  core-paths: entries that are not strings
+  bx+=' | '"$(filters_of core-paths)"' = "core-paths:\n  - 1\n  - true\n"'
+  # UX6  extension-provenance: the filters text is a file name, not a mapping
+  bx+=' | '"$(filters_of extension-provenance)"' = ".github/filters.yml"'
+  # UX9  test-wiring: the filters text is not valid YAML
+  bx+=' | '"$(filters_of test-wiring)"' = "test-wiring: [unclosed\n"'
+  # PF3  extension-install: filter reversed, one entry repeated, quotes changed
+  bx+=' | '"$(filters_of extension-install)"' |= ([split("\n") | .[] | select(length > 0)] | . as $l | ($l[0:1] + ($l[1:] | reverse) + [$l[1]]) | join("\n") + "\n" | sub("\x27"; "\""))'
+  yq -i "$bx" "$wf/build.yml"
+
+  # --- Dedicated workflows: one `yq -i` each --------------------------------
+  # FX4  usage-capture: push gains an entry the reference lacks
+  yq -i '.on.push.paths += ["zz/e/**"]' "$wf/usage-capture.yml"
+  # FX6  release-notes: a different spelling of the same glob (R13), pull_request only
+  yq -i '(.on.pull_request.paths[] | select(. == "scripts/lib/release-notes/**")) = "scripts/lib/release-notes/**/*"' \
+    "$wf/release-notes.yml"
+  # FX8  usage-attribution: a negated entry under pull_request
+  yq -i '.on.pull_request.paths += ["!zz/neg/**"]' "$wf/usage-attribution.yml"
+  # FX9  usage-dashboard: a push paths-ignore (an exclusion the reference cannot express)
+  yq -i '.on.push."paths-ignore" = ["docs/**"]' "$wf/usage-dashboard.yml"
+  # FX10 ticket-pickup: reshaped to an in-job filter equal to the reference, with a
+  #      push paths-ignore (the workflow keeps no `paths`, so R17 does not apply)
+  TP_FILTERS="ticket-pickup:"$'\n'"$(ref_paths ticket-pickup pull-request | sed 's/.*/  - "&"/')"$'\n'
+  TP_FILTERS="$TP_FILTERS" yq -i '
+    del(.on.pull_request.paths) | del(.on.push.paths)
+    | .on.push."paths-ignore" = ["docs/**"]
+    | .jobs."ticket-pickup".steps = [{"uses": "dorny/paths-filter@v3", "id": "filter", "with": {"filters": strenv(TP_FILTERS)}}] + .jobs."ticket-pickup".steps' \
+    "$wf/ticket-pickup.yml"
+  # FX15 grep-anti-patterns: the workflow filters push, the reference has no push trigger
+  yq -i '.on.push.paths = ["zz/f/**"]' "$wf/scripting-conventions.yml"
+  # UX7  usage-record-schema: an in-job filter added to a workflow that has on.*.paths
+  yq -i '.jobs."usage-record-schema".steps += [{"uses": "dorny/paths-filter@v3", "id": "filter", "with": {"filters": "usage-record-schema:\n  - zz/r/**\n"}}]' \
+    "$wf/usage-record-schema.yml"
+  # PF1a release: reference push trigger without paths, workflow with no push event
+  yq -i 'del(.on.push)' "$wf/release-monorepo.yml"
+  # PF1b release-rehearsal: events declared without a filter (a null body and a
+  #      branches-only body), the reference has neither trigger
+  yq -i '.on.pull_request = null | .on.push.branches = ["main"]' "$wf/release-rehearsal.yml"
+  # PF2  release-tests: reversed, first entry repeated, quotes mixed (single, plain, double)
+  yq -i '.on.pull_request.paths |= (. as $p | ($p | reverse) + [$p[0]])
+    | .on.pull_request.paths[0] style="single"
+    | .on.pull_request.paths[1] style=""
+    | .on.pull_request.paths[2] style="double"' "$wf/release-tests.yml"
+  # PF4  usage-pricing: branches differ from the reference (R19)
+  yq -i '.on.pull_request.branches = ["zz-gh"] | .on.push.branches = ["zz-gh"]' "$wf/usage-pricing.yml"
+
+  run_check "$f"
+
+  expect_exit 1 "PF matrix: the mutated tree fails closed (not a desynchronised stream)"
+
+  # --- FX1-FX6: divergence in both shapes (R12-R15, R18) --------------------
+  need_block figure-labels "in-job filter, reference trigger 'pull-request'" "FX1: in-job, pull-request block"
+  expect_side "$BLK" ref "FX1: pull-request block lists the reference-only entry" "zz/ref-only/**"
+  expect_side "$BLK" gh  "FX1: pull-request block GitHub-only list is empty" ""
+  need_block figure-labels "in-job filter, reference trigger 'push'" "FX1: in-job, push block"
+  expect_side "$BLK" ref "FX1: push block lists the reference-only entry" "zz/ref-only/**"
+  expect_nblocks figure-labels 2 "FX1: one block per compared trigger, no more"
+  want_drift=$((want_drift + 2))
+
+  need_block docs-index "in-job filter, reference trigger 'pull-request'" "FX2: in-job, pull-request block"
+  expect_in_block "$BLK" "(github-actions)" "FX2: block names the GitHub platform"
+  expect_in_block "$BLK" "only in the reference:"    "FX2: block labels the reference-only list"
+  expect_in_block "$BLK" "only on the GitHub side:"  "FX2: block labels the GitHub-only list"
+  expect_side "$BLK" ref "FX2: one reference-only entry" "zz/c/**"
+  expect_side "$BLK" gh  "FX2: two GitHub-only entries"  "zz/a/**
+zz/b/**"
+  need_block docs-index "in-job filter, reference trigger 'push'" "FX2: the unchanged push trigger also diverges (event-agnostic filter)"
+  expect_side "$BLK" ref "FX2: push block reference-only list is empty" ""
+  expect_nblocks docs-index 2 "FX2: two blocks"
+  want_drift=$((want_drift + 2))
+
+  need_block usage-storage "event 'pull_request'" "FX3: dedicated workflow, pull_request block"
+  expect_in_block "$BLK" "reference trigger 'pull-request'" "FX3: names the reference trigger compared"
+  expect_side "$BLK" ref "FX3: reference-only entry" "zz/d/**"
+  expect_side "$BLK" gh  "FX3: GitHub-only list is empty" ""
+  expect_nblocks usage-storage 1 "FX3: event-specific, no block for push"
+  want_drift=$((want_drift + 1))
+
+  need_block usage-capture "event 'push'" "FX4: dedicated workflow, push block"
+  expect_in_block "$BLK" "reference trigger 'push'" "FX4: names the reference trigger compared"
+  expect_side "$BLK" gh  "FX4: GitHub-only entry" "zz/e/**"
+  expect_side "$BLK" ref "FX4: reference-only list is empty" ""
+  expect_nblocks usage-capture 1 "FX4: event-specific, no block for pull_request"
+  want_drift=$((want_drift + 1))
+
+  need_block markdown-links "in-job filter, reference trigger 'pull-request'" "FX5: in-job, pull-request block"
+  expect_side "$BLK" ref "FX5: reference-only spelling" "docs/**/*"
+  expect_side "$BLK" gh  "FX5: GitHub-only spelling"    "docs/**"
+  expect_nblocks markdown-links 2 "FX5: both triggers diverge"
+  want_drift=$((want_drift + 2))
+
+  need_block release-notes "event 'pull_request'" "FX6: dedicated workflow, pull_request block"
+  expect_side "$BLK" ref "FX6: reference-only spelling" "scripts/lib/release-notes/**"
+  expect_side "$BLK" gh  "FX6: GitHub-only spelling"    "scripts/lib/release-notes/**/*"
+  expect_nblocks release-notes 1 "FX6: push is unchanged, no block for it"
+  want_drift=$((want_drift + 1))
+
+  # --- FX7-FX10: exclusions the reference cannot express (R16) --------------
+  need_block frontmatter "negated entries" "FX7: in-job negation reported"
+  expect_in_block "$BLK" "- !zz/neg/**" "FX7: names the negated entry"
+  expect_nblocks frontmatter 0 "FX7: the rest of the filter is still compared (equal, one defect = one message)"
+  want_drift=$((want_drift + 1))
+
+  need_block usage-attribution "negated entries" "FX8: dedicated negation reported"
+  expect_in_block "$BLK" "event 'pull_request'" "FX8: names the event"
+  expect_in_block "$BLK" "- !zz/neg/**"         "FX8: names the negated entry"
+  expect_nblocks usage-attribution 0 "FX8: the rest of the event is still compared (equal, one defect = one message)"
+  want_drift=$((want_drift + 1))
+
+  need_block usage-dashboard "declares paths-ignore" "FX9: paths-ignore reported"
+  expect_in_block "$BLK" "event 'push'" "FX9: names the event"
+  expect_in_block "$BLK" "- docs/**"    "FX9: names the ignored entry"
+  expect_nblocks usage-dashboard 0 "FX9: no set divergence besides the exclusion"
+  want_drift=$((want_drift + 1))
+
+  need_block ticket-pickup "declares paths-ignore" "FX10: paths-ignore reported for an in-job capability"
+  expect_in_block "$BLK" "- docs/**" "FX10: names the ignored entry"
+  expect_nblocks ticket-pickup 0 "FX10: in-job list equals the reference, no set divergence"
+  want_drift=$((want_drift + 1))
+
+  # --- FX11-FX17: triggers, filtered vs unfiltered, absent events -----------
+  need_block check-model-mappings "in-job filter, reference trigger 'push'" "FX11: in-job filter cannot match differing triggers"
+  expect_side "$BLK" ref "FX11: reference-only entry" "zz/p/**"
+  expect_side "$BLK" gh  "FX11: GitHub-only list is empty" ""
+  expect_nblocks check-model-mappings 1 "FX11: the unchanged pull-request trigger matches"
+  want_drift=$((want_drift + 1))
+
+  need_block mempalace "in-job filter, reference trigger 'pull-request'" "FX12: unfiltered reference vs filtered job"
+  expect_side "$BLK" gh  "FX12: pull-request block lists the filter" "$(ref_paths mempalace pull-request)"
+  expect_side "$BLK" ref "FX12: pull-request block reference-only list is empty" ""
+  expect_nblocks mempalace 2 "FX12: one block per trigger"
+  want_drift=$((want_drift + 2))
+
+  need_block chroma-mcp "event 'pull_request'" "FX13: filtered reference vs unfiltered job (pull_request)"
+  expect_side "$BLK" ref "FX13: pull_request block lists the reference paths" "$(ref_paths chroma-mcp pull-request)"
+  expect_side "$BLK" gh  "FX13: pull_request block GitHub-only list is empty" ""
+  need_block chroma-mcp "event 'push'" "FX13: filtered reference vs unfiltered job (push)"
+  expect_side "$BLK" ref "FX13: push block lists the reference paths" "$(ref_paths chroma-mcp push)"
+  want_drift=$((want_drift + 2))
+
+  need_block windows-hook-probe "event 'pull_request'" "FX14: unfiltered reference vs filtered workflow (pull_request)"
+  expect_side "$BLK" gh  "FX14: pull_request block lists the workflow paths" "$(ref_paths windows-hook-probe pull-request)"
+  expect_side "$BLK" ref "FX14: pull_request block reference-only list is empty" ""
+  need_block windows-hook-probe "event 'push'" "FX14: unfiltered reference vs filtered workflow (push)"
+  expect_nblocks windows-hook-probe 2 "FX14: one block per event"
+  want_drift=$((want_drift + 2))
+
+  need_block grep-anti-patterns "event 'push'" "FX15: workflow filters push, reference has no push trigger"
+  expect_in_block "$BLK" "no reference 'push' trigger" "FX15: says the reference has no push trigger"
+  expect_side "$BLK" gh  "FX15: GitHub-only entry" "zz/f/**"
+  expect_side "$BLK" ref "FX15: reference-only list is empty" ""
+  expect_nblocks grep-anti-patterns 1 "FX15: pull_request agrees"
+  want_drift=$((want_drift + 1))
+
+  need_block audit "event 'push'" "FX16: reference push trigger with paths, workflow without push"
+  expect_in_block "$BLK" "reference trigger 'push'" "FX16: names the reference trigger"
+  expect_side "$BLK" ref "FX16: reference-only entry" "zz/g/**"
+  expect_side "$BLK" gh  "FX16: GitHub-only list is empty" ""
+  expect_nblocks audit 1 "FX16: pull_request agrees"
+  want_drift=$((want_drift + 1))
+
+  need_block extension-manifest "in-job filter, no comparable reference trigger" "FX17: in-job filter without comparable trigger"
+  expect_side "$BLK" gh  "FX17: GitHub-only lists the filter" "$(ref_paths extension-manifest pull-request)"
+  expect_side "$BLK" ref "FX17: reference-only list is empty" ""
+  expect_nblocks extension-manifest 1 "FX17: compared once with the empty set"
+  want_drift=$((want_drift + 1))
+
+  # --- UX1-UX9: a filter that cannot be determined fails closed (R17) -------
+  undet() { # <capability> <cause fragment> <label>
+    need_block "$1" "cannot be determined" "$3: reported as undeterminable (R17)"
+    expect_in_block "$BLK" "$2" "$3: names the cause"
+    expect_nblocks "$1" 0 "$3: not compared afterwards, not treated as unfiltered"
+    want_drift=$((want_drift + 1))
+  }
+  undet setup                    "carries 2 path-filter steps"                   "UX1"
+  undet check-agent-profiles     "2 named filters"                               "UX2"
+  undet check-metadata-keys      "defines only the filter 'other-name'"          "UX3"
+  undet check-claude-agent-layout "not a list of strings"                        "UX4"
+  undet core-paths               "not a list of strings"                         "UX5"
+  undet extension-provenance     "not a mapping of named lists"                  "UX6"
+  undet usage-record-schema      "also declares paths under 'pull_request'"      "UX7"
+  undet test-wiring              "filters text is not valid YAML"                "UX9"
+  need_block e2e "not a list" "UX8: malformed reference paths reported"
+  expect_in_block "$BLK" "(reference)" "UX8: attributed to the reference"
+  expect_nblocks e2e 0 "UX8: not compared afterwards"
+  want_drift=$((want_drift + 1))
+
+  # --- PF1-PF5: passing verdicts print nothing -------------------------------
+  refute_in err "capability 'release' "           "PF1a: absent push event vs reference push trigger without paths agrees"
+  refute_in err "capability 'release-rehearsal' " "PF1b: events declared without a filter vs no reference trigger agree"
+  refute_in err "capability 'release-tests' "     "PF2: reordered, repeated, requoted workflow entries agree (dedicated)"
+  refute_in err "capability 'extension-install' " "PF3: reordered, repeated, requoted filter entries agree (in-job)"
+  refute_in err "capability 'usage-pricing' "     "PF4: differing branches are not compared (R19)"
+  refute_in err "capability 'ci-parity' "         "PF5: in-job filter vs a capability with no push trigger agrees (s2-F1)"
+
+  # --- Run-level: every expected block, nothing else ------------------------
+  expect_in err "FAILED: $want_drift CI parity violation(s)" "PF matrix: exactly the $want_drift expected failures, no other"
+  drift_lines="$(grep -c '^  DRIFT: ' <<< "$CHECK_STDERR")"
+  if [ "$drift_lines" -eq "$want_drift" ]; then
+    ok "PF matrix: $want_drift DRIFT blocks printed (pass rows printed none)"
+  else
+    ko "PF matrix: expected $want_drift DRIFT blocks, got $drift_lines"
+  fi
+  if [ "$fail" -gt "$fails_before" ]; then
+    echo "      matrix stderr:"
+    printf '%s\n' "$CHECK_STDERR" | sed 's/^/      | /'
+  fi
 }
 
 # ---------------------------------------------------------------------------

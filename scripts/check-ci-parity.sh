@@ -8,7 +8,7 @@
 # reference↔GitLab arm composes `scripts/build-ci.sh --check` (the generator's
 # own drift gate, spec 0048), never re-implementing GitLab generation.
 #
-# Five concerns (spec 0049 R2–R8):
+# Six concerns (spec 0049 R2–R8, plus the path filters of delta-01 R12–R24):
 #   1. Reference validity (R2) — fail closed on each docs/ci-reference-format.md
 #      validity-rule violation (unknown trigger kind/filter; engine-specific
 #      capability without evidence; missing/duplicate id; portable without
@@ -24,6 +24,13 @@
 #   4. Arm 2 — reference↔GitLab (R5): compose `build-ci.sh --check`; propagate.
 #   5. Arm 3 — GitHub Actions↔GitLab portable-set parity (R6): both engines'
 #      exhibited portable sets must agree with the reference's portable set.
+#   6. Path filters (delta-01 R12–R20) — for each portable capability with an
+#      attributed GitHub job, the reference `paths` of its pull-request and push
+#      triggers must equal, as sets of decoded textual globs, the GitHub-side
+#      filter: the `on.<event>.paths` of a dedicated workflow (per event), or the
+#      list of the job's `dorny/paths-filter` step (against every comparable
+#      trigger the capability declares). A negation or an ignore list, and a
+#      filter that cannot be read unambiguously, fail closed (R16, R17).
 #
 # Engine-specific capabilities are expected absent on the engines their
 # exception does not name (R8) — never demanded as generated jobs, their absence
@@ -59,8 +66,12 @@
 # `yq` spawns: 1 (reference) + F (one key harvest per workflow file) + 1 (GitLab
 # key harvest) + J (one step-record pass per workflow file holding an attributed
 # portable job, J <= F) + 1 (GitLab cache arm, only when a capability declares
-# `cache:`) — F + J + 3 at most, independent of the number of capabilities, jobs
-# and steps, against one spawn per value before.
+# `cache:`) + 1 (path filters: one multi-file pass over those same workflow
+# files) + 1 (the embedded `filters:` texts, decoded together as one
+# multi-document file, only when a job has one) — F + J + 5 at most, independent
+# of the number of capabilities, jobs and steps, against one spawn per value
+# before. (A `filters:` text that is not valid YAML adds one decode per text, on
+# that failure path only.)
 
 set -euo pipefail
 
@@ -261,6 +272,36 @@ tok_cmdsub() {
   while [[ $TV == *$'\n' ]]; do TV=${TV%$'\n'}; done
 }
 
+# tok_list — read one count-prefixed list slot into TLIST (newline-joined, no
+# trailing newline) and its length into TLN. TLBAD=1 when an entry is empty or
+# holds a newline: a joined list could not be split back without changing the
+# entry set.
+tok_list() {
+  local _i
+  tok_count
+  TLN=$TC
+  TLIST=""
+  TLBAD=0
+  for ((_i = 0; _i < TLN; _i++)); do
+    tok_next
+    case $TV in ''|*$'\n'*) TLBAD=1 ;; esac
+    TLIST="${TLIST:+$TLIST$'\n'}$TV"
+  done
+}
+
+# tok_plist — a "path list": the number of entries the YAML list holds, then the
+# slot of its string entries. TLBAD is also set when some entry is not a string.
+# (The programs filter with `select(tag == "!!str")` and count, rather than map a
+# non-string to "" with `// ""`: yq v4.33.2 evaluates the alternative once even
+# when nothing precedes it, which would invent an entry for a missing list.)
+tok_plist() {
+  local _all
+  tok_count
+  _all=$TC
+  tok_list
+  [ "$_all" -eq "$TLN" ] || TLBAD=1
+}
+
 # slot <yq-expr> — append one list slot to the program text being built in PROG:
 # `[ expr ] | (length, .[])` is total on any input shape (a missing path, or an
 # expression with no result, is a count of 0), whereas a bare expression would
@@ -294,7 +335,7 @@ slot '.id // ""'
 slot '.portability // ""'
 slot '.trigger // [] | length'
 PROG+='([ .trigger | select(tag == "!!seq") | .[] ] | length), '
-PROG+='(.trigger | select(tag == "!!seq") | .[] | [ ([ .on // "" ] | (length, .[])), tag, ([ select(tag == "!!map" or tag == "!!seq") | keys | .[] ] | (length, .[])) ] | .[]), '
+PROG+='(.trigger | select(tag == "!!seq") | .[] | [ ([ .on // "" ] | (length, .[])), tag, ([ select(tag == "!!map" or tag == "!!seq") | keys | .[] ] | (length, .[])), ([ select(tag == "!!map") | .paths | tag ] | (length, .[])), ([ select(tag == "!!map") | .paths | select(tag == "!!seq") | .[] ] | length), ([ select(tag == "!!map") | .paths | select(tag == "!!seq") | .[] | select(tag == "!!str") ] | (length, .[])) ] | .[]), '
 slot "select($P_SPECIFIC) | .exception.engine // \"\""
 slot "select($P_SPECIFIC) | .exception.evidence // \"\""
 slot "select($P_PORTABLE) | .command // [] | length"
@@ -337,6 +378,13 @@ CAP_CMD0=()
 CAP_CMDN=()
 CMD_ITEM=()
 CMD_TOTAL=0
+CAP_TRG0=()
+CAP_TRGN=()
+TRG_KIND=()
+TRG_PTAG=()
+TRG_PATHS=()
+TRG_BAD=()
+TRG_TOTAL=0
 
 # read_cap — decode one capability record from TOK[] into the c_* globals, in
 # the order the program above emits it.
@@ -349,11 +397,17 @@ read_cap() {
   c_tkind=()
   c_ttag=()
   c_tkeys=()
+  c_trg0=$TRG_TOTAL
   for ((_j = 0; _j < c_ntrec; _j++)); do
     tok_cmdsub; c_tkind[_j]=$TV
     tok_next;   c_ttag[_j]=$TV
     tok_cmdsub; c_tkeys[_j]=$TV
+    tok_cmdsub; TRG_PTAG[TRG_TOTAL]=$TV
+    tok_plist;  TRG_PATHS[TRG_TOTAL]=$TLIST; TRG_BAD[TRG_TOTAL]=$TLBAD
+    TRG_KIND[TRG_TOTAL]=${c_tkind[_j]}
+    TRG_TOTAL=$((TRG_TOTAL + 1))
   done
+  c_trgn=$c_ntrec
   tok_cmdsub; c_eng=$TV
   tok_cmdsub; c_ev=$TV
   tok_cmdsub; c_ncmd=$TV
@@ -575,6 +629,8 @@ for ((i = 0; i < cap_count; i++)); do
   CAP_CMDTAG[i]=$c_cmdtag
   CAP_CMD0[i]=$c_cmd0
   CAP_CMDN[i]=$c_cmdn
+  CAP_TRG0[i]=$c_trg0
+  CAP_TRGN[i]=$c_trgn
 
   # Rule 4 — id present and unique.
   if [ -z "$id" ] || [ "$id" = "null" ]; then
@@ -1274,6 +1330,417 @@ check_gha_cache() {
   fi
 }
 
+
+# Program of the path-filter pass: per document the file name, the `on:` record
+# and, for every job, its dorny/paths-filter steps.
+PROG=""
+for _ev in pull_request push; do
+  slot '$m | has("'$_ev'")'
+  for _k in paths paths-ignore; do
+    slot '$m | .'$_ev' | select(tag == "!!map") | .["'$_k'"] | tag'
+    PROG+='([ $m | .'$_ev' | select(tag == "!!map") | .["'$_k'"] | select(tag == "!!seq") | .[] ] | length), '
+    slot '$m | .'$_ev' | select(tag == "!!map") | .["'$_k'"] | select(tag == "!!seq") | .[] | select(tag == "!!str")'
+  done
+done
+_ON_EVENTS=$PROG
+PF_FSTEP='select(tag != "!!seq") | .steps | select(tag == "!!seq") | .[] | select(tag != "!!seq") | select((.uses | tag) == "!!str") | select(.uses | test("^dorny/paths-filter@"))'
+PF_PROG='"@@wf", filename, (.on | tag), ([ .on | ((select(tag == "!!str")), (select(tag == "!!seq") | .[] | select(tag == "!!str"))) ] | (length, .[])), (((.on | select(tag == "!!map")) // {}) as $m | ('$_ON_EVENTS'"@@onrec")), ([ .jobs | select(tag == "!!map") | .[] ] | length), (.jobs | select(tag == "!!map") | .[] | [ key, ([ '"$PF_FSTEP"' | .uses ] | (length, .[])), ([ '"$PF_FSTEP"' | ((.with | select(tag == "!!map") | .filters | select(tag == "!!str")) // "") ] | (length, .[])) ] | .[]), "@@wfend"'
+# --- Concern 6: GitHub path filters vs reference paths (spec 0049 delta-01) ---
+
+# Set helpers over newline-joined entry lists (Bash 3.2: no associative arrays).
+# set_norm leaves the entries once each, in first-seen order, in SET.
+set_norm() {
+  local line seen=""
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    in_list "$line" "$seen" || seen="${seen:+$seen$'\n'}$line"
+  done <<< "$1"
+  SET=$seen
+}
+# set_minus <a> <b> — the entries of a that are not in b, in DIFF.
+set_minus() {
+  local line out=""
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    in_list "$line" "$2" || out="${out:+$out$'\n'}$line"
+  done <<< "$1"
+  DIFF=$out
+}
+# pf_bullets <list> — one "      - entry" line per entry, "      (none)" if empty.
+pf_bullets() {
+  local line
+  BUL=""
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    BUL+="      - $line"$'\n'
+  done <<< "$1"
+  [ -n "$BUL" ] || BUL="      (none)"$'\n'
+  BUL=${BUL%$'\n'}
+}
+
+# pf_compare <id> <scope> <reference-description> <reference-set> <github-set>
+pf_compare() {
+  local id=$1 scope=$2 rdesc=$3 only_r only_g msg rset gset
+  [ "$4" = "$5" ] && return 0
+  set_norm "$4"; rset=$SET
+  set_norm "$5"; gset=$SET
+  set_minus "$rset" "$gset"; only_r=$DIFF
+  set_minus "$gset" "$rset"; only_g=$DIFF
+  [ -n "$only_r$only_g" ] || return 0
+  msg="capability '$id' (github-actions): path filters diverge on $scope, $rdesc (R14)"
+  pf_bullets "$only_r"; msg+=$'\n'"    only in the reference:"$'\n'"$BUL"
+  pf_bullets "$only_g"; msg+=$'\n'"    only on the GitHub side:"$'\n'"$BUL"
+  fail "$msg"
+}
+
+# pf_split <list> — positive entries in PF_POS, `!` entries in PF_NEG.
+pf_split() {
+  local line
+  PF_POS=$1
+  PF_NEG=""
+  [[ $'\n'$1 == *$'\n!'* ]] || return 0
+  PF_POS=""
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    case $line in
+      '!'*) PF_NEG="${PF_NEG:+$PF_NEG$'\n'}$line" ;;
+      *) PF_POS="${PF_POS:+$PF_POS$'\n'}$line" ;;
+    esac
+  done <<< "$1"
+}
+
+# pf_fetch_all — ONE yq spawn over every workflow file that holds an attributed
+# portable job: per YAML document its `on:` record and, per job, the number of
+# dorny/paths-filter steps and the raw `with.filters` text of the first one.
+# Independent of the per-job step-record pass above (it neither feeds nor reads
+# it), so the spawn count stays independent of the number of capabilities, jobs
+# and steps.
+PF_DOC_WF=()
+PF_DOC_TAG=()
+PF_DOC_ENTRIES=()
+PF_DOC_PRES=()
+PF_DOC_LTAG=()
+PF_DOC_LIST=()
+PF_DOC_LBAD=()
+PF_DOC_FIRSTJOB=()
+PF_DOC_NJOBS=()
+PF_JOB_KEY=()
+PF_JOB_NF=()
+PF_JOB_RAW=()
+PF_NDOC=0
+PF_NJOB=0
+pf_fetch_all() {
+  local wfs=() n m seen="" fstart e k j nj raw i
+  for ((n = 0; n < want_n; n++)); do
+    in_list "${WANT_WF[$n]}" "$seen" && continue
+    seen="${seen}${WANT_WF[$n]}"$'\n'
+    wfs[${#wfs[@]}]=${WANT_WF[$n]}
+  done
+  [ "${#wfs[@]}" -gt 0 ] || return 0
+  yq -N -0 -r "$PF_PROG" ${wfs[@]+"${wfs[@]}"} > "$TOKDIR/pathfilters.tok"
+  fstart=$TOKN
+  tok_append "$TOKDIR/pathfilters.tok"
+  TOKI=$fstart
+  while [ "$TOKI" -lt "$TOKN" ]; do
+    tok_expect '@@wf'
+    tok_next; PF_DOC_WF[PF_NDOC]=$TV
+    tok_next; PF_DOC_TAG[PF_NDOC]=$TV
+    tok_list; PF_DOC_ENTRIES[PF_NDOC]=$TLIST
+    for e in 0 1; do
+      tok_cmdsub; PF_DOC_PRES[PF_NDOC * 2 + e]=$TV
+      for k in 0 1; do
+        tok_cmdsub; PF_DOC_LTAG[PF_NDOC * 4 + e * 2 + k]=$TV
+        tok_plist;  PF_DOC_LIST[PF_NDOC * 4 + e * 2 + k]=$TLIST; PF_DOC_LBAD[PF_NDOC * 4 + e * 2 + k]=$TLBAD
+      done
+    done
+    tok_expect '@@onrec'
+    tok_count; nj=$TC
+    PF_DOC_FIRSTJOB[PF_NDOC]=$PF_NJOB
+    PF_DOC_NJOBS[PF_NDOC]=$nj
+    for ((j = 0; j < nj; j++)); do
+      tok_next; PF_JOB_KEY[PF_NJOB]=$TV
+      tok_count; m=$TC
+      for ((i = 0; i < m; i++)); do tok_next; done
+      PF_JOB_NF[PF_NJOB]=$m
+      tok_count; m=$TC
+      raw=""
+      for ((i = 0; i < m; i++)); do
+        tok_next
+        if [ "$i" -eq 0 ]; then raw=$TV; fi
+      done
+      PF_JOB_RAW[PF_NJOB]=$raw
+      PF_NJOB=$((PF_NJOB + 1))
+    done
+    tok_expect '@@wfend'
+    PF_NDOC=$((PF_NDOC + 1))
+  done
+}
+
+# pf_doc <workflow> — the first document of the file in PF_D, and the number of
+# documents the file holds in PF_DOCS.
+pf_doc() {
+  local d
+  PF_D=-1
+  PF_DOCS=0
+  for ((d = 0; d < PF_NDOC; d++)); do
+    if [ "${PF_DOC_WF[$d]}" = "$1" ]; then
+      [ "$PF_D" -ge 0 ] || PF_D=$d
+      PF_DOCS=$((PF_DOCS + 1))
+    fi
+  done
+  [ "$PF_D" -ge 0 ] || tok_die "no path-filter record for '$1'"
+}
+# pf_job <workflow> <job-key> — the job's record index in PF_J.
+pf_job() {
+  local j d
+  pf_doc "$1"
+  d=$PF_D
+  for ((j = PF_DOC_FIRSTJOB[d]; j < PF_DOC_FIRSTJOB[d] + PF_DOC_NJOBS[d]; j++)); do
+    if [ "${PF_JOB_KEY[$j]}" = "$2" ]; then PF_J=$j; return 0; fi
+  done
+  tok_die "no path-filter record for job '$2'"
+}
+# on_declared <event> <idx> — true when the event is declared in whichever form
+# `on:` takes (mapping key, list entry or scalar) in document PF_D.
+on_declared() {
+  case ${PF_DOC_TAG[$PF_D]} in
+    '!!map') [ "${PF_DOC_PRES[$((PF_D * 2 + $2))]}" = true ] ;;
+    '!!seq'|'!!str') in_list "$1" "${PF_DOC_ENTRIES[$PF_D]}" ;;
+    *) return 1 ;;
+  esac
+}
+
+# --- Embedded `filters:` texts ------------------------------------------------
+#
+# The text of an in-job filter is itself YAML. Every text that can be decoded is
+# written to one temp file as a multi-document stream (`---` between texts) and
+# decoded by ONE yq spawn. A text that holds a document marker (`---`, `...`) or a
+# `%` directive line, or is empty, is not sent: it would shift the stream, so it
+# becomes an undeterminable cause instead (R17). A text that is not valid YAML
+# makes the batched spawn abort, which would lose the attribution to a capability:
+# only then, each text is decoded on its own so the failing one is named and the
+# others are still read. The happy path spends one spawn whatever the number of
+# in-job filters.
+FD_PROG='tag, ([ select(tag == "!!map") | .[] ] | length), (select(tag == "!!map") | .[] | [ key, tag, ([ select(tag == "!!seq") | .[] ] | length), ([ select(tag == "!!seq") | .[] | select(tag == "!!str") ] | (length, .[])) ] | .[]), "@@fdoc"'
+FD_DOCN=()
+FD_TXT=()
+
+# fd_read_doc <d> — read one decoded filters document from TOK[] into FD_*[d].
+fd_read_doc() {
+  local d=$1 k nm vt
+  tok_next; FD_ROOT[d]=$TV
+  tok_count; FD_NN[d]=$TC
+  FD_NAMES[d]=""
+  FD_NAME[d]=""
+  FD_VTAG[d]=""
+  FD_ITEMS[d]=""
+  FD_BAD[d]=0
+  for ((k = 0; k < FD_NN[d]; k++)); do
+    tok_next; nm=$TV
+    tok_next; vt=$TV
+    tok_plist
+    FD_NAMES[d]="${FD_NAMES[d]:+${FD_NAMES[d]}, }$nm"
+    if [ "$k" -eq 0 ]; then
+      FD_NAME[d]=$nm; FD_VTAG[d]=$vt; FD_ITEMS[d]=$TLIST; FD_BAD[d]=$TLBAD
+    fi
+  done
+  tok_expect '@@fdoc'
+}
+
+# fd_decode_all — decode the filters text of every attributed job that has exactly
+# one path-filter step; leaves FD_STATE[n] (docN, or the cause when undeterminable).
+fd_decode_all() {
+  local n ndoc=0 txt sep="" d fd_start
+  : > "$TOKDIR/filters.yml"
+  for ((n = 0; n < want_n; n++)); do
+    FD_STATE[n]=none
+    WANT_NF[n]=0
+    pf_doc "${WANT_WF[$n]}"
+    # A file with several documents is reported as undeterminable, never read.
+    [ "$PF_DOCS" -eq 1 ] || continue
+    pf_job "${WANT_WF[$n]}" "${WANT_JK[$n]}"
+    WANT_NF[n]=${PF_JOB_NF[$PF_J]}
+    [ "${WANT_NF[$n]}" -eq 1 ] || continue
+    txt=${PF_JOB_RAW[$PF_J]}
+    case $'\n'$txt in
+      *$'\n---'*|*$'\n...'*|*$'\n%'*) FD_STATE[n]="its filters text holds a YAML document marker"; continue ;;
+    esac
+    case $txt in
+      *[![:space:]]*) ;;
+      *) FD_STATE[n]="its filters input is empty or not a string"; continue ;;
+    esac
+    printf '%s%s\n' "$sep" "$txt" >> "$TOKDIR/filters.yml"
+    sep=$'---\n'
+    FD_STATE[n]=doc$ndoc
+    FD_DOCN[ndoc]=$n
+    FD_TXT[ndoc]=$txt
+    ndoc=$((ndoc + 1))
+  done
+  [ "$ndoc" -gt 0 ] || return 0
+  fd_start=$TOKN
+  if yq -N -0 -r "$FD_PROG" "$TOKDIR/filters.yml" > "$TOKDIR/filters.tok" 2>/dev/null; then
+    tok_append "$TOKDIR/filters.tok"
+    TOKI=$fd_start
+    for ((d = 0; d < ndoc; d++)); do fd_read_doc "$d"; done
+    [ "$TOKI" -eq "$TOKN" ] || tok_die "filters stream has trailing tokens"
+    return 0
+  fi
+  # A text is not valid YAML: decode the texts one by one to name the culprit.
+  for ((d = 0; d < ndoc; d++)); do
+    printf '%s\n' "${FD_TXT[$d]}" > "$TOKDIR/filter-one.yml"
+    if yq -N -0 -r "$FD_PROG" "$TOKDIR/filter-one.yml" > "$TOKDIR/filter-one.tok" 2>/dev/null; then
+      fd_start=$TOKN
+      tok_append "$TOKDIR/filter-one.tok"
+      TOKI=$fd_start
+      fd_read_doc "$d"
+      [ "$TOKI" -eq "$TOKN" ] || tok_die "filters stream has trailing tokens"
+    else
+      FD_STATE[FD_DOCN[d]]="its filters text is not valid YAML"
+    fi
+  done
+}
+
+FD_STATE=()
+FD_ROOT=()
+FD_NN=()
+FD_NAME=()
+FD_NAMES=()
+FD_VTAG=()
+FD_ITEMS=()
+FD_BAD=()
+WANT_NF=()
+
+pf_undet() { fail "capability '$1' (github-actions): GitHub-side path filter cannot be determined: $2 (R17)"; }
+
+pf_neg() {
+  pf_bullets "$3"
+  fail "capability '$1' (github-actions): $2 holds negated entries the reference cannot express (R16):"$'\n'"$BUL"
+}
+
+# pf_ignore <id> <event> <idx> — a workflow-level paths-ignore is an exclusion (R16).
+pf_ignore() {
+  local k=$(($3 * 2 + 1))
+  case ${PF_DOC_LTAG[$((PF_D * 4 + k))]} in
+    ''|'!!null') return 0 ;;
+  esac
+  pf_bullets "${PF_DOC_LIST[$((PF_D * 4 + k))]}"
+  fail "capability '$1' (github-actions): event '$2' declares paths-ignore, an exclusion the reference cannot express (R16):"$'\n'"$BUL"
+}
+
+# pf_event_paths <id> <event> <idx> — the `paths` of one workflow event into
+# PF_POS (R16 reported); returns 1 when the list cannot be read (R17).
+pf_event_paths() {
+  local k=$(($3 * 2))
+  case ${PF_DOC_LTAG[$((PF_D * 4 + k))]} in
+    ''|'!!null'|'!!seq') ;;
+    *) pf_undet "$1" "paths under '$2' is not a list"; return 1 ;;
+  esac
+  if [ "${PF_DOC_LBAD[$((PF_D * 4 + k))]}" = 1 ]; then
+    pf_undet "$1" "paths under '$2' holds an entry that is not a string"
+    return 1
+  fi
+  pf_ignore "$1" "$2" "$3"
+  pf_split "${PF_DOC_LIST[$((PF_D * 4 + k))]}"
+  [ -z "$PF_NEG" ] || pf_neg "$1" "event '$2'" "$PF_NEG"
+  return 0
+}
+
+# check_gha_paths <id> <workflow> <want-index> — R12-R18 for one portable
+# capability with an attributed GitHub job.
+check_gha_paths() {
+  local id=$1 wf=$2 n=$3 cap_ix t t0 tn e ev rk ndone d nm st pos
+  cap_find "$id"
+  cap_ix=$CAPIDX
+  t0=${CAP_TRG0[$cap_ix]}
+  tn=${CAP_TRGN[$cap_ix]}
+  for ((t = t0; t < t0 + tn; t++)); do
+    case ${TRG_KIND[$t]} in pull-request|push) ;; *) continue ;; esac
+    case ${TRG_PTAG[$t]} in
+      ''|'!!null'|'!!seq') ;;
+      *) fail "capability '$id' (reference): trigger '${TRG_KIND[$t]}' declares a paths value that is not a list (R17)"; return ;;
+    esac
+    if [ "${TRG_BAD[$t]}" = 1 ]; then
+      fail "capability '$id' (reference): trigger '${TRG_KIND[$t]}' declares a paths entry that is not a string (R17)"
+      return
+    fi
+  done
+  pf_doc "$wf"
+  if [ "$PF_DOCS" -gt 1 ]; then
+    pf_undet "$id" "$(basename "$wf") holds more than one YAML document"
+    return
+  fi
+
+  if [ "${WANT_NF[$n]}" -eq 0 ]; then
+    # Dedicated-workflow filter: per event (R14).
+    for e in 0 1; do
+      if [ "$e" -eq 0 ]; then ev=pull_request; rk=pull-request; else ev=push; rk=push; fi
+      if on_declared "$ev" "$e"; then
+        pf_event_paths "$id" "$ev" "$e" || return
+        pos=$PF_POS
+      else
+        pos=""
+      fi
+      ndone=0
+      for ((t = t0; t < t0 + tn; t++)); do
+        [ "${TRG_KIND[$t]}" = "$rk" ] || continue
+        ndone=$((ndone + 1))
+        pf_compare "$id" "event '$ev'" "reference trigger '$rk'" "${TRG_PATHS[$t]}" "$pos"
+      done
+      [ "$ndone" -gt 0 ] || pf_compare "$id" "event '$ev'" "no reference '$rk' trigger" "" "$pos"
+    done
+    return
+  fi
+
+  # In-job filter (R14, R17).
+  if [ "${WANT_NF[$n]}" -gt 1 ]; then
+    pf_undet "$id" "the job carries ${WANT_NF[$n]} path-filter steps"
+    return
+  fi
+  st=${FD_STATE[$n]}
+  case $st in
+    doc*) d=${st#doc} ;;
+    *) pf_undet "$id" "$st"; return ;;
+  esac
+  if [ "${FD_ROOT[$d]}" != '!!map' ]; then
+    pf_undet "$id" "its filters input is not a mapping of named lists"
+    return
+  fi
+  nm=${FD_NN[$d]}
+  if [ "$nm" -ne 1 ]; then
+    pf_undet "$id" "the path-filter step defines $nm named filters (${FD_NAMES[$d]:-none})"
+    return
+  fi
+  if [ "${FD_NAME[$d]}" != "$id" ]; then
+    pf_undet "$id" "the path-filter step defines only the filter '${FD_NAME[$d]}', not '$id'"
+    return
+  fi
+  if [ "${FD_VTAG[$d]}" != '!!seq' ] || [ "${FD_BAD[$d]}" = 1 ]; then
+    pf_undet "$id" "the list of filter '$id' is not a list of strings"
+    return
+  fi
+  for e in 0 1; do
+    if [ "$e" -eq 0 ]; then ev=pull_request; else ev=push; fi
+    case ${PF_DOC_LTAG[$((PF_D * 4 + e * 2))]} in
+      ''|'!!null') ;;
+      *) pf_undet "$id" "the job has an in-job filter and the workflow also declares paths under '$ev'"; return ;;
+    esac
+  done
+  for e in 0 1; do
+    if [ "$e" -eq 0 ]; then ev=pull_request; else ev=push; fi
+    pf_ignore "$id" "$ev" "$e"
+  done
+  pf_split "${FD_ITEMS[$d]}"
+  pos=$PF_POS
+  [ -z "$PF_NEG" ] || pf_neg "$id" "the in-job filter" "$PF_NEG"
+  ndone=0
+  for ((t = t0; t < t0 + tn; t++)); do
+    case ${TRG_KIND[$t]} in pull-request|push) ;; *) continue ;; esac
+    ndone=$((ndone + 1))
+    pf_compare "$id" "in-job filter" "reference trigger '${TRG_KIND[$t]}'" "${TRG_PATHS[$t]}" "$pos"
+  done
+  [ "$ndone" -gt 0 ] || pf_compare "$id" "in-job filter" "no comparable reference trigger" "" "$pos"
+}
+
 if $GHA_PRESENT; then
   # Resolve each portable capability to its attributed job first, so the step
   # records of all of them come from one yq pass per workflow file.
@@ -1299,6 +1766,8 @@ if $GHA_PRESENT; then
     want_n=$((want_n + 1))
   done <<< "$PORTABLE_IDS"
   job_fetch_all
+  pf_fetch_all
+  fd_decode_all
   for ((n = 0; n < want_n; n++)); do
     pid=${WANT_ID[$n]}
     wf=${WANT_WF[$n]}
@@ -1309,6 +1778,7 @@ if $GHA_PRESENT; then
     if [ "${CAP_CACHELEN[$CAPIDX]}" != "0" ]; then
       check_gha_cache "$pid" "$wf" "$jk"
     fi
+    check_gha_paths "$pid" "$wf" "$n"
   done
 fi
 

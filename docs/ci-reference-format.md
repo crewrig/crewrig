@@ -307,8 +307,9 @@ matcher is recalled to give `?` (zero or one of the preceding character) and
 `+` (one or more) regex-like meaning. That recollection is an **assumption to
 verify** against GitHub's filter documentation; it has not been re-fetched.
 No `paths:` or `cache.files` glob in the reference uses either character today,
-so the rejection costs nothing and the question stays moot until a mirror
-comparison exists.
+so the rejection costs nothing and the question stays moot: the path-filter
+comparison (see *GitHub path filters are compared*) never interprets a glob, it
+compares spellings.
 
 **What is verified and what is assumed.** The matcher was cross-checked
 against `picomatch@4` with `dot: true` (the engine behind the GitHub path
@@ -409,17 +410,67 @@ and in the body of the pull request that introduced the check.
    the release branch unchecked and surface only at the release-to-`main`
    merge, where the check finally runs on the combined tree.
 
-### Known limitation: GitHub path filters are not compared
+### GitHub path filters are compared
 
 The check reads ownership from the reference, but the GitHub trigger of each
-job is the hand-written `dorny/paths-filter` list, and
-`scripts/check-ci-parity.sh` does not compare `paths:` with those filters. A
-glob added to the reference but forgotten in the workflow would make
-`path-ownership` green while the owner job never starts. Whoever extends a
-capability's `paths:` mirrors the glob in that job's filter (and in its
-`hashFiles(...)` and `--key-files` lists when the capability is cache-guarded).
-Comparing the two sets in `check-ci-parity.sh` is tracked in
-[#1422](https://github.com/crewrig/crewrig/issues/1422).
+job is hand-written. `scripts/check-ci-parity.sh` therefore compares, for every
+portable capability that has an attributed GitHub job, the reference `paths` of
+its `pull-request` and `push` triggers with the path filter GitHub applies to
+that job (spec 0049 delta-01, R12 to R24). A glob added to the reference and
+forgotten in the workflow, or the reverse, is a failure of the harness, not a
+silent gap.
+
+**What is compared.** Two GitHub-side shapes are recognised:
+
+- **In-job filter.** The list of the job's `dorny/paths-filter` step, which must
+  define exactly one filter, named after the capability id. It cannot tell a
+  pull request from a push, so it is compared with the `paths` of every
+  comparable trigger the capability declares; a capability whose `pull-request`
+  and `push` triggers list different paths therefore cannot match it. A
+  comparable event the capability does not declare is left out for an in-job
+  filter (whether an event is declared at all is trigger-set
+  conformance, not a path comparison).
+- **Dedicated-workflow filter.** `on.pull_request.paths` and `on.push.paths` of
+  the workflow file that holds the job, each compared separately with the
+  `paths` of the matching reference trigger.
+
+**How.** The comparison is a set equality on the decoded textual entries: order,
+repetition and YAML quoting do not matter, but no glob is normalised, so
+`dir/**` and `dir/**/*` are a divergence. An absent event, an event declared
+without a filter, and a reference trigger without `paths` all carry the empty
+set, so a filtered event facing an unfiltered one is a divergence and two
+unfiltered sides agree. Only `paths` is compared; `branches`, `tag-pattern` and
+the cache-key lists keep their own treatment.
+
+**What is reported.** One block per mismatch, naming the capability, the
+platform, the event (or `in-job filter`) and the reference trigger compared,
+then two labelled lists, either of which may read `(none)`:
+
+```text
+  DRIFT: capability '<id>' (github-actions): path filters diverge on event 'push', reference trigger 'push' (R14)
+    only in the reference:
+      - <entry>
+    only on the GitHub side:
+      (none)
+```
+
+**What fails closed.** A GitHub-side entry with a leading `!`, and a
+`paths-ignore` under a comparable event, cannot be expressed in the reference:
+each is reported with its entries (R16) and the remaining entries are still
+compared. A filter that cannot be read unambiguously is reported with its cause
+and the capability is compared no further (R17): several `dorny/paths-filter` steps in the job; several
+named filters, or one that is not named after the capability id; a `filters:`
+text that is not a mapping of named lists, is not valid YAML, or whose list
+holds a non-string entry; an in-job filter in a workflow that also declares
+`paths` under a comparable event (the effective filter would be the conjunction
+of two lists); a workflow file with several YAML documents. A reference `paths`
+that is not a list of strings fails the same way.
+
+**What is out of scope.** `branches`, `tag-pattern`, the wiring that consumes an
+in-job filter's output, and glob semantics (the engines' matchers can differ on
+the same spelling). The `hashFiles(...)` lists of an `actions/cache` key and the
+`--key-files` lists remain mirrored by hand: whoever extends a cache-guarded
+capability's `cache.files` mirrors them there.
 
 ## Traceability (contract C2)
 
