@@ -1,7 +1,7 @@
 ---
 id: "0243"
 slug: usage-capture-hooks-typescript
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1326
