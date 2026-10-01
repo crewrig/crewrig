@@ -2033,12 +2033,15 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15).
 
-  # Spec 0243 R28: the usage-capture row's copy of the template above. Both
-  # TypeScript entries run from pwsh, the command line of each CLI runs through
-  # the interpreter row 37 of docs/cli-matrix.md records for it, and three
-  # timing budgets (R15) apply to the fast path, the slow path and the shim.
+  # Spec 0243 R28 (reworded at delta-03): the usage-capture row's copy of the
+  # template above. Both TypeScript entries run from pwsh, the command line of
+  # each CLI and surface runs through the invocation rows 37 and 37e/37f of
+  # docs/cli-matrix.md record for it (both Antigravity CLI surfaces in the
+  # guarded form, through `cmd /c "<command>"`), the b1/b2/b3 legs prove the
+  # guard against a planted node.cmd and node.bat and re-check its premise, and
+  # three timing budgets (R15) apply to the fast path, the slow path and the shim.
   - id: windows-usage-capture
-    name: "Windows usage capture: entries, per-CLI command lines and timing budgets"
+    name: "Windows usage capture: entries, per-CLI and per-surface command lines, guarded-form legs and timing budgets"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
