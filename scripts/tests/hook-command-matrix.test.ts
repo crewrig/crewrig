@@ -39,7 +39,9 @@ const TOKEN_KEYS = [
 ] as const;
 type TokenKey = (typeof TOKEN_KEYS)[number];
 
-type Parsed = { ok: true; values: Partial<Record<TokenKey, string>> } | { ok: false; error: string };
+type Parsed =
+  | { ok: true; values: Partial<Record<TokenKey, string>> }
+  | { ok: false; error: string };
 
 /** Parse the single `[measured: k=v; …]` token of a row. */
 function parseMeasured(row: string): Parsed {
@@ -75,9 +77,12 @@ function compare(
   inEntry: string | undefined,
 ): void {
   if (inRow === undefined && inEntry === undefined) return;
-  if (inRow === undefined) failures.push(`row ${rowId} lacks the ${label} while the entry carries it`);
-  else if (inEntry === undefined) failures.push(`the entry lacks the ${label} while row ${rowId} carries it`);
-  else if (inRow !== inEntry) failures.push(`the ${label} differs between row ${rowId} and the entry`);
+  if (inRow === undefined)
+    failures.push(`row ${rowId} lacks the ${label} while the entry carries it`);
+  else if (inEntry === undefined)
+    failures.push(`the entry lacks the ${label} while row ${rowId} carries it`);
+  else if (inRow !== inEntry)
+    failures.push(`the ${label} differs between row ${rowId} and the entry`);
 }
 
 /** What the guard concludes about one (row, entry) pair; empty when they agree. */
@@ -88,7 +93,9 @@ function guardFailures(
 ): string[] {
   const failures: string[] = [];
   if ((row !== undefined) !== (entry !== undefined)) {
-    failures.push(`row ${rowId} present: ${row !== undefined}; entry present: ${entry !== undefined}`);
+    failures.push(
+      `row ${rowId} present: ${row !== undefined}; entry present: ${entry !== undefined}`,
+    );
   }
   if (entry !== undefined && entry.plantedBinary === undefined) {
     failures.push("the entry lacks the planted-binary result (whatever its status)");
@@ -120,15 +127,29 @@ function guardFailures(
     compare(failures, rowId, "planted-binary result", v["planted-binary"], entry.plantedBinary);
   }
   if ((v.caveats ?? "") !== (entry.caveats ?? []).join(",")) failures.push("caveats differ");
-  compare(failures, rowId, "guarded-form result", v["guarded-form"], serialiseGuarded(entry.guardedForm));
-  compare(failures, rowId, "guarded-form caveats", v["guarded-caveats"], entry.guardedCaveats?.join(","));
+  compare(
+    failures,
+    rowId,
+    "guarded-form result",
+    v["guarded-form"],
+    serialiseGuarded(entry.guardedForm),
+  );
+  compare(
+    failures,
+    rowId,
+    "guarded-form caveats",
+    v["guarded-caveats"],
+    entry.guardedCaveats?.join(","),
+  );
   return failures;
 }
 
 const LINES = MATRIX.split("\n");
 const rowOf = (id: string): string | undefined => LINES.find((l) => l.startsWith(`| ${id} |`));
 const entryOf = (surface: "statusline" | "hooks"): GuardedEntry | undefined =>
-  MEASURED_SURFACES.find((m) => m.cli === "antigravity" && m.surface === surface && m.os === "win32");
+  MEASURED_SURFACES.find(
+    (m) => m.cli === "antigravity" && m.surface === surface && m.os === "win32",
+  );
 
 const PAIRS = [
   { rowId: "37e", surface: "statusline" },
@@ -236,7 +257,10 @@ describe("rows 37e and 37f state their caveats in prose (R31, R33, R35, R36)", (
   test("row 37e no longer describes the delta-02 refusal", () => {
     const row = rowOf("37e") ?? "";
     assert.ok(!row.includes("refuses the command line pending #1392"), "stale refusal text");
-    assert.ok(!row.includes("cwd-first"), "stale `cwd-first` flag: no such flag exists in hook-command.ts");
+    assert.ok(
+      !row.includes("cwd-first"),
+      "stale `cwd-first` flag: no such flag exists in hook-command.ts",
+    );
   });
 
   test("the parity gap names both surfaces, rows 37e/37f, #1392 and the PATH residual (R17, R36)", () => {
@@ -267,7 +291,8 @@ describe("the parser and the guard fail on each divergence (the guard is itself 
     ],
     guardedCaveats: ["arm64-vm", "marker-probe"],
   };
-  const has = (failures: string[], needle: string): boolean => failures.some((f) => f.includes(needle));
+  const has = (failures: string[], needle: string): boolean =>
+    failures.some((f) => f.includes(needle));
   const without = (key: "plantedBinary" | "guardedForm" | "guardedCaveats"): GuardedEntry => {
     const { [key]: _omitted, ...rest } = good;
     return rest as GuardedEntry;
@@ -305,13 +330,25 @@ describe("the parser and the guard fail on each divergence (the guard is itself 
     const differs = ok.replace("planted-binary=planted-runs", "planted-binary=real-runs");
     assert.ok(has(guardFailures("37f", differs, good), "planted-binary result differs"));
     const lacks = ok.replace("; planted-binary=planted-runs", "");
-    assert.ok(has(guardFailures("37f", lacks, good), "row 37f lacks the planted-binary result while"));
+    assert.ok(
+      has(guardFailures("37f", lacks, good), "row 37f lacks the planted-binary result while"),
+    );
   });
 
   test("interpreter, quoting and bare caveats divergences", () => {
-    assert.ok(guardFailures("37f", ok.replace("cmd.exe", "powershell-5.1"), good).includes("interpreter differs"));
-    assert.ok(guardFailures("37f", ok.replace("cmd-no-grouping", "cmd"), good).includes("quoting differs"));
-    assert.ok(guardFailures("37f", ok.replace("arm64-vm,agy-1.2.14", "arm64-vm"), good).includes("caveats differ"));
+    assert.ok(
+      guardFailures("37f", ok.replace("cmd.exe", "powershell-5.1"), good).includes(
+        "interpreter differs",
+      ),
+    );
+    assert.ok(
+      guardFailures("37f", ok.replace("cmd-no-grouping", "cmd"), good).includes("quoting differs"),
+    );
+    assert.ok(
+      guardFailures("37f", ok.replace("arm64-vm,agy-1.2.14", "arm64-vm"), good).includes(
+        "caveats differ",
+      ),
+    );
   });
 
   test("the guarded-form result is carried by one side only", () => {

@@ -216,7 +216,9 @@ function commandFor(cli: Cli, surface: Surface, entry: string, args?: string[]):
 }
 
 const entryOf = (surface: Surface) =>
-  MEASURED_SURFACES.find((m) => m.cli === "antigravity" && m.surface === surface && m.os === "win32");
+  MEASURED_SURFACES.find(
+    (m) => m.cli === "antigravity" && m.surface === surface && m.os === "win32",
+  );
 
 describe("the command line of each CLI, through its interpreter", { skip: !WINDOWS }, () => {
   before(() => {
@@ -261,7 +263,11 @@ describe("the command line of each CLI, through its interpreter", { skip: !WINDO
     const res = run(agyInvocation(built.command), root, read(fixtures.shimPayload));
     assert.equal(res.status, 0, `${res.stderr}\n${built.command}`);
     assert.equal(res.stderr, "");
-    assert.equal(res.stdout, "prior-env:1", "the shim forwards the prior command, which inherits the guard (R35)");
+    assert.equal(
+      res.stdout,
+      "prior-env:1",
+      "the shim forwards the prior command, which inherits the guard (R35)",
+    );
     assert.ok(records(root).length > 0, `no record from: ${built.command}`);
   });
 
@@ -301,14 +307,21 @@ describe("the command line of each CLI, through its interpreter", { skip: !WINDO
           ran.real && !ran.planted,
           `The guard ${JSON.stringify(GUARDED_PREFIX)} did not hold on the ${surface} surface: the planted ${plant} ran: ${ran.planted}; the real node ran: ${ran.real}. Command: ${built.command}`,
         );
-        assert.equal(ran.realLog, "env=1\n", "node sees NoDefaultCurrentDirectoryInExePath=1 exactly (R35)");
+        assert.equal(
+          ran.realLog,
+          "env=1\n",
+          "node sees NoDefaultCurrentDirectoryInExePath=1 exactly (R35)",
+        );
       });
     }
 
     test(`b3: antigravity ${surface}, node.cmd planted in the cwd: the bare form still runs the plant (premise of the guard)`, () => {
       const c = plantedCase("node.cmd");
       const built = commandFor("antigravity", surface, c.script, ["claude-code", "Stop"]);
-      assert.ok(built.ok && built.command.startsWith(GUARDED_PREFIX), built.ok ? built.command : built.refusal);
+      assert.ok(
+        built.ok && built.command.startsWith(GUARDED_PREFIX),
+        built.ok ? built.command : built.refusal,
+      );
       // The bare `node <abs> <args>` text of R16(c): a fixture, never produced by the module here.
       const bare = built.command.slice(GUARDED_PREFIX.length);
       run(agyInvocation(bare), freshRoot(), "", c.cwd);
@@ -349,7 +362,11 @@ describe("b1: the Antigravity statusLine.command from a checkout path with a spa
       assert.match(refusal, /C:\/work space\/crewrig/);
     } else {
       assert.equal(plain?.ok, false);
-      assert.equal(plain?.ok === false ? plain.refusal : "", refusal, "the same diagnostic for both paths");
+      assert.equal(
+        plain?.ok === false ? plain.refusal : "",
+        refusal,
+        "the same diagnostic for both paths",
+      );
       assert.match(refusal, /#1392|unmeasured|contradicts/);
       assert.doesNotMatch(refusal, /whitespace|checkout path/);
     }
