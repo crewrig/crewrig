@@ -61,18 +61,12 @@ const MATCHES: ReadonlyArray<readonly [string, string, boolean]> = [
   ["scripts/**", "scripts/a/b/c.ts", true],
   ["scripts/**", "scriptsx/y.ts", false],
   ["**", "a/b/c", true],
-  // `?` is one character, never a `/`.
-  ["a?c", "abc", true],
-  ["a?c", "ac", false],
-  ["a?c", "a/c", false],
   // Dotfiles and dot directories are matched (the GitHub filter runs with dot: true).
   ["*", ".env", true],
   ["docs/**", "docs/.hidden/x", true],
   ["**/*.md", ".github/CONTRIBUTING.md", true],
   // The glob is anchored and every regex metacharacter outside the supported forms is literal.
   ["docs/*.md", "x/docs/page.md", false],
-  ["a+b.txt", "a+b.txt", true],
-  ["a+b.txt", "aab.txt", false],
   ["a.b", "axb", false],
   ["a$b", "a$b", true],
   ["a|b", "a|b", true],
@@ -84,6 +78,11 @@ const UNSUPPORTED: readonly string[] = [
   "src/{a,b}/**",
   "src/[ab].ts",
   "src/(a|b).ts",
+  // i1-F2: `?` and `+` mean different things to different engines; fail closed.
+  "a?c",
+  "src/?.ts",
+  "a+b.txt",
+  "a/b+/c",
   "!docs/**",
   "/abs/path",
   "./rel/path",
@@ -561,6 +560,8 @@ describe("check-path-ownership: wiring faults exit 2 (not 1)", () => {
     ["a brace set", "src/{a,b}/**"],
     ["a character class", "src/[ab].ts"],
     ["a group", "src/(a).ts"],
+    ["a question mark (i1-F2)", "src/?.ts"],
+    ["a plus sign (i1-F2)", "src/a+.ts"],
     ["a negation", "!docs/**"],
     ["a leading slash", "/docs/**"],
     ["a leading ./", "./docs/**"],
@@ -593,7 +594,7 @@ describe("check-path-ownership: wiring faults exit 2 (not 1)", () => {
       ok: [
         {
           on: "pull-request" as const,
-          paths: ["src/*/gen/**", "src/**/leaf.ts", "src/*.ts", "src/?.ts"],
+          paths: ["src/*/gen/**", "src/**/leaf.ts", "src/*.ts"],
         },
       ],
     };

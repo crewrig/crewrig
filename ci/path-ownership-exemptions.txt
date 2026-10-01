@@ -7,8 +7,8 @@
 # whose every match is also owned is reported as redundant without failing.
 #
 # Glob syntax is the one the checker implements: `*` (does not cross `/`),
-# `**/` (zero or more directories), a trailing `**`, and `?`. Any other
-# syntax is rejected. See docs/ci-reference-format.md, "Path ownership and
+# `**/` (zero or more directories), and a trailing `**`. Any other
+# syntax, `?` and `+` included, is rejected. See docs/ci-reference-format.md, "Path ownership and
 # the exemption lists".
 #
 # R17 -- use an exemption only for a file that no check exercises, or that a

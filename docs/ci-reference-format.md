@@ -294,22 +294,32 @@ than bash `[[ == ]]`, whose `*` crosses `/` and whose `**/` requires a slash
 | `*` | Zero or more characters other than `/`. |
 | `**/` | Zero or more directory levels, including none. |
 | trailing `**` | Everything below the preceding directory, at any depth. |
-| `?` | Exactly one character other than `/`. |
 
 Dotfiles are matched like any other name. Every other syntax fails closed
-with exit `2`: any of `{ } [ ] ( )`, a leading `!`, `/` or `./`, and a `**`
-that is not a whole path segment (for example `a**b`). A future `{a,b}` or
-`[x]` in a `paths:` is therefore a loud failure and never a wrong answer.
+with exit `2`: any of `{ } [ ] ( ) ? +`, a leading `!`, `/` or `./`, and a
+`**` that is not a whole path segment (for example `a**b`). A future `{a,b}`
+or `[x]` in a `paths:` is therefore a loud failure and never a wrong answer.
+
+`?` and `+` are rejected because the engines do not agree on them:
+`picomatch` (the engine behind the `dorny/paths-filter` jobs) reads `?` as one
+character, whereas GitHub's native workflow-level `on.pull_request.paths`
+matcher is recalled to give `?` (zero or one of the preceding character) and
+`+` (one or more) regex-like meaning. That recollection is an **assumption to
+verify** against GitHub's filter documentation; it has not been re-fetched.
+No `paths:` or `cache.files` glob in the reference uses either character today,
+so the rejection costs nothing and the question stays moot until a mirror
+comparison exists.
 
 **What is verified and what is assumed.** The matcher was cross-checked
 against `picomatch@4` with `dot: true` (the engine behind the GitHub path
-filter) on 349,041 (glob, tracked file) pairs formed by the 231 distinct
-`paths:` globs and the 1,511 tracked files at the time of writing: no
-difference. Its equivalence with GitLab `changes:` matching is an
-**assumption to verify**, not a claim: GitLab may treat a `**` that is not
-followed by `/` like `*`, which would make `dir/**` own one level only on
-GitLab. The trailing-`**` and `?` forms go beyond the two rules R13 states
-and rest on the `picomatch` cross-check alone.
+filter) on every (glob, tracked file) pair formed by the distinct `paths:` and
+`cache.files` globs of the reference and the tracked files: no difference
+(measured at implementation on 245 globs and 1,518 tracked files, i.e. 371,910
+pairs; the counts are a point-in-time record, not maintained). Its
+equivalence with GitLab `changes:` matching is an **assumption to verify**,
+not a claim: GitLab may treat a `**` that is not followed by `/` like `*`,
+which would make `dir/**` own one level only on GitLab. The trailing-`**` form goes beyond the two rules R13 states and rests
+on the `picomatch` cross-check alone.
 
 ### The exemption lists
 

@@ -2,20 +2,26 @@
 // (spec 0147 delta-01 R13).
 //
 // Standard library only, no I/O. It implements exactly these forms and fails
-// closed (UnsupportedGlobError) on everything else, so a future `{a,b}` or
-// `[x]` in a `paths:` list is a loud wiring fault, never a wrong answer:
+// closed (UnsupportedGlobError) on everything else, so a future `{a,b}`,
+// `[x]`, `?` or `+` in a `paths:` list is a loud wiring fault, never a wrong
+// answer:
 //
 //   *        any run of characters inside one path segment (never crosses `/`)
-//   ?        exactly one character inside one path segment
 //   **/      zero or more whole directories (`a/**/b` matches `a/b` and `a/x/y/b`)
 //   /**      a trailing `**`: everything below the prefix (`dir/**` owns `dir/x`
 //            and `dir/x/y`); a lone `**` matches every path
 //
 // A `**` is only valid as a whole path segment. Dotfiles are matched like any
 // other name. The two R13 rules (`*` stops at `/`; `**/` matches zero or more
-// directories) are the engines' own semantics; the trailing-`**` and `?` forms
-// are cross-checked against `picomatch` (the GitHub path-filter engine), and
+// directories) are the engines' own semantics; the trailing-`**` form is
+// cross-checked against `picomatch` (the GitHub path-filter engine), and
 // equivalence with GitLab `changes:` matching is an assumption, not a claim.
+//
+// `?` and `+` are rejected because engines disagree on them: `picomatch` reads
+// `?` as one character, but GitHub's native workflow-level `on.*.paths` matcher
+// is recalled to give `?` (zero or one of the preceding character) and `+` (one
+// or more) regex-like meaning. That recollection is an assumption to verify
+// against GitHub's filter documentation; the rejection makes it moot until then.
 
 /** Thrown for a glob outside the supported forms; the entry point maps it to exit 2. */
 export class UnsupportedGlobError extends Error {
@@ -29,15 +35,14 @@ export class UnsupportedGlobError extends Error {
   }
 }
 
-const UNSUPPORTED_CHARS = /[{}[\]()\\]/;
-const REGEX_META = /[.+^$|]/g;
+const UNSUPPORTED_CHARS = /[{}[\]()\\?+]/;
+const REGEX_META = /[.^$|]/g;
 
 /** Regex source for one non-`**` segment. */
 function segmentSource(segment: string): string {
   let out = "";
   for (const ch of segment) {
     if (ch === "*") out += "[^/]*";
-    else if (ch === "?") out += "[^/]";
     else out += ch.replace(REGEX_META, "\\$&");
   }
   return out;
