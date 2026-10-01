@@ -1245,6 +1245,32 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
 
+  # Spec 0109 delta-04 R23 (issue #1441): the merged-spec status derivation —
+  # the rule end to end against a throwaway git repository (a main and a
+  # release line) and an in-process fake gh.
+  - id: derive-spec-status
+    name: "Merged-spec status derivation (spec 0109 delta-04 R23)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/derive-spec-status.ts"
+          - "scripts/lib/spec-status-derivation.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/tests/derive-spec-status.test.ts"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/derive-spec-status.ts"
+          - "scripts/lib/spec-status-derivation.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/tests/derive-spec-status.test.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts
+
   # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release
   # that cannot strip types. Each command is plain POSIX so the job needs no
   # TypeScript; the grep tokens are the guard's stable diagnostic contract
