@@ -71,26 +71,27 @@ else
 fi
 reset_tls_env
 
-# The uv trust variables are signal-1 inputs too. With every variable unset the
-# baseline is only meaningful on a host without admin-added CA anchors (signal
-# 2); on such a host, assert the baseline does not fire so the positive case
-# below proves the variable itself is the trigger.
+# The uv trust variables are signal-1 inputs too. These cases are only
+# meaningful on a host without admin-added CA anchors (signal 2): there, the
+# baseline with every variable unset does not fire, so a positive result proves
+# the variable itself is the trigger. On a host with anchors detection fires
+# regardless, so the cases are skipped (not counted) rather than passing
+# vacuously.
 host_anchors=0
 detect_custom_tls_context && host_anchors=1
-for uv_var in UV_SYSTEM_CERTS UV_NATIVE_TLS; do
-  reset_tls_env
-  if [ "$host_anchors" -eq 1 ]; then
-    echo "  skip: host has admin CA anchors; $uv_var baseline not isolable"
-  fi
-  export "$uv_var=1"
-  if detect_custom_tls_context; then
-    ok "detects $uv_var set in the environment"
-  else
-    bad "did not detect $uv_var set in the environment"
-  fi
-done
-if [ "$host_anchors" -eq 0 ]; then
+if [ "$host_anchors" -eq 1 ]; then
+  echo "  skip: host has admin CA anchors; uv variable detection not isolable"
+else
   ok "baseline with no signal set does not fire"
+  for uv_var in UV_SYSTEM_CERTS UV_NATIVE_TLS; do
+    reset_tls_env
+    export "$uv_var=1"
+    if detect_custom_tls_context; then
+      ok "detects $uv_var set in the environment"
+    else
+      bad "did not detect $uv_var set in the environment"
+    fi
+  done
 fi
 reset_tls_env
 
@@ -170,7 +171,7 @@ for s in setup-claude-interactive.sh setup-gemini-interactive.sh \
 done
 
 # ---------------------------------------------------------------------------
-echo "7. Standalone MemPalace install inherits the trust (R7 runtime reach)"
+echo "7. Standalone MemPalace install inherits the trust (R2 runtime reach, R8 propagation)"
 install_cmd="$(awk '
   /^  install-mempalace:/ { in_task = 1; next }
   in_task && /^  [^ ]/ { exit }
