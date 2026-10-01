@@ -1734,7 +1734,9 @@ capabilities:
   # node@24). The usage-store tree is in the paths filter because step 9 of the plan puts
   # both halves of the R37 mechanism there (derivedStores() in layout.js,
   # the walk in prune.js): without it, a changeset touching only layout.js
-  # or prune.js would not run the suite that owns the R37 assertion.
+  # or prune.js would not run the suite that owns the R37 assertion. The usage-dashboard
+  # tree and entry script are in the paths filter because the suite runs the dashboard
+  # (cases 17 and 19), so a change to either must run it.
   - id: usage-pricing
     name: "Validate the usage-pricing model-id resolution, arithmetic, and prune reach"
     trigger:
@@ -1747,6 +1749,8 @@ capabilities:
           - "scripts/tests/fixtures/usage-pricing/**"
           - "model-prices.org.json"
           - "scripts/lib/usage-store/**"
+          - "scripts/lib/usage-dashboard/**"
+          - "scripts/usage-dashboard.sh"
           - "package.json"
           - "package-lock.json"
       - on: push
@@ -1758,6 +1762,8 @@ capabilities:
           - "scripts/tests/fixtures/usage-pricing/**"
           - "model-prices.org.json"
           - "scripts/lib/usage-store/**"
+          - "scripts/lib/usage-dashboard/**"
+          - "scripts/usage-dashboard.sh"
           - "package.json"
           - "package-lock.json"
     portability: portable

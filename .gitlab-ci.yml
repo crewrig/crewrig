@@ -1429,6 +1429,8 @@ usage-pricing:
         - "scripts/tests/fixtures/usage-pricing/**"
         - "model-prices.org.json"
         - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-dashboard/**"
+        - "scripts/usage-dashboard.sh"
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -1439,6 +1441,8 @@ usage-pricing:
         - "scripts/tests/fixtures/usage-pricing/**"
         - "model-prices.org.json"
         - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-dashboard/**"
+        - "scripts/usage-dashboard.sh"
         - "package.json"
         - "package-lock.json"
 
