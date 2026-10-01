@@ -500,6 +500,7 @@ jobs:
               - 'scripts/tests/test-check-test-wiring.sh'
               - 'scripts/check-test-strays.sh'
               - 'scripts/tests/test-check-test-strays.sh'
+              - 'scripts/lib/base-ref-resolve.sh'
               - 'scripts/tests/**'
               - 'hooks/worktree-git-guard.sh'
       - uses: actions/cache@v4
@@ -974,6 +975,8 @@ jobs:
         uses: ./.github/actions/cancel-on-failure
   changeset-coverage:
     runs-on: ubuntu-latest
+    env:
+      CI_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -993,6 +996,8 @@ jobs:
           node-version: 24
       - name: Fail-safe full check suite (spec 0147 R5)
         run: bash scripts/ci-changeset-coverage.sh
+      - name: Test the fail-safe base resolution (spec 0147 R5, issue #1402)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

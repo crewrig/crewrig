@@ -20,17 +20,34 @@
 # Options:
 #   --cache-dir DIR   Directory for the content-addressed verdict cache
 #                     (default: .ci-cache).
-#   --base-ref REF    Base ref to diff against for changeset detection.
-#                     Default: $GITHUB_BASE_REF, then
-#                     $CI_MERGE_REQUEST_TARGET_BRANCH_NAME.
+#   --base-ref REF    Base ref to diff against for changeset detection,
+#                     used verbatim. Default: $GITHUB_BASE_REF, then
+#                     $CI_MERGE_REQUEST_TARGET_BRANCH_NAME, then
+#                     $CI_COMMIT_BEFORE_SHA, then HEAD~1.
+#                     The two forge variables carry a BARE branch name, and a
+#                     CI checkout is detached with only
+#                     refs/remotes/<remote>/<name>, so they are resolved via
+#                     resolve_remote_ref (scripts/lib/base-ref-resolve.sh):
+#                     `<name>` first, then `<remote>/<name>` (issue #1401).
 #   --jobs N          Maximum number of suites to run in parallel
 #                     (default: the runner's CPU count).
+#
+# Fail-safe (spec 0170 R6): when no base ref is available, the base ref does
+# not resolve to a commit, or it resolves but shares no merge-base with HEAD,
+# every suite is scanned. That fallback is slow, so it is announced loudly:
+# `check-test-strays: WARNING: ...` on stderr, plus a `::warning::` workflow
+# annotation on stdout when GITHUB_ACTIONS=true.
 #
 
 set -euo pipefail
 
 REPO_DIR="${CREWRIG_REPO_DIR:-"$(cd "$(dirname "$0")/.." && pwd)"}"
 TESTS_DIR="$REPO_DIR/scripts/tests"
+
+# The lib lives next to this script, NOT under $REPO_DIR (which tests point at
+# a fixture without scripts/lib).
+# shellcheck source=lib/base-ref-resolve.sh
+source "$(dirname "$0")/lib/base-ref-resolve.sh"
 
 CACHE_DIR=".ci-cache"
 BASE_REF=""
@@ -80,11 +97,43 @@ sha256() {
 
 # --- Resolve the base ref (spec 0171 R1) ------------------------------------
 
+# base_remote — the remote of the repo under check (same idiom as
+# check-spec-id-reserved.sh), `origin` when there is none. Never fails.
+base_remote() {
+  local remote
+  remote="$({ git -C "$REPO_DIR" remote 2>/dev/null | grep -E -m1 'crewrig|origin' \
+    || git -C "$REPO_DIR" remote 2>/dev/null | head -1; } || true)"
+  printf '%s' "${remote:-origin}"
+}
+
+# resolve_env_base <bare-branch-name> — sets BASE_REF to the remote-tracking
+# form when the bare name does not verify; on failure BASE_REF keeps the raw
+# name so the fallback warning can cite it.
+RAW_BASE_REF=""
+resolve_env_base() {
+  local resolved
+  RAW_BASE_REF="$1"
+  BASE_REF="$1"
+  if resolved="$(resolve_remote_ref "$1" "$(base_remote)" "$REPO_DIR")"; then
+    BASE_REF="$resolved"
+  fi
+}
+
+# warn_full_scan <detail> — loud, non-fatal announcement of the scan-everything
+# fail-safe (spec 0170 R6): stderr always, `::warning::` on stdout under GitHub
+# Actions.
+warn_full_scan() {
+  echo "check-test-strays: WARNING: $1 Falling back to a full scan of every test suite (slow)." >&2
+  if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+    echo "::warning::check-test-strays: $1 Falling back to a full scan of every test suite (slow)."
+  fi
+}
+
 if [ -z "$BASE_REF" ]; then
   if [ -n "${GITHUB_BASE_REF:-}" ]; then
-    BASE_REF="$GITHUB_BASE_REF"
+    resolve_env_base "$GITHUB_BASE_REF"
   elif [ -n "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-}" ]; then
-    BASE_REF="$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    resolve_env_base "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
   elif [ -n "${CI_COMMIT_BEFORE_SHA:-}" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
     BASE_REF="$CI_COMMIT_BEFORE_SHA"
   elif git -C "$REPO_DIR" rev-parse --verify HEAD~1 >/dev/null 2>&1; then
@@ -113,11 +162,20 @@ if [ -n "$BASE_REF" ]; then
       exit 0
     fi
   else
-    # Fallback if merge-base fails
+    # Fallback if merge-base fails (spec 0170 R6): say which of the two
+    # reasons applies, citing the raw name and, when different, the resolved ref.
+    if ! git -C "$REPO_DIR" rev-parse --verify --quiet "${BASE_REF}^{commit}" >/dev/null 2>&1; then
+      warn_full_scan "base ref '${RAW_BASE_REF:-$BASE_REF}' did not resolve to a commit."
+    elif [ -n "$RAW_BASE_REF" ] && [ "$RAW_BASE_REF" != "$BASE_REF" ]; then
+      warn_full_scan "base ref '$RAW_BASE_REF' resolved to '$BASE_REF' but it has no merge-base with HEAD."
+    else
+      warn_full_scan "base ref '$BASE_REF' resolved but it has no merge-base with HEAD."
+    fi
     suites=(${all_suites[@]+"${all_suites[@]}"})
   fi
 else
   # Fallback when no base-ref is provided
+  warn_full_scan "no base ref could be determined (no --base-ref, no forge base-branch variable, no HEAD~1)."
   suites=(${all_suites[@]+"${all_suites[@]}"})
 fi
 
