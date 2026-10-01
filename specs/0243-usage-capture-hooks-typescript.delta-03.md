@@ -695,8 +695,8 @@ Replacement:
 > |---|---|---|---|
 > | (a1) | none | refusal: unmeasured | refusal: unmeasured |
 > | (a2) | no bare result, a guarded-form result (malformed, requirement 31) | refusal: unmeasured | refusal: unmeasured |
-> | (a3) | no bare result, no guarded-form result, `conforming` | refusal: unmeasured | bare form |
-> | (a4) | no bare result, no guarded-form result, `contradicting` | refusal: unmeasured | refusal: the recorded shape |
+> | (a3) | no bare result, no guarded-form result, `conforming` (malformed, requirement 31; transitional) | refusal: unmeasured | bare form |
+> | (a4) | no bare result, no guarded-form result, `contradicting` (malformed, requirement 31; transitional) | refusal: unmeasured | refusal: the recorded shape |
 > | (b) | bare result, `contradicting`, any guarded-form result | refusal: the recorded shape | refusal: the recorded shape |
 > | (c) | bare result, `conforming`, no guarded-form result | refusal: the working-directory lookup, naming #1392 (the delta-02 diagnostic) | bare form |
 > | (d) | bare result, `conforming`, a hijacked guarded-form result | refusal: the guarded form was found hijacked, naming #1392 | refusal: the same, worded for the hooks surface |
@@ -708,7 +708,14 @@ Replacement:
 > by status. (b) takes the `contradicting` entries among the rest. (c), (d) and
 > (e) divide the `conforming` ones by their guarded-form result: absent,
 > hijacked or holding. A reference elsewhere in this spec to requirement 32(a)
-> means states (a1) to (a4). Three decisions are deliberate:
+> means states (a1) to (a4). States (a2) to (a4) are all malformed under
+> requirement 31, and the guard test fails on each of them once it covers the
+> entry. None is a steady state. (a3) is the state of the hooks entry on the
+> release branch only until the implementation PR of ticket #1392 adds row 37f
+> and the hooks entry's results in one diff (requirement 33). From then on, the
+> guard test of requirements 18 and 31 keeps both entries out of (a2) to (a4).
+> The outcomes in the table are what the module returns if such an entry is
+> met anyway. Three decisions are deliberate:
 >
 > - A `contradicting` entry refuses on both surfaces, even with a holding
 >   guarded-form result. The guarded form is the row 37b shape with a prefix,
