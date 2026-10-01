@@ -125,7 +125,12 @@ linter becomes non-conforming. That is a breaking normative change under
      - otherwise, `T` is `<NNNN>` read as an integer, because the branch is
        named after a ticket.
    - It SHALL fail on every spec and every delta-spec whose `related-issue`
-     equals `T` and whose status is not `implemented`, naming each one.
+     equals `T` and whose status is `draft` or `approved`, naming each one.
+     A matched file recorded `implemented`, `archived` or `superseded` SHALL
+     NOT fail. `archived` and `superseded` are terminal states, and the
+     prohibition on status regressions forbids moving them back. Demanding
+     `implemented` of them would block every later branch of that ticket
+     until someone recorded a false status.
 
    This set contains the file spec 0168 Requirement 2 already checks, the spec
    whose id is `<NNNN>`, so that requirement stays satisfied and is widened,
@@ -135,17 +140,18 @@ linter becomes non-conforming. That is a breaking normative change under
    Requirement 19 are that convention.
 5. **Requirement 21 — a sync of `main` into a release branch is not an
    implementation PR.** A branch whose name matches
-   `(feat|fix|refactor|perf|chore)/<NNNN>-sync-main*` SHALL NOT trigger the
-   check of Requirement 20. The sync PRs of
-   `specs/0215-shell-to-typescript-migration.delta-04.md` R31 use this form,
-   and every one measured does: `chore/1231-sync-main-20261001` (#1425,
+   `chore/<NNNN>-sync-main*` SHALL NOT trigger the check of Requirement 20.
+   That is the form `specs/0215-shell-to-typescript-migration.delta-04.md`
+   R31 prescribes for its sync PRs, and every one measured uses it: `chore/1231-sync-main-20261001` (#1425,
    #1434), `chore/1231-sync-main-into-release` (#1399) and
    `chore/1231-sync-main-into-release-2` (#1411). Their number names the epic,
    and the epic's own specs (`0215`, `0215.delta-01`, `0215.delta-04`, all
    `related-issue: 1231`) are legitimately not `implemented` until the final
    merge of R37. Without this exclusion, Requirement 20 would fail every sync
-   PR. The exclusion applies to the name form, not to a branch, a base ref or
-   an epic. Every other check of this spec runs on a sync PR unchanged.
+   PR. The exclusion applies to that one name form, not to a branch, a base
+   ref or an epic. Another prefix carrying the same infix, such as
+   `feat/1500-sync-main-cleanup`, is an ordinary implementation branch and is
+   checked. Every other check of this spec runs on a sync PR unchanged.
 6. **Requirement 22 — the null cases of the implementation-PR check.** The
    check has three null cases, each with a fixed outcome:
    - **The branch name does not match the implementation form**, including a
@@ -160,21 +166,29 @@ linter becomes non-conforming. That is a breaking normative change under
      *Complexity tiers*), so failing it would be wrong. Staying silent would
      let a missing spec look identical to a checked one.
    - **A matched file carries `status: draft`:** it fails under Requirement
-     20, like any other non-`implemented` status. Requirements 2 and 19 may
-     name it as well.
+     20, as an `approved` one does. Requirements 2 and 19 may name it as
+     well.
 7. **Requirement 23 — how to determine the status of a merged delta-spec.**
    The status a merged delta-spec `D` truly carries on a branch `B` SHALL be
    determined from evidence, by the rule below. The rule SHALL never record
    more than the evidence shows.
-   - **Evidence source.** Two sources are used:
-     - the forge's merged-PR record for `B`:
-       `gh pr list --state merged --base <B> --json number,headRefName,mergedAt,closingIssuesReferences`;
-     - the instant `D` first appeared on `B`:
-       `git log --diff-filter=A --format=%ct -1 <B> -- <D>`, which is the
-       squash commit of `D`'s spec-PR, or the sync merge commit through which
-       `D` arrived.
-   - **Implementation PR for `N`** (`N` = `D`'s `related-issue`). This is a PR
-     merged into `B` that meets three conditions:
+   - **Evidence is reachability, not base ref.** Whether a PR counts for
+     `B` is decided by the commit graph of `B`, never by the PR's base ref.
+     A release branch holds `main`'s history through its fork point and
+     through every sync merge of R31. An implementation that merged into
+     `main` is therefore an implementation present on the release branch,
+     even though its PR never targeted that branch. The sources are:
+     - the forge's merged-PR record, for every base:
+       `gh pr list --state merged --json number,headRefName,mergeCommit,closingIssuesReferences`;
+     - the commit `C_D` that introduced `D`:
+       `git log --diff-filter=A --format=%H -1 <B> -- <D>`. That is the
+       squash commit of `D`'s own spec-PR. Because history is followed
+       through merges, it is the same commit on every branch that contains
+       `D`, however `D` arrived there.
+   - **Implementation PR for `N` on `B`** (`N` = `D`'s `related-issue`). This
+     is a merged PR that meets four conditions:
+     - its merge commit `M` is reachable from `B`'s head
+       (`git merge-base --is-ancestor <M> <B>`), whatever the PR's base;
      - its head branch is not a `spec/` branch;
      - its head branch is not a sync branch under Requirement 21;
      - either `N` appears in its `closingIssuesReferences`, or its head branch
@@ -183,29 +197,50 @@ linter becomes non-conforming. That is a breaking normative change under
      The closing-reference arm covers older branches that the
      implementation-PR form does not match (`docs/0026-…`, unpadded
      `fix/193-…`). GitHub populates that arm only for PRs into the default
-     branch: it is empty for #1391 and #1436, measured. So on the release
-     branch, the branch-name arm is the only arm.
+     branch: it is empty for #1391 and #1436, measured. So for a PR into the
+     release branch, the branch-name arm is the only arm.
    - **Rule:**
-     - `implemented` — an implementation PR for `N` merged into `B` at or
-       after the instant `D` first appeared on `B`;
+     - `implemented` — some implementation PR for `N` on `B` has a merge
+       commit `M` that descends from `C_D` (`git merge-base --is-ancestor
+       <C_D> <M>`), meaning the implementation merged with `D` already in
+       its history;
      - otherwise, `archived` — issue `N` is closed as not planned or as a
        duplicate;
-     - otherwise, `approved` — presence on `B` proves the spec-PR merged.
+     - otherwise, `approved` — `D`'s presence on `B` proves its spec-PR
+       merged.
    - **Ambiguity resolves to `approved`.** Two cases are ambiguous:
-     - every implementation PR for `N` merged before `D` appeared, so `D` is a
-       later amendment whose content no merged implementation is known to
-       carry;
-     - issue `N` is closed as completed, but no implementation PR for `N` is
-       found.
+     - no implementation PR for `N` on `B` descends from `C_D`, but at least
+       one exists. That PR merged before `D`, or on a line of history
+       parallel to it, so `D` is an amendment that no merged implementation
+       is known to carry;
+     - issue `N` is closed as completed, but no implementation PR for `N` on
+       `B` is found.
 
      In both cases `D` SHALL be recorded `approved`, and the correction PR
      body SHALL name it with the reason. `approved` is true of every merged
      delta-spec. `implemented` is a stronger claim, and this rule never makes
      it without evidence.
-   - **Per branch.** The determination is made separately on each branch that
-     holds `D`. When a sync of R31 carries a `status` line that conflicts with
-     the release branch's own, the conflict SHALL resolve to the value this
-     rule gives on the release branch, and never to a regression.
+   - **The determination is a function of the commit graph, so it agrees
+     across branches and never regresses.** The rule reads only `C_D`, the
+     merge commits reachable from `B`, and the forge's PR record, which is
+     the same for every branch. Two consequences follow:
+     - two branches whose heads reach the same implementation commits for
+       `N` give `D` the same status;
+     - a merge only adds reachable commits, so the status the rule gives on
+       a merge result is never lower than the status it gives on either
+       parent.
+
+     When a sync of R31, or the final merge of R37, meets a conflict on a
+     `status` line, the conflict SHALL resolve to the value the rule gives
+     on the merge result. That value is the higher of the two sides, never a
+     regression.
+   - **Measured.** Applied at `main` @ `923e5510` and at release @
+     `5479fd9e`, the rule gives the 40 files of Appendix A the same status
+     on both branches, with the same evidence PRs. Applied on the release
+     branch, `0001-spec-format-self.delta-01.md` is `implemented` through
+     #197, whose base is `main`. The 0243 family is `implemented` on the
+     release branch only, because #1391 and #1436 are not reachable from
+     `main`.
 8. **Requirement 24 — corrections on `main`.** Every delta-spec on `main` that
    carries `status: draft` when this delta is implemented SHALL be corrected
    to the status Requirement 23 determines on `main`. The set is derived at
@@ -217,18 +252,23 @@ linter becomes non-conforming. That is a breaking normative change under
    Requirements 2, 19, 20, 21 and 22, and the documentation of Requirement 28
    SHALL land in a single change, for the reason Requirement 6 gives.
 9. **Requirement 25 — corrections on the release branch.** On
-   `release/1231-ts-migration`, every spec or delta-spec present only on that
-   branch, and recorded with a status other than the one Requirement 23
-   determines there, SHALL be corrected, metadata-only, in a PR that targets
-   that branch. At `5479fd9e`, the set is the 0243 family of Appendix B:
+   `release/1231-ts-migration`, a spec or delta-spec SHALL be corrected,
+   metadata-only, in a PR that targets that branch, when two conditions
+   hold: the status it records there is below the one Requirement 23
+   determines there, and that determination depends on a commit not
+   reachable from `main`. Those are files that are present only on the
+   release branch, or that are implemented only by a release-branch
+   merge. At `5479fd9e`, the set is the 0243 family of Appendix B:
    - `specs/0243-usage-capture-hooks-typescript.md`: `approved` →
      `implemented`;
    - its `delta-01`, `delta-02` and `delta-03`: `draft` → `implemented`.
 
-   The set is re-derived when that PR is opened. A file present on both
-   branches is corrected on `main` (Requirement 24) and reaches the release
-   branch through the next sync. A file whose release-branch determination
-   differs from `main`'s is also corrected in this PR.
+   The set is re-derived when that PR is opened. Every other file is
+   corrected on `main` under Requirement 24 and reaches the release branch
+   through the next sync. Because Requirement 23 gives it the same status on
+   both branches, the sync carries the release branch's correct value. No
+   file is corrected on both branches, so the sync meets no conflict on any
+   of them.
 10. **Requirement 26 — ordering across the two branches.** The release branch
     SHALL already be correct when the linter change reaches it. It SHALL
     never be exempted to make up for not being correct. Concretely:
@@ -238,8 +278,11 @@ linter becomes non-conforming. That is a breaking normative change under
     - a residual can remain: a release-only spec or delta-spec that merged
       recorded as `draft` after that PR. The first sync PR that carries the
       linter change SHALL then carry that residual's correction, determined
-      by Requirement 23 on the release branch, and SHALL NOT merge until the
-      new linter passes on its head;
+      by Requirement 23 on the sync's merge result, and SHALL NOT merge until
+      the new linter passes on its head;
+    - after the final merge of R37, `main` reaches every commit both
+      branches reached. By Requirement 23, no file's status on `main` is
+      then lower than it was on either branch;
     - after that first sync, Requirements 2 and 19 apply on the release branch
       as on `main`, so no further residual can arise unseen.
 11. **Requirement 27 — the extension is covered.** The spec linter's test
@@ -251,7 +294,10 @@ linter becomes non-conforming. That is a breaking normative change under
     - a ticket-numbered implementation branch fails on a non-`implemented`
       delta-spec whose `related-issue` matches;
     - a spec-id-numbered branch resolves to its spec's `related-issue`;
-    - a sync branch is not checked;
+    - a sync branch `chore/<NNNN>-sync-main*` is not checked, and the same
+      infix under another prefix is;
+    - a matched `archived` or `superseded` file does not fail, while a
+      matched `approved` one does;
     - a ticket-numbered implementation branch that matches no file prints the
       notice and exits zero.
 
@@ -379,6 +425,50 @@ Then  it carries that delta-spec's correction
 And   it does not merge until the new linter passes on its head
 ```
 
+*Scenario:* an implementation that merged into main counts on the release
+branch
+
+```text
+Given specs/0001-spec-format-self.delta-01.md on main and on the release branch
+And   its implementation PR #197 merged into main, after the delta was
+      introduced
+And   the release branch reaches #197's merge commit through its fork point
+When  its status is determined per Requirement 23 on each branch
+Then  it is implemented on both, through #197
+```
+
+*Scenario:* no status regresses across the final merge
+
+```text
+Given a delta-spec determined implemented on main per Requirement 23
+And   the release branch, which reaches the same implementation commit,
+      also records it implemented
+And   the 0243 family recorded implemented on the release branch only
+When  the final merge of R37 brings the release branch into main
+Then  every file reads, on main, a status at least as high as it read on
+      either branch
+And   a conflict on a status line resolves to the higher value
+```
+
+*Scenario:* a terminal status sharing the ticket does not block
+
+```text
+Given an implementation branch feat/1500-follow-up
+And   a delta-spec with related-issue: 1500 carrying status: archived
+And   a spec with related-issue: 1500 carrying status: implemented
+When  the spec linter runs
+Then  it reports no implementation-PR status violation
+```
+
+*Scenario:* the sync exclusion is limited to the chore form
+
+```text
+Given a branch feat/1500-sync-main-cleanup
+And   a spec with related-issue: 1500 carrying status: approved
+When  the spec linter runs
+Then  it reports a failure naming that spec
+```
+
 **Out of scope,** extending the parent spec's list:
 
 - **Delta-specs and non-delta specs recorded `approved` whose implementation
@@ -408,8 +498,9 @@ And   it does not merge until the new linter passes on its head
 
 ### Appendix A — `main` at `923e5510`: the 40 delta-specs recorded as `draft`
 
-The determination is Requirement 23's, made on 2026-10-01. 33 files
-determine to `implemented` and 7 to `approved`.
+The determination is Requirement 23's, made on 2026-10-01. 31 files
+determine to `implemented` and 9 to `approved`. The determination is
+identical when the rule is applied on the release branch.
 
 | File (`specs/…`) | `related-issue` | Determined | Evidence |
 |---|---|---|---|
@@ -464,7 +555,9 @@ determine to `implemented` and 7 to `approved`.
 | `0243-usage-capture-hooks-typescript.delta-03.md` | 1392 | `draft` | `implemented` | #1436 (`feat/1392-…`), after #1430 |
 
 The 40 files of Appendix A are also present on the release branch, recorded as
-`draft`. They are corrected through the sync, per Requirement 25.
+`draft`. They are corrected on `main` under Requirement 24 and reach the
+release branch through the sync, which Requirement 23 shows carries the
+correct value there.
 
 ## MODIFIED
 
