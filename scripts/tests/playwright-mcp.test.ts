@@ -468,6 +468,30 @@ describe("all four assistants", () => {
     }
   });
 
+  // R5, R16: the fields Copilot CLI adds by itself (observed: `type: "local"`,
+  // `tools: ["*"]`) do not make the current wrapped form look foreign.
+  for (const extra of [
+    { type: "local" },
+    { tools: ["*"] },
+    { tools: ["*"], type: "local" },
+  ] as const) {
+    test(`a Copilot wrapped entry with ${JSON.stringify(extra)} is already up to date, no backup, no write`, async () => {
+      const w = makeWorld(["copilot"]);
+      const file = cfg(w, "copilot");
+      putJson(
+        file,
+        baseDoc("copilot", { ...extra, command: "bash", args: [w.wrapper, "npx", PKG] }),
+      );
+      const before = snapshot(w);
+      const r = await runTask(w);
+      assert.equal(r.code, 0, r.err.join("\n"));
+      outcome(r, "copilot", "already up to date");
+      has(r.out, MSG.upToDate(CLI_LABEL.copilot));
+      assert.deepEqual(snapshot(w), before);
+      assert.deepEqual(backups(file), []);
+    });
+  }
+
   test("a usage error exits 2 and touches nothing", async () => {
     const w = makeWorld();
     putJson(cfg(w, "gemini"), baseDoc("gemini"));
