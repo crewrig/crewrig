@@ -193,7 +193,13 @@ done
 # MAPPING_MERGE_DIR owns cleanup. This trap is that cleanup; no merged
 # document survives this run (spec 0199 R27).
 CHECK_MERGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/crewrig-check-merge.XXXXXX")"
-trap 'rm -rf "$CHECK_MERGE_DIR"' EXIT
+# P1_ERR holds pass 1's stderr (issue #1421) so the main loop can tell a silent
+# pass from a noisy one. fd 3 keeps the original stderr: when check_file aborts
+# under set -e, fd 2 still points at P1_ERR while the EXIT trap runs, so the
+# trap must replay the capture to fd 3 or the abort's stderr would be lost.
+P1_ERR="$CHECK_MERGE_DIR/pass1.err"
+exec 3>&2
+trap 'cat "$P1_ERR" 2>/dev/null >&3 || :; rm -rf "$CHECK_MERGE_DIR"' EXIT
 
 # mapping_in_force_for <target> — sources the library inside a subshell (D7):
 # scripts/lib/model-resolve.sh declares OFF_IDS/OFF_RANKS/OFF_INTEL and eight
@@ -1089,11 +1095,22 @@ fi
 for idx in "${!TARGETS[@]}"; do
   target="${TARGETS[$idx]}"
 
+  # P1_SILENT=1 iff pass 1 emitted no rejection and no stderr. check_file is a
+  # function of the file bytes, IS_ORG_PASS and the target, so pass 3 on the
+  # same path would repeat it exactly (issue #1421). The capture is replayed
+  # here after a normal pass; the EXIT trap replays it after an aborting one.
+  P1_SILENT=0
   if [ -n "${CORE_PATH[$idx]}" ]; then
     CURRENT_FILE="${CORE_PATH[$idx]}"
     CURRENT_LABEL="model-mappings/${target}.yml"
     IS_ORG_PASS=false
-    check_file "$target"
+    p1_failures="${#FAILURES[@]}"
+    check_file "$target" 2>"$P1_ERR"
+    if [ "${#FAILURES[@]}" -eq "$p1_failures" ] && [ ! -s "$P1_ERR" ]; then
+      P1_SILENT=1
+    fi
+    cat "$P1_ERR" >&2
+    : >"$P1_ERR"
   fi
 
   if [ -n "${ORG_PATH[$idx]}" ]; then
@@ -1106,7 +1123,7 @@ for idx in "${!TARGETS[@]}"; do
   # Pass 3 — the mapping in force (R31). Skipped when empty: a silent org
   # stem with no core mapping short-circuits to no handle at all.
   merged="$(mapping_in_force_for "$target")"
-  if [ -n "$merged" ]; then
+  if [ -n "$merged" ] && ! { [ "$P1_SILENT" = 1 ] && [ "$merged" = "${CORE_PATH[$idx]}" ]; }; then
     CURRENT_FILE="$merged"
     CURRENT_LABEL="model-mappings/${target} (mapping in force)"
     IS_ORG_PASS=false
