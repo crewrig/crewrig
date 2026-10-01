@@ -709,10 +709,12 @@ resolve_symlink() {
 #         '''exec' "/venv path/bin/python" "$0" "$@"      (pip/distlib)
 #         '''exec' '/venv path/bin/python' "$0" "$@"      (uv)
 #         ' '''
-#     The interpreter is the quoted absolute path on line 2. When that line
-#     names no absolute path (e.g. distlib's relocatable form, which computes
-#     it at run time), the sibling `python` of the script's realpath is used
-#     when executable.
+#     The interpreter is the quoted absolute path on line 2, accepted only when
+#     it is executable: a path the parse cannot read whole (e.g. uv's `'\''`
+#     escape of an apostrophe, which the single-quoted match stops at) would
+#     otherwise come back truncated. When that line names no usable absolute
+#     path (also distlib's relocatable form, which computes it at run time),
+#     the sibling `python` of the script's realpath is used when executable.
 console_script_python() {
   local script="$1" line interp
   local -a words
@@ -745,6 +747,8 @@ console_script_python() {
   exec_line="$(sed -n '2p' "$script" 2>/dev/null)"
   if [[ "$exec_line" =~ $re_dq ]] || [[ "$exec_line" =~ $re_sq ]]; then
     py="${BASH_REMATCH[1]}"
+    # A truncated parse names no real interpreter; fall through to the sibling.
+    [ -x "$py" ] || py=""
   fi
   if [ -z "$py" ]; then
     local sibling
