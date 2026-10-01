@@ -18,6 +18,11 @@
 #   d. A `/home/agent/x` benign-owner path → not flagged (exit 0).
 #   e. A single line holding BOTH a benign `/home/agent/…` path and a real leak
 #      → exit 1 and the leak is named (token pass, not a whole-line filter).
+#   f. A slash-less home root at end of line → exit 1 and the path is named.
+#   g. `/Users/ana/…` and `C:/Users/ana/…` fictional-fixture-owner paths → not
+#      flagged (exit 0).
+#   h. A single line holding BOTH a benign `C:/Users/ana/…` path and a real leak
+#      → exit 1 and the leak is named, while the `ana` path is not.
 #
 # Usage:
 #   bash scripts/tests/test-check-no-machine-paths.sh
@@ -232,6 +237,58 @@ run_check() {
     pass=$((pass + 1))
   else
     echo "FAIL  case-f: stderr did not name /Users/eviluser"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case g — /Users/ana/… and C:/Users/ana/… fictional-fixture-owner paths → not
+#          flagged (exit 0).
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" "fixture.ts" 'const home = "/Users/ana/crewrig";
+const win = "C:/Users/ana/crewrig";'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 0 ]; then
+    echo "PASS  case-g: benign owner 'ana' is not flagged, POSIX or Windows (exit 0)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-g: expected exit 0, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case h — One line with BOTH a benign C:/Users/ana/… path and a real leak →
+#          exit 1, leak named, ana path not named.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  init_git_repo "$repo"
+  make_initial_commit "$repo" "mixed-ana.txt" 'copy C:/Users/ana/crewrig to /Users/eviluser/secret/x'
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 1 ]; then
+    echo "PASS  case-h: leak beside a benign 'ana' path still fails (exit 1)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-h: expected exit 1, got $CHECK_EXIT"
+    fail=$((fail + 1))
+  fi
+
+  if echo "$CHECK_STDERR" | grep -qF "/Users/eviluser/" \
+     && ! echo "$CHECK_STDERR" | grep -qF "/Users/ana/"; then
+    echo "PASS  case-h: stderr names the leak and not the benign 'ana' path"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-h: stderr must name /Users/eviluser/ and not /Users/ana/"
     echo "      actual stderr: $CHECK_STDERR"
     fail=$((fail + 1))
   fi

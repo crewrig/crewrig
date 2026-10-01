@@ -13,10 +13,10 @@
 #   - Deny the generic shape `/(Users|home)/<owner>/`. The owner character class
 #     excludes `<`, `$`, `{`, so neutral placeholders like `/Users/<user>/`,
 #     `$HOME/…`, or `${HOME}/…` never match and stay legal.
-#   - Subtract a single benign owner, `agent` — the only non-machine-specific
-#     owner present in the tracked tree: the e2e container's non-root user
-#     created in `docker/e2e/base.Dockerfile` (`debian:bookworm-slim`, uid/gid
-#     1000). Every other owner is machine-specific and is flagged.
+#   - Subtract a small, closed set of benign owners — none of them anyone's
+#     login, so R6 holds. Each entry is a one-line, commented addition in
+#     BENIGN_OWNERS below citing its source. Every other owner is
+#     machine-specific and is flagged.
 #   - Match with a per-token pass (grep -oE), NOT a whole-line filter: a line
 #     that holds both a benign `/home/agent/…` path and a real leak must still
 #     surface the leak.
@@ -38,8 +38,20 @@ REPO_DIR="${CREWRIG_REPO_DIR:-"$(cd "$(dirname "$0")/.." && pwd)"}"
 # paths that continue past the owner segment.
 PATTERN='/(Users|home)/[A-Za-z0-9._-]+(/|$)'
 
-# Sole benign owner present in the tracked tree (docker/e2e/base.Dockerfile).
-BENIGN_OWNER='agent'
+# Benign owners — a new entry requires a one-line comment citing its source.
+BENIGN_OWNERS=(
+  agent  # e2e container's non-root user (docker/e2e/base.Dockerfile, uid/gid 1000).
+  ana    # fictional fixture owner of example Windows checkout paths (C:/Users/ana/crewrig) in specs 0243 delta-02/delta-03 and scripts/tests/hook-command.test.ts; a <user> placeholder is impossible there (spec 0243 R17 refuses cmd.exe metacharacters); owner decision on #1326 and #1438.
+)
+
+# is_benign_owner <owner> — exit 0 when <owner> is in BENIGN_OWNERS.
+is_benign_owner() {
+  local candidate
+  for candidate in "${BENIGN_OWNERS[@]}"; do
+    [ "$1" = "$candidate" ] && return 0
+  done
+  return 1
+}
 
 failures=0
 while IFS= read -r hit; do
@@ -54,19 +66,15 @@ while IFS= read -r hit; do
     [ -z "$token" ] && continue
     owner="${token#/*/}"    # strip '/Users/' or '/home/' prefix
     owner="${owner%%/*}"    # keep the owner segment only
-    if [ "$owner" != "$BENIGN_OWNER" ]; then
+    if ! is_benign_owner "$owner"; then
       echo "$file:$lineno: $token" >&2
       failures=$((failures + 1))
     fi
   done < <(printf '%s\n' "$content" | grep -oE "$PATTERN")
-# The third exclusion is file-scoped: a merged, immutable delta-spec whose
-# scenario uses an example Windows checkout path (C:/Users/ana/crewrig); owner
-# decision on #1326, pending a spec 0081 decision on example Windows paths in specs.
 done < <(git -C "$REPO_DIR" grep -nE "$PATTERN" -- \
            . \
            ':(exclude)scripts/check-no-machine-paths.sh' \
-           ':(exclude)scripts/tests/test-check-no-machine-paths.sh' \
-           ':(exclude)specs/0243-usage-capture-hooks-typescript.delta-02.md' || true)
+           ':(exclude)scripts/tests/test-check-no-machine-paths.sh' || true)
 
 if [ "$failures" -gt 0 ]; then
   echo "" >&2
@@ -74,8 +82,8 @@ if [ "$failures" -gt 0 ]; then
   echo "" >&2
   echo "Tracked files must not contain absolute /Users/<user>/ or /home/<user>/ paths." >&2
   echo "Replace them with a neutral placeholder (\$HOME, <user>, <repo>). The benign" >&2
-  echo "container owner '$BENIGN_OWNER' (docker/e2e/base.Dockerfile) is allowed; a new" >&2
-  echo "benign owner requires a one-line, commented addition citing its source." >&2
+  echo "owners (${BENIGN_OWNERS[*]}) declared in scripts/check-no-machine-paths.sh are" >&2
+  echo "allowed; a new benign owner requires a one-line, commented addition citing its source." >&2
   exit 1
 fi
 
