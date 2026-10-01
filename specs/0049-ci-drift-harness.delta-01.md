@@ -61,16 +61,23 @@ arm or the generator.
 
 - **Reference path set.** The set of textual glob entries of one `paths`
   list of a trigger of a capability in `ci/ci-capabilities.yml`.
-- **GitHub-side filter.** The path filter that decides whether the GitHub
-  Actions job attributed to a capability starts. It takes one of two shapes:
+- **GitHub-side filter.** The path list that GitHub Actions applies to the
+  job attributed to a capability, to decide whether that job runs or does its
+  work. It takes one of two shapes:
   - **In-job filter.** A path-filter step (a `dorny/paths-filter` step)
-    inside the attributed job. Its list applies whatever the triggering
-    event, so it cannot distinguish a pull request from a push.
+    inside the attributed job, whose output gates the job's later steps.
+    Its list applies whatever the triggering event, so it cannot
+    distinguish a pull request from a push. The wiring that consumes its
+    output is not compared (see Out of scope).
   - **Dedicated-workflow filter.** The `paths` list under an event key
     (`pull_request`, `push`) of the `on:` block of a workflow file that holds
     the attributed job. It is per event.
 - **Unfiltered event.** An event for which the reference trigger declares no
-  `paths`, or for which the GitHub side declares no filter.
+  `paths`, or for which the GitHub side declares the event with no filter.
+- **Absent event.** A comparable event that one side does not declare at all:
+  the capability has no trigger of that kind in the reference, or the
+  workflow holding the job has no such event key under `on:`. An absent event
+  carries the empty path set for the comparison (R15).
 - **Comparable events.** Reference triggers of kind `pull-request` and
   `push` are the only ones compared, matched respectively with the
   `pull_request` and `push` events of GitHub Actions.
@@ -108,7 +115,13 @@ be reported as a divergence.
 event. The harness SHALL report a divergence when the GitHub side filters an
 event that the reference leaves unfiltered, and when the GitHub side leaves
 an event unfiltered while the reference declares `paths` for it. An event
-unfiltered on both sides agrees.
+unfiltered on both sides agrees. An absent event carries the empty path set:
+it is a divergence when the other side declares `paths` for that event (a
+workflow filtering `push` for a capability with no `push` trigger, or a
+reference `push` trigger with `paths` for a workflow with no `push` event), and
+it agrees with an absent or unfiltered event on the other side, because
+whether an event is declared at all, without a filter, is trigger-set
+conformance and not a path comparison (see Out of scope).
 
 **R16.** A GitHub-side entry that is a negation (a leading `!`), and any
 exclusion construct of the GitHub-side filter (an ignore list), cannot be
@@ -117,10 +130,15 @@ divergence that names it, and SHALL NOT ignore it silently or skip the
 capability because of it.
 
 **R17.** The harness SHALL fail closed when the GitHub-side filter of the
-attributed job cannot be determined unambiguously, for example when the job
-carries several path-filter steps or when a filter's list cannot be read. It
-SHALL report the capability and the cause instead of skipping the capability
-or treating the filter as unfiltered.
+attributed job cannot be determined unambiguously. The undeterminable cases
+include: the job carries several path-filter steps; a path-filter step
+defines several named filters, or only a filter whose name is not the
+capability identifier; a filter's list cannot be read; and the job carries an
+in-job filter while the workflow that holds it also declares `paths` under a
+comparable event, so that the effective filter is the conjunction of two
+lists and equals neither. The harness SHALL report the capability and the
+cause instead of skipping the capability or treating the filter as
+unfiltered.
 
 **R18.** For each mismatch, the failure message SHALL name the capability
 identifier, the GitHub platform and the event (or "in-job filter" for the
@@ -157,7 +175,11 @@ for each of these classes, in both GitHub-side shapes where the class applies:
 - an in-job filter facing reference triggers that declare different path
   sets;
 - a filtered event facing an unfiltered one, in either direction;
-- a GitHub-side filter that cannot be determined unambiguously.
+- an event declared with `paths` on one side and absent on the other, in
+  both directions, and an event absent on one side facing an unfiltered event
+  on the other (passing verdict);
+- a GitHub-side filter that cannot be determined unambiguously, for each
+  undeterminable case listed in R17.
 
 **R22.** The comparison SHALL NOT increase the harness's wall-clock time
 materially, neither for a run on the repository nor for its self-test (about
@@ -180,6 +202,9 @@ filter, whichever the capability's checks actually require. The
 implementation SHALL re-measure rather than reuse a figure from this spec.
 
 ### Scenarios
+
+R22 (a timing bound) and R23 (a documentation edit) have no scenario: neither
+is an observable behaviour of a run. The plan states how each is verified.
 
 **Scenario:** matching sets in both shapes pass
 
@@ -292,6 +317,42 @@ And  the reverse case (reference lists globs, GitHub side has no filter)
      fails with the globs under the reference-only list
 ```
 
+**Scenario:** an event declared with paths on one side only is rejected
+
+```text
+Given a portable capability whose reference has no `push` trigger
+And   the workflow that holds its job declares `on.push.paths`
+When the harness runs
+Then it fails with a non-zero result naming the capability, the GitHub
+     platform and the `push` event
+And  the entries appear under the GitHub-only list, the reference-only list
+     being empty
+And  the reverse case (a reference `push` trigger with `paths`, a workflow
+     with no `push` event) fails with the entries under the reference-only
+     list
+```
+
+**Scenario:** an event declared without paths on one side only is not compared
+
+```text
+Given a portable capability whose reference has a `push` trigger without
+      `paths`
+And   the workflow that holds its job has no `push` event under `on:`
+When the harness runs
+Then the path-filter comparison reports no divergence for that capability,
+     because whether the event is declared at all is not a path comparison
+```
+
+**Scenario:** a capability with no filter on either side agrees by absence
+
+```text
+Given a portable capability whose comparable triggers declare no `paths`
+And   whose attributed GitHub job carries no filter of either shape
+When the harness runs
+Then the path-filter comparison reports no divergence for that capability
+     and prints nothing for it
+```
+
 **Scenario:** an undeterminable GitHub-side filter fails closed
 
 ```text
@@ -300,6 +361,48 @@ Given the job attributed to a portable capability carries two path-filter
 When the harness runs
 Then it fails with a non-zero result naming the capability and the cause,
      and does not treat the capability as unfiltered
+```
+
+**Scenario:** a path-filter step with several named filters fails closed
+
+```text
+Given the path-filter step of a portable capability's job defines two named
+      filters, or only a filter whose name is not the capability identifier
+When the harness runs
+Then it fails with a non-zero result naming the capability and the cause,
+     and does not pick a list on its own
+```
+
+**Scenario:** an unreadable filter list fails closed
+
+```text
+Given the path-filter list of a portable capability's job cannot be read
+      (for example it is not a list of strings)
+When the harness runs
+Then it fails with a non-zero result naming the capability and the cause,
+     and does not treat the capability as unfiltered
+```
+
+**Scenario:** an in-job filter combined with a workflow-level paths list fails closed
+
+```text
+Given the job of a portable capability has an in-job filter
+And   the workflow that holds it also declares `on.pull_request.paths`
+When the harness runs
+Then it fails with a non-zero result naming the capability and the cause,
+     because the effective filter is the conjunction of two lists
+```
+
+**Scenario:** the failure message names the capability, the platform and the event
+
+```text
+Given a mismatch on a portable capability, with one entry only in the
+      reference and two entries only on the GitHub side
+When the harness runs
+Then the message names the capability identifier, the GitHub platform and the
+     event (or "in-job filter" with the reference trigger kind compared)
+And  it shows a reference-only list with one entry and a GitHub-only list
+     with two entries, each clearly labelled
 ```
 
 **Scenario:** branch and tag filters are not compared
@@ -337,8 +440,14 @@ Then the path-filter comparison is skipped like every GitHub-arm check, and
   trigger kinds. A comparison of them, if ever wanted, is a separate ticket
   (R19).
 - Trigger-set conformance beyond `paths`: whether the GitHub workflow
-  declares an event for which the reference declares no trigger of the
-  matching kind. This delta compares path lists on the comparable events only.
+  declares an event, without a path filter, for which the reference declares
+  no trigger of the matching kind, or the reverse. This delta compares path
+  lists on the comparable events only; an event declared on one side only is
+  a divergence solely when it carries `paths` there (R15).
+- The wiring of the in-job filter: whether each business step of the job is
+  gated by a condition that consumes the filter's output. A filter whose
+  output nothing consumes passes this comparison. If that wiring is wanted as
+  a guarantee, it is a separate ticket.
 - The GitLab arm. It is composed from the generator's verification mode
   (parent requirement 5) and is unchanged.
 - Any change to the CI reference format, including a new field, and any
@@ -361,11 +470,11 @@ Then the path-filter comparison is skipped like every GitHub-arm check, and
 
 ### Open questions
 
-- None. All qualification decisions are resolved (tree passes on delivery:
-  R24); set equality on decoded
-  textual entries (R13), per-event matching for dedicated workflows and
-  event-agnostic matching for in-job filters (R14), fail-closed handling of
-  negations and of undeterminable filters (R16, R17).
+- None. The qualification decisions are resolved: set equality on decoded
+  textual entries (R13); per-event matching for dedicated workflows and
+  event-agnostic matching for in-job filters (R14); absent events carry the
+  empty path set (R15); fail-closed handling of negations and of
+  undeterminable filters (R16, R17); the tree passes on delivery (R24).
 
 ## MODIFIED
 
