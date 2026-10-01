@@ -104,35 +104,18 @@ tasks:
     desc: "Print the usage dashboard as a plain-text report, or its view model as JSON (spec 0210 form C). Usage: task usage:dashboard:report -- [same filters as usage:dashboard] [--as-of-today] [--json]"
     cmd: bash {{.REPO_DIR}}/scripts/usage-dashboard.sh report {{.CLI_ARGS}}
 
+  # Spec 0245: the opt-in Playwright MCP registration, routed through the
+  # spec 0084 trust wrapper on every CLI. Run it from the checkout you keep.
   setup:playwright-mcp:
-    desc: "Install the Playwright MCP server globally (opt-in). Registers @playwright/mcp in Claude Code and Gemini CLI user-scope config. Idempotent — safe to re-run."
+    desc: "Register the Playwright MCP server (opt-in) in Claude Code, Gemini CLI, GitHub Copilot CLI and Antigravity CLI, routed through scripts/lib/tls-exec.sh; converges a legacy or relocated entry, leaves a customised one untouched (spec 0245). Requires Node.js >= 24; run it from the checkout you keep. Idempotent."
     cmds:
-      - |
-        echo "Registering Playwright MCP server in Claude Code (user scope)..."
-        if claude mcp list 2>/dev/null | grep -q "playwright"; then
-          echo "  Already registered in Claude Code — skipping."
-        else
-          claude mcp add playwright npx @playwright/mcp@latest --scope user
-          echo "  Registered."
-        fi
-      - |
-        echo "Registering Playwright MCP server in Gemini CLI (global config)..."
-        GEMINI_SETTINGS="${HOME}/.gemini/settings.json"
-        if [ -f "$GEMINI_SETTINGS" ] && grep -q '"playwright"' "$GEMINI_SETTINGS" 2>/dev/null; then
-          echo "  Already registered in Gemini CLI — skipping."
-        else
-          python3 -c "
-        import json, os
-        path = os.path.expanduser('~/.gemini/settings.json')
-        if not os.path.exists(path):
-          print('  Gemini CLI config not found — skipping.')
-          raise SystemExit(0)
-        cfg = json.load(open(path))
-        cfg.setdefault('mcpServers', {})['playwright'] = {'command': 'npx', 'args': ['@playwright/mcp@latest']}
-        json.dump(cfg, open(path, 'w'), indent=2)
-        print('  Registered.')
-        " || echo "  Gemini CLI registration failed — check ~/.gemini/settings.json manually."
-        fi
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-playwright-mcp.ts
+
+  # Spec 0245: the exact CI command of the `playwright-mcp` capability.
+  test-playwright-mcp:
+    desc: "Run the Playwright MCP registration suites (model, JSONC scanner, config reader), as CI does (spec 0245)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts
 
   install-workspace:
     desc: Install all artifacts components (copy mode)

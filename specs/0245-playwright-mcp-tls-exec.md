@@ -1,7 +1,7 @@
 ---
 id: "0245"
 slug: playwright-mcp-tls-exec
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1416

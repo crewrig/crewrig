@@ -1,0 +1,55 @@
+name: Playwright MCP Registration Check
+
+# Spec 0245 (issue #1416): mirrors the `playwright-mcp` capability of
+# ci/ci-capabilities.yml.
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/setup-playwright-mcp.ts"
+      - "scripts/lib/playwright-mcp*.ts"
+      - "scripts/lib/jsonc.ts"
+      - "scripts/lib/hook-config.ts"
+      - "scripts/lib/tmp-file.ts"
+      - "scripts/lib/paths.ts"
+      - "scripts/lib/gemini-settings.sh"
+      - "scripts/tests/playwright-mcp.test.ts"
+      - "scripts/tests/jsonc.test.ts"
+      - "scripts/tests/hook-config.test.ts"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/setup-playwright-mcp.ts"
+      - "scripts/lib/playwright-mcp*.ts"
+      - "scripts/lib/jsonc.ts"
+      - "scripts/lib/hook-config.ts"
+      - "scripts/lib/tmp-file.ts"
+      - "scripts/lib/paths.ts"
+      - "scripts/lib/gemini-settings.sh"
+      - "scripts/tests/playwright-mcp.test.ts"
+      - "scripts/tests/jsonc.test.ts"
+      - "scripts/tests/hook-config.test.ts"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  playwright-mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Test the Playwright MCP registration
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
