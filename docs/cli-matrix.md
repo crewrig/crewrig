@@ -140,15 +140,31 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > which files + env vars feed the key); `scripts/build-ci.sh` derives the GitLab
 > `cache:key:files` mechanism and `scripts/check-ci-parity.sh` asserts semantic
 > key agreement with the GitHub Actions `hashFiles(...)` inputs. A portable
-> `changeset-coverage` capability with no `paths:` filter runs
-> `scripts/ci-changeset-coverage.sh` on every change as the fail-safe (spec 0147
-> R5): when a changed file is not covered by the union of the focused `paths:`
-> sets it executes the full check suite; otherwise it is a fast no-op. The base is
-> supplied per engine through the capability `env` (`CI_BASE_REF`: the pull-request
-> base SHA, or the push `before` SHA, on GitHub Actions; the merge-request diff
-> base on GitLab) and the diff is merge-base relative, so a change targeting a
-> diverged `release/**` branch is not charged for that branch's own delta. This
-> paragraph discharges the `ci/` CLI-matrix-update obligation for spec 0147.
+> `path-ownership` capability with no `paths:` filter runs
+> `scripts/check-path-ownership.ts` on every change on both engines (spec 0147
+> delta-01 R11-R20): it evaluates every tracked file, reads ownership from the
+> `pull-request` `paths:` sets of `ci/ci-capabilities.yml` at check time, and
+> fails closed when a file is neither owned nor listed in
+> `ci/path-ownership-exemptions.txt` (or the optional organization overlay
+> `ci/org/path-ownership-exemptions.txt`). It needs no base ref, so it replaces
+> the former run-time fail-safe (a roughly 40-minute full suite whenever a
+> changed file fell outside every `paths:` set) with a seconds-long static
+> check. The full suite survives as `changeset-coverage`, an exhaustive run
+> declared with the neutral `scheduled` (daily, on `main`) and `manual` trigger
+> kinds and never on a pull request: it executes the commands of every
+> `changeset-gated` capability through `scripts/ci-changeset-coverage.sh`,
+> computes no diff and resolves no base ref (so the `CI_BASE_REF` capability
+> `env` is gone). The engines realise the two kinds differently: GitHub Actions
+> hosts the job in the dedicated `.github/workflows/changeset-coverage.yml`
+> (`on.schedule` plus `workflow_dispatch`), GitLab CI emits a
+> `$CI_PIPELINE_SOURCE == "schedule"` rule followed by `when: manual`, with the
+> pipeline schedule itself an operational prerequisite kept outside the
+> pipeline file. Its regression test runs on every pull request through the
+> separate `changeset-coverage-test` capability. This
+> paragraph discharges the `ci/` CLI-matrix-update obligation for spec 0147
+> and its delta-01. The same change untracks `.claude/scheduled_tasks.lock`
+> (a Claude Code runtime lock, now git-ignored): no Claude Code integration
+> point is added or altered, so no matrix row changes for it.
 >
 > **test-wiring fine-grained cache (spec 0157).** The `test-wiring` capability
 > adds a `cache-guard: false` field and a fine-grained, content-addressed

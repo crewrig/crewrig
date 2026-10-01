@@ -1,17 +1,21 @@
 // ci-changeset-coverage.test.ts — black-box tests for scripts/ci-changeset-coverage.sh
-// (spec 0147 R4/R5/R9/R10, issue #1402).
+// as the EXHAUSTIVE RUN (spec 0147 delta-01 R21/R22/R23, issue #1405).
 //
-// Every fixture is a throwaway `git init` repository under os.tmpdir() holding a
-// minimal ci/ci-capabilities.yml: one `changeset-gated` capability whose
-// `paths:` is `docs/**` and whose command touches a marker file. The marker is
-// the observable verdict: present means the full suite ran (a changed file was
-// not covered, or the base could not be established), absent means the script
-// was a no-op. The remote-tracking refs the script reads (`origin/main`,
-// `origin/release/x`) are planted with `git update-ref`, so no remote is needed.
+// The script used to be a pull-request fail-safe: it computed a diff against a
+// base ref and ran the full suite only when a changed file was unowned. After
+// the path-ownership check (R11-R18) took that job over, it is repurposed: it
+// executes the commands of EVERY `changeset-gated: true` capability,
+// unconditionally, with no diff and no base ref. These tests pin that contract.
+//
+// Every fixture is a throwaway directory holding a minimal
+// ci/ci-capabilities.yml. Each command appends its tag to a log file in the
+// fixture, so the log is the observable verdict: which gated commands ran, and
+// in which order. The script is run from a foreign working directory, so a tag
+// landing in the fixture also proves the commands run inside REPO_DIR.
 //
 // The script under test is SCRIPT_UNDER_TEST (default: the real script), so the
-// identical file can be pointed at a pre-fix copy. Each case is tagged:
-//   discriminating — fails against the pre-fix script (it proves the fix);
+// identical file can be pointed at a pre-change copy. Each case is tagged:
+//   discriminating — fails against the pre-change (fail-safe) script;
 //   guard          — same outcome before and after (protects what must not regress).
 // Standard library only, so it runs before `npm ci`, like the ratchet.
 
@@ -26,19 +30,73 @@ import { fileURLToPath } from "node:url";
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SCRIPT =
   process.env["SCRIPT_UNDER_TEST"] ?? path.join(REPO, "scripts", "ci-changeset-coverage.sh");
-const MARKER = ".fail-safe-ran";
+const LOG = "ran.log";
 const ZEROS = "0".repeat(40);
 const MISSING_SHA = "1234567890abcdef1234567890abcdef12345678";
 
+/**
+ * Four gated capabilities and two that are not. `alpha` has a `paths:` filter and two commands;
+ * `beta` has no `paths:`; `gamma` is push-only. `plain` has a pull-request `paths:` set but is not
+ * gated, and `explicit-off` says `changeset-gated: false`: neither may run.
+ */
 const REFERENCE = `capabilities:
-  - id: gated
+  - id: alpha
     changeset-gated: true
     trigger:
       - on: pull-request
         paths:
           - "docs/**"
     command:
-      - touch ${MARKER}
+      - echo alpha-1 >> ${LOG}
+      - echo alpha-2 >> ${LOG}
+  - id: beta
+    changeset-gated: true
+    trigger:
+      - on: pull-request
+    command:
+      - echo beta >> ${LOG}
+  - id: gamma
+    changeset-gated: true
+    trigger:
+      - on: push
+        paths:
+          - "src/**"
+    command:
+      - echo gamma >> ${LOG}
+  - id: plain
+    trigger:
+      - on: pull-request
+        paths:
+          - "docs/**"
+    command:
+      - echo plain >> ${LOG}
+  - id: explicit-off
+    changeset-gated: false
+    trigger:
+      - on: pull-request
+    command:
+      - echo explicit-off >> ${LOG}
+`;
+
+/** Gated commands in reference order. */
+const ALL_GATED = ["alpha-1", "alpha-2", "beta", "gamma"];
+
+/** A failing command first, then a passing one in the same capability, then a later capability. */
+const FAILING_REFERENCE = `capabilities:
+  - id: first
+    changeset-gated: true
+    trigger:
+      - on: pull-request
+    command:
+      - echo first-1 >> ${LOG}
+      - "echo first-2-failing >> ${LOG}; false"
+      - echo first-3 >> ${LOG}
+  - id: second
+    changeset-gated: true
+    trigger:
+      - on: pull-request
+    command:
+      - echo second >> ${LOG}
 `;
 
 const temps: string[] = [];
@@ -48,14 +106,14 @@ after(() => {
 
 /**
  * The environment minus anything that would leak the caller's base ref or git state,
- * with the host's global and system git config switched off (a global
- * `core.hooksPath`, say, must not run inside the fixture repositories). Used by
- * both the fixture `git()` helper and the script under test.
+ * with the host's global and system git config switched off. Used by both the fixture
+ * `git()` helper and the script under test.
  */
 function cleanEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const key of [
     "CI_BASE_REF",
+    "BASE_REF",
     "CI_MERGE_REQUEST_TARGET_BRANCH_SHA",
     "CI_COMMIT_BEFORE_SHA",
     "GIT_DIR",
@@ -99,16 +157,20 @@ function commit(dir: string, files: Record<string, string>): string {
   return git(dir, "rev-parse", "HEAD");
 }
 
-/** A repository whose `main` holds one commit: the reference plus a covered and an uncovered file. */
-function repo(): string {
+/** A directory holding only the reference: not a git repository. */
+function plainDir(reference: string = REFERENCE): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ci-changeset-coverage-"));
   temps.push(dir);
+  fs.mkdirSync(path.join(dir, "ci"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "ci", "ci-capabilities.yml"), reference);
+  return dir;
+}
+
+/** A repository whose `main` holds the reference and a covered file. */
+function repo(reference: string = REFERENCE): string {
+  const dir = plainDir(reference);
   git(dir, "init", "-q", "-b", "main");
-  commit(dir, {
-    "ci/ci-capabilities.yml": REFERENCE,
-    "docs/seed.md": "seed\n",
-    "README.txt": "seed\n",
-  });
+  commit(dir, { "docs/seed.md": "seed\n", "README.txt": "seed\n" });
   return dir;
 }
 
@@ -116,165 +178,159 @@ interface Run {
   status: number | null;
   out: string;
   err: string;
-  suiteRan: boolean;
+  ran: string[];
 }
 
-/** Run the script under test against `dir`, with only `vars` set among the base-ref variables. */
-function run(dir: string, vars: Record<string, string> = {}): Run {
-  const res = spawnSync("bash", [SCRIPT], {
-    cwd: dir,
-    encoding: "utf8",
-    env: cleanEnv({ REPO_DIR: dir, ...vars }),
-  });
-  return {
-    status: res.status,
-    out: res.stdout,
-    err: res.stderr,
-    suiteRan: fs.existsSync(path.join(dir, MARKER)),
-  };
-}
-
-/** Plant a remote-tracking ref without a remote. */
-function plantRemoteRef(dir: string, name: string, sha: string): void {
-  git(dir, "update-ref", `refs/remotes/origin/${name}`, sha);
-}
-
-interface ReleaseFixture {
-  dir: string;
-  seed: string;
-  releaseTip: string;
+/** Tags the commands appended to the fixture's log, in order. */
+function readLog(dir: string): string[] {
+  const file = path.join(dir, LOG);
+  return fs.existsSync(file) ? fs.readFileSync(file, "utf8").split("\n").filter(Boolean) : [];
 }
 
 /**
- * `release/x` diverges from `main` with an uncovered file; a PR branch is cut at the
- * release tip, adds `prFiles`, and HEAD is the merge commit of the PR into the
- * release tip (the `pull_request` checkout on GitHub). `origin/main` is the seed.
+ * Run the script under test against `dir`, from a foreign working directory, with
+ * `vars` as the only base-ref variables (REPO_DIR is how the script finds the fixture).
  */
-function releasePr(prFiles: Record<string, string>): ReleaseFixture {
-  const dir = repo();
-  const seed = git(dir, "rev-parse", "HEAD");
-  git(dir, "checkout", "-q", "-b", "release/x");
-  const releaseTip = commit(dir, { "release-only.txt": "release\n" });
-  git(dir, "checkout", "-q", "-b", "pr");
-  commit(dir, prFiles);
-  git(dir, "checkout", "-q", "-b", "merge", "release/x");
-  git(dir, "merge", "-q", "--no-ff", "-m", "merge pr", "pr");
-  plantRemoteRef(dir, "main", seed);
-  return { dir, seed, releaseTip };
+function run(dir: string, vars: Record<string, string> = {}): Run {
+  const res = spawnSync("bash", [SCRIPT], {
+    cwd: os.tmpdir(),
+    encoding: "utf8",
+    env: cleanEnv({ REPO_DIR: dir, ...vars }),
+  });
+  return { status: res.status, out: res.stdout, err: res.stderr, ran: readLog(dir) };
 }
 
-describe("ci-changeset-coverage.sh", () => {
-  test("(a) [guard] PR merged into a diverged release tip, base supplied: fast no-op", () => {
-    const { dir, releaseTip } = releasePr({ "docs/pr.md": "pr\n" });
-    const r = run(dir, { CI_BASE_REF: releaseTip });
-    assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, false, r.out);
-    assert.match(r.out, /fast no-op/);
+/** Run with no `yq` reachable: a PATH holding nothing, and an absolute bash. */
+function runWithoutYq(dir: string): Run {
+  const empty = fs.mkdtempSync(path.join(os.tmpdir(), "ci-changeset-coverage-path-"));
+  temps.push(empty);
+  const res = spawnSync("/bin/bash", [SCRIPT], {
+    cwd: os.tmpdir(),
+    encoding: "utf8",
+    env: cleanEnv({ REPO_DIR: dir, PATH: empty }),
   });
+  return { status: res.status, out: res.stdout, err: res.stderr, ran: readLog(dir) };
+}
 
-  test("(b) [guard] same topology, no base supplied: falls back to origin/main and flags the release delta", () => {
-    const { dir } = releasePr({ "docs/pr.md": "pr\n" });
-    const r = run(dir);
-    assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, true, r.out);
-    assert.match(r.out, /release-only\.txt/);
-  });
-
-  test("(c) [guard] the PR itself adds an uncovered file: the full suite runs", () => {
-    const { dir, releaseTip } = releasePr({ "docs/pr.md": "pr\n", "src/new.txt": "new\n" });
-    const r = run(dir, { CI_BASE_REF: releaseTip });
-    assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, true, r.out);
-    assert.match(r.out, /src\/new\.txt/);
-    assert.doesNotMatch(r.out, /release-only\.txt/);
-  });
-
-  test("(d) [discriminating] base has commits HEAD lacks: only the PR's own files are evaluated", () => {
+describe("ci-changeset-coverage.sh (exhaustive run)", () => {
+  test("(a) [discriminating] every changed file is covered: every gated command still runs", () => {
     const dir = repo();
-    git(dir, "checkout", "-q", "-b", "pr");
+    const base = git(dir, "rev-parse", "HEAD");
     commit(dir, { "docs/pr.md": "pr\n" });
-    git(dir, "checkout", "-q", "main");
-    const baseTip = commit(dir, { "base-only.txt": "advanced\n" });
-    git(dir, "checkout", "-q", "pr");
-    const r = run(dir, { CI_BASE_REF: baseTip });
+    const r = run(dir, { CI_BASE_REF: base });
     assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, false, r.out);
-    assert.doesNotMatch(r.out, /base-only\.txt/);
+    assert.deepEqual(r.ran, ALL_GATED);
   });
 
-  test("(e) [discriminating] bare branch name resolves as origin/<name> and picks the right base", () => {
-    const dir = repo();
-    const seed = git(dir, "rev-parse", "HEAD");
-    git(dir, "checkout", "-q", "-b", "release/x");
-    const releaseTip = commit(dir, { "release-only.txt": "release\n" });
-    git(dir, "checkout", "-q", "-b", "pr");
-    commit(dir, { "src/new.txt": "new\n" });
-    git(dir, "branch", "-D", "release/x");
-    plantRemoteRef(dir, "main", seed);
-    plantRemoteRef(dir, "release/x", releaseTip);
-    const r = run(dir, { CI_BASE_REF: "release/x" });
-    assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, true, r.out);
-    assert.match(r.out, /base origin\/release\/x/);
-    assert.match(r.out, /src\/new\.txt/);
-    assert.doesNotMatch(r.out, /release-only\.txt/);
-  });
-
-  test("(f) [discriminating] all-zero base variables are unset and fall to origin/main", () => {
-    const dir = repo();
-    const seed = git(dir, "rev-parse", "HEAD");
-    git(dir, "checkout", "-q", "-b", "pr");
-    commit(dir, { "src/new.txt": "new\n" });
-    plantRemoteRef(dir, "main", seed);
-    const r = run(dir, { CI_BASE_REF: ZEROS, CI_COMMIT_BEFORE_SHA: ZEROS });
-    assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, true, r.out);
-    assert.match(r.out, /base origin\/main/);
-    assert.match(r.out, /src\/new\.txt/);
-  });
-
-  test("(g) [discriminating] unresolvable base and no origin/main: fail-safe full suite, never a silent exit 0", () => {
-    const dir = repo();
-    const r = run(dir, { CI_BASE_REF: MISSING_SHA });
-    assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, true, r.out);
-    assert.match(r.out, /fail-safe/);
-    assert.match(r.err, /does not resolve/);
-  });
-
-  test("(h) [guard] empty diff and no skipped candidate (this is also the no-skip guard for (j)): nothing to cover, exit 0", () => {
+  test("(b) [discriminating] empty diff against the base: every gated command still runs", () => {
     const dir = repo();
     const head = git(dir, "rev-parse", "HEAD");
     const r = run(dir, { CI_BASE_REF: head });
     assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, false, r.out);
-    assert.match(r.out, /nothing to cover/);
+    assert.deepEqual(r.ran, ALL_GATED);
   });
 
-  test("(i) [guard] frozen base older than the base tip in the merge commit: over-inclusive, suite runs", () => {
+  test("(c) [guard] an uncovered change makes no difference either", () => {
     const dir = repo();
-    const frozenBase = git(dir, "rev-parse", "HEAD");
-    git(dir, "checkout", "-q", "-b", "pr");
-    commit(dir, { "docs/pr.md": "pr\n" });
-    git(dir, "checkout", "-q", "main");
-    commit(dir, { "later-base.txt": "advanced\n" });
-    git(dir, "checkout", "-q", "-b", "merge", "main");
-    git(dir, "merge", "-q", "--no-ff", "-m", "merge pr", "pr");
-    const r = run(dir, { CI_BASE_REF: frozenBase });
+    const base = git(dir, "rev-parse", "HEAD");
+    commit(dir, { "src/new.txt": "new\n", "unowned/file.bin": "x\n" });
+    const r = run(dir, { CI_BASE_REF: base });
     assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, true, r.out);
-    assert.match(r.out, /later-base\.txt/);
+    assert.deepEqual(r.ran, ALL_GATED);
   });
 
-  test("(j) [discriminating] empty diff after a skipped base candidate (origin/main == HEAD): fail-safe full suite, never a silent exit 0", () => {
-    const dir = repo();
-    plantRemoteRef(dir, "main", git(dir, "rev-parse", "HEAD"));
-    const r = run(dir, { CI_BASE_REF: MISSING_SHA });
+  test("(d) [discriminating] no git repository at all: runs everything, no base-ref complaint", () => {
+    const dir = plainDir();
+    const r = run(dir);
     assert.equal(r.status, 0, r.err);
-    assert.equal(r.suiteRan, true, r.out);
-    assert.match(r.out, /base origin\/main/);
-    assert.match(r.err, /does not resolve/);
-    assert.match(r.err, /emptiness cannot be trusted/);
-    assert.doesNotMatch(r.out, /nothing to cover/);
+    assert.deepEqual(r.ran, ALL_GATED);
+    assert.doesNotMatch(r.err, /does not resolve|merge-base|no base ref/i);
+    assert.doesNotMatch(r.out, /base ref|merge-base|fast no-op|nothing to cover/i);
+  });
+
+  test("(e) [discriminating] garbage, unresolvable and all-zero base variables are never consulted", () => {
+    const dir = repo();
+    const r = run(dir, {
+      CI_BASE_REF: "not-a-ref",
+      CI_MERGE_REQUEST_TARGET_BRANCH_SHA: MISSING_SHA,
+      CI_COMMIT_BEFORE_SHA: ZEROS,
+      BASE_REF: "refs/heads/does-not-exist",
+    });
+    assert.equal(r.status, 0, r.err);
+    assert.deepEqual(r.ran, ALL_GATED);
+    assert.doesNotMatch(r.err, /does not resolve|merge-base|emptiness/i);
+  });
+
+  test("(f) [guard] a non-gated capability's command never runs, whether or not it has paths:", () => {
+    const dir = repo();
+    const r = run(dir);
+    assert.equal(r.status, 0, r.err);
+    assert.ok(!r.ran.includes("plain"), r.ran.join(","));
+    assert.ok(!r.ran.includes("explicit-off"), r.ran.join(","));
+  });
+
+  test("(g) [guard] gated capabilities run whatever their triggers: no paths:, push-only", () => {
+    const r = run(plainDir());
+    assert.ok(r.ran.includes("beta"), "gated, no paths:");
+    assert.ok(r.ran.includes("gamma"), "gated, push-only trigger");
+  });
+
+  test("(h) [guard] commands run in reference order, from REPO_DIR, not the caller's directory", () => {
+    const dir = plainDir();
+    const r = run(dir);
+    assert.deepEqual(r.ran, ALL_GATED);
+    assert.equal(
+      fs.existsSync(path.join(os.tmpdir(), LOG)),
+      false,
+      "log leaked into the caller's cwd",
+    );
+  });
+
+  test("(i) [guard] a failing command does not stop the others and the exit is 1", () => {
+    const dir = plainDir(FAILING_REFERENCE);
+    const r = run(dir);
+    assert.equal(r.status, 1, r.out + r.err);
+    assert.deepEqual(r.ran, ["first-1", "first-2-failing", "first-3", "second"]);
+  });
+
+  test("(j) [guard] a failure is reported on stderr, not only in a log (R22)", () => {
+    const r = run(plainDir(FAILING_REFERENCE));
+    assert.equal(r.status, 1);
+    assert.match(r.err, /fail/i);
+  });
+
+  test("(k) [guard] missing yq exits 2 and runs nothing", () => {
+    const dir = plainDir();
+    const r = runWithoutYq(dir);
+    assert.equal(r.status, 2, r.err);
+    assert.deepEqual(r.ran, []);
+  });
+
+  test("(l) [guard] a missing reference exits 2 and runs nothing", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ci-changeset-coverage-"));
+    temps.push(dir);
+    const r = run(dir);
+    assert.equal(r.status, 2, r.err);
+    assert.deepEqual(r.ran, []);
+  });
+
+  test("(m) [discriminating] the script computes no diff and resolves no base ref (R21)", () => {
+    const code = fs
+      .readFileSync(SCRIPT, "utf8")
+      .split("\n")
+      .filter((line) => !/^\s*#/.test(line))
+      .join("\n");
+    for (const forbidden of [
+      /merge-base/,
+      /base-ref-resolve/,
+      /resolve_remote_ref/,
+      /CI_BASE_REF/,
+      /BASE_REF/,
+      /CI_COMMIT_BEFORE_SHA/,
+      /CI_MERGE_REQUEST_TARGET_BRANCH_SHA/,
+      /git\b[^\n]*\bdiff\b/,
+    ]) {
+      assert.doesNotMatch(code, forbidden);
+    }
   });
 });
