@@ -288,6 +288,10 @@ implements. It reads only the tree under test; it needs no forge access.
    `status: implemented`. The exit status is unaffected. A `trivial` ticket
    has no spec by design (ADR-0010 → *Complexity tiers*), so failing it would
    be wrong; staying silent would make a missing spec look like a checked one.
+   The match is computed over the files being linted. CI lints the whole
+   tree (`task spec:lint`), so the notice there is meaningful. A local run
+   restricted to some files (`task spec:lint -- specs/<file>.md`) can print
+   it even though a matching spec exists elsewhere.
 
 **Sync branches are not implementation PRs.** A branch named
 `chore/<NNNN>-sync-main*` — the form a sync of `main` into a release branch
