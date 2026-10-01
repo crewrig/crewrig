@@ -40,13 +40,21 @@ macOS, on every wired event, headless and interactive (ticket #1398):
 | CLI and version | Wired events | What the user sees |
 |---|---|---|
 | Claude Code 2.1.285 | `Stop`, `SessionEnd` | Once per event. `Stop`: the transcript notice `Stop hook error: Failed with non-blocking status code: <line>` (interactive only). `SessionEnd`: a terminal line `SessionEnd hook [<command>] failed: <line>` after exit |
-| Gemini CLI 0.46.0 | `AfterModel` | A warning once per `AfterModel` firing. `AfterModel` fires once per streamed chunk (three times for a one-word reply), so the line can repeat several times in one turn |
+| Gemini CLI 0.46.0, interactive | `AfterModel` | A generic notice once per `AfterModel` firing: `⚠ Hook(s) [<name>] failed for event AfterModel. Press F12 to see the debug drawer for more details.` The diagnostic text itself (the package name and "re-run setup") appears only in the debug drawer behind F12 |
+| Gemini CLI 0.46.0, headless | `AfterModel` | The line itself on standard error, `Hook system message: Warning: <line>`, once per `AfterModel` firing |
 | Copilot CLI 1.0.87 | `agentStop`, `sessionEnd` | Nothing. The line reaches only `~/.copilot/logs/process-*.log` |
+
+On Gemini CLI, in both modes, `AfterModel` fires once per streamed chunk
+(three times for a one-word reply), so the notice or the line can repeat
+several times in one turn.
 
 This state SHALL be recorded as an accepted, explicit gap for as long as
 requirement 11 holds. While no entry point imports a third-party package, no
 firing takes the path of requirement 12, so no user can meet the gap. The
 measurement covers macOS only. Linux and Windows visibility was not measured.
+Antigravity CLI is out of this requirement's reach. No capture hook is wired
+for it, and its statusline shim always exits zero (requirement 14), so
+requirement 12 does not apply there.
 
 **Requirement 38 — Obligation on the change that makes the path reachable.**
 The trigger is the first change that makes `hooks/usage-capture.ts`, or a module
@@ -56,7 +64,10 @@ requirement 11. In the same pull request, that change SHALL:
 
 - (a) make the diagnostic of requirement 12 reach the user on every CLI whose
   capture fragment wires `hooks/usage-capture.ts`, during the session or at its
-  end. A line written only to a log file does not count. For a CLI where the
+  end. A line written only to a log file does not count. A generic notice
+  that does not show the diagnostic text itself, the package name and the
+  instruction to re-run setup, does not count either, such as the interactive
+  Gemini CLI notice that defers it to a debug drawer. For a CLI where the
   change cannot reach the user, it SHALL instead record a per-CLI parity gap in
   `docs/cli-matrix.md` → *Parity gaps*, with evidence that the CLI offers no
   surface that reaches the user, as the multi-CLI parity rule of `AGENTS.md`
@@ -72,8 +83,10 @@ requirement 11. In the same pull request, that change SHALL:
   outcome of (a) and (b).
 
 This spec does not choose the mechanism. A sentinel read by a later hook or by
-the status line, a per-session marker under the usage root, a setup or doctor
-check, or a CLI-native message field are all left to that change's plan. A
+the status line, a per-session marker under the usage root, or a CLI-native
+message field are all left to that change's plan. A setup or doctor check may
+complement an in-session surface, but it cannot satisfy (a) on its own,
+because it does not reach the user during the session or at its end. A
 review of that change SHALL treat a missing item (a) to (d) as unmet. This
 delta authorises no third-party import.
 
@@ -91,8 +104,9 @@ implementation pull request SHALL change documentation only:
   visible differs per CLI, and that this difference is an accepted gap while
   requirement 11 holds;
 - `docs/cli-matrix.md` → *Parity gaps* SHALL gain one `[GAP]` entry. The entry
-  names Copilot CLI (no notice, log only) and Gemini CLI (one warning per
-  streamed chunk), cites the #1398 evidence, states that the gap is latent
+  names Copilot CLI (no notice, log only) and Gemini CLI. For Gemini CLI it
+  names the interactive generic notice, which hides the diagnostic text behind
+  F12, and the repetition once per streamed chunk in both modes. It cites the #1398 evidence, states that the gap is latent
   while requirement 11 holds, and points to requirement 38.
 
 No hook, setup script, manifest or test changes.
