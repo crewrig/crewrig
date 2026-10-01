@@ -53,7 +53,107 @@ component-drift:
   script:
     - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**\" --key-env \"\" -- bash scripts/build-components.sh --target all --check"
     - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**\" --key-env \"\" -- bash scripts/test-build-components.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/layers.md"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/layers.md"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+
+model-resolution:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  cache:
+    key:
+      files:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+    paths:
+      - .ci-cache/
+  script:
     - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**\" --key-env \"\" -- bash scripts/tests/test-model-resolution.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/layers.md"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/layers.md"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+
+agent-profile-migration:
+  image: debian:stable-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  cache:
+    key:
+      files:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+    paths:
+      - .ci-cache/
+  script:
     - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**\" --key-env \"\" -- bash scripts/tests/test-agent-profile-migration.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'

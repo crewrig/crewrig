@@ -99,7 +99,107 @@ capabilities:
     command:
       - bash scripts/build-components.sh --target all --check
       - bash scripts/test-build-components.sh
+
+  - id: model-resolution
+    name: "Run the model-resolution regression suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
+          - "model-mappings/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
+          - "model-mappings/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    cache:
+      files:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+      env: []
+    command:
       - bash scripts/tests/test-model-resolution.sh
+
+  - id: agent-profile-migration
+    name: "Run the agent-profile migration regression suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
+          - "model-mappings/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.sh"
+          - "scripts/test-build-components.sh"
+          - "scripts/tests/test-model-resolution.sh"
+          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/lib/**"
+          - "artifacts/**"
+          - "extensions/**"
+          - ".crewrig/core-paths.txt"
+          - "docs/layers.md"
+          - "docs/agent-profile-migration.md"
+          - "model-mappings/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      tools: [yq]
+    cache:
+      files:
+        - "scripts/build-components.sh"
+        - "scripts/test-build-components.sh"
+        - "scripts/tests/test-model-resolution.sh"
+        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+      env: []
+    command:
       - bash scripts/tests/test-agent-profile-migration.sh
 
   - id: extension-render
