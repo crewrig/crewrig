@@ -83,13 +83,19 @@ describe("keep (R34)", () => {
         ["left", "crewrig-fixture-guard-grouped/PreToolUse", "already the direct form"],
       ],
     );
-    assert.ok(lines.every((l) => l.path === SCRIPT), "the path, never the whole command");
+    assert.ok(
+      lines.every((l) => l.path === SCRIPT),
+      "the path, never the whole command",
+    );
   });
 
   test("on macOS and Linux a guarded entry is an unrecognised shape (S4)", () => {
     for (const platform of ["darwin", "linux"] as const) {
       const lines = keepAntigravityHooks(config(), { descriptor: FIXTURE, platform });
-      assert.ok(lines.every((l) => l.detail === "unrecognised shape"), JSON.stringify(lines));
+      assert.ok(
+        lines.every((l) => l.detail === "unrecognised shape"),
+        JSON.stringify(lines),
+      );
     }
   });
 
@@ -149,7 +155,11 @@ describe("remove (R34)", () => {
     const file = hooksFile();
     fs.writeFileSync(file, `${JSON.stringify(FOREIGN, null, 2)}\n`);
     const before = fs.readFileSync(file, "utf8");
-    const result = removeAntigravityHooksFile(file, { descriptor: FIXTURE, platform: "win32" }, () => {});
+    const result = removeAntigravityHooksFile(
+      file,
+      { descriptor: FIXTURE, platform: "win32" },
+      () => {},
+    );
     assert.equal(result.status, 0);
     assert.equal(fs.readFileSync(file, "utf8"), before);
     assert.deepEqual(backups(file), []);
@@ -157,7 +167,11 @@ describe("remove (R34)", () => {
 
   test("an absent file is nothing to do", () => {
     const missing = path.join(os.tmpdir(), "crewrig-hook-antigravity-absent", "hooks.json");
-    const result = removeAntigravityHooksFile(missing, { descriptor: FIXTURE, platform: "win32" }, () => {});
+    const result = removeAntigravityHooksFile(
+      missing,
+      { descriptor: FIXTURE, platform: "win32" },
+      () => {},
+    );
     assert.equal(result.status, 0);
     assert.deepEqual(result.lines, []);
   });

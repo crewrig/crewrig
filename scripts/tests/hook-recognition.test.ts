@@ -167,9 +167,15 @@ describe("the guarded prefix (R34)", () => {
     ["another value", `set NoDefaultCurrentDirectoryInExePath=0&& node ${SHIM}`],
     ["a relative path", `${GUARDED_PREFIX}node repo/hooks/antigravity-statusline-shim.ts`],
     ["a backslashed path", `${GUARDED_PREFIX}node C:\\repo\\hooks\\antigravity-statusline-shim.ts`],
-    ["a cmd.exe metacharacter in the path", `${GUARDED_PREFIX}node C:/a&b/hooks/antigravity-statusline-shim.ts`],
+    [
+      "a cmd.exe metacharacter in the path",
+      `${GUARDED_PREFIX}node C:/a&b/hooks/antigravity-statusline-shim.ts`,
+    ],
     ["a $ in the path", `${GUARDED_PREFIX}node C:/a$b/hooks/antigravity-statusline-shim.ts`],
-    ["a backtick in the path", `${GUARDED_PREFIX}node C:/a\`b/hooks/antigravity-statusline-shim.ts`],
+    [
+      "a backtick in the path",
+      `${GUARDED_PREFIX}node C:/a\`b/hooks/antigravity-statusline-shim.ts`,
+    ],
     ["no node", `${GUARDED_PREFIX}${SHIM}`],
     ["bash instead of node", `${GUARDED_PREFIX}bash ${SHIM}`],
     ["the legacy .sh", `${GUARDED_PREFIX}node C:/repo/hooks/antigravity-statusline-shim.sh`],
@@ -181,7 +187,11 @@ describe("the guarded prefix (R34)", () => {
   }
 
   test("the usage-capture signature keeps rejecting the prefix (R20, R34)", () => {
-    for (const path of ['"/repo/hooks/usage-capture.ts"', "/repo/hooks/usage-capture.ts", "C:/repo/hooks/usage-capture.ts"]) {
+    for (const path of [
+      '"/repo/hooks/usage-capture.ts"',
+      "/repo/hooks/usage-capture.ts",
+      "C:/repo/hooks/usage-capture.ts",
+    ]) {
       const command = `${GUARDED_PREFIX}node ${path} claude-code Stop`;
       assert.equal(parseHookCommand(command, USAGE_CAPTURE), null, command);
     }

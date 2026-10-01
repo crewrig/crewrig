@@ -31,6 +31,14 @@ export interface HookDescriptor {
    * only when the whole path names an existing file.
    */
   readonly legacySpaced?: { readonly cliId: string; readonly event: string };
+  /**
+   * Spec 0243 delta-03 R34: only for descriptors whose Windows command lines
+   * the module produces in the guarded form (`GUARDED_PREFIX` of
+   * hook-command.ts) — the Antigravity CLI statusline, and the Antigravity CLI
+   * hooks-surface descriptors of rows C2/C3. Never on `USAGE_CAPTURE`, whose
+   * signature keeps rejecting the prefix in both twins (R20).
+   */
+  readonly guardedPrefix?: true;
 }
 
 export const USAGE_CAPTURE: HookDescriptor = {
@@ -53,4 +61,5 @@ export const ANTIGRAVITY_STATUSLINE: HookDescriptor = {
   cliIds: { claude: "antigravity", gemini: "antigravity", copilot: "antigravity" },
   args: () => [],
   argsPattern: "\\s*",
+  guardedPrefix: true,
 };

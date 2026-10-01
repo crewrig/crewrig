@@ -480,7 +480,11 @@ describe("Windows statusline keep, upgrade and re-point (R34, R35)", () => {
       fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: own, padding: 2 } }));
       fs.writeFileSync(
         t.marker,
-        JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: own, installedBy: "t" }),
+        JSON.stringify({
+          priorStatusLineCommand: "",
+          installedStatusLineCommand: own,
+          installedBy: "t",
+        }),
       );
       const res = rewrite(t);
       assert.equal(res.status, 0, res.log);
@@ -492,7 +496,10 @@ describe("Windows statusline keep, upgrade and re-point (R34, R35)", () => {
         installedBy: "t",
       });
       assert.equal(backups(t.settings).length, 1);
-      assert.match(res.log, /rewrote statusLine\.command -> set NoDefaultCurrentDirectoryInExePath=1&& node /);
+      assert.match(
+        res.log,
+        /rewrote statusLine\.command -> set NoDefaultCurrentDirectoryInExePath=1&& node /,
+      );
       assert.ok(!res.log.includes("current-directory lookup"), "empty prior: no R35 note");
     },
   );
@@ -504,11 +511,17 @@ describe("Windows statusline keep, upgrade and re-point (R34, R35)", () => {
       const t = setup("");
       const own = `node ${SHIM(t.repo)}`;
       fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: own } }));
-      fs.writeFileSync(t.marker, JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: own }));
+      fs.writeFileSync(
+        t.marker,
+        JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: own }),
+      );
       const before = snapshot(t);
       const res = rewrite(t, "win32", STATE_C);
       assert.equal(res.status, 0, res.log);
-      assert.match(res.log, /left statusLine\.command \(antigravity statusline on Windows: .*#1392/);
+      assert.match(
+        res.log,
+        /left statusLine\.command \(antigravity statusline on Windows: .*#1392/,
+      );
       assert.deepEqual(snapshot(t), before);
       assert.deepEqual(backups(t.settings), []);
     },
@@ -521,28 +534,41 @@ describe("Windows statusline keep, upgrade and re-point (R34, R35)", () => {
       const t = setup("");
       const guarded = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
       fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: guarded } }));
-      fs.writeFileSync(t.marker, JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: guarded }));
+      fs.writeFileSync(
+        t.marker,
+        JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: guarded }),
+      );
       const before = snapshot(t);
       const res = rewrite(t, "win32", STATE_C);
       assert.ok(!res.log.includes("already the direct form"), res.log);
-      assert.match(res.log, /left statusLine\.command \(antigravity statusline on Windows: .*#1392/);
+      assert.match(
+        res.log,
+        /left statusLine\.command \(antigravity statusline on Windows: .*#1392/,
+      );
       assert.deepEqual(snapshot(t), before);
       assert.deepEqual(backups(t.settings), []);
     },
   );
 
-  test("(e): the guarded command is kept: nothing written, no backup (R34 keep, R22)", { skip: !posix }, () => {
-    const t = setup("");
-    const guarded = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
-    fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: guarded } }));
-    fs.writeFileSync(t.marker, JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: guarded }));
-    const before = snapshot(t);
-    const res = rewrite(t);
-    assert.equal(res.status, 0, res.log);
-    assert.match(res.log, /left statusLine\.command \(already the direct form\)/);
-    assert.deepEqual(snapshot(t), before);
-    assert.deepEqual(backups(t.settings), []);
-  });
+  test(
+    "(e): the guarded command is kept: nothing written, no backup (R34 keep, R22)",
+    { skip: !posix },
+    () => {
+      const t = setup("");
+      const guarded = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
+      fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: guarded } }));
+      fs.writeFileSync(
+        t.marker,
+        JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: guarded }),
+      );
+      const before = snapshot(t);
+      const res = rewrite(t);
+      assert.equal(res.status, 0, res.log);
+      assert.match(res.log, /left statusLine\.command \(already the direct form\)/);
+      assert.deepEqual(snapshot(t), before);
+      assert.deepEqual(backups(t.settings), []);
+    },
+  );
 
   test(
     "(e): a guarded command naming a moved checkout is re-pointed from the registered path's checkout",
@@ -554,7 +580,10 @@ describe("Windows statusline keep, upgrade and re-point (R34, R35)", () => {
       fs.symlinkSync(t.repo, link);
       const registered = `${GUARDED_PREFIX}node ${SHIM(link)}`;
       fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: registered } }));
-      fs.writeFileSync(t.marker, JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: registered }));
+      fs.writeFileSync(
+        t.marker,
+        JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: registered }),
+      );
       const res = rewrite(t);
       assert.equal(res.status, 0, res.log);
       const rebuilt = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
@@ -585,33 +614,47 @@ describe("Windows statusline keep, upgrade and re-point (R34, R35)", () => {
     (shim: string) => `set FOO=1&& node ${shim}`,
     (shim: string) => `set NoDefaultCurrentDirectoryInExePath=1 && node ${shim}`,
   ]) {
-    test(`keep leaves ${JSON.stringify(variant("<shim>"))} as an unrecognised shape`, { skip: !posix }, () => {
-      const t = setup("");
-      const command = variant(SHIM(t.repo));
-      fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command } }));
-      fs.writeFileSync(t.marker, JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: command }));
-      const before = snapshot(t);
-      const res = rewrite(t);
-      assert.match(res.log, /left statusLine\.command \(unrecognised shape\)/);
-      assert.deepEqual(snapshot(t), before);
-      assert.deepEqual(backups(t.settings), []);
-    });
+    test(
+      `keep leaves ${JSON.stringify(variant("<shim>"))} as an unrecognised shape`,
+      { skip: !posix },
+      () => {
+        const t = setup("");
+        const command = variant(SHIM(t.repo));
+        fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command } }));
+        fs.writeFileSync(
+          t.marker,
+          JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: command }),
+        );
+        const before = snapshot(t);
+        const res = rewrite(t);
+        assert.match(res.log, /left statusLine\.command \(unrecognised shape\)/);
+        assert.deepEqual(snapshot(t), before);
+        assert.deepEqual(backups(t.settings), []);
+      },
+    );
   }
 
-  test("macOS and Linux leave a guarded command as an unrecognised shape (S4)", { skip: !posix }, () => {
-    for (const platform of ["darwin", "linux"] as const) {
-      const t = setup("");
-      const guarded = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
-      fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: guarded } }));
-      fs.writeFileSync(t.marker, JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: guarded }));
-      const before = snapshot(t);
-      const res = rewrite(t, platform);
-      assert.match(res.log, /left statusLine\.command \(unrecognised shape\)/);
-      assert.deepEqual(snapshot(t), before);
-    }
-  });
+  test(
+    "macOS and Linux leave a guarded command as an unrecognised shape (S4)",
+    { skip: !posix },
+    () => {
+      for (const platform of ["darwin", "linux"] as const) {
+        const t = setup("");
+        const guarded = `${GUARDED_PREFIX}node ${SHIM(t.repo)}`;
+        fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: guarded } }));
+        fs.writeFileSync(
+          t.marker,
+          JSON.stringify({ priorStatusLineCommand: "", installedStatusLineCommand: guarded }),
+        );
+        const before = snapshot(t);
+        const res = rewrite(t, platform);
+        assert.match(res.log, /left statusLine\.command \(unrecognised shape\)/);
+        assert.deepEqual(snapshot(t), before);
+      }
+    },
+  );
 
-  test("macOS and Linux keep a direct node \"<abs>\" as before", { skip: !posix }, () => {
+  test('macOS and Linux keep a direct node "<abs>" as before', { skip: !posix }, () => {
     const t = setup("");
     const direct = `node "${SHIM(t.repo)}"`;
     fs.writeFileSync(t.settings, JSON.stringify({ statusLine: { command: direct } }));

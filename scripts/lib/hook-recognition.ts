@@ -13,8 +13,17 @@
 // hook that merely names a script called `<basename>.sh` with other arguments
 // is never recognised.
 //
+// The guarded form of spec 0243 delta-03 R34 is a separate, stricter grammar,
+// tried only for a descriptor that sets `guardedPrefix`: exactly
+// `GUARDED_PREFIX`, then `node`, one space, an unquoted forward-slash absolute
+// path (optionally with a drive) ending in `/hooks/<basename>.ts`, then the
+// descriptor's arguments. Any byte of difference falls through to the shared
+// signature, whose prefix cannot match a leading `set `, so it parses `null`.
+// The shared signature, and so the Bash twin, is unchanged.
+//
 // Standard library only (spec 0240 R16).
 
+import { GUARDED_PREFIX } from "./hook-command.ts";
 import type { HookDescriptor } from "./hook-descriptor.ts";
 
 export interface HookCommandParse {
@@ -28,6 +37,8 @@ export interface HookCommandParse {
   readonly post: string;
   /** Whether the path was quoted in the command. */
   readonly quoted: boolean;
+  /** Whether the command carries the framework's guarded prefix (R34); then `pre` starts with it. */
+  readonly guarded: boolean;
 }
 
 export interface RecognitionOptions {
@@ -60,6 +71,19 @@ function signature(descriptor: HookDescriptor): RegExp {
   );
 }
 
+/**
+ * The remainder after `GUARDED_PREFIX` (R34, v1-F1): the path class excludes
+ * whitespace, quotes, the backslash, every `cmd.exe` metacharacter, `$` and
+ * the backtick, which R17 refuses in a checkout path.
+ */
+function guardedSignature(descriptor: HookDescriptor): RegExp {
+  const name = escapeRe(descriptor.basename);
+  const args = descriptor.argsPattern ?? defaultArgsPattern(descriptor);
+  return new RegExp(
+    `^node (?<uq>(?:[A-Za-z]:)?/[^\\s"'\\\\&|<>^%()$\x60]*/hooks/${name}\\.ts)(?<post>${args})$`,
+  );
+}
+
 function legacySpaced(descriptor: HookDescriptor): RegExp | null {
   const legacy = descriptor.legacySpaced;
   if (legacy === undefined) return null;
@@ -78,6 +102,20 @@ export function parseHookCommand(
   descriptor: HookDescriptor,
   options: RecognitionOptions = {},
 ): HookCommandParse | null {
+  if (descriptor.guardedPrefix === true && command.startsWith(GUARDED_PREFIX)) {
+    const rest = command.slice(GUARDED_PREFIX.length);
+    const guarded = guardedSignature(descriptor).exec(rest)?.groups;
+    if (guarded !== undefined) {
+      return {
+        pre: `${GUARDED_PREFIX}node `,
+        path: guarded["uq"] ?? "",
+        ext: "ts",
+        post: guarded["post"] ?? "",
+        quoted: false,
+        guarded: true,
+      };
+    }
+  }
   const direct = signature(descriptor).exec(command)?.groups;
   if (direct !== undefined) {
     const path = direct["dq"] ?? direct["sq"] ?? direct["uq"] ?? "";
@@ -87,6 +125,7 @@ export function parseHookCommand(
       ext: path.endsWith(".ts") ? "ts" : "sh",
       post: direct["post"] ?? "",
       quoted: direct["uq"] === undefined,
+      guarded: false,
     };
   }
   const legacyRe = legacySpaced(descriptor);
@@ -100,6 +139,7 @@ export function parseHookCommand(
         ext: "sh",
         post: legacy["post"] ?? "",
         quoted: false,
+        guarded: false,
       };
     }
   }

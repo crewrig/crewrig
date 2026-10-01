@@ -197,7 +197,11 @@ describe("measured surfaces (R18, R31, R32, R33)", () => {
     delete copy[key];
     return copy as unknown as MeasuredSurface;
   };
-  const contradicting = { status: "contradicting", interpreter: "powershell-5.1", quoting: "powershell" } as const;
+  const contradicting = {
+    status: "contradicting",
+    interpreter: "powershell-5.1",
+    quoting: "powershell",
+  } as const;
   /** One entry per R32 state, for a given surface. */
   const STATES: Record<AgyState, (surface: Surface) => MeasuredSurface | undefined> = {
     a1: () => undefined,
@@ -214,7 +218,13 @@ describe("measured surfaces (R18, R31, R32, R33)", () => {
     `${root}/hooks/${surface === "statusline" ? "antigravity-statusline-shim" : "fixture-guard"}.ts`;
   const forState = (state: AgyState, surface: Surface, root: string) => {
     const e = STATES[state](surface);
-    return build("antigravity", "win32", SCRIPT(root, surface), surface, e === undefined ? [] : [e]);
+    return build(
+      "antigravity",
+      "win32",
+      SCRIPT(root, surface),
+      surface,
+      e === undefined ? [] : [e],
+    );
   };
 
   test("holds the four hooks-surface Windows triples and the Antigravity statusline one (rows 37-37f)", () => {
@@ -250,7 +260,13 @@ describe("measured surfaces (R18, R31, R32, R33)", () => {
 
   test("the row 37f hooks entry carries the #1392 bare and guarded results, without the status-line-only caveats (R33)", () => {
     const e = find("hooks");
-    const caveats = ["arm64-vm", "agy-1.2.14", "stop-print-console", "one-plant-cwd-only", "marker-probe"];
+    const caveats = [
+      "arm64-vm",
+      "agy-1.2.14",
+      "stop-print-console",
+      "one-plant-cwd-only",
+      "marker-probe",
+    ];
     assert.equal(e?.plantedBinary, "planted-runs");
     assert.deepEqual(e?.caveats, caveats);
     assert.deepEqual(e?.guardedCaveats, caveats);
@@ -369,7 +385,9 @@ describe("measured surfaces (R18, R31, R32, R33)", () => {
         ok: true,
         command: "node C:/Users/ana/crewrig/hooks/fixture-guard.ts claude-code Stop",
       });
-      assert.ok(refusal(forState(state, "hooks", "C:/Users/Ana Diaz/crewrig")).includes("whitespace"));
+      assert.ok(
+        refusal(forState(state, "hooks", "C:/Users/Ana Diaz/crewrig")).includes("whitespace"),
+      );
     }
   });
 
@@ -392,24 +410,46 @@ describe("measured surfaces (R18, R31, R32, R33)", () => {
   // Scenario "A path with a space is refused by the path for the statusline".
   test("(e) statusline: a path with a space is refused by R17, not by a statusline diagnostic", () => {
     const message = refusal(
-      build("antigravity", "win32", "C:/Users/Ana Diaz/crewrig/hooks/antigravity-statusline-shim.ts", "statusline"),
+      build(
+        "antigravity",
+        "win32",
+        "C:/Users/Ana Diaz/crewrig/hooks/antigravity-statusline-shim.ts",
+        "statusline",
+      ),
     );
-    assert.ok(message.includes("whitespace") && message.includes("C:/Users/Ana Diaz/crewrig"), message);
+    assert.ok(
+      message.includes("whitespace") && message.includes("C:/Users/Ana Diaz/crewrig"),
+      message,
+    );
     assert.ok(!message.includes("#1392") && !message.includes("unmeasured"), message);
   });
 
   // Scenario "The hooks surface receives the guarded form once row 37f exists".
   test("(e) hooks: the guarded form, path unquoted and forward-slashed; a space is refused by R17", () => {
-    assert.deepEqual(build("antigravity", "win32", "C:\\Users\\ana\\crewrig\\hooks\\fixture-guard.ts"), {
-      ok: true,
-      command: `${GUARDED_PREFIX}node C:/Users/ana/crewrig/hooks/fixture-guard.ts claude-code Stop`,
-    });
-    const spaced = refusal(build("antigravity", "win32", "C:/Users/Ana Diaz/crewrig/hooks/fixture-guard.ts"));
+    assert.deepEqual(
+      build("antigravity", "win32", "C:\\Users\\ana\\crewrig\\hooks\\fixture-guard.ts"),
+      {
+        ok: true,
+        command: `${GUARDED_PREFIX}node C:/Users/ana/crewrig/hooks/fixture-guard.ts claude-code Stop`,
+      },
+    );
+    const spaced = refusal(
+      build("antigravity", "win32", "C:/Users/Ana Diaz/crewrig/hooks/fixture-guard.ts"),
+    );
     assert.ok(spaced.includes("checkout path") && spaced.includes("whitespace"), spaced);
     // Without its guarded-form result the hooks entry falls back to (c): the bare form.
     const bare = without(find("hooks") ?? entry("hooks"), "guardedForm");
-    const result = build("antigravity", "win32", "C:/Users/ana/crewrig/hooks/fixture-guard.ts", "hooks", [bare]);
-    assert.equal(result.ok && result.command, "node C:/Users/ana/crewrig/hooks/fixture-guard.ts claude-code Stop");
+    const result = build(
+      "antigravity",
+      "win32",
+      "C:/Users/ana/crewrig/hooks/fixture-guard.ts",
+      "hooks",
+      [bare],
+    );
+    assert.equal(
+      result.ok && result.command,
+      "node C:/Users/ana/crewrig/hooks/fixture-guard.ts claude-code Stop",
+    );
   });
 
   test("the guarded prefix's && and = are never judged as path characters (R17)", () => {
@@ -418,12 +458,15 @@ describe("measured surfaces (R18, R31, R32, R33)", () => {
   });
 
   // Scenario "macOS and Linux are untouched".
-  test("macOS and Linux: node \"<abs>\" with no guarded prefix, on both surfaces", () => {
+  test('macOS and Linux: node "<abs>" with no guarded prefix, on both surfaces', () => {
     for (const platform of ["darwin", "linux"] as const) {
       for (const surface of ["statusline", "hooks"] as const) {
         for (const measured of [undefined, [], [entry(surface, { guardedForm: HOLDING })]]) {
           const result = build("antigravity", platform, "/x/crewrig/hooks/s.ts", surface, measured);
-          assert.deepEqual(result, { ok: true, command: 'node "/x/crewrig/hooks/s.ts" claude-code Stop' });
+          assert.deepEqual(result, {
+            ok: true,
+            command: 'node "/x/crewrig/hooks/s.ts" claude-code Stop',
+          });
         }
       }
     }
@@ -432,7 +475,10 @@ describe("measured surfaces (R18, R31, R32, R33)", () => {
   test("the other CLIs on Windows keep their hooks shapes and never carry the guarded prefix", () => {
     for (const cli of ["claude", "gemini", "copilot"] as const) {
       const result = build(cli, "win32", "C:/x/hooks/usage-capture.ts");
-      assert.equal(result.ok && result.command, 'node "C:/x/hooks/usage-capture.ts" claude-code Stop');
+      assert.equal(
+        result.ok && result.command,
+        'node "C:/x/hooks/usage-capture.ts" claude-code Stop',
+      );
     }
   });
 });
