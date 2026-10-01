@@ -26,9 +26,11 @@
 # A candidate is UNSET when it is empty, the literal `null`, or all zeros
 # (GitHub `before` on a new branch, GitLab `CI_COMMIT_BEFORE_SHA` on a new
 # pipeline): the all-zero SHA is not a commit and must never be diffed. A set
-# candidate resolves as `origin/<candidate>` first (a bare branch name such as
-# `release/x`, the preferred reading on a CI checkout, which has no local
-# branches) and then as given (a SHA, `origin/x`, a local ref); each reading is
+# candidate is resolved by `resolve_remote_ref` in scripts/lib/base-ref-resolve.sh
+# (a SHA, `origin/x`, a local ref, or a bare branch name such as `release/x`,
+# which a CI checkout holds only as `origin/release/x`); it tries the name as
+# given first, then `origin/<name>`, so a local branch that diverges from its
+# remote-tracking ref wins, which never happens on a CI checkout. Each reading is
 # verified to be a commit. A set candidate that does not resolve is reported on
 # stderr and skipped (over-inclusive, never under-inclusive: R10). Because the
 # fallback `origin/main` can equal HEAD on a `main` push, an EMPTY diff is
@@ -55,6 +57,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="${REPO_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 REFERENCE="$REPO_DIR/ci/ci-capabilities.yml"
 
+# shellcheck source=lib/base-ref-resolve.sh
+source "$SCRIPT_DIR/lib/base-ref-resolve.sh"
+
 if [ ! -f "$REFERENCE" ]; then
   echo "Error: CI reference not found: $REFERENCE" >&2
   exit 2
@@ -73,25 +78,13 @@ is_unset_candidate() {
   esac
 }
 
-# Echo the first reading of $1 that verifies as a commit; return 1 otherwise.
-resolve_candidate() {
-  local ref
-  for ref in "origin/$1" "$1"; do
-    if git -C "$REPO_DIR" rev-parse --verify --quiet "${ref}^{commit}" >/dev/null 2>&1; then
-      echo "$ref"
-      return 0
-    fi
-  done
-  return 1
-}
-
 base_ref=""
 skipped_candidate=0
 for cand in "${CI_BASE_REF:-}" "${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-}" "${CI_COMMIT_BEFORE_SHA:-}" "origin/main"; do
   if is_unset_candidate "$cand"; then
     continue
   fi
-  if base_ref="$(resolve_candidate "$cand")"; then
+  if base_ref="$(resolve_remote_ref "$cand" origin "$REPO_DIR")"; then
     break
   fi
   base_ref=""
