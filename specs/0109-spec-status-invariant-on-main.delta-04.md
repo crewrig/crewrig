@@ -1,7 +1,7 @@
 ---
 id: "0109"
 slug: spec-status-invariant-on-main
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1441

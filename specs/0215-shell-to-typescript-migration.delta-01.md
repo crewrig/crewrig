@@ -1,7 +1,7 @@
 ---
 id: "0215"
 slug: shell-to-typescript-migration
-status: draft
+status: approved
 complexity: large
 interaction-mode: INTERMEDIATE
 related-issue: 1231
