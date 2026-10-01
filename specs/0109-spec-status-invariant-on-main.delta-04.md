@@ -226,8 +226,8 @@ linter becomes non-conforming. That is a breaking normative change under
      PR record, which is the same for every branch. Two consequences follow:
      - two branches whose heads reach the same implementation commits for
        `N` give `D` the same choice;
-     - a merge only adds reachable commits, so the choice on a merge result
-       is never lower than on either parent.
+     - a merge only adds reachable commits, so a file that either parent
+       gives `implemented` is also `implemented` on the merge result.
 
      The issue-state arms are not graph functions: the `archived` arm, and
      the closed-as-completed ambiguity arm. An issue can be reopened, which
@@ -300,8 +300,9 @@ linter becomes non-conforming. That is a breaking normative change under
       by Requirement 23 on the sync's merge result, and SHALL NOT merge until
       the new linter passes on its head;
     - after the final merge of R37, `main` reaches every commit both
-      branches reached. By Requirement 23, no file's status on `main` is
-      then lower than it was on either branch;
+      branches reached. Any conflict on a `status` line in that merge is
+      resolved by Requirement 23's *Conflict resolution* clause, so no file
+      regresses on `main`;
     - after that first sync, Requirements 2 and 19 apply on the release branch
       as on `main`, so no further residual can arise unseen.
 11. **Requirement 27 — the extension is covered.** The spec linter's test
@@ -464,9 +465,10 @@ And   the release branch, which reaches the same implementation commit,
       also records it implemented
 And   the 0243 family recorded implemented on the release branch only
 When  the final merge of R37 brings the release branch into main
-Then  every file reads, on main, a status at least as high as it read on
-      either branch
-And   a conflict on a status line resolves to the higher value
+Then  every file recorded implemented on either branch reads implemented
+      on main
+And   any conflict on a status line is resolved by Requirement 23's
+      Conflict resolution clause, with no regression
 ```
 
 *Scenario:* a terminal status sharing the ticket does not block
