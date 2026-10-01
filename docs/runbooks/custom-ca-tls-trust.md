@@ -39,8 +39,12 @@ export NODE_EXTRA_CA_CERTS="$CA"
 export CURL_CA_BUNDLE="$CA"
 export PIP_CERT="$CA"
 export GIT_SSL_CAINFO="$CA"
-export UV_NATIVE_TLS=1
+export UV_SYSTEM_CERTS=true
 ```
+
+`UV_SYSTEM_CERTS` is the current uv name; older uv releases call it
+`UV_NATIVE_TLS` (now deprecated), and a uv that predates both still honours
+`SSL_CERT_FILE`.
 
 `setup-*-interactive.sh` offers to write exactly these lines to
 `~/.crewrig/tls-env.sh` for you (see *Automated delegation* below).
@@ -52,7 +56,7 @@ framework's network-touching operations to the mechanism that fixes them.
 
 | Framework operation | Tool | Trust mechanism (macOS + Linux) |
 |---|---|---|
-| MemPalace install (`pipx install mempalace`, `pipx inject … chromadb`) | pip / uv | `PIP_CERT`, `REQUESTS_CA_BUNDLE`; for uv `UV_NATIVE_TLS=1` (use the OS store) or `SSL_CERT_FILE` |
+| MemPalace install (`pipx install mempalace`, `pipx inject … chromadb`) | pip / uv | `PIP_CERT`, `REQUESTS_CA_BUNDLE`; for uv `UV_SYSTEM_CERTS=true` (use the OS store; `UV_NATIVE_TLS=1` on older uv) or `SSL_CERT_FILE` |
 | MCP server launch (`npx …`, sequential-thinking) | Node.js / npm | `NODE_EXTRA_CA_CERTS`; npm also honours `npm config set cafile <CA>` |
 | Version control over HTTPS | git | `GIT_SSL_CAINFO=<CA>` (or `git config --global http.sslCAInfo <CA>`) |
 | Tool/binary installers (taskfile / yq / plannotator via `curl` or `wget`) | curl / wget | `CURL_CA_BUNDLE`; `curl --cacert <CA>`; `wget --ca-certificate <CA>` |
@@ -109,7 +113,8 @@ explicitly (without editing your profile):
 
 `scripts/start-chroma-server.sh`, `hooks/mempalace-transcript.sh`, and
 `scripts/prune-transcripts.sh` source the managed file at entry for the same
-reason.
+reason. The standalone `task install-mempalace` runs its `pipx install` through
+`tls-exec.sh` too, so a MemPalace upgrade outside setup inherits the trust.
 
 ## Impact analysis — framework-triggered network operations
 
@@ -131,7 +136,8 @@ require custom-CA trust behind an intercepting gateway:
 ## Troubleshooting
 
 - **`pipx`/`uv` still fails after exporting `SSL_CERT_FILE`:** set
-  `UV_NATIVE_TLS=1` so uv reads the OS trust store natively, and confirm your CA
+  `UV_SYSTEM_CERTS=true` (`UV_NATIVE_TLS=1` on older uv) so uv reads the OS
+  trust store natively, and confirm your CA
   is actually in that store (`update-ca-certificates` / `update-ca-trust` /
   Keychain).
 - **`npx` fails but `curl` works:** Node ignores the OS store — it needs
