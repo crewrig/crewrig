@@ -59,8 +59,8 @@
 # `yq` spawns: 1 (reference) + F (one key harvest per workflow file) + 1 (GitLab
 # key harvest) + J (one step-record pass per workflow file holding an attributed
 # portable job, J <= F) + 1 (GitLab cache arm, only when a capability declares
-# `cache:`) — F + J + 3 at most; 34 on today's tree (F = 17, J = 14), against
-# one spawn per value before.
+# `cache:`) — F + J + 3 at most, independent of the number of capabilities, jobs
+# and steps, against one spawn per value before.
 
 set -euo pipefail
 
