@@ -232,6 +232,28 @@ the hooks entry carries no guarded-form result instead, the module produces
 the bare form of requirement 16(c), and the guard test fails, because row 37f
 carries a result that the entry does not.
 
+**Scenario:** The guarded prefix is recognised on a hooks descriptor
+
+Given the hooks entry in state (e) of requirement 32, and a Windows Antigravity
+CLI `hooks.json` holding two entries for the fixture descriptor of requirement
+25: the command the module produces for it,
+`set NoDefaultCurrentDirectoryInExePath=1&& node C:/repo/hooks/<fixture>.ts <args>`,
+and the same text with a space before `&&`
+When setup runs over that file with `keep` (then with `remove`)
+Then, with `keep`, the first entry is kept as the direct form and the second
+is left byte-identical and reported as an unrecognised shape, with nothing
+written and no backup created. With `remove`, the first entry is deleted after
+a 0600 backup and the second is left byte-identical.
+
+**Scenario:** A mixed guarded-form result is hijacked
+
+Given a statusline entry, `conforming`, carrying the bare planted-binary result
+and a guarded-form result whose `node.cmd` and `node.bat` plants were bypassed
+but whose `node.exe` plant ran
+When setup is asked for a Windows `statusLine.command`
+Then the entry is in state (d) of requirement 32, and the module refuses with
+that state's diagnostic.
+
 **Scenario:** macOS and Linux are untouched
 
 Given the entry of the first scenario and a checkout on macOS (then Linux)
@@ -337,9 +359,10 @@ Replacement:
 >     the template and are never judged as part of the path, which requirement
 >     17 judges for `cmd.exe` as before. The hooks surface, whose `cmd.exe` runs
 >     in `~\.gemini\config` (row 37), SHALL receive the same guarded form under
->     requirement 33. The decision is made from its own row and entry by the
->     states of requirement 32. While its entry carries no guarded-form result,
->     it keeps the bare form of this item, which no row wires on Windows
+>     requirement 33. The outcome for each surface is the one requirement 32
+>     gives in the state of that surface's own row and entry. In the states
+>     where requirement 32 gives the hooks surface the bare form of this item,
+>     that text is the module's output only, and no row writes it on Windows
 >     (requirement 33). Should row 37e
 >     ever record an interpreter or quoting other than row 37b's, the module
 >     refuses (requirement 18). Every absolute path SHALL use forward slashes on
@@ -390,7 +413,7 @@ Replacement:
 >     32(e) does not apply, it SHALL state the statusline refusal of requirement
 >     32 as a separate case, with the evidence of row 37e and ticket #1392. It
 >     SHALL state the residual of requirement 36. When requirement 17 and a
->     statusline diagnostic of requirement 32(a) to 32(d) would both refuse, the
+>     statusline refusal of requirement 32 would both refuse, the
 >     statusline diagnostic SHALL be the one reported, since it concerns the
 >     surface and precedes any judgement of the path. No command line that
 >     cannot launch, or that would launch the wrong program, is ever written.
@@ -616,7 +639,9 @@ Replacement:
 > result and the other does not.
 >
 > The null case: an entry that carries no guarded-form result is not malformed.
-> It is the delta-02 state, and the module SHALL refuse under requirement 32(c).
+> It is the delta-02 state. When it also carries the bare result and is
+> `conforming`, it is state (c) of requirement 32, and the module SHALL refuse
+> the statusline under that state.
 > A row or entry that omits the bare planted-binary result is still malformed,
 > and the module SHALL treat a Windows `statusLine.command` entry that lacks it
 > as unmeasured — whatever its status, `contradicting` included, and whatever
@@ -625,9 +650,11 @@ Replacement:
 > release coverage: a later delta that records its own measurement in a new
 > row or a revised entry, in one diff, never a silent widening of this one.
 
-Requirement 32 — the conforming branch splits in three states, and one of them
-yields a command line, judged by requirement 17. Branches (a) and (b) are
-unchanged. Original (delta-02, ADDED):
+Requirement 32 — one exhaustive list of entry states now covers both
+Antigravity CLI surfaces on Windows, with an outcome for each surface. The
+statusline outcomes of delta-02's (a) and (b) are unchanged, and its (c) splits
+in three, one of which yields a command line judged by requirement 17.
+Original (delta-02, ADDED):
 
 > **Requirement 32 — Precedence among the statusline diagnostics.** For a Windows
 > Antigravity `statusLine.command` the module SHALL report exactly one refusal
@@ -652,38 +679,58 @@ unchanged. Original (delta-02, ADDED):
 
 Replacement:
 
-> **Requirement 32 — States of the Windows statusline entry (reworded at
-> delta-03).** For a Windows Antigravity `statusLine.command` the module SHALL
-> decide from the constant alone, by the state of the entry, between exactly one
-> refusal diagnostic and the guarded form:
+> **Requirement 32 — States of the Windows Antigravity CLI entries (reworded
+> at delta-03).** For each Antigravity CLI surface on Windows, the
+> `statusLine.command` and the hooks surface, the module SHALL decide from the
+> constant alone, by the state of that surface's entry, between exactly one
+> refusal diagnostic, the bare form of requirement 16(c) and the guarded form.
+> The state is read from four facts about the entry: whether it exists, whether
+> it carries the bare planted-binary result, its status, and its guarded-form
+> result, which is absent, holding or hijacked. A guarded-form result is
+> **holding** only when every planted candidate it records was bypassed, so
+> that the real `node` ran and no planted one did. A single hijack, even one
+> among several candidates, makes the result **hijacked**.
 >
-> - (a) no entry, or an entry that lacks the bare planted-binary result
->   whatever its status: refusal, the surface is unmeasured (requirement 18);
-> - (b) an entry that carries the bare planted-binary result and is
->   `contradicting`: refusal naming the recorded shape (requirement 18);
-> - (c) an entry that carries the bare planted-binary result, is `conforming`
->   and carries no guarded-form result: refusal naming the working-directory
->   lookup of requirement 16(c) and ticket #1392, the delta-02 diagnostic;
-> - (d) an entry that carries the bare planted-binary result, is `conforming`
->   and carries a guarded-form result recording that the planted binary ran:
->   refusal saying that the recorded measurement found the guarded form
->   hijacked, and naming ticket #1392;
-> - (e) an entry that carries the bare planted-binary result, is `conforming`
->   and carries a guarded-form result recording that the real `node` ran and
->   the planted one did not: no refusal from the surface. The module builds the
->   guarded form of requirement 16(c) and judges the checkout path under
->   requirement 17.
+> | State | Entry | `statusLine.command` | Hooks surface |
+> |---|---|---|---|
+> | (a1) | none | refusal: unmeasured | refusal: unmeasured |
+> | (a2) | no bare result, a guarded-form result (malformed, requirement 31) | refusal: unmeasured | refusal: unmeasured |
+> | (a3) | no bare result, no guarded-form result, `conforming` | refusal: unmeasured | bare form |
+> | (a4) | no bare result, no guarded-form result, `contradicting` | refusal: unmeasured | refusal: the recorded shape |
+> | (b) | bare result, `contradicting`, any guarded-form result | refusal: the recorded shape | refusal: the recorded shape |
+> | (c) | bare result, `conforming`, no guarded-form result | refusal: the working-directory lookup, naming #1392 (the delta-02 diagnostic) | bare form |
+> | (d) | bare result, `conforming`, a hijacked guarded-form result | refusal: the guarded form was found hijacked, naming #1392 | refusal: the same, worded for the hooks surface |
+> | (e) | bare result, `conforming`, a holding guarded-form result | guarded form | guarded form |
 >
-> The five states are mutually exclusive by construction. (a) takes every entry
-> without the bare result. (b) takes the `contradicting` entries among the
-> rest. (c), (d) and (e) divide the `conforming` ones by their guarded-form
-> result: absent, hijacked, or holding. Each refusal of (a) to (d) comes before,
-> and replaces, any judgement of the checkout path under requirement 17, because
-> it concerns the surface and not the path. In those states a path that
-> requirement 17 would refuse gives the same single diagnostic as one it would
-> accept. Only in (e) is the path judged. The null case: on macOS and Linux, and
-> for every surface other than the Windows Antigravity `statusLine.command`,
-> none of (a) to (e) applies and requirement 17 is judged as before.
+> The states are mutually exclusive and exhaustive by construction. (a1)
+> takes the absent entries. (a2) to (a4) divide the entries without the bare
+> result: those that carry a guarded-form result, then those that carry none,
+> by status. (b) takes the `contradicting` entries among the rest. (c), (d) and
+> (e) divide the `conforming` ones by their guarded-form result: absent,
+> hijacked or holding. A reference elsewhere in this spec to requirement 32(a)
+> means states (a1) to (a4). Three decisions are deliberate:
+>
+> - A `contradicting` entry refuses on both surfaces, even with a holding
+>   guarded-form result. The guarded form is the row 37b shape with a prefix,
+>   so an interpreter or quoting other than row 37b's leaves the template itself
+>   unproven, and a delta must set the shape (requirement 18).
+> - The status line refuses in (a3) and (c), as delta-02 specified, while the
+>   hooks surface yields the bare form there. This is not an exposure. No row
+>   writes the hooks surface on Windows unless its entry is in (e)
+>   (requirement 33), so in those states the bare form is only the module's
+>   text, as delta-02 left it for rows 37 to 37d, and never a command line
+>   written to `hooks.json`. Keeping it avoids changing an output the shipped
+>   implementation already returns.
+> - (a4) on the hooks surface keeps the recorded-shape refusal that requirement
+>   18 gives every `contradicting` hooks triple.
+>
+> Each refusal comes before, and replaces, any judgement of the checkout path
+> under requirement 17, because it concerns the surface and not the path. In
+> those states a path that requirement 17 would refuse gives the same single
+> diagnostic as one it would accept. Wherever the outcome is the bare form or
+> the guarded form, requirement 17 then judges the path. The null case: on
+> macOS and Linux, and for every CLI other than Antigravity CLI on Windows,
+> none of these states applies, and requirements 16 and 17 apply as before.
 
 Requirement 33 — the hooks surface is now measured, and receives the same
 guarded form. The statement that rows 37 to 37d do not record its
@@ -729,22 +776,21 @@ Replacement:
 > requirements 18 and 31 SHALL apply to row 37f and that entry as it applies to
 > row 37e and the statusline entry.
 >
-> The module SHALL produce the guarded form of requirement 16(c) for the
-> Antigravity CLI hooks surface on Windows when the hooks entry is in the state
-> that requirement 32(e) describes for the statusline entry, and requirement 17
-> then judges the checkout path. When the hooks entry carries a guarded-form
-> result recording that the planted binary ran, the module SHALL refuse, with
-> the diagnostic of requirement 32(d) worded for the hooks surface. Rows C2 and
+> The module SHALL decide the hooks surface on Windows by the hooks-surface
+> column of requirement 32: the guarded form in (e), the bare form in (a3) and
+> (c), and the refusal of that column in every other state. Rows C2 and
 > C3 SHALL wire the Antigravity CLI hooks surface on Windows only through this
 > module and in the guarded form. That surface's working directory is the
 > user's own configuration directory, not a repository, so a plant there needs
 > write access to the user's home. The exposure is lower than on the status
-> line, and this is not a reason to keep the bare form.
+> line, and this is not a reason to keep the bare form. No row SHALL write an
+> Antigravity CLI hooks command line on Windows while the hooks entry is in a
+> state other than (e).
 >
-> The null case: while the hooks entry carries no guarded-form result, which is
-> the state of the release branch before this delta is implemented, the module
-> keeps producing the bare form of requirement 16(c) for that surface, as
-> delta-02 specified, and no row SHALL wire the surface on Windows. On macOS
+> The null case: the release branch, before this delta is implemented, holds
+> the hooks entry in state (a3). There the module keeps returning the bare form
+> of requirement 16(c) for that surface, as delta-02 specified, and no row
+> wires the surface on Windows. On macOS
 > and Linux nothing changes. The permitted path for a later measurement that
 > contradicts this one: a delta of this spec that revises row 37f and the hooks
 > entry in one diff, never a silent change of either.
