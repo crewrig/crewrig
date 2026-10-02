@@ -211,6 +211,19 @@ Before starting any work, perform an ordered sweep designed to be
 deterministic — independent of BM25 weights, cosine thresholds, or
 semantic similarity heuristics:
 
+**Memory unavailable — say so, never skip silently.** If no `mempalace_*`
+tool is available — neither directly callable nor discoverable through the
+host CLI's deferred-tool search — or if the sweep's first MemPalace call
+fails because the server cannot be reached, tell the user explicitly, before
+any task work, that shared memory is unavailable for this session and that
+the handoff lookup, the checkpoint, and the final flush will not happen, and
+point at `task mempalace:status`. Never skip the sweep silently and never act
+as if it had run. A deferred tool counts as available: load it and run the
+sweep. Once you have signalled, continue with the task unless the user says
+otherwise. This rule binds every role, seated reviewer passes included, and
+mirrors the *Explicit signal — never silent* step of *Retrieving the
+system-context store*.
+
 1. **Compute `<project-name>`** (see *Project name derivation* above).
 
 2. **`mempalace_status`** — enumerate the wings present. Note the
