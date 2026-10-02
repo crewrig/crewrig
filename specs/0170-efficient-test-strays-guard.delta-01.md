@@ -1,7 +1,7 @@
 ---
 id: "0170"
 slug: efficient-test-strays-guard
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1445

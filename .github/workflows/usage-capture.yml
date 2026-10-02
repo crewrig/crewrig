@@ -75,10 +75,10 @@ jobs:
         run: npm install
 
       - name: Validate usage capture adapters and fixtures
-        run: bash scripts/tests/test-usage-capture.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-capture.sh
 
       - name: Validate the usage-capture opt-in of Claude Code, Gemini CLI and Copilot CLI
-        run: bash scripts/tests/test-setup-usage-capture-optin.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-usage-capture-optin.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

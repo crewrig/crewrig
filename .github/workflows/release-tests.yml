@@ -68,10 +68,10 @@ jobs:
         run: npm install --include=dev
 
       - name: Test the release driver (hermetic)
-        run: bash scripts/tests/test-monorepo-release.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release.sh
 
       - name: Test the release driver (real engine, local forge stub)
-        run: bash scripts/tests/test-monorepo-release-engine.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release-engine.sh
 
       - name: Test the lint-safe changelog facade (issue #1364)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-changelog.test.ts

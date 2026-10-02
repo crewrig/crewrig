@@ -222,11 +222,30 @@ By default, when a capability declares `cache:`, `scripts/build-ci.sh` wraps
 each hermetic `bash scripts/…` command in `scripts/ci-cache-guard.sh` so a
 cache hit skips re-execution. A capability MAY set `cache-guard: false` to
 opt out of that coarse wrapping — used when a command manages its own
-fine-grained, content-addressed cache (e.g. `scripts/check-test-strays.sh`
-caching per-suite verdicts). With `cache-guard: false`, the command is emitted
-bare (identical to the GitHub Actions step) while the engine `cache:` block and
-`GIT_DEPTH: "0"` are still emitted, so the engine cache persists the command's
-own cache directory across runs.
+fine-grained, content-addressed cache, so that the coarse key neither
+invalidates it needlessly nor skips it. With `cache-guard: false`, the command
+is emitted bare (identical to the GitHub Actions step) while the engine
+`cache:` block is still emitted, so the engine cache persists the command's own
+cache directory across runs. An illustrative entry (not an entry of the
+reference):
+
+```yaml
+  - id: self-caching-check
+    cache:
+      files: ["scripts/lib/**"]
+      env: []
+    cache-guard: false
+    command:
+      - bash scripts/some-self-caching-check.sh
+```
+
+Which capabilities currently use the opt-out is read from the reference
+itself (`grep -n 'cache-guard:' ci/ci-capabilities.yml`); this document does
+not list them, so the list cannot go stale here.
+
+A command that already starts with `bash scripts/` is wrapped whatever it is,
+including a stray-scanned suite command; the two guards then nest, the cache
+guard outside and the scan inside (see *Stray scan of registered test suites*).
 
 ### GitLab generation
 
@@ -361,10 +380,13 @@ or the reference is missing. Its regression test,
 through the separate `changeset-coverage-test` capability (no `paths:`
 filter).
 
-`check-test-strays.sh` is diff-scoped by design (spec 0170): run bare by the
-exhaustive job it scans only the suites changed by `HEAD~1`, so the daily run
-adds nothing for that one command. It stays covered before merge because
-`test-wiring` owns `scripts/tests/**`.
+The exhaustive run scans strays too. It executes each reference command with
+`eval`, and every registered suite command is declared in the scanned form
+(see *Stray scan of registered test suites*), so the daily run checks every
+suite for strays through the commands it already runs, with no extra code.
+`check-test-strays.sh` is not diff-scoped any more: it executes no suite and
+only runs `bash -n` over the suites (spec 0170 delta-01 R9), so the exhaustive
+run adds nothing for that command and needs nothing from it.
 
 | Engine | `scheduled` | `manual` |
 |---|---|---|
@@ -471,6 +493,58 @@ in-job filter's output, and glob semantics (the engines' matchers can differ on
 the same spelling). The `hashFiles(...)` lists of an `actions/cache` key and the
 `--key-files` lists remain mirrored by hand: whoever extends a cache-guarded
 capability's `cache.files` mirrors them there.
+
+## Stray scan of registered test suites
+
+A *stray* is a command line of a test suite that does not exist and whose
+failure nothing consumed: the shell prints `<cmd>: command not found` and, unless
+`set -e` is active, the suite carries on and may exit 0. Spec 0170 delta-01
+detects strays **once per suite, in the job that already runs it**, instead of
+running every changed suite a second time in `test-wiring`.
+
+**The scanned command form.** Every registered suite command is declared, in
+the reference and in the matching hand-authored GitHub Actions step, as:
+
+```text
+bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/<suite>
+```
+
+GitLab gets the same line from `scripts/build-ci.sh`; in a capability that
+declares `cache:` the generator adds its cache layer around it
+(`bash scripts/ci-cache-guard.sh --cache-dir … -- bash scripts/ci-cache-guard.sh --stray-scan -- bash …`),
+so the scan runs inside the cache guard and a stray leaves no pass marker.
+`scripts/check-ci-parity.sh` fails, naming the capability and the platform, when
+a GitHub step does not match the declared command.
+
+**The two modes of the guard.** `scripts/ci-cache-guard.sh` has two mutually
+exclusive modes; combining `--stray-scan` with `--cache-dir`, `--key-files` or
+`--key-env` is a usage error (exit 2).
+
+| Mode | Invocation | Effect |
+|---|---|---|
+| Cache (spec 0147) | `--cache-dir … --key-files … --key-env … -- <command>` | Skips the command on a cache hit, runs it on a miss and writes a marker only on success. |
+| Stray scan (spec 0170 delta-01) | `--stray-scan -- <command>` | Runs the command exactly once with its output passed through unchanged, and fails when the command's output contains `command not found`. The verdict window is that one command. |
+
+The exit codes (70 stray, 71 detector inactive, the command's own status
+otherwise) and the classes of stray the scan cannot see are documented in the
+header of `scripts/ci-cache-guard.sh` and pinned by its regression tests; read
+them there rather than here. A job whose path filter is false, or whose command
+is served from the cache, runs no scan and pays nothing for it.
+
+**The wiring check (R17).** `scripts/check-stray-scan-wiring.ts` runs in the
+`path-ownership` capability, which has no `paths:` filter. It fails the build
+when (a) a capability `command` or a workflow `run:` line executes a registered
+suite without the scan, or (b) a suite that has an owning capability is matched
+by the pull-request `paths:` of none of its owners (an owner with no `paths:`
+filter always matches). A suite with no owner is left to
+`scripts/check-test-wiring.sh` and `ci/test-wiring-exemptions.txt`.
+
+**When a suite prints the phrase.** A suite that prints `command not found` on
+purpose (an echo, an assertion on it) fails the scan with exit 70, because the
+scan matches the text and cannot tell a message from a quotation. The remedy is
+to **reword the suite** so its output no longer contains the phrase; there is no
+exemption switch. This is why the preflight messages of the `test-usage-*` suites
+are worded around it.
 
 ## Traceability (contract C2)
 

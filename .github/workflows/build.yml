@@ -111,10 +111,10 @@ jobs:
         if: steps.filter.outputs.model-resolution == 'true'
         with:
           path: .ci-cache
-          key: model-resolution-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**') }}
+          key: model-resolution-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', 'scripts/ci-cache-guard.sh') }}
       - name: Test Model Resolution
         if: steps.filter.outputs.model-resolution == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/tests/test-model-resolution.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-model-resolution.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -147,10 +147,10 @@ jobs:
         if: steps.filter.outputs.agent-profile-migration == 'true'
         with:
           path: .ci-cache
-          key: agent-profile-migration-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**') }}
+          key: agent-profile-migration-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', 'scripts/ci-cache-guard.sh') }}
       - name: Test Agent Profile Migration
         if: steps.filter.outputs.agent-profile-migration == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**" --key-env "" -- bash scripts/tests/test-agent-profile-migration.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-agent-profile-migration.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -209,16 +209,16 @@ jobs:
         run: bash scripts/check-extension-pivot.sh
       - name: Test Check Extension Pivot
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/tests/test-check-extension-pivot.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-pivot.sh
       - name: Test Build Extension
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/tests/test-build-extension.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-extension.sh
       - name: Test Extension Render Conformance
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/tests/test-extension-render-conformance.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-render-conformance.sh
       - name: Test Extension MCP Manifest
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/tests/test-extension-mcp-manifest.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-mcp-manifest.sh
       - name: Build Extension --check
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/build-extension.sh --check
@@ -227,22 +227,22 @@ jobs:
         run: bash scripts/check-extension-hook-tokens.sh
       - name: Test Check Extension Hook Tokens
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/tests/test-check-extension-hook-tokens.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-tokens.sh
       - name: Check Extension Hook Map
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/check-extension-hook-map.sh
       - name: Test Check Extension Hook Map
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/tests/test-check-extension-hook-map.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-map.sh
       - name: Test Migrate Extension
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/tests/test-migrate-extension.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-migrate-extension.sh
       - name: Test Release Package Extension
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/tests/test-release-package-extension.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-release-package-extension.sh
       - name: Test Create Extension Combinations
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/tests/test-create-extension-combinations.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-create-extension-combinations.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -269,7 +269,7 @@ jobs:
         run: bash scripts/check-extension-provenance.sh
       - name: Test Check Extension Provenance
         if: steps.filter.outputs.extension-provenance == 'true'
-        run: bash scripts/tests/test-check-extension-provenance.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-provenance.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -299,10 +299,10 @@ jobs:
         run: bash scripts/check-extension-manifest-version.sh
       - name: Test Check Extension Manifest Version
         if: steps.filter.outputs.extension-manifest == 'true'
-        run: bash scripts/tests/test-check-extension-manifest-version.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-manifest-version.sh
       - name: Test Check Extension Version Bump
         if: steps.filter.outputs.extension-manifest == 'true'
-        run: bash scripts/tests/test-check-extension-version-bump.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-version-bump.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -331,16 +331,16 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
       - name: Test Install Claude Plugin Marketplace
         if: steps.filter.outputs.extension-install == 'true'
-        run: bash scripts/tests/test-install-claude-plugin-marketplace.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-install-claude-plugin-marketplace.sh
       - name: Test Build Claude Plugin Agents Glob
         if: steps.filter.outputs.extension-install == 'true'
-        run: bash scripts/tests/test-build-claude-plugin-agents-glob.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-claude-plugin-agents-glob.sh
       - name: Test Gemini Agent Frontmatter
         if: steps.filter.outputs.extension-install == 'true'
-        run: bash scripts/tests/test-gemini-agent-frontmatter.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-gemini-agent-frontmatter.sh
       - name: Test Install Extension All
         if: steps.filter.outputs.extension-install == 'true'
-        run: bash scripts/tests/test-install-extension-all.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-install-extension-all.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -370,10 +370,10 @@ jobs:
         run: bash scripts/check-core-paths.sh
       - name: Test Check Core Paths
         if: steps.filter.outputs.core-paths == 'true'
-        run: bash scripts/tests/test-check-core-paths.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh
       - name: Test Sync From Upstream
         if: steps.filter.outputs.core-paths == 'true'
-        run: bash scripts/tests/test-sync-from-upstream.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-sync-from-upstream.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -408,10 +408,10 @@ jobs:
           key: ${{ hashFiles('scripts/check-ci-parity.sh', 'scripts/build-ci.sh', 'scripts/ci-cache-guard.sh', 'scripts/ci-changeset-coverage.sh', 'scripts/tests/test-check-ci-parity.sh', 'scripts/tests/test-build-ci.sh', 'ci/ci-capabilities.yml', '.gitlab-ci.yml', '.github/workflows/build.yml', 'docs/ci-reference-format.md') }}
       - name: Test Check Ci Parity
         if: steps.filter.outputs.ci-parity == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/tests/test-check-ci-parity.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-ci-parity.sh
       - name: Test Build Ci
         if: steps.filter.outputs.ci-parity == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/tests/test-build-ci.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-ci.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -431,13 +431,13 @@ jobs:
         if: steps.filter.outputs.docs-index == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/build-docs-index.sh', 'scripts/tests/test-build-docs-index.sh', 'docs/**') }}
+          key: ${{ hashFiles('scripts/build-docs-index.sh', 'scripts/tests/test-build-docs-index.sh', 'docs/**', 'scripts/ci-cache-guard.sh') }}
       - name: Build Docs Index
         if: steps.filter.outputs.docs-index == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**" --key-env "" -- bash scripts/build-docs-index.sh --check
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/build-docs-index.sh --check
       - name: Test Build Docs Index
         if: steps.filter.outputs.docs-index == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**" --key-env "" -- bash scripts/tests/test-build-docs-index.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/tests/test-build-docs-index.sh,docs/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-docs-index.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -466,7 +466,7 @@ jobs:
         run: bash scripts/check-figure-labels.sh
       - name: Test Check Figure Labels
         if: steps.filter.outputs.figure-labels == 'true'
-        run: bash scripts/tests/test-check-figure-labels.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-figure-labels.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -509,52 +509,52 @@ jobs:
         if: steps.filter.outputs.mempalace == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/tests/test-mempalace-*.sh', 'scripts/tests/mempalace-http-client-reuse.test.ts', 'scripts/tests/test-system-context-store.sh', 'scripts/tests/test-setup-antigravity-transcript.sh', 'scripts/tests/test-setup-claude-transcript.sh', 'scripts/tests/test-setup-copilot-transcript.sh', 'scripts/tests/test-setup-gemini-transcript.sh', 'scripts/tests/test-antigravity-component-install.sh', 'scripts/tests/test-antigravity-discovery-probe.sh', 'scripts/lib/**', 'artifacts/library/skills/mempalace/**', 'artifacts/library/skills/harness-report/**', 'config/copilot/*.json.template') }}
+          key: ${{ hashFiles('scripts/tests/test-mempalace-*.sh', 'scripts/tests/mempalace-http-client-reuse.test.ts', 'scripts/tests/test-system-context-store.sh', 'scripts/tests/test-setup-antigravity-transcript.sh', 'scripts/tests/test-setup-claude-transcript.sh', 'scripts/tests/test-setup-copilot-transcript.sh', 'scripts/tests/test-setup-gemini-transcript.sh', 'scripts/tests/test-antigravity-component-install.sh', 'scripts/tests/test-antigravity-discovery-probe.sh', 'scripts/lib/**', 'artifacts/library/skills/mempalace/**', 'artifacts/library/skills/harness-report/**', 'config/copilot/*.json.template', 'scripts/ci-cache-guard.sh') }}
       - name: Test Mempalace HTTP Client Reuse
         if: steps.filter.outputs.mempalace == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-http-client-reuse.test.ts
       - name: Test Mempalace Transcript Hook
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-transcript-hook.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-transcript-hook.sh
       - name: Test Setup Antigravity Transcript
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-setup-antigravity-transcript.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-antigravity-transcript.sh
       - name: Test Setup Claude Transcript
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-setup-claude-transcript.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-claude-transcript.sh
       - name: Test Worktree Git Guard
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-worktree-git-guard.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-worktree-git-guard.sh
       - name: Test Setup Copilot Transcript
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-setup-copilot-transcript.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-copilot-transcript.sh
       - name: Test Setup Gemini Transcript
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-setup-gemini-transcript.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-gemini-transcript.sh
       - name: Test Antigravity Component Install
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-antigravity-component-install.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-antigravity-component-install.sh
       - name: Test Antigravity Discovery Probe
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-antigravity-discovery-probe.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-antigravity-discovery-probe.sh
       - name: Test Mempalace Version Range
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-version-range.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-version-range.sh
       - name: Python3  M Pip Install   Quiet Packaging
         if: steps.filter.outputs.mempalace == 'true'
         run: python3 -m pip install --quiet packaging
       - name: Test Mempalace Pin
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-pin.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-pin.sh
       - name: Test Mempalace Runtime Guard
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-runtime-guard.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-runtime-guard.sh
       - name: Test Mempalace Doctor
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-mempalace-doctor.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-doctor.sh
       - name: Test System Context Store
         if: steps.filter.outputs.mempalace == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template" --key-env "" -- bash scripts/tests/test-system-context-store.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-mempalace-*.sh,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-system-context-store.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -562,8 +562,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # full history so the base ref resolves (spec 0157)
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -577,26 +575,21 @@ jobs:
               - 'scripts/tests/**'
               - 'hooks/worktree-git-guard.sh'
               - 'ci/test-wiring-exemptions.txt'
-      - uses: actions/cache@v4
-        if: steps.filter.outputs.test-wiring == 'true'
-        with:
-          path: .ci-cache
-          key: ${{ hashFiles('scripts/lib/**', 'scripts/check-test-strays.sh') }}
       - name: Check Test Wiring
         if: steps.filter.outputs.test-wiring == 'true'
         run: bash scripts/check-test-wiring.sh
       - name: Test Check Test Wiring
         if: steps.filter.outputs.test-wiring == 'true'
-        run: bash scripts/tests/test-check-test-wiring.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-wiring.sh
       - name: Check Test Strays
         if: steps.filter.outputs.test-wiring == 'true'
         run: bash scripts/check-test-strays.sh
       - name: Test Check Test Strays
         if: steps.filter.outputs.test-wiring == 'true'
-        run: bash scripts/tests/test-check-test-strays.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-strays.sh
       - name: Test Worktree Git Guard
         if: steps.filter.outputs.test-wiring == 'true'
-        run: bash scripts/tests/test-worktree-git-guard.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-worktree-git-guard.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -634,31 +627,31 @@ jobs:
         if: steps.filter.outputs.chroma-mcp == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/tests/test-chroma-*.sh', 'scripts/tests/test-mcp-daemon.sh', 'scripts/tests/test-palace-path-propagation.sh', 'scripts/tests/test-repair-mempalace-http.sh', 'scripts/tests/test-rotate-mempalace-token.sh', 'scripts/tests/test-worktree-claim.sh', 'scripts/mcp-daemon.sh', 'scripts/repair-mempalace-http.sh', 'scripts/switch-mempalace-http.sh', 'scripts/lib/**', 'config/launchd/**', 'config/systemd/**') }}
+          key: ${{ hashFiles('scripts/tests/test-chroma-*.sh', 'scripts/tests/test-mcp-daemon.sh', 'scripts/tests/test-palace-path-propagation.sh', 'scripts/tests/test-repair-mempalace-http.sh', 'scripts/tests/test-rotate-mempalace-token.sh', 'scripts/tests/test-worktree-claim.sh', 'scripts/mcp-daemon.sh', 'scripts/repair-mempalace-http.sh', 'scripts/switch-mempalace-http.sh', 'scripts/lib/**', 'config/launchd/**', 'config/systemd/**', 'scripts/ci-cache-guard.sh') }}
       - name: Test Chroma Fd Limits
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-chroma-fd-limits.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-fd-limits.sh
       - name: Test Chroma Health Race
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-chroma-health-race.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-health-race.sh
       - name: Test Chroma Server
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-chroma-server.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-server.sh
       - name: Test Mcp Daemon
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-mcp-daemon.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mcp-daemon.sh
       - name: Test Palace Path Propagation
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-palace-path-propagation.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-palace-path-propagation.sh
       - name: Test Repair Mempalace Http
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-repair-mempalace-http.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-repair-mempalace-http.sh
       - name: Test Rotate Mempalace Token
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-rotate-mempalace-token.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-rotate-mempalace-token.sh
       - name: Test Worktree Claim
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**" --key-env "" -- bash scripts/tests/test-worktree-claim.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-worktree-claim.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -688,76 +681,76 @@ jobs:
           python-version: "3.12"
       - name: Test E2E Assert Lib
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-assert-lib.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-assert-lib.sh
       - name: Test E2E Auth Claude Json
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-auth-claude-json.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-auth-claude-json.sh
       - name: Test E2E Auth Common
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-auth-common.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-auth-common.sh
       - name: Test E2E Auth Ollama
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-auth-ollama.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-auth-ollama.sh
       - name: Test E2E Auth Ready
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-auth-ready.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-auth-ready.sh
       - name: Test E2E Auth Taskfile
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-auth-taskfile.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-auth-taskfile.sh
       - name: Test E2E Defaults Toml
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-defaults-toml.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-defaults-toml.sh
       - name: Test E2E Docker Images
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-docker-images.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-docker-images.sh
       - name: Test E2E Gitignore
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-gitignore.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-gitignore.sh
       - name: Test E2E Judge Config
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-judge-config.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-judge-config.sh
       - name: Test E2E Libs Readme
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-libs-readme.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-libs-readme.sh
       - name: Test E2E Llm Judge Lib
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-llm-judge-lib.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-llm-judge-lib.sh
       - name: Test E2E Probes
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-probes.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-probes.sh
       - name: Test E2E Readme
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-readme.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-readme.sh
       - name: Test E2E Report
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-report.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-report.sh
       - name: Test E2E Runner Delegation
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-runner-delegation.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-runner-delegation.sh
       - name: Test E2E Runner Taskfile
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-runner-taskfile.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-runner-taskfile.sh
       - name: Test E2E Runner
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-runner.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-runner.sh
       - name: Test E2E Scenarios Parity
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-scenarios-parity.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-scenarios-parity.sh
       - name: Test E2E Scenarios Structure
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-scenarios-structure.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-scenarios-structure.sh
       - name: Test E2E Structural Lib
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-structural-lib.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-structural-lib.sh
       - name: Test E2E Taskfile
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-taskfile.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-taskfile.sh
       - name: Test E2E Toml Merge
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-toml-merge.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-toml-merge.sh
       - name: Test E2E Versions Lock
         if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: bash scripts/tests/test-e2e-versions-lock.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-e2e-versions-lock.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -782,37 +775,37 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
       - name: Test Setup Validation Backend
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-validation-backend.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-validation-backend.sh
       - name: Test Tls Delegation
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-tls-delegation.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-tls-delegation.sh
       - name: Test Setup Mcp Merge
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-mcp-merge.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-mcp-merge.sh
       - name: Test Setup Mempalace Rc Guard
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-mempalace-rc-guard.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-mempalace-rc-guard.sh
       - name: Test Setup Org Mcp
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-org-mcp.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-org-mcp.sh
       - name: Test Setup Mcp Fold Secrets Argv
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-mcp-fold-secrets-argv.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-mcp-fold-secrets-argv.sh
       - name: Test Setup Catalogue Picker
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-catalogue-picker.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-catalogue-picker.sh
       - name: Test Setup Ensure Tier Built
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-ensure-tier-built.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-ensure-tier-built.sh
       - name: Test Setup Gemini Md Cleanup
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-gemini-md-cleanup.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-gemini-md-cleanup.sh
       - name: Test Setup Init Command Instructions
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-init-command-instructions.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-init-command-instructions.sh
       - name: Test Setup Gemini Settings Merge
         if: steps.filter.outputs.setup == 'true'
-        run: bash scripts/tests/test-setup-gemini-settings-merge.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-gemini-settings-merge.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -839,7 +832,7 @@ jobs:
         run: bash scripts/check-model-mappings.sh
       - name: Test Check Model Mappings
         if: steps.filter.outputs.check-model-mappings == 'true'
-        run: bash scripts/tests/test-check-model-mappings.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-model-mappings.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -865,7 +858,7 @@ jobs:
         run: bash scripts/check-agent-profiles.sh
       - name: Test Check Agent Profiles
         if: steps.filter.outputs.check-agent-profiles == 'true'
-        run: bash scripts/tests/test-check-agent-profiles.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-agent-profiles.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -891,7 +884,7 @@ jobs:
         run: bash scripts/check-component-metadata-keys.sh
       - name: Test Check Component Metadata Keys
         if: steps.filter.outputs.check-metadata-keys == 'true'
-        run: bash scripts/tests/test-check-component-metadata-keys.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-component-metadata-keys.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -913,7 +906,7 @@ jobs:
         run: bash scripts/check-claude-agent-layout.sh
       - name: Test Check Claude Agent Layout
         if: steps.filter.outputs.check-claude-agent-layout == 'true'
-        run: bash scripts/tests/test-check-claude-agent-layout.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-claude-agent-layout.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -948,25 +941,25 @@ jobs:
         run: bash scripts/check-no-machine-paths.sh
       - name: Test Check No Machine Paths
         if: steps.filter.outputs.misc == 'true'
-        run: bash scripts/tests/test-check-no-machine-paths.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh
       - name: Check Gemini Overlay Enrollment
         if: steps.filter.outputs.misc == 'true'
         run: bash scripts/check-gemini-overlay-enrollment.sh
       - name: Test Check Gemini Overlay Enrollment
         if: steps.filter.outputs.misc == 'true'
-        run: bash scripts/tests/test-check-gemini-overlay-enrollment.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-gemini-overlay-enrollment.sh
       - name: Test Check Bash32 Portability
         if: steps.filter.outputs.misc == 'true'
-        run: bash scripts/tests/test-check-bash32-portability.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-bash32-portability.sh
       - name: Test Check Pipefail Grep
         if: steps.filter.outputs.misc == 'true'
-        run: bash scripts/tests/test-check-pipefail-grep.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-pipefail-grep.sh
       - name: Test Reserve Spec Id
         if: steps.filter.outputs.misc == 'true'
-        run: bash scripts/tests/test-reserve-spec-id.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-reserve-spec-id.sh
       - name: Test Check Spec Id Reserved
         if: steps.filter.outputs.misc == 'true'
-        run: bash scripts/tests/test-check-spec-id-reserved.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-spec-id-reserved.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -996,25 +989,25 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
       - name: Test Extract Frontmatter
         if: steps.filter.outputs.frontmatter == 'true'
-        run: bash scripts/tests/test-extract-frontmatter.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh
       - name: Test Check Skill Versions
         if: steps.filter.outputs.frontmatter == 'true'
-        run: bash scripts/tests/test-check-skill-versions.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-skill-versions.sh
       - name: Test Check Feedback Routing
         if: steps.filter.outputs.frontmatter == 'true'
-        run: bash scripts/tests/test-check-feedback-routing.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-feedback-routing.sh
       - name: Test Assembly Verification
         if: steps.filter.outputs.frontmatter == 'true'
-        run: bash scripts/tests/test-assembly-verification.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh
       - name: Test Artifact Build Install Scope
         if: steps.filter.outputs.frontmatter == 'true'
-        run: bash scripts/tests/test-artifact-build-install-scope.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-artifact-build-install-scope.sh
       - name: Test Component Tier Resolution
         if: steps.filter.outputs.frontmatter == 'true'
-        run: bash scripts/tests/test-component-tier-resolution.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-component-tier-resolution.sh
       - name: Test PR Logbook Label Scope
         if: steps.filter.outputs.frontmatter == 'true'
-        run: bash scripts/tests/test-pr-logbook-label-scope.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-pr-logbook-label-scope.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1042,7 +1035,7 @@ jobs:
         run: bash scripts/check-markdown-links.sh
       - name: Test Check Markdown Links
         if: steps.filter.outputs.markdown-links == 'true'
-        run: bash scripts/tests/test-check-markdown-links.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-markdown-links.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1089,6 +1082,12 @@ jobs:
 
       - name: Check path ownership
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts
+
+      - name: Test the stray-scan guard and its wiring check
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts
+
+      - name: Check stray-scan wiring
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-stray-scan-wiring.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1275,7 +1274,7 @@ jobs:
       # the suite belongs: it provisions the npm-installed node_modules the
       # suite needs, which the hermetic check-components job does not.
       - name: Test spec linter regression
-        run: bash scripts/tests/test-spec-linter.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-spec-linter.sh
 
       - name: Lint specs
         env:

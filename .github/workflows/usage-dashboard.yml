@@ -61,7 +61,7 @@ jobs:
         run: npm install
 
       - name: Validate the usage dashboard's three delivery forms (no network, no daemon)
-        run: bash scripts/tests/test-usage-dashboard.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-dashboard.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
