@@ -25,20 +25,22 @@ issuecomment-5949084611) led to two further changes.
 - The `unrecognised` warning of R5 is split by cause, so a file that is not
   strict never points at a repair that does nothing (s4-F1);
 - R4's strict definition is stated in bytes (s4-F2). Amendment A1, measured
-  while verifying plan v4, adds a nesting limit and a surrogate rule to it,
-  where the `jq` binaries disagree.
+  while verifying plan v4, adds a nesting limit and a surrogate rule to it.
+- Seat pass 5 (issuecomment-5949256625) set the nesting limit at 64
+  containers, required a top-level object, pinned how a strict file's entry
+  is classified, and recorded the empty-file trade-off.
 
 ## ADDED
 
 **Scenario:** A configuration file that is not strict JSON points at a rewrite, not at the repair
 
 Given the daemon is installed and serving
-And `~/.copilot/mcp-config.json` holds a correct HTTP `mempalace` entry, but also a second concatenated JSON document, a number written `NaN`, a leading UTF-8 byte order mark, nesting deeper than 256 levels, or an unpaired surrogate escape
+And `~/.copilot/mcp-config.json` holds a correct HTTP `mempalace` entry, but also a second concatenated JSON document, a number written `NaN`, a leading UTF-8 byte order mark, containers nested deeper than 64 levels, or an unpaired surrogate escape
 When a Copilot CLI session starts
 Then the check classifies the file `unrecognised`
 And its warning names `copilot` and the path `~/.copilot/mcp-config.json`, says the file is not a single strict JSON document, and says to rewrite it as one
 And the warning names `task mempalace:switch-http` for the case where the registration still needs repair after the rewrite
-And the warning does not name `task mempalace:repair`, which reports nothing to repair on such a file
+And the warning does not name `task mempalace:repair`, which reports nothing to repair on most such files
 And no agreement with the class `task mempalace:status` reports for that file is required
 
 **Scenario:** A strict file with an unknown entry shape still points at the repair
@@ -58,6 +60,44 @@ Then it registers no session-check entry
 And it removes the earlier entry, leaving every other hook entry and every non-hook key unchanged
 
 ## MODIFIED
+
+Requirement 3: the class definitions are pinned to the mapping that
+requirement 4 measures, so the two requirements read the same way. The
+sentence that follows the quoted text, from "The four registration shapes
+recorded in" to the end of requirement 3, is unchanged.
+
+Original:
+
+<!-- markdownlint-disable-next-line MD029 -->
+> 3. **(Registration classes)** When the daemon is serving, the check SHALL
+>    classify the CLI's user-level `mempalace` registration as exactly one of:
+>    `ok` (an HTTP entry whose endpoint equals the expected endpoint);
+>    `absent` (no `mempalace` entry, including a configuration file that does
+>    not exist); `stdio` (an entry that launches a local process);
+>    `wrong-endpoint` (an HTTP entry aimed at any other endpoint); and
+>    `unrecognised` (a configuration file that does not parse, or an entry
+>    matching neither the HTTP nor the stdio shape).
+
+Replacement:
+
+<!-- markdownlint-disable-next-line MD029 -->
+> 3. **(Registration classes)** When the daemon is serving, the check SHALL
+>    classify the CLI's user-level `mempalace` registration as exactly one
+>    of the classes below. "Strict" is defined in requirement 4.
+>    - `ok`: in a strict file, an object entry that carries a `url` or a
+>      `serverUrl` key whose value equals the expected endpoint.
+>    - `wrong-endpoint`: in a strict file, an object entry that carries a
+>      `url` or a `serverUrl` key whose value is anything else, a value
+>      that is not a string included.
+>    - `stdio`: in a strict file, an object entry that carries a `command`
+>      key and neither `url` nor `serverUrl`.
+>    - `absent`: no `mempalace` entry. That covers a configuration file
+>      that does not exist, and, in a strict file, an `mcpServers` that is
+>      missing, `null`, or not an object, or a `mempalace` entry that is
+>      missing, `null`, or `false`.
+>    - `unrecognised`: a configuration file that is not strict, or a strict
+>      file whose entry is neither an object carrying `url`, `serverUrl`, or
+>      `command` nor one of the `absent` cases.
 
 Requirement 4: its agreement obligation is narrowed to files that hold one
 strict JSON document, and the check's parser is pinned.
@@ -93,17 +133,20 @@ Replacement:
 >      instead of substituting replacement characters, and that does not
 >      strip a byte order mark;
 >    - the decoded text is exactly one JSON value as RFC 8259 defines it,
->      with optional surrounding whitespace;
->    - that value is nested at most 256 levels deep, counting the top-level
->      value as level 1. RFC 8259 section 9 lets a parser limit nesting
->      depth, and the `jq` binaries `task mempalace:status` may run disagree
->      past 256 levels (`jq-1.7.1-apple` rejects deeper nesting, `jq-1.8.2`
->      accepts it);
->    - no string or member name contains an unpaired UTF-16 surrogate escape.
->      RFC 8259 section 8.2 calls the behaviour of such strings
->      unpredictable, RFC 7493 section 2.1 forbids them, and the `jq`
->      binaries disagree on them (both reject `"\ud800"`, only `jq-1.8.2`
->      accepts `"\udc00"`).
+>      with optional surrounding whitespace, and that value is a JSON object;
+>    - containers (objects and arrays) are nested at most 64 levels deep.
+>      Only containers count, the top-level object is level 1, and scalars
+>      add no level. RFC 8259 section 9 lets a parser limit nesting depth.
+>      `jq-1.7.1-apple` rejects objects nested beyond 128 levels and arrays
+>      beyond 256. An assistant configuration is a handful of levels deep,
+>      so 64 keeps a wide margin below every limit observed in a `jq`
+>      binary that `task mempalace:status` may run;
+>    - no string or member name contains an unpaired UTF-16 surrogate
+>      escape. RFC 8259 section 8.2 calls the behaviour of such strings
+>      unpredictable, and RFC 7493 section 2.1 forbids them. Their handling
+>      also diverges between the two readers: `jq` rejects a lone high
+>      surrogate and replaces a lone low one with U+FFFD, while the Node.js
+>      parser keeps both.
 >
 >    Any other existing file is *not strict*. The check SHALL classify it
 >    `unrecognised` and SHALL give it the warning that requirement 5 sets for
@@ -117,8 +160,15 @@ Replacement:
 >      transmitted JSON text and lets a parser ignore one. This check chooses
 >      not to ignore it, because no supported CLI writes one, and a visible
 >      warning is the safer error;
->    - nesting deeper than 256 levels;
+>    - a top-level value that is not an object, such as `null`, `false`, an
+>      array, or a scalar;
+>    - containers nested deeper than 64 levels;
 >    - an unpaired surrogate escape in a string or a member name.
+>
+>    In a strict file, the check SHALL locate the entry the way the reader of
+>    `task mempalace:status` does today (`.mcpServers.mempalace // empty`,
+>    measured on `main` under `jq-1.7.1-apple` and `jq-1.8.2`).
+>    Requirement 3 states the class each case yields.
 >
 >    For every strict configuration file, the check's class SHALL agree with
 >    the arrangement that `task mempalace:status` reports for the same file:
@@ -160,9 +210,10 @@ Replacement:
 >
 > - **Strict file, unknown entry shape.** When the file is strict
 >   (requirement 4) but the entry matches neither the HTTP shape nor the
->   stdio shape, the warning SHALL name `task mempalace:repair`.
+>   stdio shape, the warning SHALL name the CLI and
+>   `task mempalace:repair`.
 > - **File not strict.** When the file is not strict, the warning SHALL:
->   - name the file's path;
+>   - name the CLI and the file's path;
 >   - say that the file is not a single strict JSON document;
 >   - tell the operator to rewrite it as one, for example by saving it
 >     again without the byte order mark, or by merging the concatenated
@@ -170,10 +221,17 @@ Replacement:
 >   - then name `task mempalace:switch-http` for the case where the
 >     registration still needs repair after the rewrite.
 >
+>   An empty or truncated file also gets this text. This is an accepted
+>   trade-off. The reader of `task mempalace:status` does report such a file
+>   `unknown`, so `task mempalace:repair -- --restore-backup` could restore
+>   it, but a single rule for every file that is not strict keeps the
+>   warning correct in all cases. The warning SHALL say that restoring one
+>   of the file's timestamped `.bak` backups is one way to rewrite it.
+>
 >   It SHALL NOT name `task mempalace:repair`, because that command selects
 >   its targets with the reader of `task mempalace:status`. That reader
->   accepts many files that are not strict, and on them it reports nothing
->   to repair.
+>   accepts many files that are not strict, and on most of them it reports
+>   nothing to repair.
 
 Requirement 11: a platform exception is added (ruling D3).
 
@@ -232,11 +290,13 @@ Replacement:
 >     `127.0.0.1:41893`. They SHALL cover, at minimum: every class of
 >     requirement 3 for each of the four registration shapes, where the
 >     agreement test of requirement 4 runs over strict fixtures only,
->     including nesting at exactly 256 levels; each kind of file that
+>     including containers nested at exactly 64 levels and every entry case
+>     that requirement 4 maps for a strict file; each kind of file that
 >     requirement 4 lists as not strict, which the check classifies
 >     `unrecognised` with requirement 5's not-strict warning text, with
 >     assertions on that text, among them a leading byte order mark and
->     invalid UTF-8 asserted in the same run, nesting at 257 levels, and an
+>     invalid UTF-8 asserted in the same run, containers nested at 65 levels,
+>     a top-level value that is not an object, and an
 >     unpaired surrogate escape in a value and in a member name; setup on a
 >     platform other than macOS and
 >     Linux, which registers no check and removes an earlier entry
