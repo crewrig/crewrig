@@ -1,7 +1,7 @@
 ---
 id: "0246"
 slug: surface-missing-mempalace-registration
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1410
