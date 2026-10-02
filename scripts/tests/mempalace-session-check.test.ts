@@ -216,6 +216,51 @@ describe("per-CLI output for each class (R3, R5, R7)", () => {
   });
 });
 
+describe("the probe goes to a loopback host only (R10; security review #1474)", () => {
+  // `127.1`, `127.000.000.001`, `127.0.0.01` and `0x7f.0.0.1` all resolve to 127.0.0.1 through
+  // getaddrinfo (measured), so a
+  // check that probed them would reach the fake server listening there.
+  for (const host of [
+    "127.999.0.1",
+    "127.0.0.256",
+    "example.invalid",
+    "127.1",
+    "127.000.000.001",
+    "127.0.0.01",
+    "0x7f.0.0.1",
+  ]) {
+    test(`launcher host ${host}: no request, exit 0, the not-serving warning`, async () => {
+      await withServer("auth-refusal", async (server) => {
+        const sb = makeSandbox();
+        writeLauncher(sb, server.port, host);
+        arrange(sb, "claude", "absent-no-entry", `http://${host}:${server.port}/mcp`);
+
+        const r = await runCheck(sb, "claude");
+
+        assert.equal(r.status, 0);
+        assert.equal(server.requests.length, 0, `the check probed ${host}`);
+        const w = emittedWarning(r.stdout) ?? "";
+        assert.ok(w.includes("task mempalace:status") && w.includes("claude"), w);
+        assert.ok(r.ms < BUDGET_MS, `${Math.round(r.ms)} ms`);
+        assertNoCliInvoked(sb);
+      });
+    });
+  }
+
+  test("launcher host localhost is loopback: the probe is sent", async () => {
+    await withServer("auth-refusal", async (server) => {
+      const sb = makeSandbox();
+      writeLauncher(sb, server.port, "localhost");
+      arrange(sb, "claude", "absent-no-entry", `http://localhost:${server.port}/mcp`);
+
+      const r = await runCheck(sb, "claude");
+
+      assert.equal(server.requests.length, 1);
+      assert.ok((emittedWarning(r.stdout) ?? "").includes("task mempalace:switch-http"), r.stdout);
+    });
+  });
+});
+
 describe("silence (R1, R6)", () => {
   test("no launcher installed: silent, and no request even with MEMPALACE_MCP_PORT aimed at a live server", async () => {
     await withServer("auth-refusal", async (server) => {

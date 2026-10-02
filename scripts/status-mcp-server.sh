@@ -31,11 +31,32 @@ CREWRIG_REPO_DIR="${REPO_DIR}"
 # then probes, and compares each registration against, what is actually
 # installed (spec 0246 R4). Without a readable launcher, the environment and
 # defaults apply as before.
+#
+# The launcher's host becomes the curl target only when it is loopback:
+# `localhost`, `::1` / `[::1]`, or a dotted quad 127.a.b.c with every octet
+# 0-255 and no leading zero (curl may read one as octal). Any other host, e.g.
+# `127.999.0.1`, would go through DNS and could leave the machine, so the
+# environment/default host is probed instead (PR #1474 security finding).
+# INSTALLED_ENDPOINT itself, used only for the local registration comparison,
+# is kept verbatim.
+_status_loopback_host() {
+  local h="$1" o octet='(0|[123456789][0123456789]{0,2})'
+  case "$h" in
+    localhost|'[::1]') printf '%s\n' "$h"; return 0 ;;
+    ::1) printf '[::1]\n'; return 0 ;;
+  esac
+  [[ "$h" =~ ^127\.${octet}\.${octet}\.${octet}$ ]] || return 1
+  for o in "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"; do
+    [ "$o" -le 255 ] || return 1
+  done
+  printf '%s\n' "$h"
+}
 INSTALLED_ENDPOINT="$(mcp_installed_endpoint 2>/dev/null || true)"
 if [ -n "${INSTALLED_ENDPOINT}" ]; then
   hostport="${INSTALLED_ENDPOINT#http://}"
   hostport="${hostport%/mcp}"
-  HOST="${hostport%:*}"
+  HOST="$(_status_loopback_host "${hostport%:*}")" \
+    || HOST="${MEMPALACE_MCP_HOST:-${MCP_DAEMON_HOST_DEFAULT}}"
   PORT="${hostport##*:}"
 else
   HOST="${MEMPALACE_MCP_HOST:-${MCP_DAEMON_HOST_DEFAULT}}"

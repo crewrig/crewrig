@@ -30,6 +30,7 @@ import {
   REPO,
   SENTINEL,
   assertNoCliInvoked,
+  assertStatusProbesStubbed,
   bashLib,
   emittedWarning,
   makeSandbox,
@@ -735,6 +736,69 @@ describe("a launcher on a non-default port: both readers report wrong-endpoint (
         server.requests.some((q) => q.url === "/healthz"),
         "status never reached the fake server",
       );
+      assertStatusProbesStubbed(sb, r.stdout, server.port);
+      assertNoCliInvoked(sb);
+    } finally {
+      await server.close();
+    }
+  });
+
+  // Security review #1474 [LOW]: status may only aim at a loopback launcher host.
+  // Otherwise the host falls back to the environment/default one; the port
+  // still comes from the launcher (R4: the installed endpoint).
+  for (const host of ["example.invalid", "127.999.0.1", "127.0.0.256", "127.1", "127.0.0.01"]) {
+    test(`status-mcp-server.sh never targets non-loopback launcher host ${host}`, async () => {
+      const server = await startFakeServer("auth-refusal");
+      try {
+        const sb = makeSandbox();
+        writeLauncher(sb, server.port, host);
+
+        const r = await run("bash", [path.join(REPO, "scripts", "status-mcp-server.sh")], {
+          env: sb.env({ MEMPALACE_MCP_HOST: "127.0.0.1" }),
+          cwd: sb.root,
+          timeoutMs: 30_000,
+        });
+
+        assert.match(
+          r.stdout,
+          new RegExp(`^  endpoint: http://127\\.0\\.0\\.1:${server.port}/mcp$`, "m"),
+          r.stdout + r.stderr,
+        );
+        assert.ok(
+          !r.stdout.includes(host) && !r.stderr.includes(host),
+          `the launcher host reached status output: ${r.stdout}`,
+        );
+        assert.ok(
+          server.requests.some((q) => q.url === "/healthz"),
+          "status never probed the fallback host",
+        );
+        assertStatusProbesStubbed(sb, r.stdout, server.port);
+        assertNoCliInvoked(sb);
+      } finally {
+        await server.close();
+      }
+    });
+  }
+
+  test("status-mcp-server.sh keeps a loopback launcher host", async () => {
+    const server = await startFakeServer("auth-refusal");
+    try {
+      const sb = makeSandbox();
+      writeLauncher(sb, server.port, "127.0.0.1");
+
+      const r = await run("bash", [path.join(REPO, "scripts", "status-mcp-server.sh")], {
+        env: sb.env({ MEMPALACE_MCP_HOST: "example.invalid" }),
+        cwd: sb.root,
+        timeoutMs: 30_000,
+      });
+
+      assert.match(
+        r.stdout,
+        new RegExp(`endpoint: http://127\\.0\\.0\\.1:${server.port}/mcp`),
+        r.stdout,
+      );
+      assert.ok(!r.stdout.includes("example.invalid"), r.stdout);
+      assertStatusProbesStubbed(sb, r.stdout, server.port);
       assertNoCliInvoked(sb);
     } finally {
       await server.close();

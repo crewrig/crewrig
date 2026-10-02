@@ -18,7 +18,9 @@
 // bearer token, and its one network request is an unauthenticated loopback
 // probe bounded to 1 s (R2, R10).
 
+import { lookup } from "node:dns/promises";
 import http from "node:http";
+import { isIP } from "node:net";
 import os from "node:os";
 import {
   claimThrottle,
@@ -40,6 +42,7 @@ process.on("uncaughtException", () => process.exit(0));
 process.stdout.on("error", () => process.exit(0));
 
 const PROBE_TIMEOUT_MS = 1000;
+const MAX_PROBE_ADDRESSES = 2;
 const MAX_PROBE_BODY = 1024 * 1024;
 const MAX_LAUNCHER_BYTES = 1024 * 1024;
 const NODE_FLOOR = 24;
@@ -67,11 +70,43 @@ function carriesResult(body: string): boolean {
 }
 
 /**
+ * The IP literals the probe may connect to, in order: an IP literal as is;
+ * for `localhost`, the loopback addresses the resolver returns (at most
+ * `MAX_PROBE_ADDRESSES`, duplicates dropped, any non-loopback answer
+ * discarded), so the socket never reaches a resolver-chosen remote address
+ * (R10). Each probe connects to a literal, which `net.connect` does not
+ * resolve again.
+ */
+async function loopbackTargets(
+  host: string,
+  isLoopback: (a: string) => boolean,
+): Promise<string[]> {
+  const bare = host.replace(/^\[(.*)\]$/, "$1");
+  if (isIP(bare) !== 0) return isLoopback(bare) ? [bare] : [];
+  if (bare !== "localhost") return [];
+  try {
+    const found = await lookup(bare, { all: true });
+    return [...new Set(found.map((a) => a.address).filter(isLoopback))].slice(
+      0,
+      MAX_PROBE_ADDRESSES,
+    );
+  } catch {
+    return [];
+  }
+}
+
+/**
  * R2: serving means an authentication refusal (401) or a 2xx JSON-RPC answer
  * from POST /mcp, sent without any credential. Anything else, a refused
- * connection or no answer within 1 s, is "not serving".
+ * connection or no answer within 1 s, is "not serving". `address` is a
+ * loopback IP literal; `hostHeader` keeps the launcher's host name.
  */
-function probeServing(host: string, port: number): Promise<boolean> {
+function probeOnce(
+  address: string,
+  port: number,
+  hostHeader: string,
+  timeoutMs: number,
+): Promise<boolean> {
   return new Promise((resolve) => {
     const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" });
     let settled = false;
@@ -86,7 +121,7 @@ function probeServing(host: string, port: number): Promise<boolean> {
     };
     const req = http.request(
       {
-        host: host.replace(/^\[(.*)\]$/, "$1"),
+        host: address,
         port,
         method: "POST",
         path: "/mcp",
@@ -94,6 +129,7 @@ function probeServing(host: string, port: number): Promise<boolean> {
         // setting could route off the machine.
         agent: new http.Agent({ keepAlive: false }),
         headers: {
+          host: hostHeader,
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
           "content-length": Buffer.byteLength(body),
@@ -113,10 +149,36 @@ function probeServing(host: string, port: number): Promise<boolean> {
         res.on("error", () => done(false));
       },
     );
-    const timer = setTimeout(() => done(false), PROBE_TIMEOUT_MS);
+    const timer = setTimeout(() => done(false), timeoutMs);
     req.on("error", () => done(false));
     req.end(body);
   });
+}
+
+/**
+ * R2's probe over the endpoint's loopback addresses, in order, stopping at the
+ * first definitive answer; a connection error or any other answer moves on to
+ * the next address. All attempts share the single 1 s budget.
+ *
+ * R10 reading: "the single loopback request" is one logical probe of the one
+ * expected loopback endpoint. When `localhost` resolves to both `::1` and
+ * `127.0.0.1`, trying each is that same probe, as curl in
+ * `task mempalace:status` does. It stays bounded: at most one HTTP request
+ * per address, at most two addresses, and every connection on a literal
+ * loopback IP.
+ */
+async function probeServing(
+  addresses: readonly string[],
+  port: number,
+  hostHeader: string,
+): Promise<boolean> {
+  const end = performance.now() + PROBE_TIMEOUT_MS;
+  for (const address of addresses) {
+    const remaining = end - performance.now();
+    if (remaining <= 0) break;
+    if (await probeOnce(address, port, hostHeader, remaining)) return true;
+  }
+  return false;
 }
 
 function parseArgs(argv: readonly string[]): { cli: string; platform: string } {
@@ -157,7 +219,11 @@ async function main(argv: readonly string[]): Promise<string> {
 
   // R10 allows a loopback request only; a launcher recording any other host
   // gets no probe and therefore counts as not serving.
-  const serving = endpoint.loopback ? await probeServing(endpoint.host, endpoint.port) : false;
+  const addresses = endpoint.loopback
+    ? await loopbackTargets(endpoint.host, reg.isLoopbackAddress)
+    : [];
+  const hostHeader = `${endpoint.host === "::1" ? "[::1]" : endpoint.host}:${endpoint.port}`;
+  const serving = await probeServing(addresses, endpoint.port, hostHeader);
 
   const file = reg.configPath(cli, home);
   const classification = reg.classifyFile(await readRegular(file), endpoint.url, cli);

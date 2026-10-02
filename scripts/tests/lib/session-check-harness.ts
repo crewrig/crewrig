@@ -36,6 +36,9 @@ export const CLIS = ["claude", "gemini", "copilot", "antigravity"] as const;
 export type Cli = (typeof CLIS)[number];
 export const STUB_CLIS = ["claude", "gemini", "copilot", "agy"] as const;
 
+/** The PID the stubbed supervisor and listener probes both report. */
+export const STATUS_PROBE_PID = 4242;
+
 /** The live daemon's port. No test may ever address it (R16). */
 export const LIVE_PORT = 41893;
 
@@ -123,6 +126,8 @@ export interface Sandbox {
   claudeConfigDir: string;
   stubBin: string;
   stubLog: string;
+  /** Argv log of the stubbed launchctl / lsof / systemctl / ss probes. */
+  probeLog: string;
   /** The child environment: built from nothing, plus `extra`. */
   env(extra?: Record<string, string>): Record<string, string>;
   /** Absolute path of a CLI's registration file in this HOME. */
@@ -139,7 +144,22 @@ export function makeSandbox(prefix = "sc0246-"): Sandbox {
   const claudeConfigDir = path.join(root, "claude-config");
   const stubBin = path.join(root, "stub-bin");
   const stubLog = path.join(root, "stub-cli.log");
+  const probeLog = path.join(root, "status-probes.log");
   for (const dir of [home, claudeConfigDir, stubBin]) fs.mkdirSync(dir, { recursive: true });
+  // The supervisor and listener probes of mcp_supervisor_pid / mcp_listener_pid
+  // (common.sh), stubbed so no test reads the live machine's launchd, systemd or
+  // sockets. Each logs its argv and reports the one PID, STATUS_PROBE_PID.
+  const probe = (body: string): string =>
+    `#!/bin/sh\nprintf '%s %s\\n' "$(basename "$0")" "$*" >> ${JSON.stringify(probeLog)}\n${body}\n`;
+  const probes: Record<string, string> = {
+    launchctl: `printf '\\tstate = running\\n\\tpid = %s\\n' ${STATUS_PROBE_PID}`,
+    lsof: `printf '%s\\n' ${STATUS_PROBE_PID}`,
+    systemctl: `printf '%s\\n' ${STATUS_PROBE_PID}`,
+    ss: `printf 'LISTEN 0 128 127.0.0.1:1 0.0.0.0:* users:(("python3",pid=%s,fd=3))\\n' ${STATUS_PROBE_PID}`,
+  };
+  for (const [name, body] of Object.entries(probes)) {
+    fs.writeFileSync(path.join(stubBin, name), probe(body), { mode: 0o755 });
+  }
   for (const name of STUB_CLIS) {
     const stub = path.join(stubBin, name);
     fs.writeFileSync(
@@ -170,6 +190,7 @@ export function makeSandbox(prefix = "sc0246-"): Sandbox {
     claudeConfigDir,
     stubBin,
     stubLog,
+    probeLog,
     env(extra = {}) {
       return {
         HOME: home,
@@ -505,4 +526,16 @@ export function filesUnder(dir: string): string[] {
     else if (e.isFile()) out.push(p);
   }
   return out;
+}
+
+/**
+ * status-mcp-server.sh ran against the stubbed probes only: the owner line is
+ * VERIFIED for STATUS_PROBE_PID, and the listener lookup asked about `port`.
+ */
+export function assertStatusProbesStubbed(sb: Sandbox, stdout: string, port: number): void {
+  assert.match(stdout, new RegExp(`owner: +VERIFIED \\(listener PID ${STATUS_PROBE_PID} `), stdout);
+  assert.ok(!stdout.includes("USURPED"), stdout);
+  const calls = fs.existsSync(sb.probeLog) ? fs.readFileSync(sb.probeLog, "utf8") : "";
+  assert.match(calls, /^(launchctl print gui\/\d+\/|systemctl --user show -p MainPID)/m, calls);
+  assert.match(calls, new RegExp(`^(lsof .*-iTCP:${port} |ss .*sport = :${port})`, "m"), calls);
 }

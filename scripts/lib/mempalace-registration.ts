@@ -16,6 +16,8 @@
 // The Antigravity constant is defined beside the throttle, which needs its
 // `key` on the suppressed path before this module is loaded. It is
 // re-exported here so both evidence-driven constants have one import site.
+import { isIPv4 } from "node:net";
+
 export {
   ANTIGRAVITY_SESSION_CHECK,
   type AntigravitySessionCheck,
@@ -120,12 +122,28 @@ export function parseLauncher(text: string): Endpoint | null {
     return null;
   const port = Number(portText);
   if (port > 65535) return null;
-  const loopback =
-    host === "localhost" ||
-    host === "::1" ||
-    host === "[::1]" ||
-    /^127(\.[0-9]{1,3}){3}$/.test(host);
-  return { host, port, url: `http://${host}:${portText}/mcp`, loopback };
+  return { host, port, url: `http://${host}:${portText}/mcp`, loopback: isLoopbackHost(host) };
+}
+
+/**
+ * A loopback IP literal: `::1`, or a dotted-quad IPv4 in 127.0.0.0/8 with no
+ * octet written with a leading zero (`127.0.0.01`), which curl may read as
+ * octal. Node 24's `isIPv4` already rejects those; the explicit test keeps
+ * the rule independent of the Node release and identical to the shell side.
+ */
+export function isLoopbackAddress(address: string): boolean {
+  if (address === "::1") return true;
+  return isIPv4(address) && address.startsWith("127.") && !/(^|\.)0[0-9]/.test(address);
+}
+
+/**
+ * Whether the probe may target `host` (R10). Only `localhost`, `::1`,
+ * `[::1]`, or an IPv4 literal in 127.0.0.0/8: a pattern such as
+ * `127.999.0.1` is not an IP, would be resolved through DNS, and could leave
+ * the machine (security finding on PR #1474).
+ */
+export function isLoopbackHost(host: string): boolean {
+  return host === "localhost" || host === "[::1]" || isLoopbackAddress(host);
 }
 
 /**
