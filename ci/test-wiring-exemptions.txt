@@ -18,3 +18,4 @@
 
 # --- Environment-dependent (cannot run in the hermetic check-components job) ---
 test-e2e-auth-scripts.sh	exercises scripts/e2e/auth-copilot.sh, which e2e_die's when ~/.copilot/instructions/ is absent — a `task setup:copilot` side-effect present on a developer host but not in a clean CI HOME; cannot pass in the hermetic check-components job. See follow-up note from #534 on whether the guidance path should print before that precondition.
+# acceptance probe for #1445 (comment only, never merged)
