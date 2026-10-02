@@ -191,23 +191,25 @@ Measured on the migrated tree with all four targets built:
 | Invocation | Lines | Shapes |
 |---|---|---|
 | `bash scripts/build-components.sh --target all` | **44** | 22 `model-note … claude guard-withheld …` (one per migrated agent, requirement 21) + 22 `model-drop … copilot metadata.model.intelligence <rung> unsupported-on-cli` (one per migrated agent, requirement 21). Nothing else |
-| `bash scripts/build-components.sh --target all --check` | **132** | the same 44, plus **88** `model-note <name> <target> no-mapping …` — 22 per target across all four targets |
+| `bash scripts/build-components.sh --target all --check` | **48** | the same 44, plus **4** `model-note developer <target> no-mapping …` — one per target, for the single agent of the assembly test's synthetic root |
 
-**Mechanism.** `--check` ends by running a second build under a fresh
-`mktemp -d` root (`scripts/tests/test-assembly-verification.sh`) that
-holds no `model-mappings/`, so the resolution finds no mapping in force
-and emits a `no-mapping` note per profiled agent per target. This is a
-property of `--check`'s own second, synthetic build — not of "the
-migrated tree" requirement 21 binds — so requirement 21 is satisfied
-exactly by the 44-line stream a plain build emits, and the 88 additional
-lines are a real, new-since-this-change-set observable on every CI run of
-the `component-drift` capability (which invokes `--check`): exit status
-stays 0, and `test-assembly-verification.sh` still passes, since it
-verifies assembly structure rather than model emissions. No requirement
-of spec 0200 binds that suite's synthetic root, and giving it one would
-change a check that verifies assembly for every tier and every component
-— a blast radius wider than this change set, left to a follow-up ticket
-if a reviewer wants it closed.
+**Mechanism.** `--check` ends by running a second, smaller build under a
+fresh `mktemp -d` root (`scripts/tests/test-assembly-verification.sh`) that
+holds no `model-mappings/` and only the `developer` skill and agent of
+`core` plus the fixture overlay, so the resolution finds no mapping in
+force and emits a `no-mapping` note for that one profiled agent on each of
+the four targets. Until issue #1432 that root held the whole `core` and
+`library` trees, which made the figure 88. This is a property of
+`--check`'s own second, synthetic build — not of "the migrated tree"
+requirement 21 binds — so requirement 21 is satisfied exactly by the
+44-line stream a plain build emits, and the 4 additional lines are a real,
+new-since-this-change-set observable on every CI run of the
+`component-drift` capability (which invokes `--check`): exit status stays
+0, and `test-assembly-verification.sh` still passes, since it verifies
+assembly structure rather than model emissions. No requirement of spec
+0200 binds that suite's synthetic root, and giving it one would change the
+root every assembly assertion runs against — a blast radius wider than
+this change set, left to a follow-up ticket if a reviewer wants it closed.
 
 ## Decoupling record (requirements 32-34)
 
