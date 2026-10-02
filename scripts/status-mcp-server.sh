@@ -27,8 +27,20 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # shellcheck disable=SC2034  # read by mcp_launcher_source_sha in common.sh
 CREWRIG_REPO_DIR="${REPO_DIR}"
 
-HOST="${MEMPALACE_MCP_HOST:-${MCP_DAEMON_HOST_DEFAULT}}"
-PORT="${MEMPALACE_MCP_PORT:-${MCP_DAEMON_PORT_DEFAULT}}"
+# The endpoint the installed launcher serves wins over the environment: status
+# then probes, and compares each registration against, what is actually
+# installed (spec 0246 R4). Without a readable launcher, the environment and
+# defaults apply as before.
+INSTALLED_ENDPOINT="$(mcp_installed_endpoint 2>/dev/null || true)"
+if [ -n "${INSTALLED_ENDPOINT}" ]; then
+  hostport="${INSTALLED_ENDPOINT#http://}"
+  hostport="${hostport%/mcp}"
+  HOST="${hostport%:*}"
+  PORT="${hostport##*:}"
+else
+  HOST="${MEMPALACE_MCP_HOST:-${MCP_DAEMON_HOST_DEFAULT}}"
+  PORT="${MEMPALACE_MCP_PORT:-${MCP_DAEMON_PORT_DEFAULT}}"
+fi
 LOG="${HOME}/.mempalace/mcp-server.log"
 rc=0
 
@@ -119,14 +131,14 @@ fi
 echo ""
 echo "Assistant registrations:"
 if [ "${rc}" -eq 0 ]; then
-  if ! mcp_report_assistant_arrangements "serving"; then
+  if ! mcp_report_assistant_arrangements "serving" "${INSTALLED_ENDPOINT}"; then
     echo "            One or more assistants are still in stdio mode while the shared"
     echo "            daemon is serving. They are locked out of writes by the daemon's"
     echo "            exclusive lease. Run: bash scripts/switch-mempalace-http.sh"
     rc=1
   fi
 else
-  mcp_report_assistant_arrangements || true
+  mcp_report_assistant_arrangements "" "${INSTALLED_ENDPOINT}" || true
 fi
 
 exit "${rc}"
