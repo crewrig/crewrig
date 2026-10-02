@@ -170,6 +170,13 @@ down while the CLI sits on its stdio fallback. The exact wording lives in
 file, and the channels each CLI offers are in
 [row 8e of the CLI matrix](../cli-matrix.md).
 
+Some channels rest on the vendor documentation shipped with the CLI, because
+no live probe could run: Gemini CLI's model channel, and every Antigravity
+CLI channel (spec 0246 delta-02 R7).
+[#1472](https://github.com/crewrig/crewrig/issues/1472) tracks their live
+confirmation. If a warning you expected never reached you or the model on
+one of those CLIs, report it there.
+
 | CLI | Registration file | Setup script |
 |---|---|---|
 | `claude` | `~/.claude.json` | `scripts/setup-claude-interactive.sh` |
@@ -190,7 +197,13 @@ the registration it started with.
 | registered at another endpoint | The HTTP entry points elsewhere. The warning shows both endpoints, the registered one redacted (no user info, query, fragment, or control characters). | `task mempalace:switch-http` (read the launcher note below first) |
 | unrecognised entry, naming `task mempalace:repair` | The file is strict JSON, but the entry is neither the HTTP shape (`url`/`serverUrl`) nor the stdio shape (`command`). | `task mempalace:repair` to see the options, then `task mempalace:repair -- --restore-backup` or `-- --reset-none`, then `task mempalace:switch-http` |
 | not a single strict JSON document | The file fails the strictness test below. | Rewrite the file (next section), then `task mempalace:switch-http` if needed |
+| a Gemini file with comments, naming `scripts/setup-gemini-interactive.sh` | `~/.gemini/settings.json` holds comments and its registration is not `ok`. `switch-http` and `repair` read the file with `jq`, which rejects comments: `switch-http` would refuse, and `repair` could not write it. | Run `scripts/setup-gemini-interactive.sh`. It rewrites the file as plain JSON and keeps the comments in a timestamped backup |
 | the shared memory daemon is not answering | The daemon is installed, but its MCP endpoint gave neither an authentication refusal nor an MCP answer within 1 s. | `task mempalace:status`, then [Daemon not starting after boot](#daemon-not-starting-after-boot) |
+
+When an entry carries both `url` and `serverUrl`, one value is compared:
+`url`, or `serverUrl` when `url` is `null` or `false` (`.url // .serverUrl`,
+the order `scripts/doctor-mempalace.sh` uses). An entry whose `url` is
+correct is `ok` whatever its `serverUrl` says.
 
 A project-level or local-level `mempalace` entry is not read. A Claude Code
 session served by one can still warn about the user-level file.
@@ -202,16 +215,26 @@ strict when all of these hold:
 
 - it does not start with a UTF-8 byte order mark;
 - it is valid UTF-8;
-- it holds exactly one RFC 8259 JSON value, and that value is an object;
+- it holds exactly one RFC 8259 JSON value, and that value is an object
+  whose `mcpServers`, when present, is an object or `null`;
 - objects and arrays nest at most 64 levels deep;
 - no string or key holds an unpaired surrogate escape such as `"\ud800"`.
 
 Everything else is not strict. That includes an empty or truncated file,
-several concatenated documents, `NaN`, `Infinity`, leading zeros, comments,
-and trailing garbage.
+several concatenated documents, an `mcpServers` that is an array or a
+scalar, `NaN`, `Infinity`, leading zeros, comments, trailing commas, and
+trailing garbage.
+
+`~/.gemini/settings.json` is the one exception for comments, because Gemini
+CLI itself reads the file with its comments removed. For that file only,
+`//` and `/* … */` comments outside strings are removed before every test
+except the byte order mark and UTF-8 ones. Trailing commas are not removed,
+by Gemini CLI or by the check, so a Gemini file with a trailing comma is not
+strict.
 
 The repair is to rewrite the named file as one strict document: remove the
-byte order mark, merge the documents, or delete the comments. Restoring one
+byte order mark, merge the documents, make `mcpServers` an object, or delete
+the comments. Restoring one
 of the file's timestamped `<file>.bak.<YYYYmmdd-HHMMSS>` backups is another
 way. A backup can predate a token rotation and carry a stale bearer, so run
 `task mempalace:switch-http` after restoring one if the registration is not
@@ -225,8 +248,19 @@ required to agree on strict files only (spec 0246 delta-01 R4). An empty or
 truncated file is the exception: status reports it `unknown`, so
 `task mempalace:repair -- --restore-backup` also works on it.
 
-Gemini CLI may accept comments in `~/.gemini/settings.json`. The check still
-reports such a file at every Gemini session start. Remove the comments.
+### A Gemini configuration with comments
+
+Gemini CLI accepts comments in `~/.gemini/settings.json`, and so does the
+check (spec 0246 delta-02). A commented file whose registration is `ok`
+starts silently. When the registration is anything else, the warning names
+`scripts/setup-gemini-interactive.sh` instead of `switch-http` or `repair`.
+That setup rewrites the file as plain JSON and keeps the commented original
+in a timestamped backup (spec 0214).
+
+`task mempalace:status` still reports a commented file `unknown`, because its
+`jq` reader rejects comments, and `switch-http` refuses every CLI while that
+holds. Setup rewrites the file as plain JSON on every run, so comments come
+back only after a hand edit or a restored backup.
 
 ### Gemini keeps the check and the registration in one file
 

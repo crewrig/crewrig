@@ -151,15 +151,20 @@ export function redactUrl(url: string): string {
   return out;
 }
 
-/** Shown instead of a registered `url`/`serverUrl` that is not a string. */
+/** Shown instead of a compared `url`/`serverUrl` value that is not a string. */
 export const NOT_A_STRING = "(not a string)";
 
-export type Classification =
+/**
+ * `comments` is true when the class was reached in a Gemini CLI file that
+ * held comments (delta-02 R4, R5).
+ */
+export type Classification = (
   | { readonly class: "ok" }
   | { readonly class: "absent"; readonly reason: "no-file" | "no-entry" }
   | { readonly class: "stdio" }
   | { readonly class: "wrong-endpoint"; readonly registered: string }
-  | { readonly class: "unrecognised"; readonly reason: "non-strict" | "content" };
+  | { readonly class: "unrecognised"; readonly reason: "non-strict" | "content" }
+) & { readonly comments?: boolean };
 
 export type RegistrationClass = Classification["class"];
 
@@ -170,7 +175,12 @@ export interface StrictGuards {
 }
 
 export type StrictResult =
-  | { readonly strict: true; readonly value: Readonly<Record<string, unknown>> }
+  | {
+      readonly strict: true;
+      readonly value: Readonly<Record<string, unknown>>;
+      /** Whether comment removal (Gemini CLI only) removed anything. */
+      readonly comments: boolean;
+    }
   | { readonly strict: false };
 
 const NOT_STRICT: StrictResult = { strict: false };
@@ -186,6 +196,48 @@ function own(obj: Readonly<Record<string, unknown>>, key: string): unknown {
 
 function hexAt(text: string, i: number): number {
   return Number.parseInt(text.slice(i, i + 4), 16);
+}
+
+/**
+ * Gemini CLI's comment removal (delta-02 R4; spec 0214 R12, reference
+ * behaviour `JSON.parse(stripJsonComments(...))`): `//` line comments and
+ * `/* *\/` block comments outside string literals become whitespace (line
+ * breaks kept), a never-closed block comment runs to the end, string
+ * contents are untouched, and trailing commas stay.
+ */
+export function stripJsonComments(text: string): {
+  readonly text: string;
+  readonly comments: boolean;
+} {
+  let out = "";
+  let comments = false;
+  let i = 0;
+  const blank = (s: string): string => s.replace(/[^\r\n]/g, " ");
+  while (i < text.length) {
+    const c = text[i] ?? "";
+    if (c === '"') {
+      let j = i + 1;
+      while (j < text.length && text[j] !== '"') j += text[j] === "\\" ? 2 : 1;
+      out += text.slice(i, j + 1);
+      i = j + 1;
+    } else if (c === "/" && text[i + 1] === "/") {
+      const end = text.indexOf("\n", i);
+      const stop = end === -1 ? text.length : end;
+      out += blank(text.slice(i, stop));
+      comments = true;
+      i = stop;
+    } else if (c === "/" && text[i + 1] === "*") {
+      const end = text.indexOf("*/", i + 2);
+      const stop = end === -1 ? text.length : end + 2;
+      out += blank(text.slice(i, stop));
+      comments = true;
+      i = stop;
+    } else {
+      out += c;
+      i++;
+    }
+  }
+  return { text: out, comments };
 }
 
 /**
@@ -228,51 +280,63 @@ export function lexicallyBounded(text: string): boolean {
 }
 
 /**
- * Delta R4's strictness gate, on raw bytes: no leading `EF BB BF`, valid
- * UTF-8 under a fatal decoder that keeps a BOM, exactly one RFC 8259 value
- * that is an object, containers nested at most 64 deep, no unpaired surrogate
+ * Delta R4's strictness gate (delta-02 wording). On the stored bytes: no
+ * leading `EF BB BF`, valid UTF-8 under a fatal decoder that keeps a BOM.
+ * Then, after comment removal when `jsonc` (Gemini CLI only): exactly one
+ * RFC 8259 value that is an object whose `mcpServers`, when present, is an
+ * object or `null`; containers nested at most 64 deep; no unpaired surrogate
  * escape.
  */
 export function parseStrict(
   bytes: Uint8Array,
   guards: StrictGuards = { bomByteCheck: true, ignoreBOM: true },
+  options: { readonly jsonc?: boolean } = {},
 ): StrictResult {
   if (guards.bomByteCheck && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)
     return NOT_STRICT;
   let text: string;
+  let comments = false;
   let value: unknown;
   try {
     text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: guards.ignoreBOM }).decode(bytes);
+    if (options.jsonc === true) ({ text, comments } = stripJsonComments(text));
     value = JSON.parse(text);
   } catch {
     return NOT_STRICT;
   }
   if (!isObject(value) || !lexicallyBounded(text)) return NOT_STRICT;
-  return { strict: true, value };
+  const servers = own(value, "mcpServers");
+  if (servers !== undefined && servers !== null && !isObject(servers)) {
+    return NOT_STRICT;
+  }
+  return { strict: true, value, comments };
 }
 
 /**
- * Delta R3's pinned mapping on a strict top-level object, locating the entry
- * as `.mcpServers.mempalace // empty` does. Only a redacted URL leaves here.
+ * Delta R3's pinned mapping (delta-02 wording) on a strict top-level object,
+ * locating the entry as `.mcpServers.mempalace // empty` does and comparing
+ * one value, `.url // .serverUrl`, as scripts/doctor-mempalace.sh does. Only
+ * a redacted URL leaves here.
  */
 export function classifyStrict(
   obj: Readonly<Record<string, unknown>>,
   expected: string,
 ): Classification {
   const servers = own(obj, "mcpServers");
-  if (!isObject(servers)) return { class: "absent", reason: "no-entry" };
+  if (servers === undefined || servers === null) return { class: "absent", reason: "no-entry" };
+  if (!isObject(servers)) return { class: "unrecognised", reason: "non-strict" };
   const entry = own(servers, "mempalace");
   if (entry === undefined || entry === null || entry === false)
     return { class: "absent", reason: "no-entry" };
   if (!isObject(entry)) return { class: "unrecognised", reason: "content" };
   if (Object.hasOwn(entry, "url") || Object.hasOwn(entry, "serverUrl")) {
-    const raw = [own(entry, "url"), own(entry, "serverUrl")].find(
-      (v): v is string => typeof v === "string",
-    );
-    if (raw !== undefined && raw === expected) return { class: "ok" };
+    const url = own(entry, "url");
+    const compared =
+      url === undefined || url === null || url === false ? own(entry, "serverUrl") : url;
+    if (typeof compared === "string" && compared === expected) return { class: "ok" };
     return {
       class: "wrong-endpoint",
-      registered: raw === undefined ? NOT_A_STRING : redactUrl(raw),
+      registered: typeof compared === "string" ? redactUrl(compared) : NOT_A_STRING,
     };
   }
   if (Object.hasOwn(entry, "command")) return { class: "stdio" };
@@ -288,15 +352,16 @@ export type FileRead =
 /**
  * A missing file is `absent`. An existing file that is not regular or cannot
  * be read is not strict, so `unrecognised` (seat finding v4-F7); it is never
- * read. Otherwise the strictness gate, then the pinned mapping.
+ * read. Otherwise the strictness gate, with comment removal for Gemini CLI
+ * only, then the pinned mapping.
  */
-export function classifyFile(read: FileRead, expected: string): Classification {
+export function classifyFile(read: FileRead, expected: string, cli?: Cli): Classification {
   if (read.kind === "missing") return { class: "absent", reason: "no-file" };
   if (read.kind === "unreadable") return { class: "unrecognised", reason: "non-strict" };
-  const parsed = parseStrict(read.bytes);
-  return parsed.strict
-    ? classifyStrict(parsed.value, expected)
-    : { class: "unrecognised", reason: "non-strict" };
+  const parsed = parseStrict(read.bytes, undefined, { jsonc: cli === "gemini" });
+  if (!parsed.strict) return { class: "unrecognised", reason: "non-strict" };
+  const c = classifyStrict(parsed.value, expected);
+  return parsed.comments && c.class !== "ok" ? { ...c, comments: true } : c;
 }
 
 /** The configuration path as the operator types it: relative to `~`. */
@@ -331,8 +396,36 @@ function fit(build: (variable: string) => string, variable: string): string {
 }
 
 /**
- * The R5 warning (delta-01 wording), or `null` when R6 requires silence.
- * Every text names the CLI and fits in 600 bytes.
+ * Delta-02 R5: a Gemini CLI file that held comments and does not classify
+ * `ok` names the Gemini setup, never a `task` command, since both read the
+ * file with `jq`, which rejects comments.
+ */
+function geminiCommentsWarning(c: Classification, ctx: WarningContext): string {
+  const state = (reg: string): string => {
+    switch (c.class) {
+      case "absent":
+        return `is absent: the file has no "mempalace" entry, although the shared memory daemon at ${ctx.expected} is serving`;
+      case "stdio":
+        return `is stdio: a local process, whose memory writes the shared memory daemon at ${ctx.expected} refuses`;
+      case "wrong-endpoint":
+        return `is wrong-endpoint: it points at ${reg}, but the shared memory daemon serves ${ctx.expected}`;
+      default:
+        return "is unrecognised: its entry matches neither the HTTP nor the stdio registration shape";
+    }
+  };
+  return fit(
+    (reg) =>
+      `MemPalace: the gemini "mempalace" registration in ${ctx.config} ${state(reg)}, so shared memory ` +
+      `is unavailable to this session. The file holds comments, which the CrewRig task commands cannot ` +
+      `read. Repair: run "bash scripts/setup-gemini-interactive.sh" in the CrewRig checkout; it rewrites ` +
+      `the file without its comments and keeps them in a timestamped backup. Then restart this gemini session.`,
+    c.class === "wrong-endpoint" ? c.registered : "",
+  );
+}
+
+/**
+ * The R5 warning (delta-01 and delta-02 wording), or `null` when R6 requires
+ * silence. Every text names the CLI and fits in 600 bytes.
  */
 export function warningFor(cli: Cli, c: Classification, ctx: WarningContext): string | null {
   const restart = `then restart this ${cli} session.`;
@@ -348,6 +441,7 @@ export function warningFor(cli: Cli, c: Classification, ctx: WarningContext): st
       ctx.expected,
     );
   }
+  if (c.class !== "ok" && c.comments === true) return geminiCommentsWarning(c, ctx);
   const serving = `the shared memory daemon at ${ctx.expected} is serving`;
   switch (c.class) {
     case "ok":
@@ -393,13 +487,15 @@ export function warningFor(cli: Cli, c: Classification, ctx: WarningContext): st
           ctx.config,
         );
       }
+      // Every not-strict file, a non-object `mcpServers` included: rewrite
+      // first, switch-http only after the rewrite (delta-02 R5).
       return fit(
         (cfg) =>
           `MemPalace: the ${cli} configuration file ${cfg} is not a single strict JSON document, so its ` +
           `"mempalace" registration cannot be checked. Rewrite it as one, for example by saving it again ` +
-          `without the byte order mark, by merging the concatenated documents, or by restoring one of its ` +
-          `timestamped .bak backups. If the registration still needs repair afterwards, run ` +
-          `"task mempalace:switch-http", ${restart}`,
+          `without the byte order mark, by merging the concatenated documents, by making "mcpServers" an ` +
+          `object, or by restoring one of its timestamped .bak backups. If the registration still needs ` +
+          `repair afterwards, run "task mempalace:switch-http", ${restart}`,
         ctx.config,
       );
   }

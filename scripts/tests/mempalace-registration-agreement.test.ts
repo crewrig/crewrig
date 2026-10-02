@@ -26,7 +26,7 @@ import {
   COMMON_SH,
   CLIS,
   type Cli,
-  JQ_DIR,
+  JQ_BINARIES,
   REPO,
   SENTINEL,
   assertNoCliInvoked,
@@ -66,24 +66,16 @@ const STATUS_OF: Record<Classification["class"], string> = {
 // --- the jq binaries the shell side runs under -------------------------------
 
 interface JqVariant {
-  dir: string;
+  /** Absolute path of the binary. */
+  bin: string;
   version: string;
 }
 
 function jqVariants(): JqVariant[] {
-  const dirs = [JQ_DIR, "/usr/bin"].filter(
-    (d): d is string => d !== null && fs.existsSync(path.join(d, "jq")),
-  );
-  const seen = new Set<string>();
-  const out: JqVariant[] = [];
-  for (const dir of dirs) {
-    const real = fs.realpathSync(path.join(dir, "jq"));
-    if (seen.has(real)) continue;
-    seen.add(real);
-    const v = spawnSync(path.join(dir, "jq"), ["--version"], { encoding: "utf8" });
-    out.push({ dir, version: (v.stdout || v.stderr).trim() });
-  }
-  return out;
+  return JQ_BINARIES.map((bin) => {
+    const v = spawnSync(bin, ["--version"], { encoding: "utf8" });
+    return { bin, version: (v.stdout || v.stderr).trim() };
+  });
 }
 
 const JQS = jqVariants();
@@ -124,6 +116,13 @@ const STRICT: StrictFixture[] = [
   k("url as an array", (key) => `{${servers(json({ [key]: [E] }))}}`),
   k("url and command", (key) => `{${servers(json({ [key]: E, command: "x" }))}}`),
   s("serverUrl not a string, url correct", `{${servers(json({ serverUrl: 5, url: E }))}}`),
+  // delta-02 R3: one compared value, `.url // .serverUrl`, in both orders of correctness.
+  s("url correct, serverUrl wrong", `{${servers(json({ url: E, serverUrl: WRONG }))}}`),
+  s("url wrong, serverUrl correct", `{${servers(json({ url: WRONG, serverUrl: E }))}}`),
+  s("url null, serverUrl correct", `{${servers(json({ url: null, serverUrl: E }))}}`),
+  s("url false, serverUrl correct", `{${servers(json({ url: false, serverUrl: E }))}}`),
+  s("url 5, serverUrl correct", `{${servers(json({ url: 5, serverUrl: E }))}}`),
+  s("serverUrl before url, url correct", `{${servers(`{"serverUrl":"${WRONG}","url":"${E}"}`)}}`),
   s(
     "stdio",
     `{${servers(json({ command: "/usr/bin/python3", args: ["-m", "mempalace.mcp_server"] }))}}`,
@@ -133,11 +132,6 @@ const STRICT: StrictFixture[] = [
   s("mcpServers empty", `{"mcpServers":{}}`),
   s("mempalace false", `{${servers("false")}}`),
   s("mempalace null", `{${servers("null")}}`),
-  s("mcpServers []", `{"mcpServers":[]}`),
-  s('mcpServers "s"', `{"mcpServers":"s"}`),
-  s("mcpServers false", `{"mcpServers":false}`),
-  s("mcpServers true", `{"mcpServers":true}`),
-  s("mcpServers 0", `{"mcpServers":0}`),
   s("mcpServers null", `{"mcpServers":null}`),
   s("top-level {}", "{}"),
   s('entry "s"', `{${servers('"s"')}}`),
@@ -224,6 +218,7 @@ function shellReadings(
 ): Map<string, { state: string; check: string }> {
   const script = `
 . ${shq(COMMON_SH)}
+printf 'JQ\\t%s\\n' "$(jq --version 2>&1)"
 while IFS='\t' read -r id home; do
   for cli in claude gemini copilot antigravity; do
     st="$(HOME="$home" mcp_assistant_arrangement "$cli")"
@@ -234,7 +229,7 @@ while IFS='\t' read -r id home; do
 done`;
   const input = cases.map((c) => `${c.id}\t${c.home}\n`).join("");
   const r = spawnSync("bash", ["-c", script], {
-    env: sb.env({ PATH: [sb.stubBin, jq.dir, "/usr/bin", "/bin"].join(path.delimiter) }),
+    env: sb.env({ PATH: sb.pathWithJq(jq.bin) }),
     input,
     encoding: "utf8",
     cwd: sb.root,
@@ -244,6 +239,10 @@ done`;
   const out = new Map<string, { state: string; check: string }>();
   for (const line of r.stdout.split("\n")) {
     if (line === "") continue;
+    if (line.startsWith("JQ\t")) {
+      assert.equal(line.slice(3), jq.version, `the shell ran another jq than ${jq.bin}`);
+      continue;
+    }
     const [id, cli, state, ...rest] = line.split("\t");
     out.set(`${id}/${cli}`, { state: state ?? "", check: rest.join("\t") });
   }
@@ -258,9 +257,9 @@ function expectedCheckLine(c: Classification): string {
 }
 
 describe("R4 agreement over strict fixtures (delta-01)", () => {
-  test("the jq binaries under test", (t) => {
+  test("the jq binaries under test, by absolute path", (t) => {
     assert.ok(JQS.length > 0, "no jq on PATH: the shell reader cannot run");
-    for (const jq of JQS) t.diagnostic(`jq --version (${jq.dir}): ${jq.version}`);
+    for (const jq of JQS) t.diagnostic(`jq --version (${jq.bin}): ${jq.version}`);
   });
 
   for (const jq of JQS) {
@@ -273,10 +272,10 @@ describe("R4 agreement over strict fixtures (delta-01)", () => {
 
       const disagreements: string[] = [];
       for (const c of cases) {
-        const parsed = parseStrict(c.bytes);
-        assert.ok(parsed.strict, `fixture "${c.fixture}" is meant to be strict`);
-        const cls = classifyStrict(parsed.value, E);
+        assert.ok(parseStrict(c.bytes).strict, `fixture "${c.fixture}" is meant to be strict`);
         for (const cli of CLIS) {
+          // What the check itself runs: Gemini's file goes through comment removal (delta-02 R4).
+          const cls = classifyFile({ kind: "ok", bytes: c.bytes }, E, cli);
           const got = shell.get(`${c.id}/${cli}`);
           const want = { state: STATUS_OF[cls.class], check: expectedCheckLine(cls) };
           if (got === undefined || got.state !== want.state || got.check !== want.check) {
@@ -338,6 +337,15 @@ const NON_STRICT: Array<[string, Buffer]> = [
   ["top-level true", Buffer.from("true")],
   ["top-level []", Buffer.from(`[{${MS}}]`)],
   ["top-level 5", Buffer.from("5")],
+  // delta-02 R4: an mcpServers that is neither an object nor null.
+  ['mcpServers "s"', Buffer.from('{"mcpServers":"s"}')],
+  ["mcpServers []", Buffer.from('{"mcpServers":[]}')],
+  ["mcpServers false", Buffer.from('{"mcpServers":false}')],
+  ["mcpServers true", Buffer.from('{"mcpServers":true}')],
+  ["mcpServers 0", Buffer.from('{"mcpServers":0}')],
+  ["mcpServers 5", Buffer.from('{"mcpServers":5}')],
+  // delta-02 R4: a trailing comma, in any CLI's file.
+  ["trailing comma", Buffer.from(`{${MS},}`)],
   ['top-level "s"', Buffer.from('"s"')],
   ["arrays nested to depth 65", Buffer.from(`{"deep":${nest(64, "[", "]")},${MS}}`)],
   ["objects nested to depth 65", Buffer.from(`{"deep":${nestObj(64)},${MS}}`)],
@@ -376,23 +384,31 @@ function assertNotStrictWarning(
   assert.ok(/rewrite it as one/i.test(w), `${label}: no rewrite instruction: ${w}`);
   assert.ok(w.includes(".bak"), `${label}: no .bak backups: ${w}`);
   assert.ok(w.includes("task mempalace:switch-http"), `${label}: ${w}`);
+  // delta-02 R5: the rewrite advice covers mcpServers, and comes before switch-http.
+  const advice = w.indexOf('by making "mcpServers" an object');
+  assert.ok(advice >= 0, `${label}: no advice to make mcpServers an object: ${w}`);
+  assert.ok(
+    advice < w.indexOf("task mempalace:switch-http"),
+    `${label}: switch-http precedes the rewrite advice: ${w}`,
+  );
   assert.ok(!w.includes("mempalace:repair"), `${label}: names the repair (s4-F1): ${w}`);
 }
 
 describe("files that are not strict: unrecognised, with the not-strict warning (delta-01 R4, R5)", () => {
   test("every kind is classified unrecognised/non-strict, on every CLI", () => {
     for (const [name, bytes] of NON_STRICT) {
-      assert.deepEqual(
-        classifyFile({ kind: "ok", bytes }, E),
-        { class: "unrecognised", reason: "non-strict" },
-        name,
-      );
       for (const cli of CLIS) {
+        // Comment removal is Gemini's alone (delta-02 R4): there the comment row is strict.
+        if (cli === "gemini" && name === "a // comment") continue;
+        const c = classifyFile({ kind: "ok", bytes }, E, cli);
         const shown = `~/${configRel(cli)}`;
-        const w = warningFor(
-          cli,
-          { class: "unrecognised", reason: "non-strict" },
-          { serving: true, expected: E, config: shown },
+
+        const w = warningFor(cli, c, { serving: true, expected: E, config: shown });
+
+        assert.deepEqual(
+          [c.class, "reason" in c ? c.reason : undefined],
+          ["unrecognised", "non-strict"],
+          `${cli} ${name}`,
         );
         assertNotStrictWarning(w, cli, shown, `${cli} ${name}`);
       }
@@ -489,6 +505,121 @@ function writeLauncherAt(home: string, port: number): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `MCP_HOST="127.0.0.1"\nMCP_PORT="${port}"\n`);
 }
+
+// --- Gemini with comments: outside the agreement scope (delta-02 R4, R5) ------------
+
+describe("a Gemini file with comments is classified on its content after comment removal (delta-02 R4)", () => {
+  const WRAPS: Array<[string, (text: string) => string]> = [
+    [
+      "line, block and unclosed block comments",
+      (t) => `// line comment\n/* block */${t} /* never closed`,
+    ],
+    [
+      "CRLF line endings",
+      (t) => `// line comment\r\n/* block\r\n spanning lines */\r\n${t}\r\n// tail\r\n`,
+    ],
+    [
+      "comment markers between members and inside strings",
+      (t) => {
+        const rest = t.slice(1);
+        const pad = '{ /* lead */ "pad": "// in a string /* too */" // eol\n';
+        return pad + (rest.trimStart().startsWith("}") ? rest : `,${rest}`);
+      },
+    ],
+  ];
+  const wrap = (text: string): string => (WRAPS[0] as [string, (t: string) => string])[1](text);
+
+  test("every strict fixture, commented, keeps its class on Gemini and is flagged when not ok", () => {
+    const failures: string[] = [];
+    for (const [variant, w] of WRAPS) {
+      for (const f of STRICT) {
+        const label = `${f.name} [${variant}]`;
+        const plain = Buffer.from(f.text("url"));
+        const commented = Buffer.from(w(f.text("url")));
+        const before = classifyFile({ kind: "ok", bytes: plain }, E, "gemini");
+
+        const after = classifyFile({ kind: "ok", bytes: commented }, E, "gemini");
+
+        const { comments, ...rest } = after;
+        if (JSON.stringify(rest) !== JSON.stringify(before)) {
+          failures.push(`${label}: ${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
+        }
+        if ((comments === true) !== (before.class !== "ok"))
+          failures.push(`${label}: comments flag ${String(comments)}`);
+        // Only Gemini strips comments: on every other CLI the same bytes are not strict.
+        for (const cli of ["claude", "copilot", "antigravity"] as const) {
+          const c = classifyFile({ kind: "ok", bytes: commented }, E, cli);
+          if (c.class !== "unrecognised" || c.reason !== "non-strict")
+            failures.push(`${label}: accepted on ${cli}`);
+        }
+      }
+    }
+    assert.deepEqual(failures, []);
+  });
+
+  test("a commented Gemini file that is not ok names the Gemini setup, never a jq-based task", () => {
+    for (const f of STRICT) {
+      const c = classifyFile({ kind: "ok", bytes: Buffer.from(wrap(f.text("url"))) }, E, "gemini");
+      if (c.class === "ok") continue;
+
+      const w =
+        warningFor("gemini", c, {
+          serving: true,
+          expected: E,
+          config: "~/.gemini/settings.json",
+        }) ?? "";
+
+      assert.ok(
+        w.includes("scripts/setup-gemini-interactive.sh") &&
+          /comment/i.test(w) &&
+          /backup/i.test(w),
+        `${f.name}: ${w}`,
+      );
+      assert.ok(!w.includes("switch-http") && !w.includes("mempalace:repair"), `${f.name}: ${w}`);
+      assert.ok(Buffer.byteLength(w) <= 600, f.name);
+    }
+  });
+
+  test("mcpServers null is absent on every CLI; [] and 5 are not strict (delta-02 R3, R4)", () => {
+    for (const cli of CLIS) {
+      const read = (t: string) => classifyFile({ kind: "ok", bytes: Buffer.from(t) }, E, cli);
+
+      assert.deepEqual(read('{"mcpServers":null}'), { class: "absent", reason: "no-entry" }, cli);
+      for (const bad of ['{"mcpServers":[]}', '{"mcpServers":5}']) {
+        const c = read(bad);
+        assert.deepEqual(
+          [c.class, "reason" in c ? c.reason : undefined],
+          ["unrecognised", "non-strict"],
+          `${cli} ${bad}`,
+        );
+      }
+    }
+  });
+
+  test("a trailing comma is not strict on Gemini, with or without comments", () => {
+    for (const t of [
+      `{${MS},}`,
+      `// c\n{${MS},}`,
+      `{"mcpServers":{"mempalace":${json(httpEntry("url", E))},}}`,
+    ]) {
+      const c = classifyFile({ kind: "ok", bytes: Buffer.from(t) }, E, "gemini");
+      assert.deepEqual(
+        [c.class, "reason" in c ? c.reason : undefined],
+        ["unrecognised", "non-strict"],
+        t,
+      );
+    }
+  });
+
+  test("status reads a commented Gemini file as unknown, unchanged (delta-02 Out of scope)", () => {
+    const sb = makeSandbox();
+    writeConfig(sb, "gemini", wrap(`{"mcpServers":{"mempalace":${json(httpEntry("url", E))}}}`));
+
+    const st = bashLib(sb, "mcp_assistant_arrangement gemini").stdout.trim();
+
+    assert.equal(st, "unknown");
+  });
+});
 
 // --- content: strict file, unknown entry shape (delta-01 R5) ---------------------
 

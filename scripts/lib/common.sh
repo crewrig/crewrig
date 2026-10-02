@@ -1841,17 +1841,19 @@ mcp_assistant_arrangement() {
 # is redacted by the one algorithm the session check shares (R4, plan v4
 # *Contracts*, v4-F5): userinfo, then query and fragment (line breaks
 # included), then every C0/DEL/C1 control becomes `?`, then 120 code points. A
-# value that is not a string prints the fixed text `(not a string)`, as the
-# check does. Only the first output line is kept.
+# single registered value is `(.url // .serverUrl)` (spec 0246 delta-02 R3):
+# `url` unless it is null or false, else `serverUrl`. A value that is not a
+# string is a mismatch and prints the fixed text `(not a string)`, as the
+# check's classifyStrict does. Only the first output line is kept.
 _mcp_endpoint_check() {
   local cfg
   cfg="$(mcp_assistant_config_path "$1")" || return 1
   [ -f "$cfg" ] || return 1
   jq -r -s --arg expected "$2" '
     [.[] | try (.mcpServers.mempalace // empty) catch empty] | last
-    | ([.url, .serverUrl] | map(select(type == "string")) | .[0]) as $u
-    | (if $u == $expected then "match" else "mismatch" end) + "\t"
-      + (if $u == null then "(not a string)"
+    | (.url // .serverUrl) as $u
+    | (if ($u | type) == "string" and $u == $expected then "match" else "mismatch" end) + "\t"
+      + (if ($u | type) != "string" then "(not a string)"
          else $u | sub("^(?<s>([A-Za-z][A-Za-z0-9+.-]*://)?)[^/?#]*@"; "\(.s)")
                  | sub("[?#][\\s\\S]*$"; "")
                  | gsub("[\u0000-\u001f\u007f-\u009f]"; "?")

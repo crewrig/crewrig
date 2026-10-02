@@ -72,9 +72,39 @@ function whichDir(bin: string): string | null {
   return null;
 }
 
-/** The jq the shell reader runs under: first on the parent's PATH. */
-export const JQ_DIR = whichDir("jq");
-export const NODE_DIR = path.dirname(process.execPath);
+/**
+ * Every distinct jq binary to run the shell reader under, by ABSOLUTE path:
+ * the macOS system one and Homebrew's, plus whatever the runner's PATH holds
+ * (CI). Their directories never reach a child's PATH: each sandbox links the
+ * selected binary into a private tool directory (`Sandbox.pathWithJq`), so
+ * nothing else in /opt/homebrew/bin can shadow a system tool.
+ */
+export const JQ_BINARIES: readonly string[] = (() => {
+  const found = whichDir("jq");
+  const candidates = [
+    "/usr/bin/jq",
+    "/opt/homebrew/bin/jq",
+    ...(found === null ? [] : [path.join(found, "jq")]),
+  ];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const bin of candidates) {
+    let real: string;
+    try {
+      fs.accessSync(bin, fs.constants.X_OK);
+      real = fs.realpathSync(bin);
+    } catch {
+      continue;
+    }
+    if (seen.has(real)) continue;
+    seen.add(real);
+    out.push(bin);
+  }
+  return out;
+})();
+
+/** The jq the other shell-side tests run under. */
+export const DEFAULT_JQ: string | null = JQ_BINARIES[0] ?? null;
 
 const temps: string[] = [];
 process.on("exit", () => {
@@ -97,7 +127,11 @@ export interface Sandbox {
   env(extra?: Record<string, string>): Record<string, string>;
   /** Absolute path of a CLI's registration file in this HOME. */
   config(cli: Cli): string;
+  /** A child PATH whose only jq is `jqBin` (absolute), linked into a private directory. */
+  pathWithJq(jqBin: string): string;
 }
+
+const SYSTEM_DIRS = ["/usr/bin", "/bin", "/usr/sbin", "/sbin"];
 
 export function makeSandbox(prefix = "sc0246-"): Sandbox {
   const root = mkTemp(prefix);
@@ -114,10 +148,22 @@ export function makeSandbox(prefix = "sc0246-"): Sandbox {
       { mode: 0o755 },
     );
   }
-  const pathDirs = [stubBin, NODE_DIR];
-  if (JQ_DIR !== null && !pathDirs.includes(JQ_DIR)) pathDirs.push(JQ_DIR);
-  pathDirs.push("/usr/bin", "/bin", "/usr/sbin", "/sbin");
-  const basePath = pathDirs.join(path.delimiter);
+  // Tools by absolute path, linked into private directories: node (the running
+  // one) and jq. No operator directory such as /opt/homebrew/bin is on PATH.
+  let tools = 0;
+  const toolDir = (links: Record<string, string>): string => {
+    const dir = path.join(root, `tools-${tools++}`);
+    fs.mkdirSync(dir);
+    for (const [name, target] of Object.entries(links))
+      fs.symlinkSync(target, path.join(dir, name));
+    return dir;
+  };
+  const pathWithJq = (jqBin: string): string =>
+    [stubBin, toolDir({ node: process.execPath, jq: jqBin }), ...SYSTEM_DIRS].join(path.delimiter);
+  const basePath =
+    DEFAULT_JQ === null
+      ? [stubBin, toolDir({ node: process.execPath }), ...SYSTEM_DIRS].join(path.delimiter)
+      : pathWithJq(DEFAULT_JQ);
   return {
     root,
     home,
@@ -138,6 +184,7 @@ export function makeSandbox(prefix = "sc0246-"): Sandbox {
     config(cli) {
       return path.join(home, CONFIG_REL[cli]);
     },
+    pathWithJq,
   };
 }
 

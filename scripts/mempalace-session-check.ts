@@ -160,7 +160,7 @@ async function main(argv: readonly string[]): Promise<string> {
   const serving = endpoint.loopback ? await probeServing(endpoint.host, endpoint.port) : false;
 
   const file = reg.configPath(cli, home);
-  const classification = reg.classifyFile(await readRegular(file), endpoint.url);
+  const classification = reg.classifyFile(await readRegular(file), endpoint.url, cli);
   const warning = reg.warningFor(cli, classification, {
     serving,
     expected: endpoint.url,

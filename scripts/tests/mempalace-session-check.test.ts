@@ -449,3 +449,198 @@ describe("no secret, no side effect (R10)", () => {
     });
   });
 });
+
+// --- delta-02: Gemini comments, non-object mcpServers, url/serverUrl ---------------
+
+/** A correct Gemini HTTP entry, as JSON text. */
+const geminiEntry = (url: string): string => JSON.stringify(httpEntry("gemini", url));
+
+/** Delta-02 R5: the Gemini setup text for a commented file that is not ok. */
+function assertGeminiSetupWarning(w: string | null, label: string): void {
+  assert.ok(w !== null, `${label}: no warning`);
+  assert.ok(
+    w.includes("gemini") && w.includes("scripts/setup-gemini-interactive.sh"),
+    `${label}: ${w}`,
+  );
+  assert.match(w, /comment/i, `${label}: does not say the setup drops the comments`);
+  assert.match(w, /backup/i, `${label}: does not mention the timestamped backup`);
+  assert.ok(
+    !w.includes("switch-http") && !w.includes("mempalace:repair"),
+    `${label}: names a jq-based task: ${w}`,
+  );
+  assert.ok(Buffer.byteLength(w) <= 600);
+}
+
+describe("Gemini settings with comments (delta-02 R4, R5)", () => {
+  test("a working commented configuration, with // inside a string, starts silently", async () => {
+    await withServer("auth-refusal", async (server) => {
+      const sb = makeSandbox();
+      writeLauncher(sb, server.port);
+      writeConfig(
+        sb,
+        "gemini",
+        `// team proxy\n{\n  "$schema": "https://example.invalid//schema.json",\n` +
+          `  /* the shared daemon */\n  "mcpServers": { "mempalace": ${geminiEntry(server.url)} }\n}\n`,
+      );
+
+      const r = await runCheck(sb, "gemini");
+
+      assert.deepEqual([r.status, r.stdout, r.stderr], [0, "", ""]);
+      assert.equal(server.requests.length, 1);
+      assertNoCliInvoked(sb);
+    });
+  });
+
+  test("a commented configuration without the entry, or with a stdio entry, points at the Gemini setup", async () => {
+    await withServer("auth-refusal", async (server) => {
+      const sb = makeSandbox();
+      writeLauncher(sb, server.port);
+      const cases: Array<[string, string]> = [
+        ["absent", `// hand edited\n{ "mcpServers": { /* nothing yet */ } }\n`],
+        ["stdio", `{ "mcpServers": { "mempalace": { "command": "python3" } } } // local\n`],
+        [
+          "wrong endpoint",
+          `/* pinned */ { "mcpServers": { "mempalace": ${geminiEntry("http://127.0.0.1:41000/mcp")} } }`,
+        ],
+      ];
+      for (const [label, text] of cases) {
+        writeConfig(sb, "gemini", text);
+
+        const r = await runCheck(sb, "gemini");
+
+        assert.equal(r.status, 0);
+        assertGeminiSetupWarning(emittedWarning(r.stdout), label);
+      }
+      assertNoCliInvoked(sb);
+    });
+  });
+
+  test("comment-like sequences inside string literals are left untouched", async () => {
+    await withServer("auth-refusal", async (server) => {
+      const sb = makeSandbox();
+      writeLauncher(sb, server.port);
+      // A stripper that read into strings would delete the entry between "/*" and "*/",
+      // or cut the line at "//": either way the registration would no longer read ok.
+      writeConfig(
+        sb,
+        "gemini",
+        `{"a":"x /* not a comment","mcpServers":{"mempalace":${geminiEntry(server.url)}},"b":"*/ y // z","c":"\\" // still a string"}`,
+      );
+
+      const r = await runCheck(sb, "gemini");
+
+      assert.deepEqual([r.status, r.stdout], [0, ""], r.stdout);
+    });
+  });
+
+  test("a block comment that is never closed runs to the end of the file", async () => {
+    await withServer("auth-refusal", async (server) => {
+      const sb = makeSandbox();
+      writeLauncher(sb, server.port);
+
+      writeConfig(
+        sb,
+        "gemini",
+        `{"mcpServers":{"mempalace":${geminiEntry(server.url)}}} /* unclosed`,
+      );
+      const tail = await runCheck(sb, "gemini");
+      writeConfig(sb, "gemini", `{"mcpServers":{"mempalace":${geminiEntry(server.url)}} /* }`);
+      const swallowed = await runCheck(sb, "gemini");
+
+      assert.deepEqual(
+        [tail.status, tail.stdout],
+        [0, ""],
+        "comment to EOF after a complete document: ok",
+      );
+      const w = emittedWarning(swallowed.stdout) ?? "";
+      assert.ok(w.includes("not a single strict JSON document"), `closing brace swallowed: ${w}`);
+    });
+  });
+
+  test("a trailing comma is not strict, on Gemini as elsewhere", async () => {
+    await withServer("auth-refusal", async (server) => {
+      const sb = makeSandbox();
+      writeLauncher(sb, server.port);
+      writeConfig(sb, "gemini", `{"mcpServers":{"mempalace":${geminiEntry(server.url)}},}`);
+
+      const r = await runCheck(sb, "gemini");
+
+      const w = emittedWarning(r.stdout) ?? "";
+      assert.ok(
+        w.includes("not a single strict JSON document") && w.includes("~/.gemini/settings.json"),
+        w,
+      );
+      assert.ok(!w.includes("mempalace:repair"), w);
+    });
+  });
+
+  test("comments are stripped for Gemini only: the same commented file is not strict on Copilot", async () => {
+    await withServer("auth-refusal", async (server) => {
+      const sb = makeSandbox();
+      writeLauncher(sb, server.port);
+      writeConfig(
+        sb,
+        "copilot",
+        `// note\n{"mcpServers":{"mempalace":${JSON.stringify(httpEntry("copilot", server.url))}}}`,
+      );
+
+      const r = await runCheck(sb, "copilot");
+
+      assert.ok(
+        (emittedWarning(r.stdout) ?? "").includes("not a single strict JSON document"),
+        r.stdout,
+      );
+    });
+  });
+});
+
+describe("a non-object mcpServers (delta-02 R3, R4, R5)", () => {
+  for (const value of ["[]", '"s"']) {
+    test(`mcpServers ${value}: unrecognised, rewrite advice, then switch-http, never repair`, async () => {
+      await withServer("auth-refusal", async (server) => {
+        const sb = makeSandbox();
+        writeLauncher(sb, server.port);
+        writeConfig(sb, "copilot", `{"mcpServers": ${value}}`);
+
+        const r = await runCheck(sb, "copilot");
+
+        const w = emittedWarning(r.stdout) ?? "";
+        assert.ok(w.includes("copilot") && w.includes("~/.copilot/mcp-config.json"), w);
+        assert.ok(w.includes("not a single strict JSON document"), w);
+        // R5: the rewrite advice first, then switch-http as the step after the rewrite.
+        const advice = w.indexOf('by making "mcpServers" an object');
+        assert.ok(advice >= 0, `no advice to make mcpServers an object: ${w}`);
+        assert.ok(
+          advice < w.indexOf("task mempalace:switch-http"),
+          `switch-http missing or first: ${w}`,
+        );
+        assert.ok(!w.includes("mempalace:repair"), w);
+        assertNoCliInvoked(sb);
+      });
+    });
+  }
+});
+
+describe("an entry carrying both url and serverUrl compares .url // .serverUrl (delta-02 R3)", () => {
+  test("url correct, serverUrl wrong: ok; url wrong, serverUrl correct: wrong-endpoint naming the url", async () => {
+    await withServer("auth-refusal", async (server) => {
+      const sb = makeSandbox();
+      writeLauncher(sb, server.port);
+      const other = "http://127.0.0.1:41000/mcp";
+
+      writeConfig(sb, "claude", {
+        mcpServers: { mempalace: { type: "http", url: server.url, serverUrl: other } },
+      });
+      const good = await runCheck(sb, "claude");
+      writeConfig(sb, "claude", {
+        mcpServers: { mempalace: { type: "http", url: other, serverUrl: server.url } },
+      });
+      const bad = await runCheck(sb, "claude");
+
+      assert.deepEqual([good.status, good.stdout], [0, ""]);
+      const w = emittedWarning(bad.stdout) ?? "";
+      assert.ok(w.includes("wrong-endpoint") && w.includes(other), w);
+      assertNoCliInvoked(sb);
+    });
+  });
+});
