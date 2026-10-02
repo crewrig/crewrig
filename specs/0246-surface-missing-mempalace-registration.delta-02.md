@@ -10,8 +10,10 @@ version: 3.0.0
 
 # A missing MemPalace registration is announced at session start, never silent
 
-Context. These corrections come from the post-merge audit of delta-01 and
-are recorded in ledger #961: findings s6-F1, s6-F2, s6-F3, s7-F1, and s7-F3.
+Context. These corrections are recorded in ledger #961. Findings s6-F1,
+s6-F2, and s6-F3 come from seat pass 6 on PR #1459, before the merge (head
+`4551fb5`). Findings s7-F1 and s7-F3 come from the post-merge audit of
+delta-01.
 The owner approved them at the plan-v4 gate of issue #1410 (ruling D7).
 A later owner ruling, "Doc embarquée + amender R8", adds an evidence rule
 for channels that cannot be probed live (R7), and the Antigravity throttle
@@ -46,13 +48,15 @@ Given `~/.gemini/settings.json` holds a trailing comma after its last member
 When a Gemini CLI session starts
 Then the check classifies the file `unrecognised` with the not-strict warning text of requirement 5
 
-**Scenario:** A non-object `mcpServers` gets the rewrite advice, not `switch-http`
+**Scenario:** A non-object `mcpServers` gets the rewrite advice before `switch-http`
 
 Given the daemon is installed and serving
 And `~/.copilot/mcp-config.json` is `{"mcpServers": []}`
 When a Copilot CLI session starts
 Then the check classifies the file `unrecognised` with the not-strict warning text of requirement 5
-And the warning does not name `task mempalace:switch-http`, whose pre-flight would refuse every CLI
+And the warning gives the rewrite advice, including "by making `mcpServers` an object"
+And it names `task mempalace:switch-http` only as the step after the rewrite, because its pre-flight would refuse every CLI while the file stays as it is
+And it never names `task mempalace:repair`
 
 **Scenario:** An entry carrying both `url` and `serverUrl` compares one value
 
@@ -191,8 +195,7 @@ Replacement:
 >   to break across `jq` binaries and through `~/.jq`.
 
 Requirement 5 (cumulative text from delta-01): the not-strict rewrite
-advice covers a non-object `mcpServers` (s6-F2), and a Gemini CLI file that
-holds comments points at the Gemini setup (s7-F1).
+advice covers a non-object `mcpServers` (s6-F2).
 
 Original:
 
@@ -206,30 +209,29 @@ Replacement:
 >   again without the byte order mark, by merging the concatenated
 >   documents, or by making `mcpServers` an object;
 
+Requirement 5 (parent text), first sentence: the Gemini CLI comment
+override covers every class other than `ok` (s7-F1).
+
 Original:
 
-> It SHALL NOT name `task mempalace:repair`, because that command selects
-> its targets with the reader of `task mempalace:status`. That reader
-> accepts many files that are not strict, and on most of them it reports
-> nothing to repair.
+> for `stdio`, that its writes are refused by the daemon), and names
+> `task mempalace:switch-http` followed by a session restart as the repair.
 
 Replacement:
 
-> It SHALL NOT name `task mempalace:repair`, because that command selects
-> its targets with the reader of `task mempalace:status`. That reader
-> accepts many files that are not strict, and on most of them it reports
-> nothing to repair.
->
-> - **Gemini CLI file that holds comments.** Some Gemini CLI files are
->   strict after comment removal (requirement 4), hold comments, and are
->   classified anything other than `ok`. For such a file, the warning SHALL
->   name `scripts/setup-gemini-interactive.sh` in place of
->   `task mempalace:switch-http` or `task mempalace:repair`. It SHALL say
->   that this setup rewrites the file without its comments and keeps them
->   in a timestamped backup (spec 0214 R12). Both `task` commands read the
->   file with `jq`, which rejects comments. `switch-http` would therefore
->   refuse, because its pre-flight reads the file as `unknown`, and
->   `repair` could not write it.
+> for `stdio`, that its writes are refused by the daemon), and names
+> `task mempalace:switch-http` followed by a session restart as the repair.
+> For every class other than `ok`, a Gemini CLI file that holds comments
+> and is strict after comment removal (requirement 4) gets a different
+> warning. It SHALL name `scripts/setup-gemini-interactive.sh` in place of
+> `task mempalace:switch-http` or `task mempalace:repair`, and SHALL say
+> that this setup rewrites the file without its comments and keeps them in
+> a timestamped backup (spec 0214 R12). This override applies to `absent`,
+> `stdio`, `wrong-endpoint`, and `unrecognised` alike, and takes
+> precedence over every other repair pointer in this requirement. Both
+> `task` commands read the file with `jq`, which rejects comments.
+> `switch-http` would refuse, because its pre-flight reads the file as
+> `unknown`, and `repair` could not write it.
 
 Requirement 7 (parent text): an evidence rule is added for channels that
 cannot be probed live (owner ruling at the PLAN stage of #1410, "Doc
@@ -260,12 +262,22 @@ Replacement:
 > `IneligibleTierError`, while its user channel `systemMessage` was
 > verified live.
 >
-> When that shipped documentation describes the complete output schema of
-> an event and no field in it reaches the user, the schema SHALL count as
-> evidence that the user channel is absent. That is narrower than "the
-> reference does not mention it", which
-> `docs/cli-matrix-maintenance.md` → *Gap-acceptance evidence rule*
-> rejects. The live follow-up issue SHALL re-test that absence.
+> Shipped documentation that lists no user-facing output for an event
+> SHALL count as evidence that the user channel is absent only when both
+> of the following hold:
+>
+> - the documentation itself states that its output schema for that event
+>   is complete;
+> - every machine-readable schema shipped in the same version agrees with
+>   it.
+>
+> One output variant present in a shipped schema but absent from the
+> prose voids the inference. Without that evidence, the user channel
+> SHALL be recorded in `docs/cli-matrix.md` as unconfirmed
+> (`[GAP-confirmation]`), not as an evidenced gap, until the live
+> follow-up settles it. `docs/cli-matrix-maintenance.md` →
+> *Gap-acceptance evidence rule* rejects "the reference does not mention
+> it", and this rule does not relax that.
 
 Requirement 8 (parent text), Antigravity CLI: the throttle key and the
 channels rest on the documentation shipped in `agy` (same ruling). The
@@ -302,28 +314,78 @@ Replacement:
 >   Each conversation's agent is still covered by requirement 13.
 > - **Channels.** The model channel SHALL be the documented `PreInvocation`
 >   output `{"injectSteps":[{"ephemeralMessage":"…"}]}`, which the shipped
->   documentation describes as a "transient system message". The
->   documented `PreInvocation` output carries no field that reaches the
->   user. Under requirement 7, the user channel SHALL therefore be recorded
->   in `docs/cli-matrix.md` as an evidenced gap.
+>   documentation describes as a "transient system message". The check
+>   SHALL emit that step and no other step type.
+>
+>   The user channel SHALL be recorded in `docs/cli-matrix.md` as
+>   unconfirmed (`[GAP-confirmation]`), pending issue #1472, not as an
+>   evidenced gap. The protobuf schema compiled into `agy` 1.2.14 gives
+>   `HookInjectedStep` eight variants. Two of them could reach the
+>   operator: `system_message`, and `error_message` with its `user_message`
+>   field. Neither appears in the prose documentation, which also does not
+>   say whether a documented `userMessage` step is shown to the operator.
+>   Under requirement 7, that voids an inference of absence.
+> - **Undocumented `SessionStart`.** `agy` 1.2.14 also contains an
+>   undocumented `SessionStart` hook (`CallSessionStartHook`,
+>   `SessionStartHookResult`), absent from the shipped documentation's
+>   table of supported events. The check SHALL NOT use it while it is
+>   undocumented. Issue #1472 probes it, and adopting it would take a later
+>   delta.
 > - **Timeout and interpreter.** The hook's `timeout` SHALL be written in
 >   seconds. The shipped documentation says: "`timeout` (int, optional):
 >   Execution timeout in seconds. Defaults to `30`." The command SHALL be
 >   written for `sh -c`, which runs hook commands on Unix.
 > - **Evidence record.** `docs/cli-matrix.md` SHALL record the `agy`
 >   version, the verbatim excerpts quoted above, and the fact that no live
->   probe ran. The live confirmation SHALL be a follow-up issue linked from
->   #1410.
+>   probe ran. The live confirmation is issue #1472, linked from #1410.
 
-The cost-bound bullet of requirement 8 is unchanged. The 150 ms 95th
-percentile of the suppressed path SHALL still be measured locally, which
-needs no account. In requirement 8's fallback bullet, "offers no channel to
-the user or the model" is now decided by the evidence above: the model
-channel exists, so only a measured cost above the bound triggers the
-fallback.
+Requirement 8 (parent text), fallback: the channel condition is settled by
+the documentation evidence above. The cost-bound bullet is unchanged, and
+its 150 ms 95th percentile is still measured locally, which needs no
+account.
 
-Requirement 16 (cumulative text from delta-01): the coverage list adds the
-cases of this delta.
+Original:
+
+> - **Fallback.** If the measured cost exceeds the bound, or `PreInvocation`
+>   offers no channel to the user or the model (requirement 7), the hook
+>   SHALL NOT be registered. Antigravity CLI SHALL then be recorded as an
+>   evidenced gap covered by requirement 13 alone.
+
+Replacement:
+
+> - **Fallback.** If the measured cost exceeds the bound, the hook SHALL
+>   NOT be registered. Antigravity CLI SHALL then be recorded as an
+>   evidenced gap covered by requirement 13 alone. The model channel rests
+>   on requirement 7's documentation evidence (the *Channels* bullet), so
+>   a missing channel does not trigger this fallback. If issue #1472 shows
+>   that `ephemeralMessage` does not reach the model, a later delta
+>   decides.
+
+Requirement 15 (parent text): the Antigravity throttle key is no longer
+chosen by a probe.
+
+Original:
+
+> Antigravity CLI, the throttle key that requirement 8's probe selected and
+> the measured cost of the suppressed path.
+
+Replacement:
+
+> Antigravity CLI, the documented throttle key that requirement 8 sets, the
+> fallback that applied if any, and the measured cost of the suppressed
+> path.
+
+Requirement 16 (cumulative text from delta-01): agreement fixtures exclude
+comments, and the coverage list adds the cases of this delta.
+
+Original:
+
+> agreement test of requirement 4 runs over strict fixtures only,
+
+Replacement:
+
+> agreement test of requirement 4 runs over strict fixtures that hold no
+> comment,
 
 Original:
 
@@ -379,8 +441,17 @@ Replacement:
 >   also requires a top-level object, pins how a strict file's entry is
 >   classified, and records the empty-file trade-off.
 
-The lead line of delta-01's requirement 5 block, "(seat finding s4-F1)",
-reads "(measured during PLAN)".
+Delta-01's lead line for its requirement 5 block (not normative):
+
+Original:
+
+> Requirement 5: the `unrecognised` warning is split by cause (seat finding
+> s4-F1).
+
+Replacement:
+
+> Requirement 5: the `unrecognised` warning is split by cause (measured
+> during PLAN).
 
 ## REMOVED
 
