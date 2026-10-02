@@ -568,3 +568,5 @@ run_mode() {
 echo ""
 echo "Results: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
+
+# acceptance probe for #1445 (comment only, never merged)

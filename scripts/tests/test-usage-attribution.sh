@@ -1357,3 +1357,5 @@ if [ "$fail" -gt 0 ]; then
   exit 1
 fi
 exit 0
+
+# acceptance probe for #1445 (comment only, never merged)

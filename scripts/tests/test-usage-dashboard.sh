@@ -2920,3 +2920,5 @@ fi
 echo
 echo "=== Summary: $pass passed, $fail failed ==="
 [ "$fail" -eq 0 ]
+
+# acceptance probe for #1445 (comment only, never merged)
