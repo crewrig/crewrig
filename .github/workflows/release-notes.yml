@@ -51,7 +51,7 @@ jobs:
         run: npm ci
 
       - name: Render extension release notes through the monorepo release config
-        run: bash scripts/tests/test-monorepo-release-notes.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release-notes.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
