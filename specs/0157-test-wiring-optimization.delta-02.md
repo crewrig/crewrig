@@ -1,7 +1,7 @@
 ---
 id: "0157"
 slug: test-wiring-optimization
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1445

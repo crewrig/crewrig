@@ -1,7 +1,7 @@
 ---
 id: "0171"
 slug: push-base-ref-test-strays
-status: draft
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1445
