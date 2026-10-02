@@ -1,0 +1,71 @@
+name: MemPalace Session Check
+
+# Spec 0246 (issue #1410): mirrors the `mempalace-session-check` capability of
+# ci/ci-capabilities.yml.
+on:
+  pull_request:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/mempalace-session-check.ts"
+      - "scripts/session-check-hooks.ts"
+      - "scripts/lib/mempalace-registration.ts"
+      - "scripts/lib/session-check-throttle.ts"
+      - "scripts/lib/session-check-config.ts"
+      - "scripts/lib/tmp-file.ts"
+      - "scripts/lib/mcp-daemon-launcher.sh"
+      - "scripts/lib/common.sh"
+      - "scripts/lib/usage-capture-optin.sh"
+      - "scripts/status-mcp-server.sh"
+      - "scripts/setup-*-interactive.sh"
+      - "scripts/tests/mempalace-registration*.test.ts"
+      - "scripts/tests/mempalace-session-check.test.ts"
+      - "scripts/tests/session-check-*.test.ts"
+      - "scripts/tests/lib/session-check-harness.ts"
+      - "scripts/tests/fixtures/session-check/**"
+      - "hooks/*-transcript-hooks.json"
+      - "hooks/*-usage-capture-hooks.json"
+  push:
+    branches: [main, "release/**"]
+    paths:
+      - "scripts/mempalace-session-check.ts"
+      - "scripts/session-check-hooks.ts"
+      - "scripts/lib/mempalace-registration.ts"
+      - "scripts/lib/session-check-throttle.ts"
+      - "scripts/lib/session-check-config.ts"
+      - "scripts/lib/tmp-file.ts"
+      - "scripts/lib/mcp-daemon-launcher.sh"
+      - "scripts/lib/common.sh"
+      - "scripts/lib/usage-capture-optin.sh"
+      - "scripts/status-mcp-server.sh"
+      - "scripts/setup-*-interactive.sh"
+      - "scripts/tests/mempalace-registration*.test.ts"
+      - "scripts/tests/mempalace-session-check.test.ts"
+      - "scripts/tests/session-check-*.test.ts"
+      - "scripts/tests/lib/session-check-harness.ts"
+      - "scripts/tests/fixtures/session-check/**"
+      - "hooks/*-transcript-hooks.json"
+      - "hooks/*-usage-capture-hooks.json"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  mempalace-session-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Test the MemPalace session-start check
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-registration-agreement.test.ts scripts/tests/mempalace-registration.test.ts scripts/tests/mempalace-session-check.test.ts scripts/tests/session-check-throttle.test.ts scripts/tests/session-check-hooks.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure

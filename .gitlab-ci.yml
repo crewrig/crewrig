@@ -1081,6 +1081,54 @@ ticket-pickup:
         - "scripts/tests/ticket-*.test.ts"
         - "scripts/tests/fixtures/ticket-pickup/**"
 
+mempalace-session-check:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-registration-agreement.test.ts scripts/tests/mempalace-registration.test.ts scripts/tests/mempalace-session-check.test.ts scripts/tests/session-check-throttle.test.ts scripts/tests/session-check-hooks.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/mempalace-session-check.ts"
+        - "scripts/session-check-hooks.ts"
+        - "scripts/lib/mempalace-registration.ts"
+        - "scripts/lib/session-check-throttle.ts"
+        - "scripts/lib/session-check-config.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/mcp-daemon-launcher.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/lib/usage-capture-optin.sh"
+        - "scripts/status-mcp-server.sh"
+        - "scripts/setup-*-interactive.sh"
+        - "scripts/tests/mempalace-registration*.test.ts"
+        - "scripts/tests/mempalace-session-check.test.ts"
+        - "scripts/tests/session-check-*.test.ts"
+        - "scripts/tests/lib/session-check-harness.ts"
+        - "scripts/tests/fixtures/session-check/**"
+        - "hooks/*-transcript-hooks.json"
+        - "hooks/*-usage-capture-hooks.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/mempalace-session-check.ts"
+        - "scripts/session-check-hooks.ts"
+        - "scripts/lib/mempalace-registration.ts"
+        - "scripts/lib/session-check-throttle.ts"
+        - "scripts/lib/session-check-config.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/mcp-daemon-launcher.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/lib/usage-capture-optin.sh"
+        - "scripts/status-mcp-server.sh"
+        - "scripts/setup-*-interactive.sh"
+        - "scripts/tests/mempalace-registration*.test.ts"
+        - "scripts/tests/mempalace-session-check.test.ts"
+        - "scripts/tests/session-check-*.test.ts"
+        - "scripts/tests/lib/session-check-harness.ts"
+        - "scripts/tests/fixtures/session-check/**"
+        - "hooks/*-transcript-hooks.json"
+        - "hooks/*-usage-capture-hooks.json"
+
 node-floor-guard:
   image: node:20
   script:
