@@ -21,11 +21,12 @@
 # suite (a green that certifies the adjacent property).
 #
 # Preflight: `node` on PATH and node_modules/ajv installed, or a FATAL and
-# exit 2 — never a silent pass. This guard is load-bearing: check-test-strays.sh
-# runs every changeset-modified suite from the test-wiring job, which provisions
-# no Node on either CI engine. A bare `node` invocation there would print
-# "...: node: command not found" to stderr and be counted as a stray by that
-# guard's grep, so the FATAL text below deliberately avoids that exact phrase.
+# exit 2 — never a silent pass. This guard is load-bearing: the owning CI job
+# runs this suite through `ci-cache-guard.sh --stray-scan`, which fails the job
+# when the suite's output contains the shell's not-found phrase. A bare `node`
+# invocation without Node would print "...: node: command not found" to stderr
+# and be counted as a stray by that scan, so the FATAL text below deliberately
+# avoids that exact phrase.
 #
 # Usage:
 #   bash scripts/tests/test-usage-record-schema.sh
