@@ -1186,8 +1186,11 @@ check_gha_job() {
       # Unwrap the cache-guard wrapper (spec 0147 R6/R7): the guard is a
       # mechanism, not business work. Extract the inner command after ` -- `,
       # mirroring how install_recipe_tool skips setup steps.
+      # Only the generated cache layer (`--cache-dir`) is unwrapped: the
+      # `--stray-scan` form is business work the reference declares verbatim
+      # (spec 0170 delta-01 R10), so it must match its command entry as is.
       case "$nrun" in
-        "bash scripts/ci-cache-guard.sh "*)
+        "bash scripts/ci-cache-guard.sh --cache-dir "*)
           nrun="${nrun#* -- }"
           ;;
       esac

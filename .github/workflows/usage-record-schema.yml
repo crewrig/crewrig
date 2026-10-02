@@ -43,7 +43,7 @@ jobs:
         run: npm install
 
       - name: Validate usage record schema and fixtures
-        run: bash scripts/tests/test-usage-record-schema.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-record-schema.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
