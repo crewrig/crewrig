@@ -1248,6 +1248,63 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
 
+  # Spec 0246 (issue #1410): the MemPalace session-start check, its hook writer,
+  # and the status side's wrong-endpoint line. The tests run hermetically: a
+  # scratch HOME and CLAUDE_CONFIG_DIR, stub assistant CLIs first on PATH, and
+  # a fake endpoint on 127.0.0.1:0. jq is the shell reader's own parser; the
+  # agreement test logs `jq --version`.
+  - id: mempalace-session-check
+    name: "MemPalace session-start check (spec 0246)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/mempalace-session-check.ts"
+          - "scripts/session-check-hooks.ts"
+          - "scripts/lib/mempalace-registration.ts"
+          - "scripts/lib/session-check-throttle.ts"
+          - "scripts/lib/session-check-config.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/mcp-daemon-launcher.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/usage-capture-optin.sh"
+          - "scripts/status-mcp-server.sh"
+          - "scripts/setup-*-interactive.sh"
+          - "scripts/tests/mempalace-registration*.test.ts"
+          - "scripts/tests/mempalace-session-check.test.ts"
+          - "scripts/tests/session-check-*.test.ts"
+          - "scripts/tests/lib/session-check-harness.ts"
+          - "scripts/tests/fixtures/session-check/**"
+          - "hooks/*-transcript-hooks.json"
+          - "hooks/*-usage-capture-hooks.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/mempalace-session-check.ts"
+          - "scripts/session-check-hooks.ts"
+          - "scripts/lib/mempalace-registration.ts"
+          - "scripts/lib/session-check-throttle.ts"
+          - "scripts/lib/session-check-config.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/mcp-daemon-launcher.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/usage-capture-optin.sh"
+          - "scripts/status-mcp-server.sh"
+          - "scripts/setup-*-interactive.sh"
+          - "scripts/tests/mempalace-registration*.test.ts"
+          - "scripts/tests/mempalace-session-check.test.ts"
+          - "scripts/tests/session-check-*.test.ts"
+          - "scripts/tests/lib/session-check-harness.ts"
+          - "scripts/tests/fixtures/session-check/**"
+          - "hooks/*-transcript-hooks.json"
+          - "hooks/*-usage-capture-hooks.json"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-registration-agreement.test.ts scripts/tests/mempalace-registration.test.ts scripts/tests/mempalace-session-check.test.ts scripts/tests/session-check-throttle.test.ts scripts/tests/session-check-hooks.test.ts
+
   # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release
   # that cannot strip types. Each command is plain POSIX so the job needs no
   # TypeScript; the grep tokens are the guard's stable diagnostic contract
