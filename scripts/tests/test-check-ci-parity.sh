@@ -57,6 +57,13 @@
 #          explicit install → still fails closed (guards against
 #          over-exemption — issue #1216).
 #
+#   Stray-scan wiring (spec 0170 delta-01 R16): the parity unwrap strips only
+#   the generated cache layer, never the `--stray-scan` wrapper.
+#     SC1  A step equal to the declared scanned command passes, bare
+#          (usage-pricing) and inside a cache layer (docs-index).
+#     SC2  A bare step missing the scan fails, naming capability + platform.
+#     SC3  A cache-layer step missing the scan fails the same way.
+#
 #   GitHub path filters (spec 0049 delta-01 R12-R21; the executable form of
 #   R21). ONE GHA-only fixture carries ~30 capability-scoped mutations, each on
 #   a distinct capability, applied with one `yq -i` per file and checked by ONE
@@ -552,6 +559,66 @@ refute_in() {
   expect_exit 1 "C1: cache key input divergence fails closed"
   expect_in err "capability 'ci-parity' (github-actions)" "C1: names the capability"
   expect_in err "cache key inputs diverge"                "C1: names the R6 divergence"
+}
+
+# ---------------------------------------------------------------------------
+# SC — Stray-scan wiring (spec 0170 delta-01 R16, issue #1445). A registered
+# suite command is declared in the SCANNED form
+#   bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/<suite>
+# The parity unwrap strips only the generated cache layer
+# (`bash scripts/ci-cache-guard.sh --cache-dir ... -- `), never the scan, so
+# the scan is part of what a GitHub step must exhibit.
+#   SC1  the step equals the declared scanned command, BARE (usage-pricing) and
+#        INSIDE a generated cache layer (docs-index): both pass.
+#   SC2  a bare step missing the scan fails, naming capability and platform.
+#   SC3  a step inside a cache layer missing the scan fails the same way.
+# ---------------------------------------------------------------------------
+SCAN_PREFIX="bash scripts/ci-cache-guard.sh --stray-scan -- "
+{
+  f="$(make_fixture)"
+  want_bare="$(yq -r '.capabilities[] | select(.id == "usage-pricing") | .command[-1]' "$f/ci/ci-capabilities.yml")"
+  want_layered="$(yq -r '.capabilities[] | select(.id == "docs-index") | .command[-1]' "$f/ci/ci-capabilities.yml")"
+  got_bare="$(yq -r '.jobs."usage-pricing".steps[] | select((.run // "") | test("test-usage-pricing")) | .run' "$f/.github/workflows/usage-pricing.yml")"
+  got_layered="$(yq -r '.jobs."docs-index".steps[] | select((.run // "") | test("test-build-docs-index")) | .run' "$f/.github/workflows/build.yml")"
+
+  # Preconditions: the reference declares the scanned form, and the two
+  # fixture steps are its bare and its layered exhibition.
+  case "$want_bare" in "$SCAN_PREFIX"*) ok "SC1: usage-pricing declares the scanned form" ;; *) ko "SC1: usage-pricing command is not scanned: '$want_bare'" ;; esac
+  case "$want_layered" in "$SCAN_PREFIX"*) ok "SC1: docs-index declares the scanned form" ;; *) ko "SC1: docs-index command is not scanned: '$want_layered'" ;; esac
+  if [ "$got_bare" = "$want_bare" ]; then
+    ok "SC1: the usage-pricing step is the declared scanned command, bare"
+  else
+    ko "SC1: usage-pricing step is not the declared command (got '$got_bare', want '$want_bare')"
+  fi
+  case "$got_layered" in
+    "bash scripts/ci-cache-guard.sh --cache-dir "*" -- $want_layered") ok "SC1: the docs-index step is the declared scanned command inside a cache layer" ;;
+    *) ko "SC1: docs-index step is not a cache layer around the declared command (got '$got_layered')" ;;
+  esac
+
+  run_check "$f"
+  expect_exit 0 "SC1: scanned steps, bare and layered, pass"
+  refute_in err "capability 'usage-pricing' (github-actions)" "SC1: no drift on the bare scanned step"
+  refute_in err "capability 'docs-index' (github-actions)"    "SC1: no drift on the layered scanned step"
+}
+{
+  f="$(make_fixture)"
+  yq -i '(.jobs."usage-pricing".steps[] | select((.run // "") | test("stray-scan")) | .run) = "bash scripts/tests/test-usage-pricing.sh"' \
+    "$f/.github/workflows/usage-pricing.yml"
+
+  run_check "$f"
+  expect_exit 1 "SC2: a bare step missing the scan fails closed"
+  expect_in err "capability 'usage-pricing' (github-actions)" "SC2: names capability + platform"
+  expect_in err "unexpected step: 'bash scripts/tests/test-usage-pricing.sh'" "SC2: names the unscanned step"
+}
+{
+  f="$(make_fixture)"
+  yq -i '(.jobs."docs-index".steps[] | select((.run // "") | test("stray-scan")) | .run) |= sub(" -- bash scripts/ci-cache-guard.sh --stray-scan -- ", " -- ")' \
+    "$f/.github/workflows/build.yml"
+
+  run_check "$f"
+  expect_exit 1 "SC3: a layered step missing the scan fails closed"
+  expect_in err "capability 'docs-index' (github-actions)" "SC3: names capability + platform"
+  expect_in err "unexpected step: 'bash scripts/tests/test-build-docs-index.sh'" "SC3: names the unscanned step"
 }
 
 # ===========================================================================
