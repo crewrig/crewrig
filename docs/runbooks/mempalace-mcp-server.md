@@ -161,7 +161,11 @@ it reads the expected endpoint from the installed launcher — `MCP_HOST` and
 environment — and sends one unauthenticated request to
 `http://<host>:<port>/mcp`. It then classifies the CLI's user-level
 `mempalace` registration and shows at most one warning, to you and to the
-model. It never blocks the session and never repairs anything.
+model. On Copilot CLI the warning reaches the model only, which relays it.
+On Antigravity CLI it is sent to the model only, and whether any output can
+reach you directly is unconfirmed, pending
+[#1472](https://github.com/crewrig/crewrig/issues/1472). It never blocks the
+session and never repairs anything.
 
 It stays silent when the registration is correct, when no daemon is
 installed, on a platform with no supported supervisor, and when the daemon is
