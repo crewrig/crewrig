@@ -253,6 +253,8 @@ wired_workflow() {
 # Summary
 # ---------------------------------------------------------------------------
 total=$((pass + fail))
+# acceptance probe for #1445 (never merged): a visible stray the suite does not consume
+bash -c 'bogus-xyz-1445' || true
 echo ""
 echo "Results: $pass/$total passed"
 [ "$fail" -eq 0 ] && exit 0 || exit 1
