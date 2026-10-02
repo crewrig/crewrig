@@ -71,10 +71,10 @@ jobs:
         run: npm install
 
       - name: Validate the usage-record storage contract (no daemon)
-        run: bash scripts/tests/test-usage-storage.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage.sh
 
       - name: Validate the usage-record mirror against a fake daemon
-        run: bash scripts/tests/test-usage-storage-mirror.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage-mirror.sh
 
       - name: Validate the MemPalace drawer inventory against a fake daemon
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts
