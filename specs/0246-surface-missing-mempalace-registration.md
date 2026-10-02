@@ -344,21 +344,17 @@ And a `confirmed` or `inconclusive` verdict links a separate issue
   Without that warning the session shows the same silent symptom, with no
   memory tools. Recommendation: keep it. It costs nothing extra (the probe
   already ran), and requirement 6 keeps the stdio fallback silent.
-  **Resolved (owner gate, 2026-10-02):** keep the warning, as drafted.
 - **OQ2 — Should an agent without memory continue or stop?** Requirement 13
   says signal, then continue unless the user objects. The system-context
   store rule says STOP, because that content is needed to act correctly.
   Memory is valuable but not a hard prerequisite for most tasks.
   Recommendation: signal and continue, as drafted.
-  **Resolved (owner gate, 2026-10-02):** signal and continue, as drafted.
 - **OQ3 — Install with no question and no opt-out?** Requirement 11
   registers the check on every setup run without asking. It is silent when
   everything is correct, and it costs one local request per session.
   Recommendation: no question and no setup-level opt-out. The runbook
   documents removal by hand-editing the hook file, and the next setup run
   puts the entry back.
-  **Resolved (owner gate, 2026-10-02):** install with no question and no
-  setup-level opt-out, as drafted.
 - **OQ4 — Antigravity coverage.** Requirement 8 runs the check on the
   per-invocation event with a once-per-conversation guard, and falls back to
   an evidenced gap only if that event has no channel to the user or the
@@ -368,7 +364,6 @@ And a `confirmed` or `inconclusive` verdict links a separate issue
   evidence (a live probe). Recommendation: keep the conditional as drafted.
   A resumed conversation (`--continue`) keeps its conversation identifier,
   so it is not checked again. That is accepted.
-  **Resolved (owner gate, 2026-10-02):** keep the conditional, as drafted.
 - [GROUNDING:] `mcp_assistant_arrangement` in `scripts/lib/common.sh`
   classifies any entry carrying `url` or `serverUrl` as `http` without
   comparing the endpoint, so no reader on `main` can tell `wrong-endpoint`
