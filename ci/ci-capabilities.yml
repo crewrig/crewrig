@@ -1737,6 +1737,11 @@ capabilities:
   # or prune.js would not run the suite that owns the R37 assertion. The usage-dashboard
   # tree and entry script are in the paths filter because the suite runs the dashboard
   # (cases 17 and 19), so a change to either must run it.
+  # The three usage-store entry scripts (usage-attribute.sh, usage-prune.sh,
+  # usage-query.sh) are in the paths filter for the same reason: the suite runs
+  # them (the R37 prune cases 14 and 15, the case 17 period-rollup helper, the
+  # case 19 ledger writes), so a change to their exec line or argument handling
+  # must run it.
   - id: usage-pricing
     name: "Validate the usage-pricing model-id resolution, arithmetic, and prune reach"
     trigger:
@@ -1749,6 +1754,9 @@ capabilities:
           - "scripts/tests/fixtures/usage-pricing/**"
           - "model-prices.org.json"
           - "scripts/lib/usage-store/**"
+          - "scripts/usage-attribute.sh"
+          - "scripts/usage-prune.sh"
+          - "scripts/usage-query.sh"
           - "scripts/lib/usage-dashboard/**"
           - "scripts/usage-dashboard.sh"
           - "package.json"
@@ -1762,6 +1770,9 @@ capabilities:
           - "scripts/tests/fixtures/usage-pricing/**"
           - "model-prices.org.json"
           - "scripts/lib/usage-store/**"
+          - "scripts/usage-attribute.sh"
+          - "scripts/usage-prune.sh"
+          - "scripts/usage-query.sh"
           - "scripts/lib/usage-dashboard/**"
           - "scripts/usage-dashboard.sh"
           - "package.json"
