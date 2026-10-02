@@ -13,7 +13,8 @@
 # this suite's).
 #
 # Preflight: node on PATH and node_modules/ajv installed, or a FATAL and exit
-# 2 — never a silent pass, and never the literal phrase "command not found"
+# 2 — never a silent pass, and never the literal phrase "command not found",
+# which the owning job's stray scan (`ci-cache-guard.sh --stray-scan`) fails on
 # (see test-usage-storage.sh's own preflight for why).
 #
 # Mutation discipline (this suite's share of the brief's five named

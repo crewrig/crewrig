@@ -166,21 +166,24 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > (a Claude Code runtime lock, now git-ignored): no Claude Code integration
 > point is added or altered, so no matrix row changes for it.
 >
-> **test-wiring fine-grained cache (spec 0157).** The `test-wiring` capability
-> adds a `cache-guard: false` field and a fine-grained, content-addressed
-> per-suite cache inside `scripts/check-test-strays.sh`. `cache-guard: false`
-> tells `scripts/build-ci.sh` to emit the strays command **bare** (no coarse
-> `ci-cache-guard.sh` wrapper), because the coarse wrapper's single engine-level
-> key is incompatible with the per-suite verdict cache: keyed on the suites it
-> invalidates the engine cache on every suite change (defeating the cache), and
-> keyed on lib+script it skips the whole command on a suite-only change (skipping
-> the re-validation the fine-grained cache must perform). The engine-level
-> `cache:` block (GitLab `cache:key:files` / GitHub Actions `actions/cache`
-> `hashFiles(...)`) is still emitted and persists `.ci-cache/` across runs, so
-> the per-suite verdicts survive; the fine-grained cache is the sole gate. The
-> capability also declares `requires.history-depth: full` so the base ref resolves
-> for the changeset short-circuit. This paragraph discharges the `ci/`
-> CLI-matrix-update obligation for spec 0157.
+> **test-wiring stray scan moved to the owning jobs (spec 0170 delta-01).**
+> The `test-wiring` capability no longer keeps a cache. It drops `cache:`,
+> `cache-guard: false` and `requires.history-depth: full` (and, on GitHub
+> Actions, `fetch-depth: 0` and the `actions/cache` step), because
+> `scripts/check-test-strays.sh` now runs only `bash -n` over the test suites and
+> executes none. The runtime stray check moved into the job that already runs
+> each suite: every suite command is declared as
+> `bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/<suite>`
+> in `ci/ci-capabilities.yml`, in the hand-authored GitHub Actions steps and,
+> through `scripts/build-ci.sh`, in `.gitlab-ci.yml`, so both engines run it
+> identically. `scripts/check-ci-parity.sh` unwraps only the generated
+> `--cache-dir` layer, so a missing scan on either engine is a parity failure,
+> and `scripts/check-stray-scan-wiring.ts` (run by `path-ownership`) fails a
+> suite command declared without the scan. Five cached capabilities gain
+> `scripts/ci-cache-guard.sh` in their `cache.files`, so a later edit of the
+> scan invalidates their markers. This paragraph discharges the `ci/`
+> CLI-matrix-update obligation for spec 0170 delta-01; it replaces the
+> paragraph that spec 0157 added for the former per-suite verdict cache.
 >
 > **Usage tracking, end to end (spec 0212).** Rows 8, 8c, 8d, 11 and 11b
 > describe the usage-capture wiring and commands CLI by CLI. How those pieces

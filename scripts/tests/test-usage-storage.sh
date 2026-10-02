@@ -10,8 +10,9 @@
 #
 # Preflight: node on PATH and node_modules/ajv installed, or a FATAL and exit
 # 2 — never a silent pass. The FATAL text deliberately avoids the literal
-# phrase "command not found", which check-test-strays.sh greps for across
-# every changeset-modified suite run from the no-Node test-wiring job.
+# phrase "command not found": the owning job runs this suite through
+# `ci-cache-guard.sh --stray-scan`, which fails the job when the suite's
+# output contains it (a message is indistinguishable from a real stray).
 #
 # Mutation discipline (this suite's share of the brief's five named
 # mutations): each is applied by editing a tracked module IN PLACE, proven
