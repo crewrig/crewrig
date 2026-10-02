@@ -41,21 +41,31 @@ quietly skipping the memory protocol.
    MemPalace MCP HTTP daemon installed by this framework's setup exists on the
    machine AND that daemon is serving (requirement 2), the expected
    arrangement SHALL be a `mempalace` registration of that CLI over HTTP,
-   aimed at exactly the endpoint (scheme, host, port, and path) that the
-   installed daemon is configured to serve, as recorded in the installed
-   daemon's own configuration. The endpoint SHALL NOT be taken from a
+   aimed at exactly the expected endpoint. The expected endpoint SHALL be
+   composed of the host and the port recorded in the installed daemon
+   launcher (`MCP_HOST` and `MCP_PORT` in `~/.crewrig/mcp-daemon-launcher.sh`,
+   materialised from `scripts/lib/mcp-daemon-launcher.sh`), with the scheme
+   `http` and the path `/mcp`. The scheme and the path are the framework's
+   fixed transport contract, the same constants every framework reader of
+   the endpoint uses today. The host and the port SHALL NOT be taken from a
    hard-coded default, nor from environment variables that happen to be set
-   in the session. When no such daemon is installed, or the platform has no
-   daemon supervisor this framework installs, there SHALL be no expectation,
-   and the check SHALL behave as requirement 6 states.
+   in the session. A launcher that exists but records no readable host or
+   port SHALL count as no installed daemon. When no such daemon is
+   installed, or the platform has no daemon supervisor this framework
+   installs, there SHALL be no expectation, and the check SHALL behave as
+   requirement 6 states.
 
 2. **(Serving predicate)** The check SHALL decide whether the daemon is
    serving from positive evidence obtained by one request, sent without any
    credential, to the expected loopback endpoint itself. That evidence SHALL
    be either an authentication refusal or a successful MCP answer from that
-   endpoint. A liveness endpoint that answers in every state — the `/healthz`
-   reasoning of spec 0139 delta-01 and issue #880 — SHALL NOT by itself
-   establish that the daemon is serving. A refused connection, a timeout, or
+   endpoint. A liveness endpoint that answers in every state SHALL NOT by
+   itself establish that the daemon is serving. That reasoning is recorded in
+   `docs/runbooks/mempalace-mcp-server.md` → *Checking it is actually
+   serving, and actually authenticated*, in the header of
+   `scripts/status-mcp-server.sh`, and in issue #880. No spec carries it:
+   the `scripts/lib/common.sh` comment that attributes it to spec 0139
+   delta-01 is a mis-attribution. A refused connection, a timeout, or
    any other answer SHALL count as "not serving".
 
 3. **(Registration classes)** When the daemon is serving, the check SHALL
@@ -79,15 +89,26 @@ quietly skipping the memory protocol.
    and `unrecognised` with `unknown`. `task mempalace:status` SHALL report a
    `wrong-endpoint` registration on a line distinct from a correct HTTP one,
    naming the registered endpoint and the expected endpoint and nothing else
-   from the entry. The agreement SHALL be guaranteed either by one shared
-   definition or by an automated test that runs both readers over the same
-   fixtures.
+   from the entry. The expected endpoint `task mempalace:status` compares
+   against SHALL be the requirement 1 endpoint, read from the same source
+   (the installed launcher), never from environment variables or hard-coded
+   defaults, so the two readers agree on `wrong-endpoint` on a machine
+   installed with a non-default port. The agreement SHALL be guaranteed
+   either by one shared definition or by an automated test that runs both
+   readers over the same fixtures.
 
 5. **(Warning content)** For `absent`, `stdio`, and `wrong-endpoint`, the
    check SHALL emit exactly one warning that names the CLI, states the class
    in plain words, says that shared memory is unavailable to this session (or,
    for `stdio`, that its writes are refused by the daemon), and names
    `task mempalace:switch-http` followed by a session restart as the repair.
+   When the class is `absent` because the CLI's configuration file does not
+   exist, the warning SHALL instead name that CLI's own setup script
+   (`scripts/setup-<cli>-interactive.sh`), because
+   `task mempalace:switch-http` refuses a present CLI that has no
+   configuration file and asks for its own setup script to be run first
+   (`scripts/lib/common.sh`, the R12 pre-flight of
+   `switch_assistants_to_http`).
    For `unrecognised`, the warning SHALL name `task mempalace:repair` instead.
    When the daemon is installed but not serving and the CLI's registration is
    anything other than `stdio`, the check SHALL emit one warning that the
@@ -117,14 +138,44 @@ quietly skipping the memory protocol.
 8. **(When it runs)** On Claude Code, Gemini CLI, and Copilot CLI, the check
    SHALL run on the CLI's session-start event, at least for a new session and
    for a resumed one. On Antigravity CLI, which has no session-start event
-   (`docs/cli-matrix.md` row 8, spec 0116), the check SHALL run on the
-   earliest event that fires for each model invocation, and SHALL read
-   configuration and probe the daemon at most once per conversation, keyed by
-   the conversation identifier that the hook payload carries. Every later
-   invocation in the same conversation SHALL emit nothing and SHALL NOT probe.
-   The once-per-conversation state SHALL be private to the user (mode `0600`
-   or stricter, in a directory only the user can write) and SHALL NOT grow
-   without bound.
+   (`docs/cli-matrix.md` row 8, spec 0116), the rules below apply.
+   - **Normative base.** This requirement is the normative base of a new
+     named hook, `crewrig-mempalace-session-check`, registered in the
+     Antigravity hook manifest on the per-model-invocation event
+     `PreInvocation`. The prohibition of `PreInvocation` in spec 0116
+     delta-01 replacement R3 was rescoped by
+     `specs/0116-antigravity-transcript-activation.delta-03.md` replacement R3
+     to the named hook `crewrig-mempalace-transcript` alone. That replacement
+     allows other named hooks with their own normative base, so the
+     prohibition does not bind this hook, and this spec leaves it in force
+     for the transcript hook.
+   - **Throttle key.** The recorded evidence shows the `PreInvocation`
+     payload carrying `invocationNum` and `initialNumSteps` (spec 0116
+     delta-03, item 3), and `conversationId` only on `Stop` (row 8,
+     Exercise B). The DEV stage SHALL establish, by a live `agy` probe
+     recorded in `docs/cli-matrix.md`, whether `PreInvocation` carries a
+     conversation identifier. If it does, the check SHALL read configuration
+     and probe the daemon at most once per conversation, keyed by that
+     identifier. If it does not, the check SHALL read configuration and probe
+     at most once per 30-minute window per user. The window is long enough
+     that one working conversation is not warned at every model call. It is
+     short enough that a session opened later the same half-day is checked
+     again. Each conversation's agent is still covered by requirement 13.
+   - **Guarded path.** Every invocation that the throttle suppresses SHALL
+     emit nothing and SHALL NOT probe or read any assistant configuration.
+   - **Cost bound.** The hook runs synchronously on every model call, about
+     four times per turn (row 8, Exercise A). So the suppressed path SHALL
+     cost at most 150 ms of wall-clock time per invocation, runtime start
+     included. The DEV stage SHALL measure that cost as the 95th percentile
+     of at least 20 consecutive invocations and record the figure, the
+     machine, and the `agy` version in `docs/cli-matrix.md`.
+   - **Fallback.** If the measured cost exceeds the bound, or `PreInvocation`
+     offers no channel to the user or the model (requirement 7), the hook
+     SHALL NOT be registered. Antigravity CLI SHALL then be recorded as an
+     evidenced gap covered by requirement 13 alone.
+   - **State.** The throttle state SHALL be private to the user (mode `0600`
+     or stricter, in a directory only the user can write) and SHALL NOT grow
+     without bound.
 
 9. **(Never blocks)** The check SHALL end with a success status on every
    path, including a missing runtime or a runtime below the repository's Node
@@ -188,7 +239,8 @@ quietly skipping the memory protocol.
 15. **(Documentation and matrix)** `docs/cli-matrix.md` SHALL describe the
     check for each of the four CLIs in one row: the event it runs on, the
     file its entry lands in, the user channel, the model channel, and, for
-    Antigravity CLI, the once-per-conversation guard. Each gap SHALL be listed
+    Antigravity CLI, the throttle key that requirement 8's probe selected and
+    the measured cost of the suppressed path. Each gap SHALL be listed
     under *Parity gaps* with its evidence. Row 10 (setup) SHALL mention the
     default registration of requirement 11. `docs/runbooks/mempalace-mcp-server.md`
     SHALL document each warning of requirement 5, what it means, and its
@@ -200,13 +252,17 @@ quietly skipping the memory protocol.
     against a fixture home directory and a fake loopback endpoint on an
     ephemeral port. The tests SHALL NOT contact the live daemon on
     `127.0.0.1:41893`. They SHALL cover, at minimum: every class of
-    requirement 3 for each of the four registration shapes; silence with no
-    daemon installed; the not-serving cases of requirements 5 and 6; an
+    requirement 3 for each of the four registration shapes; `absent` from a
+    missing configuration file, whose warning names the CLI's setup script
+    (requirement 5); a launcher recording a non-default port, against which
+    the check and `task mempalace:status` agree on `wrong-endpoint`
+    (requirement 4); silence with no daemon installed; the not-serving cases of requirements 5 and 6; an
     endpoint that accepts the connection and never answers, which finishes
     within the requirement 9 budget with a success status; a sentinel token
     planted in every fixture configuration and token file that never shows up
-    in any output or any child argument; the Antigravity once-per-conversation
-    guard; and the setup registration's idempotence and coexistence with both
+    in any output or any child argument; the Antigravity throttle with a
+    `PreInvocation` payload that carries a conversation identifier and with
+    one that does not (requirement 8); and the setup registration's idempotence and coexistence with both
     opt-ins in both directions (requirement 11). The tests SHALL be wired
     into continuous integration as spec 0076 requires.
 
@@ -241,12 +297,21 @@ Then the user sees one warning naming `gemini`, saying shared memory is unavaila
 And the model's context carries the same warning
 And the warning is at most 600 bytes
 
+**Scenario:** A missing configuration file points at the setup script
+
+Given the daemon is installed and serving
+And `copilot` is on `PATH` but `~/.copilot/mcp-config.json` does not exist
+When a Copilot CLI session starts
+Then the warning names `copilot`, says no `mempalace` registration exists, and names `scripts/setup-copilot-interactive.sh`
+And it does not name `task mempalace:switch-http`, which would refuse this machine
+
 **Scenario:** A registration aimed at the wrong port is announced
 
-Given the installed daemon serves `http://127.0.0.1:41893/mcp`
+Given the installed launcher records `MCP_HOST=127.0.0.1` and `MCP_PORT=41893`, while the session's environment sets `MEMPALACE_MCP_PORT=41000`
 And Copilot CLI's `~/.copilot/mcp-config.json` registers `mempalace` at `http://127.0.0.1:41000/mcp`
 When a Copilot CLI session starts
 Then the warning names `copilot`, the class `wrong-endpoint`, and `task mempalace:switch-http`
+And the expected endpoint it reports is `http://127.0.0.1:41893/mcp`, not the environment's port
 And `task mempalace:status` reports Copilot's registration on a wrong-endpoint line naming both endpoints
 
 **Scenario:** No daemon installed means no alarm (issue acceptance 3)
@@ -278,12 +343,29 @@ Given a sentinel token is planted in the daemon token file and in every fixture 
 When the check runs once for each class of requirement 3 on each of the four CLIs
 Then the sentinel appears in no output channel, no argument of any started process, and no file the check writes
 
-**Scenario:** Antigravity checks once per conversation
+**Scenario:** Antigravity checks once per conversation when the payload identifies it
 
-Given the daemon is serving and Antigravity CLI has no `mempalace` entry
+Given the DEV probe has shown that `PreInvocation` carries a conversation identifier
+And the daemon is serving and Antigravity CLI has no `mempalace` entry
 When one Antigravity conversation runs four model invocations
 Then the warning appears at the first invocation only
 And the daemon receives exactly one probe request
+
+**Scenario:** Antigravity falls back to a time window when the payload does not identify the conversation
+
+Given a `PreInvocation` payload carrying only `invocationNum` and `initialNumSteps`
+And the daemon is serving and Antigravity CLI has no `mempalace` entry
+When two conversations run eight model invocations within 30 minutes
+Then the warning appears once, at the first invocation
+And the daemon receives exactly one probe request
+And each suppressed invocation ends within 150 ms
+
+**Scenario:** A too-slow guarded path turns Antigravity into an evidenced gap
+
+Given the DEV measurement puts the suppressed path's 95th percentile above 150 ms
+When the implementation PR is prepared
+Then `crewrig-mempalace-session-check` is not registered in the Antigravity hook manifest
+And `docs/cli-matrix.md` lists Antigravity CLI under *Parity gaps* with the measurement as evidence, covered by requirement 13 alone
 
 **Scenario:** An opt-in re-run keeps the check
 
@@ -331,7 +413,8 @@ And a `confirmed` or `inconclusive` verdict links a separate issue
   user-level file that setup writes, so a user-level gap hidden by a
   project-level entry may raise a warning that the session does not need.
 - Losing a registration during a session that is already running. The check
-  runs at session start only (once per conversation on Antigravity CLI).
+  runs at session start only (once per conversation or per 30-minute window
+  on Antigravity CLI, requirement 8).
 - Other MCP servers, such as `sequentialthinking`.
 - Supporting the daemon on platforms without a supervisor this framework
   installs (Windows). The check stays silent there (requirement 6).
@@ -355,22 +438,47 @@ And a `confirmed` or `inconclusive` verdict links a separate issue
   Recommendation: no question and no setup-level opt-out. The runbook
   documents removal by hand-editing the hook file, and the next setup run
   puts the entry back.
-- **OQ4 — Antigravity coverage.** Requirement 8 runs the check on the
-  per-invocation event with a once-per-conversation guard, and falls back to
-  an evidenced gap only if that event has no channel to the user or the
-  model. `agy` is not installed on the authoring machine, and the CLI's own
-  `agy-customizations/docs/hooks.md` was not available, so the output
-  channel of that event is unverified. The DEV stage must produce that
-  evidence (a live probe). Recommendation: keep the conditional as drafted.
-  A resumed conversation (`--continue`) keeps its conversation identifier,
-  so it is not checked again. That is accepted.
+- **OQ4 — Antigravity coverage (revised after review finding s1-F2;
+  needs the owner to confirm again).** The owner approved an earlier
+  wording, which keyed a once-per-conversation guard on a conversation
+  identifier assumed to be in the `PreInvocation` payload. The recorded
+  evidence does not show one there: spec 0116 delta-03 lists only
+  `invocationNum` and `initialNumSteps`, and row 8 shows `conversationId`
+  on `Stop` only. Requirement 8 now does the following:
+  - registers a new named hook, `crewrig-mempalace-session-check`, on
+    `PreInvocation`, with requirement 8 as its normative base. Spec 0116
+    delta-03 replacement R3 scopes the `PreInvocation` prohibition to
+    `crewrig-mempalace-transcript` alone and allows other named hooks;
+  - keys the throttle on a conversation identifier only if a DEV live
+    probe shows one in the `PreInvocation` payload, and otherwise on a
+    30-minute window per user;
+  - bounds the suppressed path to 150 ms of wall-clock time (95th
+    percentile, runtime start included), because the hook runs
+    synchronously about four times per turn. DEV measures it;
+  - drops the hook and records an evidenced gap (requirement 13 alone) if
+    the bound is exceeded or the event has no channel to the user or the
+    model.
+
+  `agy` is not installed on the authoring machine and its `hooks.md` was
+  not available, so the payload, the output channel, and the cost all
+  depend on DEV evidence. Under the time-window fallback, a second
+  conversation opened inside the window is not warned by the hook; its
+  agent still signals through requirement 13. A resumed conversation
+  (`--continue`) keeps its identifier, so under the identifier key it is
+  not checked again. Both are accepted. Recommendation: confirm requirement
+  8 as revised.
 - [GROUNDING:] `mcp_assistant_arrangement` in `scripts/lib/common.sh`
   classifies any entry carrying `url` or `serverUrl` as `http` without
   comparing the endpoint, so no reader on `main` can tell `wrong-endpoint`
   apart today. Requirements 3 and 4 need it. Back-fill responsibility: this
   ticket's implementation PR adds the endpoint comparison to the shared
   reader (or to the shared definition that replaces it) and to
-  `task mempalace:status`.
+  `task mempalace:status`. That PR also switches status's expected endpoint
+  from `mcp_daemon_url` (environment variables and defaults) to the
+  installed launcher (requirement 4). It also corrects the
+  `scripts/lib/common.sh` comment near `ensure_mempalace_http` that
+  attributes the `/healthz` reasoning to spec 0139 delta-01
+  (requirement 2).
 - [GROUNDING:] The same reader returns `absent` ("CLI not installed") for a
   missing Gemini, Copilot, or Antigravity configuration file, and also for
   Claude Code when `claude` is not on `PATH`. A hook's `PATH` can differ from
