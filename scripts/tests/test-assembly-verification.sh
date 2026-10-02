@@ -3,18 +3,33 @@
 # for both core-layer and overlay components, each at its routed destination:
 # core in the committed project tree, overlay tiers in the gitignored dist/<tier>/
 # staging tree (ADR-0011, spec 0019). Covers every supported CLI directory.
+# The synthetic root is a deliberate slice: it links only the core components
+# the assertions name (CORE_SKILL / CORE_AGENT), not the whole core and library
+# trees, so the build stays cheap (issue #1432).
 set -euo pipefail
 
 ACTUAL_REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 TEMP_REPO="$(mktemp -d)"
 
+# Known core components (developer skill and agent exist in artifacts/core/).
+# Defined once, ahead of the mirror block: the synthetic root is sliced by
+# these names and the assertions below check for the same names.
+CORE_SKILL="developer"
+# Core agent asserted for Antigravity (.agents/agents/<name>/AGENT.md); the
+# agent source directory is named after the agent.
+CORE_AGENT="developer"
+
 cleanup() { rm -rf "$TEMP_REPO"; }
 trap cleanup EXIT
 
-# Mirror repo structure into temp dir.
+# Mirror repo structure into temp dir — only the slice the assertions name,
+# keyed by the CORE_SKILL / CORE_AGENT constants above.
 mkdir -p "$TEMP_REPO/artifacts"
-ln -s "$ACTUAL_REPO/artifacts/core"    "$TEMP_REPO/artifacts/core"
-ln -s "$ACTUAL_REPO/artifacts/library" "$TEMP_REPO/artifacts/library"
+mkdir -p "$TEMP_REPO/artifacts/core/skills" "$TEMP_REPO/artifacts/core/agents"
+ln -s "$ACTUAL_REPO/artifacts/core/skills/$CORE_SKILL" \
+      "$TEMP_REPO/artifacts/core/skills/$CORE_SKILL"
+ln -s "$ACTUAL_REPO/artifacts/core/agents/$CORE_AGENT" \
+      "$TEMP_REPO/artifacts/core/agents/$CORE_AGENT"
 ln -s "$ACTUAL_REPO/crewrig.config.toml" "$TEMP_REPO/crewrig.config.toml"
 
 # Copy fixture overlay as community zone.
@@ -39,8 +54,6 @@ REPO_DIR="$TEMP_REPO" bash "$ACTUAL_REPO/scripts/build-components.sh"
 # but their frontmatter `name` is the value asserted below.
 FAILURES=()
 
-# Known core component (developer skill exists in artifacts/core/skills/).
-CORE_SKILL="developer"
 # Fixture overlay components — values are the frontmatter `name` fields.
 OVERLAY_SKILL="crewrig-assembly-test-skill"
 OVERLAY_AGENT="crewrig-assembly-test-agent"
@@ -74,7 +87,6 @@ done
 # Core tier skill: <repo>/.agents/skills/<name>/SKILL.md
 # Core tier agent: <repo>/.agents/agents/<name>/AGENT.md
 # Community tier overlay skill: dist/community/.agents/skills/<name>/SKILL.md
-CORE_AGENT="developer"
 if [ ! -f "$TEMP_REPO/.agents/skills/$CORE_SKILL/SKILL.md" ]; then
   FAILURES+=("MISSING core skill '$CORE_SKILL' in .agents/skills/ (Antigravity)")
 fi

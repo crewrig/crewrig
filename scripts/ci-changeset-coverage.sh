@@ -20,12 +20,14 @@
 # remaining commands still run, so one run reports every failure); 2 when yq or
 # the reference is missing.
 #
-# Known limit (accepted, decision D8 of the plan): scripts/check-test-strays.sh
-# is diff-scoped by design (spec 0170). Run bare here it scans only the suites
-# changed by the checked-out commit, so the exhaustive run adds nothing for that
-# one command. It stays covered before merge because the `test-wiring`
-# capability owns `scripts/tests/**`. The run executes every gated command; it
-# does not make each command itself exhaustive.
+# Stray scan (spec 0170 delta-01): every registered suite command in the
+# reference is declared as
+# `bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/<suite>`.
+# This script `eval`s each reference command as written, so the exhaustive run
+# scans every suite for strays through its wrapped command, with no code here.
+# scripts/check-test-strays.sh executes no suite and only runs `bash -n`, so
+# there is nothing diff-scoped left to cover. The run executes every gated
+# command; it does not make each command itself exhaustive.
 #
 # The changeset-coverage job carries python@3.12 + node@24 + yq, which satisfies
 # every changeset-gated group's `requires` (a node@22 capability is therefore

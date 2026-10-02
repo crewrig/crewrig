@@ -5,7 +5,8 @@
 #
 # Preflight: node on PATH, node_modules/ajv installed, and require('node:sqlite')
 # resolves — or a FATAL and exit 2, never a silent pass. The wording
-# deliberately avoids the phrase scripts/check-test-strays.sh greps for
+# deliberately avoids the phrase the owning job's stray scan
+# (`ci-cache-guard.sh --stray-scan`) searches this suite's output for
 # ("command not found"), for the same reason
 # scripts/tests/test-usage-record-schema.sh's own preflight does.
 #

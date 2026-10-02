@@ -1,6 +1,33 @@
 #!/bin/bash
 # test-check-test-strays.sh — Regression tests for scripts/check-test-strays.sh
-# (issue #738, spec 0170)
+# (issue #738, specs 0170 and 0171; rewritten for the single-run guard, issue
+# #1445, spec 0170 delta-01 R9).
+#
+# scripts/check-test-strays.sh is a static syntax guard: it runs `bash -n` over
+# every scripts/tests/test-*.sh and EXECUTES ZERO SUITES, in every circumstance.
+# Runtime stray detection lives in `scripts/ci-cache-guard.sh --stray-scan`
+# (covered by scripts/tests/ci-cache-guard-scan.test.ts), not here.
+#
+# Cases:
+#   a   A clean tree passes with the exact OK line.
+#   b   R14 pin: a runtime stray in a syntactically valid suite is NOT seen by
+#       this check (exit 0). That is the documented trade-off, not a bug.
+#   g   A syntax error exits 1 naming the file, before anything runs.
+#   n   "Executes nothing", parameterised: a suite that touches a sentinel file
+#       and carries a stray is run over with no git, `--base-ref`,
+#       GITHUB_BASE_REF (resolvable and not), CI_MERGE_REQUEST_TARGET_BRANCH_NAME,
+#       CI_COMMIT_BEFORE_SHA (a real ref and GitLab's all-zero value), a warm
+#       `.ci-cache` of markers, and the legacy `--cache-dir`/`--jobs` options.
+#       The sentinel is never created, the exit is 0, stdout is exactly the OK
+#       line and stderr is empty (no WARNING, no notice, no cache write).
+#   u   Usage errors exit 2: a suite-path positional argument, an option
+#       without its value, a missing tests directory.
+#   t   Time bound on the real tree (R9: under 2 s; asserted under 5 s).
+#   r   resolve_remote_ref unit cases for scripts/lib/base-ref-resolve.sh (the
+#       only unit tests of that library, which other scripts still source).
+#
+# Usage:
+#   bash scripts/tests/test-check-test-strays.sh
 
 set -uo pipefail
 
@@ -29,8 +56,8 @@ mk_fixture() {
 
 # RUN_ENV holds optional VAR=value assignments applied to the next run_check
 # call (the caller resets it). run_check always starts from a clean slate for
-# every variable the script under test reads, so the suite behaves the same
-# locally and inside PR CI (where GITHUB_BASE_REF and GITHUB_ACTIONS are
+# every variable the script under test could read, so the suite behaves the
+# same locally and inside PR CI (where GITHUB_BASE_REF and GITHUB_ACTIONS are
 # exported).
 RUN_ENV=()
 
@@ -46,557 +73,27 @@ run_check() {
   rm -f "$out_file" "$err_file"
 }
 
-# ---------------------------------------------------------------------------
-# Case a — Clean suite passes.
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Everything is fine"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh"
-
-  run_check "$repo"
-
-  if [ "$CHECK_EXIT" -eq 0 ]; then
-    echo "PASS  case-a: a clean suite passes the check (exit 0)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-a: expected exit 0, got $CHECK_EXIT"
-    echo "      stderr: $CHECK_STDERR"
-    fail=$((fail + 1))
-  fi
-
-  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
-    echo "PASS  case-a: OK line emitted on stdout"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-a: missing OK line (stdout: $CHECK_STDOUT)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case b — Stray command fails.
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-stray.sh" << 'EOF'
-#!/bin/bash
-some-bogus-command
-EOF
-  chmod +x "$repo/scripts/tests/test-stray.sh"
-
-  run_check "$repo"
-
-  if [ "$CHECK_EXIT" -eq 1 ]; then
-    echo "PASS  case-b: a stray command fails the check (exit 1)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-b: expected exit 1, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-
-  if echo "$CHECK_STDERR" | grep -q "test-stray.sh has 1 stray.*errors"; then
-    echo "PASS  case-b: stderr names the suite and count"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-b: stderr did not name test-stray.sh and count correctly (stderr: $CHECK_STDERR)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case c — No-change short-circuit: empty merge-base diff skips the scan.
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Everything is fine"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh"
-  git -C "$repo" init -q
-  git -C "$repo" config user.email test@example.com
-  git -C "$repo" config user.name test
-  git -C "$repo" config commit.gpgsign false
-  git -C "$repo" add -A
-  git -C "$repo" commit -qm init
-  git -C "$repo" branch -M main
-
-  # A second commit touching only an unrelated path → empty test diff.
-  echo "unrelated" > "$repo/README.md"
-  git -C "$repo" add README.md
-  git -C "$repo" commit -qm unrelated
-
-  run_check "$repo" --base-ref main
-
-  if [ "$CHECK_EXIT" -eq 0 ]; then
-    echo "PASS  case-c: no-change short-circuit exits 0"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-c: expected exit 0, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
-    echo "PASS  case-c: OK line emitted on short-circuit"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-c: missing OK line (stdout: $CHECK_STDOUT)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case d — Cache hit skips re-execution on warm cache.
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Everything is fine"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh"
-  cache_dir="$(mktemp -d "$TMP_ROOT/cache-d.XXXXXX")"
-
-  # First run: cold cache, suite executes and writes verdict marker.
-  run_check "$repo" --cache-dir "$cache_dir"
-  if [ "$CHECK_EXIT" -eq 0 ]; then
-    echo "PASS  case-d: cold run exits 0"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-d: cold run expected exit 0, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  n_markers=$(find "$cache_dir" -name '*.marker' | wc -l | tr -d ' ')
-  if [ "$n_markers" -ge 1 ]; then
-    echo "PASS  case-d: cold run wrote verdict markers ($n_markers)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-d: expected at least one marker, found $n_markers"
-    fail=$((fail + 1))
-  fi
-
-  # Second run: warm cache, suite unchanged → cache hit, no re-execution.
-  run_check "$repo" --cache-dir "$cache_dir"
-  if echo "$CHECK_STDERR" | grep -q "cache hit, skipping test-clean.sh"; then
-    echo "PASS  case-d: warm run reports cache hit"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-d: expected cache-hit notice (stderr: $CHECK_STDERR)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case e — Fallback when the base ref is unresolvable: all non-cached suites run.
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Everything is fine"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh"
-
-  # No git repo at all → merge-base fails → fallback to non-cached scan.
-  run_check "$repo" --base-ref main
-
-  if [ "$CHECK_EXIT" -eq 0 ]; then
-    echo "PASS  case-e: unresolvable base falls back and exits 0"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-e: expected exit 0, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
-    echo "PASS  case-e: OK line emitted on fallback"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-e: missing OK line (stdout: $CHECK_STDOUT)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case f — Parallel execution still detects a stray in a changed suite.
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Everything is fine"
-EOF
-  cat > "$repo/scripts/tests/test-stray.sh" << 'EOF'
-#!/bin/bash
-some-bogus-command
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh" "$repo/scripts/tests/test-stray.sh"
-
-  run_check "$repo" --jobs 2
-
-  if [ "$CHECK_EXIT" -eq 1 ]; then
-    echo "PASS  case-f: parallel run fails on a stray (exit 1)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-f: expected exit 1, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDERR" | grep -q "test-stray.sh has 1 stray.*errors"; then
-    echo "PASS  case-f: stderr names the stray suite and count"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-f: stderr did not name test-stray.sh (stderr: $CHECK_STDERR)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case g — Static syntax error fails immediately (spec 0170 R1).
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-syntax-err.sh" << 'EOF'
-#!/bin/bash
-if [ -f "foo" ; then
-  echo "broken"
-EOF
-  chmod +x "$repo/scripts/tests/test-syntax-err.sh"
-
-  run_check "$repo"
-
-  if [ "$CHECK_EXIT" -eq 1 ]; then
-    echo "PASS  case-g: syntax error fails the check (exit 1)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-g: expected exit 1 on syntax error, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDERR" | grep -q "test-syntax-err.sh has syntax errors"; then
-    echo "PASS  case-g: stderr reports syntax error"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-g: stderr did not report syntax error (stderr: $CHECK_STDERR)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case h — Non-test script/helper changes do NOT re-execute unchanged test suites (spec 0170 R4, R5).
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  mkdir -p "$repo/scripts/lib"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Everything is fine"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh"
-  cat > "$repo/scripts/lib/helper.sh" << 'EOF'
-#!/bin/bash
-helper() { :; }
-EOF
-  git -C "$repo" init -q
-  git -C "$repo" config user.email test@example.com
-  git -C "$repo" config user.name test
-  git -C "$repo" config commit.gpgsign false
-  git -C "$repo" add -A
-  git -C "$repo" commit -qm init
-  git -C "$repo" branch -M main
-  init_sha="$(git -C "$repo" rev-parse HEAD)"
-
-  # Modify helper script only (no changes under scripts/tests/).
-  cat > "$repo/scripts/lib/helper.sh" << 'EOF'
-#!/bin/bash
-helper() { echo "updated"; }
-EOF
-  git -C "$repo" add scripts/lib/helper.sh
-  git -C "$repo" commit -qm change-helper
-
-  run_check "$repo" --base-ref "$init_sha"
-
-  if [ "$CHECK_EXIT" -eq 0 ]; then
-    echo "PASS  case-h: non-test helper change does not execute test suites (exit 0)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-h: expected exit 0, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
-    echo "PASS  case-h: OK line emitted"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-h: missing OK line (stdout: $CHECK_STDOUT)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case i — Changeset-scoped execution runs only the modified test suite.
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Clean suite"
-EOF
-  cat > "$repo/scripts/tests/test-stray.sh" << 'EOF'
-#!/bin/bash
-echo "Old clean suite"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh" "$repo/scripts/tests/test-stray.sh"
-  git -C "$repo" init -q
-  git -C "$repo" config user.email test@example.com
-  git -C "$repo" config user.name test
-  git -C "$repo" config commit.gpgsign false
-  git -C "$repo" add -A
-  git -C "$repo" commit -qm init
-  git -C "$repo" branch -M main
-  init_sha="$(git -C "$repo" rev-parse HEAD)"
-
-  # Introduce a stray into test-stray.sh ONLY
-  cat > "$repo/scripts/tests/test-stray.sh" << 'EOF'
-#!/bin/bash
-some-bogus-command
-EOF
-  git -C "$repo" add scripts/tests/test-stray.sh
-  git -C "$repo" commit -qm add-stray
-
-  run_check "$repo" --base-ref "$init_sha"
-
-  if [ "$CHECK_EXIT" -eq 1 ]; then
-    echo "PASS  case-i: modified suite with stray fails the check (exit 1)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-i: expected exit 1, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDERR" | grep -q "test-stray.sh has 1 stray.*errors"; then
-    echo "PASS  case-i: stderr names the modified stray suite"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-i: stderr did not name test-stray.sh (stderr: $CHECK_STDERR)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case j — Automatic HEAD~1 resolution on push/local commit without --base-ref (spec 0171 R1, R2, R3).
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Clean suite"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh"
-  git -C "$repo" init -q
-  git -C "$repo" config user.email test@example.com
-  git -C "$repo" config user.name test
-  git -C "$repo" config commit.gpgsign false
-  git -C "$repo" add -A
-  git -C "$repo" commit -qm init
-  git -C "$repo" branch -M main
-
-  # Modify an unrelated non-test file (simulate push to main).
-  echo "update docs" > "$repo/README.md"
-  git -C "$repo" add README.md
-  git -C "$repo" commit -qm update-docs
-
-  # Run check WITHOUT --base-ref and WITHOUT GITHUB_BASE_REF.
-  run_check "$repo"
-
-  if [ "$CHECK_EXIT" -eq 0 ]; then
-    echo "PASS  case-j: automatic HEAD~1 resolution on push/commit exits 0"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-j: expected exit 0, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
-    echo "PASS  case-j: OK line emitted on automatic HEAD~1 resolution"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-j: missing OK line (stdout: $CHECK_STDOUT)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case k — Automatic HEAD~1 resolution catches stray in modified test suite without --base-ref (spec 0171).
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Clean suite"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh"
-  git -C "$repo" init -q
-  git -C "$repo" config user.email test@example.com
-  git -C "$repo" config user.name test
-  git -C "$repo" config commit.gpgsign false
-  git -C "$repo" add -A
-  git -C "$repo" commit -qm init
-  git -C "$repo" branch -M main
-
-  # Modify test-clean.sh with a stray command.
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-some-bogus-command
-EOF
-  git -C "$repo" add scripts/tests/test-clean.sh
-  git -C "$repo" commit -qm add-stray-to-clean
-
-  # Run check WITHOUT --base-ref.
-  run_check "$repo"
-
-  if [ "$CHECK_EXIT" -eq 1 ]; then
-    echo "PASS  case-k: automatic HEAD~1 catches stray in modified suite (exit 1)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-k: expected exit 1, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDERR" | grep -q "test-clean.sh has 1 stray.*errors"; then
-    echo "PASS  case-k: stderr names the modified suite"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-k: stderr did not name test-clean.sh (stderr: $CHECK_STDERR)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case l — GITHUB_BASE_REF environment variable is honored when set.
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Clean suite"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh"
-  git -C "$repo" init -q
-  git -C "$repo" config user.email test@example.com
-  git -C "$repo" config user.name test
-  git -C "$repo" config commit.gpgsign false
-  git -C "$repo" add -A
-  git -C "$repo" commit -qm init
-  git -C "$repo" branch -M base-branch
-  base_sha="$(git -C "$repo" rev-parse HEAD)"
-
-  git -C "$repo" checkout -qb feature-branch
-  echo "unrelated" > "$repo/README.md"
-  git -C "$repo" add README.md
-  git -C "$repo" commit -qm update-readme
-
-  out_file="$(mktemp "$TMP_ROOT/out.XXXXXX")"
-  err_file="$(mktemp "$TMP_ROOT/err.XXXXXX")"
-  CHECK_EXIT=0
-  ( unset CI_MERGE_REQUEST_TARGET_BRANCH_NAME CI_COMMIT_BEFORE_SHA GITHUB_ACTIONS; CREWRIG_REPO_DIR="$repo" GITHUB_BASE_REF="$base_sha" bash "$SCRIPT_UNDER_TEST" --cache-dir "$TMP_ROOT/cache-l" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
-  CHECK_STDOUT="$(cat "$out_file")"
-  CHECK_STDERR="$(cat "$err_file")"
-  rm -f "$out_file" "$err_file"
-
-  if [ "$CHECK_EXIT" -eq 0 ]; then
-    echo "PASS  case-l: GITHUB_BASE_REF is honored (exit 0)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-l: expected exit 0, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
-    echo "PASS  case-l: OK line emitted on GITHUB_BASE_REF resolution"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-l: missing OK line (stdout: $CHECK_STDOUT)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Case m — CI_COMMIT_BEFORE_SHA environment variable is honored when set.
-# ---------------------------------------------------------------------------
-{
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
-#!/bin/bash
-echo "Clean suite"
-EOF
-  chmod +x "$repo/scripts/tests/test-clean.sh"
-  git -C "$repo" init -q
-  git -C "$repo" config user.email test@example.com
-  git -C "$repo" config user.name test
-  git -C "$repo" config commit.gpgsign false
-  git -C "$repo" add -A
-  git -C "$repo" commit -qm init
-  before_sha="$(git -C "$repo" rev-parse HEAD)"
-
-  echo "unrelated" > "$repo/README.md"
-  git -C "$repo" add README.md
-  git -C "$repo" commit -qm update-readme
-
-  out_file="$(mktemp "$TMP_ROOT/out.XXXXXX")"
-  err_file="$(mktemp "$TMP_ROOT/err.XXXXXX")"
-  CHECK_EXIT=0
-  ( unset GITHUB_BASE_REF CI_MERGE_REQUEST_TARGET_BRANCH_NAME GITHUB_ACTIONS; CREWRIG_REPO_DIR="$repo" CI_COMMIT_BEFORE_SHA="$before_sha" bash "$SCRIPT_UNDER_TEST" --cache-dir "$TMP_ROOT/cache-m" >"$out_file" 2>"$err_file" ) || CHECK_EXIT=$?
-  CHECK_STDOUT="$(cat "$out_file")"
-  CHECK_STDERR="$(cat "$err_file")"
-  rm -f "$out_file" "$err_file"
-
-  if [ "$CHECK_EXIT" -eq 0 ]; then
-    echo "PASS  case-m: CI_COMMIT_BEFORE_SHA is honored (exit 0)"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-m: expected exit 0, got $CHECK_EXIT"
-    fail=$((fail + 1))
-  fi
-  if echo "$CHECK_STDOUT" | grep -qF "zero runtime strays across all test suites"; then
-    echo "PASS  case-m: OK line emitted on CI_COMMIT_BEFORE_SHA resolution"
-    pass=$((pass + 1))
-  else
-    echo "FAIL  case-m: missing OK line (stdout: $CHECK_STDOUT)"
-    fail=$((fail + 1))
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# CI-topology fixtures (issue #1401).
-#
-# actions/checkout leaves a detached HEAD and creates only
-# refs/remotes/<remote>/<name> for the base branch; there is no local branch
-# named after $GITHUB_BASE_REF. mk_ci_fixture reproduces that: a bare remote,
-# a base commit pushed to `main` and `release/x`, an unrelated-history branch
-# `orphan` (also pushed), then a feature commit checked out DETACHED with the
-# only local branch deleted.
-#
-#   scripts/tests/test-changed.sh    clean; modified by the feature commit
-#   scripts/tests/test-unchanged.sh  carries a stray; untouched by the feature
-#
-# So a changeset-scoped run exits 0 while a full scan exits 1.
-# ---------------------------------------------------------------------------
-
 # fxgit — git with the developer's global/system config out of the picture, so
 # the fixtures do not depend on init.defaultBranch, signing or hooks.
 fxgit() {
   GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git "$@"
 }
 
+# mk_ci_fixture <repo> [remote] — the CI topology of issue #1401.
+#
+# actions/checkout leaves a detached HEAD and creates only
+# refs/remotes/<remote>/<name> for the base branch; there is no local branch
+# named after $GITHUB_BASE_REF. This reproduces that: a bare remote, a base
+# commit pushed to `main` and `release/x`, an unrelated-history branch
+# `orphan` (also pushed), then a feature commit checked out DETACHED with the
+# only local branch deleted.
+#
+#   scripts/tests/test-changed.sh    clean; modified by the feature commit
+#   scripts/tests/test-unchanged.sh  carries a stray; untouched by the feature
+#
+# The guard no longer reads any of this; the topology is kept because case n
+# must prove that a realistic CI checkout, base refs included, changes nothing,
+# and because case r resolves refs against it.
 mk_ci_fixture() {
   local repo="$1" remote="${2:-origin}" bare empty_tree orphan_sha
   bare="$(mktemp -d "$TMP_ROOT/bare.XXXXXX")"
@@ -643,110 +140,283 @@ pass_if() {
     pass=$((pass + 1))
   else
     echo "FAIL  $label"
+    echo "      exit: $CHECK_EXIT"
+    echo "      stdout: $CHECK_STDOUT"
+    echo "      stderr: $CHECK_STDERR"
     fail=$((fail + 1))
   fi
 }
 
-has_stderr() { grep -qF -- "$1" <<< "$CHECK_STDERR"; }
-no_stderr()  { ! has_stderr "$1"; }
-has_stdout() { grep -qF -- "$1" <<< "$CHECK_STDOUT"; }
-no_stdout()  { ! has_stdout "$1"; }
-exit_is()    { [ "$CHECK_EXIT" -eq "$1" ]; }
-no_ref()     { ! fxgit -C "$1" rev-parse --verify --quiet "$2" >/dev/null 2>&1; }
-has_ref()    { fxgit -C "$1" rev-parse --verify --quiet "$2" >/dev/null 2>&1; }
+has_stderr()   { grep -qF -- "$1" <<< "$CHECK_STDERR"; }
+exit_is()      { [ "$CHECK_EXIT" -eq "$1" ]; }
+stdout_is()    { [ "$CHECK_STDOUT" = "$1" ]; }
+stdout_empty() { [ -z "$CHECK_STDOUT" ]; }
+stderr_empty() { [ -z "$CHECK_STDERR" ]; }
+absent()       { [ ! -e "$1" ]; }
 
-# scoped_case <label> <remote> <base-name> <ENV=value>... — one scoped
-# resolution scenario. The check must exit 0 (scoped; a full scan would hit
-# the stray), print the OK line, and emit no WARNING.
-scoped_case() {
-  local label="$1" remote="$2" base_name="$3" repo
-  shift 3
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_ci_fixture "$repo" "$remote"
-  pass_if "$label: fixture is the CI topology (no local '$base_name')" \
-    no_ref "$repo" "refs/heads/$base_name"
-  pass_if "$label: fixture is the CI topology (remote-tracking ref present)" \
-    has_ref "$repo" "refs/remotes/$remote/$base_name"
-  RUN_ENV=(GIT_CONFIG_GLOBAL=/dev/null "$@")
-  run_check "$repo" --cache-dir "$TMP_ROOT/cache-$label"
-  RUN_ENV=()
-  pass_if "$label: bare base name is resolved via the remote, scoped run exits 0" exit_is 0
-  pass_if "$label: OK line emitted" has_stdout "zero runtime strays across all test suites"
-  pass_if "$label: no WARNING on stderr" no_stderr "WARNING"
+# ok_line <n> — the exact stdout of a clean run over n suites.
+ok_line() { printf 'OK: %s test suites pass the static syntax check; none executed.' "$1"; }
+
+# count_suites <repo> — number of scripts/tests/test-*.sh in a fixture.
+count_suites() {
+  find "$1/scripts/tests" -maxdepth 1 -name 'test-*.sh' | wc -l | tr -d ' '
+}
+
+# now_ms — milliseconds since the epoch, sub-second where the platform allows.
+# The integer SECONDS variable is useless for a 2 s bound: it ticks on whole
+# seconds, so a 1.2 s run can read as 1 or 2. Preference order: EPOCHREALTIME
+# (bash 5; absent from macOS's system bash 3.2), `date +%s%N` (GNU; BSD date
+# prints a literal N, rejected by the digits check), perl's Time::HiRes, and
+# finally whole seconds (coarse, but the bound below tolerates it).
+now_ms() {
+  local t
+  if [ -n "${EPOCHREALTIME:-}" ]; then
+    t="${EPOCHREALTIME/[.,]/}"   # microseconds; the separator is locale-dependent
+    echo $((t / 1000))
+    return
+  fi
+  t="$(date +%s%N 2>/dev/null)"
+  case "$t" in
+    ''|*[!0-9]*) ;;
+    *) echo $((t / 1000000)); return ;;
+  esac
+  t="$(perl -MTime::HiRes=time -e 'printf "%d\n", time() * 1000' 2>/dev/null)"
+  case "$t" in
+    ''|*[!0-9]*) ;;
+    *) echo "$t"; return ;;
+  esac
+  echo $(( $(date +%s) * 1000 ))
 }
 
 # ---------------------------------------------------------------------------
-# Case n — Bare GITHUB_BASE_REF resolves via <remote>/<name> (issue #1401).
-# ---------------------------------------------------------------------------
-scoped_case case-n origin main GITHUB_BASE_REF=main
-
-# ---------------------------------------------------------------------------
-# Case o — Same with a slash-bearing base branch name.
-# ---------------------------------------------------------------------------
-scoped_case case-o origin release/x GITHUB_BASE_REF=release/x
-
-# ---------------------------------------------------------------------------
-# Case p — Same through CI_MERGE_REQUEST_TARGET_BRANCH_NAME (GitLab).
-# ---------------------------------------------------------------------------
-scoped_case case-p origin main CI_MERGE_REQUEST_TARGET_BRANCH_NAME=main
-
-# ---------------------------------------------------------------------------
-# Case s — The remote is derived from the repo under check, not from the
-# harness's cwd: a fixture whose only remote is `crewrig` still resolves.
-# ---------------------------------------------------------------------------
-scoped_case case-s crewrig main GITHUB_BASE_REF=main
-
-# ---------------------------------------------------------------------------
-# Case q — Loud full-scan fallback (spec 0170 R6 fail-safe kept, issue #1401).
+# Case a — Clean tree passes with the exact OK line.
 # ---------------------------------------------------------------------------
 {
-  # (a) The name resolves nowhere.
-  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
-  mk_ci_fixture "$repo" origin
-  RUN_ENV=(GIT_CONFIG_GLOBAL=/dev/null GITHUB_BASE_REF=nope GITHUB_ACTIONS=true)
-  run_check "$repo" --cache-dir "$TMP_ROOT/cache-q-a"
-  RUN_ENV=()
-  pass_if "case-q(a): unresolvable base falls back to a full scan (stray found, exit 1)" exit_is 1
-  pass_if "case-q(a): stderr carries the WARNING prefix" has_stderr "check-test-strays: WARNING:"
-  pass_if "case-q(a): warning says the ref did not resolve to a commit" has_stderr "did not resolve to a commit"
-  pass_if "case-q(a): warning cites the raw name" has_stderr "'nope'"
-  pass_if "case-q(a): ::warning:: annotation on stdout under GITHUB_ACTIONS=true" has_stdout "::warning::"
-
-  RUN_ENV=(GIT_CONFIG_GLOBAL=/dev/null GITHUB_BASE_REF=nope)
-  run_check "$repo" --cache-dir "$TMP_ROOT/cache-q-a2"
-  RUN_ENV=()
-  pass_if "case-q(a): no ::warning:: annotation outside GITHUB_ACTIONS" no_stdout "::warning::"
-  pass_if "case-q(a): stderr WARNING still emitted outside GITHUB_ACTIONS" has_stderr "WARNING"
-
-  # (b) The ref resolves (origin/orphan) but shares no history with HEAD.
-  RUN_ENV=(GIT_CONFIG_GLOBAL=/dev/null GITHUB_BASE_REF=orphan)
-  run_check "$repo" --cache-dir "$TMP_ROOT/cache-q-b"
-  RUN_ENV=()
-  pass_if "case-q(b): resolved ref without merge-base falls back to a full scan (exit 1)" exit_is 1
-  pass_if "case-q(b): warning says there is no merge-base" has_stderr "no merge-base"
-  pass_if "case-q(b): warning cites the raw name" has_stderr "'orphan'"
-  pass_if "case-q(b): warning cites the resolved ref" has_stderr "'origin/orphan'"
-  pass_if "case-q(b): not misreported as an unresolved ref" no_stderr "did not resolve to a commit"
-
-  # (c) No base ref at all: no env, no HEAD~1 (single-commit repo).
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
   mk_fixture "$repo"
-  cat > "$repo/scripts/tests/test-unchanged.sh" << 'EOF'
+  cat > "$repo/scripts/tests/test-clean.sh" << 'EOF'
+#!/bin/bash
+echo "Everything is fine"
+EOF
+  chmod +x "$repo/scripts/tests/test-clean.sh"
+
+  run_check "$repo"
+
+  pass_if "case-a: a clean suite passes the check (exit 0)" exit_is 0
+  pass_if "case-a: stdout is exactly the OK line for 1 suite" stdout_is "$(ok_line 1)"
+  pass_if "case-a: stderr is empty" stderr_empty
+}
+
+# ---------------------------------------------------------------------------
+# Case b — R14 pin (spec 0170 delta-01): this check is static, so a runtime
+# stray in a syntactically valid suite is NOT detected here. It is detected, per
+# suite, by `ci-cache-guard.sh --stray-scan` in the job that runs the suite. If
+# this case ever turns red, the guard started executing suites again.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  cat > "$repo/scripts/tests/test-stray.sh" << 'EOF'
 #!/bin/bash
 some-bogus-command
 EOF
-  fxgit init -q "$repo" 2>/dev/null
-  fxgit -C "$repo" config user.email test@example.com
-  fxgit -C "$repo" config user.name test
-  fxgit -C "$repo" config commit.gpgsign false
-  fxgit -C "$repo" add -A
-  fxgit -C "$repo" commit -qm only
-  RUN_ENV=(GIT_CONFIG_GLOBAL=/dev/null GITHUB_ACTIONS=true)
-  run_check "$repo" --cache-dir "$TMP_ROOT/cache-q-c"
+  chmod +x "$repo/scripts/tests/test-stray.sh"
+
+  run_check "$repo"
+
+  pass_if "case-b: a runtime stray is not seen by the static check (exit 0)" exit_is 0
+  pass_if "case-b: stdout is exactly the OK line" stdout_is "$(ok_line 1)"
+  pass_if "case-b: nothing is reported on stderr" stderr_empty
+}
+
+# ---------------------------------------------------------------------------
+# Case g — Static syntax error fails immediately (spec 0170 R1), naming the
+# file, and nothing runs: a sibling probe suite must leave no sentinel.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  sentinel="$TMP_ROOT/sentinel.g"
+  cat > "$repo/scripts/tests/test-probe.sh" << EOF
+#!/bin/bash
+touch '$sentinel'
+EOF
+  cat > "$repo/scripts/tests/test-syntax-err.sh" << 'EOF'
+#!/bin/bash
+if [ -f "foo" ; then
+  echo "broken"
+EOF
+  chmod +x "$repo/scripts/tests/test-probe.sh" "$repo/scripts/tests/test-syntax-err.sh"
+
+  run_check "$repo"
+
+  pass_if "case-g: syntax error fails the check (exit 1)" exit_is 1
+  pass_if "case-g: stderr names the suite with the syntax error" has_stderr "test-syntax-err.sh has syntax errors"
+  pass_if "case-g: no OK line on stdout" stdout_empty
+  pass_if "case-g: no suite was executed" absent "$sentinel"
+}
+
+# ---------------------------------------------------------------------------
+# Case n — The guard executes nothing (spec 0170 delta-01 R9), parameterised.
+#
+# Every fixture carries scripts/tests/test-probe.sh, which touches a sentinel
+# file and then runs a stray command. Whatever the topology, environment or
+# arguments, the sentinel must never appear, the exit must be 0, stdout must be
+# exactly the OK line, and stderr must be empty: no WARNING, no `::warning::`
+# annotation, no cache notice.
+#
+# nothing_executes <label> <kind> [args...]   (RUN_ENV set by the caller)
+#   kind nogit   a plain directory, not a git repository
+#   kind git     the CI topology of mk_ci_fixture (detached HEAD, origin/main)
+#   kind warm    a plain directory with a warm .ci-cache of markers, passed
+#                with --cache-dir; the cache must be left byte-identical
+#   kind legacy  the CI topology plus the three legacy options with values
+#                (--base-ref main --cache-dir X --jobs 4); X must not appear
+# ---------------------------------------------------------------------------
+CI_TEMPLATE=
+
+nothing_executes() {
+  local label="$1" kind="$2" repo sentinel n cache before after
+  shift 2
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  sentinel="$TMP_ROOT/sentinel.$label"
+  cache="$TMP_ROOT/never-created.$label"
+  case "$kind" in
+    git|legacy)
+      # Build the git topology once and copy it: eight git fixtures built from
+      # scratch cost several seconds, a copy costs milliseconds. The copy keeps
+      # the (never-pushed-to-again) bare remote's absolute path.
+      if [ -z "$CI_TEMPLATE" ]; then
+        CI_TEMPLATE="$(mktemp -d "$TMP_ROOT/template.XXXXXX")"
+        mk_ci_fixture "$CI_TEMPLATE" origin
+      fi
+      cp -R "$CI_TEMPLATE/." "$repo/"
+      ;;
+    *) mk_fixture "$repo" ;;
+  esac
+  cat > "$repo/scripts/tests/test-probe.sh" << EOF
+#!/bin/bash
+touch '$sentinel'
+some-bogus-command
+EOF
+  chmod +x "$repo/scripts/tests/test-probe.sh"
+  n="$(count_suites "$repo")"
+
+  case "$kind" in
+    warm)
+      mkdir -p "$repo/.ci-cache"
+      printf 'pass\n' > "$repo/.ci-cache/0123456789abcdef.marker"
+      printf 'pass\n' > "$repo/.ci-cache/fedcba9876543210.marker"
+      before="$(find "$repo/.ci-cache" -type f -exec cksum {} + | sort)"
+      run_check "$repo" --cache-dir "$repo/.ci-cache" "$@"
+      after="$(find "$repo/.ci-cache" -type f -exec cksum {} + | sort)"
+      pass_if "case-n $label: the warm cache is left byte-identical" test "$before" = "$after"
+      ;;
+    legacy)
+      run_check "$repo" --base-ref main --cache-dir "$cache" --jobs 4 "$@"
+      pass_if "case-n $label: the legacy --cache-dir directory is never created" absent "$cache"
+      ;;
+    *)
+      run_check "$repo" "$@"
+      ;;
+  esac
   RUN_ENV=()
-  pass_if "case-q(c): no base ref falls back to a full scan (exit 1)" exit_is 1
-  pass_if "case-q(c): stderr WARNING says no base ref could be determined" has_stderr "no base ref"
-  pass_if "case-q(c): ::warning:: annotation on stdout" has_stdout "::warning::"
+
+  pass_if "case-n $label: the probe suite was not executed (no sentinel)" absent "$sentinel"
+  pass_if "case-n $label: exit 0" exit_is 0
+  pass_if "case-n $label: stdout is exactly the OK line for $n suites" stdout_is "$(ok_line "$n")"
+  pass_if "case-n $label: stderr is empty" stderr_empty
+}
+
+nothing_executes no-git          nogit
+nothing_executes base-ref-arg    git    --base-ref main
+nothing_executes ci-topology     git
+RUN_ENV=(GITHUB_BASE_REF=main)
+nothing_executes github-base     git
+RUN_ENV=(GITHUB_BASE_REF=nope GITHUB_ACTIONS=true)
+nothing_executes github-base-unresolvable git
+RUN_ENV=(CI_MERGE_REQUEST_TARGET_BRANCH_NAME=main)
+nothing_executes gitlab-target   git
+RUN_ENV=(CI_COMMIT_BEFORE_SHA=HEAD~1)
+nothing_executes gitlab-before   git
+RUN_ENV=(CI_COMMIT_BEFORE_SHA=0000000000000000000000000000000000000000)
+nothing_executes gitlab-before-zero git
+nothing_executes warm-cache      warm
+nothing_executes legacy-options  legacy
+
+# ---------------------------------------------------------------------------
+# Case u — Usage errors exit 2 (spec 0171 delta-01): no suite can be passed,
+# and a legacy option without its value is rejected, not silently swallowed.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  mk_fixture "$repo"
+  sentinel="$TMP_ROOT/sentinel.u"
+  cat > "$repo/scripts/tests/test-probe.sh" << EOF
+#!/bin/bash
+touch '$sentinel'
+EOF
+  chmod +x "$repo/scripts/tests/test-probe.sh"
+
+  run_check "$repo" scripts/tests/test-probe.sh
+  pass_if "case-u: a suite-path argument is a usage error (exit 2)" exit_is 2
+  pass_if "case-u: stderr names the rejected argument" has_stderr "unknown option or argument 'scripts/tests/test-probe.sh'"
+  pass_if "case-u: no OK line on stdout" stdout_empty
+  pass_if "case-u: the named suite was not executed" absent "$sentinel"
+
+  for opt in --cache-dir --base-ref --jobs; do
+    run_check "$repo" "$opt"
+    pass_if "case-u: '$opt' without its value is a usage error (exit 2)" exit_is 2
+    pass_if "case-u: '$opt' without its value says it requires a value" has_stderr "option '$opt' requires a value"
+    pass_if "case-u: '$opt' without its value prints no OK line" stdout_empty
+  done
+
+  run_check "$repo" --base-ref main --jobs
+  pass_if "case-u: a valueless option after a valid one is still exit 2" exit_is 2
+
+  empty="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  run_check "$empty"
+  pass_if "case-u: a missing tests directory is a usage error (exit 2)" exit_is 2
+  pass_if "case-u: stderr says the tests directory was not found" has_stderr "tests directory not found"
+}
+
+# ---------------------------------------------------------------------------
+# Case t — Time bound on the real tree (spec 0170 delta-01 R9: under 2 s).
+#
+# `bash -n` over the whole suite directory takes about 1.2 s on a laptop and
+# 0.25 s in a container. The bound asserted is 5 s, not 2 s, on purpose: a hard
+# 2 s would flake on a loaded shared runner and teach people to ignore the
+# case, while "executes nothing" is already proven exactly, by the sentinel
+# case above, independently of the clock. What this bound still catches is the
+# failure mode it exists for: a return to running suites, which costs minutes
+# (one suite alone is tens of seconds; the guard it replaces took 170-180 s).
+# The clock is sub-second (now_ms), never the integer SECONDS.
+# ---------------------------------------------------------------------------
+{
+  real_repo="$(cd "$SCRIPT_DIR/.." && pwd)"
+  bound_ms=5000
+
+  t0="$(now_ms)"
+  run_check "$real_repo"
+  t1="$(now_ms)"
+  elapsed_ms=$((t1 - t0))
+
+  pass_if "case-t: the real tree passes the static check (exit 0)" exit_is 0
+  ok_re='^OK: ([0-9]+) test suites pass the static syntax check; none executed\.$'
+  if [[ "$CHECK_STDOUT" =~ $ok_re ]] && [ "${BASH_REMATCH[1]}" -ge 1 ]; then
+    echo "PASS  case-t: OK line on the real tree (${BASH_REMATCH[1]} suites)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-t: unexpected stdout on the real tree: $CHECK_STDOUT"
+    fail=$((fail + 1))
+  fi
+  if [ "$elapsed_ms" -lt "$bound_ms" ]; then
+    echo "PASS  case-t: the real tree is checked in ${elapsed_ms} ms (bound ${bound_ms} ms)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-t: the real tree took ${elapsed_ms} ms (bound ${bound_ms} ms)"
+    fail=$((fail + 1))
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -812,6 +482,7 @@ EOF
   fi
 }
 
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 total=$((pass + fail))

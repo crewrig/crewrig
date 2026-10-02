@@ -10,6 +10,9 @@ on:
       - "scripts/tests/fixtures/usage-pricing/**"
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
+      - "scripts/usage-attribute.sh"
+      - "scripts/usage-prune.sh"
+      - "scripts/usage-query.sh"
       - "scripts/lib/usage-dashboard/**"
       - "scripts/usage-dashboard.sh"
       - "package.json"
@@ -23,6 +26,9 @@ on:
       - "scripts/tests/fixtures/usage-pricing/**"
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
+      - "scripts/usage-attribute.sh"
+      - "scripts/usage-prune.sh"
+      - "scripts/usage-query.sh"
       - "scripts/lib/usage-dashboard/**"
       - "scripts/usage-dashboard.sh"
       - "package.json"
@@ -51,7 +57,7 @@ jobs:
         run: npm install
 
       - name: Validate the model-id resolution, arithmetic, and prune reach (no network)
-        run: bash scripts/tests/test-usage-pricing.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-pricing.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
