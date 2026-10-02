@@ -140,9 +140,15 @@ quietly skipping the memory protocol.
    for a resumed one. On Antigravity CLI, which has no session-start event
    (`docs/cli-matrix.md` row 8, spec 0116), the rules below apply.
    - **Normative base.** This requirement is the normative base of a new
-     named hook, `crewrig-mempalace-session-check`, registered in the
-     Antigravity hook manifest on the per-model-invocation event
-     `PreInvocation`. The prohibition of `PreInvocation` in spec 0116
+     named hook, `crewrig-mempalace-session-check`, on the
+     per-model-invocation event `PreInvocation`. Requirement 11's writer
+     registers it directly in the user-level hook file
+     `~/.gemini/config/hooks.json`, beside any transcript hooks. The
+     committed transcript manifest `hooks/antigravity-transcript-hooks.json`
+     does not carry it. So it never passes through the transcript deploy
+     path, which spec 0116 R4 governs and which rewrites every named hook
+     except `crewrig-worktree-git-guard` into a transcript invocation. The
+     prohibition of `PreInvocation` in spec 0116
      delta-01 replacement R3 was rescoped by
      `specs/0116-antigravity-transcript-activation.delta-03.md` replacement R3
      to the named hook `crewrig-mempalace-transcript` alone. That replacement
@@ -199,16 +205,24 @@ quietly skipping the memory protocol.
 11. **(Installed by default)** Every run of
     `scripts/setup-{claude,gemini,copilot,antigravity}-interactive.sh` SHALL
     register the check in that CLI's user-level hook configuration without
-    asking, independently of the session-recording opt-in (row 8) and of the
-    usage-capture opt-in (spec 0211), and whatever the outcome of that run's
+    asking, with one exception. On Antigravity CLI it SHALL register the
+    check only while requirement 8's evidence conditions hold. When
+    requirement 8's fallback applies, the Antigravity setup SHALL NOT register
+    the check, and SHALL remove any check entry an earlier run registered.
+    Registration SHALL NOT depend on the session-recording opt-in (row 8) or
+    the usage-capture opt-in (spec 0211), nor on the outcome of that run's
     MemPalace step (HTTP registered, stdio fallback, or MemPalace not
-    installed). The registration SHALL be idempotent (exactly one check entry
-    after any number of runs), backup-first, and written at mode `0600`. It
-    SHALL preserve every other hook entry and every non-hook key. Conversely,
-    the session-recording and usage-capture writers SHALL preserve the check's
-    entry whatever their answer (accept, decline, cancel, keep, or remove).
-    The check's entry SHALL be identified by its content, never by its
-    position.
+    installed). No committed `hooks/*-transcript-hooks.json` or
+    `hooks/*-usage-capture-hooks.json` manifest SHALL carry the check's entry,
+    on any CLI. This requirement's own writer SHALL register it directly in
+    the user-level hook file, never through the session-recording or
+    usage-capture deploy paths. The registration SHALL be idempotent (exactly
+    one check entry after any number of runs), backup-first, and written at
+    mode `0600`. It SHALL preserve every other hook entry and every non-hook
+    key. Conversely, the session-recording and usage-capture writers SHALL
+    leave the check's entry untouched whatever their answer (accept,
+    decline, cancel, keep, or remove). The check's entry SHALL be identified
+    by its content, never by its position.
 
 12. **(Repository ratchet)** Every file this ticket adds SHALL comply with
     spec 0238: no new tracked shell file outside its allowlist, no new
@@ -246,7 +260,13 @@ quietly skipping the memory protocol.
     SHALL document each warning of requirement 5, what it means, and its
     repair. It SHALL also state that on Gemini CLI the check's entry and the
     `mempalace` registration live in the same file, so losing the whole file
-    loses both, and that requirement 13 is the backstop for that case.
+    loses both, and that requirement 13 is the backstop for that case. It
+    SHALL also document an accepted limitation. `task mempalace:switch-http`
+    runs a machine-wide all-or-nothing pre-flight, so a warning that names it
+    for one CLI can meet a refusal caused by another CLI's missing
+    configuration file. That refusal names the CLI at fault and asks for its
+    own setup script, which the operator runs before retrying
+    `task mempalace:switch-http`.
 
 16. **(Hermetic tests)** The DEV stage SHALL add automated tests that run
     against a fixture home directory and a fake loopback endpoint on an
@@ -364,7 +384,7 @@ And each suppressed invocation ends within 150 ms
 
 Given the DEV measurement puts the suppressed path's 95th percentile above 150 ms
 When the implementation PR is prepared
-Then `crewrig-mempalace-session-check` is not registered in the Antigravity hook manifest
+Then no setup run registers `crewrig-mempalace-session-check` in `~/.gemini/config/hooks.json`, and a later run removes any entry registered earlier
 And `docs/cli-matrix.md` lists Antigravity CLI under *Parity gaps* with the measurement as evidence, covered by requirement 13 alone
 
 **Scenario:** An opt-in re-run keeps the check
@@ -415,6 +435,9 @@ And a `confirmed` or `inconclusive` verdict links a separate issue
 - Losing a registration during a session that is already running. The check
   runs at session start only (once per conversation or per 30-minute window
   on Antigravity CLI, requirement 8).
+- Changing the machine-wide all-or-nothing pre-flight of
+  `task mempalace:switch-http`. The limitation it causes for a single-CLI
+  warning is accepted and documented in the runbook (requirement 15).
 - Other MCP servers, such as `sequentialthinking`.
 - Supporting the daemon on platforms without a supervisor this framework
   installs (Windows). The check stays silent there (requirement 6).
