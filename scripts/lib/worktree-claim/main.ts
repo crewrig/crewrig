@@ -3,33 +3,17 @@
 // Parses the command line, resolves the repository context in the shell tool's
 // order and runs the subcommand, returning the exit code. Nothing here exits the
 // process: the entry sets `process.exitCode`, so every stream drains first.
-// `run` lives in `run.ts` (loaded lazily: the other subcommands never need it).
+// `run` lives in `run.ts`.
 
 import { parseArgs } from "./args.ts";
 import { resolveContext } from "./repo.ts";
+import { runCommand } from "./run.ts";
 import { cmdHistory, cmdStatus } from "./status.ts";
 import { cmdRelease, cmdTake } from "./take.ts";
 import { cmdTakeover } from "./takeover.ts";
 import { ClaimFailure } from "./types.ts";
-import type { Env, Io, RunCommand } from "./types.ts";
+import type { Env, Io } from "./types.ts";
 import { USAGE } from "./usage.ts";
-
-/**
- * `run` lives in stream L's `run.ts`, which exports `runCommand` (the
- * `RunCommand` contract of types.ts). The specifier is a variable so this file
- * type-checks and loads before `run.ts` exists, and so no other subcommand pays
- * for it; the export is narrowed at run time.
- */
-async function loadRun(): Promise<RunCommand> {
-  const specifier = "./run.ts";
-  const loaded = (await import(specifier)) as unknown;
-  const runCommand =
-    typeof loaded === "object" && loaded !== null
-      ? (loaded as Record<string, unknown>)["runCommand"]
-      : undefined;
-  if (typeof runCommand !== "function") throw new Error("run.ts does not export runCommand");
-  return runCommand as RunCommand;
-}
 
 /** Run the claim tool with `argv` (script arguments only) and return its exit code. */
 export async function main(input: {
@@ -70,11 +54,8 @@ export async function main(input: {
         return cmdRelease(ctx, io);
       case "takeover":
         return cmdTakeover(ctx, opts, io);
-      case "run": {
-        return await (
-          await loadRun()
-        )(ctx, opts, io);
-      }
+      case "run":
+        return await runCommand(ctx, opts, io);
     }
   } catch (error) {
     if (error instanceof ClaimFailure) {

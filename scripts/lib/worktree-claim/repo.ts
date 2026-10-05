@@ -37,12 +37,13 @@ export function lastComponent(target: string, platform: NodeJS.Platform): string
 
 /**
  * A ticket id is a single path component: not empty, no `/`, not `.` or `..`,
- * and on win32 no `\` either, because that is a separator there and would
- * resolve outside the claim root.
+ * and on win32 neither `\`, a separator there that would resolve outside the
+ * claim root, nor `:`, which would open an NTFS alternate data stream through
+ * `<ticket>.log`.
  */
 export function isValidTicket(ticket: string, platform: NodeJS.Platform): boolean {
   if (ticket === "" || ticket === "." || ticket === ".." || ticket.includes("/")) return false;
-  return !(platform === "win32" && ticket.includes("\\"));
+  return !(platform === "win32" && (ticket.includes("\\") || ticket.includes(":")));
 }
 
 export function invalidTicketMessage(ticket: string): string {

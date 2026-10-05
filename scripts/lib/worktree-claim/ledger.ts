@@ -24,7 +24,9 @@ export function ledgerAppend(ctx: ClaimContext, action: string, detail = ""): vo
     flatten(ctx.ticket),
     flatten(detail),
   ];
-  fs.appendFileSync(ctx.ledger, `${fields.join("\t")}\n`);
+  // The detail of a `run` line is the wrapped argv: owner-only on creation (the
+  // mode is ignored where the platform has no POSIX modes).
+  fs.appendFileSync(ctx.ledger, `${fields.join("\t")}\n`, { mode: 0o600 });
 }
 
 /** `mkdir -p <claim root>`, with the shell tool's diagnostic when it cannot. */
