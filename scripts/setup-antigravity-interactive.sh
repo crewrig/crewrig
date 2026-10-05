@@ -414,6 +414,13 @@ migrate_antigravity_superseded_components \
   "$AGY_SUPERSEDED_ROOT" "$REPO_DIR/artifacts" all || exit 1
 echo ""
 
+# --- Worktree git guard: rewrite an installed registration (spec 0248 R30) ---
+# Runs on every setup run, before the session-recording question, so a `no`
+# and a cancelled confirmation still bring an installed guard command to the
+# current form. A Node.js below the floor prints its diagnostic and changes
+# nothing; setup carries on.
+guard_rewrite_installed antigravity "$REPO_DIR" "${HOME}/.gemini/config/hooks.json" || true
+
 # --- Transcript hooks (opt-in) --- (spec 0116)
 # The three sibling setups have offered this since spec 0056; Antigravity did
 # not, and the manifest it would have deployed registered four lifecycle events
@@ -458,7 +465,7 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     # operator's file untouched on that path.
     if ! deploy_antigravity_transcript_hooks \
            "$HOOKS_SRC" "$HOOK_SCRIPT_SRC" "$AGY_HOOKS_DIR" "$AGY_HOOKS_JSON" "$ENV_PREFIX" \
-           "$(dirname "$HOOKS_SRC")/worktree-git-guard.sh"; then
+           "$(dirname "$HOOKS_SRC")/worktree-git-guard.ts"; then
       echo "  Transcript activation FAILED — setup continues without it." >&2
     fi
   else

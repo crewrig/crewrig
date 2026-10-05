@@ -437,6 +437,14 @@ for overlay_tier in community org; do
   fi
 done
 
+# --- Worktree git guard: rewrite an installed registration (spec 0248 R30) ---
+# Runs on every setup run, before the session-recording question, so a `no`
+# and a cancelled confirmation still bring an installed guard command to the
+# current form. A Node.js below the floor prints its diagnostic and changes
+# nothing; setup carries on.
+echo ""
+guard_rewrite_installed claude "$REPO_DIR" "$SETTINGS_TARGET" || true
+
 # --- Transcript hooks (opt-in) ---
 echo ""
 # `|| true`: under `set -e`, Esc makes fzf exit 130 and would abort setup before
@@ -470,18 +478,24 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
       ENV_PATCH=$(jq -nc --arg py "$MEMPALACE_PYTHON_BIN" \
         '{"MEMPALACE_TRANSCRIPT_ENABLED": "1", "MEMPALACE_PYTHON": $py}')
     fi
-    GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
-    GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
-    # Rewrite every nested command to use the installed absolute hook path or
-    # the in-repo absolute guard path instead of the source-file's
-    # "$CLAUDE_PROJECT_DIR/..." tokens. Usage capture is not part of this
-    # manifest: it has its own opt-in below (spec 0211).
+    HOOKS_RENDERED_TMP="$(mktemp)"
     HOOKS_PATCHED_TMP="$(mktemp)"
-    jq --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" \
+    # The guard's command line comes from `hook-wiring.ts guard render` (spec
+    # 0248 R28, R29) and is final; only the transcript hook's source-file token
+    # is rewritten here to the installed absolute path. A refused or
+    # floor-failed render leaves the guard out and the installed one untouched.
+    # Usage capture is not part of this manifest: it has its own opt-in below
+    # (spec 0211).
+    if ! render_session_recording_manifest claude "$REPO_DIR" "$HOOKS_SRC" "$HOOKS_RENDERED_TMP"; then
+      echo "  ERROR: could not render $HOOKS_SRC." >&2
+      rm -f "$HOOKS_RENDERED_TMP" "$HOOKS_PATCHED_TMP"
+      exit 1
+    fi
+    jq --arg hook_path "$HOOK_SCRIPT_TARGET" \
       '(.. | objects | select(.type? == "command") | .command) |=
-         (gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path) |
-          gsub("\\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"; $guard_path))' \
-      "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
+         gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path)' \
+      "$HOOKS_RENDERED_TMP" > "$HOOKS_PATCHED_TMP"
+    rm -f "$HOOKS_RENDERED_TMP"
     if grep -q '\$CLAUDE_PROJECT_DIR' "$HOOKS_PATCHED_TMP"; then
       echo "  ERROR: Unresolved \$CLAUDE_PROJECT_DIR token in patched hooks." >&2
       rm -f "$HOOKS_PATCHED_TMP"
@@ -494,8 +508,10 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     else
       echo "  Transcript hooks merged into settings.json"
       echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
-      echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
-      warn_if_linked_worktree "$REPO_DIR" "worktree git guard"
+      if grep -qF 'worktree-git-guard' "$HOOKS_PATCHED_TMP"; then
+        echo "  Worktree git guard wired to $REPO_DIR/hooks/worktree-git-guard.ts (in-repo absolute path)"
+        warn_if_linked_worktree "$REPO_DIR" "worktree git guard"
+      fi
       echo "  env patched: $ENV_PATCH"
     fi
     rm -f "$HOOKS_PATCHED_TMP"

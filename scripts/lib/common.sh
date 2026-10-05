@@ -2320,6 +2320,86 @@ configure_validation_backend() {
   return 0
 }
 
+# --- Worktree git guard wiring (spec 0248 R28-R32) -----------------------------
+#
+# The guard's command lines and registered-command rewrites come from
+# scripts/hook-wiring.ts, reached through `node`. Every function below that
+# calls it runs the Node.js floor first, so a Node.js below 24 meets the floor
+# diagnostic before any raw Node.js error, and nothing is written.
+
+# The checkout this library sits in: it owns the floor guard and the wiring
+# tool, whatever checkout a <repo_dir> argument names (that one only supplies
+# the guard script the commands point at).
+_CREWRIG_COMMON_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+
+# require_node_floor — the generic Node.js floor precondition (spec 0240 R1).
+# Prints the floor guard's diagnostic and returns 1 below the floor. With no
+# `node` on PATH the guard cannot print anything, so this prints one shell-
+# authored line naming `node` and the Node.js 24 floor.
+require_node_floor() {
+  local guard="$_CREWRIG_COMMON_ROOT/scripts/lib/node-floor-guard.js"
+  if ! command -v node >/dev/null 2>&1; then
+    echo "  ERROR: crewrig: Node.js was not found on PATH; this step requires Node.js >= 24. Install a supported release from https://nodejs.org/en/download" >&2
+    return 1
+  fi
+  if [ ! -f "$guard" ]; then
+    echo "  ERROR: Node.js floor guard not found at $guard." >&2
+    return 1
+  fi
+  node "$guard" || return 1
+  return 0
+}
+
+# _crewrig_hook_wiring <repo_dir> <args...> — scripts/hook-wiring.ts against
+# the checkout <repo_dir>. The two flags silence the type-stripping notices of
+# Node.js 24.0-24.2 and the typeless package scope; neither hides an error.
+_crewrig_hook_wiring() {
+  local repo_dir="$1"; shift
+  node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
+    "$_CREWRIG_COMMON_ROOT/scripts/hook-wiring.ts" "$@" --repo "$repo_dir"
+}
+
+# guard_render_manifest <cli> <repo_dir> <manifest_src> <out_file> — write to
+# <out_file> the manifest with the guard's command rendered (`hook-wiring.ts
+# guard render`, one line of compact JSON). A refusal (the module's, or a
+# missing guard script) still returns 0: the tool prints its diagnostic on
+# stderr and the guard handler is ABSENT from <out_file>, which is how callers
+# detect it. Returns 1 below the Node.js floor or when the tool fails, with
+# <out_file> left empty.
+guard_render_manifest() {
+  local cli="$1" repo_dir="$2" manifest_src="$3" out="$4"
+  : > "$out"
+  require_node_floor || return 1
+  if ! _crewrig_hook_wiring "$repo_dir" guard render "$cli" --manifest "$manifest_src" > "$out"; then
+    : > "$out"
+    return 1
+  fi
+  return 0
+}
+
+# guard_rewrite_installed <cli> <repo_dir> <config> — rewrite every worktree git
+# guard command already registered in <config> to the current direct form
+# (spec 0248 R30). Called on every setup run, before the session-recording
+# question, so a `no` and a cancelled confirmation still rewrite. A
+# configuration with no guard registered needs no Node.js: nothing is run. Below
+# the floor it prints the floor diagnostic and leaves the file as it is
+# (returns 1). <config> is hooks.json for `antigravity`, the settings or
+# hooks file of the other CLIs.
+guard_rewrite_installed() {
+  local cli="$1" repo_dir="$2" config="$3"
+  [ -f "$config" ] || return 0
+  grep -qF 'worktree-git-guard' "$config" 2>/dev/null || return 0
+  if ! require_node_floor; then
+    echo "  Installed worktree git guard command left as it is." >&2
+    return 1
+  fi
+  if [ "$cli" = "antigravity" ]; then
+    _crewrig_hook_wiring "$repo_dir" guard antigravity-rewrite --hooks "$config"
+  else
+    _crewrig_hook_wiring "$repo_dir" guard rewrite "$cli" --config "$config"
+  fi
+}
+
 # --- Antigravity CLI transcript-hook deployment (spec 0116 R13/R14/R15) ------
 #
 # deploy_antigravity_transcript_hooks <manifest_src> <hook_src> <hooks_dir> <manifest_target> <env_prefix> <guard_src>
@@ -2340,11 +2420,11 @@ configure_validation_backend() {
 #        absolute path, prefixed with `$env_prefix`, and appends the lifecycle
 #        event name (R14, and R5 — the Antigravity payload carries no event
 #        name, so the manifest must say which event fired);
-#      - under `crewrig-worktree-git-guard`, the command names the absolute
-#        REPOSITORY path of the guard (never installed), with NO env prefix and
-#        NO event argument — the guard inspects the payload it reads from stdin,
-#        and it delegates claim validation to `scripts/worktree-claim.sh`
-#        relative to the repo, so an installed copy would break that chain;
+#      - under `crewrig-worktree-git-guard`, the command is the one
+#        `scripts/hook-wiring.ts guard render antigravity` builds (spec 0248
+#        R28, R29): the direct `node "<repo>/hooks/worktree-git-guard.ts"` form
+#        naming the REPOSITORY script (never installed), with NO env prefix and
+#        NO event argument — the guard inspects the payload it reads from stdin;
 #   3. backs up an existing manifest before touching it (R15) and MERGES into
 #      it rather than overwriting: `hooks.json`'s top level is a map of NAMED
 #      hooks and the operator may own others. Same-named hooks are replaced,
@@ -2357,12 +2437,10 @@ deploy_antigravity_transcript_hooks() {
   local manifest_src="$1" hook_src="$2" hooks_dir="$3" manifest_target="$4" env_prefix="$5" guard_src="$6"
   local hook_target="${hooks_dir}/mempalace-transcript.sh"
   # The guard is NEVER installed under the assistant's own directory (unlike the
-  # transcript hook): it delegates claim validation to
-  # `scripts/worktree-claim.sh` via `$(dirname "${BASH_SOURCE[0]}")/..`, and
-  # `BASH_SOURCE[0]` is the invocation path — an installed copy would resolve
-  # `..` to the wrong tree. Pin the rewrite to this repository's absolute path.
-  local guard_abs
-  guard_abs="$(cd "$(dirname "$guard_src")" && pwd -P)/$(basename "$guard_src")"
+  # transcript hook): its command names the in-repo script, so the repository it
+  # is rendered against is the one <guard_src> sits in (<repo>/hooks/...).
+  local guard_repo
+  guard_repo="$(cd "$(dirname "$guard_src")/.." && pwd -P)"
 
   mkdir -p "$hooks_dir" "$(dirname "$manifest_target")"
 
@@ -2370,8 +2448,18 @@ deploy_antigravity_transcript_hooks() {
     "mempalace-transcript.sh -> ${hook_target}"
   chmod +x "$hook_target" 2>/dev/null || true
 
-  local patched
+  # The guard's command is rendered by scripts/hook-wiring.ts (spec 0248 R28,
+  # R29): `node "<repo>/hooks/worktree-git-guard.ts"`, final. A refusal, or a
+  # Node.js below the floor, leaves the guard out of the manifest; the merge
+  # below is shallow, so an already-installed guard entry survives untouched.
+  local rendered patched
+  rendered="$(mktemp)"
   patched="$(mktemp)"
+  if ! guard_render_manifest antigravity "$guard_repo" "$manifest_src" "$rendered"; then
+    echo "  Worktree git guard not wired this run; an installed guard command is left as it is." >&2
+    jq 'del(."crewrig-worktree-git-guard")' "$manifest_src" > "$rendered" \
+      || { rm -f "$rendered" "$patched"; return 1; }
+  fi
   # Two element shapes, per the CLI's own docs/hooks.md: PreToolUse/PostToolUse
   # are GROUPED — each element is `{matcher, hooks: [handler, ...]}` — while
   # PreInvocation/PostInvocation/Stop are FLAT, each element being a handler
@@ -2380,30 +2468,14 @@ deploy_antigravity_transcript_hooks() {
   # untouched, which the CLI would happily load and never run. The shipped
   # manifest registers only flat events today, so that mistake would have been
   # invisible until the first tool event was ever registered.
-  # Two rewrite paths, dispatched on the named-hook key (spec 0116 delta-03 R28):
-  #   - `crewrig-mempalace-transcript` keeps the established contract — absolute
-  #     INSTALLED path, transcript enabling env prefix, lifecycle-event argument.
-  #   - `crewrig-worktree-git-guard` is rewritten to the absolute REPOSITORY path
-  #     of the guard with NO env prefix and NO event argument: the guard reads
-  #     the command from its stdin payload rather than a positional argument (R5
-  #     exemption), and must resolve `scripts/worktree-claim.sh` relative to the
-  #     repo, so an installed copy would break its delegation chain.
-  jq --arg envp "$env_prefix" --arg hp "$hook_target" --arg gp "$guard_abs" '
+  # Only `crewrig-mempalace-transcript` is rewritten here — absolute INSTALLED
+  # path, transcript enabling env prefix, lifecycle-event argument. The
+  # `crewrig-worktree-git-guard` hook passes through exactly as rendered.
+  jq --arg envp "$env_prefix" --arg hp "$hook_target" '
     def rewrite($ev): .command = ($envp + " bash " + ($hp | tojson) + " " + $ev);
-    def guard_rewrite: .command = ("bash " + ($gp | tojson));
     with_entries(
       if .key == "crewrig-worktree-git-guard"
-      then .value |= with_entries(
-        if (.value | type) == "array"
-        then .value |= map(
-          if has("hooks") and (.hooks | type) == "array"
-          then .hooks |= map(guard_rewrite)
-          else guard_rewrite
-          end
-        )
-        else .
-        end
-      )
+      then .
       else .value |= with_entries(
         if (.value | type) == "array"
         then (.key) as $ev
@@ -2417,7 +2489,8 @@ deploy_antigravity_transcript_hooks() {
         end
       )
       end
-    )' "$manifest_src" > "$patched" || { rm -f "$patched"; return 1; }
+    )' "$rendered" > "$patched" || { rm -f "$rendered" "$patched"; return 1; }
+  rm -f "$rendered"
 
   # `cmd > out && mv` would swallow a jq failure: POSIX exempts every command in
   # an `&&` list except the last from `set -e`, so a refused input would skip the
