@@ -89,8 +89,9 @@ void (async () => {
     let cwd = pick([["cwd"], ["workspace_dir"], ["project_dir"], ["workspacePaths", 0]]);
     if (cwd === undefined || cwd === "") cwd = process.cwd();
 
-    // A backslash reads as a forward slash (R6), so a Windows path is in scope.
-    cwd = cwd.replaceAll("\\", "/");
+    // On Windows a backslash reads as a forward slash (R6), so a Windows path
+    // is in scope; elsewhere it is an ordinary file-name character.
+    if (process.platform === "win32") cwd = cwd.replaceAll("\\", "/");
     const marker = "/.worktrees/";
     const at = cwd.lastIndexOf(marker);
     if (at === -1) return;
