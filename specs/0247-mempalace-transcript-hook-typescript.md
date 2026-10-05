@@ -79,22 +79,27 @@ touching any hook the user or another part of the framework owns.
    (a) no argument — the legacy form the Claude Code, Gemini CLI and Copilot
    CLI registrations use today (`hooks/claude-transcript-hooks.json`,
    `hooks/gemini-transcript-hooks.json`, `hooks/copilot-transcript-hooks.json`);
-   (b) one argument that is not a CLI identifier of item (c) — the legacy
-   Antigravity form, the argument being the lifecycle event name
+   (b) a non-empty first argument that is not a CLI identifier of item (c) —
+   the legacy Antigravity form, the argument being the lifecycle event name and
+   any further argument ignored, as the shell ignores it
    (`hooks/mempalace-transcript.sh:47`); (c) the direct form, whose first
    argument is the CLI identifier `claude-code`, `gemini-cli` or `copilot-cli`
    with no further argument, or `antigravity-cli` followed by exactly one event
    name. The hook is in **Antigravity mode** in shape (b) and in shape (c) with
    `antigravity-cli`, and the event argument then plays the role `$1` plays in
-   the shell (`hooks/mempalace-transcript.sh:42-57`). Any other shape SHALL end
-   the run under requirement 6 with one line on standard error naming the
-   accepted shapes and no request sent.
+   the shell (`hooks/mempalace-transcript.sh:42-57`). The only shapes outside
+   (a) to (c) are a CLI identifier followed by the wrong number of arguments.
+   Such a run SHALL end under requirement 6 with one line on standard error
+   naming the accepted shapes, no request sent and no process spawned, and
+   SHALL write the acknowledgement of requirement 5 when its first argument is
+   `antigravity-cli`, and nothing to standard output otherwise.
 
 4. **Enablement.** In shapes (a) and (b) the hook SHALL record only when
    `MEMPALACE_TRANSCRIPT_ENABLED` equals `1`, as today
    (`hooks/mempalace-transcript.sh:75-78`). In shape (c) the registration
    itself is the user's consent, because setup writes the direct form only
-   after the opt-in, and no direct form can carry an environment assignment on
+   after the opt-in or in place of a legacy command whose enablement it has
+   established (requirement 23), and no direct form can carry an environment assignment on
    Windows (row 37c of `docs/cli-matrix.md`, `CommandNotFoundException`): the
    hook SHALL record unless `MEMPALACE_TRANSCRIPT_ENABLED` is set to a
    non-empty value other than `1`, which keeps that variable usable as a
@@ -173,8 +178,9 @@ touching any hook the user or another part of the framework owns.
     the file, the records whose `type` is `PLANNER_RESPONSE`,
     `ASSISTANT_RESPONSE` or `RESPONSE`; from each, `content`, else each
     `tool_calls[].name`; the last 5 resulting lines, each followed by one space;
-    at most the first 500 bytes. A line that does not parse as JSON, and a
-    selected value that is not a string, SHALL be skipped. The run SHALL stay
+    at most the first 500 bytes. A selected number SHALL be rendered in its JSON
+    decimal form, as requirement 8 renders it; a line that does not parse as
+    JSON, and a selected object, array or boolean, SHALL be skipped. The run SHALL stay
     within the budget of requirement 19(c) for a 50 MB transcript.
 
 12. **Content bound.** The content sent SHALL be at most 4000 bytes of UTF-8
@@ -198,19 +204,31 @@ touching any hook the user or another part of the framework owns.
     own request, and SHALL NOT use that module's `call()`. Neither the token
     nor the content SHALL appear on the argument list of any process.
 
-14. **Token.** The bearer token SHALL be read from the first of: the file named
-    by `MEMPALACE_DAEMON_TOKEN_FILE` (spec 0167); the file named by
-    `TOKEN_PATH_MOCK` (`hooks/mempalace-transcript.sh:265`); the token path of
-    `mcp_token_path` (`scripts/lib/common.sh:2053-2071`) — the palace path from
-    `MEMPALACE_PALACE_PATH` or `<home>/.mempalace/palace`, resolved to its
-    physical path, its SHA-256 hex digest cut to 24 characters, under
+14. **Token.** The token file SHALL be chosen by the first of these rules
+    that applies, and the choice SHALL be final — a chosen file that does not
+    exist is reported, never replaced by a later rule
+    (`hooks/mempalace-transcript.sh:265-281`): (a) when
+    `MEMPALACE_DAEMON_TOKEN_FILE` is non-empty, the file it names (spec 0167);
+    (b) otherwise, when `TOKEN_PATH_MOCK` is non-empty, the file it names;
+    (c) otherwise the token path of `mcp_token_path`
+    (`scripts/lib/common.sh:2053-2071`) — the palace path from
+    `MEMPALACE_PALACE_PATH` or `<home>/.mempalace/palace`, made physical, its
+    SHA-256 hex digest cut to 24 characters, under
     `<home>/.mempalace/server/` — through the same single definition as
-    requirement 13 — `tokenPath()` of `scripts/lib/usage-store/mcp.js`, in a
+    requirement 13: `tokenPath()` of `scripts/lib/usage-store/mcp.js`, in a
     variant that creates no directory, since `tokenPath()` creates the palace's
     parent (`scripts/lib/usage-store/mcp.js:110`), and that the existing
-    function and the variant share (decision Q3); and, when that file does not exist, the first
-    `<home>/.mempalace/server/*/token` in byte order of the directory name
-    (`hooks/mempalace-transcript.sh:270-275`). Its content SHALL have every
+    function and the variant share (decision Q3); and, only under (c) and only
+    when that file does not exist, the first `<home>/.mempalace/server/*/token`
+    in byte order of the directory name
+    (`hooks/mempalace-transcript.sh:270-275`). The physical palace path SHALL be
+    resolved as `tokenPath()` resolves it, with one difference for a missing
+    parent: an existing palace directory gives its real path; otherwise an
+    existing parent gives the parent's real path joined with the palace's last
+    component; otherwise the parent as given, joined the same way — the
+    fallback `tokenPath()` already takes when the parent cannot be resolved.
+    Where the key so computed differs from the daemon's, rule (c)'s wildcard
+    still finds the token whenever exactly one server directory holds one. Its content SHALL have every
     whitespace character removed (`:282`). A token file that is absent SHALL
     give `DAEMON_UNREACHABLE: token file not found at <path>` (`:278-281`) and
     one that is empty after removal SHALL give a `DAEMON_UNREACHABLE` line saying
@@ -336,46 +354,81 @@ touching any hook the user or another part of the framework owns.
     (requirement 27): when the user enables session recording, setup SHALL
     deploy the direct form with the merge semantics it uses today
     (`merge_session_recording_hooks`; `deploy_antigravity_transcript_hooks`,
-    `scripts/lib/common.sh:2356`); when the user declines or cancels and the
-    CLI's configuration already holds a recognised transcript command
-    (requirement 24), setup SHALL rewrite each such command in place to the
-    direct form, keeping its event, selector, key order, every other key and
-    every other entry exactly as they were. Setup SHALL report, by name and
-    count, the commands it wrote or rewrote and those it left, with the reason.
+    `scripts/lib/common.sh:2356`), replacing every command of the classes
+    `direct`, `legacy-enabled` and `legacy-unmarked` of requirement 24 and
+    leaving every `foreign-prefix` command as requirement 25 says. When the
+    user declines or cancels, setup SHALL write a direct form only where the
+    user's consent is already established, so that a decline never starts
+    recording that was not running: it SHALL rewrite in place a `direct`
+    command (re-pointed under requirement 25) and a `legacy-enabled` command;
+    it SHALL rewrite a `legacy-unmarked` command only on Claude Code and only
+    when the same settings file holds `env.MEMPALACE_TRANSCRIPT_ENABLED` equal
+    to `"1"` (`scripts/setup-claude-interactive.sh:468-471`); and it SHALL
+    leave every other `legacy-unmarked` command unchanged and report it as
+    disabled and not upgraded — a consent that lives only in the user's shell
+    environment cannot be established by setup. Every rewrite SHALL keep the
+    command's event, selector, key order, every other key and every other entry
+    exactly as they were. Setup SHALL report, by name and count, the commands it
+    wrote or rewrote and those it left, with the reason.
 
 24. **Recognition by content.** A registered command is a transcript command
-    when its whole shape matches: an optional prefix made only of
-    `MEMPALACE_TRANSCRIPT_ENABLED=1`, optionally followed by one
-    `MEMPALACE_PYTHON=<non-blank word>` — the prefix setup writes today
+    when its whole shape matches: an optional prefix of `NAME=value` words, an
+    optional `env`, an optional `bash`, `sh` or `node`, a script path ending in
+    `/mempalace-transcript.sh` or `/mempalace-transcript.ts`, quoted or not,
+    and the arguments of one shape of requirement 3; and, for the Antigravity
+    CLI descriptor only, the guarded prefix of spec 0243 delta-03
+    requirement 34 in place of that prefix. Every transcript command SHALL fall
+    in exactly one class, decided from the command text alone:
+    (a) `foreign-prefix` — its prefix carries an assignment to a name other than
+    `MEMPALACE_TRANSCRIPT_ENABLED` and `MEMPALACE_PYTHON`, or it has the direct
+    shape (c) of requirement 3 and carries any `NAME=value` prefix;
+    (b) `direct` — shape (c) with no prefix, or with the guarded prefix only;
+    (c) `legacy-enabled` — shape (a) or (b) whose prefix is made of
+    `MEMPALACE_TRANSCRIPT_ENABLED=1` and at most one
+    `MEMPALACE_PYTHON=<non-blank word>`, the prefix setup writes today
     (`scripts/setup-gemini-interactive.sh:421-424`,
     `scripts/setup-copilot-interactive.sh:413-416`,
-    `scripts/setup-antigravity-interactive.sh:452-455`) — an optional `env`, an
-    optional `bash`, `sh` or `node`, a script path ending in
-    `/mempalace-transcript.sh` or `/mempalace-transcript.ts`, quoted or not, and
-    the arguments of one shape of requirement 3; and, for the Antigravity CLI
-    descriptor only, the guarded prefix of spec 0243 delta-03 requirement 34.
-    The predicate `sr_is_own` (`scripts/lib/usage-capture-optin.sh:206-213`)
-    and the TypeScript recogniser SHALL accept and reject the same commands,
-    proven by the shared corpus
-    `scripts/tests/fixtures/usage-capture/recognition-corpus.json` run through
-    both. A command that chains an operator's own script, or names a script
-    called `mempalace-transcript.*` with other arguments, SHALL never be
+    `scripts/setup-antigravity-interactive.sh:452-455`);
+    (d) `legacy-unmarked` — shape (a) or (b) with no prefix, or with a prefix
+    made only of those two names in which `MEMPALACE_TRANSCRIPT_ENABLED` is
+    absent or not `1`. One transcript-only predicate SHALL exist in each twin
+    — a new Bash predicate in `scripts/lib/usage-capture-optin.sh` and the
+    TypeScript recogniser — returning the class or "not a transcript command",
+    and the two SHALL return the same answer for every row of a new corpus,
+    `scripts/tests/fixtures/mempalace-transcript/recognition-corpus.json`, each
+    row carrying a `command`, a `transcript` field holding one of `no`,
+    `direct`, `legacy-enabled`, `legacy-unmarked` or `foreign-prefix`, and a
+    `note`. `sr_is_own` (`scripts/lib/usage-capture-optin.sh:206-213`) SHALL be
+    re-expressed as "the transcript predicate returns `direct`,
+    `legacy-enabled` or `legacy-unmarked`, or the command is a worktree git
+    guard command", the guard half accepting and rejecting exactly what it
+    accepts and rejects today, so guard ownership and the guard refresh of
+    `sr_merge` are unchanged (requirement 29). The existing corpus
+    `scripts/tests/fixtures/usage-capture/recognition-corpus.json`, its
+    `capture` field and its two consumers stay unchanged. A command that chains
+    an operator's own script, or names a script called `mempalace-transcript.*`
+    with other arguments, is not a transcript command and SHALL never be
     rewritten, kept, deduplicated or removed.
 
 25. **Target and left commands.** Setup SHALL rewrite a recognised transcript
     command to the `.ts` of the checkout running setup, whatever path the
     command names, because the legacy paths name copies setup made from
-    whichever checkout ran it last (`scripts/lib/common.sh:2369`). It SHALL
-    leave unchanged, and report with the reason, a recognised command whose
-    prefix carries any assignment other than those of requirement 24, so that
-    an operator's own setting is never dropped silently (as spec 0243 delta-01
-    does for capture commands). It SHALL leave the installed copies under the
+    whichever checkout ran it last (`scripts/lib/common.sh:2369`). On every
+    path — enable, decline or cancel — it SHALL leave a `foreign-prefix`
+    command byte-identical and report it with the assignment that made it so,
+    so that an operator's own setting is never dropped silently (as spec 0243
+    delta-01 does for capture commands); and on the enable path it SHALL add no
+    transcript command on an event that holds one, so that event keeps exactly
+    the operator's. It SHALL leave the installed copies under the
     CLIs' directories on disk and report their paths as no longer used.
 
 26. **Idempotence and write safety.** A second run over a rewritten
     configuration SHALL write nothing and create no backup. No combination of
-    the session-recording question and the usage-capture question SHALL leave
-    two transcript commands on one event of one CLI. Every write SHALL be
+    the session-recording question and the usage-capture question SHALL add a
+    transcript command to an event that already holds one, or leave two
+    transcript commands on one event of one CLI that setup wrote or rewrote; a
+    configuration that already held two before setup ran keeps no more than it
+    held. Every write SHALL be
     backup-first, end at mode 0600, preserve every entry and key it does not
     own, refuse a configuration that is not a JSON object, leave the file
     byte-identical when it fails, and put no configuration content on the
@@ -399,7 +452,8 @@ touching any hook the user or another part of the framework owns.
 29. **Wiring confined to this hook.** This spec SHALL change no usage-capture
     command, no status-line command and no worktree git guard command, and the
     rewrite of requirement 23 SHALL touch only commands requirement 24
-    recognises.
+    recognises; the worktree git guard half of `sr_is_own` and the refresh
+    `sr_merge` gives guard commands SHALL be unchanged.
 
 30. **Deviations from the shell behaviour (parent requirement 14).** The
     observable contract SHALL be preserved except for exactly these: the
@@ -417,8 +471,12 @@ touching any hook the user or another part of the framework owns.
     the reason in the `DAEMON_UNREACHABLE` line in place of `curl`'s exit code
     and standard error (requirement 15); a malformed trust file reported
     instead of executed (requirement 16); the project name read with both
-    separators on Windows (requirement 9); and the exit status 1 of
-    requirement 18.
+    separators on Windows (requirement 9); a first argument equal to a CLI
+    identifier, which the shell took as an Antigravity event name, now selecting
+    the direct form, and a CLI identifier with the wrong number of arguments
+    ending the run with no record (requirement 3); objects, arrays and booleans
+    selected for the Stop summary skipped where `jq -r` rendered them
+    (requirement 11); and the exit status 1 of requirement 18.
 
 31. **`windows-latest` proof (parent requirement 17).** The implementation PR
     SHALL add jobs, copied from the template of spec 0240 requirement 12 and
@@ -458,7 +516,12 @@ touching any hook the user or another part of the framework owns.
     unchanged, except those whose expected value is a wired command text or the
     installed copy requirement 21 retires, which SHALL change to the new form
     and which the implementation PR SHALL list. New black-box TypeScript tests
-    SHALL cover requirements 3 to 16 and 20 to 29.
+    SHALL cover requirements 3 to 16 and 20 to 29, including, for each CLI, the
+    decline path on every class of requirement 24 and the enable path on a
+    `foreign-prefix` command. The Bash twin of the transcript predicate SHALL be
+    exercised on the new corpus by an added block in
+    `scripts/tests/test-setup-usage-capture-optin.sh`, which leaves that suite's
+    existing assertions unchanged.
 
 33. **Parity (parent requirement 19).** The implementation PR SHALL record in
     `docs/cli-matrix.md`, in the same diff, every (CLI × operating system) cell
@@ -531,6 +594,15 @@ status is zero every time, and the record sent when the daemon is up reads
 `[AGENT] Session turn completed (<terminationReason>)` in a room named after
 the workspace path and the conversation identifier.
 
+**Scenario:** A CLI identifier with the wrong arguments records nothing
+
+Given the arguments `antigravity-cli` alone, then `claude-code Stop`
+When the hook runs with a valid payload
+Then no request is sent, standard error holds one line naming the accepted
+shapes, standard output is `{}` and a line feed in the first case and empty in
+the second, and the exit status is zero; with the arguments `Stop extra` the
+hook runs in Antigravity mode as with `Stop`.
+
 **Scenario:** A malformed payload no longer fails the turn
 
 Given a payload `not json` and an argument-less enabled invocation
@@ -560,6 +632,15 @@ When a `Stop` payload is sent
 Then standard error holds `DAEMON_UNREACHABLE: token file not found at <path>`
 followed by `mempalace-transcript: FAILED to persist agent-response (rc=4):`,
 also with `MEMPALACE_TRANSCRIPT_QUIET=1`, and the exit status is zero.
+
+**Scenario:** A named token file is final
+
+Given `MEMPALACE_DAEMON_TOKEN_FILE` naming a missing file, and a valid token at
+the computed path
+When a `Stop` payload is sent
+Then standard error holds `DAEMON_UNREACHABLE: token file not found at <the
+named path>`, no request is sent, and neither the computed path nor the
+wildcard is tried.
 
 **Scenario:** A token under another key is still found
 
@@ -602,9 +683,53 @@ reported, and a second run writes nothing and creates no backup.
 
 Given a Copilot CLI entry reading
 `MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_MCP_PORT=41999 bash "/home/u/.copilot/hooks/mempalace-transcript.sh"`
-When setup runs
-Then the entry is unchanged and reported as left because of the
-`MEMPALACE_MCP_PORT` assignment.
+When setup runs and the user declines session recording, then when it runs
+again and the user enables it
+Then both times the entry is byte-identical and reported as left because of
+the `MEMPALACE_MCP_PORT` assignment, and the enable run adds no other
+transcript command to `agentStop`, so the event holds exactly that entry.
+
+**Scenario:** A decline never turns recording on, on the prefixed CLIs
+
+Given Gemini CLI, Copilot CLI and Antigravity CLI configurations each holding a
+legacy transcript command without the `MEMPALACE_TRANSCRIPT_ENABLED=1` prefix,
+then each holding one with `MEMPALACE_TRANSCRIPT_ENABLED=0`
+When the user re-runs each setup and declines session recording
+Then every such command is byte-identical, no backup is created, and setup
+reports it as disabled and not upgraded; the same configurations holding the
+`MEMPALACE_TRANSCRIPT_ENABLED=1` prefix are rewritten to the direct form.
+
+**Scenario:** A decline on Claude Code follows the settings file's own consent
+
+Given a Claude Code settings file holding
+`bash "/home/u/.claude/hooks/mempalace-transcript.sh"` on `Stop`, first with
+`env.MEMPALACE_TRANSCRIPT_ENABLED` equal to `"1"`, then with that key absent,
+then equal to `"0"`
+When the user re-runs `scripts/setup-claude-interactive.sh` and declines
+session recording
+Then the first is rewritten to `node "/repo/hooks/mempalace-transcript.ts" claude-code`,
+and the other two are byte-identical and reported as disabled and not
+upgraded — even when the user's shell exports the variable.
+
+**Scenario:** An enable answer upgrades every own command
+
+Given the configurations of the two previous scenarios
+When the user enables session recording
+Then every `direct`, `legacy-enabled` and `legacy-unmarked` transcript command
+is replaced by the direct form, one per event, and every worktree git guard
+command is refreshed exactly as before this spec.
+
+**Scenario:** The transcript predicates agree, and guard ownership is unchanged
+
+Given the new corpus `scripts/tests/fixtures/mempalace-transcript/recognition-corpus.json`
+with rows for each class, including
+`MEMPALACE_TRANSCRIPT_ENABLED=1 bash "/x/hooks/mempalace-transcript.sh" Stop`
+(`legacy-enabled`), `node "/x/hooks/mempalace-transcript.ts" claude-code`
+(`direct`), `MEMPALACE_TRANSCRIPT_ENABLED=0 node "/x/hooks/mempalace-transcript.ts" claude-code`
+(`foreign-prefix`) and `bash "/x/hooks/worktree-git-guard.sh"` (`no`)
+When the Bash predicate and the TypeScript recogniser classify every row
+Then both return the row's `transcript` value, and `sr_is_own` still accepts
+the guard command and every command it accepted before.
 
 **Scenario:** A chained operator command is never touched
 
