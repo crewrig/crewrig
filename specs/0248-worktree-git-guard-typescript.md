@@ -96,22 +96,32 @@ honoured by the other for as long as both can run against one repository.
 
 4. **Input.** The guard SHALL read its payload from standard input unless
    standard input is an interactive terminal, and SHALL read it to the end
-   before it makes any decision. When no command can be taken from the payload
-   and a first positional argument is present and non-empty, the guard SHALL
-   use that argument as the command. It SHALL read no environment variable of
+   before it makes any decision. When the command taken from the payload is
+   absent or an empty string and a first positional argument is present and
+   non-empty, the guard SHALL use that argument as the command. It SHALL read no environment variable of
    its own; the claim lookup reads `CREWRIG_REPO_DIR` through requirement 14.
 
 5. **Extraction chain.** The command SHALL be the first of
    `.toolCall.args.CommandLine`, `.toolCall.args`, `.tool_input.command`,
    `.command`, `.tool_input` of the parsed payload that is neither absent, nor
-   `null`, nor `false` (the semantics of `jq`'s `//` operator, under which an
-   empty string is present and wins); a value that is not a string SHALL be
-   taken as its JSON text, so that a prohibited phrase inside an object still
-   matches. The working directory SHALL be the first of `.cwd`,
-   `.workspace_dir`, `.project_dir`, `.workspacePaths[0]` selected the same way,
-   and the physical current directory of the process when none is found. A
-   payload that does not parse as JSON, or is empty, SHALL be treated as having
-   no command and no working directory, never as an error.
+   `null`, nor `false` (the selection of `jq`'s `//` operator, under which an
+   empty string is selected and ends the chain). A segment that cannot be
+   indexed because an intermediate value is not an object (for example
+   `.tool_input.command` over `{"tool_input":"git reset --hard"}`) SHALL count
+   as absent and the chain SHALL continue; the shell guard's `jq` fails on such
+   a payload and selects nothing, a behaviour that differs between `jq`
+   releases, so this is the fail-safe reading and a listed deviation
+   (requirement 38(h)). A selected value that is not a string SHALL be taken as
+   its JSON text, so that a prohibited phrase inside an object still matches.
+   The working directory SHALL be the first of `.cwd`, `.workspace_dir`,
+   `.project_dir`, `.workspacePaths[0]` selected the same way. A selected value
+   that is an empty string SHALL count as absent at the two fallback steps, as
+   the shell guard's `-z` tests did: the argument fallback of requirement 4 then
+   applies to the command, and the physical current directory of the process
+   becomes the working directory, so `{"cwd":""}` is enforced from the process
+   directory and never read as a location outside every worktree. A payload that
+   does not parse as JSON, or is empty, SHALL be treated as having no command and
+   no working directory, never as an error.
 
 6. **Worktree scope.** The guard SHALL enforce only when the working directory
    contains the path component `/.worktrees/`. On Windows a backslash in the
@@ -181,12 +191,18 @@ honoured by the other for as long as both can run against one repository.
     status, standard output and standard error unchanged, so an installation
     whose command line still names the `.sh` path keeps its guard until setup
     rewrites it (parent requirement 9). It SHALL stay on the ratchet allowlist
-    without adding an entry. When `node` is absent from the search path or runs
-    a major version below 24, the shim SHALL run the floor guard of spec 0240
-    requirement 1, which prints its diagnostic, and SHALL then exit with status
-    zero: a guard that cannot start must not refuse every tool call of every
-    session, which Copilot CLI's fail-closed `preToolUse` would do with any
-    non-zero status. This is the only fail-open path the migration adds, and it
+    without adding an entry. The shim SHALL tell the two cases apart in the
+    shell, as `hooks/usage-capture.sh` does for `node` itself. When `node` is
+    absent from the search path, the shim, which cannot run the floor guard
+    because that guard is a JavaScript file `node` runs, SHALL write one
+    shell-authored diagnostic line to standard error naming the missing
+    `node` and the Node.js 24 floor, and exit with status zero. When `node` is
+    present, the shim SHALL run the floor guard of spec 0240 requirement 1 first,
+    which prints its own diagnostic and exits non-zero below 24, and SHALL then
+    exit with status zero without running the guard. Both exits are zero because
+    a guard that cannot start must not refuse every tool call of every session,
+    which Copilot CLI's fail-closed `preToolUse` would do with any non-zero
+    status. This is the only fail-open path the migration adds, and it
     replaces the shell guard's silent fail-open on a missing `jq`.
 
 14. **Claim tool surface.** `scripts/worktree-claim.ts` SHALL accept the
@@ -229,7 +245,9 @@ honoured by the other for as long as both can run against one repository.
     no other subcommand, so that `status` and `history` answer from the main
     checkout after the worktree has been removed; SHALL take the ticket from
     `--ticket` or, when the toplevel is under `.worktrees/`, from its final
-    component, and refuse an id that is empty, contains `/`, or is `.` or `..`.
+    component, and refuse an id that is empty, contains `/`, or is `.` or `..`, and on Windows
+    also an id that contains `\`, which is a separator there and would resolve
+    outside the claim root.
 
 17. **Lock semantics.** A claim SHALL be a directory
     `<claim root>/<ticket>/` created by an operation that fails when the
@@ -266,8 +284,10 @@ honoured by the other for as long as both can run against one repository.
 20. **Takeover.** `takeover` SHALL transfer a claim held by another agent whose
     age is at least `--stale-after` minutes (default 30), and SHALL otherwise
     refuse with status 4 naming the age and the threshold. `--stale-after` SHALL
-    be refused with exit 1 unless it is 1 to 9 decimal digits, and leading zeros
-    SHALL be read in base 10. A `since_epoch` that is empty, not all digits,
+    be refused with exit 1 unless it is all decimal digits and, once its leading
+    zeros are stripped (leaving at least one digit), at most 9 of them, as the
+    shell tool measures it: `0000000001` is accepted as 1 and `1234567890` is
+    refused; the stripped value SHALL be read in base 10. A `since_epoch` that is empty, not all digits,
     has a leading zero, or is longer than 18 digits SHALL be read as infinitely
     old; a value in the future by more than 300 seconds likewise; a value in the
     future by up to 300 seconds SHALL be read as zero age. The null case — no
@@ -318,13 +338,17 @@ honoured by the other for as long as both can run against one repository.
     the floor.
 
 26. **Forwarding shim for the claim tool.** `scripts/worktree-claim.sh` SHALL
-    remain, reduced to a forwarding shim that runs the floor guard and then
-    `scripts/worktree-claim.ts` with every argument and its standard input, and
+    remain, reduced to a forwarding shim that runs the floor guard of spec 0240
+    requirement 1 and then `scripts/worktree-claim.ts` with every argument and
+    its standard input, and
     returns its exit status, standard output and standard error unchanged, so
     the Bash oracle of requirement 35, the nested invocations those tests make
     and any documentation not yet re-read keep working. It SHALL stay on the
-    ratchet allowlist without adding an entry. Below the floor it SHALL exit with
-    the floor guard's non-zero status and diagnostic.
+    ratchet allowlist without adding an entry. When `node` is absent from the search path the shim, which cannot run the
+    floor guard, SHALL write one shell-authored `Error:` line to standard error
+    naming the missing `node` and the Node.js 24 floor and exit 1. When `node` is
+    present and below the floor, it SHALL exit with the floor guard's non-zero
+    status and diagnostic without running the tool.
 
 27. **One descriptor, no new mechanism.** This ticket SHALL register one hook
     descriptor for the guard (basename `worktree-git-guard`, no per-CLI
@@ -509,8 +533,11 @@ honoured by the other for as long as both can run against one repository.
     wrapped command that cannot be launched and the exit codes of a signalled
     wrapped command (requirement 22), which a shell worded and numbered as
     `line N: <command>: command not found`; (f) native path separators on Windows
-    (requirement 23); (g) the shim behaviour of requirements 13 and 26 on a Node.js
-    below the floor. On macOS and Linux no other byte of standard output, standard
+    (requirement 23), and the refusal on Windows of a `--ticket` containing `\`
+    (requirement 16); (g) the shim behaviour of requirements 13 and 26 when `node`
+    is absent or below the floor; (h) an unindexable segment of the extraction
+    chain counts as absent where the shell guard's `jq` selected nothing
+    (requirement 5). On macOS and Linux no other byte of standard output, standard
     error or any file written differs.
 
 ## Scenarios
@@ -571,21 +598,37 @@ When the guard runs with no positional argument
 Then it exits zero silently both times; and given a payload that does parse, on
 the same machine, it enforces as on a machine with `jq`.
 
+**Scenario:** Empty and unindexable payload values follow the shell's fallbacks
+
+Given the payloads `{"cwd":"","tool_input":{"command":"git reset --hard"}}`,
+`{"tool_input":{"command":""}}` with the first positional argument
+`git reset --hard`, and `{"tool_input":"git reset --hard","cwd":"/repo/.worktrees/771"}`,
+the first two with the hook process's current directory inside
+`.worktrees/771`, and no claim
+When the guard runs for each
+Then the first is enforced from the process directory and refused, the second
+takes the command from the argument and is refused, and the third is refused
+because the unindexable `.tool_input.command` counts as absent and the chain
+reaches `.tool_input`.
+
 **Scenario:** An undetermined claim state refuses
 
 Given a prohibited command in a ticket worktree, and a hook process whose current
 directory is not inside any git repository
 When the guard runs
 Then it refuses with exit status 1 and never reads the undetermined state as
-`claimed`, as the shell guard did when `status` printed nothing.
+`claimed`; the shell guard refused in the same case, when `status` printed
+nothing, and this is preserved.
 
 **Scenario:** An installed legacy command keeps guarding through the shim
 
 Given a configuration still holding `bash "/repo/hooks/worktree-git-guard.sh"`
 When the CLI fires it with a prohibited command and no claim
 Then the shim forwards to the TypeScript guard and the refusal reaches the CLI
-with status 1 and its message; and with `node` absent from the search path the
-shim prints the floor diagnostic and exits zero.
+with status 1 and its message; with `node` absent from the search path the shim
+writes its own one-line diagnostic and exits zero; and with a `node` reporting
+major version 20 the shim runs the floor guard, which prints the diagnostic naming
+20 and 24, and exits zero.
 
 **Scenario:** Take, status and release round-trip
 
@@ -630,11 +673,18 @@ naming bob.
 
 Given a claim whose `since_epoch` is `0900`, then 19 digits, then 400 seconds in
 the future, then 100 seconds in the future, and a call with `--stale-after 08`,
-then `--stale-after 1234567890`
+then `--stale-after 0000000001`, then `--stale-after 1234567890`
 When `takeover --agent bob` runs for each
 Then the first three take over, the fourth is refused as not stale, `08` means
-eight minutes, and the ten-digit value is refused with exit 1 before any
-arithmetic.
+eight minutes, `0000000001` is accepted as one minute, and the ten-digit value is
+refused with exit 1 before any arithmetic.
+
+**Scenario:** A ticket id cannot leave the claim root
+
+Given `status --ticket ../x`, and on Windows `status --ticket "..\x"`
+When the tool runs
+Then each exits 1 naming the invalid ticket, on Windows because `\` is a
+separator there, and nothing is read or written outside the claim root.
 
 **Scenario:** A wrapped command that cannot start releases the claim
 
