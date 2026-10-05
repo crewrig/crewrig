@@ -2,7 +2,7 @@
 //
 // Usage:
 //   node scripts/check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>]
-//        [--stdin-file <path>] [--env-tmpdir <NAME>] -- <node argv…>
+//        [--stdin-file <path>] [--cwd <path>] [--env-tmpdir <NAME>] -- <node argv…>
 //
 // Runs `node <node argv…>` N times with the current Node.js binary, timing each
 // run from spawn to exit with `performance.now()`, so Node.js start-up is
@@ -13,6 +13,10 @@
 //
 // --stdin-file <path> feeds that file's bytes to every run's standard input
 // (default: no stdin), read once before the first run so file I/O is never timed.
+// --cwd <path> runs every child with that directory as its working directory
+// (spec 0248 R33: the guard's slow path reads the claim from the hook process's
+// current directory, which the harness never set). A relative script path in
+// the node argv then resolves against that directory, so pass an absolute one.
 // --env-tmpdir <NAME> gives every run a fresh, empty temporary directory
 // exported to the child as $NAME and removed afterwards (spec 0243 R15: a hook
 // that writes a record must start from an empty usage root each time).
@@ -35,12 +39,14 @@ export interface Options {
   expectExit: number;
   argv: string[];
   stdinFile?: string;
+  cwd?: string;
   envTmpdir?: string;
 }
 
-/** What a run receives beyond its argv: stdin bytes and extra environment. */
+/** What a run receives beyond its argv: stdin bytes, working directory and extra environment. */
 export interface RunExtras {
   stdin?: Buffer;
+  cwd?: string;
   env?: Record<string, string>;
 }
 
@@ -80,6 +86,7 @@ export function parseArgs(args: readonly string[]): Options {
   let budgetMs: number | undefined;
   let expectExit = 0;
   let stdinFile: string | undefined;
+  let cwd: string | undefined;
   let envTmpdir: string | undefined;
   for (let i = 0; i < flags.length; i += 2) {
     const flag = flags[i];
@@ -88,6 +95,7 @@ export function parseArgs(args: readonly string[]): Options {
     else if (flag === "--budget-ms") budgetMs = positiveInt(flag, value);
     else if (flag === "--expect-exit") expectExit = positiveInt(flag, value);
     else if (flag === "--stdin-file") stdinFile = nonEmpty(flag, value);
+    else if (flag === "--cwd") cwd = nonEmpty(flag, value);
     else if (flag === "--env-tmpdir") {
       envTmpdir = nonEmpty(flag, value);
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(envTmpdir)) {
@@ -103,6 +111,7 @@ export function parseArgs(args: readonly string[]): Options {
     expectExit,
     argv: args.slice(sep + 1),
     ...(stdinFile === undefined ? {} : { stdinFile }),
+    ...(cwd === undefined ? {} : { cwd }),
     ...(envTmpdir === undefined ? {} : { envTmpdir }),
   };
 }
@@ -112,6 +121,7 @@ export const spawnNode: Runner = (argv, extras = {}) =>
   spawnSync(process.execPath, argv, {
     stdio: [extras.stdin === undefined ? "ignore" : "pipe", "ignore", "ignore"],
     ...(extras.stdin === undefined ? {} : { input: extras.stdin }),
+    ...(extras.cwd === undefined ? {} : { cwd: extras.cwd }),
     ...(extras.env === undefined ? {} : { env: { ...process.env, ...extras.env } }),
   }).status;
 
@@ -131,6 +141,7 @@ export function measure(
         : fs.mkdtempSync(path.join(os.tmpdir(), "timing-budget-"));
     const extras: RunExtras = {
       ...(stdin === undefined ? {} : { stdin }),
+      ...(opts.cwd === undefined ? {} : { cwd: opts.cwd }),
       ...(dir === undefined || opts.envTmpdir === undefined
         ? {}
         : { env: { [opts.envTmpdir]: dir } }),
@@ -191,7 +202,7 @@ export function main(args: readonly string[], run?: Runner, clock?: Clock): numb
   } catch (error) {
     if (!(error instanceof UsageError)) throw error;
     process.stderr.write(
-      `timing-budget: ${error.message}\nusage: check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>] [--stdin-file <path>] [--env-tmpdir <NAME>] -- <node argv…>\n`,
+      `timing-budget: ${error.message}\nusage: check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>] [--stdin-file <path>] [--cwd <path>] [--env-tmpdir <NAME>] -- <node argv…>\n`,
     );
     return 2;
   }

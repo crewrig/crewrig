@@ -186,6 +186,60 @@ describe("--stdin-file and --env-tmpdir", () => {
   });
 });
 
+describe("--cwd", () => {
+  test("parseArgs reads it and omits it when absent", () => {
+    const opts = parseArgs(["--runs", "1", "--budget-ms", "5", "--cwd", "/some/dir", "--", "a.js"]);
+    assert.equal(opts.cwd, "/some/dir");
+    assert.equal("cwd" in parseArgs(BASE), false);
+  });
+
+  test("rejects an empty directory", () => {
+    assert.throws(
+      () => parseArgs(["--runs", "1", "--budget-ms", "5", "--cwd", "", "--", "a"]),
+      /--cwd needs a value/,
+    );
+  });
+
+  test("every run receives the directory, next to stdin when both are given", () => {
+    const opts = parseArgs(["--runs", "2", "--budget-ms", "100", "--cwd", "/work", "--", "s.js"]);
+    const seen: (string | undefined)[] = [];
+    measure(opts, (_argv, extras) => (seen.push(extras?.cwd), 0), fakeClock([1, 1]));
+    assert.deepEqual(seen, ["/work", "/work"]);
+  });
+
+  test("CLI end to end: the child's working directory is the one given", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "timing-cwd-"));
+    try {
+      const real = fs.realpathSync(tmp);
+      const child = path.join(real, "child.js");
+      fs.writeFileSync(
+        child,
+        `process.exit(require("node:fs").realpathSync(process.cwd()) === ${JSON.stringify(real)} ? 0 : 3);`,
+      );
+      const res = spawnSync(
+        process.execPath,
+        [
+          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+          HARNESS,
+          "--runs",
+          "2",
+          "--budget-ms",
+          "60000",
+          "--cwd",
+          real,
+          "--",
+          child,
+        ],
+        { encoding: "utf8", cwd: REPO },
+      );
+      assert.equal(res.status, 0, res.stderr);
+      assert.match(res.stdout, /within 60000 ms over 2 runs/);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("evaluate", () => {
   test("over budget: names the script, budget, measured time and run", () => {
     const opts = parseArgs(BASE);
