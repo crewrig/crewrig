@@ -123,17 +123,29 @@ done
 echo "§3 user-level patch transform (R3)"
 ENVP="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3"
 HOOK_TARGET="$TMP_ROOT/copilot/hooks/mempalace-transcript.sh"
-GUARD_TARGET="$REPO_DIR/hooks/worktree-git-guard.sh"
+GUARD_TARGET="$(cd "$REPO_DIR/hooks" && pwd -P)/worktree-git-guard.ts"
+RENDERED="$TMP_ROOT/rendered.json"
 PATCHED="$TMP_ROOT/patched.json"
 
-jq --arg envp "$ENVP" --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" '
+# The guard's command line is final once rendered (spec 0248 R28, R29): the
+# replay calls the render step setup calls, then the setup's own jq program,
+# whose preToolUse arm is a pass-through (v1-F2).
+# shellcheck disable=SC2034  # read by install_file() in the lib sourced below
+INSTALL_MODE="copy"
+# shellcheck source=scripts/lib/common.sh
+source "$REPO_DIR/scripts/lib/common.sh"
+# shellcheck source=scripts/lib/usage-capture-optin.sh
+source "$REPO_DIR/scripts/lib/usage-capture-optin.sh"
+render_session_recording_manifest copilot "$REPO_DIR" "$MANIFEST" "$RENDERED" >/dev/null 2>&1
+
+jq --arg envp "$ENVP" --arg hook_path "$HOOK_TARGET" '
   (.hooks // {}) |= with_entries(
     if .key == "preToolUse"
-    then .value |= map(.command = ("bash " + ($guard_path | tojson)))
+    then .
     else .value |= map(.command = ($envp + " bash " + ($hook_path | tojson)))
     end
   )' \
-  "$MANIFEST" > "$PATCHED" 2>/dev/null
+  "$RENDERED" > "$PATCHED" 2>/dev/null
 if jq -e . "$PATCHED" >/dev/null 2>&1 && [ "$(jq -r '.hooks | type' "$PATCHED")" = "object" ]; then
   ok "patch output is valid JSON with object hooks"
 else
@@ -142,7 +154,7 @@ fi
 
 # preToolUse must point to the guard script and not carry the transcript env prefix
 guard_cmd="$(jq -r '.hooks.preToolUse[0].command // ""' "$PATCHED" 2>/dev/null)"
-if [[ "$guard_cmd" == *"$GUARD_TARGET"* ]] && [[ "$guard_cmd" != *"MEMPALACE_TRANSCRIPT_ENABLED"* ]]; then
+if [[ "$guard_cmd" == "node \"$GUARD_TARGET\"" ]] && [[ "$guard_cmd" != *"MEMPALACE_TRANSCRIPT_ENABLED"* ]]; then
   ok "preToolUse command rewritten to in-repo guard target without transcript env"
 else
   bad "preToolUse command not correctly rewritten to guard (got: $guard_cmd)"

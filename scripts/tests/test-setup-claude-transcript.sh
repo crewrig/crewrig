@@ -11,7 +11,9 @@
 #   R1 — the shipped manifest is valid JSON containing PreToolUse (guard) and
 #        lifecycle event hooks (transcripts).
 #   R2 — the setup transform rewrites mempalace-transcript.sh to the installed
-#        target path and worktree-git-guard.sh to the in-repo absolute path.
+#        target path; the guard command is the direct `node` form on the in-repo
+#        absolute path, rendered by `hook-wiring.ts guard render` (spec 0248 R28,
+#        R29), reached through render_session_recording_manifest.
 #   R3 — zero $CLAUDE_PROJECT_DIR placeholder tokens survive in the patched output.
 #   spec 0211 R2 — the session-recording manifest registers no usage-capture.sh
 #        command: usage capture has its own opt-in, covered (with the
@@ -61,8 +63,8 @@ else
 fi
 
 guard_raw="$(jq -r '.hooks.PreToolUse[0].hooks[0].command // ""' "$MANIFEST" 2>/dev/null)"
-if [[ "$guard_raw" == *"\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"* ]]; then
-  ok "PreToolUse declares worktree-git-guard.sh with project token"
+if [[ "$guard_raw" == *"\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.ts"* ]]; then
+  ok "PreToolUse declares worktree-git-guard.ts with project token"
 else
   bad "PreToolUse missing expected guard command (got: $guard_raw)"
 fi
@@ -72,14 +74,25 @@ fi
 # ---------------------------------------------------------------------------
 echo "§2 setup patch transform (R2, R3)"
 HOOK_TARGET="$TMP_ROOT/claude/hooks/mempalace-transcript.sh"
-GUARD_TARGET="$REPO_DIR/hooks/worktree-git-guard.sh"
+GUARD_TARGET="$(cd "$REPO_DIR/hooks" && pwd -P)/worktree-git-guard.ts"
+RENDERED="$TMP_ROOT/rendered.json"
 PATCHED="$TMP_ROOT/patched.json"
 
-jq --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" \
+# The guard's command line is final once rendered (spec 0248 R28, R29): setup
+# no longer substitutes it, so the replay calls the same render step setup does
+# and substitutes only the transcript hook's source-file token.
+# shellcheck disable=SC2034  # read by install_file() in the lib sourced below
+INSTALL_MODE="copy"
+# shellcheck source=scripts/lib/common.sh
+source "$REPO_DIR/scripts/lib/common.sh"
+# shellcheck source=scripts/lib/usage-capture-optin.sh
+source "$REPO_DIR/scripts/lib/usage-capture-optin.sh"
+render_session_recording_manifest claude "$REPO_DIR" "$MANIFEST" "$RENDERED" >/dev/null 2>&1
+
+jq --arg hook_path "$HOOK_TARGET" \
   '(.. | objects | select(.type? == "command") | .command) |=
-     (gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path) |
-      gsub("\\$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh"; $guard_path))' \
-  "$MANIFEST" > "$PATCHED" 2>/dev/null
+     gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path)' \
+  "$RENDERED" > "$PATCHED" 2>/dev/null
 
 if jq -e . "$PATCHED" >/dev/null 2>&1; then
   ok "patched output is valid JSON"
@@ -89,8 +102,8 @@ fi
 
 # PreToolUse must point to the guard script in-repo
 guard_patched="$(jq -r '.hooks.PreToolUse[0].hooks[0].command // ""' "$PATCHED" 2>/dev/null)"
-if [[ "$guard_patched" == *"\"$GUARD_TARGET\""* ]]; then
-  ok "PreToolUse rewritten to in-repo guard target"
+if [[ "$guard_patched" == "node \"$GUARD_TARGET\"" ]]; then
+  ok "PreToolUse rewritten to the direct node form on the in-repo guard target"
 else
   bad "PreToolUse not rewritten to in-repo guard target (got: $guard_patched)"
 fi

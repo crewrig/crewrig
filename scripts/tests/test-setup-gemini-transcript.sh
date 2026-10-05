@@ -11,8 +11,10 @@
 #   R1 — the shipped manifest is valid JSON containing BeforeTool (guard) and
 #        lifecycle event hooks (transcripts).
 #   R2 — the setup transform rewrites mempalace-transcript.sh to the installed
-#        target path (prefixed by env vars) and worktree-git-guard.sh to the
-#        in-repo absolute path (without env prefix).
+#        target path (prefixed by env vars); the guard command is the direct
+#        `node` form on the in-repo absolute path (without env prefix), rendered
+#        by `hook-wiring.ts guard render` (spec 0248 R28, R29, v1-F2: the
+#        setup's jq passes it through untouched).
 #   R3 — zero ${GEMINI_PROJECT_DIR} placeholder tokens survive in the patched output.
 #   spec 0211 R2 — the session-recording manifest registers no usage-capture.sh
 #        command: usage capture has its own opt-in, covered (with the
@@ -62,7 +64,7 @@ else
 fi
 
 guard_raw="$(jq -r '.hooks.BeforeTool[0].hooks[0].command // ""' "$MANIFEST" 2>/dev/null)"
-if [[ "$guard_raw" == *"\${GEMINI_PROJECT_DIR}/hooks/worktree-git-guard.sh"* ]]; then
+if [[ "$guard_raw" == *"\${GEMINI_PROJECT_DIR}/hooks/worktree-git-guard.ts"* ]]; then
   ok "BeforeTool declares transcript-git-guard with project token"
 else
   bad "BeforeTool missing expected guard command (got: $guard_raw)"
@@ -74,16 +76,28 @@ fi
 echo "§2 setup patch transform (R2, R3)"
 ENVP="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3"
 HOOK_TARGET="$TMP_ROOT/gemini/hooks/mempalace-transcript.sh"
-GUARD_TARGET="$REPO_DIR/hooks/worktree-git-guard.sh"
+GUARD_TARGET="$(cd "$REPO_DIR/hooks" && pwd -P)/worktree-git-guard.ts"
+RENDERED="$TMP_ROOT/rendered.json"
 PATCHED="$TMP_ROOT/patched.json"
 
-jq --arg envp "$ENVP" --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_TARGET" '
+# The guard's command line is final once rendered (spec 0248 R28, R29): the
+# replay calls the render step setup calls, then the setup's own jq program,
+# whose guard arm is a pass-through (v1-F2).
+# shellcheck disable=SC2034  # read by install_file() in the lib sourced below
+INSTALL_MODE="copy"
+# shellcheck source=scripts/lib/common.sh
+source "$REPO_DIR/scripts/lib/common.sh"
+# shellcheck source=scripts/lib/usage-capture-optin.sh
+source "$REPO_DIR/scripts/lib/usage-capture-optin.sh"
+render_session_recording_manifest gemini "$REPO_DIR" "$MANIFEST" "$RENDERED" >/dev/null 2>&1
+
+jq --arg envp "$ENVP" --arg hook_path "$HOOK_TARGET" '
   (.. | objects | select(.type? == "command")) |=
-    (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard.sh")))
-     then .command = ("bash " + $guard_path)
+    (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard")))
+     then .
      else .command = ($envp + " " + (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/mempalace-transcript.sh"; $hook_path)))
      end)' \
-  "$MANIFEST" > "$PATCHED" 2>/dev/null
+  "$RENDERED" > "$PATCHED" 2>/dev/null
 
 if jq -e . "$PATCHED" >/dev/null 2>&1; then
   ok "patched output is valid JSON"
@@ -93,7 +107,7 @@ fi
 
 # BeforeTool guard must point to in-repo guard and NOT carry the transcript env prefix
 guard_patched="$(jq -r '.hooks.BeforeTool[0].hooks[0].command // ""' "$PATCHED" 2>/dev/null)"
-if [[ "$guard_patched" == *"bash $GUARD_TARGET"* ]] && [[ "$guard_patched" != *"MEMPALACE_TRANSCRIPT_ENABLED"* ]]; then
+if [[ "$guard_patched" == "node \"$GUARD_TARGET\"" ]] && [[ "$guard_patched" != *"MEMPALACE_TRANSCRIPT_ENABLED"* ]]; then
   ok "BeforeTool guard rewritten to in-repo target without transcript env"
 else
   bad "BeforeTool guard not correctly rewritten (got: $guard_patched)"
