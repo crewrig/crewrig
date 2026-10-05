@@ -361,8 +361,9 @@ touching any hook the user or another part of the framework owns.
     transcript command after that removal. An event that held both an own
     command and a `foreign-prefix` one therefore ends with the operator's
     command alone, and the removal is reported. Worktree git guard commands are
-    refreshed from the manifest as today, and every entry the rule does not name
-    stays where it is. Applying this rule changes today's per-CLI merge code
+    refreshed from the manifest as today. Every other entry stays where it is,
+    with the one exception item (c) states for the named hook Antigravity CLI
+    reserves to the framework. Applying this rule changes today's per-CLI merge code
     only where it differs, each change acknowledged in requirement 29:
     (a) Claude Code and Gemini CLI keep `sr_merge`
     (`scripts/lib/usage-capture-optin.sh:226`) with its strip, whose add becomes
@@ -372,14 +373,25 @@ touching any hook the user or another part of the framework owns.
     SHALL take the same `sr_merge` as Gemini CLI, so operator entries in its
     user-level hooks file survive instead of being dropped, and the file's
     top-level keys other than `hooks` keep their value when present and take
-    the manifest's when absent;
+    the manifest's when absent. When the file keeps `"disableAllHooks": true`,
+    which today's full replace overwrote with the manifest's `false`
+    (`hooks/copilot-transcript-hooks.json:3`), setup SHALL keep it and SHALL
+    report that every hook in that file, session recording included, will not
+    fire until the operator sets it to `false`; it SHALL NOT report recording
+    as active;
     (c) Antigravity CLI, whose `deploy_antigravity_transcript_hooks`
     (`scripts/lib/common.sh:2356`, the shallow merge at `:2435`) replaces the
     `crewrig-mempalace-transcript` named hook wholesale, SHALL apply the rule
-    per event inside that named hook: an event whose array holds a
-    `foreign-prefix` command keeps that array byte-identical, and every other
-    event of the named hook takes the manifest's as today, including the
-    removal of an event the manifest no longer registers. When the
+    per event inside that named hook. On an event whose array holds a
+    `foreign-prefix` command, setup SHALL remove the own transcript commands
+    from that array, keep every other element byte-identical — the
+    `foreign-prefix` ones included — and add nothing; this holds whether or not
+    the manifest still registers that event. Every other event of the named
+    hook SHALL take the manifest's as today: the manifest's direct form on an
+    event the manifest registers, and the removal of an event it no longer
+    registers, other elements of that event included, as the wholesale replace
+    does today. The `crewrig-worktree-git-guard` named hook is refreshed from
+    the manifest as today, and every other named hook stays byte-identical. When the
     user declines or cancels, setup SHALL write a direct form only where the
     user's consent is already established, so that a decline never starts
     recording that was not running: it SHALL rewrite in place a `direct`
@@ -456,7 +468,8 @@ touching any hook the user or another part of the framework owns.
     configuration that already held two before setup ran keeps no more than it
     held. Every write SHALL be
     backup-first, end at mode 0600, preserve every entry and key it does not
-    own, refuse a configuration that is not a JSON object, leave the file
+    own — Antigravity CLI's `crewrig-mempalace-transcript` named hook being
+    owned, within the limits of requirement 23(c) — refuse a configuration that is not a JSON object, leave the file
     byte-identical when it fails, and put no configuration content on the
     argument list of any process (spec 0243 requirement 23).
 
@@ -485,8 +498,12 @@ touching any hook the user or another part of the framework owns.
     Gemini CLI; on Copilot CLI the move from replacing the user-level hooks file
     to `sr_merge`, so an operator's own entry in that file — a transcript
     command, a hook of another tool, or a top-level key — is now kept where
-    today it is dropped; and on Antigravity CLI the per-event treatment inside
-    the `crewrig-mempalace-transcript` named hook. None is a deviation of the
+    today it is dropped, `"disableAllHooks": true` included and reported; and on
+    Antigravity CLI the per-event treatment inside the
+    `crewrig-mempalace-transcript` named hook, where an event holding a
+    `foreign-prefix` command now keeps that command and its other elements, and
+    loses only the own transcript commands, where today the whole named hook is
+    replaced. None is a deviation of the
     hook under requirement 30: all three are setup behaviour.
 
 30. **Deviations from the shell behaviour (parent requirement 14).** The
@@ -734,14 +751,18 @@ transcript command to `agentStop`, so the event holds exactly that entry.
 
 Given, on each of the four CLIs, one event holding both
 `MEMPALACE_TRANSCRIPT_ENABLED=1 bash "<home>/hooks/mempalace-transcript.sh"`
-(with the event argument on Antigravity CLI) and
-`MEMPALACE_MCP_PORT=41999 bash "<home>/hooks/mempalace-transcript.sh"`, and,
+and `MEMPALACE_MCP_PORT=41999 bash "<home>/hooks/mempalace-transcript.sh"` —
+on Antigravity CLI both with the argument `Stop`, inside the `Stop` array of
+the `crewrig-mempalace-transcript` named hook — and,
 on Copilot CLI, an operator hook of another tool on `sessionStart`
 When the user enables session recording
 Then that event holds only the `MEMPALACE_MCP_PORT` command, byte-identical,
 and setup reports the removal of the other and why nothing was added; every
 other manifest event holds the direct form; and the Copilot CLI operator hook
-on `sessionStart` is still there.
+on `sessionStart` is still there. When that Copilot CLI file also holds
+`"disableAllHooks": true`, the key is still `true` after the run, and setup
+reports that no hook in the file, session recording included, will fire until
+the operator sets it to `false`, instead of reporting recording as active.
 
 **Scenario:** A decline never turns recording on, on the prefixed CLIs
 
