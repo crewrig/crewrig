@@ -158,7 +158,10 @@ export function planWindowsLaunch(argv: readonly string[], input: WindowsLaunchI
     return { kind: "spawn", file: resolved, args: rest, verbatim: false };
   }
   if (extension !== ".cmd" && extension !== ".bat") {
-    return refused(name, `it resolves to '${resolved}', which is neither an executable nor a .cmd or .bat script`);
+    return refused(
+      name,
+      `it resolves to '${resolved}', which is neither an executable nor a .cmd or .bat script`,
+    );
   }
 
   if (UNSAFE_PATH.test(resolved)) {

@@ -48,12 +48,19 @@ function releaseIfOurs(ctx: ClaimContext, io: Io): Outcome {
 /** The sentence that closes a launch diagnostic: what happened to the claim. */
 function claimClause(ctx: ClaimContext, outcome: Outcome): string {
   if (outcome === "released") return `the claim on '${ctx.ticket}' was released.`;
-  if (outcome === "declined") return `the claim on '${ctx.ticket}' was left in place (see the Notice above).`;
+  if (outcome === "declined")
+    return `the claim on '${ctx.ticket}' was left in place (see the Notice above).`;
   return `the claim on '${ctx.ticket}' held by '${ctx.agent}' was left in place.`;
 }
 
 /** The exit code of `run` for a finished or failed launch; prints the diagnostic of a failed one. */
-function exitCodeOf(result: LaunchResult, name: string, ctx: ClaimContext, outcome: Outcome, io: Io): number {
+function exitCodeOf(
+  result: LaunchResult,
+  name: string,
+  ctx: ClaimContext,
+  outcome: Outcome,
+  io: Io,
+): number {
   if (result.kind === "exit") return result.code;
   if (result.kind === "signal") return signalExitCode(result.signal);
   const missing = result.code === "ENOENT" || result.code === "ENOTDIR";
@@ -68,7 +75,11 @@ export const runCommand: RunCommand = async (ctx, opts, io) => {
   if (name === undefined) throw new ClaimFailure("'run' needs a command after '--'.");
 
   // Before the gate: a command refused outright must leave no claim behind.
-  const plan = planLaunch(argv, { platform: ctx.platform, env: process.env, toplevel: ctx.toplevel });
+  const plan = planLaunch(argv, {
+    platform: ctx.platform,
+    env: process.env,
+    toplevel: ctx.toplevel,
+  });
   if (plan.kind === "refused") throw new ClaimFailure(plan.message);
 
   // The gate first, so a dirty tree is refused with 5 before the claim state is
