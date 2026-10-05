@@ -491,7 +491,8 @@ touching any hook the user or another part of the framework owns.
 29. **Wiring confined to this hook.** This spec SHALL change no usage-capture
     command, no status-line command and no worktree git guard command, and the
     rewrite of requirement 23 SHALL touch only commands requirement 24
-    recognises; the worktree git guard half of `sr_is_own`, and the guard
+    recognises, except inside Antigravity CLI's `crewrig-mempalace-transcript`
+    named hook, which requirement 23(c) treats per event; the worktree git guard half of `sr_is_own`, and the guard
     command each CLI ends with after an enable run, SHALL be unchanged. Three
     changes to setup's enable path are made on purpose and are the only ones
     (requirement 23): the conditional add of `sr_merge` on Claude Code and
