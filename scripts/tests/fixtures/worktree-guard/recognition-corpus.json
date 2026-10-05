@@ -1,0 +1,175 @@
+[
+  {
+    "command": "bash \"/srv/co/crewrig/hooks/worktree-git-guard.sh\"",
+    "guard": true,
+    "note": "legacy form, double-quoted path"
+  },
+  {
+    "command": "bash /srv/co/crewrig/hooks/worktree-git-guard.sh",
+    "guard": true,
+    "note": "legacy form, unquoted path"
+  },
+  {
+    "command": "node \"/srv/co/crewrig/hooks/worktree-git-guard.ts\"",
+    "guard": true,
+    "note": "direct form, double-quoted path"
+  },
+  {
+    "command": "node /srv/co/crewrig/hooks/worktree-git-guard.ts",
+    "guard": true,
+    "note": "direct form, unquoted path"
+  },
+  {
+    "command": "node '/srv/co/crewrig/hooks/worktree-git-guard.ts'",
+    "guard": true,
+    "note": "direct form, single-quoted path"
+  },
+  {
+    "command": "sh \"/srv/co/crewrig/hooks/worktree-git-guard.sh\"",
+    "guard": true,
+    "note": "sh wrapper"
+  },
+  {
+    "command": "/srv/co/crewrig/hooks/worktree-git-guard.sh",
+    "guard": true,
+    "note": "bare script path, no interpreter"
+  },
+  {
+    "command": "/usr/local/bin/node \"/srv/co/crewrig/hooks/worktree-git-guard.ts\"",
+    "guard": true,
+    "note": "path-qualified interpreter"
+  },
+  {
+    "command": "node \"/srv/co/crewrig/hooks/worktree-git-guard.ts\"  ",
+    "guard": true,
+    "note": "trailing whitespace"
+  },
+  {
+    "command": "node C:/work/x/crewrig/hooks/worktree-git-guard.ts",
+    "guard": true,
+    "note": "Windows drive path with forward slashes, unquoted"
+  },
+  {
+    "command": "node \"C:/work/x/My Projects/crewrig/hooks/worktree-git-guard.ts\"",
+    "guard": true,
+    "note": "Windows drive path with a space, quoted"
+  },
+  {
+    "command": "node \"C:\\\\work\\\\x\\\\crewrig/hooks/worktree-git-guard.ts\"",
+    "guard": true,
+    "note": "backslashes before the hooks directory: only /hooks/ matters"
+  },
+  {
+    "command": "FOO=1 node \"/srv/co/crewrig/hooks/worktree-git-guard.ts\"",
+    "guard": true,
+    "note": "VAR=value prefix"
+  },
+  {
+    "command": "FOO=1 env bash '/srv/co/crewrig/hooks/worktree-git-guard.sh'",
+    "guard": true,
+    "note": "VAR=value, env and bash prefix, single-quoted"
+  },
+  {
+    "command": "node \"/My Projects/crewrig/hooks/worktree-git-guard.ts\"",
+    "guard": true,
+    "note": "quoted path with a space"
+  },
+  {
+    "command": "node \"/opt/tools/worktree-git-guard.ts\" --strict",
+    "guard": false,
+    "note": "an operator hook that names the script with another argument (scenario 21)"
+  },
+  {
+    "command": "bash /opt/prep.sh && bash /srv/co/crewrig/hooks/worktree-git-guard.sh",
+    "guard": false,
+    "note": "a chained command (scenario 21)"
+  },
+  {
+    "command": "bash /opt/tools/worktree-git-guard.sh",
+    "guard": false,
+    "note": "v1-F5: no /hooks/ directory; the Bash twin is tightened to the TypeScript recognition"
+  },
+  {
+    "command": "bash /opt/tools/worktree-git-guard.ts",
+    "guard": false,
+    "note": "v1-F5: the same with the .ts"
+  },
+  {
+    "command": "/opt/tools/worktree-git-guard.sh",
+    "guard": false,
+    "note": "v1-F5: a bare path with no /hooks/ directory"
+  },
+  {
+    "command": "node hooks/worktree-git-guard.ts",
+    "guard": false,
+    "note": "the relative Antigravity manifest form: no character run and slash before hooks/ (v1-F1: found by named-hook key, not recognition)"
+  },
+  {
+    "command": "bash hooks/worktree-git-guard.sh",
+    "guard": false,
+    "note": "the relative legacy manifest form"
+  },
+  {
+    "command": "worktree-git-guard.sh",
+    "guard": false,
+    "note": "a bare file name"
+  },
+  {
+    "command": "bash \"/srv/co/crewrig/hooks/worktree-git-guard.sh\" extra",
+    "guard": false,
+    "note": "an argument after the script"
+  },
+  {
+    "command": "bash -x \"/srv/co/crewrig/hooks/worktree-git-guard.sh\"",
+    "guard": false,
+    "note": "an interpreter flag"
+  },
+  {
+    "command": "echo node /srv/co/crewrig/hooks/worktree-git-guard.ts",
+    "guard": false,
+    "note": "not an interpreter"
+  },
+  {
+    "command": "python3 /srv/co/crewrig/hooks/worktree-git-guard.py",
+    "guard": false,
+    "note": "another language"
+  },
+  {
+    "command": "bash /srv/co/crewrig/hooks/worktree-git-guard.shx",
+    "guard": false,
+    "note": "a longer extension"
+  },
+  {
+    "command": "bash /srv/co/crewrig/hooks/worktree-git-guard.sh; rm -rf /",
+    "guard": false,
+    "note": "a chained command after the script"
+  },
+  {
+    "command": "node /srv/co/crewrig/hooks/mempalace-transcript.ts",
+    "guard": false,
+    "note": "the transcript hook is never the guard"
+  },
+  {
+    "command": "bash \"/srv/co/crewrig/hooks/mempalace-transcript.sh\"",
+    "guard": false,
+    "note": "the transcript hook, legacy form",
+    "transcript": true
+  },
+  {
+    "command": "FOO=1 bash /srv/co/crewrig/hooks/mempalace-transcript.sh",
+    "guard": false,
+    "note": "the transcript hook with an env prefix",
+    "transcript": true
+  },
+  {
+    "command": "node \"/srv/co/crewrig/hooks/mempalace-transcript.ts\"",
+    "guard": false,
+    "note": "the transcript predicate stays bash|sh and .sh only until row C3 flips it"
+  },
+  {
+    "command": "set NoDefaultCurrentDirectoryInExePath=1&& node C:/work/x/crewrig/hooks/worktree-git-guard.ts",
+    "guard": false,
+    "note": "the Antigravity CLI guarded form: recognised by the TypeScript descriptor only (flag guardedPrefix), never by the Bash predicate, which no Antigravity path uses",
+    "tsOnly": true
+  }
+]

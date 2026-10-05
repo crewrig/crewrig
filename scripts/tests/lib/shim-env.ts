@@ -45,3 +45,9 @@ export function pathWithFakeNode(version = "v20.11.1"): NodeJS.ProcessEnv {
   });
   return cleanEnv({ PATH: bin });
 }
+
+/** As `pathWithFakeNode`, but every other command on the parent's PATH stays reachable (for Bash libraries that need jq, mktemp and git). */
+export function fakeNodeFirst(version = "v20.11.1"): NodeJS.ProcessEnv {
+  const base = pathWithFakeNode(version);
+  return cleanEnv({ PATH: `${base["PATH"] ?? ""}:${process.env["PATH"] ?? ""}` });
+}
