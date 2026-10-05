@@ -234,7 +234,7 @@ Per-source high-water state lives at `<usage root>/state/<cli>/<sourceKey>.json`
 
 ## Installation contract: in-repo absolute-path wiring
 
-The capture step is wired by **in-repo absolute path**, never copied into any CLI's home directory. This is the same treatment `hooks/worktree-git-guard.sh` already carries.
+The capture step is wired by **in-repo absolute path**, never copied into any CLI's home directory. This is the same treatment `hooks/worktree-git-guard.ts` carries (spec 0169, spec 0248).
 
 ### Hook wiring (Claude Code, Gemini CLI, Copilot CLI)
 
@@ -291,7 +291,7 @@ Every read and write of a capture entry goes through `scripts/lib/usage-capture-
 
 **Node.js floor at setup.** Setup never writes the direct form when the `node` it finds runs a major version below 24, and the disclosure does not render either: it runs the floor guard (`scripts/lib/node-floor-guard.js`), prints its diagnostic, and leaves every installed command as it is.
 
-On Gemini CLI, setup merges `~/.gemini/settings.json` in place (spec 0214): it never rebuilds the file from its template, so every hook entry survives a re-run whatever the answers. A re-run that declines (or cancels) session recording leaves the session-recording hooks and the worktree git guard an earlier run registered in place, and setup says so, as Claude Code and Copilot CLI do on the same re-run.
+On Gemini CLI, setup merges `~/.gemini/settings.json` in place (spec 0214): it never rebuilds the file from its template, so every hook entry survives a re-run whatever the answers. A re-run that declines (or cancels) session recording leaves the session-recording hooks and the worktree git guard an earlier run registered in place, and setup says so, as Claude Code and Copilot CLI do on the same re-run. The guard's command is the one exception to "as it was": every setup run rewrites it to the direct `node` form, whatever the answer (spec 0248 R30), which keeps the registered hook and removes nothing.
 
 The hook is **never copied** to `~/.claude/hooks/`, `~/.gemini/hooks/`, or `~/.copilot/hooks/`. Its whole job is to reach `scripts/lib/usage-capture/`, so it lives at the repository path where that module tree is a sibling.
 
@@ -320,7 +320,7 @@ To run the prior command, the shim hands it, with the payload on standard input,
 
 Moving, renaming, or deleting the checkout breaks the wired absolute path. The triggering CLI then sees a non-zero status from a command that never started, and no capture runs.
 
-**This is the accepted cost of the in-repo absolute path** — the same cost `hooks/worktree-git-guard.sh` carries since spec 0169. Mitigations, in order of operator experience:
+**This is the accepted cost of the in-repo absolute path** — the same cost `hooks/worktree-git-guard.ts` has carried since spec 0169 (its `.sh` path is now a forwarding shim, spec 0248). Mitigations, in order of operator experience:
 
 0. **Linked-worktree protection:** Each installer calls `warn_if_linked_worktree` and warns when the checkout is a linked git worktree (detected via `git rev-parse --git-common-dir` differing from `.git`). The warning message is:
 
