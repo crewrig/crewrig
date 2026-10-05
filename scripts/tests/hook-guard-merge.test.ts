@@ -61,7 +61,7 @@ describe(
           const file = write(co, `${cli}.json`, installed(cli, commands(co)));
           const res = yes(cli, co, file);
           assert.match(res.stdout, /rc=0/, res.stderr);
-          const after = JSON.parse(read(file));
+          const after = JSON.parse(read(file)) as Json;
           assert.deepEqual(guardCommands(after), [direct(co)]);
           assert.ok(transcriptCount(after) >= 1);
         });
@@ -85,7 +85,7 @@ describe(
         const res = yes(cli, co, file, fakeNodeFirst());
         assert.match(res.stdout, /rc=0/, res.stderr);
         assert.match(res.stderr, /requires Node\.js >= 24/);
-        const after = JSON.parse(read(file));
+        const after = JSON.parse(read(file)) as Json;
         assert.deepEqual(
           handlers(after).filter((h) => String(h["command"]).includes("worktree-git-guard")),
           guardBefore,
@@ -105,7 +105,7 @@ describe(
         const res = yes(cli, co, file);
         assert.match(res.stdout, /rc=0/, res.stderr);
         assert.match(res.stderr, /ERROR/);
-        const after = JSON.parse(read(file));
+        const after = JSON.parse(read(file)) as Json;
         assert.deepEqual(
           handlers(after).filter((h) => String(h["command"]).includes("worktree-git-guard")),
           guardBefore,
