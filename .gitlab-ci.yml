@@ -540,6 +540,10 @@ mempalace:
         - "scripts/tests/test-setup-gemini-transcript.sh"
         - "scripts/tests/test-antigravity-component-install.sh"
         - "scripts/tests/test-antigravity-discovery-probe.sh"
+        - "scripts/tests/test-worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.ts"
+        - "scripts/worktree-claim.ts"
         - "scripts/lib/**"
         - "artifacts/library/skills/mempalace/**"
         - "artifacts/library/skills/harness-report/**"
@@ -549,20 +553,20 @@ mempalace:
       - .ci-cache/
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-http-client-reuse.test.ts"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-transcript-hook.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-antigravity-transcript.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-claude-transcript.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-worktree-git-guard.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-copilot-transcript.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-gemini-transcript.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-antigravity-component-install.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-antigravity-discovery-probe.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-version-range.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-transcript-hook.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-antigravity-transcript.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-claude-transcript.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-worktree-git-guard.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-copilot-transcript.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-gemini-transcript.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-antigravity-component-install.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-antigravity-discovery-probe.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-version-range.sh"
     - "python3 -m pip install --quiet packaging"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-pin.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-runtime-guard.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-doctor.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-system-context-store.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-pin.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-runtime-guard.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-doctor.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-mempalace-*.sh,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/test-system-context-store.sh,scripts/tests/test-setup-antigravity-transcript.sh,scripts/tests/test-setup-claude-transcript.sh,scripts/tests/test-setup-copilot-transcript.sh,scripts/tests/test-setup-gemini-transcript.sh,scripts/tests/test-antigravity-component-install.sh,scripts/tests/test-antigravity-discovery-probe.sh,scripts/tests/test-worktree-git-guard.sh,hooks/worktree-git-guard.sh,hooks/worktree-git-guard.ts,scripts/worktree-claim.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-system-context-store.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -575,6 +579,10 @@ mempalace:
         - "scripts/tests/test-setup-gemini-transcript.sh"
         - "scripts/tests/test-antigravity-component-install.sh"
         - "scripts/tests/test-antigravity-discovery-probe.sh"
+        - "scripts/tests/test-worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.ts"
+        - "scripts/worktree-claim.ts"
         - "scripts/lib/**"
         - "artifacts/library/skills/mempalace/**"
         - "artifacts/library/skills/harness-report/**"
@@ -590,13 +598,17 @@ mempalace:
         - "scripts/tests/test-setup-gemini-transcript.sh"
         - "scripts/tests/test-antigravity-component-install.sh"
         - "scripts/tests/test-antigravity-discovery-probe.sh"
+        - "scripts/tests/test-worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.ts"
+        - "scripts/worktree-claim.ts"
         - "scripts/lib/**"
         - "artifacts/library/skills/mempalace/**"
         - "artifacts/library/skills/harness-report/**"
         - "config/copilot/*.json.template"
 
 test-wiring:
-  image: debian:stable-slim
+  image: node:24
   script:
     - "bash scripts/check-test-wiring.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-wiring.sh"
@@ -613,6 +625,10 @@ test-wiring:
         - "scripts/lib/base-ref-resolve.sh"
         - "scripts/tests/**"
         - "hooks/worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.ts"
+        - "scripts/worktree-claim.ts"
+        - "scripts/lib/worktree-claim/**"
+        - "scripts/lib/hook-*.ts"
         - "ci/test-wiring-exemptions.txt"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
@@ -623,11 +639,17 @@ test-wiring:
         - "scripts/lib/base-ref-resolve.sh"
         - "scripts/tests/**"
         - "hooks/worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.ts"
+        - "scripts/worktree-claim.ts"
+        - "scripts/lib/worktree-claim/**"
+        - "scripts/lib/hook-*.ts"
         - "ci/test-wiring-exemptions.txt"
 
 chroma-mcp:
   image: python:3.12
   before_script:
+    - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+    - apt-get install -y --no-install-recommends nodejs
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
@@ -640,6 +662,9 @@ chroma-mcp:
         - "scripts/tests/test-repair-mempalace-http.sh"
         - "scripts/tests/test-rotate-mempalace-token.sh"
         - "scripts/tests/test-worktree-claim.sh"
+        - "scripts/worktree-claim.sh"
+        - "scripts/worktree-claim.ts"
+        - "hooks/worktree-git-guard.ts"
         - "scripts/mcp-daemon.sh"
         - "scripts/repair-mempalace-http.sh"
         - "scripts/switch-mempalace-http.sh"
@@ -650,14 +675,14 @@ chroma-mcp:
     paths:
       - .ci-cache/
   script:
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-fd-limits.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-health-race.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-server.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mcp-daemon.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-palace-path-propagation.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-repair-mempalace-http.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-rotate-mempalace-token.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-worktree-claim.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-fd-limits.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-health-race.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-server.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mcp-daemon.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-palace-path-propagation.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-repair-mempalace-http.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-rotate-mempalace-token.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-worktree-claim.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -667,6 +692,9 @@ chroma-mcp:
         - "scripts/tests/test-repair-mempalace-http.sh"
         - "scripts/tests/test-rotate-mempalace-token.sh"
         - "scripts/tests/test-worktree-claim.sh"
+        - "scripts/worktree-claim.sh"
+        - "scripts/worktree-claim.ts"
+        - "hooks/worktree-git-guard.ts"
         - "scripts/mcp-daemon.sh"
         - "scripts/repair-mempalace-http.sh"
         - "scripts/switch-mempalace-http.sh"
@@ -681,6 +709,9 @@ chroma-mcp:
         - "scripts/tests/test-repair-mempalace-http.sh"
         - "scripts/tests/test-rotate-mempalace-token.sh"
         - "scripts/tests/test-worktree-claim.sh"
+        - "scripts/worktree-claim.sh"
+        - "scripts/worktree-claim.ts"
+        - "hooks/worktree-git-guard.ts"
         - "scripts/mcp-daemon.sh"
         - "scripts/repair-mempalace-http.sh"
         - "scripts/switch-mempalace-http.sh"
@@ -1133,6 +1164,54 @@ usage-capture-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+worktree-guard:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-*.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "hooks/worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.ts"
+        - "scripts/worktree-claim.sh"
+        - "scripts/worktree-claim.ts"
+        - "scripts/lib/worktree-claim/**"
+        - "scripts/lib/hook-*.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/hook-wiring.ts"
+        - "scripts/tests/worktree-*.test.ts"
+        - "scripts/tests/lib/worktree-*.ts"
+        - "scripts/tests/lib/spawn-spy.ts"
+        - "scripts/tests/lib/windows-invocation.ts"
+        - "scripts/tests/fixtures/worktree-claim/**"
+        - "scripts/tests/fixtures/worktree-guard/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "hooks/worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.ts"
+        - "scripts/worktree-claim.sh"
+        - "scripts/worktree-claim.ts"
+        - "scripts/lib/worktree-claim/**"
+        - "scripts/lib/hook-*.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/hook-wiring.ts"
+        - "scripts/tests/worktree-*.test.ts"
+        - "scripts/tests/lib/worktree-*.ts"
+        - "scripts/tests/lib/spawn-spy.ts"
+        - "scripts/tests/lib/windows-invocation.ts"
+        - "scripts/tests/fixtures/worktree-claim/**"
+        - "scripts/tests/fixtures/worktree-guard/**"
+
+worktree-guard-node-24-0:
+  image: node:24.0.0
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
 lint-specs:
   image: node:22
   variables:
@@ -1348,6 +1427,7 @@ usage-capture:
         - "scripts/tests/fixtures/setup-usage-capture/**"
         - "hooks/usage-capture.ts"
         - "hooks/antigravity-statusline-shim.ts"
+        - "hooks/worktree-git-guard.ts"
         - "scripts/lib/hook-*.ts"
         - "scripts/hook-wiring.ts"
         - "scripts/check-timing-budget.ts"
@@ -1385,6 +1465,7 @@ usage-capture:
         - "scripts/tests/fixtures/setup-usage-capture/**"
         - "hooks/usage-capture.ts"
         - "hooks/antigravity-statusline-shim.ts"
+        - "hooks/worktree-git-guard.ts"
         - "scripts/lib/hook-*.ts"
         - "scripts/hook-wiring.ts"
         - "scripts/check-timing-budget.ts"

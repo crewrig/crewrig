@@ -72,6 +72,7 @@ loses its own entry. The cases:
 | `P3a`–`P3b` | separators | `/c/crewrig-probe/x`, `/x/y:/z` (MSYS conversion) |
 | `I-bash`, `I-ps` | interpreter | Copilot only: case `I` under the entry keys `bash` and `powershell` |
 | `X1` | exit status | the four hook targets: `record <cli> X1 --exit 1` (spec 0243 R12) |
+| `X2` | exit status, guard events | opt-in, on each CLI's tool event instead of its prompt event: `record <cli> X2 --exit 1` (spec 0248 M1, M2) |
 
 The `antigravity-statusline` target (spec 0243 R18, plan step 17) carries only
 the cases `I`, `Q0`, `Q1`, `Q4`, `P` and `P2d`. `statusLine.command` is a
@@ -85,7 +86,7 @@ including the rest of `statusLine`, is kept and restored byte for byte.
 `COPILOT_PROJECT_DIR` or `ANTIGRAVITY_PROJECT_DIR`.
 
 `record` writes nothing to stdout, so no CLI reads its output as a hook
-decision. It exits 0, except when given `--exit <n>` (case `X1`): it then
+decision. It exits 0, except when given `--exit <n>` (cases `X1` and `X2`): it then
 writes its complete record first and exits `<n>`. Only 0, 1 and 3–255 are
 honoured. Exit 2 is never emitted, because it blocks a Claude Code `Stop`; a
 refused value is recorded as `exitError` and the hook exits 0. It writes the record file three times: first `argv`, cwd and a
@@ -171,6 +172,49 @@ the CLI showed a hook-error notice, and whether anything was blocked, then
 `restore <cli>`. The probe fires on each CLI's prompt event
 (`UserPromptSubmit`, `BeforeAgent`, `userPromptSubmitted`), so record the
 event next to the result.
+
+Guard events (case `X2`, spec 0248 M1 and M2). Two questions about the worktree
+git guard (`docs/cli-matrix.md` row 29) were never measured: does exit status
+`1` block a tool call on each CLI's tool event, and in which directory does the
+hook run. `X2` answers both with a hook registered where the guard is, and it is
+**opt-in**: a bare `install <cli>` skips it, because a blocking tool hook would
+stop every tool call of the session. Install it alone with
+`install <cli> --only X2`. The entry goes on:
+
+| CLI | Event |
+|---|---|
+| Claude Code | `PreToolUse`, matcher `Bash` |
+| Gemini CLI | `BeforeTool`, matcher `run_shell_command` |
+| Copilot CLI | `preToolUse` |
+| Antigravity CLI | `PreToolUse`, matcher `run_command`, under the named hook `crewrig-probe` |
+
+The hook writes its usual record (its working directory is the `cwd` field),
+prints one line to standard error, `crewrig-probe X2: tool call refused, exit
+status 1 requested`, and exits 1, as the guard does on a refusal. The decision
+comes from a second command, run by the session and not by a hook: `node
+<root>/kit/probe.ts marker <cli>` writes `out\<cli>\X2-marker.txt`. The marker
+file's presence answers whether status 1 blocks the call.
+
+1. `install <cli> --only X2`. It deletes any earlier marker and prints the
+   marker command to ask for.
+2. Start a session in `C:\crewrig-probe\proj` and ask it to run that marker
+   command once, for example `claude -p "Run this shell command and report its
+   output: <marker command>"`. A tool event does not fire on a plain prompt, so
+   the session must actually call its shell tool.
+3. `collect <cli>`. It prints `marker: present` or `marker: absent` and a
+   verdict line: marker absent means status 1 blocked the tool call; marker
+   present means the call ran, so status 1 did not block; `inconclusive` means
+   the hook never fired, and the event may not fire on that surface. Note the
+   CLI's own error notice, if any, and the `cwd` of the record (for Antigravity
+   CLI that is M2: a directory that is not a repository means the guard's claim
+   read cannot succeed there).
+4. `restore <cli>`, even when the session was blocked: a blocking `preToolUse`
+   on Copilot CLI stops every tool call until the entry is removed.
+
+Run it on macOS for Claude Code, Gemini CLI and Copilot CLI, and on the Windows
+host of rows 37e and 37f for Antigravity CLI, from the interactive console
+session that CLI needs (see above). The results belong in `docs/cli-matrix.md` row 29 and its *Parity gaps*
+entry; until they are recorded there, both questions stay open.
 
 `install <cli> --only I,Q3,…` installs a subset. Use it to re-run one case, or
 to split a run into several shorter sessions. On 2026-09-30, Gemini CLI

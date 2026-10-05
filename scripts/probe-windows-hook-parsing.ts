@@ -11,6 +11,8 @@
 //   node probe.ts record <cli> <case> [...] [--exit <n>]
 //                                            (run BY the hooks) write one record,
 //                                            then exit <n> (default 0, never 2)
+//   node probe.ts marker <cli>               (run BY the session, case X2) write the
+//                                            marker file out/<cli>/X2-marker.txt
 //   node probe.ts collect <cli>              print the records, one group each
 //   node probe.ts restore <cli>              restore the config, verify SHA-256
 //   node probe.ts verify-clean               prove nothing is left installed
@@ -32,6 +34,16 @@
 // `record` writes nothing to stdout, so no CLI reads its output as a hook
 // decision, and exits 0 unless `--exit <n>` asks otherwise (case X1). Exit
 // codes of the other subcommands: 0 success, 1 check failed, 2 usage error.
+//
+// Case X2 (spec 0248 M1, M2) measures the GUARD events: does exit status 1 block
+// a tool call, and where does the hook run? It is registered on the tool event
+// of each CLI (`PreToolUse` on `Bash` for Claude Code, `BeforeTool` on
+// `run_shell_command` for Gemini CLI, `preToolUse` for Copilot CLI, `PreToolUse`
+// on `run_command` for Antigravity CLI), records its working directory, prints
+// one stderr line and exits 1. It is opt-in (`install <cli> --only X2`), because
+// a blocking `preToolUse` would otherwise stop every tool call of the session;
+// the session is then asked to run `node <root>/kit/probe.ts marker <cli>`, and
+// the marker file's presence (shown by `collect`) says whether the call ran.
 //
 // The fifth target `antigravity-statusline` measures the `statusLine.command`
 // surface of ~/.gemini/antigravity-cli/settings.json (spec 0243 R18), a single
@@ -81,6 +93,8 @@ export const STATUSLINE_CASES = ["I", "Q0", "Q1", "Q4", "P", "P2d"] as const;
 
 export interface ProbeCase {
   id: string;
+  /** Registered on the CLI's tool event, installed only when asked for by `--only`. */
+  guard?: true;
   /** Copilot entry key holding the command line (default `command`). */
   key?: "command" | "bash" | "powershell";
   command: string;
@@ -161,6 +175,9 @@ export function casesFor(cli: Cli, root: string): ProbeCase[] {
     { id: "P3b", command: rec("P3b", "/x/y:/z") },
     // Exit status 1 (never 2: it blocks Claude Code's Stop). Spec 0243 R12.
     { id: "X1", command: rec("X1", "--exit", "1") },
+    // Spec 0248 M1, M2: the guard's own event, its working directory and whether
+    // status 1 blocks the tool call.
+    { id: "X2", guard: true, command: rec("X2", "--exit", "1") },
   ];
   if (cli === "copilot") {
     cases.push({ id: "I-bash", key: "bash", command: rec("I-bash") });
@@ -199,45 +216,90 @@ export function mergeStatusLine(existing: Json, cases: ProbeCase[]): Json {
 }
 
 /** Merge the probe entries into an existing (or empty) config object. */
-export function mergeHooks(cli: Cli, existing: Json, cases: ProbeCase[]): Json {
-  if (cli === "antigravity-statusline") return mergeStatusLine(existing, cases);
+export function mergeHooks(cli: Cli, existing: Json, allCases: ProbeCase[]): Json {
+  if (cli === "antigravity-statusline") return mergeStatusLine(existing, allCases);
+  const cases = allCases.filter((c) => c.guard !== true);
+  const guards = allCases.filter((c) => c.guard === true);
   const out: Json = { ...existing };
   if (cli === "antigravity") {
     out[PROBE_TAG] = {
-      Stop: cases.map((c) => ({ type: "command", command: c.command, timeout: 10 })),
+      ...(cases.length === 0
+        ? {}
+        : { Stop: cases.map((c) => ({ type: "command", command: c.command, timeout: 10 })) }),
+      ...(guards.length === 0
+        ? {}
+        : {
+            PreToolUse: [
+              {
+                matcher: "run_command",
+                hooks: guards.map((c) => ({ type: "command", command: c.command, timeout: 10 })),
+              },
+            ],
+          }),
     };
     return out;
   }
   if (cli === "copilot") {
     out.version = 1;
     const hooks = asObject(out.hooks);
-    hooks.userPromptSubmitted = [
-      ...asArray(hooks.userPromptSubmitted),
-      ...cases.map((c) => ({ type: "command", [c.key ?? "command"]: c.command })),
-    ];
+    if (cases.length > 0) {
+      hooks.userPromptSubmitted = [
+        ...asArray(hooks.userPromptSubmitted),
+        ...cases.map((c) => ({ type: "command", [c.key ?? "command"]: c.command })),
+      ];
+    }
+    if (guards.length > 0) {
+      hooks.preToolUse = [
+        ...asArray(hooks.preToolUse),
+        ...guards.map((c) => ({ type: "command", command: c.command })),
+      ];
+    }
     out.hooks = hooks;
     return out;
   }
   const hooks = asObject(out.hooks);
   if (cli === "claude") {
-    hooks.UserPromptSubmit = [
-      ...asArray(hooks.UserPromptSubmit),
-      {
-        matcher: "",
-        hooks: cases.map((c) => ({ type: "command", command: c.command })),
-      },
-    ];
+    if (cases.length > 0) {
+      hooks.UserPromptSubmit = [
+        ...asArray(hooks.UserPromptSubmit),
+        {
+          matcher: "",
+          hooks: cases.map((c) => ({ type: "command", command: c.command })),
+        },
+      ];
+    }
+    if (guards.length > 0) {
+      hooks.PreToolUse = [
+        ...asArray(hooks.PreToolUse),
+        { matcher: "Bash", hooks: guards.map((c) => ({ type: "command", command: c.command })) },
+      ];
+    }
   } else {
-    hooks.BeforeAgent = [
-      ...asArray(hooks.BeforeAgent),
-      {
-        hooks: cases.map((c) => ({
-          type: "command",
-          name: `${PROBE_TAG}-${c.id}`,
-          command: c.command,
-        })),
-      },
-    ];
+    if (cases.length > 0) {
+      hooks.BeforeAgent = [
+        ...asArray(hooks.BeforeAgent),
+        {
+          hooks: cases.map((c) => ({
+            type: "command",
+            name: `${PROBE_TAG}-${c.id}`,
+            command: c.command,
+          })),
+        },
+      ];
+    }
+    if (guards.length > 0) {
+      hooks.BeforeTool = [
+        ...asArray(hooks.BeforeTool),
+        {
+          matcher: "run_shell_command",
+          hooks: guards.map((c) => ({
+            type: "command",
+            name: `${PROBE_TAG}-${c.id}`,
+            command: c.command,
+          })),
+        },
+      ];
+    }
   }
   out.hooks = hooks;
   return out;
@@ -337,10 +399,24 @@ export function setup(root: string, home: string, self: string, io: Io): number 
 /** The cases `install` writes: the full table, or the `--only` subset. */
 export function selectCases(cli: Cli, root: string, only: string[] | null): ProbeCase[] {
   const all = casesFor(cli, root);
-  if (only === null) return all;
+  // The guard-event case is opt-in: a blocking tool hook would stop the session.
+  if (only === null) return all.filter((c) => c.guard !== true);
   const unknown = only.filter((id) => !all.some((c) => c.id === id));
   if (unknown.length > 0) throw new UsageError(`unknown case(s) for ${cli}: ${unknown.join(", ")}`);
   return all.filter((c) => only.includes(c.id));
+}
+
+/** The file the session's marker command writes (case X2). */
+export function markerPath(root: string, cli: Cli): string {
+  return path.join(root, "out", cli, "X2-marker.txt");
+}
+
+/** Run BY the session (case X2): the file's presence proves the tool call was allowed. */
+export function marker(root: string, cli: Cli, io: Io): number {
+  fs.mkdirSync(path.dirname(markerPath(root, cli)), { recursive: true });
+  fs.writeFileSync(markerPath(root, cli), `${new Date().toISOString()}\n`);
+  io.out(`marker: wrote ${markerPath(root, cli)}`);
+  return 0;
 }
 
 export function install(root: string, cli: Cli, io: Io, only: string[] | null = null): number {
@@ -388,6 +464,12 @@ export function install(root: string, cli: Cli, io: Io, only: string[] | null = 
   fs.writeFileSync(file, text);
   io.out(`install: ${cli} -> ${file} (existed=${existed})`);
   io.out(text.trimEnd());
+  if (cases.some((c) => c.guard === true)) {
+    fs.rmSync(markerPath(root, cli), { force: true });
+    io.out(
+      `X2: ask the ${cli} session to run this command, then run collect: node "${fwd(path.join(root, "kit", "probe.ts"))}" marker ${cli}`,
+    );
+  }
   return 0;
 }
 
@@ -644,7 +726,19 @@ export async function record(self: string, argv: readonly string[]): Promise<num
   rec.parentChainError = error ?? null;
   rec.timingsMs = { firstWrite: t1 - t0, stdin: t2 - t1, parentChain: Date.now() - t2 };
   write();
+  // Case X2 behaves like the guard on a refusal: one stderr line, status 1.
+  if (id === "X2" && requested.exit !== 0) {
+    process.stderr.write("crewrig-probe X2: tool call refused, exit status 1 requested\n");
+  }
   return requested.exit;
+}
+
+/** Case X2: what the hook firing and the marker file together say. */
+export function x2Verdict(fired: boolean, markerPresent: boolean): string {
+  if (!fired) return "inconclusive, the hook never fired (the event may not fire on this surface)";
+  return markerPresent
+    ? "exit status 1 did NOT block the tool call (the marker command ran)"
+    : "exit status 1 BLOCKED the tool call (the marker command did not run)";
 }
 
 export function collect(root: string, cli: Cli, io: Io): number {
@@ -666,6 +760,11 @@ export function collect(root: string, cli: Cli, io: Io): number {
     const recs = byCase.get(c.id) ?? [];
     io.out(`[${c.id}] launched=${recs.length > 0 ? "yes" : "no"} records=${recs.length}`);
     io.out(`  hook command (${c.key ?? "command"}): ${c.command}`);
+    if (c.guard === true) {
+      const ran = fs.existsSync(markerPath(root, cli));
+      io.out(`  marker: ${ran ? "present" : "absent"} (${markerPath(root, cli)})`);
+      io.out(`  verdict: ${x2Verdict(recs.length > 0, ran)}`);
+    }
     const rec = recs[0];
     if (rec === undefined) continue;
     const pv = asObject(rec.projectVar);
@@ -750,6 +849,8 @@ export async function main(args: readonly string[], self: string, io: Io = stdio
         return collect(root, parseCli(p.positional[0]), io);
       case "restore":
         return restore(root, parseCli(p.positional[0]), io);
+      case "marker":
+        return marker(root, parseCli(p.positional[0]), io);
       case "verify-clean":
         return verifyClean(root, io);
       default:

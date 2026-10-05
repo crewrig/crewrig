@@ -25,9 +25,9 @@
 #     covered by R27 below.
 #   R27 (delta-03) — the manifest carries `crewrig-worktree-git-guard` registering
 #     `PreToolUse` through a group whose `matcher` selects `run_command` and whose
-#     handler command names `hooks/worktree-git-guard.sh`.
+#     handler command names `hooks/worktree-git-guard.ts`.
 #   R28 (delta-03) — the deployment rewrites the guard command to the absolute
-#     REPOSITORY path of `hooks/worktree-git-guard.sh` — never the installed
+#     REPOSITORY path of `hooks/worktree-git-guard.ts` — never the installed
 #     transcript hook, no env prefix, no lifecycle-event argument.
 #   R22 (delta-01) — the consent text states the true per-turn write volume.
 #   R24 (delta-01) — the setup script's call-site ARGUMENTS are asserted, not just
@@ -60,7 +60,7 @@ REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 COMMON_LIB="$REPO_DIR/scripts/lib/common.sh"
 MANIFEST="$REPO_DIR/hooks/antigravity-transcript-hooks.json"
 HOOK_SCRIPT="$REPO_DIR/hooks/mempalace-transcript.sh"
-GUARD_SCRIPT="$REPO_DIR/hooks/worktree-git-guard.sh"
+GUARD_SCRIPT="$REPO_DIR/hooks/worktree-git-guard.ts"
 SETUP="$REPO_DIR/scripts/setup-antigravity-interactive.sh"
 
 for f in "$COMMON_LIB" "$MANIFEST" "$HOOK_SCRIPT" "$GUARD_SCRIPT" "$SETUP"; do
@@ -179,7 +179,7 @@ fi
 
 # R27 (delta-03) — the manifest MAY carry the named hook `crewrig-worktree-git-guard`
 # registering `PreToolUse` through a group whose matcher selects `run_command` and
-# whose handler command names `hooks/worktree-git-guard.sh` (spec 0153 R1/R4).
+# whose handler command names `hooks/worktree-git-guard.ts` (spec 0153 R1/R4).
 if jq -e 'has("crewrig-worktree-git-guard")' "$MANIFEST" >/dev/null 2>&1; then
   ok "R27: the manifest carries the named hook 'crewrig-worktree-git-guard'"
 else
@@ -195,11 +195,11 @@ if jq -e '."crewrig-worktree-git-guard".PreToolUse[0] | has("hooks") and (.hooks
 else
   bad "R27: the guard group has no 'hooks' array (grouped shape violated)"
 fi
-if jq -e '."crewrig-worktree-git-guard".PreToolUse[0].hooks[0].command | contains("hooks/worktree-git-guard.sh")' \
+if jq -e '."crewrig-worktree-git-guard".PreToolUse[0].hooks[0].command | contains("hooks/worktree-git-guard.ts")' \
      "$MANIFEST" >/dev/null 2>&1; then
-  ok "R27: the guard handler command names hooks/worktree-git-guard.sh"
+  ok "R27: the guard handler command names hooks/worktree-git-guard.ts"
 else
-  bad "R27: the guard handler command does not name hooks/worktree-git-guard.sh"
+  bad "R27: the guard handler command does not name hooks/worktree-git-guard.ts"
 fi
 
 # --- §2. Deployment: the accept path ----------------------------------------
@@ -259,7 +259,7 @@ fi
 # R28 (delta-03) — the deployed guard command names the REPOSITORY guard path,
 # never the installed transcript hook, with no env prefix and no event argument.
 # `contains`, NOT exact equality: the rewrite's `tojson` quotes the path, so the
-# deployed command is `bash "/abs/repo/hooks/worktree-git-guard.sh"` and an exact
+# deployed command is `node "/abs/repo/hooks/worktree-git-guard.ts"` and an exact
 # match against the unquoted path would fail.
 if jq -e --arg gp "$GUARD_SCRIPT" \
      '."crewrig-worktree-git-guard".PreToolUse[0].hooks[0].command | contains($gp)' \
@@ -677,7 +677,7 @@ case "$A_ENV" in
   *) bad "R24: arg 5 is '$A_ENV' — the deployed hook would opt itself out and record nothing" ;;
 esac
 case "$A_GUARD" in
-  */hooks/worktree-git-guard.sh) ok "R24: arg 6 is the guard script source" ;;
+  */hooks/worktree-git-guard.ts) ok "R24: arg 6 is the guard script source" ;;
   *) bad "R24: arg 6 is '$A_GUARD', expected the guard script source" ;;
 esac
 # The deployment target must be the customization root that is proven to fire,

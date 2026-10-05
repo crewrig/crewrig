@@ -390,6 +390,12 @@ done
 # so it is resolved outside both opt-ins.
 COPILOT_HOOKS_DIR="$COPILOT_HOME/hooks"
 USER_HOOKS_JSON="$COPILOT_HOOKS_DIR/copilot-transcript-hooks.json"
+# Worktree git guard: rewrite an installed registration (spec 0248 R30). Runs on
+# every setup run, before the session-recording question, so a `no` and a
+# cancelled confirmation still bring an installed guard command to the current
+# form. A Node.js below the floor prints its diagnostic and changes nothing;
+# setup carries on.
+guard_rewrite_installed copilot "$REPO_DIR" "$USER_HOOKS_JSON" || true
 # `|| true`: under `set -e`, Esc makes fzf exit 130 and would abort setup before
 # the usage-capture question below; a canceled answer reads as a decline.
 ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)" || true)
@@ -414,23 +420,30 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
       ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
     fi
-    GUARD_SCRIPT_SRC="$REPO_DIR/hooks/worktree-git-guard.sh"
-    GUARD_ABS="$(cd "$(dirname "$GUARD_SCRIPT_SRC")" && pwd -P)/$(basename "$GUARD_SCRIPT_SRC")"
+    HOOKS_RENDERED_TMP="$(mktemp)"
     HOOKS_PATCHED_TMP="$(mktemp)"
     # The Copilot CLI hooks schema keys `hooks` by camelCase event name
-    # (object of event -> array). Unlike the Claude/Gemini `gsub`
-    # substitutions above, this branch REBUILDS each command deterministically
-    # per entry: `preToolUse` is the worktree git guard, every other entry the
-    # transcript hook. Usage capture is not part of this manifest: it has its
-    # own opt-in below (spec 0211).
-    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" --arg guard_path "$GUARD_ABS" '
+    # (object of event -> array). The guard's command line comes from
+    # `hook-wiring.ts guard render` (spec 0248 R28, R29) and is final: the
+    # `preToolUse` entry passes through untouched, while every other entry has
+    # its command rebuilt deterministically as the transcript hook. A refused or
+    # floor-failed render leaves the guard out and the installed one untouched.
+    # Usage capture is not part of this manifest: it has its own opt-in below
+    # (spec 0211).
+    if ! render_session_recording_manifest copilot "$REPO_DIR" "$HOOKS_SRC" "$HOOKS_RENDERED_TMP"; then
+      echo "  ERROR: could not render $HOOKS_SRC." >&2
+      rm -f "$HOOKS_RENDERED_TMP" "$HOOKS_PATCHED_TMP"
+      exit 1
+    fi
+    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" '
       (.hooks // {}) |= with_entries(
         if .key == "preToolUse"
-        then .value |= map(.command = ("bash " + ($guard_path | tojson)))
+        then .
         else .value |= map(.command = ($envp + " bash " + ($hook_path | tojson)))
         end
       )' \
-      "$HOOKS_SRC" > "$HOOKS_PATCHED_TMP"
+      "$HOOKS_RENDERED_TMP" > "$HOOKS_PATCHED_TMP"
+    rm -f "$HOOKS_RENDERED_TMP"
     if grep -q '\${COPILOT_PROJECT_DIR' "$HOOKS_PATCHED_TMP"; then
       echo "  ERROR: Unresolved \${COPILOT_PROJECT_DIR} token in patched hooks." >&2
       rm -f "$HOOKS_PATCHED_TMP"
@@ -443,8 +456,10 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
       echo "  Transcript activation FAILED — setup continues without it." >&2
     else
       echo "  User-level transcript hooks deployed to $USER_HOOKS_JSON"
-      echo "  Worktree git guard wired to $GUARD_ABS (in-repo absolute path)"
-      warn_if_linked_worktree "$REPO_DIR" "worktree git guard"
+      if grep -qF 'worktree-git-guard' "$HOOKS_PATCHED_TMP"; then
+        echo "  Worktree git guard wired to $REPO_DIR/hooks/worktree-git-guard.ts (in-repo absolute path)"
+        warn_if_linked_worktree "$REPO_DIR" "worktree git guard"
+      fi
     fi
     rm -f "$HOOKS_PATCHED_TMP"
   else

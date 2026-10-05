@@ -112,19 +112,22 @@ ORACLE_SEQ="$(jq -Sc '.sequentialthinking' <<< "$ORACLE_MCP_PY")"
 FRESH_PY="$(jq -Sc --argjson m "$ORACLE_MCP_PY" '.mcpServers = $m' "$TEMPLATE")"
 FRESH_NOPY="$(jq -Sc --argjson m "$ORACLE_MCP_NOPY" '.mcpServers = $m' "$TEMPLATE")"
 
-# The session-recording manifest, patched by the same jq transform
-# scripts/setup-gemini-interactive.sh applies (and
-# test-setup-gemini-transcript.sh §2 replays).
+# The session-recording manifest, rendered and patched as
+# scripts/setup-gemini-interactive.sh does (and test-setup-gemini-transcript.sh
+# §2 replays): the guard command comes from `hook-wiring.ts guard render` and is
+# final (spec 0248 R28, R29), the setup's jq passes it through (v1-F2).
 HOOK_TARGET="$TMP_ROOT/gemini-hooks/mempalace-transcript.sh"
-GUARD_ABS="$(cd "$REPO_DIR/hooks" && pwd -P)/worktree-git-guard.sh"
+RENDERED_MANIFEST="$TMP_ROOT/rendered-transcript-hooks.json"
 PATCHED_MANIFEST="$TMP_ROOT/patched-transcript-hooks.json"
+render_session_recording_manifest gemini "$REPO_DIR" "$TRANSCRIPT_MANIFEST" "$RENDERED_MANIFEST" >/dev/null 2>&1 \
+  || { echo "FATAL: could not render $TRANSCRIPT_MANIFEST" >&2; exit 2; }
 jq --arg envp "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$FAKE_PY" \
-   --arg hook_path "$HOOK_TARGET" --arg guard_path "$GUARD_ABS" '
+   --arg hook_path "$HOOK_TARGET" '
   (.. | objects | select(.type? == "command")) |=
-    (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard.sh")))
-     then .command = ("bash " + $guard_path)
+    (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard")))
+     then .
      else .command = ($envp + " " + (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/mempalace-transcript.sh"; $hook_path)))
-     end)' "$TRANSCRIPT_MANIFEST" > "$PATCHED_MANIFEST" \
+     end)' "$RENDERED_MANIFEST" > "$PATCHED_MANIFEST" \
   || { echo "FATAL: could not patch $TRANSCRIPT_MANIFEST" >&2; exit 2; }
 SESSION_CMDS="$(jq -c '[.hooks[][] | .hooks[] | .command] | unique' "$PATCHED_MANIFEST")"
 

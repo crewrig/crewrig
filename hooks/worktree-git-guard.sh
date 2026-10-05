@@ -1,76 +1,29 @@
 #!/bin/bash
-# worktree-git-guard.sh — Pre-tool guard that intercepts prohibited whole-tree
-# git operations in shared ticket worktrees unless an exclusive claim is held (spec 0153).
+# worktree-git-guard.sh — forwarding shim (spec 0248 R13). The hook is
+# hooks/worktree-git-guard.ts; this file remains only so an installation whose
+# wired command line still names this `.sh` path keeps its guard until setup
+# rewrites it to the direct `node` form.
+#
+# It fails OPEN on a toolchain that cannot start the guard (no `node`, or a
+# `node` below the Node.js 24 floor): exit 0 with one diagnostic line, never a
+# non-zero status, which a fail-closed Copilot CLI `preToolUse` would turn into
+# a refusal of every tool call. Once the floor holds, `exec` hands the process
+# to the TypeScript entry so its status, standard output and standard error
+# reach the CLI unchanged, standard input untouched.
+#
+# Usage: bash hooks/worktree-git-guard.sh [command]   (payload on stdin)
 
-set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-# Read input from stdin if available
-INPUT=""
-if [ ! -t 0 ]; then
-  INPUT=$(cat)
-fi
-
-# Extract command string and cwd from payload or env
-CMD=""
-CWD=""
-if [ -n "$INPUT" ]; then
-  # Antigravity `PreToolUse` payloads carry the command under
-  # `.toolCall.args.CommandLine` (`{toolCall:{name:"run_command",args:{CommandLine:...}}}`),
-  # with `.toolCall.args` as the fallback (spec 0116 delta-03 R29). The
-  # Claude/Gemini/Copilot shapes (`.tool_input.command`, `.command`, `.tool_input`)
-  # stay in the chain behind them so those payloads are not regressed.
-  CMD=$(echo "$INPUT" | jq -r '.toolCall.args.CommandLine // .toolCall.args // .tool_input.command // .command // .tool_input // empty' 2>/dev/null || true)
-  # Residual limit: the Antigravity handler's working directory is the hooks.json
-  # directory and the payload carries no `.cwd`, so `workspacePaths[0]` (the
-  # session's workspace ROOT, not the command's execution cwd) is the best the
-  # payload offers. The spec 0153 R1 scenario is covered when the session is
-  # opened inside a worktree; a session opened at the repository root that `cd`s
-  # into `.worktrees/<id>` stays inert (the root path carries no `.worktrees/`).
-  CWD=$(echo "$INPUT" | jq -r '.cwd // .workspace_dir // .project_dir // .workspacePaths[0] // empty' 2>/dev/null || true)
-fi
-
-if [ -z "$CMD" ] && [ -n "$1" ]; then
-  CMD="$1"
-fi
-if [ -z "$CWD" ]; then
-  CWD="$(pwd -P)"
-fi
-
-# Only enforce when inside a ticket worktree under .worktrees/
-if ! echo "$CWD" | grep -q '/\.worktrees/'; then
+if ! command -v node >/dev/null 2>&1; then
+  echo "worktree-git-guard: node not found on PATH; the worktree git guard requires Node.js >= 24 and is not enforcing." >&2
   exit 0
 fi
 
-# Extract ticket id from worktree path
-TICKET_ID=$(echo "$CWD" | sed -n 's|.*/\.worktrees/\([^/]*\).*|\1|p')
-if [ -z "$TICKET_ID" ]; then
+# The floor guard prints its own diagnostic below the floor; standard input is
+# left for the entry, so it is not forwarded to this probe.
+if ! node "$DIR/../scripts/lib/node-floor-guard.js" </dev/null; then
   exit 0
 fi
 
-# Check if command contains prohibited whole-tree operations
-IS_PROHIBITED=0
-
-case "$CMD" in
-  *"git reset --hard"*|*"git checkout -- ."*|*"git checkout ."*|*"git clean "*|*"git clean"*|*"git worktree remove --force"*|*"git worktree remove -f"*)
-    IS_PROHIBITED=1
-    ;;
-  *"git stash"*)
-    if ! echo "$CMD" | grep -qE "git stash (list|show|pop|apply|drop)"; then
-      IS_PROHIBITED=1
-    fi
-    ;;
-esac
-
-if [ "$IS_PROHIBITED" -eq 1 ]; then
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-  CLAIM_SCRIPT="$SCRIPT_DIR/scripts/worktree-claim.sh"
-  if [ -x "$CLAIM_SCRIPT" ]; then
-    CLAIM_STATUS=$("$CLAIM_SCRIPT" status --ticket "$TICKET_ID" 2>/dev/null || true)
-    if ! echo "$CLAIM_STATUS" | grep -q "state: claimed"; then
-      echo "mempalace-git-guard: prohibited whole-tree operation in shared worktree '.worktrees/$TICKET_ID' refused (Spec 0114 R2 / Spec 0153 R2). Take an exclusive claim via 'bash scripts/worktree-claim.sh take --agent <name>' or use 'run' before attempting whole-tree git operations." >&2
-      exit 1
-    fi
-  fi
-fi
-
-exit 0
+exec node "$DIR/worktree-git-guard.ts" "$@"

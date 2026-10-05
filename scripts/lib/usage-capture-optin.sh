@@ -200,19 +200,49 @@ def uc_reinject($fp): uc_strip | reduce $fp[] as $x (.; uc_add($x));
 # own hook payload — so anchoring the path suffix as the ENTIRE remainder of
 # the command is what makes this "content, never position" rather than
 # "substring, anywhere", the same discipline uc_sig_re already applies to its
-# own `<cli-id> <Event>` suffix. An installed copy sits under a `hooks/`
-# directory on both CLIs, but nothing here assumes that literal segment
-# name, only that a `/` precedes the basename.
-def sr_is_own:
+# own `<cli-id> <Event>` suffix. An installed `mempalace-transcript` copy sits
+# under a `hooks/` directory on both CLIs, but nothing here assumes that
+# literal segment name, only that a `/` precedes the basename; the guard
+# alternative does require `/hooks/` (see sr_is_guard).
+def sr_env_prefix:
+  "\\A\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?";
+
+# The `mempalace-transcript` alternative: `bash|sh` and the `.sh` script only.
+def sr_is_transcript:
   uc_is_command
   and (.command | test(
-    "\\A\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh)\\s+)?"
-    + "(?:\"[^\"]*/(?:mempalace-transcript|worktree-git-guard)\\.sh\""
-    + "|\\x27[^\\x27]*/(?:mempalace-transcript|worktree-git-guard)\\.sh\\x27"
-    + "|[^\\s\"\\x27]*/(?:mempalace-transcript|worktree-git-guard)\\.sh)"
+    sr_env_prefix + "(?:(?:\\S*/)?(?:bash|sh)\\s+)?"
+    + "(?:\"[^\"]*/mempalace-transcript\\.sh\""
+    + "|\\x27[^\\x27]*/mempalace-transcript\\.sh\\x27"
+    + "|[^\\s\"\\x27]*/mempalace-transcript\\.sh)"
     + "\\s*\\z"));
 
+# The worktree git guard (spec 0248 R31, v1-F5): `bash|sh|node`, the `.sh`
+# Bash twin or the `.ts` entry, and the `/hooks/` directory the TypeScript
+# recognition (scripts/lib/hook-recognition.ts) requires, so `bash
+# /opt/tools/worktree-git-guard.sh` is a guard on neither twin.
+def sr_is_guard:
+  uc_is_command
+  and (.command | test(
+    sr_env_prefix + "(?:(?:\\S*/)?(?:bash|sh|node)\\s+)?"
+    + "(?:\"[^\"]*/hooks/worktree-git-guard\\.(?:sh|ts)\""
+    + "|\\x27[^\\x27]*/hooks/worktree-git-guard\\.(?:sh|ts)\\x27"
+    + "|[^\\s\"\\x27]*/hooks/worktree-git-guard\\.(?:sh|ts))"
+    + "\\s*\\z"));
+
+def sr_is_own: sr_is_transcript or sr_is_guard;
+
 def sr_strip: uc_strip_by(sr_is_own);
+
+# The strip of a run whose manifest carries no guard handler (the render
+# refused, or the guard script is missing: `guard render` drops the entry, spec
+# 0248 v1-F4). It spares every installed guard handler, so a refused or
+# floor-failed run leaves the registered guard byte-identical while the
+# `mempalace-transcript` handlers are still refreshed. The two predicates are
+# the whole difference: the guard alternative leaves the ownership test.
+def sr_strip_sparing_guard: uc_strip_by(sr_is_transcript);
+
+def sr_has_guard: [uc_all_handlers | select(.handler | sr_is_guard)] | length > 0;
 
 # Refresh, in place, the session-recording handlers this run owns: strip
 # every handler sr_is_own picks out, then add manifest $m handlers back
@@ -223,7 +253,9 @@ def sr_strip: uc_strip_by(sr_is_own);
 # usage-capture command, survive without help from uc_reinject (#1234 — the
 # merge no longer replaces the whole per-event array, only the entries this
 # framework owns in it).
-def sr_merge($m): sr_strip | reduce ($m | uc_all_handlers) as $x (.; uc_add($x));
+def sr_merge($m):
+  (if ($m | sr_has_guard) then sr_strip else sr_strip_sparing_guard end)
+  | reduce ($m | uc_all_handlers) as $x (.; uc_add($x));
 
 # keep (a): re-point, in place, a capture handler whose path vanished. Only the
 # path token changes (it comes back double-quoted); prefix and argv are kept, and
@@ -841,6 +873,26 @@ usage_capture_apply() {
   esac
 }
 
+# render_session_recording_manifest <cli> <repo_dir> <manifest_src> <out_file> —
+# the manifest the session-recording merge reads, with the worktree git guard's
+# command rendered by `hook-wiring.ts guard render` (guard_render_manifest, in
+# common.sh; spec 0248 R28, R29). A refusal leaves the guard handler absent from
+# <out_file> and merge_session_recording_hooks then spares the installed one
+# (v1-F4). Below the Node.js floor (or when the tool fails) the diagnostic is
+# printed, nothing is rewritten, and the manifest is written WITHOUT the guard
+# handler (the unrendered one holds a `$..._PROJECT_DIR` token), so the
+# `mempalace-transcript` handlers are still merged and the installed guard
+# stays as it is. Returns non-zero only when <manifest_src> is not a JSON object.
+render_session_recording_manifest() {
+  local cli="$1" repo_dir="$2" manifest_src="$3" out="$4" shape
+  shape="$(_uc_shape "$cli")" || return 1
+  if guard_render_manifest "$cli" "$repo_dir" "$manifest_src" "$out"; then
+    return 0
+  fi
+  echo "  Worktree git guard not wired this run; an installed guard command is left as it is." >&2
+  _uc_jq "$shape" "$_UC_JQ_DEFS uc_strip_by(sr_is_guard)" "$manifest_src" > "$out"
+}
+
 # merge_session_recording_hooks <cli> <config> <patched_manifest> [<env_patch_json>]
 # The session-recording write of all three CLIs. Claude and Gemini refresh
 # this framework's own session-recording handlers in place (sr_merge, keyed
@@ -871,7 +923,12 @@ merge_session_recording_hooks() {
   case "$cli" in
     claude)  program='sr_merge($m[0]) | (if ($patch | length) > 0 then .env = ((.env // {}) + $patch) else . end) | uc_reinject($fp)' ;;
     gemini)  program='sr_merge($m[0]) | uc_reinject($fp)' ;;
-    copilot) program='$m[0] | uc_reinject($fp)' ;;
+    # A manifest without a guard handler (the render refused, spec 0248 v1-F4)
+    # carries the installed guard handlers through the full replace unchanged.
+    copilot) program='. as $cur | $m[0]
+        | (if sr_has_guard then .
+           else reduce ([$cur | uc_all_handlers | select(.handler | sr_is_guard)][]) as $x (.; uc_add($x)) end)
+        | uc_reinject($fp)' ;;
   esac
   # The same legacy classification the footprint above was read with, so the
   # strip inside uc_reinject removes exactly the handlers it re-adds.

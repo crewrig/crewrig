@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.sh\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/hooks/worktree-git-guard.ts\""
           }
         ]
       }

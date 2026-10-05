@@ -21,10 +21,13 @@ import {
   casesFor,
   mergeHooks,
   mergeStatusLine,
+  markerPath,
   parseExit,
   parseWmicList,
   redactEnv,
+  selectCases,
   STATUSLINE_CASES,
+  x2Verdict,
   type Cli,
 } from "../probe-windows-hook-parsing.ts";
 
@@ -407,6 +410,153 @@ describe("record --exit (case X1, spec 0243 R12)", () => {
 
   test("without --exit the record still exits 0", () => {
     assert.equal(run(kit(), ["record", "gemini", "I"], "").status, 0);
+  });
+});
+
+describe("guard-event case X2 (spec 0248 M1, M2)", () => {
+  type Hooks = Record<string, unknown>;
+  const installed = (cli: Cli): Hooks => JSON.parse(fs.readFileSync(cfg(cli), "utf8")) as Hooks;
+  const hooksOf = (cli: Cli): Hooks => installed(cli)["hooks"] as Hooks;
+
+  test("X2 is in the hook CLIs' tables as a guard case with `--exit 1`, and not on the statusLine surface", () => {
+    for (const cli of HOOK_CLIS) {
+      const x2 = casesFor(cli, "C:/r").find((c) => c.id === "X2");
+      assert.ok(x2 !== undefined, cli);
+      assert.equal(x2.guard, true);
+      assert.match(x2.command, new RegExp(` record ${cli} X2 --exit 1$`));
+    }
+    assert.equal(
+      casesFor("antigravity-statusline", "C:/r").some((c) => c.id === "X2"),
+      false,
+    );
+  });
+
+  test("it is opt-in: the default selection leaves it out and --only names it", () => {
+    for (const cli of HOOK_CLIS) {
+      assert.equal(
+        selectCases(cli, "C:/r", null).some((c) => c.id === "X2"),
+        false,
+        cli,
+      );
+      assert.deepEqual(
+        selectCases(cli, "C:/r", ["X2"]).map((c) => c.id),
+        ["X2"],
+      );
+    }
+    assert.equal(run(kit(), ["install", "claude"]).status, 0);
+    assert.equal(hooksOf("claude")["PreToolUse"], undefined, "a full install blocks nothing");
+  });
+
+  test("it is registered on each CLI's guard event, with that CLI's matcher", () => {
+    const only = (cli: Cli): ReturnType<typeof casesFor> => selectCases(cli, "C:/r", ["X2"]);
+    const claude = mergeHooks("claude", {}, only("claude")) as { hooks: Hooks };
+    assert.deepEqual(Object.keys(claude.hooks), ["PreToolUse"]);
+    assert.equal((claude.hooks["PreToolUse"] as { matcher: string }[])[0]?.matcher, "Bash");
+    const gemini = mergeHooks("gemini", {}, only("gemini")) as { hooks: Hooks };
+    assert.deepEqual(Object.keys(gemini.hooks), ["BeforeTool"]);
+    assert.equal(
+      (gemini.hooks["BeforeTool"] as { matcher: string }[])[0]?.matcher,
+      "run_shell_command",
+    );
+    const copilot = mergeHooks("copilot", {}, only("copilot")) as { hooks: Hooks };
+    assert.deepEqual(Object.keys(copilot.hooks), ["preToolUse"]);
+    assert.deepEqual(Object.keys((copilot.hooks["preToolUse"] as object[])[0] ?? {}).sort(), [
+      "command",
+      "type",
+    ]);
+    const agy = mergeHooks("antigravity", {}, only("antigravity")) as Record<string, Hooks>;
+    assert.deepEqual(Object.keys(agy["crewrig-probe"] ?? {}), ["PreToolUse"]);
+    assert.equal(
+      (agy["crewrig-probe"]?.["PreToolUse"] as { matcher: string }[])[0]?.matcher,
+      "run_command",
+    );
+  });
+
+  test("mixed with the default cases, both events are written", () => {
+    const both = selectCases("claude", "C:/r", ["I", "X2"]);
+    const merged = mergeHooks("claude", {}, both) as { hooks: Hooks };
+    assert.deepEqual(Object.keys(merged.hooks).sort(), ["PreToolUse", "UserPromptSubmit"]);
+  });
+
+  for (const cli of HOOK_CLIS) {
+    test(`${cli}: install --only X2 then restore leaves the file byte-identical`, () => {
+      fs.mkdirSync(path.dirname(cfg(cli)), { recursive: true });
+      const original = Buffer.from('{\n  "theme": "dark"\n}\n');
+      fs.writeFileSync(cfg(cli), original);
+      const i = run(kit(), ["install", cli, "--only", "X2"]);
+      assert.equal(i.status, 0, i.err);
+      assert.match(i.out, new RegExp(`X2: ask the ${cli} session to run this command`));
+      assert.match(i.out, new RegExp(`marker ${cli}`));
+      const r = run(kit(), ["restore", cli]);
+      assert.equal(r.status, 0, r.err);
+      assert.deepEqual(fs.readFileSync(cfg(cli)), original);
+      assert.equal(run(kit(), ["verify-clean"]).status, 0);
+    });
+  }
+
+  test("record X2 prints one stderr line, nothing on stdout, exits 1 and records its directory", () => {
+    const dir = fs.realpathSync(fs.mkdtempSync(path.join(tmp, "cwd-")));
+    const r = spawnSync(
+      process.execPath,
+      [
+        "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+        kit(),
+        "record",
+        "claude",
+        "X2",
+        "--exit",
+        "1",
+      ],
+      { encoding: "utf8", input: "{}", cwd: dir },
+    );
+    assert.equal(r.status, 1);
+    assert.equal(r.stdout, "");
+    assert.equal(r.stderr.trimEnd().split("\n").length, 1);
+    assert.match(r.stderr, /^crewrig-probe X2: /);
+    const out = path.join(root, "out", "claude");
+    const rec = JSON.parse(
+      fs.readFileSync(path.join(out, fs.readdirSync(out)[0] ?? ""), "utf8"),
+    ) as { case: string; cwd: string; exitRequested: number };
+    assert.equal(rec.case, "X2");
+    assert.equal(rec.cwd, dir);
+    assert.equal(rec.exitRequested, 1);
+  });
+
+  test("another case stays silent on stderr, as X1 does", () => {
+    const r = run(kit(), ["record", "claude", "X1", "--exit", "1"], "{}");
+    assert.equal(r.err, "");
+  });
+
+  test("the marker command writes the file, and collect turns hook plus marker into a verdict", () => {
+    assert.equal(run(kit(), ["install", "gemini", "--only", "X2"]).status, 0);
+    const none = run(kit(), ["collect", "gemini"]).out;
+    assert.match(none, /\[X2\] launched=no/);
+    assert.match(none, /marker: absent/);
+    assert.match(none, /verdict: inconclusive/);
+    assert.equal(run(kit(), ["record", "gemini", "X2", "--exit", "1"], "{}").status, 1);
+    assert.match(run(kit(), ["collect", "gemini"]).out, /verdict: exit status 1 BLOCKED/);
+    const m = run(kit(), ["marker", "gemini"]);
+    assert.equal(m.status, 0, m.err);
+    assert.ok(fs.existsSync(markerPath(root, "gemini")));
+    const after = run(kit(), ["collect", "gemini"]).out;
+    assert.match(after, /marker: present/);
+    assert.match(after, /verdict: exit status 1 did NOT block/);
+    assert.equal(run(kit(), ["restore", "gemini"]).status, 0);
+  });
+
+  test("a new install --only X2 removes a marker left by an earlier run", () => {
+    assert.equal(run(kit(), ["marker", "claude"]).status, 0);
+    assert.ok(fs.existsSync(markerPath(root, "claude")));
+    assert.equal(run(kit(), ["install", "claude", "--only", "X2"]).status, 0);
+    assert.equal(fs.existsSync(markerPath(root, "claude")), false);
+    assert.equal(run(kit(), ["restore", "claude"]).status, 0);
+  });
+
+  test("x2Verdict covers the three outcomes", () => {
+    assert.match(x2Verdict(false, false), /inconclusive/);
+    assert.match(x2Verdict(false, true), /inconclusive/);
+    assert.match(x2Verdict(true, false), /BLOCKED/);
+    assert.match(x2Verdict(true, true), /did NOT block/);
   });
 });
 
