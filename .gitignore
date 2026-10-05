@@ -4,6 +4,7 @@ Thumbs.db
 
 # Logs
 *.log
+!scripts/tests/fixtures/worktree-claim/golden/**/*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
