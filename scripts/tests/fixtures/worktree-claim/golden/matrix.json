@@ -1,0 +1,2207 @@
+{
+  "source": "scripts/worktree-claim.sh at 7302366 (git show), run on darwin",
+  "scenarios": [
+    {
+      "id": "roundtrip",
+      "description": "take, status, a second take, two refused releases, take again, release, release on unclaimed, status, history",
+      "steps": [
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice",
+            "--operation",
+            "unit tests"
+          ]
+        },
+        {
+          "args": [
+            "status"
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "bob"
+          ]
+        },
+        {
+          "args": [
+            "release",
+            "--agent",
+            "bob"
+          ]
+        },
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "30"
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice"
+          ]
+        },
+        {
+          "args": [
+            "release",
+            "--agent",
+            "alice"
+          ]
+        },
+        {
+          "args": [
+            "release",
+            "--agent",
+            "alice"
+          ]
+        },
+        {
+          "args": [
+            "status"
+          ]
+        },
+        {
+          "args": [
+            "history"
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--ticket",
+            "736"
+          ],
+          "cwd": "main"
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Claimed '736' for 'alice'.\nticket: 736\nholder: alice\nsince: <ISO>\noperation: unit tests\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n",
+            "736/holder": "alice\n",
+            "736/operation": "unit tests\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: claimed\nholder: alice\nsince: <ISO>\noperation: unit tests\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n",
+            "736/holder": "alice\n",
+            "736/operation": "unit tests\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: '736' is already claimed by another agent.\nticket: 736\nholder: alice\nsince: <ISO>\noperation: unit tests\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n",
+            "736/holder": "alice\n",
+            "736/operation": "unit tests\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: the claim on '736' is held by 'alice', not by 'bob'.\nticket: 736\nholder: alice\nsince: <ISO>\noperation: unit tests\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n",
+            "736/holder": "alice\n",
+            "736/operation": "unit tests\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: the claim on '736' is not stale.\nheld-for-seconds: <N>\nstale-after-seconds: 1800\nticket: 736\nholder: alice\nsince: <ISO>\noperation: unit tests\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n",
+            "736/holder": "alice\n",
+            "736/operation": "unit tests\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "Already held by 'alice'; nothing to take.\nticket: 736\nholder: alice\nsince: <ISO>\noperation: unit tests\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n",
+            "736/holder": "alice\n",
+            "736/operation": "unit tests\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "Released '736' held by 'alice'.\nledger: <COMMON>/crewrig/worktree-claims/736.log\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n<ISO>\trelease\talice\t736\t\n"
+          }
+        },
+        {
+          "exit": 6,
+          "stdout": "Notice: '736' is not claimed; nothing to release.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n<ISO>\trelease\talice\t736\t\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: unclaimed\nlast-action: release\nlast-holder: alice\nlast-at: <ISO>\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n<ISO>\trelease\talice\t736\t\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 2\n\n<ISO>\ttake\talice\t736\tunit tests\n<ISO>\trelease\talice\t736\t\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n<ISO>\trelease\talice\t736\t\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: unclaimed\nlast-action: release\nlast-holder: alice\nlast-at: <ISO>\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tunit tests\n<ISO>\trelease\talice\t736\t\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "dirty-nested",
+      "description": "an untracked file inside an untracked directory refuses take with 5 and leaves no claim; release then exits 6",
+      "steps": [
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice"
+          ],
+          "before": [
+            {
+              "op": "dirty",
+              "path": "newdir/nested/f.txt"
+            }
+          ]
+        },
+        {
+          "args": [
+            "release",
+            "--agent",
+            "alice"
+          ]
+        },
+        {
+          "args": [
+            "history"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 5,
+          "stdout": "Refused: the worktree at '<WORKTREE>' carries uncommitted changes.\nA whole-tree git operation would discard changes no one can attribute:\ngit records no author for an uncommitted change, so this gate refuses\noutright rather than guessing whose work it is about to destroy.\n\n?? newdir/nested/f.txt\n\nCommit what you authored (spec 0114 R10). Residue you did NOT author is\nnot yours to resolve: flag it to team-lead under docs/agent-team-protocol.md\n-> Worktree Isolation -> Stray-file discovery - no unilateral action.\nHolding a claim does not waive this gate, however it was acquired.\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 6,
+          "stdout": "Notice: '736' is not claimed; nothing to release.\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 0\n",
+          "stderr": "",
+          "files": {}
+        }
+      ]
+    },
+    {
+      "id": "run",
+      "description": "run releases on both outcomes and propagates the wrapped code; ledger detail; from a subdirectory the wrapped command runs at the toplevel",
+      "steps": [
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice",
+            "--",
+            "true"
+          ]
+        },
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice",
+            "--",
+            "sh",
+            "-c",
+            "exit 42"
+          ]
+        },
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice",
+            "--",
+            "pwd"
+          ],
+          "cwd": "sub"
+        },
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice",
+            "--",
+            "sh",
+            "-c",
+            "echo to-out; echo to-err >&2; exit 0"
+          ]
+        },
+        {
+          "args": [
+            "history"
+          ]
+        },
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: true\n<ISO>\trelease\talice\t736\trun\n"
+          }
+        },
+        {
+          "exit": 42,
+          "stdout": "",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: true\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c exit 42\n<ISO>\trelease\talice\t736\trun\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "<WORKTREE>\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: true\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c exit 42\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: pwd\n<ISO>\trelease\talice\t736\trun\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "to-out\n",
+          "stderr": "to-err\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: true\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c exit 42\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: pwd\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c echo to-out; echo to-err >&2; exit 0\n<ISO>\trelease\talice\t736\trun\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 8\n\n<ISO>\ttake\talice\t736\trun: true\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c exit 42\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: pwd\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c echo to-out; echo to-err >&2; exit 0\n<ISO>\trelease\talice\t736\trun\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: true\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c exit 42\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: pwd\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c echo to-out; echo to-err >&2; exit 0\n<ISO>\trelease\talice\t736\trun\n"
+          }
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: 'run' needs a command: <TOOL> run --agent <name> -- <command…>\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: true\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c exit 42\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: pwd\n<ISO>\trelease\talice\t736\trun\n<ISO>\ttake\talice\t736\trun: sh -c echo to-out; echo to-err >&2; exit 0\n<ISO>\trelease\talice\t736\trun\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "run-reentrant-and-refused",
+      "description": "run while the caller holds the claim is re-entrant and leaves it; run by another agent is refused with 4; run on a dirty tree is refused with 5 before the claim",
+      "steps": [
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice"
+          ]
+        },
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice",
+            "--",
+            "true"
+          ]
+        },
+        {
+          "args": [
+            "status"
+          ]
+        },
+        {
+          "args": [
+            "run",
+            "--agent",
+            "bob",
+            "--",
+            "true"
+          ]
+        },
+        {
+          "args": [
+            "release",
+            "--agent",
+            "alice"
+          ]
+        },
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice",
+            "--",
+            "true"
+          ],
+          "before": [
+            {
+              "op": "dirty",
+              "path": "stray.txt"
+            }
+          ]
+        },
+        {
+          "args": [
+            "history"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Claimed '736' for 'alice'.\nticket: 736\nholder: alice\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n",
+            "736/holder": "alice\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trun-reentrant\talice\t736\trun: true\n",
+            "736/holder": "alice\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: claimed\nholder: alice\nsince: <ISO>\noperation: \n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trun-reentrant\talice\t736\trun: true\n",
+            "736/holder": "alice\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: '736' is already claimed by another agent.\nticket: 736\nholder: alice\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trun-reentrant\talice\t736\trun: true\n",
+            "736/holder": "alice\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "Released '736' held by 'alice'.\nledger: <COMMON>/crewrig/worktree-claims/736.log\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trun-reentrant\talice\t736\trun: true\n<ISO>\trelease\talice\t736\t\n"
+          }
+        },
+        {
+          "exit": 5,
+          "stdout": "Refused: the worktree at '<WORKTREE>' carries uncommitted changes.\nA whole-tree git operation would discard changes no one can attribute:\ngit records no author for an uncommitted change, so this gate refuses\noutright rather than guessing whose work it is about to destroy.\n\n?? stray.txt\n\nCommit what you authored (spec 0114 R10). Residue you did NOT author is\nnot yours to resolve: flag it to team-lead under docs/agent-team-protocol.md\n-> Worktree Isolation -> Stray-file discovery - no unilateral action.\nHolding a claim does not waive this gate, however it was acquired.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trun-reentrant\talice\t736\trun: true\n<ISO>\trelease\talice\t736\t\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 3\n\n<ISO>\ttake\talice\t736\t\n<ISO>\trun-reentrant\talice\t736\trun: true\n<ISO>\trelease\talice\t736\t\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trun-reentrant\talice\t736\trun: true\n<ISO>\trelease\talice\t736\t\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-inside-run",
+      "description": "a takeover that lands inside a run survives the run: no release line for the displaced agent, a release-declined line instead",
+      "steps": [
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice",
+            "--",
+            "sh",
+            "-c",
+            "echo 1 > \"$COMMON_DIR/crewrig/worktree-claims/736/since_epoch\" && $CLAIM_TOOL takeover --agent bob"
+          ],
+          "env": {
+            "COMMON_DIR": "{COMMON}",
+            "CLAIM_TOOL": "{TOOL}"
+          }
+        },
+        {
+          "args": [
+            "status"
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "carol"
+          ]
+        },
+        {
+          "args": [
+            "history"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "Notice: 'bob' took over the claim on '736' while this run\n       was in flight. Releasing it here would evict them, so the claim is\n       left intact and the ledger records a declined release.\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: sh -c echo 1 > \"$COMMON_DIR/crewrig/worktree-claims/736/since_epoch\" && $CLAIM_TOOL takeover --agent bob\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n<ISO>\trelease-declined\talice\t736\trun: displaced by 'bob'; claim left intact\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: claimed\nholder: bob\nsince: <ISO>\noperation: \n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: sh -c echo 1 > \"$COMMON_DIR/crewrig/worktree-claims/736/since_epoch\" && $CLAIM_TOOL takeover --agent bob\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n<ISO>\trelease-declined\talice\t736\trun: displaced by 'bob'; claim left intact\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: '736' is already claimed by another agent.\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: sh -c echo 1 > \"$COMMON_DIR/crewrig/worktree-claims/736/since_epoch\" && $CLAIM_TOOL takeover --agent bob\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n<ISO>\trelease-declined\talice\t736\trun: displaced by 'bob'; claim left intact\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 3\n\n<ISO>\ttake\talice\t736\trun: sh -c echo 1 > \"$COMMON_DIR/crewrig/worktree-claims/736/since_epoch\" && $CLAIM_TOOL takeover --agent bob\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n<ISO>\trelease-declined\talice\t736\trun: displaced by 'bob'; claim left intact\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\trun: sh -c echo 1 > \"$COMMON_DIR/crewrig/worktree-claims/736/since_epoch\" && $CLAIM_TOOL takeover --agent bob\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n<ISO>\trelease-declined\talice\t736\trun: displaced by 'bob'; claim left intact\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-epoch-leading-zero",
+      "description": "since_epoch 0900 is read as infinitely old",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimFile",
+              "file": "since_epoch",
+              "content": "0900\n"
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-epoch-19-digits",
+      "description": "a 19-digit since_epoch is read as infinitely old",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimFile",
+              "file": "since_epoch",
+              "content": "1000000000000000000\n"
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-epoch-empty",
+      "description": "an empty since_epoch is read as infinitely old",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimFile",
+              "file": "since_epoch",
+              "content": "\n"
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-epoch-garbage",
+      "description": "a non-numeric since_epoch is read as infinitely old",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimFile",
+              "file": "since_epoch",
+              "content": "yesterday\n"
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-epoch-missing-field",
+      "description": "a claim whose since_epoch file never got written is read as infinitely old",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "30"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "removeClaimFile",
+              "file": "since_epoch"
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-epoch-future-400",
+      "description": "400 seconds in the future is corrupt: takeable",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimEpoch",
+              "offset": 400
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-epoch-future-100",
+      "description": "100 seconds in the future is skew: zero age, not stale",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimEpoch",
+              "offset": 100
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 4,
+          "stdout": "Refused: the claim on '736' is not stale.\nheld-for-seconds: <N>\nstale-after-seconds: 1800\nticket: 736\nholder: alice\nsince: <ISO>\noperation: seed operation\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-08-aged-9min",
+      "description": "--stale-after 08 means eight minutes: a nine-minute-old claim is taken over",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "08"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimEpoch",
+              "offset": -540
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=8\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-08-aged-7min",
+      "description": "--stale-after 08 means eight minutes: a seven-minute-old claim is refused",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "08"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimEpoch",
+              "offset": -420
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 4,
+          "stdout": "Refused: the claim on '736' is not stale.\nheld-for-seconds: <N>\nstale-after-seconds: 480\nticket: 736\nholder: alice\nsince: <ISO>\noperation: seed operation\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-leading-zeros",
+      "description": "--stale-after 0000000001 is one minute",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "0000000001"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimEpoch",
+              "offset": -90
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=1\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-leading-zeros-refused",
+      "description": "--stale-after 0000000001 refuses a 30-second-old claim",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "0000000001"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimEpoch",
+              "offset": -30
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 4,
+          "stdout": "Refused: the claim on '736' is not stale.\nheld-for-seconds: <N>\nstale-after-seconds: 60\nticket: 736\nholder: alice\nsince: <ISO>\noperation: seed operation\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-zero",
+      "description": "--stale-after 0 takes over a fresh claim",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "0"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimEpoch",
+              "offset": 0
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=0\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-ten-digits",
+      "description": "a ten-digit --stale-after is refused with 1 before any arithmetic",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "1234567890"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: --stale-after '1234567890' is out of range: at most 9 digits of\n       minutes. The bound is not a policy about how long a claim may be held — a\n       claim's age cannot exceed the Unix epoch, so the largest accepted value\n       already means 'never stale' by a factor of thirty. It is what keeps\n       'minutes * 60' inside the integer arithmetic that evaluates it, because a\n       threshold that overflows to a negative number reports every claim as stale\n       and grants every takeover — the opposite of what a large value asks for.\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-nine-digits",
+      "description": "a nine-digit --stale-after is accepted and means never stale",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "999999999"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            },
+            {
+              "op": "claimEpoch",
+              "offset": -60
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 4,
+          "stdout": "Refused: the claim on '736' is not stale.\nheld-for-seconds: <N>\nstale-after-seconds: 59999999940\nticket: 736\nholder: alice\nsince: <ISO>\noperation: seed operation\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-letters",
+      "description": "--stale-after abc is refused",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "abc"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: --stale-after must be a non-negative integer number of minutes, got 'abc'.\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-negative",
+      "description": "--stale-after -1 is refused",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            "-1"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: --stale-after must be a non-negative integer number of minutes, got '-1'.\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-stale-after-empty",
+      "description": "--stale-after with an empty value is refused",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after",
+            ""
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: --stale-after must be a non-negative integer number of minutes, got ''.\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "takeover-null-cases",
+      "description": "takeover on an unclaimed worktree exits 4; by the holder exits 0; an empty claim directory is claimed with an empty holder",
+      "steps": [
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob"
+          ]
+        },
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "alice"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            }
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice"
+          ],
+          "before": [
+            {
+              "op": "emptyClaim"
+            }
+          ]
+        },
+        {
+          "args": [
+            "status"
+          ]
+        },
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 4,
+          "stdout": "Refused: '736' is not claimed, so there is nothing to take over.\nUse 'take' — it evaluates the clean-tree gate, which 'takeover' does not.\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "Already held by 'alice'; nothing to take over.\nticket: 736\nholder: alice\nsince: <ISO>\noperation: seed operation\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: '736' is already claimed by another agent.\nticket: 736\nholder: \nsince: \noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/": ""
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: claimed\nholder: \nsince: \noperation: \n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/": ""
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from '' (held since ).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced= displaced-since= stale-after-minutes=30\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cross-read-shell-state",
+      "description": "state captured from the shell tool: status, history, a refused take, takeover, release, history again",
+      "steps": [
+        {
+          "args": [
+            "status"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-alice"
+            }
+          ]
+        },
+        {
+          "args": [
+            "history"
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "bob"
+          ]
+        },
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob"
+          ]
+        },
+        {
+          "args": [
+            "release",
+            "--agent",
+            "alice"
+          ]
+        },
+        {
+          "args": [
+            "release",
+            "--agent",
+            "bob"
+          ]
+        },
+        {
+          "args": [
+            "history"
+          ]
+        },
+        {
+          "args": [
+            "status"
+          ]
+        },
+        {
+          "args": [
+            "status"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "released-alice"
+            }
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "carol"
+          ],
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-bob-after-alice"
+            }
+          ]
+        },
+        {
+          "args": [
+            "history"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: claimed\nholder: alice\nsince: <ISO>\noperation: seed operation\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 1\n\n<ISO>\ttake\talice\t736\tseed operation\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: '736' is already claimed by another agent.\nticket: 736\nholder: alice\nsince: <ISO>\noperation: seed operation\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n",
+            "736/holder": "alice\n",
+            "736/operation": "seed operation\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "Took over '736' from 'alice' (held since <ISO>).\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n\nThis transfers the CLAIM and nothing else. It grants no clean-tree waiver:\n'take' and 'run' re-evaluate the gate on every invocation. Residue you\nauthored, commit; residue you did not author, flag to team-lead and stop.\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: the claim on '736' is held by 'bob', not by 'alice'.\nticket: 736\nholder: bob\nsince: <ISO>\noperation: \nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n",
+            "736/holder": "bob\n",
+            "736/operation": "\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "Released '736' held by 'bob'.\nledger: <COMMON>/crewrig/worktree-claims/736.log\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n<ISO>\trelease\tbob\t736\t\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 3\n\n<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n<ISO>\trelease\tbob\t736\t\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n<ISO>\trelease\tbob\t736\t\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: unclaimed\nlast-action: release\nlast-holder: bob\nlast-at: <ISO>\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\tseed operation\n<ISO>\ttakeover\tbob\t736\tdisplaced=alice displaced-since=<ISO> stale-after-minutes=30\n<ISO>\trelease\tbob\t736\t\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: unclaimed\nlast-action: release\nlast-holder: alice\nlast-at: <ISO>\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: '736' is already claimed by another agent.\nticket: 736\nholder: bob\nsince: <ISO>\noperation: second owner\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 3\n\n<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "read-only-from-anywhere",
+      "description": "status and history answer from the main checkout, a subdirectory and CREWRIG_REPO_DIR; mutating subcommands refuse outside .worktrees/",
+      "steps": [
+        {
+          "args": [
+            "status",
+            "--ticket",
+            "736"
+          ],
+          "cwd": "main",
+          "before": [
+            {
+              "op": "seed",
+              "name": "taken-bob-after-alice"
+            }
+          ]
+        },
+        {
+          "args": [
+            "history",
+            "--ticket",
+            "736"
+          ],
+          "cwd": "main"
+        },
+        {
+          "args": [
+            "status"
+          ],
+          "cwd": "sub"
+        },
+        {
+          "args": [
+            "status"
+          ],
+          "cwd": "outside",
+          "env": {
+            "CREWRIG_REPO_DIR": "{WT}"
+          }
+        },
+        {
+          "args": [
+            "status"
+          ],
+          "cwd": "main"
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice"
+          ],
+          "cwd": "main"
+        },
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice",
+            "--",
+            "true"
+          ],
+          "cwd": "main"
+        },
+        {
+          "args": [
+            "release",
+            "--agent",
+            "alice"
+          ],
+          "cwd": "main"
+        },
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "alice"
+          ],
+          "cwd": "main"
+        },
+        {
+          "args": [
+            "status"
+          ],
+          "cwd": "outside"
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice"
+          ],
+          "cwd": "outside"
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice"
+          ],
+          "cwd": "outside",
+          "env": {
+            "CREWRIG_REPO_DIR": "{WT}"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: claimed\nholder: bob\nsince: <ISO>\noperation: second owner\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 3\n\n<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: claimed\nholder: bob\nsince: <ISO>\noperation: second owner\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: claimed\nholder: bob\nsince: <ISO>\noperation: second owner\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: no --ticket given and none derivable: the toplevel '<MAIN>' is not\n       under a '.worktrees/' directory, so its basename is the repository's own\n       name and not a ticket id. Pass --ticket <id>.\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: 'take' acts on a SHARED ticket worktree, and the toplevel here is\n       '<MAIN>', which is not under a '.worktrees/' directory. Run it from\n       '.worktrees/<ticket-id>/'. (The read-only 'status' and 'history'\n       subcommands carry no such guard and answer from anywhere.)\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: 'run' acts on a SHARED ticket worktree, and the toplevel here is\n       '<MAIN>', which is not under a '.worktrees/' directory. Run it from\n       '.worktrees/<ticket-id>/'. (The read-only 'status' and 'history'\n       subcommands carry no such guard and answer from anywhere.)\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: 'release' acts on a SHARED ticket worktree, and the toplevel here is\n       '<MAIN>', which is not under a '.worktrees/' directory. Run it from\n       '.worktrees/<ticket-id>/'. (The read-only 'status' and 'history'\n       subcommands carry no such guard and answer from anywhere.)\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: 'takeover' acts on a SHARED ticket worktree, and the toplevel here is\n       '<MAIN>', which is not under a '.worktrees/' directory. Run it from\n       '.worktrees/<ticket-id>/'. (The read-only 'status' and 'history'\n       subcommands carry no such guard and answer from anywhere.)\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: '<OUTSIDE>' is not inside a git working tree, so there is no worktree to\n       claim. Run this from a ticket worktree, or set CREWRIG_REPO_DIR.\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: '<OUTSIDE>' is not inside a git working tree, so there is no worktree to\n       claim. Run this from a ticket worktree, or set CREWRIG_REPO_DIR.\n",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        },
+        {
+          "exit": 4,
+          "stdout": "Refused: '736' is already claimed by another agent.\nticket: 736\nholder: bob\nsince: <ISO>\noperation: second owner\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\talice\t736\t\n<ISO>\trelease\talice\t736\t\n<ISO>\ttake\tbob\t736\tsecond owner\n",
+            "736/holder": "bob\n",
+            "736/operation": "second owner\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "1577836800\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "argument-errors",
+      "description": "usage, help, unknown subcommand or argument, a value flag in final position, a missing --agent, a missing run command, an invalid ticket",
+      "steps": [
+        {
+          "args": []
+        },
+        {
+          "args": [
+            "--help"
+          ]
+        },
+        {
+          "args": [
+            "-h"
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--help"
+          ]
+        },
+        {
+          "args": [
+            "frobnicate"
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--bogus"
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--agent"
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--ticket"
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--operation"
+          ]
+        },
+        {
+          "args": [
+            "takeover",
+            "--agent",
+            "bob",
+            "--stale-after"
+          ]
+        },
+        {
+          "args": [
+            "take"
+          ]
+        },
+        {
+          "args": [
+            "release"
+          ]
+        },
+        {
+          "args": [
+            "takeover"
+          ]
+        },
+        {
+          "args": [
+            "run",
+            "--agent",
+            "alice"
+          ]
+        },
+        {
+          "args": [
+            "run"
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--ticket",
+            "../x"
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--ticket",
+            ".."
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--ticket",
+            "."
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--ticket",
+            "a/b"
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--ticket",
+            ""
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--ticket",
+            "..\\x"
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice",
+            "--ticket",
+            ".."
+          ]
+        },
+        {
+          "args": [
+            "status",
+            "--ticket",
+            "other"
+          ]
+        },
+        {
+          "args": [
+            "take",
+            "--agent",
+            "alice",
+            "extra"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 1,
+          "stdout": "<TOOL> — exclusive, attributable claims on a shared ticket worktree\n(spec 0114).\n\n  <INVOKE> run --agent <name> [--ticket <id>] -- <command…>\n      RECOMMENDED. Take the claim, run the command, release on exit. The claim\n      is held for the whole duration of the operation by construction. The\n      command runs in the worktree root — the same tree the gate certified —\n      whatever directory you invoked this from.\n\n  <INVOKE> take --agent <name> [--ticket <id>] [--operation \"<cmd>\"]\n      Take the claim for an operation that is not a single command.\n\n  <INVOKE> release --agent <name> [--ticket <id>]\n      Release a claim you hold.\n\n  <INVOKE> takeover --agent <name> [--ticket <id>] [--stale-after <minutes>]\n      Take over a claim whose holder has ended. Transfers the claim and NOTHING\n      else: no clean-tree waiver, and no working-tree file is touched.\n\n  <INVOKE> status [--ticket <id>]\n      Who holds the worktree right now. Read-only; runs from anywhere.\n\n  <INVOKE> history [--ticket <id>]\n      Who held it and when, including after the claim — and the worktree — are\n      gone. Read-only; runs from anywhere.\n\nOptions:\n  --agent <name>        The acting agent. Required for run/take/release/takeover:\n                        an anonymous holder defeats requirements 6 and 7.\n  --ticket <id>         The ticket whose worktree is claimed. Defaults to the\n                        basename of the toplevel when that is under\n                        .worktrees/; required otherwise.\n  --operation \"<cmd>\"   Recorded with the claim and in the ledger (take).\n  --stale-after <min>   Minutes after which a claim counts as stale (takeover).\n                        A non-negative integer of at most 9 digits — the width at\n                        which 'minutes * 60' still fits the arithmetic that\n                        evaluates it. Default: 30.\n  -h, --help            This block.\n\nRead-only subcommands (status, history) carry no .worktrees/ guard, so an\ninvestigation can run from the main checkout after the worktree is cleaned up.\nThe clean-tree gate is evaluated by take and run on EVERY invocation, including\nwhen the caller already holds the claim.\n\nThe gate reads `git status`, which says nothing about files matched by\n.gitignore. `git clean -fdx` and `-fdX` reach that state and destroy it while the\ngate reads clean and the run exits 0. The claim protects work git can name as\ntracked or untracked; ignored build output and local scratch files are outside\nits cover, whoever holds the claim.\n\nExit codes: 0 success | 1 genuine failure | 4 refused, claim state (take,\ntakeover, release, run) | 5 refused, tree not clean (take/run only) | 6 release\non an unclaimed worktree | n run propagates the wrapped command's exit code.\n\nThose last four overlap. run emits 1, 4 and 5 on its OWN behalf, always before\nthe wrapped command is started, and each is also a code that command may return\nby itself: a 4 from run can mean the claim is held by another agent and your\ncommand never ran at all. The code does not separate the two cases -- the\ndiagnostic does. Every refusal run raises itself prints `Refused:` (stdout) or\n`Error:` (stderr), and on that path the wrapped command produced no output,\nbecause it never ran. Branch on that output, not on the number alone.\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "<TOOL> — exclusive, attributable claims on a shared ticket worktree\n(spec 0114).\n\n  <INVOKE> run --agent <name> [--ticket <id>] -- <command…>\n      RECOMMENDED. Take the claim, run the command, release on exit. The claim\n      is held for the whole duration of the operation by construction. The\n      command runs in the worktree root — the same tree the gate certified —\n      whatever directory you invoked this from.\n\n  <INVOKE> take --agent <name> [--ticket <id>] [--operation \"<cmd>\"]\n      Take the claim for an operation that is not a single command.\n\n  <INVOKE> release --agent <name> [--ticket <id>]\n      Release a claim you hold.\n\n  <INVOKE> takeover --agent <name> [--ticket <id>] [--stale-after <minutes>]\n      Take over a claim whose holder has ended. Transfers the claim and NOTHING\n      else: no clean-tree waiver, and no working-tree file is touched.\n\n  <INVOKE> status [--ticket <id>]\n      Who holds the worktree right now. Read-only; runs from anywhere.\n\n  <INVOKE> history [--ticket <id>]\n      Who held it and when, including after the claim — and the worktree — are\n      gone. Read-only; runs from anywhere.\n\nOptions:\n  --agent <name>        The acting agent. Required for run/take/release/takeover:\n                        an anonymous holder defeats requirements 6 and 7.\n  --ticket <id>         The ticket whose worktree is claimed. Defaults to the\n                        basename of the toplevel when that is under\n                        .worktrees/; required otherwise.\n  --operation \"<cmd>\"   Recorded with the claim and in the ledger (take).\n  --stale-after <min>   Minutes after which a claim counts as stale (takeover).\n                        A non-negative integer of at most 9 digits — the width at\n                        which 'minutes * 60' still fits the arithmetic that\n                        evaluates it. Default: 30.\n  -h, --help            This block.\n\nRead-only subcommands (status, history) carry no .worktrees/ guard, so an\ninvestigation can run from the main checkout after the worktree is cleaned up.\nThe clean-tree gate is evaluated by take and run on EVERY invocation, including\nwhen the caller already holds the claim.\n\nThe gate reads `git status`, which says nothing about files matched by\n.gitignore. `git clean -fdx` and `-fdX` reach that state and destroy it while the\ngate reads clean and the run exits 0. The claim protects work git can name as\ntracked or untracked; ignored build output and local scratch files are outside\nits cover, whoever holds the claim.\n\nExit codes: 0 success | 1 genuine failure | 4 refused, claim state (take,\ntakeover, release, run) | 5 refused, tree not clean (take/run only) | 6 release\non an unclaimed worktree | n run propagates the wrapped command's exit code.\n\nThose last four overlap. run emits 1, 4 and 5 on its OWN behalf, always before\nthe wrapped command is started, and each is also a code that command may return\nby itself: a 4 from run can mean the claim is held by another agent and your\ncommand never ran at all. The code does not separate the two cases -- the\ndiagnostic does. Every refusal run raises itself prints `Refused:` (stdout) or\n`Error:` (stderr), and on that path the wrapped command produced no output,\nbecause it never ran. Branch on that output, not on the number alone.\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "<TOOL> — exclusive, attributable claims on a shared ticket worktree\n(spec 0114).\n\n  <INVOKE> run --agent <name> [--ticket <id>] -- <command…>\n      RECOMMENDED. Take the claim, run the command, release on exit. The claim\n      is held for the whole duration of the operation by construction. The\n      command runs in the worktree root — the same tree the gate certified —\n      whatever directory you invoked this from.\n\n  <INVOKE> take --agent <name> [--ticket <id>] [--operation \"<cmd>\"]\n      Take the claim for an operation that is not a single command.\n\n  <INVOKE> release --agent <name> [--ticket <id>]\n      Release a claim you hold.\n\n  <INVOKE> takeover --agent <name> [--ticket <id>] [--stale-after <minutes>]\n      Take over a claim whose holder has ended. Transfers the claim and NOTHING\n      else: no clean-tree waiver, and no working-tree file is touched.\n\n  <INVOKE> status [--ticket <id>]\n      Who holds the worktree right now. Read-only; runs from anywhere.\n\n  <INVOKE> history [--ticket <id>]\n      Who held it and when, including after the claim — and the worktree — are\n      gone. Read-only; runs from anywhere.\n\nOptions:\n  --agent <name>        The acting agent. Required for run/take/release/takeover:\n                        an anonymous holder defeats requirements 6 and 7.\n  --ticket <id>         The ticket whose worktree is claimed. Defaults to the\n                        basename of the toplevel when that is under\n                        .worktrees/; required otherwise.\n  --operation \"<cmd>\"   Recorded with the claim and in the ledger (take).\n  --stale-after <min>   Minutes after which a claim counts as stale (takeover).\n                        A non-negative integer of at most 9 digits — the width at\n                        which 'minutes * 60' still fits the arithmetic that\n                        evaluates it. Default: 30.\n  -h, --help            This block.\n\nRead-only subcommands (status, history) carry no .worktrees/ guard, so an\ninvestigation can run from the main checkout after the worktree is cleaned up.\nThe clean-tree gate is evaluated by take and run on EVERY invocation, including\nwhen the caller already holds the claim.\n\nThe gate reads `git status`, which says nothing about files matched by\n.gitignore. `git clean -fdx` and `-fdX` reach that state and destroy it while the\ngate reads clean and the run exits 0. The claim protects work git can name as\ntracked or untracked; ignored build output and local scratch files are outside\nits cover, whoever holds the claim.\n\nExit codes: 0 success | 1 genuine failure | 4 refused, claim state (take,\ntakeover, release, run) | 5 refused, tree not clean (take/run only) | 6 release\non an unclaimed worktree | n run propagates the wrapped command's exit code.\n\nThose last four overlap. run emits 1, 4 and 5 on its OWN behalf, always before\nthe wrapped command is started, and each is also a code that command may return\nby itself: a 4 from run can mean the claim is held by another agent and your\ncommand never ran at all. The code does not separate the two cases -- the\ndiagnostic does. Every refusal run raises itself prints `Refused:` (stdout) or\n`Error:` (stderr), and on that path the wrapped command produced no output,\nbecause it never ran. Branch on that output, not on the number alone.\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "<TOOL> — exclusive, attributable claims on a shared ticket worktree\n(spec 0114).\n\n  <INVOKE> run --agent <name> [--ticket <id>] -- <command…>\n      RECOMMENDED. Take the claim, run the command, release on exit. The claim\n      is held for the whole duration of the operation by construction. The\n      command runs in the worktree root — the same tree the gate certified —\n      whatever directory you invoked this from.\n\n  <INVOKE> take --agent <name> [--ticket <id>] [--operation \"<cmd>\"]\n      Take the claim for an operation that is not a single command.\n\n  <INVOKE> release --agent <name> [--ticket <id>]\n      Release a claim you hold.\n\n  <INVOKE> takeover --agent <name> [--ticket <id>] [--stale-after <minutes>]\n      Take over a claim whose holder has ended. Transfers the claim and NOTHING\n      else: no clean-tree waiver, and no working-tree file is touched.\n\n  <INVOKE> status [--ticket <id>]\n      Who holds the worktree right now. Read-only; runs from anywhere.\n\n  <INVOKE> history [--ticket <id>]\n      Who held it and when, including after the claim — and the worktree — are\n      gone. Read-only; runs from anywhere.\n\nOptions:\n  --agent <name>        The acting agent. Required for run/take/release/takeover:\n                        an anonymous holder defeats requirements 6 and 7.\n  --ticket <id>         The ticket whose worktree is claimed. Defaults to the\n                        basename of the toplevel when that is under\n                        .worktrees/; required otherwise.\n  --operation \"<cmd>\"   Recorded with the claim and in the ledger (take).\n  --stale-after <min>   Minutes after which a claim counts as stale (takeover).\n                        A non-negative integer of at most 9 digits — the width at\n                        which 'minutes * 60' still fits the arithmetic that\n                        evaluates it. Default: 30.\n  -h, --help            This block.\n\nRead-only subcommands (status, history) carry no .worktrees/ guard, so an\ninvestigation can run from the main checkout after the worktree is cleaned up.\nThe clean-tree gate is evaluated by take and run on EVERY invocation, including\nwhen the caller already holds the claim.\n\nThe gate reads `git status`, which says nothing about files matched by\n.gitignore. `git clean -fdx` and `-fdX` reach that state and destroy it while the\ngate reads clean and the run exits 0. The claim protects work git can name as\ntracked or untracked; ignored build output and local scratch files are outside\nits cover, whoever holds the claim.\n\nExit codes: 0 success | 1 genuine failure | 4 refused, claim state (take,\ntakeover, release, run) | 5 refused, tree not clean (take/run only) | 6 release\non an unclaimed worktree | n run propagates the wrapped command's exit code.\n\nThose last four overlap. run emits 1, 4 and 5 on its OWN behalf, always before\nthe wrapped command is started, and each is also a code that command may return\nby itself: a 4 from run can mean the claim is held by another agent and your\ncommand never ran at all. The code does not separate the two cases -- the\ndiagnostic does. Every refusal run raises itself prints `Refused:` (stdout) or\n`Error:` (stderr), and on that path the wrapped command produced no output,\nbecause it never ran. Branch on that output, not on the number alone.\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: unknown subcommand 'frobnicate'. Expected one of:\n       run, take, release, takeover, status, history. Run with --help.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: unknown argument '--bogus'. Run with --help for the usage block.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: '--agent' requires a value: <TOOL> take … --agent <value>. Run\n       with --help for the usage block.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: '--ticket' requires a value: <TOOL> status … --ticket <value>. Run\n       with --help for the usage block.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: '--operation' requires a value: <TOOL> take … --operation <value>. Run\n       with --help for the usage block.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: '--stale-after' requires a value: <TOOL> takeover … --stale-after <value>. Run\n       with --help for the usage block.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: --agent <name> is required for 'take': a claim with no named\n       holder answers neither requirement 6 (who holds it) nor requirement 7\n       (who held it), which are the whole point of recording one.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: --agent <name> is required for 'release': a claim with no named\n       holder answers neither requirement 6 (who holds it) nor requirement 7\n       (who held it), which are the whole point of recording one.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: --agent <name> is required for 'takeover': a claim with no named\n       holder answers neither requirement 6 (who holds it) nor requirement 7\n       (who held it), which are the whole point of recording one.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: 'run' needs a command: <TOOL> run --agent <name> -- <command…>\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: --agent <name> is required for 'run': a claim with no named\n       holder answers neither requirement 6 (who holds it) nor requirement 7\n       (who held it), which are the whole point of recording one.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: invalid --ticket '../x': a ticket id is a single path component.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: invalid --ticket '..': a ticket id is a single path component.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: invalid --ticket '.': a ticket id is a single path component.\n",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: invalid --ticket 'a/b': a ticket id is a single path component.\n",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: unclaimed\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: ..\\x\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/..\\x\nledger: <COMMON>/crewrig/worktree-claims/..\\x.log\nstate: unclaimed\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: invalid --ticket '..': a ticket id is a single path component.\n",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: other\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/other\nledger: <COMMON>/crewrig/worktree-claims/other.log\nstate: unclaimed\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Error: unknown argument 'extra'. Run with --help for the usage block.\n",
+          "files": {}
+        }
+      ]
+    },
+    {
+      "id": "ledger-flattening",
+      "description": "a tab, carriage return or line feed in an operation or agent name is flattened to one space in the ledger",
+      "steps": [
+        {
+          "args": [
+            "take",
+            "--agent",
+            "al\tice",
+            "--operation",
+            "line1\nline2\tcol\rend"
+          ]
+        },
+        {
+          "args": [
+            "release",
+            "--agent",
+            "al\tice"
+          ]
+        },
+        {
+          "args": [
+            "history"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "Claimed '736' for 'al\tice'.\nticket: 736\nholder: al\tice\nsince: <ISO>\noperation: line1\nline2\tcol\rend\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\tal ice\t736\tline1 line2 col end\n",
+            "736/holder": "al\tice\n",
+            "736/operation": "line1\nline2\tcol\rend\n",
+            "736/since": "<ISO>\n",
+            "736/since_epoch": "<EPOCH>\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "Released '736' held by 'al\tice'.\nledger: <COMMON>/crewrig/worktree-claims/736.log\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\tal ice\t736\tline1 line2 col end\n<ISO>\trelease\tal ice\t736\t\n"
+          }
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nledger: <COMMON>/crewrig/worktree-claims/736.log\nentries: 2\n\n<ISO>\ttake\tal ice\t736\tline1 line2 col end\n<ISO>\trelease\tal ice\t736\t\n",
+          "stderr": "",
+          "files": {
+            "736.log": "<ISO>\ttake\tal ice\t736\tline1 line2 col end\n<ISO>\trelease\tal ice\t736\t\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "claim-root-across-cwds",
+      "description": "the claim root prints as one string from the main checkout, the worktree and each subdirectory",
+      "steps": [
+        {
+          "args": [
+            "status",
+            "--ticket",
+            "736"
+          ],
+          "cwd": "main"
+        },
+        {
+          "args": [
+            "status"
+          ],
+          "cwd": "wt"
+        },
+        {
+          "args": [
+            "status"
+          ],
+          "cwd": "sub"
+        },
+        {
+          "args": [
+            "status",
+            "--ticket",
+            "736"
+          ],
+          "cwd": "outside",
+          "env": {
+            "CREWRIG_REPO_DIR": "{MAIN}"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: unclaimed\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: unclaimed\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: unclaimed\n",
+          "stderr": "",
+          "files": {}
+        },
+        {
+          "exit": 0,
+          "stdout": "ticket: 736\nclaim-root: <COMMON>/crewrig/worktree-claims\nclaim-dir: <COMMON>/crewrig/worktree-claims/736\nledger: <COMMON>/crewrig/worktree-claims/736.log\nstate: unclaimed\n",
+          "stderr": "",
+          "files": {}
+        }
+      ]
+    }
+  ]
+}
