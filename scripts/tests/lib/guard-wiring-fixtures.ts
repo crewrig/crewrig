@@ -84,3 +84,12 @@ export const backups = (file: string): string[] =>
   fs
     .readdirSync(path.dirname(file))
     .filter((name) => name.startsWith(`${path.basename(file)}.bak.`));
+
+/** A `{type: "command", command}` handler with extra keys. */
+export const handler = (command: string, extra: Json = {}): Json => ({
+  type: "command",
+  command,
+  ...extra,
+});
+
+export const TRANSCRIPT = 'bash "/home/u/.claude/hooks/mempalace-transcript.sh"';
