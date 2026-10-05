@@ -92,4 +92,4 @@ export const handler = (command: string, extra: Json = {}): Json => ({
   ...extra,
 });
 
-export const TRANSCRIPT = 'bash "/home/u/.claude/hooks/mempalace-transcript.sh"';
+export const TRANSCRIPT = 'bash "$HOME/.claude/hooks/mempalace-transcript.sh"';

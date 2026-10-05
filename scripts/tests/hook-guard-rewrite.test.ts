@@ -42,7 +42,7 @@ const handler = (command: string, extra: Json = {}): Json => ({
   command,
   ...extra,
 });
-const TRANSCRIPT = 'bash "/home/u/.claude/hooks/mempalace-transcript.sh"';
+const TRANSCRIPT = 'bash "$HOME/.claude/hooks/mempalace-transcript.sh"';
 
 /** A configuration of `cli`'s shape holding `guardHandlers` on its guard event and one transcript hook elsewhere. */
 function configOf(cli: RewriteCli, guardHandlers: Json[]): Json {

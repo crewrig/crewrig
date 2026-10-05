@@ -9,7 +9,7 @@ import { handler, handlers, type Checkout, type Json } from "./guard-wiring-fixt
 export type Cli = "claude" | "gemini" | "copilot";
 export const CLIS: readonly Cli[] = ["claude", "gemini", "copilot"];
 export const q = JSON.stringify;
-export const TRANSCRIPT = 'bash "/home/u/.hooks/mempalace-transcript.sh"';
+export const TRANSCRIPT = 'bash "$HOME/.hooks/mempalace-transcript.sh"';
 
 /** An installed configuration of `cli`'s shape holding `commands` as guard handlers and one transcript hook. */
 export function installed(cli: Cli, commands: string[]): Json {
