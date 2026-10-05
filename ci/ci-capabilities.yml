@@ -570,6 +570,10 @@ capabilities:
           - "scripts/tests/test-setup-gemini-transcript.sh"
           - "scripts/tests/test-antigravity-component-install.sh"
           - "scripts/tests/test-antigravity-discovery-probe.sh"
+          - "scripts/tests/test-worktree-git-guard.sh"
+          - "hooks/worktree-git-guard.sh"
+          - "hooks/worktree-git-guard.ts"
+          - "scripts/worktree-claim.ts"
           - "scripts/lib/**"
           - "artifacts/library/skills/mempalace/**"
           - "artifacts/library/skills/harness-report/**"
@@ -586,6 +590,10 @@ capabilities:
           - "scripts/tests/test-setup-gemini-transcript.sh"
           - "scripts/tests/test-antigravity-component-install.sh"
           - "scripts/tests/test-antigravity-discovery-probe.sh"
+          - "scripts/tests/test-worktree-git-guard.sh"
+          - "hooks/worktree-git-guard.sh"
+          - "hooks/worktree-git-guard.ts"
+          - "scripts/worktree-claim.ts"
           - "scripts/lib/**"
           - "artifacts/library/skills/mempalace/**"
           - "artifacts/library/skills/harness-report/**"
@@ -610,6 +618,10 @@ capabilities:
         - "scripts/tests/test-setup-gemini-transcript.sh"
         - "scripts/tests/test-antigravity-component-install.sh"
         - "scripts/tests/test-antigravity-discovery-probe.sh"
+        - "scripts/tests/test-worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.sh"
+        - "hooks/worktree-git-guard.ts"
+        - "scripts/worktree-claim.ts"
         - "scripts/lib/**"
         - "artifacts/library/skills/mempalace/**"
         - "artifacts/library/skills/harness-report/**"
@@ -655,6 +667,10 @@ capabilities:
           - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
+          - "hooks/worktree-git-guard.ts"
+          - "scripts/worktree-claim.ts"
+          - "scripts/lib/worktree-claim/**"
+          - "scripts/lib/hook-*.ts"
           - "ci/test-wiring-exemptions.txt"
       - on: push
         branches: [main, "release/**"]
@@ -668,9 +684,18 @@ capabilities:
           - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
+          - "hooks/worktree-git-guard.ts"
+          - "scripts/worktree-claim.ts"
+          - "scripts/lib/worktree-claim/**"
+          - "scripts/lib/hook-*.ts"
           - "ci/test-wiring-exemptions.txt"
     portability: portable
     changeset-gated: true
+    # node@24: the guard oracle below runs through the shim, which execs the
+    # TypeScript guard; on a Node.js below 24 the shim exits 0 without
+    # enforcing, which fails oracle Cases 3 and 4 (spec 0248 R36, R13).
+    requires:
+      runtime: node@24
     command:
       - bash scripts/check-test-wiring.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-wiring.sh
@@ -690,6 +715,9 @@ capabilities:
           - "scripts/tests/test-repair-mempalace-http.sh"
           - "scripts/tests/test-rotate-mempalace-token.sh"
           - "scripts/tests/test-worktree-claim.sh"
+          - "scripts/worktree-claim.sh"
+          - "scripts/worktree-claim.ts"
+          - "hooks/worktree-git-guard.ts"
           - "scripts/mcp-daemon.sh"
           - "scripts/repair-mempalace-http.sh"
           - "scripts/switch-mempalace-http.sh"
@@ -705,6 +733,9 @@ capabilities:
           - "scripts/tests/test-repair-mempalace-http.sh"
           - "scripts/tests/test-rotate-mempalace-token.sh"
           - "scripts/tests/test-worktree-claim.sh"
+          - "scripts/worktree-claim.sh"
+          - "scripts/worktree-claim.ts"
+          - "hooks/worktree-git-guard.ts"
           - "scripts/mcp-daemon.sh"
           - "scripts/repair-mempalace-http.sh"
           - "scripts/switch-mempalace-http.sh"
@@ -714,7 +745,10 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
-      runtime: python@3.12
+      # python@3.12 is the primary/image runtime (unchanged); node@24 is a
+      # SECONDARY runtime: the worktree-claim.sh shim execs the TypeScript
+      # claim tool, and on a Node.js below 24 it exits 1 (spec 0248 R26, R36).
+      runtime: [python@3.12, node@24]
       tools: [yq]
     cache:
       files:
@@ -724,6 +758,9 @@ capabilities:
         - "scripts/tests/test-repair-mempalace-http.sh"
         - "scripts/tests/test-rotate-mempalace-token.sh"
         - "scripts/tests/test-worktree-claim.sh"
+        - "scripts/worktree-claim.sh"
+        - "scripts/worktree-claim.ts"
+        - "hooks/worktree-git-guard.ts"
         - "scripts/mcp-daemon.sh"
         - "scripts/repair-mempalace-http.sh"
         - "scripts/switch-mempalace-http.sh"
@@ -1328,6 +1365,78 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-entry-form.test.ts
 
+  # Spec 0248 R36: the TypeScript worktree git guard and worktree claim tool
+  # (hooks/worktree-git-guard.ts, scripts/worktree-claim.ts and the module tree
+  # under scripts/lib/worktree-claim/) have their own black-box suites, which
+  # the two Bash oracles (run through the shims in test-wiring, mempalace and
+  # chroma-mcp) do not replace. `jq` is declared for the differential test of
+  # the payload chain (R5), which is skipped with an explicit line where `jq`
+  # is absent. Deliberately NOT changeset-gated, mirroring usage-capture above:
+  # the fail-safe job (ci-changeset-coverage.sh) provisions python@3.12, yq and
+  # node@24 only and carries no `jq`.
+  - id: worktree-guard
+    name: "Validate the worktree git guard and worktree claim tool (TypeScript)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "hooks/worktree-git-guard.sh"
+          - "hooks/worktree-git-guard.ts"
+          - "scripts/worktree-claim.sh"
+          - "scripts/worktree-claim.ts"
+          - "scripts/lib/worktree-claim/**"
+          - "scripts/lib/hook-*.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/hook-wiring.ts"
+          - "scripts/tests/worktree-*.test.ts"
+          - "scripts/tests/lib/worktree-*.ts"
+          - "scripts/tests/lib/spawn-spy.ts"
+          - "scripts/tests/lib/windows-invocation.ts"
+          - "scripts/tests/fixtures/worktree-claim/**"
+          - "scripts/tests/fixtures/worktree-guard/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "hooks/worktree-git-guard.sh"
+          - "hooks/worktree-git-guard.ts"
+          - "scripts/worktree-claim.sh"
+          - "scripts/worktree-claim.ts"
+          - "scripts/lib/worktree-claim/**"
+          - "scripts/lib/hook-*.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/hook-wiring.ts"
+          - "scripts/tests/worktree-*.test.ts"
+          - "scripts/tests/lib/worktree-*.ts"
+          - "scripts/tests/lib/spawn-spy.ts"
+          - "scripts/tests/lib/windows-invocation.ts"
+          - "scripts/tests/fixtures/worktree-claim/**"
+          - "scripts/tests/fixtures/worktree-guard/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-*.test.ts
+
+  # Spec 0248 R10: the two TypeScript entries print nothing on the oldest
+  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
+  # The suite runs the entry form check and the unstubbed silence runs of the
+  # guard and of the claim tool under exactly 24.0.0. No `paths:` filter, like
+  # usage-capture-node-24-0 above: the suite is fast and any shared-module
+  # change can reintroduce a warning.
+  - id: worktree-guard-node-24-0
+    name: "Worktree guard and claim entries are silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts
+
   # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves
   # the change's base ref, so the job needs full source history — declared as
   # `history-depth: full`, same as the two version-bump guards below.
@@ -1630,6 +1739,7 @@ capabilities:
           - "scripts/tests/fixtures/setup-usage-capture/**"
           - "hooks/usage-capture.ts"
           - "hooks/antigravity-statusline-shim.ts"
+          - "hooks/worktree-git-guard.ts"
           - "scripts/lib/hook-*.ts"
           - "scripts/hook-wiring.ts"
           - "scripts/check-timing-budget.ts"
@@ -1668,6 +1778,7 @@ capabilities:
           - "scripts/tests/fixtures/setup-usage-capture/**"
           - "hooks/usage-capture.ts"
           - "hooks/antigravity-statusline-shim.ts"
+          - "hooks/worktree-git-guard.ts"
           - "scripts/lib/hook-*.ts"
           - "scripts/hook-wiring.ts"
           - "scripts/check-timing-budget.ts"
@@ -2080,6 +2191,35 @@ capabilities:
         runner `tags:` that could select a Windows executor. There is no
         faithful equivalent on the other supported engines (spec 0240 R15,
         spec 0243 R28).
+
+  # Spec 0248 R33, R34: the worktree git guard row's copy of the template
+  # above. Both TypeScript entries run from pwsh: the guard from each CLI's
+  # command line through the invocation rows 37 and 37e/37f of
+  # docs/cli-matrix.md record for it, the claim tool through the R34(d)
+  # sequence, and two timing budgets (R33) apply to the guard's fast path and
+  # to its slow path (refused and allowed). The scripts and suites exist on
+  # every checkout, so the job carries no `paths:` filter, like the two
+  # Windows jobs above.
+  - id: windows-worktree-git-guard
+    name: "Windows worktree git guard: entries, per-CLI command lines, claim tool and timing budgets"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-worktree-git-guard`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 70-81), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0248 R34).
 
   # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
   # (spec 0183 R23, issue #1008): it packaged the committed source tree via
