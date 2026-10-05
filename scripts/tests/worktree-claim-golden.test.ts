@@ -65,11 +65,18 @@ describe("the golden record is well formed", () => {
     for (const name of fs.readdirSync(SEEDS)) {
       const claim = path.join(SEEDS, name, "736");
       if (fs.existsSync(claim)) {
-        assert.deepEqual(fs.readdirSync(claim).sort(), ["holder", "operation", "since", "since_epoch"]);
+        assert.deepEqual(fs.readdirSync(claim).sort(), [
+          "holder",
+          "operation",
+          "since",
+          "since_epoch",
+        ]);
         assert.match(read(path.join(claim, "since")), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\n$/);
         assert.match(read(path.join(claim, "since_epoch")), /^\d+\n$/);
       }
-      for (const line of read(path.join(SEEDS, name, "736.log")).split("\n").filter(Boolean)) {
+      for (const line of read(path.join(SEEDS, name, "736.log"))
+        .split("\n")
+        .filter(Boolean)) {
         assert.equal(line.split("\t").length, 5, `${name}: ${JSON.stringify(line)}`);
       }
     }
@@ -135,6 +142,9 @@ describe("what this tool writes, byte for byte (R18)", { skip: SKIP_POSIX }, () 
     assert.match(take?.[0] ?? "", /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
     assert.deepEqual(take?.slice(1), ["take", "alice", "736", "a b c d"]);
     assert.deepEqual(release?.slice(1), ["release", "alice", "736", ""]);
-    assert.ok(fs.existsSync(fx.ledger) && !fs.existsSync(fx.claimDir), "the ledger outlives the claim");
+    assert.ok(
+      fs.existsSync(fx.ledger) && !fs.existsSync(fx.claimDir),
+      "the ledger outlives the claim",
+    );
   });
 });

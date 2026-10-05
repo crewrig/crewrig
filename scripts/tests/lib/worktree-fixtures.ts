@@ -155,12 +155,8 @@ function git(args: readonly string[], cwd: string): string {
   return res.stdout;
 }
 
-/** A fixture repository with a linked worktree under `.worktrees/<ticket>`. */
-export function makeFixture(options: { ticket?: string } = {}): Fixture {
-  const ticket = options.ticket ?? "736";
-  const root = realTmp("crewrig-worktree-");
-  const real = path.join(root, "real");
-  const main = path.join(real, "repo");
+/** `git init` with one seed commit, a `.gitignore` holding `.worktrees/` and a tracked `sub/`. */
+export function initRepo(main: string): void {
   fs.mkdirSync(main, { recursive: true });
   git(["init", "-q"], main);
   git(["config", "user.email", "test@example.com"], main);
@@ -173,7 +169,23 @@ export function makeFixture(options: { ticket?: string } = {}): Fixture {
   fs.writeFileSync(path.join(main, "sub", "x.txt"), "x\n");
   git(["add", "-A"], main);
   git(["commit", "-q", "-m", "fixture seed"], main);
-  git(["worktree", "add", "-q", "-b", `wt-${ticket}`, path.join(main, ".worktrees", ticket)], main);
+}
+
+/** A linked worktree at `<main>/.worktrees/<ticket>`; returns its path. */
+export function addWorktree(main: string, ticket: string): string {
+  const wt = path.join(main, ".worktrees", ticket);
+  git(["worktree", "add", "-q", "-b", `wt-${ticket}`, wt], main);
+  return wt;
+}
+
+/** A fixture repository with a linked worktree under `.worktrees/<ticket>`. */
+export function makeFixture(options: { ticket?: string } = {}): Fixture {
+  const ticket = options.ticket ?? "736";
+  const root = realTmp("crewrig-worktree-");
+  const real = path.join(root, "real");
+  const main = path.join(real, "repo");
+  initRepo(main);
+  const wt = addWorktree(main, ticket);
 
   let link: string | null = null;
   try {
@@ -183,7 +195,6 @@ export function makeFixture(options: { ticket?: string } = {}): Fixture {
     link = null;
   }
 
-  const wt = path.join(main, ".worktrees", ticket);
   const common = fs.realpathSync.native(path.join(main, ".git"));
   const claimRoot = path.join(common, "crewrig", "worktree-claims");
   return {
@@ -258,70 +269,4 @@ export function which(name: string): string | null {
     }
   }
   return null;
-}
-
-// ---------------------------------------------------------------------------
-// Placeholders (golden data, spec 0248 R18 and plan step 20)
-// ---------------------------------------------------------------------------
-
-export interface PlaceholderContext {
-  readonly main: string;
-  readonly wt: string;
-  readonly common: string;
-  /** Extra directories to name, e.g. a working directory outside every repository. */
-  readonly extra?: Record<string, string>;
-}
-
-const ISO = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/g;
-
-/**
- * Replace what varies between runs: the physical fixture paths, every ISO
- * timestamp and the `held-for-seconds` count. Longest path first, so the
- * worktree is named before the main checkout it sits in.
- */
-export function placeholder(text: string, ctx: PlaceholderContext): string {
-  const named: Array<[string, string]> = [
-    [ctx.wt, "<WORKTREE>"],
-    [ctx.common, "<COMMON>"],
-    [ctx.main, "<MAIN>"],
-    ...Object.entries(ctx.extra ?? {}).map(([name, dir]): [string, string] => [dir, `<${name}>`]),
-  ];
-  named.sort((a, b) => b[0].length - a[0].length);
-  let out = text;
-  for (const [dir, token] of named) out = out.split(dir).join(token);
-  return out
-    .replace(ISO, "<ISO>")
-    .replace(/held-for-seconds: \d+/g, "held-for-seconds: <N>")
-    .replace(/worktree-claim\.(?:sh|ts)/g, "<TOOL>")
-    .replace(/(?:bash scripts\/<TOOL>|node scripts\/<TOOL>)/g, "<INVOKE>");
-}
-
-/** A `since_epoch` value within two hours of now is a clock reading, not data. */
-function epochPlaceholder(content: string): string {
-  const match = /^(\d{10})\n$/.exec(content);
-  if (match === null) return content;
-  return Math.abs(Number(match[1]) - nowEpoch()) < 7200 ? "<EPOCH>\n" : content;
-}
-
-/** Every file under the claim root (claim directories and ledgers), placeholdered, by relative path. */
-export function snapshotClaimRoot(claimRoot: string, ctx: PlaceholderContext): Record<string, string> {
-  const files: Record<string, string> = {};
-  const walk = (dir: string): void => {
-    if (!fs.existsSync(dir)) return;
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(full);
-        // An empty directory is itself state: `[ -d ]` reads it as claimed.
-        if (fs.readdirSync(full).length === 0) {
-          files[`${path.relative(claimRoot, full).split(path.sep).join("/")}/`] = "";
-        }
-      } else {
-        const rel = path.relative(claimRoot, full).split(path.sep).join("/");
-        files[rel] = placeholder(epochPlaceholder(read(full)), ctx);
-      }
-    }
-  };
-  walk(claimRoot);
-  return Object.fromEntries(Object.entries(files).sort(([a], [b]) => a.localeCompare(b)));
 }

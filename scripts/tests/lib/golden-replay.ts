@@ -14,16 +14,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import {
-  makeFixture,
-  nowEpoch,
-  placeholder,
-  realTmp,
-  snapshotClaimRoot,
-  type Fixture,
-  type PlaceholderContext,
-  type Result,
-} from "./worktree-fixtures.ts";
+import { placeholder, snapshotClaimRoot, type PlaceholderContext } from "./golden-normalize.ts";
+import { makeFixture, nowEpoch, realTmp, type Fixture, type Result } from "./worktree-fixtures.ts";
 
 export type Op =
   | { readonly op: "seed"; readonly name: string }
