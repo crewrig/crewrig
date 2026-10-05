@@ -5,7 +5,7 @@
     "preToolUse": [
       {
         "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/worktree-git-guard.sh\""
+        "command": "node \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/worktree-git-guard.ts\""
       }
     ],
     "sessionStart": [

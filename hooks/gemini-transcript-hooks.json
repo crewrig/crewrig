@@ -6,7 +6,7 @@
           {
             "type": "command",
             "name": "transcript-git-guard",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/worktree-git-guard.sh"
+            "command": "node \"${GEMINI_PROJECT_DIR}/hooks/worktree-git-guard.ts\""
           }
         ]
       }

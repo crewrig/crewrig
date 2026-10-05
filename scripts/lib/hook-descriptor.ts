@@ -63,3 +63,20 @@ export const ANTIGRAVITY_STATUSLINE: HookDescriptor = {
   argsPattern: "\\s*",
   guardedPrefix: true,
 };
+
+/**
+ * The worktree git guard (spec 0248 R27): a PreToolUse-class hook that takes no
+ * argument — it reads its payload from standard input — and is wired on all
+ * four CLIs. The per-CLI ids are never passed (`args` is empty and the
+ * arguments pattern accepts none). `guardedPrefix` is set because the guard's
+ * Antigravity CLI command line takes the guarded form on Windows (spec 0243
+ * delta-03 R34); the bare `node` forms of the other CLIs are unaffected.
+ */
+export const WORKTREE_GIT_GUARD: HookDescriptor = {
+  id: "worktree-git-guard",
+  basename: "worktree-git-guard",
+  cliIds: { claude: "claude-code", gemini: "gemini-cli", copilot: "copilot-cli" },
+  args: () => [],
+  argsPattern: "\\s*",
+  guardedPrefix: true,
+};
