@@ -78,7 +78,9 @@ touching any hook the user or another part of the framework owns.
 3. **Invocation shapes.** The hook SHALL accept exactly these argument shapes:
    (a) no argument — the legacy form the Claude Code, Gemini CLI and Copilot
    CLI registrations use today (`hooks/claude-transcript-hooks.json`,
-   `hooks/gemini-transcript-hooks.json`, `hooks/copilot-transcript-hooks.json`);
+   `hooks/gemini-transcript-hooks.json`, `hooks/copilot-transcript-hooks.json`),
+   and also an empty first argument, with any further argument ignored, which
+   the shell treats as no argument (`hooks/mempalace-transcript.sh:47-56`);
    (b) a non-empty first argument that is not a CLI identifier of item (c) —
    the legacy Antigravity form, the argument being the lifecycle event name and
    any further argument ignored, as the shell ignores it
@@ -351,12 +353,33 @@ touching any hook the user or another part of the framework owns.
 
 23. **Rewrite on the next setup run.** On every run of the four
     `scripts/setup-*-interactive.sh` with Node.js at or above the floor
-    (requirement 27): when the user enables session recording, setup SHALL
-    deploy the direct form with the merge semantics it uses today
-    (`merge_session_recording_hooks`; `deploy_antigravity_transcript_hooks`,
-    `scripts/lib/common.sh:2356`), replacing every command of the classes
-    `direct`, `legacy-enabled` and `legacy-unmarked` of requirement 24 and
-    leaving every `foreign-prefix` command as requirement 25 says. When the
+    (requirement 27): when the user enables session recording, setup SHALL,
+    on all four CLIs and by one rule, remove every transcript command of the
+    classes `direct`, `legacy-enabled` and `legacy-unmarked` of requirement 24,
+    leave every `foreign-prefix` command byte-identical, and then add the
+    manifest's direct-form command on each manifest event that holds no
+    transcript command after that removal. An event that held both an own
+    command and a `foreign-prefix` one therefore ends with the operator's
+    command alone, and the removal is reported. Worktree git guard commands are
+    refreshed from the manifest as today, and every entry the rule does not name
+    stays where it is. Applying this rule changes today's per-CLI merge code
+    only where it differs, each change acknowledged in requirement 29:
+    (a) Claude Code and Gemini CLI keep `sr_merge`
+    (`scripts/lib/usage-capture-optin.sh:226`) with its strip, whose add becomes
+    conditional on the event holding no transcript command;
+    (b) Copilot CLI, which today replaces the whole file with the manifest
+    (`merge_session_recording_hooks`, `scripts/lib/usage-capture-optin.sh:874`),
+    SHALL take the same `sr_merge` as Gemini CLI, so operator entries in its
+    user-level hooks file survive instead of being dropped, and the file's
+    top-level keys other than `hooks` keep their value when present and take
+    the manifest's when absent;
+    (c) Antigravity CLI, whose `deploy_antigravity_transcript_hooks`
+    (`scripts/lib/common.sh:2356`, the shallow merge at `:2435`) replaces the
+    `crewrig-mempalace-transcript` named hook wholesale, SHALL apply the rule
+    per event inside that named hook: an event whose array holds a
+    `foreign-prefix` command keeps that array byte-identical, and every other
+    event of the named hook takes the manifest's as today, including the
+    removal of an event the manifest no longer registers. When the
     user declines or cancels, setup SHALL write a direct form only where the
     user's consent is already established, so that a decline never starts
     recording that was not running: it SHALL rewrite in place a `direct`
@@ -403,7 +426,10 @@ touching any hook the user or another part of the framework owns.
     `legacy-enabled` or `legacy-unmarked`, or the command is a worktree git
     guard command", the guard half accepting and rejecting exactly what it
     accepts and rejects today, so guard ownership and the guard refresh of
-    `sr_merge` are unchanged (requirement 29). The existing corpus
+    `sr_merge` are unchanged (requirement 29). The transcript half changes on
+    purpose: it now rejects a `foreign-prefix` command, which it accepted, and
+    accepts the `node` and `.ts` forms and the legacy Antigravity event
+    argument, which it rejected. The existing corpus
     `scripts/tests/fixtures/usage-capture/recognition-corpus.json`, its
     `capture` field and its two consumers stay unchanged. A command that chains
     an operator's own script, or names a script called `mempalace-transcript.*`
@@ -418,8 +444,8 @@ touching any hook the user or another part of the framework owns.
     command byte-identical and report it with the assignment that made it so,
     so that an operator's own setting is never dropped silently (as spec 0243
     delta-01 does for capture commands); and on the enable path it SHALL add no
-    transcript command on an event that holds one, so that event keeps exactly
-    the operator's. It SHALL leave the installed copies under the
+    transcript command on an event that holds one, by the rule of
+    requirement 23. It SHALL leave the installed copies under the
     CLIs' directories on disk and report their paths as no longer used.
 
 26. **Idempotence and write safety.** A second run over a rewritten
@@ -452,8 +478,16 @@ touching any hook the user or another part of the framework owns.
 29. **Wiring confined to this hook.** This spec SHALL change no usage-capture
     command, no status-line command and no worktree git guard command, and the
     rewrite of requirement 23 SHALL touch only commands requirement 24
-    recognises; the worktree git guard half of `sr_is_own` and the refresh
-    `sr_merge` gives guard commands SHALL be unchanged.
+    recognises; the worktree git guard half of `sr_is_own`, and the guard
+    command each CLI ends with after an enable run, SHALL be unchanged. Three
+    changes to setup's enable path are made on purpose and are the only ones
+    (requirement 23): the conditional add of `sr_merge` on Claude Code and
+    Gemini CLI; on Copilot CLI the move from replacing the user-level hooks file
+    to `sr_merge`, so an operator's own entry in that file — a transcript
+    command, a hook of another tool, or a top-level key — is now kept where
+    today it is dropped; and on Antigravity CLI the per-event treatment inside
+    the `crewrig-mempalace-transcript` named hook. None is a deviation of the
+    hook under requirement 30: all three are setup behaviour.
 
 30. **Deviations from the shell behaviour (parent requirement 14).** The
     observable contract SHALL be preserved except for exactly these: the
@@ -521,7 +555,13 @@ touching any hook the user or another part of the framework owns.
     `foreign-prefix` command. The Bash twin of the transcript predicate SHALL be
     exercised on the new corpus by an added block in
     `scripts/tests/test-setup-usage-capture-optin.sh`, which leaves that suite's
-    existing assertions unchanged.
+    existing assertions unchanged. The existing assertions of
+    `scripts/tests/test-setup-copilot-transcript.sh` and
+    `scripts/tests/test-setup-usage-capture-optin.sh` whose expected value
+    follows from Copilot CLI's full replace — an operator entry or a top-level
+    key dropped by an enable run — SHALL change to the merge of requirement
+    23(b), and the implementation PR SHALL list them with the other changed
+    assertions.
 
 33. **Parity (parent requirement 19).** The implementation PR SHALL record in
     `docs/cli-matrix.md`, in the same diff, every (CLI × operating system) cell
@@ -601,7 +641,8 @@ When the hook runs with a valid payload
 Then no request is sent, standard error holds one line naming the accepted
 shapes, standard output is `{}` and a line feed in the first case and empty in
 the second, and the exit status is zero; with the arguments `Stop extra` the
-hook runs in Antigravity mode as with `Stop`.
+hook runs in Antigravity mode as with `Stop`, and with an empty first
+argument it runs as with no argument.
 
 **Scenario:** A malformed payload no longer fails the turn
 
@@ -689,6 +730,19 @@ Then both times the entry is byte-identical and reported as left because of
 the `MEMPALACE_MCP_PORT` assignment, and the enable run adds no other
 transcript command to `agentStop`, so the event holds exactly that entry.
 
+**Scenario:** An enable run keeps the operator's command alone on its event
+
+Given, on each of the four CLIs, one event holding both
+`MEMPALACE_TRANSCRIPT_ENABLED=1 bash "<home>/hooks/mempalace-transcript.sh"`
+(with the event argument on Antigravity CLI) and
+`MEMPALACE_MCP_PORT=41999 bash "<home>/hooks/mempalace-transcript.sh"`, and,
+on Copilot CLI, an operator hook of another tool on `sessionStart`
+When the user enables session recording
+Then that event holds only the `MEMPALACE_MCP_PORT` command, byte-identical,
+and setup reports the removal of the other and why nothing was added; every
+other manifest event holds the direct form; and the Copilot CLI operator hook
+on `sessionStart` is still there.
+
 **Scenario:** A decline never turns recording on, on the prefixed CLIs
 
 Given Gemini CLI, Copilot CLI and Antigravity CLI configurations each holding a
@@ -729,7 +783,8 @@ with rows for each class, including
 (`foreign-prefix`) and `bash "/x/hooks/worktree-git-guard.sh"` (`no`)
 When the Bash predicate and the TypeScript recogniser classify every row
 Then both return the row's `transcript` value, and `sr_is_own` still accepts
-the guard command and every command it accepted before.
+and rejects every worktree git guard command exactly as before, while it now
+rejects the `foreign-prefix` row and accepts the `direct` row.
 
 **Scenario:** A chained operator command is never touched
 
