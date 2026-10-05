@@ -86,6 +86,18 @@ export interface Io {
 }
 
 /**
+ * The contract of `run.ts` (stream L): `export function runCommand` with this
+ * signature, called by `main.ts` for the `run` subcommand after the context is
+ * resolved (`ctx.agent` is set, `opts.command` is non-empty). It returns the
+ * exit code of `run`, writes only through `io`, and throws `ClaimFailure` for an
+ * `Error:` refusal. The gate, claim and ledger helpers it needs are `treeDirt`
+ * and `refuseDirty` (gate.ts), `tryCreateClaim`, `writeClaimState`,
+ * `releaseClaimDir`, `reportHolder`, `claimExists` and `claimField` (store.ts)
+ * and `ledgerAppend` (ledger.ts).
+ */
+export type RunCommand = (ctx: ClaimContext, opts: ClaimOptions, io: Io) => Promise<number>;
+
+/**
  * A refusal or failure that ends the invocation with an `Error:` line on
  * standard error (the shell tool's `fail`). `message` has no `Error:` prefix.
  */
