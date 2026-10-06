@@ -343,5 +343,25 @@
     "command": "bash /repo/hooks/mempalace-transcript.sh Stop\r",
     "transcript": "no",
     "note": "security S1: a carriage return"
+  },
+  {
+    "command": "bash \"$(pwd)/hooks/mempalace-transcript.sh\"",
+    "transcript": "no",
+    "note": "a command substitution inside the quoted path runs an operator's command first"
+  },
+  {
+    "command": "node \"`pwd`/hooks/mempalace-transcript.ts\" claude-code",
+    "transcript": "no",
+    "note": "a backtick substitution inside the quoted path, direct shape"
+  },
+  {
+    "command": "X=$(id) node \"/x/hooks/mempalace-transcript.ts\" claude-code",
+    "transcript": "no",
+    "note": "a command substitution in a prefix value is not an operator's setting"
+  },
+  {
+    "command": "bash '/x/$(id)/hooks/mempalace-transcript.sh'",
+    "transcript": "no",
+    "note": "no substitution is ever recognised, even a single-quoted literal one"
   }
 ]
