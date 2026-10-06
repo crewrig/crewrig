@@ -2,7 +2,8 @@
 //
 // Usage:
 //   node scripts/check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>]
-//        [--stdin-file <path>] [--cwd <path>] [--env-tmpdir <NAME>] -- <node argv…>
+//        [--stdin-file <path>] [--cwd <path>] [--env-tmpdir <NAME>] [--case <label>]
+//        -- <node argv…>
 //
 // Runs `node <node argv…>` N times with the current Node.js binary, timing each
 // run from spawn to exit with `performance.now()`, so Node.js start-up is
@@ -20,6 +21,10 @@
 // --env-tmpdir <NAME> gives every run a fresh, empty temporary directory
 // exported to the child as $NAME and removed afterwards (spec 0243 R15: a hook
 // that writes a record must start from an empty usage root each time).
+// --case <label> names the measured case (spec 0247 R19, delta-01): every
+// report line then reads `timing-budget: <script> [case <label>] …`, so a
+// failure names the script, the case, the budget and the measured time.
+// Without it, every line is exactly as above.
 //
 // The budget lives in each CI job's own command line, not in a manifest, so a
 // later sub-spec copies the job and states its own budget next to its script.
@@ -41,6 +46,7 @@ export interface Options {
   stdinFile?: string;
   cwd?: string;
   envTmpdir?: string;
+  caseLabel?: string;
 }
 
 /** What a run receives beyond its argv: stdin bytes, working directory and extra environment. */
@@ -88,6 +94,7 @@ export function parseArgs(args: readonly string[]): Options {
   let stdinFile: string | undefined;
   let cwd: string | undefined;
   let envTmpdir: string | undefined;
+  let caseLabel: string | undefined;
   for (let i = 0; i < flags.length; i += 2) {
     const flag = flags[i];
     const value = flags[i + 1];
@@ -96,6 +103,7 @@ export function parseArgs(args: readonly string[]): Options {
     else if (flag === "--expect-exit") expectExit = positiveInt(flag, value);
     else if (flag === "--stdin-file") stdinFile = nonEmpty(flag, value);
     else if (flag === "--cwd") cwd = nonEmpty(flag, value);
+    else if (flag === "--case") caseLabel = nonEmpty(flag, value);
     else if (flag === "--env-tmpdir") {
       envTmpdir = nonEmpty(flag, value);
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(envTmpdir)) {
@@ -113,6 +121,7 @@ export function parseArgs(args: readonly string[]): Options {
     ...(stdinFile === undefined ? {} : { stdinFile }),
     ...(cwd === undefined ? {} : { cwd }),
     ...(envTmpdir === undefined ? {} : { envTmpdir }),
+    ...(caseLabel === undefined ? {} : { caseLabel }),
   };
 }
 
@@ -169,7 +178,8 @@ export function evaluate(
   opts: Options,
   results: readonly RunResult[],
 ): { ok: boolean; lines: string[] } {
-  const script = opts.argv.find((a) => !a.startsWith("-")) ?? opts.argv.join(" ");
+  const name = opts.argv.find((a) => !a.startsWith("-")) ?? opts.argv.join(" ");
+  const script = opts.caseLabel === undefined ? name : `${name} [case ${opts.caseLabel}]`;
   const lines: string[] = [];
   results.forEach((r, i) => {
     const tag = `(run ${i + 1}/${results.length})`;
