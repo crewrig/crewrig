@@ -333,6 +333,25 @@ def sr_merge($m):
       if ($x.handler | sr_is_transcript_any) and sr_event_has_transcript($x.event) then .
       else uc_add($x) end);
 
+# What sr_merge($m) leaves alone, reported before the write (spec 0247 R23,
+# R25): one line per foreign-prefix transcript command on an event the
+# manifest registers a transcript command for. The line names the event, the
+# script path, the names of the prefix assignments (never their values: they
+# may be credentials) and how many own transcript commands the merge removes
+# there; nothing is added on such an event.
+def sr_report($m):
+  if ($m | sr_has_transcript) | not then empty else
+    . as $cfg
+    | ([$m | uc_all_handlers | select(.handler | sr_is_transcript) | .event] | unique)[] as $e
+    | [$cfg | uc_all_handlers | select(.event == $e) | .handler] as $hs
+    | ([$hs[] | select(sr_is_transcript)] | length) as $own
+    | $hs[] | select(sr_transcript_class == "foreign-prefix") | .command
+    | (capture(sr_tr_re).pre | sr_tr_assigns | map(.n + "=...") | join(", ")) as $names
+    | (capture("(?<p>\"[^\"]*/mempalace-transcript\\.(?:sh|ts)\"|\\x27[^\\x27]*/mempalace-transcript\\.(?:sh|ts)\\x27|[^\\s\"\\x27]*/mempalace-transcript\\.(?:sh|ts))").p
+       | gsub("^[\"\\x27]|[\"\\x27]$"; "")) as $path
+    | "  Session recording: left \($path) on \($e) (keeps an environment prefix the framework does not own (\($names))); removed \($own) own transcript command(s) there and added none."
+  end;
+
 # keep (a): re-point, in place, a capture handler whose path vanished. Only the
 # path token changes (it comes back double-quoted); prefix and argv are kept, and
 # so is the form: a `.ts` handler goes to the current checkout'"'"'s `.ts`, a `.sh`
@@ -1032,6 +1051,8 @@ merge_session_recording_hooks() {
   # strip inside uc_reinject removes exactly the handlers it re-adds.
   lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
   if [ -f "$config" ]; then
+    _uc_jq "$shape" -r --slurpfile m "$patched" --argjson uc_legacy_ok "$lg" \
+      "$_UC_JQ_DEFS sr_report(\$m[0])" "$config" || true
     backup_file "$config"
   else
     _uc_create_empty "$config" || { echo "  ERROR: could not create $config." >&2; return 1; }
