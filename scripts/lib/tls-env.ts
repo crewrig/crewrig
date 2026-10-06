@@ -10,6 +10,10 @@
 //     a word Bash's `printf %q` produces: plain characters, backslash escapes,
 //     `$'…'` strings and `''`;
 //   - LF or CRLF line endings.
+// The file is parsed as bytes, not as UTF-8 text: Bash 3.2 (the macOS
+// `/bin/bash`) under a UTF-8 locale writes a non-ASCII character as a `$'…'`
+// string that mixes raw bytes with octal escapes (`€` becomes `$'` 0xE2
+// `\202` 0xAC `'`), which is not valid UTF-8 until it is decoded.
 // All or nothing: one line outside that format and the reader yields no
 // variable at all, and names the file and the first such line, so the caller
 // can report it. Nothing is ever evaluated.
@@ -53,8 +57,15 @@ const SIMPLE_ESCAPES: Readonly<Record<string, number>> = {
   "?": 0x3f,
 };
 
-function pushText(bytes: number[], text: string): void {
-  for (const byte of Buffer.from(text, "utf8")) bytes.push(byte);
+// A word is held as a "binary" string: one character per byte of the file
+// (Latin-1 decoding), so a raw byte is pushed as itself.
+function pushByte(bytes: number[], ch: string): void {
+  bytes.push(ch.charCodeAt(0) & 0xff);
+}
+
+/** A code point named by a `\u`/`\U` escape, encoded as UTF-8. */
+function pushCodePoint(bytes: number[], code: number): void {
+  for (const byte of Buffer.from(String.fromCodePoint(code), "utf8")) bytes.push(byte);
 }
 
 /** Decode the body of a `$'…'` string from `start` (just past `$'`); returns the index past the closing quote, or -1. */
@@ -64,7 +75,7 @@ function decodeAnsiC(word: string, start: number, bytes: number[]): number {
     const ch = word[i] as string;
     if (ch === "'") return i + 1;
     if (ch !== "\\") {
-      pushText(bytes, ch);
+      pushByte(bytes, ch);
       i += 1;
       continue;
     }
@@ -92,7 +103,7 @@ function decodeAnsiC(word: string, start: number, bytes: number[]): number {
     if (unicode !== null) {
       const code = parseInt((unicode[1] ?? unicode[2]) as string, 16);
       if (code > 0x10ffff) return -1;
-      pushText(bytes, String.fromCodePoint(code));
+      pushCodePoint(bytes, code);
       i += 1 + unicode[0].length;
       continue;
     }
@@ -109,6 +120,11 @@ function decodeAnsiC(word: string, start: number, bytes: number[]): number {
 
 /** The value a `printf %q` word stands for, or `undefined` when the word is outside that format. */
 export function decodeQuotedWord(word: string): string | undefined {
+  return decodeBinaryWord(Buffer.from(word, "utf8").toString("latin1"));
+}
+
+/** `decodeQuotedWord` over a binary string (one character per byte). */
+function decodeBinaryWord(word: string): string | undefined {
   if (word === "") return undefined;
   // A leading `#` or `~` is always escaped by `printf %q`: unescaped, the shell
   // would read a comment or expand a home directory.
@@ -118,11 +134,10 @@ export function decodeQuotedWord(word: string): string | undefined {
   while (i < word.length) {
     const ch = word[i] as string;
     if (ch === "\\") {
-      const next = word.codePointAt(i + 1);
-      if (next === undefined || next === 0x0a) return undefined;
-      const escaped = String.fromCodePoint(next);
-      pushText(bytes, escaped);
-      i += 1 + escaped.length;
+      const next = word[i + 1];
+      if (next === undefined || next === "\n") return undefined;
+      pushByte(bytes, next);
+      i += 2;
     } else if (ch === "$" && word[i + 1] === "'") {
       const end = decodeAnsiC(word, i + 2, bytes);
       if (end === -1) return undefined;
@@ -132,9 +147,8 @@ export function decodeQuotedWord(word: string): string | undefined {
     } else if (SPECIAL.has(ch) || ch.charCodeAt(0) < 0x20 || ch === "\u007f") {
       return undefined;
     } else {
-      const point = String.fromCodePoint(word.codePointAt(i) as number);
-      pushText(bytes, point);
-      i += point.length;
+      pushByte(bytes, ch);
+      i += 1;
     }
   }
   // `printf %q` never writes a NUL byte, and no environment value can carry one
@@ -143,10 +157,16 @@ export function decodeQuotedWord(word: string): string | undefined {
   return Buffer.from(bytes).toString("utf8");
 }
 
-/** Parse the text of a trust file: the variables, or the 1-based number of the first line outside the format. */
-export function parseTlsEnv(text: string): { vars: Record<string, string> } | { line: number } {
+/**
+ * Parse a trust file — its bytes, or its text (encoded as UTF-8): the
+ * variables, or the 1-based number of the first line outside the format.
+ */
+export function parseTlsEnv(
+  content: string | Buffer,
+): { vars: Record<string, string> } | { line: number } {
+  const bytes = typeof content === "string" ? Buffer.from(content, "utf8") : content;
   const vars: Record<string, string> = {};
-  const lines = text.split("\n");
+  const lines = bytes.toString("latin1").split("\n");
   // A final line feed ends the last line; it does not open an empty one.
   if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
   for (let index = 0; index < lines.length; index += 1) {
@@ -157,7 +177,7 @@ export function parseTlsEnv(text: string): { vars: Record<string, string> } | { 
     if (match === null) return { line: index + 1 };
     const name = match[1] as string;
     if (!NAME.test(name)) return { line: index + 1 };
-    const value = decodeQuotedWord(match[2] as string);
+    const value = decodeBinaryWord(match[2] as string);
     if (value === undefined) return { line: index + 1 };
     vars[name] = value;
   }
@@ -167,9 +187,9 @@ export function parseTlsEnv(text: string): { vars: Record<string, string> } | { 
 /** Read the trust file under `home`, never executing it. */
 export function readTlsEnv(home: string): TlsEnvResult {
   const file = tlsEnvPath(home);
-  let text: string;
+  let text: Buffer;
   try {
-    text = fs.readFileSync(file, "utf8");
+    text = fs.readFileSync(file);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "ENOENT" || code === "ENOTDIR") return { kind: "absent" };
