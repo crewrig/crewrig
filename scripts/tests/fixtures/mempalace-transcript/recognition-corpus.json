@@ -1,0 +1,282 @@
+[
+  {
+    "command": "bash \"$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh\"",
+    "transcript": "legacy-unmarked",
+    "note": "Claude manifest legacy form, token path, no argument"
+  },
+  {
+    "command": "bash \"/home/u/.claude/hooks/mempalace-transcript.sh\"",
+    "transcript": "legacy-unmarked",
+    "note": "Claude installed copy, double-quoted (spec scenario: decline follows the settings file's consent)"
+  },
+  {
+    "command": "node \"$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.ts\" claude-code",
+    "transcript": "direct",
+    "note": "Claude manifest direct form (R22)"
+  },
+  {
+    "command": "node \"/repo/hooks/mempalace-transcript.ts\" claude-code",
+    "transcript": "direct",
+    "note": "Claude direct form, absolute path"
+  },
+  {
+    "command": "bash ${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.sh",
+    "transcript": "legacy-unmarked",
+    "note": "Gemini manifest legacy form, unquoted token path"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3 bash /home/u/.gemini/hooks/mempalace-transcript.sh",
+    "transcript": "legacy-enabled",
+    "note": "Gemini installed prefix setup wrote (spec scenario: existing installation rewritten)"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash /home/u/.gemini/hooks/mempalace-transcript.sh",
+    "transcript": "legacy-enabled",
+    "note": "Gemini installed prefix without MEMPALACE_PYTHON"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=/usr/bin/python3 MEMPALACE_TRANSCRIPT_ENABLED=1 bash /home/u/.gemini/hooks/mempalace-transcript.sh",
+    "transcript": "legacy-enabled",
+    "note": "owned names in the other order"
+  },
+  {
+    "command": "node \"${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.ts\" gemini-cli",
+    "transcript": "direct",
+    "note": "Gemini manifest direct form (R22)"
+  },
+  {
+    "command": "node /repo/hooks/mempalace-transcript.ts gemini-cli",
+    "transcript": "direct",
+    "note": "Gemini direct form, unquoted"
+  },
+  {
+    "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\"",
+    "transcript": "legacy-unmarked",
+    "note": "Copilot manifest legacy form"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash \"/home/u/.copilot/hooks/mempalace-transcript.sh\"",
+    "transcript": "legacy-enabled",
+    "note": "Copilot installed prefix"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_MCP_PORT=41999 bash \"/home/u/.copilot/hooks/mempalace-transcript.sh\"",
+    "transcript": "foreign-prefix",
+    "note": "spec scenario: an operator's own setting is not dropped"
+  },
+  {
+    "command": "MEMPALACE_MCP_PORT=41999 bash \"/home/u/hooks/mempalace-transcript.sh\"",
+    "transcript": "foreign-prefix",
+    "note": "foreign assignment alone"
+  },
+  {
+    "command": "node \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.ts\" copilot-cli",
+    "transcript": "direct",
+    "note": "Copilot manifest direct form (R22)"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash \"/x/hooks/mempalace-transcript.sh\" Stop",
+    "transcript": "legacy-enabled",
+    "note": "spec scenario row: legacy Antigravity form with the enabling prefix"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3 bash \"/home/u/.gemini/antigravity-cli/hooks/mempalace-transcript.sh\" Stop",
+    "transcript": "legacy-enabled",
+    "note": "Antigravity installed form setup wrote"
+  },
+  {
+    "command": "bash hooks/mempalace-transcript.sh Stop",
+    "transcript": "legacy-unmarked",
+    "note": "Antigravity legacy manifest form, relative path"
+  },
+  {
+    "command": "bash \"/x/hooks/mempalace-transcript.sh\" PreInvocation",
+    "transcript": "legacy-unmarked",
+    "note": "legacy Antigravity event, no prefix"
+  },
+  {
+    "command": "node hooks/mempalace-transcript.ts antigravity-cli Stop",
+    "transcript": "direct",
+    "note": "Antigravity manifest direct form (R22), relative path"
+  },
+  {
+    "command": "node \"/repo/hooks/mempalace-transcript.ts\" antigravity-cli Stop",
+    "transcript": "direct",
+    "note": "Antigravity direct form, absolute path"
+  },
+  {
+    "command": "set NoDefaultCurrentDirectoryInExePath=1&& node C:/Users/ana/crewrig/hooks/mempalace-transcript.ts antigravity-cli Stop",
+    "transcript": "direct",
+    "note": "Antigravity Windows guarded form (R20)"
+  },
+  {
+    "command": "set NoDefaultCurrentDirectoryInExePath=1&& node C:/Users/ana/crewrig/hooks/mempalace-transcript.ts claude-code",
+    "transcript": "direct",
+    "note": "guarded prefix on another CLI id: accepted, the class is text-only"
+  },
+  {
+    "command": "set NoDefaultCurrentDirectoryInExePath=1&& node \"C:/Users/ana/crewrig/hooks/mempalace-transcript.ts\" antigravity-cli Stop",
+    "transcript": "no",
+    "note": "guarded form never quotes its path"
+  },
+  {
+    "command": "set NoDefaultCurrentDirectoryInExePath=1&& node C:/Users/Ana Diaz/crewrig/hooks/mempalace-transcript.ts antigravity-cli Stop",
+    "transcript": "no",
+    "note": "guarded form with a space in the path"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=0 node \"/x/hooks/mempalace-transcript.ts\" claude-code",
+    "transcript": "foreign-prefix",
+    "note": "spec scenario row: a direct form never carries a prefix"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 node \"/x/hooks/mempalace-transcript.ts\" claude-code",
+    "transcript": "foreign-prefix",
+    "note": "direct shape with the owned prefix is still foreign"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=0 bash \"/home/u/.gemini/hooks/mempalace-transcript.sh\"",
+    "transcript": "legacy-unmarked",
+    "note": "spec scenario: a decline never turns recording on (variable 0)"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=/usr/bin/python3 bash \"/home/u/.gemini/hooks/mempalace-transcript.sh\"",
+    "transcript": "legacy-unmarked",
+    "note": "owned name without the enabling one"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/mempalace-transcript.sh",
+    "transcript": "legacy-unmarked",
+    "note": "enabling name twice: not the prefix setup writes"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON= bash /x/mempalace-transcript.sh",
+    "transcript": "legacy-unmarked",
+    "note": "blank MEMPALACE_PYTHON value"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=\"1\" bash /x/mempalace-transcript.sh",
+    "transcript": "legacy-unmarked",
+    "note": "quoted value is not the literal 1"
+  },
+  {
+    "command": "env MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "env with an assignment is outside the signature"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 env bash /x/mempalace-transcript.sh",
+    "transcript": "legacy-enabled",
+    "note": "assignment then env then interpreter"
+  },
+  {
+    "command": "/x/hooks/mempalace-transcript.sh",
+    "transcript": "legacy-unmarked",
+    "note": "bare path, no interpreter"
+  },
+  {
+    "command": "sh '/x/hooks/mempalace-transcript.sh'",
+    "transcript": "legacy-unmarked",
+    "note": "single-quoted path, sh"
+  },
+  {
+    "command": "/usr/bin/bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "legacy-unmarked",
+    "note": "interpreter by absolute path"
+  },
+  {
+    "command": "bash /opt/tools/mempalace-transcript.sh",
+    "transcript": "legacy-unmarked",
+    "note": "script outside a hooks/ directory (anyScriptDir, R28)"
+  },
+  {
+    "command": "node /x/hooks/mempalace-transcript.ts",
+    "transcript": "legacy-unmarked",
+    "note": "node entry with no argument: shape (a)"
+  },
+  {
+    "command": "node /x/hooks/mempalace-transcript.ts Stop",
+    "transcript": "legacy-unmarked",
+    "note": "node entry with a legacy event word"
+  },
+  {
+    "command": "bash /x/hooks/mempalace-transcript.sh   ",
+    "transcript": "legacy-unmarked",
+    "note": "trailing whitespace allowed"
+  },
+  {
+    "command": "bash \"/x/hooks/mempalace-transcript.sh\" --foo bar",
+    "transcript": "no",
+    "note": "delta-01 row: other arguments"
+  },
+  {
+    "command": "bash \"/x/hooks/mempalace-transcript.sh\" Stop extra",
+    "transcript": "no",
+    "note": "delta-01 row: further argument after a legacy event"
+  },
+  {
+    "command": "node \"/x/hooks/mempalace-transcript.ts\" claude-code Stop",
+    "transcript": "no",
+    "note": "delta-01 row: CLI id with the wrong arity"
+  },
+  {
+    "command": "node \"/x/hooks/mempalace-transcript.ts\" antigravity-cli",
+    "transcript": "no",
+    "note": "antigravity-cli with no event"
+  },
+  {
+    "command": "node \"/x/hooks/mempalace-transcript.ts\" \"\"",
+    "transcript": "no",
+    "note": "an empty quoted argument"
+  },
+  {
+    "command": "bash /opt/prep.sh && bash /repo/hooks/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "spec scenario: a chained operator command is never touched"
+  },
+  {
+    "command": "bash /repo/hooks/mempalace-transcript.sh; rm -rf /tmp/x",
+    "transcript": "no",
+    "note": "trailing command"
+  },
+  {
+    "command": "bash $(echo /repo)/hooks/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "command substitution"
+  },
+  {
+    "command": "bash \"/x/hooks/worktree-git-guard.sh\"",
+    "transcript": "no",
+    "note": "spec scenario row: the worktree git guard"
+  },
+  {
+    "command": "node \"/x/hooks/worktree-git-guard.ts\"",
+    "transcript": "no",
+    "note": "the guard, direct form"
+  },
+  {
+    "command": "node \"/x/hooks/usage-capture.ts\" claude-code Stop",
+    "transcript": "no",
+    "note": "usage capture"
+  },
+  {
+    "command": "bash /x/hooks/mempalace-transcript.sh.bak",
+    "transcript": "no",
+    "note": "another file name"
+  },
+  {
+    "command": "bash /x/hooks/my-mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "basename must follow a slash"
+  },
+  {
+    "command": "bash mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "no slash before the basename"
+  },
+  {
+    "command": "bash /x/hooks/mempalace-transcript.py",
+    "transcript": "no",
+    "note": "other extension"
+  }
+]

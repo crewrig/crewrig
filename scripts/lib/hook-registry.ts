@@ -4,11 +4,18 @@
 // commands for a CLI; the wiring tool selects one with `--hook <id>` and
 // changes no mechanism. usage-capture owns a manifest of its own; the worktree
 // git guard shares `<cli>-transcript-hooks.json` with `mempalace-transcript`
-// (row C3), so a guard operation touches only the guard's entries there.
+// (row C3, spec 0247), so an operation on one touches only its own entries
+// there; the transcript's operations are the `transcript` subcommands
+// (scripts/lib/hook-transcript-cli.ts).
 //
 // Standard library only (spec 0240 R16).
 
-import { USAGE_CAPTURE, WORKTREE_GIT_GUARD, type HookDescriptor } from "./hook-descriptor.ts";
+import {
+  MEMPALACE_TRANSCRIPT,
+  USAGE_CAPTURE,
+  WORKTREE_GIT_GUARD,
+  type HookDescriptor,
+} from "./hook-descriptor.ts";
 
 export interface RegisteredHook {
   readonly descriptor: HookDescriptor;
@@ -30,6 +37,11 @@ const REGISTRY: readonly RegisteredHook[] = [
     descriptor: WORKTREE_GIT_GUARD,
     manifestFile: (cli) => `${cli}-transcript-hooks.json`,
     label: "Worktree git guard",
+  },
+  {
+    descriptor: MEMPALACE_TRANSCRIPT,
+    manifestFile: (cli) => `${cli}-transcript-hooks.json`,
+    label: "Session recording",
   },
 ];
 

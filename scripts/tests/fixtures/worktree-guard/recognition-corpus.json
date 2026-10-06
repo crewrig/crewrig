@@ -147,7 +147,8 @@
   {
     "command": "node /srv/co/crewrig/hooks/mempalace-transcript.ts",
     "guard": false,
-    "note": "the transcript hook is never the guard"
+    "note": "the transcript hook is never the guard",
+    "transcript": true
   },
   {
     "command": "bash \"/srv/co/crewrig/hooks/mempalace-transcript.sh\"",
@@ -159,12 +160,13 @@
     "command": "FOO=1 bash /srv/co/crewrig/hooks/mempalace-transcript.sh",
     "guard": false,
     "note": "the transcript hook with an env prefix",
-    "transcript": true
+    "transcript": false
   },
   {
     "command": "node \"/srv/co/crewrig/hooks/mempalace-transcript.ts\"",
     "guard": false,
-    "note": "the transcript predicate stays bash|sh and .sh only until row C3 flips it"
+    "note": "the transcript predicate stays bash|sh and .sh only until row C3 flips it",
+    "transcript": true
   },
   {
     "command": "set NoDefaultCurrentDirectoryInExePath=1&& node C:/work/x/crewrig/hooks/worktree-git-guard.ts",

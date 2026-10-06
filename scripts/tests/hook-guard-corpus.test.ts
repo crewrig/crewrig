@@ -87,7 +87,7 @@ describe("the Bash predicate agrees with it", { skip: SKIP_POSIX }, () => {
     });
   });
 
-  test("sr_is_transcript accepts exactly the mempalace-transcript rows (bash|sh and .sh only until row C3)", () => {
+  test("sr_is_transcript accepts exactly the mempalace-transcript rows the framework owns (row C3, spec 0247 R24)", () => {
     const got = run("sr_is_transcript");
     CORPUS.forEach((row, i) => {
       assert.equal(

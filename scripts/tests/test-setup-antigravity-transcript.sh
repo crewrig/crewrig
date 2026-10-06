@@ -217,15 +217,16 @@ else
 fi
 
 HOOK_TARGET_A="$HOOKS_DIR_A/mempalace-transcript.sh"
-if [ -f "$HOOK_TARGET_A" ]; then
-  ok "R13: hook script installed under the assistant's own directory"
+# Spec 0247 R21 retires the installed copy: the hook runs from the checkout.
+if [ ! -e "$HOOK_TARGET_A" ]; then
+  ok "R13: no hook script copy is installed under the assistant's own directory (spec 0247 R21)"
 else
-  bad "R13: hook script not installed"
+  bad "R13: a hook script copy was installed at $HOOK_TARGET_A"
 fi
-if [ -x "$HOOK_TARGET_A" ]; then
-  ok "R13: installed hook script is executable"
+if [ ! -e "$HOOK_TARGET_A" ]; then
+  ok "R13: no installed hook script to make executable (spec 0247 R21)"
 else
-  bad "R13: installed hook script is not executable"
+  bad "R13: an installed hook script exists at $HOOK_TARGET_A"
 fi
 if [ -f "$TARGET_A" ] && jq -e . "$TARGET_A" >/dev/null 2>&1; then
   ok "R14: manifest deployed to the customization root as valid JSON"
@@ -233,22 +234,21 @@ else
   bad "R14: manifest not deployed, or not valid JSON"
 fi
 
-# Every TRANSCRIPT command must name the installed hook by ABSOLUTE path — that
-# is the whole point of installing it out of the repository. Scoped to the
-# transcript hook: the guard command deliberately names the repository path
-# instead (R28).
-if jq -e --arg hp "$HOOK_TARGET_A" \
-     '."crewrig-mempalace-transcript" | [.. | .command? // empty] | length > 0 and all(contains($hp))' \
+# Every TRANSCRIPT command must name the in-repo hook by ABSOLUTE path, in the
+# direct form (spec 0247 R20, R21): no installed copy, no environment prefix.
+REPO_TS_A="$(cd "$REPO_DIR/hooks" && pwd -P)/mempalace-transcript.ts"
+if jq -e --arg hp "node \"$REPO_TS_A\" antigravity-cli " \
+     '."crewrig-mempalace-transcript" | [.. | .command? // empty] | length > 0 and all(startswith($hp))' \
      "$TARGET_A" >/dev/null 2>&1; then
-  ok "R14: every transcript command names the installed hook by absolute path"
+  ok "R14: every transcript command names the in-repo hook by absolute path (spec 0247 R21)"
 else
-  bad "R14: a transcript command does not name the installed hook by absolute path"
+  bad "R14: a transcript command does not name the in-repo hook by absolute path"
 fi
-if jq -e '."crewrig-mempalace-transcript" | [.. | .command? // empty] | all(startswith("MEMPALACE_TRANSCRIPT_ENABLED=1"))' \
+if jq -e '."crewrig-mempalace-transcript" | [.. | .command? // empty] | all(contains("MEMPALACE_TRANSCRIPT_ENABLED") | not)' \
      "$TARGET_A" >/dev/null 2>&1; then
-  ok "R14: every transcript command carries the enabling env prefix"
+  ok "R14: no transcript command carries an env prefix (spec 0247 R20)"
 else
-  bad "R14: a transcript command is missing the enabling env prefix"
+  bad "R14: a transcript command carries an env prefix"
 fi
 if grep -q '\$PWD' "$TARGET_A"; then
   bad "R4: deployed manifest reintroduced \$PWD"
@@ -492,10 +492,11 @@ if jq -e '."grouped-and-disabled".PreToolUse[0].matcher == "run_command"' "$TARG
 else
   bad "a grouped event lost its matcher"
 fi
-if jq -e --arg hp "$HOME_D/hooks/mempalace-transcript.sh" \
-     '."grouped-and-disabled".PreToolUse[0].hooks[0].command | contains($hp) and endswith(" PreToolUse")' \
+# Spec 0247 R23(c): only `crewrig-mempalace-transcript` (and the guard's named
+# hook) is the framework's; a named hook of any other name is written verbatim.
+if jq -e '."grouped-and-disabled".PreToolUse[0].hooks[0].command == "ORIG"' \
      "$TARGET_D" >/dev/null 2>&1; then
-  ok "a grouped event's INNER handler command is rewritten"
+  ok "a grouped event's INNER handler command of another named hook is left verbatim (spec 0247 R23(c))"
 else
   bad "a grouped event's inner handler command was not rewritten"
 fi
@@ -504,10 +505,9 @@ if jq -e '."grouped-and-disabled".PreToolUse[0] | has("command") | not' "$TARGET
 else
   bad "a 'command' key was injected at the group level, where the CLI never reads it"
 fi
-if jq -e --arg hp "$HOME_D/hooks/mempalace-transcript.sh" \
-     '."grouped-and-disabled".Stop[0].command | contains($hp) and endswith(" Stop")' \
+if jq -e '."grouped-and-disabled".Stop[0].command == "ORIG"' \
      "$TARGET_D" >/dev/null 2>&1; then
-  ok "a flat event's handler command is still rewritten"
+  ok "a flat event's handler command of another named hook is left verbatim (spec 0247 R23(c))"
 else
   bad "a flat event's handler command was not rewritten"
 fi
@@ -661,7 +661,7 @@ case "$A_SRC" in
   *) bad "R24: arg 1 is '$A_SRC', expected the manifest source" ;;
 esac
 case "$A_HOOK" in
-  */hooks/mempalace-transcript.sh) ok "R24: arg 2 is the hook script source" ;;
+  "") ok "R24: arg 2 is empty — no hook script copy is installed (spec 0247 R21)" ;;
   *) bad "R24: arg 2 is '$A_HOOK', expected the hook script source" ;;
 esac
 case "$A_DIR" in
@@ -673,7 +673,7 @@ case "$A_JSON" in
   *) bad "R24: arg 4 is '$A_JSON', expected \${HOME}/.gemini/config/hooks.json" ;;
 esac
 case "$A_ENV" in
-  MEMPALACE_TRANSCRIPT_ENABLED=1*) ok "R24: arg 5 enables persistence" ;;
+  "") ok "R24: arg 5 is empty — the direct form carries no env prefix (spec 0247 R4, R20)" ;;
   *) bad "R24: arg 5 is '$A_ENV' — the deployed hook would opt itself out and record nothing" ;;
 esac
 case "$A_GUARD" in

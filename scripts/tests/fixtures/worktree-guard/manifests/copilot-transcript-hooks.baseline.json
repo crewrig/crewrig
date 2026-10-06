@@ -11,31 +11,31 @@
     "sessionStart": [
       {
         "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+        "command": "node \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.ts\" copilot-cli"
       }
     ],
     "userPromptSubmitted": [
       {
         "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+        "command": "node \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.ts\" copilot-cli"
       }
     ],
     "postToolUse": [
       {
         "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+        "command": "node \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.ts\" copilot-cli"
       }
     ],
     "agentStop": [
       {
         "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+        "command": "node \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.ts\" copilot-cli"
       }
     ],
     "sessionEnd": [
       {
         "type": "command",
-        "command": "bash \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.sh\""
+        "command": "node \"${COPILOT_PROJECT_DIR:-$PWD}/hooks/mempalace-transcript.ts\" copilot-cli"
       }
     ]
   }

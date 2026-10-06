@@ -17,7 +17,7 @@
           {
             "type": "command",
             "name": "transcript-user-prompt",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.sh"
+            "command": "node \"${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.ts\" gemini-cli"
           }
         ]
       }
@@ -28,7 +28,7 @@
           {
             "type": "command",
             "name": "transcript-tool-use",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.sh"
+            "command": "node \"${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.ts\" gemini-cli"
           }
         ]
       }
@@ -39,7 +39,7 @@
           {
             "type": "command",
             "name": "transcript-agent-response",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.sh"
+            "command": "node \"${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.ts\" gemini-cli"
           }
         ]
       }
@@ -50,7 +50,7 @@
           {
             "type": "command",
             "name": "transcript-session-end",
-            "command": "bash ${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.sh"
+            "command": "node \"${GEMINI_PROJECT_DIR}/hooks/mempalace-transcript.ts\" gemini-cli"
           }
         ]
       }

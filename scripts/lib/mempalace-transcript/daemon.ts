@@ -56,13 +56,21 @@ export function requestBody(room: string, content: string): string {
 /** Classify a received answer (status code and body). */
 export function classifyAnswer(where: string, statusCode: number, body: string): DaemonOutcome {
   if (statusCode < 200 || statusCode > 299) {
-    return { ok: false, status: 4, diagnostic: `DAEMON_UNREACHABLE: ${where} — HTTP ${statusCode}` };
+    return {
+      ok: false,
+      status: 4,
+      diagnostic: `DAEMON_UNREACHABLE: ${where} — HTTP ${statusCode}`,
+    };
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(body);
   } catch {
-    return { ok: false, status: 4, diagnostic: `DAEMON_UNREACHABLE: ${where} — response is not JSON` };
+    return {
+      ok: false,
+      status: 4,
+      diagnostic: `DAEMON_UNREACHABLE: ${where} — response is not JSON`,
+    };
   }
   const message = renderSelected(valueAt(parsed, ["error", "message"]));
   if (message !== undefined) return { ok: false, status: 3, diagnostic: `ADD_FAILED: ${message}` };
@@ -125,7 +133,9 @@ export function addDrawer(request: DrawerRequest): Promise<DaemonOutcome> {
             chunks.push(chunk);
           });
           res.on("end", () => {
-            finish(classifyAnswer(where, res.statusCode ?? 0, Buffer.concat(chunks).toString("utf8")));
+            finish(
+              classifyAnswer(where, res.statusCode ?? 0, Buffer.concat(chunks).toString("utf8")),
+            );
           });
           res.on("error", (error: Error) => finish(unreachable(error.message)));
         },

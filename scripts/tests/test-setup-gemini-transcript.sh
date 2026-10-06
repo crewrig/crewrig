@@ -4,17 +4,19 @@
 #
 # Unit under test:
 #   - hooks/gemini-transcript-hooks.json (the shipped manifest)
-#   - the jq transform that scripts/setup-gemini-interactive.sh applies to the
+#   - the render step that scripts/setup-gemini-interactive.sh applies to the
 #     manifest at setup time.
 #
 # Contract asserted:
 #   R1 — the shipped manifest is valid JSON containing BeforeTool (guard) and
 #        lifecycle event hooks (transcripts).
-#   R2 — the setup transform rewrites mempalace-transcript.sh to the installed
-#        target path (prefixed by env vars); the guard command is the direct
-#        `node` form on the in-repo absolute path (without env prefix), rendered
-#        by `hook-wiring.ts guard render` (spec 0248 R28, R29, v1-F2: the
-#        setup's jq passes it through untouched).
+#   R2 — the transcript commands are the direct `node` form on the in-repo
+#        absolute path of hooks/mempalace-transcript.ts with the `gemini-cli`
+#        argument and no environment prefix, rendered by `hook-wiring.ts
+#        transcript render` (spec 0247 R20-R22: no installed copy, no
+#        `NAME=value` prefix); the guard command is the direct `node` form on the
+#        in-repo absolute path, rendered by `hook-wiring.ts guard render`
+#        (spec 0248 R28, R29).
 #   R3 — zero ${GEMINI_PROJECT_DIR} placeholder tokens survive in the patched output.
 #   spec 0211 R2 — the session-recording manifest registers no usage-capture.sh
 #        command: usage capture has its own opt-in, covered (with the
@@ -74,15 +76,14 @@ fi
 # §2. Replay the setup patch transform (R2, R3).
 # ---------------------------------------------------------------------------
 echo "§2 setup patch transform (R2, R3)"
-ENVP="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3"
-HOOK_TARGET="$TMP_ROOT/gemini/hooks/mempalace-transcript.sh"
+HOOK_TARGET="$(cd "$REPO_DIR/hooks" && pwd -P)/mempalace-transcript.ts"
 GUARD_TARGET="$(cd "$REPO_DIR/hooks" && pwd -P)/worktree-git-guard.ts"
 RENDERED="$TMP_ROOT/rendered.json"
 PATCHED="$TMP_ROOT/patched.json"
 
-# The guard's command line is final once rendered (spec 0248 R28, R29): the
-# replay calls the render step setup calls, then the setup's own jq program,
-# whose guard arm is a pass-through (v1-F2).
+# Both command lines are final once rendered (spec 0248 R28, R29; spec 0247
+# R20-R22): setup no longer rewrites them, so the replay calls the render step
+# setup calls and reads its output as the patched manifest.
 # shellcheck disable=SC2034  # read by install_file() in the lib sourced below
 INSTALL_MODE="copy"
 # shellcheck source=scripts/lib/common.sh
@@ -91,13 +92,7 @@ source "$REPO_DIR/scripts/lib/common.sh"
 source "$REPO_DIR/scripts/lib/usage-capture-optin.sh"
 render_session_recording_manifest gemini "$REPO_DIR" "$MANIFEST" "$RENDERED" >/dev/null 2>&1
 
-jq --arg envp "$ENVP" --arg hook_path "$HOOK_TARGET" '
-  (.. | objects | select(.type? == "command")) |=
-    (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard")))
-     then .
-     else .command = ($envp + " " + (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/mempalace-transcript.sh"; $hook_path)))
-     end)' \
-  "$RENDERED" > "$PATCHED" 2>/dev/null
+cp "$RENDERED" "$PATCHED"
 
 if jq -e . "$PATCHED" >/dev/null 2>&1; then
   ok "patched output is valid JSON"
@@ -113,11 +108,12 @@ else
   bad "BeforeTool guard not correctly rewritten (got: $guard_patched)"
 fi
 
-# Lifecycle events must point to installed transcript hook with env prefix
+# Lifecycle events must point to the in-repo transcript hook, no env prefix
+# (spec 0247 R20-R22)
 for ev in BeforeAgent AfterTool AfterModel SessionEnd; do
   ev_cmd="$(jq -r --arg ev "$ev" '.hooks[$ev][0].hooks[0].command // ""' "$PATCHED" 2>/dev/null)"
-  if [[ "$ev_cmd" == *"$HOOK_TARGET"* ]] && [[ "$ev_cmd" == *"MEMPALACE_TRANSCRIPT_ENABLED=1"* ]]; then
-    ok "event '$ev' rewritten to installed transcript hook with env prefix"
+  if [[ "$ev_cmd" == "node \"$HOOK_TARGET\" gemini-cli" ]] && [[ "$ev_cmd" != *"MEMPALACE_TRANSCRIPT_ENABLED"* ]]; then
+    ok "event '$ev' rewritten to the in-repo transcript hook, no env prefix"
   else
     bad "event '$ev' not correctly rewritten (got: $ev_cmd)"
   fi

@@ -1,7 +1,7 @@
 {
   "crewrig-mempalace-transcript": {
     "Stop": [
-      { "type": "command", "command": "bash hooks/mempalace-transcript.sh Stop", "timeout": 10 }
+      { "type": "command", "command": "node hooks/mempalace-transcript.ts antigravity-cli Stop", "timeout": 10 }
     ]
   },
   "crewrig-worktree-git-guard": {

@@ -28,6 +28,7 @@ import { hookCommandLine } from "./hook-command.ts";
 import type { JsonObject } from "./hook-config.ts";
 import { parseHandler, type HookCommandParse } from "./hook-recognition.ts";
 import { resolveReal } from "./paths.ts";
+import { rewriteTranscriptEvent, type TranscriptRewrite } from "./transcript-hook-rewrite.ts";
 
 export interface ReportLine {
   readonly kind: "rewrote" | "left" | "dropped";
@@ -45,6 +46,13 @@ export interface RewriteOptions {
   readonly dedupEvents?: readonly string[];
   /** File existence test; default `fs.statSync(p).isFile()`. */
   readonly pathExists?: (p: string) => boolean;
+  /**
+   * Spec 0247 R23, R25 (delta-01): the in-place rewrite of the MemPalace
+   * transcript commands, run before the session-recording question. When
+   * present the class rule of transcript-hook-rewrite.ts replaces C1's rules;
+   * when absent, every step below runs exactly as before.
+   */
+  readonly transcript?: TranscriptRewrite;
 }
 
 export interface RewriteResult {
@@ -121,6 +129,13 @@ export function rewriteConfig(input: JsonObject, options: RewriteOptions): Rewri
   if (isRecord(hooks)) {
     for (const [event, entries] of Object.entries(hooks)) {
       if (!Array.isArray(entries)) continue;
+      if (options.transcript !== undefined) {
+        const counts = rewriteTranscriptEvent(event, entries, grouped, options, platform, lines);
+        rewrote += counts.rewrote;
+        left += counts.left;
+        dropped += counts.dropped;
+        continue;
+      }
       let refs = collect(entries, grouped, options, exists);
       if (
         refs.length > 1 &&

@@ -64,7 +64,10 @@ export function classify(input: ClassifyInput): Entry | undefined {
   if (antigravityEvent === "PreInvocation") {
     const n = readField(payload, ["invocationNum"]) ?? "?";
     const model = readField(payload, ["modelName"]) ?? "unknown";
-    entry = { type: "session-lifecycle", content: `[SESSION] PreInvocation: invocation ${n} (${model})` };
+    entry = {
+      type: "session-lifecycle",
+      content: `[SESSION] PreInvocation: invocation ${n} (${model})`,
+    };
   } else if (antigravityEvent === "Stop") {
     const reason = readField(payload, ["terminationReason"]) ?? "unknown";
     entry = { type: "agent-response", content: `[AGENT] Session turn completed (${reason})` };

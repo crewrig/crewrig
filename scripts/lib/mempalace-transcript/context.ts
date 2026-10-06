@@ -93,7 +93,14 @@ export function deriveContext(input: ContextInput): RecordContext {
         env["GEMINI_PROJECT_DIR"],
         env["CLAUDE_PROJECT_DIR"],
         env["COPILOT_PROJECT_DIR"],
-        readField(payload, ["workspace_dir"], ["workspace"], ["project_dir"], ["projectDir"], ["cwd"]),
+        readField(
+          payload,
+          ["workspace_dir"],
+          ["workspace"],
+          ["project_dir"],
+          ["projectDir"],
+          ["cwd"],
+        ),
       );
   const projectDir = named ?? gitTopLevel(input) ?? input.cwd;
   const projectName = projectNameOf(projectDir, input.platform);

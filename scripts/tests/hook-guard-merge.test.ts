@@ -114,7 +114,7 @@ describe(
       });
     }
 
-    test("antigravity: a Node.js 20 deployment leaves the installed guard and merges the transcript hook", () => {
+    test("antigravity: a Node.js 20 deployment leaves the installed guard and deploys no transcript hook (row C3, spec 0247 R27)", () => {
       const co = makeCheckout();
       const hooksDir = path.join(path.dirname(co.repo), "agy-hooks");
       const target = path.join(path.dirname(co.repo), "hooks.json");
@@ -135,7 +135,7 @@ describe(
         guardEntry["crewrig-worktree-git-guard"],
         "the installed guard is untouched",
       );
-      assert.ok("crewrig-mempalace-transcript" in after, "the transcript hook is deployed");
+      assert.ok(!("crewrig-mempalace-transcript" in after), "no transcript hook is deployed below the floor");
     });
   },
 );

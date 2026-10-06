@@ -4,16 +4,18 @@
 #
 # Unit under test:
 #   - hooks/claude-transcript-hooks.json (the shipped manifest)
-#   - the jq transform that scripts/setup-claude-interactive.sh applies to the
+#   - the render step that scripts/setup-claude-interactive.sh applies to the
 #     manifest at setup time.
 #
 # Contract asserted:
 #   R1 — the shipped manifest is valid JSON containing PreToolUse (guard) and
 #        lifecycle event hooks (transcripts).
-#   R2 — the setup transform rewrites mempalace-transcript.sh to the installed
-#        target path; the guard command is the direct `node` form on the in-repo
-#        absolute path, rendered by `hook-wiring.ts guard render` (spec 0248 R28,
-#        R29), reached through render_session_recording_manifest.
+#   R2 — the transcript commands are the direct `node` form on the in-repo
+#        absolute path of hooks/mempalace-transcript.ts with the `claude-code`
+#        argument, rendered by `hook-wiring.ts transcript render` (spec 0247 R20,
+#        R21: no installed copy); the guard command is the direct `node` form on
+#        the in-repo absolute path, rendered by `hook-wiring.ts guard render`
+#        (spec 0248 R28, R29); both reached through render_session_recording_manifest.
 #   R3 — zero $CLAUDE_PROJECT_DIR placeholder tokens survive in the patched output.
 #   spec 0211 R2 — the session-recording manifest registers no usage-capture.sh
 #        command: usage capture has its own opt-in, covered (with the
@@ -73,14 +75,14 @@ fi
 # §2. Replay the setup patch transform (R2, R3).
 # ---------------------------------------------------------------------------
 echo "§2 setup patch transform (R2, R3)"
-HOOK_TARGET="$TMP_ROOT/claude/hooks/mempalace-transcript.sh"
+HOOK_TARGET="$(cd "$REPO_DIR/hooks" && pwd -P)/mempalace-transcript.ts"
 GUARD_TARGET="$(cd "$REPO_DIR/hooks" && pwd -P)/worktree-git-guard.ts"
 RENDERED="$TMP_ROOT/rendered.json"
 PATCHED="$TMP_ROOT/patched.json"
 
-# The guard's command line is final once rendered (spec 0248 R28, R29): setup
-# no longer substitutes it, so the replay calls the same render step setup does
-# and substitutes only the transcript hook's source-file token.
+# Both command lines are final once rendered (spec 0248 R28, R29; spec 0247
+# R20, R21): setup substitutes nothing any more, so the replay calls the same
+# render step setup does and reads its output as the patched manifest.
 # shellcheck disable=SC2034  # read by install_file() in the lib sourced below
 INSTALL_MODE="copy"
 # shellcheck source=scripts/lib/common.sh
@@ -89,10 +91,7 @@ source "$REPO_DIR/scripts/lib/common.sh"
 source "$REPO_DIR/scripts/lib/usage-capture-optin.sh"
 render_session_recording_manifest claude "$REPO_DIR" "$MANIFEST" "$RENDERED" >/dev/null 2>&1
 
-jq --arg hook_path "$HOOK_TARGET" \
-  '(.. | objects | select(.type? == "command") | .command) |=
-     gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path)' \
-  "$RENDERED" > "$PATCHED" 2>/dev/null
+cp "$RENDERED" "$PATCHED"
 
 if jq -e . "$PATCHED" >/dev/null 2>&1; then
   ok "patched output is valid JSON"
@@ -108,11 +107,11 @@ else
   bad "PreToolUse not rewritten to in-repo guard target (got: $guard_patched)"
 fi
 
-# Lifecycle events must point to installed transcript hook
+# Lifecycle events must point to the in-repo transcript hook (spec 0247 R21)
 for ev in UserPromptSubmit PostToolUse Stop SessionEnd; do
   ev_cmd="$(jq -r --arg ev "$ev" '.hooks[$ev][0].hooks[0].command // ""' "$PATCHED" 2>/dev/null)"
-  if [[ "$ev_cmd" == *"\"$HOOK_TARGET\""* ]]; then
-    ok "event '$ev' rewritten to installed transcript hook"
+  if [[ "$ev_cmd" == "node \"$HOOK_TARGET\" claude-code" ]]; then
+    ok "event '$ev' rewritten to the in-repo transcript hook"
   else
     bad "event '$ev' not correctly rewritten (got: $ev_cmd)"
   fi

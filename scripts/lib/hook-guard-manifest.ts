@@ -125,6 +125,16 @@ export function renderGuardManifest(
   return { manifest: copy, rendered: guards.length, refusal: null };
 }
 
+/**
+ * `manifest` without `handlers` (live references into it), and without every
+ * group, event and name their removal alone emptied: the drop of a refused
+ * render, reused by the transcript render (spec 0247, hook-transcript-manifest.ts).
+ */
+export function dropHandlers(manifest: JsonObject, handlers: ReadonlySet<Handler>): JsonObject {
+  const pruned = prune(manifest, handlers);
+  return pruned === GONE ? {} : (pruned as JsonObject);
+}
+
 /** The same drop, for a script that does not exist (never a command line). */
 export function dropGuard(manifest: JsonObject, cli: Cli): JsonObject {
   const copy = structuredClone(manifest);

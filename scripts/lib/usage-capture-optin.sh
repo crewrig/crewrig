@@ -185,37 +185,83 @@ def uc_add($x):
 
 def uc_reinject($fp): uc_strip | reduce $fp[] as $x (.; uc_add($x));
 
-# A session-recording handler this framework wrote: the WHOLE command is an
-# optional `VAR=value…`/`env`/`bash|sh` prefix (the same `pre` shape
-# uc_sig_re anchors, so an env-var prefix on Gemini or a bare `bash` wrapper
-# on Claude is free to vary) around a path — double-quoted, single-quoted or
-# bare — ending in `/mempalace-transcript.sh` or `/worktree-git-guard.sh`,
-# and nothing else (plan/1234#1 v1-F1: an EARLIER, unanchored version of this
-# predicate matched anywhere in the command, so an operator hook that merely
-# chained its own script with `&& bash .../mempalace-transcript.sh` was
-# misclassified as framework-owned and silently dropped — a narrower
-# recurrence of #1234 itself). These commands carry no distinguishing argv of
-# their own — unlike the `<cli-id> <Event>` a capture command always carries
-# (R10), they take none, because the script reads the firing event from its
-# own hook payload — so anchoring the path suffix as the ENTIRE remainder of
-# the command is what makes this "content, never position" rather than
-# "substring, anywhere", the same discipline uc_sig_re already applies to its
-# own `<cli-id> <Event>` suffix. An installed `mempalace-transcript` copy sits
-# under a `hooks/` directory on both CLIs, but nothing here assumes that
-# literal segment name, only that a `/` precedes the basename; the guard
-# alternative does require `/hooks/` (see sr_is_guard).
+# A session-recording handler this framework wrote is recognised by CONTENT,
+# never by position: the WHOLE command must match (plan/1234#1 v1-F1 — an
+# unanchored predicate once took an operator hook that chained its own script
+# with `&& bash .../mempalace-transcript.sh` as owned by the framework and
+# dropped it).
 def sr_env_prefix:
   "\\A\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?";
 
-# The `mempalace-transcript` alternative: `bash|sh` and the `.sh` script only.
+# The MemPalace transcript command and its class (spec 0247 R24, delta-01): the
+# Bash twin of scripts/lib/transcript-recognition.ts. Both SHALL return the
+# same class for every row of
+# scripts/tests/fixtures/mempalace-transcript/recognition-corpus.json.
+#   - an optional `NAME=value` prefix, an optional `env`, an optional
+#     `bash|sh|node`, a path ending in `/mempalace-transcript.sh` or `.ts`
+#     (quoted or not, any directory), and one of the four argument forms setup
+#     has ever written: (i) none, (ii) one event word, (iii) a CLI identifier,
+#     (iv) `antigravity-cli <event>`; or the guarded Windows prefix of spec 0243
+#     delta-03 R34 in place of that prefix;
+#   - class `foreign-prefix` (an assignment to a name other than
+#     MEMPALACE_TRANSCRIPT_ENABLED and MEMPALACE_PYTHON, or a direct shape with
+#     any assignment), `direct` (iii)/(iv) bare or guarded, `legacy-enabled`
+#     ((i)/(ii) with exactly `MEMPALACE_TRANSCRIPT_ENABLED=1` and at most one
+#     non-blank `MEMPALACE_PYTHON=`), `legacy-unmarked` (every other (i)/(ii)),
+#     else `no`. Other arguments, a chained command or a `$( )` are `no`.
+def sr_tr_args:
+  "(?:\\s*|(?:\\s+[A-Za-z]+|\\s+(?:claude-code|gemini-cli|copilot-cli)|\\s+antigravity-cli\\s+[A-Za-z]+)\\s*)";
+
+def sr_tr_re:
+  "\\A(?<pre>\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh|node)\\s+)?)"
+  + "(?:\"[^\"]*/mempalace-transcript\\.(?:sh|ts)\""
+  + "|\\x27[^\\x27]*/mempalace-transcript\\.(?:sh|ts)\\x27"
+  + "|[^\\s\"\\x27]*/mempalace-transcript\\.(?:sh|ts))"
+  + "(?<post>" + sr_tr_args + ")\\z";
+
+def sr_tr_guarded_re:
+  "\\Aset NoDefaultCurrentDirectoryInExePath=1&& node (?:[A-Za-z]:)?/(?:[^\\s\"\\x27\\\\&|<>^%()$`]*/)?mempalace-transcript\\.ts"
+  + "(?<post>" + sr_tr_args + ")\\z";
+
+# The leading `NAME=value` words of a prefix, before any `env` or interpreter.
+def sr_tr_assigns:
+  if test("\\A\\s*[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+") then
+    capture("\\A\\s*(?<n>[A-Za-z_][A-Za-z0-9_]*)=(?<v>\\S*)\\s+(?<rest>.*)\\z"; "s") as $c
+    | [{n: $c.n, v: $c.v}] + ($c.rest | sr_tr_assigns)
+  else [] end;
+
+def sr_tr_direct_shape:
+  [splits("\\s+") | select(. != "")] as $w
+  | (($w | length) == 1 and (["claude-code", "gemini-cli", "copilot-cli"] | index($w[0])) != null)
+    or (($w | length) == 2 and $w[0] == "antigravity-cli");
+
+# The class of a command string.
+def sr_transcript_class_of:
+  if test(sr_tr_guarded_re) then
+    (capture(sr_tr_guarded_re).post | if sr_tr_direct_shape then "direct" else "legacy-unmarked" end)
+  elif test(sr_tr_re) then
+    capture(sr_tr_re) as $p
+    | ($p.pre | sr_tr_assigns) as $a
+    | if any($a[]; .n != "MEMPALACE_TRANSCRIPT_ENABLED" and .n != "MEMPALACE_PYTHON") then "foreign-prefix"
+      elif ($p.post | sr_tr_direct_shape) then (if ($a | length) == 0 then "direct" else "foreign-prefix" end)
+      elif ([$a[] | select(.n == "MEMPALACE_TRANSCRIPT_ENABLED")] as $e
+            | [$a[] | select(.n == "MEMPALACE_PYTHON")] as $py
+            | ($e | length) == 1 and $e[0].v == "1" and ($py | length) <= 1 and all($py[]; .v != ""))
+      then "legacy-enabled"
+      else "legacy-unmarked" end
+  else "no" end;
+
+# The class of a handler object; `no` for anything that is not a command.
+def sr_transcript_class: if uc_is_command then .command | sr_transcript_class_of else "no" end;
+
+# A transcript command this framework owns (spec 0247 R24): `direct`,
+# `legacy-enabled` or `legacy-unmarked`. A `foreign-prefix` one belongs to
+# the operator and is never stripped.
 def sr_is_transcript:
-  uc_is_command
-  and (.command | test(
-    sr_env_prefix + "(?:(?:\\S*/)?(?:bash|sh)\\s+)?"
-    + "(?:\"[^\"]*/mempalace-transcript\\.sh\""
-    + "|\\x27[^\\x27]*/mempalace-transcript\\.sh\\x27"
-    + "|[^\\s\"\\x27]*/mempalace-transcript\\.sh)"
-    + "\\s*\\z"));
+  sr_transcript_class | . == "direct" or . == "legacy-enabled" or . == "legacy-unmarked";
+
+# Any transcript command, a `foreign-prefix` one of the operator included.
+def sr_is_transcript_any: sr_transcript_class != "no";
 
 # The worktree git guard (spec 0248 R31, v1-F5): `bash|sh|node`, the `.sh`
 # Bash twin or the `.ts` entry, and the `/hooks/` directory the TypeScript
@@ -244,18 +290,32 @@ def sr_strip_sparing_guard: uc_strip_by(sr_is_transcript);
 
 def sr_has_guard: [uc_all_handlers | select(.handler | sr_is_guard)] | length > 0;
 
+def sr_has_transcript: [uc_all_handlers | select(.handler | sr_is_transcript)] | length > 0;
+
+def sr_event_has_transcript($e):
+  [uc_all_handlers | select(.event == $e and (.handler | sr_is_transcript_any))] | length > 0;
+
 # Refresh, in place, the session-recording handlers this run owns: strip
-# every handler sr_is_own picks out, then add manifest $m handlers back
-# fresh (uc_add joins the existing group at the same selector — matcher on
-# Claude, the sole `{hooks:[...]}` group on Gemini — or opens a new one).
-# Anything uc_strip_by(sr_is_own) does not select is left exactly where it
-# was: a hook an operator registered on the same event, and a registered
-# usage-capture command, survive without help from uc_reinject (#1234 — the
-# merge no longer replaces the whole per-event array, only the entries this
-# framework owns in it).
+# every handler of a kind the manifest $m carries (sr_is_guard,
+# sr_is_transcript), then add manifest $m handlers back fresh (uc_add joins the
+# existing group at the same selector — matcher on Claude, the sole
+# `{hooks:[...]}` group on Gemini — or opens a new one). A kind the manifest
+# does not carry (its render refused, or Node.js is below the floor) is spared,
+# so the installed commands of that kind stay byte-identical (spec 0248 v1-F4,
+# spec 0247 R27). A manifest transcript handler is added only on an event that
+# holds no transcript command after the strip — the one left is then an
+# `foreign-prefix` command of the operator, which stays alone (spec 0247
+# R23(a)).
+# Anything the strip does not select is left exactly where it was: a hook an
+# operator registered on the same event, and a registered usage-capture
+# command, survive without help from uc_reinject (#1234).
 def sr_merge($m):
-  (if ($m | sr_has_guard) then sr_strip else sr_strip_sparing_guard end)
-  | reduce ($m | uc_all_handlers) as $x (.; uc_add($x));
+  ($m | sr_has_guard) as $g
+  | ($m | sr_has_transcript) as $t
+  | uc_strip_by(($g and sr_is_guard) or ($t and sr_is_transcript))
+  | reduce ($m | uc_all_handlers) as $x (.;
+      if ($x.handler | sr_is_transcript_any) and sr_event_has_transcript($x.event) then .
+      else uc_add($x) end);
 
 # keep (a): re-point, in place, a capture handler whose path vanished. Only the
 # path token changes (it comes back double-quoted); prefix and argv are kept, and
@@ -876,33 +936,53 @@ usage_capture_apply() {
 # render_session_recording_manifest <cli> <repo_dir> <manifest_src> <out_file> —
 # the manifest the session-recording merge reads, with the worktree git guard's
 # command rendered by `hook-wiring.ts guard render` (guard_render_manifest, in
-# common.sh; spec 0248 R28, R29). A refusal leaves the guard handler absent from
-# <out_file> and merge_session_recording_hooks then spares the installed one
-# (v1-F4). Below the Node.js floor (or when the tool fails) the diagnostic is
-# printed, nothing is rewritten, and the manifest is written WITHOUT the guard
-# handler (the unrendered one holds a `$..._PROJECT_DIR` token), so the
-# `mempalace-transcript` handlers are still merged and the installed guard
-# stays as it is. Returns non-zero only when <manifest_src> is not a JSON object.
+# common.sh; spec 0248 R28, R29) and then the MemPalace transcript commands by
+# `hook-wiring.ts transcript render` (transcript_render_manifest; spec 0247
+# R20, R21): `node "<repo>/hooks/mempalace-transcript.ts" <cli-id>`, final. A
+# refusal of either render leaves that kind's handlers absent from <out_file>,
+# and merge_session_recording_hooks then spares the installed ones (spec 0248
+# v1-F4, spec 0247 R27). Below the Node.js floor (or when the tool fails) the
+# diagnostic is printed, nothing is rewritten, and the manifest is written
+# WITHOUT the guard and the transcript handlers (the unrendered ones hold a
+# `$..._PROJECT_DIR` token), so every installed one stays as it is.
+# Sets SR_TRANSCRIPT_WIRED to 1 when <out_file> carries a rendered transcript
+# command, else 0: the caller then writes nothing that would start recording
+# (Claude Code's env patch included, seat finding v1-F3) and does not report
+# recording as active. Returns non-zero only when <manifest_src> is not a JSON
+# object.
 render_session_recording_manifest() {
-  local cli="$1" repo_dir="$2" manifest_src="$3" out="$4" shape
+  local cli="$1" repo_dir="$2" manifest_src="$3" out="$4" shape guarded
   shape="$(_uc_shape "$cli")" || return 1
-  if guard_render_manifest "$cli" "$repo_dir" "$manifest_src" "$out"; then
+  # shellcheck disable=SC2034  # read by the setup scripts after this call
+  SR_TRANSCRIPT_WIRED=0
+  guarded="$(mktemp)"
+  if guard_render_manifest "$cli" "$repo_dir" "$manifest_src" "$guarded" \
+     && transcript_render_manifest "$cli" "$repo_dir" "$guarded" "$out"; then
+    rm -f "$guarded"
+    if _uc_jq "$shape" -e "$_UC_JQ_DEFS sr_has_transcript" "$out" >/dev/null 2>&1; then
+      # shellcheck disable=SC2034  # read by the setup scripts after this call
+      SR_TRANSCRIPT_WIRED=1
+    fi
     return 0
   fi
-  echo "  Worktree git guard not wired this run; an installed guard command is left as it is." >&2
-  _uc_jq "$shape" "$_UC_JQ_DEFS uc_strip_by(sr_is_guard)" "$manifest_src" > "$out"
+  rm -f "$guarded"
+  echo "  Worktree git guard and session recording not wired this run; installed commands are left as they are." >&2
+  _uc_jq "$shape" "$_UC_JQ_DEFS uc_strip_by(sr_is_guard or sr_is_transcript_any)" "$manifest_src" > "$out"
 }
 
 # merge_session_recording_hooks <cli> <config> <patched_manifest> [<env_patch_json>]
-# The session-recording write of all three CLIs. Claude and Gemini refresh
-# this framework's own session-recording handlers in place (sr_merge, keyed
-# on sr_is_own) instead of replacing the whole per-event array, so an
-# operator's own hook registered on the same event survives a run that
-# accepts or re-accepts session recording (#1234); Copilot keeps its full
-# replace. uc_reinject($fp) on top of that additionally re-asserts the
-# capture footprint it found canonically, so it never removes, duplicates or
-# re-points a registered capture command (R8). Refuses (returns 1, writes
-# nothing) on a config that is not a JSON object.
+# The session-recording write of all three CLIs. Each refreshes this
+# framework's own session-recording handlers in place (sr_merge) instead of
+# replacing the whole per-event array, so an operator's own hook registered on
+# the same event survives a run that accepts or re-accepts session recording
+# (#1234). Copilot CLI takes the same merge since spec 0247 R23(b), in place of
+# its former full replace of the user-level hooks file: its top-level keys other
+# than `hooks` keep their value when present and take the manifest's when
+# absent, and a kept `"disableAllHooks": true` is reported (SR_ALL_HOOKS_DISABLED
+# is then 1, else 0) instead of overwritten. uc_reinject($fp) on top of that
+# re-asserts the capture footprint it found canonically, so it never removes,
+# duplicates or re-points a registered capture command (R8). Refuses (returns
+# 1, writes nothing) on a config that is not a JSON object.
 merge_session_recording_hooks() {
   local cli="$1" config="$2" patched="$3" env_patch="${4:-}" shape fp rc=0 created=0 program lg
   shape="$(_uc_shape "$cli")" || return 1
@@ -923,11 +1003,13 @@ merge_session_recording_hooks() {
   case "$cli" in
     claude)  program='sr_merge($m[0]) | (if ($patch | length) > 0 then .env = ((.env // {}) + $patch) else . end) | uc_reinject($fp)' ;;
     gemini)  program='sr_merge($m[0]) | uc_reinject($fp)' ;;
-    # A manifest without a guard handler (the render refused, spec 0248 v1-F4)
-    # carries the installed guard handlers through the full replace unchanged.
-    copilot) program='. as $cur | $m[0]
-        | (if sr_has_guard then .
-           else reduce ([$cur | uc_all_handlers | select(.handler | sr_is_guard)][]) as $x (.; uc_add($x)) end)
+    # sr_merge spares the installed guard or transcript handlers when the
+    # manifest carries none (a refused render, spec 0248 v1-F4, spec 0247 R27).
+    # A file that held nothing takes the manifest's top-level keys in its order.
+    copilot) program='. as $cur | sr_merge($m[0]) as $r
+        | (if ($cur | length) == 0 then ($m[0] | del(.hooks)) + $r
+           else reduce ($m[0] | to_entries[] | select(.key != "hooks")) as $e ($r;
+             if has($e.key) then . else .[$e.key] = $e.value end) end)
         | uc_reinject($fp)' ;;
   esac
   # The same legacy classification the footprint above was read with, so the
@@ -945,6 +1027,14 @@ merge_session_recording_hooks() {
     [ "$created" -eq 0 ] || rm -f "$config"
     echo "  ERROR: could not write $config." >&2
     return 1
+  fi
+  # shellcheck disable=SC2034  # read by the setup scripts after this call
+  SR_ALL_HOOKS_DISABLED=0
+  if [ "$cli" = "copilot" ] && jq -e '.disableAllHooks == true' "$config" >/dev/null 2>&1; then
+    # shellcheck disable=SC2034  # read by the setup scripts after this call
+    SR_ALL_HOOKS_DISABLED=1
+    echo "  WARNING: $config keeps \"disableAllHooks\": true — no hook in that file fires," >&2
+    echo "           session recording included, until you set it to false." >&2
   fi
   return 0
 }

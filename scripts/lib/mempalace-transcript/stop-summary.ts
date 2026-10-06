@@ -84,10 +84,11 @@ export function recordLines(line: string): string[] {
     if (text !== undefined) outputs.push(text);
   } else {
     const calls = fields["tool_calls"];
-    const items =
-      Array.isArray(calls) ? calls
-      : typeof calls === "object" && calls !== null ? Object.values(calls)
-      : [];
+    const items = Array.isArray(calls)
+      ? calls
+      : typeof calls === "object" && calls !== null
+        ? Object.values(calls)
+        : [];
     for (const call of items) {
       if (typeof call !== "object" || call === null || Array.isArray(call)) continue;
       const name = (call as Record<string, unknown>)["name"];

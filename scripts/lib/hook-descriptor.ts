@@ -39,6 +39,29 @@ export interface HookDescriptor {
    * signature keeps rejecting the prefix in both twins (R20).
    */
   readonly guardedPrefix?: true;
+  /**
+   * Spec 0247 R28 (descriptor fields, delta-01): the arguments may also be
+   * absent — the argument-less legacy command — on top of `argsPattern`.
+   */
+  readonly bareArgs?: true;
+  /**
+   * Spec 0247 R24: the names of a `NAME=value` prefix the framework itself
+   * wrote and drops when it rewrites the command to the direct form; a prefix
+   * with any other name is the operator's (`foreign-prefix`).
+   */
+  readonly ownedEnvNames?: readonly string[];
+  /**
+   * Spec 0247 R25: a rewrite targets the `.ts` of the checkout that runs
+   * setup, whatever path the command names, instead of the `.ts` next to the
+   * registered `.sh` (C1's target-exists rule).
+   */
+  readonly retarget?: "running-checkout";
+  /**
+   * Spec 0247 R28 (delta-01): the recognised script path ends in
+   * `/<basename>.sh` or `/<basename>.ts` in any directory, without the
+   * `/hooks/` segment the signature requires otherwise.
+   */
+  readonly anyScriptDir?: true;
 }
 
 export const USAGE_CAPTURE: HookDescriptor = {
@@ -78,5 +101,26 @@ export const WORKTREE_GIT_GUARD: HookDescriptor = {
   cliIds: { claude: "claude-code", gemini: "gemini-cli", copilot: "copilot-cli" },
   args: () => [],
   argsPattern: "\\s*",
+  guardedPrefix: true,
+};
+
+/**
+ * The MemPalace transcript hook (spec 0247 R20-R28). It is wired on all four
+ * CLIs with its CLI identifier — `antigravity-cli <event>` on Antigravity CLI,
+ * whose arguments hook-transcript-manifest.ts passes per event key — and its
+ * installed commands also take the legacy forms setup has ever written: no
+ * argument, or one event word (R24 forms (i)-(iv)).
+ */
+export const MEMPALACE_TRANSCRIPT: HookDescriptor = {
+  id: "mempalace-transcript",
+  basename: "mempalace-transcript",
+  cliIds: { claude: "claude-code", gemini: "gemini-cli", copilot: "copilot-cli" },
+  args: (cli) => [MEMPALACE_TRANSCRIPT.cliIds[cli]],
+  argsPattern:
+    "(?:\\s+[A-Za-z]+|\\s+(?:claude-code|gemini-cli|copilot-cli)|\\s+antigravity-cli\\s+[A-Za-z]+)\\s*",
+  bareArgs: true,
+  ownedEnvNames: ["MEMPALACE_TRANSCRIPT_ENABLED", "MEMPALACE_PYTHON"],
+  retarget: "running-checkout",
+  anyScriptDir: true,
   guardedPrefix: true,
 };
