@@ -1,25 +1,27 @@
 #!/bin/bash
-# test-mempalace-transcript-hook.sh — Regression tests for hooks/mempalace-transcript.sh.
+# test-mempalace-transcript-hook.sh — Regression tests for hooks/mempalace-transcript.sh
+# (the forwarding shim of hooks/mempalace-transcript.ts).
 #
 # Pins the contracts surfaced by issues #90–#94, and spec 0161/0164:
 #
-#   #90 — The curl invocation MUST be guarded by `--max-time 5`
 #   #91 — Hook fires on every PostToolUse — too frequent for parallel agents.
 #         When the hook event is `PostToolUse`, the script MUST exit 0
-#         WITHOUT spawning curl.
-#   #92 — PROJECT_NAME wrong in git worktrees.
-#         PROJECT_DIR derivation MUST use `git rev-parse --show-toplevel`.
-#   #93 — stderr silently swallowed.
-#         The curl invocation MUST NOT merge stderr into stdout via `2>&1`.
-#   spec 0164 — Python bypassed replaced with direct HTTP JSON RPC via curl.
+#         WITHOUT reaching the daemon.
+#   spec 0164 — Python bypassed replaced with direct HTTP JSON RPC.
+#
+# The three source-text cases of #90 (5-second bound), #92 (Git top level) and
+# #93 (diagnostics on stderr) read a property only a shell file has; spec 0247
+# R32 removed them with the migration to hooks/mempalace-transcript.ts, each
+# replaced by a black-box TypeScript test (mempalace-transcript-daemon.test.ts
+# and mempalace-transcript-args.test.ts).
 #
 # Observation boundary (spec 0247 R32, issue #1329): every behavioural case
 # observes the hook from the outside, through a loopback stub daemon
 # (scripts/tests/fixtures/mempalace-transcript/stub-daemon.ts) that records
 # what the shared MemPalace MCP daemon would see — never through a fake
 # `curl` on PATH. The same inputs and expected outcomes therefore hold
-# against the shell hook and its TypeScript successor, which spawns no curl.
-# The three source-text cases (#90, #92, #93) still read the shell file.
+# against the shell hook and its TypeScript successor, which spawns no curl;
+# since spec 0247 the suite runs the TypeScript hook through the shim.
 #
 # Usage:
 #   bash scripts/tests/test-mempalace-transcript-hook.sh
@@ -141,16 +143,6 @@ record() {
 }
 
 # -------------------------------------------------------------------------
-# Test 1 — Issue #90: curl call must have --max-time 5
-# -------------------------------------------------------------------------
-if grep -nE 'curl.*--max-time 5' "$HOOK" >/dev/null; then
-  record PASS "issue-90: curl invocation uses --max-time 5"
-else
-  record FAIL "issue-90: curl invocation uses --max-time 5" \
-    "no \`curl ... --max-time 5\` pattern found in $HOOK"
-fi
-
-# -------------------------------------------------------------------------
 # Test 2 — Issue #91: PostToolUse events must NOT reach the daemon.
 # Observed at the daemon: the stub records no request. A token file is
 # supplied so that a hook which did NOT skip the event would reach the stub.
@@ -174,30 +166,6 @@ if [ -s "$STUB_LOG" ]; then
     "the daemon received a request on PostToolUse: $(cat "$STUB_LOG")"
 else
   record PASS "issue-91: PostToolUse skipped (no curl spawn)"
-fi
-
-# -------------------------------------------------------------------------
-# Test 3 — Issue #92: PROJECT_DIR derivation must use git rev-parse.
-# -------------------------------------------------------------------------
-if grep -nE 'git[[:space:]]+rev-parse[[:space:]]+--show-toplevel' "$HOOK" >/dev/null; then
-  record PASS "issue-92: PROJECT_DIR uses git rev-parse --show-toplevel"
-else
-  record FAIL "issue-92: PROJECT_DIR uses git rev-parse --show-toplevel" \
-    "no \`git rev-parse --show-toplevel\` call found in $HOOK"
-fi
-
-# -------------------------------------------------------------------------
-# Test 4 — Issue #93: stderr must not be merged into stdout.
-# -------------------------------------------------------------------------
-CURL_LINE="$(grep -nE 'curl -K - -s -S' "$HOOK" || true)"
-if [ -z "$CURL_LINE" ]; then
-  record FAIL "issue-93: stderr not merged with stdout on curl call" \
-    "cannot locate curl invocation line"
-elif echo "$CURL_LINE" | grep -q '2>&1'; then
-  record FAIL "issue-93: stderr not merged with stdout on curl call" \
-    "found '2>&1' on curl invocation: $CURL_LINE"
-else
-  record PASS "issue-93: stderr not merged with stdout on curl call"
 fi
 
 # -------------------------------------------------------------------------
@@ -351,6 +319,10 @@ echo "custom-secret-token" > "$EXPLICIT_TOKEN_FILE"
   export MEMPALACE_TRANSCRIPT_ENABLED=1
   export MEMPALACE_DAEMON_TOKEN_FILE="$EXPLICIT_TOKEN_FILE"
   unset TOKEN_PATH_MOCK
+  # Input only (spec 0247 R32): with no project directory in the environment
+  # the hook asks Git for it, so the recorder sees at least one process even
+  # when the suite itself runs inside a CLI session that exports one.
+  unset GEMINI_PROJECT_DIR CLAUDE_PROJECT_DIR COPILOT_PROJECT_DIR
   printf '%s' "$STOP_JSON_T7" | bash "$HOOK" >/dev/null 2>&1
 ) || true
 stop_stub
