@@ -45,12 +45,22 @@ export interface TranscriptCheckout extends Checkout {
 /** A checkout with the transcript entry (unless `entry: false`) and its shim. */
 export function makeTranscriptCheckout(
   name = "co",
-  options: { entry?: boolean } = {},
+  options: { entry?: boolean; capture?: boolean } = {},
 ): TranscriptCheckout {
   const co = makeCheckout(name);
-  const ts = path.join(co.repo, "hooks", "mempalace-transcript.ts");
+  const hooks = path.join(co.repo, "hooks");
+  const ts = path.join(hooks, "mempalace-transcript.ts");
   if (options.entry !== false) fs.writeFileSync(ts, "// entry\n");
-  fs.writeFileSync(path.join(co.repo, "hooks", "mempalace-transcript.sh"), "#!/bin/bash\n");
+  fs.writeFileSync(path.join(hooks, "mempalace-transcript.sh"), "#!/bin/bash\n");
+  if (options.capture === true) {
+    // What the usage-capture opt-in needs from a checkout (spec 0211, 0243).
+    for (const cli of WIRED) {
+      const fragment = `${cli}-usage-capture-hooks.json`;
+      fs.copyFileSync(path.join(REPO, "hooks", fragment), path.join(hooks, fragment));
+    }
+    fs.writeFileSync(path.join(hooks, "usage-capture.ts"), "// entry\n");
+    fs.writeFileSync(path.join(hooks, "usage-capture.sh"), "#!/bin/bash\n");
+  }
   return { ...co, ts };
 }
 
