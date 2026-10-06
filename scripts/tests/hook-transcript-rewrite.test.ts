@@ -20,36 +20,26 @@ import { serialiseJson } from "../lib/hook-config.ts";
 import { bashLibs } from "./lib/bash-libs.ts";
 import { backups, mode, wiring, type Json } from "./lib/guard-wiring-fixtures.ts";
 import {
+  argvRecorder,
+  CLI_ID,
   configOf,
   directCmd,
   EVENT,
+  HOME_DIR,
   homeWithCopies,
   legacyForms,
   makeTranscriptCheckout,
   NEIGHBOURS,
   q,
   WIRED,
+  withoutNode,
   writeConfig,
   type TranscriptCheckout,
   type WiredCli,
 } from "./lib/transcript-fixtures.ts";
-import {
-  cleanEnv,
-  cleanupAll,
-  makePathDir,
-  read,
-  realTmp,
-  SKIP_POSIX,
-  which,
-} from "./lib/worktree-fixtures.ts";
+import { cleanEnv, cleanupAll, read, realTmp, SKIP_POSIX } from "./lib/worktree-fixtures.ts";
 
 after(cleanupAll);
-
-const HOME_DIR: Readonly<Record<WiredCli, string>> = {
-  claude: ".claude",
-  gemini: ".gemini",
-  copilot: ".copilot",
-};
 
 /** `transcript_rewrite_installed <cli> <repo> <file>`, as the setups call it. */
 function rewriteInstalled(cli: WiredCli, co: TranscriptCheckout, file: string, env = cleanEnv()) {
@@ -71,7 +61,7 @@ interface Case {
 const CASES: readonly Case[] = [
   {
     name: "direct, of another checkout",
-    command: (_home, cli) => `node "/old/crewrig/hooks/mempalace-transcript.ts" ${directId(cli)}`,
+    command: (_home, cli) => `node "/old/crewrig/hooks/mempalace-transcript.ts" ${CLI_ID[cli]}`,
     moves: () => true,
   },
   {
@@ -114,14 +104,6 @@ const CASES: readonly Case[] = [
     reason: /environment prefix the framework does not own \(.*MEMPALACE_MCP_PORT=\.\.\.\)/,
   },
 ];
-
-function directId(cli: WiredCli): string {
-  return {
-    claude: "claude-code",
-    gemini: "gemini-cli",
-    copilot: "copilot-cli",
-  }[cli];
-}
 
 describe(
   "the pre-question rewrite, every class on every CLI (R23, R25)",
@@ -235,7 +217,7 @@ describe(
         const forms = legacyForms(home, HOME_DIR[cli]);
         const commands = [
           forms["legacy-enabled"] ?? "",
-          `node "/old/hooks/mempalace-transcript.ts" ${directId(cli)}`,
+          `node "/old/hooks/mempalace-transcript.ts" ${CLI_ID[cli]}`,
           forms["foreign-prefix"] ?? "",
         ];
         const config = configOf(cli, commands);
@@ -281,12 +263,7 @@ describe("write safety (R26)", { skip: SKIP_POSIX }, () => {
     const co = makeTranscriptCheckout();
     const file = writeConfig(co, "plain.json", configOf("claude", ["/opt/operator/notify.sh"]));
     const before = read(file);
-    const links: Record<string, string> = {};
-    for (const tool of ["dirname", "grep", "cat", "jq", "mktemp", "sed", "tr", "uname"]) {
-      const found = which(tool);
-      if (found !== null) links[tool] = found;
-    }
-    const res = rewriteInstalled("claude", co, file, cleanEnv({ PATH: makePathDir({ links }) }));
+    const res = rewriteInstalled("claude", co, file, withoutNode());
     assert.match(res.stdout, /rc=0/, res.stderr);
     assert.equal(read(file), before);
   });
@@ -301,19 +278,7 @@ describe("write safety (R26)", { skip: SKIP_POSIX }, () => {
       configOf("claude", [forms["legacy-enabled"] ?? "", forms["foreign-prefix"] ?? ""]),
     );
     const log = path.join(realTmp("crewrig-argv-"), "argv.log");
-    const scripts: Record<string, string> = {};
-    for (const tool of ["node", "jq", "grep"]) {
-      const real = which(tool);
-      assert.ok(real, `${tool} on PATH`);
-      scripts[tool] = `printf '%s\\n' "$*" >> ${q(log)}\nexec ${q(real ?? "")} "$@"`;
-    }
-    const bin = makePathDir({ scripts });
-    const res = rewriteInstalled(
-      "claude",
-      co,
-      file,
-      cleanEnv({ PATH: `${bin}:${process.env["PATH"] ?? ""}` }),
-    );
+    const res = rewriteInstalled("claude", co, file, argvRecorder(["node", "jq", "grep"], log));
     assert.match(res.stdout, /rc=0/, res.stderr);
     const argv = read(log);
     assert.match(argv, /transcript rewrite claude --config/);

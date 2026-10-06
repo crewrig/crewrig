@@ -22,6 +22,7 @@ import { backups, handler, mode, wiring, type Json } from "./lib/guard-wiring-fi
 import {
   AGY_GUARD,
   AGY_HOOK,
+  agyCommands,
   agyDirect,
   homeWithCopies,
   makeTranscriptCheckout,
@@ -31,28 +32,6 @@ import {
 import { cleanupAll, read, realTmp, SKIP_POSIX } from "./lib/worktree-fixtures.ts";
 
 after(cleanupAll);
-
-interface Commands {
-  readonly enabled: string;
-  readonly unmarked: string;
-  readonly disabled: string;
-  readonly foreign: string;
-  /** Delta-01: a script called mempalace-transcript.* with other arguments — not a transcript command. */
-  readonly otherArgs: string;
-  readonly otherArgsStop: string;
-}
-
-function commandsFor(home: string): Commands {
-  const copy = path.join(home, ".gemini", "antigravity-cli", "hooks", "mempalace-transcript.sh");
-  return {
-    enabled: `MEMPALACE_TRANSCRIPT_ENABLED=1 bash "${copy}" Stop`,
-    unmarked: `bash "${copy}" Stop`,
-    disabled: `MEMPALACE_TRANSCRIPT_ENABLED=0 bash "${copy}" Stop`,
-    foreign: `MEMPALACE_MCP_PORT=41999 bash "${copy}" Stop`,
-    otherArgs: "bash /x/mempalace-transcript.sh --foo bar",
-    otherArgsStop: 'bash "/x/hooks/mempalace-transcript.sh" Stop extra',
-  };
-}
 
 const OPERATOR_HOOK = {
   "operator-audit": { Stop: [handler("/opt/audit/log.sh", { timeout: 3 })] },
@@ -109,7 +88,7 @@ describe("R23(c): the enable path, per event of the named hook", { skip: SKIP_PO
   for (const [route, run] of Object.entries(ROUTES)) {
     test(`${route}: an event with a foreign-prefix command keeps it and every other element, loses the own ones, gets nothing`, () => {
       const co = makeTranscriptCheckout();
-      const c = commandsFor(homeWithCopies());
+      const c = agyCommands(homeWithCopies());
       const stop = [
         handler(c.enabled, { timeout: 10 }),
         handler(c.foreign, { timeout: 11 }),
@@ -140,7 +119,7 @@ describe("R23(c): the enable path, per event of the named hook", { skip: SKIP_PO
 
     test(`${route}: every other event takes the manifest's array or goes, other elements and other-argument commands with it`, () => {
       const co = makeTranscriptCheckout();
-      const c = commandsFor(homeWithCopies());
+      const c = agyCommands(homeWithCopies());
       const target = writeHooks(co, {
         ...OPERATOR_HOOK,
         [AGY_HOOK]: {
@@ -164,7 +143,7 @@ describe("R23(c): the enable path, per event of the named hook", { skip: SKIP_PO
 
     test(`${route}: an event the manifest no longer registers keeps its foreign-prefix command and other elements`, () => {
       const co = makeTranscriptCheckout();
-      const c = commandsFor(homeWithCopies());
+      const c = agyCommands(homeWithCopies());
       const foreign = c.foreign.replace(" Stop", " PreInvocation");
       const target = writeHooks(co, {
         [AGY_HOOK]: {
@@ -242,7 +221,7 @@ describe(
 
     test("direct and legacy-enabled are rewritten; legacy-unmarked, =0, foreign-prefix and other arguments stay", () => {
       const co = makeTranscriptCheckout();
-      const c = commandsFor(homeWithCopies());
+      const c = agyCommands(homeWithCopies());
       const config = {
         ...OPERATOR_HOOK,
         [AGY_HOOK]: {
@@ -287,7 +266,7 @@ describe(
 
     test("a hooks.json holding only legacy-unmarked and =0 commands is byte-identical, with no backup", () => {
       const co = makeTranscriptCheckout();
-      const c = commandsFor(homeWithCopies());
+      const c = agyCommands(homeWithCopies());
       const target = writeHooks(co, {
         [AGY_HOOK]: { Stop: [handler(c.unmarked)], AfterTool: [handler(c.disabled)] },
       });
@@ -301,7 +280,7 @@ describe(
 
     test("a transcript command outside the named hook is never touched", () => {
       const co = makeTranscriptCheckout();
-      const c = commandsFor(homeWithCopies());
+      const c = agyCommands(homeWithCopies());
       const target = writeHooks(co, { "operator-recording": { Stop: [handler(c.enabled)] } });
       const before = read(target);
       assert.match(rewrite(co, target).stdout, /rc=0/);

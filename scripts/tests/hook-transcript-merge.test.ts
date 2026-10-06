@@ -5,10 +5,8 @@
 // operator's own setting is not dropped" — enable half, "A second enable run
 // keeps its backup and changes nothing").
 //
-// `render_session_recording_manifest` then `merge_session_recording_hooks`, as
-// the setups call them on a `yes`, with the env patch Claude Code's setup
-// passes when the transcript is wired. Antigravity CLI has its own suite
-// (hook-transcript-antigravity.test.ts). POSIX only (Bash libraries).
+// The render and merge run as the setups run them on a `yes` (yesScript).
+// Antigravity CLI has its own suite. POSIX only (Bash libraries).
 
 import assert from "node:assert/strict";
 import { after, describe, test } from "node:test";
@@ -18,14 +16,18 @@ import { backups, handlers, mode, wiring, type Json } from "./lib/guard-wiring-f
 import {
   configOf,
   directCmd,
+  eventsOf,
   EVENT,
+  HOME_DIR,
   homeWithCopies,
   legacyForms,
   makeTranscriptCheckout,
+  manifestEvents,
   q,
   transcriptCommands,
   WIRED,
   writeConfig,
+  yesScript,
   type TranscriptCheckout,
   type WiredCli,
 } from "./lib/transcript-fixtures.ts";
@@ -33,38 +35,14 @@ import { cleanupAll, read, SKIP_POSIX } from "./lib/worktree-fixtures.ts";
 
 after(cleanupAll);
 
-const HOME_DIR: Readonly<Record<WiredCli, string>> = {
-  claude: ".claude",
-  gemini: ".gemini",
-  copilot: ".copilot",
-};
-
-/** The `yes` path of a setup: render, then merge (Claude Code's env patch only when wired). */
-const YES = (cli: WiredCli, co: TranscriptCheckout, file: string): string =>
-  `render_session_recording_manifest ${cli} ${q(co.repo)} ${q(co.manifest(cli))} rendered.json \\
-     && { patch='{}'; [ "$SR_TRANSCRIPT_WIRED" = 1 ] && patch='{"MEMPALACE_TRANSCRIPT_ENABLED": "1"}'
-          merge_session_recording_hooks ${cli} ${q(file)} rendered.json "$patch"; }
-   echo "rc=$? wired=\${SR_TRANSCRIPT_WIRED:-} disabled=\${SR_ALL_HOOKS_DISABLED:-}"`;
-
 /** The `yes` answer to the usage-capture question, as `usage_capture_apply` takes it. */
 const CAPTURE = (cli: WiredCli, co: TranscriptCheckout, file: string): string =>
   `usage_capture_apply ${cli} ${q(file)} ${q(co.repo)} "$(usage_capture_state ${cli} ${q(file)})" yes >/dev/null; echo "uc=$?"`;
 
 function yes(cli: WiredCli, co: TranscriptCheckout, file: string) {
-  const res = bashLibs(YES(cli, co, file));
+  const res = bashLibs(yesScript(cli, co, file));
   assert.match(res.stdout, /rc=0/, res.stdout + res.stderr);
   return res;
-}
-
-const eventsOf = (config: Json): Record<string, unknown> =>
-  (config["hooks"] ?? {}) as Record<string, unknown>;
-
-/** The transcript events of `cli`'s manifest. */
-function manifestEvents(co: TranscriptCheckout, cli: WiredCli): string[] {
-  const manifest = JSON.parse(read(co.manifest(cli))) as Json;
-  return Object.entries(eventsOf(manifest))
-    .filter(([, entries]) => transcriptCommands(entries).length > 0)
-    .map(([event]) => event);
 }
 
 /** Every event holds at most one transcript command (R26). */
@@ -254,7 +232,7 @@ describe(
             configOf(cli, [forms["legacy-enabled"] ?? ""]),
           );
           for (const step of order) {
-            const res = bashLibs(step === "sr" ? YES(cli, co, file) : CAPTURE(cli, co, file));
+            const res = bashLibs(step === "sr" ? yesScript(cli, co, file) : CAPTURE(cli, co, file));
             assert.match(res.stdout, step === "sr" ? /rc=0/ : /uc=0/, res.stdout + res.stderr);
             assertNeverTwo(JSON.parse(read(file)) as Json, `${cli} after ${step}`);
           }

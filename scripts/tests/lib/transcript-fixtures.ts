@@ -18,7 +18,7 @@ import {
   type Checkout,
   type Json,
 } from "./guard-wiring-fixtures.ts";
-import { realTmp, REPO } from "./worktree-fixtures.ts";
+import { cleanEnv, makePathDir, read, realTmp, REPO, which } from "./worktree-fixtures.ts";
 
 export type WiredCli = "claude" | "gemini" | "copilot";
 export const WIRED: readonly WiredCli[] = ["claude", "gemini", "copilot"];
@@ -32,6 +32,12 @@ export const EVENT: Readonly<Record<WiredCli, string>> = {
   claude: "Stop",
   gemini: "AfterModel",
   copilot: "agentStop",
+};
+/** Where an earlier setup installed its copy of the shell hook, under the home directory. */
+export const HOME_DIR: Readonly<Record<WiredCli, string>> = {
+  claude: ".claude",
+  gemini: ".gemini",
+  copilot: ".copilot",
 };
 export const AGY_HOOK = "crewrig-mempalace-transcript";
 export const AGY_GUARD = "crewrig-worktree-git-guard";
@@ -78,6 +84,20 @@ export function legacyForms(home: string, dir: string): Record<string, string> {
     "legacy-unmarked": `bash "${copy}"`,
     "legacy-unmarked (=0)": `MEMPALACE_TRANSCRIPT_ENABLED=0 bash "${copy}"`,
     "foreign-prefix": `MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_MCP_PORT=41999 bash "${copy}"`,
+  };
+}
+
+/** Antigravity CLI commands on its installed copy under `home`, legacy event `Stop`. */
+export function agyCommands(home: string) {
+  const copy = path.join(home, ".gemini", "antigravity-cli", "hooks", "mempalace-transcript.sh");
+  return {
+    enabled: `MEMPALACE_TRANSCRIPT_ENABLED=1 bash "${copy}" Stop`,
+    unmarked: `bash "${copy}" Stop`,
+    disabled: `MEMPALACE_TRANSCRIPT_ENABLED=0 bash "${copy}" Stop`,
+    foreign: `MEMPALACE_MCP_PORT=41999 bash "${copy}" Stop`,
+    /** Delta-01: a script called mempalace-transcript.* with other arguments, never a transcript command. */
+    otherArgs: "bash /x/mempalace-transcript.sh --foo bar",
+    otherArgsStop: 'bash "/x/hooks/mempalace-transcript.sh" Stop extra',
   };
 }
 
@@ -159,3 +179,46 @@ export function homeWithCopies(): string {
 
 export const MANIFEST = (cli: WiredCli | "antigravity"): string =>
   path.join(REPO, "hooks", `${cli}-transcript-hooks.json`);
+
+/**
+ * The Bash of a setup's `yes` to the session-recording question: render, then
+ * merge, with Claude Code's env patch only when the transcript is wired.
+ * Prints `rc=<status> wired=<SR_TRANSCRIPT_WIRED> disabled=<SR_ALL_HOOKS_DISABLED>`.
+ */
+export const yesScript = (cli: WiredCli, co: TranscriptCheckout, file: string): string =>
+  `render_session_recording_manifest ${cli} ${q(co.repo)} ${q(co.manifest(cli))} rendered.json \\
+     && { patch='{}'; [ "$SR_TRANSCRIPT_WIRED" = 1 ] && patch='{"MEMPALACE_TRANSCRIPT_ENABLED": "1"}'
+          merge_session_recording_hooks ${cli} ${q(file)} rendered.json "$patch"; }
+   echo "rc=$? wired=\${SR_TRANSCRIPT_WIRED:-} disabled=\${SR_ALL_HOOKS_DISABLED:-}"`;
+
+export const eventsOf = (config: Json): Record<string, unknown> =>
+  (config["hooks"] ?? {}) as Record<string, unknown>;
+
+/** The events of `cli`'s manifest that carry a transcript command. */
+export function manifestEvents(co: TranscriptCheckout, cli: WiredCli): string[] {
+  const manifest = JSON.parse(read(co.manifest(cli))) as Json;
+  return Object.entries(eventsOf(manifest))
+    .filter(([, entries]) => transcriptCommands(entries).length > 0)
+    .map(([event]) => event);
+}
+
+/** An environment whose `tools` append their argument list to `log`, then run the real binary. */
+export function argvRecorder(tools: readonly string[], log: string): NodeJS.ProcessEnv {
+  const scripts: Record<string, string> = {};
+  for (const tool of tools) {
+    const real = which(tool);
+    if (real === null) throw new Error(`${tool} is needed by this test`);
+    scripts[tool] = `printf '%s\\n' "$*" >> ${q(log)}\nexec ${q(real)} "$@"`;
+  }
+  return cleanEnv({ PATH: `${makePathDir({ scripts })}:${process.env["PATH"] ?? ""}` });
+}
+
+/** A PATH with what the setup libraries need besides Node.js, and no `node`. */
+export function withoutNode(): NodeJS.ProcessEnv {
+  const links: Record<string, string> = {};
+  for (const tool of ["dirname", "grep", "cat", "jq", "mktemp", "sed", "tr", "uname"]) {
+    const found = which(tool);
+    if (found !== null) links[tool] = found;
+  }
+  return cleanEnv({ PATH: makePathDir({ links }) });
+}

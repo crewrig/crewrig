@@ -24,12 +24,14 @@ import {
   AGY_GUARD,
   AGY_HOOK,
   configOf,
+  HOME_DIR,
   homeWithCopies,
   makeTranscriptCheckout,
   q,
   transcriptCommands,
   WIRED,
   writeConfig,
+  yesScript,
   type WiredCli,
 } from "./lib/transcript-fixtures.ts";
 import { fakeNodeFirst } from "./lib/shim-env.ts";
@@ -38,12 +40,6 @@ import { cleanupAll, read, REPO, SKIP_POSIX } from "./lib/worktree-fixtures.ts";
 after(cleanupAll);
 
 const FLOOR = /requires Node\.js >= 24/;
-const HOME_DIR: Readonly<Record<WiredCli, string>> = {
-  claude: ".claude",
-  gemini: ".gemini",
-  copilot: ".copilot",
-};
-
 /** No command of the configuration is in the direct form, and none names the `.ts` entry. */
 function assertNoDirect(text: string): void {
   const config = JSON.parse(text) as unknown;
@@ -68,10 +64,7 @@ describe(
         const file = writeConfig(co, `${cli}.json`, configOf(cli, [legacy]));
         const res = bashLibs(
           `transcript_rewrite_installed ${cli} ${q(co.repo)} ${q(file)}; echo "pre=$?"
-         render_session_recording_manifest ${cli} ${q(co.repo)} ${q(co.manifest(cli))} r.json
-         patch='{}'; [ "$SR_TRANSCRIPT_WIRED" = 1 ] && patch='{"MEMPALACE_TRANSCRIPT_ENABLED": "1"}'
-         merge_session_recording_hooks ${cli} ${q(file)} r.json "$patch"
-         echo "rc=$? wired=$SR_TRANSCRIPT_WIRED"`,
+           ${yesScript(cli, co, file)}`,
           fakeNodeFirst(),
         );
         assert.match(res.stdout, /pre=1/, "the pre-question rewrite stops at the floor");
