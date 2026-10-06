@@ -582,6 +582,7 @@ jobs:
               - 'scripts/tests/**'
               - 'hooks/worktree-git-guard.sh'
               - 'hooks/worktree-git-guard.ts'
+              - 'hooks/mempalace-transcript.ts'
               - 'scripts/worktree-claim.ts'
               - 'scripts/lib/worktree-claim/**'
               - 'scripts/lib/hook-*.ts'
@@ -1318,6 +1319,65 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0247 R31, plan step 22(a): black-box suites of the TypeScript
+  # MemPalace transcript hook and of its wiring; the Bash oracle runs through
+  # the shim in the `mempalace` job.
+  mempalace-transcript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            mempalace-transcript:
+              - 'hooks/mempalace-transcript.*'
+              - 'scripts/lib/mempalace-transcript/**'
+              - 'scripts/lib/tls-env.ts'
+              - 'scripts/lib/transcript-recognition.ts'
+              - 'scripts/lib/hook-*.ts'
+              - 'scripts/hook-wiring.ts'
+              - 'scripts/lib/usage-store/mcp.*'
+              - 'scripts/lib/usage-capture-optin.sh'
+              - 'scripts/lib/common.sh'
+              - 'scripts/setup-*-interactive.sh'
+              - 'hooks/*-transcript-hooks.json'
+              - 'scripts/tests/mempalace-transcript-*.test.ts'
+              - 'scripts/tests/hook-transcript-*.test.ts'
+              - 'scripts/tests/lib/with-stub-daemon.ts'
+              - 'scripts/tests/lib/transcript-timing-fixtures.ts'
+              - 'scripts/tests/lib/spawn-spy.ts'
+              - 'scripts/tests/lib/windows-invocation.ts'
+              - 'scripts/tests/fixtures/mempalace-transcript/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.mempalace-transcript == 'true'
+        with:
+          node-version: 24
+
+      - name: Validate the MemPalace transcript hook and its wiring
+        if: steps.filter.outputs.mempalace-transcript == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-*.test.ts scripts/tests/hook-transcript-*.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0247 R1: the transcript hook entry prints nothing on the oldest
+  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
+  mempalace-transcript-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+
+      - name: Entry form and silence runs on Node.js 24.0.0
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # TEMPLATE (spec 0240 R12-R15) — the reusable `windows-latest` job shape.
   # A later sub-spec copies this job, renames it, points the three steps at
   # its own migrated script and suites, states its own --budget-ms next to its
@@ -1456,6 +1516,76 @@ jobs:
       # same command in a worktree whose claim the fixture step took.
       - name: Slow path allowed timing budget
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --stdin-file $env:TIMING_ALLOWED_PAYLOAD --cwd $env:TIMING_FIXTURE_CWD '--' "$env:GITHUB_WORKSPACE\hooks\worktree-git-guard.ts"
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0247 R31, R19: the MemPalace transcript hook row's copy of the
+  # template above. pwsh is the interpreter of every step. Budgets are the
+  # initial values of R19 (750 ms for cases (a) and (b), 2000 ms for (c) and
+  # (d)); they are recalibrated from the first green run to max(3 x the
+  # largest observed run, 300 ms) rounded up to the next 50 ms, only where
+  # lower, and each is stated next to its script. Every budget step names its
+  # case with --case, which the harness prints in its failure line. '--' is
+  # quoted so pwsh hands it to node verbatim rather than reading it as its own
+  # end-of-parameters token.
+  windows-mempalace-transcript:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Hook entry against a stub daemon, each CLI command line through its interpreter
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-windows.test.ts
+
+      # Writes the payloads, a token file and a 50 MB transcript, releases a
+      # loopback port, and exports TIMING_TOKEN_FILE, TIMING_POSTTOOLUSE_PAYLOAD,
+      # TIMING_STOP_PAYLOAD, TIMING_PROMPT_PAYLOAD and TIMING_CLOSED_PORT to the
+      # steps below through $GITHUB_ENV.
+      - name: Timing fixtures
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/transcript-timing-fixtures.ts "$env:RUNNER_TEMP\mempalace-transcript-timing"
+
+      # Budget: 750 ms (initial, R19(a)) for hooks/mempalace-transcript.ts,
+      # direct form, `PostToolUse` payload (the entry's cheap exit).
+      - name: Case (a) PostToolUse direct form timing budget
+        env:
+          MEMPALACE_DAEMON_TOKEN_FILE: ${{ env.TIMING_TOKEN_FILE }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 --case a-posttooluse-direct --stdin-file $env:TIMING_POSTTOOLUSE_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
+
+      # Budget: 750 ms (initial, R19(b)) for hooks/mempalace-transcript.ts,
+      # legacy form with MEMPALACE_TRANSCRIPT_ENABLED unset (disabled exit).
+      - name: Case (b) legacy form disabled timing budget
+        env:
+          MEMPALACE_DAEMON_TOKEN_FILE: ${{ env.TIMING_TOKEN_FILE }}
+        run: |
+          Remove-Item Env:MEMPALACE_TRANSCRIPT_ENABLED -ErrorAction SilentlyContinue
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 --case b-legacy-disabled --stdin-file $env:TIMING_POSTTOOLUSE_PAYLOAD '--' hooks/mempalace-transcript.ts
+
+      # Budget: 2000 ms (initial, R19(c)) for hooks/mempalace-transcript.ts,
+      # direct form, `Stop` payload naming the 50 MB transcript, each record
+      # persisted to the loopback stub daemon. with-stub-daemon.ts starts the
+      # stub, exports MEMPALACE_MCP_HOST/PORT to the harness, checks that the
+      # stub received the 10 records, and stops it.
+      - name: Case (c) Stop with a 50 MB transcript timing budget
+        env:
+          MEMPALACE_DAEMON_TOKEN_FILE: ${{ env.TIMING_TOKEN_FILE }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/with-stub-daemon.ts --expect-requests 10 '--' node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --case c-stop-50mb-transcript --stdin-file $env:TIMING_STOP_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
+
+      # Budget: 2000 ms (initial, R19(d)) for hooks/mempalace-transcript.ts,
+      # direct form, `UserPromptSubmit` payload, nothing listening on the
+      # daemon port (a loopback port the fixture step bound and released).
+      - name: Case (d) UserPromptSubmit with nothing listening timing budget
+        env:
+          MEMPALACE_DAEMON_TOKEN_FILE: ${{ env.TIMING_TOKEN_FILE }}
+          MEMPALACE_MCP_HOST: 127.0.0.1
+          MEMPALACE_MCP_PORT: ${{ env.TIMING_CLOSED_PORT }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --case d-nothing-listening --stdin-file $env:TIMING_PROMPT_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

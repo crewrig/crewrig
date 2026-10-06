@@ -31,7 +31,12 @@ import { GUARDED_PREFIX, hookCommandLine, type Cli } from "../lib/hook-command.t
 import { resolveReal } from "../lib/paths.ts";
 import { releasedPort } from "./lib/transcript-timing-fixtures.ts";
 import { GIT_BASH, invocation, LEGS, runInvocation } from "./lib/windows-invocation.ts";
-import { startStub, type RunningStub, type StubMode, type StubRequest } from "./lib/with-stub-daemon.ts";
+import {
+  startStub,
+  type RunningStub,
+  type StubMode,
+  type StubRequest,
+} from "./lib/with-stub-daemon.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const HOOK_TS = path.join(REPO, "hooks", "mempalace-transcript.ts");
@@ -75,7 +80,13 @@ function hookEnv(endpoint: Readonly<Record<string, string>>): NodeJS.ProcessEnv 
       delete env[key];
     }
   }
-  return { ...env, ...endpoint, MEMPALACE_DAEMON_TOKEN_FILE: tokenFile, HOME: home, USERPROFILE: home };
+  return {
+    ...env,
+    ...endpoint,
+    MEMPALACE_DAEMON_TOKEN_FILE: tokenFile,
+    HOME: home,
+    USERPROFILE: home,
+  };
 }
 
 function runHook(args: string[], input: string, endpoint: Readonly<Record<string, string>>): Run {
@@ -91,7 +102,12 @@ function runHook(args: string[], input: string, endpoint: Readonly<Record<string
 
 /** A `UserPromptSubmit` payload of Claude Code's shape, its project in native separators. */
 function promptPayload(prompt: string): string {
-  return JSON.stringify({ session_id: SESSION, cwd: project, hook_event_name: "UserPromptSubmit", prompt });
+  return JSON.stringify({
+    session_id: SESSION,
+    cwd: project,
+    hook_event_name: "UserPromptSubmit",
+    prompt,
+  });
 }
 
 /** An Antigravity `Stop` payload. */

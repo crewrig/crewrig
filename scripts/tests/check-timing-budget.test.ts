@@ -339,7 +339,10 @@ describe("--case (spec 0247 R19, delta-01)", () => {
     const failed = evaluate(opts, measure(opts, exitWith(4), fakeClock([1, 1, 1])));
     assert.match(failed.lines[0] ?? "", /^timing-budget: s\.js \[case a-posttooluse\] exited 4/);
     const passed = evaluate(opts, measure(opts, exitWith(0), fakeClock([1, 2, 3])));
-    assert.match(passed.lines[0] ?? "", /^timing-budget: s\.js \[case a-posttooluse\] within 100 ms/);
+    assert.match(
+      passed.lines[0] ?? "",
+      /^timing-budget: s\.js \[case a-posttooluse\] within 100 ms/,
+    );
   });
 
   test("the option does not change what a run receives", () => {
