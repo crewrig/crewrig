@@ -1,0 +1,2875 @@
+{
+  "source": "a7468111:hooks/mempalace-transcript.sh",
+  "capturedOn": "darwin",
+  "locale": "en_US.UTF-8",
+  "rows": [
+    {
+      "id": "claude-prompt",
+      "description": "UserPromptSubmit",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"hello world\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] hello world",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-prompt-env",
+      "description": "CLAUDE_SESSION_ID and CLAUDE_PROJECT_DIR win over the payload",
+      "args": [],
+      "mode": "ok",
+      "env": {
+        "CLAUDE_SESSION_ID": "claude-env-session",
+        "CLAUDE_PROJECT_DIR": "/work/from-env"
+      },
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/from-env-<DATE>-claude-e\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "from-env-<DATE>-claude-e",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-harness-literal",
+      "description": "a harness literal",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"<system-reminder>be nice</system-reminder>\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted harness-injection to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[HARNESS] <system-reminder>be nice</system-reminder>",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-harness-line",
+      "description": "the harness ERE on a later line",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"hi\\n  <foo-notification id=1>body\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted harness-injection to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[HARNESS] hi\n  <foo-notification id=1>body",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-harness-message",
+      "description": "the [Message] timestamp= literal",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"[Message] timestamp=1 x\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted harness-injection to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[HARNESS] [Message] timestamp=1 x",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-not-harness",
+      "description": "a tag that is not at the start of a line",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"x <foo-reminder>\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] x <foo-reminder>",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-prompt-null-literal",
+      "description": "the literal text null",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"null\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "claude-prompt-null",
+      "description": "a JSON null prompt",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":null,\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "claude-prompt-false",
+      "description": "false is skipped by //, user_input is used",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"prompt\":false,\"user_input\":\"fallback\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] fallback",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-prompt-number",
+      "description": "a number is rendered",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":42,\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] 42",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-prompt-object",
+      "description": "an object prompt",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/non-scalar-values",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":{\"a\":1},\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] {\n  \"a\": 1\n}",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "claude-prompt-true",
+      "description": "a true prompt",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/non-scalar-values",
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":true,\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] true",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "claude-pretool-command",
+      "description": "PreToolUse with a command",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"ls -la\"},\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted tool-use to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[TOOL] Bash: ls -la",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-pretool-file",
+      "description": "PreToolUse with a file path",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"/a/b.ts\"},\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted tool-use to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[TOOL] Read: /a/b.ts",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-pretool-pattern",
+      "description": "PreToolUse with a pattern",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Grep\",\"tool_input\":{\"pattern\":\"foo.*\"},\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted tool-use to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[TOOL] Grep: foo.*",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-pretool-noargs",
+      "description": "PreToolUse with no argument",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"LS\",\"tool_input\":{},\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted tool-use to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[TOOL] LS: (no args)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-pretool-empty-command",
+      "description": "an empty command is selected",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"\",\"file_path\":\"/x\"},\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted tool-use to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[TOOL] Bash: ",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-posttool",
+      "description": "PostToolUse is skipped",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"ls\"},\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "claude-stop-transcript",
+      "description": "Stop summarises the transcript tail",
+      "args": [],
+      "mode": "ok",
+      "transcript": "{\"type\":\"USER_INPUT\",\"content\":\"question\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"first answer\"}\n{\"type\":\"RESPONSE\",\"tool_calls\":[{\"name\":\"Read\"},{\"name\":\"Bash\"}]}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"line one\\nline two\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":42}\n{\"type\":\"PLANNER_RESPONSE\",\"content\":\"plan\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"last words\"}\n",
+      "stdin": "{\"hook_event_name\":\"Stop\",\"transcript_path\":\"{TMP}/transcript.jsonl\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] line one line two 42 plan last words ",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-stop-camel",
+      "description": "transcriptPath",
+      "args": [],
+      "mode": "ok",
+      "transcript": "{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"camel\"}\n",
+      "stdin": "{\"hook_event_name\":\"Stop\",\"transcriptPath\":\"{TMP}/transcript.jsonl\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] camel ",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-stop-missing",
+      "description": "a transcript path that does not exist",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"Stop\",\"transcript_path\":\"{TMP}/absent.jsonl\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] Session turn completed",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-stop-long-tail",
+      "description": "more than 20 lines and more than 5 responses",
+      "args": [],
+      "mode": "ok",
+      "transcript": "{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r0\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r1\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r2\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r3\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r4\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r5\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r6\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r7\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r8\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r9\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r10\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r11\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r12\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r13\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r14\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r15\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r16\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r17\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r18\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r19\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r20\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r21\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r22\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r23\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r24\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r25\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r26\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r27\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r28\"}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"r29\"}\n",
+      "stdin": "{\"hook_event_name\":\"Stop\",\"transcript_path\":\"{TMP}/transcript.jsonl\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] r25 r26 r27 r28 r29 ",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-stop-bad-line",
+      "description": "a transcript line that does not parse",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/exit-status",
+      "transcript": "{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"before\"}\n{bad\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"after\"}\n",
+      "stdin": "{\"hook_event_name\":\"Stop\",\"transcript_path\":\"{TMP}/transcript.jsonl\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 5,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] before after ",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-stop-object",
+      "description": "an object content in the tail",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/stop-summary-objects",
+      "transcript": "{\"type\":\"ASSISTANT_RESPONSE\",\"content\":{\"k\":\"v\"}}\n{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"text\"}\n",
+      "stdin": "{\"hook_event_name\":\"Stop\",\"transcript_path\":\"{TMP}/transcript.jsonl\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] {   \"k\": \"v\" } text ",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] text ",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-stop-two-byte",
+      "description": "500-byte cut on a 2-byte boundary",
+      "args": [],
+      "mode": "ok",
+      "transcript": "{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\"}\n",
+      "stdin": "{\"hook_event_name\":\"Stop\",\"transcript_path\":\"{TMP}/transcript.jsonl\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-stop-three-byte",
+      "description": "500-byte cut inside a 3-byte character",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/character-boundaries",
+      "transcript": "{\"type\":\"ASSISTANT_RESPONSE\",\"content\":\"€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€\"}\n",
+      "stdin": "{\"hook_event_name\":\"Stop\",\"transcript_path\":\"{TMP}/transcript.jsonl\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€�",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[AGENT] €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-session-end",
+      "description": "SessionEnd without a source",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"SessionEnd\",\"reason\":\"logout\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted session-lifecycle to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[SESSION] SessionEnd: unknown",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "claude-session-start-override",
+      "description": "SessionStart replaces a prompt entry",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"SessionStart\",\"source\":\"startup\",\"prompt\":\"ignored\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted session-lifecycle to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[SESSION] SessionStart: startup",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gemini-before-agent",
+      "description": "BeforeAgent prompt",
+      "args": [],
+      "mode": "ok",
+      "env": {
+        "GEMINI_SESSION_ID": "gem-session-42",
+        "GEMINI_PROJECT_DIR": "/g/gem-proj"
+      },
+      "stdin": "{\"hook_event_name\":\"BeforeAgent\",\"prompt\":\"from gemini\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/gem-proj-<DATE>-gem-sess\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "gem-proj-<DATE>-gem-sess",
+                  "content": "[USER] from gemini",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gemini-user-input",
+      "description": "userInput (camel case)",
+      "args": [],
+      "mode": "ok",
+      "env": {
+        "GEMINI_SESSION_ID": "gem-session-42"
+      },
+      "stdin": "{\"userInput\":\"camel input\",\"cwd\":\"/g/p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/p-<DATE>-gem-sess\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-gem-sess",
+                  "content": "[USER] camel input",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gemini-before-tool",
+      "description": "BeforeTool",
+      "args": [],
+      "mode": "ok",
+      "env": {
+        "GEMINI_SESSION_ID": "gem"
+      },
+      "stdin": "{\"hook_event_name\":\"BeforeTool\",\"tool_name\":\"run_shell_command\",\"tool_input\":{\"command\":\"npm test\"},\"cwd\":\"/g/p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted tool-use to transcripts/p-<DATE>-gem\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-gem",
+                  "content": "[TOOL] run_shell_command: npm test",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gemini-after-tool",
+      "description": "AfterTool",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"AfterTool\",\"tool_name\":\"read_file\",\"tool_input\":{\"file_path\":\"/g/x\"},\"session_id\":\"s\",\"cwd\":\"/g/p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted tool-use to transcripts/p-<DATE>-s\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-s",
+                  "content": "[TOOL] read_file: /g/x",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gemini-after-model",
+      "description": "AfterModel",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"AfterModel\",\"model_response\":\"the answer\",\"cwd\":\"/g/p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/p-<DATE>-unknown\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-unknown",
+                  "content": "[AGENT] the answer",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gemini-after-model-camel",
+      "description": "modelResponse",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"modelResponse\":\"camel answer\",\"cwd\":\"/g/p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/p-<DATE>-unknown\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-unknown",
+                  "content": "[AGENT] camel answer",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gemini-after-model-long",
+      "description": "2000 characters, then 4000 bytes on a boundary",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"AfterModel\",\"model_response\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"cwd\":\"/g/p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/p-<DATE>-unknown\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-unknown",
+                  "content": "[AGENT] éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gemini-after-model-euro",
+      "description": "4000 bytes inside a 3-byte character",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/character-boundaries",
+      "stdin": "{\"hook_event_name\":\"AfterModel\",\"model_response\":\"€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€\",\"cwd\":\"/g/p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/p-<DATE>-unknown\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-unknown",
+                  "content": "[AGENT] €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€�",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/p-<DATE>-unknown\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-unknown",
+                  "content": "[AGENT] €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gemini-session-end",
+      "description": "SessionEnd with a source",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"hook_event_name\":\"SessionEnd\",\"source\":\"exit\",\"cwd\":\"/g/p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted session-lifecycle to transcripts/p-<DATE>-unknown\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-unknown",
+                  "content": "[SESSION] SessionEnd: exit",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "copilot-session-start",
+      "description": "no event name, nothing to record",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"sessionId\":\"cop-1\",\"cwd\":\"/c/proj\",\"source\":\"new\",\"timestamp\":1}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "copilot-prompt",
+      "description": "userPromptSubmitted",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"sessionId\":\"cop-session-1\",\"cwd\":\"/c/proj\",\"prompt\":\"from copilot\",\"timestamp\":1}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-<DATE>-cop-sess\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-<DATE>-cop-sess",
+                  "content": "[USER] from copilot",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "copilot-post-tool",
+      "description": "postToolUse carries toolName, which is not read",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"sessionId\":\"cop-1\",\"cwd\":\"/c/proj\",\"toolName\":\"bash\",\"toolArgs\":\"{}\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "copilot-agent-stop",
+      "description": "agentStop",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"sessionId\":\"cop-1\",\"cwd\":\"/c/proj\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "copilot-session-number",
+      "description": "a numeric session id",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"sessionId\":123456789012,\"cwd\":\"/c/proj\",\"prompt\":\"n\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-<DATE>-12345678\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-<DATE>-12345678",
+                  "content": "[USER] n",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "agy-stop",
+      "description": "Stop",
+      "args": [
+        "Stop"
+      ],
+      "mode": "ok",
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"],\"terminationReason\":\"completed\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/agy-proj-<DATE>-conv-abc\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[AGENT] Session turn completed (completed)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "agy-stop-no-reason",
+      "description": "Stop without a reason",
+      "args": [
+        "Stop"
+      ],
+      "mode": "ok",
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"]}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/agy-proj-<DATE>-conv-abc\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[AGENT] Session turn completed (unknown)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "agy-pre-invocation",
+      "description": "PreInvocation",
+      "args": [
+        "PreInvocation"
+      ],
+      "mode": "ok",
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"],\"invocationNum\":3,\"modelName\":\"gemini-x\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted session-lifecycle to transcripts/agy-proj-<DATE>-conv-abc\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[SESSION] PreInvocation: invocation 3 (gemini-x)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "agy-pre-invocation-empty",
+      "description": "PreInvocation without fields",
+      "args": [
+        "PreInvocation"
+      ],
+      "mode": "ok",
+      "stdin": "{}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted session-lifecycle to transcripts/workdir-<DATE>-unknown\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "workdir-<DATE>-unknown",
+                  "content": "[SESSION] PreInvocation: invocation ? (unknown)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "agy-prompt-override",
+      "description": "a prompt replaces the Antigravity entry",
+      "args": [
+        "Stop"
+      ],
+      "mode": "ok",
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"],\"prompt\":\"agy prompt\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/agy-proj-<DATE>-conv-abc\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[USER] agy prompt",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "agy-other-event",
+      "description": "an event with no entry",
+      "args": [
+        "PostInvocation"
+      ],
+      "mode": "ok",
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"]}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "agy-disabled",
+      "description": "disabled: the acknowledgement only",
+      "args": [
+        "Stop"
+      ],
+      "mode": "ok",
+      "env": {
+        "MEMPALACE_TRANSCRIPT_ENABLED": null
+      },
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"]}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "agy-malformed",
+      "description": "a payload that does not parse",
+      "args": [
+        "Stop"
+      ],
+      "mode": "ok",
+      "deviation": "R30/exit-status",
+      "stdin": "{bad",
+      "expect": {
+        "exit": 5,
+        "stdout": "{}\n",
+        "stderr": "",
+        "requests": []
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "agy-git-root",
+      "description": "no workspacePaths: the Git top level",
+      "args": [
+        "Stop"
+      ],
+      "mode": "ok",
+      "cwd": "repo",
+      "stdin": "{\"conversationId\":\"c-1\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/repo-top-<DATE>-c-1\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "repo-top-<DATE>-c-1",
+                  "content": "[AGENT] Session turn completed (unknown)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "agy-session-end-event",
+      "description": "a SessionEnd hook_event_name replaces the entry",
+      "args": [
+        "Stop"
+      ],
+      "mode": "ok",
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"],\"hook_event_name\":\"SessionEnd\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted session-lifecycle to transcripts/agy-proj-<DATE>-conv-abc\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[SESSION] SessionEnd: unknown",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "agy-extra-argument",
+      "description": "Stop extra",
+      "args": [
+        "Stop",
+        "extra"
+      ],
+      "mode": "ok",
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"]}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/agy-proj-<DATE>-conv-abc\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[AGENT] Session turn completed (unknown)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "direct-claude-code",
+      "description": "claude-code with ENABLED unset",
+      "args": [
+        "claude-code"
+      ],
+      "mode": "ok",
+      "deviation": "R30/cli-identifiers",
+      "env": {
+        "MEMPALACE_TRANSCRIPT_ENABLED": null
+      },
+      "stdin": "{\"hook_event_name\":\"UserPromptSubmit\",\"prompt\":\"direct\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "",
+        "requests": []
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] direct",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "direct-antigravity-cli",
+      "description": "antigravity-cli Stop",
+      "args": [
+        "antigravity-cli",
+        "Stop"
+      ],
+      "mode": "ok",
+      "deviation": "R30/cli-identifiers",
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"],\"terminationReason\":\"done\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "",
+        "requests": []
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted agent-response to transcripts/agy-proj-<DATE>-conv-abc\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[AGENT] Session turn completed (done)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "direct-wrong-arity",
+      "description": "claude-code Stop",
+      "args": [
+        "claude-code",
+        "Stop"
+      ],
+      "mode": "ok",
+      "deviation": "R30/cli-identifiers",
+      "stdin": "{\"prompt\":\"x\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/workdir-<DATE>-unknown\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "workdir-<DATE>-unknown",
+                  "content": "[USER] x",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: expected no argument, <event>, claude-code, gemini-cli, copilot-cli or antigravity-cli <event>\n",
+        "requests": []
+      }
+    },
+    {
+      "id": "stdin-empty",
+      "description": "an empty payload",
+      "args": [],
+      "mode": "ok",
+      "stdin": "",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "stdin-trailing-garbage",
+      "description": "JSON followed by garbage",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/exit-status",
+      "stdin": "{} x",
+      "expect": {
+        "exit": 5,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "legacy-disabled",
+      "description": "the legacy form, disabled",
+      "args": [],
+      "mode": "ok",
+      "env": {
+        "MEMPALACE_TRANSCRIPT_ENABLED": null
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": []
+      }
+    },
+    {
+      "id": "quiet",
+      "description": "QUIET=1 silences the success line",
+      "args": [],
+      "mode": "ok",
+      "env": {
+        "MEMPALACE_TRANSCRIPT_QUIET": "1"
+      },
+      "stdin": "{\"prompt\":\"quiet\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] quiet",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "git-root",
+      "description": "no project named: the Git top level",
+      "args": [],
+      "mode": "ok",
+      "cwd": "repo",
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"s\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/repo-top-<DATE>-s\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "repo-top-<DATE>-s",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "cwd-fallback",
+      "description": "no project and no repository: the working directory",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"prompt\":\"p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/workdir-<DATE>-unknown\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "workdir-<DATE>-unknown",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "multibyte-session",
+      "description": "the first 8 characters of a multi-byte session id",
+      "args": [],
+      "mode": "ok",
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"éèêëàâäô-tail\",\"cwd\":\"/w/p\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/p-<DATE>-éèêëàâäô\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "p-<DATE>-éèêëàâäô",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "token-named",
+      "description": "MEMPALACE_DAEMON_TOKEN_FILE",
+      "args": [],
+      "mode": "ok",
+      "files": {
+        "named/token": "named-token\n",
+        "mock/token": "mock-token\n"
+      },
+      "env": {
+        "MEMPALACE_DAEMON_TOKEN_FILE": "{HOME}/named/token",
+        "TOKEN_PATH_MOCK": "{HOME}/mock/token"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer named-token",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "token-named-missing",
+      "description": "a missing named file is final",
+      "args": [],
+      "mode": "ok",
+      "files": {
+        "mock/token": "mock-token\n"
+      },
+      "env": {
+        "MEMPALACE_DAEMON_TOKEN_FILE": "{HOME}/nope/token",
+        "TOKEN_PATH_MOCK": "{HOME}/mock/token"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "DAEMON_UNREACHABLE: token file not found at <HOME>/nope/token\nmempalace-transcript: FAILED to persist user-prompt (rc=4): \n",
+        "requests": []
+      }
+    },
+    {
+      "id": "token-mock",
+      "description": "TOKEN_PATH_MOCK",
+      "args": [],
+      "mode": "ok",
+      "files": {
+        "mock/token": "mock-token\n",
+        ".mempalace/server/{KEY:{HOME}/.mempalace/palace}/token": "computed\n"
+      },
+      "env": {
+        "MEMPALACE_DAEMON_TOKEN_FILE": null,
+        "TOKEN_PATH_MOCK": "{HOME}/mock/token"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer mock-token",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "token-mock-missing",
+      "description": "a missing mock is final",
+      "args": [],
+      "mode": "ok",
+      "files": {
+        ".mempalace/server/0first/token": "w\n"
+      },
+      "env": {
+        "MEMPALACE_DAEMON_TOKEN_FILE": null,
+        "TOKEN_PATH_MOCK": "{HOME}/nope"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "DAEMON_UNREACHABLE: token file not found at <HOME>/nope\nmempalace-transcript: FAILED to persist user-prompt (rc=4): \n",
+        "requests": []
+      }
+    },
+    {
+      "id": "token-computed",
+      "description": "the palace-keyed path",
+      "args": [],
+      "mode": "ok",
+      "files": {
+        ".mempalace/server/{KEY:{HOME}/.mempalace/palace}/token": "computed\n",
+        ".mempalace/server/0first/token": "wild\n"
+      },
+      "env": {
+        "MEMPALACE_DAEMON_TOKEN_FILE": null
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer computed",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "token-wildcard",
+      "description": "the first server/*/token when the computed one is missing",
+      "args": [],
+      "mode": "ok",
+      "files": {
+        ".mempalace/server/1second/token": "second\n",
+        ".mempalace/server/0first/token": "first\n"
+      },
+      "env": {
+        "MEMPALACE_DAEMON_TOKEN_FILE": null
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer first",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "token-palace-path",
+      "description": "MEMPALACE_PALACE_PATH: one server directory, found by both",
+      "args": [],
+      "mode": "ok",
+      "files": {
+        ".mempalace/server/{KEY:/srv/palace}/token": "custom\n"
+      },
+      "env": {
+        "MEMPALACE_DAEMON_TOKEN_FILE": null,
+        "MEMPALACE_PALACE_PATH": "/srv/palace"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer custom",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "token-mempalace-path",
+      "description": "MEMPALACE_PATH keyed the shell's lookup",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/token-key",
+      "files": {
+        ".mempalace/server/{KEY:/srv/legacy}/token": "legacy\n",
+        ".mempalace/server/{KEY:{HOME}/.mempalace/palace}/token": "default\n"
+      },
+      "env": {
+        "MEMPALACE_DAEMON_TOKEN_FILE": null,
+        "MEMPALACE_PATH": "/srv/legacy"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer legacy",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer default",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "token-whitespace",
+      "description": "whitespace removed",
+      "args": [],
+      "mode": "ok",
+      "files": {
+        "t/token": " to\tk en \r\n\n"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer token",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "token-empty",
+      "description": "an empty token",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/empty-token",
+      "files": {
+        "t/token": " \n"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "DAEMON_UNREACHABLE: token file is empty at <HOME>/t/token\nmempalace-transcript: FAILED to persist user-prompt (rc=4): \n",
+        "requests": []
+      }
+    },
+    {
+      "id": "token-none",
+      "description": "no token anywhere",
+      "args": [],
+      "mode": "ok",
+      "files": {},
+      "env": {
+        "MEMPALACE_DAEMON_TOKEN_FILE": null
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "DAEMON_UNREACHABLE: token file not found at <HOME>/.mempalace/server/<DEFAULT_KEY>/token\nmempalace-transcript: FAILED to persist user-prompt (rc=4): \n",
+        "requests": []
+      }
+    },
+    {
+      "id": "daemon-rpc-error",
+      "description": "a JSON-RPC error",
+      "args": [],
+      "mode": "rpc-error",
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "ADD_FAILED: lease held\nmempalace-transcript: FAILED to persist user-prompt (rc=3): \n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "daemon-is-error",
+      "description": "result.isError",
+      "args": [],
+      "mode": "is-error",
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "ADD_FAILED: drawer refused\nmempalace-transcript: FAILED to persist user-prompt (rc=3): \n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "daemon-is-error-quiet",
+      "description": "failures ignore QUIET",
+      "args": [
+        "Stop"
+      ],
+      "mode": "is-error",
+      "env": {
+        "MEMPALACE_TRANSCRIPT_QUIET": "1"
+      },
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"]}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "ADD_FAILED: drawer refused\nmempalace-transcript: FAILED to persist agent-response (rc=3): \n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[AGENT] Session turn completed (unknown)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "daemon-http-500",
+      "description": "an HTML 500",
+      "args": [],
+      "mode": "http-500-html",
+      "deviation": "R30/response-classes",
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "DAEMON_UNREACHABLE: 127.0.0.1:<PORT> — HTTP 500\nmempalace-transcript: FAILED to persist user-prompt (rc=4): \n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "daemon-hang",
+      "description": "no answer within 5 s",
+      "args": [
+        "Stop"
+      ],
+      "mode": "hang",
+      "deviation": "R30/unreachable-reason",
+      "stdin": "{\"conversationId\":\"conv-abcdef123456\",\"workspacePaths\":[\"/ws/agy-proj\"]}",
+      "expect": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "DAEMON_UNREACHABLE: 127.0.0.1:<PORT> — curl exit 28: curl: (28) Operation timed out after <N> milliseconds with 0 bytes received \nmempalace-transcript: FAILED to persist agent-response (rc=4): \ncurl: (28) Operation timed out after <N> milliseconds with 0 bytes received\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[AGENT] Session turn completed (unknown)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "{}\n",
+        "stderr": "DAEMON_UNREACHABLE: 127.0.0.1:<PORT> — no answer within 5 s\nmempalace-transcript: FAILED to persist agent-response (rc=4): \n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok-123",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "agy-proj-<DATE>-conv-abc",
+                  "content": "[AGENT] Session turn completed (unknown)",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "daemon-closed",
+      "description": "a refused connection",
+      "args": [],
+      "mode": "closed",
+      "deviation": "R30/unreachable-reason",
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "DAEMON_UNREACHABLE: 127.0.0.1:<PORT> — curl exit 7: curl: (7) Failed to connect to 127.0.0.1 port <PORT> after <N> ms: Couldn't connect to server \nmempalace-transcript: FAILED to persist user-prompt (rc=4): \ncurl: (7) Failed to connect to 127.0.0.1 port <PORT> after <N> ms: Couldn't connect to server\n",
+        "requests": []
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "DAEMON_UNREACHABLE: 127.0.0.1:<PORT> — ECONNREFUSED\nmempalace-transcript: FAILED to persist user-prompt (rc=4): \n",
+        "requests": []
+      }
+    },
+    {
+      "id": "tls-valid",
+      "description": "a trust file setup wrote",
+      "args": [],
+      "mode": "ok",
+      "files": {
+        "t/token": "tok\n",
+        ".crewrig/tls-env.sh": "# setup\nexport NODE_EXTRA_CA_CERTS=/opt/My\\ CA/b.pem\n"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tls-malformed",
+      "description": "a trust file with a command in it",
+      "args": [],
+      "mode": "ok",
+      "deviation": "R30/trust-file",
+      "files": {
+        "t/token": "tok\n",
+        ".crewrig/tls-env.sh": "export A=1\necho sourced-and-run >&2\n"
+      },
+      "stdin": "{\"prompt\":\"p\",\"session_id\":\"sess-0123456789\",\"cwd\":\"/work/proj-a\"}",
+      "expect": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "sourced-and-run\nmempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ts": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "mempalace-transcript: ignoring <HOME>/.crewrig/tls-env.sh: line 2 is not an `export NAME=VALUE` line written by setup\nmempalace-transcript: persisted user-prompt to transcripts/proj-a-<DATE>-sess-012\n",
+        "requests": [
+          {
+            "method": "POST",
+            "url": "/mcp",
+            "contentType": "application/json",
+            "authorization": "Bearer tok",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "tools/call",
+              "params": {
+                "name": "mempalace_add_drawer",
+                "arguments": {
+                  "wing": "transcripts",
+                  "room": "proj-a-<DATE>-sess-012",
+                  "content": "[USER] p",
+                  "added_by": "transcript-hook"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
