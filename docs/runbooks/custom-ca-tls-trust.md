@@ -117,10 +117,21 @@ explicitly (without editing your profile):
   runs its `ProgramArguments` / `ExecStart` through the same wrapper, so its
   embedding-model fetch on first indexing inherits the trust.
 
-`scripts/start-chroma-server.sh`, `hooks/mempalace-transcript.sh`, and
-`scripts/prune-transcripts.sh` source the managed file at entry for the same
-reason. The standalone `task install-mempalace` runs its `pipx install` through
-`tls-exec.sh` too, so a MemPalace upgrade outside setup inherits the trust.
+`scripts/start-chroma-server.sh` and `scripts/prune-transcripts.sh` source
+the managed file at entry for the same reason. The standalone
+`task install-mempalace` runs its `pipx install` through `tls-exec.sh` too, so
+a MemPalace upgrade outside setup inherits the trust.
+
+The session-recording hook, `hooks/mempalace-transcript.ts` (spec 0247),
+**reads** the managed file through `scripts/lib/tls-env.ts` and never
+executes or sources it. The reader accepts only the format setup writes:
+comment lines, blank lines and `export NAME=VALUE` lines whose value is a
+`printf %q` word, with LF or CRLF line endings. It applies the values to the
+environment of the one Git process the hook spawns. The hook's own request is
+plain HTTP to the local MemPalace daemon, so the trust never changes it. A
+malformed file, one holding any other line, is ignored as a whole: the hook
+writes one line on standard error naming the file and the first such line
+number, and records anyway.
 
 ## Impact analysis — framework-triggered network operations
 

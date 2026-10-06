@@ -460,7 +460,8 @@ artifacts/
                                       # Do not edit manually
 
 hooks/                                # Shared hook scripts
-├── mempalace-transcript.sh           # Session recording (opt-in)
+├── mempalace-transcript.ts           # Session recording (opt-in; Node.js >= 24 when it fires)
+├── mempalace-transcript.sh           # Forwarding shim for installations not yet rewritten
 ├── gemini-transcript-hooks.json      # Gemini hook registration
 └── claude-transcript-hooks.json      # Claude Code hook registration
 
@@ -544,7 +545,12 @@ claude mcp remove <name>
   setup script auto-detects the right Python interpreter and verifies the
   installed version is within the supported range `>=3.6.0,<3.7`). Install
   or upgrade with `task install-mempalace` (or
-  `pipx install --force 'mempalace>=3.6.0,<3.7'`).
+  `pipx install --force 'mempalace>=3.6.0,<3.7'`). Session recording, an
+  opt-in of each setup script, wires `hooks/mempalace-transcript.ts` by its
+  absolute path in the checkout that ran setup (no copy under the CLI's
+  home, no `jq` or `curl`). It needs **Node.js 24 or later when the hook
+  fires**, and re-running setup from the checkout repairs a moved one
+  ([`docs/cli-matrix.md`](docs/cli-matrix.md) row 8b).
 - **GitHub** — Available via Claude Code's built-in connectors.
 
 ## Contributing
