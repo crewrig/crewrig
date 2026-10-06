@@ -125,6 +125,11 @@
     "note": "guarded form with a space in the path"
   },
   {
+    "command": "node \"/x/hooks/mempalace-transcript.ts\" claude-code",
+    "transcript": "direct",
+    "note": "the direct row of the predicates-agree scenario: sr_is_own now accepts it"
+  },
+  {
     "command": "MEMPALACE_TRANSCRIPT_ENABLED=0 node \"/x/hooks/mempalace-transcript.ts\" claude-code",
     "transcript": "foreign-prefix",
     "note": "spec scenario row: a direct form never carries a prefix"
