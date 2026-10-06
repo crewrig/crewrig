@@ -111,6 +111,11 @@ void (async () => {
       process.exitCode = 1;
     }
   } finally {
-    if (antigravity) process.stdout.write("{}\n");
+    if (antigravity) {
+      // A CLI that closed its end first must not turn the write into an
+      // unhandled EPIPE and a non-zero exit (R6; security review S5).
+      process.stdout.on("error", () => {});
+      process.stdout.write("{}\n");
+    }
   }
 })();

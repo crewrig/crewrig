@@ -21,6 +21,9 @@
 //                    `MEMPALACE_PYTHON=<non-blank word>`;
 //   legacy-unmarked  every other (i)/(ii) command: no prefix, or one made only
 //                    of the two owned names without that consent.
+// A command carrying shell syntax that chains, substitutes or redirects — `;`,
+// `&`, `|`, `<`, `>`, parentheses, a backquote, `$(`, a backslash, a line
+// break — is `no`, whatever the signature matched.
 // The guarded prefix is accepted on every CLI: the class is decided from the
 // text alone, and the corpus carries no CLI column.
 //
@@ -68,8 +71,30 @@ export function isDirectShape(post: string): boolean {
   return words.length === 2 && words[0] === "antigravity-cli";
 }
 
+// Shell syntax a transcript command never carries outside its prefix values
+// (security review S1): a command that chains, substitutes or redirects is an
+// operator's, never the framework's. The descriptor's shared signature is
+// wider (it serves C1 and C2 unchanged), so the transcript class narrows it
+// here, in both twins (`sr_tr_safe` in scripts/lib/usage-capture-optin.sh).
+const SAFE_WORD = "[^\\s;&|<>()$`\\\\\"'*?\\[\\]{}#~]";
+const SAFE_PRE = new RegExp(
+  `^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_]*=${SAFE_WORD}*[ \\t]+)*(?:(?:${SAFE_WORD}*/)?env[ \\t]+)?(?:(?:${SAFE_WORD}*/)?(?:bash|sh|node)[ \\t]+)?$`,
+);
+const UNSAFE_PATH = /[;&|<>()`\\]|\$\(/;
+const LINE_BREAK = /[\n\r]/;
+
+/** Whether a parsed command is free of shell syntax that would chain or substitute (S1). */
+export function isShellSafe(parse: HookCommandParse): boolean {
+  if (LINE_BREAK.test(parse.pre) || LINE_BREAK.test(parse.path) || LINE_BREAK.test(parse.post)) {
+    return false;
+  }
+  if (parse.guarded) return true;
+  return SAFE_PRE.test(parse.pre) && !UNSAFE_PATH.test(parse.path);
+}
+
 /** Classify an already-parsed transcript command. */
-export function classOfParse(parse: HookCommandParse): Exclude<TranscriptClass, "no"> {
+export function classOfParse(parse: HookCommandParse): TranscriptClass {
+  if (!isShellSafe(parse)) return "no";
   const direct = isDirectShape(parse.post);
   if (parse.guarded) return direct ? "direct" : "legacy-unmarked";
   const owned = MEMPALACE_TRANSCRIPT.ownedEnvNames ?? [];

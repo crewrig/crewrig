@@ -135,7 +135,10 @@ describe(
         guardEntry["crewrig-worktree-git-guard"],
         "the installed guard is untouched",
       );
-      assert.ok(!("crewrig-mempalace-transcript" in after), "no transcript hook is deployed below the floor");
+      assert.ok(
+        !("crewrig-mempalace-transcript" in after),
+        "no transcript hook is deployed below the floor",
+      );
     });
   },
 );

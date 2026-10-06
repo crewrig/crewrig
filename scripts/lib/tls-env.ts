@@ -137,6 +137,9 @@ export function decodeQuotedWord(word: string): string | undefined {
       i += point.length;
     }
   }
+  // `printf %q` never writes a NUL byte, and no environment value can carry one
+  // (security review S3): the file is then malformed, not half-applied.
+  if (bytes.includes(0)) return undefined;
   return Buffer.from(bytes).toString("utf8");
 }
 

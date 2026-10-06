@@ -35,17 +35,23 @@ export function tailLines(file: string, count: number): string[] {
   try {
     const size = fs.fstatSync(fd).size;
     let start = size;
-    let buffer = Buffer.alloc(0);
-    // Read until the buffer holds `count` line feeds before its last byte, so
-    // `count` whole lines are known, or the file is exhausted.
+    // Read backwards until `count` line feeds before the file's last byte are
+    // seen, so `count` whole lines are known, or the file is exhausted. Each
+    // chunk is scanned once and the chunks are joined once: linear in the bytes
+    // read, however long a line is (security review S2).
+    const chunks: Buffer[] = [];
+    let seen = 0;
     while (start > 0) {
       const length = Math.min(CHUNK, start);
       start -= length;
       const chunk = Buffer.alloc(length);
       fs.readSync(fd, chunk, 0, length, start);
-      buffer = Buffer.concat([chunk, buffer]);
-      if (countNewlines(buffer, buffer.length - 1) >= count) break;
+      chunks.unshift(chunk);
+      // The file's own last byte is not counted: a final line feed ends a line.
+      seen += countNewlines(chunk, start + length === size ? length - 1 : length);
+      if (seen >= count) break;
     }
+    const buffer = Buffer.concat(chunks);
     let text = buffer.toString("utf8");
     if (text.endsWith("\n")) text = text.slice(0, -1);
     if (text === "" && buffer.length === 0) return [];

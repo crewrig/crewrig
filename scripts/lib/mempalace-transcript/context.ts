@@ -48,16 +48,22 @@ export function gitTopLevel(input: ContextInput): string | undefined {
   if (input.platform === "win32") env["PATHEXT"] = ".EXE";
   const git = resolveOnPath("git", { platform: input.platform, env, isFile: defaultIsFile });
   if (git === undefined) return undefined;
-  const result = spawnSync(git, ["rev-parse", "--show-toplevel"], {
-    cwd: input.cwd,
-    env,
-    encoding: "utf8",
-    windowsHide: true,
-    shell: false,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+  let result: ReturnType<typeof spawnSync>;
+  try {
+    result = spawnSync(git, ["rev-parse", "--show-toplevel"], {
+      cwd: input.cwd,
+      env,
+      encoding: "utf8",
+      windowsHide: true,
+      shell: false,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    // An environment the spawn refuses (a value it cannot pass) yields no top level.
+    return undefined;
+  }
   if (result.error !== undefined || result.status !== 0) return undefined;
-  const top = stripTrailingNewlines(result.stdout);
+  const top = stripTrailingNewlines(String(result.stdout));
   return top === "" ? undefined : top;
 }
 

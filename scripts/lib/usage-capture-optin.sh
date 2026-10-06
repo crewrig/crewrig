@@ -208,16 +208,30 @@ def sr_env_prefix:
 #     any assignment), `direct` (iii)/(iv) bare or guarded, `legacy-enabled`
 #     ((i)/(ii) with exactly `MEMPALACE_TRANSCRIPT_ENABLED=1` and at most one
 #     non-blank `MEMPALACE_PYTHON=`), `legacy-unmarked` (every other (i)/(ii)),
-#     else `no`. Other arguments, a chained command or a `$( )` are `no`.
+#     else `no`. Other arguments, and a command carrying `;`, `&`, `|`, `<`,
+#     `>`, parentheses, a backquote, `$(`, a backslash or a line break
+#     outside its prefix values (sr_tr_safe), are `no`.
 def sr_tr_args:
   "(?:\\s*|(?:\\s+[A-Za-z]+|\\s+(?:claude-code|gemini-cli|copilot-cli)|\\s+antigravity-cli\\s+[A-Za-z]+)\\s*)";
 
 def sr_tr_re:
   "\\A(?<pre>\\s*(?:[A-Za-z_][A-Za-z0-9_]*=\\S*\\s+)*(?:(?:\\S*/)?env\\s+)?(?:(?:\\S*/)?(?:bash|sh|node)\\s+)?)"
-  + "(?:\"[^\"]*/mempalace-transcript\\.(?:sh|ts)\""
+  + "(?<path>\"[^\"]*/mempalace-transcript\\.(?:sh|ts)\""
   + "|\\x27[^\\x27]*/mempalace-transcript\\.(?:sh|ts)\\x27"
   + "|[^\\s\"\\x27]*/mempalace-transcript\\.(?:sh|ts))"
   + "(?<post>" + sr_tr_args + ")\\z";
+
+# Shell syntax a transcript command never carries outside its prefix values
+# (security review S1): a command that chains, substitutes, redirects or
+# spans lines belongs to the operator, never to the framework. The twin of
+# isShellSafe in scripts/lib/transcript-recognition.ts.
+def sr_tr_safe_word: "[^\\s;&|<>()$`\\\\\"\\x27*?\\[\\]{}#~]";
+def sr_tr_safe($p):
+  ($p.pre + $p.path + $p.post | test("[\\n\\r]") | not)
+  and ($p.pre | test("\\A[ \\t]*(?:[A-Za-z_][A-Za-z0-9_]*=" + sr_tr_safe_word + "*[ \\t]+)*"
+        + "(?:(?:" + sr_tr_safe_word + "*/)?env[ \\t]+)?"
+        + "(?:(?:" + sr_tr_safe_word + "*/)?(?:bash|sh|node)[ \\t]+)?\\z"))
+  and ($p.path | test("[;&|<>()`\\\\]|\\$\\(") | not);
 
 def sr_tr_guarded_re:
   "\\Aset NoDefaultCurrentDirectoryInExePath=1&& node (?:[A-Za-z]:)?/(?:[^\\s\"\\x27\\\\&|<>^%()$`]*/)?mempalace-transcript\\.ts"
@@ -237,18 +251,20 @@ def sr_tr_direct_shape:
 
 # The class of a command string.
 def sr_transcript_class_of:
-  if test(sr_tr_guarded_re) then
+  if test("[\\n\\r]") then "no"
+  elif test(sr_tr_guarded_re) then
     (capture(sr_tr_guarded_re).post | if sr_tr_direct_shape then "direct" else "legacy-unmarked" end)
   elif test(sr_tr_re) then
     capture(sr_tr_re) as $p
-    | ($p.pre | sr_tr_assigns) as $a
+    | if sr_tr_safe($p) | not then "no" else
+    ($p.pre | sr_tr_assigns) as $a
     | if any($a[]; .n != "MEMPALACE_TRANSCRIPT_ENABLED" and .n != "MEMPALACE_PYTHON") then "foreign-prefix"
       elif ($p.post | sr_tr_direct_shape) then (if ($a | length) == 0 then "direct" else "foreign-prefix" end)
       elif ([$a[] | select(.n == "MEMPALACE_TRANSCRIPT_ENABLED")] as $e
             | [$a[] | select(.n == "MEMPALACE_PYTHON")] as $py
             | ($e | length) == 1 and $e[0].v == "1" and ($py | length) <= 1 and all($py[]; .v != ""))
       then "legacy-enabled"
-      else "legacy-unmarked" end
+      else "legacy-unmarked" end end
   else "no" end;
 
 # The class of a handler object; `no` for anything that is not a command.

@@ -124,6 +124,7 @@ export function rewriteTranscriptRefs(
     const parse = parseHandler(ref.handler, MEMPALACE_TRANSCRIPT);
     if (parse === null) continue;
     const cls = classOfParse(parse);
+    if (cls === "no") continue;
     const registered = parse.path;
     const leave = (detail: string): void => {
       lines.push({ kind: "left", event: label, path: registered, detail });

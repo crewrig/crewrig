@@ -2517,7 +2517,9 @@ deploy_antigravity_transcript_hooks() {
     backup_file "$manifest_target"
     # `+`, NOT `*`. Object `+` is a SHALLOW right-biased merge: a hook we own is
     # replaced wholesale, while every hook the operator owns is untouched.
-    if ! jq -s '.[0] + .[1]' "$manifest_target" "$patched" > "${manifest_target}.tmp" 2>/dev/null; then
+    # umask 077: the temp file is 0600 from its creation, never readable by
+    # others before the move (security review S4).
+    if ! (umask 077; jq -s '.[0] + .[1]' "$manifest_target" "$patched" > "${manifest_target}.tmp" 2>/dev/null); then
       rm -f "${manifest_target}.tmp" "$patched" "$rendered"
       echo "  ERROR: $manifest_target is not a JSON object; refusing to merge." >&2
       echo "         Your original file is untouched, and a backup sits beside it." >&2
@@ -2525,7 +2527,7 @@ deploy_antigravity_transcript_hooks() {
     fi
     mv "${manifest_target}.tmp" "$manifest_target"
   else
-    cp "$patched" "$manifest_target"
+    (umask 077; cp "$patched" "$manifest_target")
   fi
   chmod 600 "$manifest_target" 2>/dev/null || true
   rm -f "$patched"
