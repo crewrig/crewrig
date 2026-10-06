@@ -31,8 +31,9 @@ issue-1247 re-expression (F3) is made in the preparatory pull request that
 decision Q2 already places before the migration. This delta runs under the
 release-branch regime of `specs/0215-shell-to-typescript-migration.delta-04.md`,
 and its spec-PR targets `release/1231-ts-migration`. The version is a MINOR
-bump. Requirements 2, 19, 24, 26, 28 and 32 are clarified or narrowed, and
-two scenarios are added. No implementation of this spec has shipped yet, and
+bump. Requirements 2, 19, 23, 24, 26, 28 and 32 are clarified or narrowed,
+and three scenarios are added. The three findings of pass 5 of the seat
+`specs/1329` on this delta (s5-F1 to s5-F3) are folded in. No implementation of this spec has shipped yet, and
 the plan that DEV follows already implements every reading recorded here. No
 question is left open.*
 
@@ -59,7 +60,11 @@ with the rows `bash "/x/hooks/mempalace-transcript.sh" --foo bar`,
 `node "/x/hooks/mempalace-transcript.ts" claude-code Stop`, each classed `no`
 When the Bash predicate and the TypeScript recogniser classify them
 Then both return `no`, and setup never rewrites, keeps, deduplicates or removes
-such a command. Run by hand, the hook still accepts `Stop extra` as the
+such a command, except inside Antigravity CLI's `crewrig-mempalace-transcript`
+named hook, which requirement 23(c) treats per event. There, on an event that
+holds a `foreign-prefix` command, such a command is kept byte-identical, and on
+any other event it goes with the event's array, which takes the manifest's or
+is removed with an event the manifest no longer registers. Run by hand, the hook still accepts `Stop extra` as the
 Antigravity shape (b) and still ends `claude-code Stop` under requirement 3.
 
 **Scenario:** A second enable run keeps its backup and changes nothing
@@ -74,10 +79,13 @@ no backup.
 
 ## MODIFIED
 
-### Preamble — line references re-anchored after row C2 (plan F1)
+### Preamble — line references re-anchored after row C2 and PR A (plan F1, s5-F3)
 
-Row C2 (#1480, `38fc9491`) merged after the commit the spec pins. It rewrote
-the setups, `scripts/lib/usage-capture-optin.sh`, `scripts/lib/common.sh`,
+Row C2 (#1480, `38fc9491`) and the preparatory pull request of requirement 32
+(#1483, `3b1cf1c8`) merged after the commit the spec pins. Among the files the
+spec cites, #1483 changed only `scripts/tests/test-mempalace-transcript-hook.sh`,
+which requirement 32 re-anchors. C2 rewrote the setups,
+`scripts/lib/usage-capture-optin.sh`, `scripts/lib/common.sh`,
 `scripts/hook-wiring.ts` and `scripts/lib/hook-descriptor.ts`, and added
 `scripts/lib/hook-registry.ts`, `scripts/lib/hook-guard-manifest.ts` and
 `scripts/lib/hook-antigravity-write.ts`. Original:
@@ -88,22 +96,24 @@ the setups, `scripts/lib/usage-capture-optin.sh`, `scripts/lib/common.sh`,
 Replacement:
 
 > requirement 30. Line references are to `release/1231-ts-migration` at
-> `e69d90c6`, after row C2 (#1480). The table below maps every anchor that C2
-> moved. A reference not in the table resolves at `e69d90c6` exactly as it did
-> at `fe0294ce`, because C2 did not change the file it names:
-> `hooks/mempalace-transcript.sh`, `scripts/tests/test-mempalace-transcript-hook.sh`,
+> `3b1cf1c8`, after row C2 (#1480) and the preparatory pull request of
+> requirement 32 (#1483). The table below maps every anchor that C2 moved.
+> Requirement 32 re-anchors `scripts/tests/test-mempalace-transcript-hook.sh`,
+> which #1483 rewrote. A reference elsewhere resolves at `3b1cf1c8` exactly as
+> it did at `fe0294ce`, because neither change touched the file it names:
+> `hooks/mempalace-transcript.sh`,
 > `scripts/lib/usage-store/mcp.js`, `scripts/lib/hook-command.ts`,
 > `scripts/lib/tls-delegation.sh`, and the `common.sh` lines `:1113`, `:1119`,
 > `:1502-1506` and `:2053-2071`.
 >
-> | Requirement | Anchor at `fe0294ce` | Anchor at `e69d90c6` |
+> | Requirement | Anchor at `fe0294ce` | Anchor at `3b1cf1c8` |
 > |---|---|---|
 > | 21 | `scripts/setup-claude-interactive.sh:465-467` (install step) | `:473-474` (the copy declared at `:455-457`) |
 > | 21 | `scripts/setup-gemini-interactive.sh:418-420` | `:426-427` (declared at `:411-413`) |
 > | 21 | `scripts/setup-copilot-interactive.sh:409-411` | `:415-416` (declared at `:404-405`) |
 > | 21, 25 | `scripts/lib/common.sh:2369-2371`, `:2369` | `:2447-2448`, inside `deploy_antigravity_transcript_hooks` (`:2436`) |
 > | 23 | `scripts/lib/usage-capture-optin.sh:226` (`sr_merge`) | `:256`, which since C2 also chooses `sr_strip_sparing_guard` (`:243`) when the manifest carries no guard |
-> | 23(b) | `scripts/lib/usage-capture-optin.sh:874` (`merge_session_recording_hooks`) | `:906`; Copilot CLI's full replace is the `copilot)` program at `:926-930`, which since C2 also carries the installed guard handlers over |
+> | 23(b) | `scripts/lib/usage-capture-optin.sh:874` (`merge_session_recording_hooks`) | `:906`; Copilot CLI's full replace is the `copilot)` program at `:928-931` (its comment at `:926-927`), which since C2 also carries the installed guard handlers over |
 > | 23(c) | `scripts/lib/common.sh:2356`, the shallow merge at `:2435` | `:2436`, the shallow merge at `:2508` |
 > | 23 | `scripts/setup-claude-interactive.sh:468-471` (`env` consent) | `:476-479` |
 > | 24 | `scripts/lib/usage-capture-optin.sh:206-213` (`sr_is_own`) | `sr_is_transcript` `:211-218`, `sr_is_guard` `:224-231`, `sr_is_own` `:233` |
@@ -155,7 +165,7 @@ Replacement:
 >    exits are zero so that requirements 5 and 6 hold when the hook cannot
 >    start.
 
-### Requirement 19 — naming the case (plan F6)
+### Requirement 19 — naming the case (plan F6, s5-F3)
 
 Original:
 
@@ -196,12 +206,57 @@ Replacement:
 >     measured time. The harness names the case through a new optional
 >     `--case <label>` option of `scripts/check-timing-budget.ts`, whose label
 >     its failure line prints (today's line, `:183`, names the script, the
->     budget and the time only). Without the option, the harness's arguments,
+>     budget, the measured time and the run index only). Without the option, the harness's arguments,
 >     output and exit codes stay as they are. The option is covered in
 >     `scripts/tests/check-timing-budget.test.ts`. A daemon that accepts the
 >     connection and never answers is bounded by requirement 13, not budgeted.
 
-### Requirement 24 — recognition grammar and C2 anchors (plan F1, F2)
+### Requirement 23 — when the in-place rewrite runs (s5-F2)
+
+Only the passage after item (c) changes. The first quoted line, the end of
+item (c), is repeated unchanged for context; items (a) to (c) and the text
+before them stay as written. Original passage:
+
+> … the manifest as today, and every other named hook stays byte-identical. When the
+> user declines or cancels, setup SHALL write a direct form only where the
+> user's consent is already established, so that a decline never starts
+> recording that was not running: it SHALL rewrite in place a `direct`
+> command (re-pointed under requirement 25) and a `legacy-enabled` command;
+> it SHALL rewrite a `legacy-unmarked` command only on Claude Code and only
+> when the same settings file holds `env.MEMPALACE_TRANSCRIPT_ENABLED` equal
+> to `"1"` (`scripts/setup-claude-interactive.sh:468-471`); and it SHALL
+> leave every other `legacy-unmarked` command unchanged and report it as
+> disabled and not upgraded — a consent that lives only in the user's shell
+> environment cannot be established by setup. Every rewrite SHALL keep the
+> command's event, selector, key order, every other key and every other entry
+> exactly as they were. Setup SHALL report, by name and count, the commands it
+> wrote or rewrote and those it left, with the reason.
+
+Replacement passage:
+
+> … the manifest as today, and every other named hook stays byte-identical.
+> On every run, before the session-recording question and whatever the
+> answer will be, setup SHALL rewrite in place the transcript commands whose
+> consent is already established, so that a decline or a cancel never
+> starts recording that was not running: it SHALL rewrite a `direct`
+> command (re-pointed under requirement 25) and a `legacy-enabled` command;
+> it SHALL rewrite a `legacy-unmarked` command only on Claude Code and only
+> when the same settings file holds `env.MEMPALACE_TRANSCRIPT_ENABLED` equal
+> to `"1"` (`scripts/setup-claude-interactive.sh:476-479`); and it SHALL
+> leave every other `legacy-unmarked` command unchanged and report it as
+> disabled and not upgraded — a consent that lives only in the user's shell
+> environment cannot be established by setup. This is the order the setups
+> already follow for the worktree git guard, whose `guard_rewrite_installed`
+> runs before the question (`scripts/setup-claude-interactive.sh:446`). When
+> the user then declines or cancels, that rewrite is the only change setup
+> makes to transcript commands. When the user enables, the enable rule of
+> this requirement then applies to the configuration the rewrite left. Every
+> rewrite SHALL keep the command's event, selector, key order, every other
+> key and every other entry exactly as they were. Setup SHALL report, by
+> name and count, the commands it wrote or rewrote and those it left, with
+> the reason.
+
+### Requirement 24 — recognition grammar, C2 anchors and the Antigravity exception (plan F1, F2, s5-F1)
 
 Original:
 
@@ -309,7 +364,9 @@ Replacement:
 >     `capture` field and its two consumers stay unchanged. A command that
 >     chains an operator's own script, or names a script called
 >     `mempalace-transcript.*` with other arguments, is not a transcript
->     command and SHALL never be rewritten, kept, deduplicated or removed.
+>     command and SHALL never be rewritten, kept, deduplicated or removed,
+>     except inside Antigravity CLI's `crewrig-mempalace-transcript` named
+>     hook, which requirement 23(c) treats per event.
 
 ### Requirement 26 — scope of the no-write rule (seat finding v1-F4)
 
@@ -336,7 +393,9 @@ Replacement:
 >     the rewrite setup makes before the session-recording question SHALL write
 >     nothing and create no backup when it runs over a configuration that rewrite
 >     has already rewritten. That rewrite is the in-place rewrite of
->     requirement 23 that the decline and cancel paths rely on: `direct`,
+>     requirement 23, which setup runs on every run before the question,
+>     whatever the answer, and on which the decline and cancel paths rely:
+>     `direct`,
 >     `legacy-enabled` and consented `legacy-unmarked` commands moved to the
 >     direct form. The enable path keeps the unconditional backup and write it
 >     has today, because requirement 29 lists the only changes made to that
@@ -394,7 +453,7 @@ Replacement:
 >     (`sr_is_transcript`, `scripts/lib/usage-capture-optin.sh:211-218`) and
 >     the wording of requirement 24.
 
-### Requirement 32 — the issue-1247 case and C2's pre-C3 pins (plan F3, F5)
+### Requirement 32 — the issue-1247 case, PR A's anchors and C2's pre-C3 pins (plan F3, F5, s5-F1, s5-F3)
 
 Original:
 
@@ -440,28 +499,33 @@ Replacement:
 
 <!-- markdownlint-disable-next-line MD029 -->
 > 32. **Oracle (parent requirement 13; reworded at delta-01).**
->     `scripts/tests/test-mempalace-transcript-hook.sh` observes the hook
->     through a `curl` placed first on the search path
->     (`scripts/tests/test-mempalace-transcript-hook.sh:62-88`, `:114-190`,
->     `:192-259`, `:261-338`). A TypeScript hook that spawns no `curl`
->     (requirement 17) can never call it. Before the implementation PR, a
->     preparatory pull request of this ticket SHALL move that observation to a
->     stub daemon on the loopback interface, keeping every case's input and
->     expected outcome, and SHALL show the suite green against the unchanged
->     shell hook. The issue-1247 case (`:310-320`) asserts that the token never
->     appears on `curl`'s own argument list, which no daemon can see. In that
->     same preparatory pull request, it SHALL be observed instead through a
+>     Up to `e69d90c6`, `scripts/tests/test-mempalace-transcript-hook.sh`
+>     observed the hook through a `curl` placed first on the search path
+>     (`:62-88`, `:114-190`, `:192-259`, `:261-338` at that commit). A
+>     TypeScript hook that spawns no `curl` (requirement 17) can never call it.
+>     Before the implementation PR, a preparatory pull request of this ticket
+>     SHALL move that observation to a stub daemon on the loopback interface,
+>     keeping every case's input and expected outcome, and SHALL show the suite
+>     green against the unchanged shell hook. That pull request is #1483,
+>     merged on the release branch as `3b1cf1c8`; the anchors below into the
+>     suite are at that commit. The issue-1247 case (`:310-320` at
+>     `e69d90c6`) asserted that the token never appears on `curl`'s own
+>     argument list, which no daemon can see. In that same preparatory pull
+>     request, it SHALL be observed instead through a
 >     recorder directory placed first on the search path. That directory holds
 >     `curl` and `git` wrappers. Each wrapper appends its own argument list to
 >     a log, then runs the real binary found after the recorder directory, so
 >     the shell hook still reaches the stub. The case keeps its input. Its
 >     expected outcome is that the stub receives the bearer token and no
->     recorded argument list contains it. This is the only change of
->     observation besides the move to the stub daemon. The implementation PR
+>     recorded argument list contains it (at `3b1cf1c8`: the recorder set-up
+>     shared with the spec-0167 case, `:333-343`, and the assertion,
+>     `:366-379`). This is the only change of observation besides the move to
+>     the stub daemon. The implementation PR
 >     SHALL then run the suite against the TypeScript hook through the
 >     forwarding shim, with its assertions unchanged. Three assertions of the
->     suite check the shell source text (`:51-59`, `:90-98`, `:100-112`), a
->     property only a shell file has. The implementation PR SHALL remove them
+>     suite check the shell source text (`:143-151`, `:179-187`, `:189-201` at
+>     `3b1cf1c8`; `:51-59`, `:90-98`, `:100-112` at `e69d90c6`), a property
+>     only a shell file has. The implementation PR SHALL remove them
 >     under the second exception of parent requirement 13, and SHALL replace
 >     each with a black-box TypeScript test of the behaviour it stood for: the
 >     5-second bound, the Git top level in a linked worktree, and diagnostics
@@ -475,7 +539,8 @@ Replacement:
 >     whose expected value is a wired command text or the installed copy that
 >     requirement 21 retires. Those SHALL change to the new form. Row C2's
 >     tests that pin the transcript behaviour from before this ticket SHALL
->     likewise change, and only their expected values, where requirements 23,
+>     likewise change, and only their expected values and the test titles that
+>     name row C3, where requirements 23,
 >     24 and 27 change that behaviour. They are:
 >     `scripts/tests/hook-guard-corpus.test.ts` (the `sr_is_transcript` test,
 >     `:90`, scoped "until row C3"); the `transcript` field of the rows of
@@ -488,7 +553,10 @@ Replacement:
 >     C3. The implementation PR SHALL list every changed assertion. New
 >     black-box TypeScript tests SHALL cover requirements 3 to 16 and 20 to 29.
 >     They SHALL include, for each CLI, the decline path on every class of
->     requirement 24 and the enable path on a `foreign-prefix` command. The
+>     requirement 24 and the enable path on a `foreign-prefix` command, and, on
+>     Antigravity CLI, both paths on a command that names a script called
+>     `mempalace-transcript.*` with other arguments inside the
+>     `crewrig-mempalace-transcript` named hook. The
 >     Bash twin of the transcript predicate SHALL be exercised on the new
 >     corpus by an added block in `scripts/tests/test-setup-usage-capture-optin.sh`,
 >     which leaves that suite's existing assertions unchanged. Some existing
