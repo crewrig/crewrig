@@ -41,7 +41,12 @@ import { parseHookCommand } from "./hook-recognition.ts";
 import type { ReportLine } from "./hook-rewrite.ts";
 import { TRANSCRIPT_HOOK_NAME } from "./hook-transcript-manifest.ts";
 import { eventRefs, rewriteTranscriptRefs } from "./transcript-hook-rewrite.ts";
-import { classifyHandler, foreignReason, OWN_CLASSES } from "./transcript-recognition.ts";
+import {
+  classifyHandler,
+  foreignReason,
+  mentionedScript,
+  OWN_CLASSES,
+} from "./transcript-recognition.ts";
 
 export interface AntigravityTranscriptResult {
   readonly config: JsonObject;
@@ -97,7 +102,7 @@ export function mergeAntigravityTranscript(
         lines.push({
           kind: "left",
           event: `${TRANSCRIPT_HOOK_NAME}/${event}`,
-          path: parseHookCommand(command, MEMPALACE_TRANSCRIPT)?.path ?? "",
+          path: mentionedScript(command),
           detail: `${foreignReason(command)}; nothing added on this event`,
         });
       }

@@ -15,21 +15,23 @@
 // 0243 delta-03 R34 in place of that prefix. Its class:
 //   foreign-prefix   a prefix assignment to a name the framework does not own,
 //                    the direct shape (iii)/(iv) with any assignment, or a
-//                    prefix outside the grammar setup writes (i1-F5);
+//                    command that fails the shell-safety rule (i1-F5);
 //   direct           (iii)/(iv) with no prefix, or with the guarded prefix;
 //   legacy-enabled   (i)/(ii) whose prefix is exactly one
 //                    `MEMPALACE_TRANSCRIPT_ENABLED=1` and at most one
 //                    `MEMPALACE_PYTHON=<non-blank word>`;
 //   legacy-unmarked  every other (i)/(ii) command: no prefix, or one made only
 //                    of the two owned names without that consent.
-// A command that chains or substitutes (`;`, `$(`, a backquote, a line break,
-// or shell syntax inside the script path) is `no`; a prefix outside the
-// grammar setup writes is `foreign-prefix` (see shellSafety below).
+// A transcript-shaped command that fails the S1 shell-safety rule — a chain,
+// a substitution, a redirection or a prefix outside the grammar setup writes,
+// anywhere in the command, including one the signature cannot parse but that
+// names the hook script — is `foreign-prefix` (owner rulings, i1-F5).
 // The guarded prefix is accepted on every CLI: the class is decided from the
 // text alone, and the corpus carries no CLI column.
 //
 // Standard library only (spec 0240 R16).
 
+import { GUARDED_PREFIX } from "./hook-command.ts";
 import { MEMPALACE_TRANSCRIPT } from "./hook-descriptor.ts";
 import { parseHookCommand, type HookCommandParse } from "./hook-recognition.ts";
 
@@ -78,7 +80,7 @@ export function isDirectShape(post: string): boolean {
 // (`sr_tr_safety` in scripts/lib/usage-capture-optin.sh):
 //   - `chained`: a `;`, `$(`, a backquote or a line break anywhere, or shell
 //     syntax inside the script path — a command that chains or substitutes.
-//     It is not a transcript command (`no`): setup never reads it as one.
+//     It is the operator's (`foreign-prefix`).
 //   - `unsafe-prefix`: any other prefix outside the grammar setup writes — a
 //     quote, `$`, a backslash, a glob or brace character, `#`, `~`, `&`, `|`,
 //     `<`, `>` or a parenthesis in a value or an interpreter path. It is the
@@ -94,6 +96,22 @@ const UNSAFE_PATH = /[;&|<>()`\\]|\$\(/;
 
 export type ShellSafety = "safe" | "chained" | "unsafe-prefix";
 
+// A command outside the signature is transcript-shaped when it holds shell
+// syntax and names `.../mempalace-transcript.sh|ts` as a whole path word.
+const SHELL_SYNTAX = /[;&|<>()`\n\r]|\$\(/;
+const SCRIPT_MENTION = /\/mempalace-transcript\.(?:sh|ts)(?=["'\s;&|<>()`]|$)/;
+
+/** The hook script a command names, quotes stripped, for a report line; `""` when none. */
+export function mentionedScript(command: string): string {
+  const parse = parseHookCommand(command, MEMPALACE_TRANSCRIPT);
+  if (parse !== null) return parse.path;
+  const m =
+    /(?:"([^"]*\/mempalace-transcript\.(?:sh|ts))"|'([^']*\/mempalace-transcript\.(?:sh|ts))'|([^\s"';&|<>()`]*\/mempalace-transcript\.(?:sh|ts)))(?=["'\s;&|<>()`]|$)/.exec(
+      command,
+    );
+  return m === null ? "" : (m[1] ?? m[2] ?? m[3] ?? "");
+}
+
 /** The shell-safety verdict of a parsed command (S1, i1-F5). */
 export function shellSafety(parse: HookCommandParse): ShellSafety {
   if (CHAINING.test(parse.pre) || CHAINING.test(parse.path) || CHAINING.test(parse.post)) {
@@ -106,9 +124,10 @@ export function shellSafety(parse: HookCommandParse): ShellSafety {
 
 /** Classify an already-parsed transcript command. */
 export function classOfParse(parse: HookCommandParse): TranscriptClass {
-  const safety = shellSafety(parse);
-  if (safety === "chained") return "no";
-  if (safety === "unsafe-prefix") return "foreign-prefix";
+  // Owner rulings of 2026-10-07 (i1-F5, spec 0247 delta-03): a command that
+  // fails S1 — chained, substituted or with an unsafe prefix — is the
+  // operator's: left byte-identical, reported, nothing added to its event.
+  if (shellSafety(parse) !== "safe") return "foreign-prefix";
   const direct = isDirectShape(parse.post);
   if (parse.guarded) return direct ? "direct" : "legacy-unmarked";
   const owned = MEMPALACE_TRANSCRIPT.ownedEnvNames ?? [];
@@ -128,7 +147,13 @@ export function classOfParse(parse: HookCommandParse): TranscriptClass {
 /** The class of a command string. */
 export function classifyTranscript(command: string): TranscriptClass {
   const parse = parseHookCommand(command, MEMPALACE_TRANSCRIPT);
-  return parse === null ? "no" : classOfParse(parse);
+  if (parse !== null) return classOfParse(parse);
+  // Not of the signature's shape, yet transcript-shaped: it names the hook
+  // script as a path word and carries shell syntax around it — a chain, a
+  // substitution or a redirection the signature cannot hold (i1-F5). The
+  // framework's own guarded Windows prefix is not counted as syntax.
+  const rest = command.startsWith(GUARDED_PREFIX) ? command.slice(GUARDED_PREFIX.length) : command;
+  return SHELL_SYNTAX.test(rest) && SCRIPT_MENTION.test(rest) ? "foreign-prefix" : "no";
 }
 
 /** The class of a handler object (`{type?: "command", command}`); `no` for anything else. */
@@ -156,5 +181,5 @@ export function foreignReason(command: string): string {
   const names = assignmentNames(command).map((n) => `${n}=...`);
   return names.length > 0
     ? `keeps an environment prefix the framework does not own (${names.join(", ")})`
-    : "keeps a prefix the framework does not write";
+    : "keeps a command line the framework does not write";
 }

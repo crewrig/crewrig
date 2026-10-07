@@ -51,9 +51,11 @@ const CLASSES: readonly TranscriptClass[] = [
 ];
 
 /**
- * Commands that chain, substitute or redirect: never a transcript command, in
- * either twin (R24 last sentence; plan step 27). Kept here, not in the corpus,
- * because they test the boundary rather than name a class setup wrote.
+ * Commands that chain, substitute or redirect around the hook script: the
+ * operator's, `foreign-prefix` in both twins (owner ruling of 2026-10-07,
+ * review i1-F5, spec 0247 delta-03) — left byte-identical, reported, nothing
+ * added to their event. Kept here, not in the corpus, because they test the
+ * boundary rather than name a class setup wrote.
  */
 const NEVER: readonly string[] = [
   "bash /repo/hooks/mempalace-transcript.sh | tee /tmp/log",
@@ -122,9 +124,9 @@ describe("the corpus (R24)", () => {
     }
   });
 
-  test("holds the chained command of the scenario, classed no", () => {
+  test("holds the chained command of the scenario, classed foreign-prefix (i1-F5)", () => {
     const chained = "bash /opt/prep.sh && bash /repo/hooks/mempalace-transcript.sh";
-    assert.equal(CORPUS.find((row) => row.command === chained)?.transcript, "no");
+    assert.equal(CORPUS.find((row) => row.command === chained)?.transcript, "foreign-prefix");
   });
 });
 
@@ -135,8 +137,10 @@ describe("the TypeScript recogniser", () => {
     });
   }
 
-  test("a chained, substituted or redirected command is never a transcript command", () => {
-    for (const command of NEVER) assert.equal(classifyTranscript(command), "no", command);
+  test("a chained, substituted or redirected command is foreign-prefix (i1-F5)", () => {
+    for (const command of NEVER) {
+      assert.equal(classifyTranscript(command), "foreign-prefix", command);
+    }
   });
 });
 
@@ -199,10 +203,10 @@ describe("the Bash twin agrees (R24)", { skip: SKIP_POSIX }, () => {
     });
   });
 
-  test("sr_transcript_class says no to every chained, substituted or redirected command", () => {
+  test("sr_transcript_class says foreign-prefix to every chained, substituted or redirected command (i1-F5)", () => {
     assert.deepEqual(
       bashOver(rowsFile(NEVER), "sr_transcript_class"),
-      NEVER.map(() => "no"),
+      NEVER.map(() => "foreign-prefix"),
     );
   });
 

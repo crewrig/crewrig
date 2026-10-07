@@ -227,3 +227,127 @@ describe("Antigravity CLI: inside the named hook, per event (R23(c))", { skip: S
     });
   }
 });
+
+// Owner ruling of 2026-10-07 (i1-F5, delta-03): the chained and substituted
+// forms are foreign-prefix too — the four forms the enable-path probe showed
+// gaining a second, direct command beside them while they were `no`.
+const CHAINED = [
+  { label: "a `;` chain", cmd: (s: string) => `prep; bash ${s}` },
+  {
+    label: "a `$( )` substitution",
+    cmd: (s: string) =>
+      `MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$(which python3) bash ${s}`,
+  },
+  {
+    label: "a backquote substitution",
+    cmd: (s: string) =>
+      `MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=\`which python3\` bash ${s}`,
+  },
+  { label: "a newline chain", cmd: (s: string) => `bash ${s}\nprep` },
+] as const;
+const SECRETS = /which python3|\nprep|prep;/;
+
+describe(
+  "i1-F5 chained forms: foreign-prefix, never a second command",
+  { skip: SKIP_POSIX },
+  () => {
+    for (const form of CHAINED) {
+      test(`classifier: ${form.label}`, () => {
+        assert.equal(
+          classifyTranscript(form.cmd("/x/hooks/mempalace-transcript.sh")),
+          "foreign-prefix",
+        );
+      });
+
+      for (const cli of WIRED) {
+        test(`${cli} decline: ${form.label} is untouched and reported`, () => {
+          const co = makeTranscriptCheckout();
+          const copy = path.join(
+            homeWithCopies(),
+            HOME_DIR[cli],
+            "hooks",
+            "mempalace-transcript.sh",
+          );
+          const file = writeConfig(co, `${cli}.json`, configOf(cli, [form.cmd(copy)]));
+          const before = read(file);
+          const res = bashLibs(
+            `transcript_rewrite_installed ${cli} ${q(co.repo)} ${q(file)}; echo "rc=$?"`,
+            cleanEnv(),
+          );
+          assert.match(res.stdout, /rc=0/, res.stdout + res.stderr);
+          assert.equal(read(file), before);
+          assert.deepEqual(backups(file), []);
+          assert.match(
+            res.stdout,
+            new RegExp(`left ${copy.replace(/[.]/g, "\\.")} on ${EVENT[cli]} \\(keeps`),
+          );
+          assert.doesNotMatch(res.stdout, SECRETS, "names only, never values");
+        });
+
+        test(`${cli} enable: ${form.label} stays alone, no direct form added, reported`, () => {
+          const co = makeTranscriptCheckout();
+          const copy = path.join(
+            homeWithCopies(),
+            HOME_DIR[cli],
+            "hooks",
+            "mempalace-transcript.sh",
+          );
+          const chained = form.cmd(copy);
+          const file = writeConfig(co, `${cli}.json`, configOf(cli, [chained]));
+          const res = bashLibs(yesScript(cli, co, file));
+          assert.match(res.stdout, /rc=0/, res.stdout + res.stderr);
+          const after = JSON.parse(read(file)) as Json;
+          const onEvent = handlers(eventsOf(after)[EVENT[cli]]).map((h) => h["command"]);
+          assert.deepEqual(onEvent, [chained], "no direct form added beside it");
+          const report = res.stdout + res.stderr;
+          assert.match(
+            report,
+            new RegExp(`left .* on ${EVENT[cli]} \\(keeps .*\\); removed 0 .*added none`),
+          );
+          assert.doesNotMatch(report, SECRETS, "names only, never values");
+        });
+      }
+
+      test(`antigravity decline and enable: ${form.label} stays alone on Stop, reported`, () => {
+        const co = makeTranscriptCheckout();
+        const copy = path.join(
+          homeWithCopies(),
+          ".gemini",
+          "antigravity-cli",
+          "hooks",
+          "mempalace-transcript.sh",
+        );
+        const chained = form.cmd(`${copy} Stop`);
+        const target = path.join(path.dirname(co.repo), "hooks.json");
+        fs.writeFileSync(
+          target,
+          serialiseJson({ [AGY_HOOK]: { Stop: [handler(chained, { timeout: 10 })] } }),
+          {
+            mode: 0o644,
+          },
+        );
+        const before = read(target);
+        const decline = bashLibs(
+          `transcript_rewrite_installed antigravity ${q(co.repo)} ${q(target)}; echo "rc=$?"`,
+          cleanEnv(),
+        );
+        assert.match(decline.stdout, /rc=0/, decline.stdout + decline.stderr);
+        assert.equal(read(target), before);
+        assert.match(decline.stdout, new RegExp(`left .* on ${AGY_HOOK}/Stop \\(keeps`));
+        const enable = bashLibs(
+          `deploy_antigravity_transcript_hooks ${q(co.manifest("antigravity"))} "" ${q(path.join(path.dirname(target), "agy-hooks"))} ${q(target)} "" ${q(co.guard)}
+         echo "rc=$?"`,
+        );
+        assert.match(enable.stdout, /rc=0/, enable.stdout + enable.stderr);
+        const after = JSON.parse(read(target)) as Json;
+        assert.deepEqual((after[AGY_HOOK] as Json)["Stop"], [handler(chained, { timeout: 10 })]);
+        const report = enable.stdout + enable.stderr;
+        assert.match(
+          report,
+          new RegExp(`left .* on ${AGY_HOOK}/Stop \\(keeps .*nothing added on this event`),
+        );
+        assert.doesNotMatch(report + decline.stdout, SECRETS);
+      });
+    }
+  },
+);

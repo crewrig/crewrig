@@ -208,9 +208,9 @@ def sr_env_prefix:
 #     any assignment), `direct` (iii)/(iv) bare or guarded, `legacy-enabled`
 #     ((i)/(ii) with exactly `MEMPALACE_TRANSCRIPT_ENABLED=1` and at most one
 #     non-blank `MEMPALACE_PYTHON=`), `legacy-unmarked` (every other (i)/(ii)),
-#     else `no`. Other arguments, and a command that chains or substitutes
-#     (sr_tr_safety), are `no`; a prefix outside the grammar setup writes is
-#     `foreign-prefix`.
+#     else `no`. Other arguments are `no`; a command that chains, substitutes
+#     or redirects, or whose prefix is outside the grammar setup writes, is
+#     `foreign-prefix` (sr_tr_safety, sr_tr_shaped_unsafe; i1-F5).
 def sr_tr_args:
   "(?:\\s*|(?:\\s+[A-Za-z]+|\\s+(?:claude-code|gemini-cli|copilot-cli)|\\s+antigravity-cli\\s+[A-Za-z]+)\\s*)";
 
@@ -226,7 +226,7 @@ def sr_tr_re:
 # scripts/lib/transcript-recognition.ts:
 #   - `chained`: a `;`, `$(`, a backquote or a line break anywhere (tested on
 #     the whole command by sr_transcript_class_of), or shell syntax inside the
-#     script path: not a transcript command (`no`);
+#     script path: `foreign-prefix` (owner ruling, i1-F5);
 #   - `unsafe-prefix`: any other prefix outside the grammar setup writes (a
 #     quote, `$`, a backslash, a glob or brace character, `#`, `~`, `&`, `|`,
 #     `<`, `>` or a parenthesis): `foreign-prefix`, left byte-identical,
@@ -257,14 +257,25 @@ def sr_tr_direct_shape:
     or (($w | length) == 2 and $w[0] == "antigravity-cli");
 
 # The class of a command string.
+# A command outside the signature is still transcript-shaped when it carries
+# shell syntax and names `.../mempalace-transcript.sh|ts` as a whole path word
+# (i1-F5); the guarded Windows prefix setup writes is not counted as syntax.
+def sr_tr_shaped_unsafe:
+  sub("\\Aset NoDefaultCurrentDirectoryInExePath=1&& "; "")
+  | test("[;&|<>()`\\n\\r]|\\$\\(")
+    and test("/mempalace-transcript\\.(?:sh|ts)(?=[\"\\x27\\s;&|<>()`]|\\z)");
+
+# The class of a command string. Owner rulings of 2026-10-07 (i1-F5, spec 0247
+# delta-03): a transcript-shaped command that fails S1 — a chain, a
+# substitution, a redirection, or a prefix outside the grammar setup writes —
+# is `foreign-prefix`: left byte-identical, reported, nothing added.
 def sr_transcript_class_of:
-  if test("[;`\\n\\r]|\\$\\(") then "no"
-  elif test(sr_tr_guarded_re) then
-    (capture(sr_tr_guarded_re).post | if sr_tr_direct_shape then "direct" else "legacy-unmarked" end)
+  if test(sr_tr_guarded_re) then
+    (if test("[;`\\n\\r]|\\$\\(") then "foreign-prefix"
+     else capture(sr_tr_guarded_re).post | if sr_tr_direct_shape then "direct" else "legacy-unmarked" end end)
   elif test(sr_tr_re) then
     capture(sr_tr_re) as $p
-    | sr_tr_safety($p) as $safety
-    | if $safety == "chained" then "no" elif $safety == "unsafe-prefix" then "foreign-prefix" else
+    | if test("[;`\\n\\r]|\\$\\(") or sr_tr_safety($p) != "safe" then "foreign-prefix" else
     ($p.pre | sr_tr_assigns) as $a
     | if any($a[]; .n != "MEMPALACE_TRANSCRIPT_ENABLED" and .n != "MEMPALACE_PYTHON") then "foreign-prefix"
       elif ($p.post | sr_tr_direct_shape) then (if ($a | length) == 0 then "direct" else "foreign-prefix" end)
@@ -273,6 +284,7 @@ def sr_transcript_class_of:
             | ($e | length) == 1 and $e[0].v == "1" and ($py | length) <= 1 and all($py[]; .v != ""))
       then "legacy-enabled"
       else "legacy-unmarked" end end
+  elif sr_tr_shaped_unsafe then "foreign-prefix"
   else "no" end;
 
 # The class of a handler object; `no` for anything that is not a command.
@@ -354,10 +366,10 @@ def sr_report($m):
     | [$cfg | uc_all_handlers | select(.event == $e) | .handler] as $hs
     | ([$hs[] | select(sr_is_transcript)] | length) as $own
     | $hs[] | select(sr_transcript_class == "foreign-prefix") | .command
-    | (capture(sr_tr_re).pre | sr_tr_assigns | map(.n + "=...") | join(", ")) as $names
+    | (if test(sr_tr_re) then (capture(sr_tr_re).pre | sr_tr_assigns | map(.n + "=...") | join(", ")) else "" end) as $names
     | (capture("(?<p>\"[^\"]*/mempalace-transcript\\.(?:sh|ts)\"|\\x27[^\\x27]*/mempalace-transcript\\.(?:sh|ts)\\x27|[^\\s\"\\x27]*/mempalace-transcript\\.(?:sh|ts))").p
        | gsub("^[\"\\x27]|[\"\\x27]$"; "")) as $path
-    | (if $names == "" then "keeps a prefix the framework does not write"
+    | (if $names == "" then "keeps a command line the framework does not write"
        else "keeps an environment prefix the framework does not own (\($names))" end) as $why
     | "  Session recording: left \($path) on \($e) (\($why)); removed \($own) own transcript command(s) there and added none."
   end;
