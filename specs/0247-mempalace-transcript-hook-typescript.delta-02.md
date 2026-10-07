@@ -1,7 +1,7 @@
 ---
 id: "0247"
 slug: mempalace-transcript-hook-typescript
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1329
