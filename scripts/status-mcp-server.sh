@@ -27,8 +27,41 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # shellcheck disable=SC2034  # read by mcp_launcher_source_sha in common.sh
 CREWRIG_REPO_DIR="${REPO_DIR}"
 
-HOST="${MEMPALACE_MCP_HOST:-${MCP_DAEMON_HOST_DEFAULT}}"
-PORT="${MEMPALACE_MCP_PORT:-${MCP_DAEMON_PORT_DEFAULT}}"
+# The endpoint the installed launcher serves wins over the environment: status
+# then probes, and compares each registration against, what is actually
+# installed (spec 0246 R4). Without a readable launcher, the environment and
+# defaults apply as before.
+#
+# The launcher's host becomes the curl target only when it is loopback:
+# `localhost`, `::1` / `[::1]`, or a dotted quad 127.a.b.c with every octet
+# 0-255 and no leading zero (curl may read one as octal). Any other host, e.g.
+# `127.999.0.1`, would go through DNS and could leave the machine, so the
+# environment/default host is probed instead (PR #1474 security finding).
+# INSTALLED_ENDPOINT itself, used only for the local registration comparison,
+# is kept verbatim.
+_status_loopback_host() {
+  local h="$1" o octet='(0|[123456789][0123456789]{0,2})'
+  case "$h" in
+    localhost|'[::1]') printf '%s\n' "$h"; return 0 ;;
+    ::1) printf '[::1]\n'; return 0 ;;
+  esac
+  [[ "$h" =~ ^127\.${octet}\.${octet}\.${octet}$ ]] || return 1
+  for o in "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"; do
+    [ "$o" -le 255 ] || return 1
+  done
+  printf '%s\n' "$h"
+}
+INSTALLED_ENDPOINT="$(mcp_installed_endpoint 2>/dev/null || true)"
+if [ -n "${INSTALLED_ENDPOINT}" ]; then
+  hostport="${INSTALLED_ENDPOINT#http://}"
+  hostport="${hostport%/mcp}"
+  HOST="$(_status_loopback_host "${hostport%:*}")" \
+    || HOST="${MEMPALACE_MCP_HOST:-${MCP_DAEMON_HOST_DEFAULT}}"
+  PORT="${hostport##*:}"
+else
+  HOST="${MEMPALACE_MCP_HOST:-${MCP_DAEMON_HOST_DEFAULT}}"
+  PORT="${MEMPALACE_MCP_PORT:-${MCP_DAEMON_PORT_DEFAULT}}"
+fi
 LOG="${HOME}/.mempalace/mcp-server.log"
 rc=0
 
@@ -119,14 +152,14 @@ fi
 echo ""
 echo "Assistant registrations:"
 if [ "${rc}" -eq 0 ]; then
-  if ! mcp_report_assistant_arrangements "serving"; then
+  if ! mcp_report_assistant_arrangements "serving" "${INSTALLED_ENDPOINT}"; then
     echo "            One or more assistants are still in stdio mode while the shared"
     echo "            daemon is serving. They are locked out of writes by the daemon's"
     echo "            exclusive lease. Run: bash scripts/switch-mempalace-http.sh"
     rc=1
   fi
 else
-  mcp_report_assistant_arrangements || true
+  mcp_report_assistant_arrangements "" "${INSTALLED_ENDPOINT}" || true
 fi
 
 exit "${rc}"

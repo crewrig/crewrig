@@ -603,6 +603,9 @@ else
   fi
 fi
 
+# --- MemPalace session-start check (spec 0246 R8, R11): registered only while ANTIGRAVITY_SESSION_CHECK says so ---
+{ command -v node >/dev/null 2>&1 && node "$REPO_DIR/scripts/lib/node-floor-guard.js" && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/session-check-hooks.ts" register antigravity; } || echo "  Session check registration FAILED — setup continues." >&2
+
 echo ""
 
 # --- Generate ~/.gemini/config/AGENTS.md from deployed context files (spec 0061) ---
