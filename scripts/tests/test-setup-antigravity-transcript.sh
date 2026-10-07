@@ -689,37 +689,36 @@ else
 fi
 
 # --- §5. The hook's own Antigravity handling ---------------------------------
-# Hermetic by stubbing curl and providing a mock token file: the hook posts
-# JSON-RPC requests via curl and, on a zero exit, logs
-# `persisted <ENTRY_TYPE> to transcripts/<ROOM>`.
-# A stub that accepts JSON-RPC calls and exits zero therefore exposes both the
-# classification, the payload content, and the room id without a live network.
+# Hermetic through a loopback stub daemon and a mock token file (spec 0247 R32,
+# delta-02): the hook posts its JSON-RPC request to the stub that
+# MEMPALACE_MCP_HOST/PORT name and, on success, logs
+# `persisted <ENTRY_TYPE> to transcripts/<ROOM>`. The stub
+# (scripts/tests/fixtures/mempalace-transcript/stub-daemon.ts) answers every
+# call with success and records the request, so the classification, the payload
+# content and the room id are observed at the daemon boundary, without a live
+# network — for the shell hook and its TypeScript successor alike.
 echo "§5 hook payload handling (R7/R8/R9/R10/R11)"
 
-MOCK_BIN="$TMP_ROOT/bin"
-mkdir -p "$MOCK_BIN"
-MOCK_CURL="$MOCK_BIN/curl"
 CONTENT_OUT="$TMP_ROOT/content-out"
-cat > "$MOCK_CURL" <<EOF
-#!/bin/bash
-payload=""
-while [ \$# -gt 0 ]; do
-  if [ "\$1" = "-d" ]; then
-    payload="\$2"
-    break
+STUB_DAEMON="$REPO_DIR/scripts/tests/fixtures/mempalace-transcript/stub-daemon.ts"
+STUB_LOG="$TMP_ROOT/stub-requests.jsonl"
+STUB_PORT_FILE="$TMP_ROOT/stub-port"
+: > "$STUB_LOG"
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$STUB_DAEMON" \
+  --port-file "$STUB_PORT_FILE" --log "$STUB_LOG" --mode ok \
+  >"$TMP_ROOT/stub-stdout" 2>"$TMP_ROOT/stub-stderr" &
+STUB_PID=$!
+stub_tries=0
+while [ ! -s "$STUB_PORT_FILE" ]; do
+  stub_tries=$((stub_tries + 1))
+  if [ "$stub_tries" -gt 50 ]; then
+    kill "$STUB_PID" 2>/dev/null || true
+    echo "FATAL: stub daemon did not report a port within 5 s: $(cat "$TMP_ROOT/stub-stderr" 2>/dev/null)" >&2
+    exit 2
   fi
-  shift
+  sleep 0.1
 done
-if [ -n "\$payload" ]; then
-  content="\$(echo "\$payload" | jq -r '.params.arguments.content // empty' 2>/dev/null)"
-  if [ -n "\$content" ]; then
-    printf '%s' "\$content" > "$CONTENT_OUT"
-  fi
-fi
-echo '{"jsonrpc": "2.0", "id": 1, "result": {"isError": false, "content": [{"text": "OK"}]}}'
-exit 0
-EOF
-chmod +x "$MOCK_CURL"
+STUB_PORT="$(tr -d '[:space:]' < "$STUB_PORT_FILE")"
 
 MOCK_TOKEN="$TMP_ROOT/mock-token"
 echo "test-token" > "$MOCK_TOKEN"
@@ -736,7 +735,8 @@ CLAUDE_PROMPT='{"hook_event_name":"UserPromptSubmit","prompt":"hello"}'
 
 run_hook() { # <payload> [event]
   local payload="$1"; shift
-  printf '%s' "$payload" | PATH="$MOCK_BIN:$PATH" MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" MEMPALACE_PYTHON="$PYSTUB" \
+  printf '%s' "$payload" | MEMPALACE_MCP_HOST=127.0.0.1 MEMPALACE_MCP_PORT="$STUB_PORT" NO_PROXY=127.0.0.1 no_proxy=127.0.0.1 \
+    MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" MEMPALACE_PYTHON="$PYSTUB" \
     bash "$HOOK_SCRIPT" "$@" 2>"$TMP_ROOT/stderr"
 }
 
@@ -812,13 +812,12 @@ else
   bad "R10: emitted $LINES lines on stdout, expected exactly 1"
 fi
 
-# Only one EXIT trap may exist: a second one REPLACES the first, silently
-# disarming both the acknowledgement and the temp-file cleanup.
-if [ "$(grep -c '^[[:space:]]*trap .* EXIT' "$HOOK_SCRIPT")" = "1" ]; then
-  ok "R10: exactly one EXIT trap is installed in the hook"
-else
-  bad "R10: $(grep -c '^[[:space:]]*trap .* EXIT' "$HOOK_SCRIPT") EXIT traps — a later one disarms the earlier"
-fi
+# The source-text check "exactly one EXIT trap in the hook" was removed with the
+# migration (parent spec 0215 R13, second exception; spec 0247 delta-02): it
+# read a property only a shell file has. Its behaviour — the acknowledgement on
+# every path, exactly once — is asserted black-box by
+# scripts/tests/mempalace-transcript-args.test.ts,
+# "the acknowledgement on every Antigravity path (R5)".
 
 # THE ENTRY'S CONTENT. Everything above pins the entry TYPE and the room; nothing
 # pinned the text. Deleting the Antigravity `Stop)` case arm left both suites
@@ -826,8 +825,14 @@ fi
 # ENTRY_TYPE — only the `(terminationReason)` suffix silently vanished. That
 # Pin the text by capturing the payload content passed to the mock curl.
 rm -f "$CONTENT_OUT"
-printf '%s' "$AGY_STOP" | PATH="$MOCK_BIN:$PATH" MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" \
+: > "$STUB_LOG"
+printf '%s' "$AGY_STOP" | MEMPALACE_MCP_HOST=127.0.0.1 MEMPALACE_MCP_PORT="$STUB_PORT" NO_PROXY=127.0.0.1 no_proxy=127.0.0.1 \
+  MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" \
   bash "$HOOK_SCRIPT" Stop >/dev/null 2>&1
+# The content the stub received, as the mock curl wrote it (no trailing newline).
+if [ -s "$STUB_LOG" ]; then
+  jq -s -j 'last | .body.params.arguments.content // empty' "$STUB_LOG" > "$CONTENT_OUT" 2>/dev/null
+fi
 if [ "$(cat "$CONTENT_OUT" 2>/dev/null)" = "[AGENT] Session turn completed (NO_TOOL_CALL)" ]; then
   ok "R7: the entry carries the terminationReason, not just the turn marker"
 else
@@ -887,6 +892,9 @@ if [ -z "$OUT" ] && ! grep -q 'persisted' "$TMP_ROOT/stderr"; then
 else
   bad "R11: PostToolUse no longer short-circuits"
 fi
+
+kill "$STUB_PID" 2>/dev/null || true
+wait "$STUB_PID" 2>/dev/null || true
 
 echo ""
 echo "§6 usage-capture statusline wiring (spec 0206, PLAN v3 step 18)"
