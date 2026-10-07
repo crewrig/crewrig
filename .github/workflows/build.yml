@@ -1551,23 +1551,29 @@ jobs:
       - name: Timing fixtures
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/transcript-timing-fixtures.ts "$env:RUNNER_TEMP\mempalace-transcript-timing"
 
-      # Budget: 750 ms (initial, R19(a)) for hooks/mempalace-transcript.ts,
-      # direct form, `PostToolUse` payload (the entry's cheap exit).
+      # Budget: 300 ms (R19(a), recalibrated from the first green windows-latest
+      # run, 37593989881: max 86.1 ms -> max(3 x 86.1, 300) = 300 ms, initial
+      # 750 ms) for hooks/mempalace-transcript.ts, direct form, `PostToolUse`
+      # payload (the entry's cheap exit).
       - name: Case (a) PostToolUse direct form timing budget
         env:
           MEMPALACE_DAEMON_TOKEN_FILE: ${{ env.TIMING_TOKEN_FILE }}
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 --case a-posttooluse-direct --stdin-file $env:TIMING_POSTTOOLUSE_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 300 --case a-posttooluse-direct --stdin-file $env:TIMING_POSTTOOLUSE_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
 
-      # Budget: 750 ms (initial, R19(b)) for hooks/mempalace-transcript.ts,
-      # legacy form with MEMPALACE_TRANSCRIPT_ENABLED unset (disabled exit).
+      # Budget: 300 ms (R19(b), recalibrated from run 37593989881: max 70.7 ms
+      # -> max(3 x 70.7, 300) = 300 ms, initial 750 ms) for
+      # hooks/mempalace-transcript.ts, legacy form with
+      # MEMPALACE_TRANSCRIPT_ENABLED unset (disabled exit).
       - name: Case (b) legacy form disabled timing budget
         env:
           MEMPALACE_DAEMON_TOKEN_FILE: ${{ env.TIMING_TOKEN_FILE }}
         run: |
           Remove-Item Env:MEMPALACE_TRANSCRIPT_ENABLED -ErrorAction SilentlyContinue
-          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 --case b-legacy-disabled --stdin-file $env:TIMING_POSTTOOLUSE_PAYLOAD '--' hooks/mempalace-transcript.ts
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 300 --case b-legacy-disabled --stdin-file $env:TIMING_POSTTOOLUSE_PAYLOAD '--' hooks/mempalace-transcript.ts
 
-      # Budget: 2000 ms (initial, R19(c)) for hooks/mempalace-transcript.ts,
+      # Budget: 550 ms (R19(c), recalibrated from run 37593989881: max 181.0 ms
+      # -> 3 x 181.0 = 543 ms, rounded up to 550 ms, initial 2000 ms) for
+      # hooks/mempalace-transcript.ts,
       # direct form, `Stop` payload naming the 50 MB transcript, each record
       # persisted to the loopback stub daemon. with-stub-daemon.ts starts the
       # stub, exports MEMPALACE_MCP_HOST/PORT to the harness, checks that the
@@ -1575,9 +1581,11 @@ jobs:
       - name: Case (c) Stop with a 50 MB transcript timing budget
         env:
           MEMPALACE_DAEMON_TOKEN_FILE: ${{ env.TIMING_TOKEN_FILE }}
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/with-stub-daemon.ts --expect-requests 10 '--' node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --case c-stop-50mb-transcript --stdin-file $env:TIMING_STOP_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/with-stub-daemon.ts --expect-requests 10 '--' node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 550 --case c-stop-50mb-transcript --stdin-file $env:TIMING_STOP_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
 
-      # Budget: 2000 ms (initial, R19(d)) for hooks/mempalace-transcript.ts,
+      # Budget: 550 ms (R19(d), recalibrated from run 37593989881: max 173.8 ms
+      # -> 3 x 173.8 = 521.4 ms, rounded up to 550 ms, initial 2000 ms) for
+      # hooks/mempalace-transcript.ts,
       # direct form, `UserPromptSubmit` payload, nothing listening on the
       # daemon port (a loopback port the fixture step bound and released).
       - name: Case (d) UserPromptSubmit with nothing listening timing budget
@@ -1585,7 +1593,7 @@ jobs:
           MEMPALACE_DAEMON_TOKEN_FILE: ${{ env.TIMING_TOKEN_FILE }}
           MEMPALACE_MCP_HOST: 127.0.0.1
           MEMPALACE_MCP_PORT: ${{ env.TIMING_CLOSED_PORT }}
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --case d-nothing-listening --stdin-file $env:TIMING_PROMPT_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 550 --case d-nothing-listening --stdin-file $env:TIMING_PROMPT_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
