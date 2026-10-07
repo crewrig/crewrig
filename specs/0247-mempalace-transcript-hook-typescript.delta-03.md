@@ -55,8 +55,19 @@ targets `release/1231-ts-migration`. Spec 0215 and its deltas 01 to 04 say
 nothing about the classes of requirement 24, so this delta contradicts none of
 them. The version is a MAJOR bump. Commands the approved text classed
 `legacy-enabled` or `legacy-unmarked`, and so rewrote or removed, are now left
-byte-identical. Commands it classed `no` now block the add on their event. No
-question is left open.*
+byte-identical. Commands it classed `no` now block the add on their event.
+One such case is a command setup itself wrote. Setup writes the prefix
+`MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN` with the detected interpreter path
+unquoted (`scripts/setup-gemini-interactive.sh:429-431`,
+`scripts/setup-copilot-interactive.sh:419-421` and
+`scripts/setup-antigravity-interactive.sh:459-461` on
+`release/1231-ts-migration`). When that path holds a character the
+shell-safety rule of requirement 24 now rejects, such as `#`, `~`, `{`, `[`,
+`*` or `'`, the command setup wrote is `foreign-prefix`. It is left
+byte-identical and reported, it is no longer migrated, and its event receives
+no direct form. This side effect is accepted. Quoting the value would not
+avoid it, because a quote is itself outside the safe-character set of the
+rule. No question is left open.*
 
 ## ADDED
 
@@ -509,7 +520,11 @@ Replacement:
 >     out-of-signature rule of that requirement reaches it, is a transcript
 >     command its event already holds. In both twins, the test of whether an
 >     event holds a transcript command SHALL therefore count every class other
->     than "not a transcript command". A configuration that already held two
+>     than "not a transcript command". A command outside the recognition
+>     signature that carries none of the syntax of the out-of-signature rule
+>     is classed "not a transcript command", so its event may still receive
+>     the direct form and record twice; the *Out of scope* note under ADDED
+>     records that pre-existing case. A configuration that already held two
 >     before setup ran keeps no more than it held. Every write SHALL be
 >     backup-first and end at
 >     mode 0600. It SHALL preserve every entry and key it does not own;
