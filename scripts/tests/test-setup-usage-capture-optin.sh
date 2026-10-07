@@ -1899,6 +1899,33 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# §7. Spec 0247 R24 — the Bash twin of the MemPalace transcript predicate,
+# `sr_transcript_class`, over the shared corpus. Its TypeScript twin
+# (scripts/lib/transcript-recognition.ts) runs over the same rows in
+# scripts/tests/hook-transcript-corpus.test.ts; both must return each row's
+# `transcript` class.
+# ---------------------------------------------------------------------------
+echo "§7 sr_transcript_class over the mempalace-transcript corpus (spec 0247 R24)"
+TR_CORPUS="$REPO_DIR/scripts/tests/fixtures/mempalace-transcript/recognition-corpus.json"
+TR_ROWS="$(jq 'length' "$TR_CORPUS")"
+TR_MISMATCH="$(jq -r --arg shape grouped "$_UC_JQ_DEFS
+  .[] | ({type: \"command\", command} | sr_transcript_class) as \$got
+  | select(\$got != .transcript) | \"\(.command) => \(\$got), expected \(.transcript)\"" "$TR_CORPUS" 2>&1)"
+if [ "$TR_ROWS" -gt 0 ] && [ -z "$TR_MISMATCH" ]; then
+  ok "(7) sr_transcript_class returns the corpus class for all $TR_ROWS rows"
+else
+  bad "(7) sr_transcript_class disagrees with the corpus: $TR_MISMATCH"
+fi
+TR_OWN="$(jq -r --arg shape grouped "$_UC_JQ_DEFS
+  [.[] | ({type: \"command\", command} | sr_is_transcript) == (.transcript | IN(\"direct\", \"legacy-enabled\", \"legacy-unmarked\"))]
+  | all" "$TR_CORPUS" 2>&1)"
+if [ "$TR_OWN" = "true" ]; then
+  ok "(7) sr_is_transcript owns exactly the direct, legacy-enabled and legacy-unmarked rows"
+else
+  bad "(7) sr_is_transcript does not match the own classes: $TR_OWN"
+fi
+
+# ---------------------------------------------------------------------------
 echo ""
 echo "PASS: $pass  FAIL: $fail"
 [ "$fail" -eq 0 ]

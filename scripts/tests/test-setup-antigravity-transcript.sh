@@ -217,15 +217,16 @@ else
 fi
 
 HOOK_TARGET_A="$HOOKS_DIR_A/mempalace-transcript.sh"
-if [ -f "$HOOK_TARGET_A" ]; then
-  ok "R13: hook script installed under the assistant's own directory"
+# Spec 0247 R21 retires the installed copy: the hook runs from the checkout.
+if [ ! -e "$HOOK_TARGET_A" ]; then
+  ok "R13: no hook script copy is installed under the assistant's own directory (spec 0247 R21)"
 else
-  bad "R13: hook script not installed"
+  bad "R13: a hook script copy was installed at $HOOK_TARGET_A"
 fi
-if [ -x "$HOOK_TARGET_A" ]; then
-  ok "R13: installed hook script is executable"
+if [ ! -e "$HOOK_TARGET_A" ]; then
+  ok "R13: no installed hook script to make executable (spec 0247 R21)"
 else
-  bad "R13: installed hook script is not executable"
+  bad "R13: an installed hook script exists at $HOOK_TARGET_A"
 fi
 if [ -f "$TARGET_A" ] && jq -e . "$TARGET_A" >/dev/null 2>&1; then
   ok "R14: manifest deployed to the customization root as valid JSON"
@@ -233,22 +234,21 @@ else
   bad "R14: manifest not deployed, or not valid JSON"
 fi
 
-# Every TRANSCRIPT command must name the installed hook by ABSOLUTE path — that
-# is the whole point of installing it out of the repository. Scoped to the
-# transcript hook: the guard command deliberately names the repository path
-# instead (R28).
-if jq -e --arg hp "$HOOK_TARGET_A" \
-     '."crewrig-mempalace-transcript" | [.. | .command? // empty] | length > 0 and all(contains($hp))' \
+# Every TRANSCRIPT command must name the in-repo hook by ABSOLUTE path, in the
+# direct form (spec 0247 R20, R21): no installed copy, no environment prefix.
+REPO_TS_A="$(cd "$REPO_DIR/hooks" && pwd -P)/mempalace-transcript.ts"
+if jq -e --arg hp "node \"$REPO_TS_A\" antigravity-cli " \
+     '."crewrig-mempalace-transcript" | [.. | .command? // empty] | length > 0 and all(startswith($hp))' \
      "$TARGET_A" >/dev/null 2>&1; then
-  ok "R14: every transcript command names the installed hook by absolute path"
+  ok "R14: every transcript command names the in-repo hook by absolute path (spec 0247 R21)"
 else
-  bad "R14: a transcript command does not name the installed hook by absolute path"
+  bad "R14: a transcript command does not name the in-repo hook by absolute path"
 fi
-if jq -e '."crewrig-mempalace-transcript" | [.. | .command? // empty] | all(startswith("MEMPALACE_TRANSCRIPT_ENABLED=1"))' \
+if jq -e '."crewrig-mempalace-transcript" | [.. | .command? // empty] | all(contains("MEMPALACE_TRANSCRIPT_ENABLED") | not)' \
      "$TARGET_A" >/dev/null 2>&1; then
-  ok "R14: every transcript command carries the enabling env prefix"
+  ok "R14: no transcript command carries an env prefix (spec 0247 R20)"
 else
-  bad "R14: a transcript command is missing the enabling env prefix"
+  bad "R14: a transcript command carries an env prefix"
 fi
 if grep -q '\$PWD' "$TARGET_A"; then
   bad "R4: deployed manifest reintroduced \$PWD"
@@ -492,10 +492,11 @@ if jq -e '."grouped-and-disabled".PreToolUse[0].matcher == "run_command"' "$TARG
 else
   bad "a grouped event lost its matcher"
 fi
-if jq -e --arg hp "$HOME_D/hooks/mempalace-transcript.sh" \
-     '."grouped-and-disabled".PreToolUse[0].hooks[0].command | contains($hp) and endswith(" PreToolUse")' \
+# Spec 0247 R23(c): only `crewrig-mempalace-transcript` (and the guard's named
+# hook) is the framework's; a named hook of any other name is written verbatim.
+if jq -e '."grouped-and-disabled".PreToolUse[0].hooks[0].command == "ORIG"' \
      "$TARGET_D" >/dev/null 2>&1; then
-  ok "a grouped event's INNER handler command is rewritten"
+  ok "a grouped event's INNER handler command of another named hook is left verbatim (spec 0247 R23(c))"
 else
   bad "a grouped event's inner handler command was not rewritten"
 fi
@@ -504,10 +505,9 @@ if jq -e '."grouped-and-disabled".PreToolUse[0] | has("command") | not' "$TARGET
 else
   bad "a 'command' key was injected at the group level, where the CLI never reads it"
 fi
-if jq -e --arg hp "$HOME_D/hooks/mempalace-transcript.sh" \
-     '."grouped-and-disabled".Stop[0].command | contains($hp) and endswith(" Stop")' \
+if jq -e '."grouped-and-disabled".Stop[0].command == "ORIG"' \
      "$TARGET_D" >/dev/null 2>&1; then
-  ok "a flat event's handler command is still rewritten"
+  ok "a flat event's handler command of another named hook is left verbatim (spec 0247 R23(c))"
 else
   bad "a flat event's handler command was not rewritten"
 fi
@@ -661,7 +661,7 @@ case "$A_SRC" in
   *) bad "R24: arg 1 is '$A_SRC', expected the manifest source" ;;
 esac
 case "$A_HOOK" in
-  */hooks/mempalace-transcript.sh) ok "R24: arg 2 is the hook script source" ;;
+  "") ok "R24: arg 2 is empty — no hook script copy is installed (spec 0247 R21)" ;;
   *) bad "R24: arg 2 is '$A_HOOK', expected the hook script source" ;;
 esac
 case "$A_DIR" in
@@ -673,7 +673,7 @@ case "$A_JSON" in
   *) bad "R24: arg 4 is '$A_JSON', expected \${HOME}/.gemini/config/hooks.json" ;;
 esac
 case "$A_ENV" in
-  MEMPALACE_TRANSCRIPT_ENABLED=1*) ok "R24: arg 5 enables persistence" ;;
+  "") ok "R24: arg 5 is empty — the direct form carries no env prefix (spec 0247 R4, R20)" ;;
   *) bad "R24: arg 5 is '$A_ENV' — the deployed hook would opt itself out and record nothing" ;;
 esac
 case "$A_GUARD" in
@@ -689,37 +689,36 @@ else
 fi
 
 # --- §5. The hook's own Antigravity handling ---------------------------------
-# Hermetic by stubbing curl and providing a mock token file: the hook posts
-# JSON-RPC requests via curl and, on a zero exit, logs
-# `persisted <ENTRY_TYPE> to transcripts/<ROOM>`.
-# A stub that accepts JSON-RPC calls and exits zero therefore exposes both the
-# classification, the payload content, and the room id without a live network.
+# Hermetic through a loopback stub daemon and a mock token file (spec 0247 R32,
+# delta-02): the hook posts its JSON-RPC request to the stub that
+# MEMPALACE_MCP_HOST/PORT name and, on success, logs
+# `persisted <ENTRY_TYPE> to transcripts/<ROOM>`. The stub
+# (scripts/tests/fixtures/mempalace-transcript/stub-daemon.ts) answers every
+# call with success and records the request, so the classification, the payload
+# content and the room id are observed at the daemon boundary, without a live
+# network — for the shell hook and its TypeScript successor alike.
 echo "§5 hook payload handling (R7/R8/R9/R10/R11)"
 
-MOCK_BIN="$TMP_ROOT/bin"
-mkdir -p "$MOCK_BIN"
-MOCK_CURL="$MOCK_BIN/curl"
 CONTENT_OUT="$TMP_ROOT/content-out"
-cat > "$MOCK_CURL" <<EOF
-#!/bin/bash
-payload=""
-while [ \$# -gt 0 ]; do
-  if [ "\$1" = "-d" ]; then
-    payload="\$2"
-    break
+STUB_DAEMON="$REPO_DIR/scripts/tests/fixtures/mempalace-transcript/stub-daemon.ts"
+STUB_LOG="$TMP_ROOT/stub-requests.jsonl"
+STUB_PORT_FILE="$TMP_ROOT/stub-port"
+: > "$STUB_LOG"
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$STUB_DAEMON" \
+  --port-file "$STUB_PORT_FILE" --log "$STUB_LOG" --mode ok \
+  >"$TMP_ROOT/stub-stdout" 2>"$TMP_ROOT/stub-stderr" &
+STUB_PID=$!
+stub_tries=0
+while [ ! -s "$STUB_PORT_FILE" ]; do
+  stub_tries=$((stub_tries + 1))
+  if [ "$stub_tries" -gt 50 ]; then
+    kill "$STUB_PID" 2>/dev/null || true
+    echo "FATAL: stub daemon did not report a port within 5 s: $(cat "$TMP_ROOT/stub-stderr" 2>/dev/null)" >&2
+    exit 2
   fi
-  shift
+  sleep 0.1
 done
-if [ -n "\$payload" ]; then
-  content="\$(echo "\$payload" | jq -r '.params.arguments.content // empty' 2>/dev/null)"
-  if [ -n "\$content" ]; then
-    printf '%s' "\$content" > "$CONTENT_OUT"
-  fi
-fi
-echo '{"jsonrpc": "2.0", "id": 1, "result": {"isError": false, "content": [{"text": "OK"}]}}'
-exit 0
-EOF
-chmod +x "$MOCK_CURL"
+STUB_PORT="$(tr -d '[:space:]' < "$STUB_PORT_FILE")"
 
 MOCK_TOKEN="$TMP_ROOT/mock-token"
 echo "test-token" > "$MOCK_TOKEN"
@@ -736,7 +735,8 @@ CLAUDE_PROMPT='{"hook_event_name":"UserPromptSubmit","prompt":"hello"}'
 
 run_hook() { # <payload> [event]
   local payload="$1"; shift
-  printf '%s' "$payload" | PATH="$MOCK_BIN:$PATH" MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" MEMPALACE_PYTHON="$PYSTUB" \
+  printf '%s' "$payload" | MEMPALACE_MCP_HOST=127.0.0.1 MEMPALACE_MCP_PORT="$STUB_PORT" NO_PROXY=127.0.0.1 no_proxy=127.0.0.1 \
+    MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" MEMPALACE_PYTHON="$PYSTUB" \
     bash "$HOOK_SCRIPT" "$@" 2>"$TMP_ROOT/stderr"
 }
 
@@ -812,13 +812,12 @@ else
   bad "R10: emitted $LINES lines on stdout, expected exactly 1"
 fi
 
-# Only one EXIT trap may exist: a second one REPLACES the first, silently
-# disarming both the acknowledgement and the temp-file cleanup.
-if [ "$(grep -c '^[[:space:]]*trap .* EXIT' "$HOOK_SCRIPT")" = "1" ]; then
-  ok "R10: exactly one EXIT trap is installed in the hook"
-else
-  bad "R10: $(grep -c '^[[:space:]]*trap .* EXIT' "$HOOK_SCRIPT") EXIT traps — a later one disarms the earlier"
-fi
+# The source-text check "exactly one EXIT trap in the hook" was removed with the
+# migration (parent spec 0215 R13, second exception; spec 0247 delta-02): it
+# read a property only a shell file has. Its behaviour — the acknowledgement on
+# every path, exactly once — is asserted black-box by
+# scripts/tests/mempalace-transcript-args.test.ts,
+# "the acknowledgement on every Antigravity path (R5)".
 
 # THE ENTRY'S CONTENT. Everything above pins the entry TYPE and the room; nothing
 # pinned the text. Deleting the Antigravity `Stop)` case arm left both suites
@@ -826,8 +825,14 @@ fi
 # ENTRY_TYPE — only the `(terminationReason)` suffix silently vanished. That
 # Pin the text by capturing the payload content passed to the mock curl.
 rm -f "$CONTENT_OUT"
-printf '%s' "$AGY_STOP" | PATH="$MOCK_BIN:$PATH" MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" \
+: > "$STUB_LOG"
+printf '%s' "$AGY_STOP" | MEMPALACE_MCP_HOST=127.0.0.1 MEMPALACE_MCP_PORT="$STUB_PORT" NO_PROXY=127.0.0.1 no_proxy=127.0.0.1 \
+  MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_DAEMON_TOKEN_FILE="$MOCK_TOKEN" \
   bash "$HOOK_SCRIPT" Stop >/dev/null 2>&1
+# The content the stub received, as the mock curl wrote it (no trailing newline).
+if [ -s "$STUB_LOG" ]; then
+  jq -s -j 'last | .body.params.arguments.content // empty' "$STUB_LOG" > "$CONTENT_OUT" 2>/dev/null
+fi
 if [ "$(cat "$CONTENT_OUT" 2>/dev/null)" = "[AGENT] Session turn completed (NO_TOOL_CALL)" ]; then
   ok "R7: the entry carries the terminationReason, not just the turn marker"
 else
@@ -887,6 +892,9 @@ if [ -z "$OUT" ] && ! grep -q 'persisted' "$TMP_ROOT/stderr"; then
 else
   bad "R11: PostToolUse no longer short-circuits"
 fi
+
+kill "$STUB_PID" 2>/dev/null || true
+wait "$STUB_PID" 2>/dev/null || true
 
 echo ""
 echo "§6 usage-capture statusline wiring (spec 0206, PLAN v3 step 18)"

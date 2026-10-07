@@ -396,66 +396,59 @@ USER_HOOKS_JSON="$COPILOT_HOOKS_DIR/copilot-transcript-hooks.json"
 # form. A Node.js below the floor prints its diagnostic and changes nothing;
 # setup carries on.
 guard_rewrite_installed copilot "$REPO_DIR" "$USER_HOOKS_JSON" || true
+# Session recording: rewrite an installed registration (spec 0247 R23), on
+# every run before the question, so an installed transcript command whose
+# consent is established (its MEMPALACE_TRANSCRIPT_ENABLED=1 prefix) moves to
+# the direct `node` form of this checkout and a decline never starts
+# recording that was not running.
+transcript_rewrite_installed copilot "$REPO_DIR" "$USER_HOOKS_JSON" || true
+report_unused_transcript_copy "$COPILOT_HOOKS_DIR/mempalace-transcript.sh"
 # `|| true`: under `set -e`, Esc makes fzf exit 130 and would abort setup before
 # the usage-capture question below; a canceled answer reads as a decline.
 ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)" || true)
 if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   HOOKS_SRC="$REPO_DIR/hooks/copilot-transcript-hooks.json"
-  HOOK_SCRIPT_SRC="$REPO_DIR/hooks/mempalace-transcript.sh"
-  HOOK_SCRIPT_TARGET="$COPILOT_HOOKS_DIR/mempalace-transcript.sh"
   echo ""
   echo "Activating transcript hooks will:"
-  echo "  1. Install the hook script to $HOOK_SCRIPT_TARGET (project-independent)"
-  echo "  2. Deploy user-level hooks to $USER_HOOKS_JSON (fires for ALL projects),"
-  echo "     backing it up first when it exists"
+  echo "  1. Merge user-level hooks into $USER_HOOKS_JSON (fires for ALL projects),"
+  echo "     backing it up first when it exists; your own entries and keys are kept"
+  echo "  2. Wire each transcript command as node \"$REPO_DIR/hooks/mempalace-transcript.ts\""
+  echo "     copilot-cli (in-repo absolute path, no environment prefix; Node.js >= 24"
+  echo "     is needed when the hook fires)"
+  echo "  Recording depends on this checkout staying at $REPO_DIR;"
+  echo "  re-running this setup from a checkout repairs it."
   echo ""
   CONFIRM=$(echo -e "yes\nno" | fzf --height 10% --header "Apply?" || true)
   if [ "$CONFIRM" = "yes" ]; then
-    mkdir -p "$COPILOT_HOOKS_DIR"
-    install_file "$HOOK_SCRIPT_SRC" "$HOOK_SCRIPT_TARGET" \
-      "mempalace-transcript.sh -> ~/.copilot/hooks/mempalace-transcript.sh"
-    chmod +x "$HOOK_SCRIPT_TARGET" 2>/dev/null || true
-    MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
-    ENV_PREFIX='MEMPALACE_TRANSCRIPT_ENABLED=1'
-    if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
-      ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
-    fi
-    HOOKS_RENDERED_TMP="$(mktemp)"
     HOOKS_PATCHED_TMP="$(mktemp)"
     # The Copilot CLI hooks schema keys `hooks` by camelCase event name
-    # (object of event -> array). The guard's command line comes from
-    # `hook-wiring.ts guard render` (spec 0248 R28, R29) and is final: the
-    # `preToolUse` entry passes through untouched, while every other entry has
-    # its command rebuilt deterministically as the transcript hook. A refused or
-    # floor-failed render leaves the guard out and the installed one untouched.
-    # Usage capture is not part of this manifest: it has its own opt-in below
-    # (spec 0211).
-    if ! render_session_recording_manifest copilot "$REPO_DIR" "$HOOKS_SRC" "$HOOKS_RENDERED_TMP"; then
+    # (object of event -> array). Both command lines come from `hook-wiring.ts`
+    # and are final: the guard's from `guard render` (spec 0248 R28, R29), the
+    # transcript's from `transcript render` (spec 0247 R20, R21). A refused or
+    # floor-failed render leaves that kind out and the installed commands
+    # untouched. Usage capture is not part of this manifest: it has its own
+    # opt-in below (spec 0211).
+    if ! render_session_recording_manifest copilot "$REPO_DIR" "$HOOKS_SRC" "$HOOKS_PATCHED_TMP"; then
       echo "  ERROR: could not render $HOOKS_SRC." >&2
-      rm -f "$HOOKS_RENDERED_TMP" "$HOOKS_PATCHED_TMP"
-      exit 1
-    fi
-    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" '
-      (.hooks // {}) |= with_entries(
-        if .key == "preToolUse"
-        then .
-        else .value |= map(.command = ($envp + " bash " + ($hook_path | tojson)))
-        end
-      )' \
-      "$HOOKS_RENDERED_TMP" > "$HOOKS_PATCHED_TMP"
-    rm -f "$HOOKS_RENDERED_TMP"
-    if grep -q '\${COPILOT_PROJECT_DIR' "$HOOKS_PATCHED_TMP"; then
-      echo "  ERROR: Unresolved \${COPILOT_PROJECT_DIR} token in patched hooks." >&2
       rm -f "$HOOKS_PATCHED_TMP"
       exit 1
     fi
     # User-level hooks: loaded by Copilot for every project (not just crewrig).
-    # Full replace as before, but backup-first, 0600, and carrying any
-    # registered capture command through unchanged (spec 0211 R8).
+    # Merged in place since spec 0247 R23(b) (no more full replace): backup-first,
+    # 0600, operator entries and top-level keys kept, and any registered capture
+    # command carried through unchanged (spec 0211 R8).
     if ! merge_session_recording_hooks copilot "$USER_HOOKS_JSON" "$HOOKS_PATCHED_TMP"; then
       echo "  Transcript activation FAILED — setup continues without it." >&2
     else
       echo "  User-level transcript hooks deployed to $USER_HOOKS_JSON"
+      if [ "${SR_ALL_HOOKS_DISABLED:-0}" = "1" ]; then
+        echo "  Session recording is NOT active: \"disableAllHooks\" is true in $USER_HOOKS_JSON."
+      elif [ "${SR_TRANSCRIPT_WIRED:-0}" = "1" ]; then
+        echo "  Session recording wired to $REPO_DIR/hooks/mempalace-transcript.ts (in-repo absolute path)"
+        warn_if_linked_worktree "$REPO_DIR" "session recording"
+      else
+        echo "  Session recording NOT activated this run; installed transcript commands are left as they are."
+      fi
       if grep -qF 'worktree-git-guard' "$HOOKS_PATCHED_TMP"; then
         echo "  Worktree git guard wired to $REPO_DIR/hooks/worktree-git-guard.ts (in-repo absolute path)"
         warn_if_linked_worktree "$REPO_DIR" "worktree git guard"

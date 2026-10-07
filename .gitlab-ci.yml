@@ -635,6 +635,7 @@ test-wiring:
         - "scripts/tests/**"
         - "hooks/worktree-git-guard.sh"
         - "hooks/worktree-git-guard.ts"
+        - "hooks/mempalace-transcript.ts"
         - "scripts/worktree-claim.ts"
         - "scripts/lib/worktree-claim/**"
         - "scripts/lib/hook-*.ts"
@@ -649,6 +650,7 @@ test-wiring:
         - "scripts/tests/**"
         - "hooks/worktree-git-guard.sh"
         - "hooks/worktree-git-guard.ts"
+        - "hooks/mempalace-transcript.ts"
         - "scripts/worktree-claim.ts"
         - "scripts/lib/worktree-claim/**"
         - "scripts/lib/hook-*.ts"
@@ -1217,6 +1219,60 @@ worktree-guard-node-24-0:
   image: node:24.0.0
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+mempalace-transcript:
+  image: node:24
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-*.test.ts scripts/tests/hook-transcript-*.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "hooks/mempalace-transcript.*"
+        - "scripts/lib/mempalace-transcript/**"
+        - "scripts/lib/tls-env.ts"
+        - "scripts/lib/transcript-recognition.ts"
+        - "scripts/lib/hook-*.ts"
+        - "scripts/hook-wiring.ts"
+        - "scripts/lib/usage-store/mcp.*"
+        - "scripts/lib/usage-capture-optin.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/setup-*-interactive.sh"
+        - "hooks/*-transcript-hooks.json"
+        - "scripts/tests/mempalace-transcript-*.test.ts"
+        - "scripts/tests/hook-transcript-*.test.ts"
+        - "scripts/tests/lib/with-stub-daemon.ts"
+        - "scripts/tests/lib/transcript-*.ts"
+        - "scripts/tests/lib/spawn-spy.ts"
+        - "scripts/tests/lib/windows-invocation.ts"
+        - "scripts/tests/fixtures/mempalace-transcript/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "hooks/mempalace-transcript.*"
+        - "scripts/lib/mempalace-transcript/**"
+        - "scripts/lib/tls-env.ts"
+        - "scripts/lib/transcript-recognition.ts"
+        - "scripts/lib/hook-*.ts"
+        - "scripts/hook-wiring.ts"
+        - "scripts/lib/usage-store/mcp.*"
+        - "scripts/lib/usage-capture-optin.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/setup-*-interactive.sh"
+        - "hooks/*-transcript-hooks.json"
+        - "scripts/tests/mempalace-transcript-*.test.ts"
+        - "scripts/tests/hook-transcript-*.test.ts"
+        - "scripts/tests/lib/with-stub-daemon.ts"
+        - "scripts/tests/lib/transcript-*.ts"
+        - "scripts/tests/lib/spawn-spy.ts"
+        - "scripts/tests/lib/windows-invocation.ts"
+        - "scripts/tests/fixtures/mempalace-transcript/**"
+
+mempalace-transcript-node-24-0:
+  image: node:24.0.0
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-entry-form.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

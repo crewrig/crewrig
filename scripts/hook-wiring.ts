@@ -15,6 +15,10 @@
 //   node scripts/hook-wiring.ts guard antigravity-rewrite --hooks <path>
 //       The worktree git guard (hook id `worktree-git-guard`, row C2). The
 //       first two are `--hook worktree-git-guard render|rewrite`.
+//   node scripts/hook-wiring.ts transcript <action> ...
+//       The MemPalace transcript hook (row C3, spec 0247): render, rewrite,
+//       antigravity-merge, antigravity-rewrite, classify — see
+//       scripts/lib/hook-transcript-cli.ts for the contract.
 //
 // `--hook <id>` selects a hook of scripts/lib/hook-registry.ts; the default,
 // `usage-capture`, keeps every C1 caller unchanged. <cli> is claude, gemini or
@@ -55,12 +59,13 @@ import {
   writeJsonConfig,
   type JsonObject,
 } from "./lib/hook-config.ts";
-import { WORKTREE_GIT_GUARD, type WiredCli } from "./lib/hook-descriptor.ts";
+import { MEMPALACE_TRANSCRIPT, WORKTREE_GIT_GUARD, type WiredCli } from "./lib/hook-descriptor.ts";
 import { guardRenderFile } from "./lib/hook-guard-manifest.ts";
 import { rewriteAntigravityGuardFile } from "./lib/hook-antigravity-write.ts";
 import { parseHandler } from "./lib/hook-recognition.ts";
 import { DEFAULT_HOOK, hookIds, lookupHook, type RegisteredHook } from "./lib/hook-registry.ts";
 import { rewriteConfig } from "./lib/hook-rewrite.ts";
+import { transcriptCommand } from "./lib/hook-transcript-cli.ts";
 import {
   installStatusline,
   rewriteStatusline,
@@ -275,8 +280,20 @@ function main(argv: readonly string[]): number {
   try {
     if (command === "statusline") return statusline(subject ?? "", options, repo, platform);
     if (command === "guard") return guard(subject ?? "", positional[2], options, repo, platform);
+    if (command === "transcript")
+      return transcriptCommand(positional.slice(1), options, { repo, platform, out, err });
     if (hook.descriptor.id === WORKTREE_GIT_GUARD.id && command !== undefined) {
       return guard(command, subject, options, repo, platform);
+    }
+    // The transcript hook is registered for its manifest and label, but C1's
+    // generic render/rewrite would apply no class rule and no foreign-prefix
+    // protection to its commands (spec 0247 R23-R25; review i1-F6).
+    if (hook.descriptor.id === MEMPALACE_TRANSCRIPT.id) {
+      err(
+        "  ERROR: --hook mempalace-transcript is not served by the generic render/rewrite;\n" +
+          "         use `hook-wiring.ts transcript render|rewrite|antigravity-merge|antigravity-rewrite|classify` instead.",
+      );
+      return 2;
     }
     const cli = asCli(subject);
     if (cli === null) {

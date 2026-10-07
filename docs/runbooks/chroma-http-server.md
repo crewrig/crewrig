@@ -124,10 +124,11 @@ purely client-side, in-process bound — it complements, but is independent
 of, the daemon's own file-descriptor floor documented above (spec 0087 /
 issue #587): this ceiling keeps each session frugal so that floor is
 approached far more slowly as concurrent sessions accumulate.
-`hooks/mempalace-transcript.sh`'s per-invocation clients honor this exact
-same ceiling and the exact same two environment variables — not a
-separate pair — so tuning one env var affects both components (spec 0088
-delta-01 R9).
+The session-recording hook, `hooks/mempalace-transcript.ts` (spec 0247),
+opens no ChromaDB client of its own: it sends one HTTP request per firing
+to the shared MemPalace MCP daemon, whose process holds the client this
+ceiling bounds. Its earlier per-invocation clients (spec 0088 delta-01 R9)
+are gone, so the two variables above now only tune that process.
 
 ## Migrating from the legacy `PersistentClient` setup
 

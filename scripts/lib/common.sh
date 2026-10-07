@@ -2400,6 +2400,61 @@ guard_rewrite_installed() {
   fi
 }
 
+# transcript_render_manifest <cli> <repo_dir> <manifest_src> <out_file> — write
+# to <out_file> the manifest with the MemPalace transcript commands rendered
+# (`hook-wiring.ts transcript render`, one line of compact JSON; spec 0247 R20,
+# R21): `node "<repo>/hooks/mempalace-transcript.ts" <cli-id>`, or on
+# Antigravity CLI `... antigravity-cli <event>`, final. A refusal (the module's,
+# or a missing hook script) still returns 0: the tool prints its diagnostic on
+# stderr and the transcript handlers are ABSENT from <out_file>. Returns 1
+# below the Node.js floor or when the tool fails, with <out_file> left empty.
+transcript_render_manifest() {
+  local cli="$1" repo_dir="$2" manifest_src="$3" out="$4"
+  : > "$out"
+  require_node_floor || return 1
+  if ! _crewrig_hook_wiring "$repo_dir" transcript render "$cli" --manifest "$manifest_src" > "$out"; then
+    : > "$out"
+    return 1
+  fi
+  return 0
+}
+
+# transcript_rewrite_installed <cli> <repo_dir> <config> — rewrite in place the
+# MemPalace transcript commands already registered in <config> whose consent is
+# established (spec 0247 R23, delta-01): `direct` re-pointed to <repo_dir>,
+# `legacy-enabled`, and on Claude Code a `legacy-unmarked` one when the file
+# holds env.MEMPALACE_TRANSCRIPT_ENABLED "1"; every other one is left and
+# reported. Called on every setup run, before the session-recording question,
+# so a `no` and a cancelled confirmation still rewrite and never start
+# recording. A configuration that names no transcript hook needs no Node.js:
+# nothing is run. Below the floor it prints the floor diagnostic and leaves
+# the file as it is (returns 1). <config> is hooks.json for `antigravity`.
+transcript_rewrite_installed() {
+  local cli="$1" repo_dir="$2" config="$3"
+  [ -f "$config" ] || return 0
+  grep -qF 'mempalace-transcript' "$config" 2>/dev/null || return 0
+  if ! require_node_floor; then
+    echo "  Installed session-recording commands left as they are." >&2
+    return 1
+  fi
+  if [ "$cli" = "antigravity" ]; then
+    _crewrig_hook_wiring "$repo_dir" transcript antigravity-rewrite --hooks "$config"
+  else
+    _crewrig_hook_wiring "$repo_dir" transcript rewrite "$cli" --config "$config"
+  fi
+}
+
+# report_unused_transcript_copy <path> — the copy of the shell hook an earlier
+# setup installed under a CLI's own directory is no longer wired (spec 0247
+# R21, R25): it is left on disk and its path reported.
+report_unused_transcript_copy() {
+  local copy="$1"
+  if [ -f "$copy" ]; then
+    echo "  No longer used (left on disk): $copy — session recording now runs the"
+    echo "  hook from this checkout."
+  fi
+}
+
 # --- Antigravity CLI transcript-hook deployment (spec 0116 R13/R14/R15) ------
 #
 # deploy_antigravity_transcript_hooks <manifest_src> <hook_src> <hooks_dir> <manifest_target> <env_prefix> <guard_src>
@@ -2411,47 +2466,38 @@ guard_rewrite_installed() {
 # deployment, so the deployment has to live somewhere a test can call. The two
 # `fzf` prompts stay in the setup script and are asserted structurally.
 #
-# What it does, in order:
-#   1. installs the shared hook script under the assistant's own directory, so
-#      the deployed hook stops depending on this repository's path (R13);
-#   2. rewrites every command in the manifest by named-hook dispatch (spec 0116
-#      delta-03 R28):
-#      - under `crewrig-mempalace-transcript`, every command names the installed
-#        absolute path, prefixed with `$env_prefix`, and appends the lifecycle
-#        event name (R14, and R5 — the Antigravity payload carries no event
-#        name, so the manifest must say which event fired);
-#      - under `crewrig-worktree-git-guard`, the command is the one
-#        `scripts/hook-wiring.ts guard render antigravity` builds (spec 0248
-#        R28, R29): the direct `node "<repo>/hooks/worktree-git-guard.ts"` form
-#        naming the REPOSITORY script (never installed), with NO env prefix and
-#        NO event argument — the guard inspects the payload it reads from stdin;
-#   3. backs up an existing manifest before touching it (R15) and MERGES into
-#      it rather than overwriting: `hooks.json`'s top level is a map of NAMED
-#      hooks and the operator may own others. Same-named hooks are replaced,
-#      which is what re-running setup should do.
+# The six-parameter signature is kept for its callers; since spec 0247 R21
+# <hook_src> and <env_prefix> are unused: the transcript hook is no longer
+# installed under the assistant's own directory and its command carries no
+# environment prefix. <hooks_dir> is still created. Both hooks are wired by the
+# in-repo absolute path of the checkout <guard_src> sits in (<repo>/hooks/...).
 #
-# The rewrite uses `with_entries`, not the `map` the sibling setups use, for two
-# reasons: the event name is a KEY here rather than a field, and a named hook may
-# carry a non-array `enabled` member that must be passed through untouched.
+# What it does, in this order (seat finding v1-F2):
+#   1. renders the guard (`hook-wiring.ts guard render antigravity`, spec 0248
+#      R28, R29) and DELETES the `crewrig-mempalace-transcript` named hook from
+#      that manifest, then backs up an existing `hooks.json` and SHALLOW-merges
+#      the result into it (`+`): that merge owns only the guard's named hook;
+#      every hook the operator owns, and the installed transcript hook, are left
+#      as they are. A refused or floor-failed guard render leaves the guard out.
+#   2. only when the Node.js floor holds, renders the transcript
+#      (`hook-wiring.ts transcript render antigravity`: `node "<repo>/hooks/
+#      mempalace-transcript.ts" antigravity-cli <event>`, the guarded form on
+#      Windows) and writes the `crewrig-mempalace-transcript` named hook with
+#      `hook-wiring.ts transcript antigravity-merge`, per event (spec 0247
+#      R23(c)): an event holding an operator's `foreign-prefix` command keeps
+#      it and loses only the framework's own; every other event takes the
+#      manifest's. A floor failure or a refused render leaves the installed
+#      transcript hook byte-identical (R27).
+# Sets SR_TRANSCRIPT_WIRED to 1 when step 2 wrote the transcript hook, else 0.
 deploy_antigravity_transcript_hooks() {
-  local manifest_src="$1" hook_src="$2" hooks_dir="$3" manifest_target="$4" env_prefix="$5" guard_src="$6"
-  local hook_target="${hooks_dir}/mempalace-transcript.sh"
-  # The guard is NEVER installed under the assistant's own directory (unlike the
-  # transcript hook): its command names the in-repo script, so the repository it
-  # is rendered against is the one <guard_src> sits in (<repo>/hooks/...).
+  local manifest_src="$1" hooks_dir="$3" manifest_target="$4" guard_src="$6"
   local guard_repo
   guard_repo="$(cd "$(dirname "$guard_src")/.." && pwd -P)"
+  # shellcheck disable=SC2034  # read by the setup scripts after this call
+  SR_TRANSCRIPT_WIRED=0
 
   mkdir -p "$hooks_dir" "$(dirname "$manifest_target")"
 
-  install_file "$hook_src" "$hook_target" \
-    "mempalace-transcript.sh -> ${hook_target}"
-  chmod +x "$hook_target" 2>/dev/null || true
-
-  # The guard's command is rendered by scripts/hook-wiring.ts (spec 0248 R28,
-  # R29): `node "<repo>/hooks/worktree-git-guard.ts"`, final. A refusal, or a
-  # Node.js below the floor, leaves the guard out of the manifest; the merge
-  # below is shallow, so an already-installed guard entry survives untouched.
   local rendered patched
   rendered="$(mktemp)"
   patched="$(mktemp)"
@@ -2460,37 +2506,8 @@ deploy_antigravity_transcript_hooks() {
     jq 'del(."crewrig-worktree-git-guard")' "$manifest_src" > "$rendered" \
       || { rm -f "$rendered" "$patched"; return 1; }
   fi
-  # Two element shapes, per the CLI's own docs/hooks.md: PreToolUse/PostToolUse
-  # are GROUPED — each element is `{matcher, hooks: [handler, ...]}` — while
-  # PreInvocation/PostInvocation/Stop are FLAT, each element being a handler
-  # itself. Rewriting `.command` unconditionally would bolt a meaningless
-  # `command` onto a group object and leave the real handler inside `hooks`
-  # untouched, which the CLI would happily load and never run. The shipped
-  # manifest registers only flat events today, so that mistake would have been
-  # invisible until the first tool event was ever registered.
-  # Only `crewrig-mempalace-transcript` is rewritten here — absolute INSTALLED
-  # path, transcript enabling env prefix, lifecycle-event argument. The
-  # `crewrig-worktree-git-guard` hook passes through exactly as rendered.
-  jq --arg envp "$env_prefix" --arg hp "$hook_target" '
-    def rewrite($ev): .command = ($envp + " bash " + ($hp | tojson) + " " + $ev);
-    with_entries(
-      if .key == "crewrig-worktree-git-guard"
-      then .
-      else .value |= with_entries(
-        if (.value | type) == "array"
-        then (.key) as $ev
-             | .value |= map(
-                 if has("hooks") and (.hooks | type) == "array"
-                 then .hooks |= map(rewrite($ev))
-                 else rewrite($ev)
-                 end
-               )
-        else .
-        end
-      )
-      end
-    )' "$rendered" > "$patched" || { rm -f "$rendered" "$patched"; return 1; }
-  rm -f "$rendered"
+  jq 'del(."crewrig-mempalace-transcript")' "$rendered" > "$patched" \
+    || { rm -f "$rendered" "$patched"; return 1; }
 
   # `cmd > out && mv` would swallow a jq failure: POSIX exempts every command in
   # an `&&` list except the last from `set -e`, so a refused input would skip the
@@ -2499,28 +2516,36 @@ deploy_antigravity_transcript_hooks() {
   if [ -f "$manifest_target" ]; then
     backup_file "$manifest_target"
     # `+`, NOT `*`. Object `+` is a SHALLOW right-biased merge: a hook we own is
-    # replaced wholesale, while every hook the operator owns is untouched. Deep
-    # merge (`*`) would union the EVENT keys inside our own hook, so an event we
-    # have since retired — say the `SessionEnd` that spec 0056 shipped and this
-    # spec removes — would survive a re-run, still pointing at a stale command.
-    # The operator's entries are preserved either way; only our own must be
-    # authoritative.
-    if ! jq -s '.[0] + .[1]' "$manifest_target" "$patched" > "${manifest_target}.tmp" 2>/dev/null; then
-      rm -f "${manifest_target}.tmp" "$patched"
+    # replaced wholesale, while every hook the operator owns is untouched.
+    # umask 077: the temp file is 0600 from its creation, never readable by
+    # others before the move (security review S4).
+    if ! (umask 077; jq -s '.[0] + .[1]' "$manifest_target" "$patched" > "${manifest_target}.tmp" 2>/dev/null); then
+      rm -f "${manifest_target}.tmp" "$patched" "$rendered"
       echo "  ERROR: $manifest_target is not a JSON object; refusing to merge." >&2
       echo "         Your original file is untouched, and a backup sits beside it." >&2
-      # The hook script installed above is deliberately NOT removed. It may have
-      # been put there by an earlier successful run, and a manifest already on
-      # disk may still reference it; deleting it to tidy up this failure would
-      # break that deployment. An unreferenced copy is inert — a deleted one that
-      # something still points at is not.
       return 1
     fi
     mv "${manifest_target}.tmp" "$manifest_target"
   else
-    cp "$patched" "$manifest_target"
+    (umask 077; cp "$patched" "$manifest_target")
   fi
+  chmod 600 "$manifest_target" 2>/dev/null || true
   rm -f "$patched"
+
+  # Step 2: the transcript named hook, per event, only above the floor.
+  local transcript_rendered
+  transcript_rendered="$(mktemp)"
+  if transcript_render_manifest antigravity "$guard_repo" "$manifest_src" "$transcript_rendered" \
+     && jq -e 'has("crewrig-mempalace-transcript")' "$transcript_rendered" >/dev/null 2>&1; then
+    if _crewrig_hook_wiring "$guard_repo" transcript antigravity-merge \
+         --hooks "$manifest_target" --manifest "$transcript_rendered"; then
+      # shellcheck disable=SC2034  # read by the setup scripts after this call
+      SR_TRANSCRIPT_WIRED=1
+    fi
+  else
+    echo "  Session recording not wired this run; an installed transcript hook is left as it is." >&2
+  fi
+  rm -f "$rendered" "$transcript_rendered"
 
   echo "  Transcript hooks deployed to $manifest_target"
 }

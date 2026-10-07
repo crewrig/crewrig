@@ -445,6 +445,15 @@ done
 echo ""
 guard_rewrite_installed claude "$REPO_DIR" "$SETTINGS_TARGET" || true
 
+# --- Session recording: rewrite an installed registration (spec 0247 R23) ---
+# Runs on every setup run, before the session-recording question, so a `no`
+# and a cancelled confirmation still bring an installed transcript command
+# whose consent is established to the direct `node` form of this checkout, and
+# never start recording that was not running. A Node.js below the floor prints
+# its diagnostic and changes nothing; setup carries on.
+transcript_rewrite_installed claude "$REPO_DIR" "$SETTINGS_TARGET" || true
+report_unused_transcript_copy "$CLAUDE_HOME/hooks/mempalace-transcript.sh"
+
 # --- Transcript hooks (opt-in) ---
 echo ""
 # `|| true`: under `set -e`, Esc makes fzf exit 130 and would abort setup before
@@ -452,54 +461,42 @@ echo ""
 ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)" || true)
 if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   HOOKS_SRC="$REPO_DIR/hooks/claude-transcript-hooks.json"
-  HOOK_SCRIPT_SRC="$REPO_DIR/hooks/mempalace-transcript.sh"
-  CLAUDE_HOOKS_DIR="$CLAUDE_HOME/hooks"
-  HOOK_SCRIPT_TARGET="$CLAUDE_HOOKS_DIR/mempalace-transcript.sh"
   echo ""
   echo "Activating transcript hooks will:"
-  echo "  1. Install the hook script to $HOOK_SCRIPT_TARGET (project-independent)"
-  echo "  2. Backup $SETTINGS_TARGET to ${SETTINGS_TARGET}.bak.<timestamp>"
-  echo "  3. Merge hooks from $HOOKS_SRC into $SETTINGS_TARGET, with each command"
-  echo "     rewritten to point at $HOOK_SCRIPT_TARGET (absolute path)"
-  echo "  4. Set env.MEMPALACE_TRANSCRIPT_ENABLED=\"1\" in $SETTINGS_TARGET"
+  echo "  1. Backup $SETTINGS_TARGET to ${SETTINGS_TARGET}.bak.<timestamp>"
+  echo "  2. Merge hooks from $HOOKS_SRC into $SETTINGS_TARGET, each command running"
+  echo "     node \"$REPO_DIR/hooks/mempalace-transcript.ts\" claude-code (in-repo absolute"
+  echo "     path; Node.js >= 24 is needed when the hook fires)"
+  echo "  3. Set env.MEMPALACE_TRANSCRIPT_ENABLED=\"1\" in $SETTINGS_TARGET"
   if [ -n "${MEMPALACE_PYTHON_BIN:-}" ]; then
-    echo "  5. Set env.MEMPALACE_PYTHON=\"$MEMPALACE_PYTHON_BIN\" in $SETTINGS_TARGET"
-    echo "     (so the hook script imports mempalace from the right interpreter)"
+    echo "  4. Set env.MEMPALACE_PYTHON=\"$MEMPALACE_PYTHON_BIN\" in $SETTINGS_TARGET"
   fi
+  echo "  Recording depends on this checkout staying at $REPO_DIR;"
+  echo "  re-running this setup from a checkout repairs it."
   echo ""
   CONFIRM_TRANSCRIPTS=$(echo -e "yes\nno" | fzf --height 10% --header "Apply these changes to settings.json?" || true)
   if [ "$CONFIRM_TRANSCRIPTS" = "yes" ]; then
-    mkdir -p "$CLAUDE_HOOKS_DIR"
-    install_file "$HOOK_SCRIPT_SRC" "$HOOK_SCRIPT_TARGET" \
-      "mempalace-transcript.sh -> ~/.claude/hooks/mempalace-transcript.sh"
-    chmod +x "$HOOK_SCRIPT_TARGET" 2>/dev/null || true
-    ENV_PATCH='{"MEMPALACE_TRANSCRIPT_ENABLED": "1"}'
-    if [ -n "${MEMPALACE_PYTHON_BIN:-}" ]; then
-      ENV_PATCH=$(jq -nc --arg py "$MEMPALACE_PYTHON_BIN" \
-        '{"MEMPALACE_TRANSCRIPT_ENABLED": "1", "MEMPALACE_PYTHON": $py}')
-    fi
-    HOOKS_RENDERED_TMP="$(mktemp)"
     HOOKS_PATCHED_TMP="$(mktemp)"
-    # The guard's command line comes from `hook-wiring.ts guard render` (spec
-    # 0248 R28, R29) and is final; only the transcript hook's source-file token
-    # is rewritten here to the installed absolute path. A refused or
-    # floor-failed render leaves the guard out and the installed one untouched.
-    # Usage capture is not part of this manifest: it has its own opt-in below
-    # (spec 0211).
-    if ! render_session_recording_manifest claude "$REPO_DIR" "$HOOKS_SRC" "$HOOKS_RENDERED_TMP"; then
+    # Both command lines come from `hook-wiring.ts` and are final: the guard's
+    # from `guard render` (spec 0248 R28, R29), the transcript's from
+    # `transcript render` (spec 0247 R20, R21). A refused or floor-failed render
+    # leaves that kind out and the installed commands untouched. Usage capture
+    # is not part of this manifest: it has its own opt-in below (spec 0211).
+    if ! render_session_recording_manifest claude "$REPO_DIR" "$HOOKS_SRC" "$HOOKS_PATCHED_TMP"; then
       echo "  ERROR: could not render $HOOKS_SRC." >&2
-      rm -f "$HOOKS_RENDERED_TMP" "$HOOKS_PATCHED_TMP"
-      exit 1
-    fi
-    jq --arg hook_path "$HOOK_SCRIPT_TARGET" \
-      '(.. | objects | select(.type? == "command") | .command) |=
-         gsub("\\$CLAUDE_PROJECT_DIR/hooks/mempalace-transcript.sh"; $hook_path)' \
-      "$HOOKS_RENDERED_TMP" > "$HOOKS_PATCHED_TMP"
-    rm -f "$HOOKS_RENDERED_TMP"
-    if grep -q '\$CLAUDE_PROJECT_DIR' "$HOOKS_PATCHED_TMP"; then
-      echo "  ERROR: Unresolved \$CLAUDE_PROJECT_DIR token in patched hooks." >&2
       rm -f "$HOOKS_PATCHED_TMP"
       exit 1
+    fi
+    # The env patch is the consent the next decline run reads (spec 0247 R23);
+    # it is withheld when no transcript command was rendered, so an installed
+    # legacy command is never switched on by it alone (seat finding v1-F3).
+    ENV_PATCH='{}'
+    if [ "${SR_TRANSCRIPT_WIRED:-0}" = "1" ]; then
+      ENV_PATCH='{"MEMPALACE_TRANSCRIPT_ENABLED": "1"}'
+      if [ -n "${MEMPALACE_PYTHON_BIN:-}" ]; then
+        ENV_PATCH=$(jq -nc --arg py "$MEMPALACE_PYTHON_BIN" \
+          '{"MEMPALACE_TRANSCRIPT_ENABLED": "1", "MEMPALACE_PYTHON": $py}')
+      fi
     fi
     # Backup-first, 0600, and it carries any registered capture command
     # through the merge unchanged (spec 0211 R8).
@@ -507,12 +504,17 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
       echo "  Transcript activation FAILED — setup continues without it." >&2
     else
       echo "  Transcript hooks merged into settings.json"
-      echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
+      if [ "${SR_TRANSCRIPT_WIRED:-0}" = "1" ]; then
+        echo "  Session recording wired to $REPO_DIR/hooks/mempalace-transcript.ts (in-repo absolute path)"
+        warn_if_linked_worktree "$REPO_DIR" "session recording"
+        echo "  env patched: $ENV_PATCH"
+      else
+        echo "  Session recording NOT activated this run; installed transcript commands are left as they are."
+      fi
       if grep -qF 'worktree-git-guard' "$HOOKS_PATCHED_TMP"; then
         echo "  Worktree git guard wired to $REPO_DIR/hooks/worktree-git-guard.ts (in-repo absolute path)"
         warn_if_linked_worktree "$REPO_DIR" "worktree git guard"
       fi
-      echo "  env patched: $ENV_PATCH"
     fi
     rm -f "$HOOKS_PATCHED_TMP"
   else

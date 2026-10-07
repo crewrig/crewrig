@@ -62,10 +62,20 @@ function defaultArgsPattern(descriptor: HookDescriptor): string {
   return `\\s+(?:${ids})\\s+[A-Za-z]+\\s*`;
 }
 
+/** The arguments pattern, admitting no argument too for a `bareArgs` descriptor (spec 0247 R28). */
+function argsOf(descriptor: HookDescriptor): string {
+  const args = descriptor.argsPattern ?? defaultArgsPattern(descriptor);
+  return descriptor.bareArgs === true ? `(?:\\s*|${args})` : args;
+}
+
+/** The directory part of the script path: `/hooks/`, or any `/` for an `anyScriptDir` descriptor. */
+const scriptDir = (descriptor: HookDescriptor): string =>
+  descriptor.anyScriptDir === true ? "/" : "/hooks/";
+
 function signature(descriptor: HookDescriptor): RegExp {
   const name = escapeRe(descriptor.basename);
-  const tail = `/hooks/${name}\\.(?:sh|ts)`;
-  const args = descriptor.argsPattern ?? defaultArgsPattern(descriptor);
+  const tail = `${scriptDir(descriptor)}${name}\\.(?:sh|ts)`;
+  const args = argsOf(descriptor);
   return new RegExp(
     `^${PREFIX}(?:"(?<dq>[^"]*${tail})"|'(?<sq>[^']*${tail})'|(?<uq>[^\\s"']*${tail}))(?<post>${args})$`,
   );
@@ -78,10 +88,10 @@ function signature(descriptor: HookDescriptor): RegExp {
  */
 function guardedSignature(descriptor: HookDescriptor): RegExp {
   const name = escapeRe(descriptor.basename);
-  const args = descriptor.argsPattern ?? defaultArgsPattern(descriptor);
-  return new RegExp(
-    `^node (?<uq>(?:[A-Za-z]:)?/[^\\s"'\\\\&|<>^%()$\x60]*/hooks/${name}\\.ts)(?<post>${args})$`,
-  );
+  const args = argsOf(descriptor);
+  const chars = "[^\\s\"'\\\\&|<>^%()$\x60]";
+  const dir = descriptor.anyScriptDir === true ? `/(?:${chars}*/)?` : `/${chars}*/hooks/`;
+  return new RegExp(`^node (?<uq>(?:[A-Za-z]:)?${dir}${name}\\.ts)(?<post>${args})$`);
 }
 
 function legacySpaced(descriptor: HookDescriptor): RegExp | null {

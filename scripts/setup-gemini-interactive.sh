@@ -401,6 +401,16 @@ done
 echo ""
 guard_rewrite_installed gemini "$REPO_DIR" "$SETTINGS_TARGET" || true
 
+# --- Session recording: rewrite an installed registration (spec 0247 R23) ---
+# Runs on every setup run, before the session-recording question, so a `no`
+# and a cancelled confirmation still bring an installed transcript command
+# whose consent is established (its MEMPALACE_TRANSCRIPT_ENABLED=1 prefix) to
+# the direct `node` form of this checkout, and never start recording that was
+# not running. A Node.js below the floor prints its diagnostic and changes
+# nothing; setup carries on.
+transcript_rewrite_installed gemini "$REPO_DIR" "$SETTINGS_TARGET" || true
+report_unused_transcript_copy "$GEMINI_HOME/hooks/mempalace-transcript.sh"
+
 # --- Transcript hooks (opt-in) ---
 echo ""
 # `|| true`: under `set -e`, Esc makes fzf exit 130 and would abort setup before
@@ -408,52 +418,26 @@ echo ""
 ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)" || true)
 if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   HOOKS_SRC="$REPO_DIR/hooks/gemini-transcript-hooks.json"
-  HOOK_SCRIPT_SRC="$REPO_DIR/hooks/mempalace-transcript.sh"
-  GEMINI_HOOKS_DIR="$GEMINI_HOME/hooks"
-  HOOK_SCRIPT_TARGET="$GEMINI_HOOKS_DIR/mempalace-transcript.sh"
   echo ""
   echo "Activating transcript hooks will:"
-  echo "  1. Install the hook script to $HOOK_SCRIPT_TARGET (project-independent)"
-  echo "  2. Backup $SETTINGS_TARGET to ${SETTINGS_TARGET}.bak.<timestamp>"
-  echo "  3. Merge hooks from $HOOKS_SRC into $SETTINGS_TARGET"
-  echo "  4. Rewrite each hook command to point at $HOOK_SCRIPT_TARGET (absolute path)"
-  echo "  5. Hardcode MEMPALACE_TRANSCRIPT_ENABLED=1 (and MEMPALACE_PYTHON if detected)"
-  echo "     into each hook's command line — no shell-profile changes needed."
+  echo "  1. Backup $SETTINGS_TARGET to ${SETTINGS_TARGET}.bak.<timestamp>"
+  echo "  2. Merge hooks from $HOOKS_SRC into $SETTINGS_TARGET, each command running"
+  echo "     node \"$REPO_DIR/hooks/mempalace-transcript.ts\" gemini-cli (in-repo absolute"
+  echo "     path, no environment prefix; Node.js >= 24 is needed when the hook fires)"
+  echo "  Recording depends on this checkout staying at $REPO_DIR;"
+  echo "  re-running this setup from a checkout repairs it."
   echo ""
   CONFIRM_TRANSCRIPTS=$(echo -e "yes\nno" | fzf --height 10% --header "Apply these changes to settings.json?" || true)
   if [ "$CONFIRM_TRANSCRIPTS" = "yes" ]; then
-    mkdir -p "$GEMINI_HOOKS_DIR"
-    install_file "$HOOK_SCRIPT_SRC" "$HOOK_SCRIPT_TARGET" \
-      "mempalace-transcript.sh -> ~/.gemini/hooks/mempalace-transcript.sh"
-    chmod +x "$HOOK_SCRIPT_TARGET" 2>/dev/null || true
-    ENV_PREFIX='MEMPALACE_TRANSCRIPT_ENABLED=1'
-    if [ -n "${MEMPALACE_PYTHON_BIN:-}" ]; then
-      ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
-    fi
-    HOOKS_RENDERED_TMP="$(mktemp)"
     HOOKS_PATCHED_TMP="$(mktemp)"
-    # The guard's command line comes from `hook-wiring.ts guard render` (spec
-    # 0248 R28, R29) and is final: the rewrite below passes it through
-    # untouched, with no env prefix. Every other command is a transcript hook:
-    # substitute the source-file token with the installed absolute path,
-    # prefixed by env vars. A refused or floor-failed render leaves the guard
-    # out and the installed one untouched. Usage capture is not part of this
+    # Both command lines come from `hook-wiring.ts` and are final: the guard's
+    # from `guard render` (spec 0248 R28, R29), the transcript's from
+    # `transcript render` (spec 0247 R20, R21), with no environment prefix
+    # (row 37c). A refused or floor-failed render leaves that kind out and the
+    # installed commands untouched. Usage capture is not part of this
     # manifest: it has its own opt-in below (spec 0211).
-    if ! render_session_recording_manifest gemini "$REPO_DIR" "$HOOKS_SRC" "$HOOKS_RENDERED_TMP"; then
+    if ! render_session_recording_manifest gemini "$REPO_DIR" "$HOOKS_SRC" "$HOOKS_PATCHED_TMP"; then
       echo "  ERROR: could not render $HOOKS_SRC." >&2
-      rm -f "$HOOKS_RENDERED_TMP" "$HOOKS_PATCHED_TMP"
-      exit 1
-    fi
-    jq --arg envp "$ENV_PREFIX" --arg hook_path "$HOOK_SCRIPT_TARGET" '
-      (.. | objects | select(.type? == "command")) |=
-        (if (.name? == "transcript-git-guard" or (.command | contains("worktree-git-guard")))
-         then .
-         else .command = ($envp + " " + (.command | gsub("\\$\\{GEMINI_PROJECT_DIR\\}/hooks/mempalace-transcript.sh"; $hook_path)))
-         end)' \
-      "$HOOKS_RENDERED_TMP" > "$HOOKS_PATCHED_TMP"
-    rm -f "$HOOKS_RENDERED_TMP"
-    if grep -q '\${GEMINI_PROJECT_DIR}' "$HOOKS_PATCHED_TMP"; then
-      echo "  ERROR: Unresolved \${GEMINI_PROJECT_DIR} token in patched hooks." >&2
       rm -f "$HOOKS_PATCHED_TMP"
       exit 1
     fi
@@ -465,7 +449,12 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
       echo "  Transcript activation FAILED — setup continues without it." >&2
     else
       echo "  Transcript hooks merged into settings.json"
-      echo "  Hook script installed at $HOOK_SCRIPT_TARGET (no longer depends on the repo path)"
+      if [ "${SR_TRANSCRIPT_WIRED:-0}" = "1" ]; then
+        echo "  Session recording wired to $REPO_DIR/hooks/mempalace-transcript.ts (in-repo absolute path)"
+        warn_if_linked_worktree "$REPO_DIR" "session recording"
+      else
+        echo "  Session recording NOT activated this run; installed transcript commands are left as they are."
+      fi
       if grep -qF 'worktree-git-guard' "$HOOKS_PATCHED_TMP"; then
         echo "  Worktree git guard wired to $REPO_DIR/hooks/worktree-git-guard.ts (in-repo absolute path)"
         warn_if_linked_worktree "$REPO_DIR" "worktree git guard"
@@ -474,11 +463,11 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
     rm -f "$HOOKS_PATCHED_TMP"
   else
     echo "  Transcript activation canceled by user."
-    echo "  Any session-recording hooks an earlier run registered in settings.json are left in place; an installed worktree git guard command was rewritten above."
+    echo "  Any session-recording hooks an earlier run registered in settings.json are left in place; installed guard and transcript commands were rewritten above where their consent was established."
   fi
 else
   echo "  Session recording disabled (can enable later by re-running this script)."
-  echo "  Any session-recording hooks an earlier run registered in settings.json are left in place; an installed worktree git guard command was rewritten above."
+  echo "  Any session-recording hooks an earlier run registered in settings.json are left in place; installed guard and transcript commands were rewritten above where their consent was established."
 fi
 
 # --- Usage capture (opt-in, spec 0211) ---

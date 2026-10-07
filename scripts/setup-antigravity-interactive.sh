@@ -421,6 +421,15 @@ echo ""
 # nothing; setup carries on.
 guard_rewrite_installed antigravity "$REPO_DIR" "${HOME}/.gemini/config/hooks.json" || true
 
+# --- Session recording: rewrite an installed registration (spec 0247 R23) ---
+# On every run, before the question: an installed transcript command whose
+# consent is established (its MEMPALACE_TRANSCRIPT_ENABLED=1 prefix) moves to
+# the direct `node` form of this checkout, inside the named hook
+# `crewrig-mempalace-transcript` only; a decline never starts recording that
+# was not running. A Node.js below the floor changes nothing.
+transcript_rewrite_installed antigravity "$REPO_DIR" "${HOME}/.gemini/config/hooks.json" || true
+report_unused_transcript_copy "$AGY_HOME/hooks/mempalace-transcript.sh"
+
 # --- Transcript hooks (opt-in) --- (spec 0116)
 # The three sibling setups have offered this since spec 0056; Antigravity did
 # not, and the manifest it would have deployed registered four lifecycle events
@@ -434,12 +443,12 @@ guard_rewrite_installed antigravity "$REPO_DIR" "${HOME}/.gemini/config/hooks.js
 ENABLE_TRANSCRIPTS=$(echo -e "no\nyes" | fzf --height 10% --header "Enable automatic session recording to MemPalace? (opt-in)")
 if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   HOOKS_SRC="$REPO_DIR/hooks/antigravity-transcript-hooks.json"
-  HOOK_SCRIPT_SRC="$REPO_DIR/hooks/mempalace-transcript.sh"
   AGY_HOOKS_DIR="$AGY_HOME/hooks"
   AGY_HOOKS_JSON="${HOME}/.gemini/config/hooks.json"
   echo ""
   echo "Activating transcript hooks will:"
-  echo "  1. Install the hook script to $AGY_HOOKS_DIR/mempalace-transcript.sh (project-independent)"
+  echo "  1. Wire node \"$REPO_DIR/hooks/mempalace-transcript.ts\" antigravity-cli Stop"
+  echo "     (in-repo absolute path; Node.js >= 24 is needed when the hook fires)"
   echo "  2. Deploy hooks to $AGY_HOOKS_JSON (fires for ALL projects)"
   if [ -f "$AGY_HOOKS_JSON" ]; then
     echo "  3. Backup $AGY_HOOKS_JSON to ${AGY_HOOKS_JSON}.bak.<timestamp>, then merge"
@@ -452,21 +461,24 @@ if [ "$ENABLE_TRANSCRIPTS" = "yes" ]; then
   echo "     registered: the CLI's other four all fire once per model call or"
   echo "     once per tool step, many times in a single turn, and each hook run"
   echo "     blocks the agent loop"
+  echo "  Recording depends on this checkout staying at $REPO_DIR;"
+  echo "  re-running this setup from a checkout repairs it."
   echo ""
   CONFIRM=$(echo -e "yes\nno" | fzf --height 10% --header "Apply?")
   if [ "$CONFIRM" = "yes" ]; then
-    MEMPALACE_PYTHON_BIN="$(detect_mempalace_python || true)"
-    ENV_PREFIX='MEMPALACE_TRANSCRIPT_ENABLED=1'
-    if [ -n "$MEMPALACE_PYTHON_BIN" ]; then
-      ENV_PREFIX="MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=$MEMPALACE_PYTHON_BIN"
-    fi
     # Guarded so a refused merge reports and lets the rest of setup finish,
     # rather than aborting the whole run under `set -e`. The helper leaves the
-    # operator's file untouched on that path.
+    # operator's file untouched on that path. The second and fifth arguments
+    # are unused since spec 0247 R21 (no installed copy, no env prefix).
     if ! deploy_antigravity_transcript_hooks \
-           "$HOOKS_SRC" "$HOOK_SCRIPT_SRC" "$AGY_HOOKS_DIR" "$AGY_HOOKS_JSON" "$ENV_PREFIX" \
+           "$HOOKS_SRC" "" "$AGY_HOOKS_DIR" "$AGY_HOOKS_JSON" "" \
            "$(dirname "$HOOKS_SRC")/worktree-git-guard.ts"; then
       echo "  Transcript activation FAILED — setup continues without it." >&2
+    elif [ "${SR_TRANSCRIPT_WIRED:-0}" = "1" ]; then
+      echo "  Session recording wired to $REPO_DIR/hooks/mempalace-transcript.ts (in-repo absolute path)"
+      warn_if_linked_worktree "$REPO_DIR" "session recording"
+    else
+      echo "  Session recording NOT activated this run; an installed transcript hook is left as it is."
     fi
   else
     echo "  Transcript activation canceled."

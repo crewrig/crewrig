@@ -677,6 +677,7 @@ capabilities:
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
           - "hooks/worktree-git-guard.ts"
+          - "hooks/mempalace-transcript.ts"
           - "scripts/worktree-claim.ts"
           - "scripts/lib/worktree-claim/**"
           - "scripts/lib/hook-*.ts"
@@ -694,6 +695,7 @@ capabilities:
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
           - "hooks/worktree-git-guard.ts"
+          - "hooks/mempalace-transcript.ts"
           - "scripts/worktree-claim.ts"
           - "scripts/lib/worktree-claim/**"
           - "scripts/lib/hook-*.ts"
@@ -1445,6 +1447,82 @@ capabilities:
       runtime: node@24.0.0
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts
+
+  # Spec 0247 R31, plan step 22(a): the black-box suites of the TypeScript
+  # MemPalace transcript hook (hooks/mempalace-transcript.ts and the module
+  # tree under scripts/lib/mempalace-transcript/) and of its wiring (the
+  # hook-transcript-* suites over the setup scripts and the shared recognition
+  # and command-line modules). The Bash oracle keeps running through the shim
+  # in the `mempalace` capability above. Deliberately NOT changeset-gated,
+  # mirroring worktree-guard: the fail-safe job provisions no Node.js 24 suite
+  # runner of its own.
+  - id: mempalace-transcript
+    name: "Validate the MemPalace transcript hook and its wiring (TypeScript)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "hooks/mempalace-transcript.*"
+          - "scripts/lib/mempalace-transcript/**"
+          - "scripts/lib/tls-env.ts"
+          - "scripts/lib/transcript-recognition.ts"
+          - "scripts/lib/hook-*.ts"
+          - "scripts/hook-wiring.ts"
+          - "scripts/lib/usage-store/mcp.*"
+          - "scripts/lib/usage-capture-optin.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/setup-*-interactive.sh"
+          - "hooks/*-transcript-hooks.json"
+          - "scripts/tests/mempalace-transcript-*.test.ts"
+          - "scripts/tests/hook-transcript-*.test.ts"
+          - "scripts/tests/lib/with-stub-daemon.ts"
+          - "scripts/tests/lib/transcript-*.ts"
+          - "scripts/tests/lib/spawn-spy.ts"
+          - "scripts/tests/lib/windows-invocation.ts"
+          - "scripts/tests/fixtures/mempalace-transcript/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "hooks/mempalace-transcript.*"
+          - "scripts/lib/mempalace-transcript/**"
+          - "scripts/lib/tls-env.ts"
+          - "scripts/lib/transcript-recognition.ts"
+          - "scripts/lib/hook-*.ts"
+          - "scripts/hook-wiring.ts"
+          - "scripts/lib/usage-store/mcp.*"
+          - "scripts/lib/usage-capture-optin.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/setup-*-interactive.sh"
+          - "hooks/*-transcript-hooks.json"
+          - "scripts/tests/mempalace-transcript-*.test.ts"
+          - "scripts/tests/hook-transcript-*.test.ts"
+          - "scripts/tests/lib/with-stub-daemon.ts"
+          - "scripts/tests/lib/transcript-*.ts"
+          - "scripts/tests/lib/spawn-spy.ts"
+          - "scripts/tests/lib/windows-invocation.ts"
+          - "scripts/tests/fixtures/mempalace-transcript/**"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-*.test.ts scripts/tests/hook-transcript-*.test.ts
+
+  # Spec 0247 R1: the transcript hook entry prints nothing on the oldest
+  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
+  # No `paths:` filter, like usage-capture-node-24-0 above: the suite is fast
+  # and any shared-module change can reintroduce a warning.
+  - id: mempalace-transcript-node-24-0
+    name: "MemPalace transcript hook entry is silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-entry-form.test.ts
 
   # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves
   # the change's base ref, so the job needs full source history — declared as
@@ -2229,6 +2307,35 @@ capabilities:
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0248 R34).
+
+  # Spec 0247 R31, R19: the MemPalace transcript hook row's copy of the
+  # template above. The entry runs from pwsh against a loopback stub daemon,
+  # the command line of each CLI runs through the invocation rows 37 and 37f
+  # of docs/cli-matrix.md record for it, and four timing budgets (R19) apply to
+  # a `PostToolUse` payload (direct and legacy-disabled), a `Stop` payload
+  # naming a 50 MB transcript persisted to the stub, and a `UserPromptSubmit`
+  # payload with nothing listening on the daemon port. No `paths:` filter, like
+  # the Windows jobs above.
+  - id: windows-mempalace-transcript
+    name: "Windows MemPalace transcript hook: entry against a stub daemon, per-CLI command lines and timing budgets"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-mempalace-transcript`).
+        GitLab CI, as configured for this repository, exposes no Windows
+        runner: every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0247 R31).
 
   # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
   # (spec 0183 R23, issue #1008): it packaged the committed source tree via

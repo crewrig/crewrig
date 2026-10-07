@@ -309,3 +309,69 @@ describe("main", () => {
     assert.match(res.stdout, /node-floor-guard\.js within 60000 ms over 2 runs/);
   });
 });
+
+describe("--case (spec 0247 R19, delta-01)", () => {
+  const CASED = ["--runs", "3", "--budget-ms", "100", "--case", "a-posttooluse", "--", "s.js"];
+
+  test("parseArgs reads the label and omits it when absent", () => {
+    assert.equal(parseArgs(CASED).caseLabel, "a-posttooluse");
+    assert.equal("caseLabel" in parseArgs(BASE), false);
+  });
+
+  test("rejects an empty label", () => {
+    assert.throws(
+      () => parseArgs(["--runs", "1", "--budget-ms", "5", "--case", "", "--", "a"]),
+      /--case needs a value/,
+    );
+  });
+
+  test("the failure line names the script, the case, the budget and the measured time", () => {
+    const opts = parseArgs(CASED);
+    const verdict = evaluate(opts, measure(opts, exitWith(0), fakeClock([40, 250, 60])));
+    assert.equal(verdict.ok, false);
+    assert.deepEqual(verdict.lines, [
+      "timing-budget: s.js [case a-posttooluse] exceeded 100 ms: measured 250.0 ms (run 2/3)",
+    ]);
+  });
+
+  test("an unexpected exit and the summary line name the case too", () => {
+    const opts = parseArgs(CASED);
+    const failed = evaluate(opts, measure(opts, exitWith(4), fakeClock([1, 1, 1])));
+    assert.match(failed.lines[0] ?? "", /^timing-budget: s\.js \[case a-posttooluse\] exited 4/);
+    const passed = evaluate(opts, measure(opts, exitWith(0), fakeClock([1, 2, 3])));
+    assert.match(
+      passed.lines[0] ?? "",
+      /^timing-budget: s\.js \[case a-posttooluse\] within 100 ms/,
+    );
+  });
+
+  test("the option does not change what a run receives", () => {
+    let got: RunExtras | undefined;
+    measure(parseArgs(CASED), (_argv, extras) => ((got = extras), 0), fakeClock([1, 1, 1]));
+    assert.deepEqual(got, {});
+  });
+
+  test("CLI end to end: the case reaches the failure line on standard error, exit 1", () => {
+    const res = spawnSync(
+      process.execPath,
+      [
+        "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+        HARNESS,
+        "--runs",
+        "1",
+        "--budget-ms",
+        "0",
+        "--case",
+        "d-closed-port",
+        "--",
+        GUARD,
+      ],
+      { encoding: "utf8" },
+    );
+    assert.equal(res.status, 1, res.stderr);
+    assert.match(
+      res.stderr,
+      /^timing-budget: \S*node-floor-guard\.js \[case d-closed-port\] exceeded 0 ms: measured [\d.]+ ms \(run 1\/1\)$/m,
+    );
+  });
+});
