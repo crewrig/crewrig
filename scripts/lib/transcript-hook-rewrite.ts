@@ -26,7 +26,7 @@ import { hookCommandLine, physicalPath, type Cli } from "./hook-command.ts";
 import { MEMPALACE_TRANSCRIPT } from "./hook-descriptor.ts";
 import { parseHandler } from "./hook-recognition.ts";
 import type { ReportLine, RewriteOptions } from "./hook-rewrite.ts";
-import { assignmentNames, classOfParse, type TranscriptClass } from "./transcript-recognition.ts";
+import { foreignReason, classOfParse, type TranscriptClass } from "./transcript-recognition.ts";
 
 export interface TranscriptRewrite {
   /** The checkout running setup: its `hooks/mempalace-transcript.ts` is the target. */
@@ -131,8 +131,7 @@ export function rewriteTranscriptRefs(
       left++;
     };
     if (cls === "foreign-prefix") {
-      const names = assignmentNames(ref.handler["command"] as string).map((n) => `${n}=...`);
-      leave(`keeps an environment prefix the framework does not own (${names.join(", ")})`);
+      leave(foreignReason(ref.handler["command"] as string));
       continue;
     }
     if (!consented(cls, ctx)) {

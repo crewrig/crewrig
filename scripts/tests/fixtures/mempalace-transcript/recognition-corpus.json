@@ -161,8 +161,8 @@
   },
   {
     "command": "MEMPALACE_TRANSCRIPT_ENABLED=\"1\" bash /x/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "a quoted prefix value is outside the grammar setup writes (security S1): never touched"
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: a double-quoted prefix value is outside setup's grammar, so the operator's: left, reported, nothing added"
   },
   {
     "command": "env MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/mempalace-transcript.sh",
@@ -311,8 +311,8 @@
   },
   {
     "command": "prep&&/usr/bin/env bash /repo/hooks/mempalace-transcript.sh",
-    "transcript": "no",
-    "note": "security S1: an `&&` chain before env"
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: `&&` in the prefix is outside setup's grammar (not a `;`/`$(`/backquote/line-break chain): foreign-prefix"
   },
   {
     "command": "prep;/bin/bash /repo/hooks/mempalace-transcript.sh",
@@ -368,5 +368,90 @@
     "command": "bash '/x/$(id)/hooks/mempalace-transcript.sh'",
     "transcript": "no",
     "note": "no substitution is ever recognised, even a single-quoted literal one"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED='1' bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: single quote in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=$HOME/py MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: `$` expansion in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=/opt/py\\3 MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: backslash in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=/opt/py* MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: glob `*` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=/opt/py? MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: glob `?` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=/opt/py[3] MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: bracket glob `[` `]` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=/opt/{py,py3} MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: brace `{` `}` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=a#b MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: `#` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=~/py MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: tilde `~` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=a&b MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: `&` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=a|b MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: pipe `|` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=a<b MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: redirection `<` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=a>b MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: redirection `>` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_PYTHON=(a) MEMPALACE_TRANSCRIPT_ENABLED=1 bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: parentheses `(` `)` in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "/opt/b*n/bash /x/hooks/mempalace-transcript.sh",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: glob in the interpreter path, no assignment in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=\"1\" node \"/x/hooks/mempalace-transcript.ts\" claude-code",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: double quote on the direct shape in the prefix: outside setup's grammar, foreign-prefix"
+  },
+  {
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=\"1\" bash \"/x/hooks/mempalace-transcript.sh\" Stop",
+    "transcript": "foreign-prefix",
+    "note": "i1-F5: double quote on the legacy Antigravity shape in the prefix: outside setup's grammar, foreign-prefix"
   }
 ]

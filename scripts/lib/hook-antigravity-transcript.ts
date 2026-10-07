@@ -41,7 +41,7 @@ import { parseHookCommand } from "./hook-recognition.ts";
 import type { ReportLine } from "./hook-rewrite.ts";
 import { TRANSCRIPT_HOOK_NAME } from "./hook-transcript-manifest.ts";
 import { eventRefs, rewriteTranscriptRefs } from "./transcript-hook-rewrite.ts";
-import { assignmentNames, classifyHandler, OWN_CLASSES } from "./transcript-recognition.ts";
+import { classifyHandler, foreignReason, OWN_CLASSES } from "./transcript-recognition.ts";
 
 export interface AntigravityTranscriptResult {
   readonly config: JsonObject;
@@ -94,14 +94,11 @@ export function mergeAntigravityTranscript(
       if (foreign.length === 0) continue;
       merged[event] = withoutOwn(entries);
       for (const command of foreign) {
-        const names = assignmentNames(command)
-          .map((n) => `${n}=...`)
-          .join(", ");
         lines.push({
           kind: "left",
           event: `${TRANSCRIPT_HOOK_NAME}/${event}`,
           path: parseHookCommand(command, MEMPALACE_TRANSCRIPT)?.path ?? "",
-          detail: `keeps an environment prefix the framework does not own (${names}); nothing added on this event`,
+          detail: `${foreignReason(command)}; nothing added on this event`,
         });
       }
     }

@@ -208,9 +208,9 @@ def sr_env_prefix:
 #     any assignment), `direct` (iii)/(iv) bare or guarded, `legacy-enabled`
 #     ((i)/(ii) with exactly `MEMPALACE_TRANSCRIPT_ENABLED=1` and at most one
 #     non-blank `MEMPALACE_PYTHON=`), `legacy-unmarked` (every other (i)/(ii)),
-#     else `no`. Other arguments, and a command carrying `;`, `&`, `|`, `<`,
-#     `>`, parentheses, a backquote, `$(`, a backslash or a line break
-#     outside its prefix values (sr_tr_safe), are `no`.
+#     else `no`. Other arguments, and a command that chains or substitutes
+#     (sr_tr_safety), are `no`; a prefix outside the grammar setup writes is
+#     `foreign-prefix`.
 def sr_tr_args:
   "(?:\\s*|(?:\\s+[A-Za-z]+|\\s+(?:claude-code|gemini-cli|copilot-cli)|\\s+antigravity-cli\\s+[A-Za-z]+)\\s*)";
 
@@ -221,17 +221,24 @@ def sr_tr_re:
   + "|[^\\s\"\\x27]*/mempalace-transcript\\.(?:sh|ts))"
   + "(?<post>" + sr_tr_args + ")\\z";
 
-# Shell syntax a transcript command never carries outside its prefix values
-# (security review S1): a command that chains, substitutes, redirects or
-# spans lines belongs to the operator, never to the framework. The twin of
-# isShellSafe in scripts/lib/transcript-recognition.ts.
+# Shell syntax and the transcript class (security review S1; review i1-F5,
+# spec 0247 delta-03), the twin of shellSafety in
+# scripts/lib/transcript-recognition.ts:
+#   - `chained`: a `;`, `$(`, a backquote or a line break anywhere (tested on
+#     the whole command by sr_transcript_class_of), or shell syntax inside the
+#     script path: not a transcript command (`no`);
+#   - `unsafe-prefix`: any other prefix outside the grammar setup writes (a
+#     quote, `$`, a backslash, a glob or brace character, `#`, `~`, `&`, `|`,
+#     `<`, `>` or a parenthesis): `foreign-prefix`, left byte-identical,
+#     reported, nothing added to its event;
+#   - `safe`: classed by the prefix names and the argument shape.
 def sr_tr_safe_word: "[^\\s;&|<>()$`\\\\\"\\x27*?\\[\\]{}#~]";
-def sr_tr_safe($p):
-  ($p.pre + $p.path + $p.post | test("[\\n\\r]") | not)
-  and ($p.pre | test("\\A[ \\t]*(?:[A-Za-z_][A-Za-z0-9_]*=" + sr_tr_safe_word + "*[ \\t]+)*"
+def sr_tr_safety($p):
+  if ($p.path | test("[;&|<>()`\\\\]|\\$\\(")) then "chained"
+  elif ($p.pre | test("\\A[ \\t]*(?:[A-Za-z_][A-Za-z0-9_]*=" + sr_tr_safe_word + "*[ \\t]+)*"
         + "(?:(?:" + sr_tr_safe_word + "*/)?env[ \\t]+)?"
-        + "(?:(?:" + sr_tr_safe_word + "*/)?(?:bash|sh|node)[ \\t]+)?\\z"))
-  and ($p.path | test("[;&|<>()`\\\\]|\\$\\(") | not);
+        + "(?:(?:" + sr_tr_safe_word + "*/)?(?:bash|sh|node)[ \\t]+)?\\z")) then "safe"
+  else "unsafe-prefix" end;
 
 def sr_tr_guarded_re:
   "\\Aset NoDefaultCurrentDirectoryInExePath=1&& node (?:[A-Za-z]:)?/(?:[^\\s\"\\x27\\\\&|<>^%()$`]*/)?mempalace-transcript\\.ts"
@@ -251,12 +258,13 @@ def sr_tr_direct_shape:
 
 # The class of a command string.
 def sr_transcript_class_of:
-  if test("[\\n\\r]") then "no"
+  if test("[;`\\n\\r]|\\$\\(") then "no"
   elif test(sr_tr_guarded_re) then
     (capture(sr_tr_guarded_re).post | if sr_tr_direct_shape then "direct" else "legacy-unmarked" end)
   elif test(sr_tr_re) then
     capture(sr_tr_re) as $p
-    | if sr_tr_safe($p) | not then "no" else
+    | sr_tr_safety($p) as $safety
+    | if $safety == "chained" then "no" elif $safety == "unsafe-prefix" then "foreign-prefix" else
     ($p.pre | sr_tr_assigns) as $a
     | if any($a[]; .n != "MEMPALACE_TRANSCRIPT_ENABLED" and .n != "MEMPALACE_PYTHON") then "foreign-prefix"
       elif ($p.post | sr_tr_direct_shape) then (if ($a | length) == 0 then "direct" else "foreign-prefix" end)
@@ -349,7 +357,9 @@ def sr_report($m):
     | (capture(sr_tr_re).pre | sr_tr_assigns | map(.n + "=...") | join(", ")) as $names
     | (capture("(?<p>\"[^\"]*/mempalace-transcript\\.(?:sh|ts)\"|\\x27[^\\x27]*/mempalace-transcript\\.(?:sh|ts)\\x27|[^\\s\"\\x27]*/mempalace-transcript\\.(?:sh|ts))").p
        | gsub("^[\"\\x27]|[\"\\x27]$"; "")) as $path
-    | "  Session recording: left \($path) on \($e) (keeps an environment prefix the framework does not own (\($names))); removed \($own) own transcript command(s) there and added none."
+    | (if $names == "" then "keeps a prefix the framework does not write"
+       else "keeps an environment prefix the framework does not own (\($names))" end) as $why
+    | "  Session recording: left \($path) on \($e) (\($why)); removed \($own) own transcript command(s) there and added none."
   end;
 
 # keep (a): re-point, in place, a capture handler whose path vanished. Only the

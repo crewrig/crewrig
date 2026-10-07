@@ -14,16 +14,17 @@
 // identifier, (iv) `antigravity-cli <event>` — or the guarded prefix of spec
 // 0243 delta-03 R34 in place of that prefix. Its class:
 //   foreign-prefix   a prefix assignment to a name the framework does not own,
-//                    or the direct shape (iii)/(iv) with any assignment;
+//                    the direct shape (iii)/(iv) with any assignment, or a
+//                    prefix outside the grammar setup writes (i1-F5);
 //   direct           (iii)/(iv) with no prefix, or with the guarded prefix;
 //   legacy-enabled   (i)/(ii) whose prefix is exactly one
 //                    `MEMPALACE_TRANSCRIPT_ENABLED=1` and at most one
 //                    `MEMPALACE_PYTHON=<non-blank word>`;
 //   legacy-unmarked  every other (i)/(ii) command: no prefix, or one made only
 //                    of the two owned names without that consent.
-// A command carrying shell syntax that chains, substitutes or redirects — `;`,
-// `&`, `|`, `<`, `>`, parentheses, a backquote, `$(`, a backslash, a line
-// break — is `no`, whatever the signature matched.
+// A command that chains or substitutes (`;`, `$(`, a backquote, a line break,
+// or shell syntax inside the script path) is `no`; a prefix outside the
+// grammar setup writes is `foreign-prefix` (see shellSafety below).
 // The guarded prefix is accepted on every CLI: the class is decided from the
 // text alone, and the corpus carries no CLI column.
 //
@@ -71,30 +72,43 @@ export function isDirectShape(post: string): boolean {
   return words.length === 2 && words[0] === "antigravity-cli";
 }
 
-// Shell syntax a transcript command never carries outside its prefix values
-// (security review S1): a command that chains, substitutes or redirects is an
-// operator's, never the framework's. The descriptor's shared signature is
-// wider (it serves C1 and C2 unchanged), so the transcript class narrows it
-// here, in both twins (`sr_tr_safe` in scripts/lib/usage-capture-optin.sh).
+// Shell syntax and the transcript class (security review S1; review i1-F5,
+// spec 0247 delta-03). The descriptor's shared signature is wider (it serves
+// C1 and C2 unchanged), so the transcript class narrows it here, in both twins
+// (`sr_tr_safety` in scripts/lib/usage-capture-optin.sh):
+//   - `chained`: a `;`, `$(`, a backquote or a line break anywhere, or shell
+//     syntax inside the script path — a command that chains or substitutes.
+//     It is not a transcript command (`no`): setup never reads it as one.
+//   - `unsafe-prefix`: any other prefix outside the grammar setup writes — a
+//     quote, `$`, a backslash, a glob or brace character, `#`, `~`, `&`, `|`,
+//     `<`, `>` or a parenthesis in a value or an interpreter path. It is the
+//     operator's (`foreign-prefix`): left byte-identical, reported, and
+//     nothing is added to its event.
+//   - `safe`: classed by the prefix names and the argument shape.
 const SAFE_WORD = "[^\\s;&|<>()$`\\\\\"'*?\\[\\]{}#~]";
 const SAFE_PRE = new RegExp(
   `^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_]*=${SAFE_WORD}*[ \\t]+)*(?:(?:${SAFE_WORD}*/)?env[ \\t]+)?(?:(?:${SAFE_WORD}*/)?(?:bash|sh|node)[ \\t]+)?$`,
 );
+const CHAINING = /[;`\n\r]|\$\(/;
 const UNSAFE_PATH = /[;&|<>()`\\]|\$\(/;
-const LINE_BREAK = /[\n\r]/;
 
-/** Whether a parsed command is free of shell syntax that would chain or substitute (S1). */
-export function isShellSafe(parse: HookCommandParse): boolean {
-  if (LINE_BREAK.test(parse.pre) || LINE_BREAK.test(parse.path) || LINE_BREAK.test(parse.post)) {
-    return false;
+export type ShellSafety = "safe" | "chained" | "unsafe-prefix";
+
+/** The shell-safety verdict of a parsed command (S1, i1-F5). */
+export function shellSafety(parse: HookCommandParse): ShellSafety {
+  if (CHAINING.test(parse.pre) || CHAINING.test(parse.path) || CHAINING.test(parse.post)) {
+    return "chained";
   }
-  if (parse.guarded) return true;
-  return SAFE_PRE.test(parse.pre) && !UNSAFE_PATH.test(parse.path);
+  if (parse.guarded) return "safe";
+  if (UNSAFE_PATH.test(parse.path)) return "chained";
+  return SAFE_PRE.test(parse.pre) ? "safe" : "unsafe-prefix";
 }
 
 /** Classify an already-parsed transcript command. */
 export function classOfParse(parse: HookCommandParse): TranscriptClass {
-  if (!isShellSafe(parse)) return "no";
+  const safety = shellSafety(parse);
+  if (safety === "chained") return "no";
+  if (safety === "unsafe-prefix") return "foreign-prefix";
   const direct = isDirectShape(parse.post);
   if (parse.guarded) return direct ? "direct" : "legacy-unmarked";
   const owned = MEMPALACE_TRANSCRIPT.ownedEnvNames ?? [];
@@ -132,4 +146,15 @@ export function classifyHandler(handler: unknown): TranscriptClass {
 export function assignmentNames(command: string): string[] {
   const parse = parseHookCommand(command, MEMPALACE_TRANSCRIPT);
   return parse === null || parse.guarded ? [] : prefixAssignments(parse.pre).map((a) => a.name);
+}
+
+/**
+ * Why a `foreign-prefix` command is left, for a report line: the names of its
+ * assignments (never their values), or the prefix outside setup's grammar.
+ */
+export function foreignReason(command: string): string {
+  const names = assignmentNames(command).map((n) => `${n}=...`);
+  return names.length > 0
+    ? `keeps an environment prefix the framework does not own (${names.join(", ")})`
+    : "keeps a prefix the framework does not write";
 }
