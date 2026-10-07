@@ -314,7 +314,8 @@ describe("no process but `git rev-parse --show-toplevel`; no token or content on
       cwd,
     });
     assert.equal(res.status, 0, res.stderr);
-    assert.match(res.stderr, /persisted/);
+    // Exactly the success line: a warning from the preloaded spy would show here (i1-F3).
+    assert.match(res.stderr, /^mempalace-transcript: persisted [^\n]*\n$/);
     if (!fs.existsSync(log)) return [];
     return fs
       .readFileSync(log, "utf8")

@@ -111,7 +111,14 @@ export function runHook(
   input: string | null,
   options: RunOptions & { readonly entry?: string } = {},
 ): Result {
-  return runNode(options.entry ?? HOOK_TS, args, { ...options, input });
+  // A preloaded test module (`--import <spawn-spy.ts>`) is loaded before the
+  // entry silences warnings, so Node.js would print its
+  // MODULE_TYPELESS_PACKAGE_JSON warning on the hook's standard error (review
+  // i1-F3): the flag rides with every `--import`.
+  const nodeArgs = options.nodeArgs?.includes("--import")
+    ? ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", ...options.nodeArgs]
+    : options.nodeArgs;
+  return runNode(options.entry ?? HOOK_TS, args, { ...options, nodeArgs, input });
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
