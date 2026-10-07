@@ -59,7 +59,7 @@ import {
   writeJsonConfig,
   type JsonObject,
 } from "./lib/hook-config.ts";
-import { WORKTREE_GIT_GUARD, type WiredCli } from "./lib/hook-descriptor.ts";
+import { MEMPALACE_TRANSCRIPT, WORKTREE_GIT_GUARD, type WiredCli } from "./lib/hook-descriptor.ts";
 import { guardRenderFile } from "./lib/hook-guard-manifest.ts";
 import { rewriteAntigravityGuardFile } from "./lib/hook-antigravity-write.ts";
 import { parseHandler } from "./lib/hook-recognition.ts";
@@ -284,6 +284,16 @@ function main(argv: readonly string[]): number {
       return transcriptCommand(positional.slice(1), options, { repo, platform, out, err });
     if (hook.descriptor.id === WORKTREE_GIT_GUARD.id && command !== undefined) {
       return guard(command, subject, options, repo, platform);
+    }
+    // The transcript hook is registered for its manifest and label, but C1's
+    // generic render/rewrite would apply no class rule and no foreign-prefix
+    // protection to its commands (spec 0247 R23-R25; review i1-F6).
+    if (hook.descriptor.id === MEMPALACE_TRANSCRIPT.id) {
+      err(
+        "  ERROR: --hook mempalace-transcript is not served by the generic render/rewrite;\n" +
+          "         use `hook-wiring.ts transcript render|rewrite|antigravity-merge|antigravity-rewrite|classify` instead.",
+      );
+      return 2;
     }
     const cli = asCli(subject);
     if (cli === null) {

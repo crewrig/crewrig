@@ -21,6 +21,7 @@ import {
   OWN_CLASSES,
   type TranscriptClass,
 } from "../lib/transcript-recognition.ts";
+import { lookupHook } from "../lib/hook-registry.ts";
 import { bashLibs } from "./lib/bash-libs.ts";
 import { wiring } from "./lib/guard-wiring-fixtures.ts";
 import { cleanupAll, read, realTmp, REPO, SKIP_POSIX } from "./lib/worktree-fixtures.ts";
@@ -157,6 +158,35 @@ describe("`hook-wiring.ts transcript classify`", () => {
     const res = wiring("transcript", "classify", "--commands", file);
     assert.equal(res.status, 1);
     assert.equal(res.stdout, "");
+  });
+});
+
+describe("the generic render/rewrite path refuses the transcript hook (review i1-F6)", () => {
+  test("it stays registered, for its manifest and label", () => {
+    assert.notEqual(lookupHook("mempalace-transcript"), null);
+  });
+
+  test("`--hook mempalace-transcript render <cli>` exits 2 and points to the transcript subcommands", () => {
+    const res = wiring("--hook", "mempalace-transcript", "render", "claude");
+    assert.equal(res.status, 2);
+    assert.equal(res.stdout, "");
+    assert.match(res.stderr, /use `hook-wiring\.ts transcript render\|rewrite/);
+  });
+
+  test("`--hook mempalace-transcript rewrite <cli>` exits 2 and leaves the configuration byte-identical", () => {
+    const file = path.join(realTmp("crewrig-transcript-generic-"), "settings.json");
+    const before = JSON.stringify({
+      hooks: {
+        Stop: [{ hooks: [{ type: "command", command: "bash /x/mempalace-transcript.sh" }] }],
+      },
+    });
+    fs.writeFileSync(file, before);
+    const res = wiring("--hook", "mempalace-transcript", "rewrite", "claude", "--config", file);
+    assert.equal(res.status, 2);
+    assert.equal(res.stdout, "");
+    assert.match(res.stderr, /transcript render\|rewrite/);
+    assert.equal(read(file), before);
+    assert.deepEqual(fs.readdirSync(path.dirname(file)), ["settings.json"]);
   });
 });
 
