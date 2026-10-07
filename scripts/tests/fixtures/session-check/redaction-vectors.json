@@ -1,0 +1,80 @@
+{
+  "description": "Shared redaction vectors for spec 0246 R4 / plan v4 Contracts (issue #1410). Each input is a registered mempalace URL; expected is what BOTH redactUrl (scripts/lib/mempalace-registration.ts) and the status-side jq in _mcp_endpoint_check (scripts/lib/common.sh) must print for it. Algorithm: strip userinfo with an optional scheme, then the query and fragment (line breaks included), then replace U+0000-U+001F and U+007F-U+009F with '?', then cap at 120 code points. Measured identical on Node v24.13.1, jq-1.8.2 and jq-1.7.1-apple.",
+  "vectors": [
+    {
+      "name": "scheme-less userinfo holding LF, then TAB, ESC, OSC 8, BEL, DEL, query and fragment",
+      "input": "u:SE\nCR@NT@127.0.0.1:41893/mcp\tX\u001b]8;;x\u0007\u001b\u007f?k=S#f",
+      "expected": "127.0.0.1:41893/mcp?X?]8;;x???"
+    },
+    {
+      "name": "scheme-less userinfo",
+      "input": "u:SECRET@127.0.0.1:41893/mcp",
+      "expected": "127.0.0.1:41893/mcp"
+    },
+    {
+      "name": "userinfo holding @, with a query secret",
+      "input": "http://u:SE@NT@127.0.0.1:41893/mcp?k=SECRET",
+      "expected": "http://127.0.0.1:41893/mcp"
+    },
+    {
+      "name": "C0 controls in the path (TAB, LF, ESC, ENQ)",
+      "input": "http://127.0.0.1:41893/m\tc\np\u001bZ\u0005",
+      "expected": "http://127.0.0.1:41893/m?c?p?Z?"
+    },
+    {
+      "name": "leading NUL",
+      "input": "\u0000http://h/p",
+      "expected": "?http://h/p"
+    },
+    {
+      "name": "query secret after an LF (v4-F5)",
+      "input": "http://h/p?k=S\nECRET",
+      "expected": "http://h/p"
+    },
+    {
+      "name": "fragment secret after CR LF (v4-F5)",
+      "input": "http://h/p#f\r\nSECRET",
+      "expected": "http://h/p"
+    },
+    {
+      "name": "ESC before a query whose secret follows an LF (v4-F5)",
+      "input": "http://h/p\u001b?q x\nSECRET",
+      "expected": "http://h/p?"
+    },
+    {
+      "name": "clean endpoint is unchanged",
+      "input": "http://127.0.0.1:41893/mcp",
+      "expected": "http://127.0.0.1:41893/mcp"
+    },
+    {
+      "name": "an @ after the first / is path, not userinfo",
+      "input": "http://h/p@x",
+      "expected": "http://h/p@x"
+    },
+    {
+      "name": "empty string",
+      "input": "",
+      "expected": ""
+    },
+    {
+      "name": "C1 controls CSI (U+009B) and NEL (U+0085)",
+      "input": "http://h/\u009b31m\u0085x",
+      "expected": "http://h/?31m?x"
+    },
+    {
+      "name": "userinfo holding CR LF",
+      "input": "http://u:p\r\nS@h/p",
+      "expected": "http://h/p"
+    },
+    {
+      "name": "cap at 120 code points, astral characters counted once",
+      "input": "https://h/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "expected": "https://h/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀😀😀😀😀😀😀😀😀😀"
+    },
+    {
+      "name": "cap at 120 code points, BMP non-ASCII",
+      "input": "http://h/éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+      "expected": "http://h/ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+    }
+  ]
+}

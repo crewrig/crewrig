@@ -1194,6 +1194,30 @@ mcp_launcher_installed_path() {
   printf '%s\n' "${MEMPALACE_MCP_LAUNCHER_PATH:-$HOME/.crewrig/mcp-daemon-launcher.sh}"
 }
 
+# mcp_installed_endpoint — the endpoint the INSTALLED launcher serves,
+# `http://<MCP_HOST>:<MCP_PORT>/mcp`, read from its two materialised lines with
+# the same rules as parseLauncher in scripts/lib/mempalace-registration.ts
+# (spec 0246 R1): the first `NAME="…"` line of each, a host of 1-64 characters
+# from [A-Za-z0-9.:[]-] (no "_": RFC 1123, and it rejects the __MCP_HOST__
+# placeholder), a port 1-65535 without a leading zero. Prints nothing
+# and returns 1 when the launcher is not a regular file, or a value is missing
+# or malformed (an unreplaced placeholder included): no daemon is installed.
+# sed runs byte-wise (LC_ALL=C) so a stray non-UTF-8 byte cannot abort it, and
+# the classes are spelled out rather than ranged so no locale's collation can
+# widen them.
+mcp_installed_endpoint() {
+  local launcher host port
+  local host_re='^[]ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.:[-]{1,64}$'
+  local port_re='^[123456789][0123456789]{0,4}$'
+  launcher="$(mcp_launcher_installed_path)"
+  [ -f "$launcher" ] || return 1
+  host="$(LC_ALL=C sed -n 's/^MCP_HOST="\([^"]*\)".*/\1/p' "$launcher" 2>/dev/null | head -n 1)"
+  port="$(LC_ALL=C sed -n 's/^MCP_PORT="\([^"]*\)".*/\1/p' "$launcher" 2>/dev/null | head -n 1)"
+  [[ "$host" =~ $host_re ]] || return 1
+  [[ "$port" =~ $port_re ]] && [ "$port" -le 65535 ] || return 1
+  printf 'http://%s:%s/mcp\n' "$host" "$port"
+}
+
 mcp_launcher_source_sha() {
   local src="$CREWRIG_REPO_DIR/scripts/lib/mcp-daemon-launcher.sh"
   [ -f "$src" ] || return 1
@@ -1811,13 +1835,53 @@ mcp_assistant_arrangement() {
   return 0
 }
 
+# _mcp_endpoint_check <cli> <expected_url> — for an `http` arrangement, prints
+# one line `match|mismatch<TAB><redacted registered URL>`, read from the same
+# last extracted entry as mcp_assistant_arrangement (spec 0246 R3, R4). The URL
+# is redacted by the one algorithm the session check shares (R4, plan v4
+# *Contracts*, v4-F5): userinfo, then query and fragment (line breaks
+# included), then every C0/DEL/C1 control becomes `?`, then 120 code points. A
+# single registered value is `(.url // .serverUrl)` (spec 0246 delta-02 R3):
+# `url` unless it is null or false, else `serverUrl`. A value that is not a
+# string is a mismatch and prints the fixed text `(not a string)`, as the
+# check's classifyStrict does. Only the first output line is kept.
+_mcp_endpoint_check() {
+  local cfg
+  cfg="$(mcp_assistant_config_path "$1")" || return 1
+  [ -f "$cfg" ] || return 1
+  jq -r -s --arg expected "$2" '
+    [.[] | try (.mcpServers.mempalace // empty) catch empty] | last
+    | (.url // .serverUrl) as $u
+    | (if ($u | type) == "string" and $u == $expected then "match" else "mismatch" end) + "\t"
+      + (if ($u | type) != "string" then "(not a string)"
+         else $u | sub("^(?<s>([A-Za-z][A-Za-z0-9+.-]*://)?)[^/?#]*@"; "\(.s)")
+                 | sub("[?#][\\s\\S]*$"; "")
+                 | gsub("[\u0000-\u001f\u007f-\u009f]"; "?")
+                 | .[0:120]
+         end)' "$cfg" 2>/dev/null | head -n 1
+}
+
+# mcp_report_assistant_arrangements [daemon_status] [expected_url] — one line
+# per assistant. With an expected URL (status-mcp-server.sh passes the
+# installed launcher's), an `http` entry registered against another endpoint
+# reads `WRONG ENDPOINT` (spec 0246 R4); the return code is unchanged.
 mcp_report_assistant_arrangements() {
-  local daemon_status="${1:-}"
-  local cli state has_lockout=0
+  local daemon_status="${1:-}" expected="${2:-}"
+  local cli state has_lockout=0 check
   for cli in claude gemini copilot antigravity; do
     state="$(mcp_assistant_arrangement "$cli")"
     case "$state" in
-      http)    printf '  %-12s http (shared daemon)\n' "$cli" ;;
+      http)
+        check=""
+        [ -z "$expected" ] || check="$(_mcp_endpoint_check "$cli" "$expected")"
+        case "$check" in
+          mismatch$'\t'*)
+            printf '  %-12s http (WRONG ENDPOINT: registered %s, expected %s)\n' \
+              "$cli" "${check#*$'\t'}" "$expected"
+            ;;
+          *) printf '  %-12s http (shared daemon)\n' "$cli" ;;
+        esac
+        ;;
       stdio)
         if [ "$daemon_status" = "serving" ] || [ "$daemon_status" = "healthy" ]; then
           printf '  %-12s stdio (LOCKED OUT by shared daemon)\n' "$cli"
@@ -1851,7 +1915,9 @@ mcp_report_assistant_arrangements() {
 # — NEVER with /healthz (`_health_mcp_daemon`), whose endpoint is
 # require_auth=False and answers 200 in every state, satisfied by a stale
 # process and therefore green for exactly the wrong reason (the rationale for
-# retiring it as a serving predicate: spec 0139 delta-01 / issue #880). The
+# retiring it as a serving predicate: docs/runbooks/mempalace-mcp-server.md →
+# "Checking it is actually serving, and actually authenticated", the header of
+# scripts/status-mcp-server.sh, and issue #880). The
 # token is read tolerantly BEFORE the probe — a token failure must never abort
 # before the probe, because converging stdio against a daemon that would have
 # answered is exactly the lockout R20 forbids; an unreadable token probes with
