@@ -1,7 +1,7 @@
 ---
 id: "0101"
 slug: spec-pr-inline-approval
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 662

@@ -49,6 +49,7 @@ docker/e2e/.dockerignore	Consumed only by the local e2e image build; no CI check
 .github/workflows/security-mcp.yml	Hosts the GitHub job of portable capability `audit`; capability `check-ci-parity` (no `paths:` filter) compares its business steps and runtime provisioning with the reference on every change.
 .github/workflows/ticket-pickup.yml	Hosts the GitHub job of portable capability `ticket-pickup`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
 .github/workflows/playwright-mcp.yml	Hosts the GitHub job of portable capability `playwright-mcp`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
+.github/workflows/derive-spec-status.yml	Hosts the GitHub job of portable capability `derive-spec-status`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
 .github/workflows/mempalace-session-check.yml	Hosts the GitHub job of portable capability `mempalace-session-check`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
 .github/workflows/windows-hook-probe.yml	Hosts the GitHub job of portable capability `windows-hook-probe`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
 .github/workflows/usage-*.yml	Each hosts the GitHub job of one portable `usage-*` capability; capability `check-ci-parity` (no `paths:` filter) compares each with the reference on every change.

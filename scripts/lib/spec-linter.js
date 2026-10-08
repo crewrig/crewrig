@@ -565,7 +565,8 @@ function lintFile(filePath) {
         }
     }
 
-    return { hasErrors, errors, id, isDelta, status: fm.status };
+    const relatedIssue = Number.isInteger(fm['related-issue']) ? fm['related-issue'] : undefined;
+    return { hasErrors, errors, id, isDelta, status: fm.status, relatedIssue };
 }
 
 function run() {
@@ -617,8 +618,8 @@ function run() {
     const fileResults = [];
     for (const file of uniqueFiles) {
         if (isExcludedSpecPath(file, manifestEntries)) continue;
-        const { hasErrors, errors, id, isDelta, status } = lintFile(file);
-        fileResults.push({ file, id, isDelta, status });
+        const { hasErrors, errors, id, isDelta, status, relatedIssue } = lintFile(file);
+        fileResults.push({ file, id, isDelta, status, relatedIssue });
         if (hasErrors) {
             console.error(`\n[FAIL] ${file}`);
             for (const err of errors) {
@@ -654,17 +655,18 @@ function run() {
     }
 
     // Base-branch `status: draft` check (spec 0109 R1/R2, R2 as replaced by
-    // delta-02, plus delta-02 R9/R10/R11). A non-delta spec
-    // already present on the base branch has by definition had its own spec-PR
-    // merged, which is the trigger docs/spec-format.md assigns to `approved` —
-    // so `draft` on it is a contradiction, not a lagging value. Delta-specs are
-    // exempt (R2); their convention is deliberately left to its own ticket.
+    // delta-02 and again by delta-04, plus delta-02 R9/R10/R11). A spec or
+    // delta-spec already present on the base branch has by definition had its
+    // own spec-PR merged, which is the trigger docs/spec-format.md assigns to
+    // `approved` — so `draft` on it is a contradiction, not a lagging value.
+    // Since delta-04 (R17, R18) delta-specs follow the same lifecycle table and
+    // are no longer exempt.
     // The status read is the one in the tree under test, so the change that
     // corrects a stale `draft` passes on the same run that introduces the
     // check — which is what makes R6's single-change landing possible.
     if (baseContext.enforced) {
-        const offenders = fileResults.filter(({ file, isDelta, status }) =>
-            !isDelta && status === 'draft' && baseContext.basePaths.has(baseContext.relPathByFile.get(file))
+        const offenders = fileResults.filter(({ file, status }) =>
+            status === 'draft' && baseContext.basePaths.has(baseContext.relPathByFile.get(file))
         );
         if (offenders.length > 0) {
             // Whose violation is it? (delta-02 R2/R9/R10/R11.) Identification
@@ -690,7 +692,7 @@ function run() {
             }
 
             if (blocking.length > 0) {
-                console.error(`\n[FAIL] Non-delta specs present on the base branch (${baseContext.ref}) carry 'status: draft':`);
+                console.error(`\n[FAIL] Specs or delta-specs present on the base branch (${baseContext.ref}) carry 'status: draft' (spec 0109 delta-04):`);
                 for (const { file } of blocking) {
                     console.error(`  - ${file}`);
                 }
@@ -701,7 +703,7 @@ function run() {
             }
 
             if (bystanders.length > 0) {
-                console.error(`\n[WARN] Non-delta specs present on the base branch (${baseContext.ref}) carry 'status: draft':`);
+                console.error(`\n[WARN] Specs or delta-specs present on the base branch (${baseContext.ref}) carry 'status: draft' (spec 0109 delta-04):`);
                 for (const { file } of bystanders) {
                     console.error(`  - ${file}`);
                 }
@@ -712,18 +714,19 @@ function run() {
             }
         }
 
-        // Spec 0168 Requirement 1 — Spec-PR status validation:
-        // A pull request introducing a new non-delta specification file (or modifying one)
+        // Spec 0168 Requirement 1 — Spec-PR status validation, extended to
+        // delta-specs by spec 0109 delta-04 R19:
+        // A pull request introducing a new specification or delta-spec file (or modifying one)
         // SHALL NOT pass CI if it carries `status: draft`.
         // It must carry `status: approved` (with `interaction-mode`) before merging to main.
         if (baseContext.changed !== null) {
-            const newDraftOffenders = fileResults.filter(({ file, isDelta, status }) =>
-                !isDelta && status === 'draft' &&
+            const newDraftOffenders = fileResults.filter(({ file, status }) =>
+                status === 'draft' &&
                 baseContext.changed.has(baseContext.relPathByFile.get(file)) &&
                 !baseContext.basePaths.has(baseContext.relPathByFile.get(file))
             );
             if (newDraftOffenders.length > 0) {
-                console.error(`\n[FAIL] Non-delta specs added or modified by this change carry 'status: draft' (spec 0168 R1):`);
+                console.error(`\n[FAIL] Specs or delta-specs added or modified by this change carry 'status: draft' (spec 0168 R1, spec 0109 delta-04 R19):`);
                 for (const { file } of newDraftOffenders) {
                     console.error(`  - ${file}`);
                 }
@@ -734,23 +737,46 @@ function run() {
             }
         }
 
-        // Spec 0168 Requirement 2 — Implementation PR status validation:
-        // A pull request operating on an implementation branch ((feat|fix|refactor|perf|chore)/<NNNN>-*)
-        // SHALL NOT pass CI if the corresponding specification file does not carry `status: implemented`.
+        // Spec 0168 Requirement 2 — Implementation PR status validation, as
+        // widened by spec 0109 delta-04 R20-R22. On an implementation branch
+        // ((feat|fix|refactor|perf|chore)/<NNNN>-*), <NNNN> resolves to a ticket T:
+        // the related-issue of the non-delta spec whose id is <NNNN> when one
+        // exists in the tree under test (a spec-id branch), else <NNNN> as an
+        // integer (a ticket branch). Every spec and delta-spec whose
+        // related-issue is T then fails while 'draft' or 'approved';
+        // 'implemented', 'archived' and 'superseded' pass. A sync of main into a
+        // release branch (chore/<NNNN>-sync-main*) is not an implementation PR
+        // (R21). A matching branch with no file for T prints a notice and does
+        // not fail (R22).
         const currentBranch = resolveCurrentBranch();
-        const implBranchMatch = currentBranch.match(/^(?:feat|fix|refactor|perf|chore)\/(\d{4})-.*$/);
-        if (implBranchMatch) {
-            const specId = implBranchMatch[1];
-            const matchingSpecs = fileResults.filter(({ id, isDelta }) => !isDelta && id === specId);
-            for (const { file, status } of matchingSpecs) {
-                if (status !== 'implemented') {
-                    console.error(`\n[FAIL] Implementation branch '${currentBranch}' matches spec id '${specId}', but specification`);
-                    console.error(`       file does not carry 'status: implemented' (spec 0168 R2):`);
+        const implBranchMatch = currentBranch.match(/^(?:feat|fix|refactor|perf|chore)\/(\d{4})-/);
+        if (implBranchMatch && !/^chore\/\d{4}-sync-main/.test(currentBranch)) {
+            const nnnn = implBranchMatch[1];
+            const idSpec = fileResults.find(({ id, isDelta }) => !isDelta && id === nnnn);
+            let matched;
+            let ticket;
+            if (idSpec && idSpec.relatedIssue === undefined) {
+                // The spec's related-issue is malformed and already fails per
+                // file; check that spec alone, as spec 0168 R2 did.
+                matched = [idSpec];
+                ticket = `spec ${nnnn}`;
+            } else {
+                ticket = idSpec ? idSpec.relatedIssue : parseInt(nnnn, 10);
+                matched = fileResults.filter(({ relatedIssue }) => relatedIssue === ticket);
+            }
+            const pending = matched.filter(({ status }) => status === 'draft' || status === 'approved');
+            if (matched.length === 0) {
+                console.error(`\n[NOTICE] Implementation branch '${currentBranch}' resolves to ticket ${ticket}; no spec or delta-spec has related-issue: ${ticket}, so none was checked for 'status: implemented' (spec 0109 delta-04 R22).`);
+            } else if (pending.length > 0) {
+                const via = idSpec ? `spec ${nnnn}'s related-issue` : `its number`;
+                console.error(`\n[FAIL] Implementation branch '${currentBranch}' resolves to ticket ${ticket} (through ${via}), but these`);
+                console.error(`       specs or delta-specs of that ticket do not carry 'status: implemented' (spec 0168 R2, spec 0109 delta-04 R20):`);
+                for (const { file, status } of pending) {
                     console.error(`  - ${file} (current status: '${status}')`);
-                    console.error(`  An implementation pull request must transition its corresponding specification`);
-                    console.error(`  frontmatter to 'status: implemented' before merging.`);
-                    totalErrors++;
                 }
+                console.error(`  An implementation pull request must transition every specification and`);
+                console.error(`  delta-spec of its ticket to 'status: implemented' before merging.`);
+                totalErrors++;
             }
         }
     }

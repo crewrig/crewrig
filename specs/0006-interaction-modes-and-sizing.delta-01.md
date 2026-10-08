@@ -1,7 +1,7 @@
 ---
 id: "0006"
 slug: interaction-modes-and-sizing
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 288
