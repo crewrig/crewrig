@@ -594,7 +594,7 @@ export function main(argv: readonly string[], deps: DeriveDeps): number {
     for (const line of render(rows, dv.prs, o.format)) deps.out(line);
     const ambiguous = rows.filter((r) => r.determined.ambiguity !== null).length;
     deps.err(
-      `derive-spec-status: ${o.scope} on ${o.branch} (${dv.branchSha.slice(0, 12)}): ${rows.length} candidate(s), ${ambiguous} ambiguous`,
+      `derive-spec-status: ${o.scope} on ${o.branch} (${dv.branchSha.slice(0, 12)}): ${rows.length} candidate(s), ${ambiguous} ambiguous among candidates`,
     );
     if (o.apply) {
       dv.apply(rows);

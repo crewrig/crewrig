@@ -202,6 +202,14 @@ describe("R23 rule on main (draft-deltas)", () => {
     assert.equal(t.get(D("0050", 9))?.[2], "approved"));
   test("non-delta specs are out of the draft-deltas scope", () =>
     assert.equal(t.has("specs/0070-x.md"), false));
+  test("i1-F2 the summary counts ambiguity among candidates only", () => {
+    const n = [...t.values()].filter((row) => /^ambiguous: /.test(row[4] ?? "")).length;
+    assert.ok(n > 0, "the fixture must carry ambiguous candidates");
+    assert.match(
+      res.err.join("\n"),
+      new RegExp(`: ${t.size} candidate\\(s\\), ${n} ambiguous among candidates$`, "m"),
+    );
+  });
   test("--check exits 1 while candidates remain", () =>
     assert.equal(r.derive(["--branch", "main", "--scope", "draft-deltas", "--check"]).code, 1));
 });
