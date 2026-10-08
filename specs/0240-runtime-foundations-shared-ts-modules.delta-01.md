@@ -1,7 +1,7 @@
 ---
 id: "0240"
 slug: runtime-foundations-shared-ts-modules
-status: draft
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1324

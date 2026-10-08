@@ -1,7 +1,7 @@
 ---
 id: "0002"
 slug: spec-author-skill
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 194

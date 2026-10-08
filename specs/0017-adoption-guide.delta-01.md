@@ -1,7 +1,7 @@
 ---
 id: "0017"
 slug: adoption-guide
-status: draft
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 231
