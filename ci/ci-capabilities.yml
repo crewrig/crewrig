@@ -585,8 +585,13 @@ capabilities:
         paths:
           - "scripts/check-core-paths.sh"
           - "scripts/sync-from-upstream.sh"
+          - "scripts/sync-from-upstream.ts"
+          - "scripts/lib/sync-from-upstream/**"
           - "scripts/tests/test-check-core-paths.sh"
           - "scripts/tests/test-sync-from-upstream.sh"
+          - "scripts/tests/sync-from-upstream-self-update.test.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/fixtures/sync-from-upstream/**"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
           - "model-mappings/**"
@@ -595,8 +600,13 @@ capabilities:
         paths:
           - "scripts/check-core-paths.sh"
           - "scripts/sync-from-upstream.sh"
+          - "scripts/sync-from-upstream.ts"
+          - "scripts/lib/sync-from-upstream/**"
           - "scripts/tests/test-check-core-paths.sh"
           - "scripts/tests/test-sync-from-upstream.sh"
+          - "scripts/tests/sync-from-upstream-self-update.test.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/fixtures/sync-from-upstream/**"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
           - "model-mappings/**"
@@ -609,6 +619,7 @@ capabilities:
       - bash scripts/check-core-paths.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-sync-from-upstream.sh
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts
 
   - id: ci-parity
     name: "Test the CI generator and parity harness"
@@ -2708,6 +2719,33 @@ capabilities:
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0250 R28).
+
+  # Spec 0253 R27, R17: the history import and operational commands row's copy
+  # of the template above. The TypeScript sync-from-upstream entry runs from
+  # pwsh, offline, against a local upstream repository the suite creates
+  # itself, with Git for Windows and no `bash`. No timing-budget step: the suite
+  # prints `timing:` lines, which R24 records and never gates. No `paths:`
+  # filter, like the Windows jobs above.
+  - id: windows-sync-from-upstream
+    name: "Windows sync from upstream: TypeScript entry against a local upstream repository, no bash"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-sync-from-upstream`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0253 R27).
 
   # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
   # (spec 0183 R23, issue #1008): it packaged the committed source tree via

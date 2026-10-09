@@ -483,8 +483,13 @@ jobs:
             core-paths:
               - 'scripts/check-core-paths.sh'
               - 'scripts/sync-from-upstream.sh'
+              - 'scripts/sync-from-upstream.ts'
+              - 'scripts/lib/sync-from-upstream/**'
               - 'scripts/tests/test-check-core-paths.sh'
               - 'scripts/tests/test-sync-from-upstream.sh'
+              - 'scripts/tests/sync-from-upstream-self-update.test.ts'
+              - 'scripts/tests/lib/hermetic-env.ts'
+              - 'scripts/tests/fixtures/sync-from-upstream/**'
               - '.crewrig/core-paths.txt'
               - 'docs/layers.md'
               - 'model-mappings/**'
@@ -506,6 +511,9 @@ jobs:
       - name: Test Sync From Upstream
         if: steps.filter.outputs.core-paths == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-sync-from-upstream.sh
+      - name: Test Sync From Upstream Self-Update
+        if: steps.filter.outputs.core-paths == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1777,6 +1785,30 @@ jobs:
           MEMPALACE_MCP_HOST: 127.0.0.1
           MEMPALACE_MCP_PORT: ${{ env.TIMING_CLOSED_PORT }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 550 --case d-nothing-listening --stdin-file $env:TIMING_PROMPT_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0253 R27, R17: the history import and operational commands row's copy
+  # of the Windows template above. pwsh is the interpreter of the one step. The
+  # suite is offline: it creates a local upstream repository itself and runs
+  # the TypeScript entry against it with Git for Windows, spawning no `bash`.
+  # No timing-budget step: the suite prints `timing:` lines, which R24 records
+  # and never gates.
+  windows-sync-from-upstream:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Sync from upstream entry against a local upstream repository, no bash
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-windows.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
