@@ -1,6 +1,6 @@
 // context-declared.ts — the declared command and skill names of an extension (spec 0254 R16).
 // Twins `_render_context_declared_commands` / `_render_context_declared_skills`
-// (scripts/lib/render-context.sh:161-184): pass (d)'s only source of truth. Both read the
+// (the shell renderer `render-context` (deleted in spec 0254 PR D; `git show 6657b08:scripts/lib/render-context (shell)`) lines 161-184): pass (d)'s only source of truth. Both read the
 // subject's `location` (default `commands/` / `skills/`, trailing slash stripped), list in
 // code-unit order of the entry name and return nothing when the subject or directory is absent.
 

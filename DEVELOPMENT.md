@@ -47,8 +47,10 @@ The script will:
 
 The `extension-skeleton/` directory contains the template source. No file
 here is named for a specific command-line tool (spec 0183 R9 — enforced by
-`bash scripts/build-extension.sh --check` over this directory, not only
-over extension source trees):
+`node scripts/build-extension.ts --check` over this directory, not only
+over extension source trees; run `node scripts/lib/node-floor-guard.js` first, as a
+separate command, since the builders need Node.js 24 or later and `js-yaml` comes
+from the setup dependency step):
 
 ```text
 extension-skeleton/
@@ -129,7 +131,7 @@ node dist/index.js
 
 ### Plugin Build Contract
 
-`build-claude-plugin.sh` propagates `dist/` and `package.json` into the plugin output directory because the declared MCP command typically points inside it (`${extensionRoot}/dist/index.js` — the one neutral path token, spec 0180), and Node requires both to load an ESM MCP server at runtime. The generated `.mcp.json` carries `${CLAUDE_PLUGIN_ROOT}` (the neutral token rewritten to Claude's own spelling), which Claude Code itself resolves when it LOADS the installed plugin — not a render-time (build-time) resolution baked into the file (spec 0180 R8).
+`scripts/build-claude-plugin.ts` (behind the forwarding shim `build-claude-plugin.sh`) propagates `dist/` and `package.json` into the plugin output directory because the declared MCP command typically points inside it (`${extensionRoot}/dist/index.js` — the one neutral path token, spec 0180), and Node requires both to load an ESM MCP server at runtime. The generated `.mcp.json` carries `${CLAUDE_PLUGIN_ROOT}` (the neutral token rewritten to Claude's own spelling), which Claude Code itself resolves when it LOADS the installed plugin — not a render-time (build-time) resolution baked into the file (spec 0180 R8).
 
 Implications for contributors:
 
@@ -151,7 +153,7 @@ Claude Code does not auto-discover plugins placed under `~/.claude/plugins/`. Pl
 
 `scripts/install-claude-plugin.sh` handles this in four steps:
 
-1. Calls `build-claude-plugin.sh` → produces `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/local-marketplace/<name>/` (a shared home outside the working tree, so multiple extensions coexist and installs survive branch switches)
+1. Calls the Claude plugin builder (`scripts/build-claude-plugin.ts`, through the shim `build-claude-plugin.sh`) → produces `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/local-marketplace/<name>/` (a shared home outside the working tree, so multiple extensions coexist and installs survive branch switches)
 2. Generates `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/local-marketplace/.claude-plugin/marketplace.json` with a marketplace named `<repo-basename>-local` (e.g. `crewrig-local`). This is a SHARED manifest: each installed extension is upserted by name, so it accumulates every extension installed under that config root
 3. Runs `claude plugin marketplace add ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/local-marketplace --scope user`
 4. Runs `claude plugin install <name>@<marketplace-name> --scope user`

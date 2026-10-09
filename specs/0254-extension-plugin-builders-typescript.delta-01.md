@@ -1,7 +1,7 @@
 ---
 id: "0254"
 slug: extension-plugin-builders-typescript
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1333

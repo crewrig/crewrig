@@ -12,7 +12,7 @@ extension is the extension's **only** hand-authored manifest: every
 declaration subject — commands, skills, agents, hooks, MCP servers,
 context — lives in a generic top-level section, declared exactly once, and
 every CLI-native file a specific command-line tool consumes is **produced
-from that single declaration** by `scripts/build-extension.sh`.
+from that single declaration** by `scripts/build-extension.ts`.
 
 ## Format
 
@@ -30,12 +30,14 @@ command-line tool is always a build output, never a hand-authored source**
 `scripts/lib/extension-generated-class.json`, `manifest_class`) — and a
 per-CLI-designated file rendered from a `commands/` pivot (`commands/*.toml`
 today) — **SHALL NOT be committed on the primary branch, for any
-command-line tool.** `bash scripts/build-extension.sh --check` fails the
+command-line tool.** `node scripts/build-extension.ts --check` fails the
 build the moment one is, naming the offending file, and points at the
 delivery paths below rather than at regenerating and committing it.
 
-**Where the rendered files actually go.** `bash scripts/build-extension.sh
-[--target {gemini,claude,copilot,antigravity,all}]` writes every output into
+**Where the rendered files actually go.** `node scripts/build-extension.ts
+[--target {gemini,claude,copilot,antigravity,all}]` (run
+`node scripts/lib/node-floor-guard.js` first, as a separate command; Node.js 24
+or later, `js-yaml` from the setup dependency step) writes every output into
 a build directory outside the committed source tree:
 
 - **Gemini CLI** (the tool that loads an extension in place) gets the
@@ -188,7 +190,7 @@ other generated-output-class member.
   // options live inside the subject's own section, never in a separate
   // "components" block: that shape is RETIRED (spec 0183 R12/R13, clean
   // break, no compatibility window) — a manifest declaring it fails every
-  // reader loudly, naming scripts/migrate-extension.sh and the migration
+  // reader loudly, naming scripts/migrate-extension.ts and the migration
   // note in docs/adoption-guide.md.
   // ============================================================
 
@@ -234,8 +236,8 @@ other generated-output-class member.
   // optionally a neutral tool-class `matcher`, a `timeLimit` (seconds —
   // the canonical unit; converted per target, or omitted where a target's
   // own unit is ungrounded), and a human `description`. Translated for
-  // every supported target by the shared render (scripts/build-extension.sh
-  // via scripts/lib/extension-hooks.sh) — no per-CLI hook key exists any
+  // every supported target by the shared render (scripts/build-extension.ts
+  // via scripts/lib/extension/hooks-emit.ts) — no per-CLI hook key exists any
   // more. A hook whose event has no counterpart on a declared target
   // produces a build warning and an entry in the observed gap set rather
   // than an approximation (see *Unmappable-declaration policy* below).
@@ -400,9 +402,9 @@ leaving neither tool with an irreducible key to carry.
 An extension declares its agent-facing context exactly **once**, in one
 command-line-tool-neutral Markdown source named by `context.source` — never
 a per-CLI file, and never a per-CLI key naming one. The shared render
-(`scripts/lib/render-context.sh`, called by `scripts/build-extension.sh` and
+(`scripts/lib/extension/context-render.ts`, called by `scripts/build-extension.ts` and
 each of the three plugin builders — the three `install-*-plugin.sh` scripts
-invoke the builders directly, bypassing `build-extension.sh`) turns that one
+invoke the builders directly, bypassing `build-extension.ts`) turns that one
 source into one output per target, resolving a small render-variable
 vocabulary against `scripts/lib/extension-targets.json`'s own knowledge of
 each target and the extension's own declared commands/skills. An extension
@@ -498,7 +500,7 @@ The durable side of the policy is a **hand-authored, committed declaration**
 of the gaps an extension's maintainers have accepted:
 `extensions/<tier>/<name>/accepted-gaps.json`, one entry per accepted gap.
 **Absence means the empty set** — an extension whose declarations all map
-cleanly ships no such file at all. `bash scripts/build-extension.sh --check`
+cleanly ships no such file at all. `node scripts/build-extension.ts --check`
 compares the observed set against the declared one and fails, naming the
 offender, on either mismatch: a gap observed but not declared
 (`GAP-UNDECLARED`), or a gap declared but no longer observed (`GAP-STALE`).
@@ -635,8 +637,8 @@ There is exactly one declaration site — no per-CLI `hooks` key exists on
 any of the four per-CLI sections, and declaring one is a manifest validation
 error.
 
-The shared translator (`scripts/lib/extension-hooks.sh`, invoked by
-`scripts/build-extension.sh`) renders every declared hook into each target's
+The shared translator (`scripts/lib/extension/hooks-emit.ts`, invoked by
+`scripts/build-extension.ts`) renders every declared hook into each target's
 own native shape. Where a declared event or matcher class has no counterpart
 on a target, the render emits a build warning and records the gap rather
 than approximating it — see *Unmappable-declaration policy* above. The full

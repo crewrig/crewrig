@@ -1,13 +1,13 @@
-// extension-golden-regen.ts — regenerate scripts/tests/fixtures/extension-golden/ from the shell oracle
-// (spec 0254 R22). One command, Linux and macOS only (it runs `bash`, `jq` and `yq` on purpose):
+// extension-golden-regen.ts — regenerate scripts/tests/fixtures/extension-golden/ from the TypeScript
+// entry (spec 0254 R22). The golden is now regenerated from the TypeScript entry, because the shell
+// scripts are forwarding shims since PR D; every regeneration needs a reviewed diff of the
+// changed files, which the command prints. One command, Linux and macOS only:
 //
 //   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/extension-golden-regen.ts
 //
-// For each subject of `buildSubjects()` it builds `--target all` with `scripts/build-extension.sh`
+// For each subject of `buildSubjects()` it builds `--target all` with `scripts/build-extension.ts`
 // in a throwaway root and stores the five outputs under `extension-golden/<subject>/`, replacing
-// what was there, then prints the files that changed. The golden is frozen while the shell is the
-// oracle; once the shell is a shim (PR D) the procedure runs the TypeScript entry instead and a
-// reviewed diff is required.
+// what was there, then prints the files that changed.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -19,7 +19,6 @@ import {
   extensionRoot,
   goldenBytes,
   outputDirs,
-  runShell,
   runTs,
 } from "./extension-run.ts";
 
@@ -30,13 +29,10 @@ function main(): number {
     process.stderr.write("Error: the golden is regenerated on Linux or macOS.\n");
     return 1;
   }
-  const useTs = process.argv.includes("--from-typescript");
   const changed: string[] = [];
   for (const [name, files] of Object.entries(buildSubjects())) {
     const tree = extensionRoot({ [name]: files });
-    const run = useTs
-      ? runTs(tree, "build-extension", ["--target", "all", name])
-      : runShell(tree, "build-extension", ["--target", "all", name]);
+    const run = runTs(tree, "build-extension", ["--target", "all", name]);
     if (run.status !== 0) {
       process.stderr.write(`Error: building ${name} failed (${run.status}):\n${run.stderr}\n`);
       return 1;

@@ -1,14 +1,14 @@
 // context-refs.ts — the name, reference, near-miss and unmask passes of the context renderer,
 // pure functions over text (spec 0254 R16).
-// Twins `_render_context_impl` passes (c) and (e) (scripts/lib/render-context.sh:484-490, 505),
-// `_render_context_pass_d` (render-context.sh:354-403) and `_render_context_warn_near_miss`
-// (render-context.sh:407-428). Every replacement is a literal string replacement.
+// Twins `_render_context_impl` passes (c) and (e) (the shell renderer `render-context` (deleted in spec 0254 PR D; `git show 6657b08:scripts/lib/render-context (shell)`) lines 484-490, 505),
+// `_render_context_pass_d` (render-context lines 354-403) and `_render_context_warn_near_miss`
+// (render-context lines 407-428). Every replacement is a literal string replacement.
 
 import { lineAt, MASK, type PassResult } from "./context-spans.ts";
 
-/** In-vocabulary identifiers, never a near miss (`RENDER_CONTEXT_VOCAB`, render-context.sh:128). */
+/** In-vocabulary identifiers, never a near miss (`RENDER_CONTEXT_VOCAB`, render-context lines 128). */
 const VOCAB = ["TOOL", "EXTENSION", "COMMAND", "SKILL", "ONLY", "EXCEPT", "ENDONLY", "ENDEXCEPT"];
-/** Known-external identifiers (`RENDER_CONTEXT_KNOWN_EXTERNAL`, render-context.sh:126). */
+/** Known-external identifiers (`RENDER_CONTEXT_KNOWN_EXTERNAL`, render-context lines 126). */
 const KNOWN_EXTERNAL = ["SKELETON_NAME"];
 
 function replaceAllLiteral(text: string, search: string, value: string): string {
