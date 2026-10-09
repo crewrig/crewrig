@@ -224,12 +224,19 @@ capabilities:
     command:
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-agent-profile-migration.sh
 
-  # Spec 0250 R27 (issue #1332): the TypeScript component-build core, its
+  # Spec 0250 R27, R28 (issue #1332): the TypeScript component-build core, its
   # shared library twins and their node --test suites. `paths:` lists every
   # entry literally (only `*` and `**`, the forms scripts/lib/glob-engine.ts
   # accepts: no brace alternation). A glob that matches nothing yet is accepted
   # by scripts/check-path-ownership.ts, which only flags unowned files and
-  # stale exemptions. Needs yq because the suites drive the shell build.
+  # stale exemptions. Needs yq because the parity suites drive the shell build.
+  # The install is the production command of spec 0240 R4, so a suite that
+  # imports a devDependency fails here: the suites are NAMED, not globbed, to
+  # keep the dev-toolchain suite (build-components-built-trees.test.ts, which
+  # needs Oxlint, Oxfmt and tsc and runs in `lint-typescript`) out of this job.
+  # `--check` on the real tree and the Linux run of the Windows proof script
+  # cover the committed trees. The conformance, differential and YAML corpus
+  # suites spawn `bash` and `yq` and retire with the shell script (PR D).
   - id: build-components-ts
     name: "Run the TypeScript component-build core and shared library twin suites"
     trigger:
@@ -242,6 +249,12 @@ capabilities:
           - "scripts/lib/component-resolve.ts"
           - "scripts/lib/model-resolve.ts"
           - "scripts/lib/yaml-text.ts"
+          - "scripts/lib/escape-control.ts"
+          - "scripts/lib/line-endings.ts"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/require-dependency.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "scripts/lib/render-command.sh"
           - "scripts/lib/component-resolve.sh"
           - "scripts/lib/model-resolve.sh"
@@ -260,6 +273,18 @@ capabilities:
           - "artifacts/**"
           - "model-mappings/**"
           - "tests/fixtures/**"
+          - "crewrig.config.toml"
+          - "package.json"
+          - "package-lock.json"
+          - ".agents/agents/**"
+          - ".agents/skills/**"
+          - ".claude/agents/**"
+          - ".claude/skills/**"
+          - ".gemini/agents/**"
+          - ".gemini/commands/**"
+          - ".gemini/skills/**"
+          - ".github/agents/**"
+          - ".github/skills/**"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -269,6 +294,12 @@ capabilities:
           - "scripts/lib/component-resolve.ts"
           - "scripts/lib/model-resolve.ts"
           - "scripts/lib/yaml-text.ts"
+          - "scripts/lib/escape-control.ts"
+          - "scripts/lib/line-endings.ts"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/require-dependency.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "scripts/lib/render-command.sh"
           - "scripts/lib/component-resolve.sh"
           - "scripts/lib/model-resolve.sh"
@@ -287,13 +318,47 @@ capabilities:
           - "artifacts/**"
           - "model-mappings/**"
           - "tests/fixtures/**"
+          - "crewrig.config.toml"
+          - "package.json"
+          - "package-lock.json"
+          - ".agents/agents/**"
+          - ".agents/skills/**"
+          - ".claude/agents/**"
+          - ".claude/skills/**"
+          - ".gemini/agents/**"
+          - ".gemini/commands/**"
+          - ".gemini/skills/**"
+          - ".github/agents/**"
+          - ".github/skills/**"
     portability: portable
     requires:
       runtime: node@24
       tools: [yq]
     command:
-      - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-*.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
+      - node scripts/build-components.ts --target all --check
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-differential.test.ts scripts/tests/build-components-differential-cli.test.ts scripts/tests/build-components-differential-deviations.test.ts scripts/tests/build-components-differential-deviations-diag.test.ts scripts/tests/build-components-differential-real.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
+
+  # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
+  # release, where type stripping still emits an ExperimentalWarning. No
+  # `paths:` filter, like mempalace-transcript-node-24-0 below: the suite is
+  # fast and any shared-module change can reintroduce a warning. The production
+  # install comes first, as the entry-form suite runs a build that loads js-yaml.
+  - id: build-components-ts-node-24-0
+    name: "Component build entry is silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts
 
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
@@ -1286,6 +1351,7 @@ capabilities:
     command:
       - npm ci
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
 
   # Spec 0240 R4-R11, R13, R16: the Node.js floor guard, the production-
@@ -2490,6 +2556,42 @@ capabilities:
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0247 R31).
+
+  # Spec 0250 R28, R29: the component-build row's copy of the template above.
+  # The production dependencies are installed first (the command of spec 0240
+  # R4), the floor guard runs, then scripts/tests/lib/windows-build-proof.ts
+  # proves the write path: `--target all --check` exits 0 with its OK line, a
+  # build into a throwaway REPO_DIR matches the four committed trees byte for
+  # byte, `--list-output-dirs` answers, and the elapsed time is printed. A short
+  # list of unit suites follows (entry form, dependency diagnostic, the two
+  # hardening unit suites, and the portable build-components and library twin
+  # suites): each either runs whole on win32 or skips its POSIX-only parts
+  # itself. The suites that compare printed paths (the `-output*`, `-names`,
+  # `-hardening-*-e2e` files) skip on win32 and are left to Linux, as are the
+  # shell-parity, conformance, differential and YAML corpus suites (spec 0250
+  # R28: not the suites that need `bash`). No timing budget (R29) and no
+  # `paths:` filter, like the Windows jobs above: the proof must not skip
+  # silently on a change it does not list.
+  - id: windows-build-components
+    name: "Windows component build: production install, floor guard, write-path proof and unit suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-build-components`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0250 R28).
 
   # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
   # (spec 0183 R23, issue #1008): it packaged the committed source tree via

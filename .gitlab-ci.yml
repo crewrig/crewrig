@@ -210,8 +210,11 @@ build-components-ts:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
-    - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-*.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts"
+    - "npm ci --omit=dev --workspaces=false"
+    - "node scripts/lib/node-floor-guard.js"
+    - "node scripts/build-components.ts --target all --check"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-differential.test.ts scripts/tests/build-components-differential-cli.test.ts scripts/tests/build-components-differential-deviations.test.ts scripts/tests/build-components-differential-deviations-diag.test.ts scripts/tests/build-components-differential-real.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -221,6 +224,12 @@ build-components-ts:
         - "scripts/lib/component-resolve.ts"
         - "scripts/lib/model-resolve.ts"
         - "scripts/lib/yaml-text.ts"
+        - "scripts/lib/escape-control.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/require-dependency.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "scripts/lib/render-command.sh"
         - "scripts/lib/component-resolve.sh"
         - "scripts/lib/model-resolve.sh"
@@ -239,6 +248,18 @@ build-components-ts:
         - "artifacts/**"
         - "model-mappings/**"
         - "tests/fixtures/**"
+        - "crewrig.config.toml"
+        - "package.json"
+        - "package-lock.json"
+        - ".agents/agents/**"
+        - ".agents/skills/**"
+        - ".claude/agents/**"
+        - ".claude/skills/**"
+        - ".gemini/agents/**"
+        - ".gemini/commands/**"
+        - ".gemini/skills/**"
+        - ".github/agents/**"
+        - ".github/skills/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.*"
@@ -247,6 +268,12 @@ build-components-ts:
         - "scripts/lib/component-resolve.ts"
         - "scripts/lib/model-resolve.ts"
         - "scripts/lib/yaml-text.ts"
+        - "scripts/lib/escape-control.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/require-dependency.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "scripts/lib/render-command.sh"
         - "scripts/lib/component-resolve.sh"
         - "scripts/lib/model-resolve.sh"
@@ -265,6 +292,27 @@ build-components-ts:
         - "artifacts/**"
         - "model-mappings/**"
         - "tests/fixtures/**"
+        - "crewrig.config.toml"
+        - "package.json"
+        - "package-lock.json"
+        - ".agents/agents/**"
+        - ".agents/skills/**"
+        - ".claude/agents/**"
+        - ".claude/skills/**"
+        - ".gemini/agents/**"
+        - ".gemini/commands/**"
+        - ".gemini/skills/**"
+        - ".github/agents/**"
+        - ".github/skills/**"
+
+build-components-ts-node-24-0:
+  image: node:24.0.0
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 extension-render:
   image: debian:stable-slim
@@ -1134,6 +1182,7 @@ lint-typescript:
   script:
     - "npm ci"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'

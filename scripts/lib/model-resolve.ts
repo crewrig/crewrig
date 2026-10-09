@@ -83,7 +83,7 @@ export function createResolveContext(
     env: process.env,
     platform: process.platform,
     pid: process.pid,
-    uid: process.platform === "win32" ? undefined : process.getuid?.(),
+    uid: process.platform === "win32" ? undefined : process.geteuid?.(),
     tmpdir: os.tmpdir(),
     stderr: (line) => void process.stderr.write(`${line}\n`),
     ...base,

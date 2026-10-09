@@ -190,8 +190,26 @@ describe("createResolveContext", () => {
       [ctx.env, ctx.platform, ctx.pid, ctx.tmpdir],
       [process.env, process.platform, process.pid, os.tmpdir()],
     );
-    assert.equal(ctx.uid, process.platform === "win32" ? undefined : process.getuid?.());
+    assert.equal(ctx.uid, process.platform === "win32" ? undefined : process.geteuid?.());
   });
+
+  // Spec 0250 delta 01, modified R20: the shell's `-O` tests the EFFECTIVE user, so the default
+  // is `geteuid`. The real and effective ids are equal in a test process, so the effective one
+  // is faked to tell the two apart.
+  test(
+    "the default uid is the effective user id, never the real one",
+    { skip: process.platform === "win32" ? "ownership is not modelled on win32" : false },
+    () => {
+      const effective = (process.getuid?.() ?? 0) + 4242;
+      const original = process.geteuid;
+      process.geteuid = () => effective;
+      try {
+        assert.equal(createResolveContext(base).uid, effective);
+      } finally {
+        process.geteuid = original;
+      }
+    },
+  );
 
   test("any field can be overridden, and the standard-error sink is a function", () => {
     const ctx = createResolveContext({ ...base, env: {}, pid: 9, uid: 3, platform: "win32" });

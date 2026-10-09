@@ -163,7 +163,7 @@ describe("the .merges counter (O11)", () => {
 
 describe("the ownership guard", () => {
   const foreign = (root: string, dir: string) =>
-    makeRun(root, { MAPPING_MERGE_DIR: dir }, { uid: (process.getuid?.() ?? 0) + 1 });
+    makeRun(root, { MAPPING_MERGE_DIR: dir }, { uid: (process.geteuid?.() ?? 0) + 1 });
 
   test(
     "a root owned by another user is refused: the core mapping and one merge-unavailable note",
