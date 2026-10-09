@@ -93,8 +93,13 @@ test("the palace-keyed path equals the one usage-store/mcp.js derives", () => {
   const home = fs.realpathSync(tmp());
   const palace = path.join(home, "p", "palace");
   fs.mkdirSync(path.join(home, "p"), { recursive: true });
-  const prior = { HOME: process.env.HOME, P: process.env.MEMPALACE_PALACE_PATH };
+  const prior = {
+    HOME: process.env.HOME,
+    UP: process.env.USERPROFILE,
+    P: process.env.MEMPALACE_PALACE_PATH,
+  };
   process.env.HOME = home;
+  process.env.USERPROFILE = home; // os.homedir() reads USERPROFILE on Windows
   process.env.MEMPALACE_PALACE_PATH = palace;
   try {
     const mcp = createRequire(import.meta.url)("../lib/usage-store/mcp.js") as {
@@ -108,6 +113,8 @@ test("the palace-keyed path equals the one usage-store/mcp.js derives", () => {
   } finally {
     if (prior.HOME === undefined) delete process.env.HOME;
     else process.env.HOME = prior.HOME;
+    if (prior.UP === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = prior.UP;
     if (prior.P === undefined) delete process.env.MEMPALACE_PALACE_PATH;
     else process.env.MEMPALACE_PALACE_PATH = prior.P;
   }

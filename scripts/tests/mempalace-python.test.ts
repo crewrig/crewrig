@@ -108,15 +108,20 @@ describe("candidate order", () => {
     ]);
   });
 
-  test("the console-script interpreter sits between the venv and python3", () => {
-    const { env, home, bin } = hermeticEnv();
-    writeFile(path.join(bin, "mempalace"), "#!/opt/venv/bin/python\n", 0o755);
-    assert.deepEqual(mempalacePythonCandidates(env, POSIX), [
-      `${home}/.local/share/pipx/venvs/mempalace/bin/python`,
-      "/opt/venv/bin/python",
-      "python3",
-    ]);
-  });
+  // A POSIX console script: on Windows `mempalace` is found through PATHEXT, not as an extensionless file.
+  test(
+    "the console-script interpreter sits between the venv and python3",
+    { skip: process.platform === "win32" },
+    () => {
+      const { env, home, bin } = hermeticEnv();
+      writeFile(path.join(bin, "mempalace"), "#!/opt/venv/bin/python\n", 0o755);
+      assert.deepEqual(mempalacePythonCandidates(env, POSIX), [
+        `${home}/.local/share/pipx/venvs/mempalace/bin/python`,
+        "/opt/venv/bin/python",
+        "python3",
+      ]);
+    },
+  );
 
   test("duplicates are dropped, first occurrence kept", () => {
     const { env, home, bin } = hermeticEnv();
