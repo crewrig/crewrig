@@ -67,11 +67,9 @@ describe("readMempalacePin", () => {
     assert.deepEqual(pin, readMempalacePin(fixtureRoot(DECLARED)));
   });
 
-  test("a lone carriage return after the closing quote is not a line end", () => {
-    assert.throws(
-      () => readMempalacePin(fixtureRoot(DECLARED.replace('"3.6.0"', '"3.6.0"\rx'))),
-      /must be declared exactly once/,
-    );
+  test("a lone carriage return is a line end, as in Python's universal newlines", () => {
+    const pin = readMempalacePin(fixtureRoot(DECLARED.replaceAll("\n", "\r")));
+    assert.deepEqual(pin, readMempalacePin(fixtureRoot(DECLARED)));
   });
 
   test("an unreadable common.sh throws the file-system error", () => {
