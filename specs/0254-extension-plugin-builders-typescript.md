@@ -641,6 +641,15 @@ admissible set {PreToolUse, UserPromptSubmit}` and `FAIL: <dir> — manifest val
 failed …` are printed, nothing is rendered for it, there is no `Done.` line, and the
 exit status is 1.
 
+**Scenario:** A failed render stops the run after its extension
+
+Given two extensions in discovery order, the first holding a context source with an
+unclosed span and a valid manifest
+When `build-extension --target all` runs in build mode
+Then every target of the first extension is still rendered, the context failure is
+printed and its context file is absent, the second extension is not rendered, no
+`Done.` line is printed, and the exit status is 1.
+
 **Scenario:** A too-old Node.js changes nothing
 
 Given Node.js 20 on the path
