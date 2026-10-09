@@ -119,14 +119,25 @@ changes. The rule covers every line that interpolates one: the `Generated:` and
 <root>) ---`, `Building skill|command|agent: <name>`, the `Warning:` lines that name
 a source or the configuration file, every `Error:` line of the build that names a
 path or a key, the collision reports of requirement 17 (names, tiers and install
-targets), and the lines of `--list-output-dirs`. For the code, the contract is that
-every line written through the output functions of the build that interpolates a
-path or a name passes that part through one shared escaper; the line's own
-separators are not part of a path or a name and are not rewritten. Two things are
-outside the rule: the diagnostic records of requirement 19, whose tab-separated
-fields are a record format and whose agent name has passed the name refusal in a
-build, and text that a source declares as a value (a description, a declared model
-value, a `fm:` or `prose:` line), which is content and not a path or a name.
+targets), and the lines of `--list-output-dirs`.
+
+The same rule covers every text the build reads from a source and writes to standard
+output or standard error: the diagnostic records of requirement 19 (`model-drop` and
+`model-note`, with their agent, target, dotted path and declared value) and the
+`offering:`, `native:`, `fm:` and `prose:` lines of the `--resolve` arm. For these,
+each control character EXCEPT TAB (U+0009) is written as `\xNN` (lower-case hex), so
+that no line feed, carriage return or escape from a source value reaches a log. TAB
+is kept, and it is the one place a printed line legitimately carries a control
+character: the diagnostic records are tab-separated by design (spec 0198 requirements
+32 and 33) and a tab cannot start a workflow command. A record or a line that holds no
+control character other than TAB prints byte for byte as before. The
+`--diagnostics` file is written raw, as before: it is a file and not a log stream.
+
+For the code, the contract is that every line written through the output functions of
+the build that interpolates a path, a name or a source value passes that part through
+the shared escaper; TAB is not escaped; the line's own separators are not rewritten.
+(For a path or a name, which holds no separator, TAB is escaped as `\x09` like any
+other control character.)
 
 The refusals are new deliberate deviations (requirement 37(v)), and the one
 hardening where the TypeScript refuses what the shell did; the escaping is a new
@@ -216,15 +227,20 @@ refused, where the shell and `yq` read it;
 outside its output root, are refused as requirement 35 says, where the shell built
 the component and wrote the files;
 
-(w) a path or a name that holds a control character is printed with each such
-character written as `\xNN` (requirement 35), where the shell printed it raw or
-never reached the line: a resource file name with a line feed aborts the shell's
+(w) a path, a name or a source value that holds a control character is printed with
+each such character written as `\xNN` (requirement 35; a source value keeps its tabs),
+where the shell printed it raw or never reached the line: a resource file name with a line feed aborts the shell's
 resource loop (`sed: ...: No such file or directory`, exit status 1, after the files
 written before it), and a tier directory name, or a source directory name that
 serves as the fallback name, with a line feed makes the collision pre-pass of the
-shell report a false collision (`Refusing 'core'`, exit status 1) before anything is
-written; any other control character (a tab, an escape) is printed raw by the shell.
-The twin builds, copies or skips the entry and prints its escaped path;
+shell report a false collision (`Refusing 'skills'` for a tier directory, `Refusing
+'core'` for a source directory, exit status 1) before anything is written; any other control character (a tab, an escape) is printed raw by the shell.
+The twin builds, copies or skips the entry and prints its escaped path. The shell also
+prints raw every text read from a source: an agent whose
+`metadata.model.intelligence` is `"medium\n::error::forged"` makes the shell's
+`emit_diag_line` write a line that begins with `::error::` on standard error, and the
+`--resolve` lines do the same, where the twin prints each control character but TAB
+as `\xNN`;
 
 (x) in the substituting arm (`replaces-core: true`) and the absent-core arm of the
 merge, `rank` values that `yq`'s `sort_by` cannot compare (`0b11`; `0o17` beside a
@@ -317,6 +333,16 @@ Then the `--- Tier:` line shows `\x0a` in the tier name and the `Warning: <sourc
 missing 'name' field, skipping` line shows `\x0a` in the source path, the tier is
 built, and no printed line begins with `::` (the shell refused the build with a false
 collision report).
+
+**Scenario:** A source value with a line feed cannot forge a line
+
+Given an agent whose `metadata.model.intelligence` is the double-quoted scalar
+`"medium\n::error::forged"`
+When a build runs, and when `--resolve` runs on that source
+Then standard error carries one diagnostic record whose value shows `\x0a`, the
+fields of the record stay tab-separated, no line of either stream begins with `::`,
+and a `--diagnostics` file receives the record as the shell wrote it, with the raw
+line feed.
 
 **Scenario:** A path without a control character prints as before
 
