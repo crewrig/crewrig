@@ -55,7 +55,11 @@ ticket staged the fixture of that suite. The edit SHALL change no other line of 
 and no other behaviour of the driver, SHALL NOT relax any assertion of
 `scripts/tests/test-monorepo-release-engine.sh` (the suite SHALL pass unchanged), and
 SHALL be noted by a comment on the issue of row G2 that names this requirement, without
-assigning anyone. The existence of this exception SHALL NOT be cited as precedent for
+assigning anyone. The edit SHALL be verified two ways: the description of the pull request SHALL show that the
+diff of `scripts/monorepo-release.sh` lies entirely inside `release_make_mirror`, and
+`scripts/tests/test-monorepo-release-engine.sh` SHALL run in CI (the `Release Driver Tests`
+workflow) on that pull request and pass with no assertion changed. The existence of this
+exception SHALL NOT be cited as precedent for
 any other script of row G2 or of a later row.
 
 ## MODIFIED
@@ -117,10 +121,12 @@ renderers add `Error: rendering context for target '<t>' failed`; (3) a Copilot 
 directory without an `AGENT.md` stops the renderer with status 1 after the output already
 written and prints nothing about it on standard output.
 
-**Out of scope, third bullet.** Original: "Editing `scripts/lib/common.sh` and the setup
-scripts that call `org_mcp_to_native`: rows F1 and J4." Replacement: unchanged, and a new
-bullet is added: "Editing `scripts/monorepo-release.sh` beyond the one bounded edit of
-requirement 30: row G2."
+**Out of scope, packaging and release bullet.** Original: "Packaging and release
+(`scripts/package-extension*.sh`, `scripts/release-package-extension.sh`,
+`scripts/monorepo-release.sh`): row G2." Replacement: "Packaging and release
+(`scripts/package-extension*.sh`, `scripts/release-package-extension.sh`,
+`scripts/monorepo-release.sh`): row G2, except the one bounded edit of
+`scripts/monorepo-release.sh` that requirement 30 of delta-01 allows."
 
 ## REMOVED
 
