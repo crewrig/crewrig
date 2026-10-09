@@ -27,8 +27,8 @@ one of these items, so each is a correction of words, and each gap the twin keep
 is added to the closed deviation list of requirement 33. It also records three
 security hardenings the owner approved after the `security` review: a ceiling on
 the expanded size of a YAML document (requirement 34), a refusal of a component
-name that could leave the output root, and an escaping of every path the build
-prints so that none can act on a CI log (requirement 35), a dependency range raised
+name that could leave the output root, and an escaping of every path, name and
+source value the build prints so that none can act on a CI log (requirement 35), a dependency range raised
 past two advisory ranges (modified requirement 24), and the effective user of the merge-root ownership test, which corrects requirement 20
 to what the shell's `-O` does. Requirements 34 and 35 and letters (u), (v) and (w) of
 requirement 37 are deliberate deviations from the shell. The shell shares the
@@ -81,7 +81,7 @@ out-of-memory after about 7 seconds, where the shell and `yq` finished in under 
 second; CI runs the build on pull requests, so a pull request could take a runner
 down.
 
-**Requirement 35 — Component name safety, the output root and printed paths.** The `name` of a
+**Requirement 35 — Component name safety, the output root and printed text.** The `name` of a
 skill, a command or an agent, read as in requirement 11 and after the skip of an
 absent or null name (requirement 33(f)), SHALL be refused when it holds a control
 character (U+0000 to U+001F, U+007F), or when, split on `/` and on `\`, it has a
@@ -110,7 +110,8 @@ Every path and every component, agent or tier name that the build writes to
 standard output or standard error SHALL be printed with each control character it
 holds (U+0000 to U+001F, U+007F) written as `\xNN` (two lower-case hex digits), the
 escaping the refused name above already uses, so that no line the build prints can
-carry a control character that came from a path or a name; a backslash is left as it
+carry a control character that came from a path or a name (the next paragraph does the
+same for source values); a backslash is left as it
 is, and a path or name with no control character prints exactly as before. Such an
 entry is not refused: a resource file, a tier directory or a source directory with
 an odd name is read, built or copied like any other, and only its printed form
@@ -337,12 +338,17 @@ collision report).
 **Scenario:** A source value with a line feed cannot forge a line
 
 Given an agent whose `metadata.model.intelligence` is the double-quoted scalar
-`"medium\n::error::forged"`
-When a build runs, and when `--resolve` runs on that source
-Then standard error carries one diagnostic record whose value shows `\x0a`, the
-fields of the record stay tab-separated, no line of either stream begins with `::`,
-and a `--diagnostics` file receives the record as the shell wrote it, with the raw
-line feed.
+`"medium\n::error::forged"`, a value outside its domain
+When a build runs with `--target copilot`, and when `--resolve <source> copilot
+--diagnostics <file>` runs on that source
+Then exactly one record carries the value, `model-drop`, the agent, `copilot`,
+`metadata.model.intelligence`, the value with `\x0a` in place of the line feed, and
+`unsupported-on-cli`, separated by tabs; no line of either stream begins with `::`;
+and the `--diagnostics` file holds that record as the shell wrote it, with the raw
+line feed. The record appears only for `copilot`: for `claude`, `gemini` and
+`antigravity` the value is not declared. The escaping of the `offering:`, `native:`,
+`fm:` and `prose:` lines is defensive: with the real mappings a value outside its
+domain is dropped, so only the record can carry it.
 
 **Scenario:** A path without a control character prints as before
 
