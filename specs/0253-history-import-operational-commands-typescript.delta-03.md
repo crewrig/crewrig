@@ -42,7 +42,7 @@ accepted (a `.cmd` makes `spawnSync` fail with EINVAL)"). The evidence of record
 is therefore the Node.js release notes of 20.12.2 and 21.7.3 and that repository
 comment; the tree holds no other citation of the advisory. A `.cmd` stub can never
 be a successful interpreter on `windows-latest`, which is the stub requirement 27
-asked for. No purpose-built `.exe` stub is available either: the job has no compiler step, and a copy of `node.exe` named `python.exe` cannot answer the probe (measured: Node.js reads `-c` as `--check` and the argument as a script path, so it exits non-zero and the probe rejects the candidate). Consequences on Windows. The four
+asked for. This pull request builds no `.exe` stub either (the job has no compiler step; building one, for example with a .NET compile step, is possible and left to a later change), and a copy of `node.exe` named `python.exe` cannot answer the probe (measured: Node.js reads `-c` as `--check` and the argument as a script path, so it exits non-zero and the probe rejects the candidate). Consequences on Windows. The four
 importers can only be driven to the missing-interpreter path: a `PATH` that holds no candidate makes the probe find none. `prune-transcripts` takes `MEMPALACE_PYTHON`
 with no probe (requirement 18), so it can also be driven through `--help`, argument
 validation, the unknown-option hint, and a dry run whose interpreter is
@@ -54,7 +54,7 @@ prompt flows, and the `mine` calls of the four importers, all of which sit behin
 a successful probe. They stay covered by the POSIX oracle of PR A (requirement 26)
 on Linux and macOS only; the PR A tests are POSIX-only. Requirement 27 asked for
 them on Windows and requirement 23 expected the Windows gap to be proved or
-disproved; this delta records the proof. No question that this delta can resolve is
+disproved; this delta records the limit. No question that this delta can resolve is
 left open.*
 
 ## ADDED
@@ -81,8 +81,7 @@ and no `mine` call.
 
 ## MODIFIED
 
-Requirement 27, the sentence on the import scripts and `prune-transcripts` — a `.cmd` stub cannot be spawned without a shell and no purpose-built `.exe` stub exists, so the
-paths behind a successful probe cannot be driven on Windows. The sentences before
+Requirement 27, the sentence on the import scripts and `prune-transcripts` — a `.cmd` stub cannot be spawned without a shell and this pull request builds no `.exe` stub, so the paths behind a successful probe are not driven on Windows. The sentences before
 and after it (the usage-wrapper part as modified by delta-01, the `sync-from-upstream`
 part, and the closing sentences naming the limit) are unchanged. Original:
 
@@ -109,10 +108,9 @@ Replacement:
 > the importers spawn the interpreter without a shell, Node.js refuses to spawn a
 > `.cmd` or `.bat` file without `shell: true` and throws `EINVAL` (CVE-2024-27980,
 > hardened in Node.js 20.12.2 and 21.7.3), so a `.cmd` stub can never be a
-> successful interpreter, and no purpose-built `.exe` stub is available (no compiler step, and a copy of `node.exe` named `python.exe` cannot answer the probe: Node.js reads `-c` as `--check` and the argument as a script path, so it exits non-zero and the probe rejects the candidate). The missing-source message, the
+> successful interpreter, and this pull request builds no `.exe` stub (the job has no compiler step; a later change MAY build one), and a copy of `node.exe` named `python.exe` cannot answer the probe (measured: Node.js reads `-c` as `--check` and the argument as a script path, so it exits non-zero and the probe rejects the candidate). The missing-source message, the
 > empty-source message, the declined and the confirmed prompt flows and the `mine`
-> calls of the four import scripts all sit behind a successful probe and SHALL NOT
-> be asserted on Windows: they stay covered by the POSIX oracle of PR A
+> calls of the four import scripts all sit behind a successful probe and are not asserted by the Windows job of this requirement (a later change MAY add them once a stub interpreter that Node.js can spawn exists): they stay covered by the POSIX oracle of PR A
 > (requirement 26) on Linux and macOS only, because the PR A tests are POSIX-only.
 
 Requirement 23, the Windows gap — the sentence expected the gap to be proved or
@@ -126,11 +124,8 @@ sentence and the usage-mirror gap added by delta-01 are unchanged):
 Replacement:
 
 > The expected gaps to prove or disprove on Windows are the Python and MemPalace
-> availability for the four import scripts and `prune-transcripts`. The gap is
-> proved, and SHALL be recorded as a parity gap for (the four import scripts x
-> Windows) and (`prune-transcripts` x Windows): on `windows-latest` no interpreter
-> stub can be spawned (Node.js 20.12.2 and 21.7.3 refuse a `.cmd` or `.bat` file
-> without `shell: true`, CVE-2024-27980, and no purpose-built `.exe` stub is available), so the
+> availability for the four import scripts and `prune-transcripts`. The gap is recorded as open (these paths are unverified on Windows, not proved impossible), and SHALL be recorded as a parity gap for (the four import scripts x
+> Windows) and (`prune-transcripts` x Windows): on `windows-latest` a `.cmd` or `.bat` stub interpreter cannot be spawned (Node.js 20.12.2 and 21.7.3 refuse them without `shell: true`, CVE-2024-27980) and this pull request builds no `.exe` stub, so the
 > end-to-end `mempalace` path, the missing-source and empty-source messages, the
 > prompt flows and the `mine` calls of the four import scripts, and everything
 > `prune-transcripts` does after it spawns a working interpreter, are covered on
