@@ -39,6 +39,16 @@ export const STUB_CLIS = ["claude", "gemini", "copilot", "agy"] as const;
 /** The PID the stubbed supervisor and listener probes both report. */
 export const STATUS_PROBE_PID = 4242;
 
+/**
+ * The listener half of the status owner check, fixed on the listener seam
+ * (`MEMPALACE_MCP_LISTENER_PID`) instead of through `lsof` / `ss`. A set seam skips
+ * the lookup, so the `lsof` and `ss` stubs below are tripwires, never answers.
+ * Spread it into `sb.env({ ...STATUS_LISTENER_SEAM, ... })` of a status run.
+ */
+export const STATUS_LISTENER_SEAM: Readonly<Record<string, string>> = {
+  MEMPALACE_MCP_LISTENER_PID: String(STATUS_PROBE_PID),
+};
+
 /** The live daemon's port. No test may ever address it (R16). */
 export const LIVE_PORT = 41893;
 
@@ -126,7 +136,7 @@ export interface Sandbox {
   claudeConfigDir: string;
   stubBin: string;
   stubLog: string;
-  /** Argv log of the stubbed launchctl / lsof / systemctl / ss probes. */
+  /** Argv log of the stubbed launchctl / systemctl probes and the lsof / ss tripwires. */
   probeLog: string;
   /** The child environment: built from nothing, plus `extra`. */
   env(extra?: Record<string, string>): Record<string, string>;
@@ -146,9 +156,11 @@ export function makeSandbox(prefix = "sc0246-"): Sandbox {
   const stubLog = path.join(root, "stub-cli.log");
   const probeLog = path.join(root, "status-probes.log");
   for (const dir of [home, claudeConfigDir, stubBin]) fs.mkdirSync(dir, { recursive: true });
-  // The supervisor and listener probes of mcp_supervisor_pid / mcp_listener_pid
-  // (common.sh), stubbed so no test reads the live machine's launchd, systemd or
-  // sockets. Each logs its argv and reports the one PID, STATUS_PROBE_PID.
+  // The supervisor probes of mcp_supervisor_pid (common.sh) answer through the
+  // launchctl / systemctl stubs; the listener side is fixed by STATUS_LISTENER_SEAM,
+  // so the lsof / ss stubs stay only as tripwires (assertStatusProbesStubbed asserts
+  // they are never called). No test reads the live machine's launchd, systemd or
+  // sockets. Each stub logs its argv and reports the one PID, STATUS_PROBE_PID.
   const probe = (body: string): string =>
     `#!/bin/sh\nprintf '%s %s\\n' "$(basename "$0")" "$*" >> ${JSON.stringify(probeLog)}\n${body}\n`;
   const probes: Record<string, string> = {
@@ -530,12 +542,14 @@ export function filesUnder(dir: string): string[] {
 
 /**
  * status-mcp-server.sh ran against the stubbed probes only: the owner line is
- * VERIFIED for STATUS_PROBE_PID, and the listener lookup asked about `port`.
+ * VERIFIED for STATUS_PROBE_PID (the listener PID came from STATUS_LISTENER_SEAM),
+ * the supervisor lookup went through the launchctl / systemctl stub, and the
+ * listener lookup spawned neither `lsof` nor `ss` (the tripwire stubs stayed unused).
  */
-export function assertStatusProbesStubbed(sb: Sandbox, stdout: string, port: number): void {
+export function assertStatusProbesStubbed(sb: Sandbox, stdout: string): void {
   assert.match(stdout, new RegExp(`owner: +VERIFIED \\(listener PID ${STATUS_PROBE_PID} `), stdout);
   assert.ok(!stdout.includes("USURPED"), stdout);
   const calls = fs.existsSync(sb.probeLog) ? fs.readFileSync(sb.probeLog, "utf8") : "";
   assert.match(calls, /^(launchctl print gui\/\d+\/|systemctl --user show -p MainPID)/m, calls);
-  assert.match(calls, new RegExp(`^(lsof .*-iTCP:${port} |ss .*sport = :${port})`, "m"), calls);
+  assert.doesNotMatch(calls, /^(lsof|ss) /m, `a listener tripwire stub was called:\n${calls}`);
 }
