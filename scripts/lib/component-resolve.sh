@@ -1,4 +1,5 @@
 #!/bin/bash
+# Mirrored by scripts/lib/component-resolve.ts (the collision pre-pass slice only); change both; conformance test build-components-conformance.test.ts.
 # component-resolve.sh — Overlay-tier component resolution shared by the four
 # per-component install commands and by the build's collision pre-pass
 # (spec 0119).
