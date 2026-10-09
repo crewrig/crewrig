@@ -221,6 +221,9 @@ read_org_mcp_manifest() {
   printf '%s' "$servers"
 }
 
+# TypeScript twin of org_mcp_to_native and MCP_RESERVED_NAMES (spec 0254, row G1b of epic
+# #1231): scripts/lib/org-mcp.ts. Change both; scripts/tests/extension-org-mcp.test.ts pins the
+# shapes. Retires with this file (row J4).
 # org_mcp_to_native <cli> <neutral_mcpservers_json>
 # Pure translator: maps the neutral org `mcpServers` object into the native
 # `mcpServers` object for a file CLI (gemini | copilot | antigravity | claude —
