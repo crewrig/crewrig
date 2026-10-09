@@ -197,7 +197,11 @@ make_fixture() {
   # The changelog facade lints CHANGELOG.md with the repository's own
   # markdownlint configuration before the release commit (issue #1364).
   cp "$REPO_DIR/.markdownlintrc" "$fix/.markdownlintrc"
-  printf 'node_modules/\ndist/\nbuild/\n/package.json\n' > "$fix/.gitignore"
+  # The root package.json is COMMITTED with the fixture, so the release driver's clone of it carries
+  # the file the TypeScript builders anchor their dependency loader on (spec 0254 R26, plan finding
+  # v1-F1: found by the Gate C trial). The real repository tracks its own root package.json.
+  cp -f "$REPO_DIR/package.json" "$fix/package.json"
+  printf 'node_modules/\ndist/\nbuild/\n' > "$fix/.gitignore"
 
   mkext "$fix" foo 1.2.0
   mkext "$fix" bar 0.4.1
@@ -279,7 +283,6 @@ make_fixture() {
   for pkg in $STAGED_NODE_PACKAGES; do
     [ -d "$REPO_DIR/node_modules/$pkg" ] && /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$fix/node_modules/$pkg"
   done
-  /bin/cp -f "$REPO_DIR/package.json" "$fix/package.json"
 
   printf '%s\n%s\n%s\n%s\n' "$fix" "$origin_bare" "$home" "$gitconfig"
 }
