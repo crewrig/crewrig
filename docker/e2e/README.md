@@ -8,7 +8,7 @@ per supported CLI, and a MemPalace sidecar.
 
 | Image                       | Source              | Purpose                                                     |
 |-----------------------------|---------------------|-------------------------------------------------------------|
-| `crewrig/e2e-base:latest`   | `base.Dockerfile`   | Shared substrate: Debian 12, Node 22, pipx, gh, yq, jq, ollama, non-root `agent` user. |
+| `crewrig/e2e-base:latest`   | `base.Dockerfile`   | Shared substrate: Debian 12, Node 24, pipx, gh, yq, jq, ollama, non-root `agent` user. |
 | `crewrig/e2e-claude:latest` | `claude.Dockerfile` | Base + `@anthropic-ai/claude-code` (npm global).            |
 | `crewrig/e2e-gemini:latest` | `gemini.Dockerfile` | Base + `@google/gemini-cli` (npm global).                   |
 | `crewrig/e2e-copilot:latest`| `copilot.Dockerfile`| Base + `@github/copilot` (npm global).                      |

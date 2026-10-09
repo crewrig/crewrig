@@ -489,7 +489,12 @@ done
   init_git_repo "$repo"
   make_initial_commit "$repo" "real.txt" "tracked content"
   mkdir -p "$repo/scripts"
-  cp "$SCRIPT_DIR/build-components.sh" "$repo/scripts/build-components.sh"
+  # The entry point and the libraries it loads travel together: the glob keeps
+  # this fixture correct for the shell script alone and for a script plus its
+  # TypeScript counterpart or shim (spec 0250 R26). Untracked, so the guard,
+  # which reads the HEAD tree, never sees them as manifest candidates.
+  cp "$SCRIPT_DIR"/build-components.* "$repo/scripts/"
+  cp -R "$SCRIPT_DIR/lib" "$repo/scripts/lib"
   # One trivially-resolvable entry, so the forward direction passes and the
   # non-zero exit is unambiguously the reverse direction's.
   write_manifest "$repo" $'real.txt\tstrict\n'

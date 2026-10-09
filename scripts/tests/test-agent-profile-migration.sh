@@ -98,8 +98,10 @@ web-conformity-checker medium'
 
 echo "=== T1 — R36: component-drift's --check command is still wired ==="
 
+# Either invocation form satisfies the wiring (spec 0250 R26): the shell build
+# today, the TypeScript entry once the capability switches. The flags stay literal.
 t1_command_list="$(yq '.capabilities[] | select(.id=="component-drift") | .command[]' "$CI_CAPABILITIES" 2>/dev/null)"
-if grep -qF 'bash scripts/build-components.sh --target all --check' <<< "$t1_command_list"; then
+if grep -qE '(bash scripts/build-components\.sh|node scripts/build-components\.ts) --target all --check' <<< "$t1_command_list"; then
   ok "T1 — component-drift's command: list carries the --check invocation"
 else
   bad "T1 — component-drift's command: list carries the --check invocation" "$t1_command_list"

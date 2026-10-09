@@ -188,29 +188,65 @@ evidence() {
 }
 
 # --- Throwaway repository ----------------------------------------------------
-# Copies the shipped scripts/*.sh plus scripts/lib/ — everything the build and
-# the four manage commands source. scripts/tests/ and scripts/e2e/ are excluded
-# (1 MB of fixtures nothing under test reads); the only shipped caller of
-# scripts/tests/ is `build-components.sh --check`, which no case here invokes.
+# Copies the shipped scripts/*.sh and scripts/*.ts plus scripts/lib/ —
+# everything the build and the four manage commands source or run.
+# scripts/tests/ and scripts/e2e/ are excluded (1 MB of fixtures nothing under
+# test reads); the only shipped caller of scripts/tests/ is
+# `build-components.sh --check`, which no case here invokes.
 # `/bin/cp -f`, never bare `cp`: an interactive alias silently no-ops on
 # overwrite and still exits 0.
+#
+# The fixture is also staged so a build written in TypeScript can run in it
+# (spec 0250 R26): the root package.json, an empty `.git` directory and a REAL
+# copy of the production dependencies the build loads. All three are required,
+# not decorative. `loadDependency` (scripts/lib/require-dependency.ts) anchors
+# on the nearest ancestor holding a `.git` entry (scripts/lib/paths.ts), reads
+# the root package.json for the declared dependencies, and refuses a package
+# that does not resolve inside that root's OWN node_modules, so a symlink back
+# to the real checkout (`cp -R` keeps links, `ln -s` is one) counts as "not
+# installed": `cp -RL` dereferences. The list below is the production closure
+# of js-yaml in package-lock.json (js-yaml and its one dependency, argparse);
+# spec 0250 PLAN step 21 adds the test that fails when it drifts.
+STAGED_NODE_PACKAGES="js-yaml argparse"
+staged_node_missing=""
+for pkg in $STAGED_NODE_PACKAGES; do
+  [ -d "$REPO_DIR/node_modules/$pkg" ] || staged_node_missing="$staged_node_missing $pkg"
+done
+# One line per run, not per fixture: new_repo runs in a command substitution, so
+# a flag set there would not survive to the next call. Absent dependencies are
+# tolerated here because the shell build needs none; a later run with a build
+# that does need them fails on the missing-dependency diagnostic instead of
+# passing silently.
+if [ -n "$staged_node_missing" ]; then
+  echo "NOTE: not found under $REPO_DIR/node_modules:$staged_node_missing; fixtures are staged without them (a build that needs js-yaml will fail on the missing-dependency diagnostic until the dependency install has run)" >&2
+fi
+
 new_repo() {
   # Separate statements deliberately: Bash 3.2 does not make an earlier name
   # visible to a later initialiser in the SAME `local`, so
   # `local name="$1" root="$WORK/$name"` aborts with `name: unbound variable`.
   local name="$1"
   local root="$WORK/$name"
-  local f
+  local f pkg
   mkdir -p "$root/scripts" "$root/artifacts" "$root/cli-home"
   /bin/cp -R "$REPO_DIR/scripts/lib" "$root/scripts/lib"
-  for f in "$REPO_DIR"/scripts/*.sh; do
-    /bin/cp -f "$f" "$root/scripts/"
+  for f in "$REPO_DIR"/scripts/*.sh "$REPO_DIR"/scripts/*.ts; do
+    [ -f "$f" ] && /bin/cp -f "$f" "$root/scripts/"
   done
   /bin/cp -f "$REPO_DIR/Taskfile.yml" "$root/Taskfile.yml"
   [ -f "$REPO_DIR/crewrig.config.toml" ] && /bin/cp -f "$REPO_DIR/crewrig.config.toml" "$root/"
+  /bin/cp -f "$REPO_DIR/package.json" "$root/package.json"
+  mkdir -p "$root/.git" "$root/node_modules"
+  for pkg in $STAGED_NODE_PACKAGES; do
+    [ -d "$REPO_DIR/node_modules/$pkg" ] && /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$root/node_modules/$pkg"
+  done
   # dist/ is gitignored upstream (.gitignore:16); the R3 case depends on that
   # being true of the fixture too, because the fix rebuilds overlay tiers there.
-  printf 'dist/\ncli-home*/\n' > "$root/.gitignore"
+  # package.json and node_modules/ are ignored for the same reason in case 14:
+  # it commits the fixture and asserts an empty `git status --porcelain`, which
+  # the staged build inputs would otherwise break as untracked files, for a
+  # reason unrelated to what that case guards.
+  printf 'dist/\ncli-home*/\npackage.json\nnode_modules/\n' > "$root/.gitignore"
   printf '%s' "$root"
 }
 

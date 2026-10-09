@@ -5,7 +5,7 @@
 # Shared substrate for the per-CLI e2e images (claude, gemini, copilot) and
 # the MemPalace sidecar. Ships:
 #   - debian:bookworm-slim (glibc, broad apt coverage)
-#   - Node.js 22 LTS via NodeSource (required floor for @github/copilot)
+#   - Node.js 24 LTS via NodeSource (satisfies the @github/copilot 22+ floor and the CrewRig 24 floor)
 #   - python3 + pipx (for the MemPalace sidecar layer)
 #   - gh (GitHub CLI, via the official apt repo)
 #   - jq, yq (mikefarah Go binary — supports TOML via `-p toml`)
@@ -17,7 +17,7 @@
 FROM debian:bookworm-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG NODE_MAJOR=22
+ARG NODE_MAJOR=24
 ARG YQ_VERSION=v4.44.3
 
 # Reproducible build environment.
@@ -39,7 +39,7 @@ RUN set -eux; \
         passwd \
         python3 python3-venv pipx \
         unzip xz-utils zstd; \
-    # NodeSource: Node.js 22 LTS
+    # NodeSource: Node.js 24 LTS
     curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -; \
     apt-get install -y --no-install-recommends nodejs; \
     # GitHub CLI: official apt repo

@@ -3,7 +3,7 @@
 # CrewRig e2e image — Gemini CLI.
 #
 # Inherits the base image and installs @google/gemini-cli globally under the
-# agent user's npm prefix. Node 22 (provided by base) satisfies the upstream
+# agent user's npm prefix. Node 24 (provided by base) satisfies the upstream
 # Node-20+ floor with margin.
 FROM crewrig/e2e-base:latest
 
