@@ -154,6 +154,9 @@ jobs:
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
+  # Spec 0250 R27: production install (spec 0240 R4), floor guard, `--check` on the
+  # real tree, the Linux run of the Windows proof script, then the named suites
+  # (the dev-toolchain suite runs in `lint-typescript`). Needs yq for the parity suites.
   build-components-ts:
     runs-on: ubuntu-latest
     steps:
@@ -169,6 +172,12 @@ jobs:
               - 'scripts/lib/component-resolve.ts'
               - 'scripts/lib/model-resolve.ts'
               - 'scripts/lib/yaml-text.ts'
+              - 'scripts/lib/escape-control.ts'
+              - 'scripts/lib/line-endings.ts'
+              - 'scripts/lib/paths.ts'
+              - 'scripts/lib/tmp-file.ts'
+              - 'scripts/lib/require-dependency.ts'
+              - 'scripts/lib/node-floor-guard.js'
               - 'scripts/lib/render-command.sh'
               - 'scripts/lib/component-resolve.sh'
               - 'scripts/lib/model-resolve.sh'
@@ -187,25 +196,67 @@ jobs:
               - 'artifacts/**'
               - 'model-mappings/**'
               - 'tests/fixtures/**'
+              - 'crewrig.config.toml'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.agents/agents/**'
+              - '.agents/skills/**'
+              - '.claude/agents/**'
+              - '.claude/skills/**'
+              - '.gemini/agents/**'
+              - '.gemini/commands/**'
+              - '.gemini/skills/**'
+              - '.github/agents/**'
+              - '.github/skills/**'
       - uses: actions/setup-node@v4
         if: steps.filter.outputs.build-components-ts == 'true'
         with:
           node-version: 24
           cache: npm
-      - name: Install dependencies
+      - name: Install production dependencies
         if: steps.filter.outputs.build-components-ts == 'true'
-        run: npm ci
+        run: npm ci --omit=dev --workspaces=false
       - name: Install yq
         if: steps.filter.outputs.build-components-ts == 'true'
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.build-components-ts == 'true'
+        run: node scripts/lib/node-floor-guard.js
+      - name: Check the committed trees against the sources
+        if: steps.filter.outputs.build-components-ts == 'true'
+        run: node scripts/build-components.ts --target all --check
+      - name: Write-path proof on Linux
+        if: steps.filter.outputs.build-components-ts == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts
       - name: Test the TypeScript component-build core
         if: steps.filter.outputs.build-components-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-*.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-differential.test.ts scripts/tests/build-components-differential-cli.test.ts scripts/tests/build-components-differential-deviations.test.ts scripts/tests/build-components-differential-deviations-diag.test.ts scripts/tests/build-components-differential-real.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
+  # release. No path filter, like `mempalace-transcript-node-24-0`.
+  build-components-ts-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+
+      - name: Entry form and silence runs on Node.js 24.0.0
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   extension-render:
     runs-on: ubuntu-latest
     steps:
@@ -1243,6 +1294,11 @@ jobs:
       - name: Test the TypeScript checks
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts
 
+      # Spec 0250 R30: needs Oxlint, Oxfmt and tsc, so it runs here, not in the
+      # production-install `build-components-ts` job.
+      - name: Test that built copies stay outside the toolchain
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts
+
       - name: Check TypeScript sources
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
       - name: Cancel workflow on job failure
@@ -1646,6 +1702,41 @@ jobs:
           MEMPALACE_MCP_HOST: 127.0.0.1
           MEMPALACE_MCP_PORT: ${{ env.TIMING_CLOSED_PORT }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 550 --case d-nothing-listening --stdin-file $env:TIMING_PROMPT_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0250 R28, R29: the component-build row's copy of the template above.
+  # pwsh is the interpreter of every step. The write-path proof prints its own
+  # elapsed time and no step has a timing budget (R29). The shell-parity suites
+  # self-skip off Linux; the conformance, YAML corpus and differential suites
+  # are not listed. No path filter, like the Windows jobs above.
+  windows-build-components:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      # Asserts `--target all --check` exits 0 with its OK line, builds into a
+      # throwaway REPO_DIR and compares every produced file with the committed
+      # four trees, runs --list-output-dirs, and prints the elapsed time.
+      - name: Write-path proof
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts
+
+      - name: Test the TypeScript component-build core
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
