@@ -1,7 +1,7 @@
 ---
 id: "0080"
 slug: configurable-validation-backend
-status: draft
+status: implemented
 complexity: large
 interaction-mode: INTERMEDIATE
 related-issue: 557

@@ -492,6 +492,21 @@ tasks:
     desc: "Lint spec files for format compliance (markdown + custom semantic rules)"
     cmd: node {{.REPO_DIR}}/scripts/lib/spec-linter.js {{.CLI_ARGS}}
 
+  # Spec 0109 delta-04 R23: the status a merged spec or delta-spec truly
+  # carries on a branch, from reachability and the merged-PR record, e.g.
+  #   task spec:derive-status -- --branch HEAD --scope draft-deltas --check
+  # Exit codes: 0 clean or applied, 1 candidates remain (--check), 2 wiring.
+  spec:derive-status:
+    desc: "Derive merged spec and delta-spec statuses from evidence (spec 0109 delta-04 R23)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/derive-spec-status.ts {{.CLI_ARGS}}
+
+  # Spec 0109 delta-04: the exact CI command of the `derive-spec-status` capability.
+  test-derive-spec-status:
+    desc: "Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts
+
   fix-markdown:
     desc: Auto-fix Markdown formatting issues
     preconditions:

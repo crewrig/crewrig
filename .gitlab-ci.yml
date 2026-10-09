@@ -1203,6 +1203,24 @@ mempalace-session-check:
         - "hooks/*-transcript-hooks.json"
         - "hooks/*-usage-capture-hooks.json"
 
+derive-spec-status:
+  image: node:24
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/derive-spec-status.ts"
+        - "scripts/lib/spec-status-derivation.ts"
+        - "scripts/lib/ts-scope.ts"
+        - "scripts/tests/derive-spec-status.test.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/derive-spec-status.ts"
+        - "scripts/lib/spec-status-derivation.ts"
+        - "scripts/lib/ts-scope.ts"
+        - "scripts/tests/derive-spec-status.test.ts"
+
 node-floor-guard:
   image: node:20
   script:
