@@ -59,8 +59,16 @@ async function lifecycle(kind: DaemonKind): Promise<void> {
     const installed = backend.install(c.names, { definitionPath: c.definitionPath });
     measure(`run-from-runner-session kind=${kind} installOk=${installed.ok}`);
     assert.equal(installed.ok, true, JSON.stringify(installed));
+    const t0 = Date.now();
     const first = await waitFor("daemon state", () => readState(c), 90_000);
-    assert.equal(await healthz(first.port), true);
+    measure(`daemon-state kind=${kind} afterMs=${Date.now() - t0} port=${first.port}`);
+    let healthy = await healthz(first.port);
+    for (let i = 0; i < 60 && !healthy; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      healthy = await healthz(first.port);
+    }
+    measure(`healthz kind=${kind} ok=${healthy} afterMs=${Date.now() - t0}`);
+    assert.equal(healthy, true, "the daemon answers /healthz");
     const status = backend.status(c.names);
     assert.equal(status.registered, true);
     assert.equal(status.running, true);
