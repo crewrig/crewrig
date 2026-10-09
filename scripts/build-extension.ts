@@ -1,5 +1,5 @@
 // build-extension.ts — render an extension's declarations for the four supported CLIs and check
-// that no generated output is committed (spec 0173, ported by spec 0254). It will replace the
+// that no generated output is committed (spec 0173, ported by spec 0254). It replaced the
 // shell tool of the same name, which stays as a forwarding shim.
 //
 // Usage: node scripts/build-extension.ts [--target gemini|claude|copilot|antigravity|all]

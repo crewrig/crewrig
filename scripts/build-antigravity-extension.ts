@@ -1,5 +1,5 @@
-// build-antigravity-extension.ts — generate an Antigravity CLI plugin from extension.json (spec 0254;
-// twin of build-antigravity-extension.sh, which stays beside it until the shim lands).
+// build-antigravity-extension.ts — generate an Antigravity CLI plugin from extension.json (spec 0254).
+// `build-antigravity-extension.sh` forwards to it as a shim.
 //
 // Usage: node scripts/build-antigravity-extension.ts <extension-dir-or-name> [output-dir]
 // Run `node scripts/lib/node-floor-guard.js` first on an unverified Node.js: the tool needs
