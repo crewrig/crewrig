@@ -126,7 +126,7 @@ When the token file is present:
 
 1. A pending marker is created at `<root>/mirror/pending/<cli>/<period>/<recordId>`.
 2. The unreachable stamp is checked. If it exists and is younger than `CREWRIG_USAGE_MIRROR_BACKOFF_MS`, the write returns without spawning.
-3. Otherwise, a detached catch-up process (`node scripts/usage-mirror.ts --from-write`) is spawned to move markers from `pending/` to `mirrored/` by creating drawers in MemPalace.
+3. Otherwise, a detached catch-up process (`bash scripts/usage-mirror.sh --from-write`, the forwarding shim to `scripts/usage-mirror.ts`; `scripts/lib/usage-store/mirror.js` still spawns it through `bash`, see issue #1515) is spawned to move markers from `pending/` to `mirrored/` by creating drawers in MemPalace.
 
 ### Explicit vs. write-time catch-up, and the mirror lock
 
