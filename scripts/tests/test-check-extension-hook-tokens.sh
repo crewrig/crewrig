@@ -21,10 +21,34 @@ fail=0
 ok() { echo "PASS  $1"; pass=$((pass + 1)); }
 ng() { echo "FAIL  $1"; fail=$((fail + 1)); }
 
+# The production closure of js-yaml, which the TypeScript builders load from a real node_modules
+# (a `.git` entry, the root package.json and a dereferenced copy: spec 0254 R26, as PR A did for the
+# other extension suites). One NOTE line per run when a package is absent.
+STAGED_NODE_PACKAGES="js-yaml argparse"
+staged_node_missing=""
+for pkg in $STAGED_NODE_PACKAGES; do
+  [ -d "$REPO_DIR/node_modules/$pkg" ] || staged_node_missing="$staged_node_missing $pkg"
+done
+if [ -n "$staged_node_missing" ]; then
+  echo "NOTE: not found under $REPO_DIR/node_modules:$staged_node_missing; sandboxes are staged without them (a build that needs js-yaml will fail on the missing-dependency diagnostic until the dependency install has run)" >&2
+fi
+
+stage_node_build_inputs() {
+  local root="$1"
+  local pkg
+  mkdir -p "$root/.git" "$root/node_modules"
+  /bin/cp -f "$REPO_DIR/package.json" "$root/package.json"
+  for pkg in $STAGED_NODE_PACKAGES; do
+    [ -d "$REPO_DIR/node_modules/$pkg" ] && /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$root/node_modules/$pkg"
+  done
+  return 0
+}
+
 make_sandbox() {
   local sandbox
   sandbox="$(mktemp -d "$TMP_ROOT/sandbox.XXXXXX")"
   cp -r "$SCRIPT_DIR" "$sandbox/scripts"
+  stage_node_build_inputs "$sandbox"
   mkdir -p "$sandbox/extensions/core" "$sandbox/extensions/library" "$sandbox/extensions/org"
   echo "$sandbox"
 }
@@ -54,6 +78,10 @@ write_fixture "$sandbox" 'bash ${extensionRoot}/hooks/handler.sh'
 # emitted hooks/hooks.json — a realistic defect shape (a target that never
 # got wired into the substitution at all).
 sed -i.bak 's/local command="\$1" target="\$2" root_token resolved token_with_slash/local command="$1" target="$2" root_token resolved token_with_slash; [ "$target" = "claude" ] \&\& { printf "%s" "$command"; return 0; }/' "$sandbox/scripts/lib/extension-hooks.sh"
+# The same defect on the TypeScript twin (spec 0254 R26: the mutated file follows the implementation under test).
+if [ -f "$sandbox/scripts/lib/extension/hooks-resolve.ts" ]; then
+  sed -i.bak 's/const rootToken = table\[target\].rootToken;/const rootToken = table[target].rootToken; if (target === "claude") return command;/' "$sandbox/scripts/lib/extension/hooks-resolve.ts"
+fi
 out="$( cd "$sandbox" && bash scripts/check-extension-hook-tokens.sh 2>&1 )"
 rc=$?
 if [ "$rc" -ne 0 ] && echo "$out" | grep -q 'hooks/hooks.json' && echo "$out" | grep -q '\${extensionRoot}'; then
@@ -66,6 +94,10 @@ echo "2. Growth — a command naming the token TWICE, translator mutated global 
 sandbox="$(make_sandbox)"
 write_fixture "$sandbox" 'bash ${extensionRoot}/hooks/handler.sh --root=${extensionRoot}'
 sed -i.bak 's|resolved="\${command//\$EXT_HOOKS_NEUTRAL_ROOT_TOKEN/\$root_token}"|resolved="${command/$EXT_HOOKS_NEUTRAL_ROOT_TOKEN/$root_token}"|' "$sandbox/scripts/lib/extension-hooks.sh"
+# The same defect on the TypeScript twin: only the first occurrence is substituted.
+if [ -f "$sandbox/scripts/lib/extension/hooks-resolve.ts" ]; then
+  sed -i.bak 's/command.split(EXT_HOOKS_NEUTRAL_ROOT_TOKEN).join(rootToken)/command.replace(EXT_HOOKS_NEUTRAL_ROOT_TOKEN, rootToken)/' "$sandbox/scripts/lib/extension/hooks-resolve.ts"
+fi
 out="$( cd "$sandbox" && bash scripts/check-extension-hook-tokens.sh 2>&1 )"
 rc=$?
 occurrences="$(echo "$out" | grep -c 'surviving neutral token occurrence')"

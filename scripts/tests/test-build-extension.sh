@@ -813,6 +813,11 @@ fi
 # so PreToolUse gaps there too, purely to construct the second colliding
 # gap the discrimination bar needs to be tested against.
 sed -i.bak 's/antigravity:PreToolUse) echo "PreToolUse" ;;/antigravity:PreToolUse) : ;;/' "$sandbox/scripts/lib/extension-hooks.sh"
+# The same mutation on the TypeScript twin, which the builders read once they forward to it
+# (spec 0254 R26: the mutated file follows the implementation under test).
+if [ -f "$sandbox/scripts/lib/extension/hooks-vocab.ts" ]; then
+  sed -i.bak 's/antigravity: { PreToolUse: "PreToolUse" },/antigravity: {},/' "$sandbox/scripts/lib/extension/hooks-vocab.ts"
+fi
 cat > "$r15_fix/extension.json" <<'EOF'
 {"name":"r15fix","version":"0.0.1","description":"fixture",
  "hooks":[{"id":"probe","event":"PreToolUse","command":"echo a"},
