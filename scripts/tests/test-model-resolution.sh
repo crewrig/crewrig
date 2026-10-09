@@ -1297,9 +1297,11 @@ o10_stray_after_build="$(find "$O10_CASE_TMP" -maxdepth 1 -name 'crewrig-mapping
 o10_committed_stray="$(find "$O10_ROOT" -name '*.merge.*' -o -name '.merges' 2>/dev/null)"
 
 # --resolve fast-exit arm: same populated fixture, same TMPDIR isolation —
-# this arm exits before the EXIT trap at build-components.sh:508 is
-# installed, so nothing else could clean up on its behalf without the
-# explicit mapping_merge_cleanup call v2-F6 adds.
+# this arm exits before the EXIT trap (now in
+# scripts/lib/build-components/staging.ts) is installed, so nothing else could
+# clean up on its behalf without the explicit cleanup call v2-F6 adds. The
+# property the former M10 mutation protected (that deleting that call turns
+# O10 red) is asserted by scripts/tests/build-components-cleanup.test.ts.
 O10_RESOLVE_TMP="$TMP_ROOT/o10-resolve-tmp"
 mkdir -p "$O10_RESOLVE_TMP"
 REPO_DIR="$O10_ROOT" TMPDIR="$O10_RESOLVE_TMP" bash "$BUILD_SCRIPT" \
@@ -1317,34 +1319,6 @@ else
     "build_rc=$o10_build_rc resolve_rc=$o10_resolve_rc outside_repo=$o10_outside_repo" \
     "stray_after_build=[$o10_stray_after_build]" "stray_after_resolve=[$o10_stray_after_resolve]" \
     "committed_stray=[$o10_committed_stray]"
-fi
-
-# --- M10 — deleting the mapping_merge_cleanup call from cleanup_check_staging
-# must turn O10's build-path assertion red: without it, O10 would certify
-# only that no merge happened, never that cleanup itself works. Run from a
-# scratch scripts/ directory (a symlinked lib/, so every OTHER library stays
-# real) rather than a bare copy: build-components.sh sources its siblings
-# relative to its own $(dirname "$0"), and a copy dropped elsewhere cannot
-# find them.
-M10_SCRIPTS="$TMP_ROOT/m10-scripts"
-mkdir -p "$M10_SCRIPTS"
-ln -s "$SCRIPT_DIR/lib" "$M10_SCRIPTS/lib"
-ln -s "$SCRIPT_DIR/tests" "$M10_SCRIPTS/tests"
-M10_BUILD="$M10_SCRIPTS/build-components.sh"
-sed 's/^  mapping_merge_cleanup$/  : # M10: cleanup call removed/' "$BUILD_SCRIPT" > "$M10_BUILD"
-if [ "$(grep -c '^  mapping_merge_cleanup$' "$BUILD_SCRIPT")" -lt 1 ] || diff -q "$BUILD_SCRIPT" "$M10_BUILD" >/dev/null 2>&1; then
-  bad "M10 — mutation actually changed build-components.sh" "sed pattern did not match; mutation is a no-op"
-else
-  M10_CASE_TMP="$TMP_ROOT/m10-case-tmp"
-  mkdir -p "$M10_CASE_TMP"
-  m10_out="$(REPO_DIR="$O10_ROOT" TMPDIR="$M10_CASE_TMP" bash "$M10_BUILD" --target claude 2>&1)"; m10_rc=$?
-  m10_stray="$(find "$M10_CASE_TMP" -maxdepth 1 -name 'crewrig-mapping-*' 2>/dev/null)"
-  rm -rf "$M10_CASE_TMP"
-  if [ "$m10_rc" -eq 0 ] && [ -n "$m10_stray" ]; then
-    ok "M10 — deleting the mapping_merge_cleanup call from cleanup_check_staging turns O10's build-path assertion red"
-  else
-    bad "M10 — deleting the cleanup call did not leave a stray root" "rc=$m10_rc" "$m10_out"
-  fi
 fi
 
 # --- O11 — the merge counter (R28's proving case) ---------------------------

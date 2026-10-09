@@ -12,4 +12,4 @@ metadata:
 
 This agent is a minimal fixture used by `scripts/tests/test-assembly-verification.sh`.
 It exists to verify that overlay agents are assembled into every supported CLI's
-output directory during `bash scripts/build-components.sh`.
+output directory during `node scripts/build-components.ts`.
