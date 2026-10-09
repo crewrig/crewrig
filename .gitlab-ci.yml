@@ -331,6 +331,79 @@ build-components-ts-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+extension-builders-ts:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node scripts/lib/node-floor-guard.js"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/build-extension.*"
+        - "scripts/build-claude-plugin.*"
+        - "scripts/build-copilot-plugin.*"
+        - "scripts/build-antigravity-extension.*"
+        - "scripts/migrate-extension.*"
+        - "scripts/lib/extension-manifest.sh"
+        - "scripts/lib/extension-hooks.sh"
+        - "scripts/lib/extension-*.json"
+        - "scripts/lib/render-context.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/lib/render-command.ts"
+        - "scripts/lib/yaml-text.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/lib/require-dependency.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/extension-*.test.ts"
+        - "scripts/tests/lib/extension-fixtures.ts"
+        - "scripts/tests/lib/shell-extension-harness.ts"
+        - "scripts/tests/fixtures/extension/**"
+        - "extensions/**"
+        - "extension-skeleton/**"
+        - "package.json"
+        - "package-lock.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/build-extension.*"
+        - "scripts/build-claude-plugin.*"
+        - "scripts/build-copilot-plugin.*"
+        - "scripts/build-antigravity-extension.*"
+        - "scripts/migrate-extension.*"
+        - "scripts/lib/extension-manifest.sh"
+        - "scripts/lib/extension-hooks.sh"
+        - "scripts/lib/extension-*.json"
+        - "scripts/lib/render-context.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/lib/render-command.ts"
+        - "scripts/lib/yaml-text.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/lib/require-dependency.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/extension-*.test.ts"
+        - "scripts/tests/lib/extension-fixtures.ts"
+        - "scripts/tests/lib/shell-extension-harness.ts"
+        - "scripts/tests/fixtures/extension/**"
+        - "extensions/**"
+        - "extension-skeleton/**"
+        - "package.json"
+        - "package-lock.json"
+
 extension-render:
   image: debian:stable-slim
   before_script:

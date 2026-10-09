@@ -383,6 +383,85 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts
 
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder modules and their
+  # shell-library twins (row G1b of epic #1231). `jq`, `yq` and `bash` are spawned on
+  # purpose by the corpus, context and conformance suites, which retire with the shell
+  # libraries (rows I1, J3, J4). `yq` stays declared until the differential test of the
+  # entries is deleted (plan v1-F2).
+  - id: extension-builders-ts
+    name: "Run the TypeScript extension and plugin builder twin suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/build-extension.*"
+          - "scripts/build-claude-plugin.*"
+          - "scripts/build-copilot-plugin.*"
+          - "scripts/build-antigravity-extension.*"
+          - "scripts/migrate-extension.*"
+          - "scripts/lib/extension-manifest.sh"
+          - "scripts/lib/extension-hooks.sh"
+          - "scripts/lib/extension-*.json"
+          - "scripts/lib/render-context.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/render-command.ts"
+          - "scripts/lib/yaml-text.ts"
+          - "scripts/lib/line-endings.ts"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/lib/require-dependency.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/extension-*.test.ts"
+          - "scripts/tests/lib/extension-fixtures.ts"
+          - "scripts/tests/lib/shell-extension-harness.ts"
+          - "scripts/tests/fixtures/extension/**"
+          - "extensions/**"
+          - "extension-skeleton/**"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/build-extension.*"
+          - "scripts/build-claude-plugin.*"
+          - "scripts/build-copilot-plugin.*"
+          - "scripts/build-antigravity-extension.*"
+          - "scripts/migrate-extension.*"
+          - "scripts/lib/extension-manifest.sh"
+          - "scripts/lib/extension-hooks.sh"
+          - "scripts/lib/extension-*.json"
+          - "scripts/lib/render-context.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/render-command.ts"
+          - "scripts/lib/yaml-text.ts"
+          - "scripts/lib/line-endings.ts"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/lib/require-dependency.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/extension-*.test.ts"
+          - "scripts/tests/lib/extension-fixtures.ts"
+          - "scripts/tests/lib/shell-extension-harness.ts"
+          - "scripts/tests/fixtures/extension/**"
+          - "extensions/**"
+          - "extension-skeleton/**"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq]
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts
+
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
     trigger:
