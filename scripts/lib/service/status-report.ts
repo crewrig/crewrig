@@ -170,8 +170,10 @@ export function taskSection(o: TaskOptions): 0 | 1 {
   const line = `  task:     ${presence}, ${state}, last result ${hex(t.lastResult)}`;
   if (registered && t.state !== 4 && !NOT_FAILURES.has(t.lastResult)) {
     o.write(`${line} *** FAILED ***`);
-    o.write("            The task is not running and its last run failed; it may have stopped");
-    o.write("            for good after its restart count ran out. Re-run the switch:");
+    o.write("            The task is not running and its last run failed; the repeating trigger");
+    o.write(
+      "            starts it again within about a minute. If it stays down, re-run the switch:",
+    );
     o.write("            bash scripts/switch-mempalace-http.sh");
     return 1;
   }

@@ -290,7 +290,7 @@ describe("status-mcp-server and uninstall-mcp-daemon against the installed MCP t
       const unit = c.names.unit;
       const envFor = (chain: typeof c): Record<string, string> => ({
         MEMPALACE_MCP_UNIT: unit,
-        MEMPALACE_MCP_LAUNCHER_PATH: chain.paths.launcher,
+        MEMPALACE_MCP_LAUNCHER_PATH: chain.paths.record,
         MEMPALACE_TLS_EXEC_PATH: chain.paths.wrapper,
       });
       const absent = (): boolean =>
@@ -311,7 +311,7 @@ describe("status-mcp-server and uninstall-mcp-daemon against the installed MCP t
 
         // The same-user listener the task did not start, on the endpoint the second
         // record names; the supervised task (this chain's) did not start it.
-        const record = parseLauncher(fs.readFileSync(other.paths.launcher, "utf8"));
+        const record = parseLauncher(fs.readFileSync(other.paths.record, "utf8"));
         assert.ok(record !== null, "the second launcher record parses");
         const otherPort = Number(record.port);
         squatter = await standIn(401, otherPort);

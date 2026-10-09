@@ -241,6 +241,7 @@ function replaceFixture(accept: (n: number) => boolean) {
       accept(probes.length) ? { status: 200, body: "{}" } : { status: 401, body: "" }
     ),
     listener: () => null,
+    parents: () => new Map<number, number>(),
     sleep: async (ms: number) => void (t += ms),
     now: () => t,
   };
@@ -293,4 +294,57 @@ test("replacement: a squatter is evicted with MEMPALACE_MCP_EVICT_CMD", async ()
   assert.equal(ok, true);
   assert.deepEqual(evicted, ["kill-it"]);
   assert.ok(r.err.some((l) => l.includes("squatter PID 999 detected")));
+});
+
+test("replacement: a listener that descends from the supervised PID is the daemon, never evicted", async () => {
+  const r = replaceFixture((n) => n >= 2);
+  const kills: number[] = [];
+  const ok = await replaceDaemonProcess({
+    ...r.opts,
+    backend: { ...r.opts.backend, supervisorPid: () => ({ state: "pid", pid: 200 }) },
+    listener: () => 300,
+    parents: () =>
+      new Map([
+        [300, 200],
+        [200, 1],
+      ]),
+    kill: (pid) => void kills.push(pid),
+  });
+  assert.equal(ok, true);
+  assert.deepEqual(kills, []);
+  assert.equal(
+    r.err.some((l) => l.includes("squatter")),
+    false,
+  );
+});
+
+test("replacement: an unreadable process table never makes a listener a squatter", async () => {
+  const r = replaceFixture((n) => n >= 2);
+  const kills: number[] = [];
+  const ok = await replaceDaemonProcess({
+    ...r.opts,
+    backend: { ...r.opts.backend, supervisorPid: () => ({ state: "pid", pid: 200 }) },
+    listener: () => 300,
+    parents: () => null,
+    kill: (pid) => void kills.push(pid),
+  });
+  assert.equal(ok, true);
+  assert.deepEqual(kills, []);
+});
+
+test("replacement: on Windows the ended task is run again at once", async () => {
+  const r = replaceFixture((n) => n >= 3);
+  const calls: string[] = [];
+  const ok = await replaceDaemonProcess({
+    ...r.opts,
+    backend: {
+      ...r.opts.backend,
+      kind: "schtasks",
+      status: () => ({ registered: true, running: false }),
+      stop: () => (calls.push("stop"), { ok: true } as const),
+      start: () => (calls.push("start"), { ok: true } as const),
+    },
+  });
+  assert.equal(ok, true);
+  assert.deepEqual(calls, ["stop", "start"]);
 });

@@ -15,6 +15,8 @@
 import { spawnSync } from "node:child_process";
 import type { ServiceBackend } from "./backend.ts";
 import { listenerPid } from "./listener-pid.ts";
+import { hasAncestor, parentTable } from "./process-tree.ts";
+import type { ParentTable } from "./process-tree.ts";
 import type { EnvLike, ServiceNames } from "./names.ts";
 import { probe } from "./probe.ts";
 import type { ProbeRequest, ProbeResult } from "./probe.ts";
@@ -36,6 +38,7 @@ export interface ReplaceOptions {
   /** Test seams. */
   readonly probeFn?: (req: ProbeRequest) => Promise<ProbeResult>;
   readonly listener?: (port: number) => number | null;
+  readonly parents?: () => ParentTable | null;
   readonly sleep?: (ms: number) => Promise<void>;
   readonly now?: () => number;
   readonly kill?: (pid: number, signal: NodeJS.Signals) => void;
@@ -91,17 +94,34 @@ export async function replaceDaemonProcess(o: ReplaceOptions): Promise<boolean> 
     return s.state === "pid" ? s.pid : null;
   };
 
+  const parents = o.parents ?? (() => parentTable());
+  // The daemon is a child of the launcher the supervisor runs (requirement 11): a listener is
+  // the supervised daemon when it is the supervised PID or descends from it. Anything else
+  // is a squatter; an unreadable process table never makes a listener one.
+  const isSquatter = (current: number, expected: number): boolean => {
+    if (current === expected) return false;
+    const table = parents();
+    return table !== null && !hasAncestor(table, current, expected);
+  };
+
   const initialListener = listener(portNum);
   const initialExpected = expectedPid();
   // A listener that is not the supervised process is a squatter: it gets no early accept.
-  if (initialListener === null || initialExpected === null || initialListener === initialExpected) {
+  if (
+    initialListener === null ||
+    initialExpected === null ||
+    !isSquatter(initialListener, initialExpected)
+  ) {
     if (await accepts()) return true;
   }
 
   for (const line of warningLines(host, port)) io.out(line);
 
   const status = backend.status(names);
-  const loaded = backend.kind === "launchd" ? status.registered : status.running;
+  // A Windows task that has ended is started again by `start` whatever its state: the
+  // repeating trigger is only the backstop (spec 0252 requirement 7, delta-02).
+  const loaded =
+    backend.kind === "launchd" || backend.kind === "schtasks" ? status.registered : status.running;
   if (!loaded) {
     const what =
       backend.kind === "launchd"
@@ -110,13 +130,16 @@ export async function replaceDaemonProcess(o: ReplaceOptions): Promise<boolean> 
     io.err(`  WARNING: ${what} — issuing no restart request.`);
   } else {
     backend.stop(names);
+    // Under launchd and systemd a stop is a restart request; the Task Scheduler ends the
+    // task and starts nothing, so on Windows it is run again at once.
+    if (backend.kind === "schtasks") backend.start(names);
   }
 
   const deadline = now() + deadlineS * 1000;
   while (now() < deadline) {
     let current = listener(portNum);
     const expected = expectedPid();
-    if (current !== null && expected !== null && current !== expected) {
+    if (current !== null && expected !== null && isSquatter(current, expected)) {
       io.err(
         `  WARNING: squatter PID ${current} detected on ${host}:${port} (expected PID ${expected}) — evicting.`,
       );
@@ -140,13 +163,13 @@ export async function replaceDaemonProcess(o: ReplaceOptions): Promise<boolean> 
         }
       }
       current = listener(portNum);
-      if (current !== null && current !== expected) {
+      if (current !== null && expected !== null && isSquatter(current, expected)) {
         io.err(`  ERROR: failed to evict squatter PID ${current} from ${host}:${port}.`);
         return false;
       }
     }
     // Probe only a verified listener, or when the supervisor's pid is unknown.
-    if (expected === null || current === expected) {
+    if (expected === null || current === null || !isSquatter(current, expected)) {
       if (await accepts()) return true;
     }
     await sleep(300);
