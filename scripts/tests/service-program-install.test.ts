@@ -66,6 +66,13 @@ test("default and overridden paths: .sh becomes .ts, another extension gets .ts 
   assert.equal(q.wrapper, "/y/t.ts");
 });
 
+test("a path value with replacement patterns is written verbatim into the installed launcher", () => {
+  const { paths } = fresh();
+  const python = "/p/$&/$$/$`/x";
+  installLauncherProgram({ paths, ...CONSTANTS, python });
+  assert.ok(readFileSync(paths.launcher, "utf8").includes(JSON.stringify(python)));
+});
+
 test("installing the launcher alone writes the launcher, its record and its own bundle only", () => {
   const { home, paths } = fresh();
   installLauncherProgram({ paths, ...CONSTANTS });

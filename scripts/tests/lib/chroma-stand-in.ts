@@ -100,7 +100,10 @@ export function dispose(s: Sandbox): void {
   for (const f of [s.pidFile, path.join(s.home, "daemon.json")]) {
     try {
       const raw = fs.readFileSync(f, "utf8");
-      const pid = Number(f.endsWith(".json") ? JSON.parse(raw).pid : raw.trim());
+      const parsed: unknown = f.endsWith(".json") ? JSON.parse(raw) : null;
+      const fromJson =
+        typeof parsed === "object" && parsed !== null && "pid" in parsed ? parsed.pid : undefined;
+      const pid = Number(parsed === null ? raw.trim() : fromJson);
       if (pid > 0) process.kill(pid, "SIGKILL");
     } catch {
       /* already gone */
@@ -110,7 +113,8 @@ export function dispose(s: Sandbox): void {
 }
 
 export function daemonRecord(s: Sandbox): { pid: number; argv: string[]; nofile: number | null } {
-  return JSON.parse(fs.readFileSync(path.join(s.home, "daemon.json"), "utf8"));
+  const parsed: unknown = JSON.parse(fs.readFileSync(path.join(s.home, "daemon.json"), "utf8"));
+  return parsed as { pid: number; argv: string[]; nofile: number | null };
 }
 
 /**

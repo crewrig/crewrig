@@ -21,6 +21,7 @@ after(() => fs.rmSync(dir, { recursive: true, force: true }));
 afterEach(() => {
   setExecutableOverride("systemctl", null);
   setExecutableOverride("launchctl", null);
+  setExecutableOverride("schtasks", null);
 });
 
 function fake(name: string, body: string): string {
@@ -28,6 +29,26 @@ function fake(name: string, body: string): string {
   fs.writeFileSync(file, `#!/bin/sh\n${body}\n`, { mode: 0o755 });
   return file;
 }
+
+test("service managers resolve to the operating system's own path, never a bare name on Windows", () => {
+  assert.equal(
+    executableFor("schtasks", "win32", { SystemRoot: "D:\\Win" }),
+    "D:\\Win\\System32\\schtasks.exe",
+  );
+  assert.equal(executableFor("schtasks", "win32", {}), "C:\\Windows\\System32\\schtasks.exe");
+  assert.equal(executableFor("launchctl", "darwin"), "/bin/launchctl");
+  assert.equal(
+    executableFor("systemctl", "linux", {}, (f) => f === "/bin/systemctl"),
+    "/bin/systemctl",
+  );
+  assert.equal(
+    executableFor("systemctl", "linux", {}, () => false),
+    "systemctl",
+  );
+  setExecutableOverride("schtasks", "/seam/schtasks");
+  assert.equal(executableFor("schtasks", "win32", {}), "/seam/schtasks");
+  setExecutableOverride("schtasks", null);
+});
 
 test("the seam replaces the executable and can be removed", () => {
   assert.equal(executableFor("systemctl"), "systemctl");
