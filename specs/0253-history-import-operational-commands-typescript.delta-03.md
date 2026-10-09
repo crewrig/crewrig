@@ -25,10 +25,7 @@ realise the parent plus delta-01, delta-02 and this delta (`docs/spec-pr-workflo
 *Version: MINOR, 2.1.0 to 2.2.0 (`docs/spec-format.md`, *Versioning*). The delta
 corrects the mechanism by which requirement 27 obtains an interpreter on Windows
 and keeps the full list of paths the job asserts; it adds one scenario and one
-parity-gap statement to requirement 23. The mechanism it replaces, a `.cmd` stub,
-cannot be spawned by Node.js (see the finding), so no implementation conforming to
-requirement 27 as written can exist and none is invalidated; an additive normative
-change, hence MINOR.*
+parity-gap statement to requirement 23. No implementation in flight is invalidated, since the Windows job of PR C is the first and is written to the corrected mechanism; an additive normative change, hence MINOR.*
 
 *Finding, measured while writing the job. The interpreter probe
 (`detectMempalacePython` in `scripts/lib/mempalace-python.ts`, which runs
@@ -59,9 +56,7 @@ the `<python> -m mempalace mine ...` calls and `scripts/lib/history-import/prune
 unchanged. That job ran `scripts/tests/history-import-python.test.ts` (the four
 importers) and `scripts/tests/history-import-prune-python.test.ts`
 (`prune-transcripts`) and printed per-command wall times. What the measurement does
-not cover is a real `mempalace` on Windows: the tests use a fake package, so the
-real-MemPalace end-to-end path stays unverified there, which requirement 23
-records. No question that this delta can resolve is left open.*
+not cover is a real `mempalace` on Windows: the tests use a fake package, so the real-MemPalace end-to-end path stays unverified there, which requirement 23 records; the same path is not exercised on Linux and macOS either, where the oracle of PR A drives stub interpreters, so the original sentence closing requirement 27, which claimed that coverage, is withdrawn by this delta. No question that this delta can resolve is left open.*
 
 ## ADDED
 
@@ -110,7 +105,7 @@ Replacement:
 > a populated history, the job SHALL assert the deterministic offline paths only:
 > the missing-interpreter diagnostic and exit 1, the missing-source diagnostic and
 > exit 1, the empty-source message and exit 0, `--help`, argument validation, the
-> declined-prompt exit 0 and a dry-run against a fake `mempalace` package. The
+> declined-prompt exit 0, the confirmed-prompt flow with its dry-run and real `mine` calls and a failing `mine`, and, for `prune-transcripts`, a dry run, `--apply` and `--project`, all against a fake `mempalace` package. The
 > interpreter is the runner's real Python, provisioned by `actions/setup-python`,
 > not a stub executable: the test writes a fake `mempalace` package into a temporary
 > directory and puts it on `PYTHONPATH`. The package holds `mempalace/__init__.py`;
@@ -123,9 +118,7 @@ Replacement:
 > 20.12.2 and 21.7.3 (CVE-2024-27980) refuse to spawn such a file without
 > `shell: true` and throw `EINVAL`. The same suite also runs on Linux and macOS.
 > The job states in its comments that the interpreter is the runner's real Python
-> with a fake `mempalace` package; a real `mempalace` with a real palace is
-> exercised by no test on any platform, and the Windows gap is recorded in
-> requirement 23.
+> with a fake `mempalace` package; a real `mempalace` with a real palace is not exercised by this job; the original claim that the end-to-end path is covered on Linux and macOS is withdrawn, since the Bash-driven oracle of PR A also drives stub interpreters, so the unverified real-MemPalace path is the same on the three platforms and is recorded for Windows, the platform of the parity rule, in requirement 23.
 
 Requirement 23, the Windows gap — the sentence must agree with requirement 27: the
 paths are verified on Windows against a fake package, and only a real `mempalace`
@@ -140,8 +133,7 @@ Replacement:
 > The expected gaps to prove or disprove on Windows are the Python and MemPalace
 > availability for the four import scripts and `prune-transcripts`. Measured: every
 > flow of these scripts is verified on `windows-latest` against a fake `mempalace`
-> package on the runner's real Python (requirement 27), and a real `mempalace`
-> installed on Windows with a real palace is unverified. That SHALL be recorded as a
+> package on the runner's real Python (requirement 27), and a real `mempalace` installed on Windows with a real palace is unverified (it is equally unexercised on Linux and macOS, where the oracle of PR A also uses stub interpreters; the parity rule records the Windows cell). That SHALL be recorded as a
 > parity gap for (the four import scripts x Windows) and (`prune-transcripts` x
 > Windows) in the words "real MemPalace on Windows unverified; every flow of the
 > scripts verified against a fake package";
