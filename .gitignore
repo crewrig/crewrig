@@ -62,3 +62,6 @@ dist-copilot-plugin/
 # Claude Code runtime lock (session id, pid): an ephemeral tool-generated
 # file that docs/layers.md says MUST NOT be committed (spec 0147 delta-01 R19).
 .claude/scheduled_tasks.lock
+
+# Spec 0254 R22: the golden tree of the extension builders stores built `dist/` directories as data.
+!scripts/tests/fixtures/extension-golden/**/dist/

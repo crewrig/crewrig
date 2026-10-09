@@ -341,7 +341,9 @@ extension-builders-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-ci-wiring.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-shim.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -355,7 +357,6 @@ extension-builders-ts:
         - "scripts/lib/extension-manifest.sh"
         - "scripts/lib/extension-hooks.sh"
         - "scripts/lib/extension-*.json"
-        - "scripts/lib/render-context.sh"
         - "scripts/lib/common.sh"
         - "scripts/lib/render-command.ts"
         - "scripts/lib/yaml-text.ts"
@@ -366,9 +367,12 @@ extension-builders-ts:
         - "scripts/lib/require-dependency.ts"
         - "scripts/lib/node-floor-guard.js"
         - "scripts/tests/extension-*.test.ts"
-        - "scripts/tests/lib/extension-fixtures.ts"
+        - "scripts/tests/lib/extension-*.ts"
         - "scripts/tests/lib/shell-extension-harness.ts"
-        - "scripts/tests/fixtures/extension/**"
+        - "scripts/tests/lib/plugin-ctx.ts"
+        - "scripts/tests/lib/windows-extension-proof.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/extension-golden/**"
         - "extensions/**"
         - "extension-skeleton/**"
         - "package.json"
@@ -385,7 +389,6 @@ extension-builders-ts:
         - "scripts/lib/extension-manifest.sh"
         - "scripts/lib/extension-hooks.sh"
         - "scripts/lib/extension-*.json"
-        - "scripts/lib/render-context.sh"
         - "scripts/lib/common.sh"
         - "scripts/lib/render-command.ts"
         - "scripts/lib/yaml-text.ts"
@@ -396,28 +399,42 @@ extension-builders-ts:
         - "scripts/lib/require-dependency.ts"
         - "scripts/lib/node-floor-guard.js"
         - "scripts/tests/extension-*.test.ts"
-        - "scripts/tests/lib/extension-fixtures.ts"
+        - "scripts/tests/lib/extension-*.ts"
         - "scripts/tests/lib/shell-extension-harness.ts"
-        - "scripts/tests/fixtures/extension/**"
+        - "scripts/tests/lib/plugin-ctx.ts"
+        - "scripts/tests/lib/windows-extension-proof.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/extension-golden/**"
         - "extensions/**"
         - "extension-skeleton/**"
         - "package.json"
         - "package-lock.json"
 
+extension-builders-ts-node-24-0:
+  image: node:24.0.0
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
 extension-render:
-  image: debian:stable-slim
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
+    - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/check-extension-pivot.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-pivot.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-extension.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-render-conformance.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-mcp-manifest.sh"
-    - "bash scripts/build-extension.sh --check"
+    - "node scripts/lib/node-floor-guard.js"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check"
     - "bash scripts/check-extension-hook-tokens.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-tokens.sh"
     - "bash scripts/check-extension-hook-map.sh"
@@ -430,6 +447,10 @@ extension-render:
       changes:
         - "scripts/check-extension-pivot.sh"
         - "scripts/build-extension.sh"
+        - "scripts/build-extension.ts"
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "scripts/install-extension.sh"
         - "scripts/lib/extension-manifest.sh"
         - "scripts/lib/extension-percli-keys.json"
@@ -448,17 +469,23 @@ extension-render:
         - "extension-skeleton/**"
         - "scripts/create-extension.sh"
         - "scripts/build-claude-plugin.sh"
+        - "scripts/build-claude-plugin.ts"
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "scripts/build-copilot-plugin.sh"
+        - "scripts/build-copilot-plugin.ts"
         - "scripts/build-antigravity-extension.sh"
+        - "scripts/build-antigravity-extension.ts"
         - "scripts/tests/test-check-extension-hook-tokens.sh"
         - "scripts/tests/test-check-extension-hook-map.sh"
         - "scripts/lib/common.sh"
         - "scripts/probe-extension-mcp-token.sh"
         - "scripts/tests/test-extension-mcp-manifest.sh"
         - "scripts/install-antigravity-extension.sh"
-        - "scripts/lib/render-context.sh"
         - "scripts/lib/extension-legacy-shape.json"
         - "scripts/migrate-extension.sh"
+        - "scripts/migrate-extension.ts"
         - "scripts/tests/test-migrate-extension.sh"
         - "scripts/release-package-extension.sh"
         - "scripts/lib/extension-install.sh"
@@ -468,6 +495,10 @@ extension-render:
       changes:
         - "scripts/check-extension-pivot.sh"
         - "scripts/build-extension.sh"
+        - "scripts/build-extension.ts"
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "scripts/install-extension.sh"
         - "scripts/lib/extension-manifest.sh"
         - "scripts/lib/extension-percli-keys.json"
@@ -486,17 +517,23 @@ extension-render:
         - "extension-skeleton/**"
         - "scripts/create-extension.sh"
         - "scripts/build-claude-plugin.sh"
+        - "scripts/build-claude-plugin.ts"
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "scripts/build-copilot-plugin.sh"
+        - "scripts/build-copilot-plugin.ts"
         - "scripts/build-antigravity-extension.sh"
+        - "scripts/build-antigravity-extension.ts"
         - "scripts/tests/test-check-extension-hook-tokens.sh"
         - "scripts/tests/test-check-extension-hook-map.sh"
         - "scripts/lib/common.sh"
         - "scripts/probe-extension-mcp-token.sh"
         - "scripts/tests/test-extension-mcp-manifest.sh"
         - "scripts/install-antigravity-extension.sh"
-        - "scripts/lib/render-context.sh"
         - "scripts/lib/extension-legacy-shape.json"
         - "scripts/migrate-extension.sh"
+        - "scripts/migrate-extension.ts"
         - "scripts/tests/test-migrate-extension.sh"
         - "scripts/release-package-extension.sh"
         - "scripts/lib/extension-install.sh"
@@ -504,12 +541,13 @@ extension-render:
         - "scripts/tests/test-create-extension-combinations.sh"
 
 extension-provenance:
-  image: debian:stable-slim
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
+    - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/check-extension-provenance.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-provenance.sh"
   rules:
@@ -557,12 +595,13 @@ extension-manifest:
         - "artifacts/**"
 
 extension-install:
-  image: debian:stable-slim
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
+    - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-install-claude-plugin-marketplace.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-claude-plugin-agents-glob.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-gemini-agent-frontmatter.sh"
@@ -575,6 +614,10 @@ extension-install:
         - "scripts/tests/test-gemini-agent-frontmatter.sh"
         - "scripts/tests/test-install-extension-all.sh"
         - "scripts/build-claude-plugin.sh"
+        - "scripts/build-claude-plugin.ts"
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "scripts/build-gemini-agent.sh"
         - "scripts/install-extension-all.sh"
         - "extensions/**"
@@ -586,6 +629,10 @@ extension-install:
         - "scripts/tests/test-gemini-agent-frontmatter.sh"
         - "scripts/tests/test-install-extension-all.sh"
         - "scripts/build-claude-plugin.sh"
+        - "scripts/build-claude-plugin.ts"
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "scripts/build-gemini-agent.sh"
         - "scripts/install-extension-all.sh"
         - "extensions/**"
@@ -1304,6 +1351,7 @@ runtime-foundations:
     - "npm ci"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-python.test.ts scripts/tests/mempalace-python-shebang.test.ts scripts/tests/mempalace-pin.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-backend.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-dual-source-conformance.test.ts scripts/tests/service-exec.test.ts scripts/tests/service-file-size.test.ts scripts/tests/service-install.test.ts scripts/tests/service-launchd-systemd.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-names.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-program-install.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-token-argv.test.ts scripts/tests/service-trust-wrapper.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/mcp-launcher-lifecycle.test.ts"
@@ -2072,7 +2120,7 @@ check-ci-parity:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 release:
-  image: node:22
+  image: node:24
   variables:
     GIT_DEPTH: "0"
     RELEASE_TOKEN: "$GITLAB_TOKEN"
@@ -2088,7 +2136,7 @@ release:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$/'
 
 release-rehearsal:
-  image: node:22
+  image: node:24
   variables:
     GIT_DEPTH: "0"
     RELEASE_DRY_RUN: "true"
@@ -2104,7 +2152,7 @@ release-rehearsal:
     - when: manual
 
 release-tests:
-  image: node:22
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -2133,6 +2181,10 @@ release-tests:
         - "scripts/tests/fixtures/release/**"
         - "scripts/release-package-extension.sh"
         - "scripts/build-extension.sh"
+        - "scripts/build-extension.ts"
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -2151,5 +2203,9 @@ release-tests:
         - "scripts/tests/fixtures/release/**"
         - "scripts/release-package-extension.sh"
         - "scripts/build-extension.sh"
+        - "scripts/build-extension.ts"
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/lib/node-floor-guard.js"
         - "package.json"
         - "package-lock.json"

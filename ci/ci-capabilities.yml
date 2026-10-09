@@ -383,13 +383,14 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts
 
-  # Spec 0254 R22, R27: the TypeScript extension and plugin builder modules and their
-  # shell-library twins (row G1b of epic #1231). `jq`, `yq` and `bash` are spawned on
-  # purpose by the corpus, context and conformance suites, which retire with the shell
-  # libraries (rows I1, J3, J4). `yq` stays declared until the differential test of the
-  # entries is deleted (plan v1-F2).
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder modules, entries and
+  # twin suites (row G1b of epic #1231). `jq`, `yq` and `bash` are spawned on purpose by the
+  # corpus, context, conformance, shell-comparison, golden-shell and differential suites,
+  # which retire with the shell scripts and libraries (PR D, rows I1, J3, J4). `yq` stays
+  # declared until the differential test is deleted (plan v1-F2). The proof script and the
+  # `--check` on the real tree run here too, so Linux and Windows prove the same bytes.
   - id: extension-builders-ts
-    name: "Run the TypeScript extension and plugin builder twin suites"
+    name: "Run the TypeScript extension and plugin builder suites, the golden proof and the real-tree check"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -404,7 +405,6 @@ capabilities:
           - "scripts/lib/extension-manifest.sh"
           - "scripts/lib/extension-hooks.sh"
           - "scripts/lib/extension-*.json"
-          - "scripts/lib/render-context.sh"
           - "scripts/lib/common.sh"
           - "scripts/lib/render-command.ts"
           - "scripts/lib/yaml-text.ts"
@@ -415,9 +415,12 @@ capabilities:
           - "scripts/lib/require-dependency.ts"
           - "scripts/lib/node-floor-guard.js"
           - "scripts/tests/extension-*.test.ts"
-          - "scripts/tests/lib/extension-fixtures.ts"
+          - "scripts/tests/lib/extension-*.ts"
           - "scripts/tests/lib/shell-extension-harness.ts"
-          - "scripts/tests/fixtures/extension/**"
+          - "scripts/tests/lib/plugin-ctx.ts"
+          - "scripts/tests/lib/windows-extension-proof.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/fixtures/extension-golden/**"
           - "extensions/**"
           - "extension-skeleton/**"
           - "package.json"
@@ -435,7 +438,6 @@ capabilities:
           - "scripts/lib/extension-manifest.sh"
           - "scripts/lib/extension-hooks.sh"
           - "scripts/lib/extension-*.json"
-          - "scripts/lib/render-context.sh"
           - "scripts/lib/common.sh"
           - "scripts/lib/render-command.ts"
           - "scripts/lib/yaml-text.ts"
@@ -446,9 +448,12 @@ capabilities:
           - "scripts/lib/require-dependency.ts"
           - "scripts/lib/node-floor-guard.js"
           - "scripts/tests/extension-*.test.ts"
-          - "scripts/tests/lib/extension-fixtures.ts"
+          - "scripts/tests/lib/extension-*.ts"
           - "scripts/tests/lib/shell-extension-harness.ts"
-          - "scripts/tests/fixtures/extension/**"
+          - "scripts/tests/lib/plugin-ctx.ts"
+          - "scripts/tests/lib/windows-extension-proof.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/fixtures/extension-golden/**"
           - "extensions/**"
           - "extension-skeleton/**"
           - "package.json"
@@ -460,7 +465,56 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-ci-wiring.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-shim.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts
+
+  # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release, where
+  # type stripping still emits an ExperimentalWarning. No `paths:` filter, like
+  # build-components-ts-node-24-0: the suite is fast and any shared-module change can
+  # reintroduce a warning. The production install comes first, as the suite runs builds.
+  - id: extension-builders-ts-node-24-0
+    name: "Extension and plugin builder entries are silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts
+
+  # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
+  # The production dependencies are installed first, the floor guard runs, then
+  # scripts/tests/lib/windows-extension-proof.ts builds every golden subject with the TypeScript
+  # entries from pwsh and compares each file with the committed golden tree, runs `--check`, the
+  # three plugin entries, the migration tool and the failure statuses, and prints the elapsed time.
+  # A short list of portable unit suites follows; the suites that spawn `bash`, `jq` or `yq` skip
+  # themselves on win32 and are left to Linux. No timing budget and no `paths:` filter, like the
+  # Windows jobs above: the proof must not skip silently on a change it does not list.
+  - id: windows-extension-builders
+    name: "Windows extension and plugin builders: production install, floor guard, golden proof and unit suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-extension-builders`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0254 R23).
 
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
@@ -470,6 +524,10 @@ capabilities:
         paths:
           - "scripts/check-extension-pivot.sh"
           - "scripts/build-extension.sh"
+          - "scripts/build-extension.ts"
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "scripts/install-extension.sh"
           - "scripts/lib/extension-manifest.sh"
           - "scripts/lib/extension-percli-keys.json"
@@ -488,17 +546,23 @@ capabilities:
           - "extension-skeleton/**"
           - "scripts/create-extension.sh"
           - "scripts/build-claude-plugin.sh"
+          - "scripts/build-claude-plugin.ts"
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "scripts/build-copilot-plugin.sh"
+          - "scripts/build-copilot-plugin.ts"
           - "scripts/build-antigravity-extension.sh"
+          - "scripts/build-antigravity-extension.ts"
           - "scripts/tests/test-check-extension-hook-tokens.sh"
           - "scripts/tests/test-check-extension-hook-map.sh"
           - "scripts/lib/common.sh"
           - "scripts/probe-extension-mcp-token.sh"
           - "scripts/tests/test-extension-mcp-manifest.sh"
           - "scripts/install-antigravity-extension.sh"
-          - "scripts/lib/render-context.sh"
           - "scripts/lib/extension-legacy-shape.json"
           - "scripts/migrate-extension.sh"
+          - "scripts/migrate-extension.ts"
           - "scripts/tests/test-migrate-extension.sh"
           - "scripts/release-package-extension.sh"
           - "scripts/lib/extension-install.sh"
@@ -509,6 +573,10 @@ capabilities:
         paths:
           - "scripts/check-extension-pivot.sh"
           - "scripts/build-extension.sh"
+          - "scripts/build-extension.ts"
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "scripts/install-extension.sh"
           - "scripts/lib/extension-manifest.sh"
           - "scripts/lib/extension-percli-keys.json"
@@ -527,17 +595,23 @@ capabilities:
           - "extension-skeleton/**"
           - "scripts/create-extension.sh"
           - "scripts/build-claude-plugin.sh"
+          - "scripts/build-claude-plugin.ts"
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "scripts/build-copilot-plugin.sh"
+          - "scripts/build-copilot-plugin.ts"
           - "scripts/build-antigravity-extension.sh"
+          - "scripts/build-antigravity-extension.ts"
           - "scripts/tests/test-check-extension-hook-tokens.sh"
           - "scripts/tests/test-check-extension-hook-map.sh"
           - "scripts/lib/common.sh"
           - "scripts/probe-extension-mcp-token.sh"
           - "scripts/tests/test-extension-mcp-manifest.sh"
           - "scripts/install-antigravity-extension.sh"
-          - "scripts/lib/render-context.sh"
           - "scripts/lib/extension-legacy-shape.json"
           - "scripts/migrate-extension.sh"
+          - "scripts/migrate-extension.ts"
           - "scripts/tests/test-migrate-extension.sh"
           - "scripts/release-package-extension.sh"
           - "scripts/lib/extension-install.sh"
@@ -546,14 +620,17 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
+      runtime: node@24
       tools: [jq, yq]
     command:
+      - npm ci --omit=dev --workspaces=false
       - bash scripts/check-extension-pivot.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-pivot.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-extension.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-render-conformance.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-mcp-manifest.sh
-      - bash scripts/build-extension.sh --check
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
       - bash scripts/check-extension-hook-tokens.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-tokens.sh
       - bash scripts/check-extension-hook-map.sh
@@ -582,8 +659,10 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
+      runtime: node@24
       tools: [yq]
     command:
+      - npm ci --omit=dev --workspaces=false
       - bash scripts/check-extension-provenance.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-provenance.sh
 
@@ -630,6 +709,10 @@ capabilities:
           - "scripts/tests/test-gemini-agent-frontmatter.sh"
           - "scripts/tests/test-install-extension-all.sh"
           - "scripts/build-claude-plugin.sh"
+          - "scripts/build-claude-plugin.ts"
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "scripts/build-gemini-agent.sh"
           - "scripts/install-extension-all.sh"
           - "extensions/**"
@@ -642,6 +725,10 @@ capabilities:
           - "scripts/tests/test-gemini-agent-frontmatter.sh"
           - "scripts/tests/test-install-extension-all.sh"
           - "scripts/build-claude-plugin.sh"
+          - "scripts/build-claude-plugin.ts"
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "scripts/build-gemini-agent.sh"
           - "scripts/install-extension-all.sh"
           - "extensions/**"
@@ -649,8 +736,10 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
+      runtime: node@24
       tools: [yq]
     command:
+      - npm ci --omit=dev --workspaces=false
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-install-claude-plugin-marketplace.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-claude-plugin-agents-glob.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-gemini-agent-frontmatter.sh
@@ -1501,6 +1590,9 @@ capabilities:
       # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only,
       # they drive the shell originals through bash; each skips itself on win32).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
+      # Spec 0253 PLAN v3 C7: the cross-platform unit tests of the TypeScript
+      # history-import and prune entries.
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts
       # Spec 0252 R21 (PLAN step A1-A3): the stop, uninstall and switch-argument
       # oracles of the MCP daemon lifecycle scripts (POSIX only, same reason).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
@@ -2891,6 +2983,58 @@ capabilities:
   # release PR (branch release-pr/main, required checks dispatched through
   # build.yml's workflow_dispatch) because GitHub offers no ruleset bypass
   # for the Actions token; GitLab keeps pushing it to the protected branch.
+  - id: windows-history-import
+    name: "Windows history import: importer and prune-transcripts entries against a fake mempalace package, no bash"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-history-import`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0253 R27).
+
+  # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
+  # (spec 0183 R23, issue #1008): it packaged the committed source tree via
+  # `npm pack`, a non-conforming release artifact under R17. The primary
+  # driver (scripts/monorepo-release.sh, the `release` capability below)
+  # already creates the release and uploads its own conforming asset on the
+  # SAME tag it pushes, so a second, conforming path would race it and put a
+  # second asset on the release — which the vendor's measured one-asset gate
+  # (specs/0183-extension-model-migration.delta-01.md Notes) forbids as
+  # firmly as the non-conforming one did. There is no replacement capability:
+  # the property this capability asserted (a tag-triggered release path)
+  # is retired, not relocated.
+
+  # release runs the monorepo release driver (scripts/monorepo-release.sh) on
+  # push to main. Portable since spec 0213: the SAME driver and engine
+  # (semantic-release) publish on both legs — GitHub Actions
+  # (.github/workflows/release-monorepo.yml, @semantic-release/github) and
+  # GitLab CI (the generated `release` job, @semantic-release/gitlab to the
+  # generic package registry plus a GitLab release). The driver detects the
+  # forge itself and sets the GitHub commit identity itself, so the business
+  # steps are identical on both engines. The credential crosses the engines
+  # under the one env key RELEASE_TOKEN (spec 0131 compares env KEYS): its
+  # GitLab value is the masked CI/CD variable $GITLAB_TOKEN (a project access
+  # token with api + write_repository, allowed to push to the protected
+  # release branch and to create tags); its GitHub value is
+  # secrets.GITHUB_TOKEN. yq is required by the packager's render step
+  # (scripts/build-extension.sh). Full history: the engine reads every tag.
+  # The business steps diverge on one point, inside the driver (issue #1379,
+  # docs/github-release-pr.md): on GitHub the release commit goes through a
+  # release PR (branch release-pr/main, required checks dispatched through
+  # build.yml's workflow_dispatch) because GitHub offers no ruleset bypass
+  # for the Actions token; GitLab keeps pushing it to the protected branch.
   - id: release
     name: "Run the monorepo semantic-release pipeline"
     trigger:
@@ -2898,7 +3042,7 @@ capabilities:
         branches: [main]
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
       tools: [jq, yq]
       history-depth: full
     env:
@@ -2920,7 +3064,7 @@ capabilities:
       - on: manual
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
       tools: [jq, yq]
       history-depth: full
     env:
@@ -2956,6 +3100,10 @@ capabilities:
           - "scripts/tests/fixtures/release/**"
           - "scripts/release-package-extension.sh"
           - "scripts/build-extension.sh"
+          - "scripts/build-extension.ts"
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "package.json"
           - "package-lock.json"
       - on: push
@@ -2975,11 +3123,15 @@ capabilities:
           - "scripts/tests/fixtures/release/**"
           - "scripts/release-package-extension.sh"
           - "scripts/build-extension.sh"
+          - "scripts/build-extension.ts"
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/lib/node-floor-guard.js"
           - "package.json"
           - "package-lock.json"
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
       tools: [jq, yq]
     command:
       - npm install --include=dev

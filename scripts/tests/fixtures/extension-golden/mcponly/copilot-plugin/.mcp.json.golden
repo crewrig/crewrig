@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "s": {
+      "command": "node",
+      "args": [
+        "${COPILOT_PLUGIN_ROOT}/dist/s.js"
+      ],
+      "type": "stdio"
+    }
+  }
+}

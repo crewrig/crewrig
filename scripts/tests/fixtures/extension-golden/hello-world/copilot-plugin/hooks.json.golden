@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "disableAllHooks": false,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "matcher": "bash",
+        "command": "bash ${COPILOT_PLUGIN_ROOT}/hooks/shell-logger.sh"
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "command": "bash ${COPILOT_PLUGIN_ROOT}/hooks/prompt-logger.sh"
+      }
+    ]
+  }
+}

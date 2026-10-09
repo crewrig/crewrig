@@ -23,7 +23,7 @@ command-line tool — `gemini-extension.json`, `claude-extension.json`,
 `copilot-extension.json`, `antigravity-extension.json`,
 `.github/copilot/extension.json`, and a per-CLI-designated file rendered
 from the `commands/` pivot — is always a build output, produced from the
-manifest by `scripts/build-extension.sh`, and never a hand-authored source.
+manifest by `scripts/build-extension.ts`, and never a hand-authored source.
 The exact list of generated-output file names and globs is committed data
 (`scripts/lib/extension-generated-class.json`). None of these files is
 committed on the primary branch, for any command-line tool (source:

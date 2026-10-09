@@ -233,7 +233,20 @@ release_make_mirror() {
   git clone -q --branch "$RELEASE_BRANCH" "$r/mirror.git" "$r/clone"
   forge_url="$(release_forge_url "$RELEASE_FORGE")"
   git -C "$r/clone" config "url.$r/mirror.git.insteadOf" "$forge_url"
-  ln -s "$ROOT_DIR/node_modules" "$r/clone/node_modules"
+  # Spec 0254 delta-01 R30 (a named, bounded exception to the ticket's scope): the TypeScript builders
+  # that the packaging step reaches load js-yaml only from a REAL copy under the root's own
+  # node_modules (spec 0240 R7 refuses a symbolic link), so the clone's node_modules is a real
+  # directory: real copies of the production closure of js-yaml, a link to every other entry.
+  mkdir "$r/clone/node_modules"
+  local entry name
+  for entry in "$ROOT_DIR"/node_modules/* "$ROOT_DIR"/node_modules/.[!.]*; do
+    [ -e "$entry" ] || [ -L "$entry" ] || continue
+    name="${entry##*/}"
+    case "$name" in
+      js-yaml|argparse) cp -RL "$entry" "$r/clone/node_modules/$name" ;;
+      *) ln -s "$entry" "$r/clone/node_modules/$name" ;;
+    esac
+  done
 }
 
 release_rehearse() {

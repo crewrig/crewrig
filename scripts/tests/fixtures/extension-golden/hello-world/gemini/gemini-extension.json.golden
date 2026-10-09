@@ -1,0 +1,14 @@
+{
+  "name": "hello-world",
+  "version": "2.1.1",
+  "description": "Demonstration extension showcasing MCP tools, commands, skills, and context.",
+  "contextFileName": "GEMINI.md",
+  "mcpServers": {
+    "default": {
+      "command": "node",
+      "args": [
+        "${extensionPath}/dist/index.js"
+      ]
+    }
+  }
+}

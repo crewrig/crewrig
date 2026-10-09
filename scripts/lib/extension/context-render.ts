@@ -1,5 +1,5 @@
 // context-render.ts — the context renderer as one pure function over text (spec 0254 R16).
-// Twins `_render_context_impl` (scripts/lib/render-context.sh:446-511): the passes run in the
+// Twins `_render_context_impl` (the shell renderer `render-context` (deleted in spec 0254 PR D; `git show 6657b08:scripts/lib/render-context (shell)`) lines 446-511): the passes run in the
 // order (b) mask, (a) spans, (c) names, (d) references, (e) unmask, then the near-miss scan.
 // No file is read or written and nothing is printed: the caller passes the data and prints the
 // returned diagnostics and warnings.

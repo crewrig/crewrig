@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "disableAllHooks": false,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "matcher": "bash",
+        "command": "bash ${COPILOT_PLUGIN_ROOT}/hooks/h.sh ${COPILOT_PLUGIN_ROOT}/x"
+      },
+      {
+        "type": "command",
+        "matcher": ".*",
+        "command": "bash ${COPILOT_PLUGIN_ROOT}/hooks/h.sh"
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "command": "bash ${COPILOT_PLUGIN_ROOT}/hooks/h.sh"
+      }
+    ]
+  }
+}

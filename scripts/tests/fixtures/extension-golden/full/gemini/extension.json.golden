@@ -1,0 +1,89 @@
+{
+  "name": "full",
+  "version": "1.2.3",
+  "description": "Full fixture \"quoted\" é",
+  "mcpServers": {
+    "local": {
+      "command": "node",
+      "args": [
+        "${extensionRoot}/dist/index.js"
+      ],
+      "env": {
+        "10": "ten",
+        "K": "V"
+      },
+      "cwd": "${extensionRoot}",
+      "timeout": 30
+    },
+    "remote": {
+      "transport": "http",
+      "url": "https://example.test/mcp",
+      "headers": {
+        "A": "B"
+      },
+      "timeout": 7
+    },
+    "stream": {
+      "transport": "sse",
+      "url": "https://example.test/sse"
+    }
+  },
+  "commands": {
+    "location": "commands/",
+    "convertToSkills": true
+  },
+  "skills": {
+    "location": "skills/"
+  },
+  "agents": {
+    "location": "agents/"
+  },
+  "context": {
+    "source": "CONTEXT.md"
+  },
+  "hooks": [
+    {
+      "id": "shell",
+      "event": "PreToolUse",
+      "matcher": "shell",
+      "command": "bash ${extensionRoot}/hooks/h.sh ${extensionRoot}/x"
+    },
+    {
+      "id": "any",
+      "event": "PreToolUse",
+      "command": "bash ${extensionRoot}/hooks/h.sh"
+    },
+    {
+      "id": "prompt",
+      "event": "UserPromptSubmit",
+      "command": "bash ${extensionRoot}/hooks/h.sh"
+    }
+  ],
+  "gemini": {
+    "themes": [
+      {
+        "name": "dark",
+        "background": "#000"
+      }
+    ]
+  },
+  "claude": {
+    "author": {
+      "name": "Fixture Author"
+    },
+    "defaultAllowedTools": [
+      "Read",
+      "Bash"
+    ],
+    "settings": {
+      "10": 2,
+      "a": 1
+    },
+    "lsp": {
+      "srv": {
+        "command": "srv"
+      }
+    },
+    "bin": "bin/"
+  }
+}

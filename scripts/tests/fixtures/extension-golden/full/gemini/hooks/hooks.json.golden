@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${extensionPath}/hooks/h.sh ${extensionPath}/x"
+          }
+        ],
+        "matcher": "run_shell_command"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${extensionPath}/hooks/h.sh"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${extensionPath}/hooks/h.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

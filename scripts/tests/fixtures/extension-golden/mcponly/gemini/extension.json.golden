@@ -1,0 +1,13 @@
+{
+  "name": "mcponly",
+  "version": "0.1.0",
+  "description": "MCP only",
+  "mcpServers": {
+    "s": {
+      "command": "node",
+      "args": [
+        "${extensionRoot}/dist/s.js"
+      ]
+    }
+  }
+}

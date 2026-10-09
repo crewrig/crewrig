@@ -88,12 +88,15 @@ issue. Agent-initiated deferral of a symmetric script is prohibited.
 `specs/0042-extension-pivot-render.delta-01.md` and spec 0173).** Extension
 components are rendered to their per-CLI consumed forms by a CLI-split pair
 that shares `scripts/lib/render-command.sh`, both dispatched from the single
-entry point `scripts/build-extension.sh`:
+entry point `scripts/build-extension.ts` (the `scripts/build-extension.sh`
+shim forwards to it; run `node scripts/lib/node-floor-guard.js` first, then the
+`node scripts/*.ts` command; Node.js 24 or later, `js-yaml` from the setup
+dependency step):
 
-- `scripts/build-claude-plugin.sh` — Claude side. Renders the pivot
+- `scripts/build-claude-plugin.ts` — Claude side. Renders the pivot
   `commands/<name>.md` into an **ephemeral** plugin skill at install
   time (Claude builds a plugin).
-- `scripts/build-extension.sh --target gemini` — Gemini side, the
+- `scripts/build-extension.ts --target gemini` — Gemini side, the
   symmetric counterpart. Renders the pivot `.md` into
   `build/extensions/<name>/commands/<name>.toml`, an **ephemeral build
   output** — never a committed sibling — because Gemini loads an
@@ -102,7 +105,7 @@ entry point `scripts/build-extension.sh`:
 
 A change to either renderer, or to the shared `render-command.sh`
 library, MUST keep this pair in sync in the same PR; the
-`bash scripts/build-extension.sh --check` guard and
+`node scripts/build-extension.ts --check` guard and
 `scripts/check-extension-pivot.sh` (R1/R7 guard) enforce that no
 generated Gemini output is ever committed, that a fresh render matches
 the declared set, and that no extension component is authored CLI-native

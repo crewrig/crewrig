@@ -262,7 +262,8 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
-  # Spec 0254 R22, R27: the TypeScript extension and plugin builder twin suites.
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder suites, the golden proof and
+  # the real-tree check.
   extension-builders-ts:
     runs-on: ubuntu-latest
     steps:
@@ -282,7 +283,6 @@ jobs:
               - 'scripts/lib/extension-manifest.sh'
               - 'scripts/lib/extension-hooks.sh'
               - 'scripts/lib/extension-*.json'
-              - 'scripts/lib/render-context.sh'
               - 'scripts/lib/common.sh'
               - 'scripts/lib/render-command.ts'
               - 'scripts/lib/yaml-text.ts'
@@ -293,9 +293,12 @@ jobs:
               - 'scripts/lib/require-dependency.ts'
               - 'scripts/lib/node-floor-guard.js'
               - 'scripts/tests/extension-*.test.ts'
-              - 'scripts/tests/lib/extension-fixtures.ts'
+              - 'scripts/tests/lib/extension-*.ts'
               - 'scripts/tests/lib/shell-extension-harness.ts'
-              - 'scripts/tests/fixtures/extension/**'
+              - 'scripts/tests/lib/plugin-ctx.ts'
+              - 'scripts/tests/lib/windows-extension-proof.ts'
+              - 'scripts/tests/lib/build-fixture-tree.ts'
+              - 'scripts/tests/fixtures/extension-golden/**'
               - 'extensions/**'
               - 'extension-skeleton/**'
               - 'package.json'
@@ -316,9 +319,15 @@ jobs:
       - name: Floor guard accepts Node.js 24
         if: steps.filter.outputs.extension-builders-ts == 'true'
         run: node scripts/lib/node-floor-guard.js
-      - name: Test the TypeScript extension and plugin builder twins
+      - name: Golden proof on Linux
         if: steps.filter.outputs.extension-builders-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts
+      - name: Check the real extensions with the TypeScript entry
+        if: steps.filter.outputs.extension-builders-ts == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
+      - name: Test the TypeScript extension and plugin builders
+        if: steps.filter.outputs.extension-builders-ts == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-ci-wiring.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-shim.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -343,6 +352,23 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release. No path
+  # filter, like `build-components-ts-node-24-0`.
+  extension-builders-ts-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+      - name: Test the extension entries
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   extension-render:
     runs-on: ubuntu-latest
     steps:
@@ -354,6 +380,10 @@ jobs:
             extension-render:
               - 'scripts/check-extension-pivot.sh'
               - 'scripts/build-extension.sh'
+              - 'scripts/build-extension.ts'
+              - 'scripts/lib/extension/**'
+              - 'scripts/lib/org-mcp.ts'
+              - 'scripts/lib/node-floor-guard.js'
               - 'scripts/install-extension.sh'
               - 'scripts/lib/extension-manifest.sh'
               - 'scripts/lib/extension-percli-keys.json'
@@ -372,22 +402,33 @@ jobs:
               - 'extension-skeleton/**'
               - 'scripts/create-extension.sh'
               - 'scripts/build-claude-plugin.sh'
+              - 'scripts/build-claude-plugin.ts'
               - 'scripts/build-copilot-plugin.sh'
+              - 'scripts/build-copilot-plugin.ts'
               - 'scripts/build-antigravity-extension.sh'
+              - 'scripts/build-antigravity-extension.ts'
               - 'scripts/tests/test-check-extension-hook-tokens.sh'
               - 'scripts/tests/test-check-extension-hook-map.sh'
               - 'scripts/lib/common.sh'
               - 'scripts/probe-extension-mcp-token.sh'
               - 'scripts/tests/test-extension-mcp-manifest.sh'
               - 'scripts/install-antigravity-extension.sh'
-              - 'scripts/lib/render-context.sh'
               - 'scripts/lib/extension-legacy-shape.json'
               - 'scripts/migrate-extension.sh'
+              - 'scripts/migrate-extension.ts'
               - 'scripts/tests/test-migrate-extension.sh'
               - 'scripts/release-package-extension.sh'
               - 'scripts/lib/extension-install.sh'
               - 'scripts/tests/test-release-package-extension.sh'
               - 'scripts/tests/test-create-extension-combinations.sh'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.extension-render == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        if: steps.filter.outputs.extension-render == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - name: Install yq
         if: steps.filter.outputs.extension-render == 'true'
         run: |
@@ -408,9 +449,12 @@ jobs:
       - name: Test Extension MCP Manifest
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-mcp-manifest.sh
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.extension-render == 'true'
+        run: node scripts/lib/node-floor-guard.js
       - name: Build Extension --check
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/build-extension.sh --check
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
       - name: Check Extension Hook Tokens
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/check-extension-hook-tokens.sh
@@ -448,6 +492,14 @@ jobs:
               - 'scripts/tests/test-check-extension-provenance.sh'
               - 'extensions/**'
               - 'artifacts/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.extension-provenance == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        if: steps.filter.outputs.extension-provenance == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - name: Install yq
         if: steps.filter.outputs.extension-provenance == 'true'
         run: |
@@ -509,10 +561,22 @@ jobs:
               - 'scripts/tests/test-gemini-agent-frontmatter.sh'
               - 'scripts/tests/test-install-extension-all.sh'
               - 'scripts/build-claude-plugin.sh'
+              - 'scripts/build-claude-plugin.ts'
+              - 'scripts/lib/extension/**'
+              - 'scripts/lib/org-mcp.ts'
+              - 'scripts/lib/node-floor-guard.js'
               - 'scripts/build-gemini-agent.sh'
               - 'scripts/install-extension-all.sh'
               - 'extensions/**'
               - 'artifacts/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.extension-install == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        if: steps.filter.outputs.extension-install == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - name: Install yq
         if: steps.filter.outputs.extension-install == 'true'
         run: |
@@ -1441,6 +1505,9 @@ jobs:
       - name: Test the history import and prune oracles (POSIX only)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
 
+      - name: Test the history import and prune TypeScript units
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts
+
       - name: Test the MCP daemon lifecycle oracles (POSIX only)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
 
@@ -1916,6 +1983,37 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0253 R27, R17: the history import row's copy of the Windows template above.
+  # pwsh is the interpreter of the one step. The suite spawns no `bash` and no `.cmd`
+  # (Node.js refuses to spawn one without a shell): it runs the TypeScript entries
+  # against the runner's real Python with a FAKE `mempalace` package on PYTHONPATH
+  # (a `__main__` that logs its arguments and exits with a chosen status, and an
+  # `mcp_server` with two dummy drawer functions), so the interpreter probe, the
+  # prompts, the `mine` calls and the Python body of prune-transcripts all run.
+  # No timing-budget step: the suite prints `timing:` lines, which R24 records and
+  # never gates.
+  windows-history-import:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: History import and prune-transcripts entries against a fake mempalace package, no bash
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # Spec 0250 R28, R29: the component-build row's copy of the template above.
   # pwsh is the interpreter of every step. The write-path proof prints its own
   # elapsed time and no step has a timing budget (R29). The shell-parity suites
@@ -1947,6 +2045,37 @@ jobs:
 
       - name: Test the TypeScript component-build core
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0254 R23: the extension builders' copy of the Windows job above.
+  windows-extension-builders:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      # Builds every golden subject with the TypeScript entries and compares each file with the
+      # committed golden tree, runs --check, the three plugin entries, the migration tool and the
+      # failure statuses, and prints the elapsed time of each step.
+      - name: Golden proof
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts
+
+      - name: Test the portable extension builder suites
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-args.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-golden.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

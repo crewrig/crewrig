@@ -241,7 +241,9 @@ tasks:
 
   migrate-extension:
     desc: "Convert an extension source tree from the retired declaration shape to the current one (task migrate-extension EXT=my-ext, spec 0183)"
-    cmd: bash {{.REPO_DIR}}/scripts/migrate-extension.sh {{.EXT}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/migrate-extension.ts {{.EXT}}
 
   # --- Claude Code tasks ---
 
@@ -254,24 +256,21 @@ tasks:
 
   import-claude-history:
     desc: Backfill MemPalace with pre-existing Claude Code transcripts from ~/.claude/projects (idempotent)
-    preconditions:
-      - sh: command -v fzf >/dev/null 2>&1
-        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
-    cmd: bash {{.REPO_DIR}}/scripts/import-claude-history.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/import-claude-history.ts {{.CLI_ARGS}}
 
   import-gemini-history:
     desc: Backfill MemPalace with pre-existing Gemini CLI transcripts from ~/.gemini/tmp (idempotent)
-    preconditions:
-      - sh: command -v fzf >/dev/null 2>&1
-        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
-    cmd: bash {{.REPO_DIR}}/scripts/import-gemini-history.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/import-gemini-history.ts {{.CLI_ARGS}}
 
   import-antigravity-history:
     desc: Backfill MemPalace with pre-existing Antigravity CLI transcripts from ~/.gemini/antigravity-cli/history.jsonl (idempotent)
-    preconditions:
-      - sh: command -v fzf >/dev/null 2>&1
-        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
-    cmd: bash {{.REPO_DIR}}/scripts/import-antigravity-history.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/import-antigravity-history.ts {{.CLI_ARGS}}
 
   install-claude-workspace:
     desc: Install all artifacts Claude Code components (copy mode)
@@ -291,7 +290,9 @@ tasks:
 
   build-claude-plugin:
     desc: "Build a Claude Code plugin from an extension (task build-claude-plugin EXT=hello-world)"
-    cmd: bash {{.REPO_DIR}}/scripts/build-claude-plugin.sh {{.EXT}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-claude-plugin.ts {{.EXT}}
 
   install-claude-plugin:
     desc: "Install a Claude Code plugin (task install-claude-plugin EXT=hello-world)"
@@ -307,7 +308,9 @@ tasks:
 
   build-antigravity-extension:
     desc: "Build an Antigravity CLI plugin from an extension (task build-antigravity-extension EXT=hello-world)"
-    cmd: bash {{.REPO_DIR}}/scripts/build-antigravity-extension.sh {{.EXT}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-antigravity-extension.ts {{.EXT}}
 
   install-antigravity-extension:
     desc: "Build and install an Antigravity CLI plugin from an extension (requires agy in PATH; task install-antigravity-extension EXT=hello-world)"
@@ -316,7 +319,8 @@ tasks:
   build-copilot-plugin:
     desc: "Build a Copilot CLI plugin from an extension (task build-copilot-plugin EXT=hello-world)"
     cmds:
-      - bash {{.REPO_DIR}}/scripts/build-copilot-plugin.sh {{.EXT}}
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-copilot-plugin.ts {{.EXT}}
 
   install-copilot-plugin:
     desc: "Build and install a Copilot CLI plugin from an extension (requires copilot in PATH; task install-copilot-plugin EXT=hello-world)"
@@ -334,10 +338,9 @@ tasks:
 
   import-copilot-history:
     desc: Backfill MemPalace with pre-existing GitHub Copilot CLI transcripts from ~/.copilot/session-state (idempotent)
-    preconditions:
-      - sh: command -v fzf >/dev/null 2>&1
-        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
-    cmd: bash {{.REPO_DIR}}/scripts/import-copilot-history.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/import-copilot-history.ts {{.CLI_ARGS}}
 
   usage:backfill:
     desc: "Replay usage-record capture for Claude Code, Gemini CLI and Copilot CLI against history already on this machine (idempotent; pass --reset-cursors to re-derive from scratch, spec 0206)"
@@ -538,7 +541,9 @@ tasks:
 
   prune-transcripts:
     desc: "Prune old transcripts from MemPalace (task prune-transcripts -- --days 30 [--apply])"
-    cmd: bash {{.REPO_DIR}}/scripts/prune-transcripts.sh {{.CLI_ARGS}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/prune-transcripts.ts {{.CLI_ARGS}}
 
   # --- Harness Feedback Loop ---
 

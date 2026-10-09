@@ -1,0 +1,36 @@
+{
+  "name": "full",
+  "version": "1.2.3",
+  "description": "Full fixture \"quoted\" é",
+  "contextFileName": "GEMINI.md",
+  "mcpServers": {
+    "local": {
+      "command": "node",
+      "args": [
+        "${extensionPath}/dist/index.js"
+      ],
+      "env": {
+        "10": "ten",
+        "K": "V"
+      },
+      "cwd": "${extensionPath}",
+      "timeout": 30
+    },
+    "remote": {
+      "httpUrl": "https://example.test/mcp",
+      "headers": {
+        "A": "B"
+      },
+      "timeout": 7
+    },
+    "stream": {
+      "url": "https://example.test/sse"
+    }
+  },
+  "themes": [
+    {
+      "name": "dark",
+      "background": "#000"
+    }
+  ]
+}

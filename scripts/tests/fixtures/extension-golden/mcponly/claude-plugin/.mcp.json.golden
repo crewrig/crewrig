@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "s": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/s.js"
+      ]
+    }
+  }
+}

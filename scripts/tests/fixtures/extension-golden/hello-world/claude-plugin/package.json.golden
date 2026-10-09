@@ -1,0 +1,17 @@
+{
+  "name": "hello-world-extension",
+  "version": "2.1.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "@types/node": "^22.15.0"
+  }
+}
