@@ -528,13 +528,17 @@ core-paths:
     - "bash scripts/check-core-paths.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-sync-from-upstream.sh"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-core-paths.sh"
         - "scripts/sync-from-upstream.sh"
+        - "scripts/sync-from-upstream.ts"
+        - "scripts/lib/sync-from-upstream/**"
         - "scripts/tests/test-check-core-paths.sh"
         - "scripts/tests/test-sync-from-upstream.sh"
+        - "scripts/tests/sync-from-upstream-self-update.test.ts"
         - ".crewrig/core-paths.txt"
         - "docs/layers.md"
         - "model-mappings/**"
@@ -542,8 +546,11 @@ core-paths:
       changes:
         - "scripts/check-core-paths.sh"
         - "scripts/sync-from-upstream.sh"
+        - "scripts/sync-from-upstream.ts"
+        - "scripts/lib/sync-from-upstream/**"
         - "scripts/tests/test-check-core-paths.sh"
         - "scripts/tests/test-sync-from-upstream.sh"
+        - "scripts/tests/sync-from-upstream-self-update.test.ts"
         - ".crewrig/core-paths.txt"
         - "docs/layers.md"
         - "model-mappings/**"
