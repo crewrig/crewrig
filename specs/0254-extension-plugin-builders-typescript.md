@@ -1,5 +1,5 @@
 ---
-id: "0251"
+id: "0254"
 slug: extension-plugin-builders-typescript
 status: draft
 complexity: standard
@@ -91,12 +91,13 @@ how to restore it.
    later steps, and migrate in this row for one reason and no other: they are
    dependencies of the step (b) scripts. The dependent scripts are the four
    builders; the dependencies are the twins of `extension-manifest.sh` (its other
-   consumers `scripts/check-extension-*.sh` are step (e), row I1, and
+   consumers `scripts/check-extension-hook-tokens.sh` and
+   `scripts/check-extension-manifest-version.sh` are step (e), row I1,
    `scripts/install-extension.sh` and `scripts/install-claude-plugin.sh` are step
-   (c), row F2), of `extension-hooks.sh` (its other consumers
-   `scripts/check-extension-hook-{map,tokens}.sh`,
-   `scripts/release-package-extension.sh` and `scripts/probe-extension-hooks.sh` are
-   rows I1, G2 and J3) and of two pure helpers
+   (c), row F2, and `scripts/release-package-extension.sh` is row G2), of
+   `extension-hooks.sh` (its other consumers `scripts/check-extension-hook-map.sh`
+   and `scripts/check-extension-hook-tokens.sh` are row I1, and the Bash suites
+   that source it in-process wait for step (e)) and of two pure helpers
    of `scripts/lib/common.sh`, `org_mcp_to_native` and `MCP_RESERVED_NAMES`, which
    the manifest library sources (their other consumers
    `scripts/setup-{gemini,copilot,antigravity}-interactive.sh` and
@@ -182,10 +183,12 @@ how to restore it.
    order, and a refusal at one step SHALL occur before the effects of every later
    step: arguments and the `--target` check; the availability of the YAML library
    (requirement 4); extension resolution; then, per extension, validation
-   (requirement 9), the banner, and the renders. In build mode the first
-   extension whose manifest fails validation SHALL stop the run with exit 1 and no
-   closing `Done.` line (the shell's errexit, pinned by the differential test of
-   requirement 22). In `--check` mode every extension and the scaffold container
+   (requirement 9), the banner, and the renders. In build mode an extension
+   that fails, whether at validation or at the render of any target or file, SHALL
+   stop the run once that extension's remaining targets have been rendered: exit 1,
+   no closing `Done.` line, and no later extension rendered (the shell's errexit,
+   pinned by the differential test of requirement 22). A validation failure renders
+   no target of that extension. In `--check` mode every extension and the scaffold container
    are checked and the exit status is 1 when any arm failed, 0 otherwise. Plugin
    builders SHALL exit 1 on a missing manifest, on a declaration-shape failure and
    on a context render failure, and 0 otherwise. Every scratch file and scratch
@@ -463,7 +466,7 @@ how to restore it.
     carriage return. It SHALL print the elapsed time of each step (parent requirement
     15 does not gate on it). A mismatch that is not a path or separator artefact stops
     the work and is a `spec`-class finding. The job and its capability follow the
-    conventions of spec 0250 requirement 24 (`portability: specific` with the
+    conventions of spec 0250 requirement 28 (`portability: specific` with the
     evidence block, mirrored by hand in `.github/workflows/build.yml`, then the CI
     file regenerated).
 
@@ -482,7 +485,10 @@ how to restore it.
     `scripts/lib/common.sh` SHALL be untouched but for comment lines: their other
     consumers are later rows, which retire them (I1, J3 and J4 respectively). The
     descriptors `scripts/lib/extension-{targets,percli-keys,generated-class,legacy-shape}.json`
-    SHALL stay the single source both implementations read.
+    SHALL stay the single source both implementations read; no key or value of any
+    of them changes, and the only edit allowed is the reword of prose that names
+    `render-context.sh`, such as the `_readme` of `extension-targets.json`, to name
+    its replacement (requirement 29).
 
 26. **Oracle (parent requirement 13).** No pull request SHALL both migrate a script
     and edit a Bash assertion of its tests. The Bash suites that exercise the five
@@ -540,6 +546,34 @@ how to restore it.
     (i) a usage line has no script path and line prefix.
     Letters (j) onward are reserved for the deviations the plan's differential test
     discovers and a `delta-01` of this spec records.
+
+29. **References (parent requirement 9).** In the pull request that installs the
+    shims, every documentation page, `Taskfile.yml` task, workflow step and skill
+    instruction that tells a reader or an agent to run one of the five scripts, or
+    that names `scripts/lib/render-context.sh`, SHALL be updated to the TypeScript
+    entry, written as two separate steps (the floor guard, then `node` and the entry)
+    and never chained with `&&` (the rule of `docs/ticket-ownership.md`, for
+    PowerShell 5.1), each page stating the Node.js 24 floor and that `js-yaml` comes
+    from the setup dependency step. At authoring, at `a81bca7`, the files naming the
+    scripts are `Taskfile.yml` (12 lines, among them the tasks at `:224`, `:274`,
+    `:290` and `:299`), `.github/workflows/build.yml` (14),
+    `.github/workflows/release-tests.yml` (2), `artifacts/FORMAT.md` (`:408` and
+    `:502`), `extension-skeleton/EXTENSION-FORMAT.md` (9, among them the prose at
+    `:403` that names `render-context.sh`), `DEVELOPMENT.md` (5), `README.md` (3),
+    `CONTRIBUTING.md`, `docs/adoption-guide.md` (3), `docs/cli-matrix-maintenance.md`
+    (4), `docs/cli-matrix.md` (10), `docs/extension-authoring.md`, `docs/layers.md`
+    (2), `docs/runbooks/extension-hook-probe.md`, `extensions/core/hello-world/README.md`
+    (4) and the `_readme` of `scripts/lib/extension-targets.json`; the plan
+    classifies each line as an instruction (rewritten) or a mention (kept where the
+    sentence only names the generator, or a dated record) and lists the result.
+    `docs/cli-matrix.md` SHALL gain the new function and module names and the
+    three-system parity in every row that names the scripts, as `AGENTS.md` → *CLI
+    Matrix Maintenance* requires. A skill or agent source that changes SHALL bump its
+    `metadata.provenance.version`, and the built copies SHALL be regenerated and
+    staged in the same commit. A test SHALL fail when a tracked file outside a
+    committed allowlist (unmigrated shell, Bash tests, dated records, ADRs, `specs/`,
+    `docs/research/`) still tells a reader to run `bash scripts/<one of the five>.sh`
+    or names `render-context.sh`.
 
 ## Scenarios
 
