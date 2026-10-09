@@ -61,6 +61,24 @@ export const POWERSHELL_SCRIPT = [
   "[ordered]@{ task = $task; processes = $rows } | ConvertTo-Json -Compress -Depth 4",
 ].join("\n");
 
+/**
+ * The constant PowerShell text of the task-creation policy read (spec 0252 requirement 20).
+ * It only READS the two Group Policy registry locations of "Prohibit New Task Creation"
+ * (`Task Creation` = 0 under `Software\\Policies\\Microsoft\\Windows\\Task Scheduler5.0`, user
+ * and machine hives; assumption: verify on a machine that sets the policy) and prints
+ * `{"prohibited": true|false}`. It creates no task.
+ */
+export const POLICY_SCRIPT = [
+  "$ErrorActionPreference = 'Stop'",
+  "$prohibited = $false",
+  "foreach ($hive in 'HKCU', 'HKLM') {",
+  "  $key = $hive + ':\\Software\\Policies\\Microsoft\\Windows\\Task Scheduler5.0'",
+  "  $item = Get-ItemProperty -Path $key -Name 'Task Creation' -ErrorAction SilentlyContinue",
+  "  if ($item -and $item.'Task Creation' -eq 0) { $prohibited = $true }",
+  "}",
+  "[ordered]@{ prohibited = $prohibited } | ConvertTo-Json -Compress",
+].join("\n");
+
 const NETSTAT_DARWIN = "/usr/sbin/netstat";
 const PS_DARWIN = "/bin/ps";
 const NETSTAT_TIMEOUT_MS = 10_000;
@@ -206,4 +224,17 @@ export function processTable(
 /** Windows only: the Task Scheduler's view of one task plus the process table, as JSON text. */
 export function taskSnapshot(taskPath: string, pids: readonly number[] = []): InspectResult {
   return powershell(taskPath, pids);
+}
+
+/**
+ * Windows only: whether Group Policy prohibits the creation of tasks, as JSON text
+ * (`POLICY_SCRIPT`). Reads the policy without creating a task.
+ */
+export function taskCreationPolicy(): InspectResult {
+  return run({
+    file: windowsToolPaths().powershell,
+    args: ["-NoProfile", "-NonInteractive", "-Command", POLICY_SCRIPT],
+    env: baseEnv({}),
+    timeoutMs: POWERSHELL_TIMEOUT_MS,
+  });
 }

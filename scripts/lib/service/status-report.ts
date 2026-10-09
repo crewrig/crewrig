@@ -127,7 +127,7 @@ export function launcherSection(o: DriftOptions): 0 | 1 {
   return rc;
 }
 
-const TASK_STATES: Readonly<Record<number, string>> = {
+export const TASK_STATES: Readonly<Record<number, string>> = {
   0: "unknown",
   1: "disabled",
   2: "queued",
@@ -135,9 +135,11 @@ const TASK_STATES: Readonly<Record<number, string>> = {
   4: "running",
 };
 /** Success, running, not yet run, terminated by the user, and an ignored new instance. */
-const NOT_FAILURES: ReadonlySet<number> = new Set([0, 0x41301, 0x41303, 0x41306, 0x800710e0]);
+export const NOT_FAILURES: ReadonlySet<number> = new Set([
+  0, 0x41301, 0x41303, 0x41306, 0x800710e0,
+]);
 
-const hex = (n: number): string => `0x${n.toString(16)}`;
+export const hex = (n: number): string => `0x${n.toString(16)}`;
 
 export interface TaskOptions {
   names: ServiceNames;

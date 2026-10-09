@@ -131,7 +131,8 @@ export const stamp = (d: Date = new Date()): string => {
   );
 };
 
-function backupNamesOf(file: string): string[] {
+/** Every `<file>.bak.*` beside the configuration, in directory order (callers sort). */
+export function backupNamesOf(file: string): string[] {
   const dir = path.dirname(file);
   const prefix = `${path.basename(file)}.bak.`;
   try {
