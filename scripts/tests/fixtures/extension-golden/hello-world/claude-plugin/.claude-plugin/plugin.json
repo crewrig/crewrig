@@ -1,0 +1,8 @@
+{
+  "name": "hello-world",
+  "description": "Demonstration extension showcasing MCP tools, commands, skills, and context.",
+  "version": "2.1.1",
+  "author": {
+    "name": "crewrig contributors"
+  }
+}

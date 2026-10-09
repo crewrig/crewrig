@@ -1,0 +1,10 @@
+[
+  {
+    "subject": "hooks",
+    "target": "antigravity",
+    "hook": "prompt-logger",
+    "event": "UserPromptSubmit",
+    "part": "event",
+    "reason": "The Antigravity CLI's complete event set (PreToolUse, PostToolUse, PreInvocation, PostInvocation, Stop) has no counterpart for a user-prompt-submission moment (spec 0179 -> Notes)."
+  }
+]

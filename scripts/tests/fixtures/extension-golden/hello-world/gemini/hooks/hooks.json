@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${extensionPath}/hooks/shell-logger.sh"
+          }
+        ],
+        "matcher": "run_shell_command"
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${extensionPath}/hooks/prompt-logger.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

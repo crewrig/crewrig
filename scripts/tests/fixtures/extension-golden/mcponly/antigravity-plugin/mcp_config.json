@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "s": {
+      "command": "node",
+      "args": [
+        "${extensionRoot}/dist/s.js"
+      ]
+    }
+  }
+}

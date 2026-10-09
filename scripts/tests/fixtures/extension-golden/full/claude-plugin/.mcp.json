@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "local": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/index.js"
+      ],
+      "env": {
+        "10": "ten",
+        "K": "V"
+      },
+      "cwd": "${CLAUDE_PLUGIN_ROOT}",
+      "timeout": 30
+    },
+    "remote": {
+      "type": "http",
+      "url": "https://example.test/mcp",
+      "headers": {
+        "A": "B"
+      },
+      "timeout": 7
+    },
+    "stream": {
+      "type": "sse",
+      "url": "https://example.test/sse"
+    }
+  }
+}

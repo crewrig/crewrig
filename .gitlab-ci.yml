@@ -341,7 +341,9 @@ extension-builders-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-differential.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden-shell.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate-shell.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity-shell.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude-shell.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot-shell.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -366,9 +368,12 @@ extension-builders-ts:
         - "scripts/lib/require-dependency.ts"
         - "scripts/lib/node-floor-guard.js"
         - "scripts/tests/extension-*.test.ts"
-        - "scripts/tests/lib/extension-fixtures.ts"
+        - "scripts/tests/lib/extension-*.ts"
         - "scripts/tests/lib/shell-extension-harness.ts"
-        - "scripts/tests/fixtures/extension/**"
+        - "scripts/tests/lib/plugin-ctx.ts"
+        - "scripts/tests/lib/windows-extension-proof.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/extension-golden/**"
         - "extensions/**"
         - "extension-skeleton/**"
         - "package.json"
@@ -396,13 +401,25 @@ extension-builders-ts:
         - "scripts/lib/require-dependency.ts"
         - "scripts/lib/node-floor-guard.js"
         - "scripts/tests/extension-*.test.ts"
-        - "scripts/tests/lib/extension-fixtures.ts"
+        - "scripts/tests/lib/extension-*.ts"
         - "scripts/tests/lib/shell-extension-harness.ts"
-        - "scripts/tests/fixtures/extension/**"
+        - "scripts/tests/lib/plugin-ctx.ts"
+        - "scripts/tests/lib/windows-extension-proof.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/extension-golden/**"
         - "extensions/**"
         - "extension-skeleton/**"
         - "package.json"
         - "package-lock.json"
+
+extension-builders-ts-node-24-0:
+  image: node:24.0.0
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 extension-render:
   image: debian:stable-slim

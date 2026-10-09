@@ -1,0 +1,6 @@
+description = "Say hello"
+
+prompt = """
+
+Say hello from the fixture.
+"""
