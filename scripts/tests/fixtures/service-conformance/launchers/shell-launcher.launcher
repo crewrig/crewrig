@@ -1,0 +1,4 @@
+MCP_HOST="127.0.0.1"
+MCP_PORT="41893"
+LAUNCHER_SOURCE_SHA="abc"
+exec true

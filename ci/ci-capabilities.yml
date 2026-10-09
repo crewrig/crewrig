@@ -1408,6 +1408,10 @@ capabilities:
       # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only,
       # they drive the shell originals through bash; each skips itself on win32).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
+      # Spec 0252 PR B (issue #1330): the service module, the MCP launcher and the
+      # MemPalace helpers. Linux runs every suite, the conformance test included;
+      # the win32-only suites (service-windows*.test.ts) run in `windows-service-task`.
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-backend.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-dual-source-conformance.test.ts scripts/tests/service-exec.test.ts scripts/tests/service-file-size.test.ts scripts/tests/service-install.test.ts scripts/tests/service-launchd-systemd.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-names.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-program-install.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-token-argv.test.ts scripts/tests/service-trust-wrapper.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/mempalace-python.test.ts scripts/tests/mempalace-python-shebang.test.ts scripts/tests/mempalace-pin.test.ts scripts/tests/mcp-launcher-lifecycle.test.ts
 
   # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's
   # install / restore contract, root resolution and wmic parser. The probe
@@ -2511,6 +2515,30 @@ capabilities:
         (scripts/build-ci.sh lines 70-81), which maps only to Linux Docker
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15).
+
+  # Spec 0252 R24: the Windows service task proof, a copy of the template above.
+  # Installs both real task chains under throwaway leaves against the real Task
+  # Scheduler and prints each measurement as a `MEASURE:` line.
+  - id: windows-service-task
+    name: "Windows service task: Task Scheduler lifecycle, restart proof and refusal legs"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-service-task`) because it
+        drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
+        configured for this repository, exposes no Windows runner: every
+        generated GitLab job derives its `image` from `requires.runtime`
+        through `runtime_to_image` (scripts/build-ci.sh), which maps only to
+        Linux Docker images, and .gitlab-ci.yml declares no runner `tags:` that
+        could select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15).
 
   # Spec 0243 R28 (reworded at delta-03): the usage-capture row's copy of the
