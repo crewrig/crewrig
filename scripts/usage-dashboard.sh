@@ -1,8 +1,10 @@
-#!/usr/bin/env bash
-# usage-dashboard.sh — the usage dashboard (spec 0210): one view model over
-# the usage store and the comparative prices, in three delivery forms.
-# Reference figures, never an invoice. Never reaches the network.
-#
+#!/bin/bash
+# usage-dashboard.sh — forwarding shim (spec 0253 R3). The command is scripts/usage-dashboard.ts;
+# this file stays so every caller of `bash scripts/usage-dashboard.sh` (the Bash tests, the
+# Taskfile before it was rewritten, scripts/lib/usage-store/mirror.js, and
+# artifacts/core/rules/60-tools.md until it was rewritten) still reaches it.
+# Fails closed: with node absent it writes one Error: line and exits 1; below the
+# floor it exits with the floor guard's status and the command is not run.
 # Usage:
 #   bash scripts/usage-dashboard.sh page   [filters] [--as-of-today] [--out <path>]
 #   bash scripts/usage-dashboard.sh serve  [--port <n>]
@@ -12,6 +14,10 @@
 #   | --asset <kind>:<ref> | --cli <cli> | --fidelity <f> | --no-ledger
 #   | --from <YYYY-MM-DD> | --to <YYYY-MM-DD> | --period <YYYY-MM>
 #   | --model <id> | --bucket day|week|month | --currency <ISO4217>
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-exec node --disable-warning=ExperimentalWarning "$SCRIPT_DIR/lib/usage-dashboard/cli.js" "$@"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node was not found on PATH; this command needs Node.js 24 or later (https://nodejs.org/en/download)." >&2
+  exit 1
+fi
+node "$DIR/lib/node-floor-guard.js" || exit $?
+exec node "$DIR/usage-dashboard.ts" "$@"

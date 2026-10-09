@@ -11,7 +11,7 @@ This page is one stage of the usage feature; the [usage architecture overview](u
 The capture step is a **Node module tree** under `scripts/lib/usage-capture/`, invoked by two TypeScript entry points that run as a direct `node` command line, with no POSIX shell in between (spec 0243). The `.sh` files of the same names remain as [forwarding shims](#forwarding-shims):
 
 - **Live capture:** `hooks/usage-capture.ts` — a sibling hook to `hooks/mempalace-transcript.ts` (session recording, spec 0247), wired by in-repo absolute path into the existing `Stop` / `SessionEnd` / `AfterModel` / `agentStop` events on Claude Code, Gemini CLI, Copilot CLI, and Antigravity (statusline display). On every CLI it is enabled by a **usage-capture opt-in of its own**, independent from the MemPalace session-recording opt-in in both directions (spec 0211): capture works on a machine where MemPalace is absent, and session recording works without capture. The question defaults to `no`; once capture is registered it becomes `keep`/`remove`, and `remove` is the removal path (see *Hook wiring* below; Antigravity keeps its statusline opt-in and removal of spec 0206 R20–R21).
-- **Backfill:** `scripts/usage-backfill.sh` — a command-line tool that replays the same per-CLI adapters against records already present on a machine, taking the same derivation rules the live path uses.
+- **Backfill:** `scripts/usage-backfill.ts` — a command-line tool that replays the same per-CLI adapters against records already present on a machine, taking the same derivation rules the live path uses.
 
 No storage backend, write format, or retention policy is implemented by this specification (spec 0206 R25). The capture module exposes a pure interface `sink.submit(record) → { status: 'stored' | 'duplicate' | 'rejected', reason? }` — the three outcomes spec 0207 R24 defines — and resolves to spec 0207's own storage contract: `scripts/lib/usage-store/journal.js`'s `write(record)` (see [Usage storage](usage-storage.md)). The hand-over from spec 0206's original spool is complete (see *Spool hand-over to spec 0207* below); a machine that ran 0206 before the hand-over has any leftover `~/.crewrig/usage/spool/` files drained into the journal on the next write, and `CREWRIG_USAGE_ROOT` is unchanged throughout.
 
@@ -335,11 +335,11 @@ Moving, renaming, or deleting the checkout breaks the wired absolute path. The t
 
 1. Each installer prints the wired absolute path at install time, so the dependency is disclosed rather than discovered.
 2. `docs/usage-capture.md` (this file) states the dependency and names the recovery: re-run the installer from a durable checkout. On Claude Code, Gemini CLI and Copilot CLI, answering `keep` at the usage-capture question re-points a registered command whose path no longer resolves at that checkout's capture script, and reports each re-pointed path (spec 0211 R11).
-3. The data itself is recoverable regardless: `scripts/usage-backfill.sh --reset-cursors` re-derives from the CLIs' own durable history everything a dead live path missed.
+3. The data itself is recoverable regardless: `node scripts/usage-backfill.ts --reset-cursors` re-derives from the CLIs' own durable history everything a dead live path missed. Run `node scripts/lib/node-floor-guard.js` first on an unverified Node.js: the commands need Node.js 24 or later.
 
 ### Runtime requirement: Node.js 24 at firing time
 
-The hooks are `node` command lines that Node.js runs by stripping types, which needs **Node.js 24 or later when the hook fires**. Setup checks the floor before it writes the direct form (see *Node.js floor at setup*), but nothing checks it afterwards. A Node.js downgraded after setup makes the hooks fail with Node.js's own non-zero status, and the triggering CLI reports a hook error, until setup is re-run on a supported Node.js. For Claude Code, Gemini CLI and Copilot CLI, the records a failing hook missed can be re-derived with `scripts/usage-backfill.sh`.
+The hooks are `node` command lines that Node.js runs by stripping types, which needs **Node.js 24 or later when the hook fires**. Setup checks the floor before it writes the direct form (see *Node.js floor at setup*), but nothing checks it afterwards. A Node.js downgraded after setup makes the hooks fail with Node.js's own non-zero status, and the triggering CLI reports a hook error, until setup is re-run on a supported Node.js. For Claude Code, Gemini CLI and Copilot CLI, the records a failing hook missed can be re-derived with `node scripts/usage-backfill.ts`.
 
 A legacy `.sh` command that setup has not rewritten yet runs the same TypeScript file through its forwarding shim. On a Node.js below 24 the capture shim still exits zero with both streams empty, so capture stops without any visible error until Node.js is upgraded; the status-line shim exits zero too, but lets Node.js's own error text through on standard error.
 
@@ -394,7 +394,7 @@ The mechanism is left to that change. A setup or doctor check may complement an 
 ## Backfill command
 
 ```bash
-bash scripts/usage-backfill.sh [--reset-cursors]
+node scripts/usage-backfill.ts [--reset-cursors]
 ```
 
 **Flags:**

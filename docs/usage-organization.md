@@ -195,7 +195,8 @@ Procedure (a) below removes them, along with every other record.
 - **It can take time**, because the check makes one MemPalace call per
   mirrored record.
 - **Run the blocks in `bash` or `zsh`, from the checkout** that wired
-  capture, since they call its scripts.
+  capture, since they call its scripts. Run `node scripts/lib/node-floor-guard.js`
+  first on an unverified Node.js: the commands need Node.js 24 or later.
 
 ### The mirror check (both procedures)
 
@@ -221,7 +222,7 @@ usage_mirror_gate() {
     echo "MemPalace mirror: $USAGE_MIRROR_VERDICT"
     return 0
   fi
-  bash scripts/usage-mirror.sh
+  node scripts/usage-mirror.ts
   n=$(find "$ROOT/mirror/pending" -type f 2>/dev/null | wc -l | tr -d ' ')
   if [ "$n" != "0" ]; then
     USAGE_MIRROR_VERDICT="UNVERIFIED ($n pending marker(s): MemPalace unreachable or unable to serve, or a record failed to mirror)"
@@ -229,7 +230,7 @@ usage_mirror_gate() {
     return 1
   fi
   while IFS= read -r d; do
-    if ! bash scripts/usage-prune.sh "$(basename "$(dirname "$d")")" "$(basename "$d")" --force; then
+    if ! node scripts/usage-prune.ts "$(basename "$(dirname "$d")")" "$(basename "$d")" --force; then
       USAGE_MIRROR_VERDICT="UNVERIFIED (MemPalace unreachable or deletion not confirmed while pruning $d)"
       echo "MemPalace mirror: $USAGE_MIRROR_VERDICT"
       return 1
@@ -304,11 +305,11 @@ has removed nothing. When it stopped during the prunes, the months pruned
 before the stop are already gone, from the usage root and from MemPalace
 alike. Either way, fix the cause, then run the whole procedure again from
 the start; every step can be repeated safely. When the check stopped on a
-waiting record, `usage-mirror.sh` names the cause on stderr with a `failed:`
+waiting record, `usage-mirror.ts` names the cause on stderr with a `failed:`
 or `stopping this pass` line. When it printed neither, MemPalace was
 unreachable: the catch-up only wrote `unreachable.stamp`
 ([Unreachable backoff](usage-storage.md#unreachable-backoff)), so make
-MemPalace reachable. An operator run of `usage-mirror.sh` does not wait out
+MemPalace reachable. An operator run of `usage-mirror.ts` does not wait out
 that backoff. When the check stopped during the prunes, the prune's FATAL
 line names the cause: MemPalace unreachable, or MemPalace not confirming a
 deletion. When the check stopped on the third, inventory-based pass, either

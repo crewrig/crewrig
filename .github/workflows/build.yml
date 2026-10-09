@@ -1627,6 +1627,30 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0253 R27 (delta-01 R17, R24): the usage-wrappers row's copy of the
+  # template above. Offline: no network, no Python and no `bash`; the one step
+  # spawns the nine TypeScript usage entries directly under pwsh against an
+  # isolated temp HOME and usage root. R24 records, never gates: the test
+  # prints a `timing: <name> <ms> ms` line per command and no step asserts a
+  # timing budget. No path filter, like the Windows jobs above.
+  windows-usage-wrappers:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Nine usage entries run offline, flag-free entry form keeps stderr free of warnings
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-windows.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # Spec 0248 R33, R34: the worktree git guard row's copy of the template
   # above. pwsh is the interpreter of every step. Budgets are the initial values
   # of R33 (750 ms fast path, 2000 ms slow path refused and allowed); they are
