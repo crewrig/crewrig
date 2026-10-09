@@ -985,6 +985,7 @@ capabilities:
           - "scripts/lib/**"
           - "config/launchd/**"
           - "config/systemd/**"
+          - "config/windows/**"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -1003,6 +1004,7 @@ capabilities:
           - "scripts/lib/**"
           - "config/launchd/**"
           - "config/systemd/**"
+          - "config/windows/**"
     portability: portable
     changeset-gated: true
     requires:
@@ -1028,6 +1030,7 @@ capabilities:
         - "scripts/lib/**"
         - "config/launchd/**"
         - "config/systemd/**"
+        - "config/windows/**"
         - "scripts/ci-cache-guard.sh"
       env: []
     command:
