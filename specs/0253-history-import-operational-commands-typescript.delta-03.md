@@ -42,11 +42,8 @@ accepted (a `.cmd` makes `spawnSync` fail with EINVAL)"). The evidence of record
 is therefore the Node.js release notes of 20.12.2 and 21.7.3 and that repository
 comment; the tree holds no other citation of the advisory. A `.cmd` stub can never
 be a successful interpreter on `windows-latest`, which is the stub requirement 27
-asked for. No `.exe` stub is available either: the job has no compiler step, and a
-copy of `node.exe` named `python.exe` receives `-c "import mempalace.mcp_server"`,
-which Node.js does not interpret as Python. Consequences on Windows. The four
-importers can only be driven to the missing-interpreter path: an empty `PATH`
-makes the probe find no candidate. `prune-transcripts` takes `MEMPALACE_PYTHON`
+asked for. No purpose-built `.exe` stub is available either: the job has no compiler step, and a copy of `node.exe` named `python.exe` cannot answer the probe (measured: Node.js reads `-c` as `--check` and the argument as a script path, so it exits non-zero and the probe rejects the candidate). Consequences on Windows. The four
+importers can only be driven to the missing-interpreter path: a `PATH` that holds no candidate makes the probe find none. `prune-transcripts` takes `MEMPALACE_PYTHON`
 with no probe (requirement 18), so it can also be driven through `--help`, argument
 validation, the unknown-option hint, and a dry run whose interpreter is
 `process.execPath` (`node.exe`): the banner (wing, cutoff date, dry-run flag) is
@@ -65,9 +62,7 @@ left open.*
 **Scenario:** The Windows job drives the importers to the missing-interpreter path
 and `prune-transcripts` to a dry-run banner
 
-Given `windows-latest`, a temporary home, and, for the importers, a `PATH` with no
-Python candidate that `detectMempalacePython` probes (an empty `PATH`, so the probe
-finds nothing)
+Given `windows-latest`, a temporary home, and, for the importers, a spawned environment whose `PATH` holds no `python`, `py`, `pipx` or `mempalace` (so the probe finds nothing; `node` itself is started by its absolute path)
 When PowerShell runs each of `node scripts/import-claude-history.ts`,
 `node scripts/import-copilot-history.ts`, `node scripts/import-gemini-history.ts`
 and `node scripts/import-antigravity-history.ts`, then `node scripts/prune-transcripts.ts
@@ -75,8 +70,7 @@ and `node scripts/import-antigravity-history.ts`, then `node scripts/prune-trans
 --bogus`, `node scripts/prune-transcripts.ts` with `MEMPALACE_PYTHON` set to a
 path that does not exist, and `node scripts/prune-transcripts.ts --days 30` with
 `MEMPALACE_PYTHON` set to `process.execPath`
-Then each importer prints the missing-interpreter diagnostic on standard error and
-exits 1; `--help` prints the usage and exits 0; `--days 0` prints `Error: --days
+Then each importer prints the two missing-interpreter `Error:` lines (on standard output for the Claude, Gemini and Copilot importers, on standard error for the Antigravity importer, as requirement 11 fixes) and exits 1; `--help` prints the usage and exits 0; `--days 0` prints `Error: --days
 must be at least 1` and exits 1; `--bogus` prints `Unknown option: --bogus` and
 the hint line naming `scripts/prune-transcripts.ts` and exits 1; the missing
 interpreter prints `Error: <interpreter> not found` and exits 1; and the dry run
@@ -87,8 +81,7 @@ and no `mine` call.
 
 ## MODIFIED
 
-Requirement 27, the sentence on the import scripts and `prune-transcripts` — a
-`.cmd` stub cannot be spawned without a shell and no `.exe` stub exists, so the
+Requirement 27, the sentence on the import scripts and `prune-transcripts` — a `.cmd` stub cannot be spawned without a shell and no purpose-built `.exe` stub exists, so the
 paths behind a successful probe cannot be driven on Windows. The sentences before
 and after it (the usage-wrapper part as modified by delta-01, the `sync-from-upstream`
 part, and the closing sentences naming the limit) are unchanged. Original:
@@ -116,9 +109,7 @@ Replacement:
 > the importers spawn the interpreter without a shell, Node.js refuses to spawn a
 > `.cmd` or `.bat` file without `shell: true` and throws `EINVAL` (CVE-2024-27980,
 > hardened in Node.js 20.12.2 and 21.7.3), so a `.cmd` stub can never be a
-> successful interpreter, and no `.exe` stub is available (no compiler step, and a
-> copy of `node.exe` named `python.exe` receives `-c "import mempalace.mcp_server"`,
-> which Node.js does not interpret as Python). The missing-source message, the
+> successful interpreter, and no purpose-built `.exe` stub is available (no compiler step, and a copy of `node.exe` named `python.exe` cannot answer the probe: Node.js reads `-c` as `--check` and the argument as a script path, so it exits non-zero and the probe rejects the candidate). The missing-source message, the
 > empty-source message, the declined and the confirmed prompt flows and the `mine`
 > calls of the four import scripts all sit behind a successful probe and SHALL NOT
 > be asserted on Windows: they stay covered by the POSIX oracle of PR A
@@ -139,7 +130,7 @@ Replacement:
 > proved, and SHALL be recorded as a parity gap for (the four import scripts x
 > Windows) and (`prune-transcripts` x Windows): on `windows-latest` no interpreter
 > stub can be spawned (Node.js 20.12.2 and 21.7.3 refuse a `.cmd` or `.bat` file
-> without `shell: true`, CVE-2024-27980, and no `.exe` stub is available), so the
+> without `shell: true`, CVE-2024-27980, and no purpose-built `.exe` stub is available), so the
 > end-to-end `mempalace` path, the missing-source and empty-source messages, the
 > prompt flows and the `mine` calls of the four import scripts, and everything
 > `prune-transcripts` does after it spawns a working interpreter, are covered on
