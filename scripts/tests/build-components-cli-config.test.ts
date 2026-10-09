@@ -1,40 +1,28 @@
 // build-components-cli-config.test.ts — R7 (configuration grammar, placeholders, canonical_repo)
-// of spec 0250 over scripts/lib/build-components/config.ts, and the shell-parity sets of R5
-// and R7.
+// of spec 0250 over scripts/lib/build-components/config.ts. The shell-parity sets of R5 and R7
+// were retired with the switch (spec 0250 PR D, R13): their oracle, scripts/build-components.sh,
+// is now a shim.
 //
 // R7's key rule follows the SHELL, not the spec text: the shell took the upper-cased key as the
 // tail of `CFG_<KEY>`, so `[A-Za-z0-9_]+` is accepted (`1a = z` builds) where R7 writes
 // `[A-Za-z_][A-Za-z0-9_]*`. That spec/shell gap is asserted here as the shell behaves. The twin
 // also rejects an array-subscript key (`a[0] = z`) that the shell accepts: a listed small
-// difference, asserted as documented. The parity sets need bash and mikefarah yq, run on Linux
-// or with CREWRIG_SHELL_PARITY=1, and skip visibly otherwise. The shell functions are read out
-// of scripts/build-components.sh itself (awk), never copied.
+// difference, asserted as documented.
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 
-import { parseArgs } from "../lib/build-components/args.ts";
 import {
   loadConfig,
   resolvePlaceholders,
   validateCanonicalRepo,
 } from "../lib/build-components/config.ts";
-import { outputDirLines } from "../lib/build-components/output-dirs.ts";
 import { escapeControl } from "../lib/escape-control.ts";
 import { BuildFailure, type Config, type Io } from "../lib/build-components/types.ts";
-import {
-  CONFIG_TEXTS,
-  INVALID_REPOS,
-  LISTING_TARGETS,
-  LISTING_TIER_FORMS,
-  VALID_REPOS,
-} from "./fixtures/build-components/config-cases.ts";
-import { REPO } from "./lib/build-fixture-tree.ts";
-import { parityGate } from "./lib/shell-resolve-harness.ts";
+import { INVALID_REPOS, VALID_REPOS } from "./fixtures/build-components/config-cases.ts";
 
 const temps: string[] = [];
 after(() => temps.forEach((dir) => fs.rmSync(dir, { recursive: true, force: true })));
@@ -211,88 +199,4 @@ describe("R7 canonical_repo", () => {
       );
     }
   });
-});
-
-const noShell = parityGate();
-const SCRIPT = path.join(REPO, "scripts", "build-components.sh");
-/** The shell's three config functions, read out of the oracle, run in a strict shell. */
-const DRIVER = `set -euo pipefail
-eval "$(awk '/^(load_crewrig_config|resolve_placeholders|validate_canonical_repo)\\(\\) \\{/,/^\\}/' "$1")"
-CFG_KEYS=""
-load_crewrig_config
-[ "$2" = validate ] && validate_canonical_repo
-content="$(cat)"; resolve_placeholders "$content"; echo; echo "KEYS:[$CFG_KEYS]"`;
-function shell(
-  toml: string,
-  mode: string,
-): { status: number | null; stdout: string; stderr: string } {
-  const dir = tmpDir();
-  fs.writeFileSync(path.join(dir, "crewrig.config.toml"), toml);
-  return spawnSync("bash", ["-c", DRIVER, "bash", SCRIPT, mode], {
-    input: "${A}|${B}|${C}|${K}|${KEY}|${CANONICAL_REPO}",
-    encoding: "utf8",
-    env: { ...process.env, REPO_DIR: dir, LC_ALL: "C" },
-  });
-}
-
-describe("shell parity: configuration", { skip: noShell ?? false }, () => {
-  test("placeholder resolution and registered keys equal the shell's", () => {
-    for (const toml of CONFIG_TEXTS) {
-      const sh = shell(toml, "load");
-      assert.equal(sh.status, 0, JSON.stringify(toml));
-      const { config: c } = load(toml);
-      const keys = c.placeholders.map((p) => ` ${p.key}`).join("");
-      const text = `${resolvePlaceholders(c, "${A}|${B}|${C}|${K}|${KEY}|${CANONICAL_REPO}")}\nKEYS:[${keys}]\n`;
-      assert.equal(text, sh.stdout, JSON.stringify(toml));
-    }
-  });
-
-  test("a key that is not an identifier aborts the shell, and fails the build with status 1", () => {
-    for (const toml of ["[table]\na = 1\n", "my-key = 1\n", "a.b = 1\n"]) {
-      assert.notEqual(shell(toml, "load").status, 0, JSON.stringify(toml));
-      assert.throws(() => load(toml), { exitCode: 1 });
-    }
-  });
-
-  test("the listed difference: the shell accepts a[0] = z", () => {
-    assert.equal(shell("a[0] = z\n", "load").status, 0);
-  });
-
-  test("canonical_repo validation: same verdict and the same two lines on standard error", () => {
-    for (const repo of [...VALID_REPOS, ...INVALID_REPOS]) {
-      const sh = shell(`canonical_repo = ${repo}\n`, "validate");
-      const c = load(`canonical_repo = ${repo}\n`).config;
-      let twin = "";
-      try {
-        validateCanonicalRepo(c);
-      } catch (e) {
-        twin = `${(e as Error).message}\n`;
-      }
-      assert.equal(twin, sh.stderr, JSON.stringify(repo));
-      assert.equal(sh.status === 0, twin === "", JSON.stringify(repo));
-    }
-  });
-});
-
-describe("shell parity: --list-output-dirs", { skip: noShell ?? false }, () => {
-  for (const target of LISTING_TARGETS) {
-    test(`--target ${JSON.stringify(target)} under every tier form`, () => {
-      const dir = tmpDir();
-      for (const tierArgs of LISTING_TIER_FORMS) {
-        const args = ["--list-output-dirs", "--target", target, ...tierArgs];
-        const sh = spawnSync("bash", [SCRIPT, ...args], {
-          encoding: "utf8",
-          env: { ...process.env, REPO_DIR: dir, LC_ALL: "C" },
-        });
-        const parsed = parseArgs(args);
-        assert.ok(parsed.ok);
-        assert.equal(sh.status, 0, `${JSON.stringify(args)}: ${sh.stderr}`);
-        assert.equal(
-          `${outputDirLines(parsed.opts).join("\n")}\n`,
-          sh.stdout,
-          JSON.stringify(args),
-        );
-      }
-    });
-  }
 });
