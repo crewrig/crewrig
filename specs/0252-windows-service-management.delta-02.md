@@ -61,7 +61,7 @@ Replacement:
 > serves and starts the task again within about a minute of its end; the task
 > definition MAY also carry a `RestartOnFailure` setting, which SHALL NOT be relied
 > on, because it was measured to restart nothing here; …
-
+>
 > The Task Scheduler starts a task again only from one of its triggers, and it does
 > not watch a process that task started. The task's action process SHALL therefore
 > be the process whose end means the daemon is down: the launcher SHALL end, with a
