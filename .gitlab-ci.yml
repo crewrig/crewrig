@@ -203,6 +203,69 @@ agent-profile-migration:
         - "docs/agent-profile-migration.md"
         - "model-mappings/**"
 
+build-components-ts:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "npm ci"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-*.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.*"
+        - "scripts/lib/build-components/**"
+        - "scripts/lib/render-command.ts"
+        - "scripts/lib/component-resolve.ts"
+        - "scripts/lib/model-resolve.ts"
+        - "scripts/lib/yaml-text.ts"
+        - "scripts/lib/render-command.sh"
+        - "scripts/lib/component-resolve.sh"
+        - "scripts/lib/model-resolve.sh"
+        - "scripts/lib/model-resolve/**"
+        - "scripts/tests/build-components-*.test.ts"
+        - "scripts/tests/yaml-text.test.ts"
+        - "scripts/tests/render-command.test.ts"
+        - "scripts/tests/component-resolve.test.ts"
+        - "scripts/tests/model-resolve-*.test.ts"
+        - "scripts/tests/lib/yaml-lib.ts"
+        - "scripts/tests/lib/shell-resolve-harness.ts"
+        - "scripts/tests/lib/mapping-fixtures.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/lib/windows-build-proof.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "artifacts/**"
+        - "model-mappings/**"
+        - "tests/fixtures/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.*"
+        - "scripts/lib/build-components/**"
+        - "scripts/lib/render-command.ts"
+        - "scripts/lib/component-resolve.ts"
+        - "scripts/lib/model-resolve.ts"
+        - "scripts/lib/yaml-text.ts"
+        - "scripts/lib/render-command.sh"
+        - "scripts/lib/component-resolve.sh"
+        - "scripts/lib/model-resolve.sh"
+        - "scripts/lib/model-resolve/**"
+        - "scripts/tests/build-components-*.test.ts"
+        - "scripts/tests/yaml-text.test.ts"
+        - "scripts/tests/render-command.test.ts"
+        - "scripts/tests/component-resolve.test.ts"
+        - "scripts/tests/model-resolve-*.test.ts"
+        - "scripts/tests/lib/yaml-lib.ts"
+        - "scripts/tests/lib/shell-resolve-harness.ts"
+        - "scripts/tests/lib/mapping-fixtures.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/lib/windows-build-proof.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "artifacts/**"
+        - "model-mappings/**"
+        - "tests/fixtures/**"
+
 extension-render:
   image: debian:stable-slim
   before_script:
