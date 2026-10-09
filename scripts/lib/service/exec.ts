@@ -27,6 +27,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync } from "node:fs";
+import { isAbsolute } from "node:path";
 
 export type ManagerTool = "launchctl" | "systemctl" | "schtasks";
 
@@ -97,7 +98,9 @@ export function executableFor(
   const seam = overrides.get(tool);
   if (seam !== undefined) return seam;
   const binDir = env["CREWRIG_TEST_SERVICE_BIN_DIR"];
-  if (process.platform !== "win32" && binDir !== undefined && binDir !== "") {
+  // Only an absolute directory is honoured: a relative one (".") would run `./launchctl`
+  // from whatever directory the call happens in.
+  if (process.platform !== "win32" && binDir !== undefined && isAbsolute(binDir)) {
     const stub = `${binDir.replace(/\/+$/, "")}/${tool}`;
     if (exists(stub)) return stub;
   }

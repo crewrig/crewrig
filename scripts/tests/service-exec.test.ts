@@ -76,6 +76,31 @@ test(
   },
 );
 
+test(
+  "CREWRIG_TEST_SERVICE_BIN_DIR: unset gives the system path, relative is ignored, absolute is used",
+  { skip: process.platform === "win32" },
+  () => {
+    const has = (f: string): boolean => f === "/stubs/launchctl" || f === "./launchctl";
+    assert.equal(executableFor("launchctl", "darwin", {}, has), "/bin/launchctl");
+    for (const relative of [".", "stubs", "../stubs", "./stubs"]) {
+      assert.equal(
+        executableFor(
+          "launchctl",
+          "darwin",
+          { CREWRIG_TEST_SERVICE_BIN_DIR: relative },
+          () => true,
+        ),
+        "/bin/launchctl",
+        `relative ${relative} is ignored`,
+      );
+    }
+    assert.equal(
+      executableFor("launchctl", "darwin", { CREWRIG_TEST_SERVICE_BIN_DIR: "/stubs" }, has),
+      "/stubs/launchctl",
+    );
+  },
+);
+
 test("the seam replaces the executable and can be removed", () => {
   const real = executableFor("systemctl");
   assert.match(real, /systemctl$/);
