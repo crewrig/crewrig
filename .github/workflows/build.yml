@@ -1440,6 +1440,9 @@ jobs:
       - name: Test the history import and prune oracles (POSIX only)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
 
+      - name: Test the history import and prune TypeScript units
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-windows.test.ts
+
       - name: Test the MCP daemon lifecycle oracles (POSIX only)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
 
@@ -1874,6 +1877,33 @@ jobs:
 
       - name: Sync from upstream entry against a local upstream repository, no bash
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-windows.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0253 R27 (as modified by its delta-03), R17: the history import row's copy
+  # of the Windows template above. pwsh is the interpreter of the one step. The
+  # suite is offline and spawns no `bash`: the four importers are driven to the
+  # missing-interpreter path (an empty PATH), `prune-transcripts` through its
+  # argument handling and a dry run whose interpreter is node.exe. A `.cmd`
+  # stub interpreter cannot work (Node refuses to spawn it without a shell), so
+  # the prompt flows and the `mempalace mine` calls stay covered on Linux and
+  # macOS only. No timing-budget step: the suite prints `timing:` lines, which
+  # R24 records and never gates.
+  windows-history-import:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: History import and prune-transcripts entries, offline paths, no bash
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-windows.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

@@ -117,8 +117,10 @@ explicitly (without editing your profile):
   runs its `ProgramArguments` / `ExecStart` through the same wrapper, so its
   embedding-model fetch on first indexing inherits the trust.
 
-`scripts/start-chroma-server.sh` and `scripts/prune-transcripts.sh` source
-the managed file at entry for the same reason. The standalone
+`scripts/start-chroma-server.sh` sources the managed file at entry, and
+`scripts/prune-transcripts.ts` reads it without running it (`readTlsEnv`, spec
+0253 R18) and hands its variables to every child it spawns, for the same
+reason. The standalone
 `task install-mempalace` runs its `pipx install` through `tls-exec.sh` too, so
 a MemPalace upgrade outside setup inherits the trust.
 
