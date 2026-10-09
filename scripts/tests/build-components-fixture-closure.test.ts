@@ -11,6 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
+import { pathToFileURL } from "node:url";
 
 import { createFixtureTree, productionClosure, REPO } from "./lib/build-fixture-tree.ts";
 
@@ -131,7 +132,9 @@ describe("createFixtureTree", () => {
   });
 
   test("loadDependency run from the tree's own copy loads js-yaml from the tree", async () => {
-    const mod = (await import(tree.resolve("scripts/lib/require-dependency.ts"))) as {
+    const mod = (await import(
+      pathToFileURL(tree.resolve("scripts/lib/require-dependency.ts")).href
+    )) as {
       loadDependency(name: string): Promise<unknown>;
     };
     const yaml = (await mod.loadDependency("js-yaml")) as { load(text: string): unknown };
@@ -141,7 +144,9 @@ describe("createFixtureTree", () => {
   test("a tree without packages makes loadDependency refuse js-yaml (the R24 premise)", async () => {
     const bare = createFixtureTree({ deps: "no-packages" });
     assert.ok(!bare.exists("node_modules"));
-    const mod = (await import(bare.resolve("scripts/lib/require-dependency.ts"))) as {
+    const mod = (await import(
+      pathToFileURL(bare.resolve("scripts/lib/require-dependency.ts")).href
+    )) as {
       loadDependency(name: string): Promise<unknown>;
     };
     await assert.rejects(mod.loadDependency("js-yaml"), { name: "MissingDependencyError" });
