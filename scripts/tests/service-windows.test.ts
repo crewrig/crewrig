@@ -79,6 +79,9 @@ async function lifecycle(kind: DaemonKind): Promise<void> {
     measure(`status kind=${kind} ${JSON.stringify(status)} ms=${Date.now() - t2}`);
     assert.equal(status.registered, true);
     assert.equal(status.running, true, JSON.stringify(status));
+    // The owner's bound on reading a state (2026-10-09): 5 s or less.
+    assert.ok(Date.now() - t2 <= 5000, `status took ${Date.now() - t2} ms`);
+    assert.ok(probeSnap.ok, "the snapshot answered");
 
     const running = snap(c);
     assert.equal(running.state, 4, "State 4 (running)");

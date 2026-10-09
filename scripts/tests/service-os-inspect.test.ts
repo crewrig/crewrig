@@ -67,6 +67,19 @@ describe("os-inspect: absolute paths and argument arrays", () => {
     assert.equal(calls.length, 0);
   });
 
+  test("the child environment keeps PSModulePath (without it a state read took 18 s, not 0.4 s)", () => {
+    const calls = record();
+    const prior = process.env["PSModulePath"];
+    process.env["PSModulePath"] = "C:\\modules";
+    try {
+      taskSnapshot("\\CrewRig\\x");
+    } finally {
+      if (prior === undefined) delete process.env["PSModulePath"];
+      else process.env["PSModulePath"] = prior;
+    }
+    assert.equal(calls[0]?.env["PSModulePath"], "C:\\modules");
+  });
+
   test("every spec has an absolute file, no shell word, and a bounded time", () => {
     const calls = record();
     listenerTable("darwin");

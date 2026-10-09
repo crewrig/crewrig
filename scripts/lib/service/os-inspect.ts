@@ -76,6 +76,9 @@ const INHERITED_ENV = [
   "TEMP",
   "TMP",
   "USERPROFILE",
+  // Without PSModulePath, powershell.exe rebuilds its module path on every start: a state
+  // read took 18 s instead of 0.4 s on windows-latest (spec 0252 delta-02, probe job).
+  "PSModulePath",
   "APPDATA",
   "LOCALAPPDATA",
   "HOME",
