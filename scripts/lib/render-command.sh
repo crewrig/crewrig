@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Mirrored by scripts/lib/render-command.ts; change both; conformance test build-components-conformance.test.ts.
 # scripts/lib/render-command.sh — Shared command renderer for the pivot source
 # format. Do NOT execute directly; source it.
 #

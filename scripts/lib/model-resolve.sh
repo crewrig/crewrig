@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Mirrored by scripts/lib/model-resolve.ts; change both; conformance test build-components-conformance.test.ts.
 # scripts/lib/model-resolve.sh — spec 0198 requirements 2-18: the single
 # mapping-access point (R2), its addressing-grammar accessors, the profile
 # reader, and the pure resolution rule engine (resolve_agent). Do NOT execute

@@ -224,6 +224,77 @@ capabilities:
     command:
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-agent-profile-migration.sh
 
+  # Spec 0250 R27 (issue #1332): the TypeScript component-build core, its
+  # shared library twins and their node --test suites. `paths:` lists every
+  # entry literally (only `*` and `**`, the forms scripts/lib/glob-engine.ts
+  # accepts: no brace alternation). A glob that matches nothing yet is accepted
+  # by scripts/check-path-ownership.ts, which only flags unowned files and
+  # stale exemptions. Needs yq because the suites drive the shell build.
+  - id: build-components-ts
+    name: "Run the TypeScript component-build core and shared library twin suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.*"
+          - "scripts/lib/build-components/**"
+          - "scripts/lib/render-command.ts"
+          - "scripts/lib/component-resolve.ts"
+          - "scripts/lib/model-resolve.ts"
+          - "scripts/lib/yaml-text.ts"
+          - "scripts/lib/render-command.sh"
+          - "scripts/lib/component-resolve.sh"
+          - "scripts/lib/model-resolve.sh"
+          - "scripts/lib/model-resolve/**"
+          - "scripts/tests/build-components-*.test.ts"
+          - "scripts/tests/yaml-text.test.ts"
+          - "scripts/tests/render-command.test.ts"
+          - "scripts/tests/component-resolve.test.ts"
+          - "scripts/tests/model-resolve-*.test.ts"
+          - "scripts/tests/lib/yaml-lib.ts"
+          - "scripts/tests/lib/shell-resolve-harness.ts"
+          - "scripts/tests/lib/mapping-fixtures.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/windows-build-proof.ts"
+          - "scripts/tests/fixtures/build-components/**"
+          - "artifacts/**"
+          - "model-mappings/**"
+          - "tests/fixtures/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.*"
+          - "scripts/lib/build-components/**"
+          - "scripts/lib/render-command.ts"
+          - "scripts/lib/component-resolve.ts"
+          - "scripts/lib/model-resolve.ts"
+          - "scripts/lib/yaml-text.ts"
+          - "scripts/lib/render-command.sh"
+          - "scripts/lib/component-resolve.sh"
+          - "scripts/lib/model-resolve.sh"
+          - "scripts/lib/model-resolve/**"
+          - "scripts/tests/build-components-*.test.ts"
+          - "scripts/tests/yaml-text.test.ts"
+          - "scripts/tests/render-command.test.ts"
+          - "scripts/tests/component-resolve.test.ts"
+          - "scripts/tests/model-resolve-*.test.ts"
+          - "scripts/tests/lib/yaml-lib.ts"
+          - "scripts/tests/lib/shell-resolve-harness.ts"
+          - "scripts/tests/lib/mapping-fixtures.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/windows-build-proof.ts"
+          - "scripts/tests/fixtures/build-components/**"
+          - "artifacts/**"
+          - "model-mappings/**"
+          - "tests/fixtures/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [yq]
+    command:
+      - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-*.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
+
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
     trigger:

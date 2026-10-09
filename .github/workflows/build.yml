@@ -154,6 +154,58 @@ jobs:
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
+  build-components-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            build-components-ts:
+              - 'scripts/build-components.*'
+              - 'scripts/lib/build-components/**'
+              - 'scripts/lib/render-command.ts'
+              - 'scripts/lib/component-resolve.ts'
+              - 'scripts/lib/model-resolve.ts'
+              - 'scripts/lib/yaml-text.ts'
+              - 'scripts/lib/render-command.sh'
+              - 'scripts/lib/component-resolve.sh'
+              - 'scripts/lib/model-resolve.sh'
+              - 'scripts/lib/model-resolve/**'
+              - 'scripts/tests/build-components-*.test.ts'
+              - 'scripts/tests/yaml-text.test.ts'
+              - 'scripts/tests/render-command.test.ts'
+              - 'scripts/tests/component-resolve.test.ts'
+              - 'scripts/tests/model-resolve-*.test.ts'
+              - 'scripts/tests/lib/yaml-lib.ts'
+              - 'scripts/tests/lib/shell-resolve-harness.ts'
+              - 'scripts/tests/lib/mapping-fixtures.ts'
+              - 'scripts/tests/lib/build-fixture-tree.ts'
+              - 'scripts/tests/lib/windows-build-proof.ts'
+              - 'scripts/tests/fixtures/build-components/**'
+              - 'artifacts/**'
+              - 'model-mappings/**'
+              - 'tests/fixtures/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.build-components-ts == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        if: steps.filter.outputs.build-components-ts == 'true'
+        run: npm ci
+      - name: Install yq
+        if: steps.filter.outputs.build-components-ts == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Test the TypeScript component-build core
+        if: steps.filter.outputs.build-components-ts == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-*.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   extension-render:
     runs-on: ubuntu-latest
     steps:
