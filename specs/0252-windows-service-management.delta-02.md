@@ -83,7 +83,7 @@ Replacement:
 Original (excerpt of requirement 7, and of the first row of the table of requirement 6):
 
 > Each SHALL: trigger at logon of the current user only; …
-
+>
 > Task Scheduler per-user task (logon trigger, interactive token, least privilege,
 > restart on failure)
 
@@ -91,7 +91,7 @@ Replacement:
 
 > Each SHALL: trigger at logon of the current user and by the repeating time trigger
 > of this requirement, and by no other trigger and for no other user; …
-
+>
 > Task Scheduler per-user task (logon trigger plus a repeating one-minute trigger,
 > interactive token, least privilege)
 
