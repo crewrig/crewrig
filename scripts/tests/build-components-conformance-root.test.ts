@@ -66,9 +66,9 @@ describe(
 
     // `/usr` is root-owned on Linux and macOS; as root the merge would write there, so skip.
     const foreign =
-      process.getuid?.() !== 0 &&
+      process.geteuid?.() !== 0 &&
       fs.existsSync("/usr") &&
-      fs.statSync("/usr").uid !== process.getuid?.();
+      fs.statSync("/usr").uid !== process.geteuid?.();
     test(
       "a root the current user does not own is not used",
       { skip: foreign ? false : "needs a foreign-owned directory and a non-root user" },
