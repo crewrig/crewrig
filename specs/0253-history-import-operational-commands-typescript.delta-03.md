@@ -27,9 +27,7 @@ narrows the list of paths the `windows-latest` job of requirement 27 SHALL asser
 and adds one scenario and one parity-gap statement. It withdraws only assertions
 no implementation can meet on `windows-latest` (see the finding), so no in-flight
 implementation is invalidated and none that followed delta-02 stops conforming;
-that is an additive, not a breaking, normative change. A reader who counts any
-narrowing of a SHALL list as a breaking change would call it MAJOR: that reading
-is raised in the hand-back of this delta, not decided here.*
+that is an additive, not a breaking, normative change, hence MINOR.*
 
 *Finding, measured while writing the job. The interpreter probe
 (`detectMempalacePython` in `scripts/lib/mempalace-python.ts`, which runs
