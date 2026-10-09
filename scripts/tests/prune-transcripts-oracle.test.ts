@@ -177,7 +177,7 @@ describe("prune-transcripts oracle", { skip: process.platform === "win32" }, () 
     assert.equal(r.status, 1);
     const [first, second] = r.stderr.split("\n");
     assert.equal(first, "Unknown option: --bogus");
-    assert.match(second ?? "", /^Run '.*prune-transcripts\.sh --help' for usage\.$/);
+    assert.match(second ?? "", /^Run '.*prune-transcripts\.(sh|ts) --help' for usage\.$/);
     assert.equal(r.record, undefined);
   });
 

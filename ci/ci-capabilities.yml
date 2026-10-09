@@ -1498,6 +1498,9 @@ capabilities:
       # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only,
       # they drive the shell originals through bash; each skips itself on win32).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
+      # Spec 0253 PLAN v3 C7: the cross-platform unit tests of the TypeScript
+      # history-import and prune entries.
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts
       # Spec 0252 R21 (PLAN step A1-A3): the stop, uninstall and switch-argument
       # oracles of the MCP daemon lifecycle scripts (POSIX only, same reason).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
@@ -2821,6 +2824,58 @@ capabilities:
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
         (.github/workflows/build.yml, job `windows-sync-from-upstream`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0253 R27).
+
+  # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
+  # (spec 0183 R23, issue #1008): it packaged the committed source tree via
+  # `npm pack`, a non-conforming release artifact under R17. The primary
+  # driver (scripts/monorepo-release.sh, the `release` capability below)
+  # already creates the release and uploads its own conforming asset on the
+  # SAME tag it pushes, so a second, conforming path would race it and put a
+  # second asset on the release — which the vendor's measured one-asset gate
+  # (specs/0183-extension-model-migration.delta-01.md Notes) forbids as
+  # firmly as the non-conforming one did. There is no replacement capability:
+  # the property this capability asserted (a tag-triggered release path)
+  # is retired, not relocated.
+
+  # release runs the monorepo release driver (scripts/monorepo-release.sh) on
+  # push to main. Portable since spec 0213: the SAME driver and engine
+  # (semantic-release) publish on both legs — GitHub Actions
+  # (.github/workflows/release-monorepo.yml, @semantic-release/github) and
+  # GitLab CI (the generated `release` job, @semantic-release/gitlab to the
+  # generic package registry plus a GitLab release). The driver detects the
+  # forge itself and sets the GitHub commit identity itself, so the business
+  # steps are identical on both engines. The credential crosses the engines
+  # under the one env key RELEASE_TOKEN (spec 0131 compares env KEYS): its
+  # GitLab value is the masked CI/CD variable $GITLAB_TOKEN (a project access
+  # token with api + write_repository, allowed to push to the protected
+  # release branch and to create tags); its GitHub value is
+  # secrets.GITHUB_TOKEN. yq is required by the packager's render step
+  # (scripts/build-extension.sh). Full history: the engine reads every tag.
+  # The business steps diverge on one point, inside the driver (issue #1379,
+  # docs/github-release-pr.md): on GitHub the release commit goes through a
+  # release PR (branch release-pr/main, required checks dispatched through
+  # build.yml's workflow_dispatch) because GitHub offers no ruleset bypass
+  # for the Actions token; GitLab keeps pushing it to the protected branch.
+  - id: windows-history-import
+    name: "Windows history import: importer and prune-transcripts entries against a fake mempalace package, no bash"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-history-import`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`

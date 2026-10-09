@@ -1440,6 +1440,9 @@ jobs:
       - name: Test the history import and prune oracles (POSIX only)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
 
+      - name: Test the history import and prune TypeScript units
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts
+
       - name: Test the MCP daemon lifecycle oracles (POSIX only)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
 
@@ -1874,6 +1877,37 @@ jobs:
 
       - name: Sync from upstream entry against a local upstream repository, no bash
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-windows.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0253 R27, R17: the history import row's copy of the Windows template above.
+  # pwsh is the interpreter of the one step. The suite spawns no `bash` and no `.cmd`
+  # (Node.js refuses to spawn one without a shell): it runs the TypeScript entries
+  # against the runner's real Python with a FAKE `mempalace` package on PYTHONPATH
+  # (a `__main__` that logs its arguments and exits with a chosen status, and an
+  # `mcp_server` with two dummy drawer functions), so the interpreter probe, the
+  # prompts, the `mine` calls and the Python body of prune-transcripts all run.
+  # No timing-budget step: the suite prints `timing:` lines, which R24 records and
+  # never gates.
+  windows-history-import:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: History import and prune-transcripts entries against a fake mempalace package, no bash
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
