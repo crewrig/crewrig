@@ -23,6 +23,14 @@ import { createHermeticEnv, runBash } from "./lib/hermetic-env.ts";
 import type { HermeticEnv, RunResult } from "./lib/hermetic-env.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const BASE_SHELL_SYNC = path.join(
+  REPO,
+  "scripts",
+  "tests",
+  "fixtures",
+  "sync-from-upstream",
+  "base-shell-sync.txt",
+);
 const SCRIPTS = path.join(REPO, "scripts");
 const MODULES = path.join(SCRIPTS, "lib", "sync-from-upstream");
 const SKIP = process.platform === "win32" ? "POSIX only: the shim is a bash script" : false;
@@ -184,16 +192,15 @@ describe("sync-from-upstream self-update", { skip: SKIP }, () => {
 
   test("C: a shell-script adopter crosses to the shim and the TypeScript command, then no-ops", () => {
     const h = hermetic();
-    const base = git(h, REPO, "rev-parse", "HEAD").trim();
-    const shell = spawnSync("git", ["show", `${base}:scripts/sync-from-upstream.sh`], {
-      cwd: REPO,
-      encoding: "buffer",
-    });
-    assert.equal(shell.status, 0);
+    // The shell script as it stood before this migration, kept as a fixture (the shebang line
+    // is dropped so the ratchet, which reads shebangs, sees no shell file; it is put back here).
+    const shell = {
+      stdout: Buffer.from(`#!/bin/bash\n${fs.readFileSync(BASE_SHELL_SYNC, "utf8")}`, "utf8"),
+    };
     assert.match(
       shell.stdout.toString("utf8"),
       /Pull core-layer files/,
-      "base is not the shell script",
+      "the fixture is not the shell script",
     );
 
     const upstream = tmpRepo(h, "upstream");

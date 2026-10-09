@@ -488,6 +488,8 @@ jobs:
               - 'scripts/tests/test-check-core-paths.sh'
               - 'scripts/tests/test-sync-from-upstream.sh'
               - 'scripts/tests/sync-from-upstream-self-update.test.ts'
+              - 'scripts/tests/lib/hermetic-env.ts'
+              - 'scripts/tests/fixtures/sync-from-upstream/**'
               - '.crewrig/core-paths.txt'
               - 'docs/layers.md'
               - 'model-mappings/**'
