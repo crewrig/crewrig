@@ -141,9 +141,11 @@ Replacement:
 > availability for the four import scripts and `prune-transcripts`; the Copilot
 > usage back-fill reads `~/.copilot/session-store.db`, unchanged here. One gap is
 > certain and SHALL be recorded as a parity gap for (usage mirror x Windows): on
-> every journal write `scripts/lib/usage-store/mirror.js` (lines 275 and 276)
-> spawns `bash scripts/usage-mirror.sh --from-write` detached, and Windows has no
-> `bash`. The evidence is that code line; the plan records whether the spawn failure
+> a journal write that passes the gates of `onWrite` (a token file present, no
+> backoff stamp younger than `CREWRIG_USAGE_MIRROR_BACKOFF_MS`, and
+> `CREWRIG_USAGE_MIRROR` not `0`) `scripts/lib/usage-store/mirror.js` (lines 275
+> and 276) spawns `bash scripts/usage-mirror.sh --from-write` detached, and Windows
+> has no `bash`. The evidence is that code line; the plan records whether the spawn failure
 > is handled, which no `error` listener on that spawn suggests it is not. This
 > spec does not edit that JavaScript file (it is outside the edit set of
 > requirement 22 and ratchet-exempt): the shim keeps the spawn working on POSIX, and
@@ -175,9 +177,18 @@ delta-spec before its pull request merges", is unchanged):
 
 Requirement 26 — PR A cannot add Bash tests, the table named two suites that do
 not run their script, and the import oracle must hold across requirement 12's
-`fzf` to `readline` change. Original, from "The plan SHALL confirm" to the end:
+`fzf` to `readline` change. Original, from "Scripts with an existing suite" to the
+end:
 
 <!-- markdownlint-disable-next-line MD029 -->
+> Scripts with an existing suite: `usage-attribute`
+> (`test-usage-attribution.sh`, `test-usage-pricing.sh`, `test-usage-dashboard.sh`),
+> `usage-backfill` (`test-usage-capture.sh`), `usage-dashboard`
+> (`test-usage-dashboard.sh`, `test-usage-pricing.sh`), `usage-mirror`
+> (`test-usage-storage.sh`, `test-usage-storage-mirror.sh`), `usage-price`
+> (`test-usage-pricing.sh`, `test-usage-dashboard.sh`), `usage-prune` and
+> `usage-query` (`test-usage-storage.sh`, `test-usage-attribution.sh` and the
+> others that name them), `sync-from-upstream` (`test-sync-from-upstream.sh`).
 > The plan SHALL confirm that each named suite executes its script and not merely
 > names it. No test references `usage-drain.sh`, `usage-task.sh`, the four import
 > scripts or `prune-transcripts.sh`: PR A SHALL add black-box Bash tests for
@@ -192,7 +203,14 @@ not run their script, and the import oracle must hold across requirement 12's
 Replacement:
 
 <!-- markdownlint-disable-next-line MD029 -->
-> The executing lines were confirmed: `test-usage-attribution.sh`,
+> Scripts with an existing suite that executes them: `usage-attribute`
+> (`test-usage-attribution.sh`, `test-usage-pricing.sh`,
+> `test-usage-dashboard.sh`), `usage-dashboard` (`test-usage-dashboard.sh`,
+> `test-usage-pricing.sh`), `usage-mirror` (`test-usage-storage-mirror.sh` alone),
+> `usage-price` (`test-usage-pricing.sh`, `test-usage-dashboard.sh`), `usage-prune`
+> and `usage-query` (`test-usage-storage.sh`, `test-usage-attribution.sh` and the
+> others that run them), `sync-from-upstream` (`test-sync-from-upstream.sh`). The
+> executing lines were confirmed: `test-usage-attribution.sh`,
 > `test-usage-pricing.sh` and `test-usage-dashboard.sh` run `usage-attribute.sh`;
 > `test-usage-pricing.sh` and `test-usage-dashboard.sh` run `usage-dashboard.sh`
 > and `usage-price.sh`; `test-usage-storage.sh` and `test-usage-attribution.sh`
@@ -221,8 +239,15 @@ Replacement:
 > answers the `import mempalace.mcp_server` probe and records the arguments of
 > `-m mempalace mine`, since they ignore `MEMPALACE_PYTHON`, and an `fzf` stub; for
 > `prune-transcripts`, a stub on `MEMPALACE_PYTHON` recording its environment,
-> and the trust-file precedence assertion of requirement 18. The tests cover at
-> least the scenarios of this spec.
+> and the trust-file precedence assertion of requirement 18. The tests cover the
+> scenarios of this spec that the shell version can satisfy today: import with no
+> sessions, missing prerequisite, declined and confirmed prompts, the Antigravity
+> temporary directory, prune dry run, `--apply` and argument validation, the
+> `usage-drain` arguments and budget, and `usage-task` `set`, `show` and `clear`.
+> The scenarios that exist only for the TypeScript version (the malformed trust
+> file, the `node` form of `usage-task` against its shim, the substring test on
+> `usage-backfill.ts`, the self-update of the sync) belong to the tests of the
+> pull request that migrates the script.
 >
 > **Dual-channel answers.** The import oracle SHALL give each scripted answer
 > through both channels at once: as a line on the script's standard input, which
