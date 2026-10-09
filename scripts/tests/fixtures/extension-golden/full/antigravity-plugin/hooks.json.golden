@@ -1,0 +1,24 @@
+{
+  "full-hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash hooks/h.sh x"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash hooks/h.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

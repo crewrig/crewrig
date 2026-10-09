@@ -1,0 +1,10 @@
+description = "Second"
+
+prompt = """
+
+Second body.
+
+---
+
+After a rule.
+"""

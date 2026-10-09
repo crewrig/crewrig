@@ -13,6 +13,9 @@
 //   context-*.ts      the context renderer (R16)
 //   tree-copy.ts resolve.ts gap-record.ts   shared plumbing (R6, R13, R14)
 
+import type { RenderCommand } from "../render-command.ts";
+import type { YamlText } from "../yaml-text.ts";
+
 /** Environment as read from `process.env`: every value is `string | undefined`. */
 export type Env = Readonly<Record<string, string | undefined>>;
 
@@ -81,4 +84,28 @@ export class ExtError extends Error {
     this.name = "ExtError";
     this.status = status;
   }
+}
+
+/** The three targets rendered by a delegated plugin builder. */
+export type PluginTarget = Exclude<Target, "gemini">;
+
+/**
+ * Everything a renderer needs, injected by the entry: nothing here is read from the
+ * process, so a plugin builder can run in-process under `build-extension` with its
+ * standard output redirected to standard error (spec 0254 R15).
+ */
+export interface ExtCtx {
+  /** Physical parent of the directory that holds the entry file (R5). */
+  readonly repoDir: string;
+  /** `<repoDir>/scripts/lib`, where the four descriptors live. */
+  readonly libDir: string;
+  readonly env: Env;
+  readonly platform: NodeJS.Platform;
+  readonly io: Io;
+  /** The descriptor's target rows, read once. */
+  readonly table: TargetTable;
+  /** The command renderer bound to the `js-yaml` reader (spec 0250). */
+  readonly renderCommand: RenderCommand;
+  /** The YAML reader the renderer was built on. */
+  readonly yaml: YamlText;
 }

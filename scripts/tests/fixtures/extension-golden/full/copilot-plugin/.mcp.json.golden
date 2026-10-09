@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "local": {
+      "command": "node",
+      "args": [
+        "${COPILOT_PLUGIN_ROOT}/dist/index.js"
+      ],
+      "env": {
+        "10": "ten",
+        "K": "V"
+      },
+      "cwd": "${COPILOT_PLUGIN_ROOT}",
+      "timeout": 30,
+      "type": "stdio"
+    },
+    "remote": {
+      "type": "http",
+      "url": "https://example.test/mcp",
+      "headers": {
+        "A": "B"
+      },
+      "timeout": 7
+    },
+    "stream": {
+      "type": "sse",
+      "url": "https://example.test/sse"
+    }
+  }
+}

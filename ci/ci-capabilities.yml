@@ -383,13 +383,14 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts
 
-  # Spec 0254 R22, R27: the TypeScript extension and plugin builder modules and their
-  # shell-library twins (row G1b of epic #1231). `jq`, `yq` and `bash` are spawned on
-  # purpose by the corpus, context and conformance suites, which retire with the shell
-  # libraries (rows I1, J3, J4). `yq` stays declared until the differential test of the
-  # entries is deleted (plan v1-F2).
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder modules, entries and
+  # twin suites (row G1b of epic #1231). `jq`, `yq` and `bash` are spawned on purpose by the
+  # corpus, context, conformance, shell-comparison, golden-shell and differential suites,
+  # which retire with the shell scripts and libraries (PR D, rows I1, J3, J4). `yq` stays
+  # declared until the differential test is deleted (plan v1-F2). The proof script and the
+  # `--check` on the real tree run here too, so Linux and Windows prove the same bytes.
   - id: extension-builders-ts
-    name: "Run the TypeScript extension and plugin builder twin suites"
+    name: "Run the TypeScript extension and plugin builder suites, the golden proof and the real-tree check"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -415,9 +416,12 @@ capabilities:
           - "scripts/lib/require-dependency.ts"
           - "scripts/lib/node-floor-guard.js"
           - "scripts/tests/extension-*.test.ts"
-          - "scripts/tests/lib/extension-fixtures.ts"
+          - "scripts/tests/lib/extension-*.ts"
           - "scripts/tests/lib/shell-extension-harness.ts"
-          - "scripts/tests/fixtures/extension/**"
+          - "scripts/tests/lib/plugin-ctx.ts"
+          - "scripts/tests/lib/windows-extension-proof.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/fixtures/extension-golden/**"
           - "extensions/**"
           - "extension-skeleton/**"
           - "package.json"
@@ -446,9 +450,12 @@ capabilities:
           - "scripts/lib/require-dependency.ts"
           - "scripts/lib/node-floor-guard.js"
           - "scripts/tests/extension-*.test.ts"
-          - "scripts/tests/lib/extension-fixtures.ts"
+          - "scripts/tests/lib/extension-*.ts"
           - "scripts/tests/lib/shell-extension-harness.ts"
-          - "scripts/tests/fixtures/extension/**"
+          - "scripts/tests/lib/plugin-ctx.ts"
+          - "scripts/tests/lib/windows-extension-proof.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/fixtures/extension-golden/**"
           - "extensions/**"
           - "extension-skeleton/**"
           - "package.json"
@@ -460,7 +467,56 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-differential.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden-shell.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate-shell.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity-shell.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude-shell.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot-shell.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts
+
+  # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release, where
+  # type stripping still emits an ExperimentalWarning. No `paths:` filter, like
+  # build-components-ts-node-24-0: the suite is fast and any shared-module change can
+  # reintroduce a warning. The production install comes first, as the suite runs builds.
+  - id: extension-builders-ts-node-24-0
+    name: "Extension and plugin builder entries are silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts
+
+  # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
+  # The production dependencies are installed first, the floor guard runs, then
+  # scripts/tests/lib/windows-extension-proof.ts builds every golden subject with the TypeScript
+  # entries from pwsh and compares each file with the committed golden tree, runs `--check`, the
+  # three plugin entries, the migration tool and the failure statuses, and prints the elapsed time.
+  # A short list of portable unit suites follows; the suites that spawn `bash`, `jq` or `yq` skip
+  # themselves on win32 and are left to Linux. No timing budget and no `paths:` filter, like the
+  # Windows jobs above: the proof must not skip silently on a change it does not list.
+  - id: windows-extension-builders
+    name: "Windows extension and plugin builders: production install, floor guard, golden proof and unit suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-extension-builders`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0254 R23).
 
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"

@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "local": {
+      "command": "node",
+      "args": [
+        "${extensionRoot}/dist/index.js"
+      ],
+      "env": {
+        "10": "ten",
+        "K": "V"
+      },
+      "cwd": "${extensionRoot}",
+      "timeout": 30
+    },
+    "remote": {
+      "serverUrl": "https://example.test/mcp",
+      "headers": {
+        "A": "B"
+      },
+      "timeout": 7
+    },
+    "stream": {
+      "serverUrl": "https://example.test/sse"
+    }
+  }
+}
