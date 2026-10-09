@@ -5,7 +5,7 @@
     "note": "Claude manifest legacy form, token path, no argument"
   },
   {
-    "command": "bash \"/home/u/.claude/hooks/mempalace-transcript.sh\"",
+    "command": "bash \"/home/agent/.claude/hooks/mempalace-transcript.sh\"",
     "transcript": "legacy-unmarked",
     "note": "Claude installed copy, double-quoted (spec scenario: decline follows the settings file's consent)"
   },
@@ -25,17 +25,17 @@
     "note": "Gemini manifest legacy form, unquoted token path"
   },
   {
-    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3 bash /home/u/.gemini/hooks/mempalace-transcript.sh",
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3 bash /home/agent/.gemini/hooks/mempalace-transcript.sh",
     "transcript": "legacy-enabled",
     "note": "Gemini installed prefix setup wrote (spec scenario: existing installation rewritten)"
   },
   {
-    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash /home/u/.gemini/hooks/mempalace-transcript.sh",
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash /home/agent/.gemini/hooks/mempalace-transcript.sh",
     "transcript": "legacy-enabled",
     "note": "Gemini installed prefix without MEMPALACE_PYTHON"
   },
   {
-    "command": "MEMPALACE_PYTHON=/usr/bin/python3 MEMPALACE_TRANSCRIPT_ENABLED=1 bash /home/u/.gemini/hooks/mempalace-transcript.sh",
+    "command": "MEMPALACE_PYTHON=/usr/bin/python3 MEMPALACE_TRANSCRIPT_ENABLED=1 bash /home/agent/.gemini/hooks/mempalace-transcript.sh",
     "transcript": "legacy-enabled",
     "note": "owned names in the other order"
   },
@@ -55,17 +55,17 @@
     "note": "Copilot manifest legacy form"
   },
   {
-    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash \"/home/u/.copilot/hooks/mempalace-transcript.sh\"",
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 bash \"/home/agent/.copilot/hooks/mempalace-transcript.sh\"",
     "transcript": "legacy-enabled",
     "note": "Copilot installed prefix"
   },
   {
-    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_MCP_PORT=41999 bash \"/home/u/.copilot/hooks/mempalace-transcript.sh\"",
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_MCP_PORT=41999 bash \"/home/agent/.copilot/hooks/mempalace-transcript.sh\"",
     "transcript": "foreign-prefix",
     "note": "spec scenario: an operator's own setting is not dropped"
   },
   {
-    "command": "MEMPALACE_MCP_PORT=41999 bash \"/home/u/hooks/mempalace-transcript.sh\"",
+    "command": "MEMPALACE_MCP_PORT=41999 bash \"/home/agent/hooks/mempalace-transcript.sh\"",
     "transcript": "foreign-prefix",
     "note": "foreign assignment alone"
   },
@@ -80,7 +80,7 @@
     "note": "spec scenario row: legacy Antigravity form with the enabling prefix"
   },
   {
-    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3 bash \"/home/u/.gemini/antigravity-cli/hooks/mempalace-transcript.sh\" Stop",
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3 bash \"/home/agent/.gemini/antigravity-cli/hooks/mempalace-transcript.sh\" Stop",
     "transcript": "legacy-enabled",
     "note": "Antigravity installed form setup wrote"
   },
@@ -140,12 +140,12 @@
     "note": "direct shape with the owned prefix is still foreign"
   },
   {
-    "command": "MEMPALACE_TRANSCRIPT_ENABLED=0 bash \"/home/u/.gemini/hooks/mempalace-transcript.sh\"",
+    "command": "MEMPALACE_TRANSCRIPT_ENABLED=0 bash \"/home/agent/.gemini/hooks/mempalace-transcript.sh\"",
     "transcript": "legacy-unmarked",
     "note": "spec scenario: a decline never turns recording on (variable 0)"
   },
   {
-    "command": "MEMPALACE_PYTHON=/usr/bin/python3 bash \"/home/u/.gemini/hooks/mempalace-transcript.sh\"",
+    "command": "MEMPALACE_PYTHON=/usr/bin/python3 bash \"/home/agent/.gemini/hooks/mempalace-transcript.sh\"",
     "transcript": "legacy-unmarked",
     "note": "owned name without the enabling one"
   },

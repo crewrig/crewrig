@@ -728,20 +728,20 @@ nothing, and the record is still sent.
 **Scenario:** An existing installation is rewritten on the next setup run
 
 Given a Gemini CLI settings file whose `AfterModel` entry reads
-`MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3 bash /home/u/.gemini/hooks/mempalace-transcript.sh`,
+`MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_PYTHON=/usr/bin/python3 bash /home/agent/.gemini/hooks/mempalace-transcript.sh`,
 a worktree git guard entry, a usage-capture entry and an operator hook on the
 same event, and a checkout at `/repo` holding `hooks/mempalace-transcript.ts`
 When the user re-runs `scripts/setup-gemini-interactive.sh` and declines the
 session-recording question
 Then the transcript entry reads `node "/repo/hooks/mempalace-transcript.ts" gemini-cli`
 after a 0600 backup, the three other entries are byte-identical, the rewrite
-and the unused copy at `/home/u/.gemini/hooks/mempalace-transcript.sh` are
+and the unused copy at `/home/agent/.gemini/hooks/mempalace-transcript.sh` are
 reported, and a second run writes nothing and creates no backup.
 
 **Scenario:** An operator's own setting is not dropped
 
 Given a Copilot CLI entry reading
-`MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_MCP_PORT=41999 bash "/home/u/.copilot/hooks/mempalace-transcript.sh"`
+`MEMPALACE_TRANSCRIPT_ENABLED=1 MEMPALACE_MCP_PORT=41999 bash "/home/agent/.copilot/hooks/mempalace-transcript.sh"`
 When setup runs and the user declines session recording, then when it runs
 again and the user enables it
 Then both times the entry is byte-identical and reported as left because of
@@ -778,7 +778,7 @@ reports it as disabled and not upgraded; the same configurations holding the
 **Scenario:** A decline on Claude Code follows the settings file's own consent
 
 Given a Claude Code settings file holding
-`bash "/home/u/.claude/hooks/mempalace-transcript.sh"` on `Stop`, first with
+`bash "/home/agent/.claude/hooks/mempalace-transcript.sh"` on `Stop`, first with
 `env.MEMPALACE_TRANSCRIPT_ENABLED` equal to `"1"`, then with that key absent,
 then equal to `"0"`
 When the user re-runs `scripts/setup-claude-interactive.sh` and declines
