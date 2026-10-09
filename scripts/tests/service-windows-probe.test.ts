@@ -7,6 +7,7 @@
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { after, test } from "node:test";
+import { POWERSHELL_SCRIPT } from "../lib/service/os-inspect.ts";
 
 const skip = process.platform !== "win32";
 const POWERSHELL = `${process.env["SystemRoot"] ?? "C:\\Windows"}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
@@ -64,6 +65,69 @@ test(
       `MEASURE: probe create status=${created.status} out=${JSON.stringify(`${created.stdout}${created.stderr}`.trim().slice(0, 160))}`,
     );
     after(() => spawnSync(SCHTASKS, ["/Delete", "/TN", TASK, "/F"], { windowsHide: true }));
+    // A task that really runs, as the daemon tasks do while the state is read.
+    const longRun = TASK + "-run";
+    const mk = spawnSync(
+      SCHTASKS,
+      [
+        "/Create",
+        "/TN",
+        longRun,
+        "/SC",
+        "ONCE",
+        "/ST",
+        "23:58",
+        "/TR",
+        "ping -n 300 127.0.0.1",
+        "/F",
+      ],
+      { encoding: "utf8", windowsHide: true },
+    );
+    const go = spawnSync(SCHTASKS, ["/Run", "/TN", longRun], {
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    console.log(`MEASURE: probe create-running create=${mk.status} run=${go.status}`);
+    after(() => {
+      spawnSync(SCHTASKS, ["/End", "/TN", longRun], { windowsHide: true });
+      spawnSync(SCHTASKS, ["/Delete", "/TN", longRun, "/F"], { windowsHide: true });
+    });
+    spawnSync("ping", ["-n", "3", "127.0.0.1"], { windowsHide: true });
+    ps("os-inspect-script-running-task", POWERSHELL_SCRIPT, {
+      CREWRIG_TASK_PATH: longRun,
+      CREWRIG_PID_LIST: "4",
+    });
+    ps("os-inspect-script-no-task", POWERSHELL_SCRIPT, {
+      CREWRIG_TASK_PATH: "",
+      CREWRIG_PID_LIST: "",
+    });
+    ps(
+      "com-get-running-tasks-enumerate",
+      "$s = New-Object -ComObject 'Schedule.Service'; $s.Connect(); foreach ($r in $s.GetRunningTasks(1)) { if ($r.Path -eq $env:T) { [int]$r.EnginePID } }",
+      { T: longRun },
+    );
+    ps(
+      "com-running-count-only",
+      "$s = New-Object -ComObject 'Schedule.Service'; $s.Connect(); $s.GetRunningTasks(1).Count",
+    );
+    ps(
+      "com-get-task-instances",
+      "$s = New-Object -ComObject 'Schedule.Service'; $s.Connect(); $t = $s.GetFolder('\\').GetTask($env:T); \"$([int]$t.State) $([int]$t.LastTaskResult)\"",
+      { T: longRun },
+    );
+    ps(
+      "cim-with-want-loop",
+      "$want = @(4); $rows = @(Get-CimInstance -Query 'SELECT ProcessId, ParentProcessId, CreationDate FROM Win32_Process' | ForEach-Object { $row = [ordered]@{ pid = [int]$_.ProcessId; ppid = [int]$_.ParentProcessId }; if ($want -contains [int]$_.ProcessId -and $_.CreationDate) { $row.start = 1 }; $row }); $rows.Count",
+    );
+    timed("schtasks-query-v-csv-running", SCHTASKS, [
+      "/Query",
+      "/TN",
+      longRun,
+      "/V",
+      "/FO",
+      "CSV",
+      "/NH",
+    ]);
     ps("powershell-empty", "exit 0");
     ps(
       "com-task-state",
