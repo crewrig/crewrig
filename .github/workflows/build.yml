@@ -1676,6 +1676,7 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-windows.test.ts
 
       - name: Restart proof and refusal legs
+        if: success() || failure()
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-windows-legs.test.ts
       - name: Cancel workflow on job failure
         if: failure()
