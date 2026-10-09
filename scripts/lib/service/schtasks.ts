@@ -40,6 +40,8 @@ export const STDIO_ADVICE =
 export const DOCTOR_POINTER = "Run doctor-mempalace for the state of the mechanism.";
 export const SWEEP_UNDETERMINED =
   "process sweep UNDETERMINED: the process table could not be read, so this does not claim that no daemon process remains";
+export const DISABLE_FAILED =
+  "could not disable the task before ending it: a trigger may have started a new instance after the sweep, so a daemon process of the removed task may still run; run `status`, then `doctor-mempalace`, to find it";
 
 export interface SchtasksOptions {
   /** Files an install put under ~/.crewrig/ that no other service uses; removed on a failed install. */
@@ -248,15 +250,20 @@ export function createBackend(options: SchtasksOptions = {}): ServiceBackend {
       const own = classifyTask(read.xml, expect);
       if (own.kind === "foreign")
         return fail(`the task ${task} is not CrewRig's (${own.reason}); left in place`);
+      // Disable first so that no trigger of the task can start a new instance while it is
+      // ended and swept (spec 0252 delta-02): the repeating keep-alive trigger would.
+      const disable = mgr("/Change", "/TN", task, "/DISABLE");
+      const disableFailed = disable.kind !== "ok";
+      if (disableFailed) report(DISABLE_FAILED);
       const ended = endTask(task);
       const del = mgr("/Delete", "/TN", task, "/F");
       if (del.kind !== "ok")
         return fail(`${command(["/Delete", "/TN", task, "/F"])} failed: ${verbatim(del)}`);
-      return ok(
+      const detail =
         ended.ok && ended.detail !== undefined && ended.detail !== "was not running"
           ? `removed; ${ended.detail}`
-          : "removed",
-      );
+          : "removed";
+      return ok(disableFailed ? `${detail}; ${DISABLE_FAILED}` : detail);
     },
 
     supervisorPid(names: ServiceNames): SupervisorPid {

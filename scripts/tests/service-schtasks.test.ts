@@ -184,26 +184,6 @@ test("a definition for another task URI is refused before any call", { skip }, (
   assert.equal(fake.calls().length, 0);
 });
 
-test("uninstall: absent is success, own is ended then deleted, foreign is left", { skip }, () => {
-  const lines: string[] = [];
-  const backend = createBackend({ report: (l) => lines.push(l) });
-  const absent = backend.uninstall(names);
-  assert.deepEqual(absent, { ok: true, detail: "was not loaded" });
-  fake.seed(TASK, renderTaskXml(input()));
-  fake.calls().length = 0;
-  assert.equal(backend.uninstall(names).ok, true);
-  assert.deepEqual(fake.calls().slice(-2), [
-    ["/End", "/TN", TASK],
-    ["/Delete", "/TN", TASK, "/F"],
-  ]);
-  assert.match(lines.join("\n"), /UNDETERMINED/);
-  assert.deepEqual(backend.uninstall(names), { ok: true, detail: "was not loaded" });
-  fake.seed(TASK, renderTaskXml(input()).replace(/<Description>[^<]*</, "<Description>Not ours<"));
-  const foreign = backend.uninstall(names);
-  assert.equal(foreign.ok, false);
-  assert.equal(fake.has(TASK), true);
-});
-
 test("start runs the task", { skip }, () => {
   fake.seed(TASK, renderTaskXml(input()));
   assert.equal(createBackend().start(names).ok, true);

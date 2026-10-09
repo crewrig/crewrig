@@ -46,6 +46,10 @@ switch (a[0]) {
   case "/End":
     say("SUCCESS\\n", 0);
     break;
+  case "/Change":
+    if (mode.changeFail) say("ERREUR : Acces refuse.\\n", 1);
+    say("SUCCESS\\n", 0);
+    break;
   default:
     say("ERROR: Invalid syntax.\\n", 1);
 }
