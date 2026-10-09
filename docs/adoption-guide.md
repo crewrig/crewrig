@@ -480,7 +480,7 @@ no dual-shape read and no fallback through a tool-specific manifest.
 
 **What breaks.** An extension whose `extension.json` still declares
 `components.<subject>.enabled`, or any of the five retired per-CLI keys,
-stops building, installing, and passing `bash scripts/build-extension.sh
+stops building, installing, and passing `node scripts/build-extension.ts
 --check` from the moment this change lands. The failure names the retired
 form it found and points here.
 
@@ -490,7 +490,9 @@ form it found and points here.
 task migrate-extension EXT=<your-extension-name>
 ```
 
-(equivalently, `bash scripts/migrate-extension.sh <path-or-name>`). The
+(equivalently, `node scripts/lib/node-floor-guard.js` then
+`node scripts/migrate-extension.ts <path-or-name>`, as two separate commands;
+Node.js 24 or later, with `js-yaml` from the setup dependency step). The
 tool converts an enabled `components.<subject>` entry into the equivalent
 generic top-level `<subject>` section, drops a disabled entry with nothing
 added, deletes the `components` object outright, drops the five retired

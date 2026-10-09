@@ -1,5 +1,5 @@
 // extension-context-declared.test.ts — declared command and skill names (spec 0254 R16).
-// Twins `_render_context_declared_commands/skills` (scripts/lib/render-context.sh:161-184).
+// Twins `_render_context_declared_commands/skills` (the shell renderer `render-context` (deleted in spec 0254 PR D; `git show 6657b08:scripts/lib/render-context (shell)`) lines 161-184).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";

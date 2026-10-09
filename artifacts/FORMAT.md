@@ -405,7 +405,7 @@ The placeholder/build-strip model above applies to `artifacts/` components,
 which are *built* into per-CLI outputs. A skill or agent shipped inside an
 **extension** (`extensions/core`, `extensions/library`) is different: it is
 consumed **in place** — `install-extension.sh` does `ln -s` / `cp -rf` of the
-whole extension dir, and `build-claude-plugin.sh` does `cp -r` of the skill dir
+whole extension dir, and `scripts/build-claude-plugin.ts` does a recursive copy of the skill dir
 — so every CLI reads the same `SKILL.md` / `AGENT.md` source bytes with **no
 render seam** to strip a frontmatter block. Two consequences follow (spec 0043):
 
@@ -499,8 +499,10 @@ The build (`scripts/build-components.ts`, reached through the shim
   by the setup dependency step (`npm ci --omit=dev --workspaces=false`). The
   build needs neither `yq` nor `jq`.
 
-The extension and plugin builders (`scripts/build-extension.sh` and its
-siblings) and the Bash scripts that have not migrated still need:
+The extension and plugin builders (`scripts/build-extension.ts` and its
+siblings, TypeScript behind forwarding `.sh` shims, spec 0254) need no `yq` or `jq`:
+they run on Node.js 24 or later with `js-yaml` from the setup dependency step.
+The Bash scripts that have not migrated still need:
 
 - **`yq`** for YAML frontmatter parsing, and **`jq`** for JSON merging (hooks,
   policies, MCP servers), until row G1b of the TypeScript migration moves them.

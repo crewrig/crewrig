@@ -91,7 +91,6 @@ scripts/lib/model-resolve.sh
 scripts/lib/monorepo-release-lib.sh
 scripts/lib/provenance-carrier.sh
 scripts/lib/render-command.sh
-scripts/lib/render-context.sh
 scripts/lib/tls-delegation.sh
 scripts/lib/tls-exec.sh
 scripts/lib/usage-capture-optin.sh

@@ -91,7 +91,7 @@ section verbatim, confirming:
 
 - **Envelope confirmed**: `{"hooks": {"EVENT_NAME": [{"matcher": ...,
   "hooks": [{"type": "command", "command": ..., "timeout": ...}]}]}}` — the
-  incumbent `build-claude-plugin.sh:213` shape (`{"hooks": $CLAUDE_HOOKS}`)
+  incumbent `build-claude-plugin.sh:213` shape (now `scripts/lib/extension/hooks-emit.ts`) (`{"hooks": $CLAUDE_HOOKS}`)
   is **confirmed from the installed tool**, not merely inherited. This
   settles the R9 divergence step 1 named: spec 0179's own probe-record cell
   ("no envelope") does not survive a fresh read of the installed binary.

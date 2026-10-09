@@ -1,0 +1,42 @@
+# old-invocation-allowlist.txt — files that may still carry the old extension-builder
+# invocation or name the deleted shared render library (spec 0254 R29).
+# scripts/tests/extension-references.test.ts fails on any other tracked or untracked text
+# file that tells a reader to run `bash scripts/<one of the five builders>.sh`, or names it.
+#
+# Format: one repo-relative path per line; an entry ending in `/` covers every file below that
+# directory. Every entry carries a reason as the `#` comment line directly above it. An entry
+# that no longer matches a file with a hit, or that appears twice, fails the suite.
+
+# The five shims: their header and usage text name the invocation they keep working.
+scripts/build-extension.sh
+scripts/build-claude-plugin.sh
+scripts/build-copilot-plugin.sh
+scripts/build-antigravity-extension.sh
+scripts/migrate-extension.sh
+
+# Unmigrated shell scripts that still reach a builder through its shim (they move with their own row).
+scripts/check-extension-manifest-version.sh
+scripts/check-extension-pivot.sh
+scripts/create-extension.sh
+scripts/install-antigravity-extension.sh
+scripts/install-claude-plugin.sh
+scripts/install-copilot-plugin.sh
+scripts/install-extension.sh
+scripts/release-package-extension.sh
+
+# Bash tests that have not migrated: each deliberately drives the shim or the shell oracle.
+scripts/tests/test-build-extension.sh
+scripts/tests/test-check-extension-manifest-version.sh
+scripts/tests/test-create-extension-combinations.sh
+scripts/tests/test-extension-render-conformance.sh
+scripts/tests/test-migrate-extension.sh
+
+# Negative assertions: these suites name the deleted library to prove it is gone and unlisted.
+scripts/tests/extension-ci-wiring.test.ts
+scripts/tests/extension-shim.test.ts
+
+# Specifications are dated records of the requirement, including the old invocation.
+specs/
+
+# A dated evidence record under tests/ quoting the invocation it ran.
+tests/gemini-extension-path-form.md

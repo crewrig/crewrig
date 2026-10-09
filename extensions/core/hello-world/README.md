@@ -28,8 +28,10 @@ hello-world/
 
 Nothing named after a specific command-line tool is committed here — a file
 of that shape is always a build output (spec 0173 requirement 4). Render one
-with `bash scripts/build-extension.sh [--target <cli>] hello-world`; `bash
-scripts/build-extension.sh --check` fails the build if a generated file is
+with `node scripts/build-extension.ts [--target <cli>] hello-world` (after
+`node scripts/lib/node-floor-guard.js`, as a separate command; Node.js 24 or
+later, `js-yaml` from the setup dependency step); `node
+scripts/build-extension.ts --check` fails the build if a generated file is
 ever committed, if a fresh render fails, or if the render's output diverges
 from the declared set.
 
@@ -41,9 +43,9 @@ forms are produced by how each tool loads an extension:
 
 - **Gemini CLI** loads an extension from an installed build tree, so its
   form, `commands/hello.toml`, is an **ephemeral build output** —
-  `bash scripts/build-extension.sh --target gemini hello-world` renders it
+  `node scripts/build-extension.ts --target gemini hello-world` renders it
   into `build/extensions/hello-world/commands/hello.toml`. It is **never**
-  committed here; `bash scripts/build-extension.sh --check` fails the build
+  committed here; `node scripts/build-extension.ts --check` fails the build
   if a copy of it ever is.
 - **Claude Code, GitHub Copilot CLI, Antigravity CLI** each build an
   ephemeral plugin at install time, rendering the pivot `.md` directly

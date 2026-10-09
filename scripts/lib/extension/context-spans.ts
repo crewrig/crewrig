@@ -1,7 +1,7 @@
 // context-spans.ts — the mask pass and the ONLY/EXCEPT span pass of the context renderer,
 // pure functions over text (spec 0254 R16).
-// Twins `_render_context_impl` pass (b) (scripts/lib/render-context.sh:463-465) and
-// `_render_context_pass_a` (render-context.sh:192-350), reproducing its awk control flow:
+// Twins `_render_context_impl` pass (b) (the shell renderer `render-context` (deleted in spec 0254 PR D; `git show 6657b08:scripts/lib/render-context (shell)`) lines 463-465) and
+// `_render_context_pass_a` (render-context lines 192-350), reproducing its awk control flow:
 // the first diagnostic aborts the scan and nothing else is produced.
 
 /** U+0001 stands for a literal `$${` between the mask pass and the unmask pass. */

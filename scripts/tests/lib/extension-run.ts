@@ -1,8 +1,7 @@
-// extension-run.ts — run the extension builders, shell or TypeScript, in a fixture root and
+// extension-run.ts — run the extension builders (the TypeScript entries) in a fixture root and
 // collect what they produced (spec 0254 R22, R23). Shared by the golden, differential and
 // Windows proofs so each compares exactly the same set of outputs.
 
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -25,17 +24,6 @@ export function extensionRoot(subjects: Readonly<Record<string, FileMap>>): Fixt
 /** The skeleton container the `--check` run scans (an empty directory is enough). */
 export function withSkeleton(tree: FixtureTree): void {
   fs.mkdirSync(path.join(tree.root, "extension-skeleton"), { recursive: true });
-}
-
-/** `bash scripts/<script>.sh <args>` in the root (the shell oracle). Linux and macOS only. */
-export function runShell(tree: FixtureTree, script: string, args: readonly string[]): RunResult {
-  const res = spawnSync("bash", [path.join(tree.root, "scripts", `${script}.sh`), ...args], {
-    cwd: tree.root,
-    encoding: "utf8",
-    // LC_ALL=C: the shell sorts file lists by locale, the twins by code unit (spec 0254 R28(g)).
-    env: { ...process.env, REPO_DIR: undefined, LC_ALL: "C" } as NodeJS.ProcessEnv,
-  });
-  return { status: res.status, stdout: res.stdout, stderr: res.stderr };
 }
 
 /** `node scripts/<script>.ts <args>` in the root (the TypeScript entry). */
