@@ -272,9 +272,10 @@ system-context store*.
    of the recovery itself, not as a chore to do "after the work".
 
    **Also record the session's usage declaration** before any task work
-   begins (spec 0208 R3): `bash scripts/usage-task.sh set --task-key
-   <handoff_key> --channel protocol`; `handoff_key` is the bare decimal
-   ticket number, identical across every CLI.
+   begins (spec 0208 R3): run the floor guard `node scripts/lib/node-floor-guard.js`,
+   then `node scripts/usage-task.ts set --task-key <handoff_key> --channel
+   protocol` (`bash scripts/usage-task.sh` remains a forwarding shim only);
+   `handoff_key` is the bare decimal ticket number, identical across every CLI.
 
 **Reviewer-seat exemption.** A seated pass — an agent instantiated per
 `docs/reviewer-seat.md` → *Instantiating a seated pass*, occupying the

@@ -104,10 +104,10 @@ The memo in rule 3 is written ONLY for the live-checkout derivation (rule 4). An
 
 ### Backfill and wing override
 
-When performing a backfill over project roots that no longer exist or have been renamed, use the lever:
+When performing a backfill over project roots that no longer exist or have been renamed, use the lever. Run `node scripts/lib/node-floor-guard.js` first on an unverified Node.js: the commands need Node.js 24 or later.
 
 ```bash
-CREWRIG_USAGE_WING=<project> bash scripts/usage-backfill.sh
+CREWRIG_USAGE_WING=<project> node scripts/usage-backfill.ts
 ```
 
 This applies rule 1 uniformly to all records in the backfill, overriding their original derivations and resolving every record to the named wing.
@@ -126,14 +126,14 @@ When the token file is present:
 
 1. A pending marker is created at `<root>/mirror/pending/<cli>/<period>/<recordId>`.
 2. The unreachable stamp is checked. If it exists and is younger than `CREWRIG_USAGE_MIRROR_BACKOFF_MS`, the write returns without spawning.
-3. Otherwise, a detached catch-up process (`bash scripts/usage-mirror.sh --from-write`) is spawned to move markers from `pending/` to `mirrored/` by creating drawers in MemPalace.
+3. Otherwise, a detached catch-up process (`node scripts/usage-mirror.ts --from-write`) is spawned to move markers from `pending/` to `mirrored/` by creating drawers in MemPalace.
 
 ### Explicit vs. write-time catch-up, and the mirror lock
 
 Every catch-up (write-time or operator-invoked) serializes on a single `mirror.lock` file. The two callers treat contention differently:
 
 - **Write-time (detached, `--from-write`)** — a single, non-blocking lock attempt. If another child already holds the lock, this one exits immediately with nothing done; the sibling in progress owns the drain, and the next write's own spawn will retry if pending markers remain.
-- **Explicit (`bash scripts/usage-mirror.sh`, with or without `--reconcile`, invoked by an operator or CI without `--from-write`)** — on a contended lock, polls every 100 ms until the lock is released or goes stale (bounded by `CREWRIG_USAGE_MIRROR_WAIT_MS`, defaulting to `CREWRIG_USAGE_MIRROR_LOCK_STALE_MS`), then runs its own pass. This is what lets an operator run `usage-mirror.sh` right after a batch of writes and rely on every marker pending at that moment having been attempted, rather than silently losing the race to a detached write-time child and returning having mirrored nothing.
+- **Explicit (`node scripts/usage-mirror.ts`, with or without `--reconcile`, invoked by an operator or CI without `--from-write`)** — on a contended lock, polls every 100 ms until the lock is released or goes stale (bounded by `CREWRIG_USAGE_MIRROR_WAIT_MS`, defaulting to `CREWRIG_USAGE_MIRROR_LOCK_STALE_MS`), then runs its own pass. This is what lets an operator run `usage-mirror.ts` right after a batch of writes and rely on every marker pending at that moment having been attempted, rather than silently losing the race to a detached write-time child and returning having mirrored nothing.
 
 Whichever caller does acquire the lock drains `pending/` in a loop — repeating its pass until the directory is empty or a pass makes no further progress — rather than a single pass. This absorbs markers created by sibling writes while the drain was running, instead of stranding them for "the next write" to spawn a fresh catch-up for.
 
@@ -143,7 +143,7 @@ When a mirror operation fails with a transport error (daemon unreachable), the `
 
 When MemPalace answers but cannot serve the call at all (an error without a `success` field, `isError`, or a malformed reply), the catch-up stops its pass after that one call, without writing the stamp, so a backlog costs at most one call per write. A failure MemPalace reports for one record (`success: false`) is logged, and the pass moves on to the next record.
 
-When MemPalace keeps answering a per-record `tool-error` for several markers in a row, the catch-up stops that pass after `CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER` (default 5) consecutive failures, without writing the stamp — the daemon is reachable, only that record is not. Each failing marker's own mtime is bumped so the next catch-up pass tries markers in a different order, moving the just-failed ones behind whatever else is pending. Catch-up passes run only on a new write's detached spawn or an explicit operator/CI invocation (`bash scripts/usage-mirror.sh`, `task usage:mirror`) — there is no scheduled or cron-triggered run — so a healthy tail stuck behind more failing markers than the breaker's threshold stays pending until one of those triggers actually fires, not on a fixed timer.
+When MemPalace keeps answering a per-record `tool-error` for several markers in a row, the catch-up stops that pass after `CREWRIG_USAGE_MIRROR_TOOL_ERROR_BREAKER` (default 5) consecutive failures, without writing the stamp — the daemon is reachable, only that record is not. Each failing marker's own mtime is bumped so the next catch-up pass tries markers in a different order, moving the just-failed ones behind whatever else is pending. Catch-up passes run only on a new write's detached spawn or an explicit operator/CI invocation (`node scripts/usage-mirror.ts`, `task usage:mirror`) — there is no scheduled or cron-triggered run — so a healthy tail stuck behind more failing markers than the breaker's threshold stays pending until one of those triggers actually fires, not on a fixed timer.
 
 ### Drawer structure
 
@@ -177,12 +177,12 @@ Each spooled record is validated and written to the journal via the standard wri
 On a machine that ran 0206's capture step before the spool hand-over, the first drain is a one-time cost that scales with whatever 0206 spooled before the hand-over; the legacy spool no longer grows. Hook-triggered writes drain under the 2-second default budget, so a large leftover spool can take several writes to empty. To pay the whole cost once, at a time you choose, run the one-shot drain, which runs with no budget:
 
 ```bash
-task usage:drain  # equivalently: bash scripts/usage-drain.sh
+task usage:drain  # equivalently: node scripts/usage-drain.ts
 ```
 
 ## Read surface
 
-The `bash scripts/usage-query.sh` command retrieves records from the journal (or from pending mirrors). Output is JSONL, one record per line. Give at least one of `--session`, `--agent` with `--parent`, `--period`, `--task-key`, or `--asset`. Selectors compose: every further selector, plus `--cli` and `--fidelity`, narrows the result (AND), and `--task-key` and `--asset` test the ledger-applied attribution unless `--no-ledger` is given. A listing with `--period` returns only that month's records and reads only its partitions. With `--rollup`, `--period` is a placement bound instead (see [Period rollups](usage-pricing.md#period-rollups)). `--pending` honours `--fidelity` only, and `--undrained` takes no filter.
+The `node scripts/usage-query.ts` command retrieves records from the journal (or from pending mirrors). Output is JSONL, one record per line. Give at least one of `--session`, `--agent` with `--parent`, `--period`, `--task-key`, or `--asset`. Selectors compose: every further selector, plus `--cli` and `--fidelity`, narrows the result (AND), and `--task-key` and `--asset` test the ledger-applied attribution unless `--no-ledger` is given. A listing with `--period` returns only that month's records and reads only its partitions. With `--rollup`, `--period` is a placement bound instead (see [Period rollups](usage-pricing.md#period-rollups)). `--pending` honours `--fidelity` only, and `--undrained` takes no filter.
 
 - **`--session <id>`** — All records in the session. Requires the full session ID.
 - **`--agent <id> --parent <parentSessionId>`** — All records from the named agent within its parent session.
@@ -199,7 +199,7 @@ Records returned by read operations are verbatim journal entries, **unless an at
 To read records with their original attribution, bypassing any ledger overrides:
 
 ```bash
-bash scripts/usage-query.sh --task-key 1171 --no-ledger
+node scripts/usage-query.ts --task-key 1171 --no-ledger
 ```
 
 Each record carries its original `schemaVersion`, so downstream processing can handle multiple schema versions if needed.
@@ -209,7 +209,7 @@ Each record carries its original `schemaVersion`, so downstream processing can h
 Records are never automatically removed. Removal is explicit and period-scoped:
 
 ```bash
-bash scripts/usage-prune.sh <cli> <YYYY-MM>
+node scripts/usage-prune.ts <cli> <YYYY-MM>
 ```
 
 This command:
@@ -228,13 +228,13 @@ A period for which no derived store has anything recorded still prints a report 
 To restore writability to a pruned period without recovering deleted records:
 
 ```bash
-bash scripts/usage-prune.sh <cli> <YYYY-MM> --unprune
+node scripts/usage-prune.ts <cli> <YYYY-MM> --unprune
 ```
 
 This removes only the pruned marker, allowing writes to the period again. **It does not restore journal entries, sidecars, or drawers, and does not recover records rejected while the period was pruned.** To recover rejected records, the capture cursors must be reset:
 
 ```bash
-bash scripts/usage-backfill.sh --reset-cursors
+node scripts/usage-backfill.ts --reset-cursors
 ```
 
 **Bold warning:** Once unpruned, new writes to the period will succeed, but previously rejected records (those that failed validation while the period was pruned) remain lost. Use `--reset-cursors` to back-capture those missed records from the original source.

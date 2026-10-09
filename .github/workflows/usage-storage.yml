@@ -6,17 +6,26 @@ on:
     paths:
       - "scripts/lib/usage-store/**"
       - "scripts/usage-query.sh"
+      - "scripts/usage-query.ts"
       - "scripts/usage-prune.sh"
+      - "scripts/usage-prune.ts"
       - "scripts/usage-mirror.sh"
+      - "scripts/usage-mirror.ts"
       - "scripts/usage-inventory.ts"
       - "scripts/usage-drain.sh"
+      - "scripts/usage-drain.ts"
       - "scripts/usage-task.sh"
+      - "scripts/usage-task.ts"
       - "scripts/usage-attribute.sh"
+      - "scripts/usage-attribute.ts"
       - "scripts/usage-backfill.sh"
+      - "scripts/usage-backfill.ts"
       - "scripts/build-usage-validator.js"
       - "scripts/tests/test-usage-storage*.sh"
       - "scripts/tests/usage-inventory.test.ts"
+      - "scripts/lib/usage-wrapper.ts"
       - "scripts/tests/usage-wrappers-oracle.test.ts"
+      - "scripts/tests/usage-wrappers.test.ts"
       - "scripts/tests/hermetic-env.test.ts"
       - "scripts/tests/lib/hermetic-env.ts"
       - "scripts/tests/fixtures/usage-storage/**"
@@ -30,17 +39,26 @@ on:
     paths:
       - "scripts/lib/usage-store/**"
       - "scripts/usage-query.sh"
+      - "scripts/usage-query.ts"
       - "scripts/usage-prune.sh"
+      - "scripts/usage-prune.ts"
       - "scripts/usage-mirror.sh"
+      - "scripts/usage-mirror.ts"
       - "scripts/usage-inventory.ts"
       - "scripts/usage-drain.sh"
+      - "scripts/usage-drain.ts"
       - "scripts/usage-task.sh"
+      - "scripts/usage-task.ts"
       - "scripts/usage-attribute.sh"
+      - "scripts/usage-attribute.ts"
       - "scripts/usage-backfill.sh"
+      - "scripts/usage-backfill.ts"
       - "scripts/build-usage-validator.js"
       - "scripts/tests/test-usage-storage*.sh"
       - "scripts/tests/usage-inventory.test.ts"
+      - "scripts/lib/usage-wrapper.ts"
       - "scripts/tests/usage-wrappers-oracle.test.ts"
+      - "scripts/tests/usage-wrappers.test.ts"
       - "scripts/tests/hermetic-env.test.ts"
       - "scripts/tests/lib/hermetic-env.ts"
       - "scripts/tests/fixtures/usage-storage/**"
@@ -86,7 +104,7 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts
 
       - name: Check the usage wrapper oracle and the hermetic environment helper (POSIX only)
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/hermetic-env.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/usage-wrappers.test.ts scripts/tests/hermetic-env.test.ts
 
       - name: Verify the standalone validator matches the generator
         run: node scripts/build-usage-validator.js --check
