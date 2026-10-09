@@ -86,7 +86,7 @@ test("no call carries /V or /FO, and translated output changes nothing", { skip 
   for (const call of fake.calls()) {
     assert.equal(call.includes("/V"), false, call.join(" "));
     assert.equal(call.includes("/FO"), false, call.join(" "));
-    assert.ok(["/Query", "/Create", "/Delete", "/Run", "/End"].includes(call[0] ?? ""));
+    assert.ok(["/Query", "/Create", "/Change", "/Delete", "/Run", "/End"].includes(call[0] ?? ""));
   }
   assert.ok(fake.calls().length > 10);
 });
