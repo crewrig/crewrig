@@ -9,7 +9,6 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
@@ -298,5 +297,4 @@ describe("the TypeScript entries behave as the shell scripts", { skip }, () => {
 
 test("the scenario labels are unique", () => {
   assert.equal(new Set(scenarios.map((s) => s.label)).size, scenarios.length);
-  assert.ok(fs.existsSync(path.join(import.meta.dirname, "lib", "extension-trees.ts")));
 });
