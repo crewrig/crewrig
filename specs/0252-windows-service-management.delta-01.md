@@ -38,11 +38,15 @@ SHALL in any case snapshot the descendants of the supervised process before endi
 the task and end the leftovers by process identifier and start time, so that
 requirement 24's "no process of the daemon tree remains after `stop`" holds. If the
 measurement shows that a process of the daemon tree survives the end of its launcher
-when the task is ended by any other means (the scheduler, a logoff, an external kill of
-the launcher), requirement 11's guarantee does not hold on Windows for that case: PRs C
-and D SHALL NOT ship the Windows `stop` until a delta-spec of this spec decides the
-treatment, and the case SHALL NOT be recorded as a parity gap in its place. This is the
-same rule requirement 16 applies to the supervised process identifier.
+when the task is ended by the Task Scheduler (an end requested through it, a logoff, a
+deletion of the task), requirement 11's guarantee does not hold on Windows for that
+case: PRs C and D SHALL NOT ship the Windows `stop` until a delta-spec of this spec
+decides the treatment, and the case SHALL NOT be recorded as a parity gap in its place.
+This is the same rule requirement 16 applies to the supervised process identifier. An
+external kill of the launcher process alone is not in this rule: as on macOS and Linux,
+where the launcher's death by `SIGKILL` alone leaves its child, it can leave the daemon
+running, the next start refuses fast on the taken port, and the case is recorded under
+requirement 25 with its measurement.
 
 ## MODIFIED
 
@@ -59,9 +63,11 @@ Replacement:
 > … and start the daemon child with no console window of its own. The action of
 > requirement 7 is the Node.js executable with the program as its first argument, a
 > console program, so the console window of the launcher process itself is not hidden by
-> that shape: it SHALL be recorded under requirement 25 as a parity gap with the
-> measurement of the plan's step 19 (observable only where a desktop exists), and a
-> decision to hide it by another action shape is a delta-spec of this spec.
+> that shape: it SHALL be recorded under requirement 25 with the measurement of the plan's step 19
+> taken on a Windows desktop session (the hosted runner has none). Until that
+> measurement exists the `docs/cli-matrix.md` row says *unverified*, not *gap*, because
+> requirement 25 records no gap without evidence; and a decision to hide the window by
+> another action shape is a delta-spec of this spec.
 
 ### Requirement 7 and 12 — an optional flag so a clean exit of the ChromaDB daemon is restarted (plan spec note SN4)
 
@@ -96,9 +102,12 @@ Replacement:
 > The installed tree is: the launcher program and its endpoint record as stated; the
 > trust wrapper at the path of `MEMPALACE_TLS_EXEC_PATH` (default
 > `~/.crewrig/tls-exec.sh`) with `.sh` replaced by `.ts`; and a bundle directory
-> `service-lib/` beside the launcher that holds exactly the repository files the two
-> installed programs import, copied verbatim, so that neither program reaches into the
-> repository. `LAUNCHER_SOURCE_SHA` is the SHA-256 of the launcher entry source, then
+> `service-lib/` that holds exactly the repository files the installed programs import,
+> copied verbatim, so that no program reaches into the repository. Each installed
+> program imports the `service-lib/` that sits in its own directory: in the default
+> layout the launcher and the wrapper share `~/.crewrig/service-lib/`, and when
+> `MEMPALACE_MCP_LAUNCHER_PATH` or `MEMPALACE_TLS_EXEC_PATH` moves one of them out of
+> that directory, the installer writes a `service-lib/` beside it too. `LAUNCHER_SOURCE_SHA` is the SHA-256 of the launcher entry source, then
 > the trust wrapper source, then the bundle files in a fixed order, so that a change to
 > a bundled module is drift too. A test SHALL assert that every static import of both
 > entries and of every bundled file resolves inside the bundle and that the bundle
@@ -148,9 +157,11 @@ Replacement:
 > (`scripts/tests/lib/session-check-harness.ts` and
 > `scripts/tests/mempalace-registration-agreement.test.ts`), which runs
 > `status-mcp-server.sh` with `lsof` and `ss` stubs on `PATH` and asserts that they
-> were called, is re-hosted on the `MEMPALACE_MCP_LISTENER_PID` and
-> `MEMPALACE_MCP_EXPECTED_PID` seams, the `lsof` and `ss` stubs staying only as
-> tripwires that assert they are never called. The one assertion whose text is not
+> were called, is re-hosted on the `MEMPALACE_MCP_LISTENER_PID` seam alone, the `lsof`
+> and `ss` stubs staying only as tripwires that assert they are never called. Its
+> `launchctl print` / `systemctl --user show -p MainPID` assertion is kept as it is: the
+> supervisor PID is still looked up through those tools, so the
+> `MEMPALACE_MCP_EXPECTED_PID` seam is not used there. The one assertion whose text is not
 > carried over, that the listener lookup was keyed by the daemon port, is a property of
 > the `lsof`/`ss` mechanism and is re-asserted on the TypeScript side by a unit test of
 > the listener lookup. At the time of this delta no test of the nine scripts observes
@@ -163,7 +174,10 @@ Requirement 21's first kind also lists the assertion of
 `start-chroma-server.sh` for its palace-directory fallback line (the plan's Test 7),
 found by the same method as the assertions of `test-chroma-server.sh`, and removed in
 the pull request that migrates `start-chroma-server.sh`; its behaviour is asserted by
-the TypeScript test of the ChromaDB start.
+the TypeScript test of the ChromaDB start. Accordingly the third kind of requirement 21,
+which lists `test-palace-path-propagation.sh` among the sourced-library suites that "are
+not touched", reads: *not touched, except that this one assertion is removed*. The rest
+of that suite, which exercises `common.sh` and the shell launcher, is unchanged.
 
 ### Requirement 25 and 32 — where the `cli-matrix` row lands (plan spec note SN7)
 
