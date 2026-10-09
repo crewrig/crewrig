@@ -55,8 +55,13 @@ prune,query,task}.sh`.
    module directory. The plan names the files.
 
 2. **Entry form, floor and silence.** Every entry SHALL use the entry form of spec
-   0243 requirement 5, reused and not redefined, so that `node scripts/<name>.ts`
-   writes no Node.js warning on any Node.js 24 release with no flag. Each is a
+   0243 requirement 5 — no top-level `import` or `export`, the `warning` listeners
+   removed as the first statement, `require` plus dynamic `import()` for the rest —
+   so that `node scripts/<name>.ts` writes no Node.js warning on any Node.js 24
+   release with no flag. Only that entry form is borrowed: the exit-zero and
+   zero-output clauses of 0243 requirement 5 belong to a hook and are not borrowed,
+   since these commands exit non-zero and print diagnostics (requirements 11, 16,
+   18). Each is a
    user-facing entry point (parent requirement 4): documented behind the floor-guard
    step, `node scripts/lib/node-floor-guard.js`, then `node scripts/<name>.ts`, and
    leaving the filesystem unmodified on a Node.js below the floor.
@@ -93,14 +98,18 @@ prune,query,task}.sh`.
    directory on each operating system, and the existing override variables
    (`CLAUDE_PROJECTS_DIR`, `GEMINI_TMP_DIR`, `COPILOT_SESSIONS_DIR`,
    `ANTIGRAVITY_HISTORY_FILE`, `MEMPALACE_HISTORY_WING`, `MEMPALACE_HISTORY_AGENT`,
-   `MEMPALACE_EXTRACT`, `MEMPALACE_PYTHON`, `CREWRIG_REPO_DIR`) SHALL keep their
+   `MEMPALACE_EXTRACT`, `CREWRIG_REPO_DIR`, and for `prune-transcripts` only
+   `MEMPALACE_PYTHON`) SHALL keep their
    names and defaults.
 
 6. **No POSIX tool (parent requirement 23).** No migrated entry SHALL spawn `find`,
    `xargs`, `du`, `awk`, `tr`, `wc`, `grep`, `sed`, `sort`, `ln`, `mktemp`, `date`,
    `cat`, `rm` or any other POSIX-only utility, and none SHALL spawn `bash`. The
    only subprocesses are `git`, the Python toolchain for the `mempalace` exception
-   (parent requirement 16), and `process.execPath` (requirement 8).
+   (parent requirement 16), `pipx` (only `pipx environment --value PIPX_HOME`, to
+   locate the MemPalace virtual environment, as `prune-transcripts.sh` does today;
+   `pipx` and the interpreters it names are part of that toolchain), and
+   `process.execPath` (requirement 8).
 
 7. **Contract of the nine wrappers.** Each usage entry SHALL run the same
    JavaScript command line as its shell predecessor, with the arguments forwarded
@@ -168,8 +177,12 @@ prune,query,task}.sh`.
     selection on Escape. The `fzf` prerequisite check and its `Error: fzf is
     required.` message are removed. This is an R14 deviation (requirement 25, items
     1 and 2): `fzf` is not among the parent requirement 5 prerequisites, and
-    parent requirement 23 forbids relying on a POSIX-only utility. The prompt SHALL
-    close its readline interface before any child process starts.
+    parent requirement 23 forbids relying on a POSIX-only utility. Both prompts of a run
+    SHALL read through one line reader over standard input, created once and
+    closed only when the run ends: a line already buffered for the second prompt
+    survives the dry-run child that runs between the two prompts, so piped input
+    `yes` then `y` reaches the real import. The reader is paused, not closed,
+    while a child process runs.
 
 13. **Counting without POSIX tools.** The directory, file and record counts SHALL be
     computed with the Node.js file system API, not following symbolic links (as
@@ -186,7 +199,14 @@ prune,query,task}.sh`.
     (plus `--dry-run` for the preview) with the arguments exactly as today, standard
     streams inherited, and SHALL exit with the child's status when it is non-zero
     (the shell version runs under `set -e`). The interpreter comes from D's
-    helper (requirement 4).
+    `detectMempalacePython` (requirement 4), which, like `detect_mempalace_python`,
+    probes in order the pipx virtual environment's Python, the interpreter of the
+    `mempalace` console script and `python3`, keeping the first on which `import
+    mempalace.mcp_server` succeeds. The import scripts do NOT read `MEMPALACE_PYTHON`
+    (today they ignore it); when no candidate imports `mempalace` they print the
+    two `Error:` lines of today (`Error: 'mempalace' is not importable from any
+    candidate Python.` then `Install MemPalace first: pipx install mempalace`) and
+    exit 1.
 
 15. **Antigravity temporary directory.** The Antigravity script SHALL create its
     temporary directory with `scripts/lib/tmp-file.ts`, place the history file in it
@@ -214,14 +234,18 @@ prune,query,task}.sh`.
     (`mempalace>=<min>,<<max>`, built from D's pin strings). Its standard output,
     standard error and exit status SHALL be unchanged.
 
-18. **Interpreter and TLS environment.** The interpreter SHALL be, in order,
-    `MEMPALACE_PYTHON`, the `mempalace` pipx virtual environment's Python when
-    `pipx` is on the path and that environment exists, else the system Python; a
-    missing interpreter SHALL print the two `Error:` lines of today and exit 1. The
+18. **Interpreter and TLS environment of `prune-transcripts`.** The interpreter
+    SHALL be, in order, `MEMPALACE_PYTHON`, the `mempalace` pipx virtual
+    environment's Python (`<PIPX_HOME>/venvs/mempalace/bin/python3`) when `pipx` is
+    on the path and that directory exists, else `python3`, with no import probe
+    (the failure surfaces in the Python body, exit 2, as today). A missing
+    interpreter SHALL print on standard error `Error: <interpreter> not found` then
+    `Install MemPalace via pipx: pipx install '<install spec>'` and exit 1. The
     custom-CA variables of `~/.crewrig/tls-env.sh` SHALL be applied to the child
     environment through `readTlsEnv` (no sourcing of a shell file), with the
-    precedence that sourcing gave today (requirement 25, item 6 and *Open
-    questions*).
+    precedence that sourcing gave today (requirement 25, item 8 and *Open
+    questions*); the import scripts do not read `tls-env.sh` today and keep not
+    doing so.
 
 19. **Contract unchanged.** `sync-from-upstream` SHALL preserve every flag
     (including `--preserve-history`), message, exit status and file written of the
@@ -295,11 +319,11 @@ prune,query,task}.sh`.
        record count (CRLF input, parent requirement 22), where `grep -c .` counted
        it;
     5. `prune-transcripts --days` or `--project` with no value prints
-       `Error: <flag> requires a value` and exits 1, replacing Bash's
+       `Error: <flag> requires a value` on standard error and exits 1, replacing Bash's
        `unbound variable` diagnostic, which is a shell artefact and not a contract;
     6. `prune-transcripts --help` prints the name of the `.ts` entry in its `Usage:`
        line, because the shim forwards to it;
-    7. on Windows only, the interpreter lookup uses `Scripts\python.exe` for the pipx
+    7. on Windows only, the `prune-transcripts` interpreter lookup uses `Scripts\python.exe` for the pipx
        environment and `python` for the system fallback; POSIX behaviour is
        unchanged;
     8. TLS variables come from `readTlsEnv` instead of sourcing `tls-env.sh`
@@ -320,9 +344,11 @@ prune,query,task}.sh`.
     The plan SHALL confirm that each named suite executes its script and not merely
     names it. No test references `usage-drain.sh`, `usage-task.sh`, the four import
     scripts or `prune-transcripts.sh`: PR A SHALL add black-box Bash tests for
-    those seven, with stubbed `python` / `mempalace` (a stub script on
-    `MEMPALACE_PYTHON` or on `PATH` recording its arguments and environment) and
-    prompts answered on standard input, covering at least the scenarios of this
+    those seven, with stubbed `python` / `mempalace` (for the import scripts, a
+    `python3` stub first on `PATH` that answers the `import mempalace.mcp_server`
+    probe and records the arguments of `-m mempalace mine`, since they ignore
+    `MEMPALACE_PYTHON`; for `prune-transcripts`, a stub on `MEMPALACE_PYTHON`
+    recording its environment) and prompts answered on standard input, covering at least the scenarios of this
     spec. A script and its Bash test SHALL NOT migrate in the same pull request:
     the Bash tests migrate later in J1a (#1340), not here.
 
@@ -336,7 +362,9 @@ prune,query,task}.sh`.
     a populated history, the job SHALL assert the deterministic offline paths only:
     the missing-interpreter diagnostic and exit 1, the missing-source diagnostic and
     exit 1, the empty-source message and exit 0, `--help`, argument validation, the
-    declined-prompt exit 0 and a dry-run against a stub interpreter (a `.cmd` file).
+    declined-prompt exit 0 and a dry-run against a stub interpreter (a `.cmd` file named for the candidate
+    the Windows lookup of `detectMempalacePython` probes, or set through
+    `MEMPALACE_PYTHON` for `prune-transcripts`).
     The job states this limit in its name or comments; the end-to-end `mempalace`
     path is covered on Linux and macOS only, and recorded as such in requirement 23.
 
@@ -400,7 +428,7 @@ runs no `mine`, never prompts, and exits 0.
 
 **Scenario:** Import with a missing prerequisite
 
-Given `MEMPALACE_PYTHON` unset and no interpreter on which `mempalace` imports
+Given no candidate interpreter on which `mempalace` imports (`PATH` limited to stubs that fail the probe)
 When any of the four import scripts runs
 Then it prints `Error: 'mempalace' is not importable from any candidate Python.`
 then `Install MemPalace first: pipx install mempalace`, on the stream of today
