@@ -44,12 +44,34 @@ fail=0
 ok() { echo "PASS  $1"; pass=$((pass + 1)); }
 ng() { echo "FAIL  $1"; fail=$((fail + 1)); }
 
+# Fixtures are staged so a build written in TypeScript can run in them (spec
+# 0254): an empty `.git` directory, the root package.json and a REAL
+# (dereferenced) copy of the production closure of js-yaml, which the build
+# loads from the nearest `.git`-anchored root's OWN node_modules. Same staging
+# as scripts/tests/test-component-tier-resolution.sh (spec 0250 R26).
+STAGED_NODE_PACKAGES="js-yaml argparse"
+staged_node_missing=""
+for pkg in $STAGED_NODE_PACKAGES; do
+  [ -d "$REPO_DIR/node_modules/$pkg" ] || staged_node_missing="$staged_node_missing $pkg"
+done
+# One line per run, not per sandbox: make_sandbox runs in a command
+# substitution, so a flag set there would not survive to the next call.
+if [ -n "$staged_node_missing" ]; then
+  echo "NOTE: not found under $REPO_DIR/node_modules:$staged_node_missing; sandboxes are staged without them (a build that needs js-yaml will fail on the missing-dependency diagnostic until the dependency install has run)" >&2
+fi
+
 # make_sandbox — a fresh mktemp'd copy of scripts/ + extension-skeleton/,
 # mirroring scripts/tests/test-build-extension.sh's own helper.
 make_sandbox() {
   local sandbox
+  local pkg
   sandbox="$(mktemp -d "$TMP_ROOT/sandbox.XXXXXX")"
   cp -r "$SCRIPT_DIR" "$sandbox/scripts"
+  mkdir -p "$sandbox/.git" "$sandbox/node_modules"
+  /bin/cp -f "$REPO_DIR/package.json" "$sandbox/package.json"
+  for pkg in $STAGED_NODE_PACKAGES; do
+    [ -d "$REPO_DIR/node_modules/$pkg" ] && /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$sandbox/node_modules/$pkg"
+  done
   cp -r "$REPO_DIR/extension-skeleton" "$sandbox/extension-skeleton"
   mkdir -p "$sandbox/extensions/core" "$sandbox/extensions/library" "$sandbox/extensions/org"
   echo "$sandbox"
