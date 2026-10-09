@@ -68,6 +68,10 @@ test("a re-install over the running own task: does the old daemon survive?", { s
     measure(
       `reinstall-over-running oldPidAlive=${alive(old.pid)} newDaemonAfterMs=${fresh === null ? -1 : Date.now() - t0}`,
     );
+    // Measured on windows-latest before the fix (`/Delete` alone leaves the old instance
+    // running): a re-install now ends the old daemon and a new one takes its place.
+    assert.equal(alive(old.pid), false, "the old daemon is ended by the re-install");
+    assert.notEqual(fresh, null, "a new daemon serves after the re-install");
   } finally {
     backend.uninstall(c.names);
     for (const pid of pids) kill(pid);

@@ -76,15 +76,17 @@ test(
   },
 );
 
-test("re-run on our own task: delete then create", { skip }, () => {
+test("re-run on our own task: disable, end, delete, then create", { skip }, () => {
   fake.seed(TASK, renderTaskXml(input()));
   assert.equal(createBackend().install(names, definition(input())).ok, true);
-  assert.deepEqual(verbs().slice(0, 3), [
+  assert.deepEqual(verbs().slice(0, 5), [
     "/Query \\CrewRig\\mempalace-test-mcp",
+    "/Change \\CrewRig\\mempalace-test-mcp",
+    "/End \\CrewRig\\mempalace-test-mcp",
     "/Delete \\CrewRig\\mempalace-test-mcp",
     "/Create \\CrewRig\\mempalace-test-mcp",
   ]);
-  assert.deepEqual(fake.calls()[1], ["/Delete", "/TN", TASK, "/F"]);
+  assert.deepEqual(fake.calls()[3], ["/Delete", "/TN", TASK, "/F"]);
 });
 
 test("a foreign task fails closed naming it; nothing is deleted or created", { skip }, () => {
