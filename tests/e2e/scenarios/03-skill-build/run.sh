@@ -93,10 +93,11 @@ cp -R "${REPO_ROOT}/config"           "$work_dir/" 2>/dev/null || true
 # to the host checkout: a package that does not resolve inside its own root's
 # node_modules is refused as "not installed" (scripts/lib/require-dependency.ts).
 # `cp -RL` dereferences (the destination is the parent directory, so a re-run
-# into an existing report directory merges instead of nesting). The package list is the production closure of js-yaml
-# in package-lock.json. Absent host packages are tolerated (the shell build
-# needs none), with a note so a later run without them fails on the
-# missing-dependency diagnostic instead of passing silently.
+# into an existing report directory merges instead of nesting). The package
+# list is the production closure of js-yaml in package-lock.json. Absent host
+# packages are tolerated (the shell build needs none), with a note so a later
+# run without them fails on the missing-dependency diagnostic instead of
+# passing silently.
 cp "${REPO_ROOT}/package.json" "$work_dir/" 2>/dev/null || true
 mkdir -p "$work_dir/.git" "$work_dir/node_modules"
 for staged_pkg in js-yaml argparse; do
