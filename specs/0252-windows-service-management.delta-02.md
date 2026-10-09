@@ -25,7 +25,8 @@ that `LastTaskResult` reads `0x800710e0` while the task runs and the trigger fir
 on an instance that `IgnoreNew` ignores, and that a snapshot of the task through the
 Task Scheduler's COM interface first took 20 to 30 seconds on that runner. A probe job
 (job `windows-service-probe` of runs 37994796307, 37995100078 and 37995308756 on PR #1533; each of
-those workflow runs was later cancelled by an unrelated job, the probe job itself passed in each)
+those workflow runs was later superseded by a newer push to the pull request, so its lifecycle
+job ended cancelled; the probe job itself passed in each)
 measured every candidate on an idle runner (a task read through COM 0.2 to 0.3 s, a CIM process table 0.3 s, a Toolhelp32
 process table 0.35 s, `schtasks /Query /V /FO CSV` 25 to 45 ms, `netstat -ano` 25 ms) and
 found the cause of the delay: the state read ran `powershell.exe` with a restricted
