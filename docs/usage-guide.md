@@ -97,7 +97,9 @@ Two writers do not depend on your answers above:
 - **Session-start declarations.** The deployed session-start rules tell an
   agent that establishes or resumes a task-handoff drawer in MemPalace to
   record the task it works on, with
-  `scripts/usage-task.sh set --channel protocol`. Each such session writes one
+  `node scripts/usage-task.ts set --channel protocol`. Run
+  `node scripts/lib/node-floor-guard.js` first on an unverified Node.js: the
+  commands need Node.js 24 or later. Each such session writes one
   declaration (a task key) under the usage root, even with capture off.
   `main` offers no switch that stops it. See
   [Session-start protocol recording](usage-attribution.md#session-start-protocol-recording).

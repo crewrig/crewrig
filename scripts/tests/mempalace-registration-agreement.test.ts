@@ -29,6 +29,7 @@ import {
   JQ_BINARIES,
   REPO,
   SENTINEL,
+  STATUS_LISTENER_SEAM,
   assertNoCliInvoked,
   assertStatusProbesStubbed,
   bashLib,
@@ -718,7 +719,7 @@ describe("a launcher on a non-default port: both readers report wrong-endpoint (
 
       // Async: the fake server lives in this process and must keep answering.
       const r = await run("bash", [path.join(REPO, "scripts", "status-mcp-server.sh")], {
-        env: sb.env({ MEMPALACE_MCP_PORT: "41000" }),
+        env: sb.env({ ...STATUS_LISTENER_SEAM, MEMPALACE_MCP_PORT: "41000" }),
         cwd: sb.root,
         timeoutMs: 30_000,
       });
@@ -736,7 +737,7 @@ describe("a launcher on a non-default port: both readers report wrong-endpoint (
         server.requests.some((q) => q.url === "/healthz"),
         "status never reached the fake server",
       );
-      assertStatusProbesStubbed(sb, r.stdout, server.port);
+      assertStatusProbesStubbed(sb, r.stdout);
       assertNoCliInvoked(sb);
     } finally {
       await server.close();
@@ -754,7 +755,7 @@ describe("a launcher on a non-default port: both readers report wrong-endpoint (
         writeLauncher(sb, server.port, host);
 
         const r = await run("bash", [path.join(REPO, "scripts", "status-mcp-server.sh")], {
-          env: sb.env({ MEMPALACE_MCP_HOST: "127.0.0.1" }),
+          env: sb.env({ ...STATUS_LISTENER_SEAM, MEMPALACE_MCP_HOST: "127.0.0.1" }),
           cwd: sb.root,
           timeoutMs: 30_000,
         });
@@ -772,7 +773,7 @@ describe("a launcher on a non-default port: both readers report wrong-endpoint (
           server.requests.some((q) => q.url === "/healthz"),
           "status never probed the fallback host",
         );
-        assertStatusProbesStubbed(sb, r.stdout, server.port);
+        assertStatusProbesStubbed(sb, r.stdout);
         assertNoCliInvoked(sb);
       } finally {
         await server.close();
@@ -787,7 +788,7 @@ describe("a launcher on a non-default port: both readers report wrong-endpoint (
       writeLauncher(sb, server.port, "127.0.0.1");
 
       const r = await run("bash", [path.join(REPO, "scripts", "status-mcp-server.sh")], {
-        env: sb.env({ MEMPALACE_MCP_HOST: "example.invalid" }),
+        env: sb.env({ ...STATUS_LISTENER_SEAM, MEMPALACE_MCP_HOST: "example.invalid" }),
         cwd: sb.root,
         timeoutMs: 30_000,
       });
@@ -798,7 +799,7 @@ describe("a launcher on a non-default port: both readers report wrong-endpoint (
         r.stdout,
       );
       assert.ok(!r.stdout.includes("example.invalid"), r.stdout);
-      assertStatusProbesStubbed(sb, r.stdout, server.port);
+      assertStatusProbesStubbed(sb, r.stdout);
       assertNoCliInvoked(sb);
     } finally {
       await server.close();

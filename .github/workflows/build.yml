@@ -262,6 +262,67 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder twin suites.
+  extension-builders-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            extension-builders-ts:
+              - 'scripts/lib/extension/**'
+              - 'scripts/lib/org-mcp.ts'
+              - 'scripts/build-extension.*'
+              - 'scripts/build-claude-plugin.*'
+              - 'scripts/build-copilot-plugin.*'
+              - 'scripts/build-antigravity-extension.*'
+              - 'scripts/migrate-extension.*'
+              - 'scripts/lib/extension-manifest.sh'
+              - 'scripts/lib/extension-hooks.sh'
+              - 'scripts/lib/extension-*.json'
+              - 'scripts/lib/render-context.sh'
+              - 'scripts/lib/common.sh'
+              - 'scripts/lib/render-command.ts'
+              - 'scripts/lib/yaml-text.ts'
+              - 'scripts/lib/line-endings.ts'
+              - 'scripts/lib/paths.ts'
+              - 'scripts/lib/tmp-file.ts'
+              - 'scripts/lib/glob-engine.ts'
+              - 'scripts/lib/require-dependency.ts'
+              - 'scripts/lib/node-floor-guard.js'
+              - 'scripts/tests/extension-*.test.ts'
+              - 'scripts/tests/lib/extension-fixtures.ts'
+              - 'scripts/tests/lib/shell-extension-harness.ts'
+              - 'scripts/tests/fixtures/extension/**'
+              - 'extensions/**'
+              - 'extension-skeleton/**'
+              - 'package.json'
+              - 'package-lock.json'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.extension-builders-ts == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        if: steps.filter.outputs.extension-builders-ts == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Install yq
+        if: steps.filter.outputs.extension-builders-ts == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.extension-builders-ts == 'true'
+        run: node scripts/lib/node-floor-guard.js
+      - name: Test the TypeScript extension and plugin builder twins
+        if: steps.filter.outputs.extension-builders-ts == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
   # release. No path filter, like `mempalace-transcript-node-24-0`.
   build-components-ts-node-24-0:
@@ -483,8 +544,13 @@ jobs:
             core-paths:
               - 'scripts/check-core-paths.sh'
               - 'scripts/sync-from-upstream.sh'
+              - 'scripts/sync-from-upstream.ts'
+              - 'scripts/lib/sync-from-upstream/**'
               - 'scripts/tests/test-check-core-paths.sh'
               - 'scripts/tests/test-sync-from-upstream.sh'
+              - 'scripts/tests/sync-from-upstream-self-update.test.ts'
+              - 'scripts/tests/lib/hermetic-env.ts'
+              - 'scripts/tests/fixtures/sync-from-upstream/**'
               - '.crewrig/core-paths.txt'
               - 'docs/layers.md'
               - 'model-mappings/**'
@@ -506,6 +572,9 @@ jobs:
       - name: Test Sync From Upstream
         if: steps.filter.outputs.core-paths == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-sync-from-upstream.sh
+      - name: Test Sync From Upstream Self-Update
+        if: steps.filter.outputs.core-paths == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1371,6 +1440,9 @@ jobs:
       - name: Test the history import and prune oracles (POSIX only)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
 
+      - name: Test the MCP daemon lifecycle oracles (POSIX only)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
+
       - name: Test the service module, the MCP launcher and the MemPalace helpers (Linux)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-backend.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-dual-source-conformance.test.ts scripts/tests/service-exec.test.ts scripts/tests/service-file-size.test.ts scripts/tests/service-install.test.ts scripts/tests/service-launchd-systemd.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-names.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-program-install.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-token-argv.test.ts scripts/tests/service-trust-wrapper.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/mempalace-python.test.ts scripts/tests/mempalace-python-shebang.test.ts scripts/tests/mempalace-pin.test.ts scripts/tests/mcp-launcher-lifecycle.test.ts
       - name: Cancel workflow on job failure
@@ -1660,6 +1732,30 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0253 R27 (delta-01 R17, R24): the usage-wrappers row's copy of the
+  # template above. Offline: no network, no Python and no `bash`; the one step
+  # spawns the nine TypeScript usage entries directly under pwsh against an
+  # isolated temp HOME and usage root. R24 records, never gates: the test
+  # prints a `timing: <name> <ms> ms` line per command and no step asserts a
+  # timing budget. No path filter, like the Windows jobs above.
+  windows-usage-wrappers:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Nine usage entries run offline, flag-free entry form keeps stderr free of warnings
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-windows.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # Spec 0248 R33, R34: the worktree git guard row's copy of the template
   # above. pwsh is the interpreter of every step. Budgets are the initial values
   # of R33 (750 ms fast path, 2000 ms slow path refused and allowed); they are
@@ -1786,6 +1882,30 @@ jobs:
           MEMPALACE_MCP_HOST: 127.0.0.1
           MEMPALACE_MCP_PORT: ${{ env.TIMING_CLOSED_PORT }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 550 --case d-nothing-listening --stdin-file $env:TIMING_PROMPT_PAYLOAD '--' hooks/mempalace-transcript.ts claude-code
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0253 R27, R17: the history import and operational commands row's copy
+  # of the Windows template above. pwsh is the interpreter of the one step. The
+  # suite is offline: it creates a local upstream repository itself and runs
+  # the TypeScript entry against it with Git for Windows, spawning no `bash`.
+  # No timing-budget step: the suite prints `timing:` lines, which R24 records
+  # and never gates.
+  windows-sync-from-upstream:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Sync from upstream entry against a local upstream repository, no bash
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-windows.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

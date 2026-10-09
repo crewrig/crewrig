@@ -19,6 +19,11 @@
 # Under the generic schema a subject has NO enablement toggle (R5): its
 # presence as a top-level section IS its enablement. Under the legacy
 # `components.*` shape a subject is enabled by `components.<subject>.enabled`.
+#
+# TypeScript twins (spec 0254, row G1b of epic #1231): scripts/lib/extension/manifest.ts,
+# shape-guard.ts, validate-*.ts and mcp-delivery.ts mirror these functions for the
+# TypeScript builders. Change both, and keep scripts/tests/extension-conformance.test.ts
+# green. This library retires with its last consumer (row I1), not with the twins.
 
 EXT_MANIFEST_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXT_MCP_TARGETS_JSON="$EXT_MANIFEST_LIB_DIR/extension-targets.json"

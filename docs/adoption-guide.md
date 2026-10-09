@@ -69,7 +69,7 @@ configuration home. The repository may be public or private.
    # upstream https://github.com/crewrig/crewrig.git (fetch)
    ```
 
-The sync script (`bash scripts/sync-from-upstream.sh`, Step 7) reads the
+The sync script (`node scripts/sync-from-upstream.ts`, Step 7) reads the
 upstream URL directly from `crewrig.config.toml → canonical_repo` — it does
 not rely on a named git remote. The `upstream` remote shown above is optional;
 retain it only if you want to run manual git operations such as `git log
@@ -337,8 +337,12 @@ After the organization's fork is in use, pull future upstream core-layer
 changes without touching overlay content.
 
 ```bash
-bash scripts/sync-from-upstream.sh
+node scripts/sync-from-upstream.ts
 ```
+
+Run `node scripts/lib/node-floor-guard.js` first on an unverified Node.js: the
+command needs Node.js 24 or later; `bash scripts/sync-from-upstream.sh` remains
+a forwarding shim.
 
 **Expected outcome:** The script exits zero, updates the core-layer paths
 listed in `.crewrig/core-paths.txt` from the URL set in
@@ -380,7 +384,7 @@ and `git bisect` surface the upstream lineage directly instead of losing it to
 a plain file restore.
 
 ```bash
-bash scripts/sync-from-upstream.sh --preserve-history
+node scripts/sync-from-upstream.ts --preserve-history
 ```
 
 This flag is opt-in and per-invocation only — it is never enabled implicitly
@@ -500,7 +504,7 @@ shape is reported as already migrated, and the tool writes nothing.
 **When the break lands.** This repository carries no framework version
 stream — there are no framework tags, no `VERSION` file, and the root
 `package.json` version has never moved since the initial commit — so the
-sync boundary an adopter running `scripts/sync-from-upstream.sh` should use
+sync boundary an adopter running `node scripts/sync-from-upstream.ts` should use
 is the change itself, not a framework version number: **2026-08-25, spec
 0183, the implementation pull request for issue #1008** (crewrig/crewrig).
 For anyone consuming the reference extension (`extensions/core/hello-world`)
@@ -543,7 +547,7 @@ contain unreplaced values (skills and agents reference the placeholder URL
 literally). The harness curator will open friction issues against the
 placeholder URL, which resolves to nothing.
 
-**Effect — `bash scripts/sync-from-upstream.sh`:** Exits 1 and prints
+**Effect — `node scripts/sync-from-upstream.ts`:** Exits 1 and prints
 an error when `canonical_repo` is absent or empty:
 
 ```text
@@ -581,7 +585,7 @@ inside a directory that is. The sync script enforces a dirty-core guard to
 prevent upstream changes from silently overwriting local modifications to
 core-layer files.
 
-**Effect:** `bash scripts/sync-from-upstream.sh` exits 1 and lists the
+**Effect:** `node scripts/sync-from-upstream.ts` exits 1 and lists the
 offending **files**, each at its full path. A directory listed in the manifest
 is never itself reported: what you see is what you modified.
 
@@ -600,7 +604,7 @@ is never itself reported: what you see is what you modified.
    adopter loses a new upstream guard and discovers it later through unrelated
    test failures; it is why the guard lists files rather than directories.
 
-   Then re-run `bash scripts/sync-from-upstream.sh`.
+   Then re-run `node scripts/sync-from-upstream.ts`.
 
 2. **Promote to an overlay override** — if the change is intentional and
    must survive future upstream syncs, move it to the corresponding
@@ -627,7 +631,7 @@ repository, not the fork.
 
 **Resolution:** Choose one of two paths:
 
-1. **Sync to pick up the fix** — run `bash scripts/sync-from-upstream.sh`
+1. **Sync to pick up the fix** — run `node scripts/sync-from-upstream.ts`
    to pull in the canonical-repository guard and, on a stale fork, the
    removal of `release-extension.yml`; commit the result, and push. The
    next push leaves the workflow inert on the fork instead of failing.

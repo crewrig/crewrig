@@ -1,9 +1,10 @@
-#!/usr/bin/env bash
-# usage-query.sh — read usage records by session, by agent+parent, by
-# period, by task-handoff key, or by external asset reference (spec 0207
-# R15-R17, spec 0208 R15). Output is JSONL, one record per line — verbatim
-# unless a ledger override applies; --no-ledger returns the entry verbatim.
-#
+#!/bin/bash
+# usage-query.sh — forwarding shim (spec 0253 R3). The command is scripts/usage-query.ts;
+# this file stays so every caller of `bash scripts/usage-query.sh` (the Bash tests, the
+# Taskfile before it was rewritten, scripts/lib/usage-store/mirror.js, and
+# artifacts/core/rules/60-tools.md until it was rewritten) still reaches it.
+# Fails closed: with node absent it writes one Error: line and exits 1; below the
+# floor it exits with the floor guard's status and the command is not run.
 # Usage:
 #   bash scripts/usage-query.sh --session <id>
 #   bash scripts/usage-query.sh --agent <id> --parent <parentSessionId>
@@ -22,6 +23,10 @@
 # --period reads only that month's partitions; with --rollup, --period is a
 # placement bound instead (spec 0209 delta-01, docs/usage-pricing.md).
 # --pending honours --fidelity only; --undrained takes no filter.
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-exec node --disable-warning=ExperimentalWarning "$SCRIPT_DIR/lib/usage-store/query.js" "$@"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node was not found on PATH; this command needs Node.js 24 or later (https://nodejs.org/en/download)." >&2
+  exit 1
+fi
+node "$DIR/lib/node-floor-guard.js" || exit $?
+exec node "$DIR/usage-query.ts" "$@"

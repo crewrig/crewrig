@@ -171,10 +171,13 @@ affected outputs in the same change.
 
 Because the four compiled agent output trees carry the `regenerable` sync
 policy (not `strict`), an upstream synchronization no longer aborts when
-your regenerated outputs diverge from upstream's own. `bash
-scripts/sync-from-upstream.sh` restores each diverged agent output from
+your regenerated outputs diverge from upstream's own. `node
+scripts/sync-from-upstream.ts` restores each diverged agent output from
 upstream and reports which ones it restored over — re-run the build
-afterward to regenerate them from your override again. The compiled skill
+afterward to regenerate them from your override again. Run
+`node scripts/lib/node-floor-guard.js` first on an unverified Node.js: the command
+needs Node.js 24 or later; `bash scripts/sync-from-upstream.sh` remains a
+forwarding shim. The compiled skill
 and command output trees are unaffected: no mapping ever reaches them, so
 they remain `strict` and a hand edit there still halts the sync.
 

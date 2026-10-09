@@ -331,6 +331,79 @@ build-components-ts-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+extension-builders-ts:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node scripts/lib/node-floor-guard.js"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/build-extension.*"
+        - "scripts/build-claude-plugin.*"
+        - "scripts/build-copilot-plugin.*"
+        - "scripts/build-antigravity-extension.*"
+        - "scripts/migrate-extension.*"
+        - "scripts/lib/extension-manifest.sh"
+        - "scripts/lib/extension-hooks.sh"
+        - "scripts/lib/extension-*.json"
+        - "scripts/lib/render-context.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/lib/render-command.ts"
+        - "scripts/lib/yaml-text.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/lib/require-dependency.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/extension-*.test.ts"
+        - "scripts/tests/lib/extension-fixtures.ts"
+        - "scripts/tests/lib/shell-extension-harness.ts"
+        - "scripts/tests/fixtures/extension/**"
+        - "extensions/**"
+        - "extension-skeleton/**"
+        - "package.json"
+        - "package-lock.json"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/extension/**"
+        - "scripts/lib/org-mcp.ts"
+        - "scripts/build-extension.*"
+        - "scripts/build-claude-plugin.*"
+        - "scripts/build-copilot-plugin.*"
+        - "scripts/build-antigravity-extension.*"
+        - "scripts/migrate-extension.*"
+        - "scripts/lib/extension-manifest.sh"
+        - "scripts/lib/extension-hooks.sh"
+        - "scripts/lib/extension-*.json"
+        - "scripts/lib/render-context.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/lib/render-command.ts"
+        - "scripts/lib/yaml-text.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/lib/require-dependency.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/extension-*.test.ts"
+        - "scripts/tests/lib/extension-fixtures.ts"
+        - "scripts/tests/lib/shell-extension-harness.ts"
+        - "scripts/tests/fixtures/extension/**"
+        - "extensions/**"
+        - "extension-skeleton/**"
+        - "package.json"
+        - "package-lock.json"
+
 extension-render:
   image: debian:stable-slim
   before_script:
@@ -528,13 +601,19 @@ core-paths:
     - "bash scripts/check-core-paths.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-sync-from-upstream.sh"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-core-paths.sh"
         - "scripts/sync-from-upstream.sh"
+        - "scripts/sync-from-upstream.ts"
+        - "scripts/lib/sync-from-upstream/**"
         - "scripts/tests/test-check-core-paths.sh"
         - "scripts/tests/test-sync-from-upstream.sh"
+        - "scripts/tests/sync-from-upstream-self-update.test.ts"
+        - "scripts/tests/lib/hermetic-env.ts"
+        - "scripts/tests/fixtures/sync-from-upstream/**"
         - ".crewrig/core-paths.txt"
         - "docs/layers.md"
         - "model-mappings/**"
@@ -542,8 +621,13 @@ core-paths:
       changes:
         - "scripts/check-core-paths.sh"
         - "scripts/sync-from-upstream.sh"
+        - "scripts/sync-from-upstream.ts"
+        - "scripts/lib/sync-from-upstream/**"
         - "scripts/tests/test-check-core-paths.sh"
         - "scripts/tests/test-sync-from-upstream.sh"
+        - "scripts/tests/sync-from-upstream-self-update.test.ts"
+        - "scripts/tests/lib/hermetic-env.ts"
+        - "scripts/tests/fixtures/sync-from-upstream/**"
         - ".crewrig/core-paths.txt"
         - "docs/layers.md"
         - "model-mappings/**"
@@ -1217,6 +1301,7 @@ runtime-foundations:
     - "npm ci"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-backend.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-dual-source-conformance.test.ts scripts/tests/service-exec.test.ts scripts/tests/service-file-size.test.ts scripts/tests/service-install.test.ts scripts/tests/service-launchd-systemd.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-names.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-program-install.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-token-argv.test.ts scripts/tests/service-trust-wrapper.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/mempalace-python.test.ts scripts/tests/mempalace-python-shebang.test.ts scripts/tests/mempalace-pin.test.ts scripts/tests/mcp-launcher-lifecycle.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
@@ -1681,6 +1766,7 @@ usage-capture:
         - "scripts/lib/usage-capture/**"
         - "scripts/lib/usage-headless.sh"
         - "scripts/usage-backfill.sh"
+        - "scripts/usage-backfill.ts"
         - "scripts/tests/test-usage-capture.sh"
         - "scripts/tests/fixtures/usage-capture/**"
         - "hooks/claude-usage-capture-hooks.json"
@@ -1719,6 +1805,7 @@ usage-capture:
         - "scripts/lib/usage-capture/**"
         - "scripts/lib/usage-headless.sh"
         - "scripts/usage-backfill.sh"
+        - "scripts/usage-backfill.ts"
         - "scripts/tests/test-usage-capture.sh"
         - "scripts/tests/fixtures/usage-capture/**"
         - "hooks/claude-usage-capture-hooks.json"
@@ -1755,24 +1842,33 @@ usage-storage:
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage-mirror.sh"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/hermetic-env.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/usage-wrappers.test.ts scripts/tests/hermetic-env.test.ts"
     - "node scripts/build-usage-validator.js --check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/lib/usage-store/**"
         - "scripts/usage-query.sh"
+        - "scripts/usage-query.ts"
         - "scripts/usage-prune.sh"
+        - "scripts/usage-prune.ts"
         - "scripts/usage-mirror.sh"
+        - "scripts/usage-mirror.ts"
         - "scripts/usage-inventory.ts"
         - "scripts/usage-drain.sh"
+        - "scripts/usage-drain.ts"
         - "scripts/usage-task.sh"
+        - "scripts/usage-task.ts"
         - "scripts/usage-attribute.sh"
+        - "scripts/usage-attribute.ts"
         - "scripts/usage-backfill.sh"
+        - "scripts/usage-backfill.ts"
         - "scripts/build-usage-validator.js"
         - "scripts/tests/test-usage-storage*.sh"
         - "scripts/tests/usage-inventory.test.ts"
+        - "scripts/lib/usage-wrapper.ts"
         - "scripts/tests/usage-wrappers-oracle.test.ts"
+        - "scripts/tests/usage-wrappers.test.ts"
         - "scripts/tests/hermetic-env.test.ts"
         - "scripts/tests/lib/hermetic-env.ts"
         - "scripts/tests/fixtures/usage-storage/**"
@@ -1785,17 +1881,26 @@ usage-storage:
       changes:
         - "scripts/lib/usage-store/**"
         - "scripts/usage-query.sh"
+        - "scripts/usage-query.ts"
         - "scripts/usage-prune.sh"
+        - "scripts/usage-prune.ts"
         - "scripts/usage-mirror.sh"
+        - "scripts/usage-mirror.ts"
         - "scripts/usage-inventory.ts"
         - "scripts/usage-drain.sh"
+        - "scripts/usage-drain.ts"
         - "scripts/usage-task.sh"
+        - "scripts/usage-task.ts"
         - "scripts/usage-attribute.sh"
+        - "scripts/usage-attribute.ts"
         - "scripts/usage-backfill.sh"
+        - "scripts/usage-backfill.ts"
         - "scripts/build-usage-validator.js"
         - "scripts/tests/test-usage-storage*.sh"
         - "scripts/tests/usage-inventory.test.ts"
+        - "scripts/lib/usage-wrapper.ts"
         - "scripts/tests/usage-wrappers-oracle.test.ts"
+        - "scripts/tests/usage-wrappers.test.ts"
         - "scripts/tests/hermetic-env.test.ts"
         - "scripts/tests/lib/hermetic-env.ts"
         - "scripts/tests/fixtures/usage-storage/**"
@@ -1806,7 +1911,7 @@ usage-storage:
         - "docs/usage-organization.md"
 
 usage-attribution:
-  image: node:22
+  image: node:24
   script:
     - "npm install"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-attribution.sh"
@@ -1816,7 +1921,9 @@ usage-attribution:
         - "scripts/lib/usage-store/**"
         - "scripts/lib/usage-capture/**"
         - "scripts/usage-task.sh"
+        - "scripts/usage-task.ts"
         - "scripts/usage-attribute.sh"
+        - "scripts/usage-attribute.ts"
         - "scripts/tests/test-usage-attribution.sh"
         - "scripts/tests/fixtures/usage-attribution/**"
         - "docs/usage-attribution.md"
@@ -1828,7 +1935,9 @@ usage-attribution:
         - "scripts/lib/usage-store/**"
         - "scripts/lib/usage-capture/**"
         - "scripts/usage-task.sh"
+        - "scripts/usage-task.ts"
         - "scripts/usage-attribute.sh"
+        - "scripts/usage-attribute.ts"
         - "scripts/tests/test-usage-attribution.sh"
         - "scripts/tests/fixtures/usage-attribution/**"
         - "docs/usage-attribution.md"
@@ -1837,7 +1946,7 @@ usage-attribution:
         - "package-lock.json"
 
 usage-pricing:
-  image: node:22
+  image: node:24
   script:
     - "npm install"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-pricing.sh"
@@ -1846,35 +1955,45 @@ usage-pricing:
       changes:
         - "scripts/lib/usage-price/**"
         - "scripts/usage-price.sh"
+        - "scripts/usage-price.ts"
         - "scripts/tests/test-usage-pricing*.sh"
         - "scripts/tests/fixtures/usage-pricing/**"
         - "model-prices.org.json"
         - "scripts/lib/usage-store/**"
         - "scripts/usage-attribute.sh"
+        - "scripts/usage-attribute.ts"
         - "scripts/usage-prune.sh"
+        - "scripts/usage-prune.ts"
         - "scripts/usage-query.sh"
+        - "scripts/usage-query.ts"
         - "scripts/lib/usage-dashboard/**"
         - "scripts/usage-dashboard.sh"
+        - "scripts/usage-dashboard.ts"
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/lib/usage-price/**"
         - "scripts/usage-price.sh"
+        - "scripts/usage-price.ts"
         - "scripts/tests/test-usage-pricing*.sh"
         - "scripts/tests/fixtures/usage-pricing/**"
         - "model-prices.org.json"
         - "scripts/lib/usage-store/**"
         - "scripts/usage-attribute.sh"
+        - "scripts/usage-attribute.ts"
         - "scripts/usage-prune.sh"
+        - "scripts/usage-prune.ts"
         - "scripts/usage-query.sh"
+        - "scripts/usage-query.ts"
         - "scripts/lib/usage-dashboard/**"
         - "scripts/usage-dashboard.sh"
+        - "scripts/usage-dashboard.ts"
         - "package.json"
         - "package-lock.json"
 
 usage-dashboard:
-  image: node:22
+  image: node:24
   script:
     - "npm install"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-dashboard.sh"
@@ -1883,6 +2002,7 @@ usage-dashboard:
       changes:
         - "scripts/lib/usage-dashboard/**"
         - "scripts/usage-dashboard.sh"
+        - "scripts/usage-dashboard.ts"
         - "scripts/tests/test-usage-dashboard*.sh"
         - "scripts/tests/fixtures/usage-dashboard/**"
         - "scripts/tests/fixtures/usage-pricing/**"
@@ -1890,9 +2010,13 @@ usage-dashboard:
         - "scripts/lib/usage-store/**"
         - "scripts/lib/usage-price/**"
         - "scripts/usage-query.sh"
+        - "scripts/usage-query.ts"
         - "scripts/usage-price.sh"
+        - "scripts/usage-price.ts"
         - "scripts/usage-attribute.sh"
+        - "scripts/usage-attribute.ts"
         - "scripts/usage-prune.sh"
+        - "scripts/usage-prune.ts"
         - "schemas/usage-record/**"
         - "package.json"
         - "package-lock.json"
@@ -1900,6 +2024,7 @@ usage-dashboard:
       changes:
         - "scripts/lib/usage-dashboard/**"
         - "scripts/usage-dashboard.sh"
+        - "scripts/usage-dashboard.ts"
         - "scripts/tests/test-usage-dashboard*.sh"
         - "scripts/tests/fixtures/usage-dashboard/**"
         - "scripts/tests/fixtures/usage-pricing/**"
@@ -1907,9 +2032,13 @@ usage-dashboard:
         - "scripts/lib/usage-store/**"
         - "scripts/lib/usage-price/**"
         - "scripts/usage-query.sh"
+        - "scripts/usage-query.ts"
         - "scripts/usage-price.sh"
+        - "scripts/usage-price.ts"
         - "scripts/usage-attribute.sh"
+        - "scripts/usage-attribute.ts"
         - "scripts/usage-prune.sh"
+        - "scripts/usage-prune.ts"
         - "schemas/usage-record/**"
         - "package.json"
         - "package-lock.json"

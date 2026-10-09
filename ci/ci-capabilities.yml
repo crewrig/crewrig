@@ -383,6 +383,85 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts
 
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder modules and their
+  # shell-library twins (row G1b of epic #1231). `jq`, `yq` and `bash` are spawned on
+  # purpose by the corpus, context and conformance suites, which retire with the shell
+  # libraries (rows I1, J3, J4). `yq` stays declared until the differential test of the
+  # entries is deleted (plan v1-F2).
+  - id: extension-builders-ts
+    name: "Run the TypeScript extension and plugin builder twin suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/build-extension.*"
+          - "scripts/build-claude-plugin.*"
+          - "scripts/build-copilot-plugin.*"
+          - "scripts/build-antigravity-extension.*"
+          - "scripts/migrate-extension.*"
+          - "scripts/lib/extension-manifest.sh"
+          - "scripts/lib/extension-hooks.sh"
+          - "scripts/lib/extension-*.json"
+          - "scripts/lib/render-context.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/render-command.ts"
+          - "scripts/lib/yaml-text.ts"
+          - "scripts/lib/line-endings.ts"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/lib/require-dependency.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/extension-*.test.ts"
+          - "scripts/tests/lib/extension-fixtures.ts"
+          - "scripts/tests/lib/shell-extension-harness.ts"
+          - "scripts/tests/fixtures/extension/**"
+          - "extensions/**"
+          - "extension-skeleton/**"
+          - "package.json"
+          - "package-lock.json"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/extension/**"
+          - "scripts/lib/org-mcp.ts"
+          - "scripts/build-extension.*"
+          - "scripts/build-claude-plugin.*"
+          - "scripts/build-copilot-plugin.*"
+          - "scripts/build-antigravity-extension.*"
+          - "scripts/migrate-extension.*"
+          - "scripts/lib/extension-manifest.sh"
+          - "scripts/lib/extension-hooks.sh"
+          - "scripts/lib/extension-*.json"
+          - "scripts/lib/render-context.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/render-command.ts"
+          - "scripts/lib/yaml-text.ts"
+          - "scripts/lib/line-endings.ts"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/lib/require-dependency.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/extension-*.test.ts"
+          - "scripts/tests/lib/extension-fixtures.ts"
+          - "scripts/tests/lib/shell-extension-harness.ts"
+          - "scripts/tests/fixtures/extension/**"
+          - "extensions/**"
+          - "extension-skeleton/**"
+          - "package.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq]
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-context-shell.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-file-size.test.ts
+
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
     trigger:
@@ -585,8 +664,13 @@ capabilities:
         paths:
           - "scripts/check-core-paths.sh"
           - "scripts/sync-from-upstream.sh"
+          - "scripts/sync-from-upstream.ts"
+          - "scripts/lib/sync-from-upstream/**"
           - "scripts/tests/test-check-core-paths.sh"
           - "scripts/tests/test-sync-from-upstream.sh"
+          - "scripts/tests/sync-from-upstream-self-update.test.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/fixtures/sync-from-upstream/**"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
           - "model-mappings/**"
@@ -595,8 +679,13 @@ capabilities:
         paths:
           - "scripts/check-core-paths.sh"
           - "scripts/sync-from-upstream.sh"
+          - "scripts/sync-from-upstream.ts"
+          - "scripts/lib/sync-from-upstream/**"
           - "scripts/tests/test-check-core-paths.sh"
           - "scripts/tests/test-sync-from-upstream.sh"
+          - "scripts/tests/sync-from-upstream-self-update.test.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/fixtures/sync-from-upstream/**"
           - ".crewrig/core-paths.txt"
           - "docs/layers.md"
           - "model-mappings/**"
@@ -609,6 +698,7 @@ capabilities:
       - bash scripts/check-core-paths.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-sync-from-upstream.sh
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts
 
   - id: ci-parity
     name: "Test the CI generator and parity harness"
@@ -1408,6 +1498,9 @@ capabilities:
       # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only,
       # they drive the shell originals through bash; each skips itself on win32).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
+      # Spec 0252 R21 (PLAN step A1-A3): the stop, uninstall and switch-argument
+      # oracles of the MCP daemon lifecycle scripts (POSIX only, same reason).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
       # Spec 0252 PR B (issue #1330): the service module, the MCP launcher and the
       # MemPalace helpers. Linux runs every suite, the conformance test included;
       # the win32-only suites (service-windows*.test.ts) run in `windows-service-task`.
@@ -2071,6 +2164,7 @@ capabilities:
           - "scripts/lib/usage-capture/**"
           - "scripts/lib/usage-headless.sh"
           - "scripts/usage-backfill.sh"
+          - "scripts/usage-backfill.ts"
           - "scripts/tests/test-usage-capture.sh"
           - "scripts/tests/fixtures/usage-capture/**"
           - "hooks/claude-usage-capture-hooks.json"
@@ -2110,6 +2204,7 @@ capabilities:
           - "scripts/lib/usage-capture/**"
           - "scripts/lib/usage-headless.sh"
           - "scripts/usage-backfill.sh"
+          - "scripts/usage-backfill.ts"
           - "scripts/tests/test-usage-capture.sh"
           - "scripts/tests/fixtures/usage-capture/**"
           - "hooks/claude-usage-capture-hooks.json"
@@ -2162,17 +2257,26 @@ capabilities:
         paths:
           - "scripts/lib/usage-store/**"
           - "scripts/usage-query.sh"
+          - "scripts/usage-query.ts"
           - "scripts/usage-prune.sh"
+          - "scripts/usage-prune.ts"
           - "scripts/usage-mirror.sh"
+          - "scripts/usage-mirror.ts"
           - "scripts/usage-inventory.ts"
           - "scripts/usage-drain.sh"
+          - "scripts/usage-drain.ts"
           - "scripts/usage-task.sh"
+          - "scripts/usage-task.ts"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-attribute.ts"
           - "scripts/usage-backfill.sh"
+          - "scripts/usage-backfill.ts"
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
           - "scripts/tests/usage-inventory.test.ts"
+          - "scripts/lib/usage-wrapper.ts"
           - "scripts/tests/usage-wrappers-oracle.test.ts"
+          - "scripts/tests/usage-wrappers.test.ts"
           - "scripts/tests/hermetic-env.test.ts"
           - "scripts/tests/lib/hermetic-env.ts"
           - "scripts/tests/fixtures/usage-storage/**"
@@ -2186,17 +2290,26 @@ capabilities:
         paths:
           - "scripts/lib/usage-store/**"
           - "scripts/usage-query.sh"
+          - "scripts/usage-query.ts"
           - "scripts/usage-prune.sh"
+          - "scripts/usage-prune.ts"
           - "scripts/usage-mirror.sh"
+          - "scripts/usage-mirror.ts"
           - "scripts/usage-inventory.ts"
           - "scripts/usage-drain.sh"
+          - "scripts/usage-drain.ts"
           - "scripts/usage-task.sh"
+          - "scripts/usage-task.ts"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-attribute.ts"
           - "scripts/usage-backfill.sh"
+          - "scripts/usage-backfill.ts"
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
           - "scripts/tests/usage-inventory.test.ts"
+          - "scripts/lib/usage-wrapper.ts"
           - "scripts/tests/usage-wrappers-oracle.test.ts"
+          - "scripts/tests/usage-wrappers.test.ts"
           - "scripts/tests/hermetic-env.test.ts"
           - "scripts/tests/lib/hermetic-env.ts"
           - "scripts/tests/fixtures/usage-storage/**"
@@ -2222,7 +2335,7 @@ capabilities:
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage-mirror.sh
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/hermetic-env.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/usage-wrappers.test.ts scripts/tests/hermetic-env.test.ts
       - node scripts/build-usage-validator.js --check
 
   # usage-attribution validates spec 0208's declaration channels, attribution
@@ -2246,7 +2359,9 @@ capabilities:
           - "scripts/lib/usage-store/**"
           - "scripts/lib/usage-capture/**"
           - "scripts/usage-task.sh"
+          - "scripts/usage-task.ts"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-attribute.ts"
           - "scripts/tests/test-usage-attribution.sh"
           - "scripts/tests/fixtures/usage-attribution/**"
           - "docs/usage-attribution.md"
@@ -2259,7 +2374,9 @@ capabilities:
           - "scripts/lib/usage-store/**"
           - "scripts/lib/usage-capture/**"
           - "scripts/usage-task.sh"
+          - "scripts/usage-task.ts"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-attribute.ts"
           - "scripts/tests/test-usage-attribution.sh"
           - "scripts/tests/fixtures/usage-attribution/**"
           - "docs/usage-attribution.md"
@@ -2268,7 +2385,7 @@ capabilities:
           - "package-lock.json"
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
     command:
       - npm install
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-attribution.sh
@@ -2303,15 +2420,20 @@ capabilities:
         paths:
           - "scripts/lib/usage-price/**"
           - "scripts/usage-price.sh"
+          - "scripts/usage-price.ts"
           - "scripts/tests/test-usage-pricing*.sh"
           - "scripts/tests/fixtures/usage-pricing/**"
           - "model-prices.org.json"
           - "scripts/lib/usage-store/**"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-attribute.ts"
           - "scripts/usage-prune.sh"
+          - "scripts/usage-prune.ts"
           - "scripts/usage-query.sh"
+          - "scripts/usage-query.ts"
           - "scripts/lib/usage-dashboard/**"
           - "scripts/usage-dashboard.sh"
+          - "scripts/usage-dashboard.ts"
           - "package.json"
           - "package-lock.json"
       - on: push
@@ -2319,20 +2441,25 @@ capabilities:
         paths:
           - "scripts/lib/usage-price/**"
           - "scripts/usage-price.sh"
+          - "scripts/usage-price.ts"
           - "scripts/tests/test-usage-pricing*.sh"
           - "scripts/tests/fixtures/usage-pricing/**"
           - "model-prices.org.json"
           - "scripts/lib/usage-store/**"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-attribute.ts"
           - "scripts/usage-prune.sh"
+          - "scripts/usage-prune.ts"
           - "scripts/usage-query.sh"
+          - "scripts/usage-query.ts"
           - "scripts/lib/usage-dashboard/**"
           - "scripts/usage-dashboard.sh"
+          - "scripts/usage-dashboard.ts"
           - "package.json"
           - "package-lock.json"
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
     command:
       - npm install
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-pricing.sh
@@ -2352,6 +2479,7 @@ capabilities:
         paths:
           - "scripts/lib/usage-dashboard/**"
           - "scripts/usage-dashboard.sh"
+          - "scripts/usage-dashboard.ts"
           - "scripts/tests/test-usage-dashboard*.sh"
           - "scripts/tests/fixtures/usage-dashboard/**"
           - "scripts/tests/fixtures/usage-pricing/**"
@@ -2359,9 +2487,13 @@ capabilities:
           - "scripts/lib/usage-store/**"
           - "scripts/lib/usage-price/**"
           - "scripts/usage-query.sh"
+          - "scripts/usage-query.ts"
           - "scripts/usage-price.sh"
+          - "scripts/usage-price.ts"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-attribute.ts"
           - "scripts/usage-prune.sh"
+          - "scripts/usage-prune.ts"
           - "schemas/usage-record/**"
           - "package.json"
           - "package-lock.json"
@@ -2370,6 +2502,7 @@ capabilities:
         paths:
           - "scripts/lib/usage-dashboard/**"
           - "scripts/usage-dashboard.sh"
+          - "scripts/usage-dashboard.ts"
           - "scripts/tests/test-usage-dashboard*.sh"
           - "scripts/tests/fixtures/usage-dashboard/**"
           - "scripts/tests/fixtures/usage-pricing/**"
@@ -2377,15 +2510,19 @@ capabilities:
           - "scripts/lib/usage-store/**"
           - "scripts/lib/usage-price/**"
           - "scripts/usage-query.sh"
+          - "scripts/usage-query.ts"
           - "scripts/usage-price.sh"
+          - "scripts/usage-price.ts"
           - "scripts/usage-attribute.sh"
+          - "scripts/usage-attribute.ts"
           - "scripts/usage-prune.sh"
+          - "scripts/usage-prune.ts"
           - "schemas/usage-record/**"
           - "package.json"
           - "package-lock.json"
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
     command:
       - npm install
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-dashboard.sh
@@ -2569,6 +2706,33 @@ capabilities:
         faithful equivalent on the other supported engines (spec 0240 R15,
         spec 0243 R28).
 
+  # Spec 0253 R27 (delta-01 R17, R24): the usage-wrappers row's copy of the
+  # template above. The nine TypeScript usage entries run from pwsh, offline,
+  # with no Python and no `bash`, against an isolated temp HOME and usage root,
+  # through scripts/tests/usage-wrappers-windows.test.ts. Each command's wall
+  # time is recorded with a `timing:` line and never gated (R24). No `paths:`
+  # filter, like the Windows jobs above.
+  - id: windows-usage-wrappers
+    name: "Windows usage wrappers: the nine TypeScript entries run offline from pwsh, timings recorded"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-usage-wrappers`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0253 R27).
+
   # Spec 0248 R33, R34: the worktree git guard row's copy of the template
   # above. Both TypeScript entries run from pwsh: the guard from each CLI's
   # command line through the invocation rows 37 and 37e/37f of
@@ -2662,6 +2826,33 @@ capabilities:
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0250 R28).
+
+  # Spec 0253 R27, R17: the history import and operational commands row's copy
+  # of the template above. The TypeScript sync-from-upstream entry runs from
+  # pwsh, offline, against a local upstream repository the suite creates
+  # itself, with Git for Windows and no `bash`. No timing-budget step: the suite
+  # prints `timing:` lines, which R24 records and never gates. No `paths:`
+  # filter, like the Windows jobs above.
+  - id: windows-sync-from-upstream
+    name: "Windows sync from upstream: TypeScript entry against a local upstream repository, no bash"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-sync-from-upstream`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0253 R27).
 
   # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
   # (spec 0183 R23, issue #1008): it packaged the committed source tree via

@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/lib/usage-dashboard/**"
       - "scripts/usage-dashboard.sh"
+      - "scripts/usage-dashboard.ts"
       - "scripts/tests/test-usage-dashboard*.sh"
       - "scripts/tests/fixtures/usage-dashboard/**"
       - "scripts/tests/fixtures/usage-pricing/**"
@@ -13,9 +14,13 @@ on:
       - "scripts/lib/usage-store/**"
       - "scripts/lib/usage-price/**"
       - "scripts/usage-query.sh"
+      - "scripts/usage-query.ts"
       - "scripts/usage-price.sh"
+      - "scripts/usage-price.ts"
       - "scripts/usage-attribute.sh"
+      - "scripts/usage-attribute.ts"
       - "scripts/usage-prune.sh"
+      - "scripts/usage-prune.ts"
       - "schemas/usage-record/**"
       - "package.json"
       - "package-lock.json"
@@ -24,6 +29,7 @@ on:
     paths:
       - "scripts/lib/usage-dashboard/**"
       - "scripts/usage-dashboard.sh"
+      - "scripts/usage-dashboard.ts"
       - "scripts/tests/test-usage-dashboard*.sh"
       - "scripts/tests/fixtures/usage-dashboard/**"
       - "scripts/tests/fixtures/usage-pricing/**"
@@ -31,9 +37,13 @@ on:
       - "scripts/lib/usage-store/**"
       - "scripts/lib/usage-price/**"
       - "scripts/usage-query.sh"
+      - "scripts/usage-query.ts"
       - "scripts/usage-price.sh"
+      - "scripts/usage-price.ts"
       - "scripts/usage-attribute.sh"
+      - "scripts/usage-attribute.ts"
       - "scripts/usage-prune.sh"
+      - "scripts/usage-prune.ts"
       - "schemas/usage-record/**"
       - "package.json"
       - "package-lock.json"
@@ -54,7 +64,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies

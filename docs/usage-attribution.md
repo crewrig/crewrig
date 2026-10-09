@@ -10,7 +10,7 @@ This page is one stage of the usage feature; the [usage architecture overview](u
 
 **Attribution** answers the question "what task was this usage record serving?" A record carries no task information at capture time; attribution is resolved later, when the record is handed to storage, by evaluating four possible sources in fixed order:
 
-1. **Explicit human declaration** — the operator has declared a task explicitly via the `usage-task.sh` command.
+1. **Explicit human declaration** — the operator has declared a task explicitly via the `usage-task.ts` command.
 2. **Environment variable** — the `CREWRIG_TASK` environment variable names a task.
 3. **Worktree or branch derivation** — the current directory's own worktree path (`.worktrees/<NNNN>`) or checked-out branch name matches a CrewRig ticket-branch convention.
 4. **Session-start protocol** — the framework's own session-start protocol has established or resumed a task-handoff drawer for this session and recorded its key.
@@ -23,12 +23,12 @@ A record for which **none** of the four channels produces a valid value carries 
 
 ### Channel 1: Explicit human declaration
 
-The operator declares a task-handoff key and/or an external asset reference explicitly:
+The operator declares a task-handoff key and/or an external asset reference explicitly. Run `node scripts/lib/node-floor-guard.js` first on an unverified Node.js: the commands need Node.js 24 or later.
 
 ```bash
-bash scripts/usage-task.sh set --channel explicit --task-key 1171
-bash scripts/usage-task.sh set --channel explicit --asset forge-issue:crewrig/crewrig#1171
-bash scripts/usage-task.sh set --channel explicit --task-key 1171 --asset forge-issue:crewrig/crewrig#1171
+node scripts/usage-task.ts set --channel explicit --task-key 1171
+node scripts/usage-task.ts set --channel explicit --asset forge-issue:crewrig/crewrig#1171
+node scripts/usage-task.ts set --channel explicit --task-key 1171 --asset forge-issue:crewrig/crewrig#1171
 ```
 
 A later explicit declaration replaces the earlier one in full (R2 — "full replacement, never merge"). This channel carries the highest priority.
@@ -99,20 +99,20 @@ or:
 
 ### Writing the declaration record
 
-The `bash scripts/usage-task.sh set` command writes a declaration record:
+The `node scripts/usage-task.ts set` command writes a declaration record:
 
 ```bash
-bash scripts/usage-task.sh set --channel explicit --task-key 1171 [--session <sessionId>]
-bash scripts/usage-task.sh set --channel protocol --task-key 1171 [--session <sessionId>]
+node scripts/usage-task.ts set --channel explicit --task-key 1171 [--session <sessionId>]
+node scripts/usage-task.ts set --channel protocol --task-key 1171 [--session <sessionId>]
 ```
 
 Optionally, an external asset reference may be included:
 
 ```bash
-bash scripts/usage-task.sh set --channel explicit --asset forge-issue:crewrig/crewrig#1171
-bash scripts/usage-task.sh set --channel explicit --task-key 1171 --asset jira-key:ORC-42
-bash scripts/usage-task.sh set --channel explicit --asset shared-file:/path/to/doc.md
-bash scripts/usage-task.sh set --channel explicit --asset shared-file:https://example.com/shared-doc
+node scripts/usage-task.ts set --channel explicit --asset forge-issue:crewrig/crewrig#1171
+node scripts/usage-task.ts set --channel explicit --task-key 1171 --asset jira-key:ORC-42
+node scripts/usage-task.ts set --channel explicit --asset shared-file:/path/to/doc.md
+node scripts/usage-task.ts set --channel explicit --asset shared-file:https://example.com/shared-doc
 ```
 
 A later write replaces the record in full (R2). The `declaringChannel` field distinguishes human-authored declarations (`explicit`) from framework-authored declarations (`protocol`), each with its own semantics (R3).
@@ -130,9 +130,9 @@ When reading, both scopes are consulted, and the scope with the later timestamp 
 
 ```bash
 task usage:task             # Alias for the command below
-bash scripts/usage-task.sh set --channel explicit --task-key 1171
-bash scripts/usage-task.sh show [--session <sessionId>]
-bash scripts/usage-task.sh clear [--session <sessionId>]
+node scripts/usage-task.ts set --channel explicit --task-key 1171
+node scripts/usage-task.ts show [--session <sessionId>]
+node scripts/usage-task.ts clear [--session <sessionId>]
 ```
 
 This command is **repository-level** and **identical on all four CLIs** (Claude Code, Gemini CLI, Copilot CLI, Antigravity); no per-CLI wiring is needed.
@@ -175,7 +175,7 @@ The sidecar is immutable after the entry is written and is never re-derived by a
 Inspecting a record's attribution sidecar without needing to re-derive it:
 
 ```bash
-bash scripts/usage-attribute.sh explain --record <recordId> --cli <cli> --period <YYYY-MM>
+node scripts/usage-attribute.ts explain --record <recordId> --cli <cli> --period <YYYY-MM>
 ```
 
 ## The attribution ledger
@@ -210,7 +210,7 @@ task usage:attribute add --agent <agentId> --parent <parentSessionId> --asset fo
 task usage:attribute add --period 2026-09 --task-key 1171 --reason "retroactive: all activity in September was task 1171" [--author <name>]
 ```
 
-When invoked via `task`, the `--author` defaults to the git user's configured name. When invoked directly via `bash scripts/usage-attribute.sh`, all required fields must be provided.
+When invoked via `task`, the `--author` defaults to the git user's configured name. When invoked directly via `node scripts/usage-attribute.ts`, all required fields must be provided.
 
 An identical entry (same scope, key, asset, timestamp, author, and reason) appended twice is a no-op — the ledger uses content-addressed entry IDs, so re-appending is idempotent (R13).
 
@@ -224,11 +224,11 @@ Lists all ledger entries matching the given filters. When no filter is given, al
 
 ## Read surface and ledger application
 
-When a record is read from the journal (via `bash scripts/usage-query.sh`), the ledger is consulted:
+When a record is read from the journal (via `node scripts/usage-query.ts`), the ledger is consulted:
 
 ```bash
-bash scripts/usage-query.sh --task-key 1171
-bash scripts/usage-query.sh --session <sessionId> --rollup
+node scripts/usage-query.ts --task-key 1171
+node scripts/usage-query.ts --session <sessionId> --rollup
 ```
 
 **Ledger application** (R15): If a ledger entry names the session, agent, or period a record belongs to, that entry's task-handoff key and/or external asset reference **replaces** the record's own attribution at read time. The record itself is not modified; only the returned result carries the overridden attribution.
@@ -240,7 +240,7 @@ The underlying record and its sidecar remain unchanged — a ledger entry never 
 To read records with their original attribution, bypassing any ledger overrides:
 
 ```bash
-bash scripts/usage-query.sh --task-key 1171 --no-ledger
+node scripts/usage-query.ts --task-key 1171 --no-ledger
 ```
 
 This returns the entry verbatim, as it was written.
@@ -250,10 +250,10 @@ This returns the entry verbatim, as it was written.
 A rollup aggregates records by task-handoff key or external asset reference, reporting token counts grouped by **fidelity** — the granularity at which a record was captured (per-request, run-total, or session-cumulative):
 
 ```bash
-bash scripts/usage-query.sh --task-key 1171 --rollup
-bash scripts/usage-query.sh --asset forge-issue:crewrig/crewrig#1171 --rollup
-bash scripts/usage-query.sh --task-key 1171 --rollup --combined
-bash scripts/usage-query.sh --period 2026-09 --task-key 1171 --rollup
+node scripts/usage-query.ts --task-key 1171 --rollup
+node scripts/usage-query.ts --asset forge-issue:crewrig/crewrig#1171 --rollup
+node scripts/usage-query.ts --task-key 1171 --rollup --combined
+node scripts/usage-query.ts --period 2026-09 --task-key 1171 --rollup
 ```
 
 Selectors compose, so the last line rolls up only task 1171's records. With `--period`, a `session-cumulative` session counts through its last snapshot in the selection, and only in the month holding that snapshot (see [Period rollups](usage-pricing.md#period-rollups)).
@@ -306,7 +306,7 @@ The session-start protocol documentation — `artifacts/core/rules/60-tools.md` 
 The explicit, period-scoped prune (R17, spec 0207 requirement 18) removes the journal entries and ledger entries recorded within a pruned period together:
 
 ```bash
-bash scripts/usage-prune.sh <cli> <YYYY-MM>
+node scripts/usage-prune.ts <cli> <YYYY-MM>
 ```
 
 This command removes:
@@ -320,7 +320,7 @@ The period is derived from each record's own `timing.requestInstant`, not `timin
 After a period is pruned, writes to that period are rejected by default (records are marked as rejected). To restore writability without recovering deleted records:
 
 ```bash
-bash scripts/usage-prune.sh <cli> <YYYY-MM> --unprune
+node scripts/usage-prune.ts <cli> <YYYY-MM> --unprune
 ```
 
 This removes only the pruned marker, allowing new writes to the period again. Rejected records from while the period was pruned remain lost; to recover them, backfill cursors must be reset.
