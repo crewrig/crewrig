@@ -69,12 +69,14 @@ Replacement:
 > was not asked to stop … (the rest of the sentence is unchanged). The non-zero
 > status is what the supervisors of the other operating systems and the diagnostics
 > read; on Windows the restart itself comes from the repeating trigger. Because the
-> trigger restarts the task, `stop` of the Windows MCP daemon is a restart request, as it
-> is under launchd and systemd (requirement 5): after `stop` the task is started again
-> within about a minute (measured: the MCP chain was serving again within the 20 to 30
-> seconds a state read takes, run 37991291835), and only `uninstall` ends it for good.
-> The ChromaDB daemon's `stop` keeps the contract of requirement 14: it does nothing to a
-> supervised daemon.
+> trigger restarts the task, `stop` of the Windows MCP daemon stays a restart request, as
+> it is under launchd and systemd (requirement 5): `stop-mcp-server` ends the task and runs
+> it again at once, as requirement 17 says, and the repeating trigger is the backstop that
+> starts it again within about a minute if that run is refused or the task ends later
+> (measured: after an end, the MCP chain was serving again within the 20 to 30 seconds a
+> state read takes, run 37991291835). Only `uninstall` ends it for good. The ChromaDB
+> daemon's `stop` keeps the contract of requirement 14: it does nothing to a supervised
+> daemon. Requirement 17 is therefore not amended.
 
 ### Requirement 6 and 7 — the triggers (seat finding s7-F1)
 
@@ -137,14 +139,23 @@ launchd and systemd.
 - **Uninstall order (requirement 5, requirement 33).** *Uninstall* of a Windows task SHALL
   first disable the task (`schtasks /Change /TN … /DISABLE`), so that no trigger can start
   it again, then end it and sweep the leftovers of its daemon tree (requirement 33), then
-  delete it. A failed disable does not stop the uninstall; it is reported.
-- **Requirement 24.** The post-`stop` assertions (the state is not running, `LastTaskResult
-  0x41306`) and the failed-last-result assertion of the restart proof race the repeating
-  trigger and SHALL be measured, not asserted: the Windows job asserts that the daemon tree
-  is gone right after `stop`, that the task is started again within the bounded wait after
-  its action process ends (kill and clean exit, each chain), and that `uninstall` leaves no
-  task and no daemon process; the non-zero end of the launcher and of the flagged wrapper is
-  asserted by their unit tests on every operating system.
+  delete it. A failed disable does not stop the uninstall, which still ends, sweeps and deletes; it is
+  reported together with the statement that a trigger may have started a new instance
+  after the sweep, so a daemon process of the removed task may still run, and with the
+  command that finds it (`status`, then `doctor-mempalace`).
+- **Requirement 24.** Original (excerpt): *"… `stop` and `start` change the state `/Query`
+  reports, `uninstall` removes it and a second `uninstall` is success, and the daemon process
+  tree is gone after `stop`."* and *"… the launcher ends with a non-zero status (`/Query`
+  reports a failed last result), the task is started again by the Task Scheduler within a
+  bounded wait …"*. Replacement: the Windows job asserts that, at the moment `stop` returns,
+  no process of the daemon tree it ended is running (checked by process identifier at that
+  moment, before the trigger can fire); that after the action process of the task ends, by
+  a kill or by a clean exit of the daemon child, the task is started again within a bounded
+  wait of 150 seconds on each chain; and that `uninstall` leaves no task and no daemon
+  process. The state `/Query` reports after `stop`, and the last result after the action
+  process ends, race the repeating trigger: the job prints them and asserts nothing on them.
+  That the launcher and the flagged wrapper end non-zero is asserted by their unit tests on
+  every operating system, not by the Windows job.
 - **Scenarios.** "the daemon is brought back after a crash on Windows" reads: *the task is
   started again by the repeating trigger within about a minute of its action process
   ending, and the launcher waits for ChromaDB on its deadline*. "stop is a restart request
