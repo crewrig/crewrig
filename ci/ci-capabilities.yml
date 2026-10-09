@@ -2291,7 +2291,7 @@ capabilities:
           - "package-lock.json"
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
     command:
       - npm install
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-attribution.sh
@@ -2365,7 +2365,7 @@ capabilities:
           - "package-lock.json"
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
     command:
       - npm install
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-pricing.sh
@@ -2428,7 +2428,7 @@ capabilities:
           - "package-lock.json"
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
     command:
       - npm install
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-dashboard.sh

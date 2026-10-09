@@ -1826,7 +1826,7 @@ usage-storage:
         - "docs/usage-organization.md"
 
 usage-attribution:
-  image: node:22
+  image: node:24
   script:
     - "npm install"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-attribution.sh"
@@ -1861,7 +1861,7 @@ usage-attribution:
         - "package-lock.json"
 
 usage-pricing:
-  image: node:22
+  image: node:24
   script:
     - "npm install"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-pricing.sh"
@@ -1908,7 +1908,7 @@ usage-pricing:
         - "package-lock.json"
 
 usage-dashboard:
-  image: node:22
+  image: node:24
   script:
     - "npm install"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-dashboard.sh"
