@@ -59,15 +59,20 @@ Replacement:
 >     `tea`), the four supported CLIs, the Python toolchain for the `mempalace`
 >     exception, and the host operating system's service manager is permitted.
 >     For process and socket inspection only, and only where Node.js offers no
->     equivalent, a migrated script MAY spawn exactly these tools on exactly these
->     operating systems: on macOS, `netstat` and `ps`; on Windows, `netstat` and
+>     equivalent (the listing of the running tasks of the operating system's own
+>     task scheduler, which is service-manager state read through the `powershell`
+>     tool, counts as process inspection), a migrated script MAY spawn exactly these
+>     tools on exactly these operating systems: on macOS, `netstat` and `ps`; on Windows, `netstat` and
 >     `powershell`; on Linux, none (the `/proc` file system answers, and no process is
 >     spawned). The list is closed: a tool or an operating system not named here is
 >     refused until a delta-spec of this spec names it. Every spawn of a tool of this
 >     list SHALL go through one module, `scripts/lib/service/os-inspect.ts`, which no
 >     script bypasses and which a script of another row imports instead of spawning
->     the tool itself; the module passes an argument array with no shell, bounds the
->     run in time, never passes a credential, and returns the output for the caller to
+>     the tool itself; the module resolves each tool at the operating system's own
+>     absolute path and not through the search path, passes an argument array with no
+>     shell, runs `powershell` only with `-NoProfile` and `-NonInteractive` and a
+>     constant script that carries no caller-supplied text, bounds the run in time,
+>     never passes a credential, and returns the output for the caller to
 >     parse in process, so no output is piped to another tool. JSON handling SHALL use
 >     the Node.js standard library. YAML handling SHALL use `js-yaml`, the library
 >     already pinned in the lockfile (as a `devDependency` at authoring time; the
