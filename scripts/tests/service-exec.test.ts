@@ -51,11 +51,12 @@ test("service managers resolve to the operating system's own path, never a bare 
 });
 
 test("the seam replaces the executable and can be removed", () => {
-  assert.equal(executableFor("systemctl"), "systemctl");
+  const real = executableFor("systemctl");
+  assert.match(real, /systemctl$/);
   setExecutableOverride("systemctl", "/x/fake");
   assert.equal(executableFor("systemctl"), "/x/fake");
   setExecutableOverride("systemctl", null);
-  assert.equal(executableFor("systemctl"), "systemctl");
+  assert.equal(executableFor("systemctl"), real);
 });
 
 test(
