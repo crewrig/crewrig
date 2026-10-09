@@ -39,6 +39,11 @@
 #
 # Bash 3.2 only: no associative arrays; case/function dispatch, matching the
 # idiom scripts/build-extension.sh already uses.
+#
+# TypeScript twins (spec 0254, row G1b of epic #1231): scripts/lib/extension/hooks-vocab.ts,
+# hooks-resolve.ts, hooks-emit.ts and validate-hooks.ts mirror these functions for the
+# TypeScript builders. Change both, and keep scripts/tests/extension-conformance.test.ts
+# green. This library retires with its last consumer (rows I1 and J3), not with the twins.
 
 EXT_HOOKS_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXT_HOOKS_TARGETS_JSON="$EXT_HOOKS_LIB_DIR/extension-targets.json"
