@@ -1216,6 +1216,7 @@ runtime-foundations:
   script:
     - "npm ci"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -1753,6 +1754,7 @@ usage-storage:
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage-mirror.sh"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/hermetic-env.test.ts"
     - "node scripts/build-usage-validator.js --check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
@@ -1769,6 +1771,9 @@ usage-storage:
         - "scripts/build-usage-validator.js"
         - "scripts/tests/test-usage-storage*.sh"
         - "scripts/tests/usage-inventory.test.ts"
+        - "scripts/tests/usage-wrappers-oracle.test.ts"
+        - "scripts/tests/hermetic-env.test.ts"
+        - "scripts/tests/lib/hermetic-env.ts"
         - "scripts/tests/fixtures/usage-storage/**"
         - "schemas/**"
         - "package.json"
@@ -1789,6 +1794,9 @@ usage-storage:
         - "scripts/build-usage-validator.js"
         - "scripts/tests/test-usage-storage*.sh"
         - "scripts/tests/usage-inventory.test.ts"
+        - "scripts/tests/usage-wrappers-oracle.test.ts"
+        - "scripts/tests/hermetic-env.test.ts"
+        - "scripts/tests/lib/hermetic-env.ts"
         - "scripts/tests/fixtures/usage-storage/**"
         - "schemas/**"
         - "package.json"
