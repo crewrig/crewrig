@@ -62,8 +62,10 @@ in the code: a fallback needs a new decision.
   UNDETERMINED. Install verification, rollback and uninstall use `schtasks`
   exit statuses only and never depend on that call.
 - **The launcher must end non-zero whenever its child ends.** The scheduler
-  restarts only a failed run and does not watch a process the task started, so
-  the process the task runs is the one whose end means the daemon is down. The
+  does not watch a process the task started, so the process the task runs is the
+  one whose end means the daemon is down; a repeating one-minute time trigger
+  with `IgnoreNew` then starts the task again (`RestartOnFailure` alone was
+  measured to restart nothing, see *Measurements*). The
   launcher ends non-zero when its child ends for any reason it was not asked to
   stop for, a clean exit included. The ChromaDB trust wrapper gets the same rule
   through the optional `--end-nonzero-on-child-exit` flag, which the Windows
@@ -89,20 +91,23 @@ in the code: a fallback needs a new decision.
 
 ## Measurements
 
-Results of the plan's measurement steps 17 to 19 are **TO BE FILLED** from the
-`MEASURE:` lines of the `windows-service-task` job of PR B, together with the
-run they come from. Until a row is filled, the corresponding consequence above
-is a stated expectation, not a finding, and no gap that depends on it is
+Results of the plan's measurement steps 17 to 19, read from the `MEASURE:` lines
+of the `windows-service-task` job of PR #1533 on `windows-latest`: run 37984532681
+(first complete lifecycle), run 37989182023 and run 37991291835 (with the
+keep-alive trigger). Where a row says *not measured*, the corresponding
+consequence above stays a stated expectation and no gap that depends on it is
 recorded as one in [`cli-matrix.md`](../cli-matrix.md).
 
 | Item | Plan step | Result |
 |---|---|---|
-| `/Run` of an interactive-token task from a non-interactive session | 17 | pending |
-| Statuses of `/Query /TN … /XML` for an absent task and of a refused `/Create` | 17 | pending |
-| Whether a task action that exits 0 is restarted | 17 | pending |
-| Restart timing (interval observed, count reached) | 17 | pending |
-| Standard-user leg (no elevation) | 17 | pending |
-| GPO-refusal producibility on the runner | 17 | pending |
-| `EnginePID` versus the launcher PID, on the real MCP chain | 18 | pending |
-| Whether `/End` kills the whole daemon tree, on both chains | 19 | pending |
-| Launcher console window on a desktop session | 19 | pending |
+| `/Create` from XML and `/Run` of an interactive-token task, from the runner's session | 17 | Works: install succeeds and the daemon serves within 0.5 to 1 s, on both chains. Not measured from a non-interactive session. |
+| Status of `/Query /TN … /XML` for an absent task | 17 | `1` (non-zero), as assumed. |
+| Status of a refused `/Create` (Group Policy) | 17 | Not produced on the runner. The refusal path is tested through the executable seam of `exec.ts` with a stub `schtasks` that returns the verbatim "Access is denied" text. |
+| Whether a task action that exits 0 is restarted by `RestartOnFailure` | 17 | **No.** With `RestartOnFailure` (interval one minute, count 999) alone, a task whose action ended with `LastTaskResult 0x1` (killed child) or after a clean child exit was not started again within 240 s, on both chains (run 37984532681). |
+| Restart through a repeating one-minute time trigger with `IgnoreNew` | 17 | **Yes.** The task is started again 25 to 58 s after its action process ends (kill and clean exit, both chains; runs 37989182023 and 37991291835). While the task runs, the trigger leaves `LastTaskResult 0x800710e0` (an instance ignored). The trigger has no end, so there is no finite restart count. |
+| Launcher and trust wrapper exit when their child ends | 17 | Yes: the program ends in about 250 ms with `LastTaskResult 0x1`, for a killed child and for a clean child exit, on both chains. |
+| Standard-user leg (no elevation) | 17 | Not measured: the runner's token is an administrator's and no restricted-token leg exists yet. |
+| `EnginePID` versus the launcher PID, on the real MCP chain | 18 | **Equal** (`enginePid=5628 launcherPid=5628`, run 37991291835; also `6708/6708` and `7604/7604` in earlier runs). On the ChromaDB chain `EnginePID` equals the trust wrapper's PID. The stand-in daemon's `ppid` is that PID on both chains. |
+| Whether `/End` kills the whole daemon tree, on both chains | 19 | Yes: after `stop`, neither the daemon nor its parent is alive and `/healthz` is down. `LastTaskResult` is `0x41301` while running and `0x41306` after `stop`; with the keep-alive trigger the task may be started again within a minute (stop is a restart request). |
+| Cost of reading a task's state (`Schedule.Service` COM plus the process table through CIM) | 18 | 20 to 33 s per call on the runner; the first call of one run timed out at its 30 s bound, hence the 60 s bound. `status-mcp-server` takes about that long on Windows there. |
+| Launcher console window on a desktop session | 19 | Not measured (the hosted runner has no desktop): *unverified*. |
