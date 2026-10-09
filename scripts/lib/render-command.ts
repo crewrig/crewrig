@@ -11,7 +11,7 @@
 // slice. That is not a precedent for the other consumers of those shell libraries.
 //
 // ── Injection of the YAML reader ─────────────────────────────────────────────
-// `js-yaml` is a devDependency until the dependency move of spec 0250 R24, and it
+// `js-yaml` is a production dependency (spec 0250 R24), and it
 // is loaded only through `loadDependency`, so nothing here imports it. The caller
 // builds a `YamlText` (scripts/lib/yaml-text.ts: `createYamlText(toYamlLib(ns))`)
 // and passes it to `createRenderCommand`, once per process:

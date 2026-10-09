@@ -31,7 +31,7 @@ export interface ResolveContext {
   readonly platform: NodeJS.Platform;
   /** The shell's `$$` of a derived merge root. */
   readonly pid: number;
-  /** `process.getuid()`; `undefined` where ownership is not modelled (win32). */
+  /** `process.geteuid()` (the shell's `-O` tests the effective user); `undefined` where ownership is not modelled (win32). */
   readonly uid: number | undefined;
   /** `os.tmpdir()`: the base when `TMPDIR` is unset or empty. */
   readonly tmpdir: string;

@@ -78,8 +78,8 @@ export function mappingSha256(target: string, core: string, org: string): string
 }
 
 /**
- * `-e` and `-O` of the shell, as one answer: `absent`, `owned` by the current user, or
- * `foreign`. Ownership is not modelled on win32, where an existing root is `owned`.
+ * `-e` and `-O` of the shell, as one answer: `absent`, `owned` by the effective user
+ * (`-O` tests the effective uid, so the context carries `process.geteuid()`), or `foreign`. Ownership is not modelled on win32, where an existing root is `owned`.
  */
 export function rootState(ctx: ResolveContext, root: string): "absent" | "owned" | "foreign" {
   try {

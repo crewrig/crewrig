@@ -28,6 +28,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { escapeControl } from "./escape-control.ts";
+
 /** Where a report is written; the build hands in its standard error. */
 export type TextSink = (text: string) => void;
 
@@ -162,9 +164,9 @@ export function reportCollision(
   sources: readonly string[],
   sink: TextSink = stderrSink,
 ): void {
-  let text = `Refusing '${name}': one installed name is claimed by more than one component.\n`;
+  let text = `Refusing '${escapeControl(name)}': one installed name is claimed by more than one component.\n`;
   text += "Every source presenting it, in no significant order:\n";
-  for (const source of sources) text += `  - ${source}\n`;
+  for (const source of sources) text += `  - ${escapeControl(source)}\n`;
   sink(text);
 }
 

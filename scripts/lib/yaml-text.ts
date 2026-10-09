@@ -18,6 +18,10 @@
 //   seq     `.a // [] | .[]`            element texts in order.
 //   has     `.a // {} | has("b")`       key presence, whatever the value.
 //   entries `.a | to_entries | .[]`     key, kind and text of every entry.
+// A document whose expanded size passes EXPANDED_NODE_LIMIT is refused as unparseable
+// (`parse` returns null): js-yaml shares an alias target, so a few hundred bytes of nested
+// aliases parse cheaply and then blow up when any consumer copies the tree (spec 0250
+// R33, the alias-expansion hardening). A cyclic alias is refused the same way.
 // A path that cannot be walked (through a scalar or a sequence), and an
 // unparseable source (`parse` returned null), are a `yq` error: the shell
 // discarded stderr, so the text is empty (`plain`, `alt`), `[]`, or `false`.
@@ -53,7 +57,7 @@ export interface YamlEntry {
 }
 
 export interface YamlText {
-  /** `null` when either load throws (unparseable, duplicate key, non-core tag). */
+  /** `null` when either load throws (unparseable, duplicate key, non-core tag) or the document is too large once expanded. */
   parse(text: string): YamlDoc | null;
   plain(doc: YamlDoc | null, path: YamlPath): string;
   alt(doc: YamlDoc | null, path: YamlPath): string;
@@ -107,6 +111,62 @@ export function toYamlLib(ns: unknown): YamlLib {
     CORE_SCHEMA: lib.CORE_SCHEMA,
     FAILSAFE_SCHEMA: lib.FAILSAFE_SCHEMA,
   };
+}
+
+/** Most nodes a document may have once every alias is followed (about 1000 times a real one). */
+export const EXPANDED_NODE_LIMIT = 100_000;
+
+interface SizeFrame {
+  readonly node: object;
+  readonly children: unknown[];
+  next: number;
+  sum: number;
+}
+
+function frameOf(node: object): SizeFrame {
+  const children: unknown[] = Array.isArray(node) ? node : Object.values(node);
+  return { node, children, next: 0, sum: 1 };
+}
+
+/**
+ * Whether following every alias of `root` reaches more than {@link EXPANDED_NODE_LIMIT}
+ * nodes, or loops back on itself. Linear in the number of distinct nodes: the size of a
+ * shared node is computed once (memoised) and the running sum is capped, so the
+ * expansion is counted, never performed. Iterative, so nesting depth cannot overflow
+ * the call stack.
+ */
+export function exceedsExpandedLimit(root: unknown): boolean {
+  if (!isRecord(root)) return false;
+  const sizes = new Map<object, number>();
+  const active = new Set<object>([root]);
+  const stack: SizeFrame[] = [frameOf(root)];
+  for (let frame = stack.at(-1); frame !== undefined; frame = stack.at(-1)) {
+    if (frame.next < frame.children.length) {
+      const child = frame.children[frame.next];
+      frame.next += 1;
+      if (!isRecord(child)) {
+        frame.sum += 1;
+      } else if (active.has(child)) {
+        return true;
+      } else if (sizes.has(child)) {
+        frame.sum += sizes.get(child) ?? 0;
+      } else {
+        active.add(child);
+        stack.push(frameOf(child));
+      }
+      if (frame.sum > EXPANDED_NODE_LIMIT) return true;
+      continue;
+    }
+    stack.pop();
+    active.delete(frame.node);
+    sizes.set(frame.node, frame.sum);
+    const parent = stack.at(-1);
+    if (parent !== undefined) {
+      parent.sum += frame.sum;
+      if (parent.sum > EXPANDED_NODE_LIMIT) return true;
+    }
+  }
+  return false;
 }
 
 /** A node seen through both trees; `core === undefined` is an absent key. */
@@ -172,6 +232,7 @@ export function createYamlText(lib: YamlLib): YamlText {
       try {
         const core = lib.load(text, { schema: lib.CORE_SCHEMA });
         const written = lib.load(text, { schema: lib.FAILSAFE_SCHEMA });
+        if (exceedsExpandedLimit(core) || exceedsExpandedLimit(written)) return null;
         return { core, text: written };
       } catch {
         return null;
