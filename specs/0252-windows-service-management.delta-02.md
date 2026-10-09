@@ -23,7 +23,13 @@ restart legs of each run passed: the task was started again 25 to 58 seconds aft
 action process ended (kill and status-0 exit, both chains). The same runs measured
 that `LastTaskResult` reads `0x800710e0` while the task runs and the trigger fires
 on an instance that `IgnoreNew` ignores, and that a snapshot of the task through the
-Task Scheduler's COM interface takes 20 to 30 seconds on that runner. This delta
+Task Scheduler's COM interface first took 20 to 30 seconds on that runner. A probe job
+(run 37994796307 and its successors on PR #1533) measured every candidate on an idle
+runner (a task read through COM 0.2 to 0.3 s, a CIM process table 0.3 s, a Toolhelp32
+process table 0.35 s, `schtasks /Query /V /FO CSV` 25 to 45 ms, `netstat -ano` 25 ms) and
+found the cause of the delay: the state read ran `powershell.exe` with a restricted
+environment, and without `PSModulePath` PowerShell rebuilds its module path on every
+start, 18 seconds each time; with `PSModulePath` the same read takes 0.43 seconds. This delta
 records these measurements as normative text and changes the restart mechanism
 accordingly. It runs under the release-branch regime of
 `specs/0215-shell-to-typescript-migration.delta-04.md`, and its spec-PR targets
@@ -73,8 +79,8 @@ Replacement:
 > it is under launchd and systemd (requirement 5): `stop-mcp-server` ends the task and runs
 > it again at once, as requirement 17 says, and the repeating trigger is the backstop that
 > starts it again within about a minute if that run is refused or the task ends later
-> (measured: after an end, the MCP chain was serving again within the 20 to 30 seconds a
-> state read takes, run 37991291835). Only `uninstall` ends it for good. The ChromaDB
+> (measured: after an end, the MCP chain was serving again by the time the next state
+> read answered, run 37991291835). Only `uninstall` ends it for good. The ChromaDB
 > daemon's `stop` keeps the contract of requirement 14: it does nothing to a supervised
 > daemon. Requirement 17 is therefore not amended.
 
@@ -125,10 +131,16 @@ Original (excerpt):
 Replacement:
 
 > … the one-minute restart floor on Windows (measured: the task is started again 25 to
-> 58 seconds after its action process ends, run 37991291835); the cost of reading a
-> task's state on Windows (measured: 20 to 30 seconds per call on `windows-latest`,
-> which makes `status-mcp-server` take about that long there; evidence in the same
-> runs); …
+> 58 seconds after its action process ends, run 37991291835); …
+>
+> A state read is not a gap: it SHALL take 5 seconds or less on Windows, as the owner
+> required on 2026-10-09. The child environment of the PowerShell call SHALL keep
+> `PSModulePath` (without it a read took 18 s, with it 0.43 s). The read stays the COM
+> interface of the Task Scheduler through the single `os-inspect` module, not
+> `schtasks /Query /V /FO CSV`: the CSV is as fast (25 to 45 ms) but it carries the state
+> as localized text (a status word in the user's language), cannot give the process
+> identifier of the task's process that requirement 16 needs, and requirement 15 reads
+> numeric results only.
 
 The finite restart count is no longer a gap: the repeating trigger has no end, so a
 launcher that keeps failing closed is started again every minute, as it is under
@@ -156,6 +168,8 @@ launchd and systemd.
   process ends, race the repeating trigger: the job prints them and asserts nothing on them.
   That the launcher and the flagged wrapper end non-zero is asserted by their unit tests on
   every operating system, not by the Windows job.
+  The Windows job also asserts that reading the state of a running task (the `status` call of
+  the backend) takes 5 seconds or less.
   The other assertions of the original text are unchanged: `start` runs the task (checked
   by the daemon serving again), `uninstall` removes the task, and a second `uninstall` is
   success ("was not loaded").
