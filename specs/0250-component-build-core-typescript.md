@@ -1,7 +1,7 @@
 ---
 id: "0250"
 slug: component-build-core-typescript
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1332

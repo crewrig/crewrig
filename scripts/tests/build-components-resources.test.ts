@@ -6,12 +6,11 @@
 // and ignores the source mode, with the link rewrite and no other normalisation; the execute rule
 // then adds `0o111 & ~umask` for an executable source and never clears a bit. Enumeration is the
 // whole path list sorted in code-unit order (the shell's `sort` under a UTF-8 locale on macOS is
-// case-insensitive: only the order of `Generated:` lines differs). The shell's own
-// `propagate_skill_resources` is the oracle of the parity set (Linux, or CREWRIG_SHELL_PARITY=1,
-// with bash and mikefarah yq), read out of scripts/build-components.sh with awk, never copied.
+// case-insensitive: only the order of `Generated:` lines differs). The shell-parity set of
+// `propagate_skill_resources` was retired with the switch (spec 0250 PR D, R13): its oracle,
+// scripts/build-components.sh, is now a shim.
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
@@ -25,8 +24,6 @@ import {
   snapshot,
   writeSkill,
 } from "./fixtures/build-components/skill-fixture.ts";
-import { REPO } from "./lib/build-fixture-tree.ts";
-import { parityGate } from "./lib/shell-resolve-harness.ts";
 
 const POSIX = process.platform === "win32" ? "skipped: file modes and links are POSIX" : false;
 /** The expected listing: folder order, then whole-path code-unit order within a folder. */
@@ -264,34 +261,4 @@ describe("R15 --check on a drift-compared tier", () => {
     assert.equal(run.lines.length, ORDER.length);
     assert.ok(run.lines.every((l) => l.startsWith("  Generated: ")));
   });
-});
-
-const noShell = parityGate();
-const SCRIPT = path.join(REPO, "scripts", "build-components.sh");
-const DRIVER = `set -euo pipefail
-eval "$(awk '/^propagate_skill_resources\\(\\) \\{/,/^\\}/' "$1")"
-CHECK_MODE=false; CHECK_COMPARE=true; DRIFT_FOUND=false
-propagate_skill_resources "$2" "$3"`;
-
-describe("shell parity: propagate_skill_resources", { skip: noShell ?? POSIX }, () => {
-  for (const mask of [0o022, 0o002, 0o077]) {
-    test(`the tree, its modes and the Generated lines equal the shell's under umask ${mask.toString(8).padStart(3, "0")}`, () => {
-      const skill = tempDir();
-      writeSkill(skill);
-      const shellOut = path.join(tempDir(), "out");
-      const sh = withUmask(mask, () =>
-        spawnSync("bash", ["-c", DRIVER, "bash", SCRIPT, skill, shellOut], {
-          encoding: "utf8",
-          env: { ...process.env, LC_ALL: "C" },
-        }),
-      );
-      assert.equal(sh.status, 0, sh.stderr);
-      const twin = propagate(mask);
-      assert.deepEqual(snapshot(twin.out), snapshot(shellOut));
-      assert.equal(
-        `${twin.lines.map((l) => l.replace(twin.out, "<OUT>")).join("\n")}\n`,
-        sh.stdout.replaceAll(shellOut, "<OUT>"),
-      );
-    });
-  }
 });

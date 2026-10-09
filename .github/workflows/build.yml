@@ -47,6 +47,7 @@ jobs:
           filters: |
             component-drift:
               - 'scripts/build-components.sh'
+              - 'scripts/build-components.ts'
               - 'scripts/test-build-components.sh'
               - 'scripts/tests/test-model-resolution.sh'
               - 'scripts/tests/test-agent-profile-migration.sh'
@@ -63,22 +64,32 @@ jobs:
               - '.github/skills/**'
               - '.gemini/commands/**'
               - 'crewrig.config.toml'
-      - name: Install yq
+              - 'package.json'
+              - 'package-lock.json'
+      - uses: actions/setup-node@v4
         if: steps.filter.outputs.component-drift == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.component-drift == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - uses: actions/cache@v4
         if: steps.filter.outputs.component-drift == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', '.agents/skills/**', '.claude/skills/**', '.gemini/skills/**', '.github/skills/**', '.gemini/commands/**', 'crewrig.config.toml') }}
+          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/build-components.ts', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', '.agents/skills/**', '.claude/skills/**', '.gemini/skills/**', '.github/skills/**', '.gemini/commands/**', 'crewrig.config.toml', 'package.json', 'package-lock.json') }}
+      - name: Floor guard accepts the running Node.js
+        if: steps.filter.outputs.component-drift == 'true'
+        run: node scripts/lib/node-floor-guard.js
       - name: Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml" --key-env "" -- bash scripts/build-components.sh --target all --check
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/build-components.ts,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml,package.json,package-lock.json" --key-env "" -- node scripts/build-components.ts --target all --check
+      - name: Test Assembly Verification
+        if: steps.filter.outputs.component-drift == 'true'
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/build-components.ts,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml,package.json,package-lock.json" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh
       - name: Test Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml" --key-env "" -- bash scripts/test-build-components.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/build-components.ts,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml,package.json,package-lock.json" --key-env "" -- bash scripts/test-build-components.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -92,6 +103,7 @@ jobs:
           filters: |
             model-resolution:
               - 'scripts/build-components.sh'
+              - 'scripts/build-components.ts'
               - 'scripts/test-build-components.sh'
               - 'scripts/tests/test-model-resolution.sh'
               - 'scripts/tests/test-agent-profile-migration.sh'
@@ -102,6 +114,13 @@ jobs:
               - 'docs/layers.md'
               - 'docs/agent-profile-migration.md'
               - 'model-mappings/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.model-resolution == 'true'
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.model-resolution == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - name: Install yq
         if: steps.filter.outputs.model-resolution == 'true'
         run: |
@@ -111,10 +130,10 @@ jobs:
         if: steps.filter.outputs.model-resolution == 'true'
         with:
           path: .ci-cache
-          key: model-resolution-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', 'scripts/ci-cache-guard.sh') }}
+          key: model-resolution-${{ hashFiles('scripts/build-components.sh', 'scripts/build-components.ts', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', 'scripts/ci-cache-guard.sh') }}
       - name: Test Model Resolution
         if: steps.filter.outputs.model-resolution == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-model-resolution.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/build-components.ts,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-model-resolution.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -128,6 +147,7 @@ jobs:
           filters: |
             agent-profile-migration:
               - 'scripts/build-components.sh'
+              - 'scripts/build-components.ts'
               - 'scripts/test-build-components.sh'
               - 'scripts/tests/test-model-resolution.sh'
               - 'scripts/tests/test-agent-profile-migration.sh'
@@ -138,6 +158,13 @@ jobs:
               - 'docs/layers.md'
               - 'docs/agent-profile-migration.md'
               - 'model-mappings/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.agent-profile-migration == 'true'
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.agent-profile-migration == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - name: Install yq
         if: steps.filter.outputs.agent-profile-migration == 'true'
         run: |
@@ -147,10 +174,10 @@ jobs:
         if: steps.filter.outputs.agent-profile-migration == 'true'
         with:
           path: .ci-cache
-          key: agent-profile-migration-${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', 'scripts/ci-cache-guard.sh') }}
+          key: agent-profile-migration-${{ hashFiles('scripts/build-components.sh', 'scripts/build-components.ts', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', 'scripts/ci-cache-guard.sh') }}
       - name: Test Agent Profile Migration
         if: steps.filter.outputs.agent-profile-migration == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-agent-profile-migration.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/build-components.ts,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-agent-profile-migration.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -192,6 +219,7 @@ jobs:
               - 'scripts/tests/lib/mapping-fixtures.ts'
               - 'scripts/tests/lib/build-fixture-tree.ts'
               - 'scripts/tests/lib/windows-build-proof.ts'
+              - 'scripts/tests/lib/shim-env.ts'
               - 'scripts/tests/fixtures/build-components/**'
               - 'artifacts/**'
               - 'model-mappings/**'
@@ -224,15 +252,12 @@ jobs:
       - name: Floor guard accepts Node.js 24
         if: steps.filter.outputs.build-components-ts == 'true'
         run: node scripts/lib/node-floor-guard.js
-      - name: Check the committed trees against the sources
-        if: steps.filter.outputs.build-components-ts == 'true'
-        run: node scripts/build-components.ts --target all --check
       - name: Write-path proof on Linux
         if: steps.filter.outputs.build-components-ts == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts
       - name: Test the TypeScript component-build core
         if: steps.filter.outputs.build-components-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-differential.test.ts scripts/tests/build-components-differential-cli.test.ts scripts/tests/build-components-differential-deviations.test.ts scripts/tests/build-components-differential-deviations-diag.test.ts scripts/tests/build-components-differential-real.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-shim.test.ts scripts/tests/build-components-ci-wiring.test.ts scripts/tests/build-components-references.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -463,6 +488,10 @@ jobs:
               - '.crewrig/core-paths.txt'
               - 'docs/layers.md'
               - 'model-mappings/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.core-paths == 'true'
+        with:
+          node-version: 24
       - name: Install yq
         if: steps.filter.outputs.core-paths == 'true'
         run: |
@@ -980,6 +1009,13 @@ jobs:
               - 'artifacts/**'
               - 'scripts/check-agent-profiles.sh'
               - 'scripts/tests/test-check-agent-profiles.sh'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-agent-profiles == 'true'
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.check-agent-profiles == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - name: Install yq
         if: steps.filter.outputs.check-agent-profiles == 'true'
         run: |
@@ -1033,6 +1069,8 @@ jobs:
               - 'scripts/check-claude-agent-layout.sh'
               - 'scripts/tests/test-check-claude-agent-layout.sh'
               - 'scripts/build-components.sh'
+              - 'scripts/build-components.ts'
+              - 'scripts/lib/build-components/**'
       - name: Check Claude Agent Layout
         if: steps.filter.outputs.check-claude-agent-layout == 'true'
         run: bash scripts/check-claude-agent-layout.sh
@@ -1114,6 +1152,13 @@ jobs:
               - 'scripts/tests/test-pr-logbook-label-scope.sh'
               - 'scripts/lib/**'
               - 'artifacts/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.frontmatter == 'true'
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.frontmatter == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - name: Install yq
         if: steps.filter.outputs.frontmatter == 'true'
         run: |

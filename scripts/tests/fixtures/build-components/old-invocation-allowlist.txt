@@ -1,0 +1,53 @@
+# old-invocation-allowlist.txt — files that may still name the old build invocation (spec 0250
+# R31, delta-01). scripts/tests/build-components-references.test.ts fails on any other tracked
+# or untracked text file that names it as an instruction.
+#
+# Format: one repo-relative path per line; an entry ending in `/` covers every file below that
+# directory. Every entry carries a reason as the `#` comment line directly above it. An entry
+# that no longer matches a file with a hit, or that appears twice, fails the suite.
+
+# The shim itself: its header and usage text name the invocation it keeps working.
+scripts/build-components.sh
+
+# Spec 0250 R23: the unmigrated shell scripts that still reach the entry through the shim.
+scripts/lib/common.sh
+scripts/lib/component-resolve.sh
+
+# The shim header names these as the callers that stay on the shim until their own row:
+# the setup and manage scripts, whose hints tell the user to run the build first.
+scripts/manage-antigravity-component.sh
+scripts/manage-claude-component.sh
+scripts/manage-copilot-component.sh
+scripts/manage-workspace-component.sh
+scripts/setup-claude-interactive.sh
+scripts/setup-copilot-interactive.sh
+scripts/setup-gemini-interactive.sh
+
+# The shim header names the Bash tests that have not migrated: each deliberately drives the shim.
+scripts/tests/test-model-resolution.sh
+scripts/tests/test-pr-logbook-label-scope.sh
+tests/e2e/scenarios/03-skill-build/run.sh
+
+# Spec text and delta-specs record the invocation as it was specified; merged specs are history.
+specs/
+
+# docs/adoption-guide.md line 226 documents that the old invocation still works and forwards.
+docs/adoption-guide.md
+
+# docs/authoring.md line 82 re-derives emissions printed by the old invocation at a pinned commit.
+docs/authoring.md
+
+# docs/agent-profile-migration.md line 189 names the old invocation as the measured baseline.
+docs/agent-profile-migration.md
+
+# docs/cli-matrix.md names the old invocation in the shim description and in rows whose cited
+# behaviour is the unmigrated shell scripts' auto-build, which still goes through the shim.
+docs/cli-matrix.md
+
+# Scenario 03 deliberately drives the shim end to end inside the e2e container; its run.sh is
+# allowlisted for the same reason and its prompt is the instruction the agent receives.
+tests/e2e/scenarios/03-skill-build/sample-skill.prompt
+
+# A recorded Copilot CLI integration-test log: it documents the commands as they were run and
+# is history, not an instruction.
+tests/copilot-cli-integration.md

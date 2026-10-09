@@ -186,12 +186,12 @@ requirement 22 obliges, and differ in no other byte.
 
 ## The diagnostic stream
 
-Measured on the migrated tree with all four targets built:
+Measured on the migrated tree with all four targets built (run `node scripts/lib/node-floor-guard.js` first, as a separate step; the build needs Node.js 24 or newer, and `js-yaml` comes from the setup dependency step; the counts were first taken through `bash scripts/build-components.sh`, which forwards to the same build):
 
 | Invocation | Lines | Shapes |
 |---|---|---|
-| `bash scripts/build-components.sh --target all` | **44** | 22 `model-note … claude guard-withheld …` (one per migrated agent, requirement 21) + 22 `model-drop … copilot metadata.model.intelligence <rung> unsupported-on-cli` (one per migrated agent, requirement 21). Nothing else |
-| `bash scripts/build-components.sh --target all --check` | **48** | the same 44, plus **4** `model-note developer <target> no-mapping …` — one per target, for the single agent of the assembly test's synthetic root |
+| `node scripts/build-components.ts --target all` | **44** | 22 `model-note … claude guard-withheld …` (one per migrated agent, requirement 21) + 22 `model-drop … copilot metadata.model.intelligence <rung> unsupported-on-cli` (one per migrated agent, requirement 21). Nothing else |
+| `node scripts/build-components.ts --target all --check` | **48** | the same 44, plus **4** `model-note developer <target> no-mapping …` — one per target, for the single agent of the assembly test's synthetic root |
 
 **Mechanism.** `--check` ends by running a second, smaller build under a
 fresh `mktemp -d` root (`scripts/tests/test-assembly-verification.sh`) that

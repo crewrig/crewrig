@@ -2,20 +2,16 @@
 // `--check` decision of R9, over scripts/lib/build-components/write.ts.
 //
 // `checkOrWrite` and `finalizeText` run against hand-built contexts (fixtures/build-components/
-// ctx-kit.ts) and the real `js-yaml`. The shell's own `check_or_write` is the oracle of the
-// parity set: it runs on Linux or with CREWRIG_SHELL_PARITY=1 (bash and mikefarah yq needed),
-// the functions read out of scripts/build-components.sh with awk, never copied.
+// ctx-kit.ts) and the real `js-yaml`. The shell-parity set of `check_or_write` was retired with
+// the switch (spec 0250 PR D, R13): its oracle, scripts/build-components.sh, is now a shim.
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
 import { checkOrWrite, finalizeText } from "../lib/build-components/write.ts";
 import { makeCtx, modeOf, tempDir, withUmask } from "./fixtures/build-components/ctx-kit.ts";
-import { REPO } from "./lib/build-fixture-tree.ts";
-import { parityGate } from "./lib/shell-resolve-harness.ts";
 
 const config = (...entries: [string, string][]) => ({
   placeholders: entries.map(([key, value]) => ({ key, value })),
@@ -217,83 +213,6 @@ describe("R16 modes of generated files", { skip: POSIX }, () => {
         assert.equal(bytes(file), "fresh\n");
         assert.equal(modeOf(file), existing);
       });
-    }
-  });
-});
-
-const noShell = parityGate();
-const SCRIPT = path.join(REPO, "scripts", "build-components.sh");
-const FUNCTIONS =
-  "load_crewrig_config|resolve_placeholders|provenance_block|inject_provenance|extract_frontmatter|check_or_write";
-const DRIVER = `set -euo pipefail
-eval "$(awk '/^(${FUNCTIONS})\\(\\) \\{/,/^\\}/' "$1")"
-CFG_KEYS=""; CHECK_MODE="$4"; CHECK_COMPARE=true; DRIFT_FOUND=false
-load_crewrig_config
-content="$(cat; printf x)"; content="\${content%x}"
-check_or_write "$2" "$content" "$3"`;
-
-describe("shell parity: check_or_write", { skip: noShell ?? false }, () => {
-  const TOML = 'k = "a&b|c\\d$e"\ncanonical_repo = "https://h/o/r"\n';
-  const SRC =
-    '---\nname: x\nmetadata:\n  provenance:\n    version: 2\n    canonical: "${CANONICAL_REPO}"\n---\nb\n';
-  const contents = [
-    "a",
-    "a\n\n\n",
-    "",
-    "\n",
-    "x ${K} y ${K}",
-    "---\nn: 1\n---\nbody",
-    "---\nn: 1\n---\nb\n---\n",
-  ];
-
-  for (const [name, source] of [
-    ["no source", false],
-    ["a provenance source", true],
-  ] as const) {
-    test(`write mode, ${name}: the file holds the shell's bytes`, () => {
-      for (const content of contents) {
-        const dir = tempDir();
-        fs.writeFileSync(path.join(dir, "crewrig.config.toml"), TOML);
-        const srcFile = path.join(dir, "src.md");
-        fs.writeFileSync(srcFile, SRC);
-        const target = path.join(dir, "out", "shell.md");
-        const sh = spawnSync(
-          "bash",
-          ["-c", DRIVER, "bash", SCRIPT, target, source ? srcFile : "", "false"],
-          {
-            input: content,
-            encoding: "utf8",
-            env: { ...process.env, REPO_DIR: dir, LC_ALL: "C" },
-          },
-        );
-        assert.equal(sh.status, 0, sh.stderr);
-        const kit = makeCtx({
-          config: config(["K", "a&b|c\\d$e"], ["CANONICAL_REPO", "https://h/o/r"]),
-        });
-        const twin = path.join(dir, "out", "twin.md");
-        checkOrWrite(kit.ctx, twin, content, source ? kit.open(SRC) : null, dir);
-        assert.equal(bytes(twin), bytes(target), JSON.stringify(content));
-        assert.equal(kit.out[0], `  Generated: ${twin}`);
-        assert.equal(sh.stdout, `  Generated: ${target}\n`);
-      }
-    });
-  }
-
-  test("--check: missing, differs, equal and directory give the shell's DRIFT lines", () => {
-    const dir = tempDir();
-    const targets = ["missing.md", "differs.md", "equal.md", "dir"].map((n) => path.join(dir, n));
-    fs.writeFileSync(targets[1] as string, "other\n");
-    fs.writeFileSync(targets[2] as string, "same\n");
-    fs.mkdirSync(targets[3] as string);
-    for (const target of targets) {
-      const sh = spawnSync("bash", ["-c", DRIVER, "bash", SCRIPT, target, "", "true"], {
-        input: "same",
-        encoding: "utf8",
-        env: { ...process.env, REPO_DIR: dir, LC_ALL: "C" },
-      });
-      const { ctx, out } = makeCtx({ check: true });
-      checkOrWrite(ctx, target, "same", null, dir);
-      assert.equal(`${out.map((l) => `${l}\n`).join("")}`, sh.stdout, target);
     }
   });
 });

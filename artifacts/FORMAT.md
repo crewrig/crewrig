@@ -2,7 +2,8 @@
 
 This document specifies the single-source format for community components
 in `artifacts/community/`. Components written in this format are compiled by
-`scripts/build-components.sh` into tool-specific outputs for Gemini CLI
+`scripts/build-components.ts` (run through the shim `scripts/build-components.sh`) into
+tool-specific outputs for Gemini CLI
 and Claude Code.
 
 ## Principles
@@ -174,7 +175,8 @@ The per-CLI mapping that turns a declared profile into a target's native
 fields or prose lives in `model-mappings/<target>.yml`, normatively
 described in [`docs/model-mapping-format.md`](../docs/model-mapping-format.md);
 the resolution that reads a mapping and a profile together is
-`scripts/lib/model-resolve.sh`, consumed by `scripts/build-components.sh`.
+`scripts/lib/model-resolve.ts` (twinned by `scripts/lib/model-resolve.sh` for the
+consumers that have not migrated), consumed by `scripts/build-components.ts`.
 How an adopting organization changes what a mapping resolves to for its own
 fork is documented in
 [`docs/org-model-mapping-override.md`](../docs/org-model-mapping-override.md);
@@ -361,7 +363,7 @@ setting:
 ### Placeholder resolution
 
 `${SHELL_LIKE}` placeholders are resolved at **build time** by
-`scripts/build-components.sh` from `crewrig.config.toml` at the repo
+`scripts/build-components.ts` from `crewrig.config.toml` at the repo
 root. Each line in the config file maps an uppercased key to a value:
 
 ```toml
@@ -488,11 +490,20 @@ backfill.
 
 ## Parser Requirements
 
-The build script (`scripts/build-components.sh`) requires:
+The build (`scripts/build-components.ts`, reached through the shim
+`scripts/build-components.sh`) requires:
 
-- **`yq`** (preferred) for YAML frontmatter parsing, or a lightweight
-  Python helper as fallback.
-- **`jq`** for JSON merging (hooks, policies, MCP servers).
+- **Node.js 24** or later, checked by `scripts/lib/node-floor-guard.js` before
+  anything is written.
+- **`js-yaml`** for YAML frontmatter parsing, a production dependency installed
+  by the setup dependency step (`npm ci --omit=dev --workspaces=false`). The
+  build needs neither `yq` nor `jq`.
+
+The extension and plugin builders (`scripts/build-extension.sh` and its
+siblings) and the Bash scripts that have not migrated still need:
+
+- **`yq`** for YAML frontmatter parsing, and **`jq`** for JSON merging (hooks,
+  policies, MCP servers), until row G1b of the TypeScript migration moves them.
 - **Bash 3.2.57** — the stock macOS `/bin/bash`, and the enforced floor. The
   forbidden constructs are declared in `ci/bash32-forbidden.txt` and rejected in
   continuous integration by `scripts/check-bash32-portability.sh`: no

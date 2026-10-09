@@ -68,7 +68,7 @@ duplicate-name cell.
 |---|---|---|
 | skill | `<name>/SKILL.md` | the only shape the vendor documents, and the only one the build stages. |
 | agent | `<name>.md` (flat) | the shape the superseded installer copied. |
-| agent | `<name>/AGENT.md` (directory) | the shape `scripts/build-components.sh` **stages**. No probe had ever covered this cell, and R3 makes the installed shape a function of what the assistant accepts. |
+| agent | `<name>/AGENT.md` (directory) | the shape `scripts/build-components.ts` **stages**. No probe had ever covered this cell, and R3 makes the installed shape a function of what the assistant accepts. |
 
 The **duplicate-name cell** installs one agent name at two roots at once. Every
 sentinel in the first probe was uniquely named by design, so nothing observed

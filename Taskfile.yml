@@ -324,48 +324,43 @@ tasks:
     cmd: bash {{.REPO_DIR}}/scripts/usage-backfill.sh {{.CLI_ARGS}}
 
   build-components-copilot:
-    desc: Build community components for GitHub Copilot CLI only
-    preconditions:
-      - sh: command -v yq >/dev/null 2>&1
-        msg: "yq is required. Install with: brew install yq"
-    cmd: bash {{.REPO_DIR}}/scripts/build-components.sh --target copilot
+    desc: "Build community components for GitHub Copilot CLI only (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target copilot
 
   build-components-antigravity:
-    desc: Build community components for Antigravity CLI only
-    preconditions:
-      - sh: command -v yq >/dev/null 2>&1
-        msg: "yq is required. Install with: brew install yq"
-    cmd: bash {{.REPO_DIR}}/scripts/build-components.sh --target antigravity
+    desc: "Build community components for Antigravity CLI only (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target antigravity
 
   # --- Community component build ---
 
   build-components:
-    desc: Build all community components for Gemini CLI, Claude Code, and GitHub Copilot CLI
-    preconditions:
-      - sh: command -v yq >/dev/null 2>&1
-        msg: "yq is required. Install with: brew install yq"
-    cmd: bash {{.REPO_DIR}}/scripts/build-components.sh --target all
+    desc: "Build all community components for Gemini CLI, Claude Code, and GitHub Copilot CLI (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target all
 
   build-components-gemini:
-    desc: Build community components for Gemini CLI only
-    preconditions:
-      - sh: command -v yq >/dev/null 2>&1
-        msg: "yq is required. Install with: brew install yq"
-    cmd: bash {{.REPO_DIR}}/scripts/build-components.sh --target gemini
+    desc: "Build community components for Gemini CLI only (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target gemini
 
   build-components-claude:
-    desc: Build community components for Claude Code only
-    preconditions:
-      - sh: command -v yq >/dev/null 2>&1
-        msg: "yq is required. Install with: brew install yq"
-    cmd: bash {{.REPO_DIR}}/scripts/build-components.sh --target claude
+    desc: "Build community components for Claude Code only (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target claude
 
   check-components:
-    desc: Check that generated community components match source (drift detection)
-    preconditions:
-      - sh: command -v yq >/dev/null 2>&1
-        msg: "yq is required. Install with: brew install yq"
-    cmd: bash {{.REPO_DIR}}/scripts/build-components.sh --target all --check
+    desc: "Check that generated community components match source (drift detection) and run the assembly verification test (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target all --check
+      - bash {{.REPO_DIR}}/scripts/tests/test-assembly-verification.sh
 
   test-components:
     desc: Test the build-components canonical_repo validator
@@ -621,15 +616,15 @@ tasks:
           local val
           val="$(yq eval --front-matter=extract "$path" "$file" 2>/dev/null || true)"
           if [ -z "$val" ] || [ "$val" = "null" ]; then
-            fail "$file — missing or empty YAML field $label" "rebuild with \`bash scripts/build-components.sh\`."
+            fail "$file — missing or empty YAML field $label" "rebuild with \`node scripts/lib/node-floor-guard.js\` then \`node scripts/build-components.ts\`."
           fi
         }
 
         check_skill_mirror() {
           local file="$1"
-          [ -s "$file" ] || fail "$file — missing or empty" "rebuild with \`bash scripts/build-components.sh\`."
+          [ -s "$file" ] || fail "$file — missing or empty" "rebuild with \`node scripts/lib/node-floor-guard.js\` then \`node scripts/build-components.ts\`."
           yq eval --front-matter=extract '.' "$file" >/dev/null 2>&1 \
-            || fail "$file — YAML frontmatter does not parse" "rebuild with \`bash scripts/build-components.sh\`."
+            || fail "$file — YAML frontmatter does not parse" "rebuild with \`node scripts/lib/node-floor-guard.js\` then \`node scripts/build-components.ts\`."
           check_yaml_field "$file" '.name' 'name'
           check_yaml_field "$file" '.metadata.provenance.version' 'metadata.provenance.version'
         }
@@ -655,23 +650,23 @@ tasks:
           for path in "$CLAUDE_AGENT" "$GEMINI_AGENT" "$COPILOT_AGENT"; do
             [ -e "$path" ] || missing="$missing $path"
           done
-          fail "agent mirrors are asymmetric — present on $present/3 paths; missing:$missing" "rebuild with \`bash scripts/build-components.sh\`."
+          fail "agent mirrors are asymmetric — present on $present/3 paths; missing:$missing" "rebuild with \`node scripts/lib/node-floor-guard.js\` then \`node scripts/build-components.ts\`."
         fi
 
         if [ "$present" -eq 3 ]; then
           # Claude + Copilot — YAML-internal provenance
           for file in "$CLAUDE_AGENT" "$COPILOT_AGENT"; do
-            [ -s "$file" ] || fail "$file — missing or empty" "rebuild with \`bash scripts/build-components.sh\`."
+            [ -s "$file" ] || fail "$file — missing or empty" "rebuild with \`node scripts/lib/node-floor-guard.js\` then \`node scripts/build-components.ts\`."
             yq eval --front-matter=extract '.' "$file" >/dev/null 2>&1 \
-              || fail "$file — YAML frontmatter does not parse" "rebuild with \`bash scripts/build-components.sh\`."
+              || fail "$file — YAML frontmatter does not parse" "rebuild with \`node scripts/lib/node-floor-guard.js\` then \`node scripts/build-components.ts\`."
             check_yaml_field "$file" '.name' 'name'
             check_yaml_field "$file" '.metadata.provenance.version' 'metadata.provenance.version'
           done
 
           # Gemini — YAML name + HTML-comment provenance line after frontmatter
-          [ -s "$GEMINI_AGENT" ] || fail "$GEMINI_AGENT — missing or empty" "rebuild with \`bash scripts/build-components.sh\`."
+          [ -s "$GEMINI_AGENT" ] || fail "$GEMINI_AGENT — missing or empty" "rebuild with \`node scripts/lib/node-floor-guard.js\` then \`node scripts/build-components.ts\`."
           yq eval --front-matter=extract '.' "$GEMINI_AGENT" >/dev/null 2>&1 \
-            || fail "$GEMINI_AGENT — YAML frontmatter does not parse" "rebuild with \`bash scripts/build-components.sh\`."
+            || fail "$GEMINI_AGENT — YAML frontmatter does not parse" "rebuild with \`node scripts/lib/node-floor-guard.js\` then \`node scripts/build-components.ts\`."
           check_yaml_field "$GEMINI_AGENT" '.name' 'name'
           # The provenance line must appear immediately after the closing `---` of the frontmatter.
           # yq's --front-matter=extract strips frontmatter; awk to find the first non-frontmatter line.
@@ -685,7 +680,7 @@ tasks:
             seen_open == 1 && in_fm == 0 && NF > 0 { print; exit }
           ' "$GEMINI_AGENT")"
           echo "$first_body_line" | grep -qE '^<!-- crewrig-provenance: version="[^"]+"' \
-            || fail "$GEMINI_AGENT — missing HTML-comment provenance line (\`<!-- crewrig-provenance: version=\"…\" … -->\`) immediately after YAML frontmatter" "rebuild with \`bash scripts/build-components.sh\`."
+            || fail "$GEMINI_AGENT — missing HTML-comment provenance line (\`<!-- crewrig-provenance: version=\"…\" … -->\`) immediately after YAML frontmatter" "rebuild with \`node scripts/lib/node-floor-guard.js\` then \`node scripts/build-components.ts\`."
         fi
 
         echo "${NAME}: OK across .claude/, .gemini/, .github/"

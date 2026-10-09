@@ -30,15 +30,14 @@ build:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 component-drift:
-  image: debian:stable-slim
-  before_script:
-    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-    - chmod +x /usr/local/bin/yq
+  image: node:24
   cache:
     key:
       files:
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
+        - "package.json"
+        - "package-lock.json"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/test-agent-profile-migration.sh"
@@ -57,12 +56,18 @@ component-drift:
     paths:
       - .ci-cache/
   script:
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/build-components.sh --target all --check"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/test-build-components.sh"
+    - "npm ci --omit=dev --workspaces=false"
+    - "node scripts/lib/node-floor-guard.js"
+    - "node scripts/build-components.ts --target all --check"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,package.json,package-lock.json,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,package.json,package-lock.json,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/test-build-components.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
+        - "package.json"
+        - "package-lock.json"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/test-agent-profile-migration.sh"
@@ -82,6 +87,9 @@ component-drift:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
+        - "package.json"
+        - "package-lock.json"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/test-agent-profile-migration.sh"
@@ -100,7 +108,7 @@ component-drift:
         - "crewrig.config.toml"
 
 model-resolution:
-  image: debian:stable-slim
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
@@ -109,6 +117,7 @@ model-resolution:
     key:
       files:
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/test-agent-profile-migration.sh"
@@ -122,11 +131,13 @@ model-resolution:
     paths:
       - .ci-cache/
   script:
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-model-resolution.sh"
+    - "npm ci --omit=dev --workspaces=false"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-model-resolution.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/test-agent-profile-migration.sh"
@@ -140,6 +151,7 @@ model-resolution:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/test-agent-profile-migration.sh"
@@ -152,7 +164,7 @@ model-resolution:
         - "model-mappings/**"
 
 agent-profile-migration:
-  image: debian:stable-slim
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
@@ -161,6 +173,7 @@ agent-profile-migration:
     key:
       files:
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/test-agent-profile-migration.sh"
@@ -174,11 +187,13 @@ agent-profile-migration:
     paths:
       - .ci-cache/
   script:
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-agent-profile-migration.sh"
+    - "npm ci --omit=dev --workspaces=false"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-agent-profile-migration.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/test-agent-profile-migration.sh"
@@ -192,6 +207,7 @@ agent-profile-migration:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
         - "scripts/test-build-components.sh"
         - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/test-agent-profile-migration.sh"
@@ -212,9 +228,8 @@ build-components-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node scripts/build-components.ts --target all --check"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-differential.test.ts scripts/tests/build-components-differential-cli.test.ts scripts/tests/build-components-differential-deviations.test.ts scripts/tests/build-components-differential-deviations-diag.test.ts scripts/tests/build-components-differential-real.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-shim.test.ts scripts/tests/build-components-ci-wiring.test.ts scripts/tests/build-components-references.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -244,6 +259,7 @@ build-components-ts:
         - "scripts/tests/lib/mapping-fixtures.ts"
         - "scripts/tests/lib/build-fixture-tree.ts"
         - "scripts/tests/lib/windows-build-proof.ts"
+        - "scripts/tests/lib/shim-env.ts"
         - "scripts/tests/fixtures/build-components/**"
         - "artifacts/**"
         - "model-mappings/**"
@@ -288,6 +304,7 @@ build-components-ts:
         - "scripts/tests/lib/mapping-fixtures.ts"
         - "scripts/tests/lib/build-fixture-tree.ts"
         - "scripts/tests/lib/windows-build-proof.ts"
+        - "scripts/tests/lib/shim-env.ts"
         - "scripts/tests/fixtures/build-components/**"
         - "artifacts/**"
         - "model-mappings/**"
@@ -502,7 +519,7 @@ extension-install:
         - "artifacts/**"
 
 core-paths:
-  image: debian:stable-slim
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
@@ -970,12 +987,13 @@ misc:
         - "model-mappings/**"
 
 frontmatter:
-  image: debian:stable-slim
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
+    - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-skill-versions.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-feedback-routing.sh"
@@ -1033,12 +1051,13 @@ check-model-mappings:
         - "scripts/tests/test-check-model-mappings.sh"
 
 check-agent-profiles:
-  image: debian:stable-slim
+  image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
+    - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/check-agent-profiles.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-agent-profiles.sh"
   rules:
@@ -1086,12 +1105,16 @@ check-claude-agent-layout:
         - "scripts/check-claude-agent-layout.sh"
         - "scripts/tests/test-check-claude-agent-layout.sh"
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
+        - "scripts/lib/build-components/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - ".claude/agents/**"
         - "scripts/check-claude-agent-layout.sh"
         - "scripts/tests/test-check-claude-agent-layout.sh"
         - "scripts/build-components.sh"
+        - "scripts/build-components.ts"
+        - "scripts/lib/build-components/**"
 
 markdown-links:
   image: python:3.12

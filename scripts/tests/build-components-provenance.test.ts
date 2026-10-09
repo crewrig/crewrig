@@ -3,13 +3,12 @@
 // `injectProvenance`), and R13/R15 link rewrites over links.ts (`rewriteSkillBodyLinks`,
 // `rewriteResourceLinks`).
 //
-// Real sources are checked structurally, synthetic frontmatters carry the edge shapes. The shell's
-// functions are the oracle of the parity sets (Linux, or CREWRIG_SHELL_PARITY=1, with bash and
-// mikefarah yq), read out of scripts/build-components.sh with awk, never copied. A mapping or a
-// sequence entry is the one listed deviation (R33(g)) and is left out of the parity set.
+// Real sources are checked structurally, synthetic frontmatters carry the edge shapes. The
+// shell-parity sets were retired with the switch (spec 0250 PR D, R13): their oracle,
+// scripts/build-components.sh, is now a shim. A mapping or a sequence entry is the one listed
+// deviation (R33(g)).
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
@@ -21,16 +20,9 @@ import {
 } from "../lib/build-components/provenance.ts";
 import { rewriteResourceLinks, rewriteSkillBodyLinks } from "../lib/build-components/links.ts";
 import { BuildFailure } from "../lib/build-components/types.ts";
-import { makeCtx, tempDir } from "./fixtures/build-components/ctx-kit.ts";
-import {
-  INJECT_DRIVER,
-  LINK_INPUTS,
-  PROV_DRIVER,
-  SYNTHETIC_SOURCES,
-  withProvenance,
-} from "./fixtures/build-components/provenance-cases.ts";
+import { makeCtx } from "./fixtures/build-components/ctx-kit.ts";
+import { withProvenance } from "./fixtures/build-components/provenance-cases.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
-import { parityGate } from "./lib/shell-resolve-harness.ts";
 
 const kit = makeCtx();
 const block = (text: string): string => provenanceBlock(kit.open(text));
@@ -223,77 +215,5 @@ describe("links", () => {
 
   test("a six-level link is rewritten once, from the left, without overlap", () => {
     assert.equal(rewriteResourceLinks(`../${D5}docs/x`), `${D5}docs/x`);
-  });
-});
-
-const noShell = parityGate();
-const SCRIPT = path.join(REPO, "scripts", "build-components.sh");
-describe("shell parity: provenance", { skip: noShell ?? false }, () => {
-  test("the block and the Gemini comment equal the shell's for synthetic and real sources", () => {
-    const dir = tempDir();
-    const files = [
-      ...SYNTHETIC_SOURCES.map((text, i) => {
-        const file = path.join(dir, `s${i}.md`);
-        fs.writeFileSync(file, text);
-        return file;
-      }),
-      ...realSources,
-    ];
-    const sh = spawnSync("bash", ["-c", PROV_DRIVER, "bash", SCRIPT, ...files], {
-      env: { ...process.env, LC_ALL: "C" },
-    });
-    assert.equal(sh.status, 0, String(sh.stderr));
-    const fields = String(sh.stdout).split("\0").slice(0, -1);
-    assert.equal(fields.length, files.length * 2);
-    files.forEach((file, i) => {
-      const doc = kit.ctx.fm.open(file);
-      assert.equal(provenanceBlock(doc), fields[2 * i], file);
-      assert.equal(geminiProvenanceComment(doc), fields[2 * i + 1], file);
-    });
-  });
-
-  test("injectProvenance equals the shell's splice", () => {
-    const file = path.join(tempDir(), "src.md");
-    fs.writeFileSync(file, withProvenance("    version: 1\n    canonical: c"));
-    const doc = kit.ctx.fm.open(file);
-    for (const content of [
-      "---\na: 1\n---\nz",
-      "---\n---\n",
-      "---\na\n---\nb\n---\nc",
-      "---\nonly",
-      "x\n---\na\n---\n",
-      "---\na\n--- \n---\nz",
-    ]) {
-      const sh = spawnSync("bash", ["-c", INJECT_DRIVER, "bash", SCRIPT, content, file], {
-        encoding: "utf8",
-      });
-      assert.equal(sh.status, 0, sh.stderr);
-      // awk ends the text with a line feed; the caller's $(...) removes trailing ones either way.
-      assert.equal(
-        injectProvenance(content, doc).replace(/\n+$/, ""),
-        sh.stdout.replace(/\n+$/, ""),
-        JSON.stringify(content),
-      );
-    }
-  });
-
-  test("the link rewrites equal the shell's sed, whose patterns are read from the script", () => {
-    const text = fs.readFileSync(SCRIPT, "utf8");
-    const body = /skill_body=\$\(printf '%s' "\$body" \| sed '([^']+)'\)/.exec(text)?.[1];
-    const resource = /sed '([^']+)' "\$src_file" > "\$target_file"/.exec(text)?.[1];
-    assert.ok(body && resource, "the sed patterns were not found in the script");
-    const inputs = LINK_INPUTS;
-    const sed = (script: string, input: string): string =>
-      String(
-        spawnSync("sed", [script], { input, env: { ...process.env, LC_ALL: "C" } }).stdout,
-      ).replace(/\n+$/, "");
-    for (const input of inputs) {
-      assert.equal(rewriteSkillBodyLinks(input), sed(body, input), `body ${JSON.stringify(input)}`);
-      assert.equal(
-        rewriteResourceLinks(input),
-        sed(resource, input),
-        `resource ${JSON.stringify(input)}`,
-      );
-    }
   });
 });
