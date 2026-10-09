@@ -16,6 +16,9 @@ on:
       - "scripts/build-usage-validator.js"
       - "scripts/tests/test-usage-storage*.sh"
       - "scripts/tests/usage-inventory.test.ts"
+      - "scripts/tests/usage-wrappers-oracle.test.ts"
+      - "scripts/tests/hermetic-env.test.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
       - "scripts/tests/fixtures/usage-storage/**"
       - "schemas/**"
       - "package.json"
@@ -37,6 +40,9 @@ on:
       - "scripts/build-usage-validator.js"
       - "scripts/tests/test-usage-storage*.sh"
       - "scripts/tests/usage-inventory.test.ts"
+      - "scripts/tests/usage-wrappers-oracle.test.ts"
+      - "scripts/tests/hermetic-env.test.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
       - "scripts/tests/fixtures/usage-storage/**"
       - "schemas/**"
       - "package.json"
@@ -78,6 +84,9 @@ jobs:
 
       - name: Validate the MemPalace drawer inventory against a fake daemon
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts
+
+      - name: Check the usage wrapper oracle and the hermetic environment helper (POSIX only)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/hermetic-env.test.ts
 
       - name: Verify the standalone validator matches the generator
         run: node scripts/build-usage-validator.js --check

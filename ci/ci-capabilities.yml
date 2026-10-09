@@ -1405,6 +1405,9 @@ capabilities:
     command:
       - npm ci
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+      # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only,
+      # they drive the shell originals through bash; each skips itself on win32).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
 
   # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's
   # install / restore contract, root resolution and wmic parser. The probe
@@ -2165,6 +2168,9 @@ capabilities:
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
           - "scripts/tests/usage-inventory.test.ts"
+          - "scripts/tests/usage-wrappers-oracle.test.ts"
+          - "scripts/tests/hermetic-env.test.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
           - "scripts/tests/fixtures/usage-storage/**"
           - "schemas/**"
           - "package.json"
@@ -2186,6 +2192,9 @@ capabilities:
           - "scripts/build-usage-validator.js"
           - "scripts/tests/test-usage-storage*.sh"
           - "scripts/tests/usage-inventory.test.ts"
+          - "scripts/tests/usage-wrappers-oracle.test.ts"
+          - "scripts/tests/hermetic-env.test.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
           - "scripts/tests/fixtures/usage-storage/**"
           - "schemas/**"
           - "package.json"
@@ -2209,6 +2218,7 @@ capabilities:
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-storage-mirror.sh
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/hermetic-env.test.ts
       - node scripts/build-usage-validator.js --check
 
   # usage-attribution validates spec 0208's declaration channels, attribution

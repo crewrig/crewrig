@@ -1367,6 +1367,9 @@ jobs:
 
       - name: Test the runtime foundations
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+
+      - name: Test the history import and prune oracles (POSIX only)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
