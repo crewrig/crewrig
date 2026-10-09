@@ -31,22 +31,30 @@ shipped yet.*
 
 ## ADDED
 
-**Requirement 33 — A daemon process that survives its launcher on Windows.** The
-measurement of the plan (step 19) asks whether ending a task on Windows leaves a
-process of the daemon tree running. The `stop` and `uninstall` of the Windows backend
-SHALL in any case snapshot the descendants of the supervised process before ending
-the task and end the leftovers by process identifier and start time, so that
-requirement 24's "no process of the daemon tree remains after `stop`" holds. If the
+**Requirement 33 — A daemon process that survives its launcher or wrapper on Windows.**
+The measurement of the plan (step 19) asks whether ending a task on Windows leaves a
+process of the daemon tree running (the daemon child of the launcher for the MCP task,
+of the trust wrapper for the ChromaDB task). The `stop` and `uninstall` of the Windows
+backend SHALL in any case snapshot the descendants of the supervised process before
+ending the task and end the leftovers by process identifier and start time, so that
+requirement 24's "no process of the daemon tree remains after `stop`" holds. When the
+process table cannot be read (the call is refused by a policy, absent or timing out),
+the snapshot is undeterminable: `/End` still runs, because it needs only the Task
+Scheduler's own tool, the command reports on standard error that the sweep is
+UNDETERMINED and does not claim that no daemon process remains, and its exit status is
+the one `/End` gave; requirement 24's sentence is the one this degradation relaxes, and
+only in that case. If the
 measurement shows that a process of the daemon tree survives the end of its launcher
 when the task is ended by the Task Scheduler (an end requested through it, a logoff, a
 deletion of the task), requirement 11's guarantee does not hold on Windows for that
 case: PRs C and D SHALL NOT ship the Windows `stop` until a delta-spec of this spec
 decides the treatment, and the case SHALL NOT be recorded as a parity gap in its place.
 This is the same rule requirement 16 applies to the supervised process identifier. An
-external kill of the launcher process alone is not in this rule: as on macOS and Linux,
-where the launcher's death by `SIGKILL` alone leaves its child, it can leave the daemon
-running, the next start refuses fast on the taken port, and the case is recorded under
-requirement 25 with its measurement.
+external kill of the launcher (or wrapper) process alone is not in this rule: it can
+leave the daemon running, in which case the next start refuses fast on the taken port.
+That case, and whether it also arises on macOS and Linux (where the launchd and systemd
+definitions shipped in `config/` set no option about the group), is recorded under
+requirement 25 with its measurement, and is claimed on no operating system without one.
 
 ## MODIFIED
 
@@ -109,11 +117,16 @@ Replacement:
 > `MEMPALACE_MCP_LAUNCHER_PATH` or `MEMPALACE_TLS_EXEC_PATH` moves one of them out of
 > that directory, the installer writes a `service-lib/` beside it too. `LAUNCHER_SOURCE_SHA` is the SHA-256 of the launcher entry source, then
 > the trust wrapper source, then the bundle files in a fixed order, so that a change to
-> a bundled module is drift too. A test SHALL assert that every static import of both
-> entries and of every bundled file resolves inside the bundle and that the bundle
-> holds no unused file. Uninstalling removes the launcher program and its endpoint
-> record, and removes the trust wrapper and `service-lib/` unless the other daemon's
-> definition still names them.
+> a bundled module is drift too. A test SHALL assert, for each
+> `service-lib/` copy, that every static import of the entries that use it and of every
+> bundled file resolves inside that copy, and that the bundle list holds no file that no
+> entry imports (read against the repository's bundle list, not against one install,
+> since installing one daemon alone writes only the files its program needs). Each
+> program's files go with its own definition: uninstalling the MCP daemon removes the
+> launcher program and its endpoint record; uninstalling the ChromaDB daemon removes
+> the trust wrapper; a `service-lib/` copy is removed only when no installed definition
+> names a program that imports from it, in whichever order the two daemons are
+> uninstalled.
 
 ### Requirement 16 — the process and socket inspection tools (plan spec note SN3)
 
@@ -178,6 +191,22 @@ the TypeScript test of the ChromaDB start. Accordingly the third kind of require
 which lists `test-palace-path-propagation.sh` among the sourced-library suites that "are
 not touched", reads: *not touched, except that this one assertion is removed*. The rest
 of that suite, which exercises `common.sh` and the shell launcher, is unchanged.
+
+### Requirement 25 — the known-gap list (seat finding s6-F1)
+
+Original (excerpt):
+
+> … the daemon console window, where the runner cannot show it; …
+
+Replacement:
+
+> … the console window of the launcher process, which is *unverified* until it is
+> measured on a Windows desktop session, and a gap only once it is measured there; and
+> the possible survival of the daemon after an external kill of the launcher alone, which
+> is claimed on no operating system without a measurement (requirement 33); … The Windows
+> job of requirement 24 asserts what a runner can observe: that the daemon child is
+> started with no console window of its own (the spawn option), and nothing about the
+> launcher's window.
 
 ### Requirement 25 and 32 — where the `cli-matrix` row lands (plan spec note SN7)
 
