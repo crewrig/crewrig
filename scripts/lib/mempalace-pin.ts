@@ -35,7 +35,9 @@ const MAX_NAME = "MEMPALACE_MAX_VERSION_EXCLUSIVE";
 
 // Line-anchored like `_PIN_RE` of mempalace_pin.py, whose `$` ends a line at
 // `\n` only. JavaScript's `m` flag also ends one at `\r`, so the anchors are
-// spelled out: not preceded and not followed by anything but a newline.
+// spelled out: not preceded and not followed by anything but a newline. The
+// file is read as Python reads it in text mode, with `\r\n` translated to `\n`
+// first (a CRLF checkout reads the same pin); a lone `\r` stays a character.
 const PIN_RE =
   /(?<![^\n])(MEMPALACE_MIN_VERSION|MEMPALACE_MAX_VERSION_EXCLUSIVE)="([^"]*)"(?![^\n])/g;
 
@@ -51,7 +53,7 @@ export function readMempalacePin(repoRoot: string): MempalacePin {
   const text: unknown = fs.readFileSync(file, "utf8");
   if (typeof text !== "string") throw new Error(`${file} did not read as text`);
   const seen = new Map<string, string[]>();
-  for (const match of text.matchAll(PIN_RE)) {
+  for (const match of text.replaceAll("\r\n", "\n").matchAll(PIN_RE)) {
     const name: unknown = match[1];
     const value: unknown = match[2];
     if (typeof name !== "string" || typeof value !== "string") continue;

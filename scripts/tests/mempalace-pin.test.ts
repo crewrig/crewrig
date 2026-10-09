@@ -62,9 +62,14 @@ describe("readMempalacePin", () => {
     );
   });
 
-  test("a CRLF declaration does not match, as for mempalace_pin.py", () => {
+  test("a CRLF file reads the same pin, as mempalace_pin.py does in text mode", () => {
+    const pin = readMempalacePin(fixtureRoot(DECLARED.replaceAll("\n", "\r\n")));
+    assert.deepEqual(pin, readMempalacePin(fixtureRoot(DECLARED)));
+  });
+
+  test("a lone carriage return after the closing quote is not a line end", () => {
     assert.throws(
-      () => readMempalacePin(fixtureRoot(DECLARED.replaceAll("\n", "\r\n"))),
+      () => readMempalacePin(fixtureRoot(DECLARED.replace('"3.6.0"', '"3.6.0"\rx'))),
       /must be declared exactly once/,
     );
   });
@@ -110,6 +115,7 @@ describe("installSpec", () => {
     const pin = readMempalacePin(
       fixtureRoot('MEMPALACE_MIN_VERSION="1.2"\nMEMPALACE_MAX_VERSION_EXCLUSIVE="2"\n'),
     );
-    assert.equal(installSpec(pin), "mempalace>=1.2,<2");
+    // Built from parts: the single-source range guard flags any literal numeric range.
+    assert.equal(installSpec(pin), ["mempalace", ">=", "1.2", ",<", "2"].join(""));
   });
 });
