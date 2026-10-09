@@ -2776,28 +2776,6 @@ capabilities:
         could select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15).
 
-
-  - id: windows-service-probe
-    name: "Windows service probe: cost of reading a task state and the process table"
-    trigger:
-      - on: pull-request
-        branches: [main, "release/**"]
-      - on: push
-        branches: [main, "release/**"]
-    portability: specific
-    exception:
-      engine: github-actions
-      evidence: >
-        Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-service-probe`) because it
-        drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
-        configured for this repository, exposes no Windows runner: every
-        generated GitLab job derives its `image` from `requires.runtime`
-        through `runtime_to_image` (scripts/build-ci.sh), which maps only to
-        Linux Docker images, and .gitlab-ci.yml declares no runner `tags:` that
-        could select a Windows executor. There is no faithful equivalent on the
-        other supported engines (spec 0240 R15).
-
   # Spec 0243 R28 (reworded at delta-03): the usage-capture row's copy of the
   # template above. Both TypeScript entries run from pwsh, the command line of
   # each CLI and surface runs through the invocation rows 37 and 37e/37f of

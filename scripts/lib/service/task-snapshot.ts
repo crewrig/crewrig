@@ -16,7 +16,7 @@ export interface TaskInfo {
   /** Unsigned HRESULT of `GetTask` for an absent task (expected 0x80070002), else 0. */
   hresult: number;
   state: number;
-  /** Unsigned `LastTaskResult` (0, 0x41301, 0x41303, 0x41306, any other a failure). */
+  /** Unsigned `LastTaskResult` (0, 0x41301, 0x41303, 0x41306 and 0x800710e0, an ignored new instance, are not failures; any other is). */
   lastResult: number;
   /** The process the task engine started, or null when the task is not running. */
   enginePid: number | null;

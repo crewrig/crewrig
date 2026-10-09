@@ -1715,31 +1715,6 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
-  # Spec 0252 delta-02: what reading a task's state and the process table costs on Windows,
-  # per candidate mechanism, printed as `MEASURE: probe` lines. A short job of its own so that
-  # the numbers arrive without waiting for the lifecycle job.
-  windows-service-probe:
-    runs-on: windows-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Floor guard accepts Node.js 24
-        run: node scripts/lib/node-floor-guard.js
-
-      - name: Cost of each way of reading a task and the process table
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-windows-probe.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
-
   # Spec 0252 R24 (plan v3 D5 *Windows proof job*): the Windows service task
   # proof, copied from the template above. pwsh is the interpreter of every
   # step. The portable unit tests run first; service-windows.test.ts installs
