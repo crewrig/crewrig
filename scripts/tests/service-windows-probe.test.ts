@@ -7,7 +7,7 @@
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { after, test } from "node:test";
-import { POWERSHELL_SCRIPT } from "../lib/service/os-inspect.ts";
+import { POWERSHELL_SCRIPT, taskSnapshot } from "../lib/service/os-inspect.ts";
 
 const skip = process.platform !== "win32";
 const POWERSHELL = `${process.env["SystemRoot"] ?? "C:\\Windows"}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
@@ -97,6 +97,50 @@ test(
       CREWRIG_TASK_PATH: longRun,
       CREWRIG_PID_LIST: "4",
     });
+    // The real function, with its restricted environment (baseEnv), as `status` calls it.
+    for (let i = 0; i < RUNS; i++) {
+      const t0 = performance.now();
+      const r = taskSnapshot(longRun, [4]);
+      console.log(
+        `MEASURE: probe os-inspect-taskSnapshot-real-env run=${i + 1} ms=${Math.round(performance.now() - t0)} ok=${r.ok} reason=${r.ok ? "-" : r.reason}`,
+      );
+    }
+    // The same script with the environment variables of baseEnv only, one added back at a time.
+    const KEEP = ["SystemRoot", "windir", "ComSpec", "PATHEXT", "TEMP", "TMP", "USERPROFILE"];
+    const restricted: NodeJS.ProcessEnv = {};
+    for (const k of KEEP) restricted[k] = process.env[k];
+    for (const extra of [
+      "",
+      "PSModulePath",
+      "COMPUTERNAME",
+      "USERNAME",
+      "ProgramData",
+      "LOCALAPPDATA",
+      "APPDATA",
+      "ProgramFiles",
+      "PROCESSOR_ARCHITECTURE",
+      "NUMBER_OF_PROCESSORS",
+      "USERDOMAIN",
+      "SystemDrive",
+      "HOMEDRIVE",
+      "HOMEPATH",
+    ]) {
+      const env = {
+        ...restricted,
+        ...(extra ? { [extra]: process.env[extra] } : {}),
+        CREWRIG_TASK_PATH: longRun,
+        CREWRIG_PID_LIST: "4",
+      };
+      const t0 = performance.now();
+      const r = spawnSync(
+        POWERSHELL,
+        ["-NoProfile", "-NonInteractive", "-Command", POWERSHELL_SCRIPT],
+        { env, encoding: "utf8", windowsHide: true, timeout: 120_000 },
+      );
+      console.log(
+        `MEASURE: probe restricted-env plus=${extra || "(none)"} ms=${Math.round(performance.now() - t0)} status=${r.status} timedOut=${r.error?.name === "Error" && String(r.error).includes("ETIMEDOUT")}`,
+      );
+    }
     ps("os-inspect-script-no-task", POWERSHELL_SCRIPT, {
       CREWRIG_TASK_PATH: "",
       CREWRIG_PID_LIST: "",
