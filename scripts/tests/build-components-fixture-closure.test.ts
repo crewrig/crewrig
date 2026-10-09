@@ -27,6 +27,30 @@ const LITERALS: readonly { file: string; pattern: RegExp }[] = [
     pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
   },
   {
+    file: "scripts/tests/test-build-extension.sh",
+    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
+  },
+  {
+    file: "scripts/tests/test-extension-render-conformance.sh",
+    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
+  },
+  {
+    file: "scripts/tests/test-migrate-extension.sh",
+    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
+  },
+  {
+    file: "scripts/tests/test-create-extension-combinations.sh",
+    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
+  },
+  {
+    file: "scripts/tests/test-release-package-extension.sh",
+    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
+  },
+  {
+    file: "scripts/tests/test-monorepo-release-engine.sh",
+    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
+  },
+  {
     file: "tests/e2e/scenarios/03-skill-build/run.sh",
     pattern: /^for staged_pkg in ([^;]+); do$/m,
   },

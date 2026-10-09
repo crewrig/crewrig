@@ -67,6 +67,34 @@ ng() { echo "FAIL  $1"; fail=$((fail + 1)); }
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
+# Build inputs for a TypeScript build of the extension scripts (spec 0254,
+# modelled on scripts/tests/test-component-tier-resolution.sh): an empty `.git`
+# directory (the project-root anchor), the root package.json and a REAL
+# (dereferenced) copy of the production closure of js-yaml under node_modules.
+# `cp -RL` matters: a symlink back to the checkout would not count as installed.
+# Absent packages are tolerated (the shell build needs none) with one NOTE per
+# run, never per sandbox.
+STAGED_NODE_PACKAGES="js-yaml argparse"
+staged_node_missing=""
+for pkg in $STAGED_NODE_PACKAGES; do
+  [ -d "$REPO_DIR/node_modules/$pkg" ] || staged_node_missing="$staged_node_missing $pkg"
+done
+if [ -n "$staged_node_missing" ]; then
+  echo "NOTE: not found under $REPO_DIR/node_modules:$staged_node_missing; sandboxes are staged without them (a build that needs js-yaml will fail on the missing-dependency diagnostic until the dependency install has run)" >&2
+fi
+
+# stage_node_build_inputs <sandbox> — call right after copying scripts/ in.
+stage_node_build_inputs() {
+  local root="$1"
+  local pkg
+  mkdir -p "$root/.git" "$root/node_modules"
+  /bin/cp -f "$REPO_DIR/package.json" "$root/package.json"
+  for pkg in $STAGED_NODE_PACKAGES; do
+    [ -d "$REPO_DIR/node_modules/$pkg" ] && /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$root/node_modules/$pkg"
+  done
+  return 0
+}
+
 # make_sandbox — a fresh mktemp'd copy of scripts/, extension-skeleton/ and
 # extensions/{core,library,org}/ (the real committed trees, so hello-world's
 # actual hooks/commands/skills fixtures come along unchanged), so RENDER's
@@ -76,6 +104,7 @@ make_sandbox() {
   local sandbox
   sandbox="$(mktemp -d "$TMP_ROOT/sandbox.XXXXXX")"
   cp -r "$SCRIPT_DIR" "$sandbox/scripts"
+  stage_node_build_inputs "$sandbox"
   cp -r "$REPO_DIR/extension-skeleton" "$sandbox/extension-skeleton"
   mkdir -p "$sandbox/extensions/core" "$sandbox/extensions/library" "$sandbox/extensions/org"
   cp -r "$REPO_DIR/extensions/core" "$sandbox/extensions/"
@@ -373,6 +402,7 @@ cat > "$MATCHALL_EXT/extension.json" <<'EOF'
  "hooks":[{"id":"everything","event":"PreToolUse","command":"echo hi"}]}
 EOF
 cp -r "$REPO_DIR/scripts" "$MATCHALL_SANDBOX/scripts"
+stage_node_build_inputs "$MATCHALL_SANDBOX"
 mkdir -p "$MATCHALL_SANDBOX/extensions/library" "$MATCHALL_SANDBOX/extensions/org"
 ( cd "$MATCHALL_SANDBOX" && bash scripts/build-extension.sh --target all matchall ) >/dev/null 2>&1
 

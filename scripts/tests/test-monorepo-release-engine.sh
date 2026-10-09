@@ -53,6 +53,22 @@ if [ ! -d "$REPO_DIR/node_modules/semantic-release" ]; then
   exit 2
 fi
 
+# Fixtures are staged so a build written in TypeScript can run in them (spec
+# 0254): the root package.json and a REAL (dereferenced) copy of the production
+# closure of js-yaml inside the fixture's OWN node_modules (the loader refuses a
+# package that resolves outside it, so a symlink back to the checkout does not
+# count). The fixture's `.git` comes from its own `git init`. Same staging as
+# scripts/tests/test-component-tier-resolution.sh (spec 0250 R26).
+STAGED_NODE_PACKAGES="js-yaml argparse"
+staged_node_missing=""
+for pkg in $STAGED_NODE_PACKAGES; do
+  [ -d "$REPO_DIR/node_modules/$pkg" ] || staged_node_missing="$staged_node_missing $pkg"
+done
+# One line per run, not per fixture (make_fixture runs in a command substitution).
+if [ -n "$staged_node_missing" ]; then
+  echo "NOTE: not found under $REPO_DIR/node_modules:$staged_node_missing; fixtures are staged without them (a build that needs js-yaml will fail on the missing-dependency diagnostic until the dependency install has run)" >&2
+fi
+
 # --- A clean, deterministic PATH -------------------------------------------
 # node is an asdf shim on this project's dev machines; `env -i` strips the
 # HOME/ASDF_* variables the shim needs to resolve the real binary (asdf then
@@ -169,7 +185,8 @@ EOF
 # fixture rather than sharing one, so a mutation in one case (e.g. a broken
 # manifest for the package-failure case) can never leak into another.
 make_fixture() {
-  local root fix home origin_bare
+  local root fix home origin_bare entry pkg
+  local link_args=()
   root="$(mktemp -d "$TMP_ROOT/fixture.XXXXXX")"
   fix="$root/repo"
   home="$root/home"
@@ -180,7 +197,7 @@ make_fixture() {
   # The changelog facade lints CHANGELOG.md with the repository's own
   # markdownlint configuration before the release commit (issue #1364).
   cp "$REPO_DIR/.markdownlintrc" "$fix/.markdownlintrc"
-  printf 'node_modules/\ndist/\nbuild/\n' > "$fix/.gitignore"
+  printf 'node_modules/\ndist/\nbuild/\n/package.json\n' > "$fix/.gitignore"
 
   mkext "$fix" foo 1.2.0
   mkext "$fix" bar 0.4.1
@@ -246,7 +263,23 @@ make_fixture() {
   env -i PATH="$CLEAN_PATH" HOME="$home" GIT_CONFIG_GLOBAL="$gitconfig" GIT_CONFIG_SYSTEM=/dev/null \
     git -C "$fix" push -q origin main --tags
 
-  ln -s "$REPO_DIR/node_modules" "$fix/node_modules"
+  # node_modules is a real directory, not one symlink to the checkout's: it
+  # links every installed package except the staged ones, which are real
+  # dereferenced copies (a symlinked js-yaml resolves outside the fixture's
+  # root). Staged after the fixture commits, and ignored (.gitignore), so the
+  # fixture's tree stays clean exactly as the single symlink left it.
+  mkdir -p "$fix/node_modules"
+  for entry in "$REPO_DIR"/node_modules/* "$REPO_DIR"/node_modules/.[!.]*; do
+    [ -e "$entry" ] || [ -L "$entry" ] || continue
+    pkg="$(basename "$entry")"
+    case " $STAGED_NODE_PACKAGES " in *" $pkg "*) continue ;; esac
+    link_args+=("$entry")
+  done
+  ln -s ${link_args[@]+"${link_args[@]}"} "$fix/node_modules/"
+  for pkg in $STAGED_NODE_PACKAGES; do
+    [ -d "$REPO_DIR/node_modules/$pkg" ] && /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$fix/node_modules/$pkg"
+  done
+  /bin/cp -f "$REPO_DIR/package.json" "$fix/package.json"
 
   printf '%s\n%s\n%s\n%s\n' "$fix" "$origin_bare" "$home" "$gitconfig"
 }
