@@ -1,56 +1,22 @@
-#!/usr/bin/env bash
-# scripts/stop-chroma-server.sh — Stop the shared ChromaDB HTTP daemon.
-set -e
+#!/bin/bash
+# stop-chroma-server.sh — forwarding shim (spec 0252 requirement 13). The tool is
+# scripts/stop-chroma-server.ts (stop the shared ChromaDB HTTP daemon); this file remains so every caller that still
+# runs `bash scripts/stop-chroma-server.sh` reaches it.
+#
+# It runs the Node.js floor guard (scripts/lib/node-floor-guard.js), then the
+# TypeScript tool with every argument and its standard input, and returns the
+# tool's exit status, standard output and standard error unchanged. It fails
+# closed: with `node` absent it writes one `Error:` line and exits 1; below the
+# floor it exits with the floor guard's status and diagnostic and the tool is not
+# run. The environment reaches the tool as set.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
-. "${SCRIPT_DIR}/lib/common.sh"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-PID_FILE="${HOME}/.mempalace/chroma-server.pid"
-
-if [ ! -f "${PID_FILE}" ]; then
-  # A supervisor-managed daemon (launchd/systemd) writes no PID file, so the
-  # absence of one does NOT mean nothing is running. Reporting "not running"
-  # here was misleading: the daemon answers, and killing it would not end it
-  # anyway — KeepAlive / Restart=always bring it straight back.
-  #
-  # Detection is the same discriminator status-chroma-server.sh:16-21 already
-  # uses: no PID file, but the heartbeat answers. This script deliberately does
-  # NOT act on that case — unloading the unit from a routine stop would cancel
-  # the operator's autostart. Ending the daemon is a separate, named operation.
-  _host="${MEMPALACE_CHROMA_HOST:-127.0.0.1}"
-  _port="${MEMPALACE_CHROMA_PORT:-8001}"
-  if curl -sf "http://${_host}:${_port}/api/v2/heartbeat" >/dev/null 2>&1; then
-    echo "chroma server: RUNNING and supervisor-managed (${_host}:${_port}, no PID file)"
-    echo "  Not stopped: a supervised daemon restarts immediately."
-    echo "  To end it, remove its supervisor unit (launchctl unload -w /"
-    echo "  systemctl --user disable --now mempalace-chroma-server)."
-    exit 0
-  fi
-  echo "chroma server not running (no PID file, heartbeat failed at ${_host}:${_port})"
-  exit 0
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node was not found on PATH; the ChromaDB daemon tool needs Node.js 24 or later (https://nodejs.org/en/download)." >&2
+  exit 1
 fi
 
-pid="$(cat "${PID_FILE}" 2>/dev/null || true)"
-if [ -z "${pid}" ] || ! kill -0 "${pid}" 2>/dev/null; then
-  echo "chroma server not running (stale PID file removed)"
-  rm -f "${PID_FILE}"
-  exit 0
-fi
+node "$DIR/lib/node-floor-guard.js" || exit $?
 
-kill -TERM "${pid}" 2>/dev/null || true
-
-deadline=$((SECONDS + 5))
-while [ "${SECONDS}" -lt "${deadline}" ]; do
-  if ! kill -0 "${pid}" 2>/dev/null; then
-    rm -f "${PID_FILE}"
-    echo "chroma server stopped (was PID ${pid})"
-    exit 0
-  fi
-  sleep 1
-done
-
-echo "WARN: chroma server (PID ${pid}) did not exit after SIGTERM — sending SIGKILL." >&2
-kill -KILL "${pid}" 2>/dev/null || true
-rm -f "${PID_FILE}"
-echo "chroma server force-stopped (was PID ${pid})"
+exec node "$DIR/stop-chroma-server.ts" "$@"

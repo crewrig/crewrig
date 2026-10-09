@@ -1,38 +1,22 @@
-#!/usr/bin/env bash
-# scripts/status-chroma-server.sh — Report whether the shared ChromaDB HTTP
-# daemon is running and healthy.
+#!/bin/bash
+# status-chroma-server.sh — forwarding shim (spec 0252 requirement 13). The tool is
+# scripts/status-chroma-server.ts (report whether the shared ChromaDB HTTP daemon is running and healthy (exit 0 healthy, exit 1 otherwise)); this file remains so every caller that still
+# runs `bash scripts/status-chroma-server.sh` reaches it.
 #
-# Exit 0 → running + heartbeat OK. Exit 1 → not running or unreachable.
-set -e
+# It runs the Node.js floor guard (scripts/lib/node-floor-guard.js), then the
+# TypeScript tool with every argument and its standard input, and returns the
+# tool's exit status, standard output and standard error unchanged. It fails
+# closed: with `node` absent it writes one `Error:` line and exits 1; below the
+# floor it exits with the floor guard's status and diagnostic and the tool is not
+# run. The environment reaches the tool as set.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
-. "${SCRIPT_DIR}/lib/common.sh"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-PID_FILE="${HOME}/.mempalace/chroma-server.pid"
-HOST="${MEMPALACE_CHROMA_HOST:-127.0.0.1}"
-PORT="${MEMPALACE_CHROMA_PORT:-8001}"
-
-if [ ! -f "${PID_FILE}" ]; then
-  # No PID file — daemon may be supervisor-managed (launchd/systemd); rely on heartbeat alone.
-  if curl -sf "http://${HOST}:${PORT}/api/v2/heartbeat" >/dev/null 2>&1; then
-    echo "chroma server: HEALTHY (supervisor-managed, ${HOST}:${PORT})"
-    exit 0
-  fi
-  echo "chroma server: NOT RUNNING (no PID file, heartbeat failed at ${HOST}:${PORT})"
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node was not found on PATH; the ChromaDB daemon tool needs Node.js 24 or later (https://nodejs.org/en/download)." >&2
   exit 1
 fi
 
-pid="$(cat "${PID_FILE}" 2>/dev/null || true)"
-if [ -z "${pid}" ] || ! kill -0 "${pid}" 2>/dev/null; then
-  echo "chroma server: NOT RUNNING (stale PID file: ${PID_FILE})"
-  exit 1
-fi
+node "$DIR/lib/node-floor-guard.js" || exit $?
 
-if ! curl -sf "http://${HOST}:${PORT}/api/v2/heartbeat" >/dev/null 2>&1; then
-  echo "chroma server: PROCESS ALIVE (PID ${pid}) but heartbeat FAILED at ${HOST}:${PORT}"
-  exit 1
-fi
-
-echo "chroma server: HEALTHY (PID ${pid}, ${HOST}:${PORT})"
-exit 0
+exec node "$DIR/status-chroma-server.ts" "$@"

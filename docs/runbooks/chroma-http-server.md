@@ -33,9 +33,9 @@ CLI session connects to it via `chromadb.HttpClient` through
 
 | Action | Command |
 |--------|---------|
-| Start  | `bash scripts/start-chroma-server.sh` |
-| Stop   | `bash scripts/stop-chroma-server.sh` |
-| Status | `bash scripts/status-chroma-server.sh` |
+| Start  | `node scripts/lib/node-floor-guard.js` then `node scripts/start-chroma-server.ts` |
+| Stop   | `node scripts/lib/node-floor-guard.js` then `node scripts/stop-chroma-server.ts` |
+| Status | `node scripts/lib/node-floor-guard.js` then `node scripts/status-chroma-server.ts` |
 | Health | `curl -sf http://127.0.0.1:8001/api/v2/heartbeat` |
 
 The supervisor (launchd `KeepAlive=true` / systemd `Restart=always`)
@@ -89,7 +89,7 @@ Both should report `65536` (or higher) once the reload completes.
 
 ### File-descriptor floor on the manual launch path
 
-`scripts/start-chroma-server.sh` — the ad-hoc path used to bring up the
+`scripts/start-chroma-server.ts` (reached by the `start-chroma-server.sh` shim) — the ad-hoc path used to bring up the
 daemon outside the installed supervisor — raises the daemon process's
 open-file soft limit to `10240` (`MEMPALACE_CHROMA_ULIMIT_FLOOR`
 overrides the default) immediately before launching it. This floor is
@@ -151,7 +151,7 @@ If you upgraded a working CrewRig install across the #98 boundary:
    daemon comes up before any MCP entry is written (see ADR 0006 →
    *First-launch ordering*).
 
-3. **Verify** with `bash scripts/status-chroma-server.sh` and by starting
+3. **Verify** with `node scripts/lib/node-floor-guard.js` then `node scripts/status-chroma-server.ts` and by starting
    one CLI session — the first MemPalace MCP call should succeed without
    the wrapper printing a fail-loud error.
 
@@ -203,10 +203,11 @@ If a pre-#98 corruption is suspected (zombie locks in `acquire_write`,
 missing `index_metadata.pickle`, stuck `embeddings_queue`):
 
 ```sh
-bash scripts/stop-chroma-server.sh
+node scripts/lib/node-floor-guard.js
+node scripts/stop-chroma-server.ts
 mempalace rebuild-from-sqlite        # or the project's documented recovery cmd
-bash scripts/start-chroma-server.sh
-bash scripts/status-chroma-server.sh
+node scripts/start-chroma-server.ts
+node scripts/status-chroma-server.ts
 ```
 
 A successful rebuild + health check restores normal operation. Capture
