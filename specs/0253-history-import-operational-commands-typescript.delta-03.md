@@ -86,7 +86,8 @@ list of paths is kept; only the stub mechanism is replaced, because a `.cmd` fil
 cannot be spawned by Node.js without a shell (see the finding). The sentences
 before and after it (the usage-wrapper part as modified by delta-01, the
 `sync-from-upstream` part) are unchanged; the sentence that closes the
-requirement is replaced with it, since its claim about Windows no longer holds.
+requirement is replaced with it: its claim about Windows no longer holds and its
+claim about Linux and macOS is withdrawn (see the finding).
 Original:
 
 > For the import scripts and `prune-transcripts`, which need Python, MemPalace and
