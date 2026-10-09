@@ -29,7 +29,7 @@ runner (a task read through COM 0.2 to 0.3 s, a CIM process table 0.3 s, a Toolh
 process table 0.35 s, `schtasks /Query /V /FO CSV` 25 to 45 ms, `netstat -ano` 25 ms) and
 found the cause of the delay: the state read ran `powershell.exe` with a restricted
 environment, and without `PSModulePath` PowerShell rebuilds its module path on every
-start, 18 seconds each time; with `PSModulePath` the same read takes 0.43 seconds. This delta
+start, 18 seconds each time; with `PSModulePath` the same read takes 0.43 seconds, and in the lifecycle job the `status` call of the backend took 0.57 to 0.61 seconds (the first, cold snapshot of a run 4.5 seconds). This delta
 records these measurements as normative text and changes the restart mechanism
 accordingly. It runs under the release-branch regime of
 `specs/0215-shell-to-typescript-migration.delta-04.md`, and its spec-PR targets
