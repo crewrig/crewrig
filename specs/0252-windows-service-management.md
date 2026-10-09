@@ -165,7 +165,7 @@ Node.js is too old is told so before anything is written.
 
    | Alternative | Verdict | Reason |
    |---|---|---|
-   | Task Scheduler per-user task (logon trigger, interactive token, least privilege, restart on failure) | **chosen** | Needs no elevation for a task bound to the current user; ships with every Windows edition; has the five operations; supervises and restarts; logs through the launcher. Costs: restart interval floor of one minute, no native PID. |
+   | Task Scheduler per-user task (logon trigger, interactive token, least privilege, restart on failure) | **chosen** | Needs no elevation for a task bound to the current user; ships with every Windows edition; has the five operations; supervises and restarts; logs through the launcher. Costs: restart interval floor of one minute, no PID in `schtasks` output (the scheduler's running-task interface supplies it). |
    | `HKCU\…\Run` key or Startup-folder shortcut plus a CrewRig-owned Node supervisor | rejected by the owner | No elevation either, but CrewRig would write and own a respawn loop, a stop path and a PID file; the owner check of spec 0158 requirement 2 forbids trusting a file a same-user process can write, and the supervisor would have to be trusted instead. |
    | Windows service (`sc.exe`, NSSM, WinSW) | rejected | Creating a service needs administrator rights, which requirement 20 of the parent forbids; NSSM and WinSW are also third-party binaries. |
    | Per-user service templates (Windows 10 1903+) | rejected | Only system components can register them; a user cannot. |
@@ -185,8 +185,8 @@ Node.js is too old is told so before anything is written.
    the daemon with no console window left open on the user's desktop (the plan
    fixes how, and the Windows job of requirement 24 verifies it where the runner
    permits, otherwise the limit is a parity gap under requirement 25). The task
-   action SHALL be the Node.js executable that runs the installer, an absolute
-   path, with the installed program of requirement 10 as its first argument. The
+   action SHALL be the absolute path of the Node.js executable running the
+   installer (`process.execPath`), with the installed program of requirement 10 as its first argument. The
    definition SHALL carry no secret: the bearer token is read by the launcher
    (requirement 11), never named in a task, plist or unit. The Task Scheduler
    restarts a task only when the process it runs ends with a failure; it does not
@@ -240,20 +240,28 @@ Node.js is too old is told so before anything is written.
     launcher (requirement 11) and the TypeScript trust wrapper (requirement 12).
     Each SHALL be self-contained or depend only on files installed beside it, SHALL
     carry no import that reaches into the repository, and SHALL be written with
-    mode 0755 where the platform has modes. The installed launcher SHALL record the
-    SHA-256 of its repository source in the same line form the shell launcher used
-    (`LAUNCHER_SOURCE_SHA="…"`), and its `MCP_HOST="…"` and `MCP_PORT="…"` values in
-    the same line form, so that `parseLauncher` of `mempalace-registration.ts`, the
-    session-start check of spec 0246 and `mcp_installed_endpoint` of `common.sh`
-    read it unchanged; how a TypeScript file carries three such lines is a plan
-    decision that SHALL keep those three readers working without edit. The default
-    installed path of the TypeScript launcher is `~/.crewrig/mcp-daemon-launcher.ts`
-    (`MEMPALACE_MCP_LAUNCHER_PATH` still overrides). While the shell installer in
-    `common.sh` still writes `~/.crewrig/mcp-daemon-launcher.sh`, the readers of the
-    installed launcher (the status report, the doctor and the uninstall) SHALL
-    consider both files and SHALL use the one most recently written; installing the
-    TypeScript launcher SHALL remove a stale shell launcher beside it, and
-    uninstalling SHALL remove both.
+    mode 0755 where the platform has modes. Every reader of the installed launcher
+    reads one fixed path, `~/.crewrig/mcp-daemon-launcher.sh` (`MEMPALACE_MCP_LAUNCHER_PATH`
+    still overrides): `launcherPath()` of `mempalace-registration.ts` (the spec 0246
+    session-start check), `mcp_launcher_installed_path` and `mcp_installed_endpoint` of
+    `common.sh` (used until row F1 by the setup scripts), the status report and the
+    uninstall. None of them is edited, and none is taught a second filename. The
+    TypeScript installer therefore writes two files: the program, at
+    `~/.crewrig/mcp-daemon-launcher.ts`, which the supervisor definition names; and, at
+    the legacy path, an *endpoint record* that is not a program. The record carries
+    the same three line forms the shell launcher carried, `MCP_HOST="…"`,
+    `MCP_PORT="…"` and `LAUNCHER_SOURCE_SHA="…"` (the SHA-256 of the program's
+    repository source), plus one `LAUNCHER_PROGRAM="…"` line naming the program, so
+    that `parseLauncher`, the 0246 check and `mcp_installed_endpoint` read it
+    unchanged. Its body SHALL fail loudly if anything executes it (a message on
+    standard error naming the program and exit 1), so a stale supervisor
+    definition that still names the legacy path cannot appear to run. The status
+    report SHALL tell the two forms apart by the `LAUNCHER_PROGRAM` line and compare
+    the recorded hash with the source of the matching form (the TypeScript program
+    or the shell launcher). When the shell installer of `common.sh` later rewrites
+    the legacy path with the real shell launcher, that file is again the program and
+    the record, and the TypeScript program beside it is unused. Uninstalling removes
+    both files.
 
 11. **TypeScript MCP daemon launcher.** The TypeScript launcher SHALL keep every
     property of `scripts/lib/mcp-daemon-launcher.sh` (spec 0113, ADR 0016):
@@ -339,10 +347,17 @@ Node.js is too old is told so before anything is written.
     unauthenticated `tools/list` to `/mcp` and requires `401`, never a header
     carrying the token; the listener-owner section (requirement 16); the launcher
     drift section (the recorded source hash against the current one, `NOT
-    INSTALLED`, `drift UNKNOWN`, `DRIFTED`); and the per-assistant arrangement
+    INSTALLED`, `drift UNKNOWN`, `DRIFTED`), which also reports `DRIFTED` when the
+    interpreter named by the supervisor definition no longer exists (a Node.js
+    removed or upgraded by a version manager) and says to re-run the switch; and
+    the per-assistant arrangement
     report (spec 0113 requirement 16, spec 0172) with its half-converted
     `LOCKED OUT` verdict; the final exit status is 0 only when every section
-    passes. The test seams `MEMPALACE_MCP_HOST` and `MEMPALACE_MCP_PORT` keep
+    passes. On Windows only, the report gains a `task:` line giving whether the
+    task is registered, its state and its last result, so that a task that has
+    stopped for good after its restart count ran out is visible; it fails the
+    section when the task is registered, not running and its last result is a
+    failure. The test seams `MEMPALACE_MCP_HOST` and `MEMPALACE_MCP_PORT` keep
     working.
 
 16. **Listener and supervisor owner without POSIX tools (spec 0158).** The PID of
@@ -351,8 +366,15 @@ Node.js is too old is told so before anything is written.
     tables, on macOS and Windows from the operating system's own networking
     facility; the plan fixes the mechanism from measurement and records it. The PID
     the supervisor runs SHALL come from the supervisor (`launchctl print`,
-    `systemctl --user show -p MainPID`, and on Windows the process tree of the
-    process the task engine runs), never from a file a same-user process can write.
+    `systemctl --user show -p MainPID`, and on Windows the running-task interface of
+    the Task Scheduler itself, which names the process the task engine started for
+    the task), never from a file, a command line or a process name that a same-user
+    process can write or spoof. `schtasks` output carries no PID, so the Windows
+    lookup goes through the scheduler's own interface (the plan names the call).
+    PR B SHALL measure on `windows-latest` that this interface returns the PID of the
+    launcher process; if it does not, no weaker identification SHALL be adopted by the
+    plan: a delta-spec of this spec decides how the Windows owner verdict degrades,
+    and PR D does not ship before it.
     The test seams `MEMPALACE_MCP_LISTENER_PID` and `MEMPALACE_MCP_EXPECTED_PID`
     keep their *set-but-empty means undeterminable, unset means look up*
     semantics. Because the launcher is now a parent of the daemon (requirement 11),
@@ -502,8 +524,10 @@ Node.js is too old is told so before anything is written.
     requirement 8 (the mechanism made unavailable on purpose, and a `/Create`
     refused with an "Access is denied" answer, each a non-zero exit with the
     capability named, the verbatim `schtasks` text and the stdio advice, and `/Query`
-    showing no task), and the Windows section of `doctor-mempalace` of requirement
-    20 in the registered, running and absent states. The job SHALL be recorded
+    showing no task), the Windows section of `doctor-mempalace` of requirement
+    20 in the registered, running and absent states, and the Windows owner verdict
+    of requirement 16: VERIFIED for the daemon the task started, USURPED for a
+    listener of the same user that the task did not start. The job SHALL be recorded
     in `ci/ci-capabilities.yml` as `portability: specific` (engine `github-actions`;
     GitLab exposes no Windows runner). No timing budget applies: these are not CLI
     integration points (parent requirement 15), so timings are recorded and do not
@@ -515,15 +539,17 @@ Node.js is too old is told so before anything is written.
     entry points, and recording every cell that does not match the others with its
     evidence. The service layer is shared by the four CLIs (each reaches the same
     daemon), so no CLI column differs from another. At authoring time the known
-    gaps to record are: the one-minute restart floor and the absence of a native
-    PID on Windows; the user-profile ACL in place of mode 0600 for the token file;
+    gaps to record are: the one-minute restart floor and the finite restart count
+    on Windows (a launcher that keeps failing closed, for instance on a missing
+    token, eventually exhausts it and stops for good, where launchd and systemd
+    never give up); the user-profile ACL in place of mode 0600 for the token file;
     the daemon console window, where the runner cannot show it; and the runner's
     administrator token, where it cannot be restricted. A gap without evidence SHALL
     NOT be recorded.
 
 26. **Dual-source conformance.** While the shell twins stay (requirement 2), a
     Linux-only test SHALL assert, against the shell functions of `common.sh`, that the
-    TypeScript twins agree on: the token path derivation, the launcher parse, the
+    TypeScript twins agree on: the token path derivation, the launcher record parse, the
     placeholder substitution of each unit, the pin read, the Python candidate order
     and the arrangement classification over a corpus of registration files. It SHALL
     be retired with the shell library in row J4.
@@ -566,13 +592,18 @@ Node.js is too old is told so before anything is written.
     of the launcher (requirement 11), so `ps` shows two processes where the shell
     launcher left one; (e) the open-file raise is performed by the daemon's Python
     interpreter (requirement 13); (f) the TLS file is parsed, not sourced, and a
-    malformed file warns and continues (requirement 12); (g) the installed launcher
-    and the trust wrapper are TypeScript files with the names of requirement 10; (h)
+    malformed file warns and continues (requirement 12); (g) the trust wrapper
+    is a TypeScript file named in requirement 10; (h)
     on Windows, every behaviour that names a POSIX mode, signal or utility takes the
     Windows form stated above; (i) the launcher ends with a non-zero status when its
     child exits with status 0 (requirement 11), where the shell launcher, which had
     replaced itself with the daemon, had no such case; (j) on Windows only,
-    `doctor-mempalace` prints a fourth section (requirement 20). A further deviation found in PLAN or DEV is added by a
+    `doctor-mempalace` prints a fourth section (requirement 20) and
+    `status-mcp-server` prints a `task:` line (requirement 15); (k) on every
+    operating system `status-mcp-server` reports a missing supervisor interpreter
+    as drift (requirement 15), a line that appears only in that failing state; (l)
+    the installed launcher is a TypeScript program with an endpoint record at the
+    legacy path (requirement 10). A further deviation found in PLAN or DEV is added by a
     delta-spec of this spec, never silently.
 
 32. **Pull-request split.** The work SHALL ship as: **PR A** (oracle hardening:
