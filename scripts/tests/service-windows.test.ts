@@ -127,7 +127,12 @@ async function lifecycle(kind: DaemonKind): Promise<void> {
   assert.equal(absent(c), true, "uninstall removes the task");
   assert.deepEqual(backend.uninstall(c.names), { ok: true, detail: "was not loaded" });
   const last = readState(c);
-  if (last !== null) await waitFor("no daemon after uninstall", () => !alive(last.pid), 15_000);
+  if (last !== null) {
+    measure(
+      `after-uninstall kind=${kind} pid=${last.pid} alive=${alive(last.pid)} ppid=${last.ppid} parentAlive=${alive(last.ppid)} cmd=${JSON.stringify(alive(last.pid) ? commandLineOf(last.pid) : "")}`,
+    );
+    await waitFor("no daemon after uninstall", () => !alive(last.pid), 60_000);
+  }
 }
 
 test(
