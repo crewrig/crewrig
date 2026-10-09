@@ -7,7 +7,7 @@
 // A difference fails unless the source is a `deviation-*` fixture whose table row names the
 // clause and the EXACT yq and reader texts (an unlisted difference fails, and so does a listed
 // one that vanished). CRLF and BOM variants are generated in a temporary directory
-// (`.gitattributes` forces LF on `*.md`); they equal yq on the LF original (R33(e)).
+// (`.gitattributes` forces LF on `*.md`; the fixtures end in `.fixture` so markdownlint does not lint them as prose); they equal yq on the LF original (R33(e)).
 // Linux and macOS only (win32 skips); it retires with the last yq-based suite.
 
 import assert from "node:assert/strict";
@@ -180,7 +180,7 @@ const sources = [
   ...walk("tests/fixtures").filter(isSource),
   ...walk("scripts/tests/fixtures/agent-profiles").filter(md),
   ...walk("extensions/core/hello-world/commands").filter(md),
-  ...walk(CORPUS).filter(md),
+  ...walk(CORPUS).filter((f) => f.endsWith(".fixture")),
 ];
 const lfText = (f: string): string => fs.readFileSync(path.join(REPO, f), "utf8");
 const fmOf = (f: string): string => frontmatterOfText(lfText(f));
@@ -195,15 +195,15 @@ const rejected = (name: string, description: string): Diffs => ({
 });
 /** Documented differences by fixture: the spec clause, then label to [yq text, reader text]. */
 const DEVIATIONS: Record<string, { clause: string; diffs: Diffs }> = {
-  "deviation-merge-key.md": {
+  "deviation-merge-key.fixture": {
     clause: "R11: the pinned schema does not expand `<<`",
     diffs: { "yaml_nested .claude.context": ["from-anchor", ""] },
   },
-  "deviation-alias.md": {
+  "deviation-alias.fixture": {
     clause: "R33(g): the loader expands an alias, yq printed `*shared`",
     diffs: { "yaml_field .license": ["*shared", "one shared text"] },
   },
-  "deviation-collection-as-scalar.md": {
+  "deviation-collection-as-scalar.fixture": {
     clause: "R12: a mapping or sequence read as a scalar renders empty, yq printed YAML",
     diffs: {
       "yaml_field .description": ["key: value", ""],
@@ -211,7 +211,7 @@ const DEVIATIONS: Record<string, { clause: string; diffs: Diffs }> = {
       "yaml_nested .claude.context": ["nested: map", ""],
     },
   },
-  "deviation-timestamp-provenance.md": {
+  "deviation-timestamp-provenance.fixture": {
     clause: "NOT in R12 or R33, finding F1: yq's string concatenation fails on a timestamp",
     diffs: {
       "provenance entries": [
@@ -220,7 +220,7 @@ const DEVIATIONS: Record<string, { clause: string; diffs: Diffs }> = {
       ],
     },
   },
-  "deviation-provenance-collection-entry.md": {
+  "deviation-provenance-collection-entry.fixture": {
     clause: "R12, R33(g): a collection provenance entry is a build error, yq failed",
     diffs: {
       "provenance.canonical": ["key: value", ""],
@@ -233,7 +233,7 @@ const DEVIATIONS: Record<string, { clause: string; diffs: Diffs }> = {
 // `parse` is null for these (R33(g): duplicate keys and explicit tags follow the library).
 for (const pair of "duplicate-key:second binary-tag:aGVsbG8= int-tag:5".split(" ")) {
   const [f = "", text = ""] = pair.split(":");
-  DEVIATIONS[`deviation-${f}.md`] = {
+  DEVIATIONS[`deviation-${f}.fixture`] = {
     clause: `R33(g): ${f}, the source does not parse`,
     diffs: rejected(`deviation-${f}`, text),
   };
@@ -253,7 +253,7 @@ describe("yq -r versus the reader, every field the build reads", { skip: noYq },
       assert.deepEqual(await both(`${CORPUS}/${name}`), diffs));
   }
   test("a collection provenance entry is told apart by its kind (R12 exits 1 on it)", () => {
-    const doc = Y.parse(fmOf(`${CORPUS}/deviation-provenance-collection-entry.md`));
+    const doc = Y.parse(fmOf(`${CORPUS}/deviation-provenance-collection-entry.fixture`));
     assert.deepEqual(
       Y.entries(doc, P).map((e) => e.kind),
       ["scalar", "mapping", "sequence"],
@@ -265,7 +265,7 @@ describe("yq -r versus the reader, every field the build reads", { skip: noYq },
     ["CRLF", (t: string) => t.replace(/\n/g, "\r\n")],
     ["BOM", (t: string) => String.fromCharCode(0xfeff) + t],
   ] as const) {
-    const original = `${CORPUS}/${variant === "CRLF" ? "crlf-and-block-scalars" : "bom-basic"}.md`;
+    const original = `${CORPUS}/${variant === "CRLF" ? "crlf-and-block-scalars" : "bom-basic"}.fixture`;
     test(`deviation R33(e): ${variant} reads as its LF original; the shell read nothing`, async () => {
       const file = path.join(scratch, `${variant}.md`);
       const raw = make(lfText(original));
@@ -287,7 +287,10 @@ describe("yq -r versus the reader, every field the build reads", { skip: noYq },
     const shapes =
       "number-like timestamp-like boolean-like null-spellings empty-value quoted-number block-literal-clip block-literal-strip block-literal-keep block-folded block-folded-strip block-folded-blank-line multi-line-plain multi-line-double-quoted multi-line-single-quoted colon-space-in-quotes long-line non-string-sequence-item crlf-and-block-scalars bom-basic";
     for (const shape of shapes.split(" "))
-      assert.ok(fs.existsSync(path.join(REPO, CORPUS, `${shape}.md`)), `fixture ${shape}.md`);
+      assert.ok(
+        fs.existsSync(path.join(REPO, CORPUS, `${shape}.fixture`)),
+        `fixture ${shape}.fixture`,
+      );
     const onDisk = walk(CORPUS).map((f) => path.basename(f));
     assert.deepEqual(
       onDisk.filter((n) => n.startsWith("deviation-")).sort(),
