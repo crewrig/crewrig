@@ -12,6 +12,7 @@
 // definition, the wrapper with the ChromaDB definition, and the bundle files of a
 // `service-lib/` go only when no remaining definition's program imports them.
 
+import { servicePlatform } from "./exec.ts";
 import { createHash, randomBytes } from "node:crypto";
 import {
   chmodSync,
@@ -87,7 +88,7 @@ export function writeStaged(target: string, data: string | Buffer, mode: number)
   const staging = `${target}.${randomBytes(8).toString("hex")}.tmp`;
   try {
     writeFileSync(staging, data, { flag: "wx", mode });
-    if (process.platform !== "win32") chmodSync(staging, mode);
+    if (servicePlatform() !== "win32") chmodSync(staging, mode);
     renameSync(staging, target);
   } catch (error) {
     rmSync(staging, { force: true });

@@ -10,6 +10,7 @@ import { after, afterEach, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   executableFor,
+  servicePlatform,
   launchDaemon,
   runManager,
   scrubbedEnv,
@@ -49,6 +50,31 @@ test("service managers resolve to the operating system's own path, never a bare 
   assert.equal(executableFor("schtasks", "win32", {}), "/seam/schtasks");
   setExecutableOverride("schtasks", null);
 });
+
+test(
+  "CREWRIG_TEST_SERVICE_PLATFORM replaces the platform on POSIX only",
+  { skip: process.platform === "win32" },
+  () => {
+    assert.equal(servicePlatform({ CREWRIG_TEST_SERVICE_PLATFORM: "darwin" }), "darwin");
+    assert.equal(servicePlatform({ CREWRIG_TEST_SERVICE_PLATFORM: "linux" }), "linux");
+    assert.equal(servicePlatform({ CREWRIG_TEST_SERVICE_PLATFORM: "bogus" }), process.platform);
+    assert.equal(servicePlatform({}), process.platform);
+  },
+);
+
+test(
+  "CREWRIG_TEST_SERVICE_BIN_DIR wins over the OS path, yields to the override seam",
+  { skip: process.platform === "win32" },
+  () => {
+    const env = { CREWRIG_TEST_SERVICE_BIN_DIR: "/stubs" };
+    const has = (f: string): boolean => f === "/stubs/launchctl";
+    assert.equal(executableFor("launchctl", "darwin", env, has), "/stubs/launchctl");
+    assert.equal(executableFor("systemctl", "linux", env, has), "systemctl");
+    setExecutableOverride("launchctl", "/seam/launchctl");
+    assert.equal(executableFor("launchctl", "darwin", env, has), "/seam/launchctl");
+    setExecutableOverride("launchctl", null);
+  },
+);
 
 test("the seam replaces the executable and can be removed", () => {
   const real = executableFor("systemctl");

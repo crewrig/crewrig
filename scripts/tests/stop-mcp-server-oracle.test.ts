@@ -61,7 +61,14 @@ function withStubs(fn: (fx: Fixture) => void): void {
 
 function stop(fx: Fixture, os: string, env: Record<string, string> = {}) {
   fs.writeFileSync(fx.calls, "");
-  return runBash(fx.h, STOP_SCRIPT, [], { env: { FAKE_UNAME: os, ...env } });
+  return runBash(fx.h, STOP_SCRIPT, [], {
+    env: {
+      FAKE_UNAME: os,
+      CREWRIG_TEST_SERVICE_PLATFORM: os.toLowerCase(),
+      CREWRIG_TEST_SERVICE_BIN_DIR: fx.h.bin,
+      ...env,
+    },
+  });
 }
 
 function callLines(fx: Fixture): string[] {

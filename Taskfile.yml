@@ -38,15 +38,21 @@ tasks:
 
   mempalace:switch-http:
     desc: "Switch every supported assistant on this machine to the shared MemPalace MCP HTTP daemon, so concurrent sessions all write to shared memory (spec 0113). All-or-nothing: if one assistant cannot be switched, none is."
-    cmd: bash {{.REPO_DIR}}/scripts/switch-mempalace-http.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/switch-mempalace-http.ts
 
   mempalace:rotate-token:
     desc: "Rotate the shared MemPalace MCP HTTP daemon bearer token (spec 0176). Mints a new token, replaces the daemon process, purges stale backups, and re-registers every assistant."
-    cmd: bash {{.REPO_DIR}}/scripts/switch-mempalace-http.sh --rotate
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/switch-mempalace-http.ts --rotate
 
   mempalace:status:
     desc: "Report the shared MemPalace MCP HTTP daemon: whether it is serving, whether authentication is actually enforced, whether the installed launcher has drifted from the repository, and which arrangement each assistant is configured for."
-    cmd: bash {{.REPO_DIR}}/scripts/status-mcp-server.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/status-mcp-server.ts
 
   mempalace:repair:
     desc: "Repair the residue left by an interrupted MemPalace switch (spec 0165): an assistant whose configuration does not parse as JSON, or whose mempalace registration matches neither the http nor the stdio shape. With no flag, reports each affected assistant, its config path, whether a timestamped backup exists, and the available actions. The repair verbs need the separator (task mempalace:repair -- [--restore-backup | --reset-none]): --restore-backup restores the most recent usable backup, --reset-none removes the mempalace registration. Restores recognisability only — never registers anyone for http, never places the bearer token in argv."
@@ -54,11 +60,15 @@ tasks:
 
   mempalace:stop:
     desc: "Restart the shared MemPalace MCP HTTP daemon. Under the supervisor a stop IS a restart request — to end the daemon, use mempalace:uninstall-daemon."
-    cmd: bash {{.REPO_DIR}}/scripts/stop-mcp-server.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/stop-mcp-server.ts
 
   mempalace:uninstall-daemon:
     desc: "End the shared MemPalace MCP HTTP daemon and remove its supervisor unit. Run this BEFORE reverting the ticket that introduced it — the launcher lives outside the repository, so a revert alone would leave a unit that keeps autostarting."
-    cmd: bash {{.REPO_DIR}}/scripts/uninstall-mcp-daemon.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/uninstall-mcp-daemon.ts
 
   usage:query:
     desc: "Read usage records by session, agent+parent, period, task-handoff key, or external asset reference (spec 0207/0208). JSONL output. Usage: task usage:query -- --session <id> | --period <YYYY-MM> [--cli <cli>] | --task-key <key> [--rollup [--combined]] | ..."

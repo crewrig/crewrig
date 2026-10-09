@@ -6,6 +6,7 @@
 // file spawns nothing. `null` means "no listener found or undeterminable": the
 // owner verdict treats both as UNVERIFIABLE, as the shell's empty string was.
 
+import { servicePlatform } from "./exec.ts";
 import { readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 import { listenerTable } from "./os-inspect.ts";
@@ -131,7 +132,7 @@ export function parseNetstatWindows(text: string, port: number): number | null {
 export function listenerPid(port: number, opts: ListenerOptions = {}): number | null {
   const seam = pidSeam(opts.env ?? process.env, "MEMPALACE_MCP_LISTENER_PID");
   if (seam.set) return seam.pid;
-  const platform = opts.platform ?? process.platform;
+  const platform = opts.platform ?? servicePlatform();
   if (platform === "linux") return linuxListener(port, opts.procRoot ?? "/proc");
   if (platform !== "darwin" && platform !== "win32") return null;
   const table = listenerTable(platform);

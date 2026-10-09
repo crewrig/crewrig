@@ -209,6 +209,11 @@ export function makeSandbox(prefix = "sc0246-"): Sandbox {
         CLAUDE_CONFIG_DIR: claudeConfigDir,
         XDG_CONFIG_HOME: path.join(home, ".config"),
         PATH: basePath,
+        // The launchctl / systemctl stubs reach the TypeScript tools through these test seams
+        // (scripts/lib/service/exec.ts): the shell found them on PATH, the TypeScript runs the
+        // absolute OS path unless told otherwise.
+        CREWRIG_TEST_SERVICE_PLATFORM: process.platform === "darwin" ? "darwin" : "linux",
+        CREWRIG_TEST_SERVICE_BIN_DIR: stubBin,
         TMPDIR: os.tmpdir(),
         LC_ALL: "C",
         ...extra,
