@@ -898,6 +898,7 @@ jobs:
               - 'scripts/lib/**'
               - 'config/launchd/**'
               - 'config/systemd/**'
+              - 'config/windows/**'
       - name: Install yq
         if: steps.filter.outputs.chroma-mcp == 'true'
         run: |
@@ -915,31 +916,31 @@ jobs:
         if: steps.filter.outputs.chroma-mcp == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/tests/test-chroma-*.sh', 'scripts/tests/test-mcp-daemon.sh', 'scripts/tests/test-palace-path-propagation.sh', 'scripts/tests/test-repair-mempalace-http.sh', 'scripts/tests/test-rotate-mempalace-token.sh', 'scripts/tests/test-worktree-claim.sh', 'scripts/worktree-claim.sh', 'scripts/worktree-claim.ts', 'hooks/worktree-git-guard.ts', 'scripts/mcp-daemon.sh', 'scripts/repair-mempalace-http.sh', 'scripts/switch-mempalace-http.sh', 'scripts/lib/**', 'config/launchd/**', 'config/systemd/**', 'scripts/ci-cache-guard.sh') }}
+          key: ${{ hashFiles('scripts/tests/test-chroma-*.sh', 'scripts/tests/test-mcp-daemon.sh', 'scripts/tests/test-palace-path-propagation.sh', 'scripts/tests/test-repair-mempalace-http.sh', 'scripts/tests/test-rotate-mempalace-token.sh', 'scripts/tests/test-worktree-claim.sh', 'scripts/worktree-claim.sh', 'scripts/worktree-claim.ts', 'hooks/worktree-git-guard.ts', 'scripts/mcp-daemon.sh', 'scripts/repair-mempalace-http.sh', 'scripts/switch-mempalace-http.sh', 'scripts/lib/**', 'config/launchd/**', 'config/systemd/**', 'config/windows/**', 'scripts/ci-cache-guard.sh') }}
       - name: Test Chroma Fd Limits
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-fd-limits.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-fd-limits.sh
       - name: Test Chroma Health Race
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-health-race.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-health-race.sh
       - name: Test Chroma Server
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-server.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-chroma-server.sh
       - name: Test Mcp Daemon
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mcp-daemon.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mcp-daemon.sh
       - name: Test Palace Path Propagation
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-palace-path-propagation.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-palace-path-propagation.sh
       - name: Test Repair Mempalace Http
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-repair-mempalace-http.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-repair-mempalace-http.sh
       - name: Test Rotate Mempalace Token
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-rotate-mempalace-token.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-rotate-mempalace-token.sh
       - name: Test Worktree Claim
         if: steps.filter.outputs.chroma-mcp == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-worktree-claim.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/tests/test-chroma-*.sh,scripts/tests/test-mcp-daemon.sh,scripts/tests/test-palace-path-propagation.sh,scripts/tests/test-repair-mempalace-http.sh,scripts/tests/test-rotate-mempalace-token.sh,scripts/tests/test-worktree-claim.sh,scripts/worktree-claim.sh,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/mcp-daemon.sh,scripts/repair-mempalace-http.sh,scripts/switch-mempalace-http.sh,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-worktree-claim.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1513,6 +1514,9 @@ jobs:
       - name: Test the MemPalace helper modules (python detection, version pin)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-python.test.ts scripts/tests/mempalace-python-shebang.test.ts scripts/tests/mempalace-pin.test.ts
 
+
+      - name: Test the service module and the MCP launcher (Linux)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-backend.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-dual-source-conformance.test.ts scripts/tests/service-exec.test.ts scripts/tests/service-file-size.test.ts scripts/tests/service-install.test.ts scripts/tests/service-launchd-systemd.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-names.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-program-install.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-schtasks-uninstall.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-token-argv.test.ts scripts/tests/service-trust-wrapper.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/mcp-launcher-lifecycle.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1707,6 +1711,40 @@ jobs:
       # it as its own end-of-parameters token.
       - name: Floor guard timing budget
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 '--' scripts/lib/node-floor-guard.js
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0252 R24 (plan v3 D5 *Windows proof job*): the Windows service task
+  # proof, copied from the template above. pwsh is the interpreter of every
+  # step. The portable unit tests run first; service-windows.test.ts installs
+  # both real task chains through the real schtasks backend under throwaway
+  # leaves and prints each measurement as one `MEASURE:` line (grep the log).
+  windows-service-task:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Test the portable service modules (POSIX-only tests skip themselves)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-names.test.ts scripts/tests/service-backend.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-schtasks-uninstall.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-bundle-closure.test.ts
+
+      - name: Task Scheduler lifecycle of both task chains
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-windows.test.ts
+
+      - name: Restart proof and refusal legs
+        if: success() || failure()
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-windows-legs.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

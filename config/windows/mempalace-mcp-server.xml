@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<!--
+  The MemPalace MCP daemon task. Action chain: node, then the installed launcher alone
+  (no wrapper in front of it, as config/systemd/mempalace-mcp-server.service runs it).
+  Rendered by scripts/lib/service/windows-task-xml.ts, which substitutes every
+  double-underscore placeholder below and refuses to emit a definition that still
+  has one (spec 0133 requirement 7, spec 0252 requirement 7). No secret is ever
+  written here: the launcher reads its credential itself, and no task names it.
+-->
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>crewrig:service-task __TASK_URI__</Description>
+    <URI>__TASK_URI__</URI>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+      <UserId>__USER_ID__</UserId>
+    </LogonTrigger>
+    <!--
+      Keep-alive (measured, spec 0252 delta-02): RestartOnFailure did not restart a task whose
+      action ended non-zero within 240 s on windows-latest, so a repeating time trigger starts
+      the task again every minute; MultipleInstancesPolicy IgnoreNew makes it a no-op while an
+      instance runs. The repetition has no end, so there is no finite restart count.
+    -->
+    <TimeTrigger>
+      <Enabled>true</Enabled>
+      <StartBoundary>2000-01-01T00:00:00</StartBoundary>
+      <Repetition>
+        <Interval>PT1M</Interval>
+      </Repetition>
+    </TimeTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>__USER_ID__</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>false</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>true</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>7</Priority>
+    <RestartOnFailure>
+      <Interval>PT1M</Interval>
+      <Count>999</Count>
+    </RestartOnFailure>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>__NODE_PATH__</Command>
+      <Arguments>"__PROGRAM_PATH__" __PROGRAM_ARGS__</Arguments>
+    </Exec>
+  </Actions>
+</Task>

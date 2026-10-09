@@ -67,6 +67,7 @@ config/.env.example
 config/release-monorepo.json
 config/launchd
 config/systemd
+config/windows
 
 # Persona, team, and seniority example catalogues (spec 0021). adopt-on-edit
 # at directory granularity: untouched files keep updating from upstream and

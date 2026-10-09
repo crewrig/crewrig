@@ -14,6 +14,7 @@ import {
   detectMempalacePython,
   mempalacePythonCandidates,
   resolveSymlink,
+  splitLauncher,
 } from "../lib/mempalace-python.ts";
 
 const temps: string[] = [];
@@ -99,6 +100,14 @@ describe("pipx home resolution order", () => {
   });
 });
 
+describe("splitLauncher", () => {
+  test("a launcher splits into command and leading arguments, anything else stays whole", () => {
+    assert.deepEqual(splitLauncher("py -3"), ["py", "-3"]);
+    assert.deepEqual(splitLauncher("python"), ["python"]);
+    assert.deepEqual(splitLauncher("/opt/venv/bin/python"), ["/opt/venv/bin/python"]);
+  });
+});
+
 describe("candidate order", () => {
   test("venv, then python3, with no console script on PATH", () => {
     const { env, home } = hermeticEnv();
@@ -108,15 +117,20 @@ describe("candidate order", () => {
     ]);
   });
 
-  test("the console-script interpreter sits between the venv and python3", () => {
-    const { env, home, bin } = hermeticEnv();
-    writeFile(path.join(bin, "mempalace"), "#!/opt/venv/bin/python\n", 0o755);
-    assert.deepEqual(mempalacePythonCandidates(env, POSIX), [
-      `${home}/.local/share/pipx/venvs/mempalace/bin/python`,
-      "/opt/venv/bin/python",
-      "python3",
-    ]);
-  });
+  // A POSIX console script: on Windows `mempalace` is found through PATHEXT, not as an extensionless file.
+  test(
+    "the console-script interpreter sits between the venv and python3",
+    { skip: process.platform === "win32" },
+    () => {
+      const { env, home, bin } = hermeticEnv();
+      writeFile(path.join(bin, "mempalace"), "#!/opt/venv/bin/python\n", 0o755);
+      assert.deepEqual(mempalacePythonCandidates(env, POSIX), [
+        `${home}/.local/share/pipx/venvs/mempalace/bin/python`,
+        "/opt/venv/bin/python",
+        "python3",
+      ]);
+    },
+  );
 
   test("duplicates are dropped, first occurrence kept", () => {
     const { env, home, bin } = hermeticEnv();

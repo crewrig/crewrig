@@ -311,6 +311,11 @@
           "title": "ADR 0018 — Forge assignment record as the cross-contributor ticket lock",
           "path": "docs/adr/0018-forge-assignment-ownership.md",
           "nav_order": 180
+        },
+        {
+          "title": "ADR 0019 — Windows per-user daemon service as a Task Scheduler task",
+          "path": "docs/adr/0019-windows-per-user-service-task-scheduler.md",
+          "nav_order": 190
         }
       ]
     }

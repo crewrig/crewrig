@@ -223,6 +223,7 @@ to every deployment of CrewRig.
 |---|---|
 | `config/launchd/` | macOS launchd service definitions for CrewRig infrastructure services. |
 | `config/systemd/` | Linux systemd unit files for CrewRig infrastructure services. |
+| `config/windows/` | Windows Task Scheduler task definitions (XML templates) for CrewRig infrastructure services. |
 
 ### Public communications
 
@@ -446,6 +447,7 @@ across multiple layers. This table provides a single-lookup view.
 | `config/release-monorepo.json` | core |
 | `config/launchd/` | core |
 | `config/systemd/` | core |
+| `config/windows/` | core |
 | `config/SOUL.md` | user-local (gitignored) |
 | `config/PROFILE.md` | user-local (gitignored) |
 | `config/ORGANIZATION.md` | overlay |
