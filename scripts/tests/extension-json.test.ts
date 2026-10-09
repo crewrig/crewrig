@@ -4,7 +4,13 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import { parseJson } from "../lib/extension/json-ordered.ts";
-import { jqText, obj, quote, writeJsonCompact, writeJsonText } from "../lib/extension/json-write.ts";
+import {
+  jqText,
+  obj,
+  quote,
+  writeJsonCompact,
+  writeJsonText,
+} from "../lib/extension/json-write.ts";
 import { ExtError } from "../lib/extension/types.ts";
 import type { JsonValue } from "../lib/extension/types.ts";
 
@@ -38,16 +44,38 @@ describe("parseJson keeps the order jq keeps", () => {
   });
 
   test("scalars and nesting", () => {
-    assert.deepEqual(read('[null,true,false,-0.5,1e3,"s",[],{}]'), [null, true, false, -0.5, 1000, "s", [], new Map()]);
+    assert.deepEqual(read('[null,true,false,-0.5,1e3,"s",[],{}]'), [
+      null,
+      true,
+      false,
+      -0.5,
+      1000,
+      "s",
+      [],
+      new Map(),
+    ]);
   });
 });
 
 describe("parseJson rejects what jq rejects, naming the file", () => {
-  for (const bad of ["", "{", '{"a":1,}', "[1 2]", '"a\nb"', "01", "1.", "tru", '{"a" 1}', "{} {}", "'a'"]) {
+  for (const bad of [
+    "",
+    "{",
+    '{"a":1,}',
+    "[1 2]",
+    '"a\nb"',
+    "01",
+    "1.",
+    "tru",
+    '{"a" 1}',
+    "{} {}",
+    "'a'",
+  ]) {
     test(JSON.stringify(bad), () => {
       assert.throws(
         () => read(bad),
-        (error: unknown) => error instanceof ExtError && error.message.startsWith("t.json is not valid JSON"),
+        (error: unknown) =>
+          error instanceof ExtError && error.message.startsWith("t.json is not valid JSON"),
       );
     });
   }
@@ -79,7 +107,10 @@ describe("writeJsonText is jq's pretty form", () => {
   });
 
   test("numbers", () => {
-    assert.equal(writeJsonCompact([0, -0, 1, -1.5, 100, 1e21, 2 ** 53]), "[0,-0,1,-1.5,100,1e+21,9007199254740992]");
+    assert.equal(
+      writeJsonCompact([0, -0, 1, -1.5, 100, 1e21, 2 ** 53]),
+      "[0,-0,1,-1.5,100,1e+21,9007199254740992]",
+    );
     assert.throws(() => writeJsonCompact(Number.POSITIVE_INFINITY));
   });
 
@@ -107,6 +138,15 @@ describe("jqText is the jq -r rule", () => {
 
 describe("obj", () => {
   test("keeps the order of the pairs and replaces a repeated key in place", () => {
-    assert.deepEqual(keys(obj([["b", 1], ["a", 2], ["b", 3]])), ["b", "a"]);
+    assert.deepEqual(
+      keys(
+        obj([
+          ["b", 1],
+          ["a", 2],
+          ["b", 3],
+        ]),
+      ),
+      ["b", "a"],
+    );
   });
 });

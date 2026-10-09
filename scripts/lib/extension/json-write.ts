@@ -50,7 +50,8 @@ function render(value: JsonValue, indent: string | null, level: number): string 
   const members: string[] =
     value instanceof Map
       ? [...value].map(
-          ([key, item]) => `${quote(key)}${indent === null ? ":" : ": "}${render(item, indent, level + 1)}`,
+          ([key, item]) =>
+            `${quote(key)}${indent === null ? ":" : ": "}${render(item, indent, level + 1)}`,
         )
       : value.map((item) => render(item, indent, level + 1));
   const [open, close] = value instanceof Map ? ["{", "}"] : ["[", "]"];
