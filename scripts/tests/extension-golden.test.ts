@@ -7,7 +7,14 @@ import path from "node:path";
 import { describe, test } from "node:test";
 
 import { buildSubjects } from "./lib/extension-trees.ts";
-import { collectFiles, diffFiles, extensionRoot, outputDirs, runTs } from "./lib/extension-run.ts";
+import {
+  collectFiles,
+  collectGolden,
+  diffFiles,
+  extensionRoot,
+  outputDirs,
+  runTs,
+} from "./lib/extension-run.ts";
 
 const GOLDEN = path.resolve(import.meta.dirname, "fixtures", "extension-golden");
 
@@ -18,7 +25,7 @@ describe("build-extension --target all equals the golden tree", () => {
       const run = runTs(tree, "build-extension", ["--target", "all", name]);
       assert.equal(run.status, 0, run.stderr);
       for (const [label, dir] of Object.entries(outputDirs(tree, name))) {
-        const golden = collectFiles(path.join(GOLDEN, name, label));
+        const golden = collectGolden(path.join(GOLDEN, name, label));
         assert.ok(golden.size > 0, `${name}/${label}: the golden is empty`);
         const built = collectFiles(dir);
         assert.deepEqual(diffFiles(golden, built), [], `${name}/${label}`);

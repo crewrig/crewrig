@@ -59,6 +59,32 @@ export function collectFiles(dir: string): Map<string, Buffer> {
   return out;
 }
 
+/**
+ * The golden tree on disk: every file carries a `.golden` suffix, so no tracked file is a shell
+ * script, a JavaScript file or a Markdown file for the ratchet and the linters (spec 0254 R22).
+ * Returns the files under their real names.
+ */
+export function collectGolden(dir: string): Map<string, Buffer> {
+  const out = new Map<string, Buffer>();
+  for (const [rel, bytes] of collectFiles(dir)) {
+    const text = bytes.subarray(0, SHEBANG_GUARD.length).equals(SHEBANG_GUARD)
+      ? bytes.subarray(SHEBANG_GUARD.length)
+      : bytes;
+    out.set(rel.replace(/\.golden$/, ""), Buffer.from(text));
+  }
+  return out;
+}
+
+/** What the ratchet sees as no shebang: a stored file that begins with `#!` is prefixed with this. */
+export const SHEBANG_GUARD = Buffer.from("GOLDEN-STORED:");
+
+/** The bytes to store for a golden file (see `SHEBANG_GUARD`). */
+export function goldenBytes(bytes: Buffer): Buffer {
+  return bytes.subarray(0, 2).toString("latin1") === "#!"
+    ? Buffer.concat([SHEBANG_GUARD, bytes])
+    : bytes;
+}
+
 /** The outputs of a full `--target all` build of `name`, by golden directory name. */
 export function outputDirs(tree: FixtureTree, name: string): Readonly<Record<string, string>> {
   const r = tree.root;

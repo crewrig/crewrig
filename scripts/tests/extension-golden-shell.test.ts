@@ -10,6 +10,7 @@ import { describe, test } from "node:test";
 import { buildSubjects } from "./lib/extension-trees.ts";
 import {
   collectFiles,
+  collectGolden,
   diffFiles,
   extensionRoot,
   outputDirs,
@@ -32,7 +33,7 @@ describe("the golden tree equals the shell oracle", { skip }, () => {
       const run = runShell(tree, "build-extension", ["--target", "all", name]);
       assert.equal(run.status, 0, run.stderr);
       for (const [label, dir] of Object.entries(outputDirs(tree, name))) {
-        const golden = collectFiles(path.join(GOLDEN, name, label));
+        const golden = collectGolden(path.join(GOLDEN, name, label));
         assert.deepEqual(diffFiles(golden, collectFiles(dir)), [], `${name}/${label}`);
       }
       tree.dispose();

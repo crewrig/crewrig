@@ -26,6 +26,7 @@ import {
 } from "./extension-trees.ts";
 import {
   collectFiles,
+  collectGolden,
   diffFiles,
   extensionRoot,
   outputDirs,
@@ -56,7 +57,7 @@ function goldenStep(): void {
     for (const [label, dir] of Object.entries(outputDirs(tree, name))) {
       const built = collectFiles(dir);
       assert.deepEqual(
-        diffFiles(collectFiles(path.join(GOLDEN, name, label)), built),
+        diffFiles(collectGolden(path.join(GOLDEN, name, label)), built),
         [],
         `${name}/${label}`,
       );
@@ -90,7 +91,7 @@ function pluginStep(): void {
     const built = collectFiles(path.join(tree.root, "out"));
     // The hook file is written by `build-extension` after the plugin builder runs (spec 0254 R15): a
     // plugin entry run on its own never writes it, so it is left out of the golden side here.
-    const golden = collectFiles(path.join(GOLDEN, "full", label));
+    const golden = collectGolden(path.join(GOLDEN, "full", label));
     golden.delete(label === "claude-plugin" ? "hooks/hooks.json" : "hooks.json");
     assert.deepEqual(diffFiles(golden, built), [], script);
     tree.dispose();

@@ -1,4 +1,4 @@
-#!/bin/bash
+GOLDEN-STORED:#!/bin/bash
 # Hook: prompt-logger (spec 0179 R18 — maps-partially example)
 #
 # Fires on a user-prompt-submission moment: Claude Code, Gemini CLI and

@@ -13,7 +13,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { buildSubjects } from "./extension-trees.ts";
-import { collectFiles, extensionRoot, outputDirs, runShell, runTs } from "./extension-run.ts";
+import {
+  collectFiles,
+  collectGolden,
+  extensionRoot,
+  goldenBytes,
+  outputDirs,
+  runShell,
+  runTs,
+} from "./extension-run.ts";
 
 const GOLDEN = path.resolve(import.meta.dirname, "..", "fixtures", "extension-golden");
 
@@ -35,13 +43,13 @@ function main(): number {
     }
     for (const [label, dir] of Object.entries(outputDirs(tree, name))) {
       const target = path.join(GOLDEN, name, label);
-      const before = collectFiles(target);
+      const before = collectGolden(target);
       fs.rmSync(target, { recursive: true, force: true });
       const after = collectFiles(dir);
       for (const [rel, bytes] of after) {
-        const file = path.join(target, ...rel.split("/"));
+        const file = path.join(target, ...`${rel}.golden`.split("/"));
         fs.mkdirSync(path.dirname(file), { recursive: true });
-        fs.writeFileSync(file, bytes);
+        fs.writeFileSync(file, goldenBytes(bytes));
         const old = before.get(rel);
         if (old === undefined || !old.equals(bytes)) changed.push(`${name}/${label}/${rel}`);
       }
