@@ -14,22 +14,21 @@ version: 2.2.0
 cumulative over `specs/0253-history-import-operational-commands-typescript.delta-01.md`
 and `specs/0253-history-import-operational-commands-typescript.delta-02.md`: every
 Original quoted below is the current text, that is the parent as modified by
-delta-01 then delta-02. Source: a finding made while writing the `windows-history-import`
-job of PR C of ticket 1331. It runs under the release-branch regime of
-`specs/0215-shell-to-typescript-migration.delta-04.md`: its spec-PR targets
-`release/1231-ts-migration`, and the base ref of every protocol is
-`origin/release/1231-ts-migration`. The implementation pull requests realise the
-parent plus delta-01, delta-02 and this delta (`docs/spec-pr-workflow.md`,
+delta-01 then delta-02. Source: a finding made while writing the
+`windows-history-import` job of PR C of ticket 1331. It runs under the
+release-branch regime of `specs/0215-shell-to-typescript-migration.delta-04.md`:
+its spec-PR targets `release/1231-ts-migration`, and the base ref of every
+protocol is `origin/release/1231-ts-migration`. The implementation pull requests
+realise the parent plus delta-01, delta-02 and this delta (`docs/spec-pr-workflow.md`,
 *Delta-spec cumulative rule*). Every requirement number is unchanged.*
 
 *Version: MINOR, 2.1.0 to 2.2.0 (`docs/spec-format.md`, *Versioning*). The delta
-narrows the list of paths the `windows-latest` job of requirement 27 SHALL assert
-and adds one scenario and one parity-gap statement. It withdraws only assertions
-the job of this pull request cannot meet without an interpreter stub that Node.js
-can spawn, which `windows-latest` does not provide as it stands (see the finding;
-a later change MAY add one and the assertions with it), so no in-flight
-implementation is invalidated and none that followed delta-02 stops conforming;
-that is an additive, not a breaking, normative change, hence MINOR.*
+corrects the mechanism by which requirement 27 obtains an interpreter on Windows
+and keeps the full list of paths the job asserts; it adds one scenario and one
+parity-gap statement to requirement 23. The mechanism it replaces, a `.cmd` stub,
+cannot be spawned by Node.js (see the finding), so no implementation conforming to
+requirement 27 as written can exist and none is invalidated; an additive normative
+change, hence MINOR.*
 
 *Finding, measured while writing the job. The interpreter probe
 (`detectMempalacePython` in `scripts/lib/mempalace-python.ts`, which runs
@@ -37,57 +36,63 @@ that is an additive, not a breaking, normative change, hence MINOR.*
 and the four importers spawn the interpreter without a shell. Node.js refuses to
 spawn a `.cmd` or `.bat` file without `shell: true` and throws `EINVAL` (the
 hardening against command injection through batch files on Windows, CVE-2024-27980,
-shipped in the Node.js security releases 20.12.2 and 21.7.3, April 2024, and in
-every later release line). The repository records the same behaviour at
-`scripts/lib/worktree-claim/git.ts` (the comment on `gitCommand`: "only `.exe` is
-accepted (a `.cmd` makes `spawnSync` fail with EINVAL)"). The evidence of record
-is therefore the Node.js release notes of 20.12.2 and 21.7.3 and that repository
-comment; the tree holds no other citation of the advisory. A `.cmd` stub can never
-be a successful interpreter on `windows-latest`, which is the stub requirement 27
-asked for. This pull request builds no `.exe` stub either (the job has no compiler step; building one, for example with a .NET compile step, is possible and left to a later change), and a copy of `node.exe` named `python.exe` cannot answer the probe (measured: Node.js reads `-c` as `--check` and the argument as a script path, so it exits non-zero and the probe rejects the candidate). Consequences on Windows. The four
-importers can only be driven to the missing-interpreter path: a `PATH` that holds no candidate makes the probe find none. `prune-transcripts` takes `MEMPALACE_PYTHON`
-with no probe (requirement 18), so it can also be driven through `--help`, argument
-validation, the unknown-option hint, and a dry run whose interpreter is
-`process.execPath` (`node.exe`): the banner (wing, cutoff date, dry-run flag) is
-printed, then Node.js is spawned on the extracted Python body, which it cannot run
-as JavaScript, so the exit status is non-zero. Not coverable on Windows: the
-missing-source message, the empty-source message, the declined and the confirmed
-prompt flows, and the `mine` calls of the four importers, all of which sit behind
-a successful probe. They stay covered by the POSIX oracle of PR A (requirement 26)
-on Linux and macOS only; the PR A tests are POSIX-only. Requirement 27 asked for
-them on Windows and requirement 23 expected the Windows gap to be proved or
-disproved; this delta records the limit. The question this delta cannot
-resolve, whether a compiled `.exe` stub interpreter would bring the omitted paths
-onto Windows, is recorded as the open parity gap of requirement 23 and left to a
-later change.*
+shipped in the Node.js security releases 20.12.2 and 21.7.3). The repository
+records the same behaviour at `scripts/lib/worktree-claim/git.ts` (the comment on
+`gitCommand`: "only `.exe` is accepted (a `.cmd` makes `spawnSync` fail with
+EINVAL)"). The evidence of record is the Node.js release notes of those two
+versions and that repository comment; the tree holds no other citation of the
+advisory. Requirement 27's parenthetical, "a `.cmd` file named for the candidate
+the Windows lookup of `detectMempalacePython` probes", therefore names a mechanism
+that cannot work. The full list of paths is nevertheless coverable on
+`windows-latest` through another mechanism, measured in the job
+`windows-history-import` of pull request #1530 (head `09d0858`), which passed on
+`windows-latest`
+(<https://github.com/crewrig/crewrig/actions/runs/37983663078>): the runner's real
+Python (3.12, provisioned by `actions/setup-python@v5`) together with a fake
+`mempalace` package that the test writes into a temporary directory and puts on
+`PYTHONPATH`. The package holds `mempalace/__init__.py`; `mempalace/__main__.py`,
+which appends `sys.argv[1:]` as one JSON line to the file named by
+`MEMPALACE_FAKE_LOG` and exits with the integer in `MEMPALACE_FAKE_EXIT`; and
+`mempalace/mcp_server.py` with dummy `tool_list_drawers` and `tool_delete_drawer`.
+It satisfies the interpreter probe (`<python> -c "import mempalace.mcp_server"`),
+the `<python> -m mempalace mine ...` calls and `scripts/lib/history-import/prune_drawers.py`
+unchanged. That job ran `scripts/tests/history-import-python.test.ts` (the four
+importers) and `scripts/tests/history-import-prune-python.test.ts`
+(`prune-transcripts`) and printed per-command wall times. What the measurement does
+not cover is a real `mempalace` on Windows: the tests use a fake package, so the
+real-MemPalace end-to-end path stays unverified there, which requirement 23
+records. No question that this delta can resolve is left open.*
 
 ## ADDED
 
-**Scenario:** The Windows job drives the importers to the missing-interpreter path
-and `prune-transcripts` to a dry-run banner
+**Scenario:** The Windows job drives the importers and `prune-transcripts` through a
+fake `mempalace` package
 
-Given `windows-latest`, a temporary home, and, for the importers, a spawned environment whose `PATH` holds no `python`, `py`, `pipx` or `mempalace` (so the probe finds nothing; `node` itself is started by its absolute path)
-When PowerShell runs each of `node scripts/import-claude-history.ts`,
-`node scripts/import-copilot-history.ts`, `node scripts/import-gemini-history.ts`
-and `node scripts/import-antigravity-history.ts`, then `node scripts/prune-transcripts.ts
---help`, `node scripts/prune-transcripts.ts --days 0`, `node scripts/prune-transcripts.ts
---bogus`, `node scripts/prune-transcripts.ts` with `MEMPALACE_PYTHON` set to a
-path that does not exist, and `node scripts/prune-transcripts.ts --days 30` with
-`MEMPALACE_PYTHON` set to `process.execPath`
-Then each importer prints the two missing-interpreter `Error:` lines (on standard output for the Claude, Gemini and Copilot importers, on standard error for the Antigravity importer, as requirement 11 fixes) and exits 1; `--help` prints the usage and exits 0; `--days 0` prints `Error: --days
-must be at least 1` and exits 1; `--bogus` prints `Unknown option: --bogus` and
-the hint line naming `scripts/prune-transcripts.ts` and exits 1; the missing
-interpreter prints `Error: <interpreter> not found` and exits 1; and the dry run
-prints the banner with the wing, the cutoff date and the dry-run flag, deletes
-nothing, and exits with a non-zero status (Node.js fails on the Python body; the
-exact value is not asserted). The job asserts no other outcome of the importers
-and no `mine` call.
+Given `windows-latest` with Python provisioned by `actions/setup-python`, and a
+fake `mempalace` package on `PYTHONPATH` whose `mine` logs its arguments
+When PowerShell runs each of the four importers with `yes` then `yes` on standard
+input, then `node scripts/prune-transcripts.ts --days 30`, then `node
+scripts/prune-transcripts.ts --days 30 --apply`
+Then the fake `mine` log shows the dry-run call, then the real call, each with
+`--mode convos --wing transcripts --agent <label> --extract exchange`; each importer
+prints `Import complete` and exits 0; the dry run of `prune-transcripts` lists
+exactly the rooms older than the cutoff and deletes none; and `--apply` deletes
+exactly those rooms through the fake `tool_delete_drawer`. The same tests assert, on
+the same runner, the missing-interpreter diagnostic with exit 1 (on standard output
+for the Claude, Gemini and Copilot importers, on standard error for the Antigravity
+importer, as requirement 11 fixes), the missing-source diagnostic with exit 1, the
+empty-source message with exit 0, the declined prompt with exit 0, `--help`, and
+argument validation.
 
 ## MODIFIED
 
-Requirement 27, the sentence on the import scripts and `prune-transcripts` — a `.cmd` stub cannot be spawned without a shell and this pull request builds no `.exe` stub, so the paths behind a successful probe are not driven on Windows. The sentences before
-and after it (the usage-wrapper part as modified by delta-01, the `sync-from-upstream`
-part, and the closing sentences naming the limit) are unchanged. Original:
+Requirement 27, the sentence on the import scripts and `prune-transcripts` — the
+list of paths is kept; only the stub mechanism is replaced, because a `.cmd` file
+cannot be spawned by Node.js without a shell (see the finding). The sentences
+before and after it (the usage-wrapper part as modified by delta-01, the
+`sync-from-upstream` part) are unchanged; the sentence that closes the
+requirement is replaced with it, since its claim about Windows no longer holds.
+Original:
 
 > For the import scripts and `prune-transcripts`, which need Python, MemPalace and
 > a populated history, the job SHALL assert the deterministic offline paths only:
@@ -96,31 +101,36 @@ part, and the closing sentences naming the limit) are unchanged. Original:
 > declined-prompt exit 0 and a dry-run against a stub interpreter (a `.cmd` file named for the candidate
 > the Windows lookup of `detectMempalacePython` probes, or set through
 > `MEMPALACE_PYTHON` for `prune-transcripts`).
+> The job states this limit in its name or comments; the end-to-end `mempalace`
+> path is covered on Linux and macOS only, and recorded as such in requirement 23.
 
 Replacement:
 
 > For the import scripts and `prune-transcripts`, which need Python, MemPalace and
-> a populated history, the job SHALL assert the deterministic offline paths that
-> Windows can reach, and no others. For each of the four import scripts: the
-> missing-interpreter diagnostic and exit 1, reached with a `PATH` that holds no
-> candidate `detectMempalacePython` probes. For `prune-transcripts`, which takes
-> `MEMPALACE_PYTHON` with no probe: `--help`, argument validation, the
-> unknown-option hint, the missing-interpreter diagnostic and exit 1, and a dry run
-> whose interpreter is `process.execPath` (`node.exe`), which prints the banner
-> (wing, cutoff date, dry-run flag) and exits with a non-zero status because Node.js
-> cannot run the Python body. No stub interpreter is used on Windows: the probe and
-> the importers spawn the interpreter without a shell, Node.js refuses to spawn a
-> `.cmd` or `.bat` file without `shell: true` and throws `EINVAL` (CVE-2024-27980,
-> hardened in Node.js 20.12.2 and 21.7.3), so a `.cmd` stub can never be a
-> successful interpreter, and this pull request builds no `.exe` stub (the job has no compiler step; a later change MAY build one), and a copy of `node.exe` named `python.exe` cannot answer the probe (measured: Node.js reads `-c` as `--check` and the argument as a script path, so it exits non-zero and the probe rejects the candidate). The missing-source message, the
-> empty-source message, the declined and the confirmed prompt flows and the `mine`
-> calls of the four import scripts all sit behind a successful probe and are not asserted by the Windows job of this requirement (a later change MAY add them once a stub interpreter that Node.js can spawn exists): they stay covered by the POSIX oracle of PR A
-> (requirement 26) on Linux and macOS only, because the PR A tests are POSIX-only.
+> a populated history, the job SHALL assert the deterministic offline paths only:
+> the missing-interpreter diagnostic and exit 1, the missing-source diagnostic and
+> exit 1, the empty-source message and exit 0, `--help`, argument validation, the
+> declined-prompt exit 0 and a dry-run against a fake `mempalace` package. The
+> interpreter is the runner's real Python, provisioned by `actions/setup-python`,
+> not a stub executable: the test writes a fake `mempalace` package into a temporary
+> directory and puts it on `PYTHONPATH`. The package holds `mempalace/__init__.py`;
+> `mempalace/__main__.py`, which appends `sys.argv[1:]` as one JSON line to the file
+> named by `MEMPALACE_FAKE_LOG` and exits with the integer in `MEMPALACE_FAKE_EXIT`;
+> and `mempalace/mcp_server.py` with dummy `tool_list_drawers` and
+> `tool_delete_drawer`. It answers the interpreter probe, the `mine` calls and the
+> extracted `prune_drawers.py` unchanged. A `.cmd` or `.bat` stub cannot be used:
+> the probe and the importers spawn the interpreter without a shell, and Node.js
+> 20.12.2 and 21.7.3 (CVE-2024-27980) refuse to spawn such a file without
+> `shell: true` and throw `EINVAL`. The same suite also runs on Linux and macOS.
+> The job states in its comments that the interpreter is the runner's real Python
+> with a fake `mempalace` package; a real `mempalace` with a real palace is
+> exercised by no test on any platform, and the Windows gap is recorded in
+> requirement 23.
 
-Requirement 23, the Windows gap — the sentence expected the gap to be proved or
-disproved for "the Python and MemPalace availability", which the finding now
-settles for the same set of paths. Original, its first clause (the rest of the
-sentence and the usage-mirror gap added by delta-01 are unchanged):
+Requirement 23, the Windows gap — the sentence must agree with requirement 27: the
+paths are verified on Windows against a fake package, and only a real `mempalace`
+is not. Original, its first clause (the rest of the sentence and the usage-mirror
+gap added by delta-01 are unchanged):
 
 > The expected gaps to prove or disprove on Windows are the Python and MemPalace
 > availability for the four import scripts and `prune-transcripts`;
@@ -128,12 +138,13 @@ sentence and the usage-mirror gap added by delta-01 are unchanged):
 Replacement:
 
 > The expected gaps to prove or disprove on Windows are the Python and MemPalace
-> availability for the four import scripts and `prune-transcripts`. The gap is recorded as open (these paths are unverified on Windows, not proved impossible), and SHALL be recorded as a parity gap for (the four import scripts x
-> Windows) and (`prune-transcripts` x Windows): on `windows-latest` a `.cmd` or `.bat` stub interpreter cannot be spawned (Node.js 20.12.2 and 21.7.3 refuse them without `shell: true`, CVE-2024-27980) and this pull request builds no `.exe` stub, so the
-> end-to-end `mempalace` path, the missing-source and empty-source messages, the
-> prompt flows and the `mine` calls of the four import scripts, and everything
-> `prune-transcripts` does after it spawns a working interpreter, are covered on
-> Linux and macOS only; Windows covers the paths named in requirement 27;
+> availability for the four import scripts and `prune-transcripts`. Measured: every
+> flow of these scripts is verified on `windows-latest` against a fake `mempalace`
+> package on the runner's real Python (requirement 27), and a real `mempalace`
+> installed on Windows with a real palace is unverified. That SHALL be recorded as a
+> parity gap for (the four import scripts x Windows) and (`prune-transcripts` x
+> Windows) in the words "real MemPalace on Windows unverified; every flow of the
+> scripts verified against a fake package";
 
 ## REMOVED
 
