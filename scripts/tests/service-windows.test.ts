@@ -69,9 +69,16 @@ async function lifecycle(kind: DaemonKind): Promise<void> {
     }
     measure(`healthz kind=${kind} ok=${healthy} afterMs=${Date.now() - t0}`);
     assert.equal(healthy, true, "the daemon answers /healthz");
+    const t1 = Date.now();
+    const probeSnap = readTaskSnapshot(c.task);
+    measure(
+      `snapshot kind=${kind} ok=${probeSnap.ok} reason=${probeSnap.ok ? "-" : probeSnap.reason} state=${probeSnap.ok ? probeSnap.task?.state : "-"} lastResult=${probeSnap.ok ? probeSnap.task?.lastResult : "-"} ms=${Date.now() - t1}`,
+    );
+    const t2 = Date.now();
     const status = backend.status(c.names);
+    measure(`status kind=${kind} ${JSON.stringify(status)} ms=${Date.now() - t2}`);
     assert.equal(status.registered, true);
-    assert.equal(status.running, true);
+    assert.equal(status.running, true, JSON.stringify(status));
 
     const running = snap(c);
     assert.equal(running.state, 4, "State 4 (running)");
