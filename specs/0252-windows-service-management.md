@@ -247,8 +247,11 @@ Node.js is too old is told so before anything is written.
     `common.sh` (used until row F1 by the setup scripts), the status report and the
     uninstall. None of them is edited, and none is taught a second filename. The
     TypeScript installer therefore writes two files: the program, at
-    `~/.crewrig/mcp-daemon-launcher.ts`, which the supervisor definition names; and, at
-    the legacy path, an *endpoint record* that is not a program. The record carries
+    the path of the record with its `.sh` extension replaced by `.ts` (by default
+    `~/.crewrig/mcp-daemon-launcher.ts`, and beside the record whenever
+    `MEMPALACE_MCP_LAUNCHER_PATH` moves it; a record path with another extension gets
+    `.ts` appended), which the supervisor definition names; and, at the legacy path,
+    an *endpoint record* that is not a program. The record carries
     the same three line forms the shell launcher carried, `MCP_HOST="…"`,
     `MCP_PORT="…"` and `LAUNCHER_SOURCE_SHA="…"` (the SHA-256 of the program's
     repository source), plus one `LAUNCHER_PROGRAM="…"` line naming the program, so
@@ -258,7 +261,8 @@ Node.js is too old is told so before anything is written.
     definition that still names the legacy path cannot appear to run. The status
     report SHALL tell the two forms apart by the `LAUNCHER_PROGRAM` line and compare
     the recorded hash with the source of the matching form (the TypeScript program
-    or the shell launcher). When the shell installer of `common.sh` later rewrites
+    or the shell launcher), and SHALL report a record whose `LAUNCHER_PROGRAM` file does
+    not exist as `*** PROGRAM MISSING ***` and fail the section. When the shell installer of `common.sh` later rewrites
     the legacy path with the real shell launcher, that file is again the program and
     the record, and the TypeScript program beside it is unused. Uninstalling removes
     both files.
@@ -356,8 +360,9 @@ Node.js is too old is told so before anything is written.
     passes. On Windows only, the report gains a `task:` line giving whether the
     task is registered, its state and its last result, so that a task that has
     stopped for good after its restart count ran out is visible; it fails the
-    section when the task is registered, not running and its last result is a
-    failure. The test seams `MEMPALACE_MCP_HOST` and `MEMPALACE_MCP_PORT` keep
+    section when the task is registered, not running and its last result is a failure,
+    that is any result other than success (`0`), running (`0x41301`), not yet run
+    (`0x41303`) and terminated by the user (`0x41306`, what `stop` produces). The test seams `MEMPALACE_MCP_HOST` and `MEMPALACE_MCP_PORT` keep
     working.
 
 16. **Listener and supervisor owner without POSIX tools (spec 0158).** The PID of
