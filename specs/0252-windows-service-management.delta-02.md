@@ -69,9 +69,29 @@ Replacement:
 > was not asked to stop … (the rest of the sentence is unchanged). The non-zero
 > status is what the supervisors of the other operating systems and the diagnostics
 > read; on Windows the restart itself comes from the repeating trigger. Because the
-> trigger restarts the task, `stop` of a Windows daemon is a restart request, as it is
-> under launchd and systemd (requirement 5): after `stop` the task is started again
-> within about a minute, and only `uninstall` ends it for good.
+> trigger restarts the task, `stop` of the Windows MCP daemon is a restart request, as it
+> is under launchd and systemd (requirement 5): after `stop` the task is started again
+> within about a minute (measured: the MCP chain was serving again within the 20 to 30
+> seconds a state read takes, run 37991291835), and only `uninstall` ends it for good.
+> The ChromaDB daemon's `stop` keeps the contract of requirement 14: it does nothing to a
+> supervised daemon.
+
+### Requirement 6 and 7 — the triggers (seat finding s7-F1)
+
+Original (excerpt of requirement 7, and of the first row of the table of requirement 6):
+
+> Each SHALL: trigger at logon of the current user only; …
+
+> Task Scheduler per-user task (logon trigger, interactive token, least privilege,
+> restart on failure)
+
+Replacement:
+
+> Each SHALL: trigger at logon of the current user and by the repeating time trigger
+> of this requirement, and by no other trigger and for no other user; …
+
+> Task Scheduler per-user task (logon trigger plus a repeating one-minute trigger,
+> interactive token, least privilege)
 
 ### Requirement 15 — the `task:` line
 
@@ -111,6 +131,29 @@ Replacement:
 The finite restart count is no longer a gap: the repeating trigger has no end, so a
 launcher that keeps failing closed is started again every minute, as it is under
 launchd and systemd.
+
+### Requirements 5, 24 and 33, the scenarios and delta-01's flag rationale (seat finding s7-F3)
+
+- **Uninstall order (requirement 5, requirement 33).** *Uninstall* of a Windows task SHALL
+  first disable the task (`schtasks /Change /TN … /DISABLE`), so that no trigger can start
+  it again, then end it and sweep the leftovers of its daemon tree (requirement 33), then
+  delete it. A failed disable does not stop the uninstall; it is reported.
+- **Requirement 24.** The post-`stop` assertions (the state is not running, `LastTaskResult
+  0x41306`) and the failed-last-result assertion of the restart proof race the repeating
+  trigger and SHALL be measured, not asserted: the Windows job asserts that the daemon tree
+  is gone right after `stop`, that the task is started again within the bounded wait after
+  its action process ends (kill and clean exit, each chain), and that `uninstall` leaves no
+  task and no daemon process; the non-zero end of the launcher and of the flagged wrapper is
+  asserted by their unit tests on every operating system.
+- **Scenarios.** "the daemon is brought back after a crash on Windows" reads: *the task is
+  started again by the repeating trigger within about a minute of its action process
+  ending, and the launcher waits for ChromaDB on its deadline*. "stop is a restart request
+  on every operating system" reads: *on Windows within about a minute*, and applies to the
+  MCP daemon.
+- **Delta-01, requirement 7 entry (the ChromaDB wrapper flag).** The flag
+  `--end-nonzero-on-child-exit` still makes the wrapper end non-zero whenever its child
+  ends, so that its end is a failure for every reader; on Windows the restart comes from
+  the repeating trigger, not from the flag.
 
 ## REMOVED
 
