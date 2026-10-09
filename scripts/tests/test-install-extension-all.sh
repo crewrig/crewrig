@@ -91,6 +91,8 @@ assert_contains "$all_skip_out" "all 4 target(s) were skipped" "Summarizes all t
 # very absence this restricted PATH exists to force.
 ln -sf "$(command -v jq)" "$FAKE_BIN/jq"
 ln -sf "$(command -v yq)" "$FAKE_BIN/yq"
+# The builders forward to Node.js (spec 0254 R24): `node` joins the restricted PATH the same way.
+ln -sf "$(command -v node)" "$FAKE_BIN/node"
 set +e
 gemini_only_out="$(PATH="/usr/bin:/bin:$FAKE_BIN" GEMINI_HOME="$FAKE_GEMINI_HOME" bash "$REPO_DIR/scripts/install-extension-all.sh" hello-world 2>&1)"
 gemini_only_code=$?
