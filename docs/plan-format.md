@@ -67,7 +67,7 @@ absence of `[P]` means strictly sequential (R4).
 ```markdown
 1. Edit `path/to/a.md` — add the X section after Y.
 2. [P] Edit `path/to/b.md` — refresh the Z table.
-3. Run `scripts/build-components.sh` and stage the regenerated outputs.
+3. Run `node scripts/build-components.ts` and stage the regenerated outputs.
 ```
 
 **3. `### Blast radius`** — bullet list. Each bullet names one of: an

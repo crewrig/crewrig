@@ -217,8 +217,13 @@ git commit -m "⚙️ Initialise config/TOOLS.md for <YOUR-ORG>"
 Run the build script to compile all artifact sources into CLI-specific outputs.
 
 ```bash
-bash scripts/build-components.sh
+node scripts/lib/node-floor-guard.js
+node scripts/build-components.ts
 ```
+
+Run the two commands as separate steps, not chained with `&&`. The build needs
+Node.js 24 or newer; `js-yaml` comes from the setup dependency step.
+`bash scripts/build-components.sh` still works and forwards to the same build.
 
 **Expected outcome:** The script exits zero and populates the following
 output directories:
@@ -530,7 +535,7 @@ the `canonical_repo` / `feedback_repo` fields still contain the literal
 placeholder strings `https://github.com/<YOUR-ORG>/<YOUR-REPO>` (or are
 empty strings).
 
-**Effect — `bash scripts/build-components.sh`:** Exits zero in both cases.
+**Effect — `node scripts/build-components.ts`:** Exits zero in both cases.
 When config is absent, the script warns on stderr that placeholders will be
 left literal. When config contains the placeholder URL, the script passes
 validation silently and emits no warning. In both cases the built outputs
@@ -553,7 +558,7 @@ re-running either script.
 
 ### Build output directories are empty or partially populated
 
-**Cause:** A source directory expected by `scripts/build-components.sh` is
+**Cause:** A source directory expected by `scripts/build-components.ts` is
 absent. Common causes: an incomplete migration from a pre-spec-0014 branch,
 a branch that predates the `artifacts/` directory restructuring, or a
 partially applied upstream sync that left a directory missing.
@@ -566,7 +571,7 @@ directories are silently skipped — no error message is emitted.
 branch. Run `git status` and `git diff origin/main` to identify missing
 files. If the branch predates spec 0014, rebase it onto `main` or re-apply
 the migration steps described in `specs/0014-*.md`. After restoring the
-missing directories, re-run `bash scripts/build-components.sh`.
+missing directories, re-run `node scripts/lib/node-floor-guard.js`, then `node scripts/build-components.ts` (two separate steps).
 
 ### Dirty-core refusal during sync {#dirty-core-refusal}
 

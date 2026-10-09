@@ -4,7 +4,7 @@
 
 Skills, agents, and commands are CrewRig's reusable agent capabilities. The
 core idea is **author once, compile everywhere**: you write a single Markdown
-source file with YAML frontmatter, and `scripts/build-components.sh` generates
+source file with YAML frontmatter, and `scripts/build-components.ts` generates
 the tool-specific outputs for Gemini CLI, Claude Code, GitHub Copilot CLI, and
 Antigravity CLI.
 This page is the conceptual overview; the normative format contract lives in
@@ -79,7 +79,7 @@ What a declared profile resolves to on each target, and how the build performs t
 
 ### Worked examples
 
-Every emission below was printed by `bash scripts/build-components.sh --resolve <agent-source> <target>` against `main` at `18b026d`, not composed by hand — re-run the same command at that commit to re-derive it.
+Every emission below was printed by `bash scripts/build-components.sh --resolve <agent-source> <target>` against `main` at `18b026d`, not composed by hand — re-run the same command at that commit to re-derive it. At the current head the same emission is `node scripts/build-components.ts --resolve <agent-source> <target>`, run after `node scripts/lib/node-floor-guard.js` as a separate step.
 
 `artifacts/core/agents/doc-writer/AGENT.md` declares:
 
@@ -120,7 +120,7 @@ nothing.
 
 ## The build
 
-`scripts/build-components.sh` is the compiler. It is tier-agnostic: it discovers
+`scripts/build-components.ts` is the compiler (`scripts/build-components.sh` is a shim that forwards to it). It is tier-agnostic: it discovers
 every tier directory under `artifacts/` and compiles each one, routing the
 output by tier. Core components are written into the committed project tree
 (`.claude/`, `.gemini/`, `.github/`, `.agents/`); non-core tiers are written into a
@@ -137,6 +137,22 @@ A drift check (`--check`) verifies that the committed outputs match what the
 sources would generate, so a build output cannot silently fall out of sync with
 its source. The full invocation reference is in
 [`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
+
+The build is TypeScript and needs Node.js 24 or newer. `js-yaml` comes from
+the setup dependency step, which installs the production dependencies
+(`npm ci --omit=dev --workspaces=false`, hash-gated on `package-lock.json`).
+Run the two commands below as separate steps, not chained with `&&`:
+
+```bash
+node scripts/lib/node-floor-guard.js
+node scripts/build-components.ts
+```
+
+A checkout set up before the TypeScript build landed has no `js-yaml`
+installed. Its per-component install (the `manage-*` scripts) prunes
+`dist/<tier>/<cli-root>` first, then runs the build and fails with the
+missing-dependency diagnostic naming `js-yaml` until setup is re-run.
+Nothing is lost: the next successful run rebuilds `dist/<tier>/<cli-root>`.
 
 ## Provenance and versioning
 
