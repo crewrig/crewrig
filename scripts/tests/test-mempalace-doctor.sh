@@ -260,12 +260,14 @@ write_reg_unguarded() {
 # Symlinks just the externals the doctor needs, so a scenario can run with a PATH
 # that is EXACTLY the fixture — the only way to assert the "console script is
 # absent" branch without the real machine's own `mempalace` answering instead.
+# `node` is linked too: once the doctor is a shim running the TypeScript entry,
+# the isolated PATH must still resolve a Node to run it.
 make_toolbin() {
   local dir="$1"
   mkdir -p "$dir"
   local tool resolved
   for tool in bash sh env jq grep sed head cut sort tr wc cat rm mktemp dirname \
-              basename readlink find uname python3 "$(basename "$PYTHON_BIN")"; do
+              basename readlink find uname node python3 "$(basename "$PYTHON_BIN")"; do
     resolved="$(command -v "$tool" 2>/dev/null || true)"
     if [ -n "$resolved" ] && [ ! -e "$dir/$tool" ]; then
       ln -s "$resolved" "$dir/$tool"

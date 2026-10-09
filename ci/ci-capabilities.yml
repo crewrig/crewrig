@@ -1408,6 +1408,9 @@ capabilities:
       # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only,
       # they drive the shell originals through bash; each skips itself on win32).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
+      # Spec 0252 R21 (PLAN step A1-A3): the stop, uninstall and switch-argument
+      # oracles of the MCP daemon lifecycle scripts (POSIX only, same reason).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
 
   # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's
   # install / restore contract, root resolution and wmic parser. The probe
