@@ -77,9 +77,9 @@ prune,query,task}.sh`.
    `scripts/lib/paths.ts`, `scripts/lib/tls-env.ts` (`readTlsEnv`, `tlsEnvPath`),
    `scripts/lib/tmp-file.ts`, `scripts/lib/line-endings.ts`,
    `scripts/lib/usage-store/**`, `scripts/lib/usage-capture/**` and
-   `scripts/lib/mempalace-transcript/**`, and duplicate none of them. The import
-   scripts and `prune-transcripts` source `scripts/lib/common.sh` for
-   `detect_mempalace_python` and the MemPalace version pin
+   `scripts/lib/mempalace-transcript/**`, and duplicate none of them. The four
+   import scripts source `scripts/lib/common.sh` for `detect_mempalace_python`, and
+   `prune-transcripts` sources it only for the MemPalace version pin
    (`MEMPALACE_MIN_VERSION`, `MEMPALACE_MAX_VERSION_EXCLUSIVE`); the TypeScript port
    of those helpers is owned by ticket #1330 (sub-spec D, spec 0252). F3 SHALL
    import D's module, SHALL NOT create a parallel port of `common.sh`, and SHALL
@@ -196,8 +196,10 @@ prune,query,task}.sh`.
 
 14. **MemPalace invocation.** The scripts SHALL run `<interpreter> -m mempalace
     mine <source> --mode convos --wing <wing> --agent <agent> --extract <mode>`
-    (plus `--dry-run` for the preview) with the arguments exactly as today, standard
-    streams inherited, and SHALL exit with the child's status when it is non-zero
+    (plus `--dry-run` for the preview) with the arguments exactly as today, the child
+    inheriting standard input, output and error as it does today (the line reader of
+    requirement 12 is paused meanwhile, so the child sees whatever input is left
+    unread by the pipe, exactly as a child of the shell script did), and SHALL exit with the child's status when it is non-zero
     (the shell version runs under `set -e`). The interpreter comes from D's
     `detectMempalacePython` (requirement 4), which, like `detect_mempalace_python`,
     probes in order the pipx virtual environment's Python, the interpreter of the
