@@ -105,7 +105,7 @@ function copyBundle(files: readonly string[], program: string, libDir: string): 
 function render(entry: string, libDir: string, values: Record<string, string>): string {
   let text = rewriteEntryImports(readFileSync(path.join(libDir, entry), "utf8"));
   for (const [key, value] of Object.entries(values)) {
-    text = text.replaceAll(`"${key}"`, JSON.stringify(value));
+    text = text.replaceAll(`"${key}"`, () => JSON.stringify(value));
   }
   const residual = RESIDUAL_RE.exec(text);
   if (residual !== null) {

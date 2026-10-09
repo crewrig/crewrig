@@ -175,6 +175,11 @@ export function createBackend(options: SchtasksOptions = {}): ServiceBackend {
             `the task ${task} exists and is not CrewRig's (${existing.ownership.reason}); nothing was deleted or written`,
           );
         }
+        // `/Delete` alone does not end a running instance (measured on windows-latest, PR #1540:
+        // the old daemon stayed alive and the new one could not take its port), so the own task
+        // is disabled, ended and swept first, as `uninstall` does.
+        if (mgr("/Change", "/TN", task, "/DISABLE").kind !== "ok") report(DISABLE_FAILED);
+        endTask(task);
         const del = mgr("/Delete", "/TN", task, "/F");
         if (del.kind !== "ok")
           return fail(

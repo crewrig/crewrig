@@ -13,7 +13,7 @@
 // scans this file).
 
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, openSync } from "node:fs";
+import { closeSync, existsSync, openSync } from "node:fs";
 
 export type ManagerTool = "launchctl" | "systemctl" | "schtasks";
 
@@ -54,9 +54,31 @@ export function setExecutableOverride(tool: ManagerTool, executable: string | nu
   else overrides.set(tool, executable);
 }
 
-/** The executable that `tool` resolves to: the seam, else the bare name. */
-export function executableFor(tool: ManagerTool): string {
-  return overrides.get(tool) ?? tool;
+/**
+ * The executable that `tool` resolves to: the seam, else the operating system's own path.
+ * A bare name makes Windows look in the current directory first (a planted binary runs),
+ * and `status` and `install` run from any directory; so on Windows `schtasks` is the one in
+ * `%SystemRoot%\\System32`, and on macOS `launchctl` is `/bin/launchctl`. On Linux
+ * `systemctl` is the first of `/usr/bin` and `/bin` that exists, else the bare name (a
+ * distribution that puts it elsewhere is still served).
+ */
+export function executableFor(
+  tool: ManagerTool,
+  platform: NodeJS.Platform = process.platform,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  exists: (file: string) => boolean = existsSync,
+): string {
+  const seam = overrides.get(tool);
+  if (seam !== undefined) return seam;
+  if (platform === "win32" && tool === "schtasks") {
+    const root = env["SystemRoot"] ?? env["windir"] ?? "C:\\Windows";
+    return `${root}\\System32\\schtasks.exe`;
+  }
+  if (platform === "darwin" && tool === "launchctl") return "/bin/launchctl";
+  if (platform === "linux" && tool === "systemctl") {
+    return ["/usr/bin/systemctl", "/bin/systemctl"].find(exists) ?? tool;
+  }
+  return tool;
 }
 
 const SECRET_KEY_RE = /token|secret|password|bearer|api[_-]?key|credential/i;
@@ -118,6 +140,12 @@ export interface LaunchOptions {
   readonly env?: Readonly<Record<string, string | undefined>>;
   /** Append the daemon's stdout and stderr to this file; discarded when absent. */
   readonly logFile?: string;
+  /**
+   * Pass `env` to the daemon as given. By default the secret-looking keys are dropped; the
+   * ChromaDB daemon is launched as the shell launched it, with the user's whole environment
+   * (a model-hub or proxy credential it needs is not ours to remove).
+   */
+  readonly unscrubbedEnv?: boolean;
 }
 
 /**
@@ -137,7 +165,7 @@ export function launchDaemon(
       windowsHide: true,
       stdio: ["ignore", fd ?? "ignore", fd ?? "ignore"],
       ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-      env: scrubbedEnv(options.env),
+      env: options.unscrubbedEnv === true ? { ...options.env } : scrubbedEnv(options.env),
     });
     child.on("error", () => {});
     child.unref();

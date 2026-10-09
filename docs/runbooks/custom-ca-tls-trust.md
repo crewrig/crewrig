@@ -117,7 +117,7 @@ explicitly (without editing your profile):
   runs its `ProgramArguments` / `ExecStart` through the same wrapper, so its
   embedding-model fetch on first indexing inherits the trust.
 
-`scripts/start-chroma-server.sh` sources the managed file at entry, and
+`scripts/start-chroma-server.ts` (the `start-chroma-server.sh` shim forwards to it) applies the managed file to the daemon's environment at entry, and
 `scripts/prune-transcripts.ts` reads it without running it (`readTlsEnv`, spec
 0253 R18) and hands its variables to every child it spawns, for the same
 reason. The standalone

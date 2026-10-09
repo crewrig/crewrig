@@ -147,10 +147,8 @@ service_cust="$(cat "$SERVICE_OUT_CUSTOM")"
 assert_contains "$service_cust" "--path /var/data/custom-palace" "Chroma systemd service uses MEMPALACE_PALACE_PATH"
 assert_not_contains "$service_cust" "__CHROMA_PALACE_PATH__" "Chroma custom systemd service has no residual placeholder"
 
-# ── Test 7: Standalone start-chroma-server.sh palace fallback ─────────────────
-
-start_chroma_content="$(cat "$REPO_DIR/scripts/start-chroma-server.sh")"
-assert_contains "$start_chroma_content" 'PALACE_DIR="${MEMPALACE_PALACE_PATH:-${MEMPALACE_DIR}/palace}"' "start-chroma-server.sh respects MEMPALACE_PALACE_PATH"
+# Test 7 (the MEMPALACE_PALACE_PATH fallback of the start script) is asserted by
+# scripts/tests/chroma-lifecycle.test.ts since the TypeScript migration (spec 0252 R21).
 
 # ── Test 8: Token derivation equivalence between shell and launcher ───────────
 
