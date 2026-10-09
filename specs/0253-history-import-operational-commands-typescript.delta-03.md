@@ -25,7 +25,9 @@ parent plus delta-01, delta-02 and this delta (`docs/spec-pr-workflow.md`,
 *Version: MINOR, 2.1.0 to 2.2.0 (`docs/spec-format.md`, *Versioning*). The delta
 narrows the list of paths the `windows-latest` job of requirement 27 SHALL assert
 and adds one scenario and one parity-gap statement. It withdraws only assertions
-no implementation can meet on `windows-latest` (see the finding), so no in-flight
+the job of this pull request cannot meet without an interpreter stub that Node.js
+can spawn, which `windows-latest` does not provide as it stands (see the finding;
+a later change MAY add one and the assertions with it), so no in-flight
 implementation is invalidated and none that followed delta-02 stops conforming;
 that is an additive, not a breaking, normative change, hence MINOR.*
 
@@ -54,8 +56,10 @@ prompt flows, and the `mine` calls of the four importers, all of which sit behin
 a successful probe. They stay covered by the POSIX oracle of PR A (requirement 26)
 on Linux and macOS only; the PR A tests are POSIX-only. Requirement 27 asked for
 them on Windows and requirement 23 expected the Windows gap to be proved or
-disproved; this delta records the limit. No question that this delta can resolve is
-left open.*
+disproved; this delta records the limit. The question this delta cannot
+resolve, whether a compiled `.exe` stub interpreter would bring the omitted paths
+onto Windows, is recorded as the open parity gap of requirement 23 and left to a
+later change.*
 
 ## ADDED
 
