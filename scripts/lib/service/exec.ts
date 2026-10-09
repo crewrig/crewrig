@@ -140,6 +140,12 @@ export interface LaunchOptions {
   readonly env?: Readonly<Record<string, string | undefined>>;
   /** Append the daemon's stdout and stderr to this file; discarded when absent. */
   readonly logFile?: string;
+  /**
+   * Pass `env` to the daemon as given. By default the secret-looking keys are dropped; the
+   * ChromaDB daemon is launched as the shell launched it, with the user's whole environment
+   * (a model-hub or proxy credential it needs is not ours to remove).
+   */
+  readonly unscrubbedEnv?: boolean;
 }
 
 /**
@@ -159,7 +165,7 @@ export function launchDaemon(
       windowsHide: true,
       stdio: ["ignore", fd ?? "ignore", fd ?? "ignore"],
       ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-      env: scrubbedEnv(options.env),
+      env: options.unscrubbedEnv === true ? { ...options.env } : scrubbedEnv(options.env),
     });
     child.on("error", () => {});
     child.unref();

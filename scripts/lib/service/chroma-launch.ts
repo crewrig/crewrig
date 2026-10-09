@@ -14,6 +14,7 @@
 // interpreter started detached with its window hidden (the `Scripts\chroma.exe`
 // launcher is an executable, not a script for the interpreter).
 
+import { homedir } from "node:os";
 import { accessSync, constants, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { delimiter, dirname, join, isAbsolute, basename } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -86,10 +87,14 @@ export function resolveInterpreter(
   const [command, ...lead] = splitLauncher(text);
   if (command === undefined) return undefined;
   if (lead.length > 0) {
-    const run = spawnSync(command, [...lead, "-c", "import sys; print(sys.executable)"], {
+    // Never a bare name: on Windows that searches the current directory first.
+    const file = isAbsolute(command) ? command : onPath(command, env, platform);
+    if (file === undefined) return undefined;
+    const run = spawnSync(file, [...lead, "-c", "import sys; print(sys.executable)"], {
       encoding: "utf8",
       windowsHide: true,
       env: { ...env },
+      timeout: 10_000,
     });
     const printed = typeof run.stdout === "string" ? run.stdout.trim() : "";
     return run.status === 0 && printed !== "" && isExecutable(printed, platform)
@@ -179,7 +184,7 @@ export async function startChroma(o: StartOptions): Promise<number> {
   }
 
   // Custom root-CA / native-TLS delegation (spec 0084), applied to the daemon only.
-  const tls = readTlsEnv(o.home ?? env["HOME"] ?? env["USERPROFILE"] ?? "");
+  const tls = readTlsEnv(o.home ?? homedir());
   if (tls.kind === "malformed") {
     io.err(`WARNING: ignoring ${tls.file}: line ${tls.line} is outside the trust-file format.`);
   } else if (tls.kind === "unreadable") {
@@ -190,7 +195,11 @@ export async function startChroma(o: StartOptions): Promise<number> {
   const runArgs = ["run", "--path", paths.palaceDir, "--host", host, "--port", port];
   const launch =
     o.platform === "win32"
-      ? launchDaemon(chroma, runArgs, { env: daemonEnv, logFile: paths.logFile })
+      ? launchDaemon(chroma, runArgs, {
+          env: daemonEnv,
+          logFile: paths.logFile,
+          unscrubbedEnv: true,
+        })
       : launchDaemon(
           python,
           [
@@ -201,7 +210,7 @@ export async function startChroma(o: StartOptions): Promise<number> {
             chroma,
             ...runArgs,
           ],
-          { env: daemonEnv, logFile: paths.logFile },
+          { env: daemonEnv, logFile: paths.logFile, unscrubbedEnv: true },
         );
   const pid = launch.pid;
   if (pid === undefined) {

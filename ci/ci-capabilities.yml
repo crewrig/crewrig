@@ -1606,7 +1606,7 @@ capabilities:
       # Spec 0252 PR C (issue #1330): the ChromaDB trio, black-box through the
       # TypeScript entries and the bash shims, and the open-file floor (needs python3;
       # the Windows-capable parts also run in `windows-chroma-trio`).
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-lifecycle.test.ts scripts/tests/chroma-launch.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-lifecycle.test.ts scripts/tests/chroma-launch.test.ts scripts/tests/chroma-launch-env.test.ts
 
   # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's
   # install / restore contract, root resolution and wmic parser. The probe
