@@ -27,16 +27,16 @@ one of these items, so each is a correction of words, and each gap the twin keep
 is added to the closed deviation list of requirement 33. It also records three
 security hardenings the owner approved after the `security` review: a ceiling on
 the expanded size of a YAML document (requirement 34), a refusal of a component
-name that could leave the output root or act on a CI log (requirement 35), a
-dependency range raised past four advisory ranges (modified requirement 24), and
-the effective user of the merge-root ownership test, which corrects requirement 20
-to what the shell's `-O` does. Requirements 34 and 35 and letters (u) and (v) of
+name that could leave the output root, and an escaping of every path the build
+prints so that none can act on a CI log (requirement 35), a dependency range raised
+past two advisory ranges (modified requirement 24), and the effective user of the merge-root ownership test, which corrects requirement 20
+to what the shell's `-O` does. Requirements 34 and 35 and letters (u), (v) and (w) of
 requirement 37 are deliberate deviations from the shell. The shell shares the
 weakness of requirement 35 and not that of requirement 34, where `yq` finished
 quickly. They bind the new build only: the shell is replaced by a forwarding shim
-in PR D and is not changed. Three known limitations are recorded
+in PR D and is not changed. Four known limitations are recorded
 once, without a behaviour change, in requirement 38. The version is a MAJOR bump:
-requirements 7, 17, 20 and 24 are modified, and the new range of requirement 24 and
+requirements 7, 10, 14, 17, 20 and 24 are modified, and the new range of requirement 24 and
 the effective-user test of requirement 20 invalidate an implementation that
 followed the parent's wording. No question is left open. This delta changes no
 other requirement of the parent, and it does not reopen the decisions the parent's
@@ -81,7 +81,7 @@ out-of-memory after about 7 seconds, where the shell and `yq` finished in under 
 second; CI runs the build on pull requests, so a pull request could take a runner
 down.
 
-**Requirement 35 — Component name safety and the output root.** The `name` of a
+**Requirement 35 — Component name safety, the output root and printed paths.** The `name` of a
 skill, a command or an agent, read as in requirement 11 and after the skip of an
 absent or null name (requirement 33(f)), SHALL be refused when it holds a control
 character (U+0000 to U+001F, U+007F), or when, split on `/` and on `\`, it has a
@@ -99,19 +99,45 @@ segment and a `.` are accepted, and a build or a check of the real corpus, whose
 names are all kebab-case, behaves exactly as before. The way out of a refusal is to
 rename the component.
 
-As defence in depth, `checkOrWrite` and the resource copy of requirement 15 SHALL
-refuse any resolved target that does not lie strictly under the output root of its
+As defence in depth, the writer of generated text (`checkOrWrite`) and the resource
+copy of requirement 15 SHALL refuse any resolved target that does not lie strictly under the output root of its
 tier: exit status 1 and `Error: refusing to write outside the output root:
 <path>` on standard error (control characters written as `\xNN`), before the
 target is read, written or created, the output root itself included among the
 refused targets. `--resolve` writes no compiled output and is not concerned.
 
-The refusal is a new deliberate deviation (requirement 37(v)), and the one
-hardening where the TypeScript refuses what the shell did. Reason, shared with the
-shell: with `name: ../../../../x` a tier other than `core` writes outside its
-staging root even under `--check`, which is documented as read-only; and a newline
-in a name lets a pull request forge GitHub Actions workflow commands (`::error`,
-`::add-mask::`) through the echoed progress lines. It applies to the new build only.
+Every path and every component, agent or tier name that the build writes to
+standard output or standard error SHALL be printed with each control character it
+holds (U+0000 to U+001F, U+007F) written as `\xNN` (two lower-case hex digits), the
+escaping the refused name above already uses, so that no line the build prints can
+carry a control character that came from a path or a name; a backslash is left as it
+is, and a path or name with no control character prints exactly as before. Such an
+entry is not refused: a resource file, a tier directory or a source directory with
+an odd name is read, built or copied like any other, and only its printed form
+changes. The rule covers every line that interpolates one: the `Generated:` and
+`DRIFT:` lines (resource relative paths included), `--- Tier: <tier> (output root:
+<root>) ---`, `Building skill|command|agent: <name>`, the `Warning:` lines that name
+a source or the configuration file, every `Error:` line of the build that names a
+path or a key, the collision reports of requirement 17 (names, tiers and install
+targets), and the lines of `--list-output-dirs`. For the code, the contract is that
+every line written through the output functions of the build that interpolates a
+path or a name passes that part through one shared escaper; the line's own
+separators are not part of a path or a name and are not rewritten. Two things are
+outside the rule: the diagnostic records of requirement 19, whose tab-separated
+fields are a record format and whose agent name has passed the name refusal in a
+build, and text that a source declares as a value (a description, a declared model
+value, a `fm:` or `prose:` line), which is content and not a path or a name.
+
+The refusals are new deliberate deviations (requirement 37(v)), and the one
+hardening where the TypeScript refuses what the shell did; the escaping is a new
+deviation too (requirement 37(w)). Reason, shared with the shell: with
+`name: ../../../../x` a tier other than `core` writes outside its staging root even
+under `--check`, which is documented as read-only; and a line feed in a name, in a
+resource file name, in a tier directory name or in a source directory name would let
+a pull request forge GitHub Actions workflow commands (`::error`, `::add-mask::`)
+through the echoed progress lines, git permitting a line feed in a path. The
+TypeScript is the more exposed of the two for a resource file name, which the shell
+failed on and the twin would copy and print. It applies to the new build only.
 
 **Requirement 36 — Merge ordering rules the shell has, stated.** Parent
 requirements 19 and 20 inherit the rules of spec 0198 and spec 0199 "as the shell
@@ -119,7 +145,8 @@ library realises them" and leave three of those rules unwritten. They SHALL hold
 in the twin, as they do in the shell: (a) the merged offerings are ordered by
 `rank` numerically, then, for equal ranks, by `id` in UTF-8 byte order, which is
 code-point order (an upper-case letter before a lower-case one, a shorter `id`
-before a longer one it prefixes), as `yq` compares; (b) one `duplicate-rank` note
+before a longer one it prefixes), as `yq` compares. This is the byte order of the
+merge only: the enumerations of requirement 33(l) use UTF-16 code-unit order; (b) one `duplicate-rank` note
 is written for each rank held by more than one offering, in the order in which the
 ranks first appear in the composed offerings before they are sorted (a substituting
 organisation mapping that lists rank 5 twice and then rank 2 twice notes rank 5
@@ -128,7 +155,7 @@ either implementation is read by the other (requirement 20, unchanged).
 
 **Requirement 37 — Deviations added to requirement 33.** The closed list of
 requirement 33 is extended by the letters below, which continue its lettering, so
-that the list reads "exactly these, (a) to (v)". Letters (a), (f), (g) and (l) are
+that the list reads "exactly these, (a) to (x)". Letters (a), (f), (g) and (l) are
 reworded under *MODIFIED*. Each added letter, like each of the others, SHALL be
 pinned by a test that compares the twin with the shell where the shell can run, and
 that fails when the difference vanishes, the way the conformance test of
@@ -169,22 +196,46 @@ merge lines;
 it last: the input is outside what the mapping checker accepts and spec 0199 leaves
 it unspecified;
 
-(t) a `rank` written as an integer in any form but plain decimal (`0x10`, `0o17`,
-`+5`, `007`) is kept as written in the merged document, where the merge of the
-shell rewrote it as a decimal integer (`16`, `15`, `5`, `7`). It sorts by its
-value, but it no longer ties with a core rank written in plain decimal, so the
+(t) in the additive merge (an organisation mapping without `replaces-core` over an
+existing core mapping), a `rank` written as an integer in any form but plain
+decimal (`0x10`, `0o17`, `+5`, `007`) is kept as written in the merged document,
+where the shell's merge, which passes the organisation offerings through `yq`'s
+JSON conversion, rewrote it as a decimal integer (`16`, `15`, `5`, `7`). It sorts by
+its value, but it no longer ties with a core rank written in plain decimal, so the
 `duplicate-rank` note that the shell wrote for `0x2` beside core's rank 2 is not
-written. A float (`1.50`, `1e3`) is kept as written by both implementations;
+written. A rank written `0b11` is lost by the shell's additive merge, which reports
+the offering as added and leaves it out of the merged document, where the twin keeps
+it. A float (`1.50`, `1e3`) is kept as written by both implementations. In the
+substituting arm and the absent-core arm the shell keeps every spelling as written,
+as the twin does, and letter (x) covers the forms it cannot sort;
 
 (u) a YAML document whose expanded size exceeds the budget of requirement 34 is
 refused, where the shell and `yq` read it;
 
 (v) a component name with a control character or a `..` segment, and a target
 outside its output root, are refused as requirement 35 says, where the shell built
-the component and wrote the files.
+the component and wrote the files;
+
+(w) a path or a name that holds a control character is printed with each such
+character written as `\xNN` (requirement 35), where the shell printed it raw or
+never reached the line: a resource file name with a line feed aborts the shell's
+resource loop (`sed: ...: No such file or directory`, exit status 1, after the files
+written before it), and a tier directory name, or a source directory name that
+serves as the fallback name, with a line feed makes the collision pre-pass of the
+shell report a false collision (`Refusing 'core'`, exit status 1) before anything is
+written; any other control character (a tab, an escape) is printed raw by the shell.
+The twin builds, copies or skips the entry and prints its escaped path;
+
+(x) in the substituting arm (`replaces-core: true`) and the absent-core arm of the
+merge, `rank` values that `yq`'s `sort_by` cannot compare (`0b11`; `0o17` beside a
+float rank) make the shell's merge end in a Go panic on standard error and leave an
+empty merged document, so the agent resolves against an empty mapping
+(`model-drop ... unsupported-on-cli`), where the twin keeps the offerings, sorted by
+value, and resolves normally.
 
 **Requirement 38 — Known limitations, recorded and left open.** The `security`
-review also found three weaknesses that this delta does not change. They are
+review and the review of this delta found four weaknesses that this delta does not
+change. They are
 recorded here once, as limitations to know and not as defects to fix in this
 ticket; a later ticket decides whether to close them.
 
@@ -202,6 +253,16 @@ ticket; a later ticket decides whether to close them.
   bodies and provenance, and `canonical_repo` is the only value requirement 7
   validates, in the shell too. A change to that file SHALL be reviewed like a
   source change, and the repository SHOULD protect it with a `CODEOWNERS` entry.
+- (d) Unlike the three above, this one is new compared with the shell. A source
+  with CRLF line endings or a leading byte-order mark is keyed on its directory name
+  by the collision pre-pass (requirement 17) and on its `name` by the build
+  (requirement 33(e)), so it can take the name of a component of another tier, or of
+  the same tier, without the collision report firing. The shell built such a source
+  under the name `null`, so it could shadow nothing. The exposure is limited to a
+  repository the user already trusts, and `.gitattributes` normalises CRLF to LF on
+  commit, so only a byte-order mark remains reachable through a commit. Requirement
+  17's rule is unchanged; a later ticket may
+  align the pre-pass on the build's reading.
 
 **Scenario:** A component named with a parent segment is refused before it writes
 outside the root
@@ -235,6 +296,33 @@ another to a sibling directory of it
 When each is made
 Then each exits 1 with `Error: refusing to write outside the output root:` and the
 path, and neither file is read, written or created.
+
+**Scenario:** A resource file named with a line feed is copied and printed escaped
+
+Given a skill whose `references/` holds a file named `a`, a line feed and
+`::error::forged.md`
+When a build runs in a CI job
+Then the file is copied under that name, the `Generated:` line shows
+`references/a\x0a::error::forged.md`, no line of standard output or standard error
+begins with `::`, and the exit status is 0 (the shell aborted on this file).
+
+**Scenario:** A tier or a source directory named with a line feed is built and printed
+escaped
+
+Given a tier directory whose name holds a line feed and `::error::tier`, and a skill
+directory of `core` whose name holds a line feed and `::error::src` and whose source
+has no `name`
+When a build runs
+Then the `--- Tier:` line shows `\x0a` in the tier name and the `Warning: <source>
+missing 'name' field, skipping` line shows `\x0a` in the source path, the tier is
+built, and no printed line begins with `::` (the shell refused the build with a false
+collision report).
+
+**Scenario:** A path without a control character prints as before
+
+Given the real corpus
+When `--check` runs
+Then standard output is the same, line for line, as without the escaping.
 
 **Scenario:** An ordinary name is not touched
 
@@ -337,13 +425,22 @@ When the root is examined
 Then it is reused; and a root owned by 0 is refused with the `merge-unavailable`
 note.
 
-**Scenario:** Offerings with no rank and with a hex rank
+**Scenario:** Offerings with no rank and with a hex rank, in the additive merge
 
-Given an organisation mapping with an offering without a `rank` and one with
-`rank: 0x10`, beside the four core offerings
+Given an organisation mapping without `replaces-core`, with an offering without a
+`rank` and one with `rank: 0x10`, beside the four core offerings
 When the merge is made
 Then the offering without a rank is first, `0x10` is kept as written and sorted
 after rank 9, and the shell's merged document differs in exactly these two ways.
+
+**Scenario:** Ranks the shell cannot sort, in the substituting merge
+
+Given an organisation mapping with `replaces-core: true` whose offerings have the
+ranks `0b11` and `4`
+When `--resolve` runs
+Then the twin keeps both offerings in that order and resolves the first, where the
+shell ends in a Go panic with an empty merged document; and with ranks `0x2` and `9`
+both implementations keep the spelling `0x2`.
 
 **Scenario:** The drift hint names the TypeScript entry
 
@@ -360,6 +457,13 @@ When a build runs
 Then the `Building` and `Generated:` lines come in code-unit order (`Zed`, `alpha`,
 `probe`; `B.md`, `Z.md`, `_c.md`, `a.md`), as under the C locale, and the same files
 are written.
+
+**Scenario:** Astral and high BMP names order by UTF-16 code unit
+
+Given `--list-output-dirs --target claude --tier ～ --tier 😀` (U+FF5E and U+1F600)
+When it runs
+Then the lines for `dist/😀/` come before those for `dist/～/`, which is the
+documented difference of requirement 33(l) from the shell's byte order.
 
 **Scenario:** The dependency range excludes the advisory ranges
 
@@ -387,10 +491,10 @@ Replacement:
 > alone (`[A-Za-z0-9_]+`: the first character is not constrained, so `1a` and `_b`
 > are accepted, as the variable `CFG_<KEY>` the shell builds accepts them; a TOML
 > table header, a hyphenated key and an array-subscript key such as `k[0]` are not)
-> SHALL exit 1 with an `Error:` naming the line, as the shell aborted on it,
-> with status 1 or 2 according to the character (requirement 33(i)). The
-> array-subscript key is the one the shell accepted and the build refuses
-> (requirement 37(p)).
+> SHALL make the build exit with status 1 and an `Error:` naming the line. The shell
+> aborted on such a key, with status 1 or 2 according to the character; the build's
+> status is 1 throughout (requirement 33(i)). The array-subscript key is the one
+> the shell accepted and the build refuses (requirement 37(p)).
 
 Requirement 10 — the body is independent of line 1, which the sentence about
 "no frontmatter" left to be read as an empty body. Original:
@@ -479,11 +583,18 @@ Replacement:
 > and not with the real user id `process.getuid()` (skipped on Windows, where
 > ownership is not modelled)
 
-Requirement 24 — the version of the dependency, raised past four advisory ranges.
-The lockfile pinned 4.3.0, which lies inside four advisory ranges of `js-yaml`;
-none is reachable through the pinned core and failsafe schemas of requirement 11,
-and the production dependency of a build that runs on pull requests is moved out of
-them. Original:
+Requirement 24 — the version of the dependency, raised past two advisory ranges.
+The lockfile pinned 4.3.0, which lies inside two advisory ranges of `js-yaml`:
+GHSA-5p4m-2wfm-xmqj (quadratic `!!omap` resolution, versions below 4.3.1) and
+GHSA-2883-xcg3-v3hh (`maxTotalMergeKeys` not bounding empty merge sources, versions
+below 4.3.2), as `npm audit --package-lock-only` reports on the lockfile of
+`origin/release/1231-ts-migration`. Neither is reachable through the pinned core and
+failsafe schemas of requirement 11, which resolve neither `!!omap` nor merge keys
+(requirement 37(o)), and the production dependency of a build that runs on pull
+requests is moved out of both. The other two advisories the audit lists
+(GHSA-h67p-54hq-rp68 and GHSA-52cp-r559-cp3m) have ranges that exclude 4.3.0 and
+concern the copy of 4.1.1 nested under `markdownlint-cli`, a development tool.
+Original:
 
 <!-- markdownlint-disable-next-line MD029 -->
 > at the version the lockfile already pins, adding no package.
@@ -566,9 +677,15 @@ Replacement:
 > locale: the lines of `--list-output-dirs`, and the tiers, the components of a tier
 > and the resource files of a skill, hence the order of the `--- Tier:`,
 > `Building ...:`, `Generated:` and `DRIFT:` lines, where the shell's glob and
-> `sort` collated differently. The build uses code-unit order throughout, the shell's
-> order under the C locale. The set of lines and of files, and every byte written,
-> never differ.
+> `sort` collated differently. The build sorts these names by UTF-16 code unit (the
+> default order of `Array.prototype.sort`: the lines of `--list-output-dirs`, the
+> tiers, the components, the resource files and the installed targets of the
+> collision pre-pass), which is the shell's byte order under the C locale for every
+> name made of characters of the Basic Multilingual Plane. The two differ when a
+> name mixes a code point from U+E000 to U+FFFF with one beyond U+FFFF (U+FF5E
+> sorts before U+1F600 in byte order and after it in UTF-16 order), and that case is
+> part of this letter. The set of lines and of files, and every byte written, never
+> differ.
 
 ## REMOVED
 
