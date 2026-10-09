@@ -26,10 +26,11 @@ from an XML definition**, driven only through `schtasks`:
 - The XML templates live in `config/windows/` beside `config/launchd/` and
   `config/systemd/`, with the same `__NAME__` placeholder convention and the
   same refusal of a residual placeholder.
-- One task per daemon, in the `\CrewRig\` folder: logon trigger for the current
-  user only, interactive token at least privilege, no stored password, one
-  running instance, no execution time limit, restart on failure with the
-  shortest interval and the largest count the scheduler allows.
+- One task per daemon, in the `\CrewRig\` folder: a logon trigger for the current
+  user and a repeating one-minute time trigger (the keep-alive, see *Measurements*),
+  interactive token at least privilege, no stored password, one running instance
+  (a new instance is ignored), no execution time limit. `RestartOnFailure` is also
+  set but is not relied on: it was measured to restart nothing.
 - The task action is `process.execPath` with the installed TypeScript program
   as first argument (the launcher for MCP, the trust wrapper for ChromaDB).
 
@@ -50,11 +51,11 @@ in the code: a fallback needs a new decision.
 
 ## Consequences
 
-- **Restart floor and finite count.** The scheduler restarts a failed run no
-  sooner than one minute after it and a finite number of times. A launcher that
-  keeps failing closed (for example on a missing token) can exhaust the count
-  and stop for good, where launchd and systemd never give up. Unverified until
-  measured (see *Measurements*).
+- **Restart floor.** The keep-alive trigger starts a task again about one minute
+  after its action process ends (measured 25 to 58 s), where launchd and systemd
+  restart in 3 to 10 s. The trigger has no end, so there is no finite restart
+  count: a launcher that keeps failing closed is started again every minute, as
+  under launchd and systemd.
 - **No PID in `schtasks` output.** The supervised PID comes from the Task
   Scheduler running-task interface (`EnginePID`), read through the single
   inspection module `scripts/lib/service/os-inspect.ts`. When that call fails

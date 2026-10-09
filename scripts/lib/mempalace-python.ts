@@ -254,8 +254,13 @@ export function mempalacePythonCandidates(
   return [...new Set(candidates.filter((c) => c !== ""))];
 }
 
-/** A candidate as `[command, ...leading arguments]`; only a launcher has any. */
-function splitLauncher(candidate: string): string[] {
+/**
+ * A candidate as `[command, ...leading arguments]`; only a launcher has any (`py -3`
+ * is `["py", "-3"]`). A caller that spawns the interpreter `detectMempalacePython`
+ * returned spawns `command` with `[...leading, ...its own arguments]`, never the whole
+ * text as one argv[0].
+ */
+export function splitLauncher(candidate: string): string[] {
   return (WINDOWS_CANDIDATES.launchers as readonly string[]).includes(candidate)
     ? candidate.split(" ")
     : [candidate];

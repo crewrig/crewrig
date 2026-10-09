@@ -14,6 +14,7 @@ import {
   detectMempalacePython,
   mempalacePythonCandidates,
   resolveSymlink,
+  splitLauncher,
 } from "../lib/mempalace-python.ts";
 
 const temps: string[] = [];
@@ -96,6 +97,14 @@ describe("pipx home resolution order", () => {
       mempalacePythonCandidates(without.env, POSIX)[0],
       `${without.home}/.local/share/pipx/venvs/mempalace/bin/python`,
     );
+  });
+});
+
+describe("splitLauncher", () => {
+  test("a launcher splits into command and leading arguments, anything else stays whole", () => {
+    assert.deepEqual(splitLauncher("py -3"), ["py", "-3"]);
+    assert.deepEqual(splitLauncher("python"), ["python"]);
+    assert.deepEqual(splitLauncher("/opt/venv/bin/python"), ["/opt/venv/bin/python"]);
   });
 });
 
