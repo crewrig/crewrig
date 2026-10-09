@@ -121,8 +121,15 @@ old is told so before anything is written.
    standard error. `REPO_DIR` SHALL default to the physical parent of the
    directory that holds the entry file, derived from the entry file's own location
    and never by searching upward for a `.git` entry, so that a copy of `scripts/`
-   in a throwaway tree with no `.git` builds that tree (requirement 26 lists the
-   suites that do this).
+   in a throwaway tree builds that tree (requirement 26 lists the suites that do
+   this). Loading `js-yaml` goes through `loadDependency` (spec 0240 requirement
+   7), which walks up from its own file to a `.git` entry and accepts a package
+   only when its real path lies under that root's `node_modules`
+   (`scripts/lib/require-dependency.ts`, `scripts/lib/paths.ts`). A throwaway tree
+   that builds more than `--list-output-dirs` therefore SHALL carry a `.git` entry,
+   the root `package.json` and a real copy, never a symbolic link, of the
+   production closure of `js-yaml` under `node_modules`; the entry needs none of
+   the three to answer `--list-output-dirs` or to print the floor diagnostic.
 
 5. **`--list-output-dirs` (spec 0125).** This flag SHALL answer before anything
    else is read: with no `crewrig.config.toml`, no `artifacts/` directory, no
@@ -135,7 +142,9 @@ old is told so before anything is written.
    `dist/<tier>/` for every tier except `core`, printed one per line, unique, in
    code-unit order. That order equals the shell's under the C locale and for the
    default `core` tier under any locale, and is a listed deviation otherwise
-   (requirement 33(l)). A test SHALL prove the flag runs where the YAML library
+   (requirement 33(l)). A target that selects no CLI (`--target nope`) prints one
+   empty line and exits 0, as the shell does, whose `printf '%s\n'` over an empty
+   list prints a newline; that is preserved. A test SHALL prove the flag runs where the YAML library
    cannot be loaded.
 
 6. **`--resolve` and `--diagnostics` (spec 0198 requirements 6 and 34).**
@@ -155,9 +164,13 @@ old is told so before anything is written.
    `crewrig.config.toml` at `REPO_DIR` line by line: split at the first `=`; the
    key is the text before it with every whitespace character removed, skipped when
    empty or beginning with `#`; the value is the text after it with leading
-   whitespace and one optional leading double quote removed and one optional
-   trailing double quote and trailing whitespace removed; a repeated key keeps its
-   last value. LF and CRLF files SHALL both parse. A missing file SHALL write
+   whitespace and one optional leading double quote removed, then the first match,
+   searched left to right, of an optional double quote immediately followed by
+   whitespace through the end of the line removed (the text `abc"` plus one space
+   becomes `abc`; the text `abc`, one space and a quote becomes `abc` plus one
+   space, because whitespace before the quote is kept); a repeated key
+   keeps its last value; a last line with no line terminator is not read, as the
+   shell's `read` loop does not read it. LF and CRLF files SHALL both parse. A missing file SHALL write
    `Warning: <path> not found — placeholders will be left literal.` to standard
    error and continue. A key whose upper-cased form is not a valid identifier
    (`[A-Za-z_][A-Za-z0-9_]*`, which a TOML table header and a hyphenated key are
@@ -556,7 +569,9 @@ old is told so before anything is written.
       made of `scripts/*.sh` and `scripts/lib/` only, with no `.git`, no
       `package.json` and no `node_modules`, and its report filter lists the build's
       progress lines. PR A adapts the copy step (adds `scripts/*.ts`, the root
-      `package.json`, a `.git` entry and a link to `node_modules`; assertions stay);
+      `package.json`, a `.git` entry and a real copy of the `js-yaml` production
+      closure under `node_modules`, since `loadDependency` refuses a symbolic link;
+      assertions stay);
       the progress lines of requirement 9 stay as they are.
     - `scripts/tests/test-agent-profile-migration.sh`, case T1, asserts the literal
       `bash scripts/build-components.sh --target all --check` in the `component-drift`
@@ -596,8 +611,10 @@ old is told so before anything is written.
     requirement 4, or a full `npm ci` whose result is a superset, in an order that
     does not remove it before the build); at authoring these include
     `component-drift`, `model-resolution`, `agent-profile-migration` and
-    `frontmatter`, the capability that runs `scripts/tests/test-check-core-paths.sh`
-    and the `changeset-coverage` exhaustive run, and the plan SHALL complete the
+    `frontmatter`, `core-paths` (which runs `scripts/tests/test-check-core-paths.sh`
+    and `scripts/check-core-paths.sh`; the latter calls `--list-output-dirs` through
+    the shim with standard error discarded, so a missing Node.js 24 would fail
+    there without a visible diagnostic) and the `changeset-coverage` exhaustive run, and the plan SHALL complete the
     list by tracing `build-components` through the suites wired in
     `ci/ci-capabilities.yml`; `component-drift` no longer requires `yq` for the
     build, and keeps it for any suite that still uses it (the model-resolution and
@@ -676,7 +693,9 @@ old is told so before anything is written.
     shipped behaviour; PR C, the entry and its modules, the shim, the dependency
     move, the CI and Taskfile wiring, the references, the `windows-latest` job and
     the removal of case M10. PR A SHALL merge before PR C, and no pull request
-    SHALL both migrate the script and change an assertion of its Bash test.
+    SHALL both migrate the script and change an assertion of its Bash test, except
+    the removal of case M10 in PR C, which requirement 26 grounds in the second
+    bounded exception of parent requirement 13.
 
 33. **Deviations from the shell behaviour (parent requirement 14).** The observable
     contract SHALL be preserved except for exactly these, each justified above:
@@ -861,8 +880,9 @@ nothing and shows no module-resolution error; and `--list-output-dirs` still suc
 
 **Scenario:** A throwaway copy of `scripts/` builds its own tree
 
-Given a copy of `scripts/`, the root `package.json` and a link to `node_modules` in a
-directory with no `.git`
+Given a directory holding a `.git` entry, a copy of `scripts/`, the root
+`package.json` and a real copy of the `js-yaml` production closure under
+`node_modules`
 When `scripts/build-components.sh --target claude` runs there with no `REPO_DIR`
 Then the entry builds that directory's `artifacts/`, not the checkout's.
 
@@ -938,9 +958,13 @@ owner of ticket #1332; each is recorded where it binds.
   unchanged, passing against both versions). That includes raising `NODE_MAJOR` of
   `docker/e2e/base.Dockerfile` from 22 to 24, the Node.js floor of parent
   requirement 4. No delta of spec 0215 is needed (requirement 26).
-- Every fixture that copies `scripts/` into a throwaway tree supplies the `.git`
-  entry, the root `package.json` and a link to `node_modules`, so `loadDependency`
-  resolves `js-yaml` unchanged. No delta of spec 0240 is needed (requirement 26).
+- Every fixture that copies `scripts/` into a throwaway tree that builds more than
+  `--list-output-dirs` supplies a `.git` entry, the root `package.json` and a real
+  copy of the `js-yaml` production closure under `node_modules`, so `loadDependency`
+  resolves `js-yaml` unchanged; it walks up to a `.git` entry and refuses a symbolic
+  link (verified against `scripts/lib/require-dependency.ts` and
+  `scripts/lib/paths.ts` by review pass `s1`). No delta of spec 0240 is needed
+  (requirements 4 and 26).
 - An absent or null `name` is skipped with the existing warning instead of
   reproducing the shell's component named `null` (requirement 33(f)).
 - `--resolve` on an unreadable source keeps exit status 2, the shell's incidental
