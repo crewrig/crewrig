@@ -51,7 +51,7 @@ export const POWERSHELL_SCRIPT = [
   "  }",
   "}",
   "$want = @(); if ($env:CREWRIG_PID_LIST) { $want = @($env:CREWRIG_PID_LIST -split ',' | ForEach-Object { [int]$_ }) }",
-  "$rows = @(Get-CimInstance -ClassName Win32_Process | ForEach-Object {",
+  "$rows = @(Get-CimInstance -Query 'SELECT ProcessId, ParentProcessId, CreationDate FROM Win32_Process' | ForEach-Object {",
   "  $row = [ordered]@{ pid = [int]$_.ProcessId; ppid = [int]$_.ParentProcessId }",
   "  if ($want -contains [int]$_.ProcessId -and $_.CreationDate) {",
   "    $row.start = [int64][DateTimeOffset]::new($_.CreationDate).ToUnixTimeMilliseconds()",
@@ -64,7 +64,7 @@ export const POWERSHELL_SCRIPT = [
 const NETSTAT_DARWIN = "/usr/sbin/netstat";
 const PS_DARWIN = "/bin/ps";
 const NETSTAT_TIMEOUT_MS = 10_000;
-const POWERSHELL_TIMEOUT_MS = 30_000;
+const POWERSHELL_TIMEOUT_MS = 60_000;
 const MAX_OUTPUT_BYTES = 32 * 1024 * 1024;
 
 /** Variables a spawned tool may inherit: locale and profile plumbing, no credential. */

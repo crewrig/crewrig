@@ -82,6 +82,8 @@ test("the settings fixed by requirement 7 are all present", () => {
   const xml = renderTaskXml(mcp);
   for (const frag of [
     "<LogonTrigger>",
+    "<TimeTrigger>",
+    "<Repetition>",
     "<LogonType>InteractiveToken</LogonType>",
     "<RunLevel>LeastPrivilege</RunLevel>",
     "<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>",

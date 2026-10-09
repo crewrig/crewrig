@@ -17,6 +17,19 @@
       <Enabled>true</Enabled>
       <UserId>__USER_ID__</UserId>
     </LogonTrigger>
+    <!--
+      Keep-alive (measured, spec 0252 delta-02): RestartOnFailure did not restart a task whose
+      action ended non-zero within 240 s on windows-latest, so a repeating time trigger starts
+      the task again every minute; MultipleInstancesPolicy IgnoreNew makes it a no-op while an
+      instance runs. The repetition has no end, so there is no finite restart count.
+    -->
+    <TimeTrigger>
+      <Enabled>true</Enabled>
+      <StartBoundary>2000-01-01T00:00:00</StartBoundary>
+      <Repetition>
+        <Interval>PT1M</Interval>
+      </Repetition>
+    </TimeTrigger>
   </Triggers>
   <Principals>
     <Principal id="Author">

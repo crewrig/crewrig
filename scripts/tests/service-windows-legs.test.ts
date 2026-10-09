@@ -36,7 +36,7 @@ import {
 const skip = process.platform !== "win32";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "crewrig-service-legs-"));
 const id = runId();
-const RESTART_BOUND_MS = 240_000;
+const RESTART_BOUND_MS = 150_000;
 after(() => fs.rmSync(root, { recursive: true, force: true }));
 
 const lastResult = (c: StandInChain): number | null => {
