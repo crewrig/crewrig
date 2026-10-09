@@ -68,8 +68,8 @@ Replacement:
 > non-zero status, whenever its daemon child ends for any reason while the launcher
 > was not asked to stop … (the rest of the sentence is unchanged). The non-zero
 > status is what the supervisors of the other operating systems and the diagnostics
-> read; on Windows the restart itself comes from the repeating trigger. Because the
-> trigger restarts the task, `stop` of the Windows MCP daemon stays a restart request, as
+> read; on Windows the restart itself comes from the repeating trigger. On Windows `stop` of the MCP daemon
+> stays a restart request, as
 > it is under launchd and systemd (requirement 5): `stop-mcp-server` ends the task and runs
 > it again at once, as requirement 17 says, and the repeating trigger is the backstop that
 > starts it again within about a minute if that run is refused or the task ends later
@@ -156,10 +156,13 @@ launchd and systemd.
   process ends, race the repeating trigger: the job prints them and asserts nothing on them.
   That the launcher and the flagged wrapper end non-zero is asserted by their unit tests on
   every operating system, not by the Windows job.
+  The other assertions of the original text are unchanged: `start` runs the task (checked
+  by the daemon serving again), `uninstall` removes the task, and a second `uninstall` is
+  success ("was not loaded").
 - **Scenarios.** "the daemon is brought back after a crash on Windows" reads: *the task is
   started again by the repeating trigger within about a minute of its action process
   ending, and the launcher waits for ChromaDB on its deadline*. "stop is a restart request
-  on every operating system" reads: *on Windows within about a minute*, and applies to the
+  on every operating system" reads: *on Windows `stop-mcp-server` ends the task and runs it again at once, the repeating trigger being the backstop within about a minute*, and applies to the
   MCP daemon.
 - **Delta-01, requirement 7 entry (the ChromaDB wrapper flag).** The flag
   `--end-nonzero-on-child-exit` still makes the wrapper end non-zero whenever its child
