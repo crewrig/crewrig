@@ -1500,7 +1500,7 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import-oracle.test.ts scripts/tests/prune-transcripts-oracle.test.ts
       # Spec 0253 PLAN v3 C7: the cross-platform unit tests of the TypeScript
       # history-import and prune entries.
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-windows.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts
       # Spec 0252 R21 (PLAN step A1-A3): the stop, uninstall and switch-argument
       # oracles of the MCP daemon lifecycle scripts (POSIX only, same reason).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
@@ -2864,7 +2864,7 @@ capabilities:
   # build.yml's workflow_dispatch) because GitHub offers no ruleset bypass
   # for the Actions token; GitLab keeps pushing it to the protected branch.
   - id: windows-history-import
-    name: "Windows history import: importer and prune-transcripts entries, offline paths, no bash"
+    name: "Windows history import: importer and prune-transcripts entries against a fake mempalace package, no bash"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
