@@ -78,10 +78,13 @@ prune,query,task}.sh`.
    (`MEMPALACE_MIN_VERSION`, `MEMPALACE_MAX_VERSION_EXCLUSIVE`); the TypeScript port
    of those helpers is owned by ticket #1330 (sub-spec D, spec 0252). F3 SHALL
    import D's module, SHALL NOT create a parallel port of `common.sh`, and SHALL
-   NOT edit D's module. F3 names the interface it needs: a function returning the
-   interpreter on which `mempalace` is importable, or none, and the two pin
-   strings. The module path and the exact signatures are settled at PLAN (see
-   *Open questions*).
+   NOT edit D's module. The interface D froze for F3's planning (2026-10-09; an
+   optional parameter may still be added, a signature will not change) is `scripts/lib/mempalace-python.ts` (`detectMempalacePython(env?)`,
+   returning the interpreter on which `mempalace.mcp_server` imports, or
+   `undefined`) and `scripts/lib/mempalace-pin.ts` (`readMempalacePin(repoRoot)`,
+   returning `{ min, maxExclusive }`, and `installSpec(pin)`). F3 plans against
+   those signatures and SHALL NOT import either file before D's first pull request,
+   which delivers them, has merged into the release branch (see requirement 28).
 
 5. **Platform-aware paths and line endings (parent requirement 22).** Every path
    SHALL be built with platform-aware path handling; the default source directories
@@ -343,7 +346,8 @@ prune,query,task}.sh`.
     versions); PR B, the nine usage wrappers (requirements 7 to 10, 22 to 24, 27 for
     them, including the `60-tools.md` rewrite and rebuild); PR C, the four import
     scripts and `prune-transcripts` with `docs/cli-matrix.md`, which needs D's
-    module shipped first; PR D, `sync-from-upstream`. PR A merges before B, C and
+    first pull request, delivering `scripts/lib/mempalace-python.ts` and
+    `scripts/lib/mempalace-pin.ts`, merged first; PR D, `sync-from-upstream`. PR A merges before B, C and
     D. PR B and PR D do not depend on #1330. No pull request SHALL both migrate a
     script and change an assertion of its Bash test. Branch names follow the
     unchanged convention (delta-04 requirement 29): `feat/0253-<slug>-oracle`,
@@ -463,11 +467,10 @@ first write.
 
 ## Open questions
 
-- **Module path and interface of D's `common.sh` port.** F3 depends on a helper that
-  finds the MemPalace interpreter and exposes the version pin (requirement 4). Ticket
-  #1330 (spec 0252) has not fixed its PLAN, so neither the path nor the signatures
-  are known, and PR C cannot start until they ship. Owner: the author of #1330 at
-  its PLAN; F3 adapts and does not dictate.
+- **Stability of D's interface.** The signatures of requirement 4 were frozen by
+  ticket #1330 for F3's planning and will land with spec 0252. PR C is blocked
+  until D's first pull request has merged; if spec 0252 changes either signature
+  before then, F3 adapts through a delta-spec of this spec and does not dictate.
 - **Precedence of `tls-env.sh` variables.** Sourcing `~/.crewrig/tls-env.sh` lets the
   file override an inherited variable; `readTlsEnv` (spec 0247) returns the parsed
   values. The PLAN SHALL verify the semantics match and either apply them as the
