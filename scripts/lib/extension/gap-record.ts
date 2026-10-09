@@ -40,17 +40,34 @@ export function gapToJson(gap: Gap): Map<string, JsonValue> {
   return obj(pairs);
 }
 
+function isReadBack(
+  gap: Gap | ReadonlyMap<string, JsonValue>,
+): gap is ReadonlyMap<string, JsonValue> {
+  return gap instanceof Map;
+}
+
+/** One member of a `Gap` as a JSON value (`undefined` when the record does not carry it). */
+function gapField(gap: Gap, name: string): JsonValue | undefined {
+  const members: Readonly<Record<string, string | undefined>> = { ...gap };
+  return members[name];
+}
+
 /**
  * `gap_key`: `subject@target`, plus `@hook@event@part` when the record carries a `hook`.
  * A record read back from a file (a `Map`) is keyed by the same rule, `has("hook")` included;
  * a missing interpolated value prints as `null`, as jq's string interpolation does.
  */
 export function gapKey(gap: Gap | ReadonlyMap<string, JsonValue>): string {
-  const field = (name: string): string =>
-    gap instanceof Map ? jqText(gap.get(name)) : jqText((gap as Gap)[name as keyof Gap]);
-  const hooked = gap instanceof Map ? gap.has("hook") : (gap as Gap).hook !== undefined;
+  if (isReadBack(gap)) {
+    const field = (name: string): string => jqText(gap.get(name));
+    const base = `${field("subject")}@${field("target")}`;
+    return gap.has("hook") ? `${base}@${field("hook")}@${field("event")}@${field("part")}` : base;
+  }
+  const field = (name: string): string => jqText(gapField(gap, name));
   const base = `${field("subject")}@${field("target")}`;
-  return hooked ? `${base}@${field("hook")}@${field("event")}@${field("part")}` : base;
+  return gap.hook !== undefined
+    ? `${base}@${field("hook")}@${field("event")}@${field("part")}`
+    : base;
 }
 
 /** Write the records as a pretty JSON array (`[]` when empty), creating parent directories. */

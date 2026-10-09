@@ -24,7 +24,9 @@ function tsFilesUnder(dir: string): string[] {
   return fs
     .readdirSync(root, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"))
-    .map((entry) => path.relative(REPO, path.join(entry.parentPath, entry.name)).split(path.sep).join("/"));
+    .map((entry) =>
+      path.relative(REPO, path.join(entry.parentPath, entry.name)).split(path.sep).join("/"),
+    );
 }
 
 test("every file the extension builders add is at most 300 lines", () => {
@@ -35,7 +37,10 @@ test("every file the extension builders add is at most 300 lines", () => {
   ];
   assert.ok(files.length > 1, "no extension builder file found");
   const tooLong = files
-    .map((rel) => ({ rel, lines: fs.readFileSync(path.join(REPO, rel), "utf8").split("\n").length - 1 }))
+    .map((rel) => ({
+      rel,
+      lines: fs.readFileSync(path.join(REPO, rel), "utf8").split("\n").length - 1,
+    }))
     .filter(({ lines }) => lines > LIMIT)
     .map(({ rel, lines }) => `${rel}: ${lines} lines`);
   assert.deepEqual(tooLong, []);

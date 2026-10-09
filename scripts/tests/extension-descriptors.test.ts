@@ -18,6 +18,11 @@ import { ExtError, TARGETS } from "../lib/extension/types.ts";
 const LIB = path.resolve(import.meta.dirname, "../lib");
 const scratch: string[] = [];
 
+/** A descriptor read with the platform parser, as the independent reference of the test. */
+function rawJson(name: string): unknown {
+  return JSON.parse(fs.readFileSync(path.join(LIB, name), "utf8")) as unknown;
+}
+
 function libWith(files: Record<string, string>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ext-desc-"));
   scratch.push(dir);
@@ -36,10 +41,10 @@ describe("readTargetTable", () => {
   });
 
   it("renders every column as text and mcpDelivery as a boolean, like the real file", () => {
-    const raw = JSON.parse(fs.readFileSync(path.join(LIB, "extension-targets.json"), "utf8"));
+    const raw = rawJson("extension-targets.json") as Record<string, Record<string, unknown>>;
     const table = readTargetTable(LIB);
     for (const target of TARGETS) {
-      const row = raw[target];
+      const row = raw[target] ?? {};
       assert.equal(table[target].shellTool, row.shellTool ?? "");
       assert.equal(table[target].rootToken, row.rootToken ?? "");
       assert.equal(table[target].hookFile, row.hookFile ?? "");
@@ -102,10 +107,10 @@ describe("mcpDeliveryOf", () => {
 
 describe("readPerCliKeys", () => {
   it("lists the key of every real row, in file order", () => {
-    const raw = JSON.parse(fs.readFileSync(path.join(LIB, "extension-percli-keys.json"), "utf8"));
+    const raw = rawJson("extension-percli-keys.json") as { key: string }[];
     assert.deepEqual(
       readPerCliKeys(LIB),
-      raw.map((row: { key: string }) => row.key),
+      raw.map((row) => row.key),
     );
     assert.ok(readPerCliKeys(LIB).includes("claude.author"));
   });

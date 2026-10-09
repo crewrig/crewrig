@@ -262,8 +262,7 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
-  # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
-  # release. No path filter, like `mempalace-transcript-node-24-0`.
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder twin suites.
   extension-builders-ts:
     runs-on: ubuntu-latest
     steps:
@@ -324,6 +323,8 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
+  # release. No path filter, like `mempalace-transcript-node-24-0`.
   build-components-ts-node-24-0:
     runs-on: ubuntu-latest
     steps:
