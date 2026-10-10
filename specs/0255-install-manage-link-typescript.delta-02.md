@@ -34,7 +34,9 @@ requirement of the parent and opens no question.*
 Given `~/.copilot/mcp-config.json` is a symbolic link into a directory that does not exist, and an
 MCP declaration `<name>.json`
 When `node scripts/manage-copilot-component.ts install mcp-servers <name>` runs
-Then it exits 1 with one `Error: <message>` line on standard error, prints no
+Then it exits 1 with one `Error: <message>` line on standard error naming the link's
+path, its unresolvable target and the corrective action (create the target's directory
+or remove the link), prints no
 `Merged:` line, and creates nothing: the link is unchanged, nothing exists at its
 target and no `.bak` file is left.
 
@@ -60,7 +62,9 @@ Replacement:
 > `jq … > "$config_file"` redirect) failed on standard error, yet, because every driver
 > runs the merge handler under `|| exit $?`, which suspends `set -e`, the script printed
 > `Merged: <name> into <key>` and exited 0 having written nothing; the TypeScript entry
-> exits 1 with one `Error: <message>` line on standard error, prints no `Merged:` line
+> exits 1 with one `Error: <message>` line on standard error, which names the path of the
+> link, the target that cannot be created and the corrective action (create the target's
+> directory or remove the link), prints no `Merged:` line
 > and writes nothing (no `.bak` file either), because reporting success while nothing
 > was written is a defect, and the observable changes are that exit status and that
 > output line; (m) deviation
