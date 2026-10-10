@@ -19,7 +19,7 @@ import { backupFile } from "./backup.ts";
 import { SetupExit } from "./exit.ts";
 import { readAndMerge } from "./gemini-settings-merge.ts";
 import type { MergeInput } from "./gemini-settings-merge.ts";
-import { writeJsonConfigSecure } from "./json-secure.ts";
+import { ModeRestrictError, writeJsonConfigSecure } from "./json-secure.ts";
 import { wrapStdioCommand } from "./trust-wrapper.ts";
 
 /** What the write needs of the setup context. */
@@ -138,9 +138,8 @@ export function geminiSettingsWrite(options: GeminiSettingsWriteOptions): number
   }
   for (const line of merged.warnings) io.out(line);
 
-  // The write reports through a buffer: a failure is told in the shell's words, by what had happened.
-  const errors: string[] = [];
-  const quiet = { io: { out: io.out, err: (line: string) => void errors.push(line) }, platform };
+  // The write's own lines are dropped: a failure is told in the shell's words, by what had happened.
+  const quiet = { io: { out: io.out, err: () => undefined }, platform };
   try {
     writeJsonConfigSecure({
       ctx: quiet,
@@ -150,8 +149,8 @@ export function geminiSettingsWrite(options: GeminiSettingsWriteOptions): number
     });
   } catch (error) {
     if (!(error instanceof SetupExit)) throw error;
-    const renamed = errors.some((line) => line.includes("could not be restricted to 0600"));
-    if (renamed) {
+    // Typed, not matched on text: the file was renamed into place, only its mode is unfinished.
+    if (error instanceof ModeRestrictError) {
       try {
         fs.chmodSync(target, 0o600);
       } catch {

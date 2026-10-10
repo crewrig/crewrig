@@ -151,3 +151,36 @@ describe("the production registration seams", () => {
     );
   });
 });
+
+describe("the production token seam", () => {
+  it("resolves the token under the context's home and palace, never the process's own", (t) => {
+    const sandbox = path.join(dir, "sandbox-home");
+    fs.mkdirSync(sandbox);
+    // Safety net: were the seam to regress to the process's own home, it would write into this decoy
+    // directory and never into the real ~/.mempalace.
+    const decoy = path.join(dir, "decoy-home");
+    fs.mkdirSync(decoy);
+    t.mock.method(os, "homedir", () => decoy);
+    for (const k of ["HOME", "USERPROFILE", "MEMPALACE_PALACE_PATH"]) {
+      const prior = process.env[k];
+      t.after(() => (prior === undefined ? delete process.env[k] : (process.env[k] = prior)));
+    }
+    process.env["HOME"] = decoy;
+    process.env["USERPROFILE"] = decoy;
+    delete process.env["MEMPALACE_PALACE_PATH"];
+    const palace = path.join(sandbox, "custom-palace");
+    const env = { MEMPALACE_PALACE_PATH: palace };
+    const deps = defaultEnsureHttpDeps({ ...ctx(env), home: sandbox }, noSpawn, {
+      host: "127.0.0.1",
+      port: "41893",
+    });
+    const token = deps.readToken();
+    assert.match(token, /^[A-Za-z0-9]{48}$/);
+    const servers = path.join(sandbox, ".mempalace", "server");
+    const [key] = fs.readdirSync(servers);
+    assert.ok(key !== undefined, "the token was created under the context's home");
+    assert.equal(fs.readFileSync(path.join(servers, key, "token"), "utf8").trim(), token);
+    assert.equal(deps.readToken(), token, "a second read returns the same token");
+    assert.deepEqual(fs.readdirSync(decoy), [], "nothing was written under the process's own home");
+  });
+});

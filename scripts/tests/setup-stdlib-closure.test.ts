@@ -12,7 +12,8 @@ import { after, describe, test } from "node:test";
 
 import { importClosure, REPO } from "./lib/setup-source-scan.ts";
 
-const LAYER1_NAMES = [
+/** Modules that must always exist: deleting or renaming one is a failure, never a silent skip. */
+const REQUIRED = [
   "argv",
   "answers",
   "prompt-ids",
@@ -26,23 +27,62 @@ const LAYER1_NAMES = [
   "worktree-warning",
   "tls-detect",
   "tls-offer",
+  "trust-wrapper",
   "deps-step",
   "prerequisites",
   "spawner",
   "context",
   "exit",
 ];
-/** Present since the first modules landed; their absence is a failure, not a skip. */
-const MUST_EXIST = new Set(LAYER1_NAMES.filter((n) => !["tls-detect", "tls-offer"].includes(n)));
+/**
+ * The only modules NOT scanned: they run after the dependency step and reach the service layer, whose
+ * usage-store CommonJS code requires built-ins without the `node:` prefix. Every other module under
+ * scripts/lib/setup/ is in LAYER 1 by default, so a new module is scanned until it is listed here.
+ * A name listed here that no longer exists fails the run.
+ */
+const AFTER_DEPENDENCY_STEP = [
+  "chroma-install",
+  "chroma-install-win",
+  "ensure-http",
+  "ensure-http-probe",
+  "trust-wrapper-install",
+];
 const MIN_CLOSURE = 20;
 
+const SETUP_DIR = path.join(REPO, "scripts/lib/setup");
 const rel = (name: string): string => `scripts/lib/setup/${name}.ts`;
-const entries = LAYER1_NAMES.map(rel).filter((p) => fs.existsSync(path.join(REPO, p)));
+const onDisk = new Set(
+  fs
+    .readdirSync(SETUP_DIR)
+    .filter((n) => n.endsWith(".ts"))
+    .map((n) => n.slice(0, -".ts".length)),
+);
+const entries = [...onDisk]
+  .filter((n) => !AFTER_DEPENDENCY_STEP.includes(n))
+  .sort()
+  .map(rel);
 
 describe("LAYER 1 import closure", () => {
-  test("every module of the explicit LAYER 1 list that must exist is present", () => {
-    const missing = [...MUST_EXIST].map(rel).filter((p) => !entries.includes(p));
-    assert.deepEqual(missing, []);
+  test("every required module exists and is scanned (trust-wrapper, tls-detect, tls-offer included)", () => {
+    assert.deepEqual(
+      REQUIRED.filter((n) => !onDisk.has(n)),
+      [],
+    );
+    assert.deepEqual(
+      REQUIRED.map(rel).filter((p) => !entries.includes(p)),
+      [],
+    );
+  });
+
+  test("an exempt name that does not exist fails", () => {
+    assert.deepEqual(
+      AFTER_DEPENDENCY_STEP.filter((n) => !onDisk.has(n)),
+      [],
+    );
+    assert.deepEqual(
+      AFTER_DEPENDENCY_STEP.filter((n) => REQUIRED.includes(n)),
+      [],
+    );
   });
 
   test("the closure holds no third-party package and no unresolvable relative import", () => {
@@ -55,12 +95,7 @@ describe("LAYER 1 import closure", () => {
       assert.ok(closure.files.has(e), `${e} is missing from its own closure`);
     // Reuse of the shared repo modules is the point of the closure walk: it must have reached them.
     assert.ok(closure.files.has("scripts/lib/link-or-copy.ts"), "link-or-copy.ts not reached");
-    if (entries.includes(rel("tls-offer"))) {
-      assert.ok(
-        closure.files.has("scripts/lib/tls-env.ts"),
-        "tls-env.ts not reached from tls-offer",
-      );
-    }
+    assert.ok(closure.files.has("scripts/lib/tls-env.ts"), "tls-env.ts not reached from tls-offer");
     const show = (f: { file: string; line: number; text: string }): string =>
       `${f.file}:${f.line} imports ${JSON.stringify(f.text)}`;
     assert.deepEqual(closure.bare.map(show), []);

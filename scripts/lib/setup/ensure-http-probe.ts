@@ -24,6 +24,7 @@ import { selectBackend } from "../service/backend.ts";
 import { installMcpDaemon } from "../service/daemon-install.ts";
 import { probeAccepts } from "../service/daemon-replace.ts";
 import type { InstallResult } from "../service/install.ts";
+import { derivedTokenPath, palacePath } from "../service/launcher/launcher-token.ts";
 import { readOrCreateToken } from "../service/token.ts";
 import type { Cli, InstallCtx, Spawner } from "./context.ts";
 
@@ -63,7 +64,10 @@ export function defaultEnsureHttpDeps(
   endpoint: { readonly host: string; readonly port: string },
 ): EnsureHttpDeps {
   return {
-    readToken: () => readOrCreateToken(),
+    // `mcp_token_path` reads `$HOME` and `MEMPALACE_PALACE_PATH`: here the context's, so a sandboxed
+    // run never resolves (or creates) the token under the process's own home.
+    readToken: () => readOrCreateToken(derivedTokenPath(palacePath(ctx.env, ctx.home), ctx.home)),
+    // The probe takes the endpoint and the token as arguments and reads neither env nor home.
     probeAccepts: (host, port, token) => probeAccepts(host, port, token),
     installDaemon: async () => {
       let backend: Awaited<ReturnType<typeof selectBackend>>;
