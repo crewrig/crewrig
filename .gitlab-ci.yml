@@ -499,6 +499,7 @@ install-ts:
         - "scripts/tests/install-differential.test.ts"
         - "scripts/tests/lib/install-sandbox.ts"
         - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/lib/oracle-taskfile-mutants.ts"
         - "scripts/tests/install-differential-extensions.test.ts"
         - "scripts/tests/install-golden.test.ts"
         - "scripts/tests/install-write-mode.test.ts"
