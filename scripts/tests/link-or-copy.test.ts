@@ -175,6 +175,17 @@ describe("linkOrCopy — refusals (R15)", () => {
   });
 });
 
+describe("a destination inside its source is refused (R16)", () => {
+  test("a name that merely starts with two dots is inside; a sibling sharing the prefix is not", () => {
+    const { src, root } = sandbox();
+    for (const place of [placeCopy, linkOrCopy]) {
+      assert.throws(() => place(src, path.join(src, "..x")), /inside its source/);
+      const sibling = path.join(root, "src", "skill-x");
+      assert.equal(place(src, sibling).dest, sibling);
+    }
+  });
+});
+
 describe("copy placement", () => {
   for (const state of ["absent", "file", "directory", "symlink", "dangling"] as const) {
     test(`placeCopy over a destination ${state}`, () => {

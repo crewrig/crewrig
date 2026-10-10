@@ -3,14 +3,14 @@
 // Ports `place_component` of the four manage-*-component.sh scripts, which are identical in it:
 // the item name is the basename of the source (a trailing slash does not change it, the shell's
 // `basename`), a `.gitkeep` is skipped, whatever sits at the destination (file, directory, link,
-// dangling link) is removed first, then link mode places through `linkOrCopy` and install mode
-// through `placeCopy`. A link that fell back to a copy prints `Copied:` (R17) and its outcome is
+// dangling link) is replaced by the staged swap of `linkOrCopy` (link mode) or `placeCopy` (install
+// mode), never removed first: a refusal leaves the old destination intact (R14). A link that fell back to a copy prints `Copied:` (R17) and its outcome is
 // collected so the caller prints ONE `summarizeFallbacks` notice at the end of the process (R18).
 
 import path from "node:path";
 
 import type { Io } from "../extension/types.ts";
-import { linkOrCopy, placeCopy, removePlaced, summarizeFallbacks } from "../link-or-copy.ts";
+import { linkOrCopy, placeCopy, summarizeFallbacks } from "../link-or-copy.ts";
 import type { LinkOrCopyOptions, LinkOutcome } from "../link-or-copy.ts";
 
 export type PlaceMode = "install" | "link";
@@ -53,7 +53,8 @@ export function placeComponent(
   if (name === ".gitkeep") return undefined;
   ctx.placed.push(name);
   const dest = path.join(destDir, name);
-  removePlaced(dest);
+  // No removal first: linkOrCopy and placeCopy replace any existing destination through the staged
+  // swap, so a refusal that is rethrown leaves the old destination intact (R14).
   const opts: LinkOrCopyOptions = { env: ctx.env, platform: ctx.platform, ...ctx.linkOptions };
   const outcome = mode === "link" ? linkOrCopy(src, dest, opts) : placeCopy(src, dest, opts);
   ctx.outcomes.push(outcome);

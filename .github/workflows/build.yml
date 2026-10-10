@@ -381,6 +381,38 @@ jobs:
               - 'scripts/tests/manage-place.test.ts'
               - 'scripts/tests/print-manage-declarations.test.ts'
               - 'scripts/tests/tree-copy-dereferenced.test.ts'
+              - 'scripts/install-antigravity-extension.ts'
+              - 'scripts/install-claude-plugin.ts'
+              - 'scripts/install-copilot-plugin.ts'
+              - 'scripts/install-extension-all.ts'
+              - 'scripts/install-extension.ts'
+              - 'scripts/install-workspace.ts'
+              - 'scripts/manage-antigravity-component.ts'
+              - 'scripts/manage-claude-component.ts'
+              - 'scripts/manage-copilot-component.ts'
+              - 'scripts/manage-workspace-component.ts'
+              - 'scripts/link-extensions.ts'
+              - 'scripts/unlink-component.ts'
+              - 'scripts/unlink-extensions.ts'
+              - 'scripts/lib/install/**'
+              - 'scripts/tests/manage-entry.test.ts'
+              - 'scripts/tests/marketplace.test.ts'
+              - 'scripts/tests/antigravity-tokens.test.ts'
+              - 'scripts/tests/install-all.test.ts'
+              - 'scripts/tests/install-entry-form.test.ts'
+              - 'scripts/tests/install-file-size.test.ts'
+              - 'scripts/tests/install-extension-reentrancy.test.ts'
+              - 'scripts/tests/install-differential.test.ts'
+              - 'scripts/tests/lib/install-sandbox.ts'
+              - 'scripts/tests/install-differential-extensions.test.ts'
+              - 'scripts/tests/install-golden.test.ts'
+              - 'scripts/tests/install-write-mode.test.ts'
+              - 'scripts/tests/windows-install-entries.test.ts'
+              - 'scripts/tests/lib/windows-proof-support.ts'
+              - 'scripts/tests/lib/windows-install-proof.ts'
+              - 'scripts/tests/lib/install-differential.ts'
+              - 'scripts/tests/lib/install-golden-*.ts'
+              - 'scripts/tests/fixtures/install-golden/**'
       - uses: actions/setup-node@v4
         if: steps.filter.outputs.install-ts == 'true'
         with:
@@ -392,9 +424,27 @@ jobs:
       - name: Floor guard accepts Node.js 24
         if: steps.filter.outputs.install-ts == 'true'
         run: node scripts/lib/node-floor-guard.js
-      - name: Test the TypeScript link-or-copy, component twin and manage modules
+      - name: Test the TypeScript link-or-copy, component twin, manage and install modules
         if: steps.filter.outputs.install-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts scripts/tests/manage-entry.test.ts scripts/tests/marketplace.test.ts scripts/tests/antigravity-tokens.test.ts scripts/tests/install-all.test.ts scripts/tests/install-entry-form.test.ts scripts/tests/install-file-size.test.ts scripts/tests/install-extension-reentrancy.test.ts scripts/tests/install-differential.test.ts scripts/tests/worktree-claim-launch.test.ts scripts/tests/install-differential-extensions.test.ts scripts/tests/install-golden.test.ts scripts/tests/install-write-mode.test.ts scripts/tests/windows-install-entries.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+
+  # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24 release.
+  # No path filter, like `extension-builders-ts-node-24-0`.
+  install-ts-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+      - name: Test the install entries
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-entry-form.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -2283,6 +2333,34 @@ jobs:
 
       - name: Test the portable extension builder suites
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-json.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-validate.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-args.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-golden.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0255 R28: the install, manage and link entries from pwsh and cmd.exe on Windows.
+  windows-install-entries:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      # Runs the thirteen entries against a sandbox HOME/USERPROFILE with stub CLIs, checks the placed
+      # files, stdout, statuses and the absence of carriage returns, and prints each step's time.
+      - name: Install entries proof
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-install-proof.ts
+
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

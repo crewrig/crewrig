@@ -426,7 +426,7 @@ install-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts scripts/tests/manage-entry.test.ts scripts/tests/marketplace.test.ts scripts/tests/antigravity-tokens.test.ts scripts/tests/install-all.test.ts scripts/tests/install-entry-form.test.ts scripts/tests/install-file-size.test.ts scripts/tests/install-extension-reentrancy.test.ts scripts/tests/install-differential.test.ts scripts/tests/worktree-claim-launch.test.ts scripts/tests/install-differential-extensions.test.ts scripts/tests/install-golden.test.ts scripts/tests/install-write-mode.test.ts scripts/tests/windows-install-entries.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -468,6 +468,47 @@ install-ts:
         - "scripts/tests/manage-place.test.ts"
         - "scripts/tests/print-manage-declarations.test.ts"
         - "scripts/tests/tree-copy-dereferenced.test.ts"
+        - "scripts/install-antigravity-extension.ts"
+        - "scripts/install-claude-plugin.ts"
+        - "scripts/install-copilot-plugin.ts"
+        - "scripts/install-extension-all.ts"
+        - "scripts/install-extension.ts"
+        - "scripts/install-workspace.ts"
+        - "scripts/manage-antigravity-component.ts"
+        - "scripts/manage-claude-component.ts"
+        - "scripts/manage-copilot-component.ts"
+        - "scripts/manage-workspace-component.ts"
+        - "scripts/link-extensions.ts"
+        - "scripts/unlink-component.ts"
+        - "scripts/unlink-extensions.ts"
+        - "scripts/lib/install/**"
+        - "scripts/tests/manage-entry.test.ts"
+        - "scripts/tests/marketplace.test.ts"
+        - "scripts/tests/antigravity-tokens.test.ts"
+        - "scripts/tests/install-all.test.ts"
+        - "scripts/tests/install-entry-form.test.ts"
+        - "scripts/tests/install-file-size.test.ts"
+        - "scripts/tests/install-extension-reentrancy.test.ts"
+        - "scripts/tests/install-differential.test.ts"
+        - "scripts/tests/lib/install-sandbox.ts"
+        - "scripts/tests/install-differential-extensions.test.ts"
+        - "scripts/tests/install-golden.test.ts"
+        - "scripts/tests/install-write-mode.test.ts"
+        - "scripts/tests/windows-install-entries.test.ts"
+        - "scripts/tests/lib/windows-proof-support.ts"
+        - "scripts/tests/lib/windows-install-proof.ts"
+        - "scripts/tests/lib/install-differential.ts"
+        - "scripts/tests/lib/install-golden-*.ts"
+        - "scripts/tests/fixtures/install-golden/**"
+
+install-ts-node-24-0:
+  image: node:24.0.0
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-entry-form.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 extension-render:
   image: node:24

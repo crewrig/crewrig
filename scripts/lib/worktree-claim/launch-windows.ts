@@ -45,6 +45,11 @@ export interface ResolveInput {
 export interface WindowsLaunchInput extends ResolveInput {
   /** The directory a name with a separator is resolved against. */
   readonly toplevel: string;
+  /**
+   * Let a path-like argument hold spaces and parentheses (`C:\Users\John Doe\...`): it is then
+   * wrapped in quotes for `cmd.exe`. Everything `UNSAFE_PATH` lists is still refused. Default false.
+   */
+  readonly allowSpaces?: boolean;
 }
 
 /** What to start: a file and its arguments, or the reason the command is refused. */
@@ -167,8 +172,13 @@ export function planWindowsLaunch(argv: readonly string[], input: WindowsLaunchI
   if (UNSAFE_PATH.test(resolved)) {
     return refused(name, `its path '${resolved}' holds a character cmd.exe would interpret`);
   }
+  const quoted: string[] = [];
   for (const [index, argument] of rest.entries()) {
-    if (!SAFE_ARGUMENT.test(argument)) {
+    if (SAFE_ARGUMENT.test(argument)) {
+      quoted.push(argument);
+    } else if (input.allowSpaces === true && isQuotablePath(argument)) {
+      quoted.push(`"${argument}"`);
+    } else {
       return refused(
         name,
         `argument ${index + 1} (${JSON.stringify(argument)}) is not a run of letters, digits and _.,:;=+@/\\- ` +
@@ -179,13 +189,18 @@ export function planWindowsLaunch(argv: readonly string[], input: WindowsLaunchI
   // `/s` strips the first and the last quote of the string that follows `/c`, so
   // the quoted path survives it; `windowsVerbatimArguments` keeps Node.js from
   // quoting that string a second time.
-  const line = `"${[`"${resolved}"`, ...rest].join(" ")}"`;
+  const line = `"${[`"${resolved}"`, ...quoted].join(" ")}"`;
   return {
     kind: "spawn",
     file: comSpec(input.env),
     args: ["/d", "/s", "/c", line],
     verbatim: true,
   };
+}
+
+/** A non-empty argument with nothing `UNSAFE_PATH` lists, and no trailing backslash that would escape the closing quote. */
+function isQuotablePath(argument: string): boolean {
+  return argument !== "" && !UNSAFE_PATH.test(argument) && !argument.endsWith("\\");
 }
 
 function refused(name: string, reason: string): WindowsPlan {

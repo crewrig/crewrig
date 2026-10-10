@@ -48,7 +48,7 @@ for (const leg of LEGS) {
       assert.equal(res.stdout, "");
       if (leg === "shell")
         assert.match(res.stderr, /: 1: Usage: install-copilot-plugin\.sh <extension-name>\n$/);
-      else assert.match(res.stderr, /Usage: install-copilot-plugin <extension-name>/);
+      else assert.match(res.stderr, /Usage: install-copilot-plugin\.sh <extension-name>/);
       assert.deepEqual(cliCalls(sb, "copilot"), []);
     });
 

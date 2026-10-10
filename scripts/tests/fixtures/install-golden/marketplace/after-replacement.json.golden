@@ -1,0 +1,28 @@
+{
+  "name": "<ROOTNAME>-local",
+  "owner": {
+    "name": "crewrig contributors"
+  },
+  "plugins": [
+    {
+      "name": "old",
+      "source": "./old"
+    },
+    {
+      "name": "alpha",
+      "description": "fixture",
+      "author": {
+        "name": "Unknown"
+      },
+      "source": "./alpha"
+    },
+    {
+      "name": "hello-world",
+      "description": "Demonstration extension showcasing MCP tools, commands, skills, and context.",
+      "author": {
+        "name": "crewrig contributors"
+      },
+      "source": "./hello-world"
+    }
+  ]
+}

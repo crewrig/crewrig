@@ -140,4 +140,47 @@ describe("mergeJsonEntry", () => {
       assert.equal(fs.existsSync(`${target}.bak`), false);
     },
   );
+
+  test(
+    "a config that is a link into a missing directory fails naming the link, the target and the action; nothing is written",
+    { skip: process.platform === "win32" },
+    () => {
+      for (const relative of [false, true]) {
+        const { declFile, configFile } = fixture('{"command":"c"}');
+        const missingDir = path.join(path.dirname(declFile), "absent");
+        const target = path.join(missingDir, "mcp-config.json");
+        const value = relative ? path.join("..", "..", "absent", "mcp-config.json") : target;
+        fs.mkdirSync(path.dirname(configFile), { recursive: true });
+        fs.symlinkSync(value, configFile);
+        const request = { declFile, configFile, key: "mcpServers", initial: INITIAL_MCP_CONFIG };
+        assert.throws(
+          () => mergeJsonEntry(request, io),
+          (error: unknown) =>
+            error instanceof ExtError &&
+            error.message.includes(configFile) &&
+            error.message.includes(target) &&
+            error.message.includes(`create the directory ${missingDir} or remove the link`),
+        );
+        assert.equal(fs.readlinkSync(configFile), value, "the link is unchanged");
+        assert.equal(fs.existsSync(`${configFile}.bak`), false);
+        assert.equal(fs.existsSync(missingDir), false, "nothing is created at the target");
+        assert.deepEqual(lines, []);
+      }
+    },
+  );
+
+  test(
+    "a config that is a link to a missing file in an existing directory is written through",
+    { skip: process.platform === "win32" },
+    () => {
+      const { declFile, configFile } = fixture('{"command":"c"}');
+      const target = path.join(path.dirname(declFile), "dotfiles", "mcp-config.json");
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.mkdirSync(path.dirname(configFile), { recursive: true });
+      fs.symlinkSync(target, configFile);
+      mergeJsonEntry({ declFile, configFile, key: "mcpServers", initial: INITIAL_MCP_CONFIG }, io);
+      assert.ok(fs.lstatSync(configFile).isSymbolicLink());
+      assert.match(fs.readFileSync(target, "utf8"), /"playwright"/);
+    },
+  );
 });

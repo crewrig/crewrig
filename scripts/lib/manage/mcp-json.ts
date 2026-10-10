@@ -9,7 +9,9 @@
 // Listed deviations: a declaration or a config that does not parse fails before the config
 // is replaced (the shell truncated it through `> "$config_file"`); the write is atomic and goes through a
 // link at the config path (the link survives, its target is updated); `.bak` stays beside the
-// configured path, a plain copy of what the link pointed to, as `cp` made it.
+// configured path, a plain copy of what the link pointed to, as `cp` made it; a link whose
+// target cannot be created (its directory is missing) fails with one `Error:` line naming the
+// link, the target and the corrective action, where the shell printed `Merged:` and wrote nothing.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -18,7 +20,7 @@ import { parseJson } from "../extension/json-ordered.ts";
 import { writeJsonText } from "../extension/json-write.ts";
 import { ExtError } from "../extension/types.ts";
 import type { Io, JsonValue } from "../extension/types.ts";
-import { writeFileAtomic } from "../tmp-file.ts";
+import { writeJsonKeepingMode } from "../install/write-mode.ts";
 
 /** What the shell wrote into a config that did not exist yet (`echo` adds the line feed). */
 export const INITIAL_MCP_CONFIG = '{"mcpServers":{}}\n';
@@ -42,6 +44,23 @@ function orEmptyObject(value: JsonValue | undefined, what: string): Map<string, 
   return value;
 }
 
+/** The link's final target when it cannot be created (its directory is missing), else undefined. */
+function uncreatableTarget(file: string): string | undefined {
+  let current = file;
+  for (let hops = 0; hops < 40; hops++) {
+    let stat: fs.Stats;
+    try {
+      stat = fs.lstatSync(current);
+    } catch {
+      // Nothing at `current`: a missing file is written through only when its directory exists.
+      return current === file || fs.existsSync(path.dirname(current)) ? undefined : current;
+    }
+    if (!stat.isSymbolicLink()) return undefined;
+    current = path.resolve(path.dirname(current), fs.readlinkSync(current));
+  }
+  return undefined;
+}
+
 /**
  * Merge one declaration into `configFile` and print `  Merged: <name> into <key>`.
  * Throws an `ExtError` naming the file when the declaration or the config is not JSON, or
@@ -49,6 +68,12 @@ function orEmptyObject(value: JsonValue | undefined, what: string): Map<string, 
  */
 export function mergeJsonEntry(req: MergeRequest, io: Io): void {
   const name = path.basename(req.declFile, ".json");
+  const target = uncreatableTarget(req.configFile);
+  if (target !== undefined) {
+    throw new ExtError(
+      `${req.configFile} is a symbolic link to ${target}, which cannot be created: create the directory ${path.dirname(target)} or remove the link`,
+    );
+  }
   fs.mkdirSync(path.dirname(req.configFile), { recursive: true });
   if (!fs.existsSync(req.configFile)) fs.writeFileSync(req.configFile, req.initial);
   fs.copyFileSync(req.configFile, `${req.configFile}.bak`);
@@ -63,6 +88,6 @@ export function mergeJsonEntry(req: MergeRequest, io: Io): void {
   root.set(req.key, entries);
 
   // The shell's `> "$config_file"` wrote through a link (dotfile manager); a rename would replace it.
-  writeFileAtomic(fs.realpathSync(req.configFile), writeJsonText(root));
+  writeJsonKeepingMode(fs.realpathSync(req.configFile), writeJsonText(root));
   io.out(`  Merged: ${name} into ${req.key}`);
 }

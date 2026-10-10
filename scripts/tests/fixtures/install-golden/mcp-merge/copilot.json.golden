@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "old": {
+      "command": "keep"
+    },
+    "demo": {
+      "command": "node",
+      "args": [
+        "a",
+        "b"
+      ],
+      "env": {
+        "K": "v"
+      }
+    }
+  },
+  "theme": "dark"
+}
