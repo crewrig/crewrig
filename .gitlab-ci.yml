@@ -540,15 +540,11 @@ setup-oracle:
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
-        - "scripts/setup-antigravity-interactive.sh"
-        - "scripts/setup-claude-interactive.sh"
-        - "scripts/setup-copilot-interactive.sh"
-        - "scripts/setup-gemini-interactive.sh"
-        - "scripts/lib/**"
+        - "scripts/**"
         - "config/**"
         - "hooks/**"
         - "artifacts/core/rules/**"
@@ -572,11 +568,7 @@ setup-oracle:
         - "scripts/tests/fixtures/setup-golden/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
-        - "scripts/setup-antigravity-interactive.sh"
-        - "scripts/setup-claude-interactive.sh"
-        - "scripts/setup-copilot-interactive.sh"
-        - "scripts/setup-gemini-interactive.sh"
-        - "scripts/lib/**"
+        - "scripts/**"
         - "config/**"
         - "hooks/**"
         - "artifacts/core/rules/**"

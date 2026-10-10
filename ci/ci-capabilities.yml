@@ -629,11 +629,7 @@ capabilities:
       - on: pull-request
         branches: [main, "release/**"]
         paths:
-          - "scripts/setup-antigravity-interactive.sh"
-          - "scripts/setup-claude-interactive.sh"
-          - "scripts/setup-copilot-interactive.sh"
-          - "scripts/setup-gemini-interactive.sh"
-          - "scripts/lib/**"
+          - "scripts/**"
           - "config/**"
           - "hooks/**"
           - "artifacts/core/rules/**"
@@ -658,11 +654,7 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
         paths:
-          - "scripts/setup-antigravity-interactive.sh"
-          - "scripts/setup-claude-interactive.sh"
-          - "scripts/setup-copilot-interactive.sh"
-          - "scripts/setup-gemini-interactive.sh"
-          - "scripts/lib/**"
+          - "scripts/**"
           - "config/**"
           - "hooks/**"
           - "artifacts/core/rules/**"
@@ -691,7 +683,7 @@ capabilities:
     command:
       - node scripts/lib/node-floor-guard.js
       - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts
 
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then

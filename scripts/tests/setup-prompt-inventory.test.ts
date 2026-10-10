@@ -33,6 +33,8 @@ const classes = new Map<string, Cancel>();
 const unknown: string[] = [];
 /** The scenarios each question was asked in: id -> cli -> scenario names. */
 const askedIn = new Map<string, Map<Cli, Set<string>>>();
+/** The witness per `<cli>/<scenario>`: the run exited 0 and asked at least one question. */
+const ran = new Set<string>();
 const linkResults = new Map<Cli, { n: CaseResult; y: CaseResult; eof: CaseResult }>();
 
 const FIXTURE_DIR =
@@ -45,6 +47,7 @@ const catalogue = (dir: string): string[] =>
     .sort();
 
 function record(cli: Cli, result: CaseResult, scenario: string): void {
+  if (result.status === 0 && result.fzfRecords.length > 0) ran.add(`${cli}/${scenario}`);
   for (const r of result.fzfRecords) {
     const id = idOfHeader(r.header);
     if (id === undefined) {
@@ -217,8 +220,10 @@ describe("setup prompt inventory (shell oracle)", skip === undefined ? {} : { sk
         const where = askedIn.get(r.id)?.get(cli) ?? new Set<string>();
         for (const name of ASKED[r.id] ?? [])
           assert.ok(where.has(name), `${cli}/${r.id} must be asked in ${name} (${r.when})`);
-        for (const name of NOT[r.id] ?? [])
+        for (const name of NOT[r.id] ?? []) {
+          assert.ok(ran.has(`${cli}/${name}`), `${cli}/${name} did not run to its end (witness)`);
           assert.ok(!where.has(name), `${cli}/${r.id} must not be asked in ${name} (${r.when})`);
+        }
       }
     });
   }
