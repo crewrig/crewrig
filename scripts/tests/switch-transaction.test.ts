@@ -348,3 +348,20 @@ test("replacement: on Windows the ended task is run again at once", async () => 
   assert.equal(ok, true);
   assert.deepEqual(calls, ["stop", "start"]);
 });
+
+test("replacement: a refused stop or start is reported, not left to the generic timeout", async () => {
+  const r = replaceFixture((n) => n >= 3);
+  const ok = await replaceDaemonProcess({
+    ...r.opts,
+    backend: {
+      ...r.opts.backend,
+      kind: "schtasks",
+      status: () => ({ registered: true, running: false }),
+      stop: () => ({ ok: false, reason: "stop refused" }),
+      start: () => ({ ok: false, reason: "run refused" }),
+    },
+  });
+  assert.equal(ok, true);
+  assert.ok(r.err.some((l) => l.includes("the restart request failed: stop refused")));
+  assert.ok(r.err.some((l) => l.includes("could not be run again: run refused")));
+});

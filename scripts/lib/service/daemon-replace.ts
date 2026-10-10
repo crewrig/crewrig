@@ -98,9 +98,11 @@ export async function replaceDaemonProcess(o: ReplaceOptions): Promise<boolean> 
   // The daemon is a child of the launcher the supervisor runs (requirement 11): a listener is
   // the supervised daemon when it is the supervised PID or descends from it. Anything else
   // is a squatter; an unreadable process table never makes a listener one.
+  // One process-table read per poll round, not one per question.
+  let table: ParentTable | null | undefined;
   const isSquatter = (current: number, expected: number): boolean => {
     if (current === expected) return false;
-    const table = parents();
+    if (table === undefined) table = parents();
     return table !== null && !hasAncestor(table, current, expected);
   };
 
@@ -129,14 +131,19 @@ export async function replaceDaemonProcess(o: ReplaceOptions): Promise<boolean> 
         : `no ${backend.kind === "systemd" ? "systemd unit" : "Windows task"} active for '${names.unit}'`;
     io.err(`  WARNING: ${what} — issuing no restart request.`);
   } else {
-    backend.stop(names);
+    const ended = backend.stop(names);
+    if (!ended.ok) io.err(`  WARNING: the restart request failed: ${ended.reason}`);
     // Under launchd and systemd a stop is a restart request; the Task Scheduler ends the
     // task and starts nothing, so on Windows it is run again at once.
-    if (backend.kind === "schtasks") backend.start(names);
+    if (backend.kind === "schtasks") {
+      const started = backend.start(names);
+      if (!started.ok) io.err(`  WARNING: the task could not be run again: ${started.reason}`);
+    }
   }
 
   const deadline = now() + deadlineS * 1000;
   while (now() < deadline) {
+    table = undefined;
     let current = listener(portNum);
     const expected = expectedPid();
     if (current !== null && expected !== null && isSquatter(current, expected)) {
