@@ -17,12 +17,24 @@ import { createHermeticEnv, writeStub } from "./hermetic-env.ts";
 
 export type Leg = "shell" | "ts";
 
-/** The legs available now, by file existence in the real repository (one entry name suffices). */
-export const IMPL: readonly Leg[] = fs.existsSync(
+const AVAILABLE: readonly Leg[] = fs.existsSync(
   path.join(REPO, "scripts/setup-claude-interactive.ts"),
 )
   ? ["shell", "ts"]
   : ["shell"];
+
+/**
+ * The legs available now, by file existence in the real repository (one entry name suffices).
+ * `SETUP_GOLDEN_LEGS` (`shell`, `ts` or `shell,ts`) narrows them, to run one leg of the golden
+ * suites alone; unset, every available leg runs.
+ */
+export const IMPL: readonly Leg[] = ((): readonly Leg[] => {
+  const wanted = (process.env["SETUP_GOLDEN_LEGS"] ?? "")
+    .split(",")
+    .map((leg) => leg.trim())
+    .filter((leg) => leg !== "");
+  return wanted.length === 0 ? AVAILABLE : AVAILABLE.filter((leg) => wanted.includes(leg));
+})();
 
 export interface SetupSandboxOptions {
   /** No `config/SOUL.md` and `config/PROFILE.md` (the missing-prerequisite case). */

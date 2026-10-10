@@ -540,7 +540,7 @@ setup-oracle:
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts scripts/tests/setup-entry-form.test.ts scripts/tests/setup-golden-deviations.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -563,6 +563,8 @@ setup-oracle:
         - "scripts/tests/setup-golden-antigravity.test.ts"
         - "scripts/tests/setup-prompt-inventory.test.ts"
         - "scripts/tests/setup-oracle-mutation.test.ts"
+        - "scripts/tests/setup-golden-deviations.test.ts"
+        - "scripts/tests/setup-entry-form.test.ts"
         - "scripts/tests/lib/setup-*.ts"
         - "scripts/tests/lib/real-home-guard.ts"
         - "scripts/tests/fixtures/setup-golden/**"
@@ -587,6 +589,62 @@ setup-oracle:
         - "scripts/tests/setup-golden-antigravity.test.ts"
         - "scripts/tests/setup-prompt-inventory.test.ts"
         - "scripts/tests/setup-oracle-mutation.test.ts"
+        - "scripts/tests/setup-golden-deviations.test.ts"
+        - "scripts/tests/setup-entry-form.test.ts"
+        - "scripts/tests/lib/setup-*.ts"
+        - "scripts/tests/lib/real-home-guard.ts"
+        - "scripts/tests/fixtures/setup-golden/**"
+
+setup-differential:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+  script:
+    - "node scripts/lib/node-floor-guard.js"
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-differential.test.ts scripts/tests/setup-differential-antigravity.test.ts scripts/tests/setup-differential-claude.test.ts scripts/tests/setup-differential-copilot.test.ts scripts/tests/setup-differential-gemini.test.ts scripts/tests/setup-twins-differential.test.ts scripts/tests/setup-twins-differential-usage.test.ts scripts/tests/setup-twins-differential-version.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/**"
+        - "config/**"
+        - "hooks/**"
+        - "artifacts/core/rules/**"
+        - "artifacts/core/system-context/**"
+        - "mcp-servers.org.json"
+        - "AGENTS.org.md"
+        - "package.json"
+        - "package-lock.json"
+        - "scripts/tests/setup-differential.test.ts"
+        - "scripts/tests/setup-differential-claude.test.ts"
+        - "scripts/tests/setup-differential-gemini.test.ts"
+        - "scripts/tests/setup-differential-copilot.test.ts"
+        - "scripts/tests/setup-differential-antigravity.test.ts"
+        - "scripts/tests/setup-twins-differential.test.ts"
+        - "scripts/tests/setup-twins-differential-usage.test.ts"
+        - "scripts/tests/setup-twins-differential-version.test.ts"
+        - "scripts/tests/lib/setup-*.ts"
+        - "scripts/tests/lib/real-home-guard.ts"
+        - "scripts/tests/fixtures/setup-golden/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/**"
+        - "config/**"
+        - "hooks/**"
+        - "artifacts/core/rules/**"
+        - "artifacts/core/system-context/**"
+        - "mcp-servers.org.json"
+        - "AGENTS.org.md"
+        - "package.json"
+        - "package-lock.json"
+        - "scripts/tests/setup-differential.test.ts"
+        - "scripts/tests/setup-differential-claude.test.ts"
+        - "scripts/tests/setup-differential-gemini.test.ts"
+        - "scripts/tests/setup-differential-copilot.test.ts"
+        - "scripts/tests/setup-differential-antigravity.test.ts"
+        - "scripts/tests/setup-twins-differential.test.ts"
+        - "scripts/tests/setup-twins-differential-usage.test.ts"
+        - "scripts/tests/setup-twins-differential-version.test.ts"
         - "scripts/tests/lib/setup-*.ts"
         - "scripts/tests/lib/real-home-guard.ts"
         - "scripts/tests/fixtures/setup-golden/**"

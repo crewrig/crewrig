@@ -28,6 +28,11 @@ export interface GoldenCase {
   readonly seed?: (sb: SetupSandbox) => void;
   /** Legs the cell runs on; default every available leg. */
   readonly legs?: readonly Leg[];
+  /**
+   * Opt-in tagged deviations (setup-golden-deviations.ts) honoured for this cell on the `ts` leg
+   * only, besides the always-on ones; a tag a cell did not list is never applied to it.
+   */
+  readonly deviations?: readonly string[];
   /** Set when the cell is the shell baseline only: the reason (a deviation letter of requirement 44 or delta-01). */
   readonly shellOnly?: string;
 }

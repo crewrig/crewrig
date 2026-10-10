@@ -156,6 +156,7 @@ for (const rc of [0, 1, 2] as const) {
     note: `R26: ensure_mempalace_http rc ${rc} — the stdio entry is written before; rc 1/2 only print the warning.`,
     stubs: { probe: rc },
     ...(rc === 2 ? { seed: blankToken } : {}),
+    ...(rc === 1 ? { deviations: ["s"] } : {}),
   });
 }
 copilot.push(

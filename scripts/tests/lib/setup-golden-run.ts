@@ -15,6 +15,8 @@ import {
   seedMempalaceVenv,
   startChromaHeartbeat,
 } from "./setup-golden-common.ts";
+import { DEFAULT_MCP_PORT, startGoldenDaemon } from "./setup-golden-daemon.ts";
+import { translateAnswers, unusedIds, withoutIds } from "./setup-golden-answers.ts";
 import { createSetupSandbox } from "./setup-sandbox.ts";
 import type { Leg } from "./setup-sandbox.ts";
 import { bakCountOf, normalize, readTokens, snapshot, treeOf } from "./setup-golden-tree.ts";
@@ -74,8 +76,22 @@ function exposeTools(bin: string, names: readonly string[]): void {
   }
 }
 
-/** Build a sandbox for the case, run its setup on `leg`, return the normalised observable result. */
+/**
+ * Run the case on `leg` and return the normalised observable result. The TypeScript leg gets the
+ * translated `--answer` arguments (setup-golden-answers.ts); the translation answers every question
+ * the setup can ask, so a run that reports unused answers is run again without them and the
+ * stderr compared is the setup's own.
+ */
 export function runCase(c: GoldenCase, leg: Leg): CaseResult {
+  if (leg !== "ts") return runOnce(c, leg, []);
+  const answers = translateAnswers(c);
+  const first = runOnce(c, leg, answers);
+  const unused = unusedIds(first.stderr);
+  return unused.length === 0 ? first : runOnce(c, leg, withoutIds(answers, unused));
+}
+
+/** Build a sandbox for the case, run its setup on `leg` with `extra` appended to its args. */
+function runOnce(c: GoldenCase, leg: Leg, extra: readonly string[]): CaseResult {
   const sb = createSetupSandbox(c.sandbox);
   try {
     const chromaPort = c.env?.["MEMPALACE_CHROMA_PORT"] ?? "";
@@ -83,7 +99,7 @@ export function runCase(c: GoldenCase, leg: Leg): CaseResult {
     exposeTools(sb.bin, c.tools ?? DEFAULT_TOOLS);
     const before = snapshot(sb);
     c.seed?.(sb);
-    const res = sb.run(entryOf(c.cli), c.args ?? [], {
+    const res = sb.run(entryOf(c.cli), [...(c.args ?? []), ...extra], {
       leg,
       ...(c.stdin === undefined ? {} : { stdin: c.stdin }),
       ...(c.env === undefined ? {} : { env: c.env }),
@@ -133,13 +149,26 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
   const base = baseStubs(c.cli);
   const stubs = { ...base, ...c.stubs, fzf: { ...base.fzf, ...c.stubs?.fzf } };
   const beat = await startChromaHeartbeat();
+  // The TypeScript leg probes the daemon over real HTTP: a loopback stand-in takes the stub
+  // `curl`'s decisions (setup-golden-daemon.ts, deviation tag (l)).
+  const daemon =
+    leg === "ts"
+      ? await startGoldenDaemon({ probe: stubs.probe ?? 0, port: c.env?.["MEMPALACE_MCP_PORT"] })
+      : undefined;
   try {
     return runCase(
       {
         ...c,
         stubs,
         tools: [...commonTools, ...(c.tools ?? [])],
-        env: { MEMPALACE_CHROMA_PORT: String(beat.port), ...c.env },
+        env: {
+          MEMPALACE_CHROMA_PORT: String(beat.port),
+          // Only a fallback port (the wanted one was taken) is passed on; else the default stands.
+          ...(daemon === undefined || String(daemon.port) === DEFAULT_MCP_PORT
+            ? {}
+            : { MEMPALACE_MCP_PORT: String(daemon.port) }),
+          ...c.env,
+        },
         seed: (sb) => {
           if (stubs.mempalaceMissing !== true) seedMempalaceVenv(sb);
           c.seed?.(sb);
@@ -149,5 +178,6 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
     );
   } finally {
     beat.stop();
+    daemon?.stop();
   }
 }

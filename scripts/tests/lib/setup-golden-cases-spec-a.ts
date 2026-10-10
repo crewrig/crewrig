@@ -165,6 +165,8 @@ const missingPrerequisite = both((_, cli) =>
         id: "missing-prerequisite",
         note: "The Gemini setup has no CLI prerequisite beyond fzf and jq; the real branch is the missing jq: `Error: jq is required but not installed.` and status 1 (R7 missing prerequisite, R21).",
         seed: (sb) => fs.rmSync(path.join(sb.bin, "jq")),
+        // Deviation tag (a): the TypeScript setup has no `jq` guard (requirement 44 (a)).
+        legs: ["shell"],
       },
 );
 
@@ -185,6 +187,10 @@ const cancelUnguarded = both((f) => ({
   note: "The keep-or-refresh question is cancelled: its site has no `|| true`, so `set -e` aborts the shell with the fzf status (130), nothing past the question is written (R7 cancelled prompt, R15).",
   stubs: { fzf: { Existing: CANCEL } },
   seed: (sb) => seedRule(sb, f),
+  // Shell only, deviation tags (c)/(e)/(g) of requirement 44: an abort-class cancel has no
+  // non-terminal form on the TypeScript leg (no pre-answer; closed stdin is exit 2). The TS side
+  // is covered by setup-prompt-tty.test.ts and setup-prompt-integration.test.ts (fake terminal).
+  legs: ["shell"],
 }));
 
 const linkAnswersRemain = both((f) => ({

@@ -648,6 +648,8 @@ capabilities:
           - "scripts/tests/setup-golden-antigravity.test.ts"
           - "scripts/tests/setup-prompt-inventory.test.ts"
           - "scripts/tests/setup-oracle-mutation.test.ts"
+          - "scripts/tests/setup-golden-deviations.test.ts"
+          - "scripts/tests/setup-entry-form.test.ts"
           - "scripts/tests/lib/setup-*.ts"
           - "scripts/tests/lib/real-home-guard.ts"
           - "scripts/tests/fixtures/setup-golden/**"
@@ -673,6 +675,8 @@ capabilities:
           - "scripts/tests/setup-golden-antigravity.test.ts"
           - "scripts/tests/setup-prompt-inventory.test.ts"
           - "scripts/tests/setup-oracle-mutation.test.ts"
+          - "scripts/tests/setup-golden-deviations.test.ts"
+          - "scripts/tests/setup-entry-form.test.ts"
           - "scripts/tests/lib/setup-*.ts"
           - "scripts/tests/lib/real-home-guard.ts"
           - "scripts/tests/fixtures/setup-golden/**"
@@ -683,7 +687,7 @@ capabilities:
     command:
       - node scripts/lib/node-floor-guard.js
       - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts scripts/tests/setup-entry-form.test.ts scripts/tests/setup-golden-deviations.test.ts
 
   # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules
   # (scripts/lib/setup/**), the TLS environment quoting and writer, the confirm remainder and the
@@ -691,6 +695,69 @@ capabilities:
   # no entry twin on Node.js 24.0.0 exists yet. The production dependency step is its own command,
   # before the first test call. The suites that need a POSIX shell skip themselves on win32; the
   # Windows exercise of the same list is `windows-setup-units`.
+  # Spec 0256 requirement 10 (ticket #1335), PR C: the parity proof. Every golden cell that runs on both
+  # legs is run on the unchanged shell setup and on the TypeScript entry and the two results are
+  # compared directly through the tagged deviations (one shard file per CLI), and each TypeScript twin of
+  # a shell library function is compared with its original. Linux only (needs bash and jq); retired
+  # with the shell setups.
+  - id: setup-differential
+    name: "Run the shell-against-TypeScript parity proof of the four setups and the twin differential suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/**"
+          - "config/**"
+          - "hooks/**"
+          - "artifacts/core/rules/**"
+          - "artifacts/core/system-context/**"
+          - "mcp-servers.org.json"
+          - "AGENTS.org.md"
+          - "package.json"
+          - "package-lock.json"
+          - "scripts/tests/setup-differential.test.ts"
+          - "scripts/tests/setup-differential-claude.test.ts"
+          - "scripts/tests/setup-differential-gemini.test.ts"
+          - "scripts/tests/setup-differential-copilot.test.ts"
+          - "scripts/tests/setup-differential-antigravity.test.ts"
+          - "scripts/tests/setup-twins-differential.test.ts"
+          - "scripts/tests/setup-twins-differential-usage.test.ts"
+          - "scripts/tests/setup-twins-differential-version.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/**"
+          - "config/**"
+          - "hooks/**"
+          - "artifacts/core/rules/**"
+          - "artifacts/core/system-context/**"
+          - "mcp-servers.org.json"
+          - "AGENTS.org.md"
+          - "package.json"
+          - "package-lock.json"
+          - "scripts/tests/setup-differential.test.ts"
+          - "scripts/tests/setup-differential-claude.test.ts"
+          - "scripts/tests/setup-differential-gemini.test.ts"
+          - "scripts/tests/setup-differential-copilot.test.ts"
+          - "scripts/tests/setup-differential-antigravity.test.ts"
+          - "scripts/tests/setup-twins-differential.test.ts"
+          - "scripts/tests/setup-twins-differential-usage.test.ts"
+          - "scripts/tests/setup-twins-differential-version.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - node scripts/lib/node-floor-guard.js
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-differential.test.ts scripts/tests/setup-differential-antigravity.test.ts scripts/tests/setup-differential-claude.test.ts scripts/tests/setup-differential-copilot.test.ts scripts/tests/setup-differential-gemini.test.ts scripts/tests/setup-twins-differential.test.ts scripts/tests/setup-twins-differential-usage.test.ts scripts/tests/setup-twins-differential-version.test.ts
+
   - id: setup-modules-ts
     name: "Run the TypeScript setup module, TLS quoting and confirm remainder unit suites"
     trigger:
@@ -1009,6 +1076,32 @@ capabilities:
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0256 R40).
+
+  # Spec 0256 requirements 34-35 (ticket #1335), PR C: the Windows proof of the four entries. The
+  # production dependencies are installed first, the floor guard runs as its own step, then the proof
+  # runs the entries under pwsh against a sandbox HOME/USERPROFILE with no POSIX shell on PATH,
+  # including the end-to-end "install CrewRig from PowerShell" run of the Claude entry. Timings are
+  # printed, never asserted. No `paths:` filter, like the Windows jobs above.
+  - id: windows-setup-entries
+    name: "Windows setup entries: production install, floor guard and the install-from-PowerShell proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-setup-entries`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0256 R34).
 
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
