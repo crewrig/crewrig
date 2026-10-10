@@ -1,0 +1,35 @@
+{
+  "tree": [
+    {"path":"<HOME>/.crewrig","kind":"dir"},
+    {"path":"<HOME>/.crewrig/system-context","kind":"dir"},
+    {"path":"<HOME>/.crewrig/system-context/friction-reporting-reference.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/system-context/friction-reporting-reference.md"},
+    {"path":"<HOME>/.crewrig/system-context/long-running-task-convention.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/system-context/long-running-task-convention.md"},
+    {"path":"<HOME>/.crewrig/system-context/mcp-tools-reference.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/system-context/mcp-tools-reference.md"},
+    {"path":"<HOME>/.crewrig/system-context/obsidian-protocol.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/system-context/obsidian-protocol.md"},
+    {"path":"<HOME>/.crewrig/system-context/palace-structure-conventions.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/system-context/palace-structure-conventions.md"},
+    {"path":"<HOME>/.crewrig/validation.conf","kind":"file","mode":"0644","sha256":"985ae7a9749795d5fb1b6acc1a957ea419723879fed3a88254b504e8581e6f2e"},
+    {"path":"<HOME>/.gemini","kind":"dir"},
+    {"path":"<HOME>/.gemini/00_SOUL.md","kind":"file","mode":"0644","sha256":"repo:config/SOUL.md"},
+    {"path":"<HOME>/.gemini/20_ORGANIZATION.md","kind":"file","mode":"0644","sha256":"repo:config/ORGANIZATION.md"},
+    {"path":"<HOME>/.gemini/60_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-tools.md"},
+    {"path":"<HOME>/.gemini/65_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:config/TOOLS.md"},
+    {"path":"<HOME>/.local","kind":"dir"},
+    {"path":"<HOME>/.local/share","kind":"dir"},
+    {"path":"<HOME>/.local/share/pipx","kind":"dir"},
+    {"path":"<HOME>/.local/share/pipx/venvs","kind":"dir"},
+    {"path":"<HOME>/.local/share/pipx/venvs/mempalace","kind":"dir"},
+    {"path":"<HOME>/.local/share/pipx/venvs/mempalace/bin","kind":"dir"},
+    {"path":"<HOME>/.local/share/pipx/venvs/mempalace/bin/chroma","kind":"file","mode":"0755","sha256":"306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"},
+    {"path":"<HOME>/.local/share/pipx/venvs/mempalace/bin/python","kind":"file","mode":"0755","sha256":"03fdc0f525c8854bea2d475ca6ec81e78afba8e5dc304da74f53b8fecb2c038e"},
+    {"path":"<REPO>/.crewrig-state","kind":"dir"},
+    {"path":"<REPO>/.crewrig-state/production-deps.sha256","kind":"file","mode":"0600","sha256":"7aea46ee62e646dfe4772c2836ead8d4b63dbd3b55f6fe5cbb1e8879ef0ff72b"}
+  ],
+  "bakCount": {},
+  "fzf": [
+    {"header":"Validation backend? (internal = built-in AskUserQuestion prompt; plannotator = rich browser review, opt-in)","options":["internal","plannotator"],"answer":"internal","unscripted":false,"cancelled":false},
+    {"header":"Translate the spec/plan into your preferred language for the gate presentation only? (the repo artifact stays English)","options":["off","on"],"answer":"off","unscripted":false,"cancelled":false},
+    {"header":"Pedagogy level for validation requests? (simple / contextual / professor)","options":["contextual","simple","professor"],"answer":"contextual","unscripted":false,"cancelled":false},
+    {"header":"Generate illustrations for reviews? (honoured only with the plannotator backend + a browser surface)","options":["off","on"],"answer":"off","unscripted":false,"cancelled":false}
+  ],
+  "curl": []
+}

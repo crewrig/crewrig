@@ -1,0 +1,4 @@
+No level catalogue entries found under <REPO>/config/level — skipping level selection.
+No expertise catalogue entries found under <REPO>/config/expertise — skipping expertise selection.
+No team catalogue entries found under <REPO>/config/teams — skipping team selection.
+Warning: <REPO>/crewrig.config.toml not found — placeholders will be left literal.

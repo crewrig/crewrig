@@ -1,0 +1,114 @@
+====================================
+  Claude Code Configuration Setup
+====================================
+
+Installing shared configuration...
+  Copied: ORGANIZATION.md -> rules/20-organization.md
+  Copied: artifacts/core/rules/60-tools.md -> rules/60-tools.md
+  Copied: TOOLS.md -> rules/65-org-tools.md
+  Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
+  Copied: SOUL.md -> rules/00-soul.md
+
+User-gate validation backend (spec 0080):
+  Validation backend recorded: backend=internal translate=off pedagogy=contextual illustration=off
+    -> <HOME>/.crewrig/validation.conf
+
+
+Production dependencies: running 'npm ci --omit=dev --workspaces=false'...
+
+Configuring MCP servers via 'claude mcp add --scope user'...
+
+Sequential Thinking MCP server (working memory):
+  Command: npx -y @modelcontextprotocol/server-sequential-thinking
+  sequentialthinking: registered (scope=user)
+
+MemPalace MCP server (persistent agent memory):
+  Detected interpreter: <HOME>/.local/share/pipx/venvs/mempalace/bin/python (mempalace 3.6.0)
+
+Installing shared ChromaDB HTTP daemon supervisor (issue #98)...
+  Installed: <HOME>/.config/systemd/user/mempalace-chroma-server.service
+  Enabled and started: mempalace-chroma-server.service
+
+Shared memory daemon (spec 0113 delta-02): defaulting claude to HTTP.
+  Without it, every session spawns its own memory server and only the
+  first one to write can write — the rest are refused for their whole life.
+  claude now reaches shared memory through the daemon.
+
+  NOTE: this run switched claude only. Still on the previous arrangement:
+    - copilot
+    - antigravity
+  They will contend for the memory lock with claude until they switch too.
+  Switch the whole machine at once with: task mempalace:switch-http
+
+  Restart any running claude session to pick this up.
+
+  Installed: settings.json
+
+Select your team:
+  Copied: teams/ATLAS.md -> rules/50-team.md
+Team: ATLAS
+
+Select your expertise:
+  Copied: expertise/BACKEND-JAVA.md -> rules/40-expertise.md
+Expertise: BACKEND-JAVA
+
+Select your experience level:
+  Copied: level/CONFIRMED.md -> rules/10-level.md
+Level: CONFIRMED
+
+Setting up personal profile...
+  Copied: PROFILE.md -> rules/30-profile.md
+
+Installing library components to <HOME>/.claude/skills (automatic)...
+Tier not built (no <REPO>/dist/library/.claude) — building automatically via 'bash scripts/build-components.sh --target claude'...
+=========================================
+  Community Component Builder
+  Target: claude
+  Mode: BUILD (generate files)
+=========================================
+
+--- Tier: core (output root: <REPO>) ---
+
+Done.
+  Tier 'library' not built (no <REPO>/dist/library/.claude) — run 'bash scripts/build-components.sh' first.
+
+  'org' install skipped.
+
+
+
+  Session recording disabled (can enable later by re-running this script).
+
+Enabling usage capture will:
+  1. Register <REPO>/hooks/usage-capture.ts
+     on the Stop, SessionEnd event(s), in <HOME>/.claude/settings.json
+     as a direct node command (no shell wrapper; needs Node.js 24 or later when the hook fires):
+       node "<REPO>/hooks/usage-capture.ts" claude-code SessionEnd
+       node "<REPO>/hooks/usage-capture.ts" claude-code Stop
+  2. Back up <HOME>/.claude/settings.json first when it exists, and change no other entry in it
+  The capture script is wired in place, by its in-repo absolute path; it is never copied.
+  No prompt or response text is recorded: only token counts, model and timing.
+  MemPalace is not required: records go to the file-system usage journal.
+
+Usage capture not enabled (re-run scripts/setup-claude-interactive.sh to enable it).
+  MemPalace session check registered in ~/.claude/settings.json
+
+====================================
+  Setup complete
+====================================
+
+Install mode: copy
+
+Active rule files:
+<HOME>/.claude/rules/00-soul.md
+<HOME>/.claude/rules/10-level.md
+<HOME>/.claude/rules/20-organization.md
+<HOME>/.claude/rules/30-profile.md
+<HOME>/.claude/rules/40-expertise.md
+<HOME>/.claude/rules/50-team.md
+<HOME>/.claude/rules/60-tools.md
+<HOME>/.claude/rules/65-org-tools.md
+
+MCP servers (from 'claude mcp list'):
+  sequentialthinking: bash <REPO>/scripts/lib/tls-exec.sh npx -y @modelcontextprotocol/server-sequential-thinking - ✓ Connected
+
+Restart any running Claude Code session to pick up the new MCP servers.

@@ -1,0 +1,34 @@
+====================================
+  GitHub Copilot CLI Setup
+====================================
+
+  Installed: <REPO>/.github/copilot/settings.json (from template)
+
+  WARN: <REPO>/.github/copilot-instructions.md is missing — Copilot will not load AGENTS.md without it.
+
+Installing shared layered context to <HOME>/.copilot/instructions ...
+  Copied: SOUL.md -> instructions/00-soul.instructions.md
+  Copied: ORGANIZATION.md -> instructions/20-organization.instructions.md
+  Copied: PROFILE.md -> instructions/30-profile.instructions.md
+  Copied: artifacts/core/rules/60-tools.md -> instructions/60-tools.instructions.md
+  Copied: TOOLS.md -> instructions/65-org-tools.instructions.md
+  Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
+
+User-gate validation backend (spec 0080):
+  Validation backend recorded: backend=internal translate=off pedagogy=contextual illustration=off
+    -> <HOME>/.crewrig/validation.conf
+
+Select your experience level:
+  Copied: level/CONFIRMED.md -> instructions/10-level.instructions.md
+Level: CONFIRMED
+
+Select your expertise:
+  Copied: expertise/BACKEND-JAVA.md -> instructions/40-expertise.instructions.md
+Expertise: BACKEND-JAVA
+
+Select your team:
+  Copied: teams/ATLAS.md -> instructions/50-team.instructions.md
+Team: ATLAS
+
+
+Production dependencies: running 'npm ci --omit=dev --workspaces=false'...

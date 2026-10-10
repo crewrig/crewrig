@@ -1,0 +1,14 @@
+====================================
+  Gemini CLI Configuration Setup
+====================================
+
+WARNING: You are using symlink mode for system context files.
+Symlinked files will change when you switch branches in this repository.
+A malicious branch could alter your agent's behavior, permissions, and
+tool access without your knowledge.
+
+Only use this mode if you TRUST ALL branches in this repository.
+For production use, prefer copy mode (the default).
+
+
+Aborted. Run without --link for secure copy mode.

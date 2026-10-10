@@ -1,0 +1,134 @@
+====================================
+  GitHub Copilot CLI Setup
+====================================
+
+Warning: GitHub Copilot CLI not detected.
+  Install with: gh extension install github/gh-copilot
+  or follow: https://docs.github.com/copilot/github-copilot-in-the-cli
+  Proceeding anyway — settings files will be written to the repo.
+
+  Installed: <REPO>/.github/copilot/settings.json (from template)
+
+  WARN: <REPO>/.github/copilot-instructions.md is missing — Copilot will not load AGENTS.md without it.
+
+Installing shared layered context to <HOME>/.copilot/instructions ...
+  Copied: SOUL.md -> instructions/00-soul.instructions.md
+  Copied: ORGANIZATION.md -> instructions/20-organization.instructions.md
+  Copied: PROFILE.md -> instructions/30-profile.instructions.md
+  Copied: artifacts/core/rules/60-tools.md -> instructions/60-tools.instructions.md
+  Copied: TOOLS.md -> instructions/65-org-tools.instructions.md
+  Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
+
+User-gate validation backend (spec 0080):
+  Validation backend recorded: backend=internal translate=off pedagogy=contextual illustration=off
+    -> <HOME>/.crewrig/validation.conf
+
+Select your experience level:
+  Copied: level/CONFIRMED.md -> instructions/10-level.instructions.md
+Level: CONFIRMED
+
+Select your expertise:
+  Copied: expertise/BACKEND-JAVA.md -> instructions/40-expertise.instructions.md
+Expertise: BACKEND-JAVA
+
+Select your team:
+  Copied: teams/ATLAS.md -> instructions/50-team.instructions.md
+Team: ATLAS
+
+
+Production dependencies: running 'npm ci --omit=dev --workspaces=false'...
+
+Configuring ~/.copilot/mcp-config.json...
+  Detected MemPalace interpreter: <HOME>/.local/share/pipx/venvs/mempalace/bin/python (mempalace 3.6.0)
+
+Installing shared ChromaDB HTTP daemon supervisor (issue #98)...
+  Installed: <HOME>/.config/systemd/user/mempalace-chroma-server.service
+  Enabled and started: mempalace-chroma-server.service
+  Installed: mcp-config.json (mempalace patched with detected Python + wrapper path)
+
+Shared memory daemon (spec 0113 delta-02): defaulting copilot to HTTP.
+  Without it, every session spawns its own memory server and only the
+  first one to write can write — the rest are refused for their whole life.
+  copilot now reaches shared memory through the daemon.
+
+  NOTE: this run switched copilot only. Still on the previous arrangement:
+    - claude
+    - antigravity
+  They will contend for the memory lock with copilot until they switch too.
+  Switch the whole machine at once with: task mempalace:switch-http
+
+  Restart any running copilot session to pick this up.
+  MemPalace reaches shared memory through the HTTP daemon.
+
+Installing library skills to <HOME>/.copilot/skills (automatic)...
+Tier not built (no <REPO>/dist/library/.github/skills) — building automatically via 'bash scripts/build-components.sh --target copilot'...
+=========================================
+  Community Component Builder
+  Target: copilot
+  Mode: BUILD (generate files)
+=========================================
+
+--- Tier: core (output root: <REPO>) ---
+
+Done.
+  Tier 'library' has no built skills (no <REPO>/dist/library/.github/skills) — run 'bash scripts/build-components.sh --target copilot' first.
+
+  Session recording disabled (re-run this script to enable).
+
+Enabling usage capture will:
+  1. Register <REPO>/hooks/usage-capture.ts
+     on the agentStop, sessionEnd event(s), in <HOME>/.copilot/hooks/copilot-transcript-hooks.json
+     as a direct node command (no shell wrapper; needs Node.js 24 or later when the hook fires):
+       node "<REPO>/hooks/usage-capture.ts" copilot-cli agentStop
+       node "<REPO>/hooks/usage-capture.ts" copilot-cli sessionEnd
+     (the same file session recording uses; its entries are left as they are)
+  2. Back up <HOME>/.copilot/hooks/copilot-transcript-hooks.json first when it exists, and change no other entry in it
+  The capture script is wired in place, by its in-repo absolute path; it is never copied.
+  No prompt or response text is recorded: only token counts, model and timing.
+  MemPalace is not required: records go to the file-system usage journal.
+
+Usage capture not enabled (re-run scripts/setup-copilot-interactive.sh to enable it).
+  MemPalace session check registered in ~/.copilot/hooks/crewrig-mempalace-session-check.json
+
+====================================
+  Setup complete
+====================================
+
+Install mode: copy
+
+Active user-level instruction files:
+<HOME>/.copilot/instructions/00-soul.instructions.md
+<HOME>/.copilot/instructions/10-level.instructions.md
+<HOME>/.copilot/instructions/20-organization.instructions.md
+<HOME>/.copilot/instructions/30-profile.instructions.md
+<HOME>/.copilot/instructions/40-expertise.instructions.md
+<HOME>/.copilot/instructions/50-team.instructions.md
+<HOME>/.copilot/instructions/60-tools.instructions.md
+<HOME>/.copilot/instructions/65-org-tools.instructions.md
+
+MCP servers (from mcp-config.json):
+  - mempalace
+  - sequentialthinking
+
+Copilot looks for skills under .github/skills/ and agents under .github/agents/.
+Run 'bash scripts/build-components.sh --target copilot' to (re)generate them.
+
+Transcript hooks are installed at two levels:
+  - User-level (~/.copilot/hooks/copilot-transcript-hooks.json): fires for ALL projects.
+  - Workspace-level (.github/copilot/settings.json): fires for this repo only.
+
+Note: GitHub Copilot CLI does NOT export a $COPILOT_PROJECT_DIR — hooks
+read the workspace path from the stdin JSON payload (or fall back to $PWD).
+
+System-context store access (spec 0068):
+  The framework installs a shared rule store at ~/.crewrig/system-context.
+  When a rule from the store is needed, the CLI reads it on demand.
+  Setup writes NO durable trust config; where the read still cannot be
+  satisfied, the store surfaces its explicit fallback signal (spec 0068).
+  Copilot denies the out-of-workspace read unless the path is
+  granted. Grant it per-invocation with one of:
+    copilot --add-dir ~/.crewrig/system-context
+    copilot --allow-all-paths
+  or approve the read interactively when prompted.
+  Note: trustedFolders in ~/.copilot/config.json does NOT durably
+  authorize this cross-project read.

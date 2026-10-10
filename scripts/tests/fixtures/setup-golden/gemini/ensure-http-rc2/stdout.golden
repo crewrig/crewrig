@@ -1,0 +1,122 @@
+====================================
+  Gemini CLI Configuration Setup
+====================================
+
+Installing shared configuration...
+  Copied: ORGANIZATION.md -> 20_ORGANIZATION.md
+  Copied: artifacts/core/rules/60-tools.md -> 60_TOOLS.md
+  Copied: TOOLS.md -> 65_TOOLS.md
+  Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
+  Copied: SOUL.md -> 00_SOUL.md
+
+User-gate validation backend (spec 0080):
+  Validation backend recorded: backend=internal translate=off pedagogy=contextual illustration=off
+    -> <HOME>/.crewrig/validation.conf
+
+
+Production dependencies: running 'npm ci --omit=dev --workspaces=false'...
+
+Configuring ~/.gemini/settings.json...
+  Detected MemPalace interpreter: <HOME>/.local/share/pipx/venvs/mempalace/bin/python (mempalace 3.6.0)
+
+Installing shared ChromaDB HTTP daemon supervisor (issue #98)...
+  Installed: <HOME>/.config/systemd/user/mempalace-chroma-server.service
+  Enabled and started: mempalace-chroma-server.service
+  Merged: settings.json (existing content kept; mempalace registered with the detected Python + wrapper path)
+
+Shared memory daemon (spec 0113 delta-02): defaulting gemini to HTTP.
+  Without it, every session spawns its own memory server and only the
+  first one to write can write — the rest are refused for their whole life.
+  NOTE: no readable bearer token — probing with a placeholder bearer.
+  WARNING: the daemon on 127.0.0.1:41893 is verified serving but no
+           readable bearer token exists for this palace, so registration
+           would point gemini at a credential that does not authenticate.
+           Keeping the existing registration untouched (exit 2).
+  Repair: run 'task mempalace:status' to inspect the daemon, then
+          'task mempalace:switch-http' for the machine-wide conversion,
+          and re-run setup afterwards.
+  LOCKOUT WARNING: the daemon is verified serving but registration
+           could not be completed, so the stdio entry just written
+           will be refused by the shared writer lock (MCP error
+           -32001) in every session.
+
+Select your team:
+  Copied: teams/ATLAS.md -> 50_USER_TEAM.md
+Team: ATLAS
+
+Select your expertise:
+  Copied: expertise/BACKEND-JAVA.md -> 40_USER_EXPERTISE.md
+Expertise: BACKEND-JAVA
+
+Select your experience level:
+  Copied: level/CONFIRMED.md -> 10_USER_LEVEL.md
+Level: CONFIRMED
+
+Setting up personal profile...
+  Copied: PROFILE.md -> 30_USER_PROFILE.md
+
+Installing library components to <HOME>/.gemini/skills (automatic)...
+Tier not built (no <REPO>/dist/library/.gemini) — building automatically via 'bash scripts/build-components.sh --target gemini'...
+=========================================
+  Community Component Builder
+  Target: gemini
+  Mode: BUILD (generate files)
+=========================================
+
+--- Tier: core (output root: <REPO>) ---
+
+Done.
+  Tier 'library' not built (no <REPO>/dist/library/.gemini) — run 'bash scripts/build-components.sh' first.
+
+
+
+  Session recording disabled (can enable later by re-running this script).
+  Any session-recording hooks an earlier run registered in settings.json are left in place; installed guard and transcript commands were rewritten above where their consent was established.
+
+Enabling usage capture will:
+  1. Register <REPO>/hooks/usage-capture.ts
+     on the AfterModel event(s), in <HOME>/.gemini/settings.json
+     as a direct node command (no shell wrapper; needs Node.js 24 or later when the hook fires):
+       node "<REPO>/hooks/usage-capture.ts" gemini-cli AfterModel
+  2. Back up <HOME>/.gemini/settings.json first when it exists, and change no other entry in it
+  The capture script is wired in place, by its in-repo absolute path; it is never copied.
+  No prompt or response text is recorded: only token counts, model and timing.
+  MemPalace is not required: records go to the file-system usage journal.
+
+Usage capture not enabled (re-run scripts/setup-gemini-interactive.sh to enable it).
+  MemPalace session check registered in ~/.gemini/settings.json
+
+====================================
+  Setup complete
+====================================
+
+Install mode: copy
+
+Active context files:
+  <HOME>/.gemini/00_SOUL.md
+  <HOME>/.gemini/10_USER_LEVEL.md
+  <HOME>/.gemini/20_ORGANIZATION.md
+  <HOME>/.gemini/30_USER_PROFILE.md
+  <HOME>/.gemini/40_USER_EXPERTISE.md
+  <HOME>/.gemini/50_USER_TEAM.md
+  <HOME>/.gemini/60_TOOLS.md
+  <HOME>/.gemini/65_TOOLS.md
+
+MCP servers (from settings.json):
+  - mempalace
+  - sequentialthinking
+
+
+System-context store access (spec 0068):
+  The framework installs a shared rule store at ~/.crewrig/system-context.
+  When a rule from the store is needed, the CLI reads it on demand.
+  Setup writes NO durable trust config; where the read still cannot be
+  satisfied, the store surfaces its explicit fallback signal (spec 0068).
+  Gemini gates tool use on workspace trust. Make the store path
+  trusted for the invocation with one of:
+    gemini --include-directories ~/.crewrig/system-context
+    GEMINI_CLI_TRUST_WORKSPACE=true gemini ...
+    gemini --skip-trust ...
+  or approve the directory interactively when prompted.
+
+Restart any running Gemini CLI session to pick up the new configuration.

@@ -1,0 +1,3 @@
+Warning: <REPO>/crewrig.config.toml not found — placeholders will be left literal.
+  WARNING: <HOME>/.copilot/hooks/copilot-transcript-hooks.json keeps "disableAllHooks": true — no hook in that file fires,
+           session recording included, until you set it to false.
