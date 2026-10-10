@@ -38,11 +38,14 @@ function noBashOnPath(h: Harness, sb: Sandbox): void {
   void h;
 }
 
-/** Every written file that names the wrapper, with its text. */
+/** Every written file that names the wrapper, with its text (not the wrapper's own source). */
 function wrapperFiles(h: Harness, sb: Sandbox): Array<[string, string]> {
   return [...h.landed(sb)]
     .map(([rel, bytes]): [string, string] => [rel, text(bytes)])
-    .filter(([, t]) => t.includes("tls-exec"));
+    .filter(
+      ([rel, t]) =>
+        t.includes("tls-exec") && !/(^|\/)tls-exec\.ts$/.test(rel.replaceAll("\\", "/")),
+    );
 }
 
 function claudeEntries(h: Harness): void {
