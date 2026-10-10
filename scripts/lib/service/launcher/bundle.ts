@@ -22,6 +22,7 @@ export const LAUNCHER_BUNDLE: readonly string[] = [
 export const TRUST_WRAPPER_BUNDLE: readonly string[] = [
   "service/launcher/launcher-child.ts",
   "tls-env.ts",
+  "tls-env-quote.ts",
 ];
 
 /** Every bundled file once, in a fixed order. */

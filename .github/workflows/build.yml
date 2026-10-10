@@ -515,6 +515,71 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules,
+  # the TLS environment quoting and writer, and the confirm remainder. The POSIX-only suites skip
+  # themselves off Linux; the Windows exercise is `windows-setup-units`.
+  setup-modules-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            setup-modules-ts:
+              - 'scripts/lib/setup/**'
+              - 'scripts/lib/tls-env.ts'
+              - 'scripts/lib/tls-env-quote.ts'
+              - 'scripts/lib/manage/confirm.ts'
+              - 'scripts/lib/service/launcher/bundle.ts'
+              - 'scripts/lib/link-or-copy*.ts'
+              - 'scripts/lib/extension/types.ts'
+              - 'scripts/lib/tls-delegation.sh'
+              - 'scripts/setup-antigravity-interactive.sh'
+              - 'scripts/setup-claude-interactive.sh'
+              - 'scripts/setup-copilot-interactive.sh'
+              - 'scripts/setup-gemini-interactive.sh'
+              - 'scripts/lib/node-floor-guard.js'
+              - 'scripts/tests/setup-answers.test.ts'
+              - 'scripts/tests/setup-backup.test.ts'
+              - 'scripts/tests/setup-catalogue.test.ts'
+              - 'scripts/tests/setup-dependency-step.test.ts'
+              - 'scripts/tests/setup-deps.test.ts'
+              - 'scripts/tests/setup-files.test.ts'
+              - 'scripts/tests/setup-link-key.test.ts'
+              - 'scripts/tests/setup-prerequisites.test.ts'
+              - 'scripts/tests/setup-prompt.test.ts'
+              - 'scripts/tests/setup-prompt-integration.test.ts'
+              - 'scripts/tests/setup-prompt-table.test.ts'
+              - 'scripts/tests/setup-prompt-tty.test.ts'
+              - 'scripts/tests/setup-tls-detect.test.ts'
+              - 'scripts/tests/setup-tls-offer.test.ts'
+              - 'scripts/tests/setup-validation.test.ts'
+              - 'scripts/tests/tls-env-quote.test.ts'
+              - 'scripts/tests/tls-env-writer.test.ts'
+              - 'scripts/tests/manage-confirm-remainder.test.ts'
+              - 'scripts/tests/lib/setup-*.ts'
+              - 'scripts/tests/lib/tls-quote-measure.ts'
+              - 'scripts/tests/fixtures/setup-tls/**'
+              - 'scripts/tests/fixtures/setup-golden/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.setup-modules-ts == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        if: steps.filter.outputs.setup-modules-ts == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.setup-modules-ts == 'true'
+        run: node scripts/lib/node-floor-guard.js
+      - name: Test the TypeScript setup modules
+        if: steps.filter.outputs.setup-modules-ts == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
   # release. No path filter, like `mempalace-transcript-node-24-0`.
   build-components-ts-node-24-0:
@@ -1931,6 +1996,7 @@ jobs:
               - 'hooks/mempalace-transcript.*'
               - 'scripts/lib/mempalace-transcript/**'
               - 'scripts/lib/tls-env.ts'
+              - 'scripts/lib/tls-env-quote.ts'
               - 'scripts/lib/transcript-recognition.ts'
               - 'scripts/lib/hook-*.ts'
               - 'scripts/hook-wiring.ts'
@@ -2490,6 +2556,34 @@ jobs:
       # files, stdout, statuses and the absence of carriage returns, and prints each step's time.
       - name: Install entries proof
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-install-proof.ts
+
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0256 R40, plan finding v1-F3: the Windows exercise of the setup layer-1 unit suites under pwsh.
+  # The POSIX-only suites skip themselves on win32. No timing budget and no path filter, like the
+  # Windows jobs above.
+  windows-setup-units:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Test the setup module unit suites
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
 
       - name: Cancel workflow on job failure
         if: failure()

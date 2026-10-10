@@ -18,13 +18,20 @@
 // variable at all, and names the file and the first such line, so the caller
 // can report it. Nothing is ever evaluated.
 //
-// This module is the cross-step contract with row F1 (#1335): F1 either keeps
-// this format or replaces it and changes this reader in the same pull request.
+// This module is the cross-step contract with row F1 (#1335): spec 0256
+// decision D1 kept this format, so the reader is unchanged and the writer
+// (`writeTlsEnv`, with `quoteWord` from tls-env-quote.ts) lives beside it. The
+// writer reads its own file back and fails when this reader rejects it.
 //
-// Standard library only.
+// Standard library only: this file and tls-env-quote.ts are bundled together
+// into the service trust wrapper (see service/launcher/bundle.ts).
 
+import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { quoteWord } from "./tls-env-quote.ts";
+
+export { quoteWord };
 
 export type TlsEnvResult =
   | { readonly kind: "absent" }
@@ -198,4 +205,51 @@ export function readTlsEnv(home: string): TlsEnvResult {
   const parsed = parseTlsEnv(text);
   if ("line" in parsed) return { kind: "malformed", file, line: parsed.line };
   return { kind: "ok", vars: parsed.vars };
+}
+
+const TLS_VARIABLES: readonly string[] = [
+  "NODE_EXTRA_CA_CERTS",
+  "SSL_CERT_FILE",
+  "REQUESTS_CA_BUNDLE",
+  "PIP_CERT",
+  "GIT_SSL_CAINFO",
+  "CURL_CA_BUNDLE",
+];
+
+/** The exact content of the trust file for `bundle` (what scripts/lib/tls-delegation.sh writes). */
+function tlsEnvContent(file: string, bundle: string): string {
+  const word = quoteWord(bundle);
+  return [
+    "# crewrig custom root-CA / native-TLS delegation (spec 0084)",
+    "# Per-user, machine-local. Written only on your explicit consent.",
+    `# Remove in one action:  rm ${file}`,
+    ...TLS_VARIABLES.map((name) => `export ${name}=${word}`),
+    "export UV_SYSTEM_CERTS=true",
+    "",
+  ].join("\n");
+}
+
+/**
+ * Write `<home>/.crewrig/tls-env.sh` delegating trust to `bundle`: LF bytes, a
+ * temporary file next to the target renamed onto it (its mode is the process
+ * umask, as the shell's `>` redirection gives it; no chmod), the temporary file
+ * removed on failure. The file is then read back; one the reader rejects throws.
+ */
+export function writeTlsEnv(home: string, bundle: string): { path: string; content: string } {
+  const file = tlsEnvPath(home);
+  const content = tlsEnvContent(file, bundle);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.tmp-${randomBytes(6).toString("hex")}`;
+  try {
+    fs.writeFileSync(tmp, Buffer.from(content, "utf8"), { flag: "wx" });
+    fs.renameSync(tmp, file);
+  } catch (error) {
+    fs.rmSync(tmp, { force: true });
+    throw error;
+  }
+  const back = readTlsEnv(home);
+  if (back.kind !== "ok") {
+    throw new Error(`tls-env: wrote ${file} but the reader rejects it (${back.kind})`);
+  }
+  return { path: file, content };
 }

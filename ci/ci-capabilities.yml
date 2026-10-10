@@ -685,6 +685,99 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts
 
+  # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules
+  # (scripts/lib/setup/**), the TLS environment quoting and writer, the confirm remainder and the
+  # launcher bundle edit. They are dark modules until the entries switch over (rows B2 to B5), so
+  # no entry twin on Node.js 24.0.0 exists yet. The production dependency step is its own command,
+  # before the first test call. The suites that need a POSIX shell skip themselves on win32; the
+  # Windows exercise of the same list is `windows-setup-units`.
+  - id: setup-modules-ts
+    name: "Run the TypeScript setup module, TLS quoting and confirm remainder unit suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/setup/**"
+          - "scripts/lib/tls-env.ts"
+          - "scripts/lib/tls-env-quote.ts"
+          - "scripts/lib/manage/confirm.ts"
+          - "scripts/lib/service/launcher/bundle.ts"
+          - "scripts/lib/link-or-copy*.ts"
+          - "scripts/lib/extension/types.ts"
+          - "scripts/lib/tls-delegation.sh"
+          - "scripts/setup-antigravity-interactive.sh"
+          - "scripts/setup-claude-interactive.sh"
+          - "scripts/setup-copilot-interactive.sh"
+          - "scripts/setup-gemini-interactive.sh"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/setup-answers.test.ts"
+          - "scripts/tests/setup-backup.test.ts"
+          - "scripts/tests/setup-catalogue.test.ts"
+          - "scripts/tests/setup-dependency-step.test.ts"
+          - "scripts/tests/setup-deps.test.ts"
+          - "scripts/tests/setup-files.test.ts"
+          - "scripts/tests/setup-link-key.test.ts"
+          - "scripts/tests/setup-prerequisites.test.ts"
+          - "scripts/tests/setup-prompt.test.ts"
+          - "scripts/tests/setup-prompt-integration.test.ts"
+          - "scripts/tests/setup-prompt-table.test.ts"
+          - "scripts/tests/setup-prompt-tty.test.ts"
+          - "scripts/tests/setup-tls-detect.test.ts"
+          - "scripts/tests/setup-tls-offer.test.ts"
+          - "scripts/tests/setup-validation.test.ts"
+          - "scripts/tests/tls-env-quote.test.ts"
+          - "scripts/tests/tls-env-writer.test.ts"
+          - "scripts/tests/manage-confirm-remainder.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/tls-quote-measure.ts"
+          - "scripts/tests/fixtures/setup-tls/**"
+          - "scripts/tests/fixtures/setup-golden/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/setup/**"
+          - "scripts/lib/tls-env.ts"
+          - "scripts/lib/tls-env-quote.ts"
+          - "scripts/lib/manage/confirm.ts"
+          - "scripts/lib/service/launcher/bundle.ts"
+          - "scripts/lib/link-or-copy*.ts"
+          - "scripts/lib/extension/types.ts"
+          - "scripts/lib/tls-delegation.sh"
+          - "scripts/setup-antigravity-interactive.sh"
+          - "scripts/setup-claude-interactive.sh"
+          - "scripts/setup-copilot-interactive.sh"
+          - "scripts/setup-gemini-interactive.sh"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/setup-answers.test.ts"
+          - "scripts/tests/setup-backup.test.ts"
+          - "scripts/tests/setup-catalogue.test.ts"
+          - "scripts/tests/setup-dependency-step.test.ts"
+          - "scripts/tests/setup-deps.test.ts"
+          - "scripts/tests/setup-files.test.ts"
+          - "scripts/tests/setup-link-key.test.ts"
+          - "scripts/tests/setup-prerequisites.test.ts"
+          - "scripts/tests/setup-prompt.test.ts"
+          - "scripts/tests/setup-prompt-integration.test.ts"
+          - "scripts/tests/setup-prompt-table.test.ts"
+          - "scripts/tests/setup-prompt-tty.test.ts"
+          - "scripts/tests/setup-tls-detect.test.ts"
+          - "scripts/tests/setup-tls-offer.test.ts"
+          - "scripts/tests/setup-validation.test.ts"
+          - "scripts/tests/tls-env-quote.test.ts"
+          - "scripts/tests/tls-env-writer.test.ts"
+          - "scripts/tests/manage-confirm-remainder.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/tls-quote-measure.ts"
+          - "scripts/tests/fixtures/setup-tls/**"
+          - "scripts/tests/fixtures/setup-golden/**"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
+
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then
   # scripts/tests/lib/windows-extension-proof.ts builds every golden subject with the TypeScript
@@ -742,6 +835,32 @@ capabilities:
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0255 R28).
+
+  # Spec 0256 R40 (ticket #1335), PR B1, plan finding v1-F3: the Windows exercise of layer 1. The
+  # production dependencies are installed first, the floor guard runs as its own step, then the
+  # same unit suites as `setup-modules-ts` run under pwsh; the POSIX-only ones skip themselves on
+  # win32. No timing budget and no `paths:` filter, like the Windows jobs above: the exercise must
+  # not skip silently on a change it does not list.
+  - id: windows-setup-units
+    name: "Windows setup module unit suites: production install, floor guard and the layer-1 suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-setup-units`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0256 R40).
 
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
@@ -2349,6 +2468,7 @@ capabilities:
           - "hooks/mempalace-transcript.*"
           - "scripts/lib/mempalace-transcript/**"
           - "scripts/lib/tls-env.ts"
+          - "scripts/lib/tls-env-quote.ts"
           - "scripts/lib/transcript-recognition.ts"
           - "scripts/lib/hook-*.ts"
           - "scripts/hook-wiring.ts"
@@ -2370,6 +2490,7 @@ capabilities:
           - "hooks/mempalace-transcript.*"
           - "scripts/lib/mempalace-transcript/**"
           - "scripts/lib/tls-env.ts"
+          - "scripts/lib/tls-env-quote.ts"
           - "scripts/lib/transcript-recognition.ts"
           - "scripts/lib/hook-*.ts"
           - "scripts/hook-wiring.ts"
