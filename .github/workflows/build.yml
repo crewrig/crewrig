@@ -62,6 +62,10 @@ jobs:
               - '.gemini/skills/**'
               - '.github/skills/**'
               - '.gemini/commands/**'
+              - '.agents/agents/**'
+              - '.claude/agents/**'
+              - '.gemini/agents/**'
+              - '.github/agents/**'
               - 'crewrig.config.toml'
       - name: Install yq
         if: steps.filter.outputs.component-drift == 'true'
@@ -72,13 +76,13 @@ jobs:
         if: steps.filter.outputs.component-drift == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', '.agents/skills/**', '.claude/skills/**', '.gemini/skills/**', '.github/skills/**', '.gemini/commands/**', 'crewrig.config.toml') }}
+          key: ${{ hashFiles('scripts/build-components.sh', 'scripts/test-build-components.sh', 'scripts/tests/test-model-resolution.sh', 'scripts/tests/test-agent-profile-migration.sh', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', '.agents/skills/**', '.claude/skills/**', '.gemini/skills/**', '.github/skills/**', '.gemini/commands/**', '.agents/agents/**', '.claude/agents/**', '.gemini/agents/**', '.github/agents/**', 'crewrig.config.toml') }}
       - name: Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml" --key-env "" -- bash scripts/build-components.sh --target all --check
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml" --key-env "" -- bash scripts/build-components.sh --target all --check
       - name: Test Build Components
         if: steps.filter.outputs.component-drift == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml" --key-env "" -- bash scripts/test-build-components.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-components.sh,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml" --key-env "" -- bash scripts/test-build-components.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -192,6 +196,7 @@ jobs:
               - 'scripts/tests/test-extension-mcp-manifest.sh'
               - 'scripts/install-antigravity-extension.sh'
               - 'scripts/lib/render-context.sh'
+              - 'scripts/lib/render-command.sh'
               - 'scripts/lib/extension-legacy-shape.json'
               - 'scripts/migrate-extension.sh'
               - 'scripts/tests/test-migrate-extension.sh'
@@ -256,6 +261,7 @@ jobs:
           filters: |
             extension-provenance:
               - 'scripts/check-extension-provenance.sh'
+              - 'scripts/lib/provenance-carrier.sh'
               - 'scripts/tests/test-check-extension-provenance.sh'
               - 'extensions/**'
               - 'artifacts/**'
@@ -285,6 +291,9 @@ jobs:
               - 'scripts/check-extension-manifest-version.sh'
               - 'scripts/check-extension-version-bump.sh'
               - 'scripts/lib/base-ref-resolve.sh'
+              - 'scripts/lib/extension-manifest.sh'
+              - 'scripts/lib/common.sh'
+              - 'scripts/lib/extension-hooks.sh'
               - 'scripts/tests/test-check-extension-manifest-version.sh'
               - 'scripts/tests/test-check-extension-version-bump.sh'
               - 'extensions/**'
@@ -365,9 +374,6 @@ jobs:
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
-      - name: Check Core Paths
-        if: steps.filter.outputs.core-paths == 'true'
-        run: bash scripts/check-core-paths.sh
       - name: Test Check Core Paths
         if: steps.filter.outputs.core-paths == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh
@@ -575,6 +581,9 @@ jobs:
               - 'scripts/tests/**'
               - 'hooks/worktree-git-guard.sh'
               - 'ci/test-wiring-exemptions.txt'
+              - '.github/workflows/*.yml'
+              - '.github/workflows/*.yaml'
+              - 'ci/ci-capabilities.yml'
       - name: Check Test Wiring
         if: steps.filter.outputs.test-wiring == 'true'
         run: bash scripts/check-test-wiring.sh
@@ -821,6 +830,7 @@ jobs:
               - 'model-mappings/**'
               - 'docs/model-mapping-format.md'
               - 'scripts/check-model-mappings.sh'
+              - 'scripts/lib/model-resolve.sh'
               - 'scripts/tests/test-check-model-mappings.sh'
       - name: Install yq
         if: steps.filter.outputs.check-model-mappings == 'true'
@@ -932,13 +942,12 @@ jobs:
               - 'scripts/check-spec-id-reserved.sh'
               - 'scripts/lib/base-ref-resolve.sh'
               - 'model-mappings/**'
+              - 'scripts/setup-gemini-interactive.sh'
+              - 'config/gemini/settings.json'
       - uses: actions/setup-python@v5
         if: steps.filter.outputs.misc == 'true'
         with:
           python-version: "3.12"
-      - name: Check No Machine Paths
-        if: steps.filter.outputs.misc == 'true'
-        run: bash scripts/check-no-machine-paths.sh
       - name: Test Check No Machine Paths
         if: steps.filter.outputs.misc == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh
@@ -960,6 +969,25 @@ jobs:
       - name: Test Check Spec Id Reserved
         if: steps.filter.outputs.misc == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-spec-id-reserved.sh
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  # Spec 0251 R1-R4: the repository-wide scans. No path filter (a catch-all
+  # `**` would make path-ownership vacuous), not changeset-gated, no test
+  # suite: they run on every pull request and push to main and release/**.
+  repository-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check No Machine Paths
+        run: bash scripts/check-no-machine-paths.sh
+      - name: Check Markdown Links
+        run: bash scripts/check-markdown-links.sh
+      - name: Check Core Paths
+        run: bash scripts/check-core-paths.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1030,9 +1058,6 @@ jobs:
         if: steps.filter.outputs.markdown-links == 'true'
         with:
           python-version: "3.12"
-      - name: Check Markdown Links
-        if: steps.filter.outputs.markdown-links == 'true'
-        run: bash scripts/check-markdown-links.sh
       - name: Test Check Markdown Links
         if: steps.filter.outputs.markdown-links == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-markdown-links.sh

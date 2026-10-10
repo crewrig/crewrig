@@ -43,15 +43,4 @@ ci/shell-allowlist.txt	Read by capability `ratchet` (no `paths:` filter) through
 docker/e2e/*.Dockerfile	Built only locally (`task e2e:build`); the image-contract test inspects built images and skips when none exists, so no CI check builds or reads the Dockerfiles.
 docker/e2e/.dockerignore	Consumed only by the local e2e image build; no CI check reads it.
 .github/actions/cancel-on-failure/action.yml	Composite action run only from a failing job's `if: failure()` step; no check exercises it.
-.github/workflows/claude.yml	Engine-specific bot-mention workflow (capability `claude`); its job key is traced by capability `check-ci-parity` (no `paths:` filter), which runs on every change; its behaviour is exercised only on GitHub.
-.github/workflows/copilot.yml	Engine-specific bot-mention workflow (capability `copilot`); its job key is traced by capability `check-ci-parity` (no `paths:` filter), which runs on every change; its behaviour is exercised only on GitHub.
-.github/workflows/pages.yml	Deploys `communication/**` after merge (capability `pages-deploy`, push-only, which confers no ownership); its job key is traced by capability `check-ci-parity` (no `paths:` filter), which runs on every change.
-.github/workflows/security-mcp.yml	Hosts the GitHub job of portable capability `audit`; capability `check-ci-parity` (no `paths:` filter) compares its business steps and runtime provisioning with the reference on every change.
-.github/workflows/ticket-pickup.yml	Hosts the GitHub job of portable capability `ticket-pickup`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
-.github/workflows/derive-spec-status.yml	Hosts the GitHub job of portable capability `derive-spec-status`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
-.github/workflows/mempalace-session-check.yml	Hosts the GitHub job of portable capability `mempalace-session-check`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
-.github/workflows/windows-hook-probe.yml	Hosts the GitHub job of portable capability `windows-hook-probe`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.
-.github/workflows/usage-*.yml	Each hosts the GitHub job of one portable `usage-*` capability; capability `check-ci-parity` (no `paths:` filter) compares each with the reference on every change.
-.github/workflows/release-*.yml	Each hosts the GitHub job of one portable `release-*` capability (`release-notes`, `release-rehearsal`, `release-tests`); capability `check-ci-parity` (no `paths:` filter) compares each with the reference on every change.
 ci/path-ownership-exemptions.txt	Input of capability `path-ownership` (no `paths:` filter), which reads it on every change.
-.github/workflows/changeset-coverage.yml	Hosts the GitHub job of capability `changeset-coverage`; capability `check-ci-parity` (no `paths:` filter) compares it with the reference on every change.

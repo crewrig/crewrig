@@ -72,6 +72,10 @@ capabilities:
           - ".gemini/skills/**"
           - ".github/skills/**"
           - ".gemini/commands/**"
+          - ".agents/agents/**"
+          - ".claude/agents/**"
+          - ".gemini/agents/**"
+          - ".github/agents/**"
           - "crewrig.config.toml"
       - on: push
         branches: [main, "release/**"]
@@ -92,6 +96,10 @@ capabilities:
           - ".gemini/skills/**"
           - ".github/skills/**"
           - ".gemini/commands/**"
+          - ".agents/agents/**"
+          - ".claude/agents/**"
+          - ".gemini/agents/**"
+          - ".github/agents/**"
           - "crewrig.config.toml"
     portability: portable
     changeset-gated: true
@@ -114,6 +122,10 @@ capabilities:
         - ".gemini/skills/**"
         - ".github/skills/**"
         - ".gemini/commands/**"
+        - ".agents/agents/**"
+        - ".claude/agents/**"
+        - ".gemini/agents/**"
+        - ".github/agents/**"
         - "crewrig.config.toml"
       env: []
     command:
@@ -259,6 +271,7 @@ capabilities:
           - "scripts/tests/test-extension-mcp-manifest.sh"
           - "scripts/install-antigravity-extension.sh"
           - "scripts/lib/render-context.sh"
+          - "scripts/lib/render-command.sh"
           - "scripts/lib/extension-legacy-shape.json"
           - "scripts/migrate-extension.sh"
           - "scripts/tests/test-migrate-extension.sh"
@@ -298,6 +311,7 @@ capabilities:
           - "scripts/tests/test-extension-mcp-manifest.sh"
           - "scripts/install-antigravity-extension.sh"
           - "scripts/lib/render-context.sh"
+          - "scripts/lib/render-command.sh"
           - "scripts/lib/extension-legacy-shape.json"
           - "scripts/migrate-extension.sh"
           - "scripts/tests/test-migrate-extension.sh"
@@ -331,6 +345,7 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-extension-provenance.sh"
+          - "scripts/lib/provenance-carrier.sh"
           - "scripts/tests/test-check-extension-provenance.sh"
           - "extensions/**"
           - "artifacts/**"
@@ -338,6 +353,7 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-extension-provenance.sh"
+          - "scripts/lib/provenance-carrier.sh"
           - "scripts/tests/test-check-extension-provenance.sh"
           - "extensions/**"
           - "artifacts/**"
@@ -358,6 +374,9 @@ capabilities:
           - "scripts/check-extension-manifest-version.sh"
           - "scripts/check-extension-version-bump.sh"
           - "scripts/lib/base-ref-resolve.sh"
+          - "scripts/lib/extension-manifest.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/extension-hooks.sh"
           - "scripts/tests/test-check-extension-manifest-version.sh"
           - "scripts/tests/test-check-extension-version-bump.sh"
           - "extensions/**"
@@ -368,6 +387,9 @@ capabilities:
           - "scripts/check-extension-manifest-version.sh"
           - "scripts/check-extension-version-bump.sh"
           - "scripts/lib/base-ref-resolve.sh"
+          - "scripts/lib/extension-manifest.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/extension-hooks.sh"
           - "scripts/tests/test-check-extension-manifest-version.sh"
           - "scripts/tests/test-check-extension-version-bump.sh"
           - "extensions/**"
@@ -446,7 +468,6 @@ capabilities:
     requires:
       tools: [yq]
     command:
-      - bash scripts/check-core-paths.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-sync-from-upstream.sh
 
@@ -656,6 +677,9 @@ capabilities:
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
           - "ci/test-wiring-exemptions.txt"
+          - ".github/workflows/*.yml"
+          - ".github/workflows/*.yaml"
+          - "ci/ci-capabilities.yml"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -669,6 +693,9 @@ capabilities:
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
           - "ci/test-wiring-exemptions.txt"
+          - ".github/workflows/*.yml"
+          - ".github/workflows/*.yaml"
+          - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
     command:
@@ -854,6 +881,8 @@ capabilities:
           - "scripts/check-spec-id-reserved.sh"
           - "scripts/lib/base-ref-resolve.sh"
           - "model-mappings/**"
+          - "scripts/setup-gemini-interactive.sh"
+          - "config/gemini/settings.json"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -870,12 +899,13 @@ capabilities:
           - "scripts/check-spec-id-reserved.sh"
           - "scripts/lib/base-ref-resolve.sh"
           - "model-mappings/**"
+          - "scripts/setup-gemini-interactive.sh"
+          - "config/gemini/settings.json"
     portability: portable
     changeset-gated: true
     requires:
       runtime: python@3.12
     command:
-      - bash scripts/check-no-machine-paths.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh
       - bash scripts/check-gemini-overlay-enrollment.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-gemini-overlay-enrollment.sh
@@ -883,6 +913,36 @@ capabilities:
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-pipefail-grep.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-reserve-spec-id.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-spec-id-reserved.sh
+
+  # repository-scan runs the checks whose verdict depends on files anywhere in
+  # the repository (spec 0251 R1-R4): check-no-machine-paths.sh scans every
+  # tracked file, check-markdown-links.sh every tracked *.md and the target of
+  # every relative link, and check-core-paths.sh every path the manifest names
+  # plus the output directories of build-components.sh. No filter can enumerate
+  # those inputs in advance, so the capability has NO `paths:` filter and runs
+  # on every pull request and push to main and release/**. It is deliberately
+  # NOT filtered with a catch-all `**` glob (R4): that would make every tracked
+  # file count as owned and turn `path-ownership` vacuous. It is not
+  # changeset-gated and runs no test suite (R3): the suites of the three scans
+  # stay in misc, markdown-links and core-paths, under their own filters.
+  # python@3.12 is for check-markdown-links.sh (`exec python3`); check-core-paths.sh
+  # needs no yq because `build-components.sh --list-output-dirs` exits in its
+  # list_output_dirs guard (scripts/build-components.sh:64-117) before the yq
+  # prerequisite check (scripts/build-components.sh:120).
+  - id: repository-scan
+    name: "Run repository-wide scans on every change"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: python@3.12
+    command:
+      - bash scripts/check-no-machine-paths.sh
+      - bash scripts/check-markdown-links.sh
+      - bash scripts/check-core-paths.sh
 
   - id: frontmatter
     name: "Test frontmatter, skill-version, and assembly contracts"
@@ -935,6 +995,7 @@ capabilities:
           - "model-mappings/**"
           - "docs/model-mapping-format.md"
           - "scripts/check-model-mappings.sh"
+          - "scripts/lib/model-resolve.sh"
           - "scripts/tests/test-check-model-mappings.sh"
       - on: push
         branches: [main, "release/**"]
@@ -942,6 +1003,7 @@ capabilities:
           - "model-mappings/**"
           - "docs/model-mapping-format.md"
           - "scripts/check-model-mappings.sh"
+          - "scripts/lib/model-resolve.sh"
           - "scripts/tests/test-check-model-mappings.sh"
     portability: portable
     changeset-gated: true
@@ -1046,7 +1108,6 @@ capabilities:
     requires:
       runtime: python@3.12
     command:
-      - bash scripts/check-markdown-links.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-markdown-links.sh
 
   # changeset-coverage is the exhaustive run (spec 0147 delta-01 R21): it has
@@ -1540,6 +1601,7 @@ capabilities:
           - "**/mcp.json"
           - "**/mcp.json.template"
           - "**/extension.json"
+          - "package-lock.json"
     portability: portable
     requires:
       runtime: node@22
