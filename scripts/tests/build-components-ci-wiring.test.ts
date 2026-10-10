@@ -19,7 +19,10 @@ import { yamlLib } from "./lib/yaml-lib.ts";
 interface Capability {
   readonly id: string;
   readonly trigger: readonly { readonly on?: string; readonly paths?: readonly string[] }[];
-  readonly requires?: { readonly runtime?: string; readonly tools?: readonly string[] };
+  readonly requires?: {
+    readonly runtime?: string | readonly string[];
+    readonly tools?: readonly string[];
+  };
   readonly cache?: { readonly files?: readonly string[] };
   /** Absent on the engine-specific capabilities (they carry an `exception` instead). */
   readonly command?: readonly string[];
@@ -57,9 +60,11 @@ const BUILD_COMMAND = new RegExp(
 );
 
 // `core-paths` runs the core-paths checks, which are Node-only by design (no `js-yaml` at
-// run time, so no production install); it still declares the Node.js 24 runtime. Named by id
-// because "needs no install" is a property of that job's design, not derivable from its commands.
-const NODE_ONLY_CAPABILITIES: ReadonlySet<string> = new Set(["core-paths"]);
+// run time, so no production install); it still declares the Node.js 24 runtime. `repository-scan`
+// (spec 0251) runs `check-core-paths.sh` too, next to two Python scans, so it declares Node.js 24
+// as a secondary runtime. Named by id because "needs no install" is a property of that job's
+// design, not derivable from its commands.
+const NODE_ONLY_CAPABILITIES: ReadonlySet<string> = new Set(["core-paths", "repository-scan"]);
 
 function loadReference(): { readonly capabilities: Capability[] } {
   const text = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
@@ -120,7 +125,8 @@ function buildingCapabilities(ref: Reference): Capability[] {
 function buildWiringFaults(ref: Reference): string[] {
   const faults: string[] = [];
   for (const cap of buildingCapabilities(ref)) {
-    if (cap.requires?.runtime !== "node@24") faults.push(`${cap.id}: runtime is not node@24`);
+    const runtimes = [cap.requires?.runtime ?? []].flat();
+    if (!runtimes.includes("node@24")) faults.push(`${cap.id}: runtime is not node@24`);
     if (NODE_ONLY_CAPABILITIES.has(cap.id)) continue;
     const install = commandsOf(cap).findIndex((c) => PROD_INSTALL.test(c));
     const firstBuild = commandsOf(cap).findIndex((c) => BUILD_COMMAND.test(c));
