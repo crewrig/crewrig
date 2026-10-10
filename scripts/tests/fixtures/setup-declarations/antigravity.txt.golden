@@ -1,0 +1,155 @@
+cli=antigravity
+banner=Antigravity CLI Configuration Setup
+step 1: banner
+step 2: prerequisites
+step 3: link-confirm
+step 4: ensure-home
+step 5: identity-check
+step 6: rules-existing
+step 7: rules-shared
+step 8: mcp-prepare
+step 9: tls-offer
+step 10: deps-install
+step 11: mcp
+step 12: rules-selection
+step 13: tiers
+step 14: migrate-superseded
+step 15: hooks-rewrite-installed
+step 16: session-recording
+step 17: usage-capture
+step 18: session-check
+step 19: system-context-file
+step 20: summary
+prompts.link-confirm=link-confirm
+prompts.rules-existing=rules-action
+prompts.rules-shared=validation.backend,validation.translate,validation.pedagogy,validation.illustration
+prompts.tls-offer=tls-delegation
+prompts.mcp=mempalace-install,install-seqthink
+prompts.rules-selection=catalogue.team,catalogue.expertise,catalogue.level,profile-method
+prompts.tiers=overlay.community,overlay.org
+prompts.session-recording=transcripts,transcripts-confirm
+prompts.usage-capture=usage-capture,usage-capture-keep
+prompt.link-confirm.step=link-confirm
+prompt.link-confirm.options=no,yes
+prompt.link-confirm.cancel=none
+prompt.rules-action.step=rules-existing
+prompt.rules-action.options=keep,refresh
+prompt.rules-action.cancel=abort
+prompt.rules-action.header=Existing context files detected — keep them (skip selection) or refresh from scratch?
+prompt.validation.backend.step=rules-shared
+prompt.validation.backend.options=internal,plannotator
+prompt.validation.backend.cancel=default
+prompt.validation.translate.step=rules-shared
+prompt.validation.translate.options=off,on
+prompt.validation.translate.cancel=default
+prompt.validation.pedagogy.step=rules-shared
+prompt.validation.pedagogy.options=contextual,simple,professor
+prompt.validation.pedagogy.cancel=default
+prompt.validation.illustration.step=rules-shared
+prompt.validation.illustration.options=off,on
+prompt.validation.illustration.cancel=default
+prompt.tls-delegation.step=tls-offer
+prompt.tls-delegation.options=no,yes
+prompt.tls-delegation.cancel=decline
+prompt.tls-delegation.header=Configure the framework's tools to trust your system CA for its network operations? (never disables TLS verification; writes only ~/.crewrig/tls-env.sh)
+prompt.mempalace-install.step=mcp
+prompt.mempalace-install.options=no,yes
+prompt.mempalace-install.cancel=decline
+prompt.install-seqthink.step=mcp
+prompt.install-seqthink.options=yes,no
+prompt.install-seqthink.cancel=abort
+prompt.install-seqthink.header=Include SequentialThinking MCP server in mcp_config.json?
+prompt.catalogue.team.step=rules-selection
+prompt.catalogue.team.options=<config/teams>
+prompt.catalogue.team.cancel=decline
+prompt.catalogue.expertise.step=rules-selection
+prompt.catalogue.expertise.options=<config/expertise>
+prompt.catalogue.expertise.cancel=decline
+prompt.catalogue.level.step=rules-selection
+prompt.catalogue.level.options=<config/level>
+prompt.catalogue.level.cancel=decline
+prompt.profile-method.step=rules-selection
+prompt.profile-method.options=keep-local,overwrite
+prompt.profile-method.cancel=abort
+prompt.overlay.community.step=tiers
+prompt.overlay.community.options=no,yes
+prompt.overlay.community.cancel=abort
+prompt.overlay.community.header=Install 'community' components to ~/.gemini/config/skills? (opt-in)
+prompt.overlay.org.step=tiers
+prompt.overlay.org.options=no,yes
+prompt.overlay.org.cancel=abort
+prompt.overlay.org.header=Install 'org' components to ~/.gemini/config/skills? (opt-in)
+prompt.transcripts.step=session-recording
+prompt.transcripts.options=no,yes
+prompt.transcripts.cancel=abort
+prompt.transcripts.header=Enable automatic session recording to MemPalace? (opt-in)
+prompt.transcripts-confirm.step=session-recording
+prompt.transcripts-confirm.options=yes,no
+prompt.transcripts-confirm.cancel=abort
+prompt.transcripts-confirm.header=Apply?
+prompt.usage-capture.step=usage-capture
+prompt.usage-capture.options=no,yes
+prompt.usage-capture.cancel=abort
+prompt.usage-capture.header=Enable Antigravity CLI usage capture (statusline channel, opt-in)?
+prompt.usage-capture-keep.step=usage-capture
+prompt.usage-capture-keep.options=keep,remove
+prompt.usage-capture-keep.cancel=abort
+prompt.usage-capture-keep.header=Antigravity usage capture is installed — keep it, or remove it (restores the prior statusLine.command, R21)?
+init.soul=agy -i "/init-soul" --new-project
+init.profile=agy -i "/init-personal-profile" --new-project
+home.cli=<HOME>/.gemini/antigravity-cli
+home.rules=<HOME>/.gemini/antigravity-cli
+home.skills=<HOME>/.gemini/config/skills
+home.agents=<HOME>/.gemini/config/agents
+home.mcp-config=<HOME>/.gemini/config/mcp_config.json
+rules.glob=[0-9][0-9]_*.md
+rules.shared-header=Installing shared configuration...
+rules.mkdir-in-existing=false
+rules.shared.1=config/ORGANIZATION.md -> <HOME>/.gemini/antigravity-cli/20_ORGANIZATION.md
+rules.shared.2=artifacts/core/rules/60-tools.md -> <HOME>/.gemini/antigravity-cli/60_TOOLS.md
+rules.shared.3=config/TOOLS.md -> <HOME>/.gemini/antigravity-cli/65_TOOLS.md
+rules.shared.4=artifacts/core/system-context -> <HOME>/.crewrig/system-context
+rules.shared.5=AGENTS.org.md -> <HOME>/.gemini/antigravity-cli/66_ORG_RULES.md (optional)
+rules.shared.6=config/SOUL.md -> <HOME>/.gemini/antigravity-cli/00_SOUL.md
+rules.store=artifacts/core/system-context -> <HOME>/.crewrig/system-context
+rules.pick-order=team,expertise,level
+rules.selection.team=config/teams/{name}.md -> <HOME>/.gemini/antigravity-cli/50_USER_TEAM.md
+rules.marker.team=<HOME>/.gemini/antigravity-cli/.selected_team
+rules.selection.expertise=config/expertise/{name}.md -> <HOME>/.gemini/antigravity-cli/40_USER_EXPERTISE.md
+rules.marker.expertise=<HOME>/.gemini/antigravity-cli/.selected_expertise
+rules.selection.level=config/level/{name}.md -> <HOME>/.gemini/antigravity-cli/10_USER_LEVEL.md
+rules.marker.level=<HOME>/.gemini/antigravity-cli/.selected_level
+rules.profile=method config/PROFILE.md -> <HOME>/.gemini/antigravity-cli/30_USER_PROFILE.md
+tiers.strategy=antigravity
+tiers.build-target=antigravity
+tiers.staging=<REPO>/dist/<TIER>/.agents
+tiers.library-staging=<REPO>/dist/library/.agents
+tiers.gate=<REPO>/dist/<TIER>/.agents
+tiers.automatic=library
+tiers.overlay=community,org
+tiers.overlay-prompts=overlay.community,overlay.org
+tiers.installs-agents=true
+tiers.migrates-superseded=true
+hooks.channel=agy-json
+hooks.file=<HOME>/.gemini/config/hooks.json
+hooks.src=<REPO>/hooks/antigravity-transcript-hooks.json
+hooks.env-patch=false
+hooks.unused-copy=<HOME>/.gemini/antigravity-cli/hooks/mempalace-transcript.sh
+hooks.leading-blank=false
+substeps.hooks-rewrite-installed=guard-rewrite,transcript-rewrite,report-unused-copy
+mcp.strategy=antigravityMcp
+mcp.handler=json-file
+mcp.target=<HOME>/.gemini/config/mcp_config.json
+substeps.mcp=backup-capture-operator-servers,mempalace-detect,chroma-daemon,sequential-thinking,write-mcp-config,org-mcp-fold,ensure-mempalace-http
+mcp.trust-wrapper=bash <REPO>/scripts/lib/tls-exec.sh
+mcp.wrapper-script=<REPO>/scripts/lib/mempalace-http-wrapper.py
+mcp.wrapper-carrier=setup
+usage-capture.strategy=statusline
+usage-capture.target=<USAGE_ROOT>/state/antigravity-statusline.json
+store-guidance=false
+legacy.gemini-md=<HOME>/.gemini/GEMINI.md
+legacy.marker=<!-- crewrig-section:
+system-context-file.target=<HOME>/.gemini/config/AGENTS.md
+summary.list-header=Active context files:
+summary.list-glob=[0-9][0-9]_*.md
+summary.mcp-source=mcp_config.json

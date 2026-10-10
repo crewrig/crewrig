@@ -2,7 +2,9 @@
 // rewrite a settings, hooks or config file holding a number that does not round-trip through a JS number
 // (the shell's jq keeps `12345678901234567890`, `1.0` and `1e3`; it prints `1e3` as `1E+3`). The refusal is
 // the lossless reader of scripts/lib/hook-config.ts: one `Error:` line on standard error, `SetupExit(1)`,
-// the file byte-identical and no backup made. Numbers that round-trip (`1.5`, `2`) still go through.
+// the file byte-identical and no backup made. The two best-effort rewrite steps (the guard and usage-capture
+// rewrites) print the same line but return status 1 and let the run go on (the shell's `|| true`).
+// Numbers that round-trip (`1.5`, `2`) still go through.
 // Every case runs in a sandboxed home under the OS temporary directory; the real home is never read.
 
 import assert from "node:assert/strict";
@@ -74,6 +76,16 @@ function assertRefused(h: Harness, file: string, before: string, step: () => unk
   assert.deepEqual(siblings, [], "no backup and no temporary file");
 }
 
+/** Run best-effort `step`: status 1, one `Error:` line naming `file`, `file` as it was, no backup, no throw. */
+function assertKeptGoing(h: Harness, file: string, before: string, step: () => number): void {
+  assert.equal(step(), 1, "the step's failure status, not a SetupExit");
+  assert.equal(h.err.length, 1, `one line on standard error, got ${JSON.stringify(h.err)}`);
+  assert.ok((h.err[0] ?? "").startsWith(`Error: ${file} cannot be rewritten without loss: `));
+  assert.equal(fs.readFileSync(file, "utf8"), before, "file bytes");
+  const siblings = fs.readdirSync(path.dirname(file)).filter((n) => n !== path.basename(file));
+  assert.deepEqual(siblings, [], "no backup and no temporary file");
+}
+
 function write(h: Harness, name: string, text: string): string {
   const file = path.join(h.home, name);
   fs.writeFileSync(file, text);
@@ -91,12 +103,12 @@ describe("usage-capture writers (usage-capture*.ts)", () => {
       );
     });
 
-    test(`usageCaptureRewrite refuses ${label}`, () => {
+    test(`usageCaptureRewrite (best effort) returns 1 on ${label}`, () => {
       const h = harness();
       const repo = checkout();
       const text = settingsText(number, cap(repo, "claude", "sh"));
       const file = write(h, "settings.json", text);
-      assertRefused(h, file, text, () =>
+      assertKeptGoing(h, file, text, () =>
         usageCaptureRewrite({
           ctx: h.ctx,
           cli: "claude",
@@ -136,12 +148,12 @@ describe("session recording merge (session-recording.ts)", () => {
 
 describe("worktree guard rewrite (hooks-rewrite.ts)", () => {
   for (const [label, number] of NUMBERS) {
-    test(`rewriteInstalledGuard refuses ${label}`, () => {
+    test(`rewriteInstalledGuard (best effort) returns 1 on ${label}`, () => {
       const h = harness();
       const legacy = `bash "${REPO}/hooks/worktree-git-guard.sh"`;
       const text = settingsText(number, legacy);
       const file = write(h, "settings.json", text);
-      assertRefused(h, file, text, () =>
+      assertKeptGoing(h, file, text, () =>
         rewriteInstalledGuard({
           ctx: { ...h.ctx, repoDir: REPO },
           cli: "claude",

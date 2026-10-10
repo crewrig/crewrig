@@ -190,3 +190,22 @@ export function importClosure(entries: readonly string[], root: string = REPO): 
   }
   return closure;
 }
+
+const VARIABLE_IMPORT_RE = /\bimport\s*\(\s*(?!["'])/g;
+
+/**
+ * The `import(...)` calls of `files` (paths relative to `root`) whose specifier is not a plain string
+ * literal: a scan of the static closure cannot follow them, so a caller must account for each one.
+ */
+export function variableImports(files: Iterable<string>, root: string = REPO): Finding[] {
+  const found: Finding[] = [];
+  for (const file of files) {
+    if (!/\.(ts|js|mjs|cjs)$/.test(file)) continue;
+    const code = stripComments(fs.readFileSync(path.join(root, file), "utf8"));
+    for (const m of code.matchAll(VARIABLE_IMPORT_RE)) {
+      const line = lineOf(code, m.index ?? 0);
+      found.push({ file, line, text: (code.split("\n")[line - 1] ?? "").trim() });
+    }
+  }
+  return found;
+}
