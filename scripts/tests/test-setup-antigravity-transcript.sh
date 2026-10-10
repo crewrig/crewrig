@@ -143,20 +143,11 @@ for noisy in PreToolUse PostToolUse PreInvocation PostInvocation; do
   fi
 done
 
-# R22 — the consent text must state the true write volume. It claimed "one entry
-# per turn (turn start and turn end)" while registering an event that fires once
-# per model call; a three-tool turn produced five entries, not two. Pin the two
-# together so the text cannot drift from the manifest again.
-if grep -q "Record ONE entry each time the agent's execution loop ends" "$SETUP"; then
-  ok "R22: the consent text states one entry per execution-loop end"
-else
-  bad "R22: the consent text does not state the true per-turn write volume"
-fi
-if grep -qE 'turn start and turn end' "$SETUP"; then
-  bad "R22: the consent text still promises a turn-start entry"
-else
-  ok "R22: the consent text no longer promises a turn-start entry"
-fi
+# R22 — the consent text must state the true write volume (one entry per execution-loop end,
+# no turn-start entry). Spec 0256 requirement 9 (PR D2): no longer read from the text of the setup
+# script. scripts/tests/setup-retarget-antigravity-transcript.test.ts runs the TypeScript entry with the
+# transcripts question answered yes and asserts the consent text it PRINTS. Pinned against the
+# unchanged shell by the golden cell antigravity/transcript-optin-yes (its stdout holds the text).
 
 # R4 — a handler's cwd is the directory holding hooks.json, so $PWD resolves
 # under the customization root rather than under any project.
@@ -561,148 +552,21 @@ case "$OFFER_OPTIONS" in
   no,*) ok "R12: the offer defaults to 'no'" ;;
   *)    bad "R12: the offer does not default to 'no' (options '$OFFER_OPTIONS')" ;;
 esac
-# R16 — BEHAVIOURAL, not a grep. An earlier version of this assertion only
-# checked that the helper's NAME appeared somewhere after the `CONFIRM=` line,
-# which no arrangement of the code could falsify: it passed even with the gate
-# fully INVERTED, so that declining deployed and accepting did not. A test that
-# cannot fail is worse than no test, because it is counted as coverage.
-#
-# Instead: extract the real block from the script, run it with `fzf` and the
-# deployment stubbed, and drive the two prompts. That exercises the gate itself
-# without needing a terminal, a real `fzf`, or a single write.
-GATE_BLOCK="$TMP_ROOT/gate-block.sh"
-awk '/^# --- Transcript hooks \(opt-in\) --- \(spec 0116\)/{p=1}
-     p && /^# --- Generate/{p=0}
-     p{print}' "$SETUP" > "$GATE_BLOCK"
-if [ -s "$GATE_BLOCK" ]; then
-  ok "R16: the transcript block was located in the setup script"
-else
-  bad "R16: could not locate the transcript block — the marker comment moved?"
-fi
-
-# TRIPWIRE. The extraction is bounded by a comment, and a comment can be
-# reworded. If the END marker ever stops matching, `awk` runs away and captures
-# the rest of the script — including the block that writes
-# `${HOME}/.gemini/config/AGENTS.md`. Sourcing that would make this suite write
-# to the operator's real home, breaking the hermeticity it claims in its own
-# header. Fail loudly on a runaway instead of silently doing more work.
-# (`run_gate` also sandboxes HOME, so this is the second of two guards.)
-if grep -q 'GEMINI_MD_TARGET' "$GATE_BLOCK"; then
-  bad "R16: the extraction ran away past the transcript block — end marker moved?"
-else
-  ok "R16: the extraction is bounded to the transcript block"
-fi
-
-# <answer1> <answer2> -> echoes "DEPLOYED" iff the helper was reached
-run_gate() {
-  local a1="$1" a2="$2"
-  ( # subshell: the stubs must not leak into the rest of the suite
-    # `fzf` is invoked as `echo ... | fzf --header ...`, so the stub swallows
-    # stdin and answers positionally: first call = the offer, second = the
-    # confirmation. A command-substitution subshell would lose an exported
-    # counter, so the state rides on a file.
-    _ASKED="$TMP_ROOT/asked.$$"; rm -f "$_ASKED"
-    fzf() {
-      cat >/dev/null
-      if [ ! -f "$_ASKED" ]; then : > "$_ASKED"; printf '%s\n' "$a1"; else printf '%s\n' "$a2"; fi
-    }
-    # Echo the ARGUMENTS, not just a marker. Without this the call site is
-    # covered by nothing: §2/§3 exercise the helper with hand-written correct
-    # arguments, and a stub that ignores its own would let a swapped or emptied
-    # argument at the call site pass the whole suite (spec 0116 delta-01 R24).
-    deploy_antigravity_transcript_hooks() { echo "DEPLOYED|$1|$2|$3|$4|$5|$6"; }
-    detect_mempalace_python() { echo "/usr/bin/python3"; }
-    # A directive covers only the next command, and `a=1; b=2` is two — hence
-    # one line each. Both are read by the block sourced below.
-    # shellcheck disable=SC2034
-    REPO_DIR="$TMP_ROOT/repo"
-    # shellcheck disable=SC2034
-    AGY_HOME="$TMP_ROOT/gatehome"
-    # Sandbox HOME. The block resolves its deployment target from ${HOME}, and
-    # this suite promises in its own header to write nothing outside a temp
-    # directory. Redirecting HOME makes that true by construction rather than by
-    # trusting that every line of the extracted block is inert.
-    HOME="$TMP_ROOT/gatehome"
-    # shellcheck source=/dev/null
-    . "$GATE_BLOCK"
-  ) 2>/dev/null
-}
-
-# Capture, then match. Piping into `grep -q` would be wrong under the `pipefail`
-# this suite runs with: grep exits on its first match, the producer takes SIGPIPE,
-# and the pipeline reports 141 — so a successful match reads as a failure.
-GATE_OUT="$(run_gate no no)"
-case "$GATE_OUT" in
-  *DEPLOYED*) bad "R16: declining the OFFER still reached the deployment" ;;
-  *)          ok  "R16: declining the offer reaches no deployment" ;;
-esac
-# `no no` alone cannot say WHICH gate blocked — the second `no` would carry the
-# case on its own. This is the independent probe: decline the offer, then answer
-# yes to anything that follows. It must still deploy nothing. Without it, a
-# refactor that renames the variable on one side of the offer's `if` — leaving
-# the gate always-true — passes the whole suite while an operator who declined
-# the offer is still shown "Apply?" and can deploy from it.
-GATE_OUT="$(run_gate no yes)"
-case "$GATE_OUT" in
-  *DEPLOYED*) bad "R16: the offer decline was overridden by the confirmation" ;;
-  *)          ok  "R16: the offer decline holds on its own" ;;
-esac
-GATE_OUT="$(run_gate yes no)"
-case "$GATE_OUT" in
-  *DEPLOYED*) bad "R16: declining the CONFIRMATION still reached the deployment" ;;
-  *)          ok  "R16: declining the confirmation reaches no deployment" ;;
-esac
-# THE CANARY. Every case above passes by NOT seeing "DEPLOYED", so a `run_gate`
-# that is broken outright — a bad extraction, an unset-variable abort, a sourcing
-# failure — would satisfy all of them and read as full coverage. This case is the
-# only one that requires the harness to actually work, which is what stops the
-# other three from being vacuous. Verified: pointing the sourced path at a
-# nonexistent file turns the suite red here (67 passed, 1 failed) rather than
-# green everywhere.
-GATE_OUT="$(run_gate yes yes)"
-case "$GATE_OUT" in
-  *DEPLOYED*) ok  "R12/R16: accepting both prompts reaches the deployment" ;;
-  *)          bad "R12/R16: accepting both prompts did NOT reach the deployment — gate inverted, or the harness is broken" ;;
-esac
-
-# R24 — the call site's ARGUMENT LIST. Everything above proves the deployment is
-# reached; none of it proves it is reached with the right arguments. Five
-# mutations at the call site previously survived the whole suite, the worst being
-# an emptied environment prefix: the deployed commands then lack
-# MEMPALACE_TRANSCRIPT_ENABLED=1, so the hook opts itself out and records nothing,
-# silently, exit 0. That is this feature's own failure mode, reachable by a
-# one-token edit.
-# No `tr ' ' '\n'` here: the env prefix (arg 5) contains a space, and a word-split
-# `tr` would push the 6th field onto a line `grep '^DEPLOYED|'` rejects, leaving
-# A_GUARD silently empty — the exact R24 defect class this ticket fixes.
-GATE_ARGS="$(printf '%s' "$GATE_OUT" | grep '^DEPLOYED|' || true)"
-IFS='|' read -r _ A_SRC A_HOOK A_DIR A_JSON A_ENV A_GUARD <<EOF
-$GATE_ARGS
-EOF
-case "$A_SRC" in
-  */hooks/antigravity-transcript-hooks.json) ok "R24: arg 1 is the manifest source" ;;
-  *) bad "R24: arg 1 is '$A_SRC', expected the manifest source" ;;
-esac
-case "$A_HOOK" in
-  "") ok "R24: arg 2 is empty — no hook script copy is installed (spec 0247 R21)" ;;
-  *) bad "R24: arg 2 is '$A_HOOK', expected the hook script source" ;;
-esac
-case "$A_DIR" in
-  */hooks) ok "R24: arg 3 is the hook install DIRECTORY" ;;
-  *) bad "R24: arg 3 is '$A_DIR', expected a hooks directory" ;;
-esac
-case "$A_JSON" in
-  */.gemini/config/hooks.json) ok "R24: arg 4 is the manifest TARGET at the customization root" ;;
-  *) bad "R24: arg 4 is '$A_JSON', expected \${HOME}/.gemini/config/hooks.json" ;;
-esac
-case "$A_ENV" in
-  "") ok "R24: arg 5 is empty — the direct form carries no env prefix (spec 0247 R4, R20)" ;;
-  *) bad "R24: arg 5 is '$A_ENV' — the deployed hook would opt itself out and record nothing" ;;
-esac
-case "$A_GUARD" in
-  */hooks/worktree-git-guard.ts) ok "R24: arg 6 is the guard script source" ;;
-  *) bad "R24: arg 6 is '$A_GUARD', expected the guard script source" ;;
-esac
+# R16 (the gate) and R24 (the call site's argument list) — spec 0256 requirement 9 (PR D2): they were
+# asserted by extracting the transcript block from the text of the setup script and running it with
+# `fzf` and the deployment stubbed. They are now asserted by RUNNING the TypeScript entry in the
+# golden sandbox (scripts/tests/setup-retarget-antigravity-transcript.test.ts):
+#   - declining the offer, the offer decline holding against a later `Apply?` yes, declining `Apply?`
+#     deploy nothing; accepting both prompts lands hooks.json (the canary that the run did something);
+#   - each of the six arguments of the deployment (manifest source, hook copy retired, hook directory,
+#     manifest target, EMPTY env prefix, guard source) is observed on the manifest that LANDS: both named
+#     hooks come from the shipped manifest, every transcript command is the direct in-repo form with no
+#     MEMPALACE_TRANSCRIPT_ENABLED prefix, the guard command names the repository guard, no hook copy is
+#     installed, and the target is ~/.gemini/config/hooks.json at 0600.
+# Pinned against the unchanged shell by the golden cells antigravity/transcript-optin-no,
+# transcript-optin-yes and transcript-optin-yes-declined. The R24 text mutations of the call site have no
+# TypeScript counterpart (there is no argument list to empty: the call is typed), so each is retired
+# with the landed-manifest assertion above that observes the same property.
 # The deployment target must be the customization root that is proven to fire,
 # not the application-data directory.
 # Pinned against the unchanged shell by the golden cell transcript-optin-yes (its tree holds
@@ -1024,25 +888,13 @@ if cmp -s "$AGY_SETTINGS" "$AGY_SETTINGS.orig"; then
 else
   bad "rewrite changed a foreign statusLine.command"
 fi
-# Structural: the setup recognises both recorded values, and removes without Node.js.
-if grep -q 'previousInstalledStatusLineCommand' "$SETUP" && grep -q 'PREVIOUS_INSTALLED_CMD' "$SETUP"; then
-  ok "setup-antigravity recognises the transitional previousInstalledStatusLineCommand as the framework's (v1-F6)"
-else
-  bad "setup-antigravity does not recognise previousInstalledStatusLineCommand"
-fi
-if grep -q 'write_json_config_secure "$AGY_SETTINGS"' "$SETUP" && ! grep -qE 'AGY_SETTINGS.*\.tmp' "$SETUP"; then
-  ok "setup-antigravity removes the statusline through the 0600 atomic writer, with no jq > .tmp && mv left"
-else
-  bad "setup-antigravity still writes settings.json through a jq > .tmp && mv block"
-fi
-
-# usage-capture.sh's own sibling class: never install_file'd, and none
-# appears under this test's sandboxed ~/.gemini/antigravity-cli/.
-if grep -qE 'install_file[^#]*antigravity-statusline-shim\.sh' "$SETUP"; then
-  bad "$SETUP appears to install_file antigravity-statusline-shim.sh — it must be wired by in-repo absolute path, never copied"
-else
-  ok "$SETUP never install_file's antigravity-statusline-shim.sh"
-fi
+# The three structural greps on the setup text (the transitional previousInstalledStatusLineCommand
+# is recognised as the framework's, the 0600 atomic writer with no `jq > .tmp && mv` left, the shim never
+# install_file'd) are retargeted by spec 0256 requirement 9 (PR D2) to runs of the TypeScript entry:
+# scripts/tests/setup-retarget-antigravity-transcript.test.ts asserts that `remove` from the transitional state restores the prior command,
+# that the install lands settings.json and the marker at 0600 with no `.tmp` sibling, and that no copy of
+# the shim appears under the home. Pinned against the unchanged shell by the golden cells
+# antigravity/usage-capture-absent-yes and usage-capture-installed-remove.
 SANDBOX_AGY_HOME="$TMP_ROOT/gemini-antigravity-cli"
 mkdir -p "$SANDBOX_AGY_HOME"
 if [ -f "$SANDBOX_AGY_HOME/antigravity-statusline-shim.sh" ]; then

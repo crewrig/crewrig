@@ -517,41 +517,56 @@ if [ -z "$agy_decl" ]; then bad "setup: empty Antigravity declaration (vacuity g
   && ok "setup: the declared CLI home is untouched — context files and hooks stay put" \
   || bad "setup: the declared CLI home moved; spec 0123 excludes the context files and hooks ($(agy_fact home.cli))"
 
-if grep -q 'install_antigravity_tier_to_home "\$REPO_DIR" library "\$AGY_SKILLS_HOME" "\$AGY_AGENTS_HOME"' "$SETUP"; then
-  ok "setup: the library call passes repo, tier, and BOTH destination roots"
-else
-  bad "setup: the library install call-site arguments are wrong or emptied"
-fi
-if grep -q 'install_antigravity_tier_to_home "\$REPO_DIR" "\$overlay_tier"' "$SETUP"; then
-  ok "setup: the overlay call passes the overlay tier"
-else
-  bad "setup: the overlay install call-site arguments are wrong or emptied"
-fi
-if grep -q 'migrate_antigravity_superseded_components' "$SETUP" \
-   && grep -q '"\$AGY_SUPERSEDED_ROOT" "\$REPO_DIR/artifacts" all' "$SETUP"; then
-  ok "setup: the migration is called with the superseded root, the artifacts root, and both kinds"
-else
-  bad "setup: the migration call-site arguments are wrong or emptied"
-fi
-
-# Both install calls must propagate a non-zero status rather than swallow it,
-# or R6 is unobservable from the run's own exit code.
-if [ "$(grep -c 'install_antigravity_tier_to_home' "$SETUP")" -eq \
-     "$(grep -c 'install_antigravity_tier_to_home.*|| exit 1' "$SETUP")" ]; then
-  ok "setup: every install call propagates a non-zero status"
-else
-  # The overlay call is wrapped across two lines; check the continuation.
-  if grep -A1 'install_antigravity_tier_to_home "\$REPO_DIR" "\$overlay_tier"' "$SETUP" | grep -q '|| exit 1'; then
-    ok "setup: every install call propagates a non-zero status (overlay call wraps)"
-  else
-    bad "setup: an install call swallows a non-zero status, hiding R6"
+# Retargeted (spec 0256 R9, PR D2): the call-site arguments and the `|| exit 1` propagation were
+# grep reads of the shell text; they are now observed by RUNNING the TypeScript Antigravity entry in a
+# sandboxed HOME with the stubs of the golden harness (scripts/tests/setup-retarget-entry-behaviour.test.ts):
+#   * "antigravity install call sites": the library skill lands at the skills root and the migration
+#     removes the superseded copy and says so (repo, tier, skills root; superseded root, artifacts root);
+#     overlay-yes/-no: the migration runs either way;
+#   * "antigravity tier install failure": a library tier staging a skill that cannot be placed aborts
+#     with a non-zero status and nothing after the tier step runs (the `|| exit 1`; R6 observable from
+#     the run's own exit code).
+# Pin against the unchanged shell while it exists: the setup-golden cells
+# antigravity/tier-install-failure (status 1, the ERROR lines, stdout ending at the library header),
+# antigravity/antigravity-superseded-migration and antigravity/overlay-yes/-no. The sandbox stubs
+# target Linux, so elsewhere the groups are skipped here and run in CI. Retired with the shell text
+# reads: the `|| exit 1` text, the argument spelling (`"$REPO_DIR" library "$AGY_SKILLS_HOME" ...`).
+# Not retargeted: the AGENTS root argument of the library call (a staged library agent did not land in
+# the sandbox run, see the report of PR D2: to be pinned from the entry's own unit tests at PR E).
+TS_TEST="$REPO_DIR/scripts/tests/setup-retarget-entry-behaviour.test.ts"
+# The golden sandbox of the TypeScript setup needs these real tools on PATH and the repository's config/
+# tree; a hermetic PATH or a partial repository copy (the install oracle's) lacks them, and the group is
+# then skipped, not failed.
+ts_sandbox_tools_missing() {
+  local t
+  for t in jq git diff ls sort uniq tee touch stat realpath comm paste od expr dd tty mv rmdir tac rev hostname whoami; do
+    command -v "$t" >/dev/null 2>&1 || return 0
+  done
+  return 1
+}
+run_ts_group() {
+  unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
+  local group="$1" log="$TMP_ROOT/ts-group.log" line name n=0
+  if [ "$(uname -s)" != "Linux" ] || ts_sandbox_tools_missing || [ ! -d "${REPO_DIR:-.}/config" ]; then
+    echo "  skip: '$group' needs the Linux setup sandbox and jq (runs in CI)"
+    return 0
   fi
-fi
+  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1
+  while IFS= read -r line; do
+    case "$line" in
+      "  ✔ "*) name="${line#  ✔ }"; ok "${name% (*ms)}"; n=$((n + 1)) ;;
+      "  ✖ "*) name="${line#  ✖ }"; bad "${name% (*ms)}"; n=$((n + 1)) ;;
+    esac
+  done < "$log"
+  [ "$n" -gt 0 ] || bad "'$group' ran no case (vacuity guard): $(tail -3 "$log")"
+}
+run_ts_group "antigravity install call sites"
+run_ts_group "antigravity tier install failure"
 
 # The migration must NOT sit inside the overlay opt-in branch: it is unconditional on which tiers
 # this run installs. Retargeted (spec 0256 R9, PR D1): declared as its own step, after `tiers`, so
 # it cannot be gated on an overlay prompt (pin: the same unit assertion and the golden cell
-# `antigravity-superseded-migration`). The call-site arguments above stay shell reads (D2).
+# `antigravity-superseded-migration`). The call-site arguments above are run, not read (D2).
 tiers_no="$(printf '%s\n' "$agy_decl" | grep -x 'step [0-9]*: tiers' | head -1 | sed -E 's/^step ([0-9]+):.*/\1/')"
 migrate_no="$(printf '%s\n' "$agy_decl" | grep -x 'step [0-9]*: migrate-superseded' | head -1 | sed -E 's/^step ([0-9]+):.*/\1/')"
 if [ -n "$tiers_no" ] && [ -n "$migrate_no" ] && [ "$migrate_no" -gt "$tiers_no" ] \

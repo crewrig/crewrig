@@ -50,57 +50,53 @@ for cli in antigravity gemini; do
 done
 
 echo ""
-echo "2. Functional cleanup assertions"
+echo "2. Functional cleanup assertions (the real TypeScript entries, spec 0256 requirement 9, PR D2)"
 
+# Retargeted from a re-implemented `run_cleanup_snippet` (a copy of the scripts' two-line cleanup,
+# which could drift from the scripts without this suite noticing) to RUNNING the real step: the
+# TypeScript entries of the Gemini and Antigravity setups run in a sandboxed HOME with a seeded
+# ~/.gemini/GEMINI.md, and the file is asserted after the run (scripts/tests/
+# setup-retarget-entry-behaviour.test.ts, group "legacy GEMINI.md cleanup": case A marker -> deleted,
+# case B no marker -> kept, case C absent -> clean run and none created, for both CLIs; each case
+# first asserts status 0 and that the setup's own context file landed, the vacuity guard).
+# Pin against the unchanged shell while it exists: the setup-golden cells gemini/legacy-gemini-md-marker,
+# gemini/legacy-gemini-md-no-marker, antigravity/legacy-gemini-md-with-marker and
+# antigravity/legacy-gemini-md-without-marker, which run the real shell script and the TypeScript
+# entry against the same fixtures. The sandbox stubs target Linux (pipx layout, systemd): elsewhere
+# the group is skipped here and runs in CI and in the Linux container.
+TS_TEST="$REPO_DIR/scripts/tests/setup-retarget-entry-behaviour.test.ts"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-# D2 (static reads of behaviour): this helper re-implements the scripts' cleanup snippet instead of
-# running the step; D2 retargets it to execute the TypeScript step. Until then the real behaviour
-# stays pinned by the goldens gemini/legacy-gemini-md-marker and -no-marker.
-# Helper running the cleanup snippet matching the scripts' implementation
-run_cleanup_snippet() {
-  local target_home="$1"
-  local legacy_file="${target_home}/.gemini/GEMINI.md"
-  if [ -f "$legacy_file" ] && grep -q '<!-- crewrig-section:' "$legacy_file" 2>/dev/null; then
-    rm -f "$legacy_file"
+# run_ts_group <group name> — run one describe group and report each subtest by name.
+# The golden sandbox of the TypeScript setup needs these real tools on PATH and the repository's config/
+# tree; a hermetic PATH or a partial repository copy (the install oracle's) lacks them, and the group is
+# then skipped, not failed.
+ts_sandbox_tools_missing() {
+  local t
+  for t in jq git diff ls sort uniq tee touch stat realpath comm paste od expr dd tty mv rmdir tac rev hostname whoami; do
+    command -v "$t" >/dev/null 2>&1 || return 0
+  done
+  return 1
+}
+run_ts_group() {
+  unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
+  local group="$1" log="$TMP_DIR/group.log" line n=0
+  if [ "$(uname -s)" != "Linux" ] || ts_sandbox_tools_missing || [ ! -d "${REPO_DIR:-.}/config" ]; then
+    echo "  skip: '$group' needs the Linux setup sandbox and jq (runs in CI)"
+    return 0
   fi
+  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1
+  while IFS= read -r line; do
+    case "$line" in
+      "  ✔ "*) line="${line#  ✔ }"; ok "${line% (*ms)}"; n=$((n + 1)) ;;
+      "  ✖ "*) line="${line#  ✖ }"; bad "${line% (*ms)}"; n=$((n + 1)) ;;
+    esac
+  done < "$log"
+  [ "$n" -gt 0 ] || bad "'$group' ran no case (vacuity guard): $(tail -3 "$log")"
 }
 
-# Case A: CrewRig-generated GEMINI.md is deleted
-HOME_A="$TMP_DIR/home_a"
-mkdir -p "$HOME_A/.gemini"
-cat > "$HOME_A/.gemini/GEMINI.md" <<'MARKER'
-<!-- crewrig-section: 00_SOUL.md -->
-# SOUL.md - Agent Identity Blueprint
-MARKER
-
-run_cleanup_snippet "$HOME_A"
-[ ! -f "$HOME_A/.gemini/GEMINI.md" ] \
-  && ok "Case A: CrewRig-generated GEMINI.md is deleted" \
-  || bad "Case A: CrewRig-generated GEMINI.md was not deleted"
-
-# Case B: Custom user GEMINI.md without marker is preserved
-HOME_B="$TMP_DIR/home_b"
-mkdir -p "$HOME_B/.gemini"
-cat > "$HOME_B/.gemini/GEMINI.md" <<'CUSTOM'
-# My Custom Gemini Rules
-Always use strict types.
-CUSTOM
-
-run_cleanup_snippet "$HOME_B"
-[ -f "$HOME_B/.gemini/GEMINI.md" ] \
-  && ok "Case B: Custom user GEMINI.md is preserved" \
-  || bad "Case B: Custom user GEMINI.md was deleted"
-
-# Case C: Absent GEMINI.md executes cleanly
-HOME_C="$TMP_DIR/home_c"
-mkdir -p "$HOME_C/.gemini"
-
-run_cleanup_snippet "$HOME_C"
-[ ! -f "$HOME_C/.gemini/GEMINI.md" ] \
-  && ok "Case C: Absent GEMINI.md completes cleanly" \
-  || bad "Case C: Unexpected state for absent GEMINI.md"
+run_ts_group "legacy GEMINI.md cleanup"
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"

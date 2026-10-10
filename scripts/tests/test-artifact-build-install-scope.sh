@@ -15,10 +15,12 @@
 #   * Build routing is exercised by running the REAL build-components.sh
 #     against a throwaway REPO_DIR seeded with synthetic artifact tiers.
 #     Nothing touches the real repo tree or the real dist/.
-#   * Install mechanics are exercised by extracting the REAL
-#     `install_tier_to_home` function body verbatim from the shipped
-#     setup-claude-interactive.sh and calling it against a temp HOME. This
-#     tests the production code path, not a re-implementation.
+#   * Install mechanics are exercised by RUNNING the real TypeScript setup
+#     entries (spec 0256 requirement 9, PR D2) in a sandboxed HOME with the
+#     overlay tiers answered yes and no, and asserting which component
+#     directories land (scripts/tests/setup-retarget-entry-behaviour.test.ts).
+#     This used to extract the `install_tier_to_home` body from the shell text
+#     and eval it.
 #   * The opt-in *gate* (fzf-driven) is not directly callable; its invariant
 #     contract is read from the TypeScript setup declaration (see the gate
 #     test + the gap note at the foot of this file).
@@ -30,9 +32,9 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD="$REPO_DIR/scripts/build-components.sh"
-CLAUDE_SETUP="$REPO_DIR/scripts/setup-claude-interactive.sh"
 # The setup DECLARATION printer (resolved now: REPO_DIR is repointed to a synthetic root below).
 PRINT_DECL="$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts"
+TS_TEST="$REPO_DIR/scripts/tests/setup-retarget-entry-behaviour.test.ts"
 
 WORK="$(mktemp -d -t crewrig-0019.XXXXXX)"
 cleanup() { rm -rf "$WORK"; }
@@ -97,14 +99,35 @@ feedback_repo = "https://github.com/crewrig/feedback"
 EOF
 }
 
-# Extract the shipped install_tier_to_home function body verbatim, so the test
-# exercises production code rather than a copy that can silently drift.
-load_real_install_fn() {
-  local script="$1"
-  local fn
-  fn=$(awk '/^install_tier_to_home\(\) \{$/{f=1} f{print} f&&/^\}$/{exit}' "$script")
-  [ -n "$fn" ] || { echo "could not extract install_tier_to_home from $script" >&2; return 1; }
-  eval "$fn"
+# run_ts_group <group name> — run one describe group of the TypeScript behaviour test and report each
+# subtest by name (a group that ran no case fails: vacuity guard). The sandbox stubs of the setup
+# entries target Linux (pipx layout, systemd), so elsewhere the group is skipped here and runs in CI
+# and in the Linux container.
+# The golden sandbox of the TypeScript setup needs these real tools on PATH and the repository's config/
+# tree; a hermetic PATH or a partial repository copy (the install oracle's) lacks them, and the group is
+# then skipped, not failed.
+ts_sandbox_tools_missing() {
+  local t
+  for t in jq git diff ls sort uniq tee touch stat realpath comm paste od expr dd tty mv rmdir tac rev hostname whoami; do
+    command -v "$t" >/dev/null 2>&1 || return 0
+  done
+  return 1
+}
+run_ts_group() {
+  unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
+  local group="$1" log="$WORK/ts-group.log" line name n=0
+  if [ "$(uname -s)" != "Linux" ] || ts_sandbox_tools_missing || [ ! -d "${REPO_DIR:-.}/config" ]; then
+    echo "SKIP: '$group' needs the Linux setup sandbox and jq (runs in CI)"
+    return 0
+  fi
+  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1 || true
+  while IFS= read -r line; do
+    case "$line" in
+      "  ✔ "*) name="${line#  ✔ }"; report "${name% (*ms)}" true; n=$((n + 1)) ;;
+      "  ✖ "*) name="${line#  ✖ }"; report "${name% (*ms)}" false "see: node --test --test-name-pattern='$group' $TS_TEST"; n=$((n + 1)) ;;
+    esac
+  done < "$log"
+  [ "$n" -gt 0 ] || report "'$group' ran no case (vacuity guard)" false "$(tail -3 "$log")"
 }
 
 # =====================================================================
@@ -167,100 +190,18 @@ ok="true"; detail=""
 report "Scenario 3 (build): community compiles into dist/, not the project tree" "$ok" "$detail"
 
 # =====================================================================
-# Install mechanics — exercise the REAL install_tier_to_home against a
-# temp HOME. Scenario 1 (install half) and Scenario 3 (install half).
+# Install mechanics (Scenario 1 install half, Scenario 3 install half, spec 0201 R10-R12) — the REAL
+# TypeScript entry of each CLI, run with the overlay tiers answered yes and no (the `tiers` step:
+# the library tier is unconditional, each overlay tier is gated by its own question). Scenario 1:
+# opted-in org (and community) land in the home, the org agent as a flat file (R10), a stale
+# same-name agent directory is removed (R11), unrelated entries stay (R12). Scenario 3: with the
+# answer no neither overlay tier reaches the home, and the yes run proves the installer places
+# them (the failure-mode guard against a no-op installer).
+# Pin against the unchanged shell while it exists: the setup-golden cells <cli>/overlay-yes and
+# <cli>/overlay-no, which run the real shell setup and the TypeScript entry against the same fixtures.
 # =====================================================================
-# Set up a temp HOME and the env vars the function closes over.
-HOME_ROOT="$WORK/home"
-CLAUDE_SKILLS_HOME="$HOME_ROOT/.claude/skills"
-CLAUDE_AGENTS_HOME="$HOME_ROOT/.claude/agents"
-mkdir -p "$HOME_ROOT"
-
-# Point the function at the dist/ tree the scenario build produced above.
-REPO_DIR="$SCEN_ROOT"
-export REPO_DIR CLAUDE_SKILLS_HOME CLAUDE_AGENTS_HOME
-
-# Bring the production function into scope. (D2, static reads of behaviour: this extraction of the
-# function body from the shell text is retargeted in PR D2, not here.)
-load_real_install_fn "$CLAUDE_SETUP"
-
-# spec 0201 (R10-R13) — pre-seed a stale per-agent directory from the retired
-# nested layout, plus two decoys the install must never touch, BEFORE any
-# install runs. Seeding after the run would test nothing: (b) would find the
-# stale directory it is meant to prove removed already absent.
-mkdir -p "$CLAUDE_AGENTS_HOME/demo-org-agent"
-echo "stale nested content" > "$CLAUDE_AGENTS_HOME/demo-org-agent/AGENT.md"
-echo "operator note" > "$CLAUDE_AGENTS_HOME/operator-note.md"
-mkdir -p "$CLAUDE_AGENTS_HOME/unrelated-agent"
-echo "unrelated" > "$CLAUDE_AGENTS_HOME/unrelated-agent/AGENT.md"
-
-# ---------------------------------------------------------------------
-# Scenario 1 (install half) — opting the org tier in copies it into HOME.
-# (Calling install_tier_to_home org is exactly what the opt-in `yes` branch
-# does — see the gate-invariant test below.)
-# ---------------------------------------------------------------------
-install_tier_to_home org >/dev/null 2>&1
-org_home="$CLAUDE_SKILLS_HOME/demo-org-skill/SKILL.md"
-ok="true"; detail=""
-[ -f "$org_home" ] || { ok="false"; detail="org skill not installed into temp HOME at $org_home"; }
-report "Scenario 1 (install): opted-in org tier lands in user HOME" "$ok" "$detail"
-
-# spec 0201 (R10) — the org agent lands as one regular flat file.
-agent_home="$CLAUDE_AGENTS_HOME/demo-org-agent.md"
-ok="true"; detail=""
-[ -f "$agent_home" ] && [ ! -L "$agent_home" ] \
-  || { ok="false"; detail="org agent not installed as a regular file at $agent_home"; }
-report "Scenario 1 (install): opted-in org agent lands as a flat file in user HOME (R10)" "$ok" "$detail"
-
-# spec 0201 (R11) — the stale same-name directory from a prior nested-layout
-# install is removed as part of this run.
-ok="true"; detail=""
-[ ! -d "$CLAUDE_AGENTS_HOME/demo-org-agent" ] \
-  || { ok="false"; detail="stale nested directory demo-org-agent/ was not removed (R11)"; }
-report "Install removes a stale same-name agent directory (R11)" "$ok" "$detail"
-
-# spec 0201 (R12) — entries unrelated to an installed agent name are untouched.
-ok="true"; detail=""
-[ -f "$CLAUDE_AGENTS_HOME/operator-note.md" ] \
-  || { ok="false"; detail="unrelated operator-note.md was removed (R12 violation)"; }
-[ -d "$CLAUDE_AGENTS_HOME/unrelated-agent" ] \
-  || { ok="false"; detail="unrelated-agent/ directory was removed (R12 violation)"; }
-report "Install does not remove entries unrelated to installed agents (R12)" "$ok" "$detail"
-
-# ---------------------------------------------------------------------
-# Scenario 3 (install half) — WITHOUT opt-in, community never reaches HOME.
-# We model "no opt-in" as the gate simply not calling install_tier_to_home
-# for community. Assert community is absent from HOME after the org install.
-# ---------------------------------------------------------------------
-community_home="$CLAUDE_SKILLS_HOME/demo-community-skill"
-ok="true"; detail=""
-[ ! -e "$community_home" ] \
-  || { ok="false"; detail="community skill reached HOME without opt-in at $community_home"; }
-report "Scenario 3 (install): un-opted community tier is absent from HOME" "$ok" "$detail"
-
-# Conversely, prove the install IS capable of placing community on opt-in —
-# otherwise the previous assertion could pass for the wrong reason (a broken
-# installer that copies nothing). This is the failure-mode guard.
-install_tier_to_home community >/dev/null 2>&1
-ok="true"; detail=""
-[ -f "$CLAUDE_SKILLS_HOME/demo-community-skill/SKILL.md" ] \
-  || { ok="false"; detail="community install is a silent no-op even when invoked"; }
-report "Scenario 3 (guard): community DOES install when explicitly opted in" "$ok" "$detail"
-
-# spec 0201 (R11, no-op clause) — assertion (d). By this point the stale
-# demo-org-agent/ directory is gone (removed by the first org install above),
-# so this is a genuine no-stale-directory run, not a repeat of the same
-# assertion under a different name. Remove the installed file, capturing the
-# real exit status (the two `install_tier_to_home` calls above discard theirs
-# with `>/dev/null 2>&1`; this is the one assertion that must not) rather than
-# relying on the leftover file to satisfy "still installs the file" for the
-# wrong reason.
-rm -f "$CLAUDE_AGENTS_HOME/demo-org-agent.md"
-install_tier_to_home org && d_exit=0 || d_exit=$?
-ok="true"; detail=""
-[ "$d_exit" -eq 0 ] && [ -f "$CLAUDE_AGENTS_HOME/demo-org-agent.md" ] \
-  || { ok="false"; detail="install into a HOME with no stale directory failed or did not re-create the file (exit=$d_exit)"; }
-report "Install into a HOME with no stale directory is a clean no-op re-install, exit 0 (R11 no-op clause)" "$ok" "$detail"
+run_ts_group "overlay tiers"
+run_ts_group "claude install mechanics"
 
 # =====================================================================
 # Opt-in gate invariant (declaration) — the fzf-driven decision cannot be
