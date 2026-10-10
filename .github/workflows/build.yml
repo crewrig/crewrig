@@ -543,7 +543,6 @@ jobs:
               - 'scripts/tests/setup-answers.test.ts'
               - 'scripts/tests/setup-backup.test.ts'
               - 'scripts/tests/setup-catalogue.test.ts'
-              - 'scripts/tests/setup-dependency-step.test.ts'
               - 'scripts/tests/setup-deps.test.ts'
               - 'scripts/tests/setup-file-size.test.ts'
               - 'scripts/tests/setup-files.test.ts'
@@ -582,7 +581,7 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
       - name: Test the TypeScript setup modules
         if: steps.filter.outputs.setup-modules-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -2590,7 +2589,7 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
 
       - name: Test the setup module unit suites
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
 
       - name: Cancel workflow on job failure
         if: failure()
