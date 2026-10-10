@@ -34,24 +34,25 @@ questions of the parent stand.*
 Given a repository whose `package-lock.json` SHA-256 equals the one recorded in
 `.crewrig-state/production-deps.sha256`, and a `node_modules` directory
 When any of the four setups reaches the dependency step
-Then `npm` is not run and the single line `Production dependencies: skipped —
-package-lock.json unchanged ... (sha256 <12 hex characters>)`, followed by the
-sentence that tells how to force a reinstall, is printed on standard output exactly as
-`install_production_dependencies` of `scripts/lib/common.sh` prints it, and the run
-continues.
+Then `npm` is not run and the single line
+`Production dependencies: skipped — package-lock.json unchanged since the last successful install (sha256 <12 hex characters>). Delete .crewrig-state/production-deps.sha256 to force a re-install.`
+is printed on standard output exactly as `install_production_dependencies` of
+`scripts/lib/common.sh` prints it, and the run continues.
 
 **Scenario:** The supervised MemPalace daemon runs the TypeScript launcher
 
-Given a Linux or macOS machine on which the MemPalace HTTP daemon is not serving and
-the setup of any CLI reaches the daemon step with the `ensure_mempalace_http` return
-code of requirement 26 that installs it
+Given a Linux or macOS machine on which the first accept probe of requirement 26 finds
+no accepting MemPalace HTTP daemon, so that the setup of any CLI installs it (the run
+then ends in return code 0 or 1)
 When the daemon is installed
 Then the supervisor unit points at the TypeScript launcher that the service layer
-installs (spec 0252 requirements 11 and 12), the files `~/.crewrig/mcp-daemon-launcher.*`
-and the directory `~/.crewrig/service-lib/` are those of that launcher, the line
-`Installed launcher: <home>/.crewrig/mcp-daemon-launcher.ts` is printed, and the
-daemon, once started, answers the authenticated accept probe of requirement 26; the
-shell setup installed `~/.crewrig/mcp-daemon-launcher.sh` and its unit instead, and the
+installs (spec 0252 requirements 11 and 12), `~/.crewrig/service-lib/` and
+`~/.crewrig/mcp-daemon-launcher.ts` are those of that launcher, the file
+`~/.crewrig/mcp-daemon-launcher.sh` is the endpoint record that the service layer
+writes at the legacy path and no longer the shell launcher, the line `Installed
+launcher: <home>/.crewrig/mcp-daemon-launcher.ts` is printed, and the daemon, once
+started, answers the authenticated accept probe of requirement 26; the shell setup
+installed its own launcher `mcp-daemon-launcher.sh` and its unit instead, and the
 daemon that either leaves behind serves the same endpoint with the same token.
 
 **Scenario:** A Windows checkout is wired into the usage-capture command
@@ -74,9 +75,8 @@ quote, `$`, a backtick or a newline is refused on every platform with that error
 Replacement:
 
 > a hit skips the install as the shell does, and prints the one line that the shell's
-> `install_production_dependencies` prints for it (`Production dependencies: skipped —
-> package-lock.json unchanged ... (sha256 <12 hex characters>)` and the sentence that
-> says how to force a reinstall), byte for byte
+> `install_production_dependencies` prints for it, byte for byte:
+> `Production dependencies: skipped — package-lock.json unchanged since the last successful install (sha256 <12 hex characters>). Delete .crewrig-state/production-deps.sha256 to force a re-install.`
 
 Observed: `scripts/lib/common.sh` prints that line on a hit, so "silently" described a
 behaviour the shell does not have; the golden cell `deps-step-hit` records the line and
@@ -97,7 +97,9 @@ Replacement:
 > everything the shell's daemon install leaves except what deviation (s) of requirement
 > 44 lists, and SHALL be pinned by the unchanged `test-setup-mempalace-rc-guard.sh`
 > after its retarget (requirement 9) and by the golden cells `ensure-http-rc0`,
-> `ensure-http-rc1` and `ensure-http-rc2`, which the TypeScript leg runs with tag (s).
+> `ensure-http-rc1` and `ensure-http-rc2`; only `ensure-http-rc1`, the cell that
+> installs the daemon, runs on the TypeScript leg with tag (s), and the other two run
+> without it.
 
 **Requirement 30 — Usage capture: the path-safety rejection.** Original, the clause:
 
@@ -112,14 +114,12 @@ Replacement:
 > `scripts/lib/hook-command.ts` is (deviation (t) of requirement 44)
 
 **Requirement 44 — Listed deviations (s) and (t).** Original, the closing sentence as
-delta-01 replaced it, which ends with deviation (r):
+delta-01 replaced it, which follows deviation (r):
 
-> (r) the supported-range check of the MemPalace version is evaluated by the setup and
-> no longer needs `packaging` in the MemPalace environment, so the run that the shell
-> stopped for lack of `packaging` now passes when the version is in range, while an
-> empty or unparsable version stays out of range.
+> Letters (s) onward are reserved for deviations a later differential test discovers
+> and a delta of this spec records.
 
-Replacement, appended after (r) and tagged in the differential test like (a) to (r):
+Replacement, tagged in the differential test like (a) to (r):
 
 > (s) the supervised MemPalace daemon runs the TypeScript launcher installed by the
 > service layer (spec 0252 requirements 11 and 12): the files that the daemon install
@@ -130,7 +130,8 @@ Replacement, appended after (r) and tagged in the differential test like (a) to 
 > install the daemon and for no other; (t) on win32 the physical path of the
 > usage-capture script is written with forward slashes where the shell, which has no
 > Windows form, refuses a backslash; a quote, `$`, a backtick or a newline stay
-> refused.
+> refused. Letters (u) onward are reserved for deviations a later differential test
+> discovers and a delta of this spec records.
 
 ## REMOVED
 
