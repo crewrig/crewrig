@@ -23,10 +23,12 @@ describe("setup differential: the comparison itself (host-runnable)", () => {
   } as unknown as CaseResult;
   const patched = (patch: Partial<CaseResult>): CaseResult => ({ ...base, ...patch });
 
-  test("identical legs agree; a tagged echo and fzf record do not count", () => {
+  test("identical legs agree; an echoed question the shell never asked is a difference", () => {
     assert.equal(legDifference(c, base, base), undefined);
+    // The `[answer]` echo is tagged (f), but the question SEQUENCE is compared: an echo with no matching
+    // shell question cannot hide behind the tag (seat finding i1-F17).
     const echoed = patched({ stdout: "[answer] x=y\none\ntwo\n", fzfRecords: [] });
-    assert.equal(legDifference(c, base, echoed), undefined);
+    assert.match(legDifference(c, base, echoed) ?? "", /question/i);
   });
 
   test("an injected untagged difference fails and names the cell and the first lines", () => {

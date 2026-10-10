@@ -4,7 +4,8 @@
 // `1e3`) would silently change, where the shell's `jq` keeps every literal. `assertRewritable` reuses the
 // refusal of hook-config.ts (`readJsonConfig` with `lossless: true`, its `LossyJsonError`): the file is
 // left untouched and one `Error:` line goes to standard error; `assertRewritable` then ends the run with
-// `SetupExit(1)`, `reportIfLossy` (best-effort steps) returns `false` and the run goes on.
+// `SetupExit(1)`, `reportIfLossy` (best-effort steps: the guard, transcript and usage-capture rewrites, the
+// session-recording merge and the Antigravity transcript deployment) returns `false` and the run goes on.
 // Call it before the backup of a write that is certain, never on a path that writes nothing.
 // Standard library and hook-config.ts only: it runs before the dependency step.
 

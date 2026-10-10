@@ -1,7 +1,8 @@
 // setup-golden-deviations.test.ts — the tagged deviations of the TypeScript leg of the golden
 // comparison (setup-golden-deviations.ts): a tagged difference is ignored on the `ts` leg only,
 // every untagged difference still fails (spec 0256 requirement 44). Host-runnable: the golden is
-// written into a temporary directory, no setup is run.
+// written into a temporary directory, no setup is run. The cells here ask no question; the
+// question sequence and the daemon probe are proved in setup-golden-evidence.test.ts.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -36,7 +37,7 @@ const shell = {
   stderr: "",
   tree: [entry, launcher, unit],
   bakCount: {},
-  fzfRecords: [{ header: "Q", options: ["a"], answer: "a", unscripted: false, cancelled: false }],
+  fzfRecords: [],
   curlRecords: [{ url: "http://127.0.0.1:41893/mcp", bearer: "<TOKEN>" }],
 } as unknown as CaseResult;
 writeGolden("claude", "cell", shell, base);
@@ -53,9 +54,13 @@ describe("golden comparison: tagged deviations of the ts leg", () => {
     accepts("ts", shell);
   });
 
-  test("[answer] echo lines (tag f) are ignored on ts and only there", () => {
+  test("[answer] echo lines (tag f) are not part of the stdout text on ts, only on the shell leg", () => {
+    // The echo is still counted as a question (setup-golden-evidence.test.ts): this shell asked none.
     const echoed = ts({ stdout: shell.stdout.replace("line one", "[answer] x=keep\nline one") });
-    accepts("ts", echoed);
+    assert.throws(
+      () => checkGolden(c, echoed, "ts", base),
+      (error: Error) => /questions/.test(error.message) && !/stdout\.golden/.test(error.message),
+    );
     rejects("shell", echoed, /stdout\.golden/);
   });
 
@@ -69,10 +74,10 @@ describe("golden comparison: tagged deviations of the ts leg", () => {
     rejects("ts", ts({ stdout: `${shell.stdout}said [answer] x=y\n` }), /stdout\.golden/);
   });
 
-  test("fzf and curl records (tags a/b/l) are ignored on ts and only there", () => {
-    const recorded = ts({ fzfRecords: [], curlRecords: [] });
-    accepts("ts", recorded);
-    rejects("shell", recorded, /tree\.json\.golden/);
+  test("the curl records are NOT a tagged deviation: dropping them fails on both legs", () => {
+    const dropped = ts({ curlRecords: [] });
+    rejects("ts", dropped, /tree\.json\.golden/);
+    rejects("shell", dropped, /tree\.json\.golden/);
   });
 
   test("every other tree key still fails on ts", () => {

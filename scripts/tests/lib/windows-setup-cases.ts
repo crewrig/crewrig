@@ -6,6 +6,7 @@
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import { productionClosure, REPO } from "./build-fixture-tree.ts";
@@ -55,10 +56,7 @@ export function disposeFixture(): void {
 export function npmFixture(): string {
   if (fixture !== undefined) return fixture;
   const dir = fs.mkdtempSync(
-    path.join(
-      fs.realpathSync(process.env["RUNNER_TEMP"] ?? process.env["TEMP"] ?? "."),
-      "setup-npm-",
-    ),
+    path.join(fs.realpathSync(process.env["RUNNER_TEMP"] ?? os.tmpdir()), "setup-npm-"),
   );
   for (const name of productionClosure())
     fs.cpSync(path.join(REPO, "node_modules", name), path.join(dir, name), {

@@ -20,7 +20,7 @@ import { MEMPALACE_TRANSCRIPT, type WiredCli } from "../hook-descriptor.ts";
 import { guardRenderFile } from "../hook-guard-manifest.ts";
 import { renderTranscriptManifest } from "../hook-transcript-manifest.ts";
 import { backupFile } from "./backup.ts";
-import { assertRewritable } from "./lossless.ts";
+import { reportIfLossy } from "./lossless.ts";
 import type { Spawner } from "./context.ts";
 import { requireNodeFloor, type HooksCtx } from "./hooks-rewrite.ts";
 import {
@@ -179,7 +179,9 @@ export function mergeSessionRecordingHooks(o: MergeOptions): MergeResult {
   const footprint = allHandlers(current ?? {}, flat).filter((x) => isCapture(x.handler));
   const created = current === null;
   if (current !== null) {
-    assertRewritable(o.ctx, config);
+    // `jq` keeps every literal, so the shell never refuses here; the TypeScript refusal prints its own
+    // `Error:` line and returns the shell's failure status, the file untouched and no backup.
+    if (!reportIfLossy(o.ctx, config)) return { ok: false, allHooksDisabled: false };
     for (const line of srReport(current, patched, flat)) out(line);
     backupFile(o.ctx, config);
   } else {

@@ -11,6 +11,7 @@ import fs from "node:fs";
 
 import type { JsonObject } from "../hook-config.ts";
 import type { Cli } from "./context.ts";
+import { SetupExit } from "./exit.ts";
 import type { UcCtx, UcDeps } from "./usage-capture-fragment.ts";
 import type { CaptureCli } from "./usage-capture-state.ts";
 
@@ -260,7 +261,15 @@ export async function usageCaptureCli(args0: readonly string[], base: UcCtx): Pr
   if (args[0] === "--") args = args.slice(1);
   else if (args[0]?.startsWith("--")) return (ctx.io.err(`Error: unknown option ${args[0]}`), 2);
   const results: Results = new Map();
-  const status = await run(ctx, args, results, deps);
+  let status: number;
+  try {
+    status = await run(ctx, args, results, deps);
+  } catch (error) {
+    // A writer that refuses (`assertRewritable`) has printed its one `Error:` line; the shell function
+    // returns a status, and the `--result` file is still written below.
+    if (!(error instanceof SetupExit)) throw error;
+    status = error.status;
+  }
   if (resultFile !== null && results.size > 0) {
     const lines = [...results].filter(([key]) => WHITELIST.has(key)).map(([k, v]) => `${k}=${v}\n`);
     fs.writeFileSync(resultFile, lines.join(""));

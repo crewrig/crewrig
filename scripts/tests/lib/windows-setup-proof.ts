@@ -58,13 +58,18 @@ export interface Harness {
   exec(sb: Sandbox, argv: readonly string[], options?: RunOptions): Run;
   landed(sb: Sandbox): Map<string, Buffer>;
   check(name: string, fn: () => void): void;
-  /** A case that could not be exercised: reported, never a failure. */
-  notExercised(name: string, reason: string): void;
+  /**
+   * A case that could not be exercised: reported on the last line, and a FAILURE when `required`
+   * (a requirement-34 case a green job must never skip silently).
+   */
+  notExercised(name: string, reason: string, options?: { required?: boolean }): void;
 }
 
 const failures: string[] = [];
 const notes: string[] = [];
 const disposers: Array<() => void> = [];
+const entriesRun = new Set<string>();
+const ENTRIES = ["claude", "gemini", "copilot", "antigravity"] as const;
 let interpreters: Interpreters = { pwsh: "pwsh", cmd: "cmd.exe", notes: [] };
 let current = "";
 
@@ -100,6 +105,7 @@ function sandbox(options: { npm?: "stub" | "real" } = {}): Sandbox {
 }
 
 function run(sb: Sandbox, cli: string, args: readonly string[], options: RunOptions = {}): Run {
+  entriesRun.add(cli);
   const script = path.join(sb.repo, "scripts", `setup-${cli}-interactive.ts`);
   const argv = [
     process.execPath,
@@ -176,7 +182,12 @@ export const harness: Harness = {
       console.error(`windows-setup-proof: FAIL ${current} / ${name}: ${message}`);
     }
   },
-  notExercised: (name, reason) => void notes.push(`${current} / ${name}: ${reason}`),
+  notExercised(name, reason, options = {}) {
+    notes.push(`${current} / ${name}: ${reason}`);
+    if (options.required !== true) return;
+    failures.push(`${current} / ${name}: a required case was not exercised: ${reason}`);
+    console.error(`windows-setup-proof: FAIL ${current} / ${name}: required case not exercised`);
+  },
 };
 
 async function main(): Promise<void> {
@@ -202,16 +213,22 @@ async function main(): Promise<void> {
       harness.check("(whole step)", () => step(harness));
       console.log(`windows-setup-proof: ${label}: ${Date.now() - started} ms`);
     }
+    current = "coverage";
+    harness.check("each of the four entries ran", () => {
+      const missing = ENTRIES.filter((cli) => !entriesRun.has(cli));
+      if (missing.length > 0) throw new Error(`no run of: ${missing.join(", ")}`);
+    });
   } catch (error) {
     failures.push(`setup: ${error instanceof Error ? error.stack : String(error)}`);
   } finally {
     for (const dispose of disposers.splice(0)) dispose();
     disposeFixture();
   }
-  if (failures.length === 0)
-    return void console.log(
-      `windows-setup-proof: OK${notes.length ? ` (${notes.length} not exercised)` : ""}`,
-    );
+  if (failures.length === 0) {
+    console.log(`windows-setup-proof: OK${notes.length ? ` (${notes.length} not exercised)` : ""}`);
+    for (const note of notes) console.log(`windows-setup-proof: not exercised: ${note}`);
+    return;
+  }
   console.error(formatReport(failures, notes));
   process.exitCode = 1;
 }

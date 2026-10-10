@@ -5,7 +5,8 @@
 // naming the cell and the first differing lines.
 // API: legDifference(c, shell, ts) -> string | undefined.
 
-import { comparable } from "./setup-golden-deviations.ts";
+import { comparable, questionTexts } from "./setup-golden-deviations.ts";
+import { QUESTIONS_FILE } from "./setup-golden-questions.ts";
 import { GOLDEN_FILES, serialize, unifiedDiff } from "./setup-golden-regen.ts";
 import type { CaseResult } from "./setup-golden-regen.ts";
 import type { GoldenCase } from "./setup-golden-types.ts";
@@ -25,13 +26,20 @@ export function legDifference(
 ): string | undefined {
   const left = serialize(shell);
   const right = serialize(ts);
-  const failures = GOLDEN_FILES.flatMap((name) => {
+  const failures: string[] = GOLDEN_FILES.flatMap((name) => {
     const a = comparable("ts", name, left[name], c.deviations);
     const b = comparable("ts", name, right[name], c.deviations);
     return a === b
       ? []
       : [`--- shell leg ${name}\n+++ ts leg ${name}\n${unifiedDiff(a, b, REPORTED_LINES)}`];
   });
+  // The questions the TypeScript run asked against the shell's fzf records (tags f and a/b drop both).
+  const [asked, answered] = questionTexts(c.cli, shell.fzfRecords, ts.stdout);
+  if (asked !== answered) {
+    failures.push(
+      `--- shell leg ${QUESTIONS_FILE} (fzf records)\n+++ ts leg ${QUESTIONS_FILE} ([answer] echo lines)\n${unifiedDiff(asked, answered, REPORTED_LINES)}`,
+    );
+  }
   return failures.length === 0
     ? undefined
     : `legs differ for ${c.cli}/${c.id}: ${c.note}\n${failures.join("\n")}`;

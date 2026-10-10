@@ -796,6 +796,7 @@ capabilities:
           - "scripts/tests/setup-declarations.test.ts"
           - "scripts/tests/setup-deps.test.ts"
           - "scripts/tests/setup-ensure-http.test.ts"
+          - "scripts/tests/setup-ensure-http-probes.test.ts"
           - "scripts/tests/setup-ensure-http-wiring.test.ts"
           - "scripts/tests/setup-file-size.test.ts"
           - "scripts/tests/setup-files.test.ts"
@@ -805,6 +806,7 @@ capabilities:
           - "scripts/tests/setup-gemini-settings-rc.test.ts"
           - "scripts/tests/setup-gemini-settings-write.test.ts"
           - "scripts/tests/setup-gemini-settings-write-diff.test.ts"
+          - "scripts/tests/setup-golden-evidence.test.ts"
           - "scripts/tests/setup-hint-strings.test.ts"
           - "scripts/tests/setup-hooks-rewrite.test.ts"
           - "scripts/tests/setup-json-secure.test.ts"
@@ -816,6 +818,8 @@ capabilities:
           - "scripts/tests/setup-lib-usage-entry.test.ts"
           - "scripts/tests/setup-lib-usage-entry-form.test.ts"
           - "scripts/tests/setup-link-key.test.ts"
+          - "scripts/tests/setup-lossless-callsites.test.ts"
+          - "scripts/tests/setup-lossless-shim.test.ts"
           - "scripts/tests/setup-lossless-writers.test.ts"
           - "scripts/tests/setup-mcp-agy-step.test.ts"
           - "scripts/tests/setup-mcp-claude-flow.test.ts"
@@ -829,6 +833,7 @@ capabilities:
           - "scripts/tests/setup-mempalace-install-offer.test.ts"
           - "scripts/tests/setup-mempalace-stdio.test.ts"
           - "scripts/tests/setup-mempalace-version.test.ts"
+          - "scripts/tests/setup-misc-paths.test.ts"
           - "scripts/tests/setup-no-posix-tool.test.ts"
           - "scripts/tests/setup-org-mcp-claude-argv.test.ts"
           - "scripts/tests/setup-org-mcp-fold.test.ts"
@@ -919,6 +924,7 @@ capabilities:
           - "scripts/tests/setup-declarations.test.ts"
           - "scripts/tests/setup-deps.test.ts"
           - "scripts/tests/setup-ensure-http.test.ts"
+          - "scripts/tests/setup-ensure-http-probes.test.ts"
           - "scripts/tests/setup-ensure-http-wiring.test.ts"
           - "scripts/tests/setup-file-size.test.ts"
           - "scripts/tests/setup-files.test.ts"
@@ -928,6 +934,7 @@ capabilities:
           - "scripts/tests/setup-gemini-settings-rc.test.ts"
           - "scripts/tests/setup-gemini-settings-write.test.ts"
           - "scripts/tests/setup-gemini-settings-write-diff.test.ts"
+          - "scripts/tests/setup-golden-evidence.test.ts"
           - "scripts/tests/setup-hint-strings.test.ts"
           - "scripts/tests/setup-hooks-rewrite.test.ts"
           - "scripts/tests/setup-json-secure.test.ts"
@@ -939,6 +946,8 @@ capabilities:
           - "scripts/tests/setup-lib-usage-entry.test.ts"
           - "scripts/tests/setup-lib-usage-entry-form.test.ts"
           - "scripts/tests/setup-link-key.test.ts"
+          - "scripts/tests/setup-lossless-callsites.test.ts"
+          - "scripts/tests/setup-lossless-shim.test.ts"
           - "scripts/tests/setup-lossless-writers.test.ts"
           - "scripts/tests/setup-mcp-agy-step.test.ts"
           - "scripts/tests/setup-mcp-claude-flow.test.ts"
@@ -952,6 +961,7 @@ capabilities:
           - "scripts/tests/setup-mempalace-install-offer.test.ts"
           - "scripts/tests/setup-mempalace-stdio.test.ts"
           - "scripts/tests/setup-mempalace-version.test.ts"
+          - "scripts/tests/setup-misc-paths.test.ts"
           - "scripts/tests/setup-no-posix-tool.test.ts"
           - "scripts/tests/setup-org-mcp-claude-argv.test.ts"
           - "scripts/tests/setup-org-mcp-fold.test.ts"
@@ -1013,7 +1023,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-antigravity-hooks.test.ts scripts/tests/setup-antigravity-statusline.test.ts scripts/tests/setup-antigravity-tier.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-backup-failure.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-chroma-install.test.ts scripts/tests/setup-chroma-install-win.test.ts scripts/tests/setup-chroma-unit.test.ts scripts/tests/setup-cli-claude-gemini.test.ts scripts/tests/setup-cli-copilot-antigravity.test.ts scripts/tests/setup-declarations.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-ensure-http.test.ts scripts/tests/setup-ensure-http-wiring.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-flow.test.ts scripts/tests/setup-flow-steps.test.ts scripts/tests/setup-gemini-settings.test.ts scripts/tests/setup-gemini-settings-rc.test.ts scripts/tests/setup-gemini-settings-write.test.ts scripts/tests/setup-gemini-settings-write-diff.test.ts scripts/tests/setup-hint-strings.test.ts scripts/tests/setup-hooks-rewrite.test.ts scripts/tests/setup-json-secure.test.ts scripts/tests/setup-json-secure-failure.test.ts scripts/tests/setup-lib-shim-tls.test.ts scripts/tests/setup-lib-shim-usage.test.ts scripts/tests/setup-lib-tls-entry.test.ts scripts/tests/setup-lib-tls-entry-offer.test.ts scripts/tests/setup-lib-usage-entry.test.ts scripts/tests/setup-lib-usage-entry-form.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-lossless-writers.test.ts scripts/tests/setup-mcp-agy-step.test.ts scripts/tests/setup-mcp-claude-flow.test.ts scripts/tests/setup-mcp-claude-step.test.ts scripts/tests/setup-mcp-copilot-step.test.ts scripts/tests/setup-mcp-gemini-step.test.ts scripts/tests/setup-mcp-json-writers.test.ts scripts/tests/setup-mcp-json-writers-merge.test.ts scripts/tests/setup-mempalace-callsite.test.ts scripts/tests/setup-mempalace-detect.test.ts scripts/tests/setup-mempalace-install-offer.test.ts scripts/tests/setup-mempalace-stdio.test.ts scripts/tests/setup-mempalace-version.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-org-mcp-claude-argv.test.ts scripts/tests/setup-org-mcp-fold.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-references.test.ts scripts/tests/setup-session-recording.test.ts scripts/tests/setup-session-recording-ownership.test.ts scripts/tests/setup-shim.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-steps-agy.test.ts scripts/tests/setup-steps-agy-channels.test.ts scripts/tests/setup-steps-copilot.test.ts scripts/tests/setup-steps-hooks.test.ts scripts/tests/setup-steps-hooks-lossy.test.ts scripts/tests/setup-steps-mcp.test.ts scripts/tests/setup-steps-rules.test.ts scripts/tests/setup-steps-rules-edge.test.ts scripts/tests/setup-steps-tiers.test.ts scripts/tests/setup-steps-usage.test.ts scripts/tests/setup-store-guidance.test.ts scripts/tests/setup-summary.test.ts scripts/tests/setup-tier-build.test.ts scripts/tests/setup-tier-install.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-trust-wrapper-install.test.ts scripts/tests/setup-usage-capture.test.ts scripts/tests/setup-usage-capture-keep.test.ts scripts/tests/setup-usage-capture-rank.test.ts scripts/tests/setup-usage-capture-state.test.ts scripts/tests/setup-usage-capture-wire-path.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-antigravity-hooks.test.ts scripts/tests/setup-antigravity-statusline.test.ts scripts/tests/setup-antigravity-tier.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-backup-failure.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-chroma-install.test.ts scripts/tests/setup-chroma-install-win.test.ts scripts/tests/setup-chroma-unit.test.ts scripts/tests/setup-cli-claude-gemini.test.ts scripts/tests/setup-cli-copilot-antigravity.test.ts scripts/tests/setup-declarations.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-ensure-http.test.ts scripts/tests/setup-ensure-http-probes.test.ts scripts/tests/setup-ensure-http-wiring.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-flow.test.ts scripts/tests/setup-flow-steps.test.ts scripts/tests/setup-gemini-settings.test.ts scripts/tests/setup-gemini-settings-rc.test.ts scripts/tests/setup-gemini-settings-write.test.ts scripts/tests/setup-gemini-settings-write-diff.test.ts scripts/tests/setup-golden-evidence.test.ts scripts/tests/setup-hint-strings.test.ts scripts/tests/setup-hooks-rewrite.test.ts scripts/tests/setup-json-secure.test.ts scripts/tests/setup-json-secure-failure.test.ts scripts/tests/setup-lib-shim-tls.test.ts scripts/tests/setup-lib-shim-usage.test.ts scripts/tests/setup-lib-tls-entry.test.ts scripts/tests/setup-lib-tls-entry-offer.test.ts scripts/tests/setup-lib-usage-entry.test.ts scripts/tests/setup-lib-usage-entry-form.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-lossless-callsites.test.ts scripts/tests/setup-lossless-shim.test.ts scripts/tests/setup-lossless-writers.test.ts scripts/tests/setup-mcp-agy-step.test.ts scripts/tests/setup-mcp-claude-flow.test.ts scripts/tests/setup-mcp-claude-step.test.ts scripts/tests/setup-mcp-copilot-step.test.ts scripts/tests/setup-mcp-gemini-step.test.ts scripts/tests/setup-mcp-json-writers.test.ts scripts/tests/setup-mcp-json-writers-merge.test.ts scripts/tests/setup-mempalace-callsite.test.ts scripts/tests/setup-mempalace-detect.test.ts scripts/tests/setup-mempalace-install-offer.test.ts scripts/tests/setup-mempalace-stdio.test.ts scripts/tests/setup-mempalace-version.test.ts scripts/tests/setup-misc-paths.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-org-mcp-claude-argv.test.ts scripts/tests/setup-org-mcp-fold.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-references.test.ts scripts/tests/setup-session-recording.test.ts scripts/tests/setup-session-recording-ownership.test.ts scripts/tests/setup-shim.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-steps-agy.test.ts scripts/tests/setup-steps-agy-channels.test.ts scripts/tests/setup-steps-copilot.test.ts scripts/tests/setup-steps-hooks.test.ts scripts/tests/setup-steps-hooks-lossy.test.ts scripts/tests/setup-steps-mcp.test.ts scripts/tests/setup-steps-rules.test.ts scripts/tests/setup-steps-rules-edge.test.ts scripts/tests/setup-steps-tiers.test.ts scripts/tests/setup-steps-usage.test.ts scripts/tests/setup-store-guidance.test.ts scripts/tests/setup-summary.test.ts scripts/tests/setup-tier-build.test.ts scripts/tests/setup-tier-install.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-trust-wrapper-install.test.ts scripts/tests/setup-usage-capture.test.ts scripts/tests/setup-usage-capture-keep.test.ts scripts/tests/setup-usage-capture-rank.test.ts scripts/tests/setup-usage-capture-state.test.ts scripts/tests/setup-usage-capture-wire-path.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
 
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then
@@ -1998,7 +2008,7 @@ capabilities:
           - "scripts/setup-gemini-interactive.sh"
           - "scripts/setup-gemini-interactive.ts"
           - "config/gemini/settings.json"
-          - "scripts/lib/setup/**"
+          - "scripts/lib/**"
           - "scripts/tests/lib/print-setup-declarations.ts"
           - "scripts/tests/lib/setup-declarations-*.ts"
       - on: push
@@ -2020,13 +2030,23 @@ capabilities:
           - "scripts/setup-gemini-interactive.sh"
           - "scripts/setup-gemini-interactive.ts"
           - "config/gemini/settings.json"
-          - "scripts/lib/setup/**"
+          - "scripts/lib/**"
           - "scripts/tests/lib/print-setup-declarations.ts"
           - "scripts/tests/lib/setup-declarations-*.ts"
     portability: portable
     changeset-gated: true
     requires:
-      runtime: [python@3.12, node@24]
+      # node@24 is the PRIMARY runtime on purpose (finding i1-F16): the
+      # GitLab image is derived from the FIRST entry, so the job runs on the
+      # pinned node:24 image like every other Node job, instead of piping an
+      # unpinned NodeSource script into bash on a python:3.12 image.
+      # check-gemini-overlay-enrollment.sh reads the Gemini descriptor through
+      # a TypeScript printer, which fails closed below Node.js 24. python is
+      # the SECONDARY runtime: the shell checks only call a bare `python3`
+      # (no minor pinned), which the apt install satisfies. The GitLab leg
+      # cannot be run locally; it is covered by build-ci.sh --check and
+      # check-ci-parity.sh only.
+      runtime: [node@24, python@3.12]
     command:
       - npm ci --omit=dev --workspaces=false
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh
