@@ -59,47 +59,68 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 MOCK_REPO="$TMP_DIR/mock-repo"
 mkdir -p "$MOCK_REPO/config"
 
-# Test Antigravity check_finalized output
-(
-  REPO_DIR="$MOCK_REPO"
-  MISSING_PREREQS=()
-  check_finalized() {
-    local file="$1" label="$2" skill="$3"
-    if [ ! -f "$file" ]; then
-      MISSING_PREREQS+=("$label is missing — run: agy -i \"$skill\" --new-project")
-    fi
-  }
-  check_finalized "$REPO_DIR/config/SOUL.md"    "config/SOUL.md"    "/init-soul"
-  check_finalized "$REPO_DIR/config/PROFILE.md" "config/PROFILE.md" "/init-personal-profile"
+# Retargeted (spec 0256 R9, PR D2): the `check_finalized` block used to be re-typed from the shell text
+# and executed here. It now RUNS the TypeScript identity check: the real `identity-check` step of
+# scripts/lib/setup/steps.ts, through the real flow runner (runSetup) over the CLI's own descriptor
+# trimmed to banner + identity-check, against the mock repo and a throwaway HOME. Pinned against the
+# unchanged shell by the golden cell `<cli>/missing-identity` of the four setup-golden suites (the
+# shell's stdout and status for the same condition) and by scripts/tests/setup-prerequisites.test.ts.
+# Retired with the shell text: the `check_finalized` body copied from each `.sh` (it re-implemented
+# the script's function instead of exercising it).
+run_identity_check() {
+  REPO_DIR_UNDER_TEST="$MOCK_REPO" HOME_UNDER_TEST="$TMP_DIR/home" REPO_ROOT="$REPO_DIR" \
+  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --input-type=module -e '
+    import { pathToFileURL } from "node:url";
+    const root = process.env.REPO_ROOT + "/scripts/";
+    const load = (rel) => import(pathToFileURL(root + rel).href);
+    const cli = process.argv[1];
+    const { runSetup } = await load("lib/setup/flow.ts");
+    const { commonSteps } = await load("lib/setup/steps.ts");
+    const mod = await load("lib/setup/cli-" + cli + ".ts");
+    const base = Object.values(mod).find((v) => v && typeof v === "object" && v.cli === cli);
+    const descriptor = { ...base, steps: ["banner", "identity-check"] };
+    const { PassThrough } = await import("node:stream");
+    const stdin = new PassThrough(); stdin.end();
+    const status = await runSetup(descriptor, {
+      argv: [], stdin,
+      stdout: { write: (t) => process.stdout.write(t) },
+      stderr: { write: (t) => process.stderr.write(t) },
+      env: { HOME: process.env.HOME_UNDER_TEST }, platform: process.platform,
+      home: process.env.HOME_UNDER_TEST, repoDir: process.env.REPO_DIR_UNDER_TEST,
+      steps: commonSteps,
+    });
+    process.exitCode = status;
+  ' "$1" 2>&1
+}
 
-  if [ "${MISSING_PREREQS[0]}" = 'config/SOUL.md is missing — run: agy -i "/init-soul" --new-project' ] && \
-     [ "${MISSING_PREREQS[1]}" = 'config/PROFILE.md is missing — run: agy -i "/init-personal-profile" --new-project' ]; then
-    exit 0
+# check_identity_run <cli> <soul-invocation> <profile-invocation> <label>
+check_identity_run() {
+  local cli="$1" soul="$2" profile="$3" label="$4" out status
+  mkdir -p "$TMP_DIR/home"
+  out="$(run_identity_check "$cli")"; status=$?
+  # Vacuity guard: the run must have produced the banner and the status of a refusal.
+  if ! grep -qF '====================================' <<< "$out"; then bad "$label: the TypeScript flow did not run -- $out"; return; fi
+  if [ "$status" -eq 1 ] \
+     && grep -qxF "  - config/SOUL.md is missing — run: $soul" <<< "$out" \
+     && grep -qxF "  - config/PROFILE.md is missing — run: $profile" <<< "$out"; then
+    ok "$label prerequisite output matches the documented invocation, status 1"
   else
-    exit 1
+    bad "$label prerequisite output mismatch (status $status) -- $out"
   fi
-) && ok "Antigravity prerequisite output matches agy -i format with --new-project" || bad "Antigravity prerequisite output mismatch"
+}
+check_identity_run antigravity 'agy -i "/init-soul" --new-project' 'agy -i "/init-personal-profile" --new-project' "Antigravity"
+check_identity_run copilot     'copilot -i "/init-soul"'          'copilot -i "/init-personal-profile"'          "Copilot"
+check_identity_run claude      'claude /init-soul'                'claude /init-personal-profile'                "Claude"
+check_identity_run gemini      'gemini /init-soul'                'gemini /init-personal-profile'                "Gemini"
 
-# Test Copilot check_finalized output
-(
-  REPO_DIR="$MOCK_REPO"
-  MISSING_PREREQS=()
-  check_finalized() {
-    local file="$1" label="$2" skill="$3"
-    if [ ! -f "$file" ]; then
-      MISSING_PREREQS+=("$label is missing — run: copilot -i \"$skill\"")
-    fi
-  }
-  check_finalized "$REPO_DIR/config/SOUL.md"    "config/SOUL.md"    "/init-soul"
-  check_finalized "$REPO_DIR/config/PROFILE.md" "config/PROFILE.md" "/init-personal-profile"
-
-  if [ "${MISSING_PREREQS[0]}" = 'config/SOUL.md is missing — run: copilot -i "/init-soul"' ] && \
-     [ "${MISSING_PREREQS[1]}" = 'config/PROFILE.md is missing — run: copilot -i "/init-personal-profile"' ]; then
-    exit 0
-  else
-    exit 1
-  fi
-) && ok "Copilot prerequisite output matches copilot -i format" || bad "Copilot prerequisite output mismatch"
+# A present SOUL.md and PROFILE.md lets the check pass (status 0, no refusal): the refusal is conditional.
+touch "$MOCK_REPO/config/SOUL.md" "$MOCK_REPO/config/PROFILE.md"
+out="$(run_identity_check gemini)"; status=$?
+if [ "$status" -eq 0 ] && ! grep -qF 'Cannot proceed' <<< "$out" && grep -qF '====================================' <<< "$out"; then
+  ok "identity files present: the TypeScript check passes (status 0)"
+else
+  bad "identity files present: expected status 0 without refusal (status $status) -- $out"
+fi
 
 echo ""
 if [ "$fail" -eq 0 ]; then

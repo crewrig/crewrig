@@ -160,20 +160,35 @@ for cli in claude antigravity; do
   fi
 done
 
-# (c) no setup script writes a durable trust entry for the store (R2/ADR-0013).
-# trustedFolders / permissions-config.json are the durable-trust surfaces named
-# in the sandbox probe; they have no legitimate non-store use in setup, so their
-# absence from executable (non-comment) code is the guard. Full-line comment
-# mentions (e.g. the copilot note explaining trustedFolders does NOT work) are
-# stripped first so they do not trip the check.
-for s in ${GAP_SCRIPTS[@]+"${GAP_SCRIPTS[@]}"} ${PASS_SCRIPTS[@]+"${PASS_SCRIPTS[@]}"}; do
-  code="$(grep -v '^[[:space:]]*#' "$SETUP_DIR/$s")"
-  if echo "$code" | grep -Eq 'trustedFolders|permissions-config\.json'; then
-    bad "setup writes a durable trust surface (trustedFolders/permissions-config.json): $s"
-  else
-    ok "no durable trust write for the store: $s"
+# (c) no setup writes a durable trust entry for the store (R2/ADR-0013).
+# Retargeted (spec 0256 R9, PR D2): the grep for `trustedFolders` / `permissions-config.json` over the
+# non-comment lines of the setup text is replaced by RUNNING the TypeScript Gemini and Copilot entries
+# (the CLIs that place the store; cell default-answers) in a sandboxed HOME and asserting that no file
+# they wrote holds a `trustedFolders` key and that no permissions-config.json lands
+# (scripts/tests/setup-retarget-gemini-copilot-run.test.ts). Pinned against the unchanged shell by the
+# golden cell `<cli>/default-answers` (the shell's file tree for the same run). The Claude and
+# Antigravity setups (PASS-default CLIs) are no longer checked here: the brief scopes this assertion to
+# the two CLIs that place the store; their golden trees still pin what they write. Retired with the shell text: the
+# comment-stripping grep.
+# run_ts_behaviour <label> <test-name-pattern>: runs the named cases of
+# scripts/tests/setup-retarget-gemini-copilot-run.test.ts, which executes the TypeScript Gemini / Copilot
+# entries in a sandboxed HOME (golden cells; Linux + jq only, like the golden suites) and asserts on what
+# they print and write. A host that cannot run the golden cells says so and skips, never passes silently.
+run_ts_behaviour() {
+  local label="$1" pattern="$2" log
+  if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
+    echo "  skip: $label (the TypeScript entry cells run on Linux with jq only)"
+    return 0
   fi
-done
+  log="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$pattern" \
+    "$SCRIPT_DIR/scripts/tests/setup-retarget-gemini-copilot-run.test.ts" 2>&1)"
+  if grep -qE '^# fail 0|^ℹ fail 0' <<< "$log" && ! grep -qE '^# pass 0|^ℹ pass 0' <<< "$log"; then
+    ok "$label"
+  else
+    bad "$label -- $(tail -15 <<< "$log")"
+  fi
+}
+run_ts_behaviour "no durable trust write for the store: TypeScript Gemini and Copilot entries" "no durable trust write"
 
 # (d) the helper names the correct per-invocation grant per CLI (source-and-call)
 if print_store_access_guidance gemini | grep -q -- "--include-directories"; then

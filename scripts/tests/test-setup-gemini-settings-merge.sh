@@ -840,29 +840,32 @@ else
     fi
   done
 fi
-if grep -nE 'usage_capture_(footprint|reinject)' "$SETUP_SCRIPT" | grep -vE '^[0-9]+:[[:space:]]*#' > "$TMP_ROOT/uc-calls.txt"; then
-  bad "13 setup still calls the usage-capture carry-over: $(cat "$TMP_ROOT/uc-calls.txt")"
-else
-  ok "13 setup calls neither usage_capture_footprint nor usage_capture_reinject (R16)"
-fi
-if grep -nE '^[^#]*(PREEXISTING_MCP=|> "\$\{SETTINGS_TARGET\}\.tmp")' "$SETUP_SCRIPT" > "$TMP_ROOT/rebuild.txt"; then
-  bad "13 setup still rebuilds settings.json from the template: $(cat "$TMP_ROOT/rebuild.txt")"
-else
-  ok "13 setup no longer writes settings.json from the template itself"
-fi
-# R15: the line printed after each decline / cancel headline.
-for headline in 'Transcript activation canceled by user.' 'Session recording disabled'; do
-  msg="$(grep -A1 -F "$headline" "$SETUP_SCRIPT" | sed -n 2p)"
-  if [ -z "$msg" ]; then
-    bad "13 R15: no message after '$headline'"
-  elif grep -qiE 'rebuilt|were not kept|not carried' <<< "$msg"; then
-    bad "13 R15: message after '$headline' still says the file was rebuilt: $msg"
-  elif grep -qF 'left in place' <<< "$msg"; then
-    ok "13 R15: message after '$headline' says an earlier registration is left in place"
-  else
-    bad "13 R15: message after '$headline' does not say it is left in place: $msg"
+# Retargeted (spec 0256 R9, PR D2): the negative greps over the shell text (no `usage_capture_footprint`
+# / `usage_capture_reinject` call, no `PREEXISTING_MCP=` / `.tmp` rebuild of settings.json) and the
+# `grep -A1` read of the R15 line after each decline headline are replaced by RUNNING the TypeScript
+# Gemini entry (cells gemini-settings-merge, transcript-optin-apply-declined, decline-everywhere) and
+# asserting what it writes and prints: scripts/tests/setup-retarget-gemini-copilot-run.test.ts. Pinned
+# against the unchanged shell by those golden cells (the shell's stdout and tree for the same cells).
+# Retired with the shell text: the grep over executable shell lines and the `grep -A1` line offsets.
+# run_ts_behaviour <label> <test-name-pattern>: runs the named cases of
+# scripts/tests/setup-retarget-gemini-copilot-run.test.ts, which executes the TypeScript Gemini / Copilot
+# entries in a sandboxed HOME (golden cells; Linux + jq only, like the golden suites) and asserts on what
+# they print and write. A host that cannot run the golden cells says so and skips, never passes silently.
+run_ts_behaviour() {
+  local label="$1" pattern="$2" log
+  if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
+    echo "  skip: $label (the TypeScript entry cells run on Linux with jq only)"
+    return 0
   fi
-done
+  log="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$pattern" \
+    "$REPO_DIR/scripts/tests/setup-retarget-gemini-copilot-run.test.ts" 2>&1)"
+  if grep -qE '^# fail 0|^ℹ fail 0' <<< "$log" && ! grep -qE '^# pass 0|^ℹ pass 0' <<< "$log"; then
+    ok "$label"
+  else
+    bad "$label -- $(tail -15 <<< "$log")"
+  fi
+}
+run_ts_behaviour "13 Gemini TypeScript entry: settings merged in place, no carry-over, R15 messages left-in-place (R15, R16)" "Gemini setup"
 
 # ---------------------------------------------------------------------------
 echo "14. A wrapped-form playwright entry survives a setup run (spec 0245 R17)"

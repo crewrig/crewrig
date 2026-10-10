@@ -62,6 +62,30 @@ fail=0
 ok()  { echo "  ok: $1"; pass=$((pass + 1)); }
 bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 
+# run_ts_behaviour <test-name-pattern> <label> <expected passes> — runs the group of
+# scripts/tests/setup-retarget-behaviour-a.test.ts the pattern names: it RUNS the TypeScript
+# setup entry in the sandbox (spec 0256 requirement 9, PR D2). Linux only, like the golden suites
+# (the sandbox drives systemd stubs): elsewhere it is reported as skipped, never as a pass.
+# Vacuity guard: the expected number of tests must have passed, none failed, none skipped.
+run_ts_behaviour() {
+  local pattern="$1" label="$2" want="$3" out rc=0 n_pass n_fail n_skip
+  if [ "$(uname -s)" != "Linux" ]; then
+    echo "  skip: $label (the TypeScript setup sandbox runs on Linux only)"
+    return 0
+  fi
+  out="$(cd "$REPO_DIR" && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \
+    --test-name-pattern="$pattern" scripts/tests/setup-retarget-behaviour-a.test.ts 2>&1)" || rc=$?
+  n_pass="$(sed -n 's/^ℹ pass //p' <<< "$out")"
+  n_fail="$(sed -n 's/^ℹ fail //p' <<< "$out")"
+  n_skip="$(sed -n 's/^ℹ skipped //p' <<< "$out")"
+  if [ "$rc" -eq 0 ] && [ "$n_pass" = "$want" ] && [ "$n_fail" = "0" ] && [ "$n_skip" = "0" ]; then
+    ok "$label: $n_pass behavioural test(s) of the TypeScript entry passed"
+  else
+    bad "$label: expected $want passing test(s), got pass=$n_pass fail=$n_fail skipped=$n_skip rc=$rc"
+    printf '%s\n' "$out" | grep -E '✖|Error' | head -10 >&2
+  fi
+}
+
 # --- Fixtures ---------------------------------------------------------------
 # Operator declarations (distinctive command/args/env so "verbatim" is meaningful).
 OP_ACME='{"command":"acme","args":["--serve","--port","9999"],"env":{"ACME_TOKEN":"xyz"}}'
@@ -202,9 +226,8 @@ echo "3. Per-script capture wiring (spec 0089 R11 / review F1)"
 # ---------------------------------------------------------------------------
 # For each script the helper's correctness hinges on the operator config being
 # captured BEFORE the framework overwrite and FROM the right file. A call-site
-# grep (§4) cannot see that, so assert both the ordering (capture line before
-# the framework write) and the function (the extracted capture line, run against
-# a seeded fixture, yields the operator's servers).
+# grep cannot see that, so assert both the declared ordering (capture before the
+# framework write) and the behaviour (the TypeScript run keeps the operator's servers).
 
 # decl_substeps <cli> — the declared sub-steps of the `mcp` step, in run order
 # (spec 0256 requirement 9, PR D1: the ORDER is read from the declaration of the
@@ -248,54 +271,28 @@ check_capture() {
     && ok "$cli: declared org fold (#$org_i) follows the framework write (#$write_i)" \
     || bad "$cli: declared org fold (#$org_i) must follow the framework write (#$write_i)"
 
-  # The capture line must still exist in the shell: the executed check below
-  # runs it (it stays until the shell is a shim: D2).
-  if ! grep -qE '^[[:space:]]*PREEXISTING_MCP=' "$path"; then bad "$script: no PREEXISTING_MCP= capture line"; return; fi
-
-  # Functional: the extracted capture line, run against a seeded operator
-  # fixture, reads the operator's servers (right file, right filter).
-  local cap_line fix captured
-  cap_line="$(grep -E '^[[:space:]]*PREEXISTING_MCP=' "$path" | head -1)"
-  fix="$(mktemp "$TMP_ROOT/precap.XXXXXX")"
-  printf '{"mcpServers":{"acme-tools":%s}}' "$OP_ACME" > "$fix"
-  captured="$(
-    eval "${target_var}=\"$fix\""
-    eval "$cap_line"
-    printf '%s' "$PREEXISTING_MCP"
-  )"
-  if printf '%s' "$captured" | jq -e 'has("acme-tools")' >/dev/null 2>&1; then
-    ok "$script: capture reads the operator's pre-run servers"
-  else
-    bad "$script: capture did not read the operator's servers (got: $captured)"
-  fi
 }
 
 check_capture setup-copilot-interactive.sh     MCP_CONFIG_TARGET copilot
 check_capture setup-antigravity-interactive.sh AGY_MCP_CONFIG    antigravity
 
+# Retargeted (spec 0256 requirement 9, PR D2): the executed `PREEXISTING_MCP=` capture line, lifted
+# out of the shell text and eval'd against a seeded file, is replaced by RUNNING the TypeScript
+# entry (Copilot and Antigravity) on a home holding the operator's non-reserved MCP server and
+# asserting the written config: framework entry present (the file was overwritten, vacuity guard),
+# operator server back verbatim, pre-run config backed up. Pin against the unchanged shell: the
+# golden cells setup-golden/{copilot,antigravity}/operator-mcp-preserved.
+run_ts_behaviour "mcp-merge" "the real TypeScript run preserves the operator's MCP server (copilot, antigravity)" 2
+
 # ---------------------------------------------------------------------------
 echo "4. Setup-script parity (all three file setups reach the helper)"
 # ---------------------------------------------------------------------------
-for s in setup-copilot-interactive.sh setup-antigravity-interactive.sh; do
-  if grep -q "merge_preexisting_mcp_servers" "$SETUP_DIR/$s"; then
-    ok "invokes merge_preexisting_mcp_servers: $s"
-  else
-    bad "missing merge_preexisting_mcp_servers call: $s"
-  fi
-done
-# Gemini (spec 0214): the setup calls gemini_settings_write, and that library
-# function is where the helper is called.
-GEMINI_LIB="$SETUP_DIR/lib/gemini-settings.sh"
-if grep -qE '^[[:space:]]*gemini_settings_write[[:space:]]' "$SETUP_DIR/setup-gemini-interactive.sh"; then
-  ok "invokes gemini_settings_write: setup-gemini-interactive.sh"
-else
-  bad "missing gemini_settings_write call: setup-gemini-interactive.sh"
-fi
-if grep -qE '^[[:space:]]*merge_preexisting_mcp_servers[[:space:]]' "$GEMINI_LIB"; then
-  ok "invokes merge_preexisting_mcp_servers: lib/gemini-settings.sh"
-else
-  bad "missing merge_preexisting_mcp_servers call: lib/gemini-settings.sh"
-fi
+# RETIRED (spec 0256 requirement 9, PR D2): the call-site greps of `merge_preexisting_mcp_servers`
+# (copilot, antigravity, lib/gemini-settings.sh) and `gemini_settings_write` read shell syntax.
+# Replaced by the behaviour of section 3 (the TypeScript run: the operator's server is back after
+# the real run) and by the helper cases of sections 1 and 2 (the helper's own policy). Gemini's
+# in-place merge is exercised by test-setup-gemini-settings-merge.sh. Pin while the shell exists:
+# golden cells {copilot,antigravity}/operator-mcp-preserved and gemini/operator-settings-*.
 
 # ---------------------------------------------------------------------------
 echo "5. backup_file helper behaviour (spec 0089 R9/R10, issue #982)"

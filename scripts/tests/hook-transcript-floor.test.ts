@@ -105,23 +105,14 @@ describe(
       });
     }
 
-    test("each setup reports recording active, and Claude Code patches env, only when SR_TRANSCRIPT_WIRED is 1", () => {
-      for (const cli of [...WIRED, "antigravity"]) {
-        const lines = read(path.join(REPO, "scripts", `setup-${cli}-interactive.sh`)).split("\n");
-        const at = lines.findIndex((line) => line.includes('echo "  Session recording wired to'));
-        assert.ok(at > 0, cli);
-        assert.match(
-          lines[at - 1] ?? "",
-          /if \[ "\$\{SR_TRANSCRIPT_WIRED:-0\}" = "1" \]; then/,
-          cli,
-        );
-      }
-      const claude = read(path.join(REPO, "scripts", "setup-claude-interactive.sh"));
-      assert.match(
-        claude,
-        /ENV_PATCH='\{\}'\n\s+if \[ "\$\{SR_TRANSCRIPT_WIRED:-0\}" = "1" \]; then\n\s+ENV_PATCH='\{"MEMPALACE_TRANSCRIPT_ENABLED": "1"\}'/,
-      );
-    });
+    // Retired (spec 0256 requirement 9, PR D2): "each setup reports recording active, and Claude Code
+    // patches env, only when SR_TRANSCRIPT_WIRED is 1" read the shell text (the line above `echo "  Session
+    // recording wired to` and an `ENV_PATCH=` regex). Replaced by runs of the TypeScript entries:
+    //   - Claude env block: scripts/tests/setup-retarget-claude-env.test.ts (pins: golden cells
+    //     claude/transcript-optin-yes, -no, -apply-declined; step test setup-steps-hooks.test.ts);
+    //   - Antigravity "wired" line only on an accepted run: scripts/tests/setup-retarget-antigravity-transcript.test.ts;
+    //   - the floor (not wired, so no report and no env patch) stays asserted by the executed cases above
+    //     ("rc=0 wired=0", "no env patch below the floor (v1-F3)").
   },
 );
 

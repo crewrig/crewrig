@@ -21,8 +21,9 @@
 #       in-scope setup scripts — asserted structurally (no leftover
 #       `exit 1` inside any team/expertise/level block, and a matching
 #       `rm -f .../.selected_<category>` skip branch at all 12 call sites).
-#   R7  functional smoke test: an empty catalogue lets a real setup script's
-#       selection sequence continue past the skipped step.
+#   R7  functional smoke test: an empty catalogue lets a real setup's
+#       selection sequence continue past the skipped step (the TypeScript
+#       entry is run, section 5).
 #
 # HERMETIC: every operation runs against mktemp -d fixtures; nothing under
 # the real repo's config/ directories or the real user's CLI home is read or
@@ -38,7 +39,6 @@ set -uo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 COMMON_LIB="$REPO_DIR/scripts/lib/common.sh"
-SETUP_DIR="$REPO_DIR/scripts"
 
 if [ ! -f "$COMMON_LIB" ]; then
   echo "FATAL: missing $COMMON_LIB" >&2
@@ -55,6 +55,30 @@ pass=0
 fail=0
 ok()  { echo "  ok: $1"; pass=$((pass + 1)); }
 bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
+
+# run_ts_behaviour <test-name-pattern> <label> <expected passes> — runs the group of
+# scripts/tests/setup-retarget-behaviour-a.test.ts the pattern names: it RUNS the TypeScript
+# setup entry in the sandbox (spec 0256 requirement 9, PR D2). Linux only, like the golden suites
+# (the sandbox drives systemd stubs): elsewhere it is reported as skipped, never as a pass.
+# Vacuity guard: the expected number of tests must have passed, none failed, none skipped.
+run_ts_behaviour() {
+  local pattern="$1" label="$2" want="$3" out rc=0 n_pass n_fail n_skip
+  if [ "$(uname -s)" != "Linux" ]; then
+    echo "  skip: $label (the TypeScript setup sandbox runs on Linux only)"
+    return 0
+  fi
+  out="$(cd "$REPO_DIR" && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \
+    --test-name-pattern="$pattern" scripts/tests/setup-retarget-behaviour-a.test.ts 2>&1)" || rc=$?
+  n_pass="$(sed -n 's/^ℹ pass //p' <<< "$out")"
+  n_fail="$(sed -n 's/^ℹ fail //p' <<< "$out")"
+  n_skip="$(sed -n 's/^ℹ skipped //p' <<< "$out")"
+  if [ "$rc" -eq 0 ] && [ "$n_pass" = "$want" ] && [ "$n_fail" = "0" ] && [ "$n_skip" = "0" ]; then
+    ok "$label: $n_pass behavioural test(s) of the TypeScript entry passed"
+  else
+    bad "$label: expected $want passing test(s), got pass=$n_pass fail=$n_fail skipped=$n_skip rc=$rc"
+    printf '%s\n' "$out" | grep -E '✖|Error' | head -10 >&2
+  fi
+}
 
 # ---------------------------------------------------------------------------
 echo "1. Empty catalogue: zero candidates, no fzf invocation, exit 0 (R1)"
@@ -151,18 +175,6 @@ out="$(PATH="$STUB_DIR:$PATH" pick_catalogue_entry "$ONE_ENTRY_DIR" "expertise" 
 echo "4. Structural parity across all four setup scripts (R5/R6)"
 # ---------------------------------------------------------------------------
 
-# extract_selection_block <script> <begin-marker> <end-marker>
-# Prints the lines strictly between (not including) the two marker lines —
-# the team/expertise/level selection body of one script — to stdout.
-extract_selection_block() {
-  local script="$1" begin="$2" end="$3"
-  awk -v begin="$begin" -v end="$end" '
-    $0 == begin { capture=1; next }
-    $0 == end   { capture=0 }
-    capture     { print }
-  ' "$script"
-}
-
 # Retargeted (spec 0256 requirement 9, PR D1): the structure of the selection step is read
 # from the DECLARATION of each TypeScript setup, not from the text of the four shells.
 #   - the helper and the categories: the `rules-selection` step offers a `catalogue.<category>`
@@ -175,8 +187,7 @@ extract_selection_block() {
 # setup-golden/<cli>/empty-catalogue-stale-markers (claude, gemini, copilot, antigravity: an empty
 # catalogue with stale markers on disk ends with the markers removed and the run completing) and
 # scripts/tests/setup-retarget-catalogue-picker.test.ts (reads the shell blocks AND the declaration
-# and asserts they agree; retired with the shell). The functional smoke (section 5) stays an
-# executed block (D2).
+# and asserts they agree; retired with the shell). The functional smoke (section 5) is a run of the TypeScript entry (D2).
 PRINT_DECL=(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts")
 for cli in claude gemini copilot antigravity; do
   decl="$("${PRINT_DECL[@]+"${PRINT_DECL[@]}"}" "$cli" 2>/dev/null)" || decl=""
@@ -221,102 +232,21 @@ for cli in claude gemini copilot antigravity; do
 done
 
 # ---------------------------------------------------------------------------
-echo "5. Functional smoke test: empty catalogue lets a real script continue (R2, R7)"
+echo "5. Functional smoke test: empty catalogue lets a real setup continue (R2, R7)"
 # ---------------------------------------------------------------------------
-# Cold-review Finding 2 (folded into this PR): a structural 'no exit 1' grep
-# alone cannot prove the skip actually falls through at runtime. This extracts
-# the VERBATIM team/expertise/level block from setup-claude-interactive.sh
-# and executes it for real, against:
-#   - config/teams/     -> zero *.md files (the empty-catalogue path, R1/R2)
-#   - config/expertise/ -> one *.md file, fzf stub declines it (R2 other cause)
-#   - config/level/     -> one *.md file, fzf stub picks it (proves execution
-#     reached and completed the THIRD category, i.e. it was never aborted)
-# then asserts a marker placed immediately after the extracted block was
-# reached, rather than only asserting the absence of the 'exit 1' string.
-
-CLAUDE_SCRIPT="$SETUP_DIR/setup-claude-interactive.sh"
-SMOKE_BLOCK="$(extract_selection_block "$CLAUDE_SCRIPT" "# --- Team selection ---" "# --- Profile handling ---")"
-
-if [ -z "$SMOKE_BLOCK" ]; then
-  bad "smoke test: could not extract the selection block from setup-claude-interactive.sh"
-else
-  SMOKE_HOME="$TMP_ROOT/smoke-claude-home"
-  SMOKE_REPO="$TMP_ROOT/smoke-repo"
-  mkdir -p "$SMOKE_HOME" "$SMOKE_REPO/config/teams" "$SMOKE_REPO/config/expertise" "$SMOKE_REPO/config/level"
-  echo "# fixture" > "$SMOKE_REPO/config/expertise/backend.md"
-  echo "# fixture" > "$SMOKE_REPO/config/level/junior.md"
-  # config/teams/ is left empty on purpose (R1 empty-catalogue path).
-
-  # Pre-seed stale markers from a "prior run" to prove R3 (skip removes them).
-  echo "stale-team" > "$SMOKE_HOME/.selected_team"
-  echo "stale-expertise" > "$SMOKE_HOME/.selected_expertise"
-
-  SMOKE_STUB_DIR="$TMP_ROOT/smoke-stubs"
-  mkdir -p "$SMOKE_STUB_DIR"
-  SMOKE_COUNTER="$TMP_ROOT/smoke-fzf-count"
-  echo 0 > "$SMOKE_COUNTER"
-  cat > "$SMOKE_STUB_DIR/fzf" <<EOF
-#!/bin/bash
-# Call 1 = expertise (decline: empty catalogue never reaches fzf at all, so
-# the FIRST real fzf call is expertise) -> prints nothing, exit 1.
-# Call 2 = level -> prints the fixture's only entry.
-cat > /dev/null
-n="\$(cat "$SMOKE_COUNTER")"
-n=\$((n + 1))
-echo "\$n" > "$SMOKE_COUNTER"
-if [ "\$n" -eq 1 ]; then
-  exit 1
-else
-  echo "junior"
-fi
-EOF
-  chmod +x "$SMOKE_STUB_DIR/fzf"
-
-  SMOKE_SCRIPT="$TMP_ROOT/smoke-run.sh"
-  {
-    echo "#!/bin/bash"
-    echo "set -e"
-    echo "source '$COMMON_LIB'"
-    echo "REPO_DIR='$SMOKE_REPO'"
-    echo "CLAUDE_HOME='$SMOKE_HOME'"
-    echo "CLAUDE_RULES=\"\${CLAUDE_HOME}/rules\""
-    echo "mkdir -p \"\$CLAUDE_RULES\""
-    printf '%s\n' "$SMOKE_BLOCK"
-    echo 'echo "SMOKE_TEST_CONTINUED_PAST_SKIP"'
-  } > "$SMOKE_SCRIPT"
-
-  smoke_out=""
-  smoke_rc=0
-  smoke_out="$(PATH="$SMOKE_STUB_DIR:$PATH" bash "$SMOKE_SCRIPT" 2>"$TMP_ROOT/smoke-stderr.txt")" || smoke_rc=$?
-
-  [ "$smoke_rc" -eq 0 ] && ok "smoke test: extracted block exits 0 under an empty team catalogue" \
-    || bad "smoke test: extracted block exited $smoke_rc (should have continued, not aborted)"
-
-  if grep -q "SMOKE_TEST_CONTINUED_PAST_SKIP" <<< "$smoke_out"; then
-    ok "smoke test: execution continued past the team/expertise skips to the trailing marker"
-  else
-    bad "smoke test: trailing marker not reached — script likely aborted on the empty catalogue"
-  fi
-
-  if grep -q "Level: junior" <<< "$smoke_out"; then
-    ok "smoke test: level selection (third category) still ran and installed 'junior'"
-  else
-    bad "smoke test: level selection output not found — third category was not reached"
-  fi
-
-  [ ! -e "$SMOKE_HOME/.selected_team" ] \
-    && ok "smoke test: stale .selected_team marker removed on the empty-catalogue skip (R3)" \
-    || bad "smoke test: .selected_team marker still present after skip"
-  [ ! -e "$SMOKE_HOME/.selected_expertise" ] \
-    && ok "smoke test: stale .selected_expertise marker removed on the declined-pick skip (R3)" \
-    || bad "smoke test: .selected_expertise marker still present after skip"
-  [ -f "$SMOKE_HOME/.selected_level" ] && [ "$(cat "$SMOKE_HOME/.selected_level")" = "junior" ] \
-    && ok "smoke test: .selected_level marker written for the actually-selected entry" \
-    || bad "smoke test: .selected_level marker missing or wrong content"
-  [ -f "$SMOKE_HOME/rules/10-level.md" ] \
-    && ok "smoke test: level rule file installed to rules/10-level.md" \
-    || bad "smoke test: level rule file was not installed"
-fi
+# Retargeted (spec 0256 requirement 9, PR D2): the block extracted from the TEXT of
+# setup-claude-interactive.sh and executed under `set -e` is replaced by RUNNING the TypeScript
+# entry of each of the four setups (scripts/tests/setup-retarget-behaviour-a.test.ts, with the
+# fzf decisions translated to `--answer`): an EMPTY team catalogue, a DECLINED expertise pick and
+# a PICKED level. Per CLI the run must exit 0 (R2: a skip continues), print the empty-catalogue
+# and declined-pick notices naming their category (R4), still reach the third category (the level
+# marker holds the pick and the level rule is installed), and remove the stale team and expertise
+# markers (R3). Vacuity guard: the exact number of passing tests (4) is required. Pin against the
+# unchanged shell: the golden cells setup-golden/<cli>/empty-catalogue,
+# empty-catalogue-stale-markers and declined-catalogue-pick (catalogue-pick-declined for claude and
+# gemini). RETIRED with the extraction: "the block ends at the trailing marker" (a `set -e`
+# survival of shell text; the run exiting 0 and reaching the level step is the behavioural form).
+run_ts_behaviour "catalogue-picker" "empty team + declined expertise + picked level, four CLIs" 4
 
 # ---------------------------------------------------------------------------
 echo ""

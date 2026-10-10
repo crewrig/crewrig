@@ -123,6 +123,30 @@ fail=0
 ok()  { echo "  ok: $1"; pass=$((pass + 1)); }
 bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 
+# run_ts_behaviour <test-name-pattern> <label> <expected passes> — runs the group of
+# scripts/tests/setup-retarget-behaviour-a.test.ts the pattern names: it RUNS the TypeScript
+# setup entry in the sandbox (spec 0256 requirement 9, PR D2). Linux only, like the golden suites
+# (the sandbox drives systemd stubs): elsewhere it is reported as skipped, never as a pass.
+# Vacuity guard: the expected number of tests must have passed, none failed, none skipped.
+run_ts_behaviour() {
+  local pattern="$1" label="$2" want="$3" out rc=0 n_pass n_fail n_skip
+  if [ "$(uname -s)" != "Linux" ]; then
+    echo "  skip: $label (the TypeScript setup sandbox runs on Linux only)"
+    return 0
+  fi
+  out="$(cd "$REPO_DIR" && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \
+    --test-name-pattern="$pattern" scripts/tests/setup-retarget-behaviour-a.test.ts 2>&1)" || rc=$?
+  n_pass="$(sed -n 's/^ℹ pass //p' <<< "$out")"
+  n_fail="$(sed -n 's/^ℹ fail //p' <<< "$out")"
+  n_skip="$(sed -n 's/^ℹ skipped //p' <<< "$out")"
+  if [ "$rc" -eq 0 ] && [ "$n_pass" = "$want" ] && [ "$n_fail" = "0" ] && [ "$n_skip" = "0" ]; then
+    ok "$label: $n_pass behavioural test(s) of the TypeScript entry passed"
+  else
+    bad "$label: expected $want passing test(s), got pass=$n_pass fail=$n_fail skipped=$n_skip rc=$rc"
+    printf '%s\n' "$out" | grep -E '✖|Error' | head -10 >&2
+  fi
+}
+
 # CAPTURE_ABS is the direct entry the opt-in registers (spec 0243); the legacy
 # shell script path is CAPTURE_SH_ABS, the form the coupled fixtures carry.
 CAPTURE_ABS="$(cd "$REPO_DIR/hooks" && pwd -P)/usage-capture.ts"
@@ -180,7 +204,6 @@ non_r5_event() {
     copilot) echo "postToolUse" ;;
   esac
 }
-setup_script() { echo "$REPO_DIR/scripts/setup-$1-interactive.sh"; }
 
 # --- declaration reads (spec 0256 requirement 9, PR D1) ---------------------
 # The structure of the three setups (the order of their steps, the prompts of the
@@ -1654,19 +1677,11 @@ for cli in $CLIS; do
     bad "$cli: the declared hooks source is '$hooks_src'"
   fi
 
-  # Shell-only (no declaration fact; stays text until the shell is a shim): the library is sourced
-  # and never copied (the golden trees pin the copy side: no usage-capture.sh under any CLI home).
-  S="$(setup_script "$cli")"
-  if grep -qE 'source[^#]*scripts/lib/usage-capture-optin\.sh' "$S"; then
-    ok "$name sources scripts/lib/usage-capture-optin.sh"
-  else
-    bad "$name does not source scripts/lib/usage-capture-optin.sh"
-  fi
-  if grep -qE 'install_file[^#]*usage-capture\.sh' "$S"; then
-    bad "$name install_file's usage-capture.sh — it must be wired by in-repo absolute path"
-  else
-    ok "$name never install_file's usage-capture.sh"
-  fi
+  # RETIRED (spec 0256 requirement 9, PR D2) as shell text: "the setup sources
+  # scripts/lib/usage-capture-optin.sh" and "never install_file's usage-capture.sh". Replaced by
+  # behaviour: the TypeScript run registers the capture entry (run_ts_behaviour below) and leaves
+  # no usage-capture.sh under any CLI home (asserted there). Pin while the shell exists: the golden
+  # trees of setup-golden/<cli>/usage-capture-* (no usage-capture.sh copy) and the loop below.
 done
 
 for d in "$HOME/.claude/hooks" "$HOME/.gemini/hooks" "$HOME/.copilot/hooks"; do
@@ -1678,21 +1693,16 @@ for d in "$HOME/.claude/hooks" "$HOME/.gemini/hooks" "$HOME/.copilot/hooks"; do
 done
 
 # Gemini (spec 0214 R16): settings.json is merged in place, so every hook entry,
-# capture included, survives on its own. The setup carries nothing over: it
-# calls neither footprint nor reinject, and its settings write precedes the
-# usage-capture step, which therefore reads the merged file.
+# capture included, survives on its own; its settings write precedes the usage-capture step.
 # Retargeted (spec 0256 requirement 9, PR D1): the ORDER is read from the declaration (the `mcp`
 # step, whose declared sub-step is the settings write, runs before `usage-capture`). Pin against
 # the unchanged shell: scripts/tests/setup-retarget-usage-order.test.ts (reads the shell line
 # order AND the declaration) and the golden cells gemini/usage-capture-installed-keep/-remove (the
-# capture entry survives the settings write). The "no footprint/reinject call" check has no
-# declaration fact and stays shell text.
-S="$(setup_script gemini)"
-if grep -vE '^[[:space:]]*#' "$S" | grep -qE 'usage_capture_(footprint|reinject)'; then
-  bad "setup-gemini: still calls usage_capture_footprint or usage_capture_reinject"
-else
-  ok "setup-gemini: calls neither usage_capture_footprint nor usage_capture_reinject"
-fi
+# capture entry survives the settings write).
+# RETIRED (PR D2) as shell text: "the setup calls neither usage_capture_footprint nor
+# usage_capture_reinject". The library API stays unit-tested in section 3 (j); the behaviour (the
+# capture entry written by the usage-capture step survives the merged settings) is the golden cells
+# above and the TypeScript run of section 5.
 gdecl="$(decl_of gemini)" || gdecl=""
 g_mcp="$(step_no "$gdecl" mcp)"
 g_uc="$(step_no "$gdecl" usage-capture)"
@@ -1708,12 +1718,31 @@ fi
 # ---------------------------------------------------------------------------
 # §5. R14: Antigravity is untouched.
 # ---------------------------------------------------------------------------
-echo "§5 Antigravity CLI unchanged (R14)"
-for f in "$REPO_DIR/scripts/setup-antigravity-interactive.sh" "$REPO_DIR"/hooks/antigravity-*; do
-  if grep -qE 'usage-capture-optin|usage-capture-hooks\.json|usage_capture_(enable|keep|remove|apply|state)|merge_session_recording_hooks' "$f"; then
-    bad "${f#"$REPO_DIR"/} references the new opt-in library or fragments"
+echo "§5 usage capture is a step that cannot abort the setup; Antigravity fragments"
+# Retargeted (spec 0256 requirement 9, PR D2). The 18 shell-syntax asserts retired in D1 (nesting
+# under an `if`, not gated on MEMPALACE_INSTALLED, `|| true` on the four prompts, the answer
+# variable reaching usage_capture_apply, every call site guarded) are replaced by BEHAVIOUR of the
+# TypeScript entry (scripts/tests/setup-retarget-behaviour-a.test.ts, run here):
+#   (i)  an unreadable hooks file (the usage-capture step fails) leaves the file byte-identical,
+#        is reported, and does NOT abort the setup: exit 0 and the next step (session-check) ran;
+#   (ii) usage capture enabled with MemPalace absent (python3 and the pipx venv gone, so the
+#        MemPalace layer is skipped) still registers the capture entry on claude, gemini and
+#        copilot (R3; review seat finding i1-F14: no golden cell covers it, so it is a unit test
+#        here rather than a golden fixture that would need regenerating in both Linux images);
+#   (iii) no usage-capture.sh is copied under any CLI home.
+# Pins against the unchanged shell: golden usage-capture-{absent-yes,absent-no,installed-*} and
+# copilot/usage-capture-unreadable-hooks. The below-the-Node-floor failure is §6 (d).
+run_ts_behaviour "usage-capture" "a usage-capture failure does not abort; MemPalace absent still runs it" 4
+
+# R14 "Antigravity unchanged": RETIRED for the setup script (the declaration of the TypeScript
+# Antigravity setup HAS a usage-capture step, strategy statusline, see the golden cells
+# antigravity/usage-capture-*: the premise of R14 no longer holds). The hook FRAGMENTS of
+# Antigravity are data files, and still must not carry the new library's fragments.
+for f in "$REPO_DIR"/hooks/antigravity-*; do
+  if grep -qE 'usage-capture-hooks\.json|merge_session_recording_hooks' "$f"; then
+    bad "${f#"$REPO_DIR"/} references the Claude/Gemini/Copilot usage-capture fragments"
   else
-    ok "${f#"$REPO_DIR"/} references neither the new library nor the fragments"
+    ok "${f#"$REPO_DIR"/} references no usage-capture fragments of the other CLIs"
   fi
 done
 

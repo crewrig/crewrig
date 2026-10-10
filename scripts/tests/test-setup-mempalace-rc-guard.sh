@@ -42,6 +42,16 @@
 #   - the documented case-branch text for that rc is printed.
 #   - (rc=0 only, sanity) the success path still behaves as documented.
 #
+# Retargeted (spec 0256 R9, PR D2): the BEHAVIOUR of the four call sites (the R26 table of the printed
+# text per (cli, rc), and the run CONTINUING after rc 1 and rc 2) is now also verified by RUNNING the
+# TypeScript call site (`runMempalaceStep` / `armFor`, scripts/lib/setup/mempalace-callsite.ts) through
+# the flow runner with the `ensureMempalaceHttp` seam stubbed to 0, 1 and 2 for each CLI:
+# scripts/tests/setup-retarget-rc-guard.test.ts (pinned against the shell by the golden cells
+# `<cli>/ensure-http-rc0`, `-rc1`, `-rc2`). THIS file keeps executing the extracted shell fragment
+# while the shell exists; what retires with the shell text (PR E) is the fragment extraction by anchor
+# line and the `set -e` survival, a shell-syntax property whose behavioural replacement is the
+# "exits 0 and continues to the later steps" case of the TypeScript test.
+#
 # HERMETIC: no HOME writes, no interactive scripts run, no network access.
 # Every fragment runs inside a throwaway harness script under a temp root
 # removed on exit.
