@@ -15,24 +15,17 @@ import { readTlsEnv } from "../../lib/tls-env.ts";
 import type { Harness, Run, Sandbox } from "./windows-setup-proof.ts";
 import { expectStatus, why } from "./windows-proof-support.ts";
 
-/** The base `--answer` list of a Claude run that asks nothing: every question has an answer. */
+/** The base `--answer` list of a Claude run: an answer for every question the sandbox run asks (no existing rules, no TLS bundle, no MemPalace, no overlay tiers, no legacy MCP entry). */
 export const CLAUDE_ANSWERS: readonly string[] = [
-  "rules-action=refresh",
   "validation.backend=internal",
   "validation.translate=off",
   "validation.pedagogy=contextual",
   "validation.illustration=off",
-  "tls-delegation=no",
-  "mempalace-install=no",
   "install-seqthink=no",
-  "legacy-mcp-removal=no",
   "install-settings=no",
   "catalogue.team=ATLAS",
   "catalogue.expertise=SOFTWARE-ARCHITECT",
   "catalogue.level=EXPERT",
-  "profile-method=keep-local",
-  "overlay.community=no",
-  "overlay.org=no",
   "transcripts=no",
   "usage-capture=no",
 ];
@@ -134,7 +127,7 @@ function answerOnly(h: Harness): void {
 function pipedInput(h: Harness): void {
   h.check("piped standard input with a BOM and CRLF", () => {
     const sb = h.sandbox();
-    const lines = ["refresh", "internal", "off", "contextual", "off", "no", "no", "no", "no", "no"];
+    const lines = ["internal", "off", "contextual", "off", "no", "no"];
     const input = Buffer.concat([
       Buffer.from([0xef, 0xbb, 0xbf]),
       Buffer.from(lines.join("\r\n") + "\r\n"),
@@ -144,15 +137,11 @@ function pipedInput(h: Harness): void {
       "claude",
       answerArgs(
         without(
-          "rules-action",
           "validation.backend",
           "validation.translate",
           "validation.pedagogy",
           "validation.illustration",
-          "tls-delegation",
-          "mempalace-install",
           "install-seqthink",
-          "legacy-mcp-removal",
           "install-settings",
         ),
       ),
@@ -168,16 +157,16 @@ function pipedInput(h: Harness): void {
 function closedInput(h: Harness): void {
   h.check("closed standard input fails closed with exit 2", () => {
     const sb = h.sandbox();
-    const res = h.run(sb, "claude", answerArgs(without("rules-action")));
+    const res = h.run(sb, "claude", answerArgs(without("validation.backend")));
     expectStatus(res, 2);
     assert.match(
       res.out + res.err,
-      /rules-action/,
+      /validation\.backend/,
       why(res, "the diagnostic must name the question"),
     );
     assert.ok(
-      !fs.existsSync(path.join(sb.home, ".claude", "rules")),
-      "nothing is written before the refusal",
+      !fs.existsSync(path.join(sb.home, ".crewrig", "validation.conf")),
+      "the validation backend is not recorded after the refusal",
     );
   });
 }
@@ -187,12 +176,9 @@ function tlsOptIn(h: Harness): void {
     const sb = h.sandbox();
     const bundle = path.join(sb.root, "ca-bundle.pem");
     fs.writeFileSync(bundle, "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n");
-    const res = h.run(
-      sb,
-      "claude",
-      answerArgs(without("tls-delegation").concat("tls-delegation=yes")),
-      { env: { SSL_CERT_FILE: bundle } },
-    );
+    const res = h.run(sb, "claude", answerArgs([...CLAUDE_ANSWERS, "tls-delegation=yes"]), {
+      env: { SSL_CERT_FILE: bundle },
+    });
     assertLanded(h, sb, res);
     const read = readTlsEnv(sb.home); // reader 1: the TypeScript reader of the setup
     assert.equal(read.kind, "ok", `tls-env.sh read back as ${JSON.stringify(read)}`);

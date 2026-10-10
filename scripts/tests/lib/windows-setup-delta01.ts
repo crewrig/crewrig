@@ -27,7 +27,11 @@ function tlsEnv(sb: Sandbox): Record<string, string> {
 }
 
 function noBashOnPath(h: Harness, sb: Sandbox): void {
-  const dirs = sandboxPath(sb.bin).split(path.delimiter);
+  // System32 holds `bash.exe` on a runner (the WSL launcher) and cannot be taken off PATH: what the entries
+  // write must not name it, which the cases assert below; only the directories we control are checked here.
+  const dirs = sandboxPath(sb.bin)
+    .split(path.delimiter)
+    .filter((dir) => !/[\\/]system32$/i.test(dir));
   for (const dir of dirs)
     for (const name of ["bash.exe", "bash.cmd", "bash"])
       assert.ok(!fs.existsSync(path.join(dir, name)), `${name} found in ${dir}`);
