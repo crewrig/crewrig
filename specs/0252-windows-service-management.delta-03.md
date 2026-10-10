@@ -83,8 +83,8 @@ Replacement:
 > `windows-service-task` and `windows-mcp-daemon`. The first, cold read of a run is the one
 > exception: it took 2.4 to 5.7 s across the runs read (2.4 s run 38010460918; 3.3 s and 3.7 s
 > in run 38012436658 attempts 1 and 2; 4.5 s run 37995988520; 5.7 s run 38012799782), so it can
-> exceed the bound; it is printed and not asserted, and every later read of the run is
-> asserted. The bound is NOT a bound on the whole `status-mcp-server` entry, which makes two or
+> exceed the bound; it is printed and not asserted, and the `status` call of the backend
+> that each Windows job times after it is asserted. The bound is NOT a bound on the whole `status-mcp-server` entry, which makes two or
 > three such reads and a listener lookup: its total is printed (`MEASURE: status-entry`: 4.4 s on
 > `windows-latest`, run 38012799782; 12.0 s and 5.5 s on loaded runners, run 38012436658
 > attempts 1 and 2) and is guarded against a hang at 30 seconds. A plan step or test that
