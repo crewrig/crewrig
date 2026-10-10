@@ -116,11 +116,14 @@ Replacement:
 > behaviour untouched, that takes the prompt text and returns the key AND the unread
 > remainder of the stream, because `read -n 1` leaves the rest of a pipe in place where
 > `readKey` (`:67-79`) takes the first chunk and pauses standard input. The rule is
-> defined on the stream and not on a chunk: after the key, the rest of its line, up to
-> and including its terminator (LF or CRLF), is discarded wherever a chunk boundary falls,
-> and what follows is the remainder; the line queue of requirement 11 SHALL serve that
-> remainder first. The exit and the pre-answer are unchanged (exit 1 with `Aborted. Run
-> without --link for secure copy mode.` unless the key is `y` or `Y`; the `--answer
+> defined on the stream and not on a chunk, and applies to input that is not a terminal
+> (on a terminal the question returns on the first keypress and nothing is discarded):
+> when the key is not itself a line terminator, the rest of its line, up to and
+> including its terminator (LF or CRLF) or the end of input, whichever comes first, is
+> discarded wherever a chunk boundary falls, and what follows is the remainder; when the
+> key is a line terminator (a blank answer), nothing further is discarded; the line
+> queue of requirement 11 SHALL serve that remainder first. The exit and the
+> pre-answer are unchanged (exit 1 with `Aborted. Run without --link for secure copy mode.` unless the key is `y` or `Y`; the `--answer
 > link-confirm=yes` pre-answer of requirement 13 stands for the key, `no` for any other
 > key); the line-mode prompter SHALL be created only after that question, so the two
 > readers never contend for standard input.
@@ -282,7 +285,8 @@ Replacement, tagged in the differential test like (a) to (l):
 > authentication (return code 1 means that no usable serving daemon could be verified,
 > which is the truth here; on the Claude arm that replaces an existing HTTP entry with
 > the stdio entry, the outcome the shell avoided only by sending the bearer to any host,
-> and the run says so in the warning it already prints); (p) on win32 the mode of a written file is not set, and the
+> and the `Converged mempalace to the stdio http-wrapper entry` line the Claude arm
+> already prints is the only notice of it); (p) on win32 the mode of a written file is not set, and the
 > `windows-setup-entries` job of requirement 34 does not assert one; (q) on win32 the
 > pipx guidance and the Chroma binary path in messages are the Windows forms
 > (`<venv>\Scripts\chroma.exe`, `py -m pip`, `scoop install pipx`) where the shell names
