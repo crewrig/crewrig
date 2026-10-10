@@ -21,6 +21,8 @@ import {
 import type { SpawnResult, Spawner } from "../lib/setup/context.ts";
 
 const REAL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+/** hook-command.ts writes a Windows script path with forward slashes (hookCommandLine). */
+const fwd = (p: string): string => p.replaceAll("\\", "/");
 const read = (file: string): unknown => JSON.parse(fs.readFileSync(file, "utf8"));
 const at = (value: unknown, ...keys: (string | number)[]): unknown =>
   keys.reduce<unknown>(
@@ -83,7 +85,8 @@ beforeEach(() => {
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
 describe("statusline channel", () => {
-  const SHIM = (ctx: AgyCtx) => path.join(ctx.repoDir, "hooks", "antigravity-statusline-shim.ts");
+  const SHIM = (ctx: AgyCtx) =>
+    fwd(path.join(ctx.repoDir, "hooks", "antigravity-statusline-shim.ts"));
 
   test("enable over an empty command installs, records the marker and says so", () => {
     const ctx = ctxOf();

@@ -20,6 +20,8 @@ import {
 import type { SpawnResult, Spawner } from "../lib/setup/context.ts";
 
 const REAL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+/** hook-command.ts writes a Windows script path with forward slashes (hookCommandLine). */
+const fwd = (p: string): string => p.replaceAll("\\", "/");
 const read = (file: string): unknown => JSON.parse(fs.readFileSync(file, "utf8"));
 const at = (value: unknown, ...keys: (string | number)[]): unknown =>
   keys.reduce<unknown>(
@@ -93,7 +95,7 @@ describe("paths and floor", () => {
     assert.equal(p.hooksJson, path.join(ctx.home, ".gemini", "config", "hooks.json"));
     assert.equal(
       agyPaths({ ...ctx, env: { CREWRIG_USAGE_ROOT: "/u" } }).marker,
-      "/u/state/antigravity-statusline.json",
+      path.join("/u", "state", "antigravity-statusline.json"),
     );
   });
 
@@ -130,11 +132,11 @@ describe("transcript deployment", () => {
     const doc = read(target);
     const command = String(at(doc, "crewrig-mempalace-transcript", "Stop", 0, "command"));
     assert.match(command, /mempalace-transcript\.ts"? antigravity-cli Stop$/);
-    assert.ok(command.includes(path.join(ctx.repoDir, "hooks")));
+    assert.ok(command.includes(fwd(path.join(ctx.repoDir, "hooks"))));
     const guard = String(
       at(doc, "crewrig-worktree-git-guard", "PreToolUse", 0, "hooks", 0, "command"),
     );
-    assert.ok(guard.includes(path.join(ctx.repoDir, "hooks", "worktree-git-guard.ts")));
+    assert.ok(guard.includes(fwd(path.join(ctx.repoDir, "hooks", "worktree-git-guard.ts"))));
     if (process.platform !== "win32") assert.equal(fs.statSync(target).mode & 0o777, 0o600);
     assert.ok(fs.statSync(request(ctx).hooksDir).isDirectory());
     assert.equal(out.at(-1), `  Transcript hooks deployed to ${target}`);

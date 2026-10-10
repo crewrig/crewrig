@@ -125,24 +125,37 @@ describe("path safety", () => {
 });
 
 describe("the legacy spaced Gemini form", () => {
-  let dir = "";
-  beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), "uc-state-"));
-  });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+  // The legacy form is a POSIX absolute path, as uc_legacy_re pins it: the paths are literals and
+  // existence is injected, so the suite holds on every platform.
+  const script = "/srv/My Projects/hooks/usage-capture.sh";
+  const config = grouped(`bash ${script} gemini-cli AfterModel`);
 
   test("counts only when its whole path names an existing file", () => {
-    const hooks = path.join(dir, "My Projects", "hooks");
-    fs.mkdirSync(hooks, { recursive: true });
-    const script = path.join(hooks, "usage-capture.sh");
-    const config = grouped(`bash ${script} gemini-cli AfterModel`);
     assert.deepEqual(legacyCandidates("grouped", config), [script]);
-    assert.deepEqual(legacyOk("grouped", config), []);
-    assert.equal(captureState("gemini", config), "absent");
-    fs.writeFileSync(script, "");
-    assert.deepEqual(legacyOk("grouped", config), [script]);
-    assert.equal(captureState("gemini", config), "installed");
-    assert.deepEqual(capturePaths("gemini", config), [script]);
+    assert.deepEqual(
+      legacyOk("grouped", config, () => false),
+      [],
+    );
+    assert.equal(
+      captureState("gemini", config, () => false),
+      "absent",
+    );
+    const exists = (p: string): boolean => p === script;
+    assert.deepEqual(legacyOk("grouped", config, exists), [script]);
+    assert.equal(captureState("gemini", config, exists), "installed");
+    assert.deepEqual(capturePaths("gemini", config, exists), [script]);
+  });
+
+  test("a Windows drive-letter path is never a candidate, as in the shell", () => {
+    const win = "C:\\Users\\me\\My Projects\\hooks\\usage-capture.sh";
+    assert.deepEqual(legacyCandidates("grouped", grouped(`bash ${win} gemini-cli AfterModel`)), []);
+    assert.deepEqual(
+      legacyCandidates(
+        "grouped",
+        grouped(`bash C:/My Projects/hooks/usage-capture.sh gemini-cli AfterModel`),
+      ),
+      [],
+    );
   });
 
   test("a compound is never a candidate, and a signature match is not one either", () => {
