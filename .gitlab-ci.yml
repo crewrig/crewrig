@@ -1370,6 +1370,7 @@ mempalace:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
+    - apt-get update && apt-get install -y --no-install-recommends jq
   cache:
     key:
       files:
@@ -1645,6 +1646,7 @@ setup:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
+    - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-validation-backend.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-tls-delegation.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-mcp-merge.sh"
@@ -1746,6 +1748,7 @@ frontmatter:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
+    - apt-get update && apt-get install -y --no-install-recommends jq
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh"
@@ -2448,6 +2451,8 @@ release-notes:
 
 usage-capture:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
   script:
     - "npm install"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-capture.sh"

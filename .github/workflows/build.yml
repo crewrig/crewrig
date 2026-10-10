@@ -1513,6 +1513,9 @@ jobs:
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
+      - name: Install production dependencies
+        if: steps.filter.outputs.setup == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - name: Test Setup Validation Backend
         if: steps.filter.outputs.setup == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-validation-backend.sh

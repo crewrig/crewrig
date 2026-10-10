@@ -1664,7 +1664,7 @@ capabilities:
       # (mempalace-http-client-reuse.test.ts) — installed alongside the
       # image rather than replacing it (spec 0242, issue #1370).
       runtime: [python@3.12, node@24]
-      tools: [yq]
+      tools: [yq, jq]
     cache:
       files:
         - "scripts/tests/test-mempalace-*.sh"
@@ -1937,6 +1937,8 @@ capabilities:
       runtime: node@24
       tools: [jq, yq]
     command:
+      # The retargeted suites run the TypeScript setup in a sandbox that copies js-yaml and argparse from here.
+      - npm ci --omit=dev --workspaces=false
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-validation-backend.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-tls-delegation.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-mcp-merge.sh
@@ -2086,7 +2088,7 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [yq]
+      tools: [yq, jq]
     command:
       - npm ci --omit=dev --workspaces=false
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh
@@ -3139,6 +3141,7 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [jq]
     command:
       - npm install
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-capture.sh
