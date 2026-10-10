@@ -66,11 +66,14 @@ roughly two dozen steps; it was one capability, not two dozen. A candidate
 reference is not invalid for collapsing a job's steps into a single entry —
 that is the required shape. Spec 0147 decomposes that one capability into
 several focused, changeset-gated capabilities (each still exactly one job),
-each with a `paths:` filter and a `changeset-gated: true` marker. Two
+each with a `paths:` filter and a `changeset-gated: true` marker. Three
 capabilities with no `paths:` filter complete the decomposition: the
 `path-ownership` check, which runs on every change and fails when a tracked
 file is owned by none of the focused capabilities and exempted by no list
-(spec 0147 delta-01 R11), and the `changeset-coverage` exhaustive run, which
+(spec 0147 delta-01 R11); the `repository-scan` capability, which is not
+changeset-gated and runs the repository-wide scans on every pull request and
+every push to `main` and `release/**` (spec 0251, see *What a capability's
+filter must cover*); and the `changeset-coverage` exhaustive run, which
 executes the commands of every changeset-gated capability on a schedule and on
 demand, never on a pull request (spec 0147 delta-01 R21).
 
@@ -218,6 +221,10 @@ stale directory. `scripts/check-ci-parity.sh` asserts the engines' cache key
 inputs agree **semantically** with the reference's `cache.files` (same declared
 inputs, not string equality).
 
+Because a cache hit skips the guarded command, `cache.files` of a cache-guarded
+check covers the same set of files as its trigger filter (see *What a
+capability's filter must cover*, the cache corollary).
+
 By default, when a capability declares `cache:`, `scripts/build-ci.sh` wraps
 each hermetic `bash scripts/…` command in `scripts/ci-cache-guard.sh` so a
 cache hit skips re-execution. A capability MAY set `cache-guard: false` to
@@ -301,6 +308,36 @@ that mechanism.
 - **Success.** The check prints `path-ownership: OK: evaluated <N> tracked
   files, owned <O>, exempt <E>` and exits `0` (R18). A file both owned and
   exempt counts as owned, so `O + E = N`.
+
+### What a capability's filter must cover (spec 0251)
+
+`path-ownership` proves that some filter owns each tracked file. It never
+proves that a check reacts to a change of the files it reads. That gap let a
+violation pass green on its own pull requests and fail on a later, unrelated
+push (the `check-no-machine-paths.sh` incident fixed by #1503 and #1505).
+Spec 0251 R14 closes it with the following trigger rule.
+
+- **A check with a finite input.** A check whose input is a known, finite set
+  of files is triggered by a `paths:` filter that covers every file of that
+  set. The set includes every helper the check sources, imports or executes,
+  directly or transitively, because a change to a helper changes the check's
+  verdict as surely as a change to its data. For a drift check, the set also
+  includes every committed output the check compares against its sources.
+- **A check with an unbounded input.** A check whose input is the whole
+  repository, or a set of files that cannot be listed in advance, runs in a
+  capability with no `paths:` filter. In this repository that capability is
+  `repository-scan`. It runs `scripts/check-no-machine-paths.sh`,
+  `scripts/check-markdown-links.sh` and `scripts/check-core-paths.sh` on every
+  pull request and every push to `main` and `release/**`, and runs no test
+  suite, so that the cost added to every change is that of the scans alone.
+- **The cache corollary.** When the check is cache-guarded (its capability
+  declares `cache:`), `cache.files` covers the same set as the trigger filter.
+  Otherwise a change to an uncovered file starts the job, produces the same
+  cache key, hits the cache, and skips the check.
+- **No catch-all filter.** A `**` glob is never the way to make a check run on
+  every change: it makes every tracked file count as owned, and
+  `path-ownership` could then never find an unowned file. Use a capability
+  with no `paths:` filter instead.
 
 ### What the matcher implements
 
