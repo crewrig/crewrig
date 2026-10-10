@@ -58,8 +58,14 @@
 #      then adds a component without rebuilding.
 #   4. Bash 3.2.57 is the enforced floor (ci/bash32-forbidden.txt). No
 #      `declare -A`, no `mapfile`. This file runs under /bin/bash 3.2 and 5.x.
-#   5. `scripts/lib/component-resolve.sh` — sourced by ALL FOUR commands —
-#      spells out `.claude/skills`, `.gemini/skills`, `.github/skills`,
+#   5. `scripts/lib/component-resolve.sh` — which the four Bash commands sourced
+#      before spec 0255 (the declarations now live in the TypeScript sources
+#      `scripts/lib/manage/descriptors.ts` and `scripts/lib/component-roots.ts`,
+#      read below by EVALUATING them through
+#      `scripts/tests/lib/print-manage-declarations.ts`, never as text; the
+#      measurement that follows was taken on the Bash form and still holds for
+#      the argument-not-substring rule) — spells out
+#      `.claude/skills`, `.gemini/skills`, `.github/skills`,
 #      `.agents/skills` and `.gemini/agents` verbatim inside `installed_targets`
 #      (:324-327, :347). A structural check that greps the scanned files for
 #      `<cli-root>/<type>` as a bare SUBSTRING therefore matches the library
@@ -69,14 +75,18 @@
 #      is exactly what R20 obliges this file to catch — the substring form still
 #      reported PASS while three behavioural cases went red. Case 19 asserts the
 #      ARGUMENT of the `component_set_staging_roots` call instead, which is the
-#      declaration itself and cannot be satisfied by an unrelated mention.
+#      declaration itself and cannot be satisfied by an unrelated mention. The
+#      TypeScript form keeps the rule: the staging roots are the helper's
+#      evaluated `staging-root.<type>` facts, never a substring of a source.
 #      THE SAME TRAP WAS LIVE A SECOND TIME, three lines below that fix, on the
 #      tier set: with `COMPONENT_OVERLAY_TIERS` cut to "library community",
 #      EIGHT behavioural cases went red while `grep -qw org` over the scan set
 #      still SUCCEEDED, matching component-resolve.sh:9 and :300 — both comments.
 #      Case 19 now reads that declaration too. Those two are the whole
 #      population: the scan set is consumed by exactly two assertions in this
-#      file, and both now read a declaration rather than a mention.
+#      file, and both now read a declaration rather than a mention. The tier set
+#      is the helper's `tiers` fact, the evaluated COMPONENT_OVERLAY_TIERS of
+#      `scripts/lib/component-roots.ts`.
 #   6. A NEGATIVE guard fails silently; a POSITIVE assertion cannot. Reword a
 #      report and every positive assertion over it goes red at once, while a
 #      negative guard simply stops matching, never fires, and the case carrying
@@ -1159,24 +1169,32 @@ gemini:agents:setup-gemini-interactive.sh:manage-workspace-component.sh
 copilot:skills:setup-copilot-interactive.sh:manage-copilot-component.sh
 antigravity:skills:setup-antigravity-interactive.sh:manage-antigravity-component.sh"
 
-# scan_set <command-script> — the command plus every scripts/lib file it sources,
-# so a tier list or staging root that moved into the shared resolver still counts.
-scan_set() {
-  local cmd="$1" libname
-  printf '%s\n' "$cmd"
-  while IFS= read -r libname; do
-    [ -f "$REPO_DIR/scripts/$libname" ] && printf '%s\n' "$REPO_DIR/scripts/$libname"
-  done < <(grep -oE '(lib/[A-Za-z0-9_-]+\.sh)' "$cmd" 2>/dev/null | sort -u)
+# The COMMAND side is read by EVALUATING its TypeScript declaration (spec 0255,
+# delta-01): the helper prints one `<cli><TAB><key><TAB><value>` fact per line,
+# in the same <HOME>/<REPO>/<TIER> sentinel form this file compares in, so the
+# comparison with the setup side below is unchanged. The setup side (the
+# setup-*-interactive.sh scripts) stays a text read.
+MANAGE_DECL="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-manage-declarations.ts" 2>/dev/null)"
+
+# decl_values <cli> <key-ERE> — the value of every fact of <cli> whose key matches.
+decl_values() {
+  printf '%s\n' "$MANAGE_DECL" | awk -F'\t' -v c="$1" -v k="$2" '$1 == c && $2 ~ k { print $3 }'
 }
 
 ok="true"; detail=""
+# Vacuity guard for the evaluated side as a whole: a helper that printed nothing
+# (a crash, a moved file) fails the case instead of letting every row "match".
+if [ -z "$MANAGE_DECL" ]; then
+  ok="false"
+  detail="the declaration helper printed nothing, so no command declaration could be read"
+fi
 while IFS=: read -r cli type setup_name cmd_name; do
   [ -n "$cli" ] || continue
   setup="$REPO_DIR/scripts/$setup_name"
   cmd="$REPO_DIR/scripts/$cmd_name"
 
   setup_zone="$(resolved_by_name "$setup" '[A-Za-z_][A-Za-z0-9_]*' "$type" | grep -E "^<HOME>.*/$type\$" | sort -u)"
-  cmd_zone="$(resolved_by_name "$cmd" '[A-Za-z0-9_]*DEST[A-Za-z0-9_]*' "$type" | grep -E "/$type\$" | sort -u)"
+  cmd_zone="$(decl_values "$cli" '^dest[.]' | grep -E "/$type\$" | sort -u)"
 
   # Vacuity guards first: an unparseable side fails the case, never passes it.
   if [ -z "$setup_zone" ] || [ "$(printf '%s\n' "$setup_zone" | wc -l | tr -d ' ')" != "1" ]; then
@@ -1186,7 +1204,7 @@ while IFS=: read -r cli type setup_name cmd_name; do
   fi
   if [ -z "$cmd_zone" ] || [ "$(printf '%s\n' "$cmd_zone" | wc -l | tr -d ' ')" != "1" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli/$type: could not parse exactly one $type landing zone from $(basename "$cmd") (got: $(printf '%s' "$cmd_zone" | tr '\n' ' '))"
+    detail="${detail}${detail:+$'\n'}$cli/$type: could not read exactly one $type landing zone from the declaration of $(basename "$cmd") (got: $(printf '%s' "$cmd_zone" | tr '\n' ' '))"
     continue
   fi
   if [ "$setup_zone" != "$cmd_zone" ]; then
@@ -1199,6 +1217,10 @@ EOF
 report "R20/R1: every command's landing zone for each covered type equals its assisted setup's" "$ok" "$detail"
 
 ok="true"; detail=""
+if [ -z "$MANAGE_DECL" ]; then
+  ok="false"
+  detail="the declaration helper printed nothing, so no command declaration could be read"
+fi
 while IFS=: read -r cli type setup_name cmd_name; do
   [ -n "$cli" ] || continue
   setup="$REPO_DIR/scripts/$setup_name"
@@ -1223,32 +1245,20 @@ while IFS=: read -r cli type setup_name cmd_name; do
     continue
   fi
 
-  scan="$(scan_set "$cmd")"
   # Basis: the command must declare the setup's staging root for this type.
   #
-  # Asserted over the ARGUMENT of every `component_set_staging_roots` call in the
-  # scanned set, never as a bare substring of it — trap 5 in the header. The scan
-  # deliberately includes the sourced libraries so a staging root that MOVES into
-  # the shared resolver still counts, and scripts/lib/component-resolve.sh
-  # already names all five roots verbatim for an unrelated reason
-  # (installed_targets, :324-327 and :347), so a substring form matches the
-  # library on every CLI and can never go red. Reading the call's argument keeps
-  # both properties: it follows the declaration wherever it lives, and an
-  # incidental mention is not a declaration.
-  #
-  # The stated cost: a declaration made INDIRECTLY — `SR=".gemini/skills";
-  # component_set_staging_roots "$SR"` — fails this case although the command
-  # still resolves from the right root. Measured, and deliberate: the file's
-  # standing rule is that a parse matching nothing fails rather than passes
-  # vacuously (scripts/check-bash32-portability.sh, "refusing to pass
-  # vacuously"), and the diagnostic below prints what the command declares, so
-  # the next author is told the literal to restore rather than left guessing.
-  declared="$(printf '%s\n' "$scan" \
-    | xargs grep -hoE 'component_set_staging_roots[[:space:]]+"[^"]*"' 2>/dev/null \
-    | sed -e 's/^[^"]*"//' -e 's/"$//' | sort -u)"
+  # Asserted over the ARGUMENT of every `component_set_staging_roots` call, never
+  # as a bare substring of a source — trap 5 in the header. Under spec 0255 the
+  # argument is the helper's evaluated `staging-root.<type>` fact of the CLI's
+  # descriptor (scripts/lib/manage/descriptors.ts), so an incidental mention
+  # cannot satisfy it and a root that moves still counts. A parse that yields
+  # nothing fails rather than passes vacuously
+  # (scripts/check-bash32-portability.sh, "refusing to pass vacuously"), and the
+  # diagnostic below prints what the command declares.
+  declared="$(decl_values "$cli" '^staging-root[.]' | sort -u)"
   if [ -z "$declared" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli/$type: no component_set_staging_roots declaration in the command or the libraries it sources, while its setup reads dist/<tier>/$setup_root"
+    detail="${detail}${detail:+$'\n'}$cli/$type: no staging root declared by the command's descriptor, while its setup reads dist/<tier>/$setup_root"
   elif ! grep -Fqx -- "$setup_root/$type" <<< "$declared"; then
     ok="false"
     detail="${detail}${detail:+$'\n'}$cli/$type: the command declares no staging root equal to the setup's ($setup_root/$type); it declares: $(printf '%s' "$declared" | tr '\n' ' ')"
@@ -1265,19 +1275,18 @@ while IFS=: read -r cli type setup_name cmd_name; do
   # prose at :9 ("a component in `org` became") and :300 ("a library-versus-org
   # command-name collision"). Two comments were satisfying a coverage assertion.
   #
-  # The declared value is a single assignment in a known file, so more than one
-  # declaration across the scanned set is itself a finding: the served set would
-  # then depend on source order, and this case could not say which one binds.
-  served="$(printf '%s\n' "$scan" \
-    | xargs grep -hE '^[[:space:]]*COMPONENT_OVERLAY_TIERS=' 2>/dev/null \
-    | sed -e 's/^[^=]*=//' | sort -u)"
-  served="$(strip_q "$served")"
+  # The declared value is the one exported COMPONENT_OVERLAY_TIERS of
+  # scripts/lib/component-roots.ts, printed as one `tiers` fact per CLI. Zero
+  # facts, or more than one for a CLI, is itself a finding: the helper must
+  # print exactly one, otherwise the served set could depend on print order and
+  # this case could not say which one binds.
+  served="$(decl_values "$cli" '^tiers$')"
   if [ -z "$served" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli/$type: no COMPONENT_OVERLAY_TIERS declaration in the command or the libraries it sources, so no served tier set is declared at all"
+    detail="${detail}${detail:+$'\n'}$cli/$type: no COMPONENT_OVERLAY_TIERS fact for the command, so no served tier set is declared at all"
   elif [ "$(printf '%s\n' "$served" | wc -l | tr -d ' ')" != "1" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli/$type: the scanned set carries more than one COMPONENT_OVERLAY_TIERS declaration, so the served tier set depends on source order (got: $(printf '%s' "$served" | tr '\n' ' '))"
+    detail="${detail}${detail:+$'\n'}$cli/$type: more than one COMPONENT_OVERLAY_TIERS fact for the command, so the served tier set depends on print order (got: $(printf '%s' "$served" | tr '\n' ' '))"
   else
     for t in library community org; do
       case " $served " in

@@ -549,33 +549,117 @@ else
   bad "setup: the migration is gated on the overlay opt-in (line $MIGRATE_LINE vs done at $OVERLAY_DONE)"
 fi
 
-# R7 — the per-component surface targets the same root.
-grep -qE '^AGY_CUSTOMIZATION_ROOT="\$\{HOME\}/\.gemini/config"$' "$MANAGE" \
-  && ok "manage: a customization root separate from ANTIGRAVITY_HOME exists" \
-  || bad "manage: no separate customization root constant"
-grep -q 'DEST="\$AGY_CUSTOMIZATION_ROOT/skills"' "$MANAGE" \
-  && ok "R7: manage installs skills to the same root the setup run uses" \
-  || bad "R7: manage does not target the documented customization root"
+# The destinations below are declarations of the antigravity manage descriptor,
+# read by EVALUATING it (the helper prints one `<cli>\t<key>\t<value>` line per
+# fact, home-relative values in the `<HOME>` sentinel form), not by grepping the
+# script's source text. Each read has a vacuity guard: a helper that prints
+# nothing for the fact FAILS the case instead of letting it pass on an empty
+# comparison.
+MANAGE_DECLS="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-manage-declarations.ts" 2>/dev/null)"
+# decl_is <cli> <key> <expected> <ok-label> <bad-label>
+decl_is() {
+  local cli="$1" key="$2" want="$3" oklabel="$4" badlabel="$5" got
+  got="$(printf '%s\n' "$MANAGE_DECLS" | awk -F '\t' -v c="$cli" -v k="$key" '$1 == c && $2 == k { print $3; exit }')"
+  if [ -z "$got" ]; then
+    bad "$badlabel (vacuous: the declaration helper printed nothing for $cli $key)"
+  elif [ "$got" = "$want" ]; then
+    ok "$oklabel"
+  else
+    bad "$badlabel (declared $got, expected $want)"
+  fi
+}
 
-# The per-component cleanup is gated on `${#PLACED_NAMES[@]} -gt 0`, so an array
-# that is never fed makes the whole branch a silent no-op that no placement
-# assertion can see — the same emptied-argument shape spec 0116 delta-01 R24
-# records. Both ends of the channel are asserted: the producer inside
-# place_component, and the arguments the consumer is called with. `-F` because
-# `[@]` would otherwise open a bracket expression.
-grep -qF 'PLACED_NAMES+=("$item_name")' "$MANAGE" \
-  && ok "manage: place_component feeds the name it just placed into PLACED_NAMES" \
-  || bad "manage: PLACED_NAMES is never fed — the per-component cleanup is a no-op branch"
-grep -qF '"$ANTIGRAVITY_HOME" "$REPO_DIR/artifacts" skills ${PLACED_NAMES[@]+"${PLACED_NAMES[@]}"}' "$MANAGE" && ok "manage: the narrow migration is called with the superseded root, the artifacts root, the kind, and the names" || bad "manage: the per-component migration call-site arguments are wrong or emptied" # acknowledged-exception: literal grep pattern (mention, not a use)
+# R7 — the per-component surface targets the same root.
+decl_is antigravity customization-root '<HOME>/.gemini/config' \
+  "manage: a customization root separate from ANTIGRAVITY_HOME exists" \
+  "manage: no separate customization root constant"
+decl_is antigravity dest.antigravity-skills '<HOME>/.gemini/config/skills' \
+  "R7: manage installs skills to the same root the setup run uses" \
+  "R7: manage does not target the documented customization root"
+
+# §7b — the per-component cleanup is gated on `${#PLACED_NAMES[@]} -gt 0`, so an
+# array that is never fed makes the whole branch a silent no-op that no
+# placement assertion can see — the same emptied-argument shape spec 0116
+# delta-01 R24 records. The channel is an internal of the shell with no
+# declaration, so it is observed by RUNNING the manage script in a sandbox
+# repository and reading what it leaves at the superseded placement.
+S7B2="$TMP_ROOT/s7b"
+S7B2_REPO="$S7B2/repo"
+S7B2_HOME="$S7B2/cli-home"
+mkdir -p "$S7B2_REPO/.git" "$S7B2_REPO/node_modules"
+/bin/cp -R "$REPO_DIR/scripts" "$S7B2_REPO/scripts"
+/bin/cp -f "$REPO_DIR/package.json" "$S7B2_REPO/package.json"
+for pkg in js-yaml argparse; do
+  [ -d "$REPO_DIR/node_modules/$pkg" ] && /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$S7B2_REPO/node_modules/$pkg"
+done
+printf 'dist/\ncli-home*/\npackage.json\nnode_modules/\n' > "$S7B2_REPO/.gitignore"
+stage_skill "$S7B2_REPO/artifacts/library" fx-served
+stage_skill "$S7B2_REPO/artifacts/library" fx-other
+stage_skill "$S7B2_REPO/dist/library/.agents" fx-served
+S7B2_SUP="$S7B2_HOME/.gemini/antigravity-cli/skills"
+stage_skill "$S7B2_HOME/.gemini/antigravity-cli" fx-served
+stage_skill "$S7B2_HOME/.gemini/antigravity-cli" fx-other
+stage_skill "$S7B2_HOME/.gemini/antigravity-cli" fx-user-notes no plain
+echo "keep me" > "$S7B2_SUP/fx-user-notes/notes.txt"
+S7B2_NOTES_BEFORE="$(cat "$S7B2_SUP/fx-user-notes/SKILL.md" "$S7B2_SUP/fx-user-notes/notes.txt")"
+
+S7B2_OUT="$(HOME="$S7B2_HOME" bash "$S7B2_REPO/scripts/manage-antigravity-component.sh" install antigravity-skills fx-served 2>"$S7B2/stderr")"
+S7B2_ST=$?
+
+# Precondition, so a run that placed nothing cannot pass the cases below.
+if [ "$S7B2_ST" -eq 0 ] \
+  && [ -f "$S7B2_HOME/.gemini/config/skills/fx-served/SKILL.md" ] \
+  && case "$S7B2_OUT" in *"Copied: fx-served"*) true ;; *) false ;; esac; then
+  ok "manage: the sandbox run exits 0 and places fx-served (the migration cases below are not vacuous)"
+else
+  bad "manage: the sandbox run did not place fx-served (exit $S7B2_ST) — got: $S7B2_OUT / $(cat "$S7B2/stderr")"
+fi
+if [ ! -e "$S7B2_SUP/fx-served" ]; then
+  case "$S7B2_OUT" in
+    *"Migrated away"*fx-served*) ok "manage: place_component feeds the name it just placed into PLACED_NAMES — the per-component cleanup is not a no-op branch" ;;
+    *) bad "manage: PLACED_NAMES is never fed — the per-component cleanup is a no-op branch (no Migrated away line)" ;;
+  esac
+else
+  bad "manage: PLACED_NAMES is never fed — the per-component cleanup is a no-op branch (fx-served survives at the superseded placement)"
+fi
+if [ -f "$S7B2_SUP/fx-other/SKILL.md" ] \
+  && [ -f "$S7B2_SUP/fx-user-notes/SKILL.md" ] \
+  && [ "$(cat "$S7B2_SUP/fx-user-notes/SKILL.md" "$S7B2_SUP/fx-user-notes/notes.txt" 2>/dev/null)" = "$S7B2_NOTES_BEFORE" ]; then
+  ok "manage: the narrow migration is called with the superseded root, the artifacts root, the kind and only the placed names"
+else
+  bad "manage: the per-component migration reached a component this run did not place (fx-other or fx-user-notes was removed or modified)"
+fi
+
+# Nothing placed, nothing migrated: with no served component left, the whole-tier
+# install rebuilds and stages nothing (a staged root holding only `.gitkeep`),
+# PLACED_NAMES stays empty, and the `-gt 0` guard skips the migration. The run
+# rebuilds from the authoring sources, so the served components are removed there.
+rm -rf "$S7B2_REPO/artifacts/library/skills/fx-served" "$S7B2_REPO/artifacts/library/skills/fx-other" \
+  "$S7B2_REPO/dist/library/.agents/skills/fx-served"
+touch "$S7B2_REPO/artifacts/library/skills/.gitkeep"
+mkdir -p "$S7B2_REPO/dist/library/.agents/skills"
+touch "$S7B2_REPO/dist/library/.agents/skills/.gitkeep"
+S7B2_OUT2="$(HOME="$S7B2_HOME" bash "$S7B2_REPO/scripts/manage-antigravity-component.sh" install antigravity-skills 2>"$S7B2/stderr2")"
+S7B2_ST2=$?
+if [ "$S7B2_ST2" -ne 0 ]; then
+  bad "manage: the placement-less sandbox run failed (exit $S7B2_ST2), so it proves nothing — got: $S7B2_OUT2 / $(cat "$S7B2/stderr2")"
+else
+  case "$S7B2_OUT2" in
+    *"Migrated away"*) bad "manage: a placement-less install migrated something away" ;;
+    *) [ -f "$S7B2_SUP/fx-other/SKILL.md" ] \
+         && ok "manage: a placement-less install performs no migration" \
+         || bad "manage: a placement-less install removed fx-other" ;;
+  esac
+fi
 
 # The two kinds spec 0123 explicitly EXCLUDES must not have moved. A one-line
 # edit to ANTIGRAVITY_HOME would have relocated both silently.
-grep -q 'DEST="\$ANTIGRAVITY_HOME/rules"' "$MANAGE" \
-  && ok "policies still resolve under ANTIGRAVITY_HOME (out of scope for 0123)" \
-  || bad "policies were relocated; spec 0123 excludes them for want of a probe"
-grep -q 'config_file="\$ANTIGRAVITY_HOME/settings.json"' "$MANAGE" \
-  && ok "mcp-servers still merge into ANTIGRAVITY_HOME/settings.json (out of scope)" \
-  || bad "the MCP settings target was relocated; spec 0123 excludes it"
+decl_is antigravity dest.policies '<HOME>/.gemini/antigravity-cli/rules' \
+  "policies still resolve under ANTIGRAVITY_HOME (out of scope for 0123)" \
+  "policies were relocated; spec 0123 excludes them for want of a probe"
+decl_is antigravity mcp-target '<HOME>/.gemini/antigravity-cli/settings.json' \
+  "mcp-servers still merge into ANTIGRAVITY_HOME/settings.json (out of scope)" \
+  "the MCP settings target was relocated; spec 0123 excludes it"
 
 # =====================================================================
 echo ""
