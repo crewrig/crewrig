@@ -1,0 +1,6 @@
+{
+  "bare": "%+-./0123456789:=@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz",
+  "bareNotFirst": "#~",
+  "escaped": " !\"$&'()*,;<>?[\\]^`{|}",
+  "tildeEscapedAfter": ":="
+}

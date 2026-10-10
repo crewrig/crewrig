@@ -107,3 +107,77 @@ export async function confirmContinue(stdin: PromptStdin, io: Io): Promise<boole
   io.out("");
   return key === "y" || key === "Y";
 }
+
+/** What `confirmKeyWithRemainder` hands back: the key typed and the unread rest of the stream. */
+export interface KeyWithRemainder {
+  readonly key: string;
+  readonly remainder: string;
+}
+
+/**
+ * Read the first key and, off a terminal, the rest of its line, which the stream rule discards:
+ * a key that is not itself an LF drops everything up to and including the next LF (a CRLF ends
+ * on its LF), wherever the chunk boundaries fall; a blank key drops nothing. What follows the
+ * dropped part, in the chunk that holds it, is the remainder. End of input before the key gives
+ * `""`; end of input inside the dropped part gives an empty remainder. The stream is paused,
+ * never destroyed, so the data after the remainder waits for the reader that resumes it.
+ */
+function readKeyAndRest(stdin: PromptStdin): Promise<KeyWithRemainder> {
+  return new Promise((resolve) => {
+    const decoder = new TextDecoder();
+    let key: string | null = null;
+    const events = ["end", "close", "error"];
+    const onEnd = (): void => finish("");
+    const onData = (chunk: unknown): void => {
+      let rest =
+        typeof chunk === "string"
+          ? chunk
+          : chunk instanceof Uint8Array
+            ? decoder.decode(chunk, { stream: true })
+            : "";
+      if (key === null) {
+        if (rest === "") return;
+        key = String.fromCodePoint(rest.codePointAt(0) ?? 0);
+        rest = rest.slice(key.length);
+        if (key === "\n") return finish(rest);
+      }
+      const lf = rest.indexOf("\n");
+      if (lf >= 0) finish(rest.slice(lf + 1));
+    };
+    function finish(remainder: string): void {
+      stdin.removeListener("data", onData);
+      for (const event of events) stdin.removeListener(event, onEnd);
+      stdin.pause();
+      resolve({ key: key ?? "", remainder });
+    }
+    stdin.on("data", onData);
+    for (const event of events) stdin.on(event, onEnd);
+    stdin.resume();
+  });
+}
+
+/**
+ * `read -p <prompt> -n 1 -r` with the rest of the stream handed back (spec 0256 requirement 16).
+ * The prompt goes to stderr, on a terminal only. On a terminal the question returns on the first
+ * keypress (raw mode put back on every exit path, the key echoed as `confirmContinue` does) and
+ * the remainder is `""`; off a terminal see `readKeyAndRest`. The caller prints the line end.
+ */
+export async function confirmKeyWithRemainder(
+  stdin: PromptStdin,
+  io: Io,
+  prompt: string,
+): Promise<KeyWithRemainder> {
+  if (stdin.isTTY !== true) return readKeyAndRest(stdin);
+  io.errRaw(prompt);
+  const wasRaw = stdin.isRaw === true;
+  let key: string;
+  try {
+    stdin.setRawMode?.(true);
+    key = await readKey(stdin);
+  } finally {
+    stdin.setRawMode?.(wasRaw);
+    stdin.pause();
+  }
+  if (key !== "") io.errRaw(key);
+  return { key, remainder: "" };
+}
