@@ -160,3 +160,63 @@ export function removeGenerated(dir: string, generatedClass: GeneratedClass): st
   for (const rel of removed) fs.rmSync(`${dir}/${rel}`, { force: true });
   return removed;
 }
+
+/** The real paths of the roots of a `copyTreeDereferenced` walk: no link may lead to one of their ancestors. */
+interface DerefRoots {
+  readonly src: string;
+  readonly dst: string;
+}
+
+function copyDereferenced(
+  src: string,
+  dst: string,
+  trail: string[],
+  roots: DerefRoots,
+  notices: string[],
+): void {
+  let kind: fs.Stats;
+  try {
+    kind = fs.statSync(src);
+  } catch {
+    notices.push(`skipped ${src}: link target does not exist`);
+    return;
+  }
+  if (kind.isFile()) {
+    fs.copyFileSync(src, dst);
+    fs.chmodSync(dst, kind.mode & 0o777);
+    return;
+  }
+  if (!kind.isDirectory()) {
+    notices.push(`skipped ${src}: not a regular file, directory or link`);
+    return;
+  }
+  const here = real(src);
+  if (trail.includes(here)) {
+    notices.push(`skipped ${src}: link cycle`);
+    return;
+  }
+  // A link to an ancestor of the source root or of the destination (`/`, `$HOME`, the directory
+  // being written) would be copied without bound: treat it as a dangling one.
+  if (trail.length > 0 && (isSameOrWithin(roots.src, here) || isSameOrWithin(roots.dst, here))) {
+    notices.push(`skipped ${src}: link target is an ancestor of the source or the destination`);
+    return;
+  }
+  fs.mkdirSync(dst, { recursive: true });
+  for (const name of fs.readdirSync(src))
+    copyDereferenced(`${src}/${name}`, `${dst}/${name}`, [...trail, here], roots, notices);
+  fs.chmodSync(dst, kind.mode & 0o777);
+}
+
+/**
+ * Copy `src` (a file or a directory) to the not-yet-existing `dst`: byte for byte, mode bits kept,
+ * mtimes not preserved, every link inside the source dereferenced. A dangling link, a link cycle,
+ * a link to an ancestor of the source or the destination, or a special file is skipped and reported in the returned notices.
+ */
+export function copyTreeDereferenced(src: string, dst: string): string[] {
+  if (isSameOrWithin(real(dst), real(src)))
+    throw new ExtError(`cannot copy '${src}' into itself ('${dst}')`);
+  const notices: string[] = [];
+  const roots = { src: real(src), dst: path.join(real(path.dirname(dst)), path.basename(dst)) };
+  copyDereferenced(src, dst, [], roots, notices);
+  return notices;
+}

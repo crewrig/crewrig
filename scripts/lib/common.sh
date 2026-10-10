@@ -2873,6 +2873,7 @@ _antigravity_source_dir_count() {
 # With explicit names the sweep is narrowed to them — the per-component install
 # surface needs only enough cleanup to keep R7's placement property true for the
 # component it just touched; R8 binds a setup run.
+# Mirrored by scripts/lib/antigravity-migrate.ts; change both; conformance test component-twins-conformance-migrate.test.ts.
 migrate_antigravity_superseded_components() {
   local superseded_root="$1" artifacts_root="$2" kind_filter="$3"
   shift 3
