@@ -57,6 +57,7 @@ export interface SwitchOptions {
   readonly replaceProcess?: (token: string) => Promise<boolean>;
   readonly register?: (cli: Cli, token: string) => void;
   readonly runStatus?: () => number;
+  readonly backup?: (file: string) => string | null;
   readonly removeClaude?: ClaudeRemover;
 }
 
@@ -134,11 +135,16 @@ export function switchAssistants(token: string, o: SwitchOptions): number {
   const captured = new Map<Cli, Registration>();
   for (const cli of present) {
     captured.set(cli, captureRegistration(cli, o.home));
-    const bak = backupConfig(assistantConfigPath(cli, o.home));
-    if (bak !== null) {
-      const cfg = assistantConfigPath(cli, o.home);
-      say(`  Backed up: ${path.basename(cfg)} -> ${path.basename(bak)}`);
+    const cfg = assistantConfigPath(cli, o.home);
+    const bak = (o.backup ?? backupConfig)(cfg);
+    if (bak === null) {
+      // As the shell's `backup_file`: warn and go on. The rollback restores from the
+      // registration captured in memory above, not from this file; only
+      // `repair-mempalace-http --restore-backup` would find no backup to use.
+      o.io.err(`  WARNING: Failed to back up ${path.basename(cfg)} (could not create a backup)`);
+      continue;
     }
+    say(`  Backed up: ${path.basename(cfg)} -> ${path.basename(bak)}`);
   }
 
   const url = daemonUrl(o.env);

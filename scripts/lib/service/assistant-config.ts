@@ -27,7 +27,7 @@ import {
   readlinkSync,
   rmSync,
   symlinkSync,
-  writeSync,
+  writeFileSync,
 } from "node:fs";
 import type { Stats } from "node:fs";
 import path from "node:path";
@@ -187,7 +187,7 @@ export function backupConfig(file: string, now: Date = new Date()): string | nul
     const fd = openSync(target, "wx", 0o600);
     created = true;
     try {
-      writeSync(fd, readFileSync(file));
+      writeFileSync(fd, readFileSync(file));
     } finally {
       closeSync(fd);
     }

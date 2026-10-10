@@ -387,3 +387,31 @@ test("replacement: a daemon relaunched during the eviction is judged on a fresh 
     false,
   );
 });
+
+test("a configuration that cannot be backed up is warned about, as the shell does, and the switch goes on", async () => {
+  const fx = fixture();
+  try {
+    let calls = 0;
+    const code = await runSwitch(
+      options(fx, {
+        backup: () => (++calls === 2 ? null : "/dev/null.bak"),
+        backend,
+        installDaemon: async () => ({ ok: true, lines: [] }),
+        replaceProcess: async () => true,
+        runStatus: () => 0,
+      }),
+    );
+    assert.equal(code, 0);
+    assert.ok(fx.err.some((l) => l.includes("WARNING: Failed to back up")));
+    assert.equal(fx.err.filter((l) => l.includes("Failed to back up")).length, 1);
+    for (const f of [".claude.json", ".gemini/settings.json", ".copilot/mcp-config.json"]) {
+      assert.equal(
+        (entryOf(path.join(fx.home, f)) as { type: string }).type,
+        "http",
+        `${f} switched`,
+      );
+    }
+  } finally {
+    rmSync(fx.home, { recursive: true, force: true });
+  }
+});
