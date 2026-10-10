@@ -135,12 +135,13 @@ describe("usage-capture writers (usage-capture*.ts)", () => {
 describe("session recording merge (session-recording.ts)", () => {
   const patched = { hooks: { Stop: [{ hooks: [{ type: "command", command: "echo hi" }] }] } };
   for (const [label, number] of NUMBERS) {
-    test(`mergeSessionRecordingHooks refuses ${label}`, () => {
+    // Best effort in the shell (`if ! merge_session_recording_hooks`): a failure status, never a SetupExit.
+    test(`mergeSessionRecordingHooks (best effort) fails on ${label}`, () => {
       const h = harness();
       const text = `{ "limit": ${number}, "model": "opus" }\n`;
       const file = write(h, "settings.json", text);
-      assertRefused(h, file, text, () =>
-        mergeSessionRecordingHooks({ ctx: h, cli: "claude", config: file, patched }),
+      assertKeptGoing(h, file, text, () =>
+        mergeSessionRecordingHooks({ ctx: h, cli: "claude", config: file, patched }).ok ? 0 : 1,
       );
     });
   }

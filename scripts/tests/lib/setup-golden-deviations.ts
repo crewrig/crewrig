@@ -8,8 +8,15 @@
 //                  shell prints nothing (requirement 44 (f)).
 //   tags (a)(b)    tree.json `fzf`: the records come from the stub `fzf` menu; the TypeScript
 //                  setup has no `fzf` (requirement 44 (a): no guard; (b): line-mode questions).
-//   tag (l)        tree.json `curl`: the records come from the stub `curl` daemon probes; the
-//                  TypeScript setup probes in-process over HTTP (delta-01 (o), requirement 44 (l)).
+//
+// These two removals would, together, delete the only evidence of WHICH questions a run asked, so
+// the ts leg is ALSO compared on the question sequence (`questionTexts`, setup-golden-questions.ts):
+// the `<id>=<value>` list of the echo lines must equal the list the shell's fzf records stand for.
+// The in-process daemon probe is not a tagged deviation of the comparison any more: the stand-in
+// of the ts leg records the requests it receives and the harness maps them onto the `curl` records
+// of the shell (setup-golden-run.ts `probeRecords`, delta-01 (o) says only that the probe is
+// in-process), so `curl` is compared like every other tree key. (It was once called tag (l) here;
+// requirement 44 (l) is the in-process BUILD, which is not a comparison rule.)
 //
 // Opt-in tag (s) applies to a cell only when its `GoldenCase.deviations` lists it (ensure-http-rc1
 // of the four CLIs), on the ts leg only:
@@ -20,9 +27,12 @@
 //
 // Aborting cancels (deviation tags (c), (e), (g)) are not a comparison rule: those cells are
 // restricted to the shell leg with `legs: ["shell"]` in the case modules.
-// API: TS_DEVIATIONS, comparable(leg, name, text, optIn).
+// API: TS_DEVIATIONS, comparable(leg, name, text, optIn), questionTexts(cli, shellFzf, tsStdout).
 
+import { askedByShell, askedByTs } from "./setup-golden-questions.ts";
+import type { AskedRecord } from "./setup-golden-questions.ts";
 import type { Leg } from "./setup-sandbox.ts";
+import type { Cli } from "./setup-golden-types.ts";
 
 /** One tagged deviation: where it applies, its requirement 44 tag, and what it ignores. */
 export interface Deviation {
@@ -36,7 +46,6 @@ export interface Deviation {
 export const TS_DEVIATIONS: readonly Deviation[] = [
   { tag: "f", file: "stdout", drop: "[answer] ", why: "the --answer echo" },
   { tag: "a/b", file: "tree.json", drop: "fzf", why: "no fzf menu on the TypeScript leg" },
-  { tag: "l", file: "tree.json", drop: "curl", why: "in-process HTTP daemon probe" },
 ];
 
 const LAUNCHER_LINE = /^(\s*Installed launcher: .*\/\.crewrig\/mcp-daemon-launcher)\.(?:sh|ts)$/;
@@ -102,4 +111,19 @@ export function comparable(
     );
   }
   return text;
+}
+
+/**
+ * The question evidence of a `ts` run, as two texts to compare: the `<id>=<value>` lines the shell
+ * run's fzf records `shellFzf` stand for (expected), and those of the `[answer]` echo lines of the
+ * TypeScript `stdout` (actual), one per line, in order. Equal texts mean the same questions were
+ * asked, in the same order, with the same answers.
+ */
+export function questionTexts(
+  cli: Cli,
+  shellFzf: readonly AskedRecord[],
+  stdout: string,
+): readonly [string, string] {
+  const text = (lines: readonly string[]): string => lines.map((l) => `${l}\n`).join("");
+  return [text(askedByShell(cli, shellFzf)), text(askedByTs(stdout))];
 }

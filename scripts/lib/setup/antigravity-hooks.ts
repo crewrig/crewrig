@@ -6,7 +6,6 @@
 // (hook-guard-manifest.ts, hook-transcript-manifest.ts, hook-antigravity-transcript.ts,
 // hook-antigravity-write.ts); the only child process is the Node.js floor guard, through the
 // injected `Spawner`. Messages are the shell's, byte for byte.
-
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -20,7 +19,7 @@ import {
 } from "../hook-antigravity-transcript.ts";
 import { TRANSCRIPT_HOOK_NAME, transcriptRenderFile } from "../hook-transcript-manifest.ts";
 import { backupFile } from "./backup.ts";
-import { assertRewritable } from "./lossless.ts";
+import { reportIfLossy } from "./lossless.ts";
 import type { InstallCtx, Spawner } from "./context.ts";
 import { warnIfLinkedWorktree } from "./worktree-warning.ts";
 
@@ -160,7 +159,8 @@ export function deployAntigravityTranscriptHooks(
     Object.entries(rendered).filter(([key]) => key !== TRANSCRIPT_HOOK_NAME),
   );
   if (fs.existsSync(manifestTarget)) {
-    assertRewritable(ctx, manifestTarget);
+    // `if ! deploy_antigravity_transcript_hooks`: the refusal reports and the run goes on, the file untouched.
+    if (!reportIfLossy(ctx, manifestTarget)) return refused;
     backupFile(ctx, manifestTarget);
     const current = readTargetForMerge(manifestTarget);
     if (current === null) {
