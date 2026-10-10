@@ -259,6 +259,7 @@ function cellsFor(p: Params): GoldenCase[] {
             ...(cli === "claude" ? { claudeServers: { mempalace: "http://existing" } } : {}),
           },
           ...(rc === 2 ? { seed: seedBlankToken } : {}),
+          ...(rc === 1 ? { deviations: ["s"] } : {}),
         },
       ),
     );

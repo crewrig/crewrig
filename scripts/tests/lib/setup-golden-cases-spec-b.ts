@@ -144,6 +144,10 @@ const copilotCases: readonly GoldenCase[] = [
     note: "An fzf cancel on INSTR_ACTION has no `|| true`: under set -e the shell stops with status 130 (R7 row cancelled prompt, abort class).",
     seed: seedRules,
     stubs: { fzf: { Existing: CANCEL } },
+    // Shell only, deviation tags (c)/(e)/(g) of requirement 44: an abort-class cancel has no
+    // non-terminal form on the TypeScript leg (no pre-answer; closed stdin is exit 2). The TS side
+    // is covered by setup-prompt-tty.test.ts and setup-prompt-integration.test.ts (fake terminal).
+    legs: ["shell"],
   },
   {
     id: "link-answers-remain",

@@ -29,19 +29,25 @@ const REPAIR = [
 
 let dir: string;
 let out: string[];
+let errs: string[];
 let events: string[];
 let probed: string[];
 
 beforeEach(() => {
   dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "setup-ensure-http-")));
   out = [];
+  errs = [];
   events = [];
   probed = [];
 });
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
 const ctx = (env: Record<string, string> = {}) => ({
-  io: { out: (l: string) => out.push(l), err: () => undefined, errRaw: () => undefined },
+  io: {
+    out: (l: string) => out.push(l),
+    err: (l: string) => errs.push(l),
+    errRaw: () => undefined,
+  },
   env,
   platform: process.platform,
   home: dir,
@@ -201,6 +207,10 @@ describe("return code 2", () => {
     fs.writeFileSync(file, " \n\t ");
     const deps = fakes({ readToken: () => readOrCreateToken(file) });
     assert.equal(await run(deps), 2);
+    assert.deepEqual(errs, [
+      `  ERROR: the token file exists but is whitespace-only: ${file}\n` +
+        "         Refusing to use it — an empty token disables authentication.",
+    ]);
     assert.deepEqual(probed, [PLACEHOLDER]);
     assert.deepEqual(events, []);
     assert.deepEqual(out.slice(4), [

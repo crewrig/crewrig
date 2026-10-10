@@ -44,9 +44,11 @@ describe("setup oracle mutation", skip === undefined ? {} : { skip }, () => {
         for (const id of m.cases[cli] ?? []) {
           const edits = m.edits(cli)?.[leg];
           const c = casesFor(cli).find((x) => x.id === id);
-          const options = edits === undefined ? { skip: `no ${leg} mutation declared yet` } : {};
+          const none = leg === "ts" ? m.tsNone : undefined;
+          const options = none === undefined ? {} : { skip: `no TypeScript counterpart: ${none}` };
           test(`${m.id}: ${cli}/${id} [${leg}] is caught`, options, async () => {
-            assert.ok(c !== undefined && edits !== undefined, `unknown case ${cli}/${id}`);
+            assert.ok(c !== undefined, `unknown case ${cli}/${id}`);
+            assert.ok(edits !== undefined, `no ${leg} mutation declared for ${m.id}/${cli}`);
             try {
               const result = await runSetupCase(mutate(c, edits), leg);
               assert.throws(() => checkGolden(c, result, leg), /golden mismatch/);

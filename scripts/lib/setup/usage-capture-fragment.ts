@@ -65,6 +65,14 @@ export function usageCaptureRequireNodeFloor(ctx: UcCtx, deps: UcDeps = {}): boo
 const unsafeMessage = (dir: string): string =>
   `  ERROR: the checkout path ${dir} contains a character (" $ \` \\ or a newline) that cannot be wired safely into a hook command; move the checkout to a path without it.`;
 
+/**
+ * The path as a hook command line carries it: on win32 the physical path is written with forward slashes,
+ * as `hookCommandLine` does (scripts/lib/hook-command.ts), so the backslashes of a Windows path are not
+ * the unsafe character the shell rejected (deviation (t) of spec 0256 delta-03).
+ */
+export const wirePath = (platform: NodeJS.Platform, p: string): string =>
+  platform === "win32" ? p.replaceAll("\\", "/") : p;
+
 /** `usage_capture_abs`: the physical absolute path of the capture script, or `null` after the shell's diagnostic. */
 export function usageCaptureAbs(
   ctx: UcCtx,
@@ -72,7 +80,7 @@ export function usageCaptureAbs(
   ext: "sh" | "ts" = "ts",
 ): string | null {
   const src = `${repoDir}/hooks/usage-capture.${ext}`;
-  if (isUnsafePath(repoDir)) {
+  if (isUnsafePath(wirePath(ctx.platform, repoDir))) {
     ctx.io.err(unsafeMessage(repoDir));
     return null;
   }
@@ -81,7 +89,7 @@ export function usageCaptureAbs(
     return null;
   }
   const dir = fs.realpathSync.native(path.dirname(src));
-  const abs = path.join(dir, path.basename(src));
+  const abs = wirePath(ctx.platform, path.join(dir, path.basename(src)));
   if (isUnsafePath(abs)) {
     ctx.io.err(unsafeMessage(dir));
     return null;

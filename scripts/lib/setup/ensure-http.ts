@@ -12,6 +12,7 @@
 // leaves this function on status 1 or 2: each seam of `EnsureHttpDeps` is guarded. The lines are the
 // shell's, byte for byte, printed through `ctx.io.out` (the shell's `echo`).
 
+import { TokenError } from "../service/token.ts";
 import { defaultEnsureHttpDeps } from "./ensure-http-probe.ts";
 import type { EnsureHttpCtx, EnsureHttpDeps, EnsureRc } from "./ensure-http-probe.ts";
 import type { Cli, Spawner } from "./context.ts";
@@ -27,11 +28,17 @@ const OTHERS: readonly Cli[] = ["claude", "gemini", "copilot", "antigravity"];
 const orDefault = (value: string | undefined, fallback: string): string =>
   value === undefined || value === "" ? fallback : value;
 
-/** The bearer token, or "" when it cannot be read or created (`mcp_token_read_or_create || true`). */
-function tryToken(deps: EnsureHttpDeps): string {
+/**
+ * The bearer token, or "" when it cannot be read or created (`mcp_token_read_or_create || true`).
+ * A refusal of the token step (`TokenError`) is reported on standard error as the shell does
+ * (`  ERROR: <reason>`, the reason's own continuation lines verbatim), unless the call is quiet
+ * (the shell's `>/dev/null 2>&1` probe of the install-failure arm).
+ */
+function tryToken(deps: EnsureHttpDeps, io?: EnsureHttpCtx["io"]): string {
   try {
     return deps.readToken();
-  } catch {
+  } catch (error) {
+    if (io !== undefined && error instanceof TokenError) io.err(`  ERROR: ${error.message}`);
     return "";
   }
 }
@@ -97,7 +104,7 @@ export async function ensureMempalaceHttp(args: {
 
   // Tolerant read: a token failure never aborts before the probe, so a serving daemon is still
   // registered against rather than bypassed for stdio.
-  let token = tryToken(deps);
+  let token = tryToken(deps, ctx.io);
   let placeholder = false;
   if (token === "") {
     token = PLACEHOLDER;
@@ -122,7 +129,7 @@ export async function ensureMempalaceHttp(args: {
       repair();
       return 1;
     }
-    token = tryToken(deps);
+    token = tryToken(deps, ctx.io);
     if (token === "") {
       say("  ERROR: the installer succeeded but no usable bearer token exists (R19).");
       repair();

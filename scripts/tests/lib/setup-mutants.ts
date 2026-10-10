@@ -2,8 +2,9 @@
 // step A9). A mutant is a list of EXACT string edits applied to files of the sandbox repo AFTER the
 // sandbox was built (through `GoldenCase.seed`). Every edit asserts that its `find` text occurs
 // exactly once: a mutant that changes nothing, or is ambiguous, fails instead of passing vacuously.
-// Each mutant declares its edits PER LEG; a leg without edits is skipped, so the TypeScript twin
-// (`scripts/setup-<cli>-interactive.ts`, `scripts/lib/setup/**`) is mutated the same way once added.
+// Each mutant declares its edits PER LEG: `shell` edits the shell scripts, `ts` the TypeScript twin
+// (`scripts/lib/setup/**`). A mutant with no TypeScript counterpart says so in `tsNone` (the test
+// skips that leg with the reason); a `ts` leg with neither edits nor `tsNone` fails the test.
 // API: MUTANTS, applyEdits(repo, edits), mutate(c, edits).
 
 import fs from "node:fs";
@@ -23,6 +24,8 @@ export interface Mutant {
   readonly id: string;
   /** The edits per leg for one CLI; a leg absent from the record has no mutation yet. */
   readonly edits: (cli: Cli) => Partial<Record<Leg, readonly Edit[]>> | undefined;
+  /** Why the TypeScript twin has no counterpart of this mutant (the behaviour is the shell's own). */
+  readonly tsNone?: string;
   /** The golden cases (by id) that must catch the mutant, per CLI. */
   readonly cases: Readonly<Partial<Record<Cli, readonly string[]>>>;
 }
@@ -46,6 +49,13 @@ const RULES_DEST: Record<Cli, readonly [string, string]> = {
 const TLS = 'offer_tls_delegation\necho ""\n';
 const DEPS = 'install_production_dependencies "$REPO_DIR" || exit 1\necho ""\n';
 const TRANSCRIPT_Q = '(opt-in)" || true)';
+const TS_STEPS = (cli: Cli): string => `scripts/lib/setup/cli-${cli}.ts`;
+const TS_RULES_DEST: Record<Cli, readonly [string, string]> = {
+  claude: ['dest: "60-tools.md",', 'dest: "61-tools.md",'],
+  gemini: ['dest: "60_TOOLS.md",', 'dest: "61_TOOLS.md",'],
+  copilot: ['"60-tools.instructions.md",', '"61-tools.instructions.md",'],
+  antigravity: ['"60_TOOLS.md"),', '"61_TOOLS.md"),'],
+};
 const ONLY = (cli: Cli, id: string): Partial<Record<Cli, readonly string[]>> => ({ [cli]: [id] });
 
 export const MUTANTS: readonly Mutant[] = [
@@ -61,6 +71,13 @@ export const MUTANTS: readonly Mutant[] = [
                 replace: 'LAST_BACKUP_PATH=""\n  return 0\n  for old in "$target".bak.*; do',
               },
             ],
+            ts: [
+              {
+                file: "scripts/lib/setup/backup.ts",
+                find: "  narrowOldBackups(file);\n",
+                replace: '  if (file !== "") return "";\n  narrowOldBackups(file);\n',
+              },
+            ],
           }
         : undefined,
     cases: { claude: ["default-answers"], gemini: ["default-answers"] },
@@ -71,6 +88,13 @@ export const MUTANTS: readonly Mutant[] = [
       shell: [
         { file: entry(cli), find: TLS, replace: "" },
         { file: entry(cli), find: DEPS, replace: `${DEPS}${TLS}` },
+      ],
+      ts: [
+        {
+          file: TS_STEPS(cli),
+          find: '"tls-offer",\n    "deps-install",',
+          replace: '"deps-install",\n    "tls-offer",',
+        },
       ],
     }),
     cases: Object.fromEntries(
@@ -90,6 +114,7 @@ export const MUTANTS: readonly Mutant[] = [
           replace: `rules/60-tools.md" ${RULES_DEST[cli][1]}`,
         },
       ],
+      ts: [{ file: TS_STEPS(cli), find: TS_RULES_DEST[cli][0], replace: TS_RULES_DEST[cli][1] }],
     }),
     cases: Object.fromEntries(
       (["claude", "gemini", "copilot", "antigravity"] as const).map((c) => [
@@ -103,7 +128,16 @@ export const MUTANTS: readonly Mutant[] = [
     edits: (cli) =>
       cli === "antigravity" // its transcript prompt has no `|| true` (pinned shell behaviour)
         ? undefined
-        : { shell: [{ file: entry(cli), find: TRANSCRIPT_Q, replace: '(opt-in)")' }] },
+        : {
+            shell: [{ file: entry(cli), find: TRANSCRIPT_Q, replace: '(opt-in)")' }],
+            ts: [
+              {
+                file: "scripts/lib/setup/steps-hooks.ts",
+                find: '    options: ["no", "yes"],\n    cancel: "decline",',
+                replace: '    options: ["no", "yes"],\n    cancel: "abort",',
+              },
+            ],
+          },
     cases: {
       ...ONLY("claude", "cancelled-prompt-guarded"),
       ...ONLY("gemini", "cancelled-prompt-guarded"),
@@ -115,6 +149,13 @@ export const MUTANTS: readonly Mutant[] = [
     edits: (cli) => ({
       shell: [
         { file: entry(cli), find: 'echo "  Setup complete"', replace: 'echo "  Setup done"' },
+      ],
+      ts: [
+        {
+          file: "scripts/lib/setup/summary.ts",
+          find: 'io.out("  Setup complete");',
+          replace: 'io.out("  Setup done");',
+        },
       ],
     }),
     cases: Object.fromEntries(
@@ -132,6 +173,13 @@ export const MUTANTS: readonly Mutant[] = [
           file: entry(cli),
           find: `echo "$TEAM" > "$${HOME_VAR[cli]}/.selected_team"`,
           replace: "true",
+        },
+      ],
+      ts: [
+        {
+          file: "scripts/lib/setup/steps-rules-pick.ts",
+          find: "fs.writeFileSync(marker, `${name}\\n`)",
+          replace: "undefined",
         },
       ],
     }),

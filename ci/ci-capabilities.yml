@@ -648,6 +648,8 @@ capabilities:
           - "scripts/tests/setup-golden-antigravity.test.ts"
           - "scripts/tests/setup-prompt-inventory.test.ts"
           - "scripts/tests/setup-oracle-mutation.test.ts"
+          - "scripts/tests/setup-golden-deviations.test.ts"
+          - "scripts/tests/setup-entry-form.test.ts"
           - "scripts/tests/lib/setup-*.ts"
           - "scripts/tests/lib/real-home-guard.ts"
           - "scripts/tests/fixtures/setup-golden/**"
@@ -673,6 +675,8 @@ capabilities:
           - "scripts/tests/setup-golden-antigravity.test.ts"
           - "scripts/tests/setup-prompt-inventory.test.ts"
           - "scripts/tests/setup-oracle-mutation.test.ts"
+          - "scripts/tests/setup-golden-deviations.test.ts"
+          - "scripts/tests/setup-entry-form.test.ts"
           - "scripts/tests/lib/setup-*.ts"
           - "scripts/tests/lib/real-home-guard.ts"
           - "scripts/tests/fixtures/setup-golden/**"
@@ -683,7 +687,7 @@ capabilities:
     command:
       - node scripts/lib/node-floor-guard.js
       - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts scripts/tests/setup-retarget-catalogue-picker.test.ts scripts/tests/setup-retarget-gemini-overlays.test.ts scripts/tests/setup-retarget-mcp-order.test.ts scripts/tests/setup-retarget-others.test.ts scripts/tests/setup-retarget-step-order.test.ts scripts/tests/setup-retarget-tier-resolution.test.ts scripts/tests/setup-retarget-usage-order.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts scripts/tests/setup-entry-form.test.ts scripts/tests/setup-golden-deviations.test.ts scripts/tests/setup-no-node-modules.test.ts scripts/tests/setup-retarget-catalogue-picker.test.ts scripts/tests/setup-retarget-gemini-overlays.test.ts scripts/tests/setup-retarget-mcp-order.test.ts scripts/tests/setup-retarget-others.test.ts scripts/tests/setup-retarget-step-order.test.ts scripts/tests/setup-retarget-tier-resolution.test.ts scripts/tests/setup-retarget-usage-order.test.ts
 
   # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules
   # (scripts/lib/setup/**), the TLS environment quoting and writer, the confirm remainder and the
@@ -691,6 +695,69 @@ capabilities:
   # no entry twin on Node.js 24.0.0 exists yet. The production dependency step is its own command,
   # before the first test call. The suites that need a POSIX shell skip themselves on win32; the
   # Windows exercise of the same list is `windows-setup-units`.
+  # Spec 0256 requirement 10 (ticket #1335), PR C: the parity proof. Every golden cell that runs on both
+  # legs is run on the unchanged shell setup and on the TypeScript entry and the two results are
+  # compared directly through the tagged deviations (one shard file per CLI), and each TypeScript twin of
+  # a shell library function is compared with its original. Linux only (needs bash and jq); retired
+  # with the shell setups.
+  - id: setup-differential
+    name: "Run the shell-against-TypeScript parity proof of the four setups and the twin differential suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/**"
+          - "config/**"
+          - "hooks/**"
+          - "artifacts/core/rules/**"
+          - "artifacts/core/system-context/**"
+          - "mcp-servers.org.json"
+          - "AGENTS.org.md"
+          - "package.json"
+          - "package-lock.json"
+          - "scripts/tests/setup-differential.test.ts"
+          - "scripts/tests/setup-differential-claude.test.ts"
+          - "scripts/tests/setup-differential-gemini.test.ts"
+          - "scripts/tests/setup-differential-copilot.test.ts"
+          - "scripts/tests/setup-differential-antigravity.test.ts"
+          - "scripts/tests/setup-twins-differential.test.ts"
+          - "scripts/tests/setup-twins-differential-usage.test.ts"
+          - "scripts/tests/setup-twins-differential-version.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/**"
+          - "config/**"
+          - "hooks/**"
+          - "artifacts/core/rules/**"
+          - "artifacts/core/system-context/**"
+          - "mcp-servers.org.json"
+          - "AGENTS.org.md"
+          - "package.json"
+          - "package-lock.json"
+          - "scripts/tests/setup-differential.test.ts"
+          - "scripts/tests/setup-differential-claude.test.ts"
+          - "scripts/tests/setup-differential-gemini.test.ts"
+          - "scripts/tests/setup-differential-copilot.test.ts"
+          - "scripts/tests/setup-differential-antigravity.test.ts"
+          - "scripts/tests/setup-twins-differential.test.ts"
+          - "scripts/tests/setup-twins-differential-usage.test.ts"
+          - "scripts/tests/setup-twins-differential-version.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - node scripts/lib/node-floor-guard.js
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-differential.test.ts scripts/tests/setup-differential-antigravity.test.ts scripts/tests/setup-differential-claude.test.ts scripts/tests/setup-differential-copilot.test.ts scripts/tests/setup-differential-gemini.test.ts scripts/tests/setup-twins-differential.test.ts scripts/tests/setup-twins-differential-usage.test.ts scripts/tests/setup-twins-differential-version.test.ts
+
   - id: setup-modules-ts
     name: "Run the TypeScript setup module, TLS quoting and confirm remainder unit suites"
     trigger:
@@ -787,6 +854,7 @@ capabilities:
           - "scripts/tests/setup-usage-capture-keep.test.ts"
           - "scripts/tests/setup-usage-capture-rank.test.ts"
           - "scripts/tests/setup-usage-capture-state.test.ts"
+          - "scripts/tests/setup-usage-capture-wire-path.test.ts"
           - "scripts/tests/setup-validation.test.ts"
           - "scripts/tests/tls-env-quote.test.ts"
           - "scripts/tests/tls-env-writer.test.ts"
@@ -899,6 +967,7 @@ capabilities:
           - "scripts/tests/setup-usage-capture-keep.test.ts"
           - "scripts/tests/setup-usage-capture-rank.test.ts"
           - "scripts/tests/setup-usage-capture-state.test.ts"
+          - "scripts/tests/setup-usage-capture-wire-path.test.ts"
           - "scripts/tests/setup-validation.test.ts"
           - "scripts/tests/tls-env-quote.test.ts"
           - "scripts/tests/tls-env-writer.test.ts"
@@ -924,7 +993,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-antigravity-hooks.test.ts scripts/tests/setup-antigravity-statusline.test.ts scripts/tests/setup-antigravity-tier.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-backup-failure.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-chroma-install.test.ts scripts/tests/setup-chroma-install-win.test.ts scripts/tests/setup-chroma-unit.test.ts scripts/tests/setup-cli-claude-gemini.test.ts scripts/tests/setup-cli-copilot-antigravity.test.ts scripts/tests/setup-declarations.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-ensure-http.test.ts scripts/tests/setup-ensure-http-wiring.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-flow.test.ts scripts/tests/setup-flow-steps.test.ts scripts/tests/setup-gemini-settings.test.ts scripts/tests/setup-gemini-settings-rc.test.ts scripts/tests/setup-gemini-settings-write.test.ts scripts/tests/setup-gemini-settings-write-diff.test.ts scripts/tests/setup-hooks-rewrite.test.ts scripts/tests/setup-json-secure.test.ts scripts/tests/setup-json-secure-failure.test.ts scripts/tests/setup-lib-tls-entry.test.ts scripts/tests/setup-lib-tls-entry-offer.test.ts scripts/tests/setup-lib-usage-entry.test.ts scripts/tests/setup-lib-usage-entry-form.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-lossless-writers.test.ts scripts/tests/setup-mcp-agy-step.test.ts scripts/tests/setup-mcp-claude-flow.test.ts scripts/tests/setup-mcp-claude-step.test.ts scripts/tests/setup-mcp-copilot-step.test.ts scripts/tests/setup-mcp-gemini-step.test.ts scripts/tests/setup-mcp-json-writers.test.ts scripts/tests/setup-mcp-json-writers-merge.test.ts scripts/tests/setup-mempalace-callsite.test.ts scripts/tests/setup-mempalace-detect.test.ts scripts/tests/setup-mempalace-install-offer.test.ts scripts/tests/setup-mempalace-stdio.test.ts scripts/tests/setup-mempalace-version.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-org-mcp-claude-argv.test.ts scripts/tests/setup-org-mcp-fold.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-session-recording.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-steps-agy.test.ts scripts/tests/setup-steps-agy-channels.test.ts scripts/tests/setup-steps-copilot.test.ts scripts/tests/setup-steps-hooks.test.ts scripts/tests/setup-steps-hooks-lossy.test.ts scripts/tests/setup-steps-mcp.test.ts scripts/tests/setup-steps-rules.test.ts scripts/tests/setup-steps-rules-edge.test.ts scripts/tests/setup-steps-tiers.test.ts scripts/tests/setup-steps-usage.test.ts scripts/tests/setup-store-guidance.test.ts scripts/tests/setup-summary.test.ts scripts/tests/setup-tier-build.test.ts scripts/tests/setup-tier-install.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-trust-wrapper-install.test.ts scripts/tests/setup-usage-capture.test.ts scripts/tests/setup-usage-capture-keep.test.ts scripts/tests/setup-usage-capture-rank.test.ts scripts/tests/setup-usage-capture-state.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-antigravity-hooks.test.ts scripts/tests/setup-antigravity-statusline.test.ts scripts/tests/setup-antigravity-tier.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-backup-failure.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-chroma-install.test.ts scripts/tests/setup-chroma-install-win.test.ts scripts/tests/setup-chroma-unit.test.ts scripts/tests/setup-cli-claude-gemini.test.ts scripts/tests/setup-cli-copilot-antigravity.test.ts scripts/tests/setup-declarations.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-ensure-http.test.ts scripts/tests/setup-ensure-http-wiring.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-flow.test.ts scripts/tests/setup-flow-steps.test.ts scripts/tests/setup-gemini-settings.test.ts scripts/tests/setup-gemini-settings-rc.test.ts scripts/tests/setup-gemini-settings-write.test.ts scripts/tests/setup-gemini-settings-write-diff.test.ts scripts/tests/setup-hooks-rewrite.test.ts scripts/tests/setup-json-secure.test.ts scripts/tests/setup-json-secure-failure.test.ts scripts/tests/setup-lib-tls-entry.test.ts scripts/tests/setup-lib-tls-entry-offer.test.ts scripts/tests/setup-lib-usage-entry.test.ts scripts/tests/setup-lib-usage-entry-form.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-lossless-writers.test.ts scripts/tests/setup-mcp-agy-step.test.ts scripts/tests/setup-mcp-claude-flow.test.ts scripts/tests/setup-mcp-claude-step.test.ts scripts/tests/setup-mcp-copilot-step.test.ts scripts/tests/setup-mcp-gemini-step.test.ts scripts/tests/setup-mcp-json-writers.test.ts scripts/tests/setup-mcp-json-writers-merge.test.ts scripts/tests/setup-mempalace-callsite.test.ts scripts/tests/setup-mempalace-detect.test.ts scripts/tests/setup-mempalace-install-offer.test.ts scripts/tests/setup-mempalace-stdio.test.ts scripts/tests/setup-mempalace-version.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-org-mcp-claude-argv.test.ts scripts/tests/setup-org-mcp-fold.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-session-recording.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-steps-agy.test.ts scripts/tests/setup-steps-agy-channels.test.ts scripts/tests/setup-steps-copilot.test.ts scripts/tests/setup-steps-hooks.test.ts scripts/tests/setup-steps-hooks-lossy.test.ts scripts/tests/setup-steps-mcp.test.ts scripts/tests/setup-steps-rules.test.ts scripts/tests/setup-steps-rules-edge.test.ts scripts/tests/setup-steps-tiers.test.ts scripts/tests/setup-steps-usage.test.ts scripts/tests/setup-store-guidance.test.ts scripts/tests/setup-summary.test.ts scripts/tests/setup-tier-build.test.ts scripts/tests/setup-tier-install.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-trust-wrapper-install.test.ts scripts/tests/setup-usage-capture.test.ts scripts/tests/setup-usage-capture-keep.test.ts scripts/tests/setup-usage-capture-rank.test.ts scripts/tests/setup-usage-capture-state.test.ts scripts/tests/setup-usage-capture-wire-path.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
 
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then
@@ -1009,6 +1078,32 @@ capabilities:
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0256 R40).
+
+  # Spec 0256 requirements 34-35 (ticket #1335), PR C: the Windows proof of the four entries. The
+  # production dependencies are installed first, the floor guard runs as its own step, then the proof
+  # runs the entries under pwsh against a sandbox HOME/USERPROFILE with no POSIX shell on PATH,
+  # including the end-to-end "install CrewRig from PowerShell" run of the Claude entry. Timings are
+  # printed, never asserted. No `paths:` filter, like the Windows jobs above.
+  - id: windows-setup-entries
+    name: "Windows setup entries: production install, floor guard and the install-from-PowerShell proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-setup-entries`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0256 R34).
 
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
