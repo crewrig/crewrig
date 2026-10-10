@@ -365,3 +365,25 @@ test("replacement: a refused stop or start is reported, not left to the generic 
   assert.ok(r.err.some((l) => l.includes("the restart request failed: stop refused")));
   assert.ok(r.err.some((l) => l.includes("could not be run again: run refused")));
 });
+
+test("replacement: a daemon relaunched during the eviction is judged on a fresh table and PID", async () => {
+  const r = replaceFixture((n) => n >= 3);
+  let phase: "squatting" | "relaunched" = "squatting";
+  const ok = await replaceDaemonProcess({
+    ...r.opts,
+    backend: {
+      ...r.opts.backend,
+      supervisorPid: () => ({ state: "pid", pid: phase === "squatting" ? 111 : 500 }),
+    },
+    listener: () => (phase === "squatting" ? 999 : 501),
+    parents: () => new Map(phase === "squatting" ? [[999, 1]] : [[501, 500]]),
+    kill: () => {
+      phase = "relaunched";
+    },
+  });
+  assert.equal(ok, true);
+  assert.equal(
+    r.err.some((l) => l.includes("failed to evict")),
+    false,
+  );
+});

@@ -145,7 +145,7 @@ export async function replaceDaemonProcess(o: ReplaceOptions): Promise<boolean> 
   while (now() < deadline) {
     table = undefined;
     let current = listener(portNum);
-    const expected = expectedPid();
+    let expected = expectedPid();
     if (current !== null && expected !== null && isSquatter(current, expected)) {
       io.err(
         `  WARNING: squatter PID ${current} detected on ${host}:${port} (expected PID ${expected}) — evicting.`,
@@ -169,6 +169,10 @@ export async function replaceDaemonProcess(o: ReplaceOptions): Promise<boolean> 
           await sleep(200);
         }
       }
+      // The supervisor may have relaunched the daemon while the squatter was being killed:
+      // judge the new listener against the current supervised PID and process table.
+      table = undefined;
+      expected = expectedPid();
       current = listener(portNum);
       if (current !== null && expected !== null && isSquatter(current, expected)) {
         io.err(`  ERROR: failed to evict squatter PID ${current} from ${host}:${port}.`);
