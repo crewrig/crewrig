@@ -1,0 +1,157 @@
+cli=claude
+banner=Claude Code Configuration Setup
+step 1: banner
+step 2: link-confirm
+step 3: ensure-home
+step 4: prerequisites
+step 5: identity-check
+step 6: rules-existing
+step 7: rules-shared
+step 8: tls-offer
+step 9: deps-install
+step 10: mcp
+step 11: rules-selection
+step 12: tiers
+step 13: hooks-rewrite-installed
+step 14: session-recording
+step 15: usage-capture
+step 16: session-check
+step 17: summary
+prompts.link-confirm=link-confirm
+prompts.rules-existing=rules-action
+prompts.rules-shared=validation.backend,validation.translate,validation.pedagogy,validation.illustration
+prompts.tls-offer=tls-delegation
+prompts.mcp=mempalace-install,install-seqthink,legacy-mcp-removal,install-settings
+prompts.rules-selection=catalogue.team,catalogue.expertise,catalogue.level,profile-method
+prompts.tiers=overlay.community,overlay.org
+prompts.session-recording=transcripts,transcripts-confirm
+prompts.usage-capture=usage-capture,usage-capture-keep
+prompt.link-confirm.step=link-confirm
+prompt.link-confirm.options=no,yes
+prompt.link-confirm.cancel=none
+prompt.rules-action.step=rules-existing
+prompt.rules-action.options=keep,refresh
+prompt.rules-action.cancel=abort
+prompt.rules-action.header=Existing rules detected — keep them (skip selection) or refresh from scratch?
+prompt.validation.backend.step=rules-shared
+prompt.validation.backend.options=internal,plannotator
+prompt.validation.backend.cancel=default
+prompt.validation.translate.step=rules-shared
+prompt.validation.translate.options=off,on
+prompt.validation.translate.cancel=default
+prompt.validation.pedagogy.step=rules-shared
+prompt.validation.pedagogy.options=contextual,simple,professor
+prompt.validation.pedagogy.cancel=default
+prompt.validation.illustration.step=rules-shared
+prompt.validation.illustration.options=off,on
+prompt.validation.illustration.cancel=default
+prompt.tls-delegation.step=tls-offer
+prompt.tls-delegation.options=no,yes
+prompt.tls-delegation.cancel=decline
+prompt.tls-delegation.header=Configure the framework's tools to trust your system CA for its network operations? (never disables TLS verification; writes only ~/.crewrig/tls-env.sh)
+prompt.mempalace-install.step=mcp
+prompt.mempalace-install.options=no,yes
+prompt.mempalace-install.cancel=decline
+prompt.install-seqthink.step=mcp
+prompt.install-seqthink.options=yes,no
+prompt.install-seqthink.cancel=abort
+prompt.install-seqthink.header=Install Sequential Thinking MCP server?
+prompt.legacy-mcp-removal.step=mcp
+prompt.legacy-mcp-removal.options=no,yes
+prompt.legacy-mcp-removal.cancel=abort
+prompt.legacy-mcp-removal.header=Remove legacy ~/.claude/mcp.json (backup will be kept)?
+prompt.install-settings.step=mcp
+prompt.install-settings.options=yes,no
+prompt.install-settings.cancel=abort
+prompt.install-settings.header=Install default settings.json?
+prompt.catalogue.team.step=rules-selection
+prompt.catalogue.team.options=<config/teams>
+prompt.catalogue.team.cancel=decline
+prompt.catalogue.expertise.step=rules-selection
+prompt.catalogue.expertise.options=<config/expertise>
+prompt.catalogue.expertise.cancel=decline
+prompt.catalogue.level.step=rules-selection
+prompt.catalogue.level.options=<config/level>
+prompt.catalogue.level.cancel=decline
+prompt.profile-method.step=rules-selection
+prompt.profile-method.options=keep-local,overwrite
+prompt.profile-method.cancel=abort
+prompt.overlay.community.step=tiers
+prompt.overlay.community.options=no,yes
+prompt.overlay.community.cancel=abort
+prompt.overlay.community.header=Install 'community' components to ~/.claude/skills? (opt-in)
+prompt.overlay.org.step=tiers
+prompt.overlay.org.options=no,yes
+prompt.overlay.org.cancel=abort
+prompt.overlay.org.header=Install 'org' components to ~/.claude/skills? (opt-in)
+prompt.transcripts.step=session-recording
+prompt.transcripts.options=no,yes
+prompt.transcripts.cancel=decline
+prompt.transcripts.header=Enable automatic session recording to MemPalace? (opt-in)
+prompt.transcripts-confirm.step=session-recording
+prompt.transcripts-confirm.options=yes,no
+prompt.transcripts-confirm.cancel=decline
+prompt.transcripts-confirm.header=Apply these changes to settings.json?
+prompt.usage-capture.step=usage-capture
+prompt.usage-capture.options=no,yes
+prompt.usage-capture.cancel=decline
+prompt.usage-capture.header=Capture token usage for Claude Code? (opt-in, MemPalace not required)
+prompt.usage-capture-keep.step=usage-capture
+prompt.usage-capture-keep.options=keep,remove
+prompt.usage-capture-keep.cancel=decline
+prompt.usage-capture-keep.header=Usage capture is registered for Claude Code. Keep it or remove it?
+init.soul=claude /init-soul
+init.profile=claude /init-personal-profile
+home.cli=<HOME>/.claude
+home.rules=<HOME>/.claude/rules
+home.skills=<HOME>/.claude/skills
+home.agents=<HOME>/.claude/agents
+home.settings=<HOME>/.claude/settings.json
+home.mcp-config=<HOME>/.claude.json
+rules.glob=*.md
+rules.shared-header=Installing shared configuration...
+rules.mkdir-in-existing=false
+rules.shared.1=config/ORGANIZATION.md -> <HOME>/.claude/rules/20-organization.md
+rules.shared.2=artifacts/core/rules/60-tools.md -> <HOME>/.claude/rules/60-tools.md
+rules.shared.3=config/TOOLS.md -> <HOME>/.claude/rules/65-org-tools.md
+rules.shared.4=artifacts/core/system-context -> <HOME>/.crewrig/system-context
+rules.shared.5=config/SOUL.md -> <HOME>/.claude/rules/00-soul.md
+rules.store=artifacts/core/system-context -> <HOME>/.crewrig/system-context
+rules.pick-order=team,expertise,level
+rules.selection.team=config/teams/{name}.md -> <HOME>/.claude/rules/50-team.md
+rules.marker.team=<HOME>/.claude/.selected_team
+rules.selection.expertise=config/expertise/{name}.md -> <HOME>/.claude/rules/40-expertise.md
+rules.marker.expertise=<HOME>/.claude/.selected_expertise
+rules.selection.level=config/level/{name}.md -> <HOME>/.claude/rules/10-level.md
+rules.marker.level=<HOME>/.claude/.selected_level
+rules.profile=method config/PROFILE.md -> <HOME>/.claude/rules/30-profile.md
+tiers.strategy=standard
+tiers.build-target=claude
+tiers.staging=<REPO>/dist/<TIER>/.claude
+tiers.library-staging=<REPO>/dist/library/.claude
+tiers.gate=<REPO>/dist/<TIER>/.claude
+tiers.automatic=library
+tiers.overlay=community,org
+tiers.overlay-prompts=overlay.community,overlay.org
+tiers.installs-agents=true
+tiers.migrates-superseded=false
+hooks.channel=settings
+hooks.file=<HOME>/.claude/settings.json
+hooks.src=<REPO>/hooks/claude-transcript-hooks.json
+hooks.env-patch=true
+hooks.unused-copy=<HOME>/.claude/hooks/mempalace-transcript.sh
+hooks.leading-blank=true
+substeps.hooks-rewrite-installed=guard-rewrite,transcript-rewrite,report-unused-copy
+mcp.strategy=claudeMcp
+mcp.handler=claude-cli
+mcp.target=<HOME>/.claude.json
+substeps.mcp=backup-claude-json,sequential-thinking,mempalace-detect,chroma-daemon,ensure-mempalace-http,register-stdio-fallback,org-mcp-fold,legacy-mcp-removal,settings-template
+mcp.trust-wrapper=bash <REPO>/scripts/lib/tls-exec.sh
+mcp.wrapper-script=<REPO>/scripts/lib/mempalace-http-wrapper.py
+mcp.wrapper-carrier=setup
+usage-capture.strategy=settings
+usage-capture.target=<HOME>/.claude/settings.json
+store-guidance=false
+summary.list-header=Active rule files:
+summary.list-glob=*.md
+summary.mcp-source=claude-mcp-list

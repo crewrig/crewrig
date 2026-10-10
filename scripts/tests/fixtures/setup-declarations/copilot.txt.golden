@@ -1,0 +1,137 @@
+cli=copilot
+banner=GitHub Copilot CLI Setup
+step 1: banner
+step 2: prerequisites
+step 3: identity-check
+step 4: copilot-workspace-files
+step 5: rules-existing
+step 6: rules-shared
+step 7: rules-selection
+step 8: tls-offer
+step 9: deps-install
+step 10: mcp
+step 11: tiers
+step 12: hooks-rewrite-installed
+step 13: session-recording
+step 14: usage-capture
+step 15: session-check
+step 16: summary
+prompts.rules-existing=rules-action
+prompts.rules-shared=validation.backend,validation.translate,validation.pedagogy,validation.illustration
+prompts.rules-selection=catalogue.level,catalogue.expertise,catalogue.team
+prompts.tls-offer=tls-delegation
+prompts.mcp=mempalace-install
+prompts.tiers=overlay.community,overlay.org
+prompts.session-recording=transcripts,transcripts-confirm
+prompts.usage-capture=usage-capture,usage-capture-keep
+prompt.rules-action.step=rules-existing
+prompt.rules-action.options=keep,refresh
+prompt.rules-action.cancel=abort
+prompt.rules-action.header=Existing instructions detected — keep them (skip selection) or refresh from scratch?
+prompt.validation.backend.step=rules-shared
+prompt.validation.backend.options=internal,plannotator
+prompt.validation.backend.cancel=default
+prompt.validation.translate.step=rules-shared
+prompt.validation.translate.options=off,on
+prompt.validation.translate.cancel=default
+prompt.validation.pedagogy.step=rules-shared
+prompt.validation.pedagogy.options=contextual,simple,professor
+prompt.validation.pedagogy.cancel=default
+prompt.validation.illustration.step=rules-shared
+prompt.validation.illustration.options=off,on
+prompt.validation.illustration.cancel=default
+prompt.catalogue.level.step=rules-selection
+prompt.catalogue.level.options=<config/level>
+prompt.catalogue.level.cancel=decline
+prompt.catalogue.expertise.step=rules-selection
+prompt.catalogue.expertise.options=<config/expertise>
+prompt.catalogue.expertise.cancel=decline
+prompt.catalogue.team.step=rules-selection
+prompt.catalogue.team.options=<config/teams>
+prompt.catalogue.team.cancel=decline
+prompt.tls-delegation.step=tls-offer
+prompt.tls-delegation.options=no,yes
+prompt.tls-delegation.cancel=decline
+prompt.tls-delegation.header=Configure the framework's tools to trust your system CA for its network operations? (never disables TLS verification; writes only ~/.crewrig/tls-env.sh)
+prompt.mempalace-install.step=mcp
+prompt.mempalace-install.options=no,yes
+prompt.mempalace-install.cancel=decline
+prompt.overlay.community.step=tiers
+prompt.overlay.community.options=no,yes
+prompt.overlay.community.cancel=abort
+prompt.overlay.community.header=Install 'community' skills to <HOME>/.copilot/skills? (opt-in)
+prompt.overlay.org.step=tiers
+prompt.overlay.org.options=no,yes
+prompt.overlay.org.cancel=abort
+prompt.overlay.org.header=Install 'org' skills to <HOME>/.copilot/skills? (opt-in)
+prompt.transcripts.step=session-recording
+prompt.transcripts.options=no,yes
+prompt.transcripts.cancel=decline
+prompt.transcripts.header=Enable automatic session recording to MemPalace? (opt-in)
+prompt.transcripts-confirm.step=session-recording
+prompt.transcripts-confirm.options=yes,no
+prompt.transcripts-confirm.cancel=decline
+prompt.transcripts-confirm.header=Apply?
+prompt.usage-capture.step=usage-capture
+prompt.usage-capture.options=no,yes
+prompt.usage-capture.cancel=decline
+prompt.usage-capture.header=Capture token usage for Copilot CLI? (opt-in, MemPalace not required)
+prompt.usage-capture-keep.step=usage-capture
+prompt.usage-capture-keep.options=keep,remove
+prompt.usage-capture-keep.cancel=decline
+prompt.usage-capture-keep.header=Usage capture is registered for Copilot CLI. Keep it or remove it?
+init.soul=copilot -i "/init-soul"
+init.profile=copilot -i "/init-personal-profile"
+home.cli=<HOME>/.copilot
+home.rules=<HOME>/.copilot/instructions
+home.skills=<HOME>/.copilot/skills
+home.mcp-config=<HOME>/.copilot/mcp-config.json
+rules.glob=*.instructions.md
+rules.shared-header=Installing shared layered context to {dir} ...
+rules.mkdir-in-existing=true
+rules.shared.1=config/SOUL.md -> <HOME>/.copilot/instructions/00-soul.instructions.md
+rules.shared.2=config/ORGANIZATION.md -> <HOME>/.copilot/instructions/20-organization.instructions.md
+rules.shared.3=config/PROFILE.md -> <HOME>/.copilot/instructions/30-profile.instructions.md
+rules.shared.4=artifacts/core/rules/60-tools.md -> <HOME>/.copilot/instructions/60-tools.instructions.md
+rules.shared.5=config/TOOLS.md -> <HOME>/.copilot/instructions/65-org-tools.instructions.md
+rules.shared.6=artifacts/core/system-context -> <HOME>/.crewrig/system-context
+rules.shared.7=AGENTS.org.md -> <HOME>/.copilot/instructions/66-org-rules.instructions.md (optional)
+rules.store=artifacts/core/system-context -> <HOME>/.crewrig/system-context
+rules.pick-order=level,expertise,team
+rules.selection.level=config/level/{name}.md -> <HOME>/.copilot/instructions/10-level.instructions.md
+rules.marker.level=<HOME>/.copilot/.selected_level
+rules.selection.expertise=config/expertise/{name}.md -> <HOME>/.copilot/instructions/40-expertise.instructions.md
+rules.marker.expertise=<HOME>/.copilot/.selected_expertise
+rules.selection.team=config/teams/{name}.md -> <HOME>/.copilot/instructions/50-team.instructions.md
+rules.marker.team=<HOME>/.copilot/.selected_team
+rules.profile=direct config/PROFILE.md -> <HOME>/.copilot/instructions/30-profile.instructions.md
+tiers.strategy=standard
+tiers.build-target=copilot
+tiers.staging=<REPO>/dist/<TIER>/.github
+tiers.library-staging=<REPO>/dist/library/.github
+tiers.gate=<REPO>/dist/<TIER>/.github/skills
+tiers.automatic=library
+tiers.overlay=community,org
+tiers.overlay-prompts=overlay.community,overlay.org
+tiers.installs-agents=false
+tiers.migrates-superseded=false
+hooks.channel=user-json
+hooks.file=<HOME>/.copilot/hooks/copilot-transcript-hooks.json
+hooks.src=<REPO>/hooks/copilot-transcript-hooks.json
+hooks.env-patch=false
+hooks.unused-copy=<HOME>/.copilot/hooks/mempalace-transcript.sh
+hooks.leading-blank=false
+substeps.hooks-rewrite-installed=guard-rewrite,transcript-rewrite,report-unused-copy
+mcp.strategy=copilotMcp
+mcp.handler=json-file
+mcp.target=<HOME>/.copilot/mcp-config.json
+substeps.mcp=backup-capture-operator-servers,mempalace-detect,chroma-daemon,write-mcp-config,org-mcp-fold,ensure-mempalace-http
+mcp.trust-wrapper=bash <REPO>/scripts/lib/tls-exec.sh
+mcp.wrapper-script=<REPO>/scripts/lib/mempalace-http-wrapper.py
+mcp.wrapper-carrier=config/copilot/mcp-config.json.template
+usage-capture.strategy=user-hooks-json
+usage-capture.target=<HOME>/.copilot/hooks/copilot-transcript-hooks.json
+store-guidance=true
+summary.list-header=Active user-level instruction files:
+summary.list-glob=*.instructions.md
+summary.mcp-source=mcp-config.json
