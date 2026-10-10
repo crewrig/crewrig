@@ -11,6 +11,7 @@ import { writeJsonConfig, type JsonObject } from "../hook-config.ts";
 import { USAGE_CAPTURE } from "../hook-descriptor.ts";
 import { parseHandler } from "../hook-recognition.ts";
 import { backupFile } from "./backup.ts";
+import { assertRewritable } from "./lossless.ts";
 import type { Cli } from "./context.ts";
 import { createSpawner } from "./spawner.ts";
 import {
@@ -119,6 +120,7 @@ export function usageCaptureKeep(options: KeepOptions): number {
     out(`  Usage capture kept unchanged in ${config}`);
     return 0;
   }
+  assertRewritable(ctx, config);
   backupFile(ctx, config);
   try {
     writeJsonConfig(config, after);

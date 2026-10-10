@@ -20,6 +20,7 @@ import {
 } from "../hook-antigravity-transcript.ts";
 import { TRANSCRIPT_HOOK_NAME, transcriptRenderFile } from "../hook-transcript-manifest.ts";
 import { backupFile } from "./backup.ts";
+import { assertRewritable } from "./lossless.ts";
 import type { InstallCtx, Spawner } from "./context.ts";
 import { warnIfLinkedWorktree } from "./worktree-warning.ts";
 
@@ -158,8 +159,8 @@ export function deployAntigravityTranscriptHooks(
   const patched = Object.fromEntries(
     Object.entries(rendered).filter(([key]) => key !== TRANSCRIPT_HOOK_NAME),
   );
-
   if (fs.existsSync(manifestTarget)) {
+    assertRewritable(ctx, manifestTarget);
     backupFile(ctx, manifestTarget);
     const current = readTargetForMerge(manifestTarget);
     if (current === null) {

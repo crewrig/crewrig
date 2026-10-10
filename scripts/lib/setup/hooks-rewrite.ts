@@ -23,6 +23,8 @@ import { WORKTREE_GIT_GUARD } from "../hook-descriptor.ts";
 import { rewriteConfig } from "../hook-rewrite.ts";
 import { transcriptCommand } from "../hook-transcript-cli.ts";
 import type { Cli, InstallCtx, Spawner } from "./context.ts";
+import { SetupExit } from "./exit.ts";
+import { assertRewritable } from "./lossless.ts";
 import { createSpawner } from "./spawner.ts";
 
 /** What the hook steps read from the setup context. */
@@ -87,6 +89,7 @@ function rewriteGuardConfig(ctx: HooksCtx, cli: Exclude<Cli, "antigravity">, fil
     out(`  ${label}: ${result.left} command(s) left as they are in ${file}; nothing written.`);
     return 0;
   }
+  assertRewritable(ctx, file);
   const backup = backupFile(file, { warn: err });
   if (backup.status === "failed") {
     err(`  ERROR: could not back up ${file}; leaving it untouched (backup-first, R23).`);
@@ -107,6 +110,7 @@ function guarded(ctx: HooksCtx, step: () => number): number {
   try {
     return step();
   } catch (error) {
+    if (error instanceof SetupExit) throw error;
     ctx.io.err(`  ERROR: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }

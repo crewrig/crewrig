@@ -10,6 +10,7 @@ import path from "node:path";
 import { writeJsonConfig, type JsonObject } from "../hook-config.ts";
 import type { WiredCli } from "../hook-descriptor.ts";
 import { backupFile } from "./backup.ts";
+import { assertRewritable } from "./lossless.ts";
 import { add, allHandlers, flatOf, isCapture, isObj, stripBy } from "./session-recording-merge.ts";
 import type { Json, Located } from "./session-recording-merge.ts";
 import {
@@ -72,6 +73,7 @@ export function usageCaptureEnable(o: UcWriteOptions): number {
       err(`  ERROR: ${config} is not a JSON object; usage capture not enabled.`);
       return 1;
     }
+    assertRewritable(ctx, config);
     backupFile(ctx, config);
     try {
       const footprint = allHandlers(frag, flat).filter((x) => isCapture(x.handler));
@@ -120,6 +122,7 @@ export function usageCaptureRemove(o: Omit<UcWriteOptions, "repoDir" | "deps">):
     err(`  ERROR: ${config} is not a JSON object; usage capture not removed.`);
     return 1;
   }
+  assertRewritable(ctx, config);
   backupFile(ctx, config);
   try {
     writeJsonConfig(
@@ -158,6 +161,7 @@ export function usageCaptureReinject(
     err("  ERROR: invalid usage-capture footprint.");
     return 1;
   }
+  assertRewritable(ctx, config);
   try {
     writeJsonConfig(
       config,
