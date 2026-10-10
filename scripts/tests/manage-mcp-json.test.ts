@@ -119,4 +119,25 @@ describe("mergeJsonEntry", () => {
       assert.equal(fs.readFileSync(configFile, "utf8"), config);
     }
   });
+
+  test(
+    "a config that is a link stays a link, its target gets the merge and .bak is a plain copy beside the link",
+    { skip: process.platform === "win32" },
+    () => {
+      const old = '{"mcpServers":{"a":1}}';
+      const { declFile, configFile } = fixture('{"command":"c"}', old);
+      const target = path.join(path.dirname(declFile), "dotfiles", "mcp-config.json");
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.renameSync(configFile, target);
+      fs.symlinkSync(target, configFile);
+      mergeJsonEntry({ declFile, configFile, key: "mcpServers", initial: INITIAL_MCP_CONFIG }, io);
+      assert.ok(fs.lstatSync(configFile).isSymbolicLink());
+      assert.equal(fs.readlinkSync(configFile), target);
+      assert.match(fs.readFileSync(target, "utf8"), /"playwright": \{\n {6}"command": "c"/);
+      assert.equal(fs.readFileSync(configFile, "utf8"), fs.readFileSync(target, "utf8"));
+      assert.ok(fs.lstatSync(`${configFile}.bak`).isFile());
+      assert.equal(fs.readFileSync(`${configFile}.bak`, "utf8"), old);
+      assert.equal(fs.existsSync(`${target}.bak`), false);
+    },
+  );
 });

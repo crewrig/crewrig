@@ -7,7 +7,9 @@
 // order and the bytes are those of `jq .` (the shell's `jq ... > file`).
 //
 // Listed deviations: a declaration or a config that does not parse fails before the config
-// is replaced (the shell truncated it through `> "$config_file"`); the write is atomic.
+// is replaced (the shell truncated it through `> "$config_file"`); the write is atomic and goes through a
+// link at the config path (the link survives, its target is updated); `.bak` stays beside the
+// configured path, a plain copy of what the link pointed to, as `cp` made it.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -60,6 +62,7 @@ export function mergeJsonEntry(req: MergeRequest, io: Io): void {
   entries.set(name, declaration);
   root.set(req.key, entries);
 
-  writeFileAtomic(req.configFile, writeJsonText(root));
+  // The shell's `> "$config_file"` wrote through a link (dotfile manager); a rename would replace it.
+  writeFileAtomic(fs.realpathSync(req.configFile), writeJsonText(root));
   io.out(`  Merged: ${name} into ${req.key}`);
 }

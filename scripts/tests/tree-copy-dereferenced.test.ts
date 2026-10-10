@@ -75,3 +75,38 @@ test(
     assert.throws(() => copyTreeDereferenced(s, path.join(s, "d", "in")), ExtError);
   },
 );
+
+test("masks setuid, setgid and sticky bits like cp -rf for a non-root user", posix, () => {
+  const root = tempDir();
+  fs.mkdirSync(path.join(root, "s"));
+  const f = path.join(root, "s", "suid");
+  fs.writeFileSync(f, "x");
+  fs.chmodSync(f, 0o4755);
+  copyTreeDereferenced(path.join(root, "s"), path.join(root, "t"));
+  assert.equal(fs.statSync(path.join(root, "t", "suid")).mode & 0o7777, 0o755);
+});
+
+test("skips a link to an ancestor of the source or of the destination", posix, () => {
+  const root = tempDir();
+  const s = path.join(root, "src", "s");
+  fs.mkdirSync(s, { recursive: true });
+  fs.mkdirSync(path.join(root, "out", "deep"), { recursive: true });
+  fs.writeFileSync(path.join(s, "keep"), "k");
+  fs.writeFileSync(path.join(root, "src", "sibling"), "sib");
+  fs.symlinkSync(path.join(root, "src", "sibling"), path.join(s, "ok"));
+  fs.symlinkSync(path.join(root, "src"), path.join(s, "up-src"));
+  fs.symlinkSync(root, path.join(s, "up-root"));
+  fs.symlinkSync(path.join(root, "out"), path.join(s, "up-dst"));
+  fs.symlinkSync(path.join(root, "out", "deep"), path.join(s, "to-dst"));
+  const notices = copyTreeDereferenced(s, path.join(root, "out", "deep"));
+  assert.equal(fs.readFileSync(path.join(root, "out", "deep", "ok"), "utf8"), "sib");
+  assert.equal(fs.readFileSync(path.join(root, "out", "deep", "keep"), "utf8"), "k");
+  for (const name of ["up-src", "up-root", "up-dst", "to-dst"]) {
+    assert.equal(fs.existsSync(path.join(root, "out", "deep", name)), false, name);
+    assert.ok(
+      notices.some((n) => n.includes(`${name}: link target is an ancestor`)),
+      name,
+    );
+  }
+  assert.equal(notices.length, 4);
+});

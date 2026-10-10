@@ -487,6 +487,64 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts
 
+  # Spec 0255 (row F2 of epic #1231), PR B: the dark link-or-copy module, the component twins and
+  # the manage modules, with their node:test suites. `bash` is spawned on purpose by the two twin
+  # conformance suites (they drive scripts/lib/common.sh and component-resolve.sh next to the
+  # twins) and `jq` by the shell functions they call; both retire with the shell libraries
+  # (row J4). Those suites skip on Windows, so this job runs on Linux only.
+  - id: install-ts
+    name: "Run the TypeScript link-or-copy, component twin and manage module suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/link-or-copy*.ts"
+          - "scripts/lib/component-roots.ts"
+          - "scripts/lib/component-overlay.ts"
+          - "scripts/lib/component-install.ts"
+          - "scripts/lib/component-resolve.ts"
+          - "scripts/lib/component-resolve.sh"
+          - "scripts/lib/antigravity-migrate.ts"
+          - "scripts/lib/manage/**"
+          - "scripts/lib/extension/**"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/tmp-file.ts"
+          - "scripts/lib/mempalace-python.ts"
+          - "scripts/lib/worktree-claim/**"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/antigravity-migrate.test.ts"
+          - "scripts/tests/component-install.test.ts"
+          - "scripts/tests/component-overlay.test.ts"
+          - "scripts/tests/component-roots.test.ts"
+          - "scripts/tests/component-twins-conformance-migrate.test.ts"
+          - "scripts/tests/component-twins-conformance.test.ts"
+          - "scripts/tests/lib/component-twins-harness.ts"
+          - "scripts/tests/lib/manage-main-run.ts"
+          - "scripts/tests/lib/overlay-loop-box.ts"
+          - "scripts/tests/lib/print-manage-declarations.ts"
+          - "scripts/tests/link-or-copy-classify.test.ts"
+          - "scripts/tests/link-or-copy-remove.test.ts"
+          - "scripts/tests/link-or-copy-swap.test.ts"
+          - "scripts/tests/link-or-copy.test.ts"
+          - "scripts/tests/manage-confirm.test.ts"
+          - "scripts/tests/manage-descriptors.test.ts"
+          - "scripts/tests/manage-main.test.ts"
+          - "scripts/tests/manage-mcp-claude.test.ts"
+          - "scripts/tests/manage-mcp-json.test.ts"
+          - "scripts/tests/manage-overlay-loop.test.ts"
+          - "scripts/tests/manage-place.test.ts"
+          - "scripts/tests/print-manage-declarations.test.ts"
+          - "scripts/tests/tree-copy-dereferenced.test.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts
+
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then
   # scripts/tests/lib/windows-extension-proof.ts builds every golden subject with the TypeScript
