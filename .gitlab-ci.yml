@@ -654,7 +654,7 @@ setup-modules-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-antigravity-hooks.test.ts scripts/tests/setup-antigravity-statusline.test.ts scripts/tests/setup-antigravity-tier.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-backup-failure.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-chroma-install.test.ts scripts/tests/setup-chroma-install-win.test.ts scripts/tests/setup-chroma-unit.test.ts scripts/tests/setup-cli-claude-gemini.test.ts scripts/tests/setup-cli-copilot-antigravity.test.ts scripts/tests/setup-declarations.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-ensure-http.test.ts scripts/tests/setup-ensure-http-wiring.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-hint-strings.test.ts scripts/tests/setup-references.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-flow.test.ts scripts/tests/setup-flow-steps.test.ts scripts/tests/setup-gemini-settings.test.ts scripts/tests/setup-gemini-settings-rc.test.ts scripts/tests/setup-gemini-settings-write.test.ts scripts/tests/setup-gemini-settings-write-diff.test.ts scripts/tests/setup-hooks-rewrite.test.ts scripts/tests/setup-json-secure.test.ts scripts/tests/setup-json-secure-failure.test.ts scripts/tests/setup-lib-tls-entry.test.ts scripts/tests/setup-lib-tls-entry-offer.test.ts scripts/tests/setup-lib-usage-entry.test.ts scripts/tests/setup-lib-usage-entry-form.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-lossless-writers.test.ts scripts/tests/setup-mcp-agy-step.test.ts scripts/tests/setup-mcp-claude-flow.test.ts scripts/tests/setup-mcp-claude-step.test.ts scripts/tests/setup-mcp-copilot-step.test.ts scripts/tests/setup-mcp-gemini-step.test.ts scripts/tests/setup-mcp-json-writers.test.ts scripts/tests/setup-mcp-json-writers-merge.test.ts scripts/tests/setup-mempalace-callsite.test.ts scripts/tests/setup-mempalace-detect.test.ts scripts/tests/setup-mempalace-install-offer.test.ts scripts/tests/setup-mempalace-stdio.test.ts scripts/tests/setup-mempalace-version.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-org-mcp-claude-argv.test.ts scripts/tests/setup-org-mcp-fold.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-session-recording.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-steps-agy.test.ts scripts/tests/setup-steps-agy-channels.test.ts scripts/tests/setup-steps-copilot.test.ts scripts/tests/setup-steps-hooks.test.ts scripts/tests/setup-steps-hooks-lossy.test.ts scripts/tests/setup-steps-mcp.test.ts scripts/tests/setup-steps-rules.test.ts scripts/tests/setup-steps-rules-edge.test.ts scripts/tests/setup-steps-tiers.test.ts scripts/tests/setup-steps-usage.test.ts scripts/tests/setup-store-guidance.test.ts scripts/tests/setup-summary.test.ts scripts/tests/setup-tier-build.test.ts scripts/tests/setup-tier-install.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-trust-wrapper-install.test.ts scripts/tests/setup-usage-capture.test.ts scripts/tests/setup-usage-capture-keep.test.ts scripts/tests/setup-usage-capture-rank.test.ts scripts/tests/setup-usage-capture-state.test.ts scripts/tests/setup-usage-capture-wire-path.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-antigravity-hooks.test.ts scripts/tests/setup-antigravity-statusline.test.ts scripts/tests/setup-antigravity-tier.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-backup-failure.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-chroma-install.test.ts scripts/tests/setup-chroma-install-win.test.ts scripts/tests/setup-chroma-unit.test.ts scripts/tests/setup-cli-claude-gemini.test.ts scripts/tests/setup-cli-copilot-antigravity.test.ts scripts/tests/setup-declarations.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-ensure-http.test.ts scripts/tests/setup-ensure-http-wiring.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-flow.test.ts scripts/tests/setup-flow-steps.test.ts scripts/tests/setup-gemini-settings.test.ts scripts/tests/setup-gemini-settings-rc.test.ts scripts/tests/setup-gemini-settings-write.test.ts scripts/tests/setup-gemini-settings-write-diff.test.ts scripts/tests/setup-hint-strings.test.ts scripts/tests/setup-hooks-rewrite.test.ts scripts/tests/setup-json-secure.test.ts scripts/tests/setup-json-secure-failure.test.ts scripts/tests/setup-lib-shim-tls.test.ts scripts/tests/setup-lib-shim-usage.test.ts scripts/tests/setup-lib-tls-entry.test.ts scripts/tests/setup-lib-tls-entry-offer.test.ts scripts/tests/setup-lib-usage-entry.test.ts scripts/tests/setup-lib-usage-entry-form.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-lossless-writers.test.ts scripts/tests/setup-mcp-agy-step.test.ts scripts/tests/setup-mcp-claude-flow.test.ts scripts/tests/setup-mcp-claude-step.test.ts scripts/tests/setup-mcp-copilot-step.test.ts scripts/tests/setup-mcp-gemini-step.test.ts scripts/tests/setup-mcp-json-writers.test.ts scripts/tests/setup-mcp-json-writers-merge.test.ts scripts/tests/setup-mempalace-callsite.test.ts scripts/tests/setup-mempalace-detect.test.ts scripts/tests/setup-mempalace-install-offer.test.ts scripts/tests/setup-mempalace-stdio.test.ts scripts/tests/setup-mempalace-version.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-org-mcp-claude-argv.test.ts scripts/tests/setup-org-mcp-fold.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-references.test.ts scripts/tests/setup-session-recording.test.ts scripts/tests/setup-session-recording-ownership.test.ts scripts/tests/setup-shim.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-steps-agy.test.ts scripts/tests/setup-steps-agy-channels.test.ts scripts/tests/setup-steps-copilot.test.ts scripts/tests/setup-steps-hooks.test.ts scripts/tests/setup-steps-hooks-lossy.test.ts scripts/tests/setup-steps-mcp.test.ts scripts/tests/setup-steps-rules.test.ts scripts/tests/setup-steps-rules-edge.test.ts scripts/tests/setup-steps-tiers.test.ts scripts/tests/setup-steps-usage.test.ts scripts/tests/setup-store-guidance.test.ts scripts/tests/setup-summary.test.ts scripts/tests/setup-tier-build.test.ts scripts/tests/setup-tier-install.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-trust-wrapper-install.test.ts scripts/tests/setup-usage-capture.test.ts scripts/tests/setup-usage-capture-keep.test.ts scripts/tests/setup-usage-capture-rank.test.ts scripts/tests/setup-usage-capture-state.test.ts scripts/tests/setup-usage-capture-wire-path.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -692,8 +692,6 @@ setup-modules-ts:
         - "scripts/tests/setup-ensure-http.test.ts"
         - "scripts/tests/setup-ensure-http-wiring.test.ts"
         - "scripts/tests/setup-file-size.test.ts"
-        - "scripts/tests/setup-hint-strings.test.ts"
-        - "scripts/tests/setup-references.test.ts"
         - "scripts/tests/setup-files.test.ts"
         - "scripts/tests/setup-flow.test.ts"
         - "scripts/tests/setup-flow-steps.test.ts"
@@ -701,9 +699,12 @@ setup-modules-ts:
         - "scripts/tests/setup-gemini-settings-rc.test.ts"
         - "scripts/tests/setup-gemini-settings-write.test.ts"
         - "scripts/tests/setup-gemini-settings-write-diff.test.ts"
+        - "scripts/tests/setup-hint-strings.test.ts"
         - "scripts/tests/setup-hooks-rewrite.test.ts"
         - "scripts/tests/setup-json-secure.test.ts"
         - "scripts/tests/setup-json-secure-failure.test.ts"
+        - "scripts/tests/setup-lib-shim-tls.test.ts"
+        - "scripts/tests/setup-lib-shim-usage.test.ts"
         - "scripts/tests/setup-lib-tls-entry.test.ts"
         - "scripts/tests/setup-lib-tls-entry-offer.test.ts"
         - "scripts/tests/setup-lib-usage-entry.test.ts"
@@ -730,7 +731,10 @@ setup-modules-ts:
         - "scripts/tests/setup-prompt-integration.test.ts"
         - "scripts/tests/setup-prompt-table.test.ts"
         - "scripts/tests/setup-prompt-tty.test.ts"
+        - "scripts/tests/setup-references.test.ts"
         - "scripts/tests/setup-session-recording.test.ts"
+        - "scripts/tests/setup-session-recording-ownership.test.ts"
+        - "scripts/tests/setup-shim.test.ts"
         - "scripts/tests/setup-stdlib-closure.test.ts"
         - "scripts/tests/setup-steps-agy.test.ts"
         - "scripts/tests/setup-steps-agy-channels.test.ts"
@@ -810,8 +814,6 @@ setup-modules-ts:
         - "scripts/tests/setup-ensure-http.test.ts"
         - "scripts/tests/setup-ensure-http-wiring.test.ts"
         - "scripts/tests/setup-file-size.test.ts"
-        - "scripts/tests/setup-hint-strings.test.ts"
-        - "scripts/tests/setup-references.test.ts"
         - "scripts/tests/setup-files.test.ts"
         - "scripts/tests/setup-flow.test.ts"
         - "scripts/tests/setup-flow-steps.test.ts"
@@ -819,9 +821,12 @@ setup-modules-ts:
         - "scripts/tests/setup-gemini-settings-rc.test.ts"
         - "scripts/tests/setup-gemini-settings-write.test.ts"
         - "scripts/tests/setup-gemini-settings-write-diff.test.ts"
+        - "scripts/tests/setup-hint-strings.test.ts"
         - "scripts/tests/setup-hooks-rewrite.test.ts"
         - "scripts/tests/setup-json-secure.test.ts"
         - "scripts/tests/setup-json-secure-failure.test.ts"
+        - "scripts/tests/setup-lib-shim-tls.test.ts"
+        - "scripts/tests/setup-lib-shim-usage.test.ts"
         - "scripts/tests/setup-lib-tls-entry.test.ts"
         - "scripts/tests/setup-lib-tls-entry-offer.test.ts"
         - "scripts/tests/setup-lib-usage-entry.test.ts"
@@ -848,7 +853,10 @@ setup-modules-ts:
         - "scripts/tests/setup-prompt-integration.test.ts"
         - "scripts/tests/setup-prompt-table.test.ts"
         - "scripts/tests/setup-prompt-tty.test.ts"
+        - "scripts/tests/setup-references.test.ts"
         - "scripts/tests/setup-session-recording.test.ts"
+        - "scripts/tests/setup-session-recording-ownership.test.ts"
+        - "scripts/tests/setup-shim.test.ts"
         - "scripts/tests/setup-stdlib-closure.test.ts"
         - "scripts/tests/setup-steps-agy.test.ts"
         - "scripts/tests/setup-steps-agy-channels.test.ts"
@@ -1382,6 +1390,7 @@ mempalace:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
+    - apt-get update && apt-get install -y --no-install-recommends jq
   cache:
     key:
       files:
@@ -1768,6 +1777,7 @@ frontmatter:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
+    - apt-get update && apt-get install -y --no-install-recommends jq
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh"
@@ -2478,6 +2488,8 @@ release-notes:
 
 usage-capture:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
   script:
     - "npm install"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-usage-capture.sh"
