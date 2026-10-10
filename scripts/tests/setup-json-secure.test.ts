@@ -258,7 +258,10 @@ describe("parity with jq", { skip: !hasJq }, () => {
   it("writes what jq . prints for a document of integers, strings and nesting", () => {
     const text =
       '{"mcpServers":{"mempalace":{"command":"bash","args":["a b","\\"q\\"","é/\\u0001\\\\"],"env":{}},"z":[[],[1,[2]],{}]},"n":null,"t":true,"f":1.5,"2":"x","1":"y"}';
-    const expected = spawnSync("jq", ["."], { input: text, encoding: "utf8" }).stdout;
+    const expected = spawnSync("jq", ["."], { input: text, encoding: "utf8" }).stdout.replaceAll(
+      "\r\n",
+      "\n",
+    );
     writeJsonConfigSecure({ ctx: ctx(), file, value: doc(text) });
     assert.equal(fs.readFileSync(file, "utf8"), expected);
   });
@@ -272,7 +275,7 @@ describe("parity with jq", { skip: !hasJq }, () => {
         input: text,
         encoding: "utf8",
       },
-    ).stdout;
+    ).stdout.replaceAll("\r\n", "\n");
     fs.writeFileSync(file, text);
     writeJsonConfigSecure({
       ctx: ctx(),

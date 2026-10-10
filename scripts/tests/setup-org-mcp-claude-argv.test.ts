@@ -102,7 +102,11 @@ describe("orgMcpClaudeArgv", () => {
         input: text,
         encoding: "utf8",
       });
-      assert.deepEqual(orgMcpClaudeArgv("n", map(text)), r.stdout.split("\n").slice(0, -1), text);
+      assert.deepEqual(
+        orgMcpClaudeArgv("n", map(text)),
+        r.stdout.split(/\r?\n/).slice(0, -1),
+        text,
+      );
     }
   });
 });

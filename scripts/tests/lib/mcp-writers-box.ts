@@ -79,4 +79,5 @@ export const writeJson: WriteJson = (file, value: JsonValue) => {
 export const seed = (file: string, body: unknown): void =>
   fs.writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`);
 export const jq = (input: string, args: string[]): string =>
-  spawnSync("jq", [...args], { input, encoding: "utf8" }).stdout;
+  // jq for Windows ends lines with CRLF; the shell oracle is read as LF
+  spawnSync("jq", [...args], { input, encoding: "utf8" }).stdout.replaceAll("\r\n", "\n");

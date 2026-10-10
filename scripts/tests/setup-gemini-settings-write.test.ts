@@ -59,7 +59,7 @@ function run(
     err: (line: string) => void err.push(line),
   };
   const rc = geminiSettingsWrite({
-    ctx: { io, platform: extra.platform ?? process.platform, home, repoDir: FAKE_REPO },
+    ctx: { io, platform: extra.platform ?? "linux", home, repoDir: FAKE_REPO },
     settingsTarget: target,
     settingsSrc: SEED,
     python: extra.python ?? "",
@@ -146,7 +146,7 @@ describe("geminiSettingsWrite", () => {
     const err: string[] = [];
     const io = { out: () => undefined, err: (l: string) => void err.push(l) };
     const rc = geminiSettingsWrite({
-      ctx: { io, platform: process.platform, home, repoDir: FAKE_REPO },
+      ctx: { io, platform: "linux", home, repoDir: FAKE_REPO },
       settingsTarget: target,
       settingsSrc: SEED,
       python: "",
@@ -165,7 +165,7 @@ describe("geminiSettingsWrite", () => {
     const rc = geminiSettingsWrite({
       ctx: {
         io: { out: (l) => void out.push(l), err: (l) => void err.push(l) },
-        platform: process.platform,
+        platform: "linux",
         home,
         repoDir: FAKE_REPO,
       },
@@ -238,7 +238,7 @@ describe("geminiSettingsWrite", () => {
     const rc = geminiSettingsWrite({
       ctx: {
         io: { out: () => undefined, err: (l) => void err.push(l) },
-        platform: process.platform,
+        platform: "linux",
         home,
         repoDir: FAKE_REPO,
       },

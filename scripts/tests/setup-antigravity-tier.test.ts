@@ -195,7 +195,7 @@ describe("migrateSupersededPlacement", () => {
     assert.equal(fs.existsSync(path.join(old, "skills/mine/SKILL.md")), true);
     assert.deepEqual(out, [
       "Migrating components left at the superseded placement...",
-      `  Migrated away: ${path.join(old, "skills/served")} (superseded placement)`,
+      `  Migrated away: ${old}/skills/served (superseded placement)`,
       `  Removed 1 framework component(s) from the superseded placement at ${old}.`,
       "",
     ]);
