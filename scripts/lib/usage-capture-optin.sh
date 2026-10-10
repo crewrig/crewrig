@@ -19,15 +19,17 @@
 # functions that set any (render_session_recording_manifest, merge_session_recording_hooks)
 # pass `--result <file>` to the entry, which writes `NAME=0|1` lines; after the call
 # the shim reads the file and sets ONLY the variables of a closed whitelist
-# (SR_TRANSCRIPT_WIRED, SR_ALL_HOOKS_DISABLED, wrote), each with a value of 0 or 1,
-# and removes the file on every return path.
+# (SR_TRANSCRIPT_WIRED, SR_ALL_HOOKS_DISABLED), each with a value of 0 or 1, and
+# removes the file on every return path. Any other name, `wrote` included (no original
+# function of this library ever set it; the TLS shim is the one that does), is refused.
 #
 # The PowerShell-target decision of usage_capture_keep (a vanished path behind a
 # NAME=value prefix on Gemini CLI and Copilot CLI) was made here from `uname -s`; the
 # entry makes it from the platform of its node process, which is `win32` on a real
 # Windows host. A shell that reports MINGW*, MSYS* or CYGWIN* (the suites stub `uname`
-# to simulate that on POSIX) passes `--platform win32` to the entry for `keep`, the
-# one subcommand that read `uname` in the original.
+# to simulate that on POSIX) passes `--platform win32` to the entry for `keep` and for
+# `apply`: the two subcommands that reached the original `uname` decision (`apply` runs
+# `keep` internally).
 #
 # The original description follows. The opt-in of Claude Code, Gemini CLI and
 # Copilot CLI (spec 0211), decoupled from the MemPalace session-recording opt-in.
@@ -554,7 +556,7 @@ _uc_run_node() {
     fi
     node "$entry" "$sub" --result "$res" -- "$@" </dev/null
   else
-    if [ "$sub" = keep ]; then
+    if [ "$sub" = keep ] || [ "$sub" = apply ]; then
       case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) plat=(--platform win32) ;; esac
     fi
     node -r "$guard" "$entry" ${plat[@]+"${plat[@]}"} "$sub" -- "$@" </dev/null
@@ -588,8 +590,6 @@ _uc_forward_result() {
         SR_TRANSCRIPT_WIRED=1) SR_TRANSCRIPT_WIRED=1 ;;
         SR_ALL_HOOKS_DISABLED=0) SR_ALL_HOOKS_DISABLED=0 ;;
         SR_ALL_HOOKS_DISABLED=1) SR_ALL_HOOKS_DISABLED=1 ;;
-        wrote=0) wrote=0 ;;
-        wrote=1) wrote=1 ;;
       esac
     done < "$res"
   fi

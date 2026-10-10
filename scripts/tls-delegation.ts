@@ -3,12 +3,15 @@
 //
 // Usage: node scripts/tls-delegation.ts detect
 //        node scripts/tls-delegation.ts candidate
-//        node scripts/tls-delegation.ts offer [--result <file>] [--answer tls-delegation=<yes|no>]
+//        node scripts/tls-delegation.ts offer [--result <file>] [--answer tls-delegation=<yes|no>] [--forwarded]
 // Run `node scripts/lib/node-floor-guard.js` first on an unverified Node.js: the tool needs
 // Node.js 24 or later. `detect` and `candidate` print nothing but the bundle path, `offer` prints
 // exactly what `offer_tls_delegation` printed (the shim sources the written file itself).
 // Status: 0 done (`detect`: detected), 1 nothing (`detect`: not detected, `candidate`: none; `offer`:
 // invalid TLS_DELEGATION), 2 usage error. `--result` writes one line `wrote=1` or `wrote=0`.
+// `--forwarded` (needs `--answer`) marks a run whose caller, the function shim, already printed the
+// preamble and asked the question itself: the entry then prints neither the preamble nor the
+// `[answer] tls-delegation=<choice>` echo, so the shim's standard output is the shell's, byte for byte.
 //
 // ENTRY FORM (spec 0255 R3; spec 0250 R3) — do not "tidy" it into an ordinary module:
 //  - No top-level `import`/`export` and nothing declared at global scope, so Node.js loads the
@@ -28,7 +31,7 @@ void (async () => {
       process.exitCode = 2;
     };
     const shape =
-      "usage: tls-delegation.ts detect | candidate | offer [--result <file>] [--answer tls-delegation=<yes|no>]";
+      "usage: tls-delegation.ts detect | candidate | offer [--result <file>] [--answer tls-delegation=<yes|no>] [--forwarded]";
     const [command, ...rest] = process.argv.slice(2);
     if (command === "detect" || command === "candidate") {
       if (rest.length > 0) return usage(`${command} takes no argument; ${shape}`);
@@ -48,8 +51,13 @@ void (async () => {
 
     let result: string | undefined;
     const answerTokens: string[] = [];
+    let forwarded = false;
     for (let i = 0; i < rest.length; i += 1) {
       const arg = rest[i] ?? "";
+      if (arg === "--forwarded") {
+        forwarded = true;
+        continue;
+      }
       const eq = arg.indexOf("=");
       const name = arg.startsWith("--") && eq > 0 ? arg.slice(0, eq) : arg;
       const inline = name === arg ? undefined : arg.slice(eq + 1);
@@ -61,9 +69,11 @@ void (async () => {
       else result = value;
     }
 
+    if (forwarded && answerTokens.length === 0) return usage("--forwarded needs --answer");
+
     const { parseSetupArgv } = await import("./lib/setup/argv.ts");
     const { createAnswers } = await import("./lib/setup/answers.ts");
-    const { createSession } = await import("./lib/setup/prompt.ts");
+    const { answerEcho, createSession } = await import("./lib/setup/prompt.ts");
     const { createLineQueue } = await import("./lib/setup/prompt-queue.ts");
     const { offerTlsDelegation, TLS_QUESTION_ID } = await import("./lib/setup/tls-offer.ts");
     const { SetupExit } = await import("./lib/setup/exit.ts");
@@ -91,14 +101,22 @@ void (async () => {
       const answers = createAnswers(parsed, "claude", io);
       const other = parsed.answers.find((answer) => answer.id !== TLS_QUESTION_ID);
       if (other !== undefined) return usage(`--answer: this entry only asks '${TLS_QUESTION_ID}'`);
+      // A forwarded run drops the prompter's echo of the answer: the original never printed it.
+      const echoPrefix = answerEcho(TLS_QUESTION_ID, "");
+      const quiet = {
+        ...io,
+        out: (line: string) => {
+          if (!(forwarded && line.startsWith(echoPrefix))) io.out(line);
+        },
+      };
       const session = createSession({
         queue: lazy,
         answers,
-        io,
+        io: quiet,
         isTty: process.stdin.isTTY === true,
       });
       const ctx = { io, env: process.env, home: home ?? os.homedir() };
-      const offered = await offerTlsDelegation({ ctx, session });
+      const offered = await offerTlsDelegation({ ctx, session, forwarded });
       wrote = offered.wrote ? 1 : 0;
     } catch (error) {
       if (!(error instanceof SetupExit)) throw error;

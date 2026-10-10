@@ -5,7 +5,8 @@
 // throwaway HOME with no TLS variable of the host. The unchanged oracle is scripts/tests/test-tls-delegation.sh.
 //
 // Pinned: sourcing prints nothing and defines the functions; the return codes; the standard output of
-// `offer_tls_delegation` is the entry's byte for byte; the variables travel back to the calling shell
+// `offer_tls_delegation` is the entry's byte for byte on the non-interactive path and the ORIGINAL's
+// (a literal) on the interactive one, with no `[answer]` line; the variables travel back to the calling shell
 // after `wrote=1` (the written file is sourced there) and not otherwise; a `fzf` answer (stub on PATH)
 // is forwarded as the entry's `--answer`; shell variables that were set but not exported are seen; no
 // side-channel file is left; `node` absent or below the floor returns non-zero without `exit`; standard
@@ -62,6 +63,28 @@ function withFzf(b: Box, reply: string): NodeJS.ProcessEnv {
   });
   return host({ PATH: `${bin}:${process.env["PATH"] ?? ""}` });
 }
+/** What the original `offer_tls_delegation` printed before it asked: the blank line and the preamble. */
+const PREAMBLE =
+  "\nCustom certificate trust (spec 0084):\n" +
+  "  Your environment looks like it sits behind a custom or corporate\n" +
+  "  certificate authority (a TLS-intercepting gateway or a private CA).\n";
+/** What the original printed after a `yes` (a bundle found): the lines and the file it wrote. */
+const CONSENT = (b: Box): string => {
+  const file = envFile(b);
+  const exported = ["NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "PIP_CERT"]
+    .concat(["GIT_SSL_CAINFO", "CURL_CA_BUNDLE"])
+    .map((name) => `    export ${name}=${b.ca}\n`)
+    .join("");
+  return (
+    `  Custom CA trust configured -> ${file}\n  Delegated to CA bundle: ${b.ca}\n` +
+    "  Applied for this setup run and, via scripts/lib/tls-exec.sh, for the\n" +
+    "  framework's runtime paths (MCP servers, the ChromaDB daemon).\n" +
+    `  Your shell profile was NOT modified. Remove with: rm ${file}\n\n  Exact configuration written:\n` +
+    "    # crewrig custom root-CA / native-TLS delegation (spec 0084)\n" +
+    "    # Per-user, machine-local. Written only on your explicit consent.\n" +
+    `    # Remove in one action:  rm ${file}\n${exported}    export UV_SYSTEM_CERTS=true\n`
+  );
+};
 const fzfCalls = (b: Box): number => {
   const file = path.join(b.root, "fzf-calls");
   return fs.existsSync(file) ? fs.readFileSync(file, "utf8").split("\n").length - 1 : 0;
@@ -170,17 +193,17 @@ describe("tls-delegation.sh function shim", { skip: SKIP }, () => {
     assert.ok(fs.existsSync(envFile(yes)));
     assert.match(outYes.stdout, /^\nCustom certificate trust \(spec 0084\):\n/);
     assert.ok(outYes.stdout.endsWith(`rc=0|SSL=${yes.ca}\n`));
-    assert.equal(
-      outYes.stdout.replace(/rc=0\|SSL=.*\n$/, ""),
-      entryOffer(yes, ["--answer", "tls-delegation=yes"], { NODE_EXTRA_CA_CERTS: yes.ca }),
-    );
+    // The ORIGINAL's standard output, as a literal: no `[answer]` echo, the preamble before the question.
+    assert.equal(outYes.stdout, `${PREAMBLE}${CONSENT(yes)}rc=0|SSL=${yes.ca}\n`);
+    assert.equal(outYes.stdout.includes("[answer]"), false);
 
     const no = box();
     const outNo = drive(no, "offer_tls_delegation; echo rc=$?", {
       ...withFzf(no, "no"),
       NODE_EXTRA_CA_CERTS: no.ca,
     });
-    assert.ok(outNo.stdout.endsWith("  TLS delegation skipped — nothing written.\nrc=0\n"));
+    assert.equal(outNo.stdout, `${PREAMBLE}  TLS delegation skipped — nothing written.\nrc=0\n`);
+    assert.equal(outNo.stdout.includes("[answer]"), false);
     assert.equal(fs.existsSync(envFile(no)), false);
 
     if (hostAnchors) return;

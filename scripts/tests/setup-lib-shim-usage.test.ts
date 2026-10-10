@@ -2,8 +2,9 @@
 // scripts/usage-capture-optin.ts (spec 0256 requirement 33, plan step E3/E4b). POSIX-only (the shim is
 // Bash). Pins: every public function gives the entry's stdout, stderr and status and leaves the entry's
 // configuration bytes; the `--result` side channel sets only the closed whitelist (SR_TRANSCRIPT_WIRED,
-// SR_ALL_HOOKS_DISABLED, wrote) with a value of 0 or 1 in the calling shell and removes its file on every
-// return path (success, node absent, below the floor); `set -u`, no `exit`, no `trap`, and standard
+// SR_ALL_HOOKS_DISABLED; `wrote` is refused, no original function set it) with a value of 0 or 1 in the
+// calling shell and removes its file on every return path (success, node absent, below the floor); a
+// `uname` stub reporting MINGW makes `keep` and `apply` take the Windows PowerShell form; `set -u`, no `exit`, no `trap`, and standard
 // input untouched (a sentinel stays readable after the call).
 
 import assert from "node:assert/strict";
@@ -147,7 +148,7 @@ describe("the --result side channel", { skip: SKIP }, () => {
       [],
       withPath(stubNode(lines), tmp),
     );
-    assert.match(a.stdout, /T=1 D=unset W=1 E=unset\n/);
+    assert.match(a.stdout, /T=1 D=unset W=unset E=unset\n/, "`wrote` is not in the whitelist");
     assert.match(a.stdout, /P=\S*\n$/);
     assert.doesNotMatch(a.stdout, /P=\/x/);
     const b = shim(
@@ -179,6 +180,40 @@ describe("the --result side channel", { skip: SKIP }, () => {
     assert.match(low.stderr, /requires Node\.js >= 24 \(stub\)/);
     assert.match(low.stdout, /T=unset D=unset/);
   });
+});
+
+describe("the Windows PowerShell target of keep and apply", { skip: SKIP }, () => {
+  /** A gemini configuration whose capture handler has a vanished path behind a NAME=value prefix. */
+  const prefixed = (gone: string): unknown =>
+    configOf("gemini", [`TOKEN=x A=b bash "${gone}/hooks/usage-capture.sh" gemini-cli AfterModel`]);
+  const LEFT =
+    /left .*gone\/hooks\/usage-capture\.sh: keeps an environment prefix \(TOKEN=\.\.\., A=\.\.\.\) that PowerShell/;
+  /** A PATH directory ahead of the host's whose `uname -s` reports the given system. */
+  const unameStub = (system: string): NodeJS.ProcessEnv => {
+    const bin = makePathDir({
+      scripts: { uname: `[ "$1" = "-s" ] && echo ${system} || exec /usr/bin/uname "$@"` },
+    });
+    return { ...process.env, PATH: `${bin}:${process.env["PATH"] ?? ""}` };
+  };
+  for (const [fn, tail] of [
+    ["keep", []],
+    ["apply", ["installed", "keep"]],
+  ] as const) {
+    test(`${FN(fn)} on MINGW leaves the prefixed vanished handler and names it; on Linux it re-points`, () => {
+      for (const system of ["MINGW64_NT-10.0-19045", "MSYS_NT-10.0", "CYGWIN_NT-10.0"]) {
+        const r = rig(prefixed("/nonexistent/gone"));
+        const win = shim(`${FN(fn)} gemini "$@"`, [r.cfgB, r.co, ...tail], unameStub(system));
+        assert.equal(win.status, 0, win.stderr);
+        assert.match(win.stdout + win.stderr, LEFT, system);
+        assert.equal(read(r.cfgB), read(r.cfgT), `${system}: the file is left as it is`);
+      }
+      const r = rig(prefixed("/nonexistent/gone"));
+      const posix = shim(`${FN(fn)} gemini "$@"`, [r.cfgB, r.co, ...tail], unameStub("Linux"));
+      assert.equal(posix.status, 0, posix.stderr);
+      assert.doesNotMatch(posix.stdout + posix.stderr, LEFT);
+      assert.notEqual(read(r.cfgB), read(r.cfgT), "on POSIX the path is re-pointed");
+    });
+  }
 });
 
 describe("shell hygiene", { skip: SKIP }, () => {

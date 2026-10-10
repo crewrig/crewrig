@@ -12,9 +12,12 @@
 #
 # Two things the entry cannot do for a function, so this shim does them in the calling shell:
 #   - the interactive question: the entry's own prompter reads lines, the original asked through
-#     `fzf`. `offer_tls_delegation` asks through `fzf` exactly as before, once detection fires, and
-#     forwards the choice with `--answer tls-delegation=<yes|no>`, so the entry never needs a
-#     terminal and never reads standard input here;
+#     `fzf`. Once detection fires, `offer_tls_delegation` prints the original's blank line and
+#     three-line preamble itself, asks through `fzf` exactly as before, and forwards the choice with
+#     `--answer tls-delegation=<yes|no> --forwarded`; `--forwarded` makes the entry print neither
+#     the preamble nor the `[answer] ...` echo of its prompter, so the standard output of this
+#     path is the original's byte for byte, and the entry never needs a terminal and never reads
+#     standard input here;
 #   - the variables: a child process cannot export into this shell. The entry writes
 #     `wrote=1|0` to a side-channel file (`--result`); on `wrote=1` the shim sources
 #     `~/.crewrig/tls-env.sh` here, as the original did, so the CA variables reach the sourcing shell.
@@ -78,10 +81,14 @@ offer_tls_delegation() {
   local choice=""
   if [ -z "${TLS_DELEGATION:-}" ]; then
     _tls_entry detect || return 0
+    echo ""
+    echo "Custom certificate trust (spec 0084):"
+    echo "  Your environment looks like it sits behind a custom or corporate"
+    echo "  certificate authority (a TLS-intercepting gateway or a private CA)."
     choice=$(printf '%s\n' no yes | fzf --height 10% \
       --header "Configure the framework's tools to trust your system CA for its network operations? (never disables TLS verification; writes only ~/.crewrig/tls-env.sh)") || choice="no"
     [ "$choice" = "yes" ] || choice="no"
-    answer=(--answer "tls-delegation=$choice")
+    answer=(--answer "tls-delegation=$choice" --forwarded)
   fi
 
   local result

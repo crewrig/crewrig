@@ -47,6 +47,8 @@ export async function offerTlsDelegation(args: {
   ctx: TlsOfferCtx;
   session: PromptSession;
   deps?: Partial<TlsOfferDeps>;
+  /** The caller (the function shim of tls-delegation.sh) printed the preamble itself: print none. */
+  forwarded?: boolean;
 }): Promise<TlsOfferResult> {
   const { ctx, session } = args;
   const deps: TlsOfferDeps = { ...defaultDeps, ...args.deps };
@@ -63,10 +65,12 @@ export async function offerTlsDelegation(args: {
     choice = "yes";
   } else {
     if (!detectCustomTlsContext(ctx.env, deps.fs.readdir)) return NOTHING;
-    io.out("");
-    io.out("Custom certificate trust (spec 0084):");
-    io.out("  Your environment looks like it sits behind a custom or corporate");
-    io.out("  certificate authority (a TLS-intercepting gateway or a private CA).");
+    if (args.forwarded !== true) {
+      io.out("");
+      io.out("Custom certificate trust (spec 0084):");
+      io.out("  Your environment looks like it sits behind a custom or corporate");
+      io.out("  certificate authority (a TLS-intercepting gateway or a private CA).");
+    }
     choice = await session.choose({
       id: TLS_QUESTION_ID,
       header: TLS_QUESTION_HEADER,
