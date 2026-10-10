@@ -597,6 +597,7 @@ extension-manifest:
 extension-install:
   image: node:24
   before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
@@ -606,6 +607,7 @@ extension-install:
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-claude-plugin-agents-glob.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-gemini-agent-frontmatter.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-install-extension-all.sh"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-sandbox.test.ts scripts/tests/install-workspace.test.ts scripts/tests/unlink-component.test.ts scripts/tests/unlink-extensions.test.ts scripts/tests/install-extension.test.ts scripts/tests/link-extensions.test.ts scripts/tests/install-copilot-plugin.test.ts scripts/tests/install-antigravity-extension.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -620,6 +622,30 @@ extension-install:
         - "scripts/lib/node-floor-guard.js"
         - "scripts/build-gemini-agent.sh"
         - "scripts/install-extension-all.sh"
+        - "scripts/tests/install-sandbox.test.ts"
+        - "scripts/tests/install-workspace.test.ts"
+        - "scripts/tests/unlink-component.test.ts"
+        - "scripts/tests/unlink-extensions.test.ts"
+        - "scripts/tests/install-extension.test.ts"
+        - "scripts/tests/link-extensions.test.ts"
+        - "scripts/tests/install-copilot-plugin.test.ts"
+        - "scripts/tests/install-antigravity-extension.test.ts"
+        - "scripts/tests/lib/install-sandbox.ts"
+        - "scripts/tests/lib/hermetic-env.ts"
+        - "scripts/install-extension.sh"
+        - "scripts/install-claude-plugin.sh"
+        - "scripts/install-copilot-plugin.sh"
+        - "scripts/install-antigravity-extension.sh"
+        - "scripts/install-workspace.sh"
+        - "scripts/manage-claude-component.sh"
+        - "scripts/manage-copilot-component.sh"
+        - "scripts/manage-antigravity-component.sh"
+        - "scripts/manage-workspace-component.sh"
+        - "scripts/link-extensions.sh"
+        - "scripts/unlink-extensions.sh"
+        - "scripts/unlink-component.sh"
+        - "scripts/lib/component-resolve.sh"
+        - "scripts/lib/extension-install.sh"
         - "extensions/**"
         - "artifacts/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -635,6 +661,30 @@ extension-install:
         - "scripts/lib/node-floor-guard.js"
         - "scripts/build-gemini-agent.sh"
         - "scripts/install-extension-all.sh"
+        - "scripts/tests/install-sandbox.test.ts"
+        - "scripts/tests/install-workspace.test.ts"
+        - "scripts/tests/unlink-component.test.ts"
+        - "scripts/tests/unlink-extensions.test.ts"
+        - "scripts/tests/install-extension.test.ts"
+        - "scripts/tests/link-extensions.test.ts"
+        - "scripts/tests/install-copilot-plugin.test.ts"
+        - "scripts/tests/install-antigravity-extension.test.ts"
+        - "scripts/tests/lib/install-sandbox.ts"
+        - "scripts/tests/lib/hermetic-env.ts"
+        - "scripts/install-extension.sh"
+        - "scripts/install-claude-plugin.sh"
+        - "scripts/install-copilot-plugin.sh"
+        - "scripts/install-antigravity-extension.sh"
+        - "scripts/install-workspace.sh"
+        - "scripts/manage-claude-component.sh"
+        - "scripts/manage-copilot-component.sh"
+        - "scripts/manage-antigravity-component.sh"
+        - "scripts/manage-workspace-component.sh"
+        - "scripts/link-extensions.sh"
+        - "scripts/unlink-extensions.sh"
+        - "scripts/unlink-component.sh"
+        - "scripts/lib/component-resolve.sh"
+        - "scripts/lib/extension-install.sh"
         - "extensions/**"
         - "artifacts/**"
 

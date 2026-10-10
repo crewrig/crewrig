@@ -715,6 +715,30 @@ capabilities:
           - "scripts/lib/node-floor-guard.js"
           - "scripts/build-gemini-agent.sh"
           - "scripts/install-extension-all.sh"
+          - "scripts/tests/install-sandbox.test.ts"
+          - "scripts/tests/install-workspace.test.ts"
+          - "scripts/tests/unlink-component.test.ts"
+          - "scripts/tests/unlink-extensions.test.ts"
+          - "scripts/tests/install-extension.test.ts"
+          - "scripts/tests/link-extensions.test.ts"
+          - "scripts/tests/install-copilot-plugin.test.ts"
+          - "scripts/tests/install-antigravity-extension.test.ts"
+          - "scripts/tests/lib/install-sandbox.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/install-extension.sh"
+          - "scripts/install-claude-plugin.sh"
+          - "scripts/install-copilot-plugin.sh"
+          - "scripts/install-antigravity-extension.sh"
+          - "scripts/install-workspace.sh"
+          - "scripts/manage-claude-component.sh"
+          - "scripts/manage-copilot-component.sh"
+          - "scripts/manage-antigravity-component.sh"
+          - "scripts/manage-workspace-component.sh"
+          - "scripts/link-extensions.sh"
+          - "scripts/unlink-extensions.sh"
+          - "scripts/unlink-component.sh"
+          - "scripts/lib/component-resolve.sh"
+          - "scripts/lib/extension-install.sh"
           - "extensions/**"
           - "artifacts/**"
       - on: push
@@ -731,19 +755,44 @@ capabilities:
           - "scripts/lib/node-floor-guard.js"
           - "scripts/build-gemini-agent.sh"
           - "scripts/install-extension-all.sh"
+          - "scripts/tests/install-sandbox.test.ts"
+          - "scripts/tests/install-workspace.test.ts"
+          - "scripts/tests/unlink-component.test.ts"
+          - "scripts/tests/unlink-extensions.test.ts"
+          - "scripts/tests/install-extension.test.ts"
+          - "scripts/tests/link-extensions.test.ts"
+          - "scripts/tests/install-copilot-plugin.test.ts"
+          - "scripts/tests/install-antigravity-extension.test.ts"
+          - "scripts/tests/lib/install-sandbox.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/install-extension.sh"
+          - "scripts/install-claude-plugin.sh"
+          - "scripts/install-copilot-plugin.sh"
+          - "scripts/install-antigravity-extension.sh"
+          - "scripts/install-workspace.sh"
+          - "scripts/manage-claude-component.sh"
+          - "scripts/manage-copilot-component.sh"
+          - "scripts/manage-antigravity-component.sh"
+          - "scripts/manage-workspace-component.sh"
+          - "scripts/link-extensions.sh"
+          - "scripts/unlink-extensions.sh"
+          - "scripts/unlink-component.sh"
+          - "scripts/lib/component-resolve.sh"
+          - "scripts/lib/extension-install.sh"
           - "extensions/**"
           - "artifacts/**"
     portability: portable
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [yq]
+      tools: [jq, yq]
     command:
       - npm ci --omit=dev --workspaces=false
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-install-claude-plugin-marketplace.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-claude-plugin-agents-glob.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-gemini-agent-frontmatter.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-install-extension-all.sh
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-sandbox.test.ts scripts/tests/install-workspace.test.ts scripts/tests/unlink-component.test.ts scripts/tests/unlink-extensions.test.ts scripts/tests/install-extension.test.ts scripts/tests/link-extensions.test.ts scripts/tests/install-copilot-plugin.test.ts scripts/tests/install-antigravity-extension.test.ts
 
   - id: core-paths
     name: "Check core-paths resolve and sync-from-upstream"
