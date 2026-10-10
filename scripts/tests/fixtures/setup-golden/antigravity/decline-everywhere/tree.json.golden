@@ -13,7 +13,7 @@
     {"path":"<HOME>/.gemini/antigravity-cli/99_CUSTOM.md","kind":"file","mode":"0644","sha256":"49cf24c707d61fd324680bc9e7c5b08ab77c7dc9b9d229397b7844085379095f"},
     {"path":"<HOME>/.gemini/config","kind":"dir"},
     {"path":"<HOME>/.gemini/config/AGENTS.md","kind":"file","mode":"0644","sha256":"ad8b677f4d53d2fe3b9dc2b3138c95a9829bf1c2bd388ababcbd8f124a4a7b9a"},
-    {"path":"<HOME>/.gemini/config/hooks.json","kind":"file","mode":"0600","sha256":"53aea09669e0456bed6927385a1159337fbf70b1aab2bf7c08c2000d54de902b"},
+    {"path":"<HOME>/.gemini/config/hooks.json","kind":"file","mode":"0600","sha256":"ed6689a62093bbb3810f4698a9552d14d79cca9c62e00ddb0d8efbde75cb4fbe"},
     {"path":"<HOME>/.gemini/config/mcp_config.json","kind":"file","mode":"0600","sha256":"d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02"},
     {"path":"<HOME>/.local","kind":"dir"},
     {"path":"<HOME>/.local/share","kind":"dir"},

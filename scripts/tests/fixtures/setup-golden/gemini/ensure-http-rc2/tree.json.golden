@@ -32,7 +32,7 @@
     {"path":"<HOME>/.gemini/50_USER_TEAM.md","kind":"file","mode":"0644","sha256":"repo:config/teams/ATLAS.md"},
     {"path":"<HOME>/.gemini/60_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-tools.md"},
     {"path":"<HOME>/.gemini/65_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:config/TOOLS.md"},
-    {"path":"<HOME>/.gemini/settings.json","kind":"file","mode":"0600","sha256":"e86e4a5bdc11cb035ae7ca56b282e8ff5cedf1679d15c64b4040cfc1a5bf0dae"},
+    {"path":"<HOME>/.gemini/settings.json","kind":"file","mode":"0600","sha256":"d795601b6c0c03145841480cbcb3df0eb2cfdd322621f3796e3f223b571b7c22"},
     {"path":"<HOME>/.gemini/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"6b4aa3a4fe7dd5382970d73c3e93c009520e83196b6576ebf272e2a04aa4033a"},
     {"path":"<HOME>/.local","kind":"dir"},
     {"path":"<HOME>/.local/share","kind":"dir"},

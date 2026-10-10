@@ -11,7 +11,7 @@
     {"path":"<HOME>/.copilot/hooks","kind":"dir"},
     {"path":"<HOME>/.copilot/hooks/copilot-transcript-hooks.json","kind":"file","mode":"0600","sha256":"78922a784ee78e9e50587e93628cd3b9d4dfbe49087adc4514e6781cea38cbb9"},
     {"path":"<HOME>/.copilot/hooks/copilot-transcript-hooks.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"c55e78158214da1fabe6b5259dde17aadf75e272d1c51175a011205fb605af57"},
-    {"path":"<HOME>/.copilot/hooks/crewrig-mempalace-session-check.json","kind":"file","mode":"0600","sha256":"9396213670ed09dcf66e58ca6c6734c798369445e9b02a10510209b82379cc43"},
+    {"path":"<HOME>/.copilot/hooks/crewrig-mempalace-session-check.json","kind":"file","mode":"0600","sha256":"7f935a053efc74d0162db7281d57727f964839b3fb5a7c8d04f4309eee260682"},
     {"path":"<HOME>/.copilot/instructions","kind":"dir"},
     {"path":"<HOME>/.copilot/instructions/00-soul.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/SOUL.md"},
     {"path":"<HOME>/.copilot/instructions/10-level.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/level/CONFIRMED.md"},

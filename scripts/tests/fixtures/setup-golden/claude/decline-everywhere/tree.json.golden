@@ -4,7 +4,7 @@
     {"path":"<HOME>/.claude.json","kind":"file","mode":"0600","sha256":"eae9d0230f31dd519899a2675288dda777c85e3ee7d5822e61acb866a58bba64"},
     {"path":"<HOME>/.claude/rules","kind":"dir"},
     {"path":"<HOME>/.claude/rules/00-soul.md","kind":"file","mode":"0644","sha256":"3842b43d980843d3dd36e166373c501fb0c94f85e7d1aecbf4d2de8abed5aac4"},
-    {"path":"<HOME>/.claude/settings.json","kind":"file","mode":"0600","sha256":"6cfac272901425c143d2982236ebdbd15a42c602fecbf013c8187cc438651b58"},
+    {"path":"<HOME>/.claude/settings.json","kind":"file","mode":"0600","sha256":"343fe93f33a0a23d2094e59e16a9e971fd0bb514cae9d49816fb4abebfdc1a2f"},
     {"path":"<HOME>/.config","kind":"dir"},
     {"path":"<HOME>/.config/systemd","kind":"dir"},
     {"path":"<HOME>/.config/systemd/user","kind":"dir"},

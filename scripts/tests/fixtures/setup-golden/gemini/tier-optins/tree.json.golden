@@ -35,7 +35,7 @@
     {"path":"<HOME>/.gemini/agents","kind":"dir"},
     {"path":"<HOME>/.gemini/agents/community-agent.md","kind":"file","mode":"0644","sha256":"repo:dist/community/.gemini/agents/community-agent.md"},
     {"path":"<HOME>/.gemini/agents/org-agent.md","kind":"file","mode":"0644","sha256":"repo:dist/org/.gemini/agents/org-agent.md"},
-    {"path":"<HOME>/.gemini/settings.json","kind":"file","mode":"0600","sha256":"f8be954a834a71f5e83f9521d7237ed7499213472ec0c6361c5716a1f21b19bf"},
+    {"path":"<HOME>/.gemini/settings.json","kind":"file","mode":"0600","sha256":"2d6bcea3580e6b85711063cc12f00d658925540881d562041a591aa370d21644"},
     {"path":"<HOME>/.gemini/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"f520598cd2d704a89d9944cf088211709175bcea7f76db1bc51d4bae09a5d8f7"},
     {"path":"<HOME>/.gemini/skills","kind":"dir"},
     {"path":"<HOME>/.gemini/skills/community-skill","kind":"dir"},

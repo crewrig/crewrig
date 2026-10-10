@@ -26,7 +26,7 @@
     {"path":"<HOME>/.gemini/30_USER_PROFILE.md","kind":"file","mode":"0644","sha256":"repo:config/PROFILE.md"},
     {"path":"<HOME>/.gemini/60_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-tools.md"},
     {"path":"<HOME>/.gemini/65_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:config/TOOLS.md"},
-    {"path":"<HOME>/.gemini/settings.json","kind":"file","mode":"0600","sha256":"f8be954a834a71f5e83f9521d7237ed7499213472ec0c6361c5716a1f21b19bf"},
+    {"path":"<HOME>/.gemini/settings.json","kind":"file","mode":"0600","sha256":"2d6bcea3580e6b85711063cc12f00d658925540881d562041a591aa370d21644"},
     {"path":"<HOME>/.gemini/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"f520598cd2d704a89d9944cf088211709175bcea7f76db1bc51d4bae09a5d8f7"},
     {"path":"<HOME>/.local","kind":"dir"},
     {"path":"<HOME>/.local/share","kind":"dir"},

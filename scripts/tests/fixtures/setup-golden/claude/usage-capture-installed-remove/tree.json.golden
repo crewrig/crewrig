@@ -14,7 +14,7 @@
     {"path":"<HOME>/.claude/rules/50-team.md","kind":"file","mode":"0644","sha256":"repo:config/teams/ATLAS.md"},
     {"path":"<HOME>/.claude/rules/60-tools.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-tools.md"},
     {"path":"<HOME>/.claude/rules/65-org-tools.md","kind":"file","mode":"0644","sha256":"repo:config/TOOLS.md"},
-    {"path":"<HOME>/.claude/settings.json","kind":"file","mode":"0600","sha256":"6cfac272901425c143d2982236ebdbd15a42c602fecbf013c8187cc438651b58"},
+    {"path":"<HOME>/.claude/settings.json","kind":"file","mode":"0600","sha256":"343fe93f33a0a23d2094e59e16a9e971fd0bb514cae9d49816fb4abebfdc1a2f"},
     {"path":"<HOME>/.claude/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"9407d83215335688b8c7deafbdafba5af09bc23ebda5e2b919e39d5bc7be5407"},
     {"path":"<HOME>/.claude/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"},
     {"path":"<HOME>/.config","kind":"dir"},

@@ -84,7 +84,22 @@ function rootNames(roots: Roots): Array<[string, string]> {
 }
 
 /**
- * Placeholders for what differs between runs: the sandbox root, repository and home (longest
+ * Every spelling of the Node executable that runs the setup (`process.execPath` and its real
+ * path), longest first: the setup writes it into hook and settings files, and it differs between
+ * hosts (`/usr/local/bin/node`, `/opt/hostedtoolcache/node/<version>/x64/bin/node`).
+ */
+export function nodePaths(): string[] {
+  const found = new Set<string>([process.execPath]);
+  try {
+    found.add(fs.realpathSync(process.execPath));
+  } catch {
+    // the executable is gone: only the literal spelling applies
+  }
+  return [...found].filter((p) => p.length > 1).sort((a, b) => b.length - a.length);
+}
+
+/**
+ * Placeholders for what differs between runs: the Node executable path (`<NODE>`), the sandbox root, repository and home (longest
  * first: the home sits inside the root), `.bak.<YYYYMMDD-HHMMSS>[.NN]` backup suffixes, ISO
  * timestamps, `mktemp` names (`tmp.XXXXXX`, `crewrig-*-XXXXXX`) and process ids.
  */
@@ -94,6 +109,7 @@ export function normalize(text: string, roots: Roots): string {
   for (const secret of [...(roots.secrets ?? [])].sort((a, b) => b.length - a.length)) {
     out = out.split(secret).join("<TOKEN>");
   }
+  for (const exe of nodePaths()) out = out.split(exe).join("<NODE>");
   for (const [dir, token] of rootNames(roots)) out = out.split(dir).join(token);
   for (const [value, token] of roots.literals ?? []) {
     out = out.replace(new RegExp(`(?<![0-9A-Za-z])${value}(?![0-9A-Za-z])`, "g"), token);

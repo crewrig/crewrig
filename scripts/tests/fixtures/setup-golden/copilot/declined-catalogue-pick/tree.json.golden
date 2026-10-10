@@ -7,7 +7,7 @@
     {"path":"<HOME>/.copilot","kind":"dir"},
     {"path":"<HOME>/.copilot/.selected_team","kind":"file","mode":"0644","sha256":"b1c18110bc9445eaea4f25fd4bd0e1e0793384976901a6dda1e6abc3c6c11437"},
     {"path":"<HOME>/.copilot/hooks","kind":"dir"},
-    {"path":"<HOME>/.copilot/hooks/crewrig-mempalace-session-check.json","kind":"file","mode":"0600","sha256":"9396213670ed09dcf66e58ca6c6734c798369445e9b02a10510209b82379cc43"},
+    {"path":"<HOME>/.copilot/hooks/crewrig-mempalace-session-check.json","kind":"file","mode":"0600","sha256":"7f935a053efc74d0162db7281d57727f964839b3fb5a7c8d04f4309eee260682"},
     {"path":"<HOME>/.copilot/instructions","kind":"dir"},
     {"path":"<HOME>/.copilot/instructions/00-soul.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/SOUL.md"},
     {"path":"<HOME>/.copilot/instructions/20-organization.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/ORGANIZATION.md"},

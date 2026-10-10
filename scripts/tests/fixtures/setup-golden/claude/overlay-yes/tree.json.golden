@@ -14,7 +14,7 @@
     {"path":"<HOME>/.claude/rules/50-team.md","kind":"file","mode":"0644","sha256":"repo:config/teams/ATLAS.md"},
     {"path":"<HOME>/.claude/rules/60-tools.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-tools.md"},
     {"path":"<HOME>/.claude/rules/65-org-tools.md","kind":"file","mode":"0644","sha256":"repo:config/TOOLS.md"},
-    {"path":"<HOME>/.claude/settings.json","kind":"file","mode":"0600","sha256":"c7647dddd43ab7ab278234d0979de6d435ab445d17c80998492328ea2c84c989"},
+    {"path":"<HOME>/.claude/settings.json","kind":"file","mode":"0600","sha256":"062a6d3f186df3ffde5d3026a51b751ff560eb77d31d883d38a08ecb49ef4925"},
     {"path":"<HOME>/.claude/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"repo:config/claude/settings.json.template"},
     {"path":"<HOME>/.claude/skills","kind":"dir"},
     {"path":"<HOME>/.claude/skills/community-demo","kind":"dir"},

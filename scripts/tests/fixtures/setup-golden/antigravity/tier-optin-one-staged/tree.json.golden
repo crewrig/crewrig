@@ -38,7 +38,7 @@
     {"path":"<HOME>/.gemini/config/agents","kind":"dir"},
     {"path":"<HOME>/.gemini/config/agents/demo-community","kind":"dir"},
     {"path":"<HOME>/.gemini/config/agents/demo-community/AGENT.md","kind":"file","mode":"0644","sha256":"repo:dist/community/.agents/agents/demo-community/AGENT.md"},
-    {"path":"<HOME>/.gemini/config/hooks.json","kind":"file","mode":"0600","sha256":"53aea09669e0456bed6927385a1159337fbf70b1aab2bf7c08c2000d54de902b"},
+    {"path":"<HOME>/.gemini/config/hooks.json","kind":"file","mode":"0600","sha256":"ed6689a62093bbb3810f4698a9552d14d79cca9c62e00ddb0d8efbde75cb4fbe"},
     {"path":"<HOME>/.gemini/config/mcp_config.json","kind":"file","mode":"0600","sha256":"ff1304f0440f975a052da31f0aa95cdd0747574e57fc2cb6e5c69ce5fec10e8f"},
     {"path":"<HOME>/.gemini/config/skills","kind":"dir"},
     {"path":"<HOME>/.gemini/config/skills/demo-community","kind":"dir"},

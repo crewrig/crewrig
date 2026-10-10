@@ -6,7 +6,7 @@
     {"path":"<HOME>/.config/systemd/user/mempalace-chroma-server.service","kind":"file","mode":"0644","sha256":"73a0c17796a4c33ae8209a6fb6774b098ae175329efcc220cc0f7bcd436cbd5f"},
     {"path":"<HOME>/.copilot","kind":"dir"},
     {"path":"<HOME>/.copilot/hooks","kind":"dir"},
-    {"path":"<HOME>/.copilot/hooks/crewrig-mempalace-session-check.json","kind":"file","mode":"0600","sha256":"9396213670ed09dcf66e58ca6c6734c798369445e9b02a10510209b82379cc43"},
+    {"path":"<HOME>/.copilot/hooks/crewrig-mempalace-session-check.json","kind":"file","mode":"0600","sha256":"7f935a053efc74d0162db7281d57727f964839b3fb5a7c8d04f4309eee260682"},
     {"path":"<HOME>/.copilot/instructions","kind":"dir"},
     {"path":"<HOME>/.copilot/instructions/00-soul.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/SOUL.md"},
     {"path":"<HOME>/.copilot/instructions/20-organization.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/ORGANIZATION.md"},
