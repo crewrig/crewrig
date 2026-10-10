@@ -1,7 +1,7 @@
 ---
 id: "0252"
 slug: windows-service-management
-status: implemented
+status: draft
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1330
@@ -22,18 +22,18 @@ in four runs of the service selection). The fix (PR #1546) judges an unasked chi
 grace of 250 ms in which a stop request still counts as requested; the launcher can therefore
 outlive its child by up to 250 ms, which requirement 11 forbids in so many words (finding
 `i1-F42`, tracked in #1547). (2) The Windows job of requirement 24 asserted that the whole
-`status-mcp-server` entry takes 5 seconds or less; on `windows-latest` it took 4.4 s typically
-and 5.5 s and 12 s on loaded runners (run 38012436658, attempts 1 and 2), because the entry
+`status-mcp-server` entry takes 5 seconds or less; on `windows-latest` it took 4.4 s (run 38012799782),
+12.0 s and 5.5 s on loaded runners (run 38012436658, attempts 1 and 2), because the entry
 makes two or three PowerShell state reads plus a listener lookup and the first, cold PowerShell
-start of a runner takes 3.7 to 4.5 s. The owner's bound of 2026-10-09 is on reading a task's
+read of a run takes 3.7 s (`snapshot ms=3696`, run 38012436658 attempt 2), 4.5 s (run 37995988520) or
+5.7 s (run 38012799782). The owner's bound of 2026-10-09 is on reading a task's
 state, which delta-02 already says (requirement 25: the `status` call of the backend). Both
 are recorded here as the normative text. This delta runs under the release-branch regime of
 `specs/0215-shell-to-typescript-migration.delta-04.md`, and its spec-PR targets
-`release/1231-ts-migration`. The version is a MINOR bump: requirement 11 is narrowed in one
-place and the assertions of requirements 24 and 25 are restated, no behaviour a plan or a seat
-has settled is dropped. Its status is `implemented` from the start because the code it
-describes is merged (PRs #1544 and #1546) and the table of `docs/spec-format.md` assigns
-`implemented` to the merge of the implementation.*
+`release/1231-ts-migration`. The version is a MINOR bump: requirement 11 is narrowed, the two
+other statements of its rule (requirement 7 and one scenario) follow it, and the assertions of
+requirements 24 and 25 are restated, no behaviour a plan or a seat
+has settled is dropped. Its status follows the table of `docs/spec-format.md`: `draft` on its spec branch, `approved` once this spec-PR merges (the implementation PRs #1544 and #1546 merged before it, as for delta-01 and delta-02, and the parent's own `implemented` flip came with PR #1542).*
 
 ## ADDED
 
@@ -82,10 +82,34 @@ Replacement:
 > The bound of 5 seconds is on a state read: the `status` call of the backend, asserted by the
 > Windows jobs `windows-service-task` and `windows-mcp-daemon`. It is NOT a bound on the whole
 > `status-mcp-server` entry, which makes two or three such reads and a listener lookup: its
-> total is printed (`MEASURE: status-entry`: 4.4 s typical on `windows-latest`, 5.5 s and 12 s
-> on loaded runners, the first cold PowerShell start of a runner taking 3.7 to 4.5 s) and is
-> guarded against a hang at 30 seconds. A plan step or test that phrases the 5 seconds on the
+> total is printed (`MEASURE: status-entry`: 4.4 s on `windows-latest`, run 38012799782; 12.0 s
+> and 5.5 s on loaded runners, run 38012436658 attempts 1 and 2) and is guarded against a hang
+> at 30 seconds. The first, cold snapshot of a run (3.7 to 5.7 s across the runs above) is
+> printed, not asserted, as delta-02 says. A plan step or test that phrases the 5 seconds on the
 > entry is read as this text.
+
+### Requirement 7 and the scenario "the daemon dies while its launcher would stay alive"
+
+Original (excerpts):
+
+> … and SHALL NOT outlive a child that was killed (requirement 11 states the rule,
+> requirement 24 tests it).
+
+and
+
+> Then the launcher ends at once with a non-zero status, the Task Scheduler records a failed
+> run and starts the task again, …
+
+Replacement:
+
+> … and SHALL NOT outlive a child that was killed, except for the bounded stop-race grace of
+> requirement 11 as amended by this delta (requirement 11 states the rule, requirement 24
+> tests it).
+
+and
+
+> Then the launcher ends, within the stop-race grace of requirement 11 (250 ms) and with a
+> non-zero status, the Task Scheduler records a failed run and starts the task again, …
 
 ## REMOVED
 
