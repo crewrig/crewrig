@@ -11,12 +11,16 @@ rec() { printf '{"argv":%s%s}\\n' "$(shift; jargv "$@")" "$EXTRA" >> "$S/$1.json
 EXTRA=''`;
 
 const FZF = `header=''
+preview=''
 prev=''
 for a in "$@"; do
   case "$prev" in --header|--prompt) [ -z "$header" ] && header="$a" ;; esac
   case "$a" in --header=*) header="\${a#--header=}" ;; --prompt=*) [ -z "$header" ] && header="\${a#--prompt=}" ;; esac
+  case "$prev" in --preview) preview="$a" ;; esac
   prev="$a"
 done
+# The catalogue picker has no header: its --preview command names the catalogue directory.
+[ -z "$header" ] && header="$preview"
 input="$(cat)"
 answer=''; found=0; cancelled=0
 while IFS="$TAB" read -r key val; do
