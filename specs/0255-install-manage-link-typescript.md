@@ -43,11 +43,12 @@ GitHub Copilot CLI and Antigravity CLI with the same commands on the three
 operating systems and with no POSIX shell, `jq` or `ln` on the machine. Every
 flag, every message a script or a test reads, every exit status and every file
 written stays what it is today, except for the few listed changes. Where the
-machine cannot create a symbolic link (typically Windows without Developer Mode
-or administrator rights), the "link" mode no longer fails or stays unavailable:
-it places a copy of the target, says so on standard error naming every
-destination that became a copy, and a later run of the same command refreshes
-that copy, so a copy never goes silently stale. The same link-or-copy module is
+machine cannot create a symbolic link because the privilege is missing
+(typically Windows without Developer Mode or administrator rights), or the file
+system reports that links are not supported, the "link" mode no longer fails or
+stays unavailable: it places a copy of the target, says so on standard error
+naming every destination that became a copy, and a later run of the same command
+refreshes that copy unconditionally, so a copy never goes silently stale. The same link-or-copy module is
 the one `monorepo-release` (row G2) and `check-extension-provenance` (row I1)
 adopt later.
 
@@ -173,7 +174,9 @@ adopt later.
    a symbolic link created) or `Copied: <name>` (indented by two spaces) (install mode, and link mode when
    the link was refused, requirement 17) on standard output. Placement SHALL go
    through the link-or-copy module (requirements 14-21), never through a direct
-   `fs` call in an entry.
+   `fs` call in an entry. A manage entry is one process: when it placed at least
+   one fallback copy it prints exactly one aggregated notice at its end
+   (requirement 18), whatever the number of types or components it handled.
 
 8. **MCP registration and merge.** The `claude` handler SHALL spawn the `claude`
    binary (`claude mcp list`, then `claude mcp add --scope user <name> -- <command>
@@ -200,15 +203,17 @@ adopt later.
    (`core`, `library`, `org`, found in two tiers: `Error: extension '<name>' exists
    in multiple tiers; names must be unique.` on standard error, status 2 inside
    the resolver and 1 for the caller), render the Gemini tree by running
-   `scripts/build-extension.ts --target gemini <name>` (in-process or as a `node`
-   subprocess, the plan decides; its standard output is sent to standard error as
-   the shell does with `>&2`), then replace `~/.gemini/extensions/<name>` with a
+   `scripts/build-extension.ts --target gemini <name>` (as a `node` subprocess or
+   in-process, the plan decides: it places nothing and prints no notice; its
+   standard output is sent to standard error as the shell does with `>&2`), then replace `~/.gemini/extensions/<name>` with a
    link to, or a copy of, `build/extensions/<name>/` through the link-or-copy
    module, printing `Linked: <name> (build directory)` or `Copied: <name> (build directory)`, each indented by two spaces. With no name it SHALL process `core` and `library`, and
    `org` too under `--include-org` or `INCLUDE_ORG` set non-empty, each tier's
    directories in code-unit order. A failure of one extension prints `Error:
    rendering extension '<name>' failed.` and, as the shell's `set -e` did, ends
-   the run with a non-zero status (requirement 22(j) pins the status).
+   the run with a non-zero status (requirement 22(j) pins the status). With no name the loop runs
+   **in-process**, so the run is one process and prints at most one aggregated
+   notice at its end, naming every extension destination that became a copy.
 
 10. **Plugin installers.** `install-claude-plugin.ts`, `install-copilot-plugin.ts`
     and `install-antigravity-extension.ts` SHALL each take one extension name
@@ -251,8 +256,9 @@ adopt later.
     when `$GEMINI_HOME` (default `~/.gemini`) is a directory or `gemini` is on the
     path; the closing counters and the two terminal `Error:` lines and the
     `Summary:` line are unchanged; the exit status is 1 on any failure or when
-    nothing was installed, 0 otherwise. The child installs SHALL run in-process or
-    as `node` subprocesses with their output captured (the plan decides), and the
+    nothing was installed, 0 otherwise. The child installs run in install mode only and place no link, so no
+    fallback notice is ever swallowed; they SHALL run in-process or as `node`
+    subprocesses with their output captured (the plan decides), and the
     `[SKIPPED]` branch for a missing binary SHALL no longer be reachable for `jq`
     (requirement 22(a)). The `PATH` resolution of `claude`, `copilot`, `agy` and
     `gemini` SHALL use the platform's own executable lookup (`PATHEXT` on Windows)
@@ -279,10 +285,14 @@ adopt later.
     printing `Removed: <name>` (indented by two spaces) only for what existed. Both SHALL remove through
     `removePlaced` of requirement 19, by name, never following a link. `INCLUDE_ORG`
     set non-empty acts as `--include-org`. `link-extensions.ts [--include-org]` SHALL
-    call the extension installer in link mode for each extension, in tier order, and
-    stop at the first failure, as its `set -e` does. `install-workspace.ts [mode]`
-    SHALL run the seven types in the shell's order, collect failures rather than
-    stop, and print the shell's `Artifacts installation finished with failures
+    run `install-extension.ts link <name>` as a `node` subprocess for each extension,
+    in tier order, and stop at the first failure, as its `set -e` does; it prints no
+    notice of its own and leaves each child's own notice as is, because the Bash
+    oracles stub child scripts in sandboxes and the child boundary is part of the
+    contract. `install-workspace.ts [mode]` SHALL likewise run
+    `manage-workspace-component.ts` as a `node` subprocess for each of the seven
+    types in the shell's order (up to seven notices, one per child that copied),
+    collect failures rather than stop, and print the shell's `Artifacts installation finished with failures
     in:<types>` block on standard error and exit 1, or `Artifacts installation
     complete.` and exit 0.
 
@@ -290,29 +300,38 @@ adopt later.
     path, "dir" | "file")` on every call, the type taken from `statSync(source)`
     (needed on Windows), and decide from the error code alone: no probe, no cache
     of a first refusal, no `process.platform` sniffing as the sole criterion.
-    Symbolic-link support is per volume (FAT, exFAT, a Dev Drive or an SMB share can
-    refuse where `C:` accepts), and a probe leaves temporary files. The link SHALL be
-    created under a staging name first so that a refusal never destroys the
-    destination (requirement 16).
+    The fallback exists for a missing symbolic-link privilege (`EPERM` on `win32`) and
+    for file systems that report that links are unsupported (`ENOTSUP`, `EOPNOTSUPP`,
+    `ENOSYS`); a probe would leave temporary files. The link SHALL be created under a
+    staging name first so that a refusal never destroys the destination, and when the
+    destination is a real directory or file the link goes in by the same swap as a
+    copy (requirement 16), because a symbolic link cannot be renamed over a non-empty
+    directory on POSIX.
 
 15. **Link-or-copy: which refusals fall back.** The fallback to a copy SHALL occur
     only for: `EPERM` when the platform is `win32`; `ENOTSUP`, `EOPNOTSUPP` and
     `ENOSYS` on any platform. Every other error SHALL be rethrown unchanged:
     `EEXIST`, `ENOENT`, `ELOOP`, `ENAMETOOLONG`, `EINVAL`, and, on a POSIX platform,
     `EPERM` and `EACCES` (parity with `ln -s` under `set -e`: copying would mask a
-    wrong landing zone). The classification SHALL be a pure function of
+    wrong landing zone), and any code a Windows volume that cannot link may yield
+    beyond `EPERM`. Such an error propagates and fails loudly, never a silent copy;
+    the code a non-linking Windows volume yields is unverified (see Open questions).
+    The classification SHALL be a pure function of
     `(code, platform)`. The module MAY share the `LINK_REFUSALS` constant of
     `scripts/lib/extension/tree-copy.ts` only if the two sets are made equal without
     changing `tree-copy.ts` behaviour; the plan decides. The mapping of the Windows
     `ERROR_PRIVILEGE_NOT_HELD` to `EPERM` by Node.js 24 is an unverified assumption
     (see Open questions): the `windows-latest` job of requirement 28 records the
-    code it observes.
+    code it observes, under the seam and for the real attempt.
 
 16. **Link-or-copy: copy semantics.** A copy SHALL be byte for byte (no CRLF
     conversion, parent requirement 22), keep file mode bits, not preserve mtimes, and
     dereference symbolic links found inside the source (none exist in `artifacts/`,
-    `extensions/` or `dist/` today). It SHALL reuse `copyTree` and `assertSafeToRemove`
-    of `tree-copy.ts` where they fit. It is not atomic by construction, but a failed
+    `extensions/` or `dist/` today). `copyTree` of `tree-copy.ts` merges into its
+    destination and recreates the symbolic links found inside the source, so the copy
+    SHALL use a new dereferencing export added to `tree-copy.ts` (requirement 2 allows
+    it), and the existing behaviour of `copyTree` stays untouched; the copy reuses
+    `assertSafeToRemove` as is. It is not atomic by construction, but a failed
     copy SHALL leave the old destination intact: stage as a sibling
     `.<name>.crewrig-tmp-<hex>` on the same volume, rename the old destination aside,
     rename the stage into place, delete the old one, and roll back the first rename
@@ -321,8 +340,9 @@ adopt later.
     entry intact. Destination states: absent (create the parent, then place); a symbolic link,
     dangling included (remove the link only, using `lstat`, never `existsSync`); a
     directory or a file (replace after the staged copy succeeded, parity with
-    `rm -rf`); a destination inside its source SHALL be refused. A copy SHALL be
-    replaced by a link when a link now succeeds. The destination name is the basename
+    `rm -rf`); a destination inside its source SHALL be refused. The staged link of requirement 14 follows the same swap when the
+    destination is a real directory or file. A copy SHALL be replaced by a link when
+    a link now succeeds. The destination name is the basename
     of the resolved source (the trailing-slash case pinned by case 4b of
     `test-component-tier-resolution.sh`). Paths are built with `joinPath` and
     `resolveReal`.
@@ -331,39 +351,41 @@ adopt later.
     SHALL NOT write a marker file inside a copy and SHALL NOT keep a registry of
     copies. Every caller knows `(source, destination)` by component name and the
     operation always rewrites the destination, so every later run of the same command
-    refreshes a copy unconditionally, which is how a copy cannot silently go stale.
+    refreshes a copy unconditionally, which is how a copy cannot silently go stale. Consequently a same-named user
+    directory is indistinguishable from a stale copy and is replaced like one, as
+    `rm -rf` does today.
     A copy made because a link was refused SHALL be reported on standard output as
     `Copied:` (the Bash oracles grep that word) and counted as a fallback. Known
     weakness, accepted: a component removed or renamed upstream leaves an orphan
     copy, as copy mode does today.
 
-18. **Link-or-copy: reporting.** The module SHALL never print. Each entry that placed
-    at least one fallback copy SHALL print on standard error, once per run, one
+18. **Link-or-copy: reporting.** The module SHALL never print. Each process that placed
+    at least one fallback copy SHALL print on standard error, at its end, exactly one
     aggregated notice that names every destination that became a copy, one per line,
     and states that a change to the source takes effect there only after the same
     operation is run again. The aggregation SHALL use `summarizeFallbacks(outcomes)`
-    of requirement 21 so the wording is single-sourced. Nothing SHALL be printed on
-    standard error when every placement was a link or the mode was install.
+    of requirement 21 so the wording is single-sourced. An entry that
+    runs child entries as subprocesses (`install-workspace`, `link-extensions`) leaves
+    each child's own notice as is and adds none; an entry that fans out in-process
+    (`install-extension` with no name, the manage entries over several components)
+    aggregates into one. Nothing SHALL be printed on standard error when every
+    placement was a link or the mode was install.
 
-19. **Link-or-copy: drift and unlink.** At refresh time only, when the destination is
-    a real directory or file, the module SHALL compute drift by comparing the file
-    set and the sha256 of each file with the source, and carry in the outcome
-    `replaced: "stale-copy" | "current-copy" | "link" | "foreign" | "absent"` with the
-    number of differing files; this is advisory and never fails the install. Size or
-    mtime comparison is rejected (a copy does not preserve mtimes). `removePlaced(dest)`
-    SHALL remove by name, never follow a link, and return `"symlink" | "copy" |
-    "absent"`; `unlink-*` use it with strict parity to the shell (`[ -e ] || [ -L ]`,
-    then `rm -rf`): no refusal, no `--force`.
+19. **Link-or-copy: unlink.** `removePlaced(dest)` SHALL remove by name, never
+    follow a link, and return `"symlink" | "copy" | "absent"`; `unlink-*` use it with
+    strict parity to the shell (`[ -e ] || [ -L ]`, then `rm -rf`): no refusal, no
+    `--force`. The module computes no drift and reports none: the unconditional
+    refresh of requirement 17 is what meets the parent's requirement that a copy
+    cannot silently go stale.
 
 20. **Link-or-copy: module surface.** The module is synchronous, like `paths.ts` and
     `tmp-file.ts`, and exports, in files each under 300 lines: `linkOrCopy(source, dest,
     opts?) -> LinkOutcome` with `opts: { onRefusal?: "copy" | "throw"; platform?;
     symlinkImpl? }` (`"throw"` is for `monorepo-release`, so that a refused link never
     copies a whole `node_modules`), `placeCopy(source, dest, opts?)` (explicit copy
-    mode, used by install mode), `removePlaced(dest)`, `inspectPlacement(source, dest)`
-    (read-only: `symlink | copy-current | copy-stale | foreign | absent`; ships in its
-    own file for rows G2 and I1; nothing in F2 requires it) and
-    `summarizeFallbacks(outcomes)`. The names are finalised in the PLAN; the semantics
+    mode, used by install mode), `removePlaced(dest)` and
+    `summarizeFallbacks(outcomes)`. Drift reporting and `inspectPlacement` are not
+    part of this row (see the Decision record). The names are finalised in the PLAN; the semantics
     are not.
 
 21. **Link-or-copy: test seam.** For unit tests the injected `symlinkImpl` and
@@ -444,8 +466,9 @@ adopt later.
     manage scripts, 38 touch points, among them the `Continue?` prompt with stdin
     piped), `test-install-extension-all.sh` (stub CLIs on `PATH`, grep of
     `[INSTALLED]`/`[SKIPPED]`/`[FAILED]`), `test-install-claude-plugin-marketplace.sh`
-    (stubs `claude` and `jq`-free after requirement 22(a): the assertions on the
-    marketplace file read it as JSON) and, incidentally, `test-build-extension.sh`
+    (it keeps a real `jq` and refuses to run without it: it is the script
+    under test that becomes `jq`-free, not its oracle; the Windows job of
+    requirement 28 does not run the Bash oracles) and, incidentally, `test-build-extension.sh`
     (a hermetic claim on `install-claude-plugin.sh` sharing a fix),
     `test-check-extension-provenance.sh` (its fixtures reproduce the `ln -s` and `cp
     -rf` primitives and stay a Bash suite until row I1) and
@@ -485,9 +508,11 @@ adopt later.
     unlisted difference fails; unit suites for the shared manage module, the
     marketplace upsert and the token rewrite; and unit suites for the link-or-copy
     module covering each requirement from 14 to 21 (every error code of requirement 15
-    on both platforms, the staging and the rollback, a dangling destination, a
-    destination inside its source, the retry, the aggregated notice naming every
-    destination, drift counts, `removePlaced` on a link, a copy and an absent name).
+    on both platforms, the staging and the rollback for a copy and for a link, a dangling destination, a
+    real-directory destination replaced by a link through the swap, a destination
+    inside its source, the retry, a copy that dereferences a link in its source, the
+    aggregated notice naming every destination, `removePlaced` on a link, a copy and
+    an absent name).
 
 28. **`windows-latest` job (parent requirement 17).** A job on `windows-latest` run
     from PowerShell (and the `unlink` and `link` entries once from `cmd`) SHALL,
@@ -584,18 +609,18 @@ independent `architect` passes, arbitrated on recognition).**
 Adopted: attempt the link on every call and decide from the error code
 (requirements 14 and 15); copy through a staged rename (16); recognise nothing and
 refresh unconditionally (17); report the fallback once on standard error naming every
-destination (18); compute drift only at refresh time (19).
+destination (18); no drift computation (19).
 
 Rejected alternatives:
 
-- *A one-time probe of link support.* Support is per volume and a probe leaves
-  temporary files; a cached first result is wrong on the next volume.
-- *Deciding on `process.platform` alone.* A Windows machine in Developer Mode links;
-  a Linux FAT mount does not.
-- *Caching the first refusal.* Same per-volume objection.
+- *A one-time probe of link support.* A probe leaves temporary files, and a cached
+  first result is stale as soon as the destination changes.
+- *Deciding on `process.platform` alone.* A Windows machine in Developer Mode links
+  and a POSIX file system may report `ENOTSUP`.
+- *Caching the first refusal.* Same objection as the probe.
 - *NTFS junctions for directories.* Requirement 21 of the parent and the scenario say
   "copies the target instead"; junctions are local-volume and absolute-only, are not
-  symbolic links, add a third state to unlink, refresh and drift, and files need the
+  symbolic links, add a third state to unlink and refresh, and files need the
   copy path anyway. Reopen through a delta of this spec if wanted.
 - *Hard links for files.* Same-volume only, and the link silently breaks when an
   editor replaces the file.
@@ -610,8 +635,17 @@ Rejected alternatives:
   with a read-modify-write race and sandbox plumbing, and the unconditional refresh
   already covers staleness. **Reopen condition:** a data-loss incident on a same-named
   user directory, or a consumer row (G2, I1) that needs to tell a copy from a link
-  (`inspectPlacement` of requirement 20 is the read-only seam that would carry it).
-- *Mtime or size drift detection.* A copy does not preserve mtimes.
+  (the registry alternative reopens only on one of those two conditions).
+- *Drift detection at refresh time (sha256 of each file) and a read-only
+  `inspectPlacement`.* With no marker and no registry a same-named user directory is
+  indistinguishable from a stale copy, so a `foreign` state has no criterion, and no
+  consumer in this row reads the result. Mtime or size comparison would not work in
+  any case, since a copy does not preserve mtimes.
+
+**Deferred.** Drift reporting and `inspectPlacement` are deferred to the row that
+needs them (G2 or I1), added through a delta of this spec, together with the
+registry reopen condition above. The requirement that a copy cannot silently go
+stale is met by the unconditional refresh of requirement 17.
 
 Other `ln -s` sites, recorded so they are not missed: `scripts/lib/common.sh`
 (retired by J4) and `scripts/monorepo-release.sh` (row G2: one `node_modules` entry
@@ -727,6 +761,10 @@ written.
   runner can link, and proves the real fallback when it cannot; a different code
   (for example `EACCES` or `UNKNOWN`) is a `spec`-class finding and a delta of this
   spec.
+- **Unverified:** the code that a Windows volume which cannot create symbolic links
+  yields. Under requirement 15 any code outside the admitted set propagates and fails
+  loudly; a delta of this spec widens the set if the `windows-latest` job (or a
+  maintainer) observes one.
 - **Assumption, unverified:** the Windows `EPERM`/`EBUSY` retry bound of requirement
   16 (5 attempts, 50 ms) is enough against antivirus and indexer locks; the PLAN
   measures it on `windows-latest`.
