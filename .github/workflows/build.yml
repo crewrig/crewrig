@@ -1523,6 +1523,15 @@ jobs:
 
       - name: Test the MCP daemon status report (Linux)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts
+
+      - name: Test the switch residue repair (Linux)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-verbs.test.ts
+
+      - name: Test the switch residue repair, platform-neutral oracle (Linux)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-windows.test.ts
+
+      - name: Test the MemPalace doctor report (Linux)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1814,6 +1823,36 @@ jobs:
 
       - name: Status report, owner verdicts and uninstall against the installed MCP task
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0252 R24 (PR E): the doctor's fourth section (*Background service
+  # mechanism*) and the repair verbs on a real Windows host. The doctor runs from
+  # PowerShell against the real Task Scheduler in the absent state, and the
+  # platform-neutral repair oracle (no bash; repair-verbs.test.ts is POSIX-only and
+  # stays in the Linux job) runs beside it; neither creates a task.
+  windows-doctor-repair:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Doctor report and its fourth section against the Task Scheduler
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts
+
+      - name: Repair verbs on Windows
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-windows.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

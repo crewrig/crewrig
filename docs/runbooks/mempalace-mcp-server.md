@@ -222,7 +222,7 @@ the registration it started with.
 
 When an entry carries both `url` and `serverUrl`, one value is compared:
 `url`, or `serverUrl` when `url` is `null` or `false` (`.url // .serverUrl`,
-the order `scripts/doctor-mempalace.sh` uses). An entry whose `url` is
+the order `scripts/doctor-mempalace.ts` uses). An entry whose `url` is
 correct is `ok` whatever its `serverUrl` says.
 
 A project-level or local-level `mempalace` entry is not read. A Claude Code

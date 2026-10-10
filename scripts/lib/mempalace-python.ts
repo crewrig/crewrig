@@ -206,7 +206,7 @@ function pipxHome(env: NodeJS.ProcessEnv, host: PythonHost | undefined): string 
 }
 
 /** `command -v name`: the executable `name` resolves to on `env`'s PATH. */
-function findOnPath(
+export function findOnPath(
   name: string,
   env: NodeJS.ProcessEnv,
   host: PythonHost | undefined,

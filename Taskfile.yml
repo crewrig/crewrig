@@ -34,7 +34,9 @@ tasks:
 
   mempalace:doctor:
     desc: "Report which MemPalace will actually answer on this machine — resolved path, interpreter and version behind every MemPalace command and every CLI's memory-server registration. Exits non-zero on divergence (spec 0108)."
-    cmd: bash {{.REPO_DIR}}/scripts/doctor-mempalace.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/doctor-mempalace.ts
 
   mempalace:switch-http:
     desc: "Switch every supported assistant on this machine to the shared MemPalace MCP HTTP daemon, so concurrent sessions all write to shared memory (spec 0113). All-or-nothing: if one assistant cannot be switched, none is."
@@ -56,7 +58,9 @@ tasks:
 
   mempalace:repair:
     desc: "Repair the residue left by an interrupted MemPalace switch (spec 0165): an assistant whose configuration does not parse as JSON, or whose mempalace registration matches neither the http nor the stdio shape. With no flag, reports each affected assistant, its config path, whether a timestamped backup exists, and the available actions. The repair verbs need the separator (task mempalace:repair -- [--restore-backup | --reset-none]): --restore-backup restores the most recent usable backup, --reset-none removes the mempalace registration. Restores recognisability only — never registers anyone for http, never places the bearer token in argv."
-    cmd: bash {{.REPO_DIR}}/scripts/repair-mempalace-http.sh {{.CLI_ARGS}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/repair-mempalace-http.ts {{.CLI_ARGS}}
 
   mempalace:stop:
     desc: "Restart the shared MemPalace MCP HTTP daemon. Under the supervisor a stop IS a restart request — to end the daemon, use mempalace:uninstall-daemon."
