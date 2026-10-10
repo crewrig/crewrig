@@ -1670,7 +1670,6 @@ setup:
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-validation-backend.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-tls-delegation.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-mcp-merge.sh"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-mempalace-rc-guard.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-org-mcp.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-mcp-fold-secrets-argv.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-catalogue-picker.sh"

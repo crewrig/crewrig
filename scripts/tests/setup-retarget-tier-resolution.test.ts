@@ -3,11 +3,10 @@
 // The suite compares each manage command's landing zone and staging root with its assisted setup's;
 // it used to parse the setup side out of the text of the setup-*-interactive.sh scripts and now
 // reads the setup's DECLARATION (print-setup-declarations.ts) beside the manage one
-// (print-manage-declarations.ts). This test keeps the two declarations agreeing, and agreeing with
-// the shell, while the shell exists. Retired with the shell, at the switch PR (E).
+// (print-manage-declarations.ts). This test keeps the two declarations agreeing, and pins the
+// staging root of each CLI literally (the shell the root used to be compared with is a shim now).
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 
@@ -15,7 +14,6 @@ import { claudeDescriptor } from "../lib/setup/cli-claude.ts";
 import { manageDeclarationFacts } from "./lib/print-manage-declarations.ts";
 import { main } from "./lib/print-setup-declarations.ts";
 
-const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const ENTRY = path.join(import.meta.dirname, "lib", "print-setup-declarations.ts");
 
 /** The covered pairs of the suite's CLI_ROWS: exhaustive, `skills` on all four, `agents` on Gemini. */
@@ -64,14 +62,15 @@ function oneOf(byKey: Map<string, string[]>, prefix: string, type: string): stri
   return byKey.get(keys[0] as string);
 }
 
-/** What the suite used to parse: the `dist/<anything>tier/<root>` roots of the shell text. */
-function shellStagingRoots(cli: string): string[] {
-  const text = fs.readFileSync(path.join(ROOT, "scripts", `setup-${cli}-interactive.sh`), "utf8");
-  const found = text.match(/dist\/\$\{?[A-Za-z_]*tier\}?\/\.[A-Za-z]+/g) ?? [];
-  return [...new Set(found.map((t) => t.replace(/^.*\//, "")))].sort();
-}
+/** The literal staging root (the last segment of `tiers.staging`) of each CLI's setup. */
+const STAGING_ROOT: Readonly<Record<string, string>> = {
+  claude: ".claude",
+  gemini: ".gemini",
+  copilot: ".github",
+  antigravity: ".agents",
+};
 
-describe("the setup declaration agrees with the manage declaration and with the shell", () => {
+describe("the setup declaration agrees with the manage declaration", () => {
   const manage = manageFacts();
 
   for (const [cli, type] of PAIRS) {
@@ -98,19 +97,11 @@ describe("the setup declaration agrees with the manage declaration and with the 
       assert.notEqual(root, staging, "tiers.staging is not in the <REPO>/dist/<TIER>/<root> form");
       assert.deepEqual(oneOf(byKey, "staging-root", type), [`${root}/${type}`]);
     });
+  }
 
-    it(`${cli}/${type}: the staging root is the one the unchanged shell reads`, () => {
-      const setup = setupFacts(cli);
-      const root = (setup.get("tiers.staging") ?? "").replace(/^<REPO>\/dist\/<TIER>\//, "");
-
-      const shellRoots = shellStagingRoots(cli);
-
-      assert.equal(
-        shellRoots.length,
-        1,
-        `the shell text names ${shellRoots.join(", ") || "no"} root`,
-      );
-      assert.equal(root, shellRoots[0]);
+  for (const [cli, root] of Object.entries(STAGING_ROOT)) {
+    it(`${cli}: the declared staging is <REPO>/dist/<TIER>/${root}`, () => {
+      assert.equal(setupFacts(cli).get("tiers.staging"), `<REPO>/dist/<TIER>/${root}`);
     });
   }
 
