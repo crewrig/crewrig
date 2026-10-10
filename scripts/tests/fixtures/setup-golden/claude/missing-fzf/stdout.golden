@@ -1,0 +1,6 @@
+====================================
+  Claude Code Configuration Setup
+====================================
+
+Error: fzf is required but not installed.
+Install with: brew install fzf (macOS) or apt-get install fzf (Linux)

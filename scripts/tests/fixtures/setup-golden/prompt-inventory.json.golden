@@ -17,6 +17,32 @@
       "gemini"
     ],
     "condition": "rules not kept and the catalogue is not empty",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "claude": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "copilot": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "gemini": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "decline",
       "claude": "decline",
@@ -42,6 +68,32 @@
       "gemini"
     ],
     "condition": "rules not kept and the catalogue is not empty",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "claude": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "copilot": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "gemini": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "decline",
       "claude": "decline",
@@ -67,6 +119,32 @@
       "gemini"
     ],
     "condition": "rules not kept and the catalogue is not empty",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "claude": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "copilot": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "gemini": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "decline",
       "claude": "decline",
@@ -89,6 +167,22 @@
       "claude"
     ],
     "condition": "always",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "claude": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "abort",
       "claude": "abort"
@@ -107,6 +201,14 @@
       "claude"
     ],
     "condition": "~/.claude/settings.json is absent",
+    "askedIn": {
+      "claude": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org"
+      ]
+    },
     "cancel": {
       "claude": "abort"
     }
@@ -124,6 +226,11 @@
       "claude"
     ],
     "condition": "~/.claude/mcp.json exists",
+    "askedIn": {
+      "claude": [
+        "full"
+      ]
+    },
     "cancel": {
       "claude": "abort"
     }
@@ -170,6 +277,32 @@
       "gemini"
     ],
     "condition": "MemPalace not found and pipx on PATH",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org"
+      ],
+      "claude": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org"
+      ],
+      "copilot": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org"
+      ],
+      "gemini": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org"
+      ]
+    },
     "cancel": {
       "antigravity": "decline",
       "claude": "decline",
@@ -196,6 +329,24 @@
       "gemini"
     ],
     "condition": "dist/community is built",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "tier-community"
+      ],
+      "claude": [
+        "full",
+        "tier-community"
+      ],
+      "copilot": [
+        "full",
+        "tier-community"
+      ],
+      "gemini": [
+        "full",
+        "tier-community"
+      ]
+    },
     "cancel": {
       "antigravity": "abort",
       "claude": "abort",
@@ -222,6 +373,24 @@
       "gemini"
     ],
     "condition": "dist/org is built",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "tier-org"
+      ],
+      "claude": [
+        "full",
+        "tier-org"
+      ],
+      "copilot": [
+        "full",
+        "tier-org"
+      ],
+      "gemini": [
+        "full",
+        "tier-org"
+      ]
+    },
     "cancel": {
       "antigravity": "abort",
       "claude": "abort",
@@ -246,6 +415,17 @@
       "gemini"
     ],
     "condition": "the local profile target differs (a non-regular target: a file there is a context file that the keep-or-refresh step removes first)",
+    "askedIn": {
+      "antigravity": [
+        "full"
+      ],
+      "claude": [
+        "full"
+      ],
+      "gemini": [
+        "full"
+      ]
+    },
     "cancel": {
       "antigravity": "abort",
       "claude": "abort",
@@ -271,6 +451,20 @@
       "gemini"
     ],
     "condition": "context files already installed",
+    "askedIn": {
+      "antigravity": [
+        "rules"
+      ],
+      "claude": [
+        "rules"
+      ],
+      "copilot": [
+        "rules"
+      ],
+      "gemini": [
+        "rules"
+      ]
+    },
     "cancel": {
       "antigravity": "abort",
       "claude": "abort",
@@ -297,6 +491,20 @@
       "gemini"
     ],
     "condition": "a custom-CA variable is set and TLS_DELEGATION is unset",
+    "askedIn": {
+      "antigravity": [
+        "full"
+      ],
+      "claude": [
+        "full"
+      ],
+      "copilot": [
+        "full"
+      ],
+      "gemini": [
+        "full"
+      ]
+    },
     "cancel": {
       "antigravity": "decline",
       "claude": "decline",
@@ -323,6 +531,36 @@
       "gemini"
     ],
     "condition": "always",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "claude": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "copilot": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "gemini": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "abort",
       "claude": "decline",
@@ -349,6 +587,20 @@
       "gemini"
     ],
     "condition": "transcripts answered yes",
+    "askedIn": {
+      "antigravity": [
+        "full"
+      ],
+      "claude": [
+        "full"
+      ],
+      "copilot": [
+        "full"
+      ],
+      "gemini": [
+        "full"
+      ]
+    },
     "cancel": {
       "antigravity": "abort",
       "claude": "decline",
@@ -375,6 +627,32 @@
       "gemini"
     ],
     "condition": "no capture registered",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org"
+      ],
+      "claude": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org"
+      ],
+      "copilot": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org"
+      ],
+      "gemini": [
+        "full",
+        "rules",
+        "tier-community",
+        "tier-org"
+      ]
+    },
     "cancel": {
       "antigravity": "abort",
       "claude": "decline",
@@ -401,6 +679,20 @@
       "gemini"
     ],
     "condition": "a capture registered",
+    "askedIn": {
+      "antigravity": [
+        "usage-keep"
+      ],
+      "claude": [
+        "usage-keep"
+      ],
+      "copilot": [
+        "usage-keep"
+      ],
+      "gemini": [
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "abort",
       "claude": "decline",
@@ -427,6 +719,32 @@
       "gemini"
     ],
     "condition": "no VALIDATION_* variable is set",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "claude": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "copilot": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "gemini": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "default",
       "claude": "default",
@@ -453,6 +771,32 @@
       "gemini"
     ],
     "condition": "no VALIDATION_* variable is set",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "claude": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "copilot": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "gemini": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "default",
       "claude": "default",
@@ -480,6 +824,32 @@
       "gemini"
     ],
     "condition": "no VALIDATION_* variable is set",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "claude": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "copilot": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "gemini": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "default",
       "claude": "default",
@@ -506,6 +876,32 @@
       "gemini"
     ],
     "condition": "no VALIDATION_* variable is set",
+    "askedIn": {
+      "antigravity": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "claude": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "copilot": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ],
+      "gemini": [
+        "full",
+        "tier-community",
+        "tier-org",
+        "usage-keep"
+      ]
+    },
     "cancel": {
       "antigravity": "default",
       "claude": "default",

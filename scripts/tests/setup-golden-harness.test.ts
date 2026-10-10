@@ -98,8 +98,7 @@ test("the hash is of the placeholdered LF text: stable across two sandboxes", ()
   const b = runCase(fakeCase, "shell");
   assert.deepEqual(a, b);
   const rules = a.tree.find((e) => e.path === "<HOME>/.claude/rules/10-level.md");
-  assert.equal(rules?.sha256?.length, 64);
-  assert.match(rules?.sha256 ?? "", /^[0-9a-f]{64}$/);
+  assert.match(rules?.sha256 ?? "", /^([0-9a-f]{64}|repo:.+)$/);
 });
 
 test("treeOf without a baseline lists the fixture files; with one, a removal is recorded", () => {

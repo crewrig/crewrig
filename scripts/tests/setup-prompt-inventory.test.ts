@@ -16,6 +16,7 @@ import { runSetupCase } from "./lib/setup-golden-run.ts";
 import type { CaseResult } from "./lib/setup-golden-run.ts";
 import { R12 } from "./lib/setup-prompt-inventory-r12.ts";
 import type { Cancel, Row } from "./lib/setup-prompt-inventory-r12.ts";
+import { ASKED, NOT } from "./lib/setup-prompt-inventory-conditions.ts";
 import { CLIS, cancelKey, idOfHeader, scenariosFor } from "./lib/setup-prompt-inventory-cases.ts";
 import type { Cli } from "./lib/setup-golden-types.ts";
 import { CANCEL, hasJq } from "./lib/setup-stubs.ts";
@@ -30,6 +31,8 @@ const seen = new Map<string, Map<Cli, Seen>>();
 /** The classification per `<cli>/<id>`. */
 const classes = new Map<string, Cancel>();
 const unknown: string[] = [];
+/** The scenarios each question was asked in: id -> cli -> scenario names. */
+const askedIn = new Map<string, Map<Cli, Set<string>>>();
 const linkResults = new Map<Cli, { n: CaseResult; y: CaseResult; eof: CaseResult }>();
 
 const FIXTURE_DIR =
@@ -48,6 +51,9 @@ function record(cli: Cli, result: CaseResult, scenario: string): void {
       unknown.push(`${cli}/${scenario}: ${r.header}`);
       continue;
     }
+    const byCli = askedIn.get(id) ?? new Map<Cli, Set<string>>();
+    byCli.set(cli, (byCli.get(cli) ?? new Set<string>()).add(scenario));
+    askedIn.set(id, byCli);
     const prior = seen.get(id)?.get(cli);
     if (prior !== undefined)
       assert.deepEqual(r.options, prior.options, `${cli}/${id} options differ across scenarios`);
@@ -123,14 +129,31 @@ function cancelMap(id: string): Record<string, string> {
   return out;
 }
 
+/** The option list the shell offered (the same for every setup that asks); a catalogue row keeps its `@catalogue:<dir>` name. */
+function observedOptions(r: Row): readonly string[] {
+  const lists = [...(seen.get(r.id)?.values() ?? [])].map((s) => s.options);
+  const first = lists[0] ?? [];
+  for (const l of lists) assert.deepEqual(l, first, `${r.id}: the setups offer different options`);
+  const dir = /^@catalogue:(.*)$/.exec(r.options[0] ?? "")?.[1];
+  return dir !== undefined && JSON.stringify(first) === JSON.stringify(catalogue(dir))
+    ? r.options
+    : first;
+}
+
+const askedMap = (id: string): Record<string, string[]> =>
+  Object.fromEntries(
+    [...(askedIn.get(id) ?? [])].sort().map(([c, names]) => [c, [...names].sort()]),
+  );
+
 function table(): string {
   const rows = [
     ...R12.map((r) => ({
       id: r.id,
       header: Object.fromEntries([...(seen.get(r.id) ?? [])].sort().map(([c, s]) => [c, s.header])),
-      options: r.options,
+      options: observedOptions(r),
       clis: [...(seen.get(r.id)?.keys() ?? [])].sort(),
       condition: r.when,
+      askedIn: askedMap(r.id),
       cancel: cancelMap(r.id),
     })),
     {
@@ -184,6 +207,18 @@ describe("setup prompt inventory (shell oracle)", skip === undefined ? {} : { sk
         );
         if (r.id.startsWith("validation.") === false)
           assert.notEqual(classes.get(`${cli}/${r.id}`), "default");
+      }
+    });
+  }
+
+  for (const r of R12) {
+    test(`${r.id}: asked when its condition holds, not asked when it is false`, () => {
+      for (const cli of r.clis) {
+        const where = askedIn.get(r.id)?.get(cli) ?? new Set<string>();
+        for (const name of ASKED[r.id] ?? [])
+          assert.ok(where.has(name), `${cli}/${r.id} must be asked in ${name} (${r.when})`);
+        for (const name of NOT[r.id] ?? [])
+          assert.ok(!where.has(name), `${cli}/${r.id} must not be asked in ${name} (${r.when})`);
       }
     });
   }

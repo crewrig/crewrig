@@ -1,11 +1,10 @@
 // setup-prompt-inventory-r12.ts — the R12 table of spec 0256 as data (plan v2 step A8): per prompt id the
 // options (the first is the default), the setups that ask it, the cancel class and the condition. The
-// shell is the oracle; a row whose `expectedMismatch` is set records where the shell differs from R12.
+// shell is the oracle, and the inventory test asserts the observed list of each row against this table.
 import { CLIS } from "./setup-golden-types.ts";
 import type { Cli } from "./setup-golden-types.ts";
 
 export type Cancel = "abort" | "decline" | "default";
-type Seen = { header: string; options: readonly string[]; scenario: string };
 
 export interface Row {
   readonly id: string;
@@ -14,8 +13,6 @@ export interface Row {
   readonly clis: readonly Cli[];
   readonly cancel: Cancel | Partial<Record<Cli, Cancel>>;
   readonly when: string;
-  /** Set when the shell differs from R12: what the shell does. The test pins the SHELL. */
-  readonly expectedMismatch?: string;
 }
 const ALL = CLIS;
 const row = (
@@ -82,17 +79,15 @@ export const R12: readonly Row[] = [
     "decline",
     "rules not kept and the catalogue is not empty",
   ),
-  {
-    ...row(
-      "profile-method",
-      ["keep-local", "overwrite"],
-      ["claude", "gemini", "antigravity"],
-      "abort",
-      "the local profile target differs (a non-regular target: a file there is a context file that the keep-or-refresh step removes first)",
-    ),
-    // EXPECTED MISMATCH with R12 ("all four"): the Copilot shell installs its profile unconditionally.
-    expectedMismatch: "setup-copilot-interactive.sh:145 installs the profile with no question",
-  },
+  // Deviation from R12 ("all four", spec delta-02): the Copilot shell installs its profile unconditionally
+  // (setup-copilot-interactive.sh:145), so it never asks.
+  row(
+    "profile-method",
+    ["keep-local", "overwrite"],
+    ["claude", "gemini", "antigravity"],
+    "abort",
+    "the local profile target differs (a non-regular target: a file there is a context file that the keep-or-refresh step removes first)",
+  ),
   row("overlay.community", ["no", "yes"], ALL, "abort", "dist/community is built"),
   row("overlay.org", ["no", "yes"], ALL, "abort", "dist/org is built"),
   row(

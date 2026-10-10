@@ -25,7 +25,12 @@ export interface TreeEntry {
   readonly kind: "file" | "symlink" | "dir" | "removed";
   /** Files only: `0600`, `0644`, `0755`... (the permission bits, octal). */
   readonly mode?: string;
-  /** Text files: sha256 of the placeholdered, LF-normalised content; binary files: of the bytes. */
+  /**
+   * Text files: sha256 of the placeholdered, LF-normalised content; binary files: of the bytes. A
+   * file under `<HOME>` that is a verbatim copy of a file of the sandbox repository records
+   * `repo:<repo-relative path>` instead (the oracle pins the setup's behaviour, not the text of
+   * the rules, catalogue entries or hooks it installs).
+   */
   readonly sha256?: string;
   /** Symlinks only: `link -> <target placeholdered>`. */
   readonly target?: string;
@@ -141,6 +146,31 @@ export function snapshot(roots: Roots): Snapshot {
   return out;
 }
 
+const EMPTY_SHA = sha("");
+
+/**
+ * Home files that are a verbatim copy of a repository file record `repo:<path>` (the
+ * lexicographically first repository path of that content); generated or merged content keeps its
+ * hash. Empty files are never a copy: every empty repository file would match.
+ */
+function referenceCopies(after: Snapshot): Map<string, TreeEntry> {
+  const firstPath = new Map<string, string>();
+  for (const entry of after.values()) {
+    if (entry.kind !== "file" || entry.sha256 === undefined || entry.sha256 === EMPTY_SHA) continue;
+    if (!entry.path.startsWith("<REPO>/")) continue;
+    const rel = entry.path.slice("<REPO>/".length);
+    const known = firstPath.get(entry.sha256);
+    if (known === undefined || rel < known) firstPath.set(entry.sha256, rel);
+  }
+  const out = new Map<string, TreeEntry>();
+  for (const [file, entry] of after) {
+    const copy = entry.sha256 === undefined ? undefined : firstPath.get(entry.sha256);
+    if (!entry.path.startsWith("<HOME>/") || copy === undefined) continue;
+    out.set(file, { ...entry, sha256: `repo:${copy}` });
+  }
+  return out;
+}
+
 const sameEntry = (a: TreeEntry, b: TreeEntry): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 const byPath = (a: TreeEntry, b: TreeEntry): number =>
@@ -154,9 +184,10 @@ const byPath = (a: TreeEntry, b: TreeEntry): number =>
 export function treeOf(roots: Roots, before: Snapshot = new Map()): TreeEntry[] {
   const after = snapshot(roots);
   const tree: TreeEntry[] = [];
+  const copies = referenceCopies(after);
   for (const [file, entry] of after) {
     const prior = before.get(file);
-    if (prior === undefined || !sameEntry(prior, entry)) tree.push(entry);
+    if (prior === undefined || !sameEntry(prior, entry)) tree.push(copies.get(file) ?? entry);
   }
   for (const [file, entry] of before) {
     if (!after.has(file)) tree.push({ path: entry.path, kind: "removed" });

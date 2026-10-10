@@ -12,6 +12,7 @@ const MODULES = [
   "./setup-golden-cases-spec-b.ts",
   "./setup-golden-cases-pins-a.ts",
   "./setup-golden-cases-pins-b.ts",
+  "./setup-golden-cases-prereq.ts",
 ] as const;
 
 const load = createRequire(import.meta.url);

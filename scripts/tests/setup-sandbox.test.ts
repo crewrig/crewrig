@@ -98,3 +98,48 @@ test("real-home guard passes when nothing changed and reports a change", () => {
     },
   );
 });
+
+test("the real-home guard sees every location a setup writes, listing usage and server by name", () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "guard-extra-"));
+  temps.push(home);
+  const put = (rel: string, text = "x"): void => {
+    fs.mkdirSync(path.dirname(path.join(home, rel)), { recursive: true });
+    fs.writeFileSync(path.join(home, rel), text);
+  };
+  put(".crewrig/usage/journal/live.log");
+  fs.mkdirSync(path.join(home, ".mempalace/server/key1"), { recursive: true });
+  const guard = realHomeGuard(home);
+  guard.assertUnchanged();
+  put(".crewrig/usage/journal/live.log", "churn");
+  guard.assertUnchanged();
+  const effects = [
+    ".gemini/00_SOUL.md",
+    ".gemini/config/mcp_config.json",
+    ".gemini/agents/a.md",
+    ".copilot/skills/s/SKILL.md",
+    ".crewrig/hooks/h.sh",
+    ".crewrig/service-lib/l.sh",
+    ".crewrig/mcp-daemon-launcher.sh",
+    ".crewrig/usage/new-entry",
+    ".config/systemd/user/mempalace-chroma-server.service",
+    "Library/LaunchAgents/io.crewrig.test.plist",
+    ".mempalace/server/key2/token",
+  ];
+  for (const rel of effects) {
+    put(rel);
+    assert.throws(
+      () => guard.assertUnchanged(),
+      (e: unknown) =>
+        e instanceof Error && e.message.includes(path.join(home, rel.split("/token")[0] ?? rel)),
+      rel,
+    );
+    fs.rmSync(path.join(home, rel.startsWith(".mempalace") ? ".mempalace/server/key2" : rel), {
+      recursive: true,
+      force: true,
+    });
+    guard.assertUnchanged();
+  }
+  put("Library/LaunchAgents/com.other.plist");
+  put(".config/systemd/user/unrelated.service");
+  guard.assertUnchanged();
+});
