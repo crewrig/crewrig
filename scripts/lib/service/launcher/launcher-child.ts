@@ -18,8 +18,9 @@
 //     signals every process of the unit at once): an unasked child end is therefore
 //     judged after a short grace (`stopGraceMs`, default 250 ms), and a stop request
 //     that arrives within it still counts as requested, so the end is status 0;
-//   - this process never outlives the child (it exits in the child's exit
-//     handler, nowhere else);
+//   - this process never outlives the child by more than that grace (it exits in
+//     the child's exit handler, or in the grace timer that handler arms, nowhere
+//     else);
 //   - a requested stop ends the child, escalating to SIGKILL after a bounded
 //     wait, then exits 0 (a clean stop under Restart=always and KeepAlive);
 //   - `endNonzeroOnChildExit` false (the unflagged trust wrapper) exits with
