@@ -1345,7 +1345,13 @@ taskfile_cmd() {
     }
     inblk && /^[[:space:]]*cmds:[[:space:]]*$/ { inlist = 1; skipping = 0; next }
     inblk && inlist && /^    [A-Za-z]/ { exit }
-    inblk && inlist && /^[[:space:]]*-[[:space:]]+[|>][-+]?[[:space:]]*$/ { skipping = 1; next }
+    inblk && inlist && skipping {
+      match($0, /^[[:space:]]*/)
+      if (RLENGTH == ind && $0 ~ /^[[:space:]]*-[[:space:]]+/) { skipping = 0 } else next
+    }
+    inblk && inlist && /^[[:space:]]*-[[:space:]]+[|>][-+]?[[:space:]]*$/ {
+      match($0, /^[[:space:]]*/); ind = RLENGTH; skipping = 1; next
+    }
     inblk && inlist && /^[[:space:]]*-[[:space:]]+/ {
       skipping = 0
       sub(/^[[:space:]]*-[[:space:]]+/, "")
