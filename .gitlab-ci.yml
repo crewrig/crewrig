@@ -52,6 +52,10 @@ component-drift:
         - ".gemini/skills/**"
         - ".github/skills/**"
         - ".gemini/commands/**"
+        - ".agents/agents/**"
+        - ".claude/agents/**"
+        - ".gemini/agents/**"
+        - ".github/agents/**"
         - "crewrig.config.toml"
     paths:
       - .ci-cache/
@@ -59,8 +63,8 @@ component-drift:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
     - "node scripts/build-components.ts --target all --check"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,package.json,package-lock.json,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,package.json,package-lock.json,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/test-build-components.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,package.json,package-lock.json,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,package.json,package-lock.json,scripts/test-build-components.sh,scripts/tests/test-model-resolution.sh,scripts/tests/test-agent-profile-migration.sh,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/test-build-components.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -83,6 +87,10 @@ component-drift:
         - ".gemini/skills/**"
         - ".github/skills/**"
         - ".gemini/commands/**"
+        - ".agents/agents/**"
+        - ".claude/agents/**"
+        - ".gemini/agents/**"
+        - ".github/agents/**"
         - "crewrig.config.toml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
@@ -105,6 +113,10 @@ component-drift:
         - ".gemini/skills/**"
         - ".github/skills/**"
         - ".gemini/commands/**"
+        - ".agents/agents/**"
+        - ".claude/agents/**"
+        - ".gemini/agents/**"
+        - ".github/agents/**"
         - "crewrig.config.toml"
 
 model-resolution:
@@ -594,6 +606,7 @@ extension-render:
         - "scripts/lib/component-overlay.ts"
         - "scripts/lib/component-install.ts"
         - "scripts/lib/antigravity-migrate.ts"
+        - "scripts/lib/render-command.sh"
         - "scripts/lib/extension-legacy-shape.json"
         - "scripts/migrate-extension.sh"
         - "scripts/migrate-extension.ts"
@@ -651,6 +664,7 @@ extension-render:
         - "scripts/lib/component-overlay.ts"
         - "scripts/lib/component-install.ts"
         - "scripts/lib/antigravity-migrate.ts"
+        - "scripts/lib/render-command.sh"
         - "scripts/lib/extension-legacy-shape.json"
         - "scripts/migrate-extension.sh"
         - "scripts/migrate-extension.ts"
@@ -674,12 +688,14 @@ extension-provenance:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-provenance.sh"
+        - "scripts/lib/provenance-carrier.sh"
         - "scripts/tests/test-check-extension-provenance.sh"
         - "extensions/**"
         - "artifacts/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-provenance.sh"
+        - "scripts/lib/provenance-carrier.sh"
         - "scripts/tests/test-check-extension-provenance.sh"
         - "extensions/**"
         - "artifacts/**"
@@ -700,6 +716,9 @@ extension-manifest:
         - "scripts/check-extension-manifest-version.sh"
         - "scripts/check-extension-version-bump.sh"
         - "scripts/lib/base-ref-resolve.sh"
+        - "scripts/lib/extension-manifest.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/lib/extension-hooks.sh"
         - "scripts/tests/test-check-extension-manifest-version.sh"
         - "scripts/tests/test-check-extension-version-bump.sh"
         - "extensions/**"
@@ -709,6 +728,9 @@ extension-manifest:
         - "scripts/check-extension-manifest-version.sh"
         - "scripts/check-extension-version-bump.sh"
         - "scripts/lib/base-ref-resolve.sh"
+        - "scripts/lib/extension-manifest.sh"
+        - "scripts/lib/common.sh"
+        - "scripts/lib/extension-hooks.sh"
         - "scripts/tests/test-check-extension-manifest-version.sh"
         - "scripts/tests/test-check-extension-version-bump.sh"
         - "extensions/**"
@@ -859,7 +881,6 @@ core-paths:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
     - chmod +x /usr/local/bin/yq
   script:
-    - "bash scripts/check-core-paths.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-sync-from-upstream.sh"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts"
@@ -1119,6 +1140,9 @@ test-wiring:
         - "scripts/lib/worktree-claim/**"
         - "scripts/lib/hook-*.ts"
         - "ci/test-wiring-exemptions.txt"
+        - ".github/workflows/*.yml"
+        - ".github/workflows/*.yaml"
+        - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-test-wiring.sh"
@@ -1134,6 +1158,9 @@ test-wiring:
         - "scripts/lib/worktree-claim/**"
         - "scripts/lib/hook-*.ts"
         - "ci/test-wiring-exemptions.txt"
+        - ".github/workflows/*.yml"
+        - ".github/workflows/*.yaml"
+        - "ci/ci-capabilities.yml"
 
 chroma-mcp:
   image: python:3.12
@@ -1300,7 +1327,6 @@ setup:
 misc:
   image: python:3.12
   script:
-    - "bash scripts/check-no-machine-paths.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh"
     - "bash scripts/check-gemini-overlay-enrollment.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-gemini-overlay-enrollment.sh"
@@ -1324,6 +1350,8 @@ misc:
         - "scripts/check-spec-id-reserved.sh"
         - "scripts/lib/base-ref-resolve.sh"
         - "model-mappings/**"
+        - "scripts/setup-gemini-interactive.sh"
+        - "config/gemini/settings.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-no-machine-paths.sh"
@@ -1339,6 +1367,21 @@ misc:
         - "scripts/check-spec-id-reserved.sh"
         - "scripts/lib/base-ref-resolve.sh"
         - "model-mappings/**"
+        - "scripts/setup-gemini-interactive.sh"
+        - "config/gemini/settings.json"
+
+repository-scan:
+  image: python:3.12
+  before_script:
+    - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+    - apt-get install -y --no-install-recommends nodejs
+  script:
+    - "bash scripts/check-no-machine-paths.sh"
+    - "bash scripts/check-markdown-links.sh"
+    - "bash scripts/check-core-paths.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 frontmatter:
   image: node:24
@@ -1408,12 +1451,14 @@ check-model-mappings:
         - "model-mappings/**"
         - "docs/model-mapping-format.md"
         - "scripts/check-model-mappings.sh"
+        - "scripts/lib/model-resolve.sh"
         - "scripts/tests/test-check-model-mappings.sh"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "model-mappings/**"
         - "docs/model-mapping-format.md"
         - "scripts/check-model-mappings.sh"
+        - "scripts/lib/model-resolve.sh"
         - "scripts/tests/test-check-model-mappings.sh"
 
 check-agent-profiles:
@@ -1485,7 +1530,6 @@ check-claude-agent-layout:
 markdown-links:
   image: python:3.12
   script:
-    - "bash scripts/check-markdown-links.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-markdown-links.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
@@ -1985,6 +2029,7 @@ audit:
         - "**/mcp.json"
         - "**/mcp.json.template"
         - "**/extension.json"
+        - "package-lock.json"
 
 usage-record-schema:
   image: node:22
