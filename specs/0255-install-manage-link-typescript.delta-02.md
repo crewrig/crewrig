@@ -1,7 +1,7 @@
 ---
 id: "0255"
 slug: install-manage-link-typescript
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1334
