@@ -387,3 +387,35 @@ test("replacement: a daemon relaunched during the eviction is judged on a fresh 
     false,
   );
 });
+
+test("a configuration that cannot be backed up aborts the switch before any assistant changes", async () => {
+  const fx = fixture();
+  try {
+    const files = [
+      path.join(fx.home, ".claude.json"),
+      path.join(fx.home, ".gemini", "settings.json"),
+      path.join(fx.home, ".copilot", "mcp-config.json"),
+      path.join(fx.home, ".gemini", "config", "mcp_config.json"),
+    ];
+    const before = files.map((f) => readFileSync(f, "utf8"));
+    let calls = 0;
+    const code = await runSwitch(
+      options(fx, {
+        backup: () => (++calls === 2 ? null : "/dev/null.bak"),
+        backend,
+        installDaemon: async () => ({ ok: true, lines: [] }),
+        replaceProcess: async () => true,
+        runStatus: () => 0,
+      }),
+    );
+    assert.equal(code, 1);
+    assert.deepEqual(
+      files.map((f) => readFileSync(f, "utf8")),
+      before,
+    );
+    assert.ok(fx.out.some((l) => l.includes("could not back up")));
+    assert.ok(fx.out.some((l) => l.includes("No assistant has been changed.")));
+  } finally {
+    rmSync(fx.home, { recursive: true, force: true });
+  }
+});
