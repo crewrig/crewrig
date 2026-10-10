@@ -1,5 +1,5 @@
 // setup-golden-run.ts — run one golden case in a fresh sandbox and capture its observable result
-// (spec 0256 requirement 7, plan v2 step A5). The shell setups only ever run through
+// (spec 0256 requirement 7, plan v2 step A5). The setups only ever run through
 // `createSetupSandbox(...).run(...)`: HOME and USERPROFILE point into the sandbox, PATH is the
 // sandbox `bin` (stubs first, then the real tools a case names).
 
@@ -42,14 +42,26 @@ export interface CaseResult {
   readonly curlRecords: readonly CurlRecord[];
 }
 
+/** The method each probe path is made with: the two requests the shell's stub `curl` stood for. */
+const PROBE_METHODS: Readonly<Record<string, string>> = { "/healthz": "GET", "/mcp": "POST" };
+
 /**
  * The requests the daemon stand-in received, as the `curl` records the shell stub wrote for the
  * same probe: the URL with the stand-in's real port shown as the fixtures' one, the bearer as
  * `<TOKEN>` (any real bearer), `<PLACEHOLDER>` or empty; a readiness poll that repeats the same
- * request keeps one record (as the shell side does).
+ * request keeps one record (as the shell side does). The shell's records carry no method, so the
+ * method is checked here instead of compared: the path implies it (`GET /healthz`, `POST /mcp`, the
+ * only two probes the stub `curl` stood for) and a request with another method or path throws
+ * (finding review/1335 i1-F22), instead of mapping onto a record that hides the difference.
  */
 export function probeRecords(requests: readonly DaemonRequest[], port: McpPortMap): CurlRecord[] {
   const bearers = { none: "", placeholder: "<PLACEHOLDER>", real: "<TOKEN>" } as const;
+  for (const r of requests) {
+    if (PROBE_METHODS[r.path] !== r.method)
+      throw new Error(
+        `unexpected daemon probe ${r.method} ${r.path} (expected GET /healthz or POST /mcp)`,
+      );
+  }
   return requests
     .map((r) => ({
       url: `http://${r.host.replace(`:${port.actual}`, `:${port.shown}`)}${r.path}`,
@@ -97,14 +109,14 @@ function exposeTools(bin: string, names: readonly string[]): void {
 const UNUSED_ANSWER_WARNING = /^Warning: --answer given for a question that was not asked: .*\n?/gm;
 
 /**
- * Run the case on `leg` and return the normalised observable result. The TypeScript leg gets the
+ * Run the case on `leg` and return the normalised observable result. Both legs run the TypeScript
+ * entry (`shell` through the forwarding shim `scripts/<entry>.sh`, `ts` directly) and get the
  * translated `--answer` arguments (setup-golden-answers.ts); the translation answers every question
  * the setup can ask, so a run that stops early reports the unused answers on stderr: that one warning
  * is dropped (tag (f), the `--answer` flag is new) and the setup runs ONCE, so its daemon probes and
  * its time are those of one run.
  */
 export function runCase(c: GoldenCase, leg: Leg, mcpPort?: McpPortMap): CaseResult {
-  if (leg !== "ts") return runOnce(c, leg, [], mcpPort);
   const only = runOnce(c, leg, translateAnswers(c), mcpPort);
   return { ...only, stderr: only.stderr.replace(UNUSED_ANSWER_WARNING, "") };
 }
@@ -134,7 +146,7 @@ function runOnce(
       ...(c.stdin === undefined ? {} : { stdin: c.stdin }),
       // The TypeScript service layer runs `/usr/bin/systemctl` (not the PATH stub) unless this test seam names
       // the stub directory: a runner with a real systemd would otherwise be driven for real.
-      env: { ...c.env, ...(leg === "ts" ? { CREWRIG_TEST_SERVICE_BIN_DIR: sb.bin } : {}) },
+      env: { ...c.env, CREWRIG_TEST_SERVICE_BIN_DIR: sb.bin },
     });
     const roots: Roots = {
       root: sb.root,
@@ -187,11 +199,10 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
   const base = baseStubs(c.cli);
   const stubs = { ...base, ...c.stubs, fzf: { ...base.fzf, ...c.stubs?.fzf } };
   const beat = await startChromaHeartbeat();
-  // The TypeScript leg probes the daemon over real HTTP: a loopback stand-in takes the stub
-  // `curl`'s decisions and records what it was asked (setup-golden-daemon.ts); the records
-  // replace the stub's `curl` records of the result, so the probe is compared, not exempted.
-  const daemon =
-    leg === "ts" ? await startGoldenDaemon({ probe: stubs.probe ?? 0, port: "0" }) : undefined;
+  // Both legs run the TypeScript entry, which probes the daemon over real HTTP: a loopback stand-in
+  // takes the stub `curl`'s decisions and records what it was asked (setup-golden-daemon.ts); the
+  // records replace the stub's `curl` records of the result, so the probe is compared, not exempted.
+  const daemon = await startGoldenDaemon({ probe: stubs.probe ?? 0, port: "0" });
   const shown = c.env?.["MEMPALACE_MCP_PORT"] ?? DEFAULT_MCP_PORT;
   try {
     const result = runCase(
@@ -202,7 +213,7 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
         env: {
           MEMPALACE_CHROMA_PORT: String(beat.port),
           ...c.env,
-          ...(daemon === undefined ? {} : { MEMPALACE_MCP_PORT: String(daemon.port) }),
+          MEMPALACE_MCP_PORT: String(daemon.port),
         },
         seed: (sb) => {
           if (stubs.mempalaceMissing !== true) seedMempalaceVenv(sb);
@@ -210,13 +221,12 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
         },
       },
       leg,
-      daemon === undefined ? undefined : { actual: String(daemon.port), shown },
+      { actual: String(daemon.port), shown },
     );
-    if (daemon === undefined) return result;
     const mapped = { actual: String(daemon.port), shown };
     return { ...result, curlRecords: probeRecords(await daemon.requests(), mapped) };
   } finally {
     beat.stop();
-    daemon?.stop();
+    daemon.stop();
   }
 }

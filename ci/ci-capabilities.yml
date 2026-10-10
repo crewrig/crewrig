@@ -1641,6 +1641,15 @@ capabilities:
           - "artifacts/library/skills/harness-report/**"
           - "config/copilot/*.json.template"
           - "scripts/manage-antigravity-component.ts"
+          - "scripts/setup-*-interactive.ts"
+          - "scripts/tests/setup-retarget-*.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+          - "scripts/tests/fixtures/setup-declarations/**"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -1666,6 +1675,15 @@ capabilities:
           - "artifacts/library/skills/harness-report/**"
           - "config/copilot/*.json.template"
           - "scripts/manage-antigravity-component.ts"
+          - "scripts/setup-*-interactive.ts"
+          - "scripts/tests/setup-retarget-*.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+          - "scripts/tests/fixtures/setup-declarations/**"
     portability: portable
     changeset-gated: true
     requires:
@@ -1699,6 +1717,15 @@ capabilities:
         - "artifacts/library/skills/harness-report/**"
         - "config/copilot/*.json.template"
         - "scripts/ci-cache-guard.sh"
+        - "scripts/setup-*-interactive.ts"
+        - "scripts/tests/setup-retarget-*.test.ts"
+        - "scripts/tests/lib/setup-*.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/lib/hermetic-env.ts"
+        - "scripts/tests/lib/real-home-guard.ts"
+        - "scripts/tests/lib/print-setup-declarations.ts"
+        - "scripts/tests/fixtures/setup-golden/**"
+        - "scripts/tests/fixtures/setup-declarations/**"
       env: []
     command:
       # test-antigravity-component-install.sh runs manage-antigravity-component.sh in a
@@ -1933,6 +1960,16 @@ capabilities:
           - "scripts/setup-*.sh"
           - "scripts/lib/**"
           - "mcp-servers.org.json"
+          - "scripts/setup-*-interactive.ts"
+          - "scripts/tests/setup-retarget-*.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+          - "scripts/tests/fixtures/setup-declarations/**"
+          - "scripts/tests/setup-flow-fixtures.ts"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -1941,6 +1978,16 @@ capabilities:
           - "scripts/setup-*.sh"
           - "scripts/lib/**"
           - "mcp-servers.org.json"
+          - "scripts/setup-*-interactive.ts"
+          - "scripts/tests/setup-retarget-*.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+          - "scripts/tests/fixtures/setup-declarations/**"
+          - "scripts/tests/setup-flow-fixtures.ts"
     portability: portable
     changeset-gated: true
     requires:
@@ -2085,6 +2132,15 @@ capabilities:
           - "scripts/manage-copilot-component.ts"
           - "scripts/manage-antigravity-component.ts"
           - "scripts/manage-workspace-component.ts"
+          - "scripts/setup-*-interactive.ts"
+          - "scripts/tests/setup-retarget-*.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+          - "scripts/tests/fixtures/setup-declarations/**"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -2104,6 +2160,15 @@ capabilities:
           - "scripts/manage-copilot-component.ts"
           - "scripts/manage-antigravity-component.ts"
           - "scripts/manage-workspace-component.ts"
+          - "scripts/setup-*-interactive.ts"
+          - "scripts/tests/setup-retarget-*.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+          - "scripts/tests/fixtures/setup-declarations/**"
     portability: portable
     changeset-gated: true
     requires:
@@ -3118,6 +3183,16 @@ capabilities:
           - "docs/cli-matrix.md"
           - "package.json"
           - "package-lock.json"
+          - "scripts/setup-*-interactive.ts"
+          - "scripts/tests/setup-retarget-*.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+          - "scripts/tests/fixtures/setup-declarations/**"
+          - "scripts/lib/**"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -3158,6 +3233,16 @@ capabilities:
           - "docs/cli-matrix.md"
           - "package.json"
           - "package-lock.json"
+          - "scripts/setup-*-interactive.ts"
+          - "scripts/tests/setup-retarget-*.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/lib/hermetic-env.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+          - "scripts/tests/fixtures/setup-declarations/**"
+          - "scripts/lib/**"
     portability: portable
     requires:
       runtime: node@24
