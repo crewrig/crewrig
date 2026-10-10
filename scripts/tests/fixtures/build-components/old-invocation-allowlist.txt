@@ -48,6 +48,17 @@ docs/cli-matrix.md
 # allowlisted for the same reason and its prompt is the instruction the agent receives.
 tests/e2e/scenarios/03-skill-build/sample-skill.prompt
 
+# Spec 0255 R5/R6 (row F2): the TypeScript twins of the shell resolution and manage scripts
+# reproduce, byte for byte, the hints and the report the shell prints ("run bash
+# scripts/build-components.sh first"); the shim stays until row J4, so the hint stays true.
+scripts/lib/component-overlay.ts
+scripts/lib/component-roots.ts
+scripts/lib/manage/confirm.ts
+scripts/lib/manage/descriptors.ts
+
+# Spec 0255 R5: the unit test that pins the byte-for-byte hint of component-roots.ts.
+scripts/tests/component-roots.test.ts
+
 # A recorded Copilot CLI integration-test log: it documents the commands as they were run and
 # is history, not an instruction.
 tests/copilot-cli-integration.md
