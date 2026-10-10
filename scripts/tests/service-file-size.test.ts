@@ -17,12 +17,26 @@ const PATTERNS = [
   "scripts/tests/mempalace-pin.test.ts",
   "scripts/tests/mcp-launcher-lifecycle.test.ts",
   "scripts/tests/lib/supervisor-stand-in.ts",
+  "scripts/tests/switch-*.test.ts",
+  "scripts/tests/doctor-sections*.test.ts",
+  "scripts/tests/status-mcp-lifecycle*.test.ts",
+  "scripts/tests/repair-*.test.ts",
+  "scripts/tests/chroma-*.test.ts",
+  "scripts/tests/stop-mcp-server-oracle.test.ts",
+  "scripts/tests/uninstall-mcp-daemon-oracle.test.ts",
+  "scripts/tests/lib/switch-fixture.ts",
+  "scripts/tests/lib/doctor-fixture.ts",
+  "scripts/tests/lib/status-mcp-fixture.ts",
+  "scripts/tests/lib/uninstall-oracle-fixture.ts",
+  "scripts/tests/lib/chroma-stand-in.ts",
+  "scripts/tests/lib/fake-schtasks.ts",
+  "scripts/tests/lib/windows-service-fixture.ts",
 ];
 
 const files = [...new Set(PATTERNS.flatMap((p) => globSync(p, { cwd: ROOT })))].sort();
 
 test("the glob finds the files of the ticket", () => {
-  assert.ok(files.length >= 20, `only ${files.length} files matched`);
+  assert.ok(files.length >= 60, `only ${files.length} files matched`);
   assert.ok(files.includes("scripts/lib/service/program-install.ts"));
 });
 
