@@ -71,7 +71,7 @@ for (const leg of LEGS) {
           res.stderr,
           /: 1: Usage: install-antigravity-extension\.sh <extension-name>\n$/,
         );
-      else assert.match(res.stderr, /Usage: install-antigravity-extension <extension-name>/);
+      else assert.match(res.stderr, /Usage: install-antigravity-extension\.sh <extension-name>/);
       assert.deepEqual(cliCalls(sb, "agy"), []);
     });
 

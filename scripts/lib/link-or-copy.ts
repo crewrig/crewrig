@@ -35,13 +35,18 @@ function realOrAncestor(p: string): string {
 
 function isSameOrWithin(inner: string, outer: string): boolean {
   const rel = path.relative(outer, inner);
-  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+  const escapes = rel === ".." || rel.startsWith(`..${path.sep}`);
+  return rel === "" || (!escapes && !path.isAbsolute(rel));
 }
 
 /** Resolve the source and refuse a destination that is the source or lies inside it (R16). */
 function resolveSource(source: string, dest: string): string {
   const src = resolveReal(source);
-  if (isSameOrWithin(realOrAncestor(dest), src)) {
+  // The destination's own entry is replaced, never followed: a link already at `dest` (even one that
+  // points at the source) is the entry being swapped, so only its parent is resolved.
+  const absDest = path.resolve(dest);
+  const physical = joinPath(realOrAncestor(path.dirname(absDest)), path.basename(absDest));
+  if (isSameOrWithin(physical, src)) {
     throw new Error(`refusing to place '${dest}' inside its source '${source}'`);
   }
   return src;

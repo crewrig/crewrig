@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "default": {
+      "command": "node",
+      "args": [
+        "<HOME>/.gemini/config/plugins/hello-world/dist/index.js"
+      ]
+    }
+  }
+}

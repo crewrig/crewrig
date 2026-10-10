@@ -120,6 +120,30 @@ describe("placeComponent details", () => {
     assert.deepEqual(sb.out, []);
   });
 
+  test("a rethrown refusal leaves the old destination intact (R14)", () => {
+    for (const state of Object.keys(states)) {
+      const sb = sandbox();
+      const dest = path.join(sb.destDir, "skill");
+      states[state]?.(dest, sb);
+      const before = fs.lstatSync(dest, { throwIfNoEntry: false });
+      const eacces = {
+        platform: "linux",
+        symlinkImpl: () => {
+          throw Object.assign(new Error("EACCES"), { code: "EACCES" });
+        },
+      };
+      assert.throws(() => placeComponent(sb.src, sb.destDir, "link", ctxOf(sb, eacces)), /EACCES/);
+      const after = fs.lstatSync(dest, { throwIfNoEntry: false });
+      assert.equal(after?.isSymbolicLink(), before?.isSymbolicLink(), state);
+      assert.equal(after?.isDirectory(), before?.isDirectory(), state);
+      assert.equal(after === undefined, before === undefined, state);
+      if (state === "directory")
+        assert.equal(fs.readFileSync(path.join(dest, "old.txt"), "utf8"), "old");
+      if (state === "file") assert.equal(fs.readFileSync(dest, "utf8"), "old");
+      assert.deepEqual(fs.readdirSync(sb.destDir), before === undefined ? [] : ["skill"], state);
+    }
+  });
+
   test("one notice per process names every fallback destination; none without a fallback", () => {
     const sb = sandbox();
     const second = path.join(sb.root, "src", "other");

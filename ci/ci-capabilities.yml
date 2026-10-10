@@ -493,7 +493,7 @@ capabilities:
   # twins) and `jq` by the shell functions they call; both retire with the shell libraries
   # (row J4). Those suites skip on Windows, so this job runs on Linux only.
   - id: install-ts
-    name: "Run the TypeScript link-or-copy, component twin and manage module suites"
+    name: "Run the TypeScript link-or-copy, component twin, manage and install module suites"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -536,6 +536,29 @@ capabilities:
           - "scripts/tests/manage-place.test.ts"
           - "scripts/tests/print-manage-declarations.test.ts"
           - "scripts/tests/tree-copy-dereferenced.test.ts"
+          - "scripts/install-antigravity-extension.ts"
+          - "scripts/install-claude-plugin.ts"
+          - "scripts/install-copilot-plugin.ts"
+          - "scripts/install-extension-all.ts"
+          - "scripts/install-extension.ts"
+          - "scripts/install-workspace.ts"
+          - "scripts/manage-antigravity-component.ts"
+          - "scripts/manage-claude-component.ts"
+          - "scripts/manage-copilot-component.ts"
+          - "scripts/manage-workspace-component.ts"
+          - "scripts/link-extensions.ts"
+          - "scripts/unlink-component.ts"
+          - "scripts/unlink-extensions.ts"
+          - "scripts/lib/install/**"
+          - "scripts/tests/manage-entry.test.ts"
+          - "scripts/tests/marketplace.test.ts"
+          - "scripts/tests/antigravity-tokens.test.ts"
+          - "scripts/tests/install-all.test.ts"
+          - "scripts/tests/install-entry-form.test.ts"
+          - "scripts/tests/install-file-size.test.ts"
+          - "scripts/tests/install-extension-reentrancy.test.ts"
+          - "scripts/tests/install-differential.test.ts"
+          - "scripts/tests/lib/install-sandbox.ts"
     portability: portable
     requires:
       runtime: node@24
@@ -543,7 +566,24 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts scripts/tests/manage-entry.test.ts scripts/tests/marketplace.test.ts scripts/tests/antigravity-tokens.test.ts scripts/tests/install-all.test.ts scripts/tests/install-entry-form.test.ts scripts/tests/install-file-size.test.ts scripts/tests/install-extension-reentrancy.test.ts scripts/tests/install-differential.test.ts
+
+  # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24
+  # release. No `paths:` filter, like extension-builders-ts-node-24-0: any shared-module change can
+  # reintroduce a type-stripping warning. The production install comes first, as the suite runs entries.
+  - id: install-ts-node-24-0
+    name: "Install, manage and link entries are silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-entry-form.test.ts
 
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then
@@ -573,6 +613,35 @@ capabilities:
         images, and .gitlab-ci.yml declares no runner `tags:` that could
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0254 R23).
+
+
+  # Spec 0255 R28 (parent R17): the install, manage and link entries from a non-POSIX interpreter.
+  # The production dependencies are installed first, the floor guard runs, then
+  # scripts/tests/lib/windows-install-proof.ts runs the thirteen entries against a sandbox
+  # HOME/USERPROFILE from pwsh (and cmd.exe for the unlink and link entries) with stub CLIs, checks
+  # the placed files, the stdout lines, the statuses, the absence of any carriage return, the link
+  # mode and its forced-refusal fallback, prints the elapsed time of each step and the rename-retry
+  # measurement. No timing budget and no `paths:` filter, like the Windows jobs above.
+  - id: windows-install-entries
+    name: "Windows install, manage and link entries: production install, floor guard and the cross-system proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-install-entries`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0255 R28).
 
   - id: extension-render
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"

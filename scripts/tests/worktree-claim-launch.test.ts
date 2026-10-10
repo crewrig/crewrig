@@ -194,6 +194,61 @@ describe("what is started (R22)", () => {
     }
   });
 
+  test("allowSpaces quotes a path argument holding spaces; absent, the argument is refused", () => {
+    const argv = [
+      "claude",
+      "marketplace",
+      "add",
+      "C:\\Users\\John Doe\\.claude\\local-marketplace",
+    ];
+    const files = ["C:\\tools\\claude.cmd"];
+    assert.equal(plan(argv, files).result.kind, "refused");
+    const fs = filesystem(files);
+    const run = planWindowsLaunch(argv, {
+      platform: "win32",
+      env: env(),
+      toplevel: TOP,
+      isFile: fs.isFile,
+      allowSpaces: true,
+    });
+    assert.deepEqual(run, {
+      kind: "spawn",
+      file: "C:\\Windows\\System32\\cmd.exe",
+      args: [
+        "/d",
+        "/s",
+        "/c",
+        '""C:\\tools\\claude.cmd" marketplace add "C:\\Users\\John Doe\\.claude\\local-marketplace""',
+      ],
+      verbatim: true,
+    });
+  });
+
+  test("allowSpaces still refuses cmd.exe syntax, quotes, newlines, empty and a trailing backslash", () => {
+    for (const argument of [
+      "C:\\a b&c",
+      "C:\\a b|c",
+      "C:\\a b<c",
+      "C:\\a b>c",
+      "C:\\a b^c",
+      "C:\\a b%PATH%",
+      "C:\\a b!x!",
+      'C:\\a "b"',
+      "C:\\a b\nc",
+      "C:\\a b\\",
+      "",
+    ]) {
+      const result = planWindowsLaunch(["npm", argument], {
+        platform: "win32",
+        env: env(),
+        toplevel: TOP,
+        isFile: filesystem(["C:\\tools\\npm.cmd"]).isFile,
+        allowSpaces: true,
+      });
+      assert.equal(result.kind, "refused", JSON.stringify(argument));
+    }
+  });
+
   test("a .cmd whose own path holds a cmd.exe metacharacter is refused", () => {
     const run = plan(["x"], ["C:\\a&b\\x.cmd"], { PATH: "C:\\a&b" });
     assert.equal(run.result.kind, "refused");
