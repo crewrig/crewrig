@@ -1,0 +1,24 @@
+# extracted from scripts/manage-antigravity-component.sh at origin/release/1231-ts-migration before the switch (spec 0255 PR E)
+types-echo: antigravity-skills, policies, mcp-servers
+types-echo: antigravity-skills, policies, mcp-servers
+alias: antigravity-skill -> antigravity-skills
+alias: policy -> policies
+alias: mcp-server -> mcp-servers
+staging-root: .agents/skills
+artifact-root: policies
+artifact-root: mcp-servers
+prompt: true
+mode-default: true
+link-warning: WARNING: Symlink mode — the installed component is a link into this
+link-warning:          repository, so a branch switch changes it in place.
+link-warning:          For antigravity-skills the link target is the regenerable
+link-warning:          staging tree dist/<tier>/, which a rebuild replaces wholesale:
+link-warning:          an edit to the authoring source under artifacts/ takes effect
+link-warning:          only after 'bash scripts/build-components.sh' has run.
+link-warning: Only use if you trust all branches in this repository.
+home: .gemini/antigravity-cli
+marker: AGY_CUSTOMIZATION_ROOT="${HOME}/.gemini/config"
+marker: DEST="$AGY_CUSTOMIZATION_ROOT/skills"
+marker: DEST="$ANTIGRAVITY_HOME/rules"
+marker: config_file="$ANTIGRAVITY_HOME/settings.json"
+marker: migrate_antigravity_superseded_components

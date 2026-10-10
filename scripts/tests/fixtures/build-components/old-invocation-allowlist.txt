@@ -14,11 +14,7 @@ scripts/lib/common.sh
 scripts/lib/component-resolve.sh
 
 # The shim header names these as the callers that stay on the shim until their own row:
-# the setup and manage scripts, whose hints tell the user to run the build first.
-scripts/manage-antigravity-component.sh
-scripts/manage-claude-component.sh
-scripts/manage-copilot-component.sh
-scripts/manage-workspace-component.sh
+# the setup scripts, whose hints tell the user to run the build first.
 scripts/setup-claude-interactive.sh
 scripts/setup-copilot-interactive.sh
 scripts/setup-gemini-interactive.sh
@@ -62,3 +58,11 @@ scripts/tests/component-roots.test.ts
 # A recorded Copilot CLI integration-test log: it documents the commands as they were run and
 # is history, not an instruction.
 tests/copilot-cli-integration.md
+
+# Spec 0255 PR E: the manage scripts became shims of scripts/manage-*-component.ts; the golden
+# facts below keep the link-mode warning text the shell printed ("run bash
+# scripts/build-components.sh first"), which the TypeScript descriptors reproduce byte for byte.
+scripts/tests/fixtures/manage-shell-facts/antigravity.facts.golden
+scripts/tests/fixtures/manage-shell-facts/claude.facts.golden
+scripts/tests/fixtures/manage-shell-facts/copilot.facts.golden
+scripts/tests/fixtures/manage-shell-facts/workspace.facts.golden

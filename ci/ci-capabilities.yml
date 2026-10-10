@@ -564,17 +564,19 @@ capabilities:
           - "scripts/tests/install-entry-form.test.ts"
           - "scripts/tests/install-file-size.test.ts"
           - "scripts/tests/install-extension-reentrancy.test.ts"
-          - "scripts/tests/install-differential.test.ts"
           - "scripts/tests/lib/install-sandbox.ts"
           - "scripts/tests/lib/build-fixture-tree.ts"
           - "scripts/tests/lib/oracle-taskfile-mutants.ts"
-          - "scripts/tests/install-differential-extensions.test.ts"
+          - "scripts/tests/install-shim.test.ts"
+          - "scripts/tests/install-ci-wiring.test.ts"
+          - "scripts/tests/install-references.test.ts"
+          - "scripts/tests/fixtures/install/**"
+          - "scripts/tests/fixtures/manage-shell-facts/**"
           - "scripts/tests/install-golden.test.ts"
           - "scripts/tests/install-write-mode.test.ts"
           - "scripts/tests/windows-install-entries.test.ts"
           - "scripts/tests/lib/windows-proof-support.ts"
           - "scripts/tests/lib/windows-install-proof.ts"
-          - "scripts/tests/lib/install-differential.ts"
           - "scripts/tests/lib/install-golden-*.ts"
           - "scripts/tests/fixtures/install-golden/**"
     portability: portable
@@ -584,7 +586,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/install-oracle-mutation.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts scripts/tests/manage-entry.test.ts scripts/tests/marketplace.test.ts scripts/tests/antigravity-tokens.test.ts scripts/tests/install-all.test.ts scripts/tests/install-entry-form.test.ts scripts/tests/install-file-size.test.ts scripts/tests/install-extension-reentrancy.test.ts scripts/tests/install-differential.test.ts scripts/tests/worktree-claim-launch.test.ts scripts/tests/install-differential-extensions.test.ts scripts/tests/install-golden.test.ts scripts/tests/install-write-mode.test.ts scripts/tests/windows-install-entries.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/install-oracle-mutation.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts scripts/tests/manage-entry.test.ts scripts/tests/marketplace.test.ts scripts/tests/antigravity-tokens.test.ts scripts/tests/install-all.test.ts scripts/tests/install-entry-form.test.ts scripts/tests/install-file-size.test.ts scripts/tests/install-extension-reentrancy.test.ts scripts/tests/worktree-claim-launch.test.ts scripts/tests/install-golden.test.ts scripts/tests/install-shim.test.ts scripts/tests/install-ci-wiring.test.ts scripts/tests/install-references.test.ts scripts/tests/install-write-mode.test.ts scripts/tests/windows-install-entries.test.ts
 
   # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24
   # release. No `paths:` filter, like extension-builders-ts-node-24-0: any shared-module change can
@@ -705,6 +707,15 @@ capabilities:
           - "scripts/probe-extension-mcp-token.sh"
           - "scripts/tests/test-extension-mcp-manifest.sh"
           - "scripts/install-antigravity-extension.sh"
+          - "scripts/install-extension.ts"
+          - "scripts/install-antigravity-extension.ts"
+          - "scripts/lib/link-or-copy*.ts"
+          - "scripts/lib/manage/**"
+          - "scripts/lib/install/**"
+          - "scripts/lib/component-roots.ts"
+          - "scripts/lib/component-overlay.ts"
+          - "scripts/lib/component-install.ts"
+          - "scripts/lib/antigravity-migrate.ts"
           - "scripts/lib/extension-legacy-shape.json"
           - "scripts/migrate-extension.sh"
           - "scripts/migrate-extension.ts"
@@ -754,6 +765,15 @@ capabilities:
           - "scripts/probe-extension-mcp-token.sh"
           - "scripts/tests/test-extension-mcp-manifest.sh"
           - "scripts/install-antigravity-extension.sh"
+          - "scripts/install-extension.ts"
+          - "scripts/install-antigravity-extension.ts"
+          - "scripts/lib/link-or-copy*.ts"
+          - "scripts/lib/manage/**"
+          - "scripts/lib/install/**"
+          - "scripts/lib/component-roots.ts"
+          - "scripts/lib/component-overlay.ts"
+          - "scripts/lib/component-install.ts"
+          - "scripts/lib/antigravity-migrate.ts"
           - "scripts/lib/extension-legacy-shape.json"
           - "scripts/migrate-extension.sh"
           - "scripts/migrate-extension.ts"
@@ -884,6 +904,26 @@ capabilities:
           - "scripts/link-extensions.sh"
           - "scripts/unlink-extensions.sh"
           - "scripts/unlink-component.sh"
+          - "scripts/install-extension-all.ts"
+          - "scripts/install-extension.ts"
+          - "scripts/install-claude-plugin.ts"
+          - "scripts/install-copilot-plugin.ts"
+          - "scripts/install-antigravity-extension.ts"
+          - "scripts/install-workspace.ts"
+          - "scripts/manage-claude-component.ts"
+          - "scripts/manage-copilot-component.ts"
+          - "scripts/manage-antigravity-component.ts"
+          - "scripts/manage-workspace-component.ts"
+          - "scripts/link-extensions.ts"
+          - "scripts/unlink-extensions.ts"
+          - "scripts/unlink-component.ts"
+          - "scripts/lib/link-or-copy*.ts"
+          - "scripts/lib/manage/**"
+          - "scripts/lib/install/**"
+          - "scripts/lib/component-roots.ts"
+          - "scripts/lib/component-overlay.ts"
+          - "scripts/lib/component-install.ts"
+          - "scripts/lib/antigravity-migrate.ts"
           - "scripts/lib/component-resolve.sh"
           - "scripts/lib/extension-install.sh"
           - "extensions/**"
@@ -926,6 +966,26 @@ capabilities:
           - "scripts/link-extensions.sh"
           - "scripts/unlink-extensions.sh"
           - "scripts/unlink-component.sh"
+          - "scripts/install-extension-all.ts"
+          - "scripts/install-extension.ts"
+          - "scripts/install-claude-plugin.ts"
+          - "scripts/install-copilot-plugin.ts"
+          - "scripts/install-antigravity-extension.ts"
+          - "scripts/install-workspace.ts"
+          - "scripts/manage-claude-component.ts"
+          - "scripts/manage-copilot-component.ts"
+          - "scripts/manage-antigravity-component.ts"
+          - "scripts/manage-workspace-component.ts"
+          - "scripts/link-extensions.ts"
+          - "scripts/unlink-extensions.ts"
+          - "scripts/unlink-component.ts"
+          - "scripts/lib/link-or-copy*.ts"
+          - "scripts/lib/manage/**"
+          - "scripts/lib/install/**"
+          - "scripts/lib/component-roots.ts"
+          - "scripts/lib/component-overlay.ts"
+          - "scripts/lib/component-install.ts"
+          - "scripts/lib/antigravity-migrate.ts"
           - "scripts/lib/component-resolve.sh"
           - "scripts/lib/extension-install.sh"
           - "extensions/**"
@@ -1119,6 +1179,7 @@ capabilities:
           - "artifacts/library/skills/mempalace/**"
           - "artifacts/library/skills/harness-report/**"
           - "config/copilot/*.json.template"
+          - "scripts/manage-antigravity-component.ts"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -1143,6 +1204,7 @@ capabilities:
           - "artifacts/library/skills/mempalace/**"
           - "artifacts/library/skills/harness-report/**"
           - "config/copilot/*.json.template"
+          - "scripts/manage-antigravity-component.ts"
     portability: portable
     changeset-gated: true
     requires:
@@ -1496,6 +1558,11 @@ capabilities:
           - "scripts/lib/**"
           - "scripts/tests/lib/print-manage-declarations.ts"
           - "artifacts/**"
+          - "scripts/install-workspace.ts"
+          - "scripts/manage-claude-component.ts"
+          - "scripts/manage-copilot-component.ts"
+          - "scripts/manage-antigravity-component.ts"
+          - "scripts/manage-workspace-component.ts"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -1510,6 +1577,11 @@ capabilities:
           - "scripts/lib/**"
           - "scripts/tests/lib/print-manage-declarations.ts"
           - "artifacts/**"
+          - "scripts/install-workspace.ts"
+          - "scripts/manage-claude-component.ts"
+          - "scripts/manage-copilot-component.ts"
+          - "scripts/manage-antigravity-component.ts"
+          - "scripts/manage-workspace-component.ts"
     portability: portable
     changeset-gated: true
     requires:

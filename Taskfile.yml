@@ -153,31 +153,45 @@ tasks:
 
   install-workspace:
     desc: Install all artifacts components (copy mode)
-    cmd: bash {{.REPO_DIR}}/scripts/install-workspace.sh install
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-workspace.ts install
 
   link-workspace:
     desc: Link all artifacts components (symlink mode, for development)
-    cmd: bash {{.REPO_DIR}}/scripts/install-workspace.sh link
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-workspace.ts link
 
   install-component:
     desc: "Install a single component (task install-component TYPE=skills NAME=my-skill)"
-    cmd: bash {{.REPO_DIR}}/scripts/manage-workspace-component.sh install {{.TYPE}} {{.NAME}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-workspace-component.ts install {{.TYPE}} {{.NAME}}
 
   link-component:
     desc: "Link a single component (task link-component TYPE=skills NAME=my-skill)"
-    cmd: bash {{.REPO_DIR}}/scripts/manage-workspace-component.sh link {{.TYPE}} {{.NAME}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-workspace-component.ts link {{.TYPE}} {{.NAME}}
 
   unlink-component:
     desc: "Remove a component from ~/.gemini (task unlink-component TYPE=skills NAME=my-skill)"
-    cmd: bash {{.REPO_DIR}}/scripts/unlink-component.sh {{.TYPE}} {{.NAME}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/unlink-component.ts {{.TYPE}} {{.NAME}}
 
   install-copilot-component:
     desc: "Install a Copilot component (task install-copilot-component TYPE=skills NAME=my-skill)"
-    cmd: bash {{.REPO_DIR}}/scripts/manage-copilot-component.sh install {{.TYPE}} {{.NAME}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-copilot-component.ts install {{.TYPE}} {{.NAME}}
 
   link-copilot-component:
     desc: "Link a Copilot component (task link-copilot-component TYPE=skills NAME=my-skill)"
-    cmd: bash {{.REPO_DIR}}/scripts/manage-copilot-component.sh link {{.TYPE}} {{.NAME}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-copilot-component.ts link {{.TYPE}} {{.NAME}}
 
   install-deps:
     desc: Install npm dependencies for all extensions
@@ -187,55 +201,75 @@ tasks:
 
   install-extension-all:
     desc: "Install a single extension across all present CLIs (task install-extension-all EXT=hello-world)"
-    cmd: bash {{.REPO_DIR}}/scripts/install-extension-all.sh {{.EXT}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-extension-all.ts {{.EXT}}
 
   # --- Gemini CLI extension tasks ---
 
   install-gemini-extensions:
     desc: Install all extensions to Gemini CLI (copy mode)
-    cmd: bash {{.REPO_DIR}}/scripts/install-extension.sh install
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-extension.ts install
 
   install-gemini-extension:
     desc: "Install a single extension to Gemini CLI (task install-gemini-extension EXT=hello-world)"
-    cmd: bash {{.REPO_DIR}}/scripts/install-extension.sh install {{.EXT}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-extension.ts install {{.EXT}}
 
   link-gemini-extensions:
     desc: "Debugging path (not an install path): symlink every extension's rendered build directory into Gemini CLI"
-    cmd: bash {{.REPO_DIR}}/scripts/link-extensions.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/link-extensions.ts
 
   link-gemini-extension-build:
     desc: "Debugging path (not an install path): symlink one extension's rendered build directory into Gemini CLI (task link-gemini-extension-build EXT=hello-world)"
-    cmd: bash {{.REPO_DIR}}/scripts/install-extension.sh link {{.EXT}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-extension.ts link {{.EXT}}
 
   unlink-gemini-extensions:
     desc: Remove all installed extensions from Gemini CLI
-    cmd: bash {{.REPO_DIR}}/scripts/unlink-extensions.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/unlink-extensions.ts
 
   # --- Legacy extension task aliases (deprecated) ---
 
   install-extensions:
     desc: "Deprecated: Install all extensions to Gemini CLI (use install-gemini-extensions)"
-    cmd: |
-      echo "[DEPRECATION] 'task install-extensions' is deprecated. Use 'task install-gemini-extensions' instead." >&2
-      bash {{.REPO_DIR}}/scripts/install-extension.sh install
+    cmds:
+      - |
+        echo "[DEPRECATION] 'task install-extensions' is deprecated. Use 'task install-gemini-extensions' instead." >&2
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-extension.ts install
 
   install-extension:
     desc: "Deprecated: Install a single extension to Gemini CLI (use install-gemini-extension or install-extension-all)"
-    cmd: |
-      echo "[DEPRECATION] 'task install-extension' is deprecated. Use 'task install-gemini-extension EXT={{.EXT}}' (Gemini only) or 'task install-extension-all EXT={{.EXT}}' (all CLIs)." >&2
-      bash {{.REPO_DIR}}/scripts/install-extension.sh install {{.EXT}}
+    cmds:
+      - |
+        echo "[DEPRECATION] 'task install-extension' is deprecated. Use 'task install-gemini-extension EXT={{.EXT}}' (Gemini only) or 'task install-extension-all EXT={{.EXT}}' (all CLIs)." >&2
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-extension.ts install {{.EXT}}
 
   link-extensions:
     desc: "Deprecated: Link all extensions to Gemini CLI (use link-gemini-extensions)"
-    cmd: |
-      echo "[DEPRECATION] 'task link-extensions' is deprecated. Use 'task link-gemini-extensions' instead." >&2
-      bash {{.REPO_DIR}}/scripts/link-extensions.sh
+    cmds:
+      - |
+        echo "[DEPRECATION] 'task link-extensions' is deprecated. Use 'task link-gemini-extensions' instead." >&2
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/link-extensions.ts
 
   unlink-extensions:
     desc: "Deprecated: Remove all installed extensions from Gemini CLI (use unlink-gemini-extensions)"
-    cmd: |
-      echo "[DEPRECATION] 'task unlink-extensions' is deprecated. Use 'task unlink-gemini-extensions' instead." >&2
-      bash {{.REPO_DIR}}/scripts/unlink-extensions.sh
+    cmds:
+      - |
+        echo "[DEPRECATION] 'task unlink-extensions' is deprecated. Use 'task unlink-gemini-extensions' instead." >&2
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/unlink-extensions.ts
 
   package:
     desc: Package all extensions to dist/
@@ -288,19 +322,27 @@ tasks:
 
   install-claude-workspace:
     desc: Install all artifacts Claude Code components (copy mode)
-    cmd: bash {{.REPO_DIR}}/scripts/manage-claude-component.sh install claude-skills
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-claude-component.ts install claude-skills
 
   link-claude-workspace:
     desc: Link all artifacts Claude Code components (symlink mode — dev only)
-    cmd: bash {{.REPO_DIR}}/scripts/manage-claude-component.sh link claude-skills
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-claude-component.ts link claude-skills
 
   install-claude-component:
     desc: "Install a single Claude Code component (task install-claude-component TYPE=claude-skills NAME=my-skill)"
-    cmd: bash {{.REPO_DIR}}/scripts/manage-claude-component.sh install {{.TYPE}} {{.NAME}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-claude-component.ts install {{.TYPE}} {{.NAME}}
 
   link-claude-component:
     desc: "Link a single Claude Code component (task link-claude-component TYPE=claude-skills NAME=my-skill)"
-    cmd: bash {{.REPO_DIR}}/scripts/manage-claude-component.sh link {{.TYPE}} {{.NAME}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-claude-component.ts link {{.TYPE}} {{.NAME}}
 
   build-claude-plugin:
     desc: "Build a Claude Code plugin from an extension (task build-claude-plugin EXT=hello-world)"
@@ -310,15 +352,21 @@ tasks:
 
   install-claude-plugin:
     desc: "Install a Claude Code plugin (task install-claude-plugin EXT=hello-world)"
-    cmd: bash {{.REPO_DIR}}/scripts/install-claude-plugin.sh {{.EXT}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-claude-plugin.ts {{.EXT}}
 
   install-antigravity-component:
     desc: "Install a single Antigravity CLI component (task install-antigravity-component TYPE=antigravity-skills NAME=my-skill)"
-    cmd: bash {{.REPO_DIR}}/scripts/manage-antigravity-component.sh install {{.TYPE}} {{.NAME}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-antigravity-component.ts install {{.TYPE}} {{.NAME}}
 
   link-antigravity-component:
     desc: "Link a single Antigravity CLI component (task link-antigravity-component TYPE=antigravity-skills NAME=my-skill)"
-    cmd: bash {{.REPO_DIR}}/scripts/manage-antigravity-component.sh link {{.TYPE}} {{.NAME}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/manage-antigravity-component.ts link {{.TYPE}} {{.NAME}}
 
   build-antigravity-extension:
     desc: "Build an Antigravity CLI plugin from an extension (task build-antigravity-extension EXT=hello-world)"
@@ -328,7 +376,9 @@ tasks:
 
   install-antigravity-extension:
     desc: "Build and install an Antigravity CLI plugin from an extension (requires agy in PATH; task install-antigravity-extension EXT=hello-world)"
-    cmd: bash {{.REPO_DIR}}/scripts/install-antigravity-extension.sh {{.EXT}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-antigravity-extension.ts {{.EXT}}
 
   build-copilot-plugin:
     desc: "Build a Copilot CLI plugin from an extension (task build-copilot-plugin EXT=hello-world)"
@@ -339,7 +389,8 @@ tasks:
   install-copilot-plugin:
     desc: "Build and install a Copilot CLI plugin from an extension (requires copilot in PATH; task install-copilot-plugin EXT=hello-world)"
     cmds:
-      - bash {{.REPO_DIR}}/scripts/install-copilot-plugin.sh {{.EXT}}
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/install-copilot-plugin.ts {{.EXT}}
 
   # --- GitHub Copilot CLI tasks ---
 

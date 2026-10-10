@@ -1,0 +1,23 @@
+# extracted from scripts/manage-copilot-component.sh at origin/release/1231-ts-migration before the switch (spec 0255 PR E)
+types-echo: skills, commands, mcp-servers
+types-echo: skills, commands, mcp-servers
+alias: skill -> skills
+alias: agent -> agents
+alias: command -> commands
+alias: mcp-server -> mcp-servers
+staging-root: .github/skills
+artifact-root: mcp-servers
+prompt: true
+mode-default: true
+link-warning: WARNING: Symlink mode — the installed component is a link into this
+link-warning:          repository, so a branch switch changes it in place.
+link-warning:          For skills the link target is the regenerable staging tree
+link-warning:          dist/<tier>/, which a rebuild replaces wholesale: an edit to
+link-warning:          the authoring source under artifacts/ takes effect only after
+link-warning:          'bash scripts/build-components.sh' has run.
+link-warning: Only use if you trust all branches in this repository.
+home: .copilot
+marker: DEST="$COPILOT_HOME/skills"
+marker: skills|commands)
+marker: agents)
+marker: config_file="$COPILOT_HOME/mcp-config.json"

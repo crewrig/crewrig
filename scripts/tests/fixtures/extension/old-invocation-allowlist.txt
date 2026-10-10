@@ -18,10 +18,6 @@ scripts/migrate-extension.sh
 scripts/check-extension-manifest-version.sh
 scripts/check-extension-pivot.sh
 scripts/create-extension.sh
-scripts/install-antigravity-extension.sh
-scripts/install-claude-plugin.sh
-scripts/install-copilot-plugin.sh
-scripts/install-extension.sh
 scripts/release-package-extension.sh
 
 # Bash tests that have not migrated: each deliberately drives the shim or the shell oracle.

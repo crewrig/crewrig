@@ -225,8 +225,9 @@ exists; a follow-up ticket owns it.
 Until then, use one of the install paths already documented for any
 fork — see [Extension authoring](extension-authoring.md) → *Delivery
 paths*: download the release's archive and extract it locally, or run
-`bash scripts/install-extension.sh install <name>` from a checkout of the
-fork.
+`node scripts/lib/node-floor-guard.js`, then
+`node scripts/install-extension.ts install <name>` (Node.js 24 floor), from a
+checkout of the fork.
 
 ## Known limitation — a cross-project issue reference two or more groups deep gets no link
 

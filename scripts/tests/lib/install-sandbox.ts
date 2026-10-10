@@ -3,8 +3,9 @@
 // HOME/USERPROFILE and a PATH of ONE directory holding stub CLIs and coreutils; no jq, no Python.
 // API: createInstallSandbox, stubCli, cliCalls (recorded argv), runEntry (one leg), runLegs (every
 // existing leg), listTree (sorted relative paths, `/` after directories, ` -> target` on links).
-// IMPL is the only switch between legs (`shell`: `bash scripts/<name>.sh`, `node`: `node
-// scripts/<name>.ts`); `runLegs` skips a leg whose file is absent (the TypeScript leg appears alone).
+// IMPL is the only switch between legs (`shell`: `bash scripts/<name>.sh`, now a fail-closed shim
+// forwarding to the TypeScript entry; `node`: `node scripts/<name>.ts` directly). Both are real user
+// paths, so both stay; `runLegs` skips a leg whose file is absent.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";

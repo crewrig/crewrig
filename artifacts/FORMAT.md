@@ -404,7 +404,7 @@ components are maintained. This is by design (spec 0030) and enforced by
 The placeholder/build-strip model above applies to `artifacts/` components,
 which are *built* into per-CLI outputs. A skill or agent shipped inside an
 **extension** (`extensions/core`, `extensions/library`) is different: it is
-consumed **in place** — `install-extension.sh` does `ln -s` / `cp -rf` of the
+consumed **in place** — `install-extension.sh` (a forwarding shim to `scripts/install-extension.ts`) does `ln -s` / `cp -rf` of the
 whole extension dir, and `scripts/build-claude-plugin.ts` does a recursive copy of the skill dir
 — so every CLI reads the same `SKILL.md` / `AGENT.md` source bytes with **no
 render seam** to strip a frontmatter block. Two consequences follow (spec 0043):

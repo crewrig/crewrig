@@ -1,12 +1,13 @@
 // install-golden-cases.ts — the inputs and the observation of the install golden (spec 0255 R27,
 // PR C step 17). `observe(leg)` runs every case through one leg of the install sandbox and returns
 // the files worth keeping, temporary paths replaced by fixed tokens, keyed by golden name. The
-// regeneration script feeds it the shell leg; the test feeds it the TypeScript leg.
+// regeneration script and the test both feed it the TypeScript entry (leg `node`); the stored bytes
+// were first produced by the real shell (PR C).
 
 import fs from "node:fs";
 import path from "node:path";
 
-import { placeHello } from "./install-differential.ts";
+import { REPO } from "./build-fixture-tree.ts";
 import { createInstallSandbox, runEntry, stubCli } from "./install-sandbox.ts";
 import type { InstallSandbox, Leg } from "./install-sandbox.ts";
 
@@ -21,9 +22,15 @@ const COPY =
   `n=$(sed -n 's/^ *"name": *"\\([^"]*\\)".*/\\1/p' "$3/plugin.json" | head -1)\n` +
   `d="$HOME/.gemini/config/plugins/$n"\nmkdir -p "$d"\ncp -R "$3/." "$d/"\n`;
 
-// The shell leg needs jq, mv and sort; the TypeScript leg (also run on Windows) needs none.
-const box = (): InstallSandbox =>
-  createInstallSandbox({ links: process.platform === "win32" ? [] : ["jq", "mv", "sort"] });
+// The TypeScript entries need no host tool beyond node (they also run on Windows).
+const box = (): InstallSandbox => createInstallSandbox();
+
+/** The real hello-world, copied without `node_modules` under `extensions/<tier>/`. */
+function placeHello(b: InstallSandbox, tier = "core"): void {
+  const from = path.join(REPO, "extensions", "core", "hello-world");
+  const to = b.tree.resolve(`extensions/${tier}/hello-world`);
+  fs.cpSync(from, to, { recursive: true, filter: (e) => path.basename(e) !== "node_modules" });
+}
 
 /** The text of a file with the sandbox paths replaced; a missing file reads `<absent>`. */
 function read(b: InstallSandbox, file: string): string {

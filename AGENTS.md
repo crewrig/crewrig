@@ -262,7 +262,7 @@ See [`docs/cli-matrix-maintenance.md`](docs/cli-matrix-maintenance.md) for the f
 
 **Summary:** Any PR touching `.claude/**`, `.gemini/**`, `artifacts/**`, `extensions/**`,
 `hooks/*-transcript-hooks.json`, `config/claude/**`, `config/gemini/**`,
-`scripts/build-components.sh`, `scripts/build-components.ts`, `scripts/lib/build-components/**`, any `scripts/{build,install,setup,import,manage}-*.sh`,
+`scripts/build-components.sh`, `scripts/build-components.ts`, `scripts/lib/build-components/**`, any `scripts/{build,install,setup,import,manage}-*.{sh,ts}`, `scripts/lib/{link-or-copy*.ts,manage/**,install/**}`,
 `.github/workflows/claude.yml` or `.github/workflows/gemini.yml`,
 `CLAUDE.md`, `GEMINI.md`, or CLI-prefixed `Taskfile.yml` entries MUST consult and update
 `docs/cli-matrix.md` in the same diff.

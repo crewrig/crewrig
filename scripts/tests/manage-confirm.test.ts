@@ -1,5 +1,6 @@
 // manage-confirm.test.ts — tests of scripts/lib/manage/confirm.ts, the twin of the link-mode
 // WARNING block and `read -p "Continue? [y/N] " -n 1 -r` of the manage-* scripts (spec 0255 R12).
+// The warning text is compared with the goldens of the shell facts (the scripts are shims since PR E).
 
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -16,7 +17,7 @@ import {
   type PromptStdin,
 } from "../lib/manage/confirm.ts";
 
-const SCRIPTS = path.resolve(import.meta.dirname, "..");
+const FACTS = path.resolve(import.meta.dirname, "fixtures", "manage-shell-facts");
 
 class FakeStdin extends EventEmitter implements PromptStdin {
   isTTY: boolean;
@@ -67,10 +68,9 @@ describe("linkWarningLines", () => {
   };
   for (const [cli, script] of Object.entries(SCRIPT) as [LinkWarningCli, string][]) {
     test(`${cli} block equals the echo lines of ${script}`, () => {
-      const source = fs.readFileSync(path.join(SCRIPTS, script), "utf8").split("\n");
-      const shell = source
-        .map((l) => /^ {2}echo "((?:WARNING|Only| {9})[^"]*)"$/.exec(l)?.[1])
-        .filter((l): l is string => l !== undefined);
+      const golden = fs.readFileSync(path.join(FACTS, `${cli}.facts.golden`), "utf8").split("\n");
+      const shell = golden.filter((l) => l.startsWith("link-warning: ")).map((l) => l.slice(14));
+      assert.ok(shell.length > 0, "no link-warning fact in the golden");
       assert.deepEqual(linkWarningLines(cli), shell);
     });
   }

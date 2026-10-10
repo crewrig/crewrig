@@ -1,5 +1,17 @@
 #!/bin/bash
-# install-workspace.sh — Install (or link) every artifacts component type for
+# install-workspace.sh — forwarding shim (spec 0255 R25). The entry is
+# scripts/install-workspace.ts; this file remains so every caller that still runs
+# `bash scripts/install-workspace.sh` (the Taskfile, the CI wiring, the Bash tests and the other scripts)
+# reaches the TypeScript version.
+#
+# It runs the Node.js floor guard (scripts/lib/node-floor-guard.js), then the TypeScript entry
+# with every argument and its standard input, and returns the entry's exit status, standard
+# output and standard error unchanged. It fails closed: with `node` absent it writes one
+# `Error:` line and exits 1; below the floor it exits with the floor guard's status and
+# diagnostic, and the entry is not run, so the filesystem is left unmodified. The `Usage:`
+# lines are printed by the TypeScript entry.
+#
+# Original description: Install (or link) every artifacts component type for
 # Gemini CLI in one run.
 #
 # Every type runs, whatever any other type does. Before spec 0119 the loop body
@@ -11,27 +23,13 @@
 # later types, failing R9 through `task install-workspace` and
 # `task link-workspace`, which R19 binds.
 
-set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-MODE="${1:-install}"
-
-echo "Installing artifacts components (mode: $MODE)..."
-
-FAILED=""
-for TYPE in commands skills hooks agents policies mcp-servers themes; do
-  # `if !` keeps errexit out of the loop: the status is collected, never fatal.
-  if ! bash "$REPO_DIR/scripts/manage-workspace-component.sh" "$MODE" "$TYPE"; then
-    FAILED="$FAILED $TYPE"
-  fi
-done
-
-if [ -n "$FAILED" ]; then
-  echo "" >&2
-  echo "Artifacts installation finished with failures in:$FAILED" >&2
-  echo "Every other type was processed; only the types named above did not" >&2
-  echo "complete. Their own reports appear above." >&2
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node was not found on PATH; install-workspace.sh needs Node.js 24 or later (https://nodejs.org/en/download)." >&2
   exit 1
 fi
 
-echo "Artifacts installation complete."
+node "$DIR/lib/node-floor-guard.js" || exit $?
+
+exec node "$DIR/install-workspace.ts" "$@"
