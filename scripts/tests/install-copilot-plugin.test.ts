@@ -52,13 +52,18 @@ for (const leg of LEGS) {
       assert.deepEqual(cliCalls(sb, "copilot"), []);
     });
 
-    it("reports a missing jq and exits 1", () => {
-      const sb = sandbox();
-      const res = run(sb, ["hello-world"]);
-      assert.equal(res.status, 1);
-      assert.equal(res.stdout, "Error: jq is required. Install with: brew install jq\n");
-      assert.equal(res.stderr, "");
-    });
+    // Spec 0255 R22(a): the TypeScript entry drops the `jq` prerequisite, so this is shell-leg only.
+    it(
+      "reports a missing jq and exits 1",
+      { skip: leg !== "shell" && "R22(a): no jq on the TypeScript leg" },
+      () => {
+        const sb = sandbox();
+        const res = run(sb, ["hello-world"]);
+        assert.equal(res.status, 1);
+        assert.equal(res.stdout, "Error: jq is required. Install with: brew install jq\n");
+        assert.equal(res.stderr, "");
+      },
+    );
 
     it("reports a missing copilot and exits 1", { skip: skipFor(leg) }, () => {
       const sb = sandbox({ clis: ["claude", "agy", "gemini"], jq: true });

@@ -207,6 +207,18 @@ describe("install-extension: every extension (no name)", () => {
     assert.equal(run(["install"], { INCLUDE_ORG: "1" }).stdout, copied("beta") + copied("orgy"));
   });
 
+  // The shell tests `[ -n "$INCLUDE_ORG" ]`: any non-empty value opts in, not only "1" ("0" included).
+  for (const value of ["yes", "0"]) {
+    perLeg(`INCLUDE_ORG=${value} (non-empty, not "1") also adds the org tier`, (sb, run) => {
+      ext(sb, "core", "beta");
+      ext(sb, "org", "orgy");
+      assert.equal(
+        run(["install"], { INCLUDE_ORG: value }).stdout,
+        copied("beta") + copied("orgy"),
+      );
+    });
+  }
+
   perLeg("an empty INCLUDE_ORG leaves the org tier out", (sb, run) => {
     ext(sb, "org", "orgy");
     const res = run(["install"], { INCLUDE_ORG: "" });

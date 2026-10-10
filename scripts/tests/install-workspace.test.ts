@@ -1,7 +1,8 @@
 // install-workspace.test.ts — black-box contract of scripts/install-workspace.sh (spec 0255 R26;
 // ticket #1334): the shell leg today, the TypeScript leg as soon as scripts/install-workspace.ts
-// exists. `scripts/manage-workspace-component.sh` is replaced in the sandbox by a stub that records
-// its arguments and fails for the types named in FAIL_TYPES.
+// exists. `scripts/manage-workspace-component.sh` and `.ts` (the TypeScript entry spawns the latter)
+// are both replaced in the sandbox by stubs that record their arguments and fail for the types named
+// in FAIL_TYPES. The `.ts` stub is written at test time into the sandbox only, never tracked.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -28,6 +29,21 @@ sandbox.tree.write(
     "",
   ].join("\n"),
   0o755,
+);
+
+sandbox.tree.write(
+  "scripts/manage-workspace-component.ts",
+  [
+    'import fs from "node:fs";',
+    "const [mode, type] = process.argv.slice(2);",
+    `fs.appendFileSync(${JSON.stringify(log)}, mode + " " + type + "\\n");`,
+    'console.log("ran " + type);',
+    'if ((process.env.FAIL_TYPES ?? "").split(" ").includes(String(type))) {',
+    '  console.error("stub failure in " + type);',
+    "  process.exit(3);",
+    "}",
+    "",
+  ].join("\n"),
 );
 
 const legs = (): Leg[] =>

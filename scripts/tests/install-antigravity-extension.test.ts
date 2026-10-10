@@ -65,16 +65,27 @@ for (const leg of LEGS) {
       const res = run(sb, []);
       assert.equal(res.status, 1);
       assert.equal(res.stdout, "");
-      assert.match(res.stderr, /: 1: Usage: install-antigravity-extension\.sh <extension-name>\n$/);
+      // R22(i): the shell form carries its script path prefix, the TypeScript form does not.
+      if (leg === "shell")
+        assert.match(
+          res.stderr,
+          /: 1: Usage: install-antigravity-extension\.sh <extension-name>\n$/,
+        );
+      else assert.match(res.stderr, /Usage: install-antigravity-extension <extension-name>/);
       assert.deepEqual(cliCalls(sb, "agy"), []);
     });
 
-    it("reports a missing jq and exits 1", () => {
-      const res = run(sandbox(), ["hello-world"]);
-      assert.equal(res.status, 1);
-      assert.equal(res.stdout, "Error: jq is required. Install with: brew install jq\n");
-      assert.equal(res.stderr, "");
-    });
+    // Spec 0255 R22(a): the TypeScript entry drops the `jq` prerequisite, so this is shell-leg only.
+    it(
+      "reports a missing jq and exits 1",
+      { skip: leg !== "shell" && "R22(a): no jq on the TypeScript leg" },
+      () => {
+        const res = run(sandbox(), ["hello-world"]);
+        assert.equal(res.status, 1);
+        assert.equal(res.stdout, "Error: jq is required. Install with: brew install jq\n");
+        assert.equal(res.stderr, "");
+      },
+    );
 
     it("reports a missing agy and exits 1", jq, () => {
       const res = run(sandbox({ clis: ["claude", "copilot", "gemini"], jq: true }), [
