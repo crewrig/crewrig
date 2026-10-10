@@ -10,7 +10,7 @@ integration point. It MUST stay in lockstep with the code.
 **Trigger surface.** A change is CLI-specific when it touches any of:
 `.claude/**`, `.gemini/**`, `artifacts/**`, `extensions/**`,
 `hooks/*-transcript-hooks.json`, `config/claude/**`, `config/gemini/**`,
-`scripts/build-components.sh`, `scripts/build-components.ts`, `scripts/lib/build-components/**`, any `scripts/{build,install,setup,import,manage}-*.sh`,
+`scripts/build-components.sh`, `scripts/build-components.ts`, `scripts/lib/build-components/**`, any `scripts/{build,install,setup,import,manage}-*.{sh,ts}`, `scripts/lib/{link-or-copy*.ts,manage/**,install/**}`,
 `.github/workflows/claude.yml` or `.github/workflows/gemini.yml`,
 the top-level entry-point files (`CLAUDE.md`, `GEMINI.md`), or a
 CLI-prefixed entry in `Taskfile.yml` / `.gitignore`.
@@ -74,7 +74,8 @@ authoritative:
 
 - `scripts/setup-<cli>-interactive.sh`
 - `scripts/import-<cli>-history.sh`
-- `scripts/manage-<cli>-component.sh` (or a new `--target <cli>`
+- `scripts/manage-<cli>-component.sh` and its TypeScript entry
+  `scripts/manage-<cli>-component.ts` (or a new `--target <cli>`
   branch in `scripts/manage-workspace-component.sh` if that script
   already serves multiple CLIs)
 - `scripts/build-components.ts` `--target <cli>` branch (`scripts/build-components.sh` forwards to it)

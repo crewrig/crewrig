@@ -487,13 +487,13 @@ scripts/
 ├── migrate-extension.sh              # Shim: forwards to migrate-extension.ts (converts an extension off the retired declaration shape, spec 0183)
 ├── import-claude-history.sh          # Claude transcript import
 ├── import-gemini-history.sh          # Gemini transcript import
-├── install-claude-plugin.sh          # Claude Code plugin installer
-├── install-extension.sh              # Gemini extension installer
-├── install-extension-all.sh          # Cross-CLI umbrella extension installer
-├── install-workspace.sh              # Bulk Gemini component install
-├── link-extensions.sh                # Symlink extensions for local dev
-├── manage-claude-component.sh        # Claude Code component manager
-├── manage-workspace-component.sh     # Gemini component manager
+├── install-claude-plugin.sh          # Shim: forwards to install-claude-plugin.ts (Claude Code plugin installer)
+├── install-extension.sh              # Shim: forwards to install-extension.ts (Gemini extension installer)
+├── install-extension-all.sh          # Shim: forwards to install-extension-all.ts (cross-CLI umbrella extension installer)
+├── install-workspace.sh              # Shim: forwards to install-workspace.ts (bulk Gemini component install)
+├── link-extensions.sh                # Shim: forwards to link-extensions.ts (symlink extensions for local dev)
+├── manage-claude-component.sh        # Shim: forwards to manage-claude-component.ts (Claude Code component manager)
+├── manage-workspace-component.sh     # Shim: forwards to manage-workspace-component.ts (Gemini component manager)
 ├── monorepo-release.sh               # Monorepo release driver — bumps versions, calls release-package-extension.sh, publishes the release (GitHub: through a release PR, docs/github-release-pr.md)
 ├── release-package-extension.sh      # The ONE place a release artifact's shape is decided: renders, asserts, archives (spec 0183)
 ├── release-pr.ts                     # Opens/updates/closes the GitHub release PR and dispatches its required checks (issue #1379)
@@ -503,8 +503,8 @@ scripts/
 ├── setup-claude-interactive.sh       # Claude Code setup (interactive)
 ├── setup-gemini-interactive.sh       # Gemini CLI setup (interactive)
 ├── test-build-components.sh          # Self-test for build-components.sh
-├── unlink-component.sh               # Remove a component symlink
-├── unlink-extensions.sh              # Remove all extension symlinks
+├── unlink-component.sh               # Shim: forwards to unlink-component.ts (remove a component symlink)
+├── unlink-extensions.sh              # Shim: forwards to unlink-extensions.ts (remove all extension symlinks)
 ├── lib/
 │   └── common.sh                     # Shared Bash helpers (sourced by scripts)
 └── tests/

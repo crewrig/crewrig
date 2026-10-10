@@ -1,7 +1,7 @@
 // install-golden.test.ts — the TypeScript install, manage and link entries reproduce the committed
-// golden bytes (spec 0255 R27, PR C step 17). The golden was written by the shell oracle
-// (scripts/tests/lib/install-golden-regen.ts) and outlives the differential test, which retires
-// in PR E. The suite regenerates nothing and runs only the TypeScript leg.
+// golden bytes (spec 0255 R27, PR C step 17). The golden was first written by the real shell
+// (PR C) and now guards the TypeScript output; scripts/tests/lib/install-golden-regen.ts rewrites
+// it from the TypeScript entry. The suite regenerates nothing and runs only the TypeScript leg.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";

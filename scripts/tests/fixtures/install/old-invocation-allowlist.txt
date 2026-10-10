@@ -1,0 +1,85 @@
+# old-invocation-allowlist.txt — files that may still name a shim script of the install, manage
+# and link entry points (spec 0255 R30, R32). scripts/tests/install-references.test.ts fails on
+# any other tracked or untracked text file that names one of the thirteen shell scripts. The
+# scripts are forwarding shims now: the instruction is `node scripts/<name>.ts` (or the Taskfile).
+#
+# Format: one repo-relative path per line; an entry ending in `/` covers every file below that
+# directory. Every entry carries a reason as the `#` comment line directly above it. An entry
+# that no longer matches a file with a hit, or that appears twice, fails the suite.
+
+# This file: it lists the shim paths it allows.
+scripts/tests/fixtures/install/old-invocation-allowlist.txt
+
+# The thirteen shims themselves: each header and usage text names the invocation it keeps working.
+scripts/install-extension.sh
+scripts/install-extension-all.sh
+scripts/install-claude-plugin.sh
+scripts/install-copilot-plugin.sh
+scripts/install-antigravity-extension.sh
+scripts/install-workspace.sh
+scripts/manage-claude-component.sh
+scripts/manage-copilot-component.sh
+scripts/manage-antigravity-component.sh
+scripts/manage-workspace-component.sh
+scripts/link-extensions.sh
+scripts/unlink-extensions.sh
+scripts/unlink-component.sh
+
+# The shell allowlist and the CI path filters name the shim FILE PATHS (a change to a shim must
+# select the jobs that run it); none runs one. The install-references suite checks separately
+# that no CI configuration or Taskfile line runs a shim through `bash`.
+ci/shell-allowlist.txt
+ci/ci-capabilities.yml
+.gitlab-ci.yml
+.github/workflows/build.yml
+
+# Shell scripts that remain until their own migration row and comment on the shim path.
+scripts/release-package-extension.sh
+scripts/lib/extension-manifest.sh
+
+# Descriptive data in scripts/lib JSON tables: a `_readme` text and per-key evidence citations
+# of the original shell lines (historical references, not instructions).
+scripts/lib/extension-targets.json
+scripts/lib/extension-percli-keys.json
+
+# The TypeScript modules cite the shell script each one twins ("ported from ...") in their header.
+scripts/lib/install/
+
+# Bash tests not yet migrated: each deliberately drives the shims, which is what they test.
+scripts/tests/test-component-tier-resolution.sh
+scripts/tests/test-install-extension-all.sh
+scripts/tests/test-antigravity-component-install.sh
+
+# node:test suites that run the shell oracle leg through the shim or cite the script they twin.
+scripts/tests/install-antigravity-extension.test.ts
+scripts/tests/install-copilot-plugin.test.ts
+scripts/tests/install-extension.test.ts
+scripts/tests/install-sandbox.test.ts
+scripts/tests/install-workspace.test.ts
+scripts/tests/link-extensions.test.ts
+scripts/tests/unlink-component.test.ts
+scripts/tests/unlink-extensions.test.ts
+
+# Dated record of a manual verification (spec 0177 era): it quotes the commands as run then.
+tests/gemini-extension-path-form.md
+
+# Accepted ADRs and specs are historical records of decisions; they are never rewritten.
+docs/adr/
+specs/
+
+# Reference documents that describe the shims as shims ("a shim to <name>.ts", "forwards to it",
+# a path in an architecture drawing); none tells the reader to run one.
+DEVELOPMENT.md
+docs/cli-matrix.md
+docs/cli-matrix-maintenance.md
+docs/extension-authoring.md
+docs/extension-mcp-servers.md
+docs/layers.md
+extension-skeleton/EXTENSION-FORMAT.md
+
+# Golden facts extracted from the four manage shell scripts before the switch (spec 0255 PR E):
+# they quote the shell's own warning and Types lines, which name the scripts' own invocation.
+scripts/tests/fixtures/manage-shell-facts/antigravity.facts.golden
+scripts/tests/fixtures/manage-shell-facts/claude.facts.golden
+scripts/tests/fixtures/manage-shell-facts/copilot.facts.golden
+scripts/tests/fixtures/manage-shell-facts/workspace.facts.golden

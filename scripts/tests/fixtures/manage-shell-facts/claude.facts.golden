@@ -1,0 +1,22 @@
+# extracted from scripts/manage-claude-component.sh at origin/release/1231-ts-migration before the switch (spec 0255 PR E)
+types-echo: claude-skills, policies, mcp-servers
+types-echo: claude-skills, policies, mcp-servers
+alias: claude-skill -> claude-skills
+alias: policy -> policies
+alias: mcp-server -> mcp-servers
+staging-root: .claude/skills
+artifact-root: policies
+artifact-root: mcp-servers
+prompt: true
+mode-default: true
+link-warning: WARNING: Symlink mode — the installed component is a link into this
+link-warning:          repository, so a branch switch changes it in place.
+link-warning:          For claude-skills the link target is the regenerable staging
+link-warning:          tree dist/<tier>/, which a rebuild replaces wholesale: an edit
+link-warning:          to the authoring source under artifacts/ takes effect only
+link-warning:          after 'bash scripts/build-components.sh' has run.
+link-warning: Only use if you trust all branches in this repository.
+home: .claude
+marker: DEST="$CLAUDE_HOME/skills"
+marker: DEST="$CLAUDE_HOME/rules"
+marker: claude mcp add --scope user

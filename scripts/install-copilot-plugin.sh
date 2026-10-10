@@ -1,5 +1,17 @@
 #!/bin/bash
-# install-copilot-plugin.sh — Install a Copilot CLI plugin from an extension
+# install-copilot-plugin.sh — forwarding shim (spec 0255 R25). The entry is
+# scripts/install-copilot-plugin.ts; this file remains so every caller that still runs
+# `bash scripts/install-copilot-plugin.sh` (the Taskfile, the CI wiring, the Bash tests and the other scripts)
+# reaches the TypeScript version.
+#
+# It runs the Node.js floor guard (scripts/lib/node-floor-guard.js), then the TypeScript entry
+# with every argument and its standard input, and returns the entry's exit status, standard
+# output and standard error unchanged. It fails closed: with `node` absent it writes one
+# `Error:` line and exits 1; below the floor it exits with the floor guard's status and
+# diagnostic, and the entry is not run, so the filesystem is left unmodified. The `Usage:`
+# lines are printed by the TypeScript entry.
+#
+# Original description: Install a Copilot CLI plugin from an extension
 #
 # Usage:
 #   bash scripts/install-copilot-plugin.sh <extension-name>
@@ -11,40 +23,13 @@
 #
 # Prerequisites: jq, copilot
 
-set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-command -v jq >/dev/null 2>&1 || { echo "Error: jq is required. Install with: brew install jq"; exit 1; }
-command -v copilot >/dev/null 2>&1 || {
-  echo "Error: 'copilot' CLI is required. Install GitHub Copilot CLI first."; exit 1;
-}
-
-REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-EXT_NAME="${1:?Usage: install-copilot-plugin.sh <extension-name>}"
-
-# Resolve the bare extension name to its SOURCE dir extensions/<tier>/<name>/,
-# searching every tier (first match; hard-error on a duplicate name). The tier
-# is a SOURCE-side concern only; the installed plugin keeps its bare name.
-EXT_DIR=""
-for tier in core library org; do
-  if [ -d "$REPO_DIR/extensions/$tier/$EXT_NAME" ]; then
-    if [ -n "$EXT_DIR" ]; then
-      echo "Error: extension '$EXT_NAME' exists in multiple tiers; names must be unique."
-      exit 1
-    fi
-    EXT_DIR="$REPO_DIR/extensions/$tier/$EXT_NAME"
-  fi
-done
-if [ -z "$EXT_DIR" ]; then
-  echo "Error: Extension '$EXT_NAME' not found in extensions/"
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node was not found on PATH; install-copilot-plugin.sh needs Node.js 24 or later (https://nodejs.org/en/download)." >&2
   exit 1
 fi
 
-# --- Build the plugin into the output directory ---
-OUTPUT_DIR="$REPO_DIR/dist-copilot-plugin/$EXT_NAME"
-bash "$REPO_DIR/scripts/build-copilot-plugin.sh" "$EXT_DIR" "$OUTPUT_DIR"
+node "$DIR/lib/node-floor-guard.js" || exit $?
 
-# --- Install via copilot ---
-copilot plugin install "$OUTPUT_DIR"
-
-echo ""
-echo "Plugin '$EXT_NAME' installed. Run: copilot plugin list"
+exec node "$DIR/install-copilot-plugin.ts" "$@"

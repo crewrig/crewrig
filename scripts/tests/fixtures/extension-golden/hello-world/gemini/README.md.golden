@@ -56,8 +56,9 @@ forms are produced by how each tool loads an extension:
 ## Delivery (spec 0173 delta-01 requirements 20/21)
 
 The rendered Gemini build tree reaches an adopter through one of three
-paths — a versioned release artifact (the default), `bash
-scripts/install-extension.sh install hello-world`, or the debugging task
+paths — a versioned release artifact (the default), `node
+scripts/lib/node-floor-guard.js` then `node scripts/install-extension.ts
+install hello-world` (Node.js 24 floor), or the debugging task
 `task link-gemini-extension-build EXT=hello-world` — never through a native
 `gemini extensions install` pointed directly at this repository's primary
 branch, which is a documented-unsupported path. See

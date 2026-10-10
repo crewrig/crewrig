@@ -53,8 +53,9 @@ committed.
 
 **The rendered Gemini tree reaches an adopter through exactly one of three
 paths** (requirement 20 — see *Delivery paths* below): a versioned release
-artifact (default, S5/#1008), `bash scripts/install-extension.sh install
-<name>` (this repository's own script), or `task
+artifact (default, S5/#1008), `node scripts/install-extension.ts install
+<name>` after `node scripts/lib/node-floor-guard.js` (this repository's own
+entry, Node.js 24 floor; `scripts/install-extension.sh` forwards to it), or `task
 link-gemini-extension-build EXT=<name>` (a documented **debugging** path,
 not an install path). A native `gemini extensions install` pointed directly
 at this repository's primary branch is a **documented-unsupported** path
@@ -544,8 +545,10 @@ tree through exactly one of three paths:
    other three supported tools (Claude Code, Copilot CLI, Antigravity CLI)
    are not served by this artifact; they reach an adopter through path 2
    below, on their own local render.
-2. **`bash scripts/install-extension.sh install <name>`** — this
-   repository's own script, which renders and then copies (or, in `link`
+2. **`node scripts/lib/node-floor-guard.js`, then
+   `node scripts/install-extension.ts install <name>`** — this
+   repository's own entry (Node.js 24 floor; run the two commands as
+   separate steps; `scripts/install-extension.sh` forwards to it), which renders and then copies (or, in `link`
    mode, symlinks) the build directory into `$GEMINI_HOME/extensions/<name>`.
 3. **`task link-gemini-extension-build EXT=<name>`** — a dedicated,
    documented **debugging** path pointed at the build directory. It is not

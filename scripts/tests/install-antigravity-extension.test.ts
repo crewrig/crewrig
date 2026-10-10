@@ -1,6 +1,8 @@
 // install-antigravity-extension.test.ts — the black-box contract of
 // scripts/install-antigravity-extension.sh (spec 0255 R10, R26; ticket #1334). Written against
-// the shell; the TypeScript leg joins automatically once the `.ts` entry exists (`LEGS`).
+// the shell, which is now a forwarding shim: the "shell" leg is `bash scripts/<name>.sh` (shim ->
+// TypeScript) and the "node" leg is the entry itself; both are real user paths. No `jq` anywhere
+// on the sandbox PATH (R22(a)).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -10,25 +12,19 @@ import { describe, it } from "node:test";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { cliCalls, createInstallSandbox, IMPL, runEntry, stubCli } from "./lib/install-sandbox.ts";
 import type { InstallSandbox, Leg } from "./lib/install-sandbox.ts";
-import { which } from "./lib/worktree-fixtures.ts";
 
 const NAME = "install-antigravity-extension";
-const HAS_JQ = which("jq") !== null;
 const LEGS: readonly Leg[] = IMPL.filter((leg) =>
   fs.existsSync(path.join(REPO, "scripts", `${NAME}.${leg === "shell" ? "sh" : "ts"}`)),
 );
-
-/** The shell leg shells out to `jq`: without a real one on the host it is skipped, never failed. */
-const skipFor = (leg: Leg): false | string =>
-  leg === "shell" && !HAS_JQ ? "jq is not installed on this host" : false;
 
 /** Run by the `agy` stub: the real one copies the plugin verbatim to `plugins/<plugin.json .name>`. */
 const COPY =
   `n=$(sed -n 's/^ *"name": *"\\([^"]*\\)".*/\\1/p' "$3/plugin.json" | head -1)\n` +
   `d="$HOME/.gemini/config/plugins/$n"\nmkdir -p "$d"\ncp -R "$3/." "$d/"\n`;
 const PLUGIN = "hello-world";
-/** Host tools linked into the sandbox PATH: `mv` is outside the hermetic coreutil set, yet the token rewrite calls it. */
-const LINKS = ["jq", "mv"];
+/** Host tools linked into the sandbox PATH: `mv` is outside the hermetic coreutil set, yet the `agy` stubs call it. */
+const LINKS = ["mv"];
 
 /** `hello-world` from the real tree (no `node_modules`); `edit` may rewrite its extension.json. */
 function place(
@@ -46,10 +42,10 @@ function place(
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2));
 }
 
-const sandbox = (opts: { clis?: readonly string[]; jq?: boolean; agy?: string } = {}) => {
+const sandbox = (opts: { clis?: readonly string[]; agy?: string } = {}) => {
   const sb = createInstallSandbox({
     ...(opts.clis === undefined ? {} : { clis: opts.clis }),
-    ...(opts.jq === true ? { links: LINKS } : {}),
+    links: LINKS,
   });
   if (opts.agy !== undefined) stubCli(sb, "agy", { body: COPY + opts.agy });
   return sb;
@@ -58,46 +54,36 @@ const sandbox = (opts: { clis?: readonly string[]; jq?: boolean; agy?: string } 
 for (const leg of LEGS) {
   describe(`install-antigravity-extension (${leg} leg)`, () => {
     const run = (sb: InstallSandbox, args: readonly string[]) => runEntry(sb, NAME, args, { leg });
-    const jq = { skip: skipFor(leg) };
 
-    it("fails with the usage line when no extension name is given", jq, () => {
-      const sb = sandbox({ jq: true });
+    it("fails with the usage line when no extension name is given", () => {
+      const sb = sandbox();
       const res = run(sb, []);
       assert.equal(res.status, 1);
       assert.equal(res.stdout, "");
-      // R22(i): the shell form carries its script path prefix, the TypeScript form does not.
-      if (leg === "shell")
-        assert.match(
-          res.stderr,
-          /: 1: Usage: install-antigravity-extension\.sh <extension-name>\n$/,
-        );
-      else assert.match(res.stderr, /Usage: install-antigravity-extension\.sh <extension-name>/);
+      assert.equal(res.stderr, "Usage: install-antigravity-extension.sh <extension-name>\n");
       assert.deepEqual(cliCalls(sb, "agy"), []);
     });
 
-    // Spec 0255 R22(a): the TypeScript entry drops the `jq` prerequisite, so this is shell-leg only.
-    it(
-      "reports a missing jq and exits 1",
-      { skip: leg !== "shell" && "R22(a): no jq on the TypeScript leg" },
-      () => {
-        const res = run(sandbox(), ["hello-world"]);
-        assert.equal(res.status, 1);
-        assert.equal(res.stdout, "Error: jq is required. Install with: brew install jq\n");
-        assert.equal(res.stderr, "");
-      },
-    );
+    // Spec 0255 R22(a): `jq` is no longer a prerequisite; the sandbox PATH holds none.
+    it("installs the plugin on a machine without jq", () => {
+      const sb = sandbox({ agy: "" });
+      assert.equal(fs.existsSync(path.join(sb.hermetic.bin, "jq")), false);
+      place(sb, "core");
+      const res = run(sb, ["hello-world"]);
+      assert.equal(res.status, 0, res.stderr);
+      assert.equal(cliCalls(sb, "agy").length, 1);
+      assert.equal(res.stderr, "");
+    });
 
-    it("reports a missing agy and exits 1", jq, () => {
-      const res = run(sandbox({ clis: ["claude", "copilot", "gemini"], jq: true }), [
-        "hello-world",
-      ]);
+    it("reports a missing agy and exits 1", () => {
+      const res = run(sandbox({ clis: ["claude", "copilot", "gemini"] }), ["hello-world"]);
       assert.equal(res.status, 1);
       assert.equal(res.stdout, "Error: 'agy' CLI is required. Install Antigravity CLI first.\n");
       assert.equal(res.stderr, "");
     });
 
-    it("reports an extension that is in no tier", jq, () => {
-      const sb = sandbox({ jq: true });
+    it("reports an extension that is in no tier", () => {
+      const sb = sandbox();
       const res = run(sb, ["ghost"]);
       assert.equal(res.status, 1);
       assert.equal(res.stdout, "Error: Extension 'ghost' not found in extensions/\n");
@@ -105,8 +91,8 @@ for (const leg of LEGS) {
       assert.equal(sb.tree.exists("dist-antigravity-plugin"), false);
     });
 
-    it("refuses a name that exists in two tiers", jq, () => {
-      const sb = sandbox({ jq: true });
+    it("refuses a name that exists in two tiers", () => {
+      const sb = sandbox();
       place(sb, "core");
       place(sb, "org");
       const res = run(sb, ["hello-world"]);
@@ -118,8 +104,8 @@ for (const leg of LEGS) {
       assert.deepEqual(cliCalls(sb, "agy"), []);
     });
 
-    it("builds, installs that directory, then resolves ${extensionRoot}", jq, () => {
-      const sb = sandbox({ jq: true, agy: "" });
+    it("builds, installs that directory, then resolves ${extensionRoot}", () => {
+      const sb = sandbox({ agy: "" });
       place(sb, "core");
       const res = run(sb, ["hello-world"]);
       assert.equal(res.status, 0, res.stderr);
@@ -142,8 +128,8 @@ for (const leg of LEGS) {
       assert.equal(res.stderr, "");
     });
 
-    it("prints no rewrite line for an extension with no mcp_config.json", jq, () => {
-      const sb = sandbox({ jq: true, agy: "" });
+    it("prints no rewrite line for an extension with no mcp_config.json", () => {
+      const sb = sandbox({ agy: "" });
       place(sb, "core", (m) => void delete m["mcpServers"]);
       const res = run(sb, ["hello-world"]);
       assert.equal(res.status, 0, res.stderr);
@@ -157,8 +143,8 @@ for (const leg of LEGS) {
     });
 
     const failing = (title: string, agy: string, message: (sb: InstallSandbox) => RegExp) =>
-      it(title, jq, () => {
-        const sb = sandbox({ jq: true, agy });
+      it(title, () => {
+        const sb = sandbox({ agy });
         place(sb, "core");
         const res = run(sb, ["hello-world"]);
         assert.equal(res.status, 1);
