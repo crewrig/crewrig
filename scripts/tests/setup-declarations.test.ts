@@ -76,7 +76,8 @@ describe("the printed declaration is pinned", () => {
         fs.mkdirSync(path.dirname(GOLDEN(cli)), { recursive: true });
         fs.writeFileSync(GOLDEN(cli), out);
       }
-      assert.equal(out, fs.readFileSync(GOLDEN(cli), "utf8"));
+      // The golden is written with `/`; a header path (`<HOME>/.copilot/skills`) is native on Windows.
+      assert.equal(out.replaceAll("\\", "/"), fs.readFileSync(GOLDEN(cli), "utf8"));
       assert.ok(out.split("\n").length > 100, "vacuity");
     });
 

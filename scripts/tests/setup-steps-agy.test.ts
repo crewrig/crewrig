@@ -8,7 +8,7 @@ import path from "node:path";
 import { describe, test } from "node:test";
 
 import { agySteps } from "../lib/setup/steps-agy.ts";
-import { descriptor, run, sandbox, useSandbox } from "./setup-flow-fixtures.ts";
+import { canon, descriptor, run, sandbox, useSandbox } from "./setup-flow-fixtures.ts";
 import { exists, golden, printed, put, read, slice } from "./setup-steps-agy-fixtures.ts";
 
 useSandbox();
@@ -122,7 +122,7 @@ describe("legacy-context-cleanup", () => {
     const want = golden("gemini", "legacy-gemini-md-marker", "stdout.golden")
       .split("\n")
       .find((l) => l.startsWith("  Removed superseded context file"));
-    assert.equal(result.out, `${want}\n`);
+    assert.equal(canon(result.out), `${want}\n`);
     assert.equal(exists(".gemini/GEMINI.md"), false);
   });
 

@@ -256,7 +256,9 @@ describe("copilot mcp step", { skip: !posix }, () => {
   });
 
   it("an out-of-range MemPalace prints its two ERROR lines on stdout and exits 1", async () => {
-    const strict = { pin: () => ({ min: "4.0.0", maxExclusive: "5" }) };
+    const min = "4.0.0";
+    const max = "5";
+    const strict = { pin: () => ({ min, maxExclusive: max }) };
     const stdin = new PassThrough();
     stdin.end();
     const out: string[] = [];
@@ -277,8 +279,8 @@ describe("copilot mcp step", { skip: !posix }, () => {
     assert.equal(
       out.join(""),
       "Configuring ~/.copilot/mcp-config.json...\n" +
-        "  ERROR: MemPalace 3.6.0 is outside the supported range >=4.0.0,<5.\n" +
-        "         Install a supported version with: pipx install --force 'mempalace>=4.0.0,<5'\n",
+        `  ERROR: MemPalace 3.6.0 is outside the supported range >=${min},<${max}.\n` +
+        `         Install a supported version with: pipx install --force 'mempalace>=${min},<${max}'\n`,
     );
   });
 });

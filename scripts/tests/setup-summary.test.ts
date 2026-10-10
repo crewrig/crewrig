@@ -11,7 +11,7 @@ import { describe, test } from "node:test";
 import type { Cli, Spawner } from "../lib/setup/context.ts";
 import type { SetupDescriptor, StepFn, SummarySpec } from "../lib/setup/descriptor.ts";
 import { globToRegExp, listMatching, mcpServerKeys } from "../lib/setup/summary.ts";
-import { descriptor, run, sandbox, useSandbox } from "./setup-flow-fixtures.ts";
+import { canon, descriptor, run, sandbox, useSandbox } from "./setup-flow-fixtures.ts";
 
 useSandbox();
 
@@ -177,7 +177,7 @@ describe("summary step", () => {
       assert.equal(result.status, 0);
       // The leading blank is this step's, except after Antigravity's system-context-file step.
       const lead = cli === "antigravity" ? "" : "\n";
-      assert.equal(result.out, `${lead}${tail.join("\n")}`);
+      assert.equal(canon(result.out), canon(`${lead}${tail.join("\n")}`));
       assert.equal(result.err, "");
     });
   }

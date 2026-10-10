@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { Spawner } from "../lib/setup/context.ts";
-import { sandbox } from "./setup-flow-fixtures.ts";
+import { canon, sandbox } from "./setup-flow-fixtures.ts";
 
 const REAL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const GOLDEN = path.join(REAL, "scripts", "tests", "fixtures", "setup-golden");
@@ -14,7 +14,7 @@ const GOLDEN = path.join(REAL, "scripts", "tests", "fixtures", "setup-golden");
 /** A golden file of one cell with its placeholders replaced by the sandbox (home == repo here). */
 export function golden(cli: string, cell: string, file: string): string {
   const text = fs.readFileSync(path.join(GOLDEN, cli, cell, file), "utf8");
-  return text.replaceAll("<HOME>", sandbox.tmp).replaceAll("<REPO>", sandbox.tmp);
+  return canon(text.replaceAll("<HOME>", sandbox.tmp).replaceAll("<REPO>", sandbox.tmp));
 }
 
 /** The lines of `text` from the line that starts with `from` (plus `offset`) up to `to` (excluded). */
@@ -28,12 +28,13 @@ export function slice(text: string, from: string, to: string | undefined, offset
 
 /** The printed output without the pre-answer echoes, with the backup stamp neutralised. */
 export function printed(out: string): string {
-  return out
-    .split("\n")
-    .filter((l) => !l.startsWith("[answer] "))
-    .join("\n")
-    .replaceAll(fs.realpathSync(sandbox.tmp), sandbox.tmp)
-    .replace(/\.bak\.[\d-]+/g, ".bak.<STAMP>");
+  return canon(
+    out
+      .split("\n")
+      .filter((l) => !l.startsWith("[answer] "))
+      .join("\n")
+      .replace(/\.bak\.[\d-]+/g, ".bak.<STAMP>"),
+  );
 }
 
 /** A spawner for which every child succeeds and `git rev-parse` names a plain checkout. */

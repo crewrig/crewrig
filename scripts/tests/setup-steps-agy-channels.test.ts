@@ -92,7 +92,7 @@ describe("agySessionRecording", () => {
       ctx: {
         io: { out: () => {}, err: () => {}, errRaw: () => {} },
         env: {},
-        platform: process.platform,
+        platform: "linux",
         home: sandbox.tmp,
         repoDir: sandbox.tmp,
         cli: "antigravity",

@@ -7,7 +7,7 @@ import { describe, test } from "node:test";
 
 import type { SetupDescriptor, StepRegistry } from "../lib/setup/descriptor.ts";
 import { tierSteps } from "../lib/setup/steps-tiers.ts";
-import { descriptor, run, sandbox, useSandbox } from "./setup-flow-fixtures.ts";
+import { canon, descriptor, run, sandbox, useSandbox } from "./setup-flow-fixtures.ts";
 import { exists, golden, printed, put, read, slice } from "./setup-steps-agy-fixtures.ts";
 
 useSandbox();
@@ -76,7 +76,7 @@ describe("tiers (antigravity strategy)", () => {
       .split("\n")
       .filter((l) => !l.startsWith("Warning:"))
       .join("\n");
-    assert.equal(result.err, want);
+    assert.equal(canon(result.err), want);
     assert.equal(result.status, 1);
     assert.equal(golden("antigravity", "tier-install-failure", "status.golden").trim(), "1");
   });
@@ -134,7 +134,9 @@ describe("tiers (standard strategy)", () => {
     const want = slice(out, "  Tier 'library' not built", "  Session recording disabled");
     assert.ok(
       printed(result.out).startsWith(
-        `\nInstalling library components to ${sandbox.tmp}/.gemini/skills (automatic)...\nTier not built`,
+        canon(
+          `\nInstalling library components to ${sandbox.tmp}/.gemini/skills (automatic)...\nTier not built`,
+        ),
       ),
     );
     assert.ok(tail(printed(result.out)).endsWith(tail(want)));
@@ -175,8 +177,8 @@ describe("tiers (standard strategy)", () => {
     const result = await run(descriptor(["tiers"], "copilot"), tierSteps, { argv: none });
     assert.equal(result.status, 0);
     assert.ok(
-      result.out.startsWith(
-        `Installing library skills to ${sandbox.tmp}/.copilot/skills (automatic)...\n`,
+      canon(result.out).startsWith(
+        canon(`Installing library skills to ${sandbox.tmp}/.copilot/skills (automatic)...\n`),
       ),
     );
     assert.ok(exists(".copilot/skills/lib-skill/SKILL.md"));

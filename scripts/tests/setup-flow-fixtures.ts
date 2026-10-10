@@ -63,6 +63,26 @@ export function descriptor(
 /** The temporary home and repository of the running test (`useSandbox` creates and removes it). */
 export const sandbox = { tmp: "" };
 
+/**
+ * The comparison form of printed text against a golden (a POSIX shell transcript): every `\\` is a
+ * `/` and the sandbox root, in each spelling it can take (the temporary directory and its
+ * `realpath.native`, which expands the 8.3 short names of Windows), is `<SANDBOX>`. Apply it to
+ * BOTH sides, so the Linux-generated golden holds on a native Windows path.
+ */
+export function canon(text: string): string {
+  const roots = new Set([
+    sandbox.tmp,
+    fs.realpathSync(sandbox.tmp),
+    fs.realpathSync.native(sandbox.tmp),
+  ]);
+  let out = text.replaceAll("\\", "/");
+  for (const root of [...roots]
+    .map((r) => r.replaceAll("\\", "/"))
+    .sort((a, b) => b.length - a.length))
+    out = out.replaceAll(root, "<SANDBOX>");
+  return out;
+}
+
 export function useSandbox(): void {
   beforeEach(() => void (sandbox.tmp = fs.mkdtempSync(path.join(os.tmpdir(), "setup-flow-"))));
   afterEach(() => fs.rmSync(sandbox.tmp, { recursive: true, force: true }));
@@ -90,7 +110,9 @@ export async function run(
     stdout: { write: (t) => out.push(t) },
     stderr: { write: (t) => err.push(t) },
     env: { HOME: sandbox.tmp, ...options.env },
-    platform: process.platform,
+    // The goldens are POSIX shell transcripts: the POSIX forms (the Windows ones are proven by the
+    // Windows entry job).
+    platform: "linux",
     home: sandbox.tmp,
     repoDir: sandbox.tmp,
     steps,

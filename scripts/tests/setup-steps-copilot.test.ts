@@ -10,7 +10,7 @@ import path from "node:path";
 import { describe, test } from "node:test";
 
 import { copilotSteps } from "../lib/setup/steps-copilot.ts";
-import { descriptor, run, sandbox, useSandbox } from "./setup-flow-fixtures.ts";
+import { canon, descriptor, run, sandbox, useSandbox } from "./setup-flow-fixtures.ts";
 
 useSandbox();
 
@@ -88,7 +88,7 @@ describe("copilot-workspace-files", () => {
     const result = await run(flow(), STEPS);
     const expected = golden.split("\n").slice(4, 8).join("\n").replaceAll("<REPO>", sandbox.tmp);
     assert.ok(expected.includes("(from template)"), "vacuity");
-    assert.equal(result.out, `${expected}\n`);
+    assert.equal(canon(result.out), canon(`${expected}\n`));
     assert.ok(result.out.includes(p.settings));
   });
 });

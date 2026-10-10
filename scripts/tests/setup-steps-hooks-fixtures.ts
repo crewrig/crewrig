@@ -124,7 +124,7 @@ export async function runHooks(cli: HookCli, options: RunOptions): Promise<Resul
     stdout: { write: (t) => out.push(t) },
     stderr: { write: (t) => err.push(t) },
     env: { HOME: rig.home },
-    platform: process.platform,
+    platform: "linux", // the goldens are POSIX shell transcripts
     home: rig.home,
     repoDir: rig.repo,
     spawn: options.spawn ?? okSpawn,
@@ -135,9 +135,17 @@ export async function runHooks(cli: HookCli, options: RunOptions): Promise<Resul
 
 const roots = (): Roots => ({ root: rig.root, repo: rig.repo, home: rig.home });
 
+/** The roots in the `/` spelling the scrubbed text (a POSIX shell transcript) uses. */
+const slashed = (r: Roots): Roots => ({
+  ...r,
+  root: r.root.replaceAll("\\", "/"),
+  repo: r.repo.replaceAll("\\", "/"),
+  home: r.home.replaceAll("\\", "/"),
+});
+
 /** The golden placeholders (`<HOME>`, `<REPO>`, `.bak.<STAMP>`) and the prompter's own lines removed. */
 export function scrub(text: string): string {
-  return normalize(text, roots())
+  return normalize(text.replace(/\\{1,2}/g, "/"), slashed(roots()))
     .split("\n")
     .filter((line) => !/^\[answer\] |^  \d\) (no|yes|keep|remove)$|\?( \(opt-in\))?$/.test(line))
     .filter(
