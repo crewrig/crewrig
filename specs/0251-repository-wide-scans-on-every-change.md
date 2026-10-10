@@ -1,7 +1,7 @@
 ---
 id: "0251"
 slug: repository-wide-scans-on-every-change
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1508
