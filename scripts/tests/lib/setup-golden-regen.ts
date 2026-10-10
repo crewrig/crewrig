@@ -10,7 +10,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { REPO } from "./build-fixture-tree.ts";
-import { comparable } from "./setup-golden-deviations.ts";
+import { comparable, questionTexts } from "./setup-golden-deviations.ts";
+import { fzfOfTree, QUESTIONS_FILE } from "./setup-golden-questions.ts";
 import type { CaseResult } from "./setup-golden-run.ts";
 import type { Cli, GoldenCase } from "./setup-golden-types.ts";
 
@@ -156,6 +157,16 @@ export function checkGolden(c: GoldenCase, result: CaseResult, leg: string, base
     const [e, a] = sides(name);
     return `--- ${c.cli}/${c.id}/${name}.golden (expected)\n+++ ${leg} leg (actual)\n${unifiedDiff(e, a)}`;
   });
+  if (leg === "ts") {
+    // The questions the run asked: the stored fzf records against the echo lines (the two the
+    // tagged deviations drop), so that dropping them hides no question (setup-golden-questions.ts).
+    const [e, a] = questionTexts(c.cli, fzfOfTree(expected["tree.json"]), actual.stdout);
+    if (e !== a) {
+      failures.push(
+        `--- ${c.cli}/${c.id} ${QUESTIONS_FILE} (the fzf records of tree.json.golden, expected)\n+++ ${leg} leg ([answer] echo lines, actual)\n${unifiedDiff(e, a)}`,
+      );
+    }
+  }
   if (failures.length > 0) {
     throw new Error(
       `golden mismatch for ${c.cli}/${c.id} [${leg}]: ${c.note}\n${failures.join("\n")}`,
