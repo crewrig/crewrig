@@ -15,9 +15,8 @@ ticket 1335, section `### Spec gaps (delta-01 candidates)`, found by reading the
 the plan has to port. It runs under the release-branch regime of
 `specs/0215-shell-to-typescript-migration.delta-04.md`: its spec-PR targets
 `release/1231-ts-migration`, and the base ref of every protocol is
-`origin/release/1231-ts-migration` (requirement 34 of that delta). Ten requirements of
-the parent cannot be met as written, contradict the shell they claim to preserve, or
-leave a behaviour unsettled: the stdio entries a CLI spawns on Windows (G1), a failed
+`origin/release/1231-ts-migration` (requirement 34 of that delta). Ten gaps were found in the parent: requirements that cannot be met as written, that
+contradict the shell they claim to preserve, or that leave a behaviour unsettled: the stdio entries a CLI spawns on Windows (G1), a failed
 Chroma install and its Windows twin (G2), the bearer probe on a non-loopback host (G3),
 the file mode on Windows (G4), the one-key `--link` reader (G5), the per-CLI arms of the
 daemon contract (G6), the Windows guidance texts (G7), the version range check (G8), the
@@ -115,9 +114,11 @@ Replacement:
 > `:51`), which are the manage scripts' texts. The question SHALL be asked by a new
 > additive export of `scripts/lib/manage/confirm.ts`, with `confirmContinue` and its
 > behaviour untouched, that takes the prompt text and returns the key AND the unread
-> remainder of the chunk it received, less one line terminator, because `read -n 1`
-> leaves the rest of a pipe in place where `readKey` (`:67-79`) takes the first chunk
-> and pauses standard input; the line queue of requirement 11 SHALL serve that
+> remainder of the stream, because `read -n 1` leaves the rest of a pipe in place where
+> `readKey` (`:67-79`) takes the first chunk and pauses standard input. The rule is
+> defined on the stream and not on a chunk: after the key, the rest of its line, up to
+> and including its terminator (LF or CRLF), is discarded wherever a chunk boundary falls,
+> and what follows is the remainder; the line queue of requirement 11 SHALL serve that
 > remainder first. The exit and the pre-answer are unchanged (exit 1 with `Aborted. Run
 > without --link for secure copy mode.` unless the key is `y` or `Y`; the `--answer
 > link-confirm=yes` pre-answer of requirement 13 stands for the key, `no` for any other
@@ -148,8 +149,8 @@ Replacement:
 > `claude` remover launched through the platform lookup; the stdio registration is
 > written by the setup's own writer; `scripts/lib/mempalace-registration.ts`, which
 > writes nothing, classifies the result and supplies the warning text. The stdio launch
-> is wrapped with the trust wrapper when a TLS file exists: `bash <repo>/scripts/lib/tls-exec.sh`
-> on POSIX, and on win32 `node <home>/.crewrig/tls-exec.ts` followed by the wrapped
+> is wrapped with the trust wrapper unconditionally, as the shell does (the wrapper does
+> nothing when no TLS file exists): `bash <repo>/scripts/lib/tls-exec.sh` on POSIX, and on win32 `node <home>/.crewrig/tls-exec.ts` followed by the wrapped
 > command, the program being installed (`installTrustWrapperProgram`,
 > `scripts/lib/service/program-install.ts:147`) before the entry is written
 > (deviation (m)). On Windows the messages that name the Chroma binary or the pipx
@@ -278,14 +279,24 @@ Replacement, tagged in the differential test like (a) to (l):
 > platform, as the shell's `set -e` does, so it is wording and not a deviation); (o) the MemPalace
 > daemon probe never sends the bearer token to a non-loopback host (spec 0252), so a run
 > configured with such a host takes return code 1 where the shell probed with
-> authentication; (p) on win32 the mode of a written file is not set, and the
+> authentication (return code 1 means that no usable serving daemon could be verified,
+> which is the truth here; on the Claude arm that replaces an existing HTTP entry with
+> the stdio entry, the outcome the shell avoided only by sending the bearer to any host,
+> and the run says so in the warning it already prints); (p) on win32 the mode of a written file is not set, and the
 > `windows-setup-entries` job of requirement 34 does not assert one; (q) on win32 the
 > pipx guidance and the Chroma binary path in messages are the Windows forms
 > (`<venv>\Scripts\chroma.exe`, `py -m pip`, `scoop install pipx`) where the shell names
 > `python3`, `brew` and `<py dir>/chroma`; (r) the supported-range check of the MemPalace
 > version is evaluated by the setup and no longer needs `packaging` in the MemPalace
 > environment, so the run that the shell stopped for lack of `packaging` now passes when
-> the version is in range, while an empty or unparsable version stays out of range.
+> the version is in range, while an empty or unparsable version stays out of range. The comparison follows the
+> ordering of `packaging.version.Version` that the shell used (`min <= version < max`,
+> `mempalace_version_in_range` at `scripts/lib/common.sh:664-675`): the release segment
+> numerically, then the pre-release (`a`, `b`, `rc`), development (`.dev`), post-release
+> (`.post`) and local (`+local`) suffixes as PEP 440 orders them, and the differential
+> test pins the vectors `3.6.0rc1` out, `3.6.0.dev0` out, `3.6.0` in, `3.6.0.post1` in,
+> `3.6.0+local` in, `3.6.99` in, `3.7.0.dev0` in, `3.7.0rc1` in, `3.7.0` out,
+> `3.7.0.post1` out and an unparsable string out.
 > Letters (s) onward are reserved for deviations a later differential test discovers
 > and a delta of this spec records.
 
