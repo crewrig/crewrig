@@ -1100,8 +1100,8 @@ report "R16-R18: the Claude command reports an unresolvable name and names every
 # Cases 18 and 19 — R20's relational arm, derived structurally, over every
 # (CLI, type) pair whose assisted setup resolves that type from compiled output.
 #
-# For each pair, the setup script's declared landing zone and staging root and
-# the command's are parsed and compared. A results comparison would be actively
+# For each pair, the setup's declared landing zone and staging root and the
+# command's are read from their TypeScript declarations and compared. A results comparison would be actively
 # harmful: install_tier_skills_to_home (setup-copilot-interactive.sh) copies only
 # SKILL.md while place_component (manage-copilot-component.sh) copies the whole
 # directory, so the two routes' file sets differ for a reason R1/R2 do not bind.
@@ -1116,65 +1116,31 @@ report "R16-R18: the Claude command reports an unresolvable name and names every
 # one machine's paths; TYPE resolves to the row's own type, which is what lets
 # one parser serve every pair.
 # =====================================================================
-strip_q() { printf '%s' "$1" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'\$//"; }
-
-# var_last <script> <VAR> — the last assignment of VAR, for substitution.
-var_last() {
-  local script="$1" var="$2" line
-  line=$(grep -E "^[[:space:]]*(local[[:space:]]+)?${var}=" "$script" 2>/dev/null | tail -1)
-  [ -n "$line" ] || return 1
-  strip_q "$(printf '%s' "$line" | sed 's/^[^=]*=//')"
-}
-
-# resolve_expr <script> <expr> <type> — expand $VAR/${VAR} from the script's own
-# assignments. HOME, REPO_DIR and tier become stable sentinels; TYPE becomes
-# <type>, so the same parser serves the `skills` rows and the `agents` one. Bash
-# substitution, not sed: a substituted value containing the sed delimiter
-# ("s|${MCP_BASE}|$(echo …" in setup-antigravity-interactive.sh) breaks sed.
-resolve_expr() {
-  local script="$1" val="$2" type="$3" pass name sub
-  for pass in 1 2 3 4 5 6; do
-    val=$(printf '%s' "$val" | sed \
-      -e 's/\${HOME}/<HOME>/g' -e 's/\$HOME/<HOME>/g' \
-      -e 's/\${REPO_DIR}/<REPO>/g' -e 's/\$REPO_DIR/<REPO>/g' \
-      -e 's/\${tier}/<TIER>/g' -e 's/\$tier/<TIER>/g' \
-      -e "s/\\\${TYPE}/$type/g" -e "s/\\\$TYPE/$type/g")
-    case "$val" in *'$'*) ;; *) break ;; esac
-    name=$(printf '%s' "$val" | sed -n 's/.*\$[{]\{0,1\}\([A-Za-z_][A-Za-z0-9_]*\).*/\1/p' | head -1)
-    [ -n "$name" ] || break
-    sub=$(var_last "$script" "$name") || break
-    [ -n "$sub" ] || break
-    val="${val//"\${$name}"/$sub}"
-    val="${val//"\$$name"/$sub}"
-  done
-  printf '%s' "$val"
-}
-
-# resolved_by_name <script> <name-ERE> <type> — resolved value of EVERY
-# assignment whose variable name matches. Every line, not just the last:
-# manage-claude-component.sh assigns DEST twice (skills, then rules) and the
-# second would hide the first.
-resolved_by_name() {
-  local script="$1" name_re="$2" type="$3" line val
-  while IFS= read -r line; do
-    val=$(resolve_expr "$script" "$(strip_q "$(printf '%s' "$line" | sed 's/^[^=]*=//')")" "$type")
-    [ -n "$val" ] && printf '%s\n' "$val"
-  done < <(grep -E "^[[:space:]]*(local[[:space:]]+)?${name_re}=" "$script" 2>/dev/null)
-}
-
-# The covered pairs: <cli>:<type>:<setup-script>:<command-script>
-CLI_ROWS="claude:skills:setup-claude-interactive.sh:manage-claude-component.sh
-gemini:skills:setup-gemini-interactive.sh:manage-workspace-component.sh
-gemini:agents:setup-gemini-interactive.sh:manage-workspace-component.sh
-copilot:skills:setup-copilot-interactive.sh:manage-copilot-component.sh
-antigravity:skills:setup-antigravity-interactive.sh:manage-antigravity-component.sh"
+# The covered pairs: <cli>:<type>:<command-script>
+CLI_ROWS="claude:skills:manage-claude-component.sh
+gemini:skills:manage-workspace-component.sh
+gemini:agents:manage-workspace-component.sh
+copilot:skills:manage-copilot-component.sh
+antigravity:skills:manage-antigravity-component.sh"
 
 # The COMMAND side is read by EVALUATING its TypeScript declaration (spec 0255,
 # delta-01): the helper prints one `<cli><TAB><key><TAB><value>` fact per line,
 # in the same <HOME>/<REPO>/<TIER> sentinel form this file compares in, so the
-# comparison with the setup side below is unchanged. The setup side (the
-# setup-*-interactive.sh scripts) stays a text read.
+# comparison with the setup side below is unchanged. The setup side is read the same way since
+# spec 0256 PR D1: by EVALUATING the setup's TypeScript declaration
+# (scripts/tests/lib/print-setup-declarations.ts <cli>), no longer by parsing the text of the
+# setup-*-interactive.sh scripts. Pin against the unchanged shell while it exists: the unit test
+# scripts/tests/setup-retarget-tier-resolution.test.ts (the setup declaration and the manage
+# declaration agree on landing zone and staging root) and the setup-golden cells <cli>/overlay-yes
+# and <cli>/overlay-no (the real script installs the tier into that landing zone).
 MANAGE_DECL="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-manage-declarations.ts" 2>/dev/null)"
+
+# setup_decl <cli> <key> — the value of the setup declaration's fact <key> ("" when the declaration
+# is empty or the fact is absent; the callers' vacuity guards fail on "").
+setup_decl() {
+  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1" 2>/dev/null \
+    | awk -v k="$2" 'index($0, k "=") == 1 { print substr($0, length(k) + 2); exit }'
+}
 
 # decl_values <cli> <key-ERE> — the value of every fact of <cli> whose key matches.
 decl_values() {
@@ -1188,18 +1154,18 @@ if [ -z "$MANAGE_DECL" ]; then
   ok="false"
   detail="the declaration helper printed nothing, so no command declaration could be read"
 fi
-while IFS=: read -r cli type setup_name cmd_name; do
+while IFS=: read -r cli type cmd_name; do
   [ -n "$cli" ] || continue
-  setup="$REPO_DIR/scripts/$setup_name"
   cmd="$REPO_DIR/scripts/$cmd_name"
 
-  setup_zone="$(resolved_by_name "$setup" '[A-Za-z_][A-Za-z0-9_]*' "$type" | grep -E "^<HOME>.*/$type\$" | sort -u)"
+  # The setup's landing zone for the type: the declaration's home.<type> fact.
+  setup_zone="$(setup_decl "$cli" "home.$type" | grep -E "^<HOME>.*/$type\$" | sort -u)"
   cmd_zone="$(decl_values "$cli" '^dest[.]' | grep -E "/$type\$" | sort -u)"
 
   # Vacuity guards first: an unparseable side fails the case, never passes it.
   if [ -z "$setup_zone" ] || [ "$(printf '%s\n' "$setup_zone" | wc -l | tr -d ' ')" != "1" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli/$type: could not parse exactly one user-home $type landing zone from $(basename "$setup") (got: $(printf '%s' "$setup_zone" | tr '\n' ' '))"
+    detail="${detail}${detail:+$'\n'}$cli/$type: could not read exactly one user-home $type landing zone from the setup declaration of $cli (home.$type; got: $(printf '%s' "$setup_zone" | tr '\n' ' '))"
     continue
   fi
   if [ -z "$cmd_zone" ] || [ "$(printf '%s\n' "$cmd_zone" | wc -l | tr -d ' ')" != "1" ]; then
@@ -1221,27 +1187,21 @@ if [ -z "$MANAGE_DECL" ]; then
   ok="false"
   detail="the declaration helper printed nothing, so no command declaration could be read"
 fi
-while IFS=: read -r cli type setup_name cmd_name; do
+while IFS=: read -r cli type cmd_name; do
   [ -n "$cli" ] || continue
-  setup="$REPO_DIR/scripts/$setup_name"
   cmd="$REPO_DIR/scripts/$cmd_name"
 
-  # The CLI root the assisted setup reads under dist/<tier>/.
-  #
-  # The tier variable is matched as `<anything>tier`, not as the bare name
-  # `tier`. All four setups declare the staging root TWICE — once in the
-  # automatic library install (`dist/$tier/<root>`) and once in the overlay
-  # opt-in guard (`dist/$overlay_tier/<root>`) — and the two forms are equally
-  # a declaration. Recognising only the bare form made this parse a hostage to
-  # which of the two happened to be inlined: when spec 0123 moved the
-  # Antigravity install body into scripts/lib/common.sh, the `$tier` occurrence
-  # went with it and this case failed although the setup still declares
-  # `dist/$overlay_tier/.agents` two lines from the call. Both forms yield the
-  # same single root for every CLI, so the vacuity guard below is unweakened.
-  setup_root="$(grep -oE 'dist/\$\{?[A-Za-z_]*tier\}?/\.[A-Za-z]+' "$setup" 2>/dev/null | sed 's|.*/||' | sort -u)"
+  # The CLI root the assisted setup reads under dist/<tier>/: the declaration's `tiers.staging` fact
+  # (`<REPO>/dist/<TIER>/<root>`; one fact per CLI, so "exactly one root" holds by construction, and
+  # an absent fact or a value outside that shape fails the case rather than passing vacuously).
+  # Read from the declaration since spec 0256 PR D1; before, the root was grepped out of the setup
+  # script's `dist/$tier/<root>` text, which had to tolerate the library and overlay spellings of
+  # the same root (the spec 0123 move of the Antigravity install body into common.sh).
+  setup_staging="$(setup_decl "$cli" tiers.staging)"
+  setup_root="$(printf '%s\n' "$setup_staging" | sed -n 's|^<REPO>/dist/<TIER>/||p')"
   if [ -z "$setup_root" ] || [ "$(printf '%s\n' "$setup_root" | wc -l | tr -d ' ')" != "1" ]; then
     ok="false"
-    detail="${detail}${detail:+$'\n'}$cli/$type: could not parse exactly one dist/<tier>/<root> staging root from $(basename "$setup") (got: $(printf '%s' "$setup_root" | tr '\n' ' '))"
+    detail="${detail}${detail:+$'\n'}$cli/$type: could not read exactly one dist/<tier>/<root> staging root from the setup declaration of $cli (tiers.staging='$setup_staging')"
     continue
   fi
 

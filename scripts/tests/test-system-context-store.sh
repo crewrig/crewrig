@@ -133,21 +133,30 @@ SETUP_DIR="$SCRIPT_DIR/scripts"
 GAP_SCRIPTS=(setup-gemini-interactive.sh setup-copilot-interactive.sh)
 PASS_SCRIPTS=(setup-claude-interactive.sh setup-antigravity-interactive.sh)
 
-# (a) the two gap CLIs call the guidance helper
-for s in ${GAP_SCRIPTS[@]+"${GAP_SCRIPTS[@]}"}; do
-  if grep -q "print_store_access_guidance" "$SETUP_DIR/$s"; then
-    ok "gap CLI calls print_store_access_guidance: $s"
+# (a)+(b) Retargeted (spec 0256 R9, PR D1): the `storeGuidance` flag is read from the DECLARATION of
+# each setup, not from a grep for the helper call. Pinned against the unchanged shell by
+# scripts/tests/setup-retarget-others.test.ts ("storeGuidance is true exactly where the shell calls
+# print_store_access_guidance"); the guidance text itself is asserted by (d) below.
+decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$SCRIPT_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1"; }
+declared_guidance() {
+  local declared
+  declared="$(decl "$1")" || return 1
+  printf '%s\n' "$declared" | grep '^store-guidance=' | head -1 | cut -d= -f2-
+}
+for cli in gemini copilot; do
+  g="$(declared_guidance "$cli")" || g=""
+  if [ "$g" = "true" ]; then
+    ok "gap CLI declares store guidance: $cli"
   else
-    bad "gap CLI missing print_store_access_guidance call: $s"
+    bad "gap CLI does not declare store guidance (store-guidance='${g:-<absent>}'): $cli"
   fi
 done
-
-# (b) the two PASS-default CLIs do NOT call it (no silent asymmetry)
-for s in ${PASS_SCRIPTS[@]+"${PASS_SCRIPTS[@]}"}; do
-  if grep -q "print_store_access_guidance" "$SETUP_DIR/$s"; then
-    bad "PASS-default CLI unexpectedly calls print_store_access_guidance: $s"
+for cli in claude antigravity; do
+  g="$(declared_guidance "$cli")" || g=""
+  if [ "$g" = "false" ]; then
+    ok "PASS-default CLI declares no store guidance: $cli"
   else
-    ok "PASS-default CLI emits no store guidance: $s"
+    bad "PASS-default CLI must declare store-guidance=false (got '${g:-<absent>}'): $cli"
   fi
 done
 

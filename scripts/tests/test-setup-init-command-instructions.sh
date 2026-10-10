@@ -26,33 +26,28 @@ bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 
 echo "1. Structural assertions in setup scripts"
 
-# Antigravity: must instruct agy -i "<skill>" --new-project
-if grep -F -q 'agy -i \"$skill\" --new-project' "$SETUP_ANTIGRAVITY"; then
-  ok "setup-antigravity-interactive.sh instructs agy -i \"\$skill\" --new-project"
-else
-  bad "setup-antigravity-interactive.sh missing agy -i \"\$skill\" --new-project instruction"
-fi
-
-# Copilot: must instruct copilot -i "<skill>"
-if grep -F -q 'copilot -i \"$skill\"' "$SETUP_COPILOT"; then
-  ok "setup-copilot-interactive.sh instructs copilot -i \"\$skill\""
-else
-  bad "setup-copilot-interactive.sh missing copilot -i \"\$skill\" instruction"
-fi
-
-# Claude: must instruct claude $skill
-if grep -q 'claude \$skill' "$SETUP_CLAUDE"; then
-  ok "setup-claude-interactive.sh instructs claude \$skill"
-else
-  bad "setup-claude-interactive.sh missing claude \$skill instruction"
-fi
-
-# Gemini: must instruct gemini
-if grep -q 'gemini' "$SETUP_GEMINI"; then
-  ok "setup-gemini-interactive.sh instructs gemini \$skill"
-else
-  bad "setup-gemini-interactive.sh missing gemini instruction"
-fi
+# Retargeted (spec 0256 R9, PR D1): the invocation each setup instructs is read from the DECLARATION
+# (`init.soul`, `init.profile`), not from the setup text. Pinned against the unchanged shell by
+# scripts/tests/setup-retarget-others.test.ts ("the init-command string per CLI") and the golden cell
+# `missing-identity` of the four setup-golden suites (the printed `run: <command> <skill>` line).
+decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1"; }
+check_declared_init() {
+  local cli="$1" soul="$2" profile="$3" declared got_soul got_profile
+  declared="$(decl "$cli")" || declared=""
+  if [ -z "$declared" ]; then bad "$cli: empty declaration (vacuity guard)"; return; fi
+  got_soul="$(printf '%s\n' "$declared" | grep '^init\.soul=' | head -1 | cut -d= -f2-)"
+  got_profile="$(printf '%s\n' "$declared" | grep '^init\.profile=' | head -1 | cut -d= -f2-)"
+  [ -n "$got_soul" ] && [ -n "$got_profile" ] || { bad "$cli: declaration lacks init.soul / init.profile"; return; }
+  if [ "$got_soul" = "$soul" ] && [ "$got_profile" = "$profile" ]; then
+    ok "$cli declares the instruction: $got_soul / $got_profile"
+  else
+    bad "$cli declares '$got_soul' / '$got_profile', expected '$soul' / '$profile'"
+  fi
+}
+check_declared_init antigravity 'agy -i "/init-soul" --new-project' 'agy -i "/init-personal-profile" --new-project'
+check_declared_init copilot     'copilot -i "/init-soul"'          'copilot -i "/init-personal-profile"'
+check_declared_init claude      'claude /init-soul'                'claude /init-personal-profile'
+check_declared_init gemini      'gemini /init-soul'                'gemini /init-personal-profile'
 
 echo ""
 echo "2. Functional prerequisite guidance format assertions"

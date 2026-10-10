@@ -598,59 +598,76 @@ fi
 echo ""
 echo "Setup scripts wire ensure_mempalace_http (delta-02 R17):"
 
-# (a) presence — each of the four setup scripts must call the helper.
+# (a) presence — each of the four setup DECLARATIONS must list the helper as a step of the
+# `mcp` layer (`substeps.mcp` ends with `ensure-mempalace-http`). Retargeted in spec 0256 PR D1
+# from a grep of the four setup scripts' text for the `ensure_mempalace_http "$REPO_DIR" <cli>` call
+# to a read of the TypeScript setup declaration (scripts/tests/lib/print-setup-declarations.ts). Pin
+# against the unchanged shell while it exists: the setup-golden cells <cli>/ensure-http-rc0, -rc1
+# and -rc2 (the real script run with the helper returning 0, 1 and 2). Vacuity guard: an empty
+# declaration, or an absent `substeps.mcp` fact, names the CLI as `(no-declaration)`.
 # The revert is not hypothetical: `mempalace` is reserved, so the preservation
 # helper deliberately drops an operator entry under that name and the framework
 # rewrites it stdio-shaped. Assert the reservation still holds below, since it
 # is what makes wiring every setup mandatory rather than merely tidy.
+SETUP_DECL_PRINTER="${REPO_DIR}/scripts/tests/lib/print-setup-declarations.ts"
+# mcp_substeps <cli> — the ordered, comma-separated `substeps.mcp` of the declaration ("" if absent).
+mcp_substeps() {
+  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$SETUP_DECL_PRINTER" "$1" 2>/dev/null \
+    | grep '^substeps\.mcp=' | head -1 | cut -d= -f2-
+}
+# substep_pos <comma-list> <id> — 1-based position of <id> in the list, empty when absent.
+substep_pos() {
+  printf '%s\n' "$1" | tr ',' '\n' | grep -nxF -- "$2" | head -1 | cut -d: -f1
+}
 missing=""
 for cli in claude gemini copilot antigravity; do
-  grep -qF 'ensure_mempalace_http "$REPO_DIR"'" ${cli}" \
-    "${REPO_DIR}/scripts/setup-${cli}-interactive.sh" || missing="${missing} ${cli}"
+  subs="$(mcp_substeps "$cli")"
+  if [ -z "$subs" ]; then missing="${missing} ${cli}(no-declaration)"; continue; fi
+  [ -n "$(substep_pos "$subs" ensure-mempalace-http)" ] || missing="${missing} ${cli}"
 done
 [ -z "${missing}" ] \
-  && ok "all four setup scripts call ensure_mempalace_http" \
-  || nope "setup script(s) dropped the HTTP-by-default wiring:${missing} — mempalace is reserved, so a later run there would silently revert to stdio"
+  && ok "all four setup declarations list ensure-mempalace-http in the mcp layer" \
+  || nope "setup declaration(s) dropped the HTTP-by-default wiring:${missing} — mempalace is reserved, so a later run there would silently revert to stdio"
 
 grep -q 'MCP_RESERVED_NAMES=(mempalace' "${REPO_DIR}/scripts/lib/common.sh" \
   && ok "mempalace is still a reserved name (so setups must switch it themselves)" \
   || nope "mempalace is no longer reserved — re-check whether the setups still need to switch"
 
-# (b) order — each ensure_mempalace_http call must come AFTER its script's
-# stdio-shaped write (the gemini_settings_write in-place merge for Gemini,
-# spec 0214; the template `mv` for Copilot; the final atomic MCP_BASE write for
-# Antigravity), so the HTTP entry overwrites the stdio one
+# (b) order — each `ensure-mempalace-http` step must come AFTER its setup's stdio-shaped write in
+# the declared `substeps.mcp` order (`gemini-settings-write` for Gemini, spec 0214; `write-mcp-config`
+# for Copilot and Antigravity), so the HTTP entry overwrites the stdio one
 # instead of the reverse. For Claude the anchor is the R19 stdio fallback
-# register, and the direction is inverted: `register_mempalace_mcp` and the
-# fallback must sit AFTER the call — a stdio register preceding the call would
+# register, and the direction is inverted: `register-stdio-fallback`
+# must sit AFTER the step — a stdio register preceding the call would
 # be overwritten by nothing and clobber an HTTP entry the call is about to
 # write (the exact defect this section guards).
+# Retargeted (spec 0256 PR D1) from comparing the line numbers of the call and of its anchor in the
+# script text to comparing the positions in the declared step list; same pin as (a): the goldens
+# <cli>/ensure-http-rc0/-rc1/-rc2, which fix the order of effects of the real script. Vacuity guard:
+# a missing declaration, call or anchor is `(no-call)` / `(no-anchor)`, never a pass.
 order_fail=""
 for cli in claude gemini copilot antigravity; do
-  script="${REPO_DIR}/scripts/setup-${cli}-interactive.sh"
-  grep -nF 'ensure_mempalace_http "$REPO_DIR"'" ${cli}" "$script" > /dev/null 2>&1 \
-    || { order_fail="${order_fail} ${cli}(no-call)"; continue; }
-  call_line="$(grep -nF 'ensure_mempalace_http "$REPO_DIR"'" ${cli}" "$script" | head -1 | cut -d: -f1)"
+  subs="$(mcp_substeps "$cli")"
+  call_pos="$(substep_pos "$subs" ensure-mempalace-http)"
+  [ -n "$call_pos" ] || { order_fail="${order_fail} ${cli}(no-call)"; continue; }
   case "$cli" in
-    claude)      anchor_pat='mcp_register_user mempalace' ; cmp='-lt' ;;
-    gemini)      anchor_pat='gemini_settings_write "$SETTINGS_TARGET"' ; cmp='-gt' ;;
-    copilot)     anchor_pat='write_json_config_secure_from "$MCP_CONFIG_TARGET" "$MCP_CONFIG_SRC"' ; cmp='-gt' ;;
-    antigravity) anchor_pat='write_json_config_secure_from "$AGY_MCP_CONFIG" - '"'"'.'"'"'' ; cmp='-gt' ;;
+    claude)      anchor_id='register-stdio-fallback' ; cmp='-lt' ;;
+    gemini)      anchor_id='gemini-settings-write' ; cmp='-gt' ;;
+    copilot)     anchor_id='write-mcp-config' ; cmp='-gt' ;;
+    antigravity) anchor_id='write-mcp-config' ; cmp='-gt' ;;
   esac
-  # -F, not BRE: the anchors carry literal `{`, which BSD grep parses as the
-  # start of an interval expression and fails on.
-  anchor_line="$(grep -nF "$anchor_pat" "$script" | head -1 | cut -d: -f1)"
-  if [ -z "$call_line" ] || [ -z "$anchor_line" ]; then
+  anchor_pos="$(substep_pos "$subs" "$anchor_id")"
+  if [ -z "$anchor_pos" ]; then
     order_fail="${order_fail} ${cli}(no-anchor)"
     continue
   fi
   case "$cmp" in
-    -lt) [ "$call_line" -lt "$anchor_line" ] || order_fail="${order_fail} ${cli}" ;;
-    -gt) [ "$call_line" -gt "$anchor_line" ] || order_fail="${order_fail} ${cli}" ;;
+    -lt) [ "$call_pos" -lt "$anchor_pos" ] || order_fail="${order_fail} ${cli}" ;;
+    -gt) [ "$call_pos" -gt "$anchor_pos" ] || order_fail="${order_fail} ${cli}" ;;
   esac
 done
 [ -z "${order_fail}" ] \
-  && ok "every ensure_mempalace_http call is ordered after (never before) its script's stdio write" \
+  && ok "every ensure-mempalace-http step is ordered after (never before) its setup's stdio write" \
   || nope "ordering violated:${order_fail} — the stdio-shaped write would clobber the HTTP entry"
 
 # Extract the helper body (comment lines stripped) for the predicate tests.

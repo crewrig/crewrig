@@ -683,7 +683,7 @@ capabilities:
     command:
       - node scripts/lib/node-floor-guard.js
       - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts scripts/tests/setup-retarget-catalogue-picker.test.ts scripts/tests/setup-retarget-gemini-overlays.test.ts scripts/tests/setup-retarget-mcp-order.test.ts scripts/tests/setup-retarget-others.test.ts scripts/tests/setup-retarget-step-order.test.ts scripts/tests/setup-retarget-tier-resolution.test.ts scripts/tests/setup-retarget-usage-order.test.ts
 
   # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules
   # (scripts/lib/setup/**), the TLS environment quoting and writer, the confirm remainder and the
@@ -1875,6 +1875,9 @@ capabilities:
           - "model-mappings/**"
           - "scripts/setup-gemini-interactive.sh"
           - "config/gemini/settings.json"
+          - "scripts/lib/setup/**"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/lib/setup-declarations-*.ts"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -1893,10 +1896,13 @@ capabilities:
           - "model-mappings/**"
           - "scripts/setup-gemini-interactive.sh"
           - "config/gemini/settings.json"
+          - "scripts/lib/setup/**"
+          - "scripts/tests/lib/print-setup-declarations.ts"
+          - "scripts/tests/lib/setup-declarations-*.ts"
     portability: portable
     changeset-gated: true
     requires:
-      runtime: python@3.12
+      runtime: [python@3.12, node@24]
     command:
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh
       - bash scripts/check-gemini-overlay-enrollment.sh

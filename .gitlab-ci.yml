@@ -540,7 +540,7 @@ setup-oracle:
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts scripts/tests/setup-retarget-catalogue-picker.test.ts scripts/tests/setup-retarget-gemini-overlays.test.ts scripts/tests/setup-retarget-mcp-order.test.ts scripts/tests/setup-retarget-others.test.ts scripts/tests/setup-retarget-step-order.test.ts scripts/tests/setup-retarget-tier-resolution.test.ts scripts/tests/setup-retarget-usage-order.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1614,6 +1614,9 @@ setup:
 
 misc:
   image: python:3.12
+  before_script:
+    - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+    - apt-get install -y --no-install-recommends nodejs
   script:
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh"
     - "bash scripts/check-gemini-overlay-enrollment.sh"
@@ -1640,6 +1643,9 @@ misc:
         - "model-mappings/**"
         - "scripts/setup-gemini-interactive.sh"
         - "config/gemini/settings.json"
+        - "scripts/lib/setup/**"
+        - "scripts/tests/lib/print-setup-declarations.ts"
+        - "scripts/tests/lib/setup-declarations-*.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-no-machine-paths.sh"
@@ -1657,6 +1663,9 @@ misc:
         - "model-mappings/**"
         - "scripts/setup-gemini-interactive.sh"
         - "config/gemini/settings.json"
+        - "scripts/lib/setup/**"
+        - "scripts/tests/lib/print-setup-declarations.ts"
+        - "scripts/tests/lib/setup-declarations-*.ts"
 
 repository-scan:
   image: python:3.12

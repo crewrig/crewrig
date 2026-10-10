@@ -23,12 +23,11 @@ import path from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { renderDeclaration, SETUP_DESCRIPTORS } from "./lib/print-setup-declarations.ts";
+
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const COMMON = path.join(REPO, "scripts", "lib", "common.sh");
 const STAMP_REL = path.join(".crewrig-state", "production-deps.sha256");
-const SETUP_SCRIPTS = ["claude", "gemini", "copilot", "antigravity"].map((cli) =>
-  path.join(REPO, "scripts", `setup-${cli}-interactive.sh`),
-);
 
 const STUB_NPM = `#!/bin/sh
 printf '%s\\t%s\\t%s\\n' "$*" "\${NODE_EXTRA_CA_CERTS:-}" "$PWD" >> "$STUB_NPM_LOG"
@@ -234,24 +233,27 @@ describe("install_production_dependencies (stub npm)", () => {
 });
 
 describe("setup-script wiring", () => {
-  /** Line number (1-based) of the first non-comment line matching `re`, as first_call does. */
-  function firstCall(lines: string[], re: RegExp): number | undefined {
-    const idx = lines.findIndex((l) => re.test(l) && !/^\s*#/.test(l));
-    return idx === -1 ? undefined : idx + 1;
+  /** The steps of one setup in run order, read from its declaration (`step N: <id>` lines). */
+  function declaredSteps(cli: string): string[] {
+    const descriptor = SETUP_DESCRIPTORS[cli];
+    assert.ok(descriptor !== undefined, cli);
+    const steps = renderDeclaration(descriptor, "lines")
+      .split("\n")
+      .flatMap((line) => /^step \d+: (.+)$/.exec(line)?.[1] ?? []);
+    assert.ok(steps.length > 0, `vacuity: the ${cli} declaration lists no step`);
+    return steps;
   }
 
-  for (const script of SETUP_SCRIPTS) {
-    test(`7. ${path.basename(script)}: after offer_tls_delegation, before ensure_tier_built`, () => {
-      const lines = fs.readFileSync(script, "utf8").split("\n");
-      const tls = firstCall(lines, /^\s*offer_tls_delegation(\s|$)/);
-      const step = firstCall(lines, /^\s*install_production_dependencies\s/);
-      const tier = firstCall(lines, /^\s*ensure_tier_built\s/);
-      assert.ok(
-        tls !== undefined && step !== undefined && tier !== undefined,
-        `${tls} ${step} ${tier}`,
-      );
-      assert.ok(tls < step, `offer_tls_delegation (l${tls}) must precede the step (l${step})`);
-      assert.ok(step < tier, `the step (l${step}) must precede ensure_tier_built (l${tier})`);
+  // Pinned against the shell by setup-retarget-step-order.test.ts, until the shell is a shim.
+  for (const cli of ["claude", "gemini", "copilot", "antigravity"]) {
+    test(`7. ${cli}: tls-offer, then deps-install, then tiers (declaration)`, () => {
+      const steps = declaredSteps(cli);
+      const tls = steps.indexOf("tls-offer");
+      const step = steps.indexOf("deps-install");
+      const tier = steps.indexOf("tiers");
+      assert.ok(tls >= 0 && step >= 0 && tier >= 0, `${tls} ${step} ${tier}`);
+      assert.ok(tls < step, `tls-offer (#${tls}) must precede the step (#${step})`);
+      assert.ok(step < tier, `the step (#${step}) must precede tiers (#${tier})`);
     });
   }
 });

@@ -35,21 +35,37 @@ import {
   mode,
   type Json,
 } from "./lib/guard-wiring-fixtures.ts";
+import { renderDeclaration, SETUP_DESCRIPTORS } from "./lib/print-setup-declarations.ts";
 import { fakeNodeFirst, pathWithoutNode } from "./lib/shim-env.ts";
 import { cleanupAll, read, REPO, SKIP_POSIX } from "./lib/worktree-fixtures.ts";
 
 after(cleanupAll);
 
+/** The steps of one setup in run order, read from its declaration (`step N: <id>` lines). */
+function declaredSteps(cli: string): string[] {
+  const descriptor = SETUP_DESCRIPTORS[cli];
+  assert.ok(descriptor !== undefined, cli);
+  const steps = renderDeclaration(descriptor, "lines")
+    .split("\n")
+    .flatMap((line) => /^step \d+: (.+)$/.exec(line)?.[1] ?? []);
+  assert.ok(steps.length > 0, `vacuity: the ${cli} declaration lists no step`);
+  return steps;
+}
+
 describe("structure: the rewrite runs before the session-recording question, the guard's jq substitutions are gone (R30, R32, v1-F2)", () => {
   for (const cli of ["claude", "gemini", "copilot", "antigravity"]) {
     const text = read(path.join(REPO, "scripts", `setup-${cli}-interactive.sh`));
-    test(`${cli}: guard_rewrite_installed is called before the question and never guarded by the answer`, () => {
-      const call = text.search(/^\s*guard_rewrite_installed /m);
-      const question = text.indexOf("Enable automatic session recording");
+    test(`${cli}: the rewrite step precedes the session-recording question (declaration)`, () => {
+      // Pinned against the shell by setup-retarget-step-order.test.ts, until the shell is a shim.
+      const steps = declaredSteps(cli);
+      const call = steps.indexOf("hooks-rewrite-installed");
+      const question = steps.indexOf("session-recording");
       assert.ok(
         call >= 0 && question >= 0 && call < question,
         "the rewrite precedes the fzf question",
       );
+    });
+    test(`${cli}: guard_rewrite_installed is never guarded by the answer`, () => {
       assert.match(text, /guard_rewrite_installed [^\n]*\|\| true/);
     });
     test(`${cli}: no jq program rebuilds or substitutes the guard's command line`, () => {

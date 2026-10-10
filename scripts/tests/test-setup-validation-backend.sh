@@ -230,12 +230,25 @@ reset_validation_env
 # ---------------------------------------------------------------------------
 echo "4. Setup-script parity (shared helper invoked by all four CLIs)"
 
-for s in setup-claude-interactive.sh setup-gemini-interactive.sh \
-         setup-copilot-interactive.sh setup-antigravity-interactive.sh; do
-  if grep -q "configure_validation_backend" "$SETUP_DIR/$s"; then
-    ok "invokes configure_validation_backend: $s"
+# Retargeted (spec 0256 R9, PR D1): read the DECLARATION of each setup, not its shell text — the
+# `rules-shared` step is the one that configures the validation backend and asks the four
+# validation.* prompts. Pinned against the unchanged shell by scripts/tests/setup-retarget-others.test.ts
+# ("the validation backend is configured by the rules-shared step") and the golden cells of the four
+# setup-golden suites (the validation.* answers land in ~/.crewrig/validation.conf).
+# decl <cli> — the DECLARATION of that CLI's TypeScript setup (spec 0256 R9, PR D1), printed by
+# scripts/tests/lib/print-setup-declarations.ts. A non-zero exit (empty descriptor) is the vacuity guard.
+decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1"; }
+for cli in claude gemini copilot antigravity; do
+  declared="$(decl "$cli")" || declared=""
+  if [ -z "$declared" ]; then
+    bad "empty declaration for $cli (vacuity guard)"
+    continue
+  fi
+  if grep -qx 'step [0-9]*: rules-shared' <<< "$declared" \
+     && grep '^prompts\.rules-shared=' <<< "$declared" | grep -q 'validation\.backend'; then
+    ok "declares the validation-backend configuration (rules-shared step): $cli"
   else
-    bad "missing configure_validation_backend call: $s"
+    bad "declaration has no validation-backend configuration (rules-shared step): $cli"
   fi
 done
 

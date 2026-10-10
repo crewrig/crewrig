@@ -34,6 +34,7 @@ import {
   yesScript,
   type WiredCli,
 } from "./lib/transcript-fixtures.ts";
+import { renderDeclaration, SETUP_DESCRIPTORS } from "./lib/print-setup-declarations.ts";
 import { fakeNodeFirst } from "./lib/shim-env.ts";
 import { cleanupAll, read, REPO, SKIP_POSIX } from "./lib/worktree-fixtures.ts";
 
@@ -123,6 +124,37 @@ describe(
     });
   },
 );
+
+describe("R27: what each setup declares about session recording (the declaration)", () => {
+  /** Every step and `key=value` fact of one setup, read from its printed declaration. */
+  function declaration(cli: string): { steps: string[]; facts: Map<string, string> } {
+    const descriptor = SETUP_DESCRIPTORS[cli];
+    assert.ok(descriptor !== undefined, cli);
+    const steps: string[] = [];
+    const facts = new Map<string, string>();
+    for (const line of renderDeclaration(descriptor, "lines").split("\n")) {
+      const step = /^step \d+: (.+)$/.exec(line);
+      if (step?.[1] !== undefined) steps.push(step[1]);
+      else if (line.includes("=")) {
+        const eq = line.indexOf("=");
+        facts.set(line.slice(0, eq), line.slice(eq + 1));
+      }
+    }
+    assert.ok(steps.length > 0 && facts.size > 0, `vacuity: the ${cli} declaration is empty`);
+    return { steps, facts };
+  }
+
+  // The env patch is pinned against the shell by the SR_TRANSCRIPT_WIRED regex of the test above,
+  // which reads the shell until the behaviour reads of PR D2 replace it.
+  for (const cli of ["claude", "gemini", "copilot", "antigravity"]) {
+    test(`${cli}: asks the session-recording question, and patches env only on Claude Code`, () => {
+      const { steps, facts } = declaration(cli);
+
+      assert.ok(steps.includes("session-recording"), cli);
+      assert.equal(facts.get("hooks.env-patch"), String(cli === "claude"), cli);
+    });
+  }
+});
 
 describe(
   "R27 on Antigravity CLI: the installed transcript hook is byte-identical (v1-F2)",

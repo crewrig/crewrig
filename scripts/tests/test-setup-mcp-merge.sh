@@ -206,28 +206,51 @@ echo "3. Per-script capture wiring (spec 0089 R11 / review F1)"
 # the framework write) and the function (the extracted capture line, run against
 # a seeded fixture, yields the operator's servers).
 
-# script | target-var referenced by the capture | first framework-write marker
+# decl_substeps <cli> — the declared sub-steps of the `mcp` step, in run order
+# (spec 0256 requirement 9, PR D1: the ORDER is read from the declaration of the
+# TypeScript setup, not from the text of the shell). A printer exit 1 (an empty
+# descriptor) or an absent fact fails the suite: the vacuity guard.
+PRINT_DECL=(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts")
+decl_substeps() {
+  local out
+  out="$("${PRINT_DECL[@]+"${PRINT_DECL[@]}"}" "$1" 2>/dev/null)" || return 1
+  grep '^substeps\.mcp=' <<< "$out" | cut -d= -f2-
+}
+# decl_index <comma-list> <id> — 1-based position of <id>, empty when absent.
+decl_index() { printf '%s\n' "$1" | tr ',' '\n' | grep -nxF "$2" | head -1 | cut -d: -f1; }
+
+# script | target-var referenced by the capture | cli
+# Pin of the retargeted ordering against the unchanged shell: the golden cells
+# setup-golden/{copilot,antigravity}/operator-mcp-preserved (the operator's server
+# survives the run) and scripts/tests/setup-retarget-mcp-order.test.ts (reads the
+# shell line order AND the declaration and asserts they agree; retired with the shell).
 check_capture() {
-  local script="$1" target_var="$2" write_marker="$3"
+  local script="$1" target_var="$2" cli="$3"
   local path="$SETUP_DIR/$script"
   if [ ! -f "$path" ]; then bad "$script: not found"; return; fi
 
-  local cap_ln write_ln merge_ln
-  cap_ln="$(grep -nE '^[[:space:]]*PREEXISTING_MCP=' "$path" | head -1 | cut -d: -f1)"
-  write_ln="$(grep -nF "$write_marker" "$path" | head -1 | cut -d: -f1)"
-  merge_ln="$(grep -nF 'merge_preexisting_mcp_servers "$PREEXISTING_MCP"' "$path" | head -1 | cut -d: -f1)"
+  local subs cap_i write_i org_i
+  # (the failure is counted here, not inside the command substitution, which runs in a subshell)
+  subs="$(decl_substeps "$cli")" || { bad "$cli: the declaration printer failed (empty descriptor?)"; return; }
+  if [ -z "$subs" ]; then bad "$cli: the declaration carries no substeps.mcp fact (vacuous)"; return; fi
+  cap_i="$(decl_index "$subs" backup-capture-operator-servers)"
+  write_i="$(decl_index "$subs" write-mcp-config)"
+  org_i="$(decl_index "$subs" org-mcp-fold)"
+  if [ -z "$cap_i" ] || [ -z "$write_i" ] || [ -z "$org_i" ]; then
+    bad "$cli: the declaration lacks a capture, write or org-fold sub-step (got: $subs)"; return
+  fi
 
-  if [ -z "$cap_ln" ]; then bad "$script: no PREEXISTING_MCP= capture line"; return; fi
-  if [ -z "$write_ln" ]; then bad "$script: no framework-write line ($write_marker)"; return; fi
-  if [ -z "$merge_ln" ]; then bad "$script: no merge_preexisting_mcp_servers call"; return; fi
+  # Ordering: capture BEFORE the framework overwrite, the org fold AFTER it.
+  [ "$cap_i" -lt "$write_i" ] \
+    && ok "$cli: declared capture (#$cap_i) precedes the framework write (#$write_i)" \
+    || bad "$cli: declared capture (#$cap_i) must precede the framework write (#$write_i)"
+  [ "$org_i" -gt "$write_i" ] \
+    && ok "$cli: declared org fold (#$org_i) follows the framework write (#$write_i)" \
+    || bad "$cli: declared org fold (#$org_i) must follow the framework write (#$write_i)"
 
-  # Ordering: capture BEFORE the framework overwrite, fold AFTER it.
-  [ "$cap_ln" -lt "$write_ln" ] \
-    && ok "$script: capture (l$cap_ln) precedes framework write (l$write_ln)" \
-    || bad "$script: capture (l$cap_ln) must precede framework write (l$write_ln)"
-  [ "$merge_ln" -gt "$write_ln" ] \
-    && ok "$script: fold (l$merge_ln) follows framework write (l$write_ln)" \
-    || bad "$script: fold (l$merge_ln) must follow framework write (l$write_ln)"
+  # The capture line must still exist in the shell: the executed check below
+  # runs it (it stays until the shell is a shim: D2).
+  if ! grep -qE '^[[:space:]]*PREEXISTING_MCP=' "$path"; then bad "$script: no PREEXISTING_MCP= capture line"; return; fi
 
   # Functional: the extracted capture line, run against a seeded operator
   # fixture, reads the operator's servers (right file, right filter).
@@ -247,8 +270,8 @@ check_capture() {
   fi
 }
 
-check_capture setup-copilot-interactive.sh     MCP_CONFIG_TARGET  'write_json_config_secure_from "$MCP_CONFIG_TARGET"'
-check_capture setup-antigravity-interactive.sh AGY_MCP_CONFIG     'write_json_config_secure_from "$AGY_MCP_CONFIG"'
+check_capture setup-copilot-interactive.sh     MCP_CONFIG_TARGET copilot
+check_capture setup-antigravity-interactive.sh AGY_MCP_CONFIG    antigravity
 
 # ---------------------------------------------------------------------------
 echo "4. Setup-script parity (all three file setups reach the helper)"

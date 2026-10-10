@@ -516,28 +516,51 @@ fi
 # The interactive script cannot run in CI, so assert its shape instead.
 echo "§4 setup script wiring (R12/R16, structural)"
 
-if grep -q 'Enable automatic session recording to MemPalace? (opt-in)' "$SETUP"; then
-  ok "R12: the opt-in offer prompt is present"
+# The DECLARATION of the Antigravity setup (spec 0256 requirement 9, PR D1), read through the
+# printer: these structural assertions no longer read the text of the setup script, which becomes
+# a forwarding shim at the switch PR. Vacuity guard: an empty declaration (the printer exits 1
+# with nothing on stdout) or a missing fact fails the suite instead of passing it.
+DECL_PRINTER="$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts"
+DECL="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$DECL_PRINTER" antigravity 2>/dev/null)"
+DECL_RC=$?
+if [ "$DECL_RC" -eq 0 ] && [ -n "$DECL" ]; then
+  ok "the Antigravity setup declaration is readable and non-empty"
 else
-  bad "R12: the opt-in offer prompt is missing"
+  bad "the Antigravity setup declaration is empty or unreadable (printer exit $DECL_RC) — the declaration assertions below would be vacuous"
 fi
-if grep -q 'fzf --height 10% --header "Apply?"' "$SETUP"; then
-  ok "R12: the second confirmation prompt is present"
+# decl_fact <key>: the value of one `<key>=<value>` fact; empty when the fact is absent.
+# A here-string, not a pipe: under `pipefail` a `grep -m1` upstream SIGPIPE would misreport.
+decl_fact() { grep -m1 "^$1=" <<<"$DECL" | cut -d= -f2-; }
+# decl_has_step <id>: the declaration lists `step <N>: <id>`.
+decl_has_step() { grep -qx "step [0-9]*: $1" <<<"$DECL"; }
+
+# Pinned against the unchanged shell by the golden cells transcript-optin-yes and
+# transcript-optin-yes-declined (scripts/tests/fixtures/setup-golden/antigravity/), whose stdout
+# holds both prompts and whose tree holds the deployed manifest.
+OFFER_HEADER="$(decl_fact prompt.transcripts.header)"
+if [ -n "$OFFER_HEADER" ] && [ "$OFFER_HEADER" = 'Enable automatic session recording to MemPalace? (opt-in)' ]; then
+  ok "R12: the opt-in offer prompt is declared"
 else
-  bad "R12: the second confirmation prompt is missing"
+  bad "R12: the opt-in offer prompt is not declared (got '$OFFER_HEADER')"
 fi
-if grep -q 'deploy_antigravity_transcript_hooks' "$SETUP"; then
-  ok "the setup script calls the deployment helper"
+CONFIRM_HEADER="$(decl_fact prompt.transcripts-confirm.header)"
+if [ -n "$CONFIRM_HEADER" ] && [ "$CONFIRM_HEADER" = 'Apply?' ]; then
+  ok "R12: the second confirmation prompt is declared"
 else
-  bad "the setup script never calls the deployment helper"
+  bad "R12: the second confirmation prompt is not declared (got '$CONFIRM_HEADER')"
 fi
-# R12 asks for the offer to default to declining: `no` must be the first line
-# fed to fzf, as in all three siblings.
-if grep -q 'echo -e "no\\nyes" | fzf --height 10% --header "Enable automatic session recording' "$SETUP"; then
-  ok "R12: the offer defaults to 'no'"
+if decl_has_step session-recording && [ "$(decl_fact hooks.channel)" = "agy-json" ]; then
+  ok "the setup declares the session-recording step that deploys the manifest (the deployment helper's call site)"
 else
-  bad "R12: the offer does not default to 'no'"
+  bad "the setup does not declare the session-recording step with the agy-json channel"
 fi
+# R12 asks for the offer to default to declining: `no` must be the first option offered to
+# fzf, as in all three siblings.
+OFFER_OPTIONS="$(decl_fact prompt.transcripts.options)"
+case "$OFFER_OPTIONS" in
+  no,*) ok "R12: the offer defaults to 'no'" ;;
+  *)    bad "R12: the offer does not default to 'no' (options '$OFFER_OPTIONS')" ;;
+esac
 # R16 — BEHAVIOURAL, not a grep. An earlier version of this assertion only
 # checked that the helper's NAME appeared somewhere after the `CONFIRM=` line,
 # which no arrangement of the code could falsify: it passed even with the gate
@@ -682,10 +705,13 @@ case "$A_GUARD" in
 esac
 # The deployment target must be the customization root that is proven to fire,
 # not the application-data directory.
-if grep -q 'AGY_HOOKS_JSON="${HOME}/.gemini/config/hooks.json"' "$SETUP"; then
+# Pinned against the unchanged shell by the golden cell transcript-optin-yes (its tree holds
+# .gemini/config/hooks.json) and by the R24 arg-4 case above.
+HOOKS_FILE="$(decl_fact hooks.file)"
+if [ -n "$HOOKS_FILE" ] && [ "$HOOKS_FILE" = '<HOME>/.gemini/config/hooks.json' ]; then
   ok "R14: the deployment target is the global customization root"
 else
-  bad "R14: the deployment target is not \${HOME}/.gemini/config/hooks.json"
+  bad "R14: the declared deployment target is '$HOOKS_FILE', not <HOME>/.gemini/config/hooks.json"
 fi
 
 # --- §5. The hook's own Antigravity handling ---------------------------------
