@@ -8,7 +8,7 @@ import path from "node:path";
 
 import type { Cli, GoldenCase } from "./setup-golden-types.ts";
 import type { FzfRecord } from "./setup-stubs.ts";
-import { installStubs } from "./setup-stubs.ts";
+import { installStubs, PLACEHOLDER_BEARER } from "./setup-stubs.ts";
 import {
   baseStubs,
   commonTools,
@@ -17,8 +17,14 @@ import {
 } from "./setup-golden-common.ts";
 import { createSetupSandbox } from "./setup-sandbox.ts";
 import type { Leg } from "./setup-sandbox.ts";
-import { bakCountOf, normalize, snapshot, treeOf } from "./setup-golden-tree.ts";
-import type { TreeEntry } from "./setup-golden-tree.ts";
+import { bakCountOf, normalize, readTokens, snapshot, treeOf } from "./setup-golden-tree.ts";
+import type { Roots, TreeEntry } from "./setup-golden-tree.ts";
+
+/** One call of the stub `curl`: the URL probed and the bearer sent (`<TOKEN>`, `<PLACEHOLDER>` or empty). */
+export interface CurlRecord {
+  readonly url: string;
+  readonly bearer: string;
+}
 
 /** Everything a golden fixture stores for one case on one leg; text is already placeholdered. */
 export interface CaseResult {
@@ -29,6 +35,8 @@ export interface CaseResult {
   /** `.bak.<STAMP>` files per backed-up target. */
   readonly bakCount: Readonly<Record<string, number>>;
   readonly fzfRecords: readonly FzfRecord[];
+  /** The stub `curl` calls, oldest first (the daemon probes). */
+  readonly curlRecords: readonly CurlRecord[];
 }
 
 /** The real tools exposed by default; a case adds more (`python3`) through `GoldenCase.tools`. */
@@ -70,6 +78,7 @@ function exposeTools(bin: string, names: readonly string[]): void {
 export function runCase(c: GoldenCase, leg: Leg): CaseResult {
   const sb = createSetupSandbox(c.sandbox);
   try {
+    const chromaPort = c.env?.["MEMPALACE_CHROMA_PORT"] ?? "";
     const stubs = installStubs(sb.bin, c.stubs);
     exposeTools(sb.bin, c.tools ?? DEFAULT_TOOLS);
     const before = snapshot(sb);
@@ -79,8 +88,19 @@ export function runCase(c: GoldenCase, leg: Leg): CaseResult {
       ...(c.stdin === undefined ? {} : { stdin: c.stdin }),
       ...(c.env === undefined ? {} : { env: c.env }),
     });
-    const tree = treeOf(sb, before);
-    const text = (value: string): string => normalize(value, sb);
+    const roots: Roots = {
+      root: sb.root,
+      repo: sb.repo,
+      home: sb.home,
+      secrets: readTokens(sb.home, PLACEHOLDER_BEARER),
+      literals: /^\d+$/.test(chromaPort) ? [[chromaPort, "<CHROMA_PORT>"]] : [],
+    };
+    const tree = treeOf(roots, before);
+    const text = (value: string): string => normalize(value, roots);
+    const bearerOf = (value: unknown): string => {
+      const raw = typeof value === "string" ? value : "";
+      return raw === PLACEHOLDER_BEARER ? "<PLACEHOLDER>" : text(raw);
+    };
     return {
       status: res.status,
       stdout: text(res.stdout),
@@ -93,6 +113,11 @@ export function runCase(c: GoldenCase, leg: Leg): CaseResult {
         options: r.options.map(text),
         answer: text(r.answer),
       })),
+      // A readiness poll repeats the same probe as often as the wall clock allows: keep one.
+      curlRecords: stubs
+        .records("curl")
+        .map((r) => ({ url: text(String(r["url"] ?? "")), bearer: bearerOf(r["bearer"]) }))
+        .filter((r, i, all) => i === 0 || JSON.stringify(r) !== JSON.stringify(all[i - 1])),
     };
   } finally {
     sb.dispose();

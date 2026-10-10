@@ -1,0 +1,9 @@
+====================================
+  Claude Code Configuration Setup
+====================================
+
+Cannot proceed — required identity files are missing:
+  - config/SOUL.md is missing — run: claude /init-soul
+  - config/PROFILE.md is missing — run: claude /init-personal-profile
+
+Generate them BEFORE re-running this script.

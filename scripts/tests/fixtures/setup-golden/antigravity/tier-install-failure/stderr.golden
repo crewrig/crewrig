@@ -1,0 +1,4 @@
+  WARNING: tier 'library' staged 1 skill(s) and 0 agent(s)
+           but placed 0 and 0 at the install target.
+           absent from the install target: skill library/broken-skill
+  ERROR: tier 'library' staged 1 skill(s) and placed none at <HOME>/.gemini/config/skills.

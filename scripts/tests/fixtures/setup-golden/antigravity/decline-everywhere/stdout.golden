@@ -1,0 +1,64 @@
+====================================
+  Antigravity CLI Configuration Setup
+====================================
+
+Existing context files found in <HOME>/.gemini/antigravity-cli:
+   - 99_CUSTOM.md
+
+Keeping existing context files. Team / expertise / level / profile selection will be skipped.
+
+Configuring <HOME>/.gemini/config/mcp_config.json...
+
+Production dependencies: running 'npm ci --omit=dev --workspaces=false'...
+
+  MemPalace not found.
+  MemPalace install skipped.
+  Installed: mcp_config.json
+
+
+Installing library components to <HOME>/.gemini/config/skills (automatic)...
+Tier not built (no <REPO>/dist/library/.agents) — building automatically via 'bash scripts/build-components.sh --target antigravity'...
+=========================================
+  Community Component Builder
+  Target: antigravity
+  Mode: BUILD (generate files)
+=========================================
+
+--- Tier: core (output root: <REPO>) ---
+
+Done.
+  Tier 'library' not built (no <REPO>/dist/library/.agents) — run 'bash scripts/build-components.sh' first.
+
+  'community' install skipped.
+
+  'org' install skipped.
+
+Migrating components left at the superseded placement...
+
+  Session recording disabled (re-run this script to enable).
+
+  Antigravity usage capture disabled (can enable later by re-running this script).
+  MemPalace session check registered in ~/.gemini/config/hooks.json
+
+Generating <HOME>/.gemini/config/AGENTS.md...
+  Generated: <HOME>/.gemini/config/AGENTS.md (4 lines)
+
+====================================
+  Setup complete
+====================================
+
+Install mode: copy
+
+Active context files:
+  <HOME>/.gemini/antigravity-cli/99_CUSTOM.md
+
+System context file (Antigravity runtime):
+  <HOME>/.gemini/config/AGENTS.md (4 lines)
+
+MCP servers (from mcp_config.json):
+
+Note: MemPalace MCP server is NOT installed in mcp_config.json.
+      Install MemPalace at the supported version, then re-run this script:
+      pipx install 'mempalace>=3.6.0,<3.7'
+
+Restart any running Antigravity CLI session to pick up the new configuration.

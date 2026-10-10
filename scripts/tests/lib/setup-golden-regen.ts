@@ -17,7 +17,9 @@ export { runCase } from "./setup-golden-run.ts";
 export type { CaseResult } from "./setup-golden-run.ts";
 export { normalize, treeOf } from "./setup-golden-tree.ts";
 
-export const FIXTURES_DIR = path.join(REPO, "scripts/tests/fixtures/setup-golden");
+/** Where compare mode reads the fixtures: `SETUP_GOLDEN_DIR` when set, else the committed directory. */
+export const FIXTURES_DIR =
+  process.env["SETUP_GOLDEN_DIR"] ?? path.join(REPO, "scripts/tests/fixtures/setup-golden");
 
 /** The four stored files of a case, by their name without the `.golden` suffix. */
 export const GOLDEN_FILES = ["status", "stdout", "stderr", "tree.json"] as const;
@@ -40,7 +42,8 @@ export function serialize(result: CaseResult): GoldenText {
     "{",
     `  "tree": ${rows(result.tree)},`,
     `  "bakCount": ${JSON.stringify(result.bakCount)},`,
-    `  "fzf": ${rows(result.fzfRecords)}`,
+    `  "fzf": ${rows(result.fzfRecords)},`,
+    `  "curl": ${rows(result.curlRecords)}`,
     "}",
     "",
   ].join("\n");

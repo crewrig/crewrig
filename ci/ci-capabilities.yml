@@ -617,6 +617,74 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-entry-form.test.ts
 
+  # Spec 0256 R40 (ticket #1335), PR A: the oracle of the four setup entry points. The sandbox,
+  # command-stub, golden-harness, smoke, per-CLI golden, prompt-inventory and oracle-mutation suites
+  # run the shell setup scripts inside a sandbox HOME with stub CLIs and compare the resulting trees
+  # with the committed goldens. The floor guard runs first, then the production dependency step,
+  # before the first test call. `jq` and `git` are real. The golden suites skip themselves off Linux
+  # and use no network. A change to the shell the oracle drives reruns it.
+  - id: setup-oracle
+    name: "Run the setup entry-point oracle: sandbox, stubs, golden, prompt-inventory and mutation suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/setup-antigravity-interactive.sh"
+          - "scripts/setup-claude-interactive.sh"
+          - "scripts/setup-copilot-interactive.sh"
+          - "scripts/setup-gemini-interactive.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/tls-delegation.sh"
+          - "scripts/lib/usage-capture-optin.sh"
+          - "scripts/lib/gemini-settings.sh"
+          - "scripts/lib/tls-exec.sh"
+          - "scripts/tests/setup-sandbox.test.ts"
+          - "scripts/tests/setup-stubs.test.ts"
+          - "scripts/tests/setup-golden-harness.test.ts"
+          - "scripts/tests/setup-golden-smoke.test.ts"
+          - "scripts/tests/setup-golden-claude.test.ts"
+          - "scripts/tests/setup-golden-gemini.test.ts"
+          - "scripts/tests/setup-golden-copilot.test.ts"
+          - "scripts/tests/setup-golden-antigravity.test.ts"
+          - "scripts/tests/setup-prompt-inventory.test.ts"
+          - "scripts/tests/setup-oracle-mutation.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/setup-antigravity-interactive.sh"
+          - "scripts/setup-claude-interactive.sh"
+          - "scripts/setup-copilot-interactive.sh"
+          - "scripts/setup-gemini-interactive.sh"
+          - "scripts/lib/common.sh"
+          - "scripts/lib/tls-delegation.sh"
+          - "scripts/lib/usage-capture-optin.sh"
+          - "scripts/lib/gemini-settings.sh"
+          - "scripts/lib/tls-exec.sh"
+          - "scripts/tests/setup-sandbox.test.ts"
+          - "scripts/tests/setup-stubs.test.ts"
+          - "scripts/tests/setup-golden-harness.test.ts"
+          - "scripts/tests/setup-golden-smoke.test.ts"
+          - "scripts/tests/setup-golden-claude.test.ts"
+          - "scripts/tests/setup-golden-gemini.test.ts"
+          - "scripts/tests/setup-golden-copilot.test.ts"
+          - "scripts/tests/setup-golden-antigravity.test.ts"
+          - "scripts/tests/setup-prompt-inventory.test.ts"
+          - "scripts/tests/setup-oracle-mutation.test.ts"
+          - "scripts/tests/lib/setup-*.ts"
+          - "scripts/tests/lib/real-home-guard.ts"
+          - "scripts/tests/fixtures/setup-golden/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - node scripts/lib/node-floor-guard.js
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts
+
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then
   # scripts/tests/lib/windows-extension-proof.ts builds every golden subject with the TypeScript

@@ -1,0 +1,3 @@
+  ERROR: the token file exists but is whitespace-only: <HOME>/.mempalace/server/<SERVER>/token
+         Refusing to use it — an empty token disables authentication.
+Warning: <REPO>/crewrig.config.toml not found — placeholders will be left literal.

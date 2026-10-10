@@ -13,6 +13,10 @@ export interface Roots {
   readonly root: string;
   readonly repo: string;
   readonly home: string;
+  /** Secret strings (the bearer the setup generated) replaced by `<TOKEN>` in every text. */
+  readonly secrets?: readonly string[];
+  /** Run-specific literals (a free TCP port) as [value, placeholder]; matched on token boundaries only. */
+  readonly literals?: ReadonlyArray<readonly [string, string]>;
 }
 
 export interface TreeEntry {
@@ -34,6 +38,28 @@ const IGNORED = new Set([".git", "node_modules"]);
 
 const BAK = /\.bak\.\d{8}-\d{6}(?:\.\d+)?/g;
 const ISO = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g;
+
+/** `~/.mempalace/server/<sha256 of the palace path>/token`: the directory name derives from the sandbox path. */
+const SERVER = /server\/[0-9a-f]{16,64}(?=\/|\b)/g;
+
+/**
+ * The bearer tokens the setup wrote under `<home>/.mempalace/server/<key>/token` (trimmed, at least
+ * 8 characters, never the setup placeholder), for use as `Roots.secrets`.
+ */
+export function readTokens(home: string, placeholder: string): string[] {
+  const base = path.join(home, ".mempalace/server");
+  const found: string[] = [];
+  if (!fs.existsSync(base)) return found;
+  for (const key of fs.readdirSync(base)) {
+    try {
+      const token = fs.readFileSync(path.join(base, key, "token"), "utf8").trim();
+      if (token.length >= 8 && token !== placeholder) found.push(token);
+    } catch {
+      // no token file in this directory
+    }
+  }
+  return found;
+}
 
 function rootNames(roots: Roots): Array<[string, string]> {
   const named: Array<[string, string]> = [];
@@ -59,8 +85,16 @@ function rootNames(roots: Roots): Array<[string, string]> {
  */
 export function normalize(text: string, roots: Roots): string {
   let out = text;
+  // Longest secret first; a secret is a random bearer, so it is replaced before anything else.
+  for (const secret of [...(roots.secrets ?? [])].sort((a, b) => b.length - a.length)) {
+    out = out.split(secret).join("<TOKEN>");
+  }
   for (const [dir, token] of rootNames(roots)) out = out.split(dir).join(token);
+  for (const [value, token] of roots.literals ?? []) {
+    out = out.replace(new RegExp(`(?<![0-9A-Za-z])${value}(?![0-9A-Za-z])`, "g"), token);
+  }
   return out
+    .replace(SERVER, "server/<SERVER>")
     .replace(BAK, ".bak.<STAMP>")
     .replace(ISO, "<ISO>")
     .replace(/\btmp\.[A-Za-z0-9]{6,}/g, "tmp.<RAND>")

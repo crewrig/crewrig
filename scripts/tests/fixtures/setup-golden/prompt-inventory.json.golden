@@ -1,0 +1,516 @@
+[
+  {
+    "id": "catalogue.expertise",
+    "header": {
+      "antigravity": "head -20 <REPO>/config/expertise/{}.md",
+      "claude": "head -20 <REPO>/config/expertise/{}.md",
+      "copilot": "head -20 <REPO>/config/expertise/{}.md",
+      "gemini": "head -20 <REPO>/config/expertise/{}.md"
+    },
+    "options": [
+      "@catalogue:config/expertise"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "rules not kept and the catalogue is not empty",
+    "cancel": {
+      "antigravity": "decline",
+      "claude": "decline",
+      "copilot": "decline",
+      "gemini": "decline"
+    }
+  },
+  {
+    "id": "catalogue.level",
+    "header": {
+      "antigravity": "head -20 <REPO>/config/level/{}.md",
+      "claude": "head -20 <REPO>/config/level/{}.md",
+      "copilot": "head -20 <REPO>/config/level/{}.md",
+      "gemini": "head -20 <REPO>/config/level/{}.md"
+    },
+    "options": [
+      "@catalogue:config/level"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "rules not kept and the catalogue is not empty",
+    "cancel": {
+      "antigravity": "decline",
+      "claude": "decline",
+      "copilot": "decline",
+      "gemini": "decline"
+    }
+  },
+  {
+    "id": "catalogue.team",
+    "header": {
+      "antigravity": "head -20 <REPO>/config/teams/{}.md",
+      "claude": "head -20 <REPO>/config/teams/{}.md",
+      "copilot": "head -20 <REPO>/config/teams/{}.md",
+      "gemini": "head -20 <REPO>/config/teams/{}.md"
+    },
+    "options": [
+      "@catalogue:config/teams"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "rules not kept and the catalogue is not empty",
+    "cancel": {
+      "antigravity": "decline",
+      "claude": "decline",
+      "copilot": "decline",
+      "gemini": "decline"
+    }
+  },
+  {
+    "id": "install-seqthink",
+    "header": {
+      "antigravity": "Include SequentialThinking MCP server in mcp_config.json?",
+      "claude": "Install Sequential Thinking MCP server?"
+    },
+    "options": [
+      "yes",
+      "no"
+    ],
+    "clis": [
+      "antigravity",
+      "claude"
+    ],
+    "condition": "always",
+    "cancel": {
+      "antigravity": "abort",
+      "claude": "abort"
+    }
+  },
+  {
+    "id": "install-settings",
+    "header": {
+      "claude": "Install default settings.json?"
+    },
+    "options": [
+      "yes",
+      "no"
+    ],
+    "clis": [
+      "claude"
+    ],
+    "condition": "~/.claude/settings.json is absent",
+    "cancel": {
+      "claude": "abort"
+    }
+  },
+  {
+    "id": "legacy-mcp-removal",
+    "header": {
+      "claude": "Remove legacy ~/.claude/mcp.json (backup will be kept)?"
+    },
+    "options": [
+      "no",
+      "yes"
+    ],
+    "clis": [
+      "claude"
+    ],
+    "condition": "~/.claude/mcp.json exists",
+    "cancel": {
+      "claude": "abort"
+    }
+  },
+  {
+    "id": "link-confirm",
+    "header": {
+      "antigravity": "Continue with symlink mode? [y/N] ",
+      "claude": "Continue with symlink mode? [y/N] ",
+      "gemini": "Continue with symlink mode? [y/N] "
+    },
+    "options": [
+      "no",
+      "yes"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "gemini"
+    ],
+    "condition": "--link is given (one key read, not fzf)",
+    "cancel": {
+      "antigravity": "none",
+      "claude": "none",
+      "gemini": "none"
+    }
+  },
+  {
+    "id": "mempalace-install",
+    "header": {
+      "antigravity": "MemPalace not found — install via pipx now? (mempalace>=3.6.0,<3.7)",
+      "claude": "MemPalace not found — install via pipx now? (mempalace>=3.6.0,<3.7)",
+      "copilot": "MemPalace not found — install via pipx now? (mempalace>=3.6.0,<3.7)",
+      "gemini": "MemPalace not found — install via pipx now? (mempalace>=3.6.0,<3.7)"
+    },
+    "options": [
+      "no",
+      "yes"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "MemPalace not found and pipx on PATH",
+    "cancel": {
+      "antigravity": "decline",
+      "claude": "decline",
+      "copilot": "decline",
+      "gemini": "decline"
+    }
+  },
+  {
+    "id": "overlay.community",
+    "header": {
+      "antigravity": "Install 'community' components to ~/.gemini/config/skills? (opt-in)",
+      "claude": "Install 'community' components to ~/.claude/skills? (opt-in)",
+      "copilot": "Install 'community' skills to <HOME>/.copilot/skills? (opt-in)",
+      "gemini": "Install 'community' components to ~/.gemini/skills? (opt-in)"
+    },
+    "options": [
+      "no",
+      "yes"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "dist/community is built",
+    "cancel": {
+      "antigravity": "abort",
+      "claude": "abort",
+      "copilot": "abort",
+      "gemini": "abort"
+    }
+  },
+  {
+    "id": "overlay.org",
+    "header": {
+      "antigravity": "Install 'org' components to ~/.gemini/config/skills? (opt-in)",
+      "claude": "Install 'org' components to ~/.claude/skills? (opt-in)",
+      "copilot": "Install 'org' skills to <HOME>/.copilot/skills? (opt-in)",
+      "gemini": "Install 'org' components to ~/.gemini/skills? (opt-in)"
+    },
+    "options": [
+      "no",
+      "yes"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "dist/org is built",
+    "cancel": {
+      "antigravity": "abort",
+      "claude": "abort",
+      "copilot": "abort",
+      "gemini": "abort"
+    }
+  },
+  {
+    "id": "profile-method",
+    "header": {
+      "antigravity": "How to resolve?",
+      "claude": "How to resolve?",
+      "gemini": "How to resolve?"
+    },
+    "options": [
+      "keep-local",
+      "overwrite"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "gemini"
+    ],
+    "condition": "the local profile target differs (a non-regular target: a file there is a context file that the keep-or-refresh step removes first)",
+    "cancel": {
+      "antigravity": "abort",
+      "claude": "abort",
+      "gemini": "abort"
+    }
+  },
+  {
+    "id": "rules-action",
+    "header": {
+      "antigravity": "Existing context files detected — keep them (skip selection) or refresh from scratch?",
+      "claude": "Existing rules detected — keep them (skip selection) or refresh from scratch?",
+      "copilot": "Existing instructions detected — keep them (skip selection) or refresh from scratch?",
+      "gemini": "Existing context files detected — keep them (skip selection) or refresh from scratch?"
+    },
+    "options": [
+      "keep",
+      "refresh"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "context files already installed",
+    "cancel": {
+      "antigravity": "abort",
+      "claude": "abort",
+      "copilot": "abort",
+      "gemini": "abort"
+    }
+  },
+  {
+    "id": "tls-delegation",
+    "header": {
+      "antigravity": "Configure the framework's tools to trust your system CA for its network operations? (never disables TLS verification; writes only ~/.crewrig/tls-env.sh)",
+      "claude": "Configure the framework's tools to trust your system CA for its network operations? (never disables TLS verification; writes only ~/.crewrig/tls-env.sh)",
+      "copilot": "Configure the framework's tools to trust your system CA for its network operations? (never disables TLS verification; writes only ~/.crewrig/tls-env.sh)",
+      "gemini": "Configure the framework's tools to trust your system CA for its network operations? (never disables TLS verification; writes only ~/.crewrig/tls-env.sh)"
+    },
+    "options": [
+      "no",
+      "yes"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "a custom-CA variable is set and TLS_DELEGATION is unset",
+    "cancel": {
+      "antigravity": "decline",
+      "claude": "decline",
+      "copilot": "decline",
+      "gemini": "decline"
+    }
+  },
+  {
+    "id": "transcripts",
+    "header": {
+      "antigravity": "Enable automatic session recording to MemPalace? (opt-in)",
+      "claude": "Enable automatic session recording to MemPalace? (opt-in)",
+      "copilot": "Enable automatic session recording to MemPalace? (opt-in)",
+      "gemini": "Enable automatic session recording to MemPalace? (opt-in)"
+    },
+    "options": [
+      "no",
+      "yes"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "always",
+    "cancel": {
+      "antigravity": "abort",
+      "claude": "decline",
+      "copilot": "decline",
+      "gemini": "decline"
+    }
+  },
+  {
+    "id": "transcripts-confirm",
+    "header": {
+      "antigravity": "Apply?",
+      "claude": "Apply these changes to settings.json?",
+      "copilot": "Apply?",
+      "gemini": "Apply these changes to settings.json?"
+    },
+    "options": [
+      "yes",
+      "no"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "transcripts answered yes",
+    "cancel": {
+      "antigravity": "abort",
+      "claude": "decline",
+      "copilot": "decline",
+      "gemini": "decline"
+    }
+  },
+  {
+    "id": "usage-capture",
+    "header": {
+      "antigravity": "Enable Antigravity CLI usage capture (statusline channel, opt-in)?",
+      "claude": "Capture token usage for Claude Code? (opt-in, MemPalace not required)",
+      "copilot": "Capture token usage for Copilot CLI? (opt-in, MemPalace not required)",
+      "gemini": "Capture token usage for Gemini CLI? (opt-in, MemPalace not required)"
+    },
+    "options": [
+      "no",
+      "yes"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "no capture registered",
+    "cancel": {
+      "antigravity": "abort",
+      "claude": "decline",
+      "copilot": "decline",
+      "gemini": "decline"
+    }
+  },
+  {
+    "id": "usage-capture-keep",
+    "header": {
+      "antigravity": "Antigravity usage capture is installed — keep it, or remove it (restores the prior statusLine.command, R21)?",
+      "claude": "Usage capture is registered for Claude Code. Keep it or remove it?",
+      "copilot": "Usage capture is registered for Copilot CLI. Keep it or remove it?",
+      "gemini": "Usage capture is registered for Gemini CLI. Keep it or remove it?"
+    },
+    "options": [
+      "keep",
+      "remove"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "a capture registered",
+    "cancel": {
+      "antigravity": "abort",
+      "claude": "decline",
+      "copilot": "decline",
+      "gemini": "decline"
+    }
+  },
+  {
+    "id": "validation.backend",
+    "header": {
+      "antigravity": "Validation backend? (internal = built-in AskUserQuestion prompt; plannotator = rich browser review, opt-in)",
+      "claude": "Validation backend? (internal = built-in AskUserQuestion prompt; plannotator = rich browser review, opt-in)",
+      "copilot": "Validation backend? (internal = built-in AskUserQuestion prompt; plannotator = rich browser review, opt-in)",
+      "gemini": "Validation backend? (internal = built-in AskUserQuestion prompt; plannotator = rich browser review, opt-in)"
+    },
+    "options": [
+      "internal",
+      "plannotator"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "no VALIDATION_* variable is set",
+    "cancel": {
+      "antigravity": "default",
+      "claude": "default",
+      "copilot": "default",
+      "gemini": "default"
+    }
+  },
+  {
+    "id": "validation.illustration",
+    "header": {
+      "antigravity": "Generate illustrations for reviews? (honoured only with the plannotator backend + a browser surface)",
+      "claude": "Generate illustrations for reviews? (honoured only with the plannotator backend + a browser surface)",
+      "copilot": "Generate illustrations for reviews? (honoured only with the plannotator backend + a browser surface)",
+      "gemini": "Generate illustrations for reviews? (honoured only with the plannotator backend + a browser surface)"
+    },
+    "options": [
+      "off",
+      "on"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "no VALIDATION_* variable is set",
+    "cancel": {
+      "antigravity": "default",
+      "claude": "default",
+      "copilot": "default",
+      "gemini": "default"
+    }
+  },
+  {
+    "id": "validation.pedagogy",
+    "header": {
+      "antigravity": "Pedagogy level for validation requests? (simple / contextual / professor)",
+      "claude": "Pedagogy level for validation requests? (simple / contextual / professor)",
+      "copilot": "Pedagogy level for validation requests? (simple / contextual / professor)",
+      "gemini": "Pedagogy level for validation requests? (simple / contextual / professor)"
+    },
+    "options": [
+      "contextual",
+      "simple",
+      "professor"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "no VALIDATION_* variable is set",
+    "cancel": {
+      "antigravity": "default",
+      "claude": "default",
+      "copilot": "default",
+      "gemini": "default"
+    }
+  },
+  {
+    "id": "validation.translate",
+    "header": {
+      "antigravity": "Translate the spec/plan into your preferred language for the gate presentation only? (the repo artifact stays English)",
+      "claude": "Translate the spec/plan into your preferred language for the gate presentation only? (the repo artifact stays English)",
+      "copilot": "Translate the spec/plan into your preferred language for the gate presentation only? (the repo artifact stays English)",
+      "gemini": "Translate the spec/plan into your preferred language for the gate presentation only? (the repo artifact stays English)"
+    },
+    "options": [
+      "off",
+      "on"
+    ],
+    "clis": [
+      "antigravity",
+      "claude",
+      "copilot",
+      "gemini"
+    ],
+    "condition": "no VALIDATION_* variable is set",
+    "cancel": {
+      "antigravity": "default",
+      "claude": "default",
+      "copilot": "default",
+      "gemini": "default"
+    }
+  }
+]

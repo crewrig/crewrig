@@ -1,0 +1,101 @@
+====================================
+  Antigravity CLI Configuration Setup
+====================================
+
+Installing shared configuration...
+  Copied: ORGANIZATION.md -> 20_ORGANIZATION.md
+  Copied: artifacts/core/rules/60-tools.md -> 60_TOOLS.md
+  Copied: TOOLS.md -> 65_TOOLS.md
+  Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
+  Copied: SOUL.md -> 00_SOUL.md
+
+User-gate validation backend (spec 0080):
+  Validation backend recorded: backend=internal translate=off pedagogy=contextual illustration=off
+    -> <HOME>/.crewrig/validation.conf
+
+Configuring <HOME>/.gemini/config/mcp_config.json...
+
+Production dependencies: running 'npm ci --omit=dev --workspaces=false'...
+
+  Detected MemPalace interpreter: <HOME>/.local/share/pipx/venvs/mempalace/bin/python (mempalace 3.6.0)
+
+Installing shared ChromaDB HTTP daemon supervisor (issue #98)...
+  Installed: <HOME>/.config/systemd/user/mempalace-chroma-server.service
+  Enabled and started: mempalace-chroma-server.service
+  mempalace MCP server configured.
+  sequentialthinking MCP server configured.
+
+Shared memory daemon (spec 0113 delta-02): defaulting antigravity to HTTP.
+  Without it, every session spawns its own memory server and only the
+  first one to write can write — the rest are refused for their whole life.
+  antigravity now reaches shared memory through the daemon.
+
+  NOTE: this run switched antigravity only. Still on the previous arrangement:
+    - claude
+    - copilot
+  They will contend for the memory lock with antigravity until they switch too.
+  Switch the whole machine at once with: task mempalace:switch-http
+
+  Restart any running antigravity session to pick this up.
+  MemPalace reaches shared memory through the HTTP daemon.
+  Installed: mcp_config.json
+
+Select your team:
+
+Select your expertise:
+  Copied: expertise/BACKEND-JAVA.md -> 40_USER_EXPERTISE.md
+Expertise: BACKEND-JAVA
+
+Select your experience level:
+  Copied: level/CONFIRMED.md -> 10_USER_LEVEL.md
+Level: CONFIRMED
+
+Setting up personal profile...
+  Copied: PROFILE.md -> 30_USER_PROFILE.md
+
+Installing library components to <HOME>/.gemini/config/skills (automatic)...
+Tier not built (no <REPO>/dist/library/.agents) — building automatically via 'bash scripts/build-components.sh --target antigravity'...
+=========================================
+  Community Component Builder
+  Target: antigravity
+  Mode: BUILD (generate files)
+=========================================
+
+--- Tier: core (output root: <REPO>) ---
+
+Done.
+  Tier 'library' not built (no <REPO>/dist/library/.agents) — run 'bash scripts/build-components.sh' first.
+
+Migrating components left at the superseded placement...
+
+  Session recording disabled (re-run this script to enable).
+
+  Antigravity usage capture disabled (can enable later by re-running this script).
+  MemPalace session check registered in ~/.gemini/config/hooks.json
+
+Generating <HOME>/.gemini/config/AGENTS.md...
+  Generated: <HOME>/.gemini/config/AGENTS.md (987 lines)
+
+====================================
+  Setup complete
+====================================
+
+Install mode: copy
+
+Active context files:
+  <HOME>/.gemini/antigravity-cli/00_SOUL.md
+  <HOME>/.gemini/antigravity-cli/10_USER_LEVEL.md
+  <HOME>/.gemini/antigravity-cli/20_ORGANIZATION.md
+  <HOME>/.gemini/antigravity-cli/30_USER_PROFILE.md
+  <HOME>/.gemini/antigravity-cli/40_USER_EXPERTISE.md
+  <HOME>/.gemini/antigravity-cli/60_TOOLS.md
+  <HOME>/.gemini/antigravity-cli/65_TOOLS.md
+
+System context file (Antigravity runtime):
+  <HOME>/.gemini/config/AGENTS.md (987 lines)
+
+MCP servers (from mcp_config.json):
+  - mempalace
+  - sequentialthinking
+
+Restart any running Antigravity CLI session to pick up the new configuration.

@@ -38,6 +38,8 @@ function mcpServersSha(f: string): string {
 function walk(dir: string, out: Map<string, string>): void {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, e.name);
+    // The Antigravity language server logs here on its own schedule, unrelated to a setup.
+    if (e.name === "log" || e.name === "cli.log") continue;
     if (e.isDirectory()) walk(full, out);
     else out.set(full, e.isSymbolicLink() ? `link ${fs.readlinkSync(full)}` : sha(full));
   }

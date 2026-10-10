@@ -1,0 +1,9 @@
+====================================
+  Antigravity CLI Configuration Setup
+====================================
+
+Cannot proceed — required identity files are missing:
+  - config/SOUL.md is missing — run: agy -i "/init-soul" --new-project
+  - config/PROFILE.md is missing — run: agy -i "/init-personal-profile" --new-project
+
+Generate them BEFORE re-running this script.
