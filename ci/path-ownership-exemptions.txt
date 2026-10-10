@@ -32,7 +32,7 @@ renovate.json	Configuration of the external Renovate service, consumed outside C
 crewrig.config.toml.template	Adopter copy-to-activate template (`docs/adoption-guide.md`); no script or test reads it.
 config/.env.example	Reference listing of environment variables; no script or test reads it.
 config/*.md.template	Seed templates for the user-local overlay files, read interactively by the `init-soul` / `init-personal-profile` commands; no CI check reads them.
-config/claude/settings.json.template	Copied at install time by `scripts/setup-claude-interactive.sh` behind an interactive `fzf` prompt; no test reads it.
+config/claude/settings.json.template	Copied at install time by `scripts/setup-claude-interactive.ts` behind an interactive prompt; no test reads it.
 config/release-monorepo.json	Documented as monorepo release configuration (`docs/layers.md`), but no script, test or workflow in the tree references the file name; candidate for a separate removal ticket.
 .oxfmtrc.json	Read by capability `lint-typescript` (no `paths:` filter): Oxfmt runs on every change through `scripts/check-typescript.ts`.
 .oxlintrc.json	Read by capability `lint-typescript` (no `paths:` filter): Oxlint runs on every change through `scripts/check-typescript.ts`.

@@ -274,10 +274,20 @@ the interactive setup script for each active CLI. These scripts are
 interactive: they will prompt for copy vs. symlink mode and confirm before
 modifying user-home directories.
 
+Each setup is a TypeScript entry that needs Node.js 24 or later. Run the floor
+guard first, then the entry, as two separate steps (not chained with `&&`):
+`node scripts/lib/node-floor-guard.js`, then
+`node scripts/setup-<cli>-interactive.ts`. The older
+`bash scripts/setup-<cli>-interactive.sh` form and the
+`task setup-<cli>-interactive` entry still work: the shell script is a
+forwarding shim that runs the same two steps and hands over its arguments and
+standard input unchanged.
+
 ### Claude Code
 
 ```bash
-bash scripts/setup-claude-interactive.sh
+node scripts/lib/node-floor-guard.js
+node scripts/setup-claude-interactive.ts
 ```
 
 Deploys to `~/.claude/rules/`. Each context file is installed with its
@@ -287,7 +297,8 @@ loads them in priority order.
 ### Gemini CLI
 
 ```bash
-bash scripts/setup-gemini-interactive.sh
+node scripts/lib/node-floor-guard.js
+node scripts/setup-gemini-interactive.ts
 ```
 
 Deploys to `~/.gemini/` directly — there is no `rules/` subdirectory for
@@ -299,7 +310,8 @@ difference automatically.
 ### GitHub Copilot CLI
 
 ```bash
-bash scripts/setup-copilot-interactive.sh
+node scripts/lib/node-floor-guard.js
+node scripts/setup-copilot-interactive.ts
 ```
 
 Deploys to `~/.copilot/instructions/` as `*.instructions.md` files
@@ -312,7 +324,8 @@ naming automatically.
 ### Antigravity CLI
 
 ```bash
-bash scripts/setup-antigravity-interactive.sh
+node scripts/lib/node-floor-guard.js
+node scripts/setup-antigravity-interactive.ts
 ```
 
 Deploys context to `~/.gemini/config/AGENTS.md` and MCP server configurations

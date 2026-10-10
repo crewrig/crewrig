@@ -46,8 +46,9 @@ export UV_SYSTEM_CERTS=true
 `UV_NATIVE_TLS` (now deprecated), and a uv that predates both still honours
 `SSL_CERT_FILE`.
 
-`setup-*-interactive.sh` offers to write exactly these lines to
-`~/.crewrig/tls-env.sh` for you (see *Automated delegation* below).
+The `setup-<cli>-interactive.ts` entries (and their `.sh` shims) offer to
+write exactly these lines to `~/.crewrig/tls-env.sh` for you (see *Automated
+delegation* below).
 
 ## Per-tool trust configuration
 

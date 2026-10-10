@@ -111,8 +111,9 @@ so both stdio and remote org servers now reach all four CLIs. See
 [`cli-matrix.md`](cli-matrix.md) row 7h.
 
 Delivery happens at setup time. After editing `mcp-servers.org.json`, **re-run
-the setup script** for each CLI you use (`scripts/setup-<cli>-interactive.sh`);
-setup is idempotent. Because the manifest is excluded from sync, your
+the setup script** for each CLI you use: `node scripts/lib/node-floor-guard.js`,
+then, as a separate step, `node scripts/setup-<cli>-interactive.ts` (Node.js 24
+or later; the `.sh` shim of the same name forwards to it); setup is idempotent. Because the manifest is excluded from sync, your
 declarations survive both a repeated setup run and an upstream synchronization.
 
 ## Re-adding a forge MCP server
