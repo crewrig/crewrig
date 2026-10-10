@@ -12,6 +12,7 @@ import { installStatusline, rewriteStatusline } from "../hook-statusline.ts";
 import { backupFile } from "./backup.ts";
 import type { Spawner } from "./context.ts";
 import { SetupExit } from "./exit.ts";
+import { assertRewritable } from "./lossless.ts";
 import { requireNodeFloor, type AgyCtx, type AgyPaths } from "./antigravity-hooks.ts";
 import { warnIfLinkedWorktree } from "./worktree-warning.ts";
 
@@ -76,6 +77,7 @@ export function statuslineInstalledNotice(ctx: AgyCtx, current: string): void {
 export function removeStatusline(ctx: AgyCtx, paths: AgyPaths): void {
   const marker = readLoose(paths.marker);
   const prior = isRecord(marker) ? marker["priorStatusLineCommand"] : undefined;
+  if (isFile(paths.settings)) assertRewritable(ctx, paths.settings);
   backupFile(ctx, paths.settings);
   const settings = isFile(paths.settings) ? readLoose(paths.settings) : undefined;
   const line = isRecord(settings) ? settings["statusLine"] : undefined;

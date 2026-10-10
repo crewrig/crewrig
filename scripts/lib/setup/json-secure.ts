@@ -49,6 +49,18 @@ export interface WriteJsonSecureOptions {
   readonly now?: () => Date;
 }
 
+/**
+ * The document was renamed onto its destination but the destination could not be narrowed to 0600
+ * (the error line is already printed). Typed so a caller tells "merged but incomplete" from "not
+ * written" without matching the message.
+ */
+export class ModeRestrictError extends SetupExit {
+  constructor(message: string) {
+    super(1, message);
+    this.name = "ModeRestrictError";
+  }
+}
+
 /** Print `Error: <message>` (one line, standard error) and end the run with status 1. */
 function fail(ctx: Pick<JsonSecureCtx, "io">, message: string): never {
   ctx.io.err(`Error: ${message}`);
@@ -101,17 +113,19 @@ function openTemp(file: string, platform: NodeJS.Platform): { fd: number; tmp: s
 
 /** Publish `text` onto `file` atomically; no temporary file survives a failure. */
 function publish(ctx: JsonSecureCtx, file: string, text: string): void {
-  const { fd, tmp } = openTemp(file, ctx.platform);
+  let tmp: string | undefined;
   try {
+    const opened = openTemp(file, ctx.platform);
+    tmp = opened.tmp;
     try {
-      fs.writeFileSync(fd, text);
-      fs.fsyncSync(fd);
+      fs.writeFileSync(opened.fd, text);
+      fs.fsyncSync(opened.fd);
     } finally {
-      fs.closeSync(fd);
+      fs.closeSync(opened.fd);
     }
     fs.renameSync(tmp, file);
   } catch (error) {
-    fs.rmSync(tmp, { force: true });
+    if (tmp !== undefined) fs.rmSync(tmp, { force: true });
     return fail(ctx, `cannot write ${file}: ${(error as Error).message.split("\n")[0]}`);
   }
   // The destination now holds what may be a credential, whatever it was before.
@@ -120,7 +134,7 @@ function publish(ctx: JsonSecureCtx, file: string, text: string): void {
     fs.chmodSync(file, 0o600);
   } catch {
     ctx.io.err(`  ERROR: ${file} holds a bearer token and could not be restricted to 0600.`);
-    throw new SetupExit(1, `${file} could not be restricted to 0600`);
+    throw new ModeRestrictError(`${file} could not be restricted to 0600`);
   }
 }
 

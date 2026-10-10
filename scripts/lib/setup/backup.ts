@@ -99,13 +99,16 @@ export function backupFile(
     );
     return "";
   }
+  let copied = true;
   try {
     copyOwnerOnly(file, bak);
   } catch {
-    // fall through to the failure warning
+    // `( umask 077; cp -P ... )` failed: the warning below, never `Backed up:`. Like the shell, a
+    // partial copy that `cp` already wrote is left where it is.
+    copied = false;
   }
   // `[ -e "$bak" ]` follows links: a copied dangling link counts as a failed backup, as in the shell.
-  if (!fs.existsSync(bak)) {
+  if (!copied || !fs.existsSync(bak)) {
     ctx.io.err(`  WARNING: Failed to back up ${name} (could not create ${path.basename(bak)})`);
     return "";
   }
