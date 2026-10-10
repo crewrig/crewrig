@@ -3,7 +3,7 @@
 // UPDATE_SETUP_DECLARATIONS=1), an emptied descriptor makes the helper fail with nothing on stdout,
 // the `step N` lines are the descriptor's steps, every key the retargeted suites will read exists
 // (the table of setup-declarations-consumers.ts), and the facts no descriptor carries still match
-// the step sources and, while the shell scripts exist, the order of the shell.
+// the step sources, the mcp sub-steps follow the printed order of the golden cells,.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -15,6 +15,7 @@ import { CLIS } from "../lib/setup/context.ts";
 import { cancelClassOf, PROMPT_INVENTORY } from "../lib/setup/prompt-ids.ts";
 import type { SetupDescriptor } from "../lib/setup/descriptor.ts";
 import { asked } from "./setup-cli-copilot-antigravity-fixtures.ts";
+import { printed } from "./setup-golden-readers.ts";
 import { CONSUMERS } from "./lib/setup-declarations-consumers.ts";
 import { main, renderDeclaration, SETUP_DESCRIPTORS } from "./lib/print-setup-declarations.ts";
 import { MCP_SUBSTEPS } from "./lib/setup-declarations-facts.ts";
@@ -223,55 +224,49 @@ describe("the facts no descriptor carries are pinned to their sources", () => {
     }
   });
 
-  // While a setup is still the shell script, the sub-step order is the shell's (plan-r3 rows 1, 6, 8).
-  const ANCHORS: Readonly<Record<Cli, readonly (readonly [string, RegExp])[]>> = {
+  // The sub-steps of mcp that the default-answers cell prints, in the order it prints them (the
+  // shell's output order, stored in the golden cell). A sub-step with no printed line is left out.
+  const PRINTED: Readonly<Record<Cli, readonly (readonly [string, string])[]>> = {
     claude: [
-      ["sequential-thinking", /Install Sequential Thinking MCP server\?/],
-      ["ensure-mempalace-http", /ensure_mempalace_http "\$REPO_DIR" claude/],
-      ["register-stdio-fallback", /mcp_register_user mempalace/],
+      ["sequential-thinking", "Sequential Thinking MCP server (working memory):"],
+      ["mempalace-detect", "  Detected interpreter:"],
+      ["chroma-daemon", "Installing shared ChromaDB HTTP daemon supervisor"],
+      ["ensure-mempalace-http", "Shared memory daemon (spec 0113 delta-02)"],
+      ["settings-template", "  Installed: settings.json"],
     ],
     gemini: [
-      ["gemini-settings-write", /gemini_settings_write "\$SETTINGS_TARGET"/],
-      ["ensure-mempalace-http", /ensure_mempalace_http "\$REPO_DIR" gemini/],
+      ["mempalace-detect", "  Detected MemPalace interpreter:"],
+      ["chroma-daemon", "Installing shared ChromaDB HTTP daemon supervisor"],
+      ["gemini-settings-write", "  Merged: settings.json"],
+      ["ensure-mempalace-http", "Shared memory daemon (spec 0113 delta-02)"],
     ],
     copilot: [
-      ["backup-capture-operator-servers", /^PREEXISTING_MCP=/],
-      ["write-mcp-config", /write_json_config_secure_from "\$MCP_CONFIG_TARGET"/],
-      ["org-mcp-fold", /apply_org_mcp_servers/],
-      ["ensure-mempalace-http", /ensure_mempalace_http "\$REPO_DIR" copilot/],
+      ["mempalace-detect", "  Detected MemPalace interpreter:"],
+      ["chroma-daemon", "Installing shared ChromaDB HTTP daemon supervisor"],
+      ["write-mcp-config", "  Installed: mcp-config.json (mempalace patched"],
+      ["ensure-mempalace-http", "Shared memory daemon (spec 0113 delta-02)"],
     ],
     antigravity: [
-      ["backup-capture-operator-servers", /^PREEXISTING_MCP=/],
-      ["sequential-thinking", /Include SequentialThinking MCP server/],
-      ["write-mcp-config", /write_json_config_secure_from "\$AGY_MCP_CONFIG"/],
-      ["org-mcp-fold", /apply_org_mcp_servers/],
-      ["ensure-mempalace-http", /ensure_mempalace_http "\$REPO_DIR" antigravity/],
+      ["mempalace-detect", "  Detected MemPalace interpreter:"],
+      ["chroma-daemon", "Installing shared ChromaDB HTTP daemon supervisor"],
+      ["sequential-thinking", "  sequentialthinking MCP server configured."],
+      ["ensure-mempalace-http", "Shared memory daemon (spec 0113 delta-02)"],
     ],
   };
   for (const cli of CLIS) {
-    it(`${cli}: the sub-steps of mcp are in the order of the shell`, (t) => {
-      const file = path.join(ROOT, "scripts", `setup-${cli}-interactive.sh`);
-      const text = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
-      if (!/^#!.*\b(ba)?sh\b/.test(text)) return t.skip("the setup is no longer a shell script");
-      const code = text
-        .split("\n")
-        .map((l, i) => [i, l] as const)
-        .filter(([, l]) => !/^\s*#/.test(l));
-      const lineOf = (re: RegExp): number => {
-        const hit = code.find(([, l]) => re.test(l));
-        assert.ok(hit !== undefined, `${cli}: no shell line for ${re}`);
-        return hit[0];
-      };
+    it(`${cli}: the sub-steps of mcp are in the order the shell printed them`, () => {
+      const out = printed(cli, "default-answers");
       const declared = MCP_SUBSTEPS[(SETUP_DESCRIPTORS[cli] as SetupDescriptor).strategies.mcp];
+      assert.ok(PRINTED[cli].length >= 4, "vacuity");
       let last = -1;
-      let previous = "";
-      for (const [name, re] of ANCHORS[cli]) {
-        assert.ok(declared.includes(name), `${cli}: ${name} not declared`);
-        assert.ok(declared.indexOf(name) > (declared.indexOf(previous) ?? -1), `${name} order`);
-        const line = lineOf(re);
-        assert.ok(line > last, `${cli}: ${name} is not after ${previous} in the shell`);
-        last = line;
-        previous = name;
+      let previous = -1;
+      for (const [name, line] of PRINTED[cli]) {
+        const index = declared.indexOf(name);
+        assert.ok(index > previous, `${cli}: ${name} is not declared after the previous one`);
+        const at = out.indexOf(line);
+        assert.ok(at > last, `${cli}: ${name} is not printed after the previous one`);
+        previous = index;
+        last = at;
       }
     });
   }

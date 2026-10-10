@@ -13,11 +13,22 @@ scripts/build-components.sh
 scripts/lib/common.sh
 scripts/lib/component-resolve.sh
 
-# The shim header names these as the callers that stay on the shim until their own row:
-# the setup scripts, whose hints tell the user to run the build first.
-scripts/setup-claude-interactive.sh
-scripts/setup-copilot-interactive.sh
-scripts/setup-gemini-interactive.sh
+# Spec 0256: the setup scripts became forwarding shims of the TypeScript entries; the TypeScript
+# setup modules reproduce, byte for byte, the hint the shell printed ("run bash
+# scripts/build-components.sh first"), because the build shim stays until its own row.
+scripts/lib/setup/antigravity-tier.ts
+scripts/lib/setup/cli-copilot.ts
+scripts/lib/setup/tier-build.ts
+scripts/lib/setup/tier-install.ts
+
+# The unit suites that pin those hints.
+scripts/tests/setup-antigravity-tier.test.ts
+scripts/tests/setup-summary.test.ts
+scripts/tests/setup-tier-build.test.ts
+scripts/tests/setup-tier-install.test.ts
+
+# The golden transcripts of the setup entries record the hint as the shell printed it.
+scripts/tests/fixtures/setup-golden/
 
 # The shim header names the Bash tests that have not migrated: each deliberately drives the shim.
 scripts/tests/test-model-resolution.sh

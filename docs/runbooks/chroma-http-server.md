@@ -26,7 +26,7 @@ CLI session connects to it via `chromadb.HttpClient` through
   wrapper both honor the variable).
 - **Supervisor unit installed**: `~/Library/LaunchAgents/com.mempalace.chroma-server.plist`
   (macOS) or `~/.config/systemd/user/mempalace-chroma-server.service` (Linux).
-  `scripts/setup-claude-interactive.sh` and `scripts/setup-gemini-interactive.sh`
+  `scripts/setup-claude-interactive.ts` and `scripts/setup-gemini-interactive.ts`
   install these automatically when the user opts into MemPalace.
 
 ## Daily operations
@@ -140,10 +140,15 @@ If you upgraded a working CrewRig install across the #98 boundary:
 2. **Re-run the setup script for each CLI you use:**
 
    ```sh
-   bash scripts/setup-claude-interactive.sh
-   bash scripts/setup-gemini-interactive.sh
-   bash scripts/setup-copilot-interactive.sh   # if Copilot is configured
+   node scripts/lib/node-floor-guard.js
+   node scripts/setup-claude-interactive.ts
+   node scripts/setup-gemini-interactive.ts
+   node scripts/setup-copilot-interactive.ts   # if Copilot is configured
    ```
+
+   Run the guard once, as its own step; the setup entries need Node.js 24 or
+   later. Each `bash scripts/setup-<cli>-interactive.sh` still works: it is a
+   forwarding shim that runs the guard, then the entry.
 
    The setup script installs the supervisor unit, starts the daemon,
    runs the health check, and rewrites the MCP entry to point at

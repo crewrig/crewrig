@@ -52,7 +52,7 @@ This is a separate, order-independent follow-up rather than a step in the
 sequence above, so it is not depicted in the diagram below.
 
 A single CLI can be converted on its own by re-running that CLI's own
-`setup-*-interactive.sh`; the machine-wide, all-four-CLIs-or-none obligation
+`setup-<cli>-interactive.ts` entry (its `.sh` shim forwards to it); the machine-wide, all-four-CLIs-or-none obligation
 belongs only to `task mempalace:switch-http`.
 
 ![Four ordered steps to convert a machine to the shared MemPalace MCP HTTP daemon: provision the bearer token, install and start the daemon, register every CLI with the token, then verify status and auth.](../assets/mempalace-mcp/convert-machine.png)
@@ -197,7 +197,7 @@ CLI channel (spec 0246 delta-02 R7).
 confirmation. If a warning you expected never reached you or the model on
 one of those CLIs, report it there.
 
-| CLI | Registration file | Setup script |
+| CLI | Registration file | Setup script (a forwarding shim to the `.ts` entry of the same name) |
 |---|---|---|
 | `claude` | `~/.claude.json` | `scripts/setup-claude-interactive.sh` |
 | `gemini` | `~/.gemini/settings.json` | `scripts/setup-gemini-interactive.sh` |
@@ -212,12 +212,12 @@ the registration it started with.
 | The warning says | Meaning | Repair |
 |---|---|---|
 | no `mempalace` registration | The file exists but has no `mempalace` entry. This session has no memory tools. | `task mempalace:switch-http` |
-| no `mempalace` registration, naming a setup script | The registration file does not exist. `switch-http` would refuse this machine (see below). | Run the named `scripts/setup-<cli>-interactive.sh` |
+| no `mempalace` registration, naming a setup script | The registration file does not exist. `switch-http` would refuse this machine (see below). | Run the named setup script: `node scripts/lib/node-floor-guard.js`, then `node scripts/setup-<cli>-interactive.ts` (the `.sh` the warning names is a forwarding shim to it and works too) |
 | registered on stdio | The CLI launches its own memory server, and the daemon's lease refuses its writes. | `task mempalace:switch-http` |
 | registered at another endpoint | The HTTP entry points elsewhere. The warning shows both endpoints, the registered one redacted (no user info, query, fragment, or control characters). | `task mempalace:switch-http` (read the launcher note below first) |
 | unrecognised entry, naming `task mempalace:repair` | The file is strict JSON, but the entry is neither the HTTP shape (`url`/`serverUrl`) nor the stdio shape (`command`). | `task mempalace:repair` to see the options, then `task mempalace:repair -- --restore-backup` or `-- --reset-none`, then `task mempalace:switch-http` |
 | not a single strict JSON document | The file fails the strictness test below. | Rewrite the file (next section), then `task mempalace:switch-http` if needed |
-| a Gemini file with comments, naming `scripts/setup-gemini-interactive.sh` | `~/.gemini/settings.json` holds comments and its registration is not `ok`. `switch-http` and `repair` read the file with `jq`, which rejects comments: `switch-http` would refuse, and `repair` could not write it. | Run `scripts/setup-gemini-interactive.sh`. It rewrites the file as plain JSON and keeps the comments in a timestamped backup |
+| a Gemini file with comments, naming `scripts/setup-gemini-interactive.sh` | `~/.gemini/settings.json` holds comments and its registration is not `ok`. `switch-http` and `repair` read the file with `jq`, which rejects comments: `switch-http` would refuse, and `repair` could not write it. | Run `node scripts/lib/node-floor-guard.js`, then `node scripts/setup-gemini-interactive.ts`. It rewrites the file as plain JSON and keeps the comments in a timestamped backup |
 | the shared memory daemon is not answering | The daemon is installed, but its MCP endpoint gave neither an authentication refusal nor an MCP answer within 1 s. | `task mempalace:status`, then [Daemon not starting after boot](#daemon-not-starting-after-boot) |
 
 When an entry carries both `url` and `serverUrl`, one value is compared:
@@ -292,8 +292,9 @@ goes with them. The session starts with no warning.
 The backstop is the agent-side rule in `artifacts/core/rules/60-tools.md` →
 *Session Start* → *Memory unavailable — say so, never skip silently* (spec
 0246 R13). An agent with no `mempalace_*` tool tells you so before any work.
-To repair, run `scripts/setup-gemini-interactive.sh`, which restores both,
-then `task mempalace:switch-http` if status does not show `http`.
+To repair, run `node scripts/lib/node-floor-guard.js`, then
+`node scripts/setup-gemini-interactive.ts` as a separate step, which restores
+both, then `task mempalace:switch-http` if status does not show `http`.
 
 ### Removing the check by hand
 

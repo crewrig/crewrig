@@ -161,7 +161,7 @@ Core system-context store (installed to user home, read on demand):
 
 | Path | Description |
 |---|---|
-| `artifacts/core/system-context/` | Reference-heavy sections extracted from `60-tools.md` (spec 0068): Palace Structure Conventions, Long-Running Task Convention, MCP Tools Reference, Friction Reporting reference detail, Obsidian Protocol. Installed verbatim to `~/.crewrig/system-context/` by every `setup-*-interactive.sh` via `install_dir`, then read on demand — direct file read by default, MemPalace optional, explicit signal on failure (never silently omitted). NOT a template — upstream content. |
+| `artifacts/core/system-context/` | Reference-heavy sections extracted from `60-tools.md` (spec 0068): Palace Structure Conventions, Long-Running Task Convention, MCP Tools Reference, Friction Reporting reference detail, Obsidian Protocol. Installed verbatim to `~/.crewrig/system-context/` by every `setup-<cli>-interactive.ts` entry (its `install_dir` twin), then read on demand — direct file read by default, MemPalace optional, explicit signal on failure (never silently omitted). NOT a template — upstream content. |
 
 ### Built outputs
 
@@ -200,7 +200,7 @@ exist, how org artifacts integrate) is defined in spec 0012 sub-spec E2.
 | `.github/copilot-instructions.md` | Copilot system prompt built from `AGENTS.md`. |
 | `.github/workflows/` | CI/CD pipeline definitions. |
 | `.github/copilot/` | GitHub Copilot workspace configuration. |
-| `.github/copilot/settings.json` | Committed workspace settings, `strict` by default as a member of `.github/copilot/` above — except its `hooks` key, which the transcript-hooks opt-in in `setup-copilot-interactive.sh` deliberately rewrites locally with an absolute path (ADR-0001 Discovery finding #8). Reclassified `excluded`, nested under the strict `.github/copilot/` parent (spec 0097 / issue #605), so that designed-in local mutation no longer aborts `scripts/sync-from-upstream.sh`; sibling members such as `extension.json` remain `strict` and still abort on a local diff. |
+| `.github/copilot/settings.json` | Committed workspace settings, `strict` by default as a member of `.github/copilot/` above — except its `hooks` key, which the transcript-hooks opt-in in `setup-copilot-interactive.ts` deliberately rewrites locally with an absolute path (ADR-0001 Discovery finding #8). Reclassified `excluded`, nested under the strict `.github/copilot/` parent (spec 0097 / issue #605), so that designed-in local mutation no longer aborts `scripts/sync-from-upstream.sh`; sibling members such as `extension.json` remain `strict` and still abort on a local diff. |
 | `.agents/skills/` | Compiled Antigravity CLI skill definitions. |
 | `.agents/agents/` | Compiled Antigravity CLI agent definitions. Reclassified `regenerable` (spec 0199 R43 / spec 0121 delta-01 R9). |
 

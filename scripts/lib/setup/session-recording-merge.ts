@@ -30,7 +30,15 @@ export const flatOf = (cli: WiredCli): boolean => cli === "copilot";
 export const withoutHooks = (group: Json): Json =>
   Object.fromEntries(Object.entries(group).filter(([key]) => key !== "hooks"));
 
-export const isGuard: Pred = (h) => parseHandler(h, WORKTREE_GIT_GUARD) !== null;
+/**
+ * `sr_is_guard`: the merge owns the plain forms only. A guarded Windows command
+ * (`GUARDED_PREFIX` then `node <abs>.ts`) belongs to the worktree-git-guard registration, so
+ * the merge leaves it as an operator command beside the manifest's guard.
+ */
+export const isGuard: Pred = (h) => {
+  const parsed = parseHandler(h, WORKTREE_GIT_GUARD);
+  return parsed !== null && !parsed.guarded;
+};
 export const isTranscript: Pred = (h) => OWN_CLASSES.includes(classifyHandler(h));
 export const isTranscriptAny: Pred = (h) => classifyHandler(h) !== "no";
 export const isCapture: Pred = (h) =>

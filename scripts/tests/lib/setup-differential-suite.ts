@@ -1,6 +1,7 @@
-// setup-differential-suite.ts — one `node:test` suite per CLI of the parity proof of spec 0256
-// requirement 10: every cell that runs on both legs is run on the shell setup and on the TypeScript
-// setup, in separate sandboxes, and the two results (status, stdout, stderr, tree, bak counts) are
+// setup-differential-suite.ts — one `node:test` suite per CLI of the forwarding-parity proof of spec
+// 0256 requirement 10: every cell is run through the shim (`bash scripts/<entry>.sh`, an
+// `exec node` forwarder) and through the TypeScript entry (`node scripts/<entry>.ts`), in separate
+// sandboxes, and the two results (status, stdout, stderr, tree, bak counts) are
 // compared DIRECTLY with each other through the tagged deviations (setup-golden-deviations.ts). An
 // untagged difference fails the cell and names the first differing lines. Linux only, needs a real
 // `jq`; both legs must be available (a `SETUP_GOLDEN_LEGS` that narrows to one leg skips the proof).
@@ -24,10 +25,9 @@ function skipReason(): string | undefined {
   return undefined;
 }
 
-/** A cell takes part when it runs on both legs and is not the shell baseline only. */
+/** A cell takes part when it runs on both legs. */
 const onBothLegs = (c: GoldenCase): boolean =>
-  c.shellOnly === undefined &&
-  (c.legs === undefined || (c.legs.includes("shell") && c.legs.includes("ts")));
+  c.legs === undefined || (c.legs.includes("shell") && c.legs.includes("ts"));
 
 export function defineDifferentialSuite(cli: Cli): void {
   const skip = skipReason();
@@ -39,9 +39,9 @@ export function defineDifferentialSuite(cli: Cli): void {
     for (const c of skip === undefined ? casesFor(cli).filter(onBothLegs) : []) {
       test(`${cli}/${c.id}`, async () => {
         try {
-          const shell = await runSetupCase(c, "shell");
-          const ts = await runSetupCase(c, "ts");
-          const difference = legDifference(c, shell, ts);
+          const shim = await runSetupCase(c, "shell");
+          const entry = await runSetupCase(c, "ts");
+          const difference = legDifference(c, shim, entry);
           assert.equal(difference, undefined, difference);
         } finally {
           guard?.assertUnchanged();

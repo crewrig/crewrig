@@ -159,35 +159,6 @@ export const antigravityCases: readonly GoldenCase[] = [
     sandbox: { omitIdentity: true },
   },
   {
-    id: "cancelled-transcripts-prompt",
-    cli: "antigravity",
-    note: "An fzf cancel on the transcripts question has no `|| true`: under set -e the shell stops with status 130 (R7 row cancelled prompt, abort class).",
-    stubs: { fzf: { "Enable automatic session recording": CANCEL } },
-    // Shell only, deviation tags (c)/(e)/(g) of requirement 44: an abort-class cancel has no
-    // non-terminal form on the TypeScript leg (no pre-answer; closed stdin is exit 2). The TS side
-    // is covered by setup-prompt-tty.test.ts and setup-prompt-integration.test.ts (fake terminal).
-    legs: ["shell"],
-  },
-  {
-    id: "cancelled-rules-action",
-    cli: "antigravity",
-    note: "An fzf cancel on the keep/refresh question has no `|| true`: under set -e the shell stops with status 130 (R7 row cancelled prompt, abort class).",
-    seed: seedRules,
-    stubs: { fzf: { Existing: CANCEL } },
-    // Shell only, deviation tags (c)/(e)/(g) of requirement 44: an abort-class cancel has no
-    // non-terminal form on the TypeScript leg (no pre-answer; closed stdin is exit 2). The TS side
-    // is covered by setup-prompt-tty.test.ts and setup-prompt-integration.test.ts (fake terminal).
-    legs: ["shell"],
-  },
-  {
-    id: "link-answers-remain",
-    cli: "antigravity",
-    note: "delta-01 requirement 16: with `y\\nkeep\\n` the shell consumes only the key y; the remainder is never read by the shell (the fzf stub answers the questions).",
-    args: ["--link"],
-    stdin: "y\nkeep\n",
-    shellOnly: "delta-01 requirement 16: the TypeScript leg reads the remainder",
-  },
-  {
     id: "chroma-install-failure",
     cli: "antigravity",
     note: "delta-01 scenario: a venv without a chroma binary prints the ERROR lines and exits 1 before any MemPalace registration, nothing after.",

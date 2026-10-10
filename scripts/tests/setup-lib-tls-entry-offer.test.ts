@@ -103,6 +103,25 @@ describe("offer", { skip: !POSIX }, () => {
     assert.match(no.stdout, /nothing written\.\n$/);
   });
 
+  test("--forwarded drops the preamble and the [answer] echo, and needs --answer", () => {
+    const b = box();
+    const res = run(b, ["offer", "--forwarded", "--answer", "tls-delegation=yes"], {
+      CREWRIG_TLS_CA: b.ca,
+    });
+    assert.equal(res.status, 0);
+    assert.match(res.stdout, /^ {2}Custom CA trust configured -> /);
+    assert.equal(res.stdout.includes("[answer]"), false);
+    assert.equal(res.stdout.includes("Custom certificate trust (spec 0084):"), false);
+    const c = box();
+    const no = run(c, ["offer", "--answer=tls-delegation=no", "--forwarded"], {
+      CREWRIG_TLS_CA: c.ca,
+    });
+    assert.equal(no.stdout, "  TLS delegation skipped — nothing written.\n");
+    const bare = run(c, ["offer", "--forwarded"], { CREWRIG_TLS_CA: c.ca });
+    assert.equal(bare.status, 2);
+    assert.equal(bare.stderr, "Error: --forwarded needs --answer\n");
+  });
+
   test("a question with no answer and no terminal is status 2 naming the question", () => {
     const b = box();
     const res = run(b, ["offer", "--result", b.result], { CREWRIG_TLS_CA: b.ca }, "");

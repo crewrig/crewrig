@@ -1,6 +1,0 @@
-====================================
-  Antigravity CLI Configuration Setup
-====================================
-
-Error: jq is required but not installed.
-Install with: brew install jq (macOS) or apt-get install jq (Linux)

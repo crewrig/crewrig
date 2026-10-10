@@ -239,13 +239,16 @@ runtime foundations every migrated script builds on.
 naming the detected version, the floor and <https://nodejs.org/en/download>,
 and exits 1; otherwise it exits 0 silently. It is plain ES5 CommonJS so it
 runs on releases that cannot strip types, and it is the one JavaScript file
-admitted through `ci/js-exceptions.txt` as `node-floor-guard`. It ships
-unwired: sub-spec F1 (#1335) calls it from setup.
+admitted through `ci/js-exceptions.txt` as `node-floor-guard`. The four
+setup entries (`scripts/setup-<cli>-interactive.ts`, spec 0256) run on it: each
+`scripts/setup-<cli>-interactive.sh` shim runs the guard as a separate step,
+then the entry, and fails closed below 24 before anything is written.
 
-**Production dependencies.** The four `scripts/setup-*-interactive.sh`
-scripts run `npm ci --omit=dev --workspaces=false` right after the spec 0084
-TLS offer, through `scripts/lib/tls-exec.sh`. The step is gated on the
-`package-lock.json` hash:
+**Production dependencies.** The four `scripts/setup-*-interactive.ts`
+entries (reached through their `.sh` shims) run
+`npm ci --omit=dev --workspaces=false` right after the spec 0084 TLS offer,
+with the CA variables of that offer in npm's environment. The step is gated on
+the `package-lock.json` hash:
 
 - It runs only when `package-lock.json` changed since the last successful
   run, or `node_modules/` is missing. Otherwise setup prints
@@ -361,7 +364,7 @@ Not all directories are required — include only what your extension needs.
 
 ## Session Transcript Activation
 
-Transcripts are disabled by default. Enable them by answering yes to the session-recording question of the CLI's setup script (for example `scripts/setup-claude-interactive.sh`). Setup wires the hook `hooks/mempalace-transcript.ts` by the in-repo absolute path of the checkout that ran it, as `node "<abs>/hooks/mempalace-transcript.ts" claude-code`, from `hooks/claude-transcript-hooks.json` (events: `UserPromptSubmit`, `PostToolUse`, `Stop`, `SessionEnd`). The hook needs Node.js 24 or later when it fires, and no `jq` or `curl` (spec 0247).
+Transcripts are disabled by default. Enable them by answering yes to the session-recording question of the CLI's setup script (for example `node scripts/setup-claude-interactive.ts`, after `node scripts/lib/node-floor-guard.js` as a separate step). Setup wires the hook `hooks/mempalace-transcript.ts` by the in-repo absolute path of the checkout that ran it, as `node "<abs>/hooks/mempalace-transcript.ts" claude-code`, from `hooks/claude-transcript-hooks.json` (events: `UserPromptSubmit`, `PostToolUse`, `Stop`, `SessionEnd`). The hook needs Node.js 24 or later when it fires, and no `jq` or `curl` (spec 0247).
 
 That direct form records without any variable: the registration is the consent. Set `MEMPALACE_TRANSCRIPT_ENABLED` to a non-empty value other than `1` (for example `0`) to switch recording off without re-running setup. The legacy argument-less form, reached through the forwarding shim `hooks/mempalace-transcript.sh`, still records only when `MEMPALACE_TRANSCRIPT_ENABLED=1`.
 

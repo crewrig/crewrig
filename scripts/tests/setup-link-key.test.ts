@@ -1,6 +1,6 @@
 // setup-link-key.test.ts — askLinkConfirm (spec 0256 delta-01 requirement 16): per CLI the warning
-// and prompt of the setup scripts (compared with the shell source while it exists), y/Y proceed,
-// anything else or end of input aborts with exit 1, the pre-answer, and the remainder.
+// and prompt the setups print (pinned against literals and the golden cells of the link-mode runs),
+// y/Y proceed, anything else or end of input aborts with exit 1, the pre-answer, and the remainder.
 
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -21,11 +21,11 @@ import {
 } from "../lib/setup/link-key.ts";
 
 const SCRIPTS = path.resolve(import.meta.dirname, "..");
-const SHELL: Partial<Record<Cli, string>> = {
-  claude: "setup-claude-interactive.sh",
-  gemini: "setup-gemini-interactive.sh",
-  antigravity: "setup-antigravity-interactive.sh",
-};
+const GOLDEN = path.join(SCRIPTS, "tests", "fixtures", "setup-golden");
+
+function golden(cli: Cli, cell: string): string {
+  return fs.readFileSync(path.join(GOLDEN, cli, cell, "stdout.golden"), "utf8");
+}
 
 class FakeStdin extends EventEmitter implements PromptStdin {
   isTTY = false;
@@ -48,41 +48,39 @@ function setup(answer?: string) {
   return { io, out, err, stdin, answers };
 }
 
-/** The `echo "..."` lines and the `read -p` prompt of the link block of one script. */
-function shellBlock(script: string): { lines: string[]; prompt: string } {
-  const text = fs.readFileSync(path.join(SCRIPTS, script), "utf8").split("\n");
-  const start = text.findIndex((l) => l.includes('if [ "$INSTALL_MODE" = "link" ]'));
-  const end = text.findIndex((l, i) => i > start && l.startsWith("fi"));
-  const block = text.slice(start, end);
-  const lines: string[] = [];
-  let prompt = "";
-  for (const l of block) {
-    const echo = /^ {2}echo "(.*)"$/.exec(l);
-    const read = /^ {2}read -p "(.*)" -n 1 -r$/.exec(l);
-    if (read?.[1] !== undefined) {
-      prompt = read[1];
-      break;
-    }
-    if (echo?.[1] !== undefined) lines.push(echo[1]);
-  }
-  return { lines, prompt };
-}
-
 describe("texts", () => {
-  for (const [cli, script] of Object.entries(SHELL)) {
-    test(`${cli} warning and prompt are those of ${script}`, (t) => {
-      if (!fs.existsSync(path.join(SCRIPTS, script ?? ""))) return t.skip("shell source gone");
-      const shell = shellBlock(script ?? "");
-      assert.ok(shell.lines.length >= 7, "vacuity guard: the warning block was not found");
-      assert.ok(shell.prompt.length > 0, "vacuity guard: the prompt was not found");
-      assert.deepEqual(LINK_WARNING_LINES, shell.lines);
-      assert.equal(LINK_PROMPT, shell.prompt);
+  test("the warning, the prompt and the abort line are the literals the setups print", () => {
+    assert.deepEqual(LINK_WARNING_LINES, [
+      "WARNING: You are using symlink mode for system context files.",
+      "Symlinked files will change when you switch branches in this repository.",
+      "A malicious branch could alter your agent's behavior, permissions, and",
+      "tool access without your knowledge.",
+      "",
+      "Only use this mode if you TRUST ALL branches in this repository.",
+      "For production use, prefer copy mode (the default).",
+      "",
+    ]);
+    assert.equal(LINK_PROMPT, "Continue with symlink mode? [y/N] ");
+    assert.equal(LINK_ABORT_LINE, "Aborted. Run without --link for secure copy mode.");
+  });
+  for (const cli of ["claude", "gemini", "antigravity"] as const) {
+    test(`${cli}: the golden link-mode stdout carries the warning lines in order`, () => {
+      assert.ok(
+        golden(cli, "link-mode").includes(LINK_WARNING_LINES.join("\n")),
+        "the warning block is in the golden stdout",
+      );
+    });
+    test(`${cli}: the golden link-mode-declined stdout ends with the warning, the echoed newline and the abort line`, () => {
+      assert.ok(
+        golden(cli, "link-mode-declined").endsWith(
+          `${LINK_WARNING_LINES.join("\n")}\n\n${LINK_ABORT_LINE}\n`,
+        ),
+        "the warning block is followed by the abort line",
+      );
     });
   }
-  test("the abort line is the shell's", (t) => {
-    const file = path.join(SCRIPTS, "setup-claude-interactive.sh");
-    if (!fs.existsSync(file)) return t.skip("shell source gone");
-    assert.ok(fs.readFileSync(file, "utf8").includes(`echo "${LINK_ABORT_LINE}"`));
+  test("copilot: the golden link-mode-no-question stdout carries no warning", () => {
+    assert.doesNotMatch(golden("copilot", "link-mode-no-question"), /symlink mode for system/);
   });
 });
 

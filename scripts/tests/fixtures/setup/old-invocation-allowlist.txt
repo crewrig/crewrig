@@ -1,0 +1,38 @@
+# old-invocation-allowlist.txt — files that may still name the old setup invocation (spec 0256
+# R33, R34). scripts/tests/setup-references.test.ts fails on any other tracked or untracked text
+# file, outside specs/ and docs/adr/, that names `bash` followed by one of the four setup shell
+# scripts. The scripts are forwarding shims now: the instruction is `node
+# scripts/setup-<cli>-interactive.ts` behind the Node.js floor guard (or the Taskfile).
+#
+# Format: one repo-relative path per line; an entry ending in `/` covers every file below that
+# directory. Every entry carries a reason as the `#` comment line directly above it. An entry
+# that no longer matches a file with a hit, or that appears twice, fails the suite.
+
+# This file, its suite and the hint-string suite: they spell the invocation they scan for or pin.
+scripts/tests/fixtures/setup/old-invocation-allowlist.txt
+scripts/tests/setup-references.test.ts
+scripts/tests/setup-hint-strings.test.ts
+
+# The four shims themselves: each header names the invocation it keeps working.
+scripts/setup-claude-interactive.sh
+scripts/setup-gemini-interactive.sh
+scripts/setup-copilot-interactive.sh
+scripts/setup-antigravity-interactive.sh
+
+# The shim path is part of the user-visible repair hint of the MemPalace session-start check
+# ("run bash scripts/setup-<cli>-interactive.sh"); the shim keeps the name, and
+# scripts/tests/setup-hint-strings.test.ts pins it.
+scripts/lib/mempalace-registration.ts
+
+# The shim suite names the invocation it proves: a caller of the old path reaches the entry.
+scripts/tests/setup-shim.test.ts
+
+# The adoption guide says the old `bash scripts/setup-<cli>-interactive.sh` form still works: it
+# documents that the shim forwards to the TypeScript entry.
+docs/adoption-guide.md
+
+# The ChromaDB runbook says each old invocation still works: it is a forwarding shim.
+docs/runbooks/chroma-http-server.md
+
+# The usage guide says the old invocation form still works: it is a forwarding shim.
+docs/usage-guide.md

@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.6.1"
+    version: "1.6.2"
 claude:
   allowed-tools:
     - Read
@@ -57,8 +57,11 @@ policy (this closes spec 0080 OQ3 — no in-skill loop).
 ## Configuration discovery
 
 Read the active configuration from **`~/.crewrig/validation.conf`** — a
-per-user, machine-local file written by the `setup-*-interactive.sh` scripts,
-outside the core layer (spec 0080 R15/R16). Format is `key=value`, one per line;
+per-user, machine-local file written by the four setup entries
+(`node scripts/setup-<cli>-interactive.ts`, run after
+`node scripts/lib/node-floor-guard.js` as a separate step; the
+`setup-<cli>-interactive.sh` shims forward to them), outside the core layer
+(spec 0080 R15/R16). Format is `key=value`, one per line;
 ignore blank lines and lines beginning with `#`. Keys:
 
 | Key | Values | Default |
