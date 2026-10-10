@@ -12,6 +12,12 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { productionClosure, REPO } from "./lib/build-fixture-tree.ts";
+import {
+  R19,
+  rewriteEntry,
+  TASKFILE_MUTANTS,
+  tasklessPath,
+} from "./lib/oracle-taskfile-mutants.ts";
 
 const TIER = "test-component-tier-resolution.sh";
 const AGY = "test-antigravity-component-install.sh";
@@ -130,10 +136,15 @@ function stageCopy(template: string, mutant: Mutant | null): string {
 }
 
 /** Run one suite in `dir`; resolve with its exit status and the sorted labels that failed. */
-function runSuite(dir: string, suite: string): Promise<{ status: number | null; fails: string[] }> {
+function runSuite(
+  dir: string,
+  suite: string,
+  pathOverride?: string,
+): Promise<{ status: number | null; fails: string[]; out: string }> {
   const home = path.join(dir, "home");
   fs.mkdirSync(home, { recursive: true });
-  const env = { ...process.env, HOME: home, USERPROFILE: home, LC_ALL: "C" };
+  const env: NodeJS.ProcessEnv = { ...process.env, HOME: home, USERPROFILE: home, LC_ALL: "C" };
+  if (pathOverride !== undefined) env["PATH"] = pathOverride;
   return new Promise((resolve) => {
     const child = spawn("bash", [path.join(dir, "scripts", "tests", suite)], { cwd: dir, env });
     let out = "";
@@ -145,7 +156,7 @@ function runSuite(dir: string, suite: string): Promise<{ status: number | null; 
         .map((l) => /^\s*FAIL: (.*)$/.exec(l)?.[1])
         .filter((l): l is string => l !== undefined)
         .sort();
-      resolve({ status, fails });
+      resolve({ status, fails, out });
     });
   });
 }
@@ -186,6 +197,42 @@ describe("install oracle mutation", { skip: !hasBash }, () => {
         if (!named && !known.includes(f)) {
           problems.push(`mutant ${mutant.id}: ${suite} regressed an unrelated case: ${f}`);
         }
+      }
+    });
+    if (problems.length > 0) throw new Error(problems.join("\n"));
+  });
+
+  // Spec 0255 delta-03: the R19 case reads a Taskfile entry written as `cmds:`. The entry
+  // `install-workspace` of each copy is rewritten into the two-command form, then one mutant
+  // is applied; go-task is hidden so the fallback runner (the CI condition) is what runs.
+  test("the R19 case goes red for each Taskfile mutant of the cmds: form", async () => {
+    const template = stageTemplate();
+    const bin = tasklessPath();
+    live.push(bin);
+    const prepare = (mutant: (typeof TASKFILE_MUTANTS)[number] | null) => {
+      const dir = stageCopy(template, null);
+      const file = path.join(dir, "Taskfile.yml");
+      fs.writeFileSync(file, rewriteEntry(fs.readFileSync(file, "utf8"), mutant));
+      return dir;
+    };
+    const runs = await Promise.all(
+      [null, ...TASKFILE_MUTANTS].map((m) => runSuite(prepare(m), TIER, bin)),
+    );
+    const [base, ...mutated] = runs;
+    if (base?.status !== 0) {
+      throw new Error(`cmds: baseline is not green (${base?.fails.join("; ")})`);
+    }
+    const problems: string[] = [];
+    mutated.forEach((run, i) => {
+      const mutant = TASKFILE_MUTANTS[i];
+      if (mutant === undefined) return;
+      if (!run.fails.some((f) => f.toLowerCase().includes(R19))) {
+        problems.push(`mutant ${mutant.id}: the R19 case stayed green`);
+      } else if (!run.out.toLowerCase().includes(mutant.detail)) {
+        problems.push(`mutant ${mutant.id}: red, but not by "${mutant.detail}"`);
+      }
+      for (const f of run.fails) {
+        if (!f.toLowerCase().includes(R19)) problems.push(`mutant ${mutant.id}: regressed ${f}`);
       }
     });
     if (problems.length > 0) throw new Error(problems.join("\n"));

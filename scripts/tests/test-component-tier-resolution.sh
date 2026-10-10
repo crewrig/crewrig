@@ -1329,7 +1329,11 @@ else
   TASK_DRIVER="extracted Taskfile cmd (probe \`command -v task\` -> exit=$TASK_PROBE_STATUS, no output)"
 fi
 
-# taskfile_cmd <taskfile> <task-name> — the `cmd:` of one task entry, verbatim.
+# taskfile_cmd <taskfile> <task-name> — every command of one task entry, verbatim,
+# in order, one per line. Reads both forms an entry takes: a single `cmd:` (one
+# line out) and a `cmds:` list (one line out per `- <command>` item). A `- |`
+# block item (the deprecation echo of the four deprecated tasks) is skipped, as
+# are its continuation lines: it is not a command this case drives.
 taskfile_cmd() {
   awk -v want="  $2:" '
     $0 == want { inblk = 1; next }
@@ -1338,6 +1342,21 @@ taskfile_cmd() {
       sub(/^[[:space:]]*cmd:[[:space:]]*/, "")
       print
       exit
+    }
+    inblk && /^[[:space:]]*cmds:[[:space:]]*$/ { inlist = 1; skipping = 0; next }
+    inblk && inlist && /^    [A-Za-z]/ { exit }
+    inblk && inlist && skipping {
+      match($0, /^[[:space:]]*/)
+      if (RLENGTH == ind && $0 ~ /^[[:space:]]*-[[:space:]]+/) { skipping = 0 } else next
+    }
+    inblk && inlist && /^[[:space:]]*-[[:space:]]+[|>][-+]?[[:space:]]*$/ {
+      match($0, /^[[:space:]]*/); ind = RLENGTH; skipping = 1; next
+    }
+    inblk && inlist && /^[[:space:]]*-[[:space:]]+/ {
+      skipping = 0
+      sub(/^[[:space:]]*-[[:space:]]+/, "")
+      print
+      next
     }
   ' "$1"
 }
@@ -1366,7 +1385,7 @@ if true; then
     local expect_script="$4"
     local type="${5:-}"
     local name="${6:-}"
-    local raw cmdline
+    local raw cmdline expect_ts
 
     # Structural arm, both drivers: the entry point must exist and must still
     # drive the script this case believes it drives.
@@ -1379,10 +1398,13 @@ if true; then
       RUN_ERR="/dev/null"
       return
     fi
+    # The entry may drive the script by its shell name (a `cmd:` running the
+    # .sh) or by its TypeScript entry name (a `cmds:` list running the .ts).
+    expect_ts="${expect_script%.sh}.ts"
     case "$raw" in
-      *"$expect_script"*) ;;
+      *"$expect_script"*|*"$expect_ts"*) ;;
       *) ok="false"
-         detail="${detail}${detail:+$'\n'}$tname: no longer drives $expect_script (cmd: $raw)" ;;
+         detail="${detail}${detail:+$'\n'}$tname: no longer drives $expect_script (cmd: $(printf '%s' "$raw" | tr '\n' ';'))" ;;
     esac
 
     if [ "$TASK_PROBE_STATUS" -eq 0 ]; then
@@ -1390,11 +1412,15 @@ if true; then
       [ -n "$type" ] && set -- "$@" "TYPE=$type"
       [ -n "$name" ] && set -- "$@" "NAME=$name"
     else
+      # Every extracted command, in order, in one shell that stops at the first
+      # non-zero status; the single stdin feed reaches the last command (the
+      # manage entry's prompt), the floor guard before it reads none.
       cmdline="$(printf '%s' "$raw" \
         | sed -e "s|{{\.REPO_DIR}}|$R20_ROOT|g" \
               -e "s|{{\.TYPE}}|$type|g" \
               -e "s|{{\.NAME}}|$name|g")"
-      set -- env HOME="$H20" bash -c "$cmdline"
+      set -- env HOME="$H20" bash -c "set -e
+$cmdline"
     fi
 
     if [ -n "$feed" ]; then
