@@ -314,47 +314,62 @@ unset CLAUDE_STUB_LOG CLAUDE_STUB_REGISTERED CLAUDE_STUB_ADD_FAIL
 # ---------------------------------------------------------------------------
 echo "6. Setup-script call-site parity"
 # ---------------------------------------------------------------------------
-# The three file setups must translate + fold org servers AFTER the 0089 merge.
-# <fold_file> holds the two folds: the setup script itself for Copilot and
-# Antigravity, scripts/lib/gemini-settings.sh for Gemini, whose setup calls
-# gemini_settings_write (spec 0214). The translation stays in the setup.
-check_file_setup() {
-  local script="$1" cli="$2" fold_file="${3:-$SETUP_DIR/$1}"
-  local path="$SETUP_DIR/$script" fold_label
-  fold_label="${fold_file#"$SETUP_DIR"/}"
-  if [ ! -f "$path" ]; then bad "$script: not found"; return; fi
-  if [ ! -f "$fold_file" ]; then bad "$fold_label: not found"; return; fi
+# The three file setups must translate + fold org servers AFTER the 0089 merge, and Claude runs
+# its imperative org loop after the reserved-server registration.
+#
+# Retargeted (spec 0256 R9, PR D1): what the SETUP does and in which order is read from the
+# DECLARATION of each setup (`substeps.mcp`), not from the setup text. Pinned against the unchanged
+# shell by scripts/tests/setup-retarget-others.test.ts ("org fold per CLI": org_mcp_to_native,
+# apply_org_mcp_servers, register_org_mcp_claude and gemini_settings_write ... ORG_MCP_NATIVE read
+# from the shell and compared with the declaration) and the golden cell `org-mcp-declared` of the four
+# setup-golden suites. The Gemini fold lives in scripts/lib/gemini-settings.sh, a function library
+# that stays: its two fold calls are still read from the file.
+decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1"; }
+substeps_of() {
+  local declared
+  declared="$(decl "$1")" || return 1
+  printf '%s\n' "$declared" | grep '^substeps\.mcp=' | head -1 | cut -d= -f2-
+}
+# pos_of <list> <id> — 1-based position of <id> in the comma-separated <list>, empty when absent.
+pos_of() { printf '%s\n' "$1" | tr ',' '\n' | grep -nx "$2" | head -1 | cut -d: -f1; }
 
-  grep -q "org_mcp_to_native $cli" "$path" \
-    && ok "$script: translates via org_mcp_to_native $cli" \
-    || bad "$script: missing org_mcp_to_native $cli"
-  grep -q "apply_org_mcp_servers" "$fold_file" \
-    && ok "$fold_label: folds via apply_org_mcp_servers" \
-    || bad "$fold_label: missing apply_org_mcp_servers"
-
-  # Call sites only (a quoted first argument), never a comment naming them.
-  local merge_ln apply_ln
-  merge_ln="$(grep -nF 'merge_preexisting_mcp_servers "' "$fold_file" | head -1 | cut -d: -f1)"
-  apply_ln="$(grep -nF 'apply_org_mcp_servers "' "$fold_file" | head -1 | cut -d: -f1)"
-  if [ -n "$merge_ln" ] && [ -n "$apply_ln" ] && [ "$apply_ln" -gt "$merge_ln" ]; then
-    ok "$fold_label: org fold (l$apply_ln) follows the 0089 merge (l$merge_ln)"
+# check_declared_order <cli> <earlier> <later> — both sub-steps are declared, <later> after <earlier>.
+check_declared_order() {
+  local cli="$1" earlier="$2" later="$3" substeps pe pl
+  substeps="$(substeps_of "$cli")" || substeps=""
+  if [ -z "$substeps" ]; then bad "$cli: empty declaration (vacuity guard)"; return; fi
+  pe="$(pos_of "$substeps" "$earlier")"; pl="$(pos_of "$substeps" "$later")"
+  if [ -n "$pe" ] && [ -n "$pl" ] && [ "$pl" -gt "$pe" ]; then
+    ok "$cli: declares $later (#$pl) after $earlier (#$pe)"
   else
-    bad "$fold_label: org fold must follow the 0089 merge (merge=$merge_ln apply=$apply_ln)"
+    bad "$cli: declaration must run $later after $earlier (substeps.mcp=$substeps)"
   fi
 }
-check_file_setup setup-gemini-interactive.sh      gemini      "$SETUP_DIR/lib/gemini-settings.sh"
-check_file_setup setup-copilot-interactive.sh     copilot
-check_file_setup setup-antigravity-interactive.sh antigravity
-GEMINI_SETUP="$SETUP_DIR/setup-gemini-interactive.sh"
-grep -qE '^[[:space:]]*gemini_settings_write[[:space:]].*"\$ORG_MCP_NATIVE"' "$GEMINI_SETUP" \
-  && ok "setup-gemini-interactive.sh: hands ORG_MCP_NATIVE to gemini_settings_write" \
-  || bad "setup-gemini-interactive.sh: gemini_settings_write is not given ORG_MCP_NATIVE"
 
-# Claude runs the imperative org loop after the reserved-server registration.
-CLAUDE_SETUP="$SETUP_DIR/setup-claude-interactive.sh"
-grep -q "register_org_mcp_claude" "$CLAUDE_SETUP" \
-  && ok "setup-claude-interactive.sh: runs register_org_mcp_claude" \
-  || bad "setup-claude-interactive.sh: missing register_org_mcp_claude"
+# Copilot and Antigravity: the org translation + fold (org_mcp_to_native, apply_org_mcp_servers)
+# follows the framework write that carries the 0089 merge of the operator's servers.
+check_declared_order copilot     write-mcp-config org-mcp-fold
+check_declared_order antigravity write-mcp-config org-mcp-fold
+# Gemini: the org servers are read (translated) BEFORE gemini_settings_write, which folds them.
+check_declared_order gemini      org-mcp-read     gemini-settings-write
+# Claude: the imperative org loop (register_org_mcp_claude) follows the reserved-server registration.
+check_declared_order claude      register-stdio-fallback org-mcp-fold
+
+# Gemini's fold library (not a setup script): both folds named, the fold after the 0089 merge.
+GEMINI_LIB="$SETUP_DIR/lib/gemini-settings.sh"
+if [ ! -f "$GEMINI_LIB" ]; then bad "lib/gemini-settings.sh: not found"; else
+  grep -q "apply_org_mcp_servers" "$GEMINI_LIB" \
+    && ok "lib/gemini-settings.sh: folds via apply_org_mcp_servers" \
+    || bad "lib/gemini-settings.sh: missing apply_org_mcp_servers"
+  # Call sites only (a quoted first argument), never a comment naming them.
+  merge_ln="$(grep -nF 'merge_preexisting_mcp_servers "' "$GEMINI_LIB" | head -1 | cut -d: -f1)"
+  apply_ln="$(grep -nF 'apply_org_mcp_servers "' "$GEMINI_LIB" | head -1 | cut -d: -f1)"
+  if [ -n "$merge_ln" ] && [ -n "$apply_ln" ] && [ "$apply_ln" -gt "$merge_ln" ]; then
+    ok "lib/gemini-settings.sh: org fold (l$apply_ln) follows the 0089 merge (l$merge_ln)"
+  else
+    bad "lib/gemini-settings.sh: org fold must follow the 0089 merge (merge=$merge_ln apply=$apply_ln)"
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 echo ""

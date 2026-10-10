@@ -161,12 +161,22 @@ reset_tls_env
 
 # ---------------------------------------------------------------------------
 echo "6. Setup-script parity — every CLI invokes the shared offer (R9)"
-for s in setup-claude-interactive.sh setup-gemini-interactive.sh \
-         setup-copilot-interactive.sh setup-antigravity-interactive.sh; do
-  if grep -q "offer_tls_delegation" "$REPO_DIR/scripts/$s"; then
-    ok "invokes offer_tls_delegation: $s"
+# Retargeted (spec 0256 R9, PR D1): read the DECLARATION of each setup — the `tls-offer` step and its
+# `tls-delegation` prompt — not the shell text. Pinned against the unchanged shell by
+# scripts/tests/setup-retarget-others.test.ts ("the TLS offer is invoked by the tls-offer step") and
+# the golden cell `tls-delegation-on` of the four setup-golden suites.
+decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1"; }
+for cli in claude gemini copilot antigravity; do
+  declared="$(decl "$cli")" || declared=""
+  if [ -z "$declared" ]; then
+    bad "empty declaration for $cli (vacuity guard)"
+    continue
+  fi
+  if grep -qx 'step [0-9]*: tls-offer' <<< "$declared" \
+     && grep -qx 'prompts.tls-offer=tls-delegation' <<< "$declared"; then
+    ok "declares the shared TLS offer (tls-offer step): $cli"
   else
-    bad "missing offer_tls_delegation call: $s"
+    bad "declaration has no TLS offer (tls-offer step, tls-delegation prompt): $cli"
   fi
 done
 

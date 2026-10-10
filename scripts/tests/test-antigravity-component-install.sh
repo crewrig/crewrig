@@ -498,15 +498,24 @@ echo "§13 call-site ARGUMENTS in both install surfaces, asserted structurally"
 # Spec 0116 delta-01 R24 records that an emptied argument once survived a whole
 # suite: asserting that the deployment is *reached* is not the same as asserting
 # what it is reached WITH.
-grep -qE '^AGY_SKILLS_HOME="\$\{HOME\}/\.gemini/config/skills"$' "$SETUP" \
-  && ok "setup: AGY_SKILLS_HOME is the documented customization root" \
-  || bad "setup: AGY_SKILLS_HOME does not point at ~/.gemini/config/skills"
-grep -qE '^AGY_AGENTS_HOME="\$\{HOME\}/\.gemini/config/agents"$' "$SETUP" \
-  && ok "setup: AGY_AGENTS_HOME is the documented customization root" \
-  || bad "setup: AGY_AGENTS_HOME does not point at ~/.gemini/config/agents"
-grep -qE '^AGY_HOME="\$\{HOME\}/\.gemini/antigravity-cli"$' "$SETUP" \
-  && ok "setup: AGY_HOME is untouched — context files and hooks stay put" \
-  || bad "setup: AGY_HOME moved; spec 0123 excludes the context files and hooks"
+# Retargeted (spec 0256 R9, PR D1): the three roots are read from the DECLARATION of the Antigravity
+# setup (`home.skills`, `home.agents`, `home.cli`), not from the AGY_*_HOME assignments of the shell.
+# Pinned against the unchanged shell by scripts/tests/setup-retarget-others.test.ts ("the Antigravity
+# homes") and the golden cells `default-answers` and `antigravity-superseded-migration` of the
+# Antigravity setup-golden suite.
+decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1"; }
+agy_decl="$(decl antigravity)" || agy_decl=""
+agy_fact() { printf '%s\n' "$agy_decl" | grep "^$1=" | head -1 | cut -d= -f2-; }
+if [ -z "$agy_decl" ]; then bad "setup: empty Antigravity declaration (vacuity guard)"; fi
+[ "$(agy_fact home.skills)" = "<HOME>/.gemini/config/skills" ] \
+  && ok "setup: the declared skills root is the documented customization root" \
+  || bad "setup: the declared skills root is not ~/.gemini/config/skills ($(agy_fact home.skills))"
+[ "$(agy_fact home.agents)" = "<HOME>/.gemini/config/agents" ] \
+  && ok "setup: the declared agents root is the documented customization root" \
+  || bad "setup: the declared agents root is not ~/.gemini/config/agents ($(agy_fact home.agents))"
+[ "$(agy_fact home.cli)" = "<HOME>/.gemini/antigravity-cli" ] \
+  && ok "setup: the declared CLI home is untouched — context files and hooks stay put" \
+  || bad "setup: the declared CLI home moved; spec 0123 excludes the context files and hooks ($(agy_fact home.cli))"
 
 if grep -q 'install_antigravity_tier_to_home "\$REPO_DIR" library "\$AGY_SKILLS_HOME" "\$AGY_AGENTS_HOME"' "$SETUP"; then
   ok "setup: the library call passes repo, tier, and BOTH destination roots"
@@ -539,14 +548,17 @@ else
   fi
 fi
 
-# The migration must NOT sit inside the overlay opt-in branch: it is
-# unconditional on which tiers this run installs.
-MIGRATE_LINE="$(grep -n 'migrate_antigravity_superseded_components' "$SETUP" | head -1 | cut -d: -f1)"
-OVERLAY_DONE="$(awk '/^for overlay_tier in/{f=1} f && /^done$/{print NR; exit}' "$SETUP")"
-if [ -n "$MIGRATE_LINE" ] && [ -n "$OVERLAY_DONE" ] && [ "$MIGRATE_LINE" -gt "$OVERLAY_DONE" ]; then
-  ok "setup: the migration runs after the overlay loop, not inside its opt-in branch"
+# The migration must NOT sit inside the overlay opt-in branch: it is unconditional on which tiers
+# this run installs. Retargeted (spec 0256 R9, PR D1): declared as its own step, after `tiers`, so
+# it cannot be gated on an overlay prompt (pin: the same unit assertion and the golden cell
+# `antigravity-superseded-migration`). The call-site arguments above stay shell reads (D2).
+tiers_no="$(printf '%s\n' "$agy_decl" | grep -x 'step [0-9]*: tiers' | head -1 | sed -E 's/^step ([0-9]+):.*/\1/')"
+migrate_no="$(printf '%s\n' "$agy_decl" | grep -x 'step [0-9]*: migrate-superseded' | head -1 | sed -E 's/^step ([0-9]+):.*/\1/')"
+if [ -n "$tiers_no" ] && [ -n "$migrate_no" ] && [ "$migrate_no" -gt "$tiers_no" ] \
+   && [ "$(agy_fact tiers.migrates-superseded)" = "true" ]; then
+  ok "setup: the migration is its own step (#$migrate_no) after the tiers step (#$tiers_no), not inside the overlay opt-in"
 else
-  bad "setup: the migration is gated on the overlay opt-in (line $MIGRATE_LINE vs done at $OVERLAY_DONE)"
+  bad "setup: the declared migration is not a step after tiers (tiers=$tiers_no migrate=$migrate_no)"
 fi
 
 # The destinations below are declarations of the antigravity manage descriptor,
