@@ -9,15 +9,11 @@ import { describe, test } from "node:test";
 import { wirePath } from "../lib/setup/usage-capture-fragment.ts";
 import { isUnsafePath } from "../lib/setup/usage-capture-state.ts";
 
-const WINDOWS =
-  "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\build-fixture-x\\hooks\\usage-capture.ts";
+const WINDOWS = "C:\\checkouts\\crewrig x\\hooks\\usage-capture.ts";
 
 describe("wirePath", () => {
   test("win32 writes the physical path with forward slashes", () => {
-    assert.equal(
-      wirePath("win32", WINDOWS),
-      "C:/Users/runneradmin/AppData/Local/Temp/build-fixture-x/hooks/usage-capture.ts",
-    );
+    assert.equal(wirePath("win32", WINDOWS), "C:/checkouts/crewrig x/hooks/usage-capture.ts");
   });
 
   test("a POSIX platform leaves the path alone, backslash included", () => {
