@@ -59,7 +59,7 @@ function ctxOf(): AgyCtx {
 }
 
 beforeEach(() => {
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "agy-hooks-")));
+  root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "agy-hooks-")));
   out = [];
   err = [];
   calls = [];
