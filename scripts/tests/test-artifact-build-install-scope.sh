@@ -105,8 +105,8 @@ EOF
 # and in the Linux container.
 run_ts_group() {
   local group="$1" log="$WORK/ts-group.log" line name n=0
-  if [ "$(uname -s)" != "Linux" ]; then
-    echo "SKIP: '$group' needs the Linux setup sandbox (runs in CI)"
+  if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
+    echo "SKIP: '$group' needs the Linux setup sandbox and jq (runs in CI)"
     return 0
   fi
   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1 || true

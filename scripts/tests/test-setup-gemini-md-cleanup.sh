@@ -71,8 +71,8 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 # run_ts_group <group name> — run one describe group and report each subtest by name.
 run_ts_group() {
   local group="$1" log="$TMP_DIR/group.log" line n=0
-  if [ "$(uname -s)" != "Linux" ]; then
-    echo "  skip: '$group' needs the Linux setup sandbox (runs in CI)"
+  if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
+    echo "  skip: '$group' needs the Linux setup sandbox and jq (runs in CI)"
     return 0
   fi
   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1

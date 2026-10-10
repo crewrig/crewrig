@@ -536,8 +536,8 @@ if [ -z "$agy_decl" ]; then bad "setup: empty Antigravity declaration (vacuity g
 TS_TEST="$REPO_DIR/scripts/tests/setup-retarget-entry-behaviour.test.ts"
 run_ts_group() {
   local group="$1" log="$TMP_ROOT/ts-group.log" line name n=0
-  if [ "$(uname -s)" != "Linux" ]; then
-    echo "  skip: '$group' needs the Linux setup sandbox (runs in CI)"
+  if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
+    echo "  skip: '$group' needs the Linux setup sandbox and jq (runs in CI)"
     return 0
   fi
   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1

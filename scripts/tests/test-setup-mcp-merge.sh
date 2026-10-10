@@ -69,8 +69,8 @@ bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 # Vacuity guard: the expected number of tests must have passed, none failed, none skipped.
 run_ts_behaviour() {
   local pattern="$1" label="$2" want="$3" out rc=0 n_pass n_fail n_skip
-  if [ "$(uname -s)" != "Linux" ]; then
-    echo "  skip: $label (the TypeScript setup sandbox runs on Linux only)"
+  if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
+    echo "  skip: $label (the TypeScript setup sandbox needs Linux and jq)"
     return 0
   fi
   out="$(cd "$REPO_DIR" && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \
