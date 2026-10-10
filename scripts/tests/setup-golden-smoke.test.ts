@@ -50,37 +50,48 @@ describe("setup golden smoke (shim leg, Linux)", { skip }, () => {
   for (const cli of ["claude", "gemini", "copilot", "antigravity"] as const) {
     it(`${cli}: runs to completion twice with the default answers`, async () => {
       const guard = realHomeGuard();
-      const beat = await startChromaHeartbeat();
-      const sb = createSetupSandbox();
       const cell = casesFor(cli).find((x) => x.id === "default-answers");
       assert.ok(cell !== undefined, `${cli}: no default-answers cell`);
-      const answers = translateAnswers(cell);
+      // The answers of the cell as `runSetupCase` builds it: the CLI's base stubs under the cell's own.
+      const base = baseStubs(cli);
+      const answers = translateAnswers({
+        ...cell,
+        stubs: { ...base, ...cell.stubs, fzf: { ...base.fzf, ...cell.stubs?.fzf } },
+      });
+      const beat = await startChromaHeartbeat();
       const daemon = await startGoldenDaemon({ probe: 0, port: "0" });
-      const stubs = installStubs(sb.bin, baseStubs(cli));
-      exposeTools(sb, commonTools);
-      seedMempalaceVenv(sb);
-      for (const pass of ["first", "second"]) {
-        const res = sb.run(`setup-${cli}-interactive`, answers, {
-          timeoutMs: 180_000,
-          env: {
-            MEMPALACE_CHROMA_PORT: String(beat.port),
-            MEMPALACE_MCP_PORT: String(daemon.port),
-            CREWRIG_TEST_SERVICE_BIN_DIR: sb.bin,
-          },
-        });
-        assert.equal(res.status, 0, `${cli} ${pass} run: ${res.stderr}\n${res.stdout.slice(-800)}`);
-        assert.match(res.stdout, /Setup complete/);
-        assert.match(lastLine(res.stdout), LAST[cli]);
-        const rules = RULES[cli];
-        const dir = path.join(sb.home, rules.dir);
-        const files = fs.readdirSync(dir).filter((n) => rules.match.test(n));
-        assert.ok(files.length >= rules.min, `${cli}: ${files.length} rule files in ${dir}`);
+      const sb = createSetupSandbox();
+      try {
+        installStubs(sb.bin, base);
+        exposeTools(sb, commonTools);
+        seedMempalaceVenv(sb);
+        for (const pass of ["first", "second"]) {
+          const res = sb.run(`setup-${cli}-interactive`, answers, {
+            timeoutMs: 180_000,
+            env: {
+              MEMPALACE_CHROMA_PORT: String(beat.port),
+              MEMPALACE_MCP_PORT: String(daemon.port),
+              CREWRIG_TEST_SERVICE_BIN_DIR: sb.bin,
+            },
+          });
+          assert.equal(
+            res.status,
+            0,
+            `${cli} ${pass} run: ${res.stderr}\n${res.stdout.slice(-800)}`,
+          );
+          assert.match(res.stdout, /Setup complete/);
+          assert.match(lastLine(res.stdout), LAST[cli]);
+          const rules = RULES[cli];
+          const dir = path.join(sb.home, rules.dir);
+          const files = fs.readdirSync(dir).filter((n) => rules.match.test(n));
+          assert.ok(files.length >= rules.min, `${cli}: ${files.length} rule files in ${dir}`);
+        }
+        guard.assertUnchanged();
+      } finally {
+        beat.stop();
+        daemon.stop();
+        sb.dispose();
       }
-      assert.ok(answers.length > 0, "the setup was given its default answers");
-      beat.stop();
-      daemon.stop();
-      guard.assertUnchanged();
-      sb.dispose();
     });
   }
 });
