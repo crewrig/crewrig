@@ -91,8 +91,10 @@ function fileEntries(h: Harness, cli: "copilot" | "antigravity", answers: string
     );
     const named = wrapperFiles(h, sb);
     assert.ok(named.length > 0, why(res, "no written file names the trust wrapper"));
-    for (const [rel, body] of h.landed(sb))
+    for (const [rel, body] of h.landed(sb)) {
+      if (/(^|[\\/])tls-exec\.ts$/.test(rel)) continue; // the wrapper's own source, not an entry
       assert.ok(!/"bash(\.exe)?"|tls-exec\.sh/.test(text(body)), `${rel} names bash`);
+    }
     const joined = named
       .map(([, t]) => t)
       .join("\n")
