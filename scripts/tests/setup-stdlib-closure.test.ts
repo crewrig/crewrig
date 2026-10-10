@@ -1,15 +1,12 @@
-// setup-stdlib-closure.test.ts — LAYER 1 of the setup graph imports only the Node.js standard library
-// (spec 0256 requirement 20). LAYER 1 is the set of modules that run BEFORE the dependency step has
-// installed anything: the static import closure of those modules (through `import ... from`,
-// `export ... from`, `import()` and `require()` specifiers, repo-relative paths followed) must hold no
-// bare specifier that is not `node:`-prefixed, i.e. no third-party package, at any depth.
+// setup-stdlib-closure.test.ts — the modules that run BEFORE the dependency step import only the Node.js
+// standard library (spec 0256 requirement 20): the static import closure of those modules (`import`,
+// `export ... from`, `import()` and `require()` specifiers, repo-relative paths followed) holds no
+// third-party package at any depth; a legacy built-in without the `node:` prefix is not one.
 //
-// The second half (plan v2 step B3b.7) covers the modules the four descriptors run BEFORE the
-// dependency step (`deps-install`): the entry graph (flow.ts, which statically imports every step
-// registry, plus the four descriptors) and the modules of each pre-dependency step. A module loaded
-// only AFTER that step (MemPalace, MCP strategies, tiers, usage capture) may reach `js-yaml`, but
-// only through a lazy `import()`: a variable-specifier import is invisible to the scan, so each one is
-// listed in LAZY_AFTER_DEPS with its reason, and an unlisted one fails the test.
+// The second half (plan v2 step B3b.7) covers the entry graph (flow.ts, the registries, the four
+// descriptors) and the modules of each pre-dependency step. A module loaded only AFTER the dependency
+// step may reach `js-yaml` through a lazy `import()`: a variable-specifier import is invisible to the
+// scan, so each one is listed in LAZY_AFTER_DEPS with its reason, and an unlisted one fails.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -31,32 +28,13 @@ import {
 } from "./lib/setup-source-scan.ts";
 
 /** Modules that must always exist: deleting or renaming one is a failure, never a silent skip. */
-const REQUIRED = [
-  "argv",
-  "answers",
-  "prompt-ids",
-  "prompt-queue",
-  "prompt",
-  "link-key",
-  "catalogue",
-  "validation-backend",
-  "files",
-  "backup",
-  "worktree-warning",
-  "tls-detect",
-  "tls-offer",
-  "trust-wrapper",
-  "deps-step",
-  "prerequisites",
-  "spawner",
-  "context",
-  "exit",
-];
+const REQUIRED =
+  "argv answers prompt-ids prompt-queue prompt link-key catalogue validation-backend files backup worktree-warning tls-detect tls-offer trust-wrapper deps-step prerequisites spawner context exit".split(
+    " ",
+  );
 /**
- * The only modules NOT scanned: they run after the dependency step and reach the service layer, whose
- * usage-store CommonJS code requires built-ins without the `node:` prefix. Every other module under
- * scripts/lib/setup/ is in LAYER 1 by default, so a new module is scanned until it is listed here.
- * A name listed here that no longer exists fails the run.
+ * The only modules NOT scanned: they run after the dependency step and reach the service layer. Every
+ * other module under scripts/lib/setup/ is scanned by default; a listed name that is gone fails the run.
  */
 const AFTER_DEPENDENCY_STEP = [
   "chroma-install",
@@ -65,6 +43,9 @@ const AFTER_DEPENDENCY_STEP = [
   "ensure-http-probe",
   "trust-wrapper-install",
 ];
+/** A bare specifier is third-party unless it names a Node.js built-in (legacy CJS omits `node:`). */
+const thirdParty = (c: Closure): Finding[] => c.bare.filter((f) => !isBuiltin(f.text));
+
 const MIN_CLOSURE = 20;
 
 const SETUP_DIR = path.join(REPO, "scripts/lib/setup");
@@ -116,13 +97,11 @@ describe("LAYER 1 import closure", () => {
     assert.ok(closure.files.has("scripts/lib/tls-env.ts"), "tls-env.ts not reached from tls-offer");
     const show = (f: { file: string; line: number; text: string }): string =>
       `${f.file}:${f.line} imports ${JSON.stringify(f.text)}`;
-    assert.deepEqual(closure.bare.map(show), []);
+    assert.deepEqual(thirdParty(closure).map(show), []);
     assert.deepEqual(closure.unresolved.map(show), []);
   });
 });
 
-/** A bare specifier is third-party unless it names a Node.js built-in (legacy CJS omits `node:`). */
-const thirdParty = (c: Closure): Finding[] => c.bare.filter((f) => !isBuiltin(f.text));
 const show = (f: Finding): string => `${f.file}:${f.line} ${JSON.stringify(f.text)}`;
 
 const SETUP = "scripts/lib/setup";

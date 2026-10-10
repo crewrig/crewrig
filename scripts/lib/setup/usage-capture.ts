@@ -16,8 +16,7 @@ import {
 } from "../hook-config.ts";
 import { USAGE_CAPTURE, type WiredCli } from "../hook-descriptor.ts";
 import { rewriteConfig } from "../hook-rewrite.ts";
-import { SetupExit } from "./exit.ts";
-import { assertRewritable } from "./lossless.ts";
+import { reportIfLossy } from "./lossless.ts";
 import { createSpawner } from "./spawner.ts";
 import { warnIfLinkedWorktree } from "./worktree-warning.ts";
 import { captureShape, unknownCliMessage } from "./usage-capture-state.ts";
@@ -147,7 +146,7 @@ function rewriteConfigFile(o: UcOptions & { readonly repoDir: string }): number 
     out(`  ${label}: ${result.left} command(s) left as they are in ${config}; nothing written.`);
     return 0;
   }
-  assertRewritable(ctx, config);
+  if (!reportIfLossy(ctx, config)) return 1;
   const backup = backupFile(config, { warn: err });
   if (backup.status === "failed") {
     err(`  ERROR: could not back up ${config}; leaving it untouched (backup-first, R23).`);
@@ -177,7 +176,6 @@ export function usageCaptureRewrite(o: UcOptions): number {
   try {
     return rewriteConfigFile({ ...o, repoDir: o.repoDir ?? o.ctx.repoDir });
   } catch (error) {
-    if (error instanceof SetupExit) throw error;
     o.ctx.io.err(`  ERROR: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }
