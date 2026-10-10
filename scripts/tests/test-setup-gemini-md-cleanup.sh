@@ -69,10 +69,20 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # run_ts_group <group name> — run one describe group and report each subtest by name.
+# The golden sandbox of the TypeScript setup needs these real tools on PATH and the repository's config/
+# tree; a hermetic PATH or a partial repository copy (the install oracle's) lacks them, and the group is
+# then skipped, not failed.
+ts_sandbox_tools_missing() {
+  local t
+  for t in jq git diff ls sort uniq tee touch stat realpath comm paste od expr dd tty mv rmdir tac rev hostname whoami; do
+    command -v "$t" >/dev/null 2>&1 || return 0
+  done
+  return 1
+}
 run_ts_group() {
   unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
   local group="$1" log="$TMP_DIR/group.log" line n=0
-  if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
+  if [ "$(uname -s)" != "Linux" ] || ts_sandbox_tools_missing || [ ! -d "${REPO_DIR:-.}/config" ]; then
     echo "  skip: '$group' needs the Linux setup sandbox and jq (runs in CI)"
     return 0
   fi

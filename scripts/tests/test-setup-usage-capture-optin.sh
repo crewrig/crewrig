@@ -128,10 +128,20 @@ bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 # setup entry in the sandbox (spec 0256 requirement 9, PR D2). Linux only, like the golden suites
 # (the sandbox drives systemd stubs): elsewhere it is reported as skipped, never as a pass.
 # Vacuity guard: the expected number of tests must have passed, none failed, none skipped.
+# The golden sandbox of the TypeScript setup needs these real tools on PATH and the repository's config/
+# tree; a hermetic PATH or a partial repository copy (the install oracle's) lacks them, and the group is
+# then skipped, not failed.
+ts_sandbox_tools_missing() {
+  local t
+  for t in jq git diff ls sort uniq tee touch stat realpath comm paste od expr dd tty mv rmdir tac rev hostname whoami; do
+    command -v "$t" >/dev/null 2>&1 || return 0
+  done
+  return 1
+}
 run_ts_behaviour() {
   unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
   local pattern="$1" label="$2" want="$3" out rc=0 n_pass n_fail n_skip
-  if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
+  if [ "$(uname -s)" != "Linux" ] || ts_sandbox_tools_missing || [ ! -d "${REPO_DIR:-.}/config" ]; then
     echo "  skip: $label (the TypeScript setup sandbox needs Linux and jq)"
     return 0
   fi

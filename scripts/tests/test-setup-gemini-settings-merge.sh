@@ -851,10 +851,20 @@ fi
 # scripts/tests/setup-retarget-gemini-copilot-run.test.ts, which executes the TypeScript Gemini / Copilot
 # entries in a sandboxed HOME (golden cells; Linux + jq only, like the golden suites) and asserts on what
 # they print and write. A host that cannot run the golden cells says so and skips, never passes silently.
+# The golden sandbox of the TypeScript setup needs these real tools on PATH and the repository's config/
+# tree; a hermetic PATH or a partial repository copy (the install oracle's) lacks them, and the group is
+# then skipped, not failed.
+ts_sandbox_tools_missing() {
+  local t
+  for t in jq git diff ls sort uniq tee touch stat realpath comm paste od expr dd tty mv rmdir tac rev hostname whoami; do
+    command -v "$t" >/dev/null 2>&1 || return 0
+  done
+  return 1
+}
 run_ts_behaviour() {
   unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
   local label="$1" pattern="$2" log
-  if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
+  if [ "$(uname -s)" != "Linux" ] || ts_sandbox_tools_missing || [ ! -d "${REPO_DIR:-.}/config" ]; then
     echo "  skip: $label (the TypeScript entry cells run on Linux with jq only)"
     return 0
   fi
