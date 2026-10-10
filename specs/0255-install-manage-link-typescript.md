@@ -285,11 +285,11 @@ adopt later.
     printing `Removed: <name>` (indented by two spaces) only for what existed. Both SHALL remove through
     `removePlaced` of requirement 19, by name, never following a link. `INCLUDE_ORG`
     set non-empty acts as `--include-org`. `link-extensions.ts [--include-org]` SHALL
-    run `install-extension.ts link <name>` as a `node` subprocess for each extension,
-    in tier order, and stop at the first failure, as its `set -e` does; it prints no
-    notice of its own and leaves each child's own notice as is, because the Bash
-    oracles stub child scripts in sandboxes and the child boundary is part of the
-    contract. `install-workspace.ts [mode]` SHALL likewise run
+    call the in-process install function of `install-extension.ts` in link mode for
+    each extension, in tier order, and stop at the first failure, as its `set -e`
+    does; it has no Bash oracle that stubs a child script, so it aggregates into
+    the one notice of requirement 18, exactly as `install-extension` with no name
+    does. `install-workspace.ts [mode]` SHALL run
     `manage-workspace-component.ts` as a `node` subprocess for each of the seven
     types in the shell's order (up to seven notices, one per child that copied),
     collect failures rather than stop, and print the shell's `Artifacts installation finished with failures
@@ -365,10 +365,10 @@ adopt later.
     and states that a change to the source takes effect there only after the same
     operation is run again. The aggregation SHALL use `summarizeFallbacks(outcomes)`
     of requirement 21 so the wording is single-sourced. An entry that
-    runs child entries as subprocesses (`install-workspace`, `link-extensions`) leaves
-    each child's own notice as is and adds none; an entry that fans out in-process
-    (`install-extension` with no name, the manage entries over several components)
-    aggregates into one. Nothing SHALL be printed on standard error when every
+    runs child entries as subprocesses (`install-workspace` only, because the Bash
+    oracles stub child scripts in sandboxes) leaves each child's own notice as is and
+    adds none; an entry that fans out in-process (`install-extension` with no name,
+    `link-extensions`, the manage entries over several components) aggregates into one. Nothing SHALL be printed on standard error when every
     placement was a link or the mode was install.
 
 19. **Link-or-copy: unlink.** `removePlaced(dest)` SHALL remove by name, never
@@ -403,8 +403,9 @@ adopt later.
     dependency not found in PATH)` lines of `install-extension-all` disappear (a
     machine with `jq` but without `claude` still skips on the missing binary);
     (b) in link mode, a refused symbolic link places a copy, reports it as in
-    requirement 18 and exits 0 where `ln -s` failed; on every other platform and
-    volume nothing changes; (c) the one-key prompt of requirement 12 works on a
+    requirement 18 and exits 0 where `ln -s` failed; where the link succeeds nothing
+    changes, and a refusal of the kinds requirement 15 lists on another platform places
+    a copy as well; (c) the one-key prompt of requirement 12 works on a
     Windows console, where `read -n 1` does not exist; end of input answers no;
     (d) JSON files written are byte-identical to `jq`'s output for the inputs the
     scripts handle, except that a number is written as JavaScript writes the value
