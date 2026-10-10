@@ -388,16 +388,9 @@ test("replacement: a daemon relaunched during the eviction is judged on a fresh 
   );
 });
 
-test("a configuration that cannot be backed up aborts the switch before any assistant changes", async () => {
+test("a configuration that cannot be backed up is warned about, as the shell does, and the switch goes on", async () => {
   const fx = fixture();
   try {
-    const files = [
-      path.join(fx.home, ".claude.json"),
-      path.join(fx.home, ".gemini", "settings.json"),
-      path.join(fx.home, ".copilot", "mcp-config.json"),
-      path.join(fx.home, ".gemini", "config", "mcp_config.json"),
-    ];
-    const before = files.map((f) => readFileSync(f, "utf8"));
     let calls = 0;
     const code = await runSwitch(
       options(fx, {
@@ -408,13 +401,16 @@ test("a configuration that cannot be backed up aborts the switch before any assi
         runStatus: () => 0,
       }),
     );
-    assert.equal(code, 1);
-    assert.deepEqual(
-      files.map((f) => readFileSync(f, "utf8")),
-      before,
-    );
-    assert.ok(fx.out.some((l) => l.includes("could not back up")));
-    assert.ok(fx.out.some((l) => l.includes("No assistant has been changed.")));
+    assert.equal(code, 0);
+    assert.ok(fx.err.some((l) => l.includes("WARNING: Failed to back up")));
+    assert.equal(fx.err.filter((l) => l.includes("Failed to back up")).length, 1);
+    for (const f of [".claude.json", ".gemini/settings.json", ".copilot/mcp-config.json"]) {
+      assert.equal(
+        (entryOf(path.join(fx.home, f)) as { type: string }).type,
+        "http",
+        `${f} switched`,
+      );
+    }
   } finally {
     rmSync(fx.home, { recursive: true, force: true });
   }

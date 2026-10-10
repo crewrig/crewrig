@@ -138,11 +138,11 @@ export function switchAssistants(token: string, o: SwitchOptions): number {
     const cfg = assistantConfigPath(cli, o.home);
     const bak = (o.backup ?? backupConfig)(cfg);
     if (bak === null) {
-      // Deviation from the shell (which warns and goes on): a switch that rewrites a
-      // configuration it could not back up has nothing to roll back to.
-      say(`  ERROR: could not back up ${cli}'s configuration: ${cfg}`);
-      say("         No assistant has been changed.");
-      return 1;
+      // As the shell's `backup_file`: warn and go on. The rollback restores from the
+      // registration captured in memory above, not from this file; only
+      // `repair-mempalace-http --restore-backup` would find no backup to use.
+      o.io.err(`  WARNING: Failed to back up ${path.basename(cfg)} (could not create a backup)`);
+      continue;
     }
     say(`  Backed up: ${path.basename(cfg)} -> ${path.basename(bak)}`);
   }
