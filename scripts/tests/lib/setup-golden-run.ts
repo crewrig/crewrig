@@ -16,7 +16,8 @@ import {
   startChromaHeartbeat,
 } from "./setup-golden-common.ts";
 import { DEFAULT_MCP_PORT, startGoldenDaemon } from "./setup-golden-daemon.ts";
-import { translateAnswers, unusedIds, withoutIds } from "./setup-golden-answers.ts";
+import type { DaemonRequest } from "./setup-golden-daemon.ts";
+import { translateAnswers } from "./setup-golden-answers.ts";
 import { createSetupSandbox } from "./setup-sandbox.ts";
 import type { Leg } from "./setup-sandbox.ts";
 import { bakCountOf, normalize, readTokens, snapshot, treeOf } from "./setup-golden-tree.ts";
@@ -39,6 +40,22 @@ export interface CaseResult {
   readonly fzfRecords: readonly FzfRecord[];
   /** The stub `curl` calls, oldest first (the daemon probes). */
   readonly curlRecords: readonly CurlRecord[];
+}
+
+/**
+ * The requests the daemon stand-in received, as the `curl` records the shell stub wrote for the
+ * same probe: the URL with the stand-in's real port shown as the fixtures' one, the bearer as
+ * `<TOKEN>` (any real bearer), `<PLACEHOLDER>` or empty; a readiness poll that repeats the same
+ * request keeps one record (as the shell side does).
+ */
+export function probeRecords(requests: readonly DaemonRequest[], port: McpPortMap): CurlRecord[] {
+  const bearers = { none: "", placeholder: "<PLACEHOLDER>", real: "<TOKEN>" } as const;
+  return requests
+    .map((r) => ({
+      url: `http://${r.host.replace(`:${port.actual}`, `:${port.shown}`)}${r.path}`,
+      bearer: bearers[r.bearer],
+    }))
+    .filter((r, i, all) => i === 0 || JSON.stringify(r) !== JSON.stringify(all[i - 1]));
 }
 
 /** The real tools exposed by default; a case adds more (`python3`) through `GoldenCase.tools`. */
@@ -76,18 +93,20 @@ function exposeTools(bin: string, names: readonly string[]): void {
   }
 }
 
+/** The warning the TypeScript setup prints for a pre-answer to a question it never asked (deviation (f)). */
+const UNUSED_ANSWER_WARNING = /^Warning: --answer given for a question that was not asked: .*\n?/gm;
+
 /**
  * Run the case on `leg` and return the normalised observable result. The TypeScript leg gets the
  * translated `--answer` arguments (setup-golden-answers.ts); the translation answers every question
- * the setup can ask, so a run that reports unused answers is run again without them and the
- * stderr compared is the setup's own.
+ * the setup can ask, so a run that stops early reports the unused answers on stderr: that one warning
+ * is dropped (tag (f), the `--answer` flag is new) and the setup runs ONCE, so its daemon probes and
+ * its time are those of one run.
  */
 export function runCase(c: GoldenCase, leg: Leg, mcpPort?: McpPortMap): CaseResult {
   if (leg !== "ts") return runOnce(c, leg, [], mcpPort);
-  const answers = translateAnswers(c);
-  const first = runOnce(c, leg, answers, mcpPort);
-  const unused = unusedIds(first.stderr);
-  return unused.length === 0 ? first : runOnce(c, leg, withoutIds(answers, unused), mcpPort);
+  const only = runOnce(c, leg, translateAnswers(c), mcpPort);
+  return { ...only, stderr: only.stderr.replace(UNUSED_ANSWER_WARNING, "") };
 }
 
 /** The port the ts leg's daemon stand-in really listens on, and the one the shell fixtures record for it. */
@@ -169,12 +188,13 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
   const stubs = { ...base, ...c.stubs, fzf: { ...base.fzf, ...c.stubs?.fzf } };
   const beat = await startChromaHeartbeat();
   // The TypeScript leg probes the daemon over real HTTP: a loopback stand-in takes the stub
-  // `curl`'s decisions (setup-golden-daemon.ts, deviation tag (l)).
+  // `curl`'s decisions and records what it was asked (setup-golden-daemon.ts); the records
+  // replace the stub's `curl` records of the result, so the probe is compared, not exempted.
   const daemon =
     leg === "ts" ? await startGoldenDaemon({ probe: stubs.probe ?? 0, port: "0" }) : undefined;
   const shown = c.env?.["MEMPALACE_MCP_PORT"] ?? DEFAULT_MCP_PORT;
   try {
-    return runCase(
+    const result = runCase(
       {
         ...c,
         stubs,
@@ -192,6 +212,9 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
       leg,
       daemon === undefined ? undefined : { actual: String(daemon.port), shown },
     );
+    if (daemon === undefined) return result;
+    const mapped = { actual: String(daemon.port), shown };
+    return { ...result, curlRecords: probeRecords(await daemon.requests(), mapped) };
   } finally {
     beat.stop();
     daemon?.stop();

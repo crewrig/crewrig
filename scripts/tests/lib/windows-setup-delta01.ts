@@ -1,9 +1,10 @@
 // windows-setup-delta01.ts — the Windows cases of delta-01 to spec 0256 (deviations (m), (n), (q)): with no
-// `bash` on PATH the Claude, Copilot and Antigravity entries name `node <home>/.crewrig/tls-exec.ts` and
-// the Sequential Thinking entry wraps `npx.cmd`; `tls-exec.ts` exists before the first entry is written;
-// no written entry names `bash`; the Chroma daemon is a scheduled task (no `unsupported OS`, rolled back
-// on failure); the pipx guidance is the Windows form. The sandbox PATH holds the `.cmd` stubs, node and
-// System32 only, so a `bash` on it would be a harness defect, asserted first.
+// `bash` on PATH the Claude, Gemini, Copilot and Antigravity entries name `node <home>/.crewrig/tls-exec.ts`
+// and the Sequential Thinking entry wraps `npx.cmd`; `tls-exec.ts` exists before the first entry is
+// registered (by call order, not by file time); no written entry names `bash`; the Chroma refusal text of
+// the shell is gone (the scheduled task itself is a declared gap, see `chromaAndMessages`); the pipx
+// guidance is the Windows form. The sandbox PATH holds the `.cmd` stubs, node and System32 only, so a
+// `bash` on it would be a harness defect, asserted first.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -52,6 +53,16 @@ function claudeEntries(h: Harness): void {
   h.check("Claude: Sequential Thinking names node tls-exec.ts and npx.cmd", () => {
     const sb = h.sandbox();
     noBashOnPath(h, sb);
+    const marker = path.join(sb.calls, "claude.wrapper");
+    const wrapperAt = path.join("%USERPROFILE%", ".crewrig", "tls-exec.ts");
+    h.stub(
+      sb,
+      "claude",
+      [
+        `if exist "${wrapperAt}" >>"${marker}" echo present`,
+        `if not exist "${wrapperAt}" >>"${marker}" echo absent`,
+      ].join("\n"),
+    );
     const res = h.run(
       sb,
       "claude",
@@ -72,14 +83,29 @@ function claudeEntries(h: Harness): void {
     assert.ok(/npx\.cmd/.test(thinking), `npx.cmd not named: ${thinking}`);
     for (const line of add)
       assert.ok(!/\bbash\b|tls-exec\.sh/.test(line), `an entry names bash: ${line}`);
-    assert.ok(
-      fs.statSync(wrapper).mtimeMs <= fs.statSync(path.join(sb.calls, "claude")).mtimeMs,
-      "tls-exec.ts was installed after the first entry",
+    // Order by call order, never by mtime: the stub noted, at each call, whether the wrapper existed.
+    const seen = h.calls(sb, "claude.wrapper");
+    const all = h.calls(sb, "claude");
+    assert.equal(
+      seen.length,
+      all.length,
+      `call log and wrapper log differ: ${all.length} vs ${seen.length}`,
+    );
+    const first = all.findIndex((l) => /^mcp add\b/.test(l));
+    assert.ok(first >= 0, "no `claude mcp add` call to order against");
+    assert.equal(
+      seen[first],
+      "present",
+      `tls-exec.ts was not installed when the first entry was registered: ${all[first]}`,
     );
   });
 }
 
-function fileEntries(h: Harness, cli: "copilot" | "antigravity", answers: string[]): void {
+function fileEntries(
+  h: Harness,
+  cli: "gemini" | "copilot" | "antigravity",
+  answers: string[],
+): void {
   h.check(`${cli}: written MCP entries name node tls-exec.ts, never bash`, () => {
     const sb = h.sandbox();
     noBashOnPath(h, sb);
@@ -105,49 +131,55 @@ function fileEntries(h: Harness, cli: "copilot" | "antigravity", answers: string
   });
 }
 
-/** (n) and (q): reached only when the MemPalace layer runs; a case not reached is reported, never silently passed. */
+/**
+ * (q) is exercised: the sandbox has no pipx, so the offer prints the guidance. (n) is NOT exercisable
+ * from this job and says so: the Chroma step runs only when a MemPalace interpreter is detected, and
+ * (1) the detector spawns the interpreter with no shell, which Node refuses for a `.cmd` stub
+ * (`EINVAL`), so only a real `.exe` would do; (2) on win32 `executableFor` runs
+ * `%SystemRoot%\\System32\\schtasks.exe` whatever PATH says (the PATH and bin-dir seams are POSIX
+ * only), so a recording `schtasks.cmd` is never called and the real Task Scheduler would be driven
+ * under the fixed leaf `mempalace-chroma-server`. The scheduled-task install and its rollback are
+ * proved by setup-chroma-install-win.test.ts (injected backend) and by the service-windows suites
+ * (real schtasks, throwaway leaf). What this job still asserts is the shell's refusal text is gone.
+ */
 function chromaAndMessages(h: Harness): void {
   h.check("pipx guidance is the Windows form (q)", () => {
     const sb = h.sandbox();
     const res = h.run(sb, "claude", answerArgs(swap("mempalace-install=yes")));
     expectStatus(res, 0);
     if (!/pipx not found/.test(res.out))
-      return h.notExercised("(q) pipx guidance", "the run did not reach the MemPalace offer");
+      return h.notExercised("(q) pipx guidance", "the run did not reach the MemPalace offer", {
+        required: true,
+      });
     assert.match(res.out, /scoop install pipx/, why(res, "expected the Windows pipx line"));
     assert.doesNotMatch(res.out, /brew install|python3 -m pip/, why(res, "a POSIX guidance line"));
   });
-  h.check("Chroma daemon is a scheduled task (n), rolled back on failure", () => {
+  h.check("Chroma daemon is not refused as an unsupported OS (n)", () => {
     const sb = h.sandbox();
-    h.stub(sb, "schtasks");
-    const ok = h.run(sb, "claude", answerArgs(CLAUDE_ANSWERS));
+    const res = h.run(sb, "claude", answerArgs(CLAUDE_ANSWERS));
+    expectStatus(res, 0);
     assert.doesNotMatch(
-      ok.out + ok.err,
+      res.out + res.err,
       /unsupported OS/,
-      why(ok, "the shell's Windows message survived"),
+      why(res, "the shell's Windows message survived"),
     );
-    if (h.calls(sb, "schtasks").length === 0)
-      return h.notExercised(
-        "(n) schtasks",
-        "no MemPalace in range in the sandbox: the Chroma step was not reached",
-      );
-    assert.ok(
-      h.calls(sb, "schtasks").some((l) => /\/create/i.test(l)),
-      "no /Create call recorded",
-    );
-    const bad = h.sandbox();
-    h.stub(bad, "schtasks", 'if /i "%1"=="/Create" exit /b 1');
-    const failed = h.run(bad, "claude", answerArgs(CLAUDE_ANSWERS));
-    expectStatus(failed, 1);
-    assert.match(
-      failed.err + failed.out,
-      /ERROR:/,
-      why(failed, "expected the install's ERROR lines"),
+    h.notExercised(
+      "(n) scheduled task and rollback",
+      "not reachable here: no `.cmd` interpreter stub can be detected (Node refuses to spawn it) and " +
+        "schtasks resolves to System32 whatever PATH holds; covered by setup-chroma-install-win.test.ts",
     );
   });
 }
 
 export function runDelta01(h: Harness): void {
   claudeEntries(h);
+  fileEntries(
+    h,
+    "gemini",
+    CLAUDE_ANSWERS.filter((a) => !/^(install-settings|install-seqthink)=/.test(a)).concat(
+      "tls-delegation=yes",
+    ),
+  );
   fileEntries(
     h,
     "copilot",
