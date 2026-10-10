@@ -132,3 +132,7 @@ export function recorder(log: string[], id: string, ask = false): StepFn {
       );
   };
 }
+
+/** `skip` reason on Windows for suites comparing POSIX shell goldens (Windows forms: the Windows entry job, spec 0256 R34). */
+export const POSIX_ONLY =
+  process.platform === "win32" && "POSIX goldens; Windows forms: Windows entry job";

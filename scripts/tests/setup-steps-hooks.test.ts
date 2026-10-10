@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { POSIX_ONLY } from "./setup-flow-fixtures.ts";
 import type { Spawner } from "../lib/setup/context.ts";
 import type { StepFn } from "../lib/setup/descriptor.ts";
 import {
@@ -54,7 +55,7 @@ function within(mine: string, cli: HookCli, cell: string): void {
   assert.ok(mine.length > 0 && golden.includes(mine), `not in golden ${cli}/${cell}:\n${mine}`);
 }
 
-describe("session-recording: the golden cells", () => {
+describe("session-recording: the golden cells", { skip: POSIX_ONLY }, () => {
   for (const cli of HOOK_CLIS) {
     test(`${cli}: answer no prints the disabled line and writes nothing`, async () => {
       seed(cli);
@@ -181,7 +182,7 @@ describe("session-recording: the golden cells", () => {
   });
 });
 
-describe("session-recording: failures", () => {
+describe("session-recording: failures", { skip: POSIX_ONLY }, () => {
   test("a manifest that cannot be rendered prints the shell's ERROR line and exits 1 (the shell's exit 1)", async () => {
     seedClaudeSettings();
     fs.writeFileSync(path.join(rig.repo, "hooks/claude-transcript-hooks.json"), "[]\n");
@@ -241,7 +242,7 @@ describe("session-recording: failures", () => {
   });
 });
 
-describe("hooks-rewrite-installed", () => {
+describe("hooks-rewrite-installed", { skip: POSIX_ONLY }, () => {
   test("the leading blank line is the descriptor's: Claude and Gemini print one, Copilot none", async () => {
     for (const cli of HOOK_CLIS) {
       const result = await runHooks(cli, { steps: ["mcp", "hooks-rewrite-installed"] });

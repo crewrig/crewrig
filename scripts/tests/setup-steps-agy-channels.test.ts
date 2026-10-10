@@ -10,7 +10,7 @@ import {
   agySessionRecording,
   agyUsageCapture,
 } from "../lib/setup/steps-agy.ts";
-import { descriptor, run, sandbox, useSandbox } from "./setup-flow-fixtures.ts";
+import { descriptor, run, sandbox, useSandbox, POSIX_ONLY } from "./setup-flow-fixtures.ts";
 import {
   copyRepoHooks,
   exists,
@@ -39,7 +39,7 @@ async function record(answers: string[]): ReturnType<typeof run> {
   );
 }
 
-describe("agySessionRecording", () => {
+describe("agySessionRecording", { skip: POSIX_ONLY }, () => {
   test("transcripts=no prints the disabled line and the blank line (golden transcript-optin-no)", async () => {
     const result = await record(["transcripts=no"]);
     const want = slice(
@@ -114,7 +114,7 @@ describe("agySessionRecording", () => {
   });
 });
 
-describe("agyUsageCapture", () => {
+describe("agyUsageCapture", { skip: POSIX_ONLY }, () => {
   const installed = (): void => {
     put(SETTINGS, `${JSON.stringify({ statusLine: { command: OLD } }, null, 2)}\n`);
     put(
@@ -177,7 +177,7 @@ describe("agyUsageCapture", () => {
   });
 });
 
-describe("agyHooksRewriteInstalled", () => {
+describe("agyHooksRewriteInstalled", { skip: POSIX_ONLY }, () => {
   test("prints nothing and writes nothing when no registration is installed", async () => {
     const result = await run(
       agy("hooks-rewrite-installed"),

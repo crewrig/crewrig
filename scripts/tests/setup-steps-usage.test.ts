@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { POSIX_ONLY } from "./setup-flow-fixtures.ts";
 import type { Spawner } from "../lib/setup/context.ts";
 import type { StepFn } from "../lib/setup/descriptor.ts";
 import {
@@ -79,7 +80,7 @@ function sameCopilotFiles(cell: string, backups: boolean): void {
   assert.deepEqual(backups ? backupShas(file) : [], baks);
 }
 
-describe("usage-capture: the golden cells", () => {
+describe("usage-capture: the golden cells", { skip: POSIX_ONLY }, () => {
   for (const cli of HOOK_CLIS) {
     test(`${cli}: absent + yes disclosure, enable, no stderr`, async () => {
       seed(cli, "absent");
@@ -135,7 +136,7 @@ describe("usage-capture: the golden cells", () => {
   });
 });
 
-describe("usage-capture: failures never abort the run", () => {
+describe("usage-capture: failures never abort the run", { skip: POSIX_ONLY }, () => {
   test("an unreadable hooks file skips the step with the two shell lines (Copilot golden)", async () => {
     put(hooksFileOf("copilot"), "not json {\n");
     const result = await runHooks("copilot", { steps: STEPS });
