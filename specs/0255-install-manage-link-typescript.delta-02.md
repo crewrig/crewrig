@@ -29,7 +29,7 @@ requirement of the parent and opens no question.*
 
 ## ADDED
 
-**Scenario:** An unwritable link at the MCP configuration is an error, not a success
+**Scenario:** An unwritable link at a JSON configuration is an error, not a success
 
 Given `~/.copilot/mcp-config.json` is a symbolic link into a directory that does not exist, and an
 MCP declaration `<name>.json`
@@ -50,16 +50,20 @@ it stands after delta 01 of this spec (letters (a) to (k) are unchanged):
 Replacement:
 
 > (k) the shell's `ln -s` on Windows (Git Bash msys, which may copy silently) is not
-> reproduced; (l) when the target of an MCP configuration merge is a symbolic
-> link whose own target cannot be created (for example `~/.copilot/mcp-config.json`,
-> `~/.gemini/settings.json` or `~/.gemini/antigravity-cli/settings.json` pointing
-> into a directory that does not exist; a link to a missing file in an existing
-> directory is written through, as the shell did), the shell's
-> `jq … > "$config_file"` redirect failed on standard error, yet the script printed
-> `Merged: <name> into <key>` and exited 0 having written nothing; the TypeScript
-> entry exits 1 with one `Error: <message>` line on standard error and writes nothing
-> (no `.bak` file either), because reporting success while nothing was written is a
-> defect, and the stricter exit status is the only observable change; (m) deviation
+> reproduced; (l) when the target of a JSON configuration merge (the `mcpServers` merge of
+> the Copilot, Antigravity and Gemini manage scripts and the `themes` merge of the Gemini
+> manage script) is a symbolic link whose own target cannot be created (for example
+> `~/.copilot/mcp-config.json`, `~/.gemini/settings.json` or
+> `~/.gemini/antigravity-cli/settings.json` pointing into a directory that does not
+> exist; a link to a missing file in an existing directory is written through, as the
+> shell did), the shell's merge sequence (the initial write, the `.bak` copy and the
+> `jq … > "$config_file"` redirect) failed on standard error, yet, because every driver
+> runs the merge handler under `|| exit $?`, which suspends `set -e`, the script printed
+> `Merged: <name> into <key>` and exited 0 having written nothing; the TypeScript entry
+> exits 1 with one `Error: <message>` line on standard error, prints no `Merged:` line
+> and writes nothing (no `.bak` file either), because reporting success while nothing
+> was written is a defect, and the observable changes are that exit status and that
+> output line; (m) deviation
 > (c) includes one difference of the last output byte: at end of input the shell's
 > `read -n 1` failed and `set -e` aborted the script before its `echo ""`, so it
 > printed no trailing line feed, whereas the TypeScript entry prints the line feed it
