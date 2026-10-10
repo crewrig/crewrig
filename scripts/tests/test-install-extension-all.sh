@@ -73,8 +73,11 @@ FAKE_GEMINI_HOME="$SANDBOX/gemini_home"
 mkdir -p "$FAKE_GEMINI_HOME"
 
 # Test 4: Universal skip when all CLIs are absent
+# `node` joins the restricted PATH the way Test 5 does (a symlink in $FAKE_BIN, not the
+# real directory): the entry points may be reached through the Node.js shim.
+ln -sf "$(command -v node)" "$FAKE_BIN/node"
 set +e
-all_skip_out="$(PATH="/usr/bin:/bin" GEMINI_HOME="$SANDBOX/nonexistent_gemini" bash "$REPO_DIR/scripts/install-extension-all.sh" hello-world 2>&1)"
+all_skip_out="$(PATH="/usr/bin:/bin:$FAKE_BIN" GEMINI_HOME="$SANDBOX/nonexistent_gemini" bash "$REPO_DIR/scripts/install-extension-all.sh" hello-world 2>&1)"
 all_skip_code=$?
 set -e
 assert_eq 1 "$all_skip_code" "Exits 1 when all CLI targets are skipped"
