@@ -160,3 +160,44 @@ export function removeGenerated(dir: string, generatedClass: GeneratedClass): st
   for (const rel of removed) fs.rmSync(`${dir}/${rel}`, { force: true });
   return removed;
 }
+
+function copyDereferenced(src: string, dst: string, trail: string[], notices: string[]): void {
+  let kind: fs.Stats;
+  try {
+    kind = fs.statSync(src);
+  } catch {
+    notices.push(`skipped ${src}: link target does not exist`);
+    return;
+  }
+  if (kind.isFile()) {
+    fs.copyFileSync(src, dst);
+    fs.chmodSync(dst, kind.mode & 0o7777);
+    return;
+  }
+  if (!kind.isDirectory()) {
+    notices.push(`skipped ${src}: not a regular file, directory or link`);
+    return;
+  }
+  const here = real(src);
+  if (trail.includes(here)) {
+    notices.push(`skipped ${src}: link cycle`);
+    return;
+  }
+  fs.mkdirSync(dst, { recursive: true });
+  for (const name of fs.readdirSync(src))
+    copyDereferenced(`${src}/${name}`, `${dst}/${name}`, [...trail, here], notices);
+  fs.chmodSync(dst, kind.mode & 0o7777);
+}
+
+/**
+ * Copy `src` (a file or a directory) to the not-yet-existing `dst`: byte for byte, mode bits kept,
+ * mtimes not preserved, every link inside the source dereferenced. A dangling link, a link cycle
+ * or a special file is skipped and reported in the returned notices.
+ */
+export function copyTreeDereferenced(src: string, dst: string): string[] {
+  if (isSameOrWithin(real(dst), real(src)))
+    throw new ExtError(`cannot copy '${src}' into itself ('${dst}')`);
+  const notices: string[] = [];
+  copyDereferenced(src, dst, [], notices);
+  return notices;
+}
