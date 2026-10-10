@@ -15,8 +15,8 @@
 // The decision needs no token file: the stub never compared the bearer with the file either, only
 // with the placeholder. The server runs in a child process because the sandbox run is synchronous
 // (`spawnSync`), as the Chroma heartbeat does. It binds 127.0.0.1 only, on the cell's
-// `MEMPALACE_MCP_PORT`, else on the shell's default port (so the endpoint the setup writes into
-// the assistant configuration is the one the shell fixtures record), else on a free port.
+// `MEMPALACE_MCP_PORT` when given, else on a free port: the golden suites of the four CLIs run in
+// parallel, so the harness asks for port 0 and maps the real port back to the one the fixtures record.
 // API: startGoldenDaemon(options) -> { port, stop() } | undefined (probe 1: nothing listens).
 
 import { spawn } from "node:child_process";
@@ -65,7 +65,8 @@ const server = http.createServer((req, res) => {
     }
   });
 });
-const announce = () => console.log(server.address().port);
+let told = false;
+const announce = () => { if (!told) { told = true; console.log(server.address().port); } };
 server.once("error", () => server.listen(0, "127.0.0.1", announce));
 server.listen(Number(port), "127.0.0.1", announce);
 `;

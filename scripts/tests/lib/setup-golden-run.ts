@@ -82,16 +82,27 @@ function exposeTools(bin: string, names: readonly string[]): void {
  * the setup can ask, so a run that reports unused answers is run again without them and the
  * stderr compared is the setup's own.
  */
-export function runCase(c: GoldenCase, leg: Leg): CaseResult {
-  if (leg !== "ts") return runOnce(c, leg, []);
+export function runCase(c: GoldenCase, leg: Leg, mcpPort?: McpPortMap): CaseResult {
+  if (leg !== "ts") return runOnce(c, leg, [], mcpPort);
   const answers = translateAnswers(c);
-  const first = runOnce(c, leg, answers);
+  const first = runOnce(c, leg, answers, mcpPort);
   const unused = unusedIds(first.stderr);
-  return unused.length === 0 ? first : runOnce(c, leg, withoutIds(answers, unused));
+  return unused.length === 0 ? first : runOnce(c, leg, withoutIds(answers, unused), mcpPort);
+}
+
+/** The port the ts leg's daemon stand-in really listens on, and the one the shell fixtures record for it. */
+export interface McpPortMap {
+  readonly actual: string;
+  readonly shown: string;
 }
 
 /** Build a sandbox for the case, run its setup on `leg` with `extra` appended to its args. */
-function runOnce(c: GoldenCase, leg: Leg, extra: readonly string[]): CaseResult {
+function runOnce(
+  c: GoldenCase,
+  leg: Leg,
+  extra: readonly string[],
+  mcpPort?: McpPortMap,
+): CaseResult {
   const sb = createSetupSandbox(c.sandbox);
   try {
     const chromaPort = c.env?.["MEMPALACE_CHROMA_PORT"] ?? "";
@@ -111,7 +122,13 @@ function runOnce(c: GoldenCase, leg: Leg, extra: readonly string[]): CaseResult 
       repo: sb.repo,
       home: sb.home,
       secrets: readTokens(sb.home, PLACEHOLDER_BEARER),
-      literals: /^\d+$/.test(chromaPort) ? [[chromaPort, "<CHROMA_PORT>"]] : [],
+      literals: [
+        ...(/^\d+$/.test(chromaPort) ? ([[chromaPort, "<CHROMA_PORT>"]] as const) : []),
+        // The suites of the four CLIs run in parallel: the stand-in takes a free port, shown as the fixtures' one.
+        ...(mcpPort === undefined || mcpPort.actual === mcpPort.shown
+          ? []
+          : ([[mcpPort.actual, mcpPort.shown]] as const)),
+      ],
     };
     const tree = treeOf(roots, before);
     const text = (value: string): string => normalize(value, roots);
@@ -154,9 +171,8 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
   // The TypeScript leg probes the daemon over real HTTP: a loopback stand-in takes the stub
   // `curl`'s decisions (setup-golden-daemon.ts, deviation tag (l)).
   const daemon =
-    leg === "ts"
-      ? await startGoldenDaemon({ probe: stubs.probe ?? 0, port: c.env?.["MEMPALACE_MCP_PORT"] })
-      : undefined;
+    leg === "ts" ? await startGoldenDaemon({ probe: stubs.probe ?? 0, port: "0" }) : undefined;
+  const shown = c.env?.["MEMPALACE_MCP_PORT"] ?? DEFAULT_MCP_PORT;
   try {
     return runCase(
       {
@@ -165,11 +181,8 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
         tools: [...commonTools, ...(c.tools ?? [])],
         env: {
           MEMPALACE_CHROMA_PORT: String(beat.port),
-          // Only a fallback port (the wanted one was taken) is passed on; else the default stands.
-          ...(daemon === undefined || String(daemon.port) === DEFAULT_MCP_PORT
-            ? {}
-            : { MEMPALACE_MCP_PORT: String(daemon.port) }),
           ...c.env,
+          ...(daemon === undefined ? {} : { MEMPALACE_MCP_PORT: String(daemon.port) }),
         },
         seed: (sb) => {
           if (stubs.mempalaceMissing !== true) seedMempalaceVenv(sb);
@@ -177,6 +190,7 @@ export async function runSetupCase(c: GoldenCase, leg: Leg): Promise<CaseResult>
         },
       },
       leg,
+      daemon === undefined ? undefined : { actual: String(daemon.port), shown },
     );
   } finally {
     beat.stop();
