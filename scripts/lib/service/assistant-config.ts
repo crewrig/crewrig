@@ -17,14 +17,19 @@ import { servicePlatform } from "./exec.ts";
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
-  copyFileSync,
+  closeSync,
   existsSync,
   lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   rmSync,
+  symlinkSync,
+  writeSync,
 } from "node:fs";
+import type { Stats } from "node:fs";
 import path from "node:path";
 import { writeFileAtomic } from "../tmp-file.ts";
 import { assistantConfigPath } from "./assistant-arrangement.ts";
@@ -150,7 +155,8 @@ export function backupNamesOf(file: string): string[] {
  * backup path, or null when the file is absent or the backup could not be made.
  */
 export function backupConfig(file: string, now: Date = new Date()): string | null {
-  if (servicePlatform() !== "win32") {
+  const posix = servicePlatform() !== "win32";
+  if (posix) {
     for (const old of backupNamesOf(file)) {
       try {
         if (lstatSync(old).isFile()) chmodSync(old, 0o600);
@@ -159,17 +165,44 @@ export function backupConfig(file: string, now: Date = new Date()): string | nul
       }
     }
   }
-  if (!existsSync(file)) return null;
+  const source = lstatOrNull(file);
+  if (source === null) return null;
+  // A name is taken when anything, a dangling symlink included, sits at it (`-e` or `-L`
+  // in the shell): writing through such a link would put the token-bearing copy elsewhere.
+  const taken = (name: string): boolean => lstatOrNull(name) !== null;
   const base = `${file}.bak.${stamp(now)}`;
   let target = base;
-  for (let n = 1; existsSync(target) && n < 100; n++) {
+  for (let n = 1; taken(target) && n < 100; n++) {
     target = `${base}.${String(n).padStart(2, "0")}`;
   }
-  if (existsSync(target)) return null;
+  if (taken(target)) return null;
+  let created = false;
   try {
-    copyFileSync(file, target);
-    if (servicePlatform() !== "win32") chmodSync(target, 0o600);
+    if (source.isSymbolicLink()) {
+      // `cp -P`: the link itself is copied, no content (and no token) is read.
+      symlinkSync(readlinkSync(file), target);
+      return target;
+    }
+    // Created exclusively and at 0600 from the first byte (the shell's `umask 077`).
+    const fd = openSync(target, "wx", 0o600);
+    created = true;
+    try {
+      writeSync(fd, readFileSync(file));
+    } finally {
+      closeSync(fd);
+    }
+    if (posix) chmodSync(target, 0o600);
     return target;
+  } catch {
+    // Only a file this call created is removed; a lost race leaves the winner's alone.
+    if (created) rmSync(target, { force: true });
+    return null;
+  }
+}
+
+function lstatOrNull(name: string): Stats | null {
+  try {
+    return lstatSync(name);
   } catch {
     return null;
   }
