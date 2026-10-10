@@ -1524,6 +1524,9 @@ jobs:
       - name: Test the MCP daemon status report (Linux)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts
 
+      - name: Test the MCP switch transaction, the token and the config backup (Linux)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-token.test.ts scripts/tests/switch-transaction.test.ts scripts/tests/service-backup-config.test.ts
+
       - name: Test the switch residue repair (Linux)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-verbs.test.ts
 
