@@ -513,6 +513,10 @@ capabilities:
           - "scripts/lib/mempalace-python.ts"
           - "scripts/lib/worktree-claim/**"
           - "scripts/lib/node-floor-guard.js"
+          - "scripts/manage-antigravity-component.sh"
+          - "scripts/manage-claude-component.sh"
+          - "scripts/manage-copilot-component.sh"
+          - "scripts/manage-workspace-component.sh"
           - "scripts/tests/antigravity-migrate.test.ts"
           - "scripts/tests/component-install.test.ts"
           - "scripts/tests/component-overlay.test.ts"
@@ -520,6 +524,8 @@ capabilities:
           - "scripts/tests/component-twins-conformance-migrate.test.ts"
           - "scripts/tests/component-twins-conformance.test.ts"
           - "scripts/tests/install-oracle-mutation.test.ts"
+          - "scripts/tests/test-antigravity-component-install.sh"
+          - "scripts/tests/test-component-tier-resolution.sh"
           - "scripts/tests/lib/component-twins-harness.ts"
           - "scripts/tests/lib/manage-main-run.ts"
           - "scripts/tests/lib/overlay-loop-box.ts"
@@ -1170,6 +1176,9 @@ capabilities:
         - "scripts/ci-cache-guard.sh"
       env: []
     command:
+      # test-antigravity-component-install.sh runs manage-antigravity-component.sh in a
+      # sandbox, which rebuilds the served overlay tiers and loads js-yaml.
+      - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-http-client-reuse.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-transcript-hook.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-antigravity-transcript.sh

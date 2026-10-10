@@ -589,8 +589,15 @@ S7B2_HOME="$S7B2/cli-home"
 mkdir -p "$S7B2_REPO/.git" "$S7B2_REPO/node_modules"
 /bin/cp -R "$REPO_DIR/scripts" "$S7B2_REPO/scripts"
 /bin/cp -f "$REPO_DIR/package.json" "$S7B2_REPO/package.json"
+# The run rebuilds the served overlay tiers, which loads js-yaml (and its argparse):
+# a checkout without the production dependency closure must fail loudly here, not
+# skip the copy and surface later as an unrelated refusal.
 for pkg in js-yaml argparse; do
-  [ -d "$REPO_DIR/node_modules/$pkg" ] && /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$S7B2_REPO/node_modules/$pkg"
+  if [ -d "$REPO_DIR/node_modules/$pkg" ]; then
+    /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$S7B2_REPO/node_modules/$pkg"
+  else
+    bad "manage: the sandbox run needs node_modules/$pkg and it is missing from $REPO_DIR — run 'npm ci --omit=dev --workspaces=false' first"
+  fi
 done
 printf 'dist/\ncli-home*/\npackage.json\nnode_modules/\n' > "$S7B2_REPO/.gitignore"
 stage_skill "$S7B2_REPO/artifacts/library" fx-served

@@ -358,6 +358,10 @@ jobs:
               - 'scripts/lib/mempalace-python.ts'
               - 'scripts/lib/worktree-claim/**'
               - 'scripts/lib/node-floor-guard.js'
+              - 'scripts/manage-antigravity-component.sh'
+              - 'scripts/manage-claude-component.sh'
+              - 'scripts/manage-copilot-component.sh'
+              - 'scripts/manage-workspace-component.sh'
               - 'scripts/tests/antigravity-migrate.test.ts'
               - 'scripts/tests/component-install.test.ts'
               - 'scripts/tests/component-overlay.test.ts'
@@ -365,6 +369,8 @@ jobs:
               - 'scripts/tests/component-twins-conformance-migrate.test.ts'
               - 'scripts/tests/component-twins-conformance.test.ts'
               - 'scripts/tests/install-oracle-mutation.test.ts'
+              - 'scripts/tests/test-antigravity-component-install.sh'
+              - 'scripts/tests/test-component-tier-resolution.sh'
               - 'scripts/tests/lib/component-twins-harness.ts'
               - 'scripts/tests/lib/manage-main-run.ts'
               - 'scripts/tests/lib/overlay-loop-box.ts'
@@ -925,6 +931,9 @@ jobs:
         if: steps.filter.outputs.mempalace == 'true'
         with:
           node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.mempalace == 'true'
+        run: npm ci --omit=dev --workspaces=false
       - uses: actions/cache@v4
         if: steps.filter.outputs.mempalace == 'true'
         with:
