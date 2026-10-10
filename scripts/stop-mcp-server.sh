@@ -1,46 +1,22 @@
-#!/usr/bin/env bash
-# scripts/stop-mcp-server.sh — Stop the shared MemPalace MCP HTTP daemon.
+#!/bin/bash
+# stop-mcp-server.sh — forwarding shim (spec 0252 requirements 1 to 5). The tool is
+# scripts/stop-mcp-server.ts (request a restart of the shared MemPalace MCP HTTP daemon); this file remains so every caller that still
+# runs `bash scripts/stop-mcp-server.sh` reaches it.
 #
-# TRANSIENT BY DESIGN. Under a supervisor with KeepAlive / Restart=always, a
-# stop is a RESTART REQUEST: the daemon comes straight back. That is the useful
-# meaning for day-to-day work (pick up a new config, clear a wedged process),
-# and it is why this script never issues `unload -w` or `disable --now` — those
-# would silently cancel the operator's autostart from a command that reads like
-# a routine stop.
-#
-# To actually end the daemon, run scripts/uninstall-mcp-daemon.sh.
-set -u
+# It runs the Node.js floor guard (scripts/lib/node-floor-guard.js), then the
+# TypeScript tool with every argument and its standard input, and returns the
+# tool's exit status, standard output and standard error unchanged. It fails
+# closed: with `node` absent it writes one `Error:` line and exits 1; below the
+# floor it exits with the floor guard's status and diagnostic and the tool is not
+# run. The environment reaches the tool as set.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
-. "${SCRIPT_DIR}/lib/common.sh"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-LABEL="${MEMPALACE_MCP_LABEL:-${MCP_DAEMON_LABEL_DEFAULT}}"
-UNIT="${MEMPALACE_MCP_UNIT:-${MCP_DAEMON_UNIT_DEFAULT}}"
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node was not found on PATH; the MemPalace MCP daemon tool needs Node.js 24 or later (https://nodejs.org/en/download)." >&2
+  exit 1
+fi
 
-case "$(uname -s)" in
-  Darwin)
-    if launchctl list 2>/dev/null | grep -q "${LABEL}"; then
-      launchctl stop "${LABEL}" 2>/dev/null || true
-      echo "MCP daemon: restart requested (${LABEL})"
-      echo "  Under KeepAlive the supervisor brings it straight back."
-      echo "  To end it: bash scripts/uninstall-mcp-daemon.sh"
-    else
-      echo "MCP daemon: no supervisor unit loaded (${LABEL})"
-    fi
-    ;;
-  Linux)
-    if systemctl --user is-active --quiet "${UNIT}" 2>/dev/null; then
-      systemctl --user restart "${UNIT}" 2>/dev/null || true
-      echo "MCP daemon: restart requested (${UNIT})"
-      echo "  Under Restart=always the supervisor brings it straight back."
-      echo "  To end it: bash scripts/uninstall-mcp-daemon.sh"
-    else
-      echo "MCP daemon: no supervisor unit active (${UNIT})"
-    fi
-    ;;
-  *)
-    echo "MCP daemon: unsupported OS — manage the supervisor unit manually." >&2
-    exit 1
-    ;;
-esac
+node "$DIR/lib/node-floor-guard.js" || exit $?
+
+exec node "$DIR/stop-mcp-server.ts" "$@"

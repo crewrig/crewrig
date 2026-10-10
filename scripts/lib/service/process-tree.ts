@@ -5,6 +5,7 @@
 // A table is a pid -> parent-pid map, or null when it could not be obtained
 // (the owner verdict then says UNVERIFIABLE, never USURPED).
 
+import { servicePlatform } from "./exec.ts";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { processTable } from "./os-inspect.ts";
@@ -81,7 +82,7 @@ function linuxTable(root: string): ParentTable | null {
 
 /** The parent table of the running system, or null when it could not be obtained. */
 export function parentTable(opts: TreeOptions = {}): ParentTable | null {
-  const platform = opts.platform ?? process.platform;
+  const platform = opts.platform ?? servicePlatform();
   if (platform === "linux") return linuxTable(opts.procRoot ?? "/proc");
   if (platform !== "darwin" && platform !== "win32") return null;
   const r = processTable(platform);

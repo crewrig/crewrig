@@ -10,6 +10,7 @@
 // Seam MEMPALACE_MCP_EXPECTED_PID: set-but-empty means undeterminable, unset
 // means look up. This file spawns nothing.
 
+import { servicePlatform } from "./exec.ts";
 import { listenerPid, pidSeam } from "./listener-pid.ts";
 import { hasAncestor, parentTable } from "./process-tree.ts";
 import type { ParentTable } from "./process-tree.ts";
@@ -88,7 +89,7 @@ export interface OwnerCheckOptions {
 /** Collect the three inputs (seams first) and return the verdict. */
 export function ownerCheck(o: OwnerCheckOptions): OwnerVerdict {
   const env = o.env ?? process.env;
-  const platform = o.platform ?? process.platform;
+  const platform = o.platform ?? servicePlatform();
   const listener = listenerPid(o.port, { platform, env });
   const seam = pidSeam(env, "MEMPALACE_MCP_EXPECTED_PID");
   const expected = seam.set ? seam.pid : o.lookupExpected();

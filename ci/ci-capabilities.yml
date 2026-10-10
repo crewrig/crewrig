@@ -1607,6 +1607,10 @@ capabilities:
       # TypeScript entries and the bash shims, and the open-file floor (needs python3;
       # the Windows-capable parts also run in `windows-chroma-trio`).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-lifecycle.test.ts scripts/tests/chroma-launch.test.ts scripts/tests/chroma-launch-env.test.ts
+      # Spec 0252 PR D (issue #1330): the MCP daemon status report, black-box through
+      # the TypeScript entry against stand-ins (the Windows-capable parts also run in
+      # `windows-mcp-daemon`).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts
 
   # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's
   # install / restore contract, root resolution and wmic parser. The probe
@@ -1728,6 +1732,8 @@ capabilities:
           - "scripts/lib/common.sh"
           - "scripts/lib/usage-capture-optin.sh"
           - "scripts/status-mcp-server.sh"
+          - "scripts/status-mcp-server.ts"
+          - "scripts/lib/service/**"
           - "scripts/setup-*-interactive.sh"
           - "scripts/tests/mempalace-registration*.test.ts"
           - "scripts/tests/mempalace-session-check.test.ts"
@@ -1749,6 +1755,8 @@ capabilities:
           - "scripts/lib/common.sh"
           - "scripts/lib/usage-capture-optin.sh"
           - "scripts/status-mcp-server.sh"
+          - "scripts/status-mcp-server.ts"
+          - "scripts/lib/service/**"
           - "scripts/setup-*-interactive.sh"
           - "scripts/tests/mempalace-registration*.test.ts"
           - "scripts/tests/mempalace-session-check.test.ts"
@@ -2795,6 +2803,27 @@ capabilities:
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
         (.github/workflows/build.yml, job `windows-chroma-trio`) because it
+        drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
+        configured for this repository, exposes no Windows runner: every
+        generated GitLab job derives its `image` from `requires.runtime`
+        through `runtime_to_image` (scripts/build-ci.sh), which maps only to
+        Linux Docker images, and .gitlab-ci.yml declares no runner `tags:` that
+        could select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15).
+  # Spec 0252 R24 (PR D): the MCP daemon proof, a copy of windows-chroma-trio.
+  - id: windows-mcp-daemon
+    name: "Windows MCP daemon: status report, owner verdicts and uninstall against the Task Scheduler"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-mcp-daemon`) because it
         drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
         configured for this repository, exposes no Windows runner: every
         generated GitLab job derives its `image` from `requires.runtime`

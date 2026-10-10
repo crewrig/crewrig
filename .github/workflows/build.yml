@@ -1520,6 +1520,9 @@ jobs:
 
       - name: Test the ChromaDB trio and its open-file floor (Linux)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-lifecycle.test.ts scripts/tests/chroma-launch.test.ts scripts/tests/chroma-launch-env.test.ts
+
+      - name: Test the MCP daemon status report (Linux)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1783,6 +1786,34 @@ jobs:
 
       - name: Re-install and delete over a running own task (measured, not asserted)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-windows-reinstall.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0252 R24 (PR D): the MCP daemon on a real Windows host. The MCP chain
+  # (the real launcher behind process.execPath) is installed with the real
+  # installer under a throwaway task name; `status-mcp-server.ts` then runs from
+  # PowerShell and must report the owner verdict VERIFIED for the task's daemon
+  # and USURPED for a same-user listener the task did not start, the `task:`
+  # line, and finish within 5 s; uninstall leaves no task and no daemon.
+  windows-mcp-daemon:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Status report, owner verdicts and uninstall against the installed MCP task
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

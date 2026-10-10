@@ -62,9 +62,25 @@ belongs only to `task mempalace:switch-http`.
 | Action | Command |
 |---|---|
 | Convert / (re)install and start | `task mempalace:switch-http` |
-| Check status | `task mempalace:status` (`bash scripts/status-mcp-server.sh`) |
-| Restart | `task mempalace:stop` (`bash scripts/stop-mcp-server.sh`) — see caveat below |
+| Check status | `task mempalace:status` (`node scripts/status-mcp-server.ts`; `bash scripts/status-mcp-server.sh` forwards to it) |
+| Restart | `task mempalace:stop` (`node scripts/stop-mcp-server.ts`; `bash scripts/stop-mcp-server.sh` forwards to it) — see caveat below |
 | End the daemon | `task mempalace:uninstall-daemon` |
+
+### On Windows
+
+The daemon runs under a Task Scheduler per-user task, `\CrewRig\mempalace-mcp-server`
+([ADR 0019](../adr/0019-windows-per-user-service-task-scheduler.md), spec 0252).
+Run the commands above from PowerShell as `node scripts/<name>.ts` (or through
+`task`).
+
+- `status` adds a `task:` line giving whether the task is registered, its state
+  and its last result. It fails when the task is registered, not running and its
+  last result is a failure, which shows a task that has stopped for good.
+- The Task Scheduler restarts a task that has ended within about a minute, not
+  within seconds as launchd and systemd do.
+- A Group Policy that forbids per-user tasks refuses the switch: nothing is
+  switched, MemPalace keeps working in stdio mode, and the refusal is quoted
+  verbatim.
 
 ### Stopping is not uninstalling
 
@@ -94,7 +110,7 @@ forever once the unit is orphaned.
 
 ### Checking it is actually serving, and actually authenticated
 
-`bash scripts/status-mcp-server.sh` (`task mempalace:status`) is the
+`node scripts/status-mcp-server.ts` (`task mempalace:status`; `bash scripts/status-mcp-server.sh` forwards to it) is the
 operator's only window onto liveness, onto whether the bearer check is
 *actually* enforced, onto launcher drift, and onto which arrangement each of
 the four CLIs is registered under — nothing else surfaces these once
@@ -145,7 +161,7 @@ The first diagnostic step is running:
 task mempalace:status
 ```
 
-`scripts/status-mcp-server.sh` diagnoses which assistant configurations are locked out (reporting `stdio (LOCKED OUT by shared daemon)` and exiting with code 1).
+`scripts/status-mcp-server.ts` diagnoses which assistant configurations are locked out (reporting `stdio (LOCKED OUT by shared daemon)` and exiting with code 1).
 
 To resolve the misconfiguration across all installed assistants, run:
 

@@ -5,7 +5,7 @@
 Generated for spec 0136 (issue #751), figure step of PLAN v5 (satisfies R13,
 R14, R15). Depicts the ordered procedure for converting a machine to the
 shared MemPalace MCP HTTP daemon, run via `task mempalace:switch-http`
-(`scripts/switch-mempalace-http.sh`).
+(`scripts/switch-mempalace-http.ts`; `scripts/switch-mempalace-http.sh` forwards to it).
 
 **Corrected during REVIEW (cold `architect` pass on #877): the original
 version of this figure showed the daemon starting before the token was
@@ -15,10 +15,10 @@ source rather than the outer script's call sequence alone:
 token as its **first** statement — the comment above that line states why
 ("The token must exist before the launcher runs: it refuses to serve
 without one, by design") — and only then calls `install_mcp_launcher` and
-`install_daemon_supervisor`, which starts the daemon. `switch-mempalace-http.sh`
+`install_daemon_supervisor`, which starts the daemon. `switch-mempalace-http.ts`
 re-reads that same token afterward, registers every CLI
 (`switch_assistants_to_http`), and verifies the result
-(`status-mcp-server.sh`).
+(`status-mcp-server.ts`).
 
 - **Model:** `gemini-3-pro-image` (Nano Banana Pro)
 - **Skill:** `nano-banana`, `generate` subcommand

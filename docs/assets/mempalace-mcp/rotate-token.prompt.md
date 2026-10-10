@@ -8,13 +8,13 @@ Depicts the ordered manual procedure for replacing the shared MCP daemon's beare
 token, in the order that leaves no daemon serving a superseded value.
 
 **Refreshed for spec 0160 (issue #914):** PR #897 (issue #880) resolved the
-previous defect where `switch-mempalace-http.sh` did not restart the running
+previous defect where `switch-mempalace-http` did not restart the running
 daemon. The script now directly replaces the daemon process
 (`mcp_daemon_replace_process`) and verifies that the new token is served before
 re-registering any assistant. The redundant manual daemon restart step
 (`task mempalace:stop`) is therefore removed. This figure depicts the
 authoritative four-step procedure matching shipped script behaviour: (1) delete
-the old token file, (2) run `switch-mempalace-http.sh` (mints new token,
+the old token file, (2) run `switch-mempalace-http` (`task mempalace:rotate-token`; mints new token,
 replaces daemon process, re-registers every CLI), (3) delete `.bak` config files
 that still hold the old token, and (4) restart every running CLI session.
 
