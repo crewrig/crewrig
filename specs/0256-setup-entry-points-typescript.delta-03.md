@@ -1,7 +1,7 @@
 ---
 id: "0256"
 slug: setup-entry-points-typescript
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1335
@@ -42,8 +42,7 @@ is printed on standard output exactly as `install_production_dependencies` of
 **Scenario:** The supervised MemPalace daemon runs the TypeScript launcher
 
 Given a Linux or macOS machine on which the first accept probe of requirement 26 finds
-no accepting MemPalace HTTP daemon, so that the setup of any CLI installs it (the run
-then ends in return code 0 or 1)
+no accepting MemPalace HTTP daemon, so that the setup of any CLI installs it
 When the daemon is installed
 Then the supervisor unit points at the TypeScript launcher that the service layer
 installs (spec 0252 requirements 11 and 12), `~/.crewrig/service-lib/` and
