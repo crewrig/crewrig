@@ -54,9 +54,9 @@ registrations, writes the same files, prints the same messages a script or a
 test reads, and exits with the same statuses, except for the few listed changes.
 The choices are asked as numbered questions on any terminal, and every question
 can be answered ahead of time on the command line, so that an installation
-can be scripted and a run with no terminal and no answers refuses to guess,
-naming the question it could not ask, instead of changing the user's home
-directory on a default nobody chose. Re-running setup after an update still
+can be scripted and a run with no terminal and no answer refuses to guess,
+stopping at the first question it could not ask and naming it, instead of
+continuing on a default nobody chose. Re-running setup after an update still
 refreshes every installed hook command and every dependency without asking
 again.
 
@@ -191,10 +191,16 @@ again.
    function body or a block, grep for a call and its order, or read a message). A
    pull request that migrates no script MAY retarget such an assertion, so that it
    reads a TypeScript declaration or the observed behaviour of the entry, on
-   three conditions: the pull request lists each retarget as before and after;
+   four conditions: the pull request lists each retarget as before and after;
    each retargeted assertion keeps a vacuity guard (the test fails when the
-   declaration it now reads is removed or emptied); and the retarget is landed
-   before the switch, never in the pull request that reduces a script to a shim.
+   declaration it now reads is removed or emptied); the retarget lands after the
+   dark modules that hold the declaration it reads (requirement 45), so that the
+   declaration exists when the assertion is retargeted, and before the switch,
+   never in the pull request that reduces a script to a shim; and every
+   retargeted suite passes, in its own pull request, against the unchanged shell
+   scripts (the equality between a declaration and what the shell does being
+   pinned by the golden harness of requirement 7), so that the shell setups,
+   which stay the real implementation until the switch, are never left unguarded.
    The starting list is that of the design notes of this ticket: the suites
    `test-setup-mcp-merge.sh`, `test-setup-catalogue-picker.sh`,
    `test-setup-usage-capture-optin.sh`, `test-setup-gemini-md-cleanup.sh`,
@@ -210,7 +216,7 @@ again.
    and the TypeScript suites `hook-transcript-floor.test.ts`,
    `hook-guard-setup.test.ts`, `setup-dependency-step.test.ts`,
    `mempalace-registration.test.ts`, `mempalace-registration-agreement.test.ts`,
-   `mempalace-session-check.test.ts` and `tests/lib/session-check-harness.ts`.
+   `mempalace-session-check.test.ts` and `scripts/tests/lib/session-check-harness.ts`.
    Non-test code that names a script (`scripts/check-gemini-overlay-enrollment.sh`
    reading the `NN_NAME.md` tokens, the warning text of `mempalace-registration.ts`,
    the hint of `require-dependency.ts`) follows the same rule. The PLAN completes
@@ -234,56 +240,94 @@ again.
 
 11. **One prompter, no `fzf`.** Every question the shell asked through `fzf` or
     `read` SHALL be asked by one prompt module built on the Node.js standard
-    library, in line mode, identically on every operating system and every terminal
-    state. No setup SHALL spawn `fzf`, and the `command -v fzf` and `command -v jq`
+    library, in line mode, with one code path on every operating system and every
+    terminal state: the input forms of requirement 15 are the same everywhere, and
+    only the behaviours that requirements 14 and 15 tie to the terminal state
+    differ. No setup SHALL spawn `fzf`, and the `command -v fzf` and `command -v jq`
     prerequisite guards SHALL be removed (requirement 44). The prompt module SHALL
-    offer the options in the order the shell listed them, so that a blank answer
-    selects the first option, as pressing Enter did on `fzf` (yes/no questions that
-    list `yes` first default to yes; the opt-ins that list `no` first default to
-    no). It SHALL read from one line queue shared by every question of the run (the
-    pattern of `scripts/lib/history-import/prompt.ts`, which is not edited here).
+    offer the options in the order the shell listed them, so that a blank answer on
+    an interactive terminal selects the first option, as pressing Enter did on
+    `fzf` (yes/no questions that list `yes` first default to yes; the opt-ins that
+    list `no` first default to no). It SHALL read from one line queue shared by every
+    question of the run (the pattern of `scripts/lib/history-import/prompt.ts`,
+    which is not edited here).
 
-12. **Prompt ids.** Every question SHALL carry a stable identifier, a public
-    surface pinned by a test table: at least the rules action (keep or refresh),
-    the Sequential Thinking opt-in, the validation backend, the transcript
-    opt-in and its confirmation, the usage-capture opt-in, the three catalogue
-    picks (`catalogue.team`, `catalogue.expertise`, `catalogue.level`), the profile
-    method, the overlay tiers (`overlay.community`, `overlay.org`), the legacy MCP
-    removal, the settings template install and the `--link` confirmation. The exact
-    list and the spelling are fixed by the PLAN and then frozen.
+12. **Prompt ids: the complete inventory.** Every question SHALL carry a stable
+    identifier, a public surface (requirement 13) pinned by a test table. The ids
+    follow one scheme, lower-case kebab words with an optional `.detail` suffix, and
+    are shared by the four setups wherever the question is the same. The inventory
+    is closed: the table below lists every question the four shell setups ask,
+    with its options (the first is the default), the setups that ask it, the
+    condition and the cancel class of requirement 15 (`decline` continues as a
+    decline or a skip, `default` takes the first option, `abort` exits 130). The
+    PLAN SHALL verify each row against the shell and the golden matrix of
+    requirement 7 and MAY refine a condition, but SHALL NOT add, rename or drop an
+    id; a later change is a delta of this spec.
+
+    | Id | Options | Setups | Asked when | Cancel |
+    |---|---|---|---|---|
+    | `link-confirm` | `no`, `yes` | all four | `--link` is given | decline (`Aborted. …`, exit 1) |
+    | `rules-action` | `keep`, `refresh` | all four (Copilot: its instruction files) | context files already installed | abort |
+    | `validation.backend` | `internal`, `plannotator` | all four | none of the four `VALIDATION_*` variables is set | default |
+    | `validation.translate` | `off`, `on` | all four | as above | default |
+    | `validation.pedagogy` | `contextual`, `simple`, `professor` | all four | as above | default |
+    | `validation.illustration` | `off`, `on` | all four | as above | default |
+    | `tls-delegation` | `no`, `yes` | all four | detection fires and `TLS_DELEGATION` is unset | abort |
+    | `mempalace-install` | `no`, `yes` | all four | MemPalace not found and `pipx` present | decline |
+    | `install-seqthink` | `yes`, `no` | Claude, Antigravity | always | abort |
+    | `legacy-mcp-removal` | `no`, `yes` | Claude | `~/.claude/mcp.json` exists | abort |
+    | `install-settings` | `yes`, `no` | Claude | `~/.claude/settings.json` absent | abort |
+    | `catalogue.team`, `catalogue.expertise`, `catalogue.level` | the catalogue entries, or the empty value for no selection | all four | rules not kept and the catalogue is not empty | decline (no selection) |
+    | `profile-method` | `keep-local`, `overwrite` | all four | the local profile differs | abort |
+    | `overlay.community`, `overlay.org` | `no`, `yes` | all four | the built tier directory exists | abort |
+    | `transcripts` | `no`, `yes` | all four | always | decline (Claude, Gemini, Copilot); abort (Antigravity) |
+    | `transcripts-confirm` | `yes`, `no` | all four | `transcripts` answered yes | as `transcripts` |
+    | `usage-capture` | `no`, `yes` | all four (Antigravity: its statusline channel) | no capture registered | as `transcripts` |
+    | `usage-capture-keep` | `keep`, `remove` | all four (Antigravity: its statusline action) | a capture registered | as `transcripts` |
 
 13. **Pre-answers.** Each entry SHALL accept the repeatable flag `--answer
     <id>=<value>`, forwarded by the shims, that answers the question with that
-    identifier without asking it and echoes `[answer] <id>=<value>`. An unknown id,
-    an id given twice with different values or a value that is not one of the
-    question's options SHALL be a usage error that exits 2 before any file is
-    modified. Every other unknown argument stays ignored, as today.
+    identifier without asking it and echoes `[answer] <id>=<value>`. A value is an
+    option name, case-insensitive, or, for the catalogue questions, an entry name
+    or the empty value. A malformed flag (no `=`, an empty id), an id outside the
+    inventory of requirement 12, an id given twice with different values or a value
+    that is not one of the question's options SHALL be a usage error that exits 2
+    before any file is modified. A known id whose question the run does not ask (its
+    condition does not hold) is accepted and ignored, and one warning on standard
+    error names it after the run. Every other unknown argument stays ignored, as
+    today.
 
-14. **Fail closed.** When a question has no pre-answer and standard input is not a
+14. **Fail closed.** When a question has no pre-answer, standard input is not a
     terminal and holds no further line (a closed pipe, `/dev/null`), the entry SHALL
-    exit 2 with a diagnostic naming the question's id and suggesting `--answer`,
-    and no question SHALL be answered by default, because defaulting would
-    auto-confirm questions whose first option is yes. This applies before the first
-    file is modified for every question the run can know it will ask, and at the
-    question otherwise.
+    stop at that question: exit 2 with a diagnostic naming the question's id and
+    suggesting `--answer`, run no step after it, and answer no question by default,
+    because defaulting would auto-confirm questions whose first option is yes. The
+    entry SHALL NOT pre-flight: the steps that precede the first question run as
+    they do in the shell (the Claude setup writes its shared rules and the
+    system-context store before it asks its first question), so the guarantee is that
+    no default is ever chosen for the user and that nothing runs after the question
+    that could not be asked; a run that must leave the home directory untouched
+    passes `--answer` for every question of the inventory whose condition holds.
 
-15. **Cancel and input forms.** A question SHALL accept the option's number or its
+15. **Input forms and cancel.** A question SHALL accept the option's number or its
     name, case-insensitive; a leading U+FEFF and a trailing carriage return SHALL be
-    stripped (PowerShell 5.1 pipes); a piped invalid answer SHALL be an immediate
-    error, an interactive invalid answer SHALL be asked again up to three times.
-    Cancelling a question (end of input on an interactive terminal) SHALL keep the
-    shell's per-site asymmetry: at the sites that end in `|| true` today
-    (transcript, its confirmation and the usage-capture question of the Claude,
-    Gemini and Copilot setups) cancel SHALL be a decline and the run SHALL continue;
-    at every other site (all the Antigravity questions, Sequential Thinking, the
-    profile method and the rest) cancel SHALL abort with the shell's status 130 and
-    the line `Setup cancelled at: <header>` on standard error. Ctrl-C keeps its
-    default behaviour.
+    stripped (PowerShell 5.1 pipes). On a terminal an invalid answer is asked again
+    up to three times and a blank line selects the first option. On input that is
+    not a terminal a blank line and an invalid answer are the same error, exit 2
+    naming the id and listing the options, because an explicit input source never
+    defaults. Cancelling a question (end of input on an interactive terminal) SHALL
+    follow the class the shell's behaviour gives that site, recorded in the table of
+    requirement 12: `decline` sites end in `|| true` or are called under
+    `|| true` today and continue as a decline or a skip; `default` sites are the four
+    validation-backend questions, which fall back to their first option; `abort`
+    sites abort with the shell's status 130 and the line
+    `Setup cancelled at: <header>` on standard error. Ctrl-C keeps its default behaviour.
 
 16. **The `--link` warning and stdin ownership.** The `--link` mode SHALL print the
     shell's warning and ask the one-key question of `scripts/lib/manage/confirm.ts`
     reused unchanged (exit 1 with `Aborted. Run without --link for secure copy mode.`
-    unless the key is `y` or `Y`); the line-mode prompter SHALL be created only after
+    unless the key is `y` or `Y`; the `--answer link-confirm=yes` pre-answer of
+    requirement 13 stands for the key, `no` for any other key); the line-mode prompter SHALL be created only after
     that question, so the two readers never contend for standard input. A child
     process the setup spawns (npm, the build, pipx, a CLI) SHALL NOT read the answer
     queue: its standard input is ignored, or the queue is paused for the call.
@@ -315,9 +359,22 @@ again.
     LF only, no mode change, written atomically next to the target and removed on
     failure, a decline writing nothing and leaving an existing file untouched. The
     quoting SHALL be accepted by the shell (`.`) and by the reader of `tls-env.ts`,
-    escaping every other printable ASCII character with a backslash (so that a
-    Windows path with a drive letter and a space round-trips), never single quotes,
-    never a verification-disabling variable, and rejecting a NUL. After writing, the
+    and SHALL follow the shell writer's `printf %q` for printable ASCII: a character
+    that `%q` leaves bare and that the reader's special set does not contain stays
+    bare, every other printable ASCII character is escaped with a backslash, and a
+    leading `#` or `~` is escaped; the exact bare alphabet is not copied from this
+    text but measured by the PLAN over the 95 printable ASCII characters on the Linux
+    and macOS runners and pinned by the differential test, which claims byte equality
+    with the shell writer for printable ASCII only. A control character, a newline or
+    DEL is written as a `$'...'` word with octal escapes, a non-ASCII character is
+    written so that it round-trips through the reader (byte equality is not claimed:
+    `printf %q` differs between Bash 3.2 and 5 and between locales, as the reader
+    already documents), the empty value is `''`, a single-quoted word is never
+    written, no verification-disabling variable is ever written, and a NUL is
+    rejected. The bundle path is written as the operating system or the user gave
+    it: a Windows path with a drive letter keeps its backslashes, escaped by the rule
+    above (so that it round-trips), which is the one place where requirement 38's `/`
+    does not apply, the value being copied and not built. After writing, the
     entry SHALL read the file back with the reader; a file the reader rejects is a
     fatal error. It SHALL then place the variables in its own environment so that
     every child it spawns inherits the bundle with no wrapper, and print the written
@@ -514,8 +571,9 @@ again.
 
 38. **Line endings, paths, case (parent requirement 22).** Every file a setup writes
     SHALL have LF line endings, including `tls-env.sh`, rules, settings and hook
-    files; paths SHALL be built with platform-aware handling and written inside a
-    file with `/`; no setup SHALL depend on two paths that differ only by letter
+    files; paths the setup builds SHALL be built with platform-aware handling and written
+    inside a file with `/` (a value copied verbatim, such as the TLS bundle path of
+    requirement 19, is written as given); no setup SHALL depend on two paths that differ only by letter
     case; and `HOME` on Windows SHALL resolve through `os.homedir()` when `HOME` is
     unset.
 
@@ -585,7 +643,7 @@ again.
     catalogue preview is `?N` instead of the `fzf` preview; (e) a run with no terminal
     and no pre-answer exits 2 naming the question, where `fzf` failed for lack of
     `/dev/tty`; (f) the new `--answer <id>=<value>` flag, its echo `[answer] …` and
-    the prompt ids; (g) a cancel at a site without `|| true` prints `Setup cancelled
+    the prompt ids; (g) a cancel at an `abort` site of requirement 12 prints `Setup cancelled
     at: <header>` where the shell was silent (the status 130 is unchanged); (h)
     catalogue entries are sorted ordinally where the shell sorted by the glob under
     the user's locale (equal under the `C` locale); (i) in `--link` mode a refused
@@ -601,13 +659,17 @@ again.
     records.
 
 45. **Pull-request staging and branch prefix.** The PLAN fixes the real split; the
-    principle is: oracle hardening (requirement 7, shell untouched) -> retargets of
-    static reads (requirement 9, no script migrates) -> dark modules in layers (the
-    prompt, files, catalogue, dependency and TLS modules; then MCP, MemPalace and
-    organisation MCP; then hooks, usage capture and session recording) -> the four
-    entries, the differential test and the `windows-setup-entries` job, dark behind
-    the unchanged shell -> the switch (shims of requirements 33 and 36, references,
-    CI, CLI matrix, allowlists) -> the one-file status flip of this spec. Every pull
+    principle is: oracle hardening (requirement 7, shell untouched) -> dark modules in
+    layers (the prompt, files, catalogue, dependency and TLS modules; then MCP,
+    MemPalace and organisation MCP; then hooks, usage capture and session recording),
+    which also carry the declarations the retargets will read -> retargets of static
+    reads (requirement 9, no script migrates, each retargeted suite green against the
+    unchanged shell) -> the four entries, the differential test and the
+    `windows-setup-entries` job, dark behind the unchanged shell -> the switch (shims
+    of requirements 33 and 36, references, CI, CLI matrix, allowlists) -> the one-file
+    status flip of this spec. The PLAN may split a stage into several pull requests
+    and may land a retarget in the same pull request as the dark module whose
+    declaration it reads, but never before it. Every pull
     request but the last targets `release/1231-ts-migration` and uses the branch
     prefix `test/1335-<slug>`, because the spec linter binds a `feat/` prefix to a
     `status: implemented` spec; the last uses `feat/1335-<slug>`.
@@ -693,7 +755,7 @@ form, and nothing else about the opt-ins changes.
 Given standard input is closed and no `--answer` flag is given
 When `node scripts/setup-gemini-interactive.ts` reaches its first question
 Then it exits with status 2, names the question's id and suggests `--answer`, and
-no file under the home directory is modified.
+runs no step after that question (the steps that precede it ran, as in the shell).
 
 **Scenario:** `--answer` drives a full run
 
@@ -771,7 +833,8 @@ Then every assertion passes unchanged.
   tagged line on standard output or a set of `eval` lines.
 - Whether the atomic write of `tls-env.sh` and of the settings files needs a short
   retry on a Windows `EPERM` rename (unverified; to be measured on `windows-latest`).
-- The exact list and spelling of the prompt ids (requirement 12).
+- The condition of each row of the question inventory (requirement 12), to be verified
+  against the shell and the golden matrix; the ids themselves are fixed.
 - How each static-read suite of requirement 9 is retargeted (a node helper that
   evaluates a TypeScript declaration, as spec 0255 did, or a behavioural check), and
   the complete list of suites that read a setup script's text.
