@@ -47,6 +47,10 @@ const LITERALS: readonly { file: string; pattern: RegExp }[] = [
     pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
   },
   {
+    file: "scripts/tests/test-antigravity-component-install.sh",
+    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
+  },
+  {
     file: "scripts/tests/test-release-package-extension.sh",
     pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
   },
