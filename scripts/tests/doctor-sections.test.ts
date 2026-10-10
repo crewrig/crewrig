@@ -103,7 +103,8 @@ describe("the three sections and the verdict", () => {
         assert.match(r.out, /NOT OK — \d+ finding\(s\):/);
         assert.match(r.out, /NOTE: A memory-server session that is already running keeps serving/);
         assert.equal(r.status, 1);
-        assert.ok(!r.out.includes(FOURTH), "the fourth section is Windows only");
+        // The fourth section is Windows only: present on win32, absent everywhere else.
+        assert.equal(r.out.includes(FOURTH), !posix, "the fourth section is Windows only");
       },
     );
   }
