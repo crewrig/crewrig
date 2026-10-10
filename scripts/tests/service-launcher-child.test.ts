@@ -38,6 +38,7 @@ function rig(extra: Partial<SuperviseOptions> = {}) {
     onSignal: (s, h) => handlers.set(s, h),
     exit: (c) => exits.push(c),
     log: (l) => logs.push(l),
+    stopGraceMs: 0,
     schedule: (fn, ms) => {
       const t = { fn, ms, cancelled: false };
       timers.push(t);
@@ -131,4 +132,25 @@ test("a spawn failure ends the process: 127 for a missing command, 126 otherwise
 test("log lines carry the shell's timestamp format", () => {
   assert.match(stamp(), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d{4}$/);
   assert.match(logLine("x"), /^\S+ x$/);
+});
+
+test("a stop request that arrives within the grace after the child's end still counts as requested", () => {
+  const r = rig({ stopGraceMs: 250 });
+  r.child.emit("exit", null, "SIGTERM");
+  assert.deepEqual(r.exits, [], "judged after the grace, not at once");
+  assert.equal(r.timers[0]?.ms, 250);
+  r.handlers.get("SIGTERM")?.();
+  assert.equal(r.timers.length, 1, "no escalation timer for a child that already ended");
+  r.timers[0]?.fn();
+  assert.deepEqual(r.exits, [0]);
+  assert.deepEqual(r.logs, [], "a requested stop logs no restart request");
+});
+
+test("without a stop request the end is judged after the grace, as before", () => {
+  const r = rig({ stopGraceMs: 250 });
+  r.child.emit("exit", null, "SIGTERM");
+  assert.deepEqual(r.exits, []);
+  r.timers[0]?.fn();
+  assert.deepEqual(r.exits, [143]);
+  assert.match(r.logs.join("\n"), /child ended \(signal SIGTERM\); ending with status 143/);
 });

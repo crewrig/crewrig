@@ -8,12 +8,12 @@
 // POSIX only: skipped on win32.
 
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
 import { createHermeticEnv, runBash, writeStub, type HermeticEnv } from "./lib/hermetic-env.ts";
+import { linkReal, tokenPathOf } from "./lib/uninstall-oracle-fixture.ts";
 
 const UNINSTALL_SCRIPT = path.resolve(import.meta.dirname, "..", "uninstall-mcp-daemon.sh");
 
@@ -30,28 +30,6 @@ interface Fixture {
   readonly svc: string;
   readonly launcher: string;
   readonly tokenPath: string;
-}
-
-/** Absolute path of the first executable `name` on the real PATH. */
-function realTool(name: string): string {
-  for (const dir of (process.env["PATH"] ?? "").split(path.delimiter)) {
-    const candidate = path.join(dir, name);
-    if (path.isAbsolute(dir) && fs.existsSync(candidate) && fs.statSync(candidate).isFile())
-      return candidate;
-  }
-  throw new Error(`oracle: ${name} not found on PATH`);
-}
-
-/** Make a real tool available on the hermetic PATH (the script needs jq and a sha256 tool). */
-function linkReal(h: HermeticEnv, name: string): void {
-  fs.symlinkSync(realTool(name), path.join(h.bin, name));
-}
-
-/** The token path `mcp_token_path` derives: ~/.mempalace/server/<sha256(palace)[:24]>/token. */
-function tokenPathOf(home: string): string {
-  const palace = path.join(fs.realpathSync(path.join(home, ".mempalace")), "palace");
-  const key = createHash("sha256").update(palace).digest("hex").slice(0, 24);
-  return path.join(home, ".mempalace", "server", key, "token");
 }
 
 /** Run `fn` with a fresh harness: stubs, an assistant CLI on PATH, a provisioned token. */

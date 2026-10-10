@@ -1610,10 +1610,10 @@ capabilities:
       # Spec 0252 PR D (issue #1330): the MCP daemon status report, black-box through
       # the TypeScript entry against stand-ins (the Windows-capable parts also run in
       # `windows-mcp-daemon`).
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts scripts/tests/status-mcp-lifecycle-windows.test.ts
       # Spec 0252 PR D (issue #1330): the all-or-nothing switch, the token file and the
       # token-bearing config backup (review i1-F38), unit level.
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-token.test.ts scripts/tests/switch-transaction.test.ts scripts/tests/service-backup-config.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-token.test.ts scripts/tests/switch-transaction.test.ts scripts/tests/switch-replace.test.ts scripts/tests/service-backup-config.test.ts
       # Spec 0252 PR E (issue #1330): the switch residue repair, black-box through the
       # TypeScript entry and the bash shim (POSIX stubs), and its platform-neutral
       # oracle (TypeScript entry only, also run in `windows-doctor-repair`).
@@ -1621,7 +1621,7 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-windows.test.ts
       # Spec 0252 PR E (issue #1330): the doctor report, black-box through the TypeScript
       # entry and the bash shim; the Windows fourth section through the os-inspect seam.
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts scripts/tests/doctor-sections-windows.test.ts
 
   # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's
   # install / restore contract, root resolution and wmic parser. The probe

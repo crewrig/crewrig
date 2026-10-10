@@ -14,6 +14,10 @@
 //     child's status when non-zero, 128+signal for a signal death, 1 for a
 //     clean status 0 (a task or unit would otherwise read a clean end as
 //     success and never restart the daemon) — and a log line says so;
+//   - the stop request and the child's end race under a control-group stop (systemd
+//     signals every process of the unit at once): an unasked child end is therefore
+//     judged after a short grace (`stopGraceMs`, default 250 ms), and a stop request
+//     that arrives within it still counts as requested, so the end is status 0;
 //   - this process never outlives the child (it exits in the child's exit
 //     handler, nowhere else);
 //   - a requested stop ends the child, escalating to SIGKILL after a bounded
@@ -46,11 +50,14 @@ export interface SuperviseOptions {
   readonly endNonzeroOnChildExit?: boolean;
   /** Wait before SIGKILL on a requested stop, ms. Default 10 000. */
   readonly killAfterMs?: number;
+  /** Grace before an unasked child end is judged, ms. Default 250; 0 judges at once. */
+  readonly stopGraceMs?: number;
   /** Runs `fn` once after `ms`; returns the cancel function. */
   readonly schedule?: (fn: () => void, ms: number) => () => void;
 }
 
 export const DEFAULT_KILL_AFTER_MS = 10_000;
+export const DEFAULT_STOP_GRACE_MS = 250;
 
 /** Signal numbers (Linux, macOS agree on these) for the 128+n convention. */
 const SIGNAL_NUMBERS: Readonly<Record<string, number>> = {
@@ -118,7 +125,9 @@ export function superviseChild(opts: SuperviseOptions): void {
   const endNonzero = opts.endNonzeroOnChildExit ?? true;
   const killAfter = opts.killAfterMs ?? DEFAULT_KILL_AFTER_MS;
   const schedule = opts.schedule ?? defaultSchedule;
+  const grace = opts.stopGraceMs ?? DEFAULT_STOP_GRACE_MS;
   let stopRequested = false;
+  let childEnded = false;
   let cancelEscalation: (() => void) | undefined;
   let child: ChildLike;
   try {
@@ -132,6 +141,7 @@ export function superviseChild(opts: SuperviseOptions): void {
     child.kill(signal);
     if (stopRequested) return;
     stopRequested = true;
+    if (childEnded) return;
     cancelEscalation = schedule(() => {
       child.kill("SIGKILL");
     }, killAfter);
@@ -145,16 +155,23 @@ export function superviseChild(opts: SuperviseOptions): void {
     opts.exit(code);
   });
   child.on("exit", (code, signal) => {
+    childEnded = true;
     cancelEscalation?.();
-    if (stopRequested) return opts.exit(0);
-    const status = endStatus(code, signal, endNonzero);
-    const how = signal === null ? `status ${code}` : `signal ${signal}`;
-    // The unflagged wrapper is transparent: it says nothing of its own.
-    if (endNonzero) {
-      opts.log(
-        logLine(`child ended (${how}); ending with status ${status} so the supervisor restarts it`),
-      );
-    }
-    opts.exit(status);
+    const settle = (): void => {
+      if (stopRequested) return opts.exit(0);
+      const status = endStatus(code, signal, endNonzero);
+      const how = signal === null ? `status ${code}` : `signal ${signal}`;
+      // The unflagged wrapper is transparent: it says nothing of its own.
+      if (endNonzero) {
+        opts.log(
+          logLine(
+            `child ended (${how}); ending with status ${status} so the supervisor restarts it`,
+          ),
+        );
+      }
+      opts.exit(status);
+    };
+    if (stopRequested || grace <= 0) return settle();
+    schedule(settle, grace);
   });
 }

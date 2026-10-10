@@ -1522,10 +1522,10 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-lifecycle.test.ts scripts/tests/chroma-launch.test.ts scripts/tests/chroma-launch-env.test.ts
 
       - name: Test the MCP daemon status report (Linux)
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts scripts/tests/status-mcp-lifecycle-windows.test.ts
 
       - name: Test the MCP switch transaction, the token and the config backup (Linux)
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-token.test.ts scripts/tests/switch-transaction.test.ts scripts/tests/service-backup-config.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-token.test.ts scripts/tests/switch-transaction.test.ts scripts/tests/switch-replace.test.ts scripts/tests/service-backup-config.test.ts
 
       - name: Test the switch residue repair (Linux)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-verbs.test.ts
@@ -1534,7 +1534,7 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-windows.test.ts
 
       - name: Test the MemPalace doctor report (Linux)
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts scripts/tests/doctor-sections-windows.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1825,7 +1825,7 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
 
       - name: Status report, owner verdicts and uninstall against the installed MCP task
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts scripts/tests/status-mcp-lifecycle-windows.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1852,7 +1852,7 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
 
       - name: Doctor report and its fourth section against the Task Scheduler
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts scripts/tests/doctor-sections-windows.test.ts
 
       - name: Repair verbs on Windows
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-windows.test.ts
