@@ -1,7 +1,7 @@
 ---
 id: "0252"
 slug: windows-service-management
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1330
