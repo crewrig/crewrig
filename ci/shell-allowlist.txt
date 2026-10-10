@@ -222,7 +222,6 @@ scripts/tests/test-setup-gemini-transcript.sh
 scripts/tests/test-setup-init-command-instructions.sh
 scripts/tests/test-setup-mcp-fold-secrets-argv.sh
 scripts/tests/test-setup-mcp-merge.sh
-scripts/tests/test-setup-mempalace-rc-guard.sh
 scripts/tests/test-setup-org-mcp.sh
 scripts/tests/test-setup-usage-capture-optin.sh
 scripts/tests/test-setup-validation-backend.sh

@@ -1,4 +1,5 @@
-// setup-golden-evidence.test.ts — the evidence the tagged deviations of the ts leg must NOT hide
+// setup-golden-evidence.test.ts — the evidence the tagged deviations must NOT hide (both legs run the
+// TypeScript entry: `shell` through the forwarding shim, `ts` directly)
 // (finding review/1335 i1-F17): WHICH questions a run asked, in what order, with what answer, and
 // WHICH daemon requests it made. Tags (f) and (a)/(b) drop the `[answer]` echo lines and the `fzf`
 // records; the question sequence compares them with each other, and the curl records (compared,
@@ -48,24 +49,27 @@ const shell = {
 const asked = ["validation.backend=internal", "install-seqthink=yes", "catalogue.team=ATLAS"];
 writeGolden("claude", "cell", shell, base);
 
-/** A ts run of the cell: the shell result, its stdout carrying `lines` of echo first. */
+/** A run of the cell: the recorded shell result, its stdout carrying `lines` of echo first. */
 const run = (echoes: readonly string[], patch: Partial<CaseResult> = {}): CaseResult => ({
   ...shell,
   stdout: echo(...echoes) + shell.stdout,
   fzfRecords: [],
   ...patch,
 });
-const golden = (result: CaseResult): void => checkGolden(c, result, "ts", base);
+const golden = (result: CaseResult, leg = "ts", cell = c): void =>
+  checkGolden(cell, result, leg, base);
 const fails = (result: CaseResult, pattern: RegExp): void => {
   assert.throws(() => golden(result), pattern);
-  assert.match(legDifference(c, shell, result) ?? "", pattern);
+  assert.throws(() => golden(result, "shell"), pattern);
+  assert.match(legDifference(c, run(asked), result) ?? "", pattern);
 };
 const QUESTIONS = /questions[\s\S]*echo lines/;
 
-describe("question sequence: the echo lines against the shell's fzf records", () => {
+describe("question sequence: the echo lines against the recorded fzf records", () => {
   test("the same questions, in order, with the same answers pass (golden and differential)", () => {
     golden(run(asked));
-    assert.equal(legDifference(c, shell, run(asked)), undefined);
+    golden(run(asked), "shell");
+    assert.equal(legDifference(c, run(asked), run(asked)), undefined);
   });
 
   test("an extra question echoed that the shell never asked fails", () => {
@@ -93,22 +97,24 @@ describe("question sequence: the echo lines against the shell's fzf records", ()
 
   test("an fzf header outside the observed inventory can never match", () => {
     const odd = { ...shell, fzfRecords: [ask("Unheard of?", "x")] } as unknown as CaseResult;
-    assert.match(legDifference(c, odd, run([])) ?? "", /\+?\?Unheard of\?=x/);
+    writeGolden("claude", "odd", odd, base);
+    assert.throws(() => golden(run([]), "ts", { ...c, id: "odd" }), /\?Unheard of\?=x/);
   });
 
   test("a cancelled catalogue pick stands for the empty value", () => {
     const declined = { ...shell, fzfRecords: [ask(TEAM, "", true)] } as unknown as CaseResult;
-    assert.equal(legDifference(c, declined, run(["catalogue.team="])), undefined);
-    assert.match(legDifference(c, declined, run(["catalogue.team=ATLAS"])) ?? "", QUESTIONS);
-  });
-
-  test("the shell leg is not subject to the sequence (it prints no echo)", () => {
-    checkGolden(c, shell, "shell", base);
+    writeGolden("claude", "declined", declined, base);
+    const cell = { ...c, id: "declined" };
+    golden(run(["catalogue.team="]), "ts", cell);
+    assert.throws(() => golden(run(["catalogue.team=ATLAS"]), "ts", cell), QUESTIONS);
   });
 
   test("the already tagged differences still pass: echo lines and fzf records are not compared as text", () => {
     golden(run(asked, { fzfRecords: [ask("Another?", "z")] }));
-    assert.equal(legDifference(c, shell, run(asked)), undefined);
+    assert.equal(
+      legDifference(c, run(asked), run(asked, { fzfRecords: [ask("Another?", "z")] })),
+      undefined,
+    );
   });
 });
 

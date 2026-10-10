@@ -1,11 +1,39 @@
 #!/usr/bin/env bash
-# scripts/lib/usage-capture-optin.sh — the usage-capture opt-in of Claude Code,
-# Gemini CLI and Copilot CLI (spec 0211), decoupled from the MemPalace
-# session-recording opt-in. Sourced by setup-{claude,gemini,copilot}-interactive.sh
-# AFTER scripts/lib/common.sh (it uses backup_file, warn_if_linked_worktree and
-# write_json_config_secure). Do NOT execute directly.
+# scripts/lib/usage-capture-optin.sh — forwarding FUNCTION shim of the usage-capture
+# opt-in (spec 0256 requirement 33, Decision D3). Sourced by the Bash suites that
+# exercise the opt-in in-process (test-setup-usage-capture-optin.sh,
+# test-setup-{claude,gemini,copilot}-transcript.sh and the TypeScript suites that
+# run them through scripts/tests/lib/bash-libs.ts). The setup scripts themselves no
+# longer source it: they are shims of the TypeScript entries. Do NOT execute directly.
 #
-# This file owns every read and every write of a capture entry in a CLI's hook
+# Every public function keeps its name, arguments, standard output, standard error
+# and return code and forwards to scripts/usage-capture-optin.ts (logic in
+# scripts/lib/setup/usage-capture-cli.ts), one `node` process per call, with the
+# Node.js floor guard (scripts/lib/node-floor-guard.js) preloaded into that process
+# (`node -r`), so below the floor the guard's diagnostic is printed and the entry is
+# not run. With `node` absent the diagnostic of usage_capture_require_node_floor is
+# printed and the status is 1. Standard input is never forwarded: the node process
+# reads /dev/null, as the shell functions never read standard input.
+#
+# The shell variables the originals set travel back through a side channel: the two
+# functions that set any (render_session_recording_manifest, merge_session_recording_hooks)
+# pass `--result <file>` to the entry, which writes `NAME=0|1` lines; after the call
+# the shim reads the file and sets ONLY the variables of a closed whitelist
+# (SR_TRANSCRIPT_WIRED, SR_ALL_HOOKS_DISABLED), each with a value of 0 or 1, and
+# removes the file on every return path. Any other name, `wrote` included (no original
+# function of this library ever set it; the TLS shim is the one that does), is refused.
+#
+# The PowerShell-target decision of usage_capture_keep (a vanished path behind a
+# NAME=value prefix on Gemini CLI and Copilot CLI) was made here from `uname -s`; the
+# entry makes it from the platform of its node process, which is `win32` on a real
+# Windows host. A shell that reports MINGW*, MSYS* or CYGWIN* (the suites stub `uname`
+# to simulate that on POSIX) passes `--platform win32` to the entry for `keep` and for
+# `apply`: the two subcommands that reached the original `uname` decision (`apply` runs
+# `keep` internally).
+#
+# The original description follows. The opt-in of Claude Code, Gemini CLI and
+# Copilot CLI (spec 0211), decoupled from the MemPalace session-recording opt-in.
+# It owns every read and every write of a capture entry in a CLI's hook
 # configuration: detection, enable, keep, remove, and the preservation step the
 # session-recording writer runs (merge_session_recording_hooks). Ownership is
 # decided by CONTENT, never by position: a capture entry is a command that
@@ -13,38 +41,20 @@
 # entry) or `/hooks/usage-capture.ts` (the direct `node` entry, spec 0243) with
 # the argv `<cli-id> <Event>` crewrig writes, wherever that path points (R10,
 # spec 0243 R20). The TypeScript twin of this predicate is
-# scripts/lib/hook-recognition.ts; both are run over one corpus. The
-# signature is positive (see uc_sig_re) so an operator's own hook that merely
-# names a script called usage-capture.sh is never removed, kept, deduplicated
-# or re-pointed (#1174, security review S2).
+# scripts/lib/hook-recognition.ts.
 #
-# <cli> is one of `claude`, `gemini`, `copilot`:
-#   - claude / gemini are GROUPED: .hooks[<Event>][] = {<selector keys>, hooks:[handler…]}
-#   - copilot is FLAT:             .hooks[<Event>][] = handler
+# <cli> is one of `claude`, `gemini`, `copilot`.
 #
-# Contracts shared by every helper:
-#   - Failure contract. A helper returns non-zero on failure and never calls
-#     `exit`. The setups call these helpers from `||` / `if !` contexts, where
-#     bash suspends errexit INSIDE the function too — so each fallible command
-#     below is checked explicitly instead of trusting `set -e`.
-#   - Mode-safe writes. Every write goes through write_json_config_secure
-#     (umask-077 mktemp, forced 0600, mv only after a successful jq), so a
-#     failed write leaves the file byte-identical and no write can widen a file
-#     that holds the MemPalace bearer token. A file this library writes always
-#     ends 0600.
-#   - Readers return 2 on a file that exists but is not a JSON object; writers
-#     return 1 on it and write nothing.
+# Contracts shared by every function: a failure is a non-zero return, never an
+# `exit`, never a `trap`; the functions are safe under `set -u` and `set -e` called
+# from `||` / `if !` contexts, and run on Bash 3.2.
 #
-# All JSON work happens in jq, through the one definitions string below, except
-# the two operations that need the direct command line (spec 0243 R16, R23):
-# rendering the fragment and rewriting legacy commands run in
-# scripts/hook-wiring.ts, reached through `node` once the Node.js floor is met
-# (usage_capture_require_node_floor). No configuration content ever reaches an
-# argument list.
+# _UC_JQ_DEFS below is no longer used by the functions: the Bash suites and the
+# corpus tests read it as the jq oracle of the capture signature, so it stays.
 
 # --- jq definitions -----------------------------------------------------------
 # Every program is compiled with `--arg shape grouped|flat`.
-# shellcheck disable=SC2016  # jq program text, not shell expansions
+# shellcheck disable=SC2016,SC2034  # jq program text, not shell expansions; read by the suites
 _UC_JQ_DEFS='
 # The capture signature, matched against the WHOLE command:
 #   [VAR=value ...] [env] [bash|sh|node] <path> <cli-id> <Event>
@@ -487,117 +497,6 @@ def uc_keep($r5; $live; $vanished; $abs_sh; $abs_ts; $fragfp; $target; $ps):
       else uc_add($x | .handler |= uc_with_path($target)) end);
 '
 
-# --- small internals ------------------------------------------------------------
-
-# _uc_shape <cli> — prints grouped|flat; returns 1 on an unknown CLI.
-_uc_shape() {
-  case "$1" in
-    claude|gemini) printf 'grouped\n' ;;
-    copilot)       printf 'flat\n' ;;
-    *) echo "  ERROR: unknown CLI '$1' (expected claude, gemini or copilot)." >&2; return 1 ;;
-  esac
-}
-
-# _uc_jq <shape> <jq args…> <program> <file> — run one read-only program.
-_uc_jq() {
-  local shape="$1"; shift
-  jq --arg shape "$shape" "$@"
-}
-
-# _uc_powershell_target <cli> — 0 on Gemini CLI and Copilot CLI running on
-# Windows, where the hook command line is read by Windows PowerShell 5.1 and a
-# NAME=value prefix is not runnable (row 37c).
-_uc_powershell_target() {
-  case "$1" in
-    gemini|copilot)
-      case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) return 0 ;; esac ;;
-  esac
-  return 1
-}
-
-# _uc_unsafe_path <path> — 0 when the path cannot be spliced, double-quoted,
-# into a shell command without changing its meaning: it holds `"`, `$`, a
-# backtick, a backslash or a newline (#1174, security review S3).
-_uc_unsafe_path() {
-  local nl='
-'
-  case "$1" in
-    *'"'*|*'$'*|*'`'*|*'\'*|*"$nl"*) return 0 ;;
-  esac
-  return 1
-}
-
-# _uc_unresolvable_path <path> — 0 when setup cannot judge whether the path
-# resolves: it is relative, or holds `$` or a backtick the hook's shell would
-# expand (`$HOME/…`, `${CLAUDE_PROJECT_DIR}/…`, `~/…`). Such a path is never
-# "vanished" and never re-pointed (#1174, security review S2).
-_uc_unresolvable_path() {
-  case "$1" in
-    /*) ;;
-    *) return 0 ;;
-  esac
-  case "$1" in
-    *'$'*|*'`'*) return 0 ;;
-  esac
-  return 1
-}
-
-# _uc_is_object <file> — 0 when the file parses as one JSON object.
-_uc_is_object() {
-  jq -e 'type == "object"' "$1" >/dev/null 2>&1
-}
-
-# _uc_legacy_ok <shape> <config> — print, as a JSON array, the legacy spaced
-# Gemini paths (see uc_legacy_re) of the config that name an existing file.
-# Every program that classifies the handlers of <config> receives it as
-# `--argjson uc_legacy_ok`; an absent or unparsable config gives `[]`.
-_uc_legacy_ok() {
-  local shape="$1" config="$2" cands p ok=""
-  if [ ! -f "$config" ] || ! _uc_is_object "$config"; then
-    printf '[]\n'
-    return 0
-  fi
-  cands="$(_uc_jq "$shape" -r "$_UC_JQ_DEFS uc_legacy_candidates | .[]" "$config")" || return 1
-  # The path class holds no control character, so one path per line is exact.
-  while IFS= read -r p; do
-    [ -n "$p" ] || continue
-    if [ -f "$p" ]; then
-      ok="${ok}${p}
-"
-    fi
-  done <<< "$cands"
-  printf '%s' "$ok" | jq -R -s -c 'split("\n") | map(select(length > 0))' || return 1
-  return 0
-}
-
-# _uc_read <cli> <config> <jq-expr> — evaluate a read-only expression
-# on the config. Absent file → the expression evaluated on {}; unparsable → 2.
-_uc_read() {
-  local cli="$1" config="$2" expr="$3" shape lg
-  shape="$(_uc_shape "$cli")" || return 1
-  if [ ! -f "$config" ]; then
-    printf '{}' | _uc_jq "$shape" -c "$_UC_JQ_DEFS $expr" || return 1
-    return 0
-  fi
-  if ! _uc_is_object "$config"; then
-    echo "  ERROR: $config is not readable as a JSON object." >&2
-    return 2
-  fi
-  lg="$(_uc_legacy_ok "$shape" "$config")" || return 2
-  _uc_jq "$shape" -c --argjson uc_legacy_ok "$lg" "$_UC_JQ_DEFS $expr" "$config" || return 2
-  return 0
-}
-
-# _uc_create_empty <config> — create an absent config as `{}` at 0600.
-_uc_create_empty() {
-  local config="$1" dir
-  dir="$(dirname "$config")"
-  if ! mkdir -p "$dir"; then return 1; fi
-  if ! ( umask 077; printf '{}\n' > "$config" ); then return 1; fi
-  chmod 600 "$config" || return 1
-  return 0
-}
-
 # --- public API -----------------------------------------------------------------
 
 # The checkout this library sits in: it owns the floor guard and the wiring
@@ -624,476 +523,127 @@ usage_capture_require_node_floor() {
   return 0
 }
 
-# _uc_hook_wiring <repo_dir> <args…> — run scripts/hook-wiring.ts against the
-# checkout <repo_dir>. The two flags silence the type-stripping notices of
-# Node.js 24.0-24.2 and the typeless package scope; neither hides an error.
-_uc_hook_wiring() {
-  local repo_dir="$1"; shift
-  node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
-    "$_UC_LIB_ROOT/scripts/hook-wiring.ts" "$@" --repo "$repo_dir"
-}
+# --- forwarding internals ---------------------------------------------------------
 
-# usage_capture_abs <repo_dir> [sh|ts] — the in-repo absolute path of the capture
-# script (CAPTURE_ABS), physical (`pwd -P`); the extension defaults to `ts`, the
-# direct entry setup registers. Returns 1 when it does not exist, or when the
-# checkout path holds a character that would change the meaning of the
-# double-quoted hook command (`"`, `$`, backtick, backslash, newline).
-usage_capture_abs() {
-  local ext="${2:-ts}" src dir abs
-  src="$1/hooks/usage-capture.$ext"
-  if _uc_unsafe_path "$1"; then
-    echo "  ERROR: the checkout path $1 contains a character (\" \$ \` \\ or a newline) that cannot be wired safely into a hook command; move the checkout to a path without it." >&2
+# _uc_run_node <result-file|""> <subcommand> <args…> — run one subcommand of
+# scripts/usage-capture-optin.ts; the status is the entry's. Standard input is /dev/null.
+# `--` ends the options, so an argument that starts with `--` reaches the entry as data.
+# The Node.js floor guard is preloaded (`node -r`), so below the floor its diagnostic is
+# printed and the entry is not run — except for the two functions that take a result file
+# (render_session_recording_manifest, merge_session_recording_hooks): below the floor
+# they still run, as they did in jq, the entry deciding for itself (it refuses the
+# direct form and renders the guard-free manifest). They need only a node that can run
+# the entry (type stripping); any other node gets the guard's diagnostic.
+_uc_run_node() {
+  local res="$1" sub="$2" guard entry
+  local -a plat=()
+  shift 2
+  guard="$_UC_LIB_ROOT/scripts/lib/node-floor-guard.js"
+  entry="$_UC_LIB_ROOT/scripts/usage-capture-optin.ts"
+  if ! command -v node >/dev/null 2>&1 || [ ! -f "$guard" ]; then
+    # Prints the diagnostic of the missing node or of the missing guard.
+    usage_capture_require_node_floor || return 1
     return 1
   fi
-  if [ ! -f "$src" ]; then
-    echo "  ERROR: capture script not found at $src." >&2
+  if [ ! -f "$entry" ]; then
+    echo "  ERROR: usage-capture entry not found at $entry." >&2
     return 1
   fi
-  dir="$(cd "$(dirname "$src")" && pwd -P)" || return 1
-  abs="$dir/$(basename "$src")"
-  if _uc_unsafe_path "$abs"; then
-    echo "  ERROR: the checkout path $dir contains a character (\" \$ \` \\ or a newline) that cannot be wired safely into a hook command; move the checkout to a path without it." >&2
-    return 1
-  fi
-  printf '%s\n' "$abs"
-}
-
-# usage_capture_fragment <cli> <repo_dir> — print the CLI's capture fragment
-# (hooks/<cli>-usage-capture-hooks.json) with every command built by
-# scripts/hook-wiring.ts render (spec 0243 R16, R26): the direct `node` form
-# with the script's physical absolute path, no token left. Returns 1 when the
-# Node.js floor is not met, the fragment is missing or unparsable, or a command
-# is refused.
-usage_capture_fragment() {
-  local cli="$1" repo_dir="$2" frag_src out
-  _uc_shape "$cli" >/dev/null || return 1
-  frag_src="$repo_dir/hooks/${cli}-usage-capture-hooks.json"
-  if [ ! -f "$frag_src" ]; then
-    echo "  ERROR: capture fragment not found at $frag_src." >&2
-    return 1
-  fi
-  usage_capture_require_node_floor || return 1
-  usage_capture_abs "$repo_dir" ts >/dev/null || return 1
-  if ! out="$(_uc_hook_wiring "$repo_dir" render "$cli")"; then
-    echo "  ERROR: could not render the $cli capture fragment $frag_src." >&2
-    return 1
-  fi
-  case "$out" in
-    *_PROJECT_DIR*)
-      echo "  ERROR: unresolved project-dir token in the $cli capture fragment." >&2
-      return 1
-      ;;
-  esac
-  # Round trip: every command the fragment registers must read back as a
-  # capture handler, or detection, keep and remove would not recognise it.
-  if ! _uc_jq "$(_uc_shape "$cli")" -e \
-      "$_UC_JQ_DEFS [.. | objects | select(.type? == \"command\")] | length > 0 and all(uc_is_capture)" \
-      >/dev/null 2>&1 <<< "$out"; then
-    echo "  ERROR: the $cli capture fragment $frag_src does not match the capture signature." >&2
-    return 1
-  fi
-  printf '%s\n' "$out"
-}
-
-# usage_capture_rewrite <cli> <config> <repo_dir> — rewrite every legacy capture
-# command of the configuration to the direct form, one command per event
-# (spec 0243 R19, R21, R22), through scripts/hook-wiring.ts. Below the Node.js
-# floor it prints the guard's diagnostic and changes nothing (R24). A second run
-# writes nothing.
-usage_capture_rewrite() {
-  local cli="$1" config="$2" repo_dir="$3"
-  _uc_shape "$cli" >/dev/null || return 1
-  usage_capture_require_node_floor || return 1
-  _uc_hook_wiring "$repo_dir" rewrite "$cli" --config "$config"
-}
-
-# usage_capture_footprint <cli> <config> — print the JSON array of
-# {event, selector, handler} for every capture handler. `[]` for an absent
-# file; returns 2 (file untouched) for one that is not a JSON object.
-usage_capture_footprint() {
-  _uc_read "$1" "$2" 'uc_footprint'
-}
-
-# usage_capture_paths <cli> <config> — print the distinct registered capture
-# script paths, one per line, in registration order. Returns 2 on unparsable JSON.
-usage_capture_paths() {
-  local out rc=0
-  out="$(_uc_read "$1" "$2" 'uc_paths | .[]')" || rc=$?
-  [ "$rc" -eq 0 ] || return "$rc"
-  # -c prints strings JSON-quoted; decode each line.
-  [ -n "$out" ] || return 0
-  printf '%s\n' "$out" | jq -r '.' || return 2
-}
-
-# usage_capture_state <cli> <config> — print `absent` or `installed`.
-# Returns 2 on unparsable JSON.
-usage_capture_state() {
-  local n rc=0
-  n="$(_uc_read "$1" "$2" 'uc_footprint | length')" || rc=$?
-  [ "$rc" -eq 0 ] || return "$rc"
-  if [ "$n" = "0" ]; then printf 'absent\n'; else printf 'installed\n'; fi
-}
-
-# usage_capture_reinject <cli> <config> <footprint_json> — one secure write:
-# strip every capture handler, then add back each footprint entry. No backup:
-# its callers own backups.
-usage_capture_reinject() {
-  local cli="$1" config="$2" fp="$3" shape lg
-  shape="$(_uc_shape "$cli")" || return 1
-  if [ ! -f "$config" ] || ! _uc_is_object "$config"; then
-    echo "  ERROR: $config is absent or not a JSON object; usage capture not re-injected." >&2
-    return 1
-  fi
-  if ! jq -e 'type == "array"' >/dev/null 2>&1 <<< "$fp"; then
-    echo "  ERROR: invalid usage-capture footprint." >&2
-    return 1
-  fi
-  lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
-  write_json_config_secure "$config" --arg shape "$shape" --argjson fp "$fp" \
-    --argjson uc_legacy_ok "$lg" "$_UC_JQ_DEFS uc_reinject(\$fp)" || return 1
-  return 0
-}
-
-# usage_capture_disclose <cli> <config> <repo_dir> — the pre-write disclosure (R6).
-usage_capture_disclose() {
-  local cli="$1" config="$2" repo_dir="$3" frag abs events cmds
-  # The floor guard comes first: the fragment is rendered through `node`, and a
-  # Node.js below the floor must be met with the guard's diagnostic, not a raw
-  # Node.js error (v1-F2, spec 0243 R24).
-  usage_capture_require_node_floor || return 1
-  frag="$(usage_capture_fragment "$cli" "$repo_dir")" || return 1
-  abs="$(usage_capture_abs "$repo_dir")" || return 1
-  events="$(jq -r '.hooks | keys_unsorted | join(", ")' <<< "$frag")" || return 1
-  cmds="$(jq -r '[.. | objects | select(.type? == "command") | .command] | unique | .[]' <<< "$frag")" || return 1
-  echo "Enabling usage capture will:"
-  echo "  1. Register $abs"
-  echo "     on the $events event(s), in $config"
-  echo "     as a direct node command (no shell wrapper; needs Node.js 24 or later when the hook fires):"
-  printf '%s\n' "$cmds" | sed 's/^/       /'
-  if [ "$cli" = "copilot" ]; then
-    echo "     (the same file session recording uses; its entries are left as they are)"
-  fi
-  echo "  2. Back up $config first when it exists, and change no other entry in it"
-  echo "  The capture script is wired in place, by its in-repo absolute path; it is never copied."
-  echo "  No prompt or response text is recorded: only token counts, model and timing."
-  echo "  MemPalace is not required: records go to the file-system usage journal."
-  warn_if_linked_worktree "$repo_dir" "usage capture"
-  echo ""
-  return 0
-}
-
-# usage_capture_enable <cli> <config> <repo_dir> — register the fragment (R5, R9).
-usage_capture_enable() {
-  local cli="$1" config="$2" repo_dir="$3" shape frag events lg
-  shape="$(_uc_shape "$cli")" || return 1
-  frag="$(usage_capture_fragment "$cli" "$repo_dir")" || return 1
-  events="$(jq -r '.hooks | keys_unsorted | join(", ")' <<< "$frag")" || return 1
-  if [ -f "$config" ]; then
-    if ! _uc_is_object "$config"; then
-      echo "  ERROR: $config is not a JSON object; usage capture not enabled." >&2
-      return 1
-    fi
-    lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
-    backup_file "$config"
-    write_json_config_secure "$config" --arg shape "$shape" --argjson frag "$frag" \
-      --argjson uc_legacy_ok "$lg" \
-      "$_UC_JQ_DEFS (\$frag | uc_footprint) as \$ffp | uc_reinject(\$ffp)" \
-      || { echo "  ERROR: could not write $config." >&2; return 1; }
-  else
-    _uc_create_empty "$config" || { echo "  ERROR: could not create $config." >&2; return 1; }
-    if ! write_json_config_secure "$config" --argjson frag "$frag" '$frag'; then
-      rm -f "$config"
-      echo "  ERROR: could not write $config." >&2
-      return 1
-    fi
-  fi
-  echo "  Usage capture enabled on $events in $config"
-  return 0
-}
-
-# usage_capture_keep <cli> <config> <repo_dir> — R11. On the R5 events:
-# (b) keep one capture handler per event — the first live one, else the first
-# unresolvable one, else the first — (a) re-point in place a kept handler whose
-# registered path no longer resolves, (c) add the fragment handler to an event
-# that has none. A path is live when it is absolute, holds no `$` or backtick,
-# and `[ -f ]` finds it; vanished when absolute, expansion-free and missing;
-# unresolvable otherwise, and then left as it is. Writes nothing (and backs up
-# nothing) on a no-op.
-usage_capture_keep() {
-  local cli="$1" config="$2" repo_dir="$3" shape frag abs abs_sh r5 fragfp
-  local paths p vanished_list="" live_list="" target="" target_ts="" vanished live missing
-  local repointed requoted wrote_abs=0 before after lg ps=false left
-  shape="$(_uc_shape "$cli")" || return 1
-  if _uc_powershell_target "$cli"; then ps=true; fi
-  if [ ! -f "$config" ]; then
-    echo "  No usage-capture entry in $config; nothing to keep."
-    return 0
-  fi
-  if ! _uc_is_object "$config"; then
-    echo "  ERROR: $config is not a JSON object; usage capture left as it is." >&2
-    return 1
-  fi
-  frag="$(usage_capture_fragment "$cli" "$repo_dir")" || return 1
-  abs="$(usage_capture_abs "$repo_dir" ts)" || return 1
-  abs_sh="$(usage_capture_abs "$repo_dir" sh)" || return 1
-  r5="$(jq -c '.hooks | keys_unsorted' <<< "$frag")" || return 1
-  fragfp="$(_uc_jq "$shape" -c "$_UC_JQ_DEFS uc_footprint" <<< "$frag")" || return 1
-  # Legacy spaced paths that exist, decided once on the file as it is now.
-  lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
-  # Paths registered on the R5 events, in order.
-  paths="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson uc_legacy_ok "$lg" \
-    "$_UC_JQ_DEFS uc_r5_paths(\$r5) | .[]" \
-    "$config")" || return 1
-  # Paths are decoded from JSON one per line (a path cannot hold a newline
-  # once usage_capture_abs refuses it; a hand-written one would split into
-  # fragments that match nothing and so change nothing).
-  while IFS= read -r p; do
-    [ -n "$p" ] || continue
-    if _uc_unresolvable_path "$p"; then
-      continue
-    elif [ -f "$p" ]; then
-      live_list="${live_list}${p}
-"
-      if [ -z "$target" ] && ! _uc_unsafe_path "$p"; then target="$p"; fi
-    else
-      vanished_list="${vanished_list}${p}
-"
-    fi
-  done <<< "$paths"
-  [ -n "$target" ] || target="$abs"
-  # A handler added to an event that has none is the fragment's (direct) one, so
-  # it points at the `.ts` of the checkout the live registered path belongs to
-  # when that exists, else at the current checkout (spec 0243 R22).
-  target_ts="$abs"
-  if [ "$target" != "$abs" ] && [ -f "${target%.*}.ts" ] && ! _uc_unsafe_path "${target%.*}.ts"; then
-    target_ts="${target%.*}.ts"
-  fi
-  vanished="$(printf '%s' "$vanished_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')" || return 1
-  live="$(printf '%s' "$live_list" | jq -R -s -c 'split("\n") | map(select(length > 0))')" || return 1
-  # Events of R5 with no capture handler before this run: (c) adds one there.
-  missing="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson uc_legacy_ok "$lg" \
-    "$_UC_JQ_DEFS [\$r5[] as \$e | select(any(uc_footprint[]; .event == \$e) | not) | \$e] | length" \
-    "$config")" || return 1
-  local program="$_UC_JQ_DEFS uc_keep(\$r5; \$live; \$vanished; \$abs_sh; \$abs; \$fragfp; \$target; \$ps)"
-  before="$(jq -c '.' "$config")" || return 1
-  after="$(_uc_jq "$shape" -c --argjson r5 "$r5" --argjson live "$live" --argjson vanished "$vanished" \
-    --arg abs "$abs" --arg abs_sh "$abs_sh" --argjson fragfp "$fragfp" --arg target "$target_ts" \
-    --argjson ps "$ps" --argjson uc_legacy_ok "$lg" "$program" "$config")" || return 1
-  # A vanished path on an assignment-prefixed command is not re-pointed on a
-  # PowerShell target: say so by name (spec 0243 delta-01, s4-F2).
-  left="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" --argjson vanished "$vanished" \
-    --argjson ps "$ps" --argjson uc_legacy_ok "$lg" \
-    "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | uc_ps_left(\$r5; \$vanished; \$ps)[]" \
-    <<< "$before")" || left=""
-  local lp ln
-  while IFS=$'\t' read -r lp ln; do
-    [ -n "$lp" ] || continue
-    echo "  Usage capture left $lp: keeps an environment prefix ($ln) that PowerShell on Windows cannot run; left as it is."
-  done <<< "$left"
-  if [ "$before" = "$after" ]; then
-    echo "  Usage capture kept unchanged in $config"
-    return 0
-  fi
-  backup_file "$config"
-  write_json_config_secure "$config" --arg shape "$shape" --argjson r5 "$r5" \
-    --argjson live "$live" --argjson vanished "$vanished" --arg abs "$abs" \
-    --argjson fragfp "$fragfp" --arg target "$target_ts" --arg abs_sh "$abs_sh" --argjson ps "$ps" --argjson uc_legacy_ok "$lg" "$program" \
-    || { echo "  ERROR: could not write $config." >&2; return 1; }
-  # Name only the vanished paths a kept handler really carried: one dropped as
-  # a duplicate was deleted, not re-pointed.
-  repointed="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" \
-    --argjson vanished "$vanished" --argjson ps "$ps" --argjson uc_legacy_ok "$lg" \
-    "$_UC_JQ_DEFS uc_keep_dedup(\$r5; \$live; \$vanished) | ([uc_ps_left(\$r5; \$vanished; \$ps)[] | split(\"\\t\")[0]]) as \$left | uc_r5_paths(\$r5) as \$now | \$vanished[] | select(. as \$v | any(\$now[]; . == \$v) and (any(\$left[]; . == \$v) | not))" \
-    <<< "$before")" || repointed=""
-  while IFS= read -r p; do
-    [ -n "$p" ] || continue
-    echo "  Usage capture re-pointed $p -> $abs"
-    wrote_abs=1
-  done <<< "$repointed"
-  requoted="$(_uc_jq "$shape" -r --argjson r5 "$r5" --argjson live "$live" \
-    --argjson vanished "$vanished" --argjson uc_legacy_ok "$lg" \
-    "$_UC_JQ_DEFS [uc_keep_dedup(\$r5; \$live; \$vanished) | uc_footprint[] | select(.event as \$e | any(\$r5[]; . == \$e)) | .handler | select(uc_needs_quotes) | uc_path | select(. as \$p | any(\$vanished[]; . == \$p) | not)] | uc_distinct | .[]" \
-    <<< "$before")" || requoted=""
-  while IFS= read -r p; do
-    [ -n "$p" ] || continue
-    echo "  Usage capture path quoted (it holds a space): $p"
-  done <<< "$requoted"
-  if [ "$missing" != "0" ]; then
-    echo "  Usage capture re-registered on $missing event(s) at $target_ts"
-    [ "$target_ts" != "$abs" ] || wrote_abs=1
-  fi
-  echo "  Usage capture kept in $config (one entry per event)"
-  if [ "$wrote_abs" -eq 1 ]; then
-    warn_if_linked_worktree "$repo_dir" "usage capture"
-  fi
-  return 0
-}
-
-# usage_capture_remove <cli> <config> — R9, R12: delete every capture handler,
-# pruning only the containers that deletion emptied. Absent file → no write.
-usage_capture_remove() {
-  local cli="$1" config="$2" shape lg
-  shape="$(_uc_shape "$cli")" || return 1
-  if [ ! -f "$config" ]; then
-    echo "  No usage-capture entry to remove ($config does not exist)."
-    return 0
-  fi
-  if ! _uc_is_object "$config"; then
-    echo "  ERROR: $config is not a JSON object; usage capture not removed." >&2
-    return 1
-  fi
-  lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
-  backup_file "$config"
-  write_json_config_secure "$config" --arg shape "$shape" --argjson uc_legacy_ok "$lg" \
-    "$_UC_JQ_DEFS uc_strip" \
-    || { echo "  ERROR: could not write $config." >&2; return 1; }
-  echo "  Usage capture removed from $config (every other entry left as it was)"
-  return 0
-}
-
-# usage_capture_apply <cli> <config> <repo_dir> <state> <answer> — the mapping
-# of a raw prompt answer, kept out of the setups so it is testable (R4, R10):
-#   absent    + yes    → enable; any other answer, empty included → no write
-#   installed + remove → remove; any other answer, empty included → keep, then
-#                        rewrite every legacy command to the direct form
-# Every path that writes the direct form first meets the Node.js floor (spec 0243
-# R24, D3): below it the guard's diagnostic is printed, nothing is written and
-# the status is non-zero. `remove` never depends on Node.js.
-# Any other state is rejected (non-zero, nothing written).
-usage_capture_apply() {
-  local cli="$1" config="$2" repo_dir="$3" state="$4" answer="$5"
-  _uc_shape "$cli" >/dev/null || return 1
-  case "$state" in
-    absent)
-      if [ "$answer" = "yes" ]; then
-        usage_capture_require_node_floor || return 1
-        usage_capture_enable "$cli" "$config" "$repo_dir"
-        return $?
-      fi
-      echo "Usage capture not enabled (re-run scripts/setup-${cli}-interactive.sh to enable it)."
-      return 0
-      ;;
-    installed)
-      if [ "$answer" = "remove" ]; then
-        usage_capture_remove "$cli" "$config"
-        return $?
-      fi
+  if [ -n "$res" ]; then
+    if ! node -e 'process.exitCode = process.features.typescript ? 0 : 1' >/dev/null 2>&1 </dev/null; then
       usage_capture_require_node_floor || return 1
-      usage_capture_keep "$cli" "$config" "$repo_dir" || return 1
-      usage_capture_rewrite "$cli" "$config" "$repo_dir"
-      return $?
-      ;;
-    *)
-      echo "  ERROR: unknown usage-capture state '$state'; nothing written." >&2
       return 1
-      ;;
-  esac
+    fi
+    node "$entry" "$sub" --result "$res" -- "$@" </dev/null
+  else
+    if [ "$sub" = keep ] || [ "$sub" = apply ]; then
+      case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) plat=(--platform win32) ;; esac
+    fi
+    node -r "$guard" "$entry" ${plat[@]+"${plat[@]}"} "$sub" -- "$@" </dev/null
+  fi
 }
 
-# render_session_recording_manifest <cli> <repo_dir> <manifest_src> <out_file> —
-# the manifest the session-recording merge reads, with the worktree git guard's
-# command rendered by `hook-wiring.ts guard render` (guard_render_manifest, in
-# common.sh; spec 0248 R28, R29) and then the MemPalace transcript commands by
-# `hook-wiring.ts transcript render` (transcript_render_manifest; spec 0247
-# R20, R21): `node "<repo>/hooks/mempalace-transcript.ts" <cli-id>`, final. A
-# refusal of either render leaves that kind's handlers absent from <out_file>,
-# and merge_session_recording_hooks then spares the installed ones (spec 0248
-# v1-F4, spec 0247 R27). Below the Node.js floor (or when the tool fails) the
-# diagnostic is printed, nothing is rewritten, and the manifest is written
-# WITHOUT the guard and the transcript handlers (the unrendered ones hold a
-# `$..._PROJECT_DIR` token), so every installed one stays as it is.
-# Sets SR_TRANSCRIPT_WIRED to 1 when <out_file> carries a rendered transcript
-# command, else 0: the caller then writes nothing that would start recording
-# (Claude Code's env patch included, seat finding v1-F3) and does not report
-# recording as active. Returns non-zero only when <manifest_src> is not a JSON
-# object.
+# _uc_forward <subcommand> <args…> — a function that sets no shell variable.
+_uc_forward() {
+  local sub="$1"
+  shift
+  _uc_run_node "" "$sub" "$@"
+}
+
+# _uc_forward_result <subcommand> <args…> — a function that sets variables: the
+# entry writes `NAME=0|1` lines to a temporary file, read here after the call.
+# Only the whitelisted names take a value, and only `0` or `1`; the file is
+# removed on every path out.
+_uc_forward_result() {
+  local sub="$1" res line rc=0
+  shift
+  if ! res="$(mktemp 2>/dev/null)" || [ -z "$res" ]; then
+    echo "  ERROR: could not create a temporary file for $sub." >&2
+    return 1
+  fi
+  _uc_run_node "$res" "$sub" "$@" || rc=$?
+  if [ -f "$res" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      # shellcheck disable=SC2034  # read by the callers after the call
+      case "$line" in
+        SR_TRANSCRIPT_WIRED=0) SR_TRANSCRIPT_WIRED=0 ;;
+        SR_TRANSCRIPT_WIRED=1) SR_TRANSCRIPT_WIRED=1 ;;
+        SR_ALL_HOOKS_DISABLED=0) SR_ALL_HOOKS_DISABLED=0 ;;
+        SR_ALL_HOOKS_DISABLED=1) SR_ALL_HOOKS_DISABLED=1 ;;
+      esac
+    done < "$res"
+  fi
+  rm -f "$res"
+  return "$rc"
+}
+
+# --- public API: forwarding shims --------------------------------------------------
+
+# usage_capture_abs <repo_dir> [sh|ts] — the in-repo absolute path of the capture script.
+usage_capture_abs() { _uc_forward abs "$@"; }
+
+# usage_capture_fragment <cli> <repo_dir> — the CLI's capture fragment, rendered.
+usage_capture_fragment() { _uc_forward fragment "$@"; }
+
+# usage_capture_rewrite <cli> <config> <repo_dir> — legacy commands to the direct form.
+usage_capture_rewrite() { _uc_forward rewrite "$@"; }
+
+# usage_capture_footprint <cli> <config> — the JSON array of capture handlers; 2 on unparsable JSON.
+usage_capture_footprint() { _uc_forward footprint "$@"; }
+
+# usage_capture_paths <cli> <config> — the registered capture script paths, one per line.
+usage_capture_paths() { _uc_forward paths "$@"; }
+
+# usage_capture_state <cli> <config> — `absent` or `installed`.
+usage_capture_state() { _uc_forward state "$@"; }
+
+# usage_capture_reinject <cli> <config> <footprint_json> — strip, then add back the footprint.
+usage_capture_reinject() { _uc_forward reinject "$@"; }
+
+# usage_capture_disclose <cli> <config> <repo_dir> — the pre-write disclosure.
+usage_capture_disclose() { _uc_forward disclose "$@"; }
+
+# usage_capture_enable <cli> <config> <repo_dir> — register the fragment.
+usage_capture_enable() { _uc_forward enable "$@"; }
+
+# usage_capture_keep <cli> <config> <repo_dir> — one capture handler per event, re-pointed.
+usage_capture_keep() { _uc_forward keep "$@"; }
+
+# usage_capture_remove <cli> <config> — delete every capture handler.
+usage_capture_remove() { _uc_forward remove "$@"; }
+
+# usage_capture_apply <cli> <config> <repo_dir> <state> <answer> — the mapping of a prompt answer.
+usage_capture_apply() { _uc_forward apply "$@"; }
+
+# render_session_recording_manifest <cli> <repo_dir> <manifest_src> <out_file> — sets
+# SR_TRANSCRIPT_WIRED. A stale 1 must never survive a run that rendered nothing, so it
+# is reset to 0 first, as the original did.
 render_session_recording_manifest() {
-  local cli="$1" repo_dir="$2" manifest_src="$3" out="$4" shape guarded
-  shape="$(_uc_shape "$cli")" || return 1
   # shellcheck disable=SC2034  # read by the setup scripts after this call
   SR_TRANSCRIPT_WIRED=0
-  guarded="$(mktemp)"
-  if guard_render_manifest "$cli" "$repo_dir" "$manifest_src" "$guarded" \
-     && transcript_render_manifest "$cli" "$repo_dir" "$guarded" "$out"; then
-    rm -f "$guarded"
-    if _uc_jq "$shape" -e "$_UC_JQ_DEFS sr_has_transcript" "$out" >/dev/null 2>&1; then
-      # shellcheck disable=SC2034  # read by the setup scripts after this call
-      SR_TRANSCRIPT_WIRED=1
-    fi
-    return 0
-  fi
-  rm -f "$guarded"
-  echo "  Worktree git guard and session recording not wired this run; installed commands are left as they are." >&2
-  _uc_jq "$shape" "$_UC_JQ_DEFS uc_strip_by(sr_is_guard or sr_is_transcript_any)" "$manifest_src" > "$out"
+  _uc_forward_result render-session-recording-manifest "$@"
 }
 
-# merge_session_recording_hooks <cli> <config> <patched_manifest> [<env_patch_json>]
-# The session-recording write of all three CLIs. Each refreshes this
-# framework's own session-recording handlers in place (sr_merge) instead of
-# replacing the whole per-event array, so an operator's own hook registered on
-# the same event survives a run that accepts or re-accepts session recording
-# (#1234). Copilot CLI takes the same merge since spec 0247 R23(b), in place of
-# its former full replace of the user-level hooks file: its top-level keys other
-# than `hooks` keep their value when present and take the manifest's when
-# absent, and a kept `"disableAllHooks": true` is reported (SR_ALL_HOOKS_DISABLED
-# is then 1, else 0) instead of overwritten. uc_reinject($fp) on top of that
-# re-asserts the capture footprint it found canonically, so it never removes,
-# duplicates or re-points a registered capture command (R8). Refuses (returns
-# 1, writes nothing) on a config that is not a JSON object.
-merge_session_recording_hooks() {
-  local cli="$1" config="$2" patched="$3" env_patch="${4:-}" shape fp rc=0 created=0 program lg
-  shape="$(_uc_shape "$cli")" || return 1
-  fp="$(usage_capture_footprint "$cli" "$config")" || rc=$?
-  if [ "$rc" -ne 0 ]; then
-    echo "  ERROR: $config is not readable as JSON; session-recording hooks not merged." >&2
-    return 1
-  fi
-  if ! jq -e 'type == "object"' "$patched" >/dev/null 2>&1; then
-    echo "  ERROR: patched hook manifest $patched is not a JSON object." >&2
-    return 1
-  fi
-  [ -n "$env_patch" ] || env_patch='{}'
-  if ! jq -e 'type == "object"' >/dev/null 2>&1 <<< "$env_patch"; then
-    echo "  ERROR: invalid environment patch for $config." >&2
-    return 1
-  fi
-  case "$cli" in
-    claude)  program='sr_merge($m[0]) | (if ($patch | length) > 0 then .env = ((.env // {}) + $patch) else . end) | uc_reinject($fp)' ;;
-    gemini)  program='sr_merge($m[0]) | uc_reinject($fp)' ;;
-    # sr_merge spares the installed guard or transcript handlers when the
-    # manifest carries none (a refused render, spec 0248 v1-F4, spec 0247 R27).
-    # A file that held nothing takes the manifest's top-level keys in its order.
-    copilot) program='. as $cur | sr_merge($m[0]) as $r
-        | (if ($cur | length) == 0 then ($m[0] | del(.hooks)) + $r
-           else reduce ($m[0] | to_entries[] | select(.key != "hooks")) as $e ($r;
-             if has($e.key) then . else .[$e.key] = $e.value end) end)
-        | uc_reinject($fp)' ;;
-  esac
-  # The same legacy classification the footprint above was read with, so the
-  # strip inside uc_reinject removes exactly the handlers it re-adds.
-  lg="$(_uc_legacy_ok "$shape" "$config")" || return 1
-  if [ -f "$config" ]; then
-    _uc_jq "$shape" -r --slurpfile m "$patched" --argjson uc_legacy_ok "$lg" \
-      "$_UC_JQ_DEFS sr_report(\$m[0])" "$config" || true
-    backup_file "$config"
-  else
-    _uc_create_empty "$config" || { echo "  ERROR: could not create $config." >&2; return 1; }
-    created=1
-  fi
-  if ! write_json_config_secure "$config" --arg shape "$shape" --slurpfile m "$patched" \
-      --argjson fp "$fp" --argjson patch "$env_patch" --argjson uc_legacy_ok "$lg" \
-      "$_UC_JQ_DEFS $program"; then
-    [ "$created" -eq 0 ] || rm -f "$config"
-    echo "  ERROR: could not write $config." >&2
-    return 1
-  fi
-  # shellcheck disable=SC2034  # read by the setup scripts after this call
-  SR_ALL_HOOKS_DISABLED=0
-  if [ "$cli" = "copilot" ] && jq -e '.disableAllHooks == true' "$config" >/dev/null 2>&1; then
-    # shellcheck disable=SC2034  # read by the setup scripts after this call
-    SR_ALL_HOOKS_DISABLED=1
-    echo "  WARNING: $config keeps \"disableAllHooks\": true — no hook in that file fires," >&2
-    echo "           session recording included, until you set it to false." >&2
-  fi
-  return 0
-}
+# merge_session_recording_hooks <cli> <config> <patched_manifest> [<env_patch_json>] —
+# sets SR_ALL_HOOKS_DISABLED when the entry ran.
+merge_session_recording_hooks() { _uc_forward_result merge-session-recording-hooks "$@"; }

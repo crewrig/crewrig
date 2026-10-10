@@ -239,7 +239,17 @@ harness loop:
 | [uv](https://github.com/astral-sh/uv) | `brew install uv` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` | `powershell -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
 | [yq](https://github.com/mikefarah/yq) | `brew install yq` | `sudo snap install yq` | `choco install yq` |
 
-> **Windows note:** setup scripts require a Bash-compatible shell
+> **Node.js note:** the four setups are TypeScript entries
+> (`scripts/setup-<cli>-interactive.ts`) and need
+> [Node.js 24 or later](https://nodejs.org/en/download). The `task
+> setup-<cli>-interactive` entries and the `bash
+> scripts/setup-<cli>-interactive.sh` shims run the Node.js floor guard
+> (`scripts/lib/node-floor-guard.js`) before the entry and stop with a
+> diagnostic below 24. Run by hand, use two separate steps: `node
+> scripts/lib/node-floor-guard.js`, then `node
+> scripts/setup-<cli>-interactive.ts`. The setups need neither `fzf` nor `jq`
+> and run on Windows without a Bash-compatible shell. The scripts that remain
+> shell scripts still need one
 > ([Git Bash](https://gitforwindows.org/), [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), or [MSYS2](https://www.msys2.org/)).
 
 ## Quick Start
@@ -321,8 +331,8 @@ task setup-antigravity-interactive
    refining the `config/SOUL.md` template section by section.
 3. **`task setup-*-interactive`** copies shared configuration files to
    the target directory, then prompts you to select your **team**,
-   **expertise**, and **experience level** via an interactive menu with
-   live preview.
+   **expertise**, and **experience level** through numbered questions
+   (`?N` previews entry N).
 
 ### Artifact Zone (optional)
 
@@ -500,8 +510,8 @@ scripts/
 ├── package-extension.sh              # Manually package a single extension at its current committed version (delegates to release-package-extension.sh)
 ├── package-extensions.sh             # Manually package every extension (delegates to package-extension.sh)
 ├── prune-transcripts.sh              # Remove old transcript archives
-├── setup-claude-interactive.sh       # Claude Code setup (interactive)
-├── setup-gemini-interactive.sh       # Gemini CLI setup (interactive)
+├── setup-claude-interactive.sh       # Shim: forwards to setup-claude-interactive.ts (Claude Code setup, interactive)
+├── setup-gemini-interactive.sh       # Shim: forwards to setup-gemini-interactive.ts (Gemini CLI setup, interactive)
 ├── test-build-components.sh          # Self-test for build-components.sh
 ├── unlink-component.sh               # Shim: forwards to unlink-component.ts (remove a component symlink)
 ├── unlink-extensions.sh              # Shim: forwards to unlink-extensions.ts (remove all extension symlinks)
@@ -531,7 +541,7 @@ renovate.json                         # Renovate dependency-update configuration
 ### Claude Code (`~/.claude.json`, managed by `claude mcp add`)
 
 Claude Code reads MCP servers from `~/.claude.json`, not from any `mcp.json`
-file. The `setup-claude-interactive.sh` script registers them via
+file. The `setup-claude-interactive.ts` entry registers them via
 `claude mcp add --scope user`. To inspect or manage them later:
 
 ```bash

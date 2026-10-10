@@ -145,10 +145,10 @@ export function checkGolden(c: GoldenCase, result: CaseResult, leg: string, base
   }
   const expected = readGolden(c.cli, c.id, base);
   const actual = serialize(result);
-  // The tagged deviations of the `ts` leg are removed from both sides (setup-golden-deviations.ts).
+  // The tagged deviations are removed from both sides (setup-golden-deviations.ts).
   const sides = (name: GoldenName): readonly [string, string] => [
-    comparable(leg, name, expected[name], c.deviations),
-    comparable(leg, name, actual[name], c.deviations),
+    comparable(name, expected[name], c.deviations),
+    comparable(name, actual[name], c.deviations),
   ];
   const failures = GOLDEN_FILES.filter((name) => {
     const [e, a] = sides(name);
@@ -157,15 +157,13 @@ export function checkGolden(c: GoldenCase, result: CaseResult, leg: string, base
     const [e, a] = sides(name);
     return `--- ${c.cli}/${c.id}/${name}.golden (expected)\n+++ ${leg} leg (actual)\n${unifiedDiff(e, a)}`;
   });
-  if (leg === "ts") {
-    // The questions the run asked: the stored fzf records against the echo lines (the two the
-    // tagged deviations drop), so that dropping them hides no question (setup-golden-questions.ts).
-    const [e, a] = questionTexts(c.cli, fzfOfTree(expected["tree.json"]), actual.stdout);
-    if (e !== a) {
-      failures.push(
-        `--- ${c.cli}/${c.id} ${QUESTIONS_FILE} (the fzf records of tree.json.golden, expected)\n+++ ${leg} leg ([answer] echo lines, actual)\n${unifiedDiff(e, a)}`,
-      );
-    }
+  // The questions the run asked: the stored fzf records against the echo lines (the two the
+  // tagged deviations drop), so that dropping them hides no question (setup-golden-questions.ts).
+  const [eq, aq] = questionTexts(c.cli, fzfOfTree(expected["tree.json"]), actual.stdout);
+  if (eq !== aq) {
+    failures.push(
+      `--- ${c.cli}/${c.id} ${QUESTIONS_FILE} (the fzf records of tree.json.golden, expected)\n+++ ${leg} leg ([answer] echo lines, actual)\n${unifiedDiff(eq, aq)}`,
+    );
   }
   if (failures.length > 0) {
     throw new Error(

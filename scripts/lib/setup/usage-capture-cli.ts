@@ -12,12 +12,17 @@ import fs from "node:fs";
 import type { JsonObject } from "../hook-config.ts";
 import type { Cli } from "./context.ts";
 import { SetupExit } from "./exit.ts";
-import type { UcCtx } from "./usage-capture-fragment.ts";
+import type { UcCtx, UcDeps } from "./usage-capture-fragment.ts";
 import type { CaptureCli } from "./usage-capture-state.ts";
 
 type Bit = "0" | "1";
 type Results = Map<string, Bit>;
-type Run = (ctx: UcCtx, a: readonly string[], res: Results) => Promise<number> | number;
+type Run = (
+  ctx: UcCtx,
+  a: readonly string[],
+  res: Results,
+  deps: UcDeps,
+) => Promise<number> | number;
 
 /** The names a `--result` file may carry; anything else is never written. */
 const WHITELIST: ReadonlySet<string> = new Set(["SR_TRANSCRIPT_WIRED", "SR_ALL_HOOKS_DISABLED"]);
@@ -74,13 +79,14 @@ const opts = (ctx: UcCtx, a: readonly string[]) => ({
 
 /** The keep step the apply is given: the same checkout and machine seams as the apply. */
 const keepOf =
-  (keep: typeof import("./usage-capture-keep.ts").usageCaptureKeep) =>
+  (keep: typeof import("./usage-capture-keep.ts").usageCaptureKeep, deps: UcDeps) =>
   (o: { ctx: UcCtx; cli: string; settingsPath: string; repoDir?: string }): number =>
     keep({
       ctx: o.ctx,
       cli: o.cli as Cli,
       settingsPath: o.settingsPath,
       repoDir: o.repoDir ?? o.ctx.repoDir,
+      deps,
     });
 
 const COMMANDS: Readonly<Record<string, Run>> = {
@@ -95,15 +101,15 @@ const COMMANDS: Readonly<Record<string, Run>> = {
     if (abs !== null) ctx.io.out(abs);
     return abs === null ? 1 : 0;
   },
-  fragment: async (ctx, a) => {
+  fragment: async (ctx, a, _res, deps) => {
     const { usageCaptureFragment } = await import("./usage-capture-fragment.ts");
-    const fragment = usageCaptureFragment(ctx, arg(a, 0), arg(a, 1));
+    const fragment = usageCaptureFragment(ctx, arg(a, 0), arg(a, 1), deps);
     if (fragment !== null) ctx.io.out(compact(fragment));
     return fragment === null ? 1 : 0;
   },
-  rewrite: async (ctx, a) => {
+  rewrite: async (ctx, a, _res, deps) => {
     const { usageCaptureRewrite } = await import("./usage-capture.ts");
-    return usageCaptureRewrite({ ...opts(ctx, a), repoDir: arg(a, 2) });
+    return usageCaptureRewrite({ ...opts(ctx, a), repoDir: arg(a, 2), deps });
   },
   footprint: reader((s, cli, doc) => [compact(s.captureFootprint(cli, doc))]),
   paths: reader((s, cli, doc) => s.capturePaths(cli, doc)),
@@ -118,28 +124,29 @@ const COMMANDS: Readonly<Record<string, Run>> = {
     }
     return usageCaptureReinject({ ...opts(ctx, a), footprint });
   },
-  disclose: async (ctx, a) => {
+  disclose: async (ctx, a, _res, deps) => {
     const { usageCaptureDisclose } = await import("./usage-capture.ts");
-    return usageCaptureDisclose({ ...opts(ctx, a), repoDir: arg(a, 2) });
+    return usageCaptureDisclose({ ...opts(ctx, a), repoDir: arg(a, 2), deps });
   },
-  enable: async (ctx, a) => {
+  enable: async (ctx, a, _res, deps) => {
     const { usageCaptureEnable } = await import("./usage-capture-write.ts");
-    return usageCaptureEnable({ ...opts(ctx, a), repoDir: arg(a, 2) });
+    return usageCaptureEnable({ ...opts(ctx, a), repoDir: arg(a, 2), deps });
   },
-  keep: async (ctx, a) => {
+  keep: async (ctx, a, _res, deps) => {
     const { usageCaptureKeep } = await import("./usage-capture-keep.ts");
     return usageCaptureKeep({
       ctx,
       cli: arg(a, 0) as Cli,
       settingsPath: arg(a, 1),
       repoDir: arg(a, 2),
+      deps,
     });
   },
   remove: async (ctx, a) => {
     const { usageCaptureRemove } = await import("./usage-capture-write.ts");
     return usageCaptureRemove(opts(ctx, a));
   },
-  apply: async (ctx, a) => {
+  apply: async (ctx, a, _res, deps) => {
     const { usageCaptureApply } = await import("./usage-capture.ts");
     const { usageCaptureKeep } = await import("./usage-capture-keep.ts");
     return usageCaptureApply({
@@ -147,10 +154,11 @@ const COMMANDS: Readonly<Record<string, Run>> = {
       repoDir: arg(a, 2),
       state: arg(a, 3),
       answer: arg(a, 4),
-      keep: keepOf(usageCaptureKeep),
+      deps,
+      keep: keepOf(usageCaptureKeep, deps),
     });
   },
-  "render-session-recording-manifest": async (ctx, a, res) => {
+  "render-session-recording-manifest": async (ctx, a, res, deps) => {
     const [cli, repo, src, out] = [arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3)];
     res.set("SR_TRANSCRIPT_WIRED", "0");
     if (await unknownCli(ctx, cli)) return 1;
@@ -171,6 +179,7 @@ const COMMANDS: Readonly<Record<string, Run>> = {
       cli: cli as "claude",
       manifestSrc: src,
       repoDir: repo,
+      ...(deps.spawn === undefined ? {} : { spawn: deps.spawn }),
     });
     // The success path writes the tool's one line of compact JSON, the fallback jq's indented text.
     const text =
@@ -213,12 +222,29 @@ const COMMANDS: Readonly<Record<string, Run>> = {
   },
 };
 
+/** The platforms `--platform` accepts: the seam for the Windows decisions the suites simulate on POSIX. */
+const PLATFORMS: readonly NodeJS.Platform[] = ["win32", "linux", "darwin"];
+
 export const USAGE =
   `Usage: usage-capture-optin.ts <subcommand> [--result <file>] [--] <argument>...\n` +
-  `  subcommands: ${Object.keys(COMMANDS).join(", ")}`;
+  `  subcommands: ${Object.keys(COMMANDS).join(", ")}\n` +
+  `  leading option: --platform <win32|linux|darwin>`;
 
 /** Run one command line (`argv` without the node and script names): the status the entry exits with. */
-export async function usageCaptureCli(argv: readonly string[], ctx: UcCtx): Promise<number> {
+export async function usageCaptureCli(args0: readonly string[], base: UcCtx): Promise<number> {
+  let argv = args0;
+  let ctx = base;
+  let deps: UcDeps = {};
+  if (argv[0] === "--platform") {
+    const platform = PLATFORMS.find((p) => p === argv[1]);
+    if (platform === undefined) return (ctx.io.err(USAGE), 2);
+    ctx = { ...ctx, platform };
+    // The override decides the platform-dependent forms only: the processes still start the way
+    // the host starts them (a `win32` override on a POSIX host must still find `node`).
+    const { createSpawner } = await import("./spawner.ts");
+    deps = { spawn: createSpawner(base) };
+    argv = argv.slice(2);
+  }
   const [name, ...rest] = argv;
   const run = name === undefined || !Object.hasOwn(COMMANDS, name) ? undefined : COMMANDS[name];
   if (run === undefined) {
@@ -237,7 +263,7 @@ export async function usageCaptureCli(argv: readonly string[], ctx: UcCtx): Prom
   const results: Results = new Map();
   let status: number;
   try {
-    status = await run(ctx, args, results);
+    status = await run(ctx, args, results, deps);
   } catch (error) {
     // A writer that refuses (`assertRewritable`) has printed its one `Error:` line; the shell function
     // returns a status, and the `--result` file is still written below.

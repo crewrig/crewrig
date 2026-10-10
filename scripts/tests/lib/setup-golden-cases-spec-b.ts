@@ -139,25 +139,6 @@ const copilotCases: readonly GoldenCase[] = [
     stubs: { fzf: { "Enable automatic session recording": CANCEL } },
   },
   {
-    id: "cancelled-rules-action",
-    cli: "copilot",
-    note: "An fzf cancel on INSTR_ACTION has no `|| true`: under set -e the shell stops with status 130 (R7 row cancelled prompt, abort class).",
-    seed: seedRules,
-    stubs: { fzf: { Existing: CANCEL } },
-    // Shell only, deviation tags (c)/(e)/(g) of requirement 44: an abort-class cancel has no
-    // non-terminal form on the TypeScript leg (no pre-answer; closed stdin is exit 2). The TS side
-    // is covered by setup-prompt-tty.test.ts and setup-prompt-integration.test.ts (fake terminal).
-    legs: ["shell"],
-  },
-  {
-    id: "link-answers-remain",
-    cli: "copilot",
-    note: "delta-01 requirement 16: with `y\\nkeep\\n` the Copilot shell reads none of standard input (no link question); the fzf stub answers the questions.",
-    args: ["--link"],
-    stdin: "y\nkeep\n",
-    shellOnly: "delta-01 requirement 16: the TypeScript leg reads the remainder",
-  },
-  {
     id: "chroma-install-failure",
     cli: "copilot",
     note: "delta-01 scenario: a venv without a chroma binary prints the ERROR lines and exits 1 before any MemPalace registration, nothing after.",

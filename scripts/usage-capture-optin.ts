@@ -1,7 +1,9 @@
 // usage-capture-optin.ts — the usage-capture opt-in and the session-recording render and merge, one
 // subcommand per public function of scripts/lib/usage-capture-optin.sh (spec 0256 requirement 33).
 //
-// Usage: node scripts/usage-capture-optin.ts <subcommand> [--result <file>] [--] <argument>...
+// Usage: node scripts/usage-capture-optin.ts [--platform <win32|linux|darwin>] <subcommand> [--result <file>] [--] <argument>...
+// The leading `--platform` overrides the platform the subcommand decides the Windows forms from
+// (the shell shim passes `win32` when its `uname -s` reports MINGW, MSYS or CYGWIN).
 // Run `node scripts/lib/node-floor-guard.js` first on an unverified Node.js: the tool needs
 // Node.js 24 or later. The logic lives in scripts/lib/setup/usage-capture-cli.ts.
 //

@@ -154,21 +154,16 @@ const tierDeclined = both((f) => ({
   seed: (sb) => stageTier(sb, f, "org"),
 }));
 
-const missingPrerequisite = both((_, cli) =>
-  cli === "claude"
-    ? {
-        id: "missing-prerequisite",
-        note: "No `claude` on PATH: `Error: 'claude' CLI is required to register MCP servers.` and status 1 before any rule is written (R7 missing prerequisite, R21).",
-        seed: (sb) => fs.rmSync(path.join(sb.bin, "claude")),
-      }
-    : {
-        id: "missing-prerequisite",
-        note: "The Gemini setup has no CLI prerequisite beyond fzf and jq; the real branch is the missing jq: `Error: jq is required but not installed.` and status 1 (R7 missing prerequisite, R21).",
-        seed: (sb) => fs.rmSync(path.join(sb.bin, "jq")),
-        // Deviation tag (a): the TypeScript setup has no `jq` guard (requirement 44 (a)).
-        legs: ["shell"],
-      },
-);
+// The Gemini cell (a missing `jq`, the original shell's guard) was removed with the shell logic:
+// the TypeScript setup has no such guard; setup-prerequisites.test.ts covers the prerequisite checks.
+const missingPrerequisite: GoldenCase[] = [
+  {
+    cli: "claude",
+    id: "missing-prerequisite",
+    note: "No `claude` on PATH: `Error: 'claude' CLI is required to register MCP servers.` and status 1 before any rule is written (R7 missing prerequisite, R21).",
+    seed: (sb) => fs.rmSync(path.join(sb.bin, "claude")),
+  },
+];
 
 const missingIdentity = both(() => ({
   id: "missing-identity",
@@ -180,27 +175,6 @@ const cancelGuarded = both(() => ({
   id: "cancelled-prompt-guarded",
   note: "The transcript question is cancelled (Esc): its site has `|| true`, so the answer reads as a decline and the run completes with status 0 (R7 cancelled prompt, R15).",
   stubs: { fzf: { "Enable automatic session recording": CANCEL } },
-}));
-
-const cancelUnguarded = both((f) => ({
-  id: "cancelled-prompt-unguarded",
-  note: "The keep-or-refresh question is cancelled: its site has no `|| true`, so `set -e` aborts the shell with the fzf status (130), nothing past the question is written (R7 cancelled prompt, R15).",
-  stubs: { fzf: { Existing: CANCEL } },
-  seed: (sb) => seedRule(sb, f),
-  // Shell only, deviation tags (c)/(e)/(g) of requirement 44: an abort-class cancel has no
-  // non-terminal form on the TypeScript leg (no pre-answer; closed stdin is exit 2). The TS side
-  // is covered by setup-prompt-tty.test.ts and setup-prompt-integration.test.ts (fake terminal).
-  legs: ["shell"],
-}));
-
-const linkAnswersRemain = both((f) => ({
-  id: "link-answers-remain",
-  note: "`y\\nkeep\\n` with --link: the shell reads one key with `read -n 1` and nothing else of stdin (its questions go to the stub fzf), so the rules question is answered by the stub (keep). The TypeScript leg reads the remainder `keep` into that question (delta-01 requirement 16).",
-  args: ["--link"],
-  stdin: "y\nkeep\n",
-  stubs: { fzf: { Existing: "keep" } },
-  seed: (sb) => seedRule(sb, f),
-  shellOnly: "delta-01 requirement 16: the TypeScript leg reads the remainder",
 }));
 
 const chromaFailure = both(() => ({
@@ -223,7 +197,5 @@ export const cases: readonly GoldenCase[] = [
   ...missingPrerequisite,
   ...missingIdentity,
   ...cancelGuarded,
-  ...cancelUnguarded,
-  ...linkAnswersRemain,
   ...chromaFailure,
 ];

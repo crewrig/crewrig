@@ -54,9 +54,9 @@ function declaredSteps(cli: string): string[] {
 
 describe("structure: the rewrite runs before the session-recording question, the guard's jq substitutions are gone (R30, R32, v1-F2)", () => {
   for (const cli of ["claude", "gemini", "copilot", "antigravity"]) {
-    const text = read(path.join(REPO, "scripts", `setup-${cli}-interactive.sh`));
     test(`${cli}: the rewrite step precedes the session-recording question (declaration)`, () => {
-      // Pinned against the shell by setup-retarget-step-order.test.ts, until the shell is a shim.
+      // The "never guarded by the answer" half is pinned by setup-steps-hooks.test.ts (a cancelled
+      // question is a decline; below the floor the installed commands stay and setup continues).
       const steps = declaredSteps(cli);
       const call = steps.indexOf("hooks-rewrite-installed");
       const question = steps.indexOf("session-recording");
@@ -64,14 +64,6 @@ describe("structure: the rewrite runs before the session-recording question, the
         call >= 0 && question >= 0 && call < question,
         "the rewrite precedes the fzf question",
       );
-    });
-    test(`${cli}: guard_rewrite_installed is never guarded by the answer`, () => {
-      assert.match(text, /guard_rewrite_installed [^\n]*\|\| true/);
-    });
-    test(`${cli}: no jq program rebuilds or substitutes the guard's command line`, () => {
-      assert.doesNotMatch(text, /"bash " \+ \$guard_path/);
-      assert.doesNotMatch(text, /gsub\([^)]*worktree-git-guard/);
-      assert.doesNotMatch(text, /guard_rewrite\b(?!_)/);
     });
   }
 

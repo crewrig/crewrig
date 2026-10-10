@@ -13,17 +13,15 @@ tasks:
 
   setup-gemini-interactive:
     desc: Interactive setup with team/expertise/level selection
-    preconditions:
-      - sh: command -v fzf >/dev/null 2>&1
-        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
-    cmd: bash {{.REPO_DIR}}/scripts/setup-gemini-interactive.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-gemini-interactive.ts
 
   setup-antigravity-interactive:
     desc: Interactive Antigravity CLI setup with team/expertise/level selection
-    preconditions:
-      - sh: command -v fzf >/dev/null 2>&1
-        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
-    cmd: bash {{.REPO_DIR}}/scripts/setup-antigravity-interactive.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-antigravity-interactive.ts
 
   install-mempalace:
     desc: Install or upgrade MemPalace at the pinned version (>=3.6.0,<3.7)
@@ -297,10 +295,9 @@ tasks:
 
   setup-claude-interactive:
     desc: Interactive Claude Code setup with team/expertise/level selection (copy by default)
-    preconditions:
-      - sh: command -v fzf >/dev/null 2>&1
-        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
-    cmd: bash {{.REPO_DIR}}/scripts/setup-claude-interactive.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-claude-interactive.ts
 
   import-claude-history:
     desc: Backfill MemPalace with pre-existing Claude Code transcripts from ~/.claude/projects (idempotent)
@@ -396,10 +393,9 @@ tasks:
 
   setup-copilot-interactive:
     desc: Interactive GitHub Copilot CLI setup (workspace settings + optional transcript hooks)
-    preconditions:
-      - sh: command -v fzf >/dev/null 2>&1
-        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
-    cmd: bash {{.REPO_DIR}}/scripts/setup-copilot-interactive.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-copilot-interactive.ts
 
   import-copilot-history:
     desc: Backfill MemPalace with pre-existing GitHub Copilot CLI transcripts from ~/.copilot/session-state (idempotent)
