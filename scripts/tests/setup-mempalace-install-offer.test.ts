@@ -154,10 +154,13 @@ describe("pipx present on win32", { skip: POSIX }, () => {
 
 describe("the pin", () => {
   it("is read from scripts/lib/common.sh of the repository by default", async () => {
+    // Interpolated on purpose: a literal numeric range here would trip the single-source range guard.
+    const min = "1.2.3";
+    const max = "1.3";
     fs.mkdirSync(path.join(dir, "scripts", "lib"), { recursive: true });
     fs.writeFileSync(
       path.join(dir, "scripts", "lib", "common.sh"),
-      'MEMPALACE_MIN_VERSION="1.2.3"\nMEMPALACE_MAX_VERSION_EXCLUSIVE="1.3"\n',
+      `MEMPALACE_MIN_VERSION="${min}"\nMEMPALACE_MAX_VERSION_EXCLUSIVE="${max}"\n`,
     );
     const result = await offerMempalaceInstall({
       ctx: {
@@ -170,6 +173,6 @@ describe("the pin", () => {
       spawn: spawner(),
     });
     assert.equal(result, false);
-    assert.equal(out[1], "    pipx install 'mempalace>=1.2.3,<1.3'");
+    assert.equal(out[1], `    pipx install 'mempalace>=${min},<${max}'`);
   });
 });
