@@ -1,8 +1,8 @@
 // setup-golden-suite.ts — one `node:test` test per (case x available leg) of a setup entry point
 // (spec 0256 requirement 7, plan v2 step A6). Linux only (the fixtures are generated and
 // compared there), needs a real `jq`. The real home is fingerprinted once and re-checked after
-// EVERY case. A TypeScript leg is compared against the same fixtures as the shell baseline;
-// `shellOnly` cells and `legs` restrict which legs run.
+// EVERY case. Both legs run the TypeScript entry (`shell` through the forwarding shim, `ts`
+// directly) and are compared against the same fixtures, recorded from the original shell.
 
 import { before, describe, test } from "node:test";
 
@@ -30,10 +30,7 @@ export function defineGoldenSuite(cli: Cli): void {
       guard = realHomeGuard();
     });
     for (const c of skip === undefined ? casesFor(cli) : []) {
-      const legs = IMPL.filter(
-        (leg: Leg) =>
-          (c.legs ?? IMPL).includes(leg) && (c.shellOnly === undefined || leg === "shell"),
-      );
+      const legs = IMPL.filter((leg: Leg) => (c.legs ?? IMPL).includes(leg));
       for (const leg of legs) {
         test(`${c.id} [${leg}]`, async () => {
           try {

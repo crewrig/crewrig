@@ -1,6 +1,6 @@
-// setup-golden-deviations.test.ts — the tagged deviations of the TypeScript leg of the golden
-// comparison (setup-golden-deviations.ts): a tagged difference is ignored on the `ts` leg only,
-// every untagged difference still fails (spec 0256 requirement 44). Host-runnable: the golden is
+// setup-golden-deviations.test.ts — the tagged deviations of the golden comparison
+// (setup-golden-deviations.ts): a tagged difference is ignored on both legs (the `shell` leg is
+// the forwarding shim of the same TypeScript entry), every untagged difference still fails (spec 0256 requirement 44). Host-runnable: the golden is
 // written into a temporary directory, no setup is run. The cells here ask no question; the
 // question sequence and the daemon probe are proved in setup-golden-evidence.test.ts.
 
@@ -54,14 +54,17 @@ describe("golden comparison: tagged deviations of the ts leg", () => {
     accepts("ts", shell);
   });
 
-  test("[answer] echo lines (tag f) are not part of the stdout text on ts, only on the shell leg", () => {
+  test("[answer] echo lines (tag f) are not part of the stdout text on either leg", () => {
     // The echo is still counted as a question (setup-golden-evidence.test.ts): this shell asked none.
     const echoed = ts({ stdout: shell.stdout.replace("line one", "[answer] x=keep\nline one") });
     assert.throws(
       () => checkGolden(c, echoed, "ts", base),
       (error: Error) => /questions/.test(error.message) && !/stdout\.golden/.test(error.message),
     );
-    rejects("shell", echoed, /stdout\.golden/);
+    assert.throws(
+      () => checkGolden(c, echoed, "shell", base),
+      (error: Error) => /questions/.test(error.message) && !/stdout\.golden/.test(error.message),
+    );
   });
 
   test("an untagged stdout difference fails on ts, even beside an [answer] line", () => {
@@ -113,8 +116,8 @@ describe("golden comparison: opt-in tag (s), the TypeScript launcher of the serv
     rejects("ts", ts({ stdout: daemon.stdout }), /stdout\.golden/);
   });
 
-  test("tag (s) is not honoured on the shell leg", () => {
-    assert.throws(() => onS("shell", daemon), /golden mismatch/);
+  test("tag (s) is honoured on the shell leg too (the shim runs the same entry)", () => {
+    onS("shell", daemon);
   });
 
   test("under tag (s) every other difference still fails", () => {

@@ -223,30 +223,6 @@ function cellsFor(p: Params): GoldenCase[] {
         stubs: { npmFail: "npm ERR! simulated failure" },
       },
     ),
-    cell(
-      "mempalace-without-packaging",
-      "A python without packaging stops the shell on the range ERROR.",
-      {
-        stubs: { noPackaging: true },
-        shellOnly: "delta-01 deviation (r)",
-      },
-    ),
-    cell(
-      "mempalace-host-nonloopback",
-      "MEMPALACE_MCP_HOST=0.0.0.0: the shell probes with the bearer, which delta-01 forbids (requirement 26 scenario).",
-      {
-        env: { MEMPALACE_MCP_HOST: "0.0.0.0" },
-        shellOnly: "delta-01 deviation (o)",
-      },
-    ),
-    cell(
-      "closed-stdin",
-      "A closed standard input: the baseline of the shell without a terminal or answers.",
-      {
-        stubs: { fzf: {} },
-        shellOnly: "deviation (e)",
-      },
-    ),
   ];
   for (const rc of [0, 1, 2] as const) {
     out.push(

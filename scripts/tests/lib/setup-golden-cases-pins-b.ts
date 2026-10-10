@@ -122,26 +122,6 @@ const copilot: GoldenCase[] = [
     stubs: { fzf: { "/.copilot/skills? (opt-in)": "no" } },
   },
   {
-    id: "closed-stdin",
-    cli: COP,
-    note: "Deviation (e) baseline: a closed standard input and the scripted stubs complete identically.",
-    shellOnly: "deviation (e)",
-  },
-  {
-    id: "mempalace-host-nonloopback",
-    cli: COP,
-    note: "R26 / G3: MEMPALACE_MCP_HOST=0.0.0.0 — the shell probes with the bearer (TypeScript leg deviates).",
-    env: { MEMPALACE_MCP_HOST: "0.0.0.0" },
-    shellOnly: "delta-01 deviation (o)",
-  },
-  {
-    id: "mempalace-without-packaging",
-    cli: COP,
-    note: "R26: python3 without `packaging` — the shell stops at the range check.",
-    stubs: { noPackaging: true },
-    shellOnly: "delta-01 deviation (r)",
-  },
-  {
     id: "org-mcp-declared",
     cli: COP,
     note: "D1 org MCP: mcp-servers.org.json is folded over the config, framework-reserved > org > operator.",

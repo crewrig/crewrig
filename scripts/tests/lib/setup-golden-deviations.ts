@@ -1,8 +1,9 @@
-// setup-golden-deviations.ts — the ONE shared list of tagged deviations the TypeScript leg of the
-// golden matrix is allowed to show against the shell fixtures (spec 0256 requirement 44 and
+// setup-golden-deviations.ts — the ONE shared list of tagged deviations the TypeScript entry (run
+// on both legs of the golden matrix: `shell` is the forwarding shim, `ts` the entry itself) is
+// allowed to show against the fixtures recorded from the original shell (spec 0256 requirement 44 and
 // delta-01 requirements 44 (m)-(r); plan v2 step C4). Everything else must match byte for byte:
 // `checkGolden` (setup-golden-regen.ts) applies `comparable` to the stored text and to the actual
-// text of a `ts` run, so an untagged difference still fails. The shell leg is never touched.
+// text of a run, so an untagged difference still fails.
 //
 //   tag (f)        stdout: the prompter echoes `[answer] <id>=<value>` for every pre-answer; the
 //                  shell prints nothing (requirement 44 (f)).
@@ -10,7 +11,7 @@
 //                  setup has no `fzf` (requirement 44 (a): no guard; (b): line-mode questions).
 //
 // These two removals would, together, delete the only evidence of WHICH questions a run asked, so
-// the ts leg is ALSO compared on the question sequence (`questionTexts`, setup-golden-questions.ts):
+// every run is ALSO compared on the question sequence (`questionTexts`, setup-golden-questions.ts):
 // the `<id>=<value>` list of the echo lines must equal the list the shell's fzf records stand for.
 // The in-process daemon probe is not a tagged deviation of the comparison any more: the stand-in
 // of the ts leg records the requests it receives and the harness maps them onto the `curl` records
@@ -19,19 +20,18 @@
 // requirement 44 (l) is the in-process BUILD, which is not a comparison rule.)
 //
 // Opt-in tag (s) applies to a cell only when its `GoldenCase.deviations` lists it (ensure-http-rc1
-// of the four CLIs), on the ts leg only:
+// of the four CLIs),
 //   tag (s)        the supervised daemon runs the TypeScript launcher of the service layer (spec 0252
 //                  requirements 11-12): the tree entries `.crewrig/mcp-daemon-launcher.*`,
 //                  `.crewrig/service-lib/` and the supervisor unit are ignored, and the extension
 //                  of the single stdout line `Installed launcher: ...` is normalised.
 //
-// Aborting cancels (deviation tags (c), (e), (g)) are not a comparison rule: those cells are
-// restricted to the shell leg with `legs: ["shell"]` in the case modules.
-// API: TS_DEVIATIONS, comparable(leg, name, text, optIn), questionTexts(cli, shellFzf, tsStdout).
+// Aborting cancels (deviation tags (c), (e), (g)) and the original shell's own guards have no
+// TypeScript form: their cells (and fixtures) were removed when the shell became a shim.
+// API: TS_DEVIATIONS, comparable(name, text, optIn), questionTexts(cli, shellFzf, tsStdout).
 
 import { askedByShell, askedByTs } from "./setup-golden-questions.ts";
 import type { AskedRecord } from "./setup-golden-questions.ts";
-import type { Leg } from "./setup-sandbox.ts";
 import type { Cli } from "./setup-golden-types.ts";
 
 /** One tagged deviation: where it applies, its requirement 44 tag, and what it ignores. */
@@ -83,17 +83,11 @@ function withoutKeys(text: string, keys: readonly string[], rowFilter = false): 
 }
 
 /**
- * `text` of the golden file `name` as it is compared on `leg`: unchanged on the shell leg and for
- * `status` and `stderr`; on the `ts` leg the tagged deviations of `TS_DEVIATIONS` are removed, and
+ * `text` of the golden file `name` as it is compared: unchanged for `status` and
+ * `stderr`; for `stdout` and `tree.json` (on every leg: both run the TypeScript entry) the tagged deviations of `TS_DEVIATIONS` are removed, and
  * the opt-in tags the cell lists in `optIn` (`GoldenCase.deviations`) are applied on top.
  */
-export function comparable(
-  leg: string,
-  name: string,
-  text: string,
-  optIn: readonly string[] = [],
-): string {
-  if (leg !== ("ts" satisfies Leg)) return text;
+export function comparable(name: string, text: string, optIn: readonly string[] = []): string {
   const tagS = optIn.includes("s");
   if (name === "stdout") {
     const prefixes = TS_DEVIATIONS.filter((d) => d.file === "stdout").map((d) => d.drop);

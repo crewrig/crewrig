@@ -1,5 +1,6 @@
-// setup-differential.test.ts — the comparison function of the parity proof (spec 0256 requirement 10)
-// is itself tested on the host: an untagged difference fails and names the cell, a tagged one does not.
+// setup-differential.test.ts — the comparison function of the forwarding-parity proof (spec 0256
+// requirement 10: `bash <shim>` against `node <entry>`) is itself tested on the host: an untagged
+// difference fails and names the cell, a tagged one does not.
 // The per-CLI proofs are setup-differential-<cli>.test.ts (Linux only; see lib/setup-differential-suite.ts).
 
 import assert from "node:assert/strict";
@@ -23,10 +24,10 @@ describe("setup differential: the comparison itself (host-runnable)", () => {
   } as unknown as CaseResult;
   const patched = (patch: Partial<CaseResult>): CaseResult => ({ ...base, ...patch });
 
-  test("identical legs agree; an echoed question the shell never asked is a difference", () => {
+  test("identical runs agree; an echoed question only one side asked is a difference", () => {
     assert.equal(legDifference(c, base, base), undefined);
     // The `[answer]` echo is tagged (f), but the question SEQUENCE is compared: an echo with no matching
-    // shell question cannot hide behind the tag (seat finding i1-F17).
+    // echo on the other side cannot hide behind the tag (seat finding i1-F17).
     const echoed = patched({ stdout: "[answer] x=y\none\ntwo\n", fzfRecords: [] });
     assert.match(legDifference(c, base, echoed) ?? "", /question/i);
   });

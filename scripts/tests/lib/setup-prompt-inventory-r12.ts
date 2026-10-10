@@ -1,6 +1,6 @@
 // setup-prompt-inventory-r12.ts — the R12 table of spec 0256 as data (plan v2 step A8): per prompt id the
 // options (the first is the default), the setups that ask it, the cancel class and the condition. The
-// shell is the oracle, and the inventory test asserts the observed list of each row against this table.
+// recorded golden (observed from the original shell) is asserted against this table row by row.
 import { CLIS } from "./setup-golden-types.ts";
 import type { Cli } from "./setup-golden-types.ts";
 
