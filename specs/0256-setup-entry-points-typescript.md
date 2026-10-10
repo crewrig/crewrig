@@ -191,16 +191,21 @@ again.
    function body or a block, grep for a call and its order, or read a message). A
    pull request that migrates no script MAY retarget such an assertion, so that it
    reads a TypeScript declaration or the observed behaviour of the entry, on
-   four conditions: the pull request lists each retarget as before and after;
+   five conditions: the pull request lists each retarget as before and after;
    each retargeted assertion keeps a vacuity guard (the test fails when the
    declaration it now reads is removed or emptied); the retarget lands after the
    dark modules that hold the declaration it reads (requirement 45), so that the
    declaration exists when the assertion is retargeted, and before the switch,
-   never in the pull request that reduces a script to a shim; and every
-   retargeted suite passes, in its own pull request, against the unchanged shell
-   scripts (the equality between a declaration and what the shell does being
-   pinned by the golden harness of requirement 7), so that the shell setups,
-   which stay the real implementation until the switch, are never left unguarded.
+   never in the pull request that reduces a script to a shim; the list names, for
+   each retarget, the cell of the golden matrix of requirement 7 or the unit
+   assertion that still pins the same property against the unchanged shell scripts
+   (a call order, a message, the content of a block), because a retargeted suite no
+   longer reads the shell and would otherwise pass whatever the shell does, and a
+   retarget with no such pin is held back until one exists; and a retarget that
+   reads a declaration lands after the dark module that holds it, while a retarget
+   that reads the observed behaviour of an entry (an order, a message) lands after
+   the entries pull request and before the switch. The shell setups, which stay
+   the real implementation until the switch, are thereby never left unguarded.
    The starting list is that of the design notes of this ticket: the suites
    `test-setup-mcp-merge.sh`, `test-setup-catalogue-picker.sh`,
    `test-setup-usage-capture-optin.sh`, `test-setup-gemini-md-cleanup.sh`,
@@ -259,20 +264,20 @@ again.
     is closed: the table below lists every question the four shell setups ask,
     with its options (the first is the default), the setups that ask it, the
     condition and the cancel class of requirement 15 (`decline` continues as a
-    decline or a skip, `default` takes the first option, `abort` exits 130). The
-    PLAN SHALL verify each row against the shell and the golden matrix of
+    decline or a skip, `default` takes the first option, `abort` exits 130; the one-key `link-confirm` has no class and exits 1 as the
+    shell does). The PLAN SHALL verify each row against the shell and the golden matrix of
     requirement 7 and MAY refine a condition, but SHALL NOT add, rename or drop an
     id; a later change is a delta of this spec.
 
     | Id | Options | Setups | Asked when | Cancel |
     |---|---|---|---|---|
-    | `link-confirm` | `no`, `yes` | all four | `--link` is given | decline (`Aborted. …`, exit 1) |
+    | `link-confirm` | `no`, `yes` | all four | `--link` is given | none: a one-key question (requirement 16), any answer but `y` and any cancel exit 1 |
     | `rules-action` | `keep`, `refresh` | all four (Copilot: its instruction files) | context files already installed | abort |
     | `validation.backend` | `internal`, `plannotator` | all four | none of the four `VALIDATION_*` variables is set | default |
     | `validation.translate` | `off`, `on` | all four | as above | default |
     | `validation.pedagogy` | `contextual`, `simple`, `professor` | all four | as above | default |
     | `validation.illustration` | `off`, `on` | all four | as above | default |
-    | `tls-delegation` | `no`, `yes` | all four | detection fires and `TLS_DELEGATION` is unset | abort |
+    | `tls-delegation` | `no`, `yes` | all four | detection fires and `TLS_DELEGATION` is unset | decline |
     | `mempalace-install` | `no`, `yes` | all four | MemPalace not found and `pipx` present | decline |
     | `install-seqthink` | `yes`, `no` | Claude, Antigravity | always | abort |
     | `legacy-mcp-removal` | `no`, `yes` | Claude | `~/.claude/mcp.json` exists | abort |
@@ -306,8 +311,9 @@ again.
     they do in the shell (the Claude setup writes its shared rules and the
     system-context store before it asks its first question), so the guarantee is that
     no default is ever chosen for the user and that nothing runs after the question
-    that could not be asked; a run that must leave the home directory untouched
-    passes `--answer` for every question of the inventory whose condition holds.
+    that could not be asked. A scripted run passes `--answer` for every question of
+    the inventory whose condition holds and then asks nothing, which makes it
+    deterministic on a machine with no terminal.
 
 15. **Input forms and cancel.** A question SHALL accept the option's number or its
     name, case-insensitive; a leading U+FEFF and a trailing carriage return SHALL be
@@ -663,9 +669,10 @@ again.
     layers (the prompt, files, catalogue, dependency and TLS modules; then MCP,
     MemPalace and organisation MCP; then hooks, usage capture and session recording),
     which also carry the declarations the retargets will read -> retargets of static
-    reads (requirement 9, no script migrates, each retargeted suite green against the
-    unchanged shell) -> the four entries, the differential test and the
-    `windows-setup-entries` job, dark behind the unchanged shell -> the switch (shims
+    reads that read a declaration (requirement 9, no script migrates) -> the four
+    entries, the differential test and the `windows-setup-entries` job, dark behind
+    the unchanged shell -> retargets of static reads that read the behaviour of an
+    entry (requirement 9) -> the switch (shims
     of requirements 33 and 36, references, CI, CLI matrix, allowlists) -> the one-file
     status flip of this spec. The PLAN may split a stage into several pull requests
     and may land a retarget in the same pull request as the dark module whose
@@ -768,7 +775,7 @@ what the same answers selected through the shell's menu installed.
 **Scenario:** Cancelling a question behaves per site
 
 Given an interactive terminal and end of input at the transcript question of the
-Claude setup, and then at the first question of the Antigravity setup
+Claude setup, and then at the Sequential Thinking question of the Antigravity setup
 When each setup reaches that question
 Then the Claude setup treats it as a decline and continues, and the Antigravity
 setup prints `Setup cancelled at: <header>` on standard error and exits 130.
