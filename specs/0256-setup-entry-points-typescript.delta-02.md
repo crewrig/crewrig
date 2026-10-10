@@ -1,7 +1,7 @@
 ---
 id: "0256"
 slug: setup-entry-points-typescript
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1335
@@ -39,8 +39,10 @@ Then it prints neither the `WARNING: You are using symlink mode` text nor the pr
 `Continue with symlink mode? [y/N]`, asks no `link-confirm` question, does not exit 1
 with `Aborted. Run without --link for secure copy mode.`, places every rules file
 and the system-context store as a symbolic link through the link-or-copy module
-(`Linked:` lines, `Install mode: link` in the summary), and exits 0; the same run
-given to the Claude, Gemini or Antigravity setup stops at the `link-confirm` question.
+(`Linked:` lines for the files and a `Linked dir:` line for the system-context store,
+`Install mode: link` in the summary), and exits 0; the same run
+of the Claude, Gemini or Antigravity setup, given no `--answer link-confirm=...`, prints
+that warning and asks the one-key question.
 
 **Scenario:** A `link-confirm` pre-answer given to the Copilot setup is ignored
 
@@ -76,8 +78,9 @@ either.
 **Scenario:** A directory at the profile destination reaches the profile question
 
 Given the Claude setup, a directory at `~/.claude/rules/30-profile.md` (no regular
-file or symbolic link named `*.md` is in the rules directory, so the rules-action
-question is not asked), and the argument `--answer profile-method=keep-local`
+file or symbolic link matching the rules pattern is in the rules directory, so the
+rules-action question is not asked: `*.md` in `~/.claude/rules` for Claude,
+`[0-9][0-9]_*.md` in `~/.gemini` and in the Antigravity home for the other two), and the argument `--answer profile-method=keep-local`
 When the setup reaches the profile step
 Then the line `Local profile differs from repository version.` is printed, the line
 `[answer] profile-method=keep-local` is echoed, `Keeping local profile.` is printed
@@ -116,10 +119,12 @@ profile step (`SKIP_RULES_CONFIG=1`), or deletes them
 (`setup-claude-interactive.sh:101-119`, `setup-gemini-interactive.sh:93-111`,
 `setup-antigravity-interactive.sh:97-115`); the profile step follows
 (`setup-claude-interactive.sh:352-369`, `setup-gemini-interactive.sh:310-327`,
-`setup-antigravity-interactive.sh:334-351`). A regular file at the destination is
+`setup-antigravity-interactive.sh:334-351`). A regular file at the destination, in a rules directory that is a real directory, is
 therefore either kept, with no profile step, or deleted, so the profile is placed as a
 new file; the branch is reachable only when the destination survives that step, for
-example a directory at that path. The TypeScript twin keeps the branch faithfully
+example a directory at that path, or when the rules directory is itself a symbolic link
+(`find` without a trailing slash lists nothing in it, so `rules-action` is not asked and
+a differing profile file reaches the profile question). The TypeScript twin keeps the branch faithfully
 (requirement 6), and the inventory test of the plan pins it. The Copilot setup has no
 such question: it places `30-profile.instructions.md` with `install_file` among the
 other instruction files and asks nothing about a differing profile
@@ -147,8 +152,9 @@ Replacement:
 > `setup-antigravity-interactive.sh:33-50`). The GitHub Copilot setup parses `--link`
 > and nothing else (`setup-copilot-interactive.sh:28-33` sets `INSTALL_MODE="link"`),
 > prints no warning, asks no question and cannot exit 1 for it; it places its files
-> through the link-or-copy module (requirement 22) exactly as the shell's `install_file`
+> through the link-or-copy module (requirement 22) as the shell's `install_file`
 > places a symbolic link under `INSTALL_MODE=link` (`scripts/lib/common.sh:470-479`),
+> with the copy fallback of deviation (i),
 > and `--answer link-confirm=...` given to it is a known id whose question is not asked
 > (requirement 13), accepted and ignored with the warning that requirement names. This
 > asymmetry already exists in the shell and the twin keeps it; an adopter who wants
