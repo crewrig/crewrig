@@ -592,7 +592,8 @@ mkdir -p "$S7B2_REPO/.git" "$S7B2_REPO/node_modules"
 # The run rebuilds the served overlay tiers, which loads js-yaml (and its argparse):
 # a checkout without the production dependency closure must fail loudly here, not
 # skip the copy and surface later as an unrelated refusal.
-for pkg in js-yaml argparse; do
+STAGED_NODE_PACKAGES="js-yaml argparse"
+for pkg in $STAGED_NODE_PACKAGES; do
   if [ -d "$REPO_DIR/node_modules/$pkg" ]; then
     /bin/cp -RL "$REPO_DIR/node_modules/$pkg" "$S7B2_REPO/node_modules/$pkg"
   else
