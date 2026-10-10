@@ -75,7 +75,7 @@ run_ts_group() {
     echo "  skip: '$group' needs the Linux setup sandbox and jq (runs in CI)"
     return 0
   fi
-  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1
+  NODE_TEST_CONTEXT= node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1
   while IFS= read -r line; do
     case "$line" in
       "  ✔ "*) line="${line#  ✔ }"; ok "${line% (*ms)}"; n=$((n + 1)) ;;

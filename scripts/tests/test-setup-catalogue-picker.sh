@@ -67,7 +67,7 @@ run_ts_behaviour() {
     echo "  skip: $label (the TypeScript setup sandbox needs Linux and jq)"
     return 0
   fi
-  out="$(cd "$REPO_DIR" && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \
+  out="$(cd "$REPO_DIR" && NODE_TEST_CONTEXT= node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \
     --test-name-pattern="$pattern" scripts/tests/setup-retarget-behaviour-a.test.ts 2>&1)" || rc=$?
   n_pass="$(sed -n 's/^ℹ pass //p' <<< "$out")"
   n_fail="$(sed -n 's/^ℹ fail //p' <<< "$out")"

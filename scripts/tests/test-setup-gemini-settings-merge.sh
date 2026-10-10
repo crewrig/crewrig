@@ -857,7 +857,7 @@ run_ts_behaviour() {
     echo "  skip: $label (the TypeScript entry cells run on Linux with jq only)"
     return 0
   fi
-  log="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$pattern" \
+  log="$(NODE_TEST_CONTEXT= node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$pattern" \
     "$REPO_DIR/scripts/tests/setup-retarget-gemini-copilot-run.test.ts" 2>&1)"
   if grep -qE '^# fail 0|^ℹ fail 0' <<< "$log" && ! grep -qE '^# pass 0|^ℹ pass 0' <<< "$log"; then
     ok "$label"
