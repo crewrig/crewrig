@@ -70,11 +70,14 @@ export function makeTranscriptCheckout(
   return { ...co, ts };
 }
 
-/** The direct form the tools write for `cli` (R20, POSIX). */
+/** The script path as the tools write it: forward slashes on Windows (hookCommandLine). */
+const written = (co: TranscriptCheckout): string => co.ts.replaceAll("\\", "/");
+
+/** The direct form the tools write for `cli` (R20). */
 export const directCmd = (co: TranscriptCheckout, cli: WiredCli): string =>
-  `node "${co.ts}" ${CLI_ID[cli]}`;
+  `node "${written(co)}" ${CLI_ID[cli]}`;
 export const agyDirect = (co: TranscriptCheckout, event: string): string =>
-  `node "${co.ts}" antigravity-cli ${event}`;
+  `node "${written(co)}" antigravity-cli ${event}`;
 
 /** The legacy forms setup has written, one per class (R24), on `home`'s installed copy. */
 export function legacyForms(home: string, dir: string): Record<string, string> {
