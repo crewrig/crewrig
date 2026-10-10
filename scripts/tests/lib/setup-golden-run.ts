@@ -102,7 +102,9 @@ function runOnce(c: GoldenCase, leg: Leg, extra: readonly string[]): CaseResult 
     const res = sb.run(entryOf(c.cli), [...(c.args ?? []), ...extra], {
       leg,
       ...(c.stdin === undefined ? {} : { stdin: c.stdin }),
-      ...(c.env === undefined ? {} : { env: c.env }),
+      // The TypeScript service layer runs `/usr/bin/systemctl` (not the PATH stub) unless this test seam names
+      // the stub directory: a runner with a real systemd would otherwise be driven for real.
+      env: { ...c.env, ...(leg === "ts" ? { CREWRIG_TEST_SERVICE_BIN_DIR: sb.bin } : {}) },
     });
     const roots: Roots = {
       root: sb.root,
