@@ -129,12 +129,13 @@ bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 # (the sandbox drives systemd stubs): elsewhere it is reported as skipped, never as a pass.
 # Vacuity guard: the expected number of tests must have passed, none failed, none skipped.
 run_ts_behaviour() {
+  unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
   local pattern="$1" label="$2" want="$3" out rc=0 n_pass n_fail n_skip
   if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
     echo "  skip: $label (the TypeScript setup sandbox needs Linux and jq)"
     return 0
   fi
-  out="$(cd "$REPO_DIR" && NODE_TEST_CONTEXT= node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \
+  out="$(cd "$REPO_DIR" && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \
     --test-name-pattern="$pattern" scripts/tests/setup-retarget-behaviour-a.test.ts 2>&1)" || rc=$?
   n_pass="$(sed -n 's/^ℹ pass //p' <<< "$out")"
   n_fail="$(sed -n 's/^ℹ fail //p' <<< "$out")"

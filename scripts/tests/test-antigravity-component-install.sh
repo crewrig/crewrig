@@ -535,12 +535,13 @@ if [ -z "$agy_decl" ]; then bad "setup: empty Antigravity declaration (vacuity g
 # the sandbox run, see the report of PR D2: to be pinned from the entry's own unit tests at PR E).
 TS_TEST="$REPO_DIR/scripts/tests/setup-retarget-entry-behaviour.test.ts"
 run_ts_group() {
+  unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
   local group="$1" log="$TMP_ROOT/ts-group.log" line name n=0
   if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
     echo "  skip: '$group' needs the Linux setup sandbox and jq (runs in CI)"
     return 0
   fi
-  NODE_TEST_CONTEXT= node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1
+  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1
   while IFS= read -r line; do
     case "$line" in
       "  ✔ "*) name="${line#  ✔ }"; ok "${name% (*ms)}"; n=$((n + 1)) ;;

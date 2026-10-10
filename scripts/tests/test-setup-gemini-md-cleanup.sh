@@ -70,12 +70,13 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 # run_ts_group <group name> — run one describe group and report each subtest by name.
 run_ts_group() {
+  unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
   local group="$1" log="$TMP_DIR/group.log" line n=0
   if [ "$(uname -s)" != "Linux" ] || ! command -v jq >/dev/null 2>&1; then
     echo "  skip: '$group' needs the Linux setup sandbox and jq (runs in CI)"
     return 0
   fi
-  NODE_TEST_CONTEXT= node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1
+  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1
   while IFS= read -r line; do
     case "$line" in
       "  ✔ "*) line="${line#  ✔ }"; ok "${line% (*ms)}"; n=$((n + 1)) ;;
