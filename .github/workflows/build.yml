@@ -404,6 +404,15 @@ jobs:
               - 'scripts/tests/install-extension-reentrancy.test.ts'
               - 'scripts/tests/install-differential.test.ts'
               - 'scripts/tests/lib/install-sandbox.ts'
+              - 'scripts/tests/install-differential-extensions.test.ts'
+              - 'scripts/tests/install-golden.test.ts'
+              - 'scripts/tests/install-write-mode.test.ts'
+              - 'scripts/tests/windows-install-entries.test.ts'
+              - 'scripts/tests/lib/windows-proof-support.ts'
+              - 'scripts/tests/lib/windows-install-proof.ts'
+              - 'scripts/tests/lib/install-differential.ts'
+              - 'scripts/tests/lib/install-golden-*.ts'
+              - 'scripts/tests/fixtures/install-golden/**'
       - uses: actions/setup-node@v4
         if: steps.filter.outputs.install-ts == 'true'
         with:
@@ -417,7 +426,7 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
       - name: Test the TypeScript link-or-copy, component twin, manage and install modules
         if: steps.filter.outputs.install-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts scripts/tests/manage-entry.test.ts scripts/tests/marketplace.test.ts scripts/tests/antigravity-tokens.test.ts scripts/tests/install-all.test.ts scripts/tests/install-entry-form.test.ts scripts/tests/install-file-size.test.ts scripts/tests/install-extension-reentrancy.test.ts scripts/tests/install-differential.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts scripts/tests/manage-entry.test.ts scripts/tests/marketplace.test.ts scripts/tests/antigravity-tokens.test.ts scripts/tests/install-all.test.ts scripts/tests/install-entry-form.test.ts scripts/tests/install-file-size.test.ts scripts/tests/install-extension-reentrancy.test.ts scripts/tests/install-differential.test.ts scripts/tests/worktree-claim-launch.test.ts scripts/tests/install-differential-extensions.test.ts scripts/tests/install-golden.test.ts scripts/tests/install-write-mode.test.ts scripts/tests/windows-install-entries.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

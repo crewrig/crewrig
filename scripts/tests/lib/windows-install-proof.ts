@@ -84,8 +84,19 @@ function run(entry: string, args: string[], shell: Shell, env: Record<string, st
 }
 
 function noCarriageReturn(dir: string): void {
-  for (const [rel, bytes] of collectFiles(dir))
+  for (const [rel, bytes] of collectFiles(dir)) {
+    // PowerShell writes its own profile data under AppData (CRLF): never a file an entry places.
+    if (rel.split("/").some((part) => part.toLowerCase() === "appdata")) continue;
     assert.ok(!bytes.includes(13), `${path.join(dir, rel)} holds a carriage return`);
+  }
+}
+
+/** The trees the install entries place or write: the three CLI roots under HOME, never AppData. */
+function noCarriageReturnInLandingZones(): void {
+  for (const zone of [".gemini", ".claude", ".copilot"]) noCarriageReturn(path.join(home, zone));
+  const root = tree?.root ?? "";
+  for (const name of fs.readdirSync(root))
+    if (/^dist-.*-plugin$/.test(name)) noCarriageReturn(path.join(root, name));
 }
 
 function installStep(): void {
@@ -206,7 +217,7 @@ function manageStep(): void {
   attempt("install-workspace", () => {
     const res = run("install-workspace", [], "pwsh");
     expectStatus(res, 0);
-    noCarriageReturn(home);
+    noCarriageReturnInLandingZones();
   });
 }
 
