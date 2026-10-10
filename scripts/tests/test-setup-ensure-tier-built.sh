@@ -136,130 +136,59 @@ fi
   || bad "missing + build fails: staging dir unexpectedly present"
 
 # ---------------------------------------------------------------------------
-echo "4. Structural parity: ensure_tier_built staging arg matches each script's own install-fn staging path (library tier)"
+echo "4. Structural parity: the build target and staging path each setup declares for its library tier"
 # ---------------------------------------------------------------------------
+# Retargeted (spec 0256 R9, PR D1): the build target and the staging path are read from the
+# DECLARATION of each setup (`tiers.build-target`, `tiers.gate` — the directory ensure_tier_built
+# tests and the one the tier install reads — and `tiers.library-staging`), not from the
+# ensure_tier_built call and the tier-install function of the shell. Pinned against the unchanged
+# shell by scripts/tests/setup-retarget-others.test.ts ("ensure_tier_built ... equals the declared
+# ..."), which reads the call and the install function and compares them ACROSS the file boundary
+# (Antigravity's function lives in scripts/lib/common.sh), and by the golden cells `default-answers`
+# (the library tier is built and installed) and `tier-install-failure` (Antigravity).
+decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1"; }
+fact() { printf '%s\n' "$2" | grep "^$1=" | head -1 | cut -d= -f2-; }
 
-# extract_ensure_call <script>
-# Prints the literal 3rd-argument (staging path) passed to ensure_tier_built
-# in <script>, exactly as it appears in source (unexpanded $REPO_DIR/$tier).
-extract_ensure_staging_arg() {
-  local script="$1" line
-  line="$(grep -oE 'ensure_tier_built "\$REPO_DIR" [A-Za-z0-9_]+ "[^"]*"' "$script" | head -1)"
-  [ -z "$line" ] && return 1
-  printf '%s\n' "$line" | awk -F'"' '{print $4}'
-}
-
-# extract_ensure_tool <script>
-# Prints the build_target (2nd argument) passed to ensure_tier_built.
-extract_ensure_tool() {
-  local script="$1" line
-  line="$(grep -oE 'ensure_tier_built "\$REPO_DIR" [A-Za-z0-9_]+ "[^"]*"' "$script" | head -1)"
-  [ -z "$line" ] && return 1
-  printf '%s\n' "$line" | awk '{print $3}'
-}
-
-# extract_install_tier_arg <script>
-# Prints the tier literal (e.g. "library") passed to whichever tier-install
-# function (install_tier_to_home / install_tier_skills_to_home) the script
-# calls for its automatic tier.
-extract_install_tier_arg() {
-  local script="$1" line
-  line="$(grep -oE 'install_tier(_skills)?_to_home [a-zA-Z0-9_]+' "$script" | head -1)"
-  if [ -z "$line" ]; then
-    # Antigravity's helper takes the repo dir first and the tier SECOND, so the
-    # tier is not the token after the function name. Matching `"$REPO_DIR"`
-    # explicitly also skips the overlay call site, whose tier is `"$overlay_tier"`
-    # — quoted, therefore outside the character class, therefore never a
-    # candidate for the `library` comparison this case is scoped to.
-    line="$(grep -oE 'install_antigravity_tier_to_home "\$REPO_DIR" [a-zA-Z0-9_]+' "$script" | head -1)"
-  fi
-  [ -z "$line" ] && return 1
-  printf '%s\n' "$line" | awk '{print $NF}'
-}
-
-# extract_install_fn_staging_pattern <script>
-# Prints the literal (unexpanded) RHS of the tier-install function's
-# `local staging="..."` assignment, e.g. '$REPO_DIR/dist/$tier/.gemini'.
-#
-# Antigravity is the one script whose tier-install function does not live in
-# the script. Spec 0123 moved it into scripts/lib/common.sh as
-# install_antigravity_tier_to_home(), for the reason spec 0116 R17 moved the
-# transcript-hook deployment there: the interactive scripts cannot run
-# end-to-end in CI, so the code that must be hermetically tested has to be
-# callable. Reading the assignment back out of the SETUP script would make this
-# case pass by no longer checking Antigravity at all — so it is read from the
-# helper instead, and only the two parameter NAMES are normalised to the
-# caller's. Everything about the path itself still has to match, so a genuine
-# divergence — `.agents` becoming `.antigravity`, `dist` becoming something
-# else — still fails, which is the whole point of the case.
-extract_install_fn_staging_pattern() {
-  local script="$1" line
-  case "$script" in
-    *setup-antigravity-interactive.sh)
-      # Scoped to the function body, not `head -1` over the whole library:
-      # common.sh is 2000 lines and another `local staging=` landing in it
-      # later must not silently become the thing this case compares.
-      line="$(awk '/^install_antigravity_tier_to_home\(\)/ { f = 1 }
-                   f && /local staging=/ { print; exit }' "$COMMON_LIB" \
-              | grep -oE 'local staging="[^"]*"')"
-      [ -z "$line" ] && return 1
-      printf '%s\n' "$line" \
-        | sed -E 's/^local staging="(.*)"$/\1/; s/\$repo_dir/$REPO_DIR/'
-      return 0
-      ;;
+for expected_tool in gemini claude copilot antigravity; do
+  # The tool names and the staging sub-directories stay verbatim literals on purpose — deriving them
+  # from the declaration would make the assertion compare a value with itself.
+  case "$expected_tool" in
+    gemini)      expected_sub=".gemini" ;;
+    claude)      expected_sub=".claude" ;;
+    copilot)     expected_sub=".github/skills" ;;
+    antigravity) expected_sub=".agents" ;;
   esac
-  line="$(grep -oE 'local staging="[^"]*"' "$script" | head -1)"
-  [ -z "$line" ] && return 1
-  printf '%s\n' "$line" | sed -E 's/^local staging="(.*)"$/\1/'
-}
+  declared="$(decl "$expected_tool")" || declared=""
+  if [ -z "$declared" ]; then
+    bad "$expected_tool: empty declaration (vacuity guard)"
+    continue
+  fi
+  build_target="$(fact tiers.build-target "$declared")"
+  gate="$(fact tiers.gate "$declared")"
+  library_staging="$(fact tiers.library-staging "$declared")"
+  if [ -z "$build_target" ] || [ -z "$gate" ] || [ -z "$library_staging" ]; then
+    bad "$expected_tool: the declaration lacks tiers.build-target / tiers.gate / tiers.library-staging"
+    continue
+  fi
 
-for s in setup-gemini-interactive.sh setup-claude-interactive.sh \
-         setup-copilot-interactive.sh setup-antigravity-interactive.sh; do
-  # A `case` rather than an associative-array lookup table: bash 3.2 (stock
-  # macOS) has no associative arrays, per docs/scripting-conventions.md Rule 5.
-  # The four tool names stay verbatim literals on purpose — deriving them from
-  # "$s" would couple this assertion to the very naming convention it exists to
-  # pin, so it would assert nothing.
-  case "$s" in
-    setup-gemini-interactive.sh)      expected_tool=gemini ;;
-    setup-claude-interactive.sh)      expected_tool=claude ;;
-    setup-copilot-interactive.sh)     expected_tool=copilot ;;
-    setup-antigravity-interactive.sh) expected_tool=antigravity ;;
-    *)                                expected_tool="(no expected build_target declared for $s)" ;;
+  [ "$build_target" = "$expected_tool" ] \
+    && ok "$expected_tool: declared build_target is '$expected_tool'" \
+    || bad "$expected_tool: declared build_target was '$build_target', expected '$expected_tool'"
+
+  # <TIER> is the declared tier placeholder: the automatic tier is `library`.
+  declared_staging="${gate/<TIER>/library}"
+  expected_staging="<REPO>/dist/library/$expected_sub"
+  [ "$declared_staging" = "$expected_staging" ] \
+    && ok "$expected_tool: declared staging path is the library tier's own ($declared_staging)" \
+    || bad "$expected_tool: declared staging path '$declared_staging' != '$expected_staging'"
+
+  # The library staging root is the gate directory's own root (Copilot's gate adds /skills).
+  case "$declared_staging" in
+    "$library_staging"|"$library_staging"/*)
+      ok "$expected_tool: the declared staging path lies under the declared library staging root ($library_staging)" ;;
+    *)
+      bad "$expected_tool: declared staging path '$declared_staging' is outside the library staging root '$library_staging'" ;;
   esac
-  path="$SETUP_DIR/$s"
-  if [ ! -f "$path" ]; then
-    bad "$s: script not found at $path"
-    continue
-  fi
-
-  ensure_staging="$(extract_ensure_staging_arg "$path")"
-  ensure_tool="$(extract_ensure_tool "$path")"
-  install_tier_arg="$(extract_install_tier_arg "$path")"
-  install_pattern="$(extract_install_fn_staging_pattern "$path")"
-
-  if [ -z "$ensure_staging" ]; then
-    bad "$s: no ensure_tier_built call found"
-    continue
-  fi
-  if [ -z "$install_pattern" ]; then
-    bad "$s: no 'local staging=' assignment found in its tier-install function"
-    continue
-  fi
-
-  [ "$ensure_tool" = "$expected_tool" ] \
-    && ok "$s: ensure_tier_built build_target is '$expected_tool'" \
-    || bad "$s: ensure_tier_built build_target was '$ensure_tool', expected '$expected_tool'"
-
-  # Substitute the literal '$tier' token in the install function's pattern
-  # with the literal tier argument the script actually passes to its
-  # install function ("library" for all four scripts today) — derived from
-  # the script itself, not assumed.
-  expected_staging="${install_pattern/\$tier/$install_tier_arg}"
-
-  [ "$ensure_staging" = "$expected_staging" ] \
-    && ok "$s: ensure_tier_built staging path matches the install function's own staging path ($ensure_staging)" \
-    || bad "$s: ensure_tier_built staging path '$ensure_staging' != install function's '$expected_staging'"
 done
 
 # ---------------------------------------------------------------------------

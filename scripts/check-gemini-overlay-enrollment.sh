@@ -13,13 +13,15 @@
 # Both sets are DERIVED FROM THE PROJECT'S OWN SOURCES (R2), never hard-coded, so
 # a future overlay is covered without editing this guard:
 #
-#   - Deployed set (forward source): every literal `"$GEMINI_HOME/NN_NAME.md"`
-#     token anywhere in the setup script. Grepping the literal token — not the
-#     `install_file` argument lists — is deliberate (R3): the user-profile
-#     overlay is deployed through an intermediate `$TARGET` variable, so parsing
-#     `install_file` call sites would MISS `30_USER_PROFILE.md`. The literal
-#     token grep also captures the conditionally-guarded `66_ORG_RULES.md` (R4)
-#     for free — no bash control-flow reasoning needed.
+#   - Deployed set (forward source): the deployed `NN_NAME.md` file names that
+#     the DECLARATION of the Gemini setup carries (spec 0256 requirement 9): the
+#     shared files (`rules.shared.*`, which includes the optional
+#     `66_ORG_RULES.md`, R4), the catalogue selections (`rules.selection.*`) and
+#     the user profile (`rules.profile`, R3), read through the declaration
+#     printer `scripts/tests/lib/print-setup-declarations.ts gemini --format
+#     json`. The guard no longer reads the TEXT of the setup script, which
+#     becomes a forwarding shim. The printer is a Node.js >= 24 program, so the
+#     Node.js floor guard runs first, as a separate step.
 #   - Enrolled set: the basenames of `context.fileName` in the settings file,
 #     parsed with `python3` (a CI dependency) rather than grepping JSON.
 #
@@ -48,14 +50,18 @@ set -euo pipefail
 
 REPO_DIR="${CREWRIG_REPO_DIR:-"$(cd "$(dirname "$0")/.." && pwd)"}"
 
-SETUP_SCRIPT="$REPO_DIR/scripts/setup-gemini-interactive.sh"
+# The declaration printer (resolved under REPO_DIR so the self-test can stand a
+# fixture printer in) and the floor guard (always the guard shipped next to this
+# script, never one under a fixture repository).
+DECLARATION_PRINTER="$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts"
+NODE_FLOOR_GUARD="$(cd "$(dirname "$0")" && pwd)/lib/node-floor-guard.js"
 SETTINGS_FILE="$REPO_DIR/config/gemini/settings.json"
 
 # The repository-root agent-rules file: enrolled but never deployed by design
 # (Gemini reads it from the repo tree). The sole allowed reverse exception (R5).
 AGENTS_EXCEPTION="AGENTS.md"
 
-for src in "$SETUP_SCRIPT" "$SETTINGS_FILE"; do
+for src in "$DECLARATION_PRINTER" "$SETTINGS_FILE"; do
   if [ ! -f "$src" ]; then
     echo "Error: source not found: $src" >&2
     exit 2
@@ -63,23 +69,48 @@ for src in "$SETUP_SCRIPT" "$SETTINGS_FILE"; do
 done
 
 # --- Deployed set (R2, R3, R4) ----------------------------------------------
-# Match the literal `"$GEMINI_HOME/NN_NAME.md"` deploy token wherever it appears
-# — direct `install_file` targets, `$TARGET=` assignments, guarded blocks alike
-# — then reduce each token to its bare overlay basename. An empty result means
-# the setup script's deploy shape changed out from under the guard: fail closed
-# (exit 2) rather than pass a vacuous forward check.
-#
-# The name segment class is the permissive `[A-Za-z0-9_]+`, not just uppercase
-# (R2): the current overlays happen to be uppercase, but a future overlay named
+# The declaration of the Gemini setup names every deployed context file in its
+# `rules.shared.*` / `rules.selection.*` / `rules.profile` facts (value:
+# `<src> -> <dest>`, with an ` (optional)` suffix on the conditional 66 file).
+# Reduce each destination to its bare basename and keep the `NN_NAME.md` ones
+# (the store directory is not an overlay). The name segment class is the
+# permissive `[A-Za-z0-9_]+`, not just uppercase (R2): a future overlay named
 # with mixed case or a digit (e.g. `67_NewTool.md`) must still land in the
-# deployed set and be checked for enrollment — narrowing the class to `[A-Z_]`
-# would silently drop such an overlay and defeat the "covered automatically"
-# promise. The token stays anchored on `"$GEMINI_HOME/` + a two-digit priority,
-# so it can still only ever match a real deploy token.
-if ! deployed=$(grep -oE '"\$GEMINI_HOME/[0-9]{2}_[A-Za-z0-9_]+\.md"' "$SETUP_SCRIPT" \
-                  | sed -E 's#.*/##; s/"$//' | sort -u) || [ -z "$deployed" ]; then
-  echo "Error: no deployed overlays found in $SETUP_SCRIPT — the deploy token" >&2
-  echo "shape may have changed; refusing to run a vacuous enrollment check." >&2
+# deployed set and be checked for enrollment.
+#
+# Fail closed (exit 2) on anything that would make the forward check vacuous:
+# a Node.js below the floor, a printer that fails or prints nothing (the
+# printer exits 1 on an empty descriptor), an unparseable declaration, or a
+# declaration that names no overlay at all.
+if ! node "$NODE_FLOOR_GUARD"; then
+  echo "Error: the declaration printer needs Node.js >= 24; refusing to run a vacuous enrollment check." >&2
+  exit 2
+fi
+if ! declaration=$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$DECLARATION_PRINTER" gemini --format json) \
+   || [ -z "$declaration" ]; then
+  echo "Error: the declaration printer produced no declaration for gemini ($DECLARATION_PRINTER)" >&2
+  echo "— an empty descriptor or a broken printer; refusing to run a vacuous enrollment check." >&2
+  exit 2
+fi
+if ! deployed=$(printf '%s' "$declaration" | python3 -c '
+import json, os, re, sys
+facts = json.load(sys.stdin).get("facts")
+if not isinstance(facts, dict):
+    sys.stderr.write("the declaration carries no facts object\n")
+    sys.exit(2)
+names = set()
+for key, value in facts.items():
+    if not re.fullmatch(r"rules\.(shared\.[0-9]+|selection\.[A-Za-z0-9_-]+|profile)", key):
+        continue
+    dest = re.sub(r" \(optional\)$", "", str(value)).rsplit(" -> ", 1)[-1]
+    base = os.path.basename(dest)
+    if re.fullmatch(r"[0-9]{2}_[A-Za-z0-9_]+\.md", base):
+        names.add(base)
+for name in sorted(names):
+    print(name)
+' | sort -u) || [ -z "$deployed" ]; then
+  echo "Error: no deployed overlays found in the gemini setup declaration — the" >&2
+  echo "declaration shape may have changed; refusing to run a vacuous enrollment check." >&2
   exit 2
 fi
 
@@ -131,7 +162,7 @@ done <<<"$enrolled"
 # Reverse warnings are non-blocking (R6): emit them, but they never set the exit
 # code on their own.
 if [ "${#warnings[@]}" -gt 0 ]; then
-  echo "WARNING: ${#warnings[@]} overlay(s) enrolled in context.fileName but not deployed by the setup script:" >&2
+  echo "WARNING: ${#warnings[@]} overlay(s) enrolled in context.fileName but not deployed by the setup (per its declaration):" >&2
   for w in ${warnings[@]+"${warnings[@]}"}; do
     echo "  - $w" >&2
   done
@@ -147,7 +178,7 @@ if [ "${#missing[@]}" -gt 0 ]; then
     echo "  - $m" >&2
   done
   echo "" >&2
-  echo "scripts/setup-gemini-interactive.sh deploys the overlay(s) above to the" >&2
+  echo "The Gemini setup (its declaration) deploys the overlay(s) above to the" >&2
   echo "Gemini home directory, but config/gemini/settings.json does not enroll them" >&2
   echo "in context.fileName, so Gemini would silently never load them. Add each to" >&2
   echo "the context.fileName array." >&2

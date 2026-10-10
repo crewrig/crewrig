@@ -9,10 +9,15 @@
 # convention "every check-*.sh has a test-*.sh".
 #
 # Each case builds a self-contained fixture repository under a temp dir with a
-# minimal setup script (deploying a known overlay set) and a settings.json
+# stand-in declaration printer (declaring a known overlay set, in the JSON shape
+# of scripts/tests/lib/print-setup-declarations.ts) and a settings.json
 # (enrolling some subset), then runs the guard with CREWRIG_REPO_DIR pointed at
 # the fixture. The guard reads plain files (not `git grep`), so the fixture need
 # not be a git repo — but we mirror the sibling harness's isolation discipline.
+# The guard reads the DECLARATION of the Gemini setup, never the text of
+# scripts/setup-gemini-interactive.sh (spec 0256 requirement 9). Case l runs the
+# guard against the REAL repository, which pins that the real printer's output
+# shape is the one the stand-in imitates.
 #
 # Cases:
 #   a. Happy path (R7) — a fixture reproducing current `main` (all 9 overlays
@@ -32,11 +37,14 @@
 #      names that are not all-uppercase, so a future overlay cannot silently drop
 #      out of the deployed set.
 #   g. Fail-closed: a missing source file (settings absent) → exit 2.
-#   h. Fail-closed: an empty deployed set (setup with zero deploy tokens) → exit 2.
+#   h. Fail-closed: an empty deployed set (a declaration naming no overlay) → exit 2.
 #   i. Fail-closed: malformed settings JSON → exit 2.
 #   j. Fail-closed: settings missing the context.fileName key → exit 2.
 #   k. Boundary: context.fileName PRESENT but an empty list → exit 1 (a forward
 #      failure, NOT the exit-2 malformed case) — locks the Finding-2 distinction.
+#   l. The real repository, real printer → exit 0 (the production read path).
+#   m. Fail-closed: the printer exits 1 with nothing on stdout (an empty
+#      descriptor, the printer's own vacuity guard) → exit 2.
 #
 # Usage:
 #   bash scripts/tests/test-check-gemini-overlay-enrollment.sh
@@ -63,54 +71,76 @@ fail=0
 # Helpers
 # ---------------------------------------------------------------------------
 
-# make_setup_script <repo>
-# Write a minimal setup script that deploys the full current-main overlay set.
-# 30_USER_PROFILE.md is deployed through an intermediate $TARGET variable (as in
-# the real script), and 66_ORG_RULES.md inside a conditional guard, so the
-# fixture exercises the indirect-target (R3) and conditional-guard (R4) paths.
-make_setup_script() {
-  local repo="$1"
-  mkdir -p "$repo/scripts"
-  cat > "$repo/scripts/setup-gemini-interactive.sh" <<'SETUP'
-#!/bin/bash
-# Minimal setup fixture — reproduces the deploy shape under test.
-install_file "$REPO_DIR/config/SOUL.md" "$GEMINI_HOME/00_SOUL.md" "x"
-install_file "$REPO_DIR/config/level/x.md" "$GEMINI_HOME/10_USER_LEVEL.md" "x"
-install_file "$REPO_DIR/config/ORGANIZATION.md" "$GEMINI_HOME/20_ORGANIZATION.md" "x"
-install_file "$REPO_DIR/config/expertise/x.md" "$GEMINI_HOME/40_USER_EXPERTISE.md" "x"
-install_file "$REPO_DIR/config/teams/x.md" "$GEMINI_HOME/50_USER_TEAM.md" "x"
-install_file "$REPO_DIR/artifacts/core/rules/60-tools.md" "$GEMINI_HOME/60_TOOLS.md" "x"
-install_file "$REPO_DIR/config/TOOLS.md" "$GEMINI_HOME/65_TOOLS.md" "x"
-if [ -f "$REPO_DIR/AGENTS.org.md" ]; then
-  install_file "$REPO_DIR/AGENTS.org.md" "$GEMINI_HOME/66_ORG_RULES.md" "x"
-fi
-# Indirect deployment target (the R3 case): the filename is bound to a variable.
-TARGET="$GEMINI_HOME/30_USER_PROFILE.md"
-install_file "$REPO_DIR/config/PROFILE.md" "$TARGET" "x"
-SETUP
+# declaration_fact <overlay-basename> <n>
+# Echo the `"key": "value"` JSON member the real declaration carries for one
+# deployed overlay, in the real shapes: the profile is `rules.profile` (the
+# indirect-target case, R3), the catalogue picks are `rules.selection.<kind>`,
+# the conditional 66 file carries the ` (optional)` suffix (R4), and every other
+# overlay is a `rules.shared.<n>` member.
+declaration_fact() {
+  local name="$1" n="$2"
+  case "$name" in
+    30_USER_PROFILE.md)   printf '"rules.profile": "method config/PROFILE.md -> <HOME>/.gemini/%s"' "$name" ;;
+    10_USER_LEVEL.md)     printf '"rules.selection.level": "config/level/{name}.md -> <HOME>/.gemini/%s"' "$name" ;;
+    40_USER_EXPERTISE.md) printf '"rules.selection.expertise": "config/expertise/{name}.md -> <HOME>/.gemini/%s"' "$name" ;;
+    50_USER_TEAM.md)      printf '"rules.selection.team": "config/teams/{name}.md -> <HOME>/.gemini/%s"' "$name" ;;
+    66_ORG_RULES.md)      printf '"rules.shared.%s": "AGENTS.org.md -> <HOME>/.gemini/%s (optional)"' "$n" "$name" ;;
+    *)                    printf '"rules.shared.%s": "config/x.md -> <HOME>/.gemini/%s"' "$n" "$name" ;;
+  esac
 }
 
-# make_setup_script_no_tokens <repo>
-# A setup fixture with NO "$GEMINI_HOME/NN_NAME.md" deploy tokens, so the guard's
-# deployed set is empty and it must fail closed (exit 2).
-make_setup_script_no_tokens() {
-  local repo="$1"
-  mkdir -p "$repo/scripts"
-  cat > "$repo/scripts/setup-gemini-interactive.sh" <<'SETUP'
-#!/bin/bash
-# Fixture with no overlay deploy tokens at all.
-echo "nothing to deploy"
-SETUP
+# make_printer <repo> <overlay-basename>...
+# Write a stand-in declaration printer that prints the JSON declaration of a
+# Gemini setup deploying exactly the given overlays (plus the non-overlay store
+# entry the real declaration carries, which the guard must ignore). The stand-in
+# is plain JavaScript in a .ts file: the guard runs it with `node` exactly as it
+# runs the real printer.
+make_printer() {
+  local repo="$1"; shift
+  mkdir -p "$repo/scripts/tests/lib"
+  local members n=0 name
+  members='"rules.store": "artifacts/core/system-context -> <HOME>/.crewrig/system-context"'
+  for name in "$@"; do
+    n=$((n + 1))
+    members="$members, $(declaration_fact "$name" "$n")"
+  done
+  {
+    echo '// Fixture stand-in for scripts/tests/lib/print-setup-declarations.ts.'
+    echo "process.stdout.write(JSON.stringify({cli: 'gemini', banner: 'fixture', steps: ['banner'], facts: {$members}}) + '\\n');"
+  } > "$repo/scripts/tests/lib/print-setup-declarations.ts"
 }
+
+# make_printer_exiting_1 <repo>
+# A stand-in printer that behaves like the real one on an empty descriptor: exit
+# 1 with NOTHING on stdout.
+make_printer_exiting_1() {
+  local repo="$1"
+  mkdir -p "$repo/scripts/tests/lib"
+  echo 'process.stderr.write("the gemini descriptor is empty\n"); process.exit(1);' \
+    > "$repo/scripts/tests/lib/print-setup-declarations.ts"
+}
+
+# The overlays the full current-main Gemini setup deploys (9); a case that
+# mutates the deployed set passes its own list.
+MAIN_DEPLOYED=(
+  00_SOUL.md 10_USER_LEVEL.md 20_ORGANIZATION.md 30_USER_PROFILE.md
+  40_USER_EXPERTISE.md 50_USER_TEAM.md 60_TOOLS.md 65_TOOLS.md 66_ORG_RULES.md
+)
+
+# make_setup_script <repo>: declare the full current-main deployed set.
+make_setup_script() { make_printer "$1" ${MAIN_DEPLOYED[@]+"${MAIN_DEPLOYED[@]}"}; }
+
+# make_setup_script_no_tokens <repo>: a declaration naming no overlay, so the
+# guard's deployed set is empty and it must fail closed (exit 2).
+make_setup_script_no_tokens() { make_printer "$1"; }
 
 # append_deploy_token <repo> <overlay-basename>
-# Append one extra install_file deploy line to the fixture setup script so the
-# deployed set gains <overlay-basename>. Used to exercise a future overlay whose
-# name is not all-uppercase.
+# Re-declare the full main set plus one extra deployed overlay, so the deployed
+# set gains <overlay-basename>. Used to exercise a future overlay whose name is
+# not all-uppercase.
 append_deploy_token() {
   local repo="$1" name="$2"
-  printf 'install_file "$REPO_DIR/config/x.md" "$GEMINI_HOME/%s" "x"\n' \
-    "$name" >> "$repo/scripts/setup-gemini-interactive.sh"
+  make_printer "$repo" ${MAIN_DEPLOYED[@]+"${MAIN_DEPLOYED[@]}"} "$name"
 }
 
 # make_settings <repo> <name>...
@@ -365,7 +395,7 @@ run_check() {
 
 # ---------------------------------------------------------------------------
 # Case h — Fail-closed: an empty deployed set (setup with zero deploy tokens) →
-#          exit 2, rather than a vacuous forward pass.
+#          exit 2, rather than a vacuous forward pass. (A declaration naming no overlay.)
 # ---------------------------------------------------------------------------
 {
   repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
@@ -445,6 +475,46 @@ run_check() {
     pass=$((pass + 1))
   else
     echo "FAIL  case-k: expected exit 1, got $CHECK_EXIT"
+    echo "      actual stderr: $CHECK_STDERR"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case l — The production read path: the REAL repository, the REAL printer →
+#          exit 0. Pins that the stand-in's JSON shape is the real one (the
+#          guard would exit 2 on a shape it cannot read) and that the live
+#          declaration enrolls every overlay it deploys.
+# ---------------------------------------------------------------------------
+{
+  CHECK_EXIT=0
+  real_out="$(bash "$SCRIPT_UNDER_TEST" 2>&1)" || CHECK_EXIT=$?
+  if [ "$CHECK_EXIT" -eq 0 ] && echo "$real_out" | grep -qF "OK: all"; then
+    echo "PASS  case-l: the real repository and the real printer pass (exit 0)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-l: expected exit 0 on the real repository, got $CHECK_EXIT"
+    echo "      actual output: $real_out"
+    fail=$((fail + 1))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Case m — Fail-closed: the printer's own vacuity guard (exit 1, nothing on
+#          stdout) → exit 2, never a vacuous forward pass.
+# ---------------------------------------------------------------------------
+{
+  repo="$(mktemp -d "$TMP_ROOT/repo.XXXXXX")"
+  make_printer_exiting_1 "$repo"
+  make_settings "$repo" ${MAIN_ENROLLED[@]+"${MAIN_ENROLLED[@]}"}
+
+  run_check "$repo"
+
+  if [ "$CHECK_EXIT" -eq 2 ]; then
+    echo "PASS  case-m: an empty declaration (printer exit 1) fails closed (exit 2)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL  case-m: expected exit 2, got $CHECK_EXIT"
     echo "      actual stderr: $CHECK_STDERR"
     fail=$((fail + 1))
   fi

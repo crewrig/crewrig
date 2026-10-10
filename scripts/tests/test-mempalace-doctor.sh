@@ -864,16 +864,38 @@ check_names_wrapper() {
   fi
 }
 
-check_names_wrapper "setup-claude-interactive.sh" \
-  "$REPO_DIR/scripts/setup-claude-interactive.sh" 1
-check_names_wrapper "setup-antigravity-interactive.sh" \
-  "$REPO_DIR/scripts/setup-antigravity-interactive.sh" 1
-check_names_wrapper "setup-gemini-interactive.sh (path lives in its template)" \
-  "$REPO_DIR/scripts/setup-gemini-interactive.sh" 0
+# Retargeted (spec 0256 R9, PR D1): where each CLI's launch path lives is read from the DECLARATION of
+# each setup (`mcp.wrapper-script`, `mcp.wrapper-carrier`: `setup` when the setup itself names the
+# wrapper, else the repository-relative committed template that carries it), not from a count of
+# the wrapper reference in the setup text — after the switch (PR E) the shell setups are shims that
+# name it 0 times, so a text count of them would fail on a correct tree. Pinned against the unchanged
+# shell by scripts/tests/setup-retarget-others.test.ts ("the launcher path per CLI": the shell setup
+# names the wrapper once iff the declaration says `setup`) and the golden cell `default-answers` of
+# the four setup-golden suites (the registered launcher path). The carrier FILES are not setup text:
+# their count is still read from the file.
+decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1"; }
+check_declared_launcher() {
+  local cli="$1" want_carrier="$2" declared script carrier
+  declared="$(decl "$cli")" || declared=""
+  if [ -z "$declared" ]; then bad "$cli: empty declaration (vacuity guard)"; return; fi
+  script="$(printf '%s\n' "$declared" | grep '^mcp\.wrapper-script=' | head -1 | cut -d= -f2-)"
+  carrier="$(printf '%s\n' "$declared" | grep '^mcp\.wrapper-carrier=' | head -1 | cut -d= -f2-)"
+  case "$script" in
+    *"/$wrapper_ref") ok "$cli declares the wrapper $wrapper_ref as its launcher" ;;
+    *) bad "$cli declares launcher '${script:-<absent>}', expected one ending in /$wrapper_ref" ;;
+  esac
+  if [ "$carrier" = "$want_carrier" ]; then
+    ok "$cli declares its launcher carrier: $carrier"
+  else
+    bad "$cli declares carrier '${carrier:-<absent>}', expected '$want_carrier'"
+  fi
+}
+check_declared_launcher claude      setup
+check_declared_launcher antigravity setup
+check_declared_launcher gemini      config/gemini/settings.json
+check_declared_launcher copilot     config/copilot/mcp-config.json.template
 check_names_wrapper "config/gemini/settings.json (Gemini's carrier)" \
   "$REPO_DIR/config/gemini/settings.json" 1
-check_names_wrapper "setup-copilot-interactive.sh (path lives in its template)" \
-  "$REPO_DIR/scripts/setup-copilot-interactive.sh" 0
 check_names_wrapper "config/copilot/mcp-config.json.template (Copilot's carrier)" \
   "$REPO_DIR/config/copilot/mcp-config.json.template" 1
 

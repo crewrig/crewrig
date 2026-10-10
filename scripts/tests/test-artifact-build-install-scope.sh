@@ -20,8 +20,8 @@
 #     setup-claude-interactive.sh and calling it against a temp HOME. This
 #     tests the production code path, not a re-implementation.
 #   * The opt-in *gate* (fzf-driven) is not directly callable; its invariant
-#     contract is verified structurally (see the gate test + the gap note at
-#     the foot of this file).
+#     contract is read from the TypeScript setup declaration (see the gate
+#     test + the gap note at the foot of this file).
 #
 # Hermetic: every artifact lives under a mktemp -d work area removed on EXIT.
 # After this script runs, `git status --porcelain` MUST stay empty.
@@ -31,6 +31,8 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD="$REPO_DIR/scripts/build-components.sh"
 CLAUDE_SETUP="$REPO_DIR/scripts/setup-claude-interactive.sh"
+# The setup DECLARATION printer (resolved now: REPO_DIR is repointed to a synthetic root below).
+PRINT_DECL="$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts"
 
 WORK="$(mktemp -d -t crewrig-0019.XXXXXX)"
 cleanup() { rm -rf "$WORK"; }
@@ -178,7 +180,8 @@ mkdir -p "$HOME_ROOT"
 REPO_DIR="$SCEN_ROOT"
 export REPO_DIR CLAUDE_SKILLS_HOME CLAUDE_AGENTS_HOME
 
-# Bring the production function into scope.
+# Bring the production function into scope. (D2, static reads of behaviour: this extraction of the
+# function body from the shell text is retargeted in PR D2, not here.)
 load_real_install_fn "$CLAUDE_SETUP"
 
 # spec 0201 (R10-R13) — pre-seed a stale per-agent directory from the retired
@@ -260,40 +263,54 @@ ok="true"; detail=""
 report "Install into a HOME with no stale directory is a clean no-op re-install, exit 0 (R11 no-op clause)" "$ok" "$detail"
 
 # =====================================================================
-# Opt-in gate invariant (structural) — the fzf-driven decision cannot be
-# called headless, so we pin the contract that gates the install calls:
-#   * library is installed unconditionally (no fzf gate above its call);
-#   * community and org install calls live inside the opt-in `if` block.
-# A regression that auto-installs community/org, or that gates library
-# behind a prompt, would break one of these greps.
+# Opt-in gate invariant (declaration) — the fzf-driven decision cannot be
+# called headless, so we pin the contract that gates the install calls, read
+# from the TypeScript setup DECLARATION (spec 0256 requirement 9, PR D1;
+# scripts/tests/lib/print-setup-declarations.ts), no longer from the shell text:
+#   * library is the ONLY automatic tier (`tiers.automatic=library`);
+#   * community and org are the opt-in overlay tiers (`tiers.overlay`), each
+#     behind a yes/no prompt (`tiers.overlay-prompts` names them, and the
+#     `prompt.overlay.<tier>.options` fact is the no,yes choice).
+# A regression that auto-installs community/org, or that gates library behind a
+# prompt, changes one of these facts. Pin against the unchanged shell while it
+# exists: the setup-golden cells <cli>/overlay-yes and <cli>/overlay-no (the
+# real script run with the opt-in accepted and declined: org/community land in
+# the home only in -yes). Vacuity guard: an empty declaration, or an absent
+# fact, fails the case.
 # =====================================================================
-ok="true"; detail=""
-# library install is not guarded by an INSTALL_OVERLAY / fzf decision.
-grep -Eq '^install_tier_to_home library$' "$CLAUDE_SETUP" \
-  || { ok="false"; detail="library is no longer installed unconditionally"; }
-# community + org are iterated as opt-in overlay tiers.
-grep -Eq 'for overlay_tier in community org' "$CLAUDE_SETUP" \
-  || { ok="false"; detail="community/org are no longer the opt-in overlay tiers"; }
-# the overlay install call sits behind a yes/no decision.
-grep -Eq 'if \[ "\$INSTALL_OVERLAY" = "yes" \]' "$CLAUDE_SETUP" \
-  || { ok="false"; detail="overlay install is no longer gated by an opt-in decision"; }
-# and crucially: community/org are NEVER installed unconditionally. The only
-# legitimate install call for them is the gated `install_tier_to_home
-# "$overlay_tier"`. A literal `install_tier_to_home community|org` line is an
-# auto-install regression — exactly the scope violation R7/R8 forbid.
-if grep -Eq '^[[:space:]]*install_tier_to_home (community|org)[[:space:]]*$' "$CLAUDE_SETUP"; then
-  ok="false"; detail="community/org are installed unconditionally (R7/R8 scope violation)"
-fi
+read_decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$PRINT_DECL" "$1" 2>/dev/null; }
+decl_fact() { printf '%s\n' "$1" | grep "^$2=" | head -1 | cut -d= -f2-; }
+
+# gate_shape_detail <declaration> — empty when the gate shape holds, else why not.
+gate_shape_detail() {
+  local decl="$1" automatic overlay prompts tier
+  [ -n "$decl" ] || { echo "the setup declaration printed nothing (vacuity guard)"; return; }
+  automatic="$(decl_fact "$decl" tiers.automatic)"
+  overlay="$(decl_fact "$decl" tiers.overlay)"
+  prompts="$(decl_fact "$decl" tiers.overlay-prompts)"
+  [ -n "$automatic" ] && [ -n "$overlay" ] && [ -n "$prompts" ] \
+    || { echo "a tier fact is absent (automatic='$automatic' overlay='$overlay' prompts='$prompts')"; return; }
+  [ "$automatic" = "library" ] \
+    || { echo "the automatic tiers are '$automatic', not library alone (R7/R8 scope violation if community/org)"; return; }
+  [ "$overlay" = "community,org" ] \
+    || { echo "community/org are no longer the opt-in overlay tiers (got '$overlay')"; return; }
+  for tier in community org; do
+    case ",$prompts," in *",overlay.$tier,"*) ;; *) echo "overlay $tier is no longer gated by an opt-in prompt"; return ;; esac
+    [ "$(decl_fact "$decl" "prompt.overlay.$tier.options")" = "no,yes" ] \
+      || { echo "overlay $tier prompt is not a no,yes decision"; return; }
+  done
+}
+
+ok="true"; detail="$(gate_shape_detail "$(read_decl claude)")"
+[ -z "$detail" ] || ok="false"
 report "Opt-in gate invariant: library auto, community/org gated (claude)" "$ok" "$detail"
 
-# Parity guard — the same gate shape exists in the Gemini and Copilot setups,
+# Parity guard — the same gate shape is declared by the Gemini and Copilot setups,
 # so the scope contract is not silently claude-only.
-# REPO_DIR was overwritten to the synthetic root above; restore the real one.
-REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 ok="true"; detail=""
-for s in setup-gemini-interactive.sh setup-copilot-interactive.sh; do
-  grep -Eq 'for overlay_tier in community org' "$REPO_DIR/scripts/$s" \
-    || { ok="false"; detail="$s lost the community/org opt-in overlay loop"; }
+for cli in gemini copilot; do
+  d="$(gate_shape_detail "$(read_decl "$cli")")"
+  [ -z "$d" ] || { ok="false"; detail="${detail}${detail:+$'\n'}$cli: $d"; }
 done
 report "Opt-in gate invariant: gemini + copilot share the gate shape" "$ok" "$detail"
 

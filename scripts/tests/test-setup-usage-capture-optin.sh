@@ -182,6 +182,24 @@ non_r5_event() {
 }
 setup_script() { echo "$REPO_DIR/scripts/setup-$1-interactive.sh"; }
 
+# --- declaration reads (spec 0256 requirement 9, PR D1) ---------------------
+# The structure of the three setups (the order of their steps, the prompts of the
+# session-recording and usage-capture steps, their options) is read from the DECLARATION
+# of the TypeScript setup, not from the text of the shells. The printer exits 1 with nothing
+# on stdout on an empty descriptor: that, and an absent fact, fail the suite (vacuity guard).
+PRINT_DECL=(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts")
+# decl_of <cli> — the declaration on stdout, status 1 when vacuous.
+decl_of() {
+  local out
+  out="$("${PRINT_DECL[@]+"${PRINT_DECL[@]}"}" "$1" 2>/dev/null)" || return 1
+  [ -n "$out" ] || return 1
+  printf '%s\n' "$out"
+}
+# fact_of <declaration> <key> — the value of `<key>=...` (empty when absent).
+fact_of() { printf '%s\n' "$1" | grep -m1 "^$2=" | cut -d= -f2-; }
+# step_no <declaration> <step id> — the 1-based position of a step (empty when absent).
+step_no() { printf '%s\n' "$1" | grep -m1 -E "^step [0-9]+: $2\$" | sed -E 's/^step ([0-9]+):.*/\1/'; }
+
 # --- test-owned jq oracle ---------------------------------------------------
 # `handlers` flattens both shapes into {e: event, s: selector, h: handler}:
 # grouped (claude/gemini, `.hooks[E][] = {selector…, hooks:[h…]}`) and flat
@@ -391,13 +409,13 @@ done
 # ---------------------------------------------------------------------------
 echo "§2 session recording no longer registers capture (R2)"
 
-# transcript_block <setup> — from `ENABLE_TRANSCRIPTS=` to its top-level `fi`,
-# comment lines dropped.
-transcript_block() {
-  awk '/^ENABLE_TRANSCRIPTS=/ {on=1} on {print} on && /^fi([[:space:];#]|$)/ {exit}' "$1" \
-    | grep -vE '^[[:space:]]*#'
-}
-R2_CAPTURE_RE='usage-capture\.sh|CAPTURE_ABS|usage_capture_(enable|fragment|abs|apply|keep)'
+# Retargeted (spec 0256 requirement 9, PR D1): the session-recording step is read from the
+# declaration — it asks exactly its own two prompts and none of the usage-capture ones, and it
+# runs before the usage-capture step. Pin of "the session-recording block names no capture
+# command" against the unchanged shell: the golden cells setup-golden/<cli>/transcript-optin-yes
+# and usage-capture-absent-no (the settings file the whole run writes carries no capture handler
+# when only session recording was accepted; any capture command registered by the session
+# recording would change the golden bytes).
 for cli in $CLIS; do
   manifest="$REPO_DIR/hooks/$cli-transcript-hooks.json"
   if grep -q 'usage-capture\.sh' "$manifest"; then
@@ -405,15 +423,22 @@ for cli in $CLIS; do
   else
     ok "hooks/$cli-transcript-hooks.json names no usage-capture.sh"
   fi
-  block="$(transcript_block "$(setup_script "$cli")")"
-  if [ -z "$block" ]; then
-    bad "setup-$cli-interactive.sh: no session-recording block found (ENABLE_TRANSCRIPTS= at column 0)"
-  # R2 forbids naming the capture COMMAND (its script, its path, or a helper
-  # that builds or registers it). Prose naming the feature is allowed (i1-F7).
-  elif grep -qE "$R2_CAPTURE_RE" <<< "$block"; then
-    bad "setup-$cli-interactive.sh: the session-recording block still names the capture command: $(grep -nE "$R2_CAPTURE_RE" <<< "$block" | head -3 | tr '\n' ' ')"
+  decl="$(decl_of "$cli")" || { bad "$cli: the declaration printer failed (vacuous)"; continue; }
+  rec_prompts="$(fact_of "$decl" prompts.session-recording)"
+  uc_prompts="$(fact_of "$decl" prompts.usage-capture)"
+  rec_no="$(step_no "$decl" session-recording)"
+  uc_no="$(step_no "$decl" usage-capture)"
+  if [ -z "$rec_prompts" ] || [ -z "$uc_prompts" ] || [ -z "$rec_no" ] || [ -z "$uc_no" ]; then
+    bad "$cli: the declaration lacks the session-recording or usage-capture step/prompts (vacuous)"
+  # R2 forbids the session-recording step from owning the capture question or command.
+  elif [ "$rec_prompts" != "transcripts,transcripts-confirm" ] || grep -q 'usage' <<< "$rec_prompts"; then
+    bad "$cli: the session-recording step declares prompts '$rec_prompts' (want only transcripts,transcripts-confirm)"
+  elif [ "$uc_prompts" != "usage-capture,usage-capture-keep" ]; then
+    bad "$cli: the usage-capture step declares prompts '$uc_prompts'"
+  elif [ "$rec_no" -ge "$uc_no" ]; then
+    bad "$cli: session recording (step $rec_no) must run before usage capture (step $uc_no)"
   else
-    ok "setup-$cli-interactive.sh: the session-recording block names neither the capture script, CAPTURE_ABS, nor a helper that registers it"
+    ok "$cli: the declared session-recording step (step $rec_no) owns only its own prompts; the capture prompts belong to the later usage-capture step (step $uc_no)"
   fi
 done
 
@@ -1573,104 +1598,70 @@ done
 # ---------------------------------------------------------------------------
 echo "§4 setup structure (R1, R4, R10, R15)"
 
-# joined <file> — "<last line no>:<logical line>", backslash continuations
-# joined, so a guard on a continuation line still counts.
-joined() {
-  awk '{ if (sub(/\\$/, "")) { buf = buf $0; next } print NR ":" buf $0; buf = "" }' "$1"
-}
-first_line_no() { grep -nE "$2" "$1" | head -1 | cut -d: -f1; }
-
+# Retargeted (spec 0256 requirement 9, PR D1). Read from the declaration: the two prompts and
+# their options (the enable question starts at `no`, the keep question at `keep`), that they come
+# after the session-recording step (R1), and that session recording writes the hooks file of its
+# own channel. Pin against the unchanged shell: the golden cells
+# setup-golden/<cli>/usage-capture-{absent-yes,absent-no,installed-keep,installed-remove} (the
+# state x answer matrix of the whole run, per CLI) and the golden cells transcript-optin-*.
+#
+# RETIRED as shell-syntax checks (replaced in D2 by the behavioural "a step failure does not abort
+# setup" and the state x answer goldens above): (1) the capture block is not nested in an `if`
+# opened after the session-recording block; (2) the block is not gated on MEMPALACE_INSTALLED (R3);
+# (3) the two capture prompts and the two session-recording prompts carry `|| true` (cancel must
+# not abort under set -e); (4) the raw answer variable reaches usage_capture_apply; (5) every
+# usage_capture_* / merge_session_recording_hooks call site is guarded by `||` or an `if`.
 for cli in $CLIS; do
-  S="$(setup_script "$cli")"
   name="setup-$cli-interactive.sh"
-  tstart="$(first_line_no "$S" '^ENABLE_TRANSCRIPTS=')"
-  tend="$(awk -v s="${tstart:-0}" 'NR > s && /^fi([[:space:];#]|$)/ {print NR; exit}' "$S")"
-  if [ -z "$tstart" ] || [ -z "$tend" ]; then
-    bad "$name: session-recording block not found"
+  decl="$(decl_of "$cli")" || { bad "$cli: the declaration printer failed (vacuous)"; continue; }
+  rec_no="$(step_no "$decl" session-recording)"
+  uc_no="$(step_no "$decl" usage-capture)"
+  enable_opts="$(fact_of "$decl" prompt.usage-capture.options)"
+  keep_opts="$(fact_of "$decl" prompt.usage-capture-keep.options)"
+  enable_hdr="$(fact_of "$decl" prompt.usage-capture.header)"
+  keep_hdr="$(fact_of "$decl" prompt.usage-capture-keep.header)"
+  hooks_src="$(fact_of "$decl" hooks.src)"
+  if [ -z "$rec_no" ] || [ -z "$uc_no" ] || [ -z "$enable_opts" ] || [ -z "$keep_opts" ]; then
+    bad "$cli: the declaration lacks the usage-capture prompts or steps (vacuous): rec=$rec_no uc=$uc_no enable=$enable_opts keep=$keep_opts"
     continue
   fi
 
+  # R1: the question sits after the session-recording block, outside it.
+  if [ "$uc_no" -gt "$rec_no" ]; then
+    ok "$cli: the declared enable and keep prompts (usage-capture, step $uc_no) come after the session-recording step (step $rec_no)"
+  else
+    bad "$cli: usage-capture (step $uc_no) is not after session-recording (step $rec_no)"
+  fi
+  # The enable prompt's first option is `no` (opt-in, the default is a decline); the keep prompt's is `keep`.
+  if [ "${enable_opts%%,*}" = "no" ] && [ "$enable_opts" = "no,yes" ]; then
+    ok "$cli: the declared enable prompt offers '$enable_opts' (starts at no)"
+  else
+    bad "$cli: the declared enable prompt offers '$enable_opts', want no,yes"
+  fi
+  if [ "$keep_opts" = "keep,remove" ]; then
+    ok "$cli: the declared keep prompt offers '$keep_opts' (starts at keep)"
+  else
+    bad "$cli: the declared keep prompt offers '$keep_opts', want keep,remove"
+  fi
+  if grep -qi 'usage' <<< "$enable_hdr" && grep -qi 'usage' <<< "$keep_hdr"; then
+    ok "$cli: both declared capture prompts have a header naming the usage capture"
+  else
+    bad "$cli: a declared capture prompt header does not name the usage capture (enable='$enable_hdr' keep='$keep_hdr')"
+  fi
+  if [ "$hooks_src" = "<REPO>/hooks/$cli-transcript-hooks.json" ]; then
+    ok "$cli: session recording is declared to merge hooks/$cli-transcript-hooks.json"
+  else
+    bad "$cli: the declared hooks source is '$hooks_src'"
+  fi
+
+  # Shell-only (no declaration fact; stays text until the shell is a shim): the library is sourced
+  # and never copied (the golden trees pin the copy side: no usage-capture.sh under any CLI home).
+  S="$(setup_script "$cli")"
   if grep -qE 'source[^#]*scripts/lib/usage-capture-optin\.sh' "$S"; then
     ok "$name sources scripts/lib/usage-capture-optin.sh"
   else
     bad "$name does not source scripts/lib/usage-capture-optin.sh"
   fi
-
-  enable_ln="$(grep -nE 'fzf' "$S" | grep -E "(printf|echo -e|echo)[[:space:]]+['\"]no\\\\nyes" | awk -F: -v e="$tend" '$1 > e {print $1; exit}')"
-  keep_ln="$(grep -nE 'fzf' "$S" | grep -E "(printf|echo -e|echo)[[:space:]]+['\"]keep\\\\nremove" | awk -F: -v e="$tend" '$1 > e {print $1; exit}')"
-  state_ln="$(grep -nE 'usage_capture_state' "$S" | grep -vE '^[0-9]+:[[:space:]]*#' | head -1 | cut -d: -f1)"
-  apply_lns="$(grep -nE 'usage_capture_apply' "$S" | grep -vE '^[0-9]+:[[:space:]]*#' | cut -d: -f1)"
-  last_apply="$(printf '%s\n' $apply_lns | tail -1)"
-
-  # R1: the question sits after the session-recording block, outside it.
-  if [ -n "$enable_ln" ] && [ -n "$keep_ln" ] && [ -n "$state_ln" ] && [ "$state_ln" -gt "$tend" ]; then
-    ok "$name: the enable prompt (input starts 'no', l. $enable_ln) and the keep prompt (input starts 'keep', l. $keep_ln) come after the session-recording block's closing fi (l. $tend)"
-  else
-    bad "$name: capture prompts not found after l. $tend (enable=$enable_ln keep=$keep_ln state=$state_ln)"
-    continue
-  fi
-  open_ifs="$(sed -n "$((tend + 1)),$((state_ln - 1))p" "$S" | grep -vE '^[[:space:]]*#' | grep -cE '^[[:space:]]*if[[:space:]]')"
-  closed_ifs="$(sed -n "$((tend + 1)),$((state_ln - 1))p" "$S" | grep -vE '^[[:space:]]*#' | grep -cE '^[[:space:]]*fi([[:space:];#]|$)')"
-  if [ "$open_ifs" = "$closed_ifs" ]; then
-    ok "$name: the capture block starts at top level (no enclosing if)"
-  else
-    bad "$name: the capture block is nested in an if opened between l. $tend and l. $state_ln"
-  fi
-  if sed -n "$((tend + 1)),${last_apply:-$state_ln}p" "$S" | grep -q 'MEMPALACE_INSTALLED'; then
-    bad "$name: the capture block is gated on MEMPALACE_INSTALLED (R3)"
-  else
-    ok "$name: the capture block is not gated on MEMPALACE_INSTALLED (R3)"
-  fi
-
-  # Cancel (Esc -> fzf 130) must not abort setup under set -e.
-  for ln in "$enable_ln" "$keep_ln"; do
-    if sed -n "${ln}p" "$S" | grep -q '|| true'; then
-      ok "$name: the capture prompt at l. $ln carries || true"
-    else
-      bad "$name: the capture prompt at l. $ln lacks || true"
-    fi
-  done
-  if [ "$cli" = "copilot" ]; then confirm_var="CONFIRM"; else confirm_var="CONFIRM_TRANSCRIPTS"; fi
-  for var in ENABLE_TRANSCRIPTS "$confirm_var"; do
-    line="$(grep -E "^[[:space:]]*$var=.*fzf" "$S" | head -1)"
-    if [ -n "$line" ] && grep -q '|| true' <<< "$line"; then
-      ok "$name: the session-recording prompt $var carries || true"
-    else
-      bad "$name: the session-recording prompt $var lacks || true (got: $line)"
-    fi
-  done
-
-  # The raw answer reaches usage_capture_apply.
-  for ln in "$enable_ln" "$keep_ln"; do
-    var="$(sed -n "${ln}p" "$S" | sed -nE 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=.*/\1/p')"
-    reached=""
-    for aln in $apply_lns; do
-      if [ "$aln" -gt "$ln" ] && sed -n "${aln}p" "$S" | grep -qE "\"\\\$\\{?$var\\}?\""; then reached=1; fi
-    done
-    if [ -n "$var" ] && [ -n "$reached" ]; then
-      ok "$name: the answer \$$var (l. $ln) reaches usage_capture_apply"
-    else
-      bad "$name: the answer at l. $ln ('$var') does not reach usage_capture_apply"
-    fi
-  done
-
-  # No unguarded library call under set -e.
-  calls="$(joined "$S" | grep -E '(usage_capture_[a-z_]+|merge_session_recording_hooks)' \
-                        | grep -vE '^[0-9]+:[[:space:]]*#')"
-  unguarded="$(grep -vE '\|\||^[0-9]+:[[:space:]]*(if|elif)[[:space:]]' <<< "$calls")"
-  n_calls="$(grep -c . <<< "$calls")"
-  if [ -n "$calls" ] && [ -z "$unguarded" ]; then
-    ok "$name: all $n_calls library call site(s) are guarded (||, or an if condition)"
-  else
-    bad "$name: unguarded library call(s): $(tr '\n' ' ' <<< "$unguarded")"
-  fi
-  if grep -qE 'merge_session_recording_hooks[[:space:]]+'"$cli" <<< "$calls"; then
-    ok "$name: session recording writes through merge_session_recording_hooks $cli"
-  else
-    bad "$name: no merge_session_recording_hooks $cli call"
-  fi
-
-  # Never-copied invariant (moved from the transcript suites, v1-F6).
   if grep -qE 'install_file[^#]*usage-capture\.sh' "$S"; then
     bad "$name install_file's usage-capture.sh — it must be wired by in-repo absolute path"
   else
@@ -1690,18 +1681,28 @@ done
 # capture included, survives on its own. The setup carries nothing over: it
 # calls neither footprint nor reinject, and its settings write precedes the
 # usage-capture step, which therefore reads the merged file.
+# Retargeted (spec 0256 requirement 9, PR D1): the ORDER is read from the declaration (the `mcp`
+# step, whose declared sub-step is the settings write, runs before `usage-capture`). Pin against
+# the unchanged shell: scripts/tests/setup-retarget-usage-order.test.ts (reads the shell line
+# order AND the declaration) and the golden cells gemini/usage-capture-installed-keep/-remove (the
+# capture entry survives the settings write). The "no footprint/reinject call" check has no
+# declaration fact and stays shell text.
 S="$(setup_script gemini)"
 if grep -vE '^[[:space:]]*#' "$S" | grep -qE 'usage_capture_(footprint|reinject)'; then
   bad "setup-gemini: still calls usage_capture_footprint or usage_capture_reinject"
 else
   ok "setup-gemini: calls neither usage_capture_footprint nor usage_capture_reinject"
 fi
-gsw_ln="$(grep -nE '^[[:space:]]*gemini_settings_write[[:space:]]' "$S" | head -1 | cut -d: -f1)"
-ucs_ln="$(grep -nE 'usage_capture_state[[:space:]]+gemini' "$S" | grep -vE '^[0-9]+:[[:space:]]*#' | head -1 | cut -d: -f1)"
-if [ -n "$gsw_ln" ] && [ -n "$ucs_ln" ] && [ "$gsw_ln" -lt "$ucs_ln" ]; then
-  ok "setup-gemini: the settings write (l. $gsw_ln) precedes the usage-capture step (l. $ucs_ln)"
+gdecl="$(decl_of gemini)" || gdecl=""
+g_mcp="$(step_no "$gdecl" mcp)"
+g_uc="$(step_no "$gdecl" usage-capture)"
+g_subs="$(fact_of "$gdecl" substeps.mcp)"
+if [ -z "$g_mcp" ] || [ -z "$g_uc" ] || ! grep -qx 'gemini-settings-write' <<< "${g_subs//,/$'\n'}"; then
+  bad "setup-gemini: the declaration lacks the mcp step, the usage-capture step or the settings-write sub-step (vacuous): mcp=$g_mcp uc=$g_uc subs=$g_subs"
+elif [ "$g_mcp" -lt "$g_uc" ]; then
+  ok "setup-gemini: the declared settings write (sub-step of step $g_mcp) precedes the usage-capture step (step $g_uc)"
 else
-  bad "setup-gemini: settings write l. $gsw_ln does not precede the usage-capture step l. $ucs_ln"
+  bad "setup-gemini: the settings-write step $g_mcp does not precede the usage-capture step $g_uc"
 fi
 
 # ---------------------------------------------------------------------------

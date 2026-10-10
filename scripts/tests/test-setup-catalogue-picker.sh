@@ -39,8 +39,6 @@ set -uo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 COMMON_LIB="$REPO_DIR/scripts/lib/common.sh"
 SETUP_DIR="$REPO_DIR/scripts"
-SETUP_SCRIPTS=(setup-claude-interactive.sh setup-gemini-interactive.sh \
-               setup-copilot-interactive.sh setup-antigravity-interactive.sh)
 
 if [ ! -f "$COMMON_LIB" ]; then
   echo "FATAL: missing $COMMON_LIB" >&2
@@ -165,47 +163,61 @@ extract_selection_block() {
   ' "$script"
 }
 
-for s in ${SETUP_SCRIPTS[@]+"${SETUP_SCRIPTS[@]}"}; do
-  path="$SETUP_DIR/$s"
-  if [ ! -f "$path" ]; then
-    bad "$s: script not found at $path"
+# Retargeted (spec 0256 requirement 9, PR D1): the structure of the selection step is read
+# from the DECLARATION of each TypeScript setup, not from the text of the four shells.
+#   - the helper and the categories: the `rules-selection` step offers a `catalogue.<category>`
+#     prompt per category, each over a catalogue directory (`<config/...>` options);
+#   - R5/R6 "no remaining exit 1": a skipped or declined pick is a decline (`cancel=decline`),
+#     never an abort;
+#   - R3 "a skip removes the stale marker": the step declares the marker of each category
+#     (`rules.marker.<category>`), which is the file the skip removes.
+# Pin of each property against the unchanged shell while it exists: the golden cell
+# setup-golden/<cli>/empty-catalogue-stale-markers (claude, gemini, copilot, antigravity: an empty
+# catalogue with stale markers on disk ends with the markers removed and the run completing) and
+# scripts/tests/setup-retarget-catalogue-picker.test.ts (reads the shell blocks AND the declaration
+# and asserts they agree; retired with the shell). The functional smoke (section 5) stays an
+# executed block (D2).
+PRINT_DECL=(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts")
+for cli in claude gemini copilot antigravity; do
+  decl="$("${PRINT_DECL[@]+"${PRINT_DECL[@]}"}" "$cli" 2>/dev/null)" || decl=""
+  if [ -z "$decl" ]; then
+    bad "$cli: the declaration printer failed or printed nothing (vacuous)"
     continue
   fi
-
-  if [ "$s" = "setup-copilot-interactive.sh" ]; then
-    # Copilot orders level -> expertise -> team and nests one level deeper
-    # (spec 0096 explicitly preserves this pre-existing ordering/indent).
-    block="$(extract_selection_block "$path" "  # Level" "  # Team")"
-    block="$block
-$(extract_selection_block "$path" "  # Team" "fi")"
-  else
-    block="$(extract_selection_block "$path" "# --- Team selection ---" "# --- Profile handling ---")"
-  fi
-
-  if [ -z "$block" ]; then
-    bad "$s: could not extract the team/expertise/level selection block"
+  order="$(grep '^rules\.pick-order=' <<< "$decl" | cut -d= -f2-)"
+  if [ -z "$order" ]; then
+    bad "$cli: the declaration carries no rules.pick-order fact (vacuous)"
     continue
   fi
-
-  if grep -qE '^\s*exit 1\s*$' <<< "$block"; then
-    bad "$s: a bare 'exit 1' remains inside the selection block"
+  if grep -qx 'step [0-9]*: rules-selection' <<< "$decl"; then
+    ok "$cli: the declaration has a rules-selection step"
   else
-    ok "$s: zero remaining 'exit 1' inside the selection block"
+    bad "$cli: the declaration has no rules-selection step"
+  fi
+  if [ "$(printf '%s\n' "$order" | tr ',' '\n' | sort | tr '\n' ',')" = "expertise,level,team," ]; then
+    ok "$cli: the selection step covers the three categories (order: $order)"
+  else
+    bad "$cli: the selection step does not cover team/expertise/level exactly once (got: $order)"
   fi
 
   for category in team expertise level; do
-    if grep -qE "rm -f \"[^\"]*\.selected_${category}\"" <<< "$block"; then
-      ok "$s: $category skip branch removes the stale .selected_$category marker"
+    cancel="$(printf '%s\n' "$decl" | grep "^prompt\.catalogue\.$category\.cancel=" | cut -d= -f2-)"
+    options="$(printf '%s\n' "$decl" | grep "^prompt\.catalogue\.$category\.options=" | cut -d= -f2-)"
+    marker="$(printf '%s\n' "$decl" | grep "^rules\.marker\.$category=" | cut -d= -f2-)"
+    if [ "$cancel" = "decline" ]; then
+      ok "$cli: the $category pick is a decline on cancel or empty (no abort)"
     else
-      bad "$s: no 'rm -f .../.selected_$category' found on the $category skip branch"
+      bad "$cli: the $category pick cancel behaviour is '$cancel', expected 'decline'"
     fi
+    case "$options" in
+      "<config/"*">") ok "$cli: the $category pick reads a catalogue directory ($options)" ;;
+      *) bad "$cli: the $category pick has no catalogue-directory options (got: '$options')" ;;
+    esac
+    case "$marker" in
+      */.selected_"$category") ok "$cli: the $category skip clears the declared stale marker (${marker##*/})" ;;
+      *) bad "$cli: the $category marker is '$marker', expected .../.selected_$category" ;;
+    esac
   done
-
-  if grep -q "pick_catalogue_entry" <<< "$block"; then
-    ok "$s: uses the shared pick_catalogue_entry helper"
-  else
-    bad "$s: does not call pick_catalogue_entry"
-  fi
 done
 
 # ---------------------------------------------------------------------------

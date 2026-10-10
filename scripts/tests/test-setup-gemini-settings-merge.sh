@@ -802,23 +802,41 @@ out_has "12c comment warning" "WARNING: $T $COMMENT_WARN"
 # ---------------------------------------------------------------------------
 echo "13. Setup wiring (R15, R16)"
 # ---------------------------------------------------------------------------
-# first_call <regex> — line number of the first non-comment line matching it.
-first_call() { grep -nE "$1" "$SETUP_SCRIPT" | grep -vE '^[0-9]+:[[:space:]]*#' | head -1 | cut -d: -f1; }
+# Retargeted (spec 0256 R9, PR D1): the ORDER of the setup is read from the DECLARATION of the Gemini
+# setup (the sub-step order of the `mcp` step and the step order), not from the line numbers of the
+# shell. Pinned against the unchanged shell by scripts/tests/setup-retarget-others.test.ts
+# ("gemini_settings_write precedes ...") and the golden cell `gemini-settings-merge` of the Gemini
+# setup-golden suite.
+decl() { node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$REPO_DIR/scripts/tests/lib/print-setup-declarations.ts" "$1"; }
+gem_decl="$(decl gemini)" || gem_decl=""
+gem_substeps="$(printf '%s\n' "$gem_decl" | grep '^substeps\.mcp=' | head -1 | cut -d= -f2-)"
+# step_no <id> — the run-order number of a declared step, empty when absent.
+step_no() { printf '%s\n' "$gem_decl" | grep -x "step [0-9]*: $1" | head -1 | sed -E 's/^step ([0-9]+):.*/\1/'; }
+sub_no() { printf '%s\n' "$gem_substeps" | tr ',' '\n' | grep -nx "$1" | head -1 | cut -d: -f1; }
 
-write_ln="$(first_call '^[[:space:]]*gemini_settings_write[[:space:]]')"
-http_ln="$(first_call '^[[:space:]]*ensure_mempalace_http[[:space:]]')"
-uc_ln="$(first_call 'usage_capture_state gemini')"
-session_ln="$(first_call 'merge_session_recording_hooks gemini')"
-if [ -z "$write_ln" ]; then
-  bad "13 setup does not call gemini_settings_write"
+write_no="$(sub_no gemini-settings-write)"
+http_no="$(sub_no ensure-mempalace-http)"
+mcp_no="$(step_no mcp)"
+uc_no="$(step_no usage-capture)"
+session_no="$(step_no session-recording)"
+if [ -z "$gem_decl" ] || [ -z "$gem_substeps" ]; then
+  bad "13 empty Gemini declaration (vacuity guard)"
+elif [ -z "$write_no" ]; then
+  bad "13 declaration does not run gemini_settings_write"
 else
-  for pair in "ensure_mempalace_http:$http_ln" "merge_session_recording_hooks:$session_ln" "usage_capture_state:$uc_ln"; do
+  if [ -n "$http_no" ] && [ "$write_no" -lt "$http_no" ]; then
+    ok "13 gemini-settings-write (#$write_no) precedes ensure-mempalace-http (#$http_no)"
+  else
+    bad "13 gemini-settings-write (#$write_no) must precede ensure-mempalace-http (#${http_no:-none})"
+  fi
+  # session recording (merge_session_recording_hooks) and usage capture are later STEPS than mcp.
+  for pair in "session-recording:$session_no" "usage-capture:$uc_no"; do
     name="${pair%%:*}"
-    ln="${pair#*:}"
-    if [ -n "$ln" ] && [ "$write_ln" -lt "$ln" ]; then
-      ok "13 gemini_settings_write (l$write_ln) precedes $name (l$ln)"
+    no="${pair#*:}"
+    if [ -n "$mcp_no" ] && [ -n "$no" ] && [ "$mcp_no" -lt "$no" ]; then
+      ok "13 the mcp step (#$mcp_no, gemini-settings-write) precedes the $name step (#$no)"
     else
-      bad "13 gemini_settings_write (l$write_ln) must precede $name (l${ln:-none})"
+      bad "13 the mcp step (#${mcp_no:-none}) must precede the $name step (#${no:-none})"
     fi
   done
 fi
