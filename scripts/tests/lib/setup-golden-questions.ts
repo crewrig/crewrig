@@ -16,7 +16,7 @@
 // it appears on neither side, and Copilot asks neither `link-confirm` nor `profile-method` (the
 // prompt inventory), so neither can appear on either side of a Copilot cell. An unmapped fzf
 // header is kept as `?<header>`: it can match nothing, so the cell fails instead of passing.
-// API: askedByShell(cli, fzfRecords), askedByTs(stdout), fzfOfTree(treeJson), QUESTIONS_FILE.
+// API: askedByShell(cli, fzfRecords), askedByTs(stdout), fzfOfTree(treeJson), ECHO, QUESTIONS_FILE.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -95,7 +95,12 @@ export function askedByShell(cli: Cli, records: readonly AskedRecord[]): readonl
   });
 }
 
-const ECHO = /^\[answer\] ([^=\n]+)=(.*)$/;
+/**
+ * The ONE echo expression: tag (f) of setup-golden-deviations.ts drops exactly the stdout lines it
+ * matches, and `askedByTs` counts exactly those lines, so a line that is dropped is always a
+ * question that was counted (finding review/1335 i1-F21).
+ */
+export const ECHO = /^\[answer\] ([^=\n]+)=(.*)$/;
 
 /** The `<id>=<value>` list of the `[answer]` echo lines of a TypeScript stdout, in order. */
 export function askedByTs(stdout: string): readonly string[] {

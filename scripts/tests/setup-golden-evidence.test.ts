@@ -160,7 +160,12 @@ describe("daemon probe: the curl records are compared, not exempted", () => {
 
   test("the records map onto the shell's curl records: real port shown as the fixtures' one, repeats collapsed", () => {
     const request = (bearer: "none" | "placeholder" | "real", p = "/mcp") =>
-      ({ method: "POST", path: p, host: "127.0.0.1:5555", bearer }) as const;
+      ({
+        method: p === "/mcp" ? "POST" : "GET",
+        path: p,
+        host: "127.0.0.1:5555",
+        bearer,
+      }) as const;
     assert.deepEqual(
       probeRecords(
         [request("real"), request("real"), request("none", "/healthz"), request("placeholder")],
@@ -172,5 +177,23 @@ describe("daemon probe: the curl records are compared, not exempted", () => {
         { url: "http://127.0.0.1:41893/mcp", bearer: "<PLACEHOLDER>" },
       ],
     );
+  });
+
+  test("a probe made with another method, or at another path, is refused (i1-F22)", () => {
+    const port = { actual: "5555", shown: "41893" };
+    const at = (method: string, path: string) =>
+      ({ method, path, host: "127.0.0.1:5555", bearer: "real" }) as const;
+    assert.deepEqual(probeRecords([at("GET", "/healthz"), at("POST", "/mcp")], port).length, 2);
+    for (const [method, path] of [
+      ["GET", "/mcp"],
+      ["POST", "/healthz"],
+      ["HEAD", "/healthz"],
+      ["POST", "/other"],
+    ] as const) {
+      assert.throws(
+        () => probeRecords([at(method, path)], port),
+        new RegExp(`unexpected daemon probe ${method} ${path}`),
+      );
+    }
   });
 });

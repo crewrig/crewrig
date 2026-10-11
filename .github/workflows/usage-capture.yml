@@ -46,6 +46,16 @@ on:
       - "docs/cli-matrix.md"
       - "package.json"
       - "package-lock.json"
+      - "scripts/setup-*-interactive.ts"
+      - "scripts/tests/setup-retarget-*.test.ts"
+      - "scripts/tests/lib/setup-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
+      - "scripts/tests/lib/real-home-guard.ts"
+      - "scripts/tests/lib/print-setup-declarations.ts"
+      - "scripts/tests/fixtures/setup-golden/**"
+      - "scripts/tests/fixtures/setup-declarations/**"
+      - "scripts/lib/**"
   push:
     branches: [main, "release/**"]
     paths:
@@ -91,6 +101,16 @@ on:
       - "docs/cli-matrix.md"
       - "package.json"
       - "package-lock.json"
+      - "scripts/setup-*-interactive.ts"
+      - "scripts/tests/setup-retarget-*.test.ts"
+      - "scripts/tests/lib/setup-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
+      - "scripts/tests/lib/real-home-guard.ts"
+      - "scripts/tests/lib/print-setup-declarations.ts"
+      - "scripts/tests/fixtures/setup-golden/**"
+      - "scripts/tests/fixtures/setup-declarations/**"
+      - "scripts/lib/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

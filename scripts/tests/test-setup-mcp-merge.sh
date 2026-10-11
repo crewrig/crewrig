@@ -69,19 +69,29 @@ bad() { echo "  FAIL: $1" >&2; fail=$((fail + 1)); }
 # Vacuity guard: the expected number of tests must have passed, none failed, none skipped.
 # The golden sandbox of the TypeScript setup needs these real tools on PATH and the repository's config/
 # tree; a hermetic PATH or a partial repository copy (the install oracle's) lacks them, and the group is
-# then skipped, not failed.
-ts_sandbox_tools_missing() {
+# then skipped off CI, but FAILED when CI is set and non-empty (GitHub Actions and GitLab CI set CI=true;
+# the install oracle's hermetic env scrubs it, which is exactly where the skip stays allowed): a missing
+# prerequisite in CI must never pass silently (i1-F24).
+# ts_sandbox_prereq_missing names the missing prerequisite in TS_MISSING and returns 0, or returns 1.
+ts_sandbox_prereq_missing() {
   local t
+  TS_MISSING=""
+  if [ "$(uname -s)" != "Linux" ]; then TS_MISSING="Linux (this host is $(uname -s))"; return 0; fi
   for t in jq git diff ls sort uniq tee touch stat realpath comm paste od expr dd tty mv rmdir tac rev hostname whoami; do
-    command -v "$t" >/dev/null 2>&1 || return 0
+    command -v "$t" >/dev/null 2>&1 || { TS_MISSING="the tool $t"; return 0; }
   done
+  if [ ! -d "${REPO_DIR:-.}/config" ]; then TS_MISSING="the config/ tree of the repository"; return 0; fi
   return 1
 }
 run_ts_behaviour() {
   unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
   local pattern="$1" label="$2" want="$3" out rc=0 n_pass n_fail n_skip
-  if [ "$(uname -s)" != "Linux" ] || ts_sandbox_tools_missing || [ ! -d "${REPO_DIR:-.}/config" ]; then
-    echo "  skip: $label (the TypeScript setup sandbox needs Linux and jq)"
+  if ts_sandbox_prereq_missing; then
+    if [ -n "${CI:-}" ]; then
+      bad "$label: the TypeScript setup sandbox cannot run on CI, missing prerequisite: $TS_MISSING"
+    else
+      echo "  skip: $label (the TypeScript setup sandbox needs $TS_MISSING)"
+    fi
     return 0
   fi
   out="$(cd "$REPO_DIR" && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \

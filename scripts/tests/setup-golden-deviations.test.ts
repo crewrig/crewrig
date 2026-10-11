@@ -73,6 +73,21 @@ describe("golden comparison: tagged deviations of the ts leg", () => {
     rejects("ts", ts({ stdout: `${shell.stdout}extra\n` }), /stdout\.golden/);
   });
 
+  test("an [answer] line the question sequence would not count is not dropped (i1-F21)", () => {
+    // Tag (f) drops exactly the `[answer] <id>=<value>` lines `askedByTs` counts: an `[answer]`
+    // line without `=` is neither counted nor dropped, so it shows as a stdout difference.
+    for (const stray of ["[answer] extra text", "[answer] =no id", "[answer]x=y"]) {
+      const text = shell.stdout.replace("line one", `${stray}\nline one`);
+      for (const leg of ["ts", "shell"]) {
+        assert.throws(
+          () => checkGolden(c, ts({ stdout: text }), leg, base),
+          /stdout\.golden/,
+          `${leg}: ${stray}`,
+        );
+      }
+    }
+  });
+
   test("a line merely containing [answer] (not starting with it) is not a deviation", () => {
     rejects("ts", ts({ stdout: `${shell.stdout}said [answer] x=y\n` }), /stdout\.golden/);
   });

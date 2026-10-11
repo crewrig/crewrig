@@ -42,14 +42,26 @@ export interface CaseResult {
   readonly curlRecords: readonly CurlRecord[];
 }
 
+/** The method each probe path is made with: the two requests the shell's stub `curl` stood for. */
+const PROBE_METHODS: Readonly<Record<string, string>> = { "/healthz": "GET", "/mcp": "POST" };
+
 /**
  * The requests the daemon stand-in received, as the `curl` records the shell stub wrote for the
  * same probe: the URL with the stand-in's real port shown as the fixtures' one, the bearer as
  * `<TOKEN>` (any real bearer), `<PLACEHOLDER>` or empty; a readiness poll that repeats the same
- * request keeps one record (as the shell side does).
+ * request keeps one record (as the shell side does). The shell's records carry no method, so the
+ * method is checked here instead of compared: the path implies it (`GET /healthz`, `POST /mcp`, the
+ * only two probes the stub `curl` stood for) and a request with another method or path throws
+ * (finding review/1335 i1-F22), instead of mapping onto a record that hides the difference.
  */
 export function probeRecords(requests: readonly DaemonRequest[], port: McpPortMap): CurlRecord[] {
   const bearers = { none: "", placeholder: "<PLACEHOLDER>", real: "<TOKEN>" } as const;
+  for (const r of requests) {
+    if (PROBE_METHODS[r.path] !== r.method)
+      throw new Error(
+        `unexpected daemon probe ${r.method} ${r.path} (expected GET /healthz or POST /mcp)`,
+      );
+  }
   return requests
     .map((r) => ({
       url: `http://${r.host.replace(`:${port.actual}`, `:${port.shown}`)}${r.path}`,
