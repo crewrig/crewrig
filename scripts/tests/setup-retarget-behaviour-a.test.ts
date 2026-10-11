@@ -15,7 +15,12 @@ import { describe, test } from "node:test";
 
 import { SETUP_DESCRIPTORS } from "./lib/print-setup-declarations.ts";
 import { declarationFacts } from "./lib/setup-declarations-facts.ts";
-import { OPERATOR, emptyCatalogues, home as seedHome } from "./lib/setup-golden-cases-pins-b2.ts";
+import {
+  OPERATOR,
+  emptyCatalogues,
+  home as seedHome,
+  orgManifest,
+} from "./lib/setup-golden-cases-pins-b2.ts";
 import { noMempalace } from "./lib/setup-golden-cases-spec-b2.ts";
 import { runSetupCase } from "./lib/setup-golden-run.ts";
 import type { Cli, GoldenCase } from "./lib/setup-golden-types.ts";
@@ -115,6 +120,44 @@ describe("mcp-merge: the operator's non-reserved server survives the real run", 
   }
 });
 
+// The operator's server is carried back by `mergePreexistingMcpServers` (mcp-json-writers.ts, called
+// by the Copilot and Antigravity writers) from the capture made before the overwrite; the org fold
+// (`applyOrgMcpServers`) receives the same capture as `preexisting` from the step file. The first
+// test above fails when the carry-back or the capture is wrong; this one fails when the step hands
+// the fold an empty `preexisting` (finding review/1335 i1-F28: the mutant `preexisting = new Map()`
+// of mcp-copilot-step.ts / mcp-agy-step.ts changes no written byte, only the collision warning).
+describe(
+  "org-fold: the fold knows the operator's captured servers (not matched by the Bash group patterns)",
+  { skip },
+  () => {
+    for (const cli of ["copilot", "antigravity"] as const) {
+      test(`${cli}: an org server named like the operator's overrides it, with the warning`, async () => {
+        const file = MCP_FILE[cli] ?? "";
+        const r = await live({
+          id: "org-collision-live",
+          cli,
+          note: "org server collides with the operator's",
+          seed: (sb) => {
+            seedHome(sb, file, `${JSON.stringify(OPERATOR, null, 2)}\n`);
+            orgManifest(sb);
+          },
+        });
+        assert.equal(r.status, 0, r.stderr);
+        assert.match(
+          r.stdout,
+          /WARNING: org-declared MCP server 'operator-tool' overrides your pre-existing 'operator-tool' entry/,
+          "the fold was given the operator's captured servers",
+        );
+        const written: unknown = JSON.parse(r.files.get(file) ?? "null");
+        const servers = (written as { mcpServers?: Record<string, { command?: string }> })
+          .mcpServers;
+        assert.equal(servers?.["operator-tool"]?.command, "org-wins", "org wins over the operator");
+        assert.ok(servers !== undefined && "org-stdio" in servers, "the other org server landed");
+      });
+    }
+  },
+);
+
 const CLIS: readonly Cli[] = ["claude", "gemini", "copilot", "antigravity"];
 
 // Pins: golden <cli>/empty-catalogue, <cli>/empty-catalogue-stale-markers, <cli>/declined-catalogue-pick
@@ -197,7 +240,13 @@ describe("usage-capture: enabled with MemPalace absent still runs (R3)", { skip 
         stubs: { mempalaceMissing: true, fzf: { [UC_HEADER[cli] ?? ""]: "yes" } },
         seed: noMempalace, // python3 and the pipx venv absent: the MemPalace layer is skipped
       });
-      assert.equal(r.status, 0, `${r.stdout.slice(-600)}\n${r.stderr}`);
+      // The premise: MemPalace really is absent in this sandbox. Without it the case would pass
+      // with MemPalace present too (finding review/1335 i1-F26); the setup prints both lines only
+      // when no interpreter is found and the install offer is declined.
+      const shown = `${r.stdout.slice(-600)}\n${r.stderr}`;
+      assert.match(r.stdout, /MemPalace not found\./, `MemPalace is not absent: ${shown}`);
+      assert.match(r.stdout, /MemPalace install skipped\./, `the offer was not declined: ${shown}`);
+      assert.equal(r.status, 0, shown);
       assert.match(r.files.get(target_) ?? "", /usage-capture\.ts/, `${target_} registers capture`);
       // wired by in-repo absolute path: no copy of usage-capture.sh under any CLI home.
       assert.deepEqual(

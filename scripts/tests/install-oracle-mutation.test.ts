@@ -167,6 +167,9 @@ function runSuite(
   fs.mkdirSync(home, { recursive: true });
   const env: NodeJS.ProcessEnv = { ...process.env, HOME: home, USERPROFILE: home, LC_ALL: "C" };
   if (pathOverride !== undefined) env["PATH"] = pathOverride;
+  // The staged copy is a partial repository (no config/): the suites' TypeScript groups skip there off CI
+  // and fail when CI is set (i1-F24), so the oracle runs them as a developer machine would.
+  delete env["CI"];
   return new Promise((resolve) => {
     const child = spawn("bash", [path.join(dir, "scripts", "tests", suite)], { cwd: dir, env });
     let out = "";

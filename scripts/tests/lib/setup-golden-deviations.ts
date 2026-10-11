@@ -30,7 +30,7 @@
 // TypeScript form: their cells (and fixtures) were removed when the shell became a shim.
 // API: TS_DEVIATIONS, comparable(name, text, optIn), questionTexts(cli, shellFzf, tsStdout).
 
-import { askedByShell, askedByTs } from "./setup-golden-questions.ts";
+import { askedByShell, askedByTs, ECHO } from "./setup-golden-questions.ts";
 import type { AskedRecord } from "./setup-golden-questions.ts";
 import type { Cli } from "./setup-golden-types.ts";
 
@@ -38,13 +38,13 @@ import type { Cli } from "./setup-golden-types.ts";
 export interface Deviation {
   readonly tag: string;
   readonly file: "stdout" | "tree.json";
-  /** `stdout`: a line prefix to drop; `tree.json`: a top-level key to ignore. */
+  /** `stdout`: the shape of the lines dropped (the matcher is `ECHO`); `tree.json`: a top-level key to ignore. */
   readonly drop: string;
   readonly why: string;
 }
 
 export const TS_DEVIATIONS: readonly Deviation[] = [
-  { tag: "f", file: "stdout", drop: "[answer] ", why: "the --answer echo" },
+  { tag: "f", file: "stdout", drop: "[answer] <id>=<value>", why: "the --answer echo" },
   { tag: "a/b", file: "tree.json", drop: "fzf", why: "no fzf menu on the TypeScript leg" },
 ];
 
@@ -90,10 +90,11 @@ function withoutKeys(text: string, keys: readonly string[], rowFilter = false): 
 export function comparable(name: string, text: string, optIn: readonly string[] = []): string {
   const tagS = optIn.includes("s");
   if (name === "stdout") {
-    const prefixes = TS_DEVIATIONS.filter((d) => d.file === "stdout").map((d) => d.drop);
+    // Tag (f) drops the lines the question sequence counts (`ECHO`, one expression for both): a
+    // `[answer] ...` line of another shape stays in the text and shows as a stdout difference.
     return text
       .split("\n")
-      .filter((line) => !prefixes.some((p) => line.startsWith(p)))
+      .filter((line) => !ECHO.test(line))
       .map((line) => (tagS ? line.replace(LAUNCHER_LINE, "$1.sh") : line))
       .join("\n");
   }

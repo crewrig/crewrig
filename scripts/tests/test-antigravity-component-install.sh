@@ -536,32 +536,49 @@ if [ -z "$agy_decl" ]; then bad "setup: empty Antigravity declaration (vacuity g
 TS_TEST="$REPO_DIR/scripts/tests/setup-retarget-entry-behaviour.test.ts"
 # The golden sandbox of the TypeScript setup needs these real tools on PATH and the repository's config/
 # tree; a hermetic PATH or a partial repository copy (the install oracle's) lacks them, and the group is
-# then skipped, not failed.
-ts_sandbox_tools_missing() {
+# then skipped off CI, but FAILED when CI is set and non-empty (GitHub Actions and GitLab CI set CI=true;
+# the install oracle's hermetic env scrubs it, which is exactly where the skip stays allowed): a missing
+# prerequisite in CI must never pass silently (i1-F24).
+# ts_sandbox_prereq_missing names the missing prerequisite in TS_MISSING and returns 0, or returns 1.
+ts_sandbox_prereq_missing() {
   local t
+  TS_MISSING=""
+  if [ "$(uname -s)" != "Linux" ]; then TS_MISSING="Linux (this host is $(uname -s))"; return 0; fi
   for t in jq git diff ls sort uniq tee touch stat realpath comm paste od expr dd tty mv rmdir tac rev hostname whoami; do
-    command -v "$t" >/dev/null 2>&1 || return 0
+    command -v "$t" >/dev/null 2>&1 || { TS_MISSING="the tool $t"; return 0; }
   done
+  if [ ! -d "${REPO_DIR:-.}/config" ]; then TS_MISSING="the config/ tree of the repository"; return 0; fi
   return 1
 }
 run_ts_group() {
   unset NODE_TEST_CONTEXT # a nested node --test must not see the parent runner's context
-  local group="$1" log="$TMP_ROOT/ts-group.log" line name n=0
-  if [ "$(uname -s)" != "Linux" ] || ts_sandbox_tools_missing || [ ! -d "${REPO_DIR:-.}/config" ]; then
-    echo "  skip: '$group' needs the Linux setup sandbox and jq (runs in CI)"
+  local group="$1" want="$2" out rc=0 line name n_pass n_fail n_skip
+  if ts_sandbox_prereq_missing; then
+    if [ -n "${CI:-}" ]; then
+      bad "'$group': the TypeScript setup sandbox cannot run on CI, missing prerequisite: $TS_MISSING"
+    else
+      echo "  skip: '$group' needs $TS_MISSING (runs in CI)"
+    fi
     return 0
   fi
-  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" >"$log" 2>&1
+  out="$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-name-pattern="$group" "$TS_TEST" 2>&1)" || rc=$?
   while IFS= read -r line; do
     case "$line" in
-      "  ✔ "*) name="${line#  ✔ }"; ok "${name% (*ms)}"; n=$((n + 1)) ;;
-      "  ✖ "*) name="${line#  ✖ }"; bad "${name% (*ms)}"; n=$((n + 1)) ;;
+      "  ✔ "*) name="${line#  ✔ }"; ok "${name% (*ms)}" ;;
+      "  ✖ "*) name="${line#  ✖ }"; bad "${name% (*ms)}" ;;
     esac
-  done < "$log"
-  [ "$n" -gt 0 ] || bad "'$group' ran no case (vacuity guard): $(tail -3 "$log")"
+  done <<< "$out"
+  n_pass="$(sed -n 's/^ℹ pass //p' <<< "$out")"
+  n_fail="$(sed -n 's/^ℹ fail //p' <<< "$out")"
+  n_skip="$(sed -n 's/^ℹ skipped //p' <<< "$out")"
+  if [ "$rc" -eq 0 ] && [ "$n_pass" = "$want" ] && [ "$n_fail" = "0" ] && [ "$n_skip" = "0" ]; then
+    ok "'$group': $n_pass test(s) of the TypeScript entry passed (vacuity guard)"
+  else
+    bad "'$group': expected $want passing test(s), got pass=$n_pass fail=$n_fail skipped=$n_skip rc=$rc: $(tail -3 <<< "$out")"
+  fi
 }
-run_ts_group "antigravity install call sites"
-run_ts_group "antigravity tier install failure"
+run_ts_group "antigravity install call sites" 2
+run_ts_group "antigravity tier install failure" 1
 
 # The migration must NOT sit inside the overlay opt-in branch: it is unconditional on which tiers
 # this run installs. Retargeted (spec 0256 R9, PR D1): declared as its own step, after `tiers`, so

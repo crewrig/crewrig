@@ -158,11 +158,20 @@ function chromaAndMessages(h: Harness): void {
     const sb = h.sandbox();
     const res = h.run(sb, "claude", answerArgs(CLAUDE_ANSWERS));
     expectStatus(res, 0);
-    assert.doesNotMatch(
-      res.out + res.err,
-      /unsupported OS/,
-      why(res, "the shell's Windows message survived"),
-    );
+    // The refusal text can only be absent from a run that REACHED the Chroma step: its header is the
+    // first line the installer prints. A run that never got there proves nothing about the text, so
+    // it asserts nothing and reports the step as not exercised (i1-F23).
+    if (/Installing shared ChromaDB HTTP daemon supervisor/.test(res.out))
+      assert.doesNotMatch(
+        res.out + res.err,
+        /unsupported OS/,
+        why(res, "the shell's Windows message survived"),
+      );
+    else
+      h.notExercised(
+        "(n) no unsupported-OS refusal",
+        "the run did not reach the Chroma step (no MemPalace interpreter detected)",
+      );
     h.notExercised(
       "(n) scheduled task and rollback",
       "not reachable here: no `.cmd` interpreter stub can be detected (Node refuses to spawn it) and " +
