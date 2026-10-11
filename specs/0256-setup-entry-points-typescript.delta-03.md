@@ -1,7 +1,7 @@
 ---
 id: "0256"
 slug: setup-entry-points-typescript
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1335
