@@ -2981,8 +2981,6 @@ jobs:
   # pwsh is the interpreter of every step. The budgets are the initial 2000 ms of R18, replaced after
   # the first green run (see each step). No path filter, like the Windows jobs above.
   windows-extension-hooks:
-  # Spec 0258 R15, R27, R34: the harness-curator entries from pwsh and cmd.exe on Windows.
-  windows-harness-curator:
     runs-on: windows-latest
     defaults:
       run:
@@ -3021,6 +3019,29 @@ jobs:
       # budget 750 ms = max(5 x the largest observed run, 750 ms) rounded up to 50 ms (spec 0258 requirement 18); first green run 38800752014 measured max 111.1 ms over 10 runs; it replaces the initial 2000 ms and is never lowered again. '--' is quoted so pwsh hands it to node verbatim.
       - name: skeleton logger timing budget
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 --stdin-file $env:HOOK_PAYLOAD --case skeleton-logger '--' extension-skeleton/hook/hooks/logger.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0258 R15, R27, R34: the harness-curator entries from pwsh and cmd.exe on Windows.
+  windows-harness-curator:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
       # Runs each of the three entries through pwsh and cmd.exe against a sandbox with a stub gh.cmd,
       # the runner's plain python and no bash, then registers and removes a throwaway scheduled task.
       - name: Harness curator entries proof
