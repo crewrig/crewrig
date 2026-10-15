@@ -2,6 +2,8 @@
 // and the golden regeneration tool both walk. A script gets a table in the chunk that adds it.
 
 import { CHECK_PINNED_ACTIONS } from "./skill-scripts-cases-github.ts";
+import { CHECK_PINNED_IMAGES } from "./skill-scripts-cases-gitlab-images.ts";
+import { CHECK_SECRETS_EXPOSURE } from "./skill-scripts-cases-gitlab-secrets.ts";
 import type { SkillCase } from "./skill-scripts-observe.ts";
 
 export interface ScriptCases {
@@ -12,4 +14,6 @@ export interface ScriptCases {
 
 export const SCRIPTS: readonly ScriptCases[] = [
   { script: "github-actions/check-pinned-actions", cases: CHECK_PINNED_ACTIONS },
+  { script: "gitlab-ci/check-pinned-images", cases: CHECK_PINNED_IMAGES },
+  { script: "gitlab-ci/check-secrets-exposure", cases: CHECK_SECRETS_EXPOSURE },
 ];

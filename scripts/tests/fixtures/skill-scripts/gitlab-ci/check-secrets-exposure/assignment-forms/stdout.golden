@@ -1,0 +1,18 @@
+[RISK] ci.yml:1: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:2: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:4: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:5: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:6: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:9: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:14: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:16: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:17: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable

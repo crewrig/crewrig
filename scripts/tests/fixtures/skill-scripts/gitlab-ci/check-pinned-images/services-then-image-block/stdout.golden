@@ -1,0 +1,3 @@
+[UNPINNED] ci.yml:3: redis:7
+[UNPINNED] ci.yml:5: node:22
+[UNPINNED] ci.yml:8: pg:16

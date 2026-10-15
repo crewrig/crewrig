@@ -1,0 +1,32 @@
+[RISK] ci.yml:2: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:3: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:4: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:5: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:6: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:10: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:11: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:12: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:13: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:14: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:15: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:23: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:25: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:26: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:28: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:29: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones

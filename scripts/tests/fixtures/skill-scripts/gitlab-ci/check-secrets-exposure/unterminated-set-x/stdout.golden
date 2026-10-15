@@ -1,0 +1,2 @@
+[RISK] ci.yml:3: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
