@@ -7,7 +7,10 @@
 //
 // Steps, each timed (the times are recorded, never asserted):
 //   1. `build-extension --target all` of each golden subject equals the golden tree, byte for byte, and
-//      no written file holds a carriage return;
+//      no written file holds a carriage return; on `win32` the Antigravity plugin's `hooks.json` is
+//      compared with its `hooks.json.win32.golden` overlay (the guarded command line, spec 0258
+//      delta-01 requirement 17) and on any other platform with the base golden, every other file
+//      always with the base golden;
 //   2. `build-extension --check` over the subjects exits 0 with its closing line;
 //   3. each plugin entry's tree equals the golden tree of its target;
 //   4. the migration tool converts a legacy tree, and a second run reports `Already migrated`;
@@ -28,6 +31,7 @@ import {
   collectFiles,
   collectGolden,
   diffFiles,
+  expectedGolden,
   extensionRoot,
   outputDirs,
   runTs,
@@ -57,7 +61,7 @@ function goldenStep(): void {
     for (const [label, dir] of Object.entries(outputDirs(tree, name))) {
       const built = collectFiles(dir);
       assert.deepEqual(
-        diffFiles(collectGolden(path.join(GOLDEN, name, label)), built),
+        diffFiles(expectedGolden(path.join(GOLDEN, name, label), process.platform), built),
         [],
         `${name}/${label}`,
       );

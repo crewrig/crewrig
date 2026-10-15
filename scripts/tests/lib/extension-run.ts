@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { buildMain } from "../../lib/extension/build-main.ts";
 import { createFixtureTree } from "./build-fixture-tree.ts";
 import type { FixtureTree, RunResult } from "./build-fixture-tree.ts";
 import { writeTree } from "./extension-trees.ts";
@@ -31,6 +32,32 @@ export function runTs(tree: FixtureTree, script: string, args: readonly string[]
   return tree.run(args, { entry: `scripts/${script}.ts` });
 }
 
+/**
+ * `build-extension <args>` in the root, in THIS process, on a build host reporting `platform` (the
+ * `ctx.platform` the entry fills from `process.platform`). The only way a POSIX host exercises the
+ * `win32` branch of the builder: the child-process entry of `runTs` always reports the real platform.
+ */
+export async function runBuildOn(
+  tree: FixtureTree,
+  args: readonly string[],
+  platform: NodeJS.Platform,
+): Promise<RunResult> {
+  const out: string[] = [];
+  const err: string[] = [];
+  const status = await buildMain({
+    argv: args,
+    env: process.env,
+    platform,
+    entryFile: path.join(tree.root, "scripts", "build-extension.ts"),
+    io: {
+      out: (line) => void out.push(`${line}\n`),
+      err: (line) => void err.push(`${line}\n`),
+      errRaw: (text) => void err.push(text),
+    },
+  });
+  return { status, stdout: out.join(""), stderr: err.join("") };
+}
+
 /** Every regular file under `dir`, `/`-separated relative path to bytes; empty when absent. */
 export function collectFiles(dir: string): Map<string, Buffer> {
   const out = new Map<string, Buffer>();
@@ -55,12 +82,44 @@ export function collectFiles(dir: string): Map<string, Buffer> {
 export function collectGolden(dir: string): Map<string, Buffer> {
   const out = new Map<string, Buffer>();
   for (const [rel, bytes] of collectFiles(dir)) {
+    if (rel.endsWith(WIN32_OVERLAY)) continue;
     const text = bytes.subarray(0, SHEBANG_GUARD.length).equals(SHEBANG_GUARD)
       ? bytes.subarray(SHEBANG_GUARD.length)
       : bytes;
     out.set(rel.replace(/\.golden$/, ""), Buffer.from(text));
   }
   return out;
+}
+
+/**
+ * The suffix of a win32 overlay golden, `<name>.win32.golden` beside `<name>.golden`: the bytes the
+ * builder writes for `<name>` on a Windows build host when they differ from the base golden. Only the
+ * Antigravity plugin's `hooks.json` has one (its command line carries `GUARDED_PREFIX` on `win32`;
+ * spec 0258 delta-01 requirement 17). `collectGolden` never returns an overlay as a file of its own.
+ */
+export const WIN32_OVERLAY = ".win32.golden";
+
+/** The overlay files of the golden directory `dir`, under the real names of the files they replace. */
+export function collectWin32Overlay(dir: string): Map<string, Buffer> {
+  const out = new Map<string, Buffer>();
+  for (const [rel, bytes] of collectFiles(dir))
+    if (rel.endsWith(WIN32_OVERLAY)) out.set(rel.slice(0, -WIN32_OVERLAY.length), bytes);
+  return out;
+}
+
+/**
+ * The golden a build on `platform` must equal: the base golden, with each overlay file standing in
+ * for the base file it names when `platform` is `win32`. Strict both ways: an overlay naming a file
+ * the base does not hold is an error, and no other platform ever reads an overlay.
+ */
+export function expectedGolden(dir: string, platform: NodeJS.Platform): Map<string, Buffer> {
+  const golden = collectGolden(dir);
+  if (platform !== "win32") return golden;
+  for (const [rel, bytes] of collectWin32Overlay(dir)) {
+    if (!golden.has(rel)) throw new Error(`${dir}: the win32 overlay of ${rel} has no base golden`);
+    golden.set(rel, bytes);
+  }
+  return golden;
 }
 
 /** What the ratchet sees as no shebang: a stored file that begins with `#!` is prefixed with this. */
