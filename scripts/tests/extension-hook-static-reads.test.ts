@@ -120,6 +120,28 @@ hook_file_sets_match "$actual" "$expected" prompt-logger shell-logger`;
   });
 });
 
+describe("conformance suite: the fold is restricted to the named hooks", () => {
+  const helpers = block(CONFORMANCE, "hook-file-states");
+  const script = `${helpers}
+actual="$(cd "$1" && find . -type f | sed 's#^\\./##' | sort)"
+expected="$(printf '%s\\n' "$2" | sort)"
+hook_file_sets_match "$actual" "$expected" prompt-logger shell-logger`;
+
+  test("an unnamed hooks/other.sh expected but hooks/other.ts produced is a mismatch (status 1)", () => {
+    const expected = [...expectedList("EXPECTED_CLAUDE"), "hooks/other.sh"];
+    const root = pluginTree(expected, { "prompt-logger": "sh", "shell-logger": "sh" });
+    fs.writeFileSync(path.join(root, "hooks", "other.ts"), "x\n");
+    assert.equal(bash(script, root, expected.join("\n")).status, 1);
+  });
+
+  test("the same unnamed hook with the same spelling matches", () => {
+    const expected = [...expectedList("EXPECTED_CLAUDE"), "hooks/other.sh"];
+    const root = pluginTree(expected, { "prompt-logger": "sh", "shell-logger": "sh" });
+    fs.writeFileSync(path.join(root, "hooks", "other.sh"), "x\n");
+    assert.equal(bash(script, root, expected.join("\n")).status, 0);
+  });
+});
+
 describe("scaffolder suite: hook_file_present", () => {
   const helpers = block(BUILD, "hook-file-twin");
   const script = `${helpers}\nhook_file_present "$1" "$2"`;
