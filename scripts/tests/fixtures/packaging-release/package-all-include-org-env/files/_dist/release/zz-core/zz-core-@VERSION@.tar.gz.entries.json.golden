@@ -97,10 +97,22 @@
       "sha256": "edd7ff856d35cc4f04b417004abfaee087a6b6f74b1f6e1d09d86302c14639f6"
     },
     {
+      "path": "hooks/prompt-logger.ts",
+      "type": "file",
+      "modeClass": "file",
+      "sha256": "a6633c0b85b11d4d9e702191b7830d4eaaad176207b63bafd80ca686e83b9175"
+    },
+    {
       "path": "hooks/shell-logger.sh",
       "type": "file",
       "modeClass": "exec",
       "sha256": "27e70ffccc78b92ce827e43c6c1edbd139aaa829eb4175e8a442ceb0c5c097cc"
+    },
+    {
+      "path": "hooks/shell-logger.ts",
+      "type": "file",
+      "modeClass": "file",
+      "sha256": "c26b77e3a5e932981b9528b3aa92b70ab6465b3424cbe80a52c7e9a6727e1e8c"
     },
     {
       "path": "package.json",
@@ -145,5 +157,5 @@
       "sha256": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
     }
   ],
-  "stream": "cd2ea795c269a19028d072c48b34f9194ae8259bfc6d96ddaa9d2b93294e39d5"
+  "stream": "424ca89d176012eceeab7fe6078f312991c77bfbb2fd18509fa4f01bdbf59e7d"
 }
