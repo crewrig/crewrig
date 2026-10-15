@@ -58,6 +58,22 @@ function link(target: string, bin: string, name: string): void {
   fs.symlinkSync(target, path.join(bin, name));
 }
 
+/** Absolute path of the real executable `name` on the host PATH, /usr/bin or /bin, if any. */
+export function findTool(name: string): string | undefined {
+  return lookup(name, [...(process.env["PATH"] ?? "").split(path.delimiter), "/usr/bin", "/bin"]);
+}
+
+/** Symlink each named host tool (git, jq, yq, ...) into `bin`; returns the names not found. */
+export function linkTools(bin: string, names: readonly string[]): string[] {
+  const missing: string[] = [];
+  for (const name of names) {
+    const found = findTool(name);
+    if (found === undefined) missing.push(name);
+    else link(found, bin, name);
+  }
+  return missing;
+}
+
 /** Create the harness. `poisonPython` (default true) sets MEMPALACE_PYTHON to the poison executable. */
 export function createHermeticEnv(options: { poisonPython?: boolean } = {}): HermeticEnv {
   if (process.platform === "win32") {

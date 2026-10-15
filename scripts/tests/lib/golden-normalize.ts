@@ -69,3 +69,35 @@ export function snapshotClaimRoot(
   walk(claimRoot);
   return Object.fromEntries(Object.entries(files).sort(([a], [b]) => a.localeCompare(b)));
 }
+
+export interface SkillPlaceholderContext {
+  /** The per-case sandbox root, its temp directory and the running Node.js binary. */
+  readonly sandbox: string;
+  readonly tmp: string;
+  readonly node: string;
+  /** The script's base name without `.sh` or `.ts`: deviation (a) strips the suffix. */
+  readonly script: string;
+  /** Name the V8 / jq text after `invalid JSON — `: deviation (c), never stored raw. */
+  readonly jsonMessage?: boolean;
+}
+
+/**
+ * Placeholders of the skill-script oracle (spec 0258 R28, R29): `<TMP>` before `<SANDBOX>`
+ * (the longer path first), `<RAND>` for a generated name in `<TMP>`, `<NODE>`, `<ISO>`, the
+ * script-name token without its extension and, on request, `<JSON-MSG>`.
+ */
+export function skillPlaceholder(text: string, ctx: SkillPlaceholderContext): string {
+  let out = text;
+  for (const [dir, token] of [
+    [ctx.tmp, "<TMP>"],
+    [ctx.sandbox, "<SANDBOX>"],
+    [ctx.node, "<NODE>"],
+  ] as const)
+    out = out.split(dir).join(token);
+  out = out
+    .replace(/<TMP>\/[A-Za-z0-9._-]+/g, "<TMP>/<RAND>")
+    .replace(ISO, "<ISO>")
+    .replaceAll(`${ctx.script}.sh`, ctx.script)
+    .replaceAll(`${ctx.script}.ts`, ctx.script);
+  return ctx.jsonMessage === true ? out.replace(/(invalid JSON — ).*/g, "$1<JSON-MSG>") : out;
+}
