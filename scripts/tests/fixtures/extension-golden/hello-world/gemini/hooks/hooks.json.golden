@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${extensionPath}/hooks/shell-logger.sh"
+            "command": "node \"${extensionPath}/hooks/shell-logger.ts\""
           }
         ],
         "matcher": "run_shell_command"
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${extensionPath}/hooks/prompt-logger.sh"
+            "command": "node \"${extensionPath}/hooks/prompt-logger.ts\""
           }
         ]
       }

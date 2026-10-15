@@ -75,7 +75,7 @@ extension-skeleton/
 │   ├── agents/sample-agent/PROMPT.md      # Same sub-agent, Gemini CLI pivot source (sibling files by design — see EXTENSION-FORMAT.md)
 │   └── agent.json.fragment                # Merged into the manifest's agents field on creation
 ├── hook/
-│   ├── hooks/logger.sh                    # Sample PreToolUse hook script (the maps-everywhere event — spec 0179)
+│   ├── hooks/logger.ts                    # Sample PreToolUse hook script (the maps-everywhere event — spec 0179)
 │   └── hooks.json.fragment                # Merged into the manifest's hooks field on creation
 └── theme/theme.json.fragment              # Merged into the manifest's gemini.themes field on creation
 ```

@@ -1,9 +1,9 @@
 // extension-hook-static-reads.test.ts — the two Bash suites that read the file names of the
-// extension hooks accept exactly the states {sh}, {sh,ts} and {ts} per hook, and fail on {}
-// (spec 0258 R30, R35; PLAN v2 steps 1-3).
+// extension hooks accept exactly the state {ts} per hook, and fail on {} (the entry is missing) and
+// on {sh} or {sh,ts} (the retired shell spelling is back) (spec 0258 R17, R30, R35).
 //
-// `realHelloWorld()` and the scaffolder copy whatever the checkout tracks, so once the example
-// hooks gain a `.ts` twin and then lose the `.sh`, the suites must keep passing at every step.
+// `realHelloWorld()` and the scaffolder copy whatever the checkout tracks, so the suites name the
+// `.ts` files only; the vacuity guards keep that check from passing on a tree that has lost an entry.
 // The helpers live inside the Bash suites (a new `.sh` file is refused by the ratchet); this test
 // extracts the marked blocks and drives them through `bash -c` on trees synthesised in a temp dir.
 
@@ -67,7 +67,7 @@ let counter = 0;
 function pluginTree(expected: readonly string[], states: Readonly<Record<string, State>>): string {
   const root = path.join(work, `tree-${counter++}`);
   for (const rel of expected) {
-    if (rel === "" || /^hooks\/[A-Za-z0-9_-]+\.sh$/.test(rel)) continue;
+    if (rel === "" || /^hooks\/[A-Za-z0-9_-]+\.(sh|ts)$/.test(rel)) continue;
     fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
     fs.writeFileSync(path.join(root, rel), "x\n");
   }
@@ -90,10 +90,13 @@ hook_file_sets_match "$actual" "$expected" prompt-logger shell-logger`;
 
   for (const list of ["EXPECTED_CLAUDE", "EXPECTED_COPILOT", "EXPECTED_ANTIGRAVITY"]) {
     const expected = expectedList(list);
-    assert.ok(expected.includes("hooks/prompt-logger.sh"), `${list} names the example hooks`);
+    for (const name of HOOKS) {
+      assert.ok(expected.includes(`hooks/${name}.ts`), `${list} names ${name}.ts`);
+      assert.ok(!expected.includes(`hooks/${name}.sh`), `${list} no longer names ${name}.sh`);
+    }
     for (const first of STATES) {
       for (const second of STATES) {
-        const accepted = first !== "none" && second !== "none";
+        const accepted = first === "ts" && second === "ts";
         test(`${list}: prompt-logger ${first}, shell-logger ${second} -> ${accepted ? "match" : "vacuity guard"}`, () => {
           const root = pluginTree(expected, { "prompt-logger": first, "shell-logger": second });
           const result = bash(script, root, expected.join("\n"));
@@ -103,62 +106,53 @@ hook_file_sets_match "$actual" "$expected" prompt-logger shell-logger`;
     }
   }
 
-  test("a stray file still fails the comparison in every accepted state", () => {
+  test("a stray file still fails the comparison", () => {
     const expected = expectedList("EXPECTED_CLAUDE");
-    for (const state of STATES.filter((s) => s !== "none")) {
-      const root = pluginTree(expected, { "prompt-logger": state, "shell-logger": state });
-      fs.writeFileSync(path.join(root, "hooks", "stray.ts"), "x\n");
-      assert.equal(bash(script, root, expected.join("\n")).status, 1, state);
-    }
+    const root = pluginTree(expected, { "prompt-logger": "ts", "shell-logger": "ts" });
+    fs.writeFileSync(path.join(root, "hooks", "stray.ts"), "x\n");
+    assert.equal(bash(script, root, expected.join("\n")).status, 1);
   });
 
   test("a missing non-hook file still fails the comparison", () => {
     const expected = expectedList("EXPECTED_CLAUDE");
-    const root = pluginTree(expected, { "prompt-logger": "ts", "shell-logger": "sh+ts" });
+    const root = pluginTree(expected, { "prompt-logger": "ts", "shell-logger": "ts" });
     fs.rmSync(path.join(root, "hooks", "hooks.json"));
     assert.equal(bash(script, root, expected.join("\n")).status, 1);
   });
-});
 
-describe("conformance suite: the fold is restricted to the named hooks", () => {
-  const helpers = block(CONFORMANCE, "hook-file-states");
-  const script = `${helpers}
-actual="$(cd "$1" && find . -type f | sed 's#^\\./##' | sort)"
-expected="$(printf '%s\\n' "$2" | sort)"
-hook_file_sets_match "$actual" "$expected" prompt-logger shell-logger`;
-
-  test("an unnamed hooks/other.sh expected but hooks/other.ts produced is a mismatch (status 1)", () => {
+  test("an expected list that names the old .sh spelling is a mismatch, never a match", () => {
     const expected = [...expectedList("EXPECTED_CLAUDE"), "hooks/other.sh"];
-    const root = pluginTree(expected, { "prompt-logger": "sh", "shell-logger": "sh" });
-    fs.writeFileSync(path.join(root, "hooks", "other.ts"), "x\n");
+    const root = pluginTree(expected, { "prompt-logger": "ts", "shell-logger": "ts" });
     assert.equal(bash(script, root, expected.join("\n")).status, 1);
-  });
-
-  test("the same unnamed hook with the same spelling matches", () => {
-    const expected = [...expectedList("EXPECTED_CLAUDE"), "hooks/other.sh"];
-    const root = pluginTree(expected, { "prompt-logger": "sh", "shell-logger": "sh" });
-    fs.writeFileSync(path.join(root, "hooks", "other.sh"), "x\n");
-    assert.equal(bash(script, root, expected.join("\n")).status, 0);
   });
 });
 
 describe("scaffolder suite: hook_file_present", () => {
   const helpers = block(BUILD, "hook-file-twin");
   const script = `${helpers}\nhook_file_present "$1" "$2"`;
+  const scaffold = (state: State): string => {
+    const root = path.join(work, `scaffold-${counter++}`);
+    fs.mkdirSync(path.join(root, "hooks"), { recursive: true });
+    for (const suffix of SPELLINGS[state]) {
+      fs.writeFileSync(path.join(root, "hooks", `logger.${suffix}`), "x\n");
+    }
+    return root;
+  };
 
   for (const state of STATES) {
-    const accepted = state !== "none";
-    test(`hooks/logger.sh probed with ${state} -> ${accepted ? "present" : "absent"}`, () => {
-      const root = path.join(work, `scaffold-${counter++}`);
-      fs.mkdirSync(path.join(root, "hooks"), { recursive: true });
-      for (const suffix of SPELLINGS[state]) {
-        fs.writeFileSync(path.join(root, "hooks", `logger.${suffix}`), "x\n");
-      }
-      assert.equal(bash(script, root, "hooks/logger.sh").status, accepted ? 0 : 1);
+    const expected = state === "ts" ? 0 : state === "none" ? 1 : 2;
+    test(`hooks/logger.ts probed with ${state} -> status ${expected}`, () => {
+      assert.equal(bash(script, scaffold(state), "hooks/logger.ts").status, expected);
     });
   }
 
-  test("only a hooks/*.sh probe is widened to its .ts twin", () => {
+  test("a probe that names the retired hooks/logger.sh never passes", () => {
+    for (const state of STATES) {
+      assert.notEqual(bash(script, scaffold(state), "hooks/logger.sh").status, 0, state);
+    }
+  });
+
+  test("a non-hook probe is the plain existence check", () => {
     const root = path.join(work, `scaffold-${counter++}`);
     fs.mkdirSync(path.join(root, "src"), { recursive: true });
     fs.writeFileSync(path.join(root, "src", "index.ts"), "x\n");
@@ -170,6 +164,6 @@ describe("scaffolder suite: hook_file_present", () => {
 // The test names HOOKS so a rename of the example hooks fails here, not silently.
 test("the conformance expected lists name the example hooks", () => {
   for (const list of ["EXPECTED_CLAUDE", "EXPECTED_COPILOT", "EXPECTED_ANTIGRAVITY"]) {
-    for (const name of HOOKS) assert.ok(expectedList(list).includes(`hooks/${name}.sh`));
+    for (const name of HOOKS) assert.ok(expectedList(list).includes(`hooks/${name}.ts`));
   }
 });

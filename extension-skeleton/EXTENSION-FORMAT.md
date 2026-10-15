@@ -247,7 +247,7 @@ other generated-output-class member.
       "id": "logger",
       "event": "PreToolUse",
       "matcher": "shell",
-      "command": "bash ${extensionRoot}/hooks/logger.sh"
+      "command": "node \"${extensionRoot}/hooks/logger.ts\""
     }
   ],
 

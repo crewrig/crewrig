@@ -6,13 +6,13 @@
       {
         "type": "command",
         "matcher": "bash",
-        "command": "bash ${COPILOT_PLUGIN_ROOT}/hooks/shell-logger.sh"
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/hooks/shell-logger.ts\""
       }
     ],
     "userPromptSubmitted": [
       {
         "type": "command",
-        "command": "bash ${COPILOT_PLUGIN_ROOT}/hooks/prompt-logger.sh"
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/hooks/prompt-logger.ts\""
       }
     ]
   }

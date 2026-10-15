@@ -28,13 +28,13 @@
       "id": "shell-logger",
       "event": "PreToolUse",
       "matcher": "shell",
-      "command": "bash ${extensionRoot}/hooks/shell-logger.sh",
+      "command": "node \"${extensionRoot}/hooks/shell-logger.ts\"",
       "description": "Maps-everywhere example (spec 0179 R18): fires before every shell-class tool call on every supported target."
     },
     {
       "id": "prompt-logger",
       "event": "UserPromptSubmit",
-      "command": "bash ${extensionRoot}/hooks/prompt-logger.sh",
+      "command": "node \"${extensionRoot}/hooks/prompt-logger.ts\"",
       "description": "Maps-partially example (spec 0179 R18): no counterpart on the Antigravity CLI (see extensions/core/hello-world/accepted-gaps.json)."
     }
   ],

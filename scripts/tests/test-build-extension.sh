@@ -606,18 +606,19 @@ scaffold() {
   printf '%s\t%s\n' "$sandbox" "$(printf '%s' "$out" | base64 | tr -d '\n')"
 }
 
-# A scaffolded hook may carry hooks/<name>.sh, hooks/<name>.ts or both
-# (spec 0258 R30, R35); neither fails. The block between the markers is driven
-# by scripts/tests/extension-hook-static-reads.test.ts.
+# A scaffolded hook is hooks/<name>.ts only (spec 0258 R17, R30, R35): the probe
+# names the .ts, and fails when the old hooks/<name>.sh is still scaffolded beside it.
+# The block between the markers is driven by
+# scripts/tests/extension-hook-static-reads.test.ts.
 # BEGIN hook-file-twin
 # hook_file_present <root> <rel-file>
 hook_file_present() {
   local root="$1" file="$2"
-  [ -e "$root/$file" ] && return 0
   case "$file" in
-    hooks/*.sh) [ -e "$root/${file%.sh}.ts" ] ;;
-    *) return 1 ;;
+    hooks/*.sh) return 2 ;;
+    hooks/*.ts) [ ! -e "$root/${file%.ts}.sh" ] || return 2 ;;
   esac
+  [ -e "$root/$file" ]
 }
 # END hook-file-twin
 
@@ -763,7 +764,7 @@ result="$(scaffold "hook")"
 sandbox="${result%%$'\t'*}"
 out_b64="${result#*$'\t'}"
 out="$(printf '%s' "$out_b64" | base64 -d)"
-assert_selection_took_effect "Case 16" "$sandbox" "$out" "hook" "hooks/logger.sh"
+assert_selection_took_effect "Case 16" "$sandbox" "$out" "hook" "hooks/logger.ts"
 if [ ! -e "$sandbox/extensions/org/probe/hooks/hooks.json" ] && [ ! -e "$sandbox/extensions/org/probe/hooks.json.fragment" ]; then
   ok "Case 16 — the scaffold carries no committed hooks/hooks.json and no leftover hooks.json.fragment (the fragment merge consumed and deleted it)"
 else

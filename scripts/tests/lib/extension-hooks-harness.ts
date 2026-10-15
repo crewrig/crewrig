@@ -132,6 +132,16 @@ export function runShell(hook: string, feed: Feed): Result {
 export const onLinux = process.platform === "linux";
 export const hasShellTwin = (hook: string): boolean => fs.existsSync(path.join(REPO, `${hook}.sh`));
 
+/** Why a shell-leg case is skipped once the switch deleted the `.sh` (the file presence decides). */
+export const SHELL_RETIRED =
+  "skipped: the hook shell scripts were retired by the switch (spec 0258 requirement 35); the entry is judged against the stored goldens";
+
+/** The `skip` option of a shell-leg case: a reason string, or `false` when the leg can run. */
+export function shellLegSkip(hook: string): string | false {
+  if (!hasShellTwin(hook)) return SHELL_RETIRED;
+  return onLinux ? false : "skipped: the shell leg runs on Linux only (bash 5.2)";
+}
+
 const digest = (data: Buffer): string =>
   `sha256:${createHash("sha256").update(data).digest("hex")} bytes:${data.length}\n`;
 

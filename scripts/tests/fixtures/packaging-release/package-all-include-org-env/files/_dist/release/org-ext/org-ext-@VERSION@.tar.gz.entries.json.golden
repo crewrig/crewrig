@@ -70,7 +70,7 @@
       "path": "extension.json",
       "type": "file",
       "modeClass": "file",
-      "sha256": "cb31fe4b6ddecf94a489518f99d63c1fac0308333dfae4e6905d60591c0a8e03"
+      "sha256": "bf0568f20e63e9cb63a1a2889c9c487f0d8cc6a792cb28fc09aa9bacea5c7912"
     },
     {
       "path": "gemini-extension.json",
@@ -88,25 +88,13 @@
       "path": "hooks/hooks.json",
       "type": "file",
       "modeClass": "file",
-      "sha256": "e1bd5ff4e00c071c62f3014410b7daff9b82bc290c91b858608a3036406bc9b4"
-    },
-    {
-      "path": "hooks/prompt-logger.sh",
-      "type": "file",
-      "modeClass": "exec",
-      "sha256": "edd7ff856d35cc4f04b417004abfaee087a6b6f74b1f6e1d09d86302c14639f6"
+      "sha256": "a043ab08045a30ac110d0dd24dce7befa94d74a0ade76b6c40b03749b9a7ed37"
     },
     {
       "path": "hooks/prompt-logger.ts",
       "type": "file",
       "modeClass": "file",
       "sha256": "a6633c0b85b11d4d9e702191b7830d4eaaad176207b63bafd80ca686e83b9175"
-    },
-    {
-      "path": "hooks/shell-logger.sh",
-      "type": "file",
-      "modeClass": "exec",
-      "sha256": "27e70ffccc78b92ce827e43c6c1edbd139aaa829eb4175e8a442ceb0c5c097cc"
     },
     {
       "path": "hooks/shell-logger.ts",
@@ -157,5 +145,5 @@
       "sha256": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
     }
   ],
-  "stream": "931607163960b9e779ae6d4173c9d5531757db91916ea524f4f7e777af6aa13f"
+  "stream": "0cab3fc8926e2b0fab5c094fcdda16896aeae14cde9ee6e4f981a0d83a7d3793"
 }

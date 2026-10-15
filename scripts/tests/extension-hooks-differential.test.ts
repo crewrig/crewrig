@@ -4,7 +4,9 @@
 // error and exit status are compared, standard error is empty everywhere, and the shell's output is
 // the committed `.golden` fixture. A deviation-tagged case compares the entry with its overlay.
 //
-// Regenerate the goldens inside the Linux container: CREWRIG_REGEN_GOLDENS=1 node --test <this file>.
+// Once the switch deleted the `.sh` files the shell leg is skipped with an explicit reason and the
+// entry is judged against the stored goldens; the goldens are never edited by hand.
+// Regenerate the goldens (needs the shell twins) inside the Linux container: CREWRIG_REGEN_GOLDENS=1 node --test <this file>.
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
@@ -14,11 +16,13 @@ import {
   DEVIATIONS,
   HOOKS,
   goldenForm,
-  hasShellTwin,
   onLinux,
   readGolden,
   runEntry,
   runShell,
+  shellLegSkip,
+  SHELL_RETIRED,
+  hasShellTwin,
   writeGolden,
   type Case,
   type Feed,
@@ -39,7 +43,7 @@ describe("regeneration", { skip: !REGEN }, () => {
   test(
     "the goldens are the shell output, identical for the three shell twins",
     {
-      skip: !onLinux,
+      skip: HOOKS.some((hook) => !hasShellTwin(hook)) ? SHELL_RETIRED : !onLinux,
     },
     () => {
       for (const item of CASES) {
@@ -68,7 +72,7 @@ for (const hook of HOOKS) {
       test(
         `${item.name}: the shell twin matches its golden, and the entry matches the shell`,
         {
-          skip: !onLinux || !hasShellTwin(hook),
+          skip: shellLegSkip(hook),
         },
         () => {
           const shell = runShell(hook, piped(item));
@@ -127,7 +131,7 @@ for (const hook of HOOKS) {
       test(
         `${label}: the shell twin reports on standard error, the entry does not`,
         {
-          skip: !onLinux || !hasShellTwin(hook),
+          skip: shellLegSkip(hook),
         },
         () => {
           const shell = runShell(hook, feed);
@@ -148,7 +152,7 @@ for (const hook of HOOKS) {
     test(
       "a partial line then EAGAIN: the shell twin drops it, the entry keeps it",
       {
-        skip: !onLinux || !hasShellTwin(hook),
+        skip: shellLegSkip(hook),
       },
       () => {
         const feed: Feed = { kind: "eagain", data: bytes('  {"a":1} ') };

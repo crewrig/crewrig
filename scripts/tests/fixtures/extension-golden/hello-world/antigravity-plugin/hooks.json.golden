@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/shell-logger.sh"
+            "command": "node \"hooks/shell-logger.ts\""
           }
         ]
       }
