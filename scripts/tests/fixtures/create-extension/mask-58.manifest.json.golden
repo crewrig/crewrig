@@ -22,6 +22,7 @@
     "build/extensions/combo58/hooks": "dir",
     "build/extensions/combo58/hooks/hooks.json": "84e38c3345ae94f21582722f3b2b4088531bced0e44ebe85aa9a184d07fc50ea",
     "build/extensions/combo58/hooks/logger.sh": "5e459f4f2536248c822b268c2b503237465fd8c0971ac157dfb6c57cd10970b0:x",
+    "build/extensions/combo58/hooks/logger.ts": "5082b4dc4df902816ca59d689850f3c4cec65c94d3059036af4d111732c1a699",
     "build/extensions/combo58/package.json": "2e9af996d88bdfed03fd7dc3ca848a3d124ec3dc84c974dcdaf299477a5e9f3a",
     "build/extensions/combo58/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
@@ -40,6 +41,7 @@
     "extensions/org/combo58/extension.json": "6199f611d1e71dd040ecd276a1965ee6365b2fe3a16b4c4b7b9041c9cbc1f6e4",
     "extensions/org/combo58/hooks": "dir",
     "extensions/org/combo58/hooks/logger.sh": "5e459f4f2536248c822b268c2b503237465fd8c0971ac157dfb6c57cd10970b0:x",
+    "extensions/org/combo58/hooks/logger.ts": "5082b4dc4df902816ca59d689850f3c4cec65c94d3059036af4d111732c1a699",
     "extensions/org/combo58/package.json": "2e9af996d88bdfed03fd7dc3ca848a3d124ec3dc84c974dcdaf299477a5e9f3a",
     "extensions/org/combo58/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }

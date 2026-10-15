@@ -15,6 +15,7 @@
     "build/extensions/combo48/hooks": "dir",
     "build/extensions/combo48/hooks/hooks.json": "84e38c3345ae94f21582722f3b2b4088531bced0e44ebe85aa9a184d07fc50ea",
     "build/extensions/combo48/hooks/logger.sh": "f07959d0318db10d6de65ef887257761ae1291cd6098b8b9703ff3af43d27b09:x",
+    "build/extensions/combo48/hooks/logger.ts": "2cc526d493e2d09a2ace457213850b7d09a16a4a3f883e1f074bde6879eb7147",
     "build/extensions/combo48/package.json": "eed9d3d3356d7a6e93bfdd885bb440f4f079298b2cb9923a74347bc24c898309",
     "build/extensions/combo48/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
@@ -27,6 +28,7 @@
     "extensions/org/combo48/extension.json": "4bb6a06fa3e07c737ec7f8b7157e760238b966140317360d8e0ebd26d94d78ab",
     "extensions/org/combo48/hooks": "dir",
     "extensions/org/combo48/hooks/logger.sh": "f07959d0318db10d6de65ef887257761ae1291cd6098b8b9703ff3af43d27b09:x",
+    "extensions/org/combo48/hooks/logger.ts": "2cc526d493e2d09a2ace457213850b7d09a16a4a3f883e1f074bde6879eb7147",
     "extensions/org/combo48/package.json": "eed9d3d3356d7a6e93bfdd885bb440f4f079298b2cb9923a74347bc24c898309",
     "extensions/org/combo48/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }

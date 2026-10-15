@@ -19,6 +19,7 @@
     "build/extensions/combo24/hooks": "dir",
     "build/extensions/combo24/hooks/hooks.json": "84e38c3345ae94f21582722f3b2b4088531bced0e44ebe85aa9a184d07fc50ea",
     "build/extensions/combo24/hooks/logger.sh": "21ef70b5c6f29b4526559692cf6c4a3543eb3ee681a4e33b9414c0d09e95efe3:x",
+    "build/extensions/combo24/hooks/logger.ts": "d4c8d40e887f8edf068a3bff7faabac2e04ccde98a5c14e33b3fe1fef2f1190c",
     "build/extensions/combo24/package.json": "ae6f4743198525ecec8960b8731924e467295c04359686b6c281c6aec505db6b",
     "build/extensions/combo24/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
@@ -35,6 +36,7 @@
     "extensions/org/combo24/extension.json": "9e0a98f99d1aabcdac0284e14d7d6c1ca09b27f9c675baa8e7f8574c528cf31b",
     "extensions/org/combo24/hooks": "dir",
     "extensions/org/combo24/hooks/logger.sh": "21ef70b5c6f29b4526559692cf6c4a3543eb3ee681a4e33b9414c0d09e95efe3:x",
+    "extensions/org/combo24/hooks/logger.ts": "d4c8d40e887f8edf068a3bff7faabac2e04ccde98a5c14e33b3fe1fef2f1190c",
     "extensions/org/combo24/package.json": "ae6f4743198525ecec8960b8731924e467295c04359686b6c281c6aec505db6b",
     "extensions/org/combo24/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
