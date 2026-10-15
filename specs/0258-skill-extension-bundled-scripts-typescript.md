@@ -77,7 +77,11 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
 2. **Entry form.** Each entry SHALL be runnable as a direct `node <path>.ts` command
    line, written to the conventions of parent requirement 2, and SHALL be a thin file
    with no top-level `import` or `export`, `process.exitCode` instead of
-   `process.exit`, and the first statement `process.removeAllListeners("warning")`, so
+   `process.exit`, the first statement `process.removeAllListeners("warning")` and the
+   whole body wrapped in `void (async () => { ... })();` (a file with no `import` or
+   `export` is a global script, so two entries that declare the same top-level name
+   fail the type-check with TS2451, and a wrapper is where a run-time `import()` may
+   `await`), so
    that no warning reaches standard error, which the differential proof compares
    (requirement 29). Spec 0255's entry form loads built-ins with `require`, which
    exists only where the nearest `package.json` is typeless; the entries of this row
@@ -513,8 +517,8 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     (`node scripts/lib/node-floor-guard.js`, then `node scripts/build-components.ts`)
     and stage its regenerated outputs in the same commit; the entry pull requests add
     files only, so the check does not require a bump there. The
-    `hello-world` extension SHALL bump its version in `extension.json`,
-    `package.json` and every golden that records it, in lockstep (spec 0044), and
+    `hello-world` extension's manifest version is written by the release driver and
+    SHALL NOT be hand-bumped (`docs/version-bump-convention.md`);
     `scripts/check-extension-manifest-version.sh` and
     `scripts/check-extension-version-bump.sh` SHALL pass.
 
@@ -548,8 +552,8 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     - S2, the switch of the extension side: the manifest lines of requirement 17, the
       second regeneration of those goldens, the deletion of the three hook scripts and
       of the skeleton's `logger.sh`, the skeleton fragment, the scaffold toolchain test
-      of requirement 26, the `create-extension` shim, the Taskfile tasks, the extension
-      version bump, the final documentation, and the flip of this spec to
+      of requirement 26, the `create-extension` shim, the Taskfile tasks, the final
+      documentation, and the flip of this spec to
       `status: implemented`.
 
     Every pull request but S2 SHALL be on a branch `test/1337-<slug>`; S2 SHALL be on
