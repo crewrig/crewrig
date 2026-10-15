@@ -1,7 +1,7 @@
 ---
 id: "0258"
 slug: skill-extension-bundled-scripts-typescript
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1337
