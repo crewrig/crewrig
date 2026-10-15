@@ -17,7 +17,7 @@
     "build/extensions/combo49/hooks/logger.ts": "7ff42aa78a2b5c9e779a347b2993e5065c4bc3aef860d036bf88166b75a170cd",
     "build/extensions/combo49/package.json": "78df2ae18b519712c78be187225d1edcd1b0667895afe47d8c232ebee72c6c9e",
     "build/extensions/combo49/src": "dir",
-    "build/extensions/combo49/src/index.ts": "824ec6d31deedb81cdb439a05dc5d7bfba8ccbd0fcaeb9cebaaf96aa2ee36fcc",
+    "build/extensions/combo49/src/index.ts": "037fd5222f149b7e1ee19730b37ecff974726ff3615450bb21d81915ba6125f7",
     "build/extensions/combo49/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo49": "dir",
@@ -31,7 +31,7 @@
     "extensions/org/combo49/hooks/logger.ts": "7ff42aa78a2b5c9e779a347b2993e5065c4bc3aef860d036bf88166b75a170cd",
     "extensions/org/combo49/package.json": "78df2ae18b519712c78be187225d1edcd1b0667895afe47d8c232ebee72c6c9e",
     "extensions/org/combo49/src": "dir",
-    "extensions/org/combo49/src/index.ts": "824ec6d31deedb81cdb439a05dc5d7bfba8ccbd0fcaeb9cebaaf96aa2ee36fcc",
+    "extensions/org/combo49/src/index.ts": "037fd5222f149b7e1ee19730b37ecff974726ff3615450bb21d81915ba6125f7",
     "extensions/org/combo49/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }

@@ -94,11 +94,11 @@ const GATES_SKIP = GATE_TOOLS.every((tool) => fs.existsSync(tool))
     : false
   : "the root's tsc, oxlint or oxfmt is not installed (run `task lint-bootstrap`)";
 
-// The name is long on purpose: the skeleton's `new Server({ name, version }, ...)` call is written in
-// its multi-line form, which oxfmt keeps only when the one-line form would pass 100 columns; a short
-// name such as `demo` collapses it to one line and the format step then fails on the scaffold. The
-// skeleton text is pinned by the stored per-mask manifests, so it is not reflowed here.
-const SCAFFOLD_NAME = "scaffold-gates-every-component";
+// The scaffold must format the same way whatever the length of the extension name: the shortest name
+// the scaffolder accepts and a name far past 100 columns are both gated, so a skeleton line that the
+// formatter reflows with the name (a call collapsing onto one line for a short name, or breaking
+// across lines for a long one) cannot come back unnoticed.
+const SCAFFOLD_NAMES = ["x", `scaffold-gates-every-component-${"long-".repeat(24)}end`];
 const EVERY_COMPONENT = "mcp-server,command,skill,agent,hook,theme";
 
 function sh(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv = {}) {
@@ -111,72 +111,74 @@ function sh(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv
   return { status: res.status, output: `${res.stdout}${res.stderr}` };
 }
 
-test(
-  "a scaffold with every component under extensions/org/ passes check-typescript --step all and the ratchet",
-  { skip: GATES_SKIP, timeout: 600_000 },
-  () => {
-    // A copy of the whole tracked tree: the root tsconfig.json, .oxlintrc.json, .oxfmtrc.json and the
-    // ratchet lists apply to the scaffold by inheritance, exactly as they do inside the repository.
-    const list = spawnSync("git", ["ls-files", "-z"], { cwd: REPO, encoding: "buffer" });
-    assert.equal(list.status, 0, "git ls-files");
-    const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "skeleton-gates-")));
-    try {
-      for (const rel of list.stdout.toString("utf8").split("\0")) {
-        if (rel === "") continue;
-        const from = path.join(REPO, rel);
-        const stat = fs.lstatSync(from, { throwIfNoEntry: false });
-        if (stat === undefined) continue;
-        fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-        if (stat.isSymbolicLink()) fs.symlinkSync(fs.readlinkSync(from), path.join(dir, rel));
-        else fs.copyFileSync(from, path.join(dir, rel));
+for (const SCAFFOLD_NAME of SCAFFOLD_NAMES) {
+  test(
+    `a scaffold named ${SCAFFOLD_NAME.length > 40 ? `<${SCAFFOLD_NAME.length} characters>` : SCAFFOLD_NAME} with every component under extensions/org/ passes check-typescript --step all and the ratchet`,
+    { skip: GATES_SKIP, timeout: 600_000 },
+    () => {
+      // A copy of the whole tracked tree: the root tsconfig.json, .oxlintrc.json, .oxfmtrc.json and the
+      // ratchet lists apply to the scaffold by inheritance, exactly as they do inside the repository.
+      const list = spawnSync("git", ["ls-files", "-z"], { cwd: REPO, encoding: "buffer" });
+      assert.equal(list.status, 0, "git ls-files");
+      const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "skeleton-gates-")));
+      try {
+        for (const rel of list.stdout.toString("utf8").split("\0")) {
+          if (rel === "") continue;
+          const from = path.join(REPO, rel);
+          const stat = fs.lstatSync(from, { throwIfNoEntry: false });
+          if (stat === undefined) continue;
+          fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+          if (stat.isSymbolicLink()) fs.symlinkSync(fs.readlinkSync(from), path.join(dir, rel));
+          else fs.copyFileSync(from, path.join(dir, rel));
+        }
+        assert.equal(sh("git", ["init", "--quiet"], dir).status, 0, "git init");
+        // The scaffolder's render step loads js-yaml from real files (never a link).
+        for (const name of ["js-yaml", "argparse"])
+          fs.cpSync(path.join(REPO, "node_modules", name), path.join(dir, "node_modules", name), {
+            recursive: true,
+            dereference: true,
+          });
+        fs.mkdirSync(path.join(dir, "extensions", "org"), { recursive: true });
+        const made = sh(
+          process.execPath,
+          ["scripts/create-extension.ts", "--components", EVERY_COMPONENT],
+          dir,
+          { NAME: SCAFFOLD_NAME, TIER: "org", HOME: path.join(dir, ".home") },
+        );
+        assert.equal(made.status, 0, made.output);
+        const scaffold = path.join(dir, "extensions", "org", SCAFFOLD_NAME);
+        assert.ok(fs.existsSync(path.join(scaffold, "extension.json")), "the scaffold exists");
+        for (const inherited of [".oxlintrc.json", ".oxfmtrc.json"])
+          assert.ok(!fs.existsSync(path.join(scaffold, inherited)), `${inherited} is inherited`);
+        // The skeleton's own tsconfig.json builds the extension standalone; it is not the root's file.
+        assert.notEqual(
+          fs.readFileSync(path.join(scaffold, "tsconfig.json"), "utf8"),
+          fs.readFileSync(path.join(REPO, "tsconfig.json"), "utf8"),
+        );
+        // Link the root's tools only now, so the render step above ran on real copies.
+        fs.rmSync(path.join(dir, "node_modules"), { recursive: true, force: true });
+        fs.symlinkSync(path.join(REPO, "node_modules"), path.join(dir, "node_modules"), "junction");
+        assert.equal(sh("git", ["add", "-A", "--", "."], dir).status, 0, "git add");
+        const gates = sh(
+          process.execPath,
+          [
+            "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+            "scripts/check-typescript.ts",
+            "--step",
+            "all",
+          ],
+          dir,
+        );
+        assert.equal(gates.status, 0, gates.output);
+        const ratchet = sh(
+          process.execPath,
+          ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "scripts/check-ratchet.ts"],
+          dir,
+        );
+        assert.equal(ratchet.status, 0, ratchet.output);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
       }
-      assert.equal(sh("git", ["init", "--quiet"], dir).status, 0, "git init");
-      // The scaffolder's render step loads js-yaml from real files (never a link).
-      for (const name of ["js-yaml", "argparse"])
-        fs.cpSync(path.join(REPO, "node_modules", name), path.join(dir, "node_modules", name), {
-          recursive: true,
-          dereference: true,
-        });
-      fs.mkdirSync(path.join(dir, "extensions", "org"), { recursive: true });
-      const made = sh(
-        process.execPath,
-        ["scripts/create-extension.ts", "--components", EVERY_COMPONENT],
-        dir,
-        { NAME: SCAFFOLD_NAME, TIER: "org", HOME: path.join(dir, ".home") },
-      );
-      assert.equal(made.status, 0, made.output);
-      const scaffold = path.join(dir, "extensions", "org", SCAFFOLD_NAME);
-      assert.ok(fs.existsSync(path.join(scaffold, "extension.json")), "the scaffold exists");
-      for (const inherited of [".oxlintrc.json", ".oxfmtrc.json"])
-        assert.ok(!fs.existsSync(path.join(scaffold, inherited)), `${inherited} is inherited`);
-      // The skeleton's own tsconfig.json builds the extension standalone; it is not the root's file.
-      assert.notEqual(
-        fs.readFileSync(path.join(scaffold, "tsconfig.json"), "utf8"),
-        fs.readFileSync(path.join(REPO, "tsconfig.json"), "utf8"),
-      );
-      // Link the root's tools only now, so the render step above ran on real copies.
-      fs.rmSync(path.join(dir, "node_modules"), { recursive: true, force: true });
-      fs.symlinkSync(path.join(REPO, "node_modules"), path.join(dir, "node_modules"), "junction");
-      assert.equal(sh("git", ["add", "-A", "--", "."], dir).status, 0, "git add");
-      const gates = sh(
-        process.execPath,
-        [
-          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
-          "scripts/check-typescript.ts",
-          "--step",
-          "all",
-        ],
-        dir,
-      );
-      assert.equal(gates.status, 0, gates.output);
-      const ratchet = sh(
-        process.execPath,
-        ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "scripts/check-ratchet.ts"],
-        dir,
-      );
-      assert.equal(ratchet.status, 0, ratchet.output);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  },
-);
+    },
+  );
+}

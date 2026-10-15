@@ -17,7 +17,7 @@
     "build/extensions/combo3/gemini-extension.json": "eb82f4f1fc005051a5934c6ad34fcadabbfb302979d79e0eaf09023a72e24415",
     "build/extensions/combo3/package.json": "ee266874f5d11cfc6862c4bf2a011357cfcade75b45f76b5bf7e6b8324675737",
     "build/extensions/combo3/src": "dir",
-    "build/extensions/combo3/src/index.ts": "6f6d6fb77bffd0f9bed97635fe219ef3ef8cf28412833440cc99b31177f90959",
+    "build/extensions/combo3/src/index.ts": "2a1f6510c4be8ae99fba22efeff5233142ef71e21493721ff2835cd77be1de59",
     "build/extensions/combo3/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo3": "dir",
@@ -31,7 +31,7 @@
     "extensions/org/combo3/extension.json": "f770b581ed06816d56e6f9f38eb53e40b0f865960c09792bf774881e43c081ab",
     "extensions/org/combo3/package.json": "ee266874f5d11cfc6862c4bf2a011357cfcade75b45f76b5bf7e6b8324675737",
     "extensions/org/combo3/src": "dir",
-    "extensions/org/combo3/src/index.ts": "6f6d6fb77bffd0f9bed97635fe219ef3ef8cf28412833440cc99b31177f90959",
+    "extensions/org/combo3/src/index.ts": "2a1f6510c4be8ae99fba22efeff5233142ef71e21493721ff2835cd77be1de59",
     "extensions/org/combo3/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }

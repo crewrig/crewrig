@@ -7,10 +7,14 @@ import {
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 
-const server = new Server(
-  { name: "${SKELETON_NAME}", version: "0.1.0" },
-  { capabilities: { tools: {} } },
-);
+// The server info is its own object literal, broken across lines, so the formatted output of a
+// scaffold does not depend on the length of the extension name.
+const serverInfo = {
+  name: "${SKELETON_NAME}",
+  version: "0.1.0",
+};
+
+const server = new Server(serverInfo, { capabilities: { tools: {} } });
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
@@ -41,6 +45,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 server.connect(transport).catch((err) => {
-  console.error("Failed to start ${SKELETON_NAME} MCP server:", err);
+  console.error("Failed to start", serverInfo.name, "MCP server:", err);
   process.exit(1);
 });

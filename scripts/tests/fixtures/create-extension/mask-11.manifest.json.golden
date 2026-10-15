@@ -21,7 +21,7 @@
     "build/extensions/combo11/gemini-extension.json": "efe59f1b97d8b4efcffd4de6289dc92a832def9178e7f1785794944ecaf6b950",
     "build/extensions/combo11/package.json": "7f449543e3d095273d42b783cb62386dd6d33c38f2eba294413c286bc1947ad3",
     "build/extensions/combo11/src": "dir",
-    "build/extensions/combo11/src/index.ts": "c6144b765e586025efcc5b9c4dfed084fee731d5aa745f7cfbaebd8dabad1b73",
+    "build/extensions/combo11/src/index.ts": "a0b0eed956d781fb3f69c769879e440055ec2a3754bcf706261e690d823b2cff",
     "build/extensions/combo11/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo11": "dir",
@@ -39,7 +39,7 @@
     "extensions/org/combo11/extension.json": "31aa6e9bb630db59584c417ca3b1ae27c8551b5225497849365a2d7bd74243ef",
     "extensions/org/combo11/package.json": "7f449543e3d095273d42b783cb62386dd6d33c38f2eba294413c286bc1947ad3",
     "extensions/org/combo11/src": "dir",
-    "extensions/org/combo11/src/index.ts": "c6144b765e586025efcc5b9c4dfed084fee731d5aa745f7cfbaebd8dabad1b73",
+    "extensions/org/combo11/src/index.ts": "a0b0eed956d781fb3f69c769879e440055ec2a3754bcf706261e690d823b2cff",
     "extensions/org/combo11/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }

@@ -27,7 +27,7 @@
     "build/extensions/combo31/skills/sample-skill": "dir",
     "build/extensions/combo31/skills/sample-skill/SKILL.md": "af55c4e4d8be2f29569fce2c0124d8f452339e15318e32adeb95d193dc3d3b84",
     "build/extensions/combo31/src": "dir",
-    "build/extensions/combo31/src/index.ts": "c68d2a11b8f680eb8a1be5a779e2608658dc70aa51b7584059565f1bad96e71a",
+    "build/extensions/combo31/src/index.ts": "4ad200ff3812660350723fb4357236c8be42046e8c3ec971bf08e88659d99c68",
     "build/extensions/combo31/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo31": "dir",
@@ -50,7 +50,7 @@
     "extensions/org/combo31/skills/sample-skill": "dir",
     "extensions/org/combo31/skills/sample-skill/SKILL.md": "af55c4e4d8be2f29569fce2c0124d8f452339e15318e32adeb95d193dc3d3b84",
     "extensions/org/combo31/src": "dir",
-    "extensions/org/combo31/src/index.ts": "c68d2a11b8f680eb8a1be5a779e2608658dc70aa51b7584059565f1bad96e71a",
+    "extensions/org/combo31/src/index.ts": "4ad200ff3812660350723fb4357236c8be42046e8c3ec971bf08e88659d99c68",
     "extensions/org/combo31/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }
