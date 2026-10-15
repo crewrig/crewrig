@@ -89,10 +89,10 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
    `process.getBuiltinModule("node:<module>")`, which exists under both module
    systems, and SHALL reach every other file with a relative `await import()`. A test
    SHALL run each such entry from a copy placed under a package that declares
-   `"type": "module"`, under a typeless one, and under a directory with no
-   `package.json`, and SHALL require the same standard output, standard error and exit
-   status from the three. The entries `scripts/create-extension.ts` and the three
-   curator entries that run inside the repository MAY use the form of spec 0255.
+   `"type": "module"`, under a package that declares `"type": "commonjs"`, under a typeless one, and under a
+   directory with no `package.json`, and SHALL require the same standard output,
+   standard error and exit status from the four. Only `scripts/create-extension.ts`, which always runs
+   inside the repository, MAY use the form of spec 0255.
 
 3. **Self-contained skill scripts.** A script under `artifacts/**/skills/*/scripts/`
    SHALL be self-contained: the component build copies the `scripts/` directory of a
@@ -110,10 +110,13 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
    SHALL stay under 300 lines (spec 0238). One entry is excepted: `schedule-curator.ts`
    registers an operating-system job through `scripts/lib/service/` (requirement 15) and
    SHALL reach that layer by a lazy `import()` of a file found by walking up from its own
-   directory to a CrewRig checkout (the first ancestor that holds
-   `scripts/lib/service/schedule-backend.ts`); when there is none it SHALL exit 1 with a
-   diagnostic that names the missing checkout, run no registration and print nothing
-   else. `curate.ts` and `setup-labels.ts` SHALL NOT load it.
+   directory to a CrewRig checkout: the walk starts from the real path of the script
+   (`fs.realpathSync`, so a link into a checkout is followed) and stops at the first
+   ancestor that holds `scripts/lib/service/schedule-backend.ts`, a file this row
+   creates (requirement 15). When there is no such ancestor, every mode except `--help`
+   SHALL exit 1 with a diagnostic that names the missing checkout, register nothing and
+   print nothing else (deviation (n)); `--help` needs no checkout. `curate.ts` and
+   `setup-labels.ts` SHALL NOT load the layer.
 
 4. **Observable contract.** Each entry SHALL preserve the observable contract of the
    script it replaces (parent requirement 14): arguments, environment variables read,
@@ -241,7 +244,8 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     of the layer SHALL pass unchanged): a job kind of the layer's names with the label
     `io.crewrig.harness-curator` (so a plist written by the shell is replaced in place),
     a renderer for a calendar plist, a `.service` and `.timer` pair and a Task
-    Scheduler calendar trigger, an optional unit to enable (the `.timer`), and a
+    Scheduler calendar trigger, and a backend selector in the new file
+    `scripts/lib/service/schedule-backend.ts`, an optional unit to enable (the `.timer`), and a
     replace-on-reinstall path (uninstall, then install) so that a changed hour takes
     effect. The scheduled command SHALL carry an absolute interpreter path and the
     installer's `PATH` (the shell relied on `bash -lc` for a login `PATH`), and where
@@ -297,7 +301,8 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
 19. **Cheap guard and lazy import.** An example hook SHALL read the payload and return
     with built-ins only; it has no module graph, so the lazy `import()` rule of parent
     requirement 15 is met by construction and a test SHALL assert that the entry
-    contains no `import` statement, no `import()` and no `require`. The skeleton's `logger.ts` SHALL
+    contains no `import` statement, no `import()` and no `require` outside its comments.
+    The skeleton's `logger.ts` SHALL
     carry a comment that shows an author where a guard and a lazy `import()` belong
     when a hook grows a module graph.
 
@@ -427,9 +432,7 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     `scripts/tests/test-build-extension.sh` (case 16 asserts `hooks/logger.sh`, line
     751), `scripts/tests/fixtures/extension/old-invocation-allowlist.txt` (line 20)
     with `scripts/tests/extension-references.test.ts`,
-    `scripts/tests/build-components-built-trees.test.ts` (the lists of TypeScript files
-    under skill `scripts/`), `scripts/tests/build-components-fixture-closure.test.ts`
-    (`js-yaml argparse` literals), the extension-golden fixtures under
+    the extension-golden fixtures under
     `scripts/tests/fixtures/extension-golden/hello-world/` and the packaging goldens
     under `scripts/tests/fixtures/packaging-release/` that hash the hook bytes. A new
     inline `js-yaml argparse` literal in a Bash suite SHALL be registered in
@@ -438,7 +441,7 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
 ### Shims, callers and the rest of the repository
 
 31. **Deviations.** The deviations from the shell contract are a closed list; letters
-    from (n) onward are reserved for what the differential test finds and SHALL be
+    from (o) onward are reserved for what the differential test finds and SHALL be
     added through a delta of this spec.
     - (a) The script name printed in usage lines and diagnostics (`$(basename "$0")`)
       is the entry's name, ending in `.ts`.
@@ -476,6 +479,8 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     - (m) `lint-json` rejects what `JSON.parse` rejects, which is stricter than
       `jq empty`: an empty file, several top-level values and the non-standard literals
       `nan` and `NaN` that `jq` accepted are reported as `invalid JSON`.
+    - (n) `schedule-curator` needs a CrewRig checkout to register or remove a job
+      (requirement 3); the shell ran from any directory. `--help` does not.
 
 32. **Shims, deletion and callers.** A script with a Bash oracle or a CI or Taskfile
     caller that is not retargeted in the same pull request SHALL become a forwarding
