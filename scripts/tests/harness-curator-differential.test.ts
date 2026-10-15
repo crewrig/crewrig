@@ -61,6 +61,8 @@ describe("curator scripts: legs and goldens", () => {
         process.platform === "linux" &&
         fs.existsSync(scriptFile(testCase.script, "sh")) &&
         !isShim(testCase.script);
+      if (!shellLive && process.platform === "linux" && isShim(testCase.script))
+        t.diagnostic("shell leg skipped: the .sh is a forwarding shim (spec 0258 requirement 32)");
       if (!shellLive || leg === "shell") return;
       const shell = observe(testCase, "shell");
       assert.deepEqual(

@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.0"
+    version: "1.4.0"
 claude:
   allowed-tools:
     - Read
@@ -244,7 +244,7 @@ surface it immediately rather than wait for the next scheduled curator
 sweep. After the `mempalace_add_drawer` call returns, run:
 
 ```bash
-bash artifacts/library/skills/harness-curator/scripts/curate.sh --apply --dedup --max-issues 5
+node artifacts/library/skills/harness-curator/scripts/curate.ts --apply --dedup --max-issues 5
 ```
 
 Dedup is on, so re-running is safe — already-open clusters are skipped.

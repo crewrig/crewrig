@@ -7,16 +7,16 @@ description: "Harness feedback-loop curator. Activate on demand to read
   (human-authored or via the auto-fix mode tracked in #42). Also supports
   a `--deep` mode that sweeps `wing=transcripts` with heuristic
   pre-filtering and emits a Markdown review document for triage. Auto
-  mode (#42) supports scheduled runs via scripts/schedule-curator.sh
+  mode (#42) supports scheduled runs via scripts/schedule-curator.ts
   with dedup and per-run issue cap."
 type: skill
 license: Apache-2.0
-compatibility: Requires bash, jq, a forge CLI (setup-labels.sh uses gh; --apply selects gh, glab, or tea per the target repository's forge), and the mempalace Python package (pipx install 'mempalace>=3.6.0,<3.7').
+compatibility: Requires Node.js 24 or later, a forge CLI (setup-labels.ts uses gh; --apply selects gh, glab, or tea per the target repository's forge), and the mempalace Python package (pipx install 'mempalace>=3.6.0,<3.7').
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.8.1"
+    version: "1.9.0"
 claude:
   allowed-tools:
     - Read
@@ -68,7 +68,7 @@ would be a multi-thousand-call traversal; see `config/TOOLS.md` →
 task harness-curate -- --dry-run
 # or directly, from the skill bundle (works whether installed at project
 # level under .gemini/.claude or user level under ~/.gemini/~/.claude):
-bash scripts/curate.sh --dry-run
+node scripts/curate.ts --dry-run
 ```
 
 The script walks `wing="harness-friction"` via the MemPalace Python
@@ -182,9 +182,9 @@ Bootstrap the 9 labels via the bundled script (idempotent — safe to
 re-run after a label vocabulary change):
 
 ```bash
-bash scripts/setup-labels.sh --repo <owner/repo>
+node scripts/setup-labels.ts --repo <owner/repo>
 # Or preview the plan without contacting GitHub:
-bash scripts/setup-labels.sh --repo <owner/repo> --dry-run
+node scripts/setup-labels.ts --repo <owner/repo> --dry-run
 ```
 
 The script uses `gh label create --force` per label, so it creates
@@ -203,9 +203,9 @@ Run a heuristic sweep of `wing="transcripts"` instead of the regular
 slipped through the recognition signals and were never tagged.
 
 ```bash
-bash scripts/curate.sh --deep
+node scripts/curate.ts --deep
 # Tune the scan window (default: 500 most-recent transcript drawers):
-bash scripts/curate.sh --deep --deep-window 1000
+node scripts/curate.ts --deep --deep-window 1000
 ```
 
 Behavior:
@@ -228,7 +228,7 @@ Auto mode is implemented; see *Auto mode (scheduled curation)* below.
 
 ### Auto mode (scheduled curation)
 
-Auto mode runs `curate.sh --apply --dedup --max-issues 5` on a recurring
+Auto mode runs `curate.ts --apply --dedup --max-issues 5` on a recurring
 local schedule, default weekly Monday 09:00. Dedup is on so re-running
 the curator never re-opens the same cluster; `--max-issues 5` caps a
 single sweep so a noisy week cannot flood a repo. Ranking before
@@ -238,11 +238,11 @@ size (descending), then `cluster_key` (ascending, tie-breaker).
 Install the schedule on your maintainer machine:
 
 ```bash
-bash artifacts/library/skills/harness-curator/scripts/schedule-curator.sh
+node artifacts/library/skills/harness-curator/scripts/schedule-curator.ts
 # Preview only:
-bash artifacts/library/skills/harness-curator/scripts/schedule-curator.sh --dry-run
+node artifacts/library/skills/harness-curator/scripts/schedule-curator.ts --dry-run
 # Remove the managed entry:
-bash artifacts/library/skills/harness-curator/scripts/schedule-curator.sh --uninstall
+node artifacts/library/skills/harness-curator/scripts/schedule-curator.ts --uninstall
 ```
 
 The installer detects macOS (launchd, plist at
@@ -254,7 +254,7 @@ Reactive trigger — run manually the moment you file a `severity: high`
 friction so the curator surfaces it without waiting for the next sweep:
 
 ```bash
-bash artifacts/library/skills/harness-curator/scripts/curate.sh --apply --dedup --max-issues 5
+node artifacts/library/skills/harness-curator/scripts/curate.ts --apply --dedup --max-issues 5
 ```
 
 Auto mode never runs on CI by design — MemPalace state is local to the

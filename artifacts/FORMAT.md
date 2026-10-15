@@ -235,7 +235,7 @@ these subfolders are **propagated verbatim** to both build outputs
 (`.gemini/skills/<name>/<subfolder>/...` and
 `.claude/skills/<name>/<subfolder>/...`). Executable bits are
 preserved. Skill bodies should reference resources by path relative
-to the skill root (e.g. `scripts/curate.sh`), so the same invocation
+to the skill root (e.g. `scripts/curate.ts`), so the same invocation
 works regardless of whether the skill lives at project level
 (`.gemini/.claude/`) or user level (`~/.gemini/`, `~/.claude/`).
 

@@ -614,7 +614,9 @@ tasks:
 
   harness-curate:
     desc: "Run the Harness Curator (task harness-curate -- [--apply | --from-stdin])"
-    cmd: bash {{.REPO_DIR}}/artifacts/library/skills/harness-curator/scripts/curate.sh {{.CLI_ARGS}}
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/artifacts/library/skills/harness-curator/scripts/curate.ts {{.CLI_ARGS}}
 
   test-harness-curate:
     desc: "Smoke-test the Harness Curator against the bundled fixture"

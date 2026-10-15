@@ -112,7 +112,7 @@ a four-stage loop:
    `SKILL.md` signals that a new version is available.
 
 For automated periodic sweeps,
-`artifacts/library/skills/harness-curator/scripts/schedule-curator.sh`
+`artifacts/library/skills/harness-curator/scripts/schedule-curator.ts`
 installs a macOS launchd job or a Linux crontab entry that runs the
 curator on a fixed cadence.
 
@@ -449,7 +449,7 @@ artifacts/
 │   ├── skills/
 │   │   ├── harness-report/    # Skill: tag frictions during real work
 │   │   └── harness-curator/   # Skill: cluster frictions and open GitHub issues
-│   │       └── scripts/       # schedule-curator.sh, curate.sh, test.sh, ...
+│   │       └── scripts/       # schedule-curator.ts, curate.ts, test.sh, ...
 │   └── agents/
 │       └── harness-curator/   # Agent: curator specialist
 ├── community/             # Adopting organisation sandbox
