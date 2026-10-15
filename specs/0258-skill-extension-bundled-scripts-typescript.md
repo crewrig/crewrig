@@ -76,14 +76,14 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
 
 2. **Entry form.** Each entry SHALL be runnable as a direct `node <path>.ts` command
    line, written to the conventions of parent requirement 2, and SHALL be a thin file
-   with no top-level `import` or `export`, `process.exitCode` instead of
-   `process.exit`, the first statement `process.removeAllListeners("warning")` and the
-   whole body wrapped in `void (async () => { ... })();` (a file with no `import` or
-   `export` is a global script, so two entries that declare the same top-level name
-   fail the type-check with TS2451, and a wrapper is where a run-time `import()` may
-   `await`), so
-   that no warning reaches standard error, which the differential proof compares
-   (requirement 29). Spec 0255's entry form loads built-ins with `require`, which
+   with no top-level `import` or `export`, using `process.exitCode` instead of
+   `process.exit`. Its first statement SHALL be `process.removeAllListeners("warning")`,
+   so that no warning reaches standard error, which the differential proof compares
+   (requirement 29); the rest of its body SHALL be wrapped in
+   `void (async () => { ... })();`, because a file with no `import` or `export` is a
+   global script, so two entries that declare the same top-level name fail the
+   type-check with TS2451, and a wrapper is where a run-time `import()` may `await`.
+   Spec 0255's entry form loads built-ins with `require`, which
    exists only where the nearest `package.json` is typeless; the entries of this row
    run where it is not: a skill script is copied into the four built trees and into a
    user or adopter directory whose package type is unknown, and an extension hook sits
