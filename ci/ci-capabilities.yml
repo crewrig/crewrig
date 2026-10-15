@@ -1361,6 +1361,25 @@ capabilities:
   # jobs above: the proof must not skip silently on a change it does not list.
   - id: windows-extension-hooks
     name: "Windows extension hooks: production install, floor guard, PowerShell and cmd.exe proof, no-deprecation channel and latency budgets"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-extension-hooks`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0258 R27).
+
   # Spec 0258 R27 (ticket #1337): the eleven skill entries from a non-POSIX interpreter. The
   # production dependencies are installed first, the floor guard runs, then
   # scripts/tests/windows-skill-scripts.test.ts runs each of the eleven entries (github-actions,
@@ -1379,7 +1398,6 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-extension-hooks`). GitLab
         (.github/workflows/build.yml, job `windows-skill-scripts`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
