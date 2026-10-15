@@ -144,7 +144,16 @@ void (async () => {
         "Install: https://cli.github.com/",
       );
     }
-    if (cp.spawnSync(gh, ["auth", "status"], { stdio: "ignore" }).status !== 0) {
+    // A Windows .cmd/.bat shim cannot be spawned directly (CVE-2024-27980): it goes through cmd.exe.
+    const shim = OS === "Windows" && /\.(cmd|bat)$/i.test(gh);
+    const auth = shim
+      ? cp.spawnSync(
+          process.env["ComSpec"] ?? "cmd.exe",
+          ["/d", "/s", "/c", `""${gh}" auth status"`],
+          { stdio: "ignore", windowsVerbatimArguments: true },
+        )
+      : cp.spawnSync(gh, ["auth", "status"], { stdio: "ignore" });
+    if (auth.status !== 0) {
       return err("Error: 'gh' is not authenticated. Run 'gh auth login' first.");
     }
     const curate = path.join(path.dirname(path.resolve(self)), "curate.ts");
