@@ -433,7 +433,15 @@ capabilities:
           - "scripts/tests/lib/windows-extension-proof.ts"
           - "scripts/tests/lib/build-fixture-tree.ts"
           - "scripts/tests/fixtures/extension-golden/**"
+<<<<<<< HEAD
           - "scripts/tests/fixtures/extension-hooks/**"
+=======
+          - "scripts/create-extension.ts"
+          - "scripts/lib/create-extension/**"
+          - "scripts/tests/create-extension-*"
+          - "scripts/tests/lib/create-extension-*"
+          - "scripts/tests/fixtures/create-extension/**"
+>>>>>>> 72b1b225 (👷 Add the windows-create-extension job and wire the scaffolder tests in CI)
           - "extensions/**"
           - "extension-skeleton/**"
           - "package.json"
@@ -467,7 +475,15 @@ capabilities:
           - "scripts/tests/lib/windows-extension-proof.ts"
           - "scripts/tests/lib/build-fixture-tree.ts"
           - "scripts/tests/fixtures/extension-golden/**"
+<<<<<<< HEAD
           - "scripts/tests/fixtures/extension-hooks/**"
+=======
+          - "scripts/create-extension.ts"
+          - "scripts/lib/create-extension/**"
+          - "scripts/tests/create-extension-*"
+          - "scripts/tests/lib/create-extension-*"
+          - "scripts/tests/fixtures/create-extension/**"
+>>>>>>> 72b1b225 (👷 Add the windows-create-extension job and wire the scaffolder tests in CI)
           - "extensions/**"
           - "extension-skeleton/**"
           - "package.json"
@@ -481,7 +497,11 @@ capabilities:
       - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
+<<<<<<< HEAD
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-ci-wiring.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks-differential.test.ts scripts/tests/extension-hooks-entry-form.test.ts scripts/tests/extension-hooks-layouts.test.ts scripts/tests/extension-hook-static-reads.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-shim.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts
+=======
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/create-extension-differential.test.ts scripts/tests/create-extension-skeleton-toolchain.test.ts scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-ci-wiring.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hook-static-reads.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-shim.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts
+>>>>>>> 72b1b225 (👷 Add the windows-create-extension job and wire the scaffolder tests in CI)
 
   # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release, where
   # type stripping still emits an ExperimentalWarning. No `paths:` filter, like
@@ -1353,6 +1373,7 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0257 R27).
 
+<<<<<<< HEAD
   # Spec 0258 R16, R18, R20, R27 (ticket #1337): the example hooks of `hello-world` and of the
   # skeleton from PowerShell and cmd.exe with no `bash` on the child PATH (interpreters resolved from
   # the parent PATH, `System32\bash.exe` never counting), the four package layouts, the no-deprecation
@@ -1361,6 +1382,16 @@ capabilities:
   # jobs above: the proof must not skip silently on a change it does not list.
   - id: windows-extension-hooks
     name: "Windows extension hooks: production install, floor guard, PowerShell and cmd.exe proof, no-deprecation channel and latency budgets"
+=======
+  # Spec 0258 R23-R27 (ticket #1337): the extension scaffolder entry from a non-POSIX interpreter.
+  # The production dependencies are installed first, the floor guard runs, then
+  # scripts/tests/windows-create-extension.test.ts runs the entry through pwsh and cmd.exe against a
+  # hermetic sandbox repository with no bash and no fzf on PATH. The dev toolchain is absent, so no
+  # `check-typescript` here. No timing budget and no `paths:` filter, like the Windows jobs above:
+  # the proof must not skip silently on a change it does not list.
+  - id: windows-create-extension
+    name: "Windows extension scaffolder entry: production install, floor guard and the cross-system proof"
+>>>>>>> 72b1b225 (👷 Add the windows-create-extension job and wire the scaffolder tests in CI)
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -1371,7 +1402,11 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
+<<<<<<< HEAD
         (.github/workflows/build.yml, job `windows-extension-hooks`). GitLab
+=======
+        (.github/workflows/build.yml, job `windows-create-extension`). GitLab
+>>>>>>> 72b1b225 (👷 Add the windows-create-extension job and wire the scaffolder tests in CI)
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`

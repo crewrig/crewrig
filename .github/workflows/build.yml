@@ -303,7 +303,15 @@ jobs:
               - 'scripts/tests/lib/windows-extension-proof.ts'
               - 'scripts/tests/lib/build-fixture-tree.ts'
               - 'scripts/tests/fixtures/extension-golden/**'
+<<<<<<< HEAD
               - 'scripts/tests/fixtures/extension-hooks/**'
+=======
+              - 'scripts/create-extension.ts'
+              - 'scripts/lib/create-extension/**'
+              - 'scripts/tests/create-extension-*'
+              - 'scripts/tests/lib/create-extension-*'
+              - 'scripts/tests/fixtures/create-extension/**'
+>>>>>>> 72b1b225 (👷 Add the windows-create-extension job and wire the scaffolder tests in CI)
               - 'extensions/**'
               - 'extension-skeleton/**'
               - 'package.json'
@@ -332,7 +340,11 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
       - name: Test the TypeScript extension and plugin builders
         if: steps.filter.outputs.extension-builders-ts == 'true'
+<<<<<<< HEAD
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-ci-wiring.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks-differential.test.ts scripts/tests/extension-hooks-entry-form.test.ts scripts/tests/extension-hooks-layouts.test.ts scripts/tests/extension-hook-static-reads.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-shim.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts
+=======
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/create-extension-differential.test.ts scripts/tests/create-extension-skeleton-toolchain.test.ts scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-ci-wiring.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hook-static-reads.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-shim.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts
+>>>>>>> 72b1b225 (👷 Add the windows-create-extension job and wire the scaffolder tests in CI)
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -2973,11 +2985,16 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+<<<<<<< HEAD
   # Spec 0258 R16, R18, R20, R27: the example hooks of `hello-world` and the skeleton from pwsh and
   # cmd.exe with no `bash` on the child PATH, the no-deprecation channel, and a latency budget per hook.
   # pwsh is the interpreter of every step. The budgets are the initial 2000 ms of R18, replaced after
   # the first green run (see each step). No path filter, like the Windows jobs above.
   windows-extension-hooks:
+=======
+  # Spec 0258 R23-R27: the extension scaffolder entry from pwsh and cmd.exe on Windows.
+  windows-create-extension:
+>>>>>>> 72b1b225 (👷 Add the windows-create-extension job and wire the scaffolder tests in CI)
     runs-on: windows-latest
     defaults:
       run:
@@ -2995,6 +3012,7 @@ jobs:
       - name: Floor guard accepts Node.js 24
         run: node scripts/lib/node-floor-guard.js
 
+<<<<<<< HEAD
       - name: Hooks from PowerShell and cmd.exe, bash absent, four package layouts
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-extension-hooks.test.ts
 
@@ -3016,6 +3034,13 @@ jobs:
       # budget 750 ms = max(5 x the largest observed run, 750 ms) rounded up to 50 ms (spec 0258 requirement 18); first green run 38800752014 measured max 111.1 ms over 10 runs; it replaces the initial 2000 ms and is never lowered again. '--' is quoted so pwsh hands it to node verbatim.
       - name: skeleton logger timing budget
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 --stdin-file $env:HOOK_PAYLOAD --case skeleton-logger '--' extension-skeleton/hook/hooks/logger.ts
+=======
+      # Runs the entry through pwsh and cmd.exe against a hermetic sandbox repository with no bash
+      # and no fzf on the child PATH, then checks the scaffold tree against the committed manifests.
+      - name: Scaffolder entry proof
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-create-extension.test.ts
+
+>>>>>>> 72b1b225 (👷 Add the windows-create-extension job and wire the scaffolder tests in CI)
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
