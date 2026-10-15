@@ -21,7 +21,7 @@ const weekly: ScheduleSpec = {
   entry: "/repo/curate.ts",
   args: ["--apply", "--dedup", "--max-issues", "5"],
   pathValue: "/opt/node/bin:/usr/bin:/bin",
-  logFile: "/home/u/.crewrig/curator.log",
+  logFile: "/srv/crewrig-test/.crewrig/curator.log",
 };
 const daily: ScheduleSpec = { ...weekly, frequency: "daily", hour: 17 };
 
@@ -56,9 +56,9 @@ test("plist, weekly: Monday weekday, hour, minute 0, PATH, no shell, no RunAtLoa
         <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>/home/u/.crewrig/curator.log</string>
+    <string>/srv/crewrig-test/.crewrig/curator.log</string>
     <key>StandardErrorPath</key>
-    <string>/home/u/.crewrig/curator.log</string>
+    <string>/srv/crewrig-test/.crewrig/curator.log</string>
 </dict>
 </plist>
 `;
@@ -90,8 +90,8 @@ Description=CrewRig scheduled job io.crewrig.harness-curator
 Type=oneshot
 Environment="PATH=/opt/node/bin:/usr/bin:/bin"
 ExecStart=/opt/node/bin/node /repo/curate.ts --apply --dedup --max-issues 5
-StandardOutput=append:/home/u/.crewrig/curator.log
-StandardError=append:/home/u/.crewrig/curator.log
+StandardOutput=append:/srv/crewrig-test/.crewrig/curator.log
+StandardError=append:/srv/crewrig-test/.crewrig/curator.log
 `,
   );
   assert.equal(
@@ -122,7 +122,7 @@ test("timer pair: % is doubled, words with spaces or quotes are quoted", () => {
     entry: "/repo/100%/curate.ts",
     args: ['say "hi"', "$HOME", "back\\slash"],
     pathValue: "/p%q:/bin",
-    logFile: "/home/u/100%/curator.log",
+    logFile: "/srv/crewrig-test/100%/curator.log",
   });
   assert.ok(service.includes('Environment="PATH=/p%%q:/bin"\n'));
   assert.ok(
@@ -130,7 +130,7 @@ test("timer pair: % is doubled, words with spaces or quotes are quoted", () => {
       'ExecStart="/opt/my node/node" /repo/100%%/curate.ts "say \\"hi\\"" $$HOME "back\\\\slash"\n',
     ),
   );
-  assert.ok(service.includes("StandardOutput=append:/home/u/100%%/curator.log\n"));
+  assert.ok(service.includes("StandardOutput=append:/srv/crewrig-test/100%%/curator.log\n"));
 });
 
 test("task XML, weekly: Monday ScheduleByWeek and the settings of a calendar job", () => {

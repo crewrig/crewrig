@@ -5,5 +5,5 @@ Description=CrewRig scheduled job io.crewrig.harness-curator
 Type=oneshot
 Environment="PATH=<SANDBOX>/bin"
 ExecStart=<NODE> <SCRIPTS>/curate --apply --dedup --max-issues 5
-StandardOutput=append:<SANDBOX>/home/.local/state/crewrig/harness-curator.log
-StandardError=append:<SANDBOX>/home/.local/state/crewrig/harness-curator.log
+StandardOutput=append:<HOME>/.local/state/crewrig/harness-curator.log
+StandardError=append:<HOME>/.local/state/crewrig/harness-curator.log

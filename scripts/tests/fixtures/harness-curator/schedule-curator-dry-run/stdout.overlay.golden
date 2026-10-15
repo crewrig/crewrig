@@ -4,9 +4,9 @@
 
 Target OS:  Linux
 Curator:    <SCRIPTS>/curate
-Logfile:    <SANDBOX>/home/.local/state/crewrig/harness-curator.log
+Logfile:    <HOME>/.local/state/crewrig/harness-curator.log
 
-# <SANDBOX>/home/.config/systemd/user/io.crewrig.harness-curator.service
+# <HOME>/.config/systemd/user/io.crewrig.harness-curator.service
 [Unit]
 Description=CrewRig scheduled job io.crewrig.harness-curator
 
@@ -14,9 +14,9 @@ Description=CrewRig scheduled job io.crewrig.harness-curator
 Type=oneshot
 Environment="PATH=<SANDBOX>/bin"
 ExecStart=<NODE> <SCRIPTS>/curate --apply --dedup --max-issues 5
-StandardOutput=append:<SANDBOX>/home/.local/state/crewrig/harness-curator.log
-StandardError=append:<SANDBOX>/home/.local/state/crewrig/harness-curator.log
-# <SANDBOX>/home/.config/systemd/user/io.crewrig.harness-curator.timer
+StandardOutput=append:<HOME>/.local/state/crewrig/harness-curator.log
+StandardError=append:<HOME>/.local/state/crewrig/harness-curator.log
+# <HOME>/.config/systemd/user/io.crewrig.harness-curator.timer
 [Unit]
 Description=CrewRig schedule of io.crewrig.harness-curator (weekly)
 

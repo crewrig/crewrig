@@ -82,11 +82,19 @@ export const fzfStub = (): StubFile =>
     "bin/fzf",
   );
 
-/** `crontab -l` exits 1 with no crontab (`crontab -` logs its input), as on a clean machine. */
+/**
+ * `crontab -l` exits 1 with no crontab (`crontab -` logs its input), as on a clean machine. The
+ * shell leg runs both in one pipeline, so `crontab -` waits (a bounded spin, no `sleep` on the
+ * sandbox PATH) until `crontab -l` has logged: the argv log order is then one order, not a race.
+ */
 export const crontabStub = (): StubFile =>
   stub(
-    "crontab",
-    `case "$1" in\n  -l) echo 'no crontab for user' >&2; exit 1 ;;\n  -) printf '  cron-input:\\n' >> '{CALLS}'; cat >> '{CALLS}' ;;\nesac\nexit 0\n`,
+    "",
+    `case "$1" in\n  -l)\n${log("crontab")}` +
+      `    : > '{ROOT}/bin/.crontab-l'\n    echo 'no crontab for user' >&2; exit 1 ;;\n` +
+      `  -)\n    i=0\n    while [ ! -e '{ROOT}/bin/.crontab-l' ] && [ "$i" -lt 200000 ]; do i=$((i + 1)); done\n` +
+      `${log("crontab")}    printf '  cron-input:\\n' >> '{CALLS}'; cat >> '{CALLS}' ;;\nesac\nexit 0\n`,
+    "bin/crontab",
   );
 
 /** `systemctl` and `launchctl` succeed and log their argv. */

@@ -129,6 +129,8 @@ export function normalise(text: string, names: Names): string {
   return text
     .split(names.tmp)
     .join("<TMP>")
+    .split(`${names.sandbox}/home`)
+    .join("<HOME>") // before the root: a golden never holds a /home/<owner>/ path (spec 0081)
     .split(names.sandbox)
     .join("<SANDBOX>")
     .split(SCRIPTS_DIR)
