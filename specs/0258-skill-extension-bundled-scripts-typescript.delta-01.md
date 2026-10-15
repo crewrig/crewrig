@@ -84,14 +84,17 @@ Replacement:
 > build host whose platform is not `win32`. On a `win32` build host the Antigravity line SHALL
 > be `set NoDefaultCurrentDirectoryInExePath=1&& node "hooks/<hook>.ts"`, the guarded prefix
 > `GUARDED_PREFIX` of `scripts/lib/hook-command.ts` that spec 0243 delta-03 adopted after
-> `docs/cli-matrix.md` row 37f measured it holding on the Antigravity hooks surface: under
-> `cmd.exe` a bare `node` is looked up in the working directory before `PATH` (CWE-427), and
-> the hooks of an Antigravity plugin run with the plugin directory as working directory. The
+> `docs/cli-matrix.md` row 37f measured it holding on the Antigravity hooks surface, in front
+> of an unquoted absolute script path: under `cmd.exe` a bare `node` is looked up in the
+> working directory before `PATH` (CWE-427). The working directory of an Antigravity plugin
+> hook, and the behaviour of the quoted plugin-relative remainder under `cmd.exe`, are not
+> measured (row 37g and issue #1601 keep those cells as not measured; this delta claims
+> neither), and the guard applies whichever directory it is. The
 > builder SHALL take the platform from the build context (`ctx.platform`, set from
 > `process.platform`), and a test SHALL inject `win32` and `linux` and compare both lines. This
 > covers every path that can put an Antigravity `hooks.json` on a Windows machine, because the
 > build host is always the machine that runs the builder: the release archive of spec 0257 is
-> built on Linux CI with `--target gemini` and serves the Gemini CLI alone (Ruling A of spec
+> built on Linux CI with `--target gemini` and serves the Gemini CLI alone (option (a) of spec
 > 0183 delta-01), so it can never carry an Antigravity `hooks.json`; the Antigravity plugin is
 > built in place by `build-extension.ts --target antigravity` (the installer
 > `scripts/lib/install/antigravity-plugin.ts` builds on the user's machine and `agy plugin
