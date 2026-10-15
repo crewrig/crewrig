@@ -8,8 +8,8 @@
 //
 // Tagged deviations: a case that carries a deviation tag (spec 0258 R31) may have OVERLAY
 // goldens, `<name>.overlay.golden` beside `<name>.golden`, recording the entry's own output
-// where the shell golden no longer applies. This chunk generates none; the entry leg is
-// compared with the overlay when present, the shell leg never is (see `expectedFor`).
+// where the shell golden no longer applies (skill-scripts-golden-regen.ts generates them); the
+// entry leg is compared with the overlay when present, the shell leg never is (see `expectedFor`).
 
 import crypto from "node:crypto";
 import fs from "node:fs";

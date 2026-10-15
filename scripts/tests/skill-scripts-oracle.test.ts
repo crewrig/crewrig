@@ -28,7 +28,7 @@ function runCase(testCase: SkillCase, t: TestContext): void {
   const leg = resolveLeg(testCase.script, "auto");
   if (leg === "shell" && process.platform !== "linux")
     return t.skip("skipped: the shell leg needs a Linux host (GNU grep, awk, sed, find)");
-  if (testCase.tools?.includes("yq") === true && findTool("yq") === undefined)
+  if (leg === "shell" && testCase.tools?.includes("yq") === true && findTool("yq") === undefined)
     return t.skip("skipped: a YAML-leg case needs yq on the host (the golden container has it)");
   const stored = readGolden(testCase);
   assert.notEqual(stored.size, 0, `${testCase.name}: no golden stored`);

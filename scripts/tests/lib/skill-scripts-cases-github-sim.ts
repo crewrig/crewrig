@@ -78,7 +78,12 @@ export const LINT_WORKFLOW: readonly SkillCase[] = [
   lintFile("file-fails-with-status-2", { actionlint: "echo problem >&2\nexit 2\n" }),
   lintFile("file-fails-with-status-127", { actionlint: "exit 127\n" }),
   lintFile("file-silent-pass", { actionlint: "exit 0\n" }),
-  lintFile("file-actionlint-killed", { actionlint: TERM, deviation: "(o)" }), // bash prints `Terminated` on stderr; the entry prints none
+  lint("file-actionlint-killed", {
+    args: ["wf.yml"],
+    files: { "wf.yml": WF },
+    stubs: { actionlint: TERM },
+    deviation: "(o)", // bash prints `Terminated` on stderr; the entry prints none
+  }),
   lint("symlink-as-target", {
     args: ["link.yml"],
     files: { "real.yml": WF },
