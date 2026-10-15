@@ -34,17 +34,29 @@ exits 0).
 
 **Scenario:** A wrapped tool killed by a signal is not announced by the entry
 
-Given a stub `actionlint` that terminates itself with `SIGTERM`
-When `node lint-workflow.ts <workflow>` runs
-Then the exit status is 143 and standard error is empty (the shell prints bash's own
-`Terminated` line).
+Given a stub `act` that terminates itself with `SIGTERM` and a stub `docker` that
+answers
+When `node simulate-job.ts <workflow> <job>` runs
+Then the exit status is 143 and standard error is empty (the shell passes the same
+status through and prints bash's own `Terminated` line); `lint-workflow.ts` with a stub
+`actionlint` that dies the same way prints `[FAIL] <file>` and exits 1, as the shell
+does, with an empty standard error.
+
+**Scenario:** A hook keeps a partial line received before a read error
+
+Given the `hello-world` hook `shell-logger.ts` fed `{"a":` and then a read error
+(`EAGAIN`) with no more data
+When it runs
+Then it writes `{"a":` followed by one line feed and exits 0 (bash drops the partial
+line and writes one line feed).
 
 **Scenario:** `lint-json` validates without `jq`
 
-Given a machine with no `jq` on the path and a file holding invalid JSON
+Given a machine with no `jq` on the path and a file holding invalid JSON with no
+trailing comma
 When `node lint-json.ts <file>` runs
 Then it reports `invalid JSON` and exits 1 (the shell printed that `jq` was not found,
-skipped the parse and exited 0 for a file that only the parse could reject).
+skipped the parse and exited 0).
 
 ## MODIFIED
 
@@ -60,8 +72,8 @@ Replacement:
 > 20. **Failure silence.** A hook SHALL never write to standard error and SHALL exit 0 on
 >     a read error (a closed standard input, a non-blocking input with no data), writing
 >     what it had read and one line feed. The shell twin exits 0 too, but its `read`
->     prints bash's own diagnostic on standard error in those cases (deviation (p)); the
->     entry does not.
+>     prints bash's own diagnostic on standard error in those cases and drops a partial
+>     line (deviations (p) and (q)); the entry does neither.
 
 **Requirement 31 — Deviations.** Original, the closing sentence of the introduction:
 
@@ -73,17 +85,20 @@ Replacement:
 
 > The deviations from the shell contract are a closed list; the letters (a) to (n) are
 > below and the letters (o) to (r) are the following, each found by a test that names it:
-> (o) when a wrapped tool or a scripted child dies of `SIGTERM`, bash prints its own
-> `Terminated` line on standard error and the entry prints nothing, the exit status
-> (128 plus the signal) being the same; (p) a hook started with a closed standard input
+> (o) when a wrapped tool or a scripted child dies of a signal (the cases cover
+> `SIGTERM`), bash prints its own job-termination line on standard error (`Terminated`
+> for `SIGTERM`) and the entry prints nothing, the exit status being the same as the
+> shell's (143 where the wrapped tool's status passes through, as in `simulate-job` and
+> `simulate-workflow`; 1 where the script maps any failure to `[FAIL]`, as in
+> `lint-workflow`); (p) a hook started with a closed standard input
 > or a non-blocking input with no data writes one line feed and nothing on standard
 > error, where the shell twin's `read` prints `read: read error: <errno text>` on
 > standard error; (q) a hook that received a partial line before a read error (`EAGAIN`)
 > writes what it received followed by one line feed, where bash drops the partial line
 > and writes one line feed; (r) `lint-json` without `jq` on the path validates the file
 > with `JSON.parse` and reports `invalid JSON` (exit 1), where the shell printed that
-> `jq` was not found, skipped the parse and exited 0 (it kept only the trailing-comma
-> heuristic). Letters from (s) onward are reserved for what a later test finds and SHALL
+> `jq` was not found, skipped the parse and exited 0 for a file whose only defect the parse
+> detects (it kept only the trailing-comma heuristic). Letters from (s) onward are reserved for what a later test finds and SHALL
 > be added through a delta of this spec.
 
 ## REMOVED
