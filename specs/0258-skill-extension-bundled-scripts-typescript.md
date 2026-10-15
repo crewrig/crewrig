@@ -390,8 +390,8 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     the same fixtures before the switch and compare the four outputs of requirement 28;
     every difference SHALL be tagged with a deviation letter of requirement 31 or fail.
     Golden files SHALL be generated in a Linux container that mirrors the CI runner
-    (Ubuntu 24.04, Bash 5.2, `jq` 1.7, Node.js 24, GNU `tar` and `gzip` on the hermetic
-    `PATH`), never on the maintainer's host, with host-specific values (the Node.js
+    (Ubuntu 24.04, Bash 5.2, `jq` 1.7, a pinned Go `yq`, Node.js 24, GNU `tar` and `gzip`
+    on the hermetic `PATH`), never on the maintainer's host, with host-specific values (the Node.js
     path, temporary paths, random tokens, ports) normalised, and SHALL then be
     regenerated in a second image with Node.js under a runner-like path
     (`/opt/hostedtoolcache/node/<version>/x64/bin`) with an empty `diff -r` between
@@ -469,9 +469,12 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     `github-actions`, `gitlab-ci`, `pr-reviewer`, `harness-curator` and
     `harness-report` skills, the `ci-configurator` and `ci-debugger` agents) SHALL
     bump `metadata.provenance.version` in the same diff (MINOR for a changed
-    invocation), `scripts/check-skill-versions.sh` SHALL pass, and the component build
+    invocation), in the switch pull request S1, and `scripts/check-skill-versions.sh`
+    SHALL pass there. Every commit that adds or changes a file under `artifacts/`,
+    including the entry pull requests B and C, SHALL run the component build
     (`node scripts/lib/node-floor-guard.js`, then `node scripts/build-components.ts`)
-    SHALL be run and its regenerated outputs staged in the same commit. The
+    and stage its regenerated outputs in the same commit; the entry pull requests add
+    files only, so the check does not require a bump there. The
     `hello-world` extension SHALL bump its version in `extension.json`,
     `package.json` and every golden that records it, in lockstep (spec 0044), and
     `scripts/check-extension-manifest-version.sh` and
@@ -510,8 +513,9 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     Every pull request but S2 SHALL be on a branch `test/1337-<slug>`; S2 SHALL be on
     `feat/1337-<slug>` (the spec linter reads `feat`, `fix`, `refactor`, `perf` and
     `chore` as the implementation-complete pull request). R0, A, C, D and E have no
-    dependency among them and SHALL be opened in parallel; B follows A; S1 follows B
-    and C; S2 follows R0, D and E.
+    dependency among them and SHALL be opened in parallel; B follows A; S1 follows R0,
+    B and C; S2 follows R0, D and E. S2 regenerates the `create-extension` goldens that
+    E committed, because the skeleton it changes is their input.
 
 ### Decision record
 
