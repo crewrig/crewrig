@@ -11,3 +11,6 @@
 
 # Skill-script oracle goldens record the exact bytes a script wrote, carriage returns included.
 scripts/tests/fixtures/skill-scripts/** -text
+
+# Hook-oracle goldens hold exact bytes (CRLF payloads): never normalise them.
+scripts/tests/fixtures/extension-hooks/*.golden -text
