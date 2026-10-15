@@ -1352,6 +1352,33 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0257 R27).
 
+  # Spec 0258 R16, R18, R20, R27 (ticket #1337): the example hooks of `hello-world` and of the
+  # skeleton from PowerShell and cmd.exe with no `bash` on the child PATH (interpreters resolved from
+  # the parent PATH, `System32\bash.exe` never counting), the four package layouts, the no-deprecation
+  # channel, and one latency budget per hook (2000 ms initially, then max(5 x the largest observed
+  # run, 750 ms) rounded up to 50 ms after the first green run). No `paths:` filter, like the Windows
+  # jobs above: the proof must not skip silently on a change it does not list.
+  - id: windows-extension-hooks
+    name: "Windows extension hooks: production install, floor guard, PowerShell and cmd.exe proof, no-deprecation channel and latency budgets"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-extension-hooks`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0258 R27).
+
   # Spec 0256 R40 (ticket #1335), PR B1, plan finding v1-F3: the Windows exercise of layer 1. The
   # production dependencies are installed first, the floor guard runs as its own step, then the
   # same unit suites as `setup-modules-ts` run under pwsh; the POSIX-only ones skip themselves on

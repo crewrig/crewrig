@@ -2973,6 +2973,53 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0258 R16, R18, R20, R27: the example hooks of `hello-world` and the skeleton from pwsh and
+  # cmd.exe with no `bash` on the child PATH, the no-deprecation channel, and a latency budget per hook.
+  # pwsh is the interpreter of every step. The budgets are the initial 2000 ms of R18, replaced after
+  # the first green run (see each step). No path filter, like the Windows jobs above.
+  windows-extension-hooks:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Hooks from PowerShell and cmd.exe, bash absent, four package layouts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-extension-hooks.test.ts
+
+      - name: No deprecation reaches the hooks
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-hooks-deprecations.test.ts
+
+      # Writes $env:RUNNER_TEMP\hooks-timing\payload.json and exports HOOK_PAYLOAD to the steps below.
+      - name: Timing fixtures
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/extension-hooks-timing-fixtures.ts "$env:RUNNER_TEMP\hooks-timing"
+
+      # initial budget 2000 ms; after the first green run replace by max(5 x largest observed, 750 ms) rounded up to 50 ms, only when lower (spec 0258 requirement 18). '--' is quoted so pwsh hands it to node verbatim.
+      - name: prompt-logger timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --stdin-file $env:HOOK_PAYLOAD --case prompt-logger '--' extensions/core/hello-world/hooks/prompt-logger.ts
+
+      # initial budget 2000 ms; after the first green run replace by max(5 x largest observed, 750 ms) rounded up to 50 ms, only when lower (spec 0258 requirement 18). '--' is quoted so pwsh hands it to node verbatim.
+      - name: shell-logger timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --stdin-file $env:HOOK_PAYLOAD --case shell-logger '--' extensions/core/hello-world/hooks/shell-logger.ts
+
+      # initial budget 2000 ms; after the first green run replace by max(5 x largest observed, 750 ms) rounded up to 50 ms, only when lower (spec 0258 requirement 18). '--' is quoted so pwsh hands it to node verbatim.
+      - name: skeleton logger timing budget
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --stdin-file $env:HOOK_PAYLOAD --case skeleton-logger '--' extension-skeleton/hook/hooks/logger.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # Spec 0256 R40, plan finding v1-F3: the Windows exercise of the setup layer-1 unit suites under pwsh.
   # The POSIX-only suites skip themselves on win32. No timing budget and no path filter, like the
   # Windows jobs above.
