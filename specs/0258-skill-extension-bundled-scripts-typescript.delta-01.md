@@ -50,11 +50,13 @@ skipped the parse and exited 0 for a file that only the parse could reject).
 
 **Requirement 20 — Failure silence.** Original:
 
+<!-- markdownlint-disable-next-line MD029 -->
 > 20. **Failure silence.** A hook SHALL never write to standard error and SHALL exit 0
 >     on a read error, as the shell's `read` and `echo` do for a closed input.
 
 Replacement:
 
+<!-- markdownlint-disable-next-line MD029 -->
 > 20. **Failure silence.** A hook SHALL never write to standard error and SHALL exit 0 on
 >     a read error (a closed standard input, a non-blocking input with no data), writing
 >     what it had read and one line feed. The shell twin exits 0 too, but its `read`
