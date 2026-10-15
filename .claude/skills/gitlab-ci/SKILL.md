@@ -21,7 +21,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
+    version: "1.1.0"
 ---
 
 
@@ -205,26 +205,29 @@ real-world audits:
 
 ## Validation tools
 
-Helper scripts live under `scripts/` and are the recommended way to
-catch the pitfalls above before merge. Both are **offline** text scans —
-no live GitLab, no `glab`, no Docker, no registry or token access.
+Helper scripts live under `scripts/` as single-file TypeScript programs
+run with `node` (Node.js 24 or later; no install step) and are the
+recommended way to catch the pitfalls above before merge. Resolve the
+`scripts/` path against this skill's own directory. Both are **offline**
+text scans — no live GitLab, no `glab`, no Docker, no registry or token
+access.
 
-- **`scripts/check-pinned-images.sh`** — fails closed if any `image:`
+- **`scripts/check-pinned-images.ts`** — fails closed if any `image:`
   or `services:` reference is not pinned to an immutable `@sha256:`
   digest. The first-line defense against a re-pointed base image. The
   GitLab counterpart of the `github-actions` skill's
-  `check-pinned-actions.sh`.
-- **`scripts/check-secrets-exposure.sh`** — flags hardcoded credential
+  `check-pinned-actions.ts`.
+- **`scripts/check-secrets-exposure.ts`** — flags hardcoded credential
   literals in `variables:`/`script:`, recognizable token shapes
   (`glpat-…`, `ghp_…`, AWS keys, PEM private keys), `echo`/`printf` of a
   credential-named variable, `set -x`, and `CI_DEBUG_TRACE`. The GitLab
-  counterpart of the `github-actions` skill's `check-secrets-exposure.sh`.
+  counterpart of the `github-actions` skill's `check-secrets-exposure.ts`.
 
 Invoke them as:
 
 ```sh
-scripts/check-pinned-images.sh .gitlab-ci.yml
-scripts/check-secrets-exposure.sh .gitlab-ci.yml
+node scripts/check-pinned-images.ts .gitlab-ci.yml
+node scripts/check-secrets-exposure.ts .gitlab-ci.yml
 ```
 
 Each accepts exactly one argument — a pipeline file or a directory

@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
+    version: "1.3.0"
 ---
 
 
@@ -320,8 +320,8 @@ that ship with the relevant skill on your output.
 For a **GitHub Actions** target (`github-actions` skill):
 
 ```bash
-scripts/lint-workflow.sh        .github/workflows/<name>.yml
-scripts/check-pinned-actions.sh .github/workflows/<name>.yml
+node scripts/lint-workflow.ts        .github/workflows/<name>.yml
+node scripts/check-pinned-actions.ts .github/workflows/<name>.yml
 ```
 
 For a **GitLab CI/CD** target (`gitlab-ci` skill — both are offline
@@ -329,8 +329,8 @@ text scans; there is no offline structural linter or pipeline
 simulator for GitLab, by design):
 
 ```bash
-scripts/check-pinned-images.sh    .gitlab-ci.yml
-scripts/check-secrets-exposure.sh .gitlab-ci.yml
+node scripts/check-pinned-images.ts    .gitlab-ci.yml
+node scripts/check-secrets-exposure.ts .gitlab-ci.yml
 ```
 
 For a GitLab target you also confirm the pipeline is in sync with the
@@ -346,7 +346,7 @@ and re-deriving, never hand-patching the generated `.gitlab-ci.yml`.
 Repeat until the scripts pass. Only then present the pipeline.
 
 If a script is unavailable in the current environment, say so
-explicitly in the output: "Note: `check-pinned-actions.sh` was not
+explicitly in the output: "Note: `check-pinned-actions.ts` was not
 available; pinning was verified by hand against the rules above."
 Never claim a script was run when it was not.
 

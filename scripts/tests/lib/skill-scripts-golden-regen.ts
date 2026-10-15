@@ -1,5 +1,11 @@
 // skill-scripts-golden-regen.ts — regenerate scripts/tests/fixtures/skill-scripts/ from the SHELL
-// leg (spec 0258 R29). Never run it on a macOS host for committed goldens: the shell scripts
+// leg (spec 0258 R29). AFTER THE SWITCH (the S1 pull request, requirement 35) the eleven shell
+// scripts no longer exist in the tree: base regeneration (`SKILL_GOLDEN_REGEN=1`) needs them back
+// from git history, the last commit that had them being 9f6e75e6 (`git show 9f6e75e6:<path>` for
+// each of the eleven `artifacts/core/skills/<skill>/scripts/<name>.sh`, written to the same place
+// in the container copy), and refuses to run while one is missing. The overlay mode
+// (`SKILL_GOLDEN_OVERLAYS=1`) keeps working without them: the stored base goldens stand for the
+// shell's output. Never run it on a macOS host for committed goldens: the shell scripts
 // depend on GNU grep, awk, sed and find. It runs in a Linux container that mirrors the CI runner
 // (Ubuntu 24.04, Bash 5.2, jq 1.7, Node.js 24, GNU tar and gzip, and the pinned Go `yq`).
 //
@@ -41,12 +47,13 @@ import { SCRIPTS } from "./skill-scripts-cases.ts";
 import {
   caseDir,
   compareGolden,
+  expectedFor,
   goldenFiles,
   overlayKeys,
   readGolden,
   writeGolden,
 } from "./skill-scripts-golden.ts";
-import { observe } from "./skill-scripts-observe.ts";
+import { SHELL_RETIRED, observe, shellAvailable } from "./skill-scripts-observe.ts";
 
 /** The overlay mode: returns the exit status. */
 function overlays(only: string | undefined): number {
@@ -54,9 +61,12 @@ function overlays(only: string | undefined): number {
   for (const { script, cases } of SCRIPTS) {
     if (only !== undefined && only !== script) continue;
     for (const testCase of cases) {
-      const shell = goldenFiles(observe(testCase, "shell"));
-      const entry = goldenFiles(observe(testCase, "entry"));
       const stored = readGolden(testCase);
+      // the stored base goldens are the shell's output once the `.sh` is gone
+      const shell = shellAvailable(script)
+        ? goldenFiles(observe(testCase, "shell"))
+        : expectedFor(stored, "shell");
+      const entry = goldenFiles(observe(testCase, "entry"));
       for (const key of overlayKeys(stored))
         fs.rmSync(path.join(caseDir(testCase), ...key.split("/")));
       const base = [...shell.keys()].filter((k) => stored.get(k) !== shell.get(k));
@@ -107,6 +117,12 @@ function main(): number {
   const changed: string[] = [];
   for (const { script, cases } of SCRIPTS) {
     if (only !== undefined && only !== script) continue;
+    if (!shellAvailable(script)) {
+      process.stderr.write(
+        `Error: ${script}: ${SHELL_RETIRED}; restore the .sh from git history (see the header).\n`,
+      );
+      return 1;
+    }
     for (const testCase of cases) {
       const files = goldenFiles(observe(testCase, "shell"));
       const stored = readGolden(testCase);

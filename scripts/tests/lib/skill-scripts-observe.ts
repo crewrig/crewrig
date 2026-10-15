@@ -94,6 +94,15 @@ export function scriptFile(script: string, ext: "sh" | "ts"): string {
   return path.join(SKILLS_ROOT, skill, "scripts", `${name}.${ext}`);
 }
 
+/** Why a shell-leg case is skipped once the switch deleted the `.sh` (the file presence decides). */
+export const SHELL_RETIRED =
+  "skipped: the shell scripts were retired by the switch (spec 0258 requirement 35)";
+
+/** True while the `.sh` of the script still exists: the shell leg can run only then. */
+export function shellAvailable(script: string): boolean {
+  return fs.existsSync(scriptFile(script, "sh"));
+}
+
 /**
  * `auto` honours env `SKILL_ORACLE_LEG=shell|entry` (a proof forces a leg while both files exist),
  * else picks the `.ts` when it exists and the `.sh` when it does not.
@@ -205,6 +214,8 @@ export function observe(testCase: SkillCase, leg: ResolvedLeg, layout?: Layout):
     }
     gitSetup(testCase, workDir, dirs.home);
 
+    if (leg === "shell" && !shellAvailable(testCase.script))
+      throw new Error(`skill-scripts-observe: ${SHELL_RETIRED}`);
     const bash = findTool("bash");
     if (leg === "shell" && bash === undefined) throw new Error("skill-scripts-observe: no bash");
     let entry = scriptFile(testCase.script, leg === "shell" ? "sh" : "ts");

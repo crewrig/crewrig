@@ -5,7 +5,7 @@ pipelines. Systematically produces a
 symptom → hypothesis → evidence → fix chain."
 model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Debugger Agent
 
@@ -230,7 +230,7 @@ Symptoms: workflow fails to start, "Invalid workflow file",
 Typical fixes:
 
 - Run `actionlint` locally on the file. The skill's
-  `scripts/lint-workflow.sh` wraps this.
+  `node scripts/lint-workflow.ts` wraps this.
 - Watch for the classic YAML traps: tab characters, multi-line
   scalars with unintended indentation, `on:` keyword interpreted as
   boolean, unquoted `1.10` becoming a float.
@@ -312,11 +312,11 @@ consecutive clean runs before closing the diagnosis.
 ## Simulation
 
 When the failure does not reproduce from the logs alone, fall back
-to local reproduction with `scripts/simulate-job.sh` (shipped with
-the `github-actions` skill):
+to local reproduction with `scripts/simulate-job.ts` (shipped with
+the `github-actions` skill, run through Node from that skill's directory):
 
 ```bash
-scripts/simulate-job.sh .github/workflows/<file>.yml <job-id>
+node scripts/simulate-job.ts .github/workflows/<file>.yml <job-id>
 ```
 
 The script runs the job under `act` or an equivalent container,

@@ -440,7 +440,7 @@ artifacts/
 │   │   ├── spec-author/   # Lifecycle: qualification stage author
 │   │   ├── pr-logbook/    # Lifecycle: PR and logbook composer
 │   │   ├── pr-reviewer/   # Lifecycle: independent PR reviewer + linters
-│   │   │   └── scripts/   # lint-shell.sh, lint-markdown.sh, lint-skill.sh, ...
+│   │   │   └── scripts/   # lint-shell.sh, lint-markdown.ts, lint-skill.ts, ...
 │   │   └── # … 10 role skills (architect, astro, copywriting, developer, doc-writer,
 │   │       # frontend, github-actions, security, tester, web-tester)
 │   └── agents/            # Sub-agent definitions (lifecycle + role agents)

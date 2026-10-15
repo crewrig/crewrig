@@ -2,18 +2,7 @@
 # Regenerate with: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts --write
 # Entries may only ever be removed: delete a line in the same PR that
 # deletes or migrates its file. See DEVELOPMENT.md (TypeScript toolchain and ratchet).
-artifacts/core/skills/github-actions/scripts/check-pinned-actions.sh
-artifacts/core/skills/github-actions/scripts/check-secrets-exposure.sh
-artifacts/core/skills/github-actions/scripts/lint-workflow.sh
-artifacts/core/skills/github-actions/scripts/simulate-job.sh
-artifacts/core/skills/github-actions/scripts/simulate-workflow.sh
-artifacts/core/skills/gitlab-ci/scripts/check-pinned-images.sh
-artifacts/core/skills/gitlab-ci/scripts/check-secrets-exposure.sh
-artifacts/core/skills/pr-reviewer/scripts/lint-json.sh
-artifacts/core/skills/pr-reviewer/scripts/lint-markdown.sh
-artifacts/core/skills/pr-reviewer/scripts/lint-python.sh
 artifacts/core/skills/pr-reviewer/scripts/lint-shell.sh
-artifacts/core/skills/pr-reviewer/scripts/lint-skill.sh
 artifacts/library/skills/harness-curator/scripts/curate.sh
 artifacts/library/skills/harness-curator/scripts/schedule-curator.sh
 artifacts/library/skills/harness-curator/scripts/setup-labels.sh

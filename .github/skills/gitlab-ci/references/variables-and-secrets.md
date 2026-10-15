@@ -414,7 +414,7 @@ and a manual approval instead.
 
 ### Offline scan
 
-This skill ships `scripts/check-secrets-exposure.sh`, which scans a
+This skill ships `scripts/check-secrets-exposure.ts`, which scans a
 `.gitlab-ci.yml` offline for several of the patterns above — hardcoded
 secret literals, `echo $TOKEN`-style log leaks, `set -x` /
 `CI_DEBUG_TRACE` in credential jobs, and global `variables:` holding a
@@ -432,7 +432,7 @@ Periodic audit checklist:
   (OIDC) so there is nothing long-lived to rotate.
 - Grep the `.gitlab-ci.yml` for hardcoded secret literals and for
   `echo`/`set -x`/`CI_DEBUG_TRACE` on jobs that consume credentials
-  (the `check-secrets-exposure.sh` validator does this).
+  (the `check-secrets-exposure.ts` validator does this).
 - Confirm no credential lives in a global `variables:` block; bind each
   to its job or environment scope.
 - For each cloud provider, audit the OIDC trust conditions: the `aud`

@@ -177,7 +177,7 @@ default:
   image: golang:1.23-bookworm@sha256:0e6f6c...   # immutable
 ```
 
-The skill's `check-pinned-images.sh` flags any `image:` (and
+The skill's `check-pinned-images.ts` flags any `image:` (and
 `services:[].name`) using a bare tag or `:latest` instead of a
 `@sha256:` digest. Treat a bare tag as a finding, not a style nit:
 digest pinning is this skill's supply-chain default, mirroring the

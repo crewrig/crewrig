@@ -5,13 +5,17 @@
 // tag (a)); a difference of a tagged case must be explained by the tags of the case, or the test
 // FAILS naming the case; the overlay golden of a tagged case must equal the entry's output and
 // differ from the shell golden in exactly the differing, tagged streams. The shell leg runs on
-// Linux only (GNU grep, awk, sed, find); elsewhere the suites skip with a named reason.
+// Linux only (GNU grep, awk, sed, find); elsewhere the suites skip with a named reason. Once the
+// switch deleted the `.sh` (decided by file presence), the base goldens ARE the shell's output:
+// the shell leg is skipped with the named reason of `SHELL_RETIRED`, the entry leg is compared
+// with the goldens and overlays, and the tag and overlay consistency checks run on every host.
 
 import assert from "node:assert/strict";
 import { describe, test, type TestContext } from "node:test";
 
 import { findTool } from "./lib/hermetic-env.ts";
 import { SCRIPTS } from "./lib/skill-scripts-cases.ts";
+import { CALLERS, checkCaller, readCaller, retiredSpellings } from "./lib/skill-scripts-callers.ts";
 import { explain, mayOverlay, tagsOf } from "./lib/skill-scripts-deviations.ts";
 import {
   compareGolden,
@@ -20,21 +24,26 @@ import {
   overlayKeys,
   readGolden,
 } from "./lib/skill-scripts-golden.ts";
-import { observe } from "./lib/skill-scripts-observe.ts";
+import { SHELL_RETIRED, observe, shellAvailable } from "./lib/skill-scripts-observe.ts";
 import type { SkillCase } from "./lib/skill-scripts-observe.ts";
 
 const NOT_LINUX = "skipped: the shell leg needs a Linux host (GNU grep, awk, sed, find)";
 const OVERLAY = ".overlay.golden";
 
 function differential(testCase: SkillCase, t: TestContext): void {
-  if (testCase.tools?.includes("yq") === true && findTool("yq") === undefined)
+  if (
+    shellAvailable(testCase.script) &&
+    testCase.tools?.includes("yq") === true &&
+    findTool("yq") === undefined
+  )
     return t.skip("skipped: a YAML-leg case needs yq on the host (the golden container has it)");
   const where = `${testCase.script}/${testCase.name}`;
   const tags = tagsOf(testCase.deviation);
   const stored = readGolden(testCase);
-  const shellObs = observe(testCase, "shell");
+  const live = shellAvailable(testCase.script);
   const entryObs = observe(testCase, "entry");
-  const shell = goldenFiles(shellObs);
+  // the retired shell's output is the stored base golden (every overlay is an entry-only file)
+  const shell = live ? goldenFiles(observe(testCase, "shell")) : expectedFor(stored, "shell");
   const entry = goldenFiles(entryObs);
   const differing = [...new Set([...shell.keys(), ...entry.keys()])]
     .filter((key) => shell.get(key) !== entry.get(key))
@@ -64,7 +73,8 @@ function differential(testCase: SkillCase, t: TestContext): void {
     );
   }
   assert.deepEqual(compareGolden(entry, expectedFor(stored, "entry")), [], `${where}: entry`);
-  assert.deepEqual(compareGolden(shell, expectedFor(stored, "shell")), [], `${where}: shell`);
+  if (live)
+    assert.deepEqual(compareGolden(shell, expectedFor(stored, "shell")), [], `${where}: shell`);
 }
 
 describe("skill-script deviations: the tag table", () => {
@@ -89,11 +99,34 @@ describe("skill-script deviations: the tag table", () => {
   });
 });
 
+describe("skill-script callers: every text names the `.ts` entry run through Node", () => {
+  for (const caller of CALLERS)
+    test(caller.file, () => assert.deepEqual(checkCaller(caller, readCaller(caller)), []));
+
+  test("the guard is not vacuous: it fails on the old spelling and on a missing new one", () => {
+    const [first] = CALLERS;
+    assert.ok(first !== undefined);
+    const text = readCaller(first);
+    assert.deepEqual(checkCaller(first, text), []);
+    assert.equal(checkCaller(first, `${text}\nscripts/lint-workflow.sh x\n`).length, 1);
+    assert.equal(checkCaller(first, `${text}\nscripts/check-pinned-actions x\n`).length, 1);
+    assert.equal(
+      checkCaller(first, text.replaceAll("node scripts/simulate-job.ts", "x")).length,
+      1,
+    );
+    assert.deepEqual(retiredSpellings("lint-shell.sh and lint-typescript.ts stay"), []);
+  });
+});
+
 for (const { script, cases } of SCRIPTS) {
+  const live = shellAvailable(script);
   describe(
-    `${script}: shell leg against entry leg`,
-    { skip: process.platform !== "linux" && NOT_LINUX },
+    live
+      ? `${script}: shell leg against entry leg`
+      : `${script}: entry leg against the goldens and overlays`,
+    { skip: live && process.platform !== "linux" && NOT_LINUX },
     () => {
+      if (!live) test("the shell leg", (t) => t.skip(SHELL_RETIRED));
       for (const testCase of cases) test(testCase.name, (t) => differential(testCase, t));
     },
   );

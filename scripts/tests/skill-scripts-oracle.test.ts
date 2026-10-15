@@ -21,11 +21,12 @@ import {
   readGolden,
 } from "./lib/skill-scripts-golden.ts";
 import { findTool } from "./lib/hermetic-env.ts";
-import { observe, resolveLeg } from "./lib/skill-scripts-observe.ts";
+import { SHELL_RETIRED, observe, resolveLeg, shellAvailable } from "./lib/skill-scripts-observe.ts";
 import type { SkillCase } from "./lib/skill-scripts-observe.ts";
 
 function runCase(testCase: SkillCase, t: TestContext): void {
   const leg = resolveLeg(testCase.script, "auto");
+  if (leg === "shell" && !shellAvailable(testCase.script)) return t.skip(SHELL_RETIRED);
   if (leg === "shell" && process.platform !== "linux")
     return t.skip("skipped: the shell leg needs a Linux host (GNU grep, awk, sed, find)");
   if (leg === "shell" && testCase.tools?.includes("yq") === true && findTool("yq") === undefined)

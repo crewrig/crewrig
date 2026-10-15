@@ -6,15 +6,15 @@ description: "Independent PR review skill. Activate to audit a pull request cold
   Changes / Comment)."
 type: skill
 license: Apache-2.0
-compatibility: "Requires bash and gh CLI (for diff fetch and review post). Optional:
-  shellcheck (lint-shell.sh), markdownlint (lint-markdown.sh), ruff or flake8
-  (lint-python.sh), Node >= 24 with oxlint and oxfmt (lint-typescript.ts).
-  Missing tools degrade gracefully."
+compatibility: "Requires Node >= 24 (the linter scripts are TypeScript files run with
+  node) and gh CLI (for diff fetch and review post). Optional: shellcheck and bash
+  (lint-shell.sh), markdownlint (lint-markdown.ts), ruff or flake8 (lint-python.ts),
+  oxlint and oxfmt (lint-typescript.ts). Missing tools degrade gracefully."
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.7.0"
+    version: "1.8.0"
 claude:
   allowed-tools:
     - Read
@@ -324,16 +324,20 @@ returns exit 0 (clean) or exit 1 (findings).
 | Script | Targets | Checks | Degrades when |
 |---|---|---|---|
 | `lint-shell.sh` | `*.sh` | shellcheck output, executable bit, `set -e` presence | shellcheck absent |
-| `lint-markdown.sh` | `*.md` | markdownlint output | markdownlint absent |
-| `lint-skill.sh` | `SKILL.md` | required frontmatter fields, version bumped vs `BASE_REF` | yq absent (grep fallback) |
-| `lint-python.sh` | `*.py` | ruff or flake8 output, bare `print(` in non-test files | both ruff and flake8 absent |
-| `lint-json.sh` | `*.json` | `jq` parse, trailing-comma heuristic | jq absent |
+| `lint-markdown.ts` | `*.md` | markdownlint output | markdownlint absent |
+| `lint-skill.ts` | `SKILL.md` | required frontmatter fields, version bumped vs `BASE_REF` | `js-yaml` unresolvable (line-scan fallback) |
+| `lint-python.ts` | `*.py` | ruff or flake8 output, bare `print(` in non-test files | both ruff and flake8 absent |
+| `lint-json.ts` | `*.json` | `JSON.parse` validation, trailing-comma heuristic | never (no external tool) |
 | `lint-typescript.ts` | `*.ts` | Oxlint type-aware strict typing (`no-explicit-any`, `ban-ts-comment`, `no-unsafe-*`), Oxfmt check mode; `max-lines` > 300 is a non-blocking warning | oxlint or oxfmt absent (per tool) |
 
-The five shell scripts use `command -v <tool>` before invoking optional
-tools, and `lint-typescript.ts` resolves `./node_modules/.bin` then
-`PATH`; all six print a one-line note when degrading, so a missing tool
-never aborts the review.
+`lint-shell.sh` uses `command -v <tool>` before invoking optional tools.
+The five other linters are invoked like `lint-typescript.ts`, through
+Node (`node scripts/lint-markdown.ts <file>...`, resolved against this
+skill's directory). `lint-typescript.ts` resolves `./node_modules/.bin`
+then `PATH`; `lint-skill.ts` resolves `js-yaml` from the script
+directory, then from the working directory, and falls back to a line
+scan when neither has it. All six print a one-line note when degrading,
+so a missing tool never aborts the review.
 
 ## Finding class taxonomy
 

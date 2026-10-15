@@ -289,6 +289,6 @@ Periodic audit checklist:
 - List org-wide secrets and their repo access list. Tighten scope.
 - Inspect workflows for top-level `env:` referencing `secrets.*`.
 - Search for `${{ secrets.` patterns in `run:` blocks (the
-  `scripts/check-secrets-exposure` validator does this).
+  `scripts/check-secrets-exposure.ts` validator does this).
 - For each cloud provider, audit the OIDC trust conditions and ensure
   every long-lived access key has a migration plan.

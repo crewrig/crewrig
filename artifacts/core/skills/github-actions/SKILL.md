@@ -15,7 +15,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.0.2"
+    version: "1.1.0"
 claude:
   allowed-tools:
     - Read
@@ -240,20 +240,22 @@ real-world audits:
 
 ## Validation tools
 
-Helper scripts live under `scripts/` and are the recommended way to
-catch the pitfalls above before merge.
+Helper scripts live under `scripts/` as single-file TypeScript programs
+run with `node` (Node.js 24 or later; no install step) and are the
+recommended way to catch the pitfalls above before merge. Resolve the
+`scripts/` path against this skill's own directory.
 
-- **`scripts/lint-workflow.sh`** — runs the upstream `actionlint` binary
+- **`scripts/lint-workflow.ts`** — runs the upstream `actionlint` binary
   across `.github/workflows/`. Catches YAML errors, shellcheck
   findings inside `run:` blocks, undefined contexts, unreachable
   steps. Run on every workflow change.
-- **`scripts/check-pinned-actions`** — fails the build if any
+- **`scripts/check-pinned-actions.ts`** — fails the build if any
   `uses:` references a tag/branch rather than a 40-character commit
   SHA. The first-line defense against supply-chain compromise.
-- **`scripts/check-secrets-exposure`** — greps for
+- **`scripts/check-secrets-exposure.ts`** — greps for
   `${{ secrets.* }}` patterns that flow into `run:` blocks without
   going through `env:`, and flags `echo $SECRET` style mistakes.
-- **`scripts/simulate-job`** / **`scripts/simulate-workflow`** —
+- **`scripts/simulate-job.ts`** / **`scripts/simulate-workflow.ts`** —
   thin wrappers around `act` that run a job or the whole workflow
   locally in Docker. Useful for fast iteration on `run:` logic, but
   remember that `act` does not faithfully reproduce the full
@@ -263,11 +265,11 @@ catch the pitfalls above before merge.
 Invoke them as:
 
 ```sh
-scripts/lint-workflow.sh .github/workflows/
-scripts/check-pinned-actions .github/workflows/
-scripts/check-secrets-exposure .github/workflows/
-scripts/simulate-job .github/workflows/ci.yml build
-scripts/simulate-workflow .github/workflows/ci.yml
+node scripts/lint-workflow.ts .github/workflows/
+node scripts/check-pinned-actions.ts .github/workflows/
+node scripts/check-secrets-exposure.ts .github/workflows/
+node scripts/simulate-job.ts .github/workflows/ci.yml build
+node scripts/simulate-workflow.ts .github/workflows/ci.yml
 ```
 
 CI should fail closed on any of these. If a script does not exist in
