@@ -96,7 +96,7 @@ describe("extension shell/TypeScript conformance", { skip: skipReason || false }
 
   each("hook files rendered per target", (c) => {
     for (const target of TARGETS) {
-      const file = renderHookFile(target, c.manifest, table);
+      const file = renderHookFile(target, c.manifest, table, "linux");
       const twin = file === null ? {} : { [file.file]: writeJsonText(file.value) };
       const prefix = `render-${target}${path.sep}`;
       const shell = Object.fromEntries(

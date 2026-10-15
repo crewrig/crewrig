@@ -38,7 +38,7 @@ export function emitHooks(
   outDir: string,
   gaps: GapChannel,
 ): void {
-  const hookFile = renderHookFile(target, manifest, ctx.table);
+  const hookFile = renderHookFile(target, manifest, ctx.table, ctx.platform);
   if (hookFile !== null) {
     const file = path.join(outDir, hookFile.file);
     fs.mkdirSync(path.dirname(file), { recursive: true });

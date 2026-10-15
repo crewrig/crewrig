@@ -2,6 +2,7 @@
 // Twin of `ext_hooks_render` (scripts/lib/extension-hooks.sh:314-375). Pure: it returns the
 // value and the file name; the caller serialises with `writeJsonText` and writes `<out>/<file>`.
 
+import { GUARDED_PREFIX } from "../hook-command.ts";
 import { jqText, obj } from "./json-write.ts";
 import { resolvedEntries, type ResolvedEntry } from "./hooks-resolve.ts";
 import { stripTrailingLf } from "./hooks-vocab.ts";
@@ -48,11 +49,17 @@ function copilotItem(e: ResolvedEntry): JsonValue {
   return obj(pairs);
 }
 
-/** The target's hook file, or null when no declared hook maps onto the target. */
+/**
+ * The target's hook file, or null when no declared hook maps onto the target. `platform` is the
+ * build host's (`ctx.platform`): an Antigravity line written on `win32` carries `GUARDED_PREFIX`,
+ * because `cmd.exe` looks a bare `node` up in the working directory before `PATH` (CWE-427; spec
+ * 0258 delta-01 requirement 17). The other three targets' lines do not depend on it.
+ */
 export function renderHookFile(
   target: Target,
   manifest: Map<string, JsonValue>,
   table: TargetTable,
+  platform: NodeJS.Platform,
 ): HookFile | null {
   const entries = resolvedEntries(target, manifest, table);
   if (entries.length === 0) return null;
@@ -67,7 +74,7 @@ export function renderHookFile(
       const grouped = groupByEvent(entries, (e) =>
         obj([
           ["matcher", e.matcher],
-          ["hooks", handler(e.command)],
+          ["hooks", handler(platform === "win32" ? GUARDED_PREFIX + e.command : e.command)],
         ]),
       );
       return { file, value: obj([[id, grouped]]) };

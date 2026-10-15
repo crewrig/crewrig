@@ -148,7 +148,7 @@ describe("resolvedEntries and hookGaps", () => {
     for (const text of ["{}", '{"hooks":null}', '{"hooks":{}}']) {
       assert.deepEqual(resolvedEntries("claude", manifest(text), table), []);
       assert.deepEqual(hookGaps("claude", manifest(text), table), { warnings: [], gaps: [] });
-      assert.equal(renderHookFile("claude", manifest(text), table), null);
+      assert.equal(renderHookFile("claude", manifest(text), table, "linux"), null);
     }
   });
 });
@@ -157,7 +157,7 @@ function render(
   target: Target,
   m: Map<string, JsonValue> = M,
 ): { file: string; json: string } | null {
-  const r = renderHookFile(target, m, table);
+  const r = renderHookFile(target, m, table, "linux");
   return r === null ? null : { file: r.file, json: writeJsonCompact(r.value) };
 }
 
