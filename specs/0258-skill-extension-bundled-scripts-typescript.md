@@ -108,8 +108,10 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
    (parent requirement 23). JSON SHALL be read with the Node.js standard library and
    YAML with `js-yaml` (requirement 11). The tools an entry MAY spawn are exactly: Git;
    `gh` (the forge CLI); the Python interpreter that runs the two `mempalace` files;
-   the host operating system's service manager through `scripts/lib/service/`
-   (requirement 18); and the *wrapped tools* of requirement 6. The scheduled
+   `pipx` and the Python launchers `python3`, `python` and `py`, to locate and run
+   that interpreter (requirement 13); the host operating system's service manager
+   through `scripts/lib/service/` (requirement 15); and the *wrapped tools* of
+   requirement 6. The scheduled
    command of `schedule-curator` runs the current Node.js interpreter.
 
 6. **Wrapped tools.** The `lint-workflow`, `simulate-job`, `simulate-workflow`,
@@ -173,9 +175,11 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     (requirement 3). When `js-yaml` cannot be resolved from either place it SHALL print
     the one-line note `lint-skill: js-yaml not found — using line fallback for the
     required keys and the version; run it from a CrewRig checkout after setup for the
-    full check.` and use the shell's line-based fallback, which skips no check the
-    shell's own fallback ran; it SHALL never fail with an unhandled
-    module-resolution error (parent requirement 6). The fallback is a documented
+    full check.` and use the shell's line-based fallback unchanged: its rules read the
+    whole file, body included, where the `js-yaml` leg reads the frontmatter block
+    only (an imprecision the shell's fallback already had and that this row keeps),
+    and it skips no check the shell's fallback ran; it SHALL never fail with an
+    unhandled module-resolution error (parent requirement 6). The fallback is a documented
     degraded mode of the kind every wrapped tool has, not an inability to run, so the
     exit status stays that of the findings (decision D1). `yq` SHALL NOT be spawned
     (deviation (d)).
@@ -228,8 +232,11 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     exit non-zero naming the missing capability and register nothing (parent
     requirement 20). It SHALL spawn no `crontab` and SHALL leave no
     partly registered job when a step fails. The
-    `fzf` prompts SHALL become a built-in prompt on a terminal and the additive options
-    `--frequency weekly|daily` and `--hour <0-23>` (deviation (f)); without a terminal
+    `fzf` prompts SHALL become a built-in prompt on a terminal, with the shell's defaults
+    (`weekly` first in the choice, hour `09`), and the additive options
+    `--frequency weekly|daily` and `--hour <0-23>` (deviation (f)); a weekly job SHALL
+    fire on Monday and every job at minute 0 of its hour, as the shell's plist and
+    cron line did; without a terminal
     and without those options the entry SHALL exit 1 naming them. `--uninstall` on a
     machine with no registered job SHALL exit 0 with a line that contains
     `nothing to remove`, and after removing a job SHALL print `Removed:` and its path
@@ -264,8 +271,10 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     and the run id, by `max(5 x the largest observed run, 750 ms)` rounded up to the
     next 50 ms when that is lower, and never lowered again by a later run. The
     tolerance is deliberately wider than spec 0243's: issue #1509 shows that a bound
-    tight on a shared runner flakes, and this row SHALL NOT add a bound that can. A
-    run over its budget SHALL fail the job with the line the harness prints
+    tight on a shared runner flakes, and this row SHALL NOT add a bound that can. The
+    replacement SHALL be made in pull request D, as a commit on its own branch after its
+    first green run and before it merges. A run over its budget SHALL fail the job with
+    the line the harness prints
     (`timing-budget: <script> exceeded <M> ms: measured <t> ms`).
 
 19. **Cheap guard and lazy import.** An example hook SHALL read the payload and return
@@ -347,8 +356,9 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     `ci/ci-capabilities.yml` as `portability: specific` with the exception paragraph of
     the earlier Windows jobs and mirrored by hand in `.github/workflows/build.yml`:
     `windows-skill-scripts` (the eleven skill entries), `windows-harness-curator` (the
-    three wrappers) and `windows-extension-hooks` (the hooks with their budget steps,
-    and `create-extension`). A job SHALL invoke each entry from PowerShell, with `bash`
+    three wrappers), `windows-extension-hooks` (the hooks, with their budget steps) and
+    `windows-create-extension` (the scaffolder); each ships with the pull request that
+    adds the entries it covers. A job SHALL invoke each entry from PowerShell, with `bash`
     absent from the narrowed `PATH` of the child (interpreters resolved from the parent
     `PATH` first; `System32\bash.exe` is on every runner `PATH` and SHALL NOT satisfy a
     check), SHALL use stub wrapped tools and a stub `gh` written at test time (no
@@ -363,8 +373,12 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     suffix. The oracle SHALL select its subject by file presence — the `.ts` entry
     when it exists, else the `.sh` — so that the switch pull request leaves its text
     unchanged. For `lint-skill` it SHALL cover both the line-fallback leg (no `yq` and
-    no `js-yaml` on the child's path) and the YAML leg, and SHALL fail rather than skip
-    when the fallback leg is absent. For the hooks, the oracle SHALL be a corpus of
+    no `js-yaml` on the child's path) and the YAML leg. The golden container of
+    requirement 29 SHALL carry `yq` (the Go implementation, version pinned in the
+    regeneration script), since the shell takes its YAML leg only when `yq` exists;
+    CI compares the entry's YAML leg with those goldens and runs the shell's YAML leg
+    live only where `yq` is present, but the line-fallback leg runs live everywhere and
+    the oracle SHALL fail, not skip, when that leg is absent. For the hooks, the oracle SHALL be a corpus of
     standard-input payloads (empty; no trailing line feed; leading and trailing blanks;
     a CRLF payload; a backslash; a long line; several lines) run against the shell and
     the entry. The existing Bash suites `artifacts/library/skills/harness-curator/scripts/test.sh`,
@@ -431,16 +445,18 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
       identical to the former header lines.
     - (h) `create-extension`: no `fzf`; `NAME` is validated; the placeholder is
       replaced literally; the additive `--components` option; Windows is supported.
-    - (i) A hook payload that the shell's `echo` would take as an option (`-n`, `-e`,
-      `-E` alone) is written literally.
+    - (i) A hook payload that is one word of the form `-` followed by one or more of
+      the letters `n`, `e` and `E` (`-n`, `-e`, `-E`, `-ne`, `-en`, ...) is taken by
+      the shell's `echo` as options and printed as nothing or as an empty line; the
+      hook writes it literally.
 
 32. **Shims, deletion and callers.** A script with a Bash oracle or a CI or Taskfile
     caller that is not retargeted in the same pull request SHALL become a forwarding
     shim of the form of spec 0255 requirement 25 (Node.js floor guard, then `exec node
     <entry>.ts "$@"`): `curate.sh`, `schedule-curator.sh`, `setup-labels.sh` and
     `create-extension.sh`; each keeps its line in `ci/shell-allowlist.txt` until row
-    J4. A script with neither SHALL be deleted with its allowlist line, in the same pull
-    request as its entry: the eleven skill scripts and the three hook scripts. Every
+    J4. A script with neither SHALL be deleted with its allowlist line, in the switch pull
+    request of requirement 35: the eleven skill scripts and the three hook scripts. Every
     skill body, agent body, reference page, `README.md`, `DEVELOPMENT.md`,
     `CONTRIBUTING.md`, `artifacts/FORMAT.md`, `Taskfile.yml` task and workflow line that
     names the old invocation SHALL be updated in the same pull request (parent
@@ -470,24 +486,32 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     installs only `SKILL.md` of a skill, never its `scripts/` (`scripts/lib/setup/tier-install.ts`),
     an existing asymmetry that this row SHALL record and SHALL NOT change.
 
-35. **Staging.** The work SHALL ship as the spec-PR plus six implementation pull
+35. **Staging.** The work SHALL ship as the spec-PR plus eight implementation pull
     requests, every one targeting `release/1231-ts-migration` and each rebased on it and
-    re-tested before its merge:
+    re-tested before its merge. Entries land first, beside the shell scripts they
+    replace, so that the differential of requirement 29 can run on CI against the live
+    shell; a separate switch pull request then removes or shims the shell:
     - R0, the static-read retargets of requirement 30 that need no entry;
     - A, the eleven-script oracle and its goldens, green against the shell;
-    - B, the eleven skill entries, `windows-skill-scripts`, the switch (deletion,
-      callers, versions, build);
-    - C, the three curator wrappers, `windows-harness-curator`, the service-layer
-      calendar trigger, the shims;
-    - D, the hook oracle, the three hooks, the manifest lines, the regenerated goldens,
-      the budgets, `windows-extension-hooks`, the extension version bump;
-    - E, `create-extension.ts`, the skeleton toolchain, the shim, the Taskfile tasks,
-      the final documentation and the flip of this spec to `status: implemented`.
+    - B, the eleven skill entries, the differential and `windows-skill-scripts`;
+    - C, the three curator entries, the service-layer calendar trigger, the
+      differential and `windows-harness-curator`;
+    - D, the hook oracle, the three hooks beside their shell twins, the differential,
+      the budgets and `windows-extension-hooks`;
+    - E, `create-extension.ts`, the differential and `windows-create-extension`;
+    - S1, the switch of the skill and curator scripts: deletions, the three curator
+      shims, callers, skill and agent version bumps, the component build;
+    - S2, the switch of the extension side: the manifest lines of requirement 17,
+      the regenerated goldens, the deletion of the three hook scripts, the skeleton
+      hook and `package.json` toolchain, the `create-extension` shim, the Taskfile
+      tasks, the extension version bump, the final documentation, and the flip of this
+      spec to `status: implemented`.
 
-    Every pull request but E SHALL be on a branch `test/1337-<slug>`; E SHALL be on
+    Every pull request but S2 SHALL be on a branch `test/1337-<slug>`; S2 SHALL be on
     `feat/1337-<slug>` (the spec linter reads `feat`, `fix`, `refactor`, `perf` and
-    `chore` as the implementation-complete pull request). A and R0, C and D have no
-    dependency among them and SHALL be opened in parallel; B follows A; E follows D.
+    `chore` as the implementation-complete pull request). R0, A, C, D and E have no
+    dependency among them and SHALL be opened in parallel; B follows A; S1 follows B
+    and C; S2 follows R0, D and E.
 
 ### Decision record
 
@@ -574,6 +598,14 @@ When `lint-skill.ts SKILL.md` runs there
 Then it prints the `js-yaml not found` note, reports the missing key through the line
 fallback and exits 1, and no module-resolution error appears.
 
+**Scenario:** `lint-skill` reads the frontmatter with `js-yaml`
+
+Given a checkout with its dependencies installed and a `SKILL.md` whose body, not its
+frontmatter, holds a line `license: x`, with `license` missing from the frontmatter
+When `lint-skill.ts SKILL.md` runs from the checkout
+Then it reports `license` missing, the shell's YAML leg having reported the same, and
+exits 1.
+
 **Scenario:** The curator dry run reads standard input
 
 Given a friction payload on standard input and no `mempalace` library
@@ -654,8 +686,5 @@ Then every assertion passes unchanged.
 - The exact shape of the calendar-trigger addition to `scripts/lib/service/`
   (requirement 15) and its Task Scheduler XML, to be fixed in the PLAN and pinned by the
   layer's own suites.
-- Whether `yq` is present on the CI runner for the YAML leg of the `lint-skill` oracle
-  (requirement 28), to be measured in pull request A; the line-fallback leg runs in any
-  case.
 - The complete list of static reads of requirement 30, with the before and after of
   each, to be fixed in the PLAN.
