@@ -205,11 +205,16 @@ export function runCurator(o: Invocation): CuratorRun {
   return { entry: label, status: res.status, out, err, ms, detail, ghCalls };
 }
 
-/** No file the entries could have written under the sandbox holds a carriage return. */
+/**
+ * No file the entries could have written under the sandbox holds a carriage return. `AppData` is
+ * skipped: PowerShell itself writes there (`StartupProfileData-NonInteractive`, with CRLF) whatever
+ * the entries do, so it is not a landing zone of an entry.
+ */
 export function assertNoCarriageReturn(fx: Fixture): void {
   const found: string[] = [];
   const walk = (dir: string): void => {
     for (const name of fs.readdirSync(dir)) {
+      if (name.toLowerCase() === "appdata") continue;
       const file = path.join(dir, name);
       if (fs.statSync(file).isDirectory()) walk(file);
       else if (fs.readFileSync(file).includes(13)) found.push(file);
