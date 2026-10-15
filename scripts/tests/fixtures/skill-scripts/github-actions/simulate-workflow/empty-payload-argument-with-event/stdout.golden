@@ -1,0 +1,2 @@
++ act pull_request --workflows wf.yml --eventpath <TMP>/<RAND> --dryrun
+act: dry run done

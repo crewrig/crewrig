@@ -1,0 +1,2 @@
+[RISK] wf.yml:2: top-level env: references ${{ secrets.* }}
+       why: secrets defined at workflow level are inherited by every job (broad blast radius)

@@ -1,0 +1,2 @@
++ act push --workflows wf.yml --job build --dryrun
+before-kill

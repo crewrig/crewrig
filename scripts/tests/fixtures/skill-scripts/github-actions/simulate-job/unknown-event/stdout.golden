@@ -1,0 +1,2 @@
++ act no_such_event --workflows wf.yml --job build --dryrun
+act: dry run done

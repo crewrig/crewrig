@@ -1,0 +1,2 @@
++ act push --workflows <SANDBOX>/work/wf.yml --job build --dryrun
+act: dry run done

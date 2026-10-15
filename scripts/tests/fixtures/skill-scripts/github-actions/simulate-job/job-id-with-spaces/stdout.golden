@@ -1,0 +1,2 @@
++ act push --workflows wf.yml --job my job --dryrun
+act: dry run done

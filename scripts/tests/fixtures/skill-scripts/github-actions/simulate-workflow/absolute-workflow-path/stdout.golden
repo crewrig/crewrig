@@ -1,0 +1,2 @@
++ act push --workflows <SANDBOX>/work/wf.yml --eventpath <TMP>/<RAND> --dryrun
+act: dry run done

@@ -1,0 +1,2 @@
+[RISK] wf.yml:4: echo ${{ secrets.* }}
+       why: secret value is written to stdout and persisted in the run log

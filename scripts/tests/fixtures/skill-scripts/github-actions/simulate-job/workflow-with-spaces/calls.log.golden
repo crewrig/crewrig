@@ -1,0 +1,2 @@
+docker <info>
+act <push> <--workflows> <my wf.yml> <--job> <build> <--dryrun>

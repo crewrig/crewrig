@@ -1,0 +1,2 @@
+repo/.github/workflows/ci.yml:3:5: error: bad expression
+[FAIL] repo/.github/workflows/ci.yml

@@ -1,0 +1,2 @@
++ act push --workflows wf.yml --eventpath <SANDBOX>/work/p.json --dryrun
+act: dry run done

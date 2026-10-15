@@ -1,0 +1,1 @@
+actionlint <-no-color> <repo/.github/workflows/ci.yml>

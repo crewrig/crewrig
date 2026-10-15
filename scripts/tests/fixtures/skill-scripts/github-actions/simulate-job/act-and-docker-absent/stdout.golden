@@ -1,0 +1,2 @@
+[SKIP] act not found — install: brew install act
+       act runs GitHub Actions locally inside Docker containers.

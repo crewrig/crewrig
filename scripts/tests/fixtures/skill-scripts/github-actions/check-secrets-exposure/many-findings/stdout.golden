@@ -1,0 +1,24 @@
+[RISK] wf.yml:1: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:2: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:3: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:4: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:5: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:6: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:7: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:8: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:9: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:10: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:11: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values
+[RISK] wf.yml:12: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values

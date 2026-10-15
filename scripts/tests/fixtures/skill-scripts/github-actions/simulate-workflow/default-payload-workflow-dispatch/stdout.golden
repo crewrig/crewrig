@@ -1,0 +1,2 @@
++ act workflow_dispatch --workflows wf.yml --eventpath <TMP>/<RAND> --dryrun
+act: dry run done

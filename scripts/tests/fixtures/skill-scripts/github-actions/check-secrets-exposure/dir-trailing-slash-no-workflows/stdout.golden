@@ -1,0 +1,2 @@
+[RISK] repo/a.yml:5: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret env values

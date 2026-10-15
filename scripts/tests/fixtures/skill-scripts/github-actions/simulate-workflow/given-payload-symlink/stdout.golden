@@ -1,0 +1,2 @@
++ act push --workflows wf.yml --eventpath link.json --dryrun
+act: dry run done

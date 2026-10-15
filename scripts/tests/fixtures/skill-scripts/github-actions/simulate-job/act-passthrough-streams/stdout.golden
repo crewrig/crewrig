@@ -1,0 +1,3 @@
++ act push --workflows wf.yml --job build --dryrun
+line-1
+line-2

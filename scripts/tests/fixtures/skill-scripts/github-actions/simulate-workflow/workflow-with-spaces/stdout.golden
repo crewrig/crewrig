@@ -1,0 +1,2 @@
++ act push --workflows my wf.yml --eventpath <TMP>/<RAND> --dryrun
+act: dry run done

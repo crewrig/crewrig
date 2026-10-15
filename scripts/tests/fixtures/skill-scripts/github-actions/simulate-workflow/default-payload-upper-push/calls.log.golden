@@ -1,0 +1,2 @@
+docker <info>
+act <PUSH> <--workflows> <wf.yml> <--eventpath> <<TMP>/<RAND>> <--dryrun>

@@ -1,0 +1,2 @@
+docker <info>
+act <push> <--workflows> <wf.yml> <--eventpath> <<SANDBOX>/work/p.json> <--dryrun>
