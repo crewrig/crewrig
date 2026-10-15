@@ -508,7 +508,8 @@ capabilities:
   # The job needs the production install and the system tools only, never the dev-toolchain (no
   # Oxlint). On GitHub, `yq` is pinned to v4.44.3 and its sha256 is checked, the version the goldens
   # were generated with. The floor guard runs after the production dependency step, before the
-  # first test call.
+  # first test call. PR B adds the shell-against-entry differential (Linux), the package-layout and
+  # copied-skill suites (Node only) and the oracle mutation suite (git and a Node install).
   - id: skill-scripts-ts
     name: "Run the skill-script oracle and its YAML leg"
     trigger:
@@ -533,7 +534,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts scripts/tests/skill-scripts-differential.test.ts scripts/tests/skill-scripts-layouts.test.ts scripts/tests/skill-scripts-copied-skill.test.ts scripts/tests/skill-scripts-mutation.test.ts
 
   # Spec 0255 (row F2 of epic #1231), PR B: the dark link-or-copy module, the component twins and
   # the manage modules, with their node:test suites. `bash` is spawned on purpose by the two twin

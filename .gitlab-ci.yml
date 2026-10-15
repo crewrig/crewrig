@@ -443,7 +443,7 @@ skill-scripts-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts scripts/tests/skill-scripts-differential.test.ts scripts/tests/skill-scripts-layouts.test.ts scripts/tests/skill-scripts-copied-skill.test.ts scripts/tests/skill-scripts-mutation.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:

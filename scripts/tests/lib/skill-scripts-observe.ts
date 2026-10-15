@@ -20,6 +20,14 @@ import { findTool, linkTools } from "./hermetic-env.ts";
 
 export type Leg = "shell" | "entry" | "auto";
 export type ResolvedLeg = "shell" | "entry";
+/** The `package.json` beside an isolated entry copy: spec 0258 R2 (`none` writes no package.json). */
+export type Layout = "module" | "commonjs" | "typeless" | "none";
+export const LAYOUT_PACKAGE: Readonly<Record<Layout, string | undefined>> = {
+  module: '{"type":"module"}\n',
+  commonjs: '{"type":"commonjs"}\n',
+  typeless: "{}\n",
+  none: undefined,
+};
 
 export const SKILLS_ROOT = path.resolve(
   import.meta.dirname,
@@ -163,8 +171,8 @@ function gitSetup(testCase: SkillCase, work: string, home: string): void {
   }
 }
 
-/** One leg of one case in a fresh sandbox. */
-export function observe(testCase: SkillCase, leg: ResolvedLeg): Observed {
+/** One leg of one case in a fresh sandbox; a `layout` runs the entry as an isolated copy of its file. */
+export function observe(testCase: SkillCase, leg: ResolvedLeg, layout?: Layout): Observed {
   if (process.platform === "win32") throw new Error("skill-scripts-observe: POSIX only");
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "skill-oracle-")));
   try {
@@ -200,9 +208,11 @@ export function observe(testCase: SkillCase, leg: ResolvedLeg): Observed {
     const bash = findTool("bash");
     if (leg === "shell" && bash === undefined) throw new Error("skill-scripts-observe: no bash");
     let entry = scriptFile(testCase.script, leg === "shell" ? "sh" : "ts");
-    if (leg === "entry" && isolatedEntry(testCase)) {
+    if (leg === "entry" && (layout !== undefined || isolatedEntry(testCase))) {
       const iso = path.join(root, "iso");
       fs.mkdirSync(iso);
+      const pkg = layout === undefined ? undefined : LAYOUT_PACKAGE[layout];
+      if (pkg !== undefined) fs.writeFileSync(path.join(iso, "package.json"), pkg);
       fs.copyFileSync(entry, path.join(iso, path.basename(entry)));
       entry = path.join(iso, path.basename(entry));
     }
