@@ -17,7 +17,10 @@ requirement 31 reserved the letters (o) onward for. It runs under the release-br
 regime of `specs/0215-shell-to-typescript-migration.delta-04.md`: its spec-PR targets
 `release/1231-ts-migration`, and the base ref of every protocol is
 `origin/release/1231-ts-migration` (requirement 34 of that delta). This delta modifies
-requirements 20 and 31 and adds scenarios. The version is a MINOR bump: no behaviour of
+requirements 17, 20 and 31 and adds scenarios. Requirement 17 is modified on the
+maintainer's ruling during the pull request D to S2 sequence: an Antigravity hook line
+that runs a bare `node` under `cmd.exe` searches the working directory first (CWE-427),
+so the line is guarded on a Windows build host. The version is a MINOR bump: no behaviour of
 the shell changes, the closed list of deviations is completed with the letters (o) to
 (r), each found by a test that names it, and the sentence of requirement 20 that the shell
 does not satisfy is corrected. This delta opens no question.*
@@ -58,7 +61,49 @@ When `node lint-json.ts <file>` runs
 Then it reports `invalid JSON` and exits 1 (the shell printed that `jq` was not found,
 skipped the parse and exited 0).
 
+**Scenario:** The Antigravity hook line is guarded on a Windows build host
+
+Given the `hello-world` extension built for the Antigravity target with the platform
+injected as `win32`
+When the builder writes the plugin's `hooks.json`
+Then the command of `shell-logger` is
+`set NoDefaultCurrentDirectoryInExePath=1&& node "hooks/shell-logger.ts"`, and with the
+platform injected as `linux` it is `node "hooks/shell-logger.ts"`.
+
 ## MODIFIED
+
+**Requirement 17 — Hook command lines.** Original, the closing sentence:
+
+> The builders (spec 0254 requirement 10) SHALL emit the line for the four targets from this
+> one source, the Antigravity line being the plugin-relative `node "hooks/<hook>.ts"`.
+
+Replacement:
+
+> The builders (spec 0254 requirement 10) SHALL emit the line for the four targets from this
+> one source, the Antigravity line being the plugin-relative `node "hooks/<hook>.ts"` on every
+> build host whose platform is not `win32`. On a `win32` build host the Antigravity line SHALL
+> be `set NoDefaultCurrentDirectoryInExePath=1&& node "hooks/<hook>.ts"`, the guarded prefix
+> `GUARDED_PREFIX` of `scripts/lib/hook-command.ts` that spec 0243 delta-03 adopted after
+> `docs/cli-matrix.md` row 37f measured it holding on the Antigravity hooks surface: under
+> `cmd.exe` a bare `node` is looked up in the working directory before `PATH` (CWE-427), and
+> the hooks of an Antigravity plugin run with the plugin directory as working directory. The
+> builder SHALL take the platform from the build context (`ctx.platform`, set from
+> `process.platform`), and a test SHALL inject `win32` and `linux` and compare both lines. This
+> covers every path that can put an Antigravity `hooks.json` on a Windows machine, because the
+> build host is always the machine that runs the builder: the release archive of spec 0257 is
+> built on Linux CI with `--target gemini` and serves the Gemini CLI alone (Ruling A of spec
+> 0183 delta-01), so it can never carry an Antigravity `hooks.json`; the Antigravity plugin is
+> built in place by `build-extension.ts --target antigravity` (the installer
+> `scripts/lib/install/antigravity-plugin.ts` builds on the user's machine and `agy plugin
+> install` copies the result); `dist-antigravity-plugin/` is git-ignored and is never
+> link-or-copied. Rejected alternatives: an absolute interpreter path resolved at install time
+> (it bakes a machine-specific `process.execPath` into the plugin and breaks the deterministic
+> outputs and goldens); refusing to emit the Antigravity hook file on a `win32` build host
+> until issue #1601 measures the plugin-root forms (zero risk, but the example hooks would be
+> absent on Antigravity for Windows meanwhile); keeping the bare `node` with a recorded risk
+> acceptance (ruled out by the maintainer). The Gemini, Claude Code and Copilot lines are
+> unchanged: their interpreters are PowerShell and Git Bash, which do not search the working
+> directory first.
 
 **Requirement 20 — Failure silence.** Original:
 
