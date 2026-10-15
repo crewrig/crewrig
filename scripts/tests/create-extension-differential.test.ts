@@ -1,15 +1,17 @@
 // create-extension-differential.test.ts — the scaffolder entry against the shell and against the
 // committed per-mask manifests (spec 0258 R28, R29). Everywhere: the entry (plain
 // `node scripts/create-extension.ts`, no `fzf`) is compared with the 64 manifests generated from
-// the shell. On Linux with `bash` and `jq`: the shell under an `fzf` stub is also run live on a
-// fixed subset of masks and on the error paths, and its stdout, stderr, status and every file it
-// wrote must equal the entry's. The behaviours only the entry has are tagged (h), spec 0258 R31.
+// the shell. While `scripts/create-extension.sh` holds the shell, on Linux with `bash` and `jq`:
+// the shell under an `fzf` stub is also run live on a fixed subset of masks and on the error
+// paths, and its stdout, stderr, status and every file it wrote must equal the entry's. Once the
+// `.sh` is a forwarding shim (the switch, spec 0258 requirement 32) that leg is skipped with an
+// explicit reason and the entry is judged against the stored manifests alone. The behaviours only the entry has are tagged (h), spec 0258 R31.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { describe, test } from "node:test";
 
-import { HAS_SHELL_LEG, LIVE_MASKS, createCases, maskSpec } from "./lib/create-extension-cases.ts";
+import { LIVE_MASKS, SHELL_LEG_SKIP, createCases, maskSpec } from "./lib/create-extension-cases.ts";
 import {
   MASKS,
   diffManifests,
@@ -40,29 +42,25 @@ describe("the entry against the committed manifests (all 64 masks)", () => {
   }
 });
 
-describe(
-  "the shell and the entry, live",
-  { skip: !HAS_SHELL_LEG && "needs Linux, bash and jq" },
-  () => {
-    const same = (spec: RunSpec, prepare?: (root: string) => void): void => {
-      const shell = cases.observe("shell", spec, prepare);
-      const entry = cases.observe("entry", spec, prepare);
-      assert.deepEqual(entry, shell);
-    };
-    for (const mask of LIVE_MASKS) test(`mask ${mask}`, () => same(maskSpec(mask)));
-    test("no NAME prints the usage", () => same({ name: "", mask: 0 }));
-    test("an unknown TIER", () => same({ ...maskSpec(5), env: { TIER: "nope" } }));
-    test("an empty TIER selects org", () => same({ ...maskSpec(5), env: { TIER: "" } }));
-    test("the core tier", () => same({ ...maskSpec(9), env: { TIER: "core" } }));
-    test("an existing target", () =>
-      same(maskSpec(3), (root) => writeFile(root, "extensions/org/combo3/keep.txt", "kept\n")));
-    test("an empty selection set and empty", () =>
-      same({ name: "empty", env: { CREWRIG_TEST_FZF_SELECTION: "" } }));
-    test("a broken builder", () => same(maskSpec(63), BROKEN_BUILDER));
-    for (const [label, observed] of Object.entries(GAP_SETS))
-      test(`gap derivation: ${label}`, () => same(maskSpec(3), gapBuilder(observed)));
-  },
-);
+describe("the shell and the entry, live", { skip: SHELL_LEG_SKIP }, () => {
+  const same = (spec: RunSpec, prepare?: (root: string) => void): void => {
+    const shell = cases.observe("shell", spec, prepare);
+    const entry = cases.observe("entry", spec, prepare);
+    assert.deepEqual(entry, shell);
+  };
+  for (const mask of LIVE_MASKS) test(`mask ${mask}`, () => same(maskSpec(mask)));
+  test("no NAME prints the usage", () => same({ name: "", mask: 0 }));
+  test("an unknown TIER", () => same({ ...maskSpec(5), env: { TIER: "nope" } }));
+  test("an empty TIER selects org", () => same({ ...maskSpec(5), env: { TIER: "" } }));
+  test("the core tier", () => same({ ...maskSpec(9), env: { TIER: "core" } }));
+  test("an existing target", () =>
+    same(maskSpec(3), (root) => writeFile(root, "extensions/org/combo3/keep.txt", "kept\n")));
+  test("an empty selection set and empty", () =>
+    same({ name: "empty", env: { CREWRIG_TEST_FZF_SELECTION: "" } }));
+  test("a broken builder", () => same(maskSpec(63), BROKEN_BUILDER));
+  for (const [label, observed] of Object.entries(GAP_SETS))
+    test(`gap derivation: ${label}`, () => same(maskSpec(3), gapBuilder(observed)));
+});
 
 describe("the entry alone, deviation (h)", () => {
   const entry = (spec: RunSpec, prepare?: (root: string) => void) =>

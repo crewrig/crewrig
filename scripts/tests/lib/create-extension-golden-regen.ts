@@ -18,12 +18,21 @@
 import fs from "node:fs";
 
 import { createCases, maskSpec } from "./create-extension-cases.ts";
+import { SHELL_LAST_COMMIT, shellIsShim } from "./create-extension-observe.ts";
 import { MASKS, goldenFile, manifestOf, writeGolden } from "./create-extension-golden.ts";
 
 function main(): number {
   if (process.platform !== "linux") {
     process.stderr.write(
       "Error: the manifests are generated from the shell in a Linux container.\n",
+    );
+    return 1;
+  }
+  if (shellIsShim()) {
+    process.stderr.write(
+      "Error: scripts/create-extension.sh is a forwarding shim, so the shell can no longer " +
+        "regenerate the base manifests; check out the last commit that held the shell " +
+        `(${SHELL_LAST_COMMIT}) to regenerate them. The stored manifests are never edited by hand.\n`,
     );
     return 1;
   }

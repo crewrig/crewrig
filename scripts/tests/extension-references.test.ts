@@ -158,6 +158,15 @@ describe("the scan detects what it must", () => {
     ]);
   });
 
+  test("the scaffolder shim is clean and would be reported if it regained the old spelling", () => {
+    const shim = "scripts/create-extension.sh";
+    assert.ok(files.includes(shim), "the shim is a candidate file");
+    assert.ok(!hits.includes(shim), "the shim names no builder invocation");
+    assert.ok(!entries.some((e) => covers(e.path, shim)), "the shim is not allow-listed");
+    const regained = (rel: string): string | null => (rel === shim ? SAMPLE_RUN : null);
+    assert.deepEqual(unlisted(filesWithHits([shim], regained), entries), [shim]);
+  });
+
   test("an unlisted hit, a stale entry and a duplicate are each reported", () => {
     const list = parseAllowlist(
       "# reason\nspecs/\n\n# reason\ngone.md\n\n# reason\ngone.md\n\nnoreason.md\n",

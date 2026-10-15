@@ -10,7 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { selectionOf } from "./create-extension-sandbox.ts";
+import { REPO, selectionOf } from "./create-extension-sandbox.ts";
 
 export type Leg = "shell" | "entry";
 
@@ -74,6 +74,20 @@ export function normalise(text: string, root: string): string {
   return out.split(fs.realpathSync.native(os.tmpdir())).join("<TMP>");
 }
 
+/** The last commit that held the shell implementation, before the switch made `.sh` a forwarding shim. */
+export const SHELL_LAST_COMMIT = "47ee9acb";
+
+/** Why the live shell leg is skipped once `scripts/create-extension.sh` forwards to the entry. */
+export const SHELL_RETIRED =
+  `skipped: scripts/create-extension.sh is a forwarding shim (spec 0258 requirement 32), so its leg ` +
+  `would run the entry twice; the shell implementation last lived at commit ${SHELL_LAST_COMMIT}`;
+
+/** True while the `.sh` is a forwarding shim to the entry (it contains `exec node`). */
+export function shellIsShim(): boolean {
+  const file = path.join(REPO, "scripts", "create-extension.sh");
+  return !fs.existsSync(file) || /^exec node /m.test(fs.readFileSync(file, "utf8"));
+}
+
 /** A directory holding only an `fzf` stub that prints `$CREWRIG_TEST_FZF_SELECTION`. */
 export function fzfStubDir(parent: string): string {
   const dir = path.join(parent, "fzf-stub");
@@ -96,6 +110,8 @@ export function run(
   baseline: Record<string, string>,
   stubDir: string,
 ): Observed {
+  if (leg === "shell" && shellIsShim())
+    throw new Error(`create-extension-observe: ${SHELL_RETIRED}`);
   const home = path.join(root, ".home");
   fs.mkdirSync(home, { recursive: true });
   const system = ["/usr/local/bin", "/usr/bin", "/bin"];

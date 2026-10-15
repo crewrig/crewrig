@@ -284,10 +284,9 @@ tasks:
 
   create-extension:
     desc: "Scaffold a new extension from skeleton (task create-extension NAME=my-ext)"
-    preconditions:
-      - sh: command -v fzf >/dev/null 2>&1
-        msg: "fzf is required. Install with: brew install fzf (macOS) or apt-get install fzf (Linux)"
-    cmd: bash {{.REPO_DIR}}/scripts/create-extension.sh
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/create-extension.ts {{.CLI_ARGS}}
 
   migrate-extension:
     desc: "Convert an extension source tree from the retired declaration shape to the current one (task migrate-extension EXT=my-ext, spec 0183)"

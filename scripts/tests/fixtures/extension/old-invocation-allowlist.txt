@@ -17,7 +17,6 @@ scripts/migrate-extension.sh
 # Unmigrated shell scripts that still reach a builder through its shim (they move with their own row).
 scripts/check-extension-manifest-version.sh
 scripts/check-extension-pivot.sh
-scripts/create-extension.sh
 
 # Bash tests that have not migrated: each deliberately drives the shim or the shell oracle.
 scripts/tests/test-build-extension.sh

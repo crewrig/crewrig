@@ -8,7 +8,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { after } from "node:test";
 
-import { fzfStubDir, run, snapshot } from "./create-extension-observe.ts";
+import {
+  SHELL_RETIRED,
+  fzfStubDir,
+  run,
+  shellIsShim,
+  snapshot,
+} from "./create-extension-observe.ts";
 import type { Leg, Observed, RunSpec } from "./create-extension-observe.ts";
 import { cloneTemplate, createTemplate } from "./create-extension-sandbox.ts";
 import { nameOf } from "./create-extension-golden.ts";
@@ -18,10 +24,13 @@ export const LIVE_MASKS: readonly number[] = [
   0, 63, 1, 2, 4, 8, 16, 32, 3, 5, 6, 12, 24, 48, 33, 18,
 ];
 
-/** The shell leg runs only where the container procedure holds: Linux with `bash` and `jq`. */
-export const HAS_SHELL_LEG =
-  process.platform === "linux" &&
-  ["bash", "jq"].every((cmd) => spawnSync(cmd, ["--version"]).error === undefined);
+/** Why the live shell leg does not run here: a forwarding shim, or no Linux with `bash` and `jq`. */
+export const SHELL_LEG_SKIP: string | false = shellIsShim()
+  ? SHELL_RETIRED
+  : process.platform === "linux" &&
+      ["bash", "jq"].every((cmd) => spawnSync(cmd, ["--version"]).error === undefined)
+    ? false
+    : "needs Linux, bash and jq";
 
 export interface Cases {
   readonly template: string;
