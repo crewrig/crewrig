@@ -85,21 +85,21 @@ Replacement:
 
 > The deviations from the shell contract are a closed list; the letters (a) to (n) are
 > below and the letters (o) to (r) are the following, each found by a test that names it:
-> (o) when a wrapped tool or a scripted child dies of a signal (the cases cover
-> `SIGTERM`), bash prints its own job-termination line on standard error (`Terminated`
-> for `SIGTERM`) and the entry prints nothing, the exit status being the same as the
+> (o) when a wrapped tool dies of `SIGTERM`, bash prints its own `Terminated` line on
+> standard error and the entry prints nothing, the exit status being the same as the
 > shell's (143 where the wrapped tool's status passes through, as in `simulate-job` and
 > `simulate-workflow`; 1 where the script maps any failure to `[FAIL]`, as in
-> `lint-workflow`); (p) a hook started with a closed standard input
-> or a non-blocking input with no data writes one line feed and nothing on standard
-> error, where the shell twin's `read` prints `read: read error: <errno text>` on
-> standard error; (q) a hook that received a partial line before a read error (`EAGAIN`)
-> writes what it received followed by one line feed, where bash drops the partial line
-> and writes one line feed; (r) `lint-json` without `jq` on the path validates the file
-> with `JSON.parse` and reports `invalid JSON` (exit 1), where the shell printed that
-> `jq` was not found, skipped the parse and exited 0 for a file whose only defect the parse
-> detects (it kept only the trailing-comma heuristic). Letters from (s) onward are reserved for what a later test finds and SHALL
-> be added through a delta of this spec.
+> `lint-workflow`); bash prints a similar line for some other signals, and only
+> `SIGTERM` is pinned by a test; (p) a hook started with a closed standard input or a
+> non-blocking input with no data writes one line feed and nothing on standard error,
+> where the shell twin's `read` prints `read: read error: <errno text>` on standard
+> error; (q) a hook that received a partial line before a read error (`EAGAIN`) writes
+> what it received followed by one line feed, where bash drops the partial line and
+> writes one line feed; (r) `lint-json` without `jq` on the path validates the file with
+> `JSON.parse` and reports `invalid JSON` (exit 1), where the shell printed that `jq`
+> was not found, skipped the parse and exited 0 for a file whose only defect the parse
+> detects (it kept only the trailing-comma heuristic). Letters from (s) onward are
+> reserved for what a later test finds and SHALL be added through a delta of this spec.
 
 ## REMOVED
 
