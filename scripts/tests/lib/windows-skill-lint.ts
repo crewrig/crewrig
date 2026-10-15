@@ -12,7 +12,7 @@ import path from "node:path";
 
 import { baseEnv } from "./windows-packaging-driver.ts";
 import { entry } from "./windows-skill-cases.ts";
-import { attempt, calls, exec } from "./windows-skill-proof.ts";
+import { attempt, calls, exec, writeStub } from "./windows-skill-proof.ts";
 import type { Ctx } from "./windows-skill-proof.ts";
 import { expectStatus, why, WIN } from "./windows-proof-support.ts";
 
@@ -120,6 +120,28 @@ export function refusals(c: Ctx): void {
         job.err,
         /refusing an argument that cmd\.exe would interpret/,
         why(job, JSON.stringify(arg)),
+      );
+      assert.deepEqual(
+        calls(c.box).filter((x) => x.tool !== "docker"),
+        [],
+        "no wrapped tool ran",
+      );
+    }
+    // The same rule covers the resolved tool path: a `.cmd` stub found in a directory whose name
+    // holds `%` must be refused too, by the two entries that launch the tool alone.
+    const odd = path.join(c.box.root, "bin%PATH%");
+    fs.mkdirSync(odd, { recursive: true });
+    for (const [skill, name, tool] of [
+      ["pr-reviewer", "lint-markdown", "markdownlint"],
+      ["pr-reviewer", "lint-python", "ruff"],
+    ] as const) {
+      writeStub(odd, c.box.stubs, tool);
+      const res = exec(c, entry(skill, name), ["a.md"], { dirs: [odd] });
+      expectStatus(res, 1);
+      assert.match(
+        res.out,
+        new RegExp(`^${name}\\.ts: refusing an argument that cmd\\.exe would interpret`),
+        why(res, `${name} with a tool path holding %`),
       );
       assert.deepEqual(
         calls(c.box).filter((x) => x.tool !== "docker"),

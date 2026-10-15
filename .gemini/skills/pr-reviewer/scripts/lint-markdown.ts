@@ -48,7 +48,7 @@ void (async () => {
     let argv = args;
     const opts: { windowsVerbatimArguments?: boolean } = {};
     if (process.platform === "win32" && /\.(cmd|bat)$/i.test(tool)) {
-      if (args.some((a) => /["%^&|<>\r\n]/.test(a)))
+      if ([tool, ...args].some((a) => /["%^&|<>\r\n]/.test(a)))
         return { status: 1, out: `${NAME}: refusing an argument that cmd.exe would interpret.` };
       cmd = process.env["ComSpec"] ?? "cmd.exe";
       const quoted = [tool, ...args].map((a) => (/[ \t]|^$/.test(a) ? `"${a}"` : a));

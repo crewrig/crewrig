@@ -73,7 +73,7 @@ process.exit(bad === undefined ? 0 : 1);
 `;
 
 /** A stub wrapped tool: a POSIX script, or a Windows \`.cmd\` that calls node (so the launch rule applies). */
-function writeStub(dir: string, stubs: string, tool: string): void {
+export function writeStub(dir: string, stubs: string, tool: string): void {
   const js = path.join(stubs, "stub-tool.cjs");
   if (WIN) {
     const body = `@echo off\r\n"${process.execPath}" "${js}" ${tool} %*\r\nexit /b %ERRORLEVEL%\r\n`;
