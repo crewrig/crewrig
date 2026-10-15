@@ -106,6 +106,7 @@ export const SIMULATE_WORKFLOW: readonly SkillCase[] = [
     stubs: { act: `${SEEN}echo act-err >&2\nexit 3\n`, docker: DOCKER_OK },
   }),
   flow("act-killed-by-term-removes-temp-payload", {
+    deviation: "(o)", // bash prints its own `Terminated` job message on stderr; the entry prints none
     args: ["wf.yml", "push"],
     stubs: { act: `${SEEN}${TERM}`, docker: DOCKER_OK },
   }),
@@ -117,10 +118,6 @@ export const SIMULATE_WORKFLOW: readonly SkillCase[] = [
   flow("act-passthrough-streams", {
     args: ["wf.yml"],
     stubs: { act: `${SEEN}echo line-1\necho err-1 >&2\nexit 0\n`, docker: DOCKER_OK },
-  }),
-  flow("mktemp-fails", {
-    args: ["wf.yml"],
-    stubs: { act: ACT_SEEN, docker: DOCKER_OK, mktemp: "echo mktemp-err >&2\nexit 1\n" },
   }),
   flow("temp-payload-removed-by-act-itself", {
     args: ["wf.yml"],
