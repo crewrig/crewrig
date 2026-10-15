@@ -18,7 +18,7 @@
     "build/extensions/combo5/skills/sample-skill/SKILL.md": "563ea96468ab2ee9f36623c974fec7c925be78f1a92ceaf73633a2c6c4ce5a90",
     "build/extensions/combo5/src": "dir",
     "build/extensions/combo5/src/index.ts": "64a1c38011590c69d2b2e4d4a9e8cb105d6699a0b548ca7b1c483261a3179d6e",
-    "build/extensions/combo5/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/extensions/combo5/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo5": "dir",
     "build/gaps/combo5/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
@@ -33,6 +33,6 @@
     "extensions/org/combo5/skills/sample-skill/SKILL.md": "563ea96468ab2ee9f36623c974fec7c925be78f1a92ceaf73633a2c6c4ce5a90",
     "extensions/org/combo5/src": "dir",
     "extensions/org/combo5/src/index.ts": "64a1c38011590c69d2b2e4d4a9e8cb105d6699a0b548ca7b1c483261a3179d6e",
-    "extensions/org/combo5/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+    "extensions/org/combo5/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }

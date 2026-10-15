@@ -22,7 +22,7 @@
     "build/extensions/combo22/skills": "dir",
     "build/extensions/combo22/skills/sample-skill": "dir",
     "build/extensions/combo22/skills/sample-skill/SKILL.md": "64d984ad623a8b5147980dfe4080fd6bb848b8978827f67edd540dbb9e3e932d",
-    "build/extensions/combo22/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/extensions/combo22/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo22": "dir",
     "build/gaps/combo22/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
@@ -39,6 +39,6 @@
     "extensions/org/combo22/skills": "dir",
     "extensions/org/combo22/skills/sample-skill": "dir",
     "extensions/org/combo22/skills/sample-skill/SKILL.md": "64d984ad623a8b5147980dfe4080fd6bb848b8978827f67edd540dbb9e3e932d",
-    "extensions/org/combo22/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+    "extensions/org/combo22/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }

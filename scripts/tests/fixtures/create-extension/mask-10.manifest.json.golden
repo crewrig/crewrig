@@ -20,7 +20,7 @@
     "build/extensions/combo10/extension.json": "87ec787da8106eec3c63d432f72cc140a1cea0942f7a70c9740874bc4250652b",
     "build/extensions/combo10/gemini-extension.json": "3f7ce508f71adb0072b5a8784137217ca323cd654d7c1ef6d979693072608b1b",
     "build/extensions/combo10/package.json": "5d4510263938fa72c35663b9cee6bc01bb892be9e8a3e31c5fbcd24f31d8fe85",
-    "build/extensions/combo10/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/extensions/combo10/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo10": "dir",
     "build/gaps/combo10/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
@@ -36,6 +36,6 @@
     "extensions/org/combo10/commands/sample.md": "5872b8274dc12cc3a8b006cc378505b76fd4b9e3df5cf55c2b884850898c34fd",
     "extensions/org/combo10/extension.json": "87ec787da8106eec3c63d432f72cc140a1cea0942f7a70c9740874bc4250652b",
     "extensions/org/combo10/package.json": "5d4510263938fa72c35663b9cee6bc01bb892be9e8a3e31c5fbcd24f31d8fe85",
-    "extensions/org/combo10/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+    "extensions/org/combo10/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }

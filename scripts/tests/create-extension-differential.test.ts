@@ -19,6 +19,7 @@ import {
   readGolden,
 } from "./lib/create-extension-golden.ts";
 import type { RunSpec } from "./lib/create-extension-observe.ts";
+import { GAP_SETS, STAGING_DIRS, gapBuilder } from "./lib/create-extension-gap-stubs.ts";
 import { writeFile } from "./lib/create-extension-sandbox.ts";
 
 const cases = createCases();
@@ -58,6 +59,8 @@ describe(
     test("an empty selection set and empty", () =>
       same({ name: "empty", env: { CREWRIG_TEST_FZF_SELECTION: "" } }));
     test("a broken builder", () => same(maskSpec(63), BROKEN_BUILDER));
+    for (const [label, observed] of Object.entries(GAP_SETS))
+      test(`gap derivation: ${label}`, () => same(maskSpec(3), gapBuilder(observed)));
   },
 );
 
@@ -72,6 +75,68 @@ describe("the entry alone, deviation (h)", () => {
       observed.stdout.endsWith("Rendering the scaffold once to derive its gap declaration...\n"),
     );
     assert.ok(observed.files["extensions/org/combo63/extension.json"] !== undefined);
+  });
+
+  describe("gap derivation against the expected text", () => {
+    const run = (observed: string | null) => entry(maskSpec(3), gapBuilder(observed));
+    const gapFiles = (files: Record<string, string>): string[] =>
+      Object.keys(files).filter((file) => file.endsWith("accepted-gaps.json"));
+    const banner = [
+      "",
+      "==============================================================",
+      " REVIEW: this scaffold declares a gap the render could not map.",
+      " extensions/org/combo3/accepted-gaps.json was DERIVED from the",
+      " render's own observed gap set below. Review each entry before",
+      " committing it — it is a starting point, not a rubber stamp.",
+      "==============================================================",
+    ].join("\n");
+    const after = (stdout: string): string => stdout.slice(stdout.indexOf("\n\n=====") + 1);
+    const lines = (stdout: string): string =>
+      after(stdout).slice(0, after(stdout).indexOf("\n\nExtension created")) + "\n";
+
+    test("one entry with a hook: banner, hook suffix, accepted-gaps.json copied", () => {
+      const observed = run(GAP_SETS["one entry with a hook"] ?? null);
+      assert.equal(observed.status, 0, observed.stderr);
+      assert.equal(
+        lines(observed.stdout),
+        `${banner}\n  - hook on gemini (hook: SessionStart): no matching event on this target\n`,
+      );
+      assert.equal(
+        observed.files["extensions/org/combo3/accepted-gaps.json"],
+        observed.files["build/gaps/combo3/observed-gaps.json"],
+      );
+    });
+
+    test("two entries, one without a hook: one line each, no hook suffix on the bare one", () => {
+      const observed = run(GAP_SETS["two entries, one without a hook"] ?? null);
+      assert.equal(
+        lines(observed.stdout),
+        `${banner}\n  - agent on copilot: tools cannot be mapped\n` +
+          "  - hook on antigravity (hook: PreToolUse): hooks are unsupported\n",
+      );
+      assert.deepEqual(gapFiles(observed.files), ["extensions/org/combo3/accepted-gaps.json"]);
+    });
+
+    for (const label of ["an empty set", "no observed-gaps file"]) {
+      test(`${label}: no banner and no accepted-gaps.json`, () => {
+        const observed = run(GAP_SETS[label] ?? null);
+        assert.equal(observed.status, 0, observed.stderr);
+        assert.ok(!observed.stdout.includes("REVIEW:"));
+        assert.deepEqual(gapFiles(observed.files), []);
+      });
+    }
+
+    test("the three plugin staging directories are swept", () => {
+      for (const label of Object.keys(GAP_SETS)) {
+        const observed = run(GAP_SETS[label] ?? null);
+        for (const dir of STAGING_DIRS)
+          assert.deepEqual(
+            Object.keys(observed.files).filter((file) => file.includes(`/${dir}`)),
+            [],
+            `${label}: ${dir}`,
+          );
+      }
+    });
   });
 
   for (const name of ["../x", "a/b", "a&b", "-x", ".x", "a b", "a;b", "a\nb"]) {

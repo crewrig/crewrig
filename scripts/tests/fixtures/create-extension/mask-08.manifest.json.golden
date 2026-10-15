@@ -17,7 +17,7 @@
     "build/extensions/combo8/extension.json": "b5b322716c2e9f759de2990a21459e7eb6a9964ca49d803f3ea88a9bebe294a2",
     "build/extensions/combo8/gemini-extension.json": "bb6c6806c138f7adf9315d4e48dc18ccd3c2fb1782c8c16e05f8f8132e716bbf",
     "build/extensions/combo8/package.json": "b254a68524505ebf5734e3a50acc078fde3b7cc10f912e7f9608ecd3ef2a6dc3",
-    "build/extensions/combo8/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/extensions/combo8/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo8": "dir",
     "build/gaps/combo8/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
@@ -31,6 +31,6 @@
     "extensions/org/combo8/agents/sample-agent/PROMPT.md": "9f875a50bd2b873ddbc9b77a165dc4a0cfb3e8cc412c21c5c3b17a45b9e2dcdf",
     "extensions/org/combo8/extension.json": "b5b322716c2e9f759de2990a21459e7eb6a9964ca49d803f3ea88a9bebe294a2",
     "extensions/org/combo8/package.json": "b254a68524505ebf5734e3a50acc078fde3b7cc10f912e7f9608ecd3ef2a6dc3",
-    "extensions/org/combo8/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+    "extensions/org/combo8/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }

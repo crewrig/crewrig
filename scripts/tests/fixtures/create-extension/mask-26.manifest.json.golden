@@ -23,7 +23,7 @@
     "build/extensions/combo26/hooks/hooks.json": "84e38c3345ae94f21582722f3b2b4088531bced0e44ebe85aa9a184d07fc50ea",
     "build/extensions/combo26/hooks/logger.sh": "2d7d47f6ebbb34d20894df3987de6863d125b7b12364e6c0cdc7a908e130ae2a:x",
     "build/extensions/combo26/package.json": "6f5560e4ccf6aa1a1075a1e6dd9c7bf186bd64f9cb4a49e9e3c8c6e26f1ccf8d",
-    "build/extensions/combo26/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/extensions/combo26/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo26": "dir",
     "build/gaps/combo26/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
@@ -41,6 +41,6 @@
     "extensions/org/combo26/hooks": "dir",
     "extensions/org/combo26/hooks/logger.sh": "2d7d47f6ebbb34d20894df3987de6863d125b7b12364e6c0cdc7a908e130ae2a:x",
     "extensions/org/combo26/package.json": "6f5560e4ccf6aa1a1075a1e6dd9c7bf186bd64f9cb4a49e9e3c8c6e26f1ccf8d",
-    "extensions/org/combo26/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+    "extensions/org/combo26/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }

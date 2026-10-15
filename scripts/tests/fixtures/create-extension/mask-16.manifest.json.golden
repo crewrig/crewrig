@@ -16,7 +16,7 @@
     "build/extensions/combo16/hooks/hooks.json": "84e38c3345ae94f21582722f3b2b4088531bced0e44ebe85aa9a184d07fc50ea",
     "build/extensions/combo16/hooks/logger.sh": "6463323a48d84176ac30fd54bf5a3c7996af9bf3c0d0f41fd19148ead2647a72:x",
     "build/extensions/combo16/package.json": "9ba0f383f8b56e506755abf00c0c501402e2bb58305fba834bdf019380b331f3",
-    "build/extensions/combo16/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/extensions/combo16/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5",
     "build/gaps": "dir",
     "build/gaps/combo16": "dir",
     "build/gaps/combo16/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
@@ -28,6 +28,6 @@
     "extensions/org/combo16/hooks": "dir",
     "extensions/org/combo16/hooks/logger.sh": "6463323a48d84176ac30fd54bf5a3c7996af9bf3c0d0f41fd19148ead2647a72:x",
     "extensions/org/combo16/package.json": "9ba0f383f8b56e506755abf00c0c501402e2bb58305fba834bdf019380b331f3",
-    "extensions/org/combo16/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+    "extensions/org/combo16/tsconfig.json": "be00e63686a93f4aedb0af19b865a58f0c33d4831422da7a725f7d761b7b34c5"
   }
 }
