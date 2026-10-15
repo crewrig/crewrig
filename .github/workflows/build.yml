@@ -318,9 +318,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Install production dependencies
+      # Dev dependencies too: the scaffold toolchain test (spec 0258 requirement 26) runs tsc, Oxlint and
+      # Oxfmt on a scaffold and fails, rather than skips, when CI is set and one of them is absent.
+      - name: Install dependencies with the TypeScript toolchain
         if: steps.filter.outputs.extension-builders-ts == 'true'
-        run: npm ci --omit=dev --workspaces=false
+        run: npm install --include=dev
       - name: Install yq
         if: steps.filter.outputs.extension-builders-ts == 'true'
         run: |

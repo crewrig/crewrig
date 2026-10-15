@@ -37,26 +37,91 @@ test("the skeleton tsconfig declares the node types (TypeScript 7 includes no @t
   assert.ok(Array.isArray(types) && types.includes("node"), "compilerOptions.types lists node");
 });
 
-const TSC = path.join(
-  REPO,
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "tsc.cmd" : "tsc",
-);
+const BIN = (tool: string): string =>
+  path.join(REPO, "node_modules", ".bin", process.platform === "win32" ? `${tool}.cmd` : tool);
+const TSC = BIN("tsc");
 const SDK = path.join(REPO, "node_modules", "@modelcontextprotocol", "sdk");
 const NODE_TYPES = path.join(REPO, "node_modules", "@types", "node");
-const COMPILE_SKIP = !fs.existsSync(TSC)
-  ? "the root's tsc is not installed"
-  : !fs.existsSync(SDK)
-    ? "the root's @modelcontextprotocol/sdk is not installed"
-    : !fs.existsSync(NODE_TYPES)
-      ? "the root's @types/node is not installed"
-      : false;
+
+/** One tool the proof needs: what it is called in a message and where it must be installed. */
+interface Need {
+  readonly label: string;
+  readonly file: string;
+}
+
+/** The first needed tool that is not installed, as a message, or `false` when all are present. */
+export function firstMissing(
+  needs: readonly Need[],
+  exists: (file: string) => boolean,
+): string | false {
+  const gap = needs.find((need) => !exists(need.file));
+  return gap === undefined ? false : `the root's ${gap.label} is not installed`;
+}
+
+/** `CI` is set on GitHub Actions and GitLab (`true`); an empty value, `0` and `false` mean it is not. */
+export function inCi(env: NodeJS.ProcessEnv): boolean {
+  const value = (env["CI"] ?? "").trim().toLowerCase();
+  return value !== "" && value !== "0" && value !== "false";
+}
+
+/**
+ * What a test that needs the dev toolchain does. A missing tool is a skip for a local run and a FAILURE
+ * under CI: the job is meant to install the toolchain, so a skip there would leave requirement 26
+ * unproven while the run stays green.
+ */
+export function toolchainDecision(
+  missing: string | false,
+  env: NodeJS.ProcessEnv,
+): { readonly skip: string | false; readonly fault: string | false } {
+  if (missing === false) return { skip: false, fault: false };
+  return inCi(env) ? { skip: false, fault: missing } : { skip: missing, fault: false };
+}
+
+const COMPILE_NEEDS: readonly Need[] = [
+  { label: "tsc", file: TSC },
+  { label: "@modelcontextprotocol/sdk", file: SDK },
+  { label: "@types/node", file: NODE_TYPES },
+];
+const GATES_NEEDS: readonly Need[] = [
+  { label: "tsc", file: TSC },
+  { label: "oxlint", file: BIN("oxlint") },
+  { label: "oxfmt", file: BIN("oxfmt") },
+  { label: "@modelcontextprotocol/sdk", file: SDK },
+  { label: "@types/node", file: NODE_TYPES },
+];
+const COMPILE = toolchainDecision(firstMissing(COMPILE_NEEDS, fs.existsSync), process.env);
+const GATES = toolchainDecision(firstMissing(GATES_NEEDS, fs.existsSync), process.env);
+
+test("the scaffold toolchain is installed when CI is set (a missing tool fails there, it never skips)", () => {
+  assert.equal(COMPILE.fault, false, String(COMPILE.fault));
+  assert.equal(GATES.fault, false, String(GATES.fault));
+});
+
+test("a missing tool fails under CI and skips locally (the decision, with an injected environment)", () => {
+  const present = (): boolean => true;
+  const absent = (): boolean => false;
+  assert.equal(firstMissing(GATES_NEEDS, present), false);
+  const gap = firstMissing(GATES_NEEDS, absent);
+  assert.equal(gap, "the root's tsc is not installed");
+  assert.deepEqual(toolchainDecision(false, { CI: "true" }), { skip: false, fault: false });
+  assert.deepEqual(toolchainDecision(gap, { CI: "true" }), { skip: false, fault: gap });
+  assert.deepEqual(toolchainDecision(gap, { CI: "1" }), { skip: false, fault: gap });
+  for (const local of [{}, { CI: "" }, { CI: "0" }, { CI: "false" }])
+    assert.deepEqual(
+      toolchainDecision(gap, local),
+      { skip: gap, fault: false },
+      JSON.stringify(local),
+    );
+  assert.equal(
+    firstMissing(COMPILE_NEEDS, (file) => file !== SDK),
+    "the root's @modelcontextprotocol/sdk is not installed",
+  );
+});
 
 test(
   "a scaffold with the mcp-server component type-checks with the root tsc",
   {
-    skip: COMPILE_SKIP,
+    skip: COMPILE.skip,
   },
   () => {
     const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "skeleton-tsc-")));
@@ -85,15 +150,6 @@ test(
   },
 );
 
-const GATE_TOOLS = ["tsc", "oxlint", "oxfmt"].map((tool) =>
-  path.join(REPO, "node_modules", ".bin", process.platform === "win32" ? `${tool}.cmd` : tool),
-);
-const GATES_SKIP = GATE_TOOLS.every((tool) => fs.existsSync(tool))
-  ? !fs.existsSync(SDK) || !fs.existsSync(NODE_TYPES)
-    ? "the root's @modelcontextprotocol/sdk or @types/node is not installed"
-    : false
-  : "the root's tsc, oxlint or oxfmt is not installed (run `task lint-bootstrap`)";
-
 // The scaffold must format the same way whatever the length of the extension name: the shortest name
 // the scaffolder accepts and a name far past 100 columns are both gated, so a skeleton line that the
 // formatter reflows with the name (a call collapsing onto one line for a short name, or breaking
@@ -114,7 +170,7 @@ function sh(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv
 for (const SCAFFOLD_NAME of SCAFFOLD_NAMES) {
   test(
     `a scaffold named ${SCAFFOLD_NAME.length > 40 ? `<${SCAFFOLD_NAME.length} characters>` : SCAFFOLD_NAME} with every component under extensions/org/ passes check-typescript --step all and the ratchet`,
-    { skip: GATES_SKIP, timeout: 600_000 },
+    { skip: GATES.skip, timeout: 600_000 },
     () => {
       // A copy of the whole tracked tree: the root tsconfig.json, .oxlintrc.json, .oxfmtrc.json and the
       // ratchet lists apply to the scaffold by inheritance, exactly as they do inside the repository.

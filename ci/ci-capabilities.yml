@@ -401,6 +401,8 @@ capabilities:
   # which retire with the shell scripts and libraries (PR D, rows I1, J3, J4). `yq` stays
   # declared until the differential test is deleted (plan v1-F2). The proof script and the
   # `--check` on the real tree run here too, so Linux and Windows prove the same bytes.
+  # The install carries the dev dependencies: the scaffold toolchain test (spec 0258 requirement 26)
+  # runs tsc, Oxlint and Oxfmt and fails, rather than skips, when CI is set and one is absent.
   - id: extension-builders-ts
     name: "Run the TypeScript extension and plugin builder suites, the golden proof and the real-tree check"
     trigger:
@@ -487,7 +489,7 @@ capabilities:
       runtime: node@24
       tools: [jq, yq]
     command:
-      - npm ci --omit=dev --workspaces=false
+      - npm install --include=dev
       - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
