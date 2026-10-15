@@ -101,9 +101,12 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
    is above it (`scripts/lib/build-components/resources.ts`,
    `scripts/lib/setup/tier-install.ts`; the same property is why
    `lint-typescript.ts` imports built-ins only). A skill script SHALL therefore be one file that
-   imports nothing but `node:` built-ins, loaded with `process.getBuiltinModule`
-   (requirement 2), SHALL NOT import anything from `scripts/lib/` and SHALL NOT use
-   `scripts/lib/require-dependency.ts`, which needs a `.git` ancestor. It SHALL NOT
+   imports no file of its own and loads built-ins with `process.getBuiltinModule`
+   (requirement 2). It SHALL NOT import anything from `scripts/lib/` and SHALL NOT use
+   `scripts/lib/require-dependency.ts`, which needs a `.git` ancestor; the two
+   exceptions are the `js-yaml` lookup of `lint-skill` (requirement 11) and the checkout
+   import of `schedule-curator` below, each a run-time `createRequire` or `import()`
+   made inside an async function. It SHALL NOT
    load a helper file either: a helper with `export` fails under a package that declares
    `"type": "commonjs"`, and a `.mts` helper escapes the toolchain scope (`.ts` files
    only, `scripts/lib/ts-scope.ts`). The few lines that scripts of one skill have in
