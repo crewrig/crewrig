@@ -161,6 +161,8 @@ export interface Exec {
   /** Tool directories on the child PATH, after the tripwire. Default: the stub `bin`. */
   readonly dirs?: readonly string[];
   readonly git?: boolean;
+  /** Keep the Windows `System32` directory on the child PATH (default). A runner may ship real tools there. */
+  readonly system?: boolean;
   readonly env?: Record<string, string>;
   /** Text piped to the entry through the shell (a file, `type` or `Get-Content`). */
   readonly stdin?: string;
@@ -169,15 +171,24 @@ export interface Exec {
 const head = (text: string): string => (text.length > 2000 ? `${text.slice(0, 2000)}...` : text);
 
 /** Run an entry through the leg's interpreter and record it; CRLF folded only on the shell legs. */
+export function childDirs(box: Box, o: Exec = {}): string[] {
+  const system =
+    WIN && o.system !== false
+      ? [path.win32.join(process.env["SystemRoot"] ?? "C:\\Windows", "System32")]
+      : [];
+  const git = o.git === true && box.git !== undefined ? [box.git] : [];
+  return [box.trip.dir, ...(o.dirs ?? [box.bin]), ...git, ...system];
+}
+
+/** Every file a `docker` lookup could resolve on the directories the child PATH would hold. */
+export function findable(tool: string, dirs: readonly string[]): string[] {
+  const names = [tool, ...[".com", ".exe", ".bat", ".cmd"].map((e) => tool + e)];
+  return dirs.flatMap((d) => names.map((n) => path.join(d, n))).filter((f) => fs.existsSync(f));
+}
+
 export function exec(c: Ctx, script: string, args: readonly string[], o: Exec = {}): Run {
   const { box, leg } = c;
-  const system = WIN
-    ? [path.win32.join(process.env["SystemRoot"] ?? "C:\\Windows", "System32")]
-    : [];
-  const git = o.git === true && box.git !== undefined ? [box.git] : [];
-  const pathValue = [box.trip.dir, ...(o.dirs ?? [box.bin]), ...git, ...system].join(
-    path.delimiter,
-  );
+  const pathValue = childDirs(box, o).join(path.delimiter);
   const env = baseEnv(pathValue, box.home, box.tmp, o.env ?? {});
   const cwd = o.cwd ?? box.work;
   const started = process.hrtime.bigint();

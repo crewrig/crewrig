@@ -9,8 +9,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { land } from "./windows-packaging-driver.ts";
-import { attempt, calls, exec } from "./windows-skill-proof.ts";
-import type { Ctx } from "./windows-skill-proof.ts";
+import { attempt, calls, childDirs, exec, findable } from "./windows-skill-proof.ts";
+import type { Ctx, Exec } from "./windows-skill-proof.ts";
 import { expectStatus, why } from "./windows-proof-support.ts";
 import type { Run } from "./windows-proof-support.ts";
 
@@ -32,7 +32,7 @@ function write(c: Ctx, rel: string, text: string): string {
   return rel;
 }
 
-const run = (c: Ctx, script: string, args: string[], o = {}): Run => exec(c, script, args, o);
+const run = (c: Ctx, script: string, args: string[], o: Exec = {}): Run => exec(c, script, args, o);
 const stdoutIs = (r: Run, want: string): void => assert.equal(r.out, want, why(r, "stdout"));
 /** The summary line on stderr; a shell leg may add its own host lines, so it is searched, not compared. */
 const stderrIs = (r: Run, want: string): void =>
@@ -175,7 +175,11 @@ function wrapped(c: Ctx): void {
       `+ act workflow_dispatch --workflows ${ci} --eventpath ${given} --dryrun\nact-stub workflow_dispatch --workflows ${ci} --eventpath ${given} --dryrun\n`,
     );
     assert.equal(fs.existsSync(path.join(box.work, given)), true, "a given payload is kept");
-    const noDocker = run(c, GHA("simulate-workflow"), [ci], { dirs: [box.binAct] });
+    // A hosted Windows runner may ship a real `docker.exe` in System32: leave that directory out,
+    // and prove on every host that no `docker` is resolvable from the directories left.
+    const bare = { dirs: [box.binAct], system: false } as const;
+    assert.deepEqual(findable("docker", childDirs(box, bare)), [], "no docker on the child PATH");
+    const noDocker = run(c, GHA("simulate-workflow"), [ci], bare);
     assert.match(noDocker.out, /^\[SKIP\] docker CLI not found/, why(noDocker, "docker note"));
   });
   attempt(c, "ws-docker-exe-through-pathext", () => {
