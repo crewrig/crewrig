@@ -1,0 +1,2 @@
+lint-skill: js-yaml not found — using line fallback for the required keys and the version; run it from a CrewRig checkout after setup for the full check.
+SKILL.md: version not bumped vs origin/main (still 1.0.0)

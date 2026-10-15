@@ -23,7 +23,7 @@ const jfNoJq = (name: string, body: string): SkillCase => ({
   files: { "f.json": body },
 });
 
-export const LINT_JSON: readonly SkillCase[] = [
+const JSON_CASES: readonly SkillCase[] = [
   jf("valid", '{"a":1,"b":[1,2]}\n'),
   jf("invalid-missing-value", '{"a":}\n'),
   jf("invalid-unterminated", '{"a":1\n'),
@@ -102,6 +102,45 @@ export const LINT_JSON: readonly SkillCase[] = [
     files: { "a.json": "[1,]\n", "b.json": "[1]\n" },
   },
 ];
+
+/**
+ * Spec 0258 R31 tags of the entry: (c) the `JSON.parse` message text and the vanished `jq not
+ * found` note, (m) a stricter parse than jq (an empty document, several top-level values, `nan`),
+ * (e) the stdin name `<stdin>` in place of the generated temp name. Each tagged case carries an
+ * overlay golden with the entry's output; the message text itself is normalised (`<JSON-MSG>`).
+ */
+const JSON_DEVIATIONS: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(
+    (
+      "invalid-missing-value invalid-unterminated invalid-multiline invalid-bare-word " +
+      "invalid-single-quotes comma-array comma-object comma-brace-bracket " +
+      "comma-brace-bracket-spaced comma-brace-bracket-twice comma-backslash-bracket " +
+      "comma-backslash-bracket-spaced comma-brace-bracket-crlf comma-space-bracket " +
+      "comma-space-brace comma-tab-bracket comma-then-newline-bracket comma-nested-and-twice " +
+      "comma-with-crlf comma-last-line-unterminated comma-nul-byte two-files-in-order " +
+      "spaces-in-path symlink-argument no-jq-valid no-jq-trailing-comma no-jq-comma-brace-bracket " +
+      "no-jq-missing-file no-jq-two-files"
+    )
+      .split(" ")
+      .map((name): [string, string] => [name, "c"]),
+  ),
+  ...Object.fromEntries(
+    "empty-file blank-lines-only two-top-level-values nan-literal nan-in-array no-jq-invalid-no-comma"
+      .split(" ")
+      .map((name): [string, string] => [name, "m"]),
+  ),
+  "stdin-invalid": "c,e",
+  "stdin-trailing-comma": "c,e",
+  "stdin-two-comma-lines": "c,e",
+  "stdin-empty": "m,e",
+  "stdin-not-provided": "m,e",
+  "no-jq-stdin": "c,e",
+};
+
+export const LINT_JSON: readonly SkillCase[] = JSON_CASES.map((c) => {
+  const deviation = JSON_DEVIATIONS[c.name];
+  return deviation === undefined ? c : { ...c, deviation, jsonMessage: true };
+});
 
 // ----------------------------------------------------------------------------- lint-markdown
 

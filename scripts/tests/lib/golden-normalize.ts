@@ -99,5 +99,8 @@ export function skillPlaceholder(text: string, ctx: SkillPlaceholderContext): st
     .replace(ISO, "<ISO>")
     .replaceAll(`${ctx.script}.sh`, ctx.script)
     .replaceAll(`${ctx.script}.ts`, ctx.script);
-  return ctx.jsonMessage === true ? out.replace(/(invalid JSON — ).*/g, "$1<JSON-MSG>") : out;
+  // The observed text is latin1: the em dash arrives as its three UTF-8 bytes, so match both forms.
+  return ctx.jsonMessage === true
+    ? out.replace(/(invalid JSON (?:—|\u00e2\u0080\u0094) ).*/g, "$1<JSON-MSG>")
+    : out;
 }

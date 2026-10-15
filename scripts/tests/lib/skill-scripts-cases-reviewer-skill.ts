@@ -79,7 +79,7 @@ const against = (head: string, base: string, c: Rest = {}): Rest => ({
 
 const REQUIRED = Object.keys(KEYS) as (keyof typeof KEYS)[];
 
-export const LINT_SKILL: readonly SkillCase[] = [
+const SKILL_CASES: readonly SkillCase[] = [
   // ----------------------------------------------------------------- line fallback (no yq)
   { name: "fallback-no-files", script: ID },
   fb("no-files-note-not-printed", {}),
@@ -289,3 +289,12 @@ export const LINT_SKILL: readonly SkillCase[] = [
   }),
   ya("base-bad-ref", { ...against(skill(), skill()), env: { BASE_REF: "no-such-ref" } }),
 ];
+
+/**
+ * Deviation (d), spec 0258 R31: with no `js-yaml` reachable the entry prints its own one-line
+ * note in place of the shell's `yq` note, so every fallback case that reaches the note carries an
+ * overlay golden. The YAML leg prints no note and matches the shell's goldens.
+ */
+export const LINT_SKILL: readonly SkillCase[] = SKILL_CASES.map((c) =>
+  c.name.startsWith("fallback-") && c.name !== "fallback-no-files" ? { ...c, deviation: "d" } : c,
+);

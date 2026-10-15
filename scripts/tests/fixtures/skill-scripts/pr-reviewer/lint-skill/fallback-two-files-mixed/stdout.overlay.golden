@@ -1,0 +1,3 @@
+lint-skill: js-yaml not found — using line fallback for the required keys and the version; run it from a CrewRig checkout after setup for the full check.
+a.md: missing required frontmatter key: name
+b.md: missing required frontmatter key: description
