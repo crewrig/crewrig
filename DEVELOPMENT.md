@@ -13,14 +13,20 @@ for the complete manifest specification.
 
 ## Creating a New Extension
 
-Always use the interactive scaffolding task:
+Always use the scaffolding task. It runs the Node.js floor guard, then
+`node scripts/create-extension.ts` (the scaffolder is TypeScript since spec
+0258; `scripts/create-extension.sh` remains as a forwarding shim):
 
 ```bash
 task create-extension NAME=my-extension
+# non-interactive: name the components yourself
+task create-extension NAME=my-extension -- --components mcp-server,skill
 ```
 
-An fzf menu lets you select which components to include (use TAB to
-toggle, ENTER to confirm):
+No `fzf` is needed. On a terminal the scaffolder prints a numbered list and
+reads the components you want (numbers or names, separated by commas or
+spaces); with `--components <list>` or `CREWRIG_TEST_FZF_SELECTION` (one
+component per line) it asks nothing:
 
 - **mcp-server** — TypeScript MCP server with stdio transport
 - **command** — Sample `.toml` slash command
@@ -29,7 +35,7 @@ toggle, ENTER to confirm):
 - **hook** — Lifecycle hook (BeforeTool/AfterTool)
 - **theme** — UI theme JSON fragment
 
-The script will:
+The scaffolder will:
 
 1. Copy the base skeleton into `extensions/org/my-extension/`.
 2. Inject selected component directories.

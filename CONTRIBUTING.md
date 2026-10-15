@@ -132,7 +132,8 @@ for the complete manifest specification.
 
 Quick steps:
 
-1. Scaffold with `task create-extension NAME=<your-name>` — it copies the
+1. Scaffold with `task create-extension NAME=<your-name>` (the TypeScript
+   scaffolder `scripts/create-extension.ts`, which needs no `fzf`) — it copies the
    base skeleton into `extensions/org/<your-name>/` (the adopter-owned
    tier), merges each selected component's own manifest fragment,
    substitutes every `${SKELETON_NAME}` placeholder, and derives

@@ -493,7 +493,7 @@ scripts/
 ├── build-components.sh               # Shim: forwards to build-components.ts (the TypeScript build)
 ├── build-claude-plugin.sh            # Shim: forwards to build-claude-plugin.ts (the TypeScript plugin generator)
 ├── check-skill-versions.sh           # CI gate: enforces version bump on modified sources
-├── create-extension.sh               # Extension scaffolding
+├── create-extension.sh               # Shim: forwards to create-extension.ts (the TypeScript extension scaffolder)
 ├── migrate-extension.sh              # Shim: forwards to migrate-extension.ts (converts an extension off the retired declaration shape, spec 0183)
 ├── import-claude-history.sh          # Claude transcript import
 ├── import-gemini-history.sh          # Gemini transcript import

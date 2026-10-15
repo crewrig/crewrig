@@ -474,7 +474,7 @@ but matches none **warns**, never fails — the accepted residual of spec 0181 R
 verbatim-passthrough guarantee (a hard error here would also claim a
 legitimate literal like `${extensionPath}`).
 
-**Two substitution layers.** `scripts/create-extension.sh` resolves
+**Two substitution layers.** `scripts/create-extension.ts` resolves
 `${SKELETON_NAME}` at **scaffold** time with a blind text substitution over
 every skeleton file, before `render_context` ever runs at **render** time
 on the already-substituted file — `${SKELETON_NAME}` is therefore the one
@@ -653,7 +653,7 @@ honest against the translator by `scripts/check-extension-hook-map.sh`.
 
 ## Fragment Merging
 
-The scaffolding system (`create-extension.sh`) merges JSON fragments into
+The scaffolding system (`create-extension.ts`) merges JSON fragments into
 `extension.json` — the single generic root manifest, and the ONLY manifest
 the scaffolding tool writes — during extension creation. Every one of the
 six offered components merges its own fragment (spec 0183 R1/R4, PLAN v2
@@ -676,7 +676,7 @@ committed — so the merge now has exactly one manifest to update; the
 double-write was retargeted to the single manifest in the same change that
 removed the skeleton's committed `gemini-extension.json` (issue #1004).
 
-After every fragment is merged, `create-extension.sh` asserts unconditionally
+After every fragment is merged, `create-extension.ts` asserts unconditionally
 that no scaffold placeholder literal (`${SKELETON_*}`) survives anywhere in
 the produced tree (spec 0183 R3), then runs one full render to derive
 `accepted-gaps.json` from the render's own observed gap set — never a static,
