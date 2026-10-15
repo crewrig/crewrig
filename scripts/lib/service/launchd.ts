@@ -21,7 +21,7 @@ import type { ServiceNames } from "./names.ts";
 import { lookupSupervisorPid } from "./supervisor-pid.ts";
 
 /** `~/Library/LaunchAgents/<label>.plist`. */
-export function plistPathFor(names: ServiceNames, home: string): string {
+export function plistPathFor(names: Pick<ServiceNames, "label">, home: string): string {
   return path.join(home, "Library", "LaunchAgents", `${names.label}.plist`);
 }
 

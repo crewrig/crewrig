@@ -21,7 +21,7 @@ import type { ServiceNames } from "./names.ts";
 import { lookupSupervisorPid } from "./supervisor-pid.ts";
 
 /** `~/.config/systemd/user/<unit>.service`. */
-export function unitPathFor(names: ServiceNames, home: string): string {
+export function unitPathFor(names: Pick<ServiceNames, "unit">, home: string): string {
   return path.join(home, ".config", "systemd", "user", `${names.unit}.service`);
 }
 
