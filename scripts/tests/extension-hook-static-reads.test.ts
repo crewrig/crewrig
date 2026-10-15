@@ -38,7 +38,7 @@ function expectedList(name: string): string[] {
 }
 
 function bash(script: string, ...args: string[]): { status: number | null; stdout: string } {
-  const env = { ...process.env, LC_ALL: "C" };
+  const env: NodeJS.ProcessEnv = { ...process.env, LC_ALL: "C" };
   delete env["NODE_TEST_CONTEXT"];
   const run = spawnSync("bash", ["-c", script, "bash", ...args], { encoding: "utf8", env });
   return { status: run.status, stdout: run.stdout };
