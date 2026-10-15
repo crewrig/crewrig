@@ -499,6 +499,40 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts
 
+  # Spec 0258 R27-R29 (ticket #1337), PR A: the skill-script oracle. The harness runs each shell
+  # script bundled with a skill in a sandbox and compares stdout, stderr, the exit code and the
+  # resulting tree with the committed goldens. Linux only: the goldens are Linux bytes, and the
+  # suites spawn `bash`, `jq` and Go `yq` (the YAML leg of the pr-reviewer lint-skill script).
+  # The job needs the production install and the system tools only, never the dev-toolchain (no
+  # Oxlint). On GitHub, `yq` is pinned to v4.44.3 and its sha256 is checked, the version the goldens
+  # were generated with. The floor guard runs after the production dependency step, before the
+  # first test call.
+  - id: skill-scripts-ts
+    name: "Run the skill-script oracle and its YAML leg"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "artifacts/**/skills/*/scripts/**"
+          - "scripts/tests/skill-scripts-*"
+          - "scripts/tests/lib/skill-scripts-*"
+          - "scripts/tests/fixtures/skill-scripts/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "artifacts/**/skills/*/scripts/**"
+          - "scripts/tests/skill-scripts-*"
+          - "scripts/tests/lib/skill-scripts-*"
+          - "scripts/tests/fixtures/skill-scripts/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq]
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts
+
   # Spec 0255 (row F2 of epic #1231), PR B: the dark link-or-copy module, the component twins and
   # the manage modules, with their node:test suites. `bash` is spawned on purpose by the two twin
   # conformance suites (they drive scripts/lib/common.sh and component-resolve.sh next to the

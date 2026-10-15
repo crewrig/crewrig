@@ -336,6 +336,46 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0258 R27-R29 (ticket #1337), PR A: the skill-script oracle and its YAML leg. Linux only: the
+  # goldens are Linux bytes. `jq` and `git` come with the runner image; `yq` is pinned to v4.44.3 (the
+  # version the goldens were generated with) and its sha256 is checked.
+  skill-scripts-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            skill-scripts-ts:
+              - 'artifacts/**/skills/*/scripts/**'
+              - 'scripts/tests/skill-scripts-*'
+              - 'scripts/tests/lib/skill-scripts-*'
+              - 'scripts/tests/fixtures/skill-scripts/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.skill-scripts-ts == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        if: steps.filter.outputs.skill-scripts-ts == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Install yq v4.44.3
+        if: steps.filter.outputs.skill-scripts-ts == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
+          sudo chmod +x /usr/local/bin/yq
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.skill-scripts-ts == 'true'
+        run: node scripts/lib/node-floor-guard.js
+      - name: Test the skill-script oracle
+        if: steps.filter.outputs.skill-scripts-ts == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # Spec 0255 (row F2), PR B: the dark link-or-copy, component twin and manage module suites.
   # Linux only: the conformance suites spawn `bash` and `jq`.
   install-ts:

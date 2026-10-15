@@ -431,6 +431,31 @@ extension-builders-ts-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+skill-scripts-ts:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node scripts/lib/node-floor-guard.js"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "artifacts/**/skills/*/scripts/**"
+        - "scripts/tests/skill-scripts-*"
+        - "scripts/tests/lib/skill-scripts-*"
+        - "scripts/tests/fixtures/skill-scripts/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "artifacts/**/skills/*/scripts/**"
+        - "scripts/tests/skill-scripts-*"
+        - "scripts/tests/lib/skill-scripts-*"
+        - "scripts/tests/fixtures/skill-scripts/**"
+
 install-ts:
   image: node:24
   before_script:
