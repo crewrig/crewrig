@@ -1,0 +1,2 @@
+bad.json: invalid JSON — jq: parse error: Expected another array element at line 1, column 4
+bad2.json: invalid JSON — jq: parse error: Unmatched '}' at line 1, column 6

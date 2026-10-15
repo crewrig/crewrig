@@ -1,0 +1,2 @@
+lint-skill: yq not found — using grep fallback for required keys.
+missing.md: not a regular file

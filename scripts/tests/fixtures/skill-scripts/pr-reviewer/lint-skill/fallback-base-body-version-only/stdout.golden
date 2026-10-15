@@ -1,0 +1,2 @@
+lint-skill: yq not found — using grep fallback for required keys.
+SKILL.md: version not bumped vs origin/main (still 7)

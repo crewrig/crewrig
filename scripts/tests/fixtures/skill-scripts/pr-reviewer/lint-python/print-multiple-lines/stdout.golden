@@ -1,0 +1,4 @@
+lint-python: neither ruff nor flake8 found — skipping static analysis.
+a.py:1: bare print() in non-test file
+a.py:3: bare print() in non-test file
+a.py:4: bare print() in non-test file

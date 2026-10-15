@@ -1,0 +1,1 @@
+markdownlint <--fix> <a.md> <dir with space/b.md> <>

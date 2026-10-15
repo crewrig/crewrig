@@ -1,0 +1,1 @@
+lint-json: jq not found — skipping JSON parse validation.

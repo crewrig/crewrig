@@ -8,3 +8,6 @@
 *.json text eol=lf
 *.toml text eol=lf
 *.md text eol=lf
+
+# Skill-script oracle goldens record the exact bytes a script wrote, carriage returns included.
+scripts/tests/fixtures/skill-scripts/** -text

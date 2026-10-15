@@ -1,0 +1,2 @@
+f.json: invalid JSON — jq: parse error: Invalid escape at line 1, column 11
+f.json:1: trailing comma before } or ]

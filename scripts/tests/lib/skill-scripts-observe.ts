@@ -190,7 +190,7 @@ export function observe(testCase: SkillCase, leg: ResolvedLeg): Observed {
     const res = spawnSync(leg === "shell" ? (bash as string) : process.execPath, [entry, ...args], {
       cwd: path.join(workDir, testCase.cwd ?? ""),
       env: { HOME: dirs.home, TMPDIR: dirs.tmp, PATH: dirs.bin, LC_ALL: "C", ...testCase.env },
-      ...(testCase.input === undefined ? {} : { input: testCase.input }),
+      ...(testCase.input === undefined ? {} : { input: Buffer.from(testCase.input, "latin1") }),
       encoding: "buffer",
       timeout: 30_000,
       maxBuffer: 64 * 1024 * 1024,

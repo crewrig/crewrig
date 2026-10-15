@@ -1,0 +1,6 @@
+lint-skill: yq not found — using grep fallback for required keys.
+SKILL.md: missing required frontmatter key: name
+SKILL.md: missing required frontmatter key: description
+SKILL.md: missing required frontmatter key: license
+SKILL.md: missing required frontmatter key: compatibility
+SKILL.md: missing required frontmatter key: metadata.provenance.version

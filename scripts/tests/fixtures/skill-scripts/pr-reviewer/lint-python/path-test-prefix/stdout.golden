@@ -1,0 +1,1 @@
+lint-python: neither ruff nor flake8 found — skipping static analysis.

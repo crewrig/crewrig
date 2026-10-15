@@ -1,0 +1,2 @@
+lint-json: jq not found — skipping JSON parse validation.
+f.json:1: trailing comma before } or ]
