@@ -191,6 +191,29 @@ hooks/shell-logger.sh
 dist/index.js
 EOF
 
+# The example hooks may be spelled hooks/<name>.sh, hooks/<name>.ts or both
+# (spec 0258 R30, R35): the expected lists above name the .sh spelling and the
+# comparison folds both spellings into one. A hook with neither spelling in the
+# produced tree fails the vacuity guard (return 2). The block between the two
+# markers is driven by scripts/tests/extension-hook-static-reads.test.ts.
+# BEGIN hook-file-states
+fold_hook_files() {
+  sed -E 's#^(hooks/[A-Za-z0-9_-]+)\.(sh|ts)$#\1.<hook>#' | sort -u
+}
+# hook_file_sets_match <actual-list> <expected-list> <hook-name>...
+hook_file_sets_match() {
+  local actual="$1" expected="$2" name
+  shift 2
+  for name in "$@"; do
+    case $'\n'"$actual"$'\n' in
+      *$'\n'"hooks/$name.sh"$'\n'* | *$'\n'"hooks/$name.ts"$'\n'*) ;;
+      *) return 2 ;;
+    esac
+  done
+  [ "$(printf '%s\n' "$actual" | fold_hook_files)" = "$(printf '%s\n' "$expected" | fold_hook_files)" ]
+}
+# END hook-file-states
+
 # assert_file_set <label> <root-dir> <expected-heredoc>
 assert_file_set() {
   local label="$1" root="$2" expected="$3"
@@ -201,7 +224,7 @@ assert_file_set() {
   local actual expected_sorted
   actual="$(cd "$root" && find . -type f | sed 's#^\./##' | sort)"
   expected_sorted="$(printf '%s\n' "$expected" | sort)"
-  if [ "$actual" = "$expected_sorted" ]; then
+  if hook_file_sets_match "$actual" "$expected_sorted" prompt-logger shell-logger; then
     ok "$label — produced file set matches the expected list exactly"
   else
     ng "$label — produced file set diverges from the expected list."$'\n'"  expected:"$'\n'"$expected_sorted"$'\n'"  actual:"$'\n'"$actual"

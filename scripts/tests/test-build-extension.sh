@@ -606,6 +606,21 @@ scaffold() {
   printf '%s\t%s\n' "$sandbox" "$(printf '%s' "$out" | base64 | tr -d '\n')"
 }
 
+# A scaffolded hook may carry hooks/<name>.sh, hooks/<name>.ts or both
+# (spec 0258 R30, R35); neither fails. The block between the markers is driven
+# by scripts/tests/extension-hook-static-reads.test.ts.
+# BEGIN hook-file-twin
+# hook_file_present <root> <rel-file>
+hook_file_present() {
+  local root="$1" file="$2"
+  [ -e "$root/$file" ] && return 0
+  case "$file" in
+    hooks/*.sh) [ -e "$root/${file%.sh}.ts" ] ;;
+    *) return 1 ;;
+  esac
+}
+# END hook-file-twin
+
 assert_selection_took_effect() {
   # assert_selection_took_effect <label> <sandbox> <stdout> <comp> <file-under-probe>
   local label="$1" sandbox="$2" out="$3" comp="$4" file="$5"
@@ -614,7 +629,7 @@ assert_selection_took_effect() {
   else
     ng "$label — stdout is missing 'Added: $comp':"$'\n'"$out"
   fi
-  if [ -e "$sandbox/extensions/org/probe/$file" ]; then
+  if hook_file_present "$sandbox/extensions/org/probe" "$file"; then
     ok "$label — expected file extensions/org/probe/$file is present"
   else
     ng "$label — expected file extensions/org/probe/$file is MISSING"
