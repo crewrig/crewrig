@@ -4,6 +4,8 @@
 // nothing is left on a failure. Throwaway leaves only; no real task is ever registered.
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { setExecutableOverride } from "../lib/service/exec.ts";
 import { curatorNames } from "../lib/service/schedule-names.ts";
@@ -38,6 +40,7 @@ afterEach(() => {
   else process.env["USERNAME"] = savedUser;
 });
 
+const storePath = (): string => path.join(fake.dir, `t_${Buffer.from(TASK).toString("hex")}`);
 const verbs = (): string[] => fake.calls().map((c) => c[0] ?? "");
 const opts = process.platform === "win32" ? { skip: "the fake is a POSIX script" } : {};
 
@@ -68,6 +71,34 @@ describe("schtasks schedule backend", opts, () => {
     assert.deepEqual(verbs(), ["/Query", "/Change", "/End", "/Delete", "/Create", "/Query"]);
     assert.deepEqual(fake.calls()[1], ["/Change", "/TN", TASK, "/DISABLE"]);
     assert.equal(verbs().includes("/Run"), false);
+  });
+
+  it("a reinstall with another hour deletes the own task before creating the new one", () => {
+    const backend = createScheduleBackend();
+    assert.equal(backend.install(names, spec).ok, true);
+    const later: ScheduleSpec = { ...spec, frequency: "weekly", hour: 14 };
+    const before = fake.calls().length;
+    assert.equal(backend.install(names, later).ok, true);
+    assert.deepEqual(verbs().slice(before), [
+      "/Query",
+      "/Change",
+      "/End",
+      "/Delete",
+      "/Create",
+      "/Query",
+    ]);
+    const stored = readFileSync(storePath(), "utf8");
+    assert.equal(stored, renderCalendarTaskXml(names, later, "dev"));
+    assert.doesNotMatch(stored, /T07:00:00|ScheduleByDay/);
+    assert.equal(verbs().includes("/Run"), false);
+  });
+
+  it("a refused create on a reinstall leaves no task", () => {
+    const backend = createScheduleBackend();
+    backend.install(names, spec);
+    fake.setMode({ createFail: "ERREUR : Acces refuse.\n" });
+    assert.equal(backend.install(names, { ...spec, hour: 14 }).ok, false);
+    assert.equal(fake.has(TASK), false);
   });
 
   it("a refused create leaves no task and no file", () => {

@@ -3,7 +3,8 @@
 // A `Type=oneshot` `<unit>.service` and the `<unit>.timer` that fires it, both under
 // `~/.config/systemd/user`, written through staged temp files. The timer is the unit that
 // is enabled (`enable --now <unit>.timer`); the service is never started by the install.
-// A failure at any point rolls back completely: `disable --now`, both files removed,
+// A reinstall over an existing timer file first runs `disable --now` so the new calendar is
+// re-armed. A failure at any point rolls back completely: `disable --now`, both files removed,
 // `daemon-reload`. `uninstall` tests the timer file BEFORE spawning any `systemctl`, so a
 // box with no user session (a CI runner) is not asked anything when there is nothing to remove.
 
@@ -60,6 +61,10 @@ export function createScheduleBackend(home: string = homedir()): ScheduleBackend
       const pair = renderTimerPair(names, spec);
       const timer = `${names.unit}.timer`;
       let failure: string | null = null;
+      // A reinstall replaces: `enable --now` on an already-active timer does not re-arm a
+      // rewritten `OnCalendar`, so an earlier registration is disabled and stopped first (the
+      // result is ignored). The first install, with no timer file, issues no such verb.
+      if (existsSync(timerPath(names))) systemctl("disable", "--now", timer);
       try {
         writeStaged(servicePath(names), pair.service, 0o644);
         writeStaged(timerPath(names), pair.timer, 0o644);

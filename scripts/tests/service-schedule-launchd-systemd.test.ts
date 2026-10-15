@@ -38,6 +38,7 @@ const spec: ScheduleSpec = {
   pathValue: "/usr/bin:/bin",
   logFile: "/tmp/curator.log",
 };
+const daily14: ScheduleSpec = { ...spec, frequency: "daily", hour: 14 };
 const STUB = `#!/bin/sh
 echo "$*" >> "$FAKE_DIR/calls.log"
 verb=""
@@ -138,6 +139,26 @@ describe("launchd schedule backend", opts, () => {
     assert.equal(existsSync(plist()), false);
   });
 
+  it("a reinstall with another hour unloads before loading and leaves only the new schedule", () => {
+    const backend = createLaunchd(home);
+    backend.install(names, spec);
+    writeFileSync(path.join(dir, "calls.log"), "");
+    assert.equal(backend.install(names, daily14).ok, true);
+    assert.deepEqual(calls(), [`unload -w ${plist()}`, `load -w ${plist()}`]);
+    const text = readFileSync(plist(), "utf8");
+    assert.match(text, /<key>Hour<\/key>\s*<integer>14<\/integer>/);
+    assert.doesNotMatch(text, /<integer>9<\/integer>|Weekday/);
+    noStartVerb();
+  });
+
+  it("a failed reinstall leaves no plist behind", () => {
+    const backend = createLaunchd(home);
+    backend.install(names, spec);
+    set("fail.load");
+    assert.equal(backend.install(names, daily14).ok, false);
+    assert.equal(existsSync(plist()), false);
+  });
+
   it("uninstall: absent spawns nothing; present unloads -w and removes the file", () => {
     const backend = createLaunchd(home);
     assert.deepEqual(backend.uninstall(names), { ok: true, absent: true });
@@ -210,6 +231,43 @@ describe("systemd schedule backend", opts, () => {
       false,
     );
     assert.equal(existsSync(timer()), false);
+  });
+
+  it("a reinstall with another hour disables the timer before re-enabling it", () => {
+    const backend = createSystemd(home);
+    backend.install(names, spec);
+    writeFileSync(path.join(dir, "calls.log"), "");
+    assert.equal(backend.install(names, daily14).ok, true);
+    assert.deepEqual(calls(), [
+      `--user disable --now ${names.unit}.timer`,
+      "--user daemon-reload",
+      `--user enable --now ${names.unit}.timer`,
+    ]);
+    const text = readFileSync(timer(), "utf8");
+    assert.match(text, /OnCalendar=\*-\*-\* 14:00:00/);
+    assert.doesNotMatch(text, /Mon|09:00/);
+    noStartVerb();
+  });
+
+  it("a failed reinstall rolls back to a clean state", () => {
+    const backend = createSystemd(home);
+    backend.install(names, spec);
+    set("fail.enable");
+    assert.equal(backend.install(names, daily14).ok, false);
+    assert.deepEqual(calls().slice(-2), [
+      `--user disable --now ${names.unit}.timer`,
+      "--user daemon-reload",
+    ]);
+    assert.equal(existsSync(service()), false);
+    assert.equal(existsSync(timer()), false);
+  });
+
+  it("a failing pre-disable never fails the reinstall", () => {
+    const backend = createSystemd(home);
+    backend.install(names, spec);
+    set("fail.disable");
+    assert.equal(backend.install(names, daily14).ok, true);
+    assert.match(readFileSync(timer(), "utf8"), /14:00:00/);
   });
 
   it("uninstall spawns nothing when the timer file is absent", () => {
