@@ -75,13 +75,24 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
    twelve skill scripts; eleven migrate.)
 
 2. **Entry form.** Each entry SHALL be runnable as a direct `node <path>.ts` command
-   line, written to the conventions of parent requirement 2, and SHALL follow the entry
-   form of spec 0255: a thin file with no top-level `import` or `export`, built-ins
-   loaded with `require("node:<module>") as typeof import("node:<module>")`,
-   `process.exitCode` instead of `process.exit`, and the first statement
-   `process.removeAllListeners("warning")`, so that a typeless `package.json` or none at
-   all produces no `MODULE_TYPELESS_PACKAGE_JSON` warning on standard error, which the
-   differential proof compares (requirement 28).
+   line, written to the conventions of parent requirement 2, and SHALL be a thin file
+   with no top-level `import` or `export`, `process.exitCode` instead of
+   `process.exit`, and the first statement `process.removeAllListeners("warning")`, so
+   that no warning reaches standard error, which the differential proof compares
+   (requirement 29). Spec 0255's entry form loads built-ins with `require`, which
+   exists only where the nearest `package.json` is typeless; the entries of this row
+   run where it is not: a skill script is copied into the four built trees and into a
+   user or adopter directory whose package type is unknown, and an extension hook sits
+   next to an extension `package.json` that declares `"type": "module"`
+   (`extensions/core/hello-world/package.json` and the skeleton's). A skill script, a
+   hook and the skeleton's hook SHALL therefore load built-ins with
+   `process.getBuiltinModule("node:<module>")`, which exists under both module
+   systems, and SHALL reach every other file with a relative `await import()`. A test
+   SHALL run each such entry from a copy placed under a package that declares
+   `"type": "module"`, under a typeless one, and under a directory with no
+   `package.json`, and SHALL require the same standard output, standard error and exit
+   status from the three. The entries `scripts/create-extension.ts` and the three
+   curator entries that run inside the repository MAY use the form of spec 0255.
 
 3. **Self-contained skill scripts.** A script under `artifacts/**/skills/*/scripts/`
    SHALL be self-contained: the component build copies the `scripts/` directory of a
@@ -280,7 +291,7 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
 19. **Cheap guard and lazy import.** An example hook SHALL read the payload and return
     with built-ins only; it has no module graph, so the lazy `import()` rule of parent
     requirement 15 is met by construction and a test SHALL assert that the entry
-    contains no `import` of anything but built-ins. The skeleton's `logger.ts` SHALL
+    contains no `import` statement, no `import()` and no `require`. The skeleton's `logger.ts` SHALL
     carry a comment that shows an author where a guard and a lazy `import()` belong
     when a hook grows a module graph.
 
@@ -499,16 +510,20 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     - B, the eleven skill entries, the differential and `windows-skill-scripts`;
     - C, the three curator entries, the service-layer calendar trigger, the
       differential and `windows-harness-curator`;
-    - D, the hook oracle, the three hooks beside their shell twins, the differential,
-      the budgets and `windows-extension-hooks`;
-    - E, `create-extension.ts`, the differential and `windows-create-extension`;
+    - D, the hook oracle, the three hooks beside their shell twins (the skeleton's
+      `logger.ts` beside its `logger.sh`), the differential, the budgets,
+      `windows-extension-hooks`, and the regeneration of the extension and packaging
+      goldens that the added files change;
+    - E, `create-extension.ts`, the differential, `windows-create-extension` and the
+      skeleton's `package.json` toolchain of requirement 26;
     - S1, the switch of the skill and curator scripts: deletions, the three curator
       shims, callers, skill and agent version bumps, the component build;
-    - S2, the switch of the extension side: the manifest lines of requirement 17,
-      the regenerated goldens, the deletion of the three hook scripts, the skeleton
-      hook and `package.json` toolchain, the `create-extension` shim, the Taskfile
-      tasks, the extension version bump, the final documentation, and the flip of this
-      spec to `status: implemented`.
+    - S2, the switch of the extension side: the manifest lines of requirement 17, the
+      second regeneration of those goldens, the deletion of the three hook scripts and
+      of the skeleton's `logger.sh`, the skeleton fragment, the scaffold toolchain test
+      of requirement 26, the `create-extension` shim, the Taskfile tasks, the extension
+      version bump, the final documentation, and the flip of this spec to
+      `status: implemented`.
 
     Every pull request but S2 SHALL be on a branch `test/1337-<slug>`; S2 SHALL be on
     `feat/1337-<slug>` (the spec linter reads `feat`, `fix`, `refactor`, `perf` and
