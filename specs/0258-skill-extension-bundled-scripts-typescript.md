@@ -107,7 +107,13 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
    several scripts of one skill need SHALL live in that skill, at
    `scripts/lib/<name>.ts` inside the skill's `scripts/` directory, loaded with a
    relative `await import()`, and SHALL NOT be shared between two skills. Every file
-   SHALL stay under 300 lines (spec 0238).
+   SHALL stay under 300 lines (spec 0238). One entry is excepted: `schedule-curator.ts`
+   registers an operating-system job through `scripts/lib/service/` (requirement 15) and
+   SHALL reach that layer by a lazy `import()` of a file found by walking up from its own
+   directory to a CrewRig checkout (the first ancestor that holds
+   `scripts/lib/service/schedule-backend.ts`); when there is none it SHALL exit 1 with a
+   diagnostic that names the missing checkout, run no registration and print nothing
+   else. `curate.ts` and `setup-labels.ts` SHALL NOT load it.
 
 4. **Observable contract.** Each entry SHALL preserve the observable contract of the
    script it replaces (parent requirement 14): arguments, environment variables read,
@@ -432,7 +438,7 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
 ### Shims, callers and the rest of the repository
 
 31. **Deviations.** The deviations from the shell contract are a closed list; letters
-    from (j) onward are reserved for what the differential test finds and SHALL be
+    from (n) onward are reserved for what the differential test finds and SHALL be
     added through a delta of this spec.
     - (a) The script name printed in usage lines and diagnostics (`$(basename "$0")`)
       is the entry's name, ending in `.ts`.
@@ -460,13 +466,25 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
       the letters `n`, `e` and `E` (`-n`, `-e`, `-E`, `-ne`, `-en`, ...) is taken by
       the shell's `echo` as options and printed as nothing or as an empty line; the
       hook writes it literally.
+    - (j) `schedule-curator`: the launchd verbs (`load -w` and `unload -w` in place of
+      `bootstrap` and `bootout`) and the `Wrote:` and `Loaded` lines MAY differ from the
+      shell's, since the job is registered through the service layer.
+    - (k) `curate` on Windows sets `PYTHONUTF8=1` for the interpreter it starts, so that
+      Gitmoji in a title survives a console code page.
+    - (l) An option that needs a value and is given none (`--threshold` last on the
+      line) reports a usage error with exit 1; the shell died with `unbound variable`.
+    - (m) `lint-json` rejects what `JSON.parse` rejects, which is stricter than
+      `jq empty`: an empty file, several top-level values and the non-standard literals
+      `nan` and `NaN` that `jq` accepted are reported as `invalid JSON`.
 
 32. **Shims, deletion and callers.** A script with a Bash oracle or a CI or Taskfile
     caller that is not retargeted in the same pull request SHALL become a forwarding
     shim of the form of spec 0255 requirement 25 (Node.js floor guard, then `exec node
     <entry>.ts "$@"`): `curate.sh`, `schedule-curator.sh`, `setup-labels.sh` and
     `create-extension.sh`; each keeps its line in `ci/shell-allowlist.txt` until row
-    J4. A script with neither SHALL be deleted with its allowlist line, in the switch pull
+    J4. A shim inside a skill has no `scripts/lib/` above it, so the three curator shims
+    SHALL carry the Node.js floor check inline (a `node -e` major-version test that prints
+    the parent requirement 4 diagnostic and exits non-zero) in place of the guard file. A script with neither SHALL be deleted with its allowlist line, in the switch pull
     request of requirement 35: the eleven skill scripts and the three hook scripts. Every
     skill body, agent body, reference page, `README.md`, `DEVELOPMENT.md`,
     `CONTRIBUTING.md`, `artifacts/FORMAT.md`, `Taskfile.yml` task and workflow line that
@@ -528,8 +546,10 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     Every pull request but S2 SHALL be on a branch `test/1337-<slug>`; S2 SHALL be on
     `feat/1337-<slug>` (the spec linter reads `feat`, `fix`, `refactor`, `perf` and
     `chore` as the implementation-complete pull request). R0, A, C, D and E have no
-    dependency among them and SHALL be opened in parallel; B follows A; S1 follows R0,
-    B and C; S2 follows R0, D and E. S2 regenerates the `create-extension` goldens that
+    dependency among them and SHALL be opened in parallel; B follows A; S1 follows B
+    and C; S2 follows R0, D and E. The skill and curator scripts have no static read
+    that R0 could retarget before their switch, so R0 holds the extension-side reads
+    only. S2 regenerates the `create-extension` goldens that
     E committed, because the skeleton it changes is their input.
 
 ### Decision record
