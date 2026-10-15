@@ -1,0 +1,33 @@
+{
+  "status": 0,
+  "stdout": "2b424813848d880485c75bd8e5c4bccdff6067438fb2e3d21e7c7b432e731562",
+  "stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "files": {
+    "build": "dir",
+    "build/extensions": "dir",
+    "build/extensions/combo48": "dir",
+    "build/extensions/combo48/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "build/extensions/combo48/CONTEXT.md": "4d1c1b36d2354f14ea56dff73b70fa5586483e163794d33a1701718e1df3f069",
+    "build/extensions/combo48/GEMINI.md": "21e33920b0b616c0e89eefbf2c93012fa0e7ad3ec3a62712de5ac551f107669c",
+    "build/extensions/combo48/README.md": "f9d99ee0021c0b5d6af97977bf2d2d7dc6d340d1ea98762846a998d54166caaa",
+    "build/extensions/combo48/extension.json": "4bb6a06fa3e07c737ec7f8b7157e760238b966140317360d8e0ebd26d94d78ab",
+    "build/extensions/combo48/gemini-extension.json": "d03f634ce80875bdabdd18f023f3614041a2e965fd057b9ec34f080be380d73a",
+    "build/extensions/combo48/hooks": "dir",
+    "build/extensions/combo48/hooks/hooks.json": "84e38c3345ae94f21582722f3b2b4088531bced0e44ebe85aa9a184d07fc50ea",
+    "build/extensions/combo48/hooks/logger.sh": "f07959d0318db10d6de65ef887257761ae1291cd6098b8b9703ff3af43d27b09:x",
+    "build/extensions/combo48/package.json": "eed9d3d3356d7a6e93bfdd885bb440f4f079298b2cb9923a74347bc24c898309",
+    "build/extensions/combo48/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/gaps": "dir",
+    "build/gaps/combo48": "dir",
+    "build/gaps/combo48/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "extensions/org/combo48": "dir",
+    "extensions/org/combo48/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "extensions/org/combo48/CONTEXT.md": "4d1c1b36d2354f14ea56dff73b70fa5586483e163794d33a1701718e1df3f069",
+    "extensions/org/combo48/README.md": "f9d99ee0021c0b5d6af97977bf2d2d7dc6d340d1ea98762846a998d54166caaa",
+    "extensions/org/combo48/extension.json": "4bb6a06fa3e07c737ec7f8b7157e760238b966140317360d8e0ebd26d94d78ab",
+    "extensions/org/combo48/hooks": "dir",
+    "extensions/org/combo48/hooks/logger.sh": "f07959d0318db10d6de65ef887257761ae1291cd6098b8b9703ff3af43d27b09:x",
+    "extensions/org/combo48/package.json": "eed9d3d3356d7a6e93bfdd885bb440f4f079298b2cb9923a74347bc24c898309",
+    "extensions/org/combo48/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "status": 0,
+  "stdout": "f70928a76a8a73fc9e05ae71df830e730e53d440132cdbce4365ef3ad76ea4f5",
+  "stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "files": {
+    "build": "dir",
+    "build/extensions": "dir",
+    "build/extensions/combo0": "dir",
+    "build/extensions/combo0/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "build/extensions/combo0/CONTEXT.md": "5260f3c62cbb0d74d41a64f351f6623ce612b57bafe2b08de4c75d7791e5f05b",
+    "build/extensions/combo0/GEMINI.md": "e925d696339472baaa563823ec650bc6a7e251a50b3ee131f08b7f9897b2ec42",
+    "build/extensions/combo0/README.md": "23149319eb4202797a61e07ab0c9825edf52d57a383b5b59ea61d724d6cc929d",
+    "build/extensions/combo0/extension.json": "d92705c8515ee275ae00f9e7309fec00d62e0c738b0de3161149d26849a22d6d",
+    "build/extensions/combo0/gemini-extension.json": "5174daf011f85d4998a2377e2806e324eac49f34cc8d13653f7ef53e5b98ea4f",
+    "build/extensions/combo0/package.json": "ec4dbfb97ddd8c6a5d94337f6abc60568db7fe0f3815808d29be5c67adf668db",
+    "build/extensions/combo0/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/gaps": "dir",
+    "build/gaps/combo0": "dir",
+    "build/gaps/combo0/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "extensions/org/combo0": "dir",
+    "extensions/org/combo0/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "extensions/org/combo0/CONTEXT.md": "5260f3c62cbb0d74d41a64f351f6623ce612b57bafe2b08de4c75d7791e5f05b",
+    "extensions/org/combo0/README.md": "23149319eb4202797a61e07ab0c9825edf52d57a383b5b59ea61d724d6cc929d",
+    "extensions/org/combo0/extension.json": "d92705c8515ee275ae00f9e7309fec00d62e0c738b0de3161149d26849a22d6d",
+    "extensions/org/combo0/package.json": "ec4dbfb97ddd8c6a5d94337f6abc60568db7fe0f3815808d29be5c67adf668db",
+    "extensions/org/combo0/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+  }
+}

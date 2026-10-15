@@ -58,9 +58,8 @@ export function parseCreateArgs(argv: readonly string[], env: Env): CreateArgs {
     } else if (word.startsWith("--components=")) {
       value = word.slice("--components=".length);
     } else {
-      return fail(
-        `Error: unknown argument '${word}'. Usage: NAME=my-extension task create-extension`,
-      );
+      // The shell ignored every argument it did not read: so does the entry.
+      continue;
     }
     const parsed = parseComponentList(value);
     if (typeof parsed === "string") return fail(parsed);

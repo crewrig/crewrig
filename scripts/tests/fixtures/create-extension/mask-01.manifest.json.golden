@@ -1,0 +1,32 @@
+{
+  "status": 0,
+  "stdout": "17239a1e8d9c6792d2b9aeb7be826470bbe348030b9577efbaa0dbe1b4d6e518",
+  "stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "files": {
+    "build": "dir",
+    "build/extensions": "dir",
+    "build/extensions/combo1": "dir",
+    "build/extensions/combo1/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "build/extensions/combo1/CONTEXT.md": "fa3ae0439a5fa32716f41bcdc9a3b5f8527ff92a00d4a1d1f1686b6b7e4a80ae",
+    "build/extensions/combo1/GEMINI.md": "cb57e44272bfdb1723f6b17e0553ac9b18f81010737afdb220b91ec38c6ef2e3",
+    "build/extensions/combo1/README.md": "ab46d9484cef672f2456d0163a0aa9d7f8ef57b6727e4e9882c67ce76c77b1c9",
+    "build/extensions/combo1/extension.json": "7ed9881e8bee31440f3ca38bab05346c6927a0564df59616e4a27d86d7522564",
+    "build/extensions/combo1/gemini-extension.json": "725f94819c965fd603cbdab0f5446a8b871c98685dd5b3ce11c20b7c1307ffd8",
+    "build/extensions/combo1/package.json": "dc441ee0d7da7b91fcb9a57c52b50aee2116799498311cf0ff219cee57a79d88",
+    "build/extensions/combo1/src": "dir",
+    "build/extensions/combo1/src/index.ts": "8925bdf22b1ca386040323502eeefa0f571884b257249a1089aba8f4f8bb79d4",
+    "build/extensions/combo1/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/gaps": "dir",
+    "build/gaps/combo1": "dir",
+    "build/gaps/combo1/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "extensions/org/combo1": "dir",
+    "extensions/org/combo1/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "extensions/org/combo1/CONTEXT.md": "fa3ae0439a5fa32716f41bcdc9a3b5f8527ff92a00d4a1d1f1686b6b7e4a80ae",
+    "extensions/org/combo1/README.md": "ab46d9484cef672f2456d0163a0aa9d7f8ef57b6727e4e9882c67ce76c77b1c9",
+    "extensions/org/combo1/extension.json": "7ed9881e8bee31440f3ca38bab05346c6927a0564df59616e4a27d86d7522564",
+    "extensions/org/combo1/package.json": "dc441ee0d7da7b91fcb9a57c52b50aee2116799498311cf0ff219cee57a79d88",
+    "extensions/org/combo1/src": "dir",
+    "extensions/org/combo1/src/index.ts": "8925bdf22b1ca386040323502eeefa0f571884b257249a1089aba8f4f8bb79d4",
+    "extensions/org/combo1/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+  }
+}

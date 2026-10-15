@@ -1,0 +1,33 @@
+{
+  "status": 0,
+  "stdout": "6c94dfacece3fe14c44ce322d9d5da981ac6699b4964ca3471e5d3150e6d7aa8",
+  "stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "files": {
+    "build": "dir",
+    "build/extensions": "dir",
+    "build/extensions/combo2": "dir",
+    "build/extensions/combo2/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "build/extensions/combo2/CONTEXT.md": "9280ec8934caef04f4e338335279a4ee77b3b9e784b41ddc297bebb9a5bfd312",
+    "build/extensions/combo2/GEMINI.md": "ddeaf4ce906ee8ce8fbdf75e28f85105e37f617e2057588a325ef60fd8c28351",
+    "build/extensions/combo2/README.md": "a86e034311177fcda363705144044d107c655e0cf36edd17461242ffb83914c2",
+    "build/extensions/combo2/commands": "dir",
+    "build/extensions/combo2/commands/sample.md": "5fabdc2ebb8bf2c5594b9a680ac763aa1670175757289ca86492135bc03aaa05",
+    "build/extensions/combo2/commands/sample.toml": "91106a4f17a5bb0f6689a9f090383c1ebdfdefca3d9808687cb2deaa18e30630",
+    "build/extensions/combo2/extension.json": "a3202f461c1b97e9b8a59d0990475ec1d4dc67a0606df1728c3f2f9b33c9d5ae",
+    "build/extensions/combo2/gemini-extension.json": "2f155346849e6866eeb52fb887f09fc0a25cf84381a50838d6bfc80b6cba6702",
+    "build/extensions/combo2/package.json": "8320d97fe09ae449d76d3b1d91bd84e3d679e487ad7bea9b2c9c62dc3b33d1ff",
+    "build/extensions/combo2/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/gaps": "dir",
+    "build/gaps/combo2": "dir",
+    "build/gaps/combo2/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "extensions/org/combo2": "dir",
+    "extensions/org/combo2/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "extensions/org/combo2/CONTEXT.md": "9280ec8934caef04f4e338335279a4ee77b3b9e784b41ddc297bebb9a5bfd312",
+    "extensions/org/combo2/README.md": "a86e034311177fcda363705144044d107c655e0cf36edd17461242ffb83914c2",
+    "extensions/org/combo2/commands": "dir",
+    "extensions/org/combo2/commands/sample.md": "5fabdc2ebb8bf2c5594b9a680ac763aa1670175757289ca86492135bc03aaa05",
+    "extensions/org/combo2/extension.json": "a3202f461c1b97e9b8a59d0990475ec1d4dc67a0606df1728c3f2f9b33c9d5ae",
+    "extensions/org/combo2/package.json": "8320d97fe09ae449d76d3b1d91bd84e3d679e487ad7bea9b2c9c62dc3b33d1ff",
+    "extensions/org/combo2/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+  }
+}

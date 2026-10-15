@@ -1,0 +1,33 @@
+{
+  "status": 0,
+  "stdout": "cf45d0034425cef824b1aec734facd36b3728090f009b654baa7f11df3cb60b6",
+  "stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "files": {
+    "build": "dir",
+    "build/extensions": "dir",
+    "build/extensions/combo34": "dir",
+    "build/extensions/combo34/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "build/extensions/combo34/CONTEXT.md": "0025f0cf2fd337c7b271900ee711209a08e92f5cccaa88382f9ea8d473e2855b",
+    "build/extensions/combo34/GEMINI.md": "048869d334172d9f50e9ee306fdb5cb1429d8f7e7d5987ed609f0d4c996610c6",
+    "build/extensions/combo34/README.md": "de0ecf0f91823f4d6fe06beaee12ac3db2a8d070f12c5639c891c53e94d9163d",
+    "build/extensions/combo34/commands": "dir",
+    "build/extensions/combo34/commands/sample.md": "acd48784b5a953b57cace864efdcb86fa51e74ebc34b4e19b0f70ae0ecabdb15",
+    "build/extensions/combo34/commands/sample.toml": "e4cfc98ff94cb84a36835ba04c5cdb0caba6de3c51111f60ef4eba41cbb663ef",
+    "build/extensions/combo34/extension.json": "74a0a23f897ea0b5e434e72c8bcefdb59a9e09c0420920c39c1005255371f84a",
+    "build/extensions/combo34/gemini-extension.json": "006c41b578c9124a003c69bea037d7d967089b58e75190c0bb83093b3f1c18a2",
+    "build/extensions/combo34/package.json": "8ef21c2be12e5fb65942b414ceedfec30087f650b98e0a4218a85cf865e24fab",
+    "build/extensions/combo34/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/gaps": "dir",
+    "build/gaps/combo34": "dir",
+    "build/gaps/combo34/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "extensions/org/combo34": "dir",
+    "extensions/org/combo34/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "extensions/org/combo34/CONTEXT.md": "0025f0cf2fd337c7b271900ee711209a08e92f5cccaa88382f9ea8d473e2855b",
+    "extensions/org/combo34/README.md": "de0ecf0f91823f4d6fe06beaee12ac3db2a8d070f12c5639c891c53e94d9163d",
+    "extensions/org/combo34/commands": "dir",
+    "extensions/org/combo34/commands/sample.md": "acd48784b5a953b57cace864efdcb86fa51e74ebc34b4e19b0f70ae0ecabdb15",
+    "extensions/org/combo34/extension.json": "74a0a23f897ea0b5e434e72c8bcefdb59a9e09c0420920c39c1005255371f84a",
+    "extensions/org/combo34/package.json": "8ef21c2be12e5fb65942b414ceedfec30087f650b98e0a4218a85cf865e24fab",
+    "extensions/org/combo34/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+  }
+}

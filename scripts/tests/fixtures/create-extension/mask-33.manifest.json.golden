@@ -1,0 +1,32 @@
+{
+  "status": 0,
+  "stdout": "d7a3461750fa75b1aac61482a4ba0e73514a22512c36e033c2c4e5458fba492c",
+  "stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "files": {
+    "build": "dir",
+    "build/extensions": "dir",
+    "build/extensions/combo33": "dir",
+    "build/extensions/combo33/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "build/extensions/combo33/CONTEXT.md": "78e02de0ed8647d2967153ba4eaa65596eb6cefb3549a069faf7c5c89dbf6a89",
+    "build/extensions/combo33/GEMINI.md": "77c7cfa0a7155d1eb56b5ad07d52ec7516938945ecd42127e70c6f1b45b65401",
+    "build/extensions/combo33/README.md": "0a254a6ddf3beb42a9b48839e251709fa9b8dc531b7f61a35611d1fd6171d4fe",
+    "build/extensions/combo33/extension.json": "639d6b2bb1626f91d563e253880a482081c2fe66fad578cd0b5f05879d1c4041",
+    "build/extensions/combo33/gemini-extension.json": "3230b27b1f442354a42e3ebb69641250447bf6fecdf4f6b40fa6aba992f0806a",
+    "build/extensions/combo33/package.json": "408ef982f2079fe3710f99f511c1c92611a63e0e5e59e0b1d41024a12b8929a1",
+    "build/extensions/combo33/src": "dir",
+    "build/extensions/combo33/src/index.ts": "cf60416b9f768c0c541a14158625f10e2a3b01622452185249e7352ac9259727",
+    "build/extensions/combo33/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e",
+    "build/gaps": "dir",
+    "build/gaps/combo33": "dir",
+    "build/gaps/combo33/observed-gaps.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "extensions/org/combo33": "dir",
+    "extensions/org/combo33/.gitignore": "695c456251e4fcdeebc81d7bdb15f4aa0d4ee615f5c6a20942d8b0795dbfce8e",
+    "extensions/org/combo33/CONTEXT.md": "78e02de0ed8647d2967153ba4eaa65596eb6cefb3549a069faf7c5c89dbf6a89",
+    "extensions/org/combo33/README.md": "0a254a6ddf3beb42a9b48839e251709fa9b8dc531b7f61a35611d1fd6171d4fe",
+    "extensions/org/combo33/extension.json": "639d6b2bb1626f91d563e253880a482081c2fe66fad578cd0b5f05879d1c4041",
+    "extensions/org/combo33/package.json": "408ef982f2079fe3710f99f511c1c92611a63e0e5e59e0b1d41024a12b8929a1",
+    "extensions/org/combo33/src": "dir",
+    "extensions/org/combo33/src/index.ts": "cf60416b9f768c0c541a14158625f10e2a3b01622452185249e7352ac9259727",
+    "extensions/org/combo33/tsconfig.json": "4e1e96ba9de0da1f3461a091127aaa5e66061c19be9b8db7c1f0b2ed71e9223e"
+  }
+}
