@@ -1,7 +1,7 @@
 ---
 id: "0258"
 slug: skill-extension-bundled-scripts-typescript
-status: draft
+status: approved
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1337
@@ -731,7 +731,7 @@ Then every assertion passes unchanged.
 ## Open questions
 
 - Whether the plugin-root command lines of requirement 17 launch on each (CLI, Windows)
-  cell: a follow-up ticket, run on the maintainer's Windows machine with the probe of
+  cell: issue #1601, run on the maintainer's Windows machine with the probe of
   `scripts/probe-windows-hook-parsing.ts`, closes it and replaces the row of
   requirement 21. This row ships the unmeasured cells named, not hidden.
 - The exact shape of the calendar-trigger addition to `scripts/lib/service/`
