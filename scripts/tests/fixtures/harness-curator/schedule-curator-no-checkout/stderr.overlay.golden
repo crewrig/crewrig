@@ -1,0 +1,1 @@
+Error: schedule-curator needs a CrewRig checkout: no ancestor of <SANDBOX>/work holds scripts/lib/service/schedule-backend.ts.

@@ -1,0 +1,2 @@
+Error: python3 not found
+Install MemPalace via pipx: pipx install 'mempalace>=3.6.0,<3.7'

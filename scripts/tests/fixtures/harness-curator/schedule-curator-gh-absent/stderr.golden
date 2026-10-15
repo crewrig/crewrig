@@ -1,0 +1,2 @@
+Error: 'gh' CLI is required (the scheduled run calls 'gh issue create').
+Install: https://cli.github.com/
